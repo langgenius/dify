@@ -479,7 +479,7 @@ const TextGeneration: FC<IMainProps> = ({
     if (!isShowResSidebar)
       return 'none'
 
-    return cn('fixed z-50 inset-0', isTablet ? 'pl-[128px]' : 'pl-6')
+    return cn('fixed inset-0 z-50', isTablet ? 'pl-[128px]' : 'pl-6')
   })()
 
   const renderResWrap = (
@@ -487,13 +487,13 @@ const TextGeneration: FC<IMainProps> = ({
       ref={resRef}
       className={
         cn(
-          'flex flex-col h-full shrink-0',
+          'flex h-full shrink-0 flex-col',
           isPC ? 'px-10 py-8' : 'bg-gray-50',
           isTablet && 'p-6', isMobile && 'p-4')
       }
     >
       <>
-        <div className='flex items-center justify-between shrink-0'>
+        <div className='flex shrink-0 items-center justify-between'>
           <div className='flex items-center space-x-3'>
             <div className={s.starIcon}></div>
             <div className='text-lg font-semibold text-gray-800'>{t('share.generation.title')}</div>
@@ -501,14 +501,14 @@ const TextGeneration: FC<IMainProps> = ({
           <div className='flex items-center space-x-2'>
             {allFailedTaskList.length > 0 && (
               <div className='flex items-center'>
-                <RiErrorWarningFill className='w-4 h-4 text-[#D92D20]' />
+                <RiErrorWarningFill className='h-4 w-4 text-[#D92D20]' />
                 <div className='ml-1 text-[#D92D20]'>{t('share.generation.batchFailed.info', { num: allFailedTaskList.length })}</div>
                 <Button
                   variant='primary'
                   className='ml-2'
                   onClick={handleRetryAllFailedTask}
                 >{t('share.generation.batchFailed.retry')}</Button>
-                <div className='mx-3 w-[1px] h-3.5 bg-gray-200'></div>
+                <div className='mx-3 h-3.5 w-[1px] bg-gray-200'></div>
               </div>
             )}
             {allSuccessTaskList.length > 0 && (
@@ -519,16 +519,16 @@ const TextGeneration: FC<IMainProps> = ({
             )}
             {!isPC && (
               <div
-                className='flex items-center justify-center cursor-pointer'
+                className='flex cursor-pointer items-center justify-center'
                 onClick={hideResSidebar}
               >
-                <XMarkIcon className='w-4 h-4 text-gray-800' />
+                <XMarkIcon className='h-4 w-4 text-gray-800' />
               </div>
             )}
           </div>
         </div>
 
-        <div className='overflow-y-auto grow'>
+        <div className='grow overflow-y-auto'>
           {!isCallBatchAPI ? renderRes() : renderBatchRes()}
           {!noPendingTask && (
             <div className='mt-4'>
@@ -542,7 +542,7 @@ const TextGeneration: FC<IMainProps> = ({
 
   if (!appId || !siteInfo || !promptConfig) {
     return (
-      <div className='flex items-center h-screen'>
+      <div className='flex h-screen items-center'>
         <Loading type='app' />
       </div>)
   }
@@ -558,7 +558,7 @@ const TextGeneration: FC<IMainProps> = ({
         <div className={cn(
           isPC ? 'w-[600px] max-w-[50%] p-8' : 'p-4',
           isInstalledApp && 'rounded-l-2xl',
-          'shrink-0 relative flex flex-col pb-10 h-full border-r border-gray-100 bg-white',
+          'relative flex h-full shrink-0 flex-col border-r border-gray-100 bg-white pb-10',
         )}>
           <div className='mb-6'>
             <div className='flex items-center justify-between'>
@@ -574,10 +574,10 @@ const TextGeneration: FC<IMainProps> = ({
               </div>
               {!isPC && (
                 <Button
-                  className='shrink-0 ml-2'
+                  className='ml-2 shrink-0'
                   onClick={showResSidebar}
                 >
-                  <div className='flex items-center space-x-2 text-primary-600 text-[13px] font-medium'>
+                  <div className='text-primary-600 flex items-center space-x-2 text-[13px] font-medium'>
                     <div className={s.starIcon}></div>
                     <span>{t('share.generation.title')}</span>
                   </div>
@@ -599,7 +599,7 @@ const TextGeneration: FC<IMainProps> = ({
                   isRight: true,
                   extra: savedMessages.length > 0
                     ? (
-                      <div className='ml-1 flex items-center h-5 px-1.5 rounded-md border border-gray-200 text-gray-500 text-xs font-medium'>
+                      <div className='ml-1 flex h-5 items-center rounded-md border border-gray-200 px-1.5 text-xs font-medium text-gray-500'>
                         {savedMessages.length}
                       </div>
                     )
@@ -610,7 +610,7 @@ const TextGeneration: FC<IMainProps> = ({
             value={currentTab}
             onChange={setCurrentTab}
           />
-          <div className='h-20 overflow-y-auto grow'>
+          <div className='h-20 grow overflow-y-auto'>
             <div className={cn(currentTab === 'create' ? 'block' : 'hidden')}>
               <RunOnce
                 siteInfo={siteInfo}
@@ -645,7 +645,7 @@ const TextGeneration: FC<IMainProps> = ({
           {/* copyright */}
           <div className={cn(
             isInstalledApp ? 'left-[248px]' : 'left-8',
-            'fixed  bottom-4  flex space-x-2 text-gray-400 font-normal text-xs',
+            'fixed  bottom-4  flex space-x-2 text-xs font-normal text-gray-400',
           )}>
             {siteInfo.copyright && (
               <div className="">© {(new Date()).getFullYear()} {siteInfo.copyright}</div>
@@ -655,7 +655,7 @@ const TextGeneration: FC<IMainProps> = ({
                 {siteInfo.copyright && <div>·</div>}
                 <div>{t('share.chat.privacyPolicyLeft')}
                   <a
-                    className='text-gray-500 px-1'
+                    className='px-1 text-gray-500'
                     href={siteInfo.privacy_policy}
                     target='_blank' rel='noopener noreferrer'>{t('share.chat.privacyPolicyMiddle')}</a>
                   {t('share.chat.privacyPolicyRight')}

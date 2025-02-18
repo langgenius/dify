@@ -25,16 +25,16 @@ export const TopBar: FC<TopBarProps> = (props) => {
   }, [datasetId])
 
   return <div className={classNames('flex shrink-0 h-[52px] items-center justify-between relative border-b border-b-divider-subtle', className)}>
-    <Link href={fallbackRoute} replace className="h-12 pl-2 pr-6 py-2 justify-start items-center gap-1 inline-flex">
+    <Link href={fallbackRoute} replace className="inline-flex h-12 items-center justify-start gap-1 py-2 pl-2 pr-6">
       <div className='p-2'>
-        <RiArrowLeftLine className='size-4 text-text-primary' />
+        <RiArrowLeftLine className='text-text-primary size-4' />
       </div>
       <p className="text-text-primary system-sm-semibold-uppercase">
         {t('datasetCreation.steps.header.fallbackRoute')}
       </p>
     </Link>
     <div className={
-      'top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 absolute'
+      'absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2'
     }>
       <Stepper
         steps={Array.from({ length: 3 }, (_, i) => ({

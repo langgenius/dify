@@ -76,7 +76,7 @@ const WorkflowVariableBlockComponent = ({
   const Item = (
     <div
       className={cn(
-        'mx-0.5 relative group/wrap flex items-center h-[18px] pl-0.5 pr-[3px] rounded-[5px] border select-none',
+        'group/wrap relative mx-0.5 flex h-[18px] select-none items-center rounded-[5px] border pl-0.5 pr-[3px]',
         isSelected ? ' border-state-accent-solid bg-state-accent-hover' : ' border-components-panel-border-subtle bg-components-badge-white-to-dark',
         !node && !isEnv && !isChatVar && '!border-state-destructive-solid !bg-state-destructive-hover',
       )}
@@ -94,24 +94,24 @@ const WorkflowVariableBlockComponent = ({
               </div>
             )
           }
-          <div className='shrink-0 mx-0.5 max-w-[60px] text-xs font-medium text-text-secondary truncate' title={node?.title} style={{
+          <div className='text-text-secondary mx-0.5 max-w-[60px] shrink-0 truncate text-xs font-medium' title={node?.title} style={{
           }}>{node?.title}</div>
-          <Line3 className='mr-0.5 text-divider-deep'></Line3>
+          <Line3 className='text-divider-deep mr-0.5'></Line3>
         </div>
       )}
-      <div className='flex items-center text-text-accent'>
-        {!isEnv && !isChatVar && <Variable02 className={cn('shrink-0 w-3.5 h-3.5', isException && 'text-text-warning')} />}
-        {isEnv && <Env className='shrink-0 w-3.5 h-3.5 text-util-colors-violet-violet-600' />}
-        {isChatVar && <BubbleX className='w-3.5 h-3.5 text-util-colors-teal-teal-700' />}
+      <div className='text-text-accent flex items-center'>
+        {!isEnv && !isChatVar && <Variable02 className={cn('h-3.5 w-3.5 shrink-0', isException && 'text-text-warning')} />}
+        {isEnv && <Env className='text-util-colors-violet-violet-600 h-3.5 w-3.5 shrink-0' />}
+        {isChatVar && <BubbleX className='text-util-colors-teal-teal-700 h-3.5 w-3.5' />}
         <div className={cn(
-          'shrink-0 ml-0.5 text-xs font-medium truncate',
+          'ml-0.5 shrink-0 truncate text-xs font-medium',
           isEnv && 'text-util-colors-violet-violet-600',
           isChatVar && 'text-util-colors-teal-teal-700',
           isException && 'text-text-warning',
         )} title={varName}>{varName}</div>
         {
           !node && !isEnv && !isChatVar && (
-            <RiErrorWarningFill className='ml-0.5 w-3 h-3 text-text-destructive' />
+            <RiErrorWarningFill className='text-text-destructive ml-0.5 h-3 w-3' />
           )
         }
       </div>

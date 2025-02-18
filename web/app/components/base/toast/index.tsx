@@ -59,13 +59,13 @@ const Toast = ({
     }`}
     />
     <div className={`flex ${size === 'md' ? 'gap-1' : 'gap-0.5'}`}>
-      <div className={`flex justify-center items-center ${size === 'md' ? 'p-0.5' : 'p-1'}`}>
-        {type === 'success' && <RiCheckboxCircleFill className={`${size === 'md' ? 'w-5 h-5' : 'w-4 h-4'} text-text-success`} aria-hidden="true" />}
-        {type === 'error' && <RiErrorWarningFill className={`${size === 'md' ? 'w-5 h-5' : 'w-4 h-4'} text-text-destructive`} aria-hidden="true" />}
-        {type === 'warning' && <RiAlertFill className={`${size === 'md' ? 'w-5 h-5' : 'w-4 h-4'} text-text-warning-secondary`} aria-hidden="true" />}
-        {type === 'info' && <RiInformation2Fill className={`${size === 'md' ? 'w-5 h-5' : 'w-4 h-4'} text-text-accent`} aria-hidden="true" />}
+      <div className={`flex items-center justify-center ${size === 'md' ? 'p-0.5' : 'p-1'}`}>
+        {type === 'success' && <RiCheckboxCircleFill className={`${size === 'md' ? 'h-5 w-5' : 'h-4 w-4'} text-text-success`} aria-hidden="true" />}
+        {type === 'error' && <RiErrorWarningFill className={`${size === 'md' ? 'h-5 w-5' : 'h-4 w-4'} text-text-destructive`} aria-hidden="true" />}
+        {type === 'warning' && <RiAlertFill className={`${size === 'md' ? 'h-5 w-5' : 'h-4 w-4'} text-text-warning-secondary`} aria-hidden="true" />}
+        {type === 'info' && <RiInformation2Fill className={`${size === 'md' ? 'h-5 w-5' : 'h-4 w-4'} text-text-accent`} aria-hidden="true" />}
       </div>
-      <div className={`flex py-1 ${size === 'md' ? 'px-1' : 'px-0.5'} flex-col items-start gap-1 grow`}>
+      <div className={`flex py-1 ${size === 'md' ? 'px-1' : 'px-0.5'} grow flex-col items-start gap-1`}>
         <div className='text-text-primary system-sm-semibold'>{message}</div>
         {children && <div className='text-text-secondary system-xs-regular'>
           {children}
@@ -74,7 +74,7 @@ const Toast = ({
       </div>
       {close
         && (<ActionButton className='z-[1000]' onClick={close}>
-          <RiCloseLine className='w-4 h-4 shrink-0 text-text-tertiary' />
+          <RiCloseLine className='text-text-tertiary h-4 w-4 shrink-0' />
         </ActionButton>)
       }
     </div>

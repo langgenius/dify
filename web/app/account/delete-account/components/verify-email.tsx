@@ -35,18 +35,18 @@ export default function VerifyEmail(props: DeleteAccountProps) {
     catch (error) { console.error(error) }
   }, [emailToken, verificationCode, confirmDeleteAccount, props])
   return <>
-    <div className='pt-1 text-text-destructive body-md-medium'>
+    <div className='text-text-destructive body-md-medium pt-1'>
       {t('common.account.deleteTip')}
     </div>
-    <div className='pt-1 pb-2 text-text-secondary body-md-regular'>
+    <div className='text-text-secondary body-md-regular pb-2 pt-1'>
       {t('common.account.deletePrivacyLinkTip')}
       <Link href='https://dify.ai/privacy' className='text-text-accent'>{t('common.account.deletePrivacyLink')}</Link>
     </div>
-    <label className='mt-3 mb-1 h-6 flex items-center system-sm-semibold text-text-secondary'>{t('common.account.verificationLabel')}</label>
+    <label className='system-sm-semibold text-text-secondary mb-1 mt-3 flex h-6 items-center'>{t('common.account.verificationLabel')}</label>
     <Input minLength={6} maxLength={6} placeholder={t('common.account.verificationPlaceholder') as string} onChange={(e) => {
       setVerificationCode(e.target.value)
     }} />
-    <div className='w-full flex flex-col mt-3 gap-2'>
+    <div className='mt-3 flex w-full flex-col gap-2'>
       <Button className='w-full' disabled={shouldButtonDisabled} loading={isDeleting} variant='warning' onClick={handleConfirm}>{t('common.account.permanentlyDeleteButton')}</Button>
       <Button className='w-full' onClick={props.onCancel}>{t('common.operation.cancel')}</Button>
       <Countdown onResend={sendEmail} />

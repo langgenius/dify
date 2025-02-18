@@ -256,17 +256,17 @@ const FileUploader = ({
         />
       )}
 
-      <div className={cn('text-text-tertiary text-sm font-semibold leading-6 mb-1', titleClassName)}>{t('datasetCreation.stepOne.uploader.title')}</div>
+      <div className={cn('text-text-tertiary mb-1 text-sm font-semibold leading-6', titleClassName)}>{t('datasetCreation.stepOne.uploader.title')}</div>
 
       {!hideUpload && (
-        <div ref={dropRef} className={cn('relative box-border flex flex-col justify-center items-center gap-1 mb-2 px-4 py-3 max-w-[640px] min-h-20 leading-4 text-xs text-text-tertiary bg-components-dropzone-bg border border-dashed border-components-dropzone-border rounded-xl', dragging && 'bg-components-dropzone-bg-accent border-components-dropzone-border-accent')}>
-          <div className="flex justify-center items-center min-h-5 text-sm leading-4 text-text-secondary">
+        <div ref={dropRef} className={cn('text-text-tertiary bg-components-dropzone-bg border-components-dropzone-border relative mb-2 box-border flex min-h-20 max-w-[640px] flex-col items-center justify-center gap-1 rounded-xl border border-dashed px-4 py-3 text-xs leading-4', dragging && 'bg-components-dropzone-bg-accent border-components-dropzone-border-accent')}>
+          <div className="text-text-secondary flex min-h-5 items-center justify-center text-sm leading-4">
             <RiUploadCloud2Line className='mr-2 size-5' />
 
             <span>
               {t('datasetCreation.stepOne.uploader.button')}
               {supportTypes.length > 0 && (
-                <label className="ml-1 text-text-accent cursor-pointer" onClick={selectHandle}>{t('datasetCreation.stepOne.uploader.browse')}</label>
+                <label className="text-text-accent ml-1 cursor-pointer" onClick={selectHandle}>{t('datasetCreation.stepOne.uploader.browse')}</label>
               )}
             </span>
           </div>
@@ -274,40 +274,40 @@ const FileUploader = ({
             size: fileUploadConfig.file_size_limit,
             supportTypes: supportTypesShowNames,
           })}</div>
-          {dragging && <div ref={dragRef} className='absolute top-0 left-0 w-full h-full' />}
+          {dragging && <div ref={dragRef} className='absolute left-0 top-0 h-full w-full' />}
         </div>
       )}
-      <div className='space-y-1 max-w-[640px] cursor-default'>
+      <div className='max-w-[640px] cursor-default space-y-1'>
 
         {fileList.map((fileItem, index) => (
           <div
             key={`${fileItem.fileID}-${index}`}
             onClick={() => fileItem.file?.id && onPreview(fileItem.file)}
             className={cn(
-              'flex items-center h-12 max-w-[640px] bg-components-panel-on-panel-item-bg text-xs leading-3 text-text-tertiary border border-components-panel-border rounded-lg shadow-xs',
+              'bg-components-panel-on-panel-item-bg text-text-tertiary border-components-panel-border shadow-xs flex h-12 max-w-[640px] items-center rounded-lg border text-xs leading-3',
               // 'border-state-destructive-border bg-state-destructive-hover',
             )}
           >
-            <div className="shrink-0 flex justify-center items-center w-12">
+            <div className="flex w-12 shrink-0 items-center justify-center">
               <DocumentFileIcon
-                className="shrink-0 size-6"
+                className="size-6 shrink-0"
                 name={fileItem.file.name}
                 extension={getFileType(fileItem.file)}
               />
             </div>
-            <div className="grow shrink flex flex-col gap-0.5">
+            <div className="flex shrink grow flex-col gap-0.5">
               <div className='flex w-full'>
-                <div className="text-sm leading-4 text-text-secondary w-0 grow truncate">{fileItem.file.name}</div>
+                <div className="text-text-secondary w-0 grow truncate text-sm leading-4">{fileItem.file.name}</div>
               </div>
-              <div className="w-full leading-3 truncate text-text-tertiary">
+              <div className="text-text-tertiary w-full truncate leading-3">
                 <span className='uppercase'>{getFileType(fileItem.file)}</span>
-                <span className='px-1 text-text-quaternary'>·</span>
+                <span className='text-text-quaternary px-1'>·</span>
                 <span>{getFileSize(fileItem.file.size)}</span>
                 {/* <span className='px-1 text-text-quaternary'>·</span>
                   <span>10k characters</span> */}
               </div>
             </div>
-            <div className="shrink-0 flex items-center justify-end gap-1 pr-3 w-16">
+            <div className="flex w-16 shrink-0 items-center justify-end gap-1 pr-3">
               {/* <span className="flex justify-center items-center w-6 h-6 cursor-pointer">
                   <RiErrorWarningFill className='size-4 text-text-warning' />
                 </span> */}
@@ -315,11 +315,11 @@ const FileUploader = ({
                 // <div className={s.percent}>{`${fileItem.progress}%`}</div>
                 <SimplePieChart percentage={fileItem.progress} stroke={chartColor} fill={chartColor} animationDuration={0} />
               )}
-              <span className="flex justify-center items-center w-6 h-6 cursor-pointer" onClick={(e) => {
+              <span className="flex h-6 w-6 cursor-pointer items-center justify-center" onClick={(e) => {
                 e.stopPropagation()
                 removeFile(fileItem.fileID)
               }}>
-                <RiDeleteBinLine className='size-4 text-text-tertiary' />
+                <RiDeleteBinLine className='text-text-tertiary size-4' />
               </span>
             </div>
           </div>

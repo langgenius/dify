@@ -133,7 +133,7 @@ const TextGenerationItem: FC<TextGenerationItemProps> = ({
 
   return (
     <TextGeneration
-      className='flex flex-col h-full overflow-y-auto border-none'
+      className='flex h-full flex-col overflow-y-auto border-none'
       innerClassName='grow flex flex-col'
       contentClassName='grow'
       content={completion}

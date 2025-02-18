@@ -83,13 +83,13 @@ const ProviderAddedCard: FC<ProviderAddedCardProps> = ({
   return (
     <div
       className={cn(
-        'mb-2 rounded-xl border-[0.5px] border-divider-regular shadow-xs bg-third-party-model-bg-default',
+        'border-divider-regular shadow-xs bg-third-party-model-bg-default mb-2 rounded-xl border-[0.5px]',
         provider.provider === 'langgenius/openai/openai' && 'bg-third-party-model-bg-openai',
         provider.provider === 'langgenius/anthropic/anthropic' && 'bg-third-party-model-bg-anthropic',
       )}
     >
-      <div className='flex pl-3 py-2 pr-2 rounded-t-xl'>
-        <div className='grow px-1 pt-1 pb-0.5'>
+      <div className='flex rounded-t-xl py-2 pl-3 pr-2'>
+        <div className='grow px-1 pb-0.5 pt-1'>
           <ProviderIcon
             className='mb-2'
             provider={provider}
@@ -122,19 +122,19 @@ const ProviderAddedCard: FC<ProviderAddedCardProps> = ({
       </div>
       {
         collapsed && (
-          <div className='group flex items-center justify-between pl-2 py-1.5 pr-[11px] border-t border-t-divider-subtle text-text-tertiary system-xs-medium'>
+          <div className='border-t-divider-subtle text-text-tertiary system-xs-medium group flex items-center justify-between border-t py-1.5 pl-2 pr-[11px]'>
             {(showQuota || !notConfigured) && (
               <>
-                <div className='group-hover:hidden flex items-center pl-1 pr-1.5 h-6 leading-6'>
+                <div className='flex h-6 items-center pl-1 pr-1.5 leading-6 group-hover:hidden'>
                   {
                     hasModelList
                       ? t('common.modelProvider.modelsNum', { num: modelList.length })
                       : t('common.modelProvider.showModels')
                   }
-                  {!loading && <RiArrowRightSLine className='w-4 h-4' />}
+                  {!loading && <RiArrowRightSLine className='h-4 w-4' />}
                 </div>
                 <div
-                  className='hidden group-hover:flex items-center pl-1 pr-1.5 h-6 rounded-lg hover:bg-components-button-ghost-bg-hover cursor-pointer'
+                  className='hover:bg-components-button-ghost-bg-hover hidden h-6 cursor-pointer items-center rounded-lg pl-1 pr-1.5 group-hover:flex'
                   onClick={handleOpenModelList}
                 >
                   {
@@ -142,18 +142,18 @@ const ProviderAddedCard: FC<ProviderAddedCardProps> = ({
                       ? t('common.modelProvider.showModelsNum', { num: modelList.length })
                       : t('common.modelProvider.showModels')
                   }
-                  {!loading && <RiArrowRightSLine className='w-4 h-4' />}
+                  {!loading && <RiArrowRightSLine className='h-4 w-4' />}
                   {
                     loading && (
-                      <RiLoader2Line className='ml-0.5 animate-spin w-3 h-3' />
+                      <RiLoader2Line className='ml-0.5 h-3 w-3 animate-spin' />
                     )
                   }
                 </div>
               </>
             )}
             {!showQuota && notConfigured && (
-              <div className='flex items-center pl-1 pr-1.5 h-6'>
-                <RiInformation2Fill className='mr-1 w-4 h-4 text-text-accent' />
+              <div className='flex h-6 items-center pl-1 pr-1.5'>
+                <RiInformation2Fill className='text-text-accent mr-1 h-4 w-4' />
                 <span className='text-text-secondary system-xs-medium'>{t('common.modelProvider.configureTip')}</span>
               </div>
             )}

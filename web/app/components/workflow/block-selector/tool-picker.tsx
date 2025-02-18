@@ -142,7 +142,7 @@ const ToolPicker: FC<Props> = ({
       </PortalToFollowElemTrigger>
 
       <PortalToFollowElemContent className='z-[1000]'>
-        <div className={cn('relative w-[356px] min-h-20 rounded-xl backdrop-blur-sm bg-components-panel-bg-blur border-[0.5px] border-components-panel-border shadow-lg', panelClassName)}>
+        <div className={cn('bg-components-panel-bg-blur border-components-panel-border relative min-h-20 w-[356px] rounded-xl border-[0.5px] shadow-lg backdrop-blur-sm', panelClassName)}>
           <div className='p-2 pb-1'>
             <SearchBox
               search={searchText}

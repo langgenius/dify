@@ -7,9 +7,9 @@ import { ClockFastForward } from '@/app/components/base/icons/src/vender/line/ti
 const HitHistoryNoData: FC = () => {
   const { t } = useTranslation()
   return (
-    <div className='mx-auto mt-20 w-[480px] p-5 rounded-2xl bg-background-section-burn space-y-2'>
-      <div className='inline-block p-3 rounded-lg border border-divider-subtle'>
-        <ClockFastForward className='w-5 h-5 text-text-tertiary' />
+    <div className='bg-background-section-burn mx-auto mt-20 w-[480px] space-y-2 rounded-2xl p-5'>
+      <div className='border-divider-subtle inline-block rounded-lg border p-3'>
+        <ClockFastForward className='text-text-tertiary h-5 w-5' />
       </div>
       <div className='system-sm-regular text-text-tertiary'>{t('appAnnotation.viewModal.noHitHistory')}</div>
     </div>

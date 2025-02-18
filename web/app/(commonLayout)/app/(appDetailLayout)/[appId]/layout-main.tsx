@@ -156,14 +156,14 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
 
   if (!appDetail) {
     return (
-      <div className='flex h-full items-center justify-center bg-background-body'>
+      <div className='bg-background-body flex h-full items-center justify-center'>
         <Loading />
       </div>
     )
   }
 
   return (
-    <div className={cn(s.app, 'flex relative', 'overflow-hidden')}>
+    <div className={cn(s.app, 'relative flex', 'overflow-hidden')}>
       {appDetail && (
         <AppSideBar title={appDetail.name} icon={appDetail.icon} icon_background={appDetail.icon_background as string} desc={appDetail.mode} navigation={navigation} />
       )}

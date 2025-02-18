@@ -82,8 +82,8 @@ const Container = () => {
   }, [currentWorkspace, router])
 
   return (
-    <div ref={containerRef} className='grow relative flex flex-col bg-background-body overflow-y-auto scroll-container'>
-      <div className='sticky top-0 flex justify-between pt-4 px-12 pb-2 leading-[56px] bg-background-body z-10 flex-wrap gap-y-2'>
+    <div ref={containerRef} className='bg-background-body scroll-container relative flex grow flex-col overflow-y-auto'>
+      <div className='bg-background-body sticky top-0 z-10 flex flex-wrap justify-between gap-y-2 px-12 pb-2 pt-4 leading-[56px]'>
         <TabSliderNew
           value={activeTab}
           onChange={newActiveTab => setActiveTab(newActiveTab)}
@@ -108,13 +108,13 @@ const Container = () => {
               onChange={e => handleKeywordsChange(e.target.value)}
               onClear={() => handleKeywordsChange('')}
             />
-            <div className="w-[1px] h-4 bg-divider-regular" />
+            <div className="bg-divider-regular h-4 w-[1px]" />
             <Button
-              className='gap-0.5 shadows-shadow-xs'
+              className='shadows-shadow-xs gap-0.5'
               onClick={() => setShowExternalApiPanel(true)}
             >
-              <ApiConnectionMod className='w-4 h-4 text-components-button-secondary-text' />
-              <div className='flex px-0.5 justify-center items-center gap-1 text-components-button-secondary-text system-sm-medium'>{t('dataset.externalAPIPanelTitle')}</div>
+              <ApiConnectionMod className='text-components-button-secondary-text h-4 w-4' />
+              <div className='text-components-button-secondary-text system-sm-medium flex items-center justify-center gap-1 px-0.5'>{t('dataset.externalAPIPanelTitle')}</div>
             </Button>
           </div>
         )}

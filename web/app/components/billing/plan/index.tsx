@@ -54,29 +54,29 @@ const PlanComp: FC<Props> = ({
 
   return (
     <div
-      className='rounded-xl border border-white select-none'
+      className='select-none rounded-xl border border-white'
       style={{
         background: typeStyle[type].bg,
         boxShadow: '5px 7px 12px 0px rgba(0, 0, 0, 0.06)',
       }}
     >
-      <div className='flex justify-between px-6 py-5 items-center'>
+      <div className='flex items-center justify-between px-6 py-5'>
         <div>
           <div
-            className='leading-[18px] text-xs font-normal opacity-70'
+            className='text-xs font-normal leading-[18px] opacity-70'
             style={{
               color: 'rgba(0, 0, 0, 0.64)',
             }}
           >
             {t('billing.currentPlan')}
           </div>
-          <div className={cn(typeStyle[type].textClassNames, 'leading-[125%] text-lg font-semibold uppercase')}>
+          <div className={cn(typeStyle[type].textClassNames, 'text-lg font-semibold uppercase leading-[125%]')}>
             {t(`billing.plans.${type}.name`)}
           </div>
         </div>
         {(!isInHeader || (isInHeader && type !== Plan.sandbox)) && (
           <UpgradeBtn
-            className='flex-shrink-0'
+            className='shrink-0'
             isPlain={type !== Plan.sandbox}
             loc={loc}
           />
@@ -111,7 +111,7 @@ const PlanComp: FC<Props> = ({
         />
         {isInHeader && type === Plan.sandbox && (
           <UpgradeBtn
-            className='flex-shrink-0 my-3'
+            className='my-3 shrink-0'
             isFull
             size='lg'
             isPlain={type !== Plan.sandbox}

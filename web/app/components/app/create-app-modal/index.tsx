@@ -93,17 +93,17 @@ function CreateApp({ onClose, onSuccess, onCreateFromTemplate }: CreateAppProps)
     handleCreateApp()
   })
   return <>
-    <div className='flex justify-center h-full overflow-y-auto overflow-x-hidden'>
-      <div className='flex-1 shrink-0 flex justify-end'>
+    <div className='flex h-full justify-center overflow-y-auto overflow-x-hidden'>
+      <div className='flex flex-1 shrink-0 justify-end'>
         <div className='px-10'>
-          <div className='w-full h-6 2xl:h-[139px]' />
-          <div className='pt-1 pb-6'>
+          <div className='h-6 w-full 2xl:h-[139px]' />
+          <div className='pb-6 pt-1'>
             <span className='title-2xl-semi-bold text-text-primary'>{t('app.newApp.startFromBlank')}</span>
           </div>
-          <div className='leading-6 mb-2'>
+          <div className='mb-2 leading-6'>
             <span className='system-sm-semibold text-text-secondary'>{t('app.newApp.chooseAppType')}</span>
           </div>
-          <div className='flex flex-col w-[660px] gap-4'>
+          <div className='flex w-[660px] flex-col gap-4'>
             <div>
               <div className='mb-2'>
                 <span className='system-2xs-medium-uppercase text-text-tertiary'>{t('app.newApp.forBeginners')}</span>
@@ -113,8 +113,8 @@ function CreateApp({ onClose, onSuccess, onCreateFromTemplate }: CreateAppProps)
                   active={appMode === 'chat'}
                   title={t('app.types.chatbot')}
                   description={t('app.newApp.chatbotShortDescription')}
-                  icon={<div className='w-6 h-6 bg-components-icon-bg-blue-solid rounded-md flex items-center justify-center'>
-                    <ChatBot className='w-4 h-4 text-components-avatar-shape-fill-stop-100' />
+                  icon={<div className='bg-components-icon-bg-blue-solid flex h-6 w-6 items-center justify-center rounded-md'>
+                    <ChatBot className='text-components-avatar-shape-fill-stop-100 h-4 w-4' />
                   </div>}
                   onClick={() => {
                     setAppMode('chat')
@@ -123,8 +123,8 @@ function CreateApp({ onClose, onSuccess, onCreateFromTemplate }: CreateAppProps)
                   active={appMode === 'agent-chat'}
                   title={t('app.types.agent')}
                   description={t('app.newApp.agentShortDescription')}
-                  icon={<div className='w-6 h-6 bg-components-icon-bg-violet-solid rounded-md flex items-center justify-center'>
-                    <Logic className='w-4 h-4 text-components-avatar-shape-fill-stop-100' />
+                  icon={<div className='bg-components-icon-bg-violet-solid flex h-6 w-6 items-center justify-center rounded-md'>
+                    <Logic className='text-components-avatar-shape-fill-stop-100 h-4 w-4' />
                   </div>}
                   onClick={() => {
                     setAppMode('agent-chat')
@@ -133,8 +133,8 @@ function CreateApp({ onClose, onSuccess, onCreateFromTemplate }: CreateAppProps)
                   active={appMode === 'completion'}
                   title={t('app.newApp.completeApp')}
                   description={t('app.newApp.completionShortDescription')}
-                  icon={<div className='w-6 h-6 bg-components-icon-bg-teal-solid rounded-md flex items-center justify-center'>
-                    <ListSparkle className='w-4 h-4 text-components-avatar-shape-fill-stop-100' />
+                  icon={<div className='bg-components-icon-bg-teal-solid flex h-6 w-6 items-center justify-center rounded-md'>
+                    <ListSparkle className='text-components-avatar-shape-fill-stop-100 h-4 w-4' />
                   </div>}
                   onClick={() => {
                     setAppMode('completion')
@@ -151,8 +151,8 @@ function CreateApp({ onClose, onSuccess, onCreateFromTemplate }: CreateAppProps)
                   active={appMode === 'advanced-chat'}
                   title={t('app.types.advanced')}
                   description={t('app.newApp.advancedShortDescription')}
-                  icon={<div className='w-6 h-6 bg-components-icon-bg-blue-light-solid rounded-md flex items-center justify-center'>
-                    <BubbleTextMod className='w-4 h-4 text-components-avatar-shape-fill-stop-100' />
+                  icon={<div className='bg-components-icon-bg-blue-light-solid flex h-6 w-6 items-center justify-center rounded-md'>
+                    <BubbleTextMod className='text-components-avatar-shape-fill-stop-100 h-4 w-4' />
                   </div>}
                   onClick={() => {
                     setAppMode('advanced-chat')
@@ -162,8 +162,8 @@ function CreateApp({ onClose, onSuccess, onCreateFromTemplate }: CreateAppProps)
                   active={appMode === 'workflow'}
                   title={t('app.types.workflow')}
                   description={t('app.newApp.workflowShortDescription')}
-                  icon={<div className='w-6 h-6 bg-components-icon-bg-indigo-solid rounded-md flex items-center justify-center'>
-                    <RiExchange2Fill className='w-4 h-4 text-components-avatar-shape-fill-stop-100' />
+                  icon={<div className='bg-components-icon-bg-indigo-solid flex h-6 w-6 items-center justify-center rounded-md'>
+                    <RiExchange2Fill className='text-components-avatar-shape-fill-stop-100 h-4 w-4' />
                   </div>}
                   onClick={() => {
                     setAppMode('workflow')
@@ -171,9 +171,9 @@ function CreateApp({ onClose, onSuccess, onCreateFromTemplate }: CreateAppProps)
               </div>
             </div>
             <Divider style={{ margin: 0 }} />
-            <div className='flex space-x-3 items-center'>
+            <div className='flex items-center space-x-3'>
               <div className='flex-1'>
-                <div className='h-6 flex items-center mb-1'>
+                <div className='mb-1 flex h-6 items-center'>
                   <label className='system-sm-semibold text-text-secondary'>{t('app.newApp.captionName')}</label>
                 </div>
                 <Input
@@ -201,7 +201,7 @@ function CreateApp({ onClose, onSuccess, onCreateFromTemplate }: CreateAppProps)
               />}
             </div>
             <div>
-              <div className='h-6 flex items-center mb-1'>
+              <div className='mb-1 flex h-6 items-center'>
                 <label className='system-sm-semibold text-text-secondary'>{t('app.newApp.captionDescription')}</label>
                 <span className='system-xs-regular text-text-tertiary ml-1'>({t('app.newApp.optional')})</span>
               </div>
@@ -213,11 +213,11 @@ function CreateApp({ onClose, onSuccess, onCreateFromTemplate }: CreateAppProps)
               />
             </div>
           </div>
-          <div className='pt-5 pb-10 flex justify-between items-center'>
-            <div className='flex gap-1 items-center system-xs-regular text-text-tertiary cursor-pointer' onClick={onCreateFromTemplate}>
+          <div className='flex items-center justify-between pb-10 pt-5'>
+            <div className='system-xs-regular text-text-tertiary flex cursor-pointer items-center gap-1' onClick={onCreateFromTemplate}>
               <span>{t('app.newApp.noIdeaTip')}</span>
               <div className='p-[1px]'>
-                <RiArrowRightLine className='w-3.5 h-3.5' />
+                <RiArrowRightLine className='h-3.5 w-3.5' />
               </div>
             </div>
             <div className='flex gap-2'>
@@ -225,28 +225,28 @@ function CreateApp({ onClose, onSuccess, onCreateFromTemplate }: CreateAppProps)
               <Button disabled={isAppsFull || !name} className='gap-1' variant="primary" onClick={handleCreateApp}>
                 <span>{t('app.newApp.Create')}</span>
                 <div className='flex gap-0.5'>
-                  <RiCommandLine size={14} className='p-0.5 system-kbd bg-components-kbd-bg-white rounded-sm' />
-                  <RiCornerDownLeftLine size={14} className='p-0.5 system-kbd bg-components-kbd-bg-white rounded-sm' />
+                  <RiCommandLine size={14} className='system-kbd bg-components-kbd-bg-white rounded-sm p-0.5' />
+                  <RiCornerDownLeftLine size={14} className='system-kbd bg-components-kbd-bg-white rounded-sm p-0.5' />
                 </div>
               </Button>
             </div>
           </div>
         </div>
       </div>
-      <div className='flex-1 shrink h-full flex justify-start relative overflow-hidden'>
-        <div className='h-6 2xl:h-[139px] absolute left-0 top-0 right-0 border-b border-b-divider-subtle'></div>
-        <div className='max-w-[760px] border-x border-x-divider-subtle'>
+      <div className='relative flex h-full flex-1 shrink justify-start overflow-hidden'>
+        <div className='border-b-divider-subtle absolute left-0 right-0 top-0 h-6 border-b 2xl:h-[139px]'></div>
+        <div className='border-x-divider-subtle max-w-[760px] border-x'>
           <div className='h-6 2xl:h-[139px]' />
           <AppPreview mode={appMode} />
-          <div className='absolute left-0 right-0 border-b border-b-divider-subtle'></div>
-          <div className='w-[664px] h-[448px] flex items-center justify-center' style={{ background: 'repeating-linear-gradient(135deg, transparent, transparent 2px, rgba(16,24,40,0.04) 4px,transparent 3px, transparent 6px)' }}>
+          <div className='border-b-divider-subtle absolute left-0 right-0 border-b'></div>
+          <div className='flex h-[448px] w-[664px] items-center justify-center' style={{ background: 'repeating-linear-gradient(135deg, transparent, transparent 2px, rgba(16,24,40,0.04) 4px,transparent 3px, transparent 6px)' }}>
             <AppScreenShot show={appMode === 'chat'} mode='chat' />
             <AppScreenShot show={appMode === 'advanced-chat'} mode='advanced-chat' />
             <AppScreenShot show={appMode === 'agent-chat'} mode='agent-chat' />
             <AppScreenShot show={appMode === 'completion'} mode='completion' />
             <AppScreenShot show={appMode === 'workflow'} mode='workflow' />
           </div>
-          <div className='absolute left-0 right-0 border-b border-b-divider-subtle'></div>
+          <div className='border-b-divider-subtle absolute left-0 right-0 border-b'></div>
         </div>
       </div>
     </div>
@@ -289,19 +289,19 @@ function AppTypeCard({ icon, title, beta = false, description, active, onClick }
   const { t } = useTranslation()
   return <div
     className={
-      cn(`w-[191px] h-[84px] p-3 border-[0.5px] relative box-content
-      rounded-xl border-components-option-card-option-border
-      bg-components-panel-on-panel-item-bg shadow-xs cursor-pointer hover:shadow-md`, active
-        ? 'outline outline-[1.5px] outline-components-option-card-option-selected-border shadow-md'
+      cn(`border-components-option-card-option-border bg-components-panel-on-panel-item-bg shadow-xs relative box-content h-[84px]
+      w-[191px] cursor-pointer
+      rounded-xl border-[0.5px] p-3 hover:shadow-md`, active
+        ? 'outline-components-option-card-option-selected-border shadow-md outline outline-[1.5px]'
         : '')
     }
     onClick={onClick}
   >
-    {beta && <div className='px-[5px] py-[3px]
-      rounded-[5px] min-w-[18px] absolute top-3 right-3
-      border border-divider-deep system-2xs-medium-uppercase text-text-tertiary'>{t('common.menus.status')}</div>}
+    {beta && <div className='border-divider-deep system-2xs-medium-uppercase
+      text-text-tertiary absolute right-3 top-3 min-w-[18px]
+      rounded-[5px] border px-[5px] py-[3px]'>{t('common.menus.status')}</div>}
     {icon}
-    <div className='system-sm-semibold text-text-secondary mt-2 mb-0.5'>{title}</div>
+    <div className='system-sm-semibold text-text-secondary mb-0.5 mt-2'>{title}</div>
     <div className='system-xs-regular text-text-tertiary'>{description}</div>
   </div>
 }
@@ -338,7 +338,7 @@ function AppPreview({ mode }: { mode: AppMode }) {
   const previewInfo = modeToPreviewInfoMap[mode]
   return <div className='px-8 py-4'>
     <h4 className='system-sm-semibold-uppercase text-text-secondary'>{previewInfo.title}</h4>
-    <div className='mt-1 system-xs-regular text-text-tertiary max-w-96 min-h-8'>
+    <div className='system-xs-regular text-text-tertiary mt-1 min-h-8 max-w-96'>
       <span>{previewInfo.description}</span>
       {previewInfo.link && <Link target='_blank' href={previewInfo.link} className='text-text-accent ml-1'>{t('app.newApp.learnMore')}</Link>}
     </div>

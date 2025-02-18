@@ -17,7 +17,7 @@ export const PreviewContainer: FC<PreviewContainerProps> = forwardRef((props, re
         'flex flex-col w-full h-full overflow-y-auto rounded-l-xl border-t-[0.5px] border-l-[0.5px] border-components-panel-border bg-background-default-lighter shadow shadow-shadow-shadow-5',
       )}
     >
-      <header className='pl-5 pt-4 pr-4 pb-3 border-b border-divider-subtle'>
+      <header className='border-divider-subtle border-b pb-3 pl-5 pr-4 pt-4'>
         {header}
       </header>
       <main className={classNames('py-5 px-6 w-full h-full', mainClassName)}>

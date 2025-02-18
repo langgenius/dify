@@ -59,20 +59,20 @@ const Popup: FC<PopupProps> = ({
   }, [language, modelList, scopeFeatures, searchText])
 
   return (
-    <div className='w-[320px] max-h-[480px] rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg overflow-y-auto'>
-      <div className='sticky top-0 pl-3 pt-3 pr-2 pb-1 bg-components-panel-bg z-10'>
+    <div className='border-components-panel-border bg-components-panel-bg max-h-[480px] w-[320px] overflow-y-auto rounded-lg border-[0.5px] shadow-lg'>
+      <div className='bg-components-panel-bg sticky top-0 z-10 pb-1 pl-3 pr-2 pt-3'>
         <div className={`
-          flex items-center pl-[9px] pr-[10px] h-8 rounded-lg border
+          flex h-8 items-center rounded-lg border pl-[9px] pr-[10px]
           ${searchText ? 'bg-components-input-bg-active border-components-input-border-active shadow-xs' : 'bg-components-input-bg-normal border-transparent'}
         `}>
           <RiSearchLine
             className={`
-              shrink-0 mr-[7px] w-[14px] h-[14px]
+              mr-[7px] h-[14px] w-[14px] shrink-0
               ${searchText ? 'text-text-tertiary' : 'text-text-quaternary'}
             `}
           />
           <input
-            className='block grow h-[18px] text-[13px] text-text-primary appearance-none outline-none bg-transparent'
+            className='text-text-primary block h-[18px] grow appearance-none bg-transparent text-[13px] outline-none'
             placeholder='Search model'
             value={searchText}
             onChange={e => setSearchText(e.target.value)}
@@ -80,7 +80,7 @@ const Popup: FC<PopupProps> = ({
           {
             searchText && (
               <XCircle
-                className='shrink-0 ml-1.5 w-[14px] h-[14px] text-text-quaternary cursor-pointer'
+                className='text-text-quaternary ml-1.5 h-[14px] w-[14px] shrink-0 cursor-pointer'
                 onClick={() => setSearchText('')}
               />
             )
@@ -100,18 +100,18 @@ const Popup: FC<PopupProps> = ({
         }
         {
           !filteredModelList.length && (
-            <div className='px-3 py-1.5 leading-[18px] text-center text-xs text-text-tertiary break-all'>
+            <div className='text-text-tertiary break-all px-3 py-1.5 text-center text-xs leading-[18px]'>
               {`No model found for “${searchText}”`}
             </div>
           )
         }
       </div>
-      <div className='sticky bottom-0 px-4 py-2 flex items-center border-t border-divider-subtle cursor-pointer text-text-accent-light-mode-only bg-components-panel-bg rounded-b-lg' onClick={() => {
+      <div className='border-divider-subtle text-text-accent-light-mode-only bg-components-panel-bg sticky bottom-0 flex cursor-pointer items-center rounded-b-lg border-t px-4 py-2' onClick={() => {
         onHide()
         setShowAccountSettingModal({ payload: 'provider' })
       }}>
         <span className='system-xs-medium'>{t('common.model.settingsLink')}</span>
-        <RiArrowRightUpLine className='ml-0.5 w-3 h-3' />
+        <RiArrowRightUpLine className='ml-0.5 h-3 w-3' />
       </div>
     </div>
   )

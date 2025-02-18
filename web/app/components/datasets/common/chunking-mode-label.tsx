@@ -19,8 +19,8 @@ const ChunkingModeLabel: FC<Props> = ({
 
   return (
     <Badge>
-      <div className='flex items-center h-full space-x-0.5 text-text-tertiary'>
-        <TypeIcon className='w-3 h-3' />
+      <div className='text-text-tertiary flex h-full items-center space-x-0.5'>
+        <TypeIcon className='h-3 w-3' />
         <span className='system-2xs-medium-uppercase'>{isGeneralMode ? `${t('dataset.chunkingMode.general')}${isQAMode ? ' · QA' : ''}` : t('dataset.chunkingMode.parentChild')}</span>
       </div>
     </Badge>

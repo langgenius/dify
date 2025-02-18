@@ -57,29 +57,29 @@ const SortDropdown = ({
       onOpenChange={setOpen}
     >
       <PortalToFollowElemTrigger onClick={() => setOpen(v => !v)}>
-        <div className='flex items-center px-2 pr-3 h-8 rounded-lg bg-state-base-hover-alt cursor-pointer'>
-          <span className='mr-1 system-sm-regular text-text-secondary'>
+        <div className='bg-state-base-hover-alt flex h-8 cursor-pointer items-center rounded-lg px-2 pr-3'>
+          <span className='system-sm-regular text-text-secondary mr-1'>
             {t('plugin.marketplace.sortBy')}
           </span>
-          <span className='mr-1 system-sm-medium text-text-primary'>
+          <span className='system-sm-medium text-text-primary mr-1'>
             {selectedOption.text}
           </span>
-          <RiArrowDownSLine className='w-4 h-4 text-text-tertiary' />
+          <RiArrowDownSLine className='text-text-tertiary h-4 w-4' />
         </div>
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent>
-        <div className='p-1 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur backdrop-blur-sm shadow-lg'>
+        <div className='border-components-panel-border bg-components-panel-bg-blur rounded-xl border-[0.5px] p-1 shadow-lg backdrop-blur-sm'>
           {
             options.map(option => (
               <div
                 key={`${option.value}-${option.order}`}
-                className='flex items-center justify-between px-3 pr-2 h-8 cursor-pointer system-md-regular text-text-primary rounded-lg hover:bg-components-panel-on-panel-item-bg-hover'
+                className='system-md-regular text-text-primary hover:bg-components-panel-on-panel-item-bg-hover flex h-8 cursor-pointer items-center justify-between rounded-lg px-3 pr-2'
                 onClick={() => handleSortChange({ sortBy: option.value, sortOrder: option.order })}
               >
                 {option.text}
                 {
                   sort.sortBy === option.value && sort.sortOrder === option.order && (
-                    <RiCheckLine className='ml-2 w-4 h-4 text-text-accent' />
+                    <RiCheckLine className='text-text-accent ml-2 h-4 w-4' />
                   )
                 }
               </div>

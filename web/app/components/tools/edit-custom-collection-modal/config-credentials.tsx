@@ -28,7 +28,7 @@ type ItemProps = {
 const SelectItem: FC<ItemProps> = ({ text, value, isChecked, onClick }) => {
   return (
     <div
-      className={cn(isChecked ? 'border-[2px] border-util-colors-indigo-indigo-600 shadow-sm bg-components-panel-on-panel-item-bg' : 'border border-components-card-border', 'mb-2 flex items-center h-9 pl-3 w-[150px] rounded-xl bg-components-panel-on-panel-item-bg hover:bg-components-panel-on-panel-item-bg-hover cursor-pointer space-x-2')}
+      className={cn(isChecked ? 'border-util-colors-indigo-indigo-600 bg-components-panel-on-panel-item-bg border-[2px] shadow-sm' : 'border-components-card-border border', 'bg-components-panel-on-panel-item-bg hover:bg-components-panel-on-panel-item-bg-hover mb-2 flex h-9 w-[150px] cursor-pointer items-center space-x-2 rounded-xl pl-3')}
       onClick={() => onClick(value)}
     >
       <Radio isChecked={isChecked} />
@@ -57,10 +57,10 @@ const ConfigCredential: FC<Props> = ({
       height={'fit-content'}
       headerClassName='!border-b-divider-regular'
       body={
-        <div className='pt-2 px-6'>
+        <div className='px-6 pt-2'>
           <div className='space-y-4'>
             <div>
-              <div className='py-2 system-sm-medium text-text-primary'>{t('tools.createTool.authMethod.type')}</div>
+              <div className='system-sm-medium text-text-primary py-2'>{t('tools.createTool.authMethod.type')}</div>
               <div className='flex space-x-3'>
                 <SelectItem
                   text={t('tools.createTool.authMethod.types.none')}
@@ -85,7 +85,7 @@ const ConfigCredential: FC<Props> = ({
             {tempCredential.auth_type === AuthType.apiKey && (
               <>
                 <div>
-                  <div className='py-2 system-sm-medium text-text-primary'>{t('tools.createTool.authHeaderPrefix.title')}</div>
+                  <div className='system-sm-medium text-text-primary py-2'>{t('tools.createTool.authHeaderPrefix.title')}</div>
                   <div className='flex space-x-3'>
                     <SelectItem
                       text={t('tools.createTool.authHeaderPrefix.types.basic')}
@@ -108,11 +108,11 @@ const ConfigCredential: FC<Props> = ({
                   </div>
                 </div>
                 <div>
-                  <div className='flex items-center py-2 system-sm-medium text-text-primary'>
+                  <div className='system-sm-medium text-text-primary flex items-center py-2'>
                     {t('tools.createTool.authMethod.key')}
                     <Tooltip
                       popupContent={
-                        <div className='w-[261px] text-text-tertiary'>
+                        <div className='text-text-tertiary w-[261px]'>
                           {t('tools.createTool.authMethod.keyTooltip')}
                         </div>
                       }
@@ -126,7 +126,7 @@ const ConfigCredential: FC<Props> = ({
                   />
                 </div>
                 <div>
-                  <div className='py-2 system-sm-medium text-text-primary'>{t('tools.createTool.authMethod.value')}</div>
+                  <div className='system-sm-medium text-text-primary py-2'>{t('tools.createTool.authMethod.value')}</div>
                   <Input
                     value={tempCredential.api_key_value}
                     onChange={e => setTempCredential({ ...tempCredential, api_key_value: e.target.value })}
@@ -137,7 +137,7 @@ const ConfigCredential: FC<Props> = ({
 
           </div>
 
-          <div className='mt-4 shrink-0 flex justify-end space-x-2 py-4'>
+          <div className='mt-4 flex shrink-0 justify-end space-x-2 py-4'>
             <Button onClick={onHide}>{t('common.operation.cancel')}</Button>
             <Button variant='primary' onClick={() => {
               onChange(tempCredential)

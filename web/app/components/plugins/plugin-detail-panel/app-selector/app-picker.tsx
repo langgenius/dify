@@ -84,7 +84,7 @@ const AppPicker: FC<Props> = ({
       </PortalToFollowElemTrigger>
 
       <PortalToFollowElemContent className='z-[1000]'>
-        <div className="relative w-[356px] min-h-20 rounded-xl backdrop-blur-sm bg-components-panel-bg-blur border-[0.5px] border-components-panel-border shadow-lg">
+        <div className="bg-components-panel-bg-blur border-components-panel-border relative min-h-20 w-[356px] rounded-xl border-[0.5px] shadow-lg backdrop-blur-sm">
           <div className='p-2 pb-1'>
             <Input
               showLeftIcon
@@ -98,7 +98,7 @@ const AppPicker: FC<Props> = ({
             {filteredAppList.map(app => (
               <div
                 key={app.id}
-                className='flex items-center gap-3 py-1 pl-2 pr-3 rounded-lg hover:bg-state-base-hover cursor-pointer'
+                className='hover:bg-state-base-hover flex cursor-pointer items-center gap-3 rounded-lg py-1 pl-2 pr-3'
                 onClick={() => onSelect(app)}
               >
                 <AppIcon
@@ -109,8 +109,8 @@ const AppPicker: FC<Props> = ({
                   background={app.icon_background}
                   imageUrl={app.icon_url}
                 />
-                <div title={app.name} className='grow system-sm-medium text-components-input-text-filled'>{app.name}</div>
-                <div className='shrink-0 text-text-tertiary system-2xs-medium-uppercase'>{getAppType(app)}</div>
+                <div title={app.name} className='system-sm-medium text-components-input-text-filled grow'>{app.name}</div>
+                <div className='text-text-tertiary system-2xs-medium-uppercase shrink-0'>{getAppType(app)}</div>
               </div>
             ))}
           </div>

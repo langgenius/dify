@@ -17,19 +17,19 @@ const TryToAsk: FC<TryToAskProps> = ({
 
   return (
     <div>
-      <div className='flex items-center mb-2.5 py-2'>
+      <div className='mb-2.5 flex items-center py-2'>
         <div
-          className='grow h-[1px]'
+          className='h-[1px] grow'
           style={{
             background: 'linear-gradient(270deg, #F3F4F6 0%, rgba(243, 244, 246, 0) 100%)',
           }}
         />
-        <div className='shrink-0 flex items-center px-3 text-gray-500'>
-          <Star04 className='mr-1 w-2.5 h-2.5' />
-          <span className='text-xs text-gray-500 font-medium'>{t('appDebug.feature.suggestedQuestionsAfterAnswer.tryToAsk')}</span>
+        <div className='flex shrink-0 items-center px-3 text-gray-500'>
+          <Star04 className='mr-1 h-2.5 w-2.5' />
+          <span className='text-xs font-medium text-gray-500'>{t('appDebug.feature.suggestedQuestionsAfterAnswer.tryToAsk')}</span>
         </div>
         <div
-          className='grow h-[1px]'
+          className='h-[1px] grow'
           style={{
             background: 'linear-gradient(270deg, rgba(243, 244, 246, 0) 0%, #F3F4F6 100%)',
           }}

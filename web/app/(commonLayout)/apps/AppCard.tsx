@@ -241,10 +241,10 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
           <>
             <Divider className="!my-1" />
             <div
-              className='h-9 py-2 px-3 mx-1 flex items-center hover:bg-gray-50 rounded-lg cursor-pointer'
+              className='mx-1 flex h-9 cursor-pointer items-center rounded-lg px-3 py-2 hover:bg-gray-50'
               onClick={onClickSwitch}
             >
-              <span className='text-gray-700 text-sm leading-5'>{t('app.switch')}</span>
+              <span className='text-sm leading-5 text-gray-700'>{t('app.switch')}</span>
             </div>
           </>
         )}
@@ -277,9 +277,9 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
           e.preventDefault()
           getRedirection(isCurrentWorkspaceEditor, app, push)
         }}
-        className='relative h-[160px] group col-span-1 bg-components-card-bg border-[1px] border-solid border-components-card-border rounded-xl shadow-sm inline-flex flex-col transition-all duration-200 ease-in-out cursor-pointer hover:shadow-lg'
+        className='bg-components-card-bg border-components-card-border group relative col-span-1 inline-flex h-[160px] cursor-pointer flex-col rounded-xl border-[1px] border-solid shadow-sm transition-all duration-200 ease-in-out hover:shadow-lg'
       >
-        <div className='flex pt-[14px] px-[14px] pb-3 h-[66px] items-center gap-3 grow-0 shrink-0'>
+        <div className='flex h-[66px] shrink-0 grow-0 items-center gap-3 px-[14px] pb-3 pt-[14px]'>
           <div className='relative shrink-0'>
             <AppIcon
               size="large"
@@ -288,13 +288,13 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
               background={app.icon_background}
               imageUrl={app.icon_url}
             />
-            <AppTypeIcon type={app.mode} wrapperClassName='absolute -bottom-0.5 -right-0.5 w-4 h-4 shadow-sm' className='w-3 h-3' />
+            <AppTypeIcon type={app.mode} wrapperClassName='absolute -bottom-0.5 -right-0.5 w-4 h-4 shadow-sm' className='h-3 w-3' />
           </div>
-          <div className='grow w-0 py-[1px]'>
-            <div className='flex items-center text-sm leading-5 font-semibold text-text-secondary'>
+          <div className='w-0 grow py-[1px]'>
+            <div className='text-text-secondary flex items-center text-sm font-semibold leading-5'>
               <div className='truncate' title={app.name}>{app.name}</div>
             </div>
-            <div className='flex items-center text-[10px] leading-[18px] text-text-tertiary font-medium'>
+            <div className='text-text-tertiary flex items-center text-[10px] font-medium leading-[18px]'>
               {app.mode === 'advanced-chat' && <div className='truncate'>{t('app.types.advanced').toUpperCase()}</div>}
               {app.mode === 'chat' && <div className='truncate'>{t('app.types.chatbot').toUpperCase()}</div>}
               {app.mode === 'agent-chat' && <div className='truncate'>{t('app.types.agent').toUpperCase()}</div>}
@@ -303,7 +303,7 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
             </div>
           </div>
         </div>
-        <div className='title-wrapper h-[90px] px-[14px] text-xs leading-normal text-text-tertiary'>
+        <div className='title-wrapper text-text-tertiary h-[90px] px-[14px] text-xs leading-normal'>
           <div
             className={cn(tags.length ? 'line-clamp-2' : 'line-clamp-4', 'group-hover:line-clamp-2')}
             title={app.description}
@@ -312,17 +312,17 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
           </div>
         </div>
         <div className={cn(
-          'absolute bottom-1 left-0 right-0 items-center shrink-0 pt-1 pl-[14px] pr-[6px] pb-[6px] h-[42px]',
+          'absolute bottom-1 left-0 right-0 h-[42px] shrink-0 items-center pb-[6px] pl-[14px] pr-[6px] pt-1',
           tags.length ? 'flex' : '!hidden group-hover:!flex',
         )}>
           {isCurrentWorkspaceEditor && (
             <>
-              <div className={cn('grow flex items-center gap-1 w-0')} onClick={(e) => {
+              <div className={cn('flex w-0 grow items-center gap-1')} onClick={(e) => {
                 e.stopPropagation()
                 e.preventDefault()
               }}>
                 <div className={cn(
-                  'group-hover:!block group-hover:!mr-0 mr-[41px] grow w-full',
+                  'mr-[41px] w-full grow group-hover:!mr-0 group-hover:!block',
                   tags.length ? '!block' : '!hidden',
                 )}>
                   <TagSelector
@@ -336,23 +336,23 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
                   />
                 </div>
               </div>
-              <div className='!hidden group-hover:!flex shrink-0 mx-1 w-[1px] h-[14px]' />
-              <div className='!hidden group-hover:!flex shrink-0'>
+              <div className='mx-1 !hidden h-[14px] w-[1px] shrink-0 group-hover:!flex' />
+              <div className='!hidden shrink-0 group-hover:!flex'>
                 <CustomPopover
                   htmlContent={<Operations />}
                   position="br"
                   trigger="click"
                   btnElement={
                     <div
-                      className='flex items-center justify-center w-8 h-8 cursor-pointer rounded-md'
+                      className='flex h-8 w-8 cursor-pointer items-center justify-center rounded-md'
                     >
-                      <RiMoreFill className='w-4 h-4 text-text-tertiary' />
+                      <RiMoreFill className='text-text-tertiary h-4 w-4' />
                     </div>
                   }
                   btnClassName={open =>
                     cn(
                       open ? '!bg-black/5 !shadow-none' : '!bg-transparent',
-                      'h-8 w-8 !p-2 rounded-md border-none hover:!bg-black/5',
+                      'h-8 w-8 rounded-md border-none !p-2 hover:!bg-black/5',
                     )
                   }
                   popupClassName={
@@ -360,7 +360,7 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
                       ? '!w-[256px] translate-x-[-224px]'
                       : '!w-[160px] translate-x-[-128px]'
                   }
-                  className={'h-fit !z-20'}
+                  className={'!z-20 h-fit'}
                 />
               </div>
             </>

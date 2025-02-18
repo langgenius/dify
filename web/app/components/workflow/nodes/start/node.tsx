@@ -20,15 +20,15 @@ const Node: FC<NodeProps<StartNodeType>> = ({
     <div className='mb-1 px-3 py-1'>
       <div className='space-y-0.5'>
         {variables.map(variable => (
-          <div key={variable.variable} className='flex items-center h-6 justify-between bg-gray-100 rounded-md  px-1 space-x-1 text-xs font-normal text-gray-700'>
-            <div className='w-0 grow flex items-center space-x-1'>
-              <Variable02 className='shrink-0 w-3.5 h-3.5 text-primary-500' />
+          <div key={variable.variable} className='flex h-6 items-center justify-between space-x-1 rounded-md  bg-gray-100 px-1 text-xs font-normal text-gray-700'>
+            <div className='flex w-0 grow items-center space-x-1'>
+              <Variable02 className='text-primary-500 h-3.5 w-3.5 shrink-0' />
               <span className='w-0 grow truncate text-xs font-normal text-gray-700'>{variable.variable}</span>
             </div>
 
             <div className='ml-1 flex items-center space-x-1'>
-              {variable.required && <span className='text-xs font-normal text-gray-500 uppercase'>{t(`${i18nPrefix}.required`)}</span>}
-              <InputVarTypeIcon type={variable.type} className='w-3 h-3 text-gray-500' />
+              {variable.required && <span className='text-xs font-normal uppercase text-gray-500'>{t(`${i18nPrefix}.required`)}</span>}
+              <InputVarTypeIcon type={variable.type} className='h-3 w-3 text-gray-500' />
             </div>
           </div>
         ))}

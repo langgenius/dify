@@ -73,25 +73,25 @@ const PublishWithMultipleModel: FC<PublishWithMultipleModelProps> = ({
           className='mt-3 w-full'
         >
           {t('appDebug.operation.applyConfig')}
-          <RiArrowDownSLine className='ml-0.5 w-3 h-3' />
+          <RiArrowDownSLine className='ml-0.5 h-3 w-3' />
         </Button>
       </PortalToFollowElemTrigger>
-      <PortalToFollowElemContent className='mt-1 w-[288px] z-50'>
-        <div className='p-1 rounded-lg border-[0.5px] border-components-panel-border shadow-lg bg-components-panel-bg'>
-          <div className='flex items-center px-3 h-[22px] text-xs font-medium text-text-tertiary'>
+      <PortalToFollowElemContent className='z-50 mt-1 w-[288px]'>
+        <div className='border-components-panel-border bg-components-panel-bg rounded-lg border-[0.5px] p-1 shadow-lg'>
+          <div className='text-text-tertiary flex h-[22px] items-center px-3 text-xs font-medium'>
             {t('appDebug.publishAs')}
           </div>
           {
             validModelConfigs.map((item, index) => (
               <div
                 key={item.id}
-                className='flex items-center h-8 px-3 text-sm text-text-tertiary rounded-lg cursor-pointer hover:bg-state-base-hover'
+                className='text-text-tertiary hover:bg-state-base-hover flex h-8 cursor-pointer items-center rounded-lg px-3 text-sm'
                 onClick={() => handleSelect(item)}
               >
-                <span className='italic min-w-[18px]'>#{index + 1}</span>
+                <span className='min-w-[18px] italic'>#{index + 1}</span>
                 <ModelIcon modelName={item.model} provider={item.providerItem} className='ml-2' />
                 <div
-                  className='ml-1 text-text-secondary truncate'
+                  className='text-text-secondary ml-1 truncate'
                   title={item.modelItem.label[language]}
                 >
                   {item.modelItem.label[language]}

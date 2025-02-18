@@ -12,7 +12,7 @@ const Card: FC<CardProps> = ({
       {
         log.length === 1 && (
           <div className='px-4 py-2'>
-            <div className='whitespace-pre-line text-text-secondary'>
+            <div className='text-text-secondary whitespace-pre-line'>
               {log[0].text}
             </div>
           </div>
@@ -23,12 +23,12 @@ const Card: FC<CardProps> = ({
           <div>
             {
               log.map((item, index) => (
-                <div key={index} className='group/card mb-2 px-4 pt-2 pb-4 rounded-xl hover:bg-state-base-hover last-of-type:mb-0'>
-                  <div className='flex justify-between items-center h-8'>
+                <div key={index} className='group/card hover:bg-state-base-hover mb-2 rounded-xl px-4 pb-4 pt-2 last-of-type:mb-0'>
+                  <div className='flex h-8 items-center justify-between'>
                     <div className='font-semibold text-[#2D31A6]'>{item.role.toUpperCase()}</div>
-                    <CopyFeedbackNew className='hidden w-6 h-6 group-hover/card:block' content={item.text} />
+                    <CopyFeedbackNew className='hidden h-6 w-6 group-hover/card:block' content={item.text} />
                   </div>
-                  <div className='whitespace-pre-line text-text-secondary'>{item.text}</div>
+                  <div className='text-text-secondary whitespace-pre-line'>{item.text}</div>
                 </div>
               ))
             }

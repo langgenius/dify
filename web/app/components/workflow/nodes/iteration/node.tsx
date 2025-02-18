@@ -43,11 +43,11 @@ const Node: FC<NodeProps<IterationNodeType>> = ({
 
   return (
     <div className={cn(
-      'relative min-w-[240px] min-h-[90px] w-full h-full rounded-2xl bg-workflow-canvas-workflow-bg',
+      'bg-workflow-canvas-workflow-bg relative h-full min-h-[90px] w-full min-w-[240px] rounded-2xl',
     )}>
       <Background
         id={`iteration-background-${id}`}
-        className='rounded-2xl !z-0'
+        className='!z-0 rounded-2xl'
         gap={[14 / zoom, 14 / zoom]}
         size={2 / zoom}
         color='var(--color-workflow-canvas-workflow-dot-color)'

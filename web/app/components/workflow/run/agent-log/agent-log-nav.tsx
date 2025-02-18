@@ -19,7 +19,7 @@ const AgentLogNav = ({
   const end = agentOrToolLogItemStack.at(-1)
 
   return (
-    <div className='flex items-center p-1 pr-3 h-8 bg-components-panel-bg'>
+    <div className='bg-components-panel-bg flex h-8 items-center p-1 pr-3'>
       <Button
         className='shrink-0 px-[5px]'
         size='small'
@@ -28,10 +28,10 @@ const AgentLogNav = ({
           onShowAgentOrToolLog()
         }}
       >
-        <RiArrowLeftLine className='mr-1 w-3.5 h-3.5' />
+        <RiArrowLeftLine className='mr-1 h-3.5 w-3.5' />
         AGENT
       </Button>
-      <div className='shrink-0 mx-0.5 system-xs-regular text-divider-deep'>/</div>
+      <div className='system-xs-regular text-divider-deep mx-0.5 shrink-0'>/</div>
       {
         agentOrToolLogItemStackLength > 1
           ? (
@@ -45,7 +45,7 @@ const AgentLogNav = ({
             </Button>
           )
           : (
-            <div className='flex items-center px-[5px] system-xs-medium-uppercase text-text-tertiary'>
+            <div className='system-xs-medium-uppercase text-text-tertiary flex items-center px-[5px]'>
               {t('workflow.nodes.agent.strategy.label')}
             </div>
           )
@@ -53,7 +53,7 @@ const AgentLogNav = ({
       {
         !!mid.length && (
           <>
-            <div className='shrink-0 mx-0.5 system-xs-regular text-divider-deep'>/</div>
+            <div className='system-xs-regular text-divider-deep mx-0.5 shrink-0'>/</div>
             <AgentLogNavMore
               options={mid}
               onShowAgentOrToolLog={onShowAgentOrToolLog}
@@ -64,8 +64,8 @@ const AgentLogNav = ({
       {
         !!end && agentOrToolLogItemStackLength > 1 && (
           <>
-            <div className='shrink-0 mx-0.5 system-xs-regular text-divider-deep'>/</div>
-            <div className='flex items-center px-[5px] system-xs-medium-uppercase text-text-tertiary'>
+            <div className='system-xs-regular text-divider-deep mx-0.5 shrink-0'>/</div>
+            <div className='system-xs-medium-uppercase text-text-tertiary flex items-center px-[5px]'>
               {end.label}
             </div>
           </>

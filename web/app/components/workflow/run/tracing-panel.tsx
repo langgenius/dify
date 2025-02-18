@@ -96,32 +96,32 @@ const TracingPanel: FC<TracingPanelProps> = ({
       return (
         <div
           key={node.id}
-          className="ml-4 mb-2 relative"
+          className="relative mb-2 ml-4"
           data-parallel-id={node.id}
           onMouseEnter={() => handleParallelMouseEnter(node.id)}
           onMouseLeave={handleParallelMouseLeave}
         >
-          <div className="flex items-center mb-1">
+          <div className="mb-1 flex items-center">
             <button
               onClick={() => toggleCollapse(node.id)}
               className={cn(
                 'mr-2 transition-colors',
-                isHovered ? 'rounded border-components-button-primary-border bg-components-button-primary-bg text-text-primary-on-surface' : 'text-text-secondary hover:text-text-primary',
+                isHovered ? 'border-components-button-primary-border bg-components-button-primary-bg text-text-primary-on-surface rounded' : 'text-text-secondary hover:text-text-primary',
               )}
             >
-              {isHovered ? <RiArrowDownSLine className="w-3 h-3" /> : <RiMenu4Line className="w-3 h-3 text-text-tertiary" />}
+              {isHovered ? <RiArrowDownSLine className="h-3 w-3" /> : <RiMenu4Line className="text-text-tertiary h-3 w-3" />}
             </button>
             <div className="system-xs-semibold-uppercase text-text-secondary flex items-center">
               <span>{parallelDetail.parallelTitle}</span>
             </div>
             <div
-              className="mx-2 grow h-px bg-divider-subtle"
+              className="bg-divider-subtle mx-2 h-px grow"
               style={{ background: 'linear-gradient(to right, rgba(16, 24, 40, 0.08), rgba(255, 255, 255, 0)' }}
             ></div>
           </div>
-          <div className={`pl-2 relative ${isCollapsed ? 'hidden' : ''}`}>
+          <div className={`relative pl-2 ${isCollapsed ? 'hidden' : ''}`}>
             <div className={cn(
-              'absolute top-0 bottom-0 left-[5px] w-[2px]',
+              'absolute bottom-0 left-[5px] top-0 w-[2px]',
               isHovered ? 'bg-text-accent-secondary' : 'bg-divider-subtle',
             )}></div>
             {parallelDetail.children!.map(renderNode)}
@@ -133,7 +133,7 @@ const TracingPanel: FC<TracingPanelProps> = ({
       const isHovered = hoveredParallel === node.id
       return (
         <div key={node.id}>
-          <div className={cn('pl-4 -mb-1.5 system-2xs-medium-uppercase', isHovered ? 'text-text-tertiary' : 'text-text-quaternary')}>
+          <div className={cn('system-2xs-medium-uppercase -mb-1.5 pl-4', isHovered ? 'text-text-tertiary' : 'text-text-quaternary')}>
             {node?.parallelDetail?.branchTitle}
           </div>
           <NodePanel

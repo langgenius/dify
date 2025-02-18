@@ -35,10 +35,10 @@ const FileListInLog = ({ fileList, isExpanded = false, noBorder = false, noPaddi
     return null
 
   return (
-    <div className={cn('px-3 py-2', expanded && 'py-3', !noBorder && 'border-t border-divider-subtle', noPadding && '!p-0')}>
+    <div className={cn('px-3 py-2', expanded && 'py-3', !noBorder && 'border-divider-subtle border-t', noPadding && '!p-0')}>
       <div className='flex justify-between gap-1'>
         {expanded && (
-          <div className='grow py-1 text-text-secondary system-xs-semibold-uppercase cursor-pointer' onClick={() => setExpanded(!expanded)}>{t('appLog.runDetail.fileListLabel')}</div>
+          <div className='text-text-secondary system-xs-semibold-uppercase grow cursor-pointer py-1' onClick={() => setExpanded(!expanded)}>{t('appLog.runDetail.fileListLabel')}</div>
         )}
         {!expanded && (
           <div className='flex gap-1'>
@@ -53,7 +53,7 @@ const FileListInLog = ({ fileList, isExpanded = false, noBorder = false, noPaddi
                     >
                       <div key={id}>
                         <FileImageRender
-                          className='w-8 h-8'
+                          className='h-8 w-8'
                           imageUrl={base64Url || url || ''}
                         />
                       </div>
@@ -63,7 +63,7 @@ const FileListInLog = ({ fileList, isExpanded = false, noBorder = false, noPaddi
                     <Tooltip
                       popupContent={name}
                     >
-                      <div key={id} className='p-1.5 rounded-md bg-components-panel-on-panel-item-bg border-[0.5px] border-components-panel-border shadow-xs'>
+                      <div key={id} className='bg-components-panel-on-panel-item-bg border-components-panel-border shadow-xs rounded-md border-[0.5px] p-1.5'>
                         <FileTypeIcon
                           type={getFileAppearanceType(name, type)}
                           size='md'
@@ -76,16 +76,16 @@ const FileListInLog = ({ fileList, isExpanded = false, noBorder = false, noPaddi
             })}
           </div>
         )}
-        <div className='flex items-center gap-1 cursor-pointer' onClick={() => setExpanded(!expanded)}>
+        <div className='flex cursor-pointer items-center gap-1' onClick={() => setExpanded(!expanded)}>
           {!expanded && <div className='text-text-tertiary system-xs-medium-uppercase'>{t('appLog.runDetail.fileListDetail')}</div>}
-          <RiArrowRightSLine className={cn('w-4 h-4 text-text-tertiary', expanded && 'rotate-90')} />
+          <RiArrowRightSLine className={cn('text-text-tertiary h-4 w-4', expanded && 'rotate-90')} />
         </div>
       </div>
       {expanded && (
         <div className='flex flex-col gap-3'>
           {fileList.map(item => (
-            <div key={item.varName} className='flex flex-col gap-1 system-xs-regular'>
-              <div className='py-1 text-text-tertiary '>{item.varName}</div>
+            <div key={item.varName} className='system-xs-regular flex flex-col gap-1'>
+              <div className='text-text-tertiary py-1 '>{item.varName}</div>
               {item.list.map(file => (
                 <FileItem
                   key={file.id}

@@ -47,31 +47,31 @@ const Item: FC<ItemProps> = ({
   const [isDeleting, setIsDeleting] = useState(false)
 
   return (
-    <div className={cn('group relative flex items-center mb-1 last-of-type:mb-0  pl-2.5 py-2 pr-3 w-full rounded-lg bg-components-panel-on-panel-item-bg border-components-panel-border-subtle border-[0.5px] shadow-xs hover:shadow-sm hover:bg-components-panel-on-panel-item-bg-hover', isDeleting && 'hover:bg-state-destructive-hover border-state-destructive-border')}>
+    <div className={cn('bg-components-panel-on-panel-item-bg border-components-panel-border-subtle shadow-xs hover:bg-components-panel-on-panel-item-bg-hover group relative  mb-1 flex w-full items-center rounded-lg border-[0.5px] py-2 pl-2.5 pr-3 last-of-type:mb-0 hover:shadow-sm', isDeleting && 'hover:bg-state-destructive-hover border-state-destructive-border')}>
       {
         config.data_source_type === DataSourceType.FILE && (
-          <div className='shrink-0 flex items-center justify-center mr-2 w-6 h-6 bg-[#F5F8FF] rounded-md border-[0.5px] border-[#E0EAFF]'>
-            <Folder className='w-4 h-4 text-[#444CE7]' />
+          <div className='mr-2 flex h-6 w-6 shrink-0 items-center justify-center rounded-md border-[0.5px] border-[#E0EAFF] bg-[#F5F8FF]'>
+            <Folder className='h-4 w-4 text-[#444CE7]' />
           </div>
         )
       }
       {
         config.data_source_type === DataSourceType.NOTION && (
-          <div className='shrink-0 flex items-center justify-center mr-2 w-6 h-6 rounded-md border-[0.5px] border-[#EAECF5]'>
-            <FileIcon type='notion' className='w-4 h-4' />
+          <div className='mr-2 flex h-6 w-6 shrink-0 items-center justify-center rounded-md border-[0.5px] border-[#EAECF5]'>
+            <FileIcon type='notion' className='h-4 w-4' />
           </div>
         )
       }
       {
         config.data_source_type === DataSourceType.WEB && (
-          <div className='shrink-0 flex items-center justify-center mr-2 w-6 h-6 bg-[#F5FAFF] border-[0.5px] border-blue-100 rounded-md'>
-            <Globe06 className='w-4 h-4 text-blue-600' />
+          <div className='mr-2 flex h-6 w-6 shrink-0 items-center justify-center rounded-md border-[0.5px] border-blue-100 bg-[#F5FAFF]'>
+            <Globe06 className='h-4 w-4 text-blue-600' />
           </div>
         )
       }
       <div className='grow'>
-        <div className='flex items-center h-[18px]'>
-          <div className='grow text-[13px] font-medium text-text-secondary truncate' title={config.name}>{config.name}</div>
+        <div className='flex h-[18px] items-center'>
+          <div className='text-text-secondary grow truncate text-[13px] font-medium' title={config.name}>{config.name}</div>
           {config.provider === 'external'
             ? <Badge text={t('dataset.externalTag') as string} />
             : <Badge
@@ -79,22 +79,22 @@ const Item: FC<ItemProps> = ({
             />}
         </div>
       </div >
-      <div className='hidden rounded-lg group-hover:flex items-center justify-end absolute right-0 top-0 bottom-0 pr-2 w-[124px] bg-gradient-to-r from-white/50 to-white to-50%'>
+      <div className='absolute bottom-0 right-0 top-0 hidden w-[124px] items-center justify-end rounded-lg bg-gradient-to-r from-white/50 to-white to-50% pr-2 group-hover:flex'>
         {
           editable && <div
-            className='flex items-center justify-center mr-1 w-6 h-6 hover:bg-black/5 rounded-md cursor-pointer'
+            className='mr-1 flex h-6 w-6 cursor-pointer items-center justify-center rounded-md hover:bg-black/5'
             onClick={() => setShowSettingsModal(true)}
           >
-            <RiEditLine className='w-4 h-4 text-text-tertiary' />
+            <RiEditLine className='text-text-tertiary h-4 w-4' />
           </div>
         }
         <div
-          className='flex items-center justify-center w-6 h-6  text-text-tertiary cursor-pointer hover:text-text-destructive'
+          className='text-text-tertiary hover:text-text-destructive flex h-6 w-6  cursor-pointer items-center justify-center'
           onClick={() => onRemove(config.id)}
           onMouseOver={() => setIsDeleting(true)}
           onMouseLeave={() => setIsDeleting(false)}
         >
-          <RiDeleteBinLine className='w-4 h-4' />
+          <RiDeleteBinLine className='h-4 w-4' />
         </div>
       </div>
       <Drawer isOpen={showSettingsModal} onClose={() => setShowSettingsModal(false)} footer={null} mask={isMobile} panelClassname='mt-16 mx-2 sm:mr-2 mb-3 !p-0 !max-w-[640px] rounded-xl'>

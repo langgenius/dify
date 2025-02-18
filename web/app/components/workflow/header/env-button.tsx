@@ -16,7 +16,7 @@ const EnvButton = ({ disabled }: { disabled: boolean }) => {
 
   return (
     <Button className='p-2' disabled={disabled} onClick={handleClick}>
-      <Env className='w-4 h-4 text-components-button-secondary-text' />
+      <Env className='text-components-button-secondary-text h-4 w-4' />
     </Button>
   )
 }

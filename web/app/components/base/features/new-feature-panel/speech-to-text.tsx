@@ -40,8 +40,8 @@ const SpeechToText = ({
   return (
     <FeatureCard
       icon={
-        <div className='shrink-0 p-1 rounded-lg border-[0.5px] border-divider-subtle shadow-xs bg-util-colors-violet-violet-600'>
-          <Microphone01 className='w-4 h-4 text-text-primary-on-surface' />
+        <div className='border-divider-subtle shadow-xs bg-util-colors-violet-violet-600 shrink-0 rounded-lg border-[0.5px] p-1'>
+          <Microphone01 className='text-text-primary-on-surface h-4 w-4' />
         </div>
       }
       title={t('appDebug.feature.speechToText.title')}

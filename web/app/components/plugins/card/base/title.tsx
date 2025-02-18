@@ -4,7 +4,7 @@ const Title = ({
   title: string
 }) => {
   return (
-    <div className='truncate text-text-secondary system-md-semibold'>
+    <div className='text-text-secondary system-md-semibold truncate'>
       {title}
     </div>
   )

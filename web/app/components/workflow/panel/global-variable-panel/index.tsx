@@ -25,23 +25,23 @@ const Panel = () => {
   return (
     <div
       className={cn(
-        'relative flex flex-col w-[420px] bg-components-panel-bg-alt rounded-l-2xl h-full border border-components-panel-border',
+        'bg-components-panel-bg-alt border-components-panel-border relative flex h-full w-[420px] flex-col rounded-l-2xl border',
       )}
     >
-      <div className='shrink-0 flex items-center justify-between p-4 pb-0 text-text-primary system-xl-semibold'>
+      <div className='text-text-primary system-xl-semibold flex shrink-0 items-center justify-between p-4 pb-0'>
         Global Variables(Current not show)
         <div className='flex items-center'>
           <div
-            className='flex items-center justify-center w-6 h-6 cursor-pointer'
+            className='flex h-6 w-6 cursor-pointer items-center justify-center'
             onClick={() => setShowPanel(false)}
           >
-            <RiCloseLine className='w-4 h-4 text-text-tertiary' />
+            <RiCloseLine className='text-text-tertiary h-4 w-4' />
           </div>
         </div>
       </div>
-      <div className='shrink-0 py-1 px-4 system-sm-regular text-text-tertiary'>...</div>
+      <div className='system-sm-regular text-text-tertiary shrink-0 px-4 py-1'>...</div>
 
-      <div className='grow px-4 rounded-b-2xl overflow-y-auto'>
+      <div className='grow overflow-y-auto rounded-b-2xl px-4'>
         {globalVariableList.map(item => (
           <Item
             key={item.name}

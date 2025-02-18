@@ -98,7 +98,7 @@ const ExtraInfo = ({ isMobile, relatedApps, expand }: IExtraInfoProps) => {
               />
             }
           >
-            <div className='system-xs-medium-uppercase inline-flex cursor-pointer items-center space-x-1 text-text-secondary'>
+            <div className='system-xs-medium-uppercase text-text-secondary inline-flex cursor-pointer items-center space-x-1'>
               <span>{relatedAppsTotal || '--'} {t('common.datasetMenus.relatedApp')}</span>
               <RiInformation2Line className='h-4 w-4' />
             </div>
@@ -117,13 +117,13 @@ const ExtraInfo = ({ isMobile, relatedApps, expand }: IExtraInfoProps) => {
         noDecoration
         needsDelay
         popupContent={
-          <div className='w-[240px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-4'>
-            <div className='inline-flex rounded-lg border-[0.5px] border-components-panel-border-subtle bg-background-default-subtle p-2'>
-              <RiApps2AddLine className='h-4 w-4 text-text-tertiary' />
+          <div className='border-components-panel-border bg-components-panel-bg-blur w-[240px] rounded-xl border-[0.5px] p-4'>
+            <div className='border-components-panel-border-subtle bg-background-default-subtle inline-flex rounded-lg border-[0.5px] p-2'>
+              <RiApps2AddLine className='text-text-tertiary h-4 w-4' />
             </div>
-            <div className='my-2 text-xs text-text-tertiary'>{t('common.datasetMenus.emptyTip')}</div>
+            <div className='text-text-tertiary my-2 text-xs'>{t('common.datasetMenus.emptyTip')}</div>
             <a
-              className='mt-2 inline-flex cursor-pointer items-center text-xs text-text-accent'
+              className='text-text-accent mt-2 inline-flex cursor-pointer items-center text-xs'
               href={
                 locale === LanguagesSupported[1]
                   ? 'https://docs.dify.ai/v/zh-hans/guides/knowledge-base/integrate-knowledge-within-application'
@@ -137,7 +137,7 @@ const ExtraInfo = ({ isMobile, relatedApps, expand }: IExtraInfoProps) => {
           </div>
         }
       >
-        <div className='system-xs-medium-uppercase inline-flex cursor-pointer items-center space-x-1 text-text-secondary'>
+        <div className='system-xs-medium-uppercase text-text-secondary inline-flex cursor-pointer items-center space-x-1'>
           <span>{t('common.datasetMenus.noRelatedApp')}</span>
           <RiInformation2Line className='h-4 w-4' />
         </div>
@@ -220,7 +220,7 @@ const DatasetDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
         dataset: datasetRes,
         mutateDatasetRes: () => mutateDatasetRes(),
       }}>
-        <div className="grow overflow-hidden bg-background-default-subtle">{children}</div>
+        <div className="bg-background-default-subtle grow overflow-hidden">{children}</div>
       </DatasetDetailContext.Provider>
     </div>
   )

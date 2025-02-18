@@ -24,40 +24,40 @@ const ToolDetail = ({
     <div
       className={cn(
         'rounded-xl',
-        !expand && 'border-l-[0.25px] border-components-panel-border bg-workflow-process-bg',
-        expand && 'border-[0.5px] border-components-panel-border-subtle bg-background-section-burn',
+        !expand && 'border-components-panel-border bg-workflow-process-bg border-l-[0.25px]',
+        expand && 'border-components-panel-border-subtle bg-background-section-burn border-[0.5px]',
       )}
     >
       <div
         className={cn(
-          'flex items-center system-xs-medium text-text-tertiary px-2.5 py-2 cursor-pointer',
+          'system-xs-medium text-text-tertiary flex cursor-pointer items-center px-2.5 py-2',
           expand && 'pb-1.5',
         )}
         onClick={() => setExpand(!expand)}
       >
-        {isFinished && <RiHammerFill className='mr-1 w-3.5 h-3.5' />}
-        {!isFinished && <RiLoader2Line className='mr-1 w-3.5 h-3.5 animate-spin' />}
+        {isFinished && <RiHammerFill className='mr-1 h-3.5 w-3.5' />}
+        {!isFinished && <RiLoader2Line className='mr-1 h-3.5 w-3.5 animate-spin' />}
         {t(`tools.thought.${isFinished ? 'used' : 'using'}`)}
-        <div className='mx-1 text-text-secondary'>{toolLabel}</div>
-        {!expand && <RiArrowRightSLine className='w-4 h-4' />}
-        {expand && <RiArrowDownSLine className='ml-auto w-4 h-4' />}
+        <div className='text-text-secondary mx-1'>{toolLabel}</div>
+        {!expand && <RiArrowRightSLine className='h-4 w-4' />}
+        {expand && <RiArrowDownSLine className='ml-auto h-4 w-4' />}
       </div>
       {
         expand && (
           <>
-            <div className='mb-0.5 mx-1 rounded-[10px] bg-components-panel-on-panel-item-bg text-text-secondary'>
-              <div className='flex items-center justify-between px-2 pt-1 h-7 system-xs-semibold-uppercase'>
+            <div className='bg-components-panel-on-panel-item-bg text-text-secondary mx-1 mb-0.5 rounded-[10px]'>
+              <div className='system-xs-semibold-uppercase flex h-7 items-center justify-between px-2 pt-1'>
                 {t('tools.thought.requestTitle')}
               </div>
-              <div className='pt-1 px-3 pb-2 code-xs-regular break-words'>
+              <div className='code-xs-regular break-words px-3 pb-2 pt-1'>
                 {input}
               </div>
             </div>
-            <div className='mx-1 mb-1 rounded-[10px] bg-components-panel-on-panel-item-bg text-text-secondary'>
-              <div className='flex items-center justify-between px-2 pt-1 h-7 system-xs-semibold-uppercase'>
+            <div className='bg-components-panel-on-panel-item-bg text-text-secondary mx-1 mb-1 rounded-[10px]'>
+              <div className='system-xs-semibold-uppercase flex h-7 items-center justify-between px-2 pt-1'>
                 {t('tools.thought.responseTitle')}
               </div>
-              <div className='pt-1 px-3 pb-2 code-xs-regular break-words'>
+              <div className='code-xs-regular break-words px-3 pb-2 pt-1'>
                 {output}
               </div>
             </div>

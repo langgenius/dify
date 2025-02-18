@@ -230,7 +230,7 @@ const Chart: React.FC<IChartProps> = ({
   const sumData = isAvg ? (sum(yData) / yData.length) : sum(yData)
 
   return (
-    <div className={`flex flex-col w-full px-6 py-4 rounded-xl bg-components-chart-bg shadow-xs ${className ?? ''}`}>
+    <div className={`bg-components-chart-bg shadow-xs flex w-full flex-col rounded-xl px-6 py-4 ${className ?? ''}`}>
       <div className='mb-3'>
         <Basic name={title} type={timePeriod} hoverTip={explanation} />
       </div>
@@ -241,7 +241,7 @@ const Chart: React.FC<IChartProps> = ({
           type={!CHART_TYPE_CONFIG[chartType].showTokens
             ? ''
             : <span>{t('appOverview.analysis.tokenUsage.consumed')} Tokens<span className='text-sm'>
-              <span className='ml-1 text-text-tertiary'>(</span>
+              <span className='text-text-tertiary ml-1'>(</span>
               <span className='text-orange-400'>~{sum(statistics.map(item => Number.parseFloat(get(item, 'total_price', '0')))).toLocaleString('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 4 })}</span>
               <span className='text-text-tertiary'>)</span>
             </span></span>}

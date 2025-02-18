@@ -13,7 +13,7 @@ const FieldCollapse = ({
     <div className='py-4'>
       <Collapse
         trigger={
-          <div className='flex items-center h-6 system-sm-semibold-uppercase text-text-secondary cursor-pointer'>{title}</div>
+          <div className='system-sm-semibold-uppercase text-text-secondary flex h-6 cursor-pointer items-center'>{title}</div>
         }
       >
         <div className='px-4'>

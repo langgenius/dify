@@ -17,22 +17,22 @@ const UserInput = () => {
     <div
       className={`
         rounded-xl border
-        ${!expanded ? 'bg-indigo-25 border-indigo-100 shadow-none' : 'bg-white shadow-xs border-transparent'}
+        ${!expanded ? 'bg-indigo-25 border-indigo-100 shadow-none' : 'shadow-xs border-transparent bg-white'}
       `}
     >
       <div
         className={`
-          flex items-center px-2 pt-4 h-[18px] text-[13px] font-semibold cursor-pointer
+          flex h-[18px] cursor-pointer items-center px-2 pt-4 text-[13px] font-semibold
           ${!expanded ? 'text-indigo-800' : 'text-gray-800'}
         `}
         onClick={() => setExpanded(!expanded)}
       >
         <RiArrowDownSLine
-          className={`mr-1 w-3 h-3 ${!expanded ? '-rotate-90 text-indigo-600' : 'text-gray-300'}`}
+          className={`mr-1 h-3 w-3 ${!expanded ? '-rotate-90 text-indigo-600' : 'text-gray-300'}`}
         />
         {t('workflow.panel.userInputField').toLocaleUpperCase()}
       </div>
-      <div className='px-2 pt-1 pb-3'>
+      <div className='px-2 pb-3 pt-1'>
         {
           expanded && (
             <div className='py-2 text-[13px] text-gray-900'>

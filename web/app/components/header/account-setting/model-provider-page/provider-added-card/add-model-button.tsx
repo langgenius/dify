@@ -15,10 +15,10 @@ const AddModelButton: FC<AddModelButtonProps> = ({
 
   return (
     <span
-      className={cn('shrink-0 flex items-center px-1.5 h-6 text-text-tertiary system-xs-medium cursor-pointer hover:bg-components-button-ghost-bg-hover hover:text-components-button-ghost-text rounded-md', className)}
+      className={cn('text-text-tertiary system-xs-medium hover:bg-components-button-ghost-bg-hover hover:text-components-button-ghost-text flex h-6 shrink-0 cursor-pointer items-center rounded-md px-1.5', className)}
       onClick={onClick}
     >
-      <PlusCircle className='mr-1 w-3 h-3' />
+      <PlusCircle className='mr-1 h-3 w-3' />
       {t('common.modelProvider.addModel')}
     </span>
   )

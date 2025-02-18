@@ -9,8 +9,8 @@ const DownloadCount = ({
   downloadCount,
 }: Props) => {
   return (
-    <div className="flex items-center space-x-1 text-text-tertiary">
-      <RiInstallLine className="shrink-0 w-3 h-3" />
+    <div className="text-text-tertiary flex items-center space-x-1">
+      <RiInstallLine className="h-3 w-3 shrink-0" />
       <div className="system-xs-regular">{formatNumber(downloadCount)}</div>
     </div>
   )

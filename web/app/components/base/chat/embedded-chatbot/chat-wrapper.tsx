@@ -113,7 +113,7 @@ const ChatWrapper = () => {
       return (
         <>
           {!currentConversationId && (
-            <div className={cn('mx-auto w-full max-w-full tablet:px-4', isMobile && 'px-4')}>
+            <div className={cn('tablet:px-4 mx-auto w-full max-w-full', isMobile && 'px-4')}>
               <div className='mb-6' />
               <ConfigPanel />
               <div
@@ -146,9 +146,9 @@ const ChatWrapper = () => {
       config={appConfig}
       chatList={chatList}
       isResponding={isResponding}
-      chatContainerInnerClassName={cn('mx-auto w-full max-w-full tablet:px-4', isMobile && 'px-4')}
+      chatContainerInnerClassName={cn('tablet:px-4 mx-auto w-full max-w-full', isMobile && 'px-4')}
       chatFooterClassName='pb-4'
-      chatFooterInnerClassName={cn('mx-auto w-full max-w-full tablet:px-4', isMobile && 'px-4')}
+      chatFooterInnerClassName={cn('tablet:px-4 mx-auto w-full max-w-full', isMobile && 'px-4')}
       onSend={doSend}
       inputs={currentConversationId ? currentConversationItem?.inputs as any : newConversationInputs}
       inputsForm={inputsForms}

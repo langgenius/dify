@@ -15,7 +15,7 @@ const HelpLineHorizontal = memo(({
 
   return (
     <div
-      className='absolute h-[1px] bg-primary-300 z-[9]'
+      className='bg-primary-300 absolute z-[9] h-[1px]'
       style={{
         top: top * zoom + y,
         left: left * zoom + x,
@@ -35,7 +35,7 @@ const HelpLineVertical = memo(({
 
   return (
     <div
-      className='absolute w-[1px] bg-primary-300 z-[9]'
+      className='bg-primary-300 absolute z-[9] w-[1px]'
       style={{
         top: top * zoom + y,
         left: left * zoom + x,

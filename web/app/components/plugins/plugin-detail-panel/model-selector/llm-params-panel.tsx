@@ -97,8 +97,8 @@ const LLMParamsPanel = ({
 
   return (
     <>
-      <div className='flex items-center justify-between mb-2'>
-        <div className={cn('h-6 flex items-center text-text-secondary system-sm-semibold')}>{t('common.modelProvider.parameters')}</div>
+      <div className='mb-2 flex items-center justify-between'>
+        <div className={cn('text-text-secondary system-sm-semibold flex h-6 items-center')}>{t('common.modelProvider.parameters')}</div>
         {
           PROVIDER_WITH_PRESET_TONE.includes(provider) && (
             <PresetsParameter onSelect={handleSelectPresetParameter} />

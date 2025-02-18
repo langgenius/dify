@@ -153,13 +153,13 @@ const AppInputsPanel = ({
   }
 
   return (
-    <div className={cn('max-h-[240px] flex flex-col pb-4 rounded-b-2xl border-t border-divider-subtle')}>
+    <div className={cn('border-divider-subtle flex max-h-[240px] flex-col rounded-b-2xl border-t pb-4')}>
       {isLoading && <div className='pt-3'><Loading type='app' /></div>}
       {!isLoading && (
-        <div className='shrink-0 mt-3 mb-2 px-4 h-6 flex items-center system-sm-semibold text-text-secondary'>{t('app.appSelector.params')}</div>
+        <div className='system-sm-semibold text-text-secondary mb-2 mt-3 flex h-6 shrink-0 items-center px-4'>{t('app.appSelector.params')}</div>
       )}
       {!isLoading && !inputFormSchema.length && (
-        <div className='h-16 flex flex-col justify-center items-center'>
+        <div className='flex h-16 flex-col items-center justify-center'>
           <div className='text-text-tertiary system-sm-regular'>{t('app.appSelector.noParams')}</div>
         </div>
       )}

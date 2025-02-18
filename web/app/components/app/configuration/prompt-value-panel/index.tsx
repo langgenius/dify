@@ -90,26 +90,26 @@ const PromptValuePanel: FC<IPromptValuePanelProps> = ({
 
   return (
     <>
-      <div className='relative z-[1] mx-3 border-[0.5px] bg-components-panel-on-panel-item-bg border-components-panel-border-subtle rounded-xl shadow-md'>
+      <div className='bg-components-panel-on-panel-item-bg border-components-panel-border-subtle relative z-[1] mx-3 rounded-xl border-[0.5px] shadow-md'>
         <div className={cn('px-4 pt-3', userInputFieldCollapse ? 'pb-3' : 'pb-1')}>
-          <div className='flex items-center gap-0.5 py-0.5 cursor-pointer' onClick={() => setUserInputFieldCollapse(!userInputFieldCollapse)}>
+          <div className='flex cursor-pointer items-center gap-0.5 py-0.5' onClick={() => setUserInputFieldCollapse(!userInputFieldCollapse)}>
             <div className='text-text-secondary system-md-semibold-uppercase'>{t('appDebug.inputs.userInputField')}</div>
-            {userInputFieldCollapse && <RiArrowRightSLine className='w-4 h-4 text-text-secondary'/>}
-            {!userInputFieldCollapse && <RiArrowDownSLine className='w-4 h-4 text-text-secondary'/>}
+            {userInputFieldCollapse && <RiArrowRightSLine className='text-text-secondary h-4 w-4'/>}
+            {!userInputFieldCollapse && <RiArrowDownSLine className='text-text-secondary h-4 w-4'/>}
           </div>
           {!userInputFieldCollapse && (
-            <div className='mt-1 text-text-tertiary system-xs-regular'>{t('appDebug.inputs.completionVarTip')}</div>
+            <div className='text-text-tertiary system-xs-regular mt-1'>{t('appDebug.inputs.completionVarTip')}</div>
           )}
         </div>
         {!userInputFieldCollapse && promptVariables.length > 0 && (
-          <div className='px-4 pt-3 pb-4'>
+          <div className='px-4 pb-4 pt-3'>
             {promptVariables.map(({ key, name, type, options, max_length, required }, index) => (
               <div
                 key={key}
                 className='mb-4 last-of-type:mb-0'
               >
                 <div>
-                  <div className='h-6 mb-1 flex items-center gap-1 text-text-secondary system-sm-semibold'>
+                  <div className='text-text-secondary system-sm-semibold mb-1 flex h-6 items-center gap-1'>
                     <div className='truncate'>{name || key}</div>
                     {!required && <span className='text-text-tertiary system-xs-regular'>{t('workflow.panel.optional')}</span>}
                   </div>
@@ -125,7 +125,7 @@ const PromptValuePanel: FC<IPromptValuePanelProps> = ({
                     )}
                     {type === 'paragraph' && (
                       <Textarea
-                        className='grow h-[120px]'
+                        className='h-[120px] grow'
                         placeholder={name}
                         value={inputs[key] ? `${inputs[key]}` : ''}
                         onChange={(e) => { handleInputValueChange(key, e.target.value) }}
@@ -156,8 +156,8 @@ const PromptValuePanel: FC<IPromptValuePanelProps> = ({
               </div>
             ))}
             {visionConfig?.enabled && (
-              <div className="mt-3 xl:flex justify-between">
-                <div className="mr-1 py-2 shrink-0 w-[120px] text-sm text-text-primary">{t('common.imageUploader.imageUpload')}</div>
+              <div className="mt-3 justify-between xl:flex">
+                <div className="text-text-primary mr-1 w-[120px] shrink-0 py-2 text-sm">{t('common.imageUploader.imageUpload')}</div>
                 <div className='grow'>
                   <TextGenerationImageUploader
                     settings={visionConfig}
@@ -174,7 +174,7 @@ const PromptValuePanel: FC<IPromptValuePanelProps> = ({
           </div>
         )}
         {!userInputFieldCollapse && (
-          <div className='flex justify-between p-4 pt-3 border-t border-divider-subtle'>
+          <div className='border-divider-subtle flex justify-between border-t p-4 pt-3'>
             <Button className='w-[72px]' onClick={onClear}>{t('common.operation.clear')}</Button>
             {canNotRun && (
               <Tooltip popupContent={t('appDebug.otherError.promptNoBeEmpty')} needsDelay>
@@ -183,7 +183,7 @@ const PromptValuePanel: FC<IPromptValuePanelProps> = ({
                   disabled={canNotRun}
                   onClick={() => onSend && onSend()}
                   className="w-[96px]">
-                  <RiPlayLargeFill className="shrink-0 w-4 h-4 mr-0.5" aria-hidden="true" />
+                  <RiPlayLargeFill className="mr-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
                   {t('appDebug.inputs.run')}
                 </Button>
               </Tooltip>
@@ -194,7 +194,7 @@ const PromptValuePanel: FC<IPromptValuePanelProps> = ({
                 disabled={canNotRun}
                 onClick={() => onSend && onSend()}
                 className="w-[96px]">
-                <RiPlayLargeFill className="shrink-0 w-4 h-4 mr-0.5" aria-hidden="true" />
+                <RiPlayLargeFill className="mr-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
                 {t('appDebug.inputs.run')}
               </Button>
             )}

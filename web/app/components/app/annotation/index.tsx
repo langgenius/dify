@@ -152,15 +152,15 @@ const Annotation: FC<Props> = ({
   }
 
   return (
-    <div className='flex flex-col h-full'>
+    <div className='flex h-full flex-col'>
       <p className='text-text-tertiary system-sm-regular'>{t('appLog.description')}</p>
-      <div className='flex flex-col py-4 flex-1'>
+      <div className='flex flex-1 flex-col py-4'>
         <Filter appId={appDetail.id} queryParams={queryParams} setQueryParams={setQueryParams}>
           <div className='flex items-center space-x-2'>
             {isChatApp && (
               <>
-                <div className={cn(!annotationConfig?.enabled && 'pr-2', 'flex items-center h-7 rounded-lg bg-components-panel-bg-blur border border-components-panel-border pl-2 space-x-1')}>
-                  <MessageFast className='w-4 h-4 text-util-colors-indigo-indigo-600' />
+                <div className={cn(!annotationConfig?.enabled && 'pr-2', 'bg-components-panel-bg-blur border-components-panel-border flex h-7 items-center space-x-1 rounded-lg border pl-2')}>
+                  <MessageFast className='text-util-colors-indigo-indigo-600 h-4 w-4' />
                   <div className='system-sm-medium text-text-primary'>{t('appAnnotation.name')}</div>
                   <Switch
                     key={controlRefreshSwitch}
@@ -188,14 +188,14 @@ const Annotation: FC<Props> = ({
                   ></Switch>
                   {annotationConfig?.enabled && (
                     <div className='flex items-center pl-1.5'>
-                      <div className='shrink-0 mr-1 w-[1px] h-3.5 bg-divider-subtle'></div>
+                      <div className='bg-divider-subtle mr-1 h-3.5 w-[1px] shrink-0'></div>
                       <ActionButton onClick={() => setIsShowEdit(true)}>
-                        <RiEqualizer2Line className='w-4 h-4 text-text-tertiary' />
+                        <RiEqualizer2Line className='text-text-tertiary h-4 w-4' />
                       </ActionButton>
                     </div>
                   )}
                 </div>
-                <div className='shrink-0 mx-3 w-[1px] h-3.5 bg-divider-regular'></div>
+                <div className='bg-divider-regular mx-3 h-3.5 w-[1px] shrink-0'></div>
               </>
             )}
 
@@ -217,7 +217,7 @@ const Annotation: FC<Props> = ({
               onRemove={handleRemove}
               onView={handleView}
             />
-            : <div className='grow flex h-full items-center justify-center'><EmptyElement /></div>
+            : <div className='flex h-full grow items-center justify-center'><EmptyElement /></div>
         }
         {/* Show Pagination only if the total is more than the limit */}
         {(total && total > APP_PAGE_LIMIT)

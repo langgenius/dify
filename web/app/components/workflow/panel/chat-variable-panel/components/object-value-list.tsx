@@ -16,11 +16,11 @@ const ObjectValueList: FC<Props> = ({
   const { t } = useTranslation()
 
   return (
-    <div className='w-full border border-gray-200 rounded-lg overflow-hidden'>
-      <div className='flex items-center h-7 system-xs-medium text-text-tertiary uppercase'>
-        <div className='w-[120px] flex items-center h-full pl-2 border-r border-gray-200'>{t('workflow.chatVariable.modal.objectKey')}</div>
-        <div className='w-[96px] flex items-center h-full pl-2 border-r border-gray-200'>{t('workflow.chatVariable.modal.objectType')}</div>
-        <div className='w-[230px] flex items-center h-full pl-2 pr-1'>{t('workflow.chatVariable.modal.objectValue')}</div>
+    <div className='w-full overflow-hidden rounded-lg border border-gray-200'>
+      <div className='system-xs-medium text-text-tertiary flex h-7 items-center uppercase'>
+        <div className='flex h-full w-[120px] items-center border-r border-gray-200 pl-2'>{t('workflow.chatVariable.modal.objectKey')}</div>
+        <div className='flex h-full w-[96px] items-center border-r border-gray-200 pl-2'>{t('workflow.chatVariable.modal.objectType')}</div>
+        <div className='flex h-full w-[230px] items-center pl-2 pr-1'>{t('workflow.chatVariable.modal.objectValue')}</div>
       </div>
       {list.map((item, index) => (
         <ObjectValueItem

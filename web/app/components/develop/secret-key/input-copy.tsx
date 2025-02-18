@@ -33,11 +33,11 @@ const InputCopy = ({
   }, [isCopied])
 
   return (
-    <div className={`flex rounded-lg bg-components-input-bg-normal hover:bg-state-base-hover py-2 items-center ${className}`}>
-      <div className="flex items-center grow h-5">
+    <div className={`bg-components-input-bg-normal hover:bg-state-base-hover flex items-center rounded-lg py-2 ${className}`}>
+      <div className="flex h-5 grow items-center">
         {children}
-        <div className='grow text-[13px] relative h-full'>
-          <div className='absolute top-0 left-0 w-full pl-2 pr-2 truncate cursor-pointer r-0' onClick={() => {
+        <div className='relative h-full grow text-[13px]'>
+          <div className='r-0 absolute left-0 top-0 w-full cursor-pointer truncate pl-2 pr-2' onClick={() => {
             copy(value)
             setIsCopied(true)
           }}>
@@ -49,13 +49,13 @@ const InputCopy = ({
             </Tooltip>
           </div>
         </div>
-        <div className="shrink-0 h-4 bg-divider-regular border" />
+        <div className="bg-divider-regular h-4 shrink-0 border" />
         <Tooltip
           popupContent={isCopied ? `${t('appApi.copied')}` : `${t('appApi.copy')}`}
           position='bottom'
         >
-          <div className="px-0.5 shrink-0">
-            <div className={`box-border w-[30px] h-[30px] flex items-center justify-center rounded-lg hover:bg-state-base-hover cursor-pointer ${s.copyIcon} ${isCopied ? s.copied : ''}`} onClick={() => {
+          <div className="shrink-0 px-0.5">
+            <div className={`hover:bg-state-base-hover box-border flex h-[30px] w-[30px] cursor-pointer items-center justify-center rounded-lg ${s.copyIcon} ${isCopied ? s.copied : ''}`} onClick={() => {
               copy(value)
               setIsCopied(true)
             }}>

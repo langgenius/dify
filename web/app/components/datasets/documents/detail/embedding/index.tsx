@@ -248,10 +248,10 @@ const EmbeddingDetail: FC<IEmbeddingDetailProps> = ({
 
   return (
     <>
-      <div className='py-12 px-16 flex flex-col gap-y-2'>
-        <div className='flex items-center gap-x-1 h-6'>
-          {isEmbedding && <RiLoader2Line className='h-4 w-4 text-text-secondary animate-spin' />}
-          <span className='grow text-text-secondary system-md-semibold-uppercase'>
+      <div className='flex flex-col gap-y-2 px-16 py-12'>
+        <div className='flex h-6 items-center gap-x-1'>
+          {isEmbedding && <RiLoader2Line className='text-text-secondary h-4 w-4 animate-spin' />}
+          <span className='text-text-secondary system-md-semibold-uppercase grow'>
             {isEmbedding && t('datasetDocuments.embedding.processing')}
             {isEmbeddingCompleted && t('datasetDocuments.embedding.completed')}
             {isEmbeddingPaused && t('datasetDocuments.embedding.paused')}
@@ -260,12 +260,12 @@ const EmbeddingDetail: FC<IEmbeddingDetailProps> = ({
           {isEmbedding && (
             <button
               type='button'
-              className={`px-1.5 py-1 border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg
-              shadow-xs shadow-shadow-shadow-3 backdrop-blur-[5px] flex items-center gap-x-1 rounded-md`}
+              className={`border-components-button-secondary-border bg-components-button-secondary-bg shadow-xs shadow-shadow-shadow-3 flex
+              items-center gap-x-1 rounded-md border-[0.5px] px-1.5 py-1 backdrop-blur-[5px]`}
               onClick={handleSwitch}
             >
-              <RiPauseCircleLine className='w-3.5 h-3.5 text-components-button-secondary-text' />
-              <span className='pr-[3px] text-components-button-secondary-text system-xs-medium'>
+              <RiPauseCircleLine className='text-components-button-secondary-text h-3.5 w-3.5' />
+              <span className='text-components-button-secondary-text system-xs-medium pr-[3px]'>
                 {t('datasetDocuments.embedding.pause')}
               </span>
             </button>
@@ -273,12 +273,12 @@ const EmbeddingDetail: FC<IEmbeddingDetailProps> = ({
           {isEmbeddingPaused && (
             <button
               type='button'
-              className={`px-1.5 py-1 border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg
-              shadow-xs shadow-shadow-shadow-3 backdrop-blur-[5px] flex items-center gap-x-1 rounded-md`}
+              className={`border-components-button-secondary-border bg-components-button-secondary-bg shadow-xs shadow-shadow-shadow-3 flex
+              items-center gap-x-1 rounded-md border-[0.5px] px-1.5 py-1 backdrop-blur-[5px]`}
               onClick={handleSwitch}
             >
-              <RiPlayCircleLine className='w-3.5 h-3.5 text-components-button-secondary-text' />
-              <span className='pr-[3px] text-components-button-secondary-text system-xs-medium'>
+              <RiPlayCircleLine className='text-components-button-secondary-text h-3.5 w-3.5' />
+              <span className='text-components-button-secondary-text system-xs-medium pr-[3px]'>
                 {t('datasetDocuments.embedding.resume')}
               </span>
             </button>
@@ -286,7 +286,7 @@ const EmbeddingDetail: FC<IEmbeddingDetailProps> = ({
         </div>
         {/* progress bar */}
         <div className={cn(
-          'flex items-center w-full h-2 rounded-md border border-components-progress-bar-border overflow-hidden',
+          'border-components-progress-bar-border flex h-2 w-full items-center overflow-hidden rounded-md border',
           isEmbedding ? 'bg-components-progress-bar-bg bg-opacity-50' : 'bg-components-progress-bar-bg',
         )}>
           <div
@@ -298,7 +298,7 @@ const EmbeddingDetail: FC<IEmbeddingDetailProps> = ({
             style={{ width: `${percent}%` }}
           />
         </div>
-        <div className={'w-full flex items-center'}>
+        <div className={'flex w-full items-center'}>
           <span className='text-text-secondary system-xs-medium'>
             {`${t('datasetDocuments.embedding.segments')} ${indexingStatusDetail?.completed_segments || '--'}/${indexingStatusDetail?.total_segments || '--'} · ${percent}%`}
           </span>

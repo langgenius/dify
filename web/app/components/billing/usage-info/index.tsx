@@ -42,10 +42,10 @@ const UsageInfo: FC<Props> = ({
   })()
   return (
     <div className={className}>
-      <div className='flex justify-between h-5 items-center'>
+      <div className='flex h-5 items-center justify-between'>
         <div className='flex items-center'>
-          <Icon className='w-4 h-4 text-gray-700' />
-          <div className='mx-1 leading-5 text-sm font-medium text-gray-700'>{name}</div>
+          <Icon className='h-4 w-4 text-gray-700' />
+          <div className='mx-1 text-sm font-medium leading-5 text-gray-700'>{name}</div>
           {tooltip && (
             <Tooltip
               popupContent={
@@ -56,7 +56,7 @@ const UsageInfo: FC<Props> = ({
             />
           )}
         </div>
-        <div className='flex items-center leading-[18px] text-[13px] font-normal'>
+        <div className='flex items-center text-[13px] font-normal leading-[18px]'>
           <div style={{
             color: percent < LOW ? '#344054' : color,
           }}>{usage}{unit}</div>

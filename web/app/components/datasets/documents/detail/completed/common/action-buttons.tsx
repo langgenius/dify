@@ -50,7 +50,7 @@ const ActionButtons: FC<IActionButtonsProps> = ({
       >
         <div className='flex items-center gap-x-1'>
           <span className='text-components-button-secondary-text system-sm-medium'>{t('common.operation.cancel')}</span>
-          <span className='px-[1px] bg-components-kbd-bg-gray rounded-[4px] text-text-tertiary system-kbd'>ESC</span>
+          <span className='bg-components-kbd-bg-gray text-text-tertiary system-kbd rounded-[4px] px-[1px]'>ESC</span>
         </div>
       </Button>
       {(isParentChildParagraphMode && actionType === 'edit' && !isChildChunk)
@@ -72,8 +72,8 @@ const ActionButtons: FC<IActionButtonsProps> = ({
         <div className='flex items-center gap-x-1'>
           <span className='text-components-button-primary-text'>{t('common.operation.save')}</span>
           <div className='flex items-center gap-x-0.5'>
-            <span className='w-4 h-4 bg-components-kbd-bg-white rounded-[4px] text-text-primary-on-surface system-kbd capitalize'>{getKeyboardKeyNameBySystem('ctrl')}</span>
-            <span className='w-4 h-4 bg-components-kbd-bg-white rounded-[4px] text-text-primary-on-surface system-kbd'>S</span>
+            <span className='bg-components-kbd-bg-white text-text-primary-on-surface system-kbd h-4 w-4 rounded-[4px] capitalize'>{getKeyboardKeyNameBySystem('ctrl')}</span>
+            <span className='bg-components-kbd-bg-white text-text-primary-on-surface system-kbd h-4 w-4 rounded-[4px]'>S</span>
           </div>
         </div>
       </Button>

@@ -17,22 +17,22 @@ const Contribute: FC = () => {
       href='https://github.com/langgenius/dify/blob/main/api/core/tools/README.md'
       target='_blank'
       rel='noopener noreferrer'
-      className="group flex col-span-1 bg-white bg-cover bg-no-repeat bg-[url('~@/app/components/tools/provider/grid_bg.svg')] border-2 border-solid border-transparent rounded-xl shadow-sm min-h-[160px] flex-col transition-all duration-200 ease-in-out cursor-pointer hover:shadow-lg"
+      className="group col-span-1 flex min-h-[160px] cursor-pointer flex-col rounded-xl border-2 border-solid border-transparent bg-white bg-[url('~@/app/components/tools/provider/grid_bg.svg')] bg-cover bg-no-repeat shadow-sm transition-all duration-200 ease-in-out hover:shadow-lg"
     >
-      <div className='flex pt-[14px] px-[14px] pb-3 h-[66px] items-center gap-3 grow-0 shrink-0'>
-        <div className='relative shrink-0 flex items-center'>
-          <div className='z-10 flex p-3 rounded-[10px] bg-white border-[0.5px] border-primary-100 shadow-md'><RiHammerFill className='w-4 h-4 text-primary-600'/></div>
-          <div className='-translate-x-2 flex p-3 rounded-[10px] bg-[#FEF6FB] border-[0.5px] border-[#FCE7F6] shadow-md'><Heart02 className='w-4 h-4 text-[#EE46BC]'/></div>
+      <div className='flex h-[66px] shrink-0 grow-0 items-center gap-3 px-[14px] pb-3 pt-[14px]'>
+        <div className='relative flex shrink-0 items-center'>
+          <div className='border-primary-100 z-10 flex rounded-[10px] border-[0.5px] bg-white p-3 shadow-md'><RiHammerFill className='text-primary-600 h-4 w-4'/></div>
+          <div className='flex -translate-x-2 rounded-[10px] border-[0.5px] border-[#FCE7F6] bg-[#FEF6FB] p-3 shadow-md'><Heart02 className='h-4 w-4 text-[#EE46BC]'/></div>
         </div>
       </div>
-      <div className='mb-3 px-[14px] text-[15px] leading-5 font-semibold'>
+      <div className='mb-3 px-[14px] text-[15px] font-semibold leading-5'>
         <div className='text-gradient'>{t('tools.contribute.line1')}</div>
         <div className='text-gradient'>{t('tools.contribute.line2')}</div>
       </div>
-      <div className='px-4 py-3 border-t-[0.5px] border-black/5 flex items-center space-x-1 text-[#155EEF]'>
-        <BookOpen01 className='w-3 h-3' />
-        <div className='grow leading-[18px] text-xs font-normal'>{t('tools.contribute.viewGuide')}</div>
-        <ArrowUpRight className='w-3 h-3' />
+      <div className='flex items-center space-x-1 border-t-[0.5px] border-black/5 px-4 py-3 text-[#155EEF]'>
+        <BookOpen01 className='h-3 w-3' />
+        <div className='grow text-xs font-normal leading-[18px]'>{t('tools.contribute.viewGuide')}</div>
+        <ArrowUpRight className='h-3 w-3' />
       </div>
     </a>
   )

@@ -37,19 +37,19 @@ const ListWrapper = ({
   }, [handleQueryPlugins, marketplaceCollections, marketplaceCollectionsFromClient, isSuccessCollections])
 
   return (
-    <div className='relative flex flex-col grow px-12 py-2 bg-background-default-subtle'>
+    <div className='bg-background-default-subtle relative flex grow flex-col px-12 py-2'>
       {
         plugins && (
-          <div className='flex items-center mb-4 pt-3'>
+          <div className='mb-4 flex items-center pt-3'>
             <div className='title-xl-semi-bold text-text-primary'>{t('plugin.marketplace.pluginsResult', { num: pluginsTotal })}</div>
-            <div className='mx-3 w-[1px] h-3.5 bg-divider-regular'></div>
+            <div className='bg-divider-regular mx-3 h-3.5 w-[1px]'></div>
             <SortDropdown locale={locale} />
           </div>
         )
       }
       {
         isLoading && page === 1 && (
-          <div className='absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2'>
+          <div className='absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2'>
             <Loading />
           </div>
         )

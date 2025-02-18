@@ -72,7 +72,7 @@ const SelectPackage: React.FC<SelectPackageProps> = ({
     <>
       <label
         htmlFor='version'
-        className='flex flex-col justify-center items-start self-stretch text-text-secondary'
+        className='text-text-secondary flex flex-col items-start justify-center self-stretch'
       >
         <span className='system-sm-semibold'>{t(`${i18nPrefix}.selectVersion`)}</span>
       </label>
@@ -86,7 +86,7 @@ const SelectPackage: React.FC<SelectPackageProps> = ({
       />
       <label
         htmlFor='package'
-        className='flex flex-col justify-center items-start self-stretch text-text-secondary'
+        className='text-text-secondary flex flex-col items-start justify-center self-stretch'
       >
         <span className='system-sm-semibold'>{t(`${i18nPrefix}.selectPackage`)}</span>
       </label>
@@ -98,7 +98,7 @@ const SelectPackage: React.FC<SelectPackageProps> = ({
         placeholder={t(`${i18nPrefix}.selectPackagePlaceholder`) || ''}
         popupClassName='w-[512px] z-[1001]'
       />
-      <div className='flex justify-end items-center gap-2 self-stretch mt-4'>
+      <div className='mt-4 flex items-center justify-end gap-2 self-stretch'>
         {!isEdit
           && <Button
             variant='secondary'

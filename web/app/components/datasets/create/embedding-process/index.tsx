@@ -252,10 +252,10 @@ const EmbeddingProcess: FC<Props> = ({ datasetId, batchId, documents = [], index
 
   return (
     <>
-      <div className="h-5 flex items-center mb-3">
-        <div className="flex items-center justify-between text-gray-900 font-medium text-sm mr-2">
+      <div className="mb-3 flex h-5 items-center">
+        <div className="mr-2 flex items-center justify-between text-sm font-medium text-gray-900">
           {isEmbedding && <div className='flex items-center'>
-            <RiLoader2Fill className='size-4 mr-1 animate-spin' />
+            <RiLoader2Fill className='mr-1 size-4 animate-spin' />
             {t('datasetDocuments.embedding.processing')}
           </div>}
           {isEmbeddingCompleted && t('datasetDocuments.embedding.completed')}
@@ -263,11 +263,11 @@ const EmbeddingProcess: FC<Props> = ({ datasetId, batchId, documents = [], index
       </div>
       {
         enableBilling && plan.type !== Plan.team && (
-          <div className='flex items-center mb-3 p-3 h-14 bg-white border-[0.5px] border-black/5 shadow-md rounded-xl'>
-            <div className='shrink-0 flex items-center justify-center w-8 h-8 bg-[#FFF6ED] rounded-lg'>
-              <ZapFast className='w-4 h-4 text-[#FB6514]' />
+          <div className='mb-3 flex h-14 items-center rounded-xl border-[0.5px] border-black/5 bg-white p-3 shadow-md'>
+            <div className='flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#FFF6ED]'>
+              <ZapFast className='h-4 w-4 text-[#FB6514]' />
             </div>
-            <div className='grow mx-3 text-[13px] font-medium text-gray-700'>
+            <div className='mx-3 grow text-[13px] font-medium text-gray-700'>
               {t('billing.plansCommon.documentProcessingPriorityUpgrade')}
             </div>
             <UpgradeBtn loc='knowledge-speed-up' />
@@ -277,21 +277,21 @@ const EmbeddingProcess: FC<Props> = ({ datasetId, batchId, documents = [], index
       <div className="flex flex-col gap-0.5 pb-2">
         {indexingStatusBatchDetail.map(indexingStatusDetail => (
           <div key={indexingStatusDetail.id} className={cn(
-            'relative h-[26px] bg-components-progress-bar-bg rounded-md overflow-hidden',
+            'bg-components-progress-bar-bg relative h-[26px] overflow-hidden rounded-md',
             indexingStatusDetail.indexing_status === 'error' && 'bg-state-destructive-hover-alt',
             // indexingStatusDetail.indexing_status === 'completed' && 's.success',
           )}>
             {isSourceEmbedding(indexingStatusDetail) && (
-              <div className="absolute top-0 left-0 h-full min-w-0.5 bg-components-progress-bar-progress border-r-[2px] border-r-components-progress-bar-progress-highlight" style={{ width: `${getSourcePercent(indexingStatusDetail)}%` }} />
+              <div className="bg-components-progress-bar-progress border-r-components-progress-bar-progress-highlight absolute left-0 top-0 h-full min-w-0.5 border-r-[2px]" style={{ width: `${getSourcePercent(indexingStatusDetail)}%` }} />
             )}
-            <div className="flex gap-1 pl-[6px] pr-2 h-full items-center z-[1]">
+            <div className="z-[1] flex h-full items-center gap-1 pl-[6px] pr-2">
               {getSourceType(indexingStatusDetail.id) === DataSourceType.FILE && (
                 // <div className={cn(
                 //   'shrink-0 marker:size-4 bg-center bg-no-repeat bg-contain',
                 //   s[getFileType(getSourceName(indexingStatusDetail.id))] || s.unknownFileIcon,
                 // )} />
                 <DocumentFileIcon
-                  className="shrink-0 size-4"
+                  className="size-4 shrink-0"
                   name={getSourceName(indexingStatusDetail.id)}
                   extension={getFileType(getSourceName(indexingStatusDetail.id))}
                 />
@@ -303,8 +303,8 @@ const EmbeddingProcess: FC<Props> = ({ datasetId, batchId, documents = [], index
                   src={getIcon(indexingStatusDetail.id)}
                 />
               )}
-              <div className="grow flex items-center gap-1 w-0" title={getSourceName(indexingStatusDetail.id)}>
-                <div className="text-xs truncate">
+              <div className="flex w-0 grow items-center gap-1" title={getSourceName(indexingStatusDetail.id)}>
+                <div className="truncate text-xs">
                   {getSourceName(indexingStatusDetail.id)}
                 </div>
                 {
@@ -323,31 +323,31 @@ const EmbeddingProcess: FC<Props> = ({ datasetId, batchId, documents = [], index
                   popupContent={indexingStatusDetail.error}
                 >
                   <span>
-                    <RiErrorWarningFill className='shrink-0 size-4 text-text-destructive' />
+                    <RiErrorWarningFill className='text-text-destructive size-4 shrink-0' />
                   </span>
                 </Tooltip>
               )}
               {indexingStatusDetail.indexing_status === 'completed' && (
-                <RiCheckboxCircleFill className='shrink-0 size-4 text-text-success' />
+                <RiCheckboxCircleFill className='text-text-success size-4 shrink-0' />
               )}
             </div>
           </div>
         ))}
       </div>
-      <hr className="my-3 h-[1px] bg-divider-subtle border-0" />
+      <hr className="bg-divider-subtle my-3 h-[1px] border-0" />
       <RuleDetail
         sourceData={ruleDetail}
         indexingType={indexingType}
         retrievalMethod={retrievalMethod}
       />
-      <div className='flex items-center gap-2 my-10'>
+      <div className='my-10 flex items-center gap-2'>
         <Button className='w-fit' onClick={navToApiDocs}>
-          <RiTerminalBoxLine className='size-4 mr-2' />
+          <RiTerminalBoxLine className='mr-2 size-4' />
           <span>Access the API</span>
         </Button>
         <Button className='w-fit' variant='primary' onClick={navToDocumentList}>
           <span>{t('datasetCreation.stepThree.navTo')}</span>
-          <ArrowRightIcon className='size-4 ml-2 stroke-current stroke-1' />
+          <ArrowRightIcon className='ml-2 size-4 stroke-current stroke-1' />
         </Button>
       </div>
     </>

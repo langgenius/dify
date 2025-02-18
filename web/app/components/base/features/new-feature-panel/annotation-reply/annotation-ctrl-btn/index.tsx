@@ -74,24 +74,24 @@ const CacheCtrlBtn: FC<Props> = ({
   }
   return (
     <div className={cn('inline-block', className)}>
-      <div className='inline-flex p-0.5 space-x-0.5 rounded-lg bg-white border border-gray-100 shadow-md text-gray-500 cursor-pointer'>
+      <div className='inline-flex cursor-pointer space-x-0.5 rounded-lg border border-gray-100 bg-white p-0.5 text-gray-500 shadow-md'>
         {cached
           ? (
             <div>
               <div
                 ref={cachedBtnRef}
-                className={cn(isCachedBtnHovering ? 'bg-[#FEF3F2] text-[#D92D20]' : 'bg-[#EEF4FF] text-[#444CE7]', 'flex p-1 space-x-1 items-center rounded-md leading-4 text-xs font-medium')}
+                className={cn(isCachedBtnHovering ? 'bg-[#FEF3F2] text-[#D92D20]' : 'bg-[#EEF4FF] text-[#444CE7]', 'flex items-center space-x-1 rounded-md p-1 text-xs font-medium leading-4')}
                 onClick={() => setShowModal(true)}
               >
                 {!isCachedBtnHovering
                   ? (
                     <>
-                      <MessageFast className='w-4 h-4' />
+                      <MessageFast className='h-4 w-4' />
                       <div>{t('appDebug.feature.annotation.cached')}</div>
                     </>
                   )
                   : <>
-                    <MessageCheckRemove className='w-4 h-4' />
+                    <MessageCheckRemove className='h-4 w-4' />
                     <div>{t('appDebug.feature.annotation.remove')}</div>
                   </>}
               </div>
@@ -103,10 +103,10 @@ const CacheCtrlBtn: FC<Props> = ({
                 popupContent={t('appDebug.feature.annotation.add')}
               >
                 <div
-                  className='p-1 rounded-md hover:bg-[#EEF4FF] hover:text-[#444CE7] cursor-pointer'
+                  className='cursor-pointer rounded-md p-1 hover:bg-[#EEF4FF] hover:text-[#444CE7]'
                   onClick={handleAdd}
                 >
-                  <MessageFastPlus className='w-4 h-4' />
+                  <MessageFastPlus className='h-4 w-4' />
                 </div>
               </Tooltip>
             )
@@ -116,10 +116,10 @@ const CacheCtrlBtn: FC<Props> = ({
           popupContent={t('appDebug.feature.annotation.edit')}
         >
           <div
-            className='p-1 cursor-pointer rounded-md hover:bg-black/5'
+            className='cursor-pointer rounded-md p-1 hover:bg-black/5'
             onClick={onEdit}
           >
-            <Edit04 className='w-4 h-4' />
+            <Edit04 className='h-4 w-4' />
           </div>
         </Tooltip>
 

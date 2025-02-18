@@ -42,20 +42,20 @@ const FontSizeSelector = () => {
     >
       <PortalToFollowElemTrigger onClick={() => handleOpenFontSizeSelector(!fontSizeSelectorShow)}>
         <div className={cn(
-          'flex items-center pl-2 pr-1.5 h-8 rounded-md text-[13px] font-medium text-text-tertiary hover:text-text-secondary cursor-pointer hover:bg-state-base-hover',
+          'text-text-tertiary hover:text-text-secondary hover:bg-state-base-hover flex h-8 cursor-pointer items-center rounded-md pl-2 pr-1.5 text-[13px] font-medium',
           fontSizeSelectorShow && 'bg-state-base-hover text-text-secondary',
         )}>
-          <RiFontSize className='mr-1 w-4 h-4' />
+          <RiFontSize className='mr-1 h-4 w-4' />
           {FONT_SIZE_LIST.find(font => font.key === fontSize)?.value || t('workflow.nodes.note.editor.small')}
         </div>
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent>
-        <div className='p-1 w-[120px] bg-components-panel-bg-blur border-[0.5px] border-components-panel-border rounded-md shadow-xl text-text-secondary'>
+        <div className='bg-components-panel-bg-blur border-components-panel-border text-text-secondary w-[120px] rounded-md border-[0.5px] p-1 shadow-xl'>
           {
             FONT_SIZE_LIST.map(font => (
               <div
                 key={font.key}
-                className='flex items-center justify-between pl-3 pr-2 h-8 rounded-md cursor-pointer hover:bg-state-base-hover'
+                className='hover:bg-state-base-hover flex h-8 cursor-pointer items-center justify-between rounded-md pl-3 pr-2'
                 onClick={(e) => {
                   e.stopPropagation()
                   handleFontSize(font.key)
@@ -69,7 +69,7 @@ const FontSizeSelector = () => {
                 </div>
                 {
                   fontSize === font.key && (
-                    <Check className='w-4 h-4 text-text-accent' />
+                    <Check className='text-text-accent h-4 w-4' />
                   )
                 }
               </div>

@@ -29,9 +29,9 @@ const WeightedScore = ({
 
   return (
     <div>
-      <div className='px-3 pt-5 pb-2 space-x-3 rounded-lg border border-components-panel-border'>
+      <div className='border-components-panel-border space-x-3 rounded-lg border px-3 pb-2 pt-5'>
         <Slider
-          className={cn('grow h-0.5 !bg-util-colors-teal-teal-500 rounded-full')}
+          className={cn('!bg-util-colors-teal-teal-500 h-0.5 grow rounded-full')}
           max={1.0}
           min={0}
           step={0.1}
@@ -39,14 +39,14 @@ const WeightedScore = ({
           onChange={v => onChange({ value: [v, (10 - v * 10) / 10] })}
           trackClassName='weightedScoreSliderTrack'
         />
-        <div className='flex justify-between mt-3'>
-          <div className='shrink-0 flex items-center w-[90px] system-xs-semibold-uppercase text-util-colors-blue-light-blue-light-500'>
+        <div className='mt-3 flex justify-between'>
+          <div className='system-xs-semibold-uppercase text-util-colors-blue-light-blue-light-500 flex w-[90px] shrink-0 items-center'>
             <div className='mr-1 truncate uppercase' title={t('dataset.weightedScore.semantic') || ''}>
               {t('dataset.weightedScore.semantic')}
             </div>
             {formatNumber(value.value[0])}
           </div>
-          <div className='shrink-0 flex items-center justify-end w-[90px] system-xs-semibold-uppercase text-util-colors-teal-teal-500'>
+          <div className='system-xs-semibold-uppercase text-util-colors-teal-teal-500 flex w-[90px] shrink-0 items-center justify-end'>
             {formatNumber(value.value[1])}
             <div className='ml-1 truncate uppercase' title={t('dataset.weightedScore.keyword') || ''}>
               {t('dataset.weightedScore.keyword')}

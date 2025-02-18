@@ -82,9 +82,9 @@ const GridMask: FC<GridMaskProps> = ({
   }, [])
 
   return (
-    <div className={`relative bg-components-panel-bg ${wrapperClassName}`}>
-      <canvas ref={canvasRef} className={`absolute inset-0 w-full h-full ${canvasClassName}`} />
-      <div className={`absolute w-full h-full z-[1] bg-gradient-to-b from-background-body to-background-gradient-mask-transparent rounded-lg ${gradientClassName}`} />
+    <div className={`bg-components-panel-bg relative ${wrapperClassName}`}>
+      <canvas ref={canvasRef} className={`absolute inset-0 h-full w-full ${canvasClassName}`} />
+      <div className={`from-background-body to-background-gradient-mask-transparent absolute z-[1] h-full w-full rounded-lg bg-gradient-to-b ${gradientClassName}`} />
       <div className='relative z-[2]'>{children}</div>
     </div>
   )

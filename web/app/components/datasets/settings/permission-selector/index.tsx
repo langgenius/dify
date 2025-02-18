@@ -77,72 +77,72 @@ const PermissionSelector = ({ disabled, permission, value, memberList, onChange,
           className='block'
         >
           {isOnlyMe && (
-            <div className={cn('flex items-center px-3 py-[6px] rounded-lg bg-gray-100 cursor-pointer hover:bg-gray-200', open && 'bg-gray-200', disabled && 'hover:!bg-gray-100 !cursor-default')}>
-              <Avatar avatar={userProfile.avatar_url} name={userProfile.name} className='shrink-0 mr-2' size={24} />
-              <div className='grow mr-2 text-gray-900 text-sm leading-5'>{t('datasetSettings.form.permissionsOnlyMe')}</div>
-              {!disabled && <RiArrowDownSLine className='shrink-0 w-4 h-4 text-gray-700' />}
+            <div className={cn('flex cursor-pointer items-center rounded-lg bg-gray-100 px-3 py-[6px] hover:bg-gray-200', open && 'bg-gray-200', disabled && '!cursor-default hover:!bg-gray-100')}>
+              <Avatar avatar={userProfile.avatar_url} name={userProfile.name} className='mr-2 shrink-0' size={24} />
+              <div className='mr-2 grow text-sm leading-5 text-gray-900'>{t('datasetSettings.form.permissionsOnlyMe')}</div>
+              {!disabled && <RiArrowDownSLine className='h-4 w-4 shrink-0 text-gray-700' />}
             </div>
           )}
           {isAllTeamMembers && (
-            <div className={cn('flex items-center px-3 py-[6px] rounded-lg bg-gray-100 cursor-pointer hover:bg-gray-200', open && 'bg-gray-200')}>
-              <div className='mr-2 flex items-center justify-center w-6 h-6 rounded-lg bg-[#EEF4FF]'>
-                <Users01 className='w-3.5 h-3.5 text-[#444CE7]' />
+            <div className={cn('flex cursor-pointer items-center rounded-lg bg-gray-100 px-3 py-[6px] hover:bg-gray-200', open && 'bg-gray-200')}>
+              <div className='mr-2 flex h-6 w-6 items-center justify-center rounded-lg bg-[#EEF4FF]'>
+                <Users01 className='h-3.5 w-3.5 text-[#444CE7]' />
               </div>
-              <div className='grow mr-2 text-text-primary text-sm leading-5'>{t('datasetSettings.form.permissionsAllMember')}</div>
-              {!disabled && <RiArrowDownSLine className='shrink-0 w-4 h-4 text-text-secondary' />}
+              <div className='text-text-primary mr-2 grow text-sm leading-5'>{t('datasetSettings.form.permissionsAllMember')}</div>
+              {!disabled && <RiArrowDownSLine className='text-text-secondary h-4 w-4 shrink-0' />}
             </div>
           )}
           {isPartialMembers && (
-            <div className={cn('flex items-center px-3 py-[6px] rounded-lg bg-gray-100 cursor-pointer hover:bg-gray-200', open && 'bg-gray-200')}>
-              <div className='mr-2 flex items-center justify-center w-6 h-6 rounded-lg bg-[#EEF4FF]'>
-                <Users01 className='w-3.5 h-3.5 text-[#444CE7]' />
+            <div className={cn('flex cursor-pointer items-center rounded-lg bg-gray-100 px-3 py-[6px] hover:bg-gray-200', open && 'bg-gray-200')}>
+              <div className='mr-2 flex h-6 w-6 items-center justify-center rounded-lg bg-[#EEF4FF]'>
+                <Users01 className='h-3.5 w-3.5 text-[#444CE7]' />
               </div>
-              <div title={selectedMembers} className='grow mr-2 text-text-primary text-sm leading-5 truncate'>{selectedMembers}</div>
-              {!disabled && <RiArrowDownSLine className='shrink-0 w-4 h-4 text-text-secondary' />}
+              <div title={selectedMembers} className='text-text-primary mr-2 grow truncate text-sm leading-5'>{selectedMembers}</div>
+              {!disabled && <RiArrowDownSLine className='text-text-secondary h-4 w-4 shrink-0' />}
             </div>
           )}
         </PortalToFollowElemTrigger>
         <PortalToFollowElemContent className='z-[1002]'>
-          <div className='relative w-[480px] rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg-blur backdrop-blur-sm shadow-lg'>
+          <div className='border-components-panel-border bg-components-panel-bg-blur relative w-[480px] rounded-lg border-[0.5px] shadow-lg backdrop-blur-sm'>
             <div className='p-1'>
-              <div className='pl-3 pr-2 py-1 rounded-lg hover:bg-gray-50 cursor-pointer' onClick={() => {
+              <div className='cursor-pointer rounded-lg py-1 pl-3 pr-2 hover:bg-gray-50' onClick={() => {
                 onChange(DatasetPermission.onlyMe)
                 setOpen(false)
               }}>
                 <div className='flex items-center gap-2'>
-                  <Avatar avatar={userProfile.avatar_url} name={userProfile.name} className='shrink-0 mr-2' size={24} />
-                  <div className='grow mr-2 text-gray-900 text-sm leading-5'>{t('datasetSettings.form.permissionsOnlyMe')}</div>
-                  {isOnlyMe && <Check className='w-4 h-4 text-primary-600' />}
+                  <Avatar avatar={userProfile.avatar_url} name={userProfile.name} className='mr-2 shrink-0' size={24} />
+                  <div className='mr-2 grow text-sm leading-5 text-gray-900'>{t('datasetSettings.form.permissionsOnlyMe')}</div>
+                  {isOnlyMe && <Check className='text-primary-600 h-4 w-4' />}
                 </div>
               </div>
-              <div className='pl-3 pr-2 py-1 rounded-lg hover:bg-gray-50 cursor-pointer' onClick={() => {
+              <div className='cursor-pointer rounded-lg py-1 pl-3 pr-2 hover:bg-gray-50' onClick={() => {
                 onChange(DatasetPermission.allTeamMembers)
                 setOpen(false)
               }}>
                 <div className='flex items-center gap-2'>
-                  <div className='mr-2 flex items-center justify-center w-6 h-6 rounded-lg bg-[#EEF4FF]'>
-                    <Users01 className='w-3.5 h-3.5 text-[#444CE7]' />
+                  <div className='mr-2 flex h-6 w-6 items-center justify-center rounded-lg bg-[#EEF4FF]'>
+                    <Users01 className='h-3.5 w-3.5 text-[#444CE7]' />
                   </div>
-                  <div className='grow mr-2 text-gray-900 text-sm leading-5'>{t('datasetSettings.form.permissionsAllMember')}</div>
-                  {isAllTeamMembers && <Check className='w-4 h-4 text-primary-600' />}
+                  <div className='mr-2 grow text-sm leading-5 text-gray-900'>{t('datasetSettings.form.permissionsAllMember')}</div>
+                  {isAllTeamMembers && <Check className='text-primary-600 h-4 w-4' />}
                 </div>
               </div>
-              <div className='pl-3 pr-2 py-1 rounded-lg hover:bg-gray-50 cursor-pointer' onClick={() => {
+              <div className='cursor-pointer rounded-lg py-1 pl-3 pr-2 hover:bg-gray-50' onClick={() => {
                 onChange(DatasetPermission.partialMembers)
                 onMemberSelect([userProfile.id])
               }}>
                 <div className='flex items-center gap-2'>
-                  <div className={cn('mr-2 flex items-center justify-center w-6 h-6 rounded-lg bg-[#FFF6ED]', isPartialMembers && '!bg-[#EEF4FF]')}>
-                    <UsersPlus className={cn('w-3.5 h-3.5 text-[#FB6514]', isPartialMembers && '!text-[#444CE7]')} />
+                  <div className={cn('mr-2 flex h-6 w-6 items-center justify-center rounded-lg bg-[#FFF6ED]', isPartialMembers && '!bg-[#EEF4FF]')}>
+                    <UsersPlus className={cn('h-3.5 w-3.5 text-[#FB6514]', isPartialMembers && '!text-[#444CE7]')} />
                   </div>
-                  <div className='grow mr-2 text-gray-900 text-sm leading-5'>{t('datasetSettings.form.permissionsInvitedMembers')}</div>
-                  {isPartialMembers && <Check className='w-4 h-4 text-primary-600' />}
+                  <div className='mr-2 grow text-sm leading-5 text-gray-900'>{t('datasetSettings.form.permissionsInvitedMembers')}</div>
+                  {isPartialMembers && <Check className='text-primary-600 h-4 w-4' />}
                 </div>
               </div>
             </div>
             {isPartialMembers && (
-              <div className='max-h-[360px] border-t-[1px] border-gray-100 p-1 overflow-y-auto'>
-                <div className='sticky left-0 top-0 p-2 pb-1 bg-white'>
+              <div className='max-h-[360px] overflow-y-auto border-t-[1px] border-gray-100 p-1'>
+                <div className='sticky left-0 top-0 bg-white p-2 pb-1'>
                   <Input
                     showLeftIcon
                     showClearIcon
@@ -152,26 +152,26 @@ const PermissionSelector = ({ disabled, permission, value, memberList, onChange,
                   />
                 </div>
                 {showMe && (
-                  <div className='pl-3 pr-[10px] py-1 flex gap-2 items-center rounded-lg'>
+                  <div className='flex items-center gap-2 rounded-lg py-1 pl-3 pr-[10px]'>
                     <Avatar avatar={userProfile.avatar_url} name={userProfile.name} className='shrink-0' size={24} />
                     <div className='grow'>
-                      <div className='text-[13px] text-text-secondary font-medium leading-[18px] truncate'>
+                      <div className='text-text-secondary truncate text-[13px] font-medium leading-[18px]'>
                         {userProfile.name}
-                        <span className='text-xs text-text-tertiary font-normal'>{t('datasetSettings.form.me')}</span>
+                        <span className='text-text-tertiary text-xs font-normal'>{t('datasetSettings.form.me')}</span>
                       </div>
-                      <div className='text-xs text-text-tertiary leading-[18px] truncate'>{userProfile.email}</div>
+                      <div className='text-text-tertiary truncate text-xs leading-[18px]'>{userProfile.email}</div>
                     </div>
-                    <Check className='shrink-0 w-4 h-4 text-text-accent opacity-30' />
+                    <Check className='text-text-accent h-4 w-4 shrink-0 opacity-30' />
                   </div>
                 )}
                 {filteredMemberList.map(member => (
-                  <div key={member.id} className='pl-3 pr-[10px] py-1 flex gap-2 items-center rounded-lg hover:bg-state-base-hover cursor-pointer' onClick={() => selectMember(member)}>
+                  <div key={member.id} className='hover:bg-state-base-hover flex cursor-pointer items-center gap-2 rounded-lg py-1 pl-3 pr-[10px]' onClick={() => selectMember(member)}>
                     <Avatar avatar={userProfile.avatar_url} name={member.name} className='shrink-0' size={24} />
                     <div className='grow'>
-                      <div className='text-[13px] text-text-secondary font-medium leading-[18px] truncate'>{member.name}</div>
-                      <div className='text-xs text-text-tertiary leading-[18px] truncate'>{member.email}</div>
+                      <div className='text-text-secondary truncate text-[13px] font-medium leading-[18px]'>{member.name}</div>
+                      <div className='text-text-tertiary truncate text-xs leading-[18px]'>{member.email}</div>
                     </div>
-                    {value.includes(member.id) && <Check className='shrink-0 w-4 h-4 text-text-accent' />}
+                    {value.includes(member.id) && <Check className='text-text-accent h-4 w-4 shrink-0' />}
                   </div>
                 ))}
               </div>

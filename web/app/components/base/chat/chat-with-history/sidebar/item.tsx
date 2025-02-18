@@ -30,16 +30,16 @@ const Item: FC<ItemProps> = ({
       ref={ref}
       key={item.id}
       className={`
-        flex mb-0.5 last-of-type:mb-0 py-1.5 pl-3 pr-1.5 text-sm font-medium text-gray-700 
-        rounded-lg cursor-pointer hover:bg-gray-50 group
+        group mb-0.5 flex cursor-pointer rounded-lg py-1.5 pl-3 pr-1.5 text-sm 
+        font-medium text-gray-700 last-of-type:mb-0 hover:bg-gray-50
         ${currentConversationId === item.id && 'text-primary-600 bg-primary-50'}
       `}
       onClick={() => onChangeConversation(item.id)}
     >
-      <MessageDotsCircle className={`shrink-0 mt-1 mr-2 w-4 h-4 text-gray-400 ${currentConversationId === item.id && 'text-primary-600'}`} />
-      <div className='grow py-0.5 break-all' title={item.name}>{item.name}</div>
+      <MessageDotsCircle className={`mr-2 mt-1 h-4 w-4 shrink-0 text-gray-400 ${currentConversationId === item.id && 'text-primary-600'}`} />
+      <div className='grow break-all py-0.5' title={item.name}>{item.name}</div>
       {item.id !== '' && (
-        <div className='shrink-0 h-6' onClick={e => e.stopPropagation()}>
+        <div className='h-6 shrink-0' onClick={e => e.stopPropagation()}>
           <ItemOperation
             isPinned={!!isPin}
             isItemHovering={isHovering}

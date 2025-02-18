@@ -18,9 +18,9 @@ const AdvancedModeWarning: FC<Props> = ({
   if (!show)
     return null
   return (
-    <div className='mb-3 py-3 px-4 border border-[#FEF0C7] rounded-xl bg-[#FFFAEB]' >
-      <div className='mb-2 text-xs leading-[18px] font-bold text-[#DC6803]'>{t('appDebug.promptMode.advancedWarning.title')}</div>
-      <div className='flex justify-between items-center'>
+    <div className='mb-3 rounded-xl border border-[#FEF0C7] bg-[#FFFAEB] px-4 py-3' >
+      <div className='mb-2 text-xs font-bold leading-[18px] text-[#DC6803]'>{t('appDebug.promptMode.advancedWarning.title')}</div>
+      <div className='flex items-center justify-between'>
         <div className='text-xs leading-[18px] '>
           <span className='text-gray-700'>{t('appDebug.promptMode.advancedWarning.description')}</span>
           <a
@@ -35,12 +35,12 @@ const AdvancedModeWarning: FC<Props> = ({
         <div className='flex items-center space-x-1'>
           <div
             onClick={onReturnToSimpleMode}
-            className='shrink-0 flex items-center h-6 px-2 bg-indigo-600 shadow-xs border border-gray-200 rounded-lg text-white text-xs font-semibold cursor-pointer space-x-1'
+            className='shadow-xs flex h-6 shrink-0 cursor-pointer items-center space-x-1 rounded-lg border border-gray-200 bg-indigo-600 px-2 text-xs font-semibold text-white'
           >
             <div className='text-xs font-semibold uppercase'>{t('appDebug.promptMode.switchBack')}</div>
           </div>
           <div
-            className='flex items-center h-6 px-2 rounded-md bg-[#fff] border border-gray-200 shadow-xs text-xs font-medium text-primary-600 cursor-pointer'
+            className='shadow-xs text-primary-600 flex h-6 cursor-pointer items-center rounded-md border border-gray-200 bg-[#fff] px-2 text-xs font-medium'
             onClick={() => setShow(false)}
           >{t('appDebug.promptMode.advancedWarning.ok')}</div>
         </div>

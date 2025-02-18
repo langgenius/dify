@@ -49,27 +49,27 @@ const ExternalKnowledgeBaseCreate: React.FC<ExternalKnowledgeBaseCreateProps> = 
     && formData.external_retrieval_model.score_threshold !== undefined
 
   return (
-    <div className='flex flex-col flex-grow self-stretch rounded-t-2xl border-t border-effects-highlight bg-components-panel-bg'>
-      <div className='flex justify-center flex-grow self-stretch'>
-        <div className='flex w-full max-w-[960px] px-14 py-0 flex-col items-center'>
-          <div className='flex w-full max-w-[640px] pt-6 pb-8 flex-col grow items-center gap-4'>
-            <div className='relative flex flex-col py-2 items-center gap-[2px] self-stretch'>
-              <div className='flex-grow text-text-primary system-xl-semibold self-stretch'>{t('dataset.connectDataset')}</div>
+    <div className='border-effects-highlight bg-components-panel-bg flex grow flex-col self-stretch rounded-t-2xl border-t'>
+      <div className='flex grow justify-center self-stretch'>
+        <div className='flex w-full max-w-[960px] flex-col items-center px-14 py-0'>
+          <div className='flex w-full max-w-[640px] grow flex-col items-center gap-4 pb-8 pt-6'>
+            <div className='relative flex flex-col items-center gap-[2px] self-stretch py-2'>
+              <div className='text-text-primary system-xl-semibold grow self-stretch'>{t('dataset.connectDataset')}</div>
               <p className='text-text-tertiary system-sm-regular'>
                 <span>{t('dataset.connectHelper.helper1')}</span>
                 <span className='text-text-secondary system-sm-medium'>{t('dataset.connectHelper.helper2')}</span>
                 <span>{t('dataset.connectHelper.helper3')}</span>
-                <a className='self-stretch text-text-accent system-sm-regular' href='https://docs.dify.ai/guides/knowledge-base/connect-external-knowledge' target='_blank' rel="noopener noreferrer">
+                <a className='text-text-accent system-sm-regular self-stretch' href='https://docs.dify.ai/guides/knowledge-base/connect-external-knowledge' target='_blank' rel="noopener noreferrer">
                   {t('dataset.connectHelper.helper4')}
                 </a>
                 <span>{t('dataset.connectHelper.helper5')} </span>
               </p>
               <Button
-                className='flex w-8 h-8 p-2 items-center justify-center absolute left-[-44px] top-1 rounded-full'
+                className='absolute left-[-44px] top-1 flex h-8 w-8 items-center justify-center rounded-full p-2'
                 variant='tertiary'
                 onClick={navBackHandle}
               >
-                <RiArrowLeftLine className='w-4 h-4 text-text-tertiary' />
+                <RiArrowLeftLine className='text-text-tertiary h-4 w-4' />
               </Button>
             </div>
             <KnowledgeBaseInfo
@@ -101,7 +101,7 @@ const ExternalKnowledgeBaseCreate: React.FC<ExternalKnowledgeBaseCreateProps> = 
                 },
               })}
             />
-            <div className='flex py-2 justify-end items-center gap-2 self-stretch'>
+            <div className='flex items-center justify-end gap-2 self-stretch py-2'>
               <Button variant='secondary' onClick={navBackHandle}>
                 <div className='text-components-button-secondary-text system-sm-medium'>{t('dataset.externalKnowledgeForm.cancel')}</div>
               </Button>
@@ -114,7 +114,7 @@ const ExternalKnowledgeBaseCreate: React.FC<ExternalKnowledgeBaseCreateProps> = 
                 loading={loading}
               >
                 <div className='text-components-button-primary-text system-sm-medium'>{t('dataset.externalKnowledgeForm.connect')}</div>
-                <RiArrowRightLine className='w-4 h-4 text-components-button-primary-text' />
+                <RiArrowRightLine className='text-components-button-primary-text h-4 w-4' />
               </Button>
             </div>
           </div>

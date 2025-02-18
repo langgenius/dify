@@ -64,7 +64,7 @@ const SSOAuth: FC<SSOAuthProps> = ({
       disabled={isLoading}
       className="w-full"
     >
-      <Lock01 className='mr-2 w-5 h-5 text-text-accent-light-mode-only' />
+      <Lock01 className='text-text-accent-light-mode-only mr-2 h-5 w-5' />
       <span className="truncate">{t('login.withSSO')}</span>
     </Button>
   )

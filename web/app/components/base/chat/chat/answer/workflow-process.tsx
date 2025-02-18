@@ -56,36 +56,36 @@ const WorkflowProcessItem = ({
   return (
     <div
       className={cn(
-        '-mx-1 px-2.5 rounded-xl border-[0.5px]',
-        collapse ? 'py-[7px] border-components-panel-border' : 'pt-[7px] px-1 pb-1 border-components-panel-border-subtle',
+        '-mx-1 rounded-xl border-[0.5px] px-2.5',
+        collapse ? 'border-components-panel-border py-[7px]' : 'border-components-panel-border-subtle px-1 pb-1 pt-[7px]',
       )}
       style={{
         background,
       }}
     >
       <div
-        className={cn('flex items-center cursor-pointer', !collapse && 'px-1.5', readonly && 'cursor-default')}
+        className={cn('flex cursor-pointer items-center', !collapse && 'px-1.5', readonly && 'cursor-default')}
         onClick={() => !readonly && setCollapse(!collapse)}
       >
         {
           running && (
-            <RiLoader2Line className='shrink-0 mr-1 w-3.5 h-3.5 text-text-tertiary' />
+            <RiLoader2Line className='text-text-tertiary mr-1 h-3.5 w-3.5 shrink-0' />
           )
         }
         {
           succeeded && (
-            <CheckCircle className='shrink-0 mr-1 w-3.5 h-3.5 text-text-success' />
+            <CheckCircle className='text-text-success mr-1 h-3.5 w-3.5 shrink-0' />
           )
         }
         {
           failed && (
-            <RiErrorWarningFill className='shrink-0 mr-1 w-3.5 h-3.5 text-text-destructive' />
+            <RiErrorWarningFill className='text-text-destructive mr-1 h-3.5 w-3.5 shrink-0' />
           )
         }
         <div className={cn('system-xs-medium text-text-secondary', !collapse && 'grow')}>
           {t('workflow.common.workflowProcess')}
         </div>
-        {!readonly && <RiArrowRightSLine className={`'ml-1 w-4 h-4 text-text-tertiary' ${collapse ? '' : 'rotate-90'}`} />}
+        {!readonly && <RiArrowRightSLine className={`'ml-1 text-text-tertiary' h-4 w-4 ${collapse ? '' : 'rotate-90'}`} />}
       </div>
       {
         !collapse && !readonly && (

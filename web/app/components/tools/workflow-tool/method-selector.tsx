@@ -34,37 +34,37 @@ const MethodSelector: FC<MethodSelectorProps> = ({
           className='block'
         >
           <div className={cn(
-            'flex items-center gap-1 min-h-[56px] px-3 py-2 h-9 bg-transparent cursor-pointer hover:bg-background-section-burn',
+            'hover:bg-background-section-burn flex h-9 min-h-[56px] cursor-pointer items-center gap-1 bg-transparent px-3 py-2',
             open && '!bg-background-section-burn hover:bg-background-section-burn',
           )}>
-            <div className={cn('grow text-[13px] leading-[18px] text-text-secondary truncate')}>
+            <div className={cn('text-text-secondary grow truncate text-[13px] leading-[18px]')}>
               {value === 'llm' ? t('tools.createTool.toolInput.methodParameter') : t('tools.createTool.toolInput.methodSetting')}
             </div>
-            <div className='shrink-0 ml-1 text-text-secondary opacity-60'>
+            <div className='text-text-secondary ml-1 shrink-0 opacity-60'>
               <RiArrowDownSLine className='h-4 w-4' />
             </div>
           </div>
         </PortalToFollowElemTrigger>
         <PortalToFollowElemContent className='z-[1040]'>
-          <div className='relative w-[320px] bg-components-panel-bg-blur backdrop-blur-sm rounded-lg border-[0.5px] border-components-panel-border  shadow-lg'>
+          <div className='bg-components-panel-bg-blur border-components-panel-border relative w-[320px] rounded-lg border-[0.5px] shadow-lg  backdrop-blur-sm'>
             <div className='p-1'>
-              <div className='pl-3 pr-2 py-2.5 rounded-lg hover:bg-components-panel-on-panel-item-bg-hover cursor-pointer' onClick={() => onChange('llm')}>
-                <div className='flex item-center gap-1'>
-                  <div className='shrink-0 w-4 h-4'>
-                    {value === 'llm' && <Check className='shrink-0 w-4 h-4 text-text-accent' />}
+              <div className='hover:bg-components-panel-on-panel-item-bg-hover cursor-pointer rounded-lg py-2.5 pl-3 pr-2' onClick={() => onChange('llm')}>
+                <div className='item-center flex gap-1'>
+                  <div className='h-4 w-4 shrink-0'>
+                    {value === 'llm' && <Check className='text-text-accent h-4 w-4 shrink-0' />}
                   </div>
-                  <div className='text-[13px] text-text-secondary font-medium leading-[18px]'>{t('tools.createTool.toolInput.methodParameter')}</div>
+                  <div className='text-text-secondary text-[13px] font-medium leading-[18px]'>{t('tools.createTool.toolInput.methodParameter')}</div>
                 </div>
-                <div className='pl-5 text-text-tertiary text-[13px] leading-[18px]'>{t('tools.createTool.toolInput.methodParameterTip')}</div>
+                <div className='text-text-tertiary pl-5 text-[13px] leading-[18px]'>{t('tools.createTool.toolInput.methodParameterTip')}</div>
               </div>
-              <div className='pl-3 pr-2 py-2.5 rounded-lg hover:bg-components-panel-on-panel-item-bg-hover cursor-pointer' onClick={() => onChange('form')}>
-                <div className='flex item-center gap-1'>
-                  <div className='shrink-0 w-4 h-4'>
-                    {value === 'form' && <Check className='shrink-0 w-4 h-4 text-text-accent' />}
+              <div className='hover:bg-components-panel-on-panel-item-bg-hover cursor-pointer rounded-lg py-2.5 pl-3 pr-2' onClick={() => onChange('form')}>
+                <div className='item-center flex gap-1'>
+                  <div className='h-4 w-4 shrink-0'>
+                    {value === 'form' && <Check className='text-text-accent h-4 w-4 shrink-0' />}
                   </div>
-                  <div className='text-[13px] text-text-secondary font-medium leading-[18px]'>{t('tools.createTool.toolInput.methodSetting')}</div>
+                  <div className='text-text-secondary text-[13px] font-medium leading-[18px]'>{t('tools.createTool.toolInput.methodSetting')}</div>
                 </div>
-                <div className='pl-5 text-text-tertiary text-[13px] leading-[18px]'>{t('tools.createTool.toolInput.methodSettingTip')}</div>
+                <div className='text-text-tertiary pl-5 text-[13px] leading-[18px]'>{t('tools.createTool.toolInput.methodSettingTip')}</div>
               </div>
             </div>
           </div>

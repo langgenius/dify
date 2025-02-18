@@ -37,7 +37,7 @@ const IfElseNode: FC<NodeProps<IfElseNodeType>> = (props) => {
       return !!condition.value
     }
   }, [])
-  const conditionNotSet = (<div className='flex items-center h-6 px-1 space-x-1 text-xs font-normal text-text-secondary bg-workflow-block-parma-bg rounded-md'>
+  const conditionNotSet = (<div className='text-text-secondary bg-workflow-block-parma-bg flex h-6 items-center space-x-1 rounded-md px-1 text-xs font-normal'>
     {t(`${i18nPrefix}.conditionNotSetup`)}
   </div>)
 
@@ -46,12 +46,12 @@ const IfElseNode: FC<NodeProps<IfElseNodeType>> = (props) => {
       {
         cases.map((caseItem, index) => (
           <div key={caseItem.case_id}>
-            <div className='relative flex items-center h-6 px-1'>
-              <div className='flex items-center justify-between w-full'>
-                <div className='text-[10px] font-semibold text-text-tertiary'>
+            <div className='relative flex h-6 items-center px-1'>
+              <div className='flex w-full items-center justify-between'>
+                <div className='text-text-tertiary text-[10px] font-semibold'>
                   {casesLength > 1 && `CASE ${index + 1}`}
                 </div>
-                <div className='text-[12px] font-semibold text-text-secondary'>{index === 0 ? 'IF' : 'ELIF'}</div>
+                <div className='text-text-secondary text-[12px] font-semibold'>{index === 0 ? 'IF' : 'ELIF'}</div>
               </div>
               <NodeSourceHandle
                 {...props}
@@ -80,7 +80,7 @@ const IfElseNode: FC<NodeProps<IfElseNodeType>> = (props) => {
                       )
                       : conditionNotSet}
                   {i !== caseItem.conditions.length - 1 && (
-                    <div className='absolute z-10 right-1 bottom-[-10px] leading-4 text-[10px] font-medium text-text-accent uppercase'>{t(`${i18nPrefix}.${caseItem.logical_operator}`)}</div>
+                    <div className='text-text-accent absolute bottom-[-10px] right-1 z-10 text-[10px] font-medium uppercase leading-4'>{t(`${i18nPrefix}.${caseItem.logical_operator}`)}</div>
                   )}
                 </div>
               ))}
@@ -88,8 +88,8 @@ const IfElseNode: FC<NodeProps<IfElseNodeType>> = (props) => {
           </div>
         ))
       }
-      <div className='relative flex items-center h-6 px-1'>
-        <div className='w-full text-xs font-semibold text-right text-text-secondary'>ELSE</div>
+      <div className='relative flex h-6 items-center px-1'>
+        <div className='text-text-secondary w-full text-right text-xs font-semibold'>ELSE</div>
         <NodeSourceHandle
           {...props}
           handleId='false'

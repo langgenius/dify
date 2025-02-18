@@ -33,29 +33,29 @@ const DSLExportConfirmModal = ({
     <Modal
       isShow={true}
       onClose={() => { }}
-      className={cn('max-w-[480px] w-[480px]')}
+      className={cn('w-[480px] max-w-[480px]')}
     >
-      <div className='relative pb-6 title-2xl-semi-bold text-text-primary'>{t('workflow.env.export.title')}</div>
-      <div className='absolute right-4 top-4 p-2 cursor-pointer' onClick={onClose}>
-        <RiCloseLine className='w-4 h-4 text-text-tertiary' />
+      <div className='title-2xl-semi-bold text-text-primary relative pb-6'>{t('workflow.env.export.title')}</div>
+      <div className='absolute right-4 top-4 cursor-pointer p-2' onClick={onClose}>
+        <RiCloseLine className='text-text-tertiary h-4 w-4' />
       </div>
       <div className='relative'>
-        <table className='w-full border-separate border-spacing-0 border border-divider-regular radius-md shadow-xs'>
+        <table className='border-divider-regular radius-md shadow-xs w-full border-separate border-spacing-0 border'>
           <thead className='system-xs-medium-uppercase text-text-tertiary'>
             <tr>
-              <td width={220} className='h-7 pl-3 border-r border-b border-divider-regular'>NAME</td>
-              <td className='h-7 pl-3 border-b border-divider-regular'>VALUE</td>
+              <td width={220} className='border-divider-regular h-7 border-b border-r pl-3'>NAME</td>
+              <td className='border-divider-regular h-7 border-b pl-3'>VALUE</td>
             </tr>
           </thead>
           <tbody>
             {envList.map((env, index) => (
               <tr key={env.name}>
-                <td className={cn('h-7 pl-3 border-r system-xs-medium', index + 1 !== envList.length && 'border-b')}>
-                  <div className='flex gap-1 items-center w-[200px]'>
-                    <Env className='shrink-0 w-4 h-4 text-util-colors-violet-violet-600' />
+                <td className={cn('system-xs-medium h-7 border-r pl-3', index + 1 !== envList.length && 'border-b')}>
+                  <div className='flex w-[200px] items-center gap-1'>
+                    <Env className='text-util-colors-violet-violet-600 h-4 w-4 shrink-0' />
                     <div className='text-text-primary truncate'>{env.name}</div>
-                    <div className='shrink-0 text-text-tertiary'>Secret</div>
-                    <RiLock2Line className='shrink-0 w-3 h-3 text-text-tertiary' />
+                    <div className='text-text-tertiary shrink-0'>Secret</div>
+                    <RiLock2Line className='text-text-tertiary h-3 w-3 shrink-0' />
                   </div>
                 </td>
                 <td className={cn('h-7 pl-3', index + 1 !== envList.length && 'border-b')}>

@@ -24,36 +24,36 @@ const Item: FC<Props> = ({
   const { t } = useTranslation()
 
   return (
-    <div className='relative px-2.5 py-2 rounded-lg bg-white border-[0.5px] border-gray-200 hover:shadow-xs group'>
+    <div className='hover:shadow-xs group relative rounded-lg border-[0.5px] border-gray-200 bg-white px-2.5 py-2'>
       <div className='flex justify-between'>
         <div className='flex items-center'>
-          <Variable02 className='w-3.5 h-3.5 text-primary-500' />
+          <Variable02 className='text-primary-500 h-3.5 w-3.5' />
           <div className='ml-1 text-[13px] font-medium text-gray-900'>{payload.name}</div>
-          <div className='ml-2 text-xs font-normal text-gray-500 capitalize'>{payload.type}</div>
+          <div className='ml-2 text-xs font-normal capitalize text-gray-500'>{payload.type}</div>
         </div>
         {payload.required && (
-          <div className='uppercase leading-4 text-xs font-normal text-gray-500'>{t(`${i18nPrefix}.addExtractParameterContent.required`)}</div>
+          <div className='text-xs font-normal uppercase leading-4 text-gray-500'>{t(`${i18nPrefix}.addExtractParameterContent.required`)}</div>
         )}
       </div>
-      <div className='mt-0.5 leading-[18px] text-xs font-normal text-gray-500'>{payload.description}</div>
+      <div className='mt-0.5 text-xs font-normal leading-[18px] text-gray-500'>{payload.description}</div>
       <div
-        className='group-hover:flex absolute top-0 right-1 hidden h-full items-center w-[119px] justify-end space-x-1 rounded-lg'
+        className='absolute right-1 top-0 hidden h-full w-[119px] items-center justify-end space-x-1 rounded-lg group-hover:flex'
         style={{
           background: 'linear-gradient(270deg, #FFF 49.99%, rgba(255, 255, 255, 0.00) 98.1%)',
         }}
       >
         <div
-          className='p-1 cursor-pointer rounded-md hover:bg-black/5'
+          className='cursor-pointer rounded-md p-1 hover:bg-black/5'
           onClick={onEdit}
         >
-          <RiEditLine className='w-4 h-4 text-gray-500' />
+          <RiEditLine className='h-4 w-4 text-gray-500' />
         </div>
 
         <div
-          className='p-1 cursor-pointer rounded-md hover:bg-black/5'
+          className='cursor-pointer rounded-md p-1 hover:bg-black/5'
           onClick={onDelete}
         >
-          <RiDeleteBinLine className='w-4 h-4 text-gray-500' />
+          <RiDeleteBinLine className='h-4 w-4 text-gray-500' />
         </div>
       </div>
     </div>

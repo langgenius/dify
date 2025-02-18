@@ -37,7 +37,7 @@ const RoleItem: FC<RoleItemProps> = ({
         readOnly={readonly}
         value={value}
         onChange={handleChange}
-        className='w-[200px] h-8 leading-8 px-2.5 rounded-lg border-0 bg-gray-100  text-gray-900 text-[13px]  placeholder:text-gray-400 focus:outline-none focus:ring-1 focus:ring-inset focus:ring-gray-200'
+        className='h-8 w-[200px] rounded-lg border-0 bg-gray-100 px-2.5 text-[13px]  leading-8 text-gray-900  placeholder:text-gray-400 focus:outline-none focus:ring-1 focus:ring-inset focus:ring-gray-200'
         type='text' />
     </div>
   )
@@ -145,7 +145,7 @@ const MemoryConfig: FC<Props> = ({
           <>
             {/* window size */}
             <div className='flex justify-between'>
-              <div className='flex items-center h-8 space-x-2'>
+              <div className='flex h-8 items-center space-x-2'>
                 <Switch
                   defaultValue={payload?.window?.enabled}
                   onChange={handleWindowEnabledChange}
@@ -154,7 +154,7 @@ const MemoryConfig: FC<Props> = ({
                 />
                 <div className='text-text-tertiary system-xs-medium-uppercase'>{t(`${i18nPrefix}.windowSize`)}</div>
               </div>
-              <div className='flex items-center h-8 space-x-2'>
+              <div className='flex h-8 items-center space-x-2'>
                 <Slider
                   className='w-[144px]'
                   value={(payload.window?.size || WINDOW_SIZE_DEFAULT) as number}
@@ -167,7 +167,7 @@ const MemoryConfig: FC<Props> = ({
                 <Input
                   value={(payload.window?.size || WINDOW_SIZE_DEFAULT) as number}
                   wrapperClassName='w-12'
-                  className='pr-0 appearance-none'
+                  className='appearance-none pr-0'
                   type='number'
                   min={WINDOW_SIZE_MIN}
                   max={WINDOW_SIZE_MAX}
@@ -180,7 +180,7 @@ const MemoryConfig: FC<Props> = ({
             </div>
             {canSetRoleName && (
               <div className='mt-4'>
-                <div className='leading-6 text-xs font-medium text-gray-500 uppercase'>{t(`${i18nPrefix}.conversationRoleName`)}</div>
+                <div className='text-xs font-medium uppercase leading-6 text-gray-500'>{t(`${i18nPrefix}.conversationRoleName`)}</div>
                 <div className='mt-1 space-y-2'>
                   <RoleItem
                     readonly={readonly}

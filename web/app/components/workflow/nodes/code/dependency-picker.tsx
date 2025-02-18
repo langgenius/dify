@@ -37,19 +37,19 @@ const DependencyPicker: FC<Props> = ({
       placement='bottom-start'
       offset={4}
     >
-      <PortalToFollowElemTrigger onClick={() => setOpen(!open)} className='flex-grow cursor-pointer'>
-        <div className='flex items-center h-8 justify-between px-2.5 rounded-lg border-0 bg-gray-100 text-gray-900 text-[13px]'>
-          <div className='grow w-0 truncate' title={value.name}>{value.name}</div>
-          <RiArrowDownSLine className='shrink-0 w-3.5 h-3.5 text-gray-700' />
+      <PortalToFollowElemTrigger onClick={() => setOpen(!open)} className='grow cursor-pointer'>
+        <div className='flex h-8 items-center justify-between rounded-lg border-0 bg-gray-100 px-2.5 text-[13px] text-gray-900'>
+          <div className='w-0 grow truncate' title={value.name}>{value.name}</div>
+          <RiArrowDownSLine className='h-3.5 w-3.5 shrink-0 text-gray-700' />
         </div>
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent style={{
         zIndex: 100,
       }}>
-        <div className='p-1 bg-white rounded-lg shadow-sm' style={{
+        <div className='rounded-lg bg-white p-1 shadow-sm' style={{
           width: 350,
         }}>
-          <div className='mb-2 mx-1'>
+          <div className='mx-1 mb-2'>
             <Input
               showLeftIcon
               showClearIcon
@@ -68,11 +68,11 @@ const DependencyPicker: FC<Props> = ({
             }).map(dependency => (
               <div
                 key={dependency.name}
-                className='flex items-center h-[30px] justify-between pl-3 pr-2 rounded-lg hover:bg-gray-100 text-gray-900 text-[13px] cursor-pointer'
+                className='flex h-[30px] cursor-pointer items-center justify-between rounded-lg pl-3 pr-2 text-[13px] text-gray-900 hover:bg-gray-100'
                 onClick={handleChange(dependency)}
               >
                 <div className='w-0 grow truncate'>{dependency.name}</div>
-                {dependency.name === value.name && <Check className='shrink-0 w-4 h-4 text-primary-600' />}
+                {dependency.name === value.name && <Check className='text-primary-600 h-4 w-4 shrink-0' />}
               </div>
             ))}
           </div>

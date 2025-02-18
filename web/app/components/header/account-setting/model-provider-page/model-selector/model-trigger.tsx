@@ -34,7 +34,7 @@ const ModelTrigger: FC<ModelTriggerProps> = ({
   return (
     <div
       className={cn(
-        'group flex items-center p-1 h-8 gap-0.5 rounded-lg bg-components-input-bg-normal',
+        'bg-components-input-bg-normal group flex h-8 items-center gap-0.5 rounded-lg p-1',
         !readonly && 'hover:bg-components-input-bg-hover cursor-pointer',
         open && 'bg-components-input-bg-hover',
         model.status !== ModelStatusEnum.active && 'bg-components-input-bg-disabled hover:bg-components-input-bg-disabled',
@@ -46,7 +46,7 @@ const ModelTrigger: FC<ModelTriggerProps> = ({
         provider={provider}
         modelName={model.model}
       />
-      <div className='flex px-1 py-[3px] items-center gap-1 grow truncate'>
+      <div className='flex grow items-center gap-1 truncate px-1 py-[3px]'>
         <ModelName
           className='grow'
           modelItem={model}
@@ -54,17 +54,17 @@ const ModelTrigger: FC<ModelTriggerProps> = ({
           showFeatures
         />
         {!readonly && (
-          <div className='shrink-0 flex items-center justify-center w-4 h-4'>
+          <div className='flex h-4 w-4 shrink-0 items-center justify-center'>
             {
               model.status !== ModelStatusEnum.active
                 ? (
                   <Tooltip popupContent={MODEL_STATUS_TEXT[model.status][language]}>
-                    <AlertTriangle className='w-4 h-4 text-text-warning-secondary' />
+                    <AlertTriangle className='text-text-warning-secondary h-4 w-4' />
                   </Tooltip>
                 )
                 : (
                   <RiArrowDownSLine
-                    className='w-3.5 h-3.5 text-text-tertiary'
+                    className='text-text-tertiary h-3.5 w-3.5'
                   />
                 )
             }

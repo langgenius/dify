@@ -28,7 +28,7 @@ const EconomicalRetrievalMethodConfig: FC<Props> = ({
 }) => {
   const { t } = useTranslation()
   const type = value.search_method
-  const icon = <Image className='size-3.5 text-util-colors-purple-purple-600' src={getIcon(type)} alt='' />
+  const icon = <Image className='text-util-colors-purple-purple-600 size-3.5' src={getIcon(type)} alt='' />
   return (
     <div className='space-y-2'>
       <RadioCard
@@ -38,7 +38,7 @@ const EconomicalRetrievalMethodConfig: FC<Props> = ({
         noRadio
         chosenConfigWrapClassName='!pb-3'
         chosenConfig={
-          <div className='flex flex-wrap leading-[18px] text-xs font-normal'>
+          <div className='flex flex-wrap text-xs font-normal leading-[18px]'>
             {value.reranking_model.reranking_model_name && (
               <div className='mr-8 flex space-x-1'>
                 <div className='text-gray-500'>{t('common.modelProvider.rerankModel.key')}</div>

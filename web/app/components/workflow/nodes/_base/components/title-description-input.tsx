@@ -33,8 +33,8 @@ export const TitleInput = memo(({
       value={localValue}
       onChange={e => setLocalValue(e.target.value)}
       className={`
-        grow mr-2 px-1 h-7 text-text-primary system-xl-semibold rounded-md border border-transparent appearance-none outline-none
-        focus:shadow-xs min-w-0
+        text-text-primary system-xl-semibold focus:shadow-xs mr-2 h-7 min-w-0 grow appearance-none rounded-md border border-transparent
+        px-1 outline-none
       `}
       placeholder={t('workflow.common.addTitle') || ''}
       onBlur={handleBlur}
@@ -63,8 +63,8 @@ export const DescriptionInput = memo(({
   return (
     <div
       className={`
-        group flex px-2 py-[5px] max-h-[60px] rounded-lg overflow-y-auto
-        leading-0 bg-components-panel-bg
+        leading-0 bg-components-panel-bg group flex max-h-[60px] overflow-y-auto rounded-lg
+        px-2 py-[5px]
         ${focus && '!shadow-xs'}
       `}
     >
@@ -75,9 +75,9 @@ export const DescriptionInput = memo(({
         onFocus={handleFocus}
         onBlur={handleBlur}
         className={`
-          w-full text-xs text-gray-900 leading-[18px] bg-transparent
-          appearance-none outline-none resize-none
-          placeholder:text-gray-400 caret-[#295EFF]
+          w-full resize-none appearance-none bg-transparent text-xs
+          leading-[18px] text-gray-900 caret-[#295EFF]
+          outline-none placeholder:text-gray-400
         `}
         placeholder={t('workflow.common.addDescription') || ''}
         autoSize

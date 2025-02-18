@@ -82,24 +82,24 @@ const Tools = () => {
   }
 
   return (
-    <div className='mt-3 px-3 rounded-xl bg-gray-50'>
-      <div className='flex items-center h-12'>
-        <div className='grow flex items-center'>
+    <div className='mt-3 rounded-xl bg-gray-50 px-3'>
+      <div className='flex h-12 items-center'>
+        <div className='flex grow items-center'>
           <div
             className={`
-              group flex items-center justify-center mr-1 w-6 h-6 rounded-md 
+              group mr-1 flex h-6 w-6 items-center justify-center rounded-md 
               ${externalDataToolsConfig.length && 'hover:shadow-xs hover:bg-white'}
             `}
             onClick={() => setExpanded(v => !v)}
           >
             {
               externalDataToolsConfig.length
-                ? <Tool03 className='group-hover:hidden w-4 h-4 text-[#444CE7]' />
-                : <Tool03 className='w-4 h-4 text-[#444CE7]' />
+                ? <Tool03 className='h-4 w-4 text-[#444CE7] group-hover:hidden' />
+                : <Tool03 className='h-4 w-4 text-[#444CE7]' />
             }
             {
               !!externalDataToolsConfig.length && (
-                <RiArrowDownSLine className={`hidden group-hover:block w-4 h-4 text-primary-600 cursor-pointer ${expanded ? 'rotate-180' : 'rotate-0'}`} />
+                <RiArrowDownSLine className={`text-primary-600 hidden h-4 w-4 cursor-pointer group-hover:block ${expanded ? 'rotate-180' : 'rotate-0'}`} />
               )
             }
           </div>
@@ -118,15 +118,15 @@ const Tools = () => {
           !expanded && !!externalDataToolsConfig.length && (
             <>
               <div className='mr-3 text-xs text-gray-500'>{t('appDebug.feature.tools.toolsInUse', { count: externalDataToolsConfig.length })}</div>
-              <div className='mr-1 w-[1px] h-3.5 bg-gray-200' />
+              <div className='mr-1 h-3.5 w-[1px] bg-gray-200' />
             </>
           )
         }
         <div
-          className='flex items-center h-7 px-3 text-xs font-medium text-gray-700 cursor-pointer'
+          className='flex h-7 cursor-pointer items-center px-3 text-xs font-medium text-gray-700'
           onClick={() => handleOpenExternalDataToolModal({}, -1)}
         >
-          <RiAddLine className='mr-[5px] w-3.5 h-3.5 ' />
+          <RiAddLine className='mr-[5px] h-3.5 w-3.5 ' />
           {t('common.operation.add')}
         </div>
       </div>
@@ -137,11 +137,11 @@ const Tools = () => {
               externalDataToolsConfig.map((item, index: number) => (
                 <div
                   key={`${index}-${item.type}-${item.label}-${item.variable}`}
-                  className='group flex items-center mb-1 last-of-type:mb-0 px-2.5 py-2 rounded-lg border-[0.5px] border-gray-200 bg-white shadow-xs'
+                  className='shadow-xs group mb-1 flex items-center rounded-lg border-[0.5px] border-gray-200 bg-white px-2.5 py-2 last-of-type:mb-0'
                 >
-                  <div className='grow flex items-center'>
+                  <div className='flex grow items-center'>
                     <AppIcon size='large'
-                      className='mr-2 !w-6 !h-6 rounded-md border-[0.5px] border-black/5'
+                      className='mr-2 !h-6 !w-6 rounded-md border-[0.5px] border-black/5'
                       icon={item.icon}
                       background={item.icon_background}
                     />
@@ -161,18 +161,18 @@ const Tools = () => {
                     </Tooltip>
                   </div>
                   <div
-                    className='hidden group-hover:flex items-center justify-center mr-1 w-6 h-6 hover:bg-black/5 rounded-md cursor-pointer'
+                    className='mr-1 hidden h-6 w-6 cursor-pointer items-center justify-center rounded-md hover:bg-black/5 group-hover:flex'
                     onClick={() => handleOpenExternalDataToolModal(item, index)}
                   >
-                    <Settings01 className='w-4 h-4 text-gray-500' />
+                    <Settings01 className='h-4 w-4 text-gray-500' />
                   </div>
                   <div
-                    className='hidden group/action group-hover:flex items-center justify-center w-6 h-6 hover:bg-[#FEE4E2] rounded-md cursor-pointer'
+                    className='group/action hidden h-6 w-6 cursor-pointer items-center justify-center rounded-md hover:bg-[#FEE4E2] group-hover:flex'
                     onClick={() => setExternalDataToolsConfig([...externalDataToolsConfig.slice(0, index), ...externalDataToolsConfig.slice(index + 1)])}
                   >
-                    <RiDeleteBinLine className='w-4 h-4 text-gray-500 group-hover/action:text-[#D92D20]' />
+                    <RiDeleteBinLine className='h-4 w-4 text-gray-500 group-hover/action:text-[#D92D20]' />
                   </div>
-                  <div className='hidden group-hover:block ml-2 mr-3 w-[1px] h-3.5 bg-gray-200' />
+                  <div className='ml-2 mr-3 hidden h-3.5 w-[1px] bg-gray-200 group-hover:block' />
                   <Switch
                     size='l'
                     defaultValue={item.enabled}

@@ -25,10 +25,10 @@ const ErrorHandleOnNode = ({
     return null
 
   return (
-    <div className='relative pt-1 pb-2 px-3'>
+    <div className='relative px-3 pb-2 pt-1'>
       <div className={cn(
-        'relative flex items-center justify-between px-[5px] h-6 bg-workflow-block-parma-bg rounded-md',
-        data._runningStatus === NodeRunningStatus.Exception && 'border-[0.5px] border-components-badge-status-light-warning-halo bg-state-warning-hover',
+        'bg-workflow-block-parma-bg relative flex h-6 items-center justify-between rounded-md px-[5px]',
+        data._runningStatus === NodeRunningStatus.Exception && 'border-components-badge-status-light-warning-halo bg-state-warning-hover border-[0.5px]',
       )}>
         <div className='system-xs-medium-uppercase text-text-tertiary'>
           {t('workflow.common.onFailure')}

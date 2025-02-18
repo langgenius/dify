@@ -16,7 +16,7 @@ type Props = {
 const ITem: FC<{ isActive: boolean; value: PlanRange; text: string; onClick: (value: PlanRange) => void }> = ({ isActive, value, text, onClick }) => {
   return (
     <div
-      className={cn(isActive ? 'bg-[#155EEF] text-white' : 'text-gray-900', 'flex items-center px-8 h-11 rounded-[32px] cursor-pointer text-[15px] font-medium')}
+      className={cn(isActive ? 'bg-[#155EEF] text-white' : 'text-gray-900', 'flex h-11 cursor-pointer items-center rounded-[32px] px-8 text-[15px] font-medium')}
       onClick={() => onClick(value)}
     >
       {text}
@@ -40,9 +40,9 @@ const SelectPlanRange: FC<Props> = ({
 
   return (
     <div>
-      <div className='mb-4 leading-[18px] text-sm font-medium text-[#F26725]'>{t('billing.plansCommon.yearlyTip')}</div>
+      <div className='mb-4 text-sm font-medium leading-[18px] text-[#F26725]'>{t('billing.plansCommon.yearlyTip')}</div>
 
-      <div className='inline-flex relative p-1 rounded-full bg-[#F5F8FF] border border-black/5'>
+      <div className='relative inline-flex rounded-full border border-black/5 bg-[#F5F8FF] p-1'>
         <ITem isActive={value === PlanRange.monthly} value={PlanRange.monthly} text={t('billing.plansCommon.planRange.monthly') as string} onClick={onChange} />
         <ITem isActive={value === PlanRange.yearly} value={PlanRange.yearly} text={t('billing.plansCommon.planRange.yearly') as string} onClick={onChange} />
         <div className='absolute right-0 top-[-16px] '>

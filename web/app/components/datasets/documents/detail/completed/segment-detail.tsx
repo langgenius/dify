@@ -109,7 +109,7 @@ const SegmentDetail: FC<ISegmentDetailProps> = ({
   }, [isParentChildMode])
 
   return (
-    <div className={'flex flex-col h-full'}>
+    <div className={'flex h-full flex-col'}>
       <div className={classNames('flex items-center justify-between', fullScreen ? 'py-3 pr-4 pl-6 border border-divider-subtle' : 'pt-3 pr-3 pl-4')}>
         <div className='flex flex-col'>
           <div className='text-text-primary system-xl-semibold'>{titleText}</div>
@@ -128,14 +128,14 @@ const SegmentDetail: FC<ISegmentDetailProps> = ({
                 handleSave={handleSave}
                 loading={loading}
               />
-              <Divider type='vertical' className='h-3.5 bg-divider-regular ml-4 mr-2' />
+              <Divider type='vertical' className='bg-divider-regular ml-4 mr-2 h-3.5' />
             </>
           )}
-          <div className='w-8 h-8 flex justify-center items-center p-1.5 cursor-pointer mr-1' onClick={toggleFullScreen}>
-            <RiExpandDiagonalLine className='w-4 h-4 text-text-tertiary' />
+          <div className='mr-1 flex h-8 w-8 cursor-pointer items-center justify-center p-1.5' onClick={toggleFullScreen}>
+            <RiExpandDiagonalLine className='text-text-tertiary h-4 w-4' />
           </div>
-          <div className='w-8 h-8 flex justify-center items-center p-1.5 cursor-pointer' onClick={onCancel}>
-            <RiCloseLine className='w-4 h-4 text-text-tertiary' />
+          <div className='flex h-8 w-8 cursor-pointer items-center justify-center p-1.5' onClick={onCancel}>
+            <RiCloseLine className='text-text-tertiary h-4 w-4' />
           </div>
         </div>
       </div>
@@ -164,7 +164,7 @@ const SegmentDetail: FC<ISegmentDetailProps> = ({
         />}
       </div>
       {isEditMode && !fullScreen && (
-        <div className='flex items-center justify-end p-4 pt-3 border-t-[1px] border-t-divider-subtle'>
+        <div className='border-t-divider-subtle flex items-center justify-end border-t-[1px] p-4 pt-3'>
           <ActionButtons
             handleCancel={handleCancel}
             handleRegeneration={handleRegeneration}

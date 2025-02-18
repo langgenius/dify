@@ -11,28 +11,28 @@ const ParentChunkCardSkelton = () => {
   const { t } = useTranslation()
   return (
     <div className='flex flex-col pb-2'>
-      <SkeletonContainer className='p-1 pb-0 gap-y-0'>
-        <SkeletonContainer className='px-2 pt-1.5 gap-y-0.5'>
+      <SkeletonContainer className='gap-y-0 p-1 pb-0'>
+        <SkeletonContainer className='gap-y-0.5 px-2 pt-1.5'>
           <SkeletonRow className='py-0.5'>
-            <SkeletonRectangle className='w-[72px] bg-text-quaternary' />
+            <SkeletonRectangle className='bg-text-quaternary w-[72px]' />
             <SkeletonPoint className='opacity-20' />
-            <SkeletonRectangle className='w-24 bg-text-quaternary' />
+            <SkeletonRectangle className='bg-text-quaternary w-24' />
             <SkeletonPoint className='opacity-20' />
-            <SkeletonRectangle className='w-24 bg-text-quaternary' />
+            <SkeletonRectangle className='bg-text-quaternary w-24' />
           </SkeletonRow>
           <SkeletonRow className='py-0.5'>
-            <SkeletonRectangle className='w-full bg-text-quaternary' />
+            <SkeletonRectangle className='bg-text-quaternary w-full' />
           </SkeletonRow>
           <SkeletonRow className='py-0.5'>
-            <SkeletonRectangle className='w-full bg-text-quaternary' />
+            <SkeletonRectangle className='bg-text-quaternary w-full' />
           </SkeletonRow>
           <SkeletonRow className='py-0.5'>
-            <SkeletonRectangle className='w-2/3 bg-text-quaternary' />
+            <SkeletonRectangle className='bg-text-quaternary w-2/3' />
           </SkeletonRow>
         </SkeletonContainer>
       </SkeletonContainer>
-      <div className='flex items-center px-3 mt-0.5'>
-        <button type='button' className='pt-0.5 text-components-button-secondary-accent-text-disabled system-xs-semibold-uppercase' disabled>
+      <div className='mt-0.5 flex items-center px-3'>
+        <button type='button' className='text-components-button-secondary-accent-text-disabled system-xs-semibold-uppercase pt-0.5' disabled>
           {t('common.operation.viewMore')}
         </button>
       </div>

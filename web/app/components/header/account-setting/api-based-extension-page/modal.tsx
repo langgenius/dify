@@ -75,9 +75,9 @@ const ApiBasedExtensionModal: FC<ApiBasedExtensionModalProps> = ({
     <Modal
       isShow
       onClose={() => { }}
-      className='!p-8 !pb-6 !max-w-none !w-[640px]'
+      className='!w-[640px] !max-w-none !p-8 !pb-6'
     >
-      <div className='mb-2 text-xl font-semibold text-text-primary'>
+      <div className='text-text-primary mb-2 text-xl font-semibold'>
         {
           data.name
             ? t('common.apiBasedExtension.modal.editTitle')
@@ -85,49 +85,49 @@ const ApiBasedExtensionModal: FC<ApiBasedExtensionModalProps> = ({
         }
       </div>
       <div className='py-2'>
-        <div className='leading-9 text-sm font-medium text-text-primary'>
+        <div className='text-text-primary text-sm font-medium leading-9'>
           {t('common.apiBasedExtension.modal.name.title')}
         </div>
         <input
           value={localeData.name || ''}
           onChange={e => handleDataChange('name', e.target.value)}
-          className='block px-3 w-full h-9 bg-components-input-bg-normal rounded-lg text-sm text-text-primary outline-none appearance-none'
+          className='bg-components-input-bg-normal text-text-primary block h-9 w-full appearance-none rounded-lg px-3 text-sm outline-none'
           placeholder={t('common.apiBasedExtension.modal.name.placeholder') || ''}
         />
       </div>
       <div className='py-2'>
-        <div className='flex justify-between items-center h-9 text-sm font-medium text-text-primary'>
+        <div className='text-text-primary flex h-9 items-center justify-between text-sm font-medium'>
           {t('common.apiBasedExtension.modal.apiEndpoint.title')}
           <a
             href={t('common.apiBasedExtension.linkUrl') || '/'}
             target='_blank' rel='noopener noreferrer'
-            className='group flex items-center text-xs text-text-tertiary font-normal hover:text-text-accent'
+            className='text-text-tertiary hover:text-text-accent group flex items-center text-xs font-normal'
           >
-            <BookOpen01 className='mr-1 w-3 h-3 text-text-tertiary group-hover:text-text-accent' />
+            <BookOpen01 className='text-text-tertiary group-hover:text-text-accent mr-1 h-3 w-3' />
             {t('common.apiBasedExtension.link')}
           </a>
         </div>
         <input
           value={localeData.api_endpoint || ''}
           onChange={e => handleDataChange('api_endpoint', e.target.value)}
-          className='block px-3 w-full h-9 bg-components-input-bg-normal rounded-lg text-sm text-text-primary outline-none appearance-none'
+          className='bg-components-input-bg-normal text-text-primary block h-9 w-full appearance-none rounded-lg px-3 text-sm outline-none'
           placeholder={t('common.apiBasedExtension.modal.apiEndpoint.placeholder') || ''}
         />
       </div>
       <div className='py-2'>
-        <div className='leading-9 text-sm font-medium text-text-primary'>
+        <div className='text-text-primary text-sm font-medium leading-9'>
           {t('common.apiBasedExtension.modal.apiKey.title')}
         </div>
         <div className='flex items-center'>
           <input
             value={localeData.api_key || ''}
             onChange={e => handleDataChange('api_key', e.target.value)}
-            className='block grow mr-2 px-3 h-9 bg-components-input-bg-normal rounded-lg text-sm text-text-primary outline-none appearance-none'
+            className='bg-components-input-bg-normal text-text-primary mr-2 block h-9 grow appearance-none rounded-lg px-3 text-sm outline-none'
             placeholder={t('common.apiBasedExtension.modal.apiKey.placeholder') || ''}
           />
         </div>
       </div>
-      <div className='flex items-center justify-end mt-6'>
+      <div className='mt-6 flex items-center justify-end'>
         <Button
           onClick={onCancel}
           className='mr-2'

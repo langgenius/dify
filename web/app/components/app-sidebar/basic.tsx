@@ -48,9 +48,9 @@ const NotionSvg = <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xm
 
 const ICON_MAP = {
   app: <AppIcon className='border !border-[rgba(0,0,0,0.05)]' />,
-  api: <AppIcon innerIcon={ApiSvg} className='border !bg-purple-50 !border-purple-200' />,
-  dataset: <AppIcon innerIcon={DatasetSvg} className='!border-[0.5px] !border-indigo-100 !bg-indigo-25' />,
-  webapp: <AppIcon innerIcon={WebappSvg} className='border !bg-primary-100 !border-primary-200' />,
+  api: <AppIcon innerIcon={ApiSvg} className='border !border-purple-200 !bg-purple-50' />,
+  dataset: <AppIcon innerIcon={DatasetSvg} className='!bg-indigo-25 !border-[0.5px] !border-indigo-100' />,
+  webapp: <AppIcon innerIcon={WebappSvg} className='!bg-primary-100 !border-primary-200 border' />,
   notion: <AppIcon innerIcon={NotionSvg} className='!border-[0.5px] !border-indigo-100 !bg-white' />,
 }
 
@@ -58,20 +58,20 @@ export default function AppBasic({ icon, icon_background, name, isExternal, type
   const { t } = useTranslation()
 
   return (
-    <div className="flex items-center grow">
+    <div className="flex grow items-center">
       {icon && icon_background && iconType === 'app' && (
-        <div className='shrink-0 mr-3'>
+        <div className='mr-3 shrink-0'>
           <AppIcon icon={icon} background={icon_background} />
         </div>
       )}
       {iconType !== 'app'
-        && <div className='shrink-0 mr-3'>
+        && <div className='mr-3 shrink-0'>
           {ICON_MAP[iconType]}
         </div>
 
       }
       {mode === 'expand' && <div className="group">
-        <div className={`flex flex-row items-center system-md-semibold text-text-secondary group-hover:text-text-primary ${textStyle?.main ?? ''}`}>
+        <div className={`system-md-semibold text-text-secondary group-hover:text-text-primary flex flex-row items-center ${textStyle?.main ?? ''}`}>
           <div className="max-w-[180px] truncate">
             {name}
           </div>

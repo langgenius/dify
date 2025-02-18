@@ -71,8 +71,8 @@ const Doc = ({ apiBaseUrl }: DocProps) => {
       <div className={`fixed right-16 top-32 z-10 transition-all ${isTocExpanded ? 'w-64' : 'w-10'}`}>
         {isTocExpanded
           ? (
-            <nav className="toc w-full bg-gray-50 p-4 rounded-lg shadow-md max-h-[calc(100vh-150px)] overflow-y-auto">
-              <div className="flex justify-between items-center mb-4">
+            <nav className="toc max-h-[calc(100vh-150px)] w-full overflow-y-auto rounded-lg bg-gray-50 p-4 shadow-md">
+              <div className="mb-4 flex items-center justify-between">
                 <h3 className="text-lg font-semibold">{t('appApi.develop.toc')}</h3>
                 <button
                   onClick={() => setIsTocExpanded(false)}
@@ -86,7 +86,7 @@ const Doc = ({ apiBaseUrl }: DocProps) => {
                   <li key={index}>
                     <a
                       href={item.href}
-                      className="text-gray-600 hover:text-gray-900 hover:underline transition-colors duration-200"
+                      className="text-gray-600 transition-colors duration-200 hover:text-gray-900 hover:underline"
                       onClick={e => handleTocClick(e, item)}
                     >
                       {item.text}
@@ -99,13 +99,13 @@ const Doc = ({ apiBaseUrl }: DocProps) => {
           : (
             <button
               onClick={() => setIsTocExpanded(true)}
-              className="w-10 h-10 bg-gray-50 rounded-full shadow-md flex items-center justify-center hover:bg-gray-100 transition-colors duration-200"
+              className="flex h-10 w-10 items-center justify-center rounded-full bg-gray-50 shadow-md transition-colors duration-200 hover:bg-gray-100"
             >
-              <RiListUnordered className="w-6 h-6" />
+              <RiListUnordered className="h-6 w-6" />
             </button>
           )}
       </div>
-      <article className='mx-1 px-4 sm:mx-12 pt-16 bg-white rounded-t-xl prose prose-xl'>
+      <article className='prose prose-xl mx-1 rounded-t-xl bg-white px-4 pt-16 sm:mx-12'>
         {locale !== LanguagesSupported[1]
           ? <TemplateEn apiBaseUrl={apiBaseUrl} />
           : <TemplateZh apiBaseUrl={apiBaseUrl} />

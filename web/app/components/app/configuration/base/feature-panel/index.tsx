@@ -23,15 +23,15 @@ const FeaturePanel: FC<IFeaturePanelProps> = ({
   children,
 }) => {
   return (
-    <div className={cn('rounded-xl border-t-[0.5px] border-l-[0.5px] border-effects-highlight bg-background-section-burn pb-3', noBodySpacing && 'pb-0', className)}>
+    <div className={cn('border-effects-highlight bg-background-section-burn rounded-xl border-l-[0.5px] border-t-[0.5px] pb-3', noBodySpacing && 'pb-0', className)}>
       {/* Header */}
-      <div className={cn('px-3 pt-2', hasHeaderBottomBorder && 'border-b border-divider-subtle')}>
-        <div className='flex justify-between items-center h-8'>
-          <div className='flex items-center space-x-1 shrink-0'>
-            {headerIcon && <div className='flex items-center justify-center w-6 h-6'>{headerIcon}</div>}
+      <div className={cn('px-3 pt-2', hasHeaderBottomBorder && 'border-divider-subtle border-b')}>
+        <div className='flex h-8 items-center justify-between'>
+          <div className='flex shrink-0 items-center space-x-1'>
+            {headerIcon && <div className='flex h-6 w-6 items-center justify-center'>{headerIcon}</div>}
             <div className='text-text-secondary system-sm-semibold'>{title}</div>
           </div>
-          <div className='flex gap-2 items-center'>
+          <div className='flex items-center gap-2'>
             {headerRight && <div>{headerRight}</div>}
           </div>
         </div>

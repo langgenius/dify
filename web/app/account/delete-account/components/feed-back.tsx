@@ -56,11 +56,11 @@ export default function FeedBack(props: DeleteAccountProps) {
     className="max-w-[480px]"
     footer={false}
   >
-    <label className='mt-3 mb-1 flex items-center system-sm-semibold text-text-secondary'>{t('common.account.feedbackLabel')}</label>
+    <label className='system-sm-semibold text-text-secondary mb-1 mt-3 flex items-center'>{t('common.account.feedbackLabel')}</label>
     <Textarea rows={6} value={userFeedback} placeholder={t('common.account.feedbackPlaceholder') as string} onChange={(e) => {
       setUserFeedback(e.target.value)
     }} />
-    <div className='w-full flex flex-col mt-3 gap-2'>
+    <div className='mt-3 flex w-full flex-col gap-2'>
       <Button className='w-full' loading={isPending} variant='primary' onClick={handleSubmit}>{t('common.operation.submit')}</Button>
       <Button className='w-full' onClick={handleSkip}>{t('common.operation.skip')}</Button>
     </div>

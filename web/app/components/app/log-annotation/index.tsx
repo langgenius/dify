@@ -34,14 +34,14 @@ const LogAnnotation: FC<Props> = ({
 
   if (!appDetail) {
     return (
-      <div className='flex h-full items-center justify-center bg-background-body'>
+      <div className='bg-background-body flex h-full items-center justify-center'>
         <Loading />
       </div>
     )
   }
 
   return (
-    <div className='pt-3 px-6 h-full flex flex-col'>
+    <div className='flex h-full flex-col px-6 pt-3'>
       {appDetail.mode !== 'workflow' && (
         <TabSlider
           className='shrink-0'
@@ -52,7 +52,7 @@ const LogAnnotation: FC<Props> = ({
           options={options}
         />
       )}
-      <div className={cn('grow h-0', appDetail.mode !== 'workflow' && 'mt-3')}>
+      <div className={cn('h-0 grow', appDetail.mode !== 'workflow' && 'mt-3')}>
         {pageType === PageType.log && appDetail.mode !== 'workflow' && (<Log appDetail={appDetail} />)}
         {pageType === PageType.annotation && (<Annotation appDetail={appDetail} />)}
         {pageType === PageType.log && appDetail.mode === 'workflow' && (<WorkflowLog appDetail={appDetail} />)}

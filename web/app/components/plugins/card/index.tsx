@@ -52,7 +52,7 @@ const Card = ({
   const getLocalizedText = (obj: Record<string, string> | undefined) =>
     obj ? renderI18nObject(obj, locale) : ''
 
-  const wrapClassName = cn('relative p-4 pb-3 border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg hover-bg-components-panel-on-panel-item-bg rounded-xl shadow-xs', className)
+  const wrapClassName = cn('border-components-panel-border bg-components-panel-on-panel-item-bg hover-bg-components-panel-on-panel-item-bg shadow-xs relative rounded-xl border-[0.5px] p-4 pb-3', className)
   if (isLoading) {
     return (
       <Placeholder
@@ -69,9 +69,9 @@ const Card = ({
       <div className="flex">
         <Icon src={icon} installed={installed} installFailed={installFailed} />
         <div className="ml-3 w-0 grow">
-          <div className="flex items-center h-5">
+          <div className="flex h-5 items-center">
             <Title title={getLocalizedText(label)} />
-            {verified && <RiVerifiedBadgeLine className="shrink-0 ml-0.5 w-4 h-4 text-text-accent" />}
+            {verified && <RiVerifiedBadgeLine className="text-text-accent ml-0.5 h-4 w-4 shrink-0" />}
             {titleLeft} {/* This can be version badge */}
           </div>
           <OrgInfo

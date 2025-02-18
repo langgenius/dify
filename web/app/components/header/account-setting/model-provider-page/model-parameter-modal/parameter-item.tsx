@@ -148,7 +148,7 @@ const ParameterItem: FC<ParameterItemProps> = ({
           />}
           <input
             ref={numberInputRef}
-            className='shrink-0 block ml-4 pl-3 w-16 h-8 appearance-none outline-none rounded-lg bg-components-input-bg-normal text-components-input-text-filled system-sm-regular'
+            className='bg-components-input-bg-normal text-components-input-text-filled system-sm-regular ml-4 block h-8 w-16 shrink-0 appearance-none rounded-lg pl-3 outline-none'
             type='number'
             max={parameterRule.max}
             min={parameterRule.min}
@@ -173,7 +173,7 @@ const ParameterItem: FC<ParameterItemProps> = ({
           />}
           <input
             ref={numberInputRef}
-            className='shrink-0 block ml-4 pl-3 w-16 h-8 appearance-none outline-none rounded-lg bg-components-input-bg-normal text-components-input-text-filled system-sm-regular'
+            className='bg-components-input-bg-normal text-components-input-text-filled system-sm-regular ml-4 block h-8 w-16 shrink-0 appearance-none rounded-lg pl-3 outline-none'
             type='number'
             max={parameterRule.max}
             min={parameterRule.min}
@@ -188,7 +188,7 @@ const ParameterItem: FC<ParameterItemProps> = ({
     if (parameterRule.type === 'boolean') {
       return (
         <Radio.Group
-          className='w-[178px] flex items-center'
+          className='flex w-[178px] items-center'
           value={renderValue ? 1 : 0}
           onChange={handleRadioChange}
         >
@@ -201,7 +201,7 @@ const ParameterItem: FC<ParameterItemProps> = ({
     if (parameterRule.type === 'string' && !parameterRule.options?.length) {
       return (
         <input
-          className={cn(isInWorkflow ? 'w-[178px]' : 'w-full', 'ml-4 flex items-center px-3 h-8 appearance-none outline-none rounded-lg bg-components-input-bg-normal text-components-input-text-filled system-sm-regular')}
+          className={cn(isInWorkflow ? 'w-[178px]' : 'w-full', 'bg-components-input-bg-normal text-components-input-text-filled system-sm-regular ml-4 flex h-8 appearance-none items-center rounded-lg px-3 outline-none')}
           value={renderValue as string}
           onChange={handleStringInputChange}
         />
@@ -211,7 +211,7 @@ const ParameterItem: FC<ParameterItemProps> = ({
     if (parameterRule.type === 'text') {
       return (
         <textarea
-          className='w-full h-20 ml-4 px-1 rounded-lg bg-components-input-bg-normal text-components-input-text-filled system-sm-regular'
+          className='bg-components-input-bg-normal text-components-input-text-filled system-sm-regular ml-4 h-20 w-full rounded-lg px-1'
           value={renderValue as string}
           onChange={handleStringInputChange}
         />
@@ -222,7 +222,7 @@ const ParameterItem: FC<ParameterItemProps> = ({
       return (
         <SimpleSelect
           className='!py-0'
-          wrapperClassName={cn('w-full !h-8')}
+          wrapperClassName={cn('!h-8 w-full')}
           defaultValue={renderValue as string}
           onSelect={handleSelect}
           items={parameterRule.options.map(option => ({ value: option, name: option }))}
@@ -232,7 +232,7 @@ const ParameterItem: FC<ParameterItemProps> = ({
 
     if (parameterRule.type === 'tag') {
       return (
-        <div className={cn('w-full !h-8')}>
+        <div className={cn('!h-8 w-full')}>
           <TagInput
             items={renderValue as string[]}
             onChange={handleTagChange}
@@ -247,9 +247,9 @@ const ParameterItem: FC<ParameterItemProps> = ({
   }
 
   return (
-    <div className='flex items-center justify-between mb-2'>
+    <div className='mb-2 flex items-center justify-between'>
       <div className='shrink-0 basis-1/2'>
-        <div className={cn('shrink-0 w-full flex items-center')}>
+        <div className={cn('flex w-full shrink-0 items-center')}>
           {
             !parameterRule.required && parameterRule.name !== 'stop' && (
               <div className='mr-2 w-7'>
@@ -262,7 +262,7 @@ const ParameterItem: FC<ParameterItemProps> = ({
             )
           }
           <div
-            className='mr-0.5 system-xs-regular text-text-secondary truncate'
+            className='system-xs-regular text-text-secondary mr-0.5 truncate'
             title={parameterRule.label[language] || parameterRule.label.en_US}
           >
             {parameterRule.label[language] || parameterRule.label.en_US}

@@ -51,7 +51,7 @@ const VariableTag = ({
   const { t } = useTranslation()
   return (
     <Tooltip popupContent={!isValid && t('workflow.errorMsg.invalidVariable')}>
-      <div className={cn('inline-flex items-center px-1.5 max-w-full h-6 text-xs rounded-md border-[0.5px] border-[rgba(16, 2440,0.08)] bg-white shadow-xs',
+      <div className={cn('border-[rgba(16, 2440,0.08)] shadow-xs inline-flex h-6 max-w-full items-center rounded-md border-[0.5px] bg-white px-1.5 text-xs',
         !isValid && 'border-red-400 !bg-[#FEF3F2]',
       )}>
         {(!isEnv && !isChatVar && <>
@@ -61,30 +61,30 @@ const VariableTag = ({
                 type={BlockEnum.Start}
               />
               <div
-                className='max-w-[60px] truncate text-text-secondary font-medium'
+                className='text-text-secondary max-w-[60px] truncate font-medium'
                 title={node?.data.title}
               >
                 {node?.data.title}
               </div>
             </>
           )}
-          <Line3 className='shrink-0 mx-0.5' />
-          <Variable02 className={cn('shrink-0 mr-0.5 w-3.5 h-3.5 text-text-accent', isException && 'text-text-warning')} />
+          <Line3 className='mx-0.5 shrink-0' />
+          <Variable02 className={cn('text-text-accent mr-0.5 h-3.5 w-3.5 shrink-0', isException && 'text-text-warning')} />
         </>)}
-        {isEnv && <Env className='shrink-0 mr-0.5 w-3.5 h-3.5 text-util-colors-violet-violet-600' />}
-        {isChatVar && <BubbleX className='w-3.5 h-3.5 text-util-colors-teal-teal-700' />}
+        {isEnv && <Env className='text-util-colors-violet-violet-600 mr-0.5 h-3.5 w-3.5 shrink-0' />}
+        {isChatVar && <BubbleX className='text-util-colors-teal-teal-700 h-3.5 w-3.5' />}
         <div
-          className={cn('truncate ml-0.5 text-text-accent font-medium', (isEnv || isChatVar) && 'text-text-secondary', isException && 'text-text-warning')}
+          className={cn('text-text-accent ml-0.5 truncate font-medium', (isEnv || isChatVar) && 'text-text-secondary', isException && 'text-text-warning')}
           title={variableName}
         >
           {variableName}
         </div>
         {
           !isShort && varType && (
-            <div className='shrink-0 ml-0.5 text-text-tertiary'>{capitalize(varType)}</div>
+            <div className='text-text-tertiary ml-0.5 shrink-0'>{capitalize(varType)}</div>
           )
         }
-        {!isValid && <RiErrorWarningFill className='ml-0.5 w-3 h-3 text-[#D92D20]' />}
+        {!isValid && <RiErrorWarningFill className='ml-0.5 h-3 w-3 text-[#D92D20]' />}
       </div>
     </Tooltip>
   )

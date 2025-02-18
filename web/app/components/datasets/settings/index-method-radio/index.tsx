@@ -36,7 +36,7 @@ const IndexMethodRadio = ({
       key: 'high_quality',
       text: <div className='flex items-center'>
         {t('datasetCreation.stepTwo.qualified')}
-        <Badge uppercase className='ml-auto border-text-accent-secondary text-text-accent-secondary'>
+        <Badge uppercase className='border-text-accent-secondary text-text-accent-secondary ml-auto'>
           {t('datasetCreation.stepTwo.recommend')}
         </Badge>
       </div>,
@@ -91,7 +91,7 @@ const IndexMethodRadio = ({
                 </OptionCard>
               </PortalToFollowElemTrigger>
               <PortalToFollowElemContent style={{ zIndex: 60 }}>
-                <div className='p-3 bg-components-tooltip-bg border-components-panel-border text-xs font-medium text-text-secondary rounded-lg shadow-lg'>
+                <div className='bg-components-tooltip-bg border-components-panel-border text-text-secondary rounded-lg p-3 text-xs font-medium shadow-lg'>
                   {t('datasetSettings.form.indexMethodChangeToEconomyDisabledTip')}
                 </div>
               </PortalToFollowElemContent>

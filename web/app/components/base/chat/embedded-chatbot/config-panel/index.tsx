@@ -27,10 +27,10 @@ const ConfigPanel = () => {
   const themeBuilder = useThemeContext()
 
   return (
-    <div className='flex flex-col max-h-[80%] w-full max-w-[720px]'>
+    <div className='flex max-h-[80%] w-full max-w-[720px] flex-col'>
       <div
         className={cn(
-          'grow rounded-xl overflow-y-auto',
+          'grow overflow-y-auto rounded-xl',
           showConfigPanelBeforeChat && 'border-[0.5px] border-gray-100 shadow-lg',
           !showConfigPanelBeforeChat && collapsed && 'border border-indigo-100',
           !showConfigPanelBeforeChat && !collapsed && 'border-[0.5px] border-gray-100 shadow-lg',
@@ -39,14 +39,14 @@ const ConfigPanel = () => {
         <div
           style={CssTransform(themeBuilder.theme?.roundedBackgroundColorStyle ?? '')}
           className={`
-            flex flex-wrap px-6 py-4 rounded-t-xl bg-indigo-25
+            bg-indigo-25 flex flex-wrap rounded-t-xl px-6 py-4
             ${isMobile && '!px-4 !py-3'}
           `}
         >
           {
             showConfigPanelBeforeChat && (
               <>
-                <div className='flex items-center h-8 text-2xl font-semibold text-gray-800'>
+                <div className='flex h-8 items-center text-2xl font-semibold text-gray-800'>
                   <AppIcon
                     iconType={appData?.site.icon_type}
                     icon={appData?.site.icon}
@@ -70,8 +70,8 @@ const ConfigPanel = () => {
           {
             !showConfigPanelBeforeChat && collapsed && (
               <>
-                <Star06 className='mr-1 mt-1 w-4 h-4 text-indigo-600' />
-                <div className='grow py-[3px] text-[13px] text-indigo-600 leading-[18px] font-medium'>
+                <Star06 className='mr-1 mt-1 h-4 w-4 text-indigo-600' />
+                <div className='grow py-[3px] text-[13px] font-medium leading-[18px] text-indigo-600'>
                   {t('share.chat.configStatusDes')}
                 </div>
                 <Button
@@ -81,7 +81,7 @@ const ConfigPanel = () => {
                   className='shrink-0 text-white'
                   onClick={() => setCollapsed(false)}
                 >
-                  <Edit02 className='mr-1 w-3 h-3' />
+                  <Edit02 className='mr-1 h-3 w-3' />
                   {t('common.operation.edit')}
                 </Button>
               </>
@@ -90,8 +90,8 @@ const ConfigPanel = () => {
           {
             !showConfigPanelBeforeChat && !collapsed && (
               <>
-                <Star06 className='mr-1 mt-1 w-4 h-4 text-indigo-600' />
-                <div className='grow py-[3px] text-[13px] text-indigo-600 leading-[18px] font-medium'>
+                <Star06 className='mr-1 mt-1 h-4 w-4 text-indigo-600' />
+                <div className='grow py-[3px] text-[13px] font-medium leading-[18px] text-indigo-600'>
                   {t('share.chat.privatePromptConfigTitle')}
                 </div>
               </>
@@ -100,9 +100,9 @@ const ConfigPanel = () => {
         </div>
         {
           !collapsed && !showConfigPanelBeforeChat && (
-            <div className='p-6 rounded-b-xl'>
+            <div className='rounded-b-xl p-6'>
               <Form />
-              <div className={cn('pl-[136px] flex items-center', isMobile && '!pl-0')}>
+              <div className={cn('flex items-center pl-[136px]', isMobile && '!pl-0')}>
                 <Button
                   styleCss={CssTransform(themeBuilder.theme?.backgroundButtonDefaultColorStyle ?? '')}
                   variant='primary'
@@ -125,7 +125,7 @@ const ConfigPanel = () => {
         }
         {
           showConfigPanelBeforeChat && (
-            <div className='p-6 rounded-b-xl'>
+            <div className='rounded-b-xl p-6'>
               <Form />
               <Button
                 styleCss={CssTransform(themeBuilder.theme?.backgroundButtonDefaultColorStyle ?? '')}
@@ -134,7 +134,7 @@ const ConfigPanel = () => {
                 size='large'
                 onClick={handleStartChat}
               >
-                <MessageDotsCircle className='mr-2 w-4 h-4 text-white' />
+                <MessageDotsCircle className='mr-2 h-4 w-4 text-white' />
                 {t('share.chat.startChat')}
               </Button>
             </div>
@@ -143,11 +143,11 @@ const ConfigPanel = () => {
       </div>
       {
         showConfigPanelBeforeChat && (site || customConfig) && (
-          <div className='mt-4 flex flex-wrap justify-between items-center py-2 text-xs text-gray-400'>
+          <div className='mt-4 flex flex-wrap items-center justify-between py-2 text-xs text-gray-400'>
             {site?.privacy_policy
               ? <div className={cn(isMobile && 'mb-2 w-full text-center')}>{t('share.chat.privacyPolicyLeft')}
                 <a
-                  className='text-gray-500 px-1'
+                  className='px-1 text-gray-500'
                   href={site?.privacy_policy}
                   target='_blank' rel='noopener noreferrer'>{t('share.chat.privacyPolicyMiddle')}</a>
                 {t('share.chat.privacyPolicyRight')}
@@ -159,11 +159,11 @@ const ConfigPanel = () => {
                 ? null
                 : (
                   <div className={cn('flex items-center justify-end', isMobile && 'w-full')}>
-                    <div className='flex items-center pr-3 space-x-3'>
+                    <div className='flex items-center space-x-3 pr-3'>
                       <span className='uppercase'>{t('share.chat.poweredBy')}</span>
                       {
                         customConfig?.replace_webapp_logo
-                          ? <img src={customConfig?.replace_webapp_logo} alt='logo' className='block w-auto h-5' />
+                          ? <img src={customConfig?.replace_webapp_logo} alt='logo' className='block h-5 w-auto' />
                           : <LogoSite className='!h-5' />
                       }
                     </div>

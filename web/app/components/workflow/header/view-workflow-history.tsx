@@ -138,31 +138,31 @@ const ViewWorkflowHistory = () => {
                 setShowMessageLogModal(false)
               }}
             >
-              <RiHistoryLine className='w-4 h-4' />
+              <RiHistoryLine className='h-4 w-4' />
             </div>
           </TipPopup>
         </PortalToFollowElemTrigger>
         <PortalToFollowElemContent className='z-[12]'>
           <div
-            className='flex flex-col ml-2 min-w-[240px] max-w-[360px] bg-components-panel-bg-blur backdrop-blur-[5px] border-[0.5px] border-components-panel-border shadow-xl rounded-xl overflow-y-auto'
+            className='bg-components-panel-bg-blur border-components-panel-border ml-2 flex min-w-[240px] max-w-[360px] flex-col overflow-y-auto rounded-xl border-[0.5px] shadow-xl backdrop-blur-[5px]'
           >
             <div className='sticky top-0 flex items-center justify-between px-4 pt-3'>
-              <div className='grow text-text-secondary system-mg-regular'>{t('workflow.changeHistory.title')}</div>
+              <div className='text-text-secondary system-mg-regular grow'>{t('workflow.changeHistory.title')}</div>
               <div
-                className='shrink-0 flex items-center justify-center w-6 h-6 cursor-pointer'
+                className='flex h-6 w-6 shrink-0 cursor-pointer items-center justify-center'
                 onClick={() => {
                   setCurrentLogItem()
                   setShowMessageLogModal(false)
                   setOpen(false)
                 }}
               >
-                <RiCloseLine className='w-4 h-4 text-text-secondary' />
+                <RiCloseLine className='text-text-secondary h-4 w-4' />
               </div>
             </div>
             {
               (
                 <div
-                  className='p-2 overflow-y-auto'
+                  className='overflow-y-auto p-2'
                   style={{
                     maxHeight: 'calc(1 / 2 * 100vh)',
                   }}
@@ -170,8 +170,8 @@ const ViewWorkflowHistory = () => {
                   {
                     !calculateChangeList.statesCount && (
                       <div className='py-12'>
-                        <RiHistoryLine className='mx-auto mb-2 w-8 h-8 text-text-tertiary' />
-                        <div className='text-center text-[13px] text-text-tertiary'>
+                        <RiHistoryLine className='text-text-tertiary mx-auto mb-2 h-8 w-8' />
+                        <div className='text-text-tertiary text-center text-[13px]'>
                           {t('workflow.changeHistory.placeholder')}
                         </div>
                       </div>
@@ -183,7 +183,7 @@ const ViewWorkflowHistory = () => {
                         <div
                           key={item?.index}
                           className={cn(
-                            'flex mb-0.5 px-2 py-[7px] rounded-lg hover:bg-state-base-hover text-text-secondary cursor-pointer',
+                            'hover:bg-state-base-hover text-text-secondary mb-0.5 flex cursor-pointer rounded-lg px-2 py-[7px]',
                             item?.index === currentHistoryStateIndex && 'bg-state-base-hover',
                           )}
                           onClick={() => {
@@ -194,7 +194,7 @@ const ViewWorkflowHistory = () => {
                           <div>
                             <div
                               className={cn(
-                                'flex items-center text-[13px] font-medium leading-[18px] text-text-secondary',
+                                'text-text-secondary flex items-center text-[13px] font-medium leading-[18px]',
                               )}
                             >
                               {item?.label || t('workflow.changeHistory.sessionStart')} ({calculateStepLabel(item?.index)}{item?.index === currentHistoryStateIndex && t('workflow.changeHistory.currentState')})
@@ -208,7 +208,7 @@ const ViewWorkflowHistory = () => {
                         <div
                           key={item?.index}
                           className={cn(
-                            'flex mb-0.5 px-2 py-[7px] rounded-lg hover:bg-state-base-hover cursor-pointer',
+                            'hover:bg-state-base-hover mb-0.5 flex cursor-pointer rounded-lg px-2 py-[7px]',
                             item?.index === calculateChangeList.statesCount - 1 && 'bg-state-base-hover',
                           )}
                           onClick={() => {
@@ -219,7 +219,7 @@ const ViewWorkflowHistory = () => {
                           <div>
                             <div
                               className={cn(
-                                'flex items-center text-[13px] font-medium leading-[18px] text-text-secondary',
+                                'text-text-secondary flex items-center text-[13px] font-medium leading-[18px]',
                               )}
                             >
                               {item?.label || t('workflow.changeHistory.sessionStart')} ({calculateStepLabel(item?.index)})
@@ -238,7 +238,7 @@ const ViewWorkflowHistory = () => {
                   <Divider className='m-0' />
                   <div
                     className={cn(
-                      'flex my-0.5 px-2 py-[7px] rounded-lg text-text-secondary cursor-pointer',
+                      'text-text-secondary my-0.5 flex cursor-pointer rounded-lg px-2 py-[7px]',
                       'hover:bg-state-base-hover',
                     )}
                     onClick={() => {
@@ -259,9 +259,9 @@ const ViewWorkflowHistory = () => {
                 </div>
               )
             }
-            <div className="px-3 w-[240px] py-2 text-xs text-text-tertiary" >
-              <div className="flex items-center mb-1 h-[22px] font-medium uppercase">{t('workflow.changeHistory.hint')}</div>
-              <div className="mb-1 text-text-tertiary leading-[18px]">{t('workflow.changeHistory.hintText')}</div>
+            <div className="text-text-tertiary w-[240px] px-3 py-2 text-xs" >
+              <div className="mb-1 flex h-[22px] items-center font-medium uppercase">{t('workflow.changeHistory.hint')}</div>
+              <div className="text-text-tertiary mb-1 leading-[18px]">{t('workflow.changeHistory.hintText')}</div>
             </div>
           </div>
         </PortalToFollowElemContent>

@@ -43,14 +43,14 @@ const PluginsPanel = () => {
 
   return (
     <>
-      <div className='flex flex-col pt-1 pb-3 px-12 justify-center items-start gap-3 self-stretch'>
-        <div className='h-px self-stretch bg-divider-subtle'></div>
+      <div className='flex flex-col items-start justify-center gap-3 self-stretch px-12 pb-3 pt-1'>
+        <div className='bg-divider-subtle h-px self-stretch'></div>
         <FilterManagement
           onFilterChange={handleFilterChange}
         />
       </div>
       {isPluginListLoading ? <Loading type='app' /> : (filteredList?.length ?? 0) > 0 ? (
-        <div className='flex px-12 items-start content-start gap-2 grow self-stretch flex-wrap'>
+        <div className='flex grow flex-wrap content-start items-start gap-2 self-stretch px-12'>
           <div className='w-full'>
             <List pluginList={filteredList || []} />
           </div>

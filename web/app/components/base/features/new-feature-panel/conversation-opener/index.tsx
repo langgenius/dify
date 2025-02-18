@@ -81,8 +81,8 @@ const ConversationOpener = ({
   return (
     <FeatureCard
       icon={
-        <div className='shrink-0 p-1 rounded-lg border-[0.5px] border-divider-subtle shadow-xs bg-util-colors-blue-light-blue-light-500'>
-          <LoveMessage className='w-4 h-4 text-text-primary-on-surface' />
+        <div className='border-divider-subtle shadow-xs bg-util-colors-blue-light-blue-light-500 shrink-0 rounded-lg border-[0.5px] p-1'>
+          <LoveMessage className='text-text-primary-on-surface h-4 w-4' />
         </div>
       }
       title={t('appDebug.feature.conversationOpener.title')}
@@ -94,18 +94,18 @@ const ConversationOpener = ({
     >
       <>
         {!opening?.enabled && (
-          <div className='min-h-8 text-text-tertiary system-xs-regular line-clamp-2'>{t('appDebug.feature.conversationOpener.description')}</div>
+          <div className='text-text-tertiary system-xs-regular line-clamp-2 min-h-8'>{t('appDebug.feature.conversationOpener.description')}</div>
         )}
         {!!opening?.enabled && (
           <>
             {!isHovering && (
-              <div className='min-h-8 text-text-tertiary system-xs-regular line-clamp-2'>
+              <div className='text-text-tertiary system-xs-regular line-clamp-2 min-h-8'>
                 {opening.opening_statement || t('appDebug.openingStatement.placeholder')}
               </div>
             )}
             {isHovering && (
               <Button className='w-full' onClick={handleOpenOpeningModal} disabled={disabled}>
-                <RiEditLine className='mr-1 w-4 h-4' />
+                <RiEditLine className='mr-1 h-4 w-4' />
                 {t('appDebug.openingStatement.writeOpener')}
               </Button>
             )}

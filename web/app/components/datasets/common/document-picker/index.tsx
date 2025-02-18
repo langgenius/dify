@@ -74,15 +74,15 @@ const DocumentPicker: FC<Props> = ({
       placement='bottom-start'
     >
       <PortalToFollowElemTrigger onClick={togglePopup}>
-        <div className={cn('flex items-center ml-1 px-2 py-0.5 rounded-lg hover:bg-state-base-hover select-none cursor-pointer', open && 'bg-state-base-hover')}>
+        <div className={cn('hover:bg-state-base-hover ml-1 flex cursor-pointer select-none items-center rounded-lg px-2 py-0.5', open && 'bg-state-base-hover')}>
           <FileIcon name={name} extension={extension} size='lg' />
-          <div className='flex flex-col items-start ml-1 mr-0.5'>
+          <div className='ml-1 mr-0.5 flex flex-col items-start'>
             <div className='flex items-center space-x-0.5'>
               <span className={cn('system-md-semibold')}> {name || '--'}</span>
-              <ArrowIcon className={'h-4 w-4 text-text-primary'} />
+              <ArrowIcon className={'text-text-primary h-4 w-4'} />
             </div>
-            <div className='flex items-center h-3 text-text-tertiary space-x-0.5'>
-              <TypeIcon className='w-3 h-3' />
+            <div className='text-text-tertiary flex h-3 items-center space-x-0.5'>
+              <TypeIcon className='h-3 w-3' />
               <span className={cn('system-2xs-medium-uppercase', isParentChild && 'mt-0.5' /* to icon problem cause not ver align */)}>
                 {isParentChild ? t('dataset.chunkingMode.parentChild') : t('dataset.chunkingMode.general')}
                 {isParentChild && ` · ${!parentMode ? '--' : parentMode === 'paragraph' ? t('dataset.parentMode.paragraph') : t('dataset.parentMode.fullDoc')}`}
@@ -92,7 +92,7 @@ const DocumentPicker: FC<Props> = ({
         </div>
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent className='z-[11]'>
-        <div className='w-[360px] p-1 pt-2 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-[5px]'>
+        <div className='border-components-panel-border bg-components-panel-bg-blur w-[360px] rounded-xl border-[0.5px] p-1 pt-2 shadow-lg backdrop-blur-[5px]'>
           <SearchInput value={query} onChange={setQuery} className='mx-1' />
           {documentsList
             ? (
@@ -106,7 +106,7 @@ const DocumentPicker: FC<Props> = ({
                 onChange={handleChange}
               />
             )
-            : (<div className='mt-2 flex items-center justify-center w-[360px] h-[100px]'>
+            : (<div className='mt-2 flex h-[100px] w-[360px] items-center justify-center'>
               <Loading />
             </div>)}
         </div>

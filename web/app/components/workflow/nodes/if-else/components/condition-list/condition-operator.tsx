@@ -66,16 +66,16 @@ const ConditionOperator = ({
               ? selectedOption.label
               : t(`${i18nPrefix}.select`)
           }
-          <RiArrowDownSLine className='ml-1 w-3.5 h-3.5' />
+          <RiArrowDownSLine className='ml-1 h-3.5 w-3.5' />
         </Button>
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent className='z-10'>
-        <div className='p-1 bg-components-panel-bg-blur rounded-xl border-[0.5px] border-components-panel-border shadow-lg'>
+        <div className='bg-components-panel-bg-blur border-components-panel-border rounded-xl border-[0.5px] p-1 shadow-lg'>
           {
             options.map(option => (
               <div
                 key={option.value}
-                className='flex items-center px-3 py-1.5 h-7 text-[13px] font-medium text-text-secondary rounded-lg cursor-pointer hover:bg-state-base-hover'
+                className='text-text-secondary hover:bg-state-base-hover flex h-7 cursor-pointer items-center rounded-lg px-3 py-1.5 text-[13px] font-medium'
                 onClick={() => {
                   onSelect(option.value)
                   setOpen(false)

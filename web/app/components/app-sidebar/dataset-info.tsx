@@ -26,16 +26,16 @@ const DatasetInfo: FC<Props> = ({
   const { t } = useTranslation()
   return (
     <div className='pl-1 pt-1'>
-      <div className='flex-shrink-0 mr-3'>
-        <AppIcon innerIcon={DatasetSvg} className='!border-[0.5px] !border-indigo-100 !bg-indigo-25' />
+      <div className='mr-3 shrink-0'>
+        <AppIcon innerIcon={DatasetSvg} className='!bg-indigo-25 !border-[0.5px] !border-indigo-100' />
       </div>
       {expand && (
         <div className='mt-2'>
           <div className='system-md-semibold text-text-secondary'>
             {name}
           </div>
-          <div className='mt-1 text-text-tertiary system-2xs-medium-uppercase'>{isExternal ? t('dataset.externalTag') : t('dataset.localDocs')}</div>
-          <div className='my-3  system-xs-regular text-text-tertiary first-letter:capitalize'>{description}</div>
+          <div className='text-text-tertiary system-2xs-medium-uppercase mt-1'>{isExternal ? t('dataset.externalTag') : t('dataset.localDocs')}</div>
+          <div className='system-xs-regular  text-text-tertiary my-3 first-letter:capitalize'>{description}</div>
         </div>
       )}
       {extraInfo}

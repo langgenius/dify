@@ -45,7 +45,7 @@ const ResultPanel: FC<ResultPanelProps> = ({
           error={error}
         />
       </div>
-      <div className='px-4 py-2 flex flex-col gap-2'>
+      <div className='flex flex-col gap-2 px-4 py-2'>
         <CodeEditor
           readOnly
           title={<div>INPUT</div>}
@@ -62,57 +62,57 @@ const ResultPanel: FC<ResultPanelProps> = ({
         />
       </div>
       <div className='px-4 py-2'>
-        <div className='h-[0.5px] bg-divider-regular opacity-5' />
+        <div className='bg-divider-regular h-[0.5px] opacity-5' />
       </div>
       <div className='px-4 py-2'>
         <div className='relative'>
-          <div className='h-6 leading-6 text-text-tertiary text-xs font-medium'>{t('runLog.meta.title')}</div>
+          <div className='text-text-tertiary h-6 text-xs font-medium leading-6'>{t('runLog.meta.title')}</div>
           <div className='py-1'>
             <div className='flex'>
-              <div className='shrink-0 w-[104px] px-2 py-[5px] text-text-tertiary text-xs leading-[18px] truncate'>{t('runLog.meta.status')}</div>
-              <div className='grow px-2 py-[5px] text-text-primary text-xs leading-[18px]'>
+              <div className='text-text-tertiary w-[104px] shrink-0 truncate px-2 py-[5px] text-xs leading-[18px]'>{t('runLog.meta.status')}</div>
+              <div className='text-text-primary grow px-2 py-[5px] text-xs leading-[18px]'>
                 <span>SUCCESS</span>
               </div>
             </div>
             <div className='flex'>
-              <div className='shrink-0 w-[104px] px-2 py-[5px] text-text-tertiary text-xs leading-[18px] truncate'>{t('runLog.meta.executor')}</div>
-              <div className='grow px-2 py-[5px] text-text-primary text-xs leading-[18px]'>
+              <div className='text-text-tertiary w-[104px] shrink-0 truncate px-2 py-[5px] text-xs leading-[18px]'>{t('runLog.meta.executor')}</div>
+              <div className='text-text-primary grow px-2 py-[5px] text-xs leading-[18px]'>
                 <span>{created_by || 'N/A'}</span>
               </div>
             </div>
             <div className='flex'>
-              <div className='shrink-0 w-[104px] px-2 py-[5px] text-text-tertiary text-xs leading-[18px] truncate'>{t('runLog.meta.startTime')}</div>
-              <div className='grow px-2 py-[5px] text-text-primary text-xs leading-[18px]'>
+              <div className='text-text-tertiary w-[104px] shrink-0 truncate px-2 py-[5px] text-xs leading-[18px]'>{t('runLog.meta.startTime')}</div>
+              <div className='text-text-primary grow px-2 py-[5px] text-xs leading-[18px]'>
                 <span>{formatTime(Date.parse(created_at) / 1000, t('appLog.dateTimeFormat') as string)}</span>
               </div>
             </div>
             <div className='flex'>
-              <div className='shrink-0 w-[104px] px-2 py-[5px] text-text-tertiary text-xs leading-[18px] truncate'>{t('runLog.meta.time')}</div>
-              <div className='grow px-2 py-[5px] text-text-primary text-xs leading-[18px]'>
+              <div className='text-text-tertiary w-[104px] shrink-0 truncate px-2 py-[5px] text-xs leading-[18px]'>{t('runLog.meta.time')}</div>
+              <div className='text-text-primary grow px-2 py-[5px] text-xs leading-[18px]'>
                 <span>{`${elapsed_time?.toFixed(3)}s`}</span>
               </div>
             </div>
             <div className='flex'>
-              <div className='shrink-0 w-[104px] px-2 py-[5px] text-text-tertiary text-xs leading-[18px] truncate'>{t('runLog.meta.tokens')}</div>
-              <div className='grow px-2 py-[5px] text-text-primary text-xs leading-[18px]'>
+              <div className='text-text-tertiary w-[104px] shrink-0 truncate px-2 py-[5px] text-xs leading-[18px]'>{t('runLog.meta.tokens')}</div>
+              <div className='text-text-primary grow px-2 py-[5px] text-xs leading-[18px]'>
                 <span>{`${total_tokens || 0} Tokens`}</span>
               </div>
             </div>
             <div className='flex'>
-              <div className='shrink-0 w-[104px] px-2 py-[5px] text-text-tertiary text-xs leading-[18px] truncate'>{t('appLog.agentLogDetail.agentMode')}</div>
-              <div className='grow px-2 py-[5px] text-text-primary text-xs leading-[18px]'>
+              <div className='text-text-tertiary w-[104px] shrink-0 truncate px-2 py-[5px] text-xs leading-[18px]'>{t('appLog.agentLogDetail.agentMode')}</div>
+              <div className='text-text-primary grow px-2 py-[5px] text-xs leading-[18px]'>
                 <span>{agentMode === 'function_call' ? t('appDebug.agent.agentModeType.functionCall') : t('appDebug.agent.agentModeType.ReACT')}</span>
               </div>
             </div>
             <div className='flex'>
-              <div className='shrink-0 w-[104px] px-2 py-[5px] text-text-tertiary text-xs leading-[18px] truncate'>{t('appLog.agentLogDetail.toolUsed')}</div>
-              <div className='grow px-2 py-[5px] text-text-primary text-xs leading-[18px]'>
+              <div className='text-text-tertiary w-[104px] shrink-0 truncate px-2 py-[5px] text-xs leading-[18px]'>{t('appLog.agentLogDetail.toolUsed')}</div>
+              <div className='text-text-primary grow px-2 py-[5px] text-xs leading-[18px]'>
                 <span>{tools?.length ? tools?.join(', ') : 'Null'}</span>
               </div>
             </div>
             <div className='flex'>
-              <div className='shrink-0 w-[104px] px-2 py-[5px] text-text-tertiary text-xs leading-[18px] truncate'>{t('appLog.agentLogDetail.iterations')}</div>
-              <div className='grow px-2 py-[5px] text-text-primary text-xs leading-[18px]'>
+              <div className='text-text-tertiary w-[104px] shrink-0 truncate px-2 py-[5px] text-xs leading-[18px]'>{t('appLog.agentLogDetail.iterations')}</div>
+              <div className='text-text-primary grow px-2 py-[5px] text-xs leading-[18px]'>
                 <span>{iterations}</span>
               </div>
             </div>

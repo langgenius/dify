@@ -47,32 +47,32 @@ const Sort: FC<Props> = ({
             className='block'
           >
             <div className={cn(
-              'flex items-center px-2 py-1 rounded-l-lg bg-components-input-bg-normal cursor-pointer hover:bg-state-base-hover-alt',
+              'bg-components-input-bg-normal hover:bg-state-base-hover-alt flex cursor-pointer items-center rounded-l-lg px-2 py-1',
               open && '!bg-state-base-hover-alt hover:bg-state-base-hover-alt',
             )}>
-              <div className='p-1 flex items-center gap-0.5'>
+              <div className='flex items-center gap-0.5 p-1'>
                 <div className='text-text-tertiary system-sm-regular'>{t('appLog.filter.sortBy')}</div>
                 <div className={cn('system-sm-regular text-text-tertiary', !!value && 'text-text-secondary')}>
                   {triggerContent}
                 </div>
               </div>
-              <RiArrowDownSLine className='h-4 w-4 text-text-tertiary' />
+              <RiArrowDownSLine className='text-text-tertiary h-4 w-4' />
             </div>
           </PortalToFollowElemTrigger>
           <PortalToFollowElemContent className='z-[1002]'>
-            <div className='relative w-[240px] bg-components-panel-bg-blur rounded-xl border-[0.5px] border-components-panel-border shadow-lg'>
-              <div className='p-1 max-h-72 overflow-auto'>
+            <div className='bg-components-panel-bg-blur border-components-panel-border relative w-[240px] rounded-xl border-[0.5px] shadow-lg'>
+              <div className='max-h-72 overflow-auto p-1'>
                 {items.map(item => (
                   <div
                     key={item.value}
-                    className='flex items-center gap-2 pl-3 py-[6px] px-2 rounded-lg cursor-pointer hover:bg-state-base-hover'
+                    className='hover:bg-state-base-hover flex cursor-pointer items-center gap-2 rounded-lg px-2 py-[6px] pl-3'
                     onClick={() => {
                       onSelect(`${order}${item.value}`)
                       setOpen(false)
                     }}
                   >
-                    <div title={item.name} className='grow text-text-secondary system-sm-medium truncate'>{item.name}</div>
-                    {value === item.value && <RiCheckLine className='shrink-0 w-4 h-4 text-util-colors-blue-light-blue-light-600' />}
+                    <div title={item.name} className='text-text-secondary system-sm-medium grow truncate'>{item.name}</div>
+                    {value === item.value && <RiCheckLine className='text-util-colors-blue-light-blue-light-600 h-4 w-4 shrink-0' />}
                   </div>
                 ))}
               </div>
@@ -80,9 +80,9 @@ const Sort: FC<Props> = ({
           </PortalToFollowElemContent>
         </div>
       </PortalToFollowElem>
-      <div className='ml-px p-2 rounded-r-lg bg-components-button-tertiary-bg hover:bg-components-button-tertiary-bg-hover cursor-pointer' onClick={() => onSelect(`${order ? '' : '-'}${value}`)}>
-        {!order && <RiSortAsc className='w-4 h-4 text-components-button-tertiary-text' />}
-        {order && <RiSortDesc className='w-4 h-4 text-components-button-tertiary-text' />}
+      <div className='bg-components-button-tertiary-bg hover:bg-components-button-tertiary-bg-hover ml-px cursor-pointer rounded-r-lg p-2' onClick={() => onSelect(`${order ? '' : '-'}${value}`)}>
+        {!order && <RiSortAsc className='text-components-button-tertiary-text h-4 w-4' />}
+        {order && <RiSortDesc className='text-components-button-tertiary-text h-4 w-4' />}
       </div>
     </div>
 

@@ -47,28 +47,28 @@ const Popup: FC<PopupProps> = ({
       }}
     >
       <PortalToFollowElemTrigger onClick={() => setOpen(v => !v)}>
-        <div className='flex items-center px-2 max-w-[240px] h-7 bg-white rounded-lg'>
-          <FileIcon type={fileType} className='shrink-0 mr-1 w-4 h-4' />
-          <div className='text-xs text-gray-600 truncate'>{data.documentName}</div>
+        <div className='flex h-7 max-w-[240px] items-center rounded-lg bg-white px-2'>
+          <FileIcon type={fileType} className='mr-1 h-4 w-4 shrink-0' />
+          <div className='truncate text-xs text-gray-600'>{data.documentName}</div>
         </div>
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent style={{ zIndex: 1000 }}>
-        <div className='max-w-[360px] bg-gray-50 rounded-xl shadow-lg'>
-          <div className='px-4 pt-3 pb-2'>
-            <div className='flex items-center h-[18px]'>
-              <FileIcon type={fileType} className='shrink-0 mr-1 w-4 h-4' />
-              <div className='text-xs font-medium text-gray-600 truncate'>{data.documentName}</div>
+        <div className='max-w-[360px] rounded-xl bg-gray-50 shadow-lg'>
+          <div className='px-4 pb-2 pt-3'>
+            <div className='flex h-[18px] items-center'>
+              <FileIcon type={fileType} className='mr-1 h-4 w-4 shrink-0' />
+              <div className='truncate text-xs font-medium text-gray-600'>{data.documentName}</div>
             </div>
           </div>
-          <div className='px-4 py-0.5 max-h-[450px] bg-white rounded-lg overflow-y-auto'>
+          <div className='max-h-[450px] overflow-y-auto rounded-lg bg-white px-4 py-0.5'>
             <div className='w-full'>
               {
                 data.sources.map((source, index) => (
                   <Fragment key={index}>
                     <div className='group py-3'>
-                      <div className='flex items-center justify-between mb-2'>
-                        <div className='flex items-center px-1.5 h-5 border border-gray-200 rounded-md'>
-                          <Hash02 className='mr-0.5 w-3 h-3 text-gray-400' />
+                      <div className='mb-2 flex items-center justify-between'>
+                        <div className='flex h-5 items-center rounded-md border border-gray-200 px-1.5'>
+                          <Hash02 className='mr-0.5 h-3 w-3 text-gray-400' />
                           <div className='text-[11px] font-medium text-gray-500'>
                             {source.segment_position || index + 1}
                           </div>
@@ -77,31 +77,31 @@ const Popup: FC<PopupProps> = ({
                           showHitInfo && (
                             <Link
                               href={`/datasets/${source.dataset_id}/documents/${source.document_id}`}
-                              className='hidden items-center h-[18px] text-xs text-primary-600 group-hover:flex'>
+                              className='text-primary-600 hidden h-[18px] items-center text-xs group-hover:flex'>
                               {t('common.chat.citation.linkToDataset')}
-                              <ArrowUpRight className='ml-1 w-3 h-3' />
+                              <ArrowUpRight className='ml-1 h-3 w-3' />
                             </Link>
                           )
                         }
                       </div>
-                      <div className='text-[13px] text-gray-800 break-words'>{source.content}</div>
+                      <div className='break-words text-[13px] text-gray-800'>{source.content}</div>
                       {
                         showHitInfo && (
-                          <div className='flex items-center mt-2 text-xs font-medium text-gray-500 flex-wrap'>
+                          <div className='mt-2 flex flex-wrap items-center text-xs font-medium text-gray-500'>
                             <Tooltip
                               text={t('common.chat.citation.characters')}
                               data={source.word_count}
-                              icon={<TypeSquare className='mr-1 w-3 h-3' />}
+                              icon={<TypeSquare className='mr-1 h-3 w-3' />}
                             />
                             <Tooltip
                               text={t('common.chat.citation.hitCount')}
                               data={source.hit_count}
-                              icon={<Target04 className='mr-1 w-3 h-3' />}
+                              icon={<Target04 className='mr-1 h-3 w-3' />}
                             />
                             <Tooltip
                               text={t('common.chat.citation.vectorHash')}
                               data={source.index_node_hash?.substring(0, 7)}
-                              icon={<BezierCurve03 className='mr-1 w-3 h-3' />}
+                              icon={<BezierCurve03 className='mr-1 h-3 w-3' />}
                             />
                             {
                               source.score && (

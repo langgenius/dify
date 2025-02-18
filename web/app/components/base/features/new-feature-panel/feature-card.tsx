@@ -32,26 +32,26 @@ const FeatureCard = ({
 }: Props) => {
   return (
     <div
-      className='mb-1 p-3 border-t-[0.5px] border-l-[0.5px] border-effects-highlight rounded-xl bg-background-section-burn'
+      className='border-effects-highlight bg-background-section-burn mb-1 rounded-xl border-l-[0.5px] border-t-[0.5px] p-3'
       onMouseEnter={onMouseEnter}
       onMouseLeave={onMouseLeave}
     >
       <div className='mb-2 flex items-center gap-2'>
         {icon}
-        <div className='grow flex items-center text-text-secondary system-sm-semibold'>
+        <div className='text-text-secondary system-sm-semibold flex grow items-center'>
           {title}
           {tooltip && (
             <Tooltip
               popupContent={tooltip}
             >
-              <div className='ml-0.5 p-px'><RiQuestionLine className='w-3.5 h-3.5 text-text-quaternary' /></div>
+              <div className='ml-0.5 p-px'><RiQuestionLine className='text-text-quaternary h-3.5 w-3.5' /></div>
             </Tooltip>
           )}
         </div>
         <Switch disabled={disabled} className='shrink-0' onChange={state => onChange?.(state)} defaultValue={value} />
       </div>
       {description && (
-        <div className='min-h-8 text-text-tertiary system-xs-regular line-clamp-2'>{description}</div>
+        <div className='text-text-tertiary system-xs-regular line-clamp-2 min-h-8'>{description}</div>
       )}
       {children}
     </div>

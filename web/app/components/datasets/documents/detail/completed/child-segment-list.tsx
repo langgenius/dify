@@ -94,7 +94,7 @@ const ChildSegmentList: FC<IChildSegmentCardProps> = ({
       isParagraphMode ? 'pt-1 pb-2' : 'px-3 grow',
       (isFullDocMode && isLoading) && 'overflow-y-hidden',
     )}>
-      {isFullDocMode ? <Divider type='horizontal' className='h-[1px] bg-divider-subtle my-1' /> : null}
+      {isFullDocMode ? <Divider type='horizontal' className='bg-divider-subtle my-1 h-[1px]' /> : null}
       <div className={classNames('flex items-center justify-between', isFullDocMode ? 'pt-2 pb-3 sticky -top-2 left-0 bg-background-default' : '')}>
         <div className={classNames(
           'h-7 flex items-center pl-1 pr-3 rounded-lg',
@@ -111,9 +111,9 @@ const ChildSegmentList: FC<IChildSegmentCardProps> = ({
             isParagraphMode
               ? collapsed
                 ? (
-                  <RiArrowRightSLine className='w-4 h-4 text-text-secondary opacity-50 mr-0.5' />
+                  <RiArrowRightSLine className='text-text-secondary mr-0.5 h-4 w-4 opacity-50' />
                 )
-                : (<RiArrowDownSLine className='w-4 h-4 text-text-secondary mr-0.5' />)
+                : (<RiArrowDownSLine className='text-text-secondary mr-0.5 h-4 w-4' />)
               : null
           }
           <span className='text-text-secondary system-sm-semibold-uppercase'>{totalText}</span>
@@ -150,7 +150,7 @@ const ChildSegmentList: FC<IChildSegmentCardProps> = ({
         ? <div className={classNames('flex gap-x-0.5', isFullDocMode ? 'grow mb-6' : 'items-center')}>
           {isParagraphMode && (
             <div className='self-stretch'>
-              <Divider type='vertical' className='w-[2px] mx-[7px] bg-text-accent-secondary' />
+              <Divider type='vertical' className='bg-text-accent-secondary mx-[7px] w-[2px]' />
             </div>
           )}
           {childChunks.length > 0

@@ -19,7 +19,7 @@ const AssignedVarReferencePopup: FC<Props> = ({
   const { t } = useTranslation()
   // max-h-[300px] overflow-y-auto todo: use portal to handle long list
   return (
-    <div className='p-1 bg-components-panel-bg-bur rounded-lg border-[0.5px] border-components-panel-border shadow-lg w-[352px]' >
+    <div className='bg-components-panel-bg-bur border-components-panel-border w-[352px] rounded-lg border-[0.5px] p-1 shadow-lg' >
       {(!vars || vars.length === 0)
         ? <ListEmpty
           title={t('workflow.nodes.assigner.noAssignedVars') || ''}

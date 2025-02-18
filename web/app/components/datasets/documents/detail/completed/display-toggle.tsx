@@ -22,14 +22,14 @@ const DisplayToggle: FC<DisplayToggleProps> = ({
     >
       <button
         type='button'
-        className='flex items-center justify-center p-2 rounded-lg bg-components-button-secondary-bg
-        border-[0.5px] border-components-button-secondary-border shadow-xs shadow-shadow-shadow-3 backdrop-blur-[5px]'
+        className='bg-components-button-secondary-bg border-components-button-secondary-border shadow-xs shadow-shadow-shadow-3 flex items-center
+        justify-center rounded-lg border-[0.5px] p-2 backdrop-blur-[5px]'
         onClick={toggleCollapsed}
       >
         {
           isCollapsed
-            ? <RiLineHeight className='w-4 h-4 text-components-button-secondary-text' />
-            : <Collapse className='w-4 h-4 text-components-button-secondary-text' />
+            ? <RiLineHeight className='text-components-button-secondary-text h-4 w-4' />
+            : <Collapse className='text-components-button-secondary-text h-4 w-4' />
         }
       </button>
 

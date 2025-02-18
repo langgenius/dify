@@ -75,28 +75,28 @@ const OneMoreStep = () => {
 
   return (
     <>
-      <div className="w-full mx-auto">
+      <div className="mx-auto w-full">
         <h2 className="title-4xl-semi-bold text-text-secondary">{t('login.oneMoreStep')}</h2>
-        <p className='mt-1 body-md-regular text-text-tertiary'>{t('login.createSample')}</p>
+        <p className='body-md-regular text-text-tertiary mt-1'>{t('login.createSample')}</p>
       </div>
 
-      <div className="w-full mx-auto mt-6">
+      <div className="mx-auto mt-6 w-full">
         <div className="bg-white">
           <div className="mb-5">
-            <label className="my-2 flex items-center justify-between system-md-semibold text-text-secondary">
+            <label className="system-md-semibold text-text-secondary my-2 flex items-center justify-between">
               {t('login.invitationCode')}
               <Tooltip
                 popupContent={
                   <div className='w-[256px] text-xs font-medium'>
                     <div className='font-medium'>{t('login.sendUsMail')}</div>
-                    <div className='text-xs font-medium cursor-pointer text-text-accent-secondary'>
+                    <div className='text-text-accent-secondary cursor-pointer text-xs font-medium'>
                       <a href="mailto:request-invitation@langgenius.ai">request-invitation@langgenius.ai</a>
                     </div>
                   </div>
                 }
                 needsDelay
               >
-                <span className='cursor-pointer text-text-accent-secondary'>{t('login.dontHave')}</span>
+                <span className='text-text-accent-secondary cursor-pointer'>{t('login.dontHave')}</span>
               </Tooltip>
             </label>
             <div className="mt-1">
@@ -112,7 +112,7 @@ const OneMoreStep = () => {
             </div>
           </div>
           <div className='mb-5'>
-            <label htmlFor="name" className="my-2 system-md-semibold text-text-secondary">
+            <label htmlFor="name" className="system-md-semibold text-text-secondary my-2">
               {t('login.interfaceLanguage')}
             </label>
             <div className="mt-1">
@@ -151,7 +151,7 @@ const OneMoreStep = () => {
               {t('login.go')}
             </Button>
           </div>
-          <div className="block w-full mt-2 system-xs-regular text-text-tertiary">
+          <div className="system-xs-regular text-text-tertiary mt-2 block w-full">
             {t('login.license.tip')}
             &nbsp;
             <Link

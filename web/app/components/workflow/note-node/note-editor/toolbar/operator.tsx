@@ -40,18 +40,18 @@ const Operator = ({
       <PortalToFollowElemTrigger onClick={() => setOpen(!open)}>
         <div
           className={cn(
-            'flex items-center justify-center w-8 h-8 cursor-pointer rounded-lg text-text-tertiary hover:text-text-secondary hover:bg-state-base-hover',
+            'text-text-tertiary hover:text-text-secondary hover:bg-state-base-hover flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg',
             open && 'bg-state-base-hover text-text-secondary',
           )}
         >
-          <RiMoreFill className='w-4 h-4' />
+          <RiMoreFill className='h-4 w-4' />
         </div>
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent>
-        <div className='min-w-[192px] bg-components-panel-bg-blur rounded-md border-[0.5px] border-components-panel-border shadow-xl'>
+        <div className='bg-components-panel-bg-blur border-components-panel-border min-w-[192px] rounded-md border-[0.5px] shadow-xl'>
           <div className='p-1'>
             <div
-              className='flex items-center justify-between px-3 h-8 cursor-pointer rounded-md text-sm text-text-secondary hover:bg-state-base-hover'
+              className='text-text-secondary hover:bg-state-base-hover flex h-8 cursor-pointer items-center justify-between rounded-md px-3 text-sm'
               onClick={() => {
                 onCopy()
                 setOpen(false)
@@ -61,7 +61,7 @@ const Operator = ({
               <ShortcutsName keys={['ctrl', 'c']} />
             </div>
             <div
-              className='flex items-center justify-between px-3 h-8 cursor-pointer rounded-md text-sm text-text-secondary hover:bg-state-base-hover'
+              className='text-text-secondary hover:bg-state-base-hover flex h-8 cursor-pointer items-center justify-between rounded-md px-3 text-sm'
               onClick={() => {
                 onDuplicate()
                 setOpen(false)
@@ -71,10 +71,10 @@ const Operator = ({
               <ShortcutsName keys={['ctrl', 'd']} />
             </div>
           </div>
-          <div className='h-[1px] bg-divider-subtle'></div>
+          <div className='bg-divider-subtle h-[1px]'></div>
           <div className='p-1'>
             <div
-              className='flex items-center justify-between px-3 h-8 cursor-pointer rounded-md text-sm text-text-secondary hover:bg-state-base-hover'
+              className='text-text-secondary hover:bg-state-base-hover flex h-8 cursor-pointer items-center justify-between rounded-md px-3 text-sm'
               onClick={e => e.stopPropagation()}
             >
               <div>{t('workflow.nodes.note.editor.showAuthor')}</div>
@@ -85,10 +85,10 @@ const Operator = ({
               />
             </div>
           </div>
-          <div className='h-[1px] bg-divider-subtle'></div>
+          <div className='bg-divider-subtle h-[1px]'></div>
           <div className='p-1'>
             <div
-              className='flex items-center justify-between px-3 h-8 cursor-pointer rounded-md text-sm text-text-secondary hover:text-text-destructive hover:bg-state-destructive-hover'
+              className='text-text-secondary hover:text-text-destructive hover:bg-state-destructive-hover flex h-8 cursor-pointer items-center justify-between rounded-md px-3 text-sm'
               onClick={() => {
                 onDelete()
                 setOpen(false)

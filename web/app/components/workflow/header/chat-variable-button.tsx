@@ -16,7 +16,7 @@ const ChatVariableButton = ({ disabled }: { disabled: boolean }) => {
 
   return (
     <Button className='p-2' disabled={disabled} onClick={handleClick}>
-      <BubbleX className='w-4 h-4 text-components-button-secondary-text' />
+      <BubbleX className='text-components-button-secondary-text h-4 w-4' />
     </Button>
   )
 }

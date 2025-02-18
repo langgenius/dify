@@ -23,8 +23,8 @@ type Props = {
 
 const KeyValue = ({ label, value, tooltip }: { label: string; value: string | number | React.JSX.Element; tooltip?: string }) => {
   return (
-    <div className='mt-3.5 leading-[125%] text-[13px] font-medium'>
-      <div className='flex items-center text-gray-500 space-x-1'>
+    <div className='mt-3.5 text-[13px] font-medium leading-[125%]'>
+      <div className='flex items-center space-x-1 text-gray-500'>
         <div>{label}</div>
         {tooltip && (
           <Tooltip
@@ -104,7 +104,7 @@ const PlanItem: FC<Props> = ({
     })[plan]
   })()
   const comingSoon = (
-    <div className='leading-[12px] text-[9px] font-semibold text-[#3538CD] uppercase'>{t('billing.plansCommon.comingSoon')}</div>
+    <div className='text-[9px] font-semibold uppercase leading-[12px] text-[#3538CD]'>{t('billing.plansCommon.comingSoon')}</div>
   )
   const supportContent = (() => {
     switch (plan) {
@@ -211,13 +211,13 @@ const PlanItem: FC<Props> = ({
     }
   }
   return (
-    <div className={cn(isMostPopularPlan ? 'bg-[#0086C9] p-0.5' : 'pt-7', 'flex flex-col min-w-[290px] w-[290px] rounded-xl')}>
+    <div className={cn(isMostPopularPlan ? 'bg-[#0086C9] p-0.5' : 'pt-7', 'flex w-[290px] min-w-[290px] flex-col rounded-xl')}>
       {isMostPopularPlan && (
-        <div className='flex items-center h-7 justify-center leading-[12px] text-xs font-medium text-[#F5F8FF]'>{t('billing.plansCommon.mostPopular')}</div>
+        <div className='flex h-7 items-center justify-center text-xs font-medium leading-[12px] text-[#F5F8FF]'>{t('billing.plansCommon.mostPopular')}</div>
       )}
-      <div className={cn(style[plan].bg, 'grow px-6 py-6 rounded-[10px]')}>
-        <div className={cn(style[plan].title, 'mb-1 leading-[125%] text-lg font-semibold')}>{t(`${i18nPrefix}.name`)}</div>
-        <div className={cn(isFreePlan ? 'mb-5 text-[#FB6514]' : 'mb-4 text-gray-500', 'h-8 leading-[125%] text-[13px] font-normal')}>{t(`${i18nPrefix}.description`)}</div>
+      <div className={cn(style[plan].bg, 'grow rounded-[10px] px-6 py-6')}>
+        <div className={cn(style[plan].title, 'mb-1 text-lg font-semibold leading-[125%]')}>{t(`${i18nPrefix}.name`)}</div>
+        <div className={cn(isFreePlan ? 'mb-5 text-[#FB6514]' : 'mb-4 text-gray-500', 'h-8 text-[13px] font-normal leading-[125%]')}>{t(`${i18nPrefix}.description`)}</div>
 
         {/* Price */}
         {isFreePlan && (
@@ -227,17 +227,17 @@ const PlanItem: FC<Props> = ({
           <div className={priceClassName}>{t('billing.plansCommon.contactSales')}</div>
         )}
         {!isFreePlan && !isEnterprisePlan && (
-          <div className='flex items-end h-9'>
+          <div className='flex h-9 items-end'>
             <div className={priceClassName}>${isYear ? planInfo.price * 10 : planInfo.price}</div>
             <div className='ml-1'>
-              {isYear && <div className='leading-[18px] text-xs font-medium text-[#F26725]'>{t('billing.plansCommon.save')}${planInfo.price * 2}</div>}
-              <div className='leading-[18px] text-[15px] font-normal text-gray-500'>/{t(`billing.plansCommon.${!isYear ? 'month' : 'year'}`)}</div>
+              {isYear && <div className='text-xs font-medium leading-[18px] text-[#F26725]'>{t('billing.plansCommon.save')}${planInfo.price * 2}</div>}
+              <div className='text-[15px] font-normal leading-[18px] text-gray-500'>/{t(`billing.plansCommon.${!isYear ? 'month' : 'year'}`)}</div>
             </div>
           </div>
         )}
 
         <div
-          className={cn(isMostPopularPlan && !isCurrent && '!bg-[#444CE7] !text-white !border !border-[#3538CD] shadow-sm', isPlanDisabled ? 'opacity-30' : `${style[plan].hoverAndActive} cursor-pointer`, 'mt-4 flex h-11 items-center justify-center border-[2px] border-gray-900 rounded-3xl text-sm font-semibold text-gray-900')}
+          className={cn(isMostPopularPlan && !isCurrent && '!border !border-[#3538CD] !bg-[#444CE7] !text-white shadow-sm', isPlanDisabled ? 'opacity-30' : `${style[plan].hoverAndActive} cursor-pointer`, 'mt-4 flex h-11 items-center justify-center rounded-3xl border-[2px] border-gray-900 text-sm font-semibold text-gray-900')}
           onClick={handleGetPayUrl}
         >
           {btnText}
@@ -245,7 +245,7 @@ const PlanItem: FC<Props> = ({
 
         <div className='my-4 h-[1px] bg-black/5'></div>
 
-        <div className='leading-[125%] text-[13px] font-normal text-gray-900'>
+        <div className='text-[13px] font-normal leading-[125%] text-gray-900'>
           {t(`${i18nPrefix}.includesTitle`)}
         </div>
         <KeyValue

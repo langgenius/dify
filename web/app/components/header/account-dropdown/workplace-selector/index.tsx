@@ -31,20 +31,20 @@ const WorkplaceSelector = () => {
   }
 
   return (
-    <Menu as="div" className="relative w-full h-full">
+    <Menu as="div" className="relative h-full w-full">
       {
         ({ open }) => (
           <>
             <MenuButton className={cn(
               `
-                flex items-center p-0.5 gap-1.5 w-full
-                group hover:bg-state-base-hover cursor-pointer ${open && 'bg-state-base-hover'} rounded-[10px]
+                hover:bg-state-base-hover group flex w-full cursor-pointer
+                items-center gap-1.5 p-0.5 ${open && 'bg-state-base-hover'} rounded-[10px]
               `,
             )}>
-              <div className='flex items-center justify-center w-7 h-7 bg-[#EFF4FF] rounded-lg text-xs font-medium text-primary-600'>{currentWorkspace?.name[0].toLocaleUpperCase()}</div>
+              <div className='text-primary-600 flex h-7 w-7 items-center justify-center rounded-lg bg-[#EFF4FF] text-xs font-medium'>{currentWorkspace?.name[0].toLocaleUpperCase()}</div>
               <div className='flex flex-row'>
-                <div className={'truncate max-w-[80px] text-text-secondary system-sm-medium'}>{currentWorkspace?.name}</div>
-                <RiArrowDownSLine className='w-4 h-4 text-text-secondary' />
+                <div className={'text-text-secondary system-sm-medium max-w-[80px] truncate'}>{currentWorkspace?.name}</div>
+                <RiArrowDownSLine className='text-text-secondary h-4 w-4' />
               </div>
             </MenuButton >
             <Transition
@@ -59,19 +59,19 @@ const WorkplaceSelector = () => {
               <MenuItems
                 className={cn(
                   `
-                    flex w-[280px] flex-col items-start absolute left-[-15px] mt-1 rounded-xl shadows-shadow-lg
+                    shadows-shadow-lg absolute left-[-15px] mt-1 flex w-[280px] flex-col items-start rounded-xl
                   `,
                 )}
               >
-                <div className="flex flex-col p-1 pb-2 items-start self-stretch w-full rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg ">
-                  <div className='flex px-3 pt-1 pb-0.5 items-start self-stretch'>
-                    <span className='flex-1 text-text-tertiary system-xs-medium-uppercase'>{t('common.userProfile.workspace')}</span>
+                <div className="border-components-panel-border bg-components-panel-bg-blur flex w-full flex-col items-start self-stretch rounded-xl border-[0.5px] p-1 pb-2 shadow-lg ">
+                  <div className='flex items-start self-stretch px-3 pb-0.5 pt-1'>
+                    <span className='text-text-tertiary system-xs-medium-uppercase flex-1'>{t('common.userProfile.workspace')}</span>
                   </div>
                   {
                     workspaces.map(workspace => (
-                      <div className='flex py-1 pl-3 pr-2 items-center gap-2 self-stretch hover:bg-state-base-hover rounded-lg' key={workspace.id} onClick={() => handleSwitchWorkspace(workspace.id)}>
-                        <div className='flex items-center justify-center w-6 h-6 bg-[#EFF4FF] rounded-md text-xs font-medium text-primary-600'>{workspace.name[0].toLocaleUpperCase()}</div>
-                        <div className='line-clamp-1 grow overflow-hidden text-text-secondary text-ellipsis system-md-regular cursor-pointer'>{workspace.name}</div>
+                      <div className='hover:bg-state-base-hover flex items-center gap-2 self-stretch rounded-lg py-1 pl-3 pr-2' key={workspace.id} onClick={() => handleSwitchWorkspace(workspace.id)}>
+                        <div className='text-primary-600 flex h-6 w-6 items-center justify-center rounded-md bg-[#EFF4FF] text-xs font-medium'>{workspace.name[0].toLocaleUpperCase()}</div>
+                        <div className='text-text-secondary system-md-regular line-clamp-1 grow cursor-pointer overflow-hidden text-ellipsis'>{workspace.name}</div>
                         {
                           <PremiumBadge size='s' color='gray' allowHover={false}>
                             <div className='system-2xs-medium'>

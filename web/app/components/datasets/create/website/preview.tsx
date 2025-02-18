@@ -22,14 +22,14 @@ const WebsitePreview = ({
       <div className={cn(s.previewHeader)}>
         <div className={cn(s.title)}>
           <span>{t('datasetCreation.stepOne.pagePreview')}</span>
-          <div className='flex items-center justify-center w-6 h-6 cursor-pointer' onClick={hidePreview}>
+          <div className='flex h-6 w-6 cursor-pointer items-center justify-center' onClick={hidePreview}>
             <XMarkIcon className='h-4 w-4'></XMarkIcon>
           </div>
         </div>
-        <div className='leading-5 text-sm font-medium text-gray-900 break-words'>
+        <div className='break-words text-sm font-medium leading-5 text-gray-900'>
           {payload.title}
         </div>
-        <div className='truncate leading-[18px] text-xs font-normal text-gray-500' title={payload.source_url}>{payload.source_url}</div>
+        <div className='truncate text-xs font-normal leading-[18px] text-gray-500' title={payload.source_url}>{payload.source_url}</div>
       </div>
       <div className={cn(s.previewContent)}>
         <div className={cn(s.fileContent, 'body-md-regular')}>{payload.markdown}</div>

@@ -25,12 +25,12 @@ const Billing: FC = () => {
     <div>
       <PlanComp loc={'billing-page'} />
       {enableBilling && isCurrentWorkspaceManager && billingUrl && (
-        <a className='mt-5 flex px-6 justify-between h-12 items-center bg-gray-50 rounded-xl cursor-pointer' href={billingUrl} target='_blank' rel='noopener noreferrer'>
+        <a className='mt-5 flex h-12 cursor-pointer items-center justify-between rounded-xl bg-gray-50 px-6' href={billingUrl} target='_blank' rel='noopener noreferrer'>
           <div className='flex items-center'>
-            <ReceiptList className='w-4 h-4 text-gray-700' />
+            <ReceiptList className='h-4 w-4 text-gray-700' />
             <div className='ml-2 text-sm font-normal text-gray-700'>{t('billing.viewBilling')}</div>
           </div>
-          <RiExternalLinkLine className='w-3 h-3' />
+          <RiExternalLinkLine className='h-3 w-3' />
         </a>
       )}
     </div>

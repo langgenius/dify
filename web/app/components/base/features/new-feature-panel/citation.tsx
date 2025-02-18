@@ -40,8 +40,8 @@ const Citation = ({
   return (
     <FeatureCard
       icon={
-        <div className='shrink-0 p-1 rounded-lg border-[0.5px] border-divider-subtle shadow-xs bg-util-colors-warning-warning-500'>
-          <Citations className='w-4 h-4 text-text-primary-on-surface' />
+        <div className='border-divider-subtle shadow-xs bg-util-colors-warning-warning-500 shrink-0 rounded-lg border-[0.5px] p-1'>
+          <Citations className='text-text-primary-on-surface h-4 w-4' />
         </div>
       }
       title={t('appDebug.feature.citation.title')}

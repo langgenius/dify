@@ -21,7 +21,7 @@ type IShareLinkProps = {
 }
 
 const StepNum: FC<{ children: React.ReactNode }> = ({ children }) =>
-  <div className='h-7 w-7 flex justify-center items-center shrink-0 mr-3 text-text-accent bg-util-colors-blue-blue-50 rounded-2xl'>
+  <div className='text-text-accent bg-util-colors-blue-blue-50 mr-3 flex h-7 w-7 shrink-0 items-center justify-center rounded-2xl'>
     {children}
   </div>
 
@@ -51,17 +51,17 @@ const CustomizeModal: FC<IShareLinkProps> = ({
     description={t(`${prefixCustomize}.explanation`)}
     isShow={isShow}
     onClose={onClose}
-    className='!max-w-2xl w-[640px]'
+    className='w-[640px] !max-w-2xl'
     closable={true}
   >
-    <div className='w-full mt-4 px-6 py-5 border-components-panel-border rounded-lg border-[0.5px]'>
+    <div className='border-components-panel-border mt-4 w-full rounded-lg border-[0.5px] px-6 py-5'>
       <Tag bordered={true} hideBg={true} className='text-text-accent-secondary border-text-accent-secondary uppercase'>{t(`${prefixCustomize}.way`)} 1</Tag>
-      <p className='my-2 system-sm-medium text-text-secondary'>{t(`${prefixCustomize}.way1.name`)}</p>
+      <p className='system-sm-medium text-text-secondary my-2'>{t(`${prefixCustomize}.way1.name`)}</p>
       <div className='flex py-4'>
         <StepNum>1</StepNum>
         <div className='flex flex-col'>
           <div className='text-text-primary'>{t(`${prefixCustomize}.way1.step1`)}</div>
-          <div className='text-text-tertiary text-xs mt-1 mb-2'>{t(`${prefixCustomize}.way1.step1Tip`)}</div>
+          <div className='text-text-tertiary mb-2 mt-1 text-xs'>{t(`${prefixCustomize}.way1.step1Tip`)}</div>
           <a href={`https://github.com/langgenius/${isChatApp ? 'webapp-conversation' : 'webapp-text-generator'}`} target='_blank' rel='noopener noreferrer'>
             <Button><GithubIcon className='text-text-secondary mr-2' />{t(`${prefixCustomize}.way1.step1Operation`)}</Button>
           </a>
@@ -71,10 +71,10 @@ const CustomizeModal: FC<IShareLinkProps> = ({
         <StepNum>2</StepNum>
         <div className='flex flex-col'>
           <div className='text-text-primary'>{t(`${prefixCustomize}.way1.step3`)}</div>
-          <div className='text-text-tertiary text-xs mt-1 mb-2'>{t(`${prefixCustomize}.way1.step2Tip`)}</div>
+          <div className='text-text-tertiary mb-2 mt-1 text-xs'>{t(`${prefixCustomize}.way1.step2Tip`)}</div>
           <a href="https://vercel.com/docs/concepts/deployments/git/vercel-for-github" target='_blank' rel='noopener noreferrer'>
             <Button>
-              <div className='mr-1.5 border-solid border-t-0 border-r-[7px] border-l-[7px] border-b-[12px] border-r-transparent border-text-primary border-l-transparent border-t-transparent'></div>
+              <div className='border-text-primary mr-1.5 border-b-[12px] border-l-[7px] border-r-[7px] border-t-0 border-solid border-l-transparent border-r-transparent border-t-transparent'></div>
               <span>{t(`${prefixCustomize}.way1.step2Operation`)}</span>
             </Button>
           </a>
@@ -82,10 +82,10 @@ const CustomizeModal: FC<IShareLinkProps> = ({
       </div>
       <div className='flex py-4'>
         <StepNum>3</StepNum>
-        <div className='flex flex-col w-full overflow-hidden'>
+        <div className='flex w-full flex-col overflow-hidden'>
           <div className='text-text-primary'>{t(`${prefixCustomize}.way1.step3`)}</div>
-          <div className='text-text-tertiary text-xs mt-1 mb-2'>{t(`${prefixCustomize}.way1.step3Tip`)}</div>
-          <pre className='overflow-x-scroll box-border py-3 px-4 bg-background-section text-xs font-medium rounded-lg select-text text-text-secondary border-[0.5px] border-components-panel-border'>
+          <div className='text-text-tertiary mb-2 mt-1 text-xs'>{t(`${prefixCustomize}.way1.step3Tip`)}</div>
+          <pre className='bg-background-section text-text-secondary border-components-panel-border box-border select-text overflow-x-scroll rounded-lg border-[0.5px] px-4 py-3 text-xs font-medium'>
             NEXT_PUBLIC_APP_ID={`'${appId}'`} <br />
             NEXT_PUBLIC_APP_KEY={'\'<Web API Key From Dify>\''} <br />
             NEXT_PUBLIC_API_URL={`'${api_base_url}'`}
@@ -94,9 +94,9 @@ const CustomizeModal: FC<IShareLinkProps> = ({
       </div>
 
     </div>
-    <div className='w-full mt-4 px-6 py-5 border-components-panel-border rounded-lg border-[0.5px]'>
+    <div className='border-components-panel-border mt-4 w-full rounded-lg border-[0.5px] px-6 py-5'>
       <Tag bordered={true} hideBg={true} className='text-text-accent-secondary border-text-accent-secondary uppercase'>{t(`${prefixCustomize}.way`)} 2</Tag>
-      <p className='my-2 system-sm-medium text-text-secondary'>{t(`${prefixCustomize}.way2.name`)}</p>
+      <p className='system-sm-medium text-text-secondary my-2'>{t(`${prefixCustomize}.way2.name`)}</p>
       <Button
         className='mt-2'
         onClick={() =>
@@ -109,8 +109,8 @@ const CustomizeModal: FC<IShareLinkProps> = ({
           )
         }
       >
-        <span className='text-sm text-text-secondary'>{t(`${prefixCustomize}.way2.operation`)}</span>
-        <ArrowTopRightOnSquareIcon className='w-4 h-4 ml-1 text-text-secondary shrink-0' />
+        <span className='text-text-secondary text-sm'>{t(`${prefixCustomize}.way2.operation`)}</span>
+        <ArrowTopRightOnSquareIcon className='text-text-secondary ml-1 h-4 w-4 shrink-0' />
       </Button>
     </div>
   </Modal>

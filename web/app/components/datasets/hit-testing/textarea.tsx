@@ -104,13 +104,13 @@ const TextAreaWithButton = ({
   }
 
   const retrievalMethod = isEconomy ? RETRIEVE_METHOD.invertedIndex : retrievalConfig.search_method
-  const icon = <Image className='size-3.5 text-util-colors-purple-purple-600' src={getIcon(retrievalMethod)} alt='' />
+  const icon = <Image className='text-util-colors-purple-purple-600 size-3.5' src={getIcon(retrievalMethod)} alt='' />
   return (
     <>
       <div className={cn('relative rounded-xl', promptS.gradientBorder)}>
-        <div className='relative pt-1.5 rounded-tl-xl rounded-tr-xl bg-background-section-burn'>
-          <div className="pl-4 pr-1.5 pb-1 flex justify-between h-8 items-center">
-            <span className="text-text-secondary font-semibold text-[13px] leading-4 uppercase">
+        <div className='bg-background-section-burn relative rounded-tl-xl rounded-tr-xl pt-1.5'>
+          <div className="flex h-8 items-center justify-between pb-1 pl-4 pr-1.5">
+            <span className="text-text-secondary text-[13px] font-semibold uppercase leading-4">
               {t('datasetHitTesting.input.title')}
             </span>
             {isExternal
@@ -119,18 +119,18 @@ const TextAreaWithButton = ({
                 size='small'
                 onClick={() => setIsSettingsOpen(!isSettingsOpen)}
               >
-                <RiEqualizer2Line className='text-components-button-secondary-text w-3.5 h-3.5' />
-                <div className='flex px-[3px] justify-center items-center gap-1'>
+                <RiEqualizer2Line className='text-components-button-secondary-text h-3.5 w-3.5' />
+                <div className='flex items-center justify-center gap-1 px-[3px]'>
                   <span className='text-components-button-secondary-text system-xs-medium'>{t('datasetHitTesting.settingTitle')}</span>
                 </div>
               </Button>
               : <div
                 onClick={onClickRetrievalMethod}
-                className='flex px-1.5 h-7 items-center bg-components-button-secondary-bg hover:bg-components-button-secondary-bg-hover rounded-lg border-[0.5px] border-components-button-secondary-bg shadow-xs backdrop-blur-[5px] cursor-pointer space-x-0.5'
+                className='bg-components-button-secondary-bg hover:bg-components-button-secondary-bg-hover border-components-button-secondary-bg shadow-xs flex h-7 cursor-pointer items-center space-x-0.5 rounded-lg border-[0.5px] px-1.5 backdrop-blur-[5px]'
               >
                 {icon}
                 <div className='text-text-secondary text-xs font-medium uppercase'>{t(`dataset.retrieval.${retrievalMethod}.title`)}</div>
-                <RiEqualizer2Line className='size-4 text-components-menu-item-text'></RiEqualizer2Line>
+                <RiEqualizer2Line className='text-components-menu-item-text size-4'></RiEqualizer2Line>
               </div>
             }
           </div>
@@ -145,33 +145,33 @@ const TextAreaWithButton = ({
               />
             )
           }
-          <div className='h-2 rounded-tl-xl rounded-tr-xl bg-background-default'></div>
+          <div className='bg-background-default h-2 rounded-tl-xl rounded-tr-xl'></div>
         </div>
-        <div className='px-4 pb-11 bg-background-default rounded-b-xl'>
+        <div className='bg-background-default rounded-b-xl px-4 pb-11'>
           <textarea
-            className='h-[220px] border-none resize-none font-normal caret-primary-600 text-text-secondary text-sm w-full focus-visible:outline-none  placeholder:text-gray-300 placeholder:text-sm placeholder:font-normal'
+            className='caret-primary-600 text-text-secondary h-[220px] w-full resize-none border-none text-sm font-normal placeholder:text-sm  placeholder:font-normal placeholder:text-gray-300 focus-visible:outline-none'
             value={text}
             onChange={handleTextChange}
             placeholder={t('datasetHitTesting.input.placeholder') as string}
           />
-          <div className="absolute inset-x-0 bottom-0 flex items-center justify-between mx-4 mt-2 mb-2">
+          <div className="absolute inset-x-0 bottom-0 mx-4 mb-2 mt-2 flex items-center justify-between">
             {text?.length > 200
               ? (
                 <Tooltip
                   popupContent={t('datasetHitTesting.input.countWarning')}
                 >
                   <div
-                    className={cn('flex items-center h-5 px-1 rounded-md bg-background-section-burn text-red-600 text-xs font-medium', !text?.length && 'opacity-50')}
+                    className={cn('bg-background-section-burn flex h-5 items-center rounded-md px-1 text-xs font-medium text-red-600', !text?.length && 'opacity-50')}
                   >
                     {text?.length}
-                    <span className="text-red-300 mx-0.5">/</span>
+                    <span className="mx-0.5 text-red-300">/</span>
                     200
                   </div>
                 </Tooltip>
               )
               : (
                 <div
-                  className={cn('flex items-center h-5 px-1 rounded-md bg-background-section-burn text-text-tertiary text-xs font-medium', !text?.length && 'opacity-50')}
+                  className={cn('bg-background-section-burn text-text-tertiary flex h-5 items-center rounded-md px-1 text-xs font-medium', !text?.length && 'opacity-50')}
                 >
                   {text?.length}
                   <span className="text-divider-deep mx-0.5">/</span>

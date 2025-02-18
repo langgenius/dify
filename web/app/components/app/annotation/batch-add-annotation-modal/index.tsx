@@ -87,10 +87,10 @@ const BatchModal: FC<IBatchModalProps> = ({
   }
 
   return (
-    <Modal isShow={isShow} onClose={() => { }} className='px-8 py-6 !max-w-[520px] !rounded-xl'>
-      <div className='relative pb-1 system-xl-medium text-text-primary'>{t('appAnnotation.batchModal.title')}</div>
-      <div className='absolute right-4 top-4 p-2 cursor-pointer' onClick={onCancel}>
-        <RiCloseLine className='w-4 h-4 text-text-tertiary' />
+    <Modal isShow={isShow} onClose={() => { }} className='!max-w-[520px] !rounded-xl px-8 py-6'>
+      <div className='system-xl-medium text-text-primary relative pb-1'>{t('appAnnotation.batchModal.title')}</div>
+      <div className='absolute right-4 top-4 cursor-pointer p-2' onClick={onCancel}>
+        <RiCloseLine className='text-text-tertiary h-4 w-4' />
       </div>
       <CSVUploader
         file={currentCSV}
@@ -104,8 +104,8 @@ const BatchModal: FC<IBatchModalProps> = ({
         </div>
       )}
 
-      <div className='mt-[28px] pt-6 flex justify-end'>
-        <Button className='mr-2 text-text-tertiary system-sm-medium' onClick={onCancel}>
+      <div className='mt-[28px] flex justify-end pt-6'>
+        <Button className='text-text-tertiary system-sm-medium mr-2' onClick={onCancel}>
           {t('appAnnotation.batchModal.cancel')}
         </Button>
         <Button

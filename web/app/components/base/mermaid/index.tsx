@@ -95,10 +95,10 @@ const Flowchart = (
     (<div ref={ref}>
       <div className="msh-segmented msh-segmented-sm css-23bs09 css-var-r1">
         <div className="msh-segmented-group">
-          <label className="msh-segmented-item flex items-center space-x-1 m-2 w-[200px]">
+          <label className="msh-segmented-item m-2 flex w-[200px] items-center space-x-1">
             <div key='classic'
-              className={cn('flex items-center justify-center mb-4 w-[calc((100%-8px)/2)] h-8 rounded-lg border border-components-option-card-option-border bg-components-option-card-option-bg cursor-pointer system-sm-medium text-text-secondary',
-                look === 'classic' && 'border-[1.5px] border-components-option-card-option-selected-border bg-components-option-card-option-selected-bg text-text-primary',
+              className={cn('border-components-option-card-option-border bg-components-option-card-option-bg system-sm-medium text-text-secondary mb-4 flex h-8 w-[calc((100%-8px)/2)] cursor-pointer items-center justify-center rounded-lg border',
+                look === 'classic' && 'border-components-option-card-option-selected-border bg-components-option-card-option-selected-bg text-text-primary border-[1.5px]',
               )}
 
               onClick={() => setLook('classic')}
@@ -107,8 +107,8 @@ const Flowchart = (
             </div>
             <div key='handDrawn'
               className={cn(
-                'flex items-center justify-center mb-4 w-[calc((100%-8px)/2)] h-8 rounded-lg border border-components-option-card-option-border bg-components-option-card-option-bg cursor-pointer system-sm-medium text-text-secondary',
-                look === 'handDrawn' && 'border-[1.5px] border-components-option-card-option-selected-border bg-components-option-card-option-selected-bg text-text-primary',
+                'border-components-option-card-option-border bg-components-option-card-option-bg system-sm-medium text-text-secondary mb-4 flex h-8 w-[calc((100%-8px)/2)] cursor-pointer items-center justify-center rounded-lg border',
+                look === 'handDrawn' && 'border-components-option-card-option-selected-border bg-components-option-card-option-selected-bg text-text-primary border-[1.5px]',
               )}
               onClick={() => setLook('handDrawn')}
             >
@@ -119,19 +119,19 @@ const Flowchart = (
       </div>
       {
         svgCode
-        && <div className="mermaid cursor-pointer h-auto w-full object-fit: cover" onClick={() => setImagePreviewUrl(svgCode)}>
+        && <div className="mermaid object-fit: cover h-auto w-full cursor-pointer" onClick={() => setImagePreviewUrl(svgCode)}>
           {svgCode && <img src={svgCode} alt="mermaid_chart" />}
         </div>
       }
       {isLoading
-        && <div className='py-4 px-[26px]'>
+        && <div className='px-[26px] py-4'>
           <LoadingAnim type='text' />
         </div>
       }
       {
         errMsg
-        && <div className='py-4 px-[26px]'>
-          <ExclamationTriangleIcon className='w-6 h-6 text-red-500' />
+        && <div className='px-[26px] py-4'>
+          <ExclamationTriangleIcon className='h-6 w-6 text-red-500' />
           &nbsp;
           {errMsg}
         </div>

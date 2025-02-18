@@ -54,7 +54,7 @@ const Panel: FC<NodePanelProps<KnowledgeRetrievalNodeType>> = ({
 
   return (
     <div className='pt-2'>
-      <div className='px-4 pb-4 space-y-4'>
+      <div className='space-y-4 px-4 pb-4'>
         {/* {JSON.stringify(inputs, null, 2)} */}
         <Field
           title={t(`${i18nPrefix}.queryVariable`)}
@@ -89,7 +89,7 @@ const Panel: FC<NodePanelProps<KnowledgeRetrievalNodeType>> = ({
                 onOpenFromPropsChange={handleOpenFromPropsChange}
                 selectedDatasets={selectedDatasets}
               />
-              {!readOnly && (<div className='w-px h-3 bg-gray-200'></div>)}
+              {!readOnly && (<div className='h-3 w-px bg-gray-200'></div>)}
               {!readOnly && (
                 <AddKnowledge
                   selectedIds={inputs.dataset_ids}

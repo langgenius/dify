@@ -32,8 +32,8 @@ export default function AccountAbout({
       className={s.modal}
     >
       <div className='relative pt-4'>
-        <div className='absolute -top-2 -right-4 flex justify-center items-center w-8 h-8 cursor-pointer' onClick={onCancel}>
-          <RiCloseLine className='w-4 h-4 text-gray-500' />
+        <div className='absolute -right-4 -top-2 flex h-8 w-8 cursor-pointer items-center justify-center' onClick={onCancel}>
+          <RiCloseLine className='h-4 w-4 text-gray-500' />
         </div>
         <div>
           <LogoSite className='mx-auto mb-2' />
@@ -52,8 +52,8 @@ export default function AccountAbout({
             </div>
           </div>
         </div>
-        <div className='mb-4 -mx-8 h-[0.5px] bg-gray-200' />
-        <div className='flex justify-between items-center'>
+        <div className='-mx-8 mb-4 h-[0.5px] bg-gray-200' />
+        <div className='flex items-center justify-between'>
           <div className='text-xs font-medium text-gray-800'>
             {
               isLatest

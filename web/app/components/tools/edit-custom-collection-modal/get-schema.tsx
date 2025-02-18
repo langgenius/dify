@@ -56,18 +56,18 @@ const GetSchema: FC<Props> = ({
   }, showExamplesRef)
 
   return (
-    <div className='flex space-x-1 justify-end relative w-[224px]'>
+    <div className='relative flex w-[224px] justify-end space-x-1'>
       <div ref={importURLRef}>
         <Button
           size='small'
           className='space-x-1 '
           onClick={() => { setShowImportFromUrl(!showImportFromUrl) }}
         >
-          <RiAddLine className='w-3 h-3' />
+          <RiAddLine className='h-3 w-3' />
           <div className='system-xs-medium text-text-secondary'>{t('tools.createTool.importFromUrl')}</div>
         </Button>
         {showImportFromUrl && (
-          <div className=' absolute left-[-35px] top-[26px] p-2 rounded-lg border border-components-panel-border bg-components-panel-bg shadow-lg'>
+          <div className=' border-components-panel-border bg-components-panel-bg absolute left-[-35px] top-[26px] rounded-lg border p-2 shadow-lg'>
             <div className='relative'>
               <Input
                 type='text'
@@ -77,7 +77,7 @@ const GetSchema: FC<Props> = ({
                 onChange={e => setImportUrl(e.target.value)}
               />
               <Button
-                className='absolute top-1 right-1'
+                className='absolute right-1 top-1'
                 size='small'
                 variant='primary'
                 disabled={!importUrl}
@@ -97,10 +97,10 @@ const GetSchema: FC<Props> = ({
           onClick={() => { setShowExamples(!showExamples) }}
         >
           <div className='system-xs-medium text-text-secondary'>{t('tools.createTool.examples')}</div>
-          <RiArrowDownSLine className='w-3 h-3' />
+          <RiArrowDownSLine className='h-3 w-3' />
         </Button>
         {showExamples && (
-          <div className='absolute top-7 right-0 p-1 rounded-lg bg-components-panel-bg shadow-sm'>
+          <div className='bg-components-panel-bg absolute right-0 top-7 rounded-lg p-1 shadow-sm'>
             {examples.map(item => (
               <div
                 key={item.key}
@@ -108,7 +108,7 @@ const GetSchema: FC<Props> = ({
                   onChange(item.content)
                   setShowExamples(false)
                 }}
-                className='px-3 py-1.5 rounded-lg hover:bg-components-panel-on-panel-item-bg-hover leading-5 system-sm-regular text-text-secondary cursor-pointer whitespace-nowrap'
+                className='hover:bg-components-panel-on-panel-item-bg-hover system-sm-regular text-text-secondary cursor-pointer whitespace-nowrap rounded-lg px-3 py-1.5 leading-5'
               >
                 {t(`tools.createTool.exampleOptions.${item.key}`)}
               </div>

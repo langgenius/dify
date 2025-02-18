@@ -27,7 +27,7 @@ const SearchBoxWrapper = ({
   return (
     <SearchBox
       inputClassName={cn(
-        'mx-auto w-[640px] shrink-0 z-[0]',
+        'z-[0] mx-auto w-[640px] shrink-0',
         searchBoxCanAnimate && 'sticky top-3 z-[11]',
         !intersected && searchBoxCanAnimate && 'w-[508px] transition-[width] duration-300',
       )}

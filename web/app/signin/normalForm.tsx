@@ -75,7 +75,7 @@ const NormalForm = () => {
   if (isLoading || consoleToken) {
     return <div className={
       cn(
-        'flex flex-col items-center w-full grow justify-center',
+        'flex w-full grow flex-col items-center justify-center',
         'px-6',
         'md:px-[108px]',
       )
@@ -84,12 +84,12 @@ const NormalForm = () => {
     </div>
   }
   if (systemFeatures.license?.status === LicenseStatus.LOST) {
-    return <div className='w-full mx-auto mt-8'>
+    return <div className='mx-auto mt-8 w-full'>
       <div className='bg-white'>
-        <div className="p-4 rounded-lg bg-gradient-to-r from-workflow-workflow-progress-bg-1 to-workflow-workflow-progress-bg-2">
-          <div className='flex items-center justify-center w-10 h-10 rounded-xl bg-components-card-bg shadow shadows-shadow-lg mb-2 relative'>
-            <RiContractLine className='w-5 h-5' />
-            <RiErrorWarningFill className='absolute w-4 h-4 text-text-warning-secondary -top-1 -right-1' />
+        <div className="from-workflow-workflow-progress-bg-1 to-workflow-workflow-progress-bg-2 rounded-lg bg-gradient-to-r p-4">
+          <div className='bg-components-card-bg shadows-shadow-lg relative mb-2 flex h-10 w-10 items-center justify-center rounded-xl shadow'>
+            <RiContractLine className='h-5 w-5' />
+            <RiErrorWarningFill className='text-text-warning-secondary absolute -right-1 -top-1 h-4 w-4' />
           </div>
           <p className='system-sm-medium text-text-primary'>{t('login.licenseLost')}</p>
           <p className='system-xs-regular text-text-tertiary mt-1'>{t('login.licenseLostTip')}</p>
@@ -98,12 +98,12 @@ const NormalForm = () => {
     </div>
   }
   if (systemFeatures.license?.status === LicenseStatus.EXPIRED) {
-    return <div className='w-full mx-auto mt-8'>
+    return <div className='mx-auto mt-8 w-full'>
       <div className='bg-white'>
-        <div className="p-4 rounded-lg bg-gradient-to-r from-workflow-workflow-progress-bg-1 to-workflow-workflow-progress-bg-2">
-          <div className='flex items-center justify-center w-10 h-10 rounded-xl bg-components-card-bg shadow shadows-shadow-lg mb-2 relative'>
-            <RiContractLine className='w-5 h-5' />
-            <RiErrorWarningFill className='absolute w-4 h-4 text-text-warning-secondary -top-1 -right-1' />
+        <div className="from-workflow-workflow-progress-bg-1 to-workflow-workflow-progress-bg-2 rounded-lg bg-gradient-to-r p-4">
+          <div className='bg-components-card-bg shadows-shadow-lg relative mb-2 flex h-10 w-10 items-center justify-center rounded-xl shadow'>
+            <RiContractLine className='h-5 w-5' />
+            <RiErrorWarningFill className='text-text-warning-secondary absolute -right-1 -top-1 h-4 w-4' />
           </div>
           <p className='system-sm-medium text-text-primary'>{t('login.licenseExpired')}</p>
           <p className='system-xs-regular text-text-tertiary mt-1'>{t('login.licenseExpiredTip')}</p>
@@ -112,12 +112,12 @@ const NormalForm = () => {
     </div>
   }
   if (systemFeatures.license?.status === LicenseStatus.INACTIVE) {
-    return <div className='w-full mx-auto mt-8'>
+    return <div className='mx-auto mt-8 w-full'>
       <div className='bg-white'>
-        <div className="p-4 rounded-lg bg-gradient-to-r from-workflow-workflow-progress-bg-1 to-workflow-workflow-progress-bg-2">
-          <div className='flex items-center justify-center w-10 h-10 rounded-xl bg-components-card-bg shadow shadows-shadow-lg mb-2 relative'>
-            <RiContractLine className='w-5 h-5' />
-            <RiErrorWarningFill className='absolute w-4 h-4 text-text-warning-secondary -top-1 -right-1' />
+        <div className="from-workflow-workflow-progress-bg-1 to-workflow-workflow-progress-bg-2 rounded-lg bg-gradient-to-r p-4">
+          <div className='bg-components-card-bg shadows-shadow-lg relative mb-2 flex h-10 w-10 items-center justify-center rounded-xl shadow'>
+            <RiContractLine className='h-5 w-5' />
+            <RiErrorWarningFill className='text-text-warning-secondary absolute -right-1 -top-1 h-4 w-4' />
           </div>
           <p className='system-sm-medium text-text-primary'>{t('login.licenseInactive')}</p>
           <p className='system-xs-regular text-text-tertiary mt-1'>{t('login.licenseInactiveTip')}</p>
@@ -128,18 +128,18 @@ const NormalForm = () => {
 
   return (
     <>
-      <div className="w-full mx-auto mt-8">
+      <div className="mx-auto mt-8 w-full">
         {isInviteLink
-          ? <div className="w-full mx-auto">
+          ? <div className="mx-auto w-full">
             <h2 className="title-4xl-semi-bold text-text-primary">{t('login.join')}{workspaceName}</h2>
-            <p className='mt-2 body-md-regular text-text-tertiary'>{t('login.joinTipStart')}{workspaceName}{t('login.joinTipEnd')}</p>
+            <p className='body-md-regular text-text-tertiary mt-2'>{t('login.joinTipStart')}{workspaceName}{t('login.joinTipEnd')}</p>
           </div>
-          : <div className="w-full mx-auto">
+          : <div className="mx-auto w-full">
             <h2 className="title-4xl-semi-bold text-text-primary">{t('login.pageTitle')}</h2>
-            <p className='mt-2 body-md-regular text-text-tertiary'>{t('login.welcome')}</p>
+            <p className='body-md-regular text-text-tertiary mt-2'>{t('login.welcome')}</p>
           </div>}
         <div className="bg-white">
-          <div className="flex flex-col gap-3 mt-6">
+          <div className="mt-6 flex flex-col gap-3">
             {systemFeatures.enable_social_oauth_login && <SocialAuth />}
             {systemFeatures.sso_enforced_for_signin && <div className='w-full'>
               <SSOAuth protocol={systemFeatures.sso_enforced_for_signin_protocol} />
@@ -148,10 +148,10 @@ const NormalForm = () => {
 
           {showORLine && <div className="relative mt-6">
             <div className="absolute inset-0 flex items-center" aria-hidden="true">
-              <div className='bg-gradient-to-r from-background-gradient-mask-transparent via-divider-regular to-background-gradient-mask-transparent h-px w-full'></div>
+              <div className='from-background-gradient-mask-transparent via-divider-regular to-background-gradient-mask-transparent h-px w-full bg-gradient-to-r'></div>
             </div>
             <div className="relative flex justify-center">
-              <span className="px-2 text-text-tertiary system-xs-medium-uppercase bg-white">{t('login.or')}</span>
+              <span className="text-text-tertiary system-xs-medium-uppercase bg-white px-2">{t('login.or')}</span>
             </div>
           </div>}
           {
@@ -171,20 +171,20 @@ const NormalForm = () => {
             </>
           }
           {allMethodsAreDisabled && <>
-            <div className="p-4 rounded-lg bg-gradient-to-r from-workflow-workflow-progress-bg-1 to-workflow-workflow-progress-bg-2">
-              <div className='flex items-center justify-center w-10 h-10 rounded-xl bg-components-card-bg shadow shadows-shadow-lg mb-2'>
-                <RiDoorLockLine className='w-5 h-5' />
+            <div className="from-workflow-workflow-progress-bg-1 to-workflow-workflow-progress-bg-2 rounded-lg bg-gradient-to-r p-4">
+              <div className='bg-components-card-bg shadows-shadow-lg mb-2 flex h-10 w-10 items-center justify-center rounded-xl shadow'>
+                <RiDoorLockLine className='h-5 w-5' />
               </div>
               <p className='system-sm-medium text-text-primary'>{t('login.noLoginMethod')}</p>
               <p className='system-xs-regular text-text-tertiary mt-1'>{t('login.noLoginMethodTip')}</p>
             </div>
             <div className="relative my-2 py-2">
               <div className="absolute inset-0 flex items-center" aria-hidden="true">
-                <div className='bg-gradient-to-r from-background-gradient-mask-transparent via-divider-regular to-background-gradient-mask-transparent h-px w-full'></div>
+                <div className='from-background-gradient-mask-transparent via-divider-regular to-background-gradient-mask-transparent h-px w-full bg-gradient-to-r'></div>
               </div>
             </div>
           </>}
-          <div className="w-full block mt-2 system-xs-regular text-text-tertiary">
+          <div className="system-xs-regular text-text-tertiary mt-2 block w-full">
             {t('login.tosDesc')}
             &nbsp;
             <Link
@@ -199,7 +199,7 @@ const NormalForm = () => {
               href='https://dify.ai/privacy'
             >{t('login.pp')}</Link>
           </div>
-          {IS_CE_EDITION && <div className="w-hull block mt-2 system-xs-regular text-text-tertiary">
+          {IS_CE_EDITION && <div className="w-hull system-xs-regular text-text-tertiary mt-2 block">
             {t('login.goToInit')}
             &nbsp;
             <Link

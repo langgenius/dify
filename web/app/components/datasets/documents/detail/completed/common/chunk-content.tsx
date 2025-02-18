@@ -120,7 +120,7 @@ const QATextArea: FC<IQATextAreaProps> = React.memo(({
 
   return (
     <div ref={containerRef} className='h-full overflow-hidden'>
-      <div ref={labelRef} className='text-text-tertiary text-xs font-medium mb-1'>QUESTION</div>
+      <div ref={labelRef} className='text-text-tertiary mb-1 text-xs font-medium'>QUESTION</div>
       <AutoResizeTextArea
         className='text-text-secondary text-sm tracking-[-0.07px] caret-[#295EFF]'
         value={question}
@@ -130,7 +130,7 @@ const QATextArea: FC<IQATextAreaProps> = React.memo(({
         containerRef={containerRef}
         labelRef={labelRef}
       />
-      <div className='text-text-tertiary text-xs font-medium mb-1 mt-6'>ANSWER</div>
+      <div className='text-text-tertiary mb-1 mt-6 text-xs font-medium'>ANSWER</div>
       <AutoResizeTextArea
         className='text-text-secondary text-sm tracking-[-0.07px] caret-[#295EFF]'
         value={answer}
@@ -179,7 +179,7 @@ const ChunkContent: FC<IChunkContentProps> = ({
   if (!isEditMode) {
     return (
       <Markdown
-        className='h-full w-full !text-text-secondary'
+        className='!text-text-secondary h-full w-full'
         content={question}
       />
     )
@@ -187,7 +187,7 @@ const ChunkContent: FC<IChunkContentProps> = ({
 
   return (
     <Textarea
-      className='h-full w-full pb-6 body-md-regular text-text-secondary tracking-[-0.07px] caret-[#295EFF]'
+      className='body-md-regular text-text-secondary h-full w-full pb-6 tracking-[-0.07px] caret-[#295EFF]'
       value={question}
       placeholder={t('datasetDocuments.segment.contentPlaceholder') || ''}
       onChange={e => onQuestionChange(e.target.value)}

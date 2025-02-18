@@ -59,16 +59,16 @@ const ModifyRetrievalModal: FC<Props> = ({
 
   return (
     <div
-      className='w-full flex flex-col bg-white border-[0.5px] border-gray-200 rounded-xl shadow-xl'
+      className='flex w-full flex-col rounded-xl border-[0.5px] border-gray-200 bg-white shadow-xl'
       style={{
         height: 'calc(100vh - 72px)',
       }}
       ref={ref}
     >
-      <div className='shrink-0 flex justify-between items-center pl-6 pr-5 h-14 border-b border-b-gray-100'>
+      <div className='flex h-14 shrink-0 items-center justify-between border-b border-b-gray-100 pl-6 pr-5'>
         <div className='text-base font-semibold text-gray-900'>
           <div>{t('datasetSettings.form.retrievalSetting.title')}</div>
-          <div className='leading-[18px] text-xs font-normal text-gray-500'>
+          <div className='text-xs font-normal leading-[18px] text-gray-500'>
             <a target='_blank' rel='noopener noreferrer' href='https://docs.dify.ai/guides/knowledge-base/create-knowledge-and-upload-documents#id-4-retrieval-settings' className='text-text-accent'>{t('datasetSettings.form.retrievalSetting.learnMore')}</a>
             {t('datasetSettings.form.retrievalSetting.description')}
           </div>
@@ -76,14 +76,14 @@ const ModifyRetrievalModal: FC<Props> = ({
         <div className='flex items-center'>
           <div
             onClick={onHide}
-            className='flex justify-center items-center w-6 h-6 cursor-pointer'
+            className='flex h-6 w-6 cursor-pointer items-center justify-center'
           >
-            <RiCloseLine className='w-4 h-4 text-gray-500' />
+            <RiCloseLine className='h-4 w-4 text-gray-500' />
           </div>
         </div>
       </div>
 
-      <div className='p-6 border-b' style={{
+      <div className='border-b p-6' style={{
         borderBottom: 'rgba(0, 0, 0, 0.05)',
       }}>
         {indexMethod === 'high_quality'
@@ -101,13 +101,13 @@ const ModifyRetrievalModal: FC<Props> = ({
           )}
       </div>
       <div
-        className='flex justify-end pt-6 px-6 border-t'
+        className='flex justify-end border-t px-6 pt-6'
         style={{
           borderColor: 'rgba(0, 0, 0, 0.05)',
         }}
       >
-        <Button className='mr-2 flex-shrink-0' onClick={onHide}>{t('common.operation.cancel')}</Button>
-        <Button variant='primary' className='flex-shrink-0' onClick={handleSave} >{t('common.operation.save')}</Button>
+        <Button className='mr-2 shrink-0' onClick={onHide}>{t('common.operation.cancel')}</Button>
+        <Button variant='primary' className='shrink-0' onClick={handleSave} >{t('common.operation.save')}</Button>
       </div>
     </div>
   )

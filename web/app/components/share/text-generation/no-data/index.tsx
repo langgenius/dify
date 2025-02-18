@@ -13,10 +13,10 @@ export type INoDataProps = {}
 const NoData: FC<INoDataProps> = () => {
   const { t } = useTranslation()
   return (
-    <div className='flex flex-col h-full w-full justify-center items-center'>
+    <div className='flex h-full w-full flex-col items-center justify-center'>
       {StarIcon}
       <div
-        className='mt-3 text-gray-300 text-xs leading-3'
+        className='mt-3 text-xs leading-3 text-gray-300'
       >
         {t('share.generation.noData')}
       </div>

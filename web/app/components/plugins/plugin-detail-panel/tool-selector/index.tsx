@@ -262,10 +262,10 @@ const ToolSelector: FC<Props> = ({
               isError={(!currentProvider || !currentTool) && !inMarketPlace}
               errorTip={
                 <div className='max-w-[240px] space-y-1 text-xs'>
-                  <h3 className='font-semibold text-text-primary'>{currentTool ? t('plugin.detailPanel.toolSelector.uninstalledTitle') : t('plugin.detailPanel.toolSelector.unsupportedTitle')}</h3>
-                  <p className='tracking-tight text-text-secondary'>{currentTool ? t('plugin.detailPanel.toolSelector.uninstalledContent') : t('plugin.detailPanel.toolSelector.unsupportedContent')}</p>
+                  <h3 className='text-text-primary font-semibold'>{currentTool ? t('plugin.detailPanel.toolSelector.uninstalledTitle') : t('plugin.detailPanel.toolSelector.unsupportedTitle')}</h3>
+                  <p className='text-text-secondary tracking-tight'>{currentTool ? t('plugin.detailPanel.toolSelector.uninstalledContent') : t('plugin.detailPanel.toolSelector.unsupportedContent')}</p>
                   <p>
-                    <Link href={'/plugins'} className='tracking-tight text-text-accent'>{t('plugin.detailPanel.toolSelector.uninstalledLink')}</Link>
+                    <Link href={'/plugins'} className='text-text-accent tracking-tight'>{t('plugin.detailPanel.toolSelector.uninstalledLink')}</Link>
                   </p>
                 </div>
               }
@@ -273,14 +273,14 @@ const ToolSelector: FC<Props> = ({
           )}
         </PortalToFollowElemTrigger>
         <PortalToFollowElemContent className='z-[1000]'>
-          <div className={cn('relative max-h-[642px] min-h-20 w-[361px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur pb-4 shadow-lg backdrop-blur-sm', !isShowSettingAuth && 'overflow-y-auto pb-2')}>
+          <div className={cn('border-components-panel-border bg-components-panel-bg-blur relative max-h-[642px] min-h-20 w-[361px] rounded-xl border-[0.5px] pb-4 shadow-lg backdrop-blur-sm', !isShowSettingAuth && 'overflow-y-auto pb-2')}>
             {!isShowSettingAuth && (
               <>
-                <div className='system-xl-semibold px-4 pb-1 pt-3.5 text-text-primary'>{t('plugin.detailPanel.toolSelector.title')}</div>
+                <div className='system-xl-semibold text-text-primary px-4 pb-1 pt-3.5'>{t('plugin.detailPanel.toolSelector.title')}</div>
                 {/* base form */}
                 <div className='flex flex-col gap-3 px-4 py-2'>
                   <div className='flex flex-col gap-1'>
-                    <div className='system-sm-semibold flex h-6 items-center text-text-secondary'>{t('plugin.detailPanel.toolSelector.toolLabel')}</div>
+                    <div className='system-sm-semibold text-text-secondary flex h-6 items-center'>{t('plugin.detailPanel.toolSelector.toolLabel')}</div>
                     <ToolPicker
                       panelClassName='w-[328px]'
                       placement='bottom'
@@ -302,7 +302,7 @@ const ToolSelector: FC<Props> = ({
                     />
                   </div>
                   <div className='flex flex-col gap-1'>
-                    <div className='system-sm-semibold flex h-6 items-center text-text-secondary'>{t('plugin.detailPanel.toolSelector.descriptionLabel')}</div>
+                    <div className='system-sm-semibold text-text-secondary flex h-6 items-center'>{t('plugin.detailPanel.toolSelector.descriptionLabel')}</div>
                     <Textarea
                       className='resize-none'
                       placeholder={t('plugin.detailPanel.toolSelector.descriptionPlaceholder')}
@@ -399,7 +399,7 @@ const ToolSelector: FC<Props> = ({
                             ? (<a
                               href={item.url}
                               target='_blank' rel='noopener noreferrer'
-                              className='inline-flex items-center text-xs text-text-accent'
+                              className='text-text-accent inline-flex items-center text-xs'
                             >
                               {t('tools.howToGet')}
                               <RiArrowRightUpLine className='ml-1 h-3 w-3' />
@@ -427,16 +427,16 @@ const ToolSelector: FC<Props> = ({
             {isShowSettingAuth && currentProvider && (
               <>
                 <div className='relative flex flex-col gap-1 pt-3.5'>
-                  <div className='absolute -top-2 left-2 w-[345px] rounded-t-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur pt-2 backdrop-blur-sm'></div>
+                  <div className='border-components-panel-border bg-components-panel-bg-blur absolute -top-2 left-2 w-[345px] rounded-t-xl border-[0.5px] pt-2 backdrop-blur-sm'></div>
                   <div
-                    className='system-xs-semibold-uppercase flex h-6 cursor-pointer items-center gap-1 px-3 text-text-accent-secondary'
+                    className='system-xs-semibold-uppercase text-text-accent-secondary flex h-6 cursor-pointer items-center gap-1 px-3'
                     onClick={() => setShowSettingAuth(false)}
                   >
                     <RiArrowLeftLine className='h-4 w-4' />
                     BACK
                   </div>
-                  <div className='system-xl-semibold px-4 text-text-primary'>{t('tools.auth.setupModalTitle')}</div>
-                  <div className='system-xs-regular px-4 text-text-tertiary'>{t('tools.auth.setupModalTitleDescription')}</div>
+                  <div className='system-xl-semibold text-text-primary px-4'>{t('tools.auth.setupModalTitle')}</div>
+                  <div className='system-xs-regular text-text-tertiary px-4'>{t('tools.auth.setupModalTitleDescription')}</div>
                 </div>
                 <ToolCredentialForm
                   collection={currentProvider}

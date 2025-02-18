@@ -74,14 +74,14 @@ const Add = ({
     return (
       <div
         className={`
-          relative flex items-center px-2 h-9 rounded-lg border border-dashed border-divider-regular bg-dropzone-bg
-          hover:bg-dropzone-bg-hover text-xs text-text-placeholder cursor-pointer
+          border-divider-regular bg-dropzone-bg hover:bg-dropzone-bg-hover text-text-placeholder relative flex h-9 cursor-pointer items-center rounded-lg
+          border border-dashed px-2 text-xs
           ${open && '!bg-components-dropzone-bg-alt'}
           ${nodesReadOnly && '!cursor-not-allowed'}
         `}
       >
-        <div className='flex items-center justify-center mr-1.5 w-5 h-5 rounded-[5px] bg-background-default-dimm'>
-          <RiAddLine className='w-3 h-3' />
+        <div className='bg-background-default-dimm mr-1.5 flex h-5 w-5 items-center justify-center rounded-[5px]'>
+          <RiAddLine className='h-3 w-3' />
         </div>
         <div className='flex items-center uppercase'>
           {tip}

@@ -58,25 +58,25 @@ const NewFeaturePanel = ({
       onClose={onClose}
       inWorkflow={inWorkflow}
     >
-      <div className='grow flex flex-col h-full'>
+      <div className='flex h-full grow flex-col'>
         {/* header */}
-        <div className='shrink-0 flex justify-between p-4 pb-3'>
+        <div className='flex shrink-0 justify-between p-4 pb-3'>
           <div>
             <div className='text-text-primary system-xl-semibold'>{t('workflow.common.features')}</div>
             <div className='text-text-tertiary body-xs-regular'>{t('workflow.common.featuresDescription')}</div>
           </div>
-          <div className='w-8 h-8 p-2 cursor-pointer' onClick={onClose}><RiCloseLine className='w-4 h-4 text-text-tertiary'/></div>
+          <div className='h-8 w-8 cursor-pointer p-2' onClick={onClose}><RiCloseLine className='text-text-tertiary h-4 w-4'/></div>
         </div>
         {/* list */}
         <div className='grow basis-0 overflow-y-auto px-4 pb-4'>
           {showFileUpload && (
-            <div className='relative mb-1 p-2 rounded-xl border border-components-panel-border shadow-xs'>
-              <div className='absolute top-0 left-0 w-full h-full rounded-xl opacity-40' style={{ background: 'linear-gradient(92deg, rgba(11, 165, 236, 0.25) 18.12%, rgba(255, 255, 255, 0.00) 167.31%)' }}></div>
-              <div className='relative flex items-start w-full h-full'>
-                <div className='shrink-0 mr-0.5 p-0.5'>
-                  <RiInformation2Fill className='w-5 h-5 text-text-accent' />
+            <div className='border-components-panel-border shadow-xs relative mb-1 rounded-xl border p-2'>
+              <div className='absolute left-0 top-0 h-full w-full rounded-xl opacity-40' style={{ background: 'linear-gradient(92deg, rgba(11, 165, 236, 0.25) 18.12%, rgba(255, 255, 255, 0.00) 167.31%)' }}></div>
+              <div className='relative flex h-full w-full items-start'>
+                <div className='mr-0.5 shrink-0 p-0.5'>
+                  <RiInformation2Fill className='text-text-accent h-5 w-5' />
                 </div>
-                <div className='p-1 text-text-primary system-xs-medium'>
+                <div className='text-text-primary system-xs-medium p-1'>
                   <span>{isChatMode ? t('workflow.common.fileUploadTip') : t('workflow.common.ImageUploadLegacyTip')}</span>
                   <a
                     className='text-text-accent'

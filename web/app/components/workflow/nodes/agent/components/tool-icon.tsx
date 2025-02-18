@@ -71,7 +71,7 @@ export const ToolIcon = memo(({ providerName }: ToolIconProps) => {
           )}
           onError={() => setIconFetchError(true)}
         />
-        : <Group className="w-3 h-3 opacity-35" />
+        : <Group className="h-3 w-3 opacity-35" />
       }
       {indicator && <Indicator color={indicator} className="absolute right-[-1px] top-[-1px]" />}
     </div>

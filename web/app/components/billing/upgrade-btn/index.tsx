@@ -22,10 +22,10 @@ const PlainBtn = ({ className, onClick }: { className?: string; onClick: () => v
 
   return (
     <div
-      className={cn(className, 'flex items-center h-8 px-3 rounded-lg border border-gray-200 bg-white shadow-sm cursor-pointer')}
+      className={cn(className, 'flex h-8 cursor-pointer items-center rounded-lg border border-gray-200 bg-white px-3 shadow-sm')}
       onClick={onClick}
     >
-      <div className='leading-[18px] text-[13px] font-medium text-gray-700'>
+      <div className='text-[13px] font-medium leading-[18px] text-gray-700'>
         {t('billing.upgradeBtn.plain')}
       </div>
     </div>
@@ -66,7 +66,7 @@ const UpgradeBtn: FC<Props> = ({
       allowHover={true}
       onClick={onClick}
     >
-      <SparklesSoft className='flex items-center py-[1px] pl-[3px] w-3.5 h-3.5 text-components-premium-badge-indigo-text-stop-0' />
+      <SparklesSoft className='text-components-premium-badge-indigo-text-stop-0 flex h-3.5 w-3.5 items-center py-[1px] pl-[3px]' />
       <div className='system-xs-medium'>
         <span className='p-1'>
           {t(`billing.upgradeBtn.${isShort ? 'encourageShort' : 'encourage'}`)}

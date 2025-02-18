@@ -141,17 +141,17 @@ const PluginPage = ({
     <div
       id='marketplace-container'
       ref={containerRef}
-      className={cn('grow relative flex flex-col overflow-y-auto border-t border-divider-subtle', activeTab === 'plugins'
-        ? 'rounded-t-xl bg-components-panel-bg'
+      className={cn('border-divider-subtle relative flex grow flex-col overflow-y-auto border-t', activeTab === 'plugins'
+        ? 'bg-components-panel-bg rounded-t-xl'
         : 'bg-background-body',
       )}
     >
       <div
         className={cn(
-          'sticky top-0 flex min-h-[60px] px-12 pt-4 pb-2 items-center self-stretch gap-1 z-10 bg-components-panel-bg', activeTab === 'discover' && 'bg-background-body',
+          'bg-components-panel-bg sticky top-0 z-10 flex min-h-[60px] items-center gap-1 self-stretch px-12 pb-2 pt-4', activeTab === 'discover' && 'bg-background-body',
         )}
       >
-        <div className='flex justify-between items-center w-full'>
+        <div className='flex w-full items-center justify-between'>
           <div className='flex-1'>
             <TabSlider
               value={activeTab}
@@ -171,11 +171,11 @@ const PluginPage = ({
                       className='px-3'
                       variant='secondary-accent'
                     >
-                      <RiBookOpenLine className='mr-1 w-4 h-4' />
+                      <RiBookOpenLine className='mr-1 h-4 w-4' />
                       {t('plugin.submitPlugin')}
                     </Button>
                   </Link>
-                  <div className='mx-2 w-[1px] h-3.5 bg-divider-regular'></div>
+                  <div className='bg-divider-regular mx-2 h-3.5 w-[1px]'></div>
                 </>
               )
             }
@@ -196,10 +196,10 @@ const PluginPage = ({
                   popupContent={t('plugin.privilege.title')}
                 >
                   <Button
-                    className='w-full h-full p-2 text-components-button-secondary-text group'
+                    className='text-components-button-secondary-text group h-full w-full p-2'
                     onClick={setShowPluginSettingModal}
                   >
-                    <RiEqualizer2Line className='w-4 h-4' />
+                    <RiEqualizer2Line className='h-4 w-4' />
                   </Button>
                 </Tooltip>
               )
@@ -212,12 +212,12 @@ const PluginPage = ({
           {plugins}
           {dragging && (
             <div
-              className="absolute inset-0 m-0.5 p-2 rounded-2xl bg-[rgba(21,90,239,0.14)] border-2
-                  border-dashed border-components-dropzone-border-accent">
+              className="border-components-dropzone-border-accent absolute inset-0 m-0.5 rounded-2xl border-2 border-dashed
+                  bg-[rgba(21,90,239,0.14)] p-2">
             </div>
           )}
-          <div className={`flex py-4 justify-center items-center gap-2 ${dragging ? 'text-text-accent' : 'text-text-quaternary'}`}>
-            <RiDragDropLine className="w-4 h-4" />
+          <div className={`flex items-center justify-center gap-2 py-4 ${dragging ? 'text-text-accent' : 'text-text-quaternary'}`}>
+            <RiDragDropLine className="h-4 w-4" />
             <span className="system-xs-regular">{t('plugin.installModal.dropPluginToInstall')}</span>
           </div>
           {currentFile && (

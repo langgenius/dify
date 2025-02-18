@@ -94,7 +94,7 @@ const ItemComponent = ({ index, style, data }: ListChildComponentProps<{
     if (hasChild) {
       return (
         <div
-          className={cn(s.arrow, current.expand && s['arrow-expand'], 'shrink-0 mr-1 w-5 h-5 hover:bg-gray-200 rounded-md')}
+          className={cn(s.arrow, current.expand && s['arrow-expand'], 'mr-1 h-5 w-5 shrink-0 rounded-md hover:bg-gray-200')}
           style={{ marginLeft: current.depth * 8 }}
           onClick={() => handleToggle(index)}
         />
@@ -106,18 +106,18 @@ const ItemComponent = ({ index, style, data }: ListChildComponentProps<{
       )
     }
     return (
-      <div className='shrink-0 mr-1 w-5 h-5' style={{ marginLeft: current.depth * 8 }} />
+      <div className='mr-1 h-5 w-5 shrink-0' style={{ marginLeft: current.depth * 8 }} />
     )
   }
 
   return (
     <div
-      className={cn('group flex items-center pl-2 pr-[2px] rounded-md border border-transparent hover:bg-gray-100 cursor-pointer', previewPageId === current.page_id && s['preview-item'])}
+      className={cn('group flex cursor-pointer items-center rounded-md border border-transparent pl-2 pr-[2px] hover:bg-gray-100', previewPageId === current.page_id && s['preview-item'])}
       style={{ ...style, top: style.top as number + 8, left: 8, right: 8, width: 'calc(100% - 16px)' }}
     >
       <Checkbox
         className={cn(
-          'shrink-0 mr-2 group-hover:border-primary-600 group-hover:border-[2px]',
+          'group-hover:border-primary-600 mr-2 shrink-0 group-hover:border-[2px]',
           disabled && 'group-hover:border-transparent',
         )}
         checked={checkedIds.has(current.page_id)}
@@ -130,12 +130,12 @@ const ItemComponent = ({ index, style, data }: ListChildComponentProps<{
       />
       {!searchValue && renderArrow()}
       <NotionIcon
-        className='shrink-0 mr-1'
+        className='mr-1 shrink-0'
         type='page'
         src={current.page_icon}
       />
       <div
-        className='grow text-sm font-medium text-gray-700 truncate'
+        className='grow truncate text-sm font-medium text-gray-700'
         title={current.page_name}
       >
         {current.page_name}
@@ -143,7 +143,7 @@ const ItemComponent = ({ index, style, data }: ListChildComponentProps<{
       {
         canPreview && (
           <div
-            className='shrink-0 hidden group-hover:flex items-center ml-1 px-2 h-6 rounded-md text-xs font-medium text-gray-500 cursor-pointer hover:bg-gray-50 hover:text-gray-700'
+            className='ml-1 hidden h-6 shrink-0 cursor-pointer items-center rounded-md px-2 text-xs font-medium text-gray-500 hover:bg-gray-50 hover:text-gray-700 group-hover:flex'
             onClick={() => handlePreview(index)}>
             {t('common.dataSource.notion.selector.preview')}
           </div>
@@ -152,7 +152,7 @@ const ItemComponent = ({ index, style, data }: ListChildComponentProps<{
       {
         searchValue && (
           <div
-            className='shrink-0 ml-1 max-w-[120px] text-xs text-gray-400 truncate'
+            className='ml-1 max-w-[120px] shrink-0 truncate text-xs text-gray-400'
             title={breadCrumbs.join(' / ')}
           >
             {breadCrumbs.join(' / ')}
@@ -278,7 +278,7 @@ const PageSelector = ({
 
   if (!currentDataList.length) {
     return (
-      <div className='flex items-center justify-center h-[296px] text-[13px] text-gray-500'>
+      <div className='flex h-[296px] items-center justify-center text-[13px] text-gray-500'>
         {t('common.dataSource.notion.selector.noSearchResult')}
       </div>
     )

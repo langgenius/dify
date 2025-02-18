@@ -47,15 +47,15 @@ const ChatUserInput = ({
     return null
 
   return (
-    <div className={cn('bg-components-panel-on-panel-item-bg rounded-xl border-[0.5px] border-components-panel-border-subtle shadow-xs z-[1]')}>
-      <div className='px-4 pt-3 pb-4'>
+    <div className={cn('bg-components-panel-on-panel-item-bg border-components-panel-border-subtle shadow-xs z-[1] rounded-xl border-[0.5px]')}>
+      <div className='px-4 pb-4 pt-3'>
         {promptVariables.map(({ key, name, type, options, max_length, required }, index) => (
           <div
             key={key}
             className='mb-4 last-of-type:mb-0'
           >
             <div>
-              <div className='h-6 mb-1 flex items-center gap-1 text-text-secondary system-sm-semibold'>
+              <div className='text-text-secondary system-sm-semibold mb-1 flex h-6 items-center gap-1'>
                 <div className='truncate'>{name || key}</div>
                 {!required && <span className='text-text-tertiary system-xs-regular'>{t('workflow.panel.optional')}</span>}
               </div>
@@ -71,7 +71,7 @@ const ChatUserInput = ({
                 )}
                 {type === 'paragraph' && (
                   <Textarea
-                    className='grow h-[120px]'
+                    className='h-[120px] grow'
                     placeholder={name}
                     value={inputs[key] ? `${inputs[key]}` : ''}
                     onChange={(e) => { handleInputValueChange(key, e.target.value) }}

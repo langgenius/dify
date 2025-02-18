@@ -42,10 +42,10 @@ const ApiBasedExtensionPage = () => {
         )
       }
       <div
-        className='flex items-center justify-center px-3 h-8 text-[13px] font-medium text-gray-700 rounded-lg bg-gray-50 cursor-pointer'
+        className='flex h-8 cursor-pointer items-center justify-center rounded-lg bg-gray-50 px-3 text-[13px] font-medium text-gray-700'
         onClick={handleOpenApiBasedExtensionModal}
       >
-        <RiAddLine className='mr-2 w-4 h-4' />
+        <RiAddLine className='mr-2 h-4 w-4' />
         {t('common.apiBasedExtension.add')}
       </div>
     </div>

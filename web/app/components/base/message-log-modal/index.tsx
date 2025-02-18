@@ -39,7 +39,7 @@ const MessageLogModal: FC<MessageLogModalProps> = ({
 
   return (
     <div
-      className={cn('relative flex flex-col pt-3 bg-components-panel-bg border-[0.5px] border-components-panel-border rounded-xl shadow-xl z-10')}
+      className={cn('bg-components-panel-bg border-components-panel-border relative z-10 flex flex-col rounded-xl border-[0.5px] pt-3 shadow-xl')}
       style={{
         width: fixedWidth ? width : 480,
         ...(!fixedWidth
@@ -55,9 +55,9 @@ const MessageLogModal: FC<MessageLogModalProps> = ({
       }}
       ref={ref}
     >
-      <h1 className='shrink-0 px-4 py-1 text-text-primary system-xl-semibold'>{t('appLog.runDetail.title')}</h1>
-      <span className='absolute right-3 top-4 p-1 cursor-pointer z-20' onClick={onCancel}>
-        <RiCloseLine className='w-4 h-4 text-text-tertiary' />
+      <h1 className='text-text-primary system-xl-semibold shrink-0 px-4 py-1'>{t('appLog.runDetail.title')}</h1>
+      <span className='absolute right-3 top-4 z-20 cursor-pointer p-1' onClick={onCancel}>
+        <RiCloseLine className='text-text-tertiary h-4 w-4' />
       </span>
       <Run
         hideResult

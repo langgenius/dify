@@ -13,14 +13,14 @@ const OrgInfo = ({
   packageNameClassName,
 }: Props) => {
   return (
-    <div className={cn('flex items-center h-4 space-x-0.5', className)}>
+    <div className={cn('flex h-4 items-center space-x-0.5', className)}>
       {orgName && (
         <>
-          <span className='shrink-0 text-text-tertiary system-xs-regular'>{orgName}</span>
-          <span className='shrink-0 text-text-quaternary system-xs-regular'>/</span>
+          <span className='text-text-tertiary system-xs-regular shrink-0'>{orgName}</span>
+          <span className='text-text-quaternary system-xs-regular shrink-0'>/</span>
         </>
       )}
-      <span className={cn('shrink-0 w-0 grow truncate text-text-tertiary system-xs-regular', packageNameClassName)}>
+      <span className={cn('text-text-tertiary system-xs-regular w-0 shrink-0 grow truncate', packageNameClassName)}>
         {packageName}
       </span>
     </div>

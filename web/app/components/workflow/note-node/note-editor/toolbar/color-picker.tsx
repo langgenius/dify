@@ -63,24 +63,24 @@ const ColorPicker = ({
     >
       <PortalToFollowElemTrigger onClick={() => setOpen(!open)}>
         <div className={cn(
-          'flex items-center justify-center w-8 h-8 rounded-md cursor-pointer hover:bg-black/5',
+          'flex h-8 w-8 cursor-pointer items-center justify-center rounded-md hover:bg-black/5',
           open && 'bg-black/5',
         )}>
           <div
             className={cn(
-              'w-4 h-4 rounded-full border border-black/5',
+              'h-4 w-4 rounded-full border border-black/5',
               THEME_MAP[theme].title,
             )}
           ></div>
         </div>
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent>
-        <div className='grid grid-cols-3 grid-rows-2 gap-0.5 p-0.5 rounded-lg border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg shadow-lg'>
+        <div className='border-components-actionbar-border bg-components-actionbar-bg grid grid-cols-3 grid-rows-2 gap-0.5 rounded-lg border-[0.5px] p-0.5 shadow-lg'>
           {
             COLOR_LIST.map(color => (
               <div
                 key={color.key}
-                className='group relative flex items-center justify-center w-8 h-8 rounded-md cursor-pointer'
+                className='group relative flex h-8 w-8 cursor-pointer items-center justify-center rounded-md'
                 onClick={(e) => {
                   e.stopPropagation()
                   onThemeChange(color.key)
@@ -89,13 +89,13 @@ const ColorPicker = ({
               >
                 <div
                   className={cn(
-                    'hidden group-hover:block absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-5 h-5 rounded-full border-[1.5px]',
+                    'absolute left-1/2 top-1/2 hidden h-5 w-5 -translate-x-1/2 -translate-y-1/2 rounded-full border-[1.5px] group-hover:block',
                     color.outer,
                   )}
                 ></div>
                 <div
                   className={cn(
-                    'absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-4 h-4 rounded-full border border-black/5',
+                    'absolute left-1/2 top-1/2 h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full border border-black/5',
                     color.inner,
                   )}
                 ></div>

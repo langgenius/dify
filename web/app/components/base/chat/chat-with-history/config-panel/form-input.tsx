@@ -35,7 +35,7 @@ const FormInput: FC<InputProps> = ({
 
   return (
     <input
-      className='grow h-9 rounded-lg bg-gray-100 px-2.5 outline-none appearance-none'
+      className='h-9 grow appearance-none rounded-lg bg-gray-100 px-2.5 outline-none'
       value={value || ''}
       maxLength={max_length}
       onChange={e => onChange(variable, e.target.value)}

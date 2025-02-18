@@ -54,25 +54,25 @@ const ModelListItem = ({ model, provider, isConfigurable, onConfig, onModifyLoad
       )}
     >
       <ModelIcon
-        className='shrink-0 mr-2'
+        className='mr-2 shrink-0'
         provider={provider}
         modelName={model.model}
       />
       <ModelName
-        className='grow system-md-regular text-text-secondary'
+        className='system-md-regular text-text-secondary grow'
         modelItem={model}
         showModelType
         showMode
         showContextSize
       >
         {modelLoadBalancingEnabled && !model.deprecated && model.load_balancing_enabled && (
-          <ModelBadge className='ml-1 uppercase text-text-accent-secondary border-text-accent-secondary'>
-            <Balance className='w-3 h-3 mr-0.5' />
+          <ModelBadge className='text-text-accent-secondary border-text-accent-secondary ml-1 uppercase'>
+            <Balance className='mr-0.5 h-3 w-3' />
             {t('common.modelProvider.loadBalancingHeadline')}
           </ModelBadge>
         )}
       </ModelName>
-      <div className='shrink-0 flex items-center'>
+      <div className='flex shrink-0 items-center'>
         {
           model.fetch_from === ConfigurationMethodEnum.customizableModel
             ? (isCurrentWorkspaceManager && (
@@ -81,7 +81,7 @@ const ModelListItem = ({ model, provider, isConfigurable, onConfig, onModifyLoad
                 className='hidden group-hover:flex'
                 onClick={() => onConfig({ __model_name: model.model, __model_type: model.model_type })}
               >
-                <Settings01 className='mr-1 w-3.5 h-3.5' />
+                <Settings01 className='mr-1 h-3.5 w-3.5' />
                 {t('common.modelProvider.config')}
               </Button>
             ))
@@ -89,10 +89,10 @@ const ModelListItem = ({ model, provider, isConfigurable, onConfig, onModifyLoad
               ? (
                 <Button
                   size='small'
-                  className='opacity-0 group-hover:opacity-100 transition-opacity'
+                  className='opacity-0 transition-opacity group-hover:opacity-100'
                   onClick={() => onModifyLoadBalancing?.(model)}
                 >
-                  <Balance className='mr-1 w-3.5 h-3.5' />
+                  <Balance className='mr-1 h-3.5 w-3.5' />
                   {t('common.modelProvider.configLoadBalancing')}
                 </Button>
               )

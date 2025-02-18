@@ -44,7 +44,7 @@ const CustomDialog = ({
         </TransitionChild>
 
         <div className="fixed inset-0 overflow-y-auto">
-          <div className="flex items-center justify-center min-h-full">
+          <div className="flex min-h-full items-center justify-center">
             <TransitionChild>
               <DialogPanel className={classNames(
                 'w-full max-w-[800px] p-6 overflow-hidden transition-all transform bg-components-panel-bg border-[0.5px] border-components-panel-border shadow-xl rounded-2xl',

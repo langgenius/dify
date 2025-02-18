@@ -130,11 +130,11 @@ function AppCard({
   return (
     <div
       className={
-        `${isInPanel ? 'border-l-[0.5px] border-t' : 'shadow-xs border-[0.5px]'} rounded-xl border-effects-highlight w-full max-w-full ${className ?? ''}`}
+        `${isInPanel ? 'border-l-[0.5px] border-t' : 'shadow-xs border-[0.5px]'} border-effects-highlight w-full max-w-full rounded-xl ${className ?? ''}`}
     >
       <div className={`${customBgColor ?? 'bg-background-default'} rounded-xl`}>
-        <div className='flex flex-col p-3 justify-center items-start gap-3 self-stretch border-b-[0.5px] border-divider-subtle w-full'>
-          <div className='flex items-center gap-3 self-stretch w-full'>
+        <div className='border-divider-subtle flex w-full flex-col items-start justify-center gap-3 self-stretch border-b-[0.5px] p-3'>
+          <div className='flex w-full items-center gap-3 self-stretch'>
             <AppBasic
               iconType={cardType}
               icon={appInfo.icon}
@@ -156,15 +156,15 @@ function AppCard({
             </div>
             <Switch defaultValue={runningStatus} onChange={onChangeStatus} disabled={toggleDisabled} />
           </div>
-          <div className='flex flex-col justify-center items-start self-stretch'>
-            <div className="pb-1 system-xs-medium text-text-tertiary">
+          <div className='flex flex-col items-start justify-center self-stretch'>
+            <div className="system-xs-medium text-text-tertiary pb-1">
               {isApp
                 ? t('appOverview.overview.appInfo.accessibleAddress')
                 : t('appOverview.overview.apiInfo.accessibleAddress')}
             </div>
-            <div className="w-full h-9 pl-2 p-1 bg-components-input-bg-normal rounded-lg items-center inline-flex gap-0.5">
-              <div className="h-4 px-1 justify-start items-start gap-2 flex flex-1 min-w-0">
-                <div className="text-text-secondary text-xs font-medium text-ellipsis overflow-hidden whitespace-nowrap">
+            <div className="bg-components-input-bg-normal inline-flex h-9 w-full items-center gap-0.5 rounded-lg p-1 pl-2">
+              <div className="flex h-4 min-w-0 flex-1 items-start justify-start gap-2 px-1">
+                <div className="text-text-secondary overflow-hidden text-ellipsis whitespace-nowrap text-xs font-medium">
                   {isApp ? appUrl : apiUrl}
                 </div>
               </div>
@@ -172,8 +172,8 @@ function AppCard({
                 content={isApp ? appUrl : apiUrl}
                 className={'!size-6'}
               />
-              {isApp && <ShareQRCode content={isApp ? appUrl : apiUrl} className='z-50 !size-6 hover:bg-state-base-hover rounded-md' selectorId={randomString(8)} />}
-              {isApp && <Divider type="vertical" className="!h-3.5 shrink-0 !mx-0.5" />}
+              {isApp && <ShareQRCode content={isApp ? appUrl : apiUrl} className='hover:bg-state-base-hover z-50 !size-6 rounded-md' selectorId={randomString(8)} />}
+              {isApp && <Divider type="vertical" className="!mx-0.5 !h-3.5 shrink-0" />}
               {/* button copy link/ button regenerate */}
               {showConfirmDelete && (
                 <Confirm
@@ -193,12 +193,12 @@ function AppCard({
                   popupContent={t('appOverview.overview.appInfo.regenerate') || ''}
                 >
                   <div
-                    className="w-6 h-6 cursor-pointer hover:bg-state-base-hover rounded-md"
+                    className="hover:bg-state-base-hover h-6 w-6 cursor-pointer rounded-md"
                     onClick={() => setShowConfirmDelete(true)}
                   >
                     <div
                       className={
-                        `w-full h-full ${style.refreshIcon} ${genLoading ? style.generateLogo : ''}`}
+                        `h-full w-full ${style.refreshIcon} ${genLoading ? style.generateLogo : ''}`}
                     ></div>
                   </div>
                 </Tooltip>
@@ -206,7 +206,7 @@ function AppCard({
             </div>
           </div>
         </div>
-        <div className={'flex p-3 items-center gap-1 self-stretch'}>
+        <div className={'flex items-center gap-1 self-stretch p-3'}>
           {!isApp && <SecretKeyButton appId={appInfo.id} />}
           {OPERATIONS_MAP[cardType].map((op) => {
             const disabled

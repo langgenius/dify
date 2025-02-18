@@ -75,9 +75,9 @@ const KeyValidator = ({
   }
 
   return (
-    <div className='mb-2 border-[0.5px] border-gray-200 bg-gray-50 rounded-md'>
+    <div className='mb-2 rounded-md border-[0.5px] border-gray-200 bg-gray-50'>
       <div className={
-        `flex items-center justify-between px-4 h-[52px] cursor-pointer ${isOpen && 'border-b-[0.5px] border-b-gray-200'}`
+        `flex h-[52px] cursor-pointer items-center justify-between px-4 ${isOpen && 'border-b-[0.5px] border-b-gray-200'}`
       }>
         {title}
         <Operate
@@ -108,9 +108,9 @@ const KeyValidator = ({
                 />
               ))
             }
-            <a className="flex items-center text-xs cursor-pointer text-primary-600" href={keyFrom.link} target='_blank' rel='noopener noreferrer'>
+            <a className="text-primary-600 flex cursor-pointer items-center text-xs" href={keyFrom.link} target='_blank' rel='noopener noreferrer'>
               {keyFrom.text}
-              <LinkExternal02 className='w-3 h-3 ml-1 text-primary-600' />
+              <LinkExternal02 className='text-primary-600 ml-1 h-3 w-3' />
             </a>
           </div>
         )

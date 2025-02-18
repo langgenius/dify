@@ -33,8 +33,8 @@ const UserInput = () => {
     return null
 
   return (
-    <div className={cn('sticky top-0 bg-components-panel-on-panel-item-bg rounded-xl border-[0.5px] border-components-panel-border-subtle shadow-xs z-[1]')}>
-      <div className='px-4 pt-3 pb-4'>
+    <div className={cn('bg-components-panel-on-panel-item-bg border-components-panel-border-subtle shadow-xs sticky top-0 z-[1] rounded-xl border-[0.5px]')}>
+      <div className='px-4 pb-4 pt-3'>
         {variables.map((variable, index) => (
           <div
             key={variable.variable}

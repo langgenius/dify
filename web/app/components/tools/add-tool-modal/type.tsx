@@ -16,16 +16,16 @@ const Types = ({
 
   return (
     <div className='mb-3'>
-      <div className={cn('mb-0.5 p-1 pl-3 flex items-center cursor-pointer text-sm leading-5 rounded-lg hover:bg-white', value === 'builtin' && '!bg-white font-medium')} onClick={() => onSelect('builtin')}>
-        <div className="shrink-0 w-4 h-4 mr-2 bg-cover bg-no-repeat bg-[url('~@/app/components/tools/add-tool-modal/D.png')]" />
+      <div className={cn('mb-0.5 flex cursor-pointer items-center rounded-lg p-1 pl-3 text-sm leading-5 hover:bg-white', value === 'builtin' && '!bg-white font-medium')} onClick={() => onSelect('builtin')}>
+        <div className="mr-2 h-4 w-4 shrink-0 bg-[url('~@/app/components/tools/add-tool-modal/D.png')] bg-cover bg-no-repeat" />
         <span className={cn('text-gray-700', value === 'builtin' && '!text-primary-600')}>{t('tools.type.builtIn')}</span>
       </div>
-      <div className={cn('mb-0.5 p-1 pl-3 flex items-center cursor-pointer text-gray-700 text-sm leading-5 rounded-lg hover:bg-white', value === 'api' && '!bg-white !text-primary-600 font-medium')} onClick={() => onSelect('api')}>
-        <FileCode className='shrink-0 w-4 h-4 mr-2' />
+      <div className={cn('mb-0.5 flex cursor-pointer items-center rounded-lg p-1 pl-3 text-sm leading-5 text-gray-700 hover:bg-white', value === 'api' && '!text-primary-600 !bg-white font-medium')} onClick={() => onSelect('api')}>
+        <FileCode className='mr-2 h-4 w-4 shrink-0' />
         {t('tools.type.custom')}
       </div>
-      <div className={cn('mb-0.5 p-1 pl-3 flex items-center cursor-pointer text-gray-700 text-sm leading-5 rounded-lg hover:bg-white', value === 'workflow' && '!bg-white !text-primary-600 font-medium')} onClick={() => onSelect('workflow')}>
-        <Exchange02 className='shrink-0 w-4 h-4 mr-2' />
+      <div className={cn('mb-0.5 flex cursor-pointer items-center rounded-lg p-1 pl-3 text-sm leading-5 text-gray-700 hover:bg-white', value === 'workflow' && '!text-primary-600 !bg-white font-medium')} onClick={() => onSelect('workflow')}>
+        <Exchange02 className='mr-2 h-4 w-4 shrink-0' />
         {t('tools.type.workflow')}
       </div>
     </div>

@@ -133,45 +133,45 @@ const EndpointCard = ({
   const CopyIcon = isCopied ? ClipboardCheck : RiClipboardLine
 
   return (
-    <div className='p-0.5 bg-background-section-burn rounded-xl'>
-      <div className='group p-2.5 pl-3 bg-components-panel-on-panel-item-bg rounded-[10px] border-[0.5px] border-components-panel-border'>
+    <div className='bg-background-section-burn rounded-xl p-0.5'>
+      <div className='bg-components-panel-on-panel-item-bg border-components-panel-border group rounded-[10px] border-[0.5px] p-2.5 pl-3'>
         <div className='flex items-center'>
-          <div className='grow mb-1 h-6 flex items-center gap-1 text-text-secondary system-md-semibold'>
-            <RiLoginCircleLine className='w-4 h-4' />
+          <div className='text-text-secondary system-md-semibold mb-1 flex h-6 grow items-center gap-1'>
+            <RiLoginCircleLine className='h-4 w-4' />
             <div>{data.name}</div>
           </div>
-          <div className='hidden group-hover:flex items-center'>
+          <div className='hidden items-center group-hover:flex'>
             <ActionButton onClick={showEndpointModalConfirm}>
-              <RiEditLine className='w-4 h-4' />
+              <RiEditLine className='h-4 w-4' />
             </ActionButton>
             <ActionButton onClick={showDeleteConfirm} className='hover:bg-state-destructive-hover text-text-tertiary hover:text-text-destructive'>
-              <RiDeleteBinLine className='w-4 h-4' />
+              <RiDeleteBinLine className='h-4 w-4' />
             </ActionButton>
           </div>
         </div>
         {data.declaration.endpoints.map((endpoint, index) => (
-          <div key={index} className='h-6 flex items-center'>
-            <div className='shrink-0 w-12 text-text-tertiary system-xs-regular'>{endpoint.method}</div>
-            <div className='group/item grow flex items-center text-text-secondary system-xs-regular truncate'>
+          <div key={index} className='flex h-6 items-center'>
+            <div className='text-text-tertiary system-xs-regular w-12 shrink-0'>{endpoint.method}</div>
+            <div className='group/item text-text-secondary system-xs-regular flex grow items-center truncate'>
               <div title={`${data.url}${endpoint.path}`} className='truncate'>{`${data.url}${endpoint.path}`}</div>
               <Tooltip popupContent={t(`common.operation.${isCopied ? 'copied' : 'copy'}`)} position='top'>
-                <ActionButton className='hidden shrink-0 ml-2 group-hover/item:flex' onClick={() => handleCopy(`${data.url}${endpoint.path}`)}>
-                  <CopyIcon className='w-3.5 h-3.5 text-text-tertiary' />
+                <ActionButton className='ml-2 hidden shrink-0 group-hover/item:flex' onClick={() => handleCopy(`${data.url}${endpoint.path}`)}>
+                  <CopyIcon className='text-text-tertiary h-3.5 w-3.5' />
                 </ActionButton>
               </Tooltip>
             </div>
           </div>
         ))}
       </div>
-      <div className='p-2 pl-3 flex items-center justify-between'>
+      <div className='flex items-center justify-between p-2 pl-3'>
         {active && (
-          <div className='flex items-center gap-1 system-xs-semibold-uppercase text-util-colors-green-green-600'>
+          <div className='system-xs-semibold-uppercase text-util-colors-green-green-600 flex items-center gap-1'>
             <Indicator color='green' />
             {t('plugin.detailPanel.serviceOk')}
           </div>
         )}
         {!active && (
-          <div className='flex items-center gap-1 system-xs-semibold-uppercase text-text-tertiary'>
+          <div className='system-xs-semibold-uppercase text-text-tertiary flex items-center gap-1'>
             <Indicator color='gray' />
             {t('plugin.detailPanel.disabled')}
           </div>

@@ -23,14 +23,14 @@ const RetryResultPanel: FC<Props> = ({
   return (
     <div>
       <div
-        className='flex items-center px-4 h-8 text-text-accent-secondary bg-components-panel-bg system-sm-medium cursor-pointer'
+        className='text-text-accent-secondary bg-components-panel-bg system-sm-medium flex h-8 cursor-pointer items-center px-4'
         onClick={(e) => {
           e.stopPropagation()
           e.nativeEvent.stopImmediatePropagation()
           onBack()
         }}
       >
-        <RiArrowLeftLine className='mr-1 w-4 h-4' />
+        <RiArrowLeftLine className='mr-1 h-4 w-4' />
         {t('workflow.singleRun.back')}
       </div>
       <TracingPanel

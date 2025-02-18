@@ -37,13 +37,13 @@ const NoData: FC<Props> = ({
 
   return (
     <>
-      <div className='max-w-[640px] p-6 rounded-2xl bg-gray-50 mt-4'>
-        <div className='flex w-11 h-11 items-center justify-center bg-gray-50 rounded-xl border-[0.5px] border-gray-100 shadow-lg'>
+      <div className='mt-4 max-w-[640px] rounded-2xl bg-gray-50 p-6'>
+        <div className='flex h-11 w-11 items-center justify-center rounded-xl border-[0.5px] border-gray-100 bg-gray-50 shadow-lg'>
           {currentProvider.emoji}
         </div>
         <div className='my-2'>
-          <span className='text-gray-700 font-semibold'>{currentProvider.title}<Icon3Dots className='inline relative -top-3 -left-1.5' /></span>
-          <div className='mt-1 pb-3 text-gray-500 text-[13px] font-normal'>
+          <span className='font-semibold text-gray-700'>{currentProvider.title}<Icon3Dots className='relative -left-1.5 -top-3 inline' /></span>
+          <div className='mt-1 pb-3 text-[13px] font-normal text-gray-500'>
             {currentProvider.description}
           </div>
         </div>

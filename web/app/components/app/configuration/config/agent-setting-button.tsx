@@ -25,8 +25,8 @@ const AgentSettingButton: FC<Props> = ({
 
   return (
     <>
-      <Button onClick={() => setIsShowAgentSetting(true)} className='shrink-0 mr-2'>
-        <RiSettings2Line className='mr-1 w-4 h-4 text-text-tertiary' />
+      <Button onClick={() => setIsShowAgentSetting(true)} className='mr-2 shrink-0'>
+        <RiSettings2Line className='text-text-tertiary mr-1 h-4 w-4' />
         {t('appDebug.agent.setting.name')}
       </Button>
       {isShowAgentSetting && (

@@ -86,7 +86,7 @@ const EditAnnotationModal: FC<Props> = ({
         title={t('appAnnotation.editModal.title') as string}
         body={(
           <div>
-            <div className='p-6 pb-4 space-y-6'>
+            <div className='space-y-6 p-6 pb-4'>
               <EditItem
                 type={EditItemType.Query}
                 content={query}
@@ -115,7 +115,7 @@ const EditAnnotationModal: FC<Props> = ({
         foot={
           <div>
             {isAnnotationFull && (
-              <div className='mt-6 mb-4 px-6'>
+              <div className='mb-4 mt-6 px-6'>
                 <AnnotationFull />
               </div>
             )}
@@ -123,9 +123,9 @@ const EditAnnotationModal: FC<Props> = ({
             {
               annotationId
                 ? (
-                  <div className='px-4 flex h-16 items-center justify-between border-t border-divider-subtle bg-background-section-burn rounded-bl-xl rounded-br-xl system-sm-medium text-text-tertiary'>
+                  <div className='border-divider-subtle bg-background-section-burn system-sm-medium text-text-tertiary flex h-16 items-center justify-between rounded-bl-xl rounded-br-xl border-t px-4'>
                     <div
-                      className='flex items-center pl-3 space-x-2 cursor-pointer'
+                      className='flex cursor-pointer items-center space-x-2 pl-3'
                       onClick={() => setShowModal(true)}
                     >
                       <MessageCheckRemove />

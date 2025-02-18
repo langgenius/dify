@@ -39,19 +39,19 @@ const NodeControl: FC<NodeControlProps> = ({
   return (
     <div
       className={`
-      hidden group-hover:flex pb-1 absolute right-0 -top-7 h-7
+      absolute -top-7 right-0 hidden h-7 pb-1 group-hover:flex
       ${data.selected && '!flex'}
       ${open && '!flex'}
       `}
     >
       <div
-        className='flex items-center px-0.5 h-6 bg-components-actionbar-bg rounded-lg border-[0.5px] border-components-actionbar-border backdrop-blur-[5px] shadow-md text-text-tertiary'
+        className='bg-components-actionbar-bg border-components-actionbar-border text-text-tertiary flex h-6 items-center rounded-lg border-[0.5px] px-0.5 shadow-md backdrop-blur-[5px]'
         onClick={e => e.stopPropagation()}
       >
         {
           canRunBySingle(data.type) && (
             <div
-              className='flex items-center justify-center w-5 h-5 rounded-md cursor-pointer hover:bg-state-base-hover'
+              className='hover:bg-state-base-hover flex h-5 w-5 cursor-pointer items-center justify-center rounded-md'
               onClick={() => {
                 handleNodeDataUpdate({
                   id,
@@ -66,13 +66,13 @@ const NodeControl: FC<NodeControlProps> = ({
             >
               {
                 data._isSingleRun
-                  ? <Stop className='w-3 h-3' />
+                  ? <Stop className='h-3 w-3' />
                   : (
                     <Tooltip
                       popupContent={t('workflow.panel.runThisStep')}
                       asChild={false}
                     >
-                      <RiPlayLargeLine className='w-3 h-3' />
+                      <RiPlayLargeLine className='h-3 w-3' />
                     </Tooltip>
                   )
               }

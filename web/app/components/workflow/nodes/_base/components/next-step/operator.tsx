@@ -44,7 +44,7 @@ const ChangeItem = ({
 
   const renderTrigger = useCallback(() => {
     return (
-      <div className='flex items-center px-2 h-8 rounded-lg cursor-pointer hover:bg-state-base-hover'>
+      <div className='hover:bg-state-base-hover flex h-8 cursor-pointer items-center rounded-lg px-2'>
         {t('workflow.panel.change')}
       </div>
     )
@@ -93,12 +93,12 @@ const Operator = ({
       onOpenChange={onOpenChange}
     >
       <PortalToFollowElemTrigger onClick={() => onOpenChange(!open)}>
-        <Button className='p-0 w-6 h-6'>
-          <RiMoreFill className='w-4 h-4' />
+        <Button className='h-6 w-6 p-0'>
+          <RiMoreFill className='h-4 w-4' />
         </Button>
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent className='z-10'>
-        <div className='min-w-[120px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg system-md-regular text-text-secondary'>
+        <div className='border-components-panel-border bg-components-panel-bg-blur system-md-regular text-text-secondary min-w-[120px] rounded-xl border-[0.5px] shadow-lg'>
           <div className='p-1'>
             <ChangeItem
               data={data}
@@ -106,7 +106,7 @@ const Operator = ({
               sourceHandle={sourceHandle}
             />
             <div
-              className='flex items-center px-2 h-8 rounded-lg cursor-pointer hover:bg-state-base-hover'
+              className='hover:bg-state-base-hover flex h-8 cursor-pointer items-center rounded-lg px-2'
               onClick={() => handleNodeDisconnect(nodeId)}
             >
               {t('workflow.common.disconnect')}
@@ -114,7 +114,7 @@ const Operator = ({
           </div>
           <div className='p-1'>
             <div
-              className='flex items-center px-2 h-8 rounded-lg cursor-pointer hover:bg-state-base-hover'
+              className='hover:bg-state-base-hover flex h-8 cursor-pointer items-center rounded-lg px-2'
               onClick={() => handleNodeDelete(nodeId)}
             >
               {t('common.operation.delete')}

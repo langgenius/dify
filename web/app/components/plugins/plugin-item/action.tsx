@@ -107,7 +107,7 @@ const Action: FC<Props> = ({
         && (
           <Tooltip popupContent={t(`${i18nPrefix}.checkForUpdates`)}>
             <ActionButton onClick={handleFetchNewVersion}>
-              <RiLoopLeftLine className='w-4 h-4 text-text-tertiary' />
+              <RiLoopLeftLine className='text-text-tertiary h-4 w-4' />
             </ActionButton>
           </Tooltip>
         )
@@ -117,7 +117,7 @@ const Action: FC<Props> = ({
         && (
           <Tooltip popupContent={t(`${i18nPrefix}.pluginInfo`)}>
             <ActionButton onClick={showPluginInfo}>
-              <RiInformation2Line className='w-4 h-4 text-text-tertiary' />
+              <RiInformation2Line className='text-text-tertiary h-4 w-4' />
             </ActionButton>
           </Tooltip>
         )
@@ -130,7 +130,7 @@ const Action: FC<Props> = ({
               className='hover:bg-state-destructive-hover text-text-tertiary hover:text-text-destructive'
               onClick={showDeleteConfirm}
             >
-              <RiDeleteBinLine className='w-4 h-4' />
+              <RiDeleteBinLine className='h-4 w-4' />
             </ActionButton>
           </Tooltip>
         )

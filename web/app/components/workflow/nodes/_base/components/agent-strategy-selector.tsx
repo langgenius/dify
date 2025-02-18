@@ -143,15 +143,15 @@ export const AgentStrategySelector = memo((props: AgentStrategySelectorProps) =>
   return <PortalToFollowElem open={open} onOpenChange={setOpen} placement='bottom'>
     <PortalToFollowElemTrigger className='w-full'>
       <div
-        className='h-8 p-1 gap-0.5 flex items-center rounded-lg bg-components-input-bg-normal w-full hover:bg-state-base-hover-alt select-none'
+        className='bg-components-input-bg-normal hover:bg-state-base-hover-alt flex h-8 w-full select-none items-center gap-0.5 rounded-lg p-1'
         onClick={() => setOpen(o => !o)}
       >
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        {icon && <div className='flex items-center justify-center w-6 h-6'><img
+        {icon && <div className='flex h-6 w-6 items-center justify-center'><img
           src={icon}
           width={20}
           height={20}
-          className='rounded-md border-[0.5px] border-components-panel-border-subtle bg-background-default-dodge'
+          className='border-components-panel-border-subtle bg-background-default-dodge rounded-md border-[0.5px]'
           alt='icon'
         /></div>}
         <p
@@ -175,7 +175,7 @@ export const AgentStrategySelector = memo((props: AgentStrategySelectorProps) =>
                 title={t('workflow.nodes.agent.unsupportedStrategy')}
                 description={t('workflow.nodes.agent.strategyNotFoundDesc')}
               />
-              : <RiArrowDownSLine className='size-4 text-text-tertiary' />
+              : <RiArrowDownSLine className='text-text-tertiary size-4' />
           }
           {showSwitchVersion && <SwitchPluginVersion
             uniqueIdentifier={value.plugin_unique_identifier}
@@ -191,12 +191,12 @@ export const AgentStrategySelector = memo((props: AgentStrategySelectorProps) =>
       </div>
     </PortalToFollowElemTrigger>
     <PortalToFollowElemContent className='z-10'>
-      <div className='bg-components-panel-bg-blur border-components-panel-border border-[0.5px] rounded-md shadow overflow-hidden w-[388px]'>
-        <header className='p-2 gap-1 flex'>
+      <div className='bg-components-panel-bg-blur border-components-panel-border w-[388px] overflow-hidden rounded-md border-[0.5px] shadow'>
+        <header className='flex gap-1 p-2'>
           <SearchInput placeholder={t('workflow.nodes.agent.strategy.searchPlaceholder')} value={query} onChange={setQuery} className={'w-full'} />
           <ViewTypeSelect viewType={viewType} onChange={setViewType} />
         </header>
-        <main className="md:max-h-[300px] xl:max-h-[400px] 2xl:max-h-[564px] relative overflow-hidden flex flex-col w-full" ref={wrapElemRef}>
+        <main className="relative flex w-full flex-col overflow-hidden md:max-h-[300px] xl:max-h-[400px] 2xl:max-h-[564px]" ref={wrapElemRef}>
           <Tools
             tools={filteredTools}
             viewType={viewType}
@@ -210,7 +210,7 @@ export const AgentStrategySelector = memo((props: AgentStrategySelectorProps) =>
               })
               setOpen(false)
             } }
-            className='max-w-none max-h-full h-full overflow-y-auto'
+            className='h-full max-h-full max-w-none overflow-y-auto'
             indexBarClassName='top-0 xl:top-36' showWorkflowEmpty={false} hasSearchText={false} />
           <PluginList
             wrapElemRef={wrapElemRef}

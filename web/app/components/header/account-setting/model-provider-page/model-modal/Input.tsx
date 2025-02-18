@@ -41,11 +41,11 @@ const Input: FC<InputProps> = ({
       <input
         tabIndex={0}
         className={`
-          block px-3 w-full h-8 bg-components-input-bg-normal text-sm text-components-input-text-filled rounded-lg border border-transparent
-          appearance-none outline-none caret-primary-600
-          hover:border-components-input-border-hover hover:bg-components-input-bg-hover
-          focus:bg-components-input-bg-active focus:border-components-input-border-active focus:shadow-xs
-          placeholder:text-sm placeholder:text-text-tertiary
+          bg-components-input-bg-normal text-components-input-text-filled caret-primary-600 hover:border-components-input-border-hover hover:bg-components-input-bg-hover focus:bg-components-input-bg-active focus:border-components-input-border-active focus:shadow-xs placeholder:text-text-tertiary block
+          h-8 w-full appearance-none
+          rounded-lg border
+          border-transparent px-3 text-sm
+          outline-none placeholder:text-sm
           ${validated && 'pr-[30px]'}
           ${className}
         `}
@@ -61,8 +61,8 @@ const Input: FC<InputProps> = ({
       />
       {
         validated && (
-          <div className='absolute top-2.5 right-2.5'>
-            <CheckCircle className='w-4 h-4 text-[#039855]' />
+          <div className='absolute right-2.5 top-2.5'>
+            <CheckCircle className='h-4 w-4 text-[#039855]' />
           </div>
         )
       }

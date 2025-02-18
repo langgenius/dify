@@ -64,11 +64,11 @@ const DebugItem: FC<DebugItemProps> = ({
 
   return (
     <div
-      className={`flex flex-col min-w-[320px] rounded-xl bg-background-section-burn ${className}`}
+      className={`bg-background-section-burn flex min-w-[320px] flex-col rounded-xl ${className}`}
       style={style}
     >
-      <div className='shrink-0 flex items-center justify-between h-10 px-3 border-b-[0.5px] border-divider-regular'>
-        <div className='flex items-center justify-center w-6 h-5 font-medium italic text-text-tertiary'>
+      <div className='border-divider-regular flex h-10 shrink-0 items-center justify-between border-b-[0.5px] px-3'>
+        <div className='text-text-tertiary flex h-5 w-6 items-center justify-center font-medium italic'>
           #{index + 1}
         </div>
         <ModelParameterTrigger

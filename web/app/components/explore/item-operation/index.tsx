@@ -59,26 +59,26 @@ const ItemOperation: FC<IItemOperationProps> = ({
       >
         <div
           ref={ref}
-          className={'min-w-[120px] p-1 bg-white rounded-lg border border--gray-200 shadow-lg'}
+          className={'border--gray-200 min-w-[120px] rounded-lg border bg-white p-1 shadow-lg'}
           onMouseEnter={setIsHovering}
           onMouseLeave={setNotHovering}
           onClick={(e) => {
             e.stopPropagation()
           }}
         >
-          <div className={cn(s.actionItem, 'hover:bg-gray-50 group')} onClick={togglePin}>
-            <Pin02 className='shrink-0 w-4 h-4 text-gray-500' />
+          <div className={cn(s.actionItem, 'group hover:bg-gray-50')} onClick={togglePin}>
+            <Pin02 className='h-4 w-4 shrink-0 text-gray-500' />
             <span className={s.actionName}>{isPinned ? t('explore.sidebar.action.unpin') : t('explore.sidebar.action.pin')}</span>
           </div>
           {isShowRenameConversation && (
-            <div className={cn(s.actionItem, 'hover:bg-gray-50 group')} onClick={onRenameConversation}>
-              <RiEditLine className='shrink-0 w-4 h-4 text-gray-500' />
+            <div className={cn(s.actionItem, 'group hover:bg-gray-50')} onClick={onRenameConversation}>
+              <RiEditLine className='h-4 w-4 shrink-0 text-gray-500' />
               <span className={s.actionName}>{t('explore.sidebar.action.rename')}</span>
             </div>
           )}
           {isShowDelete && (
-            <div className={cn(s.actionItem, s.deleteActionItem, 'hover:bg-gray-50 group')} onClick={onDelete} >
-              <RiDeleteBinLine className={cn(s.deleteActionItemChild, 'shrink-0 w-4 h-4 stroke-current text-gray-500 stroke-2')} />
+            <div className={cn(s.actionItem, s.deleteActionItem, 'group hover:bg-gray-50')} onClick={onDelete} >
+              <RiDeleteBinLine className={cn(s.deleteActionItemChild, 'h-4 w-4 shrink-0 stroke-current stroke-2 text-gray-500')} />
               <span className={cn(s.actionName, s.deleteActionItemChild)}>{t('explore.sidebar.action.delete')}</span>
             </div>
           )}

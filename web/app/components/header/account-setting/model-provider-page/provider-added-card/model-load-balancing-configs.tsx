@@ -152,12 +152,12 @@ const ModelLoadBalancingConfigs = ({
         )}
         onClick={(!withSwitch && !draftConfig.enabled) ? () => toggleModalBalancing(true) : undefined}
       >
-        <div className='flex items-center px-[15px] py-3 gap-2 select-none'>
-          <div className='grow-0 shrink-0 flex items-center justify-center w-8 h-8 text-util-colors-blue-blue-600 bg-util-colors-indigo-indigo-50 border border-util-colors-indigo-indigo-100 rounded-lg'>
-            <Balance className='w-4 h-4' />
+        <div className='flex select-none items-center gap-2 px-[15px] py-3'>
+          <div className='text-util-colors-blue-blue-600 bg-util-colors-indigo-indigo-50 border-util-colors-indigo-indigo-100 flex h-8 w-8 shrink-0 grow-0 items-center justify-center rounded-lg border'>
+            <Balance className='h-4 w-4' />
           </div>
           <div className='grow'>
-            <div className='flex items-center gap-1 text-sm text-text-primary'>
+            <div className='text-text-primary flex items-center gap-1 text-sm'>
               {t('common.modelProvider.loadBalancing')}
               <Tooltip
                 popupContent={t('common.modelProvider.loadBalancingInfo')}
@@ -165,7 +165,7 @@ const ModelLoadBalancingConfigs = ({
                 triggerClassName='w-3 h-3'
               />
             </div>
-            <div className='text-xs text-text-tertiary'>{t('common.modelProvider.loadBalancingDescription')}</div>
+            <div className='text-text-tertiary text-xs'>{t('common.modelProvider.loadBalancingDescription')}</div>
           </div>
           {
             withSwitch && (
@@ -184,9 +184,9 @@ const ModelLoadBalancingConfigs = ({
             {draftConfig.configs.map((config, index) => {
               const isProviderManaged = config.name === '__inherit__'
               return (
-                <div key={config.id || index} className='group flex items-center px-3 h-10 bg-components-panel-on-panel-item-bg border border-components-panel-border rounded-lg shadow-xs'>
-                  <div className='grow flex items-center'>
-                    <div className='flex items-center justify-center mr-2 w-3 h-3'>
+                <div key={config.id || index} className='bg-components-panel-on-panel-item-bg border-components-panel-border shadow-xs group flex h-10 items-center rounded-lg border px-3'>
+                  <div className='flex grow items-center'>
+                    <div className='mr-2 flex h-3 w-3 items-center justify-center'>
                       {(config.in_cooldown && Boolean(config.ttl))
                         ? (
                           <CooldownTimer secondsRemaining={config.ttl} onFinish={() => clearCountdown(index)} />
@@ -197,11 +197,11 @@ const ModelLoadBalancingConfigs = ({
                           </Tooltip>
                         )}
                     </div>
-                    <div className='text-[13px] mr-1'>
+                    <div className='mr-1 text-[13px]'>
                       {isProviderManaged ? t('common.modelProvider.defaultConfig') : config.name}
                     </div>
                     {isProviderManaged && (
-                      <span className='px-1 text-2xs uppercase text-text-tertiary border border-divider-regular rounded-[5px]'>{t('common.modelProvider.providerManaged')}</span>
+                      <span className='text-2xs text-text-tertiary border-divider-regular rounded-[5px] border px-1 uppercase'>{t('common.modelProvider.providerManaged')}</span>
                     )}
                   </div>
                   <div className='flex items-center gap-1'>
@@ -209,18 +209,18 @@ const ModelLoadBalancingConfigs = ({
                       <>
                         <div className='flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100'>
                           <span
-                            className='flex items-center justify-center w-8 h-8 text-text-tertiary bg-components-button-secondary-bg rounded-lg transition-colors cursor-pointer hover:bg-components-button-secondary-bg-hover'
+                            className='text-text-tertiary bg-components-button-secondary-bg hover:bg-components-button-secondary-bg-hover flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg transition-colors'
                             onClick={() => toggleEntryModal(index, config)}
                           >
-                            <Edit02 className='w-4 h-4' />
+                            <Edit02 className='h-4 w-4' />
                           </span>
                           <span
-                            className='flex items-center justify-center w-8 h-8 text-text-tertiary bg-components-button-secondary-bg rounded-lg transition-colors cursor-pointer hover:bg-components-button-secondary-bg-hover'
+                            className='text-text-tertiary bg-components-button-secondary-bg hover:bg-components-button-secondary-bg-hover flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg transition-colors'
                             onClick={() => updateConfigEntry(index, () => undefined)}
                           >
-                            <RiDeleteBinLine className='w-4 h-4' />
+                            <RiDeleteBinLine className='h-4 w-4' />
                           </span>
-                          <span className='mr-2 h-3 border-r border-r-divider-subtle' />
+                          <span className='border-r-divider-subtle mr-2 h-3 border-r' />
                         </div>
                       </>
                     )}
@@ -236,19 +236,19 @@ const ModelLoadBalancingConfigs = ({
             })}
 
             <div
-              className='flex items-center px-3 mt-1 h-8 text-[13px] font-medium text-primary-600'
+              className='text-primary-600 mt-1 flex h-8 items-center px-3 text-[13px] font-medium'
               onClick={() => toggleEntryModal()}
             >
-              <div className='flex items-center cursor-pointer'>
-                <Plus02 className='mr-2 w-3 h-3' />{t('common.modelProvider.addConfig')}
+              <div className='flex cursor-pointer items-center'>
+                <Plus02 className='mr-2 h-3 w-3' />{t('common.modelProvider.addConfig')}
               </div>
             </div>
           </div>
         )}
         {
           draftConfig.enabled && draftConfig.configs.length < 2 && (
-            <div className='flex items-center px-6 h-[34px] text-xs text-text-secondary bg-components-panel-bg border-t border-t-divider-subtle'>
-              <AlertTriangle className='mr-1 w-3 h-3 text-[#f79009]' />
+            <div className='text-text-secondary bg-components-panel-bg border-t-divider-subtle flex h-[34px] items-center border-t px-6 text-xs'>
+              <AlertTriangle className='mr-1 h-3 w-3 text-[#f79009]' />
               {t('common.modelProvider.loadBalancingLeastKeyWarning')}
             </div>
           )
@@ -257,7 +257,7 @@ const ModelLoadBalancingConfigs = ({
 
       {!modelLoadBalancingEnabled && !IS_CE_EDITION && (
         <GridMask canvasClassName='!rounded-xl'>
-          <div className='flex items-center justify-between mt-2 px-4 h-14 border-[0.5px] border-components-panel-border rounded-xl shadow-md'>
+          <div className='border-components-panel-border mt-2 flex h-14 items-center justify-between rounded-xl border-[0.5px] px-4 shadow-md'>
             <div
               className={classNames('text-sm font-semibold leading-tight text-gradient', s.textGradient)}
             >

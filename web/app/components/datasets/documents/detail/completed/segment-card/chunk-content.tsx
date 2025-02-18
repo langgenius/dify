@@ -25,7 +25,7 @@ const ChunkContent: FC<ChunkContentProps> = ({
     return (
       <div className={className}>
         <div className='flex gap-x-1'>
-          <div className='w-4 text-[13px] font-medium leading-[20px] text-text-tertiary shrink-0'>Q</div>
+          <div className='text-text-tertiary w-4 shrink-0 text-[13px] font-medium leading-[20px]'>Q</div>
           <div
             className={cn('text-text-secondary body-md-regular',
               isCollapsed ? 'line-clamp-2' : 'line-clamp-20',
@@ -34,7 +34,7 @@ const ChunkContent: FC<ChunkContentProps> = ({
           </div>
         </div>
         <div className='flex gap-x-1'>
-          <div className='w-4 text-[13px] font-medium leading-[20px] text-text-tertiary shrink-0'>A</div>
+          <div className='text-text-tertiary w-4 shrink-0 text-[13px] font-medium leading-[20px]'>A</div>
           <div className={cn('text-text-secondary body-md-regular',
             isCollapsed ? 'line-clamp-2' : 'line-clamp-20',
           )}>

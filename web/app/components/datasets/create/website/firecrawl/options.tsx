@@ -39,7 +39,7 @@ const Options: FC<Props> = ({
       />
       <div className='flex justify-between space-x-4'>
         <Field
-          className='grow shrink-0'
+          className='shrink-0 grow'
           label={t(`${I18N_PREFIX}.limit`)}
           value={payload.limit}
           onChange={handleChange('limit')}
@@ -47,7 +47,7 @@ const Options: FC<Props> = ({
           isRequired
         />
         <Field
-          className='grow shrink-0'
+          className='shrink-0 grow'
           label={t(`${I18N_PREFIX}.maxDepth`)}
           value={payload.max_depth}
           onChange={handleChange('max_depth')}
@@ -58,14 +58,14 @@ const Options: FC<Props> = ({
 
       <div className='flex justify-between space-x-4'>
         <Field
-          className='grow shrink-0'
+          className='shrink-0 grow'
           label={t(`${I18N_PREFIX}.excludePaths`)}
           value={payload.excludes}
           onChange={handleChange('excludes')}
           placeholder='blog/*, /about/*'
         />
         <Field
-          className='grow shrink-0'
+          className='shrink-0 grow'
           label={t(`${I18N_PREFIX}.includeOnlyPaths`)}
           value={payload.includes}
           onChange={handleChange('includes')}

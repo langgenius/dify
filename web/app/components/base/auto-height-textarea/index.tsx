@@ -67,7 +67,7 @@ const AutoHeightTextarea = (
 
   return (
     (<div className={`relative ${wrapperClassName}`}>
-      <div className={cn(className, 'invisible whitespace-pre-wrap break-all  overflow-y-auto')} style={{
+      <div className={cn(className, 'invisible overflow-y-auto whitespace-pre-wrap  break-all')} style={{
         minHeight,
         maxHeight,
         paddingRight: (value && value.trim().length > 10000) ? 140 : 130,

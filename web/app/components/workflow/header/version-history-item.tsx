@@ -38,7 +38,7 @@ const VersionHistoryItem: React.FC<VersionHistoryItemProps> = ({ item, selectedV
   const renderVersionLabel = (version: string) => (
     (version === WorkflowVersion.Draft || version === WorkflowVersion.Latest)
       ? (
-        <div className="shrink-0 px-1 border bg-white border-[rgba(0,0,0,0.08)] rounded-[5px] truncate">
+        <div className="shrink-0 truncate rounded-[5px] border border-[rgba(0,0,0,0.08)] bg-white px-1">
           {version}
         </div>
       )
@@ -48,7 +48,7 @@ const VersionHistoryItem: React.FC<VersionHistoryItemProps> = ({ item, selectedV
   return (
     <div
       className={cn(
-        'flex items-center p-2 h-12 text-xs font-medium text-gray-700 justify-between',
+        'flex h-12 items-center justify-between p-2 text-xs font-medium text-gray-700',
         formattedVersion === selectedVersion ? '' : 'hover:bg-gray-100',
         formattedVersion === WorkflowVersion.Draft ? 'cursor-not-allowed' : 'cursor-pointer',
       )}

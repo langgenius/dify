@@ -9,7 +9,7 @@ type Props = {
 }
 
 export const LoadingPlaceholder = ({ className }: { className?: string }) => (
-  <div className={cn('h-2 rounded-sm opacity-20 bg-text-quaternary', className)} />
+  <div className={cn('bg-text-quaternary h-2 rounded-sm opacity-20', className)} />
 )
 
 const Placeholder = ({
@@ -20,15 +20,15 @@ const Placeholder = ({
     <div className={wrapClassName}>
       <SkeletonRow>
         <div
-          className='flex w-10 h-10 p-1 justify-center items-center gap-2 rounded-[10px]
-              border-[0.5px] border-components-panel-border bg-background-default backdrop-blur-sm'>
-          <div className='flex w-5 h-5 justify-center items-center'>
+          className='border-components-panel-border bg-background-default flex h-10 w-10 items-center justify-center gap-2
+              rounded-[10px] border-[0.5px] p-1 backdrop-blur-sm'>
+          <div className='flex h-5 w-5 items-center justify-center'>
             <Group className='text-text-tertiary' />
           </div>
         </div>
         <div className="grow">
           <SkeletonContainer>
-            <div className="flex items-center h-5">
+            <div className="flex h-5 items-center">
               {loadingFileName ? (
                 <Title title={loadingFileName} />
               ) : (

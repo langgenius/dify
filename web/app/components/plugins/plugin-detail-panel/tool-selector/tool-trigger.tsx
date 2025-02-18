@@ -29,32 +29,32 @@ const ToolTrigger = ({
   const { t } = useTranslation()
   return (
     <div className={cn(
-      'group flex items-center p-2 pl-3 bg-components-input-bg-normal rounded-lg cursor-pointer hover:bg-state-base-hover-alt',
+      'bg-components-input-bg-normal hover:bg-state-base-hover-alt group flex cursor-pointer items-center rounded-lg p-2 pl-3',
       open && 'bg-state-base-hover-alt',
-      value?.provider_name && 'pl-1.5 py-1.5',
+      value?.provider_name && 'py-1.5 pl-1.5',
     )}>
       {value?.provider_name && provider && (
-        <div className='shrink-0 mr-1 p-px rounded-lg bg-components-panel-bg border border-components-panel-border'>
+        <div className='bg-components-panel-bg border-components-panel-border mr-1 shrink-0 rounded-lg border p-px'>
           <BlockIcon
-            className='!w-4 !h-4'
+            className='!h-4 !w-4'
             type={BlockEnum.Tool}
             toolIcon={provider.icon}
           />
         </div>
       )}
       {value?.tool_name && (
-        <div className='grow system-sm-medium text-components-input-text-filled'>{value.tool_name}</div>
+        <div className='system-sm-medium text-components-input-text-filled grow'>{value.tool_name}</div>
       )}
       {!value?.provider_name && (
-        <div className='grow text-components-input-text-placeholder system-sm-regular'>
+        <div className='text-components-input-text-placeholder system-sm-regular grow'>
           {!isConfigure ? t('plugin.detailPanel.toolSelector.placeholder') : t('plugin.detailPanel.configureTool')}
         </div>
       )}
       {isConfigure && (
-        <RiEqualizer2Line className={cn('shrink-0 ml-0.5 w-4 h-4 text-text-quaternary group-hover:text-text-secondary', open && 'text-text-secondary')} />
+        <RiEqualizer2Line className={cn('text-text-quaternary group-hover:text-text-secondary ml-0.5 h-4 w-4 shrink-0', open && 'text-text-secondary')} />
       )}
       {!isConfigure && (
-        <RiArrowDownSLine className={cn('shrink-0 ml-0.5 w-4 h-4 text-text-quaternary group-hover:text-text-secondary', open && 'text-text-secondary')} />
+        <RiArrowDownSLine className={cn('text-text-quaternary group-hover:text-text-secondary ml-0.5 h-4 w-4 shrink-0', open && 'text-text-secondary')} />
       )}
     </div>
   )

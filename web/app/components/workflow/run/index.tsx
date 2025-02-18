@@ -103,13 +103,13 @@ const RunPanel: FC<RunProps> = ({ hideResult, activeTab = 'RESULT', runID, getRe
   }, [loading])
 
   return (
-    <div className='grow relative flex flex-col'>
+    <div className='relative flex grow flex-col'>
       {/* tab */}
-      <div className='shrink-0 flex items-center px-4 border-b-[0.5px] border-divider-subtle'>
+      <div className='border-divider-subtle flex shrink-0 items-center border-b-[0.5px] px-4'>
         {!hideResult && (
           <div
             className={cn(
-              'mr-6 py-3 border-b-2 border-transparent system-sm-semibold-uppercase text-text-tertiary cursor-pointer',
+              'system-sm-semibold-uppercase text-text-tertiary mr-6 cursor-pointer border-b-2 border-transparent py-3',
               currentTab === 'RESULT' && '!border-util-colors-blue-brand-blue-brand-600 text-text-primary',
             )}
             onClick={() => switchTab('RESULT')}
@@ -117,23 +117,23 @@ const RunPanel: FC<RunProps> = ({ hideResult, activeTab = 'RESULT', runID, getRe
         )}
         <div
           className={cn(
-            'mr-6 py-3 border-b-2 border-transparent system-sm-semibold-uppercase text-text-tertiary cursor-pointer',
+            'system-sm-semibold-uppercase text-text-tertiary mr-6 cursor-pointer border-b-2 border-transparent py-3',
             currentTab === 'DETAIL' && '!border-util-colors-blue-brand-blue-brand-600 text-text-primary',
           )}
           onClick={() => switchTab('DETAIL')}
         >{t('runLog.detail')}</div>
         <div
           className={cn(
-            'mr-6 py-3 border-b-2 border-transparent system-sm-semibold-uppercase text-text-tertiary cursor-pointer',
+            'system-sm-semibold-uppercase text-text-tertiary mr-6 cursor-pointer border-b-2 border-transparent py-3',
             currentTab === 'TRACING' && '!border-util-colors-blue-brand-blue-brand-600 text-text-primary',
           )}
           onClick={() => switchTab('TRACING')}
         >{t('runLog.tracing')}</div>
       </div>
       {/* panel detail */}
-      <div ref={ref} className={cn('relative grow bg-components-panel-bg h-0 overflow-y-auto rounded-b-2xl')}>
+      <div ref={ref} className={cn('bg-components-panel-bg relative h-0 grow overflow-y-auto rounded-b-2xl')}>
         {loading && (
-          <div className='flex h-full items-center justify-center bg-components-panel-bg'>
+          <div className='bg-components-panel-bg flex h-full items-center justify-center'>
             <Loading />
           </div>
         )}

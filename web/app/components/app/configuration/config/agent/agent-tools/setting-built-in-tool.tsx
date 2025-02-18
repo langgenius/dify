@@ -119,7 +119,7 @@ const SettingBuiltInTool: FC<Props> = ({
   const infoUI = (
     <div className=''>
       {infoSchemas.length > 0 && (
-        <div className='py-2 space-y-1'>
+        <div className='space-y-1 py-2'>
           {infoSchemas.map((item: any, index) => (
             <div key={index} className='py-1'>
               <div className='flex items-center gap-2'>
@@ -132,7 +132,7 @@ const SettingBuiltInTool: FC<Props> = ({
                 )}
               </div>
               {item.human_description && (
-                <div className='mt-0.5 text-text-tertiary system-xs-regular'>
+                <div className='text-text-tertiary system-xs-regular mt-0.5'>
                   {item.human_description?.[language]}
                 </div>
               )}
@@ -163,47 +163,47 @@ const SettingBuiltInTool: FC<Props> = ({
       footer={null}
       mask={false}
       positionCenter={false}
-      panelClassname={cn('justify-start mt-[64px] mr-2 mb-2 !w-[420px] !max-w-[420px] !p-0 !bg-components-panel-bg rounded-2xl border-[0.5px] border-components-panel-border shadow-xl')}
+      panelClassname={cn('!bg-components-panel-bg border-components-panel-border mb-2 mr-2 mt-[64px] !w-[420px] !max-w-[420px] justify-start rounded-2xl border-[0.5px] !p-0 shadow-xl')}
     >
       <>
         {isLoading && <Loading type='app' />}
         {!isLoading && (
           <>
             {/* header */}
-            <div className='relative p-4 pb-3 border-b border-divider-subtle'>
-              <div className='absolute top-3 right-3'>
+            <div className='border-divider-subtle relative border-b p-4 pb-3'>
+              <div className='absolute right-3 top-3'>
                 <ActionButton onClick={onHide}>
-                  <RiCloseLine className='w-4 h-4' />
+                  <RiCloseLine className='h-4 w-4' />
                 </ActionButton>
               </div>
               {showBackButton && (
                 <div
-                  className='mb-2 flex items-center gap-1 text-text-accent-secondary system-xs-semibold-uppercase cursor-pointer'
+                  className='text-text-accent-secondary system-xs-semibold-uppercase mb-2 flex cursor-pointer items-center gap-1'
                   onClick={onHide}
                 >
-                  <RiArrowLeftLine className='w-4 h-4' />
+                  <RiArrowLeftLine className='h-4 w-4' />
                   BACK
                 </div>
               )}
               <div className='flex items-center gap-1'>
-                <Icon size='tiny' className='w-6 h-6' src={collection.icon} />
+                <Icon size='tiny' className='h-6 w-6' src={collection.icon} />
                 <OrgInfo
                   packageNameClassName='w-auto'
                   orgName={collection.author}
                   packageName={collection.name.split('/').pop() || ''}
                 />
               </div>
-              <div className='mt-1 text-text-primary system-md-semibold'>{currTool?.label[language]}</div>
+              <div className='text-text-primary system-md-semibold mt-1'>{currTool?.label[language]}</div>
               {!!currTool?.description[language] && (
                 <Description className='mt-3' text={currTool.description[language]} descriptionLineRows={2}></Description>
               )}
             </div>
             {/* form */}
             <div className='h-full'>
-              <div className='flex flex-col h-full'>
+              <div className='flex h-full flex-col'>
                 {(hasSetting && !readonly) ? (
                   <TabSlider
-                    className='shrink-0 mt-1 px-4'
+                    className='mt-1 shrink-0 px-4'
                     itemClassName='py-3'
                     noBorderBottom
                     value={currType}
@@ -216,15 +216,15 @@ const SettingBuiltInTool: FC<Props> = ({
                     ]}
                   />
                 ) : (
-                  <div className='p-4 pb-1 text-text-primary system-sm-semibold-uppercase'>{t('tools.setBuiltInTools.parameters')}</div>
+                  <div className='text-text-primary system-sm-semibold-uppercase p-4 pb-1'>{t('tools.setBuiltInTools.parameters')}</div>
                 )}
-                <div className='grow h-0 overflow-y-auto px-4'>
+                <div className='h-0 grow overflow-y-auto px-4'>
                   {isInfoActive ? infoUI : settingUI}
                 </div>
                 {!readonly && !isInfoActive && (
-                  <div className='mt-2 shrink-0 flex justify-end py-4 px-6  space-x-2 rounded-b-[10px] bg-components-panel-bg border-t border-divider-regular'>
-                    <Button className='flex items-center h-8 !px-3 !text-[13px] font-medium ' onClick={onHide}>{t('common.operation.cancel')}</Button>
-                    <Button className='flex items-center h-8 !px-3 !text-[13px] font-medium' variant='primary' disabled={!isValid} onClick={() => onSave?.(addDefaultValue(tempSetting, formSchemas))}>{t('common.operation.save')}</Button>
+                  <div className='bg-components-panel-bg border-divider-regular mt-2 flex shrink-0 justify-end  space-x-2 rounded-b-[10px] border-t px-6 py-4'>
+                    <Button className='flex h-8 items-center !px-3 !text-[13px] font-medium ' onClick={onHide}>{t('common.operation.cancel')}</Button>
+                    <Button className='flex h-8 items-center !px-3 !text-[13px] font-medium' variant='primary' disabled={!isValid} onClick={() => onSave?.(addDefaultValue(tempSetting, formSchemas))}>{t('common.operation.save')}</Button>
                   </div>
                 )}
               </div>

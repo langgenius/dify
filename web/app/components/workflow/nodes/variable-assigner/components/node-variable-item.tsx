@@ -35,7 +35,7 @@ const NodeVariableItem = ({
   const { t } = useTranslation()
   return (
     <div className={cn(
-      'relative flex items-center p-[3px] pl-[5px] gap-1 self-stretch rounded-md bg-workflow-block-parma-bg',
+      'bg-workflow-block-parma-bg relative flex items-center gap-1 self-stretch rounded-md p-[3px] pl-[5px]',
       showBorder && '!bg-black/[0.02]',
       className,
     )}>
@@ -47,19 +47,19 @@ const NodeVariableItem = ({
               type={node?.data.type || BlockEnum.Start}
             />
           </div>
-          <div className='max-w-[85px] truncate mx-0.5 text-xs font-medium text-gray-700' title={node?.data.title}>{node?.data.title}</div>
+          <div className='mx-0.5 max-w-[85px] truncate text-xs font-medium text-gray-700' title={node?.data.title}>{node?.data.title}</div>
           <Line3 className='mr-0.5'></Line3>
         </div>
       )}
-      <div className='flex items-center text-primary-600 w-full'>
-        {!isEnv && !isChatVar && <Variable02 className={cn('shrink-0 w-3.5 h-3.5 text-primary-500', isException && 'text-text-warning')} />}
-        {isEnv && <Env className='shrink-0 w-3.5 h-3.5 text-util-colors-violet-violet-600' />}
-        {!isChatVar && <div className={cn('max-w-[75px] truncate ml-0.5 system-xs-medium overflow-hidden text-ellipsis', isEnv && 'text-gray-900', isException && 'text-text-warning')} title={varName}>{varName}</div>}
+      <div className='text-primary-600 flex w-full items-center'>
+        {!isEnv && !isChatVar && <Variable02 className={cn('text-primary-500 h-3.5 w-3.5 shrink-0', isException && 'text-text-warning')} />}
+        {isEnv && <Env className='text-util-colors-violet-violet-600 h-3.5 w-3.5 shrink-0' />}
+        {!isChatVar && <div className={cn('system-xs-medium ml-0.5 max-w-[75px] overflow-hidden truncate text-ellipsis', isEnv && 'text-gray-900', isException && 'text-text-warning')} title={varName}>{varName}</div>}
         {isChatVar
-          && <div className='flex items-center w-full gap-1'>
-            <div className='flex h-[18px] min-w-[18px] items-center gap-0.5 flex-1'>
-              <BubbleX className='w-3.5 h-3.5 text-util-colors-teal-teal-700' />
-              <div className={cn('max-w-[75px] truncate ml-0.5 system-xs-medium overflow-hidden text-ellipsis text-util-colors-teal-teal-700')}>{varName}</div>
+          && <div className='flex w-full items-center gap-1'>
+            <div className='flex h-[18px] min-w-[18px] flex-1 items-center gap-0.5'>
+              <BubbleX className='text-util-colors-teal-teal-700 h-3.5 w-3.5' />
+              <div className={cn('system-xs-medium text-util-colors-teal-teal-700 ml-0.5 max-w-[75px] overflow-hidden truncate text-ellipsis')}>{varName}</div>
             </div>
             {writeMode && <Badge className='shrink-0' text={t(`${i18nPrefix}.operations.${writeMode}`)} />}
           </div>

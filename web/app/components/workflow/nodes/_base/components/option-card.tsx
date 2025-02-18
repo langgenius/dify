@@ -48,9 +48,9 @@ const OptionCard: FC<Props> = ({
   return (
     <div
       className={cn(
-        'flex items-center px-2 h-8 rounded-md system-sm-regular bg-components-option-card-option-bg border border-components-option-card-option-border text-text-secondary cursor-default',
+        'system-sm-regular bg-components-option-card-option-bg border-components-option-card-option-border text-text-secondary flex h-8 cursor-default items-center rounded-md border px-2',
         (!selected && !disabled) && 'hover:bg-components-option-card-option-bg-hover hover:border-components-option-card-option-border-hover hover:shadow-xs cursor-pointer',
-        selected && 'bg-components-option-card-option-selected-bg border-[1.5px] border-components-option-card-option-selected-border system-sm-medium shadow-xs',
+        selected && 'bg-components-option-card-option-selected-bg border-components-option-card-option-selected-border system-sm-medium shadow-xs border-[1.5px]',
         disabled && 'text-text-disabled',
         variants({ align }),
         className,

@@ -60,8 +60,8 @@ const RunOnce: FC<IRunOnceProps> = ({
         {/* input form */}
         <form onSubmit={onSubmit}>
           {promptConfig.prompt_variables.map(item => (
-            <div className='w-full mt-4' key={item.key}>
-              <label className='text-gray-900 text-sm font-medium'>{item.name}</label>
+            <div className='mt-4 w-full' key={item.key}>
+              <label className='text-sm font-medium text-gray-900'>{item.name}</label>
               <div className='mt-2'>
                 {item.type === 'select' && (
                   <Select
@@ -76,7 +76,7 @@ const RunOnce: FC<IRunOnceProps> = ({
                 {item.type === 'string' && (
                   <input
                     type="text"
-                    className="block w-full p-2 text-gray-900 border border-gray-300 rounded-lg bg-gray-50 sm:text-xs focus:ring-blue-500 focus:border-blue-500 "
+                    className="block w-full rounded-lg border border-gray-300 bg-gray-50 p-2 text-gray-900 focus:border-blue-500 focus:ring-blue-500 sm:text-xs "
                     placeholder={`${item.name}${!item.required ? `(${t('appDebug.variableTable.optional')})` : ''}`}
                     value={inputs[item.key]}
                     onChange={(e) => { handleInputsChange({ ...inputsRef.current, [item.key]: e.target.value }) }}
@@ -94,7 +94,7 @@ const RunOnce: FC<IRunOnceProps> = ({
                 {item.type === 'number' && (
                   <input
                     type="number"
-                    className="block w-full p-2 text-gray-900 border border-gray-300 rounded-lg bg-gray-50 sm:text-xs focus:ring-blue-500 focus:border-blue-500 "
+                    className="block w-full rounded-lg border border-gray-300 bg-gray-50 p-2 text-gray-900 focus:border-blue-500 focus:ring-blue-500 sm:text-xs "
                     placeholder={`${item.name}${!item.required ? `(${t('appDebug.variableTable.optional')})` : ''}`}
                     value={inputs[item.key]}
                     onChange={(e) => { handleInputsChange({ ...inputsRef.current, [item.key]: e.target.value }) }}
@@ -123,8 +123,8 @@ const RunOnce: FC<IRunOnceProps> = ({
           ))}
           {
             visionConfig?.enabled && (
-              <div className="w-full mt-4">
-                <div className="text-gray-900 text-sm font-medium">{t('common.imageUploader.imageUpload')}</div>
+              <div className="mt-4 w-full">
+                <div className="text-sm font-medium text-gray-900">{t('common.imageUploader.imageUpload')}</div>
                 <div className='mt-2'>
                   <TextGenerationImageUploader
                     settings={visionConfig}
@@ -142,7 +142,7 @@ const RunOnce: FC<IRunOnceProps> = ({
           {promptConfig.prompt_variables.length > 0 && (
             <div className='mt-4 h-[1px] bg-gray-100'></div>
           )}
-          <div className='w-full mt-4'>
+          <div className='mt-4 w-full'>
             <div className="flex items-center justify-between">
               <Button
                 onClick={onClear}
@@ -155,7 +155,7 @@ const RunOnce: FC<IRunOnceProps> = ({
                 variant="primary"
                 disabled={false}
               >
-                <PlayIcon className="shrink-0 w-4 h-4 mr-1" aria-hidden="true" />
+                <PlayIcon className="mr-1 h-4 w-4 shrink-0" aria-hidden="true" />
                 <span className='text-[13px]'>{t('share.generation.run')}</span>
               </Button>
             </div>

@@ -171,20 +171,20 @@ const AddToolModal: FC<Props> = ({
         clickOutsideNotOpen
         onClose={onHide}
         footer={null}
-        panelClassname={cn('mt-16 mx-2 sm:mr-2 mb-3 !p-0 rounded-xl', 'mt-2 !w-[640px]', '!max-w-[640px]')}
+        panelClassname={cn('mx-2 mb-3 mt-16 rounded-xl !p-0 sm:mr-2', 'mt-2 !w-[640px]', '!max-w-[640px]')}
       >
         <div
-          className='w-full flex bg-white border-[0.5px] border-gray-200 rounded-xl shadow-xl'
+          className='flex w-full rounded-xl border-[0.5px] border-gray-200 bg-white shadow-xl'
           style={{
             height: 'calc(100vh - 16px)',
           }}
         >
-          <div className='relative shrink-0 w-[200px] pb-3 bg-gray-100 rounded-l-xl border-r-[0.5px] border-black/2 overflow-y-auto'>
-            <div className='sticky top-0 left-0 right-0'>
-              <div className='sticky top-0 left-0 right-0 px-5 py-3 text-md font-semibold text-gray-900'>{t('tools.addTool')}</div>
-              <div className='px-3 pt-2 pb-4'>
+          <div className='border-black/2 relative w-[200px] shrink-0 overflow-y-auto rounded-l-xl border-r-[0.5px] bg-gray-100 pb-3'>
+            <div className='sticky left-0 right-0 top-0'>
+              <div className='text-md sticky left-0 right-0 top-0 px-5 py-3 font-semibold text-gray-900'>{t('tools.addTool')}</div>
+              <div className='px-3 pb-4 pt-2'>
                 <Button variant='primary' className='w-[176px]' onClick={() => setIsShowEditCustomCollectionModal(true)}>
-                  <RiAddLine className='w-4 h-4 mr-1' />
+                  <RiAddLine className='mr-1 h-4 w-4' />
                   {t('tools.createCustomTool')}
                 </Button>
               </div>
@@ -194,8 +194,8 @@ const AddToolModal: FC<Props> = ({
               <Category value={currentCategory} onSelect={setCurrentCategory} />
             </div>
           </div>
-          <div className='relative grow bg-white rounded-r-xl overflow-y-auto'>
-            <div className='z-10 sticky top-0 left-0 right-0 p-2 flex items-center gap-1 bg-white'>
+          <div className='relative grow overflow-y-auto rounded-r-xl bg-white'>
+            <div className='sticky left-0 right-0 top-0 z-10 flex items-center gap-1 bg-white p-2'>
               <div className='grow'>
                 <Input
                   showLeftIcon
@@ -205,9 +205,9 @@ const AddToolModal: FC<Props> = ({
                   onClear={() => handleKeywordsChange('')}
                 />
               </div>
-              <div className='ml-2 mr-1 w-[1px] h-4 bg-gray-200'></div>
-              <div className='p-2 cursor-pointer' onClick={onHide}>
-                <RiCloseLine className='w-4 h-4 text-gray-500' />
+              <div className='ml-2 mr-1 h-4 w-[1px] bg-gray-200'></div>
+              <div className='cursor-pointer p-2' onClick={onHide}>
+                <RiCloseLine className='h-4 w-4 text-gray-500' />
               </div>
             </div>
             {listLoading && (

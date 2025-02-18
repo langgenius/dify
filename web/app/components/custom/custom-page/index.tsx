@@ -19,8 +19,8 @@ const CustomPage = () => {
       {
         showBillingTip && (
           <GridMask canvasClassName='!rounded-xl'>
-            <div className='flex justify-between mb-1 px-6 py-5 h-[88px] shadow-md rounded-xl border-[0.5px] border-gray-200'>
-              <div className={`${s.textGradient} leading-[24px] text-base font-semibold`}>
+            <div className='mb-1 flex h-[88px] justify-between rounded-xl border-[0.5px] border-gray-200 px-6 py-5 shadow-md'>
+              <div className={`${s.textGradient} text-base font-semibold leading-[24px]`}>
                 <div>{t('custom.upgradeTip.prefix')}</div>
                 <div>{t('custom.upgradeTip.suffix')}</div>
               </div>
@@ -32,7 +32,7 @@ const CustomPage = () => {
       <CustomWebAppBrand />
       {
         showContact && (
-          <div className='absolute bottom-0 h-[50px] leading-[50px] text-xs text-gray-500'>
+          <div className='absolute bottom-0 h-[50px] text-xs leading-[50px] text-gray-500'>
             {t('custom.customize.prefix')}
             <a className='text-[#155EEF]' href={contactSalesUrl} target='_blank' rel='noopener noreferrer'>{t('custom.customize.contactUs')}</a>
             {t('custom.customize.suffix')}

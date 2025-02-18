@@ -19,7 +19,7 @@ const ContentDialog = ({
     <Transition
       show={show}
       as="div"
-      className="absolute left-0 top-0 w-full h-full z-20 p-2 box-border"
+      className="absolute left-0 top-0 z-20 box-border h-full w-full p-2"
     >
       <Transition.Child
         as={Fragment}
@@ -31,7 +31,7 @@ const ContentDialog = ({
         leaveTo="opacity-0"
       >
         <div
-          className="absolute left-0 inset-0 w-full bg-app-detail-overlay-bg"
+          className="bg-app-detail-overlay-bg absolute inset-0 left-0 w-full"
           onClick={onClose}
         />
       </Transition.Child>

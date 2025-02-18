@@ -29,7 +29,7 @@ const Icon = ({ svgString, active }: { svgString: string; active: boolean }) => 
     if (svgRef.current && svgElement)
       svgRef.current.appendChild(svgElement)
   })
-  return <svg className={cn('w-4 h-4 text-gray-700', active && '!text-primary-600')} ref={svgRef} />
+  return <svg className={cn('h-4 w-4 text-gray-700', active && '!text-primary-600')} ref={svgRef} />
 }
 
 const Category = ({
@@ -50,14 +50,14 @@ const Category = ({
 
   return (
     <div className='mb-3'>
-      <div className='px-3 py-0.5 text-gray-500 text-xs leading-[18px] font-medium'>{t('tools.addToolModal.category').toLocaleUpperCase()}</div>
-      <div className={cn('mb-0.5 p-1 pl-3 flex items-center cursor-pointer text-gray-700 text-sm leading-5 rounded-lg hover:bg-white', value === '' && '!bg-white !text-primary-600 font-medium')} onClick={() => onSelect('')}>
-        <Apps02 className='shrink-0 w-4 h-4 mr-2' />
+      <div className='px-3 py-0.5 text-xs font-medium leading-[18px] text-gray-500'>{t('tools.addToolModal.category').toLocaleUpperCase()}</div>
+      <div className={cn('mb-0.5 flex cursor-pointer items-center rounded-lg p-1 pl-3 text-sm leading-5 text-gray-700 hover:bg-white', value === '' && '!text-primary-600 !bg-white font-medium')} onClick={() => onSelect('')}>
+        <Apps02 className='mr-2 h-4 w-4 shrink-0' />
         {t('tools.type.all')}
       </div>
       {labelList.map(label => (
-        <div key={label.name} title={label.label[language]} className={cn('mb-0.5 p-1 pl-3 flex items-center cursor-pointer text-gray-700 text-sm leading-5 rounded-lg hover:bg-white truncate overflow-hidden', value === label.name && '!bg-white !text-primary-600 font-medium')} onClick={() => onSelect(label.name)}>
-          <div className='shrink-0 w-4 h-4 mr-2'>
+        <div key={label.name} title={label.label[language]} className={cn('mb-0.5 flex cursor-pointer items-center overflow-hidden truncate rounded-lg p-1 pl-3 text-sm leading-5 text-gray-700 hover:bg-white', value === label.name && '!text-primary-600 !bg-white font-medium')} onClick={() => onSelect(label.name)}>
+          <div className='mr-2 h-4 w-4 shrink-0'>
             <Icon active={value === label.name} svgString={label.icon} />
           </div>
           {label.label[language]}

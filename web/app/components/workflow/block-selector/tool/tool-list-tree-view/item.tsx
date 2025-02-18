@@ -24,7 +24,7 @@ const Item: FC<Props> = ({
 }) => {
   return (
     <div>
-      <div className='flex items-center px-3 h-[22px] text-xs font-medium text-text-tertiary'>
+      <div className='text-text-tertiary flex h-[22px] items-center px-3 text-xs font-medium'>
         {groupName}
       </div>
       <div>

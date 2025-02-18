@@ -24,16 +24,16 @@ const ErrorHandleTip = ({
 
   return (
     <div
-      className='relative flex p-2 pr-[52px] rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-xs'
+      className='border-components-panel-border bg-components-panel-bg-blur shadow-xs relative flex rounded-lg border-[0.5px] p-2 pr-[52px]'
     >
       <div
-        className='absolute inset-0 opacity-40 rounded-lg'
+        className='absolute inset-0 rounded-lg opacity-40'
         style={{
           background: 'linear-gradient(92deg, rgba(247, 144, 9, 0.25) 0%, rgba(255, 255, 255, 0.00) 100%)',
         }}
       ></div>
-      <RiAlertFill className='shrink-0 mr-1 w-4 h-4 text-text-warning-secondary' />
-      <div className='grow system-xs-medium text-text-primary'>
+      <RiAlertFill className='text-text-warning-secondary mr-1 h-4 w-4 shrink-0' />
+      <div className='system-xs-medium text-text-primary grow'>
         {text}
       </div>
     </div>

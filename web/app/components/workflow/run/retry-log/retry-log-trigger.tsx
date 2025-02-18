@@ -25,15 +25,15 @@ const RetryLogTrigger = ({
 
   return (
     <Button
-      className='flex items-center justify-between mb-1 w-full'
+      className='mb-1 flex w-full items-center justify-between'
       variant='tertiary'
       onClick={handleShowRetryResultList}
     >
       <div className='flex items-center'>
-        <RiRestartFill className='mr-0.5 w-4 h-4 text-components-button-tertiary-text shrink-0' />
+        <RiRestartFill className='text-components-button-tertiary-text mr-0.5 h-4 w-4 shrink-0' />
         {t('workflow.nodes.common.retry.retries', { num: retryDetail?.length })}
       </div>
-      <RiArrowRightSLine className='w-4 h-4 text-components-button-tertiary-text shrink-0' />
+      <RiArrowRightSLine className='text-components-button-tertiary-text h-4 w-4 shrink-0' />
     </Button>
   )
 }

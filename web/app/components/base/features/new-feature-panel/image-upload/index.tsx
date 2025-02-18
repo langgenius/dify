@@ -50,8 +50,8 @@ const FileUpload = ({
   return (
     <FeatureCard
       icon={
-        <div className='shrink-0 p-1 rounded-lg border-[0.5px] border-divider-subtle shadow-xs bg-util-colors-indigo-indigo-600'>
-          <RiImage2Fill className='w-4 h-4 text-text-primary-on-surface' />
+        <div className='border-divider-subtle shadow-xs bg-util-colors-indigo-indigo-600 shrink-0 rounded-lg border-[0.5px] p-1'>
+          <RiImage2Fill className='text-text-primary-on-surface h-4 w-4' />
         </div>
       }
       title={
@@ -59,7 +59,7 @@ const FileUpload = ({
           {t('appDebug.feature.imageUpload.title')}
           <Badge
             text='LEGACY'
-            className='shrink-0 mx-1 border-text-accent-secondary text-text-accent-secondary'
+            className='border-text-accent-secondary text-text-accent-secondary mx-1 shrink-0'
           />
         </div>
       }
@@ -71,19 +71,19 @@ const FileUpload = ({
     >
       <>
         {!file?.enabled && (
-          <div className='min-h-8 text-text-tertiary system-xs-regular line-clamp-2'>{t('appDebug.feature.imageUpload.description')}</div>
+          <div className='text-text-tertiary system-xs-regular line-clamp-2 min-h-8'>{t('appDebug.feature.imageUpload.description')}</div>
         )}
         {file?.enabled && (
           <>
             {!isHovering && !modalOpen && (
-              <div className='pt-0.5 flex items-center gap-4'>
+              <div className='flex items-center gap-4 pt-0.5'>
                 <div className=''>
-                  <div className='mb-0.5 text-text-tertiary system-2xs-medium-uppercase'>{t('appDebug.feature.imageUpload.supportedTypes')}</div>
+                  <div className='text-text-tertiary system-2xs-medium-uppercase mb-0.5'>{t('appDebug.feature.imageUpload.supportedTypes')}</div>
                   <div className='text-text-secondary system-xs-regular'>{supportedTypes}</div>
                 </div>
-                <div className='w-px h-[27px] bg-divider-subtle rotate-12'></div>
+                <div className='bg-divider-subtle h-[27px] w-px rotate-12'></div>
                 <div className=''>
-                  <div className='mb-0.5 text-text-tertiary system-2xs-medium-uppercase'>{t('appDebug.feature.imageUpload.numberLimit')}</div>
+                  <div className='text-text-tertiary system-2xs-medium-uppercase mb-0.5'>{t('appDebug.feature.imageUpload.numberLimit')}</div>
                   <div className='text-text-secondary system-xs-regular'>{file?.number_limits}</div>
                 </div>
               </div>
@@ -99,7 +99,7 @@ const FileUpload = ({
                 onChange={onChange}
               >
                 <Button className='w-full' disabled={disabled}>
-                  <RiEqualizer2Line className='mr-1 w-4 h-4' />
+                  <RiEqualizer2Line className='mr-1 h-4 w-4' />
                   {t('common.operation.settings')}
                 </Button>
               </SettingModal>

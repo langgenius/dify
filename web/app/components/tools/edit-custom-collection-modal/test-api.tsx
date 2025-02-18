@@ -66,29 +66,29 @@ const TestApi: FC<Props> = ({
         height='calc(100vh - 16px)'
         headerClassName='!border-b-divider-regular'
         body={
-          <div className='pt-2 px-6 overflow-y-auto'>
+          <div className='overflow-y-auto px-6 pt-2'>
             <div className='space-y-4'>
               <div>
-                <div className='py-2 system-sm-medium text-text-primary'>{t('tools.createTool.authMethod.title')}</div>
-                <div className='flex items-center h-9 justify-between px-2.5 bg-components-input-bg-normal rounded-lg cursor-pointer' onClick={() => setCredentialsModalShow(true)}>
+                <div className='system-sm-medium text-text-primary py-2'>{t('tools.createTool.authMethod.title')}</div>
+                <div className='bg-components-input-bg-normal flex h-9 cursor-pointer items-center justify-between rounded-lg px-2.5' onClick={() => setCredentialsModalShow(true)}>
                   <div className='system-xs-regular text-text-primary'>{t(`tools.createTool.authMethod.types.${tempCredential.auth_type}`)}</div>
-                  <RiSettings2Line className='w-4 h-4 text-text-secondary' />
+                  <RiSettings2Line className='text-text-secondary h-4 w-4' />
                 </div>
               </div>
 
               <div>
-                <div className='py-2 system-sm-medium text-text-primary'>{t('tools.test.parametersValue')}</div>
-                <div className='rounded-lg border border-divider-regular'>
-                  <table className='w-full system-xs-regular text-text-secondary font-normal'>
+                <div className='system-sm-medium text-text-primary py-2'>{t('tools.test.parametersValue')}</div>
+                <div className='border-divider-regular rounded-lg border'>
+                  <table className='system-xs-regular text-text-secondary w-full font-normal'>
                     <thead className='text-text-tertiary uppercase'>
-                      <tr className='border-b border-divider-regular'>
+                      <tr className='border-divider-regular border-b'>
                         <th className="p-2 pl-3 font-medium">{t('tools.test.parameters')}</th>
                         <th className="p-2 pl-3 font-medium">{t('tools.test.value')}</th>
                       </tr>
                     </thead>
                     <tbody>
                       {parameters.map((item, index) => (
-                        <tr key={index} className='border-b last:border-0 border-divider-regular'>
+                        <tr key={index} className='border-divider-regular border-b last:border-0'>
                           <td className="py-2 pl-3 pr-2.5">
                             {item.label[language]}
                           </td>
@@ -97,7 +97,7 @@ const TestApi: FC<Props> = ({
                               value={parametersValue[item.name] || ''}
                               onChange={e => setParametersValue({ ...parametersValue, [item.name]: e.target.value })}
                               type='text'
-                              className='!bg-transparent !border-transparent !hover:border-transparent !hover:bg-transparent !focus:border-transparent !focus:bg-transparent' />
+                              className='!hover:border-transparent !hover:bg-transparent !focus:border-transparent !focus:bg-transparent !border-transparent !bg-transparent' />
                           </td>
                         </tr>
                       ))}
@@ -107,13 +107,13 @@ const TestApi: FC<Props> = ({
               </div>
 
             </div>
-            <Button variant='primary' className=' mt-4 w-full h-10' onClick={handleTest}>{t('tools.test.title')}</Button>
+            <Button variant='primary' className=' mt-4 h-10 w-full' onClick={handleTest}>{t('tools.test.title')}</Button>
             <div className='mt-6'>
               <div className='flex items-center space-x-3'>
                 <div className='system-xs-semibold text-text-tertiary'>{t('tools.test.testResult')}</div>
-                <div className='grow w-0 h-px bg-[rgb(243, 244, 246)]'></div>
+                <div className='bg-[rgb(243, 244, 246)] h-px w-0 grow'></div>
               </div>
-              <div className='mt-2 px-3 py-2 h-[200px] overflow-y-auto overflow-x-hidden rounded-lg bg-components-input-bg-normal system-xs-regular text-text-secondary'>
+              <div className='bg-components-input-bg-normal system-xs-regular text-text-secondary mt-2 h-[200px] overflow-y-auto overflow-x-hidden rounded-lg px-3 py-2'>
                 {result || <span className='text-text-quaternary'>{t('tools.test.testResultPlaceholder')}</span>}
               </div>
             </div>

@@ -33,19 +33,19 @@ const AppTypeSelector = ({ value, onChange }: AppSelectorProps) => {
           className='block'
         >
           <div className={cn(
-            'flex items-center justify-between rounded-md cursor-pointer px-2 space-x-1 hover:bg-state-base-hover',
+            'hover:bg-state-base-hover flex cursor-pointer items-center justify-between space-x-1 rounded-md px-2',
           )}>
             <AppTypeSelectTrigger values={value} />
-            {value && value.length > 0 && <div className='w-4 h-4' onClick={(e) => {
+            {value && value.length > 0 && <div className='h-4 w-4' onClick={(e) => {
               e.stopPropagation()
               onChange([])
             }}>
-              <RiCloseCircleFill className='w-3.5 h-3.5 text-text-quaternary hover:text-text-tertiary cursor-pointer' />
+              <RiCloseCircleFill className='text-text-quaternary hover:text-text-tertiary h-3.5 w-3.5 cursor-pointer' />
             </div>}
           </div>
         </PortalToFollowElemTrigger>
         <PortalToFollowElemContent className='z-[1002]'>
-          <ul className='relative p-1 w-[240px] bg-components-panel-bg-blur backdrop-blur-[5px] rounded-xl shadow-lg border border-components-panel-border'>
+          <ul className='bg-components-panel-bg-blur border-components-panel-border relative w-[240px] rounded-xl border p-1 shadow-lg backdrop-blur-[5px]'>
             {allTypes.map(mode => (
               <AppTypeSelectorItem key={mode} type={mode}
                 checked={Boolean(value.length > 0 && value?.indexOf(mode) !== -1)}
@@ -69,25 +69,25 @@ function AppTypeSelectTrigger({ values }: { values: AppSelectorProps['value'] })
   const { t } = useTranslation()
   if (!values || values.length === 0) {
     return <div className={cn(
-      'flex items-center justify-between gap-1 h-8',
+      'flex h-8 items-center justify-between gap-1',
     )}>
-      <RiFilter3Line className='w-4 h-4 text-text-tertiary' />
-      <div className='grow min-w-[65px] text-center system-sm-medium text-text-tertiary'>{t('app.typeSelector.all')}</div>
-      <RiArrowDownSLine className='w-4 h-4 text-text-tertiary' />
+      <RiFilter3Line className='text-text-tertiary h-4 w-4' />
+      <div className='system-sm-medium text-text-tertiary min-w-[65px] grow text-center'>{t('app.typeSelector.all')}</div>
+      <RiArrowDownSLine className='text-text-tertiary h-4 w-4' />
     </div>
   }
   if (values.length === 1) {
     return <div className={cn(
-      'flex items-center justify-between gap-1 h-8 flex-nowrap',
+      'flex h-8 flex-nowrap items-center justify-between gap-1',
     )}>
       <AppTypeIcon type={values[0]} />
-      <div className='flex flex-1 items-center text-center line-clamp-1'>
+      <div className='line-clamp-1 flex flex-1 items-center text-center'>
         <AppTypeLabel type={values[0]} className="system-sm-medium text-components-menu-item-text" />
       </div>
     </div>
   }
   return <div className={cn(
-    'flex items-center justify-between h-8 -space-x-2 relative',
+    'relative flex h-8 items-center justify-between -space-x-2',
   )}>
     {values.map((mode, index) => (<AppTypeIcon key={mode} type={mode} wrapperClassName='border border-components-panel-on-panel-item-bg' style={{ zIndex: 5 - index }} />))}
   </div>
@@ -99,7 +99,7 @@ type AppTypeSelectorItemProps = {
   onClick: () => void
 }
 function AppTypeSelectorItem({ checked, type, onClick }: AppTypeSelectorItemProps) {
-  return <li className='flex items-center space-x-2 pl-2 py-1 pr-1 rounded-lg cursor-pointer hover:bg-state-base-hover' onClick={onClick}>
+  return <li className='hover:bg-state-base-hover flex cursor-pointer items-center space-x-2 rounded-lg py-1 pl-2 pr-1' onClick={onClick}>
     <Checkbox checked={checked} />
     <AppTypeIcon type={type} />
     <div className='grow p-1 pl-0'>
@@ -116,8 +116,8 @@ type AppTypeIconProps = {
 }
 
 export function AppTypeIcon({ type, className, wrapperClassName, style }: AppTypeIconProps) {
-  const wrapperClassNames = cn('w-5 h-5 inline-flex items-center justify-center rounded-md border border-divider-regular', wrapperClassName)
-  const iconClassNames = cn('w-3.5 h-3.5 text-components-avatar-shape-fill-stop-100', className)
+  const wrapperClassNames = cn('border-divider-regular inline-flex h-5 w-5 items-center justify-center rounded-md border', wrapperClassName)
+  const iconClassNames = cn('text-components-avatar-shape-fill-stop-100 h-3.5 w-3.5', className)
   if (type === 'chat') {
     return <div style={style} className={cn(wrapperClassNames, 'bg-components-icon-bg-blue-solid')}>
       <ChatBot className={iconClassNames} />

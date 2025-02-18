@@ -34,11 +34,11 @@ type Props = {
 
 const RecordsEmpty: FC = () => {
   const { t } = useTranslation()
-  return <div className='bg-gray-50 rounded-2xl p-5'>
+  return <div className='rounded-2xl bg-gray-50 p-5'>
     <div className={s.clockWrapper}>
-      <div className={cn(s.clockIcon, 'w-5 h-5')}></div>
+      <div className={cn(s.clockIcon, 'h-5 w-5')}></div>
     </div>
-    <div className='my-2 text-gray-500 text-sm'>{t('datasetHitTesting.noRecentTip')}</div>
+    <div className='my-2 text-sm text-gray-500'>{t('datasetHitTesting.noRecentTip')}</div>
   </div>
 }
 
@@ -70,11 +70,11 @@ const HitTestingPage: FC<Props> = ({ datasetId }: Props) => {
   const [isShowModifyRetrievalModal, setIsShowModifyRetrievalModal] = useState(false)
   const [isShowRightPanel, { setTrue: showRightPanel, setFalse: hideRightPanel, set: setShowRightPanel }] = useBoolean(!isMobile)
   const renderHitResults = (results: HitTesting[] | ExternalKnowledgeBaseHitTesting[]) => (
-    <div className='h-full flex flex-col py-3 px-4 rounded-t-2xl bg-background-body'>
-      <div className='shrink-0 pl-2 text-text-primary font-semibold leading-6 mb-2'>
+    <div className='bg-background-body flex h-full flex-col rounded-t-2xl px-4 py-3'>
+      <div className='text-text-primary mb-2 shrink-0 pl-2 font-semibold leading-6'>
         {t('datasetHitTesting.hit.title', { num: results.length })}
       </div>
-      <div className='grow overflow-y-auto space-y-2'>
+      <div className='grow space-y-2 overflow-y-auto'>
         {results.map((record, idx) =>
           isExternal
             ? (
@@ -93,9 +93,9 @@ const HitTestingPage: FC<Props> = ({ datasetId }: Props) => {
   )
 
   const renderEmptyState = () => (
-    <div className='h-full flex flex-col justify-center items-center py-3 px-4 rounded-t-2xl bg-background-body'>
+    <div className='bg-background-body flex h-full flex-col items-center justify-center rounded-t-2xl px-4 py-3'>
       <div className={cn(docStyle.commonIcon, docStyle.targetIcon, '!bg-text-quaternary !h-14 !w-14')} />
-      <div className='text-text-quaternary text-[13px] mt-3'>
+      <div className='text-text-quaternary mt-3 text-[13px]'>
         {t('datasetHitTesting.hit.emptyTip')}
       </div>
     </div>
@@ -107,10 +107,10 @@ const HitTestingPage: FC<Props> = ({ datasetId }: Props) => {
 
   return (
     <div className={s.container}>
-      <div className='px-6 py-3 flex flex-col'>
-        <div className='flex flex-col justify-center mb-4'>
-          <h1 className='text-base font-semibold text-text-primary'>{t('datasetHitTesting.title')}</h1>
-          <p className='mt-0.5 text-[13px] leading-4 font-normal text-text-tertiary'>{t('datasetHitTesting.desc')}</p>
+      <div className='flex flex-col px-6 py-3'>
+        <div className='mb-4 flex flex-col justify-center'>
+          <h1 className='text-text-primary text-base font-semibold'>{t('datasetHitTesting.title')}</h1>
+          <p className='text-text-tertiary mt-0.5 text-[13px] font-normal leading-4'>{t('datasetHitTesting.desc')}</p>
         </div>
         <Textarea
           datasetId={datasetId}
@@ -127,7 +127,7 @@ const HitTestingPage: FC<Props> = ({ datasetId }: Props) => {
           retrievalConfig={retrievalConfig}
           isEconomy={currentDataset?.indexing_technique === 'economy'}
         />
-        <div className='text-base font-semibold text-text-primary mt-6 mb-3'>{t('datasetHitTesting.records')}</div>
+        <div className='text-text-primary mb-3 mt-6 text-base font-semibold'>{t('datasetHitTesting.records')}</div>
         {(!recordsRes && !error)
           ? (
             <div className='flex-1'><Loading type='app' /></div>
@@ -136,12 +136,12 @@ const HitTestingPage: FC<Props> = ({ datasetId }: Props) => {
             ? (
               <>
                 <div className='grow overflow-y-auto'>
-                  <table className={'w-full border-collapse border-0 text-[13px] leading-4 text-text-secondary '}>
-                    <thead className='sticky top-0 h-7 leading-7  text-xs text-text-tertiary font-medium uppercase'>
+                  <table className={'text-text-secondary w-full border-collapse border-0 text-[13px] leading-4 '}>
+                    <thead className='text-text-tertiary sticky top-0 h-7  text-xs font-medium uppercase leading-7'>
                       <tr>
-                        <td className='pl-3 w-[128px] rounded-l-lg bg-background-section-burn'>{t('datasetHitTesting.table.header.source')}</td>
+                        <td className='bg-background-section-burn w-[128px] rounded-l-lg pl-3'>{t('datasetHitTesting.table.header.source')}</td>
                         <td className='bg-background-section-burn'>{t('datasetHitTesting.table.header.text')}</td>
-                        <td className='pl-2 w-48 rounded-r-lg bg-background-section-burn'>{t('datasetHitTesting.table.header.time')}</td>
+                        <td className='bg-background-section-burn w-48 rounded-r-lg pl-2'>{t('datasetHitTesting.table.header.time')}</td>
                       </tr>
                     </thead>
                     <tbody>
@@ -149,17 +149,17 @@ const HitTestingPage: FC<Props> = ({ datasetId }: Props) => {
                         const SourceIcon = record.source === 'app' ? RiApps2Line : RiFocus2Line
                         return <tr
                           key={record.id}
-                          className='group border-b border-divider-subtle h-10 hover:bg-background-default-hover cursor-pointer'
+                          className='border-divider-subtle hover:bg-background-default-hover group h-10 cursor-pointer border-b'
                           onClick={() => setText(record.content)}
                         >
-                          <td className='pl-3 w-[128px]'>
+                          <td className='w-[128px] pl-3'>
                             <div className='flex items-center'>
-                              <SourceIcon className='mr-1 size-4 text-text-tertiary' />
+                              <SourceIcon className='text-text-tertiary mr-1 size-4' />
                               <span className='capitalize'>{record.source.replace('_', ' ').replace('hit testing', 'retrieval test')}</span>
                             </div>
                           </td>
                           <td className='max-w-xs py-2'>{record.content}</td>
-                          <td className='pl-2 w-36'>
+                          <td className='w-36 pl-2'>
                             {formatTime(record.created_at, t('datasetHitTesting.dateTimeFormat') as string)}
                           </td>
                         </tr>
@@ -180,7 +180,7 @@ const HitTestingPage: FC<Props> = ({ datasetId }: Props) => {
         <div className='flex flex-col pt-3'>
           {/* {renderHitResults(generalResultData)} */}
           {submitLoading
-            ? <div className='h-full flex flex-col py-3 px-4 rounded-t-2xl bg-background-body'>
+            ? <div className='bg-background-body flex h-full flex-col rounded-t-2xl px-4 py-3'>
               <CardSkelton />
             </div>
             : (

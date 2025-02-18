@@ -62,7 +62,7 @@ const ConditionNumberInput = ({
   }, [onValueChange])
 
   return (
-    <div className='flex items-center cursor-pointer'>
+    <div className='flex cursor-pointer items-center'>
       <PortalToFollowElem
         open={numberVarTypeVisible}
         onOpenChange={setNumberVarTypeVisible}
@@ -76,18 +76,18 @@ const ConditionNumberInput = ({
             size='small'
           >
             {capitalize(numberVarType)}
-            <RiArrowDownSLine className='ml-[1px] w-3.5 h-3.5' />
+            <RiArrowDownSLine className='ml-[1px] h-3.5 w-3.5' />
           </Button>
         </PortalToFollowElemTrigger>
         <PortalToFollowElemContent className='z-[1000]'>
-          <div className='p-1 w-[112px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg'>
+          <div className='border-components-panel-border bg-components-panel-bg-blur w-[112px] rounded-xl border-[0.5px] p-1 shadow-lg'>
             {
               options.map(option => (
                 <div
                   key={option}
                   className={cn(
-                    'flex items-center px-3 h-7 rounded-md hover:bg-state-base-hover cursor-pointer',
-                    'text-[13px] font-medium text-text-secondary',
+                    'hover:bg-state-base-hover flex h-7 cursor-pointer items-center rounded-md px-3',
+                    'text-text-secondary text-[13px] font-medium',
                     numberVarType === option && 'bg-state-base-hover',
                   )}
                   onClick={() => {
@@ -102,8 +102,8 @@ const ConditionNumberInput = ({
           </div>
         </PortalToFollowElemContent>
       </PortalToFollowElem>
-      <div className='mx-1 w-[1px] h-4 bg-divider-regular'></div>
-      <div className='grow w-0 ml-0.5'>
+      <div className='bg-divider-regular mx-1 h-4 w-[1px]'></div>
+      <div className='ml-0.5 w-0 grow'>
         {
           numberVarType === NumberVarType.variable && (
             <PortalToFollowElem
@@ -126,15 +126,15 @@ const ConditionNumberInput = ({
                 }
                 {
                   !value && (
-                    <div className='flex items-center p-1 h-6 text-components-input-text-placeholder text-[13px]'>
-                      <Variable02 className='shrink-0 mr-1 w-4 h-4' />
+                    <div className='text-components-input-text-placeholder flex h-6 items-center p-1 text-[13px]'>
+                      <Variable02 className='mr-1 h-4 w-4 shrink-0' />
                       <div className='w-0 grow truncate'>{t('workflow.nodes.ifElse.selectVariable')}</div>
                     </div>
                   )
                 }
               </PortalToFollowElemTrigger>
               <PortalToFollowElemContent className='z-[1000]'>
-                <div className={cn('w-[296px] pt-1 bg-components-panel-bg-blur rounded-lg border-[0.5px] border-components-panel-border shadow-lg', isShort && 'w-[200px]')}>
+                <div className={cn('bg-components-panel-bg-blur border-components-panel-border w-[296px] rounded-lg border-[0.5px] pt-1 shadow-lg', isShort && 'w-[200px]')}>
                   <VarReferenceVars
                     vars={variables}
                     onChange={handleSelectVariable}
@@ -148,7 +148,7 @@ const ConditionNumberInput = ({
           numberVarType === NumberVarType.constant && (
             <div className=' relative'>
               <input
-                className={cn('block w-full px-2 text-[13px] text-components-input-text-filled placeholder:text-components-input-text-placeholder outline-none appearance-none bg-transparent', unit && 'pr-6')}
+                className={cn('text-components-input-text-filled placeholder:text-components-input-text-placeholder block w-full appearance-none bg-transparent px-2 text-[13px] outline-none', unit && 'pr-6')}
                 type='number'
                 value={value}
                 onChange={e => onValueChange(e.target.value)}
@@ -156,7 +156,7 @@ const ConditionNumberInput = ({
                 onFocus={setFocus}
                 onBlur={setBlur}
               />
-              {!isFocus && unit && <div className='absolute right-2 top-[50%] translate-y-[-50%] text-text-tertiary system-sm-regular'>{unit}</div>}
+              {!isFocus && unit && <div className='text-text-tertiary system-sm-regular absolute right-2 top-[50%] translate-y-[-50%]'>{unit}</div>}
             </div>
           )
         }

@@ -46,7 +46,7 @@ const ConfirmAddVar: FC<IConfirmAddVarProps> = ({
       >
         <div className='flex items-start space-x-3'>
           <div
-            className='shrink-0 flex items-center justify-center h-10 w-10 rounded-xl border border-gray-100'
+            className='flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-gray-100'
             style={{
               backgroundColor: 'rgba(255, 255, 255, 0.9)',
               boxShadow: '0px 12px 16px -4px rgba(16, 24, 40, 0.08), 0px 4px 6px -2px rgba(16, 24, 40, 0.03)',
@@ -54,7 +54,7 @@ const ConfirmAddVar: FC<IConfirmAddVarProps> = ({
           >{VarIcon}</div>
           <div className='grow-1'>
             <div className='text-sm font-medium text-gray-900'>{t('appDebug.autoAddVar')}</div>
-            <div className='flex flex-wrap mt-[15px] max-h-[66px] overflow-y-auto px-1 space-x-1'>
+            <div className='mt-[15px] flex max-h-[66px] flex-wrap space-x-1 overflow-y-auto px-1'>
               {varNameArr.map(name => (
                 <VarHighlight key={name} name={name} />
               ))}

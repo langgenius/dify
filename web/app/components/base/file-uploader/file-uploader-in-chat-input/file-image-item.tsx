@@ -42,21 +42,21 @@ const FileImageItem = ({
         {
           showDeleteAction && (
             <Button
-              className='hidden group-hover/file-image:flex absolute -right-1.5 -top-1.5 p-0 w-5 h-5 rounded-full z-[11]'
+              className='absolute -right-1.5 -top-1.5 z-[11] hidden h-5 w-5 rounded-full p-0 group-hover/file-image:flex'
               onClick={() => onRemove?.(id)}
             >
-              <RiCloseLine className='w-4 h-4 text-components-button-secondary-text' />
+              <RiCloseLine className='text-components-button-secondary-text h-4 w-4' />
             </Button>
           )
         }
         <FileImageRender
-          className='w-[68px] h-[68px] shadow-md'
+          className='h-[68px] w-[68px] shadow-md'
           imageUrl={base64Url || url || ''}
           showDownloadAction={showDownloadAction}
         />
         {
           progress >= 0 && !fileIsUploaded(file) && (
-            <div className='absolute inset-0 flex items-center justify-center border-[2px] border-effects-image-frame bg-background-overlay-alt z-10'>
+            <div className='border-effects-image-frame bg-background-overlay-alt absolute inset-0 z-10 flex items-center justify-center border-[2px]'>
               <ProgressCircle
                 percentage={progress}
                 size={12}
@@ -69,9 +69,9 @@ const FileImageItem = ({
         }
         {
           progress === -1 && (
-            <div className='absolute inset-0 flex items-center justify-center border-[2px] border-state-destructive-border bg-background-overlay-destructive z-10'>
+            <div className='border-state-destructive-border bg-background-overlay-destructive absolute inset-0 z-10 flex items-center justify-center border-[2px]'>
               <ReplayLine
-                className='w-5 h-5'
+                className='h-5 w-5'
                 onClick={() => onReUpload?.(id)}
               />
             </div>
@@ -79,15 +79,15 @@ const FileImageItem = ({
         }
         {
           showDownloadAction && (
-            <div className='hidden group-hover/file-image:block absolute inset-0.5 bg-background-overlay-alt bg-opacity-[0.3] z-10'>
+            <div className='bg-background-overlay-alt absolute inset-0.5 z-10 hidden bg-opacity-[0.3] group-hover/file-image:block'>
               <div
-                className='absolute bottom-0.5 right-0.5  flex items-center justify-center w-6 h-6 rounded-lg bg-components-actionbar-bg shadow-md'
+                className='bg-components-actionbar-bg absolute bottom-0.5  right-0.5 flex h-6 w-6 items-center justify-center rounded-lg shadow-md'
                 onClick={(e) => {
                   e.stopPropagation()
                   downloadFile(url || base64Url || '', name)
                 }}
               >
-                <RiDownloadLine className='w-4 h-4 text-text-tertiary' />
+                <RiDownloadLine className='text-text-tertiary h-4 w-4' />
               </div>
             </div>
           )

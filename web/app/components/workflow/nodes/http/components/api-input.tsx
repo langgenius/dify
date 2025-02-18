@@ -53,9 +53,9 @@ const ApiInput: FC<Props> = ({
         onChange={onMethodChange}
         options={MethodOptions}
         trigger={
-          <div className={cn(readonly && 'cursor-pointer', 'h-8 shrink-0 flex items-center px-2.5 bg-gray-100 border-black/5 rounded-lg')} >
-            <div className='w-12 pl-0.5 leading-[18px] text-xs font-medium text-gray-900 uppercase'>{method}</div>
-            {!readonly && <RiArrowDownSLine className='ml-1 w-3.5 h-3.5 text-gray-700' />}
+          <div className={cn(readonly && 'cursor-pointer', 'flex h-8 shrink-0 items-center rounded-lg border-black/5 bg-gray-100 px-2.5')} >
+            <div className='w-12 pl-0.5 text-xs font-medium uppercase leading-[18px] text-gray-900'>{method}</div>
+            {!readonly && <RiArrowDownSLine className='ml-1 h-3.5 w-3.5 text-gray-700' />}
           </div>
         }
         popupClassName='top-[34px] w-[108px]'
@@ -65,7 +65,7 @@ const ApiInput: FC<Props> = ({
 
       <Input
         instanceId='http-api-url'
-        className={cn(isFocus ? 'shadow-xs bg-gray-50 border-gray-300' : 'bg-gray-100 border-gray-100', 'w-0 grow rounded-lg px-3 py-[6px] border')}
+        className={cn(isFocus ? 'shadow-xs border-gray-300 bg-gray-50' : 'border-gray-100 bg-gray-100', 'w-0 grow rounded-lg border px-3 py-[6px]')}
         value={url}
         onChange={onUrlChange}
         readOnly={readonly}

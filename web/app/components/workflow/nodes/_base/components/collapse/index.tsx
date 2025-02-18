@@ -32,13 +32,13 @@ const Collapse = ({
           }
         }}
       >
-        <div className='shrink-0 w-4 h-4'>
+        <div className='h-4 w-4 shrink-0'>
           {
             !disabled && (
               <RiArrowDropRightLine
                 className={cn(
-                  'w-4 h-4 text-text-tertiary',
-                  !collapsedMerged && 'transform rotate-90',
+                  'text-text-tertiary h-4 w-4',
+                  !collapsedMerged && 'rotate-90',
                 )}
               />
             )

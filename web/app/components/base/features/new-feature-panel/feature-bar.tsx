@@ -36,23 +36,23 @@ const FeatureBar = ({
   }, [features, isChatMode, showFileUpload])
 
   return (
-    <div className='-translate-y-2 m-1 mt-0 px-2.5 py-2 pt-4 bg-util-colors-indigo-indigo-50 rounded-b-[10px] border-l border-b border-r border-components-panel-border-subtle'>
+    <div className='bg-util-colors-indigo-indigo-50 border-components-panel-border-subtle m-1 mt-0 -translate-y-2 rounded-b-[10px] border-b border-l border-r px-2.5 py-2 pt-4'>
       {noFeatureEnabled && (
-        <div className='flex items-end gap-1 cursor-pointer' onClick={() => onFeatureBarClick?.(true)}>
-          <RiApps2AddLine className='w-3.5 h-3.5 text-text-accent' />
+        <div className='flex cursor-pointer items-end gap-1' onClick={() => onFeatureBarClick?.(true)}>
+          <RiApps2AddLine className='text-text-accent h-3.5 w-3.5' />
           <div className='text-text-accent body-xs-medium'>{t('appDebug.feature.bar.empty')}</div>
-          <RiArrowRightLine className='w-3.5 h-3.5 text-text-accent' />
+          <RiArrowRightLine className='text-text-accent h-3.5 w-3.5' />
         </div>
       )}
       {!noFeatureEnabled && (
         <div className='flex items-center gap-2'>
-          <div className='shrink-0 flex items-center gap-0.5'>
+          <div className='flex shrink-0 items-center gap-0.5'>
             {!!features.moreLikeThis?.enabled && (
               <Tooltip
                 popupContent={t('appDebug.feature.moreLikeThis.title')}
               >
-                <div className='shrink-0 p-1 rounded-lg border-[0.5px] border-divider-subtle shadow-xs bg-util-colors-blue-light-blue-light-500'>
-                  <RiSparklingFill className='w-3.5 h-3.5 text-text-primary-on-surface' />
+                <div className='border-divider-subtle shadow-xs bg-util-colors-blue-light-blue-light-500 shrink-0 rounded-lg border-[0.5px] p-1'>
+                  <RiSparklingFill className='text-text-primary-on-surface h-3.5 w-3.5' />
                 </div>
               </Tooltip>
             )}
@@ -60,8 +60,8 @@ const FeatureBar = ({
               <Tooltip
                 popupContent={t('appDebug.feature.conversationOpener.title')}
               >
-                <div className='shrink-0 p-1 rounded-lg border-[0.5px] border-divider-subtle shadow-xs bg-util-colors-blue-light-blue-light-500'>
-                  <LoveMessage className='w-3.5 h-3.5 text-text-primary-on-surface' />
+                <div className='border-divider-subtle shadow-xs bg-util-colors-blue-light-blue-light-500 shrink-0 rounded-lg border-[0.5px] p-1'>
+                  <LoveMessage className='text-text-primary-on-surface h-3.5 w-3.5' />
                 </div>
               </Tooltip>
             )}
@@ -69,8 +69,8 @@ const FeatureBar = ({
               <Tooltip
                 popupContent={t('appDebug.feature.moderation.title')}
               >
-                <div className='shrink-0 p-1 rounded-lg border-[0.5px] border-divider-subtle shadow-xs bg-text-success'>
-                  <ContentModeration className='w-3.5 h-3.5 text-text-primary-on-surface' />
+                <div className='border-divider-subtle shadow-xs bg-text-success shrink-0 rounded-lg border-[0.5px] p-1'>
+                  <ContentModeration className='text-text-primary-on-surface h-3.5 w-3.5' />
                 </div>
               </Tooltip>
             )}
@@ -78,8 +78,8 @@ const FeatureBar = ({
               <Tooltip
                 popupContent={t('appDebug.feature.speechToText.title')}
               >
-                <div className='shrink-0 p-1 rounded-lg border-[0.5px] border-divider-subtle shadow-xs bg-util-colors-violet-violet-600'>
-                  <Microphone01 className='w-3.5 h-3.5 text-text-primary-on-surface' />
+                <div className='border-divider-subtle shadow-xs bg-util-colors-violet-violet-600 shrink-0 rounded-lg border-[0.5px] p-1'>
+                  <Microphone01 className='text-text-primary-on-surface h-3.5 w-3.5' />
                 </div>
               </Tooltip>
             )}
@@ -88,8 +88,8 @@ const FeatureBar = ({
                 <Tooltip
                   popupContent={t('appDebug.feature.textToSpeech.title')}
                 >
-                  <div className={cn('shrink-0 p-1 rounded-lg border-[0.5px] border-divider-subtle shadow-xs bg-util-colors-violet-violet-600', !disabled && 'cursor-pointer')}>
-                    <TextToAudio className='w-3.5 h-3.5 text-text-primary-on-surface' />
+                  <div className={cn('border-divider-subtle shadow-xs bg-util-colors-violet-violet-600 shrink-0 rounded-lg border-[0.5px] p-1', !disabled && 'cursor-pointer')}>
+                    <TextToAudio className='text-text-primary-on-surface h-3.5 w-3.5' />
                   </div>
                 </Tooltip>
               </VoiceSettings>
@@ -98,8 +98,8 @@ const FeatureBar = ({
               <Tooltip
                 popupContent={t('appDebug.feature.fileUpload.title')}
               >
-                <div className='shrink-0 p-1 rounded-lg border-[0.5px] border-divider-subtle shadow-xs bg-util-colors-blue-blue-600'>
-                  <FolderUpload className='w-3.5 h-3.5 text-text-primary-on-surface' />
+                <div className='border-divider-subtle shadow-xs bg-util-colors-blue-blue-600 shrink-0 rounded-lg border-[0.5px] p-1'>
+                  <FolderUpload className='text-text-primary-on-surface h-3.5 w-3.5' />
                 </div>
               </Tooltip>
             )}
@@ -107,8 +107,8 @@ const FeatureBar = ({
               <Tooltip
                 popupContent={t('appDebug.feature.suggestedQuestionsAfterAnswer.title')}
               >
-                <div className='shrink-0 p-1 rounded-lg border-[0.5px] border-divider-subtle shadow-xs bg-util-colors-blue-light-blue-light-500'>
-                  <VirtualAssistant className='w-3.5 h-3.5 text-text-primary-on-surface' />
+                <div className='border-divider-subtle shadow-xs bg-util-colors-blue-light-blue-light-500 shrink-0 rounded-lg border-[0.5px] p-1'>
+                  <VirtualAssistant className='text-text-primary-on-surface h-3.5 w-3.5' />
                 </div>
               </Tooltip>
             )}
@@ -116,8 +116,8 @@ const FeatureBar = ({
               <Tooltip
                 popupContent={t('appDebug.feature.citation.title')}
               >
-                <div className='shrink-0 p-1 rounded-lg border-[0.5px] border-divider-subtle shadow-xs bg-util-colors-warning-warning-500'>
-                  <Citations className='w-4 h-4 text-text-primary-on-surface' />
+                <div className='border-divider-subtle shadow-xs bg-util-colors-warning-warning-500 shrink-0 rounded-lg border-[0.5px] p-1'>
+                  <Citations className='text-text-primary-on-surface h-4 w-4' />
                 </div>
               </Tooltip>
             )}
@@ -125,16 +125,16 @@ const FeatureBar = ({
               <Tooltip
                 popupContent={t('appDebug.feature.annotation.title')}
               >
-                <div className='shrink-0 p-1 rounded-lg border-[0.5px] border-divider-subtle shadow-xs bg-util-colors-indigo-indigo-600'>
-                  <MessageFast className='w-3.5 h-3.5 text-text-primary-on-surface' />
+                <div className='border-divider-subtle shadow-xs bg-util-colors-indigo-indigo-600 shrink-0 rounded-lg border-[0.5px] p-1'>
+                  <MessageFast className='text-text-primary-on-surface h-3.5 w-3.5' />
                 </div>
               </Tooltip>
             )}
           </div>
-          <div className='grow text-text-tertiary body-xs-regular'>{t('appDebug.feature.bar.enableText')}</div>
+          <div className='text-text-tertiary body-xs-regular grow'>{t('appDebug.feature.bar.enableText')}</div>
           <Button className='shrink-0' variant='ghost-accent' size='small' onClick={() => onFeatureBarClick?.(true)}>
             <div className='mx-1'>{t('appDebug.feature.bar.manage')}</div>
-            <RiArrowRightLine className='w-3.5 h-3.5 text-text-accent' />
+            <RiArrowRightLine className='text-text-accent h-3.5 w-3.5' />
           </Button>
         </div>
       )}

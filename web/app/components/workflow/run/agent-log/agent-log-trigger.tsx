@@ -19,27 +19,27 @@ const AgentLogTrigger = ({
 
   return (
     <div
-      className='bg-components-button-tertiary-bg rounded-[10px] cursor-pointer'
+      className='bg-components-button-tertiary-bg cursor-pointer rounded-[10px]'
       onClick={() => {
         onShowAgentOrToolLog({ id: nodeInfo.id, children: agentLog || [] } as AgentLogItemWithChildren)
       }}
     >
-      <div className='flex items-center px-3 pt-2 system-2xs-medium-uppercase text-text-tertiary'>
+      <div className='system-2xs-medium-uppercase text-text-tertiary flex items-center px-3 pt-2'>
         {t('workflow.nodes.agent.strategy.label')}
       </div>
-      <div className='flex items-center pl-3 pt-1 pr-2 pb-1.5'>
+      <div className='flex items-center pb-1.5 pl-3 pr-2 pt-1'>
         {
           agentStrategy && (
-            <div className='grow system-xs-medium text-text-secondary'>
+            <div className='system-xs-medium text-text-secondary grow'>
               {agentStrategy}
             </div>
           )
         }
         <div
-          className='shrink-0 flex items-center px-[1px] system-xs-regular-uppercase text-text-tertiary cursor-pointer'
+          className='system-xs-regular-uppercase text-text-tertiary flex shrink-0 cursor-pointer items-center px-[1px]'
         >
           {t('runLog.detail')}
-          <RiArrowRightLine className='ml-0.5 w-3.5 h-3.5' />
+          <RiArrowRightLine className='ml-0.5 h-3.5 w-3.5' />
         </div>
       </div>
     </div>

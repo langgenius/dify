@@ -122,17 +122,17 @@ export default function AccountPage() {
         <div className='mr-3'>
           <AppIcon size='tiny' />
         </div>
-        <div className='mt-[3px] system-sm-medium text-text-secondary'>{item.name}</div>
+        <div className='system-sm-medium text-text-secondary mt-[3px]'>{item.name}</div>
       </div>
     )
   }
 
   return (
     <>
-      <div className='pt-2 pb-3'>
+      <div className='pb-3 pt-2'>
         <h4 className='title-2xl-semi-bold text-text-primary'>{t('common.account.myAccount')}</h4>
       </div>
-      <div className='mb-8 p-6 rounded-xl flex items-center bg-gradient-to-r from-background-gradient-bg-fill-chat-bg-2 to-background-gradient-bg-fill-chat-bg-1'>
+      <div className='from-background-gradient-bg-fill-chat-bg-2 to-background-gradient-bg-fill-chat-bg-1 mb-8 flex items-center rounded-xl bg-gradient-to-r p-6'>
         <AvatarWithEdit avatar={userProfile.avatar_url} name={userProfile.name} onSave={ mutateUserProfile } size={64} />
         <div className='ml-4'>
           <p className='system-xl-semibold text-text-primary'>{userProfile.name}</p>
@@ -141,19 +141,19 @@ export default function AccountPage() {
       </div>
       <div className='mb-8'>
         <div className={titleClassName}>{t('common.account.name')}</div>
-        <div className='flex items-center justify-between gap-2 w-full mt-2'>
-          <div className='flex-1 bg-components-input-bg-normal rounded-lg p-2 system-sm-regular text-components-input-text-filled '>
+        <div className='mt-2 flex w-full items-center justify-between gap-2'>
+          <div className='bg-components-input-bg-normal system-sm-regular text-components-input-text-filled flex-1 rounded-lg p-2 '>
             <span className='pl-1'>{userProfile.name}</span>
           </div>
-          <div className='bg-components-button-tertiary-bg rounded-lg py-2 px-3 cursor-pointer system-sm-medium text-components-button-tertiary-text' onClick={handleEditName}>
+          <div className='bg-components-button-tertiary-bg system-sm-medium text-components-button-tertiary-text cursor-pointer rounded-lg px-3 py-2' onClick={handleEditName}>
             {t('common.operation.edit')}
           </div>
         </div>
       </div>
       <div className='mb-8'>
         <div className={titleClassName}>{t('common.account.email')}</div>
-        <div className='flex items-center justify-between gap-2 w-full mt-2'>
-          <div className='flex-1 bg-components-input-bg-normal rounded-lg p-2 system-sm-regular text-components-input-text-filled '>
+        <div className='mt-2 flex w-full items-center justify-between gap-2'>
+          <div className='bg-components-input-bg-normal system-sm-regular text-components-input-text-filled flex-1 rounded-lg p-2 '>
             <span className='pl-1'>{userProfile.email}</span>
           </div>
         </div>
@@ -162,14 +162,14 @@ export default function AccountPage() {
         systemFeatures.enable_email_password_login && (
           <div className='mb-8 flex justify-between gap-2'>
             <div>
-              <div className='mb-1 system-sm-semibold text-text-secondary'>{t('common.account.password')}</div>
-              <div className='mb-2 body-xs-regular text-text-tertiary'>{t('common.account.passwordTip')}</div>
+              <div className='system-sm-semibold text-text-secondary mb-1'>{t('common.account.password')}</div>
+              <div className='body-xs-regular text-text-tertiary mb-2'>{t('common.account.passwordTip')}</div>
             </div>
             <Button onClick={() => setEditPasswordModalVisible(true)}>{userProfile.is_password_set ? t('common.account.resetPassword') : t('common.account.setPassword')}</Button>
           </div>
         )
       }
-      <div className='mb-6 border-[1px] border-divider-subtle' />
+      <div className='border-divider-subtle mb-6 border-[1px]' />
       <div className='mb-8'>
         <div className={titleClassName}>{t('common.account.langGeniusAccount')}</div>
         <div className={descriptionClassName}>{t('common.account.langGeniusAccountTip')}</div>
@@ -181,7 +181,7 @@ export default function AccountPage() {
             wrapperClassName='mt-2'
           />
         )}
-        {!IS_CE_EDITION && <Button className='mt-2 text-components-button-destructive-secondary-text' onClick={() => setShowDeleteAccountModal(true)}>{t('common.account.delete')}</Button>}
+        {!IS_CE_EDITION && <Button className='text-components-button-destructive-secondary-text mt-2' onClick={() => setShowDeleteAccountModal(true)}>{t('common.account.delete')}</Button>}
       </div>
       {
         editNameModalVisible && (
@@ -190,13 +190,13 @@ export default function AccountPage() {
             onClose={() => setEditNameModalVisible(false)}
             className={s.modal}
           >
-            <div className='mb-6 title-2xl-semi-bold text-text-primary'>{t('common.account.editName')}</div>
+            <div className='title-2xl-semi-bold text-text-primary mb-6'>{t('common.account.editName')}</div>
             <div className={titleClassName}>{t('common.account.name')}</div>
             <Input className='mt-2'
               value={editName}
               onChange={e => setEditName(e.target.value)}
             />
-            <div className='flex justify-end mt-10'>
+            <div className='mt-10 flex justify-end'>
               <Button className='mr-2' onClick={() => setEditNameModalVisible(false)}>{t('common.operation.cancel')}</Button>
               <Button
                 disabled={editing || !editName}
@@ -219,7 +219,7 @@ export default function AccountPage() {
             }}
             className={s.modal}
           >
-            <div className='mb-6 title-2xl-semi-bold text-text-primary'>{userProfile.is_password_set ? t('common.account.resetPassword') : t('common.account.setPassword')}</div>
+            <div className='title-2xl-semi-bold text-text-primary mb-6'>{userProfile.is_password_set ? t('common.account.resetPassword') : t('common.account.setPassword')}</div>
             {userProfile.is_password_set && (
               <>
                 <div className={titleClassName}>{t('common.account.currentPassword')}</div>
@@ -242,7 +242,7 @@ export default function AccountPage() {
                 </div>
               </>
             )}
-            <div className='mt-8 system-sm-semibold text-text-secondary'>
+            <div className='system-sm-semibold text-text-secondary mt-8'>
               {userProfile.is_password_set ? t('common.account.newPassword') : t('common.account.password')}
             </div>
             <div className='relative mt-2'>
@@ -261,7 +261,7 @@ export default function AccountPage() {
                 </Button>
               </div>
             </div>
-            <div className='mt-8 system-sm-semibold text-text-secondary'>{t('common.account.confirmPassword')}</div>
+            <div className='system-sm-semibold text-text-secondary mt-8'>{t('common.account.confirmPassword')}</div>
             <div className='relative mt-2'>
               <Input
                 type={showConfirmPassword ? 'text' : 'password'}
@@ -278,7 +278,7 @@ export default function AccountPage() {
                 </Button>
               </div>
             </div>
-            <div className='flex justify-end mt-10'>
+            <div className='mt-10 flex justify-end'>
               <Button className='mr-2' onClick={() => {
                 setEditPasswordModalVisible(false)
                 resetPasswordForm()

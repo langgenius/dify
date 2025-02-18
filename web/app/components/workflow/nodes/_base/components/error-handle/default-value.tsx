@@ -30,7 +30,7 @@ const DefaultValue = ({
 
   return (
     <div className='px-4 pt-2'>
-      <div className='mb-2 body-xs-regular text-text-tertiary'>
+      <div className='body-xs-regular text-text-tertiary mb-2'>
         {t('workflow.nodes.common.errorHandle.defaultValue.desc')}
         &nbsp;
         <a
@@ -49,8 +49,8 @@ const DefaultValue = ({
                 key={index}
                 className='py-1'
               >
-                <div className='flex items-center mb-1'>
-                  <div className='mr-1 system-sm-medium text-text-primary'>{form.key}</div>
+                <div className='mb-1 flex items-center'>
+                  <div className='system-sm-medium text-text-primary mr-1'>{form.key}</div>
                   <div className='system-xs-regular text-text-tertiary'>{form.type}</div>
                 </div>
                 {

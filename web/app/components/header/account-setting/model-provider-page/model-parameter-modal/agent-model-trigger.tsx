@@ -76,7 +76,7 @@ const AgentModelTrigger: FC<AgentModelTriggerProps> = ({
   return (
     <div
       className={cn(
-        'relative group flex items-center p-1 gap-[2px] flex-grow rounded-lg bg-components-input-bg-normal cursor-pointer hover:bg-state-base-hover-alt',
+        'bg-components-input-bg-normal hover:bg-state-base-hover-alt group relative flex grow cursor-pointer items-center gap-[2px] rounded-lg p-1',
       )}
     >
       {modelId ? (
@@ -130,20 +130,20 @@ const AgentModelTrigger: FC<AgentModelTriggerProps> = ({
             />
           )}
           {modelProvider && !disabled && !needsConfiguration && (
-            <div className="flex pr-1 items-center">
-              <RiEqualizer2Line className="w-4 h-4 text-text-tertiary group-hover:text-text-secondary" />
+            <div className="flex items-center pr-1">
+              <RiEqualizer2Line className="text-text-tertiary group-hover:text-text-secondary h-4 w-4" />
             </div>
           )}
         </>
       ) : (
         <>
-          <div className="flex p-1 pl-2 items-center gap-1 grow">
-            <span className="overflow-hidden text-ellipsis whitespace-nowrap system-sm-regular text-components-input-text-placeholder">
+          <div className="flex grow items-center gap-1 p-1 pl-2">
+            <span className="system-sm-regular text-components-input-text-placeholder overflow-hidden text-ellipsis whitespace-nowrap">
               {t('workflow.nodes.agent.configureModel')}
             </span>
           </div>
-          <div className="flex pr-1 items-center">
-            <RiEqualizer2Line className="w-4 h-4 text-text-tertiary group-hover:text-text-secondary" />
+          <div className="flex items-center pr-1">
+            <RiEqualizer2Line className="text-text-tertiary group-hover:text-text-secondary h-4 w-4" />
           </div>
         </>
       )}

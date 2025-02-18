@@ -162,7 +162,7 @@ const ReasoningConfigForm: React.FC<Props> = ({
     const isString = !isNumber && !isSelect && !isFile && !isAppSelector && !isModelSelector
     return (
       <div key={variable} className='space-y-1'>
-        <div className='flex items-center justify-between py-2 system-sm-semibold text-text-secondary'>
+        <div className='system-sm-semibold text-text-secondary flex items-center justify-between py-2'>
           <div className='flex items-center space-x-2'>
             <span className={cn('text-text-secondary code-sm-semibold')}>{label[language] || label.en_US}</span>
             {required && (
@@ -170,7 +170,7 @@ const ReasoningConfigForm: React.FC<Props> = ({
             )}
             {tooltipContent}
           </div>
-          <div className='flex items-center gap-1 px-2 py-1 rounded-[6px] border border-divider-subtle bg-background-default-lighter cursor-pointer hover:bg-state-base-hover' onClick={() => handleAutomatic(variable, !auto)}>
+          <div className='border-divider-subtle bg-background-default-lighter hover:bg-state-base-hover flex cursor-pointer items-center gap-1 rounded-[6px] border px-2 py-1' onClick={() => handleAutomatic(variable, !auto)}>
             <span className='text-text-secondary system-xs-medium'>{t('plugin.detailPanel.toolSelector.auto')}</span>
             <Switch
               size='xs'
@@ -183,7 +183,7 @@ const ReasoningConfigForm: React.FC<Props> = ({
           <>
             {isString && (
               <Input
-                className={cn(inputsIsFocus[variable] ? 'shadow-xs bg-gray-50 border-gray-300' : 'bg-gray-100 border-gray-100', 'rounded-lg px-3 py-[6px] border')}
+                className={cn(inputsIsFocus[variable] ? 'shadow-xs border-gray-300 bg-gray-50' : 'border-gray-100 bg-gray-100', 'rounded-lg border px-3 py-[6px]')}
                 value={varInput?.value as string || ''}
                 onChange={handleMixedTypeChange(variable)}
                 nodesOutputVars={nodeOutputVars}
@@ -256,17 +256,17 @@ const ReasoningConfigForm: React.FC<Props> = ({
           <a
             href={url}
             target='_blank' rel='noopener noreferrer'
-            className='inline-flex items-center text-xs text-text-accent'
+            className='text-text-accent inline-flex items-center text-xs'
           >
             {t('tools.howToGet')}
-            <RiArrowRightUpLine className='ml-1 w-3 h-3' />
+            <RiArrowRightUpLine className='ml-1 h-3 w-3' />
           </a>
         )}
       </div>
     )
   }
   return (
-    <div className='px-4 py-2 space-y-3'>
+    <div className='space-y-3 px-4 py-2'>
       {schemas.map(schema => renderField(schema))}
     </div>
   )

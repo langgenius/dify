@@ -22,7 +22,7 @@ const List: FC<ListProps> = ({
     <div>
       {
         title && (
-          <div className='mb-0.5 px-3 h-[26px] text-xs font-medium text-gray-500'>
+          <div className='mb-0.5 h-[26px] px-3 text-xs font-medium text-gray-500'>
             {title}
           </div>
         )

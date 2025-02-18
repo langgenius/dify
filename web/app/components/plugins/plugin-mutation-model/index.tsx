@@ -39,10 +39,10 @@ const PluginMutationModal: FC<Props> = ({
       closable
       title={modelTitle}
     >
-      <div className='mt-3 mb-2 text-text-secondary system-md-regular'>
+      <div className='text-text-secondary system-md-regular mb-2 mt-3'>
         {description}
       </div>
-      <div className='flex p-2 items-start content-start gap-1 self-stretch flex-wrap rounded-2xl bg-background-section-burn'>
+      <div className='bg-background-section-burn flex flex-wrap content-start items-start gap-1 self-stretch rounded-2xl p-2'>
         <Card
           installed={mutation.isSuccess}
           payload={plugin}
@@ -50,7 +50,7 @@ const PluginMutationModal: FC<Props> = ({
           titleLeft={cardTitleLeft}
         />
       </div>
-      <div className='flex pt-5 items-center gap-2 self-stretch'>
+      <div className='flex items-center gap-2 self-stretch pt-5'>
         <div>
           {modalBottomLeft}
         </div>

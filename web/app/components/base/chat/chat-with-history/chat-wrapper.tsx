@@ -155,7 +155,7 @@ const ChatWrapper = () => {
 
   return (
     <div
-      className='h-full bg-chatbot-bg overflow-hidden'
+      className='bg-chatbot-bg h-full overflow-hidden'
     >
       <Chat
         appData={appData}

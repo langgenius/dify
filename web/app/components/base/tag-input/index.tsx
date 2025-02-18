@@ -70,18 +70,18 @@ const TagInput: FC<TagInputProps> = ({
   }
 
   return (
-    <div className={cn('flex flex-wrap', !isInWorkflow && 'min-w-[200px]', isSpecialMode ? 'bg-gray-100 rounded-lg pb-1 pl-1' : '')}>
+    <div className={cn('flex flex-wrap', !isInWorkflow && 'min-w-[200px]', isSpecialMode ? 'rounded-lg bg-gray-100 pb-1 pl-1' : '')}>
       {
         (items || []).map((item, index) => (
           <div
             key={item}
-            className={cn('flex items-center mr-1 mt-1 pl-1.5 pr-1 py-1 system-xs-regular text-text-secondary border border-divider-deep bg-components-badge-white-to-dark rounded-md')}
+            className={cn('system-xs-regular text-text-secondary border-divider-deep bg-components-badge-white-to-dark mr-1 mt-1 flex items-center rounded-md border py-1 pl-1.5 pr-1')}
           >
             {item}
             {
               !disableRemove && (
-                <div className='flex items-center justify-center w-4 h-4 cursor-pointer' onClick={() => handleRemove(index)}>
-                  <RiCloseLine className='ml-0.5 w-3.5 h-3.5 text-text-tertiary' />
+                <div className='flex h-4 w-4 cursor-pointer items-center justify-center' onClick={() => handleRemove(index)}>
+                  <RiCloseLine className='text-text-tertiary ml-0.5 h-3.5 w-3.5' />
                 </div>
               )
             }
@@ -90,16 +90,16 @@ const TagInput: FC<TagInputProps> = ({
       }
       {
         !disableAdd && (
-          <div className={cn('flex items-center gap-x-0.5 mt-1 group/tag-add', !isSpecialMode ? 'px-1.5 rounded-md border border-dashed border-divider-deep' : '')}>
-            {!isSpecialMode && !focused && <RiAddLine className='w-3.5 h-3.5 text-text-placeholder group-hover/tag-add:text-text-secondary' />}
+          <div className={cn('group/tag-add mt-1 flex items-center gap-x-0.5', !isSpecialMode ? 'border-divider-deep rounded-md border border-dashed px-1.5' : '')}>
+            {!isSpecialMode && !focused && <RiAddLine className='text-text-placeholder group-hover/tag-add:text-text-secondary h-3.5 w-3.5' />}
             <AutosizeInput
-              inputClassName={cn('outline-none appearance-none placeholder:text-text-placeholder caret-[#295EFF] group-hover/tag-add:placeholder:text-text-secondary', isSpecialMode ? 'bg-transparent' : '')}
+              inputClassName={cn('placeholder:text-text-placeholder group-hover/tag-add:placeholder:text-text-secondary appearance-none caret-[#295EFF] outline-none', isSpecialMode ? 'bg-transparent' : '')}
               className={cn(
                 !isInWorkflow && 'max-w-[300px]',
                 isInWorkflow && 'max-w-[146px]',
                 `
-                py-1 rounded-md overflow-hidden system-xs-regular
-                ${focused && isSpecialMode && 'px-1.5 border border-dashed border-divider-deep'}
+                system-xs-regular overflow-hidden rounded-md py-1
+                ${focused && isSpecialMode && 'border-divider-deep border border-dashed px-1.5'}
               `)}
               onFocus={() => setFocused(true)}
               onBlur={handleBlur}

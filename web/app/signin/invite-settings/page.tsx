@@ -67,11 +67,11 @@ export default function InviteSettingsPage() {
     return <Loading />
   if (!checkRes.is_valid) {
     return <div className="flex flex-col md:w-[400px]">
-      <div className="w-full mx-auto">
-        <div className="mb-3 flex justify-center items-center w-14 h-14 rounded-2xl border border-components-panel-border-subtle shadow-lg text-2xl font-bold">🤷‍♂️</div>
+      <div className="mx-auto w-full">
+        <div className="border-components-panel-border-subtle mb-3 flex h-14 w-14 items-center justify-center rounded-2xl border text-2xl font-bold shadow-lg">🤷‍♂️</div>
         <h2 className="title-4xl-semi-bold">{t('login.invalid')}</h2>
       </div>
-      <div className="w-full mx-auto mt-6">
+      <div className="mx-auto mt-6 w-full">
         <Button variant='primary' className='w-full !text-sm'>
           <a href="https://dify.ai">{t('login.explore')}</a>
         </Button>
@@ -80,16 +80,16 @@ export default function InviteSettingsPage() {
   }
 
   return <div className='flex flex-col gap-3'>
-    <div className='bg-background-default-dodge border border-components-panel-border-subtle shadow-lg inline-flex w-14 h-14 justify-center items-center rounded-2xl'>
-      <RiAccountCircleLine className='w-6 h-6 text-2xl text-text-accent-light-mode-only' />
+    <div className='bg-background-default-dodge border-components-panel-border-subtle inline-flex h-14 w-14 items-center justify-center rounded-2xl border shadow-lg'>
+      <RiAccountCircleLine className='text-text-accent-light-mode-only h-6 w-6 text-2xl' />
     </div>
-    <div className='pt-2 pb-4'>
+    <div className='pb-4 pt-2'>
       <h2 className='title-4xl-semi-bold'>{t('login.setYourAccount')}</h2>
     </div>
     <form action=''>
 
       <div className='mb-5'>
-        <label htmlFor="name" className="my-2 system-md-semibold">
+        <label htmlFor="name" className="system-md-semibold my-2">
           {t('login.name')}
         </label>
         <div className="mt-1">
@@ -103,7 +103,7 @@ export default function InviteSettingsPage() {
         </div>
       </div>
       <div className='mb-5'>
-        <label htmlFor="name" className="my-2 system-md-semibold">
+        <label htmlFor="name" className="system-md-semibold my-2">
           {t('login.interfaceLanguage')}
         </label>
         <div className="mt-1">
@@ -141,7 +141,7 @@ export default function InviteSettingsPage() {
         </Button>
       </div>
     </form>
-    <div className="block w-full mt-2 system-xs-regular">
+    <div className="system-xs-regular mt-2 block w-full">
       {t('login.license.tip')}
       &nbsp;
       <Link

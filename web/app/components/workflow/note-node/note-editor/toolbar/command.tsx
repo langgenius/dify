@@ -32,15 +32,15 @@ const Command = ({
   const icon = useMemo(() => {
     switch (type) {
       case 'bold':
-        return <RiBold className={cn('w-4 h-4', selectedIsBold && 'text-primary-600')} />
+        return <RiBold className={cn('h-4 w-4', selectedIsBold && 'text-primary-600')} />
       case 'italic':
-        return <RiItalic className={cn('w-4 h-4', selectedIsItalic && 'text-primary-600')} />
+        return <RiItalic className={cn('h-4 w-4', selectedIsItalic && 'text-primary-600')} />
       case 'strikethrough':
-        return <RiStrikethrough className={cn('w-4 h-4', selectedIsStrikeThrough && 'text-primary-600')} />
+        return <RiStrikethrough className={cn('h-4 w-4', selectedIsStrikeThrough && 'text-primary-600')} />
       case 'link':
-        return <RiLink className={cn('w-4 h-4', selectedIsLink && 'text-primary-600')} />
+        return <RiLink className={cn('h-4 w-4', selectedIsLink && 'text-primary-600')} />
       case 'bullet':
-        return <RiListUnordered className={cn('w-4 h-4', selectedIsBullet && 'text-primary-600')} />
+        return <RiListUnordered className={cn('h-4 w-4', selectedIsBullet && 'text-primary-600')} />
     }
   }, [type, selectedIsBold, selectedIsItalic, selectedIsStrikeThrough, selectedIsLink, selectedIsBullet])
 
@@ -65,7 +65,7 @@ const Command = ({
     >
       <div
         className={cn(
-          'flex items-center justify-center w-8 h-8 cursor-pointer rounded-md text-text-tertiary hover:text-text-accent hover:bg-state-accent-active',
+          'text-text-tertiary hover:text-text-accent hover:bg-state-accent-active flex h-8 w-8 cursor-pointer items-center justify-center rounded-md',
           type === 'bold' && selectedIsBold && 'bg-state-accent-active',
           type === 'italic' && selectedIsItalic && 'bg-state-accent-active',
           type === 'strikethrough' && selectedIsStrikeThrough && 'bg-state-accent-active',

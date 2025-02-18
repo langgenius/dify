@@ -11,7 +11,7 @@ const Loading = () => {
         checked={false}
         disabled
       />
-      <div className='grow relative p-4 pb-3 border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg hover-bg-components-panel-on-panel-item-bg rounded-xl shadow-xs'>
+      <div className='border-components-panel-border bg-components-panel-on-panel-item-bg hover-bg-components-panel-on-panel-item-bg shadow-xs relative grow rounded-xl border-[0.5px] p-4 pb-3'>
         <Placeholder
           wrapClassName='w-full'
         />

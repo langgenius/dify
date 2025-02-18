@@ -35,7 +35,7 @@ const AgentLogModal: FC<AgentLogModalProps> = ({
 
   return (
     <div
-      className={cn('relative flex flex-col py-3 bg-components-panel-bg border-[0.5px] border-components-panel-border rounded-xl shadow-xl z-10')}
+      className={cn('bg-components-panel-bg border-components-panel-border relative z-10 flex flex-col rounded-xl border-[0.5px] py-3 shadow-xl')}
       style={{
         width: 480,
         position: 'fixed',
@@ -45,9 +45,9 @@ const AgentLogModal: FC<AgentLogModalProps> = ({
       }}
       ref={ref}
     >
-      <h1 className='shrink-0 px-4 py-1 text-md font-semibold text-text-primary'>{t('appLog.runDetail.workflowTitle')}</h1>
-      <span className='absolute right-3 top-4 p-1 cursor-pointer z-20' onClick={onCancel}>
-        <RiCloseLine className='w-4 h-4 text-text-tertiary' />
+      <h1 className='text-md text-text-primary shrink-0 px-4 py-1 font-semibold'>{t('appLog.runDetail.workflowTitle')}</h1>
+      <span className='absolute right-3 top-4 z-20 cursor-pointer p-1' onClick={onCancel}>
+        <RiCloseLine className='text-text-tertiary h-4 w-4' />
       </span>
       <AgentLogDetail
         conversationID={currentLogItem.conversationId}

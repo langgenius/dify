@@ -27,7 +27,7 @@ const Header: FC<IHeaderProps> = ({
   return (
     <div
       className={`
-        shrink-0 flex items-center justify-between h-14 px-4 
+        flex h-14 shrink-0 items-center justify-between px-4 
       `}
       style={Object.assign({}, CssTransform(theme?.backgroundHeaderColorStyle ?? ''), CssTransform(theme?.headerBorderBottomStyle ?? '')) }
     >
@@ -43,7 +43,7 @@ const Header: FC<IHeaderProps> = ({
       <Tooltip
         popupContent={t('share.chat.resetChat')}
       >
-        <div className='flex cursor-pointer hover:rounded-lg hover:bg-black/5 w-8 h-8 items-center justify-center' onClick={() => {
+        <div className='flex h-8 w-8 cursor-pointer items-center justify-center hover:rounded-lg hover:bg-black/5' onClick={() => {
           onCreateNewChat?.()
         }}>
           <RiRefreshLine className="h-4 w-4 text-sm font-bold text-white" color={theme?.colorPathOnHeader}/>

@@ -49,7 +49,7 @@ export default function AppNavItem({
       className={cn(
         s.item,
         isSelected ? s.active : 'hover:bg-gray-200',
-        'flex h-8 items-center justify-between mobile:justify-center px-2 mobile:px-1 rounded-lg text-sm font-normal',
+        'mobile:justify-center mobile:px-1 flex h-8 items-center justify-between rounded-lg px-2 text-sm font-normal',
       )}
       onClick={() => {
         router.push(url) // use Link causes popup item always trigger jump. Can not be solved by e.stopPropagation().
@@ -58,11 +58,11 @@ export default function AppNavItem({
       {isMobile && <AppIcon size='tiny' iconType={icon_type} icon={icon} background={icon_background} imageUrl={icon_url} />}
       {!isMobile && (
         <>
-          <div className='flex items-center space-x-2 w-0 grow'>
+          <div className='flex w-0 grow items-center space-x-2'>
             <AppIcon size='tiny' iconType={icon_type} icon={icon} background={icon_background} imageUrl={icon_url} />
             <div className='overflow-hidden text-ellipsis whitespace-nowrap' title={name}>{name}</div>
           </div>
-          <div className='shrink-0 h-6' onClick={e => e.stopPropagation()}>
+          <div className='h-6 shrink-0' onClick={e => e.stopPropagation()}>
             <ItemOperation
               isPinned={isPinned}
               isItemHovering={isHovering}

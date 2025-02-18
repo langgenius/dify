@@ -20,11 +20,11 @@ type Props = {
 }
 
 export const EditTitle: FC<{ className?: string; title: string }> = ({ className, title }) => (
-  <div className={cn(className, 'flex items-center h-[18px] system-xs-medium text-text-tertiary')}>
-    <RiEditFill className='mr-1 w-3.5 h-3.5' />
+  <div className={cn(className, 'system-xs-medium text-text-tertiary flex h-[18px] items-center')}>
+    <RiEditFill className='mr-1 h-3.5 w-3.5' />
     <div>{title}</div>
     <div
-      className='ml-2 grow h-[1px]'
+      className='ml-2 h-[1px] grow'
       style={{
         background: 'linear-gradient(90deg, rgba(0, 0, 0, 0.05) -1.65%, rgba(0, 0, 0, 0.00) 100%)',
       }}
@@ -40,7 +40,7 @@ const EditItem: FC<Props> = ({
   const { t } = useTranslation()
   const [newContent, setNewContent] = useState('')
   const showNewContent = newContent && newContent !== content
-  const avatar = type === EditItemType.Query ? <User className='w-6 h-6' /> : <Robot className='w-6 h-6' />
+  const avatar = type === EditItemType.Query ? <User className='h-6 w-6' /> : <Robot className='h-6 w-6' />
   const name = type === EditItemType.Query ? t('appAnnotation.editModal.queryName') : t('appAnnotation.editModal.answerName')
   const editTitle = type === EditItemType.Query ? t('appAnnotation.editModal.yourQuery') : t('appAnnotation.editModal.yourAnswer')
   const placeholder = type === EditItemType.Query ? t('appAnnotation.editModal.queryPlaceholder') : t('appAnnotation.editModal.answerPlaceholder')
@@ -58,11 +58,11 @@ const EditItem: FC<Props> = ({
 
   return (
     <div className='flex' onClick={e => e.stopPropagation()}>
-      <div className='shrink-0 mr-3'>
+      <div className='mr-3 shrink-0'>
         {avatar}
       </div>
       <div className='grow'>
-        <div className='mb-1 system-xs-semibold text-text-primary'>{name}</div>
+        <div className='system-xs-semibold text-text-primary mb-1'>{name}</div>
         <div className='system-sm-regular text-text-primary'>{content}</div>
         {!isEdit
           ? (
@@ -70,34 +70,34 @@ const EditItem: FC<Props> = ({
               {showNewContent && (
                 <div className='mt-3'>
                   <EditTitle title={editTitle} />
-                  <div className='mt-1 system-sm-regular text-text-primary'>{newContent}</div>
+                  <div className='system-sm-regular text-text-primary mt-1'>{newContent}</div>
                 </div>
               )}
               <div className='mt-2 flex items-center'>
                 {!readonly && (
                   <div
-                    className='flex items-center space-x-1 system-xs-medium text-text-accent cursor-pointer'
+                    className='system-xs-medium text-text-accent flex cursor-pointer items-center space-x-1'
                     onClick={() => {
                       setIsEdit(true)
                     }}
                   >
-                    <RiEditLine className='mr-1 w-3.5 h-3.5' />
+                    <RiEditLine className='mr-1 h-3.5 w-3.5' />
                     <div>{t('common.operation.edit')}</div>
                   </div>
                 )}
 
                 {showNewContent && (
-                  <div className='ml-2 flex items-center system-xs-medium text-text-tertiary'>
+                  <div className='system-xs-medium text-text-tertiary ml-2 flex items-center'>
                     <div className='mr-2'>·</div>
                     <div
-                      className='flex items-center space-x-1 cursor-pointer'
+                      className='flex cursor-pointer items-center space-x-1'
                       onClick={() => {
                         setNewContent(content)
                         onSave(content)
                       }}
                     >
-                      <div className='w-3.5 h-3.5'>
-                        <RiDeleteBinLine className='w-3.5 h-3.5' />
+                      <div className='h-3.5 w-3.5'>
+                        <RiDeleteBinLine className='h-3.5 w-3.5' />
                       </div>
                       <div>{t('common.operation.delete')}</div>
                     </div>

@@ -19,7 +19,7 @@ const AudioPreview: FC<AudioPreviewProps> = ({
 
   return createPortal(
     <div
-      className='fixed inset-0 p-8 flex items-center justify-center bg-black/80 z-[1000]'
+      className='fixed inset-0 z-[1000] flex items-center justify-center bg-black/80 p-8'
       onClick={e => e.stopPropagation()}
       tabIndex={-1}
     >
@@ -28,15 +28,15 @@ const AudioPreview: FC<AudioPreviewProps> = ({
           <source
             type="audio/mpeg"
             src={url}
-            className='max-w-full max-h-full'
+            className='max-h-full max-w-full'
           />
         </audio>
       </div>
       <div
-        className='absolute top-6 right-6 flex items-center justify-center w-8 h-8 bg-white/[0.08] rounded-lg backdrop-blur-[2px] cursor-pointer'
+        className='absolute right-6 top-6 flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg bg-white/[0.08] backdrop-blur-[2px]'
         onClick={onCancel}
       >
-        <RiCloseLine className='w-4 h-4 text-gray-500'/>
+        <RiCloseLine className='h-4 w-4 text-gray-500'/>
       </div>
     </div>
     ,

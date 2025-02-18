@@ -60,16 +60,16 @@ const FileFromLinkOrLocal = ({
         {trigger(open)}
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent className='z-[1001]'>
-        <div className='p-3 w-[280px] bg-components-panel-bg-blur border-[0.5px] border-components-panel-border rounded-xl shadow-lg'>
+        <div className='bg-components-panel-bg-blur border-components-panel-border w-[280px] rounded-xl border-[0.5px] p-3 shadow-lg'>
           {
             showFromLink && (
               <>
                 <div className={cn(
-                  'flex items-center p-1 h-8 bg-components-input-bg-active border border-components-input-border-active rounded-lg shadow-xs',
+                  'bg-components-input-bg-active border-components-input-border-active shadow-xs flex h-8 items-center rounded-lg border p-1',
                   showError && 'border-components-input-border-destructive',
                 )}>
                   <input
-                    className='grow block mr-0.5 px-1 bg-transparent system-sm-regular outline-none appearance-none'
+                    className='system-sm-regular mr-0.5 block grow appearance-none bg-transparent px-1 outline-none'
                     placeholder={t('common.fileUploader.pasteFileLinkInputPlaceholder') || ''}
                     value={url}
                     onChange={(e) => {
@@ -90,7 +90,7 @@ const FileFromLinkOrLocal = ({
                 </div>
                 {
                   showError && (
-                    <div className='mt-0.5 body-xs-regular text-text-destructive'>
+                    <div className='body-xs-regular text-text-destructive mt-0.5'>
                       {t('common.fileUploader.pasteFileLinkInvalid')}
                     </div>
                   )
@@ -100,10 +100,10 @@ const FileFromLinkOrLocal = ({
           }
           {
             showFromLink && showFromLocal && (
-              <div className='flex items-center p-2 h-7 system-2xs-medium-uppercase text-text-quaternary'>
-                <div className='mr-2 w-[93px] h-[1px] bg-gradient-to-l from-[rgba(16,24,40,0.08)]' />
+              <div className='system-2xs-medium-uppercase text-text-quaternary flex h-7 items-center p-2'>
+                <div className='mr-2 h-[1px] w-[93px] bg-gradient-to-l from-[rgba(16,24,40,0.08)]' />
                 OR
-                <div className='ml-2 w-[93px] h-[1px] bg-gradient-to-r from-[rgba(16,24,40,0.08)]' />
+                <div className='ml-2 h-[1px] w-[93px] bg-gradient-to-r from-[rgba(16,24,40,0.08)]' />
               </div>
             )
           }
@@ -114,7 +114,7 @@ const FileFromLinkOrLocal = ({
                 variant='secondary-accent'
                 disabled={disabled}
               >
-                <RiUploadCloud2Line className='mr-1 w-4 h-4' />
+                <RiUploadCloud2Line className='mr-1 h-4 w-4' />
                 {t('common.fileUploader.uploadFromComputer')}
                 <FileInput fileConfig={fileConfig} />
               </Button>

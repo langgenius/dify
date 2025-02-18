@@ -150,7 +150,7 @@ const Header: FC = () => {
 
   return (
     <div
-      className='absolute top-0 left-0 z-10 flex items-center justify-between w-full px-3 h-14 bg-mask-top2bottom-gray-50-to-transparent'
+      className='bg-mask-top2bottom-gray-50-to-transparent absolute left-0 top-0 z-10 flex h-14 w-full items-center justify-between px-3'
     >
       <div>
         {
@@ -174,10 +174,10 @@ const Header: FC = () => {
             {/* <GlobalVariableButton disabled={nodesReadOnly} /> */}
             {isChatMode && <ChatVariableButton disabled={nodesReadOnly} />}
             <EnvButton disabled={nodesReadOnly} />
-            <Divider type='vertical' className='h-3.5 mx-auto' />
+            <Divider type='vertical' className='mx-auto h-3.5' />
             <RunAndHistory />
             <Button className='text-components-button-secondary-text' onClick={handleShowFeatures}>
-              <RiApps2AddLine className='w-4 h-4 mr-1 text-components-button-secondary-text' />
+              <RiApps2AddLine className='text-components-button-secondary-text mr-1 h-4 w-4' />
               {t('workflow.common.features')}
             </Button>
             <AppPublisher
@@ -201,12 +201,12 @@ const Header: FC = () => {
         viewHistory && (
           <div className='flex items-center space-x-2'>
             <ViewHistory withText />
-            <Divider type='vertical' className='h-3.5 mx-auto' />
+            <Divider type='vertical' className='mx-auto h-3.5' />
             <Button
               variant='primary'
               onClick={handleGoBackToEdit}
             >
-              <ArrowNarrowLeft className='w-4 h-4 mr-1' />
+              <ArrowNarrowLeft className='mr-1 h-4 w-4' />
               {t('workflow.common.goBackToEdit')}
             </Button>
           </div>
@@ -214,13 +214,13 @@ const Header: FC = () => {
       }
       {
         restoring && (
-          <div className='flex flex-col mt-auto'>
-            <div className='flex items-center justify-end my-4'>
+          <div className='mt-auto flex flex-col'>
+            <div className='my-4 flex items-center justify-end'>
               <Button className='text-components-button-secondary-text' onClick={handleShowFeatures}>
-                <RiApps2AddLine className='w-4 h-4 mr-1 text-components-button-secondary-text' />
+                <RiApps2AddLine className='text-components-button-secondary-text mr-1 h-4 w-4' />
                 {t('workflow.common.features')}
               </Button>
-              <div className='mx-2 w-[1px] h-3.5 bg-gray-200'></div>
+              <div className='mx-2 h-3.5 w-[1px] bg-gray-200'></div>
               <Button
                 className='mr-2'
                 onClick={handleCancelRestore}

@@ -41,11 +41,11 @@ const ParamConfigContent: FC = () => {
 
   return (
     <div>
-      <div className='leading-6 text-base font-semibold text-text-primary'>{t('appDebug.vision.visionSettings.title')}</div>
-      <div className='pt-3 space-y-6'>
+      <div className='text-text-primary text-base font-semibold leading-6'>{t('appDebug.vision.visionSettings.title')}</div>
+      <div className='space-y-6 pt-3'>
         <div>
           <div className='mb-2 flex items-center  space-x-1'>
-            <div className='leading-[18px] text-[13px] font-semibold text-text-secondary'>{t('appDebug.vision.visionSettings.resolution')}</div>
+            <div className='text-text-secondary text-[13px] font-semibold leading-[18px]'>{t('appDebug.vision.visionSettings.resolution')}</div>
             <Tooltip
               popupContent={
                 <div className='w-[180px]' >
@@ -78,7 +78,7 @@ const ParamConfigContent: FC = () => {
           </div>
         </div>
         <div>
-          <div className='mb-2 leading-[18px] text-[13px] font-semibold text-text-secondary'>{t('appDebug.vision.visionSettings.uploadMethod')}</div>
+          <div className='text-text-secondary mb-2 text-[13px] font-semibold leading-[18px]'>{t('appDebug.vision.visionSettings.uploadMethod')}</div>
           <div className='flex items-center gap-1'>
             <OptionCard
               className='grow'

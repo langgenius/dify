@@ -91,7 +91,7 @@ const BaseNode: FC<BaseNodeProps> = ({
   return (
     <div
       className={cn(
-        'flex border-[2px] rounded-2xl',
+        'flex rounded-2xl border-[2px]',
         showSelectedBorder ? 'border-components-option-card-option-selected-border' : 'border-transparent',
         !showSelectedBorder && data._inParallelHovering && 'border-workflow-block-border-highlight',
         data._waitingRun && 'opacity-70',
@@ -104,10 +104,10 @@ const BaseNode: FC<BaseNodeProps> = ({
     >
       <div
         className={cn(
-          'group relative pb-1 shadow-xs',
-          'border border-transparent rounded-[15px]',
-          data.type !== BlockEnum.Iteration && 'w-[240px] bg-workflow-block-bg',
-          data.type === BlockEnum.Iteration && 'flex flex-col w-full h-full bg-workflow-block-bg-transparent border-workflow-block-border',
+          'shadow-xs group relative pb-1',
+          'rounded-[15px] border border-transparent',
+          data.type !== BlockEnum.Iteration && 'bg-workflow-block-bg w-[240px]',
+          data.type === BlockEnum.Iteration && 'bg-workflow-block-bg-transparent border-workflow-block-border flex h-full w-full flex-col',
           !data._runningStatus && 'hover:shadow-lg',
           showRunningBorder && '!border-state-accent-solid',
           showSuccessBorder && '!border-state-success-solid',
@@ -118,7 +118,7 @@ const BaseNode: FC<BaseNodeProps> = ({
       >
         {
           data._inParallelHovering && (
-            <div className='absolute left-2 -top-2.5 top system-2xs-medium-uppercase text-text-tertiary z-10'>
+            <div className='top system-2xs-medium-uppercase text-text-tertiary absolute -top-2.5 left-2 z-10'>
               {t('workflow.common.parallelRun')}
             </div>
           )
@@ -168,18 +168,18 @@ const BaseNode: FC<BaseNodeProps> = ({
           )
         }
         <div className={cn(
-          'flex items-center px-3 pt-3 pb-2 rounded-t-2xl',
+          'flex items-center rounded-t-2xl px-3 pb-2 pt-3',
           data.type === BlockEnum.Iteration && 'bg-transparent',
         )}>
           <BlockIcon
-            className='shrink-0 mr-2'
+            className='mr-2 shrink-0'
             type={data.type}
             size='md'
             toolIcon={toolIcon}
           />
           <div
             title={data.title}
-            className='grow mr-1 system-sm-semibold-uppercase text-text-primary truncate flex items-center'
+            className='system-sm-semibold-uppercase text-text-primary mr-1 flex grow items-center truncate'
           >
             <div>
               {data.title}
@@ -194,7 +194,7 @@ const BaseNode: FC<BaseNodeProps> = ({
                     {t('workflow.nodes.iteration.parallelModeEnableDesc')}
                   </div>}
                 >
-                  <div className='flex justify-center items-center px-[5px] py-[3px] ml-1 border-[1px] border-text-warning rounded-[5px] text-text-warning system-2xs-medium-uppercase '>
+                  <div className='border-text-warning text-text-warning system-2xs-medium-uppercase ml-1 flex items-center justify-center rounded-[5px] border-[1px] px-[5px] py-[3px] '>
                     {t('workflow.nodes.iteration.parallelModeUpper')}
                   </div>
                 </Tooltip>
@@ -203,29 +203,29 @@ const BaseNode: FC<BaseNodeProps> = ({
           </div>
           {
             data._iterationLength && data._iterationIndex && data._runningStatus === NodeRunningStatus.Running && (
-              <div className='mr-1.5 text-xs font-medium text-text-accent'>
+              <div className='text-text-accent mr-1.5 text-xs font-medium'>
                 {data._iterationIndex > data._iterationLength ? data._iterationLength : data._iterationIndex}/{data._iterationLength}
               </div>
             )
           }
           {
             (data._runningStatus === NodeRunningStatus.Running || data._singleRunningStatus === NodeRunningStatus.Running) && (
-              <RiLoader2Line className='w-3.5 h-3.5 text-text-accent animate-spin' />
+              <RiLoader2Line className='text-text-accent h-3.5 w-3.5 animate-spin' />
             )
           }
           {
             data._runningStatus === NodeRunningStatus.Succeeded && (
-              <RiCheckboxCircleFill className='w-3.5 h-3.5 text-text-success' />
+              <RiCheckboxCircleFill className='text-text-success h-3.5 w-3.5' />
             )
           }
           {
             data._runningStatus === NodeRunningStatus.Failed && (
-              <RiErrorWarningFill className='w-3.5 h-3.5 text-text-destructive' />
+              <RiErrorWarningFill className='text-text-destructive h-3.5 w-3.5' />
             )
           }
           {
             data._runningStatus === NodeRunningStatus.Exception && (
-              <RiAlertFill className='w-3.5 h-3.5 text-text-warning-secondary' />
+              <RiAlertFill className='text-text-warning-secondary h-3.5 w-3.5' />
             )
           }
         </div>
@@ -236,7 +236,7 @@ const BaseNode: FC<BaseNodeProps> = ({
         }
         {
           data.type === BlockEnum.Iteration && (
-            <div className='grow pl-1 pr-1 pb-1'>
+            <div className='grow pb-1 pl-1 pr-1'>
               {cloneElement(children, { id, data })}
             </div>
           )
@@ -259,7 +259,7 @@ const BaseNode: FC<BaseNodeProps> = ({
         }
         {
           data.desc && data.type !== BlockEnum.Iteration && (
-            <div className='px-3 pt-1 pb-2 system-xs-regular text-text-tertiary whitespace-pre-line break-words'>
+            <div className='system-xs-regular text-text-tertiary whitespace-pre-line break-words px-3 pb-2 pt-1'>
               {data.desc}
             </div>
           )

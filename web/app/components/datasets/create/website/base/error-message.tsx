@@ -16,13 +16,13 @@ const ErrorMessage: FC<Props> = ({
   errorMsg,
 }) => {
   return (
-    <div className={cn(className, 'py-2 px-4 border-t border-gray-200 bg-[#FFFAEB]')}>
-      <div className='flex items-center h-5'>
-        <AlertTriangle className='mr-2 w-4 h-4 text-text-warning-secondary' />
+    <div className={cn(className, 'border-t border-gray-200 bg-[#FFFAEB] px-4 py-2')}>
+      <div className='flex h-5 items-center'>
+        <AlertTriangle className='text-text-warning-secondary mr-2 h-4 w-4' />
         <div className='text-sm font-medium text-[#DC6803]'>{title}</div>
       </div>
       {errorMsg && (
-        <div className='mt-1 pl-6 leading-[18px] text-xs font-normal text-gray-700'>{errorMsg}</div>
+        <div className='mt-1 pl-6 text-xs font-normal leading-[18px] text-gray-700'>{errorMsg}</div>
       )}
     </div>
   )

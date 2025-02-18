@@ -67,10 +67,10 @@ const VoiceParamConfig = ({
     <>
       <div className='mb-4 flex items-center justify-between'>
         <div className='system-xl-semibold text-text-primary'>{t('appDebug.voice.voiceSettings.title')}</div>
-        <div className='cursor-pointer p-1' onClick={onClose}><RiCloseLine className='h-4 w-4 text-text-tertiary' /></div>
+        <div className='cursor-pointer p-1' onClick={onClose}><RiCloseLine className='text-text-tertiary h-4 w-4' /></div>
       </div>
       <div className='mb-3'>
-        <div className='system-sm-semibold mb-1 flex items-center py-1 text-text-secondary'>
+        <div className='system-sm-semibold text-text-secondary mb-1 flex items-center py-1'>
           {t('appDebug.voice.voiceSettings.language')}
           <Tooltip
             popupContent={
@@ -93,13 +93,13 @@ const VoiceParamConfig = ({
         >
           <div className='relative h-8'>
             <ListboxButton
-              className={'h-full w-full cursor-pointer rounded-lg border-0 bg-components-input-bg-normal py-1.5 pl-3 pr-10 focus-visible:bg-state-base-hover focus-visible:outline-none group-hover:bg-state-base-hover sm:text-sm sm:leading-6'}>
+              className={'bg-components-input-bg-normal focus-visible:bg-state-base-hover group-hover:bg-state-base-hover h-full w-full cursor-pointer rounded-lg border-0 py-1.5 pl-3 pr-10 focus-visible:outline-none sm:text-sm sm:leading-6'}>
               <span className={classNames('block truncate text-left text-text-secondary', !languageItem?.name && 'text-text-tertiary')}>
                 {languageItem?.name ? t(`common.voice.language.${languageItem?.value.replace('-', '')}`) : localLanguagePlaceholder}
               </span>
               <span className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2">
                 <ChevronDownIcon
-                  className="h-4 w-4 text-text-tertiary"
+                  className="text-text-tertiary h-4 w-4"
                   aria-hidden="true"
                 />
               </span>
@@ -112,11 +112,11 @@ const VoiceParamConfig = ({
             >
 
               <ListboxOptions
-                className="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-md border-[0.5px] border-components-panel-border bg-components-panel-bg px-1 py-1 text-base shadow-lg focus:outline-none sm:text-sm">
+                className="border-components-panel-border bg-components-panel-bg absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-md border-[0.5px] px-1 py-1 text-base shadow-lg focus:outline-none sm:text-sm">
                 {languages.map((item: Item) => (
                   <ListboxOption
                     key={item.value}
-                    className='relative cursor-pointer select-none rounded-lg py-2 pl-3 pr-9 text-text-secondary hover:bg-state-base-hover data-[active]:bg-state-base-active'
+                    className='text-text-secondary hover:bg-state-base-hover data-[active]:bg-state-base-active relative cursor-pointer select-none rounded-lg py-2 pl-3 pr-9'
                     value={item}
                     disabled={false}
                   >
@@ -143,7 +143,7 @@ const VoiceParamConfig = ({
         </Listbox >
       </div >
       <div className='mb-3'>
-        <div className='system-sm-semibold mb-1 py-1 text-text-secondary'>
+        <div className='system-sm-semibold text-text-secondary mb-1 py-1'>
           {t('appDebug.voice.voiceSettings.voice')}
         </div>
         <div className='flex items-center gap-1'>
@@ -158,12 +158,12 @@ const VoiceParamConfig = ({
           >
             <div className={'relative h-8 grow'}>
               <ListboxButton
-                className={'h-full w-full cursor-pointer rounded-lg border-0 bg-components-input-bg-normal py-1.5 pl-3 pr-10 focus-visible:bg-state-base-hover focus-visible:outline-none group-hover:bg-state-base-hover sm:text-sm sm:leading-6'}>
+                className={'bg-components-input-bg-normal focus-visible:bg-state-base-hover group-hover:bg-state-base-hover h-full w-full cursor-pointer rounded-lg border-0 py-1.5 pl-3 pr-10 focus-visible:outline-none sm:text-sm sm:leading-6'}>
                 <span
                   className={classNames('block truncate text-left text-text-secondary', !voiceItem?.name && 'text-text-tertiary')}>{voiceItem?.name ?? localVoicePlaceholder}</span>
                 <span className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2">
                   <ChevronDownIcon
-                    className="h-4 w-4 text-text-tertiary"
+                    className="text-text-tertiary h-4 w-4"
                     aria-hidden="true"
                   />
                 </span>
@@ -176,11 +176,11 @@ const VoiceParamConfig = ({
               >
 
                 <ListboxOptions
-                  className="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-md border-[0.5px] border-components-panel-border bg-components-panel-bg px-1 py-1 text-base shadow-lg focus:outline-none sm:text-sm">
+                  className="border-components-panel-border bg-components-panel-bg absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-md border-[0.5px] px-1 py-1 text-base shadow-lg focus:outline-none sm:text-sm">
                   {voiceItems?.map((item: Item) => (
                     <ListboxOption
                       key={item.value}
-                      className='relative cursor-pointer select-none rounded-lg py-2 pl-3 pr-9 text-text-secondary hover:bg-state-base-hover data-[active]:bg-state-base-active'
+                      className='text-text-secondary hover:bg-state-base-hover data-[active]:bg-state-base-active relative cursor-pointer select-none rounded-lg py-2 pl-3 pr-9'
                       value={item}
                       disabled={false}
                     >
@@ -205,7 +205,7 @@ const VoiceParamConfig = ({
             </div >
           </Listbox >
           {languageItem?.example && (
-            <div className='h-8 shrink-0 rounded-lg bg-components-button-tertiary-bg p-1'>
+            <div className='bg-components-button-tertiary-bg h-8 shrink-0 rounded-lg p-1'>
               <AudioBtn
                 value={languageItem?.example}
                 isAudition
@@ -217,7 +217,7 @@ const VoiceParamConfig = ({
         </div >
       </div >
       <div>
-        <div className='system-sm-semibold mb-1 py-1 text-text-secondary'>
+        <div className='system-sm-semibold text-text-secondary mb-1 py-1'>
           {t('appDebug.voice.voiceSettings.autoPlay')}
         </div>
         <Switch className='shrink-0'

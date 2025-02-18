@@ -76,11 +76,11 @@ const Install: FC<Props> = ({
   }
   return (
     <>
-      <div className='flex flex-col px-6 py-3 justify-center items-start gap-4 self-stretch'>
+      <div className='flex flex-col items-start justify-center gap-4 self-stretch px-6 py-3'>
         <div className='text-text-secondary system-md-regular'>
           <p>{t(`${i18nPrefix}.${selectedPluginsNum > 1 ? 'readyToInstallPackages' : 'readyToInstallPackage'}`, { num: selectedPluginsNum })}</p>
         </div>
-        <div className='w-full p-2 rounded-2xl bg-background-section-burn space-y-1'>
+        <div className='bg-background-section-burn w-full space-y-1 rounded-2xl p-2'>
           <InstallMulti
             allPlugins={allPlugins}
             selectedPlugins={selectedPlugins}
@@ -92,7 +92,7 @@ const Install: FC<Props> = ({
       </div>
       {/* Action Buttons */}
       {!isHideButton && (
-        <div className='flex p-6 pt-5 justify-end items-center gap-2 self-stretch'>
+        <div className='flex items-center justify-end gap-2 self-stretch p-6 pt-5'>
           {!canInstall && (
             <Button variant='secondary' className='min-w-[72px]' onClick={onCancel}>
               {t('common.operation.cancel')}
@@ -100,11 +100,11 @@ const Install: FC<Props> = ({
           )}
           <Button
             variant='primary'
-            className='min-w-[72px] flex space-x-0.5'
+            className='flex min-w-[72px] space-x-0.5'
             disabled={!canInstall || isInstalling || selectedPlugins.length === 0}
             onClick={handleInstall}
           >
-            {isInstalling && <RiLoader2Line className='w-4 h-4 animate-spin-slow' />}
+            {isInstalling && <RiLoader2Line className='animate-spin-slow h-4 w-4' />}
             <span>{t(`${i18nPrefix}.${isInstalling ? 'installing' : 'install'}`)}</span>
           </Button>
         </div>

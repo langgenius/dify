@@ -50,11 +50,11 @@ const Input = ({
   const { t } = useTranslation()
   return (
     <div className={cn('relative w-full', wrapperClassName)}>
-      {showLeftIcon && <RiSearchLine className={cn('absolute left-2 top-1/2 -translate-y-1/2 w-4 h-4 text-components-input-text-placeholder')} />}
+      {showLeftIcon && <RiSearchLine className={cn('text-components-input-text-placeholder absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2')} />}
       <input
         style={styleCss}
         className={cn(
-          'w-full py-[7px] bg-components-input-bg-normal border border-transparent text-components-input-text-filled hover:bg-components-input-bg-hover hover:border-components-input-border-hover focus:bg-components-input-bg-active focus:border-components-input-border-active focus:shadow-xs placeholder:text-components-input-text-placeholder appearance-none outline-none caret-primary-600',
+          'bg-components-input-bg-normal text-components-input-text-filled hover:bg-components-input-bg-hover hover:border-components-input-border-hover focus:bg-components-input-bg-active focus:border-components-input-border-active focus:shadow-xs placeholder:text-components-input-text-placeholder caret-primary-600 w-full appearance-none border border-transparent py-[7px] outline-none',
           inputVariants({ size }),
           showLeftIcon && 'pl-[26px]',
           showLeftIcon && size === 'large' && 'pl-7',
@@ -62,7 +62,7 @@ const Input = ({
           showClearIcon && value && size === 'large' && 'pr-7',
           destructive && 'pr-[26px]',
           destructive && size === 'large' && 'pr-7',
-          disabled && 'bg-components-input-bg-disabled border-transparent text-components-input-text-filled-disabled cursor-not-allowed hover:bg-components-input-bg-disabled hover:border-transparent',
+          disabled && 'bg-components-input-bg-disabled text-components-input-text-filled-disabled hover:bg-components-input-bg-disabled cursor-not-allowed border-transparent hover:border-transparent',
           destructive && 'bg-components-input-bg-destructive border-components-input-border-destructive text-components-input-text-filled hover:bg-components-input-bg-destructive hover:border-components-input-border-destructive focus:bg-components-input-bg-destructive focus:border-components-input-border-destructive',
           className,
         )}
@@ -75,16 +75,16 @@ const Input = ({
         {...props}
       />
       {showClearIcon && value && !disabled && !destructive && (
-        <div className={cn('absolute right-2 top-1/2 -translate-y-1/2 group p-[1px] cursor-pointer')} onClick={onClear}>
-          <RiCloseCircleFill className='w-3.5 h-3.5 text-text-quaternary cursor-pointer group-hover:text-text-tertiary' />
+        <div className={cn('group absolute right-2 top-1/2 -translate-y-1/2 cursor-pointer p-[1px]')} onClick={onClear}>
+          <RiCloseCircleFill className='text-text-quaternary group-hover:text-text-tertiary h-3.5 w-3.5 cursor-pointer' />
         </div>
       )}
       {destructive && (
-        <RiErrorWarningLine className='absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-text-destructive-secondary' />
+        <RiErrorWarningLine className='text-text-destructive-secondary absolute right-2 top-1/2 h-4 w-4 -translate-y-1/2' />
       )}
       {
         unit && (
-          <div className='absolute right-2 top-1/2 -translate-y-1/2 system-sm-regular text-text-tertiary'>
+          <div className='system-sm-regular text-text-tertiary absolute right-2 top-1/2 -translate-y-1/2'>
             {unit}
           </div>
         )

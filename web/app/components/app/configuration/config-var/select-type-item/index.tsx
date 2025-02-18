@@ -27,12 +27,12 @@ const SelectTypeItem: FC<ISelectTypeItemProps> = ({
   return (
     <div
       className={cn(
-        'flex flex-col justify-center items-center h-[58px] rounded-lg border border-components-option-card-option-border bg-components-option-card-option-bg space-y-1 text-text-secondary',
-        selected ? 'border-[1.5px] border-components-option-card-option-selected-border bg-components-option-card-option-selected-bg shadow-xs system-xs-medium' : ' hover:border-components-option-card-option-border-hover hover:bg-components-option-card-option-bg-hover hover:shadow-xs cursor-pointer system-xs-regular')}
+        'border-components-option-card-option-border bg-components-option-card-option-bg text-text-secondary flex h-[58px] flex-col items-center justify-center space-y-1 rounded-lg border',
+        selected ? 'border-components-option-card-option-selected-border bg-components-option-card-option-selected-bg shadow-xs system-xs-medium border-[1.5px]' : ' hover:border-components-option-card-option-border-hover hover:bg-components-option-card-option-bg-hover hover:shadow-xs system-xs-regular cursor-pointer')}
       onClick={onClick}
     >
       <div className='shrink-0'>
-        <InputVarTypeIcon type={type} className='w-5 h-5' />
+        <InputVarTypeIcon type={type} className='h-5 w-5' />
       </div>
       <span>{typeName}</span>
     </div>

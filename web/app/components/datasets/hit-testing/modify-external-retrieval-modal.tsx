@@ -42,16 +42,16 @@ const ModifyExternalRetrievalModal: React.FC<ModifyExternalRetrievalModalProps> 
   }
 
   return (
-    <div className='absolute z-10 top-[36px] right-[14px] flex w-[320px] flex-col items-start rounded-2xl border-[0.5px]
-      border-components-panel-border bg-components-panel-bg shadows-shadow-2xl'
+    <div className='border-components-panel-border bg-components-panel-bg shadows-shadow-2xl absolute right-[14px] top-[36px] z-10 flex w-[320px] flex-col
+      items-start rounded-2xl border-[0.5px]'
     >
-      <div className='flex p-4 pb-2 items-center justify-between self-stretch'>
-        <div className='text-text-primary system-xl-semibold flex-grow'>{t('datasetHitTesting.settingTitle')}</div>
+      <div className='flex items-center justify-between self-stretch p-4 pb-2'>
+        <div className='text-text-primary system-xl-semibold grow'>{t('datasetHitTesting.settingTitle')}</div>
         <ActionButton className='ml-auto' onClick={onClose}>
-          <RiCloseLine className='w-4 h-4 flex-shrink-0' />
+          <RiCloseLine className='h-4 w-4 shrink-0' />
         </ActionButton>
       </div>
-      <div className='flex p-4 pt-2 flex-col justify-center items-start gap-4 self-stretch'>
+      <div className='flex flex-col items-start justify-center gap-4 self-stretch p-4 pt-2'>
         <RetrievalSettings
           topK={topK}
           scoreThreshold={scoreThreshold}
@@ -60,9 +60,9 @@ const ModifyExternalRetrievalModal: React.FC<ModifyExternalRetrievalModalProps> 
           isInHitTesting={true}
         />
       </div>
-      <div className='flex p-4 pt-2 justify-end items-end gap-1 w-full'>
-        <Button className='flex-shrink-0 min-w-[72px]' onClick={onClose}>{t('common.operation.cancel')}</Button>
-        <Button variant='primary' className='flex-shrink-0 min-w-[72px]' onClick={handleSave}>{t('common.operation.save')}</Button>
+      <div className='flex w-full items-end justify-end gap-1 p-4 pt-2'>
+        <Button className='min-w-[72px] shrink-0' onClick={onClose}>{t('common.operation.cancel')}</Button>
+        <Button variant='primary' className='min-w-[72px] shrink-0' onClick={handleSave}>{t('common.operation.save')}</Button>
       </div>
     </div>
   )

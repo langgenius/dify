@@ -172,27 +172,27 @@ const SettingsModal: FC<SettingsModalProps> = ({
 
   return (
     <div
-      className='overflow-hidden w-full flex flex-col bg-components-panel-bg border-[0.5px] border-components-panel-border rounded-xl shadow-xl'
+      className='bg-components-panel-bg border-components-panel-border flex w-full flex-col overflow-hidden rounded-xl border-[0.5px] shadow-xl'
       style={{
         height: 'calc(100vh - 72px)',
       }}
       ref={ref}
     >
-      <div className='shrink-0 flex justify-between items-center pl-6 pr-5 h-14 border-b border-divider-regular'>
-        <div className='flex flex-col text-base font-semibold text-text-primary'>
+      <div className='border-divider-regular flex h-14 shrink-0 items-center justify-between border-b pl-6 pr-5'>
+        <div className='text-text-primary flex flex-col text-base font-semibold'>
           <div className='leading-6'>{t('datasetSettings.title')}</div>
         </div>
         <div className='flex items-center'>
           <div
             onClick={onCancel}
-            className='flex justify-center items-center w-6 h-6 cursor-pointer'
+            className='flex h-6 w-6 cursor-pointer items-center justify-center'
           >
-            <RiCloseLine className='w-4 h-4 text-text-tertiary' />
+            <RiCloseLine className='text-text-tertiary h-4 w-4' />
           </div>
         </div>
       </div>
       {/* Body */}
-      <div className='p-6 pt-5 border-b border-divider-regular overflow-y-auto pb-[68px]'>
+      <div className='border-divider-regular overflow-y-auto border-b p-6 pb-[68px] pt-5'>
         <div className={cn(rowClass, 'items-center')}>
           <div className={labelClass}>
             <div className='text-text-secondary system-sm-semibold'>{t('datasetSettings.form.name')}</div>
@@ -215,8 +215,8 @@ const SettingsModal: FC<SettingsModalProps> = ({
               className='resize-none'
               placeholder={t('datasetSettings.form.descPlaceholder') || ''}
             />
-            <a className='mt-2 flex items-center h-[18px] px-3 text-xs text-text-tertiary' href="https://docs.dify.ai/features/datasets#how-to-write-a-good-dataset-description" target='_blank' rel='noopener noreferrer'>
-              <BookOpenIcon className='w-3 h-[18px] mr-1' />
+            <a className='text-text-tertiary mt-2 flex h-[18px] items-center px-3 text-xs' href="https://docs.dify.ai/features/datasets#how-to-write-a-good-dataset-description" target='_blank' rel='noopener noreferrer'>
+              <BookOpenIcon className='mr-1 h-[18px] w-3' />
               {t('datasetSettings.form.descWrite')}
             </a>
           </div>
@@ -258,7 +258,7 @@ const SettingsModal: FC<SettingsModalProps> = ({
               <div className='text-text-secondary system-sm-semibold'>{t('datasetSettings.form.embeddingModel')}</div>
             </div>
             <div className='w-full'>
-              <div className='w-full h-8 rounded-lg bg-components-input-bg-normal opacity-60'>
+              <div className='bg-components-input-bg-normal h-8 w-full rounded-lg opacity-60'>
                 <ModelSelector
                   readonly
                   defaultModel={{
@@ -268,7 +268,7 @@ const SettingsModal: FC<SettingsModalProps> = ({
                   modelList={embeddingsModelList}
                 />
               </div>
-              <div className='mt-2 w-full text-xs leading-6 text-text-tertiary'>
+              <div className='text-text-tertiary mt-2 w-full text-xs leading-6'>
                 {t('datasetSettings.form.embeddingModelTip')}
                 <span className='text-text-accent cursor-pointer' onClick={() => setShowAccountSettingModal({ payload: 'provider' })}>{t('datasetSettings.form.embeddingModelTipLink')}</span>
               </div>
@@ -298,9 +298,9 @@ const SettingsModal: FC<SettingsModalProps> = ({
                 <div className='text-text-secondary system-sm-semibold'>{t('datasetSettings.form.externalKnowledgeAPI')}</div>
               </div>
               <div className='w-full max-w-[480px]'>
-                <div className='flex h-full px-3 py-2 items-center gap-1 rounded-lg bg-components-input-bg-normal'>
-                  <ApiConnectionMod className='w-4 h-4 text-text-secondary' />
-                  <div className='overflow-hidden text-text-secondary text-ellipsis system-sm-medium'>
+                <div className='bg-components-input-bg-normal flex h-full items-center gap-1 rounded-lg px-3 py-2'>
+                  <ApiConnectionMod className='text-text-secondary h-4 w-4' />
+                  <div className='text-text-secondary system-sm-medium overflow-hidden text-ellipsis'>
                     {currentDataset?.external_knowledge_info.external_knowledge_api_name}
                   </div>
                   <div className='text-text-tertiary system-xs-regular'>·</div>
@@ -313,7 +313,7 @@ const SettingsModal: FC<SettingsModalProps> = ({
                 <div className='text-text-secondary system-sm-semibold'>{t('datasetSettings.form.externalKnowledgeID')}</div>
               </div>
               <div className='w-full max-w-[480px]'>
-                <div className='flex h-full px-3 py-2 items-center gap-1 rounded-lg bg-components-input-bg-normal'>
+                <div className='bg-components-input-bg-normal flex h-full items-center gap-1 rounded-lg px-3 py-2'>
                   <div className='text-text-tertiary system-xs-regular'>{currentDataset?.external_knowledge_info.external_knowledge_id}</div>
                 </div>
               </div>
@@ -324,7 +324,7 @@ const SettingsModal: FC<SettingsModalProps> = ({
             <div className={cn(labelClass, 'w-auto min-w-[168px]')}>
               <div>
                 <div className='text-text-secondary system-sm-semibold'>{t('datasetSettings.form.retrievalSetting.title')}</div>
-                <div className='leading-[18px] text-xs font-normal text-text-tertiary'>
+                <div className='text-text-tertiary text-xs font-normal leading-[18px]'>
                   <a target='_blank' rel='noopener noreferrer' href='https://docs.dify.ai/guides/knowledge-base/create-knowledge-and-upload-documents#id-4-retrieval-settings' className='text-text-accent'>{t('datasetSettings.form.retrievalSetting.learnMore')}</a>
                   {t('datasetSettings.form.retrievalSetting.description')}
                 </div>
@@ -348,23 +348,23 @@ const SettingsModal: FC<SettingsModalProps> = ({
           </div>}
       </div>
       {isRetrievalChanged && !isHideChangedTip && (
-        <div className='absolute z-10 left-[30px] right-[30px] bottom-[76px] flex h-10 items-center px-3 rounded-lg border border-[#FEF0C7] bg-[#FFFAEB] shadow-lg justify-between'>
+        <div className='absolute bottom-[76px] left-[30px] right-[30px] z-10 flex h-10 items-center justify-between rounded-lg border border-[#FEF0C7] bg-[#FFFAEB] px-3 shadow-lg'>
           <div className='flex items-center'>
-            <AlertTriangle className='mr-1 w-3 h-3 text-[#F79009]' />
-            <div className='leading-[18px] text-xs font-medium text-gray-700'>{t('appDebug.datasetConfig.retrieveChangeTip')}</div>
+            <AlertTriangle className='mr-1 h-3 w-3 text-[#F79009]' />
+            <div className='text-xs font-medium leading-[18px] text-gray-700'>{t('appDebug.datasetConfig.retrieveChangeTip')}</div>
           </div>
-          <div className='p-1 cursor-pointer' onClick={(e) => {
+          <div className='cursor-pointer p-1' onClick={(e) => {
             setIsHideChangedTip(true)
             e.stopPropagation()
             e.nativeEvent.stopImmediatePropagation()
           }}>
-            <RiCloseLine className='w-4 h-4 text-gray-500' />
+            <RiCloseLine className='h-4 w-4 text-gray-500' />
           </div>
         </div>
       )}
 
       <div
-        className='sticky z-[5] bottom-0 w-full flex justify-end py-4 px-6 border-t border-divider-regular bg-background-section'
+        className='border-divider-regular bg-background-section sticky bottom-0 z-[5] flex w-full justify-end border-t px-6 py-4'
       >
         <Button
           onClick={onCancel}

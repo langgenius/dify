@@ -75,7 +75,7 @@ const Tool: FC<Props> = ({
     >
       <div className={cn(className)}>
         <div
-          className='flex items-center justify-between pl-3 pr-1 w-full rounded-lg hover:bg-state-base-hover cursor-pointer select-none'
+          className='hover:bg-state-base-hover flex w-full cursor-pointer select-none items-center justify-between rounded-lg pl-3 pr-1'
           onClick={() => {
             if (hasAction)
               setFold(!isFold)
@@ -97,13 +97,13 @@ const Tool: FC<Props> = ({
             // })
           }}
         >
-          <div className='flex grow items-center h-8'>
+          <div className='flex h-8 grow items-center'>
             <BlockIcon
               className='shrink-0'
               type={BlockEnum.Tool}
               toolIcon={payload.icon}
             />
-            <div className='ml-2 text-sm text-text-primary flex-1 w-0 grow truncate'>{payload.label[language]}</div>
+            <div className='text-text-primary ml-2 w-0 flex-1 grow truncate text-sm'>{payload.label[language]}</div>
           </div>
 
           <div className='flex items-center'>
@@ -111,7 +111,7 @@ const Tool: FC<Props> = ({
               <div className='text-text-tertiary system-xs-regular'>{groupName}</div>
             )}
             {hasAction && (
-              <FoldIcon className={cn('w-4 h-4 text-text-quaternary shrink-0', isFold && 'text-text-tertiary')} />
+              <FoldIcon className={cn('text-text-quaternary h-4 w-4 shrink-0', isFold && 'text-text-tertiary')} />
             )}
           </div>
         </div>

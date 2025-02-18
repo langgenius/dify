@@ -54,8 +54,8 @@ export default function Operate({
       {
         ({ open }) => (
           <>
-            <MenuButton className={`flex items-center justify-center w-8 h-8 rounded-lg hover:bg-gray-100 ${open && 'bg-gray-100'}`}>
-              <RiMoreFill className='w-4 h-4' />
+            <MenuButton className={`flex h-8 w-8 items-center justify-center rounded-lg hover:bg-gray-100 ${open && 'bg-gray-100'}`}>
+              <RiMoreFill className='h-4 w-4' />
             </MenuButton>
             <Transition
               as={Fragment}
@@ -69,7 +69,7 @@ export default function Operate({
               <MenuItems
                 className="
                   absolute right-0 top-9 w-60 max-w-80
-                  divide-y divide-gray-100 origin-top-right rounded-lg bg-white
+                  origin-top-right divide-y divide-gray-100 rounded-lg bg-white
                   shadow-lg
                 "
               >
@@ -82,7 +82,7 @@ export default function Operate({
                       <RiStickyNoteAddLine className={itemIconClassName} />
                       <div>
                         <div className='leading-5'>{t('common.dataSource.notion.changeAuthorizedPages')}</div>
-                        <div className='leading-5 text-xs text-gray-500'>
+                        <div className='text-xs leading-5 text-gray-500'>
                           {payload.total} {t('common.dataSource.notion.pagesAuthorized')}
                         </div>
                       </div>

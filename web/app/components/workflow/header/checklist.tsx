@@ -57,20 +57,20 @@ const WorkflowChecklist = ({
       <PortalToFollowElemTrigger onClick={() => !disabled && setOpen(v => !v)}>
         <div
           className={cn(
-            'relative ml-0.5 flex items-center justify-center w-7 h-7 rounded-md',
-            disabled && 'opacity-50 cursor-not-allowed',
+            'relative ml-0.5 flex h-7 w-7 items-center justify-center rounded-md',
+            disabled && 'cursor-not-allowed opacity-50',
           )}
         >
           <div
-            className={cn('group flex items-center justify-center w-full h-full rounded-md cursor-pointer hover:bg-state-accent-hover', open && 'bg-state-accent-hover')}
+            className={cn('hover:bg-state-accent-hover group flex h-full w-full cursor-pointer items-center justify-center rounded-md', open && 'bg-state-accent-hover')}
           >
             <RiListCheck3
-              className={cn('w-4 h-4 group-hover:text-components-button-secondary-accent-text', open ? 'text-components-button-secondary-accent-text' : 'text-components-button-ghost-text')}
+              className={cn('group-hover:text-components-button-secondary-accent-text h-4 w-4', open ? 'text-components-button-secondary-accent-text' : 'text-components-button-ghost-text')}
             />
           </div>
           {
             !!needWarningNodes.length && (
-              <div className='absolute -right-1.5 -top-1.5 flex items-center justify-center min-w-[18px] h-[18px] rounded-full border border-gray-100 text-white text-[11px] font-semibold bg-[#F79009]'>
+              <div className='absolute -right-1.5 -top-1.5 flex h-[18px] min-w-[18px] items-center justify-center rounded-full border border-gray-100 bg-[#F79009] text-[11px] font-semibold text-white'>
                 {needWarningNodes.length}
               </div>
             )
@@ -79,18 +79,18 @@ const WorkflowChecklist = ({
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent className='z-[12]'>
         <div
-          className='w-[420px] rounded-2xl bg-white border-[0.5px] border-black/5 shadow-lg overflow-y-auto'
+          className='w-[420px] overflow-y-auto rounded-2xl border-[0.5px] border-black/5 bg-white shadow-lg'
           style={{
             maxHeight: 'calc(2 / 3 * 100vh)',
           }}
         >
-          <div className='sticky top-0 bg-white flex items-center pl-4 pr-3 pt-3 h-[44px] text-md font-semibold text-gray-900 z-[1]'>
+          <div className='text-md sticky top-0 z-[1] flex h-[44px] items-center bg-white pl-4 pr-3 pt-3 font-semibold text-gray-900'>
             <div className='grow'>{t('workflow.panel.checklist')}{needWarningNodes.length ? `(${needWarningNodes.length})` : ''}</div>
             <div
-              className='shrink-0 flex items-center justify-center w-6 h-6 cursor-pointer'
+              className='flex h-6 w-6 shrink-0 cursor-pointer items-center justify-center'
               onClick={() => setOpen(false)}
             >
-              <RiCloseLine className='w-4 h-4 text-gray-500' />
+              <RiCloseLine className='h-4 w-4 text-gray-500' />
             </div>
           </div>
           <div className='py-2'>
@@ -103,13 +103,13 @@ const WorkflowChecklist = ({
                       needWarningNodes.map(node => (
                         <div
                           key={node.id}
-                          className='mb-2 last-of-type:mb-0 border-[0.5px] border-gray-200 bg-white shadow-xs rounded-lg cursor-pointer'
+                          className='shadow-xs mb-2 cursor-pointer rounded-lg border-[0.5px] border-gray-200 bg-white last-of-type:mb-0'
                           onClick={() => {
                             handleNodeSelect(node.id)
                             setOpen(false)
                           }}
                         >
-                          <div className='flex items-center p-2 h-9 text-xs font-medium text-gray-700'>
+                          <div className='flex h-9 items-center p-2 text-xs font-medium text-gray-700'>
                             <BlockIcon
                               type={node.type}
                               className='mr-1.5'
@@ -119,12 +119,12 @@ const WorkflowChecklist = ({
                               {node.title}
                             </span>
                           </div>
-                          <div className='border-t-[0.5px] border-t-black/2'>
+                          <div className='border-t-black/2 border-t-[0.5px]'>
                             {
                               node.unConnected && (
-                                <div className='px-3 py-2 bg-gray-25 rounded-b-lg'>
+                                <div className='bg-gray-25 rounded-b-lg px-3 py-2'>
                                   <div className='flex text-xs leading-[18px] text-gray-500'>
-                                    <AlertTriangle className='mt-[3px] mr-2 w-3 h-3 text-[#F79009]' />
+                                    <AlertTriangle className='mr-2 mt-[3px] h-3 w-3 text-[#F79009]' />
                                     {t('workflow.common.needConnectTip')}
                                   </div>
                                 </div>
@@ -132,9 +132,9 @@ const WorkflowChecklist = ({
                             }
                             {
                               node.errorMessage && (
-                                <div className='px-3 py-2 bg-gray-25 rounded-b-lg'>
+                                <div className='bg-gray-25 rounded-b-lg px-3 py-2'>
                                   <div className='flex text-xs leading-[18px] text-gray-500'>
-                                    <AlertTriangle className='mt-[3px] mr-2 w-3 h-3 text-[#F79009]' />
+                                    <AlertTriangle className='mr-2 mt-[3px] h-3 w-3 text-[#F79009]' />
                                     {node.errorMessage}
                                   </div>
                                 </div>
@@ -150,8 +150,8 @@ const WorkflowChecklist = ({
             }
             {
               !needWarningNodes.length && (
-                <div className='mx-4 mb-3 py-4 rounded-lg bg-gray-50 text-gray-400 text-xs text-center'>
-                  <ChecklistSquare className='mx-auto mb-[5px] w-8 h-8 text-gray-300' />
+                <div className='mx-4 mb-3 rounded-lg bg-gray-50 py-4 text-center text-xs text-gray-400'>
+                  <ChecklistSquare className='mx-auto mb-[5px] h-8 w-8 text-gray-300' />
                   {t('workflow.panel.checklistResolved')}
                 </div>
               )

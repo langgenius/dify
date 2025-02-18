@@ -27,7 +27,7 @@ const NodeComponent: FC<NodeProps<DocExtractorNodeType>> = ({
   const varName = isSystem ? `sys.${variable[variable.length - 1]}` : variable.slice(1).join('.')
   return (
     <div className='relative px-3'>
-      <div className='mb-1 system-2xs-medium-uppercase text-text-tertiary'>{t(`${i18nPrefix}.inputVar`)}</div>
+      <div className='system-2xs-medium-uppercase text-text-tertiary mb-1'>{t(`${i18nPrefix}.inputVar`)}</div>
       <NodeVariableItem
         node={node as Node}
         isEnv={isEnv}

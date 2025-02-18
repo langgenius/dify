@@ -47,18 +47,18 @@ const PdfPreview: FC<PdfPreviewProps> = ({
 
   return createPortal(
     <div
-      className={`fixed inset-0 flex items-center justify-center bg-black/80 z-[1000] ${!isMobile && 'p-8'}`}
+      className={`fixed inset-0 z-[1000] flex items-center justify-center bg-black/80 ${!isMobile && 'p-8'}`}
       onClick={e => e.stopPropagation()}
       tabIndex={-1}
     >
       <div
-        className='h-[95vh] w-[100vw] max-w-full max-h-full overflow-hidden'
+        className='h-[95vh] max-h-full w-[100vw] max-w-full overflow-hidden'
         style={{ transform: `scale(${scale})`, transformOrigin: 'center', scrollbarWidth: 'none', msOverflowStyle: 'none' }}
       >
         <PdfLoader
           workerSrc='/pdf.worker.min.mjs'
           url={url}
-          beforeLoad={<div className='flex justify-center items-center h-64'><Loading type='app' /></div>}
+          beforeLoad={<div className='flex h-64 items-center justify-center'><Loading type='app' /></div>}
         >
           {(pdfDocument) => {
             return (
@@ -76,22 +76,22 @@ const PdfPreview: FC<PdfPreviewProps> = ({
         </PdfLoader>
       </div>
       <Tooltip popupContent={t('common.operation.zoomOut')}>
-        <div className='absolute top-6 right-24 flex items-center justify-center w-8 h-8 rounded-lg cursor-pointer'
+        <div className='absolute right-24 top-6 flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg'
           onClick={zoomOut}>
-          <RiZoomOutLine className='w-4 h-4 text-gray-500'/>
+          <RiZoomOutLine className='h-4 w-4 text-gray-500'/>
         </div>
       </Tooltip>
       <Tooltip popupContent={t('common.operation.zoomIn')}>
-        <div className='absolute top-6 right-16 flex items-center justify-center w-8 h-8 rounded-lg cursor-pointer'
+        <div className='absolute right-16 top-6 flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg'
           onClick={zoomIn}>
-          <RiZoomInLine className='w-4 h-4 text-gray-500'/>
+          <RiZoomInLine className='h-4 w-4 text-gray-500'/>
         </div>
       </Tooltip>
       <Tooltip popupContent={t('common.operation.cancel')}>
         <div
-          className='absolute top-6 right-6 flex items-center justify-center w-8 h-8 bg-white/8 rounded-lg backdrop-blur-[2px] cursor-pointer'
+          className='bg-white/8 absolute right-6 top-6 flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg backdrop-blur-[2px]'
           onClick={onCancel}>
-          <RiCloseLine className='w-4 h-4 text-gray-500'/>
+          <RiCloseLine className='h-4 w-4 text-gray-500'/>
         </div>
       </Tooltip>
     </div>,

@@ -251,7 +251,7 @@ const Chat: FC<ChatProps> = ({
           </div>
         </div>
         <div
-          className={`absolute bottom-0 bg-chat-input-mask ${(hasTryToAsk || !noChatInput || !noStopResponding) && chatFooterClassName}`}
+          className={`bg-chat-input-mask absolute bottom-0 ${(hasTryToAsk || !noChatInput || !noStopResponding) && chatFooterClassName}`}
           ref={chatFooterRef}
         >
           <div
@@ -260,10 +260,10 @@ const Chat: FC<ChatProps> = ({
           >
             {
               !noStopResponding && isResponding && (
-                <div className='flex justify-center mb-2'>
+                <div className='mb-2 flex justify-center'>
                   <Button onClick={onStopResponding}>
-                    <StopCircle className='mr-[5px] w-3.5 h-3.5 text-gray-500' />
-                    <span className='text-xs text-gray-500 font-normal'>{t('appDebug.operation.stopResponding')}</span>
+                    <StopCircle className='mr-[5px] h-3.5 w-3.5 text-gray-500' />
+                    <span className='text-xs font-normal text-gray-500'>{t('appDebug.operation.stopResponding')}</span>
                   </Button>
                 </div>
               )

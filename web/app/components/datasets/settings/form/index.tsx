@@ -169,7 +169,7 @@ const Form = () => {
   }
 
   return (
-    <div className='w-full sm:w-[880px] px-14 py-8 flex flex-col gap-y-4'>
+    <div className='flex w-full flex-col gap-y-4 px-14 py-8 sm:w-[880px]'>
       <div className={rowClass}>
         <div className={labelClass}>
           <div className='text-text-secondary system-sm-semibold'>{t('datasetSettings.form.name')}</div>
@@ -214,7 +214,7 @@ const Form = () => {
       </div>
       {currentDataset && currentDataset.indexing_technique && (
         <>
-          <div className='w-full h-0 border-b border-divider-subtle my-1' />
+          <div className='border-divider-subtle my-1 h-0 w-full border-b' />
           <div className={rowClass}>
             <div className={labelClass}>
               <div className='text-text-secondary system-sm-semibold'>{t('datasetSettings.form.indexMethod')}</div>
@@ -227,10 +227,10 @@ const Form = () => {
                 docForm={currentDataset.doc_form}
                 currentValue={currentDataset.indexing_technique}
               />
-              {currentDataset.indexing_technique === IndexingType.ECONOMICAL && indexMethod === IndexingType.QUALIFIED && <div className='mt-2 h-10 p-2 flex items-center gap-x-0.5 rounded-xl border-[0.5px] border-components-panel-border overflow-hidden bg-components-panel-bg-blur backdrop-blur-[5px] shadow-xs'>
-                <div className='absolute top-0 left-0 right-0 bottom-0 bg-[linear-gradient(92deg,rgba(247,144,9,0.25)_0%,rgba(255,255,255,0.00)_100%)] opacity-40'></div>
+              {currentDataset.indexing_technique === IndexingType.ECONOMICAL && indexMethod === IndexingType.QUALIFIED && <div className='border-components-panel-border bg-components-panel-bg-blur shadow-xs mt-2 flex h-10 items-center gap-x-0.5 overflow-hidden rounded-xl border-[0.5px] p-2 backdrop-blur-[5px]'>
+                <div className='absolute bottom-0 left-0 right-0 top-0 bg-[linear-gradient(92deg,rgba(247,144,9,0.25)_0%,rgba(255,255,255,0.00)_100%)] opacity-40'></div>
                 <div className='p-1'>
-                  <AlertTriangle className='size-4 text-text-warning-secondary' />
+                  <AlertTriangle className='text-text-warning-secondary size-4' />
                 </div>
                 <span className='system-xs-medium'>{t('datasetSettings.form.upgradeHighQualityTip')}</span>
               </div>}
@@ -260,7 +260,7 @@ const Form = () => {
       {/* Retrieval Method Config */}
       {currentDataset?.provider === 'external'
         ? <>
-          <div className='w-full h-0 border-b border-divider-subtle my-1' />
+          <div className='border-divider-subtle my-1 h-0 w-full border-b' />
           <div className={rowClass}>
             <div className={labelClass}>
               <div className='text-text-secondary system-sm-semibold'>{t('datasetSettings.form.retrievalSetting.title')}</div>
@@ -273,15 +273,15 @@ const Form = () => {
               isInRetrievalSetting={true}
             />
           </div>
-          <div className='w-full h-0 border-b border-divider-subtle my-1' />
+          <div className='border-divider-subtle my-1 h-0 w-full border-b' />
           <div className={rowClass}>
             <div className={labelClass}>
               <div className='text-text-secondary system-sm-semibold'>{t('datasetSettings.form.externalKnowledgeAPI')}</div>
             </div>
             <div className='w-full'>
-              <div className='flex h-full px-3 py-2 items-center gap-1 rounded-lg bg-components-input-bg-normal'>
-                <ApiConnectionMod className='w-4 h-4 text-text-secondary' />
-                <div className='overflow-hidden text-text-secondary text-ellipsis system-sm-medium'>
+              <div className='bg-components-input-bg-normal flex h-full items-center gap-1 rounded-lg px-3 py-2'>
+                <ApiConnectionMod className='text-text-secondary h-4 w-4' />
+                <div className='text-text-secondary system-sm-medium overflow-hidden text-ellipsis'>
                   {currentDataset?.external_knowledge_info.external_knowledge_api_name}
                 </div>
                 <div className='text-text-tertiary system-xs-regular'>·</div>
@@ -294,7 +294,7 @@ const Form = () => {
               <div className='text-text-secondary system-sm-semibold'>{t('datasetSettings.form.externalKnowledgeID')}</div>
             </div>
             <div className='w-full'>
-              <div className='flex h-full px-3 py-2 items-center gap-1 rounded-lg bg-components-input-bg-normal'>
+              <div className='bg-components-input-bg-normal flex h-full items-center gap-1 rounded-lg px-3 py-2'>
                 <div className='text-text-tertiary system-xs-regular'>{currentDataset?.external_knowledge_info.external_knowledge_id}</div>
               </div>
             </div>
@@ -302,7 +302,7 @@ const Form = () => {
         </>
         : indexMethod
           ? <>
-            <div className='w-full h-0 border-b border-divider-subtle my-1' />
+            <div className='border-divider-subtle my-1 h-0 w-full border-b' />
             <div className={rowClass}>
               <div className={labelClass}>
                 <div>
@@ -332,7 +332,7 @@ const Form = () => {
           </>
           : null
       }
-      <div className='w-full h-0 border-b border-divider-subtle my-1' />
+      <div className='border-divider-subtle my-1 h-0 w-full border-b' />
       <div className={rowClass}>
         <div className={labelClass} />
         <div className='grow'>

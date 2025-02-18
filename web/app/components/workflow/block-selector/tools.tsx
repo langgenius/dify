@@ -90,7 +90,7 @@ const Blocks = ({
     <div className={classNames('p-1 max-w-[320px]', className)}>
       {
         !tools.length && !showWorkflowEmpty && (
-          <div className='flex items-center px-3 h-[22px] text-xs font-medium text-text-tertiary'>{t('workflow.tabs.noResult')}</div>
+          <div className='text-text-tertiary flex h-[22px] items-center px-3 text-xs font-medium'>{t('workflow.tabs.noResult')}</div>
         )
       }
       {!tools.length && showWorkflowEmpty && (

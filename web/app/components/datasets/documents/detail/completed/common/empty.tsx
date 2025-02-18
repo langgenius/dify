@@ -8,7 +8,7 @@ type IEmptyProps = {
 
 const EmptyCard = React.memo(() => {
   return (
-    <div className='w-full h-32 rounded-xl opacity-30 bg-background-section-burn shrink-0' />
+    <div className='bg-background-section-burn h-32 w-full shrink-0 rounded-xl opacity-30' />
   )
 })
 
@@ -43,14 +43,14 @@ const Empty: FC<IEmptyProps> = ({
   const { t } = useTranslation()
 
   return (
-    <div className={'h-full relative flex items-center justify-center z-0'}>
+    <div className={'relative z-0 flex h-full items-center justify-center'}>
       <div className='flex flex-col items-center'>
-        <div className='relative z-10 flex items-center justify-center w-14 h-14 border border-divider-subtle bg-components-card-bg rounded-xl shadow-lg shadow-shadow-shadow-5'>
-          <RiFileList2Line className='w-6 h-6 text-text-secondary' />
+        <div className='border-divider-subtle bg-components-card-bg shadow-shadow-shadow-5 relative z-10 flex h-14 w-14 items-center justify-center rounded-xl border shadow-lg'>
+          <RiFileList2Line className='text-text-secondary h-6 w-6' />
           <Line className='absolute -right-[1px] top-1/2 -translate-y-1/2' />
           <Line className='absolute -left-[1px] top-1/2 -translate-y-1/2' />
-          <Line className='absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 rotate-90' />
-          <Line className='absolute top-full left-1/2 -translate-x-1/2 -translate-y-1/2 rotate-90' />
+          <Line className='absolute left-1/2 top-0 -translate-x-1/2 -translate-y-1/2 rotate-90' />
+          <Line className='absolute left-1/2 top-full -translate-x-1/2 -translate-y-1/2 rotate-90' />
         </div>
         <div className='text-text-tertiary system-md-regular mt-3'>
           {t('datasetDocuments.segment.empty')}
@@ -63,14 +63,14 @@ const Empty: FC<IEmptyProps> = ({
           {t('datasetDocuments.segment.clearFilter')}
         </button>
       </div>
-      <div className='h-full w-full absolute top-0 left-0 flex flex-col gap-y-3 -z-20 overflow-hidden'>
+      <div className='absolute left-0 top-0 -z-20 flex h-full w-full flex-col gap-y-3 overflow-hidden'>
         {
           Array.from({ length: 10 }).map((_, i) => (
             <EmptyCard key={i} />
           ))
         }
       </div>
-      <div className='h-full w-full absolute top-0 left-0 bg-dataset-chunk-list-mask-bg -z-10' />
+      <div className='bg-dataset-chunk-list-mask-bg absolute left-0 top-0 -z-10 h-full w-full' />
     </div>
   )
 }

@@ -44,7 +44,7 @@ const Form = () => {
     if (form.type === 'number') {
       return (
         <input
-          className="grow h-9 rounded-lg bg-gray-100 px-2.5 outline-none appearance-none"
+          className="h-9 grow appearance-none rounded-lg bg-gray-100 px-2.5 outline-none"
           type="number"
           value={newConversationInputs[variable] || ''}
           onChange={e => handleFormChange(variable, e.target.value)}
@@ -103,9 +103,9 @@ const Form = () => {
         inputsForms.map(form => (
           <div
             key={form.variable}
-            className={`flex mb-3 last-of-type:mb-0 text-sm text-gray-900 ${isMobile && '!flex-wrap'}`}
+            className={`mb-3 flex text-sm text-gray-900 last-of-type:mb-0 ${isMobile && '!flex-wrap'}`}
           >
-            <div className={`shrink-0 mr-2 py-2 w-[128px] ${isMobile && '!w-full'}`}>{form.label}</div>
+            <div className={`mr-2 w-[128px] shrink-0 py-2 ${isMobile && '!w-full'}`}>{form.label}</div>
             {renderField(form)}
           </div>
         ))

@@ -48,14 +48,14 @@ const KeyValueItem: FC<Props> = ({
 
   return (
     <div className='flex items-center gap-1'>
-      <span className={cn('flex flex-col justify-center items-start text-text-tertiary system-xs-medium', labelWidthClassName)}>{label}</span>
-      <div className='flex justify-center items-center gap-0.5'>
-        <span className={cn(valueMaxWidthClassName, ' truncate system-xs-medium text-text-secondary')}>
+      <span className={cn('text-text-tertiary system-xs-medium flex flex-col items-start justify-center', labelWidthClassName)}>{label}</span>
+      <div className='flex items-center justify-center gap-0.5'>
+        <span className={cn(valueMaxWidthClassName, ' system-xs-medium text-text-secondary truncate')}>
           {maskedValue || value}
         </span>
         <Tooltip popupContent={t(`common.operation.${isCopied ? 'copied' : 'copy'}`)} position='top'>
           <ActionButton onClick={handleCopy}>
-            <CopyIcon className='shrink-0 w-3.5 h-3.5 text-text-tertiary' />
+            <CopyIcon className='text-text-tertiary h-3.5 w-3.5 shrink-0' />
           </ActionButton>
         </Tooltip>
       </div>

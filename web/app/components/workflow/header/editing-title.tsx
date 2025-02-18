@@ -13,7 +13,7 @@ const EditingTitle = () => {
   const isSyncingWorkflowDraft = useStore(s => s.isSyncingWorkflowDraft)
 
   return (
-    <div className='flex items-center h-[18px] system-xs-regular text-text-tertiary'>
+    <div className='system-xs-regular text-text-tertiary flex h-[18px] items-center'>
       {
         !!draftUpdatedAt && (
           <>
@@ -21,7 +21,7 @@ const EditingTitle = () => {
           </>
         )
       }
-      <span className='flex items-center mx-1'>·</span>
+      <span className='mx-1 flex items-center'>·</span>
       {
         publishedAt
           ? `${t('workflow.common.published')} ${formatTimeFromNow(publishedAt)}`
@@ -30,7 +30,7 @@ const EditingTitle = () => {
       {
         isSyncingWorkflowDraft && (
           <>
-            <span className='flex items-center mx-1'>·</span>
+            <span className='mx-1 flex items-center'>·</span>
             {t('workflow.common.syncingData')}
           </>
         )

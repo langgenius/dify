@@ -46,13 +46,13 @@ const SavedItems: FC<ISavedItemsProps> = ({
           {list.map(({ id, answer }) => (
             <div
               key={id}
-              className='p-4 rounded-xl  bg-gray-50'
+              className='rounded-xl bg-gray-50  p-4'
               style={{
                 boxShadow: '0px 1px 2px rgba(16, 24, 40, 0.05)',
               }}
             >
               <Markdown content={answer} />
-              <div className='flex items-center justify-between mt-3'>
+              <div className='mt-3 flex items-center justify-between'>
                 <div className='flex items-center space-x-2'>
                   <SimpleBtn
                     className='space-x-1'

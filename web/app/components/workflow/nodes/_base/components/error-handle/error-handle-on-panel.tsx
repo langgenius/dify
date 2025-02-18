@@ -50,9 +50,9 @@ const ErrorHandle = ({
           collapsed={collapsed}
           onCollapse={setCollapsed}
           trigger={
-            <div className='grow flex items-center justify-between pr-4'>
+            <div className='flex grow items-center justify-between pr-4'>
               <div className='flex items-center'>
-                <div className='mr-0.5 system-sm-semibold-uppercase text-text-secondary'>
+                <div className='system-sm-semibold-uppercase text-text-secondary mr-0.5'>
                   {t('workflow.nodes.common.errorHandle.title')}
                 </div>
                 <Tooltip popupContent={t('workflow.nodes.common.errorHandle.tip')} />

@@ -58,7 +58,7 @@ const ToolCredentialForm: FC<Props> = ({
         ? <div className='pt-3'><Loading type='app' /></div>
         : (
           <>
-            <div className='px-4 max-h-[464px] overflow-y-auto'>
+            <div className='max-h-[464px] overflow-y-auto px-4'>
               <Form
                 value={tempCredential}
                 onChange={(v) => {
@@ -73,10 +73,10 @@ const ToolCredentialForm: FC<Props> = ({
                   ? (<a
                     href={item.url}
                     target='_blank' rel='noopener noreferrer'
-                    className='inline-flex items-center text-xs text-text-accent'
+                    className='text-text-accent inline-flex items-center text-xs'
                   >
                     {t('tools.howToGet')}
-                    <RiArrowRightUpLine className='ml-1 w-3 h-3' />
+                    <RiArrowRightUpLine className='ml-1 h-3 w-3' />
                   </a>)
                   : null}
               />

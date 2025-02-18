@@ -40,19 +40,19 @@ type ItemProps = {
 const SelectItem: FC<ItemProps> = ({ text, value, Icon, isChecked, description, onClick, disabled }) => {
   return (
     <div
-      className={cn(disabled ? 'opacity-50' : 'cursor-pointer', isChecked ? 'border-[2px] border-indigo-600 shadow-sm' : 'border border-gray-100', 'mb-2 p-3 pr-4 rounded-xl bg-gray-25 hover:bg-gray-50')}
+      className={cn(disabled ? 'opacity-50' : 'cursor-pointer', isChecked ? 'border-[2px] border-indigo-600 shadow-sm' : 'border border-gray-100', 'bg-gray-25 mb-2 rounded-xl p-3 pr-4 hover:bg-gray-50')}
       onClick={() => !disabled && onClick(value)}
     >
       <div className='flex items-center justify-between'>
         <div className='flex items-center '>
-          <div className='mr-3 p-1 bg-indigo-50 rounded-lg'>
-            <Icon className='w-4 h-4 text-indigo-600' />
+          <div className='mr-3 rounded-lg bg-indigo-50 p-1'>
+            <Icon className='h-4 w-4 text-indigo-600' />
           </div>
-          <div className='leading-5 text-sm font-medium text-gray-900'>{text}</div>
+          <div className='text-sm font-medium leading-5 text-gray-900'>{text}</div>
         </div>
         <Radio isChecked={isChecked} />
       </div>
-      <div className='ml-9 leading-[18px] text-xs font-normal text-gray-500'>{description}</div>
+      <div className='ml-9 text-xs font-normal leading-[18px] text-gray-500'>{description}</div>
     </div>
   )
 }
@@ -83,7 +83,7 @@ const AssistantTypePicker: FC<Props> = ({
     <>
       <div className='my-4 h-[1px] bg-gray-100'></div>
       <div
-        className={cn(isAgent ? 'group cursor-pointer hover:bg-primary-50' : 'opacity-30', 'p-3 pr-4 rounded-xl bg-gray-50 ')}
+        className={cn(isAgent ? 'hover:bg-primary-50 group cursor-pointer' : 'opacity-30', 'rounded-xl bg-gray-50 p-3 pr-4 ')}
         onClick={() => {
           if (isAgent) {
             setOpen(false)
@@ -93,14 +93,14 @@ const AssistantTypePicker: FC<Props> = ({
       >
         <div className='flex items-center justify-between'>
           <div className='flex items-center '>
-            <div className='mr-3 p-1 bg-gray-200 group-hover:bg-white rounded-lg'>
-              <Settings04 className='w-4 h-4 text-gray-600 group-hover:text-[#155EEF]' />
+            <div className='mr-3 rounded-lg bg-gray-200 p-1 group-hover:bg-white'>
+              <Settings04 className='h-4 w-4 text-gray-600 group-hover:text-[#155EEF]' />
             </div>
-            <div className='leading-5 text-sm font-medium text-gray-900 group-hover:text-[#155EEF]'>{t('appDebug.agent.setting.name')}</div>
+            <div className='text-sm font-medium leading-5 text-gray-900 group-hover:text-[#155EEF]'>{t('appDebug.agent.setting.name')}</div>
           </div>
-          <ArrowUpRight className='w-4 h-4 text-gray-500 group-hover:text-[#155EEF]' />
+          <ArrowUpRight className='h-4 w-4 text-gray-500 group-hover:text-[#155EEF]' />
         </div>
-        <div className='ml-9 leading-[18px] text-xs font-normal text-gray-500'>{t('appDebug.agent.setting.description')}</div>
+        <div className='ml-9 text-xs font-normal leading-[18px] text-gray-500'>{t('appDebug.agent.setting.description')}</div>
       </div>
     </>
   )
@@ -116,15 +116,15 @@ const AssistantTypePicker: FC<Props> = ({
         }}
       >
         <PortalToFollowElemTrigger onClick={() => setOpen(v => !v)}>
-          <div className={cn(open && 'bg-gray-50', 'flex items-center h-8 px-3 border border-black/5 rounded-lg cursor-pointer select-none space-x-1 text-indigo-600')}>
-            {isAgent ? <BubbleText className='w-3 h-3' /> : <CuteRobot className='w-3 h-3' />}
+          <div className={cn(open && 'bg-gray-50', 'flex h-8 cursor-pointer select-none items-center space-x-1 rounded-lg border border-black/5 px-3 text-indigo-600')}>
+            {isAgent ? <BubbleText className='h-3 w-3' /> : <CuteRobot className='h-3 w-3' />}
             <div className='text-xs font-medium'>{t(`appDebug.assistantType.${isAgent ? 'agentAssistant' : 'chatAssistant'}.name`)}</div>
-            <RiArrowDownSLine className='w-3 h-3' />
+            <RiArrowDownSLine className='h-3 w-3' />
           </div>
         </PortalToFollowElemTrigger>
         <PortalToFollowElemContent style={{ zIndex: 1000 }}>
-          <div className='relative left-0.5 p-6 bg-white border border-black/8 shadow-lg rounded-xl w-[480px]'>
-            <div className='mb-2 leading-5 text-sm font-semibold text-gray-900'>{t('appDebug.assistantType.name')}</div>
+          <div className='border-black/8 relative left-0.5 w-[480px] rounded-xl border bg-white p-6 shadow-lg'>
+            <div className='mb-2 text-sm font-semibold leading-5 text-gray-900'>{t('appDebug.assistantType.name')}</div>
             <SelectItem
               Icon={BubbleText}
               value='chat'

@@ -95,20 +95,20 @@ const SwitchAppModal = ({ show, appDetail, inAppDetail = false, onSuccess, onClo
   return (
     <>
       <Modal
-        className={cn('p-8 max-w-[600px] w-[600px]', s.bg)}
+        className={cn('w-[600px] max-w-[600px] p-8', s.bg)}
         isShow={show}
         onClose={() => { }}
       >
-        <div className='absolute right-4 top-4 p-2 cursor-pointer' onClick={onClose}>
-          <RiCloseLine className='w-4 h-4 text-gray-500' />
+        <div className='absolute right-4 top-4 cursor-pointer p-2' onClick={onClose}>
+          <RiCloseLine className='h-4 w-4 text-gray-500' />
         </div>
-        <div className='w-12 h-12 p-3 bg-white rounded-xl border-[0.5px] border-gray-100 shadow-xl'>
-          <AlertTriangle className='w-6 h-6 text-[rgb(247,144,9)]' />
+        <div className='h-12 w-12 rounded-xl border-[0.5px] border-gray-100 bg-white p-3 shadow-xl'>
+          <AlertTriangle className='h-6 w-6 text-[rgb(247,144,9)]' />
         </div>
         <div className='relative mt-3 text-xl font-semibold leading-[30px] text-gray-900'>{t('app.switch')}</div>
-        <div className='my-1 text-gray-500 text-sm leading-5'>
+        <div className='my-1 text-sm leading-5 text-gray-500'>
           <span>{t('app.switchTipStart')}</span>
-          <span className='text-gray-700 font-medium'>{t('app.switchTip')}</span>
+          <span className='font-medium text-gray-700'>{t('app.switchTip')}</span>
           <span>{t('app.switchTipEnd')}</span>
         </div>
         <div className='pb-4'>
@@ -127,7 +127,7 @@ const SwitchAppModal = ({ show, appDetail, inAppDetail = false, onSuccess, onClo
               value={name}
               onChange={e => setName(e.target.value)}
               placeholder={t('app.newApp.appNamePlaceholder') || ''}
-              className='grow h-10'
+              className='h-10 grow'
             />
           </div>
           {showAppIconPicker && <AppIconPicker
@@ -144,10 +144,10 @@ const SwitchAppModal = ({ show, appDetail, inAppDetail = false, onSuccess, onClo
           />}
         </div>
         {isAppsFull && <AppsFull loc='app-switch' />}
-        <div className='pt-6 flex justify-between items-center'>
+        <div className='flex items-center justify-between pt-6'>
           <div className='flex items-center'>
             <Checkbox className='shrink-0' checked={removeOriginal} onCheck={() => setRemoveOriginal(!removeOriginal)} />
-            <div className="ml-2 text-sm leading-5 text-gray-700 cursor-pointer" onClick={() => setRemoveOriginal(!removeOriginal)}>{t('app.removeOriginal')}</div>
+            <div className="ml-2 cursor-pointer text-sm leading-5 text-gray-700" onClick={() => setRemoveOriginal(!removeOriginal)}>{t('app.removeOriginal')}</div>
           </div>
           <div className='flex items-center'>
             <Button className='mr-2' onClick={onClose}>{t('app.newApp.Cancel')}</Button>

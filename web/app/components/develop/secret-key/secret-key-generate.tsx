@@ -23,14 +23,14 @@ const SecretKeyGenerateModal = ({
   const { t } = useTranslation()
   return (
     <Modal isShow={isShow} onClose={onClose} title={`${t('appApi.apiKeyModal.apiSecretKey')}`} className={`px-8 ${className}`}>
-      <XMarkIcon className={`w-6 h-6 absolute cursor-pointer text-text-tertiary ${s.close}`} onClick={onClose} />
-      <p className='mt-1 text-[13px] text-text-tertiary font-normal leading-5'>{t('appApi.apiKeyModal.generateTips')}</p>
+      <XMarkIcon className={`text-text-tertiary absolute h-6 w-6 cursor-pointer ${s.close}`} onClick={onClose} />
+      <p className='text-text-tertiary mt-1 text-[13px] font-normal leading-5'>{t('appApi.apiKeyModal.generateTips')}</p>
       <div className='my-4'>
         <InputCopy className='w-full' value={newKey?.token} />
       </div>
-      <div className='flex justify-end my-4'>
+      <div className='my-4 flex justify-end'>
         <Button className={`shrink-0 ${s.w64}`} onClick={onClose}>
-          <span className='text-xs font-medium text-text-secondary'>{t('appApi.actionMsg.ok')}</span>
+          <span className='text-text-secondary text-xs font-medium'>{t('appApi.actionMsg.ok')}</span>
         </Button>
       </div>
 

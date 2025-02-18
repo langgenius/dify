@@ -35,21 +35,21 @@ const InvitationLink = ({
   }, [isCopied])
 
   return (
-    <div className='flex rounded-lg bg-gray-100 hover:bg-gray-100 border border-gray-200 py-2 items-center'>
-      <div className="flex items-center flex-grow h-5">
-        <div className='flex-grow bg-gray-100 text-[13px] relative h-full'>
+    <div className='flex items-center rounded-lg border border-gray-200 bg-gray-100 py-2 hover:bg-gray-100'>
+      <div className="flex h-5 grow items-center">
+        <div className='relative h-full grow bg-gray-100 text-[13px]'>
           <Tooltip
             popupContent={isCopied ? `${t('appApi.copied')}` : `${t('appApi.copy')}`}
           >
-            <div className='absolute top-0 left-0 w-full pl-2 pr-2 truncate cursor-pointer r-0' onClick={copyHandle}>{value.url}</div>
+            <div className='r-0 absolute left-0 top-0 w-full cursor-pointer truncate pl-2 pr-2' onClick={copyHandle}>{value.url}</div>
           </Tooltip>
         </div>
-        <div className="flex-shrink-0 h-4 bg-gray-200 border" />
+        <div className="h-4 shrink-0 border bg-gray-200" />
         <Tooltip
           popupContent={isCopied ? `${t('appApi.copied')}` : `${t('appApi.copy')}`}
         >
-          <div className="px-0.5 flex-shrink-0">
-            <div className={`box-border w-[30px] h-[30px] flex items-center justify-center rounded-lg hover:bg-gray-100 cursor-pointer ${s.copyIcon} ${isCopied ? s.copied : ''}`} onClick={copyHandle}>
+          <div className="shrink-0 px-0.5">
+            <div className={`box-border flex h-[30px] w-[30px] cursor-pointer items-center justify-center rounded-lg hover:bg-gray-100 ${s.copyIcon} ${isCopied ? s.copied : ''}`} onClick={copyHandle}>
             </div>
           </div>
         </Tooltip>

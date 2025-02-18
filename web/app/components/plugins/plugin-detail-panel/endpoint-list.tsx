@@ -64,8 +64,8 @@ const EndpointList = ({ detail }: Props) => {
     return null
 
   return (
-    <div className={cn('px-4 py-2 border-divider-subtle', showTopBorder && 'border-t')}>
-      <div className='mb-1 h-6 flex items-center justify-between text-text-secondary system-sm-semibold-uppercase'>
+    <div className={cn('border-divider-subtle px-4 py-2', showTopBorder && 'border-t')}>
+      <div className='text-text-secondary system-sm-semibold-uppercase mb-1 flex h-6 items-center justify-between'>
         <div className='flex items-center gap-0.5'>
           {t('plugin.detailPanel.endpoints')}
           <Tooltip
@@ -74,8 +74,8 @@ const EndpointList = ({ detail }: Props) => {
             popupClassName='w-[240px] p-4 rounded-xl bg-components-panel-bg-blur border-[0.5px] border-components-panel-border'
             popupContent={
               <div className='flex flex-col gap-2'>
-                <div className='w-8 h-8 flex items-center justify-center bg-background-default-subtle rounded-lg border-[0.5px] border-components-panel-border-subtle'>
-                  <RiApps2AddLine className='w-4 h-4 text-text-tertiary' />
+                <div className='bg-background-default-subtle border-components-panel-border-subtle flex h-8 w-8 items-center justify-center rounded-lg border-[0.5px]'>
+                  <RiApps2AddLine className='text-text-tertiary h-4 w-4' />
                 </div>
                 <div className='text-text-tertiary system-xs-regular'>{t('plugin.detailPanel.endpointsTip')}</div>
                 <a
@@ -83,8 +83,8 @@ const EndpointList = ({ detail }: Props) => {
                   target='_blank'
                   rel='noopener noreferrer'
                 >
-                  <div className='inline-flex items-center gap-1 text-text-accent system-xs-regular cursor-pointer'>
-                    <RiBookOpenLine className='w-3 h-3' />
+                  <div className='text-text-accent system-xs-regular inline-flex cursor-pointer items-center gap-1'>
+                    <RiBookOpenLine className='h-3 w-3' />
                     {t('plugin.detailPanel.endpointsDocLink')}
                   </div>
                 </a>
@@ -93,11 +93,11 @@ const EndpointList = ({ detail }: Props) => {
           />
         </div>
         <ActionButton onClick={showEndpointModal}>
-          <RiAddLine className='w-4 h-4' />
+          <RiAddLine className='h-4 w-4' />
         </ActionButton>
       </div>
       {data.endpoints.length === 0 && (
-        <div className='mb-1 p-3 flex justify-center rounded-[10px] bg-background-section text-text-tertiary system-xs-regular'>{t('plugin.detailPanel.endpointsEmpty')}</div>
+        <div className='bg-background-section text-text-tertiary system-xs-regular mb-1 flex justify-center rounded-[10px] p-3'>{t('plugin.detailPanel.endpointsEmpty')}</div>
       )}
       <div className='flex flex-col gap-2'>
         {data.endpoints.map((item, index) => (

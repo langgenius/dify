@@ -32,9 +32,9 @@ const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
         ref={ref}
         style={styleCss}
         className={cn(
-          'w-full min-h-20 p-2 bg-components-input-bg-normal border border-transparent text-components-input-text-filled hover:bg-components-input-bg-hover hover:border-components-input-border-hover focus:bg-components-input-bg-active focus:border-components-input-border-active focus:shadow-xs placeholder:text-components-input-text-placeholder appearance-none outline-none caret-primary-600',
+          'bg-components-input-bg-normal text-components-input-text-filled hover:bg-components-input-bg-hover hover:border-components-input-border-hover focus:bg-components-input-bg-active focus:border-components-input-border-active focus:shadow-xs placeholder:text-components-input-text-placeholder caret-primary-600 min-h-20 w-full appearance-none border border-transparent p-2 outline-none',
           textareaVariants({ size }),
-          disabled && 'bg-components-input-bg-disabled border-transparent text-components-input-text-filled-disabled cursor-not-allowed hover:bg-components-input-bg-disabled hover:border-transparent',
+          disabled && 'bg-components-input-bg-disabled text-components-input-text-filled-disabled hover:bg-components-input-bg-disabled cursor-not-allowed border-transparent hover:border-transparent',
           destructive && 'bg-components-input-bg-destructive border-components-input-border-destructive text-components-input-text-filled hover:bg-components-input-bg-destructive hover:border-components-input-border-destructive focus:bg-components-input-bg-destructive focus:border-components-input-border-destructive',
           className,
         )}

@@ -166,15 +166,15 @@ const DetailHeader = ({
   // const usedInApps = 3
 
   return (
-    <div className={cn('shrink-0 p-4 pb-3 border-b border-divider-subtle bg-components-panel-bg')}>
+    <div className={cn('border-divider-subtle bg-components-panel-bg shrink-0 border-b p-4 pb-3')}>
       <div className="flex">
-        <div className='overflow-hidden border-components-panel-border-subtle border rounded-xl'>
+        <div className='border-components-panel-border-subtle overflow-hidden rounded-xl border'>
           <Icon src={`${API_PREFIX}/workspaces/current/plugin/icon?tenant_id=${tenant_id}&filename=${icon}`} />
         </div>
         <div className="ml-3 w-0 grow">
-          <div className="flex items-center h-5">
+          <div className="flex h-5 items-center">
             <Title title={label[locale]} />
-            {verified && <RiVerifiedBadgeLine className="shrink-0 ml-0.5 w-4 h-4 text-text-accent" />}
+            {verified && <RiVerifiedBadgeLine className="text-text-accent ml-0.5 h-4 w-4 shrink-0" />}
             <PluginVersionPicker
               disabled={!isFromMarketplace}
               isShow={isShow}
@@ -196,7 +196,7 @@ const DetailHeader = ({
                   text={
                     <>
                       <div>{isFromGitHub ? meta!.version : version}</div>
-                      {isFromMarketplace && <RiArrowLeftRightLine className='ml-1 w-3 h-3 text-text-tertiary' />}
+                      {isFromMarketplace && <RiArrowLeftRightLine className='text-text-tertiary ml-1 h-3 w-3' />}
                     </>
                   }
                   hasRedCornerMark={hasNewVersion}
@@ -215,32 +215,32 @@ const DetailHeader = ({
               }}>{t('plugin.detailPanel.operation.update')}</Button>
             )}
           </div>
-          <div className='mb-1 flex justify-between items-center h-4'>
+          <div className='mb-1 flex h-4 items-center justify-between'>
             <div className='mt-0.5 flex items-center'>
               <OrgInfo
                 packageNameClassName='w-auto'
                 orgName={author}
                 packageName={name}
               />
-              <div className='ml-1 mr-0.5 text-text-quaternary system-xs-regular'>·</div>
+              <div className='text-text-quaternary system-xs-regular ml-1 mr-0.5'>·</div>
               {detail.source === PluginSource.marketplace && (
                 <Tooltip popupContent={t('plugin.detailPanel.categoryTip.marketplace')} >
-                  <div><BoxSparkleFill className='w-3.5 h-3.5 text-text-tertiary hover:text-text-accent' /></div>
+                  <div><BoxSparkleFill className='text-text-tertiary hover:text-text-accent h-3.5 w-3.5' /></div>
                 </Tooltip>
               )}
               {detail.source === PluginSource.github && (
                 <Tooltip popupContent={t('plugin.detailPanel.categoryTip.github')} >
-                  <div><Github className='w-3.5 h-3.5 text-text-secondary hover:text-text-primary' /></div>
+                  <div><Github className='text-text-secondary hover:text-text-primary h-3.5 w-3.5' /></div>
                 </Tooltip>
               )}
               {detail.source === PluginSource.local && (
                 <Tooltip popupContent={t('plugin.detailPanel.categoryTip.local')} >
-                  <div><RiHardDrive3Line className='w-3.5 h-3.5 text-text-tertiary' /></div>
+                  <div><RiHardDrive3Line className='text-text-tertiary h-3.5 w-3.5' /></div>
                 </Tooltip>
               )}
               {detail.source === PluginSource.debugging && (
                 <Tooltip popupContent={t('plugin.detailPanel.categoryTip.debugging')} >
-                  <div><RiBugLine className='w-3.5 h-3.5 text-text-tertiary hover:text-text-warning' /></div>
+                  <div><RiBugLine className='text-text-tertiary hover:text-text-warning h-3.5 w-3.5' /></div>
                 </Tooltip>
               )}
             </div>
@@ -255,7 +255,7 @@ const DetailHeader = ({
             detailUrl={detailUrl}
           />
           <ActionButton onClick={onHide}>
-            <RiCloseLine className='w-4 h-4' />
+            <RiCloseLine className='h-4 w-4' />
           </ActionButton>
         </div>
       </div>

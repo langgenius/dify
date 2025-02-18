@@ -21,14 +21,14 @@ const Empty = ({
 
   return (
     <div
-      className={cn('grow relative h-0 flex flex-wrap p-2 overflow-hidden', className)}
+      className={cn('relative flex h-0 grow flex-wrap overflow-hidden p-2', className)}
     >
       {
         Array.from({ length: 16 }).map((_, index) => (
           <div
             key={index}
             className={cn(
-              'mr-3 mb-3  h-[144px] w-[calc((100%-36px)/4)] rounded-xl bg-background-section-burn',
+              'bg-background-section-burn mb-3  mr-3 h-[144px] w-[calc((100%-36px)/4)] rounded-xl',
               index % 4 === 3 && 'mr-0',
               index > 11 && 'mb-0',
               lightCard && 'bg-background-default-lighter opacity-75',
@@ -40,19 +40,19 @@ const Empty = ({
       {
         !lightCard && (
           <div
-            className='absolute inset-0 bg-marketplace-plugin-empty z-[1]'
+            className='bg-marketplace-plugin-empty absolute inset-0 z-[1]'
           ></div>
         )
       }
-      <div className='absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[2] flex flex-col items-center'>
-        <div className='relative flex items-center justify-center mb-3 w-14 h-14 rounded-xl border border-dashed border-divider-deep bg-components-card-bg shadow-lg'>
-          <Group className='w-5 h-5' />
+      <div className='absolute left-1/2 top-1/2 z-[2] flex -translate-x-1/2 -translate-y-1/2 flex-col items-center'>
+        <div className='border-divider-deep bg-components-card-bg relative mb-3 flex h-14 w-14 items-center justify-center rounded-xl border border-dashed shadow-lg'>
+          <Group className='h-5 w-5' />
           <Line className='absolute right-[-1px] top-1/2 -translate-y-1/2' />
           <Line className='absolute left-[-1px] top-1/2 -translate-y-1/2' />
-          <Line className='absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 rotate-90' />
-          <Line className='absolute top-full left-1/2 -translate-x-1/2 -translate-y-1/2 rotate-90' />
+          <Line className='absolute left-1/2 top-0 -translate-x-1/2 -translate-y-1/2 rotate-90' />
+          <Line className='absolute left-1/2 top-full -translate-x-1/2 -translate-y-1/2 rotate-90' />
         </div>
-        <div className='text-center system-md-regular text-text-tertiary'>
+        <div className='system-md-regular text-text-tertiary text-center'>
           {text || t('plugin.marketplace.noPluginFound')}
         </div>
       </div>

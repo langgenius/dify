@@ -15,7 +15,7 @@ const Checkbox = ({ checked, onCheck, className, disabled, mixed }: CheckboxProp
     return (
       <div
         className={cn(
-          'w-4 h-4 rounded-[4px] bg-components-checkbox-bg-unchecked border border-components-checkbox-border hover:bg-components-checkbox-bg-unchecked-hover hover:border-components-checkbox-border-hover shadow-xs cursor-pointer',
+          'bg-components-checkbox-bg-unchecked border-components-checkbox-border hover:bg-components-checkbox-bg-unchecked-hover hover:border-components-checkbox-border-hover shadow-xs h-4 w-4 cursor-pointer rounded-[4px] border',
           disabled && 'border-components-checkbox-border-disabled bg-components-checkbox-bg-disabled hover:border-components-checkbox-border-disabled hover:bg-components-checkbox-bg-disabled cursor-not-allowed',
           mixed && s.mixed,
           className,
@@ -31,7 +31,7 @@ const Checkbox = ({ checked, onCheck, className, disabled, mixed }: CheckboxProp
   return (
     <div
       className={cn(
-        'w-4 h-4 flex items-center justify-center rounded-[4px] bg-components-checkbox-bg hover:bg-components-checkbox-bg-hover text-components-checkbox-icon shadow-xs cursor-pointer',
+        'bg-components-checkbox-bg hover:bg-components-checkbox-bg-hover text-components-checkbox-icon shadow-xs flex h-4 w-4 cursor-pointer items-center justify-center rounded-[4px]',
         disabled && 'bg-components-checkbox-bg-disabled-checked hover:bg-components-checkbox-bg-disabled-checked text-components-checkbox-icon-disabled cursor-not-allowed',
         className,
       )}
@@ -42,7 +42,7 @@ const Checkbox = ({ checked, onCheck, className, disabled, mixed }: CheckboxProp
         onCheck?.()
       }}
     >
-      <RiCheckLine className={cn('w-3 h-3')} />
+      <RiCheckLine className={cn('h-3 w-3')} />
     </div>
   )
 }

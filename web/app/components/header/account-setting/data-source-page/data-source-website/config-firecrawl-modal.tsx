@@ -88,11 +88,11 @@ const ConfigFirecrawlModal: FC<Props> = ({
 
   return (
     <PortalToFollowElem open>
-      <PortalToFollowElemContent className='w-full h-full z-[60]'>
+      <PortalToFollowElemContent className='z-[60] h-full w-full'>
         <div className='fixed inset-0 flex items-center justify-center bg-black/[.25]'>
-          <div className='mx-2 w-[640px] max-h-[calc(100vh-120px)] bg-white shadow-xl rounded-2xl overflow-y-auto'>
+          <div className='mx-2 max-h-[calc(100vh-120px)] w-[640px] overflow-y-auto rounded-2xl bg-white shadow-xl'>
             <div className='px-8 pt-8'>
-              <div className='flex justify-between items-center mb-4'>
+              <div className='mb-4 flex items-center justify-between'>
                 <div className='text-xl font-semibold text-gray-900'>{t(`${I18N_PREFIX}.configFirecrawl`)}</div>
               </div>
 
@@ -113,10 +113,10 @@ const ConfigFirecrawlModal: FC<Props> = ({
                   placeholder={DEFAULT_BASE_URL}
                 />
               </div>
-              <div className='my-8 flex justify-between items-center h-8'>
-                <a className='flex items-center space-x-1 leading-[18px] text-xs font-normal text-[#155EEF]' target='_blank' href='https://www.firecrawl.dev/account'>
+              <div className='my-8 flex h-8 items-center justify-between'>
+                <a className='flex items-center space-x-1 text-xs font-normal leading-[18px] text-[#155EEF]' target='_blank' href='https://www.firecrawl.dev/account'>
                   <span>{t(`${I18N_PREFIX}.getApiKeyLinkText`)}</span>
-                  <LinkExternal02 className='w-3 h-3' />
+                  <LinkExternal02 className='h-3 w-3' />
                 </a>
                 <div className='flex'>
                   <Button
@@ -139,8 +139,8 @@ const ConfigFirecrawlModal: FC<Props> = ({
               </div>
             </div>
             <div className='border-t-[0.5px] border-t-black/5'>
-              <div className='flex justify-center items-center py-3 bg-gray-50 text-xs text-gray-500'>
-                <Lock01 className='mr-1 w-3 h-3 text-gray-500' />
+              <div className='flex items-center justify-center bg-gray-50 py-3 text-xs text-gray-500'>
+                <Lock01 className='mr-1 h-3 w-3 text-gray-500' />
                 {t('common.modelProvider.encrypted.front')}
                 <a
                   className='text-primary-600 mx-1'

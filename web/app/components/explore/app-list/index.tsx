@@ -170,20 +170,20 @@ const Apps = ({
       pageType === PageType.EXPLORE ? 'h-full border-l border-gray-200' : 'h-[calc(100%-56px)]',
     )}>
       {pageType === PageType.EXPLORE && (
-        <div className='shrink-0 pt-6 px-12'>
+        <div className='shrink-0 px-12 pt-6'>
           <div className={`mb-1 ${s.textGradient} text-xl font-semibold`}>{t('explore.apps.title')}</div>
-          <div className='text-gray-500 text-sm'>{t('explore.apps.description')}</div>
+          <div className='text-sm text-gray-500'>{t('explore.apps.description')}</div>
         </div>
       )}
       <div className={cn(
-        'flex items-center justify-between mt-6',
+        'mt-6 flex items-center justify-between',
         pageType === PageType.EXPLORE ? 'px-12' : 'px-8',
       )}>
         <>
           {pageType !== PageType.EXPLORE && (
             <>
               <AppTypeSelector value={currentType} onChange={setCurrentType}/>
-              <div className='mx-2 w-[1px] h-3.5 bg-gray-200'/>
+              <div className='mx-2 h-3.5 w-[1px] bg-gray-200'/>
             </>
           )}
           <Category
@@ -205,13 +205,13 @@ const Apps = ({
       </div>
 
       <div className={cn(
-        'relative flex flex-1 pb-6 flex-col overflow-auto bg-gray-100 shrink-0 grow',
+        'relative flex flex-1 shrink-0 grow flex-col overflow-auto bg-gray-100 pb-6',
         pageType === PageType.EXPLORE ? 'mt-4' : 'mt-0 pt-2',
       )}>
         <nav
           className={cn(
             s.appList,
-            'grid content-start shrink-0',
+            'grid shrink-0 content-start',
             pageType === PageType.EXPLORE ? 'gap-4 px-6 sm:px-12' : 'gap-3 px-8  sm:!grid-cols-2 md:!grid-cols-3 lg:!grid-cols-4',
           )}>
           {searchFilteredList.map(app => (

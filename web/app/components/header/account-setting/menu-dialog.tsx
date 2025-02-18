@@ -34,15 +34,15 @@ const MenuDialog = ({
     <Transition appear show={show} as={Fragment}>
       <Dialog as="div" className="relative z-[60]" onClose={() => { }}>
         <div className="fixed inset-0">
-          <div className="flex flex-col items-center justify-center min-h-full">
+          <div className="flex min-h-full flex-col items-center justify-center">
             <DialogPanel className={cn(
-              'grow relative w-full h-full p-0 overflow-hidden text-left align-middle transition-all transform bg-background-sidenav-bg backdrop-blur-md',
-              'data-[closed]:opacity-0  data-[closed]:scale-95',
-              'data-[enter]:ease-out data-[enter]:duration-300 data-[enter]:opacity-100 data-[enter]:scale-100',
-              'data-[leave]:ease-in data-[leave]:duration-200 data-[leave]:opacity-0 data-[enter]:scale-95',
+              'bg-background-sidenav-bg relative h-full w-full grow overflow-hidden p-0 text-left align-middle backdrop-blur-md transition-all',
+              'data-[closed]:scale-95  data-[closed]:opacity-0',
+              'data-[enter]:scale-100 data-[enter]:opacity-100 data-[enter]:duration-300 data-[enter]:ease-out',
+              'data-[enter]:scale-95 data-[leave]:opacity-0 data-[leave]:duration-200 data-[leave]:ease-in',
               className,
             )}>
-              <div className='absolute top-0 right-0 h-full w-1/2 bg-components-panel-bg' />
+              <div className='bg-components-panel-bg absolute right-0 top-0 h-full w-1/2' />
               {children}
             </DialogPanel>
           </div>

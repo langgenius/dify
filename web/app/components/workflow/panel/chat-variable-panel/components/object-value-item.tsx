@@ -95,7 +95,7 @@ const ObjectValueItem: FC<Props> = ({
       {/* Key */}
       <div className='w-[120px] border-r border-gray-200'>
         <input
-          className='block px-2 w-full h-7 text-text-secondary system-xs-regular appearance-none outline-none caret-primary-600 hover:bg-state-base-hover focus:bg-components-input-bg-active  placeholder:system-xs-regular placeholder:text-components-input-text-placeholder'
+          className='text-text-secondary system-xs-regular caret-primary-600 hover:bg-state-base-hover focus:bg-components-input-bg-active placeholder:system-xs-regular placeholder:text-components-input-text-placeholder block h-7 w-full appearance-none  px-2 outline-none'
           placeholder={t('workflow.chatVariable.modal.objectKey') || ''}
           value={list[index].key}
           onChange={handleKeyChange(index)}
@@ -114,7 +114,7 @@ const ObjectValueItem: FC<Props> = ({
       {/* Value */}
       <div className='relative w-[230px]'>
         <input
-          className='block px-2 w-full h-7 text-text-secondary system-xs-regular appearance-none outline-none caret-primary-600 hover:bg-state-base-hover focus:bg-components-input-bg-active  placeholder:system-xs-regular placeholder:text-components-input-text-placeholder'
+          className='text-text-secondary system-xs-regular caret-primary-600 hover:bg-state-base-hover focus:bg-components-input-bg-active placeholder:system-xs-regular placeholder:text-components-input-text-placeholder block h-7 w-full appearance-none  px-2 outline-none'
           placeholder={t('workflow.chatVariable.modal.objectValue') || ''}
           value={list[index].value}
           onChange={handleValueChange(index)}
@@ -124,7 +124,7 @@ const ObjectValueItem: FC<Props> = ({
         />
         {list.length > 1 && !isFocus && (
           <RemoveButton
-            className='z-10 group-hover:block hidden absolute right-1 top-0.5'
+            className='absolute right-1 top-0.5 z-10 hidden group-hover:block'
             onClick={handleItemRemove(index)}
           />
         )}

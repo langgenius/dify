@@ -16,23 +16,23 @@ const LoadingError: FC = () => {
         checked={false}
         disabled
       />
-      <div className='grow relative p-4 pb-3 border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg hover-bg-components-panel-on-panel-item-bg rounded-xl shadow-xs'>
+      <div className='border-components-panel-border bg-components-panel-on-panel-item-bg hover-bg-components-panel-on-panel-item-bg shadow-xs relative grow rounded-xl border-[0.5px] p-4 pb-3'>
         <div className="flex">
           <div
-            className='relative flex w-10 h-10 p-1 justify-center items-center gap-2 rounded-[10px]
-              border-[0.5px] border-state-destructive-border bg-state-destructive-hover backdrop-blur-sm'>
-            <div className='flex w-5 h-5 justify-center items-center'>
+            className='border-state-destructive-border bg-state-destructive-hover relative flex h-10 w-10 items-center justify-center gap-2
+              rounded-[10px] border-[0.5px] p-1 backdrop-blur-sm'>
+            <div className='flex h-5 w-5 items-center justify-center'>
               <Group className='text-text-quaternary' />
             </div>
-            <div className='absolute bottom-[-4px] right-[-4px] rounded-full border-[2px] border-components-panel-bg bg-state-destructive-solid'>
-              <RiCloseLine className='w-3 h-3 text-text-primary-on-surface' />
+            <div className='border-components-panel-bg bg-state-destructive-solid absolute bottom-[-4px] right-[-4px] rounded-full border-[2px]'>
+              <RiCloseLine className='text-text-primary-on-surface h-3 w-3' />
             </div>
           </div>
           <div className="ml-3 grow">
-            <div className="flex items-center h-5 system-md-semibold text-text-destructive">
+            <div className="system-md-semibold text-text-destructive flex h-5 items-center">
               {t('plugin.installModal.pluginLoadError')}
             </div>
-            <div className='mt-0.5 system-xs-regular text-text-tertiary'>
+            <div className='system-xs-regular text-text-tertiary mt-0.5'>
               {t('plugin.installModal.pluginLoadErrorDesc')}
             </div>
           </div>

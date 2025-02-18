@@ -579,8 +579,8 @@ const StepTwo = ({
   const isModelAndRetrievalConfigDisabled = !!datasetId && !!currentDataset?.data_source_type
 
   return (
-    <div className='flex w-full h-full'>
-      <div className={cn('relative h-full w-1/2 py-6 overflow-y-auto', isMobile ? 'px-4' : 'px-12')}>
+    <div className='flex h-full w-full'>
+      <div className={cn('relative h-full w-1/2 overflow-y-auto py-6', isMobile ? 'px-4' : 'px-12')}>
         <div className={'system-md-semibold mb-1'}>{t('datasetCreation.stepTwo.segmentation')}</div>
         {((isInUpload && [ChunkingMode.text, ChunkingMode.qa].includes(currentDataset!.doc_form))
           || isUploadInEmptyDataset
@@ -600,7 +600,7 @@ const StepTwo = ({
             actions={
               <>
                 <Button variant={'secondary-accent'} onClick={() => updatePreview()}>
-                  <RiSearchEyeLine className='h-4 w-4 mr-0.5' />
+                  <RiSearchEyeLine className='mr-0.5 h-4 w-4' />
                   {t('datasetCreation.stepTwo.previewChunk')}
                 </Button>
                 <Button variant={'ghost'} onClick={resetRules}>
@@ -628,7 +628,7 @@ const StepTwo = ({
                   onChange={setOverlap}
                 />
               </div>
-              <div className='w-full flex flex-col'>
+              <div className='flex w-full flex-col'>
                 <div className='flex items-center gap-x-2'>
                   <div className='inline-flex shrink-0'>
                     <TextLabel>{t('datasetCreation.stepTwo.rules')}</TextLabel>
@@ -643,11 +643,11 @@ const StepTwo = ({
                       <Checkbox
                         checked={rule.enabled}
                       />
-                      <label className="ml-2 system-sm-regular cursor-pointer text-text-secondary">{getRuleName(rule.id)}</label>
+                      <label className="system-sm-regular text-text-secondary ml-2 cursor-pointer">{getRuleName(rule.id)}</label>
                     </div>
                   ))}
                   {IS_CE_EDITION && <>
-                    <Divider type='horizontal' className='my-4 bg-divider-subtle' />
+                    <Divider type='horizontal' className='bg-divider-subtle my-4' />
                     <div className='flex items-center py-0.5'>
                       <div className='flex items-center' onClick={() => {
                         if (currentDataset?.doc_form)
@@ -661,7 +661,7 @@ const StepTwo = ({
                           checked={currentDocForm === ChunkingMode.qa}
                           disabled={!!currentDataset?.doc_form}
                         />
-                        <label className="ml-2 system-sm-regular cursor-pointer text-text-secondary">
+                        <label className="system-sm-regular text-text-secondary ml-2 cursor-pointer">
                           {t('datasetCreation.stepTwo.useQALanguage')}
                         </label>
                       </div>
@@ -677,9 +677,9 @@ const StepTwo = ({
                         style={{
                           background: 'linear-gradient(92deg, rgba(247, 144, 9, 0.1) 0%, rgba(255, 255, 255, 0.00) 100%)',
                         }}
-                        className='h-10 mt-2 flex items-center gap-2 rounded-xl backdrop-blur-[5px] border-components-panel-border border shadow-xs px-3 text-xs'
+                        className='border-components-panel-border shadow-xs mt-2 flex h-10 items-center gap-2 rounded-xl border px-3 text-xs backdrop-blur-[5px]'
                       >
-                        <RiAlertFill className='size-4 text-text-warning-secondary' />
+                        <RiAlertFill className='text-text-warning-secondary size-4' />
                         <span className='system-xs-medium text-text-primary'>
                           {t('datasetCreation.stepTwo.QATip')}
                         </span>
@@ -707,7 +707,7 @@ const StepTwo = ({
             actions={
               <>
                 <Button variant={'secondary-accent'} onClick={() => updatePreview()}>
-                  <RiSearchEyeLine className='h-4 w-4 mr-0.5' />
+                  <RiSearchEyeLine className='mr-0.5 h-4 w-4' />
                   {t('datasetCreation.stepTwo.previewChunk')}
                 </Button>
                 <Button variant={'ghost'} onClick={resetRules}>
@@ -784,7 +784,7 @@ const StepTwo = ({
                   </div>
                   <Divider className='grow' bgStyle='gradient' />
                 </div>
-                <div className='flex gap-3 mt-1'>
+                <div className='mt-1 flex gap-3'>
                   <DelimiterInput
                     value={parentChildConfig.child.delimiter}
                     tooltip={t('datasetCreation.stepTwo.parentChildChunkDelimiterTip')!}
@@ -824,7 +824,7 @@ const StepTwo = ({
                       <Checkbox
                         checked={rule.enabled}
                       />
-                      <label className="ml-2 system-sm-regular cursor-pointer text-text-secondary">{getRuleName(rule.id)}</label>
+                      <label className="system-sm-regular text-text-secondary ml-2 cursor-pointer">{getRuleName(rule.id)}</label>
                     </div>
                   ))}
                 </div>
@@ -859,11 +859,11 @@ const StepTwo = ({
           {(!hasSetIndexType || (hasSetIndexType && indexingType === IndexingType.ECONOMICAL)) && (
             <>
               <CustomDialog show={isQAConfirmDialogOpen} onClose={() => setIsQAConfirmDialogOpen(false)} className='w-[432px]'>
-                <header className='pt-6 mb-4'>
+                <header className='mb-4 pt-6'>
                   <h2 className='text-lg font-semibold'>
                     {t('datasetCreation.stepTwo.qaSwitchHighQualityTipTitle')}
                   </h2>
-                  <p className='font-normal text-sm mt-2'>
+                  <p className='mt-2 text-sm font-normal'>
                     {t('datasetCreation.stepTwo.qaSwitchHighQualityTipContent')}
                   </p>
                 </header>
@@ -903,7 +903,7 @@ const StepTwo = ({
                   />
                 </PortalToFollowElemTrigger>
                 <PortalToFollowElemContent>
-                  <div className='p-3 bg-components-tooltip-bg border-components-panel-border text-xs font-medium text-text-secondary rounded-lg shadow-lg'>
+                  <div className='bg-components-tooltip-bg border-components-panel-border text-text-secondary rounded-lg p-3 text-xs font-medium shadow-lg'>
                     {
                       docForm === ChunkingMode.qa
                         ? t('datasetCreation.stepTwo.notAvailableForQA')
@@ -915,16 +915,16 @@ const StepTwo = ({
             </>)}
         </div>
         {!hasSetIndexType && indexType === IndexingType.QUALIFIED && (
-          <div className='mt-2 h-10 p-2 flex items-center gap-x-0.5 rounded-xl border-[0.5px] border-components-panel-border overflow-hidden bg-components-panel-bg-blur backdrop-blur-[5px] shadow-xs'>
-            <div className='absolute top-0 left-0 right-0 bottom-0 bg-[linear-gradient(92deg,rgba(247,144,9,0.25)_0%,rgba(255,255,255,0.00)_100%)] opacity-40'></div>
+          <div className='border-components-panel-border bg-components-panel-bg-blur shadow-xs mt-2 flex h-10 items-center gap-x-0.5 overflow-hidden rounded-xl border-[0.5px] p-2 backdrop-blur-[5px]'>
+            <div className='absolute bottom-0 left-0 right-0 top-0 bg-[linear-gradient(92deg,rgba(247,144,9,0.25)_0%,rgba(255,255,255,0.00)_100%)] opacity-40'></div>
             <div className='p-1'>
-              <AlertTriangle className='size-4 text-text-warning-secondary' />
+              <AlertTriangle className='text-text-warning-secondary size-4' />
             </div>
             <span className='system-xs-medium'>{t('datasetCreation.stepTwo.highQualityTip')}</span>
           </div>
         )}
         {hasSetIndexType && indexType === IndexingType.ECONOMICAL && (
-          <div className='mt-2 system-xs-medium'>
+          <div className='system-xs-medium mt-2'>
             {t('datasetCreation.stepTwo.indexSettingTip')}
             <Link className='text-text-accent' href={`/datasets/${datasetId}/settings`}>{t('datasetCreation.stepTwo.datasetSettingLink')}</Link>
           </div>
@@ -932,7 +932,7 @@ const StepTwo = ({
         {/* Embedding model */}
         {indexType === IndexingType.QUALIFIED && (
           <div className='mt-5'>
-            <div className={cn('system-md-semibold mb-1', datasetId && 'flex justify-between items-center')}>{t('datasetSettings.form.embeddingModel')}</div>
+            <div className={cn('system-md-semibold mb-1', datasetId && 'flex items-center justify-between')}>{t('datasetSettings.form.embeddingModel')}</div>
             <ModelSelector
               readonly={isModelAndRetrievalConfigDisabled}
               triggerClassName={isModelAndRetrievalConfigDisabled ? 'opacity-50' : ''}
@@ -943,7 +943,7 @@ const StepTwo = ({
               }}
             />
             {isModelAndRetrievalConfigDisabled && (
-              <div className='mt-2 system-xs-medium'>
+              <div className='system-xs-medium mt-2'>
                 {t('datasetCreation.stepTwo.indexSettingTip')}
                 <Link className='text-text-accent' href={`/datasets/${datasetId}/settings`}>{t('datasetCreation.stepTwo.datasetSettingLink')}</Link>
               </div>
@@ -964,7 +964,7 @@ const StepTwo = ({
               </div>
             )
             : (
-              <div className={cn('system-md-semibold mb-0.5', 'flex justify-between items-center')}>
+              <div className={cn('system-md-semibold mb-0.5', 'flex items-center justify-between')}>
                 <div>{t('datasetSettings.form.retrievalSetting.title')}</div>
               </div>
             )}
@@ -992,16 +992,16 @@ const StepTwo = ({
 
         {!isSetting
           ? (
-            <div className='flex items-center mt-8 py-2'>
+            <div className='mt-8 flex items-center py-2'>
               <Button onClick={() => onStepChange && onStepChange(-1)}>
-                <RiArrowLeftLine className='w-4 h-4 mr-1' />
+                <RiArrowLeftLine className='mr-1 h-4 w-4' />
                 {t('datasetCreation.stepTwo.previousStep')}
               </Button>
               <Button className='ml-auto' loading={isCreating} variant='primary' onClick={createHandle}>{t('datasetCreation.stepTwo.nextStep')}</Button>
             </div>
           )
           : (
-            <div className='flex items-center mt-8 py-2'>
+            <div className='mt-8 flex items-center py-2'>
               <Button loading={isCreating} variant='primary' onClick={createHandle}>{t('datasetCreation.stepTwo.save')}</Button>
               <Button className='ml-2' onClick={onCancel}>{t('datasetCreation.stepTwo.cancel')}</Button>
             </div>
@@ -1080,7 +1080,7 @@ const StepTwo = ({
               }
             </div>
           </PreviewHeader>}
-          className={cn('flex shrink-0 w-1/2 p-4 pr-0 relative h-full', isMobile && 'w-full max-w-[524px]')}
+          className={cn('relative flex h-full w-1/2 shrink-0 p-4 pr-0', isMobile && 'w-full max-w-[524px]')}
           mainClassName='space-y-6'
         >
           {currentDocForm === ChunkingMode.qa && estimate?.qa_preview && (
@@ -1137,10 +1137,10 @@ const StepTwo = ({
             })
           )}
           {currentEstimateMutation.isIdle && (
-            <div className='h-full w-full flex items-center justify-center'>
+            <div className='flex h-full w-full items-center justify-center'>
               <div className='flex flex-col items-center justify-center gap-3'>
-                <RiSearchEyeLine className='size-10 text-text-empty-state-icon' />
-                <p className='text-sm text-text-tertiary'>
+                <RiSearchEyeLine className='text-text-empty-state-icon size-10' />
+                <p className='text-text-tertiary text-sm'>
                   {t('datasetCreation.stepTwo.previewChunkTip')}
                 </p>
               </div>

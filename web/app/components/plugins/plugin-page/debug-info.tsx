@@ -29,10 +29,10 @@ const DebugInfo: FC = () => {
       popupContent={
         <>
           <div className='flex items-center gap-1 self-stretch'>
-            <span className='flex flex-col justify-center items-start grow shrink-0 basis-0 text-text-secondary system-sm-semibold'>{t(`${i18nPrefix}.title`)}</span>
-            <a href='https://docs.dify.ai/plugins/quick-start/develop-plugins/debug-plugin' target='_blank' className='flex items-center gap-0.5 text-text-accent-light-mode-only cursor-pointer'>
+            <span className='text-text-secondary system-sm-semibold flex shrink-0 grow basis-0 flex-col items-start justify-center'>{t(`${i18nPrefix}.title`)}</span>
+            <a href='https://docs.dify.ai/plugins/quick-start/develop-plugins/debug-plugin' target='_blank' className='text-text-accent-light-mode-only flex cursor-pointer items-center gap-0.5'>
               <span className='system-xs-medium'>{t(`${i18nPrefix}.viewDocs`)}</span>
-              <RiArrowRightUpLine className='w-3 h-3' />
+              <RiArrowRightUpLine className='h-3 w-3' />
             </a>
           </div>
           <div className='space-y-0.5'>
@@ -53,8 +53,8 @@ const DebugInfo: FC = () => {
       asChild={false}
       position='bottom'
     >
-      <Button className='w-full h-full p-2 text-components-button-secondary-text'>
-        <RiBugLine className='w-4 h-4' />
+      <Button className='text-components-button-secondary-text h-full w-full p-2'>
+        <RiBugLine className='h-4 w-4' />
       </Button>
     </Tooltip>
   )

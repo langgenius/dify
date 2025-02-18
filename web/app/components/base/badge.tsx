@@ -20,13 +20,13 @@ const Badge = ({
   return (
     <div
       className={cn(
-        'relative inline-flex items-center px-[5px] h-5 rounded-[5px] border border-divider-deep leading-3 text-text-tertiary',
+        'border-divider-deep text-text-tertiary relative inline-flex h-5 items-center rounded-[5px] border px-[5px] leading-3',
         uppercase ? 'system-2xs-medium-uppercase' : 'system-xs-medium',
         className,
       )}
     >
       {hasRedCornerMark && (
-        <div className='absolute top-[-2px] right-[-2px] w-1.5 h-1.5 border border-components-badge-status-light-error-border-inner bg-components-badge-status-light-error-bg rounded-[2px] shadow-sm'>
+        <div className='border-components-badge-status-light-error-border-inner bg-components-badge-status-light-error-bg absolute right-[-2px] top-[-2px] h-1.5 w-1.5 rounded-[2px] border shadow-sm'>
         </div>
       )}
       {children || text}

@@ -44,22 +44,22 @@ const ConfigItem: FC<Props> = ({
   const onChangeAuthorizedPage = notionActions?.onChangeAuthorizedPage || function () { }
 
   return (
-    <div className={cn(s['workspace-item'], 'flex items-center mb-1 py-1 pr-1 bg-components-panel-on-panel-item-bg rounded-lg')} key={payload.id}>
+    <div className={cn(s['workspace-item'], 'bg-components-panel-on-panel-item-bg mb-1 flex items-center rounded-lg py-1 pr-1')} key={payload.id}>
       <payload.logo className='ml-3 mr-1.5' />
-      <div className='grow py-[7px] system-sm-medium text-text-secondary truncate' title={payload.name}>{payload.name}</div>
+      <div className='system-sm-medium text-text-secondary grow truncate py-[7px]' title={payload.name}>{payload.name}</div>
       {
         payload.isActive
-          ? <Indicator className='shrink-0 mr-[6px]' color='green' />
-          : <Indicator className='shrink-0 mr-[6px]' color='yellow' />
+          ? <Indicator className='mr-[6px] shrink-0' color='green' />
+          : <Indicator className='mr-[6px] shrink-0' color='yellow' />
       }
-      <div className={`shrink-0 mr-3 text-xs font-medium uppercase ${payload.isActive ? 'text-util-colors-green-green-600' : 'text-util-colors-warning-warning-600'}`}>
+      <div className={`mr-3 shrink-0 text-xs font-medium uppercase ${payload.isActive ? 'text-util-colors-green-green-600' : 'text-util-colors-warning-warning-600'}`}>
         {
           payload.isActive
             ? t(isNotion ? 'common.dataSource.notion.connected' : 'common.dataSource.website.active')
             : t(isNotion ? 'common.dataSource.notion.disconnected' : 'common.dataSource.website.inactive')
         }
       </div>
-      <div className='mr-2 w-[1px] h-3 bg-divider-regular' />
+      <div className='bg-divider-regular mr-2 h-3 w-[1px]' />
       {isNotion && (
         <Operate payload={{
           id: payload.id,
@@ -70,8 +70,8 @@ const ConfigItem: FC<Props> = ({
 
       {
         isWebsite && !readOnly && (
-          <div className='p-2 text-text-tertiary cursor-pointer rounded-md hover:bg-black/5' onClick={onRemove} >
-            <RiDeleteBinLine className='w-4 h-4' />
+          <div className='text-text-tertiary cursor-pointer rounded-md p-2 hover:bg-black/5' onClick={onRemove} >
+            <RiDeleteBinLine className='h-4 w-4' />
           </div>
         )
       }

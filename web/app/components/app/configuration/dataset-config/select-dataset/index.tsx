@@ -104,26 +104,26 @@ const SelectDataSet: FC<ISelectDataSetProps> = ({
       )}
 
       {(loaded && hasNoData) && (
-        <div className='flex items-center justify-center mt-6 rounded-lg space-x-1  h-[128px] text-[13px] border'
+        <div className='mt-6 flex h-[128px] items-center justify-center space-x-1  rounded-lg border text-[13px]'
           style={{
             background: 'rgba(0, 0, 0, 0.02)',
             borderColor: 'rgba(0, 0, 0, 0.02',
           }}
         >
           <span className='text-text-tertiary'>{t('appDebug.feature.dataSet.noDataSet')}</span>
-          <Link href="/datasets/create" className='font-normal text-text-accent'>{t('appDebug.feature.dataSet.toCreate')}</Link>
+          <Link href="/datasets/create" className='text-text-accent font-normal'>{t('appDebug.feature.dataSet.toCreate')}</Link>
         </div>
       )}
 
       {datasets && datasets?.length > 0 && (
         <>
-          <div ref={listRef} className='mt-7 space-y-1 max-h-[286px] overflow-y-auto'>
+          <div ref={listRef} className='mt-7 max-h-[286px] space-y-1 overflow-y-auto'>
             {datasets.map(item => (
               <div
                 key={item.id}
                 className={cn(
-                  'flex justify-between items-center h-10 px-2 rounded-lg bg-components-panel-on-panel-item-bg border-components-panel-border-subtle border-[0.5px] shadow-xs cursor-pointer hover:border-components-panel-border hover:bg-components-panel-on-panel-item-bg-hover hover:shadow-sm',
-                  selected.some(i => i.id === item.id) && 'border-[1.5px] border-components-option-card-option-selected-border bg-state-accent-hover shadow-xs hover:shadow-xs hover:border-components-option-card-option-selected-border hover:bg-state-accent-hover',
+                  'bg-components-panel-on-panel-item-bg border-components-panel-border-subtle shadow-xs hover:border-components-panel-border hover:bg-components-panel-on-panel-item-bg-hover flex h-10 cursor-pointer items-center justify-between rounded-lg border-[0.5px] px-2 hover:shadow-sm',
+                  selected.some(i => i.id === item.id) && 'border-components-option-card-option-selected-border bg-state-accent-hover shadow-xs hover:shadow-xs hover:border-components-option-card-option-selected-border hover:bg-state-accent-hover border-[1.5px]',
                   !item.embedding_available && 'hover:border-components-panel-border-subtle hover:bg-components-panel-on-panel-item-bg hover:shadow-xs',
                 )}
                 onClick={() => {
@@ -136,9 +136,9 @@ const SelectDataSet: FC<ISelectDataSetProps> = ({
                   <div className={cn('mr-2', !item.embedding_available && 'opacity-30')}>
                     <TypeIcon type="upload_file" size='md' />
                   </div>
-                  <div className={cn('max-w-[200px] text-[13px] font-medium text-text-secondary overflow-hidden text-ellipsis whitespace-nowrap', !item.embedding_available && 'opacity-30 !max-w-[120px]')}>{item.name}</div>
+                  <div className={cn('text-text-secondary max-w-[200px] overflow-hidden text-ellipsis whitespace-nowrap text-[13px] font-medium', !item.embedding_available && '!max-w-[120px] opacity-30')}>{item.name}</div>
                   {!item.embedding_available && (
-                    <span className='ml-1 shrink-0 px-1 border border-divider-deep rounded-md text-text-tertiary text-xs font-normal leading-[18px]'>{t('dataset.unavailable')}</span>
+                    <span className='border-divider-deep text-text-tertiary ml-1 shrink-0 rounded-md border px-1 text-xs font-normal leading-[18px]'>{t('dataset.unavailable')}</span>
                   )}
                 </div>
                 {
@@ -159,8 +159,8 @@ const SelectDataSet: FC<ISelectDataSetProps> = ({
         </>
       )}
       {loaded && (
-        <div className='flex justify-between items-center mt-8'>
-          <div className='text-sm  font-medium text-text-secondary'>
+        <div className='mt-8 flex items-center justify-between'>
+          <div className='text-text-secondary  text-sm font-medium'>
             {selected.length > 0 && `${selected.length} ${t('appDebug.feature.dataSet.selected')}`}
           </div>
           <div className='flex space-x-2'>

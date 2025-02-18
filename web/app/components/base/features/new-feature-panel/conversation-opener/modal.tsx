@@ -95,12 +95,12 @@ const OpeningSettingModal = ({
     return (
       <div>
         <div className='flex items-center py-2'>
-          <div className='shrink-0 flex space-x-0.5 leading-[18px] text-xs font-medium text-text-tertiary'>
+          <div className='text-text-tertiary flex shrink-0 space-x-0.5 text-xs font-medium leading-[18px]'>
             <div className='uppercase'>{t('appDebug.openingStatement.openingQuestion')}</div>
             <div>·</div>
             <div>{tempSuggestedQuestions.length}/{MAX_QUESTION_NUM}</div>
           </div>
-          <Divider bgStyle='gradient' className='ml-3 grow w-0 h-px'/>
+          <Divider bgStyle='gradient' className='ml-3 h-px w-0 grow'/>
         </div>
         <ReactSortable
           className="space-y-1"
@@ -119,13 +119,13 @@ const OpeningSettingModal = ({
             return (
               <div
                 className={cn(
-                  'group relative rounded-lg border border-components-panel-border-subtle bg-components-panel-on-panel-item-bg flex items-center pl-2.5 hover:bg-components-panel-on-panel-item-bg-hover',
+                  'border-components-panel-border-subtle bg-components-panel-on-panel-item-bg hover:bg-components-panel-on-panel-item-bg-hover group relative flex items-center rounded-lg border pl-2.5',
                   focusID === index && 'border-components-input-border-active hover:border-components-input-border-active bg-components-input-bg-active hover:bg-components-input-bg-active',
                   deletingID === index && 'border-components-input-border-destructive hover:border-components-input-border-destructive bg-state-destructive-hover hover:bg-state-destructive-hover',
                 )}
                 key={index}
               >
-                <RiDraggable className='handle w-4 h-4 text-text-quaternary cursor-grab' />
+                <RiDraggable className='handle text-text-quaternary h-4 w-4 cursor-grab' />
                 <input
                   type="input"
                   value={question || ''}
@@ -138,20 +138,20 @@ const OpeningSettingModal = ({
                       return item
                     }))
                   }}
-                  className={'w-full overflow-x-auto pl-1.5 pr-8 text-sm leading-9 text-text-secondary border-0 grow h-9 bg-transparent focus:outline-none cursor-pointer rounded-lg'}
+                  className={'text-text-secondary h-9 w-full grow cursor-pointer overflow-x-auto rounded-lg border-0 bg-transparent pl-1.5 pr-8 text-sm leading-9 focus:outline-none'}
                   onFocus={() => setFocusID(index)}
                   onBlur={() => setFocusID(null)}
                 />
 
                 <div
-                  className='block absolute top-1/2 translate-y-[-50%] right-1.5 p-1 rounded-md cursor-pointer text-text-tertiary hover:bg-state-destructive-hover hover:text-text-destructive'
+                  className='text-text-tertiary hover:bg-state-destructive-hover hover:text-text-destructive absolute right-1.5 top-1/2 block translate-y-[-50%] cursor-pointer rounded-md p-1'
                   onClick={() => {
                     setTempSuggestedQuestions(tempSuggestedQuestions.filter((_, i) => index !== i))
                   }}
                   onMouseEnter={() => setDeletingID(index)}
                   onMouseLeave={() => setDeletingID(null)}
                 >
-                  <RiDeleteBinLine className='w-3.5 h-3.5' />
+                  <RiDeleteBinLine className='h-3.5 w-3.5' />
                 </div>
               </div>
             )
@@ -159,8 +159,8 @@ const OpeningSettingModal = ({
         {tempSuggestedQuestions.length < MAX_QUESTION_NUM && (
           <div
             onClick={() => { setTempSuggestedQuestions([...tempSuggestedQuestions, '']) }}
-            className='mt-1 flex items-center h-9 px-3 gap-2 rounded-lg cursor-pointer text-components-button-tertiary-text  bg-components-button-tertiary-bg hover:bg-components-button-tertiary-bg-hover'>
-            <RiAddLine className='w-4 h-4' />
+            className='text-components-button-tertiary-text bg-components-button-tertiary-bg hover:bg-components-button-tertiary-bg-hover mt-1 flex h-9 cursor-pointer items-center gap-2  rounded-lg px-3'>
+            <RiAddLine className='h-4 w-4' />
             <div className='system-sm-medium text-[13px]'>{t('appDebug.variableConfig.addOption')}</div>
           </div>
         )}
@@ -172,22 +172,22 @@ const OpeningSettingModal = ({
     <Modal
       isShow
       onClose={() => { }}
-      className='!p-6 !mt-14 !max-w-none !w-[640px] !bg-components-panel-bg-blur'
+      className='!bg-components-panel-bg-blur !mt-14 !w-[640px] !max-w-none !p-6'
     >
-      <div className='flex items-center justify-between mb-6'>
+      <div className='mb-6 flex items-center justify-between'>
         <div className='text-text-primary title-2xl-semi-bold'>{t('appDebug.feature.conversationOpener.title')}</div>
-        <div className='p-1 cursor-pointer' onClick={onCancel}><RiCloseLine className='w-4 h-4 text-text-tertiary'/></div>
+        <div className='cursor-pointer p-1' onClick={onCancel}><RiCloseLine className='text-text-tertiary h-4 w-4'/></div>
       </div>
-      <div className='flex gap-2 mb-8'>
-        <div className='shrink-0 mt-1.5 w-8 h-8 p-1.5 rounded-lg border-components-panel-border bg-util-colors-orange-dark-orange-dark-500'>
-          <RiAsterisk className='w-5 h-5 text-text-primary-on-surface' />
+      <div className='mb-8 flex gap-2'>
+        <div className='border-components-panel-border bg-util-colors-orange-dark-orange-dark-500 mt-1.5 h-8 w-8 shrink-0 rounded-lg p-1.5'>
+          <RiAsterisk className='text-text-primary-on-surface h-5 w-5' />
         </div>
-        <div className='grow p-3 bg-chat-bubble-bg rounded-2xl border-t border-divider-subtle shadow-xs'>
+        <div className='bg-chat-bubble-bg border-divider-subtle shadow-xs grow rounded-2xl border-t p-3'>
           <textarea
             value={tempValue}
             rows={3}
             onChange={e => setTempValue(e.target.value)}
-            className="w-full px-0 text-text-secondary system-md-regular  border-0 bg-transparent focus:outline-none"
+            className="text-text-secondary system-md-regular w-full border-0  bg-transparent px-0 focus:outline-none"
             placeholder={t('appDebug.openingStatement.placeholder') as string}
           />
           {renderQuestions()}

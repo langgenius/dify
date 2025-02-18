@@ -66,22 +66,22 @@ const FormItem: FC<Props> = ({
     if (typeof payload.label === 'object') {
       const { nodeType, nodeName, variable, isChatVar } = payload.label
       return (
-        <div className='h-full flex items-center'>
+        <div className='flex h-full items-center'>
           {!isChatVar && (
             <div className='flex items-center'>
               <div className='p-[1px]'>
                 <VarBlockIcon type={nodeType || BlockEnum.Start} />
               </div>
-              <div className='mx-0.5 text-xs font-medium text-gray-700 max-w-[150px] truncate' title={nodeName}>
+              <div className='mx-0.5 max-w-[150px] truncate text-xs font-medium text-gray-700' title={nodeName}>
                 {nodeName}
               </div>
               <Line3 className='mr-0.5'></Line3>
             </div>
           )}
-          <div className='flex items-center text-primary-600'>
-            {!isChatVar && <Variable02 className='w-3.5 h-3.5' />}
-            {isChatVar && <BubbleX className='w-3.5 h-3.5 text-util-colors-teal-teal-700' />}
-            <div className={cn('ml-0.5 text-xs font-medium max-w-[150px] truncate', isChatVar && 'text-text-secondary')} title={variable} >
+          <div className='text-primary-600 flex items-center'>
+            {!isChatVar && <Variable02 className='h-3.5 w-3.5' />}
+            {isChatVar && <BubbleX className='text-util-colors-teal-teal-700 h-3.5 w-3.5' />}
+            <div className={cn('ml-0.5 max-w-[150px] truncate text-xs font-medium', isChatVar && 'text-text-secondary')} title={variable} >
               {variable}
             </div>
           </div>
@@ -97,7 +97,7 @@ const FormItem: FC<Props> = ({
   return (
     <div className={cn(className)}>
       {!isArrayLikeType && (
-        <div className='h-6 mb-1 flex items-center gap-1 text-text-secondary system-sm-semibold'>
+        <div className='text-text-secondary system-sm-semibold mb-1 flex h-6 items-center gap-1'>
           <div className='truncate'>{typeof payload.label === 'object' ? nodeKey : payload.label}</div>
           {!payload.required && <span className='text-text-tertiary system-xs-regular'>{t('workflow.panel.optional')}</span>}
         </div>
@@ -248,7 +248,7 @@ const FormItem: FC<Props> = ({
                     (value as any).length > 1
                       ? (<RiDeleteBinLine
                         onClick={handleArrayItemRemove(index)}
-                        className='mr-1 w-3.5 h-3.5 text-text-tertiary cursor-pointer'
+                        className='text-text-tertiary mr-1 h-3.5 w-3.5 cursor-pointer'
                       />)
                       : undefined
                   }
@@ -274,7 +274,7 @@ const FormItem: FC<Props> = ({
                     (value as any).length > 1
                       ? (<RiDeleteBinLine
                         onClick={handleArrayItemRemove(index)}
-                        className='mr-1 w-3.5 h-3.5 text-text-tertiary cursor-pointer'
+                        className='text-text-tertiary mr-1 h-3.5 w-3.5 cursor-pointer'
                       />)
                       : undefined
                   }

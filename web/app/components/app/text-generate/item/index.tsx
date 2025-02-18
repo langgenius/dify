@@ -74,7 +74,7 @@ export const SimpleBtn = ({ className, isDisabled, onClick, children }: {
   children: React.ReactNode
 }) => (
   <div
-    className={cn(isDisabled ? 'border-gray-100 text-gray-300' : 'border-gray-200 text-gray-700 cursor-pointer hover:border-gray-300 hover:shadow-sm', 'flex items-center h-7 px-3 rounded-md border text-xs  font-medium', className)}
+    className={cn(isDisabled ? 'border-gray-100 text-gray-300' : 'cursor-pointer border-gray-200 text-gray-700 hover:border-gray-300 hover:shadow-sm', 'flex h-7 items-center rounded-md border px-3 text-xs  font-medium', className)}
     onClick={() => !isDisabled && onClick?.()}
   >
     {children}
@@ -239,7 +239,7 @@ const GenerationItem: FC<IGenerationItemProps> = ({
                   rating: 'like',
                 })
               }}
-              className='flex w-6 h-6 items-center justify-center rounded-md cursor-pointer hover:bg-gray-100'>
+              className='flex h-6 w-6 cursor-pointer items-center justify-center rounded-md hover:bg-gray-100'>
               <HandThumbUpIcon width={16} height={16} />
             </div>
             <div
@@ -248,7 +248,7 @@ const GenerationItem: FC<IGenerationItemProps> = ({
                   rating: 'dislike',
                 })
               }}
-              className='flex w-6 h-6 items-center justify-center rounded-md cursor-pointer hover:bg-gray-100'>
+              className='flex h-6 w-6 cursor-pointer items-center justify-center rounded-md hover:bg-gray-100'>
               <HandThumbDownIcon width={16} height={16} />
             </div>
           </>
@@ -261,7 +261,7 @@ const GenerationItem: FC<IGenerationItemProps> = ({
               rating: null,
             })
           }}
-          className='flex w-7 h-7 items-center justify-center rounded-md cursor-pointer  !text-primary-600 border border-primary-200 bg-primary-100 hover:border-primary-300 hover:bg-primary-200'>
+          className='!text-primary-600 border-primary-200 bg-primary-100 hover:border-primary-300 hover:bg-primary-200 flex h-7  w-7 cursor-pointer items-center justify-center rounded-md border'>
           <HandThumbUpIcon width={16} height={16} />
         </div>
       )}
@@ -272,7 +272,7 @@ const GenerationItem: FC<IGenerationItemProps> = ({
               rating: null,
             })
           }}
-          className='flex w-7 h-7 items-center justify-center rounded-md cursor-pointer  !text-red-600 border border-red-200 bg-red-100 hover:border-red-300 hover:bg-red-200'>
+          className='flex h-7 w-7 cursor-pointer items-center justify-center rounded-md  border border-red-200 bg-red-100 !text-red-600 hover:border-red-300 hover:bg-red-200'>
           <HandThumbDownIcon width={16} height={16} />
         </div>
       )}
@@ -282,7 +282,7 @@ const GenerationItem: FC<IGenerationItemProps> = ({
   const [currentTab, setCurrentTab] = useState<string>('DETAIL')
 
   return (
-    <div ref={ref} className={cn(isTop ? `rounded-xl border ${!isError ? 'border-gray-200 bg-chat-bubble-bg' : 'border-[#FECDCA] bg-[#FEF3F2]'} ` : 'rounded-br-xl !mt-0', className)}
+    <div ref={ref} className={cn(isTop ? `rounded-xl border ${!isError ? 'bg-chat-bubble-bg border-gray-200' : 'border-[#FECDCA] bg-[#FEF3F2]'} ` : '!mt-0 rounded-br-xl', className)}
       style={isTop
         ? {
           boxShadow: '0px 1px 2px rgba(16, 24, 40, 0.05)',
@@ -291,21 +291,21 @@ const GenerationItem: FC<IGenerationItemProps> = ({
     >
       {isLoading
         ? (
-          <div className='flex items-center h-10'><Loading type='area' /></div>
+          <div className='flex h-10 items-center'><Loading type='area' /></div>
         )
         : (
           <div
-            className={cn(!isTop && 'rounded-br-xl border-l-2 border-primary-400', 'p-4', innerClassName)}
+            className={cn(!isTop && 'border-primary-400 rounded-br-xl border-l-2', 'p-4', innerClassName)}
             style={mainStyle}
           >
             {(isTop && taskId) && (
-              <div className='mb-2 text-gray-500 border border-gray-200 box-border flex items-center rounded-md italic text-[11px] pl-1 pr-1.5 font-medium w-fit group-hover:opacity-100'>
-                <HashtagIcon className='w-3 h-3 text-gray-400 fill-current mr-1 stroke-current stroke-1' />
+              <div className='mb-2 box-border flex w-fit items-center rounded-md border border-gray-200 pl-1 pr-1.5 text-[11px] font-medium italic text-gray-500 group-hover:opacity-100'>
+                <HashtagIcon className='mr-1 h-3 w-3 fill-current stroke-current stroke-1 text-gray-400' />
                 {taskId}
               </div>)
             }
             <div className={`flex ${contentClassName}`}>
-              <div className='grow w-0'>
+              <div className='w-0 grow'>
                 {siteInfo && workflowProcessData && (
                   <WorkflowProcessItem
                     data={workflowProcessData}
@@ -319,7 +319,7 @@ const GenerationItem: FC<IGenerationItemProps> = ({
                   <ResultTab data={workflowProcessData} content={content} currentTab={currentTab} onCurrentTabChange={setCurrentTab} />
                 )}
                 {isError && (
-                  <div className='text-gray-400 text-sm'>{t('share.generation.batchFailed.outputPlaceholder')}</div>
+                  <div className='text-sm text-gray-400'>{t('share.generation.batchFailed.outputPlaceholder')}</div>
                 )}
                 {!workflowProcessData && !isError && (typeof content === 'string') && (
                   <Markdown content={content} />
@@ -327,15 +327,15 @@ const GenerationItem: FC<IGenerationItemProps> = ({
               </div>
             </div>
 
-            <div className='flex items-center justify-between mt-3'>
+            <div className='mt-3 flex items-center justify-between'>
               <div className='flex items-center'>
                 {
                   !isInWebApp && !isInstalledApp && !isResponding && (
                     <SimpleBtn
                       isDisabled={isError || !messageId}
-                      className={cn(isMobile && '!px-1.5', 'space-x-1 mr-1')}
+                      className={cn(isMobile && '!px-1.5', 'mr-1 space-x-1')}
                       onClick={handleOpenLogModal}>
-                      <File02 className='w-3.5 h-3.5' />
+                      <File02 className='h-3.5 w-3.5' />
                       {!isMobile && <div>{t('common.operation.log')}</div>}
                     </SimpleBtn>
                   )
@@ -352,7 +352,7 @@ const GenerationItem: FC<IGenerationItemProps> = ({
                         copy(JSON.stringify(copyContent))
                       Toast.notify({ type: 'success', message: t('common.actionMsg.copySuccessfully') })
                     }}>
-                    <RiClipboardLine className='w-3.5 h-3.5' />
+                    <RiClipboardLine className='h-3.5 w-3.5' />
                     {!isMobile && <div>{t('common.operation.copy')}</div>}
                   </SimpleBtn>
                 )}
@@ -365,7 +365,7 @@ const GenerationItem: FC<IGenerationItemProps> = ({
                         className={cn(isMobile && '!px-1.5', 'ml-2 space-x-1')}
                         onClick={() => { onSave?.(messageId as string) }}
                       >
-                        <Bookmark className='w-3.5 h-3.5' />
+                        <Bookmark className='h-3.5 w-3.5' />
                         {!isMobile && <div>{t('common.operation.save')}</div>}
                       </SimpleBtn>
                     )}
@@ -375,7 +375,7 @@ const GenerationItem: FC<IGenerationItemProps> = ({
                         className={cn(isMobile && '!px-1.5', 'ml-2 space-x-1')}
                         onClick={handleMoreLikeThis}
                       >
-                        <Stars02 className='w-3.5 h-3.5' />
+                        <Stars02 className='h-3.5 w-3.5' />
                         {!isMobile && <div>{t('appDebug.feature.moreLikeThis.title')}</div>}
                       </SimpleBtn>
                     )}
@@ -384,12 +384,12 @@ const GenerationItem: FC<IGenerationItemProps> = ({
                         onClick={onRetry}
                         className={cn(isMobile && '!px-1.5', 'ml-2 space-x-1')}
                       >
-                        <RefreshCcw01 className='w-3.5 h-3.5' />
+                        <RefreshCcw01 className='h-3.5 w-3.5' />
                         {!isMobile && <div>{t('share.generation.batchFailed.retry')}</div>}
                       </SimpleBtn>
                     )}
                     {!isError && messageId && !isWorkflow && (
-                      <div className="mx-3 w-[1px] h-[14px] bg-gray-200"></div>
+                      <div className="mx-3 h-[14px] w-[1px] bg-gray-200"></div>
                     )}
                     {ratingContent}
                   </>

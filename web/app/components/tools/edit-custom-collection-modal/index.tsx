@@ -191,10 +191,10 @@ const EditCustomCollectionModal: FC<Props> = ({
         height='calc(100vh - 16px)'
         headerClassName='!border-b-divider-regular'
         body={
-          <div className='flex flex-col h-full'>
-            <div className='grow h-0 overflow-y-auto px-6 py-3 space-y-4'>
+          <div className='flex h-full flex-col'>
+            <div className='h-0 grow space-y-4 overflow-y-auto px-6 py-3'>
               <div>
-                <div className='py-2 system-sm-medium text-text-primary'>{t('tools.createTool.name')} <span className='ml-1 text-red-500'>*</span></div>
+                <div className='system-sm-medium text-text-primary py-2'>{t('tools.createTool.name')} <span className='ml-1 text-red-500'>*</span></div>
                 <div className='flex items-center justify-between gap-3'>
                   <AppIcon size='large' onClick={() => { setShowEmojiPicker(true) }} className='cursor-pointer' icon={emoji.content} background={emoji.background} />
                   <Input
@@ -212,17 +212,17 @@ const EditCustomCollectionModal: FC<Props> = ({
 
               {/* Schema */}
               <div className='select-none'>
-                <div className='flex justify-between items-center'>
+                <div className='flex items-center justify-between'>
                   <div className='flex items-center'>
-                    <div className='py-2 system-sm-medium text-text-primary'>{t('tools.createTool.schema')}<span className='ml-1 text-red-500'>*</span></div>
-                    <div className='mx-2 w-px h-3 bg-divider-regular'></div>
+                    <div className='system-sm-medium text-text-primary py-2'>{t('tools.createTool.schema')}<span className='ml-1 text-red-500'>*</span></div>
+                    <div className='bg-divider-regular mx-2 h-3 w-px'></div>
                     <a
                       href="https://swagger.io/specification/"
                       target='_blank' rel='noopener noreferrer'
-                      className='flex items-center h-[18px] space-x-1  text-text-accent'
+                      className='text-text-accent flex h-[18px] items-center  space-x-1'
                     >
                       <div className='text-xs font-normal'>{t('tools.createTool.viewSchemaSpec')}</div>
-                      <LinkExternal02 className='w-3 h-3' />
+                      <LinkExternal02 className='h-3 w-3' />
                     </a>
                   </div>
                   <GetSchema onChange={setSchema} />
@@ -238,26 +238,26 @@ const EditCustomCollectionModal: FC<Props> = ({
 
               {/* Available Tools  */}
               <div>
-                <div className='py-2 system-sm-medium text-text-primary'>{t('tools.createTool.availableTools.title')}</div>
-                <div className='rounded-lg border border-divider-regular w-full overflow-x-auto'>
-                  <table className='w-full system-xs-regular text-text-secondary'>
+                <div className='system-sm-medium text-text-primary py-2'>{t('tools.createTool.availableTools.title')}</div>
+                <div className='border-divider-regular w-full overflow-x-auto rounded-lg border'>
+                  <table className='system-xs-regular text-text-secondary w-full'>
                     <thead className='text-text-tertiary uppercase'>
                       <tr className={cn(paramsSchemas.length > 0 && 'border-b', 'border-divider-regular')}>
                         <th className="p-2 pl-3 font-medium">{t('tools.createTool.availableTools.name')}</th>
-                        <th className="p-2 pl-3 font-medium w-[236px]">{t('tools.createTool.availableTools.description')}</th>
+                        <th className="w-[236px] p-2 pl-3 font-medium">{t('tools.createTool.availableTools.description')}</th>
                         <th className="p-2 pl-3 font-medium">{t('tools.createTool.availableTools.method')}</th>
                         <th className="p-2 pl-3 font-medium">{t('tools.createTool.availableTools.path')}</th>
-                        <th className="p-2 pl-3 font-medium w-[54px]">{t('tools.createTool.availableTools.action')}</th>
+                        <th className="w-[54px] p-2 pl-3 font-medium">{t('tools.createTool.availableTools.action')}</th>
                       </tr>
                     </thead>
                     <tbody>
                       {paramsSchemas.map((item, index) => (
-                        <tr key={index} className='border-b last:border-0 border-divider-regular'>
+                        <tr key={index} className='border-divider-regular border-b last:border-0'>
                           <td className="p-2 pl-3">{item.operation_id}</td>
-                          <td className="p-2 pl-3 w-[236px]">{item.summary}</td>
+                          <td className="w-[236px] p-2 pl-3">{item.summary}</td>
                           <td className="p-2 pl-3">{item.method}</td>
                           <td className="p-2 pl-3">{getPath(item.server_url)}</td>
-                          <td className="p-2 pl-3 w-[62px]">
+                          <td className="w-[62px] p-2 pl-3">
                             <Button
                               size='small'
                               onClick={() => {
@@ -277,22 +277,22 @@ const EditCustomCollectionModal: FC<Props> = ({
 
               {/* Authorization method */}
               <div>
-                <div className='py-2 system-sm-medium text-text-primary'>{t('tools.createTool.authMethod.title')}</div>
-                <div className='flex items-center h-9 justify-between px-2.5 bg-components-input-bg-normal rounded-lg cursor-pointer' onClick={() => setCredentialsModalShow(true)}>
+                <div className='system-sm-medium text-text-primary py-2'>{t('tools.createTool.authMethod.title')}</div>
+                <div className='bg-components-input-bg-normal flex h-9 cursor-pointer items-center justify-between rounded-lg px-2.5' onClick={() => setCredentialsModalShow(true)}>
                   <div className='system-xs-regular text-text-primary'>{t(`tools.createTool.authMethod.types.${credential.auth_type}`)}</div>
-                  <RiSettings2Line className='w-4 h-4 text-text-secondary' />
+                  <RiSettings2Line className='text-text-secondary h-4 w-4' />
                 </div>
               </div>
 
               {/* Labels */}
               <div>
-                <div className='py-2 system-sm-medium text-text-primary'>{t('tools.createTool.toolInput.label')}</div>
+                <div className='system-sm-medium text-text-primary py-2'>{t('tools.createTool.toolInput.label')}</div>
                 <LabelSelector value={labels} onChange={handleLabelSelect} />
               </div>
 
               {/* Privacy Policy */}
               <div>
-                <div className='py-2 system-sm-medium text-text-primary'>{t('tools.createTool.privacyPolicy')}</div>
+                <div className='system-sm-medium text-text-primary py-2'>{t('tools.createTool.privacyPolicy')}</div>
                 <Input
                   value={customCollection.privacy_policy}
                   onChange={(e) => {
@@ -305,7 +305,7 @@ const EditCustomCollectionModal: FC<Props> = ({
               </div>
 
               <div>
-                <div className='py-2 system-sm-medium text-text-primary'>{t('tools.createTool.customDisclaimer')}</div>
+                <div className='system-sm-medium text-text-primary py-2'>{t('tools.createTool.customDisclaimer')}</div>
                 <Input
                   value={customCollection.custom_disclaimer}
                   onChange={(e) => {
@@ -318,7 +318,7 @@ const EditCustomCollectionModal: FC<Props> = ({
               </div>
 
             </div>
-            <div className={cn(isEdit ? 'justify-between' : 'justify-end', 'mt-2 shrink-0 flex py-4 px-6 rounded-b-[10px] bg-background-section-burn border-t border-divider-regular')} >
+            <div className={cn(isEdit ? 'justify-between' : 'justify-end', 'bg-background-section-burn border-divider-regular mt-2 flex shrink-0 rounded-b-[10px] border-t px-6 py-4')} >
               {
                 isEdit && (
                   <Button variant='warning' onClick={onRemove}>{t('common.operation.delete')}</Button>

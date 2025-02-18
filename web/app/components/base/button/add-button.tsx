@@ -14,8 +14,8 @@ const AddButton: FC<Props> = ({
   onClick,
 }) => {
   return (
-    <div className={cn(className, 'p-1 rounded-md cursor-pointer hover:bg-state-base-hover select-none')} onClick={onClick}>
-      <RiAddLine className='w-4 h-4 text-text-tertiary' />
+    <div className={cn(className, 'hover:bg-state-base-hover cursor-pointer select-none rounded-md p-1')} onClick={onClick}>
+      <RiAddLine className='text-text-tertiary h-4 w-4' />
     </div>
   )
 }

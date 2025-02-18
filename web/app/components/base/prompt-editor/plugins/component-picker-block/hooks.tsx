@@ -44,7 +44,7 @@ export const usePromptOptions = (
       render: ({ isSelected, onSelect, onSetHighlight }) => {
         return <PromptMenuItem
           title={t('common.promptEditor.context.item.title')}
-          icon={<File05 className='w-4 h-4 text-[#6938EF]' />}
+          icon={<File05 className='h-4 w-4 text-[#6938EF]' />}
           disabled={!contextBlock.selectable}
           isSelected={isSelected}
           onClick={onSelect}
@@ -68,7 +68,7 @@ export const usePromptOptions = (
           return (
             <PromptMenuItem
               title={t('common.promptEditor.query.item.title')}
-              icon={<UserEdit02 className='w-4 h-4 text-[#FD853A]' />}
+              icon={<UserEdit02 className='h-4 w-4 text-[#FD853A]' />}
               disabled={!queryBlock.selectable}
               isSelected={isSelected}
               onClick={onSelect}
@@ -94,7 +94,7 @@ export const usePromptOptions = (
           return (
             <PromptMenuItem
               title={t('common.promptEditor.history.item.title')}
-              icon={<MessageClockCircle className='w-4 h-4 text-[#DD2590]' />}
+              icon={<MessageClockCircle className='h-4 w-4 text-[#DD2590]' />}
               disabled={!historyBlock.selectable
               }
               isSelected={isSelected}
@@ -133,7 +133,7 @@ export const useVariableOptions = (
           return (
             <VariableMenuItem
               title={item.value}
-              icon={<BracketsX className='w-[14px] h-[14px] text-text-accent' />}
+              icon={<BracketsX className='text-text-accent h-[14px] w-[14px]' />}
               queryString={queryString}
               isSelected={isSelected}
               onClick={onSelect}
@@ -162,7 +162,7 @@ export const useVariableOptions = (
         return (
           <VariableMenuItem
             title={t('common.promptEditor.variable.modal.add')}
-            icon={<BracketsX className='w-[14px] h-[14px] text-text-accent' />}
+            icon={<BracketsX className='text-text-accent h-[14px] w-[14px]' />}
             queryString={queryString}
             isSelected={isSelected}
             onClick={onSelect}
@@ -206,12 +206,12 @@ export const useExternalToolOptions = (
               title={item.name}
               icon={
                 <AppIcon
-                  className='!w-[14px] !h-[14px]'
+                  className='!h-[14px] !w-[14px]'
                   icon={item.icon}
                   background={item.icon_background}
                 />
               }
-              extraElement={<div className='text-xs text-text-tertiary'>{item.variableName}</div>}
+              extraElement={<div className='text-text-tertiary text-xs'>{item.variableName}</div>}
               queryString={queryString}
               isSelected={isSelected}
               onClick={onSelect}
@@ -240,8 +240,8 @@ export const useExternalToolOptions = (
         return (
           <VariableMenuItem
             title={t('common.promptEditor.variable.modal.addTool')}
-            icon={<Tool03 className='w-[14px] h-[14px] text-text-accent' />}
-            extraElement={< ArrowUpRight className='w-3 h-3 text-text-tertiary' />}
+            icon={<Tool03 className='text-text-accent h-[14px] w-[14px]' />}
+            extraElement={< ArrowUpRight className='text-text-tertiary h-3 w-3' />}
             queryString={queryString}
             isSelected={isSelected}
             onClick={onSelect}

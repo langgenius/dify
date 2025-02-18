@@ -91,14 +91,14 @@ const Tooltip: FC<TooltipProps> = ({
         onMouseLeave={() => triggerMethod === 'hover' && handleLeave(true)}
         asChild={asChild}
       >
-        {children || <div className={triggerClassName || 'p-[1px] w-3.5 h-3.5 shrink-0'}><RiQuestionLine className='text-text-quaternary hover:text-text-tertiary w-full h-full' /></div>}
+        {children || <div className={triggerClassName || 'h-3.5 w-3.5 shrink-0 p-[1px]'}><RiQuestionLine className='text-text-quaternary hover:text-text-tertiary h-full w-full' /></div>}
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent
         className="z-[9999]"
       >
         {popupContent && (<div
           className={cn(
-            !noDecoration && 'relative px-3 py-2 system-xs-regular text-text-tertiary bg-components-panel-bg rounded-md shadow-lg break-words',
+            !noDecoration && 'system-xs-regular text-text-tertiary bg-components-panel-bg relative break-words rounded-md px-3 py-2 shadow-lg',
             popupClassName,
           )}
           onMouseEnter={() => triggerMethod === 'hover' && setHoverPopup()}

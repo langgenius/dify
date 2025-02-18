@@ -33,10 +33,10 @@ const EmptyElement: FC<{ appUrl: string }> = ({ appUrl }) => {
   const pathname = usePathname()
   const pathSegments = pathname.split('/')
   pathSegments.pop()
-  return <div className='flex items-center justify-center h-full'>
-    <div className='bg-background-section-burn w-[560px] h-fit box-border px-5 py-4 rounded-2xl'>
-      <span className='text-text-secondary system-md-semibold'>{t('appLog.table.empty.element.title')}<ThreeDotsIcon className='inline relative -top-3 -left-1.5' /></span>
-      <div className='mt-2 text-text-tertiary system-sm-regular'>
+  return <div className='flex h-full items-center justify-center'>
+    <div className='bg-background-section-burn box-border h-fit w-[560px] rounded-2xl px-5 py-4'>
+      <span className='text-text-secondary system-md-semibold'>{t('appLog.table.empty.element.title')}<ThreeDotsIcon className='relative -left-1.5 -top-3 inline' /></span>
+      <div className='text-text-tertiary system-sm-regular mt-2'>
         <Trans
           i18nKey="appLog.table.empty.element.content"
           components={{ shareLink: <Link href={`${pathSegments.join('/')}/overview`} className='text-util-colors-blue-blue-600' />, testLink: <Link href={appUrl} className='text-util-colors-blue-blue-600' target='_blank' rel='noopener noreferrer' /> }}
@@ -73,10 +73,10 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
   const total = workflowLogs?.total
 
   return (
-    <div className='flex flex-col h-full'>
+    <div className='flex h-full flex-col'>
       <h1 className='text-text-primary system-xl-semibold'>{t('appLog.workflowTitle')}</h1>
       <p className='text-text-tertiary system-sm-regular'>{t('appLog.workflowSubtitle')}</p>
-      <div className='flex flex-col py-4 flex-1 max-h-[calc(100%-16px)]'>
+      <div className='flex max-h-[calc(100%-16px)] flex-1 flex-col py-4'>
         <Filter queryParams={queryParams} setQueryParams={setQueryParams} />
         {/* workflow log */}
         {total === undefined

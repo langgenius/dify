@@ -9,8 +9,8 @@ const PriorityUseTip = () => {
     <Tooltip
       popupContent={t('common.modelProvider.priorityUsing') || ''}
     >
-      <div className='absolute -right-[5px] -top-[5px] bg-util-colors-indigo-indigo-50 rounded-[5px] border-[0.5px] border-components-panel-border-subtle shadow-xs cursor-pointer'>
-        <ChevronDownDouble className='rotate-180 w-3 h-3 text-util-colors-indigo-indigo-600' />
+      <div className='bg-util-colors-indigo-indigo-50 border-components-panel-border-subtle shadow-xs absolute -right-[5px] -top-[5px] cursor-pointer rounded-[5px] border-[0.5px]'>
+        <ChevronDownDouble className='text-util-colors-indigo-indigo-600 h-3 w-3 rotate-180' />
       </div>
     </Tooltip>
   )

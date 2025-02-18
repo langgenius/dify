@@ -57,9 +57,9 @@ const ModelInfo: FC<Props> = ({
 
   return (
     <div className={cn('flex items-center rounded-lg')}>
-      <div className='shrink-0 flex items-center gap-1 mr-px h-8 pl-1.5 pr-2 rounded-l-lg bg-components-input-bg-normal'>
+      <div className='bg-components-input-bg-normal mr-px flex h-8 shrink-0 items-center gap-1 rounded-l-lg pl-1.5 pr-2'>
         <ModelIcon
-          className='!w-5 !h-5'
+          className='!h-5 !w-5'
           provider={currentProvider}
           modelName={currentModel?.model}
         />
@@ -80,15 +80,15 @@ const ModelInfo: FC<Props> = ({
             className='block'
           >
             <div className={cn(
-              'p-2 rounded-r-lg bg-components-button-tertiary-bg hover:bg-components-button-tertiary-bg-hover cursor-pointer',
+              'bg-components-button-tertiary-bg hover:bg-components-button-tertiary-bg-hover cursor-pointer rounded-r-lg p-2',
               open && 'bg-components-button-tertiary-bg-hover',
             )}>
-              <RiInformation2Line className='h-4 w-4 text-text-tertiary' />
+              <RiInformation2Line className='text-text-tertiary h-4 w-4' />
             </div>
           </PortalToFollowElemTrigger>
           <PortalToFollowElemContent className='z-[1002]'>
-            <div className='relative w-[280px] pt-3 px-4 pb-2 bg-components-panel-bg rounded-2xl border-[0.5px] border-components-panel-border shadow-xl overflow-hidden'>
-              <div className='mb-1 h-6 text-text-secondary system-sm-semibold-uppercase'>{t('appLog.detail.modelParams')}</div>
+            <div className='bg-components-panel-bg border-components-panel-border relative w-[280px] overflow-hidden rounded-2xl border-[0.5px] px-4 pb-2 pt-3 shadow-xl'>
+              <div className='text-text-secondary system-sm-semibold-uppercase mb-1 h-6'>{t('appLog.detail.modelParams')}</div>
               <div className='py-1'>
                 {['temperature', 'top_p', 'presence_penalty', 'max_tokens', 'stop'].map((param: string, index: number) => {
                   return <div className='flex justify-between py-1.5' key={index}>

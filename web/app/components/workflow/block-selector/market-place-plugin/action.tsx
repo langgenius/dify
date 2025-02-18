@@ -72,13 +72,13 @@ const OperationDropdown: FC<Props> = ({
     >
       <PortalToFollowElemTrigger onClick={handleTrigger}>
         <ActionButton className={cn(open && 'bg-state-base-hover')}>
-          <RiMoreFill className='w-4 h-4 text-components-button-secondary-accent-text' />
+          <RiMoreFill className='text-components-button-secondary-accent-text h-4 w-4' />
         </ActionButton>
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent className='z-[9999]'>
-        <div className='w-[112px] p-1 bg-components-panel-bg-blur rounded-xl border-[0.5px] border-components-panel-border shadow-lg'>
-          <div onClick={handleDownload} className='px-3 py-1.5 rounded-lg text-text-secondary system-md-regular cursor-pointer hover:bg-state-base-hover'>{t('common.operation.download')}</div>
-          <a href={`${MARKETPLACE_URL_PREFIX}/plugins/${author}/${name}`} target='_blank' className='block px-3 py-1.5 rounded-lg text-text-secondary system-md-regular cursor-pointer hover:bg-state-base-hover'>{t('common.operation.viewDetails')}</a>
+        <div className='bg-components-panel-bg-blur border-components-panel-border w-[112px] rounded-xl border-[0.5px] p-1 shadow-lg'>
+          <div onClick={handleDownload} className='text-text-secondary system-md-regular hover:bg-state-base-hover cursor-pointer rounded-lg px-3 py-1.5'>{t('common.operation.download')}</div>
+          <a href={`${MARKETPLACE_URL_PREFIX}/plugins/${author}/${name}`} target='_blank' className='text-text-secondary system-md-regular hover:bg-state-base-hover block cursor-pointer rounded-lg px-3 py-1.5'>{t('common.operation.viewDetails')}</a>
         </div>
       </PortalToFollowElemContent>
     </PortalToFollowElem>

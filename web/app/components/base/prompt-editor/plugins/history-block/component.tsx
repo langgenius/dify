@@ -40,11 +40,11 @@ const HistoryBlockComponent: FC<HistoryBlockComponentProps> = ({
 
   return (
     <div className={`
-      group inline-flex items-center pl-1 pr-0.5 h-6 border border-transparent text-[#DD2590] rounded-[5px] hover:bg-[#FCE7F6]
+      group inline-flex h-6 items-center rounded-[5px] border border-transparent pl-1 pr-0.5 text-[#DD2590] hover:bg-[#FCE7F6]
       ${open ? 'bg-[#FCE7F6]' : 'bg-[#FDF2FA]'}
       ${isSelected && '!border-[#F670C7]'}
     `} ref={ref}>
-      <MessageClockCircle className='mr-1 w-[14px] h-[14px]' />
+      <MessageClockCircle className='mr-1 h-[14px] w-[14px]' />
       <div className='mr-1 text-xs font-medium'>{t('common.promptEditor.history.item.title')}</div>
       <PortalToFollowElem
         open={open}
@@ -57,14 +57,14 @@ const HistoryBlockComponent: FC<HistoryBlockComponentProps> = ({
       >
         <PortalToFollowElemTrigger ref={triggerRef}>
           <div className={`
-            flex items-center justify-center w-[18px] h-[18px] rounded cursor-pointer
-            ${open ? 'bg-[#DD2590] text-white' : 'bg-white/50 group-hover:bg-white group-hover:shadow-xs'}
+            flex h-[18px] w-[18px] cursor-pointer items-center justify-center rounded
+            ${open ? 'bg-[#DD2590] text-white' : 'group-hover:shadow-xs bg-white/50 group-hover:bg-white'}
           `}>
-            <RiMoreFill className='w-3 h-3' />
+            <RiMoreFill className='h-3 w-3' />
           </div>
         </PortalToFollowElemTrigger>
         <PortalToFollowElemContent style={{ zIndex: 100 }}>
-          <div className='w-[360px] bg-white rounded-xl shadow-lg'>
+          <div className='w-[360px] rounded-xl bg-white shadow-lg'>
             <div className='p-4'>
               <div className='mb-2 text-xs font-medium text-gray-500'>{t('common.promptEditor.history.modal.title')}</div>
               <div className='flex items-center text-sm text-gray-700'>
@@ -77,7 +77,7 @@ const HistoryBlockComponent: FC<HistoryBlockComponentProps> = ({
               </div>
             </div>
             <div
-              className='px-4 py-3 text-xs text-[#155EEF] border-t border-black/5 rounded-b-xl cursor-pointer'
+              className='cursor-pointer rounded-b-xl border-t border-black/5 px-4 py-3 text-xs text-[#155EEF]'
               onClick={onEditRole}
             >
               {t('common.promptEditor.history.modal.edit')}

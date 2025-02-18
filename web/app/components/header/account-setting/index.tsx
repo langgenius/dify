@@ -148,15 +148,15 @@ export default function AccountSetting({
       show
       onClose={onCancel}
     >
-      <div className='mx-auto max-w-[1048px] h-[100vh] flex'>
-        <div className='w-[44px] sm:w-[224px] pl-4 pr-6 border-r border-divider-burn flex flex-col'>
-          <div className='mt-6 mb-8 px-3 py-2 text-text-primary title-2xl-semi-bold'>{t('common.userProfile.settings')}</div>
+      <div className='mx-auto flex h-[100vh] max-w-[1048px]'>
+        <div className='border-divider-burn flex w-[44px] flex-col border-r pl-4 pr-6 sm:w-[224px]'>
+          <div className='text-text-primary title-2xl-semi-bold mb-8 mt-6 px-3 py-2'>{t('common.userProfile.settings')}</div>
           <div className='w-full'>
             {
               menuItems.map(menuItem => (
                 <div key={menuItem.key} className='mb-2'>
                   {!isCurrentWorkspaceDatasetOperator && (
-                    <div className='py-2 pl-3 pb-1 mb-0.5 system-xs-medium-uppercase text-text-tertiary'>{menuItem.name}</div>
+                    <div className='system-xs-medium-uppercase text-text-tertiary mb-0.5 py-2 pb-1 pl-3'>{menuItem.name}</div>
                   )}
                   <div>
                     {
@@ -164,7 +164,7 @@ export default function AccountSetting({
                         <div
                           key={item.key}
                           className={cn(
-                            'flex items-center mb-0.5 p-1 pl-3 h-[37px] text-sm cursor-pointer rounded-lg',
+                            'mb-0.5 flex h-[37px] cursor-pointer items-center rounded-lg p-1 pl-3 text-sm',
                             activeMenu === item.key ? 'bg-state-base-active text-components-menu-item-text-active system-sm-semibold' : 'text-components-menu-item-text system-sm-medium')}
                           title={item.name}
                           onClick={() => setActiveMenu(item.key)}
@@ -181,27 +181,27 @@ export default function AccountSetting({
           </div>
         </div>
         <div className='relative flex w-[824px]'>
-          <div className='absolute top-6 -right-11 flex flex-col items-center z-[9999]'>
+          <div className='absolute -right-11 top-6 z-[9999] flex flex-col items-center'>
             <Button
               variant='tertiary'
               size='large'
               className='px-2'
               onClick={onCancel}
             >
-              <RiCloseLine className='w-5 h-5' />
+              <RiCloseLine className='h-5 w-5' />
             </Button>
-            <div className='mt-1 text-text-tertiary system-2xs-medium-uppercase'>ESC</div>
+            <div className='text-text-tertiary system-2xs-medium-uppercase mt-1'>ESC</div>
           </div>
-          <div ref={scrollRef} className='w-full pb-4 bg-components-panel-bg overflow-y-auto'>
-            <div className={cn('sticky top-0 mx-8 pt-[27px] pb-2 mb-[18px] flex items-center bg-components-panel-bg z-20', scrolled && 'border-b border-divider-regular')}>
-              <div className='shrink-0 text-text-primary title-2xl-semi-bold'>{activeItem?.name}</div>
+          <div ref={scrollRef} className='bg-components-panel-bg w-full overflow-y-auto pb-4'>
+            <div className={cn('bg-components-panel-bg sticky top-0 z-20 mx-8 mb-[18px] flex items-center pb-2 pt-[27px]', scrolled && 'border-divider-regular border-b')}>
+              <div className='text-text-primary title-2xl-semi-bold shrink-0'>{activeItem?.name}</div>
               {
                 activeItem?.description && (
-                  <div className='shrink-0 ml-2 text-xs text-text-tertiary'>{activeItem?.description}</div>
+                  <div className='text-text-tertiary ml-2 shrink-0 text-xs'>{activeItem?.description}</div>
                 )
               }
               {activeItem?.key === 'provider' && (
-                <div className='grow flex justify-end'>
+                <div className='flex grow justify-end'>
                   <Input
                     showLeftIcon
                     wrapperClassName='!w-[200px]'
@@ -212,7 +212,7 @@ export default function AccountSetting({
                 </div>
               )}
             </div>
-            <div className='px-4 sm:px-8 pt-2'>
+            <div className='px-4 pt-2 sm:px-8'>
               {activeMenu === 'provider' && <ModelProviderPage searchText={searchValue} />}
               {activeMenu === 'members' && <MembersPage />}
               {activeMenu === 'billing' && <BillingPage />}

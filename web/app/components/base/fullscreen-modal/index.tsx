@@ -43,7 +43,7 @@ export default function FullScreenModal({
             e.stopPropagation()
           }}
         >
-          <div className="w-full h-full bg-background-default-subtle rounded-2xl border border-effects-highlight relative">
+          <div className="bg-background-default-subtle border-effects-highlight relative h-full w-full rounded-2xl border">
             <TransitionChild>
               <DialogPanel className={classNames(
                 'h-full transition',
@@ -55,13 +55,13 @@ export default function FullScreenModal({
               )}>
                 {closable
                   && <div
-                    className='absolute z-50 top-3 right-3 w-9 h-9 flex items-center justify-center rounded-[10px]
-                  bg-components-button-tertiary-bg hover:bg-components-button-tertiary-bg-hover cursor-pointer'
+                    className='bg-components-button-tertiary-bg hover:bg-components-button-tertiary-bg-hover absolute right-3 top-3 z-50 flex h-9 w-9 cursor-pointer
+                  items-center justify-center rounded-[10px]'
                     onClick={(e) => {
                       e.stopPropagation()
                       onClose()
                     }}>
-                    <RiCloseLargeLine className='w-3.5 h-3.5 text-components-button-tertiary-text' />
+                    <RiCloseLargeLine className='text-components-button-tertiary-text h-3.5 w-3.5' />
                   </div>}
                 {children}
               </DialogPanel>

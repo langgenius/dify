@@ -38,10 +38,10 @@ const InputNumberWithSlider: FC<Props> = ({
   }, [onChange])
 
   return (
-    <div className='flex justify-between items-center h-8 space-x-2'>
+    <div className='flex h-8 items-center justify-between space-x-2'>
       <input
         value={value}
-        className='shrink-0 block pl-3 w-12 h-8 appearance-none outline-none rounded-lg bg-components-input-bg-normal text-[13px] text-components-input-text-filled'
+        className='bg-components-input-bg-normal text-components-input-text-filled block h-8 w-12 shrink-0 appearance-none rounded-lg pl-3 text-[13px] outline-none'
         type='number'
         min={min}
         max={max}

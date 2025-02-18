@@ -15,23 +15,23 @@ const ModelTrigger: FC<ModelTriggerProps> = ({
   return (
     <div
       className={cn(
-        'flex items-center p-1 gap-0.5 rounded-lg bg-components-input-bg-normal hover:bg-components-input-bg-hover cursor-pointer', open && 'bg-components-input-bg-hover',
+        'bg-components-input-bg-normal hover:bg-components-input-bg-hover flex cursor-pointer items-center gap-0.5 rounded-lg p-1', open && 'bg-components-input-bg-hover',
         className,
       )}
     >
-      <div className='grow flex items-center'>
-        <div className='mr-1.5 flex items-center justify-center w-4 h-4 rounded-[5px] border border-dashed border-divider-regular'>
-          <CubeOutline className='w-3 h-3 text-text-quaternary' />
+      <div className='flex grow items-center'>
+        <div className='border-divider-regular mr-1.5 flex h-4 w-4 items-center justify-center rounded-[5px] border border-dashed'>
+          <CubeOutline className='text-text-quaternary h-3 w-3' />
         </div>
         <div
-          className='text-[13px] text-text-tertiary truncate'
+          className='text-text-tertiary truncate text-[13px]'
           title='Configure model'
         >
           {t('plugin.detailPanel.configureModel')}
         </div>
       </div>
-      <div className='shrink-0 flex items-center justify-center w-4 h-4'>
-        <RiEqualizer2Line className='w-3.5 h-3.5 text-text-tertiary' />
+      <div className='flex h-4 w-4 shrink-0 items-center justify-center'>
+        <RiEqualizer2Line className='text-text-tertiary h-3.5 w-3.5' />
       </div>
     </div>
   )

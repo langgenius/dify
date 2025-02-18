@@ -42,7 +42,7 @@ const Icon = ({
 
   return (
     <div
-      className={cn('shrink-0 relative rounded-md bg-center bg-no-repeat bg-contain', iconSizeMap[size], className)}
+      className={cn('relative shrink-0 rounded-md bg-contain bg-center bg-no-repeat', iconSizeMap[size], className)}
       style={{
         backgroundImage: `url(${src})`,
       }}
@@ -50,13 +50,13 @@ const Icon = ({
       {
         installed
         && <div className={cn(iconClassName, 'bg-state-success-solid')}>
-          <RiCheckLine className='w-3 h-3 text-text-primary-on-surface' />
+          <RiCheckLine className='text-text-primary-on-surface h-3 w-3' />
         </div>
       }
       {
         installFailed
         && <div className={cn(iconClassName, 'bg-state-destructive-solid')}>
-          <RiCloseLine className='w-3 h-3 text-text-primary-on-surface' />
+          <RiCloseLine className='text-text-primary-on-surface h-3 w-3' />
         </div>
       }
     </div>

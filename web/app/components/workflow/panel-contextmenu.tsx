@@ -42,7 +42,7 @@ const PanelContextmenu = () => {
   const renderTrigger = () => {
     return (
       <div
-        className='flex items-center justify-between px-3 h-8 text-sm text-text-secondary rounded-lg cursor-pointer hover:bg-state-base-hover'
+        className='text-text-secondary hover:bg-state-base-hover flex h-8 cursor-pointer items-center justify-between rounded-lg px-3 text-sm'
       >
         {t('workflow.common.addBlock')}
       </div>
@@ -54,7 +54,7 @@ const PanelContextmenu = () => {
 
   return (
     <div
-      className='absolute w-[200px] rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg z-[9]'
+      className='border-components-panel-border bg-components-panel-bg-blur absolute z-[9] w-[200px] rounded-lg border-[0.5px] shadow-lg'
       style={{
         left: panelMenu.left,
         top: panelMenu.top,
@@ -70,7 +70,7 @@ const PanelContextmenu = () => {
           }}
         />
         <div
-          className='flex items-center justify-between px-3 h-8 text-sm text-text-secondary rounded-lg cursor-pointer hover:bg-state-base-hover'
+          className='text-text-secondary hover:bg-state-base-hover flex h-8 cursor-pointer items-center justify-between rounded-lg px-3 text-sm'
           onClick={(e) => {
             e.stopPropagation()
             handleAddNote()
@@ -80,7 +80,7 @@ const PanelContextmenu = () => {
           {t('workflow.nodes.note.addNote')}
         </div>
         <div
-          className='flex items-center justify-between px-3 h-8 text-sm text-text-secondary rounded-lg cursor-pointer hover:bg-state-base-hover'
+          className='text-text-secondary hover:bg-state-base-hover flex h-8 cursor-pointer items-center justify-between rounded-lg px-3 text-sm'
           onClick={() => {
             handleStartWorkflowRun()
             handlePaneContextmenuCancel()
@@ -94,8 +94,8 @@ const PanelContextmenu = () => {
       <div className='p-1'>
         <div
           className={cn(
-            'flex items-center justify-between px-3 h-8 text-sm text-text-secondary rounded-lg cursor-pointer',
-            !clipboardElements.length ? 'opacity-50 cursor-not-allowed' : 'hover:bg-state-base-hover',
+            'text-text-secondary flex h-8 cursor-pointer items-center justify-between rounded-lg px-3 text-sm',
+            !clipboardElements.length ? 'cursor-not-allowed opacity-50' : 'hover:bg-state-base-hover',
           )}
           onClick={() => {
             if (clipboardElements.length) {
@@ -111,13 +111,13 @@ const PanelContextmenu = () => {
       <Divider className='m-0' />
       <div className='p-1'>
         <div
-          className='flex items-center justify-between px-3 h-8 text-sm text-text-secondary rounded-lg cursor-pointer hover:bg-state-base-hover'
+          className='text-text-secondary hover:bg-state-base-hover flex h-8 cursor-pointer items-center justify-between rounded-lg px-3 text-sm'
           onClick={() => exportCheck()}
         >
           {t('app.export')}
         </div>
         <div
-          className='flex items-center justify-between px-3 h-8 text-sm text-text-secondary rounded-lg cursor-pointer hover:bg-state-base-hover'
+          className='text-text-secondary hover:bg-state-base-hover flex h-8 cursor-pointer items-center justify-between rounded-lg px-3 text-sm'
           onClick={() => setShowImportDSLModal(true)}
         >
           {t('workflow.common.importDSL')}

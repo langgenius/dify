@@ -27,9 +27,9 @@ const SearchBox = ({
   return (
     <div
       className={cn(
-        'flex items-center z-[11]',
-        size === 'large' && 'p-1.5 bg-components-panel-bg-blur rounded-xl shadow-md border border-components-chat-input-border',
-        size === 'small' && 'p-0.5 bg-components-input-bg-normal rounded-lg',
+        'z-[11] flex items-center',
+        size === 'large' && 'bg-components-panel-bg-blur border-components-chat-input-border rounded-xl border p-1.5 shadow-md',
+        size === 'small' && 'bg-components-input-bg-normal rounded-lg p-0.5',
         inputClassName,
       )}
     >
@@ -39,12 +39,12 @@ const SearchBox = ({
         size={size}
         locale={locale}
       />
-      <div className='mx-1 w-[1px] h-3.5 bg-divider-regular'></div>
-      <div className='relative grow flex items-center p-1 pl-2'>
-        <div className='flex items-center mr-2 w-full'>
+      <div className='bg-divider-regular mx-1 h-3.5 w-[1px]'></div>
+      <div className='relative flex grow items-center p-1 pl-2'>
+        <div className='mr-2 flex w-full items-center'>
           <input
             className={cn(
-              'grow block outline-none appearance-none body-md-medium text-text-secondary bg-transparent',
+              'body-md-medium text-text-secondary block grow appearance-none bg-transparent outline-none',
             )}
             value={search}
             onChange={(e) => {
@@ -56,7 +56,7 @@ const SearchBox = ({
             search && (
               <div className='absolute right-2 top-1/2 -translate-y-1/2'>
                 <ActionButton onClick={() => onSearchChange('')}>
-                  <RiCloseLine className='w-4 h-4' />
+                  <RiCloseLine className='h-4 w-4' />
                 </ActionButton>
               </div>
             )

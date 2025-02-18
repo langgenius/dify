@@ -47,9 +47,9 @@ const MembersPage = () => {
   return (
     <>
       <div className='flex flex-col'>
-        <div className='flex items-center mb-4 p-3 gap-1 bg-gray-50 rounded-2xl'>
-          <LogoEmbeddedChatHeader className='!w-10 !h-10' />
-          <div className='grow mx-2'>
+        <div className='mb-4 flex items-center gap-1 rounded-2xl bg-gray-50 p-3'>
+          <LogoEmbeddedChatHeader className='!h-10 !w-10' />
+          <div className='mx-2 grow'>
             <div className='text-sm font-medium text-gray-900'>{currentWorkspace?.name}</div>
             {enableBilling && (
               <div className='text-xs text-gray-500'>
@@ -76,41 +76,41 @@ const MembersPage = () => {
             <UpgradeBtn className='mr-2' loc='member-invite' />
           )}
           <div className={
-            `shrink-0 flex items-center py-[7px] px-3 border-[0.5px] border-gray-200
-            text-[13px] font-medium text-primary-600 bg-white
-            shadow-xs rounded-lg ${(isCurrentWorkspaceManager && !isMemberFull) ? 'cursor-pointer' : 'grayscale opacity-50 cursor-default'}`
+            `text-primary-600 shadow-xs flex shrink-0 items-center rounded-lg border-[0.5px]
+            border-gray-200 bg-white px-3 py-[7px]
+            text-[13px] font-medium ${(isCurrentWorkspaceManager && !isMemberFull) ? 'cursor-pointer' : 'cursor-default opacity-50 grayscale'}`
           } onClick={() => (isCurrentWorkspaceManager && !isMemberFull) && setInviteModalVisible(true)}>
-            <RiUserAddLine className='w-4 h-4 mr-2 ' />
+            <RiUserAddLine className='mr-2 h-4 w-4 ' />
             {t('common.members.invite')}
           </div>
         </div>
         <div className='overflow-visible lg:overflow-visible'>
-          <div className='flex items-center py-[7px] border-b border-divider-regular min-w-[480px]'>
-            <div className='grow px-3 system-xs-medium-uppercase text-text-tertiary'>{t('common.members.name')}</div>
-            <div className='shrink-0 w-[104px] system-xs-medium-uppercase text-text-tertiary'>{t('common.members.lastActive')}</div>
-            <div className='shrink-0 w-[96px] px-3 system-xs-medium-uppercase text-text-tertiary'>{t('common.members.role')}</div>
+          <div className='border-divider-regular flex min-w-[480px] items-center border-b py-[7px]'>
+            <div className='system-xs-medium-uppercase text-text-tertiary grow px-3'>{t('common.members.name')}</div>
+            <div className='system-xs-medium-uppercase text-text-tertiary w-[104px] shrink-0'>{t('common.members.lastActive')}</div>
+            <div className='system-xs-medium-uppercase text-text-tertiary w-[96px] shrink-0 px-3'>{t('common.members.role')}</div>
           </div>
-          <div className='min-w-[480px] relative'>
+          <div className='relative min-w-[480px]'>
             {
               accounts.map(account => (
-                <div key={account.id} className='flex border-b border-divider-subtle'>
-                  <div className='grow flex items-center py-2 px-3'>
+                <div key={account.id} className='border-divider-subtle flex border-b'>
+                  <div className='flex grow items-center px-3 py-2'>
                     <Avatar avatar={account.avatar_url} size={24} className='mr-2' name={account.name} />
                     <div className=''>
                       <div className='text-text-secondary system-sm-medium'>
                         {account.name}
-                        {account.status === 'pending' && <span className='ml-1 system-xs-regular text-[#DC6803]'>{t('common.members.pending')}</span>}
+                        {account.status === 'pending' && <span className='system-xs-regular ml-1 text-[#DC6803]'>{t('common.members.pending')}</span>}
                         {userProfile.email === account.email && <span className='system-xs-regular text-text-tertiary'>{t('common.members.you')}</span>}
                       </div>
                       <div className='text-text-tertiary system-xs-regular'>{account.email}</div>
                     </div>
                   </div>
-                  <div className='shrink-0 flex items-center w-[104px] py-2 system-xs-regular text-text-secondary'>{dayjs(Number((account.last_active_at || account.created_at)) * 1000).locale(locale === 'zh-Hans' ? 'zh-cn' : 'en').fromNow()}</div>
-                  <div className='shrink-0 w-[96px] flex items-center'>
+                  <div className='system-xs-regular text-text-secondary flex w-[104px] shrink-0 items-center py-2'>{dayjs(Number((account.last_active_at || account.created_at)) * 1000).locale(locale === 'zh-Hans' ? 'zh-cn' : 'en').fromNow()}</div>
+                  <div className='flex w-[96px] shrink-0 items-center'>
                     {
                       ((isCurrentWorkspaceOwner && account.role !== 'owner') || (isCurrentWorkspaceManager && !['owner', 'admin'].includes(account.role)))
                         ? <Operation member={account} operatorRole={currentWorkspace.role} onOperate={mutate} />
-                        : <div className='px-3 system-xs-regular text-text-secondary'>{RoleMap[account.role] || RoleMap.normal}</div>
+                        : <div className='system-xs-regular text-text-secondary px-3'>{RoleMap[account.role] || RoleMap.normal}</div>
                     }
                   </div>
                 </div>

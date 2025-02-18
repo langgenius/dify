@@ -23,17 +23,17 @@ const NodeComponent: FC<NodeProps<AssignerNodeType>> = ({
 
     if (validOperationItems.length === 0) {
       return (
-        <div className='relative flex flex-col px-3 py-1 gap-0.5 items-start self-stretch'>
+        <div className='relative flex flex-col items-start gap-0.5 self-stretch px-3 py-1'>
           <div className='flex flex-col items-start gap-1 self-stretch'>
-            <div className='flex px-[5px] py-1 items-center gap-1 self-stretch rounded-md bg-workflow-block-parma-bg'>
-              <div className='flex-1 text-text-tertiary system-xs-medium'>{t(`${i18nPrefix}.varNotSet`)}</div>
+            <div className='bg-workflow-block-parma-bg flex items-center gap-1 self-stretch rounded-md px-[5px] py-1'>
+              <div className='text-text-tertiary system-xs-medium flex-1'>{t(`${i18nPrefix}.varNotSet`)}</div>
             </div>
           </div>
         </div>
       )
     }
     return (
-      <div className='relative flex flex-col px-3 py-1 gap-0.5 items-start self-stretch'>
+      <div className='relative flex flex-col items-start gap-0.5 self-stretch px-3 py-1'>
         {operationItems.map((value, index) => {
           const variable = value.variable_selector
           if (!variable || variable.length === 0)
@@ -71,7 +71,7 @@ const NodeComponent: FC<NodeProps<AssignerNodeType>> = ({
   const varName = isSystem ? `sys.${variable[variable.length - 1]}` : variable.slice(1).join('.')
 
   return (
-    <div className='relative flex flex-col px-3 py-1 gap-0.5 items-start self-stretch'>
+    <div className='relative flex flex-col items-start gap-0.5 self-stretch px-3 py-1'>
       <NodeVariableItem
         node={node as Node}
         isEnv={isEnv}

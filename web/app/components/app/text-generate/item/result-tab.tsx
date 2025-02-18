@@ -34,19 +34,19 @@ const ResultTab = ({
   }, [data?.files?.length, data?.resultText])
 
   return (
-    <div className='grow relative flex flex-col'>
+    <div className='relative flex grow flex-col'>
       {(data?.resultText || !!data?.files?.length) && (
-        <div className='shrink-0 flex items-center mb-2 border-b-[0.5px] border-[rgba(0,0,0,0.05)]'>
+        <div className='mb-2 flex shrink-0 items-center border-b-[0.5px] border-[rgba(0,0,0,0.05)]'>
           <div
             className={cn(
-              'mr-6 py-3 border-b-2 border-transparent text-[13px] font-semibold leading-[18px] text-gray-400 cursor-pointer',
+              'mr-6 cursor-pointer border-b-2 border-transparent py-3 text-[13px] font-semibold leading-[18px] text-gray-400',
               currentTab === 'RESULT' && '!border-[rgb(21,94,239)] text-gray-700',
             )}
             onClick={() => switchTab('RESULT')}
           >{t('runLog.result')}</div>
           <div
             className={cn(
-              'mr-6 py-3 border-b-2 border-transparent text-[13px] font-semibold leading-[18px] text-gray-400 cursor-pointer',
+              'mr-6 cursor-pointer border-b-2 border-transparent py-3 text-[13px] font-semibold leading-[18px] text-gray-400',
               currentTab === 'DETAIL' && '!border-[rgb(21,94,239)] text-gray-700',
             )}
             onClick={() => switchTab('DETAIL')}
@@ -60,8 +60,8 @@ const ResultTab = ({
             {!!data?.files?.length && (
               <div className='flex flex-col gap-2'>
                 {data?.files.map((item: any) => (
-                  <div key={item.varName} className='flex flex-col gap-1 system-xs-regular'>
-                    <div className='py-1 text-text-tertiary '>{item.varName}</div>
+                  <div key={item.varName} className='system-xs-regular flex flex-col gap-1'>
+                    <div className='text-text-tertiary py-1 '>{item.varName}</div>
                     <FileList
                       files={item.list}
                       showDeleteAction={false}

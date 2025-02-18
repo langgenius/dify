@@ -27,23 +27,23 @@ const SearchInput: FC<SearchInputProps> = ({
 
   return (
     <div className={cn(
-      'group flex items-center px-2 h-8 rounded-lg bg-gray-200 hover:bg-gray-300 border border-transparent overflow-hidden',
-      focus && '!bg-white hover:bg-white shadow-xs !border-gray-300',
-      !focus && value && 'hover:!bg-gray-200 hover:!shadow-xs hover:!border-black/5',
-      white && '!bg-white hover:!bg-white shadow-xs !border-gray-300 hover:!border-gray-300',
+      'group flex h-8 items-center overflow-hidden rounded-lg border border-transparent bg-gray-200 px-2 hover:bg-gray-300',
+      focus && 'shadow-xs !border-gray-300 !bg-white hover:bg-white',
+      !focus && value && 'hover:!shadow-xs hover:!border-black/5 hover:!bg-gray-200',
+      white && 'shadow-xs !border-gray-300 !bg-white hover:!border-gray-300 hover:!bg-white',
       className,
     )}>
-      <div className="pointer-events-none shrink-0 flex items-center mr-1.5 justify-center w-4 h-4">
+      <div className="pointer-events-none mr-1.5 flex h-4 w-4 shrink-0 items-center justify-center">
         <RiSearchLine className="h-3.5 w-3.5 text-gray-500" aria-hidden="true" />
       </div>
       <input
         type="text"
         name="query"
         className={cn(
-          'grow block h-[18px] bg-gray-200 border-0 text-gray-700 text-[13px] placeholder:text-gray-500 appearance-none outline-none group-hover:bg-gray-300 caret-blue-600',
-          focus && '!bg-white hover:bg-white group-hover:bg-white placeholder:!text-gray-400',
+          'block h-[18px] grow appearance-none border-0 bg-gray-200 text-[13px] text-gray-700 caret-blue-600 outline-none placeholder:text-gray-500 group-hover:bg-gray-300',
+          focus && '!bg-white placeholder:!text-gray-400 hover:bg-white group-hover:bg-white',
           !focus && value && 'hover:!bg-gray-200 group-hover:!bg-gray-200',
-          white && '!bg-white hover:!bg-white group-hover:!bg-white placeholder:!text-gray-400',
+          white && '!bg-white placeholder:!text-gray-400 hover:!bg-white group-hover:!bg-white',
         )}
         placeholder={placeholder || t('common.operation.search')!}
         value={internalValue}
@@ -65,13 +65,13 @@ const SearchInput: FC<SearchInputProps> = ({
       />
       {value && (
         <div
-          className='shrink-0 flex items-center justify-center w-4 h-4 cursor-pointer group/clear'
+          className='group/clear flex h-4 w-4 shrink-0 cursor-pointer items-center justify-center'
           onClick={() => {
             onChange('')
             setInternalValue('')
           }}
         >
-          <XCircle className='w-3.5 h-3.5 text-gray-400 group-hover/clear:text-gray-600' />
+          <XCircle className='h-3.5 w-3.5 text-gray-400 group-hover/clear:text-gray-600' />
         </div>
       )}
     </div>

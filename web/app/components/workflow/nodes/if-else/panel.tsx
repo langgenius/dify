@@ -69,16 +69,16 @@ const Panel: FC<NodePanelProps<IfElseNodeType>> = ({
           onClick={() => handleAddCase()}
           disabled={readOnly}
         >
-          <RiAddLine className='mr-1 w-4 h-4' />
+          <RiAddLine className='mr-1 h-4 w-4' />
           ELIF
         </Button>
       </div>
-      <div className='my-2 mx-3 h-[1px] bg-divider-subtle'></div>
+      <div className='bg-divider-subtle mx-3 my-2 h-[1px]'></div>
       <Field
         title={t(`${i18nPrefix}.else`)}
         className='px-4 py-2'
       >
-        <div className='leading-[18px] text-xs font-normal text-text-tertiary'>{t(`${i18nPrefix}.elseDescription`)}</div>
+        <div className='text-text-tertiary text-xs font-normal leading-[18px]'>{t(`${i18nPrefix}.elseDescription`)}</div>
       </Field>
     </div>
   )

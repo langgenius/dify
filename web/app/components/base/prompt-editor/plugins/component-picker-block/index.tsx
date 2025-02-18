@@ -135,7 +135,7 @@ const ComponentPicker = ({
             // See https://github.com/facebook/lexical/blob/ac97dfa9e14a73ea2d6934ff566282d7f758e8bb/packages/lexical-react/src/shared/LexicalMenu.ts#L493
             <div className='h-0 w-0'>
               <div
-                className='w-[260px] rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-1 shadow-lg'
+                className='border-components-panel-border bg-components-panel-bg-blur w-[260px] rounded-lg border-[0.5px] p-1 shadow-lg'
                 style={{
                   ...floatingStyles,
                   visibility: isPositioned ? 'visible' : 'hidden',
@@ -148,7 +148,7 @@ const ComponentPicker = ({
                       {
                         // Divider
                         index !== 0 && options.at(index - 1)?.group !== option.group && (
-                          <div className='my-1 h-px w-full -translate-x-1 bg-divider-subtle'></div>
+                          <div className='bg-divider-subtle my-1 h-px w-full -translate-x-1'></div>
                         )
                       }
                       {option.renderMenuOption({
@@ -169,7 +169,7 @@ const ComponentPicker = ({
                     <>
                       {
                         (!!options.length) && (
-                          <div className='my-1 h-px w-full -translate-x-1 bg-divider-subtle'></div>
+                          <div className='bg-divider-subtle my-1 h-px w-full -translate-x-1'></div>
                         )
                       }
                       <div className='p-1'>

@@ -15,7 +15,7 @@ const markIcon = (
 )
 
 const lightIcon = (
-  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" className="inline relative -top-3 -left-1.5"><path d="M5 6.5V5M8.93934 7.56066L10 6.5M10.0103 11.5H11.5103" stroke="#374151" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"></path></svg>
+  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" className="relative -left-1.5 -top-3 inline"><path d="M5 6.5V5M8.93934 7.56066L10 6.5M10.0103 11.5H11.5103" stroke="#374151" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"></path></svg>
 )
 
 const NoData: FC<INoDataProps> = ({
@@ -24,23 +24,23 @@ const NoData: FC<INoDataProps> = ({
   const { t } = useTranslation()
 
   return (
-    <div className='mt-[60px] px-5 py-4 rounded-2xl bg-gray-50 '>
-      <div className='flex items-center justify-center w-11 h-11 border border-gray-100 rounded-lg'>
+    <div className='mt-[60px] rounded-2xl bg-gray-50 px-5 py-4 '>
+      <div className='flex h-11 w-11 items-center justify-center rounded-lg border border-gray-100'>
         {markIcon}
       </div>
       <div className='mt-2'>
-        <span className='text-gray-700 font-semibold'>{t('share.generation.savedNoData.title')}</span>
+        <span className='font-semibold text-gray-700'>{t('share.generation.savedNoData.title')}</span>
         {lightIcon}
       </div>
-      <div className='mt-2 text-gray-500 text-[13px] font-normal'>
+      <div className='mt-2 text-[13px] font-normal text-gray-500'>
         {t('share.generation.savedNoData.description')}
       </div>
       <Button
         className='mt-4'
         onClick={onStartCreateContent}
       >
-        <div className='flex items-center space-x-2 text-primary-600 text-[13px] font-medium'>
-          <PlusIcon className='w-4 h-4' />
+        <div className='text-primary-600 flex items-center space-x-2 text-[13px] font-medium'>
+          <PlusIcon className='h-4 w-4' />
           <span>{t('share.generation.savedNoData.startCreateContent')}</span>
         </div>
       </Button>

@@ -78,37 +78,37 @@ const TagFilter: FC<TagFilterProps> = ({
           className='block'
         >
           <div className={cn(
-            'flex items-center gap-1 px-2 h-8 rounded-lg border-[0.5px] border-transparent bg-components-input-bg-normal cursor-pointer',
+            'bg-components-input-bg-normal flex h-8 cursor-pointer items-center gap-1 rounded-lg border-[0.5px] border-transparent px-2',
             !open && !!value.length && 'shadow-xs',
             open && !!value.length && 'shadow-xs',
           )}>
             <div className='p-[1px]'>
-              <Tag01 className='h-3.5 w-3.5 text-text-tertiary' />
+              <Tag01 className='text-text-tertiary h-3.5 w-3.5' />
             </div>
-            <div className='text-[13px] leading-[18px] text-text-secondary'>
+            <div className='text-text-secondary text-[13px] leading-[18px]'>
               {!value.length && t('common.tag.placeholder')}
               {!!value.length && currentTag?.name}
             </div>
             {value.length > 1 && (
-              <div className='text-xs font-medium leading-[18px] text-text-tertiary'>{`+${value.length - 1}`}</div>
+              <div className='text-text-tertiary text-xs font-medium leading-[18px]'>{`+${value.length - 1}`}</div>
             )}
             {!value.length && (
               <div className='p-[1px]'>
-                <RiArrowDownSLine className='h-3.5 w-3.5 text-text-tertiary' />
+                <RiArrowDownSLine className='text-text-tertiary h-3.5 w-3.5' />
               </div>
             )}
             {!!value.length && (
-              <div className='p-[1px] cursor-pointer group/clear' onClick={(e) => {
+              <div className='group/clear cursor-pointer p-[1px]' onClick={(e) => {
                 e.stopPropagation()
                 onChange([])
               }}>
-                <XCircle className='h-3.5 w-3.5 text-text-tertiary group-hover/clear:text-text-secondary' />
+                <XCircle className='text-text-tertiary group-hover/clear:text-text-secondary h-3.5 w-3.5' />
               </div>
             )}
           </div>
         </PortalToFollowElemTrigger>
         <PortalToFollowElemContent className='z-[1002]'>
-          <div className='relative w-[240px] bg-components-panel-bg-blur backdrop-blur-[5px] rounded-lg border-[0.5px] border-components-panel-border shadow-lg'>
+          <div className='bg-components-panel-bg-blur border-components-panel-border relative w-[240px] rounded-lg border-[0.5px] shadow-lg backdrop-blur-[5px]'>
             <div className='p-2'>
               <Input
                 showLeftIcon
@@ -118,20 +118,20 @@ const TagFilter: FC<TagFilterProps> = ({
                 onClear={() => handleKeywordsChange('')}
               />
             </div>
-            <div className='p-1 max-h-72 overflow-auto'>
+            <div className='max-h-72 overflow-auto p-1'>
               {filteredTagList.map(tag => (
                 <div
                   key={tag.id}
-                  className='flex items-center gap-2 pl-3 py-[6px] pr-2 rounded-lg cursor-pointer hover:bg-state-base-hover'
+                  className='hover:bg-state-base-hover flex cursor-pointer items-center gap-2 rounded-lg py-[6px] pl-3 pr-2'
                   onClick={() => selectTag(tag)}
                 >
-                  <div title={tag.name} className='grow text-sm text-text-tertiary leading-5 truncate'>{tag.name}</div>
-                  {value.includes(tag.id) && <Check className='shrink-0 w-4 h-4 text-text-secondary' />}
+                  <div title={tag.name} className='text-text-tertiary grow truncate text-sm leading-5'>{tag.name}</div>
+                  {value.includes(tag.id) && <Check className='text-text-secondary h-4 w-4 shrink-0' />}
                 </div>
               ))}
               {!filteredTagList.length && (
-                <div className='p-3 flex flex-col items-center gap-1'>
-                  <Tag03 className='h-6 w-6 text-text-tertiary' />
+                <div className='flex flex-col items-center gap-1 p-3'>
+                  <Tag03 className='text-text-tertiary h-6 w-6' />
                   <div className='text-text-tertiary text-xs leading-[14px]'>{t('common.tag.noTag')}</div>
                 </div>
               )}

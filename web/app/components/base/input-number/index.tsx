@@ -68,7 +68,7 @@ export const InputNumber: FC<InputNumberProps> = (props) => {
       }}
       unit={unit}
     />
-    <div className='flex flex-col bg-components-input-bg-normal rounded-r-md border-l border-divider-subtle text-text-tertiary focus:shadow-xs'>
+    <div className='bg-components-input-bg-normal border-divider-subtle text-text-tertiary focus:shadow-xs flex flex-col rounded-r-md border-l'>
       <button onClick={inc} className={classNames(
         size === 'sm' ? 'pt-1' : 'pt-1.5',
         'px-1.5 hover:bg-components-input-bg-hover',

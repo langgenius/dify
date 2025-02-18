@@ -28,11 +28,11 @@ const LanguageSelect: FC<ILanguageSelectProps> = ({
           {languages.filter(language => language.supported).map(({ prompt_name }) => (
             <div
               key={prompt_name}
-              className='w-full py-2 px-3 inline-flex items-center justify-between hover:bg-state-base-hover rounded-lg cursor-pointer'
+              className='hover:bg-state-base-hover inline-flex w-full cursor-pointer items-center justify-between rounded-lg px-3 py-2'
               onClick={() => onSelect(prompt_name)}
             >
               <span className='text-text-secondary system-sm-medium'>{prompt_name}</span>
-              {(currentLanguage === prompt_name) && <RiCheckLine className='size-4 text-text-accent' />}
+              {(currentLanguage === prompt_name) && <RiCheckLine className='text-text-accent size-4' />}
             </div>
           ))}
         </div>
@@ -40,22 +40,22 @@ const LanguageSelect: FC<ILanguageSelectProps> = ({
       btnElement={
         <div className={cn('inline-flex items-center gap-x-[1px]', disabled && 'cursor-not-allowed')}>
           <span className={cn(
-            'px-[3px] system-xs-semibold text-components-button-tertiary-text',
+            'system-xs-semibold text-components-button-tertiary-text px-[3px]',
             disabled ? 'text-components-button-tertiary-text-disabled' : '',
           )}>
             {currentLanguage}
           </span>
           <RiArrowDownSLine className={cn(
-            'size-3.5 text-components-button-tertiary-text',
+            'text-components-button-tertiary-text size-3.5',
             disabled ? 'text-components-button-tertiary-text-disabled' : '',
           )} />
         </div>
       }
       btnClassName={() => cn(
-        '!border-0 rounded-md !px-1.5 !py-1 !mx-1 !bg-components-button-tertiary-bg !hover:bg-components-button-tertiary-bg',
+        '!bg-components-button-tertiary-bg !hover:bg-components-button-tertiary-bg !mx-1 rounded-md !border-0 !px-1.5 !py-1',
         disabled ? 'bg-components-button-tertiary-bg-disabled' : '',
       )}
-      className='!w-[140px] h-fit !z-20 !translate-x-0 !left-1'
+      className='!left-1 !z-20 h-fit !w-[140px] !translate-x-0'
     />
   )
 }

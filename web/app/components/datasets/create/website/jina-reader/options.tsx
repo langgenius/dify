@@ -45,7 +45,7 @@ const Options: FC<Props> = ({
       />
       <div className='flex justify-between space-x-4'>
         <Field
-          className='grow shrink-0'
+          className='shrink-0 grow'
           label={t(`${I18N_PREFIX}.limit`)}
           value={payload.limit}
           onChange={handleChange('limit')}

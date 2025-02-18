@@ -44,25 +44,25 @@ export default function Drawer({
       unmount={unmount}
       open={isOpen}
       onClose={() => !clickOutsideNotOpen && onClose()}
-      className="fixed z-30 inset-0 overflow-y-auto"
+      className="fixed inset-0 z-30 overflow-y-auto"
     >
-      <div className={cn('flex w-screen h-screen justify-end', positionCenter && '!justify-center')}>
+      <div className={cn('flex h-screen w-screen justify-end', positionCenter && '!justify-center')}>
         {/* mask */}
         <DialogBackdrop
-          className={cn('z-40 fixed inset-0', mask && 'bg-black bg-opacity-30')}
+          className={cn('fixed inset-0 z-40', mask && 'bg-black bg-opacity-30')}
         />
-        <div className={cn('relative z-50 flex flex-col justify-between bg-components-panel-bg w-full max-w-sm p-6 overflow-hidden text-left align-middle shadow-xl', panelClassname)}>
+        <div className={cn('bg-components-panel-bg relative z-50 flex w-full max-w-sm flex-col justify-between overflow-hidden p-6 text-left align-middle shadow-xl', panelClassname)}>
           <>
             {title && <DialogTitle
               as="h3"
-              className="text-lg font-medium leading-6 text-text-primary"
+              className="text-text-primary text-lg font-medium leading-6"
             >
               {title}
             </DialogTitle>}
-            {showClose && <DialogTitle className="flex items-center mb-4" as="div">
-              <XMarkIcon className='w-4 h-4 text-text-tertiary' onClick={onClose} />
+            {showClose && <DialogTitle className="mb-4 flex items-center" as="div">
+              <XMarkIcon className='text-text-tertiary h-4 w-4' onClick={onClose} />
             </DialogTitle>}
-            {description && <div className='text-text-tertiary text-xs font-normal mt-2'>{description}</div>}
+            {description && <div className='text-text-tertiary mt-2 text-xs font-normal'>{description}</div>}
             {children}
           </>
           {footer || (footer === null

@@ -119,11 +119,11 @@ const Embedded = ({ siteInfo, isShow, onClose, appBaseUrl, accessToken, classNam
       title={t(`${prefixEmbedded}.title`)}
       isShow={isShow}
       onClose={onClose}
-      className="!max-w-2xl w-[640px]"
+      className="w-[640px] !max-w-2xl"
       wrapperClassName={className}
       closable={true}
     >
-      <div className="mb-4 mt-8 text-text-primary system-sm-medium">
+      <div className="text-text-primary system-sm-medium mb-4 mt-8">
         {t(`${prefixEmbedded}.explanation`)}
       </div>
       <div className="flex flex-wrap items-center justify-between gap-y-2">
@@ -145,18 +145,18 @@ const Embedded = ({ siteInfo, isShow, onClose, appBaseUrl, accessToken, classNam
         })}
       </div>
       {option === 'chromePlugin' && (
-        <div className="w-full mt-6">
-          <div className={cn('gap-2 py-3 justify-center items-center inline-flex w-full rounded-lg',
-            'bg-primary-600 hover:bg-primary-600/75 cursor-pointer text-white hover:shadow-sm flex-shrink-0')}>
-            <div className={`w-4 h-4 relative ${style.pluginInstallIcon}`}></div>
-            <div className="text-white text-sm font-medium font-['Inter'] leading-tight" onClick={navigateToChromeUrl}>{t(`${prefixEmbedded}.chromePlugin`)}</div>
+        <div className="mt-6 w-full">
+          <div className={cn('inline-flex w-full items-center justify-center gap-2 rounded-lg py-3',
+            'bg-primary-600 hover:bg-primary-600/75 shrink-0 cursor-pointer text-white hover:shadow-sm')}>
+            <div className={`relative h-4 w-4 ${style.pluginInstallIcon}`}></div>
+            <div className="font-['Inter'] text-sm font-medium leading-tight text-white" onClick={navigateToChromeUrl}>{t(`${prefixEmbedded}.chromePlugin`)}</div>
           </div>
         </div>
       )}
-      <div className={cn('w-full bg-background-section border-[0.5px] border-components-panel-border rounded-lg flex-col justify-start items-start inline-flex',
+      <div className={cn('bg-background-section border-components-panel-border inline-flex w-full flex-col items-start justify-start rounded-lg border-[0.5px]',
         'mt-6')}>
-        <div className="inline-flex items-center self-stretch justify-start gap-2 py-1 pl-3 pr-1  rounded-t-lg bg-background-section-burn">
-          <div className="grow shrink-0 text-text-secondary system-sm-medium">
+        <div className="bg-background-section-burn inline-flex items-center justify-start gap-2 self-stretch rounded-t-lg py-1  pl-3 pr-1">
+          <div className="text-text-secondary system-sm-medium shrink-0 grow">
             {t(`${prefixEmbedded}.${option}`)}
           </div>
           <Tooltip
@@ -170,14 +170,14 @@ const Embedded = ({ siteInfo, isShow, onClose, appBaseUrl, accessToken, classNam
               <div
                 onClick={onClickCopy}
               >
-                {isCopied[option] && <RiClipboardFill className='w-4 h-4' />}
-                {!isCopied[option] && <RiClipboardLine className='w-4 h-4' />}
+                {isCopied[option] && <RiClipboardFill className='h-4 w-4' />}
+                {!isCopied[option] && <RiClipboardLine className='h-4 w-4' />}
               </div>
             </ActionButton>
           </Tooltip>
         </div>
-        <div className="flex items-start justify-start w-full gap-2 p-3 overflow-x-auto">
-          <div className="grow shrink basis-0 text-text-secondary text-[13px] leading-tight font-mono">
+        <div className="flex w-full items-start justify-start gap-2 overflow-x-auto p-3">
+          <div className="text-text-secondary shrink grow basis-0 font-mono text-[13px] leading-tight">
             <pre className='select-text'>{OPTION_MAP[option].getContent(appBaseUrl, accessToken, themeBuilder.theme?.primaryColor ?? '#1C64F2', isTestEnv)}</pre>
           </div>
         </div>

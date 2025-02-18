@@ -17,15 +17,15 @@ const StatusIndicators = ({ needsConfiguration, modelProvider, inModelList, disa
   const { data: pluginList } = useInstalledPluginList()
   const renderTooltipContent = (title: string, description?: string, linkText?: string, linkHref?: string) => {
     return (
-      <div className='flex w-[240px] max-w-[240px] gap-1 flex-col px-1 py-1.5' onClick={e => e.stopPropagation()}>
+      <div className='flex w-[240px] max-w-[240px] flex-col gap-1 px-1 py-1.5' onClick={e => e.stopPropagation()}>
         <div className='text-text-primary title-xs-semi-bold'>{title}</div>
         {description && (
-          <div className='min-w-[200px] text-text-secondary body-xs-regular'>
+          <div className='text-text-secondary body-xs-regular min-w-[200px]'>
             {description}
           </div>
         )}
         {linkText && linkHref && (
-          <div className='text-text-accent body-xs-regular cursor-pointer z-[100]'>
+          <div className='text-text-accent body-xs-regular z-[100] cursor-pointer'>
             <Link
               href={linkHref}
               onClick={(e) => {
@@ -52,7 +52,7 @@ const StatusIndicators = ({ needsConfiguration, modelProvider, inModelList, disa
               asChild={false}
               needsDelay={false}
             >
-              <RiErrorWarningFill className='w-4 h-4 text-text-destructive' />
+              <RiErrorWarningFill className='text-text-destructive h-4 w-4' />
             </Tooltip>
           ) : !pluginInfo ? (
             <Tooltip
@@ -65,7 +65,7 @@ const StatusIndicators = ({ needsConfiguration, modelProvider, inModelList, disa
               asChild={false}
               needsDelay={true}
             >
-              <RiErrorWarningFill className='w-4 h-4 text-text-destructive' />
+              <RiErrorWarningFill className='text-text-destructive h-4 w-4' />
             </Tooltip>
           ) : (
             <SwitchPluginVersion
@@ -89,7 +89,7 @@ const StatusIndicators = ({ needsConfiguration, modelProvider, inModelList, disa
           asChild={false}
           needsDelay
         >
-          <RiErrorWarningFill className='w-4 h-4 text-text-destructive' />
+          <RiErrorWarningFill className='text-text-destructive h-4 w-4' />
         </Tooltip>
       )}
     </>

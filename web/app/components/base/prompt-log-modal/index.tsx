@@ -33,7 +33,7 @@ const PromptLogModal: FC<PromptLogModalProps> = ({
 
   return (
     <div
-      className='relative flex flex-col bg-components-panel-bg border-[0.5px] border-components-panel-border rounded-xl shadow-xl z-10'
+      className='bg-components-panel-bg border-components-panel-border relative z-10 flex flex-col rounded-xl border-[0.5px] shadow-xl'
       style={{
         width: 480,
         position: 'fixed',
@@ -43,26 +43,26 @@ const PromptLogModal: FC<PromptLogModalProps> = ({
       }}
       ref={ref}
     >
-      <div className='shrink-0 flex justify-between items-center pl-6 pr-5 h-14 border-b border-divider-regular'>
-        <div className='text-base font-semibold text-text-primary'>PROMPT LOG</div>
+      <div className='border-divider-regular flex h-14 shrink-0 items-center justify-between border-b pl-6 pr-5'>
+        <div className='text-text-primary text-base font-semibold'>PROMPT LOG</div>
         <div className='flex items-center'>
           {
             currentLogItem.log?.length === 1 && (
               <>
-                <CopyFeedbackNew className='w-6 h-6' content={currentLogItem.log[0].text} />
-                <div className='mx-2.5 w-[1px] h-[14px] bg-divider-regular' />
+                <CopyFeedbackNew className='h-6 w-6' content={currentLogItem.log[0].text} />
+                <div className='bg-divider-regular mx-2.5 h-[14px] w-[1px]' />
               </>
             )
           }
           <div
             onClick={onCancel}
-            className='flex justify-center items-center w-6 h-6 cursor-pointer'
+            className='flex h-6 w-6 cursor-pointer items-center justify-center'
           >
-            <RiCloseLine className='w-4 h-4 text-text-tertiary' />
+            <RiCloseLine className='text-text-tertiary h-4 w-4' />
           </div>
         </div>
       </div>
-      <div className='grow p-2 overflow-y-auto'>
+      <div className='grow overflow-y-auto p-2'>
         <Card log={currentLogItem.log} />
       </div>
     </div>

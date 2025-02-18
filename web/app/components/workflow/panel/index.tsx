@@ -40,7 +40,7 @@ const Panel: FC = () => {
   return (
     <div
       tabIndex={-1}
-      className={cn('absolute top-14 right-0 bottom-2 flex z-10 outline-none')}
+      className={cn('absolute bottom-2 right-0 top-14 z-10 flex outline-none')}
       key={`${isRestoring}`}
     >
       {

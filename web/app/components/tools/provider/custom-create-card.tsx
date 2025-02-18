@@ -45,20 +45,20 @@ const Contribute = ({ onRefreshData }: Props) => {
   return (
     <>
       {isCurrentWorkspaceManager && (
-        <div className='flex flex-col col-span-1 bg-components-panel-on-panel-item-bg border-[0.5px] border-divider-subtle rounded-xl min-h-[135px] transition-all duration-200 ease-in-out cursor-pointer hover:bg-components-panel-on-panel-item-bg-hover hover:shadow-lg'>
-          <div className='group grow rounded-t-xl hover:bg-background-body' onClick={() => setIsShowEditCustomCollectionModal(true)}>
-            <div className='shrink-0 flex items-center p-4 pb-3'>
-              <div className='w-10 h-10 flex items-center justify-center border border-components-option-card-option-border bg-components-option-card-option-bg rounded-lg group-hover:border-components-option-card-option-border-hover group-hover:bg-components-option-card-option-bg-hover'>
-                <RiAddLine className='w-4 h-4 text-text-tertiary group-hover:text-text-accent'/>
+        <div className='bg-components-panel-on-panel-item-bg border-divider-subtle hover:bg-components-panel-on-panel-item-bg-hover col-span-1 flex min-h-[135px] cursor-pointer flex-col rounded-xl border-[0.5px] transition-all duration-200 ease-in-out hover:shadow-lg'>
+          <div className='hover:bg-background-body group grow rounded-t-xl' onClick={() => setIsShowEditCustomCollectionModal(true)}>
+            <div className='flex shrink-0 items-center p-4 pb-3'>
+              <div className='border-components-option-card-option-border bg-components-option-card-option-bg group-hover:border-components-option-card-option-border-hover group-hover:bg-components-option-card-option-bg-hover flex h-10 w-10 items-center justify-center rounded-lg border'>
+                <RiAddLine className='text-text-tertiary group-hover:text-text-accent h-4 w-4'/>
               </div>
-              <div className='ml-3 text-sm font-semibold leading-5 text-text-primary group-hover:text-text-accent'>{t('tools.createCustomTool')}</div>
+              <div className='text-text-primary group-hover:text-text-accent ml-3 text-sm font-semibold leading-5'>{t('tools.createCustomTool')}</div>
             </div>
           </div>
-          <div className='px-4 py-3 rounded-b-xl border-t-[0.5px] border-divider-regular text-text-tertiary hover:text-text-accent hover:bg-background-body'>
+          <div className='border-divider-regular text-text-tertiary hover:text-text-accent hover:bg-background-body rounded-b-xl border-t-[0.5px] px-4 py-3'>
             <a href={linkUrl} target='_blank' rel='noopener noreferrer' className='flex items-center space-x-1'>
-              <BookOpen01 className='shrink-0 w-3 h-3' />
-              <div className='grow leading-[18px] text-xs font-normal truncate' title={t('tools.customToolTip') || ''}>{t('tools.customToolTip')}</div>
-              <ArrowUpRight className='shrink-0 w-3 h-3' />
+              <BookOpen01 className='h-3 w-3 shrink-0' />
+              <div className='grow truncate text-xs font-normal leading-[18px]' title={t('tools.customToolTip') || ''}>{t('tools.customToolTip')}</div>
+              <ArrowUpRight className='h-3 w-3 shrink-0' />
             </a>
           </div>
         </div>

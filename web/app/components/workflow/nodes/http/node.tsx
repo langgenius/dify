@@ -13,8 +13,8 @@ const Node: FC<NodeProps<HttpNodeType>> = ({
 
   return (
     <div className='mb-1 px-3 py-1'>
-      <div className='flex items-start p-1 rounded-md bg-gray-100'>
-        <div className='flex items-center h-4 shrink-0 px-1 rounded bg-gray-25 text-xs font-semibold text-gray-700 uppercase'>{method}</div>
+      <div className='flex items-start rounded-md bg-gray-100 p-1'>
+        <div className='bg-gray-25 flex h-4 shrink-0 items-center rounded px-1 text-xs font-semibold uppercase text-gray-700'>{method}</div>
         <div className='pl-1 pt-1'>
           <ReadonlyInputWithSelectVar
             value={url}

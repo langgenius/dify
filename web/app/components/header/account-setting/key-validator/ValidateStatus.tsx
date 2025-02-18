@@ -5,17 +5,17 @@ import {
 import { CheckCircle } from '@/app/components/base/icons/src/vender/solid/general'
 
 export const ValidatedErrorIcon = () => {
-  return <RiErrorWarningFill className='w-4 h-4 text-[#D92D20]' />
+  return <RiErrorWarningFill className='h-4 w-4 text-[#D92D20]' />
 }
 
 export const ValidatedSuccessIcon = () => {
-  return <CheckCircle className='w-4 h-4 text-[#039855]' />
+  return <CheckCircle className='h-4 w-4 text-[#039855]' />
 }
 
 export const ValidatingTip = () => {
   const { t } = useTranslation()
   return (
-    <div className={'mt-2 text-primary-600 text-xs font-normal'}>
+    <div className={'text-primary-600 mt-2 text-xs font-normal'}>
       {t('common.provider.validating')}
     </div>
   )
@@ -25,7 +25,7 @@ export const ValidatedErrorMessage = ({ errorMessage }: { errorMessage: string }
   const { t } = useTranslation()
 
   return (
-    <div className={'mt-2 text-[#D92D20] text-xs font-normal'}>
+    <div className={'mt-2 text-xs font-normal text-[#D92D20]'}>
       {t('common.provider.validatedError')}{errorMessage}
     </div>
   )

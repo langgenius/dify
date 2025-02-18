@@ -60,17 +60,17 @@ export default function AppSelector({ isMobile }: IAppSelector) {
             <>
               <MenuButton
                 className={`
-                    inline-flex items-center
-                    rounded-[20px] py-1 pr-2.5 pl-1 text-sm
-                  text-gray-700 hover:bg-gray-200
-                    mobile:px-1
+                    mobile:px-1 inline-flex
+                    items-center rounded-[20px] py-1 pl-1 pr-2.5
+                  text-sm text-gray-700
+                    hover:bg-gray-200
                     ${open && 'bg-gray-200'}
                   `}
               >
-                <Avatar avatar={userProfile.avatar_url} name={userProfile.name} className='sm:mr-2 mr-0' size={32} />
+                <Avatar avatar={userProfile.avatar_url} name={userProfile.name} className='mr-0 sm:mr-2' size={32} />
                 {!isMobile && <>
                   {userProfile.name}
-                  <RiArrowDownSLine className="w-3 h-3 ml-1 text-gray-700" />
+                  <RiArrowDownSLine className="ml-1 h-3 w-3 text-gray-700" />
                 </>}
               </MenuButton>
               <Transition
@@ -84,8 +84,8 @@ export default function AppSelector({ isMobile }: IAppSelector) {
               >
                 <MenuItems
                   className="
-                    absolute right-0 mt-1.5 w-60 max-w-80
-                    divide-y divide-divider-subtle origin-top-right rounded-lg bg-components-panel-bg-blur
+                    divide-divider-subtle bg-components-panel-bg-blur absolute right-0 mt-1.5
+                    w-60 max-w-80 origin-top-right divide-y rounded-lg
                     shadow-lg focus:outline-none
                   "
                 >
@@ -107,7 +107,7 @@ export default function AppSelector({ isMobile }: IAppSelector) {
                         href='/account'
                         target='_self' rel='noopener noreferrer'>
                         <div>{t('common.account.account')}</div>
-                        <ArrowUpRight className='hidden w-[14px] h-[14px] text-text-tertiary group-hover:flex' />
+                        <ArrowUpRight className='text-text-tertiary hidden h-[14px] w-[14px] group-hover:flex' />
                       </Link>
                     </MenuItem>
                     <MenuItem>
@@ -125,7 +125,7 @@ export default function AppSelector({ isMobile }: IAppSelector) {
                         href={mailToSupport(userProfile.email, plan.type, langeniusVersionInfo.current_version)}
                         target='_blank' rel='noopener noreferrer'>
                         <div>{t('common.userProfile.emailSupport')}</div>
-                        <ArrowUpRight className='hidden w-[14px] h-[14px] text-text-tertiary group-hover:flex' />
+                        <ArrowUpRight className='text-text-tertiary hidden h-[14px] w-[14px] group-hover:flex' />
                       </a>
                     </MenuItem>}
                     <MenuItem>
@@ -136,7 +136,7 @@ export default function AppSelector({ isMobile }: IAppSelector) {
                         href='https://github.com/langgenius/dify/discussions/categories/feedbacks'
                         target='_blank' rel='noopener noreferrer'>
                         <div>{t('common.userProfile.communityFeedback')}</div>
-                        <ArrowUpRight className='hidden w-[14px] h-[14px] text-text-tertiary group-hover:flex' />
+                        <ArrowUpRight className='text-text-tertiary hidden h-[14px] w-[14px] group-hover:flex' />
                       </Link>
                     </MenuItem>
                     <MenuItem>
@@ -147,7 +147,7 @@ export default function AppSelector({ isMobile }: IAppSelector) {
                         href='https://discord.gg/5AEfbxcd9k'
                         target='_blank' rel='noopener noreferrer'>
                         <div>{t('common.userProfile.community')}</div>
-                        <ArrowUpRight className='hidden w-[14px] h-[14px] text-text-tertiary group-hover:flex' />
+                        <ArrowUpRight className='text-text-tertiary hidden h-[14px] w-[14px] group-hover:flex' />
                       </Link>
                     </MenuItem>
                     <MenuItem>
@@ -160,7 +160,7 @@ export default function AppSelector({ isMobile }: IAppSelector) {
                         }
                         target='_blank' rel='noopener noreferrer'>
                         <div>{t('common.userProfile.helpCenter')}</div>
-                        <ArrowUpRight className='hidden w-[14px] h-[14px] text-text-tertiary group-hover:flex' />
+                        <ArrowUpRight className='text-text-tertiary hidden h-[14px] w-[14px] group-hover:flex' />
                       </Link>
                     </MenuItem>
                     <MenuItem>
@@ -171,7 +171,7 @@ export default function AppSelector({ isMobile }: IAppSelector) {
                         href='https://roadmap.dify.ai'
                         target='_blank' rel='noopener noreferrer'>
                         <div>{t('common.userProfile.roadmap')}</div>
-                        <ArrowUpRight className='hidden w-[14px] h-[14px] text-text-tertiary group-hover:flex' />
+                        <ArrowUpRight className='text-text-tertiary hidden h-[14px] w-[14px] group-hover:flex' />
                       </Link>
                     </MenuItem>
                     {
@@ -182,7 +182,7 @@ export default function AppSelector({ isMobile }: IAppSelector) {
                           )} onClick={() => setAboutVisible(true)}>
                             <div>{t('common.userProfile.about')}</div>
                             <div className='flex items-center'>
-                              <div className='mr-2 system-xs-regular text-text-tertiary'>{langeniusVersionInfo.current_version}</div>
+                              <div className='system-xs-regular text-text-tertiary mr-2'>{langeniusVersionInfo.current_version}</div>
                               <Indicator color={langeniusVersionInfo.current_version === langeniusVersionInfo.latest_version ? 'green' : 'orange'} />
                             </div>
                           </div>
@@ -198,7 +198,7 @@ export default function AppSelector({ isMobile }: IAppSelector) {
                             'data-[active]:bg-state-base-hover')}
                       >
                         <div className='system-md-regular text-text-secondary'>{t('common.userProfile.logout')}</div>
-                        <RiLogoutBoxRLine className='hidden w-4 h-4 text-text-tertiary group-hover:flex' />
+                        <RiLogoutBoxRLine className='text-text-tertiary hidden h-4 w-4 group-hover:flex' />
                       </div>
                     </div>
                   </MenuItem>

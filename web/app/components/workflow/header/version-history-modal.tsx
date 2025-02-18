@@ -39,11 +39,11 @@ const VersionHistoryModal = () => {
   }
 
   return (
-    <div className='w-[336px] bg-white rounded-2xl border-[0.5px] border-gray-200 shadow-xl p-2'>
+    <div className='w-[336px] rounded-2xl border-[0.5px] border-gray-200 bg-white p-2 shadow-xl'>
       <div className="max-h-[400px] overflow-auto">
         {(isLoading && page) === 1
           ? (
-            <div className='flex items-center justify-center h-10'>
+            <div className='flex h-10 items-center justify-center'>
               <Loading/>
             </div>
           )
@@ -60,12 +60,12 @@ const VersionHistoryModal = () => {
                 />
               ))}
               {isLoading && page > 1 && (
-                <div className='flex items-center justify-center h-10'>
+                <div className='flex h-10 items-center justify-center'>
                   <Loading/>
                 </div>
               )}
               {!isLoading && versionHistory?.has_more && (
-                <div className='flex items-center justify-center h-10 mt-2'>
+                <div className='mt-2 flex h-10 items-center justify-center'>
                   <Button
                     className='text-sm'
                     onClick={handleNextPage}
@@ -75,7 +75,7 @@ const VersionHistoryModal = () => {
                 </div>
               )}
               {!isLoading && !versionHistory?.items?.length && (
-                <div className='flex items-center justify-center h-10 text-gray-500'>
+                <div className='flex h-10 items-center justify-center text-gray-500'>
                   {t('workflow.common.noHistory')}
                 </div>
               )}

@@ -68,8 +68,8 @@ const FeatureIcon: FC<FeatureIconProps> = ({
         popupContent={t('common.modelProvider.featureSupported', { feature: ModelFeatureTextEnum.vision })}
       >
         <div className='inline-block cursor-help'>
-          <ModelBadge className={`!px-0 w-[18px] justify-center text-text-tertiary ${className}`}>
-            <MagicEyes className='w-3 h-3' />
+          <ModelBadge className={`text-text-tertiary w-[18px] justify-center !px-0 ${className}`}>
+            <MagicEyes className='h-3 w-3' />
           </ModelBadge>
         </div>
       </Tooltip>
@@ -82,8 +82,8 @@ const FeatureIcon: FC<FeatureIconProps> = ({
         popupContent={t('common.modelProvider.featureSupported', { feature: ModelFeatureTextEnum.document })}
       >
         <div className='inline-block cursor-help'>
-          <ModelBadge className={`!px-0 w-[18px] justify-center text-text-tertiary ${className}`}>
-            <DocumentSupportIcon className='w-3 h-3' />
+          <ModelBadge className={`text-text-tertiary w-[18px] justify-center !px-0 ${className}`}>
+            <DocumentSupportIcon className='h-3 w-3' />
           </ModelBadge>
         </div>
       </Tooltip>
@@ -96,8 +96,8 @@ const FeatureIcon: FC<FeatureIconProps> = ({
         popupContent={t('common.modelProvider.featureSupported', { feature: ModelFeatureTextEnum.audio })}
       >
         <div className='inline-block cursor-help'>
-          <ModelBadge className={`!px-0 w-[18px] justify-center text-text-tertiary ${className}`}>
-            <AudioSupportIcon className='w-3 h-3' />
+          <ModelBadge className={`text-text-tertiary w-[18px] justify-center !px-0 ${className}`}>
+            <AudioSupportIcon className='h-3 w-3' />
           </ModelBadge>
         </div>
       </Tooltip>
@@ -110,8 +110,8 @@ const FeatureIcon: FC<FeatureIconProps> = ({
         popupContent={t('common.modelProvider.featureSupported', { feature: ModelFeatureTextEnum.video })}
       >
         <div className='inline-block cursor-help'>
-          <ModelBadge className={`!px-0 w-[18px] justify-center text-text-tertiary ${className}`}>
-            <VideoSupportIcon className='w-3 h-3' />
+          <ModelBadge className={`text-text-tertiary w-[18px] justify-center !px-0 ${className}`}>
+            <VideoSupportIcon className='h-3 w-3' />
           </ModelBadge>
         </div>
       </Tooltip>

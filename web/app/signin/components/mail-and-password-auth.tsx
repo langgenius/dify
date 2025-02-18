@@ -105,7 +105,7 @@ export default function MailAndPasswordAuth({ isInvite, isEmailSetup, allowRegis
 
   return <form onSubmit={() => { }}>
     <div className='mb-3'>
-      <label htmlFor="email" className="my-2 system-md-semibold text-text-secondary">
+      <label htmlFor="email" className="system-md-semibold text-text-secondary my-2">
         {t('login.email')}
       </label>
       <div className="mt-1">

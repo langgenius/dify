@@ -130,7 +130,7 @@ const DatasetConfig: FC = () => {
     >
       {hasData
         ? (
-          <div className='flex flex-wrap mt-1 px-3 pb-3 justify-between'>
+          <div className='mt-1 flex flex-wrap justify-between px-3 pb-3'>
             {formattedDataset.map(item => (
               <CardItem
                 key={item.id}
@@ -144,7 +144,7 @@ const DatasetConfig: FC = () => {
         )
         : (
           <div className='mt-1 px-3 pb-3'>
-            <div className='pt-2 pb-1 text-xs text-text-tertiary'>{t('appDebug.feature.dataSet.noData')}</div>
+            <div className='text-text-tertiary pb-1 pt-2 text-xs'>{t('appDebug.feature.dataSet.noData')}</div>
           </div>
         )}
 

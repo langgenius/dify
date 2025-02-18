@@ -124,7 +124,7 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
 
   return (
     <div className='mt-2'>
-      <div className='px-4 pb-4 space-y-4'>
+      <div className='space-y-4 px-4 pb-4'>
         <Field
           title={t(`${i18nPrefix}.model`)}
         >
@@ -159,7 +159,7 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
               filterVar={filterVar}
             />
             {shouldShowContextTip && (
-              <div className='leading-[18px] text-xs font-normal text-[#DC6803]'>{t(`${i18nPrefix}.notSetContextInPromptTip`)}</div>
+              <div className='text-xs font-normal leading-[18px] text-[#DC6803]'>{t(`${i18nPrefix}.notSetContextInPromptTip`)}</div>
             )}
           </>
         </Field>
@@ -204,21 +204,21 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
         {/* Memory put place examples. */}
         {isChatMode && isChatModel && !!inputs.memory && (
           <div className='mt-4'>
-            <div className='flex justify-between items-center h-8 pl-3 pr-2 rounded-lg bg-gray-100'>
+            <div className='flex h-8 items-center justify-between rounded-lg bg-gray-100 pl-3 pr-2'>
               <div className='flex items-center space-x-1'>
-                <div className='text-xs font-semibold text-gray-700 uppercase'>{t('workflow.nodes.common.memories.title')}</div>
+                <div className='text-xs font-semibold uppercase text-gray-700'>{t('workflow.nodes.common.memories.title')}</div>
                 <Tooltip
                   popupContent={t('workflow.nodes.common.memories.tip')}
                   triggerClassName='w-4 h-4'
                 />
               </div>
-              <div className='flex items-center h-[18px] px-1 rounded-[5px] border border-black/8 text-xs font-semibold text-gray-500 uppercase'>{t('workflow.nodes.common.memories.builtIn')}</div>
+              <div className='border-black/8 flex h-[18px] items-center rounded-[5px] border px-1 text-xs font-semibold uppercase text-gray-500'>{t('workflow.nodes.common.memories.builtIn')}</div>
             </div>
             {/* Readonly User Query */}
             <div className='mt-4'>
               <Editor
                 title={<div className='flex items-center space-x-1'>
-                  <div className='text-xs font-semibold text-gray-700 uppercase'>user</div>
+                  <div className='text-xs font-semibold uppercase text-gray-700'>user</div>
                   <Tooltip
                     popupContent={
                       <div className='max-w-[180px]'>{t('workflow.nodes.llm.roleDescription.user')}</div>
@@ -239,7 +239,7 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
               />
 
               {inputs.memory.query_prompt_template && !inputs.memory.query_prompt_template.includes('{{#sys.query#}}') && (
-                <div className='leading-[18px] text-xs font-normal text-[#DC6803]'>{t(`${i18nPrefix}.sysQueryInUser`)}</div>
+                <div className='text-xs font-normal leading-[18px] text-[#DC6803]'>{t(`${i18nPrefix}.sysQueryInUser`)}</div>
               )}
             </div>
           </div>

@@ -87,32 +87,32 @@ const ChatRecord = () => {
   return (
     <div
       className={`
-        flex flex-col w-[420px] rounded-l-2xl h-full border border-black/2 shadow-xl
+        border-black/2 flex h-full w-[420px] flex-col rounded-l-2xl border shadow-xl
       `}
       style={{
         background: 'linear-gradient(156deg, rgba(242, 244, 247, 0.80) 0%, rgba(242, 244, 247, 0.00) 99.43%), var(--white, #FFF)',
       }}
     >
       {!fetched && (
-        <div className='flex items-center justify-center h-full'>
+        <div className='flex h-full items-center justify-center'>
           <Loading />
         </div>
       )}
       {fetched && (
         <>
-          <div className='shrink-0 flex items-center justify-between p-4 pb-1 text-base font-semibold text-gray-900'>
+          <div className='flex shrink-0 items-center justify-between p-4 pb-1 text-base font-semibold text-gray-900'>
             {`TEST CHAT#${historyWorkflowData?.sequence_number}`}
             <div
-              className='flex justify-center items-center w-6 h-6 cursor-pointer'
+              className='flex h-6 w-6 cursor-pointer items-center justify-center'
               onClick={() => {
                 handleLoadBackupDraft()
                 workflowStore.setState({ historyWorkflowData: undefined })
               }}
             >
-              <RiCloseLine className='w-4 h-4 text-gray-500' />
+              <RiCloseLine className='h-4 w-4 text-gray-500' />
             </div>
           </div>
-          <div className='grow h-0'>
+          <div className='h-0 grow'>
             <Chat
               config={{
                 supportCitationHitInfo: true,

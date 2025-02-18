@@ -27,13 +27,13 @@ const CrawledResultItem: FC<Props> = ({
     onCheckChange(!isChecked)
   }, [isChecked, onCheckChange])
   return (
-    <div className={cn(isPreview ? 'border-[#D1E0FF] bg-primary-50 shadow-xs' : 'group hover:bg-gray-100', 'rounded-md px-2 py-[5px] cursor-pointer border border-transparent')}>
-      <div className='flex items-center h-5'>
-        <Checkbox className='group-hover:border-2 group-hover:border-primary-600 mr-2 shrink-0' checked={isChecked} onCheck={handleCheckChange} />
-        <div className='grow w-0 truncate text-sm font-medium text-gray-700' title={payload.title}>{payload.title}</div>
-        <div onClick={onPreview} className='hidden group-hover:flex items-center h-6 px-2 text-xs rounded-md font-medium text-gray-500 uppercase hover:bg-gray-50'>{t('datasetCreation.stepOne.website.preview')}</div>
+    <div className={cn(isPreview ? 'bg-primary-50 shadow-xs border-[#D1E0FF]' : 'group hover:bg-gray-100', 'cursor-pointer rounded-md border border-transparent px-2 py-[5px]')}>
+      <div className='flex h-5 items-center'>
+        <Checkbox className='group-hover:border-primary-600 mr-2 shrink-0 group-hover:border-2' checked={isChecked} onCheck={handleCheckChange} />
+        <div className='w-0 grow truncate text-sm font-medium text-gray-700' title={payload.title}>{payload.title}</div>
+        <div onClick={onPreview} className='hidden h-6 items-center rounded-md px-2 text-xs font-medium uppercase text-gray-500 hover:bg-gray-50 group-hover:flex'>{t('datasetCreation.stepOne.website.preview')}</div>
       </div>
-      <div className='mt-0.5 truncate pl-6 leading-[18px] text-xs font-normal text-gray-500' title={payload.source_url}>{payload.source_url}</div>
+      <div className='mt-0.5 truncate pl-6 text-xs font-normal leading-[18px] text-gray-500' title={payload.source_url}>{payload.source_url}</div>
     </div>
   )
 }

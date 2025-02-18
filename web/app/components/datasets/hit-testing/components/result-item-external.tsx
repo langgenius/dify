@@ -25,13 +25,13 @@ const ResultItemExternal: FC<Props> = ({ payload, positionId }) => {
   ] = useBoolean(false)
 
   return (
-    <div className={cn('pt-3 bg-chat-bubble-bg rounded-xl hover:shadow-lg cursor-pointer')} onClick={showDetailModal}>
+    <div className={cn('bg-chat-bubble-bg cursor-pointer rounded-xl pt-3 hover:shadow-lg')} onClick={showDetailModal}>
       {/* Meta info */}
       <ResultItemMeta className='px-3' labelPrefix={'Chunk'} positionId={positionId} wordCount={content.length} score={score} />
 
       {/* Main */}
       <div className='mt-1 px-3'>
-        <div className='line-clamp-2 body-md-regular break-all'>{content}</div>
+        <div className='body-md-regular line-clamp-2 break-all'>{content}</div>
       </div>
 
       {/* Foot */}
@@ -47,7 +47,7 @@ const ResultItemExternal: FC<Props> = ({ payload, positionId }) => {
         >
           <div className='mt-4 flex-1'>
             <ResultItemMeta labelPrefix={'Chunk'} positionId={positionId} wordCount={content.length} score={score} />
-            <div className={cn('mt-2 body-md-regular text-text-secondary break-all', 'h-[min(539px,_80vh)] overflow-y-auto')}>
+            <div className={cn('body-md-regular text-text-secondary mt-2 break-all', 'h-[min(539px,_80vh)] overflow-y-auto')}>
               {content}
             </div>
           </div>

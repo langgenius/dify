@@ -122,7 +122,7 @@ const DatasetUpdateForm = ({ datasetId }: DatasetUpdateFormProps) => {
     return <AppUnavailable code={500} unknownReason={t('datasetCreation.error.unavailable') as string} />
 
   return (
-    <div className='flex flex-col bg-components-panel-bg' style={{ height: 'calc(100vh - 56px)' }}>
+    <div className='bg-components-panel-bg flex flex-col' style={{ height: 'calc(100vh - 56px)' }}>
       <TopBar activeIndex={step - 1} datasetId={datasetId} />
       <div style={{ height: 'calc(100% - 52px)' }}>
         {step === 1 && <StepOne

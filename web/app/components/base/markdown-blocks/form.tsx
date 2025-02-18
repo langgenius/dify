@@ -83,7 +83,7 @@ const MarkdownForm = ({ node }: any) => {
             <label
               key={index}
               htmlFor={child.properties.for}
-              className="my-2 system-md-semibold text-text-secondary"
+              className="system-md-semibold text-text-secondary my-2"
             >
               {child.children[0]?.value || ''}
             </label>

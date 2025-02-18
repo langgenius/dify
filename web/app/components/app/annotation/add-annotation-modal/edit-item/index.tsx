@@ -21,17 +21,17 @@ const EditItem: FC<Props> = ({
   onChange,
 }) => {
   const { t } = useTranslation()
-  const avatar = type === EditItemType.Query ? <User className='w-6 h-6' /> : <Robot className='w-6 h-6' />
+  const avatar = type === EditItemType.Query ? <User className='h-6 w-6' /> : <Robot className='h-6 w-6' />
   const name = type === EditItemType.Query ? t('appAnnotation.addModal.queryName') : t('appAnnotation.addModal.answerName')
   const placeholder = type === EditItemType.Query ? t('appAnnotation.addModal.queryPlaceholder') : t('appAnnotation.addModal.answerPlaceholder')
 
   return (
     <div className='flex' onClick={e => e.stopPropagation()}>
-      <div className='shrink-0 mr-3'>
+      <div className='mr-3 shrink-0'>
         {avatar}
       </div>
       <div className='grow'>
-        <div className='mb-1 system-xs-semibold text-text-primary'>{name}</div>
+        <div className='system-xs-semibold text-text-primary mb-1'>{name}</div>
         <Textarea
           value={content}
           onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => onChange(e.target.value)}

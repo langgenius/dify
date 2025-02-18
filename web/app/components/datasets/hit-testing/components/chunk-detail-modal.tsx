@@ -42,28 +42,28 @@ const ChunkDetailModal: FC<Props> = ({
       <div className='mt-4 flex'>
         <div className={cn('flex-1', isParentChildRetrieval && 'pr-6')}>
           {/* Meta info */}
-          <div className='flex justify-between items-center'>
-            <div className='grow flex items-center space-x-2'>
+          <div className='flex items-center justify-between'>
+            <div className='flex grow items-center space-x-2'>
               <SegmentIndexTag
                 labelPrefix={`${isParentChildRetrieval ? 'Parent-' : ''}Chunk`}
                 positionId={position}
                 className={cn('w-fit group-hover:opacity-100')}
               />
               <Dot />
-              <div className='grow flex items-center space-x-1'>
+              <div className='flex grow items-center space-x-1'>
                 <FileIcon type={extension} size='sm' />
-                <span className='grow w-0 truncate text-text-secondary text-[13px] font-normal'>{document.name}</span>
+                <span className='text-text-secondary w-0 grow truncate text-[13px] font-normal'>{document.name}</span>
               </div>
             </div>
             <Score value={score} />
           </div>
           <Markdown
-            className={cn('!mt-2 !text-text-secondary', heighClassName)}
+            className={cn('!text-text-secondary !mt-2', heighClassName)}
             content={sign_content || content}
           />
           {!isParentChildRetrieval && keywords && keywords.length > 0 && (
             <div className='mt-6'>
-              <div className='font-medium text-xs text-text-tertiary uppercase'>{t(`${i18nPrefix}.keyword`)}</div>
+              <div className='text-text-tertiary text-xs font-medium uppercase'>{t(`${i18nPrefix}.keyword`)}</div>
               <div className='mt-1 flex flex-wrap'>
                 {keywords.map(keyword => (
                   <Tag key={keyword} text={keyword} className='mr-2' />
@@ -74,7 +74,7 @@ const ChunkDetailModal: FC<Props> = ({
         </div>
 
         {isParentChildRetrieval && (
-          <div className='flex-1 pl-6 pb-6'>
+          <div className='flex-1 pb-6 pl-6'>
             <div className='system-xs-semibold-uppercase text-text-secondary'>{t(`${i18nPrefix}.hitChunks`, { num: child_chunks.length })}</div>
             <div className={cn('mt-1 space-y-2', heighClassName)}>
               {child_chunks.map(item => (

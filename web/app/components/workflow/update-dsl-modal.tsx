@@ -219,32 +219,32 @@ const UpdateDSLModal = ({
   return (
     <>
       <Modal
-        className='p-6 w-[520px] rounded-2xl'
+        className='w-[520px] rounded-2xl p-6'
         isShow={show}
         onClose={onCancel}
       >
-        <div className='flex items-center justify-between mb-3'>
+        <div className='mb-3 flex items-center justify-between'>
           <div className='title-2xl-semi-bold text-text-primary'>{t('workflow.common.importDSL')}</div>
-          <div className='flex items-center justify-center w-[22px] h-[22px] cursor-pointer' onClick={onCancel}>
-            <RiCloseLine className='w-[18px] h-[18px] text-text-tertiary' />
+          <div className='flex h-[22px] w-[22px] cursor-pointer items-center justify-center' onClick={onCancel}>
+            <RiCloseLine className='text-text-tertiary h-[18px] w-[18px]' />
           </div>
         </div>
-        <div className='flex relative p-2 mb-2 gap-0.5 grow rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-xs overflow-hidden'>
-          <div className='absolute top-0 left-0 w-full h-full opacity-40 bg-toast-warning-bg' />
-          <div className='flex p-1 justify-center items-start'>
-            <RiAlertFill className='w-4 h-4 shrink-0 text-text-warning-secondary' />
+        <div className='border-components-panel-border bg-components-panel-bg-blur shadow-xs relative mb-2 flex grow gap-0.5 overflow-hidden rounded-xl border-[0.5px] p-2'>
+          <div className='bg-toast-warning-bg absolute left-0 top-0 h-full w-full opacity-40' />
+          <div className='flex items-start justify-center p-1'>
+            <RiAlertFill className='text-text-warning-secondary h-4 w-4 shrink-0' />
           </div>
-          <div className='flex py-1 flex-col items-start gap-0.5 grow'>
+          <div className='flex grow flex-col items-start gap-0.5 py-1'>
             <div className='text-text-primary system-xs-medium whitespace-pre-line'>{t('workflow.common.importDSLTip')}</div>
-            <div className='flex pt-1 pb-0.5 items-start gap-1 self-stretch'>
+            <div className='flex items-start gap-1 self-stretch pb-0.5 pt-1'>
               <Button
                 size='small'
                 variant='secondary'
                 className='z-[1000]'
                 onClick={onBackup}
               >
-                <RiFileDownloadLine className='w-3.5 h-3.5 text-components-button-secondary-text' />
-                <div className='flex px-[3px] justify-center items-center gap-1'>
+                <RiFileDownloadLine className='text-components-button-secondary-text h-3.5 w-3.5' />
+                <div className='flex items-center justify-center gap-1 px-[3px]'>
                   {t('workflow.common.backupCurrentDraft')}
                 </div>
               </Button>
@@ -252,10 +252,10 @@ const UpdateDSLModal = ({
           </div>
         </div>
         <div>
-          <div className='pt-2 text-text-primary system-md-semibold'>
+          <div className='text-text-primary system-md-semibold pt-2'>
             {t('workflow.common.chooseDSL')}
           </div>
-          <div className='flex w-full py-4 flex-col justify-center items-start gap-4 self-stretch'>
+          <div className='flex w-full flex-col items-start justify-center gap-4 self-stretch py-4'>
             <Uploader
               file={currentFile}
               updateFile={handleFile}
@@ -263,7 +263,7 @@ const UpdateDSLModal = ({
             />
           </div>
         </div>
-        <div className='flex pt-5 gap-2 items-center justify-end self-stretch'>
+        <div className='flex items-center justify-end gap-2 self-stretch pt-5'>
           <Button onClick={onCancel}>{t('app.newApp.Cancel')}</Button>
           <Button
             disabled={!currentFile || loading}
@@ -280,9 +280,9 @@ const UpdateDSLModal = ({
         onClose={() => setShowErrorModal(false)}
         className='w-[480px]'
       >
-        <div className='flex pb-4 flex-col items-start gap-2 self-stretch'>
+        <div className='flex flex-col items-start gap-2 self-stretch pb-4'>
           <div className='text-text-primary title-2xl-semi-bold'>{t('app.newApp.appCreateDSLErrorTitle')}</div>
-          <div className='flex grow flex-col text-text-secondary system-md-regular'>
+          <div className='text-text-secondary system-md-regular flex grow flex-col'>
             <div>{t('app.newApp.appCreateDSLErrorPart1')}</div>
             <div>{t('app.newApp.appCreateDSLErrorPart2')}</div>
             <br />
@@ -290,7 +290,7 @@ const UpdateDSLModal = ({
             <div>{t('app.newApp.appCreateDSLErrorPart4')}<span className='system-md-medium'>{versions?.systemVersion}</span></div>
           </div>
         </div>
-        <div className='flex pt-6 justify-end items-start gap-2 self-stretch'>
+        <div className='flex items-start justify-end gap-2 self-stretch pt-6'>
           <Button variant='secondary' onClick={() => setShowErrorModal(false)}>{t('app.newApp.Cancel')}</Button>
           <Button variant='primary' destructive onClick={onUpdateDSLConfirm}>{t('app.newApp.Confirm')}</Button>
         </div>

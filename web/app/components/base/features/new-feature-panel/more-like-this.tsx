@@ -40,8 +40,8 @@ const MoreLikeThis = ({
   return (
     <FeatureCard
       icon={
-        <div className='shrink-0 p-1 rounded-lg border-[0.5px] border-divider-subtle shadow-xs bg-util-colors-blue-light-blue-light-500'>
-          <RiSparklingFill className='w-4 h-4 text-text-primary-on-surface' />
+        <div className='border-divider-subtle shadow-xs bg-util-colors-blue-light-blue-light-500 shrink-0 rounded-lg border-[0.5px] p-1'>
+          <RiSparklingFill className='text-text-primary-on-surface h-4 w-4' />
         </div>
       }
       title={t('appDebug.feature.moreLikeThis.title')}

@@ -126,8 +126,8 @@ const StepOne = ({
   }, [files, isShowVectorSpaceFull])
 
   return (
-    <div className='flex w-full h-full'>
-      <div className='w-1/2 h-full overflow-y-auto relative'>
+    <div className='flex h-full w-full'>
+      <div className='relative h-full w-1/2 overflow-y-auto'>
         <div className='flex justify-end'>
           <div className={classNames(s.form)}>
             {
@@ -137,7 +137,7 @@ const StepOne = ({
             }
             {
               shouldShowDataSourceTypeList && (
-                <div className='flex items-center mb-8 flex-wrap gap-4'>
+                <div className='mb-8 flex flex-wrap items-center gap-4'>
                   <div
                     className={cn(
                       s.dataSourceItem,
@@ -198,11 +198,11 @@ const StepOne = ({
                   notSupportBatchUpload={notSupportBatchUpload}
                 />
                 {isShowVectorSpaceFull && (
-                  <div className='max-w-[640px] mb-4'>
+                  <div className='mb-4 max-w-[640px]'>
                     <VectorSpaceFull />
                   </div>
                 )}
-                <div className="flex justify-end gap-2 max-w-[640px]">
+                <div className="flex max-w-[640px] justify-end gap-2">
                   {/* <Button>{t('datasetCreation.stepOne.cancel')}</Button> */}
                   <Button disabled={nextDisabled} variant='primary' onClick={onStepChange}>
                     <span className="flex gap-0.5 px-[10px]">
@@ -226,11 +226,11 @@ const StepOne = ({
                       />
                     </div>
                     {isShowVectorSpaceFull && (
-                      <div className='max-w-[640px] mb-4'>
+                      <div className='mb-4 max-w-[640px]'>
                         <VectorSpaceFull />
                       </div>
                     )}
-                    <div className="flex justify-end gap-2 max-w-[640px]">
+                    <div className="flex max-w-[640px] justify-end gap-2">
                       {/* <Button>{t('datasetCreation.stepOne.cancel')}</Button> */}
                       <Button disabled={isShowVectorSpaceFull || !notionPages.length} variant='primary' onClick={onStepChange}>
                         <span className="flex gap-0.5 px-[10px]">
@@ -257,11 +257,11 @@ const StepOne = ({
                   />
                 </div>
                 {isShowVectorSpaceFull && (
-                  <div className='max-w-[640px] mb-4'>
+                  <div className='mb-4 max-w-[640px]'>
                     <VectorSpaceFull />
                   </div>
                 )}
-                <div className="flex justify-end gap-2 max-w-[640px]">
+                <div className="flex max-w-[640px] justify-end gap-2">
                   {/* <Button>{t('datasetCreation.stepOne.cancel')}</Button> */}
                   <Button disabled={isShowVectorSpaceFull || !websitePages.length} variant='primary' onClick={onStepChange}>
                     <span className="flex gap-0.5 px-[10px]">
@@ -275,8 +275,8 @@ const StepOne = ({
             {!datasetId && (
               <>
                 <div className={s.dividerLine} />
-                <span className="inline-flex items-center cursor-pointer text-[13px] leading-4 text-text-accent" onClick={modalShowHandle}>
-                  <RiFolder6Line className="size-4 mr-1" />
+                <span className="text-text-accent inline-flex cursor-pointer items-center text-[13px] leading-4" onClick={modalShowHandle}>
+                  <RiFolder6Line className="mr-1 size-4" />
                   {t('datasetCreation.stepOne.emptyDatasetCreation')}
                 </span>
               </>
@@ -285,7 +285,7 @@ const StepOne = ({
           <EmptyDatasetCreationModal show={showModal} onHide={modalCloseHandle} />
         </div>
       </div>
-      <div className='w-1/2 h-full overflow-y-auto'>
+      <div className='h-full w-1/2 overflow-y-auto'>
         {currentFile && <FilePreview file={currentFile} hidePreview={hideFilePreview} />}
         {currentNotionPage && <NotionPagePreview currentPage={currentNotionPage} hidePreview={hideNotionPagePreview} />}
         {currentWebsite && <WebsitePreview payload={currentWebsite} hidePreview={hideWebsitePreview} />}

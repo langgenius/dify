@@ -66,8 +66,8 @@ const CredentialPanel: FC<CredentialPanelProps> = ({
     <>
       {
         provider.provider_credential_schema && (
-          <div className='shrink-0 relative ml-1 p-1 w-[112px] rounded-lg bg-white/[0.18] border-[0.5px] border-components-panel-border'>
-            <div className='flex items-center justify-between mb-1 pt-1 pl-2 pr-[7px] h-5 system-xs-medium-uppercase text-text-tertiary'>
+          <div className='border-components-panel-border relative ml-1 w-[112px] shrink-0 rounded-lg border-[0.5px] bg-white/[0.18] p-1'>
+            <div className='system-xs-medium-uppercase text-text-tertiary mb-1 flex h-5 items-center justify-between pl-2 pr-[7px] pt-1'>
               API-KEY
               <Indicator color={isCustomConfigured ? 'green' : 'red'} />
             </div>
@@ -77,7 +77,7 @@ const CredentialPanel: FC<CredentialPanelProps> = ({
                 size='small'
                 onClick={onSetup}
               >
-                <RiEqualizer2Line className='mr-1 w-3.5 h-3.5' />
+                <RiEqualizer2Line className='mr-1 h-3.5 w-3.5' />
                 {t('common.operation.setup')}
               </Button>
               {

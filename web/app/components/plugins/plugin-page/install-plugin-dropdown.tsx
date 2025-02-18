@@ -63,16 +63,16 @@ const InstallPluginDropdown = ({
       <div className="relative">
         <PortalToFollowElemTrigger onClick={() => setIsMenuOpen(v => !v)}>
           <Button
-            className={cn('w-full h-full p-2 text-components-button-secondary-text', isMenuOpen && 'bg-state-base-hover')}
+            className={cn('text-components-button-secondary-text h-full w-full p-2', isMenuOpen && 'bg-state-base-hover')}
           >
-            <RiAddLine className='w-4 h-4' />
+            <RiAddLine className='h-4 w-4' />
             <span className='pl-1'>{t('plugin.installPlugin')}</span>
-            <RiArrowDownSLine className='w-4 h-4 ml-1' />
+            <RiArrowDownSLine className='ml-1 h-4 w-4' />
           </Button>
         </PortalToFollowElemTrigger>
         <PortalToFollowElemContent className='z-[1002]'>
-          <div className='flex flex-col p-1 pb-2 items-start w-[200px] bg-components-panel-bg-blur border border-components-panel-border rounded-xl shadows-shadow-lg'>
-            <span className='flex pt-1 pb-0.5 pl-2 pr-3 items-start self-stretch text-text-tertiary system-xs-medium-uppercase'>
+          <div className='bg-components-panel-bg-blur border-components-panel-border shadows-shadow-lg flex w-[200px] flex-col items-start rounded-xl border p-1 pb-2'>
+            <span className='text-text-tertiary system-xs-medium-uppercase flex items-start self-stretch pb-0.5 pl-2 pr-3 pt-1'>
               {t('plugin.installFrom')}
             </span>
             <input
@@ -94,7 +94,7 @@ const InstallPluginDropdown = ({
               ].map(({ icon: Icon, text, action }) => (
                 <div
                   key={action}
-                  className='flex items-center w-full px-2 py-1.5 gap-1 rounded-lg hover:bg-state-base-hover !cursor-pointer'
+                  className='hover:bg-state-base-hover flex w-full !cursor-pointer items-center gap-1 rounded-lg px-2 py-1.5'
                   onClick={() => {
                     if (action === 'local') {
                       fileInputRef.current?.click()
@@ -109,8 +109,8 @@ const InstallPluginDropdown = ({
                     }
                   }}
                 >
-                  <Icon className="w-4 h-4 text-text-tertiary" />
-                  <span className='px-1 text-text-secondary system-md-regular'>{text}</span>
+                  <Icon className="text-text-tertiary h-4 w-4" />
+                  <span className='text-text-secondary system-md-regular px-1'>{text}</span>
                 </div>
               ))}
             </div>

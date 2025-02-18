@@ -36,9 +36,9 @@ const AgentStrategyList = ({
     return null
 
   return (
-    <div className='px-4 pt-2 pb-4'>
+    <div className='px-4 pb-4 pt-2'>
       <div className='mb-1 py-1'>
-        <div className='mb-1 h-6 flex items-center justify-between text-text-secondary system-sm-semibold-uppercase'>
+        <div className='text-text-secondary system-sm-semibold-uppercase mb-1 flex h-6 items-center justify-between'>
           {t('plugin.detailPanel.strategyNum', { num: strategyList.length, strategy: strategyList.length > 1 ? 'strategies' : 'strategy' })}
         </div>
       </div>

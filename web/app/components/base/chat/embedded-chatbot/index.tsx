@@ -73,10 +73,10 @@ const Chatbot = () => {
         theme={themeBuilder?.theme}
         onCreateNewChat={handleNewConversation}
       />
-      <div className='flex bg-white overflow-hidden'>
-        <div className={cn('h-[100vh] grow flex flex-col overflow-y-auto', isMobile && '!h-[calc(100vh_-_3rem)]')}>
+      <div className='flex overflow-hidden bg-white'>
+        <div className={cn('flex h-[100vh] grow flex-col overflow-y-auto', isMobile && '!h-[calc(100vh_-_3rem)]')}>
           {showConfigPanelBeforeChat && !appChatListDataLoading && !appPrevChatList.length && (
-            <div className={cn('flex w-full items-center justify-center h-full tablet:px-4', isMobile && 'px-4')}>
+            <div className={cn('tablet:px-4 flex h-full w-full items-center justify-center', isMobile && 'px-4')}>
               <ConfigPanel />
             </div>
           )}
@@ -84,13 +84,13 @@ const Chatbot = () => {
             <Loading type='app' />
           )}
           {chatReady && !appChatListDataLoading && (
-            <div className='relative h-full pt-8 mx-auto w-full max-w-[720px]'>
+            <div className='relative mx-auto h-full w-full max-w-[720px] pt-8'>
               {!isMobile && (
-                <div className='absolute top-2.5 right-3 z-20'>
+                <div className='absolute right-3 top-2.5 z-20'>
                   <Tooltip
                     popupContent={t('share.chat.resetChat')}
                   >
-                    <div className='p-1.5 bg-white border-[0.5px] border-gray-100 rounded-lg shadow-md cursor-pointer' onClick={handleNewConversation}>
+                    <div className='cursor-pointer rounded-lg border-[0.5px] border-gray-100 bg-white p-1.5 shadow-md' onClick={handleNewConversation}>
                       <RiLoopLeftLine className="h-4 w-4 text-gray-500"/>
                     </div>
                   </Tooltip>

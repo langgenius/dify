@@ -36,7 +36,7 @@ const CopyBtn = ({
       >
         <div
           onMouseLeave={onMouseLeave}
-          className={'box-border p-0.5 flex items-center justify-center rounded-md bg-components-button-secondary-bg cursor-pointer'}
+          className={'bg-components-button-secondary-bg box-border flex cursor-pointer items-center justify-center rounded-md p-0.5'}
           style={!isPlain
             ? {
               boxShadow: '0px 4px 8px -2px rgba(16, 24, 40, 0.1), 0px 2px 4px -2px rgba(16, 24, 40, 0.06)',
@@ -44,7 +44,7 @@ const CopyBtn = ({
             : {}}
           onClick={onClickCopy}
         >
-          <div className={`w-6 h-6 rounded-md hover:bg-components-button-secondary-bg-hover  ${s.copyIcon} ${isCopied ? s.copied : ''}`}></div>
+          <div className={`hover:bg-components-button-secondary-bg-hover h-6 w-6 rounded-md  ${s.copyIcon} ${isCopied ? s.copied : ''}`}></div>
         </div>
       </Tooltip>
     </div>

@@ -19,12 +19,12 @@ const Iteration: FC<Props> = ({ iterationInfo, isFinal, index }) => {
     <div className={cn('px-4 py-2')}>
       <div className='flex items-center'>
         {isFinal && (
-          <div className='shrink-0 mr-3 text-text-tertiary text-xs leading-[18px] font-semibold'>{t('appLog.agentLogDetail.finalProcessing')}</div>
+          <div className='text-text-tertiary mr-3 shrink-0 text-xs font-semibold leading-[18px]'>{t('appLog.agentLogDetail.finalProcessing')}</div>
         )}
         {!isFinal && (
-          <div className='shrink-0 mr-3 text-text-tertiary text-xs leading-[18px] font-semibold'>{`${t('appLog.agentLogDetail.iteration').toUpperCase()} ${index}`}</div>
+          <div className='text-text-tertiary mr-3 shrink-0 text-xs font-semibold leading-[18px]'>{`${t('appLog.agentLogDetail.iteration').toUpperCase()} ${index}`}</div>
         )}
-        <Divider bgStyle='gradient' className='grow h-[1px] mx-0'/>
+        <Divider bgStyle='gradient' className='mx-0 h-[1px] grow'/>
       </div>
       <ToolCall
         isLLM

@@ -60,12 +60,12 @@ export default function CheckCode() {
   }
 
   return <div className='flex flex-col gap-3'>
-    <div className='bg-background-default-dodge text-text-accent-light-mode-only border border-components-panel-border-subtle shadow-lg inline-flex w-14 h-14 justify-center items-center rounded-2xl'>
-      <RiMailSendFill className='w-6 h-6 text-2xl' />
+    <div className='bg-background-default-dodge text-text-accent-light-mode-only border-components-panel-border-subtle inline-flex h-14 w-14 items-center justify-center rounded-2xl border shadow-lg'>
+      <RiMailSendFill className='h-6 w-6 text-2xl' />
     </div>
-    <div className='pt-2 pb-4'>
+    <div className='pb-4 pt-2'>
       <h2 className='title-4xl-semi-bold text-text-primary'>{t('login.checkCode.checkYourEmail')}</h2>
-      <p className='mt-2 body-md-regular text-text-secondary'>
+      <p className='body-md-regular text-text-secondary mt-2'>
         <span dangerouslySetInnerHTML={{ __html: t('login.checkCode.tips', { email }) as string }}></span>
         <br />
         {t('login.checkCode.validTime')}
@@ -80,13 +80,13 @@ export default function CheckCode() {
       <Countdown onResend={resendCode} />
     </form>
     <div className='py-2'>
-      <div className='bg-gradient-to-r from-background-gradient-mask-transparent via-divider-regular to-background-gradient-mask-transparent h-px'></div>
+      <div className='from-background-gradient-mask-transparent via-divider-regular to-background-gradient-mask-transparent h-px bg-gradient-to-r'></div>
     </div>
-    <div onClick={() => router.back()} className='flex items-center justify-center h-9 text-text-tertiary cursor-pointer'>
-      <div className='inline-block p-1 rounded-full bg-background-default-dimm'>
+    <div onClick={() => router.back()} className='text-text-tertiary flex h-9 cursor-pointer items-center justify-center'>
+      <div className='bg-background-default-dimm inline-block rounded-full p-1'>
         <RiArrowLeftLine size={12} />
       </div>
-      <span className='ml-2 system-xs-regular'>{t('login.back')}</span>
+      <span className='system-xs-regular ml-2'>{t('login.back')}</span>
     </div>
   </div>
 }

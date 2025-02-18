@@ -48,25 +48,25 @@ const ToolCallItem: FC<Props> = ({ toolCall, isLLM = false, isFinal, tokens, obs
 
   return (
     <div className={cn('py-1')}>
-      <div className={cn('group transition-all bg-background-default border border-components-panel-border rounded-2xl shadow-xs hover:shadow-md')}>
+      <div className={cn('bg-background-default border-components-panel-border shadow-xs group rounded-2xl border transition-all hover:shadow-md')}>
         <div
           className={cn(
-            'flex items-center py-3 pl-[6px] pr-3 cursor-pointer',
+            'flex cursor-pointer items-center py-3 pl-[6px] pr-3',
             !collapseState && '!pb-2',
           )}
           onClick={() => setCollapseState(!collapseState)}
         >
           <ChevronRight
             className={cn(
-              'shrink-0 w-3 h-3 mr-1 text-text-quaternary transition-all group-hover:text-text-tertiary',
+              'text-text-quaternary group-hover:text-text-tertiary mr-1 h-3 w-3 shrink-0 transition-all',
               !collapseState && 'rotate-90',
             )}
           />
-          <BlockIcon className={cn('shrink-0 mr-2')} type={isLLM ? BlockEnum.LLM : BlockEnum.Tool} toolIcon={toolCall.tool_icon} />
+          <BlockIcon className={cn('mr-2 shrink-0')} type={isLLM ? BlockEnum.LLM : BlockEnum.Tool} toolIcon={toolCall.tool_icon} />
           <div className={cn(
-            'grow text-text-secondary text-[13px] leading-[16px] font-semibold truncate',
+            'text-text-secondary grow truncate text-[13px] font-semibold leading-[16px]',
           )} title={toolName}>{toolName}</div>
-          <div className='shrink-0 text-text-tertiary text-xs leading-[18px]'>
+          <div className='text-text-tertiary shrink-0 text-xs leading-[18px]'>
             {toolCall.time_cost && (
               <span>{getTime(toolCall.time_cost || 0)}</span>
             )}
@@ -75,17 +75,17 @@ const ToolCallItem: FC<Props> = ({ toolCall, isLLM = false, isFinal, tokens, obs
             )}
           </div>
           {toolCall.status === 'success' && (
-            <RiCheckboxCircleLine className='shrink-0 ml-2 w-3.5 h-3.5 text-[#12B76A]' />
+            <RiCheckboxCircleLine className='ml-2 h-3.5 w-3.5 shrink-0 text-[#12B76A]' />
           )}
           {toolCall.status === 'error' && (
-            <RiErrorWarningLine className='shrink-0 ml-2 w-3.5 h-3.5 text-[#F04438]' />
+            <RiErrorWarningLine className='ml-2 h-3.5 w-3.5 shrink-0 text-[#F04438]' />
           )}
         </div>
         {!collapseState && (
           <div className='pb-2'>
             <div className={cn('px-[10px] py-1')}>
               {toolCall.status === 'error' && (
-                <div className='px-3 py-[10px] bg-[#fef3f2] rounded-lg border-[0.5px] border-[rbga(0,0,0,0.05)] text-xs leading-[18px] text-[#d92d20] shadow-xs'>{toolCall.error}</div>
+                <div className='shadow-xs rounded-lg border-[0.5px] border-[rbga(0,0,0,0.05)] bg-[#fef3f2] px-3 py-[10px] text-xs leading-[18px] text-[#d92d20]'>{toolCall.error}</div>
               )}
             </div>
             {toolCall.tool_input && (

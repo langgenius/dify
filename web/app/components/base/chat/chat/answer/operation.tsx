@@ -102,8 +102,8 @@ const Operation: FC<OperationProps> = ({
       <div
         className={cn(
           'absolute flex justify-end gap-1',
-          hasWorkflowProcess && '-top-3.5 -right-3.5',
-          !positionRight && '-top-3.5 -right-3.5',
+          hasWorkflowProcess && '-right-3.5 -top-3.5',
+          !positionRight && '-right-3.5 -top-3.5',
           !hasWorkflowProcess && positionRight && '!top-[9px]',
         )}
         style={(!hasWorkflowProcess && positionRight) ? { left: contentWidth + 8 } : {}}
@@ -116,11 +116,11 @@ const Operation: FC<OperationProps> = ({
         )}
 
         {!isOpeningStatement && (showPromptLog || config?.text_to_speech?.enabled) && (
-          <div className='hidden group-hover:flex items-center w-max h-[28px] p-0.5 rounded-lg bg-white border-[0.5px] border-gray-100 shadow-md shrink-0'>
+          <div className='hidden h-[28px] w-max shrink-0 items-center rounded-lg border-[0.5px] border-gray-100 bg-white p-0.5 shadow-md group-hover:flex'>
             {showPromptLog && (
               <>
                 <Log logItem={item} />
-                <div className='mx-1 w-[1px] h-[14px] bg-gray-200' />
+                <div className='mx-1 h-[14px] w-[1px] bg-gray-200' />
               </>
             )}
 
@@ -143,7 +143,7 @@ const Operation: FC<OperationProps> = ({
             appId={config?.appId || ''}
             messageId={id}
             annotationId={annotation?.id || ''}
-            className='hidden group-hover:block ml-1 shrink-0'
+            className='ml-1 hidden shrink-0 group-hover:block'
             cached={hasAnnotation}
             query={question}
             answer={content}
@@ -155,36 +155,36 @@ const Operation: FC<OperationProps> = ({
         {
           annotation?.id && (
             <div
-              className='relative box-border flex items-center justify-center h-7 w-7 p-0.5 rounded-lg bg-white cursor-pointer text-[#444CE7] shadow-md group-hover:hidden'
+              className='relative box-border flex h-7 w-7 cursor-pointer items-center justify-center rounded-lg bg-white p-0.5 text-[#444CE7] shadow-md group-hover:hidden'
             >
-              <div className='p-1 rounded-lg bg-[#EEF4FF] '>
-                <MessageFast className='w-4 h-4' />
+              <div className='rounded-lg bg-[#EEF4FF] p-1 '>
+                <MessageFast className='h-4 w-4' />
               </div>
             </div>
           )
         }
         {
-          !isOpeningStatement && !noChatInput && <RegenerateBtn className='hidden group-hover:block mr-1' onClick={() => onRegenerate?.(item)} />
+          !isOpeningStatement && !noChatInput && <RegenerateBtn className='mr-1 hidden group-hover:block' onClick={() => onRegenerate?.(item)} />
         }
         {
           config?.supportFeedback && !localFeedback?.rating && onFeedback && !isOpeningStatement && (
-            <div className='hidden group-hover:flex shrink-0 items-center px-0.5 bg-white border-[0.5px] border-gray-100 shadow-md text-gray-500 rounded-lg'>
+            <div className='hidden shrink-0 items-center rounded-lg border-[0.5px] border-gray-100 bg-white px-0.5 text-gray-500 shadow-md group-hover:flex'>
               <Tooltip popupContent={t('appDebug.operation.agree')}>
                 <div
-                  className='flex items-center justify-center mr-0.5 w-6 h-6 rounded-md hover:bg-black/5 hover:text-gray-800 cursor-pointer'
+                  className='mr-0.5 flex h-6 w-6 cursor-pointer items-center justify-center rounded-md hover:bg-black/5 hover:text-gray-800'
                   onClick={() => handleFeedback('like')}
                 >
-                  <ThumbsUp className='w-4 h-4' />
+                  <ThumbsUp className='h-4 w-4' />
                 </div>
               </Tooltip>
               <Tooltip
                 popupContent={t('appDebug.operation.disagree')}
               >
                 <div
-                  className='flex items-center justify-center w-6 h-6 rounded-md hover:bg-black/5 hover:text-gray-800 cursor-pointer'
+                  className='flex h-6 w-6 cursor-pointer items-center justify-center rounded-md hover:bg-black/5 hover:text-gray-800'
                   onClick={() => handleFeedback('dislike')}
                 >
-                  <ThumbsDown className='w-4 h-4' />
+                  <ThumbsDown className='h-4 w-4' />
                 </div>
               </Tooltip>
             </div>
@@ -197,7 +197,7 @@ const Operation: FC<OperationProps> = ({
             >
               <div
                 className={`
-                  flex items-center justify-center w-7 h-7 rounded-[10px] border-[2px] border-white cursor-pointer
+                  flex h-7 w-7 cursor-pointer items-center justify-center rounded-[10px] border-[2px] border-white
                   ${localFeedback.rating === 'like' && 'bg-blue-50 text-blue-600'}
                   ${localFeedback.rating === 'dislike' && 'bg-red-100 text-red-600'}
                 `}
@@ -205,12 +205,12 @@ const Operation: FC<OperationProps> = ({
               >
                 {
                   localFeedback.rating === 'like' && (
-                    <ThumbsUp className='w-4 h-4' />
+                    <ThumbsUp className='h-4 w-4' />
                   )
                 }
                 {
                   localFeedback.rating === 'dislike' && (
-                    <ThumbsDown className='w-4 h-4' />
+                    <ThumbsDown className='h-4 w-4' />
                   )
                 }
               </div>

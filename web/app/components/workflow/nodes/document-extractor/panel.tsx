@@ -61,7 +61,7 @@ const Panel: FC<NodePanelProps<DocExtractorNodeType>> = ({
 
   return (
     <div className='mt-2'>
-      <div className='px-4 pb-4 space-y-4'>
+      <div className='space-y-4 px-4 pb-4'>
         <Field
           title={t(`${i18nPrefix}.inputVar`)}
         >
@@ -75,7 +75,7 @@ const Panel: FC<NodePanelProps<DocExtractorNodeType>> = ({
               filterVar={filterVar}
               typePlaceHolder='File | Array[File]'
             />
-            <div className='mt-1 py-0.5 text-text-tertiary body-xs-regular'>
+            <div className='text-text-tertiary body-xs-regular mt-1 py-0.5'>
               {t(`${i18nPrefix}.supportFileTypes`, { types: supportTypesShowNames })}
               <a className='text-text-accent' href={link} target='_blank'>{t(`${i18nPrefix}.learnMore`)}</a>
             </div>

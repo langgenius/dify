@@ -64,16 +64,16 @@ const RenameDatasetModal = ({ show, dataset, onSuccess, onClose }: RenameDataset
 
   return (
     <Modal
-      className='px-8 py-6 max-w-[520px] w-[520px] rounded-xl'
+      className='w-[520px] max-w-[520px] rounded-xl px-8 py-6'
       isShow={show}
       onClose={() => { }}
     >
       <div className='relative pb-2 text-xl font-medium leading-[30px] text-gray-900'>{t('datasetSettings.title')}</div>
-      <div className='absolute right-4 top-4 p-2 cursor-pointer' onClick={onClose}>
-        <RiCloseLine className='w-4 h-4 text-gray-500' />
+      <div className='absolute right-4 top-4 cursor-pointer p-2' onClick={onClose}>
+        <RiCloseLine className='h-4 w-4 text-gray-500' />
       </div>
       <div>
-        <div className={cn('flex justify-between py-4 flex-wrap items-center')}>
+        <div className={cn('flex flex-wrap items-center justify-between py-4')}>
           <div className='shrink-0 py-2 text-sm font-medium leading-[20px] text-gray-900'>
             {t('datasetSettings.form.name')}
           </div>
@@ -84,7 +84,7 @@ const RenameDatasetModal = ({ show, dataset, onSuccess, onClose }: RenameDataset
             placeholder={t('datasetSettings.form.namePlaceholder') || ''}
           />
         </div>
-        <div className={cn('flex justify-between py-4 flex-wrap items-center')}>
+        <div className={cn('flex flex-wrap items-center justify-between py-4')}>
           <div className='shrink-0 py-2 text-sm font-medium leading-[20px] text-gray-900'>
             {t('datasetSettings.form.desc')}
           </div>
@@ -98,7 +98,7 @@ const RenameDatasetModal = ({ show, dataset, onSuccess, onClose }: RenameDataset
           </div>
         </div>
       </div>
-      <div className='pt-6 flex justify-end'>
+      <div className='flex justify-end pt-6'>
         <Button className='mr-2' onClick={onClose}>{t('common.operation.cancel')}</Button>
         <Button disabled={loading} variant="primary" onClick={onConfirm}>{t('common.operation.save')}</Button>
       </div>

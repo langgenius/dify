@@ -19,10 +19,10 @@ const SearchInput = ({
   }, [onChange])
 
   return (
-    <div className={cn(s['input-wrapper'], 'flex items-center px-2 h-7 rounded-md', `${value ? 'bg-white' : 'bg-gray-100'}`)}>
-      <div className={cn(s['search-icon'], 'mr-[6px] w-4 h-4')} />
+    <div className={cn(s['input-wrapper'], 'flex h-7 items-center rounded-md px-2', `${value ? 'bg-white' : 'bg-gray-100'}`)}>
+      <div className={cn(s['search-icon'], 'mr-[6px] h-4 w-4')} />
       <input
-        className='grow text-[13px] bg-inherit border-0 outline-0 appearance-none'
+        className='grow appearance-none border-0 bg-inherit text-[13px] outline-0'
         value={value}
         onChange={(e: ChangeEvent<HTMLInputElement>) => onChange(e.target.value)}
         placeholder={t('common.dataSource.notion.selector.searchPages') || ''}
@@ -30,7 +30,7 @@ const SearchInput = ({
       {
         value && (
           <div
-            className={cn(s['clear-icon'], 'ml-1 w-4 h-4 cursor-pointer')}
+            className={cn(s['clear-icon'], 'ml-1 h-4 w-4 cursor-pointer')}
             onClick={handleClear}
           />
         )

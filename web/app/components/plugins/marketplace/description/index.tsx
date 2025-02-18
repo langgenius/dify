@@ -16,10 +16,10 @@ const Description = async ({
 
   return (
     <>
-      <h1 className='shrink-0 mb-2 text-center title-4xl-semi-bold text-text-primary'>
+      <h1 className='title-4xl-semi-bold text-text-primary mb-2 shrink-0 text-center'>
         {t('marketplace.empower')}
       </h1>
-      <h2 className='shrink-0 flex justify-center items-center text-center body-md-regular text-text-tertiary'>
+      <h2 className='body-md-regular text-text-tertiary flex shrink-0 items-center justify-center text-center'>
         {
           isZhHans && (
             <>
@@ -36,23 +36,23 @@ const Description = async ({
             </>
           )
         }
-        <span className="relative ml-1 body-md-medium text-text-secondary after:content-[''] after:absolute after:left-0 after:bottom-[1.5px] after:w-full after:h-2 after:bg-text-text-selected z-[1]">
+        <span className="body-md-medium text-text-secondary after:bg-text-text-selected relative z-[1] ml-1 after:absolute after:bottom-[1.5px] after:left-0 after:h-2 after:w-full after:content-['']">
           <span className='relative z-[2] lowercase'>{t('category.models')}</span>
         </span>
         ,
-        <span className="relative ml-1 body-md-medium text-text-secondary after:content-[''] after:absolute after:left-0 after:bottom-[1.5px] after:w-full after:h-2 after:bg-text-text-selected z-[1]">
+        <span className="body-md-medium text-text-secondary after:bg-text-text-selected relative z-[1] ml-1 after:absolute after:bottom-[1.5px] after:left-0 after:h-2 after:w-full after:content-['']">
           <span className='relative z-[2] lowercase'>{t('category.tools')}</span>
         </span>
         ,
-        <span className="relative ml-1 body-md-medium text-text-secondary after:content-[''] after:absolute after:left-0 after:bottom-[1.5px] after:w-full after:h-2 after:bg-text-text-selected z-[1]">
+        <span className="body-md-medium text-text-secondary after:bg-text-text-selected relative z-[1] ml-1 after:absolute after:bottom-[1.5px] after:left-0 after:h-2 after:w-full after:content-['']">
           <span className='relative z-[2] lowercase'>{t('category.agents')}</span>
         </span>
         ,
-        <span className="relative ml-1 mr-1 body-md-medium text-text-secondary after:content-[''] after:absolute after:left-0 after:bottom-[1.5px] after:w-full after:h-2 after:bg-text-text-selected z-[1]">
+        <span className="body-md-medium text-text-secondary after:bg-text-text-selected relative z-[1] ml-1 mr-1 after:absolute after:bottom-[1.5px] after:left-0 after:h-2 after:w-full after:content-['']">
           <span className='relative z-[2] lowercase'>{t('category.extensions')}</span>
         </span>
         {t('marketplace.and')}
-        <span className="relative ml-1 mr-1 body-md-medium text-text-secondary after:content-[''] after:absolute after:left-0 after:bottom-[1.5px] after:w-full after:h-2 after:bg-text-text-selected z-[1]">
+        <span className="body-md-medium text-text-secondary after:bg-text-text-selected relative z-[1] ml-1 mr-1 after:absolute after:bottom-[1.5px] after:left-0 after:h-2 after:w-full after:content-['']">
           <span className='relative z-[2] lowercase'>{t('category.bundles')}</span>
         </span>
         {

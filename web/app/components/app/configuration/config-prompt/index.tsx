@@ -157,8 +157,8 @@ const Prompt: FC<IPromptProps> = ({
       {(modelModeType === ModelModeType.chat && (currentAdvancedPrompt as PromptItem[]).length < MAX_PROMPT_MESSAGE_LENGTH) && (
         <div
           onClick={handleAddMessage}
-          className='mt-3 flex items-center h-8 justify-center bg-gray-50 rounded-lg cursor-pointer text-[13px] font-medium text-gray-700 space-x-2'>
-          <RiAddLine className='w-4 h-4' />
+          className='mt-3 flex h-8 cursor-pointer items-center justify-center space-x-2 rounded-lg bg-gray-50 text-[13px] font-medium text-gray-700'>
+          <RiAddLine className='h-4 w-4' />
           <div>{t('appDebug.promptMode.operation.addMessage')}</div>
         </div>
       )}

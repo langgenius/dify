@@ -264,7 +264,7 @@ const VarReferencePicker: FC<Props> = ({
           if (readonly)
             return
           !isConstant ? setOpen(!open) : setControlFocus(Date.now())
-        }} className='!flex group/picker-trigger-wrap relative'>
+        }} className='group/picker-trigger-wrap relative !flex'>
           <>
             {isAddBtnTrigger
               ? (
@@ -272,19 +272,19 @@ const VarReferencePicker: FC<Props> = ({
                   <AddButton onClick={() => { }}></AddButton>
                 </div>
               )
-              : (<div ref={!isSupportConstantValue ? triggerRef : null} className={cn((open || isFocus) ? 'border-gray-300' : 'border-gray-100', 'relative group/wrap flex items-center w-full h-8', !isSupportConstantValue && 'p-1 rounded-lg bg-components-input-bg-normal', isInTable && 'bg-transparent border-none', readonly && 'bg-components-input-bg-disabled')}>
+              : (<div ref={!isSupportConstantValue ? triggerRef : null} className={cn((open || isFocus) ? 'border-gray-300' : 'border-gray-100', 'group/wrap relative flex h-8 w-full items-center', !isSupportConstantValue && 'bg-components-input-bg-normal rounded-lg p-1', isInTable && 'border-none bg-transparent', readonly && 'bg-components-input-bg-disabled')}>
                 {isSupportConstantValue
                   ? <div onClick={(e) => {
                     e.stopPropagation()
                     setOpen(false)
                     setControlFocus(Date.now())
-                  }} className='h-full mr-1 flex items-center space-x-1'>
+                  }} className='mr-1 flex h-full items-center space-x-1'>
                     <TypeSelector
                       noLeft
                       trigger={
-                        <div className='flex items-center h-8 px-2 radius-md bg-components-input-bg-normal'>
-                          <div className='mr-1 system-sm-regular text-components-input-text-filled'>{varKindTypes.find(item => item.value === varKindType)?.label}</div>
-                          <RiArrowDownSLine className='w-4 h-4 text-text-quaternary' />
+                        <div className='radius-md bg-components-input-bg-normal flex h-8 items-center px-2'>
+                          <div className='system-sm-regular text-components-input-text-filled mr-1'>{varKindTypes.find(item => item.value === varKindType)?.label}</div>
+                          <RiArrowDownSLine className='text-text-quaternary h-4 w-4' />
                         </div>
                       }
                       popupClassName='top-8'
@@ -296,7 +296,7 @@ const VarReferencePicker: FC<Props> = ({
                     />
                   </div>
                   : (!hasValue && <div className='ml-1.5 mr-1'>
-                    <Variable02 className={`w-4 h-4 ${readonly ? 'text-components-input-text-disabled' : 'text-components-input-text-placeholder'}`} />
+                    <Variable02 className={`h-4 w-4 ${readonly ? 'text-components-input-text-disabled' : 'text-components-input-text-placeholder'}`} />
                   </div>)}
                 {isConstant
                   ? (
@@ -314,43 +314,43 @@ const VarReferencePicker: FC<Props> = ({
                           return
                         !isConstant ? setOpen(!open) : setControlFocus(Date.now())
                       }}
-                      className='grow h-full'
+                      className='h-full grow'
                     >
-                      <div ref={isSupportConstantValue ? triggerRef : null} className={cn('h-full', isSupportConstantValue && 'flex items-center pl-1 py-1 rounded-lg bg-gray-100')}>
+                      <div ref={isSupportConstantValue ? triggerRef : null} className={cn('h-full', isSupportConstantValue && 'flex items-center rounded-lg bg-gray-100 py-1 pl-1')}>
                         <Tooltip popupContent={!isValidVar && hasValue && t('workflow.errorMsg.invalidVariable')}>
-                          <div className={cn('h-full items-center px-1.5 rounded-[5px]', hasValue ? 'bg-white inline-flex' : 'flex')}>
+                          <div className={cn('h-full items-center rounded-[5px] px-1.5', hasValue ? 'inline-flex bg-white' : 'flex')}>
                             {hasValue
                               ? (
                                 <>
                                   {isShowNodeName && !isEnv && !isChatVar && (
                                     <div className='flex items-center'>
-                                      <div className='px-[1px] h-3'>
+                                      <div className='h-3 px-[1px]'>
                                         {outputVarNode?.type && <VarBlockIcon
                                           className='!text-gray-900'
                                           type={outputVarNode.type}
                                         />}
                                       </div>
-                                      <div className='mx-0.5 text-xs font-medium text-gray-700 truncate' title={outputVarNode?.title} style={{
+                                      <div className='mx-0.5 truncate text-xs font-medium text-gray-700' title={outputVarNode?.title} style={{
                                         maxWidth: maxNodeNameWidth,
                                       }}>{outputVarNode?.title}</div>
                                       <Line3 className='mr-0.5'></Line3>
                                     </div>
                                   )}
-                                  <div className='flex items-center text-primary-600'>
-                                    {!hasValue && <Variable02 className='w-3.5 h-3.5' />}
-                                    {isEnv && <Env className='w-3.5 h-3.5 text-util-colors-violet-violet-600' />}
-                                    {isChatVar && <BubbleX className='w-3.5 h-3.5 text-util-colors-teal-teal-700' />}
-                                    <div className={cn('ml-0.5 text-xs font-medium truncate', isEnv && '!text-text-secondary', isChatVar && 'text-util-colors-teal-teal-700', isException && 'text-text-warning')} title={varName} style={{
+                                  <div className='text-primary-600 flex items-center'>
+                                    {!hasValue && <Variable02 className='h-3.5 w-3.5' />}
+                                    {isEnv && <Env className='text-util-colors-violet-violet-600 h-3.5 w-3.5' />}
+                                    {isChatVar && <BubbleX className='text-util-colors-teal-teal-700 h-3.5 w-3.5' />}
+                                    <div className={cn('ml-0.5 truncate text-xs font-medium', isEnv && '!text-text-secondary', isChatVar && 'text-util-colors-teal-teal-700', isException && 'text-text-warning')} title={varName} style={{
                                       maxWidth: maxVarNameWidth,
                                     }}>{varName}</div>
                                   </div>
-                                  <div className='ml-0.5 capitalize truncate text-text-tertiary text-center system-xs-regular' title={type} style={{
+                                  <div className='text-text-tertiary system-xs-regular ml-0.5 truncate text-center capitalize' title={type} style={{
                                     maxWidth: maxTypeWidth,
                                   }}>{type}</div>
-                                  {!isValidVar && <RiErrorWarningFill className='ml-0.5 w-3 h-3 text-[#D92D20]' />}
+                                  {!isValidVar && <RiErrorWarningFill className='ml-0.5 h-3 w-3 text-[#D92D20]' />}
                                 </>
                               )
-                              : <div className={`overflow-hidden ${readonly ? 'text-components-input-text-disabled' : 'text-components-input-text-placeholder'} text-ellipsis system-sm-regular`}>{placeholder ?? t('workflow.common.setVarValuePlaceholder')}</div>}
+                              : <div className={`overflow-hidden ${readonly ? 'text-components-input-text-disabled' : 'text-components-input-text-placeholder'} system-sm-regular text-ellipsis`}>{placeholder ?? t('workflow.common.setVarValuePlaceholder')}</div>}
                           </div>
                         </Tooltip>
                       </div>
@@ -358,10 +358,10 @@ const VarReferencePicker: FC<Props> = ({
                     </VarPickerWrap>
                   )}
                 {(hasValue && !readonly && !isInTable) && (<div
-                  className='invisible group-hover/wrap:visible absolute h-5 right-1 top-[50%] translate-y-[-50%] group p-1 rounded-md hover:bg-black/5 cursor-pointer'
+                  className='group invisible absolute right-1 top-[50%] h-5 translate-y-[-50%] cursor-pointer rounded-md p-1 hover:bg-black/5 group-hover/wrap:visible'
                   onClick={handleClearVar}
                 >
-                  <RiCloseLine className='w-3.5 h-3.5 text-gray-500 group-hover:text-gray-800' />
+                  <RiCloseLine className='h-3.5 w-3.5 text-gray-500 group-hover:text-gray-800' />
                 </div>)}
                 {!hasValue && valueTypePlaceHolder && (
                   <Badge
@@ -373,7 +373,7 @@ const VarReferencePicker: FC<Props> = ({
               </div>)}
             {!readonly && isInTable && (
               <RemoveButton
-                className='group-hover/picker-trigger-wrap:block hidden absolute right-1 top-0.5'
+                className='absolute right-1 top-0.5 hidden group-hover/picker-trigger-wrap:block'
                 onClick={() => onRemove?.()}
               />
             )}

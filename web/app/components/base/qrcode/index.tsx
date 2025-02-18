@@ -54,18 +54,18 @@ const ShareQRCode = ({ content }: Props) => {
     <Tooltip
       popupContent={t(`${prefixEmbedded}`) || ''}
     >
-      <div className='relative w-6 h-6' onClick={toggleQRCode}>
+      <div className='relative h-6 w-6' onClick={toggleQRCode}>
         <ActionButton>
-          <RiQrCodeLine className='w-4 h-4' />
+          <RiQrCodeLine className='h-4 w-4' />
         </ActionButton>
         {isShow && (
           <div
             ref={qrCodeRef}
-            className='absolute top-8 -right-8 z-10 w-[232px] flex flex-col items-center bg-components-panel-bg shadow-xs rounded-lg p-4'
+            className='bg-components-panel-bg shadow-xs absolute -right-8 top-8 z-10 flex w-[232px] flex-col items-center rounded-lg p-4'
             onClick={handlePanelClick}
           >
             <QRCode size={160} value={content} className='mb-2' />
-            <div className='flex items-center system-xs-regular'>
+            <div className='system-xs-regular flex items-center'>
               <div className='text-text-tertiary'>{t('appOverview.overview.appInfo.qrcode.scan')}</div>
               <div className='text-text-tertiary'>·</div>
               <div className='text-text-accent-secondary cursor-pointer' onClick={downloadQR}>{t('appOverview.overview.appInfo.qrcode.download')}</div>

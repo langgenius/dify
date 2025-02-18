@@ -25,7 +25,7 @@ const ParamItem: FC<Props> = ({ className, id, name, noTooltip, tip, step = 0.1,
   return (
     <div className={className}>
       <div className="flex items-center justify-between">
-        <div className="flex items-center h-6">
+        <div className="flex h-6 items-center">
           {hasSwitch && (
             <Switch
               size='md'
@@ -36,7 +36,7 @@ const ParamItem: FC<Props> = ({ className, id, name, noTooltip, tip, step = 0.1,
               }}
             />
           )}
-          <span className="mr-1 text-text-secondary system-sm-semibold">{name}</span>
+          <span className="text-text-secondary system-sm-semibold mr-1">{name}</span>
           {!noTooltip && (
             <Tooltip
               triggerClassName='w-4 h-4 shrink-0'
@@ -61,7 +61,7 @@ const ParamItem: FC<Props> = ({ className, id, name, noTooltip, tip, step = 0.1,
             className='w-[72px]'
           />
         </div>
-        <div className="flex items-center grow">
+        <div className="flex grow items-center">
           <Slider
             className='w-full'
             disabled={!enable}

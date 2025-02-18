@@ -55,8 +55,8 @@ const DatasetItem: FC<Props> = ({
   }, [onRemove])
 
   return (
-    <div className={`group/dataset-item flex h-10 cursor-pointer items-center justify-between rounded-xl 
-      border-[0.5px] border-components-panel-border-subtle px-2 
+    <div className={`group/dataset-item border-components-panel-border-subtle flex h-10 cursor-pointer items-center justify-between 
+      rounded-xl border-[0.5px] px-2 
       ${isDeleteHovered
       ? 'border-state-destructive-border bg-state-destructive-hover'
       : 'bg-components-panel-on-panel-item-bg hover:bg-components-panel-on-panel-item-bg-hover'
@@ -73,7 +73,7 @@ const DatasetItem: FC<Props> = ({
               <Folder className='h-4 w-4 text-[#444CE7]' />
             </div>
         }
-        <div className='system-sm-medium w-0 grow truncate text-text-secondary'>{payload.name}</div>
+        <div className='system-sm-medium text-text-secondary w-0 grow truncate'>{payload.name}</div>
       </div>
       {!readonly && (
         <div className='ml-2 hidden shrink-0 items-center  space-x-1 group-hover/dataset-item:flex'>
@@ -84,7 +84,7 @@ const DatasetItem: FC<Props> = ({
                 showSettingsModal()
               }}
             >
-              <RiEditLine className='h-4 w-4 shrink-0 text-text-tertiary' />
+              <RiEditLine className='text-text-tertiary h-4 w-4 shrink-0' />
             </ActionButton>
           }
           <ActionButton

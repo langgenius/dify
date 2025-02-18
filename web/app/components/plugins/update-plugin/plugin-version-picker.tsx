@@ -77,15 +77,15 @@ const PluginVersionPicker: FC<Props> = ({
       onOpenChange={onShowChange}
     >
       <PortalToFollowElemTrigger
-        className={cn('inline-flex items-center cursor-pointer', disabled && 'cursor-default')}
+        className={cn('inline-flex cursor-pointer items-center', disabled && 'cursor-default')}
         onClick={handleTriggerClick}
       >
         {trigger}
       </PortalToFollowElemTrigger>
 
       <PortalToFollowElemContent className='z-[1000]'>
-        <div className="relative w-[209px] p-1 rounded-xl bg-components-panel-bg-blur border-[0.5px] border-components-panel-border shadow-lg">
-          <div className='px-3 pt-1 pb-0.5 text-text-tertiary system-xs-medium-uppercase'>
+        <div className="bg-components-panel-bg-blur border-components-panel-border relative w-[209px] rounded-xl border-[0.5px] p-1 shadow-lg">
+          <div className='text-text-tertiary system-xs-medium-uppercase px-3 pb-0.5 pt-1'>
             {t('plugin.detailPanel.switchVersion')}
           </div>
           <div className='relative'>
@@ -93,19 +93,19 @@ const PluginVersionPicker: FC<Props> = ({
               <div
                 key={version.unique_identifier}
                 className={cn(
-                  'h-7 px-3 py-1 flex items-center gap-1 rounded-lg hover:bg-state-base-hover cursor-pointer',
-                  currentVersion === version.version && 'opacity-30 cursor-default hover:bg-transparent',
+                  'hover:bg-state-base-hover flex h-7 cursor-pointer items-center gap-1 rounded-lg px-3 py-1',
+                  currentVersion === version.version && 'cursor-default opacity-30 hover:bg-transparent',
                 )}
                 onClick={() => handleSelect({
                   version: version.version,
                   unique_identifier: version.unique_identifier,
                 })}
               >
-                <div className='grow flex items-center'>
+                <div className='flex grow items-center'>
                   <div className='text-text-secondary system-sm-medium'>{version.version}</div>
                   {currentVersion === version.version && <Badge className='ml-1' text='CURRENT'/>}
                 </div>
-                <div className='shrink-0 text-text-tertiary system-xs-regular'>{formatDate(version.created_at, format)}</div>
+                <div className='text-text-tertiary system-xs-regular shrink-0'>{formatDate(version.created_at, format)}</div>
               </div>
             ))}
           </div>

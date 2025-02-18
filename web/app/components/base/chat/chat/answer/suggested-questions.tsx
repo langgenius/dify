@@ -23,7 +23,7 @@ const SuggestedQuestions: FC<SuggestedQuestionsProps> = ({
       {suggestedQuestions.filter(q => !!q && q.trim()).map((question, index) => (
         <div
           key={index}
-          className='mt-1 mr-1 max-w-full last:mr-0 shrink-0 py-[5px] leading-[18px] items-center px-4 rounded-lg border border-gray-200 shadow-xs bg-white text-xs font-medium text-primary-600 cursor-pointer'
+          className='shadow-xs text-primary-600 mr-1 mt-1 max-w-full shrink-0 cursor-pointer items-center rounded-lg border border-gray-200 bg-white px-4 py-[5px] text-xs font-medium leading-[18px] last:mr-0'
           onClick={() => onSend?.(question)}
         >
           {question}

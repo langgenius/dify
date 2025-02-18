@@ -16,14 +16,14 @@ const HeaderInMobile = () => {
 
   return (
     <>
-      <div className='shrink-0 flex items-center px-3 h-[44px] border-b-[0.5px] border-b-gray-200'>
+      <div className='flex h-[44px] shrink-0 items-center border-b-[0.5px] border-b-gray-200 px-3'>
         <div
-          className='shrink-0 flex items-center justify-center w-8 h-8 rounded-lg'
+          className='flex h-8 w-8 shrink-0 items-center justify-center rounded-lg'
           onClick={() => setShowSidebar(true)}
         >
-          <Menu01 className='w-4 h-4 text-gray-700' />
+          <Menu01 className='h-4 w-4 text-gray-700' />
         </div>
-        <div className='grow flex justify-center items-center px-3'>
+        <div className='flex grow items-center justify-center px-3'>
           <AppIcon
             className='mr-2'
             size='tiny'
@@ -32,15 +32,15 @@ const HeaderInMobile = () => {
             imageUrl={appData?.site.icon_url}
             background={appData?.site.icon_background}
           />
-          <div className='py-1 text-base font-semibold text-gray-800 truncate'>
+          <div className='truncate py-1 text-base font-semibold text-gray-800'>
             {appData?.site.title}
           </div>
         </div>
         <div
-          className='shrink-0 flex items-center justify-center w-8 h-8 rounded-lg'
+          className='flex h-8 w-8 shrink-0 items-center justify-center rounded-lg'
           onClick={handleNewConversation}
         >
-          <Edit05 className='w-4 h-4 text-gray-700' />
+          <Edit05 className='h-4 w-4 text-gray-700' />
         </div>
       </div>
       {

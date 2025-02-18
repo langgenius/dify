@@ -24,12 +24,12 @@ const MessageTypeSelector: FC<Props> = ({
     <div className='relative left-[-8px]' ref={ref}>
       <div
         onClick={toggleShow}
-        className={cn(showOption && 'bg-indigo-100', 'flex items-center h-7 pl-1.5 pr-1 space-x-0.5 rounded-lg cursor-pointer text-indigo-800')}>
+        className={cn(showOption && 'bg-indigo-100', 'flex h-7 cursor-pointer items-center space-x-0.5 rounded-lg pl-1.5 pr-1 text-indigo-800')}>
         <div className='text-sm font-semibold uppercase'>{value}</div>
-        <ChevronSelectorVertical className='w-3 h-3 ' />
+        <ChevronSelectorVertical className='h-3 w-3 ' />
       </div>
       {showOption && (
-        <div className='absolute z-10 top-[30px] p-1 border border-gray-200 shadow-lg rounded-lg bg-white'>
+        <div className='absolute top-[30px] z-10 rounded-lg border border-gray-200 bg-white p-1 shadow-lg'>
           {allTypes.map(type => (
             <div
               key={type}
@@ -37,7 +37,7 @@ const MessageTypeSelector: FC<Props> = ({
                 setHide()
                 onChange(type)
               }}
-              className='flex items-center h-9 min-w-[44px] px-3 rounded-lg cursor-pointer text-sm font-medium text-gray-700 uppercase hover:bg-gray-50'
+              className='flex h-9 min-w-[44px] cursor-pointer items-center rounded-lg px-3 text-sm font-medium uppercase text-gray-700 hover:bg-gray-50'
             >{type}</div>
           ))
           }

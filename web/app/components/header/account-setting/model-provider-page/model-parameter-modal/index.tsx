@@ -193,10 +193,10 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
           }
         </PortalToFollowElemTrigger>
         <PortalToFollowElemContent className={cn('z-[60]', portalToFollowElemContentClassName)}>
-          <div className={cn(popupClassName, 'w-[389px] rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg')}>
-            <div className={cn('max-h-[420px] p-4 pt-3 overflow-y-auto')}>
+          <div className={cn(popupClassName, 'border-components-panel-border bg-components-panel-bg w-[389px] rounded-2xl border-[0.5px] shadow-lg')}>
+            <div className={cn('max-h-[420px] overflow-y-auto p-4 pt-3')}>
               <div className='relative'>
-                <div className={cn('mb-1 h-6 flex items-center text-text-secondary system-sm-semibold')}>
+                <div className={cn('text-text-secondary system-sm-semibold mb-1 flex h-6 items-center')}>
                   {t('common.modelProvider.model').toLocaleUpperCase()}
                 </div>
                 <ModelSelector
@@ -207,7 +207,7 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
               </div>
               {
                 !!parameterRules.length && (
-                  <div className='my-3 h-[1px] bg-divider-subtle' />
+                  <div className='bg-divider-subtle my-3 h-[1px]' />
                 )
               }
               {
@@ -217,8 +217,8 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
               }
               {
                 !isLoading && !!parameterRules.length && (
-                  <div className='flex items-center justify-between mb-2'>
-                    <div className={cn('h-6 flex items-center text-text-secondary system-sm-semibold')}>{t('common.modelProvider.parameters')}</div>
+                  <div className='mb-2 flex items-center justify-between'>
+                    <div className={cn('text-text-secondary system-sm-semibold flex h-6 items-center')}>{t('common.modelProvider.parameters')}</div>
                     {
                       PROVIDER_WITH_PRESET_TONE.includes(provider) && (
                         <PresetsParameter onSelect={handleSelectPresetParameter} />
@@ -247,7 +247,7 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
             </div>
             {!hideDebugWithMultipleModel && (
               <div
-                className='flex items-center justify-between px-4 h-[50px] bg-components-section-burn border-t border-t-divider-subtle system-sm-regular text-text-accent cursor-pointer rounded-b-xl'
+                className='bg-components-section-burn border-t-divider-subtle system-sm-regular text-text-accent flex h-[50px] cursor-pointer items-center justify-between rounded-b-xl border-t px-4'
                 onClick={() => onDebugWithMultipleModelChange?.()}
               >
                 {
@@ -255,7 +255,7 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
                     ? t('appDebug.debugAsSingleModel')
                     : t('appDebug.debugAsMultipleModel')
                 }
-                <ArrowNarrowLeft className='w-3 h-3 rotate-180' />
+                <ArrowNarrowLeft className='h-3 w-3 rotate-180' />
               </div>
             )}
           </div>

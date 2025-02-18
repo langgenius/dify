@@ -50,15 +50,15 @@ const PasteImageLinkButton: FC<PasteImageLinkButtonProps> = ({
     >
       <PortalToFollowElemTrigger onClick={handleToggle}>
         <div className={`
-          relative flex items-center justify-center px-3 h-8 bg-components-option-card-option-bg hover:bg-components-option-card-option-bg-hover text-xs text-text-tertiary rounded-lg
+          bg-components-option-card-option-bg hover:bg-components-option-card-option-bg-hover text-text-tertiary relative flex h-8 items-center justify-center rounded-lg px-3 text-xs
           ${disabled ? 'cursor-not-allowed' : 'cursor-pointer'}
         `}>
-          <Link03 className='mr-2 w-4 h-4' />
+          <Link03 className='mr-2 h-4 w-4' />
           {t('common.imageUploader.pasteImageLink')}
         </div>
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent className='z-10'>
-        <div className='p-2 w-[320px] bg-components-panel-bg border-[0.5px] border-components-panel-border rounded-lg shadow-lg'>
+        <div className='bg-components-panel-bg border-components-panel-border w-[320px] rounded-lg border-[0.5px] p-2 shadow-lg'>
           <ImageLinkInput onUpload={handleUpload} />
         </div>
       </PortalToFollowElemContent>
@@ -98,11 +98,11 @@ const TextGenerationImageUploader: FC<TextGenerationImageUploaderProps> = ({
       {
         hovering => (
           <div className={`
-            flex items-center justify-center px-3 h-8 bg-components-option-card-option-bg 
-            text-xs text-text-tertiary rounded-lg cursor-pointer
+            bg-components-option-card-option-bg text-text-tertiary flex h-8 cursor-pointer items-center 
+            justify-center rounded-lg px-3 text-xs
             ${hovering && 'bg-components-option-card-option-bg-hover'}
           `}>
-            <ImagePlus className='mr-2 w-4 h-4' />
+            <ImagePlus className='mr-2 h-4 w-4' />
             {t('common.imageUploader.uploadFromComputer')}
           </div>
         )

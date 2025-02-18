@@ -78,7 +78,7 @@ const ConfigCredential: FC<Props> = ({
       headerClassName='!border-b-divider-subtle'
       body={
 
-        <div className='px-6 py-3 h-full'>
+        <div className='h-full px-6 py-3'>
           {!credentialSchema
             ? <Loading type='app' />
             : (
@@ -97,10 +97,10 @@ const ConfigCredential: FC<Props> = ({
                     ? (<a
                       href={item.url}
                       target='_blank' rel='noopener noreferrer'
-                      className='inline-flex items-center text-xs text-text-accent'
+                      className='text-text-accent inline-flex items-center text-xs'
                     >
                       {t('tools.howToGet')}
-                      <LinkExternal02 className='ml-1 w-3 h-3' />
+                      <LinkExternal02 className='ml-1 h-3 w-3' />
                     </a>)
                     : null}
                 />

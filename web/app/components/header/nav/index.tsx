@@ -38,8 +38,8 @@ const Nav = ({
 
   return (
     <div className={`
-      flex items-center h-8 mr-0 sm:mr-3 px-0.5 rounded-xl text-sm shrink-0 font-medium
-      ${isActivated && 'bg-components-main-nav-nav-button-bg-active shadow-md font-semibold'}
+      mr-0 flex h-8 shrink-0 items-center rounded-xl px-0.5 text-sm font-medium sm:mr-3
+      ${isActivated && 'bg-components-main-nav-nav-button-bg-active font-semibold shadow-md'}
       ${!curNav && !isActivated && 'hover:bg-components-main-nav-nav-button-bg-hover'}
     `}>
       <Link href={link}>
@@ -56,7 +56,7 @@ const Nav = ({
           <div className='mr-2'>
             {
               (hovered && curNav)
-                ? <ArrowNarrowLeft className='w-4 h-4' />
+                ? <ArrowNarrowLeft className='h-4 w-4' />
                 : isActivated
                   ? activeIcon
                   : icon
@@ -68,7 +68,7 @@ const Nav = ({
       {
         curNav && isActivated && (
           <>
-            <div className='font-light text-divider-deep'>/</div>
+            <div className='text-divider-deep font-light'>/</div>
             <NavSelector
               isApp={isApp}
               curNav={curNav}

@@ -66,21 +66,21 @@ const LabelSelector: FC<LabelSelectorProps> = ({
           className='block'
         >
           <div className={cn(
-            'flex items-center gap-1 px-3 h-10 rounded-lg border-[0.5px] border-transparent bg-components-input-bg-normal cursor-pointer hover:bg-components-input-bg-hover',
+            'bg-components-input-bg-normal hover:bg-components-input-bg-hover flex h-10 cursor-pointer items-center gap-1 rounded-lg border-[0.5px] border-transparent px-3',
             open && '!hover:bg-components-input-bg-hover hover:bg-components-input-bg-hover',
           )}>
-            <div title={value.length > 0 ? selectedLabels : ''} className={cn('grow text-[13px] leading-[18px] text-text-secondary truncate', !value.length && '!text-text-quaternary')}>
+            <div title={value.length > 0 ? selectedLabels : ''} className={cn('text-text-secondary grow truncate text-[13px] leading-[18px]', !value.length && '!text-text-quaternary')}>
               {!value.length && t('tools.createTool.toolInput.labelPlaceholder')}
               {!!value.length && selectedLabels}
             </div>
-            <div className='shrink-0 ml-1 text-text-secondary opacity-60'>
+            <div className='text-text-secondary ml-1 shrink-0 opacity-60'>
               <RiArrowDownSLine className='h-4 w-4' />
             </div>
           </div>
         </PortalToFollowElemTrigger>
         <PortalToFollowElemContent className='z-[1040]'>
-          <div className='relative w-[591px] bg-components-panel-bg-blur backdrop-blur-[5px] rounded-lg border-[0.5px] border-components-panel-border  shadow-lg'>
-            <div className='p-2 border-b-[0.5px] border-divider-regular'>
+          <div className='bg-components-panel-bg-blur border-components-panel-border relative w-[591px] rounded-lg border-[0.5px] shadow-lg  backdrop-blur-[5px]'>
+            <div className='border-divider-regular border-b-[0.5px] p-2'>
               <Input
                 showLeftIcon
                 showClearIcon
@@ -89,11 +89,11 @@ const LabelSelector: FC<LabelSelectorProps> = ({
                 onClear={() => handleKeywordsChange('')}
               />
             </div>
-            <div className='p-1 max-h-[264px] overflow-y-auto'>
+            <div className='max-h-[264px] overflow-y-auto p-1'>
               {filteredLabelList.map(label => (
                 <div
                   key={label.name}
-                  className='flex items-center gap-2 pl-3 py-[6px] pr-2 rounded-lg cursor-pointer hover:bg-components-panel-on-panel-item-bg-hover'
+                  className='hover:bg-components-panel-on-panel-item-bg-hover flex cursor-pointer items-center gap-2 rounded-lg py-[6px] pl-3 pr-2'
                   onClick={() => selectLabel(label)}
                 >
                   <Checkbox
@@ -101,12 +101,12 @@ const LabelSelector: FC<LabelSelectorProps> = ({
                     checked={value.includes(label.name)}
                     onCheck={() => { }}
                   />
-                  <div title={label.label} className='grow text-sm text-text-secondary leading-5 truncate'>{label.label}</div>
+                  <div title={label.label} className='text-text-secondary grow truncate text-sm leading-5'>{label.label}</div>
                 </div>
               ))}
               {!filteredLabelList.length && (
-                <div className='p-3 flex flex-col items-center gap-1'>
-                  <Tag03 className='h-6 w-6 text-text-quaternary' />
+                <div className='flex flex-col items-center gap-1 p-3'>
+                  <Tag03 className='text-text-quaternary h-6 w-6' />
                   <div className='text-text-tertiary text-xs leading-[14px]'>{t('common.tag.noTag')}</div>
                 </div>
               )}

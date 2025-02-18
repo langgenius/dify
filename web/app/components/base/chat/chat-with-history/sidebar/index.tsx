@@ -60,10 +60,10 @@ const Sidebar = () => {
   }, [showRename, handleRenameConversation, handleCancelRename])
 
   return (
-    <div className='shrink-0 h-full flex flex-col w-[240px] border-r border-r-gray-100'>
+    <div className='flex h-full w-[240px] shrink-0 flex-col border-r border-r-gray-100'>
       {
         !isMobile && (
-          <div className='shrink-0 flex p-4'>
+          <div className='flex shrink-0 p-4'>
             <AppIcon
               className='mr-3'
               size='small'
@@ -81,14 +81,14 @@ const Sidebar = () => {
       <div className='shrink-0 p-4'>
         <Button
           variant='secondary-accent'
-          className='justify-start w-full'
+          className='w-full justify-start'
           onClick={handleNewConversation}
         >
-          <Edit05 className='mr-2 w-4 h-4' />
+          <Edit05 className='mr-2 h-4 w-4' />
           {t('share.chat.newChat')}
         </Button>
       </div>
-      <div className='grow px-4 py-2 overflow-y-auto'>
+      <div className='grow overflow-y-auto px-4 py-2'>
         {
           !!pinnedConversationList.length && (
             <div className='mb-4'>

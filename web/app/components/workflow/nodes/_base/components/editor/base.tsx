@@ -76,7 +76,7 @@ const Base: FC<Props> = ({
   return (
     <Wrap className={cn(wrapClassName)} style={wrapStyle} isInNode={isInNode} isExpand={isExpand}>
       <div ref={ref} className={cn(className, isExpand && 'h-full', 'rounded-lg border', isFocus ? 'bg-components-input-bg-normal border-transparent' : 'bg-components-input-bg-hover border-components-input-border-hover overflow-hidden')}>
-        <div className='flex justify-between items-center h-7 pt-1 pl-3 pr-2'>
+        <div className='flex h-7 items-center justify-between pl-3 pr-2 pt-1'>
           <div className='system-xs-semibold-uppercase text-text-secondary'>{title}</div>
           <div className='flex items-center' onClick={(e) => {
             e.nativeEvent.stopImmediatePropagation()
@@ -90,10 +90,10 @@ const Base: FC<Props> = ({
             )}
             {!isCopied
               ? (
-                <Clipboard className='mx-1 w-3.5 h-3.5 text-text-tertiary cursor-pointer' onClick={handleCopy} />
+                <Clipboard className='text-text-tertiary mx-1 h-3.5 w-3.5 cursor-pointer' onClick={handleCopy} />
               )
               : (
-                <ClipboardCheck className='mx-1 w-3.5 h-3.5 text-text-tertiary' />
+                <ClipboardCheck className='text-text-tertiary mx-1 h-3.5 w-3.5' />
               )
             }
 

@@ -84,17 +84,17 @@ const DatasetCard = ({
     }
     return (
       <div className="relative w-full py-1" onMouseLeave={onMouseLeave}>
-        <div className='h-8 py-[6px] px-3 mx-1 flex items-center gap-2 hover:bg-gray-100 rounded-lg cursor-pointer' onClick={onClickRename}>
-          <span className='text-gray-700 text-sm'>{t('common.operation.settings')}</span>
+        <div className='mx-1 flex h-8 cursor-pointer items-center gap-2 rounded-lg px-3 py-[6px] hover:bg-gray-100' onClick={onClickRename}>
+          <span className='text-sm text-gray-700'>{t('common.operation.settings')}</span>
         </div>
         {props.showDelete && (
           <>
             <Divider className="!my-1" />
             <div
-              className='group h-8 py-[6px] px-3 mx-1 flex items-center gap-2 hover:bg-red-50 rounded-lg cursor-pointer'
+              className='group mx-1 flex h-8 cursor-pointer items-center gap-2 rounded-lg px-3 py-[6px] hover:bg-red-50'
               onClick={onClickDelete}
             >
-              <span className={cn('text-gray-700 text-sm', 'group-hover:text-red-500')}>
+              <span className={cn('text-sm text-gray-700', 'group-hover:text-red-500')}>
                 {t('common.operation.delete')}
               </span>
             </div>
@@ -111,7 +111,7 @@ const DatasetCard = ({
   return (
     <>
       <div
-        className='group relative col-span-1 bg-components-card-bg border-[0.5px] border-solid border-components-card-border rounded-xl shadow-sm min-h-[160px] flex flex-col transition-all duration-200 ease-in-out cursor-pointer hover:shadow-lg'
+        className='bg-components-card-bg border-components-card-border group relative col-span-1 flex min-h-[160px] cursor-pointer flex-col rounded-xl border-[0.5px] border-solid shadow-sm transition-all duration-200 ease-in-out hover:shadow-lg'
         data-disable-nprogress={true}
         onClick={(e) => {
           e.preventDefault()
@@ -121,25 +121,25 @@ const DatasetCard = ({
         }}
       >
         {isExternalProvider(dataset.provider) && <CornerLabel label='External' className='absolute right-0' labelClassName='rounded-tr-xl' />}
-        <div className='flex pt-[14px] px-[14px] pb-3 h-[66px] items-center gap-3 grow-0 shrink-0'>
+        <div className='flex h-[66px] shrink-0 grow-0 items-center gap-3 px-[14px] pb-3 pt-[14px]'>
           <div className={cn(
-            'shrink-0 flex items-center justify-center p-2.5 bg-[#F5F8FF] rounded-md border-[0.5px] border-[#E0EAFF]',
+            'flex shrink-0 items-center justify-center rounded-md border-[0.5px] border-[#E0EAFF] bg-[#F5F8FF] p-2.5',
             !dataset.embedding_available && 'opacity-50 hover:opacity-100',
           )}>
-            <Folder className='w-5 h-5 text-[#444CE7]' />
+            <Folder className='h-5 w-5 text-[#444CE7]' />
           </div>
-          <div className='grow w-0 py-[1px]'>
-            <div className='flex items-center text-sm leading-5 font-semibold text-text-secondary'>
-              <div className={cn('truncate', !dataset.embedding_available && 'opacity-50 hover:opacity-100 text-text-tertiary')} title={dataset.name}>{dataset.name}</div>
+          <div className='w-0 grow py-[1px]'>
+            <div className='text-text-secondary flex items-center text-sm font-semibold leading-5'>
+              <div className={cn('truncate', !dataset.embedding_available && 'text-text-tertiary opacity-50 hover:opacity-100')} title={dataset.name}>{dataset.name}</div>
               {!dataset.embedding_available && (
                 <Tooltip
                   popupContent={t('dataset.unavailableTip')}
                 >
-                  <span className='shrink-0 inline-flex w-max ml-1 px-1 border border-gray-200 rounded-md text-gray-500 text-xs font-normal leading-[18px]'>{t('dataset.unavailable')}</span>
+                  <span className='ml-1 inline-flex w-max shrink-0 rounded-md border border-gray-200 px-1 text-xs font-normal leading-[18px] text-gray-500'>{t('dataset.unavailable')}</span>
                 </Tooltip>
               )}
             </div>
-            <div className='flex items-center mt-[1px] text-xs leading-[18px] text-text-tertiary'>
+            <div className='text-text-tertiary mt-[1px] flex items-center text-xs leading-[18px]'>
               <div
                 className={cn('truncate', (!dataset.embedding_available || !dataset.document_count) && 'opacity-50')}
                 title={dataset.provider === 'external' ? `${dataset.app_count}${t('dataset.appCount')}` : `${dataset.document_count}${t('dataset.documentCount')} · ${Math.round(dataset.word_count / 1000)}${t('dataset.wordCount')} · ${dataset.app_count}${t('dataset.appCount')}`}
@@ -150,9 +150,9 @@ const DatasetCard = ({
                   </>
                   : <>
                     <span>{dataset.document_count}{t('dataset.documentCount')}</span>
-                    <span className='shrink-0 mx-0.5 w-1 text-gray-400'>·</span>
+                    <span className='mx-0.5 w-1 shrink-0 text-gray-400'>·</span>
                     <span>{Math.round(dataset.word_count / 1000)}{t('dataset.wordCount')}</span>
-                    <span className='shrink-0 mx-0.5 w-1 text-gray-400'>·</span>
+                    <span className='mx-0.5 w-1 shrink-0 text-gray-400'>·</span>
                     <span>{dataset.app_count}{t('dataset.appCount')}</span>
                   </>
                 }
@@ -162,7 +162,7 @@ const DatasetCard = ({
         </div>
         <div
           className={cn(
-            'grow mb-2 px-[14px] max-h-[72px] text-xs leading-normal text-text-tertiary group-hover:line-clamp-2 group-hover:max-h-[36px]',
+            'text-text-tertiary mb-2 max-h-[72px] grow px-[14px] text-xs leading-normal group-hover:line-clamp-2 group-hover:max-h-[36px]',
             tags.length ? 'line-clamp-2' : 'line-clamp-4',
             !dataset.embedding_available && 'opacity-50 hover:opacity-100',
           )}
@@ -170,15 +170,15 @@ const DatasetCard = ({
           {dataset.description}
         </div>
         <div className={cn(
-          'items-center shrink-0 mt-1 pt-1 pl-[14px] pr-[6px] pb-[6px] h-[42px]',
+          'mt-1 h-[42px] shrink-0 items-center pb-[6px] pl-[14px] pr-[6px] pt-1',
           tags.length ? 'flex' : '!hidden group-hover:!flex',
         )}>
-          <div className={cn('grow flex items-center gap-1 w-0', !dataset.embedding_available && 'opacity-50 hover:opacity-100')} onClick={(e) => {
+          <div className={cn('flex w-0 grow items-center gap-1', !dataset.embedding_available && 'opacity-50 hover:opacity-100')} onClick={(e) => {
             e.stopPropagation()
             e.preventDefault()
           }}>
             <div className={cn(
-              'group-hover:!block group-hover:!mr-0 mr-[41px] grow w-full',
+              'mr-[41px] w-full grow group-hover:!mr-0 group-hover:!block',
               tags.length ? '!block' : '!hidden',
             )}>
               <TagSelector
@@ -192,26 +192,26 @@ const DatasetCard = ({
               />
             </div>
           </div>
-          <div className='!hidden group-hover:!flex shrink-0 mx-1 w-[1px] h-[14px] bg-gray-200' />
-          <div className='!hidden group-hover:!flex shrink-0'>
+          <div className='mx-1 !hidden h-[14px] w-[1px] shrink-0 bg-gray-200 group-hover:!flex' />
+          <div className='!hidden shrink-0 group-hover:!flex'>
             <CustomPopover
               htmlContent={<Operations showDelete={!isCurrentWorkspaceDatasetOperator} />}
               position="br"
               trigger="click"
               btnElement={
                 <div
-                  className='flex items-center justify-center w-8 h-8 cursor-pointer rounded-md'
+                  className='flex h-8 w-8 cursor-pointer items-center justify-center rounded-md'
                 >
-                  <RiMoreFill className='w-4 h-4 text-gray-700' />
+                  <RiMoreFill className='h-4 w-4 text-gray-700' />
                 </div>
               }
               btnClassName={open =>
                 cn(
                   open ? '!bg-black/5 !shadow-none' : '!bg-transparent',
-                  'h-8 w-8 !p-2 rounded-md border-none hover:!bg-black/5',
+                  'h-8 w-8 rounded-md border-none !p-2 hover:!bg-black/5',
                 )
               }
-              className={'!w-[128px] h-fit !z-20'}
+              className={'!z-20 h-fit !w-[128px]'}
             />
           </div>
         </div>

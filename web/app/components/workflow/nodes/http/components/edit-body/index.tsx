@@ -135,7 +135,7 @@ const EditBody: FC<Props> = ({
       {/* body type */}
       <div className='flex flex-wrap'>
         {allTypes.map(t => (
-          <label key={t} htmlFor={`body-type-${t}`} className='mr-4 flex items-center h-7 space-x-2'>
+          <label key={t} htmlFor={`body-type-${t}`} className='mr-4 flex h-7 items-center space-x-2'>
             <input
               type="radio"
               id={`body-type-${t}`}
@@ -144,7 +144,7 @@ const EditBody: FC<Props> = ({
               onChange={handleTypeChange}
               disabled={readonly}
             />
-            <div className='leading-[18px] text-[13px] font-normal text-gray-700'>{bodyTextMap[t]}</div>
+            <div className='text-[13px] font-normal leading-[18px] text-gray-700'>{bodyTextMap[t]}</div>
           </label>
         ))}
       </div>

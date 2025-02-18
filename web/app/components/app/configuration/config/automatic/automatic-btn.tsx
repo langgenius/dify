@@ -13,10 +13,10 @@ const AutomaticBtn: FC<IAutomaticBtnProps> = ({
   const { t } = useTranslation()
 
   return (
-    <div className='flex space-x-1 items-center !h-8 cursor-pointer'
+    <div className='flex !h-8 cursor-pointer items-center space-x-1'
       onClick={onClick}
     >
-      <Generator className='w-3.5 h-3.5 text-indigo-600' />
+      <Generator className='h-3.5 w-3.5 text-indigo-600' />
       <span className='text-xs font-semibold text-indigo-600'>{t('appDebug.operation.automatic')}</span>
     </div>
   )

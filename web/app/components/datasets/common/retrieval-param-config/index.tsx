@@ -115,7 +115,7 @@ const RetrievalParamConfig: FC<Props> = ({
     <div>
       {!isEconomical && !isHybridSearch && (
         <div>
-          <div className='flex items-center space-x-2 mb-2'>
+          <div className='mb-2 flex items-center space-x-2'>
             {canToggleRerankModalEnable && (
               <Switch
                 size='md'
@@ -124,7 +124,7 @@ const RetrievalParamConfig: FC<Props> = ({
               />
             )}
             <div className='flex items-center'>
-              <span className='mr-0.5 system-sm-semibold text-text-secondary'>{t('common.modelProvider.rerankModel.key')}</span>
+              <span className='system-sm-semibold text-text-secondary mr-0.5'>{t('common.modelProvider.rerankModel.key')}</span>
               <Tooltip
                 popupContent={
                   <div className="w-[200px]">{t('common.modelProvider.rerankModel.tip')}</div>
@@ -153,7 +153,7 @@ const RetrievalParamConfig: FC<Props> = ({
       )}
       {
         !isHybridSearch && (
-          <div className={cn(!isEconomical && 'mt-4', 'flex space-between space-x-4')}>
+          <div className={cn(!isEconomical && 'mt-4', 'space-between flex space-x-4')}>
             <TopKItem
               className='grow'
               value={value.top_k}
@@ -191,7 +191,7 @@ const RetrievalParamConfig: FC<Props> = ({
       {
         isHybridSearch && (
           <>
-            <div className='flex gap-2 mb-4'>
+            <div className='mb-4 flex gap-2'>
               {
                 rerankingModeOptions.map(option => (
                   <RadioCard
@@ -255,7 +255,7 @@ const RetrievalParamConfig: FC<Props> = ({
                 />
               )
             }
-            <div className={cn(!isEconomical && 'mt-4', 'flex space-between space-x-6')}>
+            <div className={cn(!isEconomical && 'mt-4', 'space-between flex space-x-6')}>
               <TopKItem
                 className='grow'
                 value={value.top_k}

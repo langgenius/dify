@@ -19,11 +19,11 @@ describe('classnames', () => {
 
   test('tailwind-merge', () => {
     expect(cn('p-0')).toBe('p-0')
-    expect(cn('text-right text-center text-left')).toBe('text-left')
-    expect(cn('pl-4 p-8')).toBe('p-8')
+    expect(cn('text-left text-center text-right')).toBe('text-left')
+    expect(cn('p-8 pl-4')).toBe('p-8')
     expect(cn('m-[2px] m-[4px]')).toBe('m-[4px]')
     expect(cn('m-1 m-[4px]')).toBe('m-[4px]')
-    expect(cn('overflow-x-auto hover:overflow-x-hidden overflow-x-scroll')).toBe(
+    expect(cn('overflow-x-auto overflow-x-scroll hover:overflow-x-hidden')).toBe(
       'hover:overflow-x-hidden overflow-x-scroll',
     )
     expect(cn('h-10 h-min')).toBe('h-min')
@@ -31,10 +31,10 @@ describe('classnames', () => {
 
     expect(cn('hover:block hover:inline')).toBe('hover:inline')
 
-    expect(cn('font-medium !font-bold')).toBe('font-medium !font-bold')
-    expect(cn('!font-medium !font-bold')).toBe('!font-bold')
+    expect(cn('!font-bold font-medium')).toBe('font-medium !font-bold')
+    expect(cn('!font-bold !font-medium')).toBe('!font-bold')
 
-    expect(cn('text-gray-100 text-primary-200')).toBe('text-primary-200')
+    expect(cn('text-primary-200 text-gray-100')).toBe('text-primary-200')
     expect(cn('text-some-unknown-color text-components-input-bg-disabled text-primary-200')).toBe('text-primary-200')
     expect(cn('bg-some-unknown-color bg-components-input-bg-disabled bg-primary-200')).toBe('bg-primary-200')
 

@@ -59,46 +59,46 @@ const ExternalApiSelect: React.FC<ExternalApiSelectProps> = ({ items, value, onS
   return (
     <div className="relative w-full">
       <div
-        className={`flex items-center justify-between cursor-pointer px-2 py-1 gap-0.5 self-stretch rounded-lg 
-        bg-components-input-bg-normal hover:bg-state-base-hover-alt ${isOpen && 'bg-state-base-hover-alt'}`}
+        className={`bg-components-input-bg-normal hover:bg-state-base-hover-alt flex cursor-pointer items-center justify-between gap-0.5 self-stretch rounded-lg 
+        px-2 py-1 ${isOpen && 'bg-state-base-hover-alt'}`}
         onClick={() => setIsOpen(!isOpen)}
       >
         {selectedItem
           ? (
-            <div className="flex p-1 items-center gap-2 self-stretch rounded-lg">
-              <ApiConnectionMod className='text-text-secondary w-4 h-4' />
-              <div className='flex items-center flex-grow'>
-                <span className='text-components-input-text-filled text-ellipsis system-sm-regular overflow-hidden'>{selectedItem.name}</span>
+            <div className="flex items-center gap-2 self-stretch rounded-lg p-1">
+              <ApiConnectionMod className='text-text-secondary h-4 w-4' />
+              <div className='flex grow items-center'>
+                <span className='text-components-input-text-filled system-sm-regular overflow-hidden text-ellipsis'>{selectedItem.name}</span>
               </div>
             </div>
           )
           : (
             <span className='text-components-input-text-placeholder system-sm-regular'>{t('dataset.selectExternalKnowledgeAPI.placeholder')}</span>
           )}
-        <RiArrowDownSLine className={`w-4 h-4 text-text-quaternary transition-transform ${isOpen ? 'text-text-secondary' : ''}`} />
+        <RiArrowDownSLine className={`text-text-quaternary h-4 w-4 transition-transform ${isOpen ? 'text-text-secondary' : ''}`} />
       </div>
       {isOpen && (
-        <div className="absolute z-10 w-full mt-1 bg-components-panel-bg-blur border rounded-xl shadow-lg">
+        <div className="bg-components-panel-bg-blur absolute z-10 mt-1 w-full rounded-xl border shadow-lg">
           {items.map(item => (
             <div
               key={item.value}
-              className="flex p-1 items-center cursor-pointer"
+              className="flex cursor-pointer items-center p-1"
               onClick={() => handleSelect(item)}
             >
-              <div className="flex p-2 items-center gap-2 self-stretch rounded-lg hover:bg-state-base-hover w-full">
-                <ApiConnectionMod className='text-text-secondary w-4 h-4' />
-                <span className='text-text-secondary text-ellipsis system-sm-medium overflow-hidden flex-grow'>{item.name}</span>
-                <span className='text-text-tertiary overflow-hidden text-right text-ellipsis system-xs-regular'>{item.url}</span>
+              <div className="hover:bg-state-base-hover flex w-full items-center gap-2 self-stretch rounded-lg p-2">
+                <ApiConnectionMod className='text-text-secondary h-4 w-4' />
+                <span className='text-text-secondary system-sm-medium grow overflow-hidden text-ellipsis'>{item.name}</span>
+                <span className='text-text-tertiary system-xs-regular overflow-hidden text-ellipsis text-right'>{item.url}</span>
               </div>
             </div>
           ))}
-          <div className='flex p-1 flex-col items-start self-stretch'>
+          <div className='flex flex-col items-start self-stretch p-1'>
             <div
-              className='flex p-2 items-center gap-2 self-stretch rounded-lg cursor-pointer hover:bg-state-base-hover'
+              className='hover:bg-state-base-hover flex cursor-pointer items-center gap-2 self-stretch rounded-lg p-2'
               onClick={handleAddNewAPI}
             >
-              <RiAddLine className='text-text-secondary w-4 h-4' />
-              <span className='flex-grow overflow-hidden text-text-secondary text-ellipsis system-sm-medium'>{t('dataset.createNewExternalAPI')}</span>
+              <RiAddLine className='text-text-secondary h-4 w-4' />
+              <span className='text-text-secondary system-sm-medium grow overflow-hidden text-ellipsis'>{t('dataset.createNewExternalAPI')}</span>
             </div>
           </div>
         </div>

@@ -107,19 +107,19 @@ const ModelLoadBalancingModal = ({ provider, model, open = false, onClose, onSav
     <Modal
       isShow={Boolean(model) && open}
       onClose={onClose}
-      className='max-w-none pt-8 px-8 w-[640px]'
+      className='w-[640px] max-w-none px-8 pt-8'
       title={
         <div className='pb-3 font-semibold'>
           <div className='h-[30px]'>{t('common.modelProvider.configLoadBalancing')}</div>
           {Boolean(model) && (
-            <div className='flex items-center h-5'>
+            <div className='flex h-5 items-center'>
               <ModelIcon
-                className='shrink-0 mr-2'
+                className='mr-2 shrink-0'
                 provider={provider}
                 modelName={model!.model}
               />
               <ModelName
-                className='grow system-md-regular text-text-secondary'
+                className='system-md-regular text-text-secondary grow'
                 modelItem={model!}
                 showModelType
                 showMode
@@ -142,15 +142,15 @@ const ModelLoadBalancingModal = ({ provider, model, open = false, onClose, onSav
                 )}
                 onClick={draftConfig.enabled ? () => toggleModalBalancing(false) : undefined}
               >
-                <div className='flex items-center px-[15px] py-3 gap-2 select-none'>
-                  <div className='grow-0 shrink-0 flex items-center justify-center w-8 h-8 bg-components-card-bg border border-components-card-border rounded-lg'>
+                <div className='flex select-none items-center gap-2 px-[15px] py-3'>
+                  <div className='bg-components-card-bg border-components-card-border flex h-8 w-8 shrink-0 grow-0 items-center justify-center rounded-lg border'>
                     {Boolean(model) && (
                       <ModelIcon className='shrink-0' provider={provider} modelName={model!.model} />
                     )}
                   </div>
                   <div className='grow'>
-                    <div className='text-sm text-text-secondary'>{t('common.modelProvider.providerManaged')}</div>
-                    <div className='text-xs text-text-tertiary'>{t('common.modelProvider.providerManagedDescription')}</div>
+                    <div className='text-text-secondary text-sm'>{t('common.modelProvider.providerManaged')}</div>
+                    <div className='text-text-tertiary text-xs'>{t('common.modelProvider.providerManagedDescription')}</div>
                   </div>
                 </div>
               </div>
@@ -168,7 +168,7 @@ const ModelLoadBalancingModal = ({ provider, model, open = false, onClose, onSav
               }} />
             </div>
 
-            <div className='flex items-center justify-end gap-2 mt-6'>
+            <div className='mt-6 flex items-center justify-end gap-2'>
               <Button onClick={onClose}>{t('common.operation.cancel')}</Button>
               <Button
                 variant='primary'

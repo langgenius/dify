@@ -76,7 +76,7 @@ const AddAnnotationModal: FC<Props> = ({
         maxWidthClassName='!max-w-[480px]'
         title={t('appAnnotation.addModal.title') as string}
         body={(
-          <div className='p-6 pb-4 space-y-6'>
+          <div className='space-y-6 p-6 pb-4'>
             <EditItem
               type={EditItemType.Query}
               content={question}
@@ -93,11 +93,11 @@ const AddAnnotationModal: FC<Props> = ({
           (
             <div>
               {isAnnotationFull && (
-                <div className='mt-6 mb-4 px-6'>
+                <div className='mb-4 mt-6 px-6'>
                   <AnnotationFull />
                 </div>
               )}
-              <div className='px-4 flex h-16 items-center justify-between border-t border-divider-subtle bg-background-section-burn rounded-bl-xl rounded-br-xl system-sm-medium text-text-tertiary'>
+              <div className='border-divider-subtle bg-background-section-burn system-sm-medium text-text-tertiary flex h-16 items-center justify-between rounded-bl-xl rounded-br-xl border-t px-4'>
                 <div
                   className='flex items-center space-x-2'
                 >

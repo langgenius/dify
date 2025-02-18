@@ -73,12 +73,12 @@ const Website: FC<Props> = ({
   return (
     <div>
       <div className="mb-4">
-        <div className="font-medium text-gray-700 mb-2 h-6">
+        <div className="mb-2 h-6 font-medium text-gray-700">
           {t('datasetCreation.stepOne.website.chooseProvider')}
         </div>
         <div className="flex space-x-2">
           <button
-            className={`px-4 py-2 text-sm font-medium rounded-md flex items-center justify-center ${
+            className={`flex items-center justify-center rounded-md px-4 py-2 text-sm font-medium ${
               selectedProvider === DataSourceProvider.jinaReader
                 ? 'bg-primary-50 text-primary-600'
                 : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
@@ -89,7 +89,7 @@ const Website: FC<Props> = ({
             <span>Jina Reader</span>
           </button>
           <button
-            className={`px-4 py-2 text-sm font-medium rounded-md ${
+            className={`rounded-md px-4 py-2 text-sm font-medium ${
               selectedProvider === DataSourceProvider.fireCrawl
                 ? 'bg-primary-50 text-primary-600'
                 : 'bg-gray-100 text-gray-600 hover:bg-gray-200'

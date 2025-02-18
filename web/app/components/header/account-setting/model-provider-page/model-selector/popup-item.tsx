@@ -80,7 +80,7 @@ const PopupItem: FC<PopupItemProps> = ({
 
   return (
     <div className='mb-1'>
-      <div className='flex items-center px-3 h-[22px] text-xs font-medium text-text-tertiary'>
+      <div className='text-text-tertiary flex h-[22px] items-center px-3 text-xs font-medium'>
         {model.label[language] || model.label.en_US}
       </div>
       {
@@ -93,11 +93,11 @@ const PopupItem: FC<PopupItemProps> = ({
               <div className='flex flex-col gap-1'>
                 <div className='flex flex-col items-start gap-2'>
                   <ModelIcon
-                    className={cn('shrink-0 w-5 h-5')}
+                    className={cn('h-5 w-5 shrink-0')}
                     provider={model}
                     modelName={modelItem.model}
                   />
-                  <div className='truncate text-text-primary system-md-medium'>{modelItem.label[language] || modelItem.label.en_US}</div>
+                  <div className='text-text-primary system-md-medium truncate'>{modelItem.label[language] || modelItem.label.en_US}</div>
                 </div>
                 {/* {currentProvider?.description && (
                   <div className='text-text-tertiary system-xs-regular'>{currentProvider?.description?.[language] || currentProvider?.description?.en_US}</div>
@@ -121,29 +121,29 @@ const PopupItem: FC<PopupItemProps> = ({
                 </div>
                 {modelItem.model_type === ModelTypeEnum.textGeneration && modelItem.features?.some(feature => [ModelFeatureEnum.vision, ModelFeatureEnum.audio, ModelFeatureEnum.video, ModelFeatureEnum.document].includes(feature)) && (
                   <div className='pt-2'>
-                    <div className='mb-1 text-text-tertiary system-2xs-medium-uppercase'>{t('common.model.capabilities')}</div>
+                    <div className='text-text-tertiary system-2xs-medium-uppercase mb-1'>{t('common.model.capabilities')}</div>
                     <div className='flex flex-wrap gap-1'>
                       {modelItem.features?.includes(ModelFeatureEnum.vision) && (
                         <ModelBadge>
-                          <RiImageCircleAiLine className='w-3.5 h-3.5 mr-0.5' />
+                          <RiImageCircleAiLine className='mr-0.5 h-3.5 w-3.5' />
                           <span>{ModelFeatureTextEnum.vision}</span>
                         </ModelBadge>
                       )}
                       {modelItem.features?.includes(ModelFeatureEnum.audio) && (
                         <ModelBadge>
-                          <RiVoiceAiFill className='w-3.5 h-3.5 mr-0.5' />
+                          <RiVoiceAiFill className='mr-0.5 h-3.5 w-3.5' />
                           <span>{ModelFeatureTextEnum.audio}</span>
                         </ModelBadge>
                       )}
                       {modelItem.features?.includes(ModelFeatureEnum.video) && (
                         <ModelBadge>
-                          <RiFilmAiLine className='w-3.5 h-3.5 mr-0.5' />
+                          <RiFilmAiLine className='mr-0.5 h-3.5 w-3.5' />
                           <span>{ModelFeatureTextEnum.video}</span>
                         </ModelBadge>
                       )}
                       {modelItem.features?.includes(ModelFeatureEnum.document) && (
                         <ModelBadge>
-                          <RiFileTextLine className='w-3.5 h-3.5 mr-0.5' />
+                          <RiFileTextLine className='mr-0.5 h-3.5 w-3.5' />
                           <span>{ModelFeatureTextEnum.document}</span>
                         </ModelBadge>
                       )}
@@ -155,12 +155,12 @@ const PopupItem: FC<PopupItemProps> = ({
           >
             <div
               key={modelItem.model}
-              className={cn('group relative flex items-center px-3 py-1.5 h-8 rounded-lg gap-1', modelItem.status === ModelStatusEnum.active ? 'cursor-pointer hover:bg-state-base-hover' : 'cursor-not-allowed hover:bg-state-base-hover-alt')}
+              className={cn('group relative flex h-8 items-center gap-1 rounded-lg px-3 py-1.5', modelItem.status === ModelStatusEnum.active ? 'hover:bg-state-base-hover cursor-pointer' : 'hover:bg-state-base-hover-alt cursor-not-allowed')}
               onClick={() => handleSelect(model.provider, modelItem)}
             >
               <div className='flex items-center gap-2'>
                 <ModelIcon
-                  className={cn('shrink-0 w-5 h-5')}
+                  className={cn('h-5 w-5 shrink-0')}
                   provider={model}
                   modelName={modelItem.model}
                 />
@@ -171,13 +171,13 @@ const PopupItem: FC<PopupItemProps> = ({
               </div>
               {
                 defaultModel?.model === modelItem.model && defaultModel.provider === currentProvider.provider && (
-                  <Check className='shrink-0 w-4 h-4 text-text-accent' />
+                  <Check className='text-text-accent h-4 w-4 shrink-0' />
                 )
               }
               {
                 modelItem.status === ModelStatusEnum.noConfigure && (
                   <div
-                    className='hidden group-hover:block text-xs font-medium text-text-accent cursor-pointer'
+                    className='text-text-accent hidden cursor-pointer text-xs font-medium group-hover:block'
                     onClick={handleOpenModelModal}
                   >
                     {t('common.operation.add').toLocaleUpperCase()}

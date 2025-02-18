@@ -77,7 +77,7 @@ const FilterCondition: FC<Props> = ({
       )}
       <div className='flex space-x-1'>
         <ConditionOperator
-          className='h-8 bg-components-input-bg-normal'
+          className='bg-components-input-bg-normal h-8'
           varType={varType}
           value={condition.comparison_operator}
           onSelect={handleChange('comparison_operator')}

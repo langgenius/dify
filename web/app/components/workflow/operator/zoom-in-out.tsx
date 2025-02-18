@@ -131,20 +131,20 @@ const ZoomInOut: FC = () => {
     >
       <PortalToFollowElemTrigger asChild>
         <div className={`
-          p-0.5 h-9 cursor-pointer text-[13px] backdrop-blur-[5px] rounded-lg
-          bg-components-actionbar-bg shadow-lg border-[0.5px] border-components-actionbar-border 
-          hover:bg-state-base-hover
+          bg-components-actionbar-bg border-components-actionbar-border hover:bg-state-base-hover h-9 cursor-pointer rounded-lg
+          border-[0.5px] p-0.5 text-[13px] shadow-lg 
+          backdrop-blur-[5px]
           ${workflowReadOnly && '!cursor-not-allowed opacity-50'}
         `}>
           <div className={cn(
-            'flex items-center justify-between w-[98px] h-8 rounded-lg',
+            'flex h-8 w-[98px] items-center justify-between rounded-lg',
           )}>
             <TipPopup
               title={t('workflow.operator.zoomOut')}
               shortcuts={['ctrl', '-']}
             >
               <div
-                className={`flex items-center justify-center w-8 h-8 rounded-lg ${zoom <= 0.25 ? 'cursor-not-allowed' : 'cursor-pointer hover:bg-black/5'}`}
+                className={`flex h-8 w-8 items-center justify-center rounded-lg ${zoom <= 0.25 ? 'cursor-not-allowed' : 'cursor-pointer hover:bg-black/5'}`}
                 onClick={(e) => {
                   if (zoom <= 0.25)
                     return
@@ -153,16 +153,16 @@ const ZoomInOut: FC = () => {
                   zoomOut()
                 }}
               >
-                <RiZoomOutLine className='w-4 h-4 text-text-tertiary hover:text-text-secondary' />
+                <RiZoomOutLine className='text-text-tertiary hover:text-text-secondary h-4 w-4' />
               </div>
             </TipPopup>
-            <div onClick={handleTrigger} className={cn('w-[34px] system-sm-medium text-text-tertiary hover:text-text-secondary')}>{parseFloat(`${zoom * 100}`).toFixed(0)}%</div>
+            <div onClick={handleTrigger} className={cn('system-sm-medium text-text-tertiary hover:text-text-secondary w-[34px]')}>{parseFloat(`${zoom * 100}`).toFixed(0)}%</div>
             <TipPopup
               title={t('workflow.operator.zoomIn')}
               shortcuts={['ctrl', '+']}
             >
               <div
-                className={`flex items-center justify-center w-8 h-8 rounded-lg ${zoom >= 2 ? 'cursor-not-allowed' : 'cursor-pointer hover:bg-black/5'}`}
+                className={`flex h-8 w-8 items-center justify-center rounded-lg ${zoom >= 2 ? 'cursor-not-allowed' : 'cursor-pointer hover:bg-black/5'}`}
                 onClick={(e) => {
                   if (zoom >= 2)
                     return
@@ -171,14 +171,14 @@ const ZoomInOut: FC = () => {
                   zoomIn()
                 }}
               >
-                <RiZoomInLine className='w-4 h-4 text-text-tertiary hover:text-text-secondary' />
+                <RiZoomInLine className='text-text-tertiary hover:text-text-secondary h-4 w-4' />
               </div>
             </TipPopup>
           </div>
         </div>
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent className='z-10'>
-        <div className='w-[145px] backdrop-blur-[5px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg'>
+        <div className='border-components-panel-border bg-components-panel-bg-blur w-[145px] rounded-xl border-[0.5px] shadow-lg backdrop-blur-[5px]'>
           {
             ZOOM_IN_OUT_OPTIONS.map((options, i) => (
               <Fragment key={i}>
@@ -192,7 +192,7 @@ const ZoomInOut: FC = () => {
                     options.map(option => (
                       <div
                         key={option.key}
-                        className='flex items-center justify-between space-x-1 py-1.5 pl-3 pr-2 h-8 rounded-lg hover:bg-state-base-hover cursor-pointer system-md-regular text-text-secondary'
+                        className='hover:bg-state-base-hover system-md-regular text-text-secondary flex h-8 cursor-pointer items-center justify-between space-x-1 rounded-lg py-1.5 pl-3 pr-2'
                         onClick={() => handleZoom(option.key)}
                       >
                         <span>{option.text}</span>

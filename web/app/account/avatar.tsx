@@ -38,10 +38,10 @@ export default function AppSelector() {
             <div>
               <MenuButton
                 className={`
-                    inline-flex items-center
-                    rounded-[20px] p-1x text-sm
-                    text-text-primary
-                    mobile:px-1
+                    p-1x text-text-primary
+                    mobile:px-1 inline-flex items-center
+                    rounded-[20px]
+                    text-sm
                     ${open && 'bg-components-panel-bg-blur'}
                   `}
               >
@@ -59,8 +59,8 @@ export default function AppSelector() {
             >
               <MenuItems
                 className="
-                    absolute -right-2 -top-1 w-60 max-w-80
-                    divide-y divide-divider-subtle origin-top-right rounded-lg bg-components-panel-bg-blur
+                    divide-divider-subtle bg-components-panel-bg-blur absolute -right-2 -top-1
+                    w-60 max-w-80 origin-top-right divide-y rounded-lg
                     shadow-lg
                   "
               >
@@ -78,10 +78,10 @@ export default function AppSelector() {
                 <MenuItem>
                   <div className='p-1' onClick={() => handleLogout()}>
                     <div
-                      className='flex items-center justify-start h-9 px-3 rounded-lg cursor-pointer group hover:bg-state-base-hover'
+                      className='hover:bg-state-base-hover group flex h-9 cursor-pointer items-center justify-start rounded-lg px-3'
                     >
-                      <LogOut01 className='w-4 h-4 text-text-tertiary flex mr-1' />
-                      <div className='font-normal text-[14px] text-text-secondary'>{t('common.userProfile.logout')}</div>
+                      <LogOut01 className='text-text-tertiary mr-1 flex h-4 w-4' />
+                      <div className='text-text-secondary text-[14px] font-normal'>{t('common.userProfile.logout')}</div>
                     </div>
                   </div>
                 </MenuItem>

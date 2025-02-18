@@ -74,15 +74,15 @@ const ConditionValue = ({
   }, [])
 
   return (
-    <div className='rounded-md bg-workflow-block-parma-bg'>
-      <div className='flex items-center px-1 h-6 '>
-        {!isEnvVar && !isChatVar && <Variable02 className='shrink-0 mr-1 w-3.5 h-3.5 text-text-accent' />}
-        {isEnvVar && <Env className='shrink-0 mr-1 w-3.5 h-3.5 text-util-colors-violet-violet-600' />}
-        {isChatVar && <BubbleX className='w-3.5 h-3.5 text-util-colors-teal-teal-700' />}
+    <div className='bg-workflow-block-parma-bg rounded-md'>
+      <div className='flex h-6 items-center px-1 '>
+        {!isEnvVar && !isChatVar && <Variable02 className='text-text-accent mr-1 h-3.5 w-3.5 shrink-0' />}
+        {isEnvVar && <Env className='text-util-colors-violet-violet-600 mr-1 h-3.5 w-3.5 shrink-0' />}
+        {isChatVar && <BubbleX className='text-util-colors-teal-teal-700 h-3.5 w-3.5' />}
 
         <div
           className={cn(
-            'shrink-0  truncate text-xs font-medium text-text-accent',
+            'text-text-accent  shrink-0 truncate text-xs font-medium',
             !notHasValue && 'max-w-[70px]',
           )}
           title={variableName}
@@ -90,20 +90,20 @@ const ConditionValue = ({
           {variableName}
         </div>
         <div
-          className='shrink-0 mx-1 text-xs font-medium text-text-primary'
+          className='text-text-primary mx-1 shrink-0 text-xs font-medium'
           title={operatorName}
         >
           {operatorName}
         </div>
       </div>
-      <div className='ml-[10px] pl-[10px] border-l border-divider-regular'>
+      <div className='border-divider-regular ml-[10px] border-l pl-[10px]'>
         {
           sub_variable_condition?.conditions.map((c: Condition, index) => (
-            <div className='relative flex items-center h-6 space-x-1' key={c.id}>
+            <div className='relative flex h-6 items-center space-x-1' key={c.id}>
               <div className='text-text-accent system-xs-medium'>{c.key}</div>
               <div className='text-text-primary system-xs-medium'>{isComparisonOperatorNeedTranslate(c.comparison_operator) ? t(`workflow.nodes.ifElse.comparisonOperator.${c.comparison_operator}`) : c.comparison_operator}</div>
               {c.comparison_operator && !isEmptyRelatedOperator(c.comparison_operator) && <div className='text-text-secondary system-xs-regular'>{isSelect(c) ? selectName(c) : formatValue(c)}</div>}
-              {index !== sub_variable_condition.conditions.length - 1 && (<div className='absolute z-10 right-1 bottom-[-10px] leading-4 text-[10px] font-medium text-text-accent uppercase'>{t(`${i18nPrefix}.${sub_variable_condition.logical_operator}`)}</div>)}
+              {index !== sub_variable_condition.conditions.length - 1 && (<div className='text-text-accent absolute bottom-[-10px] right-1 z-10 text-[10px] font-medium uppercase leading-4'>{t(`${i18nPrefix}.${sub_variable_condition.logical_operator}`)}</div>)}
             </div>
           ))
         }

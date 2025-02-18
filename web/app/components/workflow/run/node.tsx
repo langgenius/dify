@@ -85,10 +85,10 @@ const NodePanel: FC<Props> = ({
 
   return (
     <div className={cn('px-2 py-1', className)}>
-      <div className='group transition-all bg-background-default border border-components-panel-border rounded-[10px] shadow-xs hover:shadow-md'>
+      <div className='bg-background-default border-components-panel-border shadow-xs group rounded-[10px] border transition-all hover:shadow-md'>
         <div
           className={cn(
-            'flex items-center pl-1 pr-3 cursor-pointer',
+            'flex cursor-pointer items-center pl-1 pr-3',
             hideInfo ? 'py-2' : 'py-1.5',
             !collapseState && (hideInfo ? '!pb-1' : '!pb-1.5'),
           )}
@@ -97,35 +97,35 @@ const NodePanel: FC<Props> = ({
           {!hideProcessDetail && (
             <RiArrowRightSLine
               className={cn(
-                'shrink-0 w-4 h-4 mr-1 text-text-quaternary transition-all group-hover:text-text-tertiary',
+                'text-text-quaternary group-hover:text-text-tertiary mr-1 h-4 w-4 shrink-0 transition-all',
                 !collapseState && 'rotate-90',
               )}
             />
           )}
-          <BlockIcon size={inMessage ? 'xs' : 'sm'} className={cn('shrink-0 mr-2', inMessage && '!mr-1')} type={nodeInfo.node_type} toolIcon={nodeInfo.extras?.icon || nodeInfo.extras} />
+          <BlockIcon size={inMessage ? 'xs' : 'sm'} className={cn('mr-2 shrink-0', inMessage && '!mr-1')} type={nodeInfo.node_type} toolIcon={nodeInfo.extras?.icon || nodeInfo.extras} />
           <div className={cn(
-            'grow text-text-secondary system-xs-semibold-uppercase truncate',
+            'text-text-secondary system-xs-semibold-uppercase grow truncate',
             hideInfo && '!text-xs',
           )} title={nodeInfo.title}>{nodeInfo.title}</div>
           {nodeInfo.status !== 'running' && !hideInfo && (
-            <div className='shrink-0 text-text-tertiary system-xs-regular'>{nodeInfo.execution_metadata?.total_tokens ? `${getTokenCount(nodeInfo.execution_metadata?.total_tokens || 0)} tokens · ` : ''}{`${getTime(nodeInfo.elapsed_time || 0)}`}</div>
+            <div className='text-text-tertiary system-xs-regular shrink-0'>{nodeInfo.execution_metadata?.total_tokens ? `${getTokenCount(nodeInfo.execution_metadata?.total_tokens || 0)} tokens · ` : ''}{`${getTime(nodeInfo.elapsed_time || 0)}`}</div>
           )}
           {nodeInfo.status === 'succeeded' && (
-            <RiCheckboxCircleFill className='shrink-0 ml-2 w-3.5 h-3.5 text-text-success' />
+            <RiCheckboxCircleFill className='text-text-success ml-2 h-3.5 w-3.5 shrink-0' />
           )}
           {nodeInfo.status === 'failed' && (
-            <RiErrorWarningLine className='shrink-0 ml-2 w-3.5 h-3.5 text-text-warning' />
+            <RiErrorWarningLine className='text-text-warning ml-2 h-3.5 w-3.5 shrink-0' />
           )}
           {nodeInfo.status === 'stopped' && (
-            <RiAlertFill className={cn('shrink-0 ml-2 w-4 h-4 text-text-warning-secondary', inMessage && 'w-3.5 h-3.5')} />
+            <RiAlertFill className={cn('text-text-warning-secondary ml-2 h-4 w-4 shrink-0', inMessage && 'h-3.5 w-3.5')} />
           )}
           {nodeInfo.status === 'exception' && (
-            <RiAlertFill className={cn('shrink-0 ml-2 w-4 h-4 text-text-warning-secondary', inMessage && 'w-3.5 h-3.5')} />
+            <RiAlertFill className={cn('text-text-warning-secondary ml-2 h-4 w-4 shrink-0', inMessage && 'h-3.5 w-3.5')} />
           )}
           {nodeInfo.status === 'running' && (
-            <div className='shrink-0 flex items-center text-text-accent text-[13px] leading-[16px] font-medium'>
+            <div className='text-text-accent flex shrink-0 items-center text-[13px] font-medium leading-[16px]'>
               <span className='mr-2 text-xs font-normal'>Running</span>
-              <RiLoader2Line className='w-3.5 h-3.5 animate-spin' />
+              <RiLoader2Line className='h-3.5 w-3.5 animate-spin' />
             </div>
           )}
         </div>

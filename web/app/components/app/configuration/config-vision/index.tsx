@@ -57,14 +57,14 @@ const ConfigVision: FC = () => {
     return null
 
   return (
-    <div className='mt-2 flex items-center gap-2 p-2 rounded-xl border-effects-highlight border-t-[0.5px] border-l-[0.5px] bg-background-section-burn'>
+    <div className='border-effects-highlight bg-background-section-burn mt-2 flex items-center gap-2 rounded-xl border-l-[0.5px] border-t-[0.5px] p-2'>
       <div className='shrink-0 p-1'>
-        <div className='p-1 rounded-lg border-[0.5px] border-divider-subtle shadow-xs bg-util-colors-indigo-indigo-600'>
-          <Vision className='w-4 h-4 text-text-primary-on-surface' />
+        <div className='border-divider-subtle shadow-xs bg-util-colors-indigo-indigo-600 rounded-lg border-[0.5px] p-1'>
+          <Vision className='text-text-primary-on-surface h-4 w-4' />
         </div>
       </div>
-      <div className='grow flex items-center'>
-        <div className='mr-1 text-text-secondary system-sm-semibold'>{t('appDebug.vision.name')}</div>
+      <div className='flex grow items-center'>
+        <div className='text-text-secondary system-sm-semibold mr-1'>{t('appDebug.vision.name')}</div>
         <Tooltip
           popupContent={
             <div className='w-[180px]' >
@@ -73,7 +73,7 @@ const ConfigVision: FC = () => {
           }
         />
       </div>
-      <div className='shrink-0 flex items-center'>
+      <div className='flex shrink-0 items-center'>
         {/* <div className='mr-2 flex items-center gap-0.5'>
           <div className='text-text-tertiary system-xs-medium-uppercase'>{t('appDebug.vision.visionSettings.resolution')}</div>
           <Tooltip
@@ -99,7 +99,7 @@ const ConfigVision: FC = () => {
           />
         </div> */}
         <ParamConfig />
-        <div className='ml-1 mr-3 w-[1px] h-3.5 bg-divider-regular'></div>
+        <div className='bg-divider-regular ml-1 mr-3 h-3.5 w-[1px]'></div>
         <Switch
           defaultValue={isImageEnabled}
           onChange={handleChange}

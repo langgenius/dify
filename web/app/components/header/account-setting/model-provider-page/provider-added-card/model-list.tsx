@@ -49,20 +49,20 @@ const ModelList: FC<ModelListProps> = ({
   }, [onChange, provider, setShowModelLoadBalancingModal])
 
   return (
-    <div className='px-2 pb-2 rounded-b-xl'>
-      <div className='py-1 bg-components-panel-bg rounded-lg'>
+    <div className='rounded-b-xl px-2 pb-2'>
+      <div className='bg-components-panel-bg rounded-lg py-1'>
         <div className='flex items-center pl-1 pr-[3px]'>
-          <span className='group shrink-0 flex items-center mr-2'>
-            <span className='group-hover:hidden inline-flex items-center pl-1 pr-1.5 h-6 system-xs-medium text-text-tertiary'>
+          <span className='group mr-2 flex shrink-0 items-center'>
+            <span className='system-xs-medium text-text-tertiary inline-flex h-6 items-center pl-1 pr-1.5 group-hover:hidden'>
               {t('common.modelProvider.modelsNum', { num: models.length })}
-              <RiArrowRightSLine className='mr-0.5 w-4 h-4 rotate-90' />
+              <RiArrowRightSLine className='mr-0.5 h-4 w-4 rotate-90' />
             </span>
             <span
-              className='hidden group-hover:inline-flex items-center pl-1 pr-1.5 h-6 system-xs-medium text-text-tertiary bg-state-base-hover cursor-pointer rounded-lg'
+              className='system-xs-medium text-text-tertiary bg-state-base-hover hidden h-6 cursor-pointer items-center rounded-lg pl-1 pr-1.5 group-hover:inline-flex'
               onClick={() => onCollapse()}
             >
               {t('common.modelProvider.modelsNum', { num: models.length })}
-              <RiArrowRightSLine className='mr-0.5 w-4 h-4 rotate-90' />
+              <RiArrowRightSLine className='mr-0.5 h-4 w-4 rotate-90' />
             </span>
           </span>
           {/* {
@@ -74,7 +74,7 @@ const ModelList: FC<ModelListProps> = ({
           } */}
           {
             isConfigurable && isCurrentWorkspaceManager && (
-              <div className='grow flex justify-end'>
+              <div className='flex grow justify-end'>
                 <AddModelButton onClick={() => onConfig()} />
               </div>
             )

@@ -56,12 +56,12 @@ const ConditionAdd = ({
           className={className}
           disabled={disabled}
         >
-          <RiAddLine className='mr-1 w-3.5 h-3.5' />
+          <RiAddLine className='mr-1 h-3.5 w-3.5' />
           {t('workflow.nodes.ifElse.addCondition')}
         </Button>
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent className='z-[1000]'>
-        <div className='w-[296px] bg-components-panel-bg-blur rounded-lg border-[0.5px] border-components-panel-border shadow-lg'>
+        <div className='bg-components-panel-bg-blur border-components-panel-border w-[296px] rounded-lg border-[0.5px] shadow-lg'>
           <VarReferenceVars
             vars={variables}
             isSupportFileVar

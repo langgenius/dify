@@ -14,12 +14,12 @@ const ContextVar: FC<Props> = (props) => {
   const currItem = options.find(item => item.value === value)
   const notSetVar = !currItem
   return (
-    <div className={cn(notSetVar ? 'rounded-bl-xl rounded-br-xl bg-[#FEF0C7] border-[#FEF0C7]' : 'border-components-panel-border-subtle', 'flex justify-between items-center h-12 px-3 border-t ')}>
-      <div className='flex items-center space-x-1 shrink-0'>
+    <div className={cn(notSetVar ? 'rounded-bl-xl rounded-br-xl border-[#FEF0C7] bg-[#FEF0C7]' : 'border-components-panel-border-subtle', 'flex h-12 items-center justify-between border-t px-3 ')}>
+      <div className='flex shrink-0 items-center space-x-1'>
         <div className='p-1'>
-          <BracketsX className='w-4 h-4 text-text-accent' />
+          <BracketsX className='text-text-accent h-4 w-4' />
         </div>
-        <div className='mr-1 text-sm font-medium text-text-secondary'>{t('appDebug.feature.dataSet.queryVariable.title')}</div>
+        <div className='text-text-secondary mr-1 text-sm font-medium'>{t('appDebug.feature.dataSet.queryVariable.title')}</div>
         <Tooltip
           popupContent={
             <div className='w-[180px]'>

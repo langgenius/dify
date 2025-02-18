@@ -88,27 +88,27 @@ const ChangePasswordForm = () => {
   return (
     <div className={
       cn(
-        'flex flex-col items-center w-full grow justify-center',
+        'flex w-full grow flex-col items-center justify-center',
         'px-6',
         'md:px-[108px]',
       )
     }>
       {!showSuccess && (
         <div className='flex flex-col md:w-[400px]'>
-          <div className="w-full mx-auto">
+          <div className="mx-auto w-full">
             <h2 className="title-4xl-semi-bold text-text-primary">
               {t('login.changePassword')}
             </h2>
-            <p className='mt-2 body-md-regular text-text-secondary'>
+            <p className='body-md-regular text-text-secondary mt-2'>
               {t('login.changePasswordTip')}
             </p>
           </div>
 
-          <div className="w-full mx-auto mt-6">
+          <div className="mx-auto mt-6 w-full">
             <div className="bg-white">
               {/* Password */}
               <div className='mb-5'>
-                <label htmlFor="password" className="my-2 system-md-semibold text-text-secondary">
+                <label htmlFor="password" className="system-md-semibold text-text-secondary my-2">
                   {t('common.account.newPassword')}
                 </label>
                 <div className='relative mt-1'>
@@ -129,11 +129,11 @@ const ChangePasswordForm = () => {
                     </Button>
                   </div>
                 </div>
-                <div className='mt-1 body-xs-regular text-text-secondary'>{t('login.error.passwordInvalid')}</div>
+                <div className='body-xs-regular text-text-secondary mt-1'>{t('login.error.passwordInvalid')}</div>
               </div>
               {/* Confirm Password */}
               <div className='mb-5'>
-                <label htmlFor="confirmPassword" className="my-2 system-md-semibold text-text-secondary">
+                <label htmlFor="confirmPassword" className="system-md-semibold text-text-secondary my-2">
                   {t('common.account.confirmPassword')}
                 </label>
                 <div className='relative mt-1'>
@@ -170,15 +170,15 @@ const ChangePasswordForm = () => {
       )}
       {showSuccess && (
         <div className="flex flex-col md:w-[400px]">
-          <div className="w-full mx-auto">
-            <div className="mb-3 flex justify-center items-center w-14 h-14 rounded-2xl border border-components-panel-border-subtle shadow-lg font-bold">
-              <RiCheckboxCircleFill className='w-6 h-6 text-text-success' />
+          <div className="mx-auto w-full">
+            <div className="border-components-panel-border-subtle mb-3 flex h-14 w-14 items-center justify-center rounded-2xl border font-bold shadow-lg">
+              <RiCheckboxCircleFill className='text-text-success h-6 w-6' />
             </div>
             <h2 className="title-4xl-semi-bold text-text-primary">
               {t('login.passwordChangedTip')}
             </h2>
           </div>
-          <div className="w-full mx-auto mt-6">
+          <div className="mx-auto mt-6 w-full">
             <Button variant='primary' className='w-full' onClick={() => {
               setLeftTime(undefined)
               router.replace(getSignInUrl())

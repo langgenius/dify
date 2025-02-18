@@ -32,7 +32,7 @@ const PromptGeneratorBtn: FC<Props> = ({
       <ActionButton
         className='hover:bg-[#155EFF]/8'
         onClick={showAutomaticTrue}>
-        <Generator className='w-4 h-4 text-primary-600' />
+        <Generator className='text-primary-600 h-4 w-4' />
       </ActionButton>
       {showAutomatic && (
         <GetAutomaticResModal

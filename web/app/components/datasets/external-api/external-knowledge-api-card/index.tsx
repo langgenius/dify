@@ -105,20 +105,20 @@ const ExternalKnowledgeAPICard: React.FC<ExternalKnowledgeAPICardProps> = ({ api
 
   return (
     <>
-      <div className={`flex p-2 pl-3 items-start self-stretch rounded-lg border-[0.5px] 
-        border-components-panel-border-subtle bg-components-panel-on-panel-item-bg 
-        shadows-shadow-xs ${isHovered ? 'bg-state-destructive-hover border-state-destructive-border' : ''}`}
+      <div className={`border-components-panel-border-subtle bg-components-panel-on-panel-item-bg shadows-shadow-xs flex items-start self-stretch rounded-lg 
+        border-[0.5px] p-2 
+        pl-3 ${isHovered ? 'bg-state-destructive-hover border-state-destructive-border' : ''}`}
       >
-        <div className='flex py-1 flex-col justify-center items-start gap-1.5 flex-grow'>
-          <div className='flex items-center gap-1 self-stretch text-text-secondary'>
-            <ApiConnectionMod className='w-4 h-4' />
+        <div className='flex grow flex-col items-start justify-center gap-1.5 py-1'>
+          <div className='text-text-secondary flex items-center gap-1 self-stretch'>
+            <ApiConnectionMod className='h-4 w-4' />
             <div className='system-sm-medium'>{api.name}</div>
           </div>
-          <div className='self-stretch text-text-tertiary system-xs-regular'>{api.settings.endpoint}</div>
+          <div className='text-text-tertiary system-xs-regular self-stretch'>{api.settings.endpoint}</div>
         </div>
         <div className='flex items-start gap-1'>
           <ActionButton onClick={handleEditClick}>
-            <RiEditLine className='w-4 h-4 text-text-tertiary hover:text-text-secondary' />
+            <RiEditLine className='text-text-tertiary hover:text-text-secondary h-4 w-4' />
           </ActionButton>
           <ActionButton
             className='hover:bg-state-destructive-hover'
@@ -126,7 +126,7 @@ const ExternalKnowledgeAPICard: React.FC<ExternalKnowledgeAPICardProps> = ({ api
             onMouseEnter={() => setIsHovered(true)}
             onMouseLeave={() => setIsHovered(false)}
           >
-            <RiDeleteBinLine className='w-4 h-4 text-text-tertiary hover:text-text-destructive' />
+            <RiDeleteBinLine className='text-text-tertiary hover:text-text-destructive h-4 w-4' />
           </ActionButton>
         </div>
       </div>

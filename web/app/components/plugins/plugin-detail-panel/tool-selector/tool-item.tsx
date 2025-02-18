@@ -62,37 +62,37 @@ const ToolItem = ({
 
   return (
     <div className={cn(
-      'group p-1.5 pr-2 flex items-center gap-1 bg-components-panel-on-panel-item-bg border-[0.5px] border-components-panel-border-subtle rounded-lg shadow-xs cursor-default hover:bg-components-panel-on-panel-item-bg-hover hover:shadow-sm',
+      'bg-components-panel-on-panel-item-bg border-components-panel-border-subtle shadow-xs hover:bg-components-panel-on-panel-item-bg-hover group flex cursor-default items-center gap-1 rounded-lg border-[0.5px] p-1.5 pr-2 hover:shadow-sm',
       open && 'bg-components-panel-on-panel-item-bg-hover shadow-sm',
       isDeleting && 'hover:bg-state-destructive-hover border-state-destructive-border shadow-xs',
     )}>
       {icon && (
         <div className={cn('shrink-0', isTransparent && 'opacity-50')}>
-          {typeof icon === 'string' && <div className='w-7 h-7 bg-cover bg-center border-[0.5px] border-components-panel-border-subtle bg-background-default-dodge rounded-lg' style={{ backgroundImage: `url(${icon})` }} />}
-          {typeof icon !== 'string' && <AppIcon className='w-7 h-7 border-[0.5px] border-components-panel-border-subtle bg-background-default-dodge rounded-lg' size='xs' icon={icon?.content} background={icon?.background} />}
+          {typeof icon === 'string' && <div className='border-components-panel-border-subtle bg-background-default-dodge h-7 w-7 rounded-lg border-[0.5px] bg-cover bg-center' style={{ backgroundImage: `url(${icon})` }} />}
+          {typeof icon !== 'string' && <AppIcon className='border-components-panel-border-subtle bg-background-default-dodge h-7 w-7 rounded-lg border-[0.5px]' size='xs' icon={icon?.content} background={icon?.background} />}
         </div>
       )}
       {!icon && (
         <div className={cn(
-          'flex items-center justify-center w-7 h-7 rounded-md border-[0.5px] border-components-panel-border-subtle bg-background-default-subtle',
+          'border-components-panel-border-subtle bg-background-default-subtle flex h-7 w-7 items-center justify-center rounded-md border-[0.5px]',
         )}>
-          <div className='flex w-5 h-5 items-center justify-center opacity-35'>
+          <div className='flex h-5 w-5 items-center justify-center opacity-35'>
             <Group className='text-text-tertiary' />
           </div>
         </div>
       )}
-      <div className={cn('pl-0.5 grow truncate', isTransparent && 'opacity-50')}>
+      <div className={cn('grow truncate pl-0.5', isTransparent && 'opacity-50')}>
         <div className='text-text-tertiary system-2xs-medium-uppercase'>{providerNameText}</div>
         <div className='text-text-secondary system-xs-medium'>{toolLabel}</div>
       </div>
-      <div className='hidden group-hover:flex items-center gap-1'>
+      <div className='hidden items-center gap-1 group-hover:flex'>
         {!noAuth && !isError && !uninstalled && !versionMismatch && (
           <ActionButton>
-            <RiEqualizer2Line className='w-4 h-4' />
+            <RiEqualizer2Line className='h-4 w-4' />
           </ActionButton>
         )}
         <div
-          className='p-1 rounded-md text-text-tertiary cursor-pointer hover:text-text-destructive'
+          className='text-text-tertiary hover:text-text-destructive cursor-pointer rounded-md p-1'
           onClick={(e) => {
             e.stopPropagation()
             onDelete?.()
@@ -100,7 +100,7 @@ const ToolItem = ({
           onMouseOver={() => setIsDeleting(true)}
           onMouseLeave={() => setIsDeleting(false)}
         >
-          <RiDeleteBinLine className='w-4 h-4' />
+          <RiDeleteBinLine className='h-4 w-4' />
         </div>
       </div>
       {!isError && !uninstalled && !noAuth && !versionMismatch && showSwitch && (
@@ -152,7 +152,7 @@ const ToolItem = ({
           needsDelay
         >
           <div>
-            <RiErrorWarningFill className='w-4 h-4 text-text-destructive' />
+            <RiErrorWarningFill className='text-text-destructive h-4 w-4' />
           </div>
         </Tooltip>
       )}

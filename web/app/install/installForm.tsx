@@ -88,7 +88,7 @@ const InstallForm = () => {
           mt-1 text-sm text-gray-600
         '>{t('login.setAdminAccountDesc')}</p>
         </div>
-        <div className="grow mt-8 sm:mx-auto sm:w-full sm:max-w-md">
+        <div className="mt-8 grow sm:mx-auto sm:w-full sm:max-w-md">
           <div className="bg-white ">
             <form onSubmit={handleSubmit(onSubmit)}>
               <div className='mb-5'>
@@ -99,9 +99,9 @@ const InstallForm = () => {
                   <input
                     {...register('email')}
                     placeholder={t('login.emailPlaceholder') || ''}
-                    className={'appearance-none block w-full rounded-lg pl-[14px] px-3 py-2 border border-gray-200 hover:border-gray-300 hover:shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 placeholder-gray-400 caret-primary-600 sm:text-sm'}
+                    className={'focus:ring-primary-500 focus:border-primary-500 caret-primary-600 block w-full appearance-none rounded-lg border border-gray-200 px-3 py-2 pl-[14px] placeholder:text-gray-400 hover:border-gray-300 hover:shadow-sm focus:outline-none sm:text-sm'}
                   />
-                  {errors.email && <span className='text-red-400 text-sm'>{t(`${errors.email?.message}`)}</span>}
+                  {errors.email && <span className='text-sm text-red-400'>{t(`${errors.email?.message}`)}</span>}
                 </div>
 
               </div>
@@ -110,33 +110,33 @@ const InstallForm = () => {
                 <label htmlFor="name" className="my-2 flex items-center justify-between text-sm font-medium text-gray-900">
                   {t('login.name')}
                 </label>
-                <div className="mt-1 relative rounded-md shadow-sm">
+                <div className="relative mt-1 rounded-md shadow-sm">
                   <input
                     {...register('name')}
                     placeholder={t('login.namePlaceholder') || ''}
-                    className={'appearance-none block w-full rounded-lg pl-[14px] px-3 py-2 border border-gray-200 hover:border-gray-300 hover:shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 placeholder-gray-400 caret-primary-600 sm:text-sm pr-10'}
+                    className={'focus:ring-primary-500 focus:border-primary-500 caret-primary-600 block w-full appearance-none rounded-lg border border-gray-200 px-3 py-2 pl-[14px] pr-10 placeholder:text-gray-400 hover:border-gray-300 hover:shadow-sm focus:outline-none sm:text-sm'}
                   />
                 </div>
-                {errors.name && <span className='text-red-400 text-sm'>{t(`${errors.name.message}`)}</span>}
+                {errors.name && <span className='text-sm text-red-400'>{t(`${errors.name.message}`)}</span>}
               </div>
 
               <div className='mb-5'>
                 <label htmlFor="password" className="my-2 flex items-center justify-between text-sm font-medium text-gray-900">
                   {t('login.password')}
                 </label>
-                <div className="mt-1 relative rounded-md shadow-sm">
+                <div className="relative mt-1 rounded-md shadow-sm">
                   <input
                     {...register('password')}
                     type={showPassword ? 'text' : 'password'}
                     placeholder={t('login.passwordPlaceholder') || ''}
-                    className={'appearance-none block w-full rounded-lg pl-[14px] px-3 py-2 border border-gray-200 hover:border-gray-300 hover:shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 placeholder-gray-400 caret-primary-600 sm:text-sm pr-10'}
+                    className={'focus:ring-primary-500 focus:border-primary-500 caret-primary-600 block w-full appearance-none rounded-lg border border-gray-200 px-3 py-2 pl-[14px] pr-10 placeholder:text-gray-400 hover:border-gray-300 hover:shadow-sm focus:outline-none sm:text-sm'}
                   />
 
                   <div className="absolute inset-y-0 right-0 flex items-center pr-3">
                     <button
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
-                      className="text-gray-400 hover:text-gray-500 focus:outline-none focus:text-gray-500"
+                      className="text-gray-400 hover:text-gray-500 focus:text-gray-500 focus:outline-none"
                     >
                       {showPassword ? '👀' : '😝'}
                     </button>
@@ -154,7 +154,7 @@ const InstallForm = () => {
                 </Button>
               </div>
             </form>
-            <div className="block w-full mt-2 text-xs text-gray-600">
+            <div className="mt-2 block w-full text-xs text-gray-600">
               {t('login.license.tip')}
               &nbsp;
               <Link

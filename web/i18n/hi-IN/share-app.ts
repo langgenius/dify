@@ -4,7 +4,7 @@ const translation = {
     appUnavailable: 'ऐप उपलब्ध नहीं है',
     appUnknownError: 'अज्ञात त्रुटि, कृपया पुनः प्रयास करें',
     // @ts-expect-error TODO: fix this
-    // eslint-disable-next-line no-dupe-keys
+     
     appUnknownError: 'ऐप अनुपलब्ध है',
   },
   chat: {

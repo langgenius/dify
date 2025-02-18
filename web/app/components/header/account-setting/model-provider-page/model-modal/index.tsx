@@ -277,12 +277,12 @@ const ModelModal: FC<ModelModalProps> = ({
 
   return (
     <PortalToFollowElem open>
-      <PortalToFollowElemContent className='w-full h-full z-[60]'>
+      <PortalToFollowElemContent className='z-[60] h-full w-full'>
         <div className='fixed inset-0 flex items-center justify-center bg-black/[.25]'>
-          <div className='mx-2 w-[640px] max-h-[calc(100vh-120px)] bg-components-panel-bg shadow-xl rounded-2xl overflow-y-auto'>
+          <div className='bg-components-panel-bg mx-2 max-h-[calc(100vh-120px)] w-[640px] overflow-y-auto rounded-2xl shadow-xl'>
             <div className='px-8 pt-8'>
-              <div className='flex items-center mb-2'>
-                <div className='text-xl font-semibold text-text-primary'>{renderTitlePrefix()}</div>
+              <div className='mb-2 flex items-center'>
+                <div className='text-text-primary text-xl font-semibold'>{renderTitlePrefix()}</div>
               </div>
 
               <Form
@@ -295,7 +295,7 @@ const ModelModal: FC<ModelModalProps> = ({
                 isEditMode={isEditMode}
               />
 
-              <div className='mt-1 mb-4 border-t-[0.5px] border-t-divider-regular' />
+              <div className='border-t-divider-regular mb-4 mt-1 border-t-[0.5px]' />
               <ModelLoadBalancingConfigs withSwitch {...{
                 draftConfig,
                 setDraftConfig,
@@ -304,18 +304,18 @@ const ModelModal: FC<ModelModalProps> = ({
                 configurationMethod: configurateMethod,
               }} />
 
-              <div className='sticky bottom-0 flex justify-between items-center mt-2 -mx-2 pt-4 px-2 pb-6 flex-wrap gap-y-2 bg-components-panel-bg'>
+              <div className='bg-components-panel-bg sticky bottom-0 -mx-2 mt-2 flex flex-wrap items-center justify-between gap-y-2 px-2 pb-6 pt-4'>
                 {
                   (provider.help && (provider.help.title || provider.help.url))
                     ? (
                       <a
                         href={provider.help?.url[language] || provider.help?.url.en_US}
                         target='_blank' rel='noopener noreferrer'
-                        className='inline-flex items-center text-xs text-primary-600'
+                        className='text-primary-600 inline-flex items-center text-xs'
                         onClick={e => !provider.help.url && e.preventDefault()}
                       >
                         {provider.help.title?.[language] || provider.help.url[language] || provider.help.title?.en_US || provider.help.url.en_US}
-                        <LinkExternal02 className='ml-1 w-3 h-3' />
+                        <LinkExternal02 className='ml-1 h-3 w-3' />
                       </a>
                     )
                     : <div />
@@ -356,18 +356,18 @@ const ModelModal: FC<ModelModalProps> = ({
                 </div>
               </div>
             </div>
-            <div className='border-t-[0.5px] border-t-divider-regular'>
+            <div className='border-t-divider-regular border-t-[0.5px]'>
               {
                 (validatedStatusState.status === ValidatedStatus.Error && validatedStatusState.message)
                   ? (
-                    <div className='flex px-[10px] py-3 bg-background-section-burn text-xs text-[#D92D20]'>
-                      <RiErrorWarningFill className='mt-[1px] mr-2 w-[14px] h-[14px]' />
+                    <div className='bg-background-section-burn flex px-[10px] py-3 text-xs text-[#D92D20]'>
+                      <RiErrorWarningFill className='mr-2 mt-[1px] h-[14px] w-[14px]' />
                       {validatedStatusState.message}
                     </div>
                   )
                   : (
-                    <div className='flex justify-center items-center py-3 bg-background-section-burn text-xs text-text-tertiary'>
-                      <Lock01 className='mr-1 w-3 h-3 text-text-tertiary' />
+                    <div className='bg-background-section-burn text-text-tertiary flex items-center justify-center py-3 text-xs'>
+                      <Lock01 className='text-text-tertiary mr-1 h-3 w-3' />
                       {t('common.modelProvider.encrypted.front')}
                       <a
                         className='text-text-accent mx-1'

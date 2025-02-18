@@ -77,8 +77,8 @@ const AnnotationReply = ({
     <>
       <FeatureCard
         icon={
-          <div className='shrink-0 p-1 rounded-lg border-[0.5px] border-divider-subtle shadow-xs bg-util-colors-indigo-indigo-600'>
-            <MessageFast className='w-4 h-4 text-text-primary-on-surface' />
+          <div className='border-divider-subtle shadow-xs bg-util-colors-indigo-indigo-600 shrink-0 rounded-lg border-[0.5px] p-1'>
+            <MessageFast className='text-text-primary-on-surface h-4 w-4' />
           </div>
         }
         title={t('appDebug.feature.annotation.title')}
@@ -90,19 +90,19 @@ const AnnotationReply = ({
       >
         <>
           {!annotationReply?.enabled && (
-            <div className='min-h-8 text-text-tertiary system-xs-regular line-clamp-2'>{t('appDebug.feature.annotation.description')}</div>
+            <div className='text-text-tertiary system-xs-regular line-clamp-2 min-h-8'>{t('appDebug.feature.annotation.description')}</div>
           )}
           {!!annotationReply?.enabled && (
             <>
               {!isHovering && (
-                <div className='pt-0.5 flex items-center gap-4'>
+                <div className='flex items-center gap-4 pt-0.5'>
                   <div className=''>
-                    <div className='mb-0.5 text-text-tertiary system-2xs-medium-uppercase'>{t('appDebug.feature.annotation.scoreThreshold.title')}</div>
+                    <div className='text-text-tertiary system-2xs-medium-uppercase mb-0.5'>{t('appDebug.feature.annotation.scoreThreshold.title')}</div>
                     <div className='text-text-secondary system-xs-regular'>{annotationReply.score_threshold || '-'}</div>
                   </div>
-                  <div className='w-px h-[27px] bg-divider-subtle rotate-12'></div>
+                  <div className='bg-divider-subtle h-[27px] w-px rotate-12'></div>
                   <div className=''>
-                    <div className='mb-0.5 text-text-tertiary system-2xs-medium-uppercase'>{t('common.modelProvider.embeddingModel.key')}</div>
+                    <div className='text-text-tertiary system-2xs-medium-uppercase mb-0.5'>{t('common.modelProvider.embeddingModel.key')}</div>
                     <div className='text-text-secondary system-xs-regular'>{annotationReply.embedding_model?.embedding_model_name}</div>
                   </div>
                 </div>
@@ -110,13 +110,13 @@ const AnnotationReply = ({
               {isHovering && (
                 <div className='flex items-center justify-between'>
                   <Button className='w-[178px]' onClick={() => setIsShowAnnotationConfigInit(true)} disabled={disabled}>
-                    <RiEqualizer2Line className='mr-1 w-4 h-4' />
+                    <RiEqualizer2Line className='mr-1 h-4 w-4' />
                     {t('common.operation.params')}
                   </Button>
                   <Button className='w-[178px]' onClick={() => {
                     router.push(`/app/${appId}/annotations`)
                   }}>
-                    <RiExternalLinkLine className='mr-1 w-4 h-4' />
+                    <RiExternalLinkLine className='mr-1 h-4 w-4' />
                     {t('appDebug.feature.annotation.cacheManagement')}
                   </Button>
                 </div>

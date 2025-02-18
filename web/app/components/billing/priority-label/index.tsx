@@ -43,8 +43,8 @@ const PriorityLabel = ({ className }: PriorityLabelProps) => {
       </div>
     }>
       <span className={cn(`
-        shrink-0 flex items-center ml-1 px-1 h-[18px] rounded-[5px] border border-text-accent-secondary
-        text-2xs font-medium text-text-accent-secondary
+        border-text-accent-secondary text-2xs text-text-accent-secondary ml-1 flex h-[18px] shrink-0 items-center rounded-[5px]
+        border px-1 font-medium
       `, className)}>
         {
           plan.type === Plan.professional && (

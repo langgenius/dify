@@ -233,16 +233,16 @@ const ProviderDetail = ({
       footer={null}
       mask={false}
       positionCenter={false}
-      panelClassname={cn('justify-start mt-[64px] mr-2 mb-2 !w-[420px] !max-w-[420px] !p-0 !bg-components-panel-bg rounded-2xl border-[0.5px] border-components-panel-border shadow-xl')}
+      panelClassname={cn('!bg-components-panel-bg border-components-panel-border mb-2 mr-2 mt-[64px] !w-[420px] !max-w-[420px] justify-start rounded-2xl border-[0.5px] !p-0 shadow-xl')}
     >
       <div className='p-4'>
         <div className='mb-3 flex'>
           <Icon src={collection.icon} />
           <div className="ml-3 w-0 grow">
-            <div className="flex items-center h-5">
+            <div className="flex h-5 items-center">
               <Title title={collection.label[language]} />
             </div>
-            <div className='mb-1 flex justify-between items-center h-4'>
+            <div className='mb-1 flex h-4 items-center justify-between'>
               <OrgInfo
                 className="mt-0.5"
                 packageNameClassName='w-auto'
@@ -253,20 +253,20 @@ const ProviderDetail = ({
           </div>
           <div className='flex gap-1'>
             <ActionButton onClick={onHide}>
-              <RiCloseLine className='w-4 h-4' />
+              <RiCloseLine className='h-4 w-4' />
             </ActionButton>
           </div>
         </div>
         {!!collection.description[language] && (
           <Description text={collection.description[language]} descriptionLineRows={2}></Description>
         )}
-        <div className='flex gap-1 border-b-[0.5px] border-divider-subtle'>
+        <div className='border-divider-subtle flex gap-1 border-b-[0.5px]'>
           {collection.type === CollectionType.custom && !isDetailLoading && (
             <Button
-              className={cn('shrink-0 my-3 w-full')}
+              className={cn('my-3 w-full shrink-0')}
               onClick={() => setIsShowEditCustomCollectionModal(true)}
             >
-              <Settings01 className='mr-1 w-4 h-4 text-text-tertiary' />
+              <Settings01 className='text-text-tertiary mr-1 h-4 w-4' />
               <div className='system-sm-medium text-text-secondary'>{t('tools.createTool.editAction')}</div>
             </Button>
           )}
@@ -274,15 +274,15 @@ const ProviderDetail = ({
             <>
               <Button
                 variant='primary'
-                className={cn('shrink-0 my-3 w-[183px]')}
+                className={cn('my-3 w-[183px] shrink-0')}
               >
-                <a className='flex items-center text-text-primary' href={`/app/${(customCollection as WorkflowToolProviderResponse).workflow_app_id}/workflow`} rel='noreferrer' target='_blank'>
+                <a className='text-text-primary flex items-center' href={`/app/${(customCollection as WorkflowToolProviderResponse).workflow_app_id}/workflow`} rel='noreferrer' target='_blank'>
                   <div className='system-sm-medium'>{t('tools.openInStudio')}</div>
-                  <LinkExternal02 className='ml-1 w-4 h-4' />
+                  <LinkExternal02 className='ml-1 h-4 w-4' />
                 </a>
               </Button>
               <Button
-                className={cn('shrink-0 my-3 w-[183px]')}
+                className={cn('my-3 w-[183px] shrink-0')}
                 onClick={() => setIsShowEditWorkflowToolModal(true)}
                 disabled={!isCurrentWorkspaceManager}
               >
@@ -296,7 +296,7 @@ const ProviderDetail = ({
           {isDetailLoading && <div className='flex h-[200px]'><Loading type='app' /></div>}
           {/* Builtin type */}
           {!isDetailLoading && (collection.type === CollectionType.builtIn) && isAuthed && (
-            <div className='mb-1 h-6 flex items-center justify-between text-text-secondary system-sm-semibold-uppercase'>
+            <div className='text-text-secondary system-sm-semibold-uppercase mb-1 flex h-6 items-center justify-between'>
               {t('plugin.detailPanel.actionNum', { num: toolList.length, action: toolList.length > 1 ? 'actions' : 'action' })}
               {needAuth && (
                 <Button
@@ -323,7 +323,7 @@ const ProviderDetail = ({
               </div>
               <Button
                 variant='primary'
-                className={cn('shrink-0 my-3 w-full')}
+                className={cn('my-3 w-full shrink-0')}
                 onClick={() => {
                   if (collection.type === CollectionType.builtIn || collection.type === CollectionType.model)
                     showSettingAuthModal()

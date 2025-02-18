@@ -56,16 +56,16 @@ const ErrorHandleTypeSelector = ({
           size='small'
         >
           {selectedOption?.label}
-          <RiArrowDownSLine className='w-3.5 h-3.5' />
+          <RiArrowDownSLine className='h-3.5 w-3.5' />
         </Button>
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent className='z-[11]'>
-        <div className='p-1 w-[280px] border-[0.5px] border-components-panel-border rounded-xl bg-components-panel-bg-blur shadow-lg'>
+        <div className='border-components-panel-border bg-components-panel-bg-blur w-[280px] rounded-xl border-[0.5px] p-1 shadow-lg'>
           {
             options.map(option => (
               <div
                 key={option.value}
-                className='flex p-2 pr-3 rounded-lg hover:bg-state-base-hover cursor-pointer'
+                className='hover:bg-state-base-hover flex cursor-pointer rounded-lg p-2 pr-3'
                 onClick={(e) => {
                   e.stopPropagation()
                   onSelected(option.value)
@@ -75,12 +75,12 @@ const ErrorHandleTypeSelector = ({
                 <div className='mr-1 w-4 shrink-0'>
                   {
                     value === option.value && (
-                      <RiCheckLine className='w-4 h-4 text-text-accent' />
+                      <RiCheckLine className='text-text-accent h-4 w-4' />
                     )
                   }
                 </div>
                 <div className='grow'>
-                  <div className='mb-0.5 system-sm-semibold text-text-secondary'>{option.label}</div>
+                  <div className='system-sm-semibold text-text-secondary mb-0.5'>{option.label}</div>
                   <div className='system-xs-regular text-text-tertiary'>{option.description}</div>
                 </div>
               </div>

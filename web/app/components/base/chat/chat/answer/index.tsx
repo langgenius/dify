@@ -105,7 +105,7 @@ const Answer: FC<AnswerProps> = ({
       <div className='relative h-10 w-10 shrink-0'>
         {answerIcon || <AnswerIcon />}
         {responding && (
-          <div className='absolute -left-[3px] -top-[3px] flex h-4 w-4 items-center rounded-full border-[0.5px] border-gray-50 bg-white pl-[6px] shadow-xs'>
+          <div className='shadow-xs absolute -left-[3px] -top-[3px] flex h-4 w-4 items-center rounded-full border-[0.5px] border-gray-50 bg-white pl-[6px]'>
             <LoadingAnim type='avatar' />
           </div>
         )}
@@ -114,7 +114,7 @@ const Answer: FC<AnswerProps> = ({
         <div className={cn('group relative pr-10', chatAnswerContainerInner)}>
           <div
             ref={contentRef}
-            className={cn('body-lg-regular relative inline-block max-w-full rounded-2xl bg-chat-bubble-bg px-4 py-3 text-text-primary', workflowProcess && 'w-full')}
+            className={cn('body-lg-regular bg-chat-bubble-bg text-text-primary relative inline-block max-w-full rounded-2xl px-4 py-3', workflowProcess && 'w-full')}
           >
             {
               !responding && (
@@ -213,15 +213,15 @@ const Answer: FC<AnswerProps> = ({
                 disabled={!item.prevSibling}
                 onClick={() => item.prevSibling && switchSibling?.(item.prevSibling)}
               >
-                <ChevronRight className="h-[14px] w-[14px] rotate-180 text-text-primary" />
+                <ChevronRight className="text-text-primary h-[14px] w-[14px] rotate-180" />
               </button>
-              <span className="px-2 text-xs text-text-primary">{item.siblingIndex + 1} / {item.siblingCount}</span>
+              <span className="text-text-primary px-2 text-xs">{item.siblingIndex + 1} / {item.siblingCount}</span>
               <button
                 className={`${item.nextSibling ? 'opacity-100' : 'opacity-30'}`}
                 disabled={!item.nextSibling}
                 onClick={() => item.nextSibling && switchSibling?.(item.nextSibling)}
               >
-                <ChevronRight className="h-[14px] w-[14px] text-text-primary" />
+                <ChevronRight className="text-text-primary h-[14px] w-[14px]" />
               </button>
             </div>}
           </div>

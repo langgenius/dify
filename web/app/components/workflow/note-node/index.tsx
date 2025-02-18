@@ -61,7 +61,7 @@ const NoteNode = ({
   return (
     <div
       className={cn(
-        'flex flex-col relative rounded-md shadow-xs border hover:shadow-md',
+        'shadow-xs relative flex flex-col rounded-md border hover:shadow-md',
         THEME_MAP[theme].bg,
         data.selected ? THEME_MAP[theme].border : 'border-black/5',
       )}
@@ -85,7 +85,7 @@ const NoteNode = ({
           />
           <div
             className={cn(
-              'shrink-0 h-2 opacity-50 rounded-t-md',
+              'h-2 shrink-0 rounded-t-md opacity-50',
               THEME_MAP[theme].title,
             )}></div>
           {
@@ -103,7 +103,7 @@ const NoteNode = ({
               </div>
             )
           }
-          <div className='grow px-3 py-2.5 overflow-y-auto'>
+          <div className='grow overflow-y-auto px-3 py-2.5'>
             <div className={cn(
               data.selected && 'nodrag nopan nowheel cursor-text',
             )}>
@@ -116,7 +116,7 @@ const NoteNode = ({
           </div>
           {
             data.showAuthor && (
-              <div className='p-3 pt-0 text-xs text-text-tertiary'>
+              <div className='text-text-tertiary p-3 pt-0 text-xs'>
                 {data.author}
               </div>
             )

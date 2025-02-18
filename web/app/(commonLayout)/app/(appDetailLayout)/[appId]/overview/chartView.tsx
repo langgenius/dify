@@ -46,7 +46,7 @@ export default function ChartView({ appId }: IChartViewProps) {
 
   return (
     <div>
-      <div className='flex flex-row items-center mt-8 mb-4 system-xl-semibold text-text-primary'>
+      <div className='system-xl-semibold text-text-primary mb-4 mt-8 flex flex-row items-center'>
         <span className='mr-3'>{t('appOverview.analysis.title')}</span>
         <SimpleSelect
           items={Object.entries(TIME_PERIOD_MAPPING).map(([k, v]) => ({ value: k, name: t(`appLog.filter.period.${v.name}`) }))}
@@ -61,13 +61,13 @@ export default function ChartView({ appId }: IChartViewProps) {
         />
       </div>
       {!isWorkflow && (
-        <div className='grid gap-6 grid-cols-1 xl:grid-cols-2 w-full mb-6'>
+        <div className='mb-6 grid w-full grid-cols-1 gap-6 xl:grid-cols-2'>
           <ConversationsChart period={period} id={appId} />
           <EndUsersChart period={period} id={appId} />
         </div>
       )}
       {!isWorkflow && (
-        <div className='grid gap-6 grid-cols-1 xl:grid-cols-2 w-full mb-6'>
+        <div className='mb-6 grid w-full grid-cols-1 gap-6 xl:grid-cols-2'>
           {isChatApp
             ? (
               <AvgSessionInteractions period={period} id={appId} />
@@ -79,24 +79,24 @@ export default function ChartView({ appId }: IChartViewProps) {
         </div>
       )}
       {!isWorkflow && (
-        <div className='grid gap-6 grid-cols-1 xl:grid-cols-2 w-full mb-6'>
+        <div className='mb-6 grid w-full grid-cols-1 gap-6 xl:grid-cols-2'>
           <UserSatisfactionRate period={period} id={appId} />
           <CostChart period={period} id={appId} />
         </div>
       )}
       {!isWorkflow && isChatApp && (
-        <div className='grid gap-6 grid-cols-1 xl:grid-cols-2 w-full mb-6'>
+        <div className='mb-6 grid w-full grid-cols-1 gap-6 xl:grid-cols-2'>
           <MessagesChart period={period} id={appId} />
         </div>
       )}
       {isWorkflow && (
-        <div className='grid gap-6 grid-cols-1 xl:grid-cols-2 w-full mb-6'>
+        <div className='mb-6 grid w-full grid-cols-1 gap-6 xl:grid-cols-2'>
           <WorkflowMessagesChart period={period} id={appId} />
           <WorkflowDailyTerminalsChart period={period} id={appId} />
         </div>
       )}
       {isWorkflow && (
-        <div className='grid gap-6 grid-cols-1 xl:grid-cols-2 w-full mb-6'>
+        <div className='mb-6 grid w-full grid-cols-1 gap-6 xl:grid-cols-2'>
           <WorkflowCostChart period={period} id={appId} />
           <AvgUserInteractions period={period} id={appId} />
         </div>

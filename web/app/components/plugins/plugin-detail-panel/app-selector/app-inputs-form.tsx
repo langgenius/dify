@@ -108,10 +108,10 @@ const AppInputsForm = ({
     return null
 
   return (
-    <div className='px-4 py-2 flex flex-col gap-4'>
+    <div className='flex flex-col gap-4 px-4 py-2'>
       {inputsForms.map(form => (
         <div key={form.variable}>
-          <div className='h-6 mb-1 flex items-center gap-1 text-text-secondary system-sm-semibold'>
+          <div className='text-text-secondary system-sm-semibold mb-1 flex h-6 items-center gap-1'>
             <div className='truncate'>{form.label}</div>
             {!form.required && <span className='text-text-tertiary system-xs-regular'>{t('workflow.panel.optional')}</span>}
           </div>

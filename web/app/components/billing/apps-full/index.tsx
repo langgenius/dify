@@ -12,12 +12,12 @@ const AppsFull: FC = () => {
 
   return (
     <GridMask wrapperClassName='rounded-lg' canvasClassName='rounded-lg' gradientClassName='rounded-lg'>
-      <div className='col-span-1 px-3.5 pt-3.5 border-2 border-solid border-transparent rounded-lg shadow-xs min-h-[160px] flex flex-col transition-all duration-200 ease-in-out cursor-pointer hover:shadow-lg'>
-        <div className={cn(s.textGradient, 'leading-[24px] text-base font-semibold')}>
+      <div className='shadow-xs col-span-1 flex min-h-[160px] cursor-pointer flex-col rounded-lg border-2 border-solid border-transparent px-3.5 pt-3.5 transition-all duration-200 ease-in-out hover:shadow-lg'>
+        <div className={cn(s.textGradient, 'text-base font-semibold leading-[24px]')}>
           <div>{t('billing.apps.fullTipLine1')}</div>
           <div>{t('billing.apps.fullTipLine2')}</div>
         </div>
-        <div className='flex mt-8'>
+        <div className='mt-8 flex'>
           <UpgradeBtn loc='app-create' />
         </div>
       </div>

@@ -13,10 +13,10 @@ const EmptyElement: FC = () => {
   const { t } = useTranslation()
 
   return (
-    <div className='flex items-center justify-center h-full'>
-      <div className='bg-background-section-burn w-[560px] h-fit box-border px-5 py-4 rounded-2xl'>
-        <span className='text-text-secondary system-md-semibold'>{t('appAnnotation.noData.title')}<ThreeDotsIcon className='inline relative -top-3 -left-1.5' /></span>
-        <div className='mt-2 text-text-tertiary system-sm-regular'>
+    <div className='flex h-full items-center justify-center'>
+      <div className='bg-background-section-burn box-border h-fit w-[560px] rounded-2xl px-5 py-4'>
+        <span className='text-text-secondary system-md-semibold'>{t('appAnnotation.noData.title')}<ThreeDotsIcon className='relative -left-1.5 -top-3 inline' /></span>
+        <div className='text-text-tertiary system-sm-regular mt-2'>
           {t('appAnnotation.noData.description')}
         </div>
       </div>

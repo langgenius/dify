@@ -116,30 +116,30 @@ const ViewAnnotationModal: FC<Props> = ({
         <table className={cn('w-full min-w-[440px] border-collapse border-0')} >
           <thead className="system-xs-medium-uppercase text-text-tertiary">
             <tr>
-              <td className='pl-2 pr-1 w-5 rounded-l-lg bg-background-section-burn whitespace-nowrap'>{t('appAnnotation.hitHistoryTable.query')}</td>
-              <td className='pl-3 py-1.5 bg-background-section-burn whitespace-nowrap'>{t('appAnnotation.hitHistoryTable.match')}</td>
-              <td className='pl-3 py-1.5 bg-background-section-burn whitespace-nowrap'>{t('appAnnotation.hitHistoryTable.response')}</td>
-              <td className='pl-3 py-1.5 bg-background-section-burn whitespace-nowrap'>{t('appAnnotation.hitHistoryTable.source')}</td>
-              <td className='pl-3 py-1.5 bg-background-section-burn whitespace-nowrap'>{t('appAnnotation.hitHistoryTable.score')}</td>
-              <td className='pl-3 py-1.5 rounded-r-lg bg-background-section-burn whitespace-nowrap w-[160px]'>{t('appAnnotation.hitHistoryTable.time')}</td>
+              <td className='bg-background-section-burn w-5 whitespace-nowrap rounded-l-lg pl-2 pr-1'>{t('appAnnotation.hitHistoryTable.query')}</td>
+              <td className='bg-background-section-burn whitespace-nowrap py-1.5 pl-3'>{t('appAnnotation.hitHistoryTable.match')}</td>
+              <td className='bg-background-section-burn whitespace-nowrap py-1.5 pl-3'>{t('appAnnotation.hitHistoryTable.response')}</td>
+              <td className='bg-background-section-burn whitespace-nowrap py-1.5 pl-3'>{t('appAnnotation.hitHistoryTable.source')}</td>
+              <td className='bg-background-section-burn whitespace-nowrap py-1.5 pl-3'>{t('appAnnotation.hitHistoryTable.score')}</td>
+              <td className='bg-background-section-burn w-[160px] whitespace-nowrap rounded-r-lg py-1.5 pl-3'>{t('appAnnotation.hitHistoryTable.time')}</td>
             </tr>
           </thead>
           <tbody className="text-text-secondary system-sm-regular">
             {hitHistoryList.map(item => (
               <tr
                 key={item.id}
-                className={'border-b border-divider-subtle hover:bg-background-default-hover cursor-pointer'}
+                className={'border-divider-subtle hover:bg-background-default-hover cursor-pointer border-b'}
               >
                 <td
-                  className='p-3 pr-2 whitespace-nowrap overflow-hidden text-ellipsis max-w-[250px]'
+                  className='max-w-[250px] overflow-hidden text-ellipsis whitespace-nowrap p-3 pr-2'
                   title={item.question}
                 >{item.question}</td>
                 <td
-                  className='p-3 pr-2 whitespace-nowrap overflow-hidden text-ellipsis max-w-[250px]'
+                  className='max-w-[250px] overflow-hidden text-ellipsis whitespace-nowrap p-3 pr-2'
                   title={item.match}
                 >{item.match}</td>
                 <td
-                  className='p-3 pr-2 whitespace-nowrap overflow-hidden text-ellipsis max-w-[250px]'
+                  className='max-w-[250px] overflow-hidden text-ellipsis whitespace-nowrap p-3 pr-2'
                   title={item.response}
                 >{item.response}</td>
                 <td className='p-3 pr-2'>{item.source}</td>
@@ -168,7 +168,7 @@ const ViewAnnotationModal: FC<Props> = ({
         maxWidthClassName='!max-w-[800px]'
         title={
           <TabSlider
-            className='shrink-0 relative top-[9px]'
+            className='relative top-[9px] shrink-0'
             value={activeTab}
             onChange={v => setActiveTab(v as TabType)}
             options={tabs}
@@ -178,7 +178,7 @@ const ViewAnnotationModal: FC<Props> = ({
         }
         body={(
           <div>
-            <div className='p-6 pb-4 space-y-6'>
+            <div className='space-y-6 p-6 pb-4'>
               {activeTab === TabType.annotation ? annotationTab : hitHistoryTab}
             </div>
             <Confirm
@@ -195,9 +195,9 @@ const ViewAnnotationModal: FC<Props> = ({
         )}
         foot={id
           ? (
-            <div className='px-4 flex h-16 items-center justify-between border-t border-divider-subtle bg-background-section-burn rounded-bl-xl rounded-br-xl system-sm-medium text-text-tertiary'>
+            <div className='border-divider-subtle bg-background-section-burn system-sm-medium text-text-tertiary flex h-16 items-center justify-between rounded-bl-xl rounded-br-xl border-t px-4'>
               <div
-                className='flex items-center pl-3 space-x-2 cursor-pointer'
+                className='flex cursor-pointer items-center space-x-2 pl-3'
                 onClick={() => setShowModal(true)}
               >
                 <MessageCheckRemove />

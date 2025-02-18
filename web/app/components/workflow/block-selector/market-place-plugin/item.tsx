@@ -36,24 +36,24 @@ const Item: FC<Props> = ({
   }] = useBoolean(false)
 
   return (
-    <div className='group/plugin flex rounded-lg py-1 pr-1 pl-3 hover:bg-state-base-hover'>
+    <div className='group/plugin hover:bg-state-base-hover flex rounded-lg py-1 pl-3 pr-1'>
       <div
-        className='shrink-0 relative w-6 h-6 border-[0.5px] border-components-panel-border-subtle rounded-md bg-center bg-no-repeat bg-contain'
+        className='border-components-panel-border-subtle relative h-6 w-6 shrink-0 rounded-md border-[0.5px] bg-contain bg-center bg-no-repeat'
         style={{ backgroundImage: `url(${payload.icon})` }}
       />
-      <div className='ml-2 w-0 grow flex'>
+      <div className='ml-2 flex w-0 grow'>
         <div className='w-0 grow'>
-          <div className='h-4 leading-4 text-text-primary system-sm-medium truncate '>{getLocalizedText(payload.label)}</div>
-          <div className='h-5 leading-5 text-text-tertiary system-xs-regular truncate'>{getLocalizedText(payload.brief)}</div>
-          <div className='flex text-text-tertiary system-xs-regular space-x-1'>
+          <div className='text-text-primary system-sm-medium h-4 truncate leading-4 '>{getLocalizedText(payload.label)}</div>
+          <div className='text-text-tertiary system-xs-regular h-5 truncate leading-5'>{getLocalizedText(payload.brief)}</div>
+          <div className='text-text-tertiary system-xs-regular flex space-x-1'>
             <div>{payload.org}</div>
             <div>·</div>
             <div>{t('plugin.install', { num: formatNumber(payload.install_count || 0) })}</div>
           </div>
         </div>
         {/* Action */}
-        <div className={cn(!open ? 'hidden' : 'flex', 'group-hover/plugin:flex  items-center space-x-1 h-4 text-components-button-secondary-accent-text system-xs-medium')}>
-          <div className='px-1.5 cursor-pointer' onClick={showInstallModal}>{t('plugin.installAction')}</div>
+        <div className={cn(!open ? 'hidden' : 'flex', 'text-components-button-secondary-accent-text  system-xs-medium h-4 items-center space-x-1 group-hover/plugin:flex')}>
+          <div className='cursor-pointer px-1.5' onClick={showInstallModal}>{t('plugin.installAction')}</div>
           <Action
             open={open}
             onOpenChange={setOpen}

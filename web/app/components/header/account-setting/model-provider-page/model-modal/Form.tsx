@@ -153,7 +153,7 @@ function Form<
       const disabled = readonly || (isEditMode && (variable === '__model_type' || variable === '__model_name'))
       return (
         <div key={variable} className={cn(itemClassName, 'py-3')}>
-          <div className={cn(fieldLabelClassName, 'flex items-center py-2 system-sm-semibold text-text-secondary')}>
+          <div className={cn(fieldLabelClassName, 'system-sm-semibold text-text-secondary flex items-center py-2')}>
             {label[language] || label.en_US}
             {required && (
               <span className='ml-1 text-red-500'>*</span>
@@ -187,14 +187,14 @@ function Form<
 
       return (
         <div key={variable} className={cn(itemClassName, 'py-3')}>
-          <div className={cn(fieldLabelClassName, 'flex items-center py-2 system-sm-semibold text-text-secondary')}>
+          <div className={cn(fieldLabelClassName, 'system-sm-semibold text-text-secondary flex items-center py-2')}>
             {label[language] || label.en_US}
             {required && (
               <span className='ml-1 text-red-500'>*</span>
             )}
             {tooltipContent}
           </div>
-          <div className={`grid grid-cols-${options?.length} gap-3`}>
+          <div className={`grid-cols- grid${options?.length} gap-3`}>
             {options.filter((option) => {
               if (option.show_on.length)
                 return option.show_on.every(showOnItem => value[showOnItem.variable] === showOnItem.value)
@@ -203,8 +203,8 @@ function Form<
             }).map(option => (
               <div
                 className={`
-                    flex items-center gap-2 px-3 py-2 rounded-lg border border-components-option-card-option-border bg-components-option-card-option-bg cursor-pointer
-                    ${value[variable] === option.value && 'bg-components-option-card-option-selected-bg border-[1.5px] border-components-option-card-option-selected-border shadow-sm'}
+                    border-components-option-card-option-border bg-components-option-card-option-bg flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2
+                    ${value[variable] === option.value && 'bg-components-option-card-option-selected-bg border-components-option-card-option-selected-border border-[1.5px] shadow-sm'}
                     ${disabled && '!cursor-not-allowed opacity-60'}
                   `}
                 onClick={() => handleFormChange(variable, option.value)}
@@ -232,7 +232,7 @@ function Form<
 
       return (
         <div key={variable} className={cn(itemClassName, 'py-3')}>
-          <div className={cn(fieldLabelClassName, 'flex items-center py-2 system-sm-semibold text-text-secondary')}>
+          <div className={cn(fieldLabelClassName, 'system-sm-semibold text-text-secondary flex items-center py-2')}>
             {label[language] || label.en_US}
 
             {required && (
@@ -269,9 +269,9 @@ function Form<
 
       return (
         <div key={variable} className={cn(itemClassName, 'py-3')}>
-          <div className='flex items-center justify-between py-2 system-sm-semibold text-text-secondary'>
+          <div className='system-sm-semibold text-text-secondary flex items-center justify-between py-2'>
             <div className='flex items-center space-x-2'>
-              <span className={cn(fieldLabelClassName, 'flex items-center py-2 system-sm-regular text-text-secondary')}>{label[language] || label.en_US}</span>
+              <span className={cn(fieldLabelClassName, 'system-sm-regular text-text-secondary flex items-center py-2')}>{label[language] || label.en_US}</span>
               {required && (
                 <span className='ml-1 text-red-500'>*</span>
               )}
@@ -297,7 +297,7 @@ function Form<
       } = formSchema as (CredentialFormSchemaTextInput | CredentialFormSchemaSecretInput)
       return (
         <div key={variable} className={cn(itemClassName, 'py-3')}>
-          <div className={cn(fieldLabelClassName, 'flex items-center py-2 system-sm-semibold text-text-secondary')}>
+          <div className={cn(fieldLabelClassName, 'system-sm-semibold text-text-secondary flex items-center py-2')}>
             {label[language] || label.en_US}
             {required && (
               <span className='ml-1 text-red-500'>*</span>
@@ -328,7 +328,7 @@ function Form<
       } = formSchema as (CredentialFormSchemaTextInput | CredentialFormSchemaSecretInput)
       return (
         <div key={variable} className={cn(itemClassName, 'py-3')}>
-          <div className={cn(fieldLabelClassName, 'flex items-center py-2 system-sm-semibold text-text-secondary')}>
+          <div className={cn(fieldLabelClassName, 'system-sm-semibold text-text-secondary flex items-center py-2')}>
             {label[language] || label.en_US}
             {required && (
               <span className='ml-1 text-red-500'>*</span>
@@ -388,7 +388,7 @@ function Form<
 
       return (
         <div key={variable} className={cn(itemClassName, 'py-3')}>
-          <div className={cn(fieldLabelClassName, 'flex items-center py-2 system-sm-semibold text-text-secondary')}>
+          <div className={cn(fieldLabelClassName, 'system-sm-semibold text-text-secondary flex items-center py-2')}>
             {label[language] || label.en_US}
             {required && (
               <span className='ml-1 text-red-500'>*</span>

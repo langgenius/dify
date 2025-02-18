@@ -50,19 +50,19 @@ const PreviewDocumentPicker: FC<Props> = ({
       offset={4}
     >
       <PortalToFollowElemTrigger onClick={togglePopup}>
-        <div className={cn('flex items-center h-6 px-1 rounded-md hover:bg-state-base-hover select-none', open && 'bg-state-base-hover', className)}>
+        <div className={cn('hover:bg-state-base-hover flex h-6 select-none items-center rounded-md px-1', open && 'bg-state-base-hover', className)}>
           <FileIcon name={name} extension={extension} size='md' />
-          <div className='flex flex-col items-start ml-1'>
+          <div className='ml-1 flex flex-col items-start'>
             <div className='flex items-center space-x-0.5'>
-              <span className={cn('system-md-semibold max-w-[200px] truncate text-text-primary')}> {name || '--'}</span>
-              <ArrowIcon className={'h-[18px] w-[18px] text-text-primary'} />
+              <span className={cn('system-md-semibold text-text-primary max-w-[200px] truncate')}> {name || '--'}</span>
+              <ArrowIcon className={'text-text-primary h-[18px] w-[18px]'} />
             </div>
           </div>
         </div>
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent className='z-[11]'>
-        <div className='w-[392px] p-1 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-[5px]'>
-          {files?.length > 1 && <div className='pl-2 flex items-center h-8 system-xs-medium-uppercase text-text-tertiary'>{t('dataset.preprocessDocument', { num: files.length })}</div>}
+        <div className='border-components-panel-border bg-components-panel-bg-blur w-[392px] rounded-xl border-[0.5px] p-1 shadow-lg backdrop-blur-[5px]'>
+          {files?.length > 1 && <div className='system-xs-medium-uppercase text-text-tertiary flex h-8 items-center pl-2'>{t('dataset.preprocessDocument', { num: files.length })}</div>}
           {files?.length > 0
             ? (
               <DocumentList
@@ -70,7 +70,7 @@ const PreviewDocumentPicker: FC<Props> = ({
                 onChange={handleChange}
               />
             )
-            : (<div className='mt-2 flex items-center justify-center w-[360px] h-[100px]'>
+            : (<div className='mt-2 flex h-[100px] w-[360px] items-center justify-center'>
               <Loading />
             </div>)}
         </div>

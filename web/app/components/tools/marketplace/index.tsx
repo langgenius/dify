@@ -50,51 +50,51 @@ const Marketplace = ({
   return (
     <div
       ref={containerRef}
-      className='grow flex flex-col shrink-0 sticky bottom-[-442px] h-[530px] overflow-y-auto px-12 py-2 pt-0 bg-background-default-subtle'
+      className='bg-background-default-subtle sticky bottom-[-442px] flex h-[530px] shrink-0 grow flex-col overflow-y-auto px-12 py-2 pt-0'
     >
       <RiArrowUpDoubleLine
-        className='absolute top-2 left-1/2 -translate-x-1/2 w-4 h-4 text-text-quaternary cursor-pointer'
+        className='text-text-quaternary absolute left-1/2 top-2 h-4 w-4 -translate-x-1/2 cursor-pointer'
         onClick={() => onMarketplaceScroll()}
       />
-      <div className='sticky top-0 pt-5 pb-3 bg-background-default-subtle z-10'>
+      <div className='bg-background-default-subtle sticky top-0 z-10 pb-3 pt-5'>
         <div className='title-2xl-semi-bold bg-gradient-to-r from-[rgba(11,165,236,0.95)] to-[rgba(21,90,239,0.95)] bg-clip-text text-transparent'>
           {t('plugin.marketplace.moreFrom')}
         </div>
-        <div className='flex items-center text-center body-md-regular text-text-tertiary'>
+        <div className='body-md-regular text-text-tertiary flex items-center text-center'>
           {t('plugin.marketplace.discover')}
-          <span className="relative ml-1 body-md-medium text-text-secondary after:content-[''] after:absolute after:left-0 after:bottom-[1.5px] after:w-full after:h-2 after:bg-text-text-selected">
+          <span className="body-md-medium text-text-secondary after:bg-text-text-selected relative ml-1 after:absolute after:bottom-[1.5px] after:left-0 after:h-2 after:w-full after:content-['']">
             {t('plugin.category.models')}
           </span>
           ,
-          <span className="relative ml-1 body-md-medium text-text-secondary after:content-[''] after:absolute after:left-0 after:bottom-[1.5px] after:w-full after:h-2 after:bg-text-text-selected">
+          <span className="body-md-medium text-text-secondary after:bg-text-text-selected relative ml-1 after:absolute after:bottom-[1.5px] after:left-0 after:h-2 after:w-full after:content-['']">
             {t('plugin.category.tools')}
           </span>
           ,
-          <span className="relative ml-1 body-md-medium text-text-secondary after:content-[''] after:absolute after:left-0 after:bottom-[1.5px] after:w-full after:h-2 after:bg-text-text-selected">
+          <span className="body-md-medium text-text-secondary after:bg-text-text-selected relative ml-1 after:absolute after:bottom-[1.5px] after:left-0 after:h-2 after:w-full after:content-['']">
             {t('plugin.category.agents')}
           </span>
           ,
-          <span className="relative ml-1 mr-1 body-md-medium text-text-secondary after:content-[''] after:absolute after:left-0 after:bottom-[1.5px] after:w-full after:h-2 after:bg-text-text-selected">
+          <span className="body-md-medium text-text-secondary after:bg-text-text-selected relative ml-1 mr-1 after:absolute after:bottom-[1.5px] after:left-0 after:h-2 after:w-full after:content-['']">
             {t('plugin.category.extensions')}
           </span>
           {t('plugin.marketplace.and')}
-          <span className="relative ml-1 mr-1 body-md-medium text-text-secondary after:content-[''] after:absolute after:left-0 after:bottom-[1.5px] after:w-full after:h-2 after:bg-text-text-selected">
+          <span className="body-md-medium text-text-secondary after:bg-text-text-selected relative ml-1 mr-1 after:absolute after:bottom-[1.5px] after:left-0 after:h-2 after:w-full after:content-['']">
             {t('plugin.category.bundles')}
           </span>
           {t('common.operation.in')}
           <a
             href={`${MARKETPLACE_URL_PREFIX}?language=${locale}&q=${searchPluginText}&tags=${filterPluginTags.join(',')}`}
-            className='flex items-center ml-1 system-sm-medium text-text-accent'
+            className='system-sm-medium text-text-accent ml-1 flex items-center'
             target='_blank'
           >
             {t('plugin.marketplace.difyMarketplace')}
-            <RiArrowRightUpLine className='w-4 h-4' />
+            <RiArrowRightUpLine className='h-4 w-4' />
           </a>
         </div>
       </div>
       {
         isLoading && page === 1 && (
-          <div className='absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2'>
+          <div className='absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2'>
             <Loading />
           </div>
         )

@@ -88,20 +88,20 @@ const NotionPageSelector = ({
   }, [firstWorkspaceId])
 
   return (
-    <div className='bg-gray-25 border border-gray-200 rounded-xl'>
+    <div className='bg-gray-25 rounded-xl border border-gray-200'>
       {
         data?.notion_info?.length
           ? (
             <>
-              <div className='flex items-center pl-[10px] pr-2 h-11 bg-white border-b border-b-gray-200 rounded-t-xl'>
+              <div className='flex h-11 items-center rounded-t-xl border-b border-b-gray-200 bg-white pl-[10px] pr-2'>
                 <WorkspaceSelector
                   value={currentWorkspaceId || firstWorkspaceId}
                   items={notionWorkspaces}
                   onSelect={handleSelectWorkspace}
                 />
-                <div className='mx-1 w-[1px] h-3 bg-gray-200' />
+                <div className='mx-1 h-3 w-[1px] bg-gray-200' />
                 <div
-                  className={cn(s['setting-icon'], 'w-6 h-6 cursor-pointer')}
+                  className={cn(s['setting-icon'], 'h-6 w-6 cursor-pointer')}
                   onClick={() => setShowAccountSettingModal({ payload: 'data-source', onCancelCallback: mutate })}
                 />
                 <div className='grow' />
@@ -110,7 +110,7 @@ const NotionPageSelector = ({
                   onChange={handleSearchValueChange}
                 />
               </div>
-              <div className='rounded-b-xl overflow-hidden'>
+              <div className='overflow-hidden rounded-b-xl'>
                 <PageSelector
                   value={selectedPagesId}
                   disabledValue={getPagesMapAndSelectedPagesId[2]}

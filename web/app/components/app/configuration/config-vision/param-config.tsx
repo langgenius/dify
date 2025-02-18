@@ -27,12 +27,12 @@ const ParamsConfig: FC = () => {
     >
       <PortalToFollowElemTrigger onClick={() => setOpen(v => !v)}>
         <Button variant='ghost' size='small' className={cn('')}>
-          <RiSettings2Line className='w-3.5 h-3.5' />
+          <RiSettings2Line className='h-3.5 w-3.5' />
           <div className='ml-1'>{t('appDebug.voice.settings')}</div>
         </Button>
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent style={{ zIndex: 50 }}>
-        <div className='w-80 sm:w-[412px] p-4 bg-components-panel-bg rounded-lg border-[0.5px] border-components-panel-border shadow-lg space-y-3'>
+        <div className='bg-components-panel-bg border-components-panel-border w-80 space-y-3 rounded-lg border-[0.5px] p-4 shadow-lg sm:w-[412px]'>
           <ParamConfigContent />
         </div>
       </PortalToFollowElemContent>

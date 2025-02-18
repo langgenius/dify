@@ -58,9 +58,9 @@ export const FieldInfo: FC<IFieldInfoProps> = ({
   const readAlignTop = !showEdit && textNeedWrap
 
   return (
-    <div className={cn('flex items-center gap-1 py-0.5 min-h-5 text-xs', editAlignTop && '!items-start', readAlignTop && '!items-start pt-1')}>
-      <div className={cn('w-[200px] text-text-tertiary overflow-hidden text-ellipsis whitespace-nowrap shrink-0', editAlignTop && 'pt-1')}>{label}</div>
-      <div className="grow flex items-center gap-1 text-text-secondary">
+    <div className={cn('flex min-h-5 items-center gap-1 py-0.5 text-xs', editAlignTop && '!items-start', readAlignTop && '!items-start pt-1')}>
+      <div className={cn('text-text-tertiary w-[200px] shrink-0 overflow-hidden text-ellipsis whitespace-nowrap', editAlignTop && 'pt-1')}>{label}</div>
+      <div className="text-text-secondary flex grow items-center gap-1">
         {valueIcon}
         {!showEdit
           ? displayedValue
@@ -348,11 +348,11 @@ const Metadata: FC<IMetadataProps> = ({ docDetail, loading, onUpdate }) => {
                   {metadataParams.documentType && <>
                     <TypeIcon iconName={metadataMap[metadataParams.documentType || 'book'].iconName || ''} className={s.iconShow} />
                     {metadataMap[metadataParams.documentType || 'book'].text}
-                    {editStatus && <div className='inline-flex items-center gap-1 ml-1'>
+                    {editStatus && <div className='ml-1 inline-flex items-center gap-1'>
                       ·
                       <div
                         onClick={() => { setShowDocTypes(true) }}
-                        className='cursor-pointer hover:text-text-accent'
+                        className='hover:text-text-accent cursor-pointer'
                       >
                         {t('common.operation.change')}
                       </div>

@@ -80,18 +80,18 @@ function Confirm({
     return null
 
   return createPortal(
-    <div className={'fixed inset-0 flex items-center justify-center z-[10000000] bg-background-overlay'}
+    <div className={'bg-background-overlay fixed inset-0 z-[10000000] flex items-center justify-center'}
       onClick={(e) => {
         e.preventDefault()
         e.stopPropagation()
       }}>
       <div ref={dialogRef} className={'relative w-full max-w-[480px] overflow-hidden'}>
-        <div className='flex flex-col items-start max-w-full rounded-2xl border-[0.5px] border-solid border-components-panel-border shadows-shadow-lg bg-components-panel-bg'>
-          <div className='flex pt-6 pl-6 pr-6 pb-4 flex-col items-start gap-2 self-stretch'>
+        <div className='border-components-panel-border shadows-shadow-lg bg-components-panel-bg flex max-w-full flex-col items-start rounded-2xl border-[0.5px] border-solid'>
+          <div className='flex flex-col items-start gap-2 self-stretch pb-4 pl-6 pr-6 pt-6'>
             <div className='title-2xl-semi-bold text-text-primary'>{title}</div>
             <div className='system-md-regular text-text-tertiary w-full'>{content}</div>
           </div>
-          <div className='flex p-6 gap-2 justify-end items-start self-stretch'>
+          <div className='flex items-start justify-end gap-2 self-stretch p-6'>
             {showCancel && <Button onClick={onCancel}>{cancelTxt}</Button>}
             {showConfirm && <Button variant={'primary'} destructive={type !== 'info'} loading={isLoading} disabled={isDisabled} onClick={onConfirm}>{confirmTxt}</Button>}
           </div>

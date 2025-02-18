@@ -15,10 +15,10 @@ const Score: FC<Props> = ({
   if (!value || isNaN(value))
     return null
   return (
-    <div className={cn('relative items-center px-[5px] border border-components-progress-bar-border overflow-hidden',
-      besideChunkName ? 'border-l-0 h-[20.5px]' : 'h-[20px] rounded-md')}>
-      <div className={cn('absolute top-0 left-0 h-full bg-util-colors-blue-brand-blue-brand-100 border-r-[1.5px] border-components-progress-brand-progress', value === 1 && 'border-r-0')} style={{ width: `${value * 100}%` }} />
-      <div className={cn('relative flex items-center h-full space-x-0.5 text-util-colors-blue-brand-blue-brand-700')}>
+    <div className={cn('border-components-progress-bar-border relative items-center overflow-hidden border px-[5px]',
+      besideChunkName ? 'h-[20.5px] border-l-0' : 'h-[20px] rounded-md')}>
+      <div className={cn('bg-util-colors-blue-brand-blue-brand-100 border-components-progress-brand-progress absolute left-0 top-0 h-full border-r-[1.5px]', value === 1 && 'border-r-0')} style={{ width: `${value * 100}%` }} />
+      <div className={cn('text-util-colors-blue-brand-blue-brand-700 relative flex h-full items-center space-x-0.5')}>
         <div className='system-2xs-medium-uppercase'>score</div>
         <div className='system-xs-semibold'>{value?.toFixed(2)}</div>
       </div>

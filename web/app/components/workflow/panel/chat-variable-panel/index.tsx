@@ -116,61 +116,61 @@ const ChatVariablePanel = () => {
   return (
     <div
       className={cn(
-        'relative flex flex-col w-[420px] bg-components-panel-bg-alt rounded-l-2xl h-full border border-components-panel-border',
+        'bg-components-panel-bg-alt border-components-panel-border relative flex h-full w-[420px] flex-col rounded-l-2xl border',
       )}
     >
-      <div className='shrink-0 flex items-center justify-between p-4 pb-0 text-text-primary system-xl-semibold'>
+      <div className='text-text-primary system-xl-semibold flex shrink-0 items-center justify-between p-4 pb-0'>
         {t('workflow.chatVariable.panelTitle')}
         <div className='flex items-center gap-1'>
           <ActionButton state={showTip ? ActionButtonState.Active : undefined} onClick={() => setShowTip(!showTip)}>
-            <RiBookOpenLine className='w-4 h-4' />
+            <RiBookOpenLine className='h-4 w-4' />
           </ActionButton>
           <div
-            className='flex items-center justify-center w-6 h-6 cursor-pointer'
+            className='flex h-6 w-6 cursor-pointer items-center justify-center'
             onClick={() => setShowChatVariablePanel(false)}
           >
-            <RiCloseLine className='w-4 h-4 text-text-tertiary' />
+            <RiCloseLine className='text-text-tertiary h-4 w-4' />
           </div>
         </div>
       </div>
       {showTip && (
-        <div className='shrink-0 px-3 pt-2.5 pb-2'>
-          <div className='relative p-3 radius-2xl bg-background-section-burn'>
-            <div className='inline-block py-[3px] px-[5px] rounded-[5px] border border-divider-deep text-text-tertiary system-2xs-medium-uppercase'>TIPS</div>
-            <div className='mt-1 mb-4 system-sm-regular text-text-secondary'>
+        <div className='shrink-0 px-3 pb-2 pt-2.5'>
+          <div className='radius-2xl bg-background-section-burn relative p-3'>
+            <div className='border-divider-deep text-text-tertiary system-2xs-medium-uppercase inline-block rounded-[5px] border px-[5px] py-[3px]'>TIPS</div>
+            <div className='system-sm-regular text-text-secondary mb-4 mt-1'>
               {t('workflow.chatVariable.panelDescription')}
               <a target='_blank' rel='noopener noreferrer' className='text-text-accent' href={locale !== LanguagesSupported[1] ? 'https://docs.dify.ai/guides/workflow/variables#conversation-variables' : `https://docs.dify.ai/${locale.toLowerCase()}/guides/workflow/variables#hui-hua-bian-liang`}>{t('workflow.chatVariable.docLink')}</a>
             </div>
             <div className='flex items-center gap-2'>
-              <div className='flex flex-col p-3 pb-4 bg-workflow-block-bg radius-lg border border-workflow-block-border shadow-md'>
-                <BubbleX className='shrink-0 mb-1 w-4 h-4 text-util-colors-teal-teal-700' />
+              <div className='bg-workflow-block-bg radius-lg border-workflow-block-border flex flex-col border p-3 pb-4 shadow-md'>
+                <BubbleX className='text-util-colors-teal-teal-700 mb-1 h-4 w-4 shrink-0' />
                 <div className='text-text-secondary system-xs-semibold'>conversation_var</div>
                 <div className='text-text-tertiary system-2xs-regular'>String</div>
               </div>
               <div className='grow'>
                 <div className='mb-2 flex items-center gap-2 py-1'>
-                  <div className='shrink-0 flex items-center gap-1 w-16 h-3 px-1'>
-                    <LongArrowLeft className='grow h-2 text-text-quaternary' />
-                    <div className='shrink-0 text-text-tertiary system-2xs-medium'>WRITE</div>
+                  <div className='flex h-3 w-16 shrink-0 items-center gap-1 px-1'>
+                    <LongArrowLeft className='text-text-quaternary h-2 grow' />
+                    <div className='text-text-tertiary system-2xs-medium shrink-0'>WRITE</div>
                   </div>
                   <BlockIcon className='shrink-0' type={BlockEnum.Assigner} />
-                  <div className='grow text-text-secondary system-xs-semibold truncate'>{t('workflow.blocks.assigner')}</div>
+                  <div className='text-text-secondary system-xs-semibold grow truncate'>{t('workflow.blocks.assigner')}</div>
                 </div>
                 <div className='flex items-center gap-2 py-1'>
-                  <div className='shrink-0 flex items-center gap-1 w-16 h-3 px-1'>
-                    <div className='shrink-0 text-text-tertiary system-2xs-medium'>READ</div>
-                    <LongArrowRight className='grow h-2 text-text-quaternary' />
+                  <div className='flex h-3 w-16 shrink-0 items-center gap-1 px-1'>
+                    <div className='text-text-tertiary system-2xs-medium shrink-0'>READ</div>
+                    <LongArrowRight className='text-text-quaternary h-2 grow' />
                   </div>
                   <BlockIcon className='shrink-0' type={BlockEnum.LLM} />
-                  <div className='grow text-text-secondary system-xs-semibold truncate'>{t('workflow.blocks.llm')}</div>
+                  <div className='text-text-secondary system-xs-semibold grow truncate'>{t('workflow.blocks.llm')}</div>
                 </div>
               </div>
             </div>
-            <div className='absolute z-10 top-[-4px] right-[38px] w-3 h-3 bg-background-section-burn rotate-45'/>
+            <div className='bg-background-section-burn absolute right-[38px] top-[-4px] z-10 h-3 w-3 rotate-45'/>
           </div>
         </div>
       )}
-      <div className='shrink-0 px-4 pt-2 pb-3'>
+      <div className='shrink-0 px-4 pb-3 pt-2'>
         <VariableModalTrigger
           open={showVariableModal}
           setOpen={setShowVariableModal}
@@ -180,7 +180,7 @@ const ChatVariablePanel = () => {
           onClose={() => setCurrentVar(undefined)}
         />
       </div>
-      <div className='grow px-4 rounded-b-2xl overflow-y-auto'>
+      <div className='grow overflow-y-auto rounded-b-2xl px-4'>
         {varList.map(chatVar => (
           <VariableItem
             key={chatVar.id}

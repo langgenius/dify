@@ -40,7 +40,7 @@ const RetryOnNode = ({
   return (
     <div className='px-3'>
       <div className={cn(
-        'flex items-center justify-between px-[5px] py-1 bg-workflow-block-parma-bg border-[0.5px] border-transparent rounded-md system-xs-medium-uppercase text-text-tertiary',
+        'bg-workflow-block-parma-bg system-xs-medium-uppercase text-text-tertiary flex items-center justify-between rounded-md border-[0.5px] border-transparent px-[5px] py-1',
         isRunning && 'bg-state-accent-hover border-state-accent-active text-text-accent',
         isSuccessful && 'bg-state-success-hover border-state-success-active text-text-success',
         (isException || isFailed) && 'bg-state-warning-hover border-state-warning-active text-text-warning',
@@ -54,7 +54,7 @@ const RetryOnNode = ({
           {
             isRunning && (
               <>
-                <RiLoader2Line className='animate-spin mr-1 w-3.5 h-3.5' />
+                <RiLoader2Line className='mr-1 h-3.5 w-3.5 animate-spin' />
                 {t('workflow.nodes.common.retry.retrying')}
               </>
             )
@@ -62,7 +62,7 @@ const RetryOnNode = ({
           {
             isSuccessful && (
               <>
-                <RiCheckboxCircleFill className='mr-1 w-3.5 h-3.5' />
+                <RiCheckboxCircleFill className='mr-1 h-3.5 w-3.5' />
                 {t('workflow.nodes.common.retry.retrySuccessful')}
               </>
             )
@@ -70,7 +70,7 @@ const RetryOnNode = ({
           {
             (isFailed || isException) && (
               <>
-                <RiAlertFill className='mr-1 w-3.5 h-3.5' />
+                <RiAlertFill className='mr-1 h-3.5 w-3.5' />
                 {t('workflow.nodes.common.retry.retryFailed')}
               </>
             )

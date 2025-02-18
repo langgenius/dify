@@ -48,7 +48,7 @@ const RegeneratingContent: FC = React.memo(() => {
       </div>
       <div className='flex justify-end pt-6'>
         <Button variant='warning' destructive disabled className='inline-flex items-center gap-x-0.5'>
-          <RiLoader2Line className='w-4 h-4 text-components-button-destructive-primary-text-disabled animate-spin' />
+          <RiLoader2Line className='text-components-button-destructive-primary-text-disabled h-4 w-4 animate-spin' />
           <span>{t('common.operation.regenerate')}</span>
         </Button>
       </div>

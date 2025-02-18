@@ -241,11 +241,11 @@ const ModelLoadBalancingEntryModal: FC<ModelModalProps> = ({
 
   return (
     <PortalToFollowElem open>
-      <PortalToFollowElemContent className='w-full h-full z-[60]'>
+      <PortalToFollowElemContent className='z-[60] h-full w-full'>
         <div className='fixed inset-0 flex items-center justify-center bg-black/[.25]'>
-          <div className='mx-2 w-[640px] max-h-[calc(100vh-120px)] bg-white shadow-xl rounded-2xl overflow-y-auto'>
+          <div className='mx-2 max-h-[calc(100vh-120px)] w-[640px] overflow-y-auto rounded-2xl bg-white shadow-xl'>
             <div className='px-8 pt-8'>
-              <div className='flex justify-between items-center mb-2'>
+              <div className='mb-2 flex items-center justify-between'>
                 <div className='text-xl font-semibold text-gray-900'>{t(isEditMode ? 'common.modelProvider.editConfig' : 'common.modelProvider.addConfig')}</div>
               </div>
               <Form
@@ -257,18 +257,18 @@ const ModelLoadBalancingEntryModal: FC<ModelModalProps> = ({
                 showOnVariableMap={showOnVariableMap}
                 isEditMode={isEditMode}
               />
-              <div className='sticky bottom-0 flex justify-between items-center py-6 flex-wrap gap-y-2 bg-white'>
+              <div className='sticky bottom-0 flex flex-wrap items-center justify-between gap-y-2 bg-white py-6'>
                 {
                   (provider.help && (provider.help.title || provider.help.url))
                     ? (
                       <a
                         href={provider.help?.url[language] || provider.help?.url.en_US}
                         target='_blank' rel='noopener noreferrer'
-                        className='inline-flex items-center text-xs text-primary-600'
+                        className='text-primary-600 inline-flex items-center text-xs'
                         onClick={e => !provider.help.url && e.preventDefault()}
                       >
                         {provider.help.title?.[language] || provider.help.url[language] || provider.help.title?.en_US || provider.help.url.en_US}
-                        <LinkExternal02 className='ml-1 w-3 h-3' />
+                        <LinkExternal02 className='ml-1 h-3 w-3' />
                       </a>
                     )
                     : <div />
@@ -307,14 +307,14 @@ const ModelLoadBalancingEntryModal: FC<ModelModalProps> = ({
               {
                 (validatedStatusState.status === ValidatedStatus.Error && validatedStatusState.message)
                   ? (
-                    <div className='flex px-[10px] py-3 bg-[#FEF3F2] text-xs text-[#D92D20]'>
-                      <RiErrorWarningFill className='mt-[1px] mr-2 w-[14px] h-[14px]' />
+                    <div className='flex bg-[#FEF3F2] px-[10px] py-3 text-xs text-[#D92D20]'>
+                      <RiErrorWarningFill className='mr-2 mt-[1px] h-[14px] w-[14px]' />
                       {validatedStatusState.message}
                     </div>
                   )
                   : (
-                    <div className='flex justify-center items-center py-3 bg-gray-50 text-xs text-gray-500'>
-                      <Lock01 className='mr-1 w-3 h-3 text-gray-500' />
+                    <div className='flex items-center justify-center bg-gray-50 py-3 text-xs text-gray-500'>
+                      <Lock01 className='mr-1 h-3 w-3 text-gray-500' />
                       {t('common.modelProvider.encrypted.front')}
                       <a
                         className='text-primary-600 mx-1'

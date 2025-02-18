@@ -53,14 +53,14 @@ const KeyInput = ({
     <div className={className}>
       <div className="mb-2 text-[13px] font-medium text-gray-800">{name}</div>
       <div className='
-        flex items-center px-3 bg-white rounded-lg
-        shadow-xs
+        shadow-xs flex items-center rounded-lg bg-white
+        px-3
       '>
         <input
           className='
-            w-full py-[9px] mr-2
-            text-xs font-medium text-gray-700 leading-[18px]
-            appearance-none outline-none bg-transparent
+            mr-2 w-full appearance-none
+            bg-transparent py-[9px] text-xs font-medium
+            leading-[18px] text-gray-700 outline-none
           '
           value={value}
           placeholder={placeholder}

@@ -18,12 +18,12 @@ const ConfigurationButton = ({ modelProvider, handleOpenModal }: ConfigurationBu
         handleOpenModal(modelProvider, ConfigurationMethodEnum.predefinedModel, undefined)
       }}
     >
-      <div className="flex px-[3px] justify-center items-center gap-1">
+      <div className="flex items-center justify-center gap-1 px-[3px]">
         {t('workflow.nodes.agent.notAuthorized')}
       </div>
-      <div className="flex w-[14px] h-[14px] justify-center items-center">
-        <div className="w-2 h-2 shrink-0 rounded-[3px] border border-components-badge-status-light-warning-border-inner
-          bg-components-badge-status-light-warning-bg shadow-components-badge-status-light-warning-halo" />
+      <div className="flex h-[14px] w-[14px] items-center justify-center">
+        <div className="border-components-badge-status-light-warning-border-inner bg-components-badge-status-light-warning-bg shadow-components-badge-status-light-warning-halo h-2 w-2 shrink-0
+          rounded-[3px] border" />
       </div>
     </Button>
   )

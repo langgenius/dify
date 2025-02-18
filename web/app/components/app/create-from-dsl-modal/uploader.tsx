@@ -102,35 +102,35 @@ const Uploader: FC<Props> = ({
       />
       <div ref={dropRef}>
         {!file && (
-          <div className={cn('flex items-center h-12 rounded-xl bg-gray-50 border border-dashed border-gray-200 text-sm font-normal', dragging && 'bg-[#F5F8FF] border border-[#B2CCFF]')}>
-            <div className='w-full flex items-center justify-center space-x-2'>
-              <UploadCloud01 className='w-6 h-6 mr-2' />
+          <div className={cn('flex h-12 items-center rounded-xl border border-dashed border-gray-200 bg-gray-50 text-sm font-normal', dragging && 'border border-[#B2CCFF] bg-[#F5F8FF]')}>
+            <div className='flex w-full items-center justify-center space-x-2'>
+              <UploadCloud01 className='mr-2 h-6 w-6' />
               <div className='text-gray-500'>
                 {t('datasetCreation.stepOne.uploader.button')}
-                <span className='pl-1 text-[#155eef] cursor-pointer' onClick={selectHandle}>{t('datasetDocuments.list.batchModal.browse')}</span>
+                <span className='cursor-pointer pl-1 text-[#155eef]' onClick={selectHandle}>{t('datasetDocuments.list.batchModal.browse')}</span>
               </div>
             </div>
-            {dragging && <div ref={dragRef} className='absolute w-full h-full top-0 left-0' />}
+            {dragging && <div ref={dragRef} className='absolute left-0 top-0 h-full w-full' />}
           </div>
         )}
         {file && (
-          <div className={cn('flex items-center rounded-lg bg-components-panel-on-panel-item-bg border-[0.5px] border-components-panel-border shadow-xs group', 'hover:bg-[#F5F8FF] hover:border-[#B2CCFF]')}>
-            <div className='flex p-3 justify-center items-center'>
-              <YamlIcon className="w-6 h-6 shrink-0" />
+          <div className={cn('bg-components-panel-on-panel-item-bg border-components-panel-border shadow-xs group flex items-center rounded-lg border-[0.5px]', 'hover:border-[#B2CCFF] hover:bg-[#F5F8FF]')}>
+            <div className='flex items-center justify-center p-3'>
+              <YamlIcon className="h-6 w-6 shrink-0" />
             </div>
-            <div className='flex py-1 pr-2 grow flex-col items-start gap-0.5'>
-              <span className='max-w-[calc(100%_-_30px)] text-ellipsis whitespace-nowrap overflow-hidden text-text-secondary font-inter text-[12px] font-medium leading-4'>{file.name}</span>
-              <div className='flex h-3 items-center gap-1 self-stretch text-text-tertiary font-inter text-[10px] font-medium leading-3 uppercase'>
+            <div className='flex grow flex-col items-start gap-0.5 py-1 pr-2'>
+              <span className='text-text-secondary font-inter max-w-[calc(100%_-_30px)] overflow-hidden text-ellipsis whitespace-nowrap text-[12px] font-medium leading-4'>{file.name}</span>
+              <div className='text-text-tertiary font-inter flex h-3 items-center gap-1 self-stretch text-[10px] font-medium uppercase leading-3'>
                 <span>YAML</span>
                 <span className='text-text-quaternary'>·</span>
                 <span>{formatFileSize(file.size)}</span>
               </div>
             </div>
-            <div className='hidden group-hover:flex items-center'>
+            <div className='hidden items-center group-hover:flex'>
               <Button onClick={selectHandle}>{t('datasetCreation.stepOne.uploader.change')}</Button>
-              <div className='mx-2 w-px h-4 bg-gray-200' />
-              <div className='p-2 cursor-pointer' onClick={removeFile}>
-                <RiDeleteBinLine className='w-4 h-4 text-text-tertiary' />
+              <div className='mx-2 h-4 w-px bg-gray-200' />
+              <div className='cursor-pointer p-2' onClick={removeFile}>
+                <RiDeleteBinLine className='text-text-tertiary h-4 w-4' />
               </div>
             </div>
           </div>

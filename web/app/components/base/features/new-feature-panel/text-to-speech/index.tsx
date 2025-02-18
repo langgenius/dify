@@ -49,8 +49,8 @@ const TextToSpeech = ({
   return (
     <FeatureCard
       icon={
-        <div className='shrink-0 p-1 rounded-lg border-[0.5px] border-divider-subtle shadow-xs bg-util-colors-violet-violet-600'>
-          <TextToAudio className='w-4 h-4 text-text-primary-on-surface' />
+        <div className='border-divider-subtle shadow-xs bg-util-colors-violet-violet-600 shrink-0 rounded-lg border-[0.5px] p-1'>
+          <TextToAudio className='text-text-primary-on-surface h-4 w-4' />
         </div>
       }
       title={t('appDebug.feature.textToSpeech.title')}
@@ -62,24 +62,24 @@ const TextToSpeech = ({
     >
       <>
         {!features.text2speech?.enabled && (
-          <div className='min-h-8 text-text-tertiary system-xs-regular line-clamp-2'>{t('appDebug.feature.textToSpeech.description')}</div>
+          <div className='text-text-tertiary system-xs-regular line-clamp-2 min-h-8'>{t('appDebug.feature.textToSpeech.description')}</div>
         )}
         {!!features.text2speech?.enabled && (
           <>
             {!isHovering && !modalOpen && (
-              <div className='pt-0.5 flex items-center gap-4'>
+              <div className='flex items-center gap-4 pt-0.5'>
                 <div className=''>
-                  <div className='mb-0.5 text-text-tertiary system-2xs-medium-uppercase'>{t('appDebug.voice.voiceSettings.language')}</div>
+                  <div className='text-text-tertiary system-2xs-medium-uppercase mb-0.5'>{t('appDebug.voice.voiceSettings.language')}</div>
                   <div className='text-text-secondary system-xs-regular'>{languageInfo?.name || '-'}</div>
                 </div>
-                <div className='w-px h-[27px] bg-divider-subtle rotate-12'></div>
+                <div className='bg-divider-subtle h-[27px] w-px rotate-12'></div>
                 <div className=''>
-                  <div className='mb-0.5 text-text-tertiary system-2xs-medium-uppercase'>{t('appDebug.voice.voiceSettings.voice')}</div>
+                  <div className='text-text-tertiary system-2xs-medium-uppercase mb-0.5'>{t('appDebug.voice.voiceSettings.voice')}</div>
                   <div className='text-text-secondary system-xs-regular'>{features.text2speech?.voice || t('appDebug.voice.defaultDisplay')}</div>
                 </div>
-                <div className='w-px h-[27px] bg-divider-subtle rotate-12'></div>
+                <div className='bg-divider-subtle h-[27px] w-px rotate-12'></div>
                 <div className=''>
-                  <div className='mb-0.5 text-text-tertiary system-2xs-medium-uppercase'>{t('appDebug.voice.voiceSettings.autoPlay')}</div>
+                  <div className='text-text-tertiary system-2xs-medium-uppercase mb-0.5'>{t('appDebug.voice.voiceSettings.autoPlay')}</div>
                   <div className='text-text-secondary system-xs-regular'>{features.text2speech?.autoPlay === TtsAutoPlay.enabled ? t('appDebug.voice.voiceSettings.autoPlayEnabled') : t('appDebug.voice.voiceSettings.autoPlayDisabled')}</div>
                 </div>
               </div>
@@ -87,7 +87,7 @@ const TextToSpeech = ({
             {(isHovering || modalOpen) && (
               <VoiceSettings open={modalOpen && !disabled} onOpen={setModalOpen} onChange={onChange}>
                 <Button className='w-full' disabled={disabled}>
-                  <RiEqualizer2Line className='mr-1 w-4 h-4' />
+                  <RiEqualizer2Line className='mr-1 h-4 w-4' />
                   {t('appDebug.voice.voiceSettings.title')}
                 </Button>
               </VoiceSettings>

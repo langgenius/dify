@@ -108,23 +108,23 @@ const CustomWebAppBrand = () => {
   return (
     <div className='py-4'>
       <div className='mb-2 text-sm font-medium text-gray-900'>{t('custom.webapp.title')}</div>
-      <div className='relative mb-4 pl-4 pb-6 pr-[119px] rounded-xl border-[0.5px] border-black/8 shadow-xs bg-gray-50 overflow-hidden'>
-        <div className={`${s.mask} absolute top-0 left-0 w-full -bottom-2 z-10`}></div>
-        <div className='flex items-center -mt-2 mb-4 p-6 bg-white rounded-xl'>
-          <div className='flex items-center px-4 w-[125px] h-9 rounded-lg bg-primary-600 border-[0.5px] border-primary-700 shadow-xs'>
-            <MessageDotsCircle className='shrink-0 mr-2 w-4 h-4 text-white' />
-            <div className='grow h-2 rounded-sm bg-white opacity-50' />
+      <div className='border-black/8 shadow-xs relative mb-4 overflow-hidden rounded-xl border-[0.5px] bg-gray-50 pb-6 pl-4 pr-[119px]'>
+        <div className={`${s.mask} absolute -bottom-2 left-0 top-0 z-10 w-full`}></div>
+        <div className='-mt-2 mb-4 flex items-center rounded-xl bg-white p-6'>
+          <div className='bg-primary-600 border-primary-700 shadow-xs flex h-9 w-[125px] items-center rounded-lg border-[0.5px] px-4'>
+            <MessageDotsCircle className='mr-2 h-4 w-4 shrink-0 text-white' />
+            <div className='h-2 grow rounded-sm bg-white opacity-50' />
           </div>
         </div>
-        <div className='flex items-center h-5 justify-between'>
-          <div className='w-[369px] h-1.5 rounded-sm bg-gray-200 opacity-80' />
+        <div className='flex h-5 items-center justify-between'>
+          <div className='h-1.5 w-[369px] rounded-sm bg-gray-200 opacity-80' />
           {
             !webappBrandRemoved && (
               <div className='flex items-center text-[10px] font-medium text-gray-400'>
                 POWERED BY
                 {
                   webappLogo
-                    ? <img src={`${webappLogo}?hash=${imgKey}`} alt='logo' className='ml-2 block w-auto h-5' />
+                    ? <img src={`${webappLogo}?hash=${imgKey}`} alt='logo' className='ml-2 block h-5 w-auto' />
                     : <LogoSite className='ml-2 !h-5' />
                 }
               </div>
@@ -132,7 +132,7 @@ const CustomWebAppBrand = () => {
           }
         </div>
       </div>
-      <div className='flex items-center justify-between mb-2 px-4 h-14 rounded-xl border-[0.5px] border-gray-200 bg-gray-50 text-sm font-medium text-gray-900'>
+      <div className='mb-2 flex h-14 items-center justify-between rounded-xl border-[0.5px] border-gray-200 bg-gray-50 px-4 text-sm font-medium text-gray-900'>
         {t('custom.webapp.removeBrand')}
         <Switch
           size='l'
@@ -142,12 +142,12 @@ const CustomWebAppBrand = () => {
         />
       </div>
       <div className={`
-        flex items-center justify-between px-4 py-3 rounded-xl border-[0.5px] border-gray-200 bg-gray-50
+        flex items-center justify-between rounded-xl border-[0.5px] border-gray-200 bg-gray-50 px-4 py-3
         ${webappBrandRemoved && 'opacity-30'}
       `}>
         <div>
-          <div className='leading-5 text-sm font-medium text-gray-900'>{t('custom.webapp.changeLogo')}</div>
-          <div className='leading-[18px] text-xs text-gray-500'>{t('custom.webapp.changeLogoTip')}</div>
+          <div className='text-sm font-medium leading-5 text-gray-900'>{t('custom.webapp.changeLogo')}</div>
+          <div className='text-xs leading-[18px] text-gray-500'>{t('custom.webapp.changeLogoTip')}</div>
         </div>
         <div className='flex items-center'>
           {
@@ -158,7 +158,7 @@ const CustomWebAppBrand = () => {
                 `}
                 disabled={uploadDisabled}
               >
-                <ImagePlus className='mr-2 w-4 h-4' />
+                <ImagePlus className='mr-2 h-4 w-4' />
                 {
                   (webappLogo || fileId)
                     ? t('custom.change')
@@ -166,7 +166,7 @@ const CustomWebAppBrand = () => {
                 }
                 <input
                   className={`
-                    absolute block inset-0 opacity-0 text-[0] w-full
+                    absolute inset-0 block w-full text-[0] opacity-0
                     ${uploadDisabled ? 'cursor-not-allowed' : 'cursor-pointer'}
                   `}
                   onClick={e => (e.target as HTMLInputElement).value = ''}
@@ -184,7 +184,7 @@ const CustomWebAppBrand = () => {
                 className='relative mr-2'
                 disabled={true}
               >
-                <RiLoader2Line className='animate-spin mr-2 w-4 h-4' />
+                <RiLoader2Line className='mr-2 h-4 w-4 animate-spin' />
                 {t('custom.uploading')}
               </Button>
             )

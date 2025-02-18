@@ -27,15 +27,15 @@ const Operate = ({
     return (
       <div className='flex items-center'>
         <div className='
-          flex items-center
-          mr-[5px] px-3 h-7 rounded-md cursor-pointer
+          mr-[5px] flex
+          h-7 cursor-pointer items-center rounded-md px-3
           text-xs font-medium text-gray-700
         ' onClick={onCancel} >
           {t('common.operation.cancel')}
         </div>
         <div className='
-          flex items-center
-          px-3 h-7 rounded-md cursor-pointer bg-primary-700
+          bg-primary-700 flex
+          h-7 cursor-pointer items-center rounded-md px-3
           text-xs font-medium text-white
         ' onClick={onSave}>
           {t('common.operation.save')}
@@ -47,8 +47,8 @@ const Operate = ({
   if (status === 'add') {
     return (
       <div className={
-        `px-3 h-[28px] bg-white border border-gray-200 rounded-md cursor-pointer
-        text-xs font-medium text-gray-700 flex items-center ${disabled && 'opacity-50 cursor-default'}}`
+        `flex h-[28px] cursor-pointer items-center rounded-md border border-gray-200
+        bg-white px-3 text-xs font-medium text-gray-700 ${disabled && 'cursor-default opacity-50'}}`
       } onClick={() => !disabled && onAdd()}>
         {t('common.provider.addKey')}
       </div>
@@ -60,7 +60,7 @@ const Operate = ({
       <div className='flex items-center'>
         {
           status === 'fail' && (
-            <div className='flex items-center mr-4'>
+            <div className='mr-4 flex items-center'>
               <div className='text-xs text-[#D92D20]'>{t('common.provider.invalidApiKey')}</div>
               <Indicator color='red' className='ml-2' />
             </div>
@@ -72,8 +72,8 @@ const Operate = ({
           )
         }
         <div className={
-          `px-3 h-[28px] bg-white border border-gray-200 rounded-md cursor-pointer
-          text-xs font-medium text-gray-700 flex items-center ${disabled && 'opacity-50 cursor-default'}}`
+          `flex h-[28px] cursor-pointer items-center rounded-md border border-gray-200
+          bg-white px-3 text-xs font-medium text-gray-700 ${disabled && 'cursor-default opacity-50'}}`
         } onClick={() => !disabled && onEdit()}>
           {t('common.provider.editKey')}
         </div>

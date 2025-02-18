@@ -37,7 +37,7 @@ const ModelName: FC<ModelNameProps> = ({
   if (!modelItem)
     return null
   return (
-    <div className={cn('flex gap-0.5 items-center overflow-hidden text-ellipsis truncate text-components-input-text-filled system-sm-regular', className)}>
+    <div className={cn('text-components-input-text-filled system-sm-regular flex items-center gap-0.5 overflow-hidden truncate text-ellipsis', className)}>
       <div
         className='truncate'
         title={modelItem.label[language] || modelItem.label.en_US}

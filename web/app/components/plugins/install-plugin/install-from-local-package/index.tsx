@@ -86,11 +86,11 @@ const InstallFromLocalPackage: React.FC<InstallFromLocalPackageProps> = ({
     <Modal
       isShow={true}
       onClose={foldAnimInto}
-      className={cn(modalClassName, 'flex min-w-[560px] p-0 flex-col items-start rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadows-shadow-xl')}
+      className={cn(modalClassName, 'border-components-panel-border bg-components-panel-bg shadows-shadow-xl flex min-w-[560px] flex-col items-start rounded-2xl border-[0.5px] p-0')}
       closable
     >
-      <div className='flex pt-6 pl-6 pb-3 pr-14 items-start gap-2 self-stretch'>
-        <div className='self-stretch text-text-primary title-2xl-semi-bold'>
+      <div className='flex items-start gap-2 self-stretch pb-3 pl-6 pr-14 pt-6'>
+        <div className='text-text-primary title-2xl-semi-bold self-stretch'>
           {getTitle()}
         </div>
       </div>

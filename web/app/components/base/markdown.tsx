@@ -164,12 +164,12 @@ const CodeBlock: any = memo(({ inline, className, children, ...props }) => {
   return (
     <div>
       <div
-        className='flex justify-between h-8 items-center p-1 pl-3 border-b'
+        className='flex h-8 items-center justify-between border-b p-1 pl-3'
         style={{
           borderColor: 'rgba(0, 0, 0, 0.05)',
         }}
       >
-        <div className='text-[13px] text-gray-500 font-normal'>{languageShowName}</div>
+        <div className='text-[13px] font-normal text-gray-500'>{languageShowName}</div>
         <div style={{ display: 'flex' }}>
           {(['mermaid', 'svg']).includes(language!) && <SVGBtn isSVG={isSVG} setIsSVG={setIsSVG} />}
           <CopyBtn
@@ -231,10 +231,10 @@ const Link = ({ node, ...props }: any) => {
     const { onSend } = useChatContext()
     const hidden_text = decodeURIComponent(node.properties.href.toString().split('abbr:')[1])
 
-    return <abbr className="underline decoration-dashed !decoration-primary-700 cursor-pointer" onClick={() => onSend?.(hidden_text)} title={node.children[0]?.value}>{node.children[0]?.value}</abbr>
+    return <abbr className="!decoration-primary-700 cursor-pointer underline decoration-dashed" onClick={() => onSend?.(hidden_text)} title={node.children[0]?.value}>{node.children[0]?.value}</abbr>
   }
   else {
-    return <a {...props} target="_blank" className="underline decoration-dashed !decoration-primary-700 cursor-pointer">{node.children[0] ? node.children[0]?.value : 'Download'}</a>
+    return <a {...props} target="_blank" className="!decoration-primary-700 cursor-pointer underline decoration-dashed">{node.children[0] ? node.children[0]?.value : 'Download'}</a>
   }
 }
 

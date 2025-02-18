@@ -27,15 +27,15 @@ const LikedItem = ({
   isMobile,
 }: ILikedItemProps) => {
   return (
-    <Link className={cn('group/link-item flex items-center justify-between w-full h-8 rounded-lg hover:bg-state-base-hover cursor-pointer px-2', isMobile && 'justify-center')} href={`/app/${detail?.id}/overview`}>
+    <Link className={cn('group/link-item hover:bg-state-base-hover flex h-8 w-full cursor-pointer items-center justify-between rounded-lg px-2', isMobile && 'justify-center')} href={`/app/${detail?.id}/overview`}>
       <div className='flex items-center'>
-        <div className={cn('relative w-6 h-6 rounded-md')}>
+        <div className={cn('relative h-6 w-6 rounded-md')}>
           <AppIcon size='tiny' iconType={detail.icon_type} icon={detail.icon} background={detail.icon_background} imageUrl={detail.icon_url} />
         </div>
-        {!isMobile && <div className={cn(' ml-2 truncate system-sm-medium text-text-primary')}>{detail?.name || '--'}</div>}
+        {!isMobile && <div className={cn(' system-sm-medium text-text-primary ml-2 truncate')}>{detail?.name || '--'}</div>}
       </div>
-      <div className='group-hover/link-item:hidden shrink-0 system-2xs-medium-uppercase text-text-tertiary'>{appTypeMap[detail.mode]}</div>
-      <RiArrowRightUpLine className='hidden group-hover/link-item:block w-4 h-4 text-text-tertiary' />
+      <div className='system-2xs-medium-uppercase text-text-tertiary shrink-0 group-hover/link-item:hidden'>{appTypeMap[detail.mode]}</div>
+      <RiArrowRightUpLine className='text-text-tertiary hidden h-4 w-4 group-hover/link-item:block' />
     </Link>
   )
 }
@@ -51,8 +51,8 @@ const LinkedAppsPanel: FC<Props> = ({
 }) => {
   const { t } = useTranslation()
   return (
-    <div className='p-1 w-[320px] bg-components-panel-bg-blur border-[0.5px] border-components-panel-border shadow-lg rounded-xl  backdrop-blur-[5px]'>
-      <div className='mt-1 mb-0.5 pl-2 system-xs-medium-uppercase text-text-tertiary'>{relatedApps.length || '--'} {t('common.datasetMenus.relatedApp')}</div>
+    <div className='bg-components-panel-bg-blur border-components-panel-border w-[320px] rounded-xl border-[0.5px] p-1 shadow-lg  backdrop-blur-[5px]'>
+      <div className='system-xs-medium-uppercase text-text-tertiary mb-0.5 mt-1 pl-2'>{relatedApps.length || '--'} {t('common.datasetMenus.relatedApp')}</div>
       {relatedApps.map((item, index) => (
         <LikedItem key={index} detail={item} isMobile={isMobile} />
       ))}

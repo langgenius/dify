@@ -20,8 +20,8 @@ const SuggestedAction = ({ icon, link, disabled, children, className, ...props }
     )}
     {...props}
   >
-    <div className='relative w-4 h-4'>{icon}</div>
-    <div className='grow shrink basis-0 text-[13px] font-medium leading-[18px]'>{children}</div>
+    <div className='relative h-4 w-4'>{icon}</div>
+    <div className='shrink grow basis-0 text-[13px] font-medium leading-[18px]'>{children}</div>
     <ArrowUpRight />
   </a>
 )

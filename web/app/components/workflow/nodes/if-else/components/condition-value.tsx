@@ -75,14 +75,14 @@ const ConditionValue = ({
   }, [isSelect, t, value])
 
   return (
-    <div className='flex h-6 items-center rounded-md bg-workflow-block-parma-bg px-1'>
-      {!isEnvVar && !isChatVar && <Variable02 className={cn('mr-1 h-3.5 w-3.5 shrink-0 text-text-accent', isException && 'text-text-warning')} />}
-      {isEnvVar && <Env className='mr-1 h-3.5 w-3.5 shrink-0 text-util-colors-violet-violet-600' />}
-      {isChatVar && <BubbleX className='h-3.5 w-3.5 text-util-colors-teal-teal-700' />}
+    <div className='bg-workflow-block-parma-bg flex h-6 items-center rounded-md px-1'>
+      {!isEnvVar && !isChatVar && <Variable02 className={cn('text-text-accent mr-1 h-3.5 w-3.5 shrink-0', isException && 'text-text-warning')} />}
+      {isEnvVar && <Env className='text-util-colors-violet-violet-600 mr-1 h-3.5 w-3.5 shrink-0' />}
+      {isChatVar && <BubbleX className='text-util-colors-teal-teal-700 h-3.5 w-3.5' />}
 
       <div
         className={cn(
-          'ml-0.5 shrink-0 truncate text-xs font-medium text-text-accent',
+          'text-text-accent ml-0.5 shrink-0 truncate text-xs font-medium',
           !notHasValue && 'max-w-[70px]',
           isException && 'text-text-warning',
         )}
@@ -91,14 +91,14 @@ const ConditionValue = ({
         {variableName}
       </div>
       <div
-        className='mx-1 shrink-0 text-xs font-medium text-text-primary'
+        className='text-text-primary mx-1 shrink-0 text-xs font-medium'
         title={operatorName}
       >
         {operatorName}
       </div>
       {
         !notHasValue && (
-          <div className='truncate text-xs text-text-secondary' title={formatValue}>{isSelect ? selectName : formatValue}</div>
+          <div className='text-text-secondary truncate text-xs' title={formatValue}>{isSelect ? selectName : formatValue}</div>
         )
       }
     </div>

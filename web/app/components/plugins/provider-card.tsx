@@ -36,19 +36,19 @@ const ProviderCard: FC<Props> = ({
   const { locale } = useI18N()
 
   return (
-    <div className={cn('group relative p-4 pb-3 border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg hover:bg-components-panel-on-panel-item-bg rounded-xl shadow-xs', className)}>
+    <div className={cn('border-components-panel-border bg-components-panel-on-panel-item-bg hover:bg-components-panel-on-panel-item-bg shadow-xs group relative rounded-xl border-[0.5px] p-4 pb-3', className)}>
       {/* Header */}
       <div className="flex">
         <Icon src={payload.icon} />
         <div className="ml-3 w-0 grow">
-          <div className="flex items-center h-5">
+          <div className="flex h-5 items-center">
             <Title title={getValueFromI18nObject(label)} />
             {/* <RiVerifiedBadgeLine className="shrink-0 ml-0.5 w-4 h-4 text-text-accent" /> */}
           </div>
-          <div className='mb-1 flex justify-between items-center h-4'>
+          <div className='mb-1 flex h-4 items-center justify-between'>
             <div className='flex items-center'>
               <div className='text-text-tertiary system-xs-regular'>{org}</div>
-              <div className='mx-2 text-text-quaternary system-xs-regular'>·</div>
+              <div className='text-text-quaternary system-xs-regular mx-2'>·</div>
               <DownloadCount downloadCount={payload.install_count || 0} />
             </div>
           </div>
@@ -61,7 +61,7 @@ const ProviderCard: FC<Props> = ({
         ))}
       </div>
       <div
-        className='hidden group-hover:flex items-center gap-2 absolute bottom-0 left-0 right-0 p-4 pt-8 rounded-xl bg-gradient-to-tr from-components-panel-on-panel-item-bg to-background-gradient-mask-transparent'
+        className='from-components-panel-on-panel-item-bg to-background-gradient-mask-transparent absolute bottom-0 left-0 right-0 hidden items-center gap-2 rounded-xl bg-gradient-to-tr p-4 pt-8 group-hover:flex'
       >
         <Button
           className='grow'
@@ -76,7 +76,7 @@ const ProviderCard: FC<Props> = ({
         >
           <a href={`${getPluginLinkInMarketplace(payload)}?language=${locale}`} target='_blank' className='flex items-center gap-0.5'>
             {t('plugin.detailPanel.operation.detail')}
-            <RiArrowRightUpLine className='w-4 h-4' />
+            <RiArrowRightUpLine className='h-4 w-4' />
           </a>
         </Button>
       </div>

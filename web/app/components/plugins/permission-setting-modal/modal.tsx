@@ -41,13 +41,13 @@ const PluginSettingModal: FC<Props> = ({
       isShow
       onClose={onHide}
       closable
-      className='!p-0 w-[420px]'
+      className='w-[420px] !p-0'
     >
-      <div className='flex flex-col items-start w-[420px] rounded-2xl border border-components-panel-border bg-components-panel-bg shadows-shadow-xl'>
-        <div className='flex pt-6 pb-3 pl-6 pr-14 items-start gap-2 self-stretch'>
-          <span className='self-stretch text-text-primary title-2xl-semi-bold'>{t(`${i18nPrefix}.title`)}</span>
+      <div className='border-components-panel-border bg-components-panel-bg shadows-shadow-xl flex w-[420px] flex-col items-start rounded-2xl border'>
+        <div className='flex items-start gap-2 self-stretch pb-3 pl-6 pr-14 pt-6'>
+          <span className='text-text-primary title-2xl-semi-bold self-stretch'>{t(`${i18nPrefix}.title`)}</span>
         </div>
-        <div className='flex px-6 py-3 flex-col justify-center items-start gap-4 self-stretch'>
+        <div className='flex flex-col items-start justify-center gap-4 self-stretch px-6 py-3'>
           {[
             { title: t(`${i18nPrefix}.whoCanInstall`), key: 'install_permission', value: tempPrivilege.install_permission },
             { title: t(`${i18nPrefix}.whoCanDebug`), key: 'debug_permission', value: tempPrivilege.debug_permission },
@@ -56,7 +56,7 @@ const PluginSettingModal: FC<Props> = ({
               <div className='flex h-6 items-center gap-0.5'>
                 <span className='text-text-secondary system-sm-semibold'>{title}</span>
               </div>
-              <div className='flex items-start gap-2 justify-between w-full'>
+              <div className='flex w-full items-start justify-between gap-2'>
                 {[PermissionType.everyone, PermissionType.admin, PermissionType.noOne].map(option => (
                   <OptionCard
                     key={option}
@@ -70,7 +70,7 @@ const PluginSettingModal: FC<Props> = ({
             </div>
           ))}
         </div>
-        <div className='flex h-[76px] p-6 pt-5 justify-end items-center gap-2 self-stretch'>
+        <div className='flex h-[76px] items-center justify-end gap-2 self-stretch p-6 pt-5'>
           <Button
             className='min-w-[72px]'
             onClick={onHide}

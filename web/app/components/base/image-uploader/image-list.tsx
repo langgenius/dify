@@ -51,23 +51,23 @@ const ImageList: FC<ImageListProps> = ({
       {list.map(item => (
         <div
           key={item._id}
-          className="group relative mr-1 border-[0.5px] border-black/5 rounded-lg"
+          className="group relative mr-1 rounded-lg border-[0.5px] border-black/5"
         >
           {item.type === TransferMethod.local_file && item.progress !== 100 && (
             <>
               <div
-                className="absolute inset-0 flex items-center justify-center z-[1] bg-black/30"
+                className="absolute inset-0 z-[1] flex items-center justify-center bg-black/30"
                 style={{ left: item.progress > -1 ? `${item.progress}%` : 0 }}
               >
                 {item.progress === -1 && (
                   <RefreshCcw01
-                    className="w-5 h-5 text-white"
+                    className="h-5 w-5 text-white"
                     onClick={() => onReUpload && onReUpload(item._id)}
                   />
                 )}
               </div>
               {item.progress > -1 && (
-                <span className="absolute top-[50%] left-[50%] translate-x-[-50%] translate-y-[-50%] text-sm text-white mix-blend-lighten z-[1]">
+                <span className="absolute left-[50%] top-[50%] z-[1] translate-x-[-50%] translate-y-[-50%] text-sm text-white mix-blend-lighten">
                   {item.progress}%
                 </span>
               )}
@@ -76,27 +76,27 @@ const ImageList: FC<ImageListProps> = ({
           {item.type === TransferMethod.remote_url && item.progress !== 100 && (
             <div
               className={`
-                  absolute inset-0 flex items-center justify-center rounded-lg z-[1] border
+                  absolute inset-0 z-[1] flex items-center justify-center rounded-lg border
                   ${item.progress === -1
-              ? 'bg-[#FEF0C7] border-[#DC6803]'
-              : 'bg-black/[0.16] border-transparent'
+              ? 'border-[#DC6803] bg-[#FEF0C7]'
+              : 'border-transparent bg-black/[0.16]'
             }
                 `}
             >
               {item.progress > -1 && (
-                <RiLoader2Line className="animate-spin w-5 h-5 text-white" />
+                <RiLoader2Line className="h-5 w-5 animate-spin text-white" />
               )}
               {item.progress === -1 && (
                 <Tooltip
                   popupContent={t('common.imageUploader.pasteImageLinkInvalid')}
                 >
-                  <AlertTriangle className="w-4 h-4 text-[#DC6803]" />
+                  <AlertTriangle className="h-4 w-4 text-[#DC6803]" />
                 </Tooltip>
               )}
             </div>
           )}
           <img
-            className="w-16 h-16 rounded-lg object-cover cursor-pointer border-[0.5px] border-black/5"
+            className="h-16 w-16 cursor-pointer rounded-lg border-[0.5px] border-black/5 object-cover"
             alt={item.file?.name}
             onLoad={() => handleImageLinkLoadSuccess(item)}
             onError={() => handleImageLinkLoadError(item)}
@@ -118,13 +118,13 @@ const ImageList: FC<ImageListProps> = ({
             <button
               type="button"
               className={cn(
-                'absolute z-10 -top-[9px] -right-[9px] items-center justify-center w-[18px] h-[18px]',
+                'absolute -right-[9px] -top-[9px] z-10 h-[18px] w-[18px] items-center justify-center',
                 'hover:bg-state-base-hover rounded-2xl shadow-lg',
                 item.progress === -1 ? 'flex' : 'hidden group-hover:flex',
               )}
               onClick={() => onRemove && onRemove(item._id)}
             >
-              <RiCloseLine className="w-3 h-3 text-text-tertiary" />
+              <RiCloseLine className="text-text-tertiary h-3 w-3" />
             </button>
           )}
         </div>

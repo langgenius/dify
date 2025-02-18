@@ -54,33 +54,33 @@ const AgentLogItem = ({
   }, [status])
 
   return (
-    <div className='bg-background-default border-[0.5px] border-components-panel-border rounded-[10px]'>
+    <div className='bg-background-default border-components-panel-border rounded-[10px] border-[0.5px]'>
       <div
         className={cn(
-          'flex items-center pl-1.5 pt-2 pr-3 pb-2 cursor-pointer',
+          'flex cursor-pointer items-center pb-2 pl-1.5 pr-3 pt-2',
           expanded && 'pb-1',
         )}
         onClick={() => setExpanded(!expanded)}
       >
         {
           expanded
-            ? <RiArrowRightSLine className='shrink-0 w-4 h-4 rotate-90 text-text-quaternary' />
-            : <RiArrowRightSLine className='shrink-0 w-4 h-4 text-text-quaternary' />
+            ? <RiArrowRightSLine className='text-text-quaternary h-4 w-4 shrink-0 rotate-90' />
+            : <RiArrowRightSLine className='text-text-quaternary h-4 w-4 shrink-0' />
         }
         <BlockIcon
-          className='shrink-0 mr-1.5'
+          className='mr-1.5 shrink-0'
           type={toolIcon ? BlockEnum.Tool : BlockEnum.Agent}
           toolIcon={toolIcon}
         />
         <div
-          className='grow system-sm-semibold-uppercase text-text-secondary truncate'
+          className='system-sm-semibold-uppercase text-text-secondary grow truncate'
           title={label}
         >
           {label}
         </div>
         {
           metadata?.elapsed_time && (
-            <div className='shrink-0 mr-2 system-xs-regular text-text-tertiary'>{metadata?.elapsed_time?.toFixed(3)}s</div>
+            <div className='system-xs-regular text-text-tertiary mr-2 shrink-0'>{metadata?.elapsed_time?.toFixed(3)}s</div>
           )
         }
         <NodeStatusIcon status={mergeStatus} />
@@ -91,16 +91,16 @@ const AgentLogItem = ({
             {
               !!children?.length && (
                 <Button
-                  className='flex items-center justify-between mb-1 w-full'
+                  className='mb-1 flex w-full items-center justify-between'
                   variant='tertiary'
                   onClick={() => onShowAgentOrToolLog(item)}
                 >
                   <div className='flex items-center'>
-                    <RiListView className='mr-1 w-4 h-4 text-components-button-tertiary-text shrink-0' />
+                    <RiListView className='text-components-button-tertiary-text mr-1 h-4 w-4 shrink-0' />
                     {`${children.length} Action Logs`}
                   </div>
                   <div className='flex'>
-                    <RiArrowRightSLine className='w-4 h-4 text-components-button-tertiary-text shrink-0' />
+                    <RiArrowRightSLine className='text-components-button-tertiary-text h-4 w-4 shrink-0' />
                   </div>
                 </Button>
               )

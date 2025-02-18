@@ -27,13 +27,13 @@ const ModerationContent: FC<ModerationContentProps> = ({
 
   return (
     <div className='py-2'>
-      <div className='rounded-lg bg-components-panel-bg border border-components-panel-border'>
-        <div className='flex items-center justify-between px-3 h-10 rounded-lg'>
-          <div className='shrink-0 text-sm font-medium text-text-primary'>{title}</div>
-          <div className='grow flex items-center justify-end'>
+      <div className='bg-components-panel-bg border-components-panel-border rounded-lg border'>
+        <div className='flex h-10 items-center justify-between rounded-lg px-3'>
+          <div className='text-text-primary shrink-0 text-sm font-medium'>{title}</div>
+          <div className='flex grow items-center justify-end'>
             {
               info && (
-                <div className='mr-2 text-xs text-text-tertiary truncate' title={info}>{info}</div>
+                <div className='text-text-tertiary mr-2 truncate text-xs' title={info}>{info}</div>
               )
             }
             <Switch
@@ -45,19 +45,19 @@ const ModerationContent: FC<ModerationContentProps> = ({
         </div>
         {
           config.enabled && showPreset && (
-            <div className='px-3 pt-1 pb-3 bg-components-panel-bg rounded-lg'>
-              <div className='flex items-center justify-between h-8 text-[13px] font-medium text-text-secondary'>
+            <div className='bg-components-panel-bg rounded-lg px-3 pb-3 pt-1'>
+              <div className='text-text-secondary flex h-8 items-center justify-between text-[13px] font-medium'>
                 {t('appDebug.feature.moderation.modal.content.preset')}
-                <span className='text-xs font-normal text-text-tertiary'>{t('appDebug.feature.moderation.modal.content.supportMarkdown')}</span>
+                <span className='text-text-tertiary text-xs font-normal'>{t('appDebug.feature.moderation.modal.content.supportMarkdown')}</span>
               </div>
-              <div className='relative px-3 py-2 h-20 rounded-lg bg-components-input-bg-normal'>
+              <div className='bg-components-input-bg-normal relative h-20 rounded-lg px-3 py-2'>
                 <textarea
                   value={config.preset_response || ''}
-                  className='block w-full h-full bg-transparent text-sm text-text-secondary outline-none appearance-none resize-none'
+                  className='text-text-secondary block h-full w-full resize-none appearance-none bg-transparent text-sm outline-none'
                   placeholder={t('appDebug.feature.moderation.modal.content.placeholder') || ''}
                   onChange={e => handleConfigChange('preset_response', e.target.value)}
                 />
-                <div className='absolute bottom-2 right-2 flex items-center px-1 h-5 rounded-md bg-background-section text-xs font-medium text-text-quaternary'>
+                <div className='bg-background-section text-text-quaternary absolute bottom-2 right-2 flex h-5 items-center rounded-md px-1 text-xs font-medium'>
                   <span>{(config.preset_response || '').length}</span>/<span className='text-text-tertiary'>100</span>
                 </div>
               </div>

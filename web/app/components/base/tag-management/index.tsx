@@ -60,17 +60,17 @@ const TagManagementModal = ({ show, type }: TagManagementModalProps) => {
 
   return (
     <Modal
-      className='px-8 py-6 !max-w-[600px] !w-[600px] rounded-xl'
+      className='!w-[600px] !max-w-[600px] rounded-xl px-8 py-6'
       isShow={show}
       onClose={() => setShowTagManagementModal(false)}
     >
       <div className='relative pb-2 text-xl font-semibold leading-[30px] text-gray-900'>{t('common.tag.manageTags')}</div>
-      <div className='absolute right-4 top-4 p-2 cursor-pointer' onClick={() => setShowTagManagementModal(false)}>
-        <RiCloseLine className='w-4 h-4 text-gray-500' />
+      <div className='absolute right-4 top-4 cursor-pointer p-2' onClick={() => setShowTagManagementModal(false)}>
+        <RiCloseLine className='h-4 w-4 text-gray-500' />
       </div>
       <div className='mt-3 flex flex-wrap gap-2'>
         <input
-          className='shrink-0 w-[100px] px-2 py-1 rounded-lg border border-dashed border-gray-200 text-sm leading-5 text-gray-700 outline-none appearance-none  placeholder:text-gray-300 caret-primary-600 focus:border-solid'
+          className='caret-primary-600 w-[100px] shrink-0 appearance-none rounded-lg border border-dashed border-gray-200 px-2 py-1 text-sm leading-5 text-gray-700  outline-none placeholder:text-gray-300 focus:border-solid'
           placeholder={t('common.tag.addNew') || ''}
           autoFocus
           value={name}

@@ -58,8 +58,8 @@ const ConfigBtn: FC<Props> = ({
       }}
     >
       <PortalToFollowElemTrigger onClick={handleTrigger}>
-        <div className={cn(className, 'p-1 rounded-md')}>
-          <RiEqualizer2Line className='w-4 h-4 text-text-tertiary' />
+        <div className={cn(className, 'rounded-md p-1')}>
+          <RiEqualizer2Line className='text-text-tertiary h-4 w-4' />
         </div>
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent className='z-[11]'>

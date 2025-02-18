@@ -120,14 +120,14 @@ const SegmentCard: FC<ISegmentCardProps> = ({
   return (
     <div
       className={cn(
-        'w-full px-3 rounded-xl group/card',
-        isFullDocMode ? '' : 'pt-2.5 pb-2 hover:bg-dataset-chunk-detail-card-hover-bg',
+        'group/card w-full rounded-xl px-3',
+        isFullDocMode ? '' : 'hover:bg-dataset-chunk-detail-card-hover-bg pb-2 pt-2.5',
         focused.segmentContent ? 'bg-dataset-chunk-detail-card-hover-bg' : '',
         className,
       )}
       onClick={handleClickCard}
     >
-      <div className='h-5 relative flex items-center justify-between'>
+      <div className='relative flex h-5 items-center justify-between'>
         <>
           <div className='flex items-center gap-x-2'>
             <SegmentIndexTag
@@ -153,8 +153,8 @@ const SegmentCard: FC<ISegmentCardProps> = ({
             ? <div className='flex items-center'>
               <StatusItem status={enabled ? 'enabled' : 'disabled'} reverse textCls="text-text-tertiary system-xs-regular" />
               {embeddingAvailable && (
-                <div className="absolute -top-2 -right-2.5 z-20 hidden group-hover/card:flex items-center gap-x-0.5 p-1
-                      rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg shadow-md backdrop-blur-[5px]">
+                <div className="border-components-actionbar-border bg-components-actionbar-bg absolute -right-2.5 -top-2 z-20 hidden items-center gap-x-0.5
+                      rounded-[10px] border-[0.5px] p-1 shadow-md backdrop-blur-[5px] group-hover/card:flex">
                   {!archived && (
                     <>
                       <Tooltip
@@ -162,28 +162,28 @@ const SegmentCard: FC<ISegmentCardProps> = ({
                         popupClassName='text-text-secondary system-xs-medium'
                       >
                         <div
-                          className='shrink-0 w-6 h-6 flex items-center justify-center rounded-lg hover:bg-state-base-hover cursor-pointer'
+                          className='hover:bg-state-base-hover flex h-6 w-6 shrink-0 cursor-pointer items-center justify-center rounded-lg'
                           onClick={(e) => {
                             e.stopPropagation()
                             onClickEdit?.()
                           }}>
-                          <RiEditLine className='w-4 h-4 text-text-tertiary' />
+                          <RiEditLine className='text-text-tertiary h-4 w-4' />
                         </div>
                       </Tooltip>
                       <Tooltip
                         popupContent='Delete'
                         popupClassName='text-text-secondary system-xs-medium'
                       >
-                        <div className='shrink-0 w-6 h-6 flex items-center justify-center rounded-lg hover:bg-state-destructive-hover cursor-pointer group/delete'
+                        <div className='hover:bg-state-destructive-hover group/delete flex h-6 w-6 shrink-0 cursor-pointer items-center justify-center rounded-lg'
                           onClick={(e) => {
                             e.stopPropagation()
                             setShowModal(true)
                           }
                           }>
-                          <RiDeleteBinLine className='w-4 h-4 text-text-tertiary group-hover/delete:text-text-destructive' />
+                          <RiDeleteBinLine className='text-text-tertiary group-hover/delete:text-text-destructive h-4 w-4' />
                         </div>
                       </Tooltip>
-                      <Divider type="vertical" className="h-3.5 bg-divider-regular" />
+                      <Divider type="vertical" className="bg-divider-regular h-3.5" />
                     </>
                   )}
                   <div
@@ -223,7 +223,7 @@ const SegmentCard: FC<ISegmentCardProps> = ({
         isFullDocMode
           ? <button
             type='button'
-            className='mt-0.5 mb-2 text-text-accent system-xs-semibold-uppercase'
+            className='text-text-accent system-xs-semibold-uppercase mb-2 mt-0.5'
             onClick={() => onClick?.()}
           >{t('common.operation.viewMore')}</button>
           : null

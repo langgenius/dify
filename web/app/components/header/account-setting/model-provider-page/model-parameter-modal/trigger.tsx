@@ -44,16 +44,16 @@ const Trigger: FC<TriggerProps> = ({
   return (
     <div
       className={cn(
-        'relative flex items-center px-2 h-8 rounded-lg  cursor-pointer',
+        'relative flex h-8 cursor-pointer items-center rounded-lg  px-2',
         !isInWorkflow && 'border ring-inset hover:ring-[0.5px]',
         !isInWorkflow && (disabled ? 'border-text-warning ring-text-warning bg-state-warning-hover' : 'border-util-colors-indigo-indigo-600 ring-util-colors-indigo-indigo-600 bg-state-accent-hover'),
-        isInWorkflow && 'pr-[30px] bg-workflow-block-parma-bg border border-workflow-block-parma-bg  hover:border-gray-200',
+        isInWorkflow && 'bg-workflow-block-parma-bg border-workflow-block-parma-bg border pr-[30px]  hover:border-gray-200',
       )}
     >
       {
         currentProvider && (
           <ModelIcon
-            className='mr-1.5 !w-5 !h-5'
+            className='mr-1.5 !h-5 !w-5'
             provider={currentProvider}
             modelName={currentModel?.model}
           />
@@ -62,7 +62,7 @@ const Trigger: FC<TriggerProps> = ({
       {
         !currentProvider && (
           <ModelIcon
-            className='mr-1.5 !w-5 !h-5'
+            className='mr-1.5 !h-5 !w-5'
             provider={modelProviders.find(item => item.provider === providerName)}
             modelName={modelId}
           />
@@ -71,7 +71,7 @@ const Trigger: FC<TriggerProps> = ({
       {
         currentModel && (
           <ModelName
-            className='mr-1.5 text-text-primary'
+            className='text-text-primary mr-1.5'
             modelItem={currentModel}
             showMode
             showFeatures
@@ -80,7 +80,7 @@ const Trigger: FC<TriggerProps> = ({
       }
       {
         !currentModel && (
-          <div className='mr-1 text-[13px] font-medium text-text-primary truncate'>
+          <div className='text-text-primary mr-1 truncate text-[13px] font-medium'>
             {modelId}
           </div>
         )
@@ -97,14 +97,14 @@ const Trigger: FC<TriggerProps> = ({
                     : ''
               }
             >
-              <AlertTriangle className='w-4 h-4 text-[#F79009]' />
+              <AlertTriangle className='h-4 w-4 text-[#F79009]' />
             </Tooltip>
           )
           : (
-            <SlidersH className={cn(!isInWorkflow ? 'text-indigo-600' : 'text-text-tertiary', 'shrink-0 w-4 h-4')} />
+            <SlidersH className={cn(!isInWorkflow ? 'text-indigo-600' : 'text-text-tertiary', 'h-4 w-4 shrink-0')} />
           )
       }
-      {isInWorkflow && (<RiArrowDownSLine className='absolute top-[9px] right-2 w-3.5 h-3.5 text-text-tertiary' />)}
+      {isInWorkflow && (<RiArrowDownSLine className='text-text-tertiary absolute right-2 top-[9px] h-3.5 w-3.5' />)}
     </div>
   )
 }

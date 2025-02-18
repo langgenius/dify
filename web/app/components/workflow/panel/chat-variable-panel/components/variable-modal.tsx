@@ -254,23 +254,23 @@ const ChatVariableModal = ({
 
   return (
     <div
-      className={cn('flex flex-col w-[360px] bg-components-panel-bg rounded-2xl h-full border-[0.5px] border-components-panel-border shadow-2xl', type === ChatVarType.Object && 'w-[480px]')}
+      className={cn('bg-components-panel-bg border-components-panel-border flex h-full w-[360px] flex-col rounded-2xl border-[0.5px] shadow-2xl', type === ChatVarType.Object && 'w-[480px]')}
     >
-      <div className='shrink-0 flex items-center justify-between mb-3 p-4 pb-0 text-text-primary system-xl-semibold'>
+      <div className='text-text-primary system-xl-semibold mb-3 flex shrink-0 items-center justify-between p-4 pb-0'>
         {!chatVar ? t('workflow.chatVariable.modal.title') : t('workflow.chatVariable.modal.editTitle')}
         <div className='flex items-center'>
           <div
-            className='flex items-center justify-center w-6 h-6 cursor-pointer'
+            className='flex h-6 w-6 cursor-pointer items-center justify-center'
             onClick={onClose}
           >
-            <RiCloseLine className='w-4 h-4 text-text-tertiary' />
+            <RiCloseLine className='text-text-tertiary h-4 w-4' />
           </div>
         </div>
       </div>
-      <div className='px-4 py-2 max-h-[480px] overflow-y-auto'>
+      <div className='max-h-[480px] overflow-y-auto px-4 py-2'>
         {/* name */}
         <div className='mb-4'>
-          <div className='mb-1 h-6 flex items-center text-text-secondary system-sm-semibold'>{t('workflow.chatVariable.modal.name')}</div>
+          <div className='text-text-secondary system-sm-semibold mb-1 flex h-6 items-center'>{t('workflow.chatVariable.modal.name')}</div>
           <div className='flex'>
             <Input
               placeholder={t('workflow.chatVariable.modal.namePlaceholder') || ''}
@@ -283,7 +283,7 @@ const ChatVariableModal = ({
         </div>
         {/* type */}
         <div className='mb-4'>
-          <div className='mb-1 h-6 flex items-center text-text-secondary system-sm-semibold'>{t('workflow.chatVariable.modal.type')}</div>
+          <div className='text-text-secondary system-sm-semibold mb-1 flex h-6 items-center'>{t('workflow.chatVariable.modal.type')}</div>
           <div className='flex'>
             <VariableTypeSelector
               value={type}
@@ -295,7 +295,7 @@ const ChatVariableModal = ({
         </div>
         {/* default value */}
         <div className='mb-4'>
-          <div className='mb-1 h-6 flex items-center justify-between text-text-secondary system-sm-semibold'>
+          <div className='text-text-secondary system-sm-semibold mb-1 flex h-6 items-center justify-between'>
             <div>{t('workflow.chatVariable.modal.value')}</div>
             {(type === ChatVarType.ArrayString || type === ChatVarType.ArrayNumber) && (
               <Button
@@ -304,7 +304,7 @@ const ChatVariableModal = ({
                 className='text-text-tertiary'
                 onClick={() => handleEditorChange(!editInJSON)}
               >
-                {editInJSON ? <RiInputField className='mr-1 w-3.5 h-3.5' /> : <RiDraftLine className='mr-1 w-3.5 h-3.5' />}
+                {editInJSON ? <RiInputField className='mr-1 h-3.5 w-3.5' /> : <RiDraftLine className='mr-1 h-3.5 w-3.5' />}
                 {editInJSON ? t('workflow.chatVariable.modal.oneByOne') : t('workflow.chatVariable.modal.editInJSON')}
               </Button>
             )}
@@ -315,7 +315,7 @@ const ChatVariableModal = ({
                 className='text-text-tertiary'
                 onClick={() => handleEditorChange(!editInJSON)}
               >
-                {editInJSON ? <RiInputField className='mr-1 w-3.5 h-3.5' /> : <RiDraftLine className='mr-1 w-3.5 h-3.5' />}
+                {editInJSON ? <RiInputField className='mr-1 h-3.5 w-3.5' /> : <RiDraftLine className='mr-1 h-3.5 w-3.5' />}
                 {editInJSON ? t('workflow.chatVariable.modal.editInForm') : t('workflow.chatVariable.modal.editInJSON')}
               </Button>
             )}
@@ -357,7 +357,7 @@ const ChatVariableModal = ({
               />
             )}
             {editInJSON && (
-              <div className='w-full py-2 pl-3 pr-1 rounded-[10px] bg-components-input-bg-normal' style={{ height: editorMinHeight }}>
+              <div className='bg-components-input-bg-normal w-full rounded-[10px] py-2 pl-3 pr-1' style={{ height: editorMinHeight }}>
                 <CodeEditor
                   isExpand
                   noWrapper
@@ -372,10 +372,10 @@ const ChatVariableModal = ({
         </div>
         {/* description */}
         <div className=''>
-          <div className='mb-1 h-6 flex items-center text-text-secondary system-sm-semibold'>{t('workflow.chatVariable.modal.description')}</div>
+          <div className='text-text-secondary system-sm-semibold mb-1 flex h-6 items-center'>{t('workflow.chatVariable.modal.description')}</div>
           <div className='flex'>
             <textarea
-              className='block p-2 w-full h-20 rounded-lg bg-components-input-bg-normal border border-transparent system-sm-regular outline-none appearance-none caret-primary-600 resize-none hover:border-components-input-border-hover hover:bg-components-input-bg-hover focus:bg-components-input-bg-active focus:border-components-input-border-active focus:shadow-xs placeholder:system-sm-regular placeholder:text-components-input-text-placeholder'
+              className='bg-components-input-bg-normal system-sm-regular caret-primary-600 hover:border-components-input-border-hover hover:bg-components-input-bg-hover focus:bg-components-input-bg-active focus:border-components-input-border-active focus:shadow-xs placeholder:system-sm-regular placeholder:text-components-input-text-placeholder block h-20 w-full resize-none appearance-none rounded-lg border border-transparent p-2 outline-none'
               value={des}
               placeholder={t('workflow.chatVariable.modal.descriptionPlaceholder') || ''}
               onChange={e => setDes(e.target.value)}
@@ -383,7 +383,7 @@ const ChatVariableModal = ({
           </div>
         </div>
       </div>
-      <div className='p-4 pt-2 flex flex-row-reverse rounded-b-2xl'>
+      <div className='flex flex-row-reverse rounded-b-2xl p-4 pt-2'>
         <div className='flex gap-2'>
           <Button onClick={onClose}>{t('common.operation.cancel')}</Button>
           <Button variant='primary' onClick={handleSave}>{t('common.operation.save')}</Button>

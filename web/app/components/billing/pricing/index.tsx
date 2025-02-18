@@ -26,19 +26,19 @@ const Pricing: FC<Props> = ({
 
   return createPortal(
     <div
-      className='fixed inset-0 flex bg-white z-[1000] overflow-auto'
+      className='fixed inset-0 z-[1000] flex overflow-auto bg-white'
       onClick={e => e.stopPropagation()}
     >
       <GridMask wrapperClassName='grow'>
-        <div className='grow width-[0] mt-6 p-6 flex flex-col items-center'>
-          <div className='mb-3 leading-[38px] text-[30px] font-semibold text-gray-900'>
+        <div className='width-[0] mt-6 flex grow flex-col items-center p-6'>
+          <div className='mb-3 text-[30px] font-semibold leading-[38px] text-gray-900'>
             {t('billing.plansCommon.title')}
           </div>
           <SelectPlanRange
             value={planRange}
             onChange={setPlanRange}
           />
-          <div className='mt-8 pb-6 w-full justify-center flex-nowrap flex space-x-3'>
+          <div className='mt-8 flex w-full flex-nowrap justify-center space-x-3 pb-6'>
             <PlanItem
               currentPlan={plan.type}
               plan={Plan.sandbox}
@@ -68,10 +68,10 @@ const Pricing: FC<Props> = ({
       </GridMask>
 
       <div
-        className='fixed top-6 right-6 flex items-center justify-center w-10 h-10 bg-black/[0.05] rounded-full backdrop-blur-[2px] cursor-pointer z-[1001]'
+        className='fixed right-6 top-6 z-[1001] flex h-10 w-10 cursor-pointer items-center justify-center rounded-full bg-black/[0.05] backdrop-blur-[2px]'
         onClick={onCancel}
       >
-        <RiCloseLine className='w-4 h-4 text-gray-900' />
+        <RiCloseLine className='h-4 w-4 text-gray-900' />
       </div>
     </div>,
     document.body,

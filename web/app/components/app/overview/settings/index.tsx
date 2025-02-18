@@ -221,24 +221,24 @@ const SettingsModal: FC<ISettingsModalProps> = ({
         className='max-w-[520px] p-0'
       >
         {/* header */}
-        <div className='pl-6 pt-5 pr-5 pb-3'>
+        <div className='pb-3 pl-6 pr-5 pt-5'>
           <div className='flex items-center gap-1'>
-            <div className='grow text-text-primary title-2xl-semi-bold'>{t(`${prefixSettings}.title`)}</div>
+            <div className='text-text-primary title-2xl-semi-bold grow'>{t(`${prefixSettings}.title`)}</div>
             <ActionButton className='shrink-0' onClick={onHide}>
-              <RiCloseLine className='w-4 h-4' />
+              <RiCloseLine className='h-4 w-4' />
             </ActionButton>
           </div>
-          <div className='mt-0.5 text-text-tertiary system-xs-regular'>
+          <div className='text-text-tertiary system-xs-regular mt-0.5'>
             <span>{t(`${prefixSettings}.modalTip`)}</span>
             <Link href={`${locale === LanguagesSupported[1] ? 'https://docs.dify.ai/zh-hans/guides/application-publishing/launch-your-webapp-quickly#she-zhi-ni-de-ai-zhan-dian' : 'https://docs.dify.ai/guides/application-publishing/launch-your-webapp-quickly#setting-up-your-ai-site'}`} target='_blank' rel='noopener noreferrer' className='text-text-accent'>{t('common.operation.learnMore')}</Link>
           </div>
         </div>
         {/* form body */}
-        <div className='px-6 py-3 space-y-5'>
+        <div className='space-y-5 px-6 py-3'>
           {/* name & icon */}
           <div className='flex gap-4'>
             <div className='grow'>
-              <div className={cn('mb-1 py-1 text-text-secondary system-sm-semibold')}>{t(`${prefixSettings}.webName`)}</div>
+              <div className={cn('text-text-secondary system-sm-semibold mb-1 py-1')}>{t(`${prefixSettings}.webName`)}</div>
               <Input
                 className='w-full'
                 value={inputInfo.title}
@@ -258,32 +258,32 @@ const SettingsModal: FC<ISettingsModalProps> = ({
           </div>
           {/* description */}
           <div className='relative'>
-            <div className={cn('py-1 text-text-secondary system-sm-semibold')}>{t(`${prefixSettings}.webDesc`)}</div>
+            <div className={cn('text-text-secondary system-sm-semibold py-1')}>{t(`${prefixSettings}.webDesc`)}</div>
             <Textarea
               className='mt-1'
               value={inputInfo.desc}
               onChange={e => onDesChange(e.target.value)}
               placeholder={t(`${prefixSettings}.webDescPlaceholder`) as string}
             />
-            <p className={cn('pb-0.5 text-text-tertiary body-xs-regular')}>{t(`${prefixSettings}.webDescTip`)}</p>
+            <p className={cn('text-text-tertiary body-xs-regular pb-0.5')}>{t(`${prefixSettings}.webDescTip`)}</p>
           </div>
-          <Divider className="h-px my-0" />
+          <Divider className="my-0 h-px" />
           {/* answer icon */}
           {isChat && (
             <div className='w-full'>
-              <div className='flex justify-between items-center'>
-                <div className={cn('py-1 text-text-secondary system-sm-semibold')}>{t('app.answerIcon.title')}</div>
+              <div className='flex items-center justify-between'>
+                <div className={cn('text-text-secondary system-sm-semibold py-1')}>{t('app.answerIcon.title')}</div>
                 <Switch
                   defaultValue={inputInfo.use_icon_as_answer_icon}
                   onChange={v => setInputInfo({ ...inputInfo, use_icon_as_answer_icon: v })}
                 />
               </div>
-              <p className='pb-0.5 text-text-tertiary body-xs-regular'>{t('app.answerIcon.description')}</p>
+              <p className='text-text-tertiary body-xs-regular pb-0.5'>{t('app.answerIcon.description')}</p>
             </div>
           )}
           {/* language */}
           <div className='flex items-center'>
-            <div className={cn('grow py-1 text-text-secondary system-sm-semibold')}>{t(`${prefixSettings}.language`)}</div>
+            <div className={cn('text-text-secondary system-sm-semibold grow py-1')}>{t(`${prefixSettings}.language`)}</div>
             <SimpleSelect
               wrapperClassName='w-[200px]'
               items={languages.filter(item => item.supported)}
@@ -296,8 +296,8 @@ const SettingsModal: FC<ISettingsModalProps> = ({
           {isChat && (
             <div className='flex items-center'>
               <div className='grow'>
-                <div className={cn('py-1 text-text-secondary system-sm-semibold')}>{t(`${prefixSettings}.chatColorTheme`)}</div>
-                <div className='pb-0.5 body-xs-regular text-text-tertiary'>{t(`${prefixSettings}.chatColorThemeDesc`)}</div>
+                <div className={cn('text-text-secondary system-sm-semibold py-1')}>{t(`${prefixSettings}.chatColorTheme`)}</div>
+                <div className='body-xs-regular text-text-tertiary pb-0.5'>{t(`${prefixSettings}.chatColorThemeDesc`)}</div>
               </div>
               <div className='shrink-0'>
                 <Input
@@ -306,7 +306,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
                   onChange={onChange('chatColorTheme')}
                   placeholder='E.g #A020F0'
                 />
-                <div className='flex justify-between items-center'>
+                <div className='flex items-center justify-between'>
                   <p className={cn('body-xs-regular text-text-tertiary')}>{t(`${prefixSettings}.chatColorThemeInverted`)}</p>
                   <Switch defaultValue={inputInfo.chatColorThemeInverted} onChange={v => setInputInfo({ ...inputInfo, chatColorThemeInverted: v })}></Switch>
                 </div>
@@ -315,24 +315,24 @@ const SettingsModal: FC<ISettingsModalProps> = ({
           )}
           {/* workflow detail */}
           <div className='w-full'>
-            <div className='flex justify-between items-center'>
-              <div className={cn('py-1 text-text-secondary system-sm-semibold')}>{t(`${prefixSettings}.workflow.subTitle`)}</div>
+            <div className='flex items-center justify-between'>
+              <div className={cn('text-text-secondary system-sm-semibold py-1')}>{t(`${prefixSettings}.workflow.subTitle`)}</div>
               <Switch
                 disabled={!(appInfo.mode === 'workflow' || appInfo.mode === 'advanced-chat')}
                 defaultValue={inputInfo.show_workflow_steps}
                 onChange={v => setInputInfo({ ...inputInfo, show_workflow_steps: v })}
               />
             </div>
-            <p className='pb-0.5 text-text-tertiary body-xs-regular'>{t(`${prefixSettings}.workflow.showDesc`)}</p>
+            <p className='text-text-tertiary body-xs-regular pb-0.5'>{t(`${prefixSettings}.workflow.showDesc`)}</p>
           </div>
           {/* SSO */}
           {systemFeatures.enable_web_sso_switch_component && (
             <>
-              <Divider className="h-px my-0" />
+              <Divider className="my-0 h-px" />
               <div className='w-full'>
-                <p className='mb-1 system-xs-medium-uppercase text-text-tertiary'>{t(`${prefixSettings}.sso.label`)}</p>
-                <div className='flex justify-between items-center'>
-                  <div className={cn('py-1 text-text-secondary system-sm-semibold')}>{t(`${prefixSettings}.sso.title`)}</div>
+                <p className='system-xs-medium-uppercase text-text-tertiary mb-1'>{t(`${prefixSettings}.sso.label`)}</p>
+                <div className='flex items-center justify-between'>
+                  <div className={cn('text-text-secondary system-sm-semibold py-1')}>{t(`${prefixSettings}.sso.title`)}</div>
                   <Tooltip
                     disabled={systemFeatures.sso_enforced_for_web}
                     popupContent={
@@ -343,19 +343,19 @@ const SettingsModal: FC<ISettingsModalProps> = ({
                     <Switch disabled={!systemFeatures.sso_enforced_for_web || !isCurrentWorkspaceEditor} defaultValue={systemFeatures.sso_enforced_for_web && inputInfo.enable_sso} onChange={v => setInputInfo({ ...inputInfo, enable_sso: v })}></Switch>
                   </Tooltip>
                 </div>
-                <p className='pb-0.5 body-xs-regular text-text-tertiary'>{t(`${prefixSettings}.sso.description`)}</p>
+                <p className='body-xs-regular text-text-tertiary pb-0.5'>{t(`${prefixSettings}.sso.description`)}</p>
               </div>
             </>
           )}
           {/* more settings switch */}
-          <Divider className="h-px my-0" />
+          <Divider className="my-0 h-px" />
           {!isShowMore && (
-            <div className='flex items-center cursor-pointer' onClick={() => setIsShowMore(true)}>
+            <div className='flex cursor-pointer items-center' onClick={() => setIsShowMore(true)}>
               <div className='grow'>
-                <div className={cn('py-1 text-text-secondary system-sm-semibold')}>{t(`${prefixSettings}.more.entry`)}</div>
-                <p className={cn('pb-0.5 text-text-tertiary body-xs-regular')}>{t(`${prefixSettings}.more.copyRightPlaceholder`)} & {t(`${prefixSettings}.more.privacyPolicyPlaceholder`)}</p>
+                <div className={cn('text-text-secondary system-sm-semibold py-1')}>{t(`${prefixSettings}.more.entry`)}</div>
+                <p className={cn('text-text-tertiary body-xs-regular pb-0.5')}>{t(`${prefixSettings}.more.copyRightPlaceholder`)} & {t(`${prefixSettings}.more.privacyPolicyPlaceholder`)}</p>
               </div>
-              <RiArrowRightSLine className='shrink-0 ml-1 w-4 h-4 text-text-secondary' />
+              <RiArrowRightSLine className='text-text-secondary ml-1 h-4 w-4 shrink-0' />
             </div>
           )}
           {/* more settings */}
@@ -364,13 +364,13 @@ const SettingsModal: FC<ISettingsModalProps> = ({
               {/* copyright */}
               <div className='w-full'>
                 <div className='flex items-center'>
-                  <div className='grow flex items-center'>
-                    <div className={cn('mr-1 py-1 text-text-secondary system-sm-semibold')}>{t(`${prefixSettings}.more.copyright`)}</div>
+                  <div className='flex grow items-center'>
+                    <div className={cn('text-text-secondary system-sm-semibold mr-1 py-1')}>{t(`${prefixSettings}.more.copyright`)}</div>
                     {/* upgrade button */}
                     {enableBilling && isFreePlan && (
-                      <div className='select-none h-[18px]'>
+                      <div className='h-[18px] select-none'>
                         <PremiumBadge size='s' color='blue' allowHover={true} onClick={handlePlanClick}>
-                          <SparklesSoft className='flex items-center py-[1px] pl-[3px] w-3.5 h-3.5 text-components-premium-badge-indigo-text-stop-0' />
+                          <SparklesSoft className='text-components-premium-badge-indigo-text-stop-0 flex h-3.5 w-3.5 items-center py-[1px] pl-[3px]' />
                           <div className='system-xs-medium'>
                             <span className='p-1'>
                               {t('billing.upgradeBtn.encourageShort')}
@@ -394,7 +394,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
                     />
                   </Tooltip>
                 </div>
-                <p className='pb-0.5 text-text-tertiary body-xs-regular'>{t(`${prefixSettings}.more.copyrightTip`)}</p>
+                <p className='text-text-tertiary body-xs-regular pb-0.5'>{t(`${prefixSettings}.more.copyrightTip`)}</p>
                 {inputInfo.copyrightSwitchValue && (
                   <Input
                     className='mt-2 h-10'
@@ -406,8 +406,8 @@ const SettingsModal: FC<ISettingsModalProps> = ({
               </div>
               {/* privacy policy */}
               <div className='w-full'>
-                <div className={cn('py-1 text-text-secondary system-sm-semibold')}>{t(`${prefixSettings}.more.privacyPolicy`)}</div>
-                <p className={cn('pb-0.5 body-xs-regular text-text-tertiary')}>
+                <div className={cn('text-text-secondary system-sm-semibold py-1')}>{t(`${prefixSettings}.more.privacyPolicy`)}</div>
+                <p className={cn('body-xs-regular text-text-tertiary pb-0.5')}>
                   <Trans
                     i18nKey={`${prefixSettings}.more.privacyPolicyTip`}
                     components={{ privacyPolicyLink: <Link href={'https://docs.dify.ai/user-agreement/privacy-policy'} target='_blank' rel='noopener noreferrer' className='text-text-accent' /> }}
@@ -422,8 +422,8 @@ const SettingsModal: FC<ISettingsModalProps> = ({
               </div>
               {/* custom disclaimer */}
               <div className='w-full'>
-                <div className={cn('py-1 text-text-secondary system-sm-semibold')}>{t(`${prefixSettings}.more.customDisclaimer`)}</div>
-                <p className={cn('pb-0.5 body-xs-regular text-text-tertiary')}>{t(`${prefixSettings}.more.customDisclaimerTip`)}</p>
+                <div className={cn('text-text-secondary system-sm-semibold py-1')}>{t(`${prefixSettings}.more.customDisclaimer`)}</div>
+                <p className={cn('body-xs-regular text-text-tertiary pb-0.5')}>{t(`${prefixSettings}.more.customDisclaimerTip`)}</p>
                 <Textarea
                   className='mt-1'
                   value={inputInfo.customDisclaimer}
@@ -435,7 +435,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
           )}
         </div>
         {/* footer */}
-        <div className='p-6 pt-5 flex justify-end'>
+        <div className='flex justify-end p-6 pt-5'>
           <Button className='mr-2' onClick={onHide}>{t('common.operation.cancel')}</Button>
           <Button variant='primary' onClick={onClickSave} loading={saveLoading}>{t('common.operation.save')}</Button>
         </div>

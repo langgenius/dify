@@ -41,7 +41,7 @@ const ResultItem: FC<Props> = ({
   }] = useBoolean(false)
 
   return (
-    <div className={cn('pt-3 bg-chat-bubble-bg rounded-xl hover:shadow-lg cursor-pointer')} onClick={showDetailModal}>
+    <div className={cn('bg-chat-bubble-bg cursor-pointer rounded-xl pt-3 hover:shadow-lg')} onClick={showDetailModal}>
       {/* Meta info */}
       <ResultItemMeta className='px-3' labelPrefix={`${isParentChildRetrieval ? 'Parent-' : ''}Chunk`} positionId={position} wordCount={word_count} score={score} />
 
@@ -51,19 +51,19 @@ const ResultItem: FC<Props> = ({
         {isParentChildRetrieval && (
           <div className='mt-1'>
             <div
-              className={cn('inline-flex items-center h-6 space-x-0.5 text-text-secondary select-none rounded-lg cursor-pointer', isFold && 'pl-1 bg-[linear-gradient(90deg,_rgba(200,_206,_218,_0.20)_0%,_rgba(200,_206,_218,_0.04)_100%)]')}
+              className={cn('text-text-secondary inline-flex h-6 cursor-pointer select-none items-center space-x-0.5 rounded-lg', isFold && 'bg-[linear-gradient(90deg,_rgba(200,_206,_218,_0.20)_0%,_rgba(200,_206,_218,_0.04)_100%)] pl-1')}
               onClick={(e) => {
                 e.stopPropagation()
                 toggleFold()
               }}
             >
-              <Icon className={cn('w-4 h-4', isFold && 'opacity-50')} />
+              <Icon className={cn('h-4 w-4', isFold && 'opacity-50')} />
               <div className='text-xs font-semibold uppercase'>{t(`${i18nPrefix}.hitChunks`, { num: child_chunks.length })}</div>
             </div>
             {!isFold && (
               <div className='space-y-2'>
                 {child_chunks.map(item => (
-                  <div key={item.id} className='ml-[7px] pl-[7px] border-l-[2px] border-text-accent-secondary'>
+                  <div key={item.id} className='border-text-accent-secondary ml-[7px] border-l-[2px] pl-[7px]'>
                     <ChildChunkItem payload={item} isShowAll={false} />
                   </div>
                 ))}

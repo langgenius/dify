@@ -53,9 +53,9 @@ const RetryOnPanel = ({
   return (
     <>
       <div className='pt-2'>
-        <div className='flex items-center justify-between px-4 py-2 h-10'>
+        <div className='flex h-10 items-center justify-between px-4 py-2'>
           <div className='flex items-center'>
-            <div className='mr-0.5 system-sm-semibold-uppercase text-text-secondary'>{t('workflow.nodes.common.retry.retryOnFailure')}</div>
+            <div className='system-sm-semibold-uppercase text-text-secondary mr-0.5'>{t('workflow.nodes.common.retry.retryOnFailure')}</div>
           </div>
           <Switch
             defaultValue={retry_config?.retry_enabled}
@@ -65,8 +65,8 @@ const RetryOnPanel = ({
         {
           retry_config?.retry_enabled && (
             <div className='px-4 pb-2'>
-              <div className='flex items-center mb-1 w-full'>
-                <div className='grow mr-2 system-xs-medium-uppercase'>{t('workflow.nodes.common.retry.maxRetries')}</div>
+              <div className='mb-1 flex w-full items-center'>
+                <div className='system-xs-medium-uppercase mr-2 grow'>{t('workflow.nodes.common.retry.maxRetries')}</div>
                 <Slider
                   className='mr-3 w-[108px]'
                   value={retry_config?.max_retries || 3}
@@ -86,7 +86,7 @@ const RetryOnPanel = ({
                 />
               </div>
               <div className='flex items-center'>
-                <div className='grow mr-2 system-xs-medium-uppercase'>{t('workflow.nodes.common.retry.retryInterval')}</div>
+                <div className='system-xs-medium-uppercase mr-2 grow'>{t('workflow.nodes.common.retry.retryInterval')}</div>
                 <Slider
                   className='mr-3 w-[108px]'
                   value={retry_config?.retry_interval || 1000}

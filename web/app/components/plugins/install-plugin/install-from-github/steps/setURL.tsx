@@ -17,7 +17,7 @@ const SetURL: React.FC<SetURLProps> = ({ repoUrl, onChange, onNext, onCancel }) 
     <>
       <label
         htmlFor='repoUrl'
-        className='flex flex-col justify-center items-start self-stretch text-text-secondary'
+        className='text-text-secondary flex flex-col items-start justify-center self-stretch'
       >
         <span className='system-sm-semibold'>{t('plugin.installFromGitHub.gitHubRepo')}</span>
       </label>
@@ -27,12 +27,12 @@ const SetURL: React.FC<SetURLProps> = ({ repoUrl, onChange, onNext, onCancel }) 
         name='repoUrl'
         value={repoUrl}
         onChange={e => onChange(e.target.value)}
-        className='flex items-center self-stretch rounded-lg border border-components-input-border-active
-          bg-components-input-bg-active shadows-shadow-xs p-2 gap-[2px] flex-grow overflow-hidden
-          text-components-input-text-filled text-ellipsis system-sm-regular'
+        className='border-components-input-border-active bg-components-input-bg-active shadows-shadow-xs text-components-input-text-filled system-sm-regular flex
+          grow items-center gap-[2px] self-stretch overflow-hidden text-ellipsis
+          rounded-lg border p-2'
         placeholder='Please enter GitHub repo URL'
       />
-      <div className='flex justify-end items-center gap-2 self-stretch mt-4'>
+      <div className='mt-4 flex items-center justify-end gap-2 self-stretch'>
         <Button
           variant='secondary'
           className='min-w-[72px]'
