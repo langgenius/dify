@@ -1,5 +1,6 @@
 import io
 import logging
+import uuid
 from typing import Optional
 
 from werkzeug.datastructures import FileStorage
@@ -81,7 +82,7 @@ class AudioService:
         from app import app
         from extensions.ext_database import db
 
-        def invoke_tts(text_content: str, app_model, voice: Optional[str] = None):
+        def invoke_tts(text_content: str, app_model: App, voice: Optional[str] = None):
             with app.app_context():
                 if app_model.mode in {AppMode.ADVANCED_CHAT.value, AppMode.WORKFLOW.value}:
                     workflow = app_model.workflow
@@ -94,6 +95,8 @@ class AudioService:
 
                     voice = features_dict["text_to_speech"].get("voice") if voice is None else voice
                 else:
+                    if app_model.app_model_config is None:
+                        raise ValueError("AppModelConfig not found")
                     text_to_speech_dict = app_model.app_model_config.text_to_speech_dict
 
                     if not text_to_speech_dict.get("enabled"):
@@ -110,6 +113,8 @@ class AudioService:
                         voices = model_instance.get_tts_voices()
                         if voices:
                             voice = voices[0].get("value")
+                            if not voice:
+                                raise ValueError("Sorry, no voice available.")
                         else:
                             raise ValueError("Sorry, no voice available.")
 
@@ -120,7 +125,13 @@ class AudioService:
                     raise e
 
         if message_id:
+            try:
+                uuid.UUID(message_id)
+            except ValueError:
+                return None
             message = db.session.query(Message).filter(Message.id == message_id).first()
+            if message is None:
+                return None
             if message.answer == "" and message.status == "normal":
                 return None
 
@@ -130,6 +141,8 @@ class AudioService:
                     return Response(stream_with_context(response), content_type="audio/mpeg")
                 return response
         else:
+            if text is None:
+                raise ValueError("Text is required")
             response = invoke_tts(text, app_model, voice)
             if isinstance(response, Generator):
                 return Response(stream_with_context(response), content_type="audio/mpeg")

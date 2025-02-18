@@ -52,6 +52,12 @@ const useConfig = (id: string, payload: IterationNodeType) => {
         [VarType.number]: VarType.arrayNumber,
         [VarType.object]: VarType.arrayObject,
         [VarType.file]: VarType.arrayFile,
+        // list operator node can output array
+        [VarType.array]: VarType.array,
+        [VarType.arrayFile]: VarType.arrayFile,
+        [VarType.arrayString]: VarType.arrayString,
+        [VarType.arrayNumber]: VarType.arrayNumber,
+        [VarType.arrayObject]: VarType.arrayObject,
       } as Record<VarType, VarType>)[outputItemType] || VarType.arrayString
     })
     setInputs(newInputs)

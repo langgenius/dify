@@ -5,7 +5,8 @@ import {
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import dayjs from 'dayjs'
-import { RiArrowDownSLine } from '@remixicon/react'
+import { RiArrowDownSLine, RiPlanetLine } from '@remixicon/react'
+import Toast from '../../base/toast'
 import type { ModelAndParameter } from '../configuration/debug/types'
 import SuggestedAction from './suggested-action'
 import PublishWithMultipleModel from './publish-with-multiple-model'
@@ -15,6 +16,7 @@ import {
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
+import { fetchInstalledAppList } from '@/service/explore'
 import EmbeddedModal from '@/app/components/app/overview/embedded'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { useGetLanguage } from '@/context/i18n'
@@ -105,6 +107,19 @@ const AppPublisher = ({
       setPublished(false)
   }, [disabled, onToggle, open])
 
+  const handleOpenInExplore = useCallback(async () => {
+    try {
+      const { installed_apps }: any = await fetchInstalledAppList(appDetail?.id) || {}
+      if (installed_apps?.length > 0)
+        window.open(`/explore/installed/${installed_apps[0].id}`, '_blank')
+      else
+        throw new Error('No app found in Explore')
+    }
+    catch (e: any) {
+      Toast.notify({ type: 'error', message: `${e.message || e}` })
+    }
+  }, [appDetail?.id])
+
   const [embeddingModalOpen, setEmbeddingModalOpen] = useState(false)
 
   return (
@@ -128,22 +143,19 @@ const AppPublisher = ({
         </Button>
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent className='z-[11]'>
-        <div className='w-[336px] bg-white rounded-2xl border-[0.5px] border-gray-200 shadow-xl'>
+        <div className='w-[336px] bg-components-panel-bg rounded-2xl border-[0.5px] border-components-panel-border shadow-xl'>
           <div className='p-4 pt-3'>
-            <div className='flex items-center h-6 text-xs font-medium text-gray-500 uppercase'>
+            <div className='flex items-center h-6 system-xs-medium-uppercase text-text-tertiary'>
               {publishedAt ? t('workflow.common.latestPublished') : t('workflow.common.currentDraftUnpublished')}
             </div>
             {publishedAt
               ? (
                 <div className='flex justify-between items-center h-[18px]'>
-                  <div className='flex items-center mt-[3px] mb-[3px] leading-[18px] text-[13px] font-medium text-gray-700'>
+                  <div className='flex items-center mt-[3px] mb-[3px] leading-[18px] text-[13px] font-medium text-text-secondary'>
                     {t('workflow.common.publishedAt')} {formatTimeFromNow(publishedAt)}
                   </div>
                   <Button
-                    className={`
-                      ml-2 px-2 text-primary-600
-                      ${published && 'text-primary-300 border-gray-100'}
-                    `}
+                    variant='secondary-accent'
                     size='small'
                     onClick={handleRestore}
                     disabled={published}
@@ -153,7 +165,7 @@ const AppPublisher = ({
                 </div>
               )
               : (
-                <div className='flex items-center h-[18px] leading-[18px] text-[13px] font-medium text-gray-700'>
+                <div className='flex items-center h-[18px] leading-[18px] text-[13px] font-medium text-text-secondary'>
                   {t('workflow.common.autoSaved')} · {Boolean(draftUpdatedAt) && formatTimeFromNow(draftUpdatedAt!)}
                 </div>
               )}
@@ -181,7 +193,7 @@ const AppPublisher = ({
               )
             }
           </div>
-          <div className='p-4 pt-3 border-t-[0.5px] border-t-black/5'>
+          <div className='p-4 pt-3 border-t-[0.5px] border-divider-regular'>
             <SuggestedAction disabled={!publishedAt} link={appURL} icon={<PlayCircle />}>{t('workflow.common.runApp')}</SuggestedAction>
             {appDetail?.mode === 'workflow'
               ? (
@@ -205,6 +217,15 @@ const AppPublisher = ({
                   {t('workflow.common.embedIntoSite')}
                 </SuggestedAction>
               )}
+            <SuggestedAction
+              onClick={() => {
+                handleOpenInExplore()
+              }}
+              disabled={!publishedAt}
+              icon={<RiPlanetLine className='w-4 h-4' />}
+            >
+              {t('workflow.common.openInExplore')}
+            </SuggestedAction>
             <SuggestedAction disabled={!publishedAt} link='./develop' icon={<FileText className='w-4 h-4' />}>{t('workflow.common.accessAPIReference')}</SuggestedAction>
             {appDetail?.mode === 'workflow' && (
               <WorkflowToolConfigureButton

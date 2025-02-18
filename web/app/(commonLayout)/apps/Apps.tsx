@@ -25,16 +25,18 @@ import Input from '@/app/components/base/input'
 import { useStore as useTagStore } from '@/app/components/base/tag-management/store'
 import TagManagementModal from '@/app/components/base/tag-management'
 import TagFilter from '@/app/components/base/tag-management/filter'
+import CheckboxWithLabel from '@/app/components/datasets/create/website/base/checkbox-with-label'
 
 const getKey = (
   pageIndex: number,
   previousPageData: AppListResponse,
   activeTab: string,
+  isCreatedByMe: boolean,
   tags: string[],
   keywords: string,
 ) => {
   if (!pageIndex || previousPageData.has_more) {
-    const params: any = { url: 'apps', params: { page: pageIndex + 1, limit: 30, name: keywords } }
+    const params: any = { url: 'apps', params: { page: pageIndex + 1, limit: 30, name: keywords, is_created_by_me: isCreatedByMe } }
 
     if (activeTab !== 'all')
       params.params.mode = activeTab
@@ -58,6 +60,7 @@ const Apps = () => {
     defaultTab: 'all',
   })
   const { query: { tagIDs = [], keywords = '' }, setQuery } = useAppsQueryState()
+  const [isCreatedByMe, setIsCreatedByMe] = useState(false)
   const [tagFilterValue, setTagFilterValue] = useState<string[]>(tagIDs)
   const [searchKeywords, setSearchKeywords] = useState(keywords)
   const setKeywords = useCallback((keywords: string) => {
@@ -68,7 +71,7 @@ const Apps = () => {
   }, [setQuery])
 
   const { data, isLoading, setSize, mutate } = useSWRInfinite(
-    (pageIndex: number, previousPageData: AppListResponse) => getKey(pageIndex, previousPageData, activeTab, tagIDs, searchKeywords),
+    (pageIndex: number, previousPageData: AppListResponse) => getKey(pageIndex, previousPageData, activeTab, isCreatedByMe, tagIDs, searchKeywords),
     fetchAppList,
     { revalidateFirstPage: true },
   )
@@ -125,13 +128,19 @@ const Apps = () => {
 
   return (
     <>
-      <div className='sticky top-0 flex justify-between items-center pt-4 px-12 pb-2 leading-[56px] bg-gray-100 z-10 flex-wrap gap-y-2'>
+      <div className='sticky top-0 flex justify-between items-center pt-4 px-12 pb-2 leading-[56px] bg-background-body z-10 flex-wrap gap-y-2'>
         <TabSliderNew
           value={activeTab}
           onChange={setActiveTab}
           options={options}
         />
         <div className='flex items-center gap-2'>
+          <CheckboxWithLabel
+            className='mr-2'
+            label={t('app.showMyCreatedAppsOnly')}
+            isChecked={isCreatedByMe}
+            onChange={() => setIsCreatedByMe(!isCreatedByMe)}
+          />
           <TagFilter type='app' value={tagFilterValue} onChange={handleTagsChange} />
           <Input
             showLeftIcon
@@ -143,14 +152,20 @@ const Apps = () => {
           />
         </div>
       </div>
-      <nav className='grid content-start grid-cols-1 gap-4 px-12 pt-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 grow shrink-0'>
-        {isCurrentWorkspaceEditor
-          && <NewAppCard onSuccess={mutate} />}
-        {data?.map(({ data: apps }) => apps.map(app => (
-          <AppCard key={app.id} app={app} onRefresh={mutate} />
-        )))}
-        <CheckModal />
-      </nav>
+      {(data && data[0].total > 0)
+        ? <div className='grid content-start grid-cols-1 sm:grid-cols-1 md:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-5 2k:grid-cols-6 gap-4 px-12 pt-2 grow relative'>
+          {isCurrentWorkspaceEditor
+            && <NewAppCard onSuccess={mutate} />}
+          {data.map(({ data: apps }) => apps.map(app => (
+            <AppCard key={app.id} app={app} onRefresh={mutate} />
+          )))}
+        </div>
+        : <div className='grid content-start grid-cols-1 sm:grid-cols-1 md:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-5 2k:grid-cols-6 gap-4 px-12 pt-2 grow relative overflow-hidden'>
+          {isCurrentWorkspaceEditor
+            && <NewAppCard className='z-10' onSuccess={mutate} />}
+          <NoAppsFound />
+        </div>}
+      <CheckModal />
       <div ref={anchorRef} className='h-0'> </div>
       {showTagManagementModal && (
         <TagManagementModal type='app' show={showTagManagementModal} />
@@ -160,3 +175,21 @@ const Apps = () => {
 }
 
 export default Apps
+
+function NoAppsFound() {
+  const { t } = useTranslation()
+  function renderDefaultCard() {
+    const defaultCards = Array.from({ length: 36 }, (_, index) => (
+      <div key={index} className='h-[160px] inline-flex rounded-xl bg-background-default-lighter'></div>
+    ))
+    return defaultCards
+  }
+  return (
+    <>
+      {renderDefaultCard()}
+      <div className='absolute top-0 left-0 right-0 bottom-0 flex items-center justify-center bg-gradient-to-t from-background-body to-transparent'>
+        <span className='system-md-medium text-text-tertiary'>{t('app.newApp.noAppsFound')}</span>
+      </div>
+    </>
+  )
+}

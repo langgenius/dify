@@ -2,7 +2,7 @@ import { create } from 'zustand'
 import type { App, AppSSO } from '@/types/app'
 import type { IChatItem } from '@/app/components/base/chat/chat/type'
 
-type State = {
+interface State {
   appDetail?: App & Partial<AppSSO>
   appSidebarExpand: string
   currentLogItem?: IChatItem
@@ -13,7 +13,7 @@ type State = {
   showAppConfigureFeaturesModal: boolean
 }
 
-type Action = {
+interface Action {
   setAppDetail: (appDetail?: App & Partial<AppSSO>) => void
   setAppSiderbarExpand: (state: string) => void
   setCurrentLogItem: (item?: IChatItem) => void

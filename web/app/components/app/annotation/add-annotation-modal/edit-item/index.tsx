@@ -2,7 +2,7 @@
 import type { FC } from 'react'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
-import Textarea from 'rc-textarea'
+import Textarea from '@/app/components/base/textarea'
 import { Robot, User } from '@/app/components/base/icons/src/public/avatar'
 
 export enum EditItemType {
@@ -31,12 +31,10 @@ const EditItem: FC<Props> = ({
         {avatar}
       </div>
       <div className='grow'>
-        <div className='mb-1 leading-[18px] text-xs font-semibold text-gray-900'>{name}</div>
+        <div className='mb-1 system-xs-semibold text-text-primary'>{name}</div>
         <Textarea
-          className='mt-1 block w-full leading-5 max-h-none text-sm text-gray-700 outline-none appearance-none resize-none'
           value={content}
           onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => onChange(e.target.value)}
-          autoSize={{ minRows: 3 }}
           placeholder={placeholder}
           autoFocus
         />

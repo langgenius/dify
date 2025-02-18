@@ -8,12 +8,14 @@ import Button from '../button'
 import { ImagePlus } from '../icons/src/vender/line/images'
 import { useLocalFileUploader } from '../image-uploader/hooks'
 import EmojiPickerInner from '../emoji-picker/Inner'
-import Uploader from './Uploader'
+import type { OnImageInput } from './ImageInput'
+import ImageInput from './ImageInput'
 import s from './style.module.css'
 import getCroppedImg from './utils'
 import type { AppIconType, ImageFile } from '@/types/app'
 import cn from '@/utils/classnames'
 import { DISABLE_UPLOAD_IMAGE_AS_ICON } from '@/config'
+
 export type AppIconEmojiSelection = {
   type: 'emoji'
   icon: string
@@ -69,14 +71,15 @@ const AppIconPicker: FC<AppIconPickerProps> = ({
     },
   })
 
-  const [imageCropInfo, setImageCropInfo] = useState<{ tempUrl: string; croppedAreaPixels: Area; fileName: string }>()
-  const handleImageCropped = async (tempUrl: string, croppedAreaPixels: Area, fileName: string) => {
-    setImageCropInfo({ tempUrl, croppedAreaPixels, fileName })
-  }
+  type InputImageInfo = { file: File } | { tempUrl: string; croppedAreaPixels: Area; fileName: string }
+  const [inputImageInfo, setInputImageInfo] = useState<InputImageInfo>()
 
-  const [uploadImageInfo, setUploadImageInfo] = useState<{ file?: File }>()
-  const handleUpload = async (file?: File) => {
-    setUploadImageInfo({ file })
+  const handleImageInput: OnImageInput = async (isCropped: boolean, fileOrTempUrl: string | File, croppedAreaPixels?: Area, fileName?: string) => {
+    setInputImageInfo(
+      isCropped
+        ? { tempUrl: fileOrTempUrl as string, croppedAreaPixels: croppedAreaPixels!, fileName: fileName! }
+        : { file: fileOrTempUrl as File },
+    )
   }
 
   const handleSelect = async () => {
@@ -90,15 +93,15 @@ const AppIconPicker: FC<AppIconPickerProps> = ({
       }
     }
     else {
-      if (!imageCropInfo && !uploadImageInfo)
+      if (!inputImageInfo)
         return
       setUploading(true)
-      if (imageCropInfo.file) {
-        handleLocalFileUpload(imageCropInfo.file)
+      if ('file' in inputImageInfo) {
+        handleLocalFileUpload(inputImageInfo.file)
         return
       }
-      const blob = await getCroppedImg(imageCropInfo.tempUrl, imageCropInfo.croppedAreaPixels, imageCropInfo.fileName)
-      const file = new File([blob], imageCropInfo.fileName, { type: blob.type })
+      const blob = await getCroppedImg(inputImageInfo.tempUrl, inputImageInfo.croppedAreaPixels, inputImageInfo.fileName)
+      const file = new File([blob], inputImageInfo.fileName, { type: blob.type })
       handleLocalFileUpload(file)
     }
   }
@@ -127,10 +130,8 @@ const AppIconPicker: FC<AppIconPickerProps> = ({
       </div>
     </div>}
 
-    <Divider className='m-0' />
-
-    <EmojiPickerInner className={activeTab === 'emoji' ? 'block' : 'hidden'} onSelect={handleSelectEmoji} />
-    <Uploader className={activeTab === 'image' ? 'block' : 'hidden'} onImageCropped={handleImageCropped} onUpload={handleUpload}/>
+    <EmojiPickerInner className={cn(activeTab === 'emoji' ? 'block' : 'hidden', 'pt-2')} onSelect={handleSelectEmoji} />
+    <ImageInput className={activeTab === 'image' ? 'block' : 'hidden'} onImageInput={handleImageInput} />
 
     <Divider className='m-0' />
     <div className='w-full flex items-center justify-center p-3 gap-2'>

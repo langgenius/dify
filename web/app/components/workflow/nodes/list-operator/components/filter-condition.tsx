@@ -9,7 +9,7 @@ import { ComparisonOperator } from '../../if-else/types'
 import { comparisonOperatorNotRequireValue, getOperators } from '../../if-else/utils'
 import SubVariablePicker from './sub-variable-picker'
 import Input from '@/app/components/base/input'
-import { FILE_TYPE_OPTIONS, TRANSFER_METHOD } from '@/app/components/workflow/nodes/if-else/default'
+import { FILE_TYPE_OPTIONS, TRANSFER_METHOD } from '@/app/components/workflow/nodes/constants'
 import { SimpleSelect as Select } from '@/app/components/base/select'
 
 const optionNameI18NPrefix = 'workflow.nodes.ifElse.optionName'

@@ -5,11 +5,10 @@ from typing import Optional, Union
 from controllers.console.app.error import AppNotFoundError
 from extensions.ext_database import db
 from libs.login import current_user
-from models import App
-from models.model import AppMode
+from models import App, AppMode
 
 
-def get_app_model(view: Optional[Callable] = None, *, mode: Union[AppMode, list[AppMode]] = None):
+def get_app_model(view: Optional[Callable] = None, *, mode: Union[AppMode, list[AppMode], None] = None):
     def decorator(view_func):
         @wraps(view_func)
         def decorated_view(*args, **kwargs):

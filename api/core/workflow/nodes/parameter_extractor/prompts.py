@@ -1,3 +1,5 @@
+from typing import Any
+
 FUNCTION_CALLING_EXTRACTOR_NAME = "extract_parameters"
 
 FUNCTION_CALLING_EXTRACTOR_SYSTEM_PROMPT = f"""You are a helpful assistant tasked with extracting structured information based on specific criteria provided. Follow the guidelines below to ensure consistency and accuracy.
@@ -35,7 +37,7 @@ FUNCTION_CALLING_EXTRACTOR_USER_TEMPLATE = f"""extract structured information fr
 </structure>
 """  # noqa: E501
 
-FUNCTION_CALLING_EXTRACTOR_EXAMPLE = [
+FUNCTION_CALLING_EXTRACTOR_EXAMPLE: list[dict[str, Any]] = [
     {
         "user": {
             "query": "What is the weather today in SF?",

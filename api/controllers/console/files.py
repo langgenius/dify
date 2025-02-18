@@ -1,6 +1,9 @@
+from typing import Literal
+
 from flask import request
-from flask_login import current_user
-from flask_restful import Resource, marshal_with
+from flask_login import current_user  # type: ignore
+from flask_restful import Resource, marshal_with  # type: ignore
+from werkzeug.exceptions import Forbidden
 
 import services
 from configs import dify_config
@@ -47,7 +50,8 @@ class FileApi(Resource):
     @cloud_edition_billing_resource_check("documents")
     def post(self):
         file = request.files["file"]
-        source = request.form.get("source")
+        source_str = request.form.get("source")
+        source: Literal["datasets"] | None = "datasets" if source_str == "datasets" else None
 
         if "file" not in request.files:
             raise NoFileUploadedError()
@@ -57,6 +61,9 @@ class FileApi(Resource):
 
         if not file.filename:
             raise FilenameNotExistsError
+
+        if source == "datasets" and not current_user.is_dataset_editor:
+            raise Forbidden()
 
         if source not in ("datasets", None):
             source = None

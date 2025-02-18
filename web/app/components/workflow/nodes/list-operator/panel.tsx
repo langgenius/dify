@@ -11,7 +11,7 @@ import { type ListFilterNodeType, OrderBy } from './types'
 import LimitConfig from './components/limit-config'
 import FilterCondition from './components/filter-condition'
 import Field from '@/app/components/workflow/nodes/_base/components/field'
-import { type NodePanelProps } from '@/app/components/workflow/types'
+import type { NodePanelProps } from '@/app/components/workflow/types'
 import Switch from '@/app/components/base/switch'
 import ExtractInput from '@/app/components/workflow/nodes/list-operator/components/extract-input'
 
@@ -42,8 +42,8 @@ const Panel: FC<NodePanelProps<ListFilterNodeType>> = ({
   } = useConfig(id, data)
 
   return (
-    <div className='mt-2'>
-      <div className='px-4 pb-4 space-y-4'>
+    <div className='pt-2'>
+      <div className='px-4 space-y-4'>
         <Field
           title={t(`${i18nPrefix}.inputVar`)}
         >
@@ -157,7 +157,7 @@ const Panel: FC<NodePanelProps<ListFilterNodeType>> = ({
         </Field>
         <Split />
       </div>
-      <div className='px-4 pt-4 pb-2'>
+      <div>
         <OutputVars>
           <>
             <VarItem

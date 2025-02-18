@@ -53,7 +53,7 @@ const Panel: FC<NodePanelProps<KnowledgeRetrievalNodeType>> = ({
   }, [setRerankModelOpen])
 
   return (
-    <div className='mt-2'>
+    <div className='pt-2'>
       <div className='px-4 pb-4 space-y-4'>
         {/* {JSON.stringify(inputs, null, 2)} */}
         <Field
@@ -108,7 +108,7 @@ const Panel: FC<NodePanelProps<KnowledgeRetrievalNodeType>> = ({
       </div>
 
       <Split />
-      <div className='px-4 pt-4 pb-2'>
+      <div>
         <OutputVars>
           <>
             <VarItem

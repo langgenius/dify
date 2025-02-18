@@ -1033,6 +1033,7 @@ export const useNodesInteractions = () => {
     const newNodes = produce(nodes, (draft) => {
       draft.forEach((node) => {
         node.data._runningStatus = undefined
+        node.data._waitingRun = false
       })
     })
     setNodes(newNodes)

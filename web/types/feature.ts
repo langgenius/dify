@@ -24,11 +24,13 @@ export type SystemFeatures = {
   sso_enforced_for_web: boolean
   sso_enforced_for_web_protocol: SSOProtocol | ''
   enable_web_sso_switch_component: boolean
+  enable_marketplace: boolean
   enable_email_code_login: boolean
   enable_email_password_login: boolean
   enable_social_oauth_login: boolean
   is_allow_create_workspace: boolean
   is_allow_register: boolean
+  is_email_setup: boolean
   license: License
 }
 
@@ -38,11 +40,13 @@ export const defaultSystemFeatures: SystemFeatures = {
   sso_enforced_for_web: false,
   sso_enforced_for_web_protocol: '',
   enable_web_sso_switch_component: false,
+  enable_marketplace: false,
   enable_email_code_login: false,
   enable_email_password_login: false,
   enable_social_oauth_login: false,
   is_allow_create_workspace: false,
   is_allow_register: false,
+  is_email_setup: false,
   license: {
     status: LicenseStatus.NONE,
     expired_at: '',

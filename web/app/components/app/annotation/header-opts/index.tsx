@@ -4,6 +4,7 @@ import React, { Fragment, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   RiAddLine,
+  RiMoreFill,
 } from '@remixicon/react'
 import { useContext } from 'use-context-selector'
 import {
@@ -14,7 +15,6 @@ import Button from '../../../base/button'
 import AddAnnotationModal from '../add-annotation-modal'
 import type { AnnotationItemBasic } from '../type'
 import BatchAddModal from '../batch-add-annotation-modal'
-import s from './style.module.css'
 import cn from '@/utils/classnames'
 import CustomPopover from '@/app/components/base/popover'
 import { FileDownload02, FilePlus02 } from '@/app/components/base/icons/src/vender/line/files'
@@ -80,17 +80,17 @@ const HeaderOptions: FC<Props> = ({
   const Operations = () => {
     return (
       <div className="w-full py-1">
-        <button className={s.actionItem} onClick={() => {
+        <button className='h-9 py-2 px-3 mx-1 flex items-center space-x-2 hover:bg-components-panel-on-panel-item-bg-hover rounded-lg cursor-pointer disabled:opacity-50 w-[calc(100%_-_8px)]' onClick={() => {
           setShowBulkImportModal(true)
         }}>
-          <FilePlus02 className={s.actionItemIcon} />
-          <span className={s.actionName}>{t('appAnnotation.table.header.bulkImport')}</span>
+          <FilePlus02 className='w-4 h-4 text-text-tertiary' />
+          <span className='grow text-text-secondary system-sm-regular text-left'>{t('appAnnotation.table.header.bulkImport')}</span>
         </button>
         <Menu as="div" className="relative w-full h-full">
-          <Menu.Button className={s.actionItem}>
-            <FileDownload02 className={s.actionItemIcon} />
-            <span className={s.actionName}>{t('appAnnotation.table.header.bulkExport')}</span>
-            <ChevronRight className='shrink-0 w-[14px] h-[14px] text-gray-500' />
+          <Menu.Button className='h-9 py-2 px-3 mx-1 flex items-center space-x-2 hover:bg-components-panel-on-panel-item-bg-hover rounded-lg cursor-pointer disabled:opacity-50 w-[calc(100%_-_8px)]'>
+            <FileDownload02 className='w-4 h-4 text-text-tertiary' />
+            <span className='grow text-text-secondary system-sm-regular text-left'>{t('appAnnotation.table.header.bulkExport')}</span>
+            <ChevronRight className='shrink-0 w-[14px] h-[14px] text-text-tertiary' />
           </Menu.Button>
           <Transition
             as={Fragment}
@@ -103,11 +103,7 @@ const HeaderOptions: FC<Props> = ({
           >
             <Menu.Items
               className={cn(
-                `
-                  absolute top-[1px] py-1 min-w-[100px] z-10 bg-white border-[0.5px] border-gray-200
-                  divide-y divide-gray-100 origin-top-right rounded-xl
-                `,
-                s.popup,
+                'absolute top-[1px] left-1 -translate-x-full py-1 min-w-[100px] z-10 bg-components-panel-bg border-[0.5px] border-components-panel-on-panel-item-bg origin-top-right rounded-xl shadow-xs',
               )}
             >
               <CSVDownloader
@@ -119,12 +115,12 @@ const HeaderOptions: FC<Props> = ({
                   ...list.map(item => [item.question, item.answer]),
                 ]}
               >
-                <button disabled={annotationUnavailable} className={s.actionItem}>
-                  <span className={s.actionName}>CSV</span>
+                <button disabled={annotationUnavailable} className='h-9 py-2 px-3 mx-1 flex items-center space-x-2 hover:bg-components-panel-on-panel-item-bg-hover rounded-lg cursor-pointer disabled:opacity-50 w-[calc(100%_-_8px)]'>
+                  <span className='grow text-text-secondary system-sm-regular text-left'>CSV</span>
                 </button>
               </CSVDownloader>
-              <button disabled={annotationUnavailable} className={cn(s.actionItem, '!border-0')} onClick={JSONLOutput}>
-                <span className={s.actionName}>JSONL</span>
+              <button disabled={annotationUnavailable} className={cn('h-9 py-2 px-3 mx-1 flex items-center space-x-2 hover:bg-components-panel-on-panel-item-bg-hover rounded-lg cursor-pointer disabled:opacity-50 w-[calc(100%_-_8px)]', '!border-0')} onClick={JSONLOutput}>
+                <span className='grow text-text-secondary system-sm-regular text-left'>JSONL</span>
               </button>
             </Menu.Items>
           </Transition>
@@ -137,21 +133,20 @@ const HeaderOptions: FC<Props> = ({
 
   return (
     <div className='flex space-x-2'>
-      <Button variant='primary' onClick={() => setShowAddModal(true)} className='flex items-center !h-8 !px-3 !text-[13px] space-x-2'>
-        <RiAddLine className='w-4 h-4' />
+      <Button variant='primary' onClick={() => setShowAddModal(true)}>
+        <RiAddLine className='w-4 h-4 mr-0.5' />
         <div>{t('appAnnotation.table.header.addAnnotation')}</div>
       </Button>
       <CustomPopover
         htmlContent={<Operations />}
         position="br"
         trigger="click"
-        btnElement={<div className={cn(s.actionIcon, s.commonIcon)} />}
-        btnClassName={open =>
-          cn(
-            open ? 'border-gray-300 !bg-gray-100 !shadow-none' : 'border-gray-200',
-            s.actionIconWrapper,
-          )
+        btnElement={
+          <Button variant='secondary' className='w-8 p-0'>
+            <RiMoreFill className='w-4 h-4' />
+          </Button>
         }
+        btnClassName='p-0 border-0'
         className={'!w-[155px] h-fit !z-20'}
         popupClassName='!w-full !overflow-visible'
         manualClose

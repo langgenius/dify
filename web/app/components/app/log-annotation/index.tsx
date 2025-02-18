@@ -34,7 +34,7 @@ const LogAnnotation: FC<Props> = ({
 
   if (!appDetail) {
     return (
-      <div className='flex h-full items-center justify-center bg-white'>
+      <div className='flex h-full items-center justify-center bg-background-body'>
         <Loading />
       </div>
     )

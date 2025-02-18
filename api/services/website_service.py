@@ -1,8 +1,9 @@
 import datetime
 import json
+from typing import Any
 
 import requests
-from flask_login import current_user
+from flask_login import current_user  # type: ignore
 
 from core.helper import encrypter
 from core.rag.extractor.firecrawl.firecrawl_app import FirecrawlApp
@@ -23,9 +24,9 @@ class WebsiteService:
 
     @classmethod
     def crawl_url(cls, args: dict) -> dict:
-        provider = args.get("provider")
+        provider = args.get("provider", "")
         url = args.get("url")
-        options = args.get("options")
+        options = args.get("options", "")
         credentials = ApiKeyAuthService.get_auth_credentials(current_user.current_tenant_id, "website", provider)
         if provider == "firecrawl":
             # decrypt api_key
@@ -37,30 +38,22 @@ class WebsiteService:
             only_main_content = options.get("only_main_content", False)
             if not crawl_sub_pages:
                 params = {
-                    "crawlerOptions": {
-                        "includes": [],
-                        "excludes": [],
-                        "generateImgAltText": True,
-                        "limit": 1,
-                        "returnOnlyUrls": False,
-                        "pageOptions": {"onlyMainContent": only_main_content, "includeHtml": False},
-                    }
+                    "includePaths": [],
+                    "excludePaths": [],
+                    "limit": 1,
+                    "scrapeOptions": {"onlyMainContent": only_main_content},
                 }
             else:
                 includes = options.get("includes").split(",") if options.get("includes") else []
                 excludes = options.get("excludes").split(",") if options.get("excludes") else []
                 params = {
-                    "crawlerOptions": {
-                        "includes": includes,
-                        "excludes": excludes,
-                        "generateImgAltText": True,
-                        "limit": options.get("limit", 1),
-                        "returnOnlyUrls": False,
-                        "pageOptions": {"onlyMainContent": only_main_content, "includeHtml": False},
-                    }
+                    "includePaths": includes,
+                    "excludePaths": excludes,
+                    "limit": options.get("limit", 1),
+                    "scrapeOptions": {"onlyMainContent": only_main_content},
                 }
                 if options.get("max_depth"):
-                    params["crawlerOptions"]["maxDepth"] = options.get("max_depth")
+                    params["maxDepth"] = options.get("max_depth")
             job_id = firecrawl_app.crawl_url(url, params)
             website_crawl_time_cache_key = f"website_crawl_{job_id}"
             time = str(datetime.datetime.now().timestamp())
@@ -164,16 +157,18 @@ class WebsiteService:
         return crawl_status_data
 
     @classmethod
-    def get_crawl_url_data(cls, job_id: str, provider: str, url: str, tenant_id: str) -> dict | None:
+    def get_crawl_url_data(cls, job_id: str, provider: str, url: str, tenant_id: str) -> dict[Any, Any] | None:
         credentials = ApiKeyAuthService.get_auth_credentials(tenant_id, "website", provider)
         # decrypt api_key
         api_key = encrypter.decrypt_token(tenant_id=tenant_id, token=credentials.get("config").get("api_key"))
+        # FIXME data is redefine too many times here, use Any to ease the type checking, fix it later
+        data: Any
         if provider == "firecrawl":
             file_key = "website_files/" + job_id + ".txt"
             if storage.exists(file_key):
-                data = storage.load_once(file_key)
-                if data:
-                    data = json.loads(data.decode("utf-8"))
+                d = storage.load_once(file_key)
+                if d:
+                    data = json.loads(d.decode("utf-8"))
             else:
                 firecrawl_app = FirecrawlApp(api_key=api_key, base_url=credentials.get("config").get("base_url", None))
                 result = firecrawl_app.check_crawl_status(job_id)
@@ -183,22 +178,17 @@ class WebsiteService:
             if data:
                 for item in data:
                     if item.get("source_url") == url:
-                        return item
+                        return dict(item)
             return None
         elif provider == "jinareader":
-            file_key = "website_files/" + job_id + ".txt"
-            if storage.exists(file_key):
-                data = storage.load_once(file_key)
-                if data:
-                    data = json.loads(data.decode("utf-8"))
-            elif not job_id:
+            if not job_id:
                 response = requests.get(
                     f"https://r.jina.ai/{url}",
                     headers={"Accept": "application/json", "Authorization": f"Bearer {api_key}"},
                 )
                 if response.json().get("code") != 200:
                     raise ValueError("Failed to crawl")
-                return response.json().get("data")
+                return dict(response.json().get("data", {}))
             else:
                 api_key = encrypter.decrypt_token(tenant_id=tenant_id, token=credentials.get("config").get("api_key"))
                 response = requests.post(
@@ -218,18 +208,19 @@ class WebsiteService:
                 data = response.json().get("data", {})
                 for item in data.get("processed", {}).values():
                     if item.get("data", {}).get("url") == url:
-                        return item.get("data", {})
+                        return dict(item.get("data", {}))
+            return None
         else:
             raise ValueError("Invalid provider")
 
     @classmethod
-    def get_scrape_url_data(cls, provider: str, url: str, tenant_id: str, only_main_content: bool) -> dict | None:
+    def get_scrape_url_data(cls, provider: str, url: str, tenant_id: str, only_main_content: bool) -> dict:
         credentials = ApiKeyAuthService.get_auth_credentials(tenant_id, "website", provider)
         if provider == "firecrawl":
             # decrypt api_key
             api_key = encrypter.decrypt_token(tenant_id=tenant_id, token=credentials.get("config").get("api_key"))
             firecrawl_app = FirecrawlApp(api_key=api_key, base_url=credentials.get("config").get("base_url", None))
-            params = {"pageOptions": {"onlyMainContent": only_main_content, "includeHtml": False}}
+            params = {"onlyMainContent": only_main_content}
             result = firecrawl_app.scrape_url(url, params)
             return result
         else:

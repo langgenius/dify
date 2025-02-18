@@ -1,11 +1,12 @@
+from collections.abc import Mapping
 from datetime import datetime
 from enum import Enum, StrEnum
 from typing import Any, Optional
 
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel
 
 from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk
-from core.workflow.entities.node_entities import NodeRunMetadataKey
+from core.workflow.entities.node_entities import AgentNodeStrategyInit, NodeRunMetadataKey
 from core.workflow.graph_engine.entities.graph_runtime_state import GraphRuntimeState
 from core.workflow.nodes import NodeType
 from core.workflow.nodes.base import BaseNodeData
@@ -25,12 +26,14 @@ class QueueEvent(StrEnum):
     WORKFLOW_STARTED = "workflow_started"
     WORKFLOW_SUCCEEDED = "workflow_succeeded"
     WORKFLOW_FAILED = "workflow_failed"
+    WORKFLOW_PARTIAL_SUCCEEDED = "workflow_partial_succeeded"
     ITERATION_START = "iteration_start"
     ITERATION_NEXT = "iteration_next"
     ITERATION_COMPLETED = "iteration_completed"
     NODE_STARTED = "node_started"
     NODE_SUCCEEDED = "node_succeeded"
     NODE_FAILED = "node_failed"
+    NODE_EXCEPTION = "node_exception"
     RETRIEVER_RESOURCES = "retriever_resources"
     ANNOTATION_REPLY = "annotation_reply"
     AGENT_THOUGHT = "agent_thought"
@@ -38,9 +41,11 @@ class QueueEvent(StrEnum):
     PARALLEL_BRANCH_RUN_STARTED = "parallel_branch_run_started"
     PARALLEL_BRANCH_RUN_SUCCEEDED = "parallel_branch_run_succeeded"
     PARALLEL_BRANCH_RUN_FAILED = "parallel_branch_run_failed"
+    AGENT_LOG = "agent_log"
     ERROR = "error"
     PING = "ping"
     STOP = "stop"
+    RETRY = "retry"
 
 
 class AppQueueEvent(BaseModel):
@@ -82,9 +87,9 @@ class QueueIterationStartEvent(AppQueueEvent):
     start_at: datetime
 
     node_run_index: int
-    inputs: Optional[dict[str, Any]] = None
+    inputs: Optional[Mapping[str, Any]] = None
     predecessor_node_id: Optional[str] = None
-    metadata: Optional[dict[str, Any]] = None
+    metadata: Optional[Mapping[str, Any]] = None
 
 
 class QueueIterationNextEvent(AppQueueEvent):
@@ -113,18 +118,6 @@ class QueueIterationNextEvent(AppQueueEvent):
     output: Optional[Any] = None  # output for the current iteration
     duration: Optional[float] = None
 
-    @field_validator("output", mode="before")
-    @classmethod
-    def set_output(cls, v):
-        """
-        Set output
-        """
-        if v is None:
-            return None
-        if isinstance(v, int | float | str | bool | dict | list):
-            return v
-        raise ValueError("output must be a valid type")
-
 
 class QueueIterationCompletedEvent(AppQueueEvent):
     """
@@ -148,9 +141,9 @@ class QueueIterationCompletedEvent(AppQueueEvent):
     start_at: datetime
 
     node_run_index: int
-    inputs: Optional[dict[str, Any]] = None
-    outputs: Optional[dict[str, Any]] = None
-    metadata: Optional[dict[str, Any]] = None
+    inputs: Optional[Mapping[str, Any]] = None
+    outputs: Optional[Mapping[str, Any]] = None
+    metadata: Optional[Mapping[str, Any]] = None
     steps: int = 0
 
     error: Optional[str] = None
@@ -249,6 +242,17 @@ class QueueWorkflowFailedEvent(AppQueueEvent):
 
     event: QueueEvent = QueueEvent.WORKFLOW_FAILED
     error: str
+    exceptions_count: int
+
+
+class QueueWorkflowPartialSuccessEvent(AppQueueEvent):
+    """
+    QueueWorkflowFailedEvent entity
+    """
+
+    event: QueueEvent = QueueEvent.WORKFLOW_PARTIAL_SUCCEEDED
+    exceptions_count: int
+    outputs: Optional[dict[str, Any]] = None
 
 
 class QueueNodeStartedEvent(AppQueueEvent):
@@ -277,6 +281,7 @@ class QueueNodeStartedEvent(AppQueueEvent):
     start_at: datetime
     parallel_mode_run_id: Optional[str] = None
     """iteratoin run in parallel mode run id"""
+    agent_strategy: Optional[AgentNodeStrategyInit] = None
 
 
 class QueueNodeSucceededEvent(AppQueueEvent):
@@ -302,14 +307,44 @@ class QueueNodeSucceededEvent(AppQueueEvent):
     """iteration id if node is in iteration"""
     start_at: datetime
 
-    inputs: Optional[dict[str, Any]] = None
-    process_data: Optional[dict[str, Any]] = None
-    outputs: Optional[dict[str, Any]] = None
-    execution_metadata: Optional[dict[NodeRunMetadataKey, Any]] = None
+    inputs: Optional[Mapping[str, Any]] = None
+    process_data: Optional[Mapping[str, Any]] = None
+    outputs: Optional[Mapping[str, Any]] = None
+    execution_metadata: Optional[Mapping[NodeRunMetadataKey, Any]] = None
 
     error: Optional[str] = None
     """single iteration duration map"""
     iteration_duration_map: Optional[dict[str, float]] = None
+
+
+class QueueAgentLogEvent(AppQueueEvent):
+    """
+    QueueAgentLogEvent entity
+    """
+
+    event: QueueEvent = QueueEvent.AGENT_LOG
+    id: str
+    label: str
+    node_execution_id: str
+    parent_id: str | None
+    error: str | None
+    status: str
+    data: Mapping[str, Any]
+    metadata: Optional[Mapping[str, Any]] = None
+
+
+class QueueNodeRetryEvent(QueueNodeStartedEvent):
+    """QueueNodeRetryEvent entity"""
+
+    event: QueueEvent = QueueEvent.RETRY
+
+    inputs: Optional[Mapping[str, Any]] = None
+    process_data: Optional[Mapping[str, Any]] = None
+    outputs: Optional[Mapping[str, Any]] = None
+    execution_metadata: Optional[Mapping[NodeRunMetadataKey, Any]] = None
+
+    error: str
+    retry_index: int  # retry index
 
 
 class QueueNodeInIterationFailedEvent(AppQueueEvent):
@@ -335,10 +370,41 @@ class QueueNodeInIterationFailedEvent(AppQueueEvent):
     """iteration id if node is in iteration"""
     start_at: datetime
 
-    inputs: Optional[dict[str, Any]] = None
-    process_data: Optional[dict[str, Any]] = None
-    outputs: Optional[dict[str, Any]] = None
-    execution_metadata: Optional[dict[NodeRunMetadataKey, Any]] = None
+    inputs: Optional[Mapping[str, Any]] = None
+    process_data: Optional[Mapping[str, Any]] = None
+    outputs: Optional[Mapping[str, Any]] = None
+    execution_metadata: Optional[Mapping[NodeRunMetadataKey, Any]] = None
+
+    error: str
+
+
+class QueueNodeExceptionEvent(AppQueueEvent):
+    """
+    QueueNodeExceptionEvent entity
+    """
+
+    event: QueueEvent = QueueEvent.NODE_EXCEPTION
+
+    node_execution_id: str
+    node_id: str
+    node_type: NodeType
+    node_data: BaseNodeData
+    parallel_id: Optional[str] = None
+    """parallel id if node is in parallel"""
+    parallel_start_node_id: Optional[str] = None
+    """parallel start node id if node is in parallel"""
+    parent_parallel_id: Optional[str] = None
+    """parent parallel id if node is in parallel"""
+    parent_parallel_start_node_id: Optional[str] = None
+    """parent parallel start node id if node is in parallel"""
+    in_iteration_id: Optional[str] = None
+    """iteration id if node is in iteration"""
+    start_at: datetime
+
+    inputs: Optional[Mapping[str, Any]] = None
+    process_data: Optional[Mapping[str, Any]] = None
+    outputs: Optional[Mapping[str, Any]] = None
+    execution_metadata: Optional[Mapping[NodeRunMetadataKey, Any]] = None
 
     error: str
 
@@ -366,10 +432,10 @@ class QueueNodeFailedEvent(AppQueueEvent):
     """iteration id if node is in iteration"""
     start_at: datetime
 
-    inputs: Optional[dict[str, Any]] = None
-    process_data: Optional[dict[str, Any]] = None
-    outputs: Optional[dict[str, Any]] = None
-    execution_metadata: Optional[dict[NodeRunMetadataKey, Any]] = None
+    inputs: Optional[Mapping[str, Any]] = None
+    process_data: Optional[Mapping[str, Any]] = None
+    outputs: Optional[Mapping[str, Any]] = None
+    execution_metadata: Optional[Mapping[NodeRunMetadataKey, Any]] = None
 
     error: str
 

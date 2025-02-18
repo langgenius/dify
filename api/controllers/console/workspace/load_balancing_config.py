@@ -1,4 +1,4 @@
-from flask_restful import Resource, reqparse
+from flask_restful import Resource, reqparse  # type: ignore
 from werkzeug.exceptions import Forbidden
 
 from controllers.console import api
@@ -37,7 +37,7 @@ class LoadBalancingCredentialsValidateApi(Resource):
         model_load_balancing_service = ModelLoadBalancingService()
 
         result = True
-        error = None
+        error = ""
 
         try:
             model_load_balancing_service.validate_load_balancing_credentials(
@@ -86,7 +86,7 @@ class LoadBalancingConfigCredentialsValidateApi(Resource):
         model_load_balancing_service = ModelLoadBalancingService()
 
         result = True
-        error = None
+        error = ""
 
         try:
             model_load_balancing_service.validate_load_balancing_credentials(
@@ -112,10 +112,10 @@ class LoadBalancingConfigCredentialsValidateApi(Resource):
 # Load Balancing Config
 api.add_resource(
     LoadBalancingCredentialsValidateApi,
-    "/workspaces/current/model-providers/<string:provider>/models/load-balancing-configs/credentials-validate",
+    "/workspaces/current/model-providers/<path:provider>/models/load-balancing-configs/credentials-validate",
 )
 
 api.add_resource(
     LoadBalancingConfigCredentialsValidateApi,
-    "/workspaces/current/model-providers/<string:provider>/models/load-balancing-configs/<string:config_id>/credentials-validate",
+    "/workspaces/current/model-providers/<path:provider>/models/load-balancing-configs/<string:config_id>/credentials-validate",
 )

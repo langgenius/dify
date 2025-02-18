@@ -76,7 +76,7 @@ class CompletionAppRunner(AppRunner):
                 tenant_id=app_config.tenant_id,
                 app_generate_entity=application_generate_entity,
                 inputs=inputs,
-                query=query,
+                query=query or "",
                 message_id=message.id,
             )
         except ModerationError as e:
@@ -122,7 +122,7 @@ class CompletionAppRunner(AppRunner):
                 tenant_id=app_record.tenant_id,
                 model_config=application_generate_entity.model_conf,
                 config=dataset_config,
-                query=query,
+                query=query or "",
                 invoke_from=application_generate_entity.invoke_from,
                 show_retrieve_source=app_config.additional_features.show_retrieve_source,
                 hit_callback=hit_callback,

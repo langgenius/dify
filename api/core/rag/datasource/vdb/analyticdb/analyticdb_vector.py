@@ -17,12 +17,19 @@ from models.dataset import Dataset
 
 class AnalyticdbVector(BaseVector):
     def __init__(
-        self, collection_name: str, api_config: AnalyticdbVectorOpenAPIConfig, sql_config: AnalyticdbVectorBySqlConfig
+        self,
+        collection_name: str,
+        api_config: AnalyticdbVectorOpenAPIConfig | None,
+        sql_config: AnalyticdbVectorBySqlConfig | None,
     ):
         super().__init__(collection_name)
         if api_config is not None:
-            self.analyticdb_vector = AnalyticdbVectorOpenAPI(collection_name, api_config)
+            self.analyticdb_vector: AnalyticdbVectorOpenAPI | AnalyticdbVectorBySql = AnalyticdbVectorOpenAPI(
+                collection_name, api_config
+            )
         else:
+            if sql_config is None:
+                raise ValueError("Either api_config or sql_config must be provided")
             self.analyticdb_vector = AnalyticdbVectorBySql(collection_name, sql_config)
 
     def get_type(self) -> str:
@@ -33,8 +40,8 @@ class AnalyticdbVector(BaseVector):
         self.analyticdb_vector._create_collection_if_not_exists(dimension)
         self.analyticdb_vector.add_texts(texts, embeddings)
 
-    def add_texts(self, texts: list[Document], embeddings: list[list[float]], **kwargs):
-        self.analyticdb_vector.add_texts(texts, embeddings)
+    def add_texts(self, documents: list[Document], embeddings: list[list[float]], **kwargs):
+        self.analyticdb_vector.add_texts(documents, embeddings)
 
     def text_exists(self, id: str) -> bool:
         return self.analyticdb_vector.text_exists(id)
@@ -68,13 +75,13 @@ class AnalyticdbVectorFactory(AbstractVectorFactory):
         if dify_config.ANALYTICDB_HOST is None:
             # implemented through OpenAPI
             apiConfig = AnalyticdbVectorOpenAPIConfig(
-                access_key_id=dify_config.ANALYTICDB_KEY_ID,
-                access_key_secret=dify_config.ANALYTICDB_KEY_SECRET,
-                region_id=dify_config.ANALYTICDB_REGION_ID,
-                instance_id=dify_config.ANALYTICDB_INSTANCE_ID,
-                account=dify_config.ANALYTICDB_ACCOUNT,
-                account_password=dify_config.ANALYTICDB_PASSWORD,
-                namespace=dify_config.ANALYTICDB_NAMESPACE,
+                access_key_id=dify_config.ANALYTICDB_KEY_ID or "",
+                access_key_secret=dify_config.ANALYTICDB_KEY_SECRET or "",
+                region_id=dify_config.ANALYTICDB_REGION_ID or "",
+                instance_id=dify_config.ANALYTICDB_INSTANCE_ID or "",
+                account=dify_config.ANALYTICDB_ACCOUNT or "",
+                account_password=dify_config.ANALYTICDB_PASSWORD or "",
+                namespace=dify_config.ANALYTICDB_NAMESPACE or "",
                 namespace_password=dify_config.ANALYTICDB_NAMESPACE_PASSWORD,
             )
             sqlConfig = None
@@ -83,11 +90,11 @@ class AnalyticdbVectorFactory(AbstractVectorFactory):
             sqlConfig = AnalyticdbVectorBySqlConfig(
                 host=dify_config.ANALYTICDB_HOST,
                 port=dify_config.ANALYTICDB_PORT,
-                account=dify_config.ANALYTICDB_ACCOUNT,
-                account_password=dify_config.ANALYTICDB_PASSWORD,
+                account=dify_config.ANALYTICDB_ACCOUNT or "",
+                account_password=dify_config.ANALYTICDB_PASSWORD or "",
                 min_connection=dify_config.ANALYTICDB_MIN_CONNECTION,
                 max_connection=dify_config.ANALYTICDB_MAX_CONNECTION,
-                namespace=dify_config.ANALYTICDB_NAMESPACE,
+                namespace=dify_config.ANALYTICDB_NAMESPACE or "",
             )
             apiConfig = None
         return AnalyticdbVector(

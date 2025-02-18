@@ -65,7 +65,7 @@ class AudioApi(WebApiResource):
 
 class TextApi(WebApiResource):
     def post(self, app_model: App, end_user):
-        from flask_restful import reqparse
+        from flask_restful import reqparse  # type: ignore
 
         try:
             parser = reqparse.RequestParser()
@@ -82,7 +82,7 @@ class TextApi(WebApiResource):
                 and app_model.workflow
                 and app_model.workflow.features_dict
             ):
-                text_to_speech = app_model.workflow.features_dict.get("text_to_speech")
+                text_to_speech = app_model.workflow.features_dict.get("text_to_speech", {})
                 voice = args.get("voice") or text_to_speech.get("voice")
             else:
                 try:

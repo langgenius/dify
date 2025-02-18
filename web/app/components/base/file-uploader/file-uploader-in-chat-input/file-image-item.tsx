@@ -37,7 +37,7 @@ const FileImageItem = ({
     <>
       <div
         className='group/file-image relative cursor-pointer'
-        onClick={() => canPreview && setImagePreviewUrl(url || '')}
+        onClick={() => canPreview && setImagePreviewUrl(base64Url || url || '')}
       >
         {
           showDeleteAction && (
