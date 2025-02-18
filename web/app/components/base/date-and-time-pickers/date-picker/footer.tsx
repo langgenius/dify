@@ -1,5 +1,5 @@
 import React, { type FC } from 'react'
-import Button from '../../base/button'
+import Button from '../../button'
 import type { DatePickerFooterProps } from '../types'
 import { RiTimeLine } from '@remixicon/react'
 import cn from '@/utils/classnames'

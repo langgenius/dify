@@ -1,6 +1,6 @@
 import React, { type FC } from 'react'
 import type { TimePickerFooterProps } from '../types'
-import Button from '../../base/button'
+import Button from '../../button'
 
 const Footer: FC<TimePickerFooterProps> = ({
   handleSelectCurrentTime,
