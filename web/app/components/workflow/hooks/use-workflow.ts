@@ -58,6 +58,7 @@ import I18n from '@/context/i18n'
 import { CollectionType } from '@/app/components/tools/types'
 import { CUSTOM_ITERATION_START_NODE } from '@/app/components/workflow/nodes/iteration-start/constants'
 import { useWorkflowConfig } from '@/service/use-workflow'
+import { canFindTool } from '@/utils'
 
 export const useIsChatMode = () => {
   const appDetail = useAppStore(s => s.appDetail)
@@ -608,11 +609,7 @@ export const useToolIcon = (data: Node['data']) => {
         targetTools = customTools
       else
         targetTools = workflowTools
-      return targetTools.find((toolWithProvider) => {
-        return toolWithProvider.id === data.provider_id
-        || toolWithProvider.id === `langgenius/${data.provider_id}/${data.provider_id}`
-        || toolWithProvider.id === `langgenius/${data.provider_id}_tool/${data.provider_id}`
-      })?.icon
+      return targetTools.find(toolWithProvider => canFindTool(toolWithProvider.id, data.provider_id))?.icon
     }
   }, [data, buildInTools, customTools, workflowTools])
 

@@ -41,7 +41,7 @@ import type { ToolNodeType } from './nodes/tool/types'
 import type { IterationNodeType } from './nodes/iteration/types'
 import { CollectionType } from '@/app/components/tools/types'
 import { toolParametersToFormSchemas } from '@/app/components/tools/utils/to-form-schema'
-import { correctProvider } from '@/utils'
+import { canFindTool, correctModelProvider } from '@/utils'
 
 const WHITE = 'WHITE'
 const GRAY = 'GRAY'
@@ -284,16 +284,16 @@ export const initialNodes = (originNodes: Node[], originEdges: Edge[]) => {
 
     // legacy provider handle
     if (node.data.type === BlockEnum.LLM)
-      (node as any).data.model.provider = correctProvider((node as any).data.model.provider)
+      (node as any).data.model.provider = correctModelProvider((node as any).data.model.provider)
 
     if (node.data.type === BlockEnum.KnowledgeRetrieval && (node as any).data.multiple_retrieval_config.reranking_model)
-      (node as any).data.multiple_retrieval_config.reranking_model.provider = correctProvider((node as any).data.multiple_retrieval_config.reranking_model.provider)
+      (node as any).data.multiple_retrieval_config.reranking_model.provider = correctModelProvider((node as any).data.multiple_retrieval_config.reranking_model.provider)
 
     if (node.data.type === BlockEnum.QuestionClassifier)
-      (node as any).data.model.provider = correctProvider((node as any).data.model.provider)
+      (node as any).data.model.provider = correctModelProvider((node as any).data.model.provider)
 
     if (node.data.type === BlockEnum.ParameterExtractor)
-      (node as any).data.model.provider = correctProvider((node as any).data.model.provider)
+      (node as any).data.model.provider = correctModelProvider((node as any).data.model.provider)
     if (node.data.type === BlockEnum.HttpRequest && !node.data.retry_config) {
       node.data.retry_config = {
         retry_enabled: true,
@@ -517,7 +517,7 @@ export const getToolCheckParams = (
   const { provider_id, provider_type, tool_name } = toolData
   const isBuiltIn = provider_type === CollectionType.builtIn
   const currentTools = provider_type === CollectionType.builtIn ? buildInTools : provider_type === CollectionType.custom ? customTools : workflowTools
-  const currCollection = currentTools.find(item => item.id === provider_id)
+  const currCollection = currentTools.find(item => canFindTool(item.id, provider_id))
   const currTool = currCollection?.tools.find(tool => tool.name === tool_name)
   const formSchemas = currTool ? toolParametersToFormSchemas(currTool.parameters) : []
   const toolInputVarSchema = formSchemas.filter((item: any) => item.form === 'llm')
