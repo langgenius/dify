@@ -12,17 +12,9 @@ type SwitchProps = {
 }
 
 const Switch = (
-  {
-    ref: propRef,
-    onChange,
-    size = 'md',
-    defaultValue = false,
-    disabled = false,
-    className,
-  }: SwitchProps & {
+  { ref: propRef, onChange, size = 'md', defaultValue = false, disabled = false, className }: SwitchProps & {
     ref?: React.RefObject<HTMLButtonElement>;
-  },
-) => {
+  }) => {
   const [enabled, setEnabled] = useState(defaultValue)
   useEffect(() => {
     setEnabled(defaultValue)
@@ -65,6 +57,7 @@ const Switch = (
         enabled ? 'bg-components-toggle-bg' : 'bg-components-toggle-bg-unchecked',
         'relative inline-flex  flex-shrink-0 cursor-pointer rounded-[5px] border-2 border-transparent transition-colors duration-200 ease-in-out',
         disabled ? '!opacity-50 !cursor-not-allowed' : '',
+        size === 'xs' && 'rounded-sm',
         className,
       )}
     >
@@ -73,6 +66,7 @@ const Switch = (
         className={classNames(
           circleStyle[size],
           enabled ? translateLeft[size] : 'translate-x-0',
+          size === 'xs' && 'rounded-[1px]',
           'pointer-events-none inline-block transform rounded-[3px] bg-components-toggle-knob shadow ring-0 transition duration-200 ease-in-out',
         )}
       />
