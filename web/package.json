@@ -166,7 +166,7 @@
         "cross-env": "^7.0.3",
         "eslint": "^9.13.0",
         "eslint-plugin-react-hooks": "^5.0.0",
-        "eslint-plugin-react-refresh": "^0.4.13",
+        "eslint-plugin-react-refresh": "^0.4.19",
         "eslint-plugin-storybook": "^0.10.1",
         "eslint-plugin-tailwindcss": "^3.17.5",
         "husky": "^9.1.6",
