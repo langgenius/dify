@@ -37,7 +37,6 @@ class PluginMigration:
         """
         Migrate plugin.
         """
-        import concurrent.futures
         from threading import Lock
 
         click.echo(click.style("Migrating models/tools to new plugin Mechanism", fg="white"))
@@ -54,7 +53,7 @@ class PluginMigration:
         file_lock = Lock()
         counter_lock = Lock()
 
-        thread_pool = concurrent.futures.ThreadPoolExecutor(max_workers=workers)
+        thread_pool = ThreadPoolExecutor(max_workers=workers)
 
         def process_tenant(flask_app: Flask, tenant_id: str) -> None:
             with flask_app.app_context():
