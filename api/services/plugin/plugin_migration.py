@@ -484,8 +484,8 @@ class PluginMigration:
         reverse_map = {v: k for k, v in plugin_identifiers_map.items()}
 
         # at most 8 plugins one batch
-        for i in range(0, len(plugin_identifiers_map), 3):
-            batch_plugin_ids = list(plugin_identifiers_map.keys())[i : i + 3]
+        for i in range(0, len(plugin_identifiers_map), 8):
+            batch_plugin_ids = list(plugin_identifiers_map.keys())[i : i + 8]
             batch_plugin_identifiers = [plugin_identifiers_map[plugin_id] for plugin_id in batch_plugin_ids]
 
             try:
