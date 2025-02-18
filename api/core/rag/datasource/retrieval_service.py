@@ -374,5 +374,3 @@ class RetrievalService:
         except Exception as e:
             db.session.rollback()
             raise e
-        finally:
-            db.session.close()
