@@ -438,7 +438,7 @@ class VertexAiLargeLanguageModel(LargeLanguageModel):
             ]
         )
 
-    def _convert_grounding_to_glm_tool(self, dynamic_threshold: Optional[float]) -> "glm.Tool":
+    def _convert_grounding_to_glm_tool(self, dynamic_threshold: Optional[float]) -> list["glm.Tool"]:
         """
         Convert grounding messages to glm tools
 
@@ -452,6 +452,7 @@ class VertexAiLargeLanguageModel(LargeLanguageModel):
                 glm.grounding.GoogleSearchRetrieval(
                     # Optional: For Dynamic Retrieval
                     dynamic_retrieval_config=glm.grounding.DynamicRetrievalConfig(
+                        mode=glm.grounding.DynamicRetrievalConfig.Mode.MODE_DYNAMIC,
                         dynamic_threshold=dynamic_threshold,
                     )
                 )
