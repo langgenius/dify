@@ -5,6 +5,7 @@ import {
 import { useTranslation } from 'react-i18next'
 import {
   RiEditBoxLine,
+  RiExpandRightLine,
   RiLayoutLeft2Line,
 } from '@remixicon/react'
 import { useChatWithHistoryContext } from '../context'
@@ -19,7 +20,11 @@ import LogoSite from '@/app/components/base/logo/logo-site'
 import type { ConversationItem } from '@/models/share'
 import cn from '@/utils/classnames'
 
-const Sidebar = () => {
+type Props = {
+  isPanel?: boolean
+}
+
+const Sidebar = ({ isPanel }: Props) => {
   const { t } = useTranslation()
   const {
     appData,
@@ -33,7 +38,10 @@ const Sidebar = () => {
     conversationRenaming,
     handleRenameConversation,
     handleDeleteConversation,
+    sidebarCollapseState,
+    handleSidebarCollapse,
   } = useChatWithHistoryContext()
+  const isSidebarCollapsed = sidebarCollapseState
 
   const [showConfirm, setShowConfirm] = useState<ConversationItem | null>(null)
   const [showRename, setShowRename] = useState<ConversationItem | null>(null)
@@ -67,8 +75,13 @@ const Sidebar = () => {
   }, [showRename, handleRenameConversation, handleCancelRename])
 
   return (
-    <div className='flex flex-col w-[236px] p-1 pr-0'>
-      <div className='shrink-0 flex items-center gap-3 p-3 pr-2'>
+    <div className={cn(
+      'grow flex flex-col',
+      isPanel && 'rounded-xl bg-components-panel-bg border-[0.5px] border-components-panel-border-subtle shadow-lg',
+    )}>
+      <div className={cn(
+        'shrink-0 flex items-center gap-3 p-3 pr-2',
+      )}>
         <div className='shrink-0'>
           <AppIcon
             size='large'
@@ -79,13 +92,20 @@ const Sidebar = () => {
           />
         </div>
         <div className={cn('grow text-text-secondary system-md-semibold truncate')}>{appData?.site.title}</div>
-        <ActionButton size='l' onClick={() => { }}>
-          <RiLayoutLeft2Line className='w-5 h-5' />
-        </ActionButton>
+        {isSidebarCollapsed && (
+          <ActionButton size='l' onClick={() => handleSidebarCollapse(false)}>
+            <RiExpandRightLine className='w-5 h-5' />
+          </ActionButton>
+        )}
+        {!isSidebarCollapsed && (
+          <ActionButton size='l' onClick={() => handleSidebarCollapse(true)}>
+            <RiLayoutLeft2Line className='w-5 h-5' />
+          </ActionButton>
+        )}
       </div>
       <div className='shrink-0 px-3 py-4'>
-        <Button variant='secondary-accent' className='w-full justify-center space-x-0.5' onClick={handleNewConversation}>
-          <RiEditBoxLine className='w-4 h-4' />
+        <Button variant='secondary-accent' className='w-full justify-center' onClick={handleNewConversation}>
+          <RiEditBoxLine className='w-4 h-4 mr-1' />
           {t('share.chat.newChat')}
         </Button>
       </div>

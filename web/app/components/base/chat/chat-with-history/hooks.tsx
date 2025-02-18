@@ -110,6 +110,19 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
       changeLanguage(appData.site.default_language)
   }, [appData])
 
+  const [sidebarCollapseState, setSidebarCollapseState] = useState<boolean>(false)
+  const handleSidebarCollapse = useCallback((state: boolean) => {
+    if (appId) {
+      setSidebarCollapseState(state)
+      localStorage.setItem('webappSidebarCollapse', state ? 'collapsed' : 'expanded')
+    }
+  }, [appId, setSidebarCollapseState])
+  useEffect(() => {
+    if (appId) {
+      const localState = localStorage.getItem('webappSidebarCollapse')
+      setSidebarCollapseState(localState === 'collapsed')
+    }
+  }, [appId])
   const [conversationIdInfo, setConversationIdInfo] = useLocalStorageState<Record<string, string>>(CONVERSATION_ID_INFO, {
     defaultValue: {},
   })
@@ -456,5 +469,7 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
     chatShouldReloadKey,
     handleFeedback,
     currentChatInstanceRef,
+    sidebarCollapseState,
+    handleSidebarCollapse,
   }
 }

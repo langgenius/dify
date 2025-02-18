@@ -49,6 +49,8 @@ export type ChatWithHistoryContextValue = {
   handleFeedback: (messageId: string, feedback: Feedback) => void
   currentChatInstanceRef: RefObject<{ handleStop: () => void }>
   themeBuilder?: ThemeBuilder
+  sidebarCollapseState?: boolean
+  handleSidebarCollapse: (state: boolean) => void
 }
 
 export const ChatWithHistoryContext = createContext<ChatWithHistoryContextValue>({
@@ -75,5 +77,7 @@ export const ChatWithHistoryContext = createContext<ChatWithHistoryContextValue>
   isInstalledApp: false,
   handleFeedback: () => {},
   currentChatInstanceRef: { current: { handleStop: () => {} } },
+  sidebarCollapseState: false,
+  handleSidebarCollapse: () => {},
 })
 export const useChatWithHistoryContext = () => useContext(ChatWithHistoryContext)

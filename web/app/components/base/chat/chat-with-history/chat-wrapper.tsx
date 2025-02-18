@@ -9,7 +9,6 @@ import type {
 import { useChat } from '../chat/hooks'
 import { getLastAnswer, isValidGeneratedAnswer } from '../utils'
 import { useChatWithHistoryContext } from './context'
-import Header from './header'
 import ConfigPanel from './config-panel'
 import {
   fetchSuggestedQuestions,
@@ -111,10 +110,10 @@ const ChatWrapper = () => {
     if (inputsForms.length) {
       return (
         <>
-          <Header
+          {/* <Header
             isMobile={isMobile}
             title={currentConversationItem?.name || ''}
-          />
+          /> */}
           {
             !currentConversationId && (
               <div className={`mx-auto w-full max-w-[720px] ${isMobile && 'px-4'}`}>
@@ -131,18 +130,8 @@ const ChatWrapper = () => {
       )
     }
 
-    return (
-      <Header
-        isMobile={isMobile}
-        title={currentConversationItem?.name || ''}
-      />
-    )
-  }, [
-    currentConversationId,
-    inputsForms,
-    currentConversationItem,
-    isMobile,
-  ])
+    return null
+  }, [currentConversationId, inputsForms, isMobile])
 
   const answerIcon = (appData?.site && appData.site.use_icon_as_answer_icon)
     ? <AnswerIcon
