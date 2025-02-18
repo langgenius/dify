@@ -178,7 +178,7 @@ export default combine(
           '!**/build',
           '!**/.storybook',
           '!**/.next',
-          '!**/.public',
+          '!**/public',
         ],
         cssFilesRefreshRate: 5_000,
         removeDuplicates: true,
