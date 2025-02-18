@@ -18,6 +18,7 @@ import {
   useFetchToolsData,
   useNodesReadOnly,
 } from '@/app/components/workflow/hooks'
+import { canFindTool } from '@/utils'
 
 const useConfig = (id: string, payload: ToolNodeType) => {
   const { nodesReadOnly: readOnly } = useNodesReadOnly()
@@ -49,7 +50,7 @@ const useConfig = (id: string, payload: ToolNodeType) => {
         return []
     }
   })()
-  const currCollection = currentTools.find(item => item.id === provider_id)
+  const currCollection = currentTools.find(item => canFindTool(item.id, provider_id))
 
   // Auth
   const needAuth = !!currCollection?.allow_delete

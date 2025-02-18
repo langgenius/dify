@@ -72,7 +72,10 @@ import { FILE_EXTS } from '@/app/components/base/prompt-editor/constants'
 import { SupportUploadFileTypes } from '@/app/components/workflow/types'
 import NewFeaturePanel from '@/app/components/base/features/new-feature-panel'
 import { fetchFileUploadConfig } from '@/service/common'
-import { correctProvider } from '@/utils'
+import {
+  correctModelProvider,
+  correctToolProvider,
+} from '@/utils'
 import PluginDependency from '@/app/components/workflow/plugin-dependency'
 
 type PublishConfig = {
@@ -557,7 +560,7 @@ const Configuration: FC = () => {
               ...modelConfig.annotation_reply,
               embedding_model: {
                 ...modelConfig.annotation_reply.embedding_model,
-                embedding_provider_name: correctProvider(modelConfig.annotation_reply.embedding_model.embedding_provider_name),
+                embedding_provider_name: correctModelProvider(modelConfig.annotation_reply.embedding_model.embedding_provider_name),
               },
             }
           }
@@ -572,7 +575,7 @@ const Configuration: FC = () => {
 
         const config = {
           modelConfig: {
-            provider: correctProvider(model.provider),
+            provider: correctModelProvider(model.provider),
             model_id: model.name,
             mode: model.mode,
             configs: {
@@ -627,8 +630,8 @@ const Configuration: FC = () => {
                   isDeleted: res.deleted_tools?.some((deletedTool: any) => deletedTool.id === tool.id && deletedTool.tool_name === tool.tool_name),
                   notAuthor: collectionList.find(c => tool.provider_id === c.id)?.is_team_authorization === false,
                   ...(tool.provider_type === 'builtin' ? {
-                    provider_id: correctProvider(tool.provider_name),
-                    provider_name: correctProvider(tool.provider_name),
+                    provider_id: correctToolProvider(tool.provider_name),
+                    provider_name: correctToolProvider(tool.provider_name),
                   } : {}),
                 }
               }),
@@ -653,7 +656,7 @@ const Configuration: FC = () => {
           ...(retrievalConfig.reranking_model ? {
             reranking_model: {
               ...retrievalConfig.reranking_model,
-              reranking_provider_name: correctProvider(modelConfig.dataset_configs.reranking_model.reranking_provider_name),
+              reranking_provider_name: correctModelProvider(modelConfig.dataset_configs.reranking_model.reranking_provider_name),
             },
           } : {}),
         })
