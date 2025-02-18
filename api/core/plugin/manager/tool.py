@@ -3,7 +3,7 @@ from typing import Any, Optional
 
 from pydantic import BaseModel
 
-from core.plugin.entities.plugin import GenericProviderID
+from core.plugin.entities.plugin import GenericProviderID, ToolProviderID
 from core.plugin.entities.plugin_daemon import PluginBasicBooleanResponse, PluginToolProviderEntity
 from core.plugin.manager.base import BasePluginManager
 from core.tools.entities.tool_entities import ToolInvokeMessage, ToolParameter
@@ -45,7 +45,7 @@ class PluginToolManager(BasePluginManager):
         """
         Fetch tool provider for the given tenant and plugin.
         """
-        tool_provider_id = GenericProviderID(provider)
+        tool_provider_id = ToolProviderID(provider)
 
         def transformer(json_response: dict[str, Any]) -> dict:
             data = json_response.get("data")
