@@ -289,6 +289,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
               items={languages.filter(item => item.supported)}
               defaultValue={language}
               onSelect={item => setLanguage(item.value as Language)}
+              notClearable
             />
           </div>
           {/* theme color */}

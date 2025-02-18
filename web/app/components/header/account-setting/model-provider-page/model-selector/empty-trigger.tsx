@@ -1,8 +1,8 @@
 import type { FC } from 'react'
-import { RiArrowDownSLine } from '@remixicon/react'
+import { RiEqualizer2Line } from '@remixicon/react'
 import { CubeOutline } from '@/app/components/base/icons/src/vender/line/shapes'
 import cn from '@/utils/classnames'
-
+import { useTranslation } from 'react-i18next'
 type ModelTriggerProps = {
   open: boolean
   className?: string
@@ -11,6 +11,7 @@ const ModelTrigger: FC<ModelTriggerProps> = ({
   open,
   className,
 }) => {
+  const { t } = useTranslation()
   return (
     <div
       className={cn(
@@ -24,13 +25,13 @@ const ModelTrigger: FC<ModelTriggerProps> = ({
         </div>
         <div
           className='text-[13px] text-text-tertiary truncate'
-          title='Select model'
+          title='Configure model'
         >
-          Select model
+          {t('plugin.detailPanel.configureModel')}
         </div>
       </div>
       <div className='shrink-0 flex items-center justify-center w-4 h-4'>
-        <RiArrowDownSLine className='w-3.5 h-3.5 text-text-tertiary' />
+        <RiEqualizer2Line className='w-3.5 h-3.5 text-text-tertiary' />
       </div>
     </div>
   )

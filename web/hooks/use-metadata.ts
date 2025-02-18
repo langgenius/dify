@@ -65,7 +65,7 @@ export const useMetadataMap = (): MetadataMap => {
         },
         'author/publisher': { label: t(`${fieldPrefix}.webPage.authorPublisher`) },
         'publish_date': { label: t(`${fieldPrefix}.webPage.publishDate`) },
-        'topics/keywords': { label: t(`${fieldPrefix}.webPage.topicsKeywords`) },
+        'topic/keywords': { label: t(`${fieldPrefix}.webPage.topicKeywords`) },
         'description': { label: t(`${fieldPrefix}.webPage.description`) },
       },
     },
@@ -85,7 +85,7 @@ export const useMetadataMap = (): MetadataMap => {
         },
         'volume/issue/page_numbers': { label: t(`${fieldPrefix}.paper.volumeIssuePage`) },
         'doi': { label: t(`${fieldPrefix}.paper.DOI`) },
-        'topics/keywords': { label: t(`${fieldPrefix}.paper.topicsKeywords`) },
+        'topic/keywords': { label: t(`${fieldPrefix}.paper.topicKeywords`) },
         'abstract': {
           label: t(`${fieldPrefix}.paper.abstract`),
           inputType: 'textarea',
@@ -158,8 +158,8 @@ export const useMetadataMap = (): MetadataMap => {
         'start_date': { label: t(`${fieldPrefix}.IMChat.startDate`) },
         'end_date': { label: t(`${fieldPrefix}.IMChat.endDate`) },
         'participants': { label: t(`${fieldPrefix}.IMChat.participants`) },
-        'topicsKeywords': {
-          label: t(`${fieldPrefix}.IMChat.topicsKeywords`),
+        'topicKeywords': {
+          label: t(`${fieldPrefix}.IMChat.topicKeywords`),
           inputType: 'textarea',
         },
         'fileType': { label: t(`${fieldPrefix}.IMChat.fileType`) },

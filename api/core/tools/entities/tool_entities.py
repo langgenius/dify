@@ -125,7 +125,7 @@ class ToolInvokeMessage(BaseModel):
 
     class VariableMessage(BaseModel):
         variable_name: str = Field(..., description="The name of the variable")
-        variable_value: str = Field(..., description="The value of the variable")
+        variable_value: Any = Field(..., description="The value of the variable")
         stream: bool = Field(default=False, description="Whether the variable is streamed")
 
         @model_validator(mode="before")

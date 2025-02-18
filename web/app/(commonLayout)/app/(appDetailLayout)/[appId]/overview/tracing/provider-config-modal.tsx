@@ -283,7 +283,7 @@ const ProviderConfigModal: FC<Props> = ({
                             >
                               <span className='text-[#D92D20]'>{t('common.operation.remove')}</span>
                             </Button>
-                            <Divider className='mx-3 h-[18px]'/>
+                            <Divider className='mx-3 h-[18px]' />
                           </>
                         )}
                         <Button

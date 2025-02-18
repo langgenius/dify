@@ -5,7 +5,7 @@ import classNames from '@/utils/classnames'
 
 type SwitchProps = {
   onChange?: (value: boolean) => void
-  size?: 'sm' | 'md' | 'lg' | 'l'
+  size?: 'xs' | 'sm' | 'md' | 'lg' | 'l'
   defaultValue?: boolean
   disabled?: boolean
   className?: string
@@ -32,6 +32,7 @@ const Switch = (
     l: 'h-5 w-9',
     md: 'h-4 w-7',
     sm: 'h-3 w-5',
+    xs: 'h-2.5 w-3.5',
   }
 
   const circleStyle = {
@@ -39,6 +40,7 @@ const Switch = (
     l: 'h-4 w-4',
     md: 'h-3 w-3',
     sm: 'h-2 w-2',
+    xs: 'h-1.5 w-1',
   }
 
   const translateLeft = {
@@ -46,6 +48,7 @@ const Switch = (
     l: 'translate-x-4',
     md: 'translate-x-3',
     sm: 'translate-x-2',
+    xs: 'translate-x-1.5',
   }
   return (
     <OriginalSwitch

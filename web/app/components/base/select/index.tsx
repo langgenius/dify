@@ -279,10 +279,10 @@ const SimpleSelect: FC<ISelectProps> = ({
                 </ListboxOption>
               ))}
             </ListboxOptions>
-          </Transition>
+          </Transition >
         )}
-      </div>
-    </Listbox>
+      </div >
+    </Listbox >
   )
 }
 

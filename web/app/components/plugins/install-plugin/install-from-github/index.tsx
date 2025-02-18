@@ -136,9 +136,10 @@ const InstallFromGitHub: React.FC<InstallFromGitHubProps> = ({ updatePayload, on
     setState(prevState => ({ ...prevState, step: InstallStepFromGitHub.uploadFailed }))
   }, [])
 
-  const handleInstalled = useCallback(() => {
+  const handleInstalled = useCallback((notRefresh?: boolean) => {
     setState(prevState => ({ ...prevState, step: InstallStepFromGitHub.installed }))
-    refreshPluginList(manifest)
+    if (!notRefresh)
+      refreshPluginList(manifest)
     setIsInstalling(false)
     onSuccess()
   }, [manifest, onSuccess, refreshPluginList, setIsInstalling])

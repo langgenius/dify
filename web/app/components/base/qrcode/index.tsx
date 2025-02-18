@@ -64,7 +64,7 @@ const ShareQRCode = ({ content }: Props) => {
             className='absolute top-8 -right-8 z-10 w-[232px] flex flex-col items-center bg-components-panel-bg shadow-xs rounded-lg p-4'
             onClick={handlePanelClick}
           >
-            <QRCode size={160} value={content} className='mb-2'/>
+            <QRCode size={160} value={content} className='mb-2' />
             <div className='flex items-center system-xs-regular'>
               <div className='text-text-tertiary'>{t('appOverview.overview.appInfo.qrcode.scan')}</div>
               <div className='text-text-tertiary'>·</div>

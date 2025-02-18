@@ -29,6 +29,7 @@ const translation = {
     download: '下载',
     viewDetails: '查看详情',
     delete: '删除',
+    deleteApp: '删除应用',
     settings: '设置',
     setup: '设置',
     getForFree: '免费获取',
@@ -296,6 +297,7 @@ const translation = {
       usedUp: '试用额度已用完，请在下方添加自己的模型供应商',
       useYourModel: '当前正在使用你自己的模型供应商。',
       close: '关闭',
+      trialQuotaTip: '您的 Anthropic 体验额度将于 2025/03/17 过期，过期后将无法使用，请尽快体验。',
     },
     anthropic: {
       using: '嵌入能力正在使用',
@@ -542,6 +544,8 @@ const translation = {
       hitScore: '召回得分：',
     },
     inputPlaceholder: '和机器人聊天',
+    thinking: '深度思考中...',
+    thought: '已深度思考',
   },
   promptEditor: {
     placeholder: '在这里写你的提示词，输入\'{\' 插入变量、输入\'/\' 插入提示内容块',

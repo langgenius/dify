@@ -1147,8 +1147,10 @@ class Message(Base):
             "id": self.id,
             "app_id": self.app_id,
             "conversation_id": self.conversation_id,
+            "model_id": self.model_id,
             "inputs": self.inputs,
             "query": self.query,
+            "total_price": self.total_price,
             "message": self.message,
             "answer": self.answer,
             "status": self.status,
@@ -1169,7 +1171,9 @@ class Message(Base):
             id=data["id"],
             app_id=data["app_id"],
             conversation_id=data["conversation_id"],
+            model_id=data["model_id"],
             inputs=data["inputs"],
+            total_price=data["total_price"],
             query=data["query"],
             message=data["message"],
             answer=data["answer"],
@@ -1285,7 +1289,7 @@ class MessageAnnotation(Base):
         return account
 
 
-class AppAnnotationHitHistory(Base):
+class AppAnnotationHitHistory(db.Model):  # type: ignore[name-defined]
     __tablename__ = "app_annotation_hit_histories"
     __table_args__ = (
         db.PrimaryKeyConstraint("id", name="app_annotation_hit_histories_pkey"),

@@ -22,6 +22,10 @@ import ToolSelector from '@/app/components/plugins/plugin-detail-panel/tool-sele
 import MultipleToolSelector from '@/app/components/plugins/plugin-detail-panel/multiple-tool-selector'
 import AppSelector from '@/app/components/plugins/plugin-detail-panel/app-selector'
 import RadioE from '@/app/components/base/radio/ui'
+import type {
+  NodeOutPutVar,
+} from '@/app/components/workflow/types'
+import type { Node } from 'reactflow'
 
 type FormProps<
   CustomFormSchema extends Omit<CredentialFormSchema, 'type'> & { type: string } = never,
@@ -47,6 +51,9 @@ type FormProps<
   ) => ReactNode
   // If return falsy value, this field will fallback to default render
   override?: [Array<FormTypeEnum>, (formSchema: CredentialFormSchema, props: Omit<FormProps<CustomFormSchema>, 'override' | 'customRenderField'>) => ReactNode]
+  nodeId?: string
+  nodeOutputVars?: NodeOutPutVar[],
+  availableNodes?: Node[],
 }
 
 function Form<
@@ -69,6 +76,9 @@ function Form<
   fieldMoreInfo,
   customRenderField,
   override,
+  nodeId,
+  nodeOutputVars,
+  availableNodes,
 }: FormProps<CustomFormSchema>) {
   const language = useLanguage()
   const [changeKey, setChangeKey] = useState('')
@@ -97,7 +107,8 @@ function Form<
     const shouldClearVariable: Record<string, string | undefined> = {}
     if (showOnVariableMap[key]?.length) {
       showOnVariableMap[key].forEach((clearVariable) => {
-        shouldClearVariable[clearVariable] = undefined
+        const schema = formSchemas.find(it => it.variable === clearVariable)
+        shouldClearVariable[clearVariable] = schema ? schema.default : undefined
       })
     }
     onChange({ ...value, [key]: val, ...shouldClearVariable })
@@ -326,6 +337,9 @@ function Form<
           </div>
           <ToolSelector
             scope={scope}
+            nodeId={nodeId}
+            nodeOutputVars={nodeOutputVars || []}
+            availableNodes={availableNodes || []}
             disabled={readonly}
             value={value[variable]}
             // selectedTools={value[variable] ? [value[variable]] : []}
@@ -351,6 +365,9 @@ function Form<
         <div key={variable} className={cn(itemClassName, 'py-3')}>
           <MultipleToolSelector
             disabled={readonly}
+            nodeId={nodeId}
+            nodeOutputVars={nodeOutputVars || []}
+            availableNodes={availableNodes || []}
             scope={scope}
             label={label[language] || label.en_US}
             required={required}

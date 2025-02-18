@@ -184,7 +184,7 @@ export const useChecklistBeforePublish = () => {
     }
 
     return true
-  }, [nodesExtraData, notify, t, store, isChatMode, buildInTools, customTools, workflowTools, language])
+  }, [store, isChatMode, notify, t, buildInTools, customTools, workflowTools, language, nodesExtraData, strategyProviders])
 
   return {
     handleCheckBeforePublish,

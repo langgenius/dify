@@ -1,9 +1,9 @@
 import type { CSSProperties, ReactNode } from 'react'
 import React from 'react'
 import { type VariantProps, cva } from 'class-variance-authority'
+import { Highlight } from '@/app/components/base/icons/src/public/common'
 import classNames from '@/utils/classnames'
 import './index.css'
-import { Highlight } from '@/app/components/base/icons/src/public/common'
 
 const PremiumBadgeVariants = cva(
   'premium-badge',

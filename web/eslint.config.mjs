@@ -8,6 +8,22 @@ import storybook from 'eslint-plugin-storybook'
 import tailwind from 'eslint-plugin-tailwindcss'
 import reactHooks from 'eslint-plugin-react-hooks'
 import reactRefresh from 'eslint-plugin-react-refresh'
+import path from 'node:path'
+import { fileURLToPath } from 'node:url'
+import js from '@eslint/js'
+import { FlatCompat } from '@eslint/eslintrc'
+import globals from 'globals'
+import storybook from 'eslint-plugin-storybook'
+import { fixupConfigRules } from '@eslint/compat'
+import tailwind from 'eslint-plugin-tailwindcss'
+
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = path.dirname(__filename)
+const compat = new FlatCompat({
+  baseDirectory: __dirname,
+  recommendedConfig: js.configs.recommended,
+  allConfig: js.configs.all,
+})
 
 export default combine(
   stylistic({
@@ -63,10 +79,10 @@ export default combine(
   node(),
   // use nextjs config will break @eslint/config-inspector
   // use `ESLINT_CONFIG_INSPECTOR=true pnpx @eslint/config-inspector` to check the config
-  // ...process.env.ESLINT_CONFIG_INSPECTOR
-  //   ? []
-  // TODO: remove this when upgrade to nextjs 15
-  // : fixupConfigRules(compat.extends('next')),
+  ...process.env.ESLINT_CONFIG_INSPECTOR
+    ? []
+    // TODO: remove this when upgrade to nextjs 15
+    : fixupConfigRules(compat.extends('next')),
   {
     rules: {
       // performance issue, and not used.
@@ -76,6 +92,7 @@ export default combine(
   {
     ignores: [
       '**/node_modules/*',
+      '**/node_modules/',
       '**/dist/',
       '**/build/',
       '**/out/',

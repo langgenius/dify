@@ -24,7 +24,7 @@ import {
   getFilesInLogs,
 } from '@/app/components/base/file-uploader/utils'
 
-export type IResultProps = {
+export interface IResultProps {
   isWorkflow: boolean
   isCallBatchAPI: boolean
   isPC: boolean

@@ -14,6 +14,7 @@ import { useGitHubReleases } from '../install-plugin/hooks'
 import Toast from '@/app/components/base/toast'
 import { useModalContext } from '@/context/modal-context'
 import { useInvalidateInstalledPluginList } from '@/service/use-plugins'
+import type { PluginType } from '@/app/components/plugins/types'
 
 const i18nPrefix = 'plugin.action'
 
@@ -22,6 +23,7 @@ type Props = {
   installationId: string
   pluginUniqueIdentifier: string
   pluginName: string
+  category: PluginType
   usedInApps: number
   isShowFetchNewVersion: boolean
   isShowInfo: boolean
@@ -34,6 +36,7 @@ const Action: FC<Props> = ({
   installationId,
   pluginUniqueIdentifier,
   pluginName,
+  category,
   isShowFetchNewVersion,
   isShowInfo,
   isShowDelete,
@@ -67,6 +70,7 @@ const Action: FC<Props> = ({
         },
         payload: {
           type: PluginSource.github,
+          category,
           github: {
             originalPackageInfo: {
               id: pluginUniqueIdentifier,
@@ -94,7 +98,7 @@ const Action: FC<Props> = ({
       hideDeleteConfirm()
       onDelete()
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [installationId, onDelete])
   return (
     <div className='flex space-x-1'>

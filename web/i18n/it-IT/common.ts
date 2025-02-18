@@ -50,6 +50,7 @@ const translation = {
     submit: 'Invia',
     skip: 'Nave',
     imageCopied: 'Immagine copiata',
+    deleteApp: 'Elimina app',
   },
   errorMsg: {
     fieldRequired: '{{field}} è obbligatorio',
@@ -302,6 +303,7 @@ const translation = {
       usedUp: 'Quota di prova esaurita. Aggiungi il tuo fornitore di modelli.',
       useYourModel: 'Attualmente utilizzando il proprio fornitore di modelli.',
       close: 'Chiudi',
+      trialQuotaTip: 'La tua quota di prova di Anthropic scadrà l\'11/03/2025 e non sarà più disponibile in seguito. Sfruttalo in tempo.',
     },
     anthropic: {
       using: 'La capacità di embedding è in uso',

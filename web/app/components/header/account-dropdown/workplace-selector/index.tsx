@@ -46,7 +46,7 @@ const WorkplaceSelector = () => {
                 <div className={'truncate max-w-[80px] text-text-secondary system-sm-medium'}>{currentWorkspace?.name}</div>
                 <RiArrowDownSLine className='w-4 h-4 text-text-secondary' />
               </div>
-            </MenuButton>
+            </MenuButton >
             <Transition
               as={Fragment}
               enter="transition ease-out duration-100"
@@ -90,7 +90,7 @@ const WorkplaceSelector = () => {
           </>
         )
       }
-    </Menu>
+    </Menu >
   )
 }
 

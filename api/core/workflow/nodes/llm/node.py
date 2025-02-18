@@ -3,6 +3,7 @@ import logging
 from collections.abc import Generator, Mapping, Sequence
 from typing import TYPE_CHECKING, Any, Optional, cast
 
+from configs import dify_config
 from core.app.entities.app_invoke_entities import ModelConfigWithCredentialsEntity
 from core.entities.model_entities import ModelStatus
 from core.entities.provider_entities import QuotaUnit
@@ -185,6 +186,8 @@ class LLMNode(BaseNode[LLMNodeData]):
                     result_text = event.text
                     usage = event.usage
                     finish_reason = event.finish_reason
+                    # deduct quota
+                    self.deduct_llm_quota(tenant_id=self.tenant_id, model_instance=model_instance, usage=usage)
                     break
         except LLMNodeError as e:
             yield RunCompletedEvent(
@@ -240,20 +243,28 @@ class LLMNode(BaseNode[LLMNodeData]):
             user=self.user_id,
         )
 
-        # handle invoke result
-        generator = self._handle_invoke_result(invoke_result=invoke_result)
-
-        usage = LLMUsage.empty_usage()
-        for event in generator:
-            yield event
-            if isinstance(event, ModelInvokeCompletedEvent):
-                usage = event.usage
-
-        # deduct quota
-        self.deduct_llm_quota(tenant_id=self.tenant_id, model_instance=model_instance, usage=usage)
+        return self._handle_invoke_result(invoke_result=invoke_result)
 
     def _handle_invoke_result(self, invoke_result: LLMResult | Generator) -> Generator[NodeEvent, None, None]:
         if isinstance(invoke_result, LLMResult):
+            content = invoke_result.message.content
+            if content is None:
+                message_text = ""
+            elif isinstance(content, str):
+                message_text = content
+            elif isinstance(content, list):
+                # Assuming the list contains PromptMessageContent objects with a "data" attribute
+                message_text = "".join(
+                    item.data if hasattr(item, "data") and isinstance(item.data, str) else str(item) for item in content
+                )
+            else:
+                message_text = str(content)
+
+            yield ModelInvokeCompletedEvent(
+                text=message_text,
+                usage=invoke_result.usage,
+                finish_reason=None,
+            )
             return
 
         model = None
@@ -740,10 +751,7 @@ class LLMNode(BaseNode[LLMNodeData]):
             if quota_unit == QuotaUnit.TOKENS:
                 used_quota = usage.total_tokens
             elif quota_unit == QuotaUnit.CREDITS:
-                used_quota = 1
-
-                if "gpt-4" in model_instance.model:
-                    used_quota = 20
+                used_quota = dify_config.get_model_credits(model_instance.model)
             else:
                 used_quota = 1
 

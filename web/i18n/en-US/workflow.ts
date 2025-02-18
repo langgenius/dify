@@ -195,6 +195,8 @@ const translation = {
       visionVariable: 'Vision Variable',
     },
     invalidVariable: 'Invalid variable',
+    noValidTool: '{{field}} no valid tool selected',
+    toolParameterRequired: '{{field}}: parameter [{{param}}] is required',
   },
   singleRun: {
     testRun: 'Test Run ',

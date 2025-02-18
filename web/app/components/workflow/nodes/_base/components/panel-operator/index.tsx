@@ -54,12 +54,12 @@ const PanelOperator = ({
         <div
           className={`
             flex items-center justify-center w-6 h-6 rounded-md cursor-pointer
-            hover:bg-black/5
-            ${open && 'bg-black/5'}
+            hover:bg-state-base-hover
+            ${open && 'bg-state-base-hover'}
             ${triggerClassName}
           `}
         >
-          <RiMoreFill className={`w-4 h-4 ${inNode ? 'text-gray-500' : 'text-gray-700'}`} />
+          <RiMoreFill className={'w-4 h-4 text-text-tertiary'} />
         </div>
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent className='z-[11]'>

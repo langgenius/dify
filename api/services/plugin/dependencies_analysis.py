@@ -1,3 +1,4 @@
+from core.helper import marketplace
 from core.plugin.entities.plugin import GenericProviderID, PluginDependency, PluginInstallationSource
 from core.plugin.manager.plugin import PluginInstallationManager
 
@@ -12,6 +13,8 @@ class DependenciesAnalysisService:
         """
         try:
             tool_provider_id = GenericProviderID(tool_id)
+            if tool_id in ["jina", "siliconflow"]:
+                tool_provider_id.plugin_name = tool_provider_id.plugin_name + "_tool"
             return tool_provider_id.plugin_id
         except Exception as e:
             raise e
@@ -25,6 +28,9 @@ class DependenciesAnalysisService:
         """
         try:
             generic_provider_id = GenericProviderID(model_provider_id)
+            if model_provider_id == "google":
+                generic_provider_id.plugin_name = "gemini"
+
             return generic_provider_id.plugin_id
         except Exception as e:
             raise e
@@ -39,15 +45,22 @@ class DependenciesAnalysisService:
             required_plugin_unique_identifiers.append(dependency.value.plugin_unique_identifier)
 
         manager = PluginInstallationManager()
-        missing_plugin_unique_identifiers = manager.fetch_missing_dependencies(
-            tenant_id, required_plugin_unique_identifiers
-        )
+
+        # get leaked dependencies
+        missing_plugins = manager.fetch_missing_dependencies(tenant_id, required_plugin_unique_identifiers)
+        missing_plugin_unique_identifiers = {plugin.plugin_unique_identifier: plugin for plugin in missing_plugins}
 
         leaked_dependencies = []
         for dependency in dependencies:
             unique_identifier = dependency.value.plugin_unique_identifier
             if unique_identifier in missing_plugin_unique_identifiers:
-                leaked_dependencies.append(dependency)
+                leaked_dependencies.append(
+                    PluginDependency(
+                        type=dependency.type,
+                        value=dependency.value,
+                        current_identifier=missing_plugin_unique_identifiers[unique_identifier].current_identifier,
+                    )
+                )
 
         return leaked_dependencies
 
@@ -98,3 +111,18 @@ class DependenciesAnalysisService:
                 raise ValueError(f"Unknown plugin source: {plugin.source}")
 
         return result
+
+    @classmethod
+    def generate_latest_dependencies(cls, dependencies: list[str]) -> list[PluginDependency]:
+        """
+        Generate the latest version of dependencies
+        """
+        dependencies = list(set(dependencies))
+        deps = marketplace.batch_fetch_plugin_manifests(dependencies)
+        return [
+            PluginDependency(
+                type=PluginDependency.Type.Marketplace,
+                value=PluginDependency.Marketplace(marketplace_plugin_unique_identifier=dep.latest_package_identifier),
+            )
+            for dep in deps
+        ]

@@ -1,5 +1,5 @@
 import type { FC } from 'react'
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import type {
   ModelItem,
@@ -9,11 +9,9 @@ import {
   CustomConfigurationStatusEnum,
   ModelTypeEnum,
 } from '../declarations'
-import type { PluginInfoFromMarketPlace } from '@/app/components/plugins/types'
 import { useInvalidateInstalledPluginList } from '@/service/use-plugins'
 import ConfigurationButton from './configuration-button'
 import Loading from '@/app/components/base/loading'
-import { PluginType } from '@/app/components/plugins/types'
 import {
   useModelModalHandler,
   useUpdateModelList,
@@ -26,8 +24,7 @@ import StatusIndicators from './status-indicators'
 import cn from '@/utils/classnames'
 import { useProviderContext } from '@/context/provider-context'
 import { RiEqualizer2Line } from '@remixicon/react'
-import { fetchPluginInfoFromMarketPlace } from '@/service/plugins'
-import { fetchModelProviderModelList } from '@/service/common'
+import { useModelInList, usePluginInfo } from '@/service/use-plugins'
 
 export type AgentModelTriggerProps = {
   open?: boolean
@@ -66,43 +63,14 @@ const AgentModelTrigger: FC<AgentModelTriggerProps> = ({
       needsConfiguration,
     }
   }, [modelProviders, providerName])
-  const [pluginInfo, setPluginInfo] = useState<PluginInfoFromMarketPlace | null>(null)
-  const [isPluginChecked, setIsPluginChecked] = useState(false)
   const [installed, setInstalled] = useState(false)
-  const [inModelList, setInModelList] = useState(false)
   const invalidateInstalledPluginList = useInvalidateInstalledPluginList()
   const handleOpenModal = useModelModalHandler()
 
-  useEffect(() => {
-    (async () => {
-      if (modelId && currentProvider) {
-        try {
-          const modelsData = await fetchModelProviderModelList(`/workspaces/current/model-providers/${currentProvider?.provider}/models`)
-          if (modelId && modelsData.data.find(item => item.model === modelId))
-            setInModelList(true)
-        }
-        catch (error) {
-          // pass
-        }
-      }
-      if (providerName) {
-        const parts = providerName.split('/')
-        const org = parts[0]
-        const name = parts[1]
-        try {
-          const pluginInfo = await fetchPluginInfoFromMarketPlace({ org, name })
-          if (pluginInfo.data.plugin.category === PluginType.model)
-            setPluginInfo(pluginInfo.data.plugin)
-        }
-        catch (error) {
-          // pass
-        }
-      }
-      setIsPluginChecked(true)
-    })()
-  }, [providerName, modelId, currentProvider])
+  const { data: inModelList = false } = useModelInList(currentProvider, modelId)
+  const { data: pluginInfo, isLoading: isPluginLoading } = usePluginInfo(providerName)
 
-  if (modelId && !isPluginChecked)
+  if (modelId && isPluginLoading)
     return <Loading />
 
   return (

@@ -113,6 +113,7 @@ const DetailHeader = ({
         },
         payload: {
           type: PluginSource.github,
+          category: detail.declaration.category,
           github: {
             originalPackageInfo: {
               id: detail.plugin_unique_identifier,
@@ -287,6 +288,7 @@ const DetailHeader = ({
         isShowUpdateModal && (
           <UpdateFromMarketplace
             payload={{
+              category: detail.declaration.category,
               originalPackageInfo: {
                 id: detail.plugin_unique_identifier,
                 payload: detail.declaration,

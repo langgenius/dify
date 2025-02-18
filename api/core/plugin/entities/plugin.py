@@ -159,7 +159,7 @@ class GenericProviderID:
             if re.match(r"^[a-z0-9_-]+$", value):
                 value = f"langgenius/{value}/{value}"
             else:
-                raise ValueError("Invalid plugin id")
+                raise ValueError(f"Invalid plugin id {value}")
 
         self.organization, self.plugin_name, self.provider_name = value.split("/")
         self.is_hardcoded = is_hardcoded
@@ -167,6 +167,21 @@ class GenericProviderID:
     @property
     def plugin_id(self) -> str:
         return f"{self.organization}/{self.plugin_name}"
+
+
+class ModelProviderID(GenericProviderID):
+    def __init__(self, value: str, is_hardcoded: bool = False) -> None:
+        super().__init__(value, is_hardcoded)
+        if self.organization == "langgenius" and self.provider_name == "google":
+            self.plugin_name = "gemini"
+
+
+class ToolProviderID(GenericProviderID):
+    def __init__(self, value: str, is_hardcoded: bool = False) -> None:
+        super().__init__(value, is_hardcoded)
+        if self.organization == "langgenius":
+            if self.provider_name in ["jina", "siliconflow"]:
+                self.plugin_name = f"{self.provider_name}_tool"
 
 
 class PluginDependency(BaseModel):
@@ -197,3 +212,9 @@ class PluginDependency(BaseModel):
 
     type: Type
     value: Github | Marketplace | Package
+    current_identifier: Optional[str] = None
+
+
+class MissingPluginDependency(BaseModel):
+    plugin_unique_identifier: str
+    current_identifier: Optional[str] = None

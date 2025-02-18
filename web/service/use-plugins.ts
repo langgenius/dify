@@ -1,5 +1,10 @@
 import { useCallback } from 'react'
 import type {
+  ModelProvider,
+} from '@/app/components/header/account-setting/model-provider-page/declarations'
+import { fetchModelProviderModelList } from '@/service/common'
+import { fetchPluginInfoFromMarketPlace } from '@/service/plugins'
+import type {
   DebugInfo as DebugInfoTypes,
   Dependency,
   GitHubItemAndMarketPlaceDependency,
@@ -11,6 +16,7 @@ import type {
   PluginDetail,
   PluginInfoFromMarketPlace,
   PluginTask,
+  PluginType,
   PluginsFromMarketplaceByInfoResponse,
   PluginsFromMarketplaceResponse,
   VersionInfo,
@@ -18,6 +24,7 @@ import type {
   uploadGitHubResponse,
 } from '@/app/components/plugins/types'
 import { TaskStatus } from '@/app/components/plugins/types'
+import { PluginType as PluginTypeEnum } from '@/app/components/plugins/types'
 import type {
   PluginsSearchParams,
 } from '@/app/components/plugins/marketplace/types'
@@ -31,6 +38,7 @@ import {
 import { useInvalidateAllBuiltInTools } from './use-tools'
 import usePermission from '@/app/components/plugins/plugin-page/use-permission'
 import { uninstallPlugin } from '@/service/plugins'
+import useRefreshPluginList from '@/app/components/plugins/install-plugin/hooks/use-refresh-plugin-list'
 
 const NAME_SPACE = 'plugins'
 
@@ -367,10 +375,11 @@ export const useFetchPluginsInMarketPlaceByInfo = (infos: Record<string, any>[])
 }
 
 const usePluginTaskListKey = [NAME_SPACE, 'pluginTaskList']
-export const usePluginTaskList = () => {
+export const usePluginTaskList = (category?: PluginType) => {
   const {
     canManagement,
   } = usePermission()
+  const { refreshPluginList } = useRefreshPluginList()
   const {
     data,
     isFetched,
@@ -383,8 +392,12 @@ export const usePluginTaskList = () => {
     refetchInterval: (lastQuery) => {
       const lastData = lastQuery.state.data
       const taskDone = lastData?.tasks.every(task => task.status === TaskStatus.success || task.status === TaskStatus.failed)
-      if (taskDone)
+      const taskAllFailed = lastData?.tasks.every(task => task.status === TaskStatus.failed)
+      if (taskDone) {
+        if (lastData?.tasks.length && !taskAllFailed)
+          refreshPluginList(category ? { category } as any : undefined, !category)
         return false
+      }
 
       return 5000
     },
@@ -441,5 +454,42 @@ export const useMutationCheckDependencies = () => {
     mutationFn: (appId: string) => {
       return get<{ leaked_dependencies: Dependency[] }>(`/apps/imports/${appId}/check-dependencies`)
     },
+  })
+}
+
+export const useModelInList = (currentProvider?: ModelProvider, modelId?: string) => {
+  return useQuery({
+    queryKey: ['modelInList', currentProvider?.provider, modelId],
+    queryFn: async () => {
+      if (!modelId || !currentProvider) return false
+      try {
+        const modelsData = await fetchModelProviderModelList(`/workspaces/current/model-providers/${currentProvider?.provider}/models`)
+        return !!modelId && !!modelsData.data.find(item => item.model === modelId)
+      }
+      catch (error) {
+        return false
+      }
+    },
+    enabled: !!modelId && !!currentProvider,
+  })
+}
+
+export const usePluginInfo = (providerName?: string) => {
+  return useQuery({
+    queryKey: ['pluginInfo', providerName],
+    queryFn: async () => {
+      if (!providerName) return null
+      const parts = providerName.split('/')
+      const org = parts[0]
+      const name = parts[1]
+      try {
+        const response = await fetchPluginInfoFromMarketPlace({ org, name })
+        return response.data.plugin.category === PluginTypeEnum.model ? response.data.plugin : null
+      }
+      catch (error) {
+        return null
+      }
+    },
+    enabled: !!providerName,
   })
 }

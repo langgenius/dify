@@ -36,6 +36,7 @@ export type AgentStrategyProps = {
   onFormValueChange: (value: ToolVarInputs) => void
   nodeOutputVars?: NodeOutPutVar[],
   availableNodes?: Node[],
+  nodeId?: string
 }
 
 type CustomSchema<Type, Field = {}> = Omit<CredentialFormSchema, 'type'> & { type: Type } & Field
@@ -46,7 +47,7 @@ type MultipleToolSelectorSchema = CustomSchema<'array[tools]'>
 type CustomField = ToolSelectorSchema | MultipleToolSelectorSchema
 
 export const AgentStrategy = memo((props: AgentStrategyProps) => {
-  const { strategy, onStrategyChange, formSchema, formValue, onFormValueChange, nodeOutputVars, availableNodes } = props
+  const { strategy, onStrategyChange, formSchema, formValue, onFormValueChange, nodeOutputVars, availableNodes, nodeId } = props
   const { t } = useTranslation()
   const defaultModel = useDefaultModel(ModelTypeEnum.textGeneration)
   const renderI18nObject = useRenderI18nObject()
@@ -141,7 +142,7 @@ export const AgentStrategy = memo((props: AgentStrategyProps) => {
   ]
   const renderField: ComponentProps<typeof Form<CustomField>>['customRenderField'] = (schema, props) => {
     switch (schema.type) {
-      case 'tool-selector': {
+      case FormTypeEnum.toolSelector: {
         const value = props.value[schema.variable]
         const onChange = (value: any) => {
           props.onChange({ ...props.value, [schema.variable]: value })
@@ -154,6 +155,9 @@ export const AgentStrategy = memo((props: AgentStrategyProps) => {
             tooltip={schema.tooltip && renderI18nObject(schema.tooltip)}
           >
             <ToolSelector
+              nodeId={props.nodeId || ''}
+              nodeOutputVars={props.nodeOutputVars || []}
+              availableNodes={props.availableNodes || []}
               scope={schema.scope}
               value={value}
               onSelect={item => onChange(item)}
@@ -162,13 +166,16 @@ export const AgentStrategy = memo((props: AgentStrategyProps) => {
           </Field>
         )
       }
-      case 'array[tools]': {
+      case FormTypeEnum.multiToolSelector: {
         const value = props.value[schema.variable]
         const onChange = (value: any) => {
           props.onChange({ ...props.value, [schema.variable]: value })
         }
         return (
           <MultipleToolSelector
+            nodeId={props.nodeId || ''}
+            nodeOutputVars={props.nodeOutputVars || []}
+            availableNodes={props.availableNodes || []}
             scope={schema.scope}
             value={value || []}
             label={renderI18nObject(schema.label)}
@@ -199,6 +206,9 @@ export const AgentStrategy = memo((props: AgentStrategyProps) => {
             fieldLabelClassName='uppercase'
             customRenderField={renderField}
             override={override}
+            nodeId={nodeId}
+            nodeOutputVars={nodeOutputVars || []}
+            availableNodes={availableNodes || []}
           />
         </div>
         : <ListEmpty

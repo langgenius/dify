@@ -50,6 +50,7 @@ const translation = {
     submit: 'Prześlij',
     skip: 'Statek',
     imageCopied: 'Skopiowany obraz',
+    deleteApp: 'Usuń aplikację',
   },
   placeholder: {
     input: 'Proszę wprowadzić',
@@ -295,6 +296,7 @@ const translation = {
       usedUp: 'Limit próbny został wyczerpany. Dodaj własnego dostawcę modeli.',
       useYourModel: 'Aktualnie używany jest własny dostawca modeli.',
       close: 'Zamknij',
+      trialQuotaTip: 'Twój limit próbny Anthropic wygaśnie w dniu 11.03.2025 i nie będzie już dostępny po tym czasie. Prosimy o skorzystanie z niego w odpowiednim czasie.',
     },
     anthropic: {
       using: 'Zdolność do osadzania jest używana',

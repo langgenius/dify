@@ -57,7 +57,7 @@ const UpdatePluginModal: FC<Props> = ({
   }
 
   const [uploadStep, setUploadStep] = useState<UploadStep>(UploadStep.notStarted)
-  const { handleRefetch } = usePluginTaskList()
+  const { handleRefetch } = usePluginTaskList(payload.category)
 
   const configBtnText = useMemo(() => {
     return ({

@@ -131,7 +131,7 @@ const VoiceParamConfig = ({
                             )}
                           >
                             <CheckIcon className="h-4 w-4" aria-hidden="true" />
-                          </span >
+                          </span>
                         )}
                       </>
                     )}
@@ -184,19 +184,18 @@ const VoiceParamConfig = ({
                       value={item}
                       disabled={false}
                     >
-                      {({ /* active, */ selected }) => (
-                        <>
-                          <span className={classNames('block', selected && 'font-normal')}>{item.name}</span>
-                          {(selected || item.value === text2speech?.voice) && (
-                            <span
-                              className={classNames(
-                                'absolute inset-y-0 right-0 flex items-center pr-4 text-text-secondary',
-                              )}
-                            >
-                              <CheckIcon className="h-4 w-4" aria-hidden="true" />
-                            </span >
-                          )}
-                        </>
+                      <>
+                        <span className={classNames('block', selected && 'font-normal')}>{item.name}</span>
+                        {(selected || item.value === text2speech?.voice) && (
+                          <span
+                            className={classNames(
+                              'absolute inset-y-0 right-0 flex items-center pr-4 text-text-secondary',
+                            )}
+                          >
+                            <CheckIcon className="h-4 w-4" aria-hidden="true" />
+                          </span>
+                        )}
+                      </>
                       )}
                     </ListboxOption >
                   ))}

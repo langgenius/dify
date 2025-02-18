@@ -1,7 +1,6 @@
 import datetime
 import json
 import logging
-import sys
 import time
 from collections.abc import Mapping, Sequence
 from concurrent.futures import ThreadPoolExecutor
@@ -341,10 +340,14 @@ class PluginMigration:
                         plugin_ids.append(plugin_id)
 
         def fetch_plugin(plugin_id):
-            unique_identifier = cls._fetch_plugin_unique_identifier(plugin_id)
-            if unique_identifier:
-                plugins[plugin_id] = unique_identifier
-            else:
+            try:
+                unique_identifier = cls._fetch_plugin_unique_identifier(plugin_id)
+                if unique_identifier:
+                    plugins[plugin_id] = unique_identifier
+                else:
+                    plugin_not_exist.append(plugin_id)
+            except Exception:
+                logger.exception(f"Failed to fetch plugin unique identifier for {plugin_id}")
                 plugin_not_exist.append(plugin_id)
 
         with ThreadPoolExecutor(max_workers=10) as executor:
@@ -418,8 +421,6 @@ class PluginMigration:
 
         logger.info("Uninstall plugins")
 
-        sys.exit(-1)
-
         # get installation
         try:
             installation = manager.list_plugins(fake_tenant_id)
@@ -475,9 +476,9 @@ class PluginMigration:
 
         reverse_map = {v: k for k, v in plugin_identifiers_map.items()}
 
-        # at most 64 plugins one batch
-        for i in range(0, len(plugin_identifiers_map), 64):
-            batch_plugin_ids = list(plugin_identifiers_map.keys())[i : i + 64]
+        # at most 8 plugins one batch
+        for i in range(0, len(plugin_identifiers_map), 8):
+            batch_plugin_ids = list(plugin_identifiers_map.keys())[i : i + 8]
             batch_plugin_identifiers = [plugin_identifiers_map[plugin_id] for plugin_id in batch_plugin_ids]
 
             try:

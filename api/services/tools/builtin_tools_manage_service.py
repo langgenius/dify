@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from configs import dify_config
 from core.helper.position_helper import is_filtered
 from core.model_runtime.utils.encoders import jsonable_encoder
-from core.plugin.entities.plugin import GenericProviderID
+from core.plugin.entities.plugin import GenericProviderID, ToolProviderID
 from core.plugin.manager.exc import PluginDaemonClientSideError
 from core.tools.builtin_tool.providers._positions import BuiltinToolProviderSort
 from core.tools.entities.api_entities import ToolApiEntity, ToolProviderApiEntity
@@ -240,10 +240,7 @@ class BuiltinToolManageService:
 
         # rewrite db_providers
         for db_provider in db_providers:
-            try:
-                GenericProviderID(db_provider.provider)
-            except Exception:
-                db_provider.provider = f"langgenius/{db_provider.provider}/{db_provider.provider}"
+            db_provider.provider = str(ToolProviderID(db_provider.provider))
 
         # find provider
         def find_provider(provider):

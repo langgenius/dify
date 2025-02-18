@@ -54,9 +54,10 @@ const InstallFromMarketplace: React.FC<InstallFromMarketplaceProps> = ({
     return t(`${i18nPrefix}.installPlugin`)
   }, [isBundle, step, t])
 
-  const handleInstalled = useCallback(() => {
+  const handleInstalled = useCallback((notRefresh?: boolean) => {
     setStep(InstallStep.installed)
-    refreshPluginList(manifest)
+    if (!notRefresh)
+      refreshPluginList(manifest)
     setIsInstalling(false)
   }, [manifest, refreshPluginList, setIsInstalling])
 

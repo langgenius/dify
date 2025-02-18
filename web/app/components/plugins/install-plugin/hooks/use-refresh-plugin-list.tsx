@@ -1,4 +1,5 @@
-import { useUpdateModelProviders } from '@/app/components/header/account-setting/model-provider-page/hooks'
+import { useModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
+import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useProviderContext } from '@/context/provider-context'
 import { useInvalidateInstalledPluginList } from '@/service/use-plugins'
 import { useInvalidateAllBuiltInTools, useInvalidateAllToolProviders } from '@/service/use-tools'
@@ -8,7 +9,9 @@ import { PluginType } from '../../types'
 
 const useRefreshPluginList = () => {
   const invalidateInstalledPluginList = useInvalidateInstalledPluginList()
-  const updateModelProviders = useUpdateModelProviders()
+  const { mutate: refetchLLMModelList } = useModelList(ModelTypeEnum.textGeneration)
+  const { mutate: refetchEmbeddingModelList } = useModelList(ModelTypeEnum.textEmbedding)
+  const { mutate: refetchRerankModelList } = useModelList(ModelTypeEnum.rerank)
   const { refreshModelProviders } = useProviderContext()
 
   const invalidateAllToolProviders = useInvalidateAllToolProviders()
@@ -31,8 +34,10 @@ const useRefreshPluginList = () => {
 
       // model select
       if (PluginType.model.includes(manifest.category) || refreshAllType) {
-        updateModelProviders()
         refreshModelProviders()
+        refetchLLMModelList()
+        refetchEmbeddingModelList()
+        refetchRerankModelList()
       }
 
       // agent select

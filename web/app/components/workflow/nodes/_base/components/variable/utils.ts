@@ -14,7 +14,7 @@ import type { ToolNodeType } from '../../../tool/types'
 import type { ParameterExtractorNodeType } from '../../../parameter-extractor/types'
 import type { IterationNodeType } from '../../../iteration/types'
 import type { ListFilterNodeType } from '../../../list-operator/types'
-import { OUTPUT_FILE_SUB_VARIABLES } from '../../../if-else/default'
+import { OUTPUT_FILE_SUB_VARIABLES } from '../../../constants'
 import type { DocExtractorNodeType } from '../../../document-extractor/types'
 import { BlockEnum, InputVarType, VarType } from '@/app/components/workflow/types'
 import type { StartNodeType } from '@/app/components/workflow/nodes/start/types'
@@ -588,7 +588,9 @@ export const getVarType = ({
   else {
     (valueSelector as ValueSelector).slice(1).forEach((key, i) => {
       const isLast = i === valueSelector.length - 2
-      curr = curr?.find((v: any) => v.variable === key)
+      if (Array.isArray(curr))
+        curr = curr?.find((v: any) => v.variable === key)
+
       if (isLast) {
         type = curr?.type
       }

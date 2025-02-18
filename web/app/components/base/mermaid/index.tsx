@@ -145,4 +145,6 @@ const Flowchart = (
 
 Flowchart.displayName = 'Flowchart'
 
+Flowchart.displayName = 'Flowchart'
+
 export default Flowchart

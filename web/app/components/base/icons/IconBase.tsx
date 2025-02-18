@@ -36,4 +36,6 @@ const IconBase = (
 
 IconBase.displayName = 'IconBase'
 
+IconBase.displayName = 'IconBase'
+
 export default IconBase

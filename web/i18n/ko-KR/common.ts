@@ -50,6 +50,7 @@ const translation = {
     submit: '전송',
     skip: '배',
     imageCopied: '복사된 이미지',
+    deleteApp: '앱 삭제',
   },
   placeholder: {
     input: '입력해주세요',
@@ -282,6 +283,7 @@ const translation = {
       usedUp: '트라이얼 할당량이 다 사용되었습니다. 다른 모델 제공자를 추가하세요.',
       useYourModel: '현재 사용자 정의 모델 제공자를 사용 중입니다.',
       close: '닫기',
+      trialQuotaTip: 'Anthropic 평가판 할당량은 2025/03/11에 만료되며 그 이후에는 더 이상 사용할 수 없습니다. 제때 활용하시기 바랍니다.',
     },
     anthropic: {
       using: '임베드 기능을 사용 중입니다',
