@@ -707,12 +707,13 @@ def extract_unique_plugins(output_file: str, input_file: str):
 @click.option(
     "--output_file", prompt=True, help="The file to store the installed plugins.", default="installed_plugins.jsonl"
 )
-def install_plugins(input_file: str, output_file: str):
+@click.option("--workers", prompt=True, help="The number of workers to install plugins.", default=100)
+def install_plugins(input_file: str, output_file: str, workers: int):
     """
     Install plugins.
     """
     click.echo(click.style("Starting install plugins.", fg="white"))
 
-    PluginMigration.install_plugins(input_file, output_file)
+    PluginMigration.install_plugins(input_file, output_file, workers)
 
     click.echo(click.style("Install plugins completed.", fg="green"))
