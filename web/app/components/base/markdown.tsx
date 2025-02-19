@@ -72,9 +72,8 @@ const preprocessThinkTag = (content: string) => {
     return content
 
   return flow([
-    (str: string) => str.replaceAll('<think>\n', '<details>\n'),
-    (str: string) => str.replaceAll('\n</think>', '\n[ENDTHINKFLAG]</details>'),
-    (str: string) => str.replaceAll('\n</details>', '\n[ENDTHINKFLAG]</details>'),
+    (str: string) => str.replace('<think>\n', '<details data-think=true>\n'),
+    (str: string) => str.replace('\n</think>', '\n[ENDTHINKFLAG]</details>'),
   ])(content)
 }
 
