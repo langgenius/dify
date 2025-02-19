@@ -10,6 +10,7 @@ export const WorkflowContext = createContext<WorkflowStore | null>(null)
 type WorkflowProviderProps = {
   children: React.ReactNode
 }
+
 export const WorkflowContextProvider = ({ children }: WorkflowProviderProps) => {
   const storeRef = useRef<WorkflowStore>()
 
