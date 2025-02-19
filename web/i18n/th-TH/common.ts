@@ -527,6 +527,8 @@ const translation = {
       hitScore: 'คะแนนการดึงข้อมูล:',
     },
     inputPlaceholder: 'พูดคุยกับบอท',
+    thought: 'ความคิด',
+    thinking: 'ความคิด   ',
   },
   promptEditor: {
     placeholder: 'เขียนคําพร้อมท์ของคุณที่นี่ ป้อน \'{\' เพื่อแทรกตัวแปร ป้อน \'/\' เพื่อแทรกบล็อกเนื้อหาพร้อมท์',

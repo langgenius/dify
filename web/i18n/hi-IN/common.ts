@@ -550,6 +550,8 @@ const translation = {
       hitScore: 'पुनः प्राप्ति स्कोर:',
     },
     inputPlaceholder: 'बॉट से बात करें',
+    thought: 'विचार',
+    thinking: 'सोचते हुए...',
   },
   promptEditor: {
     placeholder:

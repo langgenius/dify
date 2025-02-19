@@ -68,12 +68,13 @@ const preprocessLaTeX = (content: string) => {
 }
 
 const preprocessThinkTag = (content: string) => {
-  if (!content.trim().startsWith('<think>\n'))
+  if (!(content.trim().startsWith('<think>\n') || content.trim().startsWith('<details style=')))
     return content
 
   return flow([
-    (str: string) => str.replace('<think>\n', '<details>\n'),
-    (str: string) => str.replace('\n</think>', '\n[ENDTHINKFLAG]</details>'),
+    (str: string) => str.replaceAll('<think>\n', '<details>\n'),
+    (str: string) => str.replaceAll('\n</think>', '\n[ENDTHINKFLAG]</details>'),
+    (str: string) => str.replaceAll('\n</details>', '\n[ENDTHINKFLAG]</details>'),
   ])(content)
 }
 

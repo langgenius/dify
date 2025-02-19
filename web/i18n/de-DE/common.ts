@@ -528,6 +528,8 @@ const translation = {
       hitScore: 'Abrufwertung:',
     },
     inputPlaceholder: 'Sprechen Sie mit dem Bot',
+    thought: 'Gedanke',
+    thinking: 'Denken...',
   },
   promptEditor: {
     placeholder: 'Schreiben Sie hier Ihr Aufforderungswort, geben Sie \'{\' ein, um eine Variable einzufügen, geben Sie \'/\' ein, um einen Aufforderungs-Inhaltsblock einzufügen',

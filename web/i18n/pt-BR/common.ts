@@ -528,6 +528,8 @@ const translation = {
       hitScore: 'Pontuação de recuperação:',
     },
     inputPlaceholder: 'Fale com o bot',
+    thinking: 'Pensante...',
+    thought: 'Pensamento',
   },
   promptEditor: {
     placeholder: 'Escreva sua palavra de incentivo aqui, digite \'{\' para inserir uma variável, digite \'/\' para inserir um bloco de conteúdo de incentivo',

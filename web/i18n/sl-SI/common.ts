@@ -731,6 +731,8 @@ const translation = {
     renameConversation: 'Preimenovanje pogovora',
     conversationName: 'Ime pogovora',
     conversationNamePlaceholder: 'Prosimo, vnesite ime pogovora',
+    thinking: 'Razmišljanje...',
+    thought: 'Misel',
   },
   promptEditor: {
     context: {

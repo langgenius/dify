@@ -559,6 +559,8 @@ const translation = {
       hitScore: 'Punteggio di recupero:',
     },
     inputPlaceholder: 'Parla con il bot',
+    thinking: 'Pensante...',
+    thought: 'Pensiero',
   },
   promptEditor: {
     placeholder:

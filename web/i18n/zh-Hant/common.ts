@@ -528,6 +528,8 @@ const translation = {
       hitScore: '召回得分：',
     },
     inputPlaceholder: '與 Bot 對話',
+    thinking: '思維。。。',
+    thought: '思想',
   },
   promptEditor: {
     placeholder: '在這裡寫你的提示詞，輸入\'{\' 插入變數、輸入\'/\' 插入提示內容塊',
