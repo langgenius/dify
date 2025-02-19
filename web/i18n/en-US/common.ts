@@ -494,7 +494,7 @@ const translation = {
     overview: 'Monitoring',
     promptEng: 'Orchestrate',
     apiAccess: 'API Access',
-    logAndAnn: 'Logs & Ann.',
+    logAndAnn: 'Logs & Annotations',
     logs: 'Logs',
   },
   environment: {
