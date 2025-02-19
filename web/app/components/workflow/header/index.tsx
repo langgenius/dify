@@ -4,7 +4,7 @@ import {
   useCallback,
   useMemo,
 } from 'react'
-import { RiApps2AddLine } from '@remixicon/react'
+import { RiApps2AddLine, RiHistoryLine } from '@remixicon/react'
 import { useNodes } from 'reactflow'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
@@ -15,6 +15,7 @@ import {
 import {
   BlockEnum,
   InputVarType,
+  WorkflowVersion,
 } from '../types'
 import type { StartNodeType } from '../nodes/start/types'
 import {
@@ -36,7 +37,7 @@ import RestoringTitle from './restoring-title'
 import ViewHistory from './view-history'
 import ChatVariableButton from './chat-variable-button'
 import EnvButton from './env-button'
-import VersionHistoryModal from './version-history-modal'
+import VersionHistoryButton from './version-history-button'
 import Button from '@/app/components/base/button'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { publishWorkflow } from '@/service/workflow'
@@ -55,6 +56,10 @@ const Header: FC = () => {
   const publishedAt = useStore(s => s.publishedAt)
   const draftUpdatedAt = useStore(s => s.draftUpdatedAt)
   const toolPublished = useStore(s => s.toolPublished)
+  const currentVersion = useStore(s => s.currentVersion)
+  const setShowWorkflowVersionHistoryPanel = useStore(s => s.setShowWorkflowVersionHistoryPanel)
+  const setShowEnvPanel = useStore(s => s.setShowEnvPanel)
+  const setShowDebugAndPreviewPanel = useStore(s => s.setShowDebugAndPreviewPanel)
   const nodes = useNodes<StartNodeType>()
   const startNode = nodes.find(node => node.data.type === BlockEnum.Start)
   const selectedNode = nodes.find(node => node.data.selected)
@@ -104,7 +109,8 @@ const Header: FC = () => {
   const handleCancelRestore = useCallback(() => {
     handleLoadBackupDraft()
     workflowStore.setState({ isRestoring: false })
-  }, [workflowStore, handleLoadBackupDraft])
+    setShowWorkflowVersionHistoryPanel(false)
+  }, [workflowStore, handleLoadBackupDraft, setShowWorkflowVersionHistoryPanel])
 
   const handleRestore = useCallback(() => {
     workflowStore.setState({ isRestoring: false })
@@ -132,7 +138,11 @@ const Header: FC = () => {
     // clear right panel
     if (selectedNode)
       handleNodeSelect(selectedNode.id, true)
-  }, [handleBackupDraft, workflowStore, handleNodeSelect, selectedNode])
+    setShowWorkflowVersionHistoryPanel(true)
+    setShowEnvPanel(false)
+    setShowDebugAndPreviewPanel(false)
+  }, [handleBackupDraft, workflowStore, handleNodeSelect, selectedNode,
+    setShowWorkflowVersionHistoryPanel, setShowEnvPanel, setShowDebugAndPreviewPanel])
 
   const onPublisherToggle = useCallback((state: boolean) => {
     if (state)
@@ -189,11 +199,11 @@ const Header: FC = () => {
                 inputs: variables,
                 onRefreshData: handleToolConfigureUpdate,
                 onPublish,
-                onRestore: onStartRestoring,
                 onToggle: onPublisherToggle,
                 crossAxisOffset: 4,
               }}
             />
+            <VersionHistoryButton onClick={onStartRestoring} />
           </div>
         )
       }
@@ -214,27 +224,23 @@ const Header: FC = () => {
       }
       {
         restoring && (
-          <div className='flex flex-col mt-auto'>
-            <div className='flex items-center justify-end my-4'>
-              <Button className='text-components-button-secondary-text' onClick={handleShowFeatures}>
-                <RiApps2AddLine className='w-4 h-4 mr-1 text-components-button-secondary-text' />
-                {t('workflow.common.features')}
-              </Button>
-              <div className='mx-2 w-[1px] h-3.5 bg-gray-200'></div>
-              <Button
-                className='mr-2'
-                onClick={handleCancelRestore}
-              >
-                {t('common.operation.cancel')}
-              </Button>
-              <Button
-                onClick={handleRestore}
-                variant='primary'
-              >
-                {t('workflow.common.restore')}
-              </Button>
-            </div>
-            <VersionHistoryModal />
+          <div className='flex justify-end items-center gap-x-2'>
+            <Button
+              onClick={handleRestore}
+              disabled={currentVersion?.version === WorkflowVersion.Draft}
+              variant='primary'
+            >
+              {t('workflow.common.restore')}
+            </Button>
+            <Button
+              className='text-components-button-secondary-accent-text'
+              onClick={handleCancelRestore}
+            >
+              <div className='flex items-center gap-x-0.5'>
+                <RiHistoryLine className='w-4 h-4' />
+                <span className='px-0.5'>{t('workflow.common.exitVersions')}</span>
+              </div>
+            </Button>
           </div>
         )
       }

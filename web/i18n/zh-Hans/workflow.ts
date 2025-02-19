@@ -8,6 +8,7 @@ const translation = {
     published: '已发布',
     publish: '发布',
     update: '更新',
+    publishUpdate: '发布更新',
     run: '运行',
     running: '运行中',
     inRunMode: '在运行模式中',
@@ -30,6 +31,8 @@ const translation = {
     latestPublished: '最新发布',
     publishedAt: '发布于',
     restore: '恢复',
+    versionHistory: '版本历史',
+    exitVersions: '退出版本历史',
     runApp: '运行',
     batchRunApp: '批量运行',
     accessAPIReference: '访问 API',
@@ -775,6 +778,26 @@ const translation = {
   },
   tracing: {
     stopBy: '由{{user}}终止',
+  },
+  versionHistory: {
+    title: '版本',
+    currentDraft: '当前草稿',
+    latest: '最新',
+    filter: {
+      all: '全部',
+      onlyYours: '仅你的',
+      onlyShowNamedVersions: '只显示已命名版本',
+      reset: '重置',
+      empty: '没有匹配的版本',
+    },
+    nameThisVersion: '为此版本命名',
+    editVersionInfo: '编辑信息',
+    edit: {
+      title: '标题',
+      releaseNotes: '发布说明',
+    },
+    restorationTip: '版本恢复后，当前草稿将被覆盖，并自动为当前草稿创建副本。',
+    deletionTip: '删除不可逆，请确认。',
   },
 }
 

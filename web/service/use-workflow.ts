@@ -1,9 +1,6 @@
 import { get } from './base'
-import type {
-  FetchWorkflowDraftResponse,
-} from '@/types/workflow'
-import { useQuery } from '@tanstack/react-query'
-import type { WorkflowConfigResponse } from '@/types/workflow'
+import { useInfiniteQuery, useQuery } from '@tanstack/react-query'
+import type { FetchWorkflowDraftPageResponse, FetchWorkflowDraftResponse, WorkflowConfigResponse } from '@/types/workflow'
 
 const NAME_SPACE = 'workflow'
 
@@ -19,5 +16,14 @@ export const useWorkflowConfig = (appId: string) => {
   return useQuery({
     queryKey: [NAME_SPACE, 'config', appId],
     queryFn: () => get<WorkflowConfigResponse>(`/apps/${appId}/workflows/draft/config`),
+  })
+}
+
+export const useWorkflowVersionHistory = (appId: string, initialPage: number, limit: number) => {
+  return useInfiniteQuery({
+    queryKey: [NAME_SPACE, 'versionHistory', appId, initialPage, limit],
+    queryFn: ({ pageParam = 1 }) => get<FetchWorkflowDraftPageResponse>(`/apps/${appId}/workflows?page=${pageParam}&limit=${limit}`),
+    getNextPageParam: lastPage => lastPage.has_more ? lastPage.page + 1 : null,
+    initialPageParam: initialPage,
   })
 }

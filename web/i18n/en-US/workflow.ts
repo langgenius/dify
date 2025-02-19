@@ -8,6 +8,7 @@ const translation = {
     published: 'Published',
     publish: 'Publish',
     update: 'Update',
+    publishUpdate: 'Publish Update',
     run: 'Run',
     running: 'Running',
     inRunMode: 'In Run Mode',
@@ -30,6 +31,8 @@ const translation = {
     latestPublished: 'Latest Published',
     publishedAt: 'Published',
     restore: 'Restore',
+    versionHistory: 'Version History',
+    exitVersions: 'Exit Versions',
     runApp: 'Run App',
     batchRunApp: 'Batch Run App',
     openInExplore: 'Open in Explore',
@@ -104,7 +107,7 @@ const translation = {
     branch: 'BRANCH',
     onFailure: 'On Failure',
     addFailureBranch: 'Add Fail Branch',
-    loadMore: 'Load More Workflows',
+    loadMore: 'Load More',
     noHistory: 'No History',
   },
   env: {
@@ -774,6 +777,26 @@ const translation = {
   },
   tracing: {
     stopBy: 'Stop by {{user}}',
+  },
+  versionHistory: {
+    title: 'Versions',
+    currentDraft: 'Current Draft',
+    latest: 'Latest',
+    filter: {
+      all: 'All',
+      onlyYours: 'Only yours',
+      onlyShowNamedVersions: 'Only show named versions',
+      reset: 'Reset filter',
+      empty: 'No matching version history found',
+    },
+    nameThisVersion: 'Name This Version',
+    editVersionInfo: 'Edit version info',
+    edit: {
+      title: 'Title',
+      releaseNotes: 'Release Notes',
+    },
+    restorationTip: 'After version restoration, the current draft will be overwritten, and a version will be automatically created for the current draft.',
+    deletionTip: 'Deletion is irreversible, please confirm.',
   },
 }
 
