@@ -35,10 +35,10 @@ jobs:
         with:
           node-version: ${{ matrix.node-version }}
           cache: ''
-          cache-dependency-path: 'yarn.lock'
+          cache-dependency-path: 'pnpm-lock.yaml'
 
       - name: Install Dependencies
-        run: yarn install
+        run: pnpm install --frozen-lockfile
 
       - name: Test
-        run: yarn test
+        run: pnpm test

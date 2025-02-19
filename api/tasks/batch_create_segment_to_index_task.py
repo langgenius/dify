@@ -73,43 +73,49 @@ def batch_create_segment_to_index_task(
             max_position_stmt = select(func.max(DocumentSegment.position)).where(
                 DocumentSegment.document_id == dataset_document.id
             )
-            max_position = session.scalar(max_position_stmt) or 1
-            for segment in content:
-                content_str = segment["content"]
-                doc_id = str(uuid.uuid4())
-                segment_hash = helper.generate_text_hash(content_str)
-                # calc embedding use tokens
-                tokens = embedding_model.get_text_embedding_num_tokens(texts=[content_str]) if embedding_model else 0
-                segment_document = DocumentSegment(
-                    tenant_id=tenant_id,
-                    dataset_id=dataset_id,
-                    document_id=document_id,
-                    index_node_id=doc_id,
-                    index_node_hash=segment_hash,
-                    position=max_position,
-                    content=content_str,
-                    word_count=len(content_str),
-                    tokens=tokens,
-                    created_by=user_id,
-                    indexing_at=datetime.datetime.now(datetime.UTC).replace(tzinfo=None),
-                    status="completed",
-                    completed_at=datetime.datetime.now(datetime.UTC).replace(tzinfo=None),
-                )
-                max_position += 1
-                if dataset_document.doc_form == "qa_model":
-                    segment_document.answer = segment["answer"]
-                    segment_document.word_count += len(segment["answer"])
-                word_count_change += segment_document.word_count
-                session.add(segment_document)
-                document_segments.append(segment_document)
-                segments_to_insert.append(str(segment))  # Cast to string if needed
-            # update document word count
-            dataset_document.word_count += word_count_change
-            session.add(dataset_document)
-            # add index to db
-            VectorService.create_segments_vector(None, document_segments, dataset, dataset_document.doc_form)
-            session.commit()
-
+        word_count_change = 0
+        if embedding_model:
+            tokens_list = embedding_model.get_text_embedding_num_tokens(
+                texts=[segment["content"] for segment in content]
+            )
+        else:
+            tokens_list = [0] * len(content)
+        for segment, tokens in zip(content, tokens_list):
+            content = segment["content"]
+            doc_id = str(uuid.uuid4())
+            segment_hash = helper.generate_text_hash(content)  # type: ignore
+            max_position = (
+                db.session.query(func.max(DocumentSegment.position))
+                .filter(DocumentSegment.document_id == dataset_document.id)
+                .scalar()
+            )
+            segment_document = DocumentSegment(
+                tenant_id=tenant_id,
+                dataset_id=dataset_id,
+                document_id=document_id,
+                index_node_id=doc_id,
+                index_node_hash=segment_hash,
+                position=max_position + 1 if max_position else 1,
+                content=content,
+                word_count=len(content),
+                tokens=tokens,
+                created_by=user_id,
+                indexing_at=datetime.datetime.now(datetime.UTC).replace(tzinfo=None),
+                status="completed",
+                completed_at=datetime.datetime.now(datetime.UTC).replace(tzinfo=None),
+            )
+            if dataset_document.doc_form == "qa_model":
+                segment_document.answer = segment["answer"]
+                segment_document.word_count += len(segment["answer"])
+            word_count_change += segment_document.word_count
+            db.session.add(segment_document)
+            document_segments.append(segment_document)
+        # update document word count
+        dataset_document.word_count += word_count_change
+        db.session.add(dataset_document)
+        # add index to db
+        VectorService.create_segments_vector(None, document_segments, dataset, dataset_document.doc_form)
+        db.session.commit()
         redis_client.setex(indexing_cache_key, 600, "completed")
         end_at = time.perf_counter()
         logging.info(
@@ -118,6 +124,6 @@ def batch_create_segment_to_index_task(
                 fg="green",
             )
         )
-    except Exception as e:
+    except Exception:
         logging.exception("Segments batch created index failed")
         redis_client.setex(indexing_cache_key, 600, "error")

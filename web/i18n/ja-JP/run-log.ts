@@ -24,6 +24,8 @@ const translation = {
     link: '詳細パネル',
     tipRight: '表示します。',
   },
+  circularInvocationTip: '現在のワークフローには、ツール/ノードの循環的な呼び出しがあります。',
+  actionLogs: 'アクションログ',
 }
 
 export default translation

@@ -24,6 +24,7 @@ import cn from '@/utils/classnames'
 import { useSelectedDatasetsMode } from '@/app/components/workflow/nodes/knowledge-retrieval/hooks'
 import Switch from '@/app/components/base/switch'
 import Toast from '@/app/components/base/toast'
+import Divider from '@/app/components/base/divider'
 
 type Props = {
   datasetConfigs: DatasetConfigs
@@ -188,7 +189,7 @@ const ConfigContent: FC<Props> = ({
             <div className='shrink-0 mr-2 system-xs-semibold-uppercase text-text-secondary'>
               {t('dataset.rerankSettings')}
             </div>
-            <div className='grow h-[1px] bg-gradient-to-l from-white to-[rgba(16,24,40,0.08)]'></div>
+            <Divider bgStyle='gradient' className='!h-px mx-0' />
           </div>
           {
             selectedDatasetsMode.inconsistentEmbeddingModel
@@ -352,7 +353,7 @@ const ConfigContent: FC<Props> = ({
       {isInWorkflow && type === RETRIEVE_TYPE.oneWay && (
         <div className='mt-4'>
           <div className='flex items-center space-x-0.5'>
-            <div className='leading-[32px] text-[13px] font-medium text-gray-900'>{t('common.modelProvider.systemReasoningModel.key')}</div>
+            <div className='leading-[32px] text-[13px] font-medium text-text-primary'>{t('common.modelProvider.systemReasoningModel.key')}</div>
             <Tooltip
               popupContent={t('common.modelProvider.systemReasoningModel.tip')}
             />

@@ -67,8 +67,8 @@ const RenameModal: FC<Props> = ({
       />
 
       <div className='mt-10 flex justify-end'>
-        <Button className='mr-2 flex-shrink-0' onClick={onClose}>{t('common.operation.cancel')}</Button>
-        <Button variant='primary' className='flex-shrink-0' onClick={handleSave} loading={saveLoading}>{t('common.operation.save')}</Button>
+        <Button className='mr-2 shrink-0' onClick={onClose}>{t('common.operation.cancel')}</Button>
+        <Button variant='primary' className='shrink-0' onClick={handleSave} loading={saveLoading}>{t('common.operation.save')}</Button>
       </div>
     </Modal>
   )

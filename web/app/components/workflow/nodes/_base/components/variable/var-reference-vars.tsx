@@ -134,7 +134,7 @@ const Item: FC<ItemProps> = ({
         zIndex: 100,
       }}>
         {(isObj && !isFile) && (
-          // eslint-disable-next-line @typescript-eslint/no-use-before-define
+          // eslint-disable-next-line ts/no-use-before-define
           <ObjectChildren
             nodeId={nodeId}
             title={title}
@@ -147,7 +147,7 @@ const Item: FC<ItemProps> = ({
           />
         )}
         {isFile && (
-          // eslint-disable-next-line @typescript-eslint/no-use-before-define
+          // eslint-disable-next-line ts/no-use-before-define
           <ObjectChildren
             nodeId={nodeId}
             title={title}

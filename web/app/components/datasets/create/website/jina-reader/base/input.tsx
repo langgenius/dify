@@ -20,7 +20,7 @@ const Input: FC<Props> = ({
   const handleChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value
     if (isNumber) {
-      let numberValue = parseInt(value, 10) // integer only
+      let numberValue = Number.parseInt(value, 10) // integer only
       if (isNaN(numberValue)) {
         onChange('')
         return

@@ -188,6 +188,12 @@ const translation = {
     byCategories: 'ПО КАТЕГОРИЯМ',
   },
   showMyCreatedAppsOnly: 'Показать только созданные мной приложения',
+  appSelector: {
+    label: 'ПРИЛОЖЕНИЕ',
+    noParams: 'Параметры не нужны',
+    placeholder: 'Выберите приложение...',
+    params: 'ПАРАМЕТРЫ ПРИЛОЖЕНИЯ',
+  },
 }
 
 export default translation

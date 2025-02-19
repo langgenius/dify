@@ -60,12 +60,12 @@ export default function AppBasic({ icon, icon_background, name, isExternal, type
   return (
     <div className="flex items-center grow">
       {icon && icon_background && iconType === 'app' && (
-        <div className='flex-shrink-0 mr-3'>
+        <div className='shrink-0 mr-3'>
           <AppIcon icon={icon} background={icon_background} />
         </div>
       )}
       {iconType !== 'app'
-        && <div className='flex-shrink-0 mr-3'>
+        && <div className='shrink-0 mr-3'>
           {ICON_MAP[iconType]}
         </div>
 

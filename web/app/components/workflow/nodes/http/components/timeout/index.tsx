@@ -35,7 +35,7 @@ const InputField: FC<{
         type='number'
         value={value}
         onChange={(e) => {
-          const value = Math.max(min, Math.min(max, parseInt(e.target.value, 10)))
+          const value = Math.max(min, Math.min(max, Number.parseInt(e.target.value, 10)))
           onChange(value)
         }}
         placeholder={placeholder}
