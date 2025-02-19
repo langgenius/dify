@@ -4,8 +4,8 @@ import React, { Fragment, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   RiAddLine,
+  RiDeleteBinLine,
   RiMoreFill,
-  RiDeleteBinLine
 } from '@remixicon/react'
 import { useContext } from 'use-context-selector'
 import {
@@ -22,8 +22,8 @@ import { FileDownload02, FilePlus02 } from '@/app/components/base/icons/src/vend
 import { ChevronRight } from '@/app/components/base/icons/src/vender/line/arrows'
 
 import I18n from '@/context/i18n'
-import { fetchExportAnnotationList } from '@/service/annotation'
-import { clearAllAnnotations } from '@/service/annotation'
+import { clearAllAnnotations, fetchExportAnnotationList } from '@/service/annotation'
+import Confirm from '@/app/components/base/confirm'
 import { LanguagesSupported } from '@/i18n/language'
 
 const CSV_HEADER_QA_EN = ['Question', 'Answer']
@@ -45,6 +45,7 @@ const HeaderOptions: FC<Props> = ({
   const { t } = useTranslation()
   const { locale } = useContext(I18n)
   const { CSVDownloader, Type } = useCSVDownloader()
+  const [showClearAllConfirm, setShowClearAllConfirm] = useState(false)
   const [list, setList] = useState<AnnotationItemBasic[]>([])
   const annotationUnavailable = list.length === 0
 
@@ -79,19 +80,20 @@ const HeaderOptions: FC<Props> = ({
 
   const [showBulkImportModal, setShowBulkImportModal] = useState(false)
 
-  const handleClearAll = async () => {
-    const isConfirmed= await confirm({
-      message: t('appAnnotation.table.header.clearAllConfirm'),
-      type: 'danger',
-    })
-    if(isConfirmed){
+  const onOperate = async (action: string) => {
+    if (action === 'delete') {
       try {
         await clearAllAnnotations(appId)
         onAdded()
-      } catch (e) {
+      }
+      catch (e) {
+      }
+      finally {
+        setShowClearAllConfirm(false)
       }
     }
   }
+
   const Operations = () => {
     return (
       <div className="w-full py-1">
@@ -136,20 +138,20 @@ const HeaderOptions: FC<Props> = ({
                 ]}
               >
                 <button disabled={annotationUnavailable}
-                        className='h-9 py-2 px-3 mx-1 flex items-center space-x-2 hover:bg-components-panel-on-panel-item-bg-hover rounded-lg cursor-pointer disabled:opacity-50 w-[calc(100%_-_8px)]'>
+                  className='h-9 py-2 px-3 mx-1 flex items-center space-x-2 hover:bg-components-panel-on-panel-item-bg-hover rounded-lg cursor-pointer disabled:opacity-50 w-[calc(100%_-_8px)]'>
                   <span className='grow text-text-secondary system-sm-regular text-left'>CSV</span>
                 </button>
               </CSVDownloader>
               <button disabled={annotationUnavailable}
-                      className={cn('h-9 py-2 px-3 mx-1 flex items-center space-x-2 hover:bg-components-panel-on-panel-item-bg-hover rounded-lg cursor-pointer disabled:opacity-50 w-[calc(100%_-_8px)]', '!border-0')}
-                      onClick={JSONLOutput}>
+                className={cn('h-9 py-2 px-3 mx-1 flex items-center space-x-2 hover:bg-components-panel-on-panel-item-bg-hover rounded-lg cursor-pointer disabled:opacity-50 w-[calc(100%_-_8px)]', '!border-0')}
+                onClick={JSONLOutput}>
                 <span className='grow text-text-secondary system-sm-regular text-left'>JSONL</span>
               </button>
             </Menu.Items>
           </Transition>
         </Menu>
         <button
-          onClick={handleClearAll}
+          onClick={() => setShowClearAllConfirm(true)}
           className='h-9 py-2 px-3 mx-1 flex items-center space-x-2 hover:bg-red-50 rounded-lg cursor-pointer disabled:opacity-50 w-[calc(100%_-_8px)] text-red-600'
         >
           <RiDeleteBinLine className='w-4 h-4'/>
@@ -200,6 +202,18 @@ const HeaderOptions: FC<Props> = ({
             onAdded={onAdded}
           />
         )
+      }
+      {showClearAllConfirm
+      && <Confirm
+        isShow={showClearAllConfirm}
+        isLoading={false}
+        isDisabled={false}
+        title={t('appAnnotation.table.header.clearAll')}
+        content={t('appAnnotation.table.header.clearAllConfirm')}
+        confirmText={t('common.operation.sure')}
+        onConfirm={() => onOperate('delete')}
+        onCancel={() => setShowClearAllConfirm(false)}
+      />
       }
     </div>
   )
