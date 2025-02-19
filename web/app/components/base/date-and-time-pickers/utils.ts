@@ -21,6 +21,8 @@ export const getDaysInMonth = (currentDate: Dayjs) => {
   const lastDayInLastMonth = currentDate.clone().subtract(1, 'month').endOf('month')
   const firstDayInNextMonth = currentDate.clone().add(1, 'month').startOf('month')
   const days: Day[] = []
+  const daysInOneWeek = 7
+  const totalLines = 6
 
   // Add cells for days before the first day of the month
   for (let i = firstDay - 1; i >= 0; i--) {
@@ -41,7 +43,9 @@ export const getDaysInMonth = (currentDate: Dayjs) => {
   }
 
   // Add cells for days after the last day of the month
-  for (let i = 0; lastDay + i < 6; i++) {
+  const totalLinesOfCurrentMonth = Math.ceil((daysInCurrentMonth - ((daysInOneWeek - firstDay) + lastDay + 1)) / 7) + 2
+  const needAdditionalLine = totalLinesOfCurrentMonth < totalLines
+  for (let i = 0; lastDay + i < (needAdditionalLine ? 2 * daysInOneWeek - 1 : daysInOneWeek - 1); i++) {
     const date = cloneTime(firstDayInNextMonth.add(i, 'day'), currentDate)
     days.push({
       date,
