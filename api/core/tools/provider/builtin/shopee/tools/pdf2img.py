@@ -53,6 +53,7 @@ class Pdf2ImgTool(BuiltinTool):
         bit_max_size = tool_parameters.get("bit_max_size")
         quality = tool_parameters.get("quality")
         dpi = tool_parameters.get("dpi")
+        direction = tool_parameters.get("direction")
 
         logger.info(f'{file_variable}')
         # 不是pdf直接返回
@@ -64,13 +65,13 @@ class Pdf2ImgTool(BuiltinTool):
         if not image_binary:
             return self.create_text_message("Image not found, please request user to generate image firstly.")
 
-        res = self.handle(image_binary, vector_max_size, bit_max_size, quality, dpi)
+        res = self.handle(image_binary, vector_max_size, bit_max_size, quality, direction, dpi)
         if not res:
             return self.create_text_message("Pdf2Img error, maybe pdf is encrypted")
 
         return self.create_blob_message(blob=res, meta={"mime_type": "image/jpeg"})
 
-    def handle(self, pdf_bytes, vector_max_size, bit_max_size, quality, dpi=350):
+    def handle(self, pdf_bytes, vector_max_size, bit_max_size, quality, direction, dpi=350):
         pdf_stream = io.BytesIO(pdf_bytes)
         doc = fitz.open(stream=pdf_stream, filetype="pdf")
         if 'encryption' in doc.metadata and doc.metadata['encryption'] is not None:
@@ -97,13 +98,18 @@ class Pdf2ImgTool(BuiltinTool):
             new_size = (int(original_width * ratio), int(original_length * ratio))
             image = image.resize(new_size, Image.LANCZOS)
             images.append(image)
-
-        res = self.concat_images(images, quality)
+        if direction == "horizontal":
+            res = self.concat_images_horizontal(images, quality)
+        elif direction == "vertical":
+            res = self.concat_images_vertical(images, quality)
+        else:
+            new_images = [images[0]]
+            res = self.concat_images_horizontal(new_images, quality)
         doc.close()
         pdf_stream.close()
         return res
 
-    def concat_images(self, images, quality):
+    def concat_images_horizontal(self, images, quality):
         width = 0
         height = 0
         for image in images:
@@ -117,6 +123,27 @@ class Pdf2ImgTool(BuiltinTool):
             result.paste(image, (last_image_width, 0))
             tmp, _ = image.size
             last_image_width += tmp
+
+        image_stream = io.BytesIO()
+        result.save(image_stream, format='JPEG', quality=quality)
+        image_binary_data = image_stream.getvalue()
+        image_stream.close()
+        return image_binary_data
+
+    def concat_images_vertical(self, images, quality):
+        width = 0
+        height = 0
+        for image in images:
+            cur_width, cur_height = image.size
+            height += cur_height
+            width = max(cur_width, width)
+
+        result = Image.new('RGB', (width, height))
+        last_image_height = 0
+        for image in images:
+            result.paste(image, (0, last_image_height))
+            _, tmp = image.size
+            last_image_height += tmp
 
         image_stream = io.BytesIO()
         result.save(image_stream, format='JPEG', quality=quality)
