@@ -1,5 +1,5 @@
 from core.helper import marketplace
-from core.plugin.entities.plugin import GenericProviderID, PluginDependency, PluginInstallationSource
+from core.plugin.entities.plugin import ModelProviderID, PluginDependency, PluginInstallationSource, ToolProviderID
 from core.plugin.manager.plugin import PluginInstallationManager
 
 
@@ -12,10 +12,7 @@ class DependenciesAnalysisService:
         Convert the tool id to the plugin_id
         """
         try:
-            tool_provider_id = GenericProviderID(tool_id)
-            if tool_id in ["jina", "siliconflow"]:
-                tool_provider_id.plugin_name = tool_provider_id.plugin_name + "_tool"
-            return tool_provider_id.plugin_id
+            return ToolProviderID(tool_id).plugin_id
         except Exception as e:
             raise e
 
@@ -27,11 +24,7 @@ class DependenciesAnalysisService:
         Convert the model provider id to the plugin_id
         """
         try:
-            generic_provider_id = GenericProviderID(model_provider_id)
-            if model_provider_id == "google":
-                generic_provider_id.plugin_name = "gemini"
-
-            return generic_provider_id.plugin_id
+            return ModelProviderID(model_provider_id).plugin_id
         except Exception as e:
             raise e
 
