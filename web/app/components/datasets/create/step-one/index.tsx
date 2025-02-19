@@ -23,7 +23,7 @@ import classNames from '@/utils/classnames'
 type IStepOneProps = {
   datasetId?: string
   dataSourceType?: DataSourceType
-  dataSourceTypeDisable: Boolean
+  dataSourceTypeDisable: boolean
   hasConnection: boolean
   onSetting: () => void
   files: FileItem[]

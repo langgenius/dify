@@ -1,3 +1,4 @@
+from configs import dify_config
 from core.app.entities.app_invoke_entities import AgentChatAppGenerateEntity, ChatAppGenerateEntity
 from core.entities.provider_entities import QuotaUnit
 from events.message_event import message_was_created
@@ -22,6 +23,9 @@ def handle(sender, **kwargs):
 
     system_configuration = provider_configuration.system_configuration
 
+    if not system_configuration.current_quota_type:
+        return
+
     quota_unit = None
     for quota_configuration in system_configuration.quota_configurations:
         if quota_configuration.quota_type == system_configuration.current_quota_type:
@@ -37,10 +41,7 @@ def handle(sender, **kwargs):
         if quota_unit == QuotaUnit.TOKENS:
             used_quota = message.message_tokens + message.answer_tokens
         elif quota_unit == QuotaUnit.CREDITS:
-            used_quota = 1
-
-            if "gpt-4" in model_config.model:
-                used_quota = 20
+            used_quota = dify_config.get_model_credits(model_config.model)
         else:
             used_quota = 1
 

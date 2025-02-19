@@ -1,5 +1,5 @@
 import os
-from typing import Optional
+from typing import Literal, Optional
 
 import httpx
 from tenacity import retry, retry_if_exception_type, stop_before_delay, wait_fixed
@@ -17,7 +17,6 @@ class BillingService:
         params = {"tenant_id": tenant_id}
 
         billing_info = cls._send_request("GET", "/subscription/info", params=params)
-
         return billing_info
 
     @classmethod
@@ -47,12 +46,13 @@ class BillingService:
         retry=retry_if_exception_type(httpx.RequestError),
         reraise=True,
     )
-    def _send_request(cls, method, endpoint, json=None, params=None):
+    def _send_request(cls, method: Literal["GET", "POST", "DELETE"], endpoint: str, json=None, params=None):
         headers = {"Content-Type": "application/json", "Billing-Api-Secret-Key": cls.secret_key}
 
         url = f"{cls.base_url}{endpoint}"
         response = httpx.request(method, url, json=json, params=params, headers=headers)
-
+        if method == "GET" and response.status_code != httpx.codes.OK:
+            raise ValueError("Unable to retrieve billing information. Please try again later or contact support.")
         return response.json()
 
     @staticmethod
@@ -70,3 +70,24 @@ class BillingService:
 
         if not TenantAccountRole.is_privileged_role(join.role):
             raise ValueError("Only team owner or team admin can perform this action")
+
+    @classmethod
+    def delete_account(cls, account_id: str):
+        """Delete account."""
+        params = {"account_id": account_id}
+        return cls._send_request("DELETE", "/account/", params=params)
+
+    @classmethod
+    def is_email_in_freeze(cls, email: str) -> bool:
+        params = {"email": email}
+        try:
+            response = cls._send_request("GET", "/account/in-freeze", params=params)
+            return bool(response.get("data", False))
+        except Exception:
+            return False
+
+    @classmethod
+    def update_account_deletion_feedback(cls, email: str, feedback: str):
+        """Update account deletion feedback."""
+        json = {"email": email, "feedback": feedback}
+        return cls._send_request("POST", "/account/delete-feedback", json=json)

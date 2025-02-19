@@ -1,7 +1,6 @@
 from core.workflow.graph_engine.entities.event import (
     GraphRunFailedEvent,
     GraphRunPartialSucceededEvent,
-    GraphRunSucceededEvent,
     NodeRunRetryEvent,
 )
 from tests.unit_tests.core.workflow.nodes.test_continue_on_error import ContinueOnErrorTestHelper

@@ -112,10 +112,10 @@ class LoadBalancingConfigCredentialsValidateApi(Resource):
 # Load Balancing Config
 api.add_resource(
     LoadBalancingCredentialsValidateApi,
-    "/workspaces/current/model-providers/<string:provider>/models/load-balancing-configs/credentials-validate",
+    "/workspaces/current/model-providers/<path:provider>/models/load-balancing-configs/credentials-validate",
 )
 
 api.add_resource(
     LoadBalancingConfigCredentialsValidateApi,
-    "/workspaces/current/model-providers/<string:provider>/models/load-balancing-configs/<string:config_id>/credentials-validate",
+    "/workspaces/current/model-providers/<path:provider>/models/load-balancing-configs/<string:config_id>/credentials-validate",
 )

@@ -47,6 +47,10 @@ const translation = {
     regenerate: 'Ponownie wygenerować',
     viewMore: 'ZOBACZ WIĘCEJ',
     close: 'Zamykać',
+    submit: 'Prześlij',
+    skip: 'Statek',
+    imageCopied: 'Skopiowany obraz',
+    deleteApp: 'Usuń aplikację',
   },
   placeholder: {
     input: 'Proszę wprowadzić',
@@ -185,6 +189,18 @@ const translation = {
     myAccount: 'Moje konto',
     studio: 'Dify Studio',
     account: 'Rachunek',
+    deletePrivacyLinkTip: 'Aby uzyskać więcej informacji o tym, jak postępujemy z Twoimi danymi, zapoznaj się z naszą',
+    deletePrivacyLink: 'Polityka prywatności.',
+    deleteSuccessTip: 'Twoje konto potrzebuje czasu na dokończenie usuwania. Wyślemy Ci wiadomość e-mail, gdy wszystko będzie gotowe.',
+    deleteLabel: 'Aby potwierdzić, wpisz poniżej swój adres e-mail',
+    deletePlaceholder: 'Podaj swój adres e-mail',
+    sendVerificationButton: 'Wyślij kod weryfikacyjny',
+    verificationLabel: 'Kod weryfikacyjny',
+    verificationPlaceholder: 'Wklej 6-cyfrowy kod',
+    permanentlyDeleteButton: 'Trwale usuń konto',
+    feedbackTitle: 'Sprzężenie zwrotne',
+    feedbackLabel: 'Powiedz nam, dlaczego usunąłeś swoje konto?',
+    feedbackPlaceholder: 'Fakultatywny',
   },
   members: {
     team: 'Zespół',
@@ -280,6 +296,7 @@ const translation = {
       usedUp: 'Limit próbny został wyczerpany. Dodaj własnego dostawcę modeli.',
       useYourModel: 'Aktualnie używany jest własny dostawca modeli.',
       close: 'Zamknij',
+      trialQuotaTip: 'Twój limit próbny Anthropic wygaśnie w dniu 11.03.2025 i nie będzie już dostępny po tym czasie. Prosimy o skorzystanie z niego w odpowiednim czasie.',
     },
     anthropic: {
       using: 'Zdolność do osadzania jest używana',
@@ -526,6 +543,8 @@ const translation = {
       hitScore: 'Wynik trafień:',
     },
     inputPlaceholder: 'Porozmawiaj z botem',
+    thought: 'Myśl',
+    thinking: 'Myślenie...',
   },
   promptEditor: {
     placeholder:

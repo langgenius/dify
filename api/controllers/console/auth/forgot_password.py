@@ -3,16 +3,19 @@ import secrets
 
 from flask import request
 from flask_restful import Resource, reqparse  # type: ignore
+from sqlalchemy import select
+from sqlalchemy.orm import Session
 
 from constants.languages import languages
 from controllers.console import api
 from controllers.console.auth.error import (
     EmailCodeError,
+    EmailPasswordResetLimitError,
     InvalidEmailError,
     InvalidTokenError,
     PasswordMismatchError,
 )
-from controllers.console.error import AccountNotFound, EmailSendIpLimitError
+from controllers.console.error import AccountInFreezeError, AccountNotFound, EmailSendIpLimitError
 from controllers.console.wraps import setup_required
 from events.tenant_event import tenant_was_created
 from extensions.ext_database import db
@@ -20,6 +23,7 @@ from libs.helper import email, extract_remote_ip
 from libs.password import hash_password, valid_password
 from models.account import Account
 from services.account_service import AccountService, TenantService
+from services.errors.account import AccountRegisterError
 from services.errors.workspace import WorkSpaceNotAllowedCreateError
 from services.feature_service import FeatureService
 
@@ -41,7 +45,8 @@ class ForgotPasswordSendEmailApi(Resource):
         else:
             language = "en-US"
 
-        account = Account.query.filter_by(email=args["email"]).first()
+        with Session(db.engine) as session:
+            account = session.execute(select(Account).filter_by(email=args["email"])).scalar_one_or_none()
         token = None
         if account is None:
             if FeatureService.get_system_features().is_allow_register:
@@ -66,6 +71,10 @@ class ForgotPasswordCheckApi(Resource):
 
         user_email = args["email"]
 
+        is_forgot_password_error_rate_limit = AccountService.is_forgot_password_error_rate_limit(args["email"])
+        if is_forgot_password_error_rate_limit:
+            raise EmailPasswordResetLimitError()
+
         token_data = AccountService.get_reset_password_data(args["token"])
         if token_data is None:
             raise InvalidTokenError()
@@ -74,8 +83,10 @@ class ForgotPasswordCheckApi(Resource):
             raise InvalidEmailError()
 
         if args["code"] != token_data.get("code"):
+            AccountService.add_forgot_password_error_rate_limit(args["email"])
             raise EmailCodeError()
 
+        AccountService.reset_forgot_password_error_rate_limit(args["email"])
         return {"is_valid": True, "email": token_data.get("email")}
 
 
@@ -108,7 +119,8 @@ class ForgotPasswordResetApi(Resource):
         password_hashed = hash_password(new_password, salt)
         base64_password_hashed = base64.b64encode(password_hashed).decode()
 
-        account = Account.query.filter_by(email=reset_data.get("email")).first()
+        with Session(db.engine) as session:
+            account = session.execute(select(Account).filter_by(email=reset_data.get("email"))).scalar_one_or_none()
         if account:
             account.password = base64_password_hashed
             account.password_salt = base64_salt
@@ -129,6 +141,8 @@ class ForgotPasswordResetApi(Resource):
                 )
             except WorkSpaceNotAllowedCreateError:
                 pass
+            except AccountRegisterError:
+                raise AccountInFreezeError()
 
         return {"result": "success"}
 

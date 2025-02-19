@@ -4,7 +4,7 @@ import pytest
 
 from configs import dify_config
 from core.app.app_config.entities import ModelConfigEntity
-from core.file import File, FileTransferMethod, FileType, FileUploadConfig, ImageConfig
+from core.file import File, FileTransferMethod, FileType
 from core.memory.token_buffer_memory import TokenBufferMemory
 from core.model_runtime.entities.message_entities import (
     AssistantPromptMessage,

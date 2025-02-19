@@ -35,6 +35,7 @@ export enum BlockEnum {
   ListFilter = 'list-operator',
   IterationStart = 'iteration-start',
   Assigner = 'assigner', // is now named as VariableAssigner
+  Agent = 'agent',
 }
 
 export enum ControlMode {
@@ -287,6 +288,11 @@ export enum WorkflowRunningStatus {
   Succeeded = 'succeeded',
   Failed = 'failed',
   Stopped = 'stopped',
+}
+
+export enum WorkflowVersion {
+  Draft = 'draft',
+  Latest = 'latest',
 }
 
 export enum NodeRunningStatus {

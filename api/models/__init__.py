@@ -73,7 +73,6 @@ from .task import CeleryTask, CeleryTaskSet
 from .tools import (
     ApiToolProvider,
     BuiltinToolProvider,
-    PublishedAppTool,
     ToolConversationVariables,
     ToolFile,
     ToolLabelBinding,
@@ -150,7 +149,6 @@ __all__ = [
     "ProviderOrder",
     "ProviderQuotaType",
     "ProviderType",
-    "PublishedAppTool",
     "RecommendedApp",
     "SavedMessage",
     "Site",

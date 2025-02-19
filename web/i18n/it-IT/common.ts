@@ -47,6 +47,10 @@ const translation = {
     saveAndRegenerate: 'Salva e rigenera i blocchi figlio',
     regenerate: 'Rigenerare',
     viewMore: 'SCOPRI DI PIÙ',
+    submit: 'Invia',
+    skip: 'Nave',
+    imageCopied: 'Immagine copiata',
+    deleteApp: 'Elimina app',
   },
   errorMsg: {
     fieldRequired: '{{field}} è obbligatorio',
@@ -191,6 +195,18 @@ const translation = {
     myAccount: 'Il mio account',
     account: 'Conto',
     studio: 'Dify Studio',
+    deletePrivacyLinkTip: 'Per ulteriori informazioni su come gestiamo i tuoi dati, consulta il nostro',
+    deletePrivacyLink: 'Informativa sulla privacy.',
+    deleteSuccessTip: 'Il tuo account ha bisogno di tempo per completare l\'eliminazione. Ti invieremo un\'e-mail quando tutto sarà finito.',
+    deleteLabel: 'Per confermare, digita la tua email qui sotto',
+    deletePlaceholder: 'Inserisci la tua email',
+    sendVerificationButton: 'Invia codice di verifica',
+    verificationLabel: 'Codice di verifica',
+    verificationPlaceholder: 'Incolla il codice a 6 cifre',
+    permanentlyDeleteButton: 'Elimina definitivamente l\'account',
+    feedbackTitle: 'Valutazione',
+    feedbackLabel: 'Dicci perché hai cancellato il tuo account?',
+    feedbackPlaceholder: 'Opzionale',
   },
   members: {
     team: 'Team',
@@ -287,6 +303,7 @@ const translation = {
       usedUp: 'Quota di prova esaurita. Aggiungi il tuo fornitore di modelli.',
       useYourModel: 'Attualmente utilizzando il proprio fornitore di modelli.',
       close: 'Chiudi',
+      trialQuotaTip: 'La tua quota di prova di Anthropic scadrà l\'11/03/2025 e non sarà più disponibile in seguito. Sfruttalo in tempo.',
     },
     anthropic: {
       using: 'La capacità di embedding è in uso',
@@ -542,6 +559,8 @@ const translation = {
       hitScore: 'Punteggio di recupero:',
     },
     inputPlaceholder: 'Parla con il bot',
+    thinking: 'Pensante...',
+    thought: 'Pensiero',
   },
   promptEditor: {
     placeholder:

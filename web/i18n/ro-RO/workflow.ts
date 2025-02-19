@@ -104,6 +104,8 @@ const translation = {
     openInExplore: 'Deschide în Explorează',
     onFailure: 'În caz de eșec',
     addFailureBranch: 'Adăugare ramură Fail',
+    noHistory: 'Fără istorie',
+    loadMore: 'Încărcați mai multe fluxuri de lucru',
   },
   env: {
     envPanelTitle: 'Variabile de Mediu',

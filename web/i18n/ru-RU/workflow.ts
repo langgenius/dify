@@ -104,6 +104,8 @@ const translation = {
     openInExplore: 'Открыть в разделе «Обзор»',
     onFailure: 'О неудаче',
     addFailureBranch: 'Добавить ветвь Fail',
+    noHistory: 'Без истории',
+    loadMore: 'Загрузите больше рабочих процессов',
   },
   env: {
     envPanelTitle: 'Переменные среды',

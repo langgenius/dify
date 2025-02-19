@@ -100,6 +100,8 @@ class MyScaleVector(BaseVector):
         return results.row_count > 0
 
     def delete_by_ids(self, ids: list[str]) -> None:
+        if not ids:
+            return
         self._client.command(
             f"DELETE FROM {self._config.database}.{self._collection_name} WHERE id IN {str(tuple(ids))}"
         )

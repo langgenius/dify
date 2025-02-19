@@ -25,6 +25,7 @@ import { useAppContext } from '@/context/app-context'
 import { getRedirection } from '@/utils/app-redirection'
 import Input from '@/app/components/base/input'
 import { DSLImportMode } from '@/models/app'
+import { usePluginDependencies } from '@/app/components/workflow/plugin-dependency/hooks'
 
 type AppsProps = {
   pageType?: PageType
@@ -117,6 +118,7 @@ const Apps = ({
 
   const [currApp, setCurrApp] = React.useState<App | null>(null)
   const [isShowCreateModal, setIsShowCreateModal] = React.useState(false)
+  const { handleCheckPluginDependencies } = usePluginDependencies()
   const onCreate: CreateAppModalProps['onConfirm'] = async ({
     name,
     icon_type,
@@ -144,6 +146,8 @@ const Apps = ({
       })
       if (onSuccess)
         onSuccess()
+      if (app.app_id)
+        await handleCheckPluginDependencies(app.app_id)
       localStorage.setItem(NEED_REFRESH_APP_LIST_KEY, '1')
       getRedirection(isCurrentWorkspaceEditor, { id: app.app_id }, push)
     }

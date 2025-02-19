@@ -12,7 +12,7 @@ import { User } from '@/app/components/base/icons/src/public/avatar'
 import { Markdown } from '@/app/components/base/markdown'
 import { FileList } from '@/app/components/base/file-uploader'
 
-type QuestionProps = {
+interface QuestionProps {
   item: ChatItem
   questionIcon?: ReactNode
   theme: Theme | null | undefined
@@ -28,8 +28,8 @@ const Question: FC<QuestionProps> = ({
   } = item
 
   return (
-    <div className='flex justify-end mb-2 last:mb-0 pl-10'>
-      <div className='group relative mr-4'>
+    <div className='flex justify-end mb-2 last:mb-0 pl-14'>
+      <div className='group relative mr-4 max-w-full'>
         <div
           className='px-4 py-3 bg-[#D1E9FF]/50 rounded-2xl text-sm text-gray-900'
           style={theme?.chatBubbleColorStyle ? CssTransform(theme.chatBubbleColorStyle) : {}}

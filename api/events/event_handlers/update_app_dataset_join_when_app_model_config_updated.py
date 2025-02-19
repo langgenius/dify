@@ -15,11 +15,11 @@ def handle(sender, **kwargs):
 
     app_dataset_joins = db.session.query(AppDatasetJoin).filter(AppDatasetJoin.app_id == app.id).all()
 
-    removed_dataset_ids: set[int] = set()
+    removed_dataset_ids: set[str] = set()
     if not app_dataset_joins:
         added_dataset_ids = dataset_ids
     else:
-        old_dataset_ids: set[int] = set()
+        old_dataset_ids: set[str] = set()
         old_dataset_ids.update(app_dataset_join.dataset_id for app_dataset_join in app_dataset_joins)
 
         added_dataset_ids = dataset_ids - old_dataset_ids
@@ -39,8 +39,8 @@ def handle(sender, **kwargs):
     db.session.commit()
 
 
-def get_dataset_ids_from_model_config(app_model_config: AppModelConfig) -> set[int]:
-    dataset_ids: set[int] = set()
+def get_dataset_ids_from_model_config(app_model_config: AppModelConfig) -> set[str]:
+    dataset_ids: set[str] = set()
     if not app_model_config:
         return dataset_ids
 

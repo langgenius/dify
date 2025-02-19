@@ -22,8 +22,9 @@ import { useDatasetDetailContext } from '@/context/dataset-detail'
 import FloatRightContainer from '@/app/components/base/float-right-container'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import { LayoutRight2LineMod } from '@/app/components/base/icons/src/public/knowledge'
-import { useCheckSegmentBatchImportProgress, useSegmentBatchImport } from '@/service/knowledge/use-segment'
+import { useCheckSegmentBatchImportProgress, useChildSegmentListKey, useSegmentBatchImport, useSegmentListKey } from '@/service/knowledge/use-segment'
 import { useDocumentDetail, useDocumentMetadata } from '@/service/knowledge/use-document'
+import { useInvalid } from '@/service/use-base'
 
 type DocumentContextValue = {
   datasetId?: string
@@ -149,11 +150,20 @@ const DocumentDetail: FC<Props> = ({ datasetId, documentId }) => {
 
   const embedding = ['queuing', 'indexing', 'paused'].includes((documentDetail?.display_status || '').toLowerCase())
 
+  const invalidChunkList = useInvalid(useSegmentListKey)
+  const invalidChildChunkList = useInvalid(useChildSegmentListKey)
+
   const handleOperate = (operateName?: string) => {
-    if (operateName === 'delete')
+    if (operateName === 'delete') {
       backToPrev()
-    else
+    }
+    else {
       detailMutate()
+      setTimeout(() => {
+        invalidChunkList()
+        invalidChildChunkList()
+      }, 5000)
+    }
   }
 
   const mode = useMemo(() => {
@@ -245,7 +255,7 @@ const DocumentDetail: FC<Props> = ({ datasetId, documentId }) => {
         <div className='flex flex-row flex-1' style={{ height: 'calc(100% - 4rem)' }}>
           {isDetailLoading
             ? <Loading type='app' />
-            : <div className={cn('h-full w-full flex flex-col',
+            : <div className={cn('h-full grow min-w-0 flex flex-col',
               embedding ? '' : isFullDocMode ? 'relative pt-4 pr-11 pl-11' : 'relative pt-3 pr-11 pl-5',
             )}>
               {embedding

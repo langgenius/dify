@@ -47,6 +47,10 @@ const translation = {
     view: 'Pogled',
     regenerate: 'Regeneracijo',
     viewMore: 'POGLEJ VEČ',
+    submit: 'Predložiti',
+    skip: 'Ladja',
+    imageCopied: 'Kopirana slika',
+    deleteApp: 'Izbriši aplikacijo',
   },
   errorMsg: {
     fieldRequired: '{{field}} je obvezno',
@@ -183,6 +187,18 @@ const translation = {
     delete: 'Izbriši račun',
     deleteTip: 'Brisanje vašega računa bo trajno izbrisalo vse vaše podatke in jih ne bo mogoče obnoviti.',
     deleteConfirmTip: 'Za potrditev pošljite naslednje s svojega registriranega e-poštnega naslova na ',
+    permanentlyDeleteButton: 'Trajno izbriši račun',
+    deletePrivacyLinkTip: 'Za več informacij o tem, kako ravnamo z vašimi podatki, si oglejte naše',
+    feedbackPlaceholder: 'Neobvezno',
+    sendVerificationButton: 'Pošlji kodo za preverjanje',
+    feedbackLabel: 'Povejte nam, zakaj ste izbrisali račun?',
+    verificationLabel: 'Koda za preverjanje',
+    verificationPlaceholder: 'Prilepite 6-mestno kodo',
+    deletePrivacyLink: 'Pravilnik o zasebnosti.',
+    deletePlaceholder: 'Prosimo, vnesite svoj e-poštni naslov',
+    deleteSuccessTip: 'Vaš račun potrebuje čas, da dokonča brisanje. Ko bo vse končano, vam bomo poslali e-pošto.',
+    feedbackTitle: 'Povratne informacije',
+    deleteLabel: 'Za potrditev spodaj vnesite svoj e-poštni naslov',
   },
   members: {
     team: 'Ekipa',
@@ -275,6 +291,7 @@ const translation = {
       usedUp: 'Kvota za preizkus porabljena. Dodajte svojega ponudnika modelov.',
       useYourModel: 'Trenutno uporabljate svojega ponudnika modelov.',
       close: 'Zapri',
+      trialQuotaTip: 'Vaša kvota za preskušanje antropičnih izdelkov bo potekla 11.3.2025 in po tem datumu ne bo več na voljo. Prosimo, da jo pravočasno izkoristite.',
     },
     anthropic: {
       using: 'Zmožnost vdelave uporablja',
@@ -714,6 +731,8 @@ const translation = {
     renameConversation: 'Preimenovanje pogovora',
     conversationName: 'Ime pogovora',
     conversationNamePlaceholder: 'Prosimo, vnesite ime pogovora',
+    thinking: 'Razmišljanje...',
+    thought: 'Misel',
   },
   promptEditor: {
     context: {

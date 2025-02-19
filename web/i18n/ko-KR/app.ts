@@ -151,6 +151,10 @@ const translation = {
       removeConfirmContent: '현재 구성이 사용 중입니다. 제거하면 추적 기능이 꺼집니다.',
     },
     view: '보기',
+    opik: {
+      title: '오픽',
+      description: 'Opik은 LLM 애플리케이션을 평가, 테스트 및 모니터링하기 위한 오픈 소스 플랫폼입니다.',
+    },
   },
   answerIcon: {
     description: 'WebApp 아이콘을 사용하여 공유 응용 프로그램에서 바꿀🤖지 여부',
@@ -179,6 +183,7 @@ const translation = {
     byCategories: '카테고리별',
     searchAllTemplate: '모든 템플릿 검색...',
   },
+  showMyCreatedAppsOnly: '내가 만든 앱만 보기',
 }
 
 export default translation

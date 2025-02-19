@@ -47,6 +47,10 @@ const translation = {
     regenerate: 'पुनर्जन्म',
     close: 'बंद करना',
     saveAndRegenerate: 'सहेजें और पुन: उत्पन्न करें बाल विखंडू',
+    skip: 'जहाज़',
+    submit: 'जमा करें',
+    imageCopied: 'कॉपी की गई छवि',
+    deleteApp: 'ऐप हटाएं',
   },
   errorMsg: {
     fieldRequired: '{{field}} आवश्यक है',
@@ -189,6 +193,18 @@ const translation = {
     account: 'खाता',
     studio: 'डिफाई स्टूडियो',
     myAccount: 'मेरा खाता',
+    deletePrivacyLink: 'गोपनीयता नीति।',
+    deletePlaceholder: 'कृपया अपना ईमेल दर्ज करें',
+    verificationLabel: 'सत्यापन कोड',
+    sendVerificationButton: 'पुष्टि कोड भेजें',
+    deleteLabel: 'पुष्टि करने के लिए, कृपया नीचे अपना ईमेल टाइप करें',
+    feedbackLabel: 'हमें बताएँ कि आपने अपना खाता क्यों हटाया?',
+    feedbackPlaceholder: 'वैकल्पिक',
+    feedbackTitle: 'प्रतिपुष्टि',
+    deletePrivacyLinkTip: 'हम आपके डेटा को कैसे संभालते हैं, इस बारे में अधिक जानकारी के लिए, कृपया हमारा डेटा देखें',
+    permanentlyDeleteButton: 'खाता स्थायी रूप से हटाएं',
+    verificationPlaceholder: '6-अंकीय कोड पेस्ट करें',
+    deleteSuccessTip: 'आपके खाते को हटाने का काम पूरा करने के लिए समय चाहिए. जब यह सब हो जाएगा तो हम आपको ईमेल करेंगे।',
   },
   members: {
     team: 'टीम',
@@ -284,6 +300,7 @@ const translation = {
       usedUp: 'परीक्षण कोटा समाप्त हो गया। अपना मॉडल प्रदाता जोड़ें।',
       useYourModel: 'वर्तमान में अपना मॉडल प्रदाता उपयोग कर रहे हैं।',
       close: 'बंद करें',
+      trialQuotaTip: 'आपका एंथ्रोपिक परीक्षण कोटा 2025/03/11 को समाप्त हो जाएगा और उसके बाद उपलब्ध नहीं रहेगा। कृपया इसका समय पर उपयोग करें।',
     },
     anthropic: {
       using: 'एम्बेडिंग क्षमता का उपयोग कर रहा है',
@@ -533,6 +550,8 @@ const translation = {
       hitScore: 'पुनः प्राप्ति स्कोर:',
     },
     inputPlaceholder: 'बॉट से बात करें',
+    thought: 'विचार',
+    thinking: 'सोचते हुए...',
   },
   promptEditor: {
     placeholder:
