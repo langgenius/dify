@@ -37,7 +37,7 @@ const SegmentDetail: FC<ISegmentDetailProps> = ({
   docForm,
 }) => {
   const { t } = useTranslation()
-  const [question, setQuestion] = useState(segInfo?.sign_content || segInfo?.content || '')
+  const [question, setQuestion] = useState(segInfo?.content || '')
   const [answer, setAnswer] = useState(segInfo?.answer || '')
   const [keywords, setKeywords] = useState<string[]>(segInfo?.keywords || [])
   const { eventEmitter } = useEventEmitterContextContext()
@@ -57,9 +57,6 @@ const SegmentDetail: FC<ISegmentDetailProps> = ({
 
   const handleCancel = () => {
     onCancel()
-    setQuestion(segInfo?.content || '')
-    setAnswer(segInfo?.answer || '')
-    setKeywords(segInfo?.keywords || [])
   }
 
   const handleSave = () => {
