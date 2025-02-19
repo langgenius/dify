@@ -1,4 +1,5 @@
 const translation = {
+  offlineNotice: 'Dify v1.0.0 现已正式发布。自 2025年 2 月 24 日起，当前环境将不可访问，所有数据将被永久删除。请务必在此日期之前备份所有必要数据，以避免任何数据丢失。',
   api: {
     success: '成功',
     actionSuccess: '操作成功',
