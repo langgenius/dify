@@ -17,7 +17,7 @@ const SentryInit = ({
       type: 'warning',
       message: t('common.offlineNotice'),
       duration: 60000,
-      className: 'fixed left-1/2 -translate-x-1/2',
+      className: 'fixed left-1/2 -translate-x-1/2 !w-[520px]',
     })
   }, [t])
   useEffect(() => {
