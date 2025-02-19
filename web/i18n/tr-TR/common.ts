@@ -532,6 +532,8 @@ const translation = {
       hitScore: 'Geri Alım Skoru:',
     },
     inputPlaceholder: 'Bot ile konuş',
+    thought: 'Düşünce',
+    thinking: 'Düşünü...',
   },
   promptEditor: {
     placeholder: 'Prompt kelimenizi buraya yazın, değişken eklemek için \'{\' tuşuna, prompt içerik bloğu eklemek için \'/\' tuşuna basın',

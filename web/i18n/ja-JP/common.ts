@@ -532,6 +532,8 @@ const translation = {
       hitScore: '検索スコア:',
     },
     inputPlaceholder: 'ボットと話す',
+    thought: '思考',
+    thinking: '考え中...',
   },
   promptEditor: {
     placeholder: 'ここにプロンプトワードを入力してください。変数を挿入するには「{」を、プロンプトコンテンツブロックを挿入するには「/」を入力します。',

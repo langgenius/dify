@@ -528,6 +528,8 @@ const translation = {
       hitScore: 'Score de Récupération:',
     },
     inputPlaceholder: 'Parler au bot',
+    thinking: 'Pensée...',
+    thought: 'Pensée',
   },
   promptEditor: {
     placeholder: 'Écrivez votre mot d\'invite ici, entrez \'{\' pour insérer une variable, entrez \'/\' pour insérer un bloc de contenu d\'invite',
