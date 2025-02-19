@@ -66,7 +66,7 @@ const HeaderInMobile = () => {
     <>
       <div className='shrink-0 flex items-center px-2 py-3 gap-1 bg-mask-top2bottom-gray-50-to-transparent'>
         <ActionButton size='l' className='shrink-0' onClick={() => setShowSidebar(true)}>
-          <RiMenuLine className='w-4 h-4' />
+          <RiMenuLine className='w-[18px] h-[18px]' />
         </ActionButton>
         <div className='grow flex justify-center items-center'>
           {!currentConversationId && (
@@ -101,22 +101,20 @@ const HeaderInMobile = () => {
           handleViewChatSettings={() => setShowChatSettings(true)}
         />
       </div>
-      {
-        showSidebar && (
-          <div className='fixed inset-0 z-50 flex p-1 bg-background-overlay'
-            onClick={() => setShowSidebar(false)}
-          >
-            <div className='flex h-full w-[calc(100vw_-_40px)] bg-components-panel-bg backdrop-blur-sm rounded-xl shadow-lg' onClick={e => e.stopPropagation()}>
-              <Sidebar />
-            </div>
+      {showSidebar && (
+        <div className='fixed inset-0 z-50 flex p-1 bg-background-overlay'
+          onClick={() => setShowSidebar(false)}
+        >
+          <div className='flex h-full w-[calc(100vw_-_40px)] bg-components-panel-bg backdrop-blur-sm rounded-xl shadow-lg' onClick={e => e.stopPropagation()}>
+            <Sidebar />
           </div>
-        )
-      }
+        </div>
+      )}
       {showChatSettings && (
-        <div className='fixed inset-0 z-50 p-1 bg-background-overlay'
+        <div className='fixed inset-0 z-50 flex justify-end p-1 bg-background-overlay'
           onClick={() => setShowChatSettings(false)}
         >
-          <div className='flex flex-col w-[calc(100vw_-_40px)] bg-components-panel-bg backdrop-blur-sm rounded-xl shadow-lg' onClick={e => e.stopPropagation()}>
+          <div className='flex flex-col h-full w-[calc(100vw_-_40px)] bg-components-panel-bg backdrop-blur-sm rounded-xl shadow-lg' onClick={e => e.stopPropagation()}>
             <div className='flex items-center gap-3 px-4 py-3 rounded-t-2xl border-b border-divider-subtle'>
               <Message3Fill className='shrink-0 w-6 h-6' />
               <div className='grow text-text-secondary system-xl-semibold'>{t('share.chat.chatSettingsTitle')}</div>

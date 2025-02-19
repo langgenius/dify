@@ -95,12 +95,12 @@ const Sidebar = ({ isPanel }: Props) => {
         <div className={cn('grow text-text-secondary system-md-semibold truncate')}>{appData?.site.title}</div>
         {!isMobile && isSidebarCollapsed && (
           <ActionButton size='l' onClick={() => handleSidebarCollapse(false)}>
-            <RiExpandRightLine className='w-5 h-5' />
+            <RiExpandRightLine className='w-[18px] h-[18px]' />
           </ActionButton>
         )}
         {!isMobile && !isSidebarCollapsed && (
           <ActionButton size='l' onClick={() => handleSidebarCollapse(true)}>
-            <RiLayoutLeft2Line className='w-5 h-5' />
+            <RiLayoutLeft2Line className='w-[18px] h-[18px]' />
           </ActionButton>
         )}
       </div>

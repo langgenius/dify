@@ -74,7 +74,7 @@ const Header = () => {
       <div className='shrink-0 h-14 p-3 flex items-center justify-between'>
         <div className={cn('flex items-center gap-1 transition-all duration-200 ease-in-out', !isSidebarCollapsed && 'opacity-0 user-select-none')}>
           <ActionButton className={cn(!isSidebarCollapsed && 'cursor-default')} size='l' onClick={() => handleSidebarCollapse(false)}>
-            <RiLayoutRight2Line className='w-5 h-5' />
+            <RiLayoutRight2Line className='w-[18px] h-[18px]' />
           </ActionButton>
           <div className='shrink-0 mr-1'>
             <AppIcon
@@ -107,7 +107,7 @@ const Header = () => {
           </div>
           {isSidebarCollapsed && (
             <ActionButton size='l' onClick={handleNewConversation}>
-              <RiEditBoxLine className='w-5 h-5' />
+              <RiEditBoxLine className='w-[18px] h-[18px]' />
             </ActionButton>
           )}
         </div>
@@ -117,7 +117,7 @@ const Header = () => {
               popupContent={t('share.chat.resetChat')}
             >
               <ActionButton size='l' onClick={handleNewConversation}>
-                <RiResetLeftLine className='w-5 h-5' />
+                <RiResetLeftLine className='w-[18px] h-[18px]' />
               </ActionButton>
             </Tooltip>
           )}

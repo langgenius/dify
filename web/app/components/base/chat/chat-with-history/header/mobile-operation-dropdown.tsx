@@ -32,7 +32,7 @@ const MobileOperationDropdown = ({
         onClick={() => setOpen(v => !v)}
       >
         <ActionButton size='l' state={open ? ActionButtonState.Hover : ActionButtonState.Default}>
-          <RiMoreFill className='w-5 h-5' />
+          <RiMoreFill className='w-[18px] h-[18px]' />
         </ActionButton>
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent className="z-40">

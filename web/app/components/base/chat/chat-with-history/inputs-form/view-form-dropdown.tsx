@@ -26,7 +26,7 @@ const ViewFormDropdown = () => {
         onClick={() => setOpen(v => !v)}
       >
         <ActionButton size='l' state={open ? ActionButtonState.Hover : ActionButtonState.Default}>
-          <RiChatSettingsLine className='w-5 h-5' />
+          <RiChatSettingsLine className='w-[18px] h-[18px]' />
         </ActionButton>
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent className="z-50">
