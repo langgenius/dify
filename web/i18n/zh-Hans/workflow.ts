@@ -790,9 +790,9 @@ const translation = {
       reset: '重置',
       empty: '没有匹配的版本',
     },
-    nameThisVersion: '为此版本命名',
+    nameThisVersion: '命名',
     editVersionInfo: '编辑信息',
-    edit: {
+    editField: {
       title: '标题',
       releaseNotes: '发布说明',
     },

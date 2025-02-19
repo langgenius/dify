@@ -789,9 +789,9 @@ const translation = {
       reset: 'Reset filter',
       empty: 'No matching version history found',
     },
-    nameThisVersion: 'Name This Version',
+    nameThisVersion: 'Name this version',
     editVersionInfo: 'Edit version info',
-    edit: {
+    editField: {
       title: 'Title',
       releaseNotes: 'Release Notes',
     },

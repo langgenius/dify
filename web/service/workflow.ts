@@ -4,7 +4,6 @@ import type { CommonResponse } from '@/models/common'
 import type {
   ChatRunHistoryResponse,
   ConversationVariableResponse,
-  FetchWorkflowDraftPageResponse,
   FetchWorkflowDraftResponse,
   NodesDefaultConfigsResponse,
   WorkflowRunHistoryResponse,
@@ -48,10 +47,6 @@ export const publishWorkflow = (url: string) => {
 
 export const fetchPublishedWorkflow: Fetcher<FetchWorkflowDraftResponse, string> = (url) => {
   return get<FetchWorkflowDraftResponse>(url)
-}
-
-export const fetchPublishedAllWorkflow: Fetcher<FetchWorkflowDraftPageResponse, string> = (url) => {
-  return get<FetchWorkflowDraftPageResponse>(url)
 }
 
 export const stopWorkflowRun = (url: string) => {
