@@ -82,6 +82,7 @@ import {
   initialNodes,
 } from './utils'
 import {
+  CUSTOM_EDGE,
   CUSTOM_NODE,
   DSL_EXPORT_CHECK,
   ITERATION_CHILDREN_Z_INDEX,
@@ -103,7 +104,7 @@ const nodeTypes = {
   [CUSTOM_ITERATION_START_NODE]: CustomIterationStartNode,
 }
 const edgeTypes = {
-  [CUSTOM_NODE]: CustomEdge,
+  [CUSTOM_EDGE]: CustomEdge,
 }
 
 type WorkflowProps = {
