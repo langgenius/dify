@@ -197,7 +197,6 @@ const translation = {
     invalidVariable: '无效的变量',
     noValidTool: '{{field}} 无可用工具',
     toolParameterRequired: '{{field}}: 参数 [{{param}}] 不能为空',
-
   },
   singleRun: {
     testRun: '测试运行 ',

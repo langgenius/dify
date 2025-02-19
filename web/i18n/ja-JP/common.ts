@@ -51,6 +51,9 @@ const translation = {
     skip: 'スキップ',
     imageCopied: 'コピーした画像',
     deleteApp: 'アプリを削除',
+    viewDetails: '詳細を見る',
+    copied: 'コピーしました',
+    in: '中',
   },
   errorMsg: {
     fieldRequired: '{{field}}は必要です',
@@ -127,6 +130,8 @@ const translation = {
       Custom: 'カスタム',
     },
     addMoreModel: '設定画面から他のモデルを追加してください',
+    capabilities: 'マルチモーダル機能',
+    settingsLink: 'モデルプロバイダー設定',
   },
   menus: {
     status: 'ベータ版',
@@ -139,6 +144,7 @@ const translation = {
     newApp: '新しいアプリ',
     newDataset: 'ナレッジの作成',
     tools: 'ツール',
+    exploreMarketplace: 'マーケットプレイスを探索する',
   },
   userProfile: {
     settings: '設定',
@@ -164,6 +170,7 @@ const translation = {
     dataSource: 'データソース',
     plugin: 'プラグイン',
     apiBasedExtension: 'API拡張',
+    generalGroup: '一般',
   },
   account: {
     avatar: 'アバター',
@@ -403,6 +410,12 @@ const translation = {
     loadBalancingLeastKeyWarning: '負荷分散を利用するには、最低2つのキーを有効化する必要があります。',
     loadBalancingInfo: 'デフォルトでは、負荷分散はラウンドロビン方式を採用しています。レート制限が発生した場合、1分間のクールダウン期間が適用されます。',
     upgradeForLoadBalancing: '負荷分散を利用するには、プランのアップグレードが必要です。',
+    emptyProviderTitle: 'モデルプロバイダーが設定されていません',
+    discoverMore: 'もっと発見する',
+    installProvider: 'モデルプロバイダーをインストールする',
+    configureTip: 'APIキーを設定するか、使用するモデルを追加してください',
+    toBeConfigured: '設定中',
+    emptyProviderTip: '最初にモデルプロバイダーをインストールしてください。',
   },
   dataSource: {
     add: 'データソースの追加',

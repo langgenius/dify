@@ -24,6 +24,8 @@ const translation = {
     link: 'панель деталей',
     tipRight: ' чтобы просмотреть его.',
   },
+  circularInvocationTip: 'В текущем рабочем процессе существует циклический вызов инструментов/узлов.',
+  actionLogs: 'Журналы действий',
 }
 
 export default translation
