@@ -121,6 +121,7 @@ const translation = {
     number: 'nombre',
     required: 'Requis',
     infoAndSetting: 'Infos & Paramètres',
+    file: 'lime',
   },
   noCustomTool: {
     title: 'Pas d\'outils personnalisés !',
@@ -150,6 +151,8 @@ const translation = {
   openInStudio: 'Ouvrir dans Studio',
   customToolTip: 'En savoir plus sur les outils personnalisés Dify',
   toolNameUsageTip: 'Nom de l’appel de l’outil pour le raisonnement et l’invite de l’agent',
+  copyToolName: 'Copier le nom',
+  noTools: 'Aucun outil trouvé',
 }
 
 export default translation

@@ -24,6 +24,8 @@ const translation = {
     link: 'pannello dei dettagli',
     tipRight: ' per visualizzarlo.',
   },
+  circularInvocationTip: 'C\'è una chiamata circolare di strumenti/nodi nel flusso di lavoro corrente.',
+  actionLogs: 'Registri delle azioni',
 }
 
 export default translation
