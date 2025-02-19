@@ -60,6 +60,7 @@ class Dataset(db.Model):  # type: ignore[name-defined]
     embedding_model_provider = db.Column(db.String(255), nullable=True)
     collection_binding_id = db.Column(StringUUID, nullable=True)
     retrieval_model = db.Column(JSONB, nullable=True)
+    built_in_field_enabled = db.Column(db.Boolean, nullable=False, server_default=db.text("false"))
 
     @property
     def dataset_keyword_table(self):

@@ -583,8 +583,29 @@ class DocumentService:
         return document
 
     @staticmethod
+    def get_document_by_ids(document_ids: list[str]) -> list[Document]:
+        documents = db.session.query(Document).filter(Document.id.in_(document_ids),
+                                                      Document.enabled == True,
+                                                      Document.indexing_status == "completed",
+                                                      Document.archived == False,
+                                                      ).all()
+        return documents
+
+    @staticmethod
     def get_document_by_dataset_id(dataset_id: str) -> list[Document]:
-        documents = db.session.query(Document).filter(Document.dataset_id == dataset_id, Document.enabled == True).all()
+        documents = db.session.query(Document).filter(Document.dataset_id == dataset_id, 
+                                                      Document.enabled == True,
+                                                      ).all()
+
+        return documents
+    
+    @staticmethod
+    def get_working_documents_by_dataset_id(dataset_id: str) -> list[Document]:
+        documents = db.session.query(Document).filter(Document.dataset_id == dataset_id, 
+                                                      Document.enabled == True,
+                                                      Document.indexing_status == "completed",
+                                                      Document.archived == False,
+                                                      ).all()
 
         return documents
 
