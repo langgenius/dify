@@ -153,6 +153,7 @@ jobs:
         env:
           BASH_SEVERITY: warning
           DEFAULT_BRANCH: main
+          FILTER_REGEX_INCLUDE: "web/pnpm-lock.yaml"
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           IGNORE_GENERATED_FILES: true
           IGNORE_GITIGNORED_FILES: true
