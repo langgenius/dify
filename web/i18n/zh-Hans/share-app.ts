@@ -6,10 +6,13 @@ const translation = {
   },
   chat: {
     newChat: '开启新对话',
+    chatSettingsTitle: '新对话设置',
+    chatFormTip: '对话开始后，对话设置将无法修改。',
     pinnedTitle: '已置顶',
     unpinnedTitle: '对话列表',
     newChatDefaultName: '新的对话',
     resetChat: '重置对话',
+    viewChatSettings: '查看对话设置',
     poweredBy: 'Powered by',
     prompt: '提示词',
     privatePromptConfigTitle: '对话设置',

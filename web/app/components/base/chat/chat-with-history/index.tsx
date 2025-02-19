@@ -13,7 +13,6 @@ import { useChatWithHistory } from './hooks'
 import Sidebar from './sidebar'
 import Header from './header'
 import HeaderInMobile from './header-in-mobile'
-import ConfigPanel from './config-panel'
 import ChatWrapper from './chat-wrapper'
 import type { InstalledApp } from '@/models/explore'
 import Loading from '@/app/components/base/loading'
@@ -32,8 +31,6 @@ const ChatWithHistory: FC<ChatWithHistoryProps> = ({
     appInfoError,
     appData,
     appInfoLoading,
-    appPrevChatTree,
-    showConfigPanelBeforeChat,
     appChatListDataLoading,
     chatShouldReloadKey,
     isMobile,
@@ -41,7 +38,6 @@ const ChatWithHistory: FC<ChatWithHistoryProps> = ({
     sidebarCollapseState,
   } = useChatWithHistoryContext()
   const isSidebarCollapsed = sidebarCollapseState
-  const chatReady = (!showConfigPanelBeforeChat || !!appPrevChatTree.length)
   const customConfig = appData?.custom_config
   const site = appData?.site
 
@@ -75,19 +71,18 @@ const ChatWithHistory: FC<ChatWithHistoryProps> = ({
       isMobile && 'flex-col',
       className,
     )}>
-      <div className={cn(
-        'flex flex-col w-[236px] p-1 pr-0 transition-all duration-200 ease-in-out',
-        isSidebarCollapsed && 'w-0 !p-0 overflow-hidden',
-      )}>
-        <Sidebar />
-      </div>
+      {!isMobile && (
+        <div className={cn(
+          'flex flex-col w-[236px] p-1 pr-0 transition-all duration-200 ease-in-out',
+          isSidebarCollapsed && 'w-0 !p-0 overflow-hidden',
+        )}>
+          <Sidebar />
+        </div>
+      )}
       {isMobile && (
         <HeaderInMobile />
       )}
-      <div className={cn(
-        'relative grow p-2',
-        showConfigPanelBeforeChat && !appPrevChatTree.length && 'flex items-center justify-center',
-      )}>
+      <div className={cn('relative grow p-2')}>
         {isSidebarCollapsed && (
           <div
             className={cn(
@@ -101,24 +96,14 @@ const ChatWithHistory: FC<ChatWithHistoryProps> = ({
           </div>
         )}
         <div className='h-full flex flex-col bg-chatbot-bg rounded-2xl border-[0,5px] border-components-panel-border-subtle overflow-hidden'>
-          <Header />
-          {appChatListDataLoading && chatReady && (
+          {!isMobile && <Header />}
+          {appChatListDataLoading && (
             <Loading type='app' />
           )}
-          {chatReady && !appChatListDataLoading && (
+          {!appChatListDataLoading && (
             <ChatWrapper key={chatShouldReloadKey} />
           )}
         </div>
-        {
-          showConfigPanelBeforeChat && !appChatListDataLoading && !appPrevChatTree.length && (
-            <div className={cn(
-              'flex w-full items-center justify-center h-full',
-              isMobile && 'px-4',
-            )}>
-              <ConfigPanel />
-            </div>
-          )
-        }
       </div>
     </div>
   )
@@ -148,7 +133,6 @@ const ChatWithHistoryWrap: FC<ChatWithHistoryWrapProps> = ({
     appPrevChatTree,
     pinnedConversationList,
     conversationList,
-    showConfigPanelBeforeChat,
     newConversationInputs,
     newConversationInputsRef,
     handleNewConversationInputsChange,
@@ -184,7 +168,6 @@ const ChatWithHistoryWrap: FC<ChatWithHistoryWrapProps> = ({
       appPrevChatTree,
       pinnedConversationList,
       conversationList,
-      showConfigPanelBeforeChat,
       newConversationInputs,
       newConversationInputsRef,
       handleNewConversationInputsChange,

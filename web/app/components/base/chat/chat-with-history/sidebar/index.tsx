@@ -40,6 +40,7 @@ const Sidebar = ({ isPanel }: Props) => {
     handleDeleteConversation,
     sidebarCollapseState,
     handleSidebarCollapse,
+    isMobile,
   } = useChatWithHistoryContext()
   const isSidebarCollapsed = sidebarCollapseState
 
@@ -92,12 +93,12 @@ const Sidebar = ({ isPanel }: Props) => {
           />
         </div>
         <div className={cn('grow text-text-secondary system-md-semibold truncate')}>{appData?.site.title}</div>
-        {isSidebarCollapsed && (
+        {!isMobile && isSidebarCollapsed && (
           <ActionButton size='l' onClick={() => handleSidebarCollapse(false)}>
             <RiExpandRightLine className='w-5 h-5' />
           </ActionButton>
         )}
-        {!isSidebarCollapsed && (
+        {!isMobile && !isSidebarCollapsed && (
           <ActionButton size='l' onClick={() => handleSidebarCollapse(true)}>
             <RiLayoutLeft2Line className='w-5 h-5' />
           </ActionButton>

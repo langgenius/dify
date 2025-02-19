@@ -28,13 +28,12 @@ export type ChatWithHistoryContextValue = {
   appPrevChatTree: ChatItemInTree[]
   pinnedConversationList: AppConversationData['data']
   conversationList: AppConversationData['data']
-  showConfigPanelBeforeChat: boolean
   newConversationInputs: Record<string, any>
   newConversationInputsRef: RefObject<Record<string, any>>
   handleNewConversationInputsChange: (v: Record<string, any>) => void
   inputsForms: any[]
   handleNewConversation: () => void
-  handleStartChat: () => void
+  handleStartChat: (callback?: any) => void
   handleChangeConversation: (conversationId: string) => void
   handlePinConversation: (conversationId: string) => void
   handleUnpinConversation: (conversationId: string) => void
@@ -58,7 +57,6 @@ export const ChatWithHistoryContext = createContext<ChatWithHistoryContextValue>
   appPrevChatTree: [],
   pinnedConversationList: [],
   conversationList: [],
-  showConfigPanelBeforeChat: false,
   newConversationInputs: {},
   newConversationInputsRef: { current: {} },
   handleNewConversationInputsChange: () => {},

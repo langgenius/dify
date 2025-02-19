@@ -6,10 +6,13 @@ const translation = {
   },
   chat: {
     newChat: 'Start New chat',
+    chatSettingsTitle: 'New chat setup',
+    chatFormTip: 'Chat settings cannot be modified after the chat has started.',
     pinnedTitle: 'Pinned',
     unpinnedTitle: 'Recent',
     newChatDefaultName: 'New conversation',
     resetChat: 'Reset conversation',
+    viewChatSettings: 'View chat settings',
     poweredBy: 'Powered by',
     prompt: 'Prompt',
     privatePromptConfigTitle: 'Conversation settings',

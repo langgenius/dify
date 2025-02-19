@@ -1,6 +1,5 @@
 import { useCallback, useState } from 'react'
 import {
-  RiChatSettingsLine,
   RiEditBoxLine,
   RiLayoutRight2Line,
   RiResetLeftLine,
@@ -13,6 +12,7 @@ import Operation from './operation'
 import ActionButton from '@/app/components/base/action-button'
 import AppIcon from '@/app/components/base/app-icon'
 import Tooltip from '@/app/components/base/tooltip'
+import ViewFormDropdown from '@/app/components/base/chat/chat-with-history/inputs-form/view-form-dropdown'
 import Confirm from '@/app/components/base/confirm'
 import RenameModal from '@/app/components/base/chat/chat-with-history/sidebar/rename-modal'
 import type { ConversationItem } from '@/models/share'
@@ -20,11 +20,11 @@ import cn from '@/utils/classnames'
 
 const Header = () => {
   const {
-    // isMobile,
     appData,
     currentConversationId,
+    currentConversationItem,
+    inputsForms,
     pinnedConversationList,
-    conversationList,
     handlePinConversation,
     handleUnpinConversation,
     conversationRenaming,
@@ -38,7 +38,6 @@ const Header = () => {
   const isSidebarCollapsed = sidebarCollapseState
 
   const isPin = pinnedConversationList.some(item => item.id === currentConversationId)
-  const currentConversationItem = conversationList.find(item => item.id === currentConversationId) || pinnedConversationList.find(item => item.id === currentConversationId)
 
   const [showConfirm, setShowConfirm] = useState<ConversationItem | null>(null)
   const [showRename, setShowRename] = useState<ConversationItem | null>(null)
@@ -113,17 +112,18 @@ const Header = () => {
           )}
         </div>
         <div className='flex items-center gap-1'>
-          <Tooltip
-            popupContent={t('share.chat.resetChat')}
-          >
-            <ActionButton size='l' onClick={handleNewConversation}>
-              <RiResetLeftLine className='w-5 h-5' />
-            </ActionButton>
-          </Tooltip>
-          {/* TODO */}
-          <ActionButton size='l' onClick={() => { }}>
-            <RiChatSettingsLine className='w-5 h-5' />
-          </ActionButton>
+          {currentConversationId && (
+            <Tooltip
+              popupContent={t('share.chat.resetChat')}
+            >
+              <ActionButton size='l' onClick={handleNewConversation}>
+                <RiResetLeftLine className='w-5 h-5' />
+              </ActionButton>
+            </Tooltip>
+          )}
+          {currentConversationId && inputsForms.length > 0 && (
+            <ViewFormDropdown />
+          )}
         </div>
       </div>
       {!!showConfirm && (

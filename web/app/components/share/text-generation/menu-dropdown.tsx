@@ -52,7 +52,7 @@ const MenuDropdown: FC<Props> = ({
       >
         <PortalToFollowElemTrigger onClick={handleTrigger}>
           <div>
-            <ActionButton className={cn(open && 'bg-state-base-hover')}>
+            <ActionButton size='l' className={cn(open && 'bg-state-base-hover')}>
               <RiEqualizer2Line className='w-4 h-4' />
             </ActionButton>
           </div>
