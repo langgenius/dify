@@ -21,7 +21,7 @@ import Input from '@/app/components/base/input'
 import { ApiConnectionMod } from '@/app/components/base/icons/src/vender/solid/development'
 import CheckboxWithLabel from '@/app/components/datasets/create/website/base/checkbox-with-label'
 // import DatasetMetadataDrawer from '@/app/components/datasets/metadata/dataset-metadata-drawer'
-import NoData from '@/app/components/datasets/metadata/metadata-document/no-data'
+import MetaDataDocument from '@/app/components/datasets/metadata/metadata-document'
 // Services
 import { fetchDatasetApiBaseUrl } from '@/service/datasets'
 
@@ -92,8 +92,8 @@ const Container = () => {
 
   return (
     <div ref={containerRef} className='grow relative flex flex-col bg-background-body overflow-y-auto scroll-container'>
-      <div className='flex justify-end mt-[300px]'>
-        <NoData onStart={() => { }} />
+      <div className='flex justify-end mt-[300px] mr-[100px]'>
+        <MetaDataDocument />
         {/* <SelectMetadataModal trigger={<Button className='w-[200px]'>select</Button>} onSave={(data) => { console.log(data) }} />
         <CreateModal trigger={<Button className='w-[200px]'>add</Button>} hasBack onSave={(data) => { console.log(data) }} />
         <Button className='flex w-[200px]' size="medium" onClick={() => setShowExternalApiPanel(true)}>

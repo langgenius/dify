@@ -7,17 +7,20 @@ import { InputNumber } from '@/app/components/base/input-number'
 import cn from '@/utils/classnames'
 
 type Props = {
+  className?: string
   type: DataType
   value: any
   onChange: (value: any) => void
 }
 
 const InputCombined: FC<Props> = ({
+  className: configClassName,
   type,
   value,
   onChange,
 }) => {
-  const className = 'grow p-0.5 h-6  text-xs'
+  // TODO: configClassName...
+  const className = cn('grow p-0.5 h-6  text-xs', configClassName)
   if (type === DataType.time)
     return <div className='grow text-xs'>Datepicker placeholder</div>
 
