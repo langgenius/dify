@@ -944,7 +944,16 @@ services:
     restart: always
     volumes:
       - ./volumes/unstructured:/app/data
-
+  dify2openai:
+    image: funnyzak/dify2openai:0.0.1
+    ports:
+      - "8001:3000"
+    environment:
+      - DIFY_API_URL=https://api.dify.ai/v1 #
+      - BOT_TYPE=Chat #Chat,Completion,Workflow
+    # - MODELS_NAME=dify #default
+    depends_on:
+      - api
 networks:
   # create a network between sandbox, api and ssrf_proxy, and can not access outside.
   ssrf_proxy_network:
