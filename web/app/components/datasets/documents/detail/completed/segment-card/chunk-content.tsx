@@ -49,7 +49,7 @@ const ChunkContent: FC<ChunkContentProps> = ({
       isFullDocMode ? 'line-clamp-3' : isCollapsed ? 'line-clamp-2' : 'line-clamp-20',
       className,
     )}
-    content={sign_content || content}
+    content={sign_content || content || ''}
   />
 }
 
