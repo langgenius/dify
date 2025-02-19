@@ -85,9 +85,6 @@ importers:
       ahooks:
         specifier: ^3.8.1
         version: 3.8.1(react@18.2.0)
-      canvas:
-        specifier: ^3.1.0
-        version: 3.1.0
       class-variance-authority:
         specifier: ^0.7.0
         version: 0.7.0
@@ -425,6 +422,9 @@ importers:
       bing-translate-api:
         specifier: ^4.0.2
         version: 4.0.2
+      canvas:
+        specifier: ^3.1.0
+        version: 3.1.0
       code-inspector-plugin:
         specifier: ^0.18.1
         version: 0.18.3
