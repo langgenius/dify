@@ -10,6 +10,7 @@ from typing import Any, Optional, cast
 
 from pydantic import BaseModel
 from sqlalchemy import func
+from sqlalchemy.orm import Session
 from werkzeug.exceptions import Unauthorized
 
 from configs import dify_config
@@ -101,7 +102,7 @@ class AccountService:
 
     @staticmethod
     def load_user(user_id: str) -> None | Account:
-        account = Account.query.filter_by(id=user_id).first()
+        account = db.session.query(Account).filter_by(id=user_id).first()
         if not account:
             return None
 
@@ -146,7 +147,7 @@ class AccountService:
     def authenticate(email: str, password: str, invite_token: Optional[str] = None) -> Account:
         """authenticate account with email and password"""
 
-        account = Account.query.filter_by(email=email).first()
+        account = db.session.query(Account).filter_by(email=email).first()
         if not account:
             raise AccountNotFoundError()
 
@@ -924,11 +925,14 @@ class RegisterService:
 
     @classmethod
     def invite_new_member(
-        cls, tenant: Tenant, email: str, language: str, role: str = "normal", inviter: Optional[Account] = None
+        cls, tenant: Tenant, email: str, language: str, role: str = "normal", inviter: Account | None = None
     ) -> str:
+        if not inviter:
+            raise ValueError("Inviter is required")
+
         """Invite new member"""
-        account = Account.query.filter_by(email=email).first()
-        assert inviter is not None, "Inviter must be provided."
+        with Session(db.engine) as session:
+            account = session.query(Account).filter_by(email=email).first()
 
         if not account:
             TenantService.check_member_permission(tenant, inviter, None, "add")

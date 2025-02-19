@@ -24,6 +24,8 @@ const translation = {
     link: 'panoul de detalii',
     tipRight: ' pentru a o vizualiza.',
   },
+  actionLogs: 'Jurnale de acțiuni',
+  circularInvocationTip: 'Există o invocare circulară a instrumentelor/nodurilor în fluxul de lucru curent.',
 }
 
 export default translation

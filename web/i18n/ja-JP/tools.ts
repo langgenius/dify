@@ -133,6 +133,7 @@ const translation = {
     number: '数',
     required: '必須',
     infoAndSetting: '情報と設定',
+    file: 'ファイル',
   },
   noCustomTool: {
     title: 'カスタムツールがありません！',
@@ -150,6 +151,8 @@ const translation = {
   howToGet: '取得方法',
   openInStudio: 'スタジオで開く',
   toolNameUsageTip: 'ツール呼び出し名、エージェントの推論とプロンプトの単語に使用されます',
+  copyToolName: '名前をコピー',
+  noTools: 'ツールが見つかりませんでした',
 }
 
 export default translation

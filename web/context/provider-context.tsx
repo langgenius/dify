@@ -25,6 +25,7 @@ import Toast from '@/app/components/base/toast'
 
 type ProviderContextState = {
   modelProviders: ModelProvider[]
+  refreshModelProviders: () => void
   textGenerationModelList: Model[]
   supportRetrievalMethods: RETRIEVE_METHOD[]
   isAPIKeySet: boolean
@@ -42,6 +43,7 @@ type ProviderContextState = {
 }
 const ProviderContext = createContext<ProviderContextState>({
   modelProviders: [],
+  refreshModelProviders: () => { },
   textGenerationModelList: [],
   supportRetrievalMethods: [],
   isAPIKeySet: true,
@@ -74,7 +76,6 @@ export const useProviderContext = () => useContext(ProviderContext)
 
 // Adding a dangling comma to avoid the generic parsing issue in tsx, see:
 // https://github.com/microsoft/TypeScript/issues/15713
-// eslint-disable-next-line @typescript-eslint/comma-dangle
 export const useProviderContextSelector = <T,>(selector: (state: ProviderContextState) => T): T =>
   useContextSelector(ProviderContext, selector)
 
@@ -84,7 +85,7 @@ type ProviderContextProviderProps = {
 export const ProviderContextProvider = ({
   children,
 }: ProviderContextProviderProps) => {
-  const { data: providersData } = useSWR('/workspaces/current/model-providers', fetchModelProviders)
+  const { data: providersData, mutate: refreshModelProviders } = useSWR('/workspaces/current/model-providers', fetchModelProviders)
   const fetchModelListUrlPrefix = '/workspaces/current/models/model-types/'
   const { data: textGenerationModelList } = useSWR(`${fetchModelListUrlPrefix}${ModelTypeEnum.textGeneration}`, fetchModelList)
   const { data: supportRetrievalMethods } = useSWR('/datasets/retrieval-setting', fetchSupportRetrievalMethods)
@@ -143,6 +144,7 @@ export const ProviderContextProvider = ({
   return (
     <ProviderContext.Provider value={{
       modelProviders: providersData?.data || [],
+      refreshModelProviders,
       textGenerationModelList: textGenerationModelList?.data || [],
       isAPIKeySet: !!textGenerationModelList?.data.some(model => model.status === ModelStatusEnum.active),
       supportRetrievalMethods: supportRetrievalMethods?.retrieval_method || [],

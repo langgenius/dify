@@ -188,6 +188,12 @@ const translation = {
     byCategories: 'THEO DANH MỤC',
   },
   showMyCreatedAppsOnly: 'Chỉ hiển thị ứng dụng do tôi tạo',
+  appSelector: {
+    params: 'THÔNG SỐ ỨNG DỤNG',
+    placeholder: 'Chọn một ứng dụng...',
+    noParams: 'Không cần thông số',
+    label: 'Ứng dụng',
+  },
 }
 
 export default translation

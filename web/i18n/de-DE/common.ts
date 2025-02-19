@@ -51,6 +51,9 @@ const translation = {
     skip: 'Schiff',
     imageCopied: 'Kopiertes Bild',
     deleteApp: 'App löschen',
+    viewDetails: 'Details anzeigen',
+    in: 'in',
+    copied: 'Kopiert',
   },
   placeholder: {
     input: 'Bitte eingeben',
@@ -123,6 +126,8 @@ const translation = {
       Custom: 'Benutzerdefiniert',
     },
     addMoreModel: 'Gehen Sie zu den Einstellungen, um mehr Modelle hinzuzufügen',
+    settingsLink: 'Einstellungen für Modellanbieter',
+    capabilities: 'Multimodale Fähigkeiten',
   },
   menus: {
     status: 'Beta',
@@ -135,6 +140,7 @@ const translation = {
     newApp: 'Neue App',
     newDataset: 'Wissen erstellen',
     tools: 'Werkzeuge',
+    exploreMarketplace: 'Marketplace erkunden',
   },
   userProfile: {
     settings: 'Einstellungen',
@@ -160,6 +166,7 @@ const translation = {
     dataSource: 'Datenquelle',
     plugin: 'Plugins',
     apiBasedExtension: 'API-Erweiterung',
+    generalGroup: 'ALLGEMEIN',
   },
   account: {
     avatar: 'Avatar',
@@ -399,6 +406,12 @@ const translation = {
     defaultConfig: 'Standardkonfiguration',
     apiKeyRateLimit: 'Ratenlimit wurde erreicht, verfügbar nach {{seconds}}s',
     loadBalancingInfo: 'Standardmäßig wird für den Lastenausgleich die Round-Robin-Strategie verwendet. Wenn die Ratenbegrenzung ausgelöst wird, wird eine Abklingzeit von 1 Minute angewendet.',
+    emptyProviderTip: 'Bitte installieren Sie zuerst einen Modellanbieter.',
+    configureTip: 'Einrichten des API-Schlüssels oder Hinzufügen des zu verwendenden Modells',
+    discoverMore: 'Erfahren Sie mehr in',
+    installProvider: 'Installieren von Modellanbietern',
+    toBeConfigured: 'Zu konfigurieren',
+    emptyProviderTitle: 'Modellanbieter nicht eingerichtet',
   },
   dataSource: {
     add: 'Eine Datenquelle hinzufügen',
@@ -528,6 +541,8 @@ const translation = {
       hitScore: 'Abrufwertung:',
     },
     inputPlaceholder: 'Sprechen Sie mit dem Bot',
+    thought: 'Gedanke',
+    thinking: 'Denken...',
   },
   promptEditor: {
     placeholder: 'Schreiben Sie hier Ihr Aufforderungswort, geben Sie \'{\' ein, um eine Variable einzufügen, geben Sie \'/\' ein, um einen Aufforderungs-Inhaltsblock einzufügen',

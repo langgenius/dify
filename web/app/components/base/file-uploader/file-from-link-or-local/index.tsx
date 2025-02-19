@@ -59,7 +59,7 @@ const FileFromLinkOrLocal = ({
       <PortalToFollowElemTrigger onClick={() => setOpen(v => !v)} asChild>
         {trigger(open)}
       </PortalToFollowElemTrigger>
-      <PortalToFollowElemContent className='z-10'>
+      <PortalToFollowElemContent className='z-[1001]'>
         <div className='p-3 w-[280px] bg-components-panel-bg-blur border-[0.5px] border-components-panel-border rounded-xl shadow-lg'>
           {
             showFromLink && (

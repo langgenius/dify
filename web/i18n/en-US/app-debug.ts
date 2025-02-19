@@ -103,7 +103,7 @@ const translation = {
       edit: 'Edit annotation',
     },
     dataSet: {
-      title: 'Context',
+      title: 'Knowledge',
       noData: 'You can import Knowledge as context',
       words: 'Words',
       textBlocks: 'Text Blocks',

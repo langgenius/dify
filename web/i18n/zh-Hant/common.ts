@@ -51,6 +51,9 @@ const translation = {
     skip: '船',
     imageCopied: '複製的圖片',
     deleteApp: '刪除應用程式',
+    viewDetails: '查看詳情',
+    in: '在',
+    copied: '複製',
   },
   placeholder: {
     input: '請輸入',
@@ -123,6 +126,8 @@ const translation = {
       Custom: '自定義',
     },
     addMoreModel: '新增更多模型',
+    settingsLink: 'Model Provider 設置',
+    capabilities: '多模式功能',
   },
   menus: {
     status: 'beta',
@@ -135,6 +140,7 @@ const translation = {
     newApp: '建立應用',
     newDataset: '建立知識庫',
     tools: '工具',
+    exploreMarketplace: '探索 Marketplace',
   },
   userProfile: {
     settings: '設定',
@@ -160,6 +166,7 @@ const translation = {
     dataSource: '資料來源',
     plugin: '外掛',
     apiBasedExtension: 'API 擴充套件',
+    generalGroup: '常規',
   },
   account: {
     avatar: '頭像',
@@ -399,6 +406,12 @@ const translation = {
     editConfig: '編輯配置',
     loadBalancingInfo: '默認情況下，負載均衡使用 Round-robin 策略。如果觸發了速率限制，將應用 1 分鐘的冷卻時間。',
     loadBalancingLeastKeyWarning: '要啟用負載均衡，必須至少啟用 2 個金鑰。',
+    discoverMore: '發現更多',
+    installProvider: '安裝模型提供程式',
+    toBeConfigured: '待配置',
+    emptyProviderTitle: '未設置模型提供者',
+    configureTip: '設置 api-key 或添加要使用的模型',
+    emptyProviderTip: '請先安裝模型提供者。',
   },
   dataSource: {
     add: '新增資料來源',
@@ -528,6 +541,8 @@ const translation = {
       hitScore: '召回得分：',
     },
     inputPlaceholder: '與 Bot 對話',
+    thinking: '思維。。。',
+    thought: '思想',
   },
   promptEditor: {
     placeholder: '在這裡寫你的提示詞，輸入\'{\' 插入變數、輸入\'/\' 插入提示內容塊',
