@@ -1,14 +1,15 @@
 import React, { type FC } from 'react'
 import Button from '../../button'
-import type { DatePickerFooterProps } from '../types'
+import { type DatePickerFooterProps, ViewType } from '../types'
 import { RiTimeLine } from '@remixicon/react'
 import cn from '@/utils/classnames'
 import { useTranslation } from 'react-i18next'
 
 const Footer: FC<DatePickerFooterProps> = ({
   needTimePicker,
-  handleClickTimePicker,
   displayTime,
+  view,
+  handleClickTimePicker,
   handleSelectCurrentDate,
   handleConfirmDate,
 }) => {
@@ -28,7 +29,8 @@ const Footer: FC<DatePickerFooterProps> = ({
           onClick={handleClickTimePicker}
         >
           <RiTimeLine className='w-3.5 h-3.5' />
-          <span>{displayTime}</span>
+          {view === ViewType.date && <span>{displayTime}</span>}
+          {view === ViewType.time && <span>{t('time.operation.pickDate')}</span>}
         </button>
       )}
       <div className='flex items-center gap-x-1'>

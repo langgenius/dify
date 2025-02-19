@@ -38,6 +38,7 @@ export type DatePickerHeaderProps = {
 export type DatePickerFooterProps = {
   needTimePicker: boolean
   displayTime: string
+  view: ViewType
   handleClickTimePicker: () => void
   handleSelectCurrentDate: () => void
   handleConfirmDate: () => void

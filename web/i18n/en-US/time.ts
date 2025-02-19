@@ -26,6 +26,7 @@ const translation = {
     now: 'Now',
     ok: 'OK',
     cancel: 'Cancel',
+    pickDate: 'Pick Date',
   },
   title: {
     pickTime: 'Pick Time',

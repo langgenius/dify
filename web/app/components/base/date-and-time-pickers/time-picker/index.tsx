@@ -82,6 +82,7 @@ const TimePicker = ({
 
   const handleConfirm = useCallback(() => {
     onChange(selectedTime)
+    setIsOpen(false)
   }, [onChange, selectedTime])
 
   const timeFormat = 'hh:mm A'

@@ -258,6 +258,7 @@ const DatePicker = ({
               <DatePickerFooter
                 needTimePicker={needTimePicker}
                 displayTime={displayTime}
+                view={view}
                 handleClickTimePicker={handleClickTimePicker}
                 handleSelectCurrentDate={handleSelectCurrentDate}
                 handleConfirmDate={handleConfirmDate}
