@@ -228,7 +228,7 @@ class LargeLanguageModel(AIModel):
         :return: result generator
         """
         callbacks = callbacks or []
-        prompt_message = AssistantPromptMessage(content="")
+        assistant_message = AssistantPromptMessage(content="")
         usage = None
         system_fingerprint = None
         real_model = model
@@ -250,7 +250,7 @@ class LargeLanguageModel(AIModel):
                     callbacks=callbacks,
                 )
 
-                prompt_message.content += chunk.delta.message.content
+                assistant_message.content += chunk.delta.message.content
                 real_model = chunk.model
                 if chunk.delta.usage:
                     usage = chunk.delta.usage
@@ -265,7 +265,7 @@ class LargeLanguageModel(AIModel):
             result=LLMResult(
                 model=real_model,
                 prompt_messages=prompt_messages,
-                message=prompt_message,
+                message=assistant_message,
                 usage=usage or LLMUsage.empty_usage(),
                 system_fingerprint=system_fingerprint,
             ),
