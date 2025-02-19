@@ -14,16 +14,17 @@ export enum Period {
 type TriggerProps = {
   value: Dayjs | undefined
   selectedDate: Dayjs | undefined
-  handleClear: (e: React.MouseEvent) => void
   isOpen: boolean
+  handleClear: (e: React.MouseEvent) => void
+  handleClickTrigger: (e: React.MouseEvent) => void
 }
 
 export type DatePickerProps = {
   value: Dayjs | undefined
   placeholder?: string
-  onChange: (date?: Dayjs) => void
-  onClear: () => void
   needTimePicker?: boolean
+  onChange: (date: Dayjs | undefined) => void
+  onClear: () => void
   renderTrigger?: (props: TriggerProps) => React.ReactNode
 }
 
@@ -44,7 +45,10 @@ export type DatePickerFooterProps = {
 
 export type TimePickerProps = {
   value: Dayjs | undefined
-  onChange: (date: Dayjs) => void
+  placeholder?: string
+  onChange: (date: Dayjs | undefined) => void
+  onClear: () => void
+  renderTrigger?: () => React.ReactNode
 }
 
 export type TimePickerFooterProps = {
@@ -71,7 +75,7 @@ export type CalendarItemProps = {
 }
 
 export type TimeOptionsProps = {
-  selectedTime: Dayjs
+  selectedTime: Dayjs | undefined
   handleSelectHour: (hour: string) => void
   handleSelectMinute: (minute: string) => void
   handleSelectPeriod: (period: Period) => void

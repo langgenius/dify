@@ -32,13 +32,12 @@ const DatePicker = ({
   const [isOpen, setIsOpen] = useState(false)
   const [view, setView] = useState(ViewType.date)
   const containerRef = useRef<HTMLDivElement>(null)
-  const today = useRef(dayjs())
 
-  const [currentDate, setCurrentDate] = useState(value || today.current)
+  const [currentDate, setCurrentDate] = useState(value || dayjs())
   const [selectedDate, setSelectedDate] = useState(value)
 
-  const [selectedMonth, setSelectedMonth] = useState((value || today.current).month())
-  const [selectedYear, setSelectedYear] = useState((value || today.current).year())
+  const [selectedMonth, setSelectedMonth] = useState((value || dayjs()).month())
+  const [selectedYear, setSelectedYear] = useState((value || dayjs()).year())
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -165,7 +164,7 @@ const DatePicker = ({
 
   const timeFormat = needTimePicker ? 'MMMM D, YYYY hh:mm A' : 'MMMM D, YYYY'
   const displayValue = value?.format(timeFormat) || ''
-  const displayTime = (selectedDate || dayjs()).format('hh:mm A')
+  const displayTime = (selectedDate || dayjs().startOf('day')).format('hh:mm A')
   const placeholderDate = isOpen && selectedDate ? selectedDate.format(timeFormat) : (placeholder || t('time.defaultPlaceholder'))
 
   return (
@@ -174,14 +173,18 @@ const DatePicker = ({
       onOpenChange={setIsOpen}
       placement='bottom-end'
     >
-      <PortalToFollowElemTrigger onClick={handleClickTrigger}>
+      <PortalToFollowElemTrigger>
         {renderTrigger ? (renderTrigger({
           value,
           selectedDate,
-          handleClear,
           isOpen,
+          handleClear,
+          handleClickTrigger,
         })) : (
-          <div className='w-[252px] flex items-center gap-x-0.5 rounded-lg px-2 py-1 bg-components-input-bg-normal cursor-pointer group hover:bg-state-base-hover-alt'>
+          <div
+            className='w-[252px] flex items-center gap-x-0.5 rounded-lg px-2 py-1 bg-components-input-bg-normal cursor-pointer group hover:bg-state-base-hover-alt'
+            onClick={handleClickTrigger}
+          >
             <input
               className='flex-1 p-1 bg-transparent text-components-input-text-filled placeholder:text-components-input-text-placeholder truncate system-xs-regular
             outline-none appearance-none cursor-pointer'
@@ -241,7 +244,7 @@ const DatePicker = ({
               />
             ) : (
               <TimePickerOptions
-                selectedTime={selectedDate || dayjs()}
+                selectedTime={selectedDate}
                 handleSelectHour={handleSelectHour}
                 handleSelectMinute={handleSelectMinute}
                 handleSelectPeriod={handleSelectPeriod}

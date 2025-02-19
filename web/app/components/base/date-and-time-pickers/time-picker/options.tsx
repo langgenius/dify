@@ -17,7 +17,7 @@ const Options: FC<TimeOptionsProps> = ({
       <ul className='flex flex-col gap-y-0.5 h-[208px] overflow-y-auto no-scrollbar pb-[184px]'>
         {
           hourOptions.map((hour) => {
-            const isSelected = selectedTime.format('hh') === hour
+            const isSelected = selectedTime?.format('hh') === hour
             return (
               <OptionListItem
                 key={hour}
@@ -34,7 +34,7 @@ const Options: FC<TimeOptionsProps> = ({
       <ul className='flex flex-col gap-y-0.5 h-[208px] overflow-y-auto no-scrollbar pb-[184px]'>
         {
           minuteOptions.map((minute) => {
-            const isSelected = selectedTime.format('mm') === minute
+            const isSelected = selectedTime?.format('mm') === minute
             return (
               <OptionListItem
                 key={minute}
@@ -51,7 +51,7 @@ const Options: FC<TimeOptionsProps> = ({
       <ul className='flex flex-col gap-y-0.5 h-[208px] overflow-y-auto no-scrollbar pb-[184px]'>
         {
           periodOptions.map((period) => {
-            const isSelected = selectedTime.format('A') === period
+            const isSelected = selectedTime?.format('A') === period
             return (
               <OptionListItem
                 key={period}
