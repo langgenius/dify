@@ -13,7 +13,6 @@ import EnvNav from './env-nav'
 import PluginsNav from './plugins-nav'
 import ExploreNav from './explore-nav'
 import ToolsNav from './tools-nav'
-import LicenseNav from './license-env'
 import { WorkspaceProvider } from '@/context/workspace-context'
 import { useAppContext } from '@/context/app-context'
 import LogoSite from '@/app/components/base/logo/logo-site'
@@ -22,6 +21,7 @@ import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import { useProviderContext } from '@/context/provider-context'
 import { useModalContext } from '@/context/modal-context'
 import { useTranslation } from 'react-i18next'
+import LicenseNav from './license-env'
 
 const navClassName = `
   flex items-center relative mr-0 sm:mr-3 px-3 h-8 rounded-xl
@@ -71,6 +71,7 @@ const Header = () => {
               <WorkspaceProvider>
                 <WorkplaceSelector />
               </WorkspaceProvider>
+              <LicenseNav />
               {enableBilling && (
                 <div className='select-none'>
                   <PremiumBadge color='blue' allowHover={true} onClick={handlePlanClick}>
@@ -93,6 +94,7 @@ const Header = () => {
             <LogoSite />
           </Link>
           <div className='font-light text-divider-deep'>/</div>
+          <LicenseNav />
           {
             enableBilling && (
               <div className='select-none'>
@@ -120,7 +122,6 @@ const Header = () => {
         )
       }
       <div className='flex items-center shrink-0'>
-        <LicenseNav />
         <EnvNav />
         <div className='mr-3'>
           <PluginsNav />
