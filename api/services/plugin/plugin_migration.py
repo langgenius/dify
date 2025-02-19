@@ -386,7 +386,7 @@ class PluginMigration:
                 batch_plugin_identifiers = [
                     plugins["plugins"][plugin_id]
                     for plugin_id in batch_plugin_ids
-                    if plugin_id not in installed_plugins_ids
+                    if plugin_id not in installed_plugins_ids and plugin_id in plugins["plugins"]
                 ]
                 manager.install_from_identifiers(
                     tenant_id,
