@@ -48,7 +48,7 @@ class File(BaseModel):
     size: int = -1
 
     # Those properties are private, should not be exposed to the outside.
-    _storage_key: str
+    _storage_key: Optional[str] = None
 
     def __init__(
         self,
