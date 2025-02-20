@@ -14,6 +14,8 @@ import { RiQuestionLine } from '@remixicon/react'
 import Divider from '@/app/components/base/divider'
 import AddMetadataButton from '../add-metadata-button'
 
+const i18nPrefix = 'dataset.metadata.batchEditMetadata'
+
 type Props = {
   documentNum: number
   list: MetadataItemWithEdit[]
@@ -65,13 +67,13 @@ const EditMetadataBatchModal: FC<Props> = ({
   }, [templeList, addedList, isApplyToAllSelectDocument, onChange])
   return (
     <Modal
-      title='Edit Metadata'
+      title={t(`${i18nPrefix}.editMetadata`)}
       isShow
       closable
       onClose={onHide}
       className='!max-w-[640px]'
     >
-      <div className='system-xs-medium text-text-accent'>Editing {documentNum} documents</div>
+      <div className='system-xs-medium text-text-accent'>{t(`${i18nPrefix}.editDocumentsNum`, { num: documentNum })}</div>
       {/* TODO handle list scroll. There is two list. */}
       <div className='mt-4 space-y-2'>
         {templeList.map(item => (
@@ -85,7 +87,7 @@ const EditMetadataBatchModal: FC<Props> = ({
       </div>
       <div className='mt-4 pl-[18px]'>
         <div className='flex items-center'>
-          <div className='mr-2 shrink-0 system-xs-medium-uppercase text-text-tertiary'>New metadata</div>
+          <div className='mr-2 shrink-0 system-xs-medium-uppercase text-text-tertiary'>{t('dataset.metadata.createMetadata.title')}</div>
           <Divider bgStyle='gradient' />
         </div>
         <div className='mt-2 space-y-2'>
@@ -111,11 +113,11 @@ const EditMetadataBatchModal: FC<Props> = ({
       </div>
 
       <div className='mt-4 flex items-center justify-between'>
-        <div className='flex items-center'>
+        <div className='flex items-center select-none'>
           <Checkbox checked={isApplyToAllSelectDocument} onCheck={() => setIsApplyToAllSelectDocument(!isApplyToAllSelectDocument)} />
-          <div className='ml-2 mr-1 system-xs-medium text-text-secondary'>Apply to all selected documents</div>
+          <div className='ml-2 mr-1 system-xs-medium text-text-secondary'>{t(`${i18nPrefix}.applyToAllSelectDocument`)}</div>
           <Tooltip popupContent={
-            <div className='max-w-[240px]'>Automatically create all the above edited and new metadata for all selected documents, otherwise editing metadata will only apply to documents with it.</div>
+            <div className='max-w-[240px]'>{t(`${i18nPrefix}.applyToAllSelectDocumentTip`)}</div>
           } >
             <div className='p-px cursor-pointer'>
               <RiQuestionLine className='size-3.5 text-text-tertiary' />

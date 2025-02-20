@@ -12,6 +12,7 @@ import SelectMetadataModal from '../select-metadata-modal'
 import AddMetadataButton from '../add-metadata-button'
 
 type Props = {
+  className?: string
   noHeader?: boolean
   title?: string
   uppercaseTitle?: boolean
@@ -26,6 +27,7 @@ type Props = {
 }
 
 const InfoGroup: FC<Props> = ({
+  className,
   noHeader,
   title,
   uppercaseTitle = true,
@@ -39,7 +41,7 @@ const InfoGroup: FC<Props> = ({
   onAdd,
 }) => {
   return (
-    <div className='bg-white'>
+    <div className={cn('bg-white', className)}>
       {!noHeader && (
         <div className='flex items-center justify-between'>
           <div className='flex items-center space-x-1'>

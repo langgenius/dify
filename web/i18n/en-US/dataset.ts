@@ -178,6 +178,13 @@ const translation = {
       name: 'Name',
       namePlaceholder: 'Add metadata name',
     },
+    batchEditMetadata: {
+      editMetadata: 'Edit Metadata',
+      editDocumentsNum: 'Editing {{num}} documents',
+      applyToAllSelectDocument: 'Apply to all selected documents',
+      applyToAllSelectDocumentTip: 'Automatically create all the above edited and new metadata for all selected documents, otherwise editing metadata will only apply to documents with it.',
+      multipleValue: 'Multiple Value',
+    },
     selectMetadata: {
       search: 'Search metadata',
       newAction: 'New Metadata',

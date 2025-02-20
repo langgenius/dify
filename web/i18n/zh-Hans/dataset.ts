@@ -178,6 +178,13 @@ const translation = {
       name: '名称',
       namePlaceholder: '添加元数据名称',
     },
+    batchEditMetadata: {
+      editMetadata: '编辑元数据',
+      editDocumentsNum: '编辑 {{num}} 个文档',
+      applyToAllSelectDocument: '应用于所有选定文档',
+      applyToAllSelectDocumentTip: '自动为所有选定文档创建上述编辑和新元数据，否则仅对具有元数据的文档应用编辑。',
+      multipleValue: '多个值',
+    },
     selectMetadata: {
       search: '搜索元数据',
       newAction: '新建元数据',

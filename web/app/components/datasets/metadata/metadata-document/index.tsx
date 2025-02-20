@@ -52,7 +52,7 @@ const MetadataDocument: FC = () => {
   return (
     <div className='w-[388px] space-y-4'>
       {!hasData ? (
-        <div>
+        <div className='pl-2'>
           <InfoGroup
             title={t('dataset.metadata.metadata')}
             uppercaseTitle={false}
@@ -111,10 +111,12 @@ const MetadataDocument: FC = () => {
       )}
 
       <InfoGroup
+        className='pl-2'
         title={t(`${i18nPrefix}.documentInformation`)}
         list={documentInfoList}
       />
       <InfoGroup
+        className='pl-2'
         title={t(`${i18nPrefix}.technicalParameters`)}
         list={technicalParams}
       />
