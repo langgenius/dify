@@ -398,6 +398,19 @@ class Document(db.Model):  # type: ignore[name-defined]
         )
 
     @property
+    def uploader(self):
+        user = db.session.query(Account).filter(Account.id == self.created_by).first()
+        return user.name if user else None
+
+    @property
+    def upload_date(self):
+        return self.created_at
+
+    @property
+    def last_update_date(self):
+        return self.updated_at
+
+
     def process_rule_dict(self):
         if self.dataset_process_rule_id:
             return self.dataset_process_rule.to_dict()

@@ -129,3 +129,10 @@ class ChildChunkUpdateArgs(BaseModel):
 class MetadataArgs(BaseModel):
     type: Literal["string", "number", "time"]
     name: str
+
+class MetadataValue(BaseModel):
+    name: str
+    value: str
+
+class MetadataValueUpdateArgs(BaseModel):
+    fields: list[MetadataValue]

@@ -95,8 +95,8 @@ class KnowledgeRetrievalNode(BaseNode[KnowledgeRetrievalNodeData]):
             db.session.query(Document.dataset_id, func.count(Document.id).label("available_document_count"))
             .filter(
                 Document.indexing_status == "completed",
-                Document.enabled == True,
-                Document.archived == False,
+                Document.enabled == True,  # noqa: E712
+                Document.archived == False,  # noqa: E712
                 Document.dataset_id.in_(dataset_ids),
             )
             .group_by(Document.dataset_id)
@@ -221,8 +221,8 @@ class KnowledgeRetrievalNode(BaseNode[KnowledgeRetrievalNodeData]):
                     dataset = Dataset.query.filter_by(id=segment.dataset_id).first()
                     document = Document.query.filter(
                         Document.id == segment.document_id,
-                        Document.enabled == True,
-                        Document.archived == False,
+                        Document.enabled == True,  # noqa: E712
+                        Document.archived == False,  # noqa: E712
                     ).first()
                     if dataset and document:
                         source = {
