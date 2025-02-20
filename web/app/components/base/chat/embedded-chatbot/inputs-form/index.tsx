@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React from 'react'
 import { useTranslation } from 'react-i18next'
 import { Message3Fill } from '@/app/components/base/icons/src/public/other'
 import Button from '@/app/components/base/button'
@@ -7,7 +7,15 @@ import InputsFormContent from '@/app/components/base/chat/embedded-chatbot/input
 import { useEmbeddedChatbotContext } from '../context'
 import cn from '@/utils/classnames'
 
-const InputsFormNode = () => {
+type Props = {
+  collapsed: boolean
+  setCollapsed: (collapsed: boolean) => void
+}
+
+const InputsFormNode = ({
+  collapsed,
+  setCollapsed,
+}: Props) => {
   const { t } = useTranslation()
   const {
     isMobile,
@@ -15,7 +23,6 @@ const InputsFormNode = () => {
     themeBuilder,
     handleStartChat,
   } = useEmbeddedChatbotContext()
-  const [collapsed, setCollapsed] = useState(!!currentConversationId)
 
   return (
     <div className={cn('mb-6 pt-6 px-4 flex flex-col items-center', isMobile && 'mb-4 pt-4')}>

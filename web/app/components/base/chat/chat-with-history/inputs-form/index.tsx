@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React from 'react'
 import { useTranslation } from 'react-i18next'
 import { Message3Fill } from '@/app/components/base/icons/src/public/other'
 import Button from '@/app/components/base/button'
@@ -7,14 +7,22 @@ import InputsFormContent from '@/app/components/base/chat/chat-with-history/inpu
 import { useChatWithHistoryContext } from '../context'
 import cn from '@/utils/classnames'
 
-const InputsFormNode = () => {
+type Props = {
+  collapsed: boolean
+  setCollapsed: (collapsed: boolean) => void
+}
+
+const InputsFormNode = ({
+  collapsed,
+  setCollapsed,
+}: Props) => {
   const { t } = useTranslation()
   const {
     isMobile,
     currentConversationId,
     handleStartChat,
+    themeBuilder,
   } = useChatWithHistoryContext()
-  const [collapsed, setCollapsed] = useState(!!currentConversationId)
 
   return (
     <div className={cn('pt-6 px-4 flex flex-col items-center', isMobile && 'pt-4')}>
@@ -43,7 +51,18 @@ const InputsFormNode = () => {
         )}
         {!collapsed && !currentConversationId && (
           <div className={cn('p-6', isMobile && 'p-4')}>
-            <Button variant='primary' className='w-full' onClick={() => handleStartChat(() => setCollapsed(true))}>{t('share.chat.startChat')}</Button>
+            <Button
+              variant='primary'
+              className='w-full'
+              onClick={() => handleStartChat(() => setCollapsed(true))}
+              style={
+                themeBuilder?.theme
+                  ? {
+                    backgroundColor: themeBuilder?.theme.primaryColor,
+                  }
+                  : {}
+              }
+            >{t('share.chat.startChat')}</Button>
           </div>
         )}
       </div>

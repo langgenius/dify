@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import Chat from '../chat'
 import type {
   ChatConfig,
@@ -17,7 +17,9 @@ import {
   getUrl,
   stopChatMessageResponding,
 } from '@/service/share'
+import AppIcon from '@/app/components/base/app-icon'
 import AnswerIcon from '@/app/components/base/answer-icon'
+import cn from '@/utils/classnames'
 
 const ChatWrapper = () => {
   const {
@@ -141,18 +143,48 @@ const ChatWrapper = () => {
     doSend(question.content, question.message_files, true, isValidGeneratedAnswer(parentAnswer) ? parentAnswer : null)
   }, [chatList, doSend])
 
+  const messageList = useMemo(() => {
+    if (currentConversationId)
+      return chatList
+    return chatList.filter(item => !item.isOpeningStatement)
+  }, [chatList, currentConversationId])
+
+  const [collapsed, setCollapsed] = useState(!!currentConversationId)
+
   const chatNode = useMemo(() => {
     if (!inputsForms.length)
       return null
     if (isMobile) {
       if (!currentConversationId)
-        return <InputsForm />
+        return <InputsForm collapsed={collapsed} setCollapsed={setCollapsed} />
       return null
     }
     else {
-      return <InputsForm />
+      return <InputsForm collapsed={collapsed} setCollapsed={setCollapsed} />
     }
-  }, [isMobile, currentConversationId, inputsForms])
+  }, [inputsForms.length, isMobile, currentConversationId, collapsed])
+
+  const welcome = useMemo(() => {
+    const welcomeMessage = chatList.find(item => item.isOpeningStatement)
+    if (currentConversationId)
+      return null
+    if (!welcomeMessage)
+      return null
+    if (!collapsed && inputsForms.length > 0)
+      return null
+    return (
+      <div className={cn('h-[50vh] py-12 flex flex-col items-center justify-center gap-3')}>
+        <AppIcon
+          size='xl'
+          iconType={appData?.site.icon_type}
+          icon={appData?.site.icon}
+          background={appData?.site.icon_background}
+          imageUrl={appData?.site.icon_url}
+        />
+        <div className='text-text-tertiary body-2xl-regular'>{welcomeMessage.content}</div>
+      </div>
+    )
+  }, [appData?.site.icon, appData?.site.icon_background, appData?.site.icon_type, appData?.site.icon_url, chatList, collapsed, currentConversationId, inputsForms.length])
 
   const answerIcon = (appData?.site && appData.site.use_icon_as_answer_icon)
     ? <AnswerIcon
@@ -170,7 +202,7 @@ const ChatWrapper = () => {
       <Chat
         appData={appData}
         config={appConfig}
-        chatList={chatList}
+        chatList={messageList}
         isResponding={isResponding}
         chatContainerInnerClassName={`mx-auto pt-6 w-full max-w-[720px] ${isMobile && 'px-4'}`}
         chatFooterClassName='pb-4'
@@ -180,7 +212,12 @@ const ChatWrapper = () => {
         inputsForm={inputsForms}
         onRegenerate={doRegenerate}
         onStopResponding={handleStop}
-        chatNode={chatNode}
+        chatNode={
+          <>
+            {chatNode}
+            {welcome}
+          </>
+        }
         allToolIcons={appMeta?.tool_icons || {}}
         onFeedback={handleFeedback}
         suggestedQuestions={suggestedQuestions}
