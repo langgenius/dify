@@ -51,6 +51,9 @@ const translation = {
     skip: 'Gemi',
     imageCopied: 'Kopyalanan görüntü',
     deleteApp: 'Uygulamayı Sil',
+    copied: 'Kopya -lanan',
+    in: 'içinde',
+    viewDetails: 'Detayları Görüntüle',
   },
   errorMsg: {
     fieldRequired: '{{field}} gereklidir',
@@ -127,6 +130,8 @@ const translation = {
       Custom: 'Özel',
     },
     addMoreModel: 'Daha fazla model eklemek için ayarlara gidin',
+    capabilities: 'MultiModal Yetenekler',
+    settingsLink: 'Model Sağlayıcı Ayarları',
   },
   menus: {
     status: 'beta',
@@ -139,6 +144,7 @@ const translation = {
     newApp: 'Yeni Uygulama',
     newDataset: 'Bilgi Oluştur',
     tools: 'Araçlar',
+    exploreMarketplace: 'Marketplace\'i Keşfedin',
   },
   userProfile: {
     settings: 'Ayarlar',
@@ -164,6 +170,7 @@ const translation = {
     dataSource: 'Veri Kaynağı',
     plugin: 'Eklentiler',
     apiBasedExtension: 'API Uzantısı',
+    generalGroup: 'GENEL',
   },
   account: {
     avatar: 'Avatar',
@@ -403,6 +410,12 @@ const translation = {
     loadBalancingLeastKeyWarning: 'Yük dengeleme etkinleştirmek için en az 2 anahtar etkinleştirilmelidir.',
     loadBalancingInfo: 'Varsayılan olarak, yük dengeleme Yuvarlakrobin stratejisini kullanır. Hız sınırlaması tetiklenirse, 1 dakikalık bir soğuma süresi uygulanacaktır.',
     upgradeForLoadBalancing: 'Yük Dengelemeyi etkinleştirmek için planınızı yükseltin.',
+    installProvider: 'Model sağlayıcılarını yükleme',
+    toBeConfigured: 'Yapılandırılacak',
+    emptyProviderTip: 'Lütfen önce bir model sağlayıcı yükleyin.',
+    emptyProviderTitle: 'Model sağlayıcı ayarlanmadı',
+    discoverMore: 'Daha fazlasını keşfedin',
+    configureTip: 'Api-key\'i ayarlayın veya kullanmak için model ekleyin',
   },
   dataSource: {
     add: 'Bir veri kaynağı ekle',
@@ -532,6 +545,8 @@ const translation = {
       hitScore: 'Geri Alım Skoru:',
     },
     inputPlaceholder: 'Bot ile konuş',
+    thought: 'Düşünce',
+    thinking: 'Düşünü...',
   },
   promptEditor: {
     placeholder: 'Prompt kelimenizi buraya yazın, değişken eklemek için \'{\' tuşuna, prompt içerik bloğu eklemek için \'/\' tuşuna basın',

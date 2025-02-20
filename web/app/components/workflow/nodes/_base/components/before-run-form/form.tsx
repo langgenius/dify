@@ -9,7 +9,7 @@ import { InputVarType } from '@/app/components/workflow/types'
 import AddButton from '@/app/components/base/button/add-button'
 import { RETRIEVAL_OUTPUT_STRUCT } from '@/app/components/workflow/constants'
 
-export type Props = {
+export interface Props {
   className?: string
   label?: string
   inputs: InputVar[]

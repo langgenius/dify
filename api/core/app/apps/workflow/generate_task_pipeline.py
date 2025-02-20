@@ -13,6 +13,7 @@ from core.app.entities.app_invoke_entities import (
     WorkflowAppGenerateEntity,
 )
 from core.app.entities.queue_entities import (
+    QueueAgentLogEvent,
     QueueErrorEvent,
     QueueIterationCompletedEvent,
     QueueIterationNextEvent,
@@ -190,7 +191,9 @@ class WorkflowAppGenerateTaskPipeline:
             and features_dict["text_to_speech"].get("enabled")
             and features_dict["text_to_speech"].get("autoPlay") == "enabled"
         ):
-            tts_publisher = AppGeneratorTTSPublisher(tenant_id, features_dict["text_to_speech"].get("voice"))
+            tts_publisher = AppGeneratorTTSPublisher(
+                tenant_id, features_dict["text_to_speech"].get("voice"), features_dict["text_to_speech"].get("language")
+            )
 
         for response in self._process_stream_response(tts_publisher=tts_publisher, trace_manager=trace_manager):
             while True:
@@ -526,6 +529,10 @@ class WorkflowAppGenerateTaskPipeline:
                 self._task_state.answer += delta_text
                 yield self._text_chunk_to_stream_response(
                     delta_text, from_variable_selector=event.from_variable_selector
+                )
+            elif isinstance(event, QueueAgentLogEvent):
+                yield self._workflow_cycle_manager._handle_agent_log(
+                    task_id=self._application_generate_entity.task_id, event=event
                 )
             else:
                 continue
