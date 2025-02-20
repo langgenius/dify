@@ -14,7 +14,7 @@ import { VarType } from '@/app/components/workflow/types'
 
 const i18nPrefix = 'workflow.nodes.http'
 
-interface Props {
+type Props = {
   instanceId: string
   className?: string
   nodeId: string

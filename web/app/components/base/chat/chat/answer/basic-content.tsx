@@ -4,7 +4,7 @@ import type { ChatItem } from '../../types'
 import { Markdown } from '@/app/components/base/markdown'
 import cn from '@/utils/classnames'
 
-interface BasicContentProps {
+type BasicContentProps = {
   item: ChatItem
 }
 const BasicContent: FC<BasicContentProps> = ({

@@ -8,7 +8,7 @@ import Thought from '@/app/components/base/chat/chat/thought'
 import { FileList } from '@/app/components/base/file-uploader'
 import { getProcessedFilesFromResponse } from '@/app/components/base/file-uploader/utils'
 
-interface AgentContentProps {
+type AgentContentProps = {
   item: ChatItem
   responding?: boolean
 }

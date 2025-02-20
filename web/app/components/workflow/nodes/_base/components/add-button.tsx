@@ -7,7 +7,7 @@ import {
 import cn from '@/utils/classnames'
 import Button from '@/app/components/base/button'
 
-interface Props {
+type Props = {
   className?: string
   text: string
   onClick: () => void

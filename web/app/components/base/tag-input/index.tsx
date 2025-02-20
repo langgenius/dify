@@ -7,7 +7,7 @@ import { RiAddLine, RiCloseLine } from '@remixicon/react'
 import cn from '@/utils/classnames'
 import { useToastContext } from '@/app/components/base/toast'
 
-interface TagInputProps {
+type TagInputProps = {
   items: string[]
   onChange: (items: string[]) => void
   disableRemove?: boolean

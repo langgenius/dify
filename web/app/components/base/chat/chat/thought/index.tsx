@@ -4,7 +4,7 @@ import React from 'react'
 import type { ThoughtItem, ToolInfoInThought } from '../type'
 import ToolDetail from '@/app/components/base/chat/chat/answer/tool-detail'
 
-export interface IThoughtProps {
+export type IThoughtProps = {
   thought: ThoughtItem
   isFinished: boolean
 }

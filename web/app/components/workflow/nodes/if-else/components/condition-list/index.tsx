@@ -19,7 +19,7 @@ import type {
 } from '@/app/components/workflow/types'
 import cn from '@/utils/classnames'
 
-interface ConditionListProps {
+type ConditionListProps = {
   isSubVariable?: boolean
   disabled?: boolean
   caseId: string

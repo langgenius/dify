@@ -2,7 +2,7 @@
 import type { FC } from 'react'
 import React, { useCallback } from 'react'
 
-interface Props {
+type Props = {
   value: string | number
   onChange: (value: string | number) => void
   placeholder?: string

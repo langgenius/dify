@@ -30,6 +30,10 @@ WORKDIR /app/web
 COPY --from=packages /app/web/ .
 COPY . .
 
+# set base path
+ARG NEXT_PUBLIC_BASE_PATH
+ENV NEXT_PUBLIC_BASE_PATH=${NEXT_PUBLIC_BASE_PATH}
+
 ENV NODE_OPTIONS="--max-old-space-size=4096"
 RUN pnpm build
 

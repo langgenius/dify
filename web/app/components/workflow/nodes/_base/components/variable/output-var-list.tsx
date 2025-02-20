@@ -11,7 +11,7 @@ import type { VarType } from '@/app/components/workflow/types'
 import { checkKeys } from '@/utils/var'
 import Toast from '@/app/components/base/toast'
 
-interface Props {
+type Props = {
   readonly: boolean
   outputs: OutputVar
   outputKeyOrders: string[]

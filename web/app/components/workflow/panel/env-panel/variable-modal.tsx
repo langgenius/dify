@@ -12,7 +12,7 @@ import type { EnvironmentVariable } from '@/app/components/workflow/types'
 import cn from '@/utils/classnames'
 import { checkKeys } from '@/utils/var'
 
-export interface ModalPropsType {
+export type ModalPropsType = {
   env?: EnvironmentVariable
   onClose: () => void
   onSave: (env: EnvironmentVariable) => void

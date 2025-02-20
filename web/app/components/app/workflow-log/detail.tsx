@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { RiCloseLine } from '@remixicon/react'
 import Run from '@/app/components/workflow/run'
 
-interface ILogDetail {
+type ILogDetail = {
   runID: string
   onClose: () => void
 }

@@ -9,7 +9,7 @@ import cn from '@/utils/classnames'
 
 const i18nPrefix = 'workflow.nodes.http'
 
-interface Props {
+type Props = {
   readonly: boolean
   nodeId: string
   list: KeyValue[]

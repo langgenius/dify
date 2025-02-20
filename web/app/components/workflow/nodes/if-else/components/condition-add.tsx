@@ -18,7 +18,7 @@ import type {
   Var,
 } from '@/app/components/workflow/types'
 
-interface ConditionAddProps {
+type ConditionAddProps = {
   className?: string
   caseId: string
   variables: NodeOutPutVar[]

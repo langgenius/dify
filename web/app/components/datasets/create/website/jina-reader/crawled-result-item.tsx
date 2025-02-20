@@ -6,7 +6,7 @@ import cn from '@/utils/classnames'
 import type { CrawlResultItem as CrawlResultItemType } from '@/models/datasets'
 import Checkbox from '@/app/components/base/checkbox'
 
-interface Props {
+type Props = {
   payload: CrawlResultItemType
   isChecked: boolean
   isPreview: boolean

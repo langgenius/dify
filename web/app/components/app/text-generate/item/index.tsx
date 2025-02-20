@@ -33,7 +33,7 @@ import { useChatContext } from '@/app/components/base/chat/chat/context'
 
 const MAX_DEPTH = 3
 
-export interface IGenerationItemProps {
+export type IGenerationItemProps = {
   isWorkflow?: boolean
   workflowProcessData?: WorkflowProcess
   className?: string

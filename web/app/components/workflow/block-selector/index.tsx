@@ -27,7 +27,6 @@ import SearchBox from '@/app/components/plugins/marketplace/search-box'
 import {
   Plus02,
 } from '@/app/components/base/icons/src/vender/line/general'
-import classNames from '@/utils/classnames'
 
 type NodeSelectorProps = {
   open?: boolean

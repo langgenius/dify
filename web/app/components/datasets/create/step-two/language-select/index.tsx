@@ -6,7 +6,7 @@ import cn from '@/utils/classnames'
 import Popover from '@/app/components/base/popover'
 import { languages } from '@/i18n/language'
 
-export interface ILanguageSelectProps {
+export type ILanguageSelectProps = {
   currentLanguage: string
   onSelect: (language: string) => void
   disabled?: boolean

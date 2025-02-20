@@ -16,7 +16,7 @@ import type { VarType } from '@/app/components/workflow/types'
 import cn from '@/utils/classnames'
 const i18nPrefix = 'workflow.nodes.ifElse'
 
-interface ConditionOperatorProps {
+type ConditionOperatorProps = {
   className?: string
   disabled?: boolean
   varType: VarType

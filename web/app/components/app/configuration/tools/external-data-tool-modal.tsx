@@ -21,13 +21,13 @@ import { useToastContext } from '@/app/components/base/toast'
 import AppIcon from '@/app/components/base/app-icon'
 
 const systemTypes = ['api']
-interface ExternalDataToolModalProps {
+type ExternalDataToolModalProps = {
   data: ExternalDataTool
   onCancel: () => void
   onSave: (externalDataTool: ExternalDataTool) => void
   onValidateBeforeSave?: (externalDataTool: ExternalDataTool) => boolean
 }
-interface Provider {
+type Provider = {
   key: string
   name: string
   form_schema?: CodeBasedExtensionItem['form_schema']

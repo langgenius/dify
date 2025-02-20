@@ -14,7 +14,7 @@ import { useProviderContext } from '@/context/provider-context'
 import AppsFull from '@/app/components/billing/apps-full-in-dialog'
 import type { AppIconType } from '@/types/app'
 
-export interface CreateAppModalProps {
+export type CreateAppModalProps = {
   show: boolean
   isEditModal?: boolean
   appName: string

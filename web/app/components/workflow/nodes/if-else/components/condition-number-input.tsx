@@ -30,7 +30,7 @@ const options = [
   NumberVarType.constant,
 ]
 
-interface ConditionNumberInputProps {
+type ConditionNumberInputProps = {
   numberVarType?: NumberVarType
   onNumberVarTypeChange: (v: NumberVarType) => void
   value: string

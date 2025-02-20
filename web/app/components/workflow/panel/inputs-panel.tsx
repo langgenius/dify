@@ -25,7 +25,7 @@ import {
 } from '@/app/components/base/chat/chat/utils'
 import { useCheckInputsForms } from '@/app/components/base/chat/chat/check-input-forms-hooks'
 
-interface Props {
+type Props = {
   onRun: () => void
 }
 

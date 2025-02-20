@@ -9,7 +9,7 @@ import type { CrawlResultItem } from '@/models/datasets'
 
 const I18N_PREFIX = 'datasetCreation.stepOne.website'
 
-interface Props {
+type Props = {
   className?: string
   list: CrawlResultItem[]
   checkedList: CrawlResultItem[]

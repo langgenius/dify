@@ -12,7 +12,7 @@ import { User } from '@/app/components/base/icons/src/public/avatar'
 import { Markdown } from '@/app/components/base/markdown'
 import { FileList } from '@/app/components/base/file-uploader'
 
-interface QuestionProps {
+type QuestionProps = {
   item: ChatItem
   questionIcon?: ReactNode
   theme: Theme | null | undefined

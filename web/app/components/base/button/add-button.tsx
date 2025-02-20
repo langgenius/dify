@@ -4,7 +4,7 @@ import React from 'react'
 import { RiAddLine } from '@remixicon/react'
 import cn from '@/utils/classnames'
 
-interface Props {
+type Props = {
   className?: string
   onClick: () => void
 }

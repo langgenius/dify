@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next'
 import cn from '@/utils/classnames'
 import { RowStruct } from '@/app/components/base/icons/src/public/other'
 
-interface Props {
+type Props = {
   className?: string
   crawledNum: number
   totalNum: number

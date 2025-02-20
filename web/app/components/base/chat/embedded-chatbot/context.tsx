@@ -15,7 +15,7 @@ import type {
   ConversationItem,
 } from '@/models/share'
 
-export interface EmbeddedChatbotContextValue {
+export type EmbeddedChatbotContextValue = {
   appInfoError?: any
   appInfoLoading?: boolean
   appMeta?: AppMeta

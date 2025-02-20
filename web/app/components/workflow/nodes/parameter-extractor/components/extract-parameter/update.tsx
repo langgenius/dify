@@ -28,7 +28,7 @@ const DEFAULT_PARAM: Param = {
   required: false,
 }
 
-interface Props {
+type Props = {
   type: 'add' | 'edit'
   payload?: Param
   onSave: (payload: Param, moreInfo?: MoreInfo) => void
