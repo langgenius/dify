@@ -4,7 +4,7 @@ import React from 'react'
 import type { MetadataItemWithValue } from '../types'
 import Field from './field'
 import InputCombined from '../edit-metadata-batch/input-combined'
-import { RiDeleteBinLine } from '@remixicon/react'
+import { RiDeleteBinLine, RiQuestionLine } from '@remixicon/react'
 import Tooltip from '@/app/components/base/tooltip'
 import cn from '@/utils/classnames'
 import Divider from '@/app/components/base/divider'
@@ -12,7 +12,9 @@ import SelectMetadataModal from '../select-metadata-modal'
 import AddMetadataButton from '../add-metadata-button'
 
 type Props = {
-  title: string
+  noHeader?: boolean
+  title?: string
+  uppercaseTitle?: boolean
   titleTooltip?: string
   headerRight?: React.ReactNode
   contentClassName?: string
@@ -24,7 +26,9 @@ type Props = {
 }
 
 const InfoGroup: FC<Props> = ({
+  noHeader,
   title,
+  uppercaseTitle = true,
   titleTooltip,
   headerRight,
   contentClassName,
@@ -36,18 +40,23 @@ const InfoGroup: FC<Props> = ({
 }) => {
   return (
     <div className='bg-white'>
-      <div className='flex items-center justify-between'>
-        <div className='flex items-center space-x-1'>
-          <div className='system-xs-medium text-text-secondary'>{title}</div>
-          {titleTooltip && (
-            <Tooltip popupContent={titleTooltip} />
-          )}
-        </div>
-        {headerRight}
-        {/* <div className='flex px-1.5 rounded-md hover:bg-components-button-tertiary-bg-hover items-center h-6 space-x-1 cursor-pointer' onClick={() => setIsEdit(true)}>
+      {!noHeader && (
+        <div className='flex items-center justify-between'>
+          <div className='flex items-center space-x-1'>
+            <div className={cn('text-text-secondary', uppercaseTitle ? 'system-xs-semibold-uppercase' : 'system-md-semibold')}>{title}</div>
+            {titleTooltip && (
+              <Tooltip popupContent={<div className='max-w-[240px]'>{titleTooltip}</div>}>
+                <RiQuestionLine className='size-3.5 text-text-tertiary' />
+              </Tooltip>
+            )}
+          </div>
+          {headerRight}
+          {/* <div className='flex px-1.5 rounded-md hover:bg-components-button-tertiary-bg-hover items-center h-6 space-x-1 cursor-pointer' onClick={() => setIsEdit(true)}>
         </div> */}
-      </div>
-      <div className={cn('mt-3 space-y-1', contentClassName)}>
+        </div>
+      )}
+
+      <div className={cn('mt-3 space-y-1', !noHeader && 'mt-0', contentClassName)}>
         {isEdit && (
           <div>
             <SelectMetadataModal

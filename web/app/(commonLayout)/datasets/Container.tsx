@@ -20,7 +20,6 @@ import Button from '@/app/components/base/button'
 import Input from '@/app/components/base/input'
 import { ApiConnectionMod } from '@/app/components/base/icons/src/vender/solid/development'
 import CheckboxWithLabel from '@/app/components/datasets/create/website/base/checkbox-with-label'
-import EditMetadataBatchModal from '@/app/components/datasets/metadata/edit-metadata-batch/modal'
 // import DatasetMetadataDrawer from '@/app/components/datasets/metadata/dataset-metadata-drawer'
 import MetaDataDocument from '@/app/components/datasets/metadata/metadata-document'
 // Services
@@ -112,7 +111,7 @@ const Container = () => {
           onIsBuiltInEnabledChange={setIsBuiltInEnabled}
           onClose={() => { }}
         /> */}
-        <EditMetadataBatchModal
+        {/* <EditMetadataBatchModal
           documentNum={20}
           list={[
             {
@@ -130,7 +129,7 @@ const Container = () => {
           ]}
           onHide={() => { }}
           onChange={(list, newList, isApplyToAllSelectDocument) => { console.log(list, newList, isApplyToAllSelectDocument) }}
-        />
+        /> */}
       </div>
       <div className='sticky top-0 flex justify-between pt-4 px-12 pb-2 leading-[56px] bg-background-body z-10 flex-wrap gap-y-2'>
         <TabSliderNew
