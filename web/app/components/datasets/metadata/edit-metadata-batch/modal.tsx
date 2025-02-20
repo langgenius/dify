@@ -10,8 +10,9 @@ import { useTranslation } from 'react-i18next'
 import Checkbox from '../../../base/checkbox'
 import Tooltip from '../../../base/tooltip'
 import SelectMetadataModal from '../select-metadata-modal'
-import { RiAddLine, RiQuestionLine } from '@remixicon/react'
+import { RiQuestionLine } from '@remixicon/react'
 import Divider from '@/app/components/base/divider'
+import AddMetadataButton from '../add-metadata-button'
 
 type Props = {
   documentNum: number
@@ -99,11 +100,10 @@ const EditMetadataBatchModal: FC<Props> = ({
         </div>
         <div className='mt-3'>
           <SelectMetadataModal
+            popupPlacement='top-start'
+            popupOffset={{ mainAxis: 4, crossAxis: 0 }}
             trigger={
-              <Button className='w-full flex items-center' size='small' variant='tertiary'>
-                <RiAddLine className='mr-1 size-3.5' />
-                <div>Add metadata</div>
-              </Button>
+              <AddMetadataButton />
             }
             onSave={data => setAddedList([...addedList, data])}
           />

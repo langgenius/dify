@@ -6,12 +6,14 @@ import CreateContent from './create-content'
 import SelectMetadata from './select-metadata'
 import { PortalToFollowElem, PortalToFollowElemContent, PortalToFollowElemTrigger } from '../../base/portal-to-follow-elem'
 import type { MetadataItem } from './types'
+import type { Placement } from '@floating-ui/react'
 import { DataType } from './types'
 
 type Props = {
+  popupPlacement?: Placement
+  popupOffset?: { mainAxis: number, crossAxis: number }
   onSave: (data: any) => void
   trigger: React.ReactNode
-  popupLeft?: number
 } & CreateContentProps
 
 enum Step {
@@ -26,8 +28,9 @@ const testMetadataList: MetadataItem[] = [
 ]
 
 const SelectMetadataModal: FC<Props> = ({
+  popupPlacement = 'left-start',
+  popupOffset = { mainAxis: -38, crossAxis: 4 },
   trigger,
-  popupLeft = 4,
   onSave,
 }) => {
   const [open, setOpen] = useState(false)
@@ -41,11 +44,8 @@ const SelectMetadataModal: FC<Props> = ({
     <PortalToFollowElem
       open={open}
       onOpenChange={setOpen}
-      placement='left-start'
-      offset={{
-        mainAxis: popupLeft,
-        crossAxis: -38,
-      }}
+      placement={popupPlacement}
+      offset={popupOffset}
     >
       <PortalToFollowElemTrigger
         onClick={() => setOpen(!open)}

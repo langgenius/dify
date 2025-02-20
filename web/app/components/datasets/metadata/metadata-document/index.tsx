@@ -10,7 +10,7 @@ import { useTranslation } from 'react-i18next'
 
 const MetadataDocument: FC = () => {
   const { t } = useTranslation()
-  const [isEdit, setIsEdit] = useState(false)
+  const [isEdit, setIsEdit] = useState(true)
 
   const [list, setList] = useState<MetadataItemWithValue[]>([
     {

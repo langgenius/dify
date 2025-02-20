@@ -7,6 +7,9 @@ import InputCombined from '../edit-metadata-batch/input-combined'
 import { RiDeleteBinLine } from '@remixicon/react'
 import Tooltip from '@/app/components/base/tooltip'
 import cn from '@/utils/classnames'
+import Divider from '@/app/components/base/divider'
+import SelectMetadataModal from '../select-metadata-modal'
+import AddMetadataButton from '../add-metadata-button'
 
 type Props = {
   title: string
@@ -32,7 +35,7 @@ const InfoGroup: FC<Props> = ({
   onAdd,
 }) => {
   return (
-    <div>
+    <div className='bg-white'>
       <div className='flex items-center justify-between'>
         <div className='flex items-center space-x-1'>
           <div className='system-xs-medium text-text-secondary'>{title}</div>
@@ -45,6 +48,17 @@ const InfoGroup: FC<Props> = ({
         </div> */}
       </div>
       <div className={cn('mt-3 space-y-1', contentClassName)}>
+        {isEdit && (
+          <div>
+            <SelectMetadataModal
+              trigger={
+                <AddMetadataButton />
+              }
+              onSave={() => { }}
+            />
+            <Divider className='my-3 ' bgStyle='gradient' />
+          </div>
+        )}
         {list.map((item, i) => (
           <Field key={item.id || `${i}`} label={item.name}>
             {isEdit ? (
