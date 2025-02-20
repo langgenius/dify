@@ -1,0 +1,61 @@
+import {
+  ComparisonOperator,
+  MetadataFilteringVariableType,
+} from '@/app/components/workflow/nodes/knowledge-retrieval/types'
+
+export const isEmptyRelatedOperator = (operator: ComparisonOperator) => {
+  return [ComparisonOperator.empty, ComparisonOperator.notEmpty, ComparisonOperator.isNull, ComparisonOperator.isNotNull, ComparisonOperator.exists, ComparisonOperator.notExists].includes(operator)
+}
+
+const notTranslateKey = [
+  ComparisonOperator.equal, ComparisonOperator.notEqual,
+  ComparisonOperator.largerThan, ComparisonOperator.largerThanOrEqual,
+  ComparisonOperator.lessThan, ComparisonOperator.lessThanOrEqual,
+]
+
+export const isComparisonOperatorNeedTranslate = (operator?: ComparisonOperator) => {
+  if (!operator)
+    return false
+  return !notTranslateKey.includes(operator)
+}
+
+export const getOperators = (type?: MetadataFilteringVariableType) => {
+  switch (type) {
+    case MetadataFilteringVariableType.string:
+      return [
+        ComparisonOperator.contains,
+        ComparisonOperator.notContains,
+        ComparisonOperator.startWith,
+        ComparisonOperator.endWith,
+        ComparisonOperator.is,
+        ComparisonOperator.isNot,
+        ComparisonOperator.empty,
+        ComparisonOperator.notEmpty,
+      ]
+    case MetadataFilteringVariableType.number:
+      return [
+        ComparisonOperator.equal,
+        ComparisonOperator.notEqual,
+        ComparisonOperator.largerThan,
+        ComparisonOperator.lessThan,
+        ComparisonOperator.largerThanOrEqual,
+        ComparisonOperator.lessThanOrEqual,
+        ComparisonOperator.empty,
+        ComparisonOperator.notEmpty,
+      ]
+    default:
+      return [
+        ComparisonOperator.is,
+        ComparisonOperator.isNot,
+        ComparisonOperator.empty,
+        ComparisonOperator.notEmpty,
+      ]
+  }
+}
+
+export const comparisonOperatorNotRequireValue = (operator?: ComparisonOperator) => {
+  if (!operator)
+    return false
+
+  return [ComparisonOperator.empty, ComparisonOperator.notEmpty, ComparisonOperator.isNull, ComparisonOperator.isNotNull, ComparisonOperator.exists, ComparisonOperator.notExists].includes(operator)
+}

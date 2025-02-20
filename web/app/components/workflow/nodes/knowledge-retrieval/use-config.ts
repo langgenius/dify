@@ -9,10 +9,20 @@ import { isEqual } from 'lodash-es'
 import type { ValueSelector, Var } from '../../types'
 import { BlockEnum, VarType } from '../../types'
 import {
-  useIsChatMode, useNodesReadOnly,
+  useIsChatMode,
+  useNodesReadOnly,
   useWorkflow,
 } from '../../hooks'
-import type { KnowledgeRetrievalNodeType, MultipleRetrievalConfig } from './types'
+import type {
+  HandleAddCondition,
+  HandleRemoveCondition,
+  HandleToggleConditionLogicalOperator,
+  HandleUpdateCondition,
+  KnowledgeRetrievalNodeType,
+  MetadataFilteringModeEnum,
+  MultipleRetrievalConfig,
+} from './types'
+import { ComparisonOperator, LogicalOperator } from './types'
 import {
   getMultipleRetrievalConfig,
   getSelectedDatasetsMode,
@@ -202,7 +212,7 @@ const useConfig = (id: string, payload: KnowledgeRetrievalNodeType) => {
       const inputs = inputRef.current
       const datasetIds = inputs.dataset_ids
       if (datasetIds?.length > 0) {
-        const { data: dataSetsWithDetail } = await fetchDatasets({ url: '/datasets', params: { page: 1, ids: datasetIds } })
+        const { data: dataSetsWithDetail } = await fetchDatasets({ url: '/datasets', params: { page: 1, ids: datasetIds } as any })
         setSelectedDatasets(dataSetsWithDetail)
       }
       const newInputs = produce(inputs, (draft) => {
@@ -287,6 +297,43 @@ const useConfig = (id: string, payload: KnowledgeRetrievalNodeType) => {
     })
   }, [runInputData, setRunInputData])
 
+  const handleMetadataFilterModeChange = useCallback((newMode: MetadataFilteringModeEnum) => {
+    setInputs(produce(inputRef.current, (draft) => {
+      draft.metadata_filtering_mode = newMode
+    }))
+  }, [setInputs])
+
+  const handleAddCondition = useCallback<HandleAddCondition>((name) => {
+    const newInputs = produce(inputRef.current, (draft) => {
+      draft.metadata_filtering_conditions?.conditions.push({
+        name,
+        comparison_operator: ComparisonOperator.is,
+      })
+    })
+    setInputs(newInputs)
+  }, [setInputs])
+
+  const handleRemoveCondition = useCallback<HandleRemoveCondition>((index) => {
+    const newInputs = produce(inputRef.current, (draft) => {
+      draft.metadata_filtering_conditions?.conditions.splice(index, 1)
+    })
+    setInputs(newInputs)
+  }, [setInputs])
+
+  const handleUpdateCondition = useCallback<HandleUpdateCondition>((index, newCondition) => {
+    const newInputs = produce(inputRef.current, (draft) => {
+      draft.metadata_filtering_conditions!.conditions[index] = newCondition
+    })
+    setInputs(newInputs)
+  }, [setInputs])
+
+  const handleToggleConditionLogicalOperator = useCallback<HandleToggleConditionLogicalOperator>(() => {
+    const newInputs = produce(inputRef.current, (draft) => {
+      draft.metadata_filtering_conditions!.logical_operator = LogicalOperator.and
+    })
+    setInputs(newInputs)
+  }, [setInputs])
+
   return {
     readOnly,
     inputs,
@@ -308,6 +355,11 @@ const useConfig = (id: string, payload: KnowledgeRetrievalNodeType) => {
     runResult,
     rerankModelOpen,
     setRerankModelOpen,
+    handleMetadataFilterModeChange,
+    handleUpdateCondition,
+    handleAddCondition,
+    handleRemoveCondition,
+    handleToggleConditionLogicalOperator,
   }
 }
 
