@@ -26,6 +26,7 @@ import { CollectionType } from '@/app/components/tools/types'
 import { useGetLanguage } from '@/context/i18n'
 import type { AgentNodeType } from '../nodes/agent/types'
 import { useStrategyProviders } from '@/service/use-strategy'
+import { canFindTool } from '@/utils'
 
 export const useChecklist = (nodes: Node[], edges: Edge[]) => {
   const { t } = useTranslation()
@@ -51,7 +52,7 @@ export const useChecklist = (nodes: Node[], edges: Edge[]) => {
 
         moreDataForCheckValid = getToolCheckParams(node.data as ToolNodeType, buildInTools, customTools, workflowTools, language)
         if (provider_type === CollectionType.builtIn)
-          toolIcon = buildInTools.find(tool => tool.id === node.data.provider_id)?.icon
+          toolIcon = buildInTools.find(tool => canFindTool(tool.id, node.data.provider_id || ''))?.icon
 
         if (provider_type === CollectionType.custom)
           toolIcon = customTools.find(tool => tool.id === node.data.provider_id)?.icon

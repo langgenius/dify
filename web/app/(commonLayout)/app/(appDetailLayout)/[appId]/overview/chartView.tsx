@@ -53,7 +53,7 @@ export default function ChartView({ appId }: IChartViewProps) {
           className='mt-0 !w-40'
           onSelect={(item) => {
             const id = item.value
-            const value = TIME_PERIOD_MAPPING[id]?.value || '-1'
+            const value = TIME_PERIOD_MAPPING[id]?.value ?? '-1'
             const name = item.name || t('appLog.filter.period.allTime')
             onSelect({ value, name })
           }}

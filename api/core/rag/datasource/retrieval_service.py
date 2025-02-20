@@ -1,5 +1,6 @@
 import concurrent.futures
 import json
+from concurrent.futures import ThreadPoolExecutor
 from typing import Optional
 
 from flask import Flask, current_app
@@ -52,7 +53,7 @@ class RetrievalService:
         exceptions: list[str] = []
 
         # Optimize multithreading with thread pools
-        with concurrent.futures.ThreadPoolExecutor(max_workers=dify_config.RETRIEVAL_SERVICE_WORKER) as executor:  # type: ignore
+        with ThreadPoolExecutor(max_workers=dify_config.RETRIEVAL_SERVICE_EXECUTORS) as executor:  # type: ignore
             futures = []
             if retrieval_method == "keyword_search":
                 futures.append(
@@ -374,5 +375,3 @@ class RetrievalService:
         except Exception as e:
             db.session.rollback()
             raise e
-        finally:
-            db.session.close()

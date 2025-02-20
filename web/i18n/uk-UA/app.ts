@@ -188,6 +188,12 @@ const translation = {
     searchAllTemplate: 'Пошук по всіх шаблонах...',
   },
   showMyCreatedAppsOnly: 'Показати лише створені мною додатки',
+  appSelector: {
+    noParams: 'Параметри не потрібні',
+    label: 'ДОДАТОК',
+    params: 'ПАРАМЕТРИ ПРОГРАМИ',
+    placeholder: 'Виберіть програму...',
+  },
 }
 
 export default translation

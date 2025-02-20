@@ -24,6 +24,8 @@ const translation = {
     link: 'panel podrobnosti',
     tipRight: ' za ogled.',
   },
+  actionLogs: 'Dnevniki dejanj',
+  circularInvocationTip: 'V trenutnem poteku dela obstaja krožno sklicevanje orodij / vozlišč.',
 }
 
 export default translation

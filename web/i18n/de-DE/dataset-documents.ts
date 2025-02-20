@@ -146,6 +146,7 @@ const translation = {
         DOI: 'DOI',
         topicKeywords: 'Themen/Schlüsselwörter',
         abstract: 'Zusammenfassung',
+        topicsKeywords: 'Themen/Stichworte',
       },
       socialMediaPost: {
         platform: 'Plattform',
