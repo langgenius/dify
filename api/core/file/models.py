@@ -81,7 +81,7 @@ class File(BaseModel):
             dify_model_identity=dify_model_identity,
             url=url,
         )
-        self._storage_key = str(storage_key) if storage_key is not None else None
+        self._storage_key = str(storage_key)
 
     def to_dict(self) -> Mapping[str, str | int | None]:
         data = self.model_dump(mode="json")
