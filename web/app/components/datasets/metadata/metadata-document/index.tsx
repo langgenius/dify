@@ -26,6 +26,7 @@ const MetadataDocument: FC = () => {
       type: DataType.string,
     },
   ])
+  const [tempList, setTempList] = useState<MetadataItemWithValue[]>(list)
   const hasData = list.length > 0
   return (
     <div>
@@ -33,18 +34,39 @@ const MetadataDocument: FC = () => {
         <InfoGroup
           title='Metadata'
           titleTooltip='Metadata serves as a critical filter that enhances the accuracy and relevance of information retrieval. You can modify and add metadata for this document here.'
-          list={list}
-          headerRight={isEdit ? <div>Save</div> : <Button variant='ghost' onClick={() => setIsEdit(true)}>
-            <RiEditLine className='size-3.5 text-text-tertiary cursor-pointer' />
-            <div>{t('common.operation.edit')}</div>
-          </Button>}
+          list={isEdit ? tempList : list}
+          headerRight={isEdit ? (
+            <div className='flex space-x-1'>
+              <Button variant='ghost' size='small' onClick={() => {
+                setTempList(list)
+                setIsEdit(false)
+              }}>
+                <div>{t('common.operation.cancel')}</div>
+              </Button>
+              <Button variant='primary' size='small' onClick={() => {
+                setIsEdit(false)
+                setList(tempList)
+              }}>
+                <div>{t('common.operation.save')}</div>
+              </Button>
+            </div>
+          ) : (
+            <Button variant='ghost' size='small' onClick={() => {
+              setTempList(list)
+              setIsEdit(true)
+            }}>
+              <RiEditLine className='mr-1 size-3.5 text-text-tertiary cursor-pointer' />
+              <div>{t('common.operation.edit')}</div>
+            </Button>
+          )}
           isEdit={isEdit}
+          contentClassName='mt-5'
           onChange={(item) => {
-            const newList = list.map(i => (i.name === item.name ? item : i))
+            const newList = tempList.map(i => (i.name === item.name ? item : i))
             setList(newList)
           }}
           onDelete={(item) => {
-            const newList = list.filter(i => i.name !== item.name)
+            const newList = tempList.filter(i => i.name !== item.name)
             setList(newList)
           }}
           onAdd={() => {

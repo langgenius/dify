@@ -20,7 +20,7 @@ const InputCombined: FC<Props> = ({
   onChange,
 }) => {
   // TODO: configClassName...
-  const className = cn('grow p-0.5 h-6  text-xs', configClassName)
+  const className = cn('grow p-0.5 h-6  text-xs')
   if (type === DataType.time)
     return <div className='grow text-xs'>Datepicker placeholder</div>
 
@@ -40,6 +40,7 @@ const InputCombined: FC<Props> = ({
   }
   return (
     <Input
+      wrapperClassName={configClassName}
       className={cn(className, 'rounded-md')}
       value={value}
       onChange={e => onChange(e.target.value)}
