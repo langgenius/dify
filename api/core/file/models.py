@@ -63,7 +63,9 @@ class File(BaseModel):
         extension: Optional[str] = None,
         mime_type: Optional[str] = None,
         size: int = -1,
-        storage_key: str,
+        storage_key: Optional[str] = None,
+        dify_model_identity: Optional[str] = FILE_MODEL_IDENTITY,
+        url: Optional[str] = None,
     ):
         super().__init__(
             id=id,
@@ -76,6 +78,8 @@ class File(BaseModel):
             extension=extension,
             mime_type=mime_type,
             size=size,
+            dify_model_identity=dify_model_identity,
+            url=url,
         )
         self._storage_key = storage_key
 
