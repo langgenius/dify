@@ -57,9 +57,6 @@ const SegmentDetail: FC<ISegmentDetailProps> = ({
 
   const handleCancel = () => {
     onCancel()
-    setQuestion(segInfo?.content || '')
-    setAnswer(segInfo?.answer || '')
-    setKeywords(segInfo?.keywords || [])
   }
 
   const handleSave = () => {
