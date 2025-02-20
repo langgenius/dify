@@ -9,6 +9,8 @@ import { RiEditLine } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
 import Divider from '@/app/components/base/divider'
 
+const i18nPrefix = 'dataset.metadata.documentMetadata'
+
 const MetadataDocument: FC = () => {
   const { t } = useTranslation()
   const [isEdit, setIsEdit] = useState(true)
@@ -48,13 +50,13 @@ const MetadataDocument: FC = () => {
   const documentInfoList = builtList
   const technicalParams = builtList
   return (
-    <div className='space-y-4'>
-      {hasData ? (
+    <div className='w-[388px] space-y-4'>
+      {!hasData ? (
         <div>
           <InfoGroup
-            title='Metadata'
+            title={t('dataset.metadata.metadata')}
             uppercaseTitle={false}
-            titleTooltip='Metadata serves as a critical filter that enhances the accuracy and relevance of information retrieval. You can modify and add metadata for this document here.'
+            titleTooltip={t(`${i18nPrefix}.metadataToolTip`)}
             list={isEdit ? tempList : list}
             headerRight={isEdit ? (
               <div className='flex space-x-1'>
@@ -109,12 +111,12 @@ const MetadataDocument: FC = () => {
       )}
 
       <InfoGroup
-        title='Document Information'
-        list={builtList}
+        title={t(`${i18nPrefix}.documentInformation`)}
+        list={documentInfoList}
       />
       <InfoGroup
-        title='Technical Parameters'
-        list={builtList}
+        title={t(`${i18nPrefix}.technicalParameters`)}
+        list={technicalParams}
       />
     </div>
   )

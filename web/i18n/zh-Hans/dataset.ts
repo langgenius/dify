@@ -170,6 +170,7 @@ const translation = {
   allKnowledgeDescription: '选择以显示该工作区内所有知识库。只有工作区所有者才能管理所有知识库。',
   metadata: {
     metadata: '元数据',
+    addMetadata: '添加元数据',
     createMetadata: {
       title: '新建元数据',
       back: '返回',
@@ -192,6 +193,12 @@ const translation = {
       namePlaceholder: '元数据名称',
       builtIn: '内置',
       builtInDescription: '内置元数据是系统预定义的元数据，您可以在此处查看和管理内置元数据。',
+    },
+    documentMetadata: {
+      metadataToolTip: '元数据是关于文档的数据，用于描述文档的属性。元数据可以帮助您更好地组织和管理文档。',
+      startLabeling: '开始标注',
+      documentInformation: '文档信息',
+      technicalParameters: '技术参数',
     },
   },
 }

@@ -4,6 +4,7 @@ import React from 'react'
 import Button from '../../base/button'
 import { RiAddLine } from '@remixicon/react'
 import cn from '@/utils/classnames'
+import { useTranslation } from 'react-i18next'
 
 type Props = {
   className?: string
@@ -14,6 +15,7 @@ const AddedMetadataButton: FC<Props> = ({
   className,
   onClick,
 }) => {
+  const { t } = useTranslation()
   return (
     <Button
       className={cn('w-full flex items-center', className)}
@@ -22,7 +24,7 @@ const AddedMetadataButton: FC<Props> = ({
       onClick={onClick}
     >
       <RiAddLine className='mr-1 size-3.5' />
-      <div>Add metadata</div>
+      <div>{t('dataset.metadata.addMetadata')}</div>
     </Button>
   )
 }
