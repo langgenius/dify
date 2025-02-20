@@ -9,9 +9,10 @@ import type {
 import { useChat } from '../chat/hooks'
 import { getLastAnswer, isValidGeneratedAnswer } from '../utils'
 import { useEmbeddedChatbotContext } from './context'
-import ConfigPanel from './config-panel'
 import { isDify } from './utils'
-import cn from '@/utils/classnames'
+import { InputVarType } from '@/app/components/workflow/types'
+import { TransferMethod } from '@/types/app'
+import InputsForm from '@/app/components/base/chat/embedded-chatbot/inputs-form'
 import {
   fetchSuggestedQuestions,
   getUrl,
@@ -19,6 +20,7 @@ import {
 } from '@/service/share'
 import LogoAvatar from '@/app/components/base/logo/logo-embedded-chat-avatar'
 import AnswerIcon from '@/app/components/base/answer-icon'
+import cn from '@/utils/classnames'
 
 const ChatWrapper = () => {
   const {
@@ -29,6 +31,7 @@ const ChatWrapper = () => {
     currentConversationItem,
     inputsForms,
     newConversationInputs,
+    newConversationInputsRef,
     handleNewConversationCompleted,
     isMobile,
     isInstalledApp,
@@ -67,6 +70,38 @@ const ChatWrapper = () => {
     appPrevChatList,
     taskId => stopChatMessageResponding('', taskId, isInstalledApp, appId),
   )
+  const inputsFormValue = currentConversationId ? currentConversationItem?.inputs : newConversationInputsRef?.current
+  const inputDisabled = useMemo(() => {
+    let hasEmptyInput = ''
+    let fileIsUploading = false
+    const requiredVars = inputsForms.filter(({ required }) => required)
+    if (requiredVars.length) {
+      requiredVars.forEach(({ variable, label, type }) => {
+        if (hasEmptyInput)
+          return
+
+        if (fileIsUploading)
+          return
+
+        if (!inputsFormValue?.[variable])
+          hasEmptyInput = label as string
+
+        if ((type === InputVarType.singleFile || type === InputVarType.multiFiles) && inputsFormValue?.[variable]) {
+          const files = inputsFormValue[variable]
+          if (Array.isArray(files))
+            fileIsUploading = files.find(item => item.transferMethod === TransferMethod.local_file && !item.uploadedId)
+          else
+            fileIsUploading = files.transferMethod === TransferMethod.local_file && !files.uploadedId
+        }
+      })
+    }
+    if (hasEmptyInput)
+      return true
+
+    if (fileIsUploading)
+      return true
+    return false
+  }, [inputsFormValue, inputsForms])
 
   useEffect(() => {
     if (currentChatInstanceRef.current)
@@ -109,25 +144,17 @@ const ChatWrapper = () => {
   }, [chatList, doSend])
 
   const chatNode = useMemo(() => {
-    if (inputsForms.length) {
-      return (
-        <>
-          {!currentConversationId && (
-            <div className={cn('mx-auto w-full max-w-full tablet:px-4', isMobile && 'px-4')}>
-              <div className='mb-6' />
-              <ConfigPanel />
-              <div
-                className='my-6 h-[1px]'
-                style={{ background: 'linear-gradient(90deg, rgba(242, 244, 247, 0.00) 0%, #F2F4F7 49.17%, rgba(242, 244, 247, 0.00) 100%)' }}
-              />
-            </div>
-          )}
-        </>
-      )
+    if (!inputsForms.length)
+      return null
+    if (isMobile) {
+      if (!currentConversationId)
+        return <InputsForm />
+      return <div className='mb-4'></div>
     }
-
-    return null
-  }, [currentConversationId, inputsForms, isMobile])
+    else {
+      return <InputsForm />
+    }
+  }, [isMobile, currentConversationId, inputsForms])
 
   const answerIcon = isDify()
     ? <LogoAvatar className='relative shrink-0' />
@@ -162,6 +189,8 @@ const ChatWrapper = () => {
       hideProcessDetail
       themeBuilder={themeBuilder}
       switchSibling={siblingMessageId => setTargetMessageId(siblingMessageId)}
+      inputDisabled={inputDisabled}
+      isMobile={isMobile}
     />
   )
 }
