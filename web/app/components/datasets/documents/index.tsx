@@ -27,6 +27,8 @@ import cn from '@/utils/classnames'
 import { useInvalidDocumentDetailKey } from '@/service/knowledge/use-document'
 import { useInvalid } from '@/service/use-base'
 import { useChildSegmentListKey, useSegmentListKey } from '@/service/knowledge/use-segment'
+import useEditDocumentMetadata from '../metadata/hooks/use-edit-document-metadata'
+import DatasetMetadataDrawer from '../metadata/metadata-dataset/dataset-metadata-drawer'
 
 const FolderPlusIcon = ({ className }: React.SVGProps<SVGElement>) => {
   return <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" className={className ?? ''}>
@@ -73,7 +75,7 @@ const EmptyElement: FC<{ canAdd: boolean; onClick: () => void; type?: 'upload' |
   </div>
 }
 
-interface IDocumentsProps {
+type IDocumentsProps = {
   datasetId: string
 }
 
@@ -234,6 +236,12 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
     handleSearch()
   }
 
+  const {
+    isShowEditModal: isShowEditMetadataModal,
+    showEditModal: showEditMetadataModal,
+    hideEditModal: hideEditMetadataModal,
+  } = useEditDocumentMetadata()
+
   return (
     <div className='flex flex-col h-full overflow-y-auto'>
       <div className='flex flex-col justify-center gap-1 px-6 pt-4'>
@@ -262,6 +270,18 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
           <div className='flex gap-2 justify-center items-center !h-8'>
             {!isFreePlan && <AutoDisabledDocument datasetId={datasetId} />}
             <IndexFailed datasetId={datasetId} />
+            {/* TODO privilage */}
+            <Button variant='secondary' className='shrink-0' onClick={showEditMetadataModal}>{t('dataset.metadata.metadata')}</Button>
+            {isShowEditMetadataModal && (
+              <DatasetMetadataDrawer
+                userMetadata={[]}
+                builtInMetadata={[]}
+                isBuiltInEnabled={false}
+                onIsBuiltInEnabledChange={() => { }}
+                onClose={hideEditMetadataModal}
+                onChange={() => { }}
+              />
+            )}
             {embeddingAvailable && (
               <Button variant='primary' onClick={routeToDocCreate} className='shrink-0'>
                 <PlusIcon className={cn('h-4 w-4 mr-2 stroke-current')} />

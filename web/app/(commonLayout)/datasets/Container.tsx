@@ -19,11 +19,9 @@ import TagFilter from '@/app/components/base/tag-management/filter'
 import Button from '@/app/components/base/button'
 import Input from '@/app/components/base/input'
 import { ApiConnectionMod } from '@/app/components/base/icons/src/vender/solid/development'
-import { DataType } from '@/app/components/datasets/metadata/types'
 import CheckboxWithLabel from '@/app/components/datasets/create/website/base/checkbox-with-label'
 // import DatasetMetadataDrawer from '@/app/components/datasets/metadata/dataset-metadata-drawer'
 // import MetaDataDocument from '@/app/components/datasets/metadata/metadata-document'
-import EditMetadataBatchModal from '@/app/components/datasets/metadata/edit-metadata-batch/modal'
 // Services
 import { fetchDatasetApiBaseUrl } from '@/service/datasets'
 
@@ -86,7 +84,7 @@ const Container = () => {
 
   return (
     <div ref={containerRef} className='grow relative flex flex-col bg-background-body overflow-y-auto scroll-container'>
-      <EditMetadataBatchModal
+      {/* <EditMetadataBatchModal
         documentNum={20}
         list={[
           {
@@ -104,7 +102,7 @@ const Container = () => {
         ]}
         onHide={() => { }}
         onChange={(list, newList, isApplyToAllSelectDocument) => { console.log(list, newList, isApplyToAllSelectDocument) }}
-      />
+      /> */}
       <div className='sticky top-0 flex justify-between pt-4 px-12 pb-2 leading-[56px] bg-background-body z-10 flex-wrap gap-y-2'>
         <TabSliderNew
           value={activeTab}

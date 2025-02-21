@@ -4,10 +4,10 @@ import React, { useCallback, useState } from 'react'
 import type { Props as CreateContentProps } from './create-content'
 import CreateContent from './create-content'
 import SelectMetadata from './select-metadata'
-import { PortalToFollowElem, PortalToFollowElemContent, PortalToFollowElemTrigger } from '../../base/portal-to-follow-elem'
-import type { MetadataItem } from './types'
+import { PortalToFollowElem, PortalToFollowElemContent, PortalToFollowElemTrigger } from '../../../base/portal-to-follow-elem'
+import type { MetadataItem } from '../types'
 import type { Placement } from '@floating-ui/react'
-import { DataType } from './types'
+import { DataType } from '../types'
 
 type Props = {
   popupPlacement?: Placement

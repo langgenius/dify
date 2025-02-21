@@ -8,7 +8,7 @@ import { RiDeleteBinLine, RiQuestionLine } from '@remixicon/react'
 import Tooltip from '@/app/components/base/tooltip'
 import cn from '@/utils/classnames'
 import Divider from '@/app/components/base/divider'
-import SelectMetadataModal from '../select-metadata-modal'
+import SelectMetadataModal from '../metadata-dataset/select-metadata-modal'
 import AddMetadataButton from '../add-metadata-button'
 
 type Props = {
