@@ -51,6 +51,9 @@ const translation = {
     skip: 'Корабель',
     imageCopied: 'Скопійоване зображення',
     deleteApp: 'Видалити програму',
+    viewDetails: 'Перегляд докладних відомостей',
+    copied: 'Скопійовані',
+    in: 'В',
   },
   placeholder: {
     input: 'Будь ласка, введіть текст',
@@ -123,6 +126,8 @@ const translation = {
       Custom: 'Користувацький',
     },
     addMoreModel: 'Перейдіть до налаштувань, щоб додати більше моделей',
+    settingsLink: 'Налаштування постачальника моделі',
+    capabilities: 'Можливості MultiModal',
   },
   menus: {
     status: 'бета',
@@ -135,6 +140,7 @@ const translation = {
     newApp: 'Нова програма',
     newDataset: 'Створити знання',
     tools: 'Інструменти',
+    exploreMarketplace: 'Дізнайтеся більше про Marketplace',
   },
   userProfile: {
     settings: 'Налаштування',
@@ -160,6 +166,7 @@ const translation = {
     dataSource: 'Джерело даних',
     plugin: 'Плагіни',
     apiBasedExtension: 'Розширення API',
+    generalGroup: 'ЗАГАЛЬНЕ',
   },
   account: {
     avatar: 'Аватар',
@@ -400,6 +407,12 @@ const translation = {
     providerManagedDescription: 'Використовуйте єдиний набір облікових даних, наданий постачальником моделі.',
     loadBalancingLeastKeyWarning: 'Щоб увімкнути балансування навантаження, має бути ввімкнено щонайменше 2 клавіші.',
     loadBalancingInfo: 'За замовчуванням для балансування навантаження використовується стратегія кругової системи. Якщо спрацьовує обмеження швидкості, буде застосовано період перезарядки тривалістю 1 хвилина.',
+    emptyProviderTip: 'Спочатку встановіть постачальника моделі.',
+    installProvider: 'Встановлення постачальників моделей',
+    toBeConfigured: 'Підлягає налаштуванню',
+    emptyProviderTitle: 'Постачальника моделі не налаштовано',
+    configureTip: 'Налаштуйте api-ключ або додайте модель для використання',
+    discoverMore: 'Відкрийте для себе більше в',
   },
   dataSource: {
     add: 'Додати джерело даних',

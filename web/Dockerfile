@@ -46,6 +46,7 @@ ENV MARKETPLACE_API_URL=http://127.0.0.1:5001
 ENV MARKETPLACE_URL=http://127.0.0.1:5001
 ENV PORT=3000
 ENV NEXT_TELEMETRY_DISABLED=1
+ENV PM2_INSTANCES=2
 
 # set timezone
 ENV TZ=UTC
@@ -58,7 +59,6 @@ COPY --from=builder /app/web/public ./public
 COPY --from=builder /app/web/.next/standalone ./
 COPY --from=builder /app/web/.next/static ./.next/static
 
-COPY docker/pm2.json ./pm2.json
 COPY docker/entrypoint.sh ./entrypoint.sh
 
 
