@@ -1,7 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import React, { useCallback, useRef, useState } from 'react'
-import type { MetadataItemWithValueLength } from '../types'
+import type { BuiltInMetadataItem, MetadataItemWithValueLength } from '../types'
 import Drawer from '@/app/components/base/drawer'
 import Button from '@/app/components/base/button'
 import { RiAddLine, RiDeleteBinLine, RiEditLine } from '@remixicon/react'
@@ -22,7 +22,7 @@ const i18nPrefix = 'dataset.metadata.datasetMetadata'
 
 type Props = {
   userMetadata: MetadataItemWithValueLength[]
-  builtInMetadata: MetadataItemWithValueLength[]
+  builtInMetadata: BuiltInMetadataItem[]
   isBuiltInEnabled: boolean
   onIsBuiltInEnabledChange: (value: boolean) => void
   onClose: () => void
@@ -63,7 +63,7 @@ const Item: FC<ItemProps> = ({
 
   return (
     <div
-      key={payload.id}
+      key={payload.name}
       className={cn(
         !readonly && !disabled && 'group/item hover:shadow-xs cursor-pointer',
         'border border-components-panel-border-subtle rounded-md bg-components-panel-on-panel-item-bg',
@@ -189,10 +189,10 @@ const DatasetMetadataDrawer: FC<Props> = ({
       <div className='mt-1 space-y-1'>
         {builtInMetadata.map(payload => (
           <Item
-            key={payload.id}
+            key={payload.name}
             readonly
             disabled={!isBuiltInEnabled}
-            payload={payload}
+            payload={payload as MetadataItemWithValueLength}
           />
         ))}
       </div>

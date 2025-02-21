@@ -4,10 +4,13 @@ export enum DataType {
   time = 'time',
 }
 
-export type MetadataItem = {
-  id: string
+export type BuiltInMetadataItem = {
   type: DataType
   name: string
+}
+
+export type MetadataItem = BuiltInMetadataItem & {
+  id: string
 }
 
 export type MetadataItemWithValue = MetadataItem & {

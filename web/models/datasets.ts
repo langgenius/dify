@@ -56,6 +56,7 @@ export type DataSet = {
     score_threshold: number
     score_threshold_enabled: boolean
   }
+  built_in_field_enabled: boolean
 }
 
 export type ExternalAPIItem = {

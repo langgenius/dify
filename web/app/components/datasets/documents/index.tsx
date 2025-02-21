@@ -7,7 +7,7 @@ import { useRouter } from 'next/navigation'
 import { useDebounce, useDebounceFn } from 'ahooks'
 import { groupBy, omit } from 'lodash-es'
 import { PlusIcon } from '@heroicons/react/24/solid'
-import { RiExternalLinkLine } from '@remixicon/react'
+import { RiDraftLine, RiExternalLinkLine } from '@remixicon/react'
 import AutoDisabledDocument from '../common/document-status-with-action/auto-disabled-document'
 import List from './list'
 import s from './style.module.css'
@@ -240,7 +240,14 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
     isShowEditModal: isShowEditMetadataModal,
     showEditModal: showEditMetadataModal,
     hideEditModal: hideEditMetadataModal,
-  } = useEditDocumentMetadata()
+    datasetMetaData,
+    builtInEnabled,
+    setBuiltInEnabled,
+    builtInMetaData,
+  } = useEditDocumentMetadata({
+    datasetId,
+    dataset,
+  })
 
   return (
     <div className='flex flex-col h-full overflow-y-auto'>
@@ -271,13 +278,16 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
             {!isFreePlan && <AutoDisabledDocument datasetId={datasetId} />}
             <IndexFailed datasetId={datasetId} />
             {/* TODO privilage */}
-            <Button variant='secondary' className='shrink-0' onClick={showEditMetadataModal}>{t('dataset.metadata.metadata')}</Button>
+            <Button variant='secondary' className='shrink-0' onClick={showEditMetadataModal}>
+              <RiDraftLine className='size-4 mr-1' />
+              {t('dataset.metadata.metadata')}
+            </Button>
             {isShowEditMetadataModal && (
               <DatasetMetadataDrawer
-                userMetadata={[]}
-                builtInMetadata={[]}
-                isBuiltInEnabled={false}
-                onIsBuiltInEnabledChange={() => { }}
+                userMetadata={datasetMetaData || []}
+                builtInMetadata={builtInMetaData || []}
+                isBuiltInEnabled={builtInEnabled}
+                onIsBuiltInEnabledChange={setBuiltInEnabled}
                 onClose={hideEditMetadataModal}
                 onChange={() => { }}
               />
