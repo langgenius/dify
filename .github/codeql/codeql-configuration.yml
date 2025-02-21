@@ -1,0 +1,4 @@
+# following the advice from https://github.com/github/codeql-action/issues/2756
+query-filters:
+  - exclude:
+      id: js/regex-injection
