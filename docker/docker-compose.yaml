@@ -414,7 +414,8 @@ x-shared-env: &shared-api-worker-env
 services:
   # API service
   api:
-    image: langgenius/dify-api:0.15.3
+    # image: langgenius/dify-api:0.15.3
+    build: ../api
     restart: always
     environment:
       # Use the shared environment variables.
