@@ -45,6 +45,8 @@ import Pagination from '@/app/components/base/pagination'
 import Checkbox from '@/app/components/base/checkbox'
 import { useDocumentArchive, useDocumentDelete, useDocumentDisable, useDocumentEnable, useDocumentUnArchive, useSyncDocument, useSyncWebsite } from '@/service/knowledge/use-document'
 import { extensionToFileType } from '@/app/components/datasets/hit-testing/utils/extension-to-file-type'
+import useBatchEditDocumentMetadata from '../metadata/hooks/use-batch-edit-document-metadata'
+import EditMetadataBatchModal from '@/app/components/datasets/metadata/edit-metadata-batch/modal'
 
 export const useIndexStatus = () => {
   const { t } = useTranslation()
@@ -424,6 +426,7 @@ const DocumentList: FC<IDocumentListProps> = ({
   const isQAMode = chunkingMode === ChunkingMode.qa
   const [localDocs, setLocalDocs] = useState<LocalDoc[]>(documents)
   const [enableSort, setEnableSort] = useState(true)
+  const { isShowEditModal, showEditModal, hideEditModal } = useBatchEditDocumentMetadata()
 
   useEffect(() => {
     setLocalDocs(documents)
@@ -615,19 +618,20 @@ const DocumentList: FC<IDocumentListProps> = ({
           })}
         </tbody>
       </table>
-      {(selectedIds.length > 0) && (
-        <BatchAction
-          className='absolute left-0 bottom-16 z-20'
-          selectedIds={selectedIds}
-          onArchive={handleAction(DocumentActionType.archive)}
-          onBatchEnable={handleAction(DocumentActionType.enable)}
-          onBatchDisable={handleAction(DocumentActionType.disable)}
-          onBatchDelete={handleAction(DocumentActionType.delete)}
-          onCancel={() => {
-            onSelectedIdChange([])
-          }}
-        />
-      )}
+      {/* {(selectedIds.length > 0) && ( */}
+      <BatchAction
+        className='absolute left-0 bottom-16 z-20'
+        selectedIds={selectedIds}
+        onArchive={handleAction(DocumentActionType.archive)}
+        onBatchEnable={handleAction(DocumentActionType.enable)}
+        onBatchDisable={handleAction(DocumentActionType.disable)}
+        onBatchDelete={handleAction(DocumentActionType.delete)}
+        onEditMetadata={showEditModal}
+        onCancel={() => {
+          onSelectedIdChange([])
+        }}
+      />
+      {/* )} */}
       {/* Show Pagination only if the total is more than the limit */}
       {pagination.total && pagination.total > (pagination.limit || 10) && (
         <Pagination
@@ -643,6 +647,15 @@ const DocumentList: FC<IDocumentListProps> = ({
           name={currDocument.name}
           onClose={setShowRenameModalFalse}
           onSaved={handleRenamed}
+        />
+      )}
+
+      {isShowEditModal && (
+        <EditMetadataBatchModal
+          documentNum={selectedIds.length}
+          list={[]}
+          onChange={() => { }}
+          onHide={hideEditModal}
         />
       )}
     </div>

@@ -4,7 +4,7 @@ import type { DataSet } from '@/models/datasets'
 import { useCallback, useState } from 'react'
 import type { BuiltInMetadataItem, MetadataItemWithValueLength } from '../types'
 
-const useEditDocumentMetadata = ({
+const useEditDatasetMetadata = ({
   datasetId,
   dataset,
 }: {
@@ -53,4 +53,4 @@ const useEditDocumentMetadata = ({
   }
 }
 
-export default useEditDocumentMetadata
+export default useEditDatasetMetadata

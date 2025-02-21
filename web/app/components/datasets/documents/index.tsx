@@ -27,7 +27,7 @@ import cn from '@/utils/classnames'
 import { useInvalidDocumentDetailKey } from '@/service/knowledge/use-document'
 import { useInvalid } from '@/service/use-base'
 import { useChildSegmentListKey, useSegmentListKey } from '@/service/knowledge/use-segment'
-import useEditDocumentMetadata from '../metadata/hooks/use-edit-document-metadata'
+import useEditDocumentMetadata from '../metadata/hooks/use-edit-dataset-metadata'
 import DatasetMetadataDrawer from '../metadata/metadata-dataset/dataset-metadata-drawer'
 
 const FolderPlusIcon = ({ className }: React.SVGProps<SVGElement>) => {
