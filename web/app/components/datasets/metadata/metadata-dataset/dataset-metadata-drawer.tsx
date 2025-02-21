@@ -17,6 +17,7 @@ import Tooltip from '@/app/components/base/tooltip'
 import CreateModal from '@/app/components/datasets/metadata/metadata-dataset/create-metadata-modal'
 import { useBoolean, useHover } from 'ahooks'
 import Confirm from '@/app/components/base/confirm'
+import Toast from '@/app/components/base/toast'
 
 const i18nPrefix = 'dataset.metadata.datasetMetadata'
 
@@ -27,6 +28,7 @@ type Props = {
   onIsBuiltInEnabledChange: (value: boolean) => void
   onClose: () => void
   onChange: (data: MetadataItemWithValueLength[]) => void
+  onRemove: (metaDataId: string) => void
 }
 
 type ItemProps = {
@@ -82,7 +84,7 @@ const Item: FC<ItemProps> = ({
           <div className='shrink-0 system-xs-regular'>{payload.type}</div>
         </div>
         <div className='group-hover/item:hidden ml-2 shrink-0 system-xs-regular text-text-tertiary'>
-          {disabled ? t(`${i18nPrefix}.disabled`) : t(`${i18nPrefix}.values`, { num: payload.valueLength || 0 })}
+          {disabled ? t(`${i18nPrefix}.disabled`) : t(`${i18nPrefix}.values`, { num: payload.use_count || 0 })}
         </div>
         <div className='group-hover/item:flex hidden ml-2 items-center text-text-tertiary space-x-1'>
           <RiEditLine className='size-4 cursor-pointer' onClick={handleRename} />
@@ -112,6 +114,7 @@ const DatasetMetadataDrawer: FC<Props> = ({
   onIsBuiltInEnabledChange,
   onClose,
   onChange,
+  onRemove,
 }) => {
   const { t } = useTranslation()
   const [isShowRenameModal, setIsShowRenameModal] = useState(false)
@@ -144,11 +147,14 @@ const DatasetMetadataDrawer: FC<Props> = ({
   }, [currPayload, templeName, userMetadata, onChange])
 
   const handleDelete = useCallback((payload: MetadataItemWithValueLength) => {
-    return () => {
-      const nextUserMetadata = userMetadata.filter(p => p.id !== payload.id)
-      onChange(nextUserMetadata)
+    return async () => {
+      await onRemove(payload.id)
+      Toast.notify({
+        type: 'success',
+        message: t('common.api.success'),
+      })
     }
-  }, [userMetadata, onChange])
+  }, [onRemove, t])
 
   return (
     <Drawer

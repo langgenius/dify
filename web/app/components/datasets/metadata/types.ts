@@ -18,7 +18,7 @@ export type MetadataItemWithValue = MetadataItem & {
 }
 
 export type MetadataItemWithValueLength = MetadataItem & {
-  valueLength: number
+  use_count: number
 }
 export enum UpdateType {
   changeValue = 'changeValue',
