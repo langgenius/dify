@@ -42,10 +42,7 @@ class StreamProcessor(ABC):
                 if (
                     edge.run_condition
                     and edge.run_condition.branch_identify
-                    and (
-                        run_result.edge_source_handle == edge.run_condition.branch_identify
-                        or edge.target_node_id not in self.graph.node_parallel_mapping
-                    )
+                    and run_result.edge_source_handle == edge.run_condition.branch_identify
                 ):
                     # remove unreachable nodes
                     # FIXME: because of the code branch can combine directly, so for answer node
@@ -60,11 +57,12 @@ class StreamProcessor(ABC):
 
                     # The branch_identify parameter is added to ensure that
                     # only nodes in the correct logical branch are included.
+                    reachable_node_ids.append(edge.target_node_id)
                     ids = self._fetch_node_ids_in_reachable_branch(edge.target_node_id, run_result.edge_source_handle)
                     reachable_node_ids.extend(ids)
                 else:
                     unreachable_first_node_ids.append(edge.target_node_id)
-
+            unreachable_first_node_ids = list(set(unreachable_first_node_ids) - set(reachable_node_ids))
             for node_id in unreachable_first_node_ids:
                 self._remove_node_ids_in_unreachable_branch(node_id, reachable_node_ids)
 
