@@ -376,7 +376,7 @@ export const useFetchPluginsInMarketPlaceByInfo = (infos: Record<string, any>[])
 }
 
 const usePluginTaskListKey = [NAME_SPACE, 'pluginTaskList']
-export const usePluginTaskList = (category?: PluginType, disableRefreshPluginList?: boolean) => {
+export const usePluginTaskList = (category?: PluginType) => {
   const {
     canManagement,
   } = usePermission()
@@ -405,7 +405,7 @@ export const usePluginTaskList = (category?: PluginType, disableRefreshPluginLis
       const taskDone = lastData?.tasks.every(task => task.status === TaskStatus.success || task.status === TaskStatus.failed)
       const taskAllFailed = lastData?.tasks.every(task => task.status === TaskStatus.failed)
       if (taskDone) {
-        if (lastData?.tasks.length && !taskAllFailed && !disableRefreshPluginList)
+        if (lastData?.tasks.length && !taskAllFailed)
           refreshPluginList(category ? { category } as any : undefined, !category)
       }
     }
