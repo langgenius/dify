@@ -37,11 +37,11 @@ const Nav = ({
   const isActivated = Array.isArray(activeSegment) ? activeSegment.includes(segment!) : segment === activeSegment
   const pathname = usePathname()
   const searchParams = useSearchParams()
-  const [capturedQueryParams, setCapturedQueryParams] = useState('')
+  const [linkLastSearchParams, setLinkLastSearchParams] = useState('')
 
   useEffect(() => {
     if (pathname === link)
-      setCapturedQueryParams(searchParams.toString())
+      setLinkLastSearchParams(searchParams.toString())
   }, [pathname, searchParams])
 
   return (
@@ -50,7 +50,7 @@ const Nav = ({
       ${isActivated && 'bg-components-main-nav-nav-button-bg-active shadow-md font-semibold'}
       ${!curNav && !isActivated && 'hover:bg-components-main-nav-nav-button-bg-hover'}
     `}>
-      <Link href={link + (capturedQueryParams && `?${capturedQueryParams}`)}>
+      <Link href={link + (linkLastSearchParams && `?${linkLastSearchParams}`)}>
         <div
           onClick={() => setAppDetail()}
           className={classNames(`
