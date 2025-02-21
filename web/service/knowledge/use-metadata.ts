@@ -51,6 +51,22 @@ export const useCreateMetaData = (datasetId: string) => {
   })
 }
 
+export const useRenameMeta = (datasetId: string) => {
+  const invalidDatasetMetaData = useInvalidDatasetMetaData(datasetId)
+  return useMutation({
+    mutationFn: async (payload: MetadataItemWithValueLength) => {
+      datasetMetaData = datasetMetaData.map((item) => {
+        if (item.id === payload.id)
+          return payload
+
+        return item
+      })
+      await invalidDatasetMetaData()
+      return Promise.resolve(true)
+    },
+  })
+}
+
 export const useDeleteMetaData = (datasetId: string) => {
   const invalidDatasetMetaData = useInvalidDatasetMetaData(datasetId)
   return useMutation({

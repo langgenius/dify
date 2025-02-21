@@ -242,6 +242,7 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
     hideEditModal: hideEditMetadataModal,
     datasetMetaData,
     handleAddMetaData,
+    handleRename,
     handleDeleteMetaData,
     builtInEnabled,
     setBuiltInEnabled,
@@ -287,13 +288,13 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
             {isShowEditMetadataModal && (
               <DatasetMetadataDrawer
                 userMetadata={datasetMetaData || []}
-                builtInMetadata={builtInMetaData || []}
-                isBuiltInEnabled={builtInEnabled}
-                onIsBuiltInEnabledChange={setBuiltInEnabled}
                 onClose={hideEditMetadataModal}
-                onChange={() => { }}
                 onAdd={handleAddMetaData}
+                onRename={handleRename}
                 onRemove={handleDeleteMetaData}
+                builtInMetadata={builtInMetaData || []}
+                isBuiltInEnabled={!!builtInEnabled}
+                onIsBuiltInEnabledChange={setBuiltInEnabled}
               />
             )}
             {embeddingAvailable && (

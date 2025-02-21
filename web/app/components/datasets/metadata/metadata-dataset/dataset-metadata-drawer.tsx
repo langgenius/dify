@@ -11,7 +11,6 @@ import Modal from '@/app/components/base/modal'
 import Field from './field'
 import Input from '@/app/components/base/input'
 import { useTranslation } from 'react-i18next'
-import produce from 'immer'
 import Switch from '@/app/components/base/switch'
 import Tooltip from '@/app/components/base/tooltip'
 import CreateModal from '@/app/components/datasets/metadata/metadata-dataset/create-metadata-modal'
@@ -27,8 +26,8 @@ type Props = {
   isBuiltInEnabled: boolean
   onIsBuiltInEnabledChange: (value: boolean) => void
   onClose: () => void
-  onChange: (data: MetadataItemWithValueLength[]) => void
   onAdd: (payload: BuiltInMetadataItem) => void
+  onRename: (payload: MetadataItemWithValueLength) => void
   onRemove: (metaDataId: string) => void
 }
 
@@ -114,8 +113,8 @@ const DatasetMetadataDrawer: FC<Props> = ({
   isBuiltInEnabled,
   onIsBuiltInEnabledChange,
   onClose,
-  onChange,
   onAdd,
+  onRename,
   onRemove,
 }) => {
   const { t } = useTranslation()
@@ -140,16 +139,20 @@ const DatasetMetadataDrawer: FC<Props> = ({
     setOpen(false)
   }, [onAdd, t])
 
-  const handleRenamed = useCallback(() => {
-    const nextUserMetadata = produce(userMetadata, (draft) => {
-      const index = draft.findIndex(p => p.id === currPayload?.id)
-      if (index !== -1)
-        draft[index].name = templeName!
-    })
-
-    onChange(nextUserMetadata)
+  const handleRenamed = useCallback(async () => {
+    const item = userMetadata.find(p => p.id === currPayload?.id)
+    if (item) {
+      await onRename({
+        ...item,
+        name: templeName,
+      })
+      Toast.notify({
+        type: 'success',
+        message: t('common.api.success'),
+      })
+    }
     setIsShowRenameModal(false)
-  }, [currPayload, templeName, userMetadata, onChange])
+  }, [userMetadata, currPayload?.id, onRename, templeName])
 
   const handleDelete = useCallback((payload: MetadataItemWithValueLength) => {
     return async () => {
