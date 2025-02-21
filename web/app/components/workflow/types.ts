@@ -1,7 +1,7 @@
 import type {
   Edge as ReactFlowEdge,
   Node as ReactFlowNode,
-  Viewport,
+  Viewport, XYPosition,
 } from 'reactflow'
 import type { Resolution, TransferMethod } from '@/types/app'
 import type { ToolDefaultValue } from '@/app/components/workflow/block-selector/types'
@@ -79,6 +79,7 @@ export type CommonNodeType<T = {}> = {
   type: BlockEnum
   width?: number
   height?: number
+  position?: XYPosition
   error_strategy?: ErrorHandleTypeEnum
   retry_config?: WorkflowRetryConfig
   default_value?: DefaultValueForm[]

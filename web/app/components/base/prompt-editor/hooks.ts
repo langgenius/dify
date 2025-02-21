@@ -74,9 +74,11 @@ export const useSelectOrDelete: UseSelectOrDeleteHandler = (nodeKey: string, com
   )
 
   const handleSelect = useCallback((e: MouseEvent) => {
-    e.stopPropagation()
-    clearSelection()
-    setSelected(true)
+    if (!e.metaKey && !e.ctrlKey) {
+      e.stopPropagation()
+      clearSelection()
+      setSelected(true)
+    }
   }, [setSelected, clearSelection])
 
   useEffect(() => {
