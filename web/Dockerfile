@@ -43,6 +43,8 @@ ENV CONSOLE_API_URL=http://127.0.0.1:5001
 ENV APP_API_URL=http://127.0.0.1:5001
 ENV PORT=3000
 ENV NEXT_TELEMETRY_DISABLED=1
+# Set environment variables, at run time
+ENV NEXT_PUBLIC_BASE_PATH=
 
 # Set environment variables, at run time
 ENV NEXT_PUBLIC_BASE_PATH=
