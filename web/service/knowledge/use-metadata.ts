@@ -36,6 +36,21 @@ export const useInvalidDatasetMetaData = (datasetId: string) => {
   return useInvalid([NAME_SPACE, 'dataset', datasetId])
 }
 
+export const useCreateMetaData = (datasetId: string) => {
+  const invalidDatasetMetaData = useInvalidDatasetMetaData(datasetId)
+  return useMutation({
+    mutationFn: async (payload: BuiltInMetadataItem) => {
+      datasetMetaData.push({
+        id: `${Math.random()}`,
+        ...payload,
+        use_count: 0,
+      })
+      await invalidDatasetMetaData()
+      return Promise.resolve(true)
+    },
+  })
+}
+
 export const useDeleteMetaData = (datasetId: string) => {
   const invalidDatasetMetaData = useInvalidDatasetMetaData(datasetId)
   return useMutation({

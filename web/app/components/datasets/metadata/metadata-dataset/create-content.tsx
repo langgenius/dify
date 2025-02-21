@@ -12,12 +12,14 @@ import { useTranslation } from 'react-i18next'
 const i18nPrefix = 'dataset.metadata.createMetadata'
 
 export type Props = {
+  onClose?: () => void
   onSave: (data: any) => void
   hasBack?: boolean
   onBack?: () => void
 }
 
 const CreateContent: FC<Props> = ({
+  onClose = () => { },
   hasBack,
   onBack,
   onSave,
@@ -43,7 +45,7 @@ const CreateContent: FC<Props> = ({
   return (
     <ModalLikeWrap
       title={t(`${i18nPrefix}.title`)}
-      onClose={() => { }}
+      onClose={onClose}
       onConfirm={handleSave}
       hideCloseBtn={hasBack}
       beforeHeader={hasBack && (

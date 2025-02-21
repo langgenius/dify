@@ -200,6 +200,8 @@ const translation = {
       namePlaceholder: '元数据名称',
       builtIn: '内置',
       builtInDescription: '内置元数据是系统预定义的元数据，您可以在此处查看和管理内置元数据。',
+      deleteTitle: '确定删除',
+      deleteContent: '你确定要删除元数据 "{{name}}" 吗?',
     },
     documentMetadata: {
       metadataToolTip: '元数据是关于文档的数据，用于描述文档的属性。元数据可以帮助您更好地组织和管理文档。',

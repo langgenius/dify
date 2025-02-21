@@ -1,23 +1,25 @@
 'use client'
 import type { FC } from 'react'
-import React, { useState } from 'react'
+import React from 'react'
 import type { Props as CreateContentProps } from './create-content'
 import CreateContent from './create-content'
 import { PortalToFollowElem, PortalToFollowElemContent, PortalToFollowElemTrigger } from '../../../base/portal-to-follow-elem'
 
 type Props = {
+  open: boolean
+  setOpen: (open: boolean) => void
   onSave: (data: any) => void
   trigger: React.ReactNode
   popupLeft?: number
 } & CreateContentProps
 
 const CreateMetadataModal: FC<Props> = ({
+  open,
+  setOpen,
   trigger,
   popupLeft = 20,
   ...createContentProps
 }) => {
-  const [open, setOpen] = useState(false)
-
   return (
     <PortalToFollowElem
       open={open}
@@ -34,7 +36,7 @@ const CreateMetadataModal: FC<Props> = ({
         {trigger}
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent className='z-[1000]'>
-        <CreateContent {...createContentProps} />
+        <CreateContent {...createContentProps} onClose={() => setOpen(false)} />
       </PortalToFollowElemContent>
     </PortalToFollowElem >
 

@@ -28,6 +28,7 @@ type Props = {
   onIsBuiltInEnabledChange: (value: boolean) => void
   onClose: () => void
   onChange: (data: MetadataItemWithValueLength[]) => void
+  onAdd: (payload: BuiltInMetadataItem) => void
   onRemove: (metaDataId: string) => void
 }
 
@@ -96,8 +97,8 @@ const Item: FC<ItemProps> = ({
           <Confirm
             isShow
             type='warning'
-            title={'Confirm to delete'}
-            content={`Are you sure you want to delete the metadata "${payload.name}"?`}
+            title={t('dataset.metadata.datasetMetadata.deleteTitle')}
+            content={t('dataset.metadata.datasetMetadata.deleteContent', { name: payload.name })}
             onConfirm={handleDelete}
             onCancel={hideDeleteConfirm}
           />
@@ -114,6 +115,7 @@ const DatasetMetadataDrawer: FC<Props> = ({
   onIsBuiltInEnabledChange,
   onClose,
   onChange,
+  onAdd,
   onRemove,
 }) => {
   const { t } = useTranslation()
@@ -128,12 +130,15 @@ const DatasetMetadataDrawer: FC<Props> = ({
     }
   }, [setCurrPayload, setIsShowRenameModal])
 
-  const handleAdd = useCallback((data: MetadataItemWithValueLength) => {
-    const nextUserMetadata = produce(userMetadata, (draft) => {
-      draft.push(data)
+  const [open, setOpen] = useState(false)
+  const handleAdd = useCallback(async (data: MetadataItemWithValueLength) => {
+    await onAdd(data)
+    Toast.notify({
+      type: 'success',
+      message: t('common.api.success'),
     })
-    onChange(nextUserMetadata)
-  }, [userMetadata, onChange])
+    setOpen(false)
+  }, [onAdd, t])
 
   const handleRenamed = useCallback(() => {
     const nextUserMetadata = produce(userMetadata, (draft) => {
@@ -167,10 +172,14 @@ const DatasetMetadataDrawer: FC<Props> = ({
     >
       <div className='system-sm-regular text-text-tertiary'>{t(`${i18nPrefix}.description`)}</div>
 
-      <CreateModal trigger={<Button variant='primary' className='mt-3'>
-        <RiAddLine className='mr-1' />
-        {t(`${i18nPrefix}.addMetaData`)}
-      </Button>} hasBack onSave={handleAdd} />
+      <CreateModal
+        open={open}
+        setOpen={setOpen}
+        trigger={<Button variant='primary' className='mt-3'>
+          <RiAddLine className='mr-1' />
+          {t(`${i18nPrefix}.addMetaData`)}
+        </Button>} hasBack onSave={handleAdd}
+      />
 
       <div className='mt-3 space-y-1'>
         {userMetadata.map(payload => (

@@ -1,7 +1,8 @@
 import { useBoolean } from 'ahooks'
-import { useBuiltInMetaData, useDatasetMetaData, useDeleteMetaData, useUpdateBuiltInStatus } from '@/service/knowledge/use-metadata'
+import { useBuiltInMetaData, useCreateMetaData, useDatasetMetaData, useDeleteMetaData, useUpdateBuiltInStatus } from '@/service/knowledge/use-metadata'
 import type { DataSet } from '@/models/datasets'
 import { useCallback, useState } from 'react'
+import type { BuiltInMetadataItem } from '../types'
 
 const useEditDocumentMetadata = ({
   datasetId,
@@ -16,6 +17,12 @@ const useEditDocumentMetadata = ({
   }] = useBoolean(false)
 
   const { data: datasetMetaData } = useDatasetMetaData(datasetId)
+
+  const { mutate: doAddMetaData } = useCreateMetaData(datasetId)
+  const handleAddMetaData = useCallback((payload: BuiltInMetadataItem) => {
+    doAddMetaData(payload)
+  }, [doAddMetaData])
+
   const { mutate: doDeleteMetaData } = useDeleteMetaData(datasetId)
   const handleDeleteMetaData = useCallback((metaDataId: string) => {
     doDeleteMetaData(metaDataId)
@@ -29,6 +36,7 @@ const useEditDocumentMetadata = ({
     showEditModal,
     hideEditModal,
     datasetMetaData: datasetMetaData?.data,
+    handleAddMetaData,
     handleDeleteMetaData,
     builtInMetaData: builtInMetaData?.fields,
     builtInEnabled,
