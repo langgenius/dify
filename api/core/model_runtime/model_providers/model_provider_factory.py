@@ -34,9 +34,11 @@ class ModelProviderExtension(BaseModel):
 
 
 class ModelProviderFactory:
-    provider_position_map: dict[str, int] = {}
+    provider_position_map: dict[str, int]
 
     def __init__(self, tenant_id: str) -> None:
+        self.provider_position_map = {}
+
         self.tenant_id = tenant_id
         self.plugin_model_manager = PluginModelManager()
 
