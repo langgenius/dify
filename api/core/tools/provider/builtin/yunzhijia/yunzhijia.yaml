@@ -1,0 +1,14 @@
+identity:
+  author: ZhuJun Lu
+  name: yunzhijia
+  label:
+    en_US: CloudHub
+    zh_Hans: 云之家
+    pt_BR: CloudHub
+  description:
+    en_US: CloudHub open api
+    zh_Hans: 云之家相关开放能力
+    pt_BR: CloudHub open api
+  icon: icon.jpg
+  tags:
+    - social
