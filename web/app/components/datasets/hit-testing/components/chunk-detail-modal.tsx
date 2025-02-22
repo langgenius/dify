@@ -12,6 +12,7 @@ import FileIcon from '@/app/components/base/file-uploader/file-type-icon'
 import type { FileAppearanceTypeEnum } from '@/app/components/base/file-uploader/types'
 import cn from '@/utils/classnames'
 import Tag from '@/app/components/datasets/documents/detail/completed/common/tag'
+import { Markdown } from '@/app/components/base/markdown'
 
 const i18nPrefix = 'datasetHitTesting'
 
@@ -26,7 +27,7 @@ const ChunkDetailModal: FC<Props> = ({
 }) => {
   const { t } = useTranslation()
   const { segment, score, child_chunks } = payload
-  const { position, content, keywords, document } = segment
+  const { position, content, sign_content, keywords, document } = segment
   const isParentChildRetrieval = !!(child_chunks && child_chunks.length > 0)
   const extension = document.name.split('.').slice(-1)[0] as FileAppearanceTypeEnum
   const heighClassName = isParentChildRetrieval ? 'h-[min(627px,_80vh)] overflow-y-auto' : 'h-[min(539px,_80vh)] overflow-y-auto'
@@ -56,9 +57,10 @@ const ChunkDetailModal: FC<Props> = ({
             </div>
             <Score value={score} />
           </div>
-          <div className={cn('mt-2 body-md-regular text-text-secondary break-all', heighClassName)}>
-            {content}
-          </div>
+          <Markdown
+            className={cn('!mt-2 !text-text-secondary', heighClassName)}
+            content={sign_content || content}
+          />
           {!isParentChildRetrieval && keywords && keywords.length > 0 && (
             <div className='mt-6'>
               <div className='font-medium text-xs text-text-tertiary uppercase'>{t(`${i18nPrefix}.keyword`)}</div>

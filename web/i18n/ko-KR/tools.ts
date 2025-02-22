@@ -133,6 +133,7 @@ const translation = {
     number: '숫자',
     required: '필수',
     infoAndSetting: '정보 및 설정',
+    file: '파일',
   },
   noCustomTool: {
     title: '커스텀 도구가 없습니다!',
@@ -150,6 +151,8 @@ const translation = {
   howToGet: '획득 방법',
   openInStudio: '스튜디오에서 열기',
   toolNameUsageTip: 'Agent 추리와 프롬프트를 위한 도구 호출 이름',
+  noTools: '도구를 찾을 수 없습니다.',
+  copyToolName: '이름 복사',
 }
 
 export default translation

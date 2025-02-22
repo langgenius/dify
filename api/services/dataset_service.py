@@ -4,13 +4,16 @@ import logging
 import random
 import time
 import uuid
+from collections import Counter
 from typing import Any, Optional
 
 from flask_login import current_user  # type: ignore
 from sqlalchemy import func
+from sqlalchemy.orm import Session
 from werkzeug.exceptions import NotFound
 
 from configs import dify_config
+from core.entities import DEFAULT_PLUGIN_ID
 from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
 from core.model_manager import ModelManager
 from core.model_runtime.entities.model_entities import ModelType
@@ -41,6 +44,7 @@ from models.source import DataSourceOauthBinding
 from services.entities.knowledge_entities.knowledge_entities import (
     ChildChunkUpdateArgs,
     KnowledgeConfig,
+    MetaDataConfig,
     RerankingModel,
     RetrievalModel,
     SegmentUpdateArgs,
@@ -221,8 +225,7 @@ class DatasetService:
                 )
             except LLMBadRequestError:
                 raise ValueError(
-                    "No Embedding Model available. Please configure a valid provider "
-                    "in the Settings -> Model Provider."
+                    "No Embedding Model available. Please configure a valid provider in the Settings -> Model Provider."
                 )
             except ProviderTokenNotInitError as ex:
                 raise ValueError(f"The dataset in unavailable, due to: {ex.description}")
@@ -267,7 +270,15 @@ class DatasetService:
             external_knowledge_api_id = data.get("external_knowledge_api_id", None)
             if not external_knowledge_api_id:
                 raise ValueError("External knowledge api id is required.")
-            external_knowledge_binding = ExternalKnowledgeBindings.query.filter_by(dataset_id=dataset_id).first()
+
+            with Session(db.engine) as session:
+                external_knowledge_binding = (
+                    session.query(ExternalKnowledgeBindings).filter_by(dataset_id=dataset_id).first()
+                )
+
+                if not external_knowledge_binding:
+                    raise ValueError("External knowledge binding not found.")
+
             if (
                 external_knowledge_binding.external_knowledge_id != external_knowledge_id
                 or external_knowledge_binding.external_knowledge_api_id != external_knowledge_api_id
@@ -315,8 +326,19 @@ class DatasetService:
                     except ProviderTokenNotInitError as ex:
                         raise ValueError(ex.description)
             else:
+                # add default plugin id to both setting sets, to make sure the plugin model provider is consistent
+                plugin_model_provider = dataset.embedding_model_provider
+                if "/" not in plugin_model_provider:
+                    plugin_model_provider = f"{DEFAULT_PLUGIN_ID}/{plugin_model_provider}/{plugin_model_provider}"
+
+                new_plugin_model_provider = data["embedding_model_provider"]
+                if "/" not in new_plugin_model_provider:
+                    new_plugin_model_provider = (
+                        f"{DEFAULT_PLUGIN_ID}/{new_plugin_model_provider}/{new_plugin_model_provider}"
+                    )
+
                 if (
-                    data["embedding_model_provider"] != dataset.embedding_model_provider
+                    new_plugin_model_provider != plugin_model_provider
                     or data["embedding_model"] != dataset.embedding_model
                 ):
                     action = "update"
@@ -859,7 +881,7 @@ class DocumentService:
                 position = DocumentService.get_documents_position(dataset.id)
                 document_ids = []
                 duplicate_document_ids = []
-                if knowledge_config.data_source.info_list.data_source_type == "upload_file":
+                if knowledge_config.data_source.info_list.data_source_type == "upload_file":  # type: ignore
                     upload_file_list = knowledge_config.data_source.info_list.file_info_list.file_ids  # type: ignore
                     for file_id in upload_file_list:
                         file = (
@@ -894,6 +916,9 @@ class DocumentService:
                                 document.data_source_info = json.dumps(data_source_info)
                                 document.batch = batch
                                 document.indexing_status = "waiting"
+                                if knowledge_config.metadata:
+                                    document.doc_type = knowledge_config.metadata.doc_type
+                                    document.metadata = knowledge_config.metadata.doc_metadata
                                 db.session.add(document)
                                 documents.append(document)
                                 duplicate_document_ids.append(document.id)
@@ -901,7 +926,7 @@ class DocumentService:
                         document = DocumentService.build_document(
                             dataset,
                             dataset_process_rule.id,  # type: ignore
-                            knowledge_config.data_source.info_list.data_source_type,
+                            knowledge_config.data_source.info_list.data_source_type,  # type: ignore
                             knowledge_config.doc_form,
                             knowledge_config.doc_language,
                             data_source_info,
@@ -910,14 +935,15 @@ class DocumentService:
                             account,
                             file_name,
                             batch,
+                            knowledge_config.metadata,
                         )
                         db.session.add(document)
                         db.session.flush()
                         document_ids.append(document.id)
                         documents.append(document)
                         position += 1
-                elif knowledge_config.data_source.info_list.data_source_type == "notion_import":
-                    notion_info_list = knowledge_config.data_source.info_list.notion_info_list
+                elif knowledge_config.data_source.info_list.data_source_type == "notion_import":  # type: ignore
+                    notion_info_list = knowledge_config.data_source.info_list.notion_info_list  # type: ignore
                     if not notion_info_list:
                         raise ValueError("No notion info list found.")
                     exist_page_ids = []
@@ -956,7 +982,7 @@ class DocumentService:
                                 document = DocumentService.build_document(
                                     dataset,
                                     dataset_process_rule.id,  # type: ignore
-                                    knowledge_config.data_source.info_list.data_source_type,
+                                    knowledge_config.data_source.info_list.data_source_type,  # type: ignore
                                     knowledge_config.doc_form,
                                     knowledge_config.doc_language,
                                     data_source_info,
@@ -965,6 +991,7 @@ class DocumentService:
                                     account,
                                     page.page_name,
                                     batch,
+                                    knowledge_config.metadata,
                                 )
                                 db.session.add(document)
                                 db.session.flush()
@@ -976,8 +1003,8 @@ class DocumentService:
                     # delete not selected documents
                     if len(exist_document) > 0:
                         clean_notion_document_task.delay(list(exist_document.values()), dataset.id)
-                elif knowledge_config.data_source.info_list.data_source_type == "website_crawl":
-                    website_info = knowledge_config.data_source.info_list.website_info_list
+                elif knowledge_config.data_source.info_list.data_source_type == "website_crawl":  # type: ignore
+                    website_info = knowledge_config.data_source.info_list.website_info_list  # type: ignore
                     if not website_info:
                         raise ValueError("No website info list found.")
                     urls = website_info.urls
@@ -996,7 +1023,7 @@ class DocumentService:
                         document = DocumentService.build_document(
                             dataset,
                             dataset_process_rule.id,  # type: ignore
-                            knowledge_config.data_source.info_list.data_source_type,
+                            knowledge_config.data_source.info_list.data_source_type,  # type: ignore
                             knowledge_config.doc_form,
                             knowledge_config.doc_language,
                             data_source_info,
@@ -1005,6 +1032,7 @@ class DocumentService:
                             account,
                             document_name,
                             batch,
+                            knowledge_config.metadata,
                         )
                         db.session.add(document)
                         db.session.flush()
@@ -1042,6 +1070,7 @@ class DocumentService:
         account: Account,
         name: str,
         batch: str,
+        metadata: Optional[MetaDataConfig] = None,
     ):
         document = Document(
             tenant_id=dataset.tenant_id,
@@ -1057,6 +1086,9 @@ class DocumentService:
             doc_form=document_form,
             doc_language=document_language,
         )
+        if metadata is not None:
+            document.doc_metadata = metadata.doc_metadata
+            document.doc_type = metadata.doc_type
         return document
 
     @staticmethod
@@ -1169,6 +1201,10 @@ class DocumentService:
         # update document name
         if document_data.name:
             document.name = document_data.name
+        # update doc_type and doc_metadata if provided
+        if document_data.metadata is not None:
+            document.doc_metadata = document_data.metadata.doc_type
+            document.doc_type = document_data.metadata.doc_type
         # update document to be waiting
         document.indexing_status = "waiting"
         document.completed_at = None
@@ -1195,20 +1231,20 @@ class DocumentService:
 
         if features.billing.enabled:
             count = 0
-            if knowledge_config.data_source.info_list.data_source_type == "upload_file":
+            if knowledge_config.data_source.info_list.data_source_type == "upload_file":  # type: ignore
                 upload_file_list = (
-                    knowledge_config.data_source.info_list.file_info_list.file_ids
-                    if knowledge_config.data_source.info_list.file_info_list
+                    knowledge_config.data_source.info_list.file_info_list.file_ids  # type: ignore
+                    if knowledge_config.data_source.info_list.file_info_list  # type: ignore
                     else []
                 )
                 count = len(upload_file_list)
-            elif knowledge_config.data_source.info_list.data_source_type == "notion_import":
-                notion_info_list = knowledge_config.data_source.info_list.notion_info_list
+            elif knowledge_config.data_source.info_list.data_source_type == "notion_import":  # type: ignore
+                notion_info_list = knowledge_config.data_source.info_list.notion_info_list  # type: ignore
                 if notion_info_list:
                     for notion_info in notion_info_list:
                         count = count + len(notion_info.pages)
-            elif knowledge_config.data_source.info_list.data_source_type == "website_crawl":
-                website_info = knowledge_config.data_source.info_list.website_info_list
+            elif knowledge_config.data_source.info_list.data_source_type == "website_crawl":  # type: ignore
+                website_info = knowledge_config.data_source.info_list.website_info_list  # type: ignore
                 if website_info:
                     count = len(website_info.urls)
             batch_upload_limit = int(dify_config.BATCH_UPLOAD_LIMIT)
@@ -1239,7 +1275,7 @@ class DocumentService:
         dataset = Dataset(
             tenant_id=tenant_id,
             name="",
-            data_source_type=knowledge_config.data_source.info_list.data_source_type,
+            data_source_type=knowledge_config.data_source.info_list.data_source_type,  # type: ignore
             indexing_technique=knowledge_config.indexing_technique,
             created_by=account.id,
             embedding_model=knowledge_config.embedding_model,
@@ -1453,7 +1489,7 @@ class SegmentService:
                 model=dataset.embedding_model,
             )
             # calc embedding use tokens
-            tokens = embedding_model.get_text_embedding_num_tokens(texts=[content])
+            tokens = embedding_model.get_text_embedding_num_tokens(texts=[content])[0]
         lock_name = "add_segment_lock_document_id_{}".format(document.id)
         with redis_client.lock(lock_name, timeout=600):
             max_position = (
@@ -1530,9 +1566,12 @@ class SegmentService:
                 if dataset.indexing_technique == "high_quality" and embedding_model:
                     # calc embedding use tokens
                     if document.doc_form == "qa_model":
-                        tokens = embedding_model.get_text_embedding_num_tokens(texts=[content + segment_item["answer"]])
+                        tokens = embedding_model.get_text_embedding_num_tokens(
+                            texts=[content + segment_item["answer"]]
+                        )[0]
                     else:
-                        tokens = embedding_model.get_text_embedding_num_tokens(texts=[content])
+                        tokens = embedding_model.get_text_embedding_num_tokens(texts=[content])[0]
+
                 segment_document = DocumentSegment(
                     tenant_id=current_user.current_tenant_id,
                     dataset_id=document.dataset_id,
@@ -1611,8 +1650,11 @@ class SegmentService:
                     segment.answer = args.answer
                     segment.word_count += len(args.answer) if args.answer else 0
                 word_count_change = segment.word_count - word_count_change
+                keyword_changed = False
                 if args.keywords:
-                    segment.keywords = args.keywords
+                    if Counter(segment.keywords) != Counter(args.keywords):
+                        segment.keywords = args.keywords
+                        keyword_changed = True
                 segment.enabled = True
                 segment.disabled_at = None
                 segment.disabled_by = None
@@ -1623,13 +1665,6 @@ class SegmentService:
                     document.word_count = max(0, document.word_count + word_count_change)
                     db.session.add(document)
                 # update segment index task
-                if args.enabled:
-                    VectorService.create_segments_vector(
-                        [args.keywords] if args.keywords else None,
-                        [segment],
-                        dataset,
-                        document.doc_form,
-                    )
                 if document.doc_form == IndexType.PARENT_CHILD_INDEX and args.regenerate_child_chunks:
                     # regenerate child chunks
                     # get embedding model instance
@@ -1662,6 +1697,14 @@ class SegmentService:
                     VectorService.generate_child_chunks(
                         segment, document, dataset, embedding_model_instance, processing_rule, True
                     )
+                elif document.doc_form in (IndexType.PARAGRAPH_INDEX, IndexType.QA_INDEX):
+                    if args.enabled or keyword_changed:
+                        VectorService.create_segments_vector(
+                            [args.keywords] if args.keywords else None,
+                            [segment],
+                            dataset,
+                            document.doc_form,
+                        )
             else:
                 segment_hash = helper.generate_text_hash(content)
                 tokens = 0
@@ -1676,9 +1719,9 @@ class SegmentService:
 
                     # calc embedding use tokens
                     if document.doc_form == "qa_model":
-                        tokens = embedding_model.get_text_embedding_num_tokens(texts=[content + segment.answer])
+                        tokens = embedding_model.get_text_embedding_num_tokens(texts=[content + segment.answer])[0]
                     else:
-                        tokens = embedding_model.get_text_embedding_num_tokens(texts=[content])
+                        tokens = embedding_model.get_text_embedding_num_tokens(texts=[content])[0]
                 segment.content = content
                 segment.index_node_hash = segment_hash
                 segment.word_count = len(content)

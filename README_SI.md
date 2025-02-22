@@ -22,6 +22,9 @@
     <a href="https://twitter.com/intent/follow?screen_name=dify_ai" target="_blank">
         <img src="https://img.shields.io/twitter/follow/dify_ai?logo=X&color=%20%23f5f5f5"
             alt="follow on X(Twitter)"></a>
+    <a href="https://www.linkedin.com/company/langgenius/" target="_blank">
+        <img src="https://custom-icon-badges.demolab.com/badge/LinkedIn-0A66C2?logo=linkedin-white&logoColor=fff"
+            alt="follow on LinkedIn"></a>
     <a href="https://hub.docker.com/u/langgenius" target="_blank">
         <img alt="Docker Pulls" src="https://img.shields.io/docker/pulls/langgenius/dify-web?labelColor=%20%23FDB062&color=%20%23f79009"></a>
     <a href="https://github.com/langgenius/dify/graphs/commit-activity" target="_blank">
@@ -103,6 +106,73 @@ Prosimo, glejte naša pogosta vprašanja [FAQ](https://docs.dify.ai/getting-star
 **7. Backend-as-a-Service**: 
   AVse ponudbe Difyja so opremljene z ustreznimi API-ji, tako da lahko Dify brez težav integrirate v svojo poslovno logiko.
 
+## Primerjava Funkcij
+
+<table style="width: 100%;">
+  <tr>
+    <th align="center">Funkcija</th>
+    <th align="center">Dify.AI</th>
+    <th align="center">LangChain</th>
+    <th align="center">Flowise</th>
+    <th align="center">OpenAI Assistants API</th>
+  </tr>
+  <tr>
+    <td align="center">Programski pristop</td>
+    <td align="center">API + usmerjeno v aplikacije</td>
+    <td align="center">Python koda</td>
+    <td align="center">Usmerjeno v aplikacije</td>
+    <td align="center">Usmerjeno v API</td>
+  </tr>
+  <tr>
+    <td align="center">Podprti LLM-ji</td>
+    <td align="center">Bogata izbira</td>
+    <td align="center">Bogata izbira</td>
+    <td align="center">Bogata izbira</td>
+    <td align="center">Samo OpenAI</td>
+  </tr>
+  <tr>
+    <td align="center">RAG pogon</td>
+    <td align="center">✅</td>
+    <td align="center">✅</td>
+    <td align="center">✅</td>
+    <td align="center">✅</td>
+  </tr>
+  <tr>
+    <td align="center">Agent</td>
+    <td align="center">✅</td>
+    <td align="center">✅</td>
+    <td align="center">❌</td>
+    <td align="center">✅</td>
+  </tr>
+  <tr>
+    <td align="center">Potek dela</td>
+    <td align="center">✅</td>
+    <td align="center">❌</td>
+    <td align="center">✅</td>
+    <td align="center">❌</td>
+  </tr>
+  <tr>
+    <td align="center">Spremljanje</td>
+    <td align="center">✅</td>
+    <td align="center">✅</td>
+    <td align="center">❌</td>
+    <td align="center">❌</td>
+  </tr>
+  <tr>
+    <td align="center">Funkcija za podjetja (SSO/nadzor dostopa)</td>
+    <td align="center">✅</td>
+    <td align="center">❌</td>
+    <td align="center">❌</td>
+    <td align="center">❌</td>
+  </tr>
+  <tr>
+    <td align="center">Lokalna namestitev</td>
+    <td align="center">✅</td>
+    <td align="center">✅</td>
+    <td align="center">✅</td>
+    <td align="center">❌</td>
+  </tr>
+</table>
 
 ## Uporaba Dify
 

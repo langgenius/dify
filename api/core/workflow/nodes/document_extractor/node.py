@@ -107,8 +107,10 @@ def _extract_text_by_mime_type(*, file_content: bytes, mime_type: str) -> str:
             return _extract_text_from_plain_text(file_content)
         case "application/pdf":
             return _extract_text_from_pdf(file_content)
-        case "application/vnd.openxmlformats-officedocument.wordprocessingml.document" | "application/msword":
+        case "application/msword":
             return _extract_text_from_doc(file_content)
+        case "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
+            return _extract_text_from_docx(file_content)
         case "text/csv":
             return _extract_text_from_csv(file_content)
         case "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" | "application/vnd.ms-excel":
@@ -142,8 +144,10 @@ def _extract_text_by_file_extension(*, file_content: bytes, file_extension: str)
             return _extract_text_from_yaml(file_content)
         case ".pdf":
             return _extract_text_from_pdf(file_content)
-        case ".doc" | ".docx":
+        case ".doc":
             return _extract_text_from_doc(file_content)
+        case ".docx":
+            return _extract_text_from_docx(file_content)
         case ".csv":
             return _extract_text_from_csv(file_content)
         case ".xls" | ".xlsx":
@@ -203,7 +207,33 @@ def _extract_text_from_pdf(file_content: bytes) -> str:
 
 def _extract_text_from_doc(file_content: bytes) -> str:
     """
-    Extract text from a DOC/DOCX file.
+    Extract text from a DOC file.
+    """
+    from unstructured.partition.api import partition_via_api
+
+    if not (dify_config.UNSTRUCTURED_API_URL and dify_config.UNSTRUCTURED_API_KEY):
+        raise TextExtractionError("UNSTRUCTURED_API_URL and UNSTRUCTURED_API_KEY must be set")
+
+    try:
+        with tempfile.NamedTemporaryFile(suffix=".doc", delete=False) as temp_file:
+            temp_file.write(file_content)
+            temp_file.flush()
+            with open(temp_file.name, "rb") as file:
+                elements = partition_via_api(
+                    file=file,
+                    metadata_filename=temp_file.name,
+                    api_url=dify_config.UNSTRUCTURED_API_URL,
+                    api_key=dify_config.UNSTRUCTURED_API_KEY,
+                )
+            os.unlink(temp_file.name)
+        return "\n".join([getattr(element, "text", "") for element in elements])
+    except Exception as e:
+        raise TextExtractionError(f"Failed to extract text from DOC: {str(e)}") from e
+
+
+def _extract_text_from_docx(file_content: bytes) -> str:
+    """
+    Extract text from a DOCX file.
     For now support only paragraph and table add more if needed
     """
     try:
@@ -255,13 +285,13 @@ def _extract_text_from_doc(file_content: bytes) -> str:
 
                         text.append(markdown_table)
                 except Exception as e:
-                    logger.warning(f"Failed to extract table from DOC/DOCX: {e}")
+                    logger.warning(f"Failed to extract table from DOC: {e}")
                     continue
 
         return "\n".join(text)
 
     except Exception as e:
-        raise TextExtractionError(f"Failed to extract text from DOC/DOCX: {str(e)}") from e
+        raise TextExtractionError(f"Failed to extract text from DOCX: {str(e)}") from e
 
 
 def _download_file_content(file: File) -> bytes:
@@ -329,14 +359,29 @@ def _extract_text_from_excel(file_content: bytes) -> str:
 
 
 def _extract_text_from_ppt(file_content: bytes) -> str:
+    from unstructured.partition.api import partition_via_api
     from unstructured.partition.ppt import partition_ppt
 
     try:
-        with io.BytesIO(file_content) as file:
-            elements = partition_ppt(file=file)
+        if dify_config.UNSTRUCTURED_API_URL and dify_config.UNSTRUCTURED_API_KEY:
+            with tempfile.NamedTemporaryFile(suffix=".ppt", delete=False) as temp_file:
+                temp_file.write(file_content)
+                temp_file.flush()
+                with open(temp_file.name, "rb") as file:
+                    elements = partition_via_api(
+                        file=file,
+                        metadata_filename=temp_file.name,
+                        api_url=dify_config.UNSTRUCTURED_API_URL,
+                        api_key=dify_config.UNSTRUCTURED_API_KEY,
+                    )
+                os.unlink(temp_file.name)
+        else:
+            with io.BytesIO(file_content) as file:
+                elements = partition_ppt(file=file)
         return "\n".join([getattr(element, "text", "") for element in elements])
+
     except Exception as e:
-        raise TextExtractionError(f"Failed to extract text from PPT: {str(e)}") from e
+        raise TextExtractionError(f"Failed to extract text from PPTX: {str(e)}") from e
 
 
 def _extract_text_from_pptx(file_content: bytes) -> str:

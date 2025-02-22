@@ -7,7 +7,7 @@ import { useHotkeys } from 'react-hotkeys-hook'
 import Tooltip from '@/app/components/base/tooltip'
 import Toast from '@/app/components/base/toast'
 
-type ImagePreviewProps = {
+interface ImagePreviewProps {
   url: string
   title: string
   onCancel: () => void
@@ -99,7 +99,7 @@ const ImagePreview: FC<ImagePreviewProps> = ({
 
     for (let offset = 0; offset < byteCharacters.length; offset += 512) {
       const slice = byteCharacters.slice(offset, offset + 512)
-      const byteNumbers = new Array(slice.length)
+      const byteNumbers = Array.from({ length: slice.length })
       for (let i = 0; i < slice.length; i++)
         byteNumbers[i] = slice.charCodeAt(i)
 

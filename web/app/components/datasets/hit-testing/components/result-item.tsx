@@ -2,34 +2,31 @@
 import type { FC } from 'react'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
-import { RiArrowDownSLine, RiArrowRightSLine, RiArrowRightUpLine } from '@remixicon/react'
+import { RiArrowDownSLine, RiArrowRightSLine } from '@remixicon/react'
 import { useBoolean } from 'ahooks'
-import { SegmentIndexTag } from '../../documents/detail/completed/common/segment-index-tag'
-import Dot from '../../documents/detail/completed/common/dot'
-import Score from './score'
 import ChildChunkItem from './child-chunks-item'
 import ChunkDetailModal from './chunk-detail-modal'
+import ResultItemMeta from './result-item-meta'
+import ResultItemFooter from './result-item-footer'
 import type { HitTesting } from '@/models/datasets'
 import cn from '@/utils/classnames'
-import FileIcon from '@/app/components/base/file-uploader/file-type-icon'
 import type { FileAppearanceTypeEnum } from '@/app/components/base/file-uploader/types'
 import Tag from '@/app/components/datasets/documents/detail/completed/common/tag'
 import { extensionToFileType } from '@/app/components/datasets/hit-testing/utils/extension-to-file-type'
+import { Markdown } from '@/app/components/base/markdown'
 
 const i18nPrefix = 'datasetHitTesting'
 type Props = {
-  isExternal: boolean
   payload: HitTesting
 }
 
 const ResultItem: FC<Props> = ({
-  isExternal,
   payload,
 }) => {
   const { t } = useTranslation()
-  const { segment, content: externalContent, score, child_chunks } = payload
-  const data = isExternal ? externalContent : segment
-  const { position, word_count, content, keywords, document } = data
+  const { segment, score, child_chunks } = payload
+  const data = segment
+  const { position, word_count, content, sign_content, keywords, document } = data
   const isParentChildRetrieval = !!(child_chunks && child_chunks.length > 0)
   const extension = document.name.split('.').slice(-1)[0] as FileAppearanceTypeEnum
   const fileType = extensionToFileType(extension)
@@ -46,25 +43,20 @@ const ResultItem: FC<Props> = ({
   return (
     <div className={cn('pt-3 bg-chat-bubble-bg rounded-xl hover:shadow-lg cursor-pointer')} onClick={showDetailModal}>
       {/* Meta info */}
-      <div className='flex justify-between items-center px-3'>
-        <div className='flex items-center space-x-2'>
-          <SegmentIndexTag
-            labelPrefix={`${isParentChildRetrieval ? 'Parent-' : ''}Chunk`}
-            positionId={position}
-            className={cn('w-fit group-hover:opacity-100')}
-          />
-          <Dot />
-          <div className='system-xs-medium text-text-tertiary'>{word_count} {t('datasetDocuments.segment.characters', { count: word_count })}</div>
-        </div>
-        <Score value={score} />
-      </div>
+      <ResultItemMeta className='px-3' labelPrefix={`${isParentChildRetrieval ? 'Parent-' : ''}Chunk`} positionId={position} wordCount={word_count} score={score} />
 
       {/* Main */}
       <div className='mt-1 px-3'>
-        <div className='line-clamp-2 body-md-regular break-all'>{content}</div>
+        <Markdown className='line-clamp-2' content={sign_content || content} />
         {isParentChildRetrieval && (
           <div className='mt-1'>
-            <div className={cn('inline-flex items-center h-6 space-x-0.5 text-text-secondary select-none rounded-lg cursor-pointer', isFold && 'pl-1 bg-[linear-gradient(90deg,_rgba(200,_206,_218,_0.20)_0%,_rgba(200,_206,_218,_0.04)_100%)]')} onClick={toggleFold}>
+            <div
+              className={cn('inline-flex items-center h-6 space-x-0.5 text-text-secondary select-none rounded-lg cursor-pointer', isFold && 'pl-1 bg-[linear-gradient(90deg,_rgba(200,_206,_218,_0.20)_0%,_rgba(200,_206,_218,_0.04)_100%)]')}
+              onClick={(e) => {
+                e.stopPropagation()
+                toggleFold()
+              }}
+            >
               <Icon className={cn('w-4 h-4', isFold && 'opacity-50')} />
               <div className='text-xs font-semibold uppercase'>{t(`${i18nPrefix}.hitChunks`, { num: child_chunks.length })}</div>
             </div>
@@ -88,19 +80,7 @@ const ResultItem: FC<Props> = ({
         )}
       </div>
       {/* Foot */}
-      <div className='mt-3 flex justify-between items-center h-10 pl-3 pr-2 border-t border-divider-subtle'>
-        <div className='grow flex items-center space-x-1'>
-          <FileIcon type={fileType} size='sm' />
-          <span className='grow w-0 truncate text-text-secondary text-[13px] font-normal'>{document.name}</span>
-        </div>
-        <div
-          className='flex items-center space-x-1 cursor-pointer text-text-tertiary'
-          onClick={showDetailModal}
-        >
-          <div className='text-xs uppercase'>{t(`${i18nPrefix}.open`)}</div>
-          <RiArrowRightUpLine className='size-3.5' />
-        </div>
-      </div>
+      <ResultItemFooter docType={fileType} docTitle={document.name} showDetailModal={showDetailModal} />
 
       {
         isShowDetailModal && (

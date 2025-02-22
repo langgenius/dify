@@ -33,6 +33,7 @@ const translation = {
       explanation: 'Ready-to-use AI WebApp',
       accessibleAddress: 'Public URL',
       preview: 'Preview',
+      launch: 'Launch',
       regenerate: 'Regenerate',
       regenerateNotice: 'Do you want to regenerate the public URL?',
       preUseReminder: 'Please enable WebApp before continuing.',

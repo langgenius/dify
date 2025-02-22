@@ -21,6 +21,9 @@
     <a href="https://twitter.com/intent/follow?screen_name=dify_ai" target="_blank">
         <img src="https://img.shields.io/twitter/follow/dify_ai?logo=X&color=%20%23f5f5f5"
             alt="X(Twitter)でフォロー"></a>
+    <a href="https://www.linkedin.com/company/langgenius/" target="_blank">
+        <img src="https://custom-icon-badges.demolab.com/badge/LinkedIn-0A66C2?logo=linkedin-white&logoColor=fff"
+            alt="LinkedInでフォロー"></a>
     <a href="https://hub.docker.com/u/langgenius" target="_blank">
         <img alt="Docker Pulls" src="https://img.shields.io/docker/pulls/langgenius/dify-web?labelColor=%20%23FDB062&color=%20%23f79009"></a>
     <a href="https://github.com/langgenius/dify/graphs/commit-activity" target="_blank">
@@ -161,7 +164,7 @@ DifyはオープンソースのLLMアプリケーション開発プラットフ�
 
 - **企業/組織向けのDify</br>**
 企業中心の機能を提供しています。[メールを送信](mailto:business@dify.ai?subject=[GitHub]Business%20License%20Inquiry)して企業のニーズについて相談してください。 </br>
-  > AWSを使用しているスタートアップ企業や中小企業の場合は、[AWS Marketplace](https://aws.amazon.com/marketplace/pp/prodview-t22mebxzwjhu6)のDify Premiumをチェックして、ワンクリックで自分のAWS VPCにデプロイできます。さらに、手頃な価格のAMIオファリングどして、ロゴやブランディングをカスタマイズしてアプリケーションを作成するオプションがあります。
+  > AWSを使用しているスタートアップ企業や中小企業の場合は、[AWS Marketplace](https://aws.amazon.com/marketplace/pp/prodview-t23mebxzwjhu6)のDify Premiumをチェックして、ワンクリックで自分のAWS VPCにデプロイできます。さらに、手頃な価格のAMIオファリングとして、ロゴやブランディングをカスタマイズしてアプリケーションを作成するオプションがあります。
 
 
 ## 最新の情報を入手

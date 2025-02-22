@@ -4,6 +4,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useDebounceFn } from 'ahooks'
 import { useTranslation } from 'react-i18next'
 import { createContext, useContext, useContextSelector } from 'use-context-selector'
+import { usePathname } from 'next/navigation'
 import { useDocumentContext } from '../index'
 import { ProcessStatus } from '../segment-add'
 import s from './style.module.css'
@@ -99,6 +100,7 @@ const Completed: FC<ICompletedProps> = ({
 }) => {
   const { t } = useTranslation()
   const { notify } = useContext(ToastContext)
+  const pathname = usePathname()
   const datasetId = useDocumentContext(s => s.datasetId) || ''
   const documentId = useDocumentContext(s => s.documentId) || ''
   const docForm = useDocumentContext(s => s.docForm)
@@ -355,6 +357,7 @@ const Completed: FC<ICompletedProps> = ({
           if (seg.id === segmentId) {
             seg.answer = res.data.answer
             seg.content = res.data.content
+            seg.sign_content = res.data.sign_content
             seg.keywords = res.data.keywords
             seg.word_count = res.data.word_count
             seg.hit_count = res.data.hit_count
@@ -373,6 +376,10 @@ const Completed: FC<ICompletedProps> = ({
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [segments, datasetId, documentId])
+
+  useEffect(() => {
+    resetList()
+  }, [pathname])
 
   useEffect(() => {
     if (importStatus === ProcessStatus.COMPLETED)

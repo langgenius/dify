@@ -3,13 +3,13 @@ import type { IOnCompleted, IOnData, IOnError, IOnFile, IOnMessageEnd, IOnMessag
 import type { ChatPromptConfig, CompletionPromptConfig } from '@/models/debug'
 import type { ModelModeType } from '@/types/app'
 import type { ModelParameterRule } from '@/app/components/header/account-setting/model-provider-page/declarations'
-export type AutomaticRes = {
+export interface AutomaticRes {
   prompt: string
   variables: string[]
   opening_statement: string
   error?: string
 }
-export type CodeGenRes = {
+export interface CodeGenRes {
   code: string
   language: string[]
   error?: string

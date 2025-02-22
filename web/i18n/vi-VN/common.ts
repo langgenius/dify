@@ -50,6 +50,10 @@ const translation = {
     submit: 'Trình',
     skip: 'Tàu',
     imageCopied: 'Hình ảnh sao chép',
+    deleteApp: 'Xóa ứng dụng',
+    viewDetails: 'Xem chi tiết',
+    copied: 'Sao chép',
+    in: 'trong',
   },
   placeholder: {
     input: 'Vui lòng nhập',
@@ -122,6 +126,8 @@ const translation = {
       Custom: 'Tùy chỉnh',
     },
     addMoreModel: 'Điều chỉnh cài đặt để thêm mô hình',
+    settingsLink: 'Cài đặt nhà cung cấp mô hình',
+    capabilities: 'Khả năng đa phương thức',
   },
   menus: {
     status: 'beta',
@@ -134,6 +140,7 @@ const translation = {
     newApp: 'Ứng dụng mới',
     newDataset: 'Tạo Kiến thức',
     tools: 'Công cụ',
+    exploreMarketplace: 'Khám phá Marketplace',
   },
   userProfile: {
     settings: 'Cài đặt',
@@ -159,6 +166,7 @@ const translation = {
     dataSource: 'Nguồn dữ liệu',
     plugin: 'Plugins',
     apiBasedExtension: 'Mở rộng dựa trên API',
+    generalGroup: 'TỔNG QUÁT',
   },
   account: {
     avatar: 'Ảnh đại diện',
@@ -286,6 +294,7 @@ const translation = {
       usedUp: 'Quota dùng thử đã hết. Thêm nhà cung cấp Mô hình của riêng bạn.',
       useYourModel: 'Hiện đang sử dụng nhà cung cấp Mô hình của riêng bạn.',
       close: 'Đóng',
+      trialQuotaTip: 'Hạn ngạch dùng thử Anthropic của bạn sẽ hết hạn vào 2025/03/11 và sẽ không còn khả dụng sau đó. Vui lòng sử dụng nó kịp thời.',
     },
     anthropic: {
       using: 'Khả năng nhúng đang sử dụng',
@@ -397,6 +406,12 @@ const translation = {
     apiKeyRateLimit: 'Đã đạt đến giới hạn tốc độ, có sẵn sau {{giây}} giây',
     upgradeForLoadBalancing: 'Nâng cấp gói của bạn để bật Cân bằng tải.',
     loadBalancingLeastKeyWarning: 'Để bật cân bằng tải, ít nhất 2 phím phải được bật.',
+    toBeConfigured: 'Được cấu hình',
+    emptyProviderTitle: 'Nhà cung cấp mô hình chưa được thiết lập',
+    discoverMore: 'Khám phá thêm trong',
+    emptyProviderTip: 'Vui lòng cài đặt nhà cung cấp mô hình trước.',
+    installProvider: 'Cài đặt nhà cung cấp mô hình',
+    configureTip: 'Thiết lập api-key hoặc thêm mô hình để sử dụng',
   },
   dataSource: {
     add: 'Thêm nguồn dữ liệu',
@@ -526,6 +541,8 @@ const translation = {
       hitScore: 'Điểm truy xuất:',
     },
     inputPlaceholder: 'Nói chuyện với Bot',
+    thought: 'Tư duy',
+    thinking: 'Suy nghĩ...',
   },
   promptEditor: {
     placeholder: 'Viết từ khóa của bạn ở đây, nhập \'{\' để chèn một biến, nhập \'/\' để chèn một khối nội dung nhắc nhở',

@@ -1,0 +1,19 @@
+# TiFlash tiflash.toml Configuration File reference:
+# https://docs.pingcap.com/tidb/stable/tiflash-configuration#configure-the-tiflashtoml-file
+
+listen_host = "0.0.0.0"
+path = "/data"
+
+[flash]
+tidb_status_addr = "tidb:10080"
+service_addr = "tiflash:4030"
+
+[flash.proxy]
+config = "/tiflash-learner.toml"
+
+[logger]
+errorlog = "/logs/tiflash_error.log"
+log = "/logs/tiflash.log"
+
+[raft]
+pd_addr = "pd0:2379"

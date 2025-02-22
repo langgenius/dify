@@ -38,6 +38,8 @@ const LocaleLayout = ({
         className="h-full select-auto color-scheme"
         data-api-prefix={process.env.NEXT_PUBLIC_API_PREFIX}
         data-pubic-api-prefix={process.env.NEXT_PUBLIC_PUBLIC_API_PREFIX}
+        data-marketplace-api-prefix={process.env.NEXT_PUBLIC_MARKETPLACE_API_PREFIX}
+        data-marketplace-url-prefix={process.env.NEXT_PUBLIC_MARKETPLACE_URL_PREFIX}
         data-public-edition={process.env.NEXT_PUBLIC_EDITION}
         data-public-support-mail-login={process.env.NEXT_PUBLIC_SUPPORT_MAIL_LOGIN}
         data-public-sentry-dsn={process.env.NEXT_PUBLIC_SENTRY_DSN}
@@ -45,6 +47,7 @@ const LocaleLayout = ({
         data-public-site-about={process.env.NEXT_PUBLIC_SITE_ABOUT}
         data-public-text-generation-timeout-ms={process.env.NEXT_PUBLIC_TEXT_GENERATION_TIMEOUT_MS}
         data-public-top-k-max-value={process.env.NEXT_PUBLIC_TOP_K_MAX_VALUE}
+        data-public-indexing-max-segmentation-tokens-length={process.env.NEXT_PUBLIC_INDEXING_MAX_SEGMENTATION_TOKENS_LENGTH}
       >
         <BrowserInitor>
           <SentryInitor>

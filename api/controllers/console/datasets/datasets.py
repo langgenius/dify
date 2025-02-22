@@ -14,6 +14,7 @@ from controllers.console.wraps import account_initialization_required, enterpris
 from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
 from core.indexing_runner import IndexingRunner
 from core.model_runtime.entities.model_entities import ModelType
+from core.plugin.entities.plugin import ModelProviderID
 from core.provider_manager import ProviderManager
 from core.rag.datasource.vdb.vector_type import VectorType
 from core.rag.extractor.entity.extract_setting import ExtractSetting
@@ -72,7 +73,9 @@ class DatasetListApi(Resource):
 
         data = marshal(datasets, dataset_detail_fields)
         for item in data:
+            # convert embedding_model_provider to plugin standard format
             if item["indexing_technique"] == "high_quality":
+                item["embedding_model_provider"] = str(ModelProviderID(item["embedding_model_provider"]))
                 item_model = f"{item['embedding_model']}:{item['embedding_model_provider']}"
                 if item_model in model_names:
                     item["embedding_available"] = True
@@ -457,7 +460,7 @@ class DatasetIndexingEstimateApi(Resource):
             )
         except LLMBadRequestError:
             raise ProviderNotInitializeError(
-                "No Embedding Model available. Please configure a valid provider " "in the Settings -> Model Provider."
+                "No Embedding Model available. Please configure a valid provider in the Settings -> Model Provider."
             )
         except ProviderTokenNotInitError as ex:
             raise ProviderNotInitializeError(ex.description)
@@ -619,9 +622,7 @@ class DatasetRetrievalSettingApi(Resource):
         vector_type = dify_config.VECTOR_STORE
         match vector_type:
             case (
-                VectorType.MILVUS
-                | VectorType.RELYT
-                | VectorType.PGVECTOR
+                VectorType.RELYT
                 | VectorType.TIDB_VECTOR
                 | VectorType.CHROMA
                 | VectorType.TENCENT
@@ -645,6 +646,7 @@ class DatasetRetrievalSettingApi(Resource):
                 | VectorType.TIDB_ON_QDRANT
                 | VectorType.LINDORM
                 | VectorType.COUCHBASE
+                | VectorType.MILVUS
             ):
                 return {
                     "retrieval_method": [
