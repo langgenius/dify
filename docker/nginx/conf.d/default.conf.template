@@ -40,6 +40,9 @@ server {
       include proxy.conf;
     }
 
+    # placeholder for chatbot basic auth
+    ${CHATBOT_BASIC_AUTH_CONFIG}
+
     # placeholder for acme challenge location
     ${ACME_CHALLENGE_LOCATION}
 
