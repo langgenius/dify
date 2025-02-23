@@ -89,7 +89,9 @@ class DatasetConfigManager:
                         dataset_configs["retrieval_model"]
                     ),
                     top_k=dataset_configs.get("top_k", 4),
-                    score_threshold=dataset_configs.get("score_threshold"),
+                    score_threshold=dataset_configs.get("score_threshold")
+                    if dataset_configs.get("score_threshold_enabled", False)
+                    else None,
                     reranking_model=dataset_configs.get("reranking_model"),
                     weights=dataset_configs.get("weights"),
                     reranking_enabled=dataset_configs.get("reranking_enabled", True),
