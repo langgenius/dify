@@ -4,6 +4,7 @@ import React, { Fragment, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   RiAddLine,
+  RiDeleteBinLine,
   RiMoreFill,
 } from '@remixicon/react'
 import { useContext } from 'use-context-selector'
@@ -21,7 +22,8 @@ import { FileDownload02, FilePlus02 } from '@/app/components/base/icons/src/vend
 import { ChevronRight } from '@/app/components/base/icons/src/vender/line/arrows'
 
 import I18n from '@/context/i18n'
-import { fetchExportAnnotationList } from '@/service/annotation'
+import { clearAllAnnotations, fetchExportAnnotationList } from '@/service/annotation'
+import Confirm from '@/app/components/base/confirm'
 import { LanguagesSupported } from '@/i18n/language'
 
 const CSV_HEADER_QA_EN = ['Question', 'Answer']
@@ -43,6 +45,7 @@ const HeaderOptions: FC<Props> = ({
   const { t } = useTranslation()
   const { locale } = useContext(I18n)
   const { CSVDownloader, Type } = useCSVDownloader()
+  const [showClearAllConfirm, setShowClearAllConfirm] = useState(false)
   const [list, setList] = useState<AnnotationItemBasic[]>([])
   const annotationUnavailable = list.length === 0
 
@@ -77,20 +80,39 @@ const HeaderOptions: FC<Props> = ({
 
   const [showBulkImportModal, setShowBulkImportModal] = useState(false)
 
+  const onOperate = async (action: string) => {
+    if (action === 'delete') {
+      try {
+        await clearAllAnnotations(appId)
+        onAdded()
+      }
+      catch (e) {
+      }
+      finally {
+        setShowClearAllConfirm(false)
+      }
+    }
+  }
+
   const Operations = () => {
     return (
       <div className="w-full py-1">
-        <button className='h-9 py-2 px-3 mx-1 flex items-center space-x-2 hover:bg-components-panel-on-panel-item-bg-hover rounded-lg cursor-pointer disabled:opacity-50 w-[calc(100%_-_8px)]' onClick={() => {
-          setShowBulkImportModal(true)
-        }}>
-          <FilePlus02 className='w-4 h-4 text-text-tertiary' />
-          <span className='grow text-text-secondary system-sm-regular text-left'>{t('appAnnotation.table.header.bulkImport')}</span>
+        <button
+          className='h-9 py-2 px-3 mx-1 flex items-center space-x-2 hover:bg-components-panel-on-panel-item-bg-hover rounded-lg cursor-pointer disabled:opacity-50 w-[calc(100%_-_8px)]'
+          onClick={() => {
+            setShowBulkImportModal(true)
+          }}>
+          <FilePlus02 className='w-4 h-4 text-text-tertiary'/>
+          <span
+            className='grow text-text-secondary system-sm-regular text-left'>{t('appAnnotation.table.header.bulkImport')}</span>
         </button>
         <Menu as="div" className="relative w-full h-full">
-          <Menu.Button className='h-9 py-2 px-3 mx-1 flex items-center space-x-2 hover:bg-components-panel-on-panel-item-bg-hover rounded-lg cursor-pointer disabled:opacity-50 w-[calc(100%_-_8px)]'>
-            <FileDownload02 className='w-4 h-4 text-text-tertiary' />
-            <span className='grow text-text-secondary system-sm-regular text-left'>{t('appAnnotation.table.header.bulkExport')}</span>
-            <ChevronRight className='shrink-0 w-[14px] h-[14px] text-text-tertiary' />
+          <Menu.Button
+            className='h-9 py-2 px-3 mx-1 flex items-center space-x-2 hover:bg-components-panel-on-panel-item-bg-hover rounded-lg cursor-pointer disabled:opacity-50 w-[calc(100%_-_8px)]'>
+            <FileDownload02 className='w-4 h-4 text-text-tertiary'/>
+            <span
+              className='grow text-text-secondary system-sm-regular text-left'>{t('appAnnotation.table.header.bulkExport')}</span>
+            <ChevronRight className='shrink-0 w-[14px] h-[14px] text-text-tertiary'/>
           </Menu.Button>
           <Transition
             as={Fragment}
@@ -115,16 +137,28 @@ const HeaderOptions: FC<Props> = ({
                   ...list.map(item => [item.question, item.answer]),
                 ]}
               >
-                <button disabled={annotationUnavailable} className='h-9 py-2 px-3 mx-1 flex items-center space-x-2 hover:bg-components-panel-on-panel-item-bg-hover rounded-lg cursor-pointer disabled:opacity-50 w-[calc(100%_-_8px)]'>
+                <button disabled={annotationUnavailable}
+                  className='h-9 py-2 px-3 mx-1 flex items-center space-x-2 hover:bg-components-panel-on-panel-item-bg-hover rounded-lg cursor-pointer disabled:opacity-50 w-[calc(100%_-_8px)]'>
                   <span className='grow text-text-secondary system-sm-regular text-left'>CSV</span>
                 </button>
               </CSVDownloader>
-              <button disabled={annotationUnavailable} className={cn('h-9 py-2 px-3 mx-1 flex items-center space-x-2 hover:bg-components-panel-on-panel-item-bg-hover rounded-lg cursor-pointer disabled:opacity-50 w-[calc(100%_-_8px)]', '!border-0')} onClick={JSONLOutput}>
+              <button disabled={annotationUnavailable}
+                className={cn('h-9 py-2 px-3 mx-1 flex items-center space-x-2 hover:bg-components-panel-on-panel-item-bg-hover rounded-lg cursor-pointer disabled:opacity-50 w-[calc(100%_-_8px)]', '!border-0')}
+                onClick={JSONLOutput}>
                 <span className='grow text-text-secondary system-sm-regular text-left'>JSONL</span>
               </button>
             </Menu.Items>
           </Transition>
         </Menu>
+        <button
+          onClick={() => setShowClearAllConfirm(true)}
+          className='h-9 py-2 px-3 mx-1 flex items-center space-x-2 hover:bg-red-50 rounded-lg cursor-pointer disabled:opacity-50 w-[calc(100%_-_8px)] text-red-600'
+        >
+          <RiDeleteBinLine className='w-4 h-4'/>
+          <span className='grow system-sm-regular text-left'>
+            {t('appAnnotation.table.header.clearAll')}
+          </span>
+        </button>
       </div>
     )
   }
@@ -134,11 +168,11 @@ const HeaderOptions: FC<Props> = ({
   return (
     <div className='flex space-x-2'>
       <Button variant='primary' onClick={() => setShowAddModal(true)}>
-        <RiAddLine className='w-4 h-4 mr-0.5' />
+        <RiAddLine className='w-4 h-4 mr-0.5'/>
         <div>{t('appAnnotation.table.header.addAnnotation')}</div>
       </Button>
       <CustomPopover
-        htmlContent={<Operations />}
+        htmlContent={<Operations/>}
         position="br"
         trigger="click"
         btnElement={
@@ -168,6 +202,18 @@ const HeaderOptions: FC<Props> = ({
             onAdded={onAdded}
           />
         )
+      }
+      {showClearAllConfirm
+      && <Confirm
+        isShow={showClearAllConfirm}
+        isLoading={false}
+        isDisabled={false}
+        title={t('appAnnotation.table.header.clearAll')}
+        content={t('appAnnotation.table.header.clearAllConfirm')}
+        confirmText={t('common.operation.sure')}
+        onConfirm={() => onOperate('delete')}
+        onCancel={() => setShowClearAllConfirm(false)}
+      />
       }
     </div>
   )
