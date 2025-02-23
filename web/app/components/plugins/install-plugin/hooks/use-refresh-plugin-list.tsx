@@ -23,17 +23,15 @@ const useRefreshPluginList = () => {
       // installed list
       invalidateInstalledPluginList()
 
-      if (!manifest) return
-
       // tool page, tool select
-      if (PluginType.tool.includes(manifest.category) || refreshAllType) {
+      if ((manifest && PluginType.tool.includes(manifest.category)) || refreshAllType) {
         invalidateAllToolProviders()
         invalidateAllBuiltInTools()
         // TODO: update suggested tools. It's a function in hook useMarketplacePlugins,handleUpdatePlugins
       }
 
       // model select
-      if (PluginType.model.includes(manifest.category) || refreshAllType) {
+      if ((manifest && PluginType.model.includes(manifest.category)) || refreshAllType) {
         refreshModelProviders()
         refetchLLMModelList()
         refetchEmbeddingModelList()
@@ -41,7 +39,7 @@ const useRefreshPluginList = () => {
       }
 
       // agent select
-      if (PluginType.agent.includes(manifest.category) || refreshAllType)
+      if ((manifest && PluginType.agent.includes(manifest.category)) || refreshAllType)
         invalidateStrategyProviders()
     },
   }
