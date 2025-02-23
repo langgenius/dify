@@ -1,0 +1,35 @@
+identity:
+  author: Shun Miyazawa
+  name: growi
+  label:
+    ja_JP: GROWI
+    en_US: GROWI
+    zh_Hans: GROWI
+  description:
+    ja_JP: マークダウンを使用したチームコラボレーションソフトウェア
+    en_US: Team collaboration software using markdown
+    zh_Hans: 使用 markdown 的团队协作软件
+  icon: icon.svg
+credentials_for_provider:
+  access_token:
+    type: secret-input
+    required: true
+    label:
+      en_US: GROWI access token
+    placeholder:
+      ja_JP: GROWI アクセストークンを入力してください
+      en_US: Please input your GROWI access token
+      zh_Hans: 请输入您的 GROWI 访问令牌
+    help:
+      ja_JP: ユーザー設定から API トークンを発行してください
+      en_US: Please issue an API Token through User Settings
+      zh_Hans: 请通过用户设置发行 API 令牌
+  growi_url:
+    type: text-input
+    required: true
+    label:
+      en_US: GROWI URL
+    placeholder:
+      ja_JP: GROWI URL を入力してください
+      en_US: Please input your GROWI URL
+      zh_Hans: 请输入您的 GROWI 站点 URL
