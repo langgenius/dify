@@ -108,6 +108,7 @@ class VariableEntity(BaseModel):
     description: str = ""
     type: VariableEntityType
     required: bool = False
+    is_chat_option: bool = False
     max_length: Optional[int] = None
     options: Sequence[str] = Field(default_factory=list)
     allowed_file_types: Sequence[FileType] = Field(default_factory=list)

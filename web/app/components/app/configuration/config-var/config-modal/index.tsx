@@ -11,6 +11,7 @@ import SelectTypeItem from '../select-type-item'
 import Field from './field'
 import Input from '@/app/components/base/input'
 import Toast from '@/app/components/base/toast'
+import Tooltip from '@/app/components/base/tooltip'
 import { checkKeys, getNewVarInWorkflow } from '@/utils/var'
 import ConfigContext from '@/context/debug-configuration'
 import type { InputVar, MoreInfo, UploadFileSetting } from '@/app/components/workflow/types'
@@ -20,6 +21,7 @@ import FileUploadSetting from '@/app/components/workflow/nodes/_base/components/
 import Checkbox from '@/app/components/base/checkbox'
 import { DEFAULT_FILE_UPLOAD_SETTING } from '@/app/components/workflow/constants'
 import { DEFAULT_VALUE_MAX_LEN } from '@/config'
+import { useStore as useAppStore } from '@/app/components/app/store'
 
 const TEXT_MAX_LENGTH = 256
 
@@ -51,6 +53,9 @@ const ConfigModal: FC<IConfigModalProps> = ({
     if (isShow)
       modalRef.current?.focus()
   }, [isShow])
+
+  const appDetail = useAppStore(state => state.appDetail)
+  const isChatflow = appDetail?.mode === 'advanced-chat'
 
   const isStringInput = type === InputVarType.textInput || type === InputVarType.paragraph
   const checkVariableName = useCallback((value: string, canBeEmpty?: boolean) => {
@@ -231,6 +236,20 @@ const ConfigModal: FC<IConfigModalProps> = ({
               onChange={(p: UploadFileSetting) => setTempPayload(p as InputVar)}
               isMultiple={type === InputVarType.multiFiles}
             />
+          )}
+
+          { isChatflow && (type === InputVarType.select || type === InputVarType.number) && (
+            <div className='!mt-5 flex items-center h-6 space-x-2'>
+              <Checkbox checked={tempPayload.is_chat_option} onCheck={() => handlePayloadChange('is_chat_option')(!tempPayload.is_chat_option)} />
+              <span className='text-text-secondary system-sm-semibold'>{t('appDebug.variableConfig.isChatOption')}</span>
+              {type === InputVarType.number && (
+                <Tooltip
+                  popupContent={<div>{t('appDebug.variableConfig.isChatOptionNumberHint')}</div>}
+                  triggerClassName='w-4 h-4'
+                  asChild={false}
+                />
+              )}
+            </div>
           )}
 
           <div className='!mt-5 flex items-center h-6 space-x-2'>

@@ -182,6 +182,7 @@ export type InputVar = {
   max_length?: number
   default?: string
   required: boolean
+  is_chat_option?: boolean
   hint?: string
   options?: string[]
   value_selector?: ValueSelector

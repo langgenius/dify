@@ -399,6 +399,8 @@ const translation = {
       atLeastOneOption: 'At least one option is required',
       optionRepeat: 'Has repeat options',
     },
+    'isChatOption': 'Input in each message',
+    'isChatOptionNumberHint': 'When the user selects it, the variable value is 1, otherwise it is 0',
   },
   vision: {
     name: 'Vision',

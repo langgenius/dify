@@ -12,7 +12,7 @@ export const useCheckInputsForms = () => {
   const checkInputsForm = useCallback((inputs: Record<string, any>, inputsForm: InputForm[]) => {
     let hasEmptyInput = ''
     let fileIsUploading = false
-    const requiredVars = inputsForm.filter(({ required }) => required)
+    const requiredVars = inputsForm.filter(({ required }) => required).filter(({ is_chat_option }) => !is_chat_option)
 
     if (requiredVars?.length) {
       requiredVars.forEach(({ variable, label, type }) => {
