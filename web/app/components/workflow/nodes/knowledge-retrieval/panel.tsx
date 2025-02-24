@@ -50,11 +50,24 @@ const Panel: FC<NodePanelProps<KnowledgeRetrievalNodeType>> = ({
     setDynamicDatasetEnable,
     filterDatasetIdsVar,
     handleDatasetIdsVarChange,
+    dataset_ids,
+    setDatasetIds,
   } = useConfig(id, data)
 
   const handleOpenFromPropsChange = useCallback((openFromProps: boolean) => {
     setRerankModelOpen(openFromProps)
   }, [setRerankModelOpen])
+
+  const dataset_ids_from = {
+    inputs: [{
+      label: t(`${i18nPrefix}.knowledge`)!,
+      variable: 'dataset_ids',
+      type: InputVarType.json,
+      required: true,
+    }],
+    values: { dataset_ids },
+    onChange: (keyValue: any) => setDatasetIds((keyValue as any).dataset_ids),
+  }
 
   return (
     <div className='pt-2'>
@@ -192,6 +205,7 @@ const Panel: FC<NodePanelProps<KnowledgeRetrievalNodeType>> = ({
                 values: { query },
                 onChange: keyValue => setQuery((keyValue as any).query),
               },
+              ...(inputs.dynamic_dataset_enable ? [dataset_ids_from] : []),
             ]}
             runningStatus={runningStatus}
             onRun={handleRun}

@@ -84,3 +84,5 @@ class KnowledgeRetrievalNodeData(BaseNodeData):
     retrieval_mode: Literal["single", "multiple"]
     multiple_retrieval_config: Optional[MultipleRetrievalConfig] = None
     single_retrieval_config: Optional[SingleRetrievalConfig] = None
+    dynamic_dataset_enable: bool = False
+    dataset_ids_variable_selector: list[str]

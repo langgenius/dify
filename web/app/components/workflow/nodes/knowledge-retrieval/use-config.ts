@@ -307,6 +307,14 @@ const useConfig = (id: string, payload: KnowledgeRetrievalNodeType) => {
     setInputs(newInputs)
   }, [inputs, setInputs, setSelectedDatasets])
 
+  const dataset_ids = runInputData.dataset_ids
+  const setDatasetIds = useCallback((newQuery: string[]) => {
+    setRunInputData({
+      ...runInputData,
+      dataset_ids: newQuery,
+    })
+  }, [runInputData, setRunInputData])
+
   return {
     readOnly,
     inputs,
@@ -331,6 +339,8 @@ const useConfig = (id: string, payload: KnowledgeRetrievalNodeType) => {
     setDynamicDatasetEnable,
     filterDatasetIdsVar,
     handleDatasetIdsVarChange,
+    dataset_ids,
+    setDatasetIds,
   }
 }
 
