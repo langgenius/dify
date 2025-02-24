@@ -16,7 +16,10 @@ type ConditionListProps = {
 } & Omit<MetadataShape, 'handleAddCondition'>
 const ConditionList = ({
   disabled,
-  metadataFilteringConditions,
+  metadataFilteringConditions = {
+    conditions: [],
+    logical_operator: LogicalOperator.and,
+  },
   handleRemoveCondition,
   handleToggleConditionLogicalOperator,
   handleUpdateCondition,
@@ -54,6 +57,7 @@ const ConditionList = ({
         conditions.map((condition, index) => (
           <ConditionItem
             key={index}
+            index={index}
             className={conditionItemClassName}
             disabled={disabled}
             condition={condition}

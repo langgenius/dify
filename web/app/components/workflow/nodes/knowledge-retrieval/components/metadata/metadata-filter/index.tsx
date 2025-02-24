@@ -7,7 +7,7 @@ import type { MetadataShape } from '@/app/components/workflow/nodes/knowledge-re
 import { MetadataFilteringModeEnum } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
 
 type MetadataFilterProps = {
-  metadataFilterMode: MetadataFilteringModeEnum
+  metadataFilterMode?: MetadataFilteringModeEnum
   handleMetadataFilterModeChange: (mode: MetadataFilteringModeEnum) => void
 } & MetadataShape
 const MetadataFilter = ({
@@ -19,7 +19,7 @@ const MetadataFilter = ({
 
   return (
     <Collapse
-      disabled={metadataFilterMode === MetadataFilteringModeEnum.disabled}
+      disabled={metadataFilterMode === MetadataFilteringModeEnum.disabled || metadataFilterMode === MetadataFilteringModeEnum.manual}
       collapsed={collapsed}
       onCollapse={setCollapsed}
       trigger={
@@ -28,7 +28,13 @@ const MetadataFilter = ({
             <div className='mr-0.5 system-sm-semibold-uppercase text-text-secondary'>
               metadata filtering
             </div>
-            <Tooltip popupContent='Metadata filtering is the process of using metadata attributes (such as tags, categories, or access permissions) to refine and control the retrieval of relevant information within a system.' />
+            <Tooltip
+              popupContent={(
+                <div className='w-[200px]'>
+                  Metadata filtering is the process of using metadata attributes (such as tags, categories, or access permissions) to refine and control the retrieval of relevant information within a system.
+                </div>
+              )}
+            />
           </div>
           <div className='flex items-center'>
             <MetadataFilterSelector
@@ -37,7 +43,9 @@ const MetadataFilter = ({
             />
             {
               metadataFilterMode === MetadataFilteringModeEnum.manual && (
-                <MetadataTrigger {...restProps} />
+                <div className='ml-1'>
+                  <MetadataTrigger {...restProps} />
+                </div>
               )
             }
           </div>
@@ -47,7 +55,7 @@ const MetadataFilter = ({
       <>
         {
           metadataFilterMode === MetadataFilteringModeEnum.automatic && (
-            <div className='body-xs-regular text-text-tertiary'>
+            <div className='px-4 body-xs-regular text-text-tertiary'>
               Automatically generate metadata filtering conditions based on Query Variable
             </div>
           )

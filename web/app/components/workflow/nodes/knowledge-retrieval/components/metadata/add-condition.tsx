@@ -35,7 +35,7 @@ const AddCondition = ({
           Add Condition
         </Button>
       </PortalToFollowElemTrigger>
-      <PortalToFollowElemContent>
+      <PortalToFollowElemContent className='z-10'>
         <div className='w-[320px] bg-components-panel-bg-blur border-[0.5px] border-components-panel-border rounded-xl shadow-lg'>
           <div className='p-2 pb-1'>
             <Input

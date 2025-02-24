@@ -9,6 +9,7 @@ import useConfig from './use-config'
 import RetrievalConfig from './components/retrieval-config'
 import AddKnowledge from './components/add-dataset'
 import DatasetList from './components/dataset-list'
+import MetadataFilter from './components/metadata/metadata-filter'
 import type { KnowledgeRetrievalNodeType } from './types'
 import Field from '@/app/components/workflow/nodes/_base/components/field'
 import Split from '@/app/components/workflow/nodes/_base/components/split'
@@ -46,6 +47,11 @@ const Panel: FC<NodePanelProps<KnowledgeRetrievalNodeType>> = ({
     runResult,
     rerankModelOpen,
     setRerankModelOpen,
+    handleAddCondition,
+    handleMetadataFilterModeChange,
+    handleRemoveCondition,
+    handleToggleConditionLogicalOperator,
+    handleUpdateCondition,
   } = useConfig(id, data)
 
   const handleOpenFromPropsChange = useCallback((openFromProps: boolean) => {
@@ -106,7 +112,17 @@ const Panel: FC<NodePanelProps<KnowledgeRetrievalNodeType>> = ({
           />
         </Field>
       </div>
-
+      <div className='py-2'>
+        <MetadataFilter
+          metadataFilterMode={inputs.metadata_filtering_mode}
+          metadataFilteringConditions={inputs.metadata_filtering_conditions}
+          handleAddCondition={handleAddCondition}
+          handleMetadataFilterModeChange={handleMetadataFilterModeChange}
+          handleRemoveCondition={handleRemoveCondition}
+          handleToggleConditionLogicalOperator={handleToggleConditionLogicalOperator}
+          handleUpdateCondition={handleUpdateCondition}
+        />
+      </div>
       <Split />
       <div>
         <OutputVars>

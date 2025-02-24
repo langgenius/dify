@@ -12,11 +12,11 @@ import Button from '@/app/components/base/button'
 import { MetadataFilteringModeEnum } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
 
 type MetadataFilterSelectorProps = {
-  value: MetadataFilteringModeEnum
+  value?: MetadataFilteringModeEnum
   onSelect: (value: MetadataFilteringModeEnum) => void
 }
 const MetadataFilterSelector = ({
-  value,
+  value = MetadataFilteringModeEnum.disabled,
   onSelect,
 }: MetadataFilterSelectorProps) => {
   const [open, setOpen] = useState(false)
@@ -50,7 +50,12 @@ const MetadataFilterSelector = ({
       open={open}
       onOpenChange={setOpen}
     >
-      <PortalToFollowElemTrigger onClick={() => setOpen(!open)}>
+      <PortalToFollowElemTrigger
+        onClick={(e) => {
+          e.stopPropagation()
+          setOpen(!open)
+        }}
+      >
         <Button
           variant='secondary'
           size='small'
@@ -59,8 +64,8 @@ const MetadataFilterSelector = ({
           <RiArrowDownSLine className='w-3.5 h-3.5' />
         </Button>
       </PortalToFollowElemTrigger>
-      <PortalToFollowElemContent>
-        <div className='p-1 bg-components-panel-bg-blur border-[0.5px] border-components-panel-border rounded-xl shadow-lg'>
+      <PortalToFollowElemContent className='z-10'>
+        <div className='p-1 w-[280px] bg-components-panel-bg-blur border-[0.5px] border-components-panel-border rounded-xl shadow-lg'>
           {
             options.map(option => (
               <div

@@ -99,7 +99,7 @@ export type HandleUpdateCondition = (index: number, newCondition: MetadataFilter
 export type HandleToggleConditionLogicalOperator = () => void
 
 export type MetadataShape = {
-  metadataFilteringConditions: MetadataFilteringConditions
+  metadataFilteringConditions?: MetadataFilteringConditions
   handleAddCondition: HandleAddCondition
   handleRemoveCondition: HandleRemoveCondition
   handleToggleConditionLogicalOperator: HandleToggleConditionLogicalOperator
