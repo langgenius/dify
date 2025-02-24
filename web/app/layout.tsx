@@ -4,6 +4,7 @@ import BrowserInitor from './components/browser-initor'
 import SentryInitor from './components/sentry-initor'
 import { getLocaleOnServer } from '@/i18n/server'
 import { TanstackQueryIniter } from '@/context/query-client'
+import { ThemeProvider } from 'next-themes'
 import './styles/globals.css'
 import './styles/markdown.scss'
 
@@ -52,7 +53,16 @@ const LocaleLayout = ({
         <BrowserInitor>
           <SentryInitor>
             <TanstackQueryIniter>
-              <I18nServer>{children}</I18nServer>
+              <ThemeProvider
+                attribute='data-theme'
+                defaultTheme='system'
+                enableSystem
+                disableTransitionOnChange
+              >
+                <I18nServer>
+                  {children}
+                </I18nServer>
+              </ThemeProvider>
             </TanstackQueryIniter>
           </SentryInitor>
         </BrowserInitor>
