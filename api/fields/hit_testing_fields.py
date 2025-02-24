@@ -7,7 +7,7 @@ document_fields = {
     "data_source_type": fields.String,
     "name": fields.String,
     "doc_type": fields.String,
-    "doc_metadata": fields.Raw
+    "doc_metadata": fields.Raw,
 }
 
 segment_fields = {
