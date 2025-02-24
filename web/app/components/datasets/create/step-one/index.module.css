@@ -14,7 +14,7 @@
 }
 
 .dataSourceItem {
-  @apply box-border relative grow shrink-0 flex items-center p-3 h-14 bg-white rounded-xl cursor-pointer;
+  @apply w-full box-border relative flex items-center p-3 h-14 bg-white rounded-xl cursor-pointer;
   border: 0.5px solid #EAECF0;
   box-shadow: 0px 1px 2px rgba(16, 24, 40, 0.05);
   font-weight: 500;
@@ -64,7 +64,7 @@
 }
 
 .datasetIcon {
-  @apply flex mr-2 w-8 h-8 rounded-lg bg-center bg-no-repeat;
+  @apply flex shrink-0 mr-2 w-8 h-8 rounded-lg bg-center bg-no-repeat;
   background-color: #F5FAFF;
   background-image: url(../assets/file.svg);
   background-size: 16px;
