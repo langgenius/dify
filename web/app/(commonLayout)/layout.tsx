@@ -8,6 +8,7 @@ import Header from '@/app/components/header'
 import { EventEmitterContextProvider } from '@/context/event-emitter'
 import { ProviderContextProvider } from '@/context/provider-context'
 import { ModalContextProvider } from '@/context/modal-context'
+import { ThemeProvider } from 'next-themes'
 
 const Layout = ({ children }: { children: ReactNode }) => {
   return (
@@ -18,10 +19,17 @@ const Layout = ({ children }: { children: ReactNode }) => {
           <EventEmitterContextProvider>
             <ProviderContextProvider>
               <ModalContextProvider>
-                <HeaderWrapper>
-                  <Header />
-                </HeaderWrapper>
-                {children}
+                <ThemeProvider
+                  attribute='data-theme'
+                  defaultTheme='system'
+                  enableSystem
+                  disableTransitionOnChange
+                >
+                  <HeaderWrapper>
+                    <Header />
+                  </HeaderWrapper>
+                  {children}
+                </ThemeProvider>
               </ModalContextProvider>
             </ProviderContextProvider>
           </EventEmitterContextProvider>

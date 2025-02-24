@@ -8,6 +8,7 @@ import HeaderWrapper from '@/app/components/header/header-wrapper'
 import { EventEmitterContextProvider } from '@/context/event-emitter'
 import { ProviderContextProvider } from '@/context/provider-context'
 import { ModalContextProvider } from '@/context/modal-context'
+import { ThemeProvider } from 'next-themes'
 
 const Layout = ({ children }: { children: ReactNode }) => {
   return (
@@ -18,12 +19,19 @@ const Layout = ({ children }: { children: ReactNode }) => {
           <EventEmitterContextProvider>
             <ProviderContextProvider>
               <ModalContextProvider>
-                <HeaderWrapper>
-                  <Header />
-                </HeaderWrapper>
-                <div className='relative flex flex-col overflow-y-auto bg-components-panel-bg shrink-0 h-0 grow'>
-                  {children}
-                </div>
+                <ThemeProvider
+                  attribute='data-theme'
+                  defaultTheme='system'
+                  enableSystem
+                  disableTransitionOnChange
+                >
+                  <HeaderWrapper>
+                    <Header />
+                  </HeaderWrapper>
+                  <div className='relative flex flex-col overflow-y-auto bg-components-panel-bg shrink-0 h-0 grow'>
+                    {children}
+                  </div>
+                </ThemeProvider>
               </ModalContextProvider>
             </ProviderContextProvider>
           </EventEmitterContextProvider>
