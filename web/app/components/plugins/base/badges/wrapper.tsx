@@ -1,7 +1,8 @@
 import React, { type FC } from 'react'
-import { useTheme } from 'next-themes'
 import cn from '@/utils/classnames'
 import Tooltip from '@/app/components/base/tooltip'
+import AppsContext from '@/context/app-context'
+import { useContextSelector } from 'use-context-selector'
 
 type BadgeWrapperProps = {
   className?: string
@@ -16,9 +17,9 @@ const BadgeWrapper: FC<BadgeWrapperProps> = ({
   BadgeIconLight,
   BadgeIconDark,
 }) => {
-  const { resolvedTheme } = useTheme()
+  const theme = useContextSelector(AppsContext, state => state.theme)
 
-  const isDark = resolvedTheme === 'dark'
+  const isDark = theme === 'dark'
   const iconClassName = cn('w-5 h-5', className)
   const Icon = isDark ? BadgeIconDark : BadgeIconLight
 
