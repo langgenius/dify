@@ -148,15 +148,15 @@ const translation = {
     },
     avgSessionInteractions: {
       title: '平均会话互动数',
-      explanation: '反应每个会话用户的持续沟通次数，如果用户与 AI 问答了 10 轮，即为 10。该指标反映了用户粘性。仅在对话型应用提供。',
+      explanation: '反映每个会话用户的持续沟通次数，如果用户与 AI 问答了 10 轮，即为 10。该指标反映了用户粘性。仅在对话型应用提供。',
     },
     avgUserInteractions: {
       title: '平均用户调用次数',
-      explanation: '反应每天用户的使用次数。该指标反映了用户粘性。',
+      explanation: '反映每天用户的使用次数。该指标反映了用户粘性。',
     },
     userSatisfactionRate: {
       title: '用户满意度',
-      explanation: '每 1000 条消息的点赞数。反应了用户对回答十分满意的比例。',
+      explanation: '每 1000 条消息的点赞数。反映了用户对回答十分满意的比例。',
     },
     avgResponseTime: {
       title: '平均响应时间',
