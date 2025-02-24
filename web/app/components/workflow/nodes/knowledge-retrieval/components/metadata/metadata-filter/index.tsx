@@ -5,6 +5,7 @@ import Collapse from '@/app/components/workflow/nodes/_base/components/collapse'
 import Tooltip from '@/app/components/base/tooltip'
 import type { MetadataShape } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
 import { MetadataFilteringModeEnum } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
+import ModelSelector from '@/app/components/header/account-setting/model-provider-page/model-selector'
 
 type MetadataFilterProps = {
   metadataFilterMode?: MetadataFilteringModeEnum
@@ -55,9 +56,14 @@ const MetadataFilter = ({
       <>
         {
           metadataFilterMode === MetadataFilteringModeEnum.automatic && (
-            <div className='px-4 body-xs-regular text-text-tertiary'>
-              Automatically generate metadata filtering conditions based on Query Variable
-            </div>
+            <>
+              <div className='px-4 body-xs-regular text-text-tertiary'>
+                Automatically generate metadata filtering conditions based on Query Variable
+              </div>
+              <ModelSelector
+                modelList={[]}
+              />
+            </>
           )
         }
       </>

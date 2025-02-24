@@ -92,6 +92,12 @@ export type KnowledgeRetrievalNodeType = CommonNodeType & {
   _datasets?: DataSet[]
   metadata_filtering_mode?: MetadataFilteringModeEnum
   metadata_filtering_conditions?: MetadataFilteringConditions
+  metadata_model_config?: {
+    provider: string
+    name: string
+    mode: string
+    completion_params: Record<string, any>
+  }
 }
 
 export type HandleAddCondition = (name: string) => void
