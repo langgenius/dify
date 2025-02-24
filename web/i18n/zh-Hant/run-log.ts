@@ -19,7 +19,7 @@ const translation = {
     steps: '執行步數',
   },
   resultEmpty: {
-    title: '本運行僅輸出JSON格式，',
+    title: '本運行僅輸出 JSON 格式，',
     tipLeft: '請到',
     link: '詳細資訊面板',
     tipRight: '查看它。',
