@@ -34,23 +34,20 @@ class RecyclableContextVar(Generic[T]):
         self._updates = ContextVar[int](context_var.name + "_updates", default=0)
 
     def get(self, default: T | HiddenValue = _default) -> T:
-        # it leads to a situation that self.updates is less than cls.thread_recycles if `set` was never called before
-        # increase it manually
         thread_recycles = self._thread_recycles.get(0)
         self_updates = self._updates.get()
         if thread_recycles > self_updates:
             self._updates.set(thread_recycles)
 
         # check if thread is recycled and should be updated
-        if thread_recycles == self_updates:
-            # thread_recycles is not equals to updates, means current context is invalid
-            # check if default is provided
+        if thread_recycles < self_updates:
+            return self._context_var.get()
+        else:
+            # thread_recycles >= self_updates, means current context is invalid
             if isinstance(default, HiddenValue) or default is _default:
                 raise LookupError
             else:
                 return default
-        else:
-            return self._context_var.get()
 
     def set(self, value: T):
         # it leads to a situation that self.updates is less than cls.thread_recycles if `set` was never called before
