@@ -416,6 +416,7 @@ const translation = {
         url: 'Segmentierte URL',
         metadata: 'Weitere Metadaten',
       },
+      dynamic: 'Dynamisch',
     },
     http: {
       inputVars: 'Eingabevariablen',

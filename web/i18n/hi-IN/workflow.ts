@@ -429,6 +429,7 @@ const translation = {
         url: 'विभाजित URL',
         metadata: 'अन्य मेटाडेटा',
       },
+      dynamic: 'गतिशील',
     },
     http: {
       inputVars: 'इनपुट वेरिएबल्स',

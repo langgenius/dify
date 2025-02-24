@@ -416,6 +416,7 @@ const translation = {
         url: '分段鏈接',
         metadata: '其他元數據',
       },
+      dynamic: '動態',
     },
     http: {
       inputVars: '輸入變量',

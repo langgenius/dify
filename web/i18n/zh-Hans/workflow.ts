@@ -422,6 +422,7 @@ const translation = {
         url: '分段链接',
         metadata: '其他元数据',
       },
+      dynamic: '动态',
     },
     http: {
       inputVars: '输入变量',

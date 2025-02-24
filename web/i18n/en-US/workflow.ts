@@ -414,6 +414,7 @@ const translation = {
     knowledgeRetrieval: {
       queryVariable: 'Query Variable',
       knowledge: 'Knowledge',
+      dynamic: 'Dynamic',
       outputVars: {
         output: 'Retrieval segmented data',
         content: 'Segmented content',
