@@ -36,7 +36,7 @@ class RecyclableContextVar(Generic[T]):
     def get(self, default: T | HiddenValue = _default) -> T:
         # it leads to a situation that self.updates is less than cls.thread_recycles if `set` was never called before
         # increase it manually
-        thread_recycles = self._thread_recycles.get()
+        thread_recycles = self._thread_recycles.get(0)
         self_updates = self._updates.get()
         if thread_recycles > self_updates:
             self._updates.set(thread_recycles)
@@ -54,7 +54,7 @@ class RecyclableContextVar(Generic[T]):
 
     def set(self, value: T):
         # increment the updates if self.updates equals to thread_recycles
-        if self._updates.get() == self._thread_recycles.get():
+        if self._updates.get() == self._thread_recycles.get(0):
             # after increment,
             self._updates.set(self._updates.get() + 1)
 
