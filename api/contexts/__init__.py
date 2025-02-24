@@ -15,8 +15,7 @@ tenant_id: ContextVar[str] = ContextVar("tenant_id")
 workflow_variable_pool: ContextVar["VariablePool"] = ContextVar("workflow_variable_pool")
 
 """
-To avoid race-conditions caused by gunicorn thread recycling, each contextvar should be reset to None avoid
-referencing old values.
+To avoid race-conditions caused by gunicorn thread recycling, using RecyclableContextVar to replace with
 """
 plugin_tool_providers: RecyclableContextVar[dict[str, "PluginToolProviderController"]] = RecyclableContextVar(
     ContextVar("plugin_tool_providers")
