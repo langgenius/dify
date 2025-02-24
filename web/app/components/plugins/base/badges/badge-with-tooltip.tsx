@@ -3,14 +3,14 @@ import { useTheme } from 'next-themes'
 import cn from '@/utils/classnames'
 import Tooltip from '@/app/components/base/tooltip'
 
-type BadgeWrapperProps = {
+type BadgeWithTooltipProps = {
   className?: string
   popupContent?: string
   BadgeIconLight: React.ElementType
   BadgeIconDark: React.ElementType
 }
 
-const BadgeWrapper: FC<BadgeWrapperProps> = ({
+const BadgeWithTooltip: FC<BadgeWithTooltipProps> = ({
   className,
   popupContent,
   BadgeIconLight,
@@ -34,4 +34,4 @@ const BadgeWrapper: FC<BadgeWrapperProps> = ({
   )
 }
 
-export default BadgeWrapper
+export default BadgeWithTooltip

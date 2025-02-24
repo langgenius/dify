@@ -1,6 +1,6 @@
 import React, { type FC } from 'react'
 import { useTranslation } from 'react-i18next'
-import Wrapper from './wrapper'
+import BadgeWithTooltip from './badge-with-tooltip'
 import VerifiedDark from '@/app/components/base/icons/src/public/plugins/VerifiedDark'
 import VerifiedLight from '@/app/components/base/icons/src/public/plugins/VerifiedLight'
 
@@ -14,7 +14,7 @@ const Verified: FC<VerifiedProps> = ({
   const { t } = useTranslation()
 
   return (
-    <Wrapper
+    <BadgeWithTooltip
       className={className}
       BadgeIconLight={VerifiedLight}
       BadgeIconDark={VerifiedDark}

@@ -1,6 +1,6 @@
 import React, { type FC } from 'react'
 import { useTranslation } from 'react-i18next'
-import Wrapper from './wrapper'
+import BadgeWithTooltip from './badge-with-tooltip'
 import PartnerDark from '@/app/components/base/icons/src/public/plugins/PartnerDark'
 import PartnerLight from '@/app/components/base/icons/src/public/plugins/PartnerLight'
 
@@ -14,7 +14,7 @@ const Partner: FC<PartnerProps> = ({
   const { t } = useTranslation()
 
   return (
-    <Wrapper
+    <BadgeWithTooltip
       className={className}
       BadgeIconLight={PartnerLight}
       BadgeIconDark={PartnerDark}
