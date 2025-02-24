@@ -40,9 +40,18 @@ importers:
       '@hookform/resolvers':
         specifier: ^3.9.0
         version: 3.9.0(react-hook-form@7.53.1(react@18.2.0))
+      '@lexical/code':
+        specifier: ^0.18.0
+        version: 0.18.0
       '@lexical/react':
         specifier: ^0.18.0
         version: 0.18.0(react-dom@18.2.0(react@18.2.0))(react@18.2.0)(yjs@13.6.20)
+      '@lexical/text':
+        specifier: ^0.18.0
+        version: 0.18.0
+      '@lexical/utils':
+        specifier: ^0.18.0
+        version: 0.18.0
       '@mdx-js/loader':
         specifier: ^3.1.0
         version: 3.1.0(acorn@8.13.0)(webpack@5.95.0(esbuild@0.23.1)(uglify-js@3.19.3))
