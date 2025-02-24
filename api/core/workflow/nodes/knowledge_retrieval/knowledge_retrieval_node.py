@@ -14,7 +14,7 @@ from core.model_runtime.model_providers.__base.large_language_model import Large
 from core.rag.datasource.retrieval_service import RetrievalService
 from core.rag.retrieval.dataset_retrieval import DatasetRetrieval
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
-from core.variables import StringSegment
+from core.variables import StringSegment, ArrayStringSegment
 from core.workflow.entities.node_entities import NodeRunResult
 from core.workflow.nodes.base import BaseNode
 from core.workflow.nodes.enums import NodeType
@@ -61,6 +61,21 @@ class KnowledgeRetrievalNode(BaseNode[KnowledgeRetrievalNodeData]):
             return NodeRunResult(
                 status=WorkflowNodeExecutionStatus.FAILED, inputs=variables, error="Query is required."
             )
+
+        if self.node_data.dynamic_dataset_enable:
+            dataset_ids_var = self.graph_runtime_state.variable_pool.get(self.node_data.dataset_ids_variable_selector)
+            if not isinstance(dataset_ids_var, ArrayStringSegment):
+                return NodeRunResult(
+                    status=WorkflowNodeExecutionStatus.FAILED,
+                    inputs={},
+                    error="Dataset Ids variable is not string array type.",
+                )
+            dataset_ids = variable.value
+            variables = {"dataset_ids": dataset_ids}
+            if not dataset_ids:
+                return NodeRunResult(
+                    status=WorkflowNodeExecutionStatus.FAILED, inputs=variables, error="Dataset Ids is required."
+                )
         # retrieve knowledge
         try:
             results = self._fetch_dataset_retriever(node_data=self.node_data, query=query)
@@ -89,6 +104,9 @@ class KnowledgeRetrievalNode(BaseNode[KnowledgeRetrievalNodeData]):
     def _fetch_dataset_retriever(self, node_data: KnowledgeRetrievalNodeData, query: str) -> list[dict[str, Any]]:
         available_datasets = []
         dataset_ids = node_data.dataset_ids
+        if self.node_data.dynamic_dataset_enable:
+            dataset_ids_var = self.graph_runtime_state.variable_pool.get(self.node_data.dataset_ids_variable_selector)
+            dataset_ids = dataset_ids_var.value
 
         # Subquery: Count the number of available documents for each dataset
         subquery = (
@@ -275,6 +293,8 @@ class KnowledgeRetrievalNode(BaseNode[KnowledgeRetrievalNodeData]):
         """
         variable_mapping = {}
         variable_mapping[node_id + ".query"] = node_data.query_variable_selector
+        if node_data.dynamic_dataset_enable:
+            variable_mapping[node_id + ".dataset_ids"] = node_data.dataset_ids_variable_selector
         return variable_mapping
 
     def _fetch_model_config(

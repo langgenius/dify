@@ -12,6 +12,7 @@ import DatasetList from './components/dataset-list'
 import type { KnowledgeRetrievalNodeType } from './types'
 import Field from '@/app/components/workflow/nodes/_base/components/field'
 import Split from '@/app/components/workflow/nodes/_base/components/split'
+import Switch from '@/app/components/base/switch'
 import OutputVars, { VarItem } from '@/app/components/workflow/nodes/_base/components/output-vars'
 import { InputVarType, type NodePanelProps } from '@/app/components/workflow/types'
 import BeforeRunForm from '@/app/components/workflow/nodes/_base/components/before-run-form'
@@ -46,11 +47,27 @@ const Panel: FC<NodePanelProps<KnowledgeRetrievalNodeType>> = ({
     runResult,
     rerankModelOpen,
     setRerankModelOpen,
+    setDynamicDatasetEnable,
+    filterDatasetIdsVar,
+    handleDatasetIdsVarChange,
+    dataset_ids,
+    setDatasetIds,
   } = useConfig(id, data)
 
   const handleOpenFromPropsChange = useCallback((openFromProps: boolean) => {
     setRerankModelOpen(openFromProps)
   }, [setRerankModelOpen])
+
+  const dataset_ids_from = {
+    inputs: [{
+      label: t(`${i18nPrefix}.knowledge`)!,
+      variable: 'dataset_ids',
+      type: InputVarType.json,
+      required: true,
+    }],
+    values: { dataset_ids },
+    onChange: (keyValue: any) => setDatasetIds((keyValue as any).dataset_ids),
+  }
 
   return (
     <div className='pt-2'>
@@ -84,13 +101,25 @@ const Panel: FC<NodePanelProps<KnowledgeRetrievalNodeType>> = ({
                 singleRetrievalModelConfig={inputs.single_retrieval_config?.model}
                 onSingleRetrievalModelChange={handleModelChanged as any}
                 onSingleRetrievalModelParamsChange={handleCompletionParamsChange}
-                readonly={readOnly || !selectedDatasets.length}
+                readonly={readOnly || (!inputs.dynamic_dataset_enable && !selectedDatasets.length)}
                 openFromProps={rerankModelOpen}
                 onOpenFromPropsChange={handleOpenFromPropsChange}
                 selectedDatasets={selectedDatasets}
               />
               {!readOnly && (<div className='w-px h-3 bg-gray-200'></div>)}
               {!readOnly && (
+                <Switch
+                  size='md'
+                  className='mr-2'
+                  defaultValue={inputs.dynamic_dataset_enable}
+                  onChange={async (val) => {
+                    setDynamicDatasetEnable(val)
+                  }}
+                />
+              )}
+              {!readOnly && (<span className="mr-1 text-text-secondary system-sm-medium">动态</span>)}
+              {!readOnly && !inputs.dynamic_dataset_enable && (<div className='w-px h-3 bg-gray-200'></div>)}
+              {!readOnly && !inputs.dynamic_dataset_enable && (
                 <AddKnowledge
                   selectedIds={inputs.dataset_ids}
                   onChange={handleOnDatasetsChange}
@@ -99,11 +128,25 @@ const Panel: FC<NodePanelProps<KnowledgeRetrievalNodeType>> = ({
             </div>
           }
         >
-          <DatasetList
-            list={selectedDatasets}
-            onChange={handleOnDatasetsChange}
-            readonly={readOnly}
-          />
+          <div>
+            {!inputs.dynamic_dataset_enable && (
+              <DatasetList
+                list={selectedDatasets}
+                onChange={handleOnDatasetsChange}
+                readonly={readOnly}
+              />
+            )}
+            {inputs.dynamic_dataset_enable && (
+              <VarReferencePicker
+                nodeId={id}
+                readonly={readOnly}
+                isShowNodeName
+                value={inputs.dataset_ids_variable_selector}
+                onChange={handleDatasetIdsVarChange}
+                filterVar={filterDatasetIdsVar}
+              />
+            )}
+          </div>
         </Field>
       </div>
 
@@ -162,6 +205,7 @@ const Panel: FC<NodePanelProps<KnowledgeRetrievalNodeType>> = ({
                 values: { query },
                 onChange: keyValue => setQuery((keyValue as any).query),
               },
+              ...(inputs.dynamic_dataset_enable ? [dataset_ids_from] : []),
             ]}
             runningStatus={runningStatus}
             onRun={handleRun}
