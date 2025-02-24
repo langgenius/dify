@@ -410,6 +410,7 @@ const translation = {
         url: 'セグメント化されたURL',
         metadata: 'その他のメタデータ',
       },
+      dynamic: 'ダイナミック',
     },
     http: {
       inputVars: '入力変数',

@@ -117,7 +117,7 @@ const Panel: FC<NodePanelProps<KnowledgeRetrievalNodeType>> = ({
                   }}
                 />
               )}
-              {!readOnly && (<span className="mr-1 text-text-secondary system-sm-medium">动态</span>)}
+              {!readOnly && (<span className="mr-1 text-text-secondary system-sm-medium">{t(`${i18nPrefix}.dynamic`)}</span>)}
               {!readOnly && !inputs.dynamic_dataset_enable && (<div className='w-px h-3 bg-gray-200'></div>)}
               {!readOnly && !inputs.dynamic_dataset_enable && (
                 <AddKnowledge

@@ -410,6 +410,7 @@ const translation = {
         url: 'URL تقسیم‌بندی شده',
         metadata: 'سایر متاداده‌ها',
       },
+      dynamic: 'پویا',
     },
     http: {
       inputVars: 'متغیرهای ورودی',

@@ -410,6 +410,7 @@ const translation = {
         url: '세그먼트 URL',
         metadata: '기타 메타데이터',
       },
+      dynamic: '동적인',
     },
     http: {
       inputVars: '입력 변수',

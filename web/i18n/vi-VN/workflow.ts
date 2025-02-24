@@ -410,6 +410,7 @@ const translation = {
         url: 'URL phân đoạn',
         metadata: 'Siêu dữ liệu khác',
       },
+      dynamic: 'Năng động',
     },
     http: {
       inputVars: 'Biến đầu vào',

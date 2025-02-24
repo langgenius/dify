@@ -410,6 +410,7 @@ const translation = {
         url: 'URL ที่แบ่งกลุ่ม',
         metadata: 'ข้อมูลเมตาอื่นๆ',
       },
+      dynamic: 'พลวัต',
     },
     http: {
       inputVars: 'ตัวแปรอินพุต',
