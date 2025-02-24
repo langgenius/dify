@@ -44,11 +44,14 @@ class HostingConfiguration:
     provider_map: dict[str, HostingProvider]
     moderation_config: Optional[HostedModerationConfig] = None
 
+    def __init__(self) -> None:
+        self.provider_map = {}
+        self.moderation_config = None
+
     def init_app(self, app: Flask) -> None:
         if dify_config.EDITION != "CLOUD":
             return
 
-        self.provider_map = {}
         self.provider_map[f"{DEFAULT_PLUGIN_ID}/azure_openai/azure_openai"] = self.init_azure_openai()
         self.provider_map[f"{DEFAULT_PLUGIN_ID}/openai/openai"] = self.init_openai()
         self.provider_map[f"{DEFAULT_PLUGIN_ID}/anthropic/anthropic"] = self.init_anthropic()
