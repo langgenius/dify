@@ -43,6 +43,12 @@ importers:
       '@lexical/code':
         specifier: ^0.18.0
         version: 0.18.0
+      '@lexical/link':
+        specifier: ^0.18.0
+        version: 0.18.0
+      '@lexical/list':
+        specifier: ^0.18.0
+        version: 0.18.0
       '@lexical/react':
         specifier: ^0.18.0
         version: 0.18.0(react-dom@18.2.0(react@18.2.0))(react@18.2.0)(yjs@13.6.20)

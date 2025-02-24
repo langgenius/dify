@@ -87,6 +87,7 @@ export type PluginManifestInMarket = {
   introduction: string
   verified: boolean
   install_count: number
+  badges: string[]
 }
 
 export type PluginDetail = {

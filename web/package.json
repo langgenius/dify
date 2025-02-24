@@ -34,6 +34,8 @@
     "@heroicons/react": "^2.0.16",
     "@hookform/resolvers": "^3.9.0",
     "@lexical/code": "^0.18.0",
+    "@lexical/link": "^0.18.0",
+    "@lexical/list": "^0.18.0",
     "@lexical/react": "^0.18.0",
     "@lexical/selection": "^0.18.0",
     "@lexical/text": "^0.18.0",
