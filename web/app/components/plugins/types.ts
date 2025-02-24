@@ -137,6 +137,7 @@ export type Plugin = {
     settings: CredentialFormSchemaBase[]
   }
   tags: { name: string }[]
+  badges: string[]
 }
 
 export enum PermissionType {
