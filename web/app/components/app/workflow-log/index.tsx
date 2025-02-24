@@ -4,10 +4,12 @@ import React, { useState } from 'react'
 import useSWR from 'swr'
 import { usePathname } from 'next/navigation'
 import { useDebounce } from 'ahooks'
+import { omit } from 'lodash-es'
+import dayjs from 'dayjs'
 import { Trans, useTranslation } from 'react-i18next'
 import Link from 'next/link'
 import List from './list'
-import Filter from './filter'
+import Filter, { TIME_PERIOD_MAPPING } from './filter'
 import Pagination from '@/app/components/base/pagination'
 import Loading from '@/app/components/base/loading'
 import { fetchWorkflowLogs } from '@/service/log'
@@ -19,6 +21,7 @@ export type ILogsProps = {
 }
 
 export type QueryParam = {
+  period: string
   status?: string
   keyword?: string
 }
@@ -48,7 +51,7 @@ const EmptyElement: FC<{ appUrl: string }> = ({ appUrl }) => {
 
 const Logs: FC<ILogsProps> = ({ appDetail }) => {
   const { t } = useTranslation()
-  const [queryParams, setQueryParams] = useState<QueryParam>({ status: 'all' })
+  const [queryParams, setQueryParams] = useState<QueryParam>({ status: 'all', period: '2' })
   const [currPage, setCurrPage] = React.useState<number>(0)
   const debouncedQueryParams = useDebounce(queryParams, { wait: 500 })
   const [limit, setLimit] = React.useState<number>(APP_PAGE_LIMIT)
@@ -58,6 +61,13 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
     limit,
     ...(debouncedQueryParams.status !== 'all' ? { status: debouncedQueryParams.status } : {}),
     ...(debouncedQueryParams.keyword ? { keyword: debouncedQueryParams.keyword } : {}),
+    ...((debouncedQueryParams.period !== '9')
+      ? {
+        start: dayjs().subtract(TIME_PERIOD_MAPPING[debouncedQueryParams.period].value, 'day').startOf('day').format('YYYY-MM-DD HH:mm'),
+        end: dayjs().endOf('day').format('YYYY-MM-DD HH:mm'),
+      }
+      : {}),
+    ...omit(debouncedQueryParams, ['period', 'status']),
   }
 
   const getWebAppType = (appType: AppMode) => {
