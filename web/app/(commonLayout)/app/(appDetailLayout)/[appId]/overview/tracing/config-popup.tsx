@@ -152,6 +152,9 @@ const ConfigPopup: FC<PopupProps> = ({
     if (opikConfig)
       configuredPanels.push(opikPanel)
 
+    if (weaveConfig)
+      configuredPanels.push(weavePanel)
+
     return configuredPanels
   }
 
@@ -169,6 +172,8 @@ const ConfigPopup: FC<PopupProps> = ({
     if (!opikConfig)
       notConfiguredPanels.push(opikPanel)
 
+    if (!weaveConfig)
+      notConfiguredPanels.push(weavePanel)
     return notConfiguredPanels
   }
 
@@ -224,6 +229,7 @@ const ConfigPopup: FC<PopupProps> = ({
                 {langSmithPanel}
                 {langfusePanel}
                 {opikPanel}
+                {weavePanel}
               </div>
             </>
           )
