@@ -7,7 +7,6 @@ from typing import Optional
 from pydantic import BaseModel
 
 import contexts
-from core.entities import DEFAULT_PLUGIN_ID
 from core.helper.position_helper import get_provider_position_map, sort_to_dict_by_position_map
 from core.model_runtime.entities.model_entities import AIModelEntity, ModelType
 from core.model_runtime.entities.provider_entities import ProviderConfig, ProviderEntity, SimpleProviderEntity
@@ -362,11 +361,5 @@ class ModelProviderFactory:
         :param provider: provider name
         :return: plugin id and provider name
         """
-        plugin_id = DEFAULT_PLUGIN_ID
-        provider_name = provider
-        if "/" in provider:
-            # get the plugin_id before provider
-            plugin_id = "/".join(provider.split("/")[:-1])
-            provider_name = provider.split("/")[-1]
-
-        return str(plugin_id), provider_name
+        provider_id = ModelProviderID(provider)
+        return provider_id.plugin_id, provider_id.provider_name
