@@ -100,6 +100,23 @@ class AccountService:
         redis_client.delete(AccountService._get_refresh_token_key(refresh_token))
         redis_client.delete(AccountService._get_account_refresh_token_key(account_id))
 
+    def load_user_by_email(email: str) -> Account:
+        try:
+            account = db.session.query(Account).filter_by(email=email).first()
+            if not account:
+                # b03ed72f-d86a-4028-a442-ae0e1b3e0e46 admin
+                # prod: 9fc6e06f-cc56-4cd1-afc9-5a401fddedce
+                admin_user = AccountService.load_user("9fc6e06f-cc56-4cd1-afc9-5a401fddedce")
+                language = "zh-Hans"
+                role = "editor"
+
+                RegisterService.invite_new_member(admin_user.current_tenant, email, language, role=role, inviter=admin_user, status=AccountStatus.ACTIVE)
+                account = db.session.query(Account).filter_by(email=email).first()
+        except Exception:
+            account = db.session.query(Account).filter_by(email=email).first()
+        
+        return AccountService.load_user(account.id)
+
     @staticmethod
     def load_user(user_id: str) -> None | Account:
         account = db.session.query(Account).filter_by(id=user_id).first()
@@ -925,7 +942,7 @@ class RegisterService:
 
     @classmethod
     def invite_new_member(
-        cls, tenant: Tenant, email: str, language: str, role: str = "normal", inviter: Account | None = None
+        cls, tenant: Tenant, email: str, language: str, role: str = "normal", inviter: Account | None = None, status: str = AccountStatus.PENDING
     ) -> str:
         if not inviter:
             raise ValueError("Inviter is required")
@@ -939,7 +956,7 @@ class RegisterService:
             name = email.split("@")[0]
 
             account = cls.register(
-                email=email, name=name, language=language, status=AccountStatus.PENDING, is_setup=True
+                email=email, name=name, language=language, status=status, is_setup=True
             )
             # Create new tenant member for invited tenant
             TenantService.create_tenant_member(tenant, account, role)
@@ -958,13 +975,13 @@ class RegisterService:
         token = cls.generate_invite_token(tenant, account)
 
         # send email
-        send_invite_member_mail_task.delay(
-            language=account.interface_language,
-            to=email,
-            token=token,
-            inviter_name=inviter.name if inviter else "Dify",
-            workspace_name=tenant.name,
-        )
+        # send_invite_member_mail_task.delay(
+        #     language=account.interface_language,
+        #     to=email,
+        #     token=token,
+        #     inviter_name=inviter.name if inviter else "Dify",
+        #     workspace_name=tenant.name,
+        # )
 
         return token
 
