@@ -2,6 +2,7 @@ import type { CommonNodeType, ModelConfig, ValueSelector } from '@/app/component
 import type { RETRIEVE_TYPE } from '@/types/app'
 import type {
   DataSet,
+  MetadataInDoc,
   RerankingModeEnum,
 } from '@/models/datasets'
 
@@ -94,11 +95,12 @@ export type KnowledgeRetrievalNodeType = CommonNodeType & {
 }
 
 export type HandleAddCondition = (name: string) => void
-export type HandleRemoveCondition = (index: number) => void
-export type HandleUpdateCondition = (index: number, newCondition: MetadataFilteringCondition) => void
+export type HandleRemoveCondition = (name: string) => void
+export type HandleUpdateCondition = (name: string, newCondition: MetadataFilteringCondition) => void
 export type HandleToggleConditionLogicalOperator = () => void
 
 export type MetadataShape = {
+  metadataList?: MetadataInDoc[]
   metadataFilteringConditions?: MetadataFilteringConditions
   handleAddCondition: HandleAddCondition
   handleRemoveCondition: HandleRemoveCondition

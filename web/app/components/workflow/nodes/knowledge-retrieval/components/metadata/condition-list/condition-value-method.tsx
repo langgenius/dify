@@ -52,6 +52,8 @@ const ConditionValueMethod = ({
                   valueMethod === option && 'bg-state-base-hover',
                 )}
                 onClick={() => {
+                  if (valueMethod === option)
+                    return
                   onValueMethodChange(option)
                   setOpen(false)
                 }}

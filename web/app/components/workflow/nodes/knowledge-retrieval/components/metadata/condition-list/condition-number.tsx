@@ -1,12 +1,31 @@
+import { useCallback } from 'react'
 import ConditionValueMethod from './condition-value-method'
 import type { ConditionValueMethodProps } from './condition-value-method'
 import ConditionVariableSelector from './condition-variable-selector'
+import type {
+  Node,
+  NodeOutPutVar,
+  ValueSelector,
+} from '@/app/components/workflow/types'
 
-type ConditionNumberProps = {} & ConditionValueMethodProps
+type ConditionNumberProps = {
+  value?: string | number
+  onChange: (value: string | number) => void
+  nodesOutputVars: NodeOutPutVar[]
+  availableNodes: Node[]
+} & ConditionValueMethodProps
 const ConditionNumber = ({
+  value,
+  onChange,
   valueMethod,
   onValueMethodChange,
+  nodesOutputVars,
+  availableNodes,
 }: ConditionNumberProps) => {
+  const handleVariableValueChange = useCallback((v: ValueSelector) => {
+    onChange(`{{#${v.join('.')}#}}`)
+  }, [onChange])
+
   return (
     <div className='flex items-center pl-1 pr-2 h-8'>
       <ConditionValueMethod
@@ -17,13 +36,20 @@ const ConditionNumber = ({
       {
         valueMethod === 'variable' && (
           <ConditionVariableSelector
-            onChange={() => {}}
+            valueSelector={(value as string).split('.')}
+            onChange={handleVariableValueChange}
+            nodesOutputVars={nodesOutputVars}
+            availableNodes={availableNodes}
           />
         )
       }
       {
         valueMethod === 'constant' && (
-          <input />
+          <input
+            value={value}
+            type='number'
+            onChange={e => onChange(e.target.value)}
+          />
         )
       }
     </div>

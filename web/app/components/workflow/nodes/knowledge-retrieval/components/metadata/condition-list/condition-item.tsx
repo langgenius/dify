@@ -4,17 +4,21 @@ import {
   useState,
 } from 'react'
 import { RiDeleteBinLine } from '@remixicon/react'
-import { comparisonOperatorNotRequireValue } from './utils'
+import {
+  VARIABLE_REGEX,
+  comparisonOperatorNotRequireValue,
+} from './utils'
 import ConditionOperator from './condition-operator'
-import ConditionValueMethod from './condition-value-method'
 import ConditionString from './condition-string'
 import ConditionNumber from './condition-number'
 import ConditionDate from './condition-date'
 import { useCondition } from './hooks'
 import type {
+  ComparisonOperator,
   HandleRemoveCondition,
   HandleUpdateCondition,
   MetadataFilteringCondition,
+  MetadataShape,
 } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
 import { MetadataFilteringVariableType } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
 
@@ -25,7 +29,6 @@ import type {
 import cn from '@/utils/classnames'
 
 type ConditionItemProps = {
-  index: number
   className?: string
   disabled?: boolean
   condition: MetadataFilteringCondition // condition may the condition of case or condition of sub variable
@@ -33,13 +36,16 @@ type ConditionItemProps = {
   onUpdateCondition?: HandleUpdateCondition
   nodesOutputVars: NodeOutPutVar[]
   availableNodes: Node[]
-}
+} & Pick<MetadataShape, 'metadataList'>
 const ConditionItem = ({
-  index,
   className,
   disabled,
   condition,
   onRemoveCondition,
+  onUpdateCondition,
+  metadataList = [],
+  nodesOutputVars,
+  availableNodes,
 }: ConditionItemProps) => {
   const [isHovered, setIsHovered] = useState(false)
   const { getConditionVariableType } = useCondition()
@@ -52,8 +58,53 @@ const ConditionItem = ({
   }, [disabled])
 
   const doRemoveCondition = useCallback(() => {
-    onRemoveCondition?.(index)
-  }, [onRemoveCondition, index])
+    onRemoveCondition?.(condition.name)
+  }, [onRemoveCondition, condition.name])
+
+  const currentMetadata = useMemo(() => {
+    return metadataList.find(metadata => metadata.name === condition.name)
+  }, [metadataList, condition.name])
+
+  const handleConditionOperatorChange = useCallback((operator: ComparisonOperator) => {
+    onUpdateCondition?.(condition.name, { ...condition, comparison_operator: operator })
+  }, [onUpdateCondition, condition])
+
+  const valueAndValueMethod = useMemo(() => {
+    if (
+      (currentMetadata?.type === MetadataFilteringVariableType.string || currentMetadata?.type === MetadataFilteringVariableType.number)
+      && typeof condition.value === 'string'
+    ) {
+      const matched = condition.value.match(VARIABLE_REGEX)
+
+      if (matched?.length) {
+        return {
+          value: matched[0].slice(3, -3),
+          valueMethod: 'variable',
+        }
+      }
+      else {
+        return {
+          value: condition.value,
+          valueMethod: 'constant',
+        }
+      }
+    }
+
+    return {
+      value: condition.value,
+      valueMethod: 'constant',
+    }
+  }, [currentMetadata, condition.value])
+  const [localValueMethod, setLocalValueMethod] = useState(valueAndValueMethod.value)
+
+  const handleValueMethodChange = useCallback((v: string) => {
+    setLocalValueMethod(v)
+    onUpdateCondition?.(condition.name, { ...condition, value: undefined })
+  }, [condition, onUpdateCondition])
+
+  const handleValueChange = useCallback((v: any) => {
+    onUpdateCondition?.(condition.name, { ...condition, value: v })
+  }, [condition, onUpdateCondition])
 
   return (
     <div className={cn('flex mb-1 last-of-type:mb-0', className)}>
@@ -71,37 +122,40 @@ const ConditionItem = ({
           <div className='mx-1 w-[1px] h-3 bg-divider-regular'></div>
           <ConditionOperator
             disabled={!canChooseOperator}
-            variableType={MetadataFilteringVariableType.string}
+            variableType={currentMetadata!.type}
             value={condition.comparison_operator}
-            onSelect={() => {}}
+            onSelect={handleConditionOperatorChange}
           />
-        </div>
-        <div className='flex items-center pl-1 pr-2 h-8'>
-          <ConditionValueMethod
-            valueMethod='variable'
-            onValueMethodChange={() => {}}
-          />
-          <div className='ml-1 mr-1.5 w-[1px] h-4 bg-divider-regular'></div>
         </div>
         {
           !comparisonOperatorNotRequireValue(condition.comparison_operator) && getConditionVariableType(condition.name) === MetadataFilteringVariableType.string && (
             <ConditionString
-              onValueMethodChange={() => {}}
+              valueMethod={localValueMethod}
+              onValueMethodChange={handleValueMethodChange}
+              nodesOutputVars={nodesOutputVars}
+              availableNodes={availableNodes}
+              value={valueAndValueMethod.value}
+              onChange={handleValueChange}
             />
           )
         }
         {
           !comparisonOperatorNotRequireValue(condition.comparison_operator) && getConditionVariableType(condition.name) === MetadataFilteringVariableType.number && (
             <ConditionNumber
-              onValueMethodChange={() => {}}
+              valueMethod={localValueMethod}
+              onValueMethodChange={handleValueMethodChange}
+              nodesOutputVars={nodesOutputVars}
+              availableNodes={availableNodes}
+              value={valueAndValueMethod.value}
+              onChange={handleValueChange}
             />
           )
         }
         {
           !comparisonOperatorNotRequireValue(condition.comparison_operator) && getConditionVariableType(condition.name) === MetadataFilteringVariableType.date && (
             <ConditionDate
-              value=''
-              onChange={() => {}}
+              value={condition.value}
+              onChange={handleValueChange}
             />
           )
         }

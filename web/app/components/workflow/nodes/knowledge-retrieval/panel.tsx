@@ -2,6 +2,7 @@ import type { FC } from 'react'
 import {
   memo,
   useCallback,
+  useMemo,
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import VarReferencePicker from '../_base/components/variable/var-reference-picker'
@@ -57,6 +58,14 @@ const Panel: FC<NodePanelProps<KnowledgeRetrievalNodeType>> = ({
   const handleOpenFromPropsChange = useCallback((openFromProps: boolean) => {
     setRerankModelOpen(openFromProps)
   }, [setRerankModelOpen])
+
+  const metadataList = useMemo(() => {
+    return selectedDatasets.filter((dataset) => {
+      return !!dataset.doc_metadata
+    }).map((dataset) => {
+      return dataset.doc_metadata!
+    }).flat()
+  }, [selectedDatasets])
 
   return (
     <div className='pt-2'>
@@ -114,6 +123,7 @@ const Panel: FC<NodePanelProps<KnowledgeRetrievalNodeType>> = ({
       </div>
       <div className='py-2'>
         <MetadataFilter
+          metadataList={metadataList}
           metadataFilterMode={inputs.metadata_filtering_mode}
           metadataFilteringConditions={inputs.metadata_filtering_conditions}
           handleAddCondition={handleAddCondition}

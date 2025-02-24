@@ -8,7 +8,7 @@ import DatePicker from '@/app/components/base/date-and-time-picker/date-picker'
 import cn from '@/utils/classnames'
 
 type ConditionDateProps = {
-  value: string
+  value?: string
   onChange: (date: string) => void
 }
 const ConditionDate = ({
@@ -52,7 +52,7 @@ const ConditionDate = ({
 
   return (
     <DatePicker
-      value={dayjs()}
+      value={dayjs(value)}
       onChange={handleDateChange}
       onClear={handleDateChange}
       renderTrigger={renderTrigger}

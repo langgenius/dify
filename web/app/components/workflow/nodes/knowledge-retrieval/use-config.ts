@@ -313,23 +313,29 @@ const useConfig = (id: string, payload: KnowledgeRetrievalNodeType) => {
     setInputs(newInputs)
   }, [setInputs])
 
-  const handleRemoveCondition = useCallback<HandleRemoveCondition>((index) => {
+  const handleRemoveCondition = useCallback<HandleRemoveCondition>((name) => {
+    const index = inputRef.current.metadata_filtering_conditions?.conditions.findIndex(c => c.name === name) || -1
     const newInputs = produce(inputRef.current, (draft) => {
-      draft.metadata_filtering_conditions?.conditions.splice(index, 1)
+      if (index > -1)
+        draft.metadata_filtering_conditions?.conditions.splice(index, 1)
     })
     setInputs(newInputs)
   }, [setInputs])
 
-  const handleUpdateCondition = useCallback<HandleUpdateCondition>((index, newCondition) => {
+  const handleUpdateCondition = useCallback<HandleUpdateCondition>((name, newCondition) => {
+    const index = inputRef.current.metadata_filtering_conditions?.conditions.findIndex(c => c.name === name) || -1
     const newInputs = produce(inputRef.current, (draft) => {
-      draft.metadata_filtering_conditions!.conditions[index] = newCondition
+      if (index > -1)
+        draft.metadata_filtering_conditions!.conditions[index] = newCondition
     })
     setInputs(newInputs)
   }, [setInputs])
 
   const handleToggleConditionLogicalOperator = useCallback<HandleToggleConditionLogicalOperator>(() => {
+    const oldLogicalOperator = inputRef.current.metadata_filtering_conditions?.logical_operator
+    const newLogicalOperator = oldLogicalOperator === LogicalOperator.and ? LogicalOperator.or : LogicalOperator.and
     const newInputs = produce(inputRef.current, (draft) => {
-      draft.metadata_filtering_conditions!.logical_operator = LogicalOperator.and
+      draft.metadata_filtering_conditions!.logical_operator = newLogicalOperator
     })
     setInputs(newInputs)
   }, [setInputs])

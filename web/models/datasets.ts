@@ -2,6 +2,7 @@ import type { DataSourceNotionPage, DataSourceProvider } from './common'
 import type { AppIconType, AppMode, RetrievalConfig } from '@/types/app'
 import type { Tag } from '@/app/components/base/tag-management/constant'
 import type { IndexingType } from '@/app/components/datasets/create/step-two'
+import type { MetadataFilteringVariableType } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
 
 export enum DataSourceType {
   FILE = 'upload_file',
@@ -19,6 +20,13 @@ export enum ChunkingMode {
   text = 'text_model', // General text
   qa = 'qa_model', // General QA
   parentChild = 'hierarchical_model', // Parent-Child
+}
+
+export type MetadataInDoc = {
+  value: string
+  id: string
+  type: MetadataFilteringVariableType
+  name: string
 }
 
 export type DataSet = {
@@ -57,6 +65,7 @@ export type DataSet = {
     score_threshold_enabled: boolean
   }
   built_in_field_enabled: boolean
+  doc_metadata?: MetadataInDoc[]
 }
 
 export type ExternalAPIItem = {

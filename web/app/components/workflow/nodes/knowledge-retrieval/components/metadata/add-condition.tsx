@@ -1,4 +1,7 @@
-import { useState } from 'react'
+import {
+  useMemo,
+  useState,
+} from 'react'
 import {
   RiAddLine,
 } from '@remixicon/react'
@@ -12,9 +15,15 @@ import Input from '@/app/components/base/input'
 import type { MetadataShape } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
 
 const AddCondition = ({
+  metadataList,
   handleAddCondition,
-}: Pick<MetadataShape, 'handleAddCondition'>) => {
+}: Pick<MetadataShape, 'handleAddCondition' | 'metadataList'>) => {
   const [open, setOpen] = useState(false)
+  const [searchText, setSearchText] = useState('')
+
+  const filteredMetadataList = useMemo(() => {
+    return metadataList?.filter(metadata => metadata.name.includes(searchText))
+  }, [metadataList, searchText])
 
   return (
     <PortalToFollowElem
@@ -41,19 +50,28 @@ const AddCondition = ({
             <Input
               showLeftIcon
               placeholder='Search metadata'
+              value={searchText}
+              onChange={e => setSearchText(e.target.value)}
             />
           </div>
           <div className='p-1'>
-            <div className='flex items-center px-3 h-6 rounded-md system-sm-medium text-text-secondary cursor-pointer hover:bg-state-base-hover'>
-              <div
-                className='grow truncate'
-                title='Language'
-                onClick={() => handleAddCondition?.('language')}
-              >
-                Language
-              </div>
-              <div className='shrink-0 system-xs-regular text-text-tertiary'>string</div>
-            </div>
+            {
+              filteredMetadataList?.map(metadata => (
+                <div
+                  key={metadata.id}
+                  className='flex items-center px-3 h-6 rounded-md system-sm-medium text-text-secondary cursor-pointer hover:bg-state-base-hover'
+                >
+                  <div
+                    className='grow truncate'
+                    title={metadata.name}
+                    onClick={() => handleAddCondition?.(metadata.name)}
+                  >
+                    {metadata.name}
+                  </div>
+                  <div className='shrink-0 system-xs-regular text-text-tertiary'>{metadata.type}</div>
+                </div>
+              ))
+            }
           </div>
         </div>
       </PortalToFollowElemContent>

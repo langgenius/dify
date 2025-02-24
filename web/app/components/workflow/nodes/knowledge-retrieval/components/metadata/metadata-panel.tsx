@@ -8,6 +8,7 @@ type MetadataPanelProps = {
 } & MetadataShape
 const MetadataPanel = ({
   metadataFilteringConditions,
+  metadataList,
   onCancel,
   handleAddCondition,
   ...restProps
@@ -28,10 +29,14 @@ const MetadataPanel = ({
       <div className='px-1 py-2'>
         <div className='px-3 py-1'>
           <ConditionList
+            metadataList={metadataList}
             metadataFilteringConditions={metadataFilteringConditions}
             {...restProps}
           />
-          <AddCondition handleAddCondition={handleAddCondition} />
+          <AddCondition
+            metadataList={metadataList}
+            handleAddCondition={handleAddCondition}
+          />
         </div>
       </div>
     </div>
