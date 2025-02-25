@@ -105,8 +105,8 @@ class AccountService:
             account = db.session.query(Account).filter_by(email=email).first()
             if not account:
                 # b03ed72f-d86a-4028-a442-ae0e1b3e0e46 admin
-                # prod: 9fc6e06f-cc56-4cd1-afc9-5a401fddedce
-                admin_user = AccountService.load_user("9fc6e06f-cc56-4cd1-afc9-5a401fddedce")
+                # prod: 54cb1dda-6198-42d5-828f-5d4fafb0449b
+                admin_user = AccountService.load_user("54cb1dda-6198-42d5-828f-5d4fafb0449b")
                 language = "zh-Hans"
                 role = "editor"
 
