@@ -263,13 +263,13 @@ class PluginFetchInstallTasksApi(Resource):
     @plugin_permission_required(debug_required=True)
     def get(self):
         tenant_id = current_user.current_tenant_id
+        print(f"tenant_id: {tenant_id}")
 
         parser = reqparse.RequestParser()
         parser.add_argument("page", type=int, required=True, location="args")
         parser.add_argument("page_size", type=int, required=True, location="args")
         args = parser.parse_args()
-
-        print(tenant_id, args["page"], args["page_size"])
+        print(f"args: {args}")
 
         try:
             return jsonable_encoder(
