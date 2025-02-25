@@ -280,6 +280,9 @@ class PluginFetchInstallTasksApi(Resource):
         except PluginDaemonClientSideError as e:
             logging.error(f"error: {e}")
             raise ValueError(e)
+        except Exception as e2:
+            logging.error(f"error: {e2}")
+            raise ValueError(e2)
 
 
 class PluginFetchInstallTaskApi(Resource):
