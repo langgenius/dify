@@ -2,7 +2,7 @@
 import type { FC } from 'react'
 import { Theme } from '@/types/app'
 import cn from '@/utils/classnames'
-import { useTheme } from 'next-themes'
+import useTheme from '@/hooks/use-theme'
 
 type Props = {
   status: string
@@ -13,7 +13,7 @@ const StatusContainer: FC<Props> = ({
   status,
   children,
 }) => {
-  const { resolvedTheme: theme } = useTheme()
+  const { theme } = useTheme()
   return (
     <div
       className={cn(

@@ -6,7 +6,7 @@ import { AnthropicDark, AnthropicLight } from '@/app/components/base/icons/src/p
 import { renderI18nObject } from '@/hooks/use-i18n'
 import { Theme } from '@/types/app'
 import cn from '@/utils/classnames'
-import { useTheme } from 'next-themes'
+import useTheme from '@/hooks/use-theme'
 
 type ProviderIconProps = {
   provider: ModelProvider
@@ -16,7 +16,7 @@ const ProviderIcon: FC<ProviderIconProps> = ({
   provider,
   className,
 }) => {
-  const { resolvedTheme: theme } = useTheme()
+  const { theme } = useTheme()
   const language = useLanguage()
 
   if (provider.provider === 'langgenius/anthropic/anthropic') {

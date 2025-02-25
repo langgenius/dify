@@ -1,24 +1,24 @@
 import React, { type FC } from 'react'
-import { useTheme } from 'next-themes'
 import cn from '@/utils/classnames'
 import Tooltip from '@/app/components/base/tooltip'
+import { Theme } from '@/types/app'
 
-type BadgeWithTooltipProps = {
+type IconWithTooltipProps = {
   className?: string
   popupContent?: string
+  theme: Theme
   BadgeIconLight: React.ElementType
   BadgeIconDark: React.ElementType
 }
 
-const BadgeWithTooltip: FC<BadgeWithTooltipProps> = ({
+const IconWithTooltip: FC<IconWithTooltipProps> = ({
   className,
+  theme,
   popupContent,
   BadgeIconLight,
   BadgeIconDark,
 }) => {
-  const { resolvedTheme } = useTheme()
-
-  const isDark = resolvedTheme === 'dark'
+  const isDark = theme === Theme.dark
   const iconClassName = cn('w-5 h-5', className)
   const Icon = isDark ? BadgeIconDark : BadgeIconLight
 
@@ -34,4 +34,4 @@ const BadgeWithTooltip: FC<BadgeWithTooltipProps> = ({
   )
 }
 
-export default BadgeWithTooltip
+export default React.memo(IconWithTooltip)

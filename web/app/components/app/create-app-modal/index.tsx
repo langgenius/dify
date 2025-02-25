@@ -27,7 +27,7 @@ import { BubbleTextMod, ChatBot, ListSparkle, Logic } from '@/app/components/bas
 import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
 import { getRedirection } from '@/utils/app-redirection'
 import FullScreenModal from '@/app/components/base/fullscreen-modal'
-import { useTheme } from 'next-themes'
+import useTheme from '@/hooks/use-theme'
 
 type CreateAppProps = {
   onSuccess: () => void
@@ -347,7 +347,7 @@ function AppPreview({ mode }: { mode: AppMode }) {
 }
 
 function AppScreenShot({ mode, show }: { mode: AppMode; show: boolean }) {
-  const { resolvedTheme: theme } = useTheme()
+  const { theme } = useTheme()
   const modeToImageMap = {
     'chat': 'Chatbot',
     'advanced-chat': 'Chatflow',

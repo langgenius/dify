@@ -1,8 +1,9 @@
-import React, { type FC } from 'react'
+import type { FC } from 'react'
 import { useTranslation } from 'react-i18next'
-import BadgeWithTooltip from './badge-with-tooltip'
+import IconWithTooltip from './icon-with-tooltip'
 import VerifiedDark from '@/app/components/base/icons/src/public/plugins/VerifiedDark'
 import VerifiedLight from '@/app/components/base/icons/src/public/plugins/VerifiedLight'
+import useTheme from '@/hooks/use-theme'
 
 type VerifiedProps = {
   className?: string
@@ -12,10 +13,12 @@ const Verified: FC<VerifiedProps> = ({
   className,
 }) => {
   const { t } = useTranslation()
+  const { theme } = useTheme()
 
   return (
-    <BadgeWithTooltip
+    <IconWithTooltip
       className={className}
+      theme={theme}
       BadgeIconLight={VerifiedLight}
       BadgeIconDark={VerifiedDark}
       popupContent={t('plugin.marketplace.verifiedTip')}
@@ -23,4 +26,4 @@ const Verified: FC<VerifiedProps> = ({
   )
 }
 
-export default React.memo(Verified)
+export default Verified
