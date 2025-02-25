@@ -247,8 +247,7 @@ class ToolEngine:
                 )
             elif response.type == ToolInvokeMessage.MessageType.JSON:
                 result = json.dumps(
-                    cast(ToolInvokeMessage.JsonMessage, response.message).json_object,
-                    ensure_ascii=False
+                    cast(ToolInvokeMessage.JsonMessage, response.message).json_object, ensure_ascii=False
                 )
             else:
                 result += str(response.message)
