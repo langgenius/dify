@@ -52,6 +52,7 @@ class BasePluginManager:
         Make a request to the plugin daemon inner API.
         """
         url = URL(str(plugin_daemon_inner_api_baseurl)) / path
+        logging.info(f"plugin_daemon_uri: {url}")
         headers = headers or {}
         headers["X-Api-Key"] = plugin_daemon_inner_api_key
         headers["Accept-Encoding"] = "gzip, deflate, br"
@@ -136,7 +137,7 @@ class BasePluginManager:
         Make a request to the plugin daemon inner API and return the response as a model.
         """
         response = self._request(method, path, headers, data, params, files)
-        logging.info(f"response: {response.text}")
+        logging.info(f"response: {response}")
         json_response = response.json()
         if transformer:
             json_response = transformer(json_response)
