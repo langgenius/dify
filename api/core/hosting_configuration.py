@@ -52,12 +52,19 @@ class HostingConfiguration:
         if dify_config.EDITION != "CLOUD":
             return
 
-        self.provider_map[f"{DEFAULT_PLUGIN_ID}/azure_openai/azure_openai"] = self.init_azure_openai()
-        self.provider_map[f"{DEFAULT_PLUGIN_ID}/openai/openai"] = self.init_openai()
-        self.provider_map[f"{DEFAULT_PLUGIN_ID}/anthropic/anthropic"] = self.init_anthropic()
-        self.provider_map[f"{DEFAULT_PLUGIN_ID}/minimax/minimax"] = self.init_minimax()
-        self.provider_map[f"{DEFAULT_PLUGIN_ID}/spark/spark"] = self.init_spark()
-        self.provider_map[f"{DEFAULT_PLUGIN_ID}/zhipuai/zhipuai"] = self.init_zhipuai()
+        self.provider_map["azure_openai"] = self.init_azure_openai()
+        self.provider_map["openai"] = self.init_openai()
+        self.provider_map["anthropic"] = self.init_anthropic()
+        self.provider_map["minimax"] = self.init_minimax()
+        self.provider_map["spark"] = self.init_spark()
+        self.provider_map["zhipuai"] = self.init_zhipuai()
+        # NOTE: We need to use the new name format after the data migration.
+        # self.provider_map[f"{DEFAULT_PLUGIN_ID}/azure_openai/azure_openai"] = self.init_azure_openai()
+        # self.provider_map[f"{DEFAULT_PLUGIN_ID}/openai/openai"] = self.init_openai()
+        # self.provider_map[f"{DEFAULT_PLUGIN_ID}/anthropic/anthropic"] = self.init_anthropic()
+        # self.provider_map[f"{DEFAULT_PLUGIN_ID}/minimax/minimax"] = self.init_minimax()
+        # self.provider_map[f"{DEFAULT_PLUGIN_ID}/spark/spark"] = self.init_spark()
+        # self.provider_map[f"{DEFAULT_PLUGIN_ID}/zhipuai/zhipuai"] = self.init_zhipuai()
 
         self.moderation_config = self.init_moderation_config()
 
