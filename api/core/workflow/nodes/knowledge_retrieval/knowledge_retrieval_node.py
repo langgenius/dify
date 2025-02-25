@@ -56,7 +56,7 @@ class KnowledgeRetrievalNode(BaseNode[KnowledgeRetrievalNodeData]):
                 error="Query variable is not string type.",
             )
         query = variable.value
-        variables: Mapping[str, Any] = {"query": query}
+        variables: dict[str, Any] = {"query": query}
         if not query:
             return NodeRunResult(
                 status=WorkflowNodeExecutionStatus.FAILED, inputs=variables, error="Query is required."
