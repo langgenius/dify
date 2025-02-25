@@ -14,7 +14,7 @@ from core.model_runtime.model_providers.__base.large_language_model import Large
 from core.rag.datasource.retrieval_service import RetrievalService
 from core.rag.retrieval.dataset_retrieval import DatasetRetrieval
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
-from core.variables import StringSegment, ArrayStringSegment
+from core.variables import ArrayStringSegment, StringSegment
 from core.workflow.entities.node_entities import NodeRunResult
 from core.workflow.nodes.base import BaseNode
 from core.workflow.nodes.enums import NodeType
@@ -70,7 +70,7 @@ class KnowledgeRetrievalNode(BaseNode[KnowledgeRetrievalNodeData]):
                     inputs={},
                     error="Dataset Ids variable is not string array type.",
                 )
-            dataset_ids = variable.value
+            dataset_ids = dataset_ids_var.value
             variables = {"dataset_ids": dataset_ids}
             if not dataset_ids:
                 return NodeRunResult(
@@ -106,7 +106,8 @@ class KnowledgeRetrievalNode(BaseNode[KnowledgeRetrievalNodeData]):
         dataset_ids = node_data.dataset_ids
         if self.node_data.dynamic_dataset_enable:
             dataset_ids_var = self.graph_runtime_state.variable_pool.get(self.node_data.dataset_ids_variable_selector)
-            dataset_ids = dataset_ids_var.value
+            if isinstance(dataset_ids_var, ArrayStringSegment):
+                dataset_ids = dataset_ids_var.value
 
         # Subquery: Count the number of available documents for each dataset
         subquery = (
