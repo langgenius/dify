@@ -249,8 +249,8 @@ const formatItem = (
           outputSchema.push({
             variable: outputKey,
             type: output.type === 'array'
-              ? `Array[${output.items?.type.slice(0, 1).toLocaleUpperCase()}${output.items?.type.slice(1)}]`
-              : `${output.type.slice(0, 1).toLocaleUpperCase()}${output.type.slice(1)}`,
+              ? `array[${output.items?.type.slice(0, 1).toLocaleLowerCase()}${output.items?.type.slice(1)}]`
+              : `${output.type.slice(0, 1).toLocaleLowerCase()}${output.type.slice(1)}`,
             description: output.description,
           })
         })
