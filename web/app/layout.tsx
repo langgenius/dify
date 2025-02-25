@@ -55,6 +55,7 @@ const LocaleLayout = ({
             <TanstackQueryIniter>
               <ThemeProvider
                 attribute='data-theme'
+                forcedTheme='light'
                 defaultTheme='system'
                 enableSystem
                 disableTransitionOnChange
