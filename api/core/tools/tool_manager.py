@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING, Any, Union, cast
 from yarl import URL
 
 import contexts
-from core.plugin.entities.plugin import GenericProviderID, ToolProviderID
+from core.plugin.entities.plugin import ToolProviderID
 from core.plugin.manager.tool import PluginToolManager
 from core.tools.__base.tool_provider import ToolProviderController
 from core.tools.__base.tool_runtime import ToolRuntime
@@ -188,7 +188,7 @@ class ToolManager:
                 )
 
             if isinstance(provider_controller, PluginToolProviderController):
-                provider_id_entity = GenericProviderID(provider_id)
+                provider_id_entity = ToolProviderID(provider_id)
                 # get credentials
                 builtin_provider: BuiltinToolProvider | None = (
                     db.session.query(BuiltinToolProvider)
