@@ -5,7 +5,6 @@ on:
     branches:
       - "main"
       - "deploy/dev"
-      - "fix/plugin-race-condition"
   release:
     types: [published]
 
