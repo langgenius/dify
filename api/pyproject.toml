@@ -83,7 +83,6 @@ yarl = "~1.18.3"
 # Related transparent dependencies with pinned version
 # required by main implementations
 ############################################################
-opendal = "0.45.16"
 [tool.poetry.group.indirect.dependencies]
 kaleido = "0.2.1"
 rank-bm25 = "~0.2.2"
