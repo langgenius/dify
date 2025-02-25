@@ -5351,7 +5351,7 @@ version = "0.45.16"
 description = "Apache OpenDAL™ Python Binding"
 optional = false
 python-versions = ">=3.10"
-groups = ["main", "storage"]
+groups = ["storage"]
 markers = "python_version == \"3.11\" or python_version >= \"3.12\""
 files = [
     {file = "opendal-0.45.16-cp310-cp310-macosx_10_12_x86_64.macosx_11_0_arm64.macosx_10_12_universal2.whl", hash = "sha256:aa8d3bcf8466a489800df517bff40e5da107c11f88123b3063aa8c0238552548"},
