@@ -1,4 +1,5 @@
 from functools import wraps
+import logging
 from typing import Any
 
 from flask import current_app, g, has_request_context, request
@@ -53,6 +54,7 @@ def login_required(func):
 
     @wraps(func)
     def decorated_view(*args, **kwargs):
+        logging.info("login_required")
         auth_header = request.headers.get("Authorization")
         if dify_config.ADMIN_API_KEY_ENABLE:
             if auth_header:
