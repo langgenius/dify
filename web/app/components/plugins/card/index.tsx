@@ -73,8 +73,8 @@ const Card = ({
         <div className="ml-3 w-0 grow">
           <div className="flex items-center h-5">
             <Title title={getLocalizedText(label)} />
-            {isPartner && <Partner className='w-4 h-4 ml-0.5' />}
-            {verified && <Verified className='w-4 h-4 ml-0.5' />}
+            {isPartner && <Partner className='w-4 h-4 ml-0.5' text={t('plugin.marketplace.partnerTip')} />}
+            {verified && <Verified className='w-4 h-4 ml-0.5' text={t('plugin.marketplace.verifiedTip')} />}
             {titleLeft} {/* This can be version badge */}
           </div>
           <OrgInfo
