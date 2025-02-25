@@ -56,7 +56,7 @@ const LocaleLayout = ({
               <ThemeProvider
                 attribute='data-theme'
                 forcedTheme='light'
-                defaultTheme='system'
+                defaultTheme='light' // TODO: change to 'system' when dark mode ready
                 enableSystem
                 disableTransitionOnChange
               >
