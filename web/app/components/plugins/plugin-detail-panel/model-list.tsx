@@ -13,7 +13,7 @@ const ModelList = ({
   detail,
 }: Props) => {
   const { t } = useTranslation()
-  const { data: res } = useModelProviderModelList(`${detail.plugin_id}/${detail.name}`)
+  const { data: res } = useModelProviderModelList(`${detail.plugin_id}/${detail.name === 'gemini' ? 'google' : detail.name}`)
 
   if (!res)
     return null
