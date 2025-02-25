@@ -41,8 +41,12 @@ class HostedModerationConfig(BaseModel):
 
 
 class HostingConfiguration:
-    provider_map: dict[str, HostingProvider] = {}
+    provider_map: dict[str, HostingProvider]
     moderation_config: Optional[HostedModerationConfig] = None
+
+    def __init__(self) -> None:
+        self.provider_map = {}
+        self.moderation_config = None
 
     def init_app(self, app: Flask) -> None:
         if dify_config.EDITION != "CLOUD":

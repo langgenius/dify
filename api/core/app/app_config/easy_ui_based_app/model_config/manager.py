@@ -2,9 +2,9 @@ from collections.abc import Mapping
 from typing import Any
 
 from core.app.app_config.entities import ModelConfigEntity
-from core.entities import DEFAULT_PLUGIN_ID
 from core.model_runtime.entities.model_entities import ModelPropertyKey, ModelType
 from core.model_runtime.model_providers.model_provider_factory import ModelProviderFactory
+from core.plugin.entities.plugin import ModelProviderID
 from core.provider_manager import ProviderManager
 
 
@@ -61,9 +61,7 @@ class ModelConfigManager:
             raise ValueError(f"model.provider is required and must be in {str(model_provider_names)}")
 
         if "/" not in config["model"]["provider"]:
-            config["model"]["provider"] = (
-                f"{DEFAULT_PLUGIN_ID}/{config['model']['provider']}/{config['model']['provider']}"
-            )
+            config["model"]["provider"] = str(ModelProviderID(config["model"]["provider"]))
 
         if config["model"]["provider"] not in model_provider_names:
             raise ValueError(f"model.provider is required and must be in {str(model_provider_names)}")
