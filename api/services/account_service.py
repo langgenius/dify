@@ -406,6 +406,10 @@ class AccountService:
         return TokenPair(access_token=new_access_token, refresh_token=new_refresh_token)
 
     @staticmethod
+    def load_logged_in_account_by_email(*, email: str):
+        return AccountService.load_user_by_email(email)
+
+    @staticmethod
     def load_logged_in_account(*, account_id: str):
         return AccountService.load_user(account_id)
 
