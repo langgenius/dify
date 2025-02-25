@@ -1,5 +1,6 @@
 import io
 import logging
+import traceback
 
 from flask import request, send_file
 from flask_login import current_user  # type: ignore
@@ -282,6 +283,7 @@ class PluginFetchInstallTasksApi(Resource):
             raise ValueError(e)
         except Exception as e2:
             logging.error(f"error: {e2}")
+            print(traceback.format_exc())
             raise ValueError(e2)
 
 
