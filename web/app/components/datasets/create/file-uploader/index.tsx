@@ -243,7 +243,7 @@ const FileUploader = ({
   }, [handleDrop])
 
   return (
-    <div className="mb-5 max-w-[640px]">
+    <div className="mb-5 w-[640px]">
       {!hideUpload && (
         <input
           ref={fileUploader}
