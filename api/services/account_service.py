@@ -112,7 +112,8 @@ class AccountService:
 
                 RegisterService.invite_new_member(admin_user.current_tenant, email, language, role=role, inviter=admin_user, status=AccountStatus.ACTIVE)
                 account = db.session.query(Account).filter_by(email=email).first()
-        except Exception:
+        except Exception as e:
+            print(f"exception: {e}")
             account = db.session.query(Account).filter_by(email=email).first()
         
         return AccountService.load_user(account.id)
