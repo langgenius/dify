@@ -136,6 +136,7 @@ class BasePluginManager:
         Make a request to the plugin daemon inner API and return the response as a model.
         """
         response = self._request(method, path, headers, data, params, files)
+        logging.info(f"response: {response.text}")
         json_response = response.json()
         if transformer:
             json_response = transformer(json_response)
