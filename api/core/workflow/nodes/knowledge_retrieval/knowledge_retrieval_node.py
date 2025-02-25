@@ -71,7 +71,7 @@ class KnowledgeRetrievalNode(BaseNode[KnowledgeRetrievalNodeData]):
                     error="Dataset Ids variable is not string array type.",
                 )
             dataset_ids = dataset_ids_var.value
-            variables = {"dataset_ids": dataset_ids}
+            variables["dataset_ids"] = dataset_ids
             if not dataset_ids:
                 return NodeRunResult(
                     status=WorkflowNodeExecutionStatus.FAILED, inputs=variables, error="Dataset Ids is required."
@@ -107,7 +107,7 @@ class KnowledgeRetrievalNode(BaseNode[KnowledgeRetrievalNodeData]):
         if self.node_data.dynamic_dataset_enable:
             dataset_ids_var = self.graph_runtime_state.variable_pool.get(self.node_data.dataset_ids_variable_selector)
             if isinstance(dataset_ids_var, ArrayStringSegment):
-                dataset_ids = dataset_ids_var.value
+                dataset_ids = list(dataset_ids_var.value)
 
         # Subquery: Count the number of available documents for each dataset
         subquery = (
