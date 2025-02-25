@@ -23,8 +23,8 @@ model_credential_schema:
       en_US: Model Name
       zh_Hans: 模型名称
     placeholder:
-      en_US: Enter your model name
-      zh_Hans: 输入模型名称
+      en_US: Enter your model name, consistent with that in Ollama
+      zh_Hans: 输入模型名称，需要和Ollama中运行的模型名称一致
   credential_form_schemas:
     - variable: base_url
       label:
