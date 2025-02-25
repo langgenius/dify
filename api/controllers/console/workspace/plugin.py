@@ -1,4 +1,5 @@
 import io
+import logging
 
 from flask import request, send_file
 from flask_login import current_user  # type: ignore
@@ -262,21 +263,22 @@ class PluginFetchInstallTasksApi(Resource):
     @account_initialization_required
     @plugin_permission_required(debug_required=True)
     def get(self):
+        logging.info("PluginFetchInstallTasksApi")
         tenant_id = current_user.current_tenant_id
-        print(f"tenant_id: {tenant_id}")
+        logging.info(f"tenant_id: {tenant_id}")
 
         parser = reqparse.RequestParser()
         parser.add_argument("page", type=int, required=True, location="args")
         parser.add_argument("page_size", type=int, required=True, location="args")
         args = parser.parse_args()
-        print(f"args: {args}")
+        logging.info(f"args: {args}")
 
         try:
             return jsonable_encoder(
                 {"tasks": PluginService.fetch_install_tasks(tenant_id, args["page"], args["page_size"])}
             )
         except PluginDaemonClientSideError as e:
-            print(e)
+            logging.error(f"error: {e}")
             raise ValueError(e)
 
 
