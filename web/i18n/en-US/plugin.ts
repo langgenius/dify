@@ -194,8 +194,8 @@ const translation = {
       firstReleased: 'First Released',
     },
     viewMore: 'View more',
-    verifiedTip: 'This plugin is verified by Dify',
-    partnerTip: 'This plugin is developed by Dify partners',
+    verifiedTip: 'Verified by Dify',
+    partnerTip: 'Verified by a Dify partner',
   },
   task: {
     installing: 'Installing {{installingLength}} plugins, 0 done.',
