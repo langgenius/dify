@@ -6,7 +6,6 @@ from typing import Any, Optional, cast
 from sqlalchemy.exc import IntegrityError
 
 from configs import dify_config
-from core.entities import DEFAULT_PLUGIN_ID
 from core.entities.model_entities import DefaultModelEntity, DefaultModelProviderEntity
 from core.entities.provider_configuration import ProviderConfiguration, ProviderConfigurations, ProviderModelBundle
 from core.entities.provider_entities import (
@@ -370,11 +369,8 @@ class ProviderManager:
 
         provider_name_to_provider_records_dict = defaultdict(list)
         for provider in providers:
-            if provider.provider_name.startswith(DEFAULT_PLUGIN_ID):
-                provider_name = provider.provider_name
-            else:
-                provider_name = f"{DEFAULT_PLUGIN_ID}/{provider.provider_name}/{provider.provider_name}"
-            provider_name_to_provider_records_dict[provider_name].append(provider)
+            # TODO: Use provider name with prefix after the data migration
+            provider_name_to_provider_records_dict[str(ModelProviderID(provider.provider_name))].append(provider)
 
         return provider_name_to_provider_records_dict
 
