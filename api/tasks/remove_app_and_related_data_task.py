@@ -20,7 +20,6 @@ from models.model import (
     Message,
     MessageAgentThought,
     MessageAnnotation,
-    MessageChain,
     MessageFeedback,
     MessageFile,
     RecommendedApp,
@@ -245,7 +244,6 @@ def _delete_app_messages(tenant_id: str, app_id: str):
         db.session.query(MessageAnnotation).filter(MessageAnnotation.message_id == message_id).delete(
             synchronize_session=False
         )
-        db.session.query(MessageChain).filter(MessageChain.message_id == message_id).delete(synchronize_session=False)
         db.session.query(MessageAgentThought).filter(MessageAgentThought.message_id == message_id).delete(
             synchronize_session=False
         )

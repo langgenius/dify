@@ -13,7 +13,6 @@ from models.model import (
     Message,
     MessageAgentThought,
     MessageAnnotation,
-    MessageChain,
     MessageFeedback,
     MessageFile,
 )
@@ -61,9 +60,6 @@ def clean_messages():
                     synchronize_session=False
                 )
                 db.session.query(MessageAnnotation).filter(MessageAnnotation.message_id == message.id).delete(
-                    synchronize_session=False
-                )
-                db.session.query(MessageChain).filter(MessageChain.message_id == message.id).delete(
                     synchronize_session=False
                 )
                 db.session.query(MessageAgentThought).filter(MessageAgentThought.message_id == message.id).delete(
