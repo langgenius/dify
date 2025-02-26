@@ -6,7 +6,10 @@ from core.model_manager import ModelInstance
 from core.model_runtime.entities.message_entities import PromptMessage
 from core.model_runtime.entities.model_entities import ModelPropertyKey
 from core.prompt.entities.advanced_prompt_entities import MemoryConfig
-
+import re
+def clean_answer(answer):
+    cleaned_answer = re.sub(r'<details.*?</details>', '', answer, flags=re.DOTALL)
+    return cleaned_answer
 
 class PromptTransform:
     def _append_chat_histories(
@@ -18,6 +21,9 @@ class PromptTransform:
     ) -> list[PromptMessage]:
         rest_tokens = self._calculate_rest_token(prompt_messages, model_config)
         histories = self._get_history_messages_list_from_memory(memory, memory_config, rest_tokens)
+        for history in histories:
+            ## delete reasoning_content in history for next conservation
+            history.content=clean_answer(history.content)
         prompt_messages.extend(histories)
 
         return prompt_messages
