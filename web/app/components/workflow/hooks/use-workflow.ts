@@ -58,6 +58,7 @@ import I18n from '@/context/i18n'
 import { CollectionType } from '@/app/components/tools/types'
 import { CUSTOM_ITERATION_START_NODE } from '@/app/components/workflow/nodes/iteration-start/constants'
 import { useWorkflowConfig } from '@/service/use-workflow'
+import { canFindTool } from '@/utils'
 const basePath = process.env.NEXT_PUBLIC_BASE_PATH || ''
 
 export const useIsChatMode = () => {
@@ -490,7 +491,6 @@ export const useWorkflowInit = () => {
           return acc
         }, {} as Record<string, string>),
         environmentVariables: res.environment_variables?.map(env => env.value_type === 'secret' ? { ...env, value: '[__HIDDEN__]' } : env) || [],
-        // #TODO chatVar sync#
         conversationVariables: res.conversation_variables || [],
       })
       setSyncWorkflowDraftHash(res.hash)
@@ -615,7 +615,7 @@ export const useToolIcon = (data: Node['data']) => {
         targetTools = customTools
       else
         targetTools = workflowTools
-      return targetTools.find(toolWithProvider => toolWithProvider.id === data.provider_id)?.icon
+      return targetTools.find(toolWithProvider => canFindTool(toolWithProvider.id, data.provider_id))?.icon
     }
   }, [data, buildInTools, customTools, workflowTools])
 

@@ -51,6 +51,9 @@ const translation = {
     submit: 'जमा करें',
     imageCopied: 'कॉपी की गई छवि',
     deleteApp: 'ऐप हटाएं',
+    in: 'में',
+    copied: 'कॉपी किया गया',
+    viewDetails: 'विवरण देखें',
   },
   errorMsg: {
     fieldRequired: '{{field}} आवश्यक है',
@@ -130,6 +133,8 @@ const translation = {
       Custom: 'कस्टम',
     },
     addMoreModel: 'अधिक मॉडल जोड़ने के लिए सेटिंग्स पर जाएं',
+    capabilities: 'मल्टीमोडल क्षमताएँ',
+    settingsLink: 'मॉडल प्रदाता सेटिंग्स',
   },
   menus: {
     status: 'बीटा',
@@ -144,6 +149,7 @@ const translation = {
     newApp: 'नया ऐप',
     newDataset: 'ज्ञान बनाएं',
     tools: 'उपकरण',
+    exploreMarketplace: 'मार्केटप्लेस का अन्वेषण करें',
   },
   userProfile: {
     settings: 'सेटिंग्स',
@@ -169,6 +175,7 @@ const translation = {
     dataSource: 'डेटा स्रोत',
     plugin: 'प्लगइन्स',
     apiBasedExtension: 'API विस्तार',
+    generalGroup: 'सामान्य',
   },
   account: {
     avatar: 'अवतार',
@@ -419,6 +426,12 @@ const translation = {
       'डिफ़ॉल्ट रूप से, लोड बैलेंसिंग राउंड-रॉबिन रणनीति का उपयोग करता है। यदि रेट लिमिटिंग ट्रिगर हो जाती है, तो 1 मिनट का कूलडाउन पीरियड लागू होगा।',
     upgradeForLoadBalancing:
       'लोड बैलेंसिंग सक्षम करने के लिए अपनी योजना अपग्रेड करें।',
+    discoverMore: 'और अधिक खोजें',
+    installProvider: 'मॉडल प्रदाताओं को स्थापित करें',
+    configureTip: 'एपीआई-कुंजी सेट करें या उपयोग के लिए मॉडल जोड़ें',
+    toBeConfigured: 'कॉन्फ़िगर किया जाना है',
+    emptyProviderTitle: 'मॉडल प्रदाता सेट नहीं किया गया',
+    emptyProviderTip: 'कृपया पहले एक मॉडल प्रदाता स्थापित करें।',
   },
   dataSource: {
     add: 'डेटा स्रोत जोड़ें',
@@ -550,6 +563,8 @@ const translation = {
       hitScore: 'पुनः प्राप्ति स्कोर:',
     },
     inputPlaceholder: 'बॉट से बात करें',
+    thought: 'विचार',
+    thinking: 'सोचते हुए...',
   },
   promptEditor: {
     placeholder:

@@ -19,8 +19,8 @@ class CotChatAgentRunner(CotAgentRunner):
         """
         Organize system prompt
         """
-        if not self.app_config.agent:
-            raise ValueError("Agent configuration is not set")
+        assert self.app_config.agent
+        assert self.app_config.agent.prompt
 
         prompt_entity = self.app_config.agent.prompt
         if not prompt_entity:
@@ -83,8 +83,10 @@ class CotChatAgentRunner(CotAgentRunner):
             assistant_message.content = ""  # FIXME: type check tell mypy that assistant_message.content is str
             for unit in agent_scratchpad:
                 if unit.is_final():
+                    assert isinstance(assistant_message.content, str)
                     assistant_message.content += f"Final Answer: {unit.agent_response}"
                 else:
+                    assert isinstance(assistant_message.content, str)
                     assistant_message.content += f"Thought: {unit.thought}\n\n"
                     if unit.action_str:
                         assistant_message.content += f"Action: {unit.action_str}\n\n"
