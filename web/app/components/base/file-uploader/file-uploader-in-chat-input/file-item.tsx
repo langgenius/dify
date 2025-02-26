@@ -98,8 +98,12 @@ const FileItem = ({
                 size='m'
                 className='hidden group-hover/file-item:flex absolute -right-1 -top-1'
                 onClick={(e) => {
+                  let filename = name
+                  if (tmp_preview_url.indexOf('.bin')) {
+                    filename = `${name.split('.')[0]}.${ext}`
+                  }
                   e.stopPropagation()
-                  downloadFile(tmp_preview_url || '', name)
+                  downloadFile(tmp_preview_url || '', filename)
                 }}
               >
                 <RiDownloadLine className='w-3.5 h-3.5 text-text-tertiary' />
