@@ -31,9 +31,9 @@ class ProviderModelCurrentlyNotSupportError(BaseHTTPException):
     code = 400
 
 
-class InvalidConversationIDError(BaseHTTPException):
-    error_code = "invalid_conversation_id"
-    description = "The conversation is invalid. Please check validity of conversation id."
+class ConversationCompletedError(BaseHTTPException):
+    error_code = "conversation_completed"
+    description = "The conversation has ended. Please start a new conversation."
     code = 400
 
 
