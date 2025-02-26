@@ -239,6 +239,7 @@ class DatasetRetrieval:
         model_config: ModelConfigWithCredentialsEntity,
         planning_strategy: PlanningStrategy,
         message_id: Optional[str] = None,
+        metadata_filter_document_ids: Optional[dict[str, list[str]]] = None,
     ):
         tools = []
         for dataset in available_datasets:
@@ -293,6 +294,11 @@ class DatasetRetrieval:
                             document.metadata["dataset_name"] = dataset.name
                         results.append(document)
                 else:
+                    document_ids_filter = None
+                    if metadata_filter_document_ids:
+                        document_ids = metadata_filter_document_ids.get(dataset.id, [])
+                        if document_ids:
+                            document_ids_filter = document_ids
                     retrieval_model_config = dataset.retrieval_model or default_retrieval_model
 
                     # get top k
@@ -324,6 +330,7 @@ class DatasetRetrieval:
                             reranking_model=reranking_model,
                             reranking_mode=retrieval_model_config.get("reranking_mode", "reranking_model"),
                             weights=retrieval_model_config.get("weights", None),
+                            document_ids_filter=document_ids_filter,
                         )
                 self._on_query(query, [dataset_id], app_id, user_from, user_id)
 

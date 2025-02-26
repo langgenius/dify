@@ -326,6 +326,14 @@ class TidbOnQdrantVector(BaseVector):
                 ),
             ],
         )
+        document_ids_filter = kwargs.get("document_ids_filter")
+        if document_ids_filter:
+            filter.must.append(
+                models.FieldCondition(
+                    key="metadata.doc_id",
+                    match=models.MatchAny(any=document_ids_filter),
+                )
+            )
         results = self._client.search(
             collection_name=self._collection_name,
             query_vector=query_vector,
@@ -368,6 +376,14 @@ class TidbOnQdrantVector(BaseVector):
                 )
             ]
         )
+        document_ids_filter = kwargs.get("document_ids_filter")
+        if document_ids_filter:
+            scroll_filter.must.append(
+                models.FieldCondition(
+                    key="metadata.doc_id",
+                    match=models.MatchAny(any=document_ids_filter),
+                )
+            )
         response = self._client.scroll(
             collection_name=self._collection_name,
             scroll_filter=scroll_filter,

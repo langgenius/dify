@@ -130,9 +130,30 @@ class MetadataArgs(BaseModel):
     type: Literal["string", "number", "time"]
     name: str
 
-class MetadataValue(BaseModel):
+
+class MetadataUpdateArgs(BaseModel):
     name: str
     value: str
 
+
 class MetadataValueUpdateArgs(BaseModel):
-    fields: list[MetadataValue]
+    fields: list[MetadataUpdateArgs]
+
+
+class MetadataDetail(BaseModel):
+    id: str
+    name: str
+    value: str
+
+
+class DocumentMetadataOperation(BaseModel):
+    document_id: str
+    metadata_list: list[MetadataDetail]
+
+
+class MetadataOperationData(BaseModel):
+    """
+    Metadata operation data
+    """
+
+    operation_data: list[DocumentMetadataOperation]

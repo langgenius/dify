@@ -155,10 +155,16 @@ class PGVector(BaseVector):
         :return: List of Documents that are nearest to the query vector.
         """
         top_k = kwargs.get("top_k", 4)
+        document_ids_filter = kwargs.get("document_ids_filter")
+        where_clause = ""
+        if document_ids_filter:
+            doc_ids = ", ".join(f"'{id}'" for id in document_ids_filter)
+            where_clause = f" WHERE metadata->>'doc_id' in ({doc_ids}) "
 
         with self._get_cursor() as cur:
             cur.execute(
                 f"SELECT meta, text, embedding <=> %s AS distance FROM {self.table_name}"
+                f" {where_clause}"
                 f" ORDER BY distance LIMIT {top_k}",
                 (json.dumps(query_vector),),
             )
@@ -176,10 +182,16 @@ class PGVector(BaseVector):
         top_k = kwargs.get("top_k", 5)
 
         with self._get_cursor() as cur:
+            document_ids_filter = kwargs.get("document_ids_filter")
+            where_clause = ""
+            if document_ids_filter:
+                doc_ids = ", ".join(f"'{id}'" for id in document_ids_filter)
+                where_clause = f" AND metadata->>'doc_id' in ({doc_ids}) "
             cur.execute(
                 f"""SELECT meta, text, ts_rank(to_tsvector(coalesce(text, '')), plainto_tsquery(%s)) AS score
                 FROM {self.table_name}
                 WHERE to_tsvector(text) @@ plainto_tsquery(%s)
+                {where_clause}
                 ORDER BY score DESC
                 LIMIT {top_k}""",
                 # f"'{query}'" is required in order to account for whitespace in query

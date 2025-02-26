@@ -198,6 +198,19 @@ class Dataset(db.Model):  # type: ignore[name-defined]
             "external_knowledge_api_endpoint": json.loads(external_knowledge_api.settings).get("endpoint", ""),
         }
 
+    @property
+    def doc_metadata(self):
+        dataset_metadatas = db.session.query(DatasetMetadata).filter(DatasetMetadata.dataset_id == self.id).all()
+
+        return [
+            {
+                "id": dataset_metadata.id,
+                "name": dataset_metadata.name,
+                "type": dataset_metadata.type,
+            }
+            for dataset_metadata in dataset_metadatas
+        ]
+
     @staticmethod
     def gen_collection_name_by_id(dataset_id: str) -> str:
         normalized_dataset_id = dataset_id.replace("-", "_")
@@ -251,6 +264,7 @@ class Document(db.Model):  # type: ignore[name-defined]
         db.Index("document_dataset_id_idx", "dataset_id"),
         db.Index("document_is_paused_idx", "is_paused"),
         db.Index("document_tenant_idx", "tenant_id"),
+        db.Index("document_metadata_idx", "doc_metadata", postgresql_using="gin"),
     )
 
     # initial fields
@@ -307,7 +321,7 @@ class Document(db.Model):  # type: ignore[name-defined]
     archived_at = db.Column(db.DateTime, nullable=True)
     updated_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
     doc_type = db.Column(db.String(40), nullable=True)
-    doc_metadata = db.Column(db.JSON, nullable=True)
+    doc_metadata = db.Column(JSONB, nullable=True)
     doc_form = db.Column(db.String(255), nullable=False, server_default=db.text("'text_model'::character varying"))
     doc_language = db.Column(db.String(255), nullable=True)
 
@@ -410,6 +424,28 @@ class Document(db.Model):  # type: ignore[name-defined]
     def last_update_date(self):
         return self.updated_at
 
+    @property
+    def doc_metadata_details(self):
+        if self.doc_metadata:
+            document_metadatas = (
+                db.session.query(DatasetMetadata)
+                .join(DatasetMetadataBinding, DatasetMetadataBinding.metadata_id == DatasetMetadata.id)
+                .filter(
+                    DatasetMetadataBinding.dataset_id == self.dataset_id, DatasetMetadataBinding.document_id == self.id
+                )
+                .all()
+            )
+            metadata_list = []
+            for metadata in document_metadatas:
+                metadata_dict = {
+                    "id": metadata.id,
+                    "name": metadata.name,
+                    "type": metadata.type,
+                    "value": self.doc_metadata.get(metadata.type),
+                }
+                metadata_list.append(metadata_dict)
+            return metadata_list
+        return None
 
     def process_rule_dict(self):
         if self.dataset_process_rule_id:

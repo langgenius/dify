@@ -88,9 +88,9 @@ class DatasetDocumentSegmentListApi(Resource):
 
         if args["enabled"].lower() != "all":
             if args["enabled"].lower() == "true":
-                query = query.filter(DocumentSegment.enabled == True)  # noqa: E712
+                query = query.filter(DocumentSegment.enabled == True)
             elif args["enabled"].lower() == "false":
-                query = query.filter(DocumentSegment.enabled == False)  # noqa: E712
+                query = query.filter(DocumentSegment.enabled == False)
 
         segments = query.paginate(page=page, per_page=limit, max_per_page=100, error_out=False)
 

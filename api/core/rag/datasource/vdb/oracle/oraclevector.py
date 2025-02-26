@@ -185,10 +185,15 @@ class OracleVector(BaseVector):
         :return: List of Documents that are nearest to the query vector.
         """
         top_k = kwargs.get("top_k", 4)
+        document_ids_filter = kwargs.get("document_ids_filter")
+        where_clause = ""
+        if document_ids_filter:
+            doc_ids = ", ".join(f"'{id}'" for id in document_ids_filter)
+            where_clause = f"WHERE metadata->>'doc_id' in ({doc_ids})"
         with self._get_cursor() as cur:
             cur.execute(
                 f"SELECT meta, text, vector_distance(embedding,:1) AS distance FROM {self.table_name}"
-                f" ORDER BY distance fetch first {top_k} rows only",
+                f" {where_clause} ORDER BY distance fetch first {top_k} rows only",
                 [numpy.array(query_vector)],
             )
             docs = []
@@ -241,9 +246,15 @@ class OracleVector(BaseVector):
                     if token not in stop_words:
                         entities.append(token)
             with self._get_cursor() as cur:
+                document_ids_filter = kwargs.get("document_ids_filter")
+                where_clause = ""
+                if document_ids_filter:
+                    doc_ids = ", ".join(f"'{id}'" for id in document_ids_filter)
+                    where_clause = f" AND metadata->>'doc_id' in ({doc_ids}) "
                 cur.execute(
                     f"select meta, text, embedding FROM {self.table_name}"
-                    f" WHERE CONTAINS(text, :1, 1) > 0 order by score(1) desc fetch first {top_k} rows only",
+                    f"WHERE CONTAINS(text, :1, 1) > 0 {where_clause} "
+                    f"order by score(1) desc fetch first {top_k} rows only",
                     [" ACCUM ".join(entities)],
                 )
                 docs = []

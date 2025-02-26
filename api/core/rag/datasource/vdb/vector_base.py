@@ -48,7 +48,7 @@ class BaseVector(ABC):
     @abstractmethod
     def delete(self) -> None:
         raise NotImplementedError
-    
+
     @abstractmethod
     def update_metadata(self, document_id: str, metadata: dict) -> None:
         raise NotImplementedError

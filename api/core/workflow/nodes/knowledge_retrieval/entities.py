@@ -1,8 +1,10 @@
+from collections.abc import Sequence
 from typing import Any, Literal, Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from core.workflow.nodes.base import BaseNodeData
+from core.workflow.nodes.llm.entities import VisionConfig
 
 
 class RerankingModelConfig(BaseModel):
@@ -73,11 +75,44 @@ class SingleRetrievalConfig(BaseModel):
     model: ModelConfig
 
 
+SupportedComparisonOperator = Literal[
+    # for string or array
+    "contains",
+    "not contains",
+    "starts with",
+    "ends with",
+    "is",
+    "is not",
+    "empty",
+    "is not empty",
+    # for number
+    "=",
+    "≠",
+    ">",
+    "<",
+    "≥",
+    "≤",
+    # for time
+    "before",
+    "after",
+]
+
+
+class Condition(BaseModel):
+    """
+    Conditon detail
+    """
+
+    metadata_name: str
+    comparison_operator: SupportedComparisonOperator
+    value: str | Sequence[str] | None = None
+
+
 class MetadataFilteringCondition(BaseModel):
     """
     Metadata Filtering Condition.
     """
-    
+
     logical_operator: Optional[Literal["and", "or"]] = "and"
     conditions: Optional[list[Condition]] = Field(default=None, deprecated=True)
 
@@ -93,5 +128,7 @@ class KnowledgeRetrievalNodeData(BaseNodeData):
     retrieval_mode: Literal["single", "multiple"]
     multiple_retrieval_config: Optional[MultipleRetrievalConfig] = None
     single_retrieval_config: Optional[SingleRetrievalConfig] = None
-    metadata_filtering_mode: Optional[Literal["disabled", "automatic", "manual"]]  = "disabled"
-    metadata_filtering_conditions: Optional[dict[str, Any]] = None
+    metadata_filtering_mode: Optional[Literal["disabled", "automatic", "manual"]] = "disabled"
+    metadata_model_config: Optional[ModelConfig] = None
+    metadata_filtering_conditions: Optional[MetadataFilteringCondition] = None
+    vision: VisionConfig = Field(default_factory=VisionConfig)

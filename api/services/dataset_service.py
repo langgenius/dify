@@ -585,28 +585,43 @@ class DocumentService:
 
     @staticmethod
     def get_document_by_ids(document_ids: list[str]) -> list[Document]:
-        documents = db.session.query(Document).filter(Document.id.in_(document_ids),
-                                                      Document.enabled == True,
-                                                      Document.indexing_status == "completed",
-                                                      Document.archived == False,
-                                                      ).all()
+        documents = (
+            db.session.query(Document)
+            .filter(
+                Document.id.in_(document_ids),
+                Document.enabled == True,
+                Document.indexing_status == "completed",
+                Document.archived == False,
+            )
+            .all()
+        )
         return documents
 
     @staticmethod
     def get_document_by_dataset_id(dataset_id: str) -> list[Document]:
-        documents = db.session.query(Document).filter(Document.dataset_id == dataset_id, 
-                                                      Document.enabled == True,
-                                                      ).all()
+        documents = (
+            db.session.query(Document)
+            .filter(
+                Document.dataset_id == dataset_id,
+                Document.enabled == True,
+            )
+            .all()
+        )
 
         return documents
-    
+
     @staticmethod
     def get_working_documents_by_dataset_id(dataset_id: str) -> list[Document]:
-        documents = db.session.query(Document).filter(Document.dataset_id == dataset_id, 
-                                                      Document.enabled == True,
-                                                      Document.indexing_status == "completed",
-                                                      Document.archived == False,
-                                                      ).all()
+        documents = (
+            db.session.query(Document)
+            .filter(
+                Document.dataset_id == dataset_id,
+                Document.enabled == True,
+                Document.indexing_status == "completed",
+                Document.archived == False,
+            )
+            .all()
+        )
 
         return documents
 
@@ -688,7 +703,7 @@ class DocumentService:
 
         if document.tenant_id != current_user.current_tenant_id:
             raise ValueError("No permission.")
-        
+
         if dataset.built_in_field_enabled:
             if document.doc_metadata:
                 document.doc_metadata[BuiltInField.document_name] = name
@@ -1097,7 +1112,9 @@ class DocumentService:
                 BuiltInField.document_name: name,
                 BuiltInField.uploader: account.name,
                 BuiltInField.upload_date: datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%d %H:%M:%S"),
-                BuiltInField.last_update_date: datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%d %H:%M:%S"),
+                BuiltInField.last_update_date: datetime.datetime.now(datetime.timezone.utc).strftime(
+                    "%Y-%m-%d %H:%M:%S"
+                ),
                 BuiltInField.source: data_source_type,
             }
         if metadata is not None:

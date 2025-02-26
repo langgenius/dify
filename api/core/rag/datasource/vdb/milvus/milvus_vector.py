@@ -218,12 +218,18 @@ class MilvusVector(BaseVector):
         """
         Search for documents by vector similarity.
         """
+        document_ids_filter = kwargs.get("document_ids_filter")
+        filter = ""
+        if document_ids_filter:
+            doc_ids = ", ".join(f"'{id}'" for id in document_ids_filter)
+            filter = f'metadata["doc_id"] in ({doc_ids})'
         results = self._client.search(
             collection_name=self._collection_name,
             data=[query_vector],
             anns_field=Field.VECTOR.value,
             limit=kwargs.get("top_k", 4),
             output_fields=[Field.CONTENT_KEY.value, Field.METADATA_KEY.value],
+            filter=filter,
         )
 
         return self._process_search_results(
@@ -239,6 +245,11 @@ class MilvusVector(BaseVector):
         if not self._hybrid_search_enabled or not self.field_exists(Field.SPARSE_VECTOR.value):
             logger.warning("Full-text search is not supported in current Milvus version (requires >= 2.5.0)")
             return []
+        document_ids_filter = kwargs.get("document_ids_filter")
+        filter = ""
+        if document_ids_filter:
+            doc_ids = ", ".join(f"'{id}'" for id in document_ids_filter)
+            filter = f'metadata["doc_id"] in ({doc_ids})'
 
         results = self._client.search(
             collection_name=self._collection_name,
@@ -246,6 +257,7 @@ class MilvusVector(BaseVector):
             anns_field=Field.SPARSE_VECTOR.value,
             limit=kwargs.get("top_k", 4),
             output_fields=[Field.CONTENT_KEY.value, Field.METADATA_KEY.value],
+            filter=filter,
         )
 
         return self._process_search_results(

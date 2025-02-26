@@ -168,16 +168,16 @@ class WeaviateVector(BaseVector):
         # check whether the index already exists
         schema = self._default_schema(self._collection_name)
         if self._client.schema.contains(schema):
-            for uuid in ids:
-                try:
-                    self._client.data_object.delete(
-                        class_name=self._collection_name,
-                        uuid=uuid,
-                    )
-                except weaviate.UnexpectedStatusCodeException as e:
-                    # tolerate not found error
-                    if e.status_code != 404:
-                        raise e
+            try:
+                self._client.batch.delete_objects(
+                    class_name=self._collection_name,
+                    where={"operator": "ContainsAny", "path": ["id"], "valueTextArray": ids},
+                    output="minimal",
+                )
+            except weaviate.UnexpectedStatusCodeException as e:
+                # tolerate not found error
+                if e.status_code != 404:
+                    raise e
 
     def search_by_vector(self, query_vector: list[float], **kwargs: Any) -> list[Document]:
         """Look up similar documents by embedding vector in Weaviate."""
@@ -187,8 +187,10 @@ class WeaviateVector(BaseVector):
         query_obj = self._client.query.get(collection_name, properties)
 
         vector = {"vector": query_vector}
-        if kwargs.get("where_filter"):
-            query_obj = query_obj.with_where(kwargs.get("where_filter"))
+        document_ids_filter = kwargs.get("document_ids_filter")
+        if document_ids_filter:
+            where_filter = {"operator": "ContainsAny", "path": ["doc_id"], "valueTextArray": document_ids_filter}
+            query_obj = query_obj.with_where(where_filter)
         result = (
             query_obj.with_near_vector(vector)
             .with_limit(kwargs.get("top_k", 4))
@@ -233,8 +235,10 @@ class WeaviateVector(BaseVector):
         if kwargs.get("search_distance"):
             content["certainty"] = kwargs.get("search_distance")
         query_obj = self._client.query.get(collection_name, properties)
-        if kwargs.get("where_filter"):
-            query_obj = query_obj.with_where(kwargs.get("where_filter"))
+        document_ids_filter = kwargs.get("document_ids_filter")
+        if document_ids_filter:
+            where_filter = {"operator": "ContainsAny", "path": ["doc_id"], "valueTextArray": document_ids_filter}
+            query_obj = query_obj.with_where(where_filter)
         query_obj = query_obj.with_additional(["vector"])
         properties = ["text"]
         result = query_obj.with_bm25(query=query, properties=properties).with_limit(kwargs.get("top_k", 4)).do()
