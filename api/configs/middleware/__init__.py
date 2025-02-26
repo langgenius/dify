@@ -167,8 +167,8 @@ class DatabaseConfig(BaseSettings):
         default=False,
     )
 
-    RETRIEVAL_SERVICE_WORKER: NonNegativeInt = Field(
-        description="If True, enables the retrieval service worker.",
+    RETRIEVAL_SERVICE_EXECUTORS: NonNegativeInt = Field(
+        description="Number of processes for the retrieval service, default to CPU cores.",
         default=os.cpu_count(),
     )
 

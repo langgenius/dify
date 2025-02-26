@@ -7,7 +7,7 @@ import LoadingAnim from '@/app/components/base/chat/chat/loading-anim'
 import StatusContainer from '@/app/components/workflow/run/status-container'
 import { FileList } from '@/app/components/base/file-uploader'
 
-type ResultTextProps = {
+interface ResultTextProps {
   isRunning?: boolean
   outputs?: any
   error?: string

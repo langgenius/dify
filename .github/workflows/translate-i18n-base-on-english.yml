@@ -39,11 +39,11 @@ jobs:
 
       - name: Install dependencies
         if: env.FILES_CHANGED == 'true'
-        run: yarn install --frozen-lockfile
+        run: pnpm install --frozen-lockfile
 
       - name: Run npm script
         if: env.FILES_CHANGED == 'true'
-        run: npm run auto-gen-i18n
+        run: pnpm run auto-gen-i18n
 
       - name: Create Pull Request
         if: env.FILES_CHANGED == 'true'

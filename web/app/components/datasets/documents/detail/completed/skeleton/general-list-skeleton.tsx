@@ -8,7 +8,7 @@ import {
 import Checkbox from '@/app/components/base/checkbox'
 import Divider from '@/app/components/base/divider'
 
-const CardSkelton = React.memo(() => {
+export const CardSkelton = React.memo(() => {
   return (
     <SkeletonContainer className='p-1 pb-2 gap-y-0'>
       <SkeletonContainer className='px-2 pt-1.5 gap-y-0.5'>
@@ -50,7 +50,7 @@ const GeneralListSkeleton = () => {
   return (
     <div className='relative flex flex-col grow overflow-y-hidden z-10'>
       <div className='absolute top-0 left-0 w-full h-full bg-dataset-chunk-list-mask-bg z-20' />
-      {[...Array(10)].map((_, index) => {
+      {[...Array.from({ length: 10 })].map((_, index) => {
         return (
           <div key={index} className='flex items-start gap-x-2'>
             <Checkbox

@@ -302,3 +302,7 @@ def _get_file_type_by_mimetype(mime_type: str) -> FileType | None:
     else:
         file_type = FileType.CUSTOM
     return file_type
+
+
+def get_file_type_by_mime_type(mime_type: str) -> FileType:
+    return _get_file_type_by_mimetype(mime_type) or FileType.CUSTOM

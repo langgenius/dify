@@ -68,12 +68,15 @@ export const ThinkBlock = ({ children, ...props }: any) => {
   const displayContent = removeEndThink(children)
   const { t } = useTranslation()
 
+  if (!(props['data-think'] ?? false))
+    return (<details {...props}>{children}</details>)
+
   return (
     <details {...(!isComplete && { open: true })} className="group">
       <summary className="text-gray-500 font-bold list-none pl-2 flex items-center cursor-pointer select-none whitespace-nowrap">
-        <div className="flex-shrink-0 flex items-center">
+        <div className="shrink-0 flex items-center">
           <svg
-            className="w-3 h-3 mr-2 transform transition-transform duration-500 group-open:rotate-90"
+            className="w-3 h-3 mr-2 transition-transform duration-500 group-open:rotate-90"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"

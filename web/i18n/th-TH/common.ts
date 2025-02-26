@@ -51,6 +51,9 @@ const translation = {
     submit: 'ส่ง',
     imageCopied: 'ภาพที่คัดลอก',
     deleteApp: 'ลบแอพ',
+    copied: 'คัด ลอก',
+    viewDetails: 'ดูรายละเอียด',
+    in: 'ใน',
   },
   errorMsg: {
     fieldRequired: '{{field}} เป็นสิ่งจําเป็น',
@@ -122,6 +125,8 @@ const translation = {
       Custom: 'ธรรมเนียม',
     },
     addMoreModel: 'ไปที่การตั้งค่าเพื่อเพิ่มรุ่นเพิ่มเติม',
+    settingsLink: 'การตั้งค่าผู้ให้บริการโมเดล',
+    capabilities: 'ความสามารถหลายรูปแบบ',
   },
   menus: {
     status: 'Beta',
@@ -134,6 +139,7 @@ const translation = {
     newApp: 'แอพใหม่',
     newDataset: 'สร้างความรู้',
     tools: 'เครื่อง มือ',
+    exploreMarketplace: 'สํารวจ Marketplace',
   },
   userProfile: {
     settings: 'การตั้งค่า',
@@ -159,6 +165,7 @@ const translation = {
     dataSource: 'แหล่งข้อมูล',
     plugin: 'ปลั๊กอิน',
     apiBasedExtension: 'ส่วนขยาย API',
+    generalGroup: 'ทั่วไป',
   },
   account: {
     account: 'บัญชี',
@@ -398,6 +405,12 @@ const translation = {
     loadBalancingLeastKeyWarning: 'หากต้องการเปิดใช้งานการปรับสมดุลโหลด ต้องเปิดใช้งานคีย์อย่างน้อย 2 ปุ่ม',
     loadBalancingInfo: 'ตามค่าเริ่มต้น การปรับสมดุลภาระงานจะใช้กลยุทธ์แบบ Round-robin หากเปิดใช้งานการจํากัดอัตรา จะมีการใช้ระยะเวลาคูลดาวน์ 1 นาที',
     upgradeForLoadBalancing: 'อัปเกรดแผนของคุณเพื่อเปิดใช้งานการปรับสมดุลโหลด',
+    emptyProviderTip: 'โปรดติดตั้งผู้ให้บริการโมเดลก่อน',
+    discoverMore: 'ดูเพิ่มเติมใน',
+    emptyProviderTitle: 'ไม่ได้ตั้งค่าผู้ให้บริการโมเดล',
+    toBeConfigured: 'ต้องกําหนดค่า',
+    installProvider: 'ติดตั้งผู้ให้บริการโมเดล',
+    configureTip: 'ตั้งค่า api-key หรือเพิ่มโมเดลเพื่อใช้',
   },
   dataSource: {
     add: 'เพิ่มแหล่งข้อมูล',
@@ -527,6 +540,8 @@ const translation = {
       hitScore: 'คะแนนการดึงข้อมูล:',
     },
     inputPlaceholder: 'พูดคุยกับบอท',
+    thought: 'ความคิด',
+    thinking: 'ความคิด   ',
   },
   promptEditor: {
     placeholder: 'เขียนคําพร้อมท์ของคุณที่นี่ ป้อน \'{\' เพื่อแทรกตัวแปร ป้อน \'/\' เพื่อแทรกบล็อกเนื้อหาพร้อมท์',

@@ -51,6 +51,9 @@ const translation = {
     skip: 'Ladja',
     imageCopied: 'Kopirana slika',
     deleteApp: 'Izbriši aplikacijo',
+    viewDetails: 'Poglej podrobnosti',
+    copied: 'Kopirati',
+    in: 'v',
   },
   errorMsg: {
     fieldRequired: '{{field}} je obvezno',
@@ -127,6 +130,8 @@ const translation = {
       Custom: 'Po meri',
     },
     addMoreModel: 'Pojdite v nastavitve, da dodate več modelov',
+    settingsLink: 'Nastavitve ponudnika modelov',
+    capabilities: 'Multimodalne zmogljivosti',
   },
   menus: {
     status: 'beta',
@@ -139,6 +144,7 @@ const translation = {
     newApp: 'Nova aplikacija',
     newDataset: 'Ustvari znanje',
     tools: 'Orodja',
+    exploreMarketplace: 'Raziščite Marketplace',
   },
   userProfile: {
     settings: 'Nastavitve',
@@ -164,6 +170,7 @@ const translation = {
     dataSource: 'Vir podatkov',
     plugin: 'Vtičniki',
     apiBasedExtension: 'Razširitev API-ja',
+    generalGroup: 'SPLOŠNO',
   },
   account: {
     account: 'Račun',
@@ -602,6 +609,12 @@ const translation = {
       created: 'Oznaka uspešno ustvarjena',
       failed: 'Ustvarjanje oznake ni uspelo',
     },
+    discoverMore: 'Odkrijte več v',
+    installProvider: 'Namestitev ponudnikov modelov',
+    emptyProviderTitle: 'Ponudnik modelov ni nastavljen',
+    emptyProviderTip: 'Najprej namestite ponudnika modelov.',
+    toBeConfigured: 'Za konfiguracijo',
+    configureTip: 'Nastavitev tipke API ali dodajanje modela za uporabo',
   },
   dataSource: {
     notion: {
@@ -731,6 +744,8 @@ const translation = {
     renameConversation: 'Preimenovanje pogovora',
     conversationName: 'Ime pogovora',
     conversationNamePlaceholder: 'Prosimo, vnesite ime pogovora',
+    thinking: 'Razmišljanje...',
+    thought: 'Misel',
   },
   promptEditor: {
     context: {

@@ -6,7 +6,7 @@ import type { Timeout as TimeoutPayloadType } from '../../types'
 import Input from '@/app/components/base/input'
 import { FieldCollapse } from '@/app/components/workflow/nodes/_base/components/collapse'
 
-type Props = {
+interface Props {
   readonly: boolean
   nodeId: string
   payload: TimeoutPayloadType
@@ -35,7 +35,7 @@ const InputField: FC<{
         type='number'
         value={value}
         onChange={(e) => {
-          const value = Math.max(min, Math.min(max, parseInt(e.target.value, 10)))
+          const value = Math.max(min, Math.min(max, Number.parseInt(e.target.value, 10)))
           onChange(value)
         }}
         placeholder={placeholder}

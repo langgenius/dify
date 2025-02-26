@@ -15,10 +15,7 @@ package-mode = false
 ############################################################
 
 [tool.poetry.dependencies]
-anthropic = "~0.23.1"
 authlib = "1.3.1"
-azure-ai-inference = "~1.0.0b8"
-azure-ai-ml = "~1.20.0"
 azure-identity = "1.16.1"
 beautifulsoup4 = "4.12.2"
 boto3 = "1.36.12"
@@ -26,9 +23,6 @@ bs4 = "~0.0.1"
 cachetools = "~5.3.0"
 celery = "~5.4.0"
 chardet = "~5.1.0"
-cohere = "~5.2.4"
-dashscope = { version = "~1.17.0", extras = ["tokenizer"] }
-fal-client = "0.5.6"
 flask = "~3.1.0"
 flask-compress = "~1.17"
 flask-cors = "~4.0.0"
@@ -38,24 +32,19 @@ flask-restful = "~0.3.10"
 flask-sqlalchemy = "~3.1.1"
 gevent = "~24.11.1"
 gmpy2 = "~2.2.1"
-google-ai-generativelanguage = "0.6.9"
 google-api-core = "2.18.0"
 google-api-python-client = "2.90.0"
 google-auth = "2.29.0"
 google-auth-httplib2 = "0.2.0"
 google-cloud-aiplatform = "1.49.0"
-google-generativeai = "0.8.1"
 googleapis-common-protos = "1.63.0"
 gunicorn = "~23.0.0"
 httpx = { version = "~0.27.0", extras = ["socks"] }
-huggingface-hub = "~0.16.4"
 jieba = "0.42.1"
 langfuse = "~2.51.3"
 langsmith = "~0.1.77"
 mailchimp-transactional = "~1.0.50"
 markdown = "~3.5.1"
-nomic = "~3.1.2"
-novita-client = "~0.5.7"
 numpy = "~1.26.4"
 oci = "~2.135.1"
 openai = "~1.61.0"
@@ -77,25 +66,16 @@ python-dotenv = "1.0.1"
 pyyaml = "~6.0.1"
 readabilipy = "0.2.0"
 redis = { version = "~5.0.3", extras = ["hiredis"] }
-replicate = "~0.22.0"
 resend = "~0.7.0"
-sagemaker = "~2.231.0"
-scikit-learn = "~1.5.1"
 sentry-sdk = { version = "~1.44.1", extras = ["flask"] }
 sqlalchemy = "~2.0.29"
 starlette = "0.41.0"
-tencentcloud-sdk-python-hunyuan = "~3.0.1294"
 tiktoken = "~0.8.0"
 tokenizers = "~0.15.0"
 transformers = "~4.35.0"
 unstructured = { version = "~0.16.1", extras = ["docx", "epub", "md", "msg", "ppt", "pptx"] }
 validators = "0.21.0"
-volcengine-python-sdk = {extras = ["ark"], version = "~1.0.98"}
-websocket-client = "~1.7.0"
-xinference-client = "0.15.2"
 yarl = "~1.18.3"
-youtube-transcript-api = "~0.6.2"
-zhipuai = "~2.1.5"
 # Before adding new dependency, consider place it in alphabet order (a-z) and suitable group.
 
 ############################################################
@@ -112,21 +92,8 @@ safetensors = "~0.4.3"
 # [ Tools ] dependency group
 ############################################################
 [tool.poetry.group.tools.dependencies]
-arxiv = "2.1.0"
 cloudscraper = "1.2.71"
-duckduckgo-search = "~6.3.0"
-jsonpath-ng = "1.6.1"
-matplotlib = "~3.8.2"
-mplfonts = "~0.0.8"
-newspaper3k = "0.2.8"
 nltk = "3.9.1"
-numexpr = "~2.9.0"
-pydub = "~0.25.1"
-qrcode = "~7.4.2"
-twilio = "~9.0.4"
-vanna = { version = "0.7.5", extras = ["postgres", "mysql", "clickhouse", "duckdb", "oracle"] }
-wikipedia = "1.4.0"
-yfinance = "~0.2.40"
 
 ############################################################
 # [ Storage ] dependency group
@@ -167,6 +134,7 @@ tidb-vector = "0.0.9"
 upstash-vector = "0.6.0"
 volcengine-compat = "~1.0.156"
 weaviate-client = "~3.21.0"
+xinference-client = "~1.2.2"
 
 ############################################################
 # [ Dev ] dependency group
