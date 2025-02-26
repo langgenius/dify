@@ -604,7 +604,7 @@ class InstalledApp(Base):
         return tenant
 
 
-class Conversation(Base):
+class Conversation(db.Model):  # type: ignore[name-defined]
     __tablename__ = "conversations"
     __table_args__ = (
         db.PrimaryKeyConstraint("id", name="conversation_pkey"),
