@@ -31,6 +31,7 @@ export type AppContextValue = {
   pageContainerRef: React.RefObject<HTMLDivElement>
   langeniusVersionInfo: LangGeniusVersionResponse
   useSelector: typeof useSelector
+  isLoadingCurrentWorkspace: boolean
 }
 
 const initialLangeniusVersionInfo = {
@@ -77,6 +78,7 @@ const AppContext = createContext<AppContextValue>({
   pageContainerRef: createRef(),
   langeniusVersionInfo: initialLangeniusVersionInfo,
   useSelector,
+  isLoadingCurrentWorkspace: false,
 })
 
 export function useSelector<T>(selector: (value: AppContextValue) => T): T {
@@ -92,7 +94,7 @@ export const AppContextProvider: FC<AppContextProviderProps> = ({ children }) =>
 
   const { data: appList, mutate: mutateApps } = useSWR({ url: '/apps', params: { page: 1, limit: 30, name: '' } }, fetchAppList)
   const { data: userProfileResponse, mutate: mutateUserProfile } = useSWR({ url: '/account/profile', params: {} }, fetchUserProfile)
-  const { data: currentWorkspaceResponse, mutate: mutateCurrentWorkspace } = useSWR({ url: '/workspaces/current', params: {} }, fetchCurrentWorkspace)
+  const { data: currentWorkspaceResponse, mutate: mutateCurrentWorkspace, isLoading: isLoadingCurrentWorkspace } = useSWR({ url: '/workspaces/current', params: {} }, fetchCurrentWorkspace)
 
   const { data: systemFeatures } = useSWR({ url: '/console/system-features' }, getSystemFeatures, {
     fallbackData: defaultSystemFeatures,
@@ -157,6 +159,7 @@ export const AppContextProvider: FC<AppContextProviderProps> = ({ children }) =>
       isCurrentWorkspaceEditor,
       isCurrentWorkspaceDatasetOperator,
       mutateCurrentWorkspace,
+      isLoadingCurrentWorkspace,
     }}>
       <div className='flex flex-col h-full overflow-y-auto'>
         {globalThis.document?.body?.getAttribute('data-public-maintenance-notice') && <MaintenanceNotice />}

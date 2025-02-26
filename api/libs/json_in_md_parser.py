@@ -10,6 +10,7 @@ def parse_json_markdown(json_string: str) -> dict:
     ends = ["```", "``", "`", "}"]
     end_index = -1
     start_index = 0
+    parsed: dict = {}
     for s in starts:
         start_index = json_string.find(s)
         if start_index != -1:
@@ -27,7 +28,7 @@ def parse_json_markdown(json_string: str) -> dict:
         extracted_content = json_string[start_index:end_index].strip()
         parsed = json.loads(extracted_content)
     else:
-        raise Exception("Could not find JSON block in the output.")
+        raise ValueError("could not find json block in the output.")
 
     return parsed
 
@@ -36,10 +37,10 @@ def parse_and_check_json_markdown(text: str, expected_keys: list[str]) -> dict:
     try:
         json_obj = parse_json_markdown(text)
     except json.JSONDecodeError as e:
-        raise OutputParserError(f"Got invalid JSON object. Error: {e}")
+        raise OutputParserError(f"got invalid json object. error: {e}")
     for key in expected_keys:
         if key not in json_obj:
             raise OutputParserError(
-                f"Got invalid return object. Expected key `{key}` to be present, but got {json_obj}"
+                f"got invalid return object. expected key `{key}` to be present, but got {json_obj}"
             )
     return json_obj

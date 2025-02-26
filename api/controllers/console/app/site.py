@@ -1,7 +1,7 @@
 from datetime import UTC, datetime
 
-from flask_login import current_user
-from flask_restful import Resource, marshal_with, reqparse
+from flask_login import current_user  # type: ignore
+from flask_restful import Resource, marshal_with, reqparse  # type: ignore
 from werkzeug.exceptions import Forbidden, NotFound
 
 from constants.languages import supported_language
@@ -50,7 +50,7 @@ class AppSite(Resource):
         if not current_user.is_editor:
             raise Forbidden()
 
-        site = db.session.query(Site).filter(Site.app_id == app_model.id).one_or_404()
+        site = Site.query.filter(Site.app_id == app_model.id).one_or_404()
 
         for attr_name in [
             "title",

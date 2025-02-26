@@ -3,8 +3,8 @@ from unittest.mock import MagicMock
 
 import pytest
 from _pytest.monkeypatch import MonkeyPatch
-from qcloud_cos import CosS3Client
-from qcloud_cos.streambody import StreamBody
+from qcloud_cos import CosS3Client  # type: ignore
+from qcloud_cos.streambody import StreamBody  # type: ignore
 
 from tests.unit_tests.oss.__mock.base import (
     get_example_bucket,

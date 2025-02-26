@@ -68,7 +68,7 @@ class TokenBufferMemory:
 
         messages = list(reversed(thread_messages))
 
-        prompt_messages = []
+        prompt_messages: list[PromptMessage] = []
         for message in messages:
             files = db.session.query(MessageFile).filter(MessageFile.message_id == message.id).all()
             if files:

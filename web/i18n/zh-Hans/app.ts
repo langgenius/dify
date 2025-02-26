@@ -157,6 +157,10 @@ const translation = {
       title: 'Langfuse',
       description: '跟踪、评估、提示管理和指标，以调试和改进您的 LLM 应用程序。',
     },
+    opik: {
+      title: 'Opik',
+      description: '一个全方位的开发者平台，适用于 LLM 驱动应用程序生命周期的每个步骤。',
+    },
     inUse: '使用中',
     configProvider: {
       title: '配置 ',
@@ -170,6 +174,7 @@ const translation = {
     },
   },
   openInExplore: '在“探索”中打开',
+  showMyCreatedAppsOnly: '我创建的',
 }
 
 export default translation

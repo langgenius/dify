@@ -1,0 +1,148 @@
+identity:
+  name: bedrock_retrieve_and_generate
+  author: AWS
+  label:
+    en_US: Bedrock Retrieve and Generate
+    zh_Hans: Bedrock检索和生成
+  icon: icon.svg
+
+description:
+  human:
+    en_US: "This is an advanced usage of Bedrock Retrieve. Please refer to the API documentation for detailed parameters and paste them into the corresponding Knowledge Base Configuration or External Sources Configuration"
+    zh_Hans: "这个工具为Bedrock Retrieve的高级用法，请参考API设置详细的参数，并粘贴到对应的知识库配置或者外部源配置"
+  llm: A tool for retrieving and generating information using Amazon Bedrock Knowledge Base
+
+parameters:
+  - name: aws_region
+    type: string
+    required: false
+    label:
+      en_US: AWS Region
+      zh_Hans: AWS区域
+    human_description:
+      en_US: AWS region for the Bedrock service
+      zh_Hans: Bedrock服务的AWS区域
+    form: form
+
+  - name: aws_access_key_id
+    type: string
+    required: false
+    label:
+      en_US: AWS Access Key ID
+      zh_Hans: AWS访问密钥ID
+    human_description:
+      en_US: AWS access key ID for authentication (optional)
+      zh_Hans: 用于身份验证的AWS访问密钥ID（可选）
+    form: form
+
+  - name: aws_secret_access_key
+    type: string
+    required: false
+    label:
+      en_US: AWS Secret Access Key
+      zh_Hans: AWS秘密访问密钥
+    human_description:
+      en_US: AWS secret access key for authentication (optional)
+      zh_Hans: 用于身份验证的AWS秘密访问密钥（可选）
+    form: form
+
+  - name: result_type
+    type: select
+    required: true
+    label:
+      en_US: result type
+      zh_Hans: 结果类型
+    human_description:
+      en_US: return a list of json or texts
+      zh_Hans: 返回一个列表，内容是json还是纯文本
+    default: text
+    options:
+      - value: json
+        label:
+          en_US: JSON
+          zh_Hans: JSON
+      - value: text
+        label:
+          en_US: Text
+          zh_Hans: 文本
+      - value: text-with-citations
+        label:
+          en_US: Text With Citations
+          zh_Hans: 文本（包含引用）
+    form: form
+
+  - name: input
+    type: string
+    required: true
+    label:
+      en_US: Input Text
+      zh_Hans: 输入文本
+    human_description:
+      en_US: The text query to retrieve information
+      zh_Hans: 用于检索信息的文本查询
+    form: llm
+
+  - name: type
+    type: select
+    required: true
+    label:
+      en_US: Configuration Type
+      zh_Hans: 配置类型
+    human_description:
+      en_US: Type of retrieve and generate configuration
+      zh_Hans: 检索和生成配置的类型
+    options:
+      - value: KNOWLEDGE_BASE
+        label:
+          en_US: Knowledge Base
+          zh_Hans: 知识库
+      - value: EXTERNAL_SOURCES
+        label:
+          en_US: External Sources
+          zh_Hans: 外部源
+    form: form
+
+  - name: knowledge_base_configuration
+    type: string
+    required: false
+    label:
+      en_US: Knowledge Base Configuration
+      zh_Hans: 知识库配置
+    human_description:
+      en_US: Please refer to @https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/bedrock-agent-runtime/client/retrieve_and_generate.html#retrieve-and-generate for complete parameters and paste them here
+      zh_Hans: 请参考 https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/bedrock-agent-runtime/client/retrieve_and_generate.html#retrieve-and-generate 配置完整的参数并粘贴到这里
+    form: form
+
+  - name: external_sources_configuration
+    type: string
+    required: false
+    label:
+      en_US: External Sources Configuration
+      zh_Hans: 外部源配置
+    human_description:
+      en_US: Please refer to https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/bedrock-agent-runtime/client/retrieve_and_generate.html#retrieve-and-generate for complete parameters and paste them here
+      zh_Hans: 请参考 https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/bedrock-agent-runtime/client/retrieve_and_generate.html#retrieve-and-generate 配置完整的参数并粘贴到这里
+    form: form
+
+  - name: session_configuration
+    type: string
+    required: false
+    label:
+      en_US: Session Configuration
+      zh_Hans: 会话配置
+    human_description:
+      en_US: JSON formatted session configuration
+      zh_Hans: JSON格式的会话配置
+    default: ""
+    form: form
+
+  - name: session_id
+    type: string
+    required: false
+    label:
+      en_US: Session ID
+      zh_Hans: 会话ID
+    human_description:
+      en_US: Session ID for continuous conversations
+      zh_Hans: 用于连续对话的会话ID
+    form: form

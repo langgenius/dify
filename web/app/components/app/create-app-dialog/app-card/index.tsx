@@ -25,10 +25,10 @@ const AppCard = ({
         <div className='relative shrink-0'>
           <AppIcon
             size='large'
-            iconType={app.app.icon_type}
-            icon={app.app.icon}
-            background={app.app.icon_background}
-            imageUrl={app.app.icon_url}
+            iconType={appBasicInfo.icon_type}
+            icon={appBasicInfo.icon}
+            background={appBasicInfo.icon_background}
+            imageUrl={appBasicInfo.icon_url}
           />
           <AppTypeIcon wrapperClassName='absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-[4px] border border-divider-regular outline outline-components-panel-on-panel-item-bg'
             className='w-3 h-3' type={appBasicInfo.mode} />

@@ -1,7 +1,7 @@
 from functools import wraps
 
 from flask import request
-from flask_restful import Resource, reqparse
+from flask_restful import Resource, reqparse  # type: ignore
 from werkzeug.exceptions import NotFound, Unauthorized
 
 from configs import dify_config
@@ -31,7 +31,7 @@ def admin_required(view):
         if auth_scheme != "bearer":
             raise Unauthorized("Invalid Authorization header format. Expected 'Bearer <api-key>' format.")
 
-        if dify_config.ADMIN_API_KEY != auth_token:
+        if auth_token != dify_config.ADMIN_API_KEY:
             raise Unauthorized("API key is invalid.")
 
         return view(*args, **kwargs)
@@ -56,7 +56,7 @@ class InsertExploreAppListApi(Resource):
 
         app = App.query.filter(App.id == args["app_id"]).first()
         if not app:
-            raise NotFound(f'App \'{args["app_id"]}\' is not found')
+            raise NotFound(f"App '{args['app_id']}' is not found")
 
         site = app.site
         if not site:

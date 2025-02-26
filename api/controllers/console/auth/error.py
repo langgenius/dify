@@ -53,3 +53,15 @@ class EmailCodeLoginRateLimitExceededError(BaseHTTPException):
     error_code = "email_code_login_rate_limit_exceeded"
     description = "Too many login emails have been sent. Please try again in 5 minutes."
     code = 429
+
+
+class EmailCodeAccountDeletionRateLimitExceededError(BaseHTTPException):
+    error_code = "email_code_account_deletion_rate_limit_exceeded"
+    description = "Too many account deletion emails have been sent. Please try again in 5 minutes."
+    code = 429
+
+
+class EmailPasswordResetLimitError(BaseHTTPException):
+    error_code = "email_password_reset_limit"
+    description = "Too many failed password reset attempts. Please try again in 24 hours."
+    code = 429

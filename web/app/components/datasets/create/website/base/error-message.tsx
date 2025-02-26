@@ -18,7 +18,7 @@ const ErrorMessage: FC<Props> = ({
   return (
     <div className={cn(className, 'py-2 px-4 border-t border-gray-200 bg-[#FFFAEB]')}>
       <div className='flex items-center h-5'>
-        <AlertTriangle className='mr-2 w-4 h-4 text-[#F79009]' />
+        <AlertTriangle className='mr-2 w-4 h-4 text-text-warning-secondary' />
         <div className='text-sm font-medium text-[#DC6803]'>{title}</div>
       </div>
       {errorMsg && (

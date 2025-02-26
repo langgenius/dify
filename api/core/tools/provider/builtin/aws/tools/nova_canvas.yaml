@@ -1,0 +1,175 @@
+identity:
+  name: nova_canvas
+  author: AWS
+  label:
+    en_US: AWS Bedrock Nova Canvas
+    zh_Hans: AWS Bedrock Nova Canvas
+  icon: icon.svg
+description:
+  human:
+    en_US: A tool for generating and modifying images using AWS Bedrock's Nova Canvas model. Supports text-to-image, color-guided generation, image variation, inpainting, outpainting, and background removal. Input parameters reference https://docs.aws.amazon.com/nova/latest/userguide/image-gen-req-resp-structure.html
+    zh_Hans: 使用 AWS Bedrock 的 Nova Canvas 模型生成和修改图像的工具。支持文生图、颜色引导生成、图像变体、内补绘制、外补绘制和背景移除功能, 输入参数参考 https://docs.aws.amazon.com/nova/latest/userguide/image-gen-req-resp-structure.html。
+  llm: Generate or modify images using AWS Bedrock's Nova Canvas model with multiple task types including text-to-image, color-guided generation, image variation, inpainting, outpainting, and background removal.
+parameters:
+  - name: task_type
+    type: string
+    required: false
+    default: TEXT_IMAGE
+    label:
+      en_US: Task Type
+      zh_Hans: 任务类型
+    human_description:
+      en_US: Type of image generation task (TEXT_IMAGE, COLOR_GUIDED_GENERATION, IMAGE_VARIATION, INPAINTING, OUTPAINTING, BACKGROUND_REMOVAL)
+      zh_Hans: 图像生成任务的类型（文生图、颜色引导生成、图像变体、内补绘制、外补绘制、背景移除）
+    form: llm
+  - name: prompt
+    type: string
+    required: true
+    label:
+      en_US: Prompt
+      zh_Hans: 提示词
+    human_description:
+      en_US: Text description of the image you want to generate or modify
+      zh_Hans: 您想要生成或修改的图像的文本描述
+    llm_description: Describe the image you want to generate or how you want to modify the input image
+    form: llm
+  - name: image_input_s3uri
+    type: string
+    required: false
+    label:
+      en_US: Input image s3 uri
+      zh_Hans: 输入图片的s3 uri
+    human_description:
+      en_US: The input image to modify (required for all modes except TEXT_IMAGE)
+      zh_Hans: 要修改的输入图像（除文生图外的所有模式都需要）
+    llm_description: The input image you want to modify. Required for all modes except TEXT_IMAGE.
+    form: llm
+  - name: image_output_s3uri
+    type: string
+    required: true
+    label:
+      en_US: Output S3 URI
+      zh_Hans: 输出S3 URI
+    human_description:
+      en_US: The S3 URI where the generated image will be saved. If provided, the image will be uploaded with name format canvas-output-{timestamp}.png
+      zh_Hans: 生成的图像将保存到的S3 URI。如果提供，图像将以canvas-output-{timestamp}.png的格式上传
+    llm_description: Optional S3 URI where the generated image will be uploaded. The image will be saved with a timestamp-based filename.
+    form: form
+  - name: negative_prompt
+    type: string
+    required: false
+    label:
+      en_US: Negative Prompt
+      zh_Hans: 负面提示词
+    human_description:
+      en_US: Things you don't want in the generated image
+      zh_Hans: 您不想在生成的图像中出现的内容
+    form: llm
+  - name: width
+    type: number
+    required: false
+    label:
+      en_US: Width
+      zh_Hans: 宽度
+    human_description:
+      en_US: Width of the generated image
+      zh_Hans: 生成图像的宽度
+    form: form
+    default: 1024
+  - name: height
+    type: number
+    required: false
+    label:
+      en_US: Height
+      zh_Hans: 高度
+    human_description:
+      en_US: Height of the generated image
+      zh_Hans: 生成图像的高度
+    form: form
+    default: 1024
+  - name: cfg_scale
+    type: number
+    required: false
+    label:
+      en_US: CFG Scale
+      zh_Hans: CFG比例
+    human_description:
+      en_US: How strongly the image should conform to the prompt
+      zh_Hans: 图像应该多大程度上符合提示词
+    form: form
+    default: 8.0
+  - name: seed
+    type: number
+    required: false
+    label:
+      en_US: Seed
+      zh_Hans: 种子值
+    human_description:
+      en_US: Random seed for image generation
+      zh_Hans: 图像生成的随机种子
+    form: form
+    default: 0
+  - name: aws_region
+    type: string
+    required: false
+    default: us-east-1
+    label:
+      en_US: AWS Region
+      zh_Hans: AWS 区域
+    human_description:
+      en_US: AWS region for Bedrock service
+      zh_Hans: Bedrock 服务的 AWS 区域
+    form: form
+  - name: quality
+    type: string
+    required: false
+    default: standard
+    label:
+      en_US: Quality
+      zh_Hans: 质量
+    human_description:
+      en_US: Quality of the generated image (standard or premium)
+      zh_Hans: 生成图像的质量（标准或高级）
+    form: form
+  - name: colors
+    type: string
+    required: false
+    label:
+      en_US: Colors
+      zh_Hans: 颜色
+    human_description:
+      en_US: List of colors for color-guided generation
+      zh_Hans: 颜色引导生成的颜色列表
+    form: form
+  - name: similarity_strength
+    type: number
+    required: false
+    default: 0.5
+    label:
+      en_US: Similarity Strength
+      zh_Hans: 相似度强度
+    human_description:
+      en_US: How similar the generated image should be to the input image (0.0 to 1.0)
+      zh_Hans: 生成的图像应该与输入图像的相似程度（0.0到1.0）
+    form: form
+  - name: mask_prompt
+    type: string
+    required: false
+    label:
+      en_US: Mask Prompt
+      zh_Hans: 蒙版提示词
+    human_description:
+      en_US: Text description to generate mask for inpainting/outpainting
+      zh_Hans: 用于生成内补绘制/外补绘制蒙版的文本描述
+    form: llm
+  - name: outpainting_mode
+    type: string
+    required: false
+    default: DEFAULT
+    label:
+      en_US: Outpainting Mode
+      zh_Hans: 外补绘制模式
+    human_description:
+      en_US: Mode for outpainting (DEFAULT or other supported modes)
+      zh_Hans: 外补绘制的模式（DEFAULT或其他支持的模式）
+    form: form

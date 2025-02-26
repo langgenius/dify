@@ -5,8 +5,8 @@ import logging
 from collections.abc import Generator
 from typing import Optional, Union
 
-import oci
-from oci.generative_ai_inference.models.base_chat_response import BaseChatResponse
+import oci  # type: ignore
+from oci.generative_ai_inference.models.base_chat_response import BaseChatResponse  # type: ignore
 
 from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta
 from core.model_runtime.entities.message_entities import (
@@ -33,7 +33,7 @@ logger = logging.getLogger(__name__)
 
 request_template = {
     "compartmentId": "",
-    "servingMode": {"modelId": "cohere.command-r-plus", "servingType": "ON_DEMAND"},
+    "servingMode": {"modelId": "cohere.command-r-plus-08-2024", "servingType": "ON_DEMAND"},
     "chatRequest": {
         "apiFormat": "COHERE",
         # "preambleOverride": "You are a helpful assistant.",
@@ -60,19 +60,19 @@ oci_config_template = {
 class OCILargeLanguageModel(LargeLanguageModel):
     # https://docs.oracle.com/en-us/iaas/Content/generative-ai/pretrained-models.htm
     _supported_models = {
-        "meta.llama-3-70b-instruct": {
+        "meta.llama-3.1-70b-instruct": {
             "system": True,
             "multimodal": False,
             "tool_call": False,
             "stream_tool_call": False,
         },
-        "cohere.command-r-16k": {
+        "cohere.command-r-08-2024": {
             "system": True,
             "multimodal": False,
             "tool_call": True,
             "stream_tool_call": False,
         },
-        "cohere.command-r-plus": {
+        "cohere.command-r-plus-08-2024": {
             "system": True,
             "multimodal": False,
             "tool_call": True,

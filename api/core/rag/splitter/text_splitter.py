@@ -92,7 +92,7 @@ class TextSplitter(BaseDocumentTransformer, ABC):
         texts, metadatas = [], []
         for doc in documents:
             texts.append(doc.page_content)
-            metadatas.append(doc.metadata)
+            metadatas.append(doc.metadata or {})
         return self.create_documents(texts, metadatas=metadatas)
 
     def _join_docs(self, docs: list[str], separator: str) -> Optional[str]:
@@ -143,7 +143,7 @@ class TextSplitter(BaseDocumentTransformer, ABC):
     def from_huggingface_tokenizer(cls, tokenizer: Any, **kwargs: Any) -> TextSplitter:
         """Text splitter that uses HuggingFace tokenizer to count length."""
         try:
-            from transformers import PreTrainedTokenizerBase
+            from transformers import PreTrainedTokenizerBase  # type: ignore
 
             if not isinstance(tokenizer, PreTrainedTokenizerBase):
                 raise ValueError("Tokenizer received was not an instance of PreTrainedTokenizerBase")

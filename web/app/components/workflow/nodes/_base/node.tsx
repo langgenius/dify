@@ -25,7 +25,10 @@ import {
   useNodesReadOnly,
   useToolIcon,
 } from '../../hooks'
-import { hasErrorHandleNode } from '../../utils'
+import {
+  hasErrorHandleNode,
+  hasRetryNode,
+} from '../../utils'
 import { useNodeIterationInteractions } from '../iteration/use-interactions'
 import type { IterationNodeType } from '../iteration/types'
 import {
@@ -35,6 +38,7 @@ import {
 import NodeResizer from './components/node-resizer'
 import NodeControl from './components/node-control'
 import ErrorHandleOnNode from './components/error-handle/error-handle-on-node'
+import RetryOnNode from './components/retry/retry-on-node'
 import AddVariablePopupWithPosition from './components/add-variable-popup-with-position'
 import cn from '@/utils/classnames'
 import BlockIcon from '@/app/components/workflow/block-icon'
@@ -103,7 +107,7 @@ const BaseNode: FC<BaseNodeProps> = ({
           'group relative pb-1 shadow-xs',
           'border border-transparent rounded-[15px]',
           data.type !== BlockEnum.Iteration && 'w-[240px] bg-workflow-block-bg',
-          data.type === BlockEnum.Iteration && 'flex flex-col w-full h-full bg-[#fcfdff]/80',
+          data.type === BlockEnum.Iteration && 'flex flex-col w-full h-full bg-workflow-block-bg-transparent border-workflow-block-border',
           !data._runningStatus && 'hover:shadow-lg',
           showRunningBorder && '!border-state-accent-solid',
           showSuccessBorder && '!border-state-success-solid',
@@ -165,7 +169,7 @@ const BaseNode: FC<BaseNodeProps> = ({
         }
         <div className={cn(
           'flex items-center px-3 pt-3 pb-2 rounded-t-2xl',
-          data.type === BlockEnum.Iteration && 'bg-[rgba(250,252,255,0.9)]',
+          data.type === BlockEnum.Iteration && 'bg-transparent',
         )}>
           <BlockIcon
             className='shrink-0 mr-2'
@@ -235,6 +239,14 @@ const BaseNode: FC<BaseNodeProps> = ({
             <div className='grow pl-1 pr-1 pb-1'>
               {cloneElement(children, { id, data })}
             </div>
+          )
+        }
+        {
+          hasRetryNode(data.type) && (
+            <RetryOnNode
+              id={id}
+              data={data}
+            />
           )
         }
         {

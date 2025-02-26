@@ -7,6 +7,14 @@
 @import "../../themes/manual-light.css";
 @import "../../themes/manual-dark.css";
 
+html {
+  color-scheme: light;
+}
+
+html[data-theme='dark'] {
+  color-scheme: dark;
+}
+
 html[data-changing-theme] * {
   transition: none !important;
 }

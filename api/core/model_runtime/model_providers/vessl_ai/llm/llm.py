@@ -17,14 +17,12 @@ from core.model_runtime.model_providers.openai_api_compatible.llm.llm import OAI
 
 class VesslAILargeLanguageModel(OAIAPICompatLargeLanguageModel):
     def get_customizable_model_schema(self, model: str, credentials: dict) -> AIModelEntity:
-        features = []
-
         entity = AIModelEntity(
             model=model,
             label=I18nObject(en_US=model),
             model_type=ModelType.LLM,
             fetch_from=FetchFrom.CUSTOMIZABLE_MODEL,
-            features=features,
+            features=[],
             model_properties={
                 ModelPropertyKey.MODE: credentials.get("mode"),
             },

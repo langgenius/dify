@@ -2,7 +2,7 @@ import logging
 import time
 
 import click
-from celery import shared_task
+from celery import shared_task  # type: ignore
 from flask import render_template
 
 from extensions.ext_mail import mail

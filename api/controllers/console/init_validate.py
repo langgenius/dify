@@ -1,7 +1,7 @@
 import os
 
 from flask import session
-from flask_restful import Resource, reqparse
+from flask_restful import Resource, reqparse  # type: ignore
 
 from configs import dify_config
 from libs.helper import StrLen

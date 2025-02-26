@@ -61,7 +61,8 @@ const Form: FC<FormProps> = ({
     const shouldClearVariable: Record<string, string | undefined> = {}
     if (showOnVariableMap[key]?.length) {
       showOnVariableMap[key].forEach((clearVariable) => {
-        shouldClearVariable[clearVariable] = undefined
+        const schema = formSchemas.find(it => it.variable === clearVariable)
+        shouldClearVariable[clearVariable] = schema ? schema.default : undefined
       })
     }
     onChange({ ...value, [key]: val, ...shouldClearVariable })

@@ -111,7 +111,7 @@ const DatasetCard = ({
   return (
     <>
       <div
-        className='group relative col-span-1 bg-white border-[0.5px] border-solid border-transparent rounded-xl shadow-sm min-h-[160px] flex flex-col transition-all duration-200 ease-in-out cursor-pointer hover:shadow-lg'
+        className='group relative col-span-1 bg-components-card-bg border-[0.5px] border-solid border-components-card-border rounded-xl shadow-sm min-h-[160px] flex flex-col transition-all duration-200 ease-in-out cursor-pointer hover:shadow-lg'
         data-disable-nprogress={true}
         onClick={(e) => {
           e.preventDefault()
@@ -129,8 +129,8 @@ const DatasetCard = ({
             <Folder className='w-5 h-5 text-[#444CE7]' />
           </div>
           <div className='grow w-0 py-[1px]'>
-            <div className='flex items-center text-sm leading-5 font-semibold text-gray-800'>
-              <div className={cn('truncate', !dataset.embedding_available && 'opacity-50 hover:opacity-100')} title={dataset.name}>{dataset.name}</div>
+            <div className='flex items-center text-sm leading-5 font-semibold text-text-secondary'>
+              <div className={cn('truncate', !dataset.embedding_available && 'opacity-50 hover:opacity-100 text-text-tertiary')} title={dataset.name}>{dataset.name}</div>
               {!dataset.embedding_available && (
                 <Tooltip
                   popupContent={t('dataset.unavailableTip')}
@@ -139,7 +139,7 @@ const DatasetCard = ({
                 </Tooltip>
               )}
             </div>
-            <div className='flex items-center mt-[1px] text-xs leading-[18px] text-gray-500'>
+            <div className='flex items-center mt-[1px] text-xs leading-[18px] text-text-tertiary'>
               <div
                 className={cn('truncate', (!dataset.embedding_available || !dataset.document_count) && 'opacity-50')}
                 title={dataset.provider === 'external' ? `${dataset.app_count}${t('dataset.appCount')}` : `${dataset.document_count}${t('dataset.documentCount')} · ${Math.round(dataset.word_count / 1000)}${t('dataset.wordCount')} · ${dataset.app_count}${t('dataset.appCount')}`}
@@ -162,7 +162,7 @@ const DatasetCard = ({
         </div>
         <div
           className={cn(
-            'grow mb-2 px-[14px] max-h-[72px] text-xs leading-normal text-gray-500 group-hover:line-clamp-2 group-hover:max-h-[36px]',
+            'grow mb-2 px-[14px] max-h-[72px] text-xs leading-normal text-text-tertiary group-hover:line-clamp-2 group-hover:max-h-[36px]',
             tags.length ? 'line-clamp-2' : 'line-clamp-4',
             !dataset.embedding_available && 'opacity-50 hover:opacity-100',
           )}

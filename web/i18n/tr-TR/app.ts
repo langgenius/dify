@@ -155,6 +155,10 @@ const translation = {
       removeConfirmContent: 'Mevcut yapılandırma kullanımda, kaldırılması İzleme özelliğini kapatacaktır.',
     },
     view: 'Görünüm',
+    opik: {
+      title: 'Opik Belediyesi',
+      description: 'Opik, LLM uygulamalarını değerlendirmek, test etmek ve izlemek için açık kaynaklı bir platformdur.',
+    },
   },
   answerIcon: {
     descriptionInExplore: 'Keşfet\'te değiştirilecek 🤖 WebApp simgesinin kullanılıp kullanılmayacağı',
@@ -179,6 +183,7 @@ const translation = {
     searchAllTemplate: 'Tüm şablonlarda ara...',
     byCategories: 'KATEGORILERE GÖRE',
   },
+  showMyCreatedAppsOnly: 'Sadece oluşturduğum uygulamaları göster',
 }
 
 export default translation

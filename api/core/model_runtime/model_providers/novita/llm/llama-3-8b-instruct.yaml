@@ -1,7 +1,7 @@
 model: meta-llama/llama-3-8b-instruct
 label:
-  zh_Hans: meta-llama/llama-3-8b-instruct
-  en_US: meta-llama/llama-3-8b-instruct
+  zh_Hans: Llama 3 8B Instruct
+  en_US: Llama 3 8B Instruct
 model_type: llm
 features:
   - agent-thought
@@ -35,7 +35,7 @@ parameter_rules:
     max: 2
     default: 0
 pricing:
-  input: '0.00063'
-  output: '0.00063'
+  input: '0.0004'
+  output: '0.0004'
   unit: '0.0001'
   currency: USD

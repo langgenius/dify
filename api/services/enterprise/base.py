@@ -8,8 +8,8 @@ class EnterpriseRequest:
     secret_key = os.environ.get("ENTERPRISE_API_SECRET_KEY", "ENTERPRISE_API_SECRET_KEY")
 
     proxies = {
-        "http": None,
-        "https": None,
+        "http": "",
+        "https": "",
     }
 
     @classmethod

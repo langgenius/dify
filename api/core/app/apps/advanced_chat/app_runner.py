@@ -109,18 +109,18 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
                 ConversationVariable.conversation_id == self.conversation.id,
             )
             with Session(db.engine) as session:
-                conversation_variables = session.scalars(stmt).all()
-                if not conversation_variables:
+                db_conversation_variables = session.scalars(stmt).all()
+                if not db_conversation_variables:
                     # Create conversation variables if they don't exist.
-                    conversation_variables = [
+                    db_conversation_variables = [
                         ConversationVariable.from_variable(
                             app_id=self.conversation.app_id, conversation_id=self.conversation.id, variable=variable
                         )
                         for variable in workflow.conversation_variables
                     ]
-                    session.add_all(conversation_variables)
+                    session.add_all(db_conversation_variables)
                 # Convert database entities to variables.
-                conversation_variables = [item.to_variable() for item in conversation_variables]
+                conversation_variables = [item.to_variable() for item in db_conversation_variables]
 
                 session.commit()
 

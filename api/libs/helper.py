@@ -41,6 +41,18 @@ class AppIconUrlField(fields.Raw):
         return None
 
 
+class AvatarUrlField(fields.Raw):
+    def output(self, key, obj):
+        if obj is None:
+            return None
+
+        from models.account import Account
+
+        if isinstance(obj, Account) and obj.avatar is not None:
+            return file_helpers.get_signed_file_url(obj.avatar)
+        return None
+
+
 class TimestampField(fields.Raw):
     def format(self, value) -> int:
         return int(value.timestamp())
@@ -248,13 +260,13 @@ class TokenManager:
         if token_data_json is None:
             logging.warning(f"{token_type} token {token} not found with key {key}")
             return None
-        token_data = json.loads(token_data_json)
+        token_data: Optional[dict[str, Any]] = json.loads(token_data_json)
         return token_data
 
     @classmethod
     def _get_current_token_for_account(cls, account_id: str, token_type: str) -> Optional[str]:
         key = cls._get_account_token_key(account_id, token_type)
-        current_token = redis_client.get(key)
+        current_token: Optional[str] = redis_client.get(key)
         return current_token
 
     @classmethod

@@ -3,7 +3,7 @@ import io
 import json
 from collections.abc import Generator
 
-from google.cloud import storage as google_cloud_storage
+from google.cloud import storage as google_cloud_storage  # type: ignore
 
 from configs import dify_config
 from extensions.storage.base_storage import BaseStorage
@@ -35,7 +35,7 @@ class GoogleCloudStorage(BaseStorage):
     def load_once(self, filename: str) -> bytes:
         bucket = self.client.get_bucket(self.bucket_name)
         blob = bucket.get_blob(filename)
-        data = blob.download_as_bytes()
+        data: bytes = blob.download_as_bytes()
         return data
 
     def load_stream(self, filename: str) -> Generator:

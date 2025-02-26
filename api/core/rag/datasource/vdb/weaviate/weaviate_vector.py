@@ -3,7 +3,7 @@ import json
 from typing import Any, Optional
 
 import requests
-import weaviate
+import weaviate  # type: ignore
 from pydantic import BaseModel, model_validator
 
 from configs import dify_config
@@ -107,7 +107,8 @@ class WeaviateVector(BaseVector):
             for i, text in enumerate(texts):
                 data_properties = {Field.TEXT_KEY.value: text}
                 if metadatas is not None:
-                    for key, val in metadatas[i].items():
+                    # metadata maybe None
+                    for key, val in (metadatas[i] or {}).items():
                         data_properties[key] = self._json_serializable(val)
 
                 batch.add_data_object(
@@ -208,10 +209,11 @@ class WeaviateVector(BaseVector):
             score_threshold = float(kwargs.get("score_threshold") or 0.0)
             # check score threshold
             if score > score_threshold:
-                doc.metadata["score"] = score
-                docs.append(doc)
+                if doc.metadata is not None:
+                    doc.metadata["score"] = score
+                    docs.append(doc)
         # Sort the documents by score in descending order
-        docs = sorted(docs, key=lambda x: x.metadata["score"], reverse=True)
+        docs = sorted(docs, key=lambda x: x.metadata.get("score", 0) if x.metadata else 0, reverse=True)
         return docs
 
     def search_by_full_text(self, query: str, **kwargs: Any) -> list[Document]:
@@ -275,7 +277,7 @@ class WeaviateVectorFactory(AbstractVectorFactory):
         return WeaviateVector(
             collection_name=collection_name,
             config=WeaviateConfig(
-                endpoint=dify_config.WEAVIATE_ENDPOINT,
+                endpoint=dify_config.WEAVIATE_ENDPOINT or "",
                 api_key=dify_config.WEAVIATE_API_KEY,
                 batch_size=dify_config.WEAVIATE_BATCH_SIZE,
             ),

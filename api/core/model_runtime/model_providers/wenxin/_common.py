@@ -41,15 +41,15 @@ class BaiduAccessToken:
         resp = response.json()
         if "error" in resp:
             if resp["error"] == "invalid_client":
-                raise InvalidAPIKeyError(f'Invalid API key or secret key: {resp["error_description"]}')
+                raise InvalidAPIKeyError(f"Invalid API key or secret key: {resp['error_description']}")
             elif resp["error"] == "unknown_error":
-                raise InternalServerError(f'Internal server error: {resp["error_description"]}')
+                raise InternalServerError(f"Internal server error: {resp['error_description']}")
             elif resp["error"] == "invalid_request":
-                raise BadRequestError(f'Bad request: {resp["error_description"]}')
+                raise BadRequestError(f"Bad request: {resp['error_description']}")
             elif resp["error"] == "rate_limit_exceeded":
-                raise RateLimitReachedError(f'Rate limit reached: {resp["error_description"]}')
+                raise RateLimitReachedError(f"Rate limit reached: {resp['error_description']}")
             else:
-                raise Exception(f'Unknown error: {resp["error_description"]}')
+                raise Exception(f"Unknown error: {resp['error_description']}")
 
         return resp["access_token"]
 
@@ -122,6 +122,7 @@ class _CommonWenxin:
         "bge-large-zh": "https://aip.baidubce.com/rpc/2.0/ai_custom/v1/wenxinworkshop/embeddings/bge_large_zh",
         "tao-8k": "https://aip.baidubce.com/rpc/2.0/ai_custom/v1/wenxinworkshop/embeddings/tao_8k",
         "bce-reranker-base_v1": "https://aip.baidubce.com/rpc/2.0/ai_custom/v1/wenxinworkshop/reranker/bce_reranker_base",
+        "ernie-lite-pro-128k": "https://aip.baidubce.com/rpc/2.0/ai_custom/v1/wenxinworkshop/chat/ernie-lite-pro-128k",
     }
 
     function_calling_supports = [

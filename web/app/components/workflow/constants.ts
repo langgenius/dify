@@ -203,9 +203,6 @@ export const NODES_EXTRA_DATA: Record<BlockEnum, NodesExtraData> = {
 
 }
 
-export const ALL_CHAT_AVAILABLE_BLOCKS = Object.keys(NODES_EXTRA_DATA).filter(key => key !== BlockEnum.End && key !== BlockEnum.Start) as BlockEnum[]
-export const ALL_COMPLETION_AVAILABLE_BLOCKS = Object.keys(NODES_EXTRA_DATA).filter(key => key !== BlockEnum.Answer && key !== BlockEnum.Start) as BlockEnum[]
-
 export const NODES_INITIAL_DATA = {
   [BlockEnum.Start]: {
     type: BlockEnum.Start,
@@ -506,3 +503,5 @@ export const WORKFLOW_DATA_UPDATE = 'WORKFLOW_DATA_UPDATE'
 export const CUSTOM_NODE = 'custom'
 export const CUSTOM_EDGE = 'custom'
 export const DSL_EXPORT_CHECK = 'DSL_EXPORT_CHECK'
+export const DEFAULT_RETRY_MAX = 3
+export const DEFAULT_RETRY_INTERVAL = 100

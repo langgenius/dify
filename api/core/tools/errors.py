@@ -31,3 +31,7 @@ class ToolApiSchemaError(ValueError):
 
 class ToolEngineInvokeError(Exception):
     meta: ToolInvokeMeta
+
+    def __init__(self, meta, **kwargs):
+        self.meta = meta
+        super().__init__(**kwargs)

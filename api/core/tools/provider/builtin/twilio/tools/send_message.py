@@ -37,7 +37,7 @@ class TwilioAPIWrapper(BaseModel):
     def set_validator(cls, values: dict) -> dict:
         """Validate that api key and python package exists in environment."""
         try:
-            from twilio.rest import Client
+            from twilio.rest import Client  # type: ignore
         except ImportError:
             raise ImportError("Could not import twilio python package. Please install it with `pip install twilio`.")
         account_sid = values.get("account_sid")
