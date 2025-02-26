@@ -71,6 +71,7 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
     params: query,
   }, fetchWorkflowLogs)
   const total = workflowLogs?.total
+  const basePath = process.env.NEXT_PUBLIC_BASE_PATH || ''
 
   return (
     <div className='flex flex-col h-full'>
@@ -83,7 +84,7 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
           ? <Loading type='app' />
           : total > 0
             ? <List logs={workflowLogs} appDetail={appDetail} onRefresh={mutate} />
-            : <EmptyElement appUrl={`${appDetail.site.app_base_url}/${getWebAppType(appDetail.mode)}/${appDetail.site.access_token}`} />
+            : <EmptyElement appUrl={`${appDetail.site.app_base_url}${basePath}/${getWebAppType(appDetail.mode)}/${appDetail.site.access_token}`} />
         }
         {/* Show Pagination only if the total is more than the limit */}
         {(total && total > APP_PAGE_LIMIT)

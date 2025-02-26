@@ -15,8 +15,8 @@ const LogoSite: FC<LogoSiteProps> = ({
       theme: s.theme,
     }
   })
-
-  const src = theme === 'light' ? '/logo/logo-site.png' : `/logo/logo-site-${theme}.png`
+  const basePath = process.env.NEXT_PUBLIC_BASE_PATH || ''
+  const src = basePath + (theme === 'light' ? '/logo/logo-site.png' : `/logo/logo-site-${theme}.png`)
   return (
     <img
       src={src}

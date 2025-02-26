@@ -11,12 +11,16 @@ const ProviderIcon: FC<ProviderIconProps> = ({
   className,
 }) => {
   const language = useLanguage()
-
   if (provider.icon_large) {
+    let src = `${provider.icon_large[language] || provider.icon_large.en_US}`
+    const basePath = process.env.NEXT_PUBLIC_BASE_PATH || ''
+    if (!src.includes(basePath))
+      src = `${basePath}${src}`
+
     return (
       <img
         alt='provider-icon'
-        src={`${provider.icon_large[language] || provider.icon_large.en_US}`}
+        src={src}
         className={`w-auto h-6 ${className}`}
       />
     )

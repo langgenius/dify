@@ -20,6 +20,7 @@ import { fetchCollectionList } from '@/service/tools'
 
 const ProviderList = () => {
   const { t } = useTranslation()
+  const basePath = process.env.NEXT_PUBLIC_BASE_PATH || ''
 
   const [activeTab, setActiveTab] = useTabSearchParams({
     defaultTab: 'builtin',
@@ -52,6 +53,12 @@ const ProviderList = () => {
   }, [activeTab, tagFilterValue, keywords, collectionList])
   const getProviderList = async () => {
     const list = await fetchCollectionList()
+    if (basePath) {
+      list.forEach((item) => {
+        if (typeof item.icon == 'string' && !item.icon.includes(basePath))
+          item.icon = `${basePath}${item.icon}`
+      })
+    }
     setCollectionList([...list])
   }
   useEffect(() => {

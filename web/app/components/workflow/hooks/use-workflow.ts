@@ -58,6 +58,7 @@ import I18n from '@/context/i18n'
 import { CollectionType } from '@/app/components/tools/types'
 import { CUSTOM_ITERATION_START_NODE } from '@/app/components/workflow/nodes/iteration-start/constants'
 import { useWorkflowConfig } from '@/service/use-workflow'
+const basePath = process.env.NEXT_PUBLIC_BASE_PATH || ''
 
 export const useIsChatMode = () => {
   const appDetail = useAppStore(s => s.appDetail)
@@ -433,7 +434,12 @@ export const useFetchToolsData = () => {
   const handleFetchAllTools = useCallback(async (type: string) => {
     if (type === 'builtin') {
       const buildInTools = await fetchAllBuiltInTools()
-
+      if (basePath) {
+        buildInTools.forEach((item) => {
+          if (typeof item.icon == 'string' && !item.icon.includes(basePath))
+            item.icon = `${basePath}${item.icon}`
+        })
+      }
       workflowStore.setState({
         buildInTools: buildInTools || [],
       })

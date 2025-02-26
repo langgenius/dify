@@ -10,6 +10,7 @@ import { useAppContext } from '@/context/app-context'
 import { IS_CE_EDITION } from '@/config'
 import type { SiteInfo } from '@/models/share'
 import { useThemeContext } from '@/app/components/base/chat/embedded-chatbot/theme/theme-context'
+const basePath = process.env.NEXT_PUBLIC_BASE_PATH || ''
 
 type Props = {
   siteInfo?: SiteInfo
@@ -24,7 +25,7 @@ const OPTION_MAP = {
   iframe: {
     getContent: (url: string, token: string) =>
       `<iframe
- src="${url}/chatbot/${token}"
+ src="${url}${basePath}/chatbot/${token}"
  style="width: 100%; height: 100%; min-height: 700px"
  frameborder="0"
  allow="microphone">
@@ -39,12 +40,12 @@ const OPTION_MAP = {
   isDev: true`
   : ''}${IS_CE_EDITION
   ? `,
-  baseUrl: '${url}'`
+  baseUrl: '${url}${basePath}'`
   : ''}
  }
 </script>
 <script
- src="${url}/embed.min.js"
+ src="${url}${basePath}/embed.min.js"
  id="${token}"
  defer>
 </script>
@@ -59,7 +60,7 @@ const OPTION_MAP = {
 </style>`,
   },
   chromePlugin: {
-    getContent: (url: string, token: string) => `ChatBot URL: ${url}/chatbot/${token}`,
+    getContent: (url: string, token: string) => `ChatBot URL: ${url}${basePath}/chatbot/${token}`,
   },
 }
 const prefixEmbedded = 'appOverview.overview.appInfo.embedded'

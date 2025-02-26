@@ -9,7 +9,7 @@ export default function RoutePrefixHandle() {
   console.log('basePath:', basePath)
 
   const handleRouteChange = () => {
-    console.log('页面已切换到:', pathname)
+    console.log('已切换到:', pathname)
     const addPrefixToImg = (e) => {
       const url = new URL(e.src)
       const prefix = url.pathname.substr(0, basePath.length)

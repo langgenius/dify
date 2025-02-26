@@ -6,6 +6,7 @@ import type {
 import { useLanguage } from '../hooks'
 import { CubeOutline } from '@/app/components/base/icons/src/vender/line/shapes'
 import { OpenaiViolet } from '@/app/components/base/icons/src/public/llm'
+const basePath = process.env.NEXT_PUBLIC_BASE_PATH || ''
 
 type ModelIconProps = {
   provider?: Model | ModelProvider
@@ -23,10 +24,13 @@ const ModelIcon: FC<ModelIconProps> = ({
     return <OpenaiViolet className={`w-4 h-4 ${className}`}/>
 
   if (provider?.icon_small) {
+    let src = provider.icon_small[language] || provider.icon_small.en_US
+    if (src && !src.includes(basePath))
+      src = `${basePath}${src}`
     return (
       <img
         alt='model-icon'
-        src={`${provider.icon_small[language] || provider.icon_small.en_US}`}
+        src={src}
         className={`w-4 h-4 ${className}`}
       />
     )

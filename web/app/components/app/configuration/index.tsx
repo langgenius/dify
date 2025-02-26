@@ -71,6 +71,7 @@ import { FILE_EXTS } from '@/app/components/base/prompt-editor/constants'
 import { SupportUploadFileTypes } from '@/app/components/workflow/types'
 import NewFeaturePanel from '@/app/components/base/features/new-feature-panel'
 import { fetchFileUploadConfig } from '@/service/common'
+const basePath = process.env.NEXT_PUBLIC_BASE_PATH || ''
 
 type PublishConfig = {
   modelConfig: ModelConfig
@@ -499,6 +500,12 @@ const Configuration: FC = () => {
   useEffect(() => {
     (async () => {
       const collectionList = await fetchCollectionList()
+      if (basePath) {
+        collectionList.forEach((item) => {
+          if (typeof item.icon == 'string' && !item.icon.includes(basePath))
+            item.icon = `${basePath}${item.icon}`
+        })
+      }
       setCollectionList(collectionList)
       fetchAppDetail({ url: '/apps', id: appId }).then(async (res: any) => {
         setMode(res.mode)

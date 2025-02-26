@@ -46,9 +46,6 @@ ENV NEXT_TELEMETRY_DISABLED=1
 # Set environment variables, at run time
 ENV NEXT_PUBLIC_BASE_PATH=
 
-# Set environment variables, at run time
-ENV NEXT_PUBLIC_BASE_PATH=
-
 # set timezone
 ENV TZ=UTC
 RUN ln -s /usr/share/zoneinfo/${TZ} /etc/localtime \

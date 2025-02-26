@@ -33,6 +33,7 @@ import type { ToolWithProvider } from '@/app/components/workflow/types'
 import Toast from '@/app/components/base/toast'
 import ConfigContext from '@/context/debug-configuration'
 import type { ModelConfig } from '@/models/debug'
+const basePath = process.env.NEXT_PUBLIC_BASE_PATH || ''
 
 type Props = {
   onHide: () => void
@@ -57,6 +58,12 @@ const AddToolModal: FC<Props> = ({
   const getAllTools = async () => {
     setListLoading(true)
     const buildInTools = await fetchAllBuiltInTools()
+    if (basePath) {
+      buildInTools.forEach((item) => {
+        if (typeof item.icon == 'string' && !item.icon.includes(basePath))
+          item.icon = `${basePath}${item.icon}`
+      })
+    }
     const customTools = await fetchAllCustomTools()
     const workflowTools = await fetchAllWorkflowTools()
     const mergedToolList = [
