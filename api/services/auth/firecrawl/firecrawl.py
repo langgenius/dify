@@ -21,10 +21,12 @@ class FirecrawlAuth(ApiKeyAuthBase):
         headers = self._prepare_headers()
         options = {
             "url": "https://example.com",
-            "crawlerOptions": {"excludes": [], "includes": [], "limit": 1},
-            "pageOptions": {"onlyMainContent": True},
+            "includePaths": [],
+            "excludePaths": [],
+            "limit": 1,
+            "scrapeOptions": {"onlyMainContent": True},
         }
-        response = self._post_request(f"{self.base_url}/v0/crawl", options, headers)
+        response = self._post_request(f"{self.base_url}/v1/crawl", options, headers)
         if response.status_code == 200:
             return True
         else:

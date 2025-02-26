@@ -3,6 +3,7 @@
 import uuid
 from typing import Optional
 
+from configs import dify_config
 from core.model_manager import ModelInstance
 from core.rag.cleaner.clean_processor import CleanProcessor
 from core.rag.datasource.retrieval_service import RetrievalService
@@ -46,6 +47,8 @@ class ParentChildIndexProcessor(BaseIndexProcessor):
                 embedding_model_instance=kwargs.get("embedding_model_instance"),
             )
             for document in documents:
+                if kwargs.get("preview") and len(all_documents) >= 10:
+                    return all_documents
                 # document clean
                 document_text = CleanProcessor.clean(document.page_content, process_rule)
                 document.page_content = document_text
@@ -80,6 +83,10 @@ class ParentChildIndexProcessor(BaseIndexProcessor):
             child_nodes = self._split_child_nodes(
                 document, rules, process_rule.get("mode"), kwargs.get("embedding_model_instance")
             )
+            if kwargs.get("preview"):
+                if len(child_nodes) > dify_config.CHILD_CHUNKS_PREVIEW_NUMBER:
+                    child_nodes = child_nodes[: dify_config.CHILD_CHUNKS_PREVIEW_NUMBER]
+
             document.children = child_nodes
             doc_id = str(uuid.uuid4())
             hash = helper.generate_text_hash(document.page_content)

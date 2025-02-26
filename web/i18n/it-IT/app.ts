@@ -167,6 +167,10 @@ const translation = {
         'La configurazione attuale è in uso, rimuovendola disattiverà la funzione di Tracciamento.',
     },
     view: 'Vista',
+    opik: {
+      description: 'Opik è una piattaforma open source per la valutazione, il test e il monitoraggio delle applicazioni LLM.',
+      title: 'Opik',
+    },
   },
   answerIcon: {
     description: 'Se utilizzare l\'icona WebApp per la sostituzione 🤖 nell\'applicazione condivisa',
@@ -194,6 +198,13 @@ const translation = {
     },
     byCategories: 'PER CATEGORIE',
     searchAllTemplate: 'Cerca in tutti i modelli...',
+  },
+  showMyCreatedAppsOnly: 'Mostra solo le mie app create',
+  appSelector: {
+    params: 'PARAMETRI DELL\'APP',
+    noParams: 'Non sono necessari parametri',
+    placeholder: 'Seleziona un\'app...',
+    label: 'APP',
   },
 }
 

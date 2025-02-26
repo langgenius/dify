@@ -167,6 +167,8 @@ class OracleVector(BaseVector):
         return docs
 
     def delete_by_ids(self, ids: list[str]) -> None:
+        if not ids:
+            return
         with self._get_cursor() as cur:
             cur.execute(f"DELETE FROM {self.table_name} WHERE id IN %s" % (tuple(ids),))
 

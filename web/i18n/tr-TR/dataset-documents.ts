@@ -132,7 +132,7 @@ const translation = {
         language: 'Dil',
         authorPublisher: 'Yazar/Yayıncı',
         publishDate: 'Yayın Tarihi',
-        topicsKeywords: 'Konular/Anahtar Kelimeler',
+        topicKeywords: 'Konular/Anahtar Kelimeler',
         description: 'Açıklama',
       },
       paper: {

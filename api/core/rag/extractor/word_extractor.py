@@ -50,7 +50,7 @@ class WordExtractor(BaseExtractor):
 
             self.web_path = self.file_path
             # TODO: use a better way to handle the file
-            self.temp_file = tempfile.NamedTemporaryFile()  # noqa: SIM115
+            self.temp_file = tempfile.NamedTemporaryFile()  # noqa SIM115
             self.temp_file.write(r.content)
             self.file_path = self.temp_file.name
         elif not os.path.isfile(self.file_path):
@@ -234,7 +234,7 @@ class WordExtractor(BaseExtractor):
                                     continue
                                 for i in url_pattern.findall(x.text):
                                     hyperlinks_url = str(i)
-                    except Exception as e:
+                    except Exception:
                         logger.exception("Failed to parse HYPERLINK xml")
 
         def parse_paragraph(paragraph):

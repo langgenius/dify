@@ -98,6 +98,8 @@ class ElasticSearchVector(BaseVector):
         return bool(self._client.exists(index=self._collection_name, id=id))
 
     def delete_by_ids(self, ids: list[str]) -> None:
+        if not ids:
+            return
         for id in ids:
             self._client.delete(index=self._collection_name, id=id)
 

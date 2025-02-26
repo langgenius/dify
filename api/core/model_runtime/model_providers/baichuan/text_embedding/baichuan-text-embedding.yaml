@@ -1,5 +1,0 @@
-model: baichuan-text-embedding
-model_type: text-embedding
-model_properties:
-  context_size: 512
-  max_chunks: 16

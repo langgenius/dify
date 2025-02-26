@@ -107,7 +107,7 @@ const BaseNode: FC<BaseNodeProps> = ({
           'group relative pb-1 shadow-xs',
           'border border-transparent rounded-[15px]',
           data.type !== BlockEnum.Iteration && 'w-[240px] bg-workflow-block-bg',
-          data.type === BlockEnum.Iteration && 'flex flex-col w-full h-full bg-[#fcfdff]/80',
+          data.type === BlockEnum.Iteration && 'flex flex-col w-full h-full bg-workflow-block-bg-transparent border-workflow-block-border',
           !data._runningStatus && 'hover:shadow-lg',
           showRunningBorder && '!border-state-accent-solid',
           showSuccessBorder && '!border-state-success-solid',
@@ -169,7 +169,7 @@ const BaseNode: FC<BaseNodeProps> = ({
         }
         <div className={cn(
           'flex items-center px-3 pt-3 pb-2 rounded-t-2xl',
-          data.type === BlockEnum.Iteration && 'bg-[rgba(250,252,255,0.9)]',
+          data.type === BlockEnum.Iteration && 'bg-transparent',
         )}>
           <BlockIcon
             className='shrink-0 mr-2'

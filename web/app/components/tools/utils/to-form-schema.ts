@@ -1,5 +1,5 @@
 import type { ToolCredential, ToolParameter } from '../types'
-const toType = (type: string) => {
+export const toType = (type: string) => {
   switch (type) {
     case 'string':
       return 'text-input'
@@ -62,4 +62,35 @@ export const addDefaultValue = (value: Record<string, any>, formSchemas: { varia
       newValues[formSchema.variable] = formSchema.default
   })
   return newValues
+}
+
+export const generateFormValue = (value: Record<string, any>, formSchemas: { variable: string; default?: any }[], isReasoning = false) => {
+  const newValues = {} as any
+  formSchemas.forEach((formSchema) => {
+    const itemValue = value[formSchema.variable]
+    if ((formSchema.default !== undefined) && (value === undefined || itemValue === null || itemValue === '' || itemValue === undefined)) {
+      newValues[formSchema.variable] = {
+        ...(isReasoning ? { value: null, auto: 1 } : { value: formSchema.default }),
+      }
+    }
+  })
+  return newValues
+}
+
+export const getPlainValue = (value: Record<string, any>) => {
+  const plainValue = { ...value } as any
+  Object.keys(plainValue).forEach((key) => {
+    plainValue[key] = value[key].value
+  })
+  return plainValue
+}
+
+export const getStructureValue = (value: Record<string, any>) => {
+  const newValue = { ...value } as any
+  Object.keys(newValue).forEach((key) => {
+    newValue[key] = {
+      value: value[key],
+    }
+  })
+  return newValue
 }

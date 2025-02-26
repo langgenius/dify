@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 
 from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, InvokeFrom, WorkflowAppGenerateEntity
 from core.app.entities.queue_entities import (
+    QueueAgentLogEvent,
     QueueIterationCompletedEvent,
     QueueIterationNextEvent,
     QueueIterationStartEvent,
@@ -24,6 +25,7 @@ from core.app.entities.queue_entities import (
     QueueParallelBranchRunSucceededEvent,
 )
 from core.app.entities.task_entities import (
+    AgentLogStreamResponse,
     IterationNodeCompletedStreamResponse,
     IterationNodeNextStreamResponse,
     IterationNodeStartStreamResponse,
@@ -34,7 +36,6 @@ from core.app.entities.task_entities import (
     ParallelBranchStartStreamResponse,
     WorkflowFinishStreamResponse,
     WorkflowStartStreamResponse,
-    WorkflowTaskState,
 )
 from core.file import FILE_MODEL_IDENTITY, File
 from core.model_runtime.utils.encoders import jsonable_encoder
@@ -58,13 +59,20 @@ from models.workflow import (
     WorkflowRunStatus,
 )
 
-from .exc import WorkflowNodeExecutionNotFoundError, WorkflowRunNotFoundError
+from .exc import WorkflowRunNotFoundError
 
 
 class WorkflowCycleManage:
-    _application_generate_entity: Union[AdvancedChatAppGenerateEntity, WorkflowAppGenerateEntity]
-    _task_state: WorkflowTaskState
-    _workflow_system_variables: dict[SystemVariableKey, Any]
+    def __init__(
+        self,
+        *,
+        application_generate_entity: Union[AdvancedChatAppGenerateEntity, WorkflowAppGenerateEntity],
+        workflow_system_variables: dict[SystemVariableKey, Any],
+    ) -> None:
+        self._workflow_run: WorkflowRun | None = None
+        self._workflow_node_executions: dict[str, WorkflowNodeExecution] = {}
+        self._application_generate_entity = application_generate_entity
+        self._workflow_system_variables = workflow_system_variables
 
     def _handle_workflow_run_start(
         self,
@@ -240,7 +248,7 @@ class WorkflowCycleManage:
         workflow_run.finished_at = datetime.now(UTC).replace(tzinfo=None)
         workflow_run.exceptions_count = exceptions_count
 
-        stmt = select(WorkflowNodeExecution).where(
+        stmt = select(WorkflowNodeExecution.node_execution_id).where(
             WorkflowNodeExecution.tenant_id == workflow_run.tenant_id,
             WorkflowNodeExecution.app_id == workflow_run.app_id,
             WorkflowNodeExecution.workflow_id == workflow_run.workflow_id,
@@ -248,16 +256,18 @@ class WorkflowCycleManage:
             WorkflowNodeExecution.workflow_run_id == workflow_run.id,
             WorkflowNodeExecution.status == WorkflowNodeExecutionStatus.RUNNING.value,
         )
-
-        running_workflow_node_executions = session.scalars(stmt).all()
+        ids = session.scalars(stmt).all()
+        # Use self._get_workflow_node_execution here to make sure the cache is updated
+        running_workflow_node_executions = [
+            self._get_workflow_node_execution(session=session, node_execution_id=id) for id in ids if id
+        ]
 
         for workflow_node_execution in running_workflow_node_executions:
+            now = datetime.now(UTC).replace(tzinfo=None)
             workflow_node_execution.status = WorkflowNodeExecutionStatus.FAILED.value
             workflow_node_execution.error = error
-            workflow_node_execution.finished_at = datetime.now(UTC).replace(tzinfo=None)
-            workflow_node_execution.elapsed_time = (
-                workflow_node_execution.finished_at - workflow_node_execution.created_at
-            ).total_seconds()
+            workflow_node_execution.finished_at = now
+            workflow_node_execution.elapsed_time = (now - workflow_node_execution.created_at).total_seconds()
 
         if trace_manager:
             trace_manager.add_trace_task(
@@ -299,6 +309,8 @@ class WorkflowCycleManage:
         workflow_node_execution.created_at = datetime.now(UTC).replace(tzinfo=None)
 
         session.add(workflow_node_execution)
+
+        self._workflow_node_executions[event.node_execution_id] = workflow_node_execution
         return workflow_node_execution
 
     def _handle_workflow_node_execution_success(
@@ -310,9 +322,8 @@ class WorkflowCycleManage:
         inputs = WorkflowEntry.handle_special_values(event.inputs)
         process_data = WorkflowEntry.handle_special_values(event.process_data)
         outputs = WorkflowEntry.handle_special_values(event.outputs)
-        execution_metadata = (
-            json.dumps(jsonable_encoder(event.execution_metadata)) if event.execution_metadata else None
-        )
+        execution_metadata_dict = dict(event.execution_metadata or {})
+        execution_metadata = json.dumps(jsonable_encoder(execution_metadata_dict)) if execution_metadata_dict else None
         finished_at = datetime.now(UTC).replace(tzinfo=None)
         elapsed_time = (finished_at - event.start_at).total_seconds()
 
@@ -326,6 +337,7 @@ class WorkflowCycleManage:
         workflow_node_execution.finished_at = finished_at
         workflow_node_execution.elapsed_time = elapsed_time
 
+        workflow_node_execution = session.merge(workflow_node_execution)
         return workflow_node_execution
 
     def _handle_workflow_node_execution_failed(
@@ -365,6 +377,7 @@ class WorkflowCycleManage:
         workflow_node_execution.elapsed_time = elapsed_time
         workflow_node_execution.execution_metadata = execution_metadata
 
+        workflow_node_execution = session.merge(workflow_node_execution)
         return workflow_node_execution
 
     def _handle_workflow_node_execution_retried(
@@ -416,6 +429,8 @@ class WorkflowCycleManage:
         workflow_node_execution.index = event.node_run_index
 
         session.add(workflow_node_execution)
+
+        self._workflow_node_executions[event.node_execution_id] = workflow_node_execution
         return workflow_node_execution
 
     #################################################
@@ -526,6 +541,7 @@ class WorkflowCycleManage:
                 parent_parallel_start_node_id=event.parent_parallel_start_node_id,
                 iteration_id=event.in_iteration_id,
                 parallel_run_id=event.parallel_mode_run_id,
+                agent_strategy=event.agent_strategy,
             ),
         )
 
@@ -812,22 +828,41 @@ class WorkflowCycleManage:
         return None
 
     def _get_workflow_run(self, *, session: Session, workflow_run_id: str) -> WorkflowRun:
-        """
-        Refetch workflow run
-        :param workflow_run_id: workflow run id
-        :return:
-        """
+        if self._workflow_run and self._workflow_run.id == workflow_run_id:
+            cached_workflow_run = self._workflow_run
+            cached_workflow_run = session.merge(cached_workflow_run)
+            return cached_workflow_run
         stmt = select(WorkflowRun).where(WorkflowRun.id == workflow_run_id)
         workflow_run = session.scalar(stmt)
         if not workflow_run:
             raise WorkflowRunNotFoundError(workflow_run_id)
+        self._workflow_run = workflow_run
 
         return workflow_run
 
     def _get_workflow_node_execution(self, session: Session, node_execution_id: str) -> WorkflowNodeExecution:
-        stmt = select(WorkflowNodeExecution).where(WorkflowNodeExecution.node_execution_id == node_execution_id)
-        workflow_node_execution = session.scalar(stmt)
-        if not workflow_node_execution:
-            raise WorkflowNodeExecutionNotFoundError(node_execution_id)
+        if node_execution_id not in self._workflow_node_executions:
+            raise ValueError(f"Workflow node execution not found: {node_execution_id}")
+        cached_workflow_node_execution = self._workflow_node_executions[node_execution_id]
+        return session.merge(cached_workflow_node_execution)
 
-        return workflow_node_execution
+    def _handle_agent_log(self, task_id: str, event: QueueAgentLogEvent) -> AgentLogStreamResponse:
+        """
+        Handle agent log
+        :param task_id: task id
+        :param event: agent log event
+        :return:
+        """
+        return AgentLogStreamResponse(
+            task_id=task_id,
+            data=AgentLogStreamResponse.Data(
+                node_execution_id=event.node_execution_id,
+                id=event.id,
+                parent_id=event.parent_id,
+                label=event.label,
+                error=event.error,
+                status=event.status,
+                data=event.data,
+                metadata=event.metadata,
+            ),
+        )

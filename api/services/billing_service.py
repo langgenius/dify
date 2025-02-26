@@ -1,5 +1,5 @@
 import os
-from typing import Optional
+from typing import Literal, Optional
 
 import httpx
 from tenacity import retry, retry_if_exception_type, stop_before_delay, wait_fixed
@@ -17,7 +17,6 @@ class BillingService:
         params = {"tenant_id": tenant_id}
 
         billing_info = cls._send_request("GET", "/subscription/info", params=params)
-
         return billing_info
 
     @classmethod
@@ -47,12 +46,13 @@ class BillingService:
         retry=retry_if_exception_type(httpx.RequestError),
         reraise=True,
     )
-    def _send_request(cls, method, endpoint, json=None, params=None):
+    def _send_request(cls, method: Literal["GET", "POST", "DELETE"], endpoint: str, json=None, params=None):
         headers = {"Content-Type": "application/json", "Billing-Api-Secret-Key": cls.secret_key}
 
         url = f"{cls.base_url}{endpoint}"
         response = httpx.request(method, url, json=json, params=params, headers=headers)
-
+        if method == "GET" and response.status_code != httpx.codes.OK:
+            raise ValueError("Unable to retrieve billing information. Please try again later or contact support.")
         return response.json()
 
     @staticmethod
