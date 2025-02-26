@@ -164,9 +164,7 @@ class AgentChatAppGenerator(MessageBasedAppGenerator):
         )
 
         # init generate records
-        (conversation, message) = self._init_generate_records(
-            application_generate_entity, conversation, args.get("conversation_id")
-        )
+        (conversation, message) = self._init_generate_records(application_generate_entity, conversation)
 
         # init queue manager
         queue_manager = MessageBasedAppQueueManager(
