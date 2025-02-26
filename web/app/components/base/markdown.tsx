@@ -7,11 +7,15 @@ import RehypeKatex from 'rehype-katex'
 import RemarkGfm from 'remark-gfm'
 import RehypeRaw from 'rehype-raw'
 import SyntaxHighlighter from 'react-syntax-highlighter'
-import { atelierHeathLight } from 'react-syntax-highlighter/dist/esm/styles/hljs'
+import {
+  atelierHeathLight,
+  // atelierHeathDark,
+} from 'react-syntax-highlighter/dist/esm/styles/hljs'
 import { Component, memo, useMemo, useRef, useState } from 'react'
 import { flow } from 'lodash-es'
 import cn from '@/utils/classnames'
-import CopyBtn from '@/app/components/base/copy-btn'
+import ActionButton from '@/app/components/base/action-button'
+import CopyIcon from '@/app/components/base/copy-icon'
 import SVGBtn from '@/app/components/base/svg'
 import Flowchart from '@/app/components/base/mermaid'
 import ImageGallery from '@/app/components/base/image-gallery'
@@ -137,13 +141,14 @@ const CodeBlock: any = memo(({ inline, className, children, ...props }) => {
       )
     }
     else {
+      // TODO: atelierHeathDark
       return (
         <SyntaxHighlighter
           {...props}
           style={atelierHeathLight}
           customStyle={{
             paddingLeft: 12,
-            backgroundColor: '#fff',
+            // backgroundColor: '#fff',
           }}
           language={match?.[1]}
           showLineNumbers
@@ -159,21 +164,14 @@ const CodeBlock: any = memo(({ inline, className, children, ...props }) => {
     return <code {...props} className={className}>{children}</code>
 
   return (
-    <div>
-      <div
-        className='flex justify-between h-8 items-center p-1 pl-3 border-b'
-        style={{
-          borderColor: 'rgba(0, 0, 0, 0.05)',
-        }}
-      >
-        <div className='text-[13px] text-gray-500 font-normal'>{languageShowName}</div>
-        <div style={{ display: 'flex' }}>
+    <div className='bg-components-input-bg-normal rounded-[10px]'>
+      <div className='flex justify-between h-8 items-center p-1 pl-3 border-b border-divider-subtle'>
+        <div className='system-xs-semibold-uppercase text-text-secondary'>{languageShowName}</div>
+        <div className='flex items-center gap-1'>
           {(['mermaid', 'svg']).includes(language!) && <SVGBtn isSVG={isSVG} setIsSVG={setIsSVG} />}
-          <CopyBtn
-            className='mr-1'
-            value={String(children).replace(/\n$/, '')}
-            isPlain
-          />
+          <ActionButton>
+            <CopyIcon content={String(children).replace(/\n$/, '')}/>
+          </ActionButton>
         </div>
       </div>
       {renderCodeContent}
@@ -241,7 +239,7 @@ export function Markdown(props: { content: string; className?: string }) {
     preprocessLaTeX,
   ])(props.content)
   return (
-    <div className={cn(props.className, 'markdown-body')}>
+    <div className={cn('markdown-body', '!text-text-primary', props.className)}>
       <ReactMarkdown
         remarkPlugins={[
           RemarkGfm,
