@@ -830,6 +830,40 @@ class TenantService:
 
         return cast(dict, tenant.custom_config_dict)
 
+    @staticmethod
+    def admin_update_member_password(tenant: Tenant, member: Account, new_password: str, operator: Account):
+        """Update member password by admin without requiring old password
+
+        Args:
+            member: The member whose password needs to be updated
+            new_password: New password to set
+
+        Returns:
+            Member: Updated member object
+
+        Raises:
+            ValidationError: If new password doesn't meet requirements
+        """
+        TenantService.check_member_permission(tenant, operator, member, "update")
+
+        target_member_join = TenantAccountJoin.query.filter_by(tenant_id=tenant.id, account_id=member.id).first()
+        # Validate new password format/strength
+        valid_password(new_password)
+
+        # Generate new salt
+        salt = secrets.token_bytes(16)
+        base64_salt = base64.b64encode(salt).decode()
+
+        # Hash password with new salt
+        password_hashed = hash_password(new_password, salt)
+        base64_password_hashed = base64.b64encode(password_hashed).decode()
+
+        # Update member's password and salt
+        target_member_join.password = base64_password_hashed
+        target_member_join.password_salt = base64_salt
+
+        db.session.commit()
+
 
 class RegisterService:
     @classmethod
