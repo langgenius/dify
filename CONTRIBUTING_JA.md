@@ -73,7 +73,7 @@ Dify を構築するには次の依存関係が必要です。それらがシス
 - [Docker](https://www.docker.com/)
 - [Docker Compose](https://docs.docker.com/compose/install/)
 - [Node.js v18.x (LTS)](http://nodejs.org)
-- [PNpm](https://pnpm.io/)
+- [pnpm](https://pnpm.io/)
 - [Python](https://www.python.org/) version 3.11.x or 3.12.x
 
 ### 4. インストール
