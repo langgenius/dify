@@ -975,6 +975,8 @@ class DocumentService:
                                     "notion_page_icon": page.page_icon.model_dump() if page.page_icon else None,
                                     "type": page.type,
                                 }
+                                # Truncate page name to 255 characters to prevent DB field length errors
+                                truncated_page_name = page.page_name[:255] if page.page_name else "nopagename"
                                 document = DocumentService.build_document(
                                     dataset,
                                     dataset_process_rule.id,  # type: ignore
@@ -985,7 +987,7 @@ class DocumentService:
                                     created_from,
                                     position,
                                     account,
-                                    page.page_name,
+                                    truncated_page_name,
                                     batch,
                                     knowledge_config.metadata,
                                 )
