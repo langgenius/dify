@@ -3,6 +3,7 @@ const translation = {
     header: {
       creation: 'ナレッジの作成',
       update: 'データの追加',
+      fallbackRoute: '知識',
     },
     one: 'データソース',
     two: 'テキスト進行中',

@@ -24,7 +24,7 @@ type Payload = VarGroupItemType & {
   group_name?: string
 }
 
-type Props = {
+interface Props {
   readOnly: boolean
   nodeId: string
   payload: Payload

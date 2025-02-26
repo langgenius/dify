@@ -74,7 +74,7 @@ class CacheEmbedding(Embeddings):
                             embedding_queue_embeddings.append(normalized_embedding)
                         except IntegrityError:
                             db.session.rollback()
-                        except Exception as e:
+                        except Exception:
                             logging.exception("Failed transform embedding")
                 cache_embeddings = []
                 try:

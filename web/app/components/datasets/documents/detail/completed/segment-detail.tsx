@@ -57,9 +57,6 @@ const SegmentDetail: FC<ISegmentDetailProps> = ({
 
   const handleCancel = () => {
     onCancel()
-    setQuestion(segInfo?.content || '')
-    setAnswer(segInfo?.answer || '')
-    setKeywords(segInfo?.keywords || [])
   }
 
   const handleSave = () => {
@@ -142,9 +139,9 @@ const SegmentDetail: FC<ISegmentDetailProps> = ({
       <div className={classNames(
         'flex grow',
         fullScreen ? 'w-full flex-row justify-center px-6 pt-6 gap-x-8' : 'flex-col gap-y-1 py-3 px-4',
-        !isEditMode && 'pb-0',
+        !isEditMode && 'pb-0 overflow-hidden',
       )}>
-        <div className={classNames('break-all overflow-hidden whitespace-pre-line', fullScreen ? 'w-1/2' : 'grow')}>
+        <div className={classNames(isEditMode ? 'break-all whitespace-pre-line overflow-hidden' : 'overflow-y-auto', fullScreen ? 'w-1/2' : 'grow')}>
           <ChunkContent
             docForm={docForm}
             question={question}

@@ -10,25 +10,25 @@ export enum PromptMode {
   advanced = 'advanced',
 }
 
-export type PromptItem = {
+export interface PromptItem {
   role?: PromptRole
   text: string
 }
 
-export type ChatPromptConfig = {
+export interface ChatPromptConfig {
   prompt: PromptItem[]
 }
 
-export type ConversationHistoriesRole = {
+export interface ConversationHistoriesRole {
   user_prefix: string
   assistant_prefix: string
 }
-export type CompletionPromptConfig = {
+export interface CompletionPromptConfig {
   prompt: PromptItem
   conversation_histories_role: ConversationHistoriesRole
 }
 
-export type BlockStatus = {
+export interface BlockStatus {
   context: boolean
   history: boolean
   query: boolean
@@ -40,7 +40,7 @@ export enum PromptRole {
   assistant = 'assistant',
 }
 
-export type PromptVariable = {
+export interface PromptVariable {
   key: string
   name: string
   type: string // "string" | "number" | "select",
@@ -55,7 +55,7 @@ export type PromptVariable = {
   icon_background?: string
 }
 
-export type CompletionParams = {
+export interface CompletionParams {
   max_tokens: number
   temperature: number
   top_p: number
@@ -66,12 +66,12 @@ export type CompletionParams = {
 
 export type ModelId = 'gpt-3.5-turbo' | 'text-davinci-003'
 
-export type PromptConfig = {
+export interface PromptConfig {
   prompt_template: string
   prompt_variables: PromptVariable[]
 }
 
-export type MoreLikeThisConfig = {
+export interface MoreLikeThisConfig {
   enabled: boolean
 }
 
@@ -79,7 +79,7 @@ export type SuggestedQuestionsAfterAnswerConfig = MoreLikeThisConfig
 
 export type SpeechToTextConfig = MoreLikeThisConfig
 
-export type TextToSpeechConfig = {
+export interface TextToSpeechConfig {
   enabled: boolean
   voice?: string
   language?: string
@@ -88,7 +88,7 @@ export type TextToSpeechConfig = {
 
 export type CitationConfig = MoreLikeThisConfig
 
-export type AnnotationReplyConfig = {
+export interface AnnotationReplyConfig {
   id: string
   enabled: boolean
   score_threshold: number
@@ -98,7 +98,7 @@ export type AnnotationReplyConfig = {
   }
 }
 
-export type ModerationContentConfig = {
+export interface ModerationContentConfig {
   enabled: boolean
   preset_response?: string
 }
@@ -113,14 +113,14 @@ export type ModerationConfig = MoreLikeThisConfig & {
 }
 
 export type RetrieverResourceConfig = MoreLikeThisConfig
-export type AgentConfig = {
+export interface AgentConfig {
   enabled: boolean
   strategy: AgentStrategy
   max_iteration: number
   tools: ToolItem[]
 }
 // frontend use. Not the same as backend
-export type ModelConfig = {
+export interface ModelConfig {
   provider: string // LLM Provider: for example "OPENAI"
   model_id: string
   mode: ModelModeType
@@ -138,12 +138,12 @@ export type ModelConfig = {
   dataSets: any[]
   agentConfig: AgentConfig
 }
-export type DatasetConfigItem = {
+export interface DatasetConfigItem {
   enable: boolean
   value: number
 }
 
-export type DatasetConfigs = {
+export interface DatasetConfigs {
   retrieval_model: RETRIEVE_TYPE
   reranking_model: {
     reranking_provider_name: string
@@ -172,39 +172,39 @@ export type DatasetConfigs = {
   reranking_enable?: boolean
 }
 
-export type DebugRequestBody = {
+export interface DebugRequestBody {
   inputs: Inputs
   query: string
   completion_params: CompletionParams
   model_config: ModelConfig
 }
 
-export type DebugResponse = {
+export interface DebugResponse {
   id: string
   answer: string
   created_at: string
 }
 
-export type DebugResponseStream = {
+export interface DebugResponseStream {
   id: string
   data: string
   created_at: string
 }
 
-export type FeedBackRequestBody = {
+export interface FeedBackRequestBody {
   message_id: string
   rating: 'like' | 'dislike'
   content?: string
   from_source: 'api' | 'log'
 }
 
-export type FeedBackResponse = {
+export interface FeedBackResponse {
   message_id: string
   rating: 'like' | 'dislike'
 }
 
 // Log session list
-export type LogSessionListQuery = {
+export interface LogSessionListQuery {
   keyword?: string
   start?: string // format datetime(YYYY-mm-dd HH:ii)
   end?: string // format datetime(YYYY-mm-dd HH:ii)
@@ -212,7 +212,7 @@ export type LogSessionListQuery = {
   limit: number // default 20. 1-100
 }
 
-export type LogSessionListResponse = {
+export interface LogSessionListResponse {
   data: {
     id: string
     conversation_id: string
@@ -226,7 +226,7 @@ export type LogSessionListResponse = {
 }
 
 // log session detail and debug
-export type LogSessionDetailResponse = {
+export interface LogSessionDetailResponse {
   id: string
   conversation_id: string
   model_provider: string
@@ -240,7 +240,7 @@ export type LogSessionDetailResponse = {
   from_source: 'api' | 'log'
 }
 
-export type SavedMessage = {
+export interface SavedMessage {
   id: string
   answer: string
 }

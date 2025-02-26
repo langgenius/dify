@@ -8,7 +8,7 @@ import RemoveButton from '@/app/components/workflow/nodes/_base/components/remov
 import Input from '@/app/components/workflow/nodes/_base/components/input-support-select-var'
 import type { Var } from '@/app/components/workflow/types'
 import { VarType } from '@/app/components/workflow/types'
-type Props = {
+interface Props {
   className?: string
   instanceId?: string
   nodeId: string

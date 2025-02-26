@@ -6,6 +6,9 @@ LABEL maintainer="takatost@gmail.com"
 # RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g' /etc/apk/repositories
 
 RUN apk add --no-cache tzdata
+RUN npm install -g pnpm@9.12.2
+ENV PNPM_HOME="/pnpm"
+ENV PATH="$PNPM_HOME:$PATH"
 
 
 # install packages
@@ -14,12 +17,12 @@ FROM base AS packages
 WORKDIR /app/web
 
 COPY package.json .
-COPY yarn.lock .
+COPY pnpm-lock.yaml .
 
 # if you located in China, you can use taobao registry to speed up
-# RUN yarn install --frozen-lockfile --registry https://registry.npmmirror.com/
+# RUN pnpm install --frozen-lockfile --registry https://registry.npmmirror.com/
 
-RUN yarn install --frozen-lockfile
+RUN pnpm install --frozen-lockfile
 
 # build resources
 FROM base AS builder
@@ -30,7 +33,8 @@ COPY . .
 # Set environment variables, at build time
 ENV NEXT_PUBLIC_BASE_PATH=
 
-RUN yarn build
+ENV NODE_OPTIONS="--max-old-space-size=4096"
+RUN pnpm build
 
 
 # production stage
@@ -41,10 +45,13 @@ ENV EDITION=SELF_HOSTED
 ENV DEPLOY_ENV=PRODUCTION
 ENV CONSOLE_API_URL=http://127.0.0.1:5001
 ENV APP_API_URL=http://127.0.0.1:5001
+ENV MARKETPLACE_API_URL=http://127.0.0.1:5001
+ENV MARKETPLACE_URL=http://127.0.0.1:5001
 ENV PORT=3000
 ENV NEXT_TELEMETRY_DISABLED=1
 # Set environment variables, at run time
 ENV NEXT_PUBLIC_BASE_PATH=
+ENV PM2_INSTANCES=2
 
 # set timezone
 ENV TZ=UTC
@@ -57,13 +64,11 @@ COPY --from=builder /app/web/public ./public
 COPY --from=builder /app/web/.next/standalone ./
 COPY --from=builder /app/web/.next/static ./.next/static
 
-COPY docker/pm2.json ./pm2.json
 COPY docker/entrypoint.sh ./entrypoint.sh
 
 
 # global runtime packages
-RUN yarn global add pm2 \
-    && yarn cache clean \
+RUN pnpm add -g pm2 \
     && mkdir /.pm2 \
     && chown -R 1001:0 /.pm2 /app/web \
     && chmod -R g=u /.pm2 /app/web

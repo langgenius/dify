@@ -84,7 +84,7 @@ const DatasetItem: FC<Props> = ({
                 showSettingsModal()
               }}
             >
-              <RiEditLine className='w-4 h-4 flex-shrink-0 text-text-tertiary' />
+              <RiEditLine className='w-4 h-4 shrink-0 text-text-tertiary' />
             </ActionButton>
           }
           <ActionButton
@@ -93,7 +93,7 @@ const DatasetItem: FC<Props> = ({
             onMouseEnter={() => setIsDeleteHovered(true)}
             onMouseLeave={() => setIsDeleteHovered(false)}
           >
-            <RiDeleteBinLine className={`w-4 h-4 flex-shrink-0 ${isDeleteHovered ? 'text-text-destructive' : 'text-text-tertiary'}`} />
+            <RiDeleteBinLine className={`w-4 h-4 shrink-0 ${isDeleteHovered ? 'text-text-destructive' : 'text-text-tertiary'}`} />
           </ActionButton>
         </div>
       )}

@@ -51,6 +51,9 @@ const translation = {
     skip: 'کشتی',
     imageCopied: 'تصویر کپی شده',
     deleteApp: 'حذف برنامه',
+    copied: 'کپی',
+    viewDetails: 'دیدن جزئیات',
+    in: 'در',
   },
   errorMsg: {
     fieldRequired: '{{field}} الزامی است',
@@ -127,6 +130,8 @@ const translation = {
       Custom: 'سفارشی',
     },
     addMoreModel: 'برای افزودن مدل‌های بیشتر به تنظیمات بروید',
+    settingsLink: 'تنظیمات ارائه دهنده مدل',
+    capabilities: 'قابلیت های چند وجهی',
   },
   menus: {
     status: 'بتا',
@@ -139,6 +144,7 @@ const translation = {
     newApp: 'برنامه جدید',
     newDataset: 'ایجاد دانش',
     tools: 'ابزارها',
+    exploreMarketplace: 'بازار را کاوش کنید',
   },
   userProfile: {
     settings: 'تنظیمات',
@@ -164,6 +170,7 @@ const translation = {
     dataSource: 'منبع داده',
     plugin: 'افزونه‌ها',
     apiBasedExtension: 'توسعه مبتنی بر API',
+    generalGroup: 'عمومی',
   },
   account: {
     avatar: 'آواتار',
@@ -403,6 +410,12 @@ const translation = {
     loadBalancingLeastKeyWarning: 'برای فعال کردن تعادل بار، حداقل 2 کلید باید فعال باشند.',
     loadBalancingInfo: 'به طور پیش‌فرض، تعادل بار از استراتژی Round-robin استفاده می‌کند. اگر محدودیت نرخ فعال شود، یک دوره خنک شدن 1 دقیقه‌ای اعمال خواهد شد.',
     upgradeForLoadBalancing: 'برای فعال کردن تعادل بار، طرح خود را ارتقا دهید.',
+    emptyProviderTitle: 'ارائه دهنده مدل راه اندازی نشده است',
+    toBeConfigured: 'پیکربندی شود',
+    configureTip: 'api-key را راه اندازی کنید یا مدل را برای استفاده اضافه کنید',
+    installProvider: 'نصب ارائه دهندگان مدل',
+    discoverMore: 'اطلاعات بیشتر در',
+    emptyProviderTip: 'لطفا ابتدا یک ارائه دهنده مدل نصب کنید.',
   },
   dataSource: {
     add: 'افزودن منبع داده',
@@ -532,6 +545,8 @@ const translation = {
       hitScore: 'امتیاز بازیابی:',
     },
     inputPlaceholder: 'با ربات صحبت کنید',
+    thought: 'فکر',
+    thinking: 'تفکر...',
   },
   promptEditor: {
     placeholder: 'دستور خود را اینجا بنویسید، «{» را وارد کنید تا یک متغیر درج کنید، «/» را وارد کنید تا یک بلوک محتوای دستور درج کنید',
