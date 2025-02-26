@@ -106,7 +106,7 @@ const translation = {
     customDisclaimer: 'カスタム免責事項',
     customDisclaimerPlaceholder: 'カスタム免責事項を入力してください',
     confirmTitle: '保存しますか？',
-    confirmTip: '新しバージョン保存すると、このツールを使用されているアプリは影響を受けます',
+    confirmTip: 'このツールを使用しているアプリは影響を受けます',
     deleteToolConfirmTitle: 'このツールを削除しますか？',
     deleteToolConfirmContent: 'ツールの削除は取り消しできません。ユーザーはもうあなた様のツールにアクセスできません。',
   },

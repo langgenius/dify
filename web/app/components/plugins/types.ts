@@ -87,6 +87,7 @@ export type PluginManifestInMarket = {
   introduction: string
   verified: boolean
   install_count: number
+  badges: string[]
 }
 
 export type PluginDetail = {
@@ -137,6 +138,7 @@ export type Plugin = {
     settings: CredentialFormSchemaBase[]
   }
   tags: { name: string }[]
+  badges: string[]
 }
 
 export enum PermissionType {

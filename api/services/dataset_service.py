@@ -13,10 +13,10 @@ from sqlalchemy.orm import Session
 from werkzeug.exceptions import NotFound
 
 from configs import dify_config
-from core.entities import DEFAULT_PLUGIN_ID
 from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
 from core.model_manager import ModelManager
 from core.model_runtime.entities.model_entities import ModelType
+from core.plugin.entities.plugin import ModelProviderID
 from core.rag.index_processor.constant.index_type import IndexType
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from events.dataset_event import dataset_was_deleted
@@ -328,14 +328,10 @@ class DatasetService:
             else:
                 # add default plugin id to both setting sets, to make sure the plugin model provider is consistent
                 plugin_model_provider = dataset.embedding_model_provider
-                if "/" not in plugin_model_provider:
-                    plugin_model_provider = f"{DEFAULT_PLUGIN_ID}/{plugin_model_provider}/{plugin_model_provider}"
+                plugin_model_provider = str(ModelProviderID(plugin_model_provider))
 
                 new_plugin_model_provider = data["embedding_model_provider"]
-                if "/" not in new_plugin_model_provider:
-                    new_plugin_model_provider = (
-                        f"{DEFAULT_PLUGIN_ID}/{new_plugin_model_provider}/{new_plugin_model_provider}"
-                    )
+                new_plugin_model_provider = str(ModelProviderID(new_plugin_model_provider))
 
                 if (
                     new_plugin_model_provider != plugin_model_provider
@@ -979,6 +975,8 @@ class DocumentService:
                                     "notion_page_icon": page.page_icon.model_dump() if page.page_icon else None,
                                     "type": page.type,
                                 }
+                                # Truncate page name to 255 characters to prevent DB field length errors
+                                truncated_page_name = page.page_name[:255] if page.page_name else "nopagename"
                                 document = DocumentService.build_document(
                                     dataset,
                                     dataset_process_rule.id,  # type: ignore
@@ -989,7 +987,7 @@ class DocumentService:
                                     created_from,
                                     position,
                                     account,
-                                    page.page_name,
+                                    truncated_page_name,
                                     batch,
                                     knowledge_config.metadata,
                                 )
