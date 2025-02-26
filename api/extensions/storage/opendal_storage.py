@@ -71,15 +71,8 @@ class OpenDALStorage(BaseStorage):
         logger.debug(f"file {filename} downloaded to {target_filepath}")
 
     def exists(self, filename: str) -> bool:
-        # FIXME this is a workaround for opendal python-binding do not have a exists method and no better
-        # error handler here when opendal python-binding has a exists method, we should use it
-        # more https://github.com/apache/opendal/blob/main/bindings/python/src/operator.rs
-        try:
-            res: bool = self.op.stat(path=filename).mode.is_file()
-            logger.debug(f"file {filename} checked")
-            return res
-        except Exception:
-            return False
+        res: bool = self.op.exists(path=filename)
+        return res
 
     def delete(self, filename: str):
         if self.exists(filename):
