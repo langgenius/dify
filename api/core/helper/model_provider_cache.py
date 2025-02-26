@@ -30,7 +30,7 @@ class ProviderCredentialsCache:
             except JSONDecodeError:
                 return None
 
-            return cached_provider_credentials
+            return dict(cached_provider_credentials)
         else:
             return None
 

@@ -33,7 +33,7 @@ class ToolParameterCache:
             except JSONDecodeError:
                 return None
 
-            return cached_tool_parameter
+            return dict(cached_tool_parameter)
         else:
             return None
 

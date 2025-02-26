@@ -25,6 +25,11 @@ const translation = {
   noRecentTip: 'Tukaj ni nedavnih rezultatov poizvedb',
   viewChart: 'Prikaži VEKTORSKI GRAF',
   viewDetail: 'Prikaži podrobnosti',
+  records: 'Zapisov',
+  keyword: 'Ključne besede',
+  chunkDetail: 'Detajl koščka',
+  open: 'Odprt',
+  hitChunks: 'Zadenite {{num}} podrejene koščke',
 }
 
 export default translation

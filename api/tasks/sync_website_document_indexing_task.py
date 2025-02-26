@@ -3,7 +3,7 @@ import logging
 import time
 
 import click
-from celery import shared_task
+from celery import shared_task  # type: ignore
 
 from core.indexing_runner import IndexingRunner
 from core.rag.index_processor.index_processor_factory import IndexProcessorFactory
@@ -25,6 +25,8 @@ def sync_website_document_indexing_task(dataset_id: str, document_id: str):
     start_at = time.perf_counter()
 
     dataset = db.session.query(Dataset).filter(Dataset.id == dataset_id).first()
+    if dataset is None:
+        raise ValueError("Dataset not found")
 
     sync_indexing_cache_key = "document_{}_is_sync".format(document_id)
     # check document limit
@@ -44,7 +46,7 @@ def sync_website_document_indexing_task(dataset_id: str, document_id: str):
         if document:
             document.indexing_status = "error"
             document.error = str(e)
-            document.stopped_at = datetime.datetime.utcnow()
+            document.stopped_at = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
             db.session.add(document)
             db.session.commit()
         redis_client.delete(sync_indexing_cache_key)
@@ -52,33 +54,35 @@ def sync_website_document_indexing_task(dataset_id: str, document_id: str):
 
     logging.info(click.style("Start sync website document: {}".format(document_id), fg="green"))
     document = db.session.query(Document).filter(Document.id == document_id, Document.dataset_id == dataset_id).first()
+    if not document:
+        logging.info(click.style("Document not found: {}".format(document_id), fg="yellow"))
+        return
     try:
-        if document:
-            # clean old data
-            index_processor = IndexProcessorFactory(document.doc_form).init_index_processor()
+        # clean old data
+        index_processor = IndexProcessorFactory(document.doc_form).init_index_processor()
 
-            segments = db.session.query(DocumentSegment).filter(DocumentSegment.document_id == document_id).all()
-            if segments:
-                index_node_ids = [segment.index_node_id for segment in segments]
-                # delete from vector index
-                index_processor.clean(dataset, index_node_ids)
+        segments = db.session.query(DocumentSegment).filter(DocumentSegment.document_id == document_id).all()
+        if segments:
+            index_node_ids = [segment.index_node_id for segment in segments]
+            # delete from vector index
+            index_processor.clean(dataset, index_node_ids, with_keywords=True, delete_child_chunks=True)
 
-                for segment in segments:
-                    db.session.delete(segment)
-                db.session.commit()
+        for segment in segments:
+            db.session.delete(segment)
+        db.session.commit()
 
-            document.indexing_status = "parsing"
-            document.processing_started_at = datetime.datetime.utcnow()
-            db.session.add(document)
-            db.session.commit()
+        document.indexing_status = "parsing"
+        document.processing_started_at = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
+        db.session.add(document)
+        db.session.commit()
 
-            indexing_runner = IndexingRunner()
-            indexing_runner.run([document])
-            redis_client.delete(sync_indexing_cache_key)
+        indexing_runner = IndexingRunner()
+        indexing_runner.run([document])
+        redis_client.delete(sync_indexing_cache_key)
     except Exception as ex:
         document.indexing_status = "error"
         document.error = str(ex)
-        document.stopped_at = datetime.datetime.utcnow()
+        document.stopped_at = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
         db.session.add(document)
         db.session.commit()
         logging.info(click.style(str(ex), fg="yellow"))

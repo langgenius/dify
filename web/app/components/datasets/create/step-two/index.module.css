@@ -13,18 +13,6 @@
   z-index: 10;
 }
 
-.form {
-  @apply px-16 pb-8;
-}
-
-.form .label {
-  @apply pt-6 pb-2 flex items-center;
-  font-weight: 500;
-  font-size: 16px;
-  line-height: 24px;
-  color: #344054;
-}
-
 .segmentationItem {
   min-height: 68px;
 }
@@ -75,6 +63,10 @@
   cursor: pointer;
 }
 
+.disabled {
+  cursor: not-allowed !important;
+}
+
 .indexItem.disabled:hover {
   background-color: #fcfcfd;
   border-color: #f2f4f7;
@@ -87,8 +79,7 @@
 }
 
 .radioItem {
-  @apply relative mb-2 rounded-xl border border-gray-100 cursor-pointer;
-  background-color: #fcfcfd;
+  @apply relative mb-2 rounded-xl border border-components-option-card-option-border cursor-pointer bg-components-option-card-option-bg;
 }
 
 .radioItem.segmentationItem.custom {
@@ -146,7 +137,7 @@
 }
 
 .typeIcon.economical {
-  background-image: url(../assets/piggy-bank-01.svg);
+  background-image: url(../assets/piggy-bank-mod.svg);
 }
 
 .radioItem .radio {
@@ -247,7 +238,7 @@
 }
 
 .ruleItem {
-  @apply flex items-center;
+  @apply flex items-center py-1.5;
 }
 
 .formFooter {
@@ -392,19 +383,6 @@
 
 .previewWrap.isMobile {
   max-width: 524px;
-}
-
-.previewHeader {
-  position: sticky;
-  top: 0;
-  left: 0;
-  padding-top: 42px;
-  background-color: #fff;
-  font-weight: 600;
-  font-size: 18px;
-  line-height: 28px;
-  color: #101828;
-  z-index: 10;
 }
 
 /* 

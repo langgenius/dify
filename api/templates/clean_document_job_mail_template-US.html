@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Documents Disabled Notification</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+      background-color: #f5f5f5;
+    }
+    .email-container {
+      max-width: 600px;
+      margin: 20px auto;
+      background: #ffffff;
+      border-radius: 10px;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+      overflow: hidden;
+    }
+    .header {
+      background-color: #eef2fa;
+      padding: 20px;
+      text-align: center;
+    }
+    .header img {
+      height: 40px;
+    }
+    .content {
+      padding: 20px;
+      line-height: 1.6;
+      color: #333;
+    }
+    .content h1 {
+      font-size: 24px;
+      color: #222;
+    }
+    .content p {
+      margin: 10px 0;
+    }
+    .content ul {
+      padding-left: 20px;
+    }
+    .content ul li {
+      margin-bottom: 10px;
+    }
+    .cta-button, .cta-button:hover, .cta-button:active, .cta-button:visited, .cta-button:focus {
+      display: block;
+      margin: 20px auto;
+      padding: 10px 20px;
+      background-color: #4e89f9;
+      color: #ffffff !important;
+      text-align: center;
+      text-decoration: none !important;
+      border-radius: 5px;
+      width: fit-content;
+    }
+    .footer {
+      text-align: center;
+      padding: 10px;
+      font-size: 12px;
+      color: #777;
+      background-color: #f9f9f9;
+    }
+  </style>
+</head>
+<body>
+  <div class="email-container">
+    <!-- Header -->
+    <div class="header">
+      <img src="https://img.mailinblue.com/6365111/images/content_library/original/64cb67ca60532312c211dc72.png" alt="Dify Logo">
+    </div>
+
+    <!-- Content -->
+    <div class="content">
+      <h1>Some Documents in Your Knowledge Base Have Been Disabled</h1>
+      <p>Dear {{userName}},</p>
+      <p>
+        We're sorry for the inconvenience. To ensure optimal performance, documents 
+        that haven’t been updated or accessed in the past 30 days have been disabled in
+        your knowledge bases:
+      </p>
+      <ul>
+          {% for item in knowledge_details %}
+            <li>{{ item }}</li>
+          {% endfor %}
+      </ul>
+      <p>You can re-enable them anytime.</p>
+      <a href={{url}} class="cta-button">Re-enable in Dify</a>
+    </div>
+
+    <!-- Footer -->
+    <div class="footer">
+      Sincerely,<br>
+      The Dify Team
+    </div>
+  </div>
+</body>
+</html>

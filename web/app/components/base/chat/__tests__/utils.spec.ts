@@ -263,7 +263,7 @@ describe('build chat item tree and get thread messages', () => {
     expect(tree7).toMatchSnapshot()
   })
 
-  const partialMessages2 = (partialMessages as ChatItemInTree[])
+  const partialMessages2 = partialMessages as ChatItemInTree[]
   const tree8 = buildChatItemTree(partialMessages2)
   it('should work with partial messages 2', () => {
     expect(tree8).toMatchSnapshot()

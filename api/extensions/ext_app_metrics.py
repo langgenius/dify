@@ -54,12 +54,14 @@ def init_app(app: DifyApp):
         from extensions.ext_database import db
 
         engine = db.engine
+        # TODO: Fix the type error
+        # FIXME maybe its sqlalchemy issue
         return {
             "pid": os.getpid(),
-            "pool_size": engine.pool.size(),
-            "checked_in_connections": engine.pool.checkedin(),
-            "checked_out_connections": engine.pool.checkedout(),
-            "overflow_connections": engine.pool.overflow(),
-            "connection_timeout": engine.pool.timeout(),
-            "recycle_time": db.engine.pool._recycle,
+            "pool_size": engine.pool.size(),  # type: ignore
+            "checked_in_connections": engine.pool.checkedin(),  # type: ignore
+            "checked_out_connections": engine.pool.checkedout(),  # type: ignore
+            "overflow_connections": engine.pool.overflow(),  # type: ignore
+            "connection_timeout": engine.pool.timeout(),  # type: ignore
+            "recycle_time": db.engine.pool._recycle,  # type: ignore
         }

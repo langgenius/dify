@@ -7,8 +7,10 @@ import {
 } from '@remixicon/react'
 import TipPopup from '../operator/tip-popup'
 import { useWorkflowHistoryStore } from '../workflow-history-store'
+import Divider from '../../base/divider'
 import { useNodesReadOnly } from '@/app/components/workflow/hooks'
 import ViewWorkflowHistory from '@/app/components/workflow/header/view-workflow-history'
+import classNames from '@/utils/classnames'
 
 export type UndoRedoProps = { handleUndo: () => void; handleRedo: () => void }
 const UndoRedo: FC<UndoRedoProps> = ({ handleUndo, handleRedo }) => {
@@ -29,36 +31,35 @@ const UndoRedo: FC<UndoRedoProps> = ({ handleUndo, handleRedo }) => {
   const { nodesReadOnly } = useNodesReadOnly()
 
   return (
-    <div className='flex items-center p-0.5 rounded-lg border-[0.5px] border-gray-100 bg-white shadow-lg text-gray-500'>
+    <div className='flex items-center space-x-0.5 p-0.5 backdrop-blur-[5px] rounded-lg border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg shadow-lg'>
       <TipPopup title={t('workflow.common.undo')!} shortcuts={['ctrl', 'z']}>
         <div
           data-tooltip-id='workflow.undo'
-          className={`
-        flex items-center px-1.5 w-8 h-8 rounded-md text-[13px] font-medium 
-        hover:bg-black/5 hover:text-gray-700 cursor-pointer select-none
-        ${(nodesReadOnly || buttonsDisabled.undo) && 'hover:bg-transparent opacity-50 !cursor-not-allowed'}
-      `}
+          className={
+            classNames('flex items-center px-1.5 w-8 h-8 rounded-md system-sm-medium text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary cursor-pointer select-none',
+              (nodesReadOnly || buttonsDisabled.undo)
+              && 'hover:bg-transparent text-text-disabled hover:text-text-disabled cursor-not-allowed')}
           onClick={() => !nodesReadOnly && !buttonsDisabled.undo && handleUndo()}
         >
           <RiArrowGoBackLine className='h-4 w-4' />
         </div>
-      </TipPopup>
+      </TipPopup >
       <TipPopup title={t('workflow.common.redo')!} shortcuts={['ctrl', 'y']}>
         <div
           data-tooltip-id='workflow.redo'
-          className={`
-        flex items-center px-1.5 w-8 h-8 rounded-md text-[13px] font-medium 
-        hover:bg-black/5 hover:text-gray-700 cursor-pointer select-none
-        ${(nodesReadOnly || buttonsDisabled.redo) && 'hover:bg-transparent opacity-50 !cursor-not-allowed'}
-      `}
+          className={
+            classNames('flex items-center px-1.5 w-8 h-8 rounded-md system-sm-medium text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary cursor-pointer select-none',
+              (nodesReadOnly || buttonsDisabled.redo)
+              && 'hover:bg-transparent text-text-disabled hover:text-text-disabled cursor-not-allowed',
+            )}
           onClick={() => !nodesReadOnly && !buttonsDisabled.redo && handleRedo()}
         >
           <RiArrowGoForwardFill className='h-4 w-4' />
         </div>
       </TipPopup>
-      <div className="mx-[3px] w-[1px] h-3.5 bg-gray-200"></div>
+      <Divider type='vertical' className="h-3.5 mx-0.5" />
       <ViewWorkflowHistory />
-    </div>
+    </div >
   )
 }
 

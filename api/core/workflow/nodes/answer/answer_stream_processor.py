@@ -60,11 +60,10 @@ class AnswerStreamProcessor(StreamProcessor):
 
                     del self.current_stream_chunk_generating_node_ids[event.route_node_state.node_id]
 
-                # remove unreachable nodes
                 self._remove_unreachable_nodes(event)
 
                 # generate stream outputs
-                yield from self._generate_stream_outputs_when_node_finished(event)
+                yield from self._generate_stream_outputs_when_node_finished(cast(NodeRunSucceededEvent, event))
             else:
                 yield event
 
@@ -131,7 +130,7 @@ class AnswerStreamProcessor(StreamProcessor):
                             node_type=event.node_type,
                             node_data=event.node_data,
                             chunk_content=text,
-                            from_variable_selector=value_selector,
+                            from_variable_selector=list(value_selector),
                             route_node_state=event.route_node_state,
                             parallel_id=event.parallel_id,
                             parallel_start_node_id=event.parallel_start_node_id,

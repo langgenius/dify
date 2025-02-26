@@ -4,7 +4,7 @@ const translation = {
   customToolTip: 'Learn more about Dify custom tools',
   type: {
     all: 'All',
-    builtIn: 'Built-in',
+    builtIn: 'Tools',
     custom: 'Custom',
     workflow: 'Workflow',
   },
@@ -21,7 +21,7 @@ const translation = {
     setupModalTitle: 'Set Up Authorization',
     setupModalTitleDescription: 'After configuring credentials, all members within the workspace can use this tool when orchestrating applications.',
   },
-  includeToolNum: '{{num}} tools included',
+  includeToolNum: '{{num}} {{action}} included',
   addTool: 'Add Tool',
   addToolModal: {
     type: 'type',
@@ -31,6 +31,8 @@ const translation = {
     manageInTools: 'Manage in Tools',
     emptyTitle: 'No workflow tool available',
     emptyTip: 'Go to "Workflow -> Publish as Tool"',
+    emptyTitleCustom: 'No custom tool available',
+    emptyTipCustom: 'Create a custom tool',
   },
   createTool: {
     title: 'Create Custom Tool',
@@ -129,6 +131,7 @@ const translation = {
     parameters: 'parameters',
     string: 'string',
     number: 'number',
+    file: 'file',
     required: 'Required',
     infoAndSetting: 'Info & Settings',
   },
@@ -144,10 +147,12 @@ const translation = {
   },
   builtInPromptTitle: 'Prompt',
   toolRemoved: 'Tool removed',
-  notAuthorized: 'Tool not authorized',
+  notAuthorized: 'Not authorized',
   howToGet: 'How to get',
   openInStudio: 'Open in Studio',
   toolNameUsageTip: 'Tool call name for agent reasoning and prompting',
+  copyToolName: 'Copy Name',
+  noTools: 'No tools found',
 }
 
 export default translation

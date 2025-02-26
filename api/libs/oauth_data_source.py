@@ -1,8 +1,9 @@
 import datetime
 import urllib.parse
+from typing import Any
 
 import requests
-from flask_login import current_user
+from flask_login import current_user  # type: ignore
 
 from extensions.ext_database import db
 from models.source import DataSourceOauthBinding
@@ -226,7 +227,7 @@ class NotionOAuth(OAuthDataSource):
         has_more = True
 
         while has_more:
-            data = {
+            data: dict[str, Any] = {
                 "filter": {"value": "page", "property": "object"},
                 **({"start_cursor": next_cursor} if next_cursor else {}),
             }
@@ -254,7 +255,8 @@ class NotionOAuth(OAuthDataSource):
         response = requests.get(url=f"{self._NOTION_BLOCK_SEARCH}/{block_id}", headers=headers)
         response_json = response.json()
         if response.status_code != 200:
-            raise ValueError(f"Error fetching block parent page ID: {response_json.message}")
+            message = response_json.get("message", "unknown error")
+            raise ValueError(f"Error fetching block parent page ID: {message}")
         parent = response_json["parent"]
         parent_type = parent["type"]
         if parent_type == "block_id":
@@ -281,7 +283,7 @@ class NotionOAuth(OAuthDataSource):
         has_more = True
 
         while has_more:
-            data = {
+            data: dict[str, Any] = {
                 "filter": {"value": "database", "property": "object"},
                 **({"start_cursor": next_cursor} if next_cursor else {}),
             }

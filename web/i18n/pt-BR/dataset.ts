@@ -146,6 +146,28 @@ const translation = {
   learnHowToWriteGoodKnowledgeDescription: 'Aprenda a escrever uma boa descrição de conhecimento',
   externalAPIPanelDocumentation: 'Saiba como criar uma API de conhecimento externo',
   externalKnowledgeDescription: 'Descrição do Conhecimento',
+  chunkingMode: {
+    parentChild: 'Pai-filho',
+    general: 'Geral',
+  },
+  parentMode: {
+    fullDoc: 'Documento completo',
+    paragraph: 'Parágrafo',
+  },
+  batchAction: {
+    selected: 'Selecionado',
+    delete: 'Excluir',
+    enable: 'Habilitar',
+    archive: 'Arquivo',
+    disable: 'Desabilitar',
+    cancel: 'Cancelar',
+  },
+  documentsDisabled: '{{num}} documentos desativados - inativos por mais de 30 dias',
+  enable: 'Habilitar',
+  preprocessDocument: '{{num}} Documentos de pré-processamento',
+  localDocs: 'Documentos locais',
+  allKnowledgeDescription: 'Selecione para exibir todo o conhecimento neste espaço de trabalho. Somente o proprietário do espaço de trabalho pode gerenciar todo o conhecimento.',
+  allKnowledge: 'Todo o conhecimento',
 }
 
 export default translation

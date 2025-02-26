@@ -8,15 +8,12 @@ import { fetchAppList } from '@/service/apps'
 import Loading from '@/app/components/base/loading'
 import { fetchCurrentWorkspace, fetchLanggeniusVersion, fetchUserProfile, getSystemFeatures } from '@/service/common'
 import type { App } from '@/types/app'
-import { Theme } from '@/types/app'
 import type { ICurrentWorkspace, LangGeniusVersionResponse, UserProfileResponse } from '@/models/common'
 import MaintenanceNotice from '@/app/components/header/maintenance-notice'
 import type { SystemFeatures } from '@/types/feature'
 import { defaultSystemFeatures } from '@/types/feature'
 
 export type AppContextValue = {
-  theme: Theme
-  setTheme: (theme: Theme) => void
   apps: App[]
   systemFeatures: SystemFeatures
   mutateApps: VoidFunction
@@ -31,6 +28,7 @@ export type AppContextValue = {
   pageContainerRef: React.RefObject<HTMLDivElement>
   langeniusVersionInfo: LangGeniusVersionResponse
   useSelector: typeof useSelector
+  isLoadingCurrentWorkspace: boolean
 }
 
 const initialLangeniusVersionInfo = {
@@ -55,9 +53,7 @@ const initialWorkspaceInfo: ICurrentWorkspace = {
 }
 
 const AppContext = createContext<AppContextValue>({
-  theme: Theme.light,
   systemFeatures: defaultSystemFeatures,
-  setTheme: () => { },
   apps: [],
   mutateApps: () => { },
   userProfile: {
@@ -65,6 +61,7 @@ const AppContext = createContext<AppContextValue>({
     name: '',
     email: '',
     avatar: '',
+    avatar_url: '',
     is_password_set: false,
   },
   currentWorkspace: initialWorkspaceInfo,
@@ -77,6 +74,7 @@ const AppContext = createContext<AppContextValue>({
   pageContainerRef: createRef(),
   langeniusVersionInfo: initialLangeniusVersionInfo,
   useSelector,
+  isLoadingCurrentWorkspace: false,
 })
 
 export function useSelector<T>(selector: (value: AppContextValue) => T): T {
@@ -92,7 +90,7 @@ export const AppContextProvider: FC<AppContextProviderProps> = ({ children }) =>
 
   const { data: appList, mutate: mutateApps } = useSWR({ url: '/apps', params: { page: 1, limit: 30, name: '' } }, fetchAppList)
   const { data: userProfileResponse, mutate: mutateUserProfile } = useSWR({ url: '/account/profile', params: {} }, fetchUserProfile)
-  const { data: currentWorkspaceResponse, mutate: mutateCurrentWorkspace } = useSWR({ url: '/workspaces/current', params: {} }, fetchCurrentWorkspace)
+  const { data: currentWorkspaceResponse, mutate: mutateCurrentWorkspace, isLoading: isLoadingCurrentWorkspace } = useSWR({ url: '/workspaces/current', params: {} }, fetchCurrentWorkspace)
 
   const { data: systemFeatures } = useSWR({ url: '/console/system-features' }, getSystemFeatures, {
     fallbackData: defaultSystemFeatures,
@@ -125,24 +123,11 @@ export const AppContextProvider: FC<AppContextProviderProps> = ({ children }) =>
       setCurrentWorkspace(currentWorkspaceResponse)
   }, [currentWorkspaceResponse])
 
-  const [theme, setTheme] = useState<Theme>(Theme.light)
-  const handleSetTheme = useCallback((theme: Theme) => {
-    setTheme(theme)
-    globalThis.document.documentElement.setAttribute('data-theme', theme)
-  }, [])
-
-  useEffect(() => {
-    globalThis.document.documentElement.setAttribute('data-theme', theme)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
-
   if (!appList || !userProfile)
     return <Loading type='app' />
 
   return (
     <AppContext.Provider value={{
-      theme,
-      setTheme: handleSetTheme,
       apps: appList.data,
       systemFeatures: { ...defaultSystemFeatures, ...systemFeatures },
       mutateApps,
@@ -157,6 +142,7 @@ export const AppContextProvider: FC<AppContextProviderProps> = ({ children }) =>
       isCurrentWorkspaceEditor,
       isCurrentWorkspaceDatasetOperator,
       mutateCurrentWorkspace,
+      isLoadingCurrentWorkspace,
     }}>
       <div className='flex flex-col h-full overflow-y-auto'>
         {globalThis.document?.body?.getAttribute('data-public-maintenance-notice') && <MaintenanceNotice />}

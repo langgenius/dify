@@ -121,6 +121,7 @@ const translation = {
     number: 'número',
     required: 'Obrigatório',
     infoAndSetting: 'Informações e Configurações',
+    file: 'arquivo',
   },
   noCustomTool: {
     title: 'Nenhuma ferramenta personalizada!',
@@ -144,10 +145,14 @@ const translation = {
     emptyTitle: 'Nenhuma ferramenta de fluxo de trabalho disponível',
     added: 'Adicionado',
     manageInTools: 'Gerenciar em Ferramentas',
+    emptyTitleCustom: 'Nenhuma ferramenta personalizada disponível',
+    emptyTipCustom: 'Criar uma ferramenta personalizada',
   },
   openInStudio: 'Abrir no Studio',
   customToolTip: 'Saiba mais sobre as ferramentas personalizadas da Dify',
   toolNameUsageTip: 'Nome da chamada da ferramenta para raciocínio e solicitação do agente',
+  copyToolName: 'Nome da cópia',
+  noTools: 'Nenhuma ferramenta encontrada',
 }
 
 export default translation

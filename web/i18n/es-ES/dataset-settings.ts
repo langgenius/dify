@@ -32,6 +32,9 @@ const translation = {
     retrievalSettings: 'Configuración de recuperación',
     externalKnowledgeID: 'ID de conocimiento externo',
     externalKnowledgeAPI: 'API de conocimiento externo',
+    indexMethodChangeToEconomyDisabledTip: 'No disponible para degradar de HQ a ECO',
+    helpText: 'Aprenda a escribir una buena descripción del conjunto de datos.',
+    upgradeHighQualityTip: 'Una vez que se actualiza al modo de alta calidad, no está disponible volver al modo económico',
   },
 }
 

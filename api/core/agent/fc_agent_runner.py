@@ -40,22 +40,26 @@ class FunctionCallAgentRunner(BaseAgentRunner):
         app_generate_entity = self.application_generate_entity
 
         app_config = self.app_config
+        assert app_config is not None, "app_config is required"
+        assert app_config.agent is not None, "app_config.agent is required"
 
         # convert tools into ModelRuntime Tool format
         tool_instances, prompt_messages_tools = self._init_prompt_tools()
+
+        assert app_config.agent
 
         iteration_step = 1
         max_iteration_steps = min(app_config.agent.max_iteration, 5) + 1
 
         # continue to run until there is not any tool call
         function_call_state = True
-        llm_usage = {"usage": None}
+        llm_usage: dict[str, Optional[LLMUsage]] = {"usage": None}
         final_answer = ""
 
         # get tracing instance
         trace_manager = app_generate_entity.trace_manager
 
-        def increase_usage(final_llm_usage_dict: dict[str, LLMUsage], usage: LLMUsage):
+        def increase_usage(final_llm_usage_dict: dict[str, Optional[LLMUsage]], usage: LLMUsage):
             if not final_llm_usage_dict["usage"]:
                 final_llm_usage_dict["usage"] = usage
             else:
@@ -75,7 +79,7 @@ class FunctionCallAgentRunner(BaseAgentRunner):
                 # the last iteration, remove all tools
                 prompt_messages_tools = []
 
-            message_file_ids = []
+            message_file_ids: list[str] = []
             agent_thought = self.create_agent_thought(
                 message_id=message.id, message="", tool_name="", tool_input="", messages_ids=message_file_ids
             )
@@ -105,7 +109,7 @@ class FunctionCallAgentRunner(BaseAgentRunner):
 
             current_llm_usage = None
 
-            if self.stream_tool_call:
+            if isinstance(chunks, Generator):
                 is_first_chunk = True
                 for chunk in chunks:
                     if is_first_chunk:
@@ -116,13 +120,13 @@ class FunctionCallAgentRunner(BaseAgentRunner):
                     # check if there is any tool call
                     if self.check_tool_calls(chunk):
                         function_call_state = True
-                        tool_calls.extend(self.extract_tool_calls(chunk))
+                        tool_calls.extend(self.extract_tool_calls(chunk) or [])
                         tool_call_names = ";".join([tool_call[1] for tool_call in tool_calls])
                         try:
                             tool_call_inputs = json.dumps(
                                 {tool_call[1]: tool_call[2] for tool_call in tool_calls}, ensure_ascii=False
                             )
-                        except json.JSONDecodeError as e:
+                        except json.JSONDecodeError:
                             # ensure ascii to avoid encoding error
                             tool_call_inputs = json.dumps({tool_call[1]: tool_call[2] for tool_call in tool_calls})
 
@@ -131,7 +135,7 @@ class FunctionCallAgentRunner(BaseAgentRunner):
                             for content in chunk.delta.message.content:
                                 response += content.data
                         else:
-                            response += chunk.delta.message.content
+                            response += str(chunk.delta.message.content)
 
                     if chunk.delta.usage:
                         increase_usage(llm_usage, chunk.delta.usage)
@@ -139,17 +143,17 @@ class FunctionCallAgentRunner(BaseAgentRunner):
 
                     yield chunk
             else:
-                result: LLMResult = chunks
+                result = chunks
                 # check if there is any tool call
                 if self.check_blocking_tool_calls(result):
                     function_call_state = True
-                    tool_calls.extend(self.extract_blocking_tool_calls(result))
+                    tool_calls.extend(self.extract_blocking_tool_calls(result) or [])
                     tool_call_names = ";".join([tool_call[1] for tool_call in tool_calls])
                     try:
                         tool_call_inputs = json.dumps(
                             {tool_call[1]: tool_call[2] for tool_call in tool_calls}, ensure_ascii=False
                         )
-                    except json.JSONDecodeError as e:
+                    except json.JSONDecodeError:
                         # ensure ascii to avoid encoding error
                         tool_call_inputs = json.dumps({tool_call[1]: tool_call[2] for tool_call in tool_calls})
 
@@ -162,7 +166,7 @@ class FunctionCallAgentRunner(BaseAgentRunner):
                         for content in result.message.content:
                             response += content.data
                     else:
-                        response += result.message.content
+                        response += str(result.message.content)
 
                 if not result.message.content:
                     result.message.content = ""
@@ -239,12 +243,12 @@ class FunctionCallAgentRunner(BaseAgentRunner):
                         invoke_from=self.application_generate_entity.invoke_from,
                         agent_tool_callback=self.agent_callback,
                         trace_manager=trace_manager,
+                        app_id=self.application_generate_entity.app_config.app_id,
+                        message_id=self.message.id,
+                        conversation_id=self.conversation.id,
                     )
                     # publish files
-                    for message_file_id, save_as in message_files:
-                        if save_as:
-                            self.variables_pool.set_file(tool_name=tool_call_name, value=message_file_id, name=save_as)
-
+                    for message_file_id in message_files:
                         # publish message file
                         self.queue_manager.publish(
                             QueueMessageFileEvent(message_file_id=message_file_id), PublishFrom.APPLICATION_MANAGER
@@ -263,7 +267,7 @@ class FunctionCallAgentRunner(BaseAgentRunner):
                 if tool_response["tool_response"] is not None:
                     self._current_thoughts.append(
                         ToolPromptMessage(
-                            content=tool_response["tool_response"],
+                            content=str(tool_response["tool_response"]),
                             tool_call_id=tool_call_id,
                             name=tool_call_name,
                         )
@@ -273,9 +277,9 @@ class FunctionCallAgentRunner(BaseAgentRunner):
                 # save agent thought
                 self.save_agent_thought(
                     agent_thought=agent_thought,
-                    tool_name=None,
-                    tool_input=None,
-                    thought=None,
+                    tool_name="",
+                    tool_input="",
+                    thought="",
                     tool_invoke_meta={
                         tool_response["tool_call_name"]: tool_response["meta"] for tool_response in tool_responses
                     },
@@ -283,7 +287,7 @@ class FunctionCallAgentRunner(BaseAgentRunner):
                         tool_response["tool_call_name"]: tool_response["tool_response"]
                         for tool_response in tool_responses
                     },
-                    answer=None,
+                    answer="",
                     messages_ids=message_file_ids,
                 )
                 self.queue_manager.publish(
@@ -296,7 +300,6 @@ class FunctionCallAgentRunner(BaseAgentRunner):
 
             iteration_step += 1
 
-        self.update_db_variables(self.variables_pool, self.db_variables_pool)
         # publish end event
         self.queue_manager.publish(
             QueueMessageEndEvent(
@@ -327,9 +330,7 @@ class FunctionCallAgentRunner(BaseAgentRunner):
             return True
         return False
 
-    def extract_tool_calls(
-        self, llm_result_chunk: LLMResultChunk
-    ) -> Union[None, list[tuple[str, str, dict[str, Any]]]]:
+    def extract_tool_calls(self, llm_result_chunk: LLMResultChunk) -> list[tuple[str, str, dict[str, Any]]]:
         """
         Extract tool calls from llm result chunk
 
@@ -352,7 +353,7 @@ class FunctionCallAgentRunner(BaseAgentRunner):
 
         return tool_calls
 
-    def extract_blocking_tool_calls(self, llm_result: LLMResult) -> Union[None, list[tuple[str, str, dict[str, Any]]]]:
+    def extract_blocking_tool_calls(self, llm_result: LLMResult) -> list[tuple[str, str, dict[str, Any]]]:
         """
         Extract blocking tool calls from llm result
 
@@ -375,9 +376,7 @@ class FunctionCallAgentRunner(BaseAgentRunner):
 
         return tool_calls
 
-    def _init_system_message(
-        self, prompt_template: str, prompt_messages: Optional[list[PromptMessage]] = None
-    ) -> list[PromptMessage]:
+    def _init_system_message(self, prompt_template: str, prompt_messages: list[PromptMessage]) -> list[PromptMessage]:
         """
         Initialize system message
         """
@@ -389,9 +388,9 @@ class FunctionCallAgentRunner(BaseAgentRunner):
         if prompt_messages and not isinstance(prompt_messages[0], SystemPromptMessage) and prompt_template:
             prompt_messages.insert(0, SystemPromptMessage(content=prompt_template))
 
-        return prompt_messages
+        return prompt_messages or []
 
-    def _organize_user_query(self, query, prompt_messages: list[PromptMessage]) -> list[PromptMessage]:
+    def _organize_user_query(self, query: str, prompt_messages: list[PromptMessage]) -> list[PromptMessage]:
         """
         Organize user query
         """
@@ -449,7 +448,7 @@ class FunctionCallAgentRunner(BaseAgentRunner):
     def _organize_prompt_messages(self):
         prompt_template = self.app_config.prompt_template.simple_prompt_template or ""
         self.history_prompt_messages = self._init_system_message(prompt_template, self.history_prompt_messages)
-        query_prompt_messages = self._organize_user_query(self.query, [])
+        query_prompt_messages = self._organize_user_query(self.query or "", [])
 
         self.history_prompt_messages = AgentHistoryPromptTransform(
             model_config=self.model_config,

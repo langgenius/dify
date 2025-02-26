@@ -32,6 +32,9 @@ const translation = {
     retrievalSettings: 'Alma Ayarları',
     externalKnowledgeAPI: 'Harici Bilgi API\'si',
     externalKnowledgeID: 'Harici Bilgi Kimliği',
+    upgradeHighQualityTip: 'Yüksek Kalite moduna yükselttikten sonra Ekonomik moda geri dönülemez',
+    indexMethodChangeToEconomyDisabledTip: 'Genel Merkezden ECO\'ya düşürme için mevcut değil',
+    helpText: 'İyi bir veri kümesi açıklamasının nasıl yazılacağını öğrenin.',
   },
 }
 

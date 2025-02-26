@@ -11,20 +11,11 @@ from configs import dify_config
 
 SSRF_DEFAULT_MAX_RETRIES = dify_config.SSRF_DEFAULT_MAX_RETRIES
 
-proxy_mounts = (
-    {
-        "http://": httpx.HTTPTransport(proxy=dify_config.SSRF_PROXY_HTTP_URL),
-        "https://": httpx.HTTPTransport(proxy=dify_config.SSRF_PROXY_HTTPS_URL),
-    }
-    if dify_config.SSRF_PROXY_HTTP_URL and dify_config.SSRF_PROXY_HTTPS_URL
-    else None
-)
-
 BACKOFF_FACTOR = 0.5
 STATUS_FORCELIST = [429, 500, 502, 503, 504]
 
 
-class MaxRetriesExceededError(Exception):
+class MaxRetriesExceededError(ValueError):
     """Raised when the maximum number of retries is exceeded."""
 
     pass
@@ -45,13 +36,16 @@ def make_request(method, url, max_retries=SSRF_DEFAULT_MAX_RETRIES, **kwargs):
         )
 
     retries = 0
-    stream = kwargs.pop("stream", False)
     while retries <= max_retries:
         try:
             if dify_config.SSRF_PROXY_ALL_URL:
                 with httpx.Client(proxy=dify_config.SSRF_PROXY_ALL_URL) as client:
                     response = client.request(method=method, url=url, **kwargs)
-            elif proxy_mounts:
+            elif dify_config.SSRF_PROXY_HTTP_URL and dify_config.SSRF_PROXY_HTTPS_URL:
+                proxy_mounts = {
+                    "http://": httpx.HTTPTransport(proxy=dify_config.SSRF_PROXY_HTTP_URL),
+                    "https://": httpx.HTTPTransport(proxy=dify_config.SSRF_PROXY_HTTPS_URL),
+                }
                 with httpx.Client(mounts=proxy_mounts) as client:
                     response = client.request(method=method, url=url, **kwargs)
             else:
@@ -65,11 +59,12 @@ def make_request(method, url, max_retries=SSRF_DEFAULT_MAX_RETRIES, **kwargs):
 
         except httpx.RequestError as e:
             logging.warning(f"Request to URL {url} failed on attempt {retries + 1}: {e}")
+            if max_retries == 0:
+                raise
 
         retries += 1
         if retries <= max_retries:
             time.sleep(BACKOFF_FACTOR * (2 ** (retries - 1)))
-
     raise MaxRetriesExceededError(f"Reached maximum retries ({max_retries}) for URL {url}")
 
 

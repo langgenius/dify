@@ -2,7 +2,7 @@ import logging
 import time
 import uuid
 from collections.abc import Generator, Mapping, Sequence
-from typing import Any, Optional
+from typing import Any, Optional, cast
 
 from configs import dify_config
 from core.app.apps.base_app_queue_manager import GenerateTaskStoppedError
@@ -129,11 +129,11 @@ class WorkflowEntry:
         :return:
         """
         # fetch node info from workflow graph
-        graph = workflow.graph_dict
-        if not graph:
+        workflow_graph = workflow.graph_dict
+        if not workflow_graph:
             raise ValueError("workflow graph not found")
 
-        nodes = graph.get("nodes")
+        nodes = workflow_graph.get("nodes")
         if not nodes:
             raise ValueError("nodes not found in workflow graph")
 
@@ -194,9 +194,109 @@ class WorkflowEntry:
             raise WorkflowNodeRunFailedError(node_instance=node_instance, error=str(e))
         return node_instance, generator
 
+    @classmethod
+    def run_free_node(
+        cls, node_data: dict, node_id: str, tenant_id: str, user_id: str, user_inputs: dict[str, Any]
+    ) -> tuple[BaseNode, Generator[NodeEvent | InNodeEvent, None, None]]:
+        """
+        Run free node
+
+        NOTE: only parameter_extractor/question_classifier are supported
+
+        :param node_data: node data
+        :param user_id: user id
+        :param user_inputs: user inputs
+        :return:
+        """
+        # generate a fake graph
+        node_config = {"id": node_id, "width": 114, "height": 514, "type": "custom", "data": node_data}
+        start_node_config = {
+            "id": "start",
+            "width": 114,
+            "height": 514,
+            "type": "custom",
+            "data": {
+                "type": NodeType.START.value,
+                "title": "Start",
+                "desc": "Start",
+            },
+        }
+        graph_dict = {
+            "nodes": [start_node_config, node_config],
+            "edges": [
+                {
+                    "source": "start",
+                    "target": node_id,
+                    "sourceHandle": "source",
+                    "targetHandle": "target",
+                }
+            ],
+        }
+
+        node_type = NodeType(node_data.get("type", ""))
+        if node_type not in {NodeType.PARAMETER_EXTRACTOR, NodeType.QUESTION_CLASSIFIER}:
+            raise ValueError(f"Node type {node_type} not supported")
+
+        node_cls = NODE_TYPE_CLASSES_MAPPING[node_type]["1"]
+        if not node_cls:
+            raise ValueError(f"Node class not found for node type {node_type}")
+
+        graph = Graph.init(graph_config=graph_dict)
+
+        # init variable pool
+        variable_pool = VariablePool(
+            system_variables={},
+            user_inputs={},
+            environment_variables=[],
+        )
+
+        node_cls = cast(type[BaseNode], node_cls)
+        # init workflow run state
+        node_instance: BaseNode = node_cls(
+            id=str(uuid.uuid4()),
+            config=node_config,
+            graph_init_params=GraphInitParams(
+                tenant_id=tenant_id,
+                app_id="",
+                workflow_type=WorkflowType.WORKFLOW,
+                workflow_id="",
+                graph_config=graph_dict,
+                user_id=user_id,
+                user_from=UserFrom.ACCOUNT,
+                invoke_from=InvokeFrom.DEBUGGER,
+                call_depth=0,
+            ),
+            graph=graph,
+            graph_runtime_state=GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter()),
+        )
+
+        try:
+            # variable selector to variable mapping
+            try:
+                variable_mapping = node_cls.extract_variable_selector_to_variable_mapping(
+                    graph_config=graph_dict, config=node_config
+                )
+            except NotImplementedError:
+                variable_mapping = {}
+
+            cls.mapping_user_inputs_to_variable_pool(
+                variable_mapping=variable_mapping,
+                user_inputs=user_inputs,
+                variable_pool=variable_pool,
+                tenant_id=tenant_id,
+            )
+
+            # run node
+            generator = node_instance.run()
+
+            return node_instance, generator
+        except Exception as e:
+            raise WorkflowNodeRunFailedError(node_instance=node_instance, error=str(e))
+
     @staticmethod
     def handle_special_values(value: Optional[Mapping[str, Any]]) -> Mapping[str, Any] | None:
-        return WorkflowEntry._handle_special_values(value)
+        result = WorkflowEntry._handle_special_values(value)
+        return result if isinstance(result, Mapping) or result is None else dict(result)
 
     @staticmethod
     def _handle_special_values(value: Any) -> Any:
@@ -208,10 +308,10 @@ class WorkflowEntry:
                 res[k] = WorkflowEntry._handle_special_values(v)
             return res
         if isinstance(value, list):
-            res = []
+            res_list = []
             for item in value:
-                res.append(WorkflowEntry._handle_special_values(item))
-            return res
+                res_list.append(WorkflowEntry._handle_special_values(item))
+            return res_list
         if isinstance(value, File):
             return value.to_dict()
         return value
@@ -237,6 +337,10 @@ class WorkflowEntry:
                 variable_selector
             ):
                 raise ValueError(f"Variable key {node_variable} not found in user inputs.")
+
+            # environment variable already exist in variable pool, not from user inputs
+            if variable_pool.get(variable_selector):
+                continue
 
             # fetch variable node id from variable selector
             variable_node_id = variable_selector[0]

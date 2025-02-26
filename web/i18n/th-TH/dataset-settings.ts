@@ -32,6 +32,9 @@ const translation = {
     externalKnowledgeID: 'ID ความรู้ภายนอก',
     retrievalSettings: 'การตั้งค่าการดึงข้อมูล',
     save: 'ประหยัด',
+    indexMethodChangeToEconomyDisabledTip: 'ไม่สามารถดาวน์เกรดจาก HQ เป็น ECO ได้',
+    helpText: 'เรียนรู้วิธีเขียนคําอธิบายชุดข้อมูลที่ดี',
+    upgradeHighQualityTip: 'เมื่ออัปเกรดเป็นโหมดคุณภาพสูงแล้ว จะไม่สามารถเปลี่ยนกลับเป็นโหมดประหยัดได้',
   },
 }
 

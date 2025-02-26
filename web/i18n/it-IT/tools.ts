@@ -32,6 +32,8 @@ const translation = {
     manageInTools: 'Gestisci in Strumenti',
     emptyTitle: 'Nessun strumento di flusso di lavoro disponibile',
     emptyTip: 'Vai a `Flusso di lavoro -> Pubblica come Strumento`',
+    emptyTitleCustom: 'Nessun attrezzo personalizzato disponibile',
+    emptyTipCustom: 'Creare uno strumento personalizzato',
   },
   createTool: {
     title: 'Crea Strumento Personalizzato',
@@ -138,6 +140,7 @@ const translation = {
     number: 'numero',
     required: 'Richiesto',
     infoAndSetting: 'Info & Impostazioni',
+    file: 'file',
   },
   noCustomTool: {
     title: 'Nessun strumento personalizzato!',
@@ -158,6 +161,8 @@ const translation = {
   openInStudio: 'Apri in Studio',
   toolNameUsageTip:
     'Nome chiamata strumento per il ragionamento e il prompting dell\'agente',
+  noTools: 'Nessun utensile trovato',
+  copyToolName: 'Copia nome',
 }
 
 export default translation

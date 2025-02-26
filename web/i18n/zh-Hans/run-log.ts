@@ -19,11 +19,13 @@ const translation = {
     steps: '运行步数',
   },
   resultEmpty: {
-    title: '本次运行仅输出JSON格式，',
+    title: '本次运行仅输出 JSON 格式，',
     tipLeft: '请转到',
     link: '详细信息面板',
     tipRight: '查看它。',
   },
+  actionLogs: 'Action 日志',
+  circularInvocationTip: '当前工作流中存在工具/节点的循环调用。',
 }
 
 export default translation

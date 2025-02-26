@@ -72,6 +72,7 @@ import SyncingDataModal from './syncing-data-modal'
 import UpdateDSLModal from './update-dsl-modal'
 import DSLExportConfirmModal from './dsl-export-confirm-modal'
 import LimitTips from './limit-tips'
+import PluginDependency from './plugin-dependency'
 import {
   useStore,
   useWorkflowStore,
@@ -81,6 +82,7 @@ import {
   initialNodes,
 } from './utils'
 import {
+  CUSTOM_EDGE,
   CUSTOM_NODE,
   DSL_EXPORT_CHECK,
   ITERATION_CHILDREN_Z_INDEX,
@@ -102,7 +104,7 @@ const nodeTypes = {
   [CUSTOM_ITERATION_START_NODE]: CustomIterationStartNode,
 }
 const edgeTypes = {
-  [CUSTOM_NODE]: CustomEdge,
+  [CUSTOM_EDGE]: CustomEdge,
 }
 
 type WorkflowProps = {
@@ -179,7 +181,7 @@ const Workflow: FC<WorkflowProps> = memo(({
     return () => {
       handleSyncWorkflowDraft(true, true)
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const { handleRefreshWorkflowDraft } = useWorkflowUpdate()
@@ -280,7 +282,7 @@ const Workflow: FC<WorkflowProps> = memo(({
     <div
       id='workflow-container'
       className={`
-        relative w-full min-w-[960px] h-full bg-[#F0F2F7]
+        relative w-full min-w-[960px] h-full 
         ${workflowReadOnly && 'workflow-panel-animation'}
         ${nodeAnimation && 'workflow-node-animation'}
       `}
@@ -327,6 +329,7 @@ const Workflow: FC<WorkflowProps> = memo(({
         )
       }
       <LimitTips />
+      <PluginDependency />
       <ReactFlow
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
@@ -371,7 +374,8 @@ const Workflow: FC<WorkflowProps> = memo(({
         <Background
           gap={[14, 14]}
           size={2}
-          color='#E4E5E7'
+          className="bg-workflow-canvas-workflow-bg"
+          color='var(--color-workflow-canvas-workflow-dot-color)'
         />
       </ReactFlow>
     </div>
@@ -401,7 +405,7 @@ const WorkflowWrap = memo(() => {
 
   if (!data || isLoading) {
     return (
-      <div className='flex justify-center items-center relative w-full h-full bg-[#F0F2F7]'>
+      <div className='flex justify-center items-center relative w-full h-full'>
         <Loading />
       </div>
     )
