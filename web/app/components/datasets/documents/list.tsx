@@ -426,7 +426,9 @@ const DocumentList: FC<IDocumentListProps> = ({
   const isQAMode = chunkingMode === ChunkingMode.qa
   const [localDocs, setLocalDocs] = useState<LocalDoc[]>(documents)
   const [enableSort, setEnableSort] = useState(true)
-  const { isShowEditModal, showEditModal, hideEditModal } = useBatchEditDocumentMetadata()
+  const { isShowEditModal, showEditModal, hideEditModal } = useBatchEditDocumentMetadata({
+    list: documents,
+  })
 
   useEffect(() => {
     setLocalDocs(documents)

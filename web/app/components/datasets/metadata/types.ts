@@ -14,17 +14,22 @@ export type MetadataItem = BuiltInMetadataItem & {
 }
 
 export type MetadataItemWithValue = MetadataItem & {
-  value: string | number
+  value: string | number | null
 }
 
 export type MetadataItemWithValueLength = MetadataItem & {
   use_count: number
 }
 
+export type MetadataItemInBatchEdit = MetadataItemWithValue & {
+  isMultipleValue?: boolean
+}
+
 export enum UpdateType {
   changeValue = 'changeValue',
   delete = 'delete',
 }
+
 export type MetadataItemWithEdit = MetadataItemWithValue & {
   isMultipleValue?: boolean
   isUpdated?: boolean

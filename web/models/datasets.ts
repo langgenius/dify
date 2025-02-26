@@ -3,6 +3,7 @@ import type { AppIconType, AppMode, RetrievalConfig } from '@/types/app'
 import type { Tag } from '@/app/components/base/tag-management/constant'
 import type { IndexingType } from '@/app/components/datasets/create/step-two'
 import type { MetadataFilteringVariableType } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
+import type { MetadataItemWithValue } from '@/app/components/datasets/metadata/types'
 
 export enum DataSourceType {
   FILE = 'upload_file',
@@ -324,6 +325,7 @@ export type SimpleDocumentDetail = InitialDocumentDetail & {
       extension: string
     }
   }
+  doc_metadata?: MetadataItemWithValue[]
 }
 
 export type DocumentListResponse = {
