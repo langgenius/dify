@@ -138,6 +138,29 @@ class WeaveDataTrace(BaseTraceInstance):
         self.update_run(llm_run)
         self.update_run(message_run)
 
+    def moderation_trace(self, trace_info: ModerationTraceInfo):
+        if trace_info.message_data is None:
+            return
+
+        metadata = trace_info.metadata
+        metadata["tags"] = ["moderation"]
+        metadata["start_time"] = trace_info.start_time or trace_info.message_data.created_at,
+        metadata["end_time"] = trace_info.end_time or trace_info.message_data.updated_at,
+
+        moderation_run = WeaveTraceModel(
+            id=str(uuid.uuid4()),
+            op=str(TraceTaskName.MODERATION_TRACE.value),
+            inputs=trace_info.inputs,
+            outputs={
+                "action": trace_info.action,
+                "flagged": trace_info.flagged,
+                "preset_response": trace_info.preset_response,
+                "inputs": trace_info.inputs,
+            },
+            attributes=metadata,
+        )
+        self.add_run(moderation_run, parent_run_id=trace_info.message_id)
+
     def api_check(self):
         try:
             login_status = wandb.login(key=self.weave_api_key, verify=True, relogin=True)
