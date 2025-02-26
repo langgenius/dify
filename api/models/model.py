@@ -1258,7 +1258,7 @@ class MessageFile(Base):
     created_at: Mapped[datetime] = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
 
 
-class MessageAnnotation(Base):
+class MessageAnnotation(db.Model):  # type: ignore[name-defined]
     __tablename__ = "message_annotations"
     __table_args__ = (
         db.PrimaryKeyConstraint("id", name="message_annotation_pkey"),
