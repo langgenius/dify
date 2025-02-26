@@ -35,6 +35,12 @@ else:
     from app_factory import create_app
 
     app = create_app()
+
+    # patch begin by wanghang123: flask 解决中文乱码问题,若是响应返回中文时会出现utf字符(\uxxx等)，需要设置ensure_ascii=False
+    app.json.ensure_ascii = False
+    app.config['JSON_AS_ASCII'] = False
+    # patch end
+
     celery = app.extensions["celery"]
 
 if __name__ == "__main__":
