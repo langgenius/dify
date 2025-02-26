@@ -6,14 +6,17 @@ import operator
 import os
 import tempfile
 from collections.abc import Mapping, Sequence
-from typing import Any, cast
+from typing import Any, cast, Union, Iterator
 
 import docx
 import pandas as pd
 import pypdfium2  # type: ignore
 import yaml  # type: ignore
-from docx.table import Table
+from docx import Document
+from docx.document import Document as _Document
+from docx.table import Table, _Cell  
 from docx.text.paragraph import Paragraph
+from docx.oxml.ns import qn
 
 from configs import dify_config
 from core.file import File, FileTransferMethod, file_manager
@@ -238,60 +241,42 @@ def _extract_text_from_docx(file_content: bytes) -> str:
     """
     try:
         doc_file = io.BytesIO(file_content)
-        doc = docx.Document(doc_file)
+        doc = Document(doc_file)
         text = []
 
-        # Keep track of paragraph and table positions
-        content_items: list[tuple[int, str, Table | Paragraph]] = []
-
-        # Process paragraphs and tables
-        for i, paragraph in enumerate(doc.paragraphs):
-            if paragraph.text.strip():
-                content_items.append((i, "paragraph", paragraph))
-
-        for i, table in enumerate(doc.tables):
-            content_items.append((i, "table", table))
-
-        # Sort content items based on their original position
-        content_items.sort(key=operator.itemgetter(0))
-
-        # Process sorted content
-        for _, item_type, item in content_items:
-            if item_type == "paragraph":
-                if isinstance(item, Table):
+        for block in _iter_block_items(doc):
+            if isinstance(block, Paragraph):
+                if block.text.strip():
+                    text.append(block.text)
+            elif isinstance(block, Table):
+                has_content = any(
+                    cell.text.strip()
+                    for row in block.rows
+                    for cell in row.cells
+                )
+                
+                if not has_content:
                     continue
-                text.append(item.text)
-            elif item_type == "table":
-                # Process tables
-                if not isinstance(item, Table):
-                    continue
+
                 try:
-                    # Check if any cell in the table has text
-                    has_content = False
-                    for row in item.rows:
-                        if any(cell.text.strip() for cell in row.cells):
-                            has_content = True
-                            break
+                    header_cells = block.rows[0].cells
+                    header_texts = [cell.text.replace("\n", "<br>") for cell in header_cells]
+                    markdown_table = f"| {' | '.join(header_texts)} |\n"
+                    markdown_table += f"| {' | '.join(['---'] * len(header_cells))} |\n"
 
-                    if has_content:
-                        cell_texts = [cell.text.replace("\n", "<br>") for cell in item.rows[0].cells]
-                        markdown_table = f"| {' | '.join(cell_texts)} |\n"
-                        markdown_table += f"| {' | '.join(['---'] * len(item.rows[0].cells))} |\n"
+                    for row in block.rows[1:]:
+                        row_texts = [cell.text.replace("\n", "<br>") for cell in row.cells]
+                        markdown_table += f"| {' | '.join(row_texts)} |\n"
 
-                        for row in item.rows[1:]:
-                            # Replace newlines with <br> in each cell
-                            row_cells = [cell.text.replace("\n", "<br>") for cell in row.cells]
-                            markdown_table += "| " + " | ".join(row_cells) + " |\n"
-
-                        text.append(markdown_table)
+                    text.append(markdown_table)
                 except Exception as e:
-                    logger.warning(f"Failed to extract table from DOC: {e}")
+                    logger.warning(f"Failed to extract table from DOCX: {e}")
                     continue
 
         return "\n".join(text)
-
     except Exception as e:
-        raise TextExtractionError(f"Failed to extract text from DOCX: {str(e)}") from e
+        logger.error(f"Failed to extract text from DOCX: {e}")
+        return ""
 
 
 def _download_file_content(file: File) -> bytes:
@@ -440,3 +425,24 @@ def _extract_text_from_msg(file_content: bytes) -> str:
         return "\n".join([str(element) for element in elements])
     except Exception as e:
         raise TextExtractionError(f"Failed to extract text from MSG: {str(e)}") from e
+
+
+def _iter_block_items(parent: Union[_Document, _Cell]) -> Iterator[Union[Paragraph, Table]]:
+    """
+    Yield each paragraph and table child within *parent*, in document order.
+    Each returned value is an instance of either Paragraph or Table.
+    """
+    if isinstance(parent, _Document):
+        parent_elm = parent.element.body
+    elif isinstance(parent, Table):
+        parent_elm = parent._element
+    elif isinstance(parent, _Cell):
+        parent_elm = parent._tc
+    else:
+        raise ValueError("Unsupported parent type")
+
+    for child in parent_elm.iterchildren():
+        if child.tag == qn("w:p"):
+            yield Paragraph(child, parent)
+        elif child.tag == qn("w:tbl"):
+            yield Table(child, parent)
