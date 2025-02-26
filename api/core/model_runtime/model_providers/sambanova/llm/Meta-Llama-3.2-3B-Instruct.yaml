@@ -1,0 +1,31 @@
+model: Meta-Llama-3.2-3B-Instruct
+label:
+  en_US: Meta-Llama-3.2-3B-Instruct
+model_type: llm
+features:
+  - agent-thought
+model_properties:
+  mode: chat
+  context_size: 4000
+parameter_rules:
+  - name: temperature
+    use_template: temperature
+  - name: top_p
+    use_template: top_p
+  - name: top_k
+    label:
+      en_US: Top k
+    type: int
+    help:
+      en_US: Only sample from the top K options for each subsequent token.
+    required: false
+  - name: max_tokens_to_sample
+    use_template: max_tokens
+    default: 2000
+    min: 1
+    max: 4000
+pricing:
+  input: '0.0000008'
+  output: '0.0000016'
+  unit: '1'
+  currency: USD
