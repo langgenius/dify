@@ -839,7 +839,7 @@ class Conversation(db.Model):  # type: ignore[name-defined]
         return self.override_model_configs is not None
 
 
-class Message(Base):
+class Message(db.Model):  # type: ignore[name-defined]
     __tablename__ = "messages"
     __table_args__ = (
         PrimaryKeyConstraint("id", name="message_pkey"),
@@ -1190,7 +1190,7 @@ class Message(Base):
         )
 
 
-class MessageFeedback(Base):
+class MessageFeedback(db.Model):  # type: ignore[name-defined]
     __tablename__ = "message_feedbacks"
     __table_args__ = (
         db.PrimaryKeyConstraint("id", name="message_feedback_pkey"),
@@ -1217,7 +1217,7 @@ class MessageFeedback(Base):
         return account
 
 
-class MessageFile(Base):
+class MessageFile(db.Model):  # type: ignore[name-defined]
     __tablename__ = "message_files"
     __table_args__ = (
         db.PrimaryKeyConstraint("id", name="message_file_pkey"),
@@ -1327,7 +1327,7 @@ class AppAnnotationHitHistory(db.Model):  # type: ignore[name-defined]
         return account
 
 
-class AppAnnotationSetting(Base):
+class AppAnnotationSetting(db.Model):  # type: ignore[name-defined]
     __tablename__ = "app_annotation_settings"
     __table_args__ = (
         db.PrimaryKeyConstraint("id", name="app_annotation_settings_pkey"),
