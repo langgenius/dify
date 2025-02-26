@@ -355,12 +355,13 @@ function AppScreenShot({ mode, show }: { mode: AppMode; show: boolean }) {
     'completion': 'TextGenerator',
     'workflow': 'Workflow',
   }
+  const basePath = process.env.NEXT_PUBLIC_BASE_PATH || ''
   return <picture>
-    <source media="(resolution: 1x)" srcSet={`/screenshots/${theme}/${modeToImageMap[mode]}.png`} />
-    <source media="(resolution: 2x)" srcSet={`/screenshots/${theme}/${modeToImageMap[mode]}@2x.png`} />
-    <source media="(resolution: 3x)" srcSet={`/screenshots/${theme}/${modeToImageMap[mode]}@3x.png`} />
+    <source media="(resolution: 1x)" srcSet={`${basePath}/screenshots/${theme}/${modeToImageMap[mode]}.png`} />
+    <source media="(resolution: 2x)" srcSet={`${basePath}/screenshots/${theme}/${modeToImageMap[mode]}@2x.png`} />
+    <source media="(resolution: 3x)" srcSet={`${basePath}/screenshots/${theme}/${modeToImageMap[mode]}@3x.png`} />
     <Image className={show ? '' : 'hidden'}
-      src={`/screenshots/${theme}/${modeToImageMap[mode]}.png`}
+      src={`${basePath}/screenshots/${theme}/${modeToImageMap[mode]}.png`}
       alt='App Screen Shot'
       width={664} height={448} />
   </picture>

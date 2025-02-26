@@ -10,6 +10,7 @@ import { randomString } from '@/utils'
 type IInvitationLinkProps = {
   value: SuccessInvitationResult
 }
+const basePath = process.env.NEXT_PUBLIC_BASE_PATH || ''
 
 const InvitationLink = ({
   value,
@@ -18,7 +19,7 @@ const InvitationLink = ({
   const selector = useRef(`invite-link-${randomString(4)}`)
 
   const copyHandle = useCallback(() => {
-    copy(`${!value.url.startsWith('http') ? window.location.origin : ''}${value.url}`)
+    copy(`${!value.url.startsWith('http') ? window.location.origin : ''}${basePath}${value.url}`)
     setIsCopied(true)
   }, [value])
 
@@ -41,7 +42,7 @@ const InvitationLink = ({
           <Tooltip
             popupContent={isCopied ? `${t('appApi.copied')}` : `${t('appApi.copy')}`}
           >
-            <div className='absolute top-0 left-0 w-full pl-2 pr-2 truncate cursor-pointer r-0' onClick={copyHandle}>{value.url}</div>
+            <div className='absolute top-0 left-0 w-full pl-2 pr-2 truncate cursor-pointer r-0' onClick={copyHandle}>{basePath + value.url}</div>
           </Tooltip>
         </div>
         <div className="flex-shrink-0 h-4 bg-gray-200 border" />

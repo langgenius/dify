@@ -30,6 +30,9 @@ WORKDIR /app/web
 COPY --from=packages /app/web/ .
 COPY . .
 
+# Set environment variables, at build time
+ENV NEXT_PUBLIC_BASE_PATH=
+
 ENV NODE_OPTIONS="--max-old-space-size=4096"
 RUN pnpm build
 
@@ -46,6 +49,8 @@ ENV MARKETPLACE_API_URL=http://127.0.0.1:5001
 ENV MARKETPLACE_URL=http://127.0.0.1:5001
 ENV PORT=3000
 ENV NEXT_TELEMETRY_DISABLED=1
+# Set environment variables, at run time
+ENV NEXT_PUBLIC_BASE_PATH=
 ENV PM2_INSTANCES=2
 
 # set timezone

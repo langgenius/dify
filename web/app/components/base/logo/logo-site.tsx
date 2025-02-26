@@ -9,6 +9,13 @@ type LogoSiteProps = {
 const LogoSite: FC<LogoSiteProps> = ({
   className,
 }) => {
+  const { theme } = useSelector((s) => {
+    return {
+      theme: s.theme,
+    }
+  })
+  const basePath = process.env.NEXT_PUBLIC_BASE_PATH || ''
+  const src = basePath + (theme === 'light' ? '/logo/logo-site.png' : `/logo/logo-site-${theme}.png`)
   return (
     <img
       src={'/logo/logo.png'}
