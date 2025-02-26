@@ -1,6 +1,7 @@
 import json
 import logging
 from collections.abc import Generator, Mapping, Sequence
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any, Optional, cast
 
 from configs import dify_config
@@ -29,6 +30,7 @@ from core.model_runtime.entities.message_entities import (
 from core.model_runtime.entities.model_entities import ModelFeature, ModelPropertyKey, ModelType
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
 from core.model_runtime.utils.encoders import jsonable_encoder
+from core.plugin.entities.plugin import ModelProviderID
 from core.prompt.entities.advanced_prompt_entities import CompletionModelPromptTemplate, MemoryConfig
 from core.prompt.utils.prompt_message_util import PromptMessageUtil
 from core.variables import (
@@ -758,11 +760,17 @@ class LLMNode(BaseNode[LLMNodeData]):
         if used_quota is not None and system_configuration.current_quota_type is not None:
             db.session.query(Provider).filter(
                 Provider.tenant_id == tenant_id,
-                Provider.provider_name == model_instance.provider,
+                # TODO: Use provider name with prefix after the data migration.
+                Provider.provider_name == ModelProviderID(model_instance.provider).provider_name,
                 Provider.provider_type == ProviderType.SYSTEM.value,
                 Provider.quota_type == system_configuration.current_quota_type.value,
                 Provider.quota_limit > Provider.quota_used,
-            ).update({"quota_used": Provider.quota_used + used_quota})
+            ).update(
+                {
+                    "quota_used": Provider.quota_used + used_quota,
+                    "last_used": datetime.now(tz=UTC).replace(tzinfo=None),
+                }
+            )
             db.session.commit()
 
     @classmethod

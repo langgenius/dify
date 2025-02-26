@@ -336,6 +336,10 @@ class DocumentUpdateByFileApi(DatasetApiResource):
 
         if not dataset:
             raise ValueError("Dataset is not exist.")
+
+        # indexing_technique is already set in dataset since this is an update
+        args["indexing_technique"] = dataset.indexing_technique
+
         if "file" in request.files:
             # save file info
             file = request.files["file"]
