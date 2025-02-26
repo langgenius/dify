@@ -28,4 +28,6 @@ const IconBase = forwardRef<React.MutableRefObject<HTMLOrSVGElement>, IconBasePr
   })
 })
 
+IconBase.displayName = 'IconBase'
+
 export default IconBase

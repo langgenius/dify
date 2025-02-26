@@ -1,20 +1,23 @@
 import json
-from typing import Any, Optional
+from datetime import datetime
+from typing import Any, Optional, cast
 
 import sqlalchemy as sa
+from deprecated import deprecated
 from sqlalchemy import ForeignKey, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_bundle import ApiToolBundle
 from core.tools.entities.tool_entities import ApiProviderSchemaType, WorkflowToolParameterConfiguration
+from models.base import Base
 
 from .engine import db
 from .model import Account, App, Tenant
 from .types import StringUUID
 
 
-class BuiltinToolProvider(db.Model):  # type: ignore[name-defined]
+class BuiltinToolProvider(Base):
     """
     This table stores the tool provider information for built-in tools for each tenant.
     """
@@ -27,66 +30,28 @@ class BuiltinToolProvider(db.Model):  # type: ignore[name-defined]
     )
 
     # id of the tool provider
-    id = db.Column(StringUUID, server_default=db.text("uuid_generate_v4()"))
+    id: Mapped[str] = mapped_column(StringUUID, server_default=db.text("uuid_generate_v4()"))
     # id of the tenant
-    tenant_id = db.Column(StringUUID, nullable=True)
+    tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=True)
     # who created this tool provider
-    user_id = db.Column(StringUUID, nullable=False)
+    user_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     # name of the tool provider
-    provider = db.Column(db.String(40), nullable=False)
+    provider: Mapped[str] = mapped_column(db.String(256), nullable=False)
     # credential of the tool provider
-    encrypted_credentials = db.Column(db.Text, nullable=True)
-    created_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
-    updated_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
+    encrypted_credentials: Mapped[str] = mapped_column(db.Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)")
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)")
+    )
 
     @property
     def credentials(self) -> dict:
-        return dict(json.loads(self.encrypted_credentials))
+        return cast(dict, json.loads(self.encrypted_credentials))
 
 
-class PublishedAppTool(db.Model):  # type: ignore[name-defined]
-    """
-    The table stores the apps published as a tool for each person.
-    """
-
-    __tablename__ = "tool_published_apps"
-    __table_args__ = (
-        db.PrimaryKeyConstraint("id", name="published_app_tool_pkey"),
-        db.UniqueConstraint("app_id", "user_id", name="unique_published_app_tool"),
-    )
-
-    # id of the tool provider
-    id = db.Column(StringUUID, server_default=db.text("uuid_generate_v4()"))
-    # id of the app
-    app_id = db.Column(StringUUID, ForeignKey("apps.id"), nullable=False)
-    # who published this tool
-    user_id = db.Column(StringUUID, nullable=False)
-    # description of the tool, stored in i18n format, for human
-    description = db.Column(db.Text, nullable=False)
-    # llm_description of the tool, for LLM
-    llm_description = db.Column(db.Text, nullable=False)
-    # query description, query will be seem as a parameter of the tool,
-    # to describe this parameter to llm, we need this field
-    query_description = db.Column(db.Text, nullable=False)
-    # query name, the name of the query parameter
-    query_name = db.Column(db.String(40), nullable=False)
-    # name of the tool provider
-    tool_name = db.Column(db.String(40), nullable=False)
-    # author
-    author = db.Column(db.String(40), nullable=False)
-    created_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
-    updated_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
-
-    @property
-    def description_i18n(self) -> I18nObject:
-        return I18nObject(**json.loads(self.description))
-
-    @property
-    def app(self):
-        return db.session.query(App).filter(App.id == self.app_id).first()
-
-
-class ApiToolProvider(db.Model):  # type: ignore[name-defined]
+class ApiToolProvider(Base):
     """
     The table stores the api providers.
     """
@@ -120,8 +85,8 @@ class ApiToolProvider(db.Model):  # type: ignore[name-defined]
     # custom_disclaimer
     custom_disclaimer: Mapped[str] = mapped_column(sa.TEXT, default="")
 
-    created_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
-    updated_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
+    created_at: Mapped[datetime] = mapped_column(db.DateTime, nullable=False, server_default=func.current_timestamp())
+    updated_at: Mapped[datetime] = mapped_column(db.DateTime, nullable=False, server_default=func.current_timestamp())
 
     @property
     def schema_type(self) -> ApiProviderSchemaType:
@@ -144,7 +109,7 @@ class ApiToolProvider(db.Model):  # type: ignore[name-defined]
         return db.session.query(Tenant).filter(Tenant.id == self.tenant_id).first()
 
 
-class ToolLabelBinding(db.Model):  # type: ignore[name-defined]
+class ToolLabelBinding(Base):
     """
     The table stores the labels for tools.
     """
@@ -155,16 +120,16 @@ class ToolLabelBinding(db.Model):  # type: ignore[name-defined]
         db.UniqueConstraint("tool_id", "label_name", name="unique_tool_label_bind"),
     )
 
-    id = db.Column(StringUUID, server_default=db.text("uuid_generate_v4()"))
+    id: Mapped[str] = mapped_column(StringUUID, server_default=db.text("uuid_generate_v4()"))
     # tool id
-    tool_id = db.Column(db.String(64), nullable=False)
+    tool_id: Mapped[str] = mapped_column(db.String(64), nullable=False)
     # tool type
-    tool_type = db.Column(db.String(40), nullable=False)
+    tool_type: Mapped[str] = mapped_column(db.String(40), nullable=False)
     # label name
-    label_name = db.Column(db.String(40), nullable=False)
+    label_name: Mapped[str] = mapped_column(db.String(40), nullable=False)
 
 
-class WorkflowToolProvider(db.Model):  # type: ignore[name-defined]
+class WorkflowToolProvider(Base):
     """
     The table stores the workflow providers.
     """
@@ -176,30 +141,38 @@ class WorkflowToolProvider(db.Model):  # type: ignore[name-defined]
         db.UniqueConstraint("tenant_id", "app_id", name="unique_workflow_tool_provider_app_id"),
     )
 
-    id = db.Column(StringUUID, server_default=db.text("uuid_generate_v4()"))
+    id: Mapped[str] = mapped_column(StringUUID, server_default=db.text("uuid_generate_v4()"))
     # name of the workflow provider
-    name = db.Column(db.String(40), nullable=False)
+    name: Mapped[str] = mapped_column(db.String(40), nullable=False)
     # label of the workflow provider
-    label = db.Column(db.String(255), nullable=False, server_default="")
+    label: Mapped[str] = mapped_column(db.String(255), nullable=False, server_default="")
     # icon
-    icon = db.Column(db.String(255), nullable=False)
+    icon: Mapped[str] = mapped_column(db.String(255), nullable=False)
     # app id of the workflow provider
-    app_id = db.Column(StringUUID, nullable=False)
+    app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     # version of the workflow provider
-    version = db.Column(db.String(255), nullable=False, server_default="")
+    version: Mapped[str] = mapped_column(db.String(255), nullable=False, server_default="")
     # who created this tool
-    user_id = db.Column(StringUUID, nullable=False)
+    user_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     # tenant id
-    tenant_id = db.Column(StringUUID, nullable=False)
+    tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     # description of the provider
-    description = db.Column(db.Text, nullable=False)
+    description: Mapped[str] = mapped_column(db.Text, nullable=False)
     # parameter configuration
-    parameter_configuration = db.Column(db.Text, nullable=False, server_default="[]")
+    parameter_configuration: Mapped[str] = mapped_column(db.Text, nullable=False, server_default="[]")
     # privacy policy
-    privacy_policy = db.Column(db.String(255), nullable=True, server_default="")
+    privacy_policy: Mapped[str] = mapped_column(db.String(255), nullable=True, server_default="")
 
-    created_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
-    updated_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
+    created_at: Mapped[datetime] = mapped_column(
+        db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)")
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)")
+    )
+
+    @property
+    def schema_type(self) -> ApiProviderSchemaType:
+        return ApiProviderSchemaType.value_of(self.schema_type_str)
 
     @property
     def user(self) -> Account | None:
@@ -218,7 +191,7 @@ class WorkflowToolProvider(db.Model):  # type: ignore[name-defined]
         return db.session.query(App).filter(App.id == self.app_id).first()
 
 
-class ToolModelInvoke(db.Model):  # type: ignore[name-defined]
+class ToolModelInvoke(Base):
     """
     store the invoke logs from tool invoke
     """
@@ -255,7 +228,8 @@ class ToolModelInvoke(db.Model):  # type: ignore[name-defined]
     updated_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
 
 
-class ToolConversationVariables(db.Model):  # type: ignore[name-defined]
+@deprecated
+class ToolConversationVariables(Base):
     """
     store the conversation variables from tool invoke
     """
@@ -286,12 +260,69 @@ class ToolConversationVariables(db.Model):  # type: ignore[name-defined]
         return json.loads(self.variables_str)
 
 
-class ToolFile(db.Model):  # type: ignore[name-defined]
+class ToolFile(Base):
+    """
+    store the file created by agent
+    """
+
     __tablename__ = "tool_files"
     __table_args__ = (
         db.PrimaryKeyConstraint("id", name="tool_file_pkey"),
         db.Index("tool_file_conversation_id_idx", "conversation_id"),
     )
+
+    id: Mapped[str] = mapped_column(StringUUID, server_default=db.text("uuid_generate_v4()"))
+    # conversation user id
+    user_id: Mapped[str] = mapped_column(StringUUID)
+    # tenant id
+    tenant_id: Mapped[str] = mapped_column(StringUUID)
+    # conversation id
+    conversation_id: Mapped[str] = mapped_column(StringUUID, nullable=True)
+    # file key
+    file_key: Mapped[str] = mapped_column(db.String(255), nullable=False)
+    # mime type
+    mimetype: Mapped[str] = mapped_column(db.String(255), nullable=False)
+    # original url
+    original_url: Mapped[str] = mapped_column(db.String(2048), nullable=True)
+    # name
+    name: Mapped[str] = mapped_column(default="")
+    # size
+    size: Mapped[int] = mapped_column(default=-1)
+
+
+@deprecated
+class DeprecatedPublishedAppTool(Base):
+    """
+    The table stores the apps published as a tool for each person.
+    """
+
+    __tablename__ = "tool_published_apps"
+    __table_args__ = (
+        db.PrimaryKeyConstraint("id", name="published_app_tool_pkey"),
+        db.UniqueConstraint("app_id", "user_id", name="unique_published_app_tool"),
+    )
+
+    # id of the app
+    app_id = db.Column(StringUUID, ForeignKey("apps.id"), nullable=False)
+    # who published this tool
+    description = db.Column(db.Text, nullable=False)
+    # llm_description of the tool, for LLM
+    llm_description = db.Column(db.Text, nullable=False)
+    # query description, query will be seem as a parameter of the tool,
+    # to describe this parameter to llm, we need this field
+    query_description = db.Column(db.Text, nullable=False)
+    # query name, the name of the query parameter
+    query_name = db.Column(db.String(40), nullable=False)
+    # name of the tool provider
+    tool_name = db.Column(db.String(40), nullable=False)
+    # author
+    author = db.Column(db.String(40), nullable=False)
+    created_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
+    updated_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
+
+    @property
+    def description_i18n(self) -> I18nObject:
+        return I18nObject(**json.loads(self.description))
 
     id = db.Column(StringUUID, server_default=db.text("uuid_generate_v4()"))
     user_id: Mapped[str] = db.Column(StringUUID, nullable=False)

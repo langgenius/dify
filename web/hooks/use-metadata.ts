@@ -9,22 +9,22 @@ export type metadataType = DocType | 'originInfo' | 'technicalParameters'
 
 type MetadataMap =
     Record<
-    metadataType,
-    {
-      text: string
-      allowEdit?: boolean
-      icon?: React.ReactNode
-      iconName?: string
-      subFieldsMap: Record<
-      string,
+      metadataType,
       {
-        label: string
-        inputType?: inputType
-        field?: string
-        render?: (value: any, total?: number) => React.ReactNode | string
+        text: string
+        allowEdit?: boolean
+        icon?: React.ReactNode
+        iconName?: string
+        subFieldsMap: Record<
+          string,
+          {
+            label: string
+            inputType?: inputType
+            field?: string
+            render?: (value: any, total?: number) => React.ReactNode | string
+          }
+        >
       }
-      >
-    }
     >
 
 const fieldPrefix = 'datasetDocuments.metadata.field'

@@ -72,21 +72,27 @@ jobs:
         with:
           files: web/**
 
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+          run_install: false
+
       - name: Setup NodeJS
         uses: actions/setup-node@v4
         if: steps.changed-files.outputs.any_changed == 'true'
         with:
           node-version: 20
-          cache: yarn
+          cache: pnpm
           cache-dependency-path: ./web/package.json
 
       - name: Web dependencies
         if: steps.changed-files.outputs.any_changed == 'true'
-        run: yarn install --frozen-lockfile
+        run: pnpm install --frozen-lockfile
 
       - name: Web style check
         if: steps.changed-files.outputs.any_changed == 'true'
-        run: yarn run lint
+        run: pnpm run lint
 
   docker-compose-template:
     name: Docker Compose Template

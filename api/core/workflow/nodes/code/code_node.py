@@ -195,7 +195,7 @@ class CodeNode(BaseNode[CodeNodeData]):
             if output_config.type == "object":
                 # check if output is object
                 if not isinstance(result.get(output_name), dict):
-                    if result.get(output_name) is None:
+                    if result[output_name] is None:
                         transformed_result[output_name] = None
                     else:
                         raise OutputValidationError(

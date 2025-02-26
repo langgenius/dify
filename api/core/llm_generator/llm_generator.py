@@ -48,7 +48,7 @@ class LLMGenerator:
             response = cast(
                 LLMResult,
                 model_instance.invoke_llm(
-                    prompt_messages=prompts, model_parameters={"max_tokens": 100, "temperature": 1}, stream=False
+                    prompt_messages=list(prompts), model_parameters={"max_tokens": 100, "temperature": 1}, stream=False
                 ),
             )
         answer = cast(str, response.message.content)
@@ -101,7 +101,7 @@ class LLMGenerator:
             response = cast(
                 LLMResult,
                 model_instance.invoke_llm(
-                    prompt_messages=prompt_messages,
+                    prompt_messages=list(prompt_messages),
                     model_parameters={"max_tokens": 256, "temperature": 0},
                     stream=False,
                 ),
@@ -110,7 +110,7 @@ class LLMGenerator:
             questions = output_parser.parse(cast(str, response.message.content))
         except InvokeError:
             questions = []
-        except Exception as e:
+        except Exception:
             logging.exception("Failed to generate suggested questions after answer")
             questions = []
 
@@ -150,7 +150,7 @@ class LLMGenerator:
                 response = cast(
                     LLMResult,
                     model_instance.invoke_llm(
-                        prompt_messages=prompt_messages, model_parameters=model_parameters, stream=False
+                        prompt_messages=list(prompt_messages), model_parameters=model_parameters, stream=False
                     ),
                 )
 
@@ -200,7 +200,7 @@ class LLMGenerator:
                 prompt_content = cast(
                     LLMResult,
                     model_instance.invoke_llm(
-                        prompt_messages=prompt_messages, model_parameters=model_parameters, stream=False
+                        prompt_messages=list(prompt_messages), model_parameters=model_parameters, stream=False
                     ),
                 )
             except InvokeError as e:
@@ -236,7 +236,7 @@ class LLMGenerator:
                 parameter_content = cast(
                     LLMResult,
                     model_instance.invoke_llm(
-                        prompt_messages=parameter_messages, model_parameters=model_parameters, stream=False
+                        prompt_messages=list(parameter_messages), model_parameters=model_parameters, stream=False
                     ),
                 )
                 rule_config["variables"] = re.findall(r'"\s*([^"]+)\s*"', cast(str, parameter_content.message.content))
@@ -248,7 +248,7 @@ class LLMGenerator:
                 statement_content = cast(
                     LLMResult,
                     model_instance.invoke_llm(
-                        prompt_messages=statement_messages, model_parameters=model_parameters, stream=False
+                        prompt_messages=list(statement_messages), model_parameters=model_parameters, stream=False
                     ),
                 )
                 rule_config["opening_statement"] = cast(str, statement_content.message.content)
@@ -301,7 +301,7 @@ class LLMGenerator:
             response = cast(
                 LLMResult,
                 model_instance.invoke_llm(
-                    prompt_messages=prompt_messages, model_parameters=model_parameters, stream=False
+                    prompt_messages=list(prompt_messages), model_parameters=model_parameters, stream=False
                 ),
             )
 

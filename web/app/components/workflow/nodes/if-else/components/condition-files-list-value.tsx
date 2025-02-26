@@ -9,7 +9,7 @@ import {
   isComparisonOperatorNeedTranslate,
   isEmptyRelatedOperator,
 } from '../utils'
-import { FILE_TYPE_OPTIONS, TRANSFER_METHOD } from '../default'
+import { FILE_TYPE_OPTIONS, TRANSFER_METHOD } from '../../constants'
 import type { ValueSelector } from '../../../types'
 import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'
 import { BubbleX, Env } from '@/app/components/base/icons/src/vender/line/others'

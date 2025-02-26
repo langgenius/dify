@@ -64,6 +64,7 @@ type Props = {
   placeholder?: string
   minWidth?: number
   popupFor?: 'assigned' | 'toAssigned'
+  zIndex?: number
 }
 
 const VarReferencePicker: FC<Props> = ({
@@ -90,6 +91,7 @@ const VarReferencePicker: FC<Props> = ({
   placeholder,
   minWidth,
   popupFor,
+  zIndex,
 }) => {
   const { t } = useTranslation()
   const store = useStoreApi()
@@ -386,7 +388,7 @@ const VarReferencePicker: FC<Props> = ({
           </>
         </WrapElem>
         <PortalToFollowElemContent style={{
-          zIndex: 100,
+          zIndex: zIndex || 100,
         }} className='mt-1'>
           {!isConstant && (
             <VarReferencePopup

@@ -19,6 +19,7 @@ import {
 } from '@/app/components/app/configuration/debug/hooks'
 import type { ModelAndParameter } from '@/app/components/app/configuration/debug/types'
 import Button from '@/app/components/base/button'
+import Divider from '@/app/components/base/divider'
 import Loading from '@/app/components/base/loading'
 import AppPublisher from '@/app/components/app/app-publisher/features-wrapper'
 import type {
@@ -59,7 +60,7 @@ import {
   useTextGenerationCurrentProviderAndModelAndModelList,
 } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { fetchCollectionList } from '@/service/tools'
-import { type Collection } from '@/app/components/tools/types'
+import type { Collection } from '@/app/components/tools/types'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import {
   getMultipleRetrievalConfig,
@@ -71,6 +72,11 @@ import { FILE_EXTS } from '@/app/components/base/prompt-editor/constants'
 import { SupportUploadFileTypes } from '@/app/components/workflow/types'
 import NewFeaturePanel from '@/app/components/base/features/new-feature-panel'
 import { fetchFileUploadConfig } from '@/service/common'
+import {
+  correctModelProvider,
+  correctToolProvider,
+} from '@/utils'
+import PluginDependency from '@/app/components/workflow/plugin-dependency'
 
 type PublishConfig = {
   modelConfig: ModelConfig
@@ -156,7 +162,7 @@ const Configuration: FC = () => {
   const setCompletionParams = (value: FormValue) => {
     const params = { ...value }
 
-    // eslint-disable-next-line @typescript-eslint/no-use-before-define
+    // eslint-disable-next-line ts/no-use-before-define
     if ((!params.stop || params.stop.length === 0) && (modeModeTypeRef.current === ModelModeType.completion)) {
       params.stop = getTempStop()
       setTempStop([])
@@ -165,7 +171,7 @@ const Configuration: FC = () => {
   }
 
   const [modelConfig, doSetModelConfig] = useState<ModelConfig>({
-    provider: 'openai',
+    provider: 'langgenius/openai/openai',
     model_id: 'gpt-3.5-turbo',
     mode: ModelModeType.unset,
     configs: {
@@ -188,7 +194,7 @@ const Configuration: FC = () => {
 
   const isAgent = mode === 'agent-chat'
 
-  const isOpenAI = modelConfig.provider === 'openai'
+  const isOpenAI = modelConfig.provider === 'langgenius/openai/openai'
 
   const [collectionList, setCollectionList] = useState<Collection[]>([])
   useEffect(() => {
@@ -361,7 +367,7 @@ const Configuration: FC = () => {
   const [canReturnToSimpleMode, setCanReturnToSimpleMode] = useState(true)
   const setPromptMode = async (mode: PromptMode) => {
     if (mode === PromptMode.advanced) {
-      // eslint-disable-next-line @typescript-eslint/no-use-before-define
+      // eslint-disable-next-line ts/no-use-before-define
       await migrateToDefaultPrompt()
       setCanReturnToSimpleMode(true)
     }
@@ -547,8 +553,19 @@ const Configuration: FC = () => {
         if (modelConfig.retriever_resource)
           setCitationConfig(modelConfig.retriever_resource)
 
-        if (modelConfig.annotation_reply)
-          setAnnotationConfig(modelConfig.annotation_reply, true)
+        if (modelConfig.annotation_reply) {
+          let annotationConfig = modelConfig.annotation_reply
+          if (modelConfig.annotation_reply.enabled) {
+            annotationConfig = {
+              ...modelConfig.annotation_reply,
+              embedding_model: {
+                ...modelConfig.annotation_reply.embedding_model,
+                embedding_provider_name: correctModelProvider(modelConfig.annotation_reply.embedding_model.embedding_provider_name),
+              },
+            }
+          }
+          setAnnotationConfig(annotationConfig, true)
+        }
 
         if (modelConfig.sensitive_word_avoidance)
           setModerationConfig(modelConfig.sensitive_word_avoidance)
@@ -558,7 +575,7 @@ const Configuration: FC = () => {
 
         const config = {
           modelConfig: {
-            provider: model.provider,
+            provider: correctModelProvider(model.provider),
             model_id: model.name,
             mode: model.mode,
             configs: {
@@ -600,7 +617,6 @@ const Configuration: FC = () => {
             annotation_reply: modelConfig.annotation_reply,
             external_data_tools: modelConfig.external_data_tools,
             dataSets: datasets || [],
-            // eslint-disable-next-line multiline-ternary
             agentConfig: res.mode === 'agent-chat' ? {
               max_iteration: DEFAULT_AGENT_SETTING.max_iteration,
               ...modelConfig.agent_mode,
@@ -611,8 +627,12 @@ const Configuration: FC = () => {
               }).map((tool: any) => {
                 return {
                   ...tool,
-                  isDeleted: res.deleted_tools?.includes(tool.tool_name),
+                  isDeleted: res.deleted_tools?.some((deletedTool: any) => deletedTool.id === tool.id && deletedTool.tool_name === tool.tool_name),
                   notAuthor: collectionList.find(c => tool.provider_id === c.id)?.is_team_authorization === false,
+                  ...(tool.provider_type === 'builtin' ? {
+                    provider_id: correctToolProvider(tool.provider_name),
+                    provider_name: correctToolProvider(tool.provider_name),
+                  } : {}),
                 }
               }),
             } : DEFAULT_AGENT_SETTING,
@@ -633,6 +653,12 @@ const Configuration: FC = () => {
           retrieval_model: RETRIEVE_TYPE.multiWay,
           ...modelConfig.dataset_configs,
           ...retrievalConfig,
+          ...(retrievalConfig.reranking_model ? {
+            reranking_model: {
+              ...retrievalConfig.reranking_model,
+              reranking_provider_name: correctModelProvider(modelConfig.dataset_configs.reranking_model.reranking_provider_name),
+            },
+          } : {}),
         })
         setHasFetchedDetail(true)
       })
@@ -873,13 +899,13 @@ const Configuration: FC = () => {
           <div className="flex flex-col h-full">
             <div className='relative flex grow h-[200px] pt-14'>
               {/* Header */}
-              <div className='absolute top-0 left-0 w-full bg-white h-14'>
+              <div className='absolute top-0 left-0 w-full bg-default-subtle h-14'>
                 <div className='flex items-center justify-between px-6 h-14'>
                   <div className='flex items-center'>
-                    <div className='text-base font-semibold leading-6 text-gray-900'>{t('appDebug.orchestrate')}</div>
+                    <div className='system-xl-semibold text-text-primary'>{t('appDebug.orchestrate')}</div>
                     <div className='flex items-center h-[14px] space-x-1 text-xs'>
                       {isAdvancedMode && (
-                        <div className='ml-1 flex items-center h-5 px-1.5 border border-gray-100 rounded-md text-[11px] font-medium text-gray-500 uppercase'>{t('appDebug.promptMode.advanced')}</div>
+                        <div className='ml-1 flex items-center h-5 px-1.5 border border-components-button-secondary-border rounded-md system-xs-medium-uppercase text-text-tertiary uppercase'>{t('appDebug.promptMode.advanced')}</div>
                       )}
                     </div>
                   </div>
@@ -915,13 +941,13 @@ const Configuration: FC = () => {
                           debugWithMultipleModel={debugWithMultipleModel}
                           onDebugWithMultipleModelChange={handleDebugWithMultipleModelChange}
                         />
-                        <div className='mx-2 w-[1px] h-[14px] bg-gray-200'></div>
+                        <Divider type='vertical' className='mx-2 h-[14px]' />
                       </>
                     )}
                     {isMobile && (
-                      <Button className='!h-8 !text-[13px] font-medium' onClick={showDebugPanel}>
+                      <Button className='mr-2 !h-8 !text-[13px] font-medium' onClick={showDebugPanel}>
                         <span className='mr-1'>{t('appDebug.operation.debugConfig')}</span>
-                        <CodeBracketIcon className="w-4 h-4 text-gray-500" />
+                        <CodeBracketIcon className="w-4 h-4 text-text-tertiary" />
                       </Button>
                     )}
                     <AppPublisher {...{
@@ -992,7 +1018,7 @@ const Configuration: FC = () => {
             />
           )}
           {isMobile && (
-            <Drawer showClose isOpen={isShowDebugPanel} onClose={hideDebugPanel} mask footer={null} panelClassname='!bg-gray-50'>
+            <Drawer showClose isOpen={isShowDebugPanel} onClose={hideDebugPanel} mask footer={null}>
               <Debug
                 isAPIKeySet={isAPIKeySet}
                 onSetting={() => setShowAccountSettingModal({ payload: 'provider' })}
@@ -1020,6 +1046,7 @@ const Configuration: FC = () => {
               onAutoAddPromptVariable={handleAddPromptVariable}
             />
           )}
+          <PluginDependency />
         </>
       </FeaturesProvider>
     </ConfigContext.Provider>

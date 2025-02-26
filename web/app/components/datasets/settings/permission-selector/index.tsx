@@ -88,8 +88,8 @@ const PermissionSelector = ({ disabled, permission, value, memberList, onChange,
               <div className='mr-2 flex items-center justify-center w-6 h-6 rounded-lg bg-[#EEF4FF]'>
                 <Users01 className='w-3.5 h-3.5 text-[#444CE7]' />
               </div>
-              <div className='grow mr-2 text-gray-900 text-sm leading-5'>{t('datasetSettings.form.permissionsAllMember')}</div>
-              {!disabled && <RiArrowDownSLine className='shrink-0 w-4 h-4 text-gray-700' />}
+              <div className='grow mr-2 text-text-primary text-sm leading-5'>{t('datasetSettings.form.permissionsAllMember')}</div>
+              {!disabled && <RiArrowDownSLine className='shrink-0 w-4 h-4 text-text-secondary' />}
             </div>
           )}
           {isPartialMembers && (
@@ -97,13 +97,13 @@ const PermissionSelector = ({ disabled, permission, value, memberList, onChange,
               <div className='mr-2 flex items-center justify-center w-6 h-6 rounded-lg bg-[#EEF4FF]'>
                 <Users01 className='w-3.5 h-3.5 text-[#444CE7]' />
               </div>
-              <div title={selectedMembers} className='grow mr-2 text-gray-900 text-sm leading-5 truncate'>{selectedMembers}</div>
-              {!disabled && <RiArrowDownSLine className='shrink-0 w-4 h-4 text-gray-700' />}
+              <div title={selectedMembers} className='grow mr-2 text-text-primary text-sm leading-5 truncate'>{selectedMembers}</div>
+              {!disabled && <RiArrowDownSLine className='shrink-0 w-4 h-4 text-text-secondary' />}
             </div>
           )}
         </PortalToFollowElemTrigger>
         <PortalToFollowElemContent className='z-[1002]'>
-          <div className='relative w-[480px] rounded-lg border-[0.5px] bg-white shadow-lg'>
+          <div className='relative w-[480px] rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg-blur backdrop-blur-sm shadow-lg'>
             <div className='p-1'>
               <div className='pl-3 pr-2 py-1 rounded-lg hover:bg-gray-50 cursor-pointer' onClick={() => {
                 onChange(DatasetPermission.onlyMe)
@@ -155,23 +155,23 @@ const PermissionSelector = ({ disabled, permission, value, memberList, onChange,
                   <div className='pl-3 pr-[10px] py-1 flex gap-2 items-center rounded-lg'>
                     <Avatar avatar={userProfile.avatar_url} name={userProfile.name} className='shrink-0' size={24} />
                     <div className='grow'>
-                      <div className='text-[13px] text-gray-700 font-medium leading-[18px] truncate'>
+                      <div className='text-[13px] text-text-secondary font-medium leading-[18px] truncate'>
                         {userProfile.name}
-                        <span className='text-xs text-gray-500 font-normal'>{t('datasetSettings.form.me')}</span>
+                        <span className='text-xs text-text-tertiary font-normal'>{t('datasetSettings.form.me')}</span>
                       </div>
-                      <div className='text-xs text-gray-500 leading-[18px] truncate'>{userProfile.email}</div>
+                      <div className='text-xs text-text-tertiary leading-[18px] truncate'>{userProfile.email}</div>
                     </div>
-                    <Check className='shrink-0 w-4 h-4 text-primary-600 opacity-30' />
+                    <Check className='shrink-0 w-4 h-4 text-text-accent opacity-30' />
                   </div>
                 )}
                 {filteredMemberList.map(member => (
-                  <div key={member.id} className='pl-3 pr-[10px] py-1 flex gap-2 items-center rounded-lg hover:bg-gray-100 cursor-pointer' onClick={() => selectMember(member)}>
+                  <div key={member.id} className='pl-3 pr-[10px] py-1 flex gap-2 items-center rounded-lg hover:bg-state-base-hover cursor-pointer' onClick={() => selectMember(member)}>
                     <Avatar avatar={userProfile.avatar_url} name={member.name} className='shrink-0' size={24} />
                     <div className='grow'>
-                      <div className='text-[13px] text-gray-700 font-medium leading-[18px] truncate'>{member.name}</div>
-                      <div className='text-xs text-gray-500 leading-[18px] truncate'>{member.email}</div>
+                      <div className='text-[13px] text-text-secondary font-medium leading-[18px] truncate'>{member.name}</div>
+                      <div className='text-xs text-text-tertiary leading-[18px] truncate'>{member.email}</div>
                     </div>
-                    {value.includes(member.id) && <Check className='shrink-0 w-4 h-4 text-primary-600' />}
+                    {value.includes(member.id) && <Check className='shrink-0 w-4 h-4 text-text-accent' />}
                   </div>
                 ))}
               </div>
