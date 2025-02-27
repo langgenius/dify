@@ -459,6 +459,7 @@ class LLMNode(BaseNode[LLMNodeData]):
                 "index_node_hash": metadata.get("segment_index_node_hash"),
                 "content": context_dict.get("content"),
                 "page": metadata.get("page"),
+                "doc_metadata": metadata.get("doc_metadata"),
             }
 
             return source
