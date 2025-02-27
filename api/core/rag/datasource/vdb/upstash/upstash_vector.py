@@ -90,7 +90,8 @@ class UpstashVector(BaseVector):
         top_k = kwargs.get("top_k", 4)
         document_ids_filter = kwargs.get("document_ids_filter")
         if document_ids_filter:
-            filter = f"doc_id in ({', '.join(f"'{id}'" for id in document_ids_filter)})"
+            document_ids = ", ".join(f"'{id}'" for id in document_ids_filter)
+            filter = f"document_id in ({document_ids})"
         else:
             filter = ""
         result = self.index.query(

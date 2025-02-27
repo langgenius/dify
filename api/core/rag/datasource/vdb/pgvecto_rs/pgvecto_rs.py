@@ -191,7 +191,7 @@ class PGVectoRS(BaseVector):
             )
             document_ids_filter = kwargs.get("document_ids_filter")
             if document_ids_filter:
-                stmt = stmt.where(self._table.meta["doc_id"].in_(document_ids_filter))
+                stmt = stmt.where(self._table.meta["document_id"].in_(document_ids_filter))
             res = session.execute(stmt)
             results = [(row[0], row[1]) for row in res]
 

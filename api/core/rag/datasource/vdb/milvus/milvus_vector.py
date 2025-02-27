@@ -221,8 +221,8 @@ class MilvusVector(BaseVector):
         document_ids_filter = kwargs.get("document_ids_filter")
         filter = ""
         if document_ids_filter:
-            doc_ids = ", ".join(f"'{id}'" for id in document_ids_filter)
-            filter = f'metadata["doc_id"] in ({doc_ids})'
+            document_ids = ", ".join(f"'{id}'" for id in document_ids_filter)
+            filter = f'metadata["document_id"] in ({document_ids})'
         results = self._client.search(
             collection_name=self._collection_name,
             data=[query_vector],
@@ -248,8 +248,8 @@ class MilvusVector(BaseVector):
         document_ids_filter = kwargs.get("document_ids_filter")
         filter = ""
         if document_ids_filter:
-            doc_ids = ", ".join(f"'{id}'" for id in document_ids_filter)
-            filter = f'metadata["doc_id"] in ({doc_ids})'
+            document_ids = ", ".join(f"'{id}'" for id in document_ids_filter)
+            filter = f'metadata["document_id"] in ({document_ids})'
 
         results = self._client.search(
             collection_name=self._collection_name,

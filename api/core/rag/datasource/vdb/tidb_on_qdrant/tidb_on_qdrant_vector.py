@@ -330,7 +330,7 @@ class TidbOnQdrantVector(BaseVector):
         if document_ids_filter:
             filter.must.append(
                 models.FieldCondition(
-                    key="metadata.doc_id",
+                    key="metadata.document_id",
                     match=models.MatchAny(any=document_ids_filter),
                 )
             )
@@ -380,7 +380,7 @@ class TidbOnQdrantVector(BaseVector):
         if document_ids_filter:
             scroll_filter.must.append(
                 models.FieldCondition(
-                    key="metadata.doc_id",
+                    key="metadata.document_id",
                     match=models.MatchAny(any=document_ids_filter),
                 )
             )

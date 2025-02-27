@@ -199,8 +199,8 @@ class TiDBVector(BaseVector):
         document_ids_filter = kwargs.get("document_ids_filter")
         where_clause = ""
         if document_ids_filter:
-            doc_ids = ", ".join(f"'{id}'" for id in document_ids_filter)
-            where_clause = f" WHERE meta->>'$.doc_id' in ({doc_ids}) "
+            document_ids = ", ".join(f"'{id}'" for id in document_ids_filter)
+            where_clause = f" WHERE meta->>'$.document_id' in ({document_ids}) "
 
         with Session(self._engine) as session:
             select_statement = sql_text(f"""

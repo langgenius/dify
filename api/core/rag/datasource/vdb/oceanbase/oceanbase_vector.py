@@ -157,8 +157,8 @@ class OceanBaseVector(BaseVector):
         document_ids_filter = kwargs.get("document_ids_filter")
         where_clause = None
         if document_ids_filter:
-            doc_ids = ", ".join(f"'{id}'" for id in document_ids_filter)
-            where_clause = f"metadata->>'$.doc_id' in ({doc_ids})"
+            document_ids = ", ".join(f"'{id}'" for id in document_ids_filter)
+            where_clause = f"metadata->>'$.document_id' in ({document_ids})"
         ef_search = kwargs.get("ef_search", self._hnsw_ef_search)
         if ef_search != self._hnsw_ef_search:
             self._client.set_ob_hnsw_ef_search(ef_search)

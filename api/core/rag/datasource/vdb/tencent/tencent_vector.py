@@ -151,7 +151,7 @@ class TencentVector(BaseVector):
         document_ids_filter = kwargs.get("document_ids_filter")
         filter = None
         if document_ids_filter:
-            filter = Filter(Filter.In("metadata.doc_id", document_ids_filter))
+            filter = Filter(Filter.In("metadata.document_id", document_ids_filter))
         res = self._db.collection(self._collection_name).search(
             vectors=[query_vector],
             filter=filter,

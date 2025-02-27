@@ -156,7 +156,7 @@ class OpenSearchVector(BaseVector):
         }
         document_ids_filter = kwargs.get("document_ids_filter")
         if document_ids_filter:
-            query["query"] = {"terms": {"metadata.doc_id": document_ids_filter}}
+            query["query"] = {"terms": {"metadata.document_id": document_ids_filter}}
 
         try:
             response = self._client.search(index=self._collection_name.lower(), body=query)
@@ -184,7 +184,7 @@ class OpenSearchVector(BaseVector):
         full_text_query = {"query": {"match": {Field.CONTENT_KEY.value: query}}}
         document_ids_filter = kwargs.get("document_ids_filter")
         if document_ids_filter:
-            full_text_query["query"]["terms"] = {"metadata.doc_id": document_ids_filter}
+            full_text_query["query"]["terms"] = {"metadata.document_id": document_ids_filter}
 
         response = self._client.search(index=self._collection_name.lower(), body=full_text_query)
 

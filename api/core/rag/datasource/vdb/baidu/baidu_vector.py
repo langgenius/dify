@@ -125,12 +125,12 @@ class BaiduVector(BaseVector):
         query_vector = [float(val) if isinstance(val, np.float64) else val for val in query_vector]
         document_ids_filter = kwargs.get("document_ids_filter")
         if document_ids_filter:
-            doc_ids = ", ".join(f"'{id}'" for id in document_ids_filter)
+            document_ids = ", ".join(f"'{id}'" for id in document_ids_filter)
             anns = AnnSearch(
                 vector_field=self.field_vector,
                 vector_floats=query_vector,
                 params=HNSWSearchParams(ef=kwargs.get("ef", 10), limit=kwargs.get("top_k", 4)),
-                filter=f"doc_id IN ({doc_ids})",
+                filter=f"document_id IN ({document_ids})",
             )
         else:
             anns = AnnSearch(

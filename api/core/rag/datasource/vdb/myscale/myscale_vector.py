@@ -133,8 +133,8 @@ class MyScaleVector(BaseVector):
         )
         document_ids_filter = kwargs.get("document_ids_filter")
         if document_ids_filter:
-            doc_ids = ", ".join(f"'{id}'" for id in document_ids_filter)
-            where_str = f"{where_str} AND metadata['doc_id'] in ({doc_ids})"
+            document_ids = ", ".join(f"'{id}'" for id in document_ids_filter)
+            where_str = f"{where_str} AND metadata['document_id'] in ({document_ids})"
         sql = f"""
             SELECT text, vector, metadata, {dist} as dist FROM {self._config.database}.{self._collection_name}
             {where_str} ORDER BY dist {order.value} LIMIT {top_k}

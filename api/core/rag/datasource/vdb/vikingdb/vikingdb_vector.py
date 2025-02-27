@@ -180,7 +180,7 @@ class VikingDBVector(BaseVector):
         docs = self._get_search_res(results, score_threshold)
         document_ids_filter = kwargs.get("document_ids_filter")
         if document_ids_filter:
-            docs = [doc for doc in docs if doc.metadata.get("doc_id") in document_ids_filter]
+            docs = [doc for doc in docs if doc.metadata.get("document_id") in document_ids_filter]
         return docs
 
     def _get_search_res(self, results, score_threshold) -> list[Document]:

@@ -171,7 +171,7 @@ class LindormVectorStore(BaseVector):
         document_ids_filter = kwargs.get("document_ids_filter")
         filters = []
         if document_ids_filter:
-            filters.append({"terms": {"metadata.doc_id": document_ids_filter}})
+            filters.append({"terms": {"metadata.document_id": document_ids_filter}})
         query = default_vector_search_query(query_vector=query_vector, k=top_k, filters=filters, **kwargs)
 
         try:
@@ -214,7 +214,7 @@ class LindormVectorStore(BaseVector):
         filters = kwargs.get("filter", [])
         document_ids_filter = kwargs.get("document_ids_filter")
         if document_ids_filter:
-            filters.append({"terms": {"metadata.doc_id": document_ids_filter}})
+            filters.append({"terms": {"metadata.document_id": document_ids_filter}})
         routing = self._routing
         full_text_query = default_text_search_query(
             query_text=query,

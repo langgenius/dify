@@ -226,7 +226,7 @@ class RelytVector(BaseVector):
         document_ids_filter = kwargs.get("document_ids_filter")
         filter = kwargs.get("filter", {})
         if document_ids_filter:
-            filter["doc_id"] = document_ids_filter
+            filter["document_id"] = document_ids_filter
         results = self.similarity_search_with_score_by_vector(
             k=int(kwargs.get("top_k", 4)), embedding=query_vector, filter=filter
         )

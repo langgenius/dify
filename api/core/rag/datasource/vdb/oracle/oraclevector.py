@@ -188,8 +188,8 @@ class OracleVector(BaseVector):
         document_ids_filter = kwargs.get("document_ids_filter")
         where_clause = ""
         if document_ids_filter:
-            doc_ids = ", ".join(f"'{id}'" for id in document_ids_filter)
-            where_clause = f"WHERE metadata->>'doc_id' in ({doc_ids})"
+            document_ids = ", ".join(f"'{id}'" for id in document_ids_filter)
+            where_clause = f"WHERE metadata->>'document_id' in ({document_ids})"
         with self._get_cursor() as cur:
             cur.execute(
                 f"SELECT meta, text, vector_distance(embedding,:1) AS distance FROM {self.table_name}"
@@ -249,8 +249,8 @@ class OracleVector(BaseVector):
                 document_ids_filter = kwargs.get("document_ids_filter")
                 where_clause = ""
                 if document_ids_filter:
-                    doc_ids = ", ".join(f"'{id}'" for id in document_ids_filter)
-                    where_clause = f" AND metadata->>'doc_id' in ({doc_ids}) "
+                    document_ids = ", ".join(f"'{id}'" for id in document_ids_filter)
+                    where_clause = f" AND metadata->>'document_id' in ({document_ids}) "
                 cur.execute(
                     f"select meta, text, embedding FROM {self.table_name}"
                     f"WHERE CONTAINS(text, :1, 1) > 0 {where_clause} "

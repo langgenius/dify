@@ -100,7 +100,7 @@ class ChromaVector(BaseVector):
             results: QueryResult = collection.query(
                 query_embeddings=query_vector,
                 n_results=kwargs.get("top_k", 4),
-                where={"doc_id": {"$in": document_ids_filter}},
+                where={"document_id": {"$in": document_ids_filter}},
             )
         else:
             results: QueryResult = collection.query(query_embeddings=query_vector, n_results=kwargs.get("top_k", 4))
