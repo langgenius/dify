@@ -32,7 +32,9 @@ logger = logging.getLogger(__name__)
 
 
 class FunctionCallAgentRunner(BaseAgentRunner):
-    def run(self, message: Message, query: str, **kwargs: Any) -> Union[Generator[LLMResultChunk, None, None], LLMResult]:
+    def run(
+        self, message: Message, query: str, **kwargs: Any
+    ) -> Union[Generator[LLMResultChunk, None, None], LLMResult]:
         """
         Run FunctionCall agent application
         """
@@ -76,7 +78,8 @@ class FunctionCallAgentRunner(BaseAgentRunner):
         final_system_fingerprint = None
 
         def response_generator() -> Generator[LLMResultChunk, None, None]:
-            nonlocal function_call_state, \
+            nonlocal \
+                function_call_state, \
                 function_call_state, \
                 iteration_step, \
                 prompt_messages_tools, \
@@ -126,7 +129,8 @@ class FunctionCallAgentRunner(BaseAgentRunner):
                     for chunk in chunks:
                         if is_first_chunk:
                             self.queue_manager.publish(
-                                QueueAgentThoughtEvent(agent_thought_id=agent_thought.id), PublishFrom.APPLICATION_MANAGER
+                                QueueAgentThoughtEvent(agent_thought_id=agent_thought.id),
+                                PublishFrom.APPLICATION_MANAGER,
                             )
                             is_first_chunk = False
                         # check if there is any tool call
@@ -246,7 +250,9 @@ class FunctionCallAgentRunner(BaseAgentRunner):
                             "tool_call_id": tool_call_id,
                             "tool_call_name": tool_call_name,
                             "tool_response": f"there is not a tool named {tool_call_name}",
-                            "meta": ToolInvokeMeta.error_instance(f"there is not a tool named {tool_call_name}").to_dict(),
+                            "meta": ToolInvokeMeta.error_instance(
+                                f"there is not a tool named {tool_call_name}"
+                            ).to_dict(),
                         }
                     else:
                         # invoke tool
@@ -329,7 +335,7 @@ class FunctionCallAgentRunner(BaseAgentRunner):
                 ),
                 PublishFrom.APPLICATION_MANAGER,
             )
-        
+
         chunk_generator = response_generator()
 
         if app_generate_entity.stream:
