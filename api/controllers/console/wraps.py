@@ -12,8 +12,7 @@ from models.model import DifySetup
 from services.feature_service import FeatureService, LicenseStatus
 from services.operation_service import OperationService
 
-from .error import (NotInitValidateError, NotSetupError,
-                    UnauthorizedAndForceLogout)
+from .error import NotInitValidateError, NotSetupError, UnauthorizedAndForceLogout
 
 
 def account_initialization_required(view):
