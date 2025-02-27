@@ -212,7 +212,7 @@ const Paragraph = (paragraph: any) => {
       <>
         <ImageGallery srcs={[children_node[0].properties.src]} />
         {
-          paragraph.children && paragraph.children.length > 0 ? <p>{paragraph.children.slice(1)}</p> : null
+          Array.isArray(paragraph.children) ? <p>{paragraph.children.slice(1)}</p> : null
         }
       </>
     )
