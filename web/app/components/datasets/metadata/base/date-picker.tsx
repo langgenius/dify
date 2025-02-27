@@ -1,0 +1,67 @@
+import { useCallback } from 'react'
+import dayjs from 'dayjs'
+import {
+  RiCalendarLine,
+  RiCloseCircleFill,
+} from '@remixicon/react'
+import DatePicker from '@/app/components/base/date-and-time-picker/date-picker'
+import cn from '@/utils/classnames'
+
+type Props = {
+  className?: string
+  value?: number
+  onChange: (date: number | null) => void
+}
+const WrappedDatePicker = ({
+  className,
+  value,
+  onChange,
+}: Props) => {
+  const handleDateChange = useCallback((date?: dayjs.Dayjs) => {
+    if (date)
+      onChange(date.valueOf())
+    else
+      onChange(null)
+  }, [onChange])
+
+  const renderTrigger = useCallback(() => {
+    return (
+      <div className={cn('group flex items-center rounded-md bg-components-input-bg-normal', className)}>
+        <div
+          className={cn(
+            'grow',
+            value ? 'text-text-secondary' : 'text-text-tertiary',
+          )}
+        >
+          {value || 'Choose a time...'}
+        </div>
+        <RiCloseCircleFill
+          className={cn(
+            'hidden group-hover:block w-4 h-4 cursor-pointer hover:text-components-input-text-filled',
+            value && 'text-text-quaternary',
+          )}
+          onClick={() => handleDateChange()}
+        />
+        <RiCalendarLine
+          className={cn(
+            'block group-hover:hidden shrink-0 w-4 h-4',
+            value ? 'text-text-quaternary' : 'text-text-tertiary',
+          )}
+        />
+      </div>
+    )
+  }, [className, value, handleDateChange])
+
+  return (
+    <DatePicker
+      value={dayjs(value)}
+      onChange={handleDateChange}
+      onClear={handleDateChange}
+      renderTrigger={renderTrigger}
+      triggerWrapClassName='w-full'
+      popupZIndexClassname='z-[1000]'
+    />
+  )
+}
+
+export default WrappedDatePicker
