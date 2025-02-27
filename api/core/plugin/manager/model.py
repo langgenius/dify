@@ -1,5 +1,6 @@
 import binascii
 from collections.abc import Generator, Sequence
+import logging
 from typing import IO, Optional
 
 from core.model_runtime.entities.llm_entities import LLMResultChunk
@@ -93,6 +94,8 @@ class PluginModelManager(BasePluginManager):
                 "Content-Type": "application/json",
             },
         )
+
+        logging.info(f"response: {response}")
 
         for resp in response:
             if resp.credentials and isinstance(resp.credentials, dict):
