@@ -1,98 +1,82 @@
 import { Plan, type PlanInfo, Priority } from '@/app/components/billing/type'
 
-const supportModelProviders = 'OpenAI/Anthropic/Azure OpenAI/  Llama2/Hugging Face/Replicate'
+const supportModelProviders = 'OpenAI/Anthropic/Llama2/Azure OpenAI/Hugging Face/Replicate'
 
 export const NUM_INFINITE = 99999999
 export const contractSales = 'contractSales'
 export const unAvailable = 'unAvailable'
 
-export const contactSalesUrl = 'mailto:business@dify.ai'
+export const contactSalesUrl = 'https://vikgc6bnu1s.typeform.com/to/mowuXTQH'
+export const getStartedWithCommunityUrl = 'https://github.com/langgenius/dify'
+export const getWithPremiumUrl = 'https://aws.amazon.com/marketplace/pp/prodview-t22mebxzwjhu6'
 
 export const ALL_PLANS: Record<Plan, PlanInfo> = {
   sandbox: {
     level: 1,
     price: 0,
     modelProviders: supportModelProviders,
+    teamWorkspace: 1,
     teamMembers: 1,
-    buildApps: 10,
-    vectorSpace: 5,
-    documentsUploadQuota: 50,
+    buildApps: 5,
+    documents: 50,
+    vectorSpace: '50MB',
+    documentsUploadQuota: 0,
+    documentsRequestQuota: 10,
     documentProcessingPriority: Priority.standard,
-    logHistory: 30,
-    customTools: unAvailable,
-    messageRequest: {
-      en: '200 messages',
-      zh: '200 条信息',
-    },
+    messageRequest: 200,
     annotatedResponse: 10,
+    logHistory: 30,
   },
   professional: {
     level: 2,
     price: 59,
     modelProviders: supportModelProviders,
+    teamWorkspace: 1,
     teamMembers: 3,
     buildApps: 50,
-    vectorSpace: 200,
-    documentsUploadQuota: 500,
+    documents: 500,
+    vectorSpace: '5GB',
+    documentsUploadQuota: 0,
+    documentsRequestQuota: 100,
     documentProcessingPriority: Priority.priority,
-    logHistory: NUM_INFINITE,
-    customTools: 10,
-    messageRequest: {
-      en: '5,000  messages/month',
-      zh: '5,000 条信息/月',
-    },
+    messageRequest: 5000,
     annotatedResponse: 2000,
+    logHistory: NUM_INFINITE,
   },
   team: {
     level: 3,
     price: 159,
     modelProviders: supportModelProviders,
-    teamMembers: NUM_INFINITE,
-    buildApps: NUM_INFINITE,
-    vectorSpace: 1000,
-    documentsUploadQuota: 1000,
+    teamWorkspace: 1,
+    teamMembers: 50,
+    buildApps: 200,
+    documents: 1000,
+    vectorSpace: '20GB',
+    documentsUploadQuota: 0,
+    documentsRequestQuota: 1000,
     documentProcessingPriority: Priority.topPriority,
-    logHistory: NUM_INFINITE,
-    customTools: NUM_INFINITE,
-    messageRequest: {
-      en: '10,000  messages/month',
-      zh: '10,000 条信息/月',
-    },
+    messageRequest: 10000,
     annotatedResponse: 5000,
-  },
-  enterprise: {
-    level: 4,
-    price: 0,
-    modelProviders: supportModelProviders,
-    teamMembers: NUM_INFINITE,
-    buildApps: NUM_INFINITE,
-    vectorSpace: NUM_INFINITE,
-    documentsUploadQuota: NUM_INFINITE,
-    documentProcessingPriority: Priority.topPriority,
     logHistory: NUM_INFINITE,
-    customTools: NUM_INFINITE,
-    messageRequest: {
-      en: contractSales,
-      zh: contractSales,
-    },
-    annotatedResponse: NUM_INFINITE,
   },
 }
 
 export const defaultPlan = {
   type: Plan.sandbox,
   usage: {
+    documents: 50,
     vectorSpace: 1,
     buildApps: 1,
     teamMembers: 1,
     annotatedResponse: 1,
-    documentsUploadQuota: 1,
+    documentsUploadQuota: 0,
   },
   total: {
+    documents: 50,
     vectorSpace: 10,
     buildApps: 10,
     teamMembers: 1,
     annotatedResponse: 10,
-    documentsUploadQuota: 50,
+    documentsUploadQuota: 0,
   },
 }

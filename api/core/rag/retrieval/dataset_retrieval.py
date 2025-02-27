@@ -203,6 +203,7 @@ class DatasetRetrieval:
                                 "segment_id": segment.id,
                                 "retriever_from": invoke_from.to_source(),
                                 "score": record.score or 0.0,
+                                "doc_metadata": document.doc_metadata,
                             }
 
                             if invoke_from.to_source() == "dev":

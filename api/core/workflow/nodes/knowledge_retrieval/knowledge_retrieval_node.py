@@ -264,6 +264,7 @@ class KnowledgeRetrievalNode(LLMNode):
                                 "segment_word_count": segment.word_count,
                                 "segment_position": segment.position,
                                 "segment_index_node_hash": segment.index_node_hash,
+                                "doc_metadata": document.doc_metadata,
                             },
                             "title": document.name,
                         }

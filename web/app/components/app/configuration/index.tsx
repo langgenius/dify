@@ -94,7 +94,7 @@ const Configuration: FC = () => {
   })))
   const { data: fileUploadConfigResponse } = useSWR({ url: '/files/upload' }, fetchFileUploadConfig)
 
-  const latestPublishedAt = useMemo(() => appDetail?.model_config.updated_at, [appDetail])
+  const latestPublishedAt = useMemo(() => appDetail?.model_config?.updated_at, [appDetail])
   const [formattingChanged, setFormattingChanged] = useState(false)
   const { setShowAccountSettingModal } = useModalContext()
   const [hasFetchedDetail, setHasFetchedDetail] = useState(false)
