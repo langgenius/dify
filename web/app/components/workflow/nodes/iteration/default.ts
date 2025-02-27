@@ -4,7 +4,7 @@ import type { IterationNodeType } from './types'
 import {
   ALL_CHAT_AVAILABLE_BLOCKS,
   ALL_COMPLETION_AVAILABLE_BLOCKS,
-} from '@/app/components/workflow/blocks'
+} from '@/app/components/workflow/constants'
 const i18nPrefix = 'workflow'
 
 const nodeDefault: NodeDefault<IterationNodeType> = {
