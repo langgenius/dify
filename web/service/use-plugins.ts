@@ -216,7 +216,7 @@ export const useInstallOrUpdate = ({
           }
           if (item.type === 'marketplace') {
             const data = item as GitHubItemAndMarketPlaceDependency
-            uniqueIdentifier = data.value.plugin_unique_identifier! || plugin[i]?.plugin_id
+            uniqueIdentifier = data.value.marketplace_plugin_unique_identifier! || plugin[i]?.plugin_id
             if (uniqueIdentifier === installedPayload?.uniqueIdentifier) {
               return {
                 success: true,
