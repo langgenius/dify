@@ -5,6 +5,7 @@ import { DataType } from '../types'
 import Input from '@/app/components/base/input'
 import { InputNumber } from '@/app/components/base/input-number'
 import cn from '@/utils/classnames'
+import Datepicker from '../base/date-picker'
 
 type Props = {
   className?: string
@@ -21,10 +22,16 @@ const InputCombined: FC<Props> = ({
   onChange,
   readOnly,
 }) => {
-  // TODO: configClassName...
-  const className = cn('grow p-0.5 h-6  text-xs')
-  if (type === DataType.time)
-    return <div className='grow text-xs'>Datepicker placeholder</div>
+  const className = cn('grow p-0.5 h-6 text-xs')
+  if (type === DataType.time) {
+    return (
+      <Datepicker
+        className={className}
+        value={value}
+        onChange={onChange}
+      />
+    )
+  }
 
   if (type === DataType.number) {
     return (

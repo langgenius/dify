@@ -30,7 +30,7 @@ const EditMetadatabatchItem: FC<Props> = ({
       <Label text={payload.name} isDeleted={isDeleted} />
       {payload.isMultipleValue
         ? <InputHasSetMultipleValue
-          onClear={() => onChange({ ...payload, isMultipleValue: false })}
+          onClear={() => onChange({ ...payload, value: null, isMultipleValue: false })}
           readOnly={isDeleted}
         />
         : <InputCombined

@@ -101,43 +101,44 @@ const EditMetadataBatchModal: FC<Props> = ({
       onClose={onHide}
       className='!max-w-[640px]'
     >
-      <div className='system-xs-medium text-text-accent'>{t(`${i18nPrefix}.editDocumentsNum`, { num: documentNum })}</div>
-      {/* TODO handle list scroll. There is two list. */}
-      <div className='mt-4 space-y-2'>
-        {templeList.map(item => (
-          <EditMetadataBatchItem
-            key={item.id}
-            payload={item}
-            onChange={handleTemplesChange}
-            onRemove={handleTempleItemRemove}
-            onReset={handleItemReset}
-          />
-        ))}
-      </div>
-      <div className='mt-4 pl-[18px]'>
-        <div className='flex items-center'>
-          <div className='mr-2 shrink-0 system-xs-medium-uppercase text-text-tertiary'>{t('dataset.metadata.createMetadata.title')}</div>
-          <Divider bgStyle='gradient' />
-        </div>
-        <div className='mt-2 space-y-2'>
-          {addedList.map((item, i) => (
-            <AddedMetadataItem
-              key={i}
+      <div className='mt-1 system-xs-medium text-text-accent'>{t(`${i18nPrefix}.editDocumentsNum`, { num: documentNum })}</div>
+      <div className='max-h-[305px] overflow-y-auto'>
+        <div className='mt-4 space-y-2'>
+          {templeList.map(item => (
+            <EditMetadataBatchItem
+              key={item.id}
               payload={item}
-              onChange={handleAddedListChange}
-              onRemove={handleAddedItemRemove(i)}
+              onChange={handleTemplesChange}
+              onRemove={handleTempleItemRemove}
+              onReset={handleItemReset}
             />
           ))}
         </div>
-        <div className='mt-3'>
-          <SelectMetadataModal
-            popupPlacement='top-start'
-            popupOffset={{ mainAxis: 4, crossAxis: 0 }}
-            trigger={
-              <AddMetadataButton />
-            }
-            onSave={data => setAddedList([...addedList, data])}
-          />
+        <div className='mt-4 pl-[18px]'>
+          <div className='flex items-center'>
+            <div className='mr-2 shrink-0 system-xs-medium-uppercase text-text-tertiary'>{t('dataset.metadata.createMetadata.title')}</div>
+            <Divider bgStyle='gradient' />
+          </div>
+          <div className='mt-2 space-y-2'>
+            {addedList.map((item, i) => (
+              <AddedMetadataItem
+                key={i}
+                payload={item}
+                onChange={handleAddedListChange}
+                onRemove={handleAddedItemRemove(i)}
+              />
+            ))}
+          </div>
+          <div className='mt-3'>
+            <SelectMetadataModal
+              popupPlacement='top-start'
+              popupOffset={{ mainAxis: 4, crossAxis: 0 }}
+              trigger={
+                <AddMetadataButton />
+              }
+              onSave={data => setAddedList([...addedList, data])}
+            />
+          </div>
         </div>
       </div>
 
