@@ -18,9 +18,7 @@ import {
   validateModelProvider,
 } from '@/service/common'
 
-export const MODEL_PROVIDER_QUOTA_GET_PAID = ['anthropic', 'openai', 'azure_openai']
-
-export const DEFAULT_BACKGROUND_COLOR = '#F3F4F6'
+export const MODEL_PROVIDER_QUOTA_GET_PAID = ['langgenius/anthropic/anthropic', 'langgenius/openai/openai', 'langgenius/azure_openai/azure_openai']
 
 export const isNullOrUndefined = (value: any) => {
   return value === undefined || value === null

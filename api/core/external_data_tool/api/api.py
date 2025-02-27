@@ -62,8 +62,9 @@ class ApiExternalDataTool(ExternalDataTool):
 
         if not api_based_extension:
             raise ValueError(
-                "[External data tool] API query failed, variable: {}, "
-                "error: api_based_extension_id is invalid".format(self.variable)
+                "[External data tool] API query failed, variable: {}, error: api_based_extension_id is invalid".format(
+                    self.variable
+                )
             )
 
         # decrypt api_key

@@ -1,9 +1,10 @@
-import { refreshAccessTokenOrRelogin } from './refresh-token'
 import { API_PREFIX, IS_CE_EDITION, PUBLIC_API_PREFIX } from '@/config'
+import { refreshAccessTokenOrRelogin } from './refresh-token'
 import Toast from '@/app/components/base/toast'
 import type { AnnotationReply, MessageEnd, MessageReplace, ThoughtItem } from '@/app/components/base/chat/chat/type'
 import type { VisionFile } from '@/types/app'
 import type {
+  AgentLogResponse,
   IterationFinishedResponse,
   IterationNextResponse,
   IterationStartedResponse,
@@ -17,27 +18,10 @@ import type {
   WorkflowStartedResponse,
 } from '@/types/workflow'
 import { removeAccessToken } from '@/app/components/share/utils'
+import type { FetchOptionType, ResponseError } from './fetch'
+import { ContentType, base, baseOptions, getAccessToken } from './fetch'
 import { asyncRunSafe } from '@/utils'
 const TIME_OUT = 100000
-
-const ContentType = {
-  json: 'application/json',
-  stream: 'text/event-stream',
-  audio: 'audio/mpeg',
-  form: 'application/x-www-form-urlencoded; charset=UTF-8',
-  download: 'application/octet-stream', // for download
-  upload: 'multipart/form-data', // for upload
-}
-
-const baseOptions = {
-  method: 'GET',
-  mode: 'cors',
-  credentials: 'include', // always send cookies、HTTP Basic authentication.
-  headers: new Headers({
-    'Content-Type': ContentType.json,
-  }),
-  redirect: 'follow',
-}
 
 export type IOnDataMoreInfo = {
   conversationId?: string
@@ -70,9 +54,11 @@ export type IOnTextChunk = (textChunk: TextChunkResponse) => void
 export type IOnTTSChunk = (messageId: string, audioStr: string, audioType?: string) => void
 export type IOnTTSEnd = (messageId: string, audioStr: string, audioType?: string) => void
 export type IOnTextReplace = (textReplace: TextReplaceResponse) => void
+export type IOnAgentLog = (agentLog: AgentLogResponse) => void
 
 export type IOtherOptions = {
   isPublicAPI?: boolean
+  isMarketplaceAPI?: boolean
   bodyStringify?: boolean
   needAllResponseContent?: boolean
   deleteContentType?: boolean
@@ -100,17 +86,7 @@ export type IOtherOptions = {
   onTTSChunk?: IOnTTSChunk
   onTTSEnd?: IOnTTSEnd
   onTextReplace?: IOnTextReplace
-}
-
-type ResponseError = {
-  code: string
-  message: string
-  status: number
-}
-
-type FetchOptionType = Omit<RequestInit, 'body'> & {
-  params?: Record<string, any>
-  body?: BodyInit | Record<string, any> | null
+  onAgentLog?: IOnAgentLog
 }
 
 function unicodeToChar(text: string) {
@@ -118,30 +94,12 @@ function unicodeToChar(text: string) {
     return ''
 
   return text.replace(/\\u[0-9a-f]{4}/g, (_match, p1) => {
-    return String.fromCharCode(parseInt(p1, 16))
+    return String.fromCharCode(Number.parseInt(p1, 16))
   })
 }
 
 function requiredWebSSOLogin() {
   globalThis.location.href = `/webapp-signin?redirect_url=${globalThis.location.pathname}`
-}
-
-function getAccessToken(isPublicAPI?: boolean) {
-  if (isPublicAPI) {
-    const sharedToken = globalThis.location.pathname.split('/').slice(-1)[0]
-    const accessToken = localStorage.getItem('token') || JSON.stringify({ [sharedToken]: '' })
-    let accessTokenJson = { [sharedToken]: '' }
-    try {
-      accessTokenJson = JSON.parse(accessToken)
-    }
-    catch (e) {
-
-    }
-    return accessTokenJson[sharedToken]
-  }
-  else {
-    return localStorage.getItem('console_token') || ''
-  }
 }
 
 export function format(text: string) {
@@ -174,6 +132,7 @@ const handleStream = (
   onTTSChunk?: IOnTTSChunk,
   onTTSEnd?: IOnTTSEnd,
   onTextReplace?: IOnTextReplace,
+  onAgentLog?: IOnAgentLog,
 ) => {
   if (!response.ok)
     throw new Error('Network response was not ok')
@@ -274,6 +233,9 @@ const handleStream = (
             else if (bufferObj.event === 'text_replace') {
               onTextReplace?.(bufferObj as TextReplaceResponse)
             }
+            else if (bufferObj.event === 'agent_log') {
+              onAgentLog?.(bufferObj as AgentLogResponse)
+            }
             else if (bufferObj.event === 'tts_message') {
               onTTSChunk?.(bufferObj.message_id, bufferObj.audio, bufferObj.audio_type)
             }
@@ -301,115 +263,7 @@ const handleStream = (
   read()
 }
 
-const baseFetch = <T>(
-  url: string,
-  fetchOptions: FetchOptionType,
-  {
-    isPublicAPI = false,
-    bodyStringify = true,
-    needAllResponseContent,
-    deleteContentType,
-    getAbortController,
-    silent,
-  }: IOtherOptions,
-): Promise<T> => {
-  const options: typeof baseOptions & FetchOptionType = Object.assign({}, baseOptions, fetchOptions)
-  if (getAbortController) {
-    const abortController = new AbortController()
-    getAbortController(abortController)
-    options.signal = abortController.signal
-  }
-  const accessToken = getAccessToken(isPublicAPI)
-  options.headers.set('Authorization', `Bearer ${accessToken}`)
-
-  if (deleteContentType) {
-    options.headers.delete('Content-Type')
-  }
-  else {
-    const contentType = options.headers.get('Content-Type')
-    if (!contentType)
-      options.headers.set('Content-Type', ContentType.json)
-  }
-
-  const urlPrefix = isPublicAPI ? PUBLIC_API_PREFIX : API_PREFIX
-  let urlWithPrefix = (url.startsWith('http://') || url.startsWith('https://'))
-    ? url
-    : `${urlPrefix}${url.startsWith('/') ? url : `/${url}`}`
-
-  const { method, params, body } = options
-  // handle query
-  if (method === 'GET' && params) {
-    const paramsArray: string[] = []
-    Object.keys(params).forEach(key =>
-      paramsArray.push(`${key}=${encodeURIComponent(params[key])}`),
-    )
-    if (urlWithPrefix.search(/\?/) === -1)
-      urlWithPrefix += `?${paramsArray.join('&')}`
-
-    else
-      urlWithPrefix += `&${paramsArray.join('&')}`
-
-    delete options.params
-  }
-
-  if (body && bodyStringify)
-    options.body = JSON.stringify(body)
-
-  // Handle timeout
-  return Promise.race([
-    new Promise((resolve, reject) => {
-      setTimeout(() => {
-        reject(new Error('request timeout'))
-      }, TIME_OUT)
-    }),
-    new Promise((resolve, reject) => {
-      globalThis.fetch(urlWithPrefix, options as RequestInit)
-        .then((res) => {
-          const resClone = res.clone()
-          // Error handler
-          if (!/^(2|3)\d{2}$/.test(String(res.status))) {
-            const bodyJson = res.json()
-            switch (res.status) {
-              case 401:
-                return Promise.reject(resClone)
-              case 403:
-                bodyJson.then((data: ResponseError) => {
-                  if (!silent)
-                    Toast.notify({ type: 'error', message: data.message })
-                  if (data.code === 'already_setup')
-                    globalThis.location.href = `${globalThis.location.origin}/signin`
-                })
-                break
-              // fall through
-              default:
-                bodyJson.then((data: ResponseError) => {
-                  if (!silent)
-                    Toast.notify({ type: 'error', message: data.message })
-                })
-            }
-            return Promise.reject(resClone)
-          }
-
-          // handle delete api. Delete api not return content.
-          if (res.status === 204) {
-            resolve({ result: 'success' })
-            return
-          }
-
-          // return data
-          if (options.headers.get('Content-type') === ContentType.download || options.headers.get('Content-type') === ContentType.audio)
-            resolve(needAllResponseContent ? resClone : res.blob())
-
-          else resolve(needAllResponseContent ? resClone : res.json())
-        })
-        .catch((err) => {
-          if (!silent)
-            Toast.notify({ type: 'error', message: err })
-          reject(err)
-        })
-    }),
-  ]) as Promise<T>
-}
+const baseFetch = base
 
 export const upload = (options: any, isPublicAPI?: boolean, url?: string, searchParams?: string): Promise<any> => {
   const urlPrefix = isPublicAPI ? PUBLIC_API_PREFIX : API_PREFIX
@@ -475,19 +329,25 @@ export const ssePost = (
     onTTSChunk,
     onTTSEnd,
     onTextReplace,
+    onAgentLog,
     onError,
     getAbortController,
   } = otherOptions
   const abortController = new AbortController()
 
+  const token = localStorage.getItem('console_token')
+
   const options = Object.assign({}, baseOptions, {
     method: 'POST',
     signal: abortController.signal,
-  }, fetchOptions)
+    headers: new Headers({
+      Authorization: `Bearer ${token}`,
+    }),
+  } as RequestInit, fetchOptions)
 
-  const contentType = options.headers.get('Content-Type')
+  const contentType = (options.headers as Headers).get('Content-Type')
   if (!contentType)
-    options.headers.set('Content-Type', ContentType.json)
+    (options.headers as Headers).set('Content-Type', ContentType.json)
 
   getAbortController?.(abortController)
 
@@ -501,7 +361,7 @@ export const ssePost = (
     options.body = JSON.stringify(body)
 
   const accessToken = getAccessToken(isPublicAPI)
-  options.headers.set('Authorization', `Bearer ${accessToken}`)
+  options.headers!.set('Authorization', `Bearer ${accessToken}`)
 
   globalThis.fetch(urlWithPrefix, options as RequestInit)
     .then((res) => {
@@ -540,7 +400,7 @@ export const ssePost = (
           return
         }
         onData?.(str, isFirstMessage, moreInfo)
-      }, onCompleted, onThought, onMessageEnd, onMessageReplace, onFile, onWorkflowStarted, onWorkflowFinished, onNodeStarted, onNodeFinished, onIterationStart, onIterationNext, onIterationFinish, onNodeRetry, onParallelBranchStarted, onParallelBranchFinished, onTextChunk, onTTSChunk, onTTSEnd, onTextReplace)
+      }, onCompleted, onThought, onMessageEnd, onMessageReplace, onFile, onWorkflowStarted, onWorkflowFinished, onNodeStarted, onNodeFinished, onIterationStart, onIterationNext, onIterationFinish, onNodeRetry, onParallelBranchStarted, onParallelBranchFinished, onTextChunk, onTTSChunk, onTTSEnd, onTextReplace, onAgentLog)
     }).catch((e) => {
       if (e.toString() !== 'AbortError: The user aborted a request.' && !e.toString().errorMessage.includes('TypeError: Cannot assign to read only property'))
         Toast.notify({ type: 'error', message: e })
@@ -633,8 +493,18 @@ export const getPublic = <T>(url: string, options = {}, otherOptions?: IOtherOpt
   return get<T>(url, options, { ...otherOptions, isPublicAPI: true })
 }
 
+// For Marketplace API
+export const getMarketplace = <T>(url: string, options = {}, otherOptions?: IOtherOptions) => {
+  return get<T>(url, options, { ...otherOptions, isMarketplaceAPI: true })
+}
+
 export const post = <T>(url: string, options = {}, otherOptions?: IOtherOptions) => {
   return request<T>(url, Object.assign({}, options, { method: 'POST' }), otherOptions)
+}
+
+// For Marketplace API
+export const postMarketplace = <T>(url: string, options = {}, otherOptions?: IOtherOptions) => {
+  return post<T>(url, options, { ...otherOptions, isMarketplaceAPI: true })
 }
 
 export const postPublic = <T>(url: string, options = {}, otherOptions?: IOtherOptions) => {

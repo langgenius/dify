@@ -47,7 +47,7 @@ const MembersPage = () => {
   return (
     <>
       <div className='flex flex-col'>
-        <div className='flex items-center mb-4 p-3 bg-gray-50 rounded-2xl'>
+        <div className='flex items-center mb-4 p-3 gap-1 bg-gray-50 rounded-2xl'>
           <LogoEmbeddedChatHeader className='!w-10 !h-10' />
           <div className='grow mx-2'>
             <div className='text-sm font-medium text-gray-900'>{currentWorkspace?.name}</div>
@@ -95,7 +95,7 @@ const MembersPage = () => {
               accounts.map(account => (
                 <div key={account.id} className='flex border-b border-divider-subtle'>
                   <div className='grow flex items-center py-2 px-3'>
-                    <Avatar size={24} className='mr-2' name={account.name} />
+                    <Avatar avatar={account.avatar_url} size={24} className='mr-2' name={account.name} />
                     <div className=''>
                       <div className='text-text-secondary system-sm-medium'>
                         {account.name}

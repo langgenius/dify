@@ -155,6 +155,10 @@ const translation = {
       removeConfirmContent: 'La configuración actual está en uso, eliminarla desactivará la función de rastreo.',
     },
     view: 'Vista',
+    opik: {
+      description: 'Opik es una plataforma de código abierto para evaluar, probar y monitorear aplicaciones LLM.',
+      title: 'Opik',
+    },
   },
   answerIcon: {
     title: 'Usar el icono de la aplicación web para reemplazar 🤖',
@@ -182,6 +186,13 @@ const translation = {
     },
     byCategories: 'POR CATEGORÍAS',
     searchAllTemplate: 'Buscar todas las plantillas...',
+  },
+  showMyCreatedAppsOnly: 'Mostrar solo mis aplicaciones creadas',
+  appSelector: {
+    label: 'APLICACIÓN',
+    placeholder: 'Selecciona una aplicación...',
+    noParams: 'No se necesitan parámetros',
+    params: 'PARÁMETROS DE LA APLICACIÓN',
   },
 }
 

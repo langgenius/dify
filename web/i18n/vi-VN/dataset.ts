@@ -166,6 +166,8 @@ const translation = {
   enable: 'Kích hoạt',
   preprocessDocument: '{{số}} Tiền xử lý tài liệu',
   documentsDisabled: '{{num}} tài liệu bị vô hiệu hóa - không hoạt động trong hơn 30 ngày',
+  allKnowledge: 'Tất cả kiến thức',
+  allKnowledgeDescription: 'Chọn để hiển thị tất cả kiến thức trong không gian làm việc này. Chỉ Chủ sở hữu không gian làm việc mới có thể quản lý tất cả kiến thức.',
 }
 
 export default translation

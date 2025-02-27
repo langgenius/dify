@@ -255,7 +255,8 @@ class NotionOAuth(OAuthDataSource):
         response = requests.get(url=f"{self._NOTION_BLOCK_SEARCH}/{block_id}", headers=headers)
         response_json = response.json()
         if response.status_code != 200:
-            raise ValueError(f"Error fetching block parent page ID: {response_json.message}")
+            message = response_json.get("message", "unknown error")
+            raise ValueError(f"Error fetching block parent page ID: {message}")
         parent = response_json["parent"]
         parent_type = parent["type"]
         if parent_type == "block_id":

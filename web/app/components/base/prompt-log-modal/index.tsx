@@ -33,7 +33,7 @@ const PromptLogModal: FC<PromptLogModalProps> = ({
 
   return (
     <div
-      className='relative flex flex-col bg-white border-[0.5px] border-gray-200 rounded-xl shadow-xl z-10'
+      className='relative flex flex-col bg-components-panel-bg border-[0.5px] border-components-panel-border rounded-xl shadow-xl z-10'
       style={{
         width: 480,
         position: 'fixed',
@@ -43,14 +43,14 @@ const PromptLogModal: FC<PromptLogModalProps> = ({
       }}
       ref={ref}
     >
-      <div className='shrink-0 flex justify-between items-center pl-6 pr-5 h-14 border-b border-b-gray-100'>
-        <div className='text-base font-semibold text-gray-900'>PROMPT LOG</div>
+      <div className='shrink-0 flex justify-between items-center pl-6 pr-5 h-14 border-b border-divider-regular'>
+        <div className='text-base font-semibold text-text-primary'>PROMPT LOG</div>
         <div className='flex items-center'>
           {
             currentLogItem.log?.length === 1 && (
               <>
                 <CopyFeedbackNew className='w-6 h-6' content={currentLogItem.log[0].text} />
-                <div className='mx-2.5 w-[1px] h-[14px] bg-gray-200' />
+                <div className='mx-2.5 w-[1px] h-[14px] bg-divider-regular' />
               </>
             )
           }
@@ -58,7 +58,7 @@ const PromptLogModal: FC<PromptLogModalProps> = ({
             onClick={onCancel}
             className='flex justify-center items-center w-6 h-6 cursor-pointer'
           >
-            <RiCloseLine className='w-4 h-4 text-gray-500' />
+            <RiCloseLine className='w-4 h-4 text-text-tertiary' />
           </div>
         </div>
       </div>

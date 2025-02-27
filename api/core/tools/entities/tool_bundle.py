@@ -18,7 +18,7 @@ class ApiToolBundle(BaseModel):
     # summary
     summary: Optional[str] = None
     # operation_id
-    operation_id: str | None = None
+    operation_id: Optional[str] = None
     # parameters
     parameters: Optional[list[ToolParameter]] = None
     # author

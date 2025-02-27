@@ -15,7 +15,6 @@ from core.app.entities.queue_entities import (
 from core.app.entities.task_entities import (
     ErrorStreamResponse,
     PingStreamResponse,
-    TaskState,
 )
 from core.errors.error import QuotaExceededError
 from core.model_runtime.errors.invoke import InvokeAuthorizationError, InvokeError
@@ -30,22 +29,12 @@ class BasedGenerateTaskPipeline:
     BasedGenerateTaskPipeline is a class that generate stream output and state management for Application.
     """
 
-    _task_state: TaskState
-    _application_generate_entity: AppGenerateEntity
-
     def __init__(
         self,
         application_generate_entity: AppGenerateEntity,
         queue_manager: AppQueueManager,
         stream: bool,
     ) -> None:
-        """
-        Initialize GenerateTaskPipeline.
-        :param application_generate_entity: application generate entity
-        :param queue_manager: queue manager
-        :param user: user
-        :param stream: stream
-        """
         self._application_generate_entity = application_generate_entity
         self._queue_manager = queue_manager
         self._start_at = time.perf_counter()

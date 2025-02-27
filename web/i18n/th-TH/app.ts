@@ -160,6 +160,10 @@ const translation = {
       removeConfirmTitle: 'ลบการกําหนดค่า {{key}} หรือไม่?',
       removeConfirmContent: 'การกําหนดค่าปัจจุบันกําลังใช้งาน การลบออกจะเป็นการปิดคุณสมบัติการติดตาม',
     },
+    opik: {
+      title: 'โอปิก',
+      description: 'Opik เป็นแพลตฟอร์มโอเพ่นซอร์สสําหรับการประเมิน ทดสอบ และตรวจสอบแอปพลิเคชัน LLM',
+    },
   },
   mermaid: {
     handDrawn: 'วาดด้วยมือ',
@@ -178,6 +182,13 @@ const translation = {
     },
     searchAllTemplate: 'ค้นหาเทมเพลตทั้งหมด...',
     byCategories: 'ตามหมวดหมู่',
+  },
+  showMyCreatedAppsOnly: 'แสดงเฉพาะแอปที่ฉันสร้าง',
+  appSelector: {
+    placeholder: 'เลือกแอป...',
+    params: 'พารามิเตอร์แอพ',
+    noParams: 'ไม่จําเป็นต้องใช้พารามิเตอร์',
+    label: 'แอพ',
   },
 }
 

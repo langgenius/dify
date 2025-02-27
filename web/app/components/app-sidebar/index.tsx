@@ -57,7 +57,7 @@ const AppDetailNav = ({ title, desc, isExternal, icon, icon_background, navigati
       <div
         className={`
           shrink-0
-          ${expand ? 'p-3' : 'p-2'}
+          ${expand ? 'p-2' : 'p-1'}
         `}
       >
         {iconType === 'app' && (

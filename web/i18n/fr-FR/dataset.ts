@@ -166,6 +166,8 @@ const translation = {
   documentsDisabled: '{{num}} documents désactivés - inactifs depuis plus de 30 jours',
   localDocs: 'Docs locaux',
   enable: 'Activer',
+  allKnowledge: 'Toutes les connaissances',
+  allKnowledgeDescription: 'Sélectionnez cette option pour afficher toutes les connaissances dans cet espace de travail. Seul le propriétaire de l’espace de travail peut gérer toutes les connaissances.',
 }
 
 export default translation

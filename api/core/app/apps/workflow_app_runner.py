@@ -5,6 +5,7 @@ from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
 from core.app.apps.base_app_runner import AppRunner
 from core.app.entities.queue_entities import (
     AppQueueEvent,
+    QueueAgentLogEvent,
     QueueIterationCompletedEvent,
     QueueIterationNextEvent,
     QueueIterationStartEvent,
@@ -27,6 +28,7 @@ from core.app.entities.queue_entities import (
 from core.workflow.entities.node_entities import NodeRunMetadataKey
 from core.workflow.entities.variable_pool import VariablePool
 from core.workflow.graph_engine.entities.event import (
+    AgentLogEvent,
     GraphEngineEvent,
     GraphRunFailedEvent,
     GraphRunPartialSucceededEvent,
@@ -239,6 +241,7 @@ class WorkflowBasedAppRunner(AppRunner):
                     predecessor_node_id=event.predecessor_node_id,
                     in_iteration_id=event.in_iteration_id,
                     parallel_mode_run_id=event.parallel_mode_run_id,
+                    agent_strategy=event.agent_strategy,
                 )
             )
         elif isinstance(event, NodeRunSucceededEvent):
@@ -371,6 +374,19 @@ class WorkflowBasedAppRunner(AppRunner):
             self._publish_event(
                 QueueRetrieverResourcesEvent(
                     retriever_resources=event.retriever_resources, in_iteration_id=event.in_iteration_id
+                )
+            )
+        elif isinstance(event, AgentLogEvent):
+            self._publish_event(
+                QueueAgentLogEvent(
+                    id=event.id,
+                    label=event.label,
+                    node_execution_id=event.node_execution_id,
+                    parent_id=event.parent_id,
+                    error=event.error,
+                    status=event.status,
+                    data=event.data,
+                    metadata=event.metadata,
                 )
             )
         elif isinstance(event, ParallelBranchRunStartedEvent):

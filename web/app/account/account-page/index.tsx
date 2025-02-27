@@ -3,17 +3,17 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { useContext } from 'use-context-selector'
+import DeleteAccount from '../delete-account'
 import s from './index.module.css'
+import AvatarWithEdit from './AvatarWithEdit'
 import Collapse from '@/app/components/header/account-setting/collapse'
 import type { IItem } from '@/app/components/header/account-setting/collapse'
 import Modal from '@/app/components/base/modal'
-import Confirm from '@/app/components/base/confirm'
 import Button from '@/app/components/base/button'
 import { updateUserProfile } from '@/service/common'
 import { useAppContext } from '@/context/app-context'
 import { ToastContext } from '@/app/components/base/toast'
 import AppIcon from '@/app/components/base/app-icon'
-import Avatar from '@/app/components/base/avatar'
 import { IS_CE_EDITION } from '@/config'
 import Input from '@/app/components/base/input'
 
@@ -133,7 +133,7 @@ export default function AccountPage() {
         <h4 className='title-2xl-semi-bold text-text-primary'>{t('common.account.myAccount')}</h4>
       </div>
       <div className='mb-8 p-6 rounded-xl flex items-center bg-gradient-to-r from-background-gradient-bg-fill-chat-bg-2 to-background-gradient-bg-fill-chat-bg-1'>
-        <Avatar name={userProfile.name} size={64} />
+        <AvatarWithEdit avatar={userProfile.avatar_url} name={userProfile.name} onSave={ mutateUserProfile } size={64} />
         <div className='ml-4'>
           <p className='system-xl-semibold text-text-primary'>{userProfile.name}</p>
           <p className='system-xs-regular text-text-tertiary'>{userProfile.email}</p>
@@ -296,37 +296,9 @@ export default function AccountPage() {
       }
       {
         showDeleteAccountModal && (
-          <Confirm
-            isShow
+          <DeleteAccount
             onCancel={() => setShowDeleteAccountModal(false)}
             onConfirm={() => setShowDeleteAccountModal(false)}
-            showCancel={false}
-            type='warning'
-            title={t('common.account.delete')}
-            content={
-              <>
-                <div className='my-1 text-text-destructive body-md-medium'>
-                  {t('common.account.deleteTip')}
-                </div>
-                <div className='mt-3 text-sm leading-5'>
-                  <span>{t('common.account.deleteConfirmTip')}</span>
-                  <a
-                    className='text-text-accent cursor'
-                    href={`mailto:support@dify.ai?subject=Delete Account Request&body=Delete Account: ${userProfile.email}`}
-                    target='_blank'
-                    rel='noreferrer noopener'
-                    onClick={(e) => {
-                      e.preventDefault()
-                      window.location.href = e.currentTarget.href
-                    }}
-                  >
-                    support@dify.ai
-                  </a>
-                </div>
-                <div className='my-2 px-3 py-2 rounded-lg bg-components-input-bg-active border border-components-input-border-active system-sm-regular text-components-input-text-filled'>{`${t('common.account.delete')}: ${userProfile.email}`}</div>
-              </>
-            }
-            confirmText={t('common.operation.ok') as string}
           />
         )
       }

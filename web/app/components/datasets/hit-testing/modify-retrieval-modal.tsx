@@ -9,9 +9,8 @@ import type { RetrievalConfig } from '@/types/app'
 import RetrievalMethodConfig from '@/app/components/datasets/common/retrieval-method-config'
 import EconomicalRetrievalMethodConfig from '@/app/components/datasets/common/economical-retrieval-method-config'
 import Button from '@/app/components/base/button'
-import { ensureRerankModelSelected, isReRankModelSelected } from '@/app/components/datasets/common/check-rerank-model'
+import { isReRankModelSelected } from '@/app/components/datasets/common/check-rerank-model'
 import { useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
-import { RerankingModeEnum } from '@/models/datasets'
 
 type Props = {
   indexMethod: string
@@ -39,15 +38,11 @@ const ModifyRetrievalModal: FC<Props> = ({
 
   const {
     modelList: rerankModelList,
-    defaultModel: rerankDefaultModel,
-    currentModel: isRerankDefaultModelValid,
   } = useModelListAndDefaultModelAndCurrentProviderAndModel(ModelTypeEnum.rerank)
 
   const handleSave = () => {
     if (
       !isReRankModelSelected({
-        rerankDefaultModel,
-        isRerankDefaultModelValid: !!isRerankDefaultModelValid,
         rerankModelList,
         retrievalConfig,
         indexMethod,
@@ -56,14 +51,7 @@ const ModifyRetrievalModal: FC<Props> = ({
       Toast.notify({ type: 'error', message: t('appDebug.datasetConfig.rerankModelRequired') })
       return
     }
-    onSave(ensureRerankModelSelected({
-      rerankDefaultModel: rerankDefaultModel!,
-      retrievalConfig: {
-        ...retrievalConfig,
-        reranking_enable: retrievalConfig.reranking_mode === RerankingModeEnum.RerankingModel,
-      },
-      indexMethod,
-    }))
+    onSave(retrievalConfig)
   }
 
   if (!isShow)
