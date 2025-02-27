@@ -312,7 +312,7 @@ class EducationVerifyApi(Resource):
     def get(self):
         account = current_user
 
-        return BillingService.EducationIdentity.verify(account.id)
+        return BillingService.EducationIdentity.verify(account.id, account.email)
 
 
 class EducationApi(Resource):

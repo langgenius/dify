@@ -5,6 +5,7 @@ import httpx
 from tenacity import retry, retry_if_exception_type, stop_before_delay, wait_fixed
 
 from extensions.ext_database import db
+from libs.helper import RateLimiter
 from models.account import Account, TenantAccountJoin, TenantAccountRole
 
 
@@ -93,8 +94,18 @@ class BillingService:
         return cls._send_request("POST", "/account/delete-feedback", json=json)
 
     class EducationIdentity:
+        verification_rate_limit = RateLimiter(prefix="edu_verification_rate_limit", limit=10, period=60)
+        activation_rate_limit = RateLimiter(prefix="edu_activation_rate_limit", limit=10, period=60)
+
         @classmethod
-        def verify(cls, account_id: str):
+        def verify(cls, account_id: str, account_email: str):
+            if cls.verification_rate_limit.is_rate_limited(account_email):
+                from controllers.console.error import EducationVerifyLimitError
+
+                raise EducationVerifyLimitError()
+
+            cls.verification_rate_limit.increment_rate_limit(account_email)
+
             params = {"account_id": account_id}
             return BillingService._send_request("GET", "/education/verify", params=params)
 
@@ -105,6 +116,12 @@ class BillingService:
 
         @classmethod
         def activate(cls, account: Account, token: str):
+            if cls.activation_rate_limit.is_rate_limited(account.email):
+                from controllers.console.error import EducationActivateLimitError
+
+                raise EducationActivateLimitError()
+
+            cls.activation_rate_limit.increment_rate_limit(account.email)
             json = {
                 "account_id": account.id,
                 "email": account.email,
