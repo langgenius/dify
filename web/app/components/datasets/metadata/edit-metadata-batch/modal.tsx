@@ -2,7 +2,8 @@
 import type { FC } from 'react'
 import React, { useCallback, useState } from 'react'
 import Modal from '../../../base/modal'
-import { DataType, type MetadataItemWithEdit } from '../types'
+import type { MetadataItemInBatchEdit } from '../types'
+import { DataType, type MetadataItemWithEdit, UpdateType } from '../types'
 import EditMetadataBatchItem from './edit-row'
 import AddedMetadataItem from './add-row'
 import Button from '../../../base/button'
@@ -13,30 +14,45 @@ import SelectMetadataModal from '../metadata-dataset/select-metadata-modal'
 import { RiQuestionLine } from '@remixicon/react'
 import Divider from '@/app/components/base/divider'
 import AddMetadataButton from '../add-metadata-button'
+import produce from 'immer'
 
 const i18nPrefix = 'dataset.metadata.batchEditMetadata'
 
 type Props = {
   documentNum: number
-  list: MetadataItemWithEdit[]
-  onChange: (list: MetadataItemWithEdit[], addedList: MetadataItemWithEdit[], isApplyToAllSelectDocument: boolean) => void
+  list: MetadataItemInBatchEdit[]
+  onSave: (list: MetadataItemInBatchEdit[], isApplyToAllSelectDocument: boolean) => void
   onHide: () => void
 }
 
 const EditMetadataBatchModal: FC<Props> = ({
   documentNum,
   list,
-  onChange,
+  onSave,
   onHide,
 }) => {
   const { t } = useTranslation()
   const [templeList, setTempleList] = useState<MetadataItemWithEdit[]>(list)
   const handleTemplesChange = useCallback((payload: MetadataItemWithEdit) => {
-    const newTempleList = templeList.map(i => i.id === payload.id ? payload : i)
+    const newTempleList = produce(templeList, (draft) => {
+      const index = draft.findIndex(i => i.id === payload.id)
+      if (index !== -1) {
+        draft[index] = payload
+        draft[index].isUpdated = true
+        draft[index].updateType = UpdateType.changeValue
+      }
+    },
+    )
     setTempleList(newTempleList)
   }, [templeList])
   const handleTempleItemRemove = useCallback((id: string) => {
-    const newTempleList = templeList.filter(i => i.id !== id)
+    const newTempleList = produce(templeList, (draft) => {
+      const index = draft.findIndex(i => i.id === id)
+      if (index !== -1) {
+        draft[index].isUpdated = true
+        draft[index].updateType = UpdateType.delete
+      }
+    })
     setTempleList(newTempleList)
   }, [templeList])
 
@@ -63,8 +79,8 @@ const EditMetadataBatchModal: FC<Props> = ({
   const [isApplyToAllSelectDocument, setIsApplyToAllSelectDocument] = useState(false)
 
   const handleSave = useCallback(() => {
-    onChange(templeList, addedList, isApplyToAllSelectDocument)
-  }, [templeList, addedList, isApplyToAllSelectDocument, onChange])
+    onSave([...templeList.filter(item => item.updateType !== UpdateType.delete), ...addedList], isApplyToAllSelectDocument)
+  }, [templeList, addedList, isApplyToAllSelectDocument, onSave])
   return (
     <Modal
       title={t(`${i18nPrefix}.editMetadata`)}

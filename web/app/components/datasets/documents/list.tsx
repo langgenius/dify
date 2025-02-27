@@ -426,7 +426,13 @@ const DocumentList: FC<IDocumentListProps> = ({
   const isQAMode = chunkingMode === ChunkingMode.qa
   const [localDocs, setLocalDocs] = useState<LocalDoc[]>(documents)
   const [enableSort, setEnableSort] = useState(true)
-  const { isShowEditModal, showEditModal, hideEditModal } = useBatchEditDocumentMetadata({
+  const {
+    isShowEditModal,
+    showEditModal,
+    hideEditModal,
+    originalList,
+    handleSave,
+  } = useBatchEditDocumentMetadata({
     list: documents,
   })
 
@@ -655,8 +661,8 @@ const DocumentList: FC<IDocumentListProps> = ({
       {isShowEditModal && (
         <EditMetadataBatchModal
           documentNum={selectedIds.length}
-          list={[]}
-          onChange={() => { }}
+          list={originalList}
+          onSave={handleSave}
           onHide={hideEditModal}
         />
       )}
