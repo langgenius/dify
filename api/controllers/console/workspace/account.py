@@ -317,7 +317,7 @@ class EducationVerifyApi(Resource):
 
 class EducationApi(Resource):
     status_fields = {
-        "verified": fields.Boolean,
+        "result": fields.Boolean,
     }
 
     @setup_required
