@@ -12,7 +12,8 @@ from models.model import DifySetup
 from services.feature_service import FeatureService, LicenseStatus
 from services.operation_service import OperationService
 
-from .error import NotInitValidateError, NotSetupError, UnauthorizedAndForceLogout
+from .error import (NotInitValidateError, NotSetupError,
+                    UnauthorizedAndForceLogout)
 
 
 def account_initialization_required(view):
@@ -46,6 +47,17 @@ def only_edition_self_hosted(view):
         if dify_config.EDITION != "SELF_HOSTED":
             abort(404)
 
+        return view(*args, **kwargs)
+
+    return decorated
+
+
+def cloud_edition_billing_enabled(view):
+    @wraps(view)
+    def decorated(*args, **kwargs):
+        features = FeatureService.get_features(current_user.current_tenant_id)
+        if not features.billing.enabled:
+            abort(403, "The billing feature is not enabled.")
         return view(*args, **kwargs)
 
     return decorated

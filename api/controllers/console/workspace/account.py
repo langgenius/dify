@@ -3,24 +3,20 @@ import datetime
 import pytz
 from flask import request
 from flask_login import current_user  # type: ignore
-from flask_restful import Resource, fields, marshal_with, reqparse  # type: ignore
+from flask_restful import (Resource, fields, marshal_with,  # type: ignore
+                           reqparse)
 
 from configs import dify_config
 from constants.languages import supported_language
 from controllers.console import api
 from controllers.console.workspace.error import (
-    AccountAlreadyInitedError,
-    CurrentPasswordIncorrectError,
-    InvalidAccountDeletionCodeError,
-    InvalidInvitationCodeError,
-    RepeatPasswordNotMatchError,
-)
-from controllers.console.wraps import (
-    account_initialization_required,
-    enterprise_license_required,
-    only_edition_cloud,
-    setup_required,
-)
+    AccountAlreadyInitedError, CurrentPasswordIncorrectError,
+    InvalidAccountDeletionCodeError, InvalidInvitationCodeError,
+    RepeatPasswordNotMatchError)
+from controllers.console.wraps import (account_initialization_required,
+                                       cloud_edition_billing_enabled,
+                                       enterprise_license_required,
+                                       only_edition_cloud, setup_required)
 from extensions.ext_database import db
 from fields.member_fields import account_fields
 from libs.helper import TimestampField, timezone
@@ -28,7 +24,8 @@ from libs.login import login_required
 from models import AccountIntegrate, InvitationCode
 from services.account_service import AccountService
 from services.billing_service import BillingService
-from services.errors.account import CurrentPasswordIncorrectError as ServiceCurrentPasswordIncorrectError
+from services.errors.account import \
+    CurrentPasswordIncorrectError as ServiceCurrentPasswordIncorrectError
 
 
 class AccountInitApi(Resource):
@@ -306,6 +303,7 @@ class EducationVerifyApi(Resource):
     @login_required
     @account_initialization_required
     @only_edition_cloud
+    @cloud_edition_billing_enabled
     @marshal_with(verify_fields)
     def get(self):
         account = current_user
@@ -322,6 +320,7 @@ class EducationApi(Resource):
     @login_required
     @account_initialization_required
     @only_edition_cloud
+    @cloud_edition_billing_enabled
     def post(self):
         account = current_user
 
@@ -335,6 +334,7 @@ class EducationApi(Resource):
     @login_required
     @account_initialization_required
     @only_edition_cloud
+    @cloud_edition_billing_enabled
     @marshal_with(status_fields)
     def get(self):
         account = current_user
