@@ -1,4 +1,5 @@
 import io
+import traceback
 
 from flask import send_file
 from flask_login import current_user  # type: ignore
@@ -103,6 +104,7 @@ class ModelProviderApi(Resource):
                 tenant_id=current_user.current_tenant_id, provider=provider, credentials=args["credentials"]
             )
         except CredentialsValidateFailedError as ex:
+            print(traceback.format_exc())
             raise ValueError(str(ex))
 
         return {"result": "success"}, 201
