@@ -12,10 +12,13 @@ export type InputNumberProps = {
   max?: number
   min?: number
   defaultValue?: number
+  wrapClassName?: string
+  controlWrapClassName?: string
+  controlClassName?: string
 } & Omit<InputProps, 'value' | 'onChange' | 'size' | 'min' | 'max' | 'defaultValue'>
 
 export const InputNumber: FC<InputNumberProps> = (props) => {
-  const { unit, className, onChange, amount = 1, value, size = 'md', max, min, defaultValue, ...rest } = props
+  const { unit, className, onChange, amount = 1, value, size = 'md', max, min, defaultValue, wrapClassName, controlWrapClassName, controlClassName, ...rest } = props
 
   const isValidValue = (v: number) => {
     if (max && v > max)
@@ -46,7 +49,7 @@ export const InputNumber: FC<InputNumberProps> = (props) => {
     onChange(newValue)
   }
 
-  return <div className='flex'>
+  return <div className={classNames('flex', wrapClassName)}>
     <Input {...rest}
       // disable default controller
       type='text'
@@ -68,16 +71,18 @@ export const InputNumber: FC<InputNumberProps> = (props) => {
       }}
       unit={unit}
     />
-    <div className='flex flex-col bg-components-input-bg-normal rounded-r-md border-l border-divider-subtle text-text-tertiary focus:shadow-xs'>
+    <div className={classNames('flex flex-col bg-components-input-bg-normal rounded-r-md border-l border-divider-subtle text-text-tertiary focus:shadow-xs', controlWrapClassName)}>
       <button onClick={inc} className={classNames(
         size === 'sm' ? 'pt-1' : 'pt-1.5',
         'px-1.5 hover:bg-components-input-bg-hover',
+        controlClassName,
       )}>
         <RiArrowUpSLine className='size-3' />
       </button>
       <button onClick={dec} className={classNames(
         size === 'sm' ? 'pb-1' : 'pb-1.5',
         'px-1.5 hover:bg-components-input-bg-hover',
+        controlClassName,
       )}>
         <RiArrowDownSLine className='size-3' />
       </button>

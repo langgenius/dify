@@ -29,7 +29,10 @@ const EditMetadatabatchItem: FC<Props> = ({
       {isUpdated ? <EditedBeacon onReset={() => onReset(payload.id)} /> : <div className='shrink-0 size-4' />}
       <Label text={payload.name} isDeleted={isDeleted} />
       {payload.isMultipleValue
-        ? <InputHasSetMultipleValue onClear={() => onChange({ ...payload, isMultipleValue: false })} />
+        ? <InputHasSetMultipleValue
+          onClear={() => onChange({ ...payload, isMultipleValue: false })}
+          readOnly={isDeleted}
+        />
         : <InputCombined
           type={payload.type}
           value={payload.value}
