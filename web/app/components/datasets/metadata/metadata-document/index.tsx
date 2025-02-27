@@ -8,12 +8,18 @@ import Button from '@/app/components/base/button'
 import { RiEditLine } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
 import Divider from '@/app/components/base/divider'
+import cn from '@/utils/classnames'
 
 const i18nPrefix = 'dataset.metadata.documentMetadata'
 
-const MetadataDocument: FC = () => {
+type Props = {
+  className?: string
+}
+const MetadataDocument: FC<Props> = ({
+  className,
+}) => {
   const { t } = useTranslation()
-  const [isEdit, setIsEdit] = useState(true)
+  const [isEdit, setIsEdit] = useState(false)
 
   const [list, setList] = useState<MetadataItemWithValue[]>([
     {
@@ -49,9 +55,10 @@ const MetadataDocument: FC = () => {
 
   const documentInfoList = builtList
   const technicalParams = builtList
+
   return (
-    <div className='w-[388px] space-y-4'>
-      {!hasData ? (
+    <div className={cn('w-[388px] space-y-4', className)}>
+      {(hasData || isEdit) ? (
         <div className='pl-2'>
           <InfoGroup
             title={t('dataset.metadata.metadata')}
@@ -86,13 +93,15 @@ const MetadataDocument: FC = () => {
             contentClassName='mt-5'
             onChange={(item) => {
               const newList = tempList.map(i => (i.name === item.name ? item : i))
-              setList(newList)
+              setTempList(newList)
             }}
             onDelete={(item) => {
               const newList = tempList.filter(i => i.name !== item.name)
-              setList(newList)
+              setTempList(newList)
             }}
-            onAdd={() => {
+            onAdd={(payload) => {
+              const newList = [...tempList, payload]
+              setTempList(newList)
             }}
           />
           {builtInEnabled && (
@@ -107,7 +116,7 @@ const MetadataDocument: FC = () => {
           )}
         </div>
       ) : (
-        <NoData onStart={() => { }} />
+        <NoData onStart={() => setIsEdit(true)} />
       )}
 
       <InfoGroup

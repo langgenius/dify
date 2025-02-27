@@ -12,7 +12,7 @@ import { DataType } from '../types'
 type Props = {
   popupPlacement?: Placement
   popupOffset?: { mainAxis: number, crossAxis: number }
-  onSave: (data: any) => void
+  onSave: (data: MetadataItem) => void
   trigger: React.ReactNode
 } & CreateContentProps
 

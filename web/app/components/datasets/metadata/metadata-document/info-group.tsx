@@ -65,7 +65,7 @@ const InfoGroup: FC<Props> = ({
               trigger={
                 <AddMetadataButton />
               }
-              onSave={() => { }}
+              onSave={data => onAdd?.(data)}
             />
             <Divider className='my-3 ' bgStyle='gradient' />
           </div>
@@ -81,7 +81,7 @@ const InfoGroup: FC<Props> = ({
                   onChange={value => onChange?.({ ...item, value })}
                 />
                 <div className='shrink-0 p-1 rounded-md text-text-tertiary  hover:text-text-destructive hover:bg-state-destructive-hover cursor-pointer'>
-                  <RiDeleteBinLine className='size-4' />
+                  <RiDeleteBinLine className='size-4' onClick={() => onDelete?.(item)} />
                 </div>
               </div>
             ) : (<div className='py-1 system-xs-regular text-text-secondary'>{item.value}</div>)}
