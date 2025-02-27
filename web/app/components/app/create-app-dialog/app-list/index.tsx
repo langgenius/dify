@@ -128,7 +128,7 @@ const Apps = ({
     icon_background,
     description,
   }) => {
-    const { export_data } = await fetchAppDetail(
+    const { export_data, mode } = await fetchAppDetail(
       currApp?.app.id as string,
     )
     try {
@@ -151,7 +151,7 @@ const Apps = ({
       if (app.app_id)
         await handleCheckPluginDependencies(app.app_id)
       localStorage.setItem(NEED_REFRESH_APP_LIST_KEY, '1')
-      getRedirection(isCurrentWorkspaceEditor, { id: app.app_id }, push)
+      getRedirection(isCurrentWorkspaceEditor, { id: app.app_id, mode }, push)
     }
     catch (e) {
       Toast.notify({ type: 'error', message: t('app.newApp.appCreateFailed') })

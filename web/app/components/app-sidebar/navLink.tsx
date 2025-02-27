@@ -3,13 +3,13 @@
 import { useSelectedLayoutSegment } from 'next/navigation'
 import Link from 'next/link'
 import classNames from '@/utils/classnames'
+import type { RemixiconComponentType } from '@remixicon/react'
 
 export type NavIcon = React.ComponentType<
 React.PropsWithoutRef<React.ComponentProps<'svg'>> & {
   title?: string | undefined
   titleId?: string | undefined
-}
->
+}> | RemixiconComponentType
 
 export type NavLinkProps = {
   name: string
