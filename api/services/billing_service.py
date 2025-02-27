@@ -5,7 +5,7 @@ import httpx
 from tenacity import retry, retry_if_exception_type, stop_before_delay, wait_fixed
 
 from extensions.ext_database import db
-from models.account import TenantAccountJoin, TenantAccountRole
+from models.account import Account, TenantAccountJoin, TenantAccountRole
 
 
 class BillingService:
@@ -91,3 +91,23 @@ class BillingService:
         """Update account deletion feedback."""
         json = {"email": email, "feedback": feedback}
         return cls._send_request("POST", "/account/delete-feedback", json=json)
+
+    class EducationIdentity:
+        @classmethod
+        def verify(cls, account_id: str):
+            params = {"account_id": account_id}
+            return BillingService._send_request("GET", "/education/verify", params=params)
+
+        @classmethod
+        def is_active(cls, account_id: str):
+            params = {"account_id": account_id}
+            return BillingService._send_request("GET", "/education/status", params=params)
+
+        @classmethod
+        def activate(cls, account: Account, token: str):
+            json = {
+                "account_id": account.id,
+                "email": account.email,
+                "token": token,
+            }
+            return BillingService._send_request("POST", "/education/", json=json)

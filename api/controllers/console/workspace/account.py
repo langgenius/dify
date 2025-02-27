@@ -15,7 +15,12 @@ from controllers.console.workspace.error import (
     InvalidInvitationCodeError,
     RepeatPasswordNotMatchError,
 )
-from controllers.console.wraps import account_initialization_required, enterprise_license_required, setup_required
+from controllers.console.wraps import (
+    account_initialization_required,
+    enterprise_license_required,
+    only_edition_cloud,
+    setup_required,
+)
 from extensions.ext_database import db
 from fields.member_fields import account_fields
 from libs.helper import TimestampField, timezone
@@ -292,6 +297,51 @@ class AccountDeleteUpdateFeedbackApi(Resource):
         return {"result": "success"}
 
 
+class EducationVerifyApi(Resource):
+    verify_fields = {
+        "token": fields.String,
+    }
+
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @only_edition_cloud
+    @marshal_with(verify_fields)
+    def get(self):
+        account = current_user
+
+        return BillingService.EducationIdentity.verify(account.id)
+
+
+class EducationApi(Resource):
+    status_fields = {
+        "verified": fields.Boolean,
+    }
+
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @only_edition_cloud
+    def post(self):
+        account = current_user
+
+        parser = reqparse.RequestParser()
+        parser.add_argument("token", type=str, required=True, location="json")
+        args = parser.parse_args()
+
+        return BillingService.EducationIdentity.activate(account, args["token"])
+
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @only_edition_cloud
+    @marshal_with(status_fields)
+    def get(self):
+        account = current_user
+
+        return BillingService.EducationIdentity.is_active(account.id)
+
+
 # Register API resources
 api.add_resource(AccountInitApi, "/account/init")
 api.add_resource(AccountProfileApi, "/account/profile")
@@ -305,5 +355,7 @@ api.add_resource(AccountIntegrateApi, "/account/integrates")
 api.add_resource(AccountDeleteVerifyApi, "/account/delete/verify")
 api.add_resource(AccountDeleteApi, "/account/delete")
 api.add_resource(AccountDeleteUpdateFeedbackApi, "/account/delete/feedback")
+api.add_resource(EducationVerifyApi, "/account/education/verify")
+api.add_resource(EducationApi, "/account/education")
 # api.add_resource(AccountEmailApi, '/account/email')
 # api.add_resource(AccountEmailVerifyApi, '/account/email-verify')
