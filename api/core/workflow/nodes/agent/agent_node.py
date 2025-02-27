@@ -200,11 +200,11 @@ class AgentNode(ToolNode):
                             tool_runtime.entity.description.llm = (
                                 extra.get("descrption", "") or tool_runtime.entity.description.llm
                             )
-                        for params in tool_runtime.entity.parameters:
-                            params.form = (
+                        for tool_runtime_params in tool_runtime.entity.parameters:
+                            tool_runtime_params.form = (
                                 ToolParameter.ToolParameterForm.FORM
-                                if params.name in manual_input_params
-                                else params.form
+                                if tool_runtime_params.name in manual_input_params
+                                else tool_runtime_params.form
                             )
                         manual_input_value = {}
                         if tool_runtime.entity.parameters:
