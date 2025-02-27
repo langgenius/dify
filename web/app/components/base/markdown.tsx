@@ -211,7 +211,9 @@ const Paragraph = (paragraph: any) => {
     return (
       <>
         <ImageGallery srcs={[children_node[0].properties.src]} />
-        <p>{paragraph.children.slice(1)}</p>
+        {
+          Array.isArray(paragraph.children) ? <p>{paragraph.children.slice(1)}</p> : null
+        }
       </>
     )
   }
@@ -257,6 +259,11 @@ export function Markdown(props: { content: string; className?: string }) {
               const iterate = (node: any) => {
                 if (node.type === 'element' && node.properties?.ref)
                   delete node.properties.ref
+
+                if (node.type === 'element' && !/^[a-z][a-z0-9]*$/i.test(node.tagName)) {
+                  node.type = 'text'
+                  node.value = `<${node.tagName}`
+                }
 
                 if (node.children)
                   node.children.forEach(iterate)

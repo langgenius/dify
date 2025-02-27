@@ -51,7 +51,7 @@ const translation = {
       communityForums: '社群論壇',
       emailSupport: '電子郵件支援',
       priorityEmail: '優先電子郵件和聊天支援',
-      logoChange: 'Logo更改',
+      logoChange: 'Logo 更改',
       SSOAuthentication: 'SSO 認證',
       personalizedSupport: '個性化支援',
       dedicatedAPISupport: '專用 API 支援',

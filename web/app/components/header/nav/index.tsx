@@ -1,8 +1,8 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { useSelectedLayoutSegment } from 'next/navigation'
+import { usePathname, useSearchParams, useSelectedLayoutSegment } from 'next/navigation'
 import type { INavSelectorProps } from './nav-selector'
 import NavSelector from './nav-selector'
 import classNames from '@/utils/classnames'
@@ -35,6 +35,14 @@ const Nav = ({
   const [hovered, setHovered] = useState(false)
   const segment = useSelectedLayoutSegment()
   const isActivated = Array.isArray(activeSegment) ? activeSegment.includes(segment!) : segment === activeSegment
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
+  const [linkLastSearchParams, setLinkLastSearchParams] = useState('')
+
+  useEffect(() => {
+    if (pathname === link)
+      setLinkLastSearchParams(searchParams.toString())
+  }, [pathname, searchParams])
 
   return (
     <div className={`
@@ -42,7 +50,7 @@ const Nav = ({
       ${isActivated && 'bg-components-main-nav-nav-button-bg-active shadow-md font-semibold'}
       ${!curNav && !isActivated && 'hover:bg-components-main-nav-nav-button-bg-hover'}
     `}>
-      <Link href={link}>
+      <Link href={link + (linkLastSearchParams && `?${linkLastSearchParams}`)}>
         <div
           onClick={() => setAppDetail()}
           className={classNames(`

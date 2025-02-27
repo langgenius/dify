@@ -286,8 +286,8 @@ export const initialNodes = (originNodes: Node[], originEdges: Edge[]) => {
     if (node.data.type === BlockEnum.LLM)
       (node as any).data.model.provider = correctModelProvider((node as any).data.model.provider)
 
-    if (node.data.type === BlockEnum.KnowledgeRetrieval && (node as any).data.multiple_retrieval_config.reranking_model)
-      (node as any).data.multiple_retrieval_config.reranking_model.provider = correctModelProvider((node as any).data.multiple_retrieval_config.reranking_model.provider)
+    if (node.data.type === BlockEnum.KnowledgeRetrieval && (node as any).data.multiple_retrieval_config?.reranking_model)
+      (node as any).data.multiple_retrieval_config.reranking_model.provider = correctModelProvider((node as any).data.multiple_retrieval_config?.reranking_model.provider)
 
     if (node.data.type === BlockEnum.QuestionClassifier)
       (node as any).data.model.provider = correctModelProvider((node as any).data.model.provider)

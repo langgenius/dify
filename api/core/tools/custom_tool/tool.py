@@ -105,10 +105,10 @@ class ApiTool(Tool):
         needed_parameters = [parameter for parameter in (self.api_bundle.parameters or []) if parameter.required]
         for parameter in needed_parameters:
             if parameter.required and parameter.name not in parameters:
-                raise ToolParameterValidationError(f"Missing required parameter {parameter.name}")
-
-            if parameter.default is not None and parameter.name not in parameters:
-                parameters[parameter.name] = parameter.default
+                if parameter.default is not None:
+                    parameters[parameter.name] = parameter.default
+                else:
+                    raise ToolParameterValidationError(f"Missing required parameter {parameter.name}")
 
         return headers
 

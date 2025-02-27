@@ -39,6 +39,8 @@ type Props = {
   searchText: string
 }
 
+const FixedModelProvider = ['langgenius/openai/openai', 'langgenius/anthropic/anthropic']
+
 const ModelProviderPage = ({ searchText }: Props) => {
   const debouncedSearchText = useDebounce(searchText, { wait: 500 })
   const { t } = useTranslation()
@@ -64,6 +66,16 @@ const ModelProviderPage = ({ searchText }: Props) => {
         configuredProviders.push(provider)
       else
         notConfiguredProviders.push(provider)
+    })
+
+    configuredProviders.sort((a, b) => {
+      if (FixedModelProvider.includes(a.provider) && FixedModelProvider.includes(b.provider))
+        return FixedModelProvider.indexOf(a.provider) - FixedModelProvider.indexOf(b.provider) > 0 ? 1 : -1
+      else if (FixedModelProvider.includes(a.provider))
+        return -1
+      else if (FixedModelProvider.includes(b.provider))
+        return 1
+      return 0
     })
 
     return [configuredProviders, notConfiguredProviders]
