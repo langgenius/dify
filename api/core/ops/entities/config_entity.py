@@ -88,6 +88,7 @@ class OpikConfig(BaseTracingConfig):
 
         return v
 
+
 class WeaveConfig(BaseTracingConfig):
     """
     Model class for Weave tracing config.

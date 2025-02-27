@@ -18,8 +18,8 @@ from core.ops.entities.config_entity import (
     LangfuseConfig,
     LangSmithConfig,
     OpikConfig,
-    WeaveConfig,
     TracingProviderEnum,
+    WeaveConfig,
 )
 from core.ops.entities.trace_entity import (
     DatasetRetrievalTraceInfo,
@@ -34,9 +34,9 @@ from core.ops.entities.trace_entity import (
 )
 from core.ops.langfuse_trace.langfuse_trace import LangFuseDataTrace
 from core.ops.langsmith_trace.langsmith_trace import LangSmithDataTrace
-from core.ops.weave_trace.weave_trace import WeaveDataTrace
 from core.ops.opik_trace.opik_trace import OpikDataTrace
 from core.ops.utils import get_message_data
+from core.ops.weave_trace.weave_trace import WeaveDataTrace
 from extensions.ext_database import db
 from extensions.ext_storage import storage
 from models.model import App, AppModelConfig, Conversation, Message, MessageFile, TraceAppConfig

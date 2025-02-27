@@ -1,17 +1,19 @@
+from typing import Any, Dict, List, Optional, Union
+
 from pydantic import BaseModel, Field, field_validator
 from pydantic_core.core_schema import ValidationInfo
-from typing import Any, Union, Optional, List, Dict
 
 from core.ops.utils import replace_text_with_content
+
 
 class WeaveTokenUsage(BaseModel):
     input_tokens: Optional[int] = None
     output_tokens: Optional[int] = None
     total_tokens: Optional[int] = None
 
+
 class WeaveMultiModel(BaseModel):
     file_list: Optional[list[str]] = Field(None, description="List of files")
-
 
 
 class WeaveTraceModel(WeaveTokenUsage, WeaveMultiModel):
@@ -19,7 +21,9 @@ class WeaveTraceModel(WeaveTokenUsage, WeaveMultiModel):
     op: str = Field(..., description="Name of the operation")
     inputs: Optional[Union[str, Dict[str, Any], List, None]] = Field(None, description="Inputs of the trace")
     outputs: Optional[Union[str, Dict[str, Any], List, None]] = Field(None, description="Outputs of the trace")
-    attributes: Optional[Union[str, Dict[str, Any], List, None]] = Field(None, description="Metadata and attributes associated with trace")
+    attributes: Optional[Union[str, Dict[str, Any], List, None]] = Field(
+        None, description="Metadata and attributes associated with trace"
+    )
     exception: Optional[str] = Field(None, description="Exception message of the trace")
 
     @field_validator("inputs", "outputs")
