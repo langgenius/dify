@@ -181,6 +181,7 @@ class BasePluginManager:
                 else:
                     raise ValueError(line)
 
+            logging.info(f"rep: {rep}, line_data: {line_data}")
             if rep.code != 0:
                 if rep.code == -500:
                     try:

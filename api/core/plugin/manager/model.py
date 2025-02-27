@@ -95,8 +95,6 @@ class PluginModelManager(BasePluginManager):
             },
         )
 
-        logging.info(f"response: {response}")
-
         for resp in response:
             if resp.credentials and isinstance(resp.credentials, dict):
                 credentials.update(resp.credentials)
