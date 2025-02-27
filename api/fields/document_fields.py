@@ -32,7 +32,7 @@ document_fields = {
     "word_count": fields.Integer,
     "hit_count": fields.Integer,
     "doc_form": fields.String,
-    "doc_metadata_details": fields.List(fields.Nested(document_metadata_fields)),
+    "doc_metadata": fields.List(fields.Nested(document_metadata_fields), attribute="doc_metadata_details"),
 }
 
 document_with_segments_fields = {
@@ -59,7 +59,7 @@ document_with_segments_fields = {
     "hit_count": fields.Integer,
     "completed_segments": fields.Integer,
     "total_segments": fields.Integer,
-    "doc_metadata_details": fields.List(fields.Nested(document_metadata_fields)),
+    "doc_metadata": fields.List(fields.Nested(document_metadata_fields), attribute="doc_metadata_details"),
 }
 
 dataset_and_document_fields = {
