@@ -100,10 +100,13 @@ export const useBuiltInMetaData = () => {
   })
 }
 
-export const useBatchUpdateDocMetadata = (datasetId: string) => {
+export const useBatchUpdateDocMetadata = () => {
   return useMutation({
-    mutationFn: (enabled: boolean) => {
-      console.log(datasetId, enabled)
+    mutationFn: (payload: {
+      document_id: string,
+      metadata_list: MetadataItemWithValueLength[],
+    }[]) => {
+      console.log(payload)
       return Promise.resolve(true)
     },
   })

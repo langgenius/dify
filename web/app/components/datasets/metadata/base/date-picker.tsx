@@ -6,6 +6,7 @@ import {
 } from '@remixicon/react'
 import DatePicker from '@/app/components/base/date-and-time-picker/date-picker'
 import cn from '@/utils/classnames'
+import type { TriggerProps } from '@/app/components/base/date-and-time-picker/types'
 
 type Props = {
   className?: string
@@ -24,9 +25,11 @@ const WrappedDatePicker = ({
       onChange(null)
   }, [onChange])
 
-  const renderTrigger = useCallback(() => {
+  const renderTrigger = useCallback(({
+    handleClickTrigger,
+  }: TriggerProps) => {
     return (
-      <div className={cn('group flex items-center rounded-md bg-components-input-bg-normal', className)}>
+      <div onClick={handleClickTrigger} className={cn('group flex items-center rounded-md bg-components-input-bg-normal', className)}>
         <div
           className={cn(
             'grow',

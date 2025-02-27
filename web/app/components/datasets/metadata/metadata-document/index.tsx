@@ -34,6 +34,12 @@ const MetadataDocument: FC<Props> = ({
       value: 'PDF',
       type: DataType.string,
     },
+    {
+      id: '3',
+      name: 'Date',
+      value: null,
+      type: DataType.time,
+    },
   ])
   const [tempList, setTempList] = useState<MetadataItemWithValue[]>(list)
   const builtInEnabled = true

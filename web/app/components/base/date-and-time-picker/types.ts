@@ -11,7 +11,7 @@ export enum Period {
   PM = 'PM',
 }
 
-type TriggerProps = {
+export type TriggerProps = {
   value: Dayjs | undefined
   selectedDate: Dayjs | undefined
   isOpen: boolean
