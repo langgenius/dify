@@ -56,6 +56,18 @@ const EditMetadataBatchModal: FC<Props> = ({
     setTempleList(newTempleList)
   }, [templeList])
 
+  const handleItemReset = useCallback((id: string) => {
+    const newTempleList = produce(templeList, (draft) => {
+      const index = draft.findIndex(i => i.id === id)
+      if (index !== -1) {
+        draft[index] = { ...list[index] }
+        draft[index].isUpdated = false
+        delete draft[index].updateType
+      }
+    })
+    setTempleList(newTempleList)
+  }, [list, templeList])
+
   const testAddedList: MetadataItemWithEdit[] = [
     {
       id: '1', name: 'name1', type: DataType.string, value: 'aaa',
@@ -98,6 +110,7 @@ const EditMetadataBatchModal: FC<Props> = ({
             payload={item}
             onChange={handleTemplesChange}
             onRemove={handleTempleItemRemove}
+            onReset={handleItemReset}
           />
         ))}
       </div>

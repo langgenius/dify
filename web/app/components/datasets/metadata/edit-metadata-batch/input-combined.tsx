@@ -11,6 +11,7 @@ type Props = {
   type: DataType
   value: any
   onChange: (value: any) => void
+  readOnly?: boolean
 }
 
 const InputCombined: FC<Props> = ({
@@ -18,6 +19,7 @@ const InputCombined: FC<Props> = ({
   type,
   value,
   onChange,
+  readOnly,
 }) => {
   // TODO: configClassName...
   const className = cn('grow p-0.5 h-6  text-xs')
@@ -34,6 +36,7 @@ const InputCombined: FC<Props> = ({
           size='sm'
           controlWrapClassName='overflow-hidden'
           controlClassName='pt-0 pb-0'
+          readOnly={readOnly}
         />
       </div>
     )
@@ -44,8 +47,8 @@ const InputCombined: FC<Props> = ({
       className={cn(className, 'rounded-md')}
       value={value}
       onChange={e => onChange(e.target.value)}
-    >
-    </Input>
+      readOnly={readOnly}
+    />
   )
 }
 export default React.memo(InputCombined)

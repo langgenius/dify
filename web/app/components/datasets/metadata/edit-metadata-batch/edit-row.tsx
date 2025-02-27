@@ -13,26 +13,29 @@ type Props = {
   payload: MetadataItemWithEdit
   onChange: (payload: MetadataItemWithEdit) => void
   onRemove: (id: string) => void
+  onReset: (id: string) => void
 }
 
 const EditMetadatabatchItem: FC<Props> = ({
   payload,
   onChange,
   onRemove,
+  onReset,
 }) => {
   const isUpdated = payload.isUpdated
   const isDeleted = payload.updateType === UpdateType.delete
   return (
     <div className='flex h-6 items-center space-x-0.5'>
-      {isUpdated ? <EditedBeacon onReset={() => { }} /> : <div className='shrink-0 size-4' />}
+      {isUpdated ? <EditedBeacon onReset={() => onReset(payload.id)} /> : <div className='shrink-0 size-4' />}
       <Label text={payload.name} isDeleted={isDeleted} />
       {payload.isMultipleValue
         ? <InputHasSetMultipleValue onClear={() => onChange({ ...payload, isMultipleValue: false })} />
         : <InputCombined
           type={payload.type}
           value={payload.value}
-          onChange={v => onChange({ ...payload, value: v as string })
-          } />}
+          onChange={v => onChange({ ...payload, value: v as string })}
+          readOnly={isDeleted}
+        />}
 
       <div
         className={
