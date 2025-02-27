@@ -1,5 +1,3 @@
-from unittest.mock import Mock, patch
-
 import pytest
 
 from core.file import File, FileTransferMethod
@@ -15,6 +13,7 @@ from core.workflow.nodes.document_extractor.node import (
 from core.workflow.nodes.enums import NodeType
 from docx.oxml.text.paragraph import CT_P
 from models.workflow import WorkflowNodeExecutionStatus
+from unittest.mock import Mock, patch
 
 
 @pytest.fixture
