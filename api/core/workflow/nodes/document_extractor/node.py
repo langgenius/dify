@@ -4,17 +4,17 @@ import json
 import logging
 import os
 import tempfile
-from collections.abc import Mapping, Sequence
-from typing import Any, cast, Union, Iterator
+from collections.abc import Iterator, Mapping, Sequence
+from typing import Any, Union, cast
 
+import docx
 import pandas as pd
 import pypdfium2  # type: ignore
 import yaml  # type: ignore
-import docx
 from docx.document import Document as _Document
-from docx.table import Table, _Cell  
-from docx.text.paragraph import Paragraph
 from docx.oxml.ns import qn
+from docx.table import Table, _Cell
+from docx.text.paragraph import Paragraph
 
 from configs import dify_config
 from core.file import File, FileTransferMethod, file_manager
@@ -27,7 +27,8 @@ from core.workflow.nodes.enums import NodeType
 from models.workflow import WorkflowNodeExecutionStatus
 
 from .entities import DocumentExtractorNodeData
-from .exc import DocumentExtractorError, FileDownloadError, TextExtractionError, UnsupportedFileTypeError
+from .exc import (DocumentExtractorError, FileDownloadError,
+                  TextExtractionError, UnsupportedFileTypeError)
 
 logger = logging.getLogger(__name__)
 
@@ -278,8 +279,7 @@ def _extract_text_from_docx(file_content: bytes) -> str:
         return "\n".join(text)
 
     except Exception as e:
-        logger.exception(f"Failed to extract text from DOCX: {e}")
-        return ""
+        raise TextExtractionError(f"Failed to extract text from DOCX: {str(e)}") from e
 
 
 def _download_file_content(file: File) -> bytes:
@@ -453,6 +453,7 @@ def _iter_block_items(parent: Union[_Document, _Cell]) -> Iterator[Union[Paragra
             yield Paragraph(child, parent)
         elif child.tag == qn("w:tbl"):
             yield Table(child, parent)
+
 
 def _has_valid_iterchildren(element) -> bool:
     """
