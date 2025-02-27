@@ -13,6 +13,7 @@ import cn from '@/utils/classnames'
 import type { FileAppearanceTypeEnum } from '@/app/components/base/file-uploader/types'
 import Tag from '@/app/components/datasets/documents/detail/completed/common/tag'
 import { extensionToFileType } from '@/app/components/datasets/hit-testing/utils/extension-to-file-type'
+import { Markdown } from '@/app/components/base/markdown'
 
 const i18nPrefix = 'datasetHitTesting'
 type Props = {
@@ -25,7 +26,7 @@ const ResultItem: FC<Props> = ({
   const { t } = useTranslation()
   const { segment, score, child_chunks } = payload
   const data = segment
-  const { position, word_count, content, keywords, document } = data
+  const { position, word_count, content, sign_content, keywords, document } = data
   const isParentChildRetrieval = !!(child_chunks && child_chunks.length > 0)
   const extension = document.name.split('.').slice(-1)[0] as FileAppearanceTypeEnum
   const fileType = extensionToFileType(extension)
@@ -46,10 +47,16 @@ const ResultItem: FC<Props> = ({
 
       {/* Main */}
       <div className='mt-1 px-3'>
-        <div className='line-clamp-2 body-md-regular break-all'>{content}</div>
+        <Markdown className='line-clamp-2' content={sign_content || content} />
         {isParentChildRetrieval && (
           <div className='mt-1'>
-            <div className={cn('inline-flex items-center h-6 space-x-0.5 text-text-secondary select-none rounded-lg cursor-pointer', isFold && 'pl-1 bg-[linear-gradient(90deg,_rgba(200,_206,_218,_0.20)_0%,_rgba(200,_206,_218,_0.04)_100%)]')} onClick={toggleFold}>
+            <div
+              className={cn('inline-flex items-center h-6 space-x-0.5 text-text-secondary select-none rounded-lg cursor-pointer', isFold && 'pl-1 bg-[linear-gradient(90deg,_rgba(200,_206,_218,_0.20)_0%,_rgba(200,_206,_218,_0.04)_100%)]')}
+              onClick={(e) => {
+                e.stopPropagation()
+                toggleFold()
+              }}
+            >
               <Icon className={cn('w-4 h-4', isFold && 'opacity-50')} />
               <div className='text-xs font-semibold uppercase'>{t(`${i18nPrefix}.hitChunks`, { num: child_chunks.length })}</div>
             </div>

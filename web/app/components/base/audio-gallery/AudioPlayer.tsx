@@ -55,7 +55,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ src }) => {
     audio.load()
 
     // Delayed generation of waveform data
-    // eslint-disable-next-line @typescript-eslint/no-use-before-define
+    // eslint-disable-next-line ts/no-use-before-define
     const timer = setTimeout(() => generateWaveformData(src), 1000)
 
     return () => {

@@ -11,15 +11,17 @@ export const ChunkLabel: FC<ChunkLabelProps> = (props) => {
   const { label, characterCount } = props
   return <div className='flex items-center text-text-tertiary text-xs font-medium'>
     <SelectionMod className='size-[10px]' />
-    <p className='flex gap-2 ml-0.5'><span>
-      {label}
-    </span>
-    <span>
+    <p className='flex gap-2 ml-0.5'>
+      <span>
+        {label}
+      </span>
+      <span>
         ·
-    </span>
-    <span>
-      {`${characterCount} characters`}
-    </span></p>
+      </span>
+      <span>
+        {`${characterCount} characters`}
+      </span>
+    </p>
   </div>
 }
 

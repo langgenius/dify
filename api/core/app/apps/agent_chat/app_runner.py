@@ -8,18 +8,16 @@ from core.agent.fc_agent_runner import FunctionCallAgentRunner
 from core.app.apps.agent_chat.app_config_manager import AgentChatAppConfig
 from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
 from core.app.apps.base_app_runner import AppRunner
-from core.app.entities.app_invoke_entities import AgentChatAppGenerateEntity, ModelConfigWithCredentialsEntity
+from core.app.entities.app_invoke_entities import AgentChatAppGenerateEntity
 from core.app.entities.queue_entities import QueueAnnotationReplyEvent
 from core.memory.token_buffer_memory import TokenBufferMemory
 from core.model_manager import ModelInstance
-from core.model_runtime.entities.llm_entities import LLMMode, LLMUsage
+from core.model_runtime.entities.llm_entities import LLMMode
 from core.model_runtime.entities.model_entities import ModelFeature, ModelPropertyKey
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
 from core.moderation.base import ModerationError
-from core.tools.entities.tool_entities import ToolRuntimeVariablePool
 from extensions.ext_database import db
-from models.model import App, Conversation, Message, MessageAgentThought
-from models.tools import ToolConversationVariables
+from models.model import App, Conversation, Message
 
 logger = logging.getLogger(__name__)
 
@@ -64,8 +62,8 @@ class AgentChatAppRunner(AppRunner):
             app_record=app_record,
             model_config=application_generate_entity.model_conf,
             prompt_template_entity=app_config.prompt_template,
-            inputs=inputs,
-            files=files,
+            inputs=dict(inputs),
+            files=list(files),
             query=query,
         )
 
@@ -86,8 +84,8 @@ class AgentChatAppRunner(AppRunner):
             app_record=app_record,
             model_config=application_generate_entity.model_conf,
             prompt_template_entity=app_config.prompt_template,
-            inputs=inputs,
-            files=files,
+            inputs=dict(inputs),
+            files=list(files),
             query=query,
             memory=memory,
         )
@@ -99,8 +97,8 @@ class AgentChatAppRunner(AppRunner):
                 app_id=app_record.id,
                 tenant_id=app_config.tenant_id,
                 app_generate_entity=application_generate_entity,
-                inputs=inputs,
-                query=query,
+                inputs=dict(inputs),
+                query=query or "",
                 message_id=message.id,
             )
         except ModerationError as e:
@@ -156,9 +154,9 @@ class AgentChatAppRunner(AppRunner):
             app_record=app_record,
             model_config=application_generate_entity.model_conf,
             prompt_template_entity=app_config.prompt_template,
-            inputs=inputs,
-            files=files,
-            query=query,
+            inputs=dict(inputs),
+            files=list(files),
+            query=query or "",
             memory=memory,
         )
 
@@ -173,16 +171,7 @@ class AgentChatAppRunner(AppRunner):
             return
 
         agent_entity = app_config.agent
-        if not agent_entity:
-            raise ValueError("Agent entity not found")
-
-        # load tool variables
-        tool_conversation_variables = self._load_tool_variables(
-            conversation_id=conversation.id, user_id=application_generate_entity.user_id, tenant_id=app_config.tenant_id
-        )
-
-        # convert db variables to tool variables
-        tool_variables = self._convert_db_variables_to_tool_variables(tool_conversation_variables)
+        assert agent_entity is not None
 
         # init model instance
         model_instance = ModelInstance(
@@ -193,9 +182,9 @@ class AgentChatAppRunner(AppRunner):
             app_record=app_record,
             model_config=application_generate_entity.model_conf,
             prompt_template_entity=app_config.prompt_template,
-            inputs=inputs,
-            files=files,
-            query=query,
+            inputs=dict(inputs),
+            files=list(files),
+            query=query or "",
             memory=memory,
         )
 
@@ -243,8 +232,6 @@ class AgentChatAppRunner(AppRunner):
             user_id=application_generate_entity.user_id,
             memory=memory,
             prompt_messages=prompt_message,
-            variables_pool=tool_variables,
-            db_variables=tool_conversation_variables,
             model_instance=model_instance,
         )
 
@@ -260,74 +247,4 @@ class AgentChatAppRunner(AppRunner):
             queue_manager=queue_manager,
             stream=application_generate_entity.stream,
             agent=True,
-        )
-
-    def _load_tool_variables(self, conversation_id: str, user_id: str, tenant_id: str) -> ToolConversationVariables:
-        """
-        load tool variables from database
-        """
-        tool_variables: ToolConversationVariables | None = (
-            db.session.query(ToolConversationVariables)
-            .filter(
-                ToolConversationVariables.conversation_id == conversation_id,
-                ToolConversationVariables.tenant_id == tenant_id,
-            )
-            .first()
-        )
-
-        if tool_variables:
-            # save tool variables to session, so that we can update it later
-            db.session.add(tool_variables)
-        else:
-            # create new tool variables
-            tool_variables = ToolConversationVariables(
-                conversation_id=conversation_id,
-                user_id=user_id,
-                tenant_id=tenant_id,
-                variables_str="[]",
-            )
-            db.session.add(tool_variables)
-            db.session.commit()
-
-        return tool_variables
-
-    def _convert_db_variables_to_tool_variables(
-        self, db_variables: ToolConversationVariables
-    ) -> ToolRuntimeVariablePool:
-        """
-        convert db variables to tool variables
-        """
-        return ToolRuntimeVariablePool(
-            **{
-                "conversation_id": db_variables.conversation_id,
-                "user_id": db_variables.user_id,
-                "tenant_id": db_variables.tenant_id,
-                "pool": db_variables.variables,
-            }
-        )
-
-    def _get_usage_of_all_agent_thoughts(
-        self, model_config: ModelConfigWithCredentialsEntity, message: Message
-    ) -> LLMUsage:
-        """
-        Get usage of all agent thoughts
-        :param model_config: model config
-        :param message: message
-        :return:
-        """
-        agent_thoughts = (
-            db.session.query(MessageAgentThought).filter(MessageAgentThought.message_id == message.id).all()
-        )
-
-        all_message_tokens = 0
-        all_answer_tokens = 0
-        for agent_thought in agent_thoughts:
-            all_message_tokens += agent_thought.message_tokens
-            all_answer_tokens += agent_thought.answer_tokens
-
-        model_type_instance = model_config.provider_model_bundle.model_type_instance
-        model_type_instance = cast(LargeLanguageModel, model_type_instance)
-
-        return model_type_instance._calc_response_usage(
-            model_config.model, model_config.credentials, all_message_tokens, all_answer_tokens
         )

@@ -29,7 +29,7 @@ const map2Options = (map: { [key: string]: string }) => {
   return Object.keys(map).map(key => ({ value: key, name: map[key] }))
 }
 
-type IFieldInfoProps = {
+interface IFieldInfoProps {
   label: string
   value?: string
   valueIcon?: ReactNode
@@ -117,7 +117,7 @@ const IconButton: FC<{
   )
 }
 
-type IMetadataProps = {
+interface IMetadataProps {
   docDetail?: FullDocumentDetail
   loading: boolean
   onUpdate: () => void

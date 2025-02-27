@@ -35,7 +35,6 @@ import {
   useLanguage,
   useProviderCredentialsAndLoadBalancing,
 } from '../hooks'
-import ProviderIcon from '../provider-icon'
 import { useValidate } from '../../key-validator/hooks'
 import { ValidatedStatus } from '../../key-validator/declarations'
 import ModelLoadBalancingConfigs from '../provider-added-card/model-load-balancing-configs'
@@ -280,11 +279,10 @@ const ModelModal: FC<ModelModalProps> = ({
     <PortalToFollowElem open>
       <PortalToFollowElemContent className='w-full h-full z-[60]'>
         <div className='fixed inset-0 flex items-center justify-center bg-black/[.25]'>
-          <div className='mx-2 w-[640px] max-h-[calc(100vh-120px)] bg-white shadow-xl rounded-2xl overflow-y-auto'>
+          <div className='mx-2 w-[640px] max-h-[calc(100vh-120px)] bg-components-panel-bg shadow-xl rounded-2xl overflow-y-auto'>
             <div className='px-8 pt-8'>
-              <div className='flex justify-between items-center mb-2'>
-                <div className='text-xl font-semibold text-gray-900'>{renderTitlePrefix()}</div>
-                <ProviderIcon provider={provider} />
+              <div className='flex items-center mb-2'>
+                <div className='text-xl font-semibold text-text-primary'>{renderTitlePrefix()}</div>
               </div>
 
               <Form
@@ -297,7 +295,7 @@ const ModelModal: FC<ModelModalProps> = ({
                 isEditMode={isEditMode}
               />
 
-              <div className='mt-1 mb-4 border-t-[0.5px] border-t-gray-100' />
+              <div className='mt-1 mb-4 border-t-[0.5px] border-t-divider-regular' />
               <ModelLoadBalancingConfigs withSwitch {...{
                 draftConfig,
                 setDraftConfig,
@@ -306,7 +304,7 @@ const ModelModal: FC<ModelModalProps> = ({
                 configurationMethod: configurateMethod,
               }} />
 
-              <div className='sticky bottom-0 flex justify-between items-center mt-2 -mx-2 pt-4 px-2 pb-6 flex-wrap gap-y-2 bg-white'>
+              <div className='sticky bottom-0 flex justify-between items-center mt-2 -mx-2 pt-4 px-2 pb-6 flex-wrap gap-y-2 bg-components-panel-bg'>
                 {
                   (provider.help && (provider.help.title || provider.help.url))
                     ? (
@@ -326,8 +324,9 @@ const ModelModal: FC<ModelModalProps> = ({
                   {
                     isEditMode && (
                       <Button
+                        variant='warning'
                         size='large'
-                        className='mr-2 text-[#D92D20]'
+                        className='mr-2'
                         onClick={() => setShowConfirm(true)}
                       >
                         {t('common.operation.remove')}
@@ -357,21 +356,21 @@ const ModelModal: FC<ModelModalProps> = ({
                 </div>
               </div>
             </div>
-            <div className='border-t-[0.5px] border-t-black/5'>
+            <div className='border-t-[0.5px] border-t-divider-regular'>
               {
                 (validatedStatusState.status === ValidatedStatus.Error && validatedStatusState.message)
                   ? (
-                    <div className='flex px-[10px] py-3 bg-[#FEF3F2] text-xs text-[#D92D20]'>
+                    <div className='flex px-[10px] py-3 bg-background-section-burn text-xs text-[#D92D20]'>
                       <RiErrorWarningFill className='mt-[1px] mr-2 w-[14px] h-[14px]' />
                       {validatedStatusState.message}
                     </div>
                   )
                   : (
-                    <div className='flex justify-center items-center py-3 bg-gray-50 text-xs text-gray-500'>
-                      <Lock01 className='mr-1 w-3 h-3 text-gray-500' />
+                    <div className='flex justify-center items-center py-3 bg-background-section-burn text-xs text-text-tertiary'>
+                      <Lock01 className='mr-1 w-3 h-3 text-text-tertiary' />
                       {t('common.modelProvider.encrypted.front')}
                       <a
-                        className='text-primary-600 mx-1'
+                        className='text-text-accent mx-1'
                         target='_blank' rel='noopener noreferrer'
                         href='https://pycryptodome.readthedocs.io/en/latest/src/cipher/oaep.html'
                       >

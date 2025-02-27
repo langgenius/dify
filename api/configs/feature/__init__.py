@@ -134,6 +134,60 @@ class CodeExecutionSandboxConfig(BaseSettings):
     )
 
 
+class PluginConfig(BaseSettings):
+    """
+    Plugin configs
+    """
+
+    PLUGIN_DAEMON_URL: HttpUrl = Field(
+        description="Plugin API URL",
+        default="http://localhost:5002",
+    )
+
+    PLUGIN_DAEMON_KEY: str = Field(
+        description="Plugin API key",
+        default="plugin-api-key",
+    )
+
+    INNER_API_KEY_FOR_PLUGIN: str = Field(description="Inner api key for plugin", default="inner-api-key")
+
+    PLUGIN_REMOTE_INSTALL_HOST: str = Field(
+        description="Plugin Remote Install Host",
+        default="localhost",
+    )
+
+    PLUGIN_REMOTE_INSTALL_PORT: PositiveInt = Field(
+        description="Plugin Remote Install Port",
+        default=5003,
+    )
+
+    PLUGIN_MAX_PACKAGE_SIZE: PositiveInt = Field(
+        description="Maximum allowed size for plugin packages in bytes",
+        default=15728640,
+    )
+
+    PLUGIN_MAX_BUNDLE_SIZE: PositiveInt = Field(
+        description="Maximum allowed size for plugin bundles in bytes",
+        default=15728640 * 12,
+    )
+
+
+class MarketplaceConfig(BaseSettings):
+    """
+    Configuration for marketplace
+    """
+
+    MARKETPLACE_ENABLED: bool = Field(
+        description="Enable or disable marketplace",
+        default=True,
+    )
+
+    MARKETPLACE_API_URL: HttpUrl = Field(
+        description="Marketplace API URL",
+        default="https://marketplace.dify.ai",
+    )
+
+
 class EndpointConfig(BaseSettings):
     """
     Configuration for various application endpoints and URLs
@@ -158,6 +212,10 @@ class EndpointConfig(BaseSettings):
     APP_WEB_URL: str = Field(
         description="Base URL for the web application, used for frontend references",
         default="",
+    )
+
+    ENDPOINT_URL_TEMPLATE: str = Field(
+        description="Template url for endpoint plugin", default="http://localhost:5002/e/{hook_id}"
     )
 
 
@@ -315,8 +373,8 @@ class HttpConfig(BaseSettings):
     )
 
     RESPECT_XFORWARD_HEADERS_ENABLED: bool = Field(
-        description="Enable or disable the X-Forwarded-For Proxy Fix middleware from Werkzeug"
-        " to respect X-* headers to redirect clients",
+        description="Enable handling of X-Forwarded-For, X-Forwarded-Proto, and X-Forwarded-Port headers"
+        " when the app is behind a single trusted reverse proxy.",
         default=False,
     )
 
@@ -495,6 +553,11 @@ class AuthConfig(BaseSettings):
 
     LOGIN_LOCKOUT_DURATION: PositiveInt = Field(
         description="Time (in seconds) a user must wait before retrying login after exceeding the rate limit.",
+        default=86400,
+    )
+
+    FORGOT_PASSWORD_LOCKOUT_DURATION: PositiveInt = Field(
+        description="Time (in seconds) a user must wait before retrying password reset after exceeding the rate limit.",
         default=86400,
     )
 
@@ -788,6 +851,8 @@ class FeatureConfig(
     AuthConfig,  # Changed from OAuthConfig to AuthConfig
     BillingConfig,
     CodeExecutionSandboxConfig,
+    PluginConfig,
+    MarketplaceConfig,
     DataSetConfig,
     EndpointConfig,
     FileAccessConfig,

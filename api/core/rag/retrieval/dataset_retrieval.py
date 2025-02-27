@@ -26,9 +26,7 @@ from core.rag.rerank.rerank_type import RerankMode
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from core.rag.retrieval.router.multi_dataset_function_call_router import FunctionCallMultiDatasetRouter
 from core.rag.retrieval.router.multi_dataset_react_route import ReactMultiDatasetRouter
-from core.tools.tool.dataset_retriever.dataset_multi_retriever_tool import DatasetMultiRetrieverTool
-from core.tools.tool.dataset_retriever.dataset_retriever_base_tool import DatasetRetrieverBaseTool
-from core.tools.tool.dataset_retriever.dataset_retriever_tool import DatasetRetrieverTool
+from core.tools.utils.dataset_retriever.dataset_retriever_base_tool import DatasetRetrieverBaseTool
 from extensions.ext_database import db
 from models.dataset import Dataset, DatasetQuery, DocumentSegment
 from models.dataset import Document as DatasetDocument
@@ -205,6 +203,7 @@ class DatasetRetrieval:
                                 "segment_id": segment.id,
                                 "retriever_from": invoke_from.to_source(),
                                 "score": record.score or 0.0,
+                                "doc_metadata": document.doc_metadata,
                             }
 
                             if invoke_from.to_source() == "dev":
@@ -444,7 +443,7 @@ class DatasetRetrieval:
                 db.session.commit()
 
         # get tracing instance
-        trace_manager: Optional[TraceQueueManager] = (
+        trace_manager: TraceQueueManager | None = (
             self.application_generate_entity.trace_manager if self.application_generate_entity else None
         )
         if trace_manager:
@@ -588,6 +587,8 @@ class DatasetRetrieval:
                 if score_threshold_enabled:
                     score_threshold = retrieval_model_config.get("score_threshold")
 
+                from core.tools.utils.dataset_retriever.dataset_retriever_tool import DatasetRetrieverTool
+
                 tool = DatasetRetrieverTool.from_dataset(
                     dataset=dataset,
                     top_k=top_k,
@@ -599,20 +600,24 @@ class DatasetRetrieval:
 
                 tools.append(tool)
         elif retrieve_config.retrieve_strategy == DatasetRetrieveConfigEntity.RetrieveStrategy.MULTIPLE:
-            if retrieve_config.reranking_model is not None:
-                tool = DatasetMultiRetrieverTool.from_dataset(
-                    dataset_ids=[dataset.id for dataset in available_datasets],
-                    tenant_id=tenant_id,
-                    top_k=retrieve_config.top_k or 2,
-                    score_threshold=retrieve_config.score_threshold,
-                    hit_callbacks=[hit_callback],
-                    return_resource=return_resource,
-                    retriever_from=invoke_from.to_source(),
-                    reranking_provider_name=retrieve_config.reranking_model.get("reranking_provider_name"),
-                    reranking_model_name=retrieve_config.reranking_model.get("reranking_model_name"),
-                )
+            from core.tools.utils.dataset_retriever.dataset_multi_retriever_tool import DatasetMultiRetrieverTool
 
-                tools.append(tool)
+            if retrieve_config.reranking_model is None:
+                raise ValueError("Reranking model is required for multiple retrieval")
+
+            tool = DatasetMultiRetrieverTool.from_dataset(
+                dataset_ids=[dataset.id for dataset in available_datasets],
+                tenant_id=tenant_id,
+                top_k=retrieve_config.top_k or 2,
+                score_threshold=retrieve_config.score_threshold,
+                hit_callbacks=[hit_callback],
+                return_resource=return_resource,
+                retriever_from=invoke_from.to_source(),
+                reranking_provider_name=retrieve_config.reranking_model.get("reranking_provider_name"),
+                reranking_model_name=retrieve_config.reranking_model.get("reranking_model_name"),
+            )
+
+            tools.append(tool)
 
         return tools
 

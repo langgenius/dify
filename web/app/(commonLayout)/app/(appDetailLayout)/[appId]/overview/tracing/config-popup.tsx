@@ -11,6 +11,8 @@ import ProviderConfigModal from './provider-config-modal'
 import Indicator from '@/app/components/header/indicator'
 import Switch from '@/app/components/base/switch'
 import Tooltip from '@/app/components/base/tooltip'
+import Divider from '@/app/components/base/divider'
+import cn from '@/utils/classnames'
 
 const I18N_PREFIX = 'app.tracing'
 
@@ -79,7 +81,6 @@ const ConfigPopup: FC<PopupProps> = ({
       className='ml-3'
       defaultValue={enabled}
       onChange={onStatusChange}
-      size='l'
       disabled={providerAllNotConfigured}
     />
   )
@@ -123,7 +124,7 @@ const ConfigPopup: FC<PopupProps> = ({
   )
 
   const configuredProviderPanel = () => {
-    const configuredPanels: ProviderPanel[] = []
+    const configuredPanels: any[] = []
 
     if (langSmithConfig)
       configuredPanels.push(langSmithPanel)
@@ -138,7 +139,7 @@ const ConfigPopup: FC<PopupProps> = ({
   }
 
   const moreProviderPanel = () => {
-    const notConfiguredPanels: ProviderPanel[] = []
+    const notConfiguredPanels: any[] = []
 
     if (!langSmithConfig)
       notConfiguredPanels.push(langSmithPanel)
@@ -161,15 +162,15 @@ const ConfigPopup: FC<PopupProps> = ({
   }
 
   return (
-    <div className='w-[420px] p-4 rounded-2xl bg-white border-[0.5px] border-black/5 shadow-lg'>
+    <div className='w-[420px] p-4 rounded-2xl bg-components-panel-bg border-[0.5px] border-components-panel-border shadow-xl'>
       <div className='flex justify-between items-center'>
         <div className='flex items-center'>
           <TracingIcon size='md' className='mr-2' />
-          <div className='leading-[120%] text-[18px] font-semibold text-gray-900'>{t(`${I18N_PREFIX}.tracing`)}</div>
+          <div className='text-text-primary title-2xl-semibold'>{t(`${I18N_PREFIX}.tracing`)}</div>
         </div>
         <div className='flex items-center'>
           <Indicator color={enabled ? 'green' : 'gray'} />
-          <div className='ml-1.5 text-xs font-semibold text-gray-500 uppercase'>
+          <div className={cn('ml-1 system-xs-semibold-uppercase text-text-tertiary', enabled && 'text-util-colors-green-green-600')}>
             {t(`${I18N_PREFIX}.${enabled ? 'enabled' : 'disabled'}`)}
           </div>
           {!readOnly && (
@@ -185,19 +186,18 @@ const ConfigPopup: FC<PopupProps> = ({
                 : switchContent}
             </>
           )}
-
         </div>
       </div>
 
-      <div className='mt-2 leading-4 text-xs font-normal text-gray-500'>
+      <div className='mt-2 system-xs-regular text-text-tertiary'>
         {t(`${I18N_PREFIX}.tracingDescription`)}
       </div>
-      <div className='mt-3 h-px bg-gray-100'></div>
-      <div className='mt-3'>
+      <Divider className='my-3' />
+      <div className='relative'>
         {(providerAllConfigured || providerAllNotConfigured)
           ? (
             <>
-              <div className='leading-4 text-xs font-medium text-gray-500 uppercase'>{t(`${I18N_PREFIX}.configProviderTitle.${providerAllConfigured ? 'configured' : 'notConfigured'}`)}</div>
+              <div className='system-xs-medium-uppercase text-text-tertiary'>{t(`${I18N_PREFIX}.configProviderTitle.${providerAllConfigured ? 'configured' : 'notConfigured'}`)}</div>
               <div className='mt-2 space-y-2'>
                 {langSmithPanel}
                 {langfusePanel}
@@ -207,11 +207,11 @@ const ConfigPopup: FC<PopupProps> = ({
           )
           : (
             <>
-              <div className='leading-4 text-xs font-medium text-gray-500 uppercase'>{t(`${I18N_PREFIX}.configProviderTitle.configured`)}</div>
+              <div className='system-xs-medium-uppercase text-text-tertiary'>{t(`${I18N_PREFIX}.configProviderTitle.configured`)}</div>
               <div className='mt-2 space-y-2'>
                 {configuredProviderPanel()}
               </div>
-              <div className='mt-3 leading-4 text-xs font-medium text-gray-500 uppercase'>{t(`${I18N_PREFIX}.configProviderTitle.moreProvider`)}</div>
+              <div className='mt-3 system-xs-medium-uppercase text-text-tertiary'>{t(`${I18N_PREFIX}.configProviderTitle.moreProvider`)}</div>
               <div className='mt-2 space-y-2'>
                 {moreProviderPanel()}
               </div>

@@ -188,6 +188,12 @@ const translation = {
     searchAllTemplate: 'همه قالب ها را جستجو کنید...',
   },
   showMyCreatedAppsOnly: 'فقط برنامه‌های ایجاد شده توسط من را نشان بده',
+  appSelector: {
+    params: 'پارامترهای برنامه',
+    noParams: 'بدون پارامتر مورد نیاز است',
+    label: 'برنامه',
+    placeholder: 'برنامه ای را انتخاب کنید...',
+  },
 }
 
 export default translation
