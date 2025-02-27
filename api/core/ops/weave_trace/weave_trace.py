@@ -92,6 +92,7 @@ class WeaveDataTrace(BaseTraceInstance):
                 op=str(TraceTaskName.MESSAGE_TRACE.value),
                 inputs=dict(trace_info.workflow_run_inputs),
                 outputs=dict(trace_info.workflow_run_outputs),
+                total_tokens=trace_info.total_tokens,
                 attributes=message_attributes,
                 exception=trace_info.error,
                 file_list=[],
@@ -355,8 +356,10 @@ class WeaveDataTrace(BaseTraceInstance):
             attributes=attributes,
             exception=trace_info.error,
         )
-
-        self.start_call(tool_run, parent_run_id=trace_info.message_id)
+        message_id = trace_info.message_id or trace_info.conversation_id
+        message_id = message_id or None
+        self.start_call(tool_run, parent_run_id=message_id)
+        self.finish_call(tool_run)
 
     def generate_name_trace(self, trace_info: GenerateNameTraceInfo):
         attributes = trace_info.metadata
