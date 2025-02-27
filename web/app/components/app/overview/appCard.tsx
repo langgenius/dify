@@ -88,7 +88,7 @@ function AppCard({
   const runningStatus = isApp ? appInfo.enable_site : appInfo.enable_api
   const { app_base_url, access_token } = appInfo.site ?? {}
   const appMode = (appInfo.mode !== 'completion' && appInfo.mode !== 'workflow') ? 'chat' : appInfo.mode
-  const appUrl = `${app_base_url}/${appMode}/${access_token}`
+  const appUrl = `${app_base_url}${process.env.NEXT_PUBLIC_BASE_PATH || ''}/${appMode}/${access_token}`
   const apiUrl = appInfo?.api_base_url
 
   const genClickFuncByName = (opName: string) => {

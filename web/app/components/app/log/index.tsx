@@ -99,7 +99,7 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
     : null, fetchCompletionConversations)
 
   const total = isChatMode ? chatConversations?.total : completionConversations?.total
-
+  const basePath = process.env.NEXT_PUBLIC_BASE_PATH || ''
   return (
     <div className='grow flex flex-col h-full'>
       <p className='shrink-0 text-text-tertiary system-sm-regular'>{t('appLog.description')}</p>
@@ -109,7 +109,7 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
           ? <Loading type='app' />
           : total > 0
             ? <List logs={isChatMode ? chatConversations : completionConversations} appDetail={appDetail} onRefresh={isChatMode ? mutateChatList : mutateCompletionList} />
-            : <EmptyElement appUrl={`${appDetail.site.app_base_url}/${getWebAppType(appDetail.mode)}/${appDetail.site.access_token}`} />
+            : <EmptyElement appUrl={`${appDetail.site.app_base_url}${basePath}/${getWebAppType(appDetail.mode)}/${appDetail.site.access_token}`} />
         }
         {/* Show Pagination only if the total is more than the limit */}
         {(total && total > APP_PAGE_LIMIT)

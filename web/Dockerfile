@@ -29,6 +29,8 @@ FROM base AS builder
 WORKDIR /app/web
 COPY --from=packages /app/web/ .
 COPY . .
+# Set environment variables, at build time
+ENV NEXT_PUBLIC_BASE_PATH=/dify
 
 ENV NODE_OPTIONS="--max-old-space-size=4096"
 RUN pnpm build
@@ -36,7 +38,8 @@ RUN pnpm build
 
 # production stage
 FROM base AS production
-
+# Set environment variables, at run time
+ENV NEXT_PUBLIC_BASE_PATH=/dify
 ENV NODE_ENV=production
 ENV EDITION=SELF_HOSTED
 ENV DEPLOY_ENV=PRODUCTION

@@ -429,12 +429,19 @@ export const useWorkflow = () => {
 }
 
 export const useFetchToolsData = () => {
+  const basePath = process.env.NEXT_PUBLIC_BASE_PATH || ''
   const workflowStore = useWorkflowStore()
 
   const handleFetchAllTools = useCallback(async (type: string) => {
     if (type === 'builtin') {
       const buildInTools = await fetchAllBuiltInTools()
 
+      if (basePath) {
+        buildInTools.forEach((item) => {
+          if (typeof item.icon == 'string' && !item.icon.includes(basePath))
+            item.icon = `${basePath}${item.icon}`
+        })
+      }
       workflowStore.setState({
         buildInTools: buildInTools || [],
       })

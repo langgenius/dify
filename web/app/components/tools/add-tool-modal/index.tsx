@@ -57,6 +57,13 @@ const AddToolModal: FC<Props> = ({
   const getAllTools = async () => {
     setListLoading(true)
     const buildInTools = await fetchAllBuiltInTools()
+    const basePath = process.env.NEXT_PUBLIC_BASE_PATH || ''
+    if (basePath) {
+      buildInTools.forEach((item) => {
+        if (typeof item.icon == 'string' && !item.icon.includes(basePath))
+          item.icon = `${basePath}${item.icon}`
+      })
+    }
     const customTools = await fetchAllCustomTools()
     const workflowTools = await fetchAllWorkflowTools()
     const mergedToolList = [

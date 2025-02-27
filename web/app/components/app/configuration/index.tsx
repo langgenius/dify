@@ -504,7 +504,14 @@ const Configuration: FC = () => {
 
   useEffect(() => {
     (async () => {
+      const basePath = process.env.NEXT_PUBLIC_BASE_PATH || ''
       const collectionList = await fetchCollectionList()
+      if (basePath) {
+        collectionList.forEach((item) => {
+          if (typeof item.icon == 'string' && !item.icon.includes(basePath))
+            item.icon = `${basePath}${item.icon}`
+        })
+      }
       setCollectionList(collectionList)
       fetchAppDetail({ url: '/apps', id: appId }).then(async (res: any) => {
         setMode(res.mode)
