@@ -23,6 +23,7 @@ type Props = {
   list: MetadataItemInBatchEdit[]
   onSave: (list: MetadataItemInBatchEdit[], isApplyToAllSelectDocument: boolean) => void
   onHide: () => void
+  onShowManage: () => void
 }
 
 const EditMetadataBatchModal: FC<Props> = ({
@@ -30,6 +31,7 @@ const EditMetadataBatchModal: FC<Props> = ({
   list,
   onSave,
   onHide,
+  onShowManage,
 }) => {
   const { t } = useTranslation()
   const [templeList, setTempleList] = useState<MetadataItemWithEdit[]>(list)
@@ -137,6 +139,7 @@ const EditMetadataBatchModal: FC<Props> = ({
                 <AddMetadataButton />
               }
               onSave={data => setAddedList([...addedList, data])}
+              onManage={onShowManage}
             />
           </div>
         </div>

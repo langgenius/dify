@@ -403,6 +403,7 @@ type IDocumentListProps = {
   datasetId: string
   pagination: PaginationProps
   onUpdate: () => void
+  onManageMetadata: () => void
 }
 
 /**
@@ -416,6 +417,7 @@ const DocumentList: FC<IDocumentListProps> = ({
   datasetId,
   pagination,
   onUpdate,
+  onManageMetadata,
 }) => {
   const { t } = useTranslation()
   const { formatTime } = useTimestamp()
@@ -664,6 +666,10 @@ const DocumentList: FC<IDocumentListProps> = ({
           list={originalList}
           onSave={handleSave}
           onHide={hideEditModal}
+          onShowManage={() => {
+            hideEditModal()
+            onManageMetadata()
+          }}
         />
       )}
     </div>

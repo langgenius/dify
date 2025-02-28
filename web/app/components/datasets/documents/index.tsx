@@ -324,6 +324,7 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
                 current: currPage,
                 onChange: setCurrPage,
               }}
+              onManageMetadata={showEditMetadataModal}
             />
             : <EmptyElement canAdd={embeddingAvailable} onClick={routeToDocCreate} type={isDataSourceNotion ? 'sync' : 'upload'} />
         }
