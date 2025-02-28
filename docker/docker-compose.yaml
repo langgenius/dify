@@ -312,6 +312,7 @@ x-shared-env: &shared-api-worker-env
   PGUSER: ${PGUSER:-${DB_USERNAME}}
   POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-${DB_PASSWORD}}
   POSTGRES_DB: ${POSTGRES_DB:-${DB_DATABASE}}
+  EXPOSE_DB_PORT: ${EXPOSE_DB_PORT:-${DB_PORT}}
   PGDATA: ${PGDATA:-/var/lib/postgresql/data/pgdata}
   SANDBOX_API_KEY: ${SANDBOX_API_KEY:-dify-sandbox}
   SANDBOX_GIN_MODE: ${SANDBOX_GIN_MODE:-release}
