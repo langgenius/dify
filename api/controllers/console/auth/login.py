@@ -34,7 +34,6 @@ from services.errors.workspace import WorkSpaceNotAllowedCreateError
 from services.feature_service import FeatureService
 
 
-# TODO: copy as a separate auth service api
 class LoginApi(Resource):
     """Resource for user login."""
 
