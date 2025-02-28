@@ -140,6 +140,9 @@ const ConfigPopup: FC<PopupProps> = ({
   const configuredProviderPanel = () => {
     const configuredPanels: any[] = []
 
+    if (weaveConfig)
+      configuredPanels.push(weavePanel)
+
     if (langSmithConfig)
       configuredPanels.push(langSmithPanel)
 
@@ -149,14 +152,13 @@ const ConfigPopup: FC<PopupProps> = ({
     if (opikConfig)
       configuredPanels.push(opikPanel)
 
-    if (weaveConfig)
-      configuredPanels.push(weavePanel)
-
     return configuredPanels
   }
 
   const moreProviderPanel = () => {
     const notConfiguredPanels: any[] = []
+    if (!weaveConfig)
+      notConfiguredPanels.push(weavePanel)
 
     if (!langSmithConfig)
       notConfiguredPanels.push(langSmithPanel)
@@ -167,8 +169,6 @@ const ConfigPopup: FC<PopupProps> = ({
     if (!opikConfig)
       notConfiguredPanels.push(opikPanel)
 
-    if (!weaveConfig)
-      notConfiguredPanels.push(weavePanel)
     return notConfiguredPanels
   }
 
@@ -220,10 +220,10 @@ const ConfigPopup: FC<PopupProps> = ({
             <>
               <div className='system-xs-medium-uppercase text-text-tertiary'>{t(`${I18N_PREFIX}.configProviderTitle.${providerAllConfigured ? 'configured' : 'notConfigured'}`)}</div>
               <div className='mt-2 space-y-2'>
+                {weavePanel}
                 {langSmithPanel}
                 {langfusePanel}
                 {opikPanel}
-                {weavePanel}
               </div>
             </>
           )
