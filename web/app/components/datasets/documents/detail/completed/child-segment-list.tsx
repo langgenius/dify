@@ -39,7 +39,7 @@ type IChildSegmentCardProps = {
   isLoading?: boolean
   focused?: boolean
   mode: string
-
+}
 const ChildSegmentList: FC<IChildSegmentCardProps> = ({
   childChunks,
   parentChunkId,
