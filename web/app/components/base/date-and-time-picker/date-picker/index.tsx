@@ -19,6 +19,7 @@ import YearAndMonthPickerFooter from '../year-and-month-picker/footer'
 import TimePickerHeader from '../time-picker/header'
 import TimePickerOptions from '../time-picker/options'
 import { useTranslation } from 'react-i18next'
+import { useAppContext } from '@/context/app-context'
 
 const DatePicker = ({
   value,
@@ -30,6 +31,8 @@ const DatePicker = ({
   triggerWrapClassName,
   popupZIndexClassname = 'z-[11]',
 }: DatePickerProps) => {
+  const { userProfile: { timezone } } = useAppContext()
+
   const { t } = useTranslation()
   const [isOpen, setIsOpen] = useState(false)
   const [view, setView] = useState(ViewType.date)
@@ -100,7 +103,9 @@ const DatePicker = ({
   }
 
   const handleConfirmDate = () => {
-    onChange(selectedDate)
+    // debugger
+    console.log(selectedDate, selectedDate?.tz(timezone))
+    onChange(selectedDate ? selectedDate.tz(timezone) : undefined)
     setIsOpen(false)
   }
 
