@@ -112,6 +112,7 @@ const translation = {
           operation: 'Tài liệu',
         },
       },
+      launch: 'Phóng',
     },
     apiInfo: {
       title: 'API dịch vụ backend',

@@ -8,7 +8,7 @@ import OptionCard from '../../_base/components/option-card'
 
 const i18nPrefix = 'workflow.nodes.parameterExtractor'
 
-type Props = {
+interface Props {
   type: ReasoningModeType
   onChange: (type: ReasoningModeType) => void
 }

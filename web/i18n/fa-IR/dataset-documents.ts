@@ -132,7 +132,7 @@ const translation = {
         language: 'زبان',
         authorPublisher: 'نویسنده/ناشر',
         publishDate: 'تاریخ انتشار',
-        topicsKeywords: 'موضوعات/کلیدواژه‌ها',
+        topicKeywords: 'موضوعات/کلیدواژه‌ها',
         description: 'توضیحات',
       },
       paper: {

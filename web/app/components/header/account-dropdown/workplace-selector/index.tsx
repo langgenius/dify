@@ -2,13 +2,14 @@ import { Fragment } from 'react'
 import { useContext } from 'use-context-selector'
 import { useTranslation } from 'react-i18next'
 import { Menu, Transition } from '@headlessui/react'
-import s from './index.module.css'
+import { RiArrowDownSLine } from '@remixicon/react'
 import cn from '@/utils/classnames'
 import { switchWorkspace } from '@/service/common'
 import { useWorkspacesContext } from '@/context/workspace-context'
+import { useProviderContext } from '@/context/provider-context'
+import { ToastContext } from '@/app/components/base/toast'
 import { ChevronRight } from '@/app/components/base/icons/src/vender/line/arrows'
 import { Check } from '@/app/components/base/icons/src/vender/line/general'
-import { ToastContext } from '@/app/components/base/toast'
 
 const itemClassName = `
   flex items-center px-3 py-2 h-9 cursor-pointer rounded-lg
@@ -25,10 +26,11 @@ const itemCheckClassName = `
 
 const WorkplaceSelector = () => {
   const { t } = useTranslation()
+  const { plan } = useProviderContext()
   const { notify } = useContext(ToastContext)
   const { workspaces } = useWorkspacesContext()
   const currentWorkspace = workspaces.find(v => v.current)
-
+  const isFreePlan = plan.type === 'sandbox'
   const handleSwitchWorkspace = async (tenant_id: string) => {
     try {
       if (currentWorkspace?.id === tenant_id)
@@ -49,7 +51,8 @@ const WorkplaceSelector = () => {
           <>
             <Menu.Button className={cn(itemClassName,
               `
-                w-full group hover:bg-state-base-hover pl-3 pr-2
+                flex items-center p-0.5 gap-1.5 w-full
+                group hover:bg-state-base-hover cursor-pointer ${open && 'bg-state-base-hover'} rounded-[10px]
               `,
               open && 'bg-state-base-hover',
             )}>
@@ -72,10 +75,12 @@ const WorkplaceSelector = () => {
                     absolute top-[1px] w-[216px] max-h-[70vh] overflow-y-scroll z-10 bg-components-panel-bg-blur backdrop-blur-[5px] border-[0.5px] border-components-panel-border
                     divide-y divide-divider-subtle origin-top-right rounded-xl focus:outline-none
                   `,
-                  s.popup,
                 )}
               >
-                <div className="px-1 py-1">
+                <div className="flex flex-col p-1 pb-2 items-start self-stretch w-full rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg ">
+                  <div className='flex px-3 pt-1 pb-0.5 items-start self-stretch'>
+                    <span className='flex-1 text-text-tertiary system-xs-medium-uppercase'>{t('common.userProfile.workspace')}</span>
+                  </div>
                   {
                     workspaces.map(workspace => (
                       <Menu.Item key={workspace.id}>

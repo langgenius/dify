@@ -9,7 +9,6 @@ import { Menu, Transition } from '@headlessui/react'
 import Indicator from '../indicator'
 import AccountAbout from '../account-about'
 import GithubStar from '../github-star'
-import WorkplaceSelector from './workplace-selector'
 import Support from './support'
 import Compliance from './compliance'
 import classNames from '@/utils/classnames'
@@ -99,11 +98,7 @@ export default function AppSelector({ isMobile }: IAppSelector) {
                       <Avatar avatar={userProfile.avatar_url} name={userProfile.name} size={36} className='mr-3' />
                     </div>
                   </Menu.Item>
-                  <div className='p-1'>
-                    <div className='mt-2 px-3 text-xs font-medium text-text-tertiary'>{t('common.userProfile.workspace')}</div>
-                    <WorkplaceSelector />
-                  </div>
-                  <div className="p-1">
+                  <div className="px-1 py-1">
                     <Menu.Item>
                       {({ active }) => <Link
                         className={classNames(itemClassName, 'group',

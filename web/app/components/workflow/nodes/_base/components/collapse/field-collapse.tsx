@@ -1,8 +1,9 @@
+import type { ReactNode } from 'react'
 import Collapse from '.'
 
 type FieldCollapseProps = {
   title: string
-  children: JSX.Element
+  children: ReactNode
 }
 const FieldCollapse = ({
   title,

@@ -123,6 +123,7 @@ const translation = {
           operation: 'Dokumentacja',
         },
       },
+      launch: 'Uruchomić',
     },
     apiInfo: {
       title: 'API usługi w tle',
