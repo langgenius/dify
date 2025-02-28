@@ -211,9 +211,7 @@ const Paragraph = (paragraph: any) => {
     return (
       <>
         <ImageGallery srcs={[children_node[0].properties.src]} />
-        {
-          Array.isArray(paragraph.children) ? <p>{paragraph.children.slice(1)}</p> : null
-        }
+        <p>{paragraph.children.slice(1)}</p>
       </>
     )
   }

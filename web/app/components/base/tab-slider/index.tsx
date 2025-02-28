@@ -1,11 +1,11 @@
-import type { FC, ReactNode } from 'react'
+import type { FC } from 'react'
 import { useEffect, useState } from 'react'
 import cn from '@/utils/classnames'
 import Badge, { BadgeState } from '@/app/components/base/badge/index'
 import { useInstalledPluginList } from '@/service/use-plugins'
 type Option = {
   value: string
-  text: ReactNode
+  text: string
 }
 
 type TabSliderProps = {
