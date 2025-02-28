@@ -52,7 +52,7 @@ class BasePluginManager:
         Make a request to the plugin daemon inner API.
         """
         url = URL(str(plugin_daemon_inner_api_baseurl)) / path
-        logging.info(f"plugin_daemon_uri: {url}")
+        # logging.info(f"plugin_daemon_uri: {url}")
         headers = headers or {}
         headers["X-Api-Key"] = plugin_daemon_inner_api_key
         headers["Accept-Encoding"] = "gzip, deflate, br"
@@ -181,7 +181,7 @@ class BasePluginManager:
                 else:
                     raise ValueError(line)
 
-            logging.info(f"rep: {rep}, line_data: {line_data}")
+            # logging.info(f"rep: {rep}, line_data: {line_data}")
             if rep.code != 0:
                 if rep.code == -500:
                     try:

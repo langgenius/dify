@@ -19,7 +19,7 @@ from .error import NotInitValidateError, NotSetupError, UnauthorizedAndForceLogo
 def account_initialization_required(view):
     @wraps(view)
     def decorated(*args, **kwargs):
-        logging.info("account_initialization_required")
+        # logging.info("account_initialization_required")
         # check account initialization
         account = current_user
 
@@ -136,7 +136,7 @@ def cloud_utm_record(view):
 def setup_required(view):
     @wraps(view)
     def decorated(*args, **kwargs):
-        logging.info("setup_required")
+        # logging.info("setup_required")
         # check setup
         if (
             dify_config.EDITION == "SELF_HOSTED"

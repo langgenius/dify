@@ -44,7 +44,13 @@ class RemoteRecommendAppRetrieval(RecommendAppRetrievalBase):
         """
         domain = dify_config.HOSTED_FETCH_APP_TEMPLATES_REMOTE_DOMAIN
         url = f"{domain}/apps/{app_id}"
-        response = requests.get(url, timeout=(3, 10))
+        proxies = None
+        if dify_config.PROXY_HTTP_URL and dify_config.PROXY_HTTPS_URL:
+            proxies = {
+                "http": dify_config.PROXY_HTTP_URL,
+                "https": dify_config.PROXY_HTTPS_URL,
+            }
+        response = requests.get(url, timeout=(3, 10), proxies=proxies)
         if response.status_code != 200:
             return None
         data: dict = response.json()
@@ -59,7 +65,13 @@ class RemoteRecommendAppRetrieval(RecommendAppRetrievalBase):
         """
         domain = dify_config.HOSTED_FETCH_APP_TEMPLATES_REMOTE_DOMAIN
         url = f"{domain}/apps?language={language}"
-        response = requests.get(url, timeout=(3, 10))
+        proxies = None
+        if dify_config.PROXY_HTTP_URL and dify_config.PROXY_HTTPS_URL:
+            proxies = {
+                "http": dify_config.PROXY_HTTP_URL,
+                "https": dify_config.PROXY_HTTPS_URL,
+            }
+        response = requests.get(url, timeout=(3, 10), proxies=proxies)
         if response.status_code != 200:
             raise ValueError(f"fetch recommended apps failed, status code: {response.status_code}")
 
