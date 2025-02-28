@@ -66,7 +66,7 @@ services:
 
   # plugin daemon
   plugin_daemon:
-    image: langgenius/dify-plugin-daemon:0.0.2-local
+    image: langgenius/dify-plugin-daemon:0.0.3-local
     restart: always
     environment:
       # Use the shared environment variables.
