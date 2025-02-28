@@ -31,8 +31,15 @@ class VersionApi(Resource):
         if not check_update_url:
             return result
 
+        proxies = None
+        if dify_config.PROXY_HTTP_URL and dify_config.PROXY_HTTPS_URL:
+            proxies = {
+                "http": dify_config.PROXY_HTTP_URL,
+                "https": dify_config.PROXY_HTTPS_URL,
+            }
+
         try:
-            response = requests.get(check_update_url, {"current_version": args.get("current_version")})
+            response = requests.get(check_update_url, {"current_version": args.get("current_version")}, proxies=proxies)
         except Exception as error:
             logging.warning("Check update version error: {}.".format(str(error)))
             result["version"] = args.get("current_version")

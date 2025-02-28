@@ -264,15 +264,15 @@ class PluginFetchInstallTasksApi(Resource):
     @account_initialization_required
     @plugin_permission_required(debug_required=True)
     def get(self):
-        logging.info("PluginFetchInstallTasksApi")
+        # logging.info("PluginFetchInstallTasksApi")
         tenant_id = current_user.current_tenant_id
-        logging.info(f"tenant_id: {tenant_id}")
+        # logging.info(f"tenant_id: {tenant_id}")
 
         parser = reqparse.RequestParser()
         parser.add_argument("page", type=int, required=True, location="args")
         parser.add_argument("page_size", type=int, required=True, location="args")
         args = parser.parse_args()
-        logging.info(f"args: {args}")
+        # logging.info(f"args: {args}")
 
         try:
             return jsonable_encoder(

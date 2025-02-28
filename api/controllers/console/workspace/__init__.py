@@ -18,7 +18,7 @@ def plugin_permission_required(
         def decorated(*args, **kwargs):
             user = current_user
             tenant_id = user.current_tenant_id
-            logging.info("plugin_permission_required")
+            # logging.info("plugin_permission_required")
 
             with Session(db.engine) as session:
                 permission = (
