@@ -280,11 +280,12 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
           <div className='flex gap-2 justify-center items-center !h-8'>
             {!isFreePlan && <AutoDisabledDocument datasetId={datasetId} />}
             <IndexFailed datasetId={datasetId} />
-            {/* TODO privilage */}
-            <Button variant='secondary' className='shrink-0' onClick={showEditMetadataModal}>
-              <RiDraftLine className='size-4 mr-1' />
-              {t('dataset.metadata.metadata')}
-            </Button>
+            {embeddingAvailable && (
+              <Button variant='secondary' className='shrink-0' onClick={showEditMetadataModal}>
+                <RiDraftLine className='size-4 mr-1' />
+                {t('dataset.metadata.metadata')}
+              </Button>
+            )}
             {isShowEditMetadataModal && (
               <DatasetMetadataDrawer
                 userMetadata={datasetMetaData || []}
