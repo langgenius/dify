@@ -94,6 +94,7 @@ const MetadataDocument: FC<Props> = ({
         <NoData onStart={() => setIsEdit(true)} />
       )}
 
+      {/* Old Metadata */}
       <InfoGroup
         className='pl-2'
         title={t(`${i18nPrefix}.documentInformation`)}

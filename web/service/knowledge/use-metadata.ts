@@ -78,7 +78,7 @@ export const useDeleteMetaData = (datasetId: string) => {
   })
 }
 
-export const useBuiltInMetaData = () => {
+export const useBuiltInMetaDataFields = () => {
   return useQuery<{ fields: BuiltInMetadataItem[] }>({
     queryKey: [NAME_SPACE, 'built-in'],
     queryFn: () => {

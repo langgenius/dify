@@ -1,6 +1,8 @@
 import { useBatchUpdateDocMetadata } from '@/service/knowledge/use-metadata'
 import { DataType, type MetadataItemWithValue } from '../types'
 import { useState } from 'react'
+import Toast from '@/app/components/base/toast'
+import { useTranslation } from 'react-i18next'
 
 const testList = [
   {
@@ -32,6 +34,8 @@ const useMetadataDocument = ({
   datasetId,
   documentId,
 }: Props) => {
+  const { t } = useTranslation()
+
   const { mutate } = useBatchUpdateDocMetadata()
   const [isEdit, setIsEdit] = useState(false)
 
@@ -48,7 +52,10 @@ const useMetadataDocument = ({
     })
     setList(tempList)
     setIsEdit(false)
-    // Toa
+    Toast.notify({
+      type: 'success',
+      message: t('common.api.actionSuccess'),
+    })
   }
 
   const handleCancel = () => {
@@ -62,6 +69,7 @@ const useMetadataDocument = ({
   }
 
   const builtInEnabled = true
+
   const builtList = [
     {
       id: '1',

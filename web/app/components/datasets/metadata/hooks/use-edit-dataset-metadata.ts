@@ -1,5 +1,5 @@
 import { useBoolean } from 'ahooks'
-import { useBuiltInMetaData, useCreateMetaData, useDatasetMetaData, useDeleteMetaData, useRenameMeta, useUpdateBuiltInStatus } from '@/service/knowledge/use-metadata'
+import { useBuiltInMetaDataFields, useCreateMetaData, useDatasetMetaData, useDeleteMetaData, useRenameMeta, useUpdateBuiltInStatus } from '@/service/knowledge/use-metadata'
 import type { DataSet } from '@/models/datasets'
 import { useCallback, useState } from 'react'
 import type { BuiltInMetadataItem, MetadataItemWithValueLength } from '../types'
@@ -35,7 +35,7 @@ const useEditDatasetMetadata = ({
 
   const [builtInEnabled, setBuiltInEnabled] = useState(dataset?.built_in_field_enabled)
   const { mutate } = useUpdateBuiltInStatus(datasetId)
-  const { data: builtInMetaData } = useBuiltInMetaData()
+  const { data: builtInMetaData } = useBuiltInMetaDataFields()
   return {
     isShowEditModal,
     showEditModal,

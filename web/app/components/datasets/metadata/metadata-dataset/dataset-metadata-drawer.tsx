@@ -134,7 +134,7 @@ const DatasetMetadataDrawer: FC<Props> = ({
     await onAdd(data)
     Toast.notify({
       type: 'success',
-      message: t('common.api.success'),
+      message: t('common.api.actionSuccess'),
     })
     setOpen(false)
   }, [onAdd, t])
@@ -148,7 +148,7 @@ const DatasetMetadataDrawer: FC<Props> = ({
       })
       Toast.notify({
         type: 'success',
-        message: t('common.api.success'),
+        message: t('common.api.actionSuccess'),
       })
     }
     setIsShowRenameModal(false)
@@ -159,7 +159,7 @@ const DatasetMetadataDrawer: FC<Props> = ({
       await onRemove(payload.id)
       Toast.notify({
         type: 'success',
-        message: t('common.api.success'),
+        message: t('common.api.actionSuccess'),
       })
     }
   }, [onRemove, t])
