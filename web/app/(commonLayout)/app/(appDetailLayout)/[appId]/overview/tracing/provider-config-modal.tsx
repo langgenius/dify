@@ -4,7 +4,7 @@ import React, { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useBoolean } from 'ahooks'
 import Field from './field'
-import type {LangFuseConfig, LangSmithConfig, OpikConfig, WeaveConfig } from './type'
+import type { LangFuseConfig, LangSmithConfig, OpikConfig, WeaveConfig } from './type'
 import { TracingProvider } from './type'
 import { docURL } from './config'
 import {
@@ -194,6 +194,40 @@ const ProviderConfigModal: FC<Props> = ({
                     </div>
 
                     <div className='space-y-4'>
+                      {type === TracingProvider.weave && (
+                        <>
+                          <Field
+                            label='API Key'
+                            labelClassName='!text-sm'
+                            isRequired
+                            value={(config as WeaveConfig).api_key}
+                            onChange={handleConfigChange('api_key')}
+                            placeholder={t(`${I18N_PREFIX}.placeholder`, { key: 'API Key' })!}
+                          />
+                          <Field
+                            label={t(`${I18N_PREFIX}.project`)!}
+                            labelClassName='!text-sm'
+                            isRequired
+                            value={(config as WeaveConfig).project}
+                            onChange={handleConfigChange('project')}
+                            placeholder={t(`${I18N_PREFIX}.placeholder`, { key: t(`${I18N_PREFIX}.project`) })!}
+                          />
+                          <Field
+                            label='Entity'
+                            labelClassName='!text-sm'
+                            value={(config as WeaveConfig).entity}
+                            onChange={handleConfigChange('entity')}
+                            placeholder={t(`${I18N_PREFIX}.placeholder`, { key: 'Entity' })!}
+                          />
+                          <Field
+                            label='Endpoint'
+                            labelClassName='!text-sm'
+                            value={(config as WeaveConfig).endpoint}
+                            onChange={handleConfigChange('endpoint')}
+                            placeholder={'https://trace.wandb.ai/'}
+                          />
+                        </>
+                      )}
                       {type === TracingProvider.langSmith && (
                         <>
                           <Field
@@ -281,41 +315,6 @@ const ProviderConfigModal: FC<Props> = ({
                           />
                         </>
                       )}
-                      {type === TracingProvider.weave && (
-                        <>
-                          <Field
-                            label='API Key'
-                            labelClassName='!text-sm'
-                            isRequired
-                            value={(config as WeaveConfig).api_key}
-                            onChange={handleConfigChange('api_key')}
-                            placeholder={t(`${I18N_PREFIX}.placeholder`, { key: 'API Key' })!}
-                          />
-                          <Field
-                            label={t(`${I18N_PREFIX}.project`)!}
-                            labelClassName='!text-sm'
-                            isRequired
-                            value={(config as WeaveConfig).project}
-                            onChange={handleConfigChange('project')}
-                            placeholder={t(`${I18N_PREFIX}.placeholder`, { key: t(`${I18N_PREFIX}.project`) })!}
-                          />
-                          <Field
-                            label='Entity'
-                            labelClassName='!text-sm'
-                            value={(config as WeaveConfig).entity}
-                            onChange={handleConfigChange('entity')}
-                            placeholder={t(`${I18N_PREFIX}.placeholder`, { key: 'Entity' })!}
-                          />
-                          <Field
-                            label='Endpoint'
-                            labelClassName='!text-sm'
-                            value={(config as WeaveConfig).endpoint}
-                            onChange={handleConfigChange('endpoint')}
-                            placeholder={'https://trace.wandb.ai/'}
-                          />
-                        </>
-                      )}
-
                     </div>
                     <div className='my-8 flex justify-between items-center h-8'>
                       <a
