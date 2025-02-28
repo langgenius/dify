@@ -88,8 +88,10 @@ type ICompletedProps = {
   archived?: boolean
 }
 /**
- * Embedding done, show list of all segments
- * Support search and filter
+ * Completed Component
+ * 
+ * This component handles the display of completed documents and their segments.
+ * It supports both 'custom' (API spec) and 'hierarchical' (legacy) modes for parent-child structure.
  */
 const Completed: FC<ICompletedProps> = ({
   embeddingAvailable,
@@ -624,6 +626,7 @@ const Completed: FC<ICompletedProps> = ({
                 segmentIndex: currSegment?.segInfo?.id === segments[0]?.id,
                 segmentContent: currSegment?.segInfo?.id === segments[0]?.id,
               }}
+              mode={mode}
             />
             <ChildSegmentList
               parentChunkId={segments[0]?.id}
@@ -637,6 +640,7 @@ const Completed: FC<ICompletedProps> = ({
               inputValue={inputValue}
               onClearFilter={onClearFilter}
               isLoading={isLoadingSegmentList || isLoadingChildSegmentList}
+              mode={mode}
             />
           </div>
           : <SegmentList
@@ -654,6 +658,7 @@ const Completed: FC<ICompletedProps> = ({
             handleAddNewChildChunk={handleAddNewChildChunk}
             onClickSlice={onClickSlice}
             onClearFilter={onClearFilter}
+            mode={mode}
           />
       }
       {/* Pagination */}

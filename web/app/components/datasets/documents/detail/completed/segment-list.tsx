@@ -1,4 +1,4 @@
-import React, { type ForwardedRef, useMemo } from 'react'
+import React, { type ForwardedRef, useMemo, type FC } from 'react'
 import { useDocumentContext } from '../index'
 import SegmentCard from './segment-card'
 import Empty from './common/empty'
@@ -9,7 +9,7 @@ import type { ChildChunkDetail, SegmentDetailModel } from '@/models/datasets'
 import Checkbox from '@/app/components/base/checkbox'
 import Divider from '@/app/components/base/divider'
 
-type ISegmentListProps = {
+type SegmentListProps = {
   isLoading: boolean
   items: SegmentDetailModel[]
   selectedSegmentIds: string[]
@@ -23,9 +23,10 @@ type ISegmentListProps = {
   archived?: boolean
   embeddingAvailable: boolean
   onClearFilter: () => void
+  mode: string
 }
 
-const SegmentList = React.forwardRef(({
+const SegmentList: FC<SegmentListProps> = ({
   isLoading,
   items,
   selectedSegmentIds,
@@ -39,10 +40,8 @@ const SegmentList = React.forwardRef(({
   archived,
   embeddingAvailable,
   onClearFilter,
-}: ISegmentListProps,
-ref: ForwardedRef<HTMLDivElement>,
-) => {
-  const mode = useDocumentContext(s => s.mode)
+  mode,
+}, ref: ForwardedRef<HTMLDivElement>) => {
   const parentMode = useDocumentContext(s => s.parentMode)
   const currSegment = useSegmentListContext(s => s.currSegment)
   const currChildChunk = useSegmentListContext(s => s.currChildChunk)
@@ -98,6 +97,7 @@ ref: ForwardedRef<HTMLDivElement>,
                     segmentIndex: segmentIndexFocused,
                     segmentContent: segmentContentFocused,
                   }}
+                  mode={mode}
                 />
                 {!isLast && <div className='w-full px-3'>
                   <Divider type='horizontal' className='bg-divider-subtle my-1' />
@@ -109,7 +109,7 @@ ref: ForwardedRef<HTMLDivElement>,
       }
     </div>
   )
-})
+}
 
 SegmentList.displayName = 'SegmentList'
 

@@ -1,3 +1,15 @@
+/**
+ * ChildSegmentList Component
+ * 
+ * This component handles the display of child segments in both hierarchical and custom modes.
+ * It supports two processing modes as per API documentation:
+ * - 'custom': The mode specified in API documentation for parent-child structure
+ * - 'hierarchical': The original mode for backward compatibility
+ * 
+ * The component adapts its display based on the parent mode (paragraph or full-doc)
+ * and the processing mode (custom or hierarchical).
+ */
+
 import { type FC, useMemo, useState } from 'react'
 import { RiArrowDownSLine, RiArrowRightSLine } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
@@ -26,6 +38,7 @@ type IChildSegmentCardProps = {
   onClearFilter?: () => void
   isLoading?: boolean
   focused?: boolean
+  mode: string  // Added to support both 'custom' and 'hierarchical' modes as per API documentation
 }
 
 const ChildSegmentList: FC<IChildSegmentCardProps> = ({
@@ -41,6 +54,7 @@ const ChildSegmentList: FC<IChildSegmentCardProps> = ({
   onClearFilter,
   isLoading,
   focused = false,
+  mode,  // Receive mode from parent to determine display logic
 }) => {
   const { t } = useTranslation()
   const parentMode = useDocumentContext(s => s.parentMode)
@@ -52,13 +66,33 @@ const ChildSegmentList: FC<IChildSegmentCardProps> = ({
     setCollapsed(!collapsed)
   }
 
-  const isParagraphMode = useMemo(() => {
-    return parentMode === 'paragraph'
-  }, [parentMode])
+  /**
+   * Determines if the current mode supports parent-child structure
+   * Supports both 'custom' (API documentation) and 'hierarchical' (legacy) modes
+   */
+  const isParentChildMode = useMemo(() => {
+    return mode === 'hierarchical' || mode === 'custom'
+  }, [mode])
 
+  /**
+   * Checks if the current mode is paragraph mode
+   * Must satisfy both:
+   * 1. Parent mode is 'paragraph'
+   * 2. Processing mode is either 'custom' or 'hierarchical'
+   */
+  const isParagraphMode = useMemo(() => {
+    return parentMode === 'paragraph' && (mode === 'hierarchical' || mode === 'custom')
+  }, [mode, parentMode])
+
+  /**
+   * Checks if the current mode is full document mode
+   * Must satisfy both:
+   * 1. Parent mode is 'full-doc'
+   * 2. Processing mode is either 'custom' or 'hierarchical'
+   */
   const isFullDocMode = useMemo(() => {
-    return parentMode === 'full-doc'
-  }, [parentMode])
+    return parentMode === 'full-doc' && (mode === 'hierarchical' || mode === 'custom')
+  }, [mode, parentMode])
 
   const contentOpacity = useMemo(() => {
     return (enabled || focused) ? '' : 'opacity-50 group-hover/card:opacity-100'

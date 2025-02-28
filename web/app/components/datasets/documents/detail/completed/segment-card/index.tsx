@@ -36,6 +36,7 @@ type ISegmentCardProps = {
     segmentIndex: boolean
     segmentContent: boolean
   }
+  mode: string
 }
 
 const SegmentCard: FC<ISegmentCardProps> = ({
@@ -52,6 +53,7 @@ const SegmentCard: FC<ISegmentCardProps> = ({
   archived,
   embeddingAvailable,
   focused,
+  mode,
 }) => {
   const { t } = useTranslation()
   const {
@@ -69,7 +71,6 @@ const SegmentCard: FC<ISegmentCardProps> = ({
     updated_at,
   } = detail as Required<ISegmentCardProps>['detail']
   const [showModal, setShowModal] = useState(false)
-  const mode = useDocumentContext(s => s.mode)
   const parentMode = useDocumentContext(s => s.parentMode)
 
   const isGeneralMode = useMemo(() => {
