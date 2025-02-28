@@ -79,6 +79,7 @@ dataset_detail_fields = {
     "external_knowledge_info": fields.Nested(external_knowledge_info_fields),
     "external_retrieval_model": fields.Nested(external_retrieval_model_fields, allow_null=True),
     "doc_metadata": fields.List(fields.Nested(doc_metadata_fields)),
+    "built_in_field_enabled": fields.Boolean,
 }
 
 dataset_query_detail_fields = {

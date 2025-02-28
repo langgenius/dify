@@ -16,6 +16,7 @@ from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped
 
 from configs import dify_config
+from core.rag.index_processor.constant.built_in_field import BuiltInField
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from extensions.ext_storage import storage
 from services.entities.knowledge_entities.knowledge_entities import ParentMode, Rule
@@ -444,8 +445,45 @@ class Document(db.Model):  # type: ignore[name-defined]
                     "value": self.doc_metadata.get(metadata.type),
                 }
                 metadata_list.append(metadata_dict)
+            # deal built-in fields
+            metadata_list.extend(self.get_built_in_fields())
+
             return metadata_list
         return None
+    
+    def get_built_in_fields(self):
+        built_in_fields = []
+        built_in_fields.append({
+                    "id": "built-in",
+                    "name": BuiltInField.document_name,
+                    "type": "string",
+                    "value": self.name,
+                })
+        built_in_fields.append({
+                    "id": "built-in",
+                    "name": BuiltInField.uploader,
+                    "type": "string",
+                    "value": self.uploader,
+                })
+        built_in_fields.append({
+                    "id": "built-in",
+                    "name": BuiltInField.upload_date,
+                    "type": "date",
+                    "value": self.created_at,
+                })
+        built_in_fields.append({
+                    "id": "built-in",
+                    "name": BuiltInField.last_update_date,
+                    "type": "date",
+                    "value": self.updated_at,
+                })
+        built_in_fields.append({
+                    "id": "built-in",
+                    "name": BuiltInField.source,
+                    "type": "string",
+                    "value": self.data_source_info,
+                })
+        return built_in_fields
 
     def process_rule_dict(self):
         if self.dataset_process_rule_id:
