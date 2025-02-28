@@ -1,7 +1,7 @@
 from flask import Blueprint
 from flask_restful import Api, Resource # type: ignore
 
-from controllers.service_api import api
+from controllers.service_api_with_auth import api
 
 class UserProfile(Resource):
     def get(self):

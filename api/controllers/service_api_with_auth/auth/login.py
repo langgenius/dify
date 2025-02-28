@@ -5,13 +5,13 @@ from flask import request
 from flask_restful import Resource, reqparse  # type: ignore
 
 from constants.languages import languages
-from controllers.service_api import api
-from controllers.service_api.auth.error import (
+from controllers.service_api_with_auth import api
+from controllers.service_api_with_auth.auth.error import (
     EmailCodeError,
     InvalidEmailError,
     InvalidTokenError,
 )
-from controllers.service_api.error import (
+from controllers.service_api_with_auth.error import (
     AccountInFreezeError,
     AccountNotFound,
     EmailSendIpLimitError,
