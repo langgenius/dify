@@ -92,11 +92,12 @@ const SideBar: FC<IExploreSideBarProps> = ({
 
   const pinnedAppsCount = installedApps.filter(({ is_pinned }) => is_pinned).length
   return (
-    <div className='w-fit sm:w-[216px] shrink-0 pt-6 px-4 border-gray-200 cursor-pointer'>
+    <div className='w-fit sm:w-[216px] shrink-0 pt-6 px-4 border-r border-divider-burn cursor-pointer'>
       <div>
         <Link
           href='/explore/apps'
-          className={cn(isDiscoverySelected ? 'text-primary-600  bg-white font-semibold' : 'text-gray-700 font-medium hover:bg-gray-200', 'flex items-center pc:justify-start pc:w-full mobile:justify-center mobile:w-fit h-9 px-3 mobile:px-2 gap-2 rounded-lg')}
+          className={cn(isDiscoverySelected ? 'text-text-accent' : 'text-text-primary font-medium hover:bg-gray-200',
+            'flex items-center no-underline pc:justify-start pc:w-full mobile:justify-center mobile:w-fit h-9 px-3 mobile:px-2 gap-2 rounded-lg')}
           style={isDiscoverySelected ? { boxShadow: '0px 1px 2px rgba(16, 24, 40, 0.05)' } : {}}
         >
           {isDiscoverySelected ? <SelectedDiscoveryIcon /> : <DiscoveryIcon />}
@@ -105,7 +106,7 @@ const SideBar: FC<IExploreSideBarProps> = ({
       </div>
       {installedApps.length > 0 && (
         <div className='mt-10'>
-          <p className='pl-2 mobile:px-0 text-xs text-gray-500 break-all font-medium uppercase'>{t('explore.sidebar.workspace')}</p>
+          <p className='pl-2 mobile:px-0 text-xs text-text-tertiary break-all font-medium uppercase'>{t('explore.sidebar.workspace')}</p>
           <div className='mt-3 space-y-1 overflow-y-auto overflow-x-hidden'
             style={{
               height: 'calc(100vh - 250px)',
