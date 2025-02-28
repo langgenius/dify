@@ -8,6 +8,7 @@ import { RiEditLine } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
 import Divider from '@/app/components/base/divider'
 import useMetadataDocument from '../hooks/use-metadata-document'
+import type { FullDocumentDetail } from '@/models/datasets'
 import cn from '@/utils/classnames'
 
 const i18nPrefix = 'dataset.metadata.documentMetadata'
@@ -16,11 +17,13 @@ type Props = {
   datasetId: string
   documentId: string
   className?: string
+  docDetail: FullDocumentDetail
 }
 const MetadataDocument: FC<Props> = ({
   datasetId,
   documentId,
   className,
+  docDetail,
 }) => {
   const { t } = useTranslation()
   const {
@@ -35,10 +38,9 @@ const MetadataDocument: FC<Props> = ({
     startToEdit,
     handleSave,
     handleCancel,
-  } = useMetadataDocument({ datasetId, documentId })
-
-  const documentInfoList = builtList
-  const technicalParams = builtList
+    originInfo,
+    technicalParameters,
+  } = useMetadataDocument({ datasetId, documentId, docDetail })
 
   return (
     <div className={cn('w-[388px] space-y-4', className)}>
@@ -98,12 +100,12 @@ const MetadataDocument: FC<Props> = ({
       <InfoGroup
         className='pl-2'
         title={t(`${i18nPrefix}.documentInformation`)}
-        list={documentInfoList}
+        list={originInfo}
       />
       <InfoGroup
         className='pl-2'
         title={t(`${i18nPrefix}.technicalParameters`)}
-        list={technicalParams}
+        list={technicalParameters}
       />
     </div>
   )

@@ -58,7 +58,7 @@ const InfoGroup: FC<Props> = ({
         </div>
       )}
 
-      <div className={cn('mt-3 space-y-1', !noHeader && 'mt-0', contentClassName)}>
+      <div className={cn('mt-3 space-y-1', contentClassName)}>
         {isEdit && (
           <div>
             <SelectMetadataModal

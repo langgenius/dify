@@ -2,7 +2,9 @@ import { useBatchUpdateDocMetadata } from '@/service/knowledge/use-metadata'
 import { DataType, type MetadataItemWithValue } from '../types'
 import { useState } from 'react'
 import Toast from '@/app/components/base/toast'
+import type { FullDocumentDetail } from '@/models/datasets'
 import { useTranslation } from 'react-i18next'
+import { useMetadataMap } from '@/hooks/use-metadata'
 
 const testList = [
   {
@@ -28,11 +30,13 @@ const testList = [
 type Props = {
   datasetId: string
   documentId: string
+  docDetail: FullDocumentDetail
 }
 
 const useMetadataDocument = ({
   datasetId,
   documentId,
+  docDetail,
 }: Props) => {
   const { t } = useTranslation()
 
@@ -85,6 +89,27 @@ const useMetadataDocument = ({
     },
   ]
 
+  // old metadata and technical params
+  const metadataMap = useMetadataMap()
+  const getReadOnlyMetaData = (mainField: 'originInfo' | 'technicalParameters') => {
+    const fieldMap = metadataMap[mainField]?.subFieldsMap
+    const sourceData = docDetail
+    const fieldList = Object.keys(fieldMap).map((key) => {
+      const field = fieldMap[key]
+      return {
+        id: field?.label,
+        type: DataType.string,
+        name: field?.label,
+        value: sourceData[key],
+      }
+    })
+
+    return fieldList
+  }
+
+  const originInfo = getReadOnlyMetaData('originInfo')
+  const technicalParameters = getReadOnlyMetaData('technicalParameters')
+
   return {
     isEdit,
     setIsEdit,
@@ -98,6 +123,8 @@ const useMetadataDocument = ({
     startToEdit,
     handleSave,
     handleCancel,
+    originInfo,
+    technicalParameters,
   }
 }
 

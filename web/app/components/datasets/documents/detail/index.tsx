@@ -279,9 +279,7 @@ const DocumentDetail: FC<Props> = ({ datasetId, documentId }) => {
               className='mr-2 mt-3'
               datasetId={datasetId}
               documentId={documentId}
-            // docDetail={{ ...documentDetail, ...documentMetadata, doc_type: documentMetadata?.doc_type === 'others' ? '' : documentMetadata?.doc_type } as any}
-            // loading={isMetadataLoading}
-            // onUpdate={metadataMutate}
+              docDetail={{ ...documentDetail, ...documentMetadata, doc_type: documentMetadata?.doc_type === 'others' ? '' : documentMetadata?.doc_type } as any}
             />
           </FloatRightContainer>
         </div>
