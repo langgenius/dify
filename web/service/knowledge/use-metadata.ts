@@ -1,4 +1,4 @@
-import type { BuiltInMetadataItem, MetadataItemWithValueLength } from '@/app/components/datasets/metadata/types'
+import type { BuiltInMetadataItem, MetadataBatchEditToServer, MetadataItemWithValueLength } from '@/app/components/datasets/metadata/types'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { useInvalid } from '../use-base'
 
@@ -103,9 +103,10 @@ export const useBuiltInMetaData = () => {
 export const useBatchUpdateDocMetadata = () => {
   return useMutation({
     mutationFn: (payload: {
-      document_id: string,
-      metadata_list: MetadataItemWithValueLength[],
-    }[]) => {
+      dataset_id: string
+      metadata_list: MetadataBatchEditToServer
+    }) => {
+      // /console/api/datasets/{dataset_id}/documents/metadata
       console.log(payload)
       return Promise.resolve(true)
     },

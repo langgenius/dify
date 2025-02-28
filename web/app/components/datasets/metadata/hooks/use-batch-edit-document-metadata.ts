@@ -1,5 +1,5 @@
 import { useBoolean } from 'ahooks'
-import type { MetadataItemInBatchEdit, MetadataItemWithValue } from '../types'
+import type { MetadataBatchEditToServer, MetadataItemInBatchEdit, MetadataItemWithValue } from '../types'
 import { DataType } from '../types'
 import type { SimpleDocumentDetail } from '@/models/datasets'
 import { useMemo } from 'react'
@@ -92,7 +92,7 @@ const useBatchEditDocumentMetadata = ({
       return false
     })
 
-    const res: { document_id: string, metadata_list: MetadataItemWithValue[] }[] = list.map((item, i) => {
+    const res: MetadataBatchEditToServer = list.map((item, i) => {
       // the new metadata will override the old one
       const oldMetadataList = item.doc_metadata || testMetadataList[i] // TODO: used mock data
       let newMetadataList: MetadataItemWithValue[] = oldMetadataList

@@ -1,63 +1,41 @@
 'use client'
 import type { FC } from 'react'
-import React, { useState } from 'react'
-import { DataType, type MetadataItemWithValue } from '../types'
+import React from 'react'
 import InfoGroup from './info-group'
 import NoData from './no-data'
 import Button from '@/app/components/base/button'
 import { RiEditLine } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
 import Divider from '@/app/components/base/divider'
+import useMetadataDocument from '../hooks/use-metadata-document'
 import cn from '@/utils/classnames'
 
 const i18nPrefix = 'dataset.metadata.documentMetadata'
 
 type Props = {
+  datasetId: string
+  documentId: string
   className?: string
 }
 const MetadataDocument: FC<Props> = ({
+  datasetId,
+  documentId,
   className,
 }) => {
   const { t } = useTranslation()
-  const [isEdit, setIsEdit] = useState(false)
-
-  const [list, setList] = useState<MetadataItemWithValue[]>([
-    {
-      id: '1',
-      name: 'Doc type',
-      value: 'PDF',
-      type: DataType.string,
-    },
-    {
-      id: '2',
-      name: 'Title',
-      value: 'PDF',
-      type: DataType.string,
-    },
-    {
-      id: '3',
-      name: 'Date',
-      value: null,
-      type: DataType.time,
-    },
-  ])
-  const [tempList, setTempList] = useState<MetadataItemWithValue[]>(list)
-  const builtInEnabled = true
-  const builtList = [
-    {
-      id: '1',
-      name: 'OriginalfileNmae',
-      value: 'Steve Jobs The Man Who Thought Different.pdf',
-      type: DataType.string,
-    },
-    {
-      id: '2',
-      name: 'Title',
-      value: 'PDF',
-      type: DataType.string,
-    },
-  ]
-  const hasData = list.length > 0
+  const {
+    isEdit,
+    setIsEdit,
+    list,
+    tempList,
+    setTempList,
+    hasData,
+    builtList,
+    builtInEnabled,
+    startToEdit,
+    handleSave,
+    handleCancel,
+  } = useMetadataDocument({ datasetId, documentId })
 
   const documentInfoList = builtList
   const technicalParams = builtList
@@ -73,24 +51,15 @@ const MetadataDocument: FC<Props> = ({
             list={isEdit ? tempList : list}
             headerRight={isEdit ? (
               <div className='flex space-x-1'>
-                <Button variant='ghost' size='small' onClick={() => {
-                  setTempList(list)
-                  setIsEdit(false)
-                }}>
+                <Button variant='ghost' size='small' onClick={handleCancel}>
                   <div>{t('common.operation.cancel')}</div>
                 </Button>
-                <Button variant='primary' size='small' onClick={() => {
-                  setIsEdit(false)
-                  setList(tempList)
-                }}>
+                <Button variant='primary' size='small' onClick={handleSave}>
                   <div>{t('common.operation.save')}</div>
                 </Button>
               </div>
             ) : (
-              <Button variant='ghost' size='small' onClick={() => {
-                setTempList(list)
-                setIsEdit(true)
-              }}>
+              <Button variant='ghost' size='small' onClick={startToEdit}>
                 <RiEditLine className='mr-1 size-3.5 text-text-tertiary cursor-pointer' />
                 <div>{t('common.operation.edit')}</div>
               </Button>
