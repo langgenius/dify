@@ -14,6 +14,7 @@ type Props = {
   popupOffset?: { mainAxis: number, crossAxis: number }
   onSave: (data: MetadataItem) => void
   trigger: React.ReactNode
+  onManage: () => void
 } & CreateContentProps
 
 enum Step {
@@ -32,6 +33,7 @@ const SelectMetadataModal: FC<Props> = ({
   popupOffset = { mainAxis: -38, crossAxis: 4 },
   trigger,
   onSave,
+  onManage,
 }) => {
   const [open, setOpen] = useState(false)
   const [step, setStep] = useState(Step.select)
@@ -59,7 +61,7 @@ const SelectMetadataModal: FC<Props> = ({
             onSelect={handleSave}
             list={testMetadataList}
             onNew={() => setStep(Step.create)}
-            onManage={() => { }}
+            onManage={onManage}
           />
         ) : (
           <CreateContent

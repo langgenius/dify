@@ -1,8 +1,8 @@
 import { useBoolean } from 'ahooks'
 import { useBuiltInMetaDataFields, useCreateMetaData, useDatasetMetaData, useDeleteMetaData, useRenameMeta, useUpdateBuiltInStatus } from '@/service/knowledge/use-metadata'
 import type { DataSet } from '@/models/datasets'
-import { useCallback, useState } from 'react'
-import type { BuiltInMetadataItem, MetadataItemWithValueLength } from '../types'
+import { useCallback, useEffect, useState } from 'react'
+import { type BuiltInMetadataItem, type MetadataItemWithValueLength, isShowManageMetadataLocalStorageKey } from '../types'
 
 const useEditDatasetMetadata = ({
   datasetId,
@@ -15,6 +15,15 @@ const useEditDatasetMetadata = ({
     setTrue: showEditModal,
     setFalse: hideEditModal,
   }] = useBoolean(false)
+
+  useEffect(() => {
+    const isShowManageMetadata = localStorage.getItem(isShowManageMetadataLocalStorageKey)
+    if (isShowManageMetadata) {
+      showEditModal()
+      localStorage.removeItem(isShowManageMetadataLocalStorageKey)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const { data: datasetMetaData } = useDatasetMetaData(datasetId)
 

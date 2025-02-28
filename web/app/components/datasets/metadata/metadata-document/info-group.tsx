@@ -1,7 +1,8 @@
 'use client'
 import type { FC } from 'react'
 import React from 'react'
-import type { MetadataItemWithValue } from '../types'
+import { useRouter } from 'next/navigation'
+import { type MetadataItemWithValue, isShowManageMetadataLocalStorageKey } from '../types'
 import Field from './field'
 import InputCombined from '../edit-metadata-batch/input-combined'
 import { RiDeleteBinLine, RiQuestionLine } from '@remixicon/react'
@@ -12,6 +13,7 @@ import SelectMetadataModal from '../metadata-dataset/select-metadata-modal'
 import AddMetadataButton from '../add-metadata-button'
 
 type Props = {
+  dataSetId: string
   className?: string
   noHeader?: boolean
   title?: string
@@ -27,6 +29,7 @@ type Props = {
 }
 
 const InfoGroup: FC<Props> = ({
+  dataSetId,
   className,
   noHeader,
   title,
@@ -40,6 +43,12 @@ const InfoGroup: FC<Props> = ({
   onDelete,
   onAdd,
 }) => {
+  const router = useRouter()
+  const handleMangeMetadata = () => {
+    localStorage.setItem(isShowManageMetadataLocalStorageKey, 'true')
+    router.push(`/datasets/${dataSetId}/documents`)
+  }
+
   return (
     <div className={cn('bg-white', className)}>
       {!noHeader && (
@@ -66,6 +75,7 @@ const InfoGroup: FC<Props> = ({
                 <AddMetadataButton />
               }
               onSave={data => onAdd?.(data)}
+              onManage={handleMangeMetadata}
             />
             <Divider className='my-3 ' bgStyle='gradient' />
           </div>

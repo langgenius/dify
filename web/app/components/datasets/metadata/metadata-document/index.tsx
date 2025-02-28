@@ -51,6 +51,7 @@ const MetadataDocument: FC<Props> = ({
             uppercaseTitle={false}
             titleTooltip={t(`${i18nPrefix}.metadataToolTip`)}
             list={isEdit ? tempList : list}
+            dataSetId={datasetId}
             headerRight={isEdit ? (
               <div className='flex space-x-1'>
                 <Button variant='ghost' size='small' onClick={handleCancel}>
@@ -88,6 +89,7 @@ const MetadataDocument: FC<Props> = ({
                 noHeader
                 titleTooltip='Built-in metadata is system-generated metadata that is automatically added to the document. You can enable or disable built-in metadata here.'
                 list={builtList}
+                dataSetId={datasetId}
               />
             </>
           )}
@@ -101,11 +103,13 @@ const MetadataDocument: FC<Props> = ({
         className='pl-2'
         title={t(`${i18nPrefix}.documentInformation`)}
         list={originInfo}
+        dataSetId={datasetId}
       />
       <InfoGroup
         className='pl-2'
         title={t(`${i18nPrefix}.technicalParameters`)}
         list={technicalParameters}
+        dataSetId={datasetId}
       />
     </div>
   )

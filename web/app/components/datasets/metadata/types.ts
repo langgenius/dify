@@ -37,3 +37,5 @@ export type MetadataItemWithEdit = MetadataItemWithValue & {
   isUpdated?: boolean
   updateType?: UpdateType
 }
+
+export const isShowManageMetadataLocalStorageKey = 'dify-isShowManageMetadata'
