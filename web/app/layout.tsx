@@ -7,6 +7,7 @@ import { TanstackQueryIniter } from '@/context/query-client'
 import { ThemeProvider } from 'next-themes'
 import './styles/globals.css'
 import './styles/markdown.scss'
+import OfflineNotice from './components/offline-notice'
 
 export const metadata = {
   title: 'Dify',
@@ -61,7 +62,9 @@ const LocaleLayout = ({
                 disableTransitionOnChange
               >
                 <I18nServer>
-                  {children}
+                  <OfflineNotice>
+                    {children}
+                  </OfflineNotice>
                 </I18nServer>
               </ThemeProvider>
             </TanstackQueryIniter>

@@ -1,4 +1,6 @@
 const translation = {
+  offlineNoticeTitle: 'Important Notice',
+  offlineNotice: 'Dify v1.0.0 is now officially released. Effective March 5, 2025, the current environment will no longer be accessible, and all data will be permanently deleted. Please ensure that you back up any necessary data prior to this date to avoid any loss.',
   api: {
     success: 'Success',
     actionSuccess: 'Action succeeded',
