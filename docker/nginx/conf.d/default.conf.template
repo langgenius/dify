@@ -29,7 +29,7 @@ server {
       include proxy.conf;
     }
 
-    location /e {
+    location /e/ {
       proxy_pass http://plugin_daemon:5002;
       proxy_set_header Dify-Hook-Url $scheme://$host$request_uri;
       include proxy.conf;
