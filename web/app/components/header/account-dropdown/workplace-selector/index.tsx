@@ -6,31 +6,14 @@ import { RiArrowDownSLine } from '@remixicon/react'
 import cn from '@/utils/classnames'
 import { switchWorkspace } from '@/service/common'
 import { useWorkspacesContext } from '@/context/workspace-context'
-import { useProviderContext } from '@/context/provider-context'
 import { ToastContext } from '@/app/components/base/toast'
-import { ChevronRight } from '@/app/components/base/icons/src/vender/line/arrows'
-import { Check } from '@/app/components/base/icons/src/vender/line/general'
-
-const itemClassName = `
-  flex items-center px-3 py-2 h-9 cursor-pointer rounded-lg
-`
-const itemIconClassName = `
-  shrink-0 mr-2 flex items-center justify-center w-6 h-6 bg-[#EFF4FF] rounded-md text-xs font-medium text-text-accent
-`
-const itemNameClassName = `
-  grow mr-2 text-sm text-text-secondary text-left
-`
-const itemCheckClassName = `
-  shrink-0 w-4 h-4 text-text-accent
-`
 
 const WorkplaceSelector = () => {
   const { t } = useTranslation()
-  const { plan } = useProviderContext()
   const { notify } = useContext(ToastContext)
   const { workspaces } = useWorkspacesContext()
   const currentWorkspace = workspaces.find(v => v.current)
-  const isFreePlan = plan.type === 'sandbox'
+
   const handleSwitchWorkspace = async (tenant_id: string) => {
     try {
       if (currentWorkspace?.id === tenant_id)
@@ -49,16 +32,17 @@ const WorkplaceSelector = () => {
       {
         ({ open }) => (
           <>
-            <Menu.Button className={cn(itemClassName,
+            <Menu.Button className={cn(
               `
                 flex items-center p-0.5 gap-1.5 w-full
                 group hover:bg-state-base-hover cursor-pointer ${open && 'bg-state-base-hover'} rounded-[10px]
               `,
-              open && 'bg-state-base-hover',
             )}>
-              <div className={itemIconClassName}>{currentWorkspace?.name[0].toLocaleUpperCase()}</div>
-              <div className={`${itemNameClassName} truncate px-1`}>{currentWorkspace?.name}</div>
-              <ChevronRight className='shrink-0 size-[14px] text-text-tertiary' />
+              <div className='flex items-center justify-center w-7 h-7 bg-[#EFF4FF] rounded-lg text-xs font-medium text-primary-600'>{currentWorkspace?.name[0].toLocaleUpperCase()}</div>
+              <div className='flex flex-row'>
+                <div className={'truncate max-w-[80px] text-text-secondary system-sm-medium'}>{currentWorkspace?.name}</div>
+                <RiArrowDownSLine className='w-4 h-4 text-text-secondary' />
+              </div>
             </Menu.Button>
             <Transition
               as={Fragment}
@@ -72,8 +56,7 @@ const WorkplaceSelector = () => {
               <Menu.Items
                 className={cn(
                   `
-                    absolute top-[1px] w-[216px] max-h-[70vh] overflow-y-scroll z-10 bg-components-panel-bg-blur backdrop-blur-[5px] border-[0.5px] border-components-panel-border
-                    divide-y divide-divider-subtle origin-top-right rounded-xl focus:outline-none
+                    flex w-[280px] flex-col items-start absolute left-[-15px] mt-1 rounded-xl shadows-shadow-lg
                   `,
                 )}
               >
@@ -83,16 +66,10 @@ const WorkplaceSelector = () => {
                   </div>
                   {
                     workspaces.map(workspace => (
-                      <Menu.Item key={workspace.id}>
-                        {({ active }) => <div className={cn(itemClassName,
-                          active && 'bg-state-base-hover',
-                        )} key={workspace.id} onClick={() => handleSwitchWorkspace(workspace.id)}>
-                          <div className={itemIconClassName}>{workspace.name[0].toLocaleUpperCase()}</div>
-                          <div className={itemNameClassName}>{workspace.name}</div>
-                          {workspace.current && <Check className={itemCheckClassName} />}
-                        </div>}
-
-                      </Menu.Item>
+                      <div className='flex py-1 pl-3 pr-2 items-center gap-2 self-stretch hover:bg-state-base-hover rounded-lg' key={workspace.id} onClick={() => handleSwitchWorkspace(workspace.id)}>
+                        <div className='flex items-center justify-center w-6 h-6 bg-[#EFF4FF] rounded-md text-xs font-medium text-primary-600'>{workspace.name[0].toLocaleUpperCase()}</div>
+                        <div className='line-clamp-1 grow overflow-hidden text-text-secondary text-ellipsis system-md-regular cursor-pointer'>{workspace.name}</div>
+                      </div>
                     ))
                   }
                 </div>
