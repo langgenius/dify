@@ -1060,7 +1060,7 @@ class DocumentService:
         dataset: Dataset,
         process_rule_id: str,
         data_source_type: str,
-        document_form: str,  
+        document_form: str,
         document_language: str,
         data_source_info: dict,
         created_from: str,

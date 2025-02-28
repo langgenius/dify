@@ -1,11 +1,11 @@
 /**
  * ChildSegmentList Component
- * 
+ *
  * This component handles the display of child segments in both hierarchical and custom modes.
  * It supports two processing modes as per API documentation:
  * - 'custom': The mode specified in API documentation for parent-child structure
  * - 'hierarchical': The original mode for backward compatibility
- * 
+ *
  * The component adapts its display based on the parent mode (paragraph or full-doc)
  * and the processing mode (custom or hierarchical).
  */
@@ -38,8 +38,7 @@ type IChildSegmentCardProps = {
   onClearFilter?: () => void
   isLoading?: boolean
   focused?: boolean
-  mode: string  // Added to support both 'custom' and 'hierarchical' modes as per API documentation
-}
+  mode: string
 
 const ChildSegmentList: FC<IChildSegmentCardProps> = ({
   childChunks,
@@ -54,7 +53,7 @@ const ChildSegmentList: FC<IChildSegmentCardProps> = ({
   onClearFilter,
   isLoading,
   focused = false,
-  mode,  // Receive mode from parent to determine display logic
+  mode,
 }) => {
   const { t } = useTranslation()
   const parentMode = useDocumentContext(s => s.parentMode)

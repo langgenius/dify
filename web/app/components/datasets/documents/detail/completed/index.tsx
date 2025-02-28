@@ -89,7 +89,7 @@ type ICompletedProps = {
 }
 /**
  * Completed Component
- * 
+ *
  * This component handles the display of completed documents and their segments.
  * It supports both 'custom' (API spec) and 'hierarchical' (legacy) modes for parent-child structure.
  */
@@ -381,7 +381,7 @@ const Completed: FC<ICompletedProps> = ({
 
   useEffect(() => {
     resetList()
-  }, [pathname])
+  }, [pathname, resetList])
 
   useEffect(() => {
     if (importStatus === ProcessStatus.COMPLETED)

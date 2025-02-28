@@ -1,4 +1,4 @@
-import React, { type ForwardedRef, useMemo, type FC } from 'react'
+import React, { type FC, type ForwardedRef, useMemo } from 'react'
 import { useDocumentContext } from '../index'
 import SegmentCard from './segment-card'
 import Empty from './common/empty'
