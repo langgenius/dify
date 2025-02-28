@@ -4,7 +4,8 @@ import { useState } from 'react'
 import Toast from '@/app/components/base/toast'
 import type { FullDocumentDetail } from '@/models/datasets'
 import { useTranslation } from 'react-i18next'
-import { useMetadataMap } from '@/hooks/use-metadata'
+import { useLanguages, useMetadataMap } from '@/hooks/use-metadata'
+import { get } from 'lodash-es'
 
 const testList = [
   {
@@ -91,16 +92,35 @@ const useMetadataDocument = ({
 
   // old metadata and technical params
   const metadataMap = useMetadataMap()
+  const languageMap = useLanguages()
+
   const getReadOnlyMetaData = (mainField: 'originInfo' | 'technicalParameters') => {
     const fieldMap = metadataMap[mainField]?.subFieldsMap
     const sourceData = docDetail
+    const getTargetMap = (field: string) => {
+      if (field === 'language')
+        return languageMap
+
+      return {} as any
+    }
+
+    const getTargetValue = (field: string) => {
+      const val = get(sourceData, field, '')
+      if (!val && val !== 0)
+        return '-'
+      if (fieldMap[field]?.inputType === 'select')
+        return getTargetMap(field)[val]
+      if (fieldMap[field]?.render)
+        return fieldMap[field]?.render?.(val, field === 'hit_count' ? get(sourceData, 'segment_count', 0) as number : undefined)
+      return val
+    }
     const fieldList = Object.keys(fieldMap).map((key) => {
       const field = fieldMap[key]
       return {
         id: field?.label,
         type: DataType.string,
         name: field?.label,
-        value: sourceData[key],
+        value: getTargetValue(key),
       }
     })
 
