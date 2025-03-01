@@ -293,6 +293,15 @@ class BuiltinToolManageService:
         """
         list apo tools
         """
+        apo_tool = "apo_select"
+        match tool_type:
+            case "analysis":
+                apo_tool = "apo_analysis"
+            case "select":
+                apo_tool = "apo_select"
+            case "rule":
+                apo_tool = "apo_rule"
+
         # get all builtin providers
         provider_controllers = ToolManager.list_builtin_providers(tenant_id)
 
@@ -322,6 +331,8 @@ class BuiltinToolManageService:
                         name_func=lambda x: x.identity.name,
                     ):
                         continue
+                    if provider_controller.entity.identity.name != apo_tool:
+                        continue
 
                     # convert provider controller to user provider
                     user_builtin_provider = ToolTransformService.builtin_provider_to_user_provider(
@@ -334,15 +345,32 @@ class BuiltinToolManageService:
                     ToolTransformService.repack_provider(tenant_id=tenant_id, provider=user_builtin_provider)
 
                     tools = provider_controller.get_tools()
-                    for tool in tools or []:
-                        user_builtin_provider.tools.append(
-                            ToolTransformService.convert_tool_entity_to_api_entity(
-                                tenant_id=tenant_id,
-                                tool=tool,
-                                credentials=user_builtin_provider.original_credentials,
-                                labels=ToolLabelManager.get_tool_labels(provider_controller),
+                    if query is None:
+                        for tool in tools or []:
+                            user_builtin_provider.tools.append(
+                                ToolTransformService.convert_tool_entity_to_api_entity(
+                                    tenant_id=tenant_id,
+                                    tool=tool,
+                                    credentials=user_builtin_provider.original_credentials,
+                                    labels=ToolLabelManager.get_tool_labels(provider_controller),
+                                )
                             )
+                    else:
+                        match_tools = process.extract(
+                            query,
+                            [tool.entity.description.human.zh_Hans for tool in tools],
+                            limit=3,
                         )
+                        for match_name, score, index in match_tools or []:
+                            tool = tools[index]
+                            user_builtin_provider.tools.append(
+                                ToolTransformService.convert_tool_entity_to_api_entity(
+                                    tenant_id=tenant_id,
+                                    tool=tool,
+                                    credentials=user_builtin_provider.original_credentials,
+                                    labels=ToolLabelManager.get_tool_labels(provider_controller),
+                                )
+                            )
 
                     result.append(user_builtin_provider)
                 except Exception as e:
