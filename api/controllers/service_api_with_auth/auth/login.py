@@ -1,9 +1,7 @@
 from typing import cast
 
 import flask_login  # type: ignore
-from flask import request
-from flask_restful import Resource, reqparse  # type: ignore
-
+from configs.deploy import DeploymentConfig
 from constants.languages import languages
 from controllers.service_api_with_auth import api
 from controllers.service_api_with_auth.auth.error import (
@@ -16,8 +14,10 @@ from controllers.service_api_with_auth.error import (
     AccountNotFound,
     EmailSendIpLimitError,
     NotAllowedCreateWorkspace,
+    TenantNotFoundError,
 )
-from events.tenant_event import tenant_was_created
+from flask import request
+from flask_restful import Resource, reqparse  # type: ignore
 from libs.helper import email, extract_remote_ip
 from models.account import Account
 from services.account_service import AccountService, TenantService
@@ -117,11 +117,15 @@ class EmailCodeLoginSendEmailApi(Resource):
 
         if account is None:
             if FeatureService.get_system_features().is_allow_register:
-                token = AccountService.send_email_code_login_email(email=args["email"], language=language)
+                token = AccountService.send_email_code_login_email(
+                    email=args["email"], language=language
+                )
             else:
                 raise AccountNotFound()
         else:
-            token = AccountService.send_email_code_login_email(account=account, language=language)
+            token = AccountService.send_email_code_login_email(
+                account=account, language=language
+            )
 
         return {"result": "success", "data": token}
 
@@ -170,49 +174,67 @@ class EmailCodeLoginApi(Resource):
             description: Invalid token, email or code
         """
         parser = reqparse.RequestParser()
+        # TODO: ytqh add a new field for different tenant (default: Saier)
+        parser.add_argument("tenant_id", type=str, required=False, location="json")
         parser.add_argument("email", type=str, required=True, location="json")
         parser.add_argument("code", type=str, required=True, location="json")
         parser.add_argument("token", type=str, required=True, location="json")
         args = parser.parse_args()
 
         user_email = args["email"]
+        tenant_id = args["tenant_id"]
 
-        token_data = AccountService.get_email_code_login_data(args["token"])
-        if token_data is None:
-            raise InvalidTokenError()
+        # Skip token validation if in debug mode is True
+        # WARNING: This is for development purposes only and should never be enabled in production
+        if DeploymentConfig().DEBUG:
+            import logging
 
-        if token_data["email"] != args["email"]:
-            raise InvalidEmailError()
+            logger = logging.getLogger(__name__)
+            logger.warning(
+                f"⚠️ DEBUG MODE: Token validation bypassed for email: {user_email}"
+            )
 
-        if token_data["code"] != args["code"]:
-            raise EmailCodeError()
+            tenant_id = "5cd3029e-7f92-428a-a5c8-14a790c70233"  # TODO: ytqh move this to the config
+        else:
+            token_data = AccountService.get_email_code_login_data(args["token"])
+            if token_data is None:
+                raise InvalidTokenError()
 
-        AccountService.revoke_email_code_login_token(args["token"])
+            if token_data["email"] != args["email"]:
+                raise InvalidEmailError()
+
+            if token_data["code"] != args["code"]:
+                raise EmailCodeError()
+
+            AccountService.revoke_email_code_login_token(args["token"])
+
         try:
             account = AccountService.get_user_through_email(user_email)
+            tenant = TenantService.get_tenant_by_id(tenant_id)
         except AccountRegisterError as are:
             raise AccountInFreezeError()
-        if account:
-            tenant = TenantService.get_join_tenants(account)
-            if not tenant:
-                if not FeatureService.get_system_features().is_allow_create_workspace:
-                    raise NotAllowedCreateWorkspace()
-                else:
-                    tenant = TenantService.create_tenant(f"{account.name}'s Workspace")
-                    TenantService.create_tenant_member(tenant, account, role="owner")
-                    account.current_tenant = tenant
-                    tenant_was_created.send(tenant)
+
+        if tenant is None:
+            raise TenantNotFoundError()
 
         if account is None:
             try:
-                account = AccountService.create_account_and_tenant(
-                    email=user_email, name=user_email, interface_language=languages[0]
+                account = AccountService.create_account_in_tenant(
+                    tenant=tenant,
+                    email=user_email,
+                    name=user_email,
+                    interface_language=languages[0],
                 )
-            except WorkSpaceNotAllowedCreateError:
-                return NotAllowedCreateWorkspace()
             except AccountRegisterError as are:
                 raise AccountInFreezeError()
-        token_pair = AccountService.login(account, ip_address=extract_remote_ip(request))
+        else:
+            connected_tenant = TenantService.get_join_tenants(account)
+            if connected_tenant is None:
+                TenantService.create_tenant_member(tenant, account, role="end_user")
+
+        token_pair = AccountService.login(
+            account, ip_address=extract_remote_ip(request)
+        )
         AccountService.reset_login_error_rate_limit(args["email"])
         return {"result": "success", "data": token_pair.model_dump()}
 

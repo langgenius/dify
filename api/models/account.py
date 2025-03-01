@@ -210,6 +210,8 @@ class TenantAccountJoinRole(enum.Enum):
     ADMIN = "admin"
     NORMAL = "normal"
     DATASET_OPERATOR = "dataset_operator"
+    END_USER = "end_user"
+    END_ADMIN = "end_admin"
 
 
 class TenantAccountJoin(db.Model):  # type: ignore[name-defined]

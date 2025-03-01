@@ -243,6 +243,17 @@ class AccountService:
         return account
 
     @staticmethod
+    def create_account_in_tenant(
+        tenant: Tenant, email: str, name: str, interface_language: str, password: Optional[str] = None
+    ) -> Account:
+        """create account"""
+        account = AccountService.create_account(
+            email=email, name=name, interface_language=interface_language, password=password
+        )
+        TenantService.create_tenant_member(tenant, account, role="end_user")
+        return account
+
+    @staticmethod
     def create_account_and_tenant(
         email: str, name: str, interface_language: str, password: Optional[str] = None
     ) -> Account:
@@ -549,6 +560,11 @@ def _get_login_cache_key(*, account_id: str, token: str):
 
 
 class TenantService:
+
+    @staticmethod
+    def get_tenant_by_id(tenant_id: str) -> Tenant:
+        return Tenant.query.filter_by(id=tenant_id).first()
+    
     @staticmethod
     def create_tenant(name: str, is_setup: Optional[bool] = False, is_from_dashboard: Optional[bool] = False) -> Tenant:
         """Create tenant"""

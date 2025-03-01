@@ -101,3 +101,8 @@ class AccountInFreezeError(BaseHTTPException):
         "This email account has been deleted within the past 30 days"
         "and is temporarily unavailable for new account registration."
     )
+
+class TenantNotFoundError(BaseHTTPException):
+    error_code = "tenant_not_found"
+    description = "Tenant not found."
+    code = 400
