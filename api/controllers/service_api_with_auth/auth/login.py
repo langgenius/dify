@@ -175,7 +175,13 @@ class EmailCodeLoginApi(Resource):
         """
         parser = reqparse.RequestParser()
         # TODO: ytqh add a new field for different tenant (default: Saier)
-        parser.add_argument("tenant_id", type=str, required=False, location="json")
+        parser.add_argument(
+            "tenant_id",
+            type=str,
+            required=False,
+            default="5cd3029e-7f92-428a-a5c8-14a790c70233",
+            location="json",
+        )  # TODO: ytqh move this to the config
         parser.add_argument("email", type=str, required=True, location="json")
         parser.add_argument("code", type=str, required=True, location="json")
         parser.add_argument("token", type=str, required=True, location="json")
@@ -184,29 +190,17 @@ class EmailCodeLoginApi(Resource):
         user_email = args["email"]
         tenant_id = args["tenant_id"]
 
-        # Skip token validation if in debug mode is True
-        # WARNING: This is for development purposes only and should never be enabled in production
-        if DeploymentConfig().DEBUG:
-            import logging
+        token_data = AccountService.get_email_code_login_data(args["token"])
+        if token_data is None:
+            raise InvalidTokenError()
 
-            logger = logging.getLogger(__name__)
-            logger.warning(
-                f"⚠️ DEBUG MODE: Token validation bypassed for email: {user_email}"
-            )
+        if token_data["email"] != args["email"]:
+            raise InvalidEmailError()
 
-            tenant_id = "5cd3029e-7f92-428a-a5c8-14a790c70233"  # TODO: ytqh move this to the config
-        else:
-            token_data = AccountService.get_email_code_login_data(args["token"])
-            if token_data is None:
-                raise InvalidTokenError()
+        if token_data["code"] != args["code"]:
+            raise EmailCodeError()
 
-            if token_data["email"] != args["email"]:
-                raise InvalidEmailError()
-
-            if token_data["code"] != args["code"]:
-                raise EmailCodeError()
-
-            AccountService.revoke_email_code_login_token(args["token"])
+        AccountService.revoke_email_code_login_token(args["token"])
 
         try:
             account = AccountService.get_user_through_email(user_email)
@@ -229,7 +223,7 @@ class EmailCodeLoginApi(Resource):
                 raise AccountInFreezeError()
         else:
             connected_tenant = TenantService.get_join_tenants(account)
-            if connected_tenant is None:
+            if connected_tenant is None or tenant not in connected_tenant:
                 TenantService.create_tenant_member(tenant, account, role="end_user")
 
         token_pair = AccountService.login(

@@ -9,6 +9,7 @@ from hashlib import sha256
 from typing import Any, Optional, cast
 
 from configs import dify_config
+from configs.deploy import DeploymentConfig
 from constants.languages import language_timezone_mapping, languages
 from events.tenant_event import tenant_was_created
 from extensions.ext_database import db
@@ -28,7 +29,7 @@ from models.account import (
     TenantStatus,
 )
 from models.model import DifySetup
-from pydantic import BaseModel
+from pydantic import BaseModel  # type: ignore
 from services.billing_service import BillingService
 from services.errors.account import (
     AccountAlreadyInTenantError,
@@ -48,7 +49,7 @@ from services.errors.account import (
 )
 from services.errors.workspace import WorkSpaceNotAllowedCreateError
 from services.feature_service import FeatureService
-from sqlalchemy import func
+from sqlalchemy import func  # type: ignore
 from tasks.delete_account_task import delete_account_task
 from tasks.mail_account_deletion_task import send_account_deletion_verification_code
 from tasks.mail_email_code_login import send_email_code_login_mail_task
@@ -504,14 +505,22 @@ class AccountService:
         email = account.email if account else email
         if email is None:
             raise ValueError("Email must be provided.")
-        if cls.email_code_login_rate_limiter.is_rate_limited(email):
+        if (
+            cls.email_code_login_rate_limiter.is_rate_limited(email)
+            and not DeploymentConfig().DEBUG
+        ):
             from controllers.console.auth.error import (
                 EmailCodeLoginRateLimitExceededError,
             )
 
             raise EmailCodeLoginRateLimitExceededError()
 
-        code = "".join([str(random.randint(0, 9)) for _ in range(6)])
+        # if debug mode, force set code to 111111
+        if DeploymentConfig().DEBUG:
+            code = "111111"  # TODO: ytqh move this to config
+        else:
+            code = "".join([str(random.randint(0, 9)) for _ in range(6)])
+
         token = TokenManager.generate_token(
             account=account,
             email=email,
