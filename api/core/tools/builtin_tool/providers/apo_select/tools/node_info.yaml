@@ -1,0 +1,105 @@
+identity:
+  name: node_info
+  author: APO
+  label:
+    en_US: node_info
+    zh_Hans: 获取节点信息
+    pt_BR: node_info
+description:
+  human:
+    en_US: A tool for getting fault log.
+    zh_Hans: 获取节点信息
+    pt_BR: A tool for getting fault log.
+  llm: A tool for getting fault log.
+parameters:
+  - name: entryService
+    type: string
+    required: true
+    label:
+      en_US: entryService
+      zh_Hans: 入口服务名
+      pt_BR: entryService
+    human_description:
+      en_US: Time format in strftime standard.
+      zh_Hans: 拓扑入口服务名
+      pt_BR: Time format in strftime standard.
+    llm_description: toplogy service name
+    form: llm
+  - name: entryEndpoint
+    type: string
+    required: true
+    label:
+      en_US: entryEndpoint
+      zh_Hans: 入口服务端点
+      pt_BR: entryEndpoint
+    human_description:
+      en_US: Time format in strftime standard.
+      zh_Hans: 拓扑入口服务端点
+      pt_BR: Time format in strftime standard.
+    llm_description: toplogy endpoint
+    form: llm
+  - name: service
+    type: string
+    required: true
+    label:
+      en_US: service
+      zh_Hans: 服务名
+      pt_BR: service
+    human_description:
+      en_US: Time format in strftime standard.
+      zh_Hans: 查询指定服务的名称
+      pt_BR: Time format in strftime standard.
+    llm_description: Time format in strftime standard.
+    form: llm
+  - name: endpoint
+    type: string
+    required: true
+    label:
+      en_US: endpoint
+      zh_Hans: 服务端点
+      pt_BR: endpoint
+    human_description:
+      en_US: Time format in strftime standard.
+      zh_Hans: 指定服务的端点
+      pt_BR: Time format in strftime standard.
+    llm_description: toplogy endpoint
+    form: llm
+  - name: start_time
+    type: number
+    required: false
+    label:
+      en_US: start_time
+      zh_Hans: 开始时间
+      pt_BR: start_time
+    human_description:
+      en_US: Time format in strftime standard.
+      zh_Hans: 指定查询CPU指标的开始时间。
+      pt_BR: Time format in strftime standard.
+    llm_description: Time format in strftime standard.
+    form: llm
+  - name: end_time
+    type: number
+    required: false
+    label:
+      en_US: end_time
+      zh_Hans: 结束时间
+      pt_BR: end_time
+    human_description:
+      en_US: Time format in strftime standard.
+      zh_Hans: 指定查询CPU指标的结束时间。
+      pt_BR: Time format in strftime standard.
+    llm_description: Time format in strftime standard.
+    form: llm
+  - name: type
+    type: string
+    required: false
+    label:
+      en_US: type
+      zh_Hans: 查询数据类型(log, slow, error)
+      pt_BR: type
+    human_description:
+      en_US: Time format in strftime standard.
+      zh_Hans: 指定查询数据类型(log, slow, error)。
+      pt_BR: Time format in strftime standard.
+    llm_description: Time format in strftime standard.
+    form: llm

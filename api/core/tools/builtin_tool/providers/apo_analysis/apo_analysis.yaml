@@ -1,0 +1,14 @@
+identity:
+  author: APO
+  name: apo_analysis
+  label:
+    en_US: APOAnalysis
+    zh_Hans: APO异常检测
+    pt_BR: APOSelect
+  description:
+    en_US: A tool for getting the current time.
+    zh_Hans: APO异常检测分析。
+    pt_BR: A tool for getting the current time.
+  icon: icon.svg
+  tags:
+    - utilities

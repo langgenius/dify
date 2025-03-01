@@ -1,0 +1,53 @@
+identity:
+  name: select_container_cpu
+  author: APO
+  label:
+    en_US: select_container_cpu
+    zh_Hans: 查询容器CPU占用
+    pt_BR: select_container_cpu
+description:
+  human:
+    en_US: A tool for getting container cpu.
+    zh_Hans: 查询容器CPU占用
+    pt_BR: A tool for getting container cpu.
+  llm: A tool for getting container cpu.
+parameters:
+  - name: container_name
+    type: string
+    required: true
+    label:
+      en_US: container_name
+      zh_Hans: 容器名
+      pt_BR: container_name
+    human_description:
+      en_US: Time format in strftime standard.
+      zh_Hans: 查询指定Pod的CPU占用。
+      pt_BR: Time format in strftime standard.
+    llm_description: Time format in strftime standard.
+    form: llm
+  - name: start_time
+    type: number
+    required: false
+    label:
+      en_US: start_time
+      zh_Hans: 开始时间
+      pt_BR: start_time
+    human_description:
+      en_US: Time format in strftime standard.
+      zh_Hans: 指定查询CPU指标的开始时间。
+      pt_BR: Time format in strftime standard.
+    llm_description: Time format in strftime standard.
+    form: llm
+  - name: end_time
+    type: number
+    required: false
+    label:
+      en_US: end_time
+      zh_Hans: 结束时间
+      pt_BR: end_time
+    human_description:
+      en_US: Time format in strftime standard.
+      zh_Hans: 指定查询CPU指标的结束时间。
+      pt_BR: Time format in strftime standard.
+    llm_description: Time format in strftime standard.
+    form: llm

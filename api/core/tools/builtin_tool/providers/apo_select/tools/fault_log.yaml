@@ -1,0 +1,53 @@
+identity:
+  name: fault_log
+  author: APO
+  label:
+    en_US: fault_log
+    zh_Hans: 获取故障现场日志
+    pt_BR: fault_log
+description:
+  human:
+    en_US: A tool for getting fault log.
+    zh_Hans: 查询容器CPU占用
+    pt_BR: A tool for getting fault log.
+  llm: A tool for getting fault log.
+parameters:
+  - name: service
+    type: string
+    required: true
+    label:
+      en_US: service
+      zh_Hans: 服务名
+      pt_BR: service
+    human_description:
+      en_US: Time format in strftime standard.
+      zh_Hans: 查询指定Pod的CPU占用。
+      pt_BR: Time format in strftime standard.
+    llm_description: Time format in strftime standard.
+    form: llm
+  - name: start_time
+    type: number
+    required: false
+    label:
+      en_US: start_time
+      zh_Hans: 开始时间
+      pt_BR: start_time
+    human_description:
+      en_US: Time format in strftime standard.
+      zh_Hans: 指定查询CPU指标的开始时间。
+      pt_BR: Time format in strftime standard.
+    llm_description: Time format in strftime standard.
+    form: llm
+  - name: end_time
+    type: number
+    required: false
+    label:
+      en_US: end_time
+      zh_Hans: 结束时间
+      pt_BR: end_time
+    human_description:
+      en_US: Time format in strftime standard.
+      zh_Hans: 指定查询CPU指标的结束时间。
+      pt_BR: Time format in strftime standard.
+    llm_description: Time format in strftime standard.
+    form: llm

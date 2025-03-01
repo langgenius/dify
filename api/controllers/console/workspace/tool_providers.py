@@ -562,6 +562,31 @@ class ToolBuiltinListApi(Resource):
         )
 
 
+class APOToolBuiltinListApi(Resource):
+    def get(self):
+        user = current_user
+        user_id = user.id
+        tenant_id = user.current_tenant_id
+
+        parser = reqparse.RequestParser()
+        parser.add_argument("tool_type", type=str, required=True, nullable=False, location="args")
+        parser.add_argument("query", type=str, required=False, nullable=True, location="args")
+
+        args = parser.parse_args()
+
+        return jsonable_encoder(
+            [
+                provider.to_dict()
+                for provider in BuiltinToolManageService.list_apo_tools(
+                    user_id,
+                    tenant_id,
+                    args["tool_type"],
+                    args.get("query", None),
+                )
+            ]
+        )
+
+
 class ToolApiListApi(Resource):
     @setup_required
     @login_required
@@ -648,6 +673,7 @@ api.add_resource(ToolWorkflowProviderGetApi, "/workspaces/current/tool-provider/
 api.add_resource(ToolWorkflowProviderListToolApi, "/workspaces/current/tool-provider/workflow/tools")
 
 api.add_resource(ToolBuiltinListApi, "/workspaces/current/tools/builtin")
+api.add_resource(APOToolBuiltinListApi, "/workspaces/current/tools/apo")
 api.add_resource(ToolApiListApi, "/workspaces/current/tools/api")
 api.add_resource(ToolWorkflowListApi, "/workspaces/current/tools/workflow")
 

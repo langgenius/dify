@@ -1,0 +1,14 @@
+identity:
+  author: APO
+  name: apo_rule
+  label:
+    en_US: APORule
+    zh_Hans: APO规则执行
+    pt_BR: APOSelect
+  description:
+    en_US: APO execute rule.
+    zh_Hans: APO规则执行
+    pt_BR: APO execute rule.
+  icon: icon.svg
+  tags:
+    - utilities

@@ -1,0 +1,14 @@
+identity:
+  author: APO
+  name: apo_select
+  label:
+    en_US: APOSelect
+    zh_Hans: APO查询数据
+    pt_BR: APOSelect
+  description:
+    en_US: APO query data.
+    zh_Hans: APO查询数据的工具。
+    pt_BR: APO query data.
+  icon: icon.svg
+  tags:
+    - utilities

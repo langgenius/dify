@@ -1,0 +1,40 @@
+identity:
+  name: alert_associate
+  author: APO
+  label:
+    en_US: alert_associate
+    zh_Hans: 关联拓扑和告警数据
+    pt_BR: alert_associate
+description:
+  human:
+    en_US: A tool for alert_associate
+    zh_Hans: 关联拓扑和告警数据
+    pt_BR: A tool for alert_associate
+  llm: A tool for alert_associate
+parameters:
+  - name: topology_data
+    type: string
+    required: true
+    label:
+      en_US: topology_data
+      zh_Hans: 拓扑数据
+      pt_BR: topology_data
+    human_description:
+      en_US: topology_data
+      zh_Hans: 拓扑数据
+      pt_BR: topology_data
+    llm_description: topology data
+    form: llm
+  - name: alert_data
+    type: string
+    required: false
+    label:
+      en_US: alert_data
+      zh_Hans: 告警事件数据
+      pt_BR: alert_data
+    human_description:
+      en_US: alert_data
+      zh_Hans: 告警事件数据
+      pt_BR: alert_data
+    llm_description: alert event data
+    form: llm
