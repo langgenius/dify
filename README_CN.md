@@ -186,6 +186,8 @@ Dify 是一个开源的 LLM 应用开发平台。其直观的界面结合了 AI 
 
 启动 Dify 服务器的最简单方法是运行我们的 [docker-compose.yml](docker/docker-compose.yaml) 文件。在运行安装命令之前，请确保您的机器上安装了 [Docker](https://docs.docker.com/get-docker/) 和 [Docker Compose](https://docs.docker.com/compose/install/)：
 
+> **镜像加速**：如果您在中国大陆地区，可能会遇到 Docker 镜像拉取速度慢的问题。您可以使用 DaoCloud 提供的[镜像代理加速](https://github.com/DaoCloud/public-image-mirror)：`docker.m.daocloud.io`。比如只需在 docker-compose.yaml 文件中将所有的 `langgenius/` 镜像前缀替换为 `docker.m.daocloud.io/langgenius/`，将 `postgres:15-alpine` 替换为 `docker.m.daocloud.io/postgres:15-alpine` 即可。
+
 ```bash
 cd docker
 cp .env.example .env
