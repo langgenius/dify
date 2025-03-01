@@ -34,8 +34,6 @@ class LogoutApi(Resource):
           - user/auth
         summary: Logout User
         description: Logs out the authenticated user and invalidates the session
-        security:
-          - ApiKeyAuth: []
         responses:
           200:
             description: Successfully logged out
@@ -241,8 +239,6 @@ class RefreshTokenApi(Resource):
           - user/auth
         summary: Refresh Token
         description: Refreshes an access token using a valid refresh token
-        security:
-          - ApiKeyAuth: []
         parameters:
           - in: body
             name: body
