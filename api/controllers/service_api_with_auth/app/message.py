@@ -1,20 +1,23 @@
 import logging
 
-from flask_restful import Resource, fields, marshal_with, reqparse  # type: ignore
-from flask_restful.inputs import int_range  # type: ignore
-from werkzeug.exceptions import BadRequest, InternalServerError, NotFound
-
 import services
 from controllers.service_api_with_auth import api
 from controllers.service_api_with_auth.app.error import NotChatAppError
-from controllers.service_api_with_auth.wraps import FetchUserArg, WhereisUserArg, validate_app_token
+from controllers.service_api_with_auth.wraps import (
+    FetchUserArg,
+    WhereisUserArg,
+    validate_app_token,
+)
 from core.app.entities.app_invoke_entities import InvokeFrom
 from fields.conversation_fields import message_file_fields
 from fields.raws import FilesContainedField
+from flask_restful import Resource, fields, marshal_with, reqparse  # type: ignore
+from flask_restful.inputs import int_range  # type: ignore
 from libs.helper import TimestampField, uuid_value
 from models.model import App, AppMode, EndUser
 from services.errors.message import SuggestedQuestionsAfterAnswerDisabledError
 from services.message_service import MessageService
+from werkzeug.exceptions import BadRequest, InternalServerError, NotFound
 
 
 class MessageListApi(Resource):
@@ -74,9 +77,57 @@ class MessageListApi(Resource):
         "data": fields.List(fields.Nested(message_fields)),
     }
 
-    @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.QUERY))
+    @validate_app_token
     @marshal_with(message_infinite_scroll_pagination_fields)
     def get(self, app_model: App, end_user: EndUser):
+        """Get messages list.
+        ---
+        tags:
+          - app/message
+        summary: List messages
+        description: Get a paginated list of messages for a conversation
+        security:
+          - ApiKeyAuth: []
+        parameters:
+          - name: conversation_id
+            in: query
+            required: true
+            type: string
+            format: uuid
+            description: ID of the conversation to get messages for
+          - name: first_id
+            in: query
+            type: string
+            format: uuid
+            description: ID of the first message for pagination
+          - name: limit
+            in: query
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+            description: Number of messages to return
+        responses:
+          200:
+            description: Messages retrieved successfully
+            schema:
+              type: object
+              properties:
+                limit:
+                  type: integer
+                has_more:
+                  type: boolean
+                data:
+                  type: array
+                  items:
+                    type: object
+          400:
+            description: Invalid request
+          401:
+            description: Invalid or missing token
+          404:
+            description: Conversation not found or not a chat app
+        """
         app_mode = AppMode.value_of(app_model.mode)
         if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
             raise NotChatAppError()
@@ -98,8 +149,54 @@ class MessageListApi(Resource):
 
 
 class MessageFeedbackApi(Resource):
-    @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.JSON, required=True))
+    @validate_app_token
     def post(self, app_model: App, end_user: EndUser, message_id):
+        """Submit feedback for a message.
+        ---
+        tags:
+          - app/message
+        summary: Submit message feedback
+        description: Submit user feedback for a specific message
+        security:
+          - ApiKeyAuth: []
+        parameters:
+          - name: message_id
+            in: path
+            required: true
+            type: string
+            format: uuid
+            description: ID of the message to provide feedback for
+          - name: body
+            in: body
+            required: true
+            schema:
+              type: object
+              required:
+                - rating
+              properties:
+                rating:
+                  type: string
+                  enum: [like, dislike, null]
+                  description: User's rating of the message
+                content:
+                  type: string
+                  description: Additional feedback content
+        responses:
+          200:
+            description: Feedback submitted successfully
+            schema:
+              type: object
+              properties:
+                result:
+                  type: string
+                  example: success
+          400:
+            description: Invalid request
+          401:
+            description: Invalid or missing token
+          404:
+            description: Message not found or not a chat app
+        """
         message_id = str(message_id)
 
         parser = reqparse.RequestParser()
@@ -122,8 +219,43 @@ class MessageFeedbackApi(Resource):
 
 
 class MessageSuggestedApi(Resource):
-    @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.QUERY, required=True))
+    @validate_app_token
     def get(self, app_model: App, end_user: EndUser, message_id):
+        """Get suggested questions for a message.
+        ---
+        tags:
+          - app/message
+        summary: Get suggested questions
+        description: Get suggested follow-up questions for a specific message
+        security:
+          - ApiKeyAuth: []
+        parameters:
+          - name: message_id
+            in: path
+            required: true
+            type: string
+            format: uuid
+            description: ID of the message to get suggestions for
+        responses:
+          200:
+            description: Suggested questions retrieved successfully
+            schema:
+              type: object
+              properties:
+                result:
+                  type: string
+                  example: success
+                data:
+                  type: array
+                  items:
+                    type: string
+          400:
+            description: Invalid request or suggestions disabled
+          401:
+            description: Invalid or missing token
+          404:
+            description: Message not found or not a chat app
+        """
         message_id = str(message_id)
         app_mode = AppMode.value_of(app_model.mode)
         if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:

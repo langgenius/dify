@@ -1,12 +1,11 @@
-from flask_restful import Resource, marshal_with, reqparse  # type: ignore
-from flask_restful.inputs import int_range  # type: ignore
-from sqlalchemy.orm import Session
-from werkzeug.exceptions import NotFound
-
 import services
 from controllers.service_api_with_auth import api
 from controllers.service_api_with_auth.app.error import NotChatAppError
-from controllers.service_api_with_auth.wraps import FetchUserArg, WhereisUserArg, validate_app_token
+from controllers.service_api_with_auth.wraps import (
+    FetchUserArg,
+    WhereisUserArg,
+    validate_app_token,
+)
 from core.app.entities.app_invoke_entities import InvokeFrom
 from extensions.ext_database import db
 from fields.conversation_fields import (
@@ -14,15 +13,63 @@ from fields.conversation_fields import (
     conversation_infinite_scroll_pagination_fields,
     simple_conversation_fields,
 )
+from flask_restful import Resource, marshal_with, reqparse  # type: ignore
+from flask_restful.inputs import int_range  # type: ignore
 from libs.helper import uuid_value
 from models.model import App, AppMode, EndUser
 from services.conversation_service import ConversationService
+from sqlalchemy.orm import Session  # type: ignore
+from werkzeug.exceptions import NotFound
 
 
 class ConversationApi(Resource):
-    @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.QUERY))
+    @validate_app_token
     @marshal_with(conversation_infinite_scroll_pagination_fields)
     def get(self, app_model: App, end_user: EndUser):
+        """Get conversations list.
+        ---
+        tags:
+          - app/conversation
+        summary: List conversations
+        description: Get a paginated list of conversations for the current user
+        security:
+          - ApiKeyAuth: []
+        parameters:
+          - name: last_id
+            in: query
+            type: string
+            format: uuid
+            description: ID of the last conversation for pagination
+          - name: limit
+            in: query
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+            description: Number of conversations to return
+          - name: sort_by
+            in: query
+            type: string
+            enum: [created_at, -created_at, updated_at, -updated_at]
+            default: -updated_at
+            description: Field to sort by, prefix with - for descending order
+        responses:
+          200:
+            description: Conversations retrieved successfully
+            schema:
+              type: object
+              properties:
+                data:
+                  type: array
+                  items:
+                    type: object
+                has_more:
+                  type: boolean
+          401:
+            description: Invalid or missing token
+          404:
+            description: Not a chat app
+        """
         app_mode = AppMode.value_of(app_model.mode)
         if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
             raise NotChatAppError()
@@ -56,9 +103,38 @@ class ConversationApi(Resource):
 
 
 class ConversationDetailApi(Resource):
-    @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.JSON))
+    @validate_app_token
     @marshal_with(conversation_delete_fields)
     def delete(self, app_model: App, end_user: EndUser, c_id):
+        """Delete a conversation.
+        ---
+        tags:
+          - app/conversation
+        summary: Delete conversation
+        description: Delete a specific conversation
+        security:
+          - ApiKeyAuth: []
+        parameters:
+          - name: c_id
+            in: path
+            required: true
+            type: string
+            format: uuid
+            description: ID of the conversation to delete
+        responses:
+          200:
+            description: Conversation deleted successfully
+            schema:
+              type: object
+              properties:
+                result:
+                  type: string
+                  example: success
+          401:
+            description: Invalid or missing token
+          404:
+            description: Conversation not found or not a chat app
+        """
         app_mode = AppMode.value_of(app_model.mode)
         if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
             raise NotChatAppError()
@@ -73,9 +149,57 @@ class ConversationDetailApi(Resource):
 
 
 class ConversationRenameApi(Resource):
-    @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.JSON))
+    @validate_app_token
     @marshal_with(simple_conversation_fields)
     def post(self, app_model: App, end_user: EndUser, c_id):
+        """Rename a conversation.
+        ---
+        tags:
+          - app/conversation
+        summary: Rename conversation
+        description: Change the name of a specific conversation
+        security:
+          - ApiKeyAuth: []
+        parameters:
+          - name: c_id
+            in: path
+            required: true
+            type: string
+            format: uuid
+            description: ID of the conversation to rename
+          - name: body
+            in: body
+            required: true
+            schema:
+              type: object
+              required:
+                - name
+              properties:
+                name:
+                  type: string
+                  description: New name for the conversation
+                auto_generate:
+                  type: boolean
+                  default: false
+                  description: Whether to auto-generate the name
+        responses:
+          200:
+            description: Conversation renamed successfully
+            schema:
+              type: object
+              properties:
+                id:
+                  type: string
+                  format: uuid
+                name:
+                  type: string
+          400:
+            description: Invalid request
+          401:
+            description: Invalid or missing token
+          404:
+            description: Conversation not found or not a chat app
+        """
         app_mode = AppMode.value_of(app_model.mode)
         if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
             raise NotChatAppError()

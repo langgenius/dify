@@ -1,10 +1,9 @@
-from flask_restful import Resource, marshal_with  # type: ignore
-
 from controllers.common import fields
 from controllers.common import helpers as controller_helpers
 from controllers.service_api_with_auth import api
 from controllers.service_api_with_auth.app.error import AppUnavailableError
 from controllers.service_api_with_auth.wraps import validate_app_token
+from flask_restful import Resource, marshal_with  # type: ignore
 from models.model import App, AppMode
 from services.app_service import AppService
 
@@ -15,7 +14,26 @@ class AppParameterApi(Resource):
     @validate_app_token
     @marshal_with(fields.parameters_fields)
     def get(self, app_model: App):
-        """Retrieve app parameters."""
+        """Retrieve app parameters.
+        ---
+        tags:
+          - app/parameters
+        summary: Get app parameters
+        description: Retrieve parameters for the current application
+        security:
+          - ApiKeyAuth: []
+        responses:
+          200:
+            description: Parameters retrieved successfully
+            schema:
+              type: object
+          400:
+            description: Invalid request
+          401:
+            description: Invalid or missing token
+          404:
+            description: App unavailable
+        """
         if app_model.mode in {AppMode.ADVANCED_CHAT.value, AppMode.WORKFLOW.value}:
             workflow = app_model.workflow
             if workflow is None:
@@ -40,14 +58,53 @@ class AppParameterApi(Resource):
 class AppMetaApi(Resource):
     @validate_app_token
     def get(self, app_model: App):
-        """Get app meta"""
+        """Get app meta information.
+        ---
+        tags:
+          - app/meta
+        summary: Get app meta
+        description: Retrieve meta information for the current application
+        security:
+          - ApiKeyAuth: []
+        responses:
+          200:
+            description: Meta information retrieved successfully
+            schema:
+              type: object
+          401:
+            description: Invalid or missing token
+        """
         return AppService().get_app_meta(app_model)
 
 
 class AppInfoApi(Resource):
     @validate_app_token
     def get(self, app_model: App):
-        """Get app information"""
+        """Get app information.
+        ---
+        tags:
+          - app/info
+        summary: Get app info
+        description: Retrieve basic information about the current application
+        security:
+          - ApiKeyAuth: []
+        responses:
+          200:
+            description: App information retrieved successfully
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                description:
+                  type: string
+                tags:
+                  type: array
+                  items:
+                    type: string
+          401:
+            description: Invalid or missing token
+        """
         tags = [tag.name for tag in app_model.tags]
         return {"name": app_model.name, "description": app_model.description, "tags": tags}
 

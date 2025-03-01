@@ -1,9 +1,5 @@
 import logging
 
-from libs.login import login_required
-from flask_restful import Resource, reqparse  # type: ignore
-from werkzeug.exceptions import InternalServerError, NotFound
-
 import services
 from controllers.service_api_with_auth import api
 from controllers.service_api_with_auth.app.error import (
@@ -15,7 +11,11 @@ from controllers.service_api_with_auth.app.error import (
     ProviderNotInitializeError,
     ProviderQuotaExceededError,
 )
-from controllers.service_api_with_auth.wraps import FetchUserArg, WhereisUserArg, validate_app_token
+from controllers.service_api_with_auth.wraps import (
+    FetchUserArg,
+    WhereisUserArg,
+    validate_app_token,
+)
 from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.errors.error import (
@@ -24,15 +24,62 @@ from core.errors.error import (
     QuotaExceededError,
 )
 from core.model_runtime.errors.invoke import InvokeError
+from flask_restful import Resource, reqparse  # type: ignore
 from libs import helper
 from libs.helper import uuid_value
+from libs.login import login_required
 from models.model import App, AppMode, EndUser
 from services.app_generate_service import AppGenerateService
+from werkzeug.exceptions import InternalServerError, NotFound
 
 
 class CompletionApi(Resource):
-    @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.JSON, required=True))
+    @validate_app_token
     def post(self, app_model: App, end_user: EndUser):
+        """Generate completion response.
+        ---
+        tags:
+          - app/completion
+        summary: Generate completion
+        description: Generate a completion response for the provided inputs
+        security:
+          - ApiKeyAuth: []
+        parameters:
+          - name: body
+            in: body
+            required: true
+            schema:
+              type: object
+              required:
+                - inputs
+              properties:
+                inputs:
+                  type: object
+                  description: Input variables for the completion
+                query:
+                  type: string
+                  description: User query text
+                files:
+                  type: array
+                  description: List of files to process
+                response_mode:
+                  type: string
+                  enum: [blocking, streaming]
+                  description: Response delivery mode
+                retriever_from:
+                  type: string
+                  default: dev
+                  description: Source of the retriever
+        responses:
+          200:
+            description: Completion generated successfully
+          400:
+            description: Invalid request
+          401:
+            description: Invalid or missing token
+          404:
+            description: App unavailable or conversation not found
+        """
         if app_model.mode != "completion":
             raise AppUnavailableError()
 
@@ -82,8 +129,36 @@ class CompletionApi(Resource):
 
 
 class CompletionStopApi(Resource):
-    @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.JSON, required=True))
+    @validate_app_token
     def post(self, app_model: App, end_user: EndUser, task_id):
+        """Stop a running completion task.
+        ---
+        tags:
+          - app/completion
+        summary: Stop completion task
+        description: Stop a running completion generation task
+        security:
+          - ApiKeyAuth: []
+        parameters:
+          - name: task_id
+            in: path
+            required: true
+            type: string
+            description: ID of the task to stop
+        responses:
+          200:
+            description: Task stopped successfully
+            schema:
+              type: object
+              properties:
+                result:
+                  type: string
+                  example: success
+          401:
+            description: Invalid or missing token
+          404:
+            description: App unavailable
+        """
         if app_model.mode != "completion":
             raise AppUnavailableError()
 
@@ -93,8 +168,61 @@ class CompletionStopApi(Resource):
 
 
 class ChatApi(Resource):
-    @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.JSON, required=True))
+    @validate_app_token
     def post(self, app_model: App, end_user: EndUser):
+        """Generate chat response.
+        ---
+        tags:
+          - app/chat
+        summary: Generate chat response
+        description: Generate a chat response for the provided inputs and query
+        security:
+          - ApiKeyAuth: []
+        parameters:
+          - name: body
+            in: body
+            required: true
+            schema:
+              type: object
+              required:
+                - inputs
+                - query
+              properties:
+                inputs:
+                  type: object
+                  description: Input variables for the chat
+                query:
+                  type: string
+                  description: User query text
+                files:
+                  type: array
+                  description: List of files to process
+                response_mode:
+                  type: string
+                  enum: [blocking, streaming]
+                  description: Response delivery mode
+                conversation_id:
+                  type: string
+                  format: uuid
+                  description: ID of an existing conversation to continue
+                retriever_from:
+                  type: string
+                  default: dev
+                  description: Source of the retriever
+                auto_generate_name:
+                  type: boolean
+                  default: true
+                  description: Whether to automatically generate a name for the conversation
+        responses:
+          200:
+            description: Chat response generated successfully
+          400:
+            description: Invalid request
+          401:
+            description: Invalid or missing token
+          404:
+            description: App unavailable or conversation not found
+        """
         app_mode = AppMode.value_of(app_model.mode)
         if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
             raise NotChatAppError()
@@ -141,8 +269,36 @@ class ChatApi(Resource):
 
 
 class ChatStopApi(Resource):
-    @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.JSON, required=True))
+    @validate_app_token
     def post(self, app_model: App, end_user: EndUser, task_id):
+        """Stop a running chat task.
+        ---
+        tags:
+          - app/chat
+        summary: Stop chat task
+        description: Stop a running chat generation task
+        security:
+          - ApiKeyAuth: []
+        parameters:
+          - name: task_id
+            in: path
+            required: true
+            type: string
+            description: ID of the task to stop
+        responses:
+          200:
+            description: Task stopped successfully
+            schema:
+              type: object
+              properties:
+                result:
+                  type: string
+                  example: success
+          401:
+            description: Invalid or missing token
+          404:
+            description: App unavailable or not a chat app
+        """
         app_mode = AppMode.value_of(app_model.mode)
         if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
             raise NotChatAppError()
