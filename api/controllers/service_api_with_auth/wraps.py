@@ -4,6 +4,7 @@ from enum import Enum
 from functools import wraps
 from typing import Optional
 
+from configs import dify_config
 from extensions.ext_database import db
 from flask import current_app, request
 from flask_login import user_logged_in  # type: ignore
@@ -58,8 +59,10 @@ def validate_app_token(view: Optional[Callable] = None):
             except Exception as e:
                 raise Unauthorized(f"Failed to extract user_id from token: {str(e)}")
 
-            # Get app model using hardcoded ID
-            app_id = "b278ba96-fa8e-48a8-b3e9-debe34468be0"  # TODO: ytqh Replace with your actual hardcoded app ID
+            app_id = request.headers.get("X-App-Id")
+            if not app_id:
+                app_id = dify_config.DEFAULT_APP_ID
+
             app_model = db.session.query(App).filter(App.id == app_id).first()
 
             if not app_model:

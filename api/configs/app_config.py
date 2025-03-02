@@ -12,6 +12,7 @@ from .middleware import MiddlewareConfig
 from .packaging import PackagingInfo
 from .remote_settings_sources import RemoteSettingsSource, RemoteSettingsSourceConfig, RemoteSettingsSourceName
 from .remote_settings_sources.apollo import ApolloSettingsSource
+from .school import SchoolConfig
 
 logger = logging.getLogger(__name__)
 
@@ -64,6 +65,8 @@ class DifyConfig(
     # Enterprise feature configs
     # **Before using, please contact business@dify.ai by email to inquire about licensing matters.**
     EnterpriseFeatureConfig,
+    # School Configs
+    SchoolConfig,
 ):
     model_config = SettingsConfigDict(
         # read from dotenv format config file

@@ -17,6 +17,11 @@ class DeploymentConfig(BaseSettings):
         default=False,
     )
 
+    DEBUG_EMAIL_CODE_FOR_LOGIN: str = Field(
+        description="Default email code for login",
+        default="111111",
+    )
+
     EDITION: str = Field(
         description="Deployment edition of the application (e.g., 'SELF_HOSTED', 'CLOUD')",
         default="SELF_HOSTED",

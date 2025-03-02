@@ -1,19 +1,14 @@
 from typing import cast
 
 import flask_login  # type: ignore
-from configs.deploy import DeploymentConfig
+from configs import dify_config
 from constants.languages import languages
 from controllers.service_api_with_auth import api
-from controllers.service_api_with_auth.auth.error import (
-    EmailCodeError,
-    InvalidEmailError,
-    InvalidTokenError,
-)
+from controllers.service_api_with_auth.auth.error import EmailCodeError, InvalidEmailError, InvalidTokenError
 from controllers.service_api_with_auth.error import (
     AccountInFreezeError,
     AccountNotFound,
     EmailSendIpLimitError,
-    NotAllowedCreateWorkspace,
     TenantNotFoundError,
 )
 from flask import request
@@ -115,15 +110,11 @@ class EmailCodeLoginSendEmailApi(Resource):
 
         if account is None:
             if FeatureService.get_system_features().is_allow_register:
-                token = AccountService.send_email_code_login_email(
-                    email=args["email"], language=language
-                )
+                token = AccountService.send_email_code_login_email(email=args["email"], language=language)
             else:
                 raise AccountNotFound()
         else:
-            token = AccountService.send_email_code_login_email(
-                account=account, language=language
-            )
+            token = AccountService.send_email_code_login_email(account=account, language=language)
 
         return {"result": "success", "data": token}
 
@@ -172,21 +163,13 @@ class EmailCodeLoginApi(Resource):
             description: Invalid token, email or code
         """
         parser = reqparse.RequestParser()
-        # TODO: ytqh add a new field for different tenant (default: Saier)
-        parser.add_argument(
-            "tenant_id",
-            type=str,
-            required=False,
-            default="5cd3029e-7f92-428a-a5c8-14a790c70233",
-            location="json",
-        )  # TODO: ytqh move this to the config
         parser.add_argument("email", type=str, required=True, location="json")
         parser.add_argument("code", type=str, required=True, location="json")
         parser.add_argument("token", type=str, required=True, location="json")
         args = parser.parse_args()
 
         user_email = args["email"]
-        tenant_id = args["tenant_id"]
+        tenant_id = dify_config.DEFAULT_TENANT_ID
 
         token_data = AccountService.get_email_code_login_data(args["token"])
         if token_data is None:
@@ -224,9 +207,7 @@ class EmailCodeLoginApi(Resource):
             if connected_tenant is None or tenant not in connected_tenant:
                 TenantService.create_tenant_member(tenant, account, role="end_user")
 
-        token_pair = AccountService.login(
-            account, ip_address=extract_remote_ip(request)
-        )
+        token_pair = AccountService.login(account, ip_address=extract_remote_ip(request))
         AccountService.reset_login_error_rate_limit(args["email"])
         return {"result": "success", "data": token_pair.model_dump()}
 
