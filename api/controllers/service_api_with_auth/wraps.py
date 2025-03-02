@@ -55,16 +55,11 @@ def validate_user_token_and_extract_info(view: Optional[Callable] = None):
             try:
                 decoded = PassportService().verify(auth_token)
                 user_id = decoded.get("user_id")
-                expired_at = decoded.get("exp")
-
             except Exception as e:
                 raise Unauthorized(f"Failed to extract user_id from token: {str(e)}")
 
             if not user_id:
                 raise Unauthorized("Invalid token: missing user_id")
-
-            if expired_at < datetime.now(UTC).timestamp():
-                raise Unauthorized("Token has expired")
 
             account = AccountService.load_user(user_id)
             if account is None:
