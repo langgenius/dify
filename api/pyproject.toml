@@ -1,14 +1,17 @@
 [project]
 name = "dify-api"
 requires-python = ">=3.11,<3.13"
-dynamic = [ "dependencies" ]
+dynamic = ["dependencies"]
 
 [build-system]
 requires = ["poetry-core>=2.0.0"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.poetry]
-package-mode = false
+name = "jim-api"
+version = "0.1.0"
+description = "Jim API - LLM application development platform"
+authors = ["Jim Team <support@jim.ai>"]
 
 ############################################################
 # [ Main ] Dependency group
@@ -89,9 +92,16 @@ tiktoken = "~0.8.0"
 tokenizers = "~0.15.0"
 transformers = "~4.35.0"
 types-pytz = "~2024.2.0.20241003"
-unstructured = { version = "~0.16.1", extras = ["docx", "epub", "md", "msg", "ppt", "pptx"] }
+unstructured = { version = "~0.16.1", extras = [
+    "docx",
+    "epub",
+    "md",
+    "msg",
+    "ppt",
+    "pptx",
+] }
 validators = "0.21.0"
-volcengine-python-sdk = {extras = ["ark"], version = "~1.0.98"}
+volcengine-python-sdk = { extras = ["ark"], version = "~1.0.98" }
 websocket-client = "~1.7.0"
 xinference-client = "0.15.2"
 yarl = "~1.18.3"
@@ -126,7 +136,13 @@ numexpr = "~2.9.0"
 pydub = "~0.25.1"
 qrcode = "~7.4.2"
 twilio = "~9.0.4"
-vanna = { version = "0.7.5", extras = ["postgres", "mysql", "clickhouse", "duckdb", "oracle"] }
+vanna = { version = "0.7.5", extras = [
+    "postgres",
+    "mysql",
+    "clickhouse",
+    "duckdb",
+    "oracle",
+] }
 wikipedia = "1.4.0"
 yfinance = "~0.2.40"
 

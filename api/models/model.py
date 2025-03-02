@@ -7,18 +7,17 @@ from enum import Enum, StrEnum
 from typing import TYPE_CHECKING, Any, Literal, Optional, cast
 
 import sqlalchemy as sa
-from flask import request
-from flask_login import UserMixin  # type: ignore
-from sqlalchemy import Float, func, text
-from sqlalchemy.orm import Mapped, mapped_column
-
 from configs import dify_config
 from core.file import FILE_MODEL_IDENTITY, File, FileTransferMethod, FileType
 from core.file import helpers as file_helpers
 from core.file.tool_file_parser import ToolFileParser
+from flask import request
+from flask_login import UserMixin  # type: ignore
 from libs.helper import generate_string
 from models.enums import CreatedByRole
 from models.workflow import WorkflowRunStatus
+from sqlalchemy import Float, func, text
+from sqlalchemy.orm import Mapped, mapped_column
 
 from .account import Account, Tenant
 from .engine import db
@@ -1323,6 +1322,8 @@ class EndUser(UserMixin, db.Model):  # type: ignore[name-defined]
     name = db.Column(db.String(255))
     is_anonymous = db.Column(db.Boolean, nullable=False, server_default=db.text("true"))
     session_id: Mapped[str] = mapped_column()
+    gender = db.Column(db.Integer, nullable=False, server_default=db.text("0"))  # 0: unknown, 1: male, 2: female
+    extra_profile = db.Column(db.JSON, nullable=True)  # JSON format, e.g. { "major":"engineer" }
     created_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
     updated_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
 
