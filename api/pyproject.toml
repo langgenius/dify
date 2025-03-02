@@ -8,10 +8,7 @@ requires = ["poetry-core>=2.0.0"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.poetry]
-name = "jim-api"
-version = "0.1.0"
-description = "Jim API - LLM application development platform"
-authors = ["Jim Team <support@jim.ai>"]
+package-mode = false
 
 ############################################################
 # [ Main ] Dependency group

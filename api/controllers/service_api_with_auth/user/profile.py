@@ -1,10 +1,16 @@
-from flask import Blueprint
-from flask_restful import Api, Resource # type: ignore
+import re
 
 from controllers.service_api_with_auth import api
+from controllers.service_api_with_auth.wraps import validate_user_token_and_extract_info
+from flask import Blueprint, request
+from flask_restful import Api, Resource  # type: ignore
+from models.model import EndUser
+from services.end_user_service import EndUserService
+
 
 class UserProfile(Resource):
-    def get(self):
+    @validate_user_token_and_extract_info
+    def get(self, end_user: EndUser):
         """Get user profile.
         ---
         tags:
@@ -32,9 +38,12 @@ class UserProfile(Resource):
           401:
             description: Invalid or missing token
         """
-        pass
+        # Use the service to get user profile
+        profile = EndUserService.get_user_profile(end_user.id)
+        return profile
 
-    def put(self):
+    @validate_user_token_and_extract_info
+    def put(self, end_user: EndUser):
         """Update user profile.
         ---
         tags:
@@ -75,6 +84,38 @@ class UserProfile(Resource):
           401:
             description: Invalid or missing token
         """
-        pass
+        data = request.get_json()
+        validated_data = {}
+
+        # Validate username if provided
+        if 'username' in data:
+            username = data['username']
+            # Validate username (Chinese or English only, max 10 chars)
+            if not re.match(r'^[a-zA-Z\u4e00-\u9fa5]+$', username) or len(username) > 10:
+                return {"success": False, "message": "Invalid username format"}, 400
+            validated_data['username'] = username
+
+        # Validate gender if provided
+        if 'gender' in data:
+            gender_str = data['gender']
+            if gender_str not in ["unknown", "male", "female"]:
+                return {"success": False, "message": "Invalid gender value"}, 400
+            validated_data['gender'] = gender_str
+
+        # Validate major if provided
+        if 'major' in data:
+            major = data['major']
+            if len(major) > 20:
+                return {"success": False, "message": "Major exceeds maximum length"}, 400
+            validated_data['major'] = major
+
+        # Use the service to update user profile
+        success, error = EndUserService.update_user_profile(end_user, validated_data)
+
+        if not success:
+            return {"success": False, "message": error or "Failed to update profile"}, 500
+
+        return {"success": True}
+
 
 api.add_resource(UserProfile, '/user/profile')
