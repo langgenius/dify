@@ -4,13 +4,13 @@ from controllers.service_api_with_auth import api
 from controllers.service_api_with_auth.wraps import validate_user_token_and_extract_info
 from flask import Blueprint, request
 from flask_restful import Api, Resource  # type: ignore
-from models.model import EndUser
+from models.model import App, EndUser
 from services.end_user_service import EndUserService
 
 
 class UserProfile(Resource):
     @validate_user_token_and_extract_info
-    def get(self, end_user: EndUser):
+    def get(self, app_model: App, end_user: EndUser):
         """Get user profile.
         ---
         tags:
@@ -39,11 +39,11 @@ class UserProfile(Resource):
             description: Invalid or missing token
         """
         # Use the service to get user profile
-        profile = EndUserService.get_user_profile(end_user.id)
+        profile = EndUserService.get_user_profile(end_user.external_user_id)
         return profile
 
     @validate_user_token_and_extract_info
-    def put(self, end_user: EndUser):
+    def put(self, app_model: App, end_user: EndUser):
         """Update user profile.
         ---
         tags:

@@ -3,6 +3,7 @@ from typing import Any, Dict, Optional, Tuple
 from extensions.ext_database import db
 from models.account import Account
 from models.model import EndUser
+from services.account_service import AccountService
 
 
 class EndUserService:
@@ -18,7 +19,7 @@ class EndUserService:
             Dict containing user profile information
         """
         # Get EndUser information
-        end_user = db.session.query(EndUser).filter(EndUser.id == end_user_id).first()
+        end_user = db.session.query(EndUser).filter(EndUser.external_user_id == end_user_id).first()
 
         if not end_user:
             return {"username": None, "gender": "unknown", "major": None, "email": None}

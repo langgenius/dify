@@ -11,7 +11,7 @@ from flask_login import user_logged_in  # type: ignore
 from flask_restful import Resource  # type: ignore
 from libs.login import _get_user
 from libs.passport import PassportService
-from models.account import Account, Tenant, TenantAccountJoin, TenantStatus
+from models.account import Account, AccountStatus, Tenant, TenantAccountJoin, TenantStatus
 from models.model import ApiToken, App, EndUser
 from pydantic import BaseModel  # type: ignore
 from services.account_service import AccountService
@@ -55,16 +55,21 @@ def validate_user_token_and_extract_info(view: Optional[Callable] = None):
             try:
                 decoded = PassportService().verify(auth_token)
                 user_id = decoded.get("user_id")
+                expired_at = decoded.get("exp")
+
             except Exception as e:
                 raise Unauthorized(f"Failed to extract user_id from token: {str(e)}")
 
             if not user_id:
                 raise Unauthorized("Invalid token: missing user_id")
 
+            if expired_at < datetime.now(UTC).timestamp():
+                raise Unauthorized("Token has expired")
+
             account = AccountService.load_user(user_id)
             if account is None:
                 raise Unauthorized("Invalid token: user not found")
-            if account.status != Account.AccountStatus.ACTIVE:
+            if account.status != AccountStatus.ACTIVE:
                 raise Unauthorized("Invalid token: account is not active")
 
             app_id = request.headers.get("X-App-Id")
@@ -90,7 +95,7 @@ def validate_user_token_and_extract_info(view: Optional[Callable] = None):
 
             kwargs["app_model"] = app_model
 
-            kwargs["end_user"] = create_or_update_end_user_for_user_id(app_model, user_id)
+            kwargs["end_user"] = create_or_update_end_user_for_user_id(app_model, account.id)
 
             return view_func(*args, **kwargs)
 
@@ -244,8 +249,8 @@ def create_or_update_end_user_for_user_id(app_model: App, user_id: Optional[str]
         .filter(
             EndUser.tenant_id == app_model.tenant_id,
             EndUser.app_id == app_model.id,
-            EndUser.session_id == user_id,
-            EndUser.type == "service_api",
+            EndUser.external_user_id == user_id,
+            EndUser.type == "service_api_with_auth",
         )
         .first()
     )
@@ -254,9 +259,9 @@ def create_or_update_end_user_for_user_id(app_model: App, user_id: Optional[str]
         end_user = EndUser(
             tenant_id=app_model.tenant_id,
             app_id=app_model.id,
-            type="service_api",
-            is_anonymous=user_id == "DEFAULT-USER",
+            type="service_api_with_auth",
             session_id=user_id,
+            external_user_id=user_id,
         )
         db.session.add(end_user)
         db.session.commit()
