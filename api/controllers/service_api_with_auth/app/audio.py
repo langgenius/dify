@@ -14,11 +14,7 @@ from controllers.service_api_with_auth.app.error import (
     UnsupportedAudioTypeError,
 )
 from controllers.service_api_with_auth.wraps import validate_app_token
-from core.errors.error import (
-    ModelCurrentlyNotSupportError,
-    ProviderTokenNotInitError,
-    QuotaExceededError,
-)
+from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
 from core.model_runtime.errors.invoke import InvokeError
 from flask import request
 from flask_restful import Resource, reqparse  # type: ignore
@@ -39,7 +35,7 @@ class AudioApi(Resource):
         """Transcribe audio to text.
         ---
         tags:
-          - app/audio
+          - service/audio
         summary: Transcribe audio
         description: Convert audio file to text using speech-to-text
         security:
@@ -108,7 +104,7 @@ class TextApi(Resource):
         """Convert text to speech.
         ---
         tags:
-          - app/audio
+          - service/audio
         summary: Text to speech
         description: Convert text to speech audio
         security:

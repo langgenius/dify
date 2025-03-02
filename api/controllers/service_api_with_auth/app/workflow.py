@@ -8,18 +8,10 @@ from controllers.service_api_with_auth.app.error import (
     ProviderNotInitializeError,
     ProviderQuotaExceededError,
 )
-from controllers.service_api_with_auth.wraps import (
-    FetchUserArg,
-    WhereisUserArg,
-    validate_app_token,
-)
+from controllers.service_api_with_auth.wraps import FetchUserArg, WhereisUserArg, validate_app_token
 from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.entities.app_invoke_entities import InvokeFrom
-from core.errors.error import (
-    ModelCurrentlyNotSupportError,
-    ProviderTokenNotInitError,
-    QuotaExceededError,
-)
+from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
 from core.model_runtime.errors.invoke import InvokeError
 from extensions.ext_database import db
 from fields.workflow_app_log_fields import workflow_app_log_pagination_fields
@@ -56,7 +48,7 @@ class WorkflowRunDetailApi(Resource):
         """Get workflow run details.
         ---
         tags:
-          - app/workflow
+          - service/workflow
         summary: Get workflow run details
         description: Retrieve details of a specific workflow run
         security:
@@ -117,7 +109,7 @@ class WorkflowRunApi(Resource):
         """Run a workflow.
         ---
         tags:
-          - app/workflow
+          - service/workflow
         summary: Run workflow
         description: Execute a workflow with the provided inputs
         security:
@@ -187,7 +179,7 @@ class WorkflowTaskStopApi(Resource):
         """Stop a running workflow task.
         ---
         tags:
-          - app/workflow
+          - service/workflow
         summary: Stop workflow task
         description: Stop a running workflow task
         security:
@@ -228,7 +220,7 @@ class WorkflowAppLogApi(Resource):
         """Get workflow app logs.
         ---
         tags:
-          - app/workflow
+          - service/workflow
         summary: Get workflow logs
         description: Retrieve logs for workflow app executions
         security:

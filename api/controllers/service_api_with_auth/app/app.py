@@ -17,7 +17,7 @@ class AppParameterApi(Resource):
         """Retrieve app parameters.
         ---
         tags:
-          - app/parameters
+          - service/parameters
         summary: Get app parameters
         description: Retrieve parameters for the current application
         security:
@@ -61,7 +61,7 @@ class AppMetaApi(Resource):
         """Get app meta information.
         ---
         tags:
-          - app/meta
+          - service/meta
         summary: Get app meta
         description: Retrieve meta information for the current application
         security:
@@ -83,7 +83,7 @@ class AppInfoApi(Resource):
         """Get app information.
         ---
         tags:
-          - app/info
+          - service/info
         summary: Get app info
         description: Retrieve basic information about the current application
         security:

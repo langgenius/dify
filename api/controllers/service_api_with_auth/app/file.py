@@ -7,11 +7,7 @@ from controllers.service_api_with_auth.app.error import (
     TooManyFilesError,
     UnsupportedFileTypeError,
 )
-from controllers.service_api_with_auth.wraps import (
-    FetchUserArg,
-    WhereisUserArg,
-    validate_app_token,
-)
+from controllers.service_api_with_auth.wraps import FetchUserArg, WhereisUserArg, validate_app_token
 from fields.file_fields import file_fields
 from flask import request
 from flask_restful import Resource, marshal_with  # type: ignore
@@ -26,7 +22,7 @@ class FileApi(Resource):
         """Upload a file.
         ---
         tags:
-          - app/file
+          - service/file
         summary: Upload file
         description: Upload a file to be used with the application
         security:

@@ -1,11 +1,7 @@
 import services
 from controllers.service_api_with_auth import api
 from controllers.service_api_with_auth.app.error import NotChatAppError
-from controllers.service_api_with_auth.wraps import (
-    FetchUserArg,
-    WhereisUserArg,
-    validate_app_token,
-)
+from controllers.service_api_with_auth.wraps import FetchUserArg, WhereisUserArg, validate_app_token
 from core.app.entities.app_invoke_entities import InvokeFrom
 from extensions.ext_database import db
 from fields.conversation_fields import (
@@ -29,7 +25,7 @@ class ConversationApi(Resource):
         """Get conversations list.
         ---
         tags:
-          - app/conversation
+          - service/conversation
         summary: List conversations
         description: Get a paginated list of conversations for the current user
         security:
@@ -109,7 +105,7 @@ class ConversationDetailApi(Resource):
         """Delete a conversation.
         ---
         tags:
-          - app/conversation
+          - service/conversation
         summary: Delete conversation
         description: Delete a specific conversation
         security:
@@ -155,7 +151,7 @@ class ConversationRenameApi(Resource):
         """Rename a conversation.
         ---
         tags:
-          - app/conversation
+          - service/conversation
         summary: Rename conversation
         description: Change the name of a specific conversation
         security:

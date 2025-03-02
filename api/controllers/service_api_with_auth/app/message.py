@@ -3,11 +3,7 @@ import logging
 import services
 from controllers.service_api_with_auth import api
 from controllers.service_api_with_auth.app.error import NotChatAppError
-from controllers.service_api_with_auth.wraps import (
-    FetchUserArg,
-    WhereisUserArg,
-    validate_app_token,
-)
+from controllers.service_api_with_auth.wraps import FetchUserArg, WhereisUserArg, validate_app_token
 from core.app.entities.app_invoke_entities import InvokeFrom
 from fields.conversation_fields import message_file_fields
 from fields.raws import FilesContainedField
@@ -83,7 +79,7 @@ class MessageListApi(Resource):
         """Get messages list.
         ---
         tags:
-          - app/message
+          - service/message
         summary: List messages
         description: Get a paginated list of messages for a conversation
         security:
@@ -154,7 +150,7 @@ class MessageFeedbackApi(Resource):
         """Submit feedback for a message.
         ---
         tags:
-          - app/message
+          - service/message
         summary: Submit message feedback
         description: Submit user feedback for a specific message
         security:
@@ -224,7 +220,7 @@ class MessageSuggestedApi(Resource):
         """Get suggested questions for a message.
         ---
         tags:
-          - app/message
+          - service/message
         summary: Get suggested questions
         description: Get suggested follow-up questions for a specific message
         security:

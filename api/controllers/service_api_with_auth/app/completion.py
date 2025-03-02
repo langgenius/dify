@@ -11,18 +11,10 @@ from controllers.service_api_with_auth.app.error import (
     ProviderNotInitializeError,
     ProviderQuotaExceededError,
 )
-from controllers.service_api_with_auth.wraps import (
-    FetchUserArg,
-    WhereisUserArg,
-    validate_app_token,
-)
+from controllers.service_api_with_auth.wraps import FetchUserArg, WhereisUserArg, validate_app_token
 from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.entities.app_invoke_entities import InvokeFrom
-from core.errors.error import (
-    ModelCurrentlyNotSupportError,
-    ProviderTokenNotInitError,
-    QuotaExceededError,
-)
+from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
 from core.model_runtime.errors.invoke import InvokeError
 from flask_restful import Resource, reqparse  # type: ignore
 from libs import helper
@@ -39,7 +31,7 @@ class CompletionApi(Resource):
         """Generate completion response.
         ---
         tags:
-          - app/completion
+          - service/completion
         summary: Generate completion
         description: Generate a completion response for the provided inputs
         security:
@@ -134,7 +126,7 @@ class CompletionStopApi(Resource):
         """Stop a running completion task.
         ---
         tags:
-          - app/completion
+          - service/completion
         summary: Stop completion task
         description: Stop a running completion generation task
         security:
@@ -173,7 +165,7 @@ class ChatApi(Resource):
         """Generate chat response.
         ---
         tags:
-          - app/chat
+          - service/chat
         summary: Generate chat response
         description: Generate a chat response for the provided inputs and query
         security:
@@ -274,7 +266,7 @@ class ChatStopApi(Resource):
         """Stop a running chat task.
         ---
         tags:
-          - app/chat
+          - service/chat
         summary: Stop chat task
         description: Stop a running chat generation task
         security:
