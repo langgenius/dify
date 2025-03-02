@@ -3,7 +3,7 @@ import logging
 import services
 from controllers.service_api_with_auth import api
 from controllers.service_api_with_auth.app.error import NotChatAppError
-from controllers.service_api_with_auth.wraps import FetchUserArg, WhereisUserArg, validate_app_token
+from controllers.service_api_with_auth.wraps import FetchUserArg, WhereisUserArg, validate_user_token_and_extract_info
 from core.app.entities.app_invoke_entities import InvokeFrom
 from fields.conversation_fields import message_file_fields
 from fields.raws import FilesContainedField
@@ -73,7 +73,7 @@ class MessageListApi(Resource):
         "data": fields.List(fields.Nested(message_fields)),
     }
 
-    @validate_app_token
+    @validate_user_token_and_extract_info
     @marshal_with(message_infinite_scroll_pagination_fields)
     def get(self, app_model: App, end_user: EndUser):
         """Get messages list.
@@ -145,7 +145,7 @@ class MessageListApi(Resource):
 
 
 class MessageFeedbackApi(Resource):
-    @validate_app_token
+    @validate_user_token_and_extract_info
     def post(self, app_model: App, end_user: EndUser, message_id):
         """Submit feedback for a message.
         ---
@@ -215,7 +215,7 @@ class MessageFeedbackApi(Resource):
 
 
 class MessageSuggestedApi(Resource):
-    @validate_app_token
+    @validate_user_token_and_extract_info
     def get(self, app_model: App, end_user: EndUser, message_id):
         """Get suggested questions for a message.
         ---

@@ -1,7 +1,7 @@
 import services
 from controllers.service_api_with_auth import api
 from controllers.service_api_with_auth.app.error import NotChatAppError
-from controllers.service_api_with_auth.wraps import FetchUserArg, WhereisUserArg, validate_app_token
+from controllers.service_api_with_auth.wraps import FetchUserArg, WhereisUserArg, validate_user_token_and_extract_info
 from core.app.entities.app_invoke_entities import InvokeFrom
 from extensions.ext_database import db
 from fields.conversation_fields import (
@@ -19,7 +19,7 @@ from werkzeug.exceptions import NotFound
 
 
 class ConversationApi(Resource):
-    @validate_app_token
+    @validate_user_token_and_extract_info
     @marshal_with(conversation_infinite_scroll_pagination_fields)
     def get(self, app_model: App, end_user: EndUser):
         """Get conversations list.
@@ -99,7 +99,7 @@ class ConversationApi(Resource):
 
 
 class ConversationDetailApi(Resource):
-    @validate_app_token
+    @validate_user_token_and_extract_info
     @marshal_with(conversation_delete_fields)
     def delete(self, app_model: App, end_user: EndUser, c_id):
         """Delete a conversation.
@@ -145,7 +145,7 @@ class ConversationDetailApi(Resource):
 
 
 class ConversationRenameApi(Resource):
-    @validate_app_token
+    @validate_user_token_and_extract_info
     @marshal_with(simple_conversation_fields)
     def post(self, app_model: App, end_user: EndUser, c_id):
         """Rename a conversation.

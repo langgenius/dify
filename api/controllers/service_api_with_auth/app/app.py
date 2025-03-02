@@ -2,18 +2,18 @@ from controllers.common import fields
 from controllers.common import helpers as controller_helpers
 from controllers.service_api_with_auth import api
 from controllers.service_api_with_auth.app.error import AppUnavailableError
-from controllers.service_api_with_auth.wraps import validate_app_token
+from controllers.service_api_with_auth.wraps import validate_user_token_and_extract_info
 from flask_restful import Resource, marshal_with  # type: ignore
-from models.model import App, AppMode
+from models.model import App, AppMode, EndUser
 from services.app_service import AppService
 
 
 class AppParameterApi(Resource):
     """Resource for app variables."""
 
-    @validate_app_token
+    @validate_user_token_and_extract_info
     @marshal_with(fields.parameters_fields)
-    def get(self, app_model: App):
+    def get(self, app_model: App, end_user: EndUser):
         """Retrieve app parameters.
         ---
         tags:
@@ -56,8 +56,8 @@ class AppParameterApi(Resource):
 
 
 class AppMetaApi(Resource):
-    @validate_app_token
-    def get(self, app_model: App):
+    @validate_user_token_and_extract_info
+    def get(self, app_model: App, end_user: EndUser):
         """Get app meta information.
         ---
         tags:
@@ -78,8 +78,8 @@ class AppMetaApi(Resource):
 
 
 class AppInfoApi(Resource):
-    @validate_app_token
-    def get(self, app_model: App):
+    @validate_user_token_and_extract_info
+    def get(self, app_model: App, end_user: EndUser):
         """Get app information.
         ---
         tags:

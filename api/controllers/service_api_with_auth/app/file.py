@@ -7,7 +7,7 @@ from controllers.service_api_with_auth.app.error import (
     TooManyFilesError,
     UnsupportedFileTypeError,
 )
-from controllers.service_api_with_auth.wraps import FetchUserArg, WhereisUserArg, validate_app_token
+from controllers.service_api_with_auth.wraps import FetchUserArg, WhereisUserArg, validate_user_token_and_extract_info
 from fields.file_fields import file_fields
 from flask import request
 from flask_restful import Resource, marshal_with  # type: ignore
@@ -16,7 +16,7 @@ from services.file_service import FileService
 
 
 class FileApi(Resource):
-    @validate_app_token
+    @validate_user_token_and_extract_info
     @marshal_with(file_fields)
     def post(self, app_model: App, end_user: EndUser):
         """Upload a file.

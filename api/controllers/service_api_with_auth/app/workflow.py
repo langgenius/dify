@@ -8,7 +8,7 @@ from controllers.service_api_with_auth.app.error import (
     ProviderNotInitializeError,
     ProviderQuotaExceededError,
 )
-from controllers.service_api_with_auth.wraps import FetchUserArg, WhereisUserArg, validate_app_token
+from controllers.service_api_with_auth.wraps import FetchUserArg, WhereisUserArg, validate_user_token_and_extract_info
 from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
@@ -42,9 +42,9 @@ workflow_run_fields = {
 
 
 class WorkflowRunDetailApi(Resource):
-    @validate_app_token
+    @validate_user_token_and_extract_info
     @marshal_with(workflow_run_fields)
-    def get(self, app_model: App, workflow_id: str):
+    def get(self, app_model: App, end_user: EndUser, workflow_id: str):
         """Get workflow run details.
         ---
         tags:
@@ -104,7 +104,7 @@ class WorkflowRunDetailApi(Resource):
 
 
 class WorkflowRunApi(Resource):
-    @validate_app_token
+    @validate_user_token_and_extract_info
     def post(self, app_model: App, end_user: EndUser):
         """Run a workflow.
         ---
@@ -174,7 +174,7 @@ class WorkflowRunApi(Resource):
 
 
 class WorkflowTaskStopApi(Resource):
-    @validate_app_token
+    @validate_user_token_and_extract_info
     def post(self, app_model: App, end_user: EndUser, task_id: str):
         """Stop a running workflow task.
         ---
@@ -214,9 +214,9 @@ class WorkflowTaskStopApi(Resource):
 
 
 class WorkflowAppLogApi(Resource):
-    @validate_app_token
+    @validate_user_token_and_extract_info
     @marshal_with(workflow_app_log_pagination_fields)
-    def get(self, app_model: App):
+    def get(self, app_model: App, end_user: EndUser):
         """Get workflow app logs.
         ---
         tags:

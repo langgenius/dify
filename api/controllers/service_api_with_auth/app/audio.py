@@ -13,7 +13,7 @@ from controllers.service_api_with_auth.app.error import (
     ProviderQuotaExceededError,
     UnsupportedAudioTypeError,
 )
-from controllers.service_api_with_auth.wraps import validate_app_token
+from controllers.service_api_with_auth.wraps import validate_user_token_and_extract_info
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
 from core.model_runtime.errors.invoke import InvokeError
 from flask import request
@@ -30,7 +30,7 @@ from werkzeug.exceptions import InternalServerError
 
 
 class AudioApi(Resource):
-    @validate_app_token
+    @validate_user_token_and_extract_info
     def post(self, app_model: App, end_user: EndUser):
         """Transcribe audio to text.
         ---
@@ -99,7 +99,7 @@ class AudioApi(Resource):
 
 
 class TextApi(Resource):
-    @validate_app_token
+    @validate_user_token_and_extract_info
     def post(self, app_model: App, end_user: EndUser):
         """Convert text to speech.
         ---

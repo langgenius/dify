@@ -35,7 +35,7 @@ class FetchUserArg(BaseModel):
     required: bool = False
 
 
-def validate_app_token(view: Optional[Callable] = None):
+def validate_user_token_and_extract_info(view: Optional[Callable] = None):
     def decorator(view_func):
         @wraps(view_func)
         def decorated_view(*args, **kwargs):

@@ -11,7 +11,7 @@ from controllers.service_api_with_auth.app.error import (
     ProviderNotInitializeError,
     ProviderQuotaExceededError,
 )
-from controllers.service_api_with_auth.wraps import FetchUserArg, WhereisUserArg, validate_app_token
+from controllers.service_api_with_auth.wraps import FetchUserArg, WhereisUserArg, validate_user_token_and_extract_info
 from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
@@ -26,7 +26,7 @@ from werkzeug.exceptions import InternalServerError, NotFound
 
 
 class CompletionApi(Resource):
-    @validate_app_token
+    @validate_user_token_and_extract_info
     def post(self, app_model: App, end_user: EndUser):
         """Generate completion response.
         ---
@@ -121,7 +121,7 @@ class CompletionApi(Resource):
 
 
 class CompletionStopApi(Resource):
-    @validate_app_token
+    @validate_user_token_and_extract_info
     def post(self, app_model: App, end_user: EndUser, task_id):
         """Stop a running completion task.
         ---
@@ -160,7 +160,7 @@ class CompletionStopApi(Resource):
 
 
 class ChatApi(Resource):
-    @validate_app_token
+    @validate_user_token_and_extract_info
     def post(self, app_model: App, end_user: EndUser):
         """Generate chat response.
         ---
@@ -261,7 +261,7 @@ class ChatApi(Resource):
 
 
 class ChatStopApi(Resource):
-    @validate_app_token
+    @validate_user_token_and_extract_info
     def post(self, app_model: App, end_user: EndUser, task_id):
         """Stop a running chat task.
         ---
