@@ -109,10 +109,7 @@ class EmailCodeLoginSendEmailApi(Resource):
             raise AccountInFreezeError()
 
         if account is None:
-            if FeatureService.get_system_features().is_allow_register:
-                token = AccountService.send_email_code_login_email(email=args["email"], language=language)
-            else:
-                raise AccountNotFound()
+            token = AccountService.send_email_code_login_email(email=args["email"], language=language)
         else:
             token = AccountService.send_email_code_login_email(account=account, language=language)
 
