@@ -416,10 +416,7 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
               supportFeedback
               feedback={detail.message.feedbacks.find((item: any) => item.from_source === 'admin')}
               onFeedback={feedback => onFeedback(detail.message.id, feedback)}
-              supportAnnotation
               isShowTextToSpeech
-              appId={appDetail?.id}
-              varList={varList}
               siteInfo={null}
             />
           </div>
