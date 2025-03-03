@@ -6,6 +6,7 @@ from core.model_runtime.utils.encoders import jsonable_encoder
 from core.tools.__base.tool import ToolParameter
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_entities import ToolProviderType
+from core.tools.entities.tool_entities import APODisPlay
 
 
 class ToolApiEntity(BaseModel):
@@ -16,6 +17,7 @@ class ToolApiEntity(BaseModel):
     parameters: Optional[list[ToolParameter]] = None
     labels: list[str] = Field(default_factory=list)
     output_schema: Optional[dict] = None
+    display: Optional[APODisPlay] = None
 
 
 ToolProviderTypeApiLiteral = Optional[Literal["builtin", "api", "workflow"]]

@@ -3,12 +3,12 @@ identity:
   name: apo_analysis
   label:
     en_US: APOAnalysis
-    zh_Hans: APO异常检测
-    pt_BR: APOSelect
+    zh_Hans: APO数据异常检测&关联
+    pt_BR: APOAnalysis
   description:
-    en_US: A tool for getting the current time.
-    zh_Hans: APO异常检测分析。
-    pt_BR: A tool for getting the current time.
+    en_US: Input observable data, identify abnormal data through relevant algorithms, or directly correlate and summarize the data.
+    zh_Hans: 输入可观测性数据, 通过相关算法识别出现异常数据、或者直接对数据进行关联汇总。
+    pt_BR: Input observable data, identify abnormal data through relevant algorithms, or directly correlate and summarize the data.
   icon: icon.svg
   tags:
     - utilities

@@ -19,8 +19,8 @@ class FaultLogTool(BuiltinTool):
         message_id: Optional[str] = None,
     ) -> Generator[ToolInvokeMessage, None, None]:
         service = tool_parameters.get("service")
-        start_time = tool_parameters.get("start_time")
-        end_time = tool_parameters.get("end_time")
+        start_time = tool_parameters.get("startTime")
+        end_time = tool_parameters.get("endTime")
         params = {
           'service': [service],
           'startTime': start_time,

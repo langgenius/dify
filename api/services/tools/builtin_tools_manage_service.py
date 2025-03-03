@@ -359,7 +359,7 @@ class BuiltinToolManageService:
                         match_tools = process.extract(
                             query,
                             [tool.entity.description.human.zh_Hans for tool in tools],
-                            limit=3,
+                            limit=5,
                         )
                         for match_name, score, index in match_tools or []:
                             tool = tools[index]

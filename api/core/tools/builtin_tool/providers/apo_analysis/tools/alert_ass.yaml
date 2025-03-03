@@ -8,33 +8,33 @@ identity:
 description:
   human:
     en_US: A tool for alert_associate
-    zh_Hans: 关联拓扑和告警数据
+    zh_Hans: 关联拓扑和告警数据, 用于大模型推理
     pt_BR: A tool for alert_associate
   llm: A tool for alert_associate
 parameters:
-  - name: topology_data
+  - name: topologyData
     type: string
     required: true
     label:
-      en_US: topology_data
-      zh_Hans: 拓扑数据
-      pt_BR: topology_data
+      en_US: topologyData
+      zh_Hans: topologyData
+      pt_BR: topologyData
     human_description:
-      en_US: topology_data
-      zh_Hans: 拓扑数据
+      en_US: topologyData
+      zh_Hans: 入口服务拓扑结构数据
       pt_BR: topology_data
     llm_description: topology data
     form: llm
-  - name: alert_data
+  - name: alertData
     type: string
-    required: false
+    required: true
     label:
-      en_US: alert_data
-      zh_Hans: 告警事件数据
-      pt_BR: alert_data
+      en_US: alertData
+      zh_Hans: alertData
+      pt_BR: alertData
     human_description:
-      en_US: alert_data
-      zh_Hans: 告警事件数据
-      pt_BR: alert_data
-    llm_description: alert event data
+      en_US: alertData
+      zh_Hans: 入口服务告警事件数据
+      pt_BR: alertData
+    llm_description: alert data 
     form: llm

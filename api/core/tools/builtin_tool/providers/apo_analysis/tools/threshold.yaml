@@ -7,34 +7,34 @@ identity:
     pt_BR: threshold
 description:
   human:
-    en_US: A tool for getting the current time
+    en_US: threshold judgement
     zh_Hans: 阈值判定
-    pt_BR: A tool for getting the current time
-  llm: A tool for getting the current time
+    pt_BR: threshold judgement
+  llm: threshold judgement
 parameters:
-  - name: metric_data
+  - name: metricData
     type: string
     required: true
     label:
-      en_US: metric_data
-      zh_Hans: 指标数据
-      pt_BR: metric_data
+      en_US: metricData
+      zh_Hans: metricData
+      pt_BR: metricData
     human_description:
-      en_US: Time format in strftime standard
+      en_US: time series metric data
       zh_Hans: 时序指标数据
-      pt_BR: Time format in strftime standard
-    llm_description: metric type data
+      pt_BR: time series metric data
+    llm_description: Time series indicator data
     form: llm
   - name: threshold
     type: string
-    required: false
+    required: true
     label:
       en_US: threshold
-      zh_Hans: 阈值
+      zh_Hans: threshold
       pt_BR: threshold
     human_description:
-      en_US: Time format in strftime standard
-      zh_Hans: 阈值判定
-      pt_BR: Time format in strftime standard
-    llm_description: data threshold judgement
+      en_US: threshold
+      zh_Hans: 检测指标类型数据是否超过阈值
+      pt_BR: threshold
+    llm_description: threshold
     form: llm

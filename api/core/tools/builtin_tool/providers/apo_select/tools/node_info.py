@@ -22,8 +22,8 @@ class FaultLogTool(BuiltinTool):
         endpoint = tool_parameters.get("endpoint")
         entryService = tool_parameters.get("entryService")
         entryEndpoint = tool_parameters.get("entryEndpoint")
-        start_time = tool_parameters.get("start_time")
-        end_time = tool_parameters.get("end_time")
+        start_time = tool_parameters.get("startTime")
+        end_time = tool_parameters.get("endTime")
         type = tool_parameters.get("type")
     
         params = {

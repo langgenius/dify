@@ -18,9 +18,9 @@ class SelectContainerRSSTool(BuiltinTool):
         app_id: Optional[str] = None,
         message_id: Optional[str] = None,
     ) -> Generator[ToolInvokeMessage, None, None]:
-        container_name = tool_parameters.get("container_name")
-        start_time = tool_parameters.get("start_time")
-        end_time = tool_parameters.get("end_time")
+        container_name = tool_parameters.get("container")
+        start_time = tool_parameters.get("startTime")
+        end_time = tool_parameters.get("endTime")
         pmql = 'container_memory_rss{container="' + container_name + '"}'
         params = {
           'query': pmql,

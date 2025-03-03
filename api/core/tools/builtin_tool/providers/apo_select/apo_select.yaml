@@ -3,12 +3,12 @@ identity:
   name: apo_select
   label:
     en_US: APOSelect
-    zh_Hans: APO查询数据
+    zh_Hans: APO平台查询可观测性数据
     pt_BR: APOSelect
   description:
-    en_US: APO query data.
-    zh_Hans: APO查询数据的工具。
-    pt_BR: APO query data.
+    en_US: Query APO data.
+    zh_Hans: 查询APO平台可观测性数据, 用于进一步分析
+    pt_BR: Query APO data.
   icon: icon.svg
   tags:
     - utilities

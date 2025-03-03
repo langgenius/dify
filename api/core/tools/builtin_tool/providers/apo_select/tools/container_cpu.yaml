@@ -2,52 +2,55 @@ identity:
   name: select_container_cpu
   author: APO
   label:
-    en_US: select_container_cpu
-    zh_Hans: 查询容器CPU占用
-    pt_BR: select_container_cpu
+    en_US: Query the CPU utilization of the container
+    zh_Hans: 查询容器CPU利用率
+    pt_BR: Query the CPU utilization of the container
+display:
+  type: cpu
+  unit: precent
 description:
   human:
-    en_US: A tool for getting container cpu.
-    zh_Hans: 查询容器CPU占用
-    pt_BR: A tool for getting container cpu.
-  llm: A tool for getting container cpu.
+    en_US: Query the CPU utilization of the container
+    zh_Hans: 查询容器CPU利用率
+    pt_BR: Query the CPU utilization of the container
+  llm: Query the CPU utilization of the container
 parameters:
-  - name: container_name
+  - name: container
     type: string
     required: true
     label:
-      en_US: container_name
-      zh_Hans: 容器名
-      pt_BR: container_name
+      en_US: container
+      zh_Hans: container
+      pt_BR: container
     human_description:
-      en_US: Time format in strftime standard.
-      zh_Hans: 查询指定Pod的CPU占用。
-      pt_BR: Time format in strftime standard.
-    llm_description: Time format in strftime standard.
+      en_US: Specified container name
+      zh_Hans: 指定的容器名称
+      pt_BR: Specified container name
+    llm_description: Specified container name
     form: llm
-  - name: start_time
+  - name: startTime
     type: number
-    required: false
+    required: true
     label:
-      en_US: start_time
-      zh_Hans: 开始时间
-      pt_BR: start_time
+      en_US: startTime
+      zh_Hans: startTime
+      pt_BR: startTime
     human_description:
-      en_US: Time format in strftime standard.
-      zh_Hans: 指定查询CPU指标的开始时间。
-      pt_BR: Time format in strftime standard.
-    llm_description: Time format in strftime standard.
+      en_US: Data query start time
+      zh_Hans: 开始时间 (微秒)
+      pt_BR: Data query start time
+    llm_description: Data query start time
     form: llm
-  - name: end_time
+  - name: endTime
     type: number
-    required: false
+    required: true
     label:
-      en_US: end_time
-      zh_Hans: 结束时间
-      pt_BR: end_time
+      en_US: endTime
+      zh_Hans: endTime
+      pt_BR: endTime
     human_description:
-      en_US: Time format in strftime standard.
-      zh_Hans: 指定查询CPU指标的结束时间。
-      pt_BR: Time format in strftime standard.
-    llm_description: Time format in strftime standard.
+      en_US: Data query end time
+      zh_Hans: 结束时间 (微秒)
+      pt_BR: Data query end time
+    llm_description: Data query start time
     form: llm

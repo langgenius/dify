@@ -2,27 +2,30 @@ identity:
   name: topology
   author: APO
   label:
-    en_US: topology
-    zh_Hans: 获取当前入口的拓扑结构
-    pt_BR: topology
+    en_US: Query the entry service topology
+    zh_Hans: 查询入口服务拓扑结构
+    pt_BR: Query the entry service topology
 description:
   human:
-    en_US: A tool for getting the current time.
-    zh_Hans: 获取当前入口的拓扑结构
-    pt_BR: A tool for getting the current time.
-  llm: A tool for getting the current time.
+    en_US: Query the entry service topology
+    zh_Hans: 查询入口服务拓扑结构
+    pt_BR: Query the entry service topology
+  llm: Query the entry service topology
+display:
+  type: topology
+  unit: topology
 parameters:
   - name: service
     type: string
     required: true
     label:
       en_US: service
-      zh_Hans: 服务名
+      zh_Hans: service
       pt_BR: service
     human_description:
-      en_US: Time format in strftime standard.
+      en_US: entry service
       zh_Hans: 拓扑入口服务名
-      pt_BR: Time format in strftime standard.
+      pt_BR: entry service
     llm_description: toplogy service name
     form: llm
   - name: endpoint
@@ -30,37 +33,37 @@ parameters:
     required: true
     label:
       en_US: endpoint
-      zh_Hans: 服务端点
+      zh_Hans: endpoint
       pt_BR: endpoint
     human_description:
-      en_US: Time format in strftime standard.
+      en_US: toplogy endpoint
       zh_Hans: 拓扑入口服务端点
-      pt_BR: Time format in strftime standard.
+      pt_BR: toplogy endpoint
     llm_description: toplogy endpoint
     form: llm
-  - name: start_time
+  - name: startTime
     type: number
-    required: false
+    required: true
     label:
-      en_US: start_time
-      zh_Hans: 开始时间
-      pt_BR: start_time
+      en_US: startTime
+      zh_Hans: startTime
+      pt_BR: startTime
     human_description:
-      en_US: Time format in strftime standard.
-      zh_Hans: 查询开始时间。
-      pt_BR: Time format in strftime standard.
-    llm_description: Time format in strftime standard.
+      en_US: Data query start time
+      zh_Hans: 开始时间 (微秒)
+      pt_BR: Data query start time
+    llm_description: Data query start time
     form: llm
-  - name: end_time
+  - name: endTime
     type: number
-    required: false
+    required: true
     label:
-      en_US: end_time
-      zh_Hans: 结束时间
-      pt_BR: end_time
+      en_US: endTime
+      zh_Hans: endTime
+      pt_BR: endTime
     human_description:
-      en_US: Time format in strftime standard.
-      zh_Hans: 指定查询的结束时间
-      pt_BR: Time format in strftime standard.
-    llm_description: Time format in strftime standard.
+      en_US: Data query end time
+      zh_Hans: 结束时间 (微秒)
+      pt_BR: Data query end time
+    llm_description: Data query start time
     form: llm

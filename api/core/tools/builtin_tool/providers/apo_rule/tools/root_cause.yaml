@@ -8,20 +8,20 @@ identity:
 description:
   human:
     en_US: get root cause
-    zh_Hans: 获取根因节点
+    zh_Hans: 从大模型返回结果获取根因节点
     pt_BR: get root cause
   llm: get root cause node
 parameters:
-  - name: llm_text
+  - name: text
     type: string
     required: false
     label:
-      en_US: llm_text
-      zh_Hans: 大模型返回结果
-      pt_BR: llm_text
+      en_US: text
+      zh_Hans: text
+      pt_BR: text
     human_description:
-      en_US: llm_text
-      zh_Hans: 大模型返回结果
-      pt_BR: llm_text
+      en_US: llm text
+      zh_Hans: 大模型返回文本结果
+      pt_BR: llm text
     llm_description: rule
     form: llm
