@@ -179,7 +179,7 @@ const WorkflowToolConfigureButton = ({
           <div className={cn(
             'group bg-background-section-burn rounded-lg transition-colors',
             disabled ? 'shadow-xs opacity-30 cursor-not-allowed' : 'cursor-pointer',
-            !published && 'hover:bg-primary-50',
+            !disabled && !published && 'hover:bg-primary-50',
           )}>
             {isCurrentWorkspaceManager
               ? (
