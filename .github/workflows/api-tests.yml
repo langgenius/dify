@@ -26,6 +26,9 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
 
       - name: Setup Poetry and Python ${{ matrix.python-version }}
         uses: ./.github/actions/setup-poetry
@@ -47,14 +50,8 @@ jobs:
       - name: Run Unit tests
         run: poetry run -P api bash dev/pytest/pytest_unit_tests.sh
 
-      - name: Run ModelRuntime
-        run: poetry run -P api bash dev/pytest/pytest_model_runtime.sh
-
       - name: Run dify config tests
         run: poetry run -P api python dev/pytest/pytest_config_tests.py
-
-      - name: Run Tool
-        run: poetry run -P api bash dev/pytest/pytest_tools.sh
 
       - name: Run mypy
         run: |

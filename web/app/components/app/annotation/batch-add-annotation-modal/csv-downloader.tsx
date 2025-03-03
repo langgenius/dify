@@ -42,7 +42,7 @@ const CSVDownload: FC = () => {
               <td className='h-9 pl-3 pr-2 border-b border-divider-regular'>{t('appAnnotation.batchModal.answer')}</td>
             </tr>
           </thead>
-          <tbody className='text-gray-700'>
+          <tbody className='text-text-secondary'>
             <tr>
               <td className='h-9 pl-3 pr-2 border-b border-divider-subtle text-[13px]'>{t('appAnnotation.batchModal.question')} 1</td>
               <td className='h-9 pl-3 pr-2 border-b border-divider-subtle text-[13px]'>{t('appAnnotation.batchModal.answer')} 1</td>

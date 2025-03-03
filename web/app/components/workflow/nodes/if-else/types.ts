@@ -35,7 +35,7 @@ export enum ComparisonOperator {
   notExists = 'not exists',
 }
 
-export type Condition = {
+export interface Condition {
   id: string
   varType: VarType
   variable_selector?: ValueSelector
@@ -46,7 +46,7 @@ export type Condition = {
   sub_variable_condition?: CaseItem
 }
 
-export type CaseItem = {
+export interface CaseItem {
   case_id: string
   logical_operator: LogicalOperator
   conditions: Condition[]

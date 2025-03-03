@@ -133,6 +133,7 @@ const translation = {
     number: 'عدد',
     required: 'الزامی',
     infoAndSetting: 'اطلاعات و تنظیمات',
+    file: 'فایل',
   },
   noCustomTool: {
     title: 'ابزار سفارشی وجود ندارد!',
@@ -150,6 +151,8 @@ const translation = {
   howToGet: 'چگونه دریافت کنید',
   openInStudio: 'باز کردن در استودیو',
   toolNameUsageTip: 'نام فراخوانی ابزار برای استدلال و پرامپت‌های عامل',
+  copyToolName: 'کپی نام',
+  noTools: 'هیچ ابزاری یافت نشد',
 }
 
 export default translation

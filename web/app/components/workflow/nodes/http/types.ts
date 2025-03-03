@@ -18,7 +18,7 @@ export enum BodyType {
   binary = 'binary',
 }
 
-export type KeyValue = {
+export interface KeyValue {
   id?: string
   key: string
   value: string
@@ -38,7 +38,7 @@ export type BodyPayload = {
   file?: ValueSelector // when type is file
   value?: string // when type is text
 }[]
-export type Body = {
+export interface Body {
   type: BodyType
   data: string | BodyPayload // string is deprecated, it would convert to BodyPayload after loaded
 }
@@ -54,7 +54,7 @@ export enum APIType {
   custom = 'custom',
 }
 
-export type Authorization = {
+export interface Authorization {
   type: AuthorizationType
   config?: {
     type: APIType
@@ -63,7 +63,7 @@ export type Authorization = {
   } | null
 }
 
-export type Timeout = {
+export interface Timeout {
   connect?: number
   read?: number
   write?: number

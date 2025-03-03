@@ -78,7 +78,7 @@ const Doc = ({ apiBaseUrl }: DocProps) => {
                   onClick={() => setIsTocExpanded(false)}
                   className="text-gray-500 hover:text-gray-700"
                 >
-                ✕
+                  ✕
                 </button>
               </div>
               <ul className="space-y-2">

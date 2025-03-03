@@ -2,6 +2,8 @@ import type { FC } from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
+  RiArrowRightSLine,
+  RiInformation2Fill,
   RiLoader2Line,
 } from '@remixicon/react'
 import type {
@@ -11,7 +13,6 @@ import type {
 } from '../declarations'
 import { ConfigurationMethodEnum } from '../declarations'
 import {
-  DEFAULT_BACKGROUND_COLOR,
   MODEL_PROVIDER_QUOTA_GET_PAID,
   modelTypeFormat,
 } from '../utils'
@@ -21,18 +22,20 @@ import CredentialPanel from './credential-panel'
 import QuotaPanel from './quota-panel'
 import ModelList from './model-list'
 import AddModelButton from './add-model-button'
-import { ChevronDownDouble } from '@/app/components/base/icons/src/vender/line/arrows'
 import { fetchModelProviderModelList } from '@/service/common'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { IS_CE_EDITION } from '@/config'
 import { useAppContext } from '@/context/app-context'
+import cn from '@/utils/classnames'
 
 export const UPDATE_MODEL_PROVIDER_CUSTOM_MODEL_LIST = 'UPDATE_MODEL_PROVIDER_CUSTOM_MODEL_LIST'
 type ProviderAddedCardProps = {
+  notConfigured?: boolean
   provider: ModelProvider
   onOpenModal: (configurationMethod: ConfigurationMethodEnum, currentCustomConfigurationModelFixedFields?: CustomConfigurationModelFixedFields) => void
 }
 const ProviderAddedCard: FC<ProviderAddedCardProps> = ({
+  notConfigured,
   provider,
   onOpenModal,
 }) => {
@@ -47,6 +50,7 @@ const ProviderAddedCard: FC<ProviderAddedCardProps> = ({
   const hasModelList = fetched && !!modelList.length
   const { isCurrentWorkspaceManager } = useAppContext()
   const showQuota = systemConfig.enabled && [...MODEL_PROVIDER_QUOTA_GET_PAID].includes(provider.provider) && !IS_CE_EDITION
+  const showCredential = configurationMethods.includes(ConfigurationMethodEnum.predefinedModel) && isCurrentWorkspaceManager
 
   const getModelList = async (providerName: string) => {
     if (loading)
@@ -78,8 +82,11 @@ const ProviderAddedCard: FC<ProviderAddedCardProps> = ({
 
   return (
     <div
-      className='mb-2 rounded-xl border-[0.5px] border-black/5 shadow-xs'
-      style={{ background: provider.background || DEFAULT_BACKGROUND_COLOR }}
+      className={cn(
+        'mb-2 rounded-xl border-[0.5px] border-divider-regular shadow-xs bg-third-party-model-bg-default',
+        provider.provider === 'langgenius/openai/openai' && 'bg-third-party-model-bg-openai',
+        provider.provider === 'langgenius/anthropic/anthropic' && 'bg-third-party-model-bg-anthropic',
+      )}
     >
       <div className='flex pl-3 py-2 pr-2 rounded-t-xl'>
         <div className='grow px-1 pt-1 pb-0.5'>
@@ -105,7 +112,7 @@ const ProviderAddedCard: FC<ProviderAddedCardProps> = ({
           )
         }
         {
-          configurationMethods.includes(ConfigurationMethodEnum.predefinedModel) && isCurrentWorkspaceManager && (
+          showCredential && (
             <CredentialPanel
               onSetup={() => onOpenModal(ConfigurationMethodEnum.predefinedModel)}
               provider={provider}
@@ -115,35 +122,46 @@ const ProviderAddedCard: FC<ProviderAddedCardProps> = ({
       </div>
       {
         collapsed && (
-          <div className='group flex items-center justify-between pl-2 py-1.5 pr-[11px] border-t border-t-black/5 bg-white/30 text-xs font-medium text-gray-500'>
-            <div className='group-hover:hidden pl-1 pr-1.5 h-6 leading-6'>
-              {
-                hasModelList
-                  ? t('common.modelProvider.modelsNum', { num: modelList.length })
-                  : t('common.modelProvider.showModels')
-              }
-            </div>
-            <div
-              className='hidden group-hover:flex items-center pl-1 pr-1.5 h-6 rounded-lg hover:bg-white cursor-pointer'
-              onClick={handleOpenModelList}
-            >
-              <ChevronDownDouble className='mr-0.5 w-3 h-3' />
-              {
-                hasModelList
-                  ? t('common.modelProvider.showModelsNum', { num: modelList.length })
-                  : t('common.modelProvider.showModels')
-              }
-              {
-                loading && (
-                  <RiLoader2Line className='ml-0.5 animate-spin w-3 h-3' />
-                )
-              }
-            </div>
+          <div className='group flex items-center justify-between pl-2 py-1.5 pr-[11px] border-t border-t-divider-subtle text-text-tertiary system-xs-medium'>
+            {(showQuota || !notConfigured) && (
+              <>
+                <div className='group-hover:hidden flex items-center pl-1 pr-1.5 h-6 leading-6'>
+                  {
+                    hasModelList
+                      ? t('common.modelProvider.modelsNum', { num: modelList.length })
+                      : t('common.modelProvider.showModels')
+                  }
+                  {!loading && <RiArrowRightSLine className='w-4 h-4' />}
+                </div>
+                <div
+                  className='hidden group-hover:flex items-center pl-1 pr-1.5 h-6 rounded-lg hover:bg-components-button-ghost-bg-hover cursor-pointer'
+                  onClick={handleOpenModelList}
+                >
+                  {
+                    hasModelList
+                      ? t('common.modelProvider.showModelsNum', { num: modelList.length })
+                      : t('common.modelProvider.showModels')
+                  }
+                  {!loading && <RiArrowRightSLine className='w-4 h-4' />}
+                  {
+                    loading && (
+                      <RiLoader2Line className='ml-0.5 animate-spin w-3 h-3' />
+                    )
+                  }
+                </div>
+              </>
+            )}
+            {!showQuota && notConfigured && (
+              <div className='flex items-center pl-1 pr-1.5 h-6'>
+                <RiInformation2Fill className='mr-1 w-4 h-4 text-text-accent' />
+                <span className='text-text-secondary system-xs-medium'>{t('common.modelProvider.configureTip')}</span>
+              </div>
+            )}
             {
               configurationMethods.includes(ConfigurationMethodEnum.customizableModel) && isCurrentWorkspaceManager && (
                 <AddModelButton
                   onClick={() => onOpenModal(ConfigurationMethodEnum.customizableModel)}
-                  className='hidden group-hover:flex group-hover:text-primary-600'
+                  className='flex'
                 />
               )
             }
