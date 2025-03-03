@@ -168,7 +168,7 @@ const Apps = ({
 
       <div className='shrink-0 pt-6 px-12'>
         <div className={`mb-1 ${s.textGradient} text-xl font-semibold`}>{t('explore.apps.title')}</div>
-        <div className='text-gray-500 text-sm'>{t('explore.apps.description')}</div>
+        <div className='text-text-tertiary text-sm'>{t('explore.apps.description')}</div>
       </div>
 
       <div className={cn(
