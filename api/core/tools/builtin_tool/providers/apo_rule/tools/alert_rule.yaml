@@ -3,12 +3,12 @@ identity:
   author: APO
   label:
     en_US: alert_rule
-    zh_Hans: 告警规则执行
+    zh_Hans: 规则执行
     pt_BR: alert_rule
 description:
   human:
     en_US: alert rule execute
-    zh_Hans: 告警规则执行
+    zh_Hans: 规则执行
     pt_BR: alert rule execute
   llm: alert rule execute
 parameters:
@@ -27,10 +27,10 @@ parameters:
   #   form: llm
   - name: rule
     type: string
-    required: false
+    required: true
     label:
       en_US: rule
-      zh_Hans: 自然语言描述的规则
+      zh_Hans: rule
       pt_BR: rule
     human_description:
       en_US: rule

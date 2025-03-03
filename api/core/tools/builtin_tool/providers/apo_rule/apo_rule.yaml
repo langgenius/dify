@@ -4,11 +4,11 @@ identity:
   label:
     en_US: APORule
     zh_Hans: APO规则执行
-    pt_BR: APOSelect
+    pt_BR: APORule
   description:
-    en_US: APO execute rule.
-    zh_Hans: APO规则执行
-    pt_BR: APO execute rule.
+    en_US: The user inputs the rules described in natural language for large model reasoning
+    zh_Hans: 用户输入自然语言描述的规则,用于大模型推理
+    pt_BR: The user inputs the rules described in natural language for large model reasoning
   icon: icon.svg
   tags:
     - utilities

@@ -18,9 +18,9 @@ class SelectCPUTool(BuiltinTool):
         app_id: Optional[str] = None,
         message_id: Optional[str] = None,
     ) -> Generator[ToolInvokeMessage, None, None]:
-        node_name = tool_parameters.get("node_name")
-        start_time = tool_parameters.get("start_time")
-        end_time = tool_parameters.get("end_time")
+        node_name = tool_parameters.get("nodeName")
+        start_time = tool_parameters.get("startTime")
+        end_time = tool_parameters.get("endTime")
         sumql = 'sum by (instance_name) (avg by (mode, instance_name)'
         pmql = sumql + ' (rate(node_cpu_seconds_total{mode!="idle", instance_name="' + node_name + '"}[1m])))'
         params = {

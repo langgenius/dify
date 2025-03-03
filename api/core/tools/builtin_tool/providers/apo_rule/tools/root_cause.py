@@ -18,7 +18,7 @@ class RootCauseTool(BuiltinTool):
         """
         invoke tools
         """
-        llm_text = tool_parameters.get("llm_text")
+        llm_text = tool_parameters.get("text")
         node_lists, text = self._get_node_list(llm_text)
         
         yield self.create_text_message(text)

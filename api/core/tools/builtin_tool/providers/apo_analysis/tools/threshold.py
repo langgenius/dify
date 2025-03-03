@@ -15,7 +15,7 @@ class ThresholdTool(BuiltinTool):
         app_id: Optional[str] = None,
         message_id: Optional[str] = None,
     ) -> Generator[ToolInvokeMessage, None, None]:
-        metric = tool_parameters.get('metric_data')
+        metric = tool_parameters.get('metricData')
         metric_data = json.loads(metric)
         threshold = float(tool_parameters.get('threshold'))
         res = {}

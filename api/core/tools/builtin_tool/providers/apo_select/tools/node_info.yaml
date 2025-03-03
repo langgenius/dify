@@ -11,6 +11,9 @@ description:
     zh_Hans: 获取节点信息
     pt_BR: A tool for getting fault log.
   llm: A tool for getting fault log.
+display:
+  type: info
+  unit: info
 parameters:
   - name: entryService
     type: string
@@ -64,31 +67,31 @@ parameters:
       pt_BR: Time format in strftime standard.
     llm_description: toplogy endpoint
     form: llm
-  - name: start_time
+  - name: startTime
     type: number
-    required: false
+    required: true
     label:
-      en_US: start_time
-      zh_Hans: 开始时间
-      pt_BR: start_time
+      en_US: startTime
+      zh_Hans: startTime
+      pt_BR: startTime
     human_description:
-      en_US: Time format in strftime standard.
-      zh_Hans: 指定查询CPU指标的开始时间。
-      pt_BR: Time format in strftime standard.
-    llm_description: Time format in strftime standard.
+      en_US: Data query start time
+      zh_Hans: 开始时间 (微秒)
+      pt_BR: Data query start time
+    llm_description: Data query start time
     form: llm
-  - name: end_time
+  - name: endTime
     type: number
-    required: false
+    required: true
     label:
-      en_US: end_time
-      zh_Hans: 结束时间
-      pt_BR: end_time
+      en_US: endTime
+      zh_Hans: endTime
+      pt_BR: endTime
     human_description:
-      en_US: Time format in strftime standard.
-      zh_Hans: 指定查询CPU指标的结束时间。
-      pt_BR: Time format in strftime standard.
-    llm_description: Time format in strftime standard.
+      en_US: Data query end time
+      zh_Hans: 结束时间 (微秒)
+      pt_BR: Data query end time
+    llm_description: Data query start time
     form: llm
   - name: type
     type: string

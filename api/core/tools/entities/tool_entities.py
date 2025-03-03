@@ -318,10 +318,14 @@ class ToolDescription(BaseModel):
     human: I18nObject = Field(..., description="The description presented to the user")
     llm: str = Field(..., description="The description presented to the LLM")
 
+class APODisPlay(BaseModel):
+    type: str = Field(..., description="The type of the apo data display")
+    unit: str = Field(..., description="The unit of the apo data display")
 
 class ToolEntity(BaseModel):
     identity: ToolIdentity
     parameters: list[ToolParameter] = Field(default_factory=list)
+    display: Optional[APODisPlay] = None
     description: Optional[ToolDescription] = None
     output_schema: Optional[dict] = None
     has_runtime_parameters: bool = Field(default=False, description="Whether the tool has runtime parameters")

@@ -20,8 +20,8 @@ class AlertTool(BuiltinTool):
     ) -> Generator[ToolInvokeMessage, None, None]:
         service = tool_parameters.get("service")
         endpoint = tool_parameters.get("endpoint")
-        start_time = tool_parameters.get("start_time")
-        end_time = tool_parameters.get("end_time")
+        start_time = tool_parameters.get("startTime")
+        end_time = tool_parameters.get("endTime")
         params = {
           'service': service,
           'endpoint': endpoint,

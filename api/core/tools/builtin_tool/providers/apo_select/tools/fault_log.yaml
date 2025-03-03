@@ -2,52 +2,55 @@ identity:
   name: fault_log
   author: APO
   label:
-    en_US: fault_log
-    zh_Hans: 获取故障现场日志
-    pt_BR: fault_log
+    en_US: Query service log data
+    zh_Hans: 查询服务日志数据
+    pt_BR: Query service log data
 description:
   human:
-    en_US: A tool for getting fault log.
-    zh_Hans: 查询容器CPU占用
-    pt_BR: A tool for getting fault log.
-  llm: A tool for getting fault log.
+    en_US: Query service log data
+    zh_Hans: 查询服务日志数据
+    pt_BR: Query service log data
+  llm: Query service log data
+display:
+  type: log
+  unit: log
 parameters:
   - name: service
     type: string
     required: true
     label:
       en_US: service
-      zh_Hans: 服务名
+      zh_Hans: service
       pt_BR: service
     human_description:
-      en_US: Time format in strftime standard.
-      zh_Hans: 查询指定Pod的CPU占用。
-      pt_BR: Time format in strftime standard.
-    llm_description: Time format in strftime standard.
+      en_US: service name
+      zh_Hans: 查询的日志服务名
+      pt_BR: service name
+    llm_description: service name
     form: llm
-  - name: start_time
+  - name: startTime
     type: number
-    required: false
+    required: true
     label:
-      en_US: start_time
-      zh_Hans: 开始时间
-      pt_BR: start_time
+      en_US: startTime
+      zh_Hans: startTime
+      pt_BR: startTime
     human_description:
-      en_US: Time format in strftime standard.
-      zh_Hans: 指定查询CPU指标的开始时间。
-      pt_BR: Time format in strftime standard.
-    llm_description: Time format in strftime standard.
+      en_US: Data query start time
+      zh_Hans: 开始时间 (微秒)
+      pt_BR: Data query start time
+    llm_description: Data query start time
     form: llm
-  - name: end_time
+  - name: endTime
     type: number
-    required: false
+    required: true
     label:
-      en_US: end_time
-      zh_Hans: 结束时间
-      pt_BR: end_time
+      en_US: endTime
+      zh_Hans: endTime
+      pt_BR: endTime
     human_description:
-      en_US: Time format in strftime standard.
-      zh_Hans: 指定查询CPU指标的结束时间。
-      pt_BR: Time format in strftime standard.
-    llm_description: Time format in strftime standard.
+      en_US: Data query end time
+      zh_Hans: 结束时间 (微秒)
+      pt_BR: Data query end time
+    llm_description: Data query start time
     form: llm

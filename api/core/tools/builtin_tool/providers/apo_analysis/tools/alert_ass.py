@@ -15,9 +15,9 @@ class AlertAssociateTool(BuiltinTool):
         app_id: Optional[str] = None,
         message_id: Optional[str] = None,
     ) -> Generator[ToolInvokeMessage, None, None]:
-        metric = tool_parameters.get('topology_data')
+        metric = tool_parameters.get('topologyData')
         topology_data = json.loads(metric)['data']
-        alert_data = json.loads(tool_parameters.get('alert_data'))['data']
+        alert_data = json.loads(tool_parameters.get('alertData'))['data']
         alert = self.process_alert(alert_data)
         topology = self.process_topology(topology_data, alert)
 
