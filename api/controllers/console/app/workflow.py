@@ -496,26 +496,63 @@ class PublishedAllWorkflowApi(Resource):
         workflow_service = WorkflowService()
         workflows, has_more = workflow_service.get_all_published_workflow(app_model=app_model, page=page, limit=limit)
 
-        return {"items": workflows, "page": page, "limit": limit, "has_more": has_more}
+        return {
+            "items": workflows,
+            "page": page,
+            "limit": limit,
+            "has_more": has_more,
+        }
 
 
-api.add_resource(DraftWorkflowApi, "/apps/<uuid:app_id>/workflows/draft")
-api.add_resource(WorkflowConfigApi, "/apps/<uuid:app_id>/workflows/draft/config")
-api.add_resource(AdvancedChatDraftWorkflowRunApi, "/apps/<uuid:app_id>/advanced-chat/workflows/draft/run")
-api.add_resource(DraftWorkflowRunApi, "/apps/<uuid:app_id>/workflows/draft/run")
-api.add_resource(WorkflowTaskStopApi, "/apps/<uuid:app_id>/workflow-runs/tasks/<string:task_id>/stop")
-api.add_resource(DraftWorkflowNodeRunApi, "/apps/<uuid:app_id>/workflows/draft/nodes/<string:node_id>/run")
+api.add_resource(
+    DraftWorkflowApi,
+    "/apps/<uuid:app_id>/workflows/draft",
+)
+api.add_resource(
+    WorkflowConfigApi,
+    "/apps/<uuid:app_id>/workflows/draft/config",
+)
+api.add_resource(
+    AdvancedChatDraftWorkflowRunApi,
+    "/apps/<uuid:app_id>/advanced-chat/workflows/draft/run",
+)
+api.add_resource(
+    DraftWorkflowRunApi,
+    "/apps/<uuid:app_id>/workflows/draft/run",
+)
+api.add_resource(
+    WorkflowTaskStopApi,
+    "/apps/<uuid:app_id>/workflow-runs/tasks/<string:task_id>/stop",
+)
+api.add_resource(
+    DraftWorkflowNodeRunApi,
+    "/apps/<uuid:app_id>/workflows/draft/nodes/<string:node_id>/run",
+)
 api.add_resource(
     AdvancedChatDraftRunIterationNodeApi,
     "/apps/<uuid:app_id>/advanced-chat/workflows/draft/iteration/nodes/<string:node_id>/run",
 )
 api.add_resource(
-    WorkflowDraftRunIterationNodeApi, "/apps/<uuid:app_id>/workflows/draft/iteration/nodes/<string:node_id>/run"
+    WorkflowDraftRunIterationNodeApi,
+    "/apps/<uuid:app_id>/workflows/draft/iteration/nodes/<string:node_id>/run",
 )
-api.add_resource(PublishedWorkflowApi, "/apps/<uuid:app_id>/workflows/publish")
-api.add_resource(PublishedAllWorkflowApi, "/apps/<uuid:app_id>/workflows")
-api.add_resource(DefaultBlockConfigsApi, "/apps/<uuid:app_id>/workflows/default-workflow-block-configs")
 api.add_resource(
-    DefaultBlockConfigApi, "/apps/<uuid:app_id>/workflows/default-workflow-block-configs/<string:block_type>"
+    PublishedWorkflowApi,
+    "/apps/<uuid:app_id>/workflows/publish",
 )
-api.add_resource(ConvertToWorkflowApi, "/apps/<uuid:app_id>/convert-to-workflow")
+api.add_resource(
+    PublishedAllWorkflowApi,
+    "/apps/<uuid:app_id>/workflows",
+)
+api.add_resource(
+    DefaultBlockConfigsApi,
+    "/apps/<uuid:app_id>/workflows/default-workflow-block-configs",
+)
+api.add_resource(
+    DefaultBlockConfigApi,
+    "/apps/<uuid:app_id>/workflows/default-workflow-block-configs/<string:block_type>",
+)
+api.add_resource(
+    ConvertToWorkflowApi,
+    "/apps/<uuid:app_id>/convert-to-workflow",
+)
