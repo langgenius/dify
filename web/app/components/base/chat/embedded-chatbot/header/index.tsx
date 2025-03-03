@@ -76,7 +76,7 @@ const Header: FC<IHeaderProps> = ({
 
   return (
     <div
-      className={cn('shrink-0 flex items-center justify-between h-14 px-3')}
+      className={cn('shrink-0 flex items-center justify-between h-14 px-3 rounded-t-2xl')}
       style={Object.assign({}, CssTransform(theme?.backgroundHeaderColorStyle ?? ''), CssTransform(theme?.headerBorderBottomStyle ?? '')) }
     >
       <div className="grow flex items-center space-x-3">

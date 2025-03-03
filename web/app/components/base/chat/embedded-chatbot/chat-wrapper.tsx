@@ -206,7 +206,7 @@ const ChatWrapper = () => {
       isResponding={isResponding}
       chatContainerInnerClassName={cn('mx-auto w-full max-w-full tablet:px-4', isMobile && 'px-4')}
       chatFooterClassName='pb-4'
-      chatFooterInnerClassName={cn('mx-auto w-full max-w-full tablet:px-4', isMobile && 'px-4')}
+      chatFooterInnerClassName={cn('mx-auto w-full max-w-full tablet:px-4', isMobile && 'px-2')}
       onSend={doSend}
       inputs={currentConversationId ? currentConversationItem?.inputs as any : newConversationInputs}
       inputsForm={inputsForms}
