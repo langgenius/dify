@@ -45,8 +45,8 @@ class OracleVectorConfig(BaseModel):
                 raise ValueError("config_dir is required for autonomous database")
             if not values.get("wallet_location"):
                 raise ValueError("wallet_location is required for autonomous database")
-            if not values.get("wallet_location"):
-                raise ValueError("wallet_location is required for autonomous database")
+            if not values.get("wallet_password"):
+                raise ValueError("wallet_password is required for autonomous database")
         return values
 
 
