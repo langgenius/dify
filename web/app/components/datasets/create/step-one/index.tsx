@@ -137,7 +137,7 @@ const StepOne = ({
             }
             {
               shouldShowDataSourceTypeList && (
-                <div className='flex items-center mb-8 flex-wrap gap-4'>
+                <div className='grid grid-cols-3 mb-8 gap-4'>
                   <div
                     className={cn(
                       s.dataSourceItem,
@@ -153,7 +153,12 @@ const StepOne = ({
                     }}
                   >
                     <span className={cn(s.datasetIcon)} />
-                    {t('datasetCreation.stepOne.dataSourceType.file')}
+                    <span
+                      title={t('datasetCreation.stepOne.dataSourceType.file')}
+                      className='truncate'
+                    >
+                      {t('datasetCreation.stepOne.dataSourceType.file')}
+                    </span>
                   </div>
                   <div
                     className={cn(
@@ -170,7 +175,12 @@ const StepOne = ({
                     }}
                   >
                     <span className={cn(s.datasetIcon, s.notion)} />
-                    {t('datasetCreation.stepOne.dataSourceType.notion')}
+                    <span
+                      title={t('datasetCreation.stepOne.dataSourceType.notion')}
+                      className='truncate'
+                    >
+                      {t('datasetCreation.stepOne.dataSourceType.notion')}
+                    </span>
                   </div>
                   <div
                     className={cn(
@@ -181,7 +191,12 @@ const StepOne = ({
                     onClick={() => changeType(DataSourceType.WEB)}
                   >
                     <span className={cn(s.datasetIcon, s.web)} />
-                    {t('datasetCreation.stepOne.dataSourceType.web')}
+                    <span
+                      title={t('datasetCreation.stepOne.dataSourceType.web')}
+                      className='truncate'
+                    >
+                      {t('datasetCreation.stepOne.dataSourceType.web')}
+                    </span>
                   </div>
                 </div>
               )

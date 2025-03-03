@@ -97,7 +97,7 @@ const PopupItem: FC<PopupItemProps> = ({
                     provider={model}
                     modelName={modelItem.model}
                   />
-                  <div className='truncate text-text-primary system-md-medium'>{modelItem.label[language] || modelItem.label.en_US}</div>
+                  <div className='text-text-primary system-md-medium text-wrap break-words'>{modelItem.label[language] || modelItem.label.en_US}</div>
                 </div>
                 {/* {currentProvider?.description && (
                   <div className='text-text-tertiary system-xs-regular'>{currentProvider?.description?.[language] || currentProvider?.description?.en_US}</div>

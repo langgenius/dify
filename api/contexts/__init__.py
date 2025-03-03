@@ -2,6 +2,8 @@ from contextvars import ContextVar
 from threading import Lock
 from typing import TYPE_CHECKING
 
+from contexts.wrapper import RecyclableContextVar
+
 if TYPE_CHECKING:
     from core.plugin.entities.plugin_daemon import PluginModelProviderEntity
     from core.tools.plugin_tool.provider import PluginToolProviderController
@@ -12,8 +14,17 @@ tenant_id: ContextVar[str] = ContextVar("tenant_id")
 
 workflow_variable_pool: ContextVar["VariablePool"] = ContextVar("workflow_variable_pool")
 
-plugin_tool_providers: ContextVar[dict[str, "PluginToolProviderController"]] = ContextVar("plugin_tool_providers")
-plugin_tool_providers_lock: ContextVar[Lock] = ContextVar("plugin_tool_providers_lock")
+"""
+To avoid race-conditions caused by gunicorn thread recycling, using RecyclableContextVar to replace with
+"""
+plugin_tool_providers: RecyclableContextVar[dict[str, "PluginToolProviderController"]] = RecyclableContextVar(
+    ContextVar("plugin_tool_providers")
+)
+plugin_tool_providers_lock: RecyclableContextVar[Lock] = RecyclableContextVar(ContextVar("plugin_tool_providers_lock"))
 
-plugin_model_providers: ContextVar[list["PluginModelProviderEntity"] | None] = ContextVar("plugin_model_providers")
-plugin_model_providers_lock: ContextVar[Lock] = ContextVar("plugin_model_providers_lock")
+plugin_model_providers: RecyclableContextVar[list["PluginModelProviderEntity"] | None] = RecyclableContextVar(
+    ContextVar("plugin_model_providers")
+)
+plugin_model_providers_lock: RecyclableContextVar[Lock] = RecyclableContextVar(
+    ContextVar("plugin_model_providers_lock")
+)

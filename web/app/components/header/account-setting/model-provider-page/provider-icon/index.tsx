@@ -1,12 +1,12 @@
 import type { FC } from 'react'
 import type { ModelProvider } from '../declarations'
 import { useLanguage } from '../hooks'
-import { useAppContext } from '@/context/app-context'
 import { Openai } from '@/app/components/base/icons/src/vender/other'
 import { AnthropicDark, AnthropicLight } from '@/app/components/base/icons/src/public/llm'
 import { renderI18nObject } from '@/hooks/use-i18n'
 import { Theme } from '@/types/app'
 import cn from '@/utils/classnames'
+import useTheme from '@/hooks/use-theme'
 
 type ProviderIconProps = {
   provider: ModelProvider
@@ -16,7 +16,7 @@ const ProviderIcon: FC<ProviderIconProps> = ({
   provider,
   className,
 }) => {
-  const { theme } = useAppContext()
+  const { theme } = useTheme()
   const language = useLanguage()
 
   if (provider.provider === 'langgenius/anthropic/anthropic') {

@@ -157,14 +157,9 @@ class AIModel(BaseModel):
         :param credentials: model credentials
         :return: model schema
         """
-        return self._get_customizable_model_schema(model, credentials)
 
-    def _get_customizable_model_schema(self, model: str, credentials: dict) -> Optional[AIModelEntity]:
-        """
-        Get customizable model schema and fill in the template
-        """
+        # get customizable model schema
         schema = self.get_customizable_model_schema(model, credentials)
-
         if not schema:
             return None
 
