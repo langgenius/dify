@@ -53,6 +53,8 @@ const Panel: FC<NodePanelProps<KnowledgeRetrievalNodeType>> = ({
     handleRemoveCondition,
     handleToggleConditionLogicalOperator,
     handleUpdateCondition,
+    handleMetadataModelChange,
+    handleMetadataCompletionParamsChange,
   } = useConfig(id, data)
 
   const handleOpenFromPropsChange = useCallback((openFromProps: boolean) => {
@@ -131,6 +133,9 @@ const Panel: FC<NodePanelProps<KnowledgeRetrievalNodeType>> = ({
           handleRemoveCondition={handleRemoveCondition}
           handleToggleConditionLogicalOperator={handleToggleConditionLogicalOperator}
           handleUpdateCondition={handleUpdateCondition}
+          metadataModelConfig={inputs.metadata_model_config}
+          handleMetadataModelChange={handleMetadataModelChange}
+          handleMetadataCompletionParamsChange={handleMetadataCompletionParamsChange}
         />
       </div>
       <Split />

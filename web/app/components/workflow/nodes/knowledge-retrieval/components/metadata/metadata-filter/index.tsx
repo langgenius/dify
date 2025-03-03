@@ -5,7 +5,7 @@ import Collapse from '@/app/components/workflow/nodes/_base/components/collapse'
 import Tooltip from '@/app/components/base/tooltip'
 import type { MetadataShape } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
 import { MetadataFilteringModeEnum } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
-import ModelSelector from '@/app/components/header/account-setting/model-provider-page/model-selector'
+import ModelParameterModal from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
 
 type MetadataFilterProps = {
   metadataFilterMode?: MetadataFilteringModeEnum
@@ -14,6 +14,9 @@ type MetadataFilterProps = {
 const MetadataFilter = ({
   metadataFilterMode,
   handleMetadataFilterModeChange,
+  metadataModelConfig,
+  handleMetadataModelChange,
+  handleMetadataCompletionParamsChange,
   ...restProps
 }: MetadataFilterProps) => {
   const [collapsed, setCollapsed] = useState(true)
@@ -60,9 +63,21 @@ const MetadataFilter = ({
               <div className='px-4 body-xs-regular text-text-tertiary'>
                 Automatically generate metadata filtering conditions based on Query Variable
               </div>
-              <ModelSelector
-                modelList={[]}
-              />
+              <div className='mt-1 px-4'>
+                <ModelParameterModal
+                  popupClassName='!w-[387px]'
+                  isInWorkflow
+                  isAdvancedMode={true}
+                  mode={metadataModelConfig?.mode || 'chat'}
+                  provider={metadataModelConfig?.provider || ''}
+                  completionParams={metadataModelConfig?.completion_params || { temperature: 0.7 }}
+                  modelId={metadataModelConfig?.name || ''}
+                  setModel={handleMetadataModelChange || (() => {})}
+                  onCompletionParamsChange={handleMetadataCompletionParamsChange || (() => {})}
+                  hideDebugWithMultipleModel
+                  debugWithMultipleModel={false}
+                />
+              </div>
             </>
           )
         }

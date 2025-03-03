@@ -340,6 +340,28 @@ const useConfig = (id: string, payload: KnowledgeRetrievalNodeType) => {
     setInputs(newInputs)
   }, [setInputs])
 
+  const handleMetadataModelChange = useCallback((model: { provider: string; modelId: string; mode?: string }) => {
+    const newInputs = produce(inputRef.current, (draft) => {
+      draft.metadata_model_config = {
+        provider: model.provider,
+        name: model.modelId,
+        mode: model.mode || 'chat',
+        completion_params: draft.metadata_model_config?.completion_params || { temperature: 0.7 },
+      }
+    })
+    setInputs(newInputs)
+  }, [setInputs])
+
+  const handleMetadataCompletionParamsChange = useCallback((newParams: Record<string, any>) => {
+    const newInputs = produce(inputRef.current, (draft) => {
+      draft.metadata_model_config = {
+        ...draft.metadata_model_config!,
+        completion_params: newParams,
+      }
+    })
+    setInputs(newInputs)
+  }, [setInputs])
+
   return {
     readOnly,
     inputs,
@@ -366,6 +388,8 @@ const useConfig = (id: string, payload: KnowledgeRetrievalNodeType) => {
     handleAddCondition,
     handleRemoveCondition,
     handleToggleConditionLogicalOperator,
+    handleMetadataModelChange,
+    handleMetadataCompletionParamsChange,
   }
 }
 
