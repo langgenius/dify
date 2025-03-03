@@ -26,7 +26,7 @@ import MarkdownButton from '@/app/components/base/markdown-blocks/button'
 import MarkdownForm from '@/app/components/base/markdown-blocks/form'
 import ThinkBlock from '@/app/components/base/markdown-blocks/think-block'
 import { Theme } from '@/types/app'
-import { useAppContext } from '@/context/app-context'
+import useTheme from '@/hooks/use-theme'
 import cn from '@/utils/classnames'
 
 // Available language https://github.com/react-syntax-highlighter/react-syntax-highlighter/blob/master/AVAILABLE_LANGUAGES_HLJS.MD
@@ -107,7 +107,7 @@ export function PreCode(props: { children: any }) {
 // or use the non-minified dev environment for full errors and additional helpful warnings.
 
 const CodeBlock: any = memo(({ inline, className, children, ...props }: any) => {
-  const { theme } = useAppContext()
+  const { theme } = useTheme()
   const [isSVG, setIsSVG] = useState(true)
   const match = /language-(\w+)/.exec(className || '')
   const language = match?.[1]
