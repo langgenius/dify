@@ -4,6 +4,7 @@ from typing import cast
 
 from flask import abort, request
 from flask_restful import Resource, inputs, marshal_with, reqparse  # type: ignore
+from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden, InternalServerError, NotFound
 
 import services
@@ -14,6 +15,7 @@ from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import account_initialization_required, setup_required
 from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.entities.app_invoke_entities import InvokeFrom
+from extensions.ext_database import db
 from factories import variable_factory
 from fields.workflow_fields import workflow_fields, workflow_pagination_fields
 from fields.workflow_run_fields import workflow_run_node_execution_fields
@@ -505,20 +507,22 @@ class PublishedAllWorkflowApi(Resource):
             user_id = cast(str, user_id)
 
         workflow_service = WorkflowService()
-        workflows, has_more = workflow_service.get_all_published_workflow(
-            app_model=app_model,
-            page=page,
-            limit=limit,
-            user_id=user_id,
-            named_only=named_only,
-        )
+        with Session(db.engine) as session:
+            workflows, has_more = workflow_service.get_all_published_workflow(
+                session=session,
+                app_model=app_model,
+                page=page,
+                limit=limit,
+                user_id=user_id,
+                named_only=named_only,
+            )
 
-        return {
-            "items": workflows,
-            "page": page,
-            "limit": limit,
-            "has_more": has_more,
-        }
+            return {
+                "items": workflows,
+                "page": page,
+                "limit": limit,
+                "has_more": has_more,
+            }
 
 
 api.add_resource(

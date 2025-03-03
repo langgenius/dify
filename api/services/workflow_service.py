@@ -83,6 +83,7 @@ class WorkflowService:
     def get_all_published_workflow(
         self,
         *,
+        session: Session,
         app_model: App,
         page: int,
         limit: int,
@@ -109,8 +110,7 @@ class WorkflowService:
         if named_only:
             stmt = stmt.where(Workflow.marked_name != "")
 
-        with Session(db.engine) as session:
-            workflows = session.scalars(stmt).all()
+        workflows = session.scalars(stmt).all()
 
         has_more = len(workflows) > limit
         if has_more:
