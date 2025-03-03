@@ -432,6 +432,12 @@ services:
     volumes:
       # Mount the storage directory to the container, for storing user files.
       - ./volumes/app/storage:/app/api/storage
+      - ./logs/api:/var/log/api  # 挂载日志目录
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"  # 设置最大日志文件大小
+        max-file: "5"    # 设置日志文件轮换数量
     networks:
       - ssrf_proxy_network
       - default
@@ -457,6 +463,12 @@ services:
     volumes:
       # Mount the storage directory to the container, for storing user files.
       - ./volumes/app/storage:/app/api/storage
+      - ./logs/worker:/var/log/worker  # 挂载日志目录
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "5"
     networks:
       - ssrf_proxy_network
       - default
@@ -477,6 +489,13 @@ services:
       TOP_K_MAX_VALUE: ${TOP_K_MAX_VALUE:-}
       INDEXING_MAX_SEGMENTATION_TOKENS_LENGTH: ${INDEXING_MAX_SEGMENTATION_TOKENS_LENGTH:-}
       PM2_INSTANCES: ${PM2_INSTANCES:-2}
+    volumes:
+      - ./logs/web:/var/log/web  # 挂载日志目录
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "5"
 
   # The postgres database.
   db:
@@ -495,6 +514,7 @@ services:
                -c 'effective_cache_size=${POSTGRES_EFFECTIVE_CACHE_SIZE:-4096MB}'
     volumes:
       - ./volumes/db/data:/var/lib/postgresql/data
+      - ./logs/db:/var/log/postgresql  # 挂载日志目录
     healthcheck:
       test: [ 'CMD', 'pg_isready' ]
       interval: 1s
@@ -502,6 +522,11 @@ services:
       retries: 30
     ports:
       - '${EXPOSE_DB_PORT:-5432}:5432'
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "5"
 
   # The redis cache.
   redis:
@@ -512,10 +537,16 @@ services:
     volumes:
       # Mount the redis data directory to the container.
       - ./volumes/redis/data:/data
+      - ./logs/redis:/var/log/redis  # 挂载日志目录
     # Set the redis password when startup redis server.
     command: redis-server --requirepass ${REDIS_PASSWORD:-difyai123456}
     healthcheck:
       test: [ 'CMD', 'redis-cli', 'ping' ]
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "5"
 
   # The DifySandbox
   sandbox:
@@ -533,12 +564,27 @@ services:
       HTTPS_PROXY: ${SANDBOX_HTTPS_PROXY:-http://ssrf_proxy:3128}
       SANDBOX_PORT: ${SANDBOX_PORT:-8194}
     volumes:
-      - ./volumes/sandbox/dependencies:/dependencies
-      - ./volumes/sandbox/conf:/conf
+      - /Users/Shared/dify_host_mnt/opt_agent_dify/docker/volumes/sandbox/dependencies:/dependencies
+      - ./logs/sandbox:/var/log/sandbox 
+     # - type: tmpfs
+     #   target: /dependencies
+     #   tmpfs:
+     #     size: 100m
+     # - type: tmpfs
+     #   target: /conf
+     # - /opt/agent/dify/docker/volumes/sandbox/dependencies:/dependencies
+     # - /opt/agent/dify/docker/volumes/sandbox/conf:/conf
+     # - ./volumes/sandbox/dependencies:/dependencies
+     # - ./volumes/sandbox/conf:/conf
     healthcheck:
       test: [ 'CMD', 'curl', '-f', 'http://localhost:8194/health' ]
     networks:
       - ssrf_proxy_network
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "5"
 
   # plugin daemon
   plugin_daemon:
@@ -562,6 +608,12 @@ services:
       - "${EXPOSE_PLUGIN_DEBUGGING_PORT:-5003}:${PLUGIN_DEBUGGING_PORT:-5003}"
     volumes:
       - ./volumes/plugin_daemon:/app/storage
+      - ./logs/plugin_daemon:/var/log/plugin_daemon 
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "5"
 
 
   # ssrf_proxy server
@@ -573,6 +625,7 @@ services:
     volumes:
       - ./ssrf_proxy/squid.conf.template:/etc/squid/squid.conf.template
       - ./ssrf_proxy/docker-entrypoint.sh:/docker-entrypoint-mount.sh
+      - ./logs/ssrf_proxy:/var/log/squid
     entrypoint: [ 'sh', '-c', "cp /docker-entrypoint-mount.sh /docker-entrypoint.sh && sed -i 's/\r$$//' /docker-entrypoint.sh && chmod +x /docker-entrypoint.sh && /docker-entrypoint.sh" ]
     environment:
       # pls clearly modify the squid env vars to fit your network environment.
@@ -584,6 +637,11 @@ services:
     networks:
       - ssrf_proxy_network
       - default
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "5"
 
   # Certbot service
   # use `docker-compose --profile certbot up` to start the certbot service.
@@ -598,12 +656,18 @@ services:
       - ./volumes/certbot/conf/live:/etc/letsencrypt/live
       - ./certbot/update-cert.template.txt:/update-cert.template.txt
       - ./certbot/docker-entrypoint.sh:/docker-entrypoint.sh
+      - ./logs/certbot:/var/log/certbot
     environment:
       - CERTBOT_EMAIL=${CERTBOT_EMAIL}
       - CERTBOT_DOMAIN=${CERTBOT_DOMAIN}
       - CERTBOT_OPTIONS=${CERTBOT_OPTIONS:-}
     entrypoint: [ '/docker-entrypoint.sh' ]
     command: [ 'tail', '-f', '/dev/null' ]
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "5"
 
   # The nginx reverse proxy.
   # used for reverse proxying the API service and Web service.
@@ -620,6 +684,7 @@ services:
       - ./volumes/certbot/conf/live:/etc/letsencrypt/live # cert dir (with certbot container)
       - ./volumes/certbot/conf:/etc/letsencrypt
       - ./volumes/certbot/www:/var/www/html
+      - ./logs/nginx:/var/log/nginx
     entrypoint: [ 'sh', '-c', "cp /docker-entrypoint-mount.sh /docker-entrypoint.sh && sed -i 's/\r$$//' /docker-entrypoint.sh && chmod +x /docker-entrypoint.sh && /docker-entrypoint.sh" ]
     environment:
       NGINX_SERVER_NAME: ${NGINX_SERVER_NAME:-_}
@@ -644,6 +709,11 @@ services:
     ports:
       - '${EXPOSE_NGINX_PORT:-80}:${NGINX_PORT:-80}'
       - '${EXPOSE_NGINX_SSL_PORT:-443}:${NGINX_SSL_PORT:-443}'
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "5"
 
   # The Weaviate vector store.
   weaviate:
@@ -655,6 +725,7 @@ services:
     volumes:
       # Mount the Weaviate data directory to the con tainer.
       - ./volumes/weaviate:/var/lib/weaviate
+      - ./logs/weaviate:/var/log/weaviate 
     environment:
       # The Weaviate configurations
       # You can refer to the [Weaviate](https://weaviate.io/developers/weaviate/config-refs/env-vars) documentation for more information.
@@ -668,6 +739,11 @@ services:
       AUTHENTICATION_APIKEY_USERS: ${WEAVIATE_AUTHENTICATION_APIKEY_USERS:-hello@dify.ai}
       AUTHORIZATION_ADMINLIST_ENABLED: ${WEAVIATE_AUTHORIZATION_ADMINLIST_ENABLED:-true}
       AUTHORIZATION_ADMINLIST_USERS: ${WEAVIATE_AUTHORIZATION_ADMINLIST_USERS:-hello@dify.ai}
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "5"
 
   # Qdrant vector store.
   # (if used, you need to set VECTOR_STORE to qdrant in the api & worker service.)
@@ -678,8 +754,14 @@ services:
     restart: always
     volumes:
       - ./volumes/qdrant:/qdrant/storage
+      - ./logs/qdrant:/var/log/qdrant
     environment:
       QDRANT_API_KEY: ${QDRANT_API_KEY:-difyai123456}
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "5"
 
   # The Couchbase vector store.
   couchbase-server:
@@ -706,6 +788,7 @@ services:
     command: sh -c "/opt/couchbase/init/init-cbserver.sh"
     volumes:
       - ./volumes/couchbase/data:/opt/couchbase/var/lib/couchbase/data
+      - ./logs/couchbase:/opt/couchbase/var/lib/couchbase/logs
     healthcheck:
       # ensure bucket was created before proceeding
       test: [ "CMD-SHELL", "curl -s -f -u Administrator:password http://localhost:8091/pools/default/buckets | grep -q '\\[{' || exit 1" ]
@@ -713,6 +796,11 @@ services:
       retries: 10
       start_period: 30s
       timeout: 10s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "5"
 
   # The pgvector vector database.
   pgvector:
@@ -730,11 +818,17 @@ services:
       PGDATA: ${PGVECTOR_PGDATA:-/var/lib/postgresql/data/pgdata}
     volumes:
       - ./volumes/pgvector/data:/var/lib/postgresql/data
+      - ./logs/pgvector:/var/log/pgvector
     healthcheck:
       test: [ 'CMD', 'pg_isready' ]
       interval: 1s
       timeout: 3s
       retries: 30
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "5"
 
   # pgvecto-rs vector store
   pgvecto-rs:
@@ -752,11 +846,17 @@ services:
       PGDATA: ${PGVECTOR_PGDATA:-/var/lib/postgresql/data/pgdata}
     volumes:
       - ./volumes/pgvecto_rs/data:/var/lib/postgresql/data
+      - ./logs/pgvecto-rs:/var/log/pgvecto-rs 
     healthcheck:
       test: [ 'CMD', 'pg_isready' ]
       interval: 1s
       timeout: 3s
       retries: 30
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "5"
 
   # Chroma vector database
   chroma:
@@ -766,10 +866,16 @@ services:
     restart: always
     volumes:
       - ./volumes/chroma:/chroma/chroma
+      - ./logs/chroma:/var/log/chroma
     environment:
       CHROMA_SERVER_AUTHN_CREDENTIALS: ${CHROMA_SERVER_AUTHN_CREDENTIALS:-difyai123456}
       CHROMA_SERVER_AUTHN_PROVIDER: ${CHROMA_SERVER_AUTHN_PROVIDER:-chromadb.auth.token_authn.TokenAuthenticationServerProvider}
       IS_PERSISTENT: ${CHROMA_IS_PERSISTENT:-TRUE}
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "5"
 
   # OceanBase vector database
   oceanbase:
@@ -781,12 +887,19 @@ services:
       - ./volumes/oceanbase/data:/root/ob
       - ./volumes/oceanbase/conf:/root/.obd/cluster
       - ./volumes/oceanbase/init.d:/root/boot/init.d
+      - ./logs/oceanbase:/opt/oracle/diag/rdbms/freepdb1/FREEPDB1/trace
     environment:
       OB_MEMORY_LIMIT: ${OCEANBASE_MEMORY_LIMIT:-6G}
       OB_SYS_PASSWORD: ${OCEANBASE_VECTOR_PASSWORD:-difyai123456}
       OB_TENANT_PASSWORD: ${OCEANBASE_VECTOR_PASSWORD:-difyai123456}
       OB_CLUSTER_NAME: ${OCEANBASE_CLUSTER_NAME:-difyai}
       OB_SERVER_IP: '127.0.0.1'
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "5"
+
 
   # Oracle vector database
   oracle:
@@ -799,9 +912,15 @@ services:
         type: volume
         target: /opt/oracle/oradata
       - ./startupscripts:/opt/oracle/scripts/startup
+      - ./logs/oracle:/opt/oracle/diag/rdbms/freepdb1/FREEPDB1/trace 
     environment:
       ORACLE_PWD: ${ORACLE_PWD:-Dify123456}
       ORACLE_CHARACTERSET: ${ORACLE_CHARACTERSET:-AL32UTF8}
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "5"
 
   # Milvus vector database services
   etcd:
@@ -816,6 +935,7 @@ services:
       ETCD_SNAPSHOT_COUNT: ${ETCD_SNAPSHOT_COUNT:-50000}
     volumes:
       - ./volumes/milvus/etcd:/etcd
+      - ./logs/etcd:/var/log/etcd
     command: etcd -advertise-client-urls=http://127.0.0.1:2379 -listen-client-urls http://0.0.0.0:2379 --data-dir /etcd
     healthcheck:
       test: [ 'CMD', 'etcdctl', 'endpoint', 'health' ]
@@ -824,6 +944,11 @@ services:
       retries: 3
     networks:
       - milvus
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "5"
 
   minio:
     container_name: milvus-minio
@@ -835,6 +960,7 @@ services:
       MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:-minioadmin}
     volumes:
       - ./volumes/milvus/minio:/minio_data
+      - ./logs/minio:/var/log/minio
     command: minio server /minio_data --console-address ":9001"
     healthcheck:
       test: [ 'CMD', 'curl', '-f', 'http://localhost:9000/minio/health/live' ]
@@ -843,6 +969,11 @@ services:
       retries: 3
     networks:
       - milvus
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "5"
 
   milvus-standalone:
     container_name: milvus-standalone
@@ -856,6 +987,7 @@ services:
       common.security.authorizationEnabled: ${MILVUS_AUTHORIZATION_ENABLED:-true}
     volumes:
       - ./volumes/milvus/milvus:/var/lib/milvus
+      - ./logs/milvus:/var/log/milvus
     healthcheck:
       test: [ 'CMD', 'curl', '-f', 'http://localhost:9091/healthz' ]
       interval: 30s
@@ -870,6 +1002,11 @@ services:
       - 9091:9091
     networks:
       - milvus
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "5"
 
   # Opensearch vector database
   opensearch:
@@ -891,8 +1028,14 @@ services:
         hard: ${OPENSEARCH_NOFILE_HARD:-65536}
     volumes:
       - ./volumes/opensearch/data:/usr/share/opensearch/data
+      - ./logs/opensearch:/usr/share/opensearch/logs 
     networks:
       - opensearch-net
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "5"
 
   opensearch-dashboards:
     container_name: opensearch-dashboards
@@ -903,10 +1046,16 @@ services:
       OPENSEARCH_HOSTS: '["https://opensearch:9200"]'
     volumes:
       - ./volumes/opensearch/opensearch_dashboards.yml:/usr/share/opensearch-dashboards/config/opensearch_dashboards.yml
+      - ./logs/opensearch-dashboards:/usr/share/opensearch-dashboards/logs 
     networks:
       - opensearch-net
     depends_on:
       - opensearch
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "5"
 
   # MyScale vector database
   myscale:
@@ -920,8 +1069,14 @@ services:
       - ./volumes/myscale/data:/var/lib/clickhouse
       - ./volumes/myscale/log:/var/log/clickhouse-server
       - ./volumes/myscale/config/users.d/custom_users_config.xml:/etc/clickhouse-server/users.d/custom_users_config.xml
+      - ./logs/myscale:/var/log/myscale
     ports:
       - ${MYSCALE_PORT:-8123}:${MYSCALE_PORT:-8123}
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "5"
 
   # https://www.elastic.co/guide/en/elasticsearch/reference/current/settings.html
   # https://www.elastic.co/guide/en/elasticsearch/reference/current/docker.html#docker-prod-prerequisites
@@ -935,6 +1090,7 @@ services:
     volumes:
       - ./elasticsearch/docker-entrypoint.sh:/docker-entrypoint-mount.sh
       - dify_es01_data:/usr/share/elasticsearch/data
+      - ./logs/elasticsearch:/usr/share/elasticsearch/logs
     environment:
       ELASTIC_PASSWORD: ${ELASTICSEARCH_PASSWORD:-elastic}
       VECTOR_STORE: ${VECTOR_STORE:-}
@@ -957,6 +1113,11 @@ services:
       interval: 30s
       timeout: 10s
       retries: 50
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "5"
 
   # https://www.elastic.co/guide/en/kibana/current/docker.html
   # https://www.elastic.co/guide/en/kibana/current/settings.html
@@ -985,6 +1146,13 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
+    volumes:
+      - ./logs/kibana:/usr/share/kibana/logs  # 挂载日志目录
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "5"
 
   # unstructured .
   # (if used, you need to set ETL_TYPE to Unstructured in the api & worker service.)
@@ -995,6 +1163,12 @@ services:
     restart: always
     volumes:
       - ./volumes/unstructured:/app/data
+      - ./logs/unstructured:/var/log/unstructured  # 挂载日志目录
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "5"
 
 networks:
   # create a network between sandbox, api and ssrf_proxy, and can not access outside.
