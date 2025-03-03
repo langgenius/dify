@@ -768,7 +768,7 @@ class Embedding(db.Model):  # type: ignore[name-defined]
     hash = db.Column(db.String(64), nullable=False)
     embedding = db.Column(db.LargeBinary, nullable=False)
     created_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
-    provider_name = db.Column(db.String(255), nullable=False, server_default=db.text("''::character varying"))
+    provider_name = db.Column(db.String(40), nullable=False, server_default=db.text("''::character varying"))
 
     def set_embedding(self, embedding_data: list[float]):
         self.embedding = pickle.dumps(embedding_data, protocol=pickle.HIGHEST_PROTOCOL)
