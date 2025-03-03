@@ -109,8 +109,8 @@ class Workflow(Base):
     app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     type: Mapped[str] = mapped_column(db.String(255), nullable=False)
     version: Mapped[str]
-    marked_name: Mapped[str]
-    marked_comment: Mapped[str]
+    marked_name: Mapped[str] = mapped_column(default="", server_default="")
+    marked_comment: Mapped[str] = mapped_column(default="", server_default="")
     graph: Mapped[str] = mapped_column(sa.Text)
     _features: Mapped[str] = mapped_column("features", sa.TEXT)
     created_by: Mapped[str] = mapped_column(StringUUID, nullable=False)
