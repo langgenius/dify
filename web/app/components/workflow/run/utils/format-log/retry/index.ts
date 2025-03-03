@@ -20,17 +20,18 @@ const format = (list: NodeTracing[]): NodeTracing[] => {
       return {
         ...item,
         retryDetail: retryNodes.filter((node) => {
-          if (!isInIteration)
-            return node.node_id === nodeId
-
-          if (!isInLoop)
+          if (!isInIteration && !isInLoop)
             return node.node_id === nodeId
 
           // retry node in iteration
-          return node.node_id === nodeId && (
-            isInIteration ? node.execution_metadata?.iteration_index === execution_metadata?.iteration_index
-              : isInLoop ? node.execution_metadata?.loop_index === execution_metadata?.loop_index
-                : false)
+          if (isInIteration)
+            return node.node_id === nodeId && node.execution_metadata?.iteration_index === execution_metadata?.iteration_index
+
+          // retry node in loop
+          if (isInLoop)
+            return node.node_id === nodeId && node.execution_metadata?.loop_index === execution_metadata?.loop_index
+
+          return false
         }),
       }
     }
