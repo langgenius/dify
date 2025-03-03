@@ -7,7 +7,7 @@ line-length = 120
 quote-style = "double"
 
 [lint]
-preview = true
+preview = false
 select = [
     "B", # flake8-bugbear rules
     "C4", # flake8-comprehensions
