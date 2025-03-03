@@ -390,13 +390,12 @@ export const useChat = (
             ...data,
             status: NodeRunningStatus.Running,
           })
-          handleUpdateChatList(produce(chatListRef.current, (draft) => {
-            const currentIndex = draft.findIndex(item => item.id === responseItem.id)
-            draft[currentIndex] = {
-              ...draft[currentIndex],
-              ...responseItem,
-            }
-          }))
+          updateCurrentQAOnTree({
+            placeholderQuestionId,
+            questionItem,
+            responseItem,
+            parentId: params.parent_message_id,
+          })
         },
         onLoopFinish: ({ data }) => {
           const currentTracingIndex = responseItem.workflowProcess!.tracing!.findIndex(item => item.id === data.id)
@@ -405,13 +404,12 @@ export const useChat = (
               ...responseItem.workflowProcess!.tracing[currentTracingIndex],
               ...data,
             }
-            handleUpdateChatList(produce(chatListRef.current, (draft) => {
-              const currentIndex = draft.findIndex(item => item.id === responseItem.id)
-              draft[currentIndex] = {
-                ...draft[currentIndex],
-                ...responseItem,
-              }
-            }))
+            updateCurrentQAOnTree({
+              placeholderQuestionId,
+              questionItem,
+              responseItem,
+              parentId: params.parent_message_id,
+            })
           }
         },
         onNodeStarted: ({ data }) => {

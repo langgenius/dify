@@ -385,7 +385,7 @@ export const ssePost = (
     options.body = JSON.stringify(body)
 
   const accessToken = getAccessToken(isPublicAPI)
-  options.headers!.set('Authorization', `Bearer ${accessToken}`)
+  ;(options.headers as Headers).set('Authorization', `Bearer ${accessToken}`)
 
   globalThis.fetch(urlWithPrefix, options as RequestInit)
     .then((res) => {

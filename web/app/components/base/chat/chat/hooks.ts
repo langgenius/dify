@@ -533,38 +533,6 @@ export const useChat = (
             parentId: data.parent_message_id,
           })
         },
-        // TODO: LOOP CHANGE
-        onLoopStart: ({ data }) => {
-          responseItem.workflowProcess!.tracing!.push({
-            ...data,
-            status: WorkflowRunningStatus.Running,
-          } as any)
-          handleUpdateChatList(produce(chatListRef.current, (draft) => {
-            const currentIndex = draft.findIndex(item => item.id === responseItem.id)
-            draft[currentIndex] = {
-              ...draft[currentIndex],
-              ...responseItem,
-            }
-          }))
-        },
-        onLoopFinish: ({ data }) => {
-          const tracing = responseItem.workflowProcess!.tracing!
-          const loopIndex = tracing.findIndex(item => item.node_id === data.node_id
-            && (item.execution_metadata?.parallel_id === data.execution_metadata?.parallel_id || item.parallel_id === data.execution_metadata?.parallel_id))!
-          tracing[loopIndex] = {
-            ...tracing[loopIndex],
-            ...data,
-            status: WorkflowRunningStatus.Succeeded,
-          } as any
-
-          handleUpdateChatList(produce(chatListRef.current, (draft) => {
-            const currentIndex = draft.findIndex(item => item.id === responseItem.id)
-            draft[currentIndex] = {
-              ...draft[currentIndex],
-              ...responseItem,
-            }
-          }))
-        },
         onNodeStarted: ({ data: nodeStartedData }) => {
           if (nodeStartedData.iteration_id)
             return
@@ -613,6 +581,35 @@ export const useChat = (
         },
         onTTSEnd: (messageId: string, audio: string) => {
           player.playAudioWithAudio(audio, false)
+        },
+        onLoopStart: ({ data: loopStartedData }) => {
+          responseItem.workflowProcess!.tracing!.push({
+            ...loopStartedData,
+            status: WorkflowRunningStatus.Running,
+          } as any)
+          updateCurrentQAOnTree({
+            placeholderQuestionId,
+            questionItem,
+            responseItem,
+            parentId: data.parent_message_id,
+          })
+        },
+        onLoopFinish: ({ data: loopFinishedData }) => {
+          const tracing = responseItem.workflowProcess!.tracing!
+          const loopIndex = tracing.findIndex(item => item.node_id === loopFinishedData.node_id
+            && (item.execution_metadata?.parallel_id === loopFinishedData.execution_metadata?.parallel_id || item.parallel_id === loopFinishedData.execution_metadata?.parallel_id))!
+          tracing[loopIndex] = {
+            ...tracing[loopIndex],
+            ...loopFinishedData,
+            status: WorkflowRunningStatus.Succeeded,
+          } as any
+
+          updateCurrentQAOnTree({
+            placeholderQuestionId,
+            questionItem,
+            responseItem,
+            parentId: data.parent_message_id,
+          })
         },
       })
     return true
