@@ -19,7 +19,6 @@ import {
 } from '../types'
 import { useStore } from '../store'
 import Divider from '../../base/divider'
-import AddBlock from './add-block'
 import TipPopup from './tip-popup'
 import { useOperator } from './hooks'
 import cn from '@/utils/classnames'
@@ -45,7 +44,7 @@ const Control = () => {
 
   return (
     <div className='flex items-center p-0.5 rounded-lg border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg shadow-lg text-text-tertiary'>
-      <AddBlock />
+      {/* <AddBlock /> */}
       <TipPopup title={t('workflow.nodes.note.addNote')}>
         <div
           className={cn(

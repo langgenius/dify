@@ -6,6 +6,7 @@ export let apiPrefix = ''
 export let publicApiPrefix = ''
 export let marketplaceApiPrefix = ''
 export let marketplaceUrlPrefix = ''
+export let v1ApiPrefix = ''
 
 // NEXT_PUBLIC_API_PREFIX=/console/api NEXT_PUBLIC_PUBLIC_API_PREFIX=/api npm run start
 if (process.env.NEXT_PUBLIC_API_PREFIX && process.env.NEXT_PUBLIC_PUBLIC_API_PREFIX) {
@@ -38,10 +39,20 @@ else {
   marketplaceUrlPrefix = globalThis.document?.body?.getAttribute('data-marketplace-url-prefix') || ''
 }
 
+if(process.env.NEXT_PUBLIC_V1_API_PREFIX)
+  v1ApiPrefix = process.env.NEXT_PUBLIC_V1_API_PREFIX
+
+else if(globalThis.document?.body?.getAttribute('data-v1-api-prefix'))
+  v1ApiPrefix =  globalThis.document?.body?.getAttribute('data-v1-api-prefix')
+
+else
+  v1ApiPrefix = 'http://localhost:5001/v1'
+
 export const API_PREFIX: string = apiPrefix
 export const PUBLIC_API_PREFIX: string = publicApiPrefix
 export const MARKETPLACE_API_PREFIX: string = marketplaceApiPrefix
 export const MARKETPLACE_URL_PREFIX: string = marketplaceUrlPrefix
+export const V1_API_PREFIX: string = v1ApiPrefix
 
 const EDITION = process.env.NEXT_PUBLIC_EDITION || globalThis.document?.body?.getAttribute('data-public-edition') || 'SELF_HOSTED'
 export const IS_CE_EDITION = EDITION === 'SELF_HOSTED'

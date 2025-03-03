@@ -2,6 +2,7 @@ import type { IOnCompleted, IOnData, IOnError, IOnFile, IOnIterationFinished, IO
 import {
   del as consoleDel, get as consoleGet, patch as consolePatch, post as consolePost,
   delPublic as del, getPublic as get, patchPublic as patch, postPublic as post, ssePost,
+  sseV1Post,
 } from './base'
 import type { FeedbackType } from '@/app/components/base/chat/chat/type'
 import type {
@@ -224,4 +225,38 @@ export const fetchAccessToken = async (appCode: string) => {
   const headers = new Headers()
   headers.append('X-App-Code', appCode)
   return get('/passport', { headers }) as Promise<{ access_token: string }>
+}
+
+export const sendWorkflowRun = async (
+  body: Record<string, any>,
+  {
+    onWorkflowStarted,
+    onNodeStarted,
+    onNodeFinished,
+    onWorkflowFinished,
+    onIterationStart,
+    onIterationNext,
+    onIterationFinish,
+    onTextChunk,
+    onTextReplace,
+  }: {
+    onWorkflowStarted: IOnWorkflowStarted
+    onNodeStarted: IOnNodeStarted
+    onNodeFinished: IOnNodeFinished
+    onWorkflowFinished: IOnWorkflowFinished
+    onIterationStart: IOnIterationStarted
+    onIterationNext: IOnIterationNext
+    onIterationFinish: IOnIterationFinished
+    onTextChunk: IOnTextChunk
+    onTextReplace: IOnTextReplace
+  },
+  isInstalledApp: boolean,
+  apiKey: string,
+) => {
+  return sseV1Post('workflows/run', {
+    body: {
+      ...body,
+      response_mode: 'streaming',
+    },
+  }, { onNodeStarted, onWorkflowStarted, onWorkflowFinished, isPublicAPI: !isInstalledApp, onNodeFinished, onIterationStart, onIterationNext, onIterationFinish, onTextChunk, onTextReplace }, apiKey)
 }

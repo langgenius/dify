@@ -1,4 +1,4 @@
-import { API_PREFIX, IS_CE_EDITION, PUBLIC_API_PREFIX } from '@/config'
+import { API_PREFIX, IS_CE_EDITION, PUBLIC_API_PREFIX, V1_API_PREFIX } from '@/config'
 import { refreshAccessTokenOrRelogin } from './refresh-token'
 import Toast from '@/app/components/base/toast'
 import type { AnnotationReply, MessageEnd, MessageReplace, ThoughtItem } from '@/app/components/base/chat/chat/type'
@@ -362,7 +362,6 @@ export const ssePost = (
 
   const accessToken = getAccessToken(isPublicAPI)
   options.headers!.set('Authorization', `Bearer ${accessToken}`)
-
   globalThis.fetch(urlWithPrefix, options as RequestInit)
     .then((res) => {
       if (!/^(2|3)\d{2}$/.test(String(res.status))) {
@@ -533,4 +532,112 @@ export const patch = <T>(url: string, options = {}, otherOptions?: IOtherOptions
 
 export const patchPublic = <T>(url: string, options = {}, otherOptions?: IOtherOptions) => {
   return patch<T>(url, options, { ...otherOptions, isPublicAPI: true })
+}
+
+// copy from ssePost
+export const sseV1Post = (
+  url: string,
+  fetchOptions: FetchOptionType,
+  otherOptions: IOtherOptions,
+  apiKey: string,
+) => {
+  const {
+    isPublicAPI = false,
+    onData,
+    onCompleted,
+    onThought,
+    onFile,
+    onMessageEnd,
+    onMessageReplace,
+    onWorkflowStarted,
+    onWorkflowFinished,
+    onNodeStarted,
+    onNodeFinished,
+    onIterationStart,
+    onIterationNext,
+    onIterationFinish,
+    onNodeRetry,
+    onParallelBranchStarted,
+    onParallelBranchFinished,
+    onTextChunk,
+    onTTSChunk,
+    onTTSEnd,
+    onTextReplace,
+    onAgentLog,
+    onError,
+    getAbortController,
+  } = otherOptions
+  const abortController = new AbortController()
+
+  const token = localStorage.getItem('console_token')
+  console.log(baseOptions)
+  const options = Object.assign({}, baseOptions, {
+    method: 'POST',
+    signal: abortController.signal,
+    headers: new Headers({
+      Authorization: `Bearer ${token}`,
+    }),
+  } as RequestInit, fetchOptions)
+
+  const contentType = (options.headers as Headers).get('Content-Type')
+  if (!contentType)
+    (options.headers as Headers).set('Content-Type', ContentType.json)
+
+  getAbortController?.(abortController)
+
+  const urlPrefix = V1_API_PREFIX
+  const urlWithPrefix = (url.startsWith('http://') || url.startsWith('https://'))
+    ? url
+    : `${urlPrefix}${url.startsWith('/') ? url : `/${url}`}`
+
+  const { body } = options
+  if (body)
+    options.body = JSON.stringify(body)
+
+  const accessToken = getAccessToken(isPublicAPI)
+  options.headers!.set('Authorization', `Bearer ${apiKey}`)
+  console.log(options)
+  globalThis.fetch(urlWithPrefix, options as RequestInit)
+    .then((res) => {
+      if (!/^(2|3)\d{2}$/.test(String(res.status))) {
+        if (res.status === 401) {
+          refreshAccessTokenOrRelogin(TIME_OUT).then(() => {
+            ssePost(url, fetchOptions, otherOptions)
+          }).catch(() => {
+            res.json().then((data: any) => {
+              if (isPublicAPI) {
+                if (data.code === 'web_sso_auth_required')
+                  requiredWebSSOLogin()
+
+                if (data.code === 'unauthorized') {
+                  removeAccessToken()
+                  globalThis.location.reload()
+                }
+              }
+            })
+          })
+        }
+        else {
+          res.json().then((data) => {
+            Toast.notify({ type: 'error', message: data.message || 'Server Error' })
+          })
+          onError?.('Server Error')
+        }
+        return
+      }
+      return handleStream(res, (str: string, isFirstMessage: boolean, moreInfo: IOnDataMoreInfo) => {
+        if (moreInfo.errorMessage) {
+          onError?.(moreInfo.errorMessage, moreInfo.errorCode)
+          // TypeError: Cannot assign to read only property ... will happen in page leave, so it should be ignored.
+          if (moreInfo.errorMessage !== 'AbortError: The user aborted a request.' && !moreInfo.errorMessage.includes('TypeError: Cannot assign to read only property'))
+            Toast.notify({ type: 'error', message: moreInfo.errorMessage })
+          return
+        }
+        onData?.(str, isFirstMessage, moreInfo)
+      }, onCompleted, onThought, onMessageEnd, onMessageReplace, onFile, onWorkflowStarted, onWorkflowFinished, onNodeStarted, onNodeFinished, onIterationStart, onIterationNext, onIterationFinish, onNodeRetry, onParallelBranchStarted, onParallelBranchFinished, onTextChunk, onTTSChunk, onTTSEnd, onTextReplace, onAgentLog)
+    }).catch((e) => {
+      if (e.toString() !== 'AbortError: The user aborted a request.' && !e.toString().errorMessage.includes('TypeError: Cannot assign to read only property'))
+        Toast.notify({ type: 'error', message: e })
+      onError?.(e)
+    })
 }

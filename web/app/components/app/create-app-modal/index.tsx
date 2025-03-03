@@ -23,7 +23,6 @@ import Input from '@/app/components/base/input'
 import Textarea from '@/app/components/base/textarea'
 import AppIcon from '@/app/components/base/app-icon'
 import AppsFull from '@/app/components/billing/apps-full-in-dialog'
-import { BubbleTextMod, ChatBot, ListSparkle, Logic } from '@/app/components/base/icons/src/vender/solid/communication'
 import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
 import { getRedirection } from '@/utils/app-redirection'
 import FullScreenModal from '@/app/components/base/fullscreen-modal'
@@ -41,7 +40,7 @@ function CreateApp({ onClose, onSuccess, onCreateFromTemplate }: CreateAppProps)
   const { notify } = useContext(ToastContext)
   const mutateApps = useContextSelector(AppsContext, state => state.mutateApps)
 
-  const [appMode, setAppMode] = useState<AppMode>('chat')
+  const [appMode, setAppMode] = useState<AppMode>('workflow')
   const [appIcon, setAppIcon] = useState<AppIconSelection>({ type: 'emoji', icon: '🤖', background: '#FFEAD5' })
   const [showAppIconPicker, setShowAppIconPicker] = useState(false)
   const [name, setName] = useState('')
@@ -105,7 +104,7 @@ function CreateApp({ onClose, onSuccess, onCreateFromTemplate }: CreateAppProps)
             <span className='system-sm-semibold text-text-secondary'>{t('app.newApp.chooseAppType')}</span>
           </div>
           <div className='flex flex-col w-[660px] gap-4'>
-            <div>
+            {/* <div>
               <div className='mb-2'>
                 <span className='system-2xs-medium-uppercase text-text-tertiary'>{t('app.newApp.forBeginners')}</span>
               </div>
@@ -141,13 +140,13 @@ function CreateApp({ onClose, onSuccess, onCreateFromTemplate }: CreateAppProps)
                     setAppMode('completion')
                   }} />
               </div>
-            </div>
+            </div> */}
             <div>
               <div className='mb-2'>
                 <span className='system-2xs-medium-uppercase text-text-tertiary'>{t('app.newApp.forAdvanced')}</span>
               </div>
               <div className='flex flex-row gap-2'>
-                <AppTypeCard
+                {/* <AppTypeCard
                   beta
                   active={appMode === 'advanced-chat'}
                   title={t('app.types.advanced')}
@@ -157,7 +156,7 @@ function CreateApp({ onClose, onSuccess, onCreateFromTemplate }: CreateAppProps)
                   </div>}
                   onClick={() => {
                     setAppMode('advanced-chat')
-                  }} />
+                  }} /> */}
                 <AppTypeCard
                   beta
                   active={appMode === 'workflow'}

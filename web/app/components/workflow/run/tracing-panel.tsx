@@ -14,6 +14,7 @@ import {
 import { useTranslation } from 'react-i18next'
 import { useLogs } from './hooks'
 import NodePanel from './node'
+import NodePanelForRun from '@/app/components/run/node/node'
 import SpecialResultPanel from './special-result-panel'
 import type { NodeTracing } from '@/types/workflow'
 import formatNodeList from '@/app/components/workflow/run/utils/format-log'
@@ -23,6 +24,7 @@ type TracingPanelProps = {
   className?: string
   hideNodeInfo?: boolean
   hideNodeProcessDetail?: boolean
+  ifForRun?: boolean
 }
 
 const TracingPanel: FC<TracingPanelProps> = ({
@@ -30,6 +32,7 @@ const TracingPanel: FC<TracingPanelProps> = ({
   className,
   hideNodeInfo = false,
   hideNodeProcessDetail = false,
+  ifForRun = false,
 }) => {
   const { t } = useTranslation()
   const treeNodes = formatNodeList(list, t)
@@ -136,14 +139,24 @@ const TracingPanel: FC<TracingPanelProps> = ({
           <div className={cn('pl-4 -mb-1.5 system-2xs-medium-uppercase', isHovered ? 'text-text-tertiary' : 'text-text-quaternary')}>
             {node?.parallelDetail?.branchTitle}
           </div>
-          <NodePanel
-            nodeInfo={node!}
-            onShowIterationDetail={handleShowIterationResultList}
-            onShowRetryDetail={handleShowRetryResultList}
-            onShowAgentOrToolLog={handleShowAgentOrToolLog}
-            hideInfo={hideNodeInfo}
-            hideProcessDetail={hideNodeProcessDetail}
-          />
+          {
+            ifForRun ? <NodePanelForRun
+              nodeInfo={node!}
+              onShowIterationDetail={handleShowIterationResultList}
+              onShowRetryDetail={handleShowRetryResultList}
+              onShowAgentOrToolLog={handleShowAgentOrToolLog}
+              hideInfo={hideNodeInfo}
+              hideProcessDetail={hideNodeProcessDetail}
+            /> : <NodePanel
+              nodeInfo={node!}
+              onShowIterationDetail={handleShowIterationResultList}
+              onShowRetryDetail={handleShowRetryResultList}
+              onShowAgentOrToolLog={handleShowAgentOrToolLog}
+              hideInfo={hideNodeInfo}
+              hideProcessDetail={hideNodeProcessDetail}
+            />
+          }
+
         </div>
       )
     }

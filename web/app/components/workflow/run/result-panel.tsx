@@ -15,12 +15,13 @@ import { hasRetryNode } from '@/app/components/workflow/utils'
 import { IterationLogTrigger } from '@/app/components/workflow/run/iteration-log'
 import { RetryLogTrigger } from '@/app/components/workflow/run/retry-log'
 import { AgentLogTrigger } from '@/app/components/workflow/run/agent-log'
+import DataDisplay from './data-display'
 
 type ResultPanelProps = {
   nodeInfo?: NodeTracing
   inputs?: string
   process_data?: string
-  outputs?: string
+  outputs?: any
   status: string
   error?: string
   elapsed_time?: number
@@ -126,6 +127,13 @@ const ResultPanel: FC<ResultPanelProps> = ({
             tip={<ErrorHandleTip type={execution_metadata?.error_strategy} />}
           />
         )}
+      </div>
+      <div className='px-4 py-2'>
+        <div className='h-[0.5px] divider-subtle' />
+      </div>
+      <div className='px-4 py-2'>
+
+        {outputs && outputs?.text && <DataDisplay data={outputs.text} />}
       </div>
       <div className='px-4 py-2'>
         <div className='h-[0.5px] divider-subtle' />

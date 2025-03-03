@@ -158,3 +158,12 @@ export const deleteWorkflowTool = (toolID: string) => {
     },
   })
 }
+
+export const fetchApoTools = (apoToolType: string, queryText: string) => {
+  return get('/workspaces/current/tools/apo', {
+    params: {
+      tool_type: apoToolType,
+      query: queryText,
+    },
+  })
+}

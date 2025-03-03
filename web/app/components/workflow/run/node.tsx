@@ -25,6 +25,7 @@ import type {
 } from '@/types/workflow'
 import ErrorHandleTip from '@/app/components/workflow/nodes/_base/components/error-handle/error-handle-tip'
 import { hasRetryNode } from '@/app/components/workflow/utils'
+import DataDisplay from './data-display'
 
 type Props = {
   className?: string
@@ -215,6 +216,9 @@ const NodePanel: FC<Props> = ({
                 />
               </div>
             )}
+            {
+              nodeInfo.outputs?.text && <DataDisplay data={nodeInfo.outputs.text} />
+            }
           </div>
         )}
       </div>

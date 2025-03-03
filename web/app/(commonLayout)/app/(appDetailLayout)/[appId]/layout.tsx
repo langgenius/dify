@@ -19,7 +19,6 @@ import { useContextSelector } from 'use-context-selector'
 import s from './style.module.css'
 import cn from '@/utils/classnames'
 import { useStore } from '@/app/components/app/store'
-import AppSideBar from '@/app/components/app-sidebar'
 import type { NavIcon } from '@/app/components/app-sidebar/navLink'
 import { fetchAppDetail, fetchAppSSO } from '@/service/apps'
 import AppContext, { useAppContext } from '@/context/app-context'
@@ -164,9 +163,10 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
 
   return (
     <div className={cn(s.app, 'flex relative', 'overflow-hidden')}>
-      {appDetail && (
+      {/* {appDetail && (
         <AppSideBar title={appDetail.name} icon={appDetail.icon} icon_background={appDetail.icon_background as string} desc={appDetail.mode} navigation={navigation} />
-      )}
+      )} */}
+
       <div className="bg-components-panel-bg grow overflow-hidden">
         {children}
       </div>

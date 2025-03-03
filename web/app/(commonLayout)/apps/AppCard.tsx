@@ -31,6 +31,7 @@ import DSLExportConfirmModal from '@/app/components/workflow/dsl-export-confirm-
 import { fetchWorkflowDraft } from '@/service/workflow'
 import { fetchInstalledAppList } from '@/service/explore'
 import { AppTypeIcon } from '@/app/components/app/type-selector'
+import Button from '@/app/components/base/button'
 
 export type AppCardProps = {
   app: App
@@ -301,6 +302,13 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
               {app.mode === 'workflow' && <div className='truncate'>{t('app.types.workflow').toUpperCase()}</div>}
               {app.mode === 'completion' && <div className='truncate'>{t('app.types.completion').toUpperCase()}</div>}
             </div>
+          </div>
+          <div>
+            <Button onClick={(e) => {
+              e.preventDefault()
+              e.stopPropagation()
+              push(`app/${app.id}/run`)
+            }}>运行</Button>
           </div>
         </div>
         <div className='title-wrapper h-[90px] px-[14px] text-xs leading-normal text-text-tertiary'>

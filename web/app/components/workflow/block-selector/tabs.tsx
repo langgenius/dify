@@ -8,6 +8,7 @@ import { TabsEnum } from './types'
 import Blocks from './blocks'
 import AllTools from './all-tools'
 import cn from '@/utils/classnames'
+import APOTools from './apoTools'
 
 export type TabsProps = {
   activeTab: TabsEnum
@@ -58,11 +59,12 @@ const Tabs: FC<TabsProps> = ({
       }
       {
         activeTab === TabsEnum.Blocks && !noBlocks && (
-          <Blocks
-            searchText={searchText}
-            onSelect={onSelect}
-            availableBlocksTypes={availableBlocksTypes}
-          />
+          <><APOTools onSelect={onSelect} searchText={searchText}/>
+            <Blocks
+              searchText={searchText}
+              onSelect={onSelect}
+              availableBlocksTypes={availableBlocksTypes}
+            /></>
         )
       }
       {

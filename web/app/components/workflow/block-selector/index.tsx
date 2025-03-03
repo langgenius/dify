@@ -27,7 +27,6 @@ import SearchBox from '@/app/components/plugins/marketplace/search-box'
 import {
   Plus02,
 } from '@/app/components/base/icons/src/vender/line/general'
-import classNames from '@/utils/classnames'
 
 type NodeSelectorProps = {
   open?: boolean
@@ -44,6 +43,7 @@ type NodeSelectorProps = {
   availableBlocksTypes?: BlockEnum[]
   disabled?: boolean
   noBlocks?: boolean
+  absolute?: boolean
 }
 const NodeSelector: FC<NodeSelectorProps> = ({
   open: openFromProps,
@@ -60,6 +60,7 @@ const NodeSelector: FC<NodeSelectorProps> = ({
   availableBlocksTypes,
   disabled,
   noBlocks = false,
+  absolute = true,
 }) => {
   const { t } = useTranslation()
   const [searchText, setSearchText] = useState('')
@@ -98,38 +99,7 @@ const NodeSelector: FC<NodeSelectorProps> = ({
       return t('workflow.tabs.searchTool')
     return ''
   }, [activeTab, t])
-
-  return (
-    <PortalToFollowElem
-      placement={placement}
-      offset={offset}
-      open={open}
-      onOpenChange={handleOpenChange}
-    >
-      <PortalToFollowElemTrigger
-        asChild={asChild}
-        onClick={handleTrigger}
-        className={triggerInnerClassName}
-      >
-        {
-          trigger
-            ? trigger(open)
-            : (
-              <div
-                className={`
-                  flex items-center justify-center 
-                  w-4 h-4 rounded-full bg-components-button-primary-bg text-text-primary-on-surface hover:bg-components-button-primary-bg-hover cursor-pointer z-10
-                  ${triggerClassName?.(open)}
-                `}
-                style={triggerStyle}
-              >
-                <Plus02 className='w-2.5 h-2.5' />
-              </div>
-            )
-        }
-      </PortalToFollowElemTrigger>
-      <PortalToFollowElemContent className='z-[1000]'>
-        <div className={`rounded-lg border-[0.5px] border-gray-200 bg-white shadow-lg ${popupClassName}`}>
+  const TabContent = () => <div className={`rounded-lg border-[0.5px] border-gray-200 bg-white shadow-lg ${popupClassName}`}>
           <div className='px-2 pt-2' onClick={e => e.stopPropagation()}>
             {activeTab === TabsEnum.Blocks && (
               <Input
@@ -164,9 +134,40 @@ const NodeSelector: FC<NodeSelectorProps> = ({
             noBlocks={noBlocks}
           />
         </div>
+  return absolute
+    ? <PortalToFollowElem
+      placement={placement}
+      offset={offset}
+      open={open}
+      onOpenChange={handleOpenChange}
+    >
+      <PortalToFollowElemTrigger
+        asChild={asChild}
+        onClick={handleTrigger}
+        className={triggerInnerClassName}
+      >
+        {
+          trigger
+            ? trigger(open)
+            : (
+              <div
+                className={`
+                  flex items-center justify-center 
+                  w-4 h-4 rounded-full bg-components-button-primary-bg text-text-primary-on-surface hover:bg-components-button-primary-bg-hover cursor-pointer z-10
+                  ${triggerClassName?.(open)}
+                `}
+                style={triggerStyle}
+              >
+                <Plus02 className='w-2.5 h-2.5' />
+              </div>
+            )
+        }
+      </PortalToFollowElemTrigger>
+      <PortalToFollowElemContent className='z-[1000]'>
+        <TabContent/>
       </PortalToFollowElemContent>
     </PortalToFollowElem>
-  )
+    : <TabContent/>
 }
 
 export default memo(NodeSelector)
