@@ -303,7 +303,7 @@ class OracleVectorFactory(AbstractVectorFactory):
             config=OracleVectorConfig(
                 user=dify_config.ORACLE_USER or "system",
                 password=dify_config.ORACLE_PASSWORD or "oracle",
-                dsn=dify_config.ORACLE_DSN,
+                dsn=dify_config.ORACLE_DSN or "oracle:1521/freepdb1",
                 config_dir=dify_config.ORACLE_CONFIG_DIR,
                 wallet_location=dify_config.ORACLE_WALLET_LOCATION,
                 wallet_password=dify_config.ORACLE_WALLET_PASSWORD,
