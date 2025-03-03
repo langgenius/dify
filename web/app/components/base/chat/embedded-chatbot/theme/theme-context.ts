@@ -9,7 +9,7 @@ export class Theme {
   public backgroundHeaderColorStyle = 'backgroundImage: linear-gradient(to right, #2563eb, #0ea5e9)'
   public headerBorderBottomStyle = ''
   public colorFontOnHeaderStyle = 'color: white'
-  public colorPathOnHeader = 'white'
+  public colorPathOnHeader = 'text-text-primary-on-surface'
   public backgroundButtonDefaultColorStyle = 'backgroundColor: #1C64F2'
   public roundedBackgroundColorStyle = 'backgroundColor: rgb(245 248 255)'
   public chatBubbleColorStyle = 'backgroundColor: rgb(225 239 254)'

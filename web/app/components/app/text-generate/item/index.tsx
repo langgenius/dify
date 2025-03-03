@@ -1,39 +1,40 @@
 'use client'
 import type { FC } from 'react'
-import React, { useEffect, useRef, useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
+  RiBookmark3Line,
   RiClipboardLine,
+  RiFileList3Line,
+  RiPlayList2Line,
+  RiReplay15Line,
+  RiSparklingFill,
+  RiSparklingLine,
+  RiThumbDownLine,
+  RiThumbUpLine,
 } from '@remixicon/react'
 import copy from 'copy-to-clipboard'
 import { useParams } from 'next/navigation'
-import { HandThumbDownIcon, HandThumbUpIcon } from '@heroicons/react/24/outline'
 import { useBoolean } from 'ahooks'
-import { HashtagIcon } from '@heroicons/react/24/solid'
 import ResultTab from './result-tab'
-import cn from '@/utils/classnames'
 import { Markdown } from '@/app/components/base/markdown'
 import Loading from '@/app/components/base/loading'
 import Toast from '@/app/components/base/toast'
-import AudioBtn from '@/app/components/base/audio-btn'
 import type { FeedbackType } from '@/app/components/base/chat/chat/type'
 import { fetchMoreLikeThis, updateFeedback } from '@/service/share'
-import { File02 } from '@/app/components/base/icons/src/vender/line/files'
-import { Bookmark } from '@/app/components/base/icons/src/vender/line/general'
-import { Stars02 } from '@/app/components/base/icons/src/vender/line/weather'
-import { RefreshCcw01 } from '@/app/components/base/icons/src/vender/line/arrows'
-import AnnotationCtrlBtn from '@/app/components/base/features/new-feature-panel/annotation-reply/annotation-ctrl-btn'
 import { fetchTextGenerationMessage } from '@/service/debug'
-import EditReplyModal from '@/app/components/app/annotation/edit-annotation-modal'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import WorkflowProcessItem from '@/app/components/base/chat/chat/answer/workflow-process'
 import type { WorkflowProcess } from '@/app/components/base/chat/types'
 import type { SiteInfo } from '@/models/share'
 import { useChatContext } from '@/app/components/base/chat/chat/context'
+import ActionButton, { ActionButtonState } from '@/app/components/base/action-button'
+import NewAudioButton from '@/app/components/base/new-audio-button'
+import cn from '@/utils/classnames'
 
 const MAX_DEPTH = 3
 
-export interface IGenerationItemProps {
+export type IGenerationItemProps = {
   isWorkflow?: boolean
   workflowProcessData?: WorkflowProcess
   className?: string
@@ -56,30 +57,11 @@ export interface IGenerationItemProps {
   taskId?: string
   controlClearMoreLikeThis?: number
   supportFeedback?: boolean
-  supportAnnotation?: boolean
   isShowTextToSpeech?: boolean
-  appId?: string
-  varList?: { label: string; value: string | number | object }[]
-  innerClassName?: string
-  contentClassName?: string
-  footerClassName?: string
   hideProcessDetail?: boolean
   siteInfo: SiteInfo | null
+  inSidePanel?: boolean
 }
-
-export const SimpleBtn = ({ className, isDisabled, onClick, children }: {
-  className?: string
-  isDisabled?: boolean
-  onClick?: () => void
-  children: React.ReactNode
-}) => (
-  <div
-    className={cn(isDisabled ? 'border-gray-100 text-gray-300' : 'border-gray-200 text-gray-700 cursor-pointer hover:border-gray-300 hover:shadow-sm', 'flex items-center h-7 px-3 rounded-md border text-xs  font-medium', className)}
-    onClick={() => !isDisabled && onClick?.()}
-  >
-    {children}
-  </div>
-)
 
 export const copyIcon = (
   <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -109,22 +91,16 @@ const GenerationItem: FC<IGenerationItemProps> = ({
   taskId,
   controlClearMoreLikeThis,
   supportFeedback,
-  supportAnnotation,
   isShowTextToSpeech,
-  appId,
-  varList,
-  innerClassName,
-  contentClassName,
   hideProcessDetail,
   siteInfo,
+  inSidePanel,
 }) => {
   const { t } = useTranslation()
   const params = useParams()
   const isTop = depth === 1
-  const ref = useRef(null)
   const [completionRes, setCompletionRes] = useState('')
   const [childMessageId, setChildMessageId] = useState<string | null>(null)
-  const hasChild = !!childMessageId
   const [childFeedback, setChildFeedback] = useState<FeedbackType>({
     rating: null,
   })
@@ -140,8 +116,6 @@ const GenerationItem: FC<IGenerationItemProps> = ({
     setChildFeedback(childFeedback)
   }
 
-  const [isShowReplyModal, setIsShowReplyModal] = useState(false)
-  const question = (varList && varList?.length > 0) ? varList?.map(({ label, value }) => `${label}:${value}`).join('&') : ''
   const [isQuerying, { setTrue: startQuerying, setFalse: stopQuerying }] = useBoolean(false)
 
   const childProps = {
@@ -161,6 +135,7 @@ const GenerationItem: FC<IGenerationItemProps> = ({
     controlClearMoreLikeThis,
     isWorkflow,
     siteInfo,
+    taskId,
   }
 
   const handleMoreLikeThis = async () => {
@@ -177,19 +152,6 @@ const GenerationItem: FC<IGenerationItemProps> = ({
     setChildMessageId(res.id)
     stopQuerying()
   }
-
-  const mainStyle = (() => {
-    const res: React.CSSProperties = !isTop
-      ? {
-        background: depth % 2 === 0 ? 'linear-gradient(90.07deg, #F9FAFB 0.05%, rgba(249, 250, 251, 0) 99.93%)' : '#fff',
-      }
-      : {}
-
-    if (hasChild)
-      res.boxShadow = '0px 1px 2px rgba(16, 24, 40, 0.05)'
-
-    return res
-  })()
 
   useEffect(() => {
     if (controlClearMoreLikeThis) {
@@ -228,123 +190,125 @@ const GenerationItem: FC<IGenerationItemProps> = ({
     setShowPromptLogModal(true)
   }
 
-  const ratingContent = (
-    <>
-      {!isWorkflow && !isError && messageId && !feedback?.rating && (
-        <SimpleBtn className="!px-0">
-          <>
-            <div
-              onClick={() => {
-                onFeedback?.({
-                  rating: 'like',
-                })
-              }}
-              className='flex w-6 h-6 items-center justify-center rounded-md cursor-pointer hover:bg-gray-100'>
-              <HandThumbUpIcon width={16} height={16} />
-            </div>
-            <div
-              onClick={() => {
-                onFeedback?.({
-                  rating: 'dislike',
-                })
-              }}
-              className='flex w-6 h-6 items-center justify-center rounded-md cursor-pointer hover:bg-gray-100'>
-              <HandThumbDownIcon width={16} height={16} />
-            </div>
-          </>
-        </SimpleBtn>
-      )}
-      {!isWorkflow && !isError && messageId && feedback?.rating === 'like' && (
-        <div
-          onClick={() => {
-            onFeedback?.({
-              rating: null,
-            })
-          }}
-          className='flex w-7 h-7 items-center justify-center rounded-md cursor-pointer  !text-primary-600 border border-primary-200 bg-primary-100 hover:border-primary-300 hover:bg-primary-200'>
-          <HandThumbUpIcon width={16} height={16} />
-        </div>
-      )}
-      {!isWorkflow && !isError && messageId && feedback?.rating === 'dislike' && (
-        <div
-          onClick={() => {
-            onFeedback?.({
-              rating: null,
-            })
-          }}
-          className='flex w-7 h-7 items-center justify-center rounded-md cursor-pointer  !text-red-600 border border-red-200 bg-red-100 hover:border-red-300 hover:bg-red-200'>
-          <HandThumbDownIcon width={16} height={16} />
-        </div>
-      )}
-    </>
-  )
-
   const [currentTab, setCurrentTab] = useState<string>('DETAIL')
+  const showResultTabs = !!workflowProcessData?.resultText || !!workflowProcessData?.files?.length
+  const switchTab = async (tab: string) => {
+    setCurrentTab(tab)
+  }
+  useEffect(() => {
+    if (workflowProcessData?.resultText || !!workflowProcessData?.files?.length)
+      switchTab('RESULT')
+    else
+      switchTab('DETAIL')
+  }, [workflowProcessData?.files?.length, workflowProcessData?.resultText])
 
   return (
-    <div ref={ref} className={cn(isTop ? `rounded-xl border ${!isError ? 'border-gray-200 bg-chat-bubble-bg' : 'border-[#FECDCA] bg-[#FEF3F2]'} ` : 'rounded-br-xl !mt-0', className)}
-      style={isTop
-        ? {
-          boxShadow: '0px 1px 2px rgba(16, 24, 40, 0.05)',
-        }
-        : {}}
-    >
-      {isLoading
-        ? (
-          <div className='flex items-center h-10'><Loading type='area' /></div>
-        )
-        : (
-          <div
-            className={cn(!isTop && 'rounded-br-xl border-l-2 border-primary-400', 'p-4', innerClassName)}
-            style={mainStyle}
-          >
-            {(isTop && taskId) && (
-              <div className='mb-2 text-gray-500 border border-gray-200 box-border flex items-center rounded-md italic text-[11px] pl-1 pr-1.5 font-medium w-fit group-hover:opacity-100'>
-                <HashtagIcon className='w-3 h-3 text-gray-400 fill-current mr-1 stroke-current stroke-1' />
-                {taskId}
-              </div>)
-            }
-            <div className={`flex ${contentClassName}`}>
-              <div className='grow w-0'>
-                {siteInfo && workflowProcessData && (
-                  <WorkflowProcessItem
-                    data={workflowProcessData}
-                    expand={workflowProcessData.expand}
-                    hideProcessDetail={hideProcessDetail}
-                    hideInfo={hideProcessDetail}
-                    readonly={!siteInfo.show_workflow_steps}
-                  />
-                )}
-                {workflowProcessData && !isError && (
-                  <ResultTab data={workflowProcessData} content={content} currentTab={currentTab} onCurrentTabChange={setCurrentTab} />
-                )}
-                {isError && (
-                  <div className='text-gray-400 text-sm'>{t('share.generation.batchFailed.outputPlaceholder')}</div>
-                )}
-                {!workflowProcessData && !isError && (typeof content === 'string') && (
+    <>
+      <div className={cn('relative', !isTop && 'mt-3', className)}>
+        {isLoading && (
+          <div className={cn('flex items-center h-10', !inSidePanel && 'bg-chat-bubble-bg rounded-2xl border-t border-divider-subtle')}><Loading type='area' /></div>
+        )}
+        {!isLoading && (
+          <>
+            {/* result content */}
+            <div className={cn(
+              'relative',
+              !inSidePanel && 'bg-chat-bubble-bg rounded-2xl border-t border-divider-subtle',
+            )}>
+              {workflowProcessData && (
+                <>
+                  <div className={cn(
+                    'p-3 pb-0',
+                    showResultTabs && 'border-b border-divider-subtle',
+                  )}>
+                    {taskId && (
+                      <div className={cn('mb-2 flex items-center system-2xs-medium-uppercase text-text-accent-secondary', isError && 'text-text-destructive')}>
+                        <RiPlayList2Line className='w-3 h-3 mr-1' />
+                        <span>{t('share.generation.execution')}</span>
+                        <span className='px-1'>·</span>
+                        <span>{taskId}</span>
+                      </div>
+                    )}
+                    {siteInfo && workflowProcessData && (
+                      <WorkflowProcessItem
+                        data={workflowProcessData}
+                        expand={workflowProcessData.expand}
+                        hideProcessDetail={hideProcessDetail}
+                        hideInfo={hideProcessDetail}
+                        readonly={!siteInfo.show_workflow_steps}
+                      />
+                    )}
+                    {showResultTabs && (
+                      <div className='flex items-center px-1 space-x-6'>
+                        <div
+                          className={cn(
+                            'py-3 border-b-2 border-transparent system-sm-semibold-uppercase text-text-tertiary cursor-pointer',
+                            currentTab === 'RESULT' && 'text-text-primary border-util-colors-blue-brand-blue-brand-600',
+                          )}
+                          onClick={() => switchTab('RESULT')}
+                        >{t('runLog.result')}</div>
+                        <div
+                          className={cn(
+                            'py-3 border-b-2 border-transparent system-sm-semibold-uppercase text-text-tertiary cursor-pointer',
+                            currentTab === 'DETAIL' && 'text-text-primary border-util-colors-blue-brand-blue-brand-600',
+                          )}
+                          onClick={() => switchTab('DETAIL')}
+                        >{t('runLog.detail')}</div>
+                      </div>
+                    )}
+                  </div>
+                  {!isError && (
+                    <ResultTab data={workflowProcessData} content={content} currentTab={currentTab} />
+                  )}
+                </>
+              )}
+              {!workflowProcessData && taskId && (
+                <div className={cn('sticky left-0 top-0 flex items-center w-full p-4 pb-3 bg-components-actionbar-bg rounded-t-2xl system-2xs-medium-uppercase text-text-accent-secondary', isError && 'text-text-destructive')}>
+                  <RiPlayList2Line className='w-3 h-3 mr-1' />
+                  <span>{t('share.generation.execution')}</span>
+                  <span className='px-1'>·</span>
+                  <span>{`${taskId}${depth > 1 ? `-${depth - 1}` : ''}`}</span>
+                </div>
+              )}
+              {isError && (
+                <div className='p-4 pt-0 text-text-quaternary body-lg-regular'>{t('share.generation.batchFailed.outputPlaceholder')}</div>
+              )}
+              {!workflowProcessData && !isError && (typeof content === 'string') && (
+                <div className={cn('p-4', taskId && 'pt-0')}>
                   <Markdown content={content} />
-                )}
-              </div>
+                </div>
+              )}
             </div>
-
-            <div className='flex items-center justify-between mt-3'>
-              <div className='flex items-center'>
-                {
-                  !isInWebApp && !isInstalledApp && !isResponding && (
-                    <SimpleBtn
-                      isDisabled={isError || !messageId}
-                      className={cn(isMobile && '!px-1.5', 'space-x-1 mr-1')}
-                      onClick={handleOpenLogModal}>
-                      <File02 className='w-3.5 h-3.5' />
-                      {!isMobile && <div>{t('common.operation.log')}</div>}
-                    </SimpleBtn>
-                  )
-                }
-                {((currentTab === 'RESULT' && workflowProcessData?.resultText) || !isWorkflow) && (
-                  <SimpleBtn
-                    isDisabled={isError || !messageId}
-                    className={cn(isMobile && '!px-1.5', 'space-x-1')}
-                    onClick={() => {
+            {/* meta data */}
+            <div className={cn(
+              'relative mt-1 h-4 px-4 text-text-quaternary system-xs-regular',
+              isMobile && ((childMessageId || isQuerying) && depth < 3) && 'pl-10',
+            )}>
+              {!isWorkflow && <span>{content?.length} {t('common.unit.char')}</span>}
+              {/* action buttons */}
+              <div className='absolute right-2 bottom-1 flex items-center'>
+                {!isInWebApp && !isInstalledApp && !isResponding && (
+                  <div className='ml-1 flex items-center gap-0.5 p-0.5 rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg shadow-md backdrop-blur-sm'>
+                    <ActionButton disabled={isError || !messageId} onClick={handleOpenLogModal}>
+                      <RiFileList3Line className='w-4 h-4' />
+                      {/* <div>{t('common.operation.log')}</div> */}
+                    </ActionButton>
+                  </div>
+                )}
+                <div className='ml-1 flex items-center gap-0.5 p-0.5 rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg shadow-md backdrop-blur-sm'>
+                  {moreLikeThis && (
+                    <ActionButton state={depth === MAX_DEPTH ? ActionButtonState.Disabled : ActionButtonState.Default} disabled={depth === MAX_DEPTH} onClick={handleMoreLikeThis}>
+                      <RiSparklingLine className='w-4 h-4' />
+                    </ActionButton>
+                  )}
+                  {isShowTextToSpeech && (
+                    <NewAudioButton
+                      id={messageId!}
+                      voice={config?.text_to_speech?.voice}
+                    />
+                  )}
+                  {((currentTab === 'RESULT' && workflowProcessData?.resultText) || !isWorkflow) && (
+                    <ActionButton disabled={isError || !messageId} onClick={() => {
                       const copyContent = isWorkflow ? workflowProcessData?.resultText : content
                       if (typeof copyContent === 'string')
                         copy(copyContent)
@@ -352,117 +316,68 @@ const GenerationItem: FC<IGenerationItemProps> = ({
                         copy(JSON.stringify(copyContent))
                       Toast.notify({ type: 'success', message: t('common.actionMsg.copySuccessfully') })
                     }}>
-                    <RiClipboardLine className='w-3.5 h-3.5' />
-                    {!isMobile && <div>{t('common.operation.copy')}</div>}
-                  </SimpleBtn>
-                )}
-
-                {isInWebApp && (
-                  <>
-                    {!isWorkflow && (
-                      <SimpleBtn
-                        isDisabled={isError || !messageId}
-                        className={cn(isMobile && '!px-1.5', 'ml-2 space-x-1')}
-                        onClick={() => { onSave?.(messageId as string) }}
-                      >
-                        <Bookmark className='w-3.5 h-3.5' />
-                        {!isMobile && <div>{t('common.operation.save')}</div>}
-                      </SimpleBtn>
+                      <RiClipboardLine className='w-4 h-4' />
+                    </ActionButton>
+                  )}
+                  {isInWebApp && isError && (
+                    <ActionButton onClick={onRetry}>
+                      <RiReplay15Line className='w-4 h-4' />
+                    </ActionButton>
+                  )}
+                  {isInWebApp && !isWorkflow && (
+                    <ActionButton disabled={isError || !messageId} onClick={() => { onSave?.(messageId as string) }}>
+                      <RiBookmark3Line className='w-4 h-4' />
+                    </ActionButton>
+                  )}
+                </div>
+                {(supportFeedback || isInWebApp) && !isWorkflow && !isError && messageId && (
+                  <div className='ml-1 flex items-center gap-0.5 p-0.5 rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg shadow-md backdrop-blur-sm'>
+                    {!feedback?.rating && (
+                      <>
+                        <ActionButton onClick={() => onFeedback?.({ rating: 'like' })}>
+                          <RiThumbUpLine className='w-4 h-4' />
+                        </ActionButton>
+                        <ActionButton onClick={() => onFeedback?.({ rating: 'dislike' })}>
+                          <RiThumbDownLine className='w-4 h-4' />
+                        </ActionButton>
+                      </>
                     )}
-                    {(moreLikeThis && depth < MAX_DEPTH) && (
-                      <SimpleBtn
-                        isDisabled={isError || !messageId}
-                        className={cn(isMobile && '!px-1.5', 'ml-2 space-x-1')}
-                        onClick={handleMoreLikeThis}
-                      >
-                        <Stars02 className='w-3.5 h-3.5' />
-                        {!isMobile && <div>{t('appDebug.feature.moreLikeThis.title')}</div>}
-                      </SimpleBtn>
+                    {feedback?.rating === 'like' && (
+                      <ActionButton state={ActionButtonState.Active} onClick={() => onFeedback?.({ rating: null })}>
+                        <RiThumbUpLine className='w-4 h-4' />
+                      </ActionButton>
                     )}
-                    {isError && (
-                      <SimpleBtn
-                        onClick={onRetry}
-                        className={cn(isMobile && '!px-1.5', 'ml-2 space-x-1')}
-                      >
-                        <RefreshCcw01 className='w-3.5 h-3.5' />
-                        {!isMobile && <div>{t('share.generation.batchFailed.retry')}</div>}
-                      </SimpleBtn>
+                    {feedback?.rating === 'dislike' && (
+                      <ActionButton state={ActionButtonState.Destructive} onClick={() => onFeedback?.({ rating: null })}>
+                        <RiThumbDownLine className='w-4 h-4' />
+                      </ActionButton>
                     )}
-                    {!isError && messageId && !isWorkflow && (
-                      <div className="mx-3 w-[1px] h-[14px] bg-gray-200"></div>
-                    )}
-                    {ratingContent}
-                  </>
-                )}
-
-                {supportAnnotation && (
-                  <>
-                    <div className='ml-2 mr-1 h-[14px] w-[1px] bg-gray-200'></div>
-                    <AnnotationCtrlBtn
-                      appId={appId!}
-                      messageId={messageId!}
-                      className='ml-1'
-                      query={question}
-                      answer={content}
-                      // not support cache. So can not be cached
-                      cached={false}
-                      onAdded={() => {
-
-                      }}
-                      onEdit={() => setIsShowReplyModal(true)}
-                      onRemoved={() => { }}
-                    />
-                  </>
-                )}
-
-                <EditReplyModal
-                  appId={appId!}
-                  messageId={messageId!}
-                  isShow={isShowReplyModal}
-                  onHide={() => setIsShowReplyModal(false)}
-                  query={question}
-                  answer={content}
-                  onAdded={() => { }}
-                  onEdited={() => { }}
-                  createdAt={0}
-                  onRemove={() => { }}
-                  onlyEditResponse
-                />
-
-                {supportFeedback && (
-                  <div className='ml-1'>
-                    {ratingContent}
                   </div>
-                )}
-
-                {isShowTextToSpeech && (
-                  <>
-                    <div className='ml-2 mr-2 h-[14px] w-[1px] bg-gray-200'></div>
-                    <AudioBtn
-                      id={messageId!}
-                      className={'mr-1'}
-                      voice={config?.text_to_speech?.voice}
-                    />
-                  </>
-                )}
-              </div>
-              <div>
-                {!workflowProcessData && (
-                  <div className='text-xs text-gray-500'>{content?.length} {t('common.unit.char')}</div>
                 )}
               </div>
             </div>
-
-          </div>
+            {/* more like this elements */}
+            {!isTop && (
+              <div className={cn(
+                'absolute top-[-32px] w-4 h-[33px] flex justify-center',
+                isMobile ? 'left-[17px]' : 'left-[50%] translate-x-[-50%]',
+              )}>
+                <div className='h-full w-0.5 bg-divider-regular'></div>
+                <div className={cn(
+                  'absolute left-0 w-4 h-4 flex items-center justify-center bg-util-colors-blue-blue-500 rounded-2xl border-[0.5px] border-divider-subtle shadow-xs',
+                  isMobile ? 'top-[3.5px]' : 'top-2',
+                )}>
+                  <RiSparklingFill className='w-3 h-3 text-text-primary-on-surface' />
+                </div>
+              </div>
+            )}
+          </>
         )}
-
+      </div>
       {((childMessageId || isQuerying) && depth < 3) && (
-        <div className='pl-4'>
-          <GenerationItem {...childProps as any} />
-        </div>
+        <GenerationItem {...childProps as any} />
       )}
-
-    </div>
+    </>
   )
 }
 export default React.memo(GenerationItem)

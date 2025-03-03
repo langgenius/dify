@@ -1,13 +1,13 @@
 'use client'
 import type { FC } from 'react'
 import React from 'react'
-import s from './style.module.css'
 import cn from '@/utils/classnames'
 
 type Item = {
   id: string
   name: string
   isRight?: boolean
+  icon?: React.ReactNode
   extra?: React.ReactNode
 }
 
@@ -22,18 +22,22 @@ const TabHeader: FC<ITabHeaderProps> = ({
   value,
   onChange,
 }) => {
-  const renderItem = ({ id, name, extra }: Item) => (
+  const renderItem = ({ id, name, icon, extra }: Item) => (
     <div
       key={id}
-      className={cn(id === value ? `${s.itemActive} text-gray-900` : 'text-gray-500', 'relative flex items-center pb-1.5 leading-6 cursor-pointer')}
+      className={cn(
+        'relative flex items-center pt-2.5 pb-2 border-b-2 border-transparent system-md-semibold cursor-pointer',
+        id === value ? 'text-text-primary border-components-tab-active' : 'text-text-tertiary',
+      )}
       onClick={() => onChange(id)}
     >
-      <div className='text-base font-semibold'>{name}</div>
+      {icon || ''}
+      <div className='ml-2'>{name}</div>
       {extra || ''}
     </div>
   )
   return (
-    <div className='flex justify-between border-b border-gray-200 '>
+    <div className='flex justify-between'>
       <div className='flex space-x-4'>
         {items.filter(item => !item.isRight).map(renderItem)}
       </div>
