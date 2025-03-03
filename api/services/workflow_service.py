@@ -5,7 +5,8 @@ from datetime import UTC, datetime
 from typing import Any, Optional
 from uuid import uuid4
 
-from sqlalchemy import desc
+from sqlalchemy import select
+from sqlalchemy.orm import Session
 
 from core.app.apps.advanced_chat.app_config_manager import AdvancedChatAppConfigManager
 from core.app.apps.workflow.app_config_manager import WorkflowAppConfigManager
@@ -79,21 +80,37 @@ class WorkflowService:
 
         return workflow
 
-    def get_all_published_workflow(self, app_model: App, page: int, limit: int) -> tuple[list[Workflow], bool]:
+    def get_all_published_workflow(
+        self,
+        *,
+        app_model: App,
+        page: int,
+        limit: int,
+        user_id: str | None,
+        named_only: bool = False,
+    ) -> tuple[Sequence[Workflow], bool]:
         """
         Get published workflow with pagination
         """
         if not app_model.workflow_id:
             return [], False
 
-        workflows = (
-            db.session.query(Workflow)
-            .filter(Workflow.app_id == app_model.id)
-            .order_by(desc(Workflow.version))
-            .offset((page - 1) * limit)
+        stmt = (
+            select(Workflow)
+            .where(Workflow.app_id == app_model.id)
+            .order_by(Workflow.created_at.desc())
             .limit(limit + 1)
-            .all()
+            .offset((page - 1) * limit)
         )
+
+        if user_id:
+            stmt = stmt.where(Workflow.created_by == user_id)
+
+        if named_only:
+            stmt = stmt.where(Workflow.marked_name != "")
+
+        with Session(db.engine) as session:
+            workflows = session.scalars(stmt).all()
 
         has_more = len(workflows) > limit
         if has_more:

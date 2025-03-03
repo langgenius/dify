@@ -1,5 +1,6 @@
 import json
 import logging
+from typing import cast
 
 from flask import abort, request
 from flask_restful import Resource, inputs, marshal_with, reqparse  # type: ignore
@@ -490,11 +491,27 @@ class PublishedAllWorkflowApi(Resource):
         parser = reqparse.RequestParser()
         parser.add_argument("page", type=inputs.int_range(1, 99999), required=False, default=1, location="args")
         parser.add_argument("limit", type=inputs.int_range(1, 100), required=False, default=20, location="args")
+        parser.add_argument("user_id", type=str, required=False, location="args")
+        parser.add_argument("named_only", type=inputs.boolean, required=False, default=False, location="args")
         args = parser.parse_args()
-        page = args.get("page")
-        limit = args.get("limit")
+        page = int(args.get("page", 1))
+        limit = int(args.get("limit", 10))
+        user_id = args.get("user_id")
+        named_only = args.get("named_only", False)
+
+        if user_id:
+            if user_id != current_user.id:
+                raise Forbidden()
+            user_id = cast(str, user_id)
+
         workflow_service = WorkflowService()
-        workflows, has_more = workflow_service.get_all_published_workflow(app_model=app_model, page=page, limit=limit)
+        workflows, has_more = workflow_service.get_all_published_workflow(
+            app_model=app_model,
+            page=page,
+            limit=limit,
+            user_id=user_id,
+            named_only=named_only,
+        )
 
         return {
             "items": workflows,
