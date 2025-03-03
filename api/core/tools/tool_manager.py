@@ -572,33 +572,10 @@ class ToolManager:
         else:
             filters.append(typ)
 
-      with db.session.no_autoflush:
-        if "builtin" in filters:
-            # get builtin providers
-            builtin_providers = cls.list_builtin_providers(tenant_id)
-
-            # get db builtin providers
-            db_builtin_providers: list[BuiltinToolProvider] = (
-                db.session.query(BuiltinToolProvider).filter(BuiltinToolProvider.tenant_id == tenant_id).all()
-            )
-
-            def find_db_builtin_provider(provider):
-                return next((x for x in db_builtin_providers if x.provider == provider), None)
-
-            # append builtin providers
-            for provider in builtin_providers:
-                # handle include, exclude
-                if provider.identity is None:
-                    continue
-                if is_filtered(
-                    include_set=cast(set[str], dify_config.POSITION_TOOL_INCLUDES_SET),
-                    exclude_set=cast(set[str], dify_config.POSITION_TOOL_EXCLUDES_SET),
-                    data=provider,
-                    name_func=lambda x: x.identity.name,
-                ):
-                    continue
-
-                # get db builtin providers
+        with db.session.no_autoflush:
+            if "builtin" in filters:
+                # get builtin providers
+                builtin_providers = cls.list_builtin_providers(tenant_id)
                 db_builtin_providers: list[BuiltinToolProvider] = (
                     db.session.query(BuiltinToolProvider).filter(BuiltinToolProvider.tenant_id == tenant_id).all()
                 )
