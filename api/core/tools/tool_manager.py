@@ -576,6 +576,8 @@ class ToolManager:
             if "builtin" in filters:
                 # get builtin providers
                 builtin_providers = cls.list_builtin_providers(tenant_id)
+
+                # get db builtin providers
                 db_builtin_providers: list[BuiltinToolProvider] = (
                     db.session.query(BuiltinToolProvider).filter(BuiltinToolProvider.tenant_id == tenant_id).all()
                 )
