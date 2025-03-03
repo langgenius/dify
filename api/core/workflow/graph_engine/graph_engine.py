@@ -19,6 +19,7 @@ from core.workflow.entities.variable_pool import VariablePool, VariableValue
 from core.workflow.graph_engine.condition_handlers.condition_manager import ConditionManager
 from core.workflow.graph_engine.entities.event import (
     BaseIterationEvent,
+    BaseLoopEvent,
     GraphEngineEvent,
     GraphRunFailedEvent,
     GraphRunPartialSucceededEvent,
@@ -644,6 +645,12 @@ class GraphEngine:
                     if isinstance(item, GraphEngineEvent):
                         if isinstance(item, BaseIterationEvent):
                             # add parallel info to iteration event
+                            item.parallel_id = parallel_id
+                            item.parallel_start_node_id = parallel_start_node_id
+                            item.parent_parallel_id = parent_parallel_id
+                            item.parent_parallel_start_node_id = parent_parallel_start_node_id
+                        elif isinstance(item, BaseLoopEvent):
+                            # add parallel info to loop event
                             item.parallel_id = parallel_id
                             item.parallel_start_node_id = parallel_start_node_id
                             item.parent_parallel_id = parent_parallel_id
