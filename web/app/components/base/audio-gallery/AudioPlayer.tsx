@@ -5,7 +5,7 @@ import {
   RiPlayLargeFill,
 } from '@remixicon/react'
 import Toast from '@/app/components/base/toast'
-import { useAppContext } from '@/context/app-context'
+import useTheme from '@/hooks/use-theme'
 import { Theme } from '@/types/app'
 import cn from '@/utils/classnames'
 
@@ -24,7 +24,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ src }) => {
   const [hasStartedPlaying, setHasStartedPlaying] = useState(false)
   const [hoverTime, setHoverTime] = useState(0)
   const [isAudioAvailable, setIsAudioAvailable] = useState(true)
-  const { theme } = useAppContext()
+  const { theme } = useTheme()
 
   useEffect(() => {
     const audio = audioRef.current
