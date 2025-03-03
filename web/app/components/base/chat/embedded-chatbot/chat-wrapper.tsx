@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import Chat from '../chat'
 import type {
   ChatConfig,
@@ -9,16 +9,19 @@ import type {
 import { useChat } from '../chat/hooks'
 import { getLastAnswer, isValidGeneratedAnswer } from '../utils'
 import { useEmbeddedChatbotContext } from './context'
-import ConfigPanel from './config-panel'
 import { isDify } from './utils'
-import cn from '@/utils/classnames'
+import { InputVarType } from '@/app/components/workflow/types'
+import { TransferMethod } from '@/types/app'
+import InputsForm from '@/app/components/base/chat/embedded-chatbot/inputs-form'
 import {
   fetchSuggestedQuestions,
   getUrl,
   stopChatMessageResponding,
 } from '@/service/share'
+import AppIcon from '@/app/components/base/app-icon'
 import LogoAvatar from '@/app/components/base/logo/logo-embedded-chat-avatar'
 import AnswerIcon from '@/app/components/base/answer-icon'
+import cn from '@/utils/classnames'
 
 const ChatWrapper = () => {
   const {
@@ -29,6 +32,7 @@ const ChatWrapper = () => {
     currentConversationItem,
     inputsForms,
     newConversationInputs,
+    newConversationInputsRef,
     handleNewConversationCompleted,
     isMobile,
     isInstalledApp,
@@ -67,6 +71,38 @@ const ChatWrapper = () => {
     appPrevChatList,
     taskId => stopChatMessageResponding('', taskId, isInstalledApp, appId),
   )
+  const inputsFormValue = currentConversationId ? currentConversationItem?.inputs : newConversationInputsRef?.current
+  const inputDisabled = useMemo(() => {
+    let hasEmptyInput = ''
+    let fileIsUploading = false
+    const requiredVars = inputsForms.filter(({ required }) => required)
+    if (requiredVars.length) {
+      requiredVars.forEach(({ variable, label, type }) => {
+        if (hasEmptyInput)
+          return
+
+        if (fileIsUploading)
+          return
+
+        if (!inputsFormValue?.[variable])
+          hasEmptyInput = label as string
+
+        if ((type === InputVarType.singleFile || type === InputVarType.multiFiles) && inputsFormValue?.[variable]) {
+          const files = inputsFormValue[variable]
+          if (Array.isArray(files))
+            fileIsUploading = files.find(item => item.transferMethod === TransferMethod.local_file && !item.uploadedId)
+          else
+            fileIsUploading = files.transferMethod === TransferMethod.local_file && !files.uploadedId
+        }
+      })
+    }
+    if (hasEmptyInput)
+      return true
+
+    if (fileIsUploading)
+      return true
+    return false
+  }, [inputsFormValue, inputsForms])
 
   useEffect(() => {
     if (currentChatInstanceRef.current)
@@ -108,26 +144,48 @@ const ChatWrapper = () => {
     doSend(question.content, question.message_files, true, isValidGeneratedAnswer(parentAnswer) ? parentAnswer : null)
   }, [chatList, doSend])
 
-  const chatNode = useMemo(() => {
-    if (inputsForms.length) {
-      return (
-        <>
-          {!currentConversationId && (
-            <div className={cn('mx-auto w-full max-w-full tablet:px-4', isMobile && 'px-4')}>
-              <div className='mb-6' />
-              <ConfigPanel />
-              <div
-                className='my-6 h-[1px]'
-                style={{ background: 'linear-gradient(90deg, rgba(242, 244, 247, 0.00) 0%, #F2F4F7 49.17%, rgba(242, 244, 247, 0.00) 100%)' }}
-              />
-            </div>
-          )}
-        </>
-      )
-    }
+  const messageList = useMemo(() => {
+    if (currentConversationId)
+      return chatList
+    return chatList.filter(item => !item.isOpeningStatement)
+  }, [chatList, currentConversationId])
 
-    return null
-  }, [currentConversationId, inputsForms, isMobile])
+  const [collapsed, setCollapsed] = useState(!!currentConversationId)
+
+  const chatNode = useMemo(() => {
+    if (!inputsForms.length)
+      return null
+    if (isMobile) {
+      if (!currentConversationId)
+        return <InputsForm collapsed={collapsed} setCollapsed={setCollapsed} />
+      return <div className='mb-4'></div>
+    }
+    else {
+      return <InputsForm collapsed={collapsed} setCollapsed={setCollapsed} />
+    }
+  }, [inputsForms.length, isMobile, currentConversationId, collapsed])
+
+  const welcome = useMemo(() => {
+    const welcomeMessage = chatList.find(item => item.isOpeningStatement)
+    if (currentConversationId)
+      return null
+    if (!welcomeMessage)
+      return null
+    if (!collapsed && inputsForms.length > 0)
+      return null
+    return (
+      <div className={cn('h-[50vh] py-12 flex flex-col items-center justify-center gap-3')}>
+        <AppIcon
+          size='xl'
+          iconType={appData?.site.icon_type}
+          icon={appData?.site.icon}
+          background={appData?.site.icon_background}
+          imageUrl={appData?.site.icon_url}
+        />
+        <div className='text-text-tertiary body-2xl-regular'>{welcomeMessage.content}</div>
+      </div>
+    )
+  }, [appData?.site.icon, appData?.site.icon_background, appData?.site.icon_type, appData?.site.icon_url, chatList, collapsed, currentConversationId, inputsForms.length])
 
   const answerIcon = isDify()
     ? <LogoAvatar className='relative shrink-0' />
@@ -144,17 +202,22 @@ const ChatWrapper = () => {
     <Chat
       appData={appData}
       config={appConfig}
-      chatList={chatList}
+      chatList={messageList}
       isResponding={isResponding}
       chatContainerInnerClassName={cn('mx-auto w-full max-w-full tablet:px-4', isMobile && 'px-4')}
-      chatFooterClassName='pb-4'
-      chatFooterInnerClassName={cn('mx-auto w-full max-w-full tablet:px-4', isMobile && 'px-4')}
+      chatFooterClassName={cn('pb-4', !isMobile && 'rounded-b-2xl')}
+      chatFooterInnerClassName={cn('mx-auto w-full max-w-full tablet:px-4', isMobile && 'px-2')}
       onSend={doSend}
       inputs={currentConversationId ? currentConversationItem?.inputs as any : newConversationInputs}
       inputsForm={inputsForms}
       onRegenerate={doRegenerate}
       onStopResponding={handleStop}
-      chatNode={chatNode}
+      chatNode={
+        <>
+          {chatNode}
+          {welcome}
+        </>
+      }
       allToolIcons={appMeta?.tool_icons || {}}
       onFeedback={handleFeedback}
       suggestedQuestions={suggestedQuestions}
@@ -162,6 +225,8 @@ const ChatWrapper = () => {
       hideProcessDetail
       themeBuilder={themeBuilder}
       switchSibling={siblingMessageId => setTargetMessageId(siblingMessageId)}
+      inputDisabled={inputDisabled}
+      isMobile={isMobile}
     />
   )
 }

@@ -77,9 +77,9 @@ const Citation: FC<CitationProps> = ({
 
   return (
     <div className='mt-3 -mb-1'>
-      <div className='flex items-center mb-2 text-xs font-medium text-gray-500'>
+      <div className='flex items-center mb-2 system-xs-medium text-text-tertiary'>
         {t('common.chat.citation.title')}
-        <div className='grow ml-2 h-[1px] bg-black/5' />
+        <div className='grow ml-2 h-[1px] bg-divider-regular' />
       </div>
       <div className='relative flex flex-wrap'>
         {
@@ -87,7 +87,7 @@ const Citation: FC<CitationProps> = ({
             <div
               key={index}
               className='absolute top-0 left-0 w-auto mr-1 mb-1 pl-7 pr-2 max-w-[240px] h-7 text-xs whitespace-nowrap opacity-0 -z-10'
-              ref={ele => (elesRef.current[index] = ele!)}
+              ref={(ele: any) => (elesRef.current[index] = ele!)}
             >
               {res.documentName}
             </div>
@@ -106,13 +106,13 @@ const Citation: FC<CitationProps> = ({
         {
           limitNumberInOneLine < resourcesLength && (
             <div
-              className='flex items-center px-2 h-7 bg-white rounded-lg text-xs font-medium text-gray-500 cursor-pointer'
+              className='flex items-center px-2 h-7 bg-components-panel-bg rounded-lg text-text-tertiary system-xs-medium cursor-pointer'
               onClick={() => setShowMore(v => !v)}
             >
               {
                 !showMore
                   ? `+ ${resourcesLength - limitNumberInOneLine}`
-                  : <RiArrowDownSLine className='w-4 h-4 text-gray-600 rotate-180' />
+                  : <RiArrowDownSLine className='w-4 h-4 text-text-tertiary rotate-180' />
               }
             </div>
           )

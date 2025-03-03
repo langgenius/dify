@@ -397,6 +397,7 @@ export const useChat = (
               )
               setSuggestQuestions(data)
             }
+            // eslint-disable-next-line unused-imports/no-unused-vars
             catch (e) {
               setSuggestQuestions([])
             }
@@ -555,7 +556,7 @@ export const useChat = (
             if (!item.execution_metadata?.parallel_id)
               return item.node_id === nodeFinishedData.node_id
 
-            return item.node_id === nodeFinishedData.node_id && (item.execution_metadata?.parallel_id === nodeFinishedData.execution_metadata.parallel_id)
+            return item.node_id === nodeFinishedData.node_id && (item.execution_metadata?.parallel_id === nodeFinishedData.execution_metadata?.parallel_id)
           })
           responseItem.workflowProcess!.tracing[currentIndex] = nodeFinishedData as any
 

@@ -1,8 +1,8 @@
 import type { FC } from 'react'
-import { useTranslation } from 'react-i18next'
-import { File02 } from '@/app/components/base/icons/src/vender/line/files'
+import { RiFileList3Line } from '@remixicon/react'
 import type { IChatItem } from '@/app/components/base/chat/chat/type'
 import { useStore as useAppStore } from '@/app/components/app/store'
+import ActionButton from '@/app/components/base/action-button'
 
 type LogProps = {
   logItem: IChatItem
@@ -10,7 +10,6 @@ type LogProps = {
 const Log: FC<LogProps> = ({
   logItem,
 }) => {
-  const { t } = useTranslation()
   const setCurrentLogItem = useAppStore(s => s.setCurrentLogItem)
   const setShowPromptLogModal = useAppStore(s => s.setShowPromptLogModal)
   const setShowAgentLogModal = useAppStore(s => s.setShowAgentLogModal)
@@ -20,7 +19,7 @@ const Log: FC<LogProps> = ({
 
   return (
     <div
-      className='shrink-0 p-1 flex items-center justify-center rounded-[6px] font-medium text-gray-500 hover:bg-gray-50 cursor-pointer hover:text-gray-700'
+      className='ml-1 flex items-center gap-0.5 p-0.5 rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg shadow-md backdrop-blur-sm'
       onClick={(e) => {
         e.stopPropagation()
         e.nativeEvent.stopImmediatePropagation()
@@ -33,8 +32,9 @@ const Log: FC<LogProps> = ({
           setShowPromptLogModal(true)
       }}
     >
-      <File02 className='mr-1 w-4 h-4' />
-      <div className='text-xs leading-4'>{runID ? t('appLog.viewLog') : isAgent ? t('appLog.agentLog') : t('appLog.promptLog')}</div>
+      <ActionButton>
+        <RiFileList3Line className='w-4 h-4' />
+      </ActionButton>
     </div>
   )
 }
