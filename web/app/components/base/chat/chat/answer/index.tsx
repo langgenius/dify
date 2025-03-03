@@ -105,7 +105,7 @@ const Answer: FC<AnswerProps> = ({
       <div className='shrink-0 relative w-10 h-10'>
         {answerIcon || <AnswerIcon />}
         {responding && (
-          <div className='absolute -top-[3px] -left-[3px] pl-[6px] flex items-center w-4 h-4 bg-white rounded-full shadow-xs border-[0.5px] border-gray-50'>
+          <div className='absolute -top-[3px] -left-[3px] pl-[6px] flex items-center w-4 h-4 bg-background-section-burn rounded-full shadow-xs border-[0.5px] border-divider-subtle'>
             <LoadingAnim type='avatar' />
           </div>
         )}

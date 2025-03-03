@@ -11,6 +11,12 @@ html[data-theme="dark"] {
   --color-workflow-process-bg: linear-gradient(90deg,
       rgba(24, 24, 27, 0.25) 0%,
       rgba(24, 24, 27, 0.04) 100%);
+  --color-workflow-run-failed-bg: linear-gradient(98deg,
+      rgba(240, 68, 56, 0.12) 0%,
+      rgba(0, 0, 0, 0) 26.01%);
+  --color-workflow-batch-failed-bg: linear-gradient(92deg,
+      rgba(240, 68, 56, 0.3) 0%,
+      rgba(0, 0, 0, 0) 100%);
   --color-marketplace-divider-bg: linear-gradient(90deg,
       rgba(200, 206, 218, 0.14) 0%,
       rgba(0, 0, 0, 0) 100%);
