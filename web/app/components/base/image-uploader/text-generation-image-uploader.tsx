@@ -50,7 +50,7 @@ const PasteImageLinkButton: FC<PasteImageLinkButtonProps> = ({
     >
       <PortalToFollowElemTrigger onClick={handleToggle}>
         <div className={`
-          relative flex items-center justify-center px-3 h-8 bg-components-option-card-option-bg hover:bg-components-option-card-option-bg-hover text-xs text-text-tertiary rounded-lg
+          relative flex items-center justify-center px-3 h-8 bg-components-button-tertiary-bg hover:bg-components-button-tertiary-bg-hover text-xs text-text-tertiary rounded-lg
           ${disabled ? 'cursor-not-allowed' : 'cursor-pointer'}
         `}>
           <Link03 className='mr-2 w-4 h-4' />
@@ -98,9 +98,9 @@ const TextGenerationImageUploader: FC<TextGenerationImageUploaderProps> = ({
       {
         hovering => (
           <div className={`
-            flex items-center justify-center px-3 h-8 bg-components-option-card-option-bg 
+            flex items-center justify-center px-3 h-8 bg-components-button-tertiary-bg  
             text-xs text-text-tertiary rounded-lg cursor-pointer
-            ${hovering && 'bg-components-option-card-option-bg-hover'}
+            ${hovering && 'hover:bg-components-button-tertiary-bg-hover'}
           `}>
             <ImagePlus className='mr-2 w-4 h-4' />
             {t('common.imageUploader.uploadFromComputer')}
