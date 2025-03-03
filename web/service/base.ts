@@ -577,6 +577,7 @@ export const sseV1Post = (
     headers: new Headers({
       Authorization: `Bearer ${token}`,
     }),
+    credentials: 'same-origin',
   } as RequestInit, fetchOptions)
 
   const contentType = (options.headers as Headers).get('Content-Type')
