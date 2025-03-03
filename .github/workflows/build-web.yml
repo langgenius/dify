@@ -1,4 +1,4 @@
-name: Build Docker Image
+name: Build DIFY WEB Docker Image
 
 on:
   push:
@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
 
 env:
-  DOCKERHUB_REPO: registry.cn-hangzhou.aliyuncs.com/kindlingx/dify-api
+  DOCKERHUB_REPO: registry.cn-hangzhou.aliyuncs.com/kindlingx/dify-web
 
 jobs:
   build-image:
@@ -60,7 +60,7 @@ jobs:
       - name: Build and push
         uses: docker/build-push-action@v6
         with:
-          context: ./api
+          context: ./web
           push: true
           tags: |
             ${{ env.DOCKERHUB_REPO }}:${{ env.APP_VERSION }}
