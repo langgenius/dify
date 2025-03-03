@@ -582,8 +582,10 @@ class AdvancedChatAppGenerateTaskPipeline:
                         session.commit()
 
                     yield workflow_finish_resp
-                elif event.stopped_by in (QueueStopEvent.StopBy.INPUT_MODERATION,
-                                          QueueStopEvent.StopBy.ANNOTATION_REPLY,):
+                elif event.stopped_by in (
+                    QueueStopEvent.StopBy.INPUT_MODERATION,
+                    QueueStopEvent.StopBy.ANNOTATION_REPLY,
+                ):
                     # When hitting input-moderation or annotation-reply, the workflow will not start
                     with Session(db.engine, expire_on_commit=False) as session:
                         # Save message
