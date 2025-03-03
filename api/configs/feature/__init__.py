@@ -389,6 +389,7 @@ class InnerAPIConfig(BaseSettings):
         default=False,
     )
 
+
 class LoggingConfig(BaseSettings):
     """
     Configuration for application logging
