@@ -1,6 +1,6 @@
 from typing import Optional
 
-from pydantic import Field, PositiveInt
+from pydantic import Field
 from pydantic_settings import BaseSettings
 
 
@@ -20,7 +20,8 @@ class OracleConfig(BaseSettings):
     )
 
     ORACLE_DSN: Optional[str] = Field(
-        description="Oracle database connection string. For traditional database, use format 'host:port/service_name'. For autonomous database, use the service name from tnsnames.ora in the wallet",
+        description="Oracle database connection string. For traditional database, use format 'host:port/service_name'. "
+                    "For autonomous database, use the service name from tnsnames.ora in the wallet",
         default=None,
     )
 
