@@ -116,14 +116,16 @@ class OracleVector(BaseVector):
             "max": 50,
             "increment": 1,
         }
-        
+
         if config.is_autonomous:
-            pool_params.update({
-                "config_dir": config.config_dir,
-                "wallet_location": config.wallet_location,
-                "wallet_password": config.wallet_password,
-            })
-        
+            pool_params.update(
+                {
+                    "config_dir": config.config_dir,
+                    "wallet_location": config.wallet_location,
+                    "wallet_password": config.wallet_password,
+                }
+            )
+
         return oracledb.create_pool(**pool_params)
 
     @contextmanager
