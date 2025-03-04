@@ -295,7 +295,7 @@ class LoopNode(BaseNode[LoopNodeData]):
                 metadata = {
                     **metadata,
                     NodeRunMetadataKey.LOOP_ID: self.node_id,
-                    NodeRunMetadataKey.LOOP_INDEX: iter_run_index
+                    NodeRunMetadataKey.LOOP_INDEX: iter_run_index,
                 }
                 event.route_node_state.node_run_result.metadata = metadata
         return event
