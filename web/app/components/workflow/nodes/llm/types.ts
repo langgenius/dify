@@ -16,3 +16,35 @@ export type LLMNodeType = CommonNodeType & {
     configs?: VisionSetting
   }
 }
+
+export enum Type {
+  string = 'string',
+  number = 'number',
+  boolean = 'boolean',
+  object = 'object',
+  array = 'array',
+}
+
+type ArrayItemType = Exclude<Type, Type.array>
+
+export type Field = {
+  type: Type
+  properties?: { // Object has properties
+    [key: string]: Field
+  }
+  required?: string[] // Key of required properties in object
+  description?: string
+  items?: { // Array has items. Define the item type
+    type: ArrayItemType
+  }
+  additionalProperties?: false // Required in object by api. Just set false
+}
+
+export type StructuredOutput = {
+  schema: {
+    type: Type.object,
+    properties: Record<string, Field>
+    required: string[]
+    additionalProperties: false
+  }
+}
