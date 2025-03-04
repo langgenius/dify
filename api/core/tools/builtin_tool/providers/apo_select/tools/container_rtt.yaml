@@ -12,8 +12,8 @@ description:
     pt_BR: Query container rtt
   llm: Query container rtt
 display:
-  type: network
-  unit: seconds
+  type: metric
+  title: 基础设施情况 - 容器网络 - 与下游服务RTT
 parameters:
   - name: pod
     type: string

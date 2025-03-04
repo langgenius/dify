@@ -35,7 +35,7 @@ class SelectContainerCPUTool(BuiltinTool):
         resp = requests.post(dify_config.APO_BACKEND_URL + '/api/metric/query', json=params)
         list = resp.json()['result']
         list = json.dumps({
-            'type': 'cpu',
+            'type': 'metric',
             'display': True,
             'unit': list['unit'],
             'data': {

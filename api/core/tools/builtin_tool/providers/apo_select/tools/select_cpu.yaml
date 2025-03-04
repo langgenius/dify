@@ -12,16 +12,16 @@ description:
     pt_BR: Query the CPU utilization of the host
   llm: Query the CPU utilization of the host
 display:
-  type: cpu
-  unit: precent
+  type: metric
+  title: 宿主机监控指标 - Quick CPU / Mem / Disk - CPU Busy
 parameters:
-  - name: nodeName
+  - name: node
     type: string
     required: true
     label:
-      en_US: nodeName
-      zh_Hans: nodeName
-      pt_BR: nodeName
+      en_US: node
+      zh_Hans: node
+      pt_BR: node
     human_description:
       en_US: Specified host name
       zh_Hans: 指定的主机名

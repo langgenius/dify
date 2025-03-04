@@ -13,7 +13,7 @@ description:
   llm: Query service log data
 display:
   type: log
-  unit: log
+  title: log
 parameters:
   - name: service
     type: string

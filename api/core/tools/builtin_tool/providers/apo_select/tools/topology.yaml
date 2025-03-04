@@ -13,7 +13,7 @@ description:
   llm: Query the entry service topology
 display:
   type: topology
-  unit: topology
+  title: topology
 parameters:
   - name: service
     type: string

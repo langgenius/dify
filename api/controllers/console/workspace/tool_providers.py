@@ -1,4 +1,5 @@
 import io
+import requests
 
 from flask import send_file
 from flask_login import current_user  # type: ignore
@@ -587,6 +588,148 @@ class APOToolBuiltinListApi(Resource):
         )
 
 
+def get_step(start_time, end_time):
+        time_diff = end_time - start_time
+
+        SECOND = 1000000  # microseconds
+        MINUTE = 60 * SECOND
+        HOUR = 60 * MINUTE
+
+        step = SECOND  # default step is 1 second
+
+        if time_diff <= 15 * MINUTE:
+            step = 30 * SECOND
+        elif time_diff <= 30 * MINUTE:
+            step = 1 * MINUTE
+        elif time_diff <= 1 * HOUR:
+            step = 2 * MINUTE
+        elif time_diff <= 1.5 * HOUR:
+            step = 3 * MINUTE
+        elif time_diff <= 3 * HOUR:
+            step = 6 * MINUTE
+        elif time_diff <= 6 * HOUR:
+            step = 12 * MINUTE
+        elif time_diff <= 12 * HOUR:
+            step = 24 * MINUTE
+        elif time_diff <= 15 * HOUR:
+            step = 30 * MINUTE
+        elif time_diff <= 30 * HOUR:
+            step = 1 * HOUR
+        else:
+            step = ((time_diff + 30 * SECOND - 1) // (30 * SECOND)) * SECOND
+
+        return step
+
+def get_url(type):
+    match type:
+        case "metric":
+            return dify_config.APO_BACKEND_URL + "/api/metric/query"
+        case "alert":
+            return dify_config.APO_BACKEND_URL + "/api/alerts/descendant/anormal/delta"
+        case "topology":
+            return dify_config.APO_BACKEND_URL + "/api/service/relation"
+
+class APOToolPreviewApi(Resource):
+    def post(self):
+        user = current_user
+        user_id = user.id
+        tenant_id = user.current_tenant_id
+
+        parser = reqparse.RequestParser()
+        parser.add_argument("type", type=str, required=True, nullable=False, location="json")
+        parser.add_argument("title", type=str, required=True, nullable=False, location="json")
+        parser.add_argument("startTime", type=int, required=True, nullable=True, location="json")
+        parser.add_argument("endTime", type=int, required=True, nullable=True, location="json")
+        parser.add_argument("params", type=dict, required=True, nullable=False, location="json")
+
+        args = parser.parse_args()
+
+        res = {}
+
+        match args["type"]:
+            case "metric":
+                url = get_url(args["type"])
+                json = {
+                    "metricName": args["title"],
+                    "params": args["params"],
+                    "startTime": args["startTime"],
+                    "endTime": args["endTime"],
+                    "step": get_step(args["startTime"], args["endTime"]),
+                }
+                resp = requests.post(url, json=json)
+                raw = resp.json()['result']
+                res = {
+                    'type': 'metric',
+                    'display': True,
+                    'unit': raw['unit'],
+                    'data': {
+                    "timeseries": raw['timeseries']
+                  }
+                }
+            case "topology":
+                url = get_url(args["type"])
+                params = args["params"]
+                json = {
+                    "service": params['service'],
+                    "endpoint": params['endpoint'],
+                    "entryService": params['service'],
+                    "entryEndpoint": params['endpoint'],
+                    "startTime": args["startTime"],
+                    "endTime": args["endTime"],
+                    "withTopology": True,
+                    "removeClientCall": True,
+                }
+                resp = requests.get(url, params=json)
+                raw = resp.json()
+                res = {
+                    'type': 'topology',
+                    'display': True,
+                    'data': raw
+                }
+            case "alert":
+                url = get_url(args["type"])
+                params = args["params"]
+                json = {
+                    "service": params['service'],
+                    "endpoint": params['endpoint'],
+                    "startTime": args["startTime"],
+                    "endTime": args["endTime"],
+                    'anormalTypes': "app,container,infra,network,error,appInstance",
+                    'deltaStartTime': args["startTime"],
+                    'deltaEndTime': args["endTime"],
+                    'step': get_step(args["startTime"], args["endTime"]),
+                }
+                resp = requests.post(url, json=json)
+                raw = resp.json()
+                res = {
+                    'type': 'topology',
+                    'display': True,
+                    'data': raw
+                }
+            case "log":
+                url = dify_config.APO_BACKEND_URL + "/api/log/fault/pagelist"
+                params = args["params"]
+                json = {
+                    'service': [params['service']],
+                    'startTime': args["startTime"],
+                    'endTime': args["endTime"],
+                    'pageNum': 1,
+                    'pageSize': 10
+                }
+                resp = requests.post(url, json=json)
+                raw = resp.json()['list'][0]
+
+                content_url = dify_config.APO_BACKEND_URL + "/api/log/fault/content"
+                content = requests.post(content_url, json=raw).json()
+                res = {
+                    'type': 'log',
+                    'display': True,
+                    'data': content,
+                }
+        return jsonable_encoder(res)
+
+
+
 class ToolApiListApi(Resource):
     @setup_required
     @login_required
@@ -674,6 +817,7 @@ api.add_resource(ToolWorkflowProviderListToolApi, "/workspaces/current/tool-prov
 
 api.add_resource(ToolBuiltinListApi, "/workspaces/current/tools/builtin")
 api.add_resource(APOToolBuiltinListApi, "/workspaces/current/tools/apo")
+api.add_resource(APOToolPreviewApi, "/workspaces/current/tools/apo/preview")
 api.add_resource(ToolApiListApi, "/workspaces/current/tools/api")
 api.add_resource(ToolWorkflowListApi, "/workspaces/current/tools/workflow")
 

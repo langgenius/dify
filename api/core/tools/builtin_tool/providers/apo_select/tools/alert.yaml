@@ -13,7 +13,7 @@ description:
   llm: Query the entry service alert events
 display:
   type: alert
-  unit: alert
+  title: alert
 parameters:
   - name: service
     type: string

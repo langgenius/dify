@@ -8,7 +8,7 @@ identity:
 description:
   human:
     en_US: threshold judgement
-    zh_Hans: 阈值判定
+    zh_Hans: 基于固定阈值检测数据，超过阈值认为异常
     pt_BR: threshold judgement
   llm: threshold judgement
 parameters:

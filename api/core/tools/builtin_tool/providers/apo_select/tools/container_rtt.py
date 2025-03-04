@@ -35,7 +35,7 @@ class ContainerRTTTool(BuiltinTool):
         resp = requests.post(dify_config.APO_BACKEND_URL + '/api/metric/query', json=params)
         list = resp.json()['result']
         list = json.dumps({
-            'type': 'memory',
+            'type': 'metric',
             'display': True,
             'unit': list['unit'],
             'data': {

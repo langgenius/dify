@@ -12,8 +12,8 @@ description:
     pt_BR: Query container resident memory usage
   llm: Query container resident memory usage
 display:
-  type: memory
-  unit: bytes
+  type: metric
+  title: 基础设施情况 - 容器内存 - 容器内存使用率 - Containerd
 parameters:
   - name: pod
     type: string

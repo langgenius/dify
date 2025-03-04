@@ -18,13 +18,13 @@ class SelectCPUTool(BuiltinTool):
         app_id: Optional[str] = None,
         message_id: Optional[str] = None,
     ) -> Generator[ToolInvokeMessage, None, None]:
-        node_name = tool_parameters.get("nodeName")
+        node = tool_parameters.get("node")
         start_time = tool_parameters.get("startTime")
         end_time = tool_parameters.get("endTime")
         params = {
           'metricName': '宿主机监控指标 - Quick CPU / Mem / Disk - CPU Busy',
           'params': {
-            "node": node_name,  
+            "node": node,  
           },
           'startTime': start_time,
           'endTime': end_time,
@@ -33,7 +33,7 @@ class SelectCPUTool(BuiltinTool):
         resp = requests.post(dify_config.APO_BACKEND_URL + '/api/metric/query', json=params)
         list = resp.json()['result']
         list = json.dumps({
-            'type': 'cpu',
+            'type': 'metric',
             'display': True,
             'unit': list['unit'],
             'data': {
