@@ -3,6 +3,8 @@ import { useBuiltInMetaDataFields, useCreateMetaData, useDatasetMetaData, useDel
 import type { DataSet } from '@/models/datasets'
 import { useCallback, useEffect, useState } from 'react'
 import { type BuiltInMetadataItem, type MetadataItemWithValueLength, isShowManageMetadataLocalStorageKey } from '../types'
+import useCheckMetadataName from './use-check-metadata-name'
+import Toast from '@/app/components/base/toast'
 
 const useEditDatasetMetadata = ({
   datasetId,
@@ -28,7 +30,16 @@ const useEditDatasetMetadata = ({
   const { data: datasetMetaData } = useDatasetMetaData(datasetId)
 
   const { mutate: doAddMetaData } = useCreateMetaData(datasetId)
+  const { checkName } = useCheckMetadataName()
   const handleAddMetaData = useCallback((payload: BuiltInMetadataItem) => {
+    const errorMsg = checkName(payload.name).errorMsg
+    if (errorMsg) {
+      Toast.notify({
+        message: errorMsg,
+        type: 'error',
+      })
+      return
+    }
     doAddMetaData(payload)
   }, [doAddMetaData])
 

@@ -125,8 +125,7 @@ export const useBatchUpdateDocMetadata = () => {
 export const useUpdateBuiltInStatus = (datasetId: string) => {
   return useMutation({
     mutationFn: (enabled: boolean) => {
-      // TODO: wait for method is patch or post
-      return patch(`/datasets/${datasetId}/metadata/built-in/${enabled ? 'disable' : 'enable'}`)
+      return post(`/datasets/${datasetId}/metadata/built-in/${enabled ? 'disable' : 'enable'}`)
     },
   })
 }
