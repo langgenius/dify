@@ -13,7 +13,7 @@ const More: FC<MoreProps> = ({
   const { t } = useTranslation()
 
   return (
-    <div className='flex items-center mt-1 h-[18px] text-xs text-gray-400 opacity-0 group-hover:opacity-100'>
+    <div className='mt-1 flex items-center system-xs-regular text-text-quaternary opacity-0 group-hover:opacity-100'>
       {
         more && (
           <>

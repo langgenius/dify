@@ -197,11 +197,13 @@ x-shared-env: &shared-api-worker-env
   CHROMA_DATABASE: ${CHROMA_DATABASE:-default_database}
   CHROMA_AUTH_PROVIDER: ${CHROMA_AUTH_PROVIDER:-chromadb.auth.token_authn.TokenAuthClientProvider}
   CHROMA_AUTH_CREDENTIALS: ${CHROMA_AUTH_CREDENTIALS:-}
-  ORACLE_HOST: ${ORACLE_HOST:-oracle}
-  ORACLE_PORT: ${ORACLE_PORT:-1521}
   ORACLE_USER: ${ORACLE_USER:-dify}
   ORACLE_PASSWORD: ${ORACLE_PASSWORD:-dify}
-  ORACLE_DATABASE: ${ORACLE_DATABASE:-FREEPDB1}
+  ORACLE_DSN: ${ORACLE_DSN:-oracle:1521/FREEPDB1}
+  ORACLE_CONFIG_DIR: ${ORACLE_CONFIG_DIR:-/app/api/storage/wallet}
+  ORACLE_WALLET_LOCATION: ${ORACLE_WALLET_LOCATION:-/app/api/storage/wallet}
+  ORACLE_WALLET_PASSWORD: ${ORACLE_WALLET_PASSWORD:-dify}
+  ORACLE_IS_AUTONOMOUS: ${ORACLE_IS_AUTONOMOUS:-false}
   RELYT_HOST: ${RELYT_HOST:-db}
   RELYT_PORT: ${RELYT_PORT:-5432}
   RELYT_USER: ${RELYT_USER:-postgres}
@@ -414,7 +416,7 @@ x-shared-env: &shared-api-worker-env
 services:
   # API service
   api:
-    image: langgenius/dify-api:0.15.3
+    image: langgenius/dify-api:1.0.0
     restart: always
     environment:
       # Use the shared environment variables.
@@ -424,6 +426,8 @@ services:
       SENTRY_DSN: ${API_SENTRY_DSN:-}
       SENTRY_TRACES_SAMPLE_RATE: ${API_SENTRY_TRACES_SAMPLE_RATE:-1.0}
       SENTRY_PROFILES_SAMPLE_RATE: ${API_SENTRY_PROFILES_SAMPLE_RATE:-1.0}
+      PLUGIN_REMOTE_INSTALL_HOST: ${EXPOSE_PLUGIN_DEBUGGING_HOST:-localhost}
+      PLUGIN_REMOTE_INSTALL_PORT: ${EXPOSE_PLUGIN_DEBUGGING_PORT:-5003}
       PLUGIN_MAX_PACKAGE_SIZE: ${PLUGIN_MAX_PACKAGE_SIZE:-52428800}
       INNER_API_KEY_FOR_PLUGIN: ${PLUGIN_DIFY_INNER_API_KEY:-QaHbTe77CtuXmsfyhR7+vRjI/+XbV1AaFy691iy+kGDv2Jvy0/eAh8Y1}
     depends_on:
@@ -439,7 +443,7 @@ services:
   # worker service
   # The Celery worker for processing the queue.
   worker:
-    image: langgenius/dify-api:0.15.3
+    image: langgenius/dify-api:1.0.0
     restart: always
     environment:
       # Use the shared environment variables.
@@ -463,7 +467,7 @@ services:
 
   # Frontend web application.
   web:
-    image: langgenius/dify-web:0.15.3
+    image: langgenius/dify-web:1.0.0
     restart: always
     environment:
       CONSOLE_API_URL: ${CONSOLE_API_URL:-}
@@ -534,6 +538,7 @@ services:
       SANDBOX_PORT: ${SANDBOX_PORT:-8194}
     volumes:
       - ./volumes/sandbox/dependencies:/dependencies
+      - ./volumes/sandbox/conf:/conf
     healthcheck:
       test: [ 'CMD', 'curl', '-f', 'http://localhost:8194/health' ]
     networks:
@@ -541,7 +546,7 @@ services:
 
   # plugin daemon
   plugin_daemon:
-    image: langgenius/dify-plugin-daemon:0.0.2-local
+    image: langgenius/dify-plugin-daemon:0.0.3-local
     restart: always
     environment:
       # Use the shared environment variables.
@@ -553,8 +558,8 @@ services:
       PPROF_ENABLED: ${PLUGIN_PPROF_ENABLED:-false}
       DIFY_INNER_API_URL: ${PLUGIN_DIFY_INNER_API_URL:-http://api:5001}
       DIFY_INNER_API_KEY: ${INNER_API_KEY_FOR_PLUGIN:-QaHbTe77CtuXmsfyhR7+vRjI/+XbV1AaFy691iy+kGDv2Jvy0/eAh8Y1}
-      PLUGIN_REMOTE_INSTALLING_HOST: ${PLUGIN_REMOTE_INSTALL_HOST:-0.0.0.0}
-      PLUGIN_REMOTE_INSTALLING_PORT: ${PLUGIN_REMOTE_INSTALL_PORT:-5003}
+      PLUGIN_REMOTE_INSTALLING_HOST: ${EXPOSE_PLUGIN_DEBUGGING_HOST:-localhost}
+      PLUGIN_REMOTE_INSTALLING_PORT: ${EXPOSE_PLUGIN_DEBUGGING_PORT:-5003}
       PLUGIN_WORKING_PATH: ${PLUGIN_WORKING_PATH:-/app/storage/cwd}
       FORCE_VERIFYING_SIGNATURE: ${FORCE_VERIFYING_SIGNATURE:-true}
     ports:

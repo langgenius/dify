@@ -231,7 +231,7 @@ const AppPublisher = ({
               )}
             <SuggestedAction
               onClick={() => {
-                handleOpenInExplore()
+                publishedAt && handleOpenInExplore()
               }}
               disabled={!publishedAt}
               icon={<RiPlanetLine className='w-4 h-4' />}

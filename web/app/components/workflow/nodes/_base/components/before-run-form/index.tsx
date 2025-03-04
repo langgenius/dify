@@ -50,8 +50,11 @@ function formatValue(value: string | any, type: InputVarType) {
   if (type === InputVarType.multiFiles)
     return getProcessedFiles(value)
 
-  if (type === InputVarType.singleFile)
+  if (type === InputVarType.singleFile) {
+    if (Array.isArray(value))
+      return getProcessedFiles(value)
     return getProcessedFiles([value])[0]
+  }
 
   return value
 }

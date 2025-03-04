@@ -120,7 +120,7 @@ export const ProviderContextProvider = ({
     if (localStorage.getItem('anthropic_quota_notice') === 'true')
       return
 
-    if (dayjs().isAfter(dayjs('2025-03-11')))
+    if (dayjs().isAfter(dayjs('2025-03-17')))
       return
 
     if (providersData?.data && providersData.data.length > 0) {

@@ -179,18 +179,18 @@ const WorkflowToolConfigureButton = ({
         <div className={cn(
           'group bg-background-section-burn rounded-lg transition-colors',
           disabled ? 'shadow-xs opacity-30 cursor-not-allowed' : 'cursor-pointer',
-          !published && 'hover:bg-state-accent-hover',
+          !disabled && !published && 'hover:bg-state-accent-hover',
         )}>
           {isCurrentWorkspaceManager
             ? (
               <div
                 className='flex justify-start items-center gap-2 p-2 pl-2.5'
-                onClick={() => !published && setShowModal(true)}
+                onClick={() => !disabled && !published && setShowModal(true)}
               >
-                <RiHammerLine className={cn('relative w-4 h-4 text-text-secondary', !published && 'group-hover:text-text-accent')} />
+                <RiHammerLine className={cn('relative w-4 h-4 text-text-secondary', !disabled && !published && 'group-hover:text-text-accent')} />
                 <div
                   title={t('workflow.common.workflowAsTool') || ''}
-                  className={cn('grow shrink basis-0 system-sm-medium text-text-secondary truncate', !published && 'group-hover:text-text-accent')}
+                  className={cn('grow shrink basis-0 system-sm-medium text-text-secondary truncate', !disabled && !published && 'group-hover:text-text-accent')}
                 >
                   {t('workflow.common.workflowAsTool')}
                 </div>

@@ -1,6 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import React, { useCallback } from 'react'
+import React, { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import produce from 'immer'
 import {
@@ -24,8 +24,9 @@ import { Variable02 } from '@/app/components/base/icons/src/vender/solid/develop
 import { BubbleX } from '@/app/components/base/icons/src/vender/line/others'
 import { FILE_EXTS } from '@/app/components/base/prompt-editor/constants'
 import cn from '@/utils/classnames'
+import type { FileEntity } from '@/app/components/base/file-uploader/types'
 
-interface Props {
+type Props = {
   payload: InputVar
   value: any
   onChange: (value: any) => void
@@ -94,6 +95,21 @@ const FormItem: FC<Props> = ({
   const isArrayLikeType = [InputVarType.contexts, InputVarType.iterator].includes(type)
   const isContext = type === InputVarType.contexts
   const isIterator = type === InputVarType.iterator
+  const singleFileValue = useMemo(() => {
+    if (payload.variable === '#files#')
+      return value?.[0] || []
+
+    return value ? [value] : []
+  }, [payload.variable, value])
+  const handleSingleFileChange = useCallback((files: FileEntity[]) => {
+    if (payload.variable === '#files#')
+      onChange(files)
+    else if (files.length)
+      onChange(files[0])
+    else
+      onChange(null)
+  }, [onChange, payload.variable])
+
   return (
     <div className={cn(className)}>
       {!isArrayLikeType && (
@@ -161,13 +177,8 @@ const FormItem: FC<Props> = ({
         }
         {(type === InputVarType.singleFile) && (
           <FileUploaderInAttachmentWrapper
-            value={value ? [value] : []}
-            onChange={(files) => {
-              if (files.length)
-                onChange(files[0])
-              else
-                onChange(null)
-            }}
+            value={singleFileValue}
+            onChange={handleSingleFileChange}
             fileConfig={{
               allowed_file_types: inStepRun
                 ? [

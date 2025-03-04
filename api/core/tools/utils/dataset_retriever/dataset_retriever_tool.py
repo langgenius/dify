@@ -172,6 +172,7 @@ class DatasetRetrieverTool(DatasetRetrieverBaseTool):
                                     "segment_id": segment.id,
                                     "retriever_from": self.retriever_from,
                                     "score": record.score or 0.0,
+                                    "doc_metadata": document.doc_metadata,  # type: ignore
                                 }
 
                                 if self.retriever_from == "dev":
