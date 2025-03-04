@@ -9,10 +9,10 @@ import { InputVarType } from '@/app/components/workflow/types'
 import AddButton from '@/app/components/base/button/add-button'
 import { RETRIEVAL_OUTPUT_STRUCT } from '@/app/components/workflow/constants'
 
-export interface Props {
+export type Props = {
   className?: string
   label?: string
-  inputs: InputVar[]
+  inputs: InputVar[] | any
   values: Record<string, string>
   onChange: (newValues: Record<string, any>) => void
 }
@@ -85,6 +85,7 @@ const Form: FC<Props> = ({
             payload={input}
             value={values[input.variable]}
             onChange={handleChange(input.variable)}
+            customLabel={input.customLabel}
           />
         )
       })}

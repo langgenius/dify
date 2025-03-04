@@ -6,6 +6,16 @@ const translation = {
   chart: {
     chartTitle: 'Chart Display',
   },
+  displayType: {
+    cpu: 'CPU metrics',
+    network: 'Network metrics',
+    memory: 'Memory metrics',
+    topology: 'Topology structure',
+    alert: 'Alert events',
+    log: 'Log data',
+    custom: 'Custom query return data',
+  },
+
 }
 
 export default translation

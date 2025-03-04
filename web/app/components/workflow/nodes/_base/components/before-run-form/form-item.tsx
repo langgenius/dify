@@ -1,5 +1,5 @@
 'use client'
-import type { FC } from 'react'
+import type { FC, ReactNode } from 'react'
 import React, { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import produce from 'immer'
@@ -25,13 +25,14 @@ import { BubbleX } from '@/app/components/base/icons/src/vender/line/others'
 import { FILE_EXTS } from '@/app/components/base/prompt-editor/constants'
 import cn from '@/utils/classnames'
 
-interface Props {
+type Props = {
   payload: InputVar
   value: any
   onChange: (value: any) => void
   className?: string
   autoFocus?: boolean
   inStepRun?: boolean
+  customLabel?: ReactNode
 }
 
 const FormItem: FC<Props> = ({
@@ -41,6 +42,7 @@ const FormItem: FC<Props> = ({
   className,
   autoFocus,
   inStepRun = false,
+  customLabel,
 }) => {
   const { t } = useTranslation()
   const { type } = payload
@@ -96,12 +98,13 @@ const FormItem: FC<Props> = ({
   const isIterator = type === InputVarType.iterator
   return (
     <div className={cn(className)}>
-      {!isArrayLikeType && (
-        <div className='h-6 mb-1 flex items-center gap-1 text-text-secondary system-sm-semibold'>
-          <div className='truncate'>{typeof payload.label === 'object' ? nodeKey : payload.label}</div>
-          {!payload.required && <span className='text-text-tertiary system-xs-regular'>{t('workflow.panel.optional')}</span>}
-        </div>
-      )}
+      {
+        customLabel || <>{!isArrayLikeType && (
+          <div className='h-6 mb-1 flex items-center gap-1 text-text-secondary system-sm-semibold'>
+            <div className='truncate'>{typeof payload.label === 'object' ? nodeKey : payload.label}</div>
+            {!payload.required && <span className='text-text-tertiary system-xs-regular'>{t('workflow.panel.optional')}</span>}
+          </div>
+        )}</>}
       <div className='grow'>
         {
           type === InputVarType.textInput && (
