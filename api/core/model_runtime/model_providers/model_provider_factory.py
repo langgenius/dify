@@ -1,3 +1,4 @@
+import hashlib
 import logging
 import os
 from collections.abc import Sequence
@@ -206,17 +207,35 @@ class ModelProviderFactory:
         Get model schema
         """
         plugin_id, provider_name = self.get_plugin_id_and_provider_name_from_provider(provider)
-        model_schema = self.plugin_model_manager.get_model_schema(
-            tenant_id=self.tenant_id,
-            user_id="unknown",
-            plugin_id=plugin_id,
-            provider=provider_name,
-            model_type=model_type.value,
-            model=model,
-            credentials=credentials,
-        )
+        cache_key = f"{self.tenant_id}:{plugin_id}:{provider_name}:{model_type.value}:{model}"
+        # sort credentials
+        sorted_credentials = sorted(credentials.items()) if credentials else []
+        cache_key += ":".join([hashlib.md5(f"{k}:{v}".encode()).hexdigest() for k, v in sorted_credentials])
 
-        return model_schema
+        try:
+            contexts.plugin_model_schemas.get()
+        except LookupError:
+            contexts.plugin_model_schemas.set({})
+            contexts.plugin_model_schema_lock.set(Lock())
+
+        with contexts.plugin_model_schema_lock.get():
+            if cache_key in contexts.plugin_model_schemas.get():
+                return contexts.plugin_model_schemas.get()[cache_key]
+
+            schema = self.plugin_model_manager.get_model_schema(
+                tenant_id=self.tenant_id,
+                user_id="unknown",
+                plugin_id=plugin_id,
+                provider=provider_name,
+                model_type=model_type.value,
+                model=model,
+                credentials=credentials or {},
+            )
+
+            if schema:
+                contexts.plugin_model_schemas.get()[cache_key] = schema
+
+            return schema
 
     def get_models(
         self,
