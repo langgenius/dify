@@ -5,10 +5,10 @@ from typing import TYPE_CHECKING
 from contexts.wrapper import RecyclableContextVar
 
 if TYPE_CHECKING:
+    from core.model_runtime.entities.model_entities import AIModelEntity
     from core.plugin.entities.plugin_daemon import PluginModelProviderEntity
     from core.tools.plugin_tool.provider import PluginToolProviderController
     from core.workflow.entities.variable_pool import VariablePool
-    from core.model_runtime.entities.model_entities import AIModelEntity
 
 
 tenant_id: ContextVar[str] = ContextVar("tenant_id")
