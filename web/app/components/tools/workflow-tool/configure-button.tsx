@@ -179,16 +179,16 @@ const WorkflowToolConfigureButton = ({
           <div className={cn(
             'group bg-background-section-burn rounded-lg transition-colors',
             disabled ? 'shadow-xs opacity-30 cursor-not-allowed' : 'cursor-pointer',
-            !published && 'hover:bg-primary-50',
+            !disabled && !published && 'hover:bg-primary-50',
           )}>
             {isCurrentWorkspaceManager
               ? (
                 <div
                   className='flex justify-start items-center text-text-primary gap-2 px-2.5 py-2'
-                  onClick={() => !published && setShowModal(true)}
+                  onClick={() => !disabled && !published && setShowModal(true)}
                 >
-                  <Tools className={cn('relative w-4 h-4', !published && 'group-hover:text-primary-600')} />
-                  <div title={t('workflow.common.workflowAsTool') || ''} className={cn('grow shrink basis-0 text-[13px] font-medium leading-[18px] truncate', !published && 'group-hover:text-primary-600')}>{t('workflow.common.workflowAsTool')}</div>
+                  <Tools className={cn('relative w-4 h-4', !disabled && !published && 'group-hover:text-primary-600')} />
+                  <div title={t('workflow.common.workflowAsTool') || ''} className={cn('grow shrink basis-0 text-[13px] font-medium leading-[18px] truncate', !disabled && !published && 'group-hover:text-primary-600')}>{t('workflow.common.workflowAsTool')}</div>
                   {!published && (
                     <span className='shrink-0 px-1 border border-divider-regular rounded-[5px] bg-background-default-subtle text-[10px] font-medium leading-[18px] text-text-tertiary'>{t('workflow.common.configureRequired').toLocaleUpperCase()}</span>
                   )}
