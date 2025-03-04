@@ -35,6 +35,7 @@ from models.workflow import (
     WorkflowType,
 )
 from services.errors.app import WorkflowHashNotEqualError
+from services.workflow.workflow_converter import WorkflowConverter
 
 from .errors.workflow_service import DraftWorkflowDeletionError, WorkflowInUseError
 

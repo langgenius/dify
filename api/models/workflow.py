@@ -2,7 +2,7 @@ import json
 from collections.abc import Mapping, Sequence
 from datetime import UTC, datetime
 from enum import Enum
-from typing import TYPE_CHECKING, Any, Optional, Union
+from typing import TYPE_CHECKING, Any, Optional, Self, Union
 from uuid import uuid4
 
 if TYPE_CHECKING:
@@ -145,7 +145,7 @@ class Workflow(Base):
         conversation_variables: Sequence[Variable],
         marked_name: str = "",
         marked_comment: str = "",
-    ):
+    ) -> Self:
         workflow = Workflow()
         workflow.id = str(uuid4())
         workflow.tenant_id = tenant_id

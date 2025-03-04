@@ -373,6 +373,13 @@ class PublishedWorkflowApi(Resource):
         parser.add_argument("marked_comment", type=str, required=False, default="", location="json")
         args = parser.parse_args()
 
+        # Validate name and comment length
+        if args.marked_name and len(args.marked_name) > 20:
+            raise ValueError("Marked name cannot exceed 20 characters")
+        if args.marked_comment and len(args.marked_comment) > 100:
+            raise ValueError("Marked comment cannot exceed 100 characters")
+        args = parser.parse_args()
+
         workflow_service = WorkflowService()
         with Session(db.engine) as session:
             workflow = workflow_service.publish_workflow(
@@ -567,6 +574,13 @@ class WorkflowByIdApi(Resource):
         parser = reqparse.RequestParser()
         parser.add_argument("marked_name", type=str, required=False, location="json")
         parser.add_argument("marked_comment", type=str, required=False, location="json")
+        args = parser.parse_args()
+
+        # Validate name and comment length
+        if args.marked_name and len(args.marked_name) > 20:
+            raise ValueError("Marked name cannot exceed 20 characters")
+        if args.marked_comment and len(args.marked_comment) > 100:
+            raise ValueError("Marked comment cannot exceed 100 characters")
         args = parser.parse_args()
 
         # Prepare update data
