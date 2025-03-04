@@ -1,4 +1,4 @@
-name: Build DIFY WEB Docker Image
+name: Build Dify WEB Docker Image
 
 on:
   push:

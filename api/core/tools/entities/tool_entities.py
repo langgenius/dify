@@ -320,6 +320,7 @@ class ToolDescription(BaseModel):
 
 class APODisPlay(BaseModel):
     type: str = Field(..., description="The type of the apo data display")
+    uint: str = Field(..., description="The unit of the apo data display")
     title: str = Field(..., description="The title of the apo data display")
 
 class ToolEntity(BaseModel):

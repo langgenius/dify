@@ -14,6 +14,7 @@ from core.model_runtime.utils.encoders import jsonable_encoder
 from extensions.ext_database import db
 from libs.helper import alphanumeric, uuid_value
 from libs.login import login_required
+from libs.apo_utils import APOUtils
 from services.tools.api_tools_manage_service import ApiToolManageService
 from services.tools.builtin_tools_manage_service import BuiltinToolManageService
 from services.tools.tool_labels_service import ToolLabelsService
@@ -587,39 +588,6 @@ class APOToolBuiltinListApi(Resource):
             ]
         )
 
-
-def get_step(start_time, end_time):
-        time_diff = end_time - start_time
-
-        SECOND = 1000000  # microseconds
-        MINUTE = 60 * SECOND
-        HOUR = 60 * MINUTE
-
-        step = SECOND  # default step is 1 second
-
-        if time_diff <= 15 * MINUTE:
-            step = 30 * SECOND
-        elif time_diff <= 30 * MINUTE:
-            step = 1 * MINUTE
-        elif time_diff <= 1 * HOUR:
-            step = 2 * MINUTE
-        elif time_diff <= 1.5 * HOUR:
-            step = 3 * MINUTE
-        elif time_diff <= 3 * HOUR:
-            step = 6 * MINUTE
-        elif time_diff <= 6 * HOUR:
-            step = 12 * MINUTE
-        elif time_diff <= 12 * HOUR:
-            step = 24 * MINUTE
-        elif time_diff <= 15 * HOUR:
-            step = 30 * MINUTE
-        elif time_diff <= 30 * HOUR:
-            step = 1 * HOUR
-        else:
-            step = ((time_diff + 30 * SECOND - 1) // (30 * SECOND)) * SECOND
-
-        return step
-
 def get_url(type):
     match type:
         case "metric":
@@ -654,7 +622,7 @@ class APOToolPreviewApi(Resource):
                     "params": args["params"],
                     "startTime": args["startTime"],
                     "endTime": args["endTime"],
-                    "step": get_step(args["startTime"], args["endTime"]),
+                    "step": APOUtils.get_step(args["startTime"], args["endTime"]),
                 }
                 resp = requests.post(url, json=json)
                 raw = resp.json()['result']
@@ -697,7 +665,7 @@ class APOToolPreviewApi(Resource):
                     'anormalTypes': "app,container,infra,network,error,appInstance",
                     'deltaStartTime': args["startTime"],
                     'deltaEndTime': args["endTime"],
-                    'step': get_step(args["startTime"], args["endTime"]),
+                    'step': APOUtils.get_step(args["startTime"], args["endTime"]),
                 }
                 resp = requests.post(url, json=json)
                 raw = resp.json()

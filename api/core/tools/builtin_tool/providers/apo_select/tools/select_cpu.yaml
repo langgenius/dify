@@ -14,6 +14,7 @@ description:
 display:
   type: metric
   title: 宿主机监控指标 - Quick CPU / Mem / Disk - CPU Busy
+  uint: percent(0-100)百分比
 parameters:
   - name: node
     type: string

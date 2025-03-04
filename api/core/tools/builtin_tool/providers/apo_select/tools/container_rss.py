@@ -7,7 +7,7 @@ import requests
 from configs import dify_config
 from core.tools.builtin_tool.tool import BuiltinTool
 from core.tools.entities.tool_entities import ToolInvokeMessage
-from core.tools.builtin_tool.providers.utils import APOUtils
+from libs.apo_utils import APOUtils
 
 class SelectContainerRSSTool(BuiltinTool):
     def _invoke(
