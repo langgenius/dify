@@ -1,9 +1,11 @@
 from flask_restful import Resource, marshal_with, reqparse  # type: ignore
 from flask_restful.inputs import int_range  # type: ignore
+from sqlalchemy.orm import Session
 
 from controllers.console import api
 from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import account_initialization_required, setup_required
+from extensions.ext_database import db
 from fields.workflow_app_log_fields import workflow_app_log_pagination_fields
 from libs.login import login_required
 from models import App
@@ -36,11 +38,12 @@ class WorkflowAppLogApi(Resource):
 
         # get paginate workflow app logs
         workflow_app_service = WorkflowAppService()
-        workflow_app_log_pagination = workflow_app_service.get_paginate_workflow_app_logs(
-            app_model=app_model, args=args
-        )
+        with Session(db.engine) as session:
+            workflow_app_log_pagination = workflow_app_service.get_paginate_workflow_app_logs(
+                session=session, app_model=app_model, args=args
+            )
 
-        return workflow_app_log_pagination
+            return workflow_app_log_pagination
 
 
 api.add_resource(WorkflowAppLogApi, "/apps/<uuid:app_id>/workflow-app-logs")

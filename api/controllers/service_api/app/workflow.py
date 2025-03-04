@@ -2,6 +2,7 @@ import logging
 
 from flask_restful import Resource, fields, marshal_with, reqparse  # type: ignore
 from flask_restful.inputs import int_range  # type: ignore
+from sqlalchemy.orm import Session
 from werkzeug.exceptions import InternalServerError
 
 from controllers.service_api import api
@@ -125,17 +126,20 @@ class WorkflowAppLogApi(Resource):
         parser = reqparse.RequestParser()
         parser.add_argument("keyword", type=str, location="args")
         parser.add_argument("status", type=str, choices=["succeeded", "failed", "stopped"], location="args")
+        parser.add_argument("created_at__before", type=str, location="args")
+        parser.add_argument("created_at__after", type=str, location="args")
         parser.add_argument("page", type=int_range(1, 99999), default=1, location="args")
         parser.add_argument("limit", type=int_range(1, 100), default=20, location="args")
         args = parser.parse_args()
 
         # get paginate workflow app logs
         workflow_app_service = WorkflowAppService()
-        workflow_app_log_pagination = workflow_app_service.get_paginate_workflow_app_logs(
-            app_model=app_model, args=args
-        )
+        with Session(db.engine) as session:
+            workflow_app_log_pagination = workflow_app_service.get_paginate_workflow_app_logs(
+                session=session, app_model=app_model, args=args
+            )
 
-        return workflow_app_log_pagination
+            return workflow_app_log_pagination
 
 
 api.add_resource(WorkflowRunApi, "/workflows/run")

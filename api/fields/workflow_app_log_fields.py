@@ -20,5 +20,5 @@ workflow_app_log_pagination_fields = {
     "limit": fields.Integer(attribute="per_page"),
     "total": fields.Integer,
     "has_more": fields.Boolean(attribute="has_next"),
-    "data": fields.List(fields.Nested(workflow_app_log_partial_fields), attribute="items"),
+    "data": fields.List(fields.Nested(workflow_app_log_partial_fields)),
 }

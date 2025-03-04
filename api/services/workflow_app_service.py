@@ -1,31 +1,33 @@
 import uuid
 from datetime import datetime
 
-from flask_sqlalchemy.pagination import Pagination
-from sqlalchemy import and_, or_
+from sqlalchemy import and_, func, or_, select
+from sqlalchemy.orm import Session
 
-from extensions.ext_database import db
 from models import App, EndUser, WorkflowAppLog, WorkflowRun
 from models.enums import CreatedByRole
 from models.workflow import WorkflowRunStatus
 
 
 class WorkflowAppService:
-    def get_paginate_workflow_app_logs(self, app_model: App, args: dict) -> Pagination:
+    def get_paginate_workflow_app_logs(self, *, session: Session, app_model: App, args: dict) -> dict:
         """
-        Get paginate workflow app logs
-        :param app: app model
+        Get paginate workflow app logs using SQLAlchemy 2.0 style
+        :param app_model: app model
         :param args: request args
-        :return:
+        :param session: SQLAlchemy session, if None will use db
+        :return: Pagination object
         """
-        query = db.select(WorkflowAppLog).where(
+        # Build base statement using SQLAlchemy 2.0 style
+        stmt = select(WorkflowAppLog).where(
             WorkflowAppLog.tenant_id == app_model.tenant_id, WorkflowAppLog.app_id == app_model.id
         )
 
         status = WorkflowRunStatus.value_of(args.get("status", "")) if args.get("status") else None
-        keyword = args["keyword"]
+        keyword = args.get("keyword")
+
         if keyword or status:
-            query = query.join(WorkflowRun, WorkflowRun.id == WorkflowAppLog.workflow_run_id)
+            stmt = stmt.join(WorkflowRun, WorkflowRun.id == WorkflowAppLog.workflow_run_id)
 
         if keyword:
             keyword_like_val = f"%{keyword[:30].encode('unicode_escape').decode('utf-8')}%".replace(r"\u", r"\\u")
@@ -41,21 +43,21 @@ class WorkflowAppService:
             if keyword_uuid:
                 keyword_conditions.append(WorkflowRun.id == keyword_uuid)
 
-            query = query.outerjoin(
+            stmt = stmt.outerjoin(
                 EndUser,
                 and_(WorkflowRun.created_by == EndUser.id, WorkflowRun.created_by_role == CreatedByRole.END_USER),
-            ).filter(or_(*keyword_conditions))
+            ).where(or_(*keyword_conditions))
 
         if status:
-            # join with workflow_run and filter by status
-            query = query.filter(WorkflowRun.status == status.value)
+            # filter by status
+            stmt = stmt.where(WorkflowRun.status == status.value)
 
         # Add time-based filtering
         created_at_before = args.get("created_at__before")
         if created_at_before:
             try:
                 before_date = datetime.fromisoformat(created_at_before.replace("Z", "+00:00"))
-                query = query.filter(WorkflowAppLog.created_at <= before_date)
+                stmt = stmt.where(WorkflowAppLog.created_at <= before_date)
             except ValueError:
                 pass  # Ignore invalid date format
 
@@ -63,15 +65,32 @@ class WorkflowAppService:
         if created_at_after:
             try:
                 after_date = datetime.fromisoformat(created_at_after.replace("Z", "+00:00"))
-                query = query.filter(WorkflowAppLog.created_at >= after_date)
+                stmt = stmt.where(WorkflowAppLog.created_at >= after_date)
             except ValueError:
                 pass  # Ignore invalid date format
 
-        query = query.order_by(WorkflowAppLog.created_at.desc())
+        stmt = stmt.order_by(WorkflowAppLog.created_at.desc())
 
-        pagination = db.paginate(query, page=args["page"], per_page=args["limit"], error_out=False)
+        page = args["page"]
+        per_page = args["limit"]
 
-        return pagination
+        # Get total count using the same filters
+        count_stmt = select(func.count()).select_from(stmt.subquery())
+        total = session.scalar(count_stmt)
+
+        # Apply pagination limits
+        offset_stmt = stmt.offset((page - 1) * per_page).limit(per_page)
+
+        # Execute query and get items
+        items = list(session.scalars(offset_stmt).all())
+
+        return {
+            "page": page,
+            "limit": per_page,
+            "total": total,
+            "has_more": total > page * per_page,
+            "data": items,
+        }
 
     @staticmethod
     def _safe_parse_uuid(value: str):
