@@ -75,7 +75,7 @@ docker compose up -d
 
 運行後，您可以在瀏覽器中通過 [http://localhost/install](http://localhost/install) 訪問 Dify 儀表板並開始初始化過程。
 
-#### 尋求幫助
+### 尋求幫助
 
 如果您在設置 Dify 時遇到問題，請參考我們的 [常見問題](https://docs.dify.ai/getting-started/install-self-hosted/faqs)。如果仍有疑問，請聯絡 [社區和我們](#community--contact)。
 
