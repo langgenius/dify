@@ -207,6 +207,12 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
     handleNewConversationInputsChange(conversationInputs)
   }, [handleNewConversationInputsChange, inputsForms])
 
+  // when inputForms is empty, ConfigPanel set hide
+  useEffect(() => {
+    if (!inputsForms || inputsForms.length === 0) 
+      setShowConfigPanelBeforeChat(false)
+  }, [inputsForms, setShowConfigPanelBeforeChat])
+
   const { data: newConversation } = useSWR(newConversationId ? [isInstalledApp, appId, newConversationId] : null, () => generationConversationName(isInstalledApp, appId, newConversationId), { revalidateOnFocus: false })
   const [originConversationList, setOriginConversationList] = useState<ConversationItem[]>([])
   useEffect(() => {

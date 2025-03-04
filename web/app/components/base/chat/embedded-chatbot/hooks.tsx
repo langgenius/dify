@@ -317,6 +317,12 @@ export const useEmbeddedChatbot = () => {
     notify({ type: 'success', message: t('common.api.success') })
   }, [isInstalledApp, appId, t, notify])
 
+  // when inputForms is empty, ConfigPanel set hide
+  useEffect(() => {
+    if (!inputsForms || inputsForms.length === 0) 
+      setShowConfigPanelBeforeChat(false)
+  }, [inputsForms, setShowConfigPanelBeforeChat])
+
   return {
     appInfoError,
     appInfoLoading,
