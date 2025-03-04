@@ -6,7 +6,7 @@ function addChildrenToIterationNode(iterationNode: NodeTracing, childrenNodes: N
   childrenNodes.forEach((item, index) => {
     if (!item.execution_metadata) return
     const { iteration_index = 0 } = item.execution_metadata
-    const runIndex: number = iteration_index || index
+    const runIndex: number = iteration_index !== undefined ? iteration_index : index
     if (!details[runIndex])
       details[runIndex] = []
 
@@ -26,6 +26,7 @@ const format = (list: NodeTracing[], t: any): NodeTracing[] => {
     .filter(item => item.execution_metadata?.iteration_id && iterationNodeIds.includes(item.execution_metadata.iteration_id))
     .map(item => item.node_id)
   // move iteration children nodes to iteration node's details field
+
   const result = list
     .filter(item => !iterationChildrenNodeIds.includes(item.node_id))
     .map((item) => {
