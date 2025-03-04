@@ -6,31 +6,11 @@ import { useInvalid } from '../use-base'
 
 const NAME_SPACE = 'dataset-metadata'
 
-// let datasetMetaData = [
-//   {
-//     id: '1-ae54c',
-//     name: 'Doc type',
-//     type: 'string',
-//     use_count: 1,
-//   },
-//   {
-//     id: '2-fufex',
-//     name: 'Title',
-//     type: 'string',
-//     use_count: 5,
-//   },
-// ]
-
 export const useDatasetMetaData = (datasetId: string) => {
-  return useQuery<{ data: MetadataItemWithValueLength[] }>({
+  return useQuery<{ doc_metadata: MetadataItemWithValueLength[], built_in_field_enabled: boolean }>({
     queryKey: [NAME_SPACE, 'dataset', datasetId],
     queryFn: () => {
-      return get(`/datasets/${datasetId}/metadata`)
-      // return {
-      //   data: datasetMetaData,
-      // } as {
-      //   data: MetadataItemWithValueLength[],
-      // }
+      return get<{ doc_metadata: MetadataItemWithValueLength[], built_in_field_enabled: boolean }>(`/datasets/${datasetId}/metadata`)
     },
   })
 }
@@ -43,12 +23,9 @@ export const useCreateMetaData = (datasetId: string) => {
   const invalidDatasetMetaData = useInvalidDatasetMetaData(datasetId)
   return useMutation({
     mutationFn: async (payload: BuiltInMetadataItem) => {
-      // datasetMetaData.push({
-      //   id: `${Math.random()}`,
-      //   ...payload,
-      //   use_count: 0,
-      // })
-      await post(`/datasets/${datasetId}/metadata`, payload)
+      await post(`/datasets/${datasetId}/metadata`, {
+        body: payload,
+      })
       await invalidDatasetMetaData()
       return Promise.resolve(true)
     },
@@ -91,21 +68,7 @@ export const useBuiltInMetaDataFields = () => {
   return useQuery<{ fields: BuiltInMetadataItem[] }>({
     queryKey: [NAME_SPACE, 'built-in'],
     queryFn: () => {
-      return get('/metadata/built-in')
-      // return {
-      //   fields: [
-      //     {
-      //       name: 'OriginalfileNmae',
-      //       type: 'string',
-      //     },
-      //     {
-      //       name: 'Title',
-      //       type: 'string',
-      //     },
-      //   ],
-      // } as {
-      //   fields: BuiltInMetadataItem[],
-      // }
+      return get('/datasets/metadata/built-in')
     },
   })
 }
@@ -125,7 +88,7 @@ export const useBatchUpdateDocMetadata = () => {
 export const useUpdateBuiltInStatus = (datasetId: string) => {
   return useMutation({
     mutationFn: (enabled: boolean) => {
-      return post(`/datasets/${datasetId}/metadata/built-in/${enabled ? 'disable' : 'enable'}`)
+      return post(`/datasets/${datasetId}/metadata/built-in/${enabled ? 'enable' : 'disable'}`)
     },
   })
 }
