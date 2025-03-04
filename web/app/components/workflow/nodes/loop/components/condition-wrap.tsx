@@ -98,6 +98,7 @@ const ConditionWrap: FC<Props> = ({
                   onUpdateSubVariableCondition={handleUpdateSubVariableCondition}
                   onToggleSubVariableConditionLogicalOperator={handleToggleSubVariableConditionLogicalOperator}
                   isSubVariable={isSubVariable}
+                  availableVars={availableVars}
                 />
               </div>
             )

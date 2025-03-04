@@ -34,6 +34,7 @@ type ConditionListProps = {
   onRemoveSubVariableCondition?: handleRemoveSubVariableCondition
   onUpdateSubVariableCondition?: HandleUpdateSubVariableCondition
   onToggleSubVariableConditionLogicalOperator?: HandleToggleSubVariableConditionLogicalOperator
+  availableVars: NodeOutPutVar[]
 }
 const ConditionList = ({
   isSubVariable,
@@ -51,6 +52,7 @@ const ConditionList = ({
   nodeId,
   availableNodes,
   numberVariables,
+  availableVars,
 }: ConditionListProps) => {
   const doToggleConditionLogicalOperator = useCallback((conditionId?: string) => {
     if (isSubVariable && conditionId)
@@ -113,6 +115,7 @@ const ConditionList = ({
             availableNodes={availableNodes}
             numberVariables={numberVariables}
             isSubVariableKey={isSubVariable}
+            availableVars={availableVars}
           />
         ))
       }

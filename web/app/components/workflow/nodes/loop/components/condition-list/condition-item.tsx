@@ -25,15 +25,18 @@ import { comparisonOperatorNotRequireValue, getOperators } from './../../utils'
 import ConditionOperator from './condition-operator'
 import ConditionInput from './condition-input'
 import { FILE_TYPE_OPTIONS, SUB_VARIABLES, TRANSFER_METHOD } from './../../default'
-import VariableTag from '@/app/components/workflow/nodes/_base/components/variable-tag'
 import type {
   Node,
   NodeOutPutVar,
+  ValueSelector,
+  Var,
 } from '@/app/components/workflow/types'
 import { VarType } from '@/app/components/workflow/types'
 import cn from '@/utils/classnames'
 import { SimpleSelect as Select } from '@/app/components/base/select'
 import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'
+import ConditionVarSelector from './condition-var-selector'
+
 const optionNameI18NPrefix = 'workflow.nodes.ifElse.optionName'
 
 type ConditionItemProps = {
@@ -53,6 +56,7 @@ type ConditionItemProps = {
   nodeId: string
   availableNodes: Node[]
   numberVariables: NodeOutPutVar[]
+  availableVars: NodeOutPutVar[]
 }
 const ConditionItem = ({
   className,
@@ -71,10 +75,12 @@ const ConditionItem = ({
   nodeId,
   availableNodes,
   numberVariables,
+  availableVars,
 }: ConditionItemProps) => {
   const { t } = useTranslation()
 
   const [isHovered, setIsHovered] = useState(false)
+  const [open, setOpen] = useState(false)
 
   const doUpdateCondition = useCallback((newCondition: Condition) => {
     if (isSubVariableKey)
@@ -183,6 +189,17 @@ const ConditionItem = ({
       onRemoveCondition?.(condition.id)
   }, [condition, conditionId, isSubVariableKey, onRemoveCondition, onRemoveSubVariableCondition])
 
+  const handleVarChange = useCallback((valueSelector: ValueSelector, varItem: Var) => {
+    const newCondition = produce(condition, (draft) => {
+      draft.variable_selector = valueSelector
+      draft.varType = varItem.type
+      draft.value = ''
+      draft.comparison_operator = getOperators(varItem.type)[0]
+    })
+    doUpdateCondition(newCondition)
+    setOpen(false)
+  }, [condition, doUpdateCondition])
+
   return (
     <div className={cn('flex mb-1 last-of-type:mb-0', className)}>
       <div className={cn(
@@ -214,11 +231,14 @@ const ConditionItem = ({
                 />
               )
               : (
-                <VariableTag
+                <ConditionVarSelector
+                  open={open}
+                  onOpenChange={setOpen}
                   valueSelector={condition.variable_selector || []}
                   varType={condition.varType}
                   availableNodes={availableNodes}
-                  isShort
+                  nodesOutputVars={availableVars}
+                  onChange={handleVarChange}
                 />
               )}
 
@@ -289,7 +309,7 @@ const ConditionItem = ({
                 handleToggleSubVariableConditionLogicalOperator={onToggleSubVariableConditionLogicalOperator}
                 nodeId={nodeId}
                 availableNodes={availableNodes}
-                availableVars={[]}
+                availableVars={availableVars}
               />
             </div>
           )
