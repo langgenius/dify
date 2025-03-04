@@ -2,6 +2,7 @@ import React, { type FC, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   RiCloseLine,
+  RiCollapseDiagonalLine,
   RiExpandDiagonalLine,
 } from '@remixicon/react'
 import { useDocumentContext } from '../index'
@@ -37,7 +38,7 @@ const SegmentDetail: FC<ISegmentDetailProps> = ({
   docForm,
 }) => {
   const { t } = useTranslation()
-  const [question, setQuestion] = useState(segInfo?.content || '')
+  const [question, setQuestion] = useState(isEditMode ? segInfo?.content || '' : segInfo?.sign_content || '')
   const [answer, setAnswer] = useState(segInfo?.answer || '')
   const [keywords, setKeywords] = useState<string[]>(segInfo?.keywords || [])
   const { eventEmitter } = useEventEmitterContextContext()
@@ -129,7 +130,7 @@ const SegmentDetail: FC<ISegmentDetailProps> = ({
             </>
           )}
           <div className='w-8 h-8 flex justify-center items-center p-1.5 cursor-pointer mr-1' onClick={toggleFullScreen}>
-            <RiExpandDiagonalLine className='w-4 h-4 text-text-tertiary' />
+            {fullScreen ? <RiCollapseDiagonalLine className='w-4 h-4 text-text-tertiary' /> : <RiExpandDiagonalLine className='w-4 h-4 text-text-tertiary' />}
           </div>
           <div className='w-8 h-8 flex justify-center items-center p-1.5 cursor-pointer' onClick={onCancel}>
             <RiCloseLine className='w-4 h-4 text-text-tertiary' />

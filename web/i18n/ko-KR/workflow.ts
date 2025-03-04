@@ -557,7 +557,7 @@ const translation = {
         'append': '추가',
         'over-write': '덮어쓰기',
         '+=': '+=',
-        'title': '제목',
+        'title': '조작',
         'extend': '연장',
         'clear': '초기화',
         '/=': '/=',

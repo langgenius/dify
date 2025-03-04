@@ -10,6 +10,7 @@ import type {
 } from '@/app/components/tools/types'
 import type { ToolWithProvider } from '@/app/components/workflow/types'
 import type { Label } from '@/app/components/tools/labels/constant'
+import { buildProviderQuery } from './_tools_util'
 
 export const fetchCollectionList = () => {
   return get<Collection[]>('/workspaces/current/tool-providers')
@@ -24,11 +25,13 @@ export const fetchBuiltInToolList = (collectionName: string) => {
 }
 
 export const fetchCustomToolList = (collectionName: string) => {
-  return get<Tool[]>(`/workspaces/current/tool-provider/api/tools?provider=${collectionName}`)
+  const query = buildProviderQuery(collectionName)
+  return get<Tool[]>(`/workspaces/current/tool-provider/api/tools?${query}`)
 }
 
 export const fetchModelToolList = (collectionName: string) => {
-  return get<Tool[]>(`/workspaces/current/tool-provider/model/tools?provider=${collectionName}`)
+  const query = buildProviderQuery(collectionName)
+  return get<Tool[]>(`/workspaces/current/tool-provider/model/tools?${query}`)
 }
 
 export const fetchWorkflowToolList = (appID: string) => {
@@ -65,7 +68,8 @@ export const parseParamsSchema = (schema: string) => {
 }
 
 export const fetchCustomCollection = (collectionName: string) => {
-  return get<CustomCollectionBackend>(`/workspaces/current/tool-provider/api/get?provider=${collectionName}`)
+  const query = buildProviderQuery(collectionName)
+  return get<CustomCollectionBackend>(`/workspaces/current/tool-provider/api/get?${query}`)
 }
 
 export const createCustomCollection = (collection: CustomCollectionBackend) => {

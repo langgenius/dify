@@ -52,33 +52,33 @@ const ItemOperation: FC<IItemOperationProps> = ({
       <PortalToFollowElemTrigger
         onClick={() => setOpen(v => !v)}
       >
-        <div className={cn(className, s.btn, 'h-6 w-6 rounded-md border-none py-1', (isItemHovering || open) && `${s.open} !bg-gray-100 !shadow-none`)}></div>
+        <div className={cn(className, s.btn, 'h-6 w-6 rounded-md border-none py-1', (isItemHovering || open) && `${s.open} !bg-components-actionbar-bg !shadow-none`)}></div>
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent
         className="z-50"
       >
         <div
           ref={ref}
-          className={'min-w-[120px] p-1 bg-white rounded-lg border border--gray-200 shadow-lg'}
+          className={'min-w-[120px] p-1 bg-components-panel-bg-blur backdrop-blur-[5px] rounded-lg border border-components-panel-border shadow-lg'}
           onMouseEnter={setIsHovering}
           onMouseLeave={setNotHovering}
           onClick={(e) => {
             e.stopPropagation()
           }}
         >
-          <div className={cn(s.actionItem, 'hover:bg-gray-50 group')} onClick={togglePin}>
-            <Pin02 className='shrink-0 w-4 h-4 text-gray-500' />
+          <div className={cn(s.actionItem, 'hover:bg-state-base-hover group')} onClick={togglePin}>
+            <Pin02 className='shrink-0 w-4 h-4 text-text-secondary' />
             <span className={s.actionName}>{isPinned ? t('explore.sidebar.action.unpin') : t('explore.sidebar.action.pin')}</span>
           </div>
           {isShowRenameConversation && (
-            <div className={cn(s.actionItem, 'hover:bg-gray-50 group')} onClick={onRenameConversation}>
-              <RiEditLine className='shrink-0 w-4 h-4 text-gray-500' />
+            <div className={cn(s.actionItem, 'hover:bg-state-base-hover group')} onClick={onRenameConversation}>
+              <RiEditLine className='shrink-0 w-4 h-4 text-text-secondary' />
               <span className={s.actionName}>{t('explore.sidebar.action.rename')}</span>
             </div>
           )}
           {isShowDelete && (
-            <div className={cn(s.actionItem, s.deleteActionItem, 'hover:bg-gray-50 group')} onClick={onDelete} >
-              <RiDeleteBinLine className={cn(s.deleteActionItemChild, 'shrink-0 w-4 h-4 stroke-current text-gray-500 stroke-2')} />
+            <div className={cn(s.actionItem, s.deleteActionItem, 'hover:bg-state-base-hover group')} onClick={onDelete} >
+              <RiDeleteBinLine className={cn(s.deleteActionItemChild, 'shrink-0 w-4 h-4 stroke-current text-text-secondary stroke-2')} />
               <span className={cn(s.actionName, s.deleteActionItemChild)}>{t('explore.sidebar.action.delete')}</span>
             </div>
           )}

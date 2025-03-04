@@ -194,7 +194,7 @@ class ToolManager:
                     db.session.query(BuiltinToolProvider)
                     .filter(
                         BuiltinToolProvider.tenant_id == tenant_id,
-                        (BuiltinToolProvider.provider == provider_id)
+                        (BuiltinToolProvider.provider == str(provider_id_entity))
                         | (BuiltinToolProvider.provider == provider_id_entity.provider_name),
                     )
                     .first()
