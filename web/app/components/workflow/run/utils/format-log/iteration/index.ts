@@ -26,7 +26,6 @@ const format = (list: NodeTracing[], t: any): NodeTracing[] => {
     .filter(item => item.execution_metadata?.iteration_id && iterationNodeIds.includes(item.execution_metadata.iteration_id))
     .map(item => item.node_id)
   // move iteration children nodes to iteration node's details field
-
   const result = list
     .filter(item => !iterationChildrenNodeIds.includes(item.node_id))
     .map((item) => {
