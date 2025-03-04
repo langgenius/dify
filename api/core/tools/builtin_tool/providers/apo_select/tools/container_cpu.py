@@ -7,7 +7,7 @@ import requests
 from configs import dify_config
 from core.tools.builtin_tool.tool import BuiltinTool
 from core.tools.entities.tool_entities import ToolInvokeMessage
-
+from core.tools.builtin_tool.providers.utils import APOUtils
 
 class SelectContainerCPUTool(BuiltinTool):
     def _invoke(
@@ -18,25 +18,26 @@ class SelectContainerCPUTool(BuiltinTool):
         app_id: Optional[str] = None,
         message_id: Optional[str] = None,
     ) -> Generator[ToolInvokeMessage, None, None]:
-        container_name = tool_parameters.get("container")
+        pod = tool_parameters.get("pod")
+        namespace = tool_parameters.get("namespace")
         start_time = tool_parameters.get("startTime")
         end_time = tool_parameters.get("endTime")
-        pmql = 'rate(container_cpu_usage_seconds_total{container="' + container_name + '"}[1m])'
         params = {
-          'query': pmql,
-          'start': start_time,
-          'end': end_time,
-          'step': '1m'
+          'metricName': '基础设施情况 - 容器CPU - 容器CPU使用率 - Containerd',
+          'params': {
+            "pod": pod,
+            "namespace": namespace
+          },
+          'startTime': start_time,
+          'endTime': end_time,
+          'step': APOUtils.get_step(start_time, end_time),
           }
-        url = dify_config.APO_VM_URL + "/api/v1/query_range" 
-        resp = requests.get(url, params=params)
-        list = resp.json()['data']['result'][0]
-        res = {}
-        for item in list['values']:
-            res[str(item[0] * 1000)] = float(item[1])
+        resp = requests.post(dify_config.APO_BACKEND_URL + '/api/metric/query', json=params)
+        list = resp.json()['result']
         list = json.dumps({
             'type': 'cpu',
             'display': True,
-            'data': res,
+            'unit': list['unit'],
+            'data': list['timeseries']
         })
         yield self.create_text_message(list)

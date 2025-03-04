@@ -18,10 +18,17 @@ class ThresholdTool(BuiltinTool):
         metric = tool_parameters.get('metricData')
         metric_data = json.loads(metric)
         threshold = float(tool_parameters.get('threshold'))
-        res = {}
-        for k, v in metric_data['data'].items():
-            if v > threshold:
-                res[str(k)] = v
+        res = []
+        for serie in metric_data['data']:
+            tmpres = {
+                "name": serie['legend'],
+                "data": {},
+            }
+            for k, v in serie['chart']['chartData'].items():
+                v = float(v)
+                if v > threshold:
+                    tmpres['data'][str(k)] = v
+            res.append(tmpres)
         res = json.dumps({
             "type": 'llm',
             "display": False,

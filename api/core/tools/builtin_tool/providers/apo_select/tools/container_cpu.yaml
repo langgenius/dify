@@ -15,18 +15,31 @@ description:
     pt_BR: Query the CPU utilization of the container
   llm: Query the CPU utilization of the container
 parameters:
-  - name: container
+  - name: pod
     type: string
     required: true
     label:
-      en_US: container
-      zh_Hans: container
-      pt_BR: container
+      en_US: pod
+      zh_Hans: pod
+      pt_BR: pod
     human_description:
-      en_US: Specified container name
-      zh_Hans: 指定的容器名称
-      pt_BR: Specified container name
-    llm_description: Specified container name
+      en_US: Specified pod name
+      zh_Hans: 指定的容器POD名称
+      pt_BR: Specified pod name
+    llm_description: Specified pod name
+    form: llm
+  - name: namespace
+    type: string
+    required: true
+    label:
+      en_US: namespace
+      zh_Hans: namespace
+      pt_BR: namespace
+    human_description:
+      en_US: Specified namespace
+      zh_Hans: 指定的容器所在Namespace
+      pt_BR: Specified namespace
+    llm_description: Specified namespace
     form: llm
   - name: startTime
     type: number
