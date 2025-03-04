@@ -127,6 +127,7 @@ class CompletionAppRunner(AppRunner):
                 show_retrieve_source=app_config.additional_features.show_retrieve_source,
                 hit_callback=hit_callback,
                 message_id=message.id,
+                inputs=inputs,
             )
 
         # reorganize all inputs and template to prompt messages

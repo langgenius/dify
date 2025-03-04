@@ -81,6 +81,7 @@ from .datasets import (
     datasets_segments,
     external,
     hit_testing,
+    metadata,
     website,
 )
 

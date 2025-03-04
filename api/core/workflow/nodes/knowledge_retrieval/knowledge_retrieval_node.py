@@ -2,7 +2,7 @@ import json
 import logging
 from collections import defaultdict
 from collections.abc import Mapping, Sequence
-from typing import Any, Optional, cast
+from typing import Any, cast, Optional
 
 from sqlalchemy import func
 
@@ -12,9 +12,8 @@ from core.entities.agent_entities import PlanningStrategy
 from core.entities.model_entities import ModelStatus
 from core.model_manager import ModelInstance, ModelManager
 from core.model_runtime.entities.message_entities import PromptMessageRole
-from core.model_runtime.entities.model_entities import ModelFeature, ModelPropertyKey, ModelType
+from core.model_runtime.entities.model_entities import ModelFeature, ModelType
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
-from core.prompt.advanced_prompt_transform import AdvancedPromptTransform
 from core.prompt.simple_prompt_transform import ModelMode
 from core.rag.datasource.retrieval_service import RetrievalService
 from core.rag.retrieval.dataset_retrieval import DatasetRetrieval
@@ -40,7 +39,7 @@ from libs.json_in_md_parser import parse_and_check_json_markdown
 from models.dataset import Dataset, DatasetMetadata, Document
 from models.workflow import WorkflowNodeExecutionStatus
 
-from .entities import KnowledgeRetrievalNodeData
+from .entities import KnowledgeRetrievalNodeData, ModelConfig
 from .exc import (
     InvalidModelTypeError,
     KnowledgeRetrievalNodeError,
@@ -144,7 +143,7 @@ class KnowledgeRetrievalNode(LLMNode):
         dataset_retrieval = DatasetRetrieval()
         if node_data.retrieval_mode == DatasetRetrieveConfigEntity.RetrieveStrategy.SINGLE.value:
             # fetch model config
-            model_instance, model_config = self._fetch_model_config(node_data)
+            model_instance, model_config = self._fetch_model_config(node_data.single_retrieval_config.model)
             # check model is support tool calling
             model_type_instance = model_config.provider_model_bundle.model_type_instance
             model_type_instance = cast(LargeLanguageModel, model_type_instance)
@@ -284,7 +283,7 @@ class KnowledgeRetrievalNode(LLMNode):
 
     def _get_metadata_filter_condition(
         self, dataset_ids: list, query: str, node_data: KnowledgeRetrievalNodeData
-    ) -> dict[str, list[str]]:
+    ) -> Optional[dict[str, list[str]]]:
         document_query = db.session.query(Document.id).filter(
             Document.dataset_id.in_(dataset_ids),
             Document.indexing_status == "completed",
@@ -334,8 +333,8 @@ class KnowledgeRetrievalNode(LLMNode):
         # fetch prompt messages
         prompt_template = self._get_prompt_template(
             node_data=node_data,
-            query=query or "",
             metadata_fields=all_metadata_fields,
+            query=query or "",
         )
         prompt_messages, stop = self._fetch_prompt_messages(
             prompt_template=prompt_template,
@@ -378,7 +377,7 @@ class KnowledgeRetrievalNode(LLMNode):
                             }
                         )
         except Exception as e:
-            return None
+            return []
         return automatic_metadata_filters
 
     def _process_metadata_filter_func(*, condition: str, metadata_name: str, value: str, query):
@@ -429,18 +428,16 @@ class KnowledgeRetrievalNode(LLMNode):
         variable_mapping[node_id + ".query"] = node_data.query_variable_selector
         return variable_mapping
 
-    def _fetch_model_config(
-        self, node_data: KnowledgeRetrievalNodeData
-    ) -> tuple[ModelInstance, ModelConfigWithCredentialsEntity]:
+    def _fetch_model_config(self, model: ModelConfig) -> tuple[ModelInstance, ModelConfigWithCredentialsEntity]:
         """
         Fetch model config
-        :param node_data: node data
+        :param model: model
         :return:
         """
-        if node_data.single_retrieval_config is None:
-            raise ValueError("single_retrieval_config is required")
-        model_name = node_data.single_retrieval_config.model.name
-        provider_name = node_data.single_retrieval_config.model.provider
+        if model is None:
+            raise ValueError("model is required")
+        model_name = model.name
+        provider_name = model.provider
 
         model_manager = ModelManager()
         model_instance = model_manager.get_model_instance(
@@ -469,14 +466,14 @@ class KnowledgeRetrievalNode(LLMNode):
             raise ModelQuotaExceededError(f"Model provider {provider_name} quota exceeded.")
 
         # model config
-        completion_params = node_data.single_retrieval_config.model.completion_params
+        completion_params = model.completion_params
         stop = []
         if "stop" in completion_params:
             stop = completion_params["stop"]
             del completion_params["stop"]
 
         # get model mode
-        model_mode = node_data.single_retrieval_config.model.mode
+        model_mode = model.mode
         if not model_mode:
             raise ModelNotExistError("LLM mode is required.")
 
@@ -495,50 +492,6 @@ class KnowledgeRetrievalNode(LLMNode):
             parameters=completion_params,
             stop=stop,
         )
-
-    def _calculate_rest_token(
-        self,
-        node_data: KnowledgeRetrievalNodeData,
-        query: str,
-        model_config: ModelConfigWithCredentialsEntity,
-        context: Optional[str],
-    ) -> int:
-        prompt_transform = AdvancedPromptTransform(with_variable_tmpl=True)
-        prompt_template = self._get_prompt_template(node_data, query, None, 2000)
-        prompt_messages = prompt_transform.get_prompt(
-            prompt_template=prompt_template,
-            inputs={},
-            query="",
-            files=[],
-            context=context,
-            memory_config=node_data.memory,
-            memory=None,
-            model_config=model_config,
-        )
-        rest_tokens = 2000
-
-        model_context_tokens = model_config.model_schema.model_properties.get(ModelPropertyKey.CONTEXT_SIZE)
-        if model_context_tokens:
-            model_instance = ModelInstance(
-                provider_model_bundle=model_config.provider_model_bundle, model=model_config.model
-            )
-
-            curr_message_tokens = model_instance.get_llm_num_tokens(prompt_messages)
-
-            max_tokens = 0
-            for parameter_rule in model_config.model_schema.parameter_rules:
-                if parameter_rule.name == "max_tokens" or (
-                    parameter_rule.use_template and parameter_rule.use_template == "max_tokens"
-                ):
-                    max_tokens = (
-                        model_config.parameters.get(parameter_rule.name)
-                        or model_config.parameters.get(parameter_rule.use_template or "")
-                    ) or 0
-
-            rest_tokens = model_context_tokens - max_tokens - curr_message_tokens
-            rest_tokens = max(rest_tokens, 0)
-
-        return rest_tokens
 
     def _get_prompt_template(self, node_data: KnowledgeRetrievalNodeData, metadata_fields: list, query: str):
         model_mode = ModelMode.value_of(node_data.metadata_model_config.mode)

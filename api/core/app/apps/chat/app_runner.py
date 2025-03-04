@@ -168,6 +168,7 @@ class ChatAppRunner(AppRunner):
                 hit_callback=hit_callback,
                 memory=memory,
                 message_id=message.id,
+                inputs=inputs,
             )
 
         # reorganize all inputs and template to prompt messages

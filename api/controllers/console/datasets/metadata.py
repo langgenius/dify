@@ -26,7 +26,7 @@ def _validate_description_length(description):
     return description
 
 
-class DatasetListApi(Resource):
+class DatasetMetadataCreateApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
@@ -114,7 +114,7 @@ class DatasetMetadataBuiltInFieldActionApi(Resource):
         return 200
 
 
-class DocumentMetadataApi(Resource):
+class DocumentMetadataEditApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
@@ -136,8 +136,8 @@ class DocumentMetadataApi(Resource):
         return 200
 
 
-api.add_resource(DatasetListApi, "/datasets/<uuid:dataset_id>/metadata")
+api.add_resource(DatasetMetadataCreateApi, "/datasets/<uuid:dataset_id>/metadata")
 api.add_resource(DatasetMetadataApi, "/datasets/<uuid:dataset_id>/metadata/<uuid:metadata_id>")
 api.add_resource(DatasetMetadataBuiltInFieldApi, "/datasets/metadata/built-in")
 api.add_resource(DatasetMetadataBuiltInFieldActionApi, "/datasets/metadata/built-in/<string:action>")
-api.add_resource(DocumentMetadataApi, "/datasets/<uuid:dataset_id>/documents/metadata")
+api.add_resource(DocumentMetadataEditApi, "/datasets/<uuid:dataset_id>/documents/metadata")
