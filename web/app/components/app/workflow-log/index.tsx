@@ -6,6 +6,8 @@ import { usePathname } from 'next/navigation'
 import { useDebounce } from 'ahooks'
 import { omit } from 'lodash-es'
 import dayjs from 'dayjs'
+import utc from 'dayjs/plugin/utc'
+import timezone from 'dayjs/plugin/timezone'
 import { Trans, useTranslation } from 'react-i18next'
 import Link from 'next/link'
 import List from './list'
@@ -15,6 +17,10 @@ import Loading from '@/app/components/base/loading'
 import { fetchWorkflowLogs } from '@/service/log'
 import { APP_PAGE_LIMIT } from '@/config'
 import type { App, AppMode } from '@/types/app'
+import { useAppContext } from '@/context/app-context'
+
+dayjs.extend(utc)
+dayjs.extend(timezone)
 
 export type ILogsProps = {
   appDetail: App
@@ -51,6 +57,7 @@ const EmptyElement: FC<{ appUrl: string }> = ({ appUrl }) => {
 
 const Logs: FC<ILogsProps> = ({ appDetail }) => {
   const { t } = useTranslation()
+  const { userProfile: { timezone } } = useAppContext()
   const [queryParams, setQueryParams] = useState<QueryParam>({ status: 'all', period: '2' })
   const [currPage, setCurrPage] = React.useState<number>(0)
   const debouncedQueryParams = useDebounce(queryParams, { wait: 500 })
@@ -63,8 +70,8 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
     ...(debouncedQueryParams.keyword ? { keyword: debouncedQueryParams.keyword } : {}),
     ...((debouncedQueryParams.period !== '9')
       ? {
-        start: dayjs().subtract(TIME_PERIOD_MAPPING[debouncedQueryParams.period].value, 'day').startOf('day').format('YYYY-MM-DD HH:mm'),
-        end: dayjs().endOf('day').format('YYYY-MM-DD HH:mm'),
+        created_at__after: dayjs().subtract(TIME_PERIOD_MAPPING[debouncedQueryParams.period].value, 'day').startOf('day').tz(timezone).format('YYYY-MM-DDTHH:mm:ssZ'),
+        created_at__before: dayjs().endOf('day').tz(timezone).format('YYYY-MM-DDTHH:mm:ssZ'),
       }
       : {}),
     ...omit(debouncedQueryParams, ['period', 'status']),
