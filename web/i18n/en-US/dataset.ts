@@ -178,6 +178,10 @@ const translation = {
       name: 'Name',
       namePlaceholder: 'Add metadata name',
     },
+    checkName: {
+      empty: 'Metadata name cannot be empty',
+      invalid: 'Metadata name can only contain lowercase letters, numbers, and underscores and must start with a lowercase letter',
+    },
     batchEditMetadata: {
       editMetadata: 'Edit Metadata',
       editDocumentsNum: 'Editing {{num}} documents',
