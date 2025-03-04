@@ -129,7 +129,7 @@ const StepOne = ({
     <div className='flex w-full h-full'>
       <div className='w-1/2 h-full overflow-y-auto relative'>
         <div className='flex justify-end'>
-          <div className={classNames(s.form)}>
+          <div className={classNames(s.form, 'overflow-hidden')}>
             {
               shouldShowDataSourceTypeList && (
                 <div className={classNames(s.stepHeader, 'z-10 text-text-secondary bg-components-panel-bg-blur')}>{t('datasetCreation.steps.one')}</div>
