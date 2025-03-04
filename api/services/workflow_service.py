@@ -453,3 +453,58 @@ class WorkflowService:
             )
         else:
             raise ValueError(f"Invalid app mode: {app_model.mode}")
+
+    def update_workflow(
+        self, *, session: Session, workflow_id: str, tenant_id: str, account_id: str, data: dict
+    ) -> Optional[Workflow]:
+        """
+        Update workflow attributes
+
+        :param session: SQLAlchemy database session
+        :param workflow_id: Workflow ID
+        :param tenant_id: Tenant ID
+        :param account_id: Account ID (for permission check)
+        :param data: Dictionary containing fields to update
+        :return: Updated workflow or None if not found
+        """
+        stmt = select(Workflow).where(Workflow.id == workflow_id, Workflow.tenant_id == tenant_id)
+        workflow = session.scalar(stmt)
+
+        if not workflow:
+            return None
+
+        allowed_fields = ["marked_name", "marked_comment"]
+
+        for field, value in data.items():
+            if field in allowed_fields:
+                setattr(workflow, field, value)
+
+        workflow.updated_by = account_id
+        workflow.updated_at = datetime.now(UTC).replace(tzinfo=None)
+
+        return workflow
+
+    def delete_workflow(self, *, session: Session, workflow_id: str, tenant_id: str) -> bool:
+        """
+        Delete a workflow
+
+        :param session: SQLAlchemy database session
+        :param workflow_id: Workflow ID
+        :param tenant_id: Tenant ID
+        :return: True if deletable, False if not found or in use
+        """
+        stmt = select(Workflow).where(Workflow.id == workflow_id, Workflow.tenant_id == tenant_id)
+        workflow = session.scalar(stmt)
+
+        if not workflow:
+            return False
+
+        # Check if this workflow is currently referenced by an app
+        stmt = select(App).where(App.workflow_id == workflow_id)
+        app = session.scalar(stmt)
+        if app:
+            # Cannot delete a workflow that's currently in use by an app
+            return False
+
+        session.delete(workflow)
+        return True

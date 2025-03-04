@@ -525,6 +525,90 @@ class PublishedAllWorkflowApi(Resource):
             }
 
 
+class WorkflowByIdApi(Resource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
+    @marshal_with(workflow_fields)
+    def patch(self, app_model: App, workflow_id: str):
+        """
+        Update workflow attributes
+        """
+        # Check permission
+        if not current_user.is_editor:
+            raise Forbidden()
+
+        if not isinstance(current_user, Account):
+            raise Forbidden()
+
+        parser = reqparse.RequestParser()
+        parser.add_argument("marked_name", type=str, required=False, location="json")
+        parser.add_argument("marked_comment", type=str, required=False, location="json")
+        args = parser.parse_args()
+
+        # Prepare update data
+        update_data = {}
+        if args.get("marked_name") is not None:
+            update_data["marked_name"] = args["marked_name"]
+        if args.get("marked_comment") is not None:
+            update_data["marked_comment"] = args["marked_comment"]
+
+        if not update_data:
+            return {"message": "No valid fields to update"}, 400
+
+        workflow_service = WorkflowService()
+
+        # Create a session and manage the transaction
+        with Session(db.engine, expire_on_commit=False) as session:
+            workflow = workflow_service.update_workflow(
+                session=session,
+                workflow_id=workflow_id,
+                tenant_id=app_model.tenant_id,
+                account_id=current_user.id,
+                data=update_data,
+            )
+
+            if not workflow:
+                raise NotFound("Workflow not found")
+
+            # Commit the transaction in the controller
+            session.commit()
+
+        return workflow
+
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
+    def delete(self, app_model: App, workflow_id: str):
+        """
+        Delete workflow
+        """
+        # Check permission
+        if not current_user.is_editor:
+            raise Forbidden()
+
+        if not isinstance(current_user, Account):
+            raise Forbidden()
+
+        workflow_service = WorkflowService()
+
+        # Create a session and manage the transaction
+        with Session(db.engine) as session:
+            success = workflow_service.delete_workflow(
+                session=session, workflow_id=workflow_id, tenant_id=app_model.tenant_id
+            )
+
+            if not success:
+                raise NotFound("Workflow not found or cannot be deleted")
+
+            # Commit the transaction in the controller
+            session.commit()
+
+        return None, 204
+
+
 api.add_resource(
     DraftWorkflowApi,
     "/apps/<uuid:app_id>/workflows/draft",
@@ -576,4 +660,8 @@ api.add_resource(
 api.add_resource(
     ConvertToWorkflowApi,
     "/apps/<uuid:app_id>/convert-to-workflow",
+)
+api.add_resource(
+    WorkflowByIdApi,
+    "/apps/<uuid:app_id>/workflows/<string:workflow_id>",
 )
