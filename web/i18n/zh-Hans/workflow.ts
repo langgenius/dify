@@ -672,7 +672,7 @@ const translation = {
       currentLoop: '当前循环',
       breakCondition: '循环终止条件',
       loopMaxCount: '最大循环次数',
-      loopMaxCountError: '请输入正确的 最大循环次数，范围为 1 到 100',
+      loopMaxCountError: '请输入正确的 最大循环次数，范围为 1 到 {{maxCount}}',
       errorResponseMethod: '错误响应方法',
       ErrorMethod: {
         operationTerminated: '错误时终止',

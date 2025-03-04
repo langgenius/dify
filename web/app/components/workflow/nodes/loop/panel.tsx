@@ -14,6 +14,7 @@ import BeforeRunForm from '@/app/components/workflow/nodes/_base/components/befo
 import formatTracing from '@/app/components/workflow/run/utils/format-log'
 
 import { useLogs } from '@/app/components/workflow/run/hooks'
+import { LOOP_NODE_MAX_COUNT } from '@/config'
 
 const i18nPrefix = 'workflow.nodes.loop'
 
@@ -80,7 +81,7 @@ const Panel: FC<NodePanelProps<LoopNodeType>> = ({
             <div className='px-3 py-2'>
               <InputNumberWithSlider
                 min={1}
-                max={100}
+                max={LOOP_NODE_MAX_COUNT}
                 value={inputs.loop_count}
                 onChange={(val) => {
                   const roundedVal = Math.round(val)

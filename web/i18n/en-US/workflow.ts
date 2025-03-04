@@ -671,7 +671,7 @@ const translation = {
       currentLoop: 'Current Loop',
       breakCondition: 'Loop Termination Condition',
       loopMaxCount: 'Maximum Loop Count',
-      loopMaxCountError: 'Please enter a valid maximum loop count, ranging from 1 to 100',
+      loopMaxCountError: 'Please enter a valid maximum loop count, ranging from 1 to {{maxCount}}',
       errorResponseMethod: 'Error Response Method',
       ErrorMethod: {
         operationTerminated: 'Terminated',

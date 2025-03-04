@@ -4,6 +4,7 @@ import { ComparisonOperator, LogicalOperator, type LoopNodeType } from './types'
 import { isEmptyRelatedOperator } from './utils'
 import { TransferMethod } from '@/types/app'
 import { ALL_CHAT_AVAILABLE_BLOCKS, ALL_COMPLETION_AVAILABLE_BLOCKS } from '@/app/components/workflow/blocks'
+import { LOOP_NODE_MAX_COUNT } from '@/config'
 const i18nPrefix = 'workflow.errorMsg'
 
 const nodeDefault: NodeDefault<LoopNodeType> = {
@@ -62,9 +63,9 @@ const nodeDefault: NodeDefault<LoopNodeType> = {
       Number.isNaN(Number(payload.loop_count))
       || !Number.isInteger(Number(payload.loop_count))
       || payload.loop_count < 1
-      || payload.loop_count > 100
+      || payload.loop_count > LOOP_NODE_MAX_COUNT
     ))
-      errorMessages = t('workflow.nodes.loop.loopMaxCountError')
+      errorMessages = t('workflow.nodes.loop.loopMaxCountError', { maxCount: LOOP_NODE_MAX_COUNT })
 
     return {
       isValid: !errorMessages,
