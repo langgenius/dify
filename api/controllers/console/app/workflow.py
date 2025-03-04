@@ -602,12 +602,12 @@ class WorkflowByIdApi(Resource):
                 )
                 # Commit the transaction in the controller
                 session.commit()
-            except ValueError as e:
-                raise NotFound(str(e))
             except WorkflowInUseError as e:
                 abort(400, description=str(e))
             except DraftWorkflowDeletionError as e:
                 abort(400, description=str(e))
+            except ValueError as e:
+                raise NotFound(str(e))
 
         return None, 204
 
