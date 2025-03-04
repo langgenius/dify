@@ -175,23 +175,26 @@ class WorkflowService:
         # return draft workflow
         return workflow
 
-    def publish_workflow(self, app_model: App, account: Account, draft_workflow: Optional[Workflow] = None) -> Workflow:
-        """
-        Publish workflow from draft
-
-        :param app_model: App instance
-        :param account: Account instance
-        :param draft_workflow: Workflow instance
-        """
-        if not draft_workflow:
-            # fetch draft workflow by app_model
-            draft_workflow = self.get_draft_workflow(app_model=app_model)
-
+    def publish_workflow(
+        self,
+        *,
+        session: Session,
+        app_model: App,
+        account: Account,
+        marked_name: str = "",
+        marked_comment: str = "",
+    ) -> Workflow:
+        draft_workflow_stmt = select(Workflow).where(
+            Workflow.tenant_id == app_model.tenant_id,
+            Workflow.app_id == app_model.id,
+            Workflow.version == "draft",
+        )
+        draft_workflow = session.scalar(draft_workflow_stmt)
         if not draft_workflow:
             raise ValueError("No valid workflow found.")
 
         # create new workflow
-        workflow = Workflow(
+        workflow = Workflow.new(
             tenant_id=app_model.tenant_id,
             app_id=app_model.id,
             type=draft_workflow.type,
@@ -201,15 +204,12 @@ class WorkflowService:
             created_by=account.id,
             environment_variables=draft_workflow.environment_variables,
             conversation_variables=draft_workflow.conversation_variables,
+            marked_name=marked_name,
+            marked_comment=marked_comment,
         )
 
         # commit db session changes
-        db.session.add(workflow)
-        db.session.flush()
-        db.session.commit()
-
-        app_model.workflow_id = workflow.id
-        db.session.commit()
+        session.add(workflow)
 
         # trigger app workflow events
         app_published_workflow_was_updated.send(app_model, published_workflow=workflow)

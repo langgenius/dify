@@ -368,10 +368,32 @@ class PublishedWorkflowApi(Resource):
         if not isinstance(current_user, Account):
             raise Forbidden()
 
-        workflow_service = WorkflowService()
-        workflow = workflow_service.publish_workflow(app_model=app_model, account=current_user)
+        parser = reqparse.RequestParser()
+        parser.add_argument("marked_name", type=str, required=False, default="", location="json")
+        parser.add_argument("marked_comment", type=str, required=False, default="", location="json")
+        args = parser.parse_args()
 
-        return {"result": "success", "created_at": TimestampField().format(workflow.created_at)}
+        workflow_service = WorkflowService()
+        with Session(db.engine) as session:
+            workflow = workflow_service.publish_workflow(
+                session=session,
+                app_model=app_model,
+                account=current_user,
+                marked_name=args.marked_name or "",
+                marked_comment=args.marked_comment or "",
+            )
+
+            app_model.workflow_id = workflow.id
+            db.session.commit()
+
+            workflow_created_at = TimestampField().format(workflow.created_at)
+
+            session.commit()
+
+        return {
+            "result": "success",
+            "created_at": workflow_created_at,
+        }
 
 
 class DefaultBlockConfigsApi(Resource):
