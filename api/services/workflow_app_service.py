@@ -1,4 +1,5 @@
 import uuid
+from datetime import datetime
 
 from flask_sqlalchemy.pagination import Pagination
 from sqlalchemy import and_, or_
@@ -48,6 +49,23 @@ class WorkflowAppService:
         if status:
             # join with workflow_run and filter by status
             query = query.filter(WorkflowRun.status == status.value)
+
+        # Add time-based filtering
+        created_at_before = args.get("created_at__before")
+        if created_at_before:
+            try:
+                before_date = datetime.fromisoformat(created_at_before.replace("Z", "+00:00"))
+                query = query.filter(WorkflowAppLog.created_at <= before_date)
+            except ValueError:
+                pass  # Ignore invalid date format
+
+        created_at_after = args.get("created_at__after")
+        if created_at_after:
+            try:
+                after_date = datetime.fromisoformat(created_at_after.replace("Z", "+00:00"))
+                query = query.filter(WorkflowAppLog.created_at >= after_date)
+            except ValueError:
+                pass  # Ignore invalid date format
 
         query = query.order_by(WorkflowAppLog.created_at.desc())
 
