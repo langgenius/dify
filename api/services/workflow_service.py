@@ -100,7 +100,7 @@ class WorkflowService:
         stmt = (
             select(Workflow)
             .where(Workflow.app_id == app_model.id)
-            .order_by(Workflow.created_at.desc())
+            .order_by(Workflow.version.desc())
             .limit(limit + 1)
             .offset((page - 1) * limit)
         )
