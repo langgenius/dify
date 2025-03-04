@@ -262,7 +262,7 @@ const translation = {
     'assigner': '变量赋值节点用于向可写入变量（例如会话变量）进行变量赋值。',
     'variable-aggregator': '将多路分支的变量聚合为一个变量，以实现下游节点统一配置。',
     'iteration': '对列表对象执行多次步骤直至输出所有结果。',
-    'loop': '循环执行一段逻辑直至满足结束条件或到达循环次数上限。',
+    'loop': '循环执行一段逻辑直到满足结束条件或者到达循环次数上限。',
     'parameter-extractor': '利用 LLM 从自然语言内推理提取出结构化参数，用于后置的工具调用或 HTTP 请求。',
     'document-extractor': '用于将用户上传的文档解析为 LLM 便于理解的文本内容。',
     'list-operator': '用于过滤或排序数组内容。',
