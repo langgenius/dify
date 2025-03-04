@@ -35,7 +35,8 @@ from models.workflow import (
     WorkflowType,
 )
 from services.errors.app import WorkflowHashNotEqualError
-from services.workflow.workflow_converter import WorkflowConverter
+
+from .errors.workflow_service import DraftWorkflowDeletionError, WorkflowInUseError
 
 
 class WorkflowService:
@@ -491,20 +492,27 @@ class WorkflowService:
         :param session: SQLAlchemy database session
         :param workflow_id: Workflow ID
         :param tenant_id: Tenant ID
-        :return: True if deletable, False if not found or in use
+        :return: True if successful
+        :raises: ValueError if workflow not found
+        :raises: WorkflowInUseError if workflow is in use
+        :raises: DraftWorkflowDeletionError if workflow is a draft version
         """
         stmt = select(Workflow).where(Workflow.id == workflow_id, Workflow.tenant_id == tenant_id)
         workflow = session.scalar(stmt)
 
         if not workflow:
-            return False
+            raise ValueError(f"Workflow with ID {workflow_id} not found")
+
+        # Check if workflow is a draft version
+        if workflow.version == "draft":
+            raise DraftWorkflowDeletionError("Cannot delete draft workflow versions")
 
         # Check if this workflow is currently referenced by an app
         stmt = select(App).where(App.workflow_id == workflow_id)
         app = session.scalar(stmt)
         if app:
             # Cannot delete a workflow that's currently in use by an app
-            return False
+            raise WorkflowInUseError(f"Cannot delete workflow that is currently in use by app '{app.name}'")
 
         session.delete(workflow)
         return True

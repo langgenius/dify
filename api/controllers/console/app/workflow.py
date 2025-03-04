@@ -27,7 +27,7 @@ from models.account import Account
 from models.model import AppMode
 from services.app_generate_service import AppGenerateService
 from services.errors.app import WorkflowHashNotEqualError
-from services.workflow_service import WorkflowService
+from services.workflow_service import DraftWorkflowDeletionError, WorkflowInUseError, WorkflowService
 
 logger = logging.getLogger(__name__)
 
@@ -596,15 +596,18 @@ class WorkflowByIdApi(Resource):
 
         # Create a session and manage the transaction
         with Session(db.engine) as session:
-            success = workflow_service.delete_workflow(
-                session=session, workflow_id=workflow_id, tenant_id=app_model.tenant_id
-            )
-
-            if not success:
-                raise NotFound("Workflow not found or cannot be deleted")
-
-            # Commit the transaction in the controller
-            session.commit()
+            try:
+                workflow_service.delete_workflow(
+                    session=session, workflow_id=workflow_id, tenant_id=app_model.tenant_id
+                )
+                # Commit the transaction in the controller
+                session.commit()
+            except ValueError as e:
+                raise NotFound(str(e))
+            except WorkflowInUseError as e:
+                abort(400, description=str(e))
+            except DraftWorkflowDeletionError as e:
+                abort(400, description=str(e))
 
         return None, 204
 
