@@ -36,6 +36,8 @@ class SelectCPUTool(BuiltinTool):
             'type': 'cpu',
             'display': True,
             'unit': list['unit'],
-            'data': list['timeseries']
+            'data': {
+                "timeseries": list['timeseries']
+            }
         })
         yield self.create_text_message(list)

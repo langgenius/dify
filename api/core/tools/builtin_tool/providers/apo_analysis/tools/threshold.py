@@ -19,7 +19,7 @@ class ThresholdTool(BuiltinTool):
         metric_data = json.loads(metric)
         threshold = float(tool_parameters.get('threshold'))
         res = []
-        for serie in metric_data['data']:
+        for serie in metric_data['data']['timeseries']:
             tmpres = {
                 "name": serie['legend'],
                 "data": {},
