@@ -25,6 +25,15 @@ export enum Type {
   array = 'array',
 }
 
+export enum ArrayType {
+  string = 'array[string]',
+  number = 'array[number]',
+  boolean = 'array[boolean]',
+  object = 'array[object]',
+}
+
+export type TypeWithArray = Type | ArrayType
+
 type ArrayItemType = Exclude<Type, Type.array>
 
 export type Field = {
