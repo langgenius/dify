@@ -1,31 +1,17 @@
 import { useBoolean } from 'ahooks'
 import type { MetadataBatchEditToServer, MetadataItemInBatchEdit, MetadataItemWithValue } from '../types'
-import { DataType } from '../types'
 import type { SimpleDocumentDetail } from '@/models/datasets'
 import { useMemo } from 'react'
 import { isEqual } from 'lodash-es'
-// compare
-// original and edited list.
-// Use the edited list, except the original and edited value is both multiple value.
-const testMetadataList: MetadataItemWithValue[][] = [
-  [
-    { id: 'str-same-value', name: 'name', type: DataType.string, value: 'Joel' },
-    { id: 'num', name: 'age', type: DataType.number, value: 10 },
-    { id: 'date', name: 'date', type: DataType.time, value: null },
-    { id: 'str-with-different-value', name: 'hobby', type: DataType.string, value: 'bbb' },
-  ],
-  [
-    { id: 'str-same-value', name: 'name', type: DataType.string, value: 'Joel' },
-    { id: 'str-with-different-value', name: 'hobby', type: DataType.string, value: 'ccc' },
-    { id: 'str-extra', name: 'extra', type: DataType.string, value: 'ddd' },
-  ],
-]
+import { useBatchUpdateDocMetadata } from '@/service/knowledge/use-metadata'
 
 type Props = {
+  datasetId: string
   list: SimpleDocumentDetail[]
 }
 
 const useBatchEditDocumentMetadata = ({
+  datasetId,
   list,
 }: Props) => {
   const [isShowEditModal, {
@@ -33,22 +19,25 @@ const useBatchEditDocumentMetadata = ({
     setFalse: hideEditModal,
   }] = useBoolean(false)
 
+  const metaDataList: MetadataItemWithValue[][] = (() => {
+    const res: MetadataItemWithValue[][] = []
+    list.forEach((item) => {
+      if (item.doc_metadata) {
+        res.push(item.doc_metadata.filter(item => item.id !== 'built-in'))
+        return
+      }
+      res.push([])
+    })
+    return res
+  })()
+
+  // To check is key has multiple value
   const originalList: MetadataItemInBatchEdit[] = useMemo(() => {
     const idNameValue: Record<string, { value: string | number | null, isMultipleValue: boolean }> = {}
-    // TODO: mock backend data struct
-    // const metaDataList: MetadataItemWithValue[][] = list.map((item, i) => {
-    //   if (item.doc_metadata)
-    //     return item.doc_metadata
 
-    //   return testMetadataList[i] || []
-    // })
-    const metaDataList = testMetadataList
     const res: MetadataItemInBatchEdit[] = []
     metaDataList.forEach((metaData) => {
       metaData.forEach((item) => {
-        // if (item.value === 'ccc') {
-        //   debugger
-        // }
         if (idNameValue[item.id]?.isMultipleValue)
           return
         const itemInRes = res.find(i => i.id === item.id)
@@ -74,9 +63,10 @@ const useBatchEditDocumentMetadata = ({
       })
     })
     return res
-  }, [])
+  }, [metaDataList])
 
   const formateToBackendList = (editedList: MetadataItemInBatchEdit[], isApplyToAllSelectDocument: boolean) => {
+    // TODO: add list should be not in updateList; and updated not refresh cash
     const updatedList = editedList.filter((editedItem) => {
       const originalItem = originalList.find(i => i.id === editedItem.id)
       if (!originalItem) // added item
@@ -94,10 +84,10 @@ const useBatchEditDocumentMetadata = ({
 
     const res: MetadataBatchEditToServer = list.map((item, i) => {
       // the new metadata will override the old one
-      const oldMetadataList = item.doc_metadata || testMetadataList[i] // TODO: used mock data
+      const oldMetadataList = item.doc_metadata || metaDataList[i]
       let newMetadataList: MetadataItemWithValue[] = oldMetadataList
         .filter((item) => {
-          return !removedList.find(removedItem => removedItem.id === item.id)
+          return item.id !== 'built-in' && !removedList.find(removedItem => removedItem.id === item.id)
         })
 
         .map(item => ({
@@ -129,9 +119,14 @@ const useBatchEditDocumentMetadata = ({
     return res
   }
 
+  const { mutate } = useBatchUpdateDocMetadata()
+
   const handleSave = (editedList: MetadataItemInBatchEdit[], isApplyToAllSelectDocument: boolean) => {
     const backendList = formateToBackendList(editedList, isApplyToAllSelectDocument)
-    console.log(backendList)
+    mutate({
+      dataset_id: datasetId,
+      metadata_list: backendList,
+    })
   }
 
   return {

@@ -435,7 +435,8 @@ const DocumentList: FC<IDocumentListProps> = ({
     originalList,
     handleSave,
   } = useBatchEditDocumentMetadata({
-    list: documents,
+    datasetId,
+    list: documents.filter(item => selectedIds.includes(item.id)),
   })
 
   useEffect(() => {
@@ -628,20 +629,20 @@ const DocumentList: FC<IDocumentListProps> = ({
           })}
         </tbody>
       </table>
-      {/* {(selectedIds.length > 0) && ( */}
-      <BatchAction
-        className='absolute left-0 bottom-16 z-20'
-        selectedIds={selectedIds}
-        onArchive={handleAction(DocumentActionType.archive)}
-        onBatchEnable={handleAction(DocumentActionType.enable)}
-        onBatchDisable={handleAction(DocumentActionType.disable)}
-        onBatchDelete={handleAction(DocumentActionType.delete)}
-        onEditMetadata={showEditModal}
-        onCancel={() => {
-          onSelectedIdChange([])
-        }}
-      />
-      {/* )} */}
+      {(selectedIds.length > 0) && (
+        <BatchAction
+          className='absolute left-0 bottom-16 z-20'
+          selectedIds={selectedIds}
+          onArchive={handleAction(DocumentActionType.archive)}
+          onBatchEnable={handleAction(DocumentActionType.enable)}
+          onBatchDisable={handleAction(DocumentActionType.disable)}
+          onBatchDelete={handleAction(DocumentActionType.delete)}
+          onEditMetadata={showEditModal}
+          onCancel={() => {
+            onSelectedIdChange([])
+          }}
+        />
+      )}
       {/* Show Pagination only if the total is more than the limit */}
       {pagination.total && pagination.total > (pagination.limit || 10) && (
         <Pagination
@@ -662,6 +663,7 @@ const DocumentList: FC<IDocumentListProps> = ({
 
       {isShowEditModal && (
         <EditMetadataBatchModal
+          datasetId={datasetId}
           documentNum={selectedIds.length}
           list={originalList}
           onSave={handleSave}

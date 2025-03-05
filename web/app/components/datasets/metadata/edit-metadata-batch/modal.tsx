@@ -2,8 +2,8 @@
 import type { FC } from 'react'
 import React, { useCallback, useState } from 'react'
 import Modal from '../../../base/modal'
-import type { MetadataItemInBatchEdit } from '../types'
-import { DataType, type MetadataItemWithEdit, UpdateType } from '../types'
+import type { BuiltInMetadataItem, MetadataItemInBatchEdit } from '../types'
+import { type MetadataItemWithEdit, UpdateType } from '../types'
 import EditMetadataBatchItem from './edit-row'
 import AddedMetadataItem from './add-row'
 import Button from '../../../base/button'
@@ -15,10 +15,14 @@ import { RiQuestionLine } from '@remixicon/react'
 import Divider from '@/app/components/base/divider'
 import AddMetadataButton from '../add-metadata-button'
 import produce from 'immer'
+import useCheckMetadataName from '../hooks/use-check-metadata-name'
+import Toast from '@/app/components/base/toast'
+import { useCreateMetaData } from '@/service/knowledge/use-metadata'
 
 const i18nPrefix = 'dataset.metadata.batchEditMetadata'
 
 type Props = {
+  datasetId: string,
   documentNum: number
   list: MetadataItemInBatchEdit[]
   onSave: (list: MetadataItemInBatchEdit[], isApplyToAllSelectDocument: boolean) => void
@@ -27,12 +31,14 @@ type Props = {
 }
 
 const EditMetadataBatchModal: FC<Props> = ({
+  datasetId,
   documentNum,
   list,
   onSave,
   onHide,
   onShowManage,
 }) => {
+  console.log(list)
   const { t } = useTranslation()
   const [templeList, setTempleList] = useState<MetadataItemWithEdit[]>(list)
   const handleTemplesChange = useCallback((payload: MetadataItemWithEdit) => {
@@ -70,15 +76,25 @@ const EditMetadataBatchModal: FC<Props> = ({
     setTempleList(newTempleList)
   }, [list, templeList])
 
-  const testAddedList: MetadataItemWithEdit[] = [
-    {
-      id: '1', name: 'name1', type: DataType.string, value: 'aaa',
-    },
-    {
-      id: '2.1', name: 'num v', type: DataType.number, value: 10,
-    },
-  ]
-  const [addedList, setAddedList] = useState<MetadataItemWithEdit[]>(testAddedList)
+  const { checkName } = useCheckMetadataName()
+  const { mutate: doAddMetaData } = useCreateMetaData(datasetId)
+  const handleAddMetaData = useCallback(async (payload: BuiltInMetadataItem) => {
+    const errorMsg = checkName(payload.name).errorMsg
+    if (errorMsg) {
+      Toast.notify({
+        message: errorMsg,
+        type: 'error',
+      })
+      return Promise.reject(new Error(errorMsg))
+    }
+    await doAddMetaData(payload)
+    Toast.notify({
+      type: 'success',
+      message: t('common.api.actionSuccess'),
+    })
+  }, [checkName, doAddMetaData, t])
+
+  const [addedList, setAddedList] = useState<MetadataItemWithEdit[]>([])
   const handleAddedListChange = useCallback((payload: MetadataItemWithEdit) => {
     const newAddedList = addedList.map(i => i.id === payload.id ? payload : i)
     setAddedList(newAddedList)
@@ -133,12 +149,14 @@ const EditMetadataBatchModal: FC<Props> = ({
           </div>
           <div className='mt-3'>
             <SelectMetadataModal
+              datasetId={datasetId}
               popupPlacement='top-start'
               popupOffset={{ mainAxis: 4, crossAxis: 0 }}
               trigger={
                 <AddMetadataButton />
               }
-              onSave={data => setAddedList([...addedList, data])}
+              onSave={handleAddMetaData}
+              onSelect={data => setAddedList([...addedList, data as MetadataItemWithEdit])}
               onManage={onShowManage}
             />
           </div>
