@@ -2,11 +2,7 @@
 import type { FC } from 'react'
 import React, { Fragment, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import {
-  RiAddLine,
-  RiDeleteBinLine,
-  RiMoreFill
-} from '@remixicon/react'
+import { RiAddLine, RiDeleteBinLine, RiMoreFill } from '@remixicon/react'
 import { useContext } from 'use-context-selector'
 import {
   useCSVDownloader,
@@ -70,8 +66,11 @@ const HeaderOptions: FC<Props> = ({
   }
 
   useEffect(() => {
-    fetchList()
-  }, [])
+  const fetchData = async () => {
+    await fetchList()
+  }
+  fetchData()
+}, [fetchList])
   useEffect(() => {
     if (controlUpdateList)
       fetchList()
@@ -80,15 +79,16 @@ const HeaderOptions: FC<Props> = ({
   const [showBulkImportModal, setShowBulkImportModal] = useState(false)
 
   const handleClearAll = async () => {
-    const isConfirmed= await confirm({
+    const isConfirmed = await confirm({
       message: t('appAnnotation.table.header.clearAllConfirm'),
       type: 'danger',
     })
-    if(isConfirmed){
+    if (isConfirmed){
       try {
         await clearAllAnnotations(appId)
         onAdded()
-      } catch (e) {
+      } catch (_) {
+        console.error('Failed to clear annotations')
       }
     }
   }
