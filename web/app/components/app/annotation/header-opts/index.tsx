@@ -4,8 +4,8 @@ import React, { Fragment, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   RiAddLine,
-  RiMoreFill,
-  RiDeleteBinLine
+  RiDeleteBinLine,
+  RiMoreFill
 } from '@remixicon/react'
 import { useContext } from 'use-context-selector'
 import {
