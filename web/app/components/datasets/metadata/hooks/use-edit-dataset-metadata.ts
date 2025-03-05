@@ -32,17 +32,17 @@ const useEditDatasetMetadata = ({
   const { data: datasetMetaData } = useDatasetMetaData(datasetId)
   const { mutate: doAddMetaData } = useCreateMetaData(datasetId)
   const { checkName } = useCheckMetadataName()
-  const handleAddMetaData = useCallback((payload: BuiltInMetadataItem) => {
+  const handleAddMetaData = useCallback(async (payload: BuiltInMetadataItem) => {
     const errorMsg = checkName(payload.name).errorMsg
     if (errorMsg) {
       Toast.notify({
         message: errorMsg,
         type: 'error',
       })
-      return
+      return Promise.reject(new Error(errorMsg))
     }
-    doAddMetaData(payload)
-  }, [doAddMetaData])
+    await doAddMetaData(payload)
+  }, [checkName, doAddMetaData])
 
   const { mutate: doRenameMetaData } = useRenameMeta(datasetId)
   const handleRename = useCallback((payload: MetadataItemWithValueLength) => {
