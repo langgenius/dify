@@ -30,6 +30,7 @@ export type NodeTracing = {
   predecessor_node_id: string
   node_id: string
   iteration_id?: string
+  loop_id?: string
   node_type: BlockEnum
   title: string
   inputs: any
@@ -45,12 +46,15 @@ export type NodeTracing = {
     currency: string
     iteration_id?: string
     iteration_index?: number
+    loop_id?: string
+    loop_index?: number
     parallel_id?: string
     parallel_start_node_id?: string
     parent_parallel_id?: string
     parent_parallel_start_node_id?: string
     parallel_mode_run_id?: string
     iteration_duration_map?: IterationDurationMap
+    loop_duration_map?: LoopDurationMap
     error_strategy?: ErrorHandleTypeEnum
     agent_log?: AgentLogItem[]
     tool_info?: {
@@ -61,6 +65,8 @@ export type NodeTracing = {
   metadata: {
     iterator_length: number
     iterator_index: number
+    loop_length: number
+    loop_index: number
   }
   created_at: number
   created_by: {
@@ -69,10 +75,11 @@ export type NodeTracing = {
     email: string
   }
   iterDurationMap?: IterationDurationMap
+  loopDurationMap?: LoopDurationMap
   finished_at: number
   extras?: any
   expand?: boolean // for UI
-  details?: NodeTracing[][] // iteration detail
+  details?: NodeTracing[][] // iteration or loop detail
   retryDetail?: NodeTracing[] // retry detail
   retry_index?: number
   parallelDetail?: { // parallel detail. if is in parallel, this field will be set
@@ -204,6 +211,27 @@ export type IterationFinishedResponse = {
   data: NodeTracing
 }
 
+export type LoopStartedResponse = {
+  task_id: string
+  workflow_run_id: string
+  event: string
+  data: NodeTracing
+}
+
+export type LoopNextResponse = {
+  task_id: string
+  workflow_run_id: string
+  event: string
+  data: NodeTracing
+}
+
+export type LoopFinishedResponse = {
+  task_id: string
+  workflow_run_id: string
+  event: string
+  data: NodeTracing
+}
+
 export type ParallelBranchStartedResponse = {
   task_id: string
   workflow_run_id: string
@@ -290,6 +318,7 @@ export type ConversationVariableResponse = {
 }
 
 export type IterationDurationMap = Record<string, number>
+export type LoopDurationMap = Record<string, number>
 
 export type WorkflowConfigResponse = {
   parallel_depth_limit: number
