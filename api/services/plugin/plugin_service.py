@@ -104,10 +104,7 @@ class PluginService:
         plugins = manager.list_plugins(tenant_id)
         plugin_ids = [plugin.plugin_id for plugin in plugins if plugin.source == PluginInstallationSource.Marketplace]
         try:
-            manifests = {
-                plugin_id: manifest
-                for plugin_id, manifest in PluginService.fetch_latest_plugin_version(plugin_ids).items()
-            }
+            manifests = PluginService.fetch_latest_plugin_version(plugin_ids)
         except Exception:
             manifests = {}
             logger.exception("failed to fetch plugin manifests")
