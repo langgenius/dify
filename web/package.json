@@ -203,5 +203,12 @@
     "**/*.ts?(x)": [
       "eslint --fix"
     ]
+  },
+  "pnpm": {
+    "ignoredBuiltDependencies": [
+      "core-js-pure",
+      "esbuild",
+      "sharp"
+    ]
   }
 }
