@@ -3,7 +3,7 @@ from collections.abc import Sequence
 from mimetypes import guess_type
 from typing import Optional
 
-from cachetools import TTLCache
+from pydantic import BaseModel
 
 from configs import dify_config
 from core.helper import marketplace
@@ -21,7 +21,7 @@ from core.plugin.entities.plugin_daemon import PluginInstallTask, PluginUploadRe
 from core.plugin.manager.asset import PluginAssetManager
 from core.plugin.manager.debugging import PluginDebuggingManager
 from core.plugin.manager.plugin import PluginInstallationManager
-from pydantic import BaseModel
+from extensions.ext_redis import redis_client
 
 logger = logging.getLogger(__name__)
 
@@ -32,22 +32,26 @@ class PluginService:
         version: str
         unique_identifier: str
 
-    latest_plugin_cache: TTLCache[str, Optional[LatestPluginCache]] = TTLCache(maxsize=1024, ttl=60 * 5)
+    REDIS_KEY_PREFIX = "plugin_service:latest_plugin:"
+    REDIS_TTL = 60 * 5  # 5 minutes
 
     @staticmethod
     def fetch_latest_plugin_version(plugin_ids: Sequence[str]) -> dict[str, Optional[LatestPluginCache]]:
         """
         Fetch the latest plugin version
         """
+
         result = {}
 
         try:
             cache_not_exists = []
 
+            # Try to get from Redis first
             for plugin_id in plugin_ids:
-                try:
-                    result[plugin_id] = PluginService.latest_plugin_cache[plugin_id]
-                except KeyError:
+                cached_data = redis_client.get(f"{PluginService.REDIS_KEY_PREFIX}{plugin_id}")
+                if cached_data:
+                    result[plugin_id] = PluginService.LatestPluginCache.model_validate_json(cached_data)
+                else:
                     cache_not_exists.append(plugin_id)
 
             if cache_not_exists:
@@ -57,11 +61,20 @@ class PluginService:
                 }
 
                 for plugin_id, manifest in manifests.items():
-                    PluginService.latest_plugin_cache[plugin_id] = PluginService.LatestPluginCache(
+                    latest_plugin = PluginService.LatestPluginCache(
                         plugin_id=plugin_id,
                         version=manifest.latest_version,
                         unique_identifier=manifest.latest_package_identifier,
                     )
+
+                    # Store in Redis
+                    redis_client.setex(
+                        f"{PluginService.REDIS_KEY_PREFIX}{plugin_id}",
+                        PluginService.REDIS_TTL,
+                        latest_plugin.model_dump_json(),
+                    )
+
+                    result[plugin_id] = latest_plugin
 
                     # pop plugin_id from cache_not_exists
                     cache_not_exists.remove(plugin_id)
