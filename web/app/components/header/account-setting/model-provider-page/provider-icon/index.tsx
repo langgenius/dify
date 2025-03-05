@@ -35,12 +35,13 @@ const ProviderIcon: FC<ProviderIconProps> = ({
       </div>
     )
   }
+  const basePath = process.env.NEXT_PUBLIC_BASE_PATH || ''
 
   return (
     <div className={cn('inline-flex items-center gap-2', className)}>
       <img
         alt='provider-icon'
-        src={renderI18nObject(provider.icon_small, language)}
+        src={basePath + renderI18nObject(provider.icon_small, language)}
         className='w-6 h-6'
       />
       <div className='system-md-semibold text-text-primary'>

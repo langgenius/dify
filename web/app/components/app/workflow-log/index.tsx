@@ -23,6 +23,7 @@ export type QueryParam = {
   keyword?: string
 }
 
+const basePath = process.env.NEXT_PUBLIC_BASE_PATH || ''
 const ThreeDotsIcon = ({ className }: SVGProps<SVGElement>) => {
   return <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" className={className ?? ''}>
     <path d="M5 6.5V5M8.93934 7.56066L10 6.5M10.0103 11.5H11.5103" stroke="#374151" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
@@ -83,7 +84,7 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
           ? <Loading type='app' />
           : total > 0
             ? <List logs={workflowLogs} appDetail={appDetail} onRefresh={mutate} />
-            : <EmptyElement appUrl={`${appDetail.site.app_base_url}/${getWebAppType(appDetail.mode)}/${appDetail.site.access_token}`} />
+            : <EmptyElement appUrl={`${appDetail.site.app_base_url}${basePath}/${getWebAppType(appDetail.mode)}/${appDetail.site.access_token}`} />
         }
         {/* Show Pagination only if the total is more than the limit */}
         {(total && total > APP_PAGE_LIMIT)
