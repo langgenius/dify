@@ -64,8 +64,6 @@ const InfoGroup: FC<Props> = ({
             )}
           </div>
           {headerRight}
-          {/* <div className='flex px-1.5 rounded-md hover:bg-components-button-tertiary-bg-hover items-center h-6 space-x-1 cursor-pointer' onClick={() => setIsEdit(true)}>
-        </div> */}
         </div>
       )}
 
@@ -81,7 +79,7 @@ const InfoGroup: FC<Props> = ({
               onSave={data => onAdd?.(data)}
               onManage={handleMangeMetadata}
             />
-            <Divider className='my-3 ' bgStyle='gradient' />
+            {list.length > 0 && <Divider className='my-3 ' bgStyle='gradient' />}
           </div>
         )}
         {list.map((item, i) => (
