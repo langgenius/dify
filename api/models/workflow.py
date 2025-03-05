@@ -159,6 +159,8 @@ class Workflow(Base):
         workflow.conversation_variables = conversation_variables or []
         workflow.marked_name = marked_name
         workflow.marked_comment = marked_comment
+        workflow.created_at = datetime.now(UTC).replace(tzinfo=None)
+        workflow.updated_at = workflow.created_at
         return workflow
 
     @property
