@@ -442,7 +442,7 @@ class Document(db.Model):  # type: ignore[name-defined]
                     "id": metadata.id,
                     "name": metadata.name,
                     "type": metadata.type,
-                    "value": self.doc_metadata.get(metadata.type),
+                    "value": self.doc_metadata.get(metadata.name),
                 }
                 metadata_list.append(metadata_dict)
             # deal built-in fields

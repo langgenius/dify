@@ -133,7 +133,7 @@ class MetadataArgs(BaseModel):
 
 class MetadataUpdateArgs(BaseModel):
     name: str
-    value: str
+    value: Optional[str | int | float] = None
 
 
 class MetadataValueUpdateArgs(BaseModel):
@@ -143,7 +143,7 @@ class MetadataValueUpdateArgs(BaseModel):
 class MetadataDetail(BaseModel):
     id: str
     name: str
-    value: str
+    value: Optional[str | int | float] = None
 
 
 class DocumentMetadataOperation(BaseModel):
