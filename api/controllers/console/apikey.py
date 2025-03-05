@@ -3,6 +3,8 @@ from typing import Any
 import flask_restful  # type: ignore
 from flask_login import current_user  # type: ignore
 from flask_restful import Resource, fields, marshal_with
+from sqlalchemy import select
+from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden
 
 from extensions.ext_database import db
@@ -26,7 +28,16 @@ api_key_list = {"data": fields.List(fields.Nested(api_key_fields), attribute="it
 
 
 def _get_resource(resource_id, tenant_id, resource_model):
-    resource = resource_model.query.filter_by(id=resource_id, tenant_id=tenant_id).first()
+    if resource_model == App:
+        with Session(db.engine) as session:
+            resource = session.execute(
+                select(resource_model).filter_by(id=resource_id, tenant_id=tenant_id)
+            ).scalar_one_or_none()
+    else:
+        with Session(db.engine) as session:
+            resource = session.execute(
+                select(resource_model).filter_by(id=resource_id, tenant_id=tenant_id)
+            ).scalar_one_or_none()
 
     if resource is None:
         flask_restful.abort(404, message=f"{resource_model.__name__} not found.")

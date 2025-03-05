@@ -37,7 +37,22 @@ BODY_TYPE_TO_CONTENT_TYPE = {
 
 
 class Executor:
-    method: Literal["get", "head", "post", "put", "delete", "patch"]
+    method: Literal[
+        "get",
+        "head",
+        "post",
+        "put",
+        "delete",
+        "patch",
+        "options",
+        "GET",
+        "POST",
+        "PUT",
+        "PATCH",
+        "DELETE",
+        "HEAD",
+        "OPTIONS",
+    ]
     url: str
     params: list[tuple[str, str]] | None
     content: str | bytes | None
@@ -67,12 +82,6 @@ class Executor:
                 node_data.authorization.config.api_key
             ).text
 
-        # check if node_data.url is a valid URL
-        if not node_data.url:
-            raise InvalidURLError("url is required")
-        if not node_data.url.startswith(("http://", "https://")):
-            raise InvalidURLError("url should start with http:// or https://")
-
         self.url: str = node_data.url
         self.method = node_data.method
         self.auth = node_data.authorization
@@ -98,6 +107,12 @@ class Executor:
 
     def _init_url(self):
         self.url = self.variable_pool.convert_template(self.node_data.url).text
+
+        # check if url is a valid URL
+        if not self.url:
+            raise InvalidURLError("url is required")
+        if not self.url.startswith(("http://", "https://")):
+            raise InvalidURLError("url should start with http:// or https://")
 
     def _init_params(self):
         """
@@ -158,7 +173,10 @@ class Executor:
                     if len(data) != 1:
                         raise RequestBodyError("json body type should have exactly one item")
                     json_string = self.variable_pool.convert_template(data[0].value).text
-                    json_object = json.loads(json_string, strict=False)
+                    try:
+                        json_object = json.loads(json_string, strict=False)
+                    except json.JSONDecodeError as e:
+                        raise RequestBodyError(f"Failed to parse JSON: {json_string}") from e
                     self.json = json_object
                     # self.json = self._parse_object_contains_variables(json_object)
                 case "binary":
@@ -235,9 +253,9 @@ class Executor:
         )
         if executor_response.size > threshold_size:
             raise ResponseSizeError(
-                f'{"File" if executor_response.is_file else "Text"} size is too large,'
-                f' max size is {threshold_size / 1024 / 1024:.2f} MB,'
-                f' but current size is {executor_response.readable_size}.'
+                f"{'File' if executor_response.is_file else 'Text'} size is too large,"
+                f" max size is {threshold_size / 1024 / 1024:.2f} MB,"
+                f" but current size is {executor_response.readable_size}."
             )
 
         return executor_response
@@ -246,7 +264,22 @@ class Executor:
         """
         do http request depending on api bundle
         """
-        if self.method not in {"get", "head", "post", "put", "delete", "patch"}:
+        if self.method not in {
+            "get",
+            "head",
+            "post",
+            "put",
+            "delete",
+            "patch",
+            "options",
+            "GET",
+            "POST",
+            "PUT",
+            "PATCH",
+            "DELETE",
+            "HEAD",
+            "OPTIONS",
+        }:
             raise InvalidHttpMethodError(f"Invalid http method {self.method}")
 
         request_args = {
@@ -263,7 +296,7 @@ class Executor:
         }
         # request_args = {k: v for k, v in request_args.items() if v is not None}
         try:
-            response = getattr(ssrf_proxy, self.method)(**request_args)
+            response = getattr(ssrf_proxy, self.method.lower())(**request_args)
         except (ssrf_proxy.MaxRetriesExceededError, httpx.RequestError) as e:
             raise HttpRequestNodeError(str(e))
         # FIXME: fix type ignore, this maybe httpx type issue
@@ -305,7 +338,7 @@ class Executor:
                 if self.auth.config and self.auth.config.header:
                     authorization_header = self.auth.config.header
                 if k.lower() == authorization_header.lower():
-                    raw += f'{k}: {"*" * len(v)}\r\n'
+                    raw += f"{k}: {'*' * len(v)}\r\n"
                     continue
             raw += f"{k}: {v}\r\n"
 

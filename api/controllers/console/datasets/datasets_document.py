@@ -7,7 +7,6 @@ from flask import request
 from flask_login import current_user  # type: ignore
 from flask_restful import Resource, fields, marshal, marshal_with, reqparse  # type: ignore
 from sqlalchemy import asc, desc
-from transformers.hf_argparser import string_to_bool  # type: ignore
 from werkzeug.exceptions import Forbidden, NotFound
 
 import services
@@ -41,6 +40,7 @@ from core.indexing_runner import IndexingRunner
 from core.model_manager import ModelManager
 from core.model_runtime.entities.model_entities import ModelType
 from core.model_runtime.errors.invoke import InvokeAuthorizationError
+from core.plugin.manager.exc import PluginDaemonClientSideError
 from core.rag.extractor.entity.extract_setting import ExtractSetting
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
@@ -151,8 +151,20 @@ class DatasetDocumentListApi(Resource):
         sort = request.args.get("sort", default="-created_at", type=str)
         # "yes", "true", "t", "y", "1" convert to True, while others convert to False.
         try:
-            fetch = string_to_bool(request.args.get("fetch", default="false"))
-        except (ArgumentTypeError, ValueError, Exception) as e:
+            fetch_val = request.args.get("fetch", default="false")
+            if isinstance(fetch_val, bool):
+                fetch = fetch_val
+            else:
+                if fetch_val.lower() in ("yes", "true", "t", "y", "1"):
+                    fetch = True
+                elif fetch_val.lower() in ("no", "false", "f", "n", "0"):
+                    fetch = False
+                else:
+                    raise ArgumentTypeError(
+                        f"Truthy value expected: got {fetch_val} but expected one of yes/no, true/false, t/f, y/n, 1/0 "
+                        f"(case insensitive)."
+                    )
+        except (ArgumentTypeError, ValueError, Exception):
             fetch = False
         dataset = DatasetService.get_dataset(dataset_id)
         if not dataset:
@@ -259,7 +271,8 @@ class DatasetDocumentListApi(Resource):
         parser.add_argument("original_document_id", type=str, required=False, location="json")
         parser.add_argument("doc_form", type=str, default="text_model", required=False, nullable=False, location="json")
         parser.add_argument("retrieval_model", type=dict, required=False, nullable=False, location="json")
-
+        parser.add_argument("embedding_model", type=str, required=False, nullable=True, location="json")
+        parser.add_argument("embedding_model_provider", type=str, required=False, nullable=True, location="json")
         parser.add_argument(
             "doc_language", type=str, default="English", required=False, nullable=False, location="json"
         )
@@ -353,8 +366,7 @@ class DatasetInitApi(Resource):
                 )
             except InvokeAuthorizationError:
                 raise ProviderNotInitializeError(
-                    "No Embedding Model available. Please configure a valid provider "
-                    "in the Settings -> Model Provider."
+                    "No Embedding Model available. Please configure a valid provider in the Settings -> Model Provider."
                 )
             except ProviderTokenNotInitError as ex:
                 raise ProviderNotInitializeError(ex.description)
@@ -432,6 +444,8 @@ class DocumentIndexingEstimateApi(DocumentResource):
                         "in the Settings -> Model Provider."
                     )
                 except ProviderTokenNotInitError as ex:
+                    raise ProviderNotInitializeError(ex.description)
+                except PluginDaemonClientSideError as ex:
                     raise ProviderNotInitializeError(ex.description)
                 except Exception as e:
                     raise IndexingEstimateError(str(e))
@@ -529,10 +543,11 @@ class DocumentBatchIndexingEstimateApi(DocumentResource):
                 return response.model_dump(), 200
             except LLMBadRequestError:
                 raise ProviderNotInitializeError(
-                    "No Embedding Model available. Please configure a valid provider "
-                    "in the Settings -> Model Provider."
+                    "No Embedding Model available. Please configure a valid provider in the Settings -> Model Provider."
                 )
             except ProviderTokenNotInitError as ex:
+                raise ProviderNotInitializeError(ex.description)
+            except PluginDaemonClientSideError as ex:
                 raise ProviderNotInitializeError(ex.description)
             except Exception as e:
                 raise IndexingEstimateError(str(e))

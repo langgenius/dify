@@ -1,3 +1,4 @@
+import contextvars
 import logging
 import uuid
 from collections.abc import Generator, Mapping, Sequence
@@ -174,6 +175,7 @@ class IterationNode(BaseNode[IterationNodeData]):
                         self._run_single_iter_parallel,
                         flask_app=current_app._get_current_object(),  # type: ignore
                         q=q,
+                        context=contextvars.copy_context(),
                         iterator_list_value=iterator_list_value,
                         inputs=inputs,
                         outputs=outputs,
@@ -568,6 +570,7 @@ class IterationNode(BaseNode[IterationNodeData]):
         self,
         *,
         flask_app: Flask,
+        context: contextvars.Context,
         q: Queue,
         iterator_list_value: Sequence[str],
         inputs: Mapping[str, list],
@@ -582,9 +585,12 @@ class IterationNode(BaseNode[IterationNodeData]):
         """
         run single iteration in parallel mode
         """
+        for var, val in context.items():
+            var.set(val)
         with flask_app.app_context():
             parallel_mode_run_id = uuid.uuid4().hex
             graph_engine_copy = graph_engine.create_copy()
+            graph_engine_copy.graph_runtime_state.total_tokens = 0
             variable_pool_copy = graph_engine_copy.graph_runtime_state.variable_pool
             variable_pool_copy.add([self.node_id, "index"], index)
             variable_pool_copy.add([self.node_id, "item"], item)

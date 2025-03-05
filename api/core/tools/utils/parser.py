@@ -5,6 +5,7 @@ from json import loads as json_loads
 from json.decoder import JSONDecodeError
 from typing import Optional
 
+from flask import request
 from requests import get
 from yaml import YAMLError, safe_load  # type: ignore
 
@@ -17,7 +18,7 @@ from core.tools.errors import ToolApiSchemaError, ToolNotSupportedError, ToolPro
 class ApiBasedToolSchemaParser:
     @staticmethod
     def parse_openapi_to_tool_bundle(
-        openapi: dict, extra_info: Optional[dict], warning: Optional[dict]
+        openapi: dict, extra_info: dict | None = None, warning: dict | None = None
     ) -> list[ApiToolBundle]:
         warning = warning if warning is not None else {}
         extra_info = extra_info if extra_info is not None else {}
@@ -29,6 +30,10 @@ class ApiBasedToolSchemaParser:
             raise ToolProviderNotFoundError("No server found in the openapi yaml.")
 
         server_url = openapi["servers"][0]["url"]
+        request_env = request.headers.get("X-Request-Env")
+        if request_env:
+            matched_servers = [server["url"] for server in openapi["servers"] if server["env"] == request_env]
+            server_url = matched_servers[0] if matched_servers else server_url
 
         # list all interfaces
         interfaces = []
@@ -112,7 +117,7 @@ class ApiBasedToolSchemaParser:
                                 llm_description=property.get("description", ""),
                                 default=property.get("default", None),
                                 placeholder=I18nObject(
-                                    en_US=parameter.get("description", ""), zh_Hans=parameter.get("description", "")
+                                    en_US=property.get("description", ""), zh_Hans=property.get("description", "")
                                 ),
                             )
 
@@ -144,7 +149,7 @@ class ApiBasedToolSchemaParser:
                 if not path:
                     path = str(uuid.uuid4())
 
-                interface["operation"]["operationId"] = f'{path}_{interface["method"]}'
+                interface["operation"]["operationId"] = f"{path}_{interface['method']}"
 
             bundles.append(
                 ApiToolBundle(
@@ -186,7 +191,7 @@ class ApiBasedToolSchemaParser:
 
     @staticmethod
     def parse_openapi_yaml_to_tool_bundle(
-        yaml: str, extra_info: Optional[dict], warning: Optional[dict]
+        yaml: str, extra_info: dict | None = None, warning: dict | None = None
     ) -> list[ApiToolBundle]:
         """
         parse openapi yaml to tool bundle
@@ -203,7 +208,8 @@ class ApiBasedToolSchemaParser:
         return ApiBasedToolSchemaParser.parse_openapi_to_tool_bundle(openapi, extra_info=extra_info, warning=warning)
 
     @staticmethod
-    def parse_swagger_to_openapi(swagger: dict, extra_info: Optional[dict], warning: Optional[dict]) -> dict:
+    def parse_swagger_to_openapi(swagger: dict, extra_info: dict | None = None, warning: dict | None = None) -> dict:
+        warning = warning or {}
         """
         parse swagger to openapi
 
@@ -266,7 +272,7 @@ class ApiBasedToolSchemaParser:
 
     @staticmethod
     def parse_openai_plugin_json_to_tool_bundle(
-        json: str, extra_info: Optional[dict], warning: Optional[dict]
+        json: str, extra_info: dict | None = None, warning: dict | None = None
     ) -> list[ApiToolBundle]:
         """
         parse openapi plugin yaml to tool bundle
@@ -282,7 +288,7 @@ class ApiBasedToolSchemaParser:
             api = openai_plugin["api"]
             api_url = api["url"]
             api_type = api["type"]
-        except:
+        except JSONDecodeError:
             raise ToolProviderNotFoundError("Invalid openai plugin json.")
 
         if api_type != "openapi":
@@ -300,7 +306,7 @@ class ApiBasedToolSchemaParser:
 
     @staticmethod
     def auto_parse_to_tool_bundle(
-        content: str, extra_info: Optional[dict] = None, warning: Optional[dict] = None
+        content: str, extra_info: dict | None = None, warning: dict | None = None
     ) -> tuple[list[ApiToolBundle], str]:
         """
         auto parse to tool bundle

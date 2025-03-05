@@ -165,6 +165,8 @@ const translation = {
   preprocessDocument: '{{숫자}} 문서 전처리',
   enable: '사용',
   documentsDisabled: '{{num}} 문서 사용 안 함 - 30일 이상 비활성 상태',
+  allKnowledge: '모든 지식',
+  allKnowledgeDescription: '이 작업 영역의 모든 정보를 표시하려면 선택합니다. 워크스페이스 소유자만 모든 기술 자료를 관리할 수 있습니다.',
 }
 
 export default translation

@@ -1,11 +1,16 @@
 import json
 from collections.abc import Mapping, Sequence
 from datetime import UTC, datetime
-from enum import Enum, StrEnum
+from enum import Enum
 from typing import TYPE_CHECKING, Any, Optional, Union
 
+if TYPE_CHECKING:
+    from models.model import AppMode
+from enum import StrEnum
+from typing import TYPE_CHECKING
+
 import sqlalchemy as sa
-from sqlalchemy import func
+from sqlalchemy import Index, PrimaryKeyConstraint, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 import contexts
@@ -14,6 +19,7 @@ from core.helper import encrypter
 from core.variables import SecretVariable, Variable
 from factories import variable_factory
 from libs import helper
+from models.base import Base
 from models.enums import CreatedByRole
 
 from .account import Account
@@ -21,7 +27,7 @@ from .engine import db
 from .types import StringUUID
 
 if TYPE_CHECKING:
-    from models.model import AppMode, Message
+    from models.model import AppMode
 
 
 class WorkflowType(Enum):
@@ -59,7 +65,7 @@ class WorkflowType(Enum):
         return cls.WORKFLOW if app_mode == AppMode.WORKFLOW else cls.CHAT
 
 
-class Workflow(db.Model):  # type: ignore[name-defined]
+class Workflow(Base):
     """
     Workflow, for `Workflow App` and `Chat App workflow mode`.
 
@@ -174,7 +180,7 @@ class Workflow(db.Model):  # type: ignore[name-defined]
             features["file_upload"]["enabled"] = image_enabled
             features["file_upload"]["number_limits"] = image_number_limits
             features["file_upload"]["allowed_file_upload_methods"] = image_transfer_methods
-            features["file_upload"]["allowed_file_types"] = ["image"]
+            features["file_upload"]["allowed_file_types"] = features["file_upload"].get("allowed_file_types", ["image"])
             features["file_upload"]["allowed_file_extensions"] = []
             del features["file_upload"]["image"]
             self._features = json.dumps(features)
@@ -249,11 +255,12 @@ class Workflow(db.Model):  # type: ignore[name-defined]
         ]
 
         # decrypt secret variables value
-        decrypt_func = (
-            lambda var: var.model_copy(update={"value": encrypter.decrypt_token(tenant_id=tenant_id, token=var.value)})
-            if isinstance(var, SecretVariable)
-            else var
-        )
+        def decrypt_func(var):
+            if isinstance(var, SecretVariable):
+                return var.model_copy(update={"value": encrypter.decrypt_token(tenant_id=tenant_id, token=var.value)})
+            else:
+                return var
+
         results = list(map(decrypt_func, results))
         return results
 
@@ -277,11 +284,12 @@ class Workflow(db.Model):  # type: ignore[name-defined]
                 value[i] = origin_variables_dictionary[variable.id].model_copy(update={"name": variable.name})
 
         # encrypt secret variables value
-        encrypt_func = (
-            lambda var: var.model_copy(update={"value": encrypter.encrypt_token(tenant_id=tenant_id, token=var.value)})
-            if isinstance(var, SecretVariable)
-            else var
-        )
+        def encrypt_func(var):
+            if isinstance(var, SecretVariable):
+                return var.model_copy(update={"value": encrypter.encrypt_token(tenant_id=tenant_id, token=var.value)})
+            else:
+                return var
+
         encrypted_vars = list(map(encrypt_func, value))
         environment_variables_json = json.dumps(
             {var.name: var.model_dump() for var in encrypted_vars},
@@ -347,7 +355,7 @@ class WorkflowRunStatus(StrEnum):
         raise ValueError(f"invalid workflow run status value {value}")
 
 
-class WorkflowRun(db.Model):  # type: ignore[name-defined]
+class WorkflowRun(Base):
     """
     Workflow Run
 
@@ -405,8 +413,8 @@ class WorkflowRun(db.Model):  # type: ignore[name-defined]
     status: Mapped[str] = mapped_column(db.String(255))  # running, succeeded, failed, stopped, partial-succeeded
     outputs: Mapped[Optional[str]] = mapped_column(sa.Text, default="{}")
     error: Mapped[Optional[str]] = mapped_column(db.Text)
-    elapsed_time = db.Column(db.Float, nullable=False, server_default=db.text("0"))
-    total_tokens: Mapped[int] = mapped_column(server_default=db.text("0"))
+    elapsed_time = db.Column(db.Float, nullable=False, server_default=sa.text("0"))
+    total_tokens: Mapped[int] = mapped_column(sa.BigInteger, server_default=sa.text("0"))
     total_steps = db.Column(db.Integer, server_default=db.text("0"))
     created_by_role: Mapped[str] = mapped_column(db.String(255))  # account, end_user
     created_by = db.Column(StringUUID, nullable=False)
@@ -439,7 +447,7 @@ class WorkflowRun(db.Model):  # type: ignore[name-defined]
         return json.loads(self.outputs) if self.outputs else {}
 
     @property
-    def message(self) -> Optional["Message"]:
+    def message(self):
         from models.model import Message
 
         return (
@@ -549,7 +557,7 @@ class WorkflowNodeExecutionStatus(Enum):
         raise ValueError(f"invalid workflow node execution status value {value}")
 
 
-class WorkflowNodeExecution(db.Model):  # type: ignore[name-defined]
+class WorkflowNodeExecution(Base):
     """
     Workflow Node Execution
 
@@ -715,7 +723,7 @@ class WorkflowAppLogCreatedFrom(Enum):
         raise ValueError(f"invalid workflow app log created from value {value}")
 
 
-class WorkflowAppLog(db.Model):  # type: ignore[name-defined]
+class WorkflowAppLog(Base):
     """
     Workflow App execution log, excluding workflow debugging records.
 
@@ -777,15 +785,20 @@ class WorkflowAppLog(db.Model):  # type: ignore[name-defined]
         return db.session.get(EndUser, self.created_by) if created_by_role == CreatedByRole.END_USER else None
 
 
-class ConversationVariable(db.Model):  # type: ignore[name-defined]
+class ConversationVariable(Base):
     __tablename__ = "workflow_conversation_variables"
+    __table_args__ = (
+        PrimaryKeyConstraint("id", "conversation_id", name="workflow_conversation_variables_pkey"),
+        Index("workflow__conversation_variables_app_id_idx", "app_id"),
+        Index("workflow__conversation_variables_created_at_idx", "created_at"),
+    )
 
-    id: Mapped[str] = db.Column(StringUUID, primary_key=True)
-    conversation_id: Mapped[str] = db.Column(StringUUID, nullable=False, primary_key=True)
-    app_id: Mapped[str] = db.Column(StringUUID, nullable=False, index=True)
-    data = db.Column(db.Text, nullable=False)
-    created_at = db.Column(db.DateTime, nullable=False, index=True, server_default=func.current_timestamp())
-    updated_at = db.Column(
+    id: Mapped[str] = mapped_column(StringUUID, primary_key=True)
+    conversation_id: Mapped[str] = mapped_column(StringUUID, nullable=False, primary_key=True)
+    app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    data = mapped_column(db.Text, nullable=False)
+    created_at = mapped_column(db.DateTime, nullable=False, server_default=func.current_timestamp())
+    updated_at = mapped_column(
         db.DateTime, nullable=False, server_default=func.current_timestamp(), onupdate=func.current_timestamp()
     )
 

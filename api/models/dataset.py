@@ -13,6 +13,7 @@ from typing import Any, cast
 
 from sqlalchemy import func
 from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.orm import Mapped
 
 from configs import dify_config
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
@@ -515,7 +516,7 @@ class DocumentSegment(db.Model):  # type: ignore[name-defined]
     tenant_id = db.Column(StringUUID, nullable=False)
     dataset_id = db.Column(StringUUID, nullable=False)
     document_id = db.Column(StringUUID, nullable=False)
-    position = db.Column(db.Integer, nullable=False)
+    position: Mapped[int]
     content = db.Column(db.Text, nullable=False)
     answer = db.Column(db.Text, nullable=True)
     word_count = db.Column(db.Integer, nullable=False)
@@ -582,6 +583,10 @@ class DocumentSegment(db.Model):  # type: ignore[name-defined]
                 return []
         else:
             return []
+
+    @property
+    def sign_content(self):
+        return self.get_sign_content()
 
     def get_sign_content(self):
         signed_urls = []
@@ -780,7 +785,7 @@ class DatasetCollectionBinding(db.Model):  # type: ignore[name-defined]
     )
 
     id = db.Column(StringUUID, primary_key=True, server_default=db.text("uuid_generate_v4()"))
-    provider_name = db.Column(db.String(40), nullable=False)
+    provider_name = db.Column(db.String(255), nullable=False)
     model_name = db.Column(db.String(255), nullable=False)
     type = db.Column(db.String(40), server_default=db.text("'dataset'::character varying"), nullable=False)
     collection_name = db.Column(db.String(64), nullable=False)

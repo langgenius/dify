@@ -140,6 +140,8 @@ class TencentVector(BaseVector):
         return False
 
     def delete_by_ids(self, ids: list[str]) -> None:
+        if not ids:
+            return
         self._db.collection(self._collection_name).delete(document_ids=ids)
 
     def delete_by_metadata_field(self, key: str, value: str) -> None:

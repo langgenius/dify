@@ -39,6 +39,8 @@ type ChatInputAreaProps = {
   inputs?: Record<string, any>
   inputsForm?: InputForm[]
   theme?: Theme | null
+  isResponding?: boolean
+  disabled?: boolean
 }
 const ChatInputArea = ({
   showFeatureBar,
@@ -51,6 +53,8 @@ const ChatInputArea = ({
   inputs = {},
   inputsForm = [],
   theme,
+  isResponding,
+  disabled,
 }: ChatInputAreaProps) => {
   const { t } = useTranslation()
   const { notify } = useToastContext()
@@ -77,6 +81,11 @@ const ChatInputArea = ({
   const historyRef = useRef([''])
   const [currentIndex, setCurrentIndex] = useState(-1)
   const handleSend = () => {
+    if (isResponding) {
+      notify({ type: 'info', message: t('appDebug.errorMessage.waitForResponse') })
+      return
+    }
+
     if (onSend) {
       const { files, setFiles } = filesStore.getState()
       if (files.find(item => item.transferMethod === TransferMethod.local_file && !item.uploadedId)) {
@@ -116,7 +125,7 @@ const ChatInputArea = ({
         setQuery(historyRef.current[currentIndex + 1])
       }
       else if (currentIndex === historyRef.current.length - 1) {
-      // If it is the last element, clear the input box
+        // If it is the last element, clear the input box
         setCurrentIndex(historyRef.current.length)
         setQuery('')
       }
@@ -148,6 +157,7 @@ const ChatInputArea = ({
         className={cn(
           'relative pb-[9px] bg-components-panel-bg-blur border border-components-chat-input-border rounded-xl shadow-md z-10',
           isDragActive && 'border border-dashed border-components-option-card-option-selected-border',
+          disabled && 'opacity-50 pointer-events-none border-components-panel-border shadow-none',
         )}
       >
         <div className='relative px-[9px] pt-[9px] max-h-[158px] overflow-x-hidden overflow-y-auto'>
@@ -166,9 +176,10 @@ const ChatInputArea = ({
               <Textarea
                 ref={textareaRef}
                 className={cn(
-                  'p-1 w-full leading-6 body-lg-regular text-text-tertiary outline-none',
+                  'p-1 w-full leading-6 body-lg-regular text-text-tertiary bg-transparent outline-none',
                 )}
                 placeholder={t('common.chat.inputPlaceholder') || ''}
+                autoFocus
                 autoSize={{ minRows: 1 }}
                 onResize={handleTextareaResize}
                 value={query}

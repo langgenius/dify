@@ -33,12 +33,14 @@ const translation = {
       explanation: 'Ready-to-use AI WebApp',
       accessibleAddress: 'Public URL',
       preview: 'Preview',
+      launch: 'Launch',
       regenerate: 'Regenerate',
       regenerateNotice: 'Do you want to regenerate the public URL?',
       preUseReminder: 'Please enable WebApp before continuing.',
       settings: {
         entry: 'Settings',
-        title: 'WebApp Settings',
+        title: 'Web App Settings',
+        modalTip: 'Client-side web app settings. ',
         webName: 'WebApp Name',
         webDesc: 'WebApp Description',
         webDescTip: 'This text will be displayed on the client side, providing basic guidance on how to use the application',
@@ -56,7 +58,7 @@ const translation = {
         chatColorThemeInverted: 'Inverted',
         invalidHexMessage: 'Invalid hex value',
         sso: {
-          label: 'SSO Authentication',
+          label: 'SSO Enforcement',
           title: 'WebApp SSO',
           description: 'All users are required to login with SSO before using WebApp',
           tooltip: 'Contact the administrator to enable WebApp SSO',
@@ -64,6 +66,8 @@ const translation = {
         more: {
           entry: 'Show more settings',
           copyright: 'Copyright',
+          copyrightTip: 'Display copyright information in the webapp',
+          copyrightTooltip: 'Please upgrade to Professional plan or above',
           copyRightPlaceholder: 'Enter the name of the author or organization',
           privacyPolicy: 'Privacy Policy',
           privacyPolicyPlaceholder: 'Enter the privacy policy link',

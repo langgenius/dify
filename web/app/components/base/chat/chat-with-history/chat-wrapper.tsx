@@ -1,30 +1,35 @@
-import { useCallback, useEffect, useMemo } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import Chat from '../chat'
 import type {
   ChatConfig,
   ChatItem,
+  ChatItemInTree,
   OnSend,
 } from '../types'
 import { useChat } from '../chat/hooks'
-import { getLastAnswer } from '../utils'
+import { getLastAnswer, isValidGeneratedAnswer } from '../utils'
 import { useChatWithHistoryContext } from './context'
-import Header from './header'
-import ConfigPanel from './config-panel'
+import { InputVarType } from '@/app/components/workflow/types'
+import { TransferMethod } from '@/types/app'
+import InputsForm from '@/app/components/base/chat/chat-with-history/inputs-form'
 import {
   fetchSuggestedQuestions,
   getUrl,
   stopChatMessageResponding,
 } from '@/service/share'
+import AppIcon from '@/app/components/base/app-icon'
 import AnswerIcon from '@/app/components/base/answer-icon'
+import cn from '@/utils/classnames'
 
 const ChatWrapper = () => {
   const {
     appParams,
-    appPrevChatList,
+    appPrevChatTree,
     currentConversationId,
     currentConversationItem,
     inputsForms,
     newConversationInputs,
+    newConversationInputsRef,
     handleNewConversationCompleted,
     isMobile,
     isInstalledApp,
@@ -50,8 +55,7 @@ const ChatWrapper = () => {
   }, [appParams, currentConversationItem?.introduction, currentConversationId])
   const {
     chatList,
-    chatListRef,
-    handleUpdateChatList,
+    setTargetMessageId,
     handleSend,
     handleStop,
     isResponding,
@@ -62,9 +66,41 @@ const ChatWrapper = () => {
       inputs: (currentConversationId ? currentConversationItem?.inputs : newConversationInputs) as any,
       inputsForm: inputsForms,
     },
-    appPrevChatList,
+    appPrevChatTree,
     taskId => stopChatMessageResponding('', taskId, isInstalledApp, appId),
   )
+  const inputsFormValue = currentConversationId ? currentConversationItem?.inputs : newConversationInputsRef?.current
+  const inputDisabled = useMemo(() => {
+    let hasEmptyInput = ''
+    let fileIsUploading = false
+    const requiredVars = inputsForms.filter(({ required }) => required)
+    if (requiredVars.length) {
+      requiredVars.forEach(({ variable, label, type }) => {
+        if (hasEmptyInput)
+          return
+
+        if (fileIsUploading)
+          return
+
+        if (!inputsFormValue?.[variable])
+          hasEmptyInput = label as string
+
+        if ((type === InputVarType.singleFile || type === InputVarType.multiFiles) && inputsFormValue?.[variable]) {
+          const files = inputsFormValue[variable]
+          if (Array.isArray(files))
+            fileIsUploading = files.find(item => item.transferMethod === TransferMethod.local_file && !item.uploadedId)
+          else
+            fileIsUploading = files.transferMethod === TransferMethod.local_file && !files.uploadedId
+        }
+      })
+    }
+    if (hasEmptyInput)
+      return true
+
+    if (fileIsUploading)
+      return true
+    return false
+  }, [inputsFormValue, inputsForms])
 
   useEffect(() => {
     if (currentChatInstanceRef.current)
@@ -72,13 +108,13 @@ const ChatWrapper = () => {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  const doSend: OnSend = useCallback((message, files, last_answer) => {
+  const doSend: OnSend = useCallback((message, files, isRegenerate = false, parentAnswer: ChatItem | null = null) => {
     const data: any = {
       query: message,
       files,
       inputs: currentConversationId ? currentConversationItem?.inputs : newConversationInputs,
       conversation_id: currentConversationId,
-      parent_message_id: last_answer?.id || getLastAnswer(chatListRef.current)?.id || null,
+      parent_message_id: (isRegenerate ? parentAnswer?.id : getLastAnswer(chatList)?.id) || null,
     }
 
     handleSend(
@@ -91,68 +127,64 @@ const ChatWrapper = () => {
       },
     )
   }, [
-    chatListRef,
+    chatList,
+    handleNewConversationCompleted,
+    handleSend,
     currentConversationId,
     currentConversationItem,
-    handleSend,
     newConversationInputs,
-    handleNewConversationCompleted,
     isInstalledApp,
     appId,
   ])
 
-  const doRegenerate = useCallback((chatItem: ChatItem) => {
-    const index = chatList.findIndex(item => item.id === chatItem.id)
-    if (index === -1)
-      return
+  const doRegenerate = useCallback((chatItem: ChatItemInTree) => {
+    const question = chatList.find(item => item.id === chatItem.parentMessageId)!
+    const parentAnswer = chatList.find(item => item.id === question.parentMessageId)
+    doSend(question.content, question.message_files, true, isValidGeneratedAnswer(parentAnswer) ? parentAnswer : null)
+  }, [chatList, doSend])
 
-    const prevMessages = chatList.slice(0, index)
-    const question = prevMessages.pop()
-    const lastAnswer = getLastAnswer(prevMessages)
+  const messageList = useMemo(() => {
+    if (currentConversationId)
+      return chatList
+    return chatList.filter(item => !item.isOpeningStatement)
+  }, [chatList, currentConversationId])
 
-    if (!question)
-      return
-
-    handleUpdateChatList(prevMessages)
-    doSend(question.content, question.message_files, lastAnswer)
-  }, [chatList, handleUpdateChatList, doSend])
+  const [collapsed, setCollapsed] = useState(!!currentConversationId)
 
   const chatNode = useMemo(() => {
-    if (inputsForms.length) {
-      return (
-        <>
-          <Header
-            isMobile={isMobile}
-            title={currentConversationItem?.name || ''}
-          />
-          {
-            !currentConversationId && (
-              <div className={`mx-auto w-full max-w-[720px] ${isMobile && 'px-4'}`}>
-                <div className='mb-6' />
-                <ConfigPanel />
-                <div
-                  className='my-6 h-[1px]'
-                  style={{ background: 'linear-gradient(90deg, rgba(242, 244, 247, 0.00) 0%, #F2F4F7 49.17%, rgba(242, 244, 247, 0.00) 100%)' }}
-                />
-              </div>
-            )
-          }
-        </>
-      )
+    if (!inputsForms.length)
+      return null
+    if (isMobile) {
+      if (!currentConversationId)
+        return <InputsForm collapsed={collapsed} setCollapsed={setCollapsed} />
+      return null
     }
+    else {
+      return <InputsForm collapsed={collapsed} setCollapsed={setCollapsed} />
+    }
+  }, [inputsForms.length, isMobile, currentConversationId, collapsed])
 
+  const welcome = useMemo(() => {
+    const welcomeMessage = chatList.find(item => item.isOpeningStatement)
+    if (currentConversationId)
+      return null
+    if (!welcomeMessage)
+      return null
+    if (!collapsed && inputsForms.length > 0)
+      return null
     return (
-      <Header
-        isMobile={isMobile}
-        title={currentConversationItem?.name || ''}
-      />
+      <div className={cn('h-[50vh] py-12 flex flex-col items-center justify-center gap-3')}>
+        <AppIcon
+          size='xl'
+          iconType={appData?.site.icon_type}
+          icon={appData?.site.icon}
+          background={appData?.site.icon_background}
+          imageUrl={appData?.site.icon_url}
+        />
+        <div className='text-text-tertiary body-2xl-regular'>{welcomeMessage.content}</div>
+      </div>
     )
-  }, [
-    currentConversationId,
-    inputsForms,
-    currentConversationItem,
-    isMobile,
-  ])
+  }, [appData?.site.icon, appData?.site.icon_background, appData?.site.icon_type, appData?.site.icon_url, chatList, collapsed, currentConversationId, inputsForms.length])
 
   const answerIcon = (appData?.site && appData.site.use_icon_as_answer_icon)
     ? <AnswerIcon
@@ -170,23 +202,31 @@ const ChatWrapper = () => {
       <Chat
         appData={appData}
         config={appConfig}
-        chatList={chatList}
+        chatList={messageList}
         isResponding={isResponding}
         chatContainerInnerClassName={`mx-auto pt-6 w-full max-w-[720px] ${isMobile && 'px-4'}`}
         chatFooterClassName='pb-4'
-        chatFooterInnerClassName={`mx-auto w-full max-w-[720px] ${isMobile && 'px-4'}`}
+        chatFooterInnerClassName={`mx-auto w-full max-w-[720px] ${isMobile ? 'px-2' : 'px-4'}`}
         onSend={doSend}
         inputs={currentConversationId ? currentConversationItem?.inputs as any : newConversationInputs}
         inputsForm={inputsForms}
         onRegenerate={doRegenerate}
         onStopResponding={handleStop}
-        chatNode={chatNode}
+        chatNode={
+          <>
+            {chatNode}
+            {welcome}
+          </>
+        }
         allToolIcons={appMeta?.tool_icons || {}}
         onFeedback={handleFeedback}
         suggestedQuestions={suggestedQuestions}
         answerIcon={answerIcon}
         hideProcessDetail
         themeBuilder={themeBuilder}
+        switchSibling={siblingMessageId => setTargetMessageId(siblingMessageId)}
+        inputDisabled={inputDisabled}
+        isMobile={isMobile}
       />
     </div>
   )

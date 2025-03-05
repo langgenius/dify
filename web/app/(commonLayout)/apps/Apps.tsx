@@ -25,16 +25,18 @@ import Input from '@/app/components/base/input'
 import { useStore as useTagStore } from '@/app/components/base/tag-management/store'
 import TagManagementModal from '@/app/components/base/tag-management'
 import TagFilter from '@/app/components/base/tag-management/filter'
+import CheckboxWithLabel from '@/app/components/datasets/create/website/base/checkbox-with-label'
 
 const getKey = (
   pageIndex: number,
   previousPageData: AppListResponse,
   activeTab: string,
+  isCreatedByMe: boolean,
   tags: string[],
   keywords: string,
 ) => {
   if (!pageIndex || previousPageData.has_more) {
-    const params: any = { url: 'apps', params: { page: pageIndex + 1, limit: 30, name: keywords } }
+    const params: any = { url: 'apps', params: { page: pageIndex + 1, limit: 30, name: keywords, is_created_by_me: isCreatedByMe } }
 
     if (activeTab !== 'all')
       params.params.mode = activeTab
@@ -57,7 +59,8 @@ const Apps = () => {
   const [activeTab, setActiveTab] = useTabSearchParams({
     defaultTab: 'all',
   })
-  const { query: { tagIDs = [], keywords = '' }, setQuery } = useAppsQueryState()
+  const { query: { tagIDs = [], keywords = '', isCreatedByMe: queryIsCreatedByMe = false }, setQuery } = useAppsQueryState()
+  const [isCreatedByMe, setIsCreatedByMe] = useState(queryIsCreatedByMe)
   const [tagFilterValue, setTagFilterValue] = useState<string[]>(tagIDs)
   const [searchKeywords, setSearchKeywords] = useState(keywords)
   const setKeywords = useCallback((keywords: string) => {
@@ -68,7 +71,7 @@ const Apps = () => {
   }, [setQuery])
 
   const { data, isLoading, setSize, mutate } = useSWRInfinite(
-    (pageIndex: number, previousPageData: AppListResponse) => getKey(pageIndex, previousPageData, activeTab, tagIDs, searchKeywords),
+    (pageIndex: number, previousPageData: AppListResponse) => getKey(pageIndex, previousPageData, activeTab, isCreatedByMe, tagIDs, searchKeywords),
     fetchAppList,
     { revalidateFirstPage: true },
   )
@@ -123,6 +126,12 @@ const Apps = () => {
     handleTagsUpdate()
   }
 
+  const handleCreatedByMeChange = useCallback(() => {
+    const newValue = !isCreatedByMe
+    setIsCreatedByMe(newValue)
+    setQuery(prev => ({ ...prev, isCreatedByMe: newValue }))
+  }, [isCreatedByMe, setQuery])
+
   return (
     <>
       <div className='sticky top-0 flex justify-between items-center pt-4 px-12 pb-2 leading-[56px] bg-background-body z-10 flex-wrap gap-y-2'>
@@ -132,6 +141,12 @@ const Apps = () => {
           options={options}
         />
         <div className='flex items-center gap-2'>
+          <CheckboxWithLabel
+            className='mr-2'
+            label={t('app.showMyCreatedAppsOnly')}
+            isChecked={isCreatedByMe}
+            onChange={handleCreatedByMeChange}
+          />
           <TagFilter type='app' value={tagFilterValue} onChange={handleTagsChange} />
           <Input
             showLeftIcon

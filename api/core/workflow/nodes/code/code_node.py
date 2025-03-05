@@ -195,7 +195,7 @@ class CodeNode(BaseNode[CodeNodeData]):
             if output_config.type == "object":
                 # check if output is object
                 if not isinstance(result.get(output_name), dict):
-                    if isinstance(result.get(output_name), type(None)):
+                    if result[output_name] is None:
                         transformed_result[output_name] = None
                     else:
                         raise OutputValidationError(
@@ -223,7 +223,7 @@ class CodeNode(BaseNode[CodeNodeData]):
             elif output_config.type == "array[number]":
                 # check if array of number available
                 if not isinstance(result[output_name], list):
-                    if isinstance(result[output_name], type(None)):
+                    if result[output_name] is None:
                         transformed_result[output_name] = None
                     else:
                         raise OutputValidationError(
@@ -244,7 +244,7 @@ class CodeNode(BaseNode[CodeNodeData]):
             elif output_config.type == "array[string]":
                 # check if array of string available
                 if not isinstance(result[output_name], list):
-                    if isinstance(result[output_name], type(None)):
+                    if result[output_name] is None:
                         transformed_result[output_name] = None
                     else:
                         raise OutputValidationError(
@@ -265,7 +265,7 @@ class CodeNode(BaseNode[CodeNodeData]):
             elif output_config.type == "array[object]":
                 # check if array of object available
                 if not isinstance(result[output_name], list):
-                    if isinstance(result[output_name], type(None)):
+                    if result[output_name] is None:
                         transformed_result[output_name] = None
                     else:
                         raise OutputValidationError(

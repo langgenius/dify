@@ -6,8 +6,6 @@ import { useTranslation } from 'react-i18next'
 import Link from 'next/link'
 import produce from 'immer'
 import TypeIcon from '../type-icon'
-import s from './style.module.css'
-import cn from '@/utils/classnames'
 import Modal from '@/app/components/base/modal'
 import type { DataSet } from '@/models/datasets'
 import Button from '@/app/components/base/button'
@@ -15,6 +13,7 @@ import { fetchDatasets } from '@/service/datasets'
 import Loading from '@/app/components/base/loading'
 import Badge from '@/app/components/base/badge'
 import { useKnowledge } from '@/hooks/use-knowledge'
+import cn from '@/utils/classnames'
 
 export type ISelectDataSetProps = {
   isShow: boolean
@@ -111,8 +110,8 @@ const SelectDataSet: FC<ISelectDataSetProps> = ({
             borderColor: 'rgba(0, 0, 0, 0.02',
           }}
         >
-          <span className='text-gray-500'>{t('appDebug.feature.dataSet.noDataSet')}</span>
-          <Link href="/datasets/create" className='font-normal text-[#155EEF]'>{t('appDebug.feature.dataSet.toCreate')}</Link>
+          <span className='text-text-tertiary'>{t('appDebug.feature.dataSet.noDataSet')}</span>
+          <Link href="/datasets/create" className='font-normal text-text-accent'>{t('appDebug.feature.dataSet.toCreate')}</Link>
         </div>
       )}
 
@@ -122,32 +121,37 @@ const SelectDataSet: FC<ISelectDataSetProps> = ({
             {datasets.map(item => (
               <div
                 key={item.id}
-                className={cn(s.item, selected.some(i => i.id === item.id) && s.selected, 'flex justify-between items-center h-10 px-2 rounded-lg bg-white border border-gray-200  cursor-pointer', !item.embedding_available && s.disabled)}
+                className={cn(
+                  'flex justify-between items-center h-10 px-2 rounded-lg bg-components-panel-on-panel-item-bg border-components-panel-border-subtle border-[0.5px] shadow-xs cursor-pointer hover:border-components-panel-border hover:bg-components-panel-on-panel-item-bg-hover hover:shadow-sm',
+                  selected.some(i => i.id === item.id) && 'border-[1.5px] border-components-option-card-option-selected-border bg-state-accent-hover shadow-xs hover:shadow-xs hover:border-components-option-card-option-selected-border hover:bg-state-accent-hover',
+                  !item.embedding_available && 'hover:border-components-panel-border-subtle hover:bg-components-panel-on-panel-item-bg hover:shadow-xs',
+                )}
                 onClick={() => {
                   if (!item.embedding_available)
                     return
                   toggleSelect(item)
                 }}
               >
-                <div className='mr-1 flex items-center'>
-                  <div className={cn('mr-2', !item.embedding_available && 'opacity-50')}>
+                <div className='mr-1 flex items-center overflow-hidden'>
+                  <div className={cn('mr-2', !item.embedding_available && 'opacity-30')}>
                     <TypeIcon type="upload_file" size='md' />
                   </div>
-                  <div className={cn('max-w-[200px] text-[13px] font-medium text-gray-800 overflow-hidden text-ellipsis whitespace-nowrap', !item.embedding_available && 'opacity-50 !max-w-[120px]')}>{item.name}</div>
+                  <div className={cn('max-w-[200px] text-[13px] font-medium text-text-secondary truncate', !item.embedding_available && 'opacity-30 !max-w-[120px]')}>{item.name}</div>
                   {!item.embedding_available && (
-                    <span className='ml-1 shrink-0 px-1 border border-gray-200 rounded-md text-gray-500 text-xs font-normal leading-[18px]'>{t('dataset.unavailable')}</span>
+                    <span className='ml-1 shrink-0 px-1 border border-divider-deep rounded-md text-text-tertiary text-xs font-normal leading-[18px]'>{t('dataset.unavailable')}</span>
                   )}
                 </div>
                 {
                   item.indexing_technique && (
                     <Badge
+                      className='shrink-0'
                       text={formatIndexingTechniqueAndMethod(item.indexing_technique, item.retrieval_model_dict?.search_method)}
                     />
                   )
                 }
                 {
                   item.provider === 'external' && (
-                    <Badge text={t('dataset.externalTag')} />
+                    <Badge className='shrink-0' text={t('dataset.externalTag')} />
                   )
                 }
               </div>
@@ -157,7 +161,7 @@ const SelectDataSet: FC<ISelectDataSetProps> = ({
       )}
       {loaded && (
         <div className='flex justify-between items-center mt-8'>
-          <div className='text-sm  font-medium text-gray-700'>
+          <div className='text-sm  font-medium text-text-secondary'>
             {selected.length > 0 && `${selected.length} ${t('appDebug.feature.dataSet.selected')}`}
           </div>
           <div className='flex space-x-2'>

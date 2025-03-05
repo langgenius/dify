@@ -155,6 +155,10 @@ const translation = {
       removeConfirmContent: 'Configurația curentă este în uz, eliminarea acesteia va dezactiva funcția de Urmărire.',
     },
     view: 'Vedere',
+    opik: {
+      description: 'Opik este o platformă open-source pentru evaluarea, testarea și monitorizarea aplicațiilor LLM.',
+      title: 'Opik',
+    },
   },
   answerIcon: {
     descriptionInExplore: 'Dacă să utilizați pictograma WebApp pentru a înlocui 🤖 în Explore',
@@ -182,6 +186,13 @@ const translation = {
     },
     searchAllTemplate: 'Căutați toate șabloanele...',
     byCategories: 'DUPĂ CATEGORII',
+  },
+  showMyCreatedAppsOnly: 'Afișează doar aplicațiile create de mine',
+  appSelector: {
+    label: 'APLICAȚIE',
+    params: 'PARAMETRII APLICAȚIEI',
+    noParams: 'Nu sunt necesari parametri',
+    placeholder: 'Selectați o aplicație...',
   },
 }
 

@@ -1,3 +1,4 @@
+import contextvars
 import logging
 import threading
 import uuid
@@ -18,7 +19,7 @@ from core.app.apps.base_app_queue_manager import AppQueueManager, GenerateTaskSt
 from core.app.apps.message_based_app_generator import MessageBasedAppGenerator
 from core.app.apps.message_based_app_queue_manager import MessageBasedAppQueueManager
 from core.app.entities.app_invoke_entities import AgentChatAppGenerateEntity, InvokeFrom
-from core.model_runtime.errors.invoke import InvokeAuthorizationError, InvokeError
+from core.model_runtime.errors.invoke import InvokeAuthorizationError
 from core.ops.ops_trace_manager import TraceQueueManager
 from extensions.ext_database import db
 from factories import file_factory
@@ -29,17 +30,6 @@ logger = logging.getLogger(__name__)
 
 
 class AgentChatAppGenerator(MessageBasedAppGenerator):
-    @overload
-    def generate(
-        self,
-        *,
-        app_model: App,
-        user: Union[Account, EndUser],
-        args: Mapping[str, Any],
-        invoke_from: InvokeFrom,
-        streaming: Literal[True],
-    ) -> Generator[str, None, None]: ...
-
     @overload
     def generate(
         self,
@@ -59,8 +49,19 @@ class AgentChatAppGenerator(MessageBasedAppGenerator):
         user: Union[Account, EndUser],
         args: Mapping[str, Any],
         invoke_from: InvokeFrom,
+        streaming: Literal[True],
+    ) -> Generator[Mapping | str, None, None]: ...
+
+    @overload
+    def generate(
+        self,
+        *,
+        app_model: App,
+        user: Union[Account, EndUser],
+        args: Mapping[str, Any],
+        invoke_from: InvokeFrom,
         streaming: bool,
-    ) -> Mapping[str, Any] | Generator[str, None, None]: ...
+    ) -> Union[Mapping, Generator[Mapping | str, None, None]]: ...
 
     def generate(
         self,
@@ -70,7 +71,7 @@ class AgentChatAppGenerator(MessageBasedAppGenerator):
         args: Mapping[str, Any],
         invoke_from: InvokeFrom,
         streaming: bool = True,
-    ):
+    ) -> Union[Mapping, Generator[Mapping | str, None, None]]:
         """
         Generate App response.
 
@@ -148,9 +149,7 @@ class AgentChatAppGenerator(MessageBasedAppGenerator):
             model_conf=ModelConfigConverter.convert(app_config),
             file_upload_config=file_extra_config,
             conversation_id=conversation.id if conversation else None,
-            inputs=conversation.inputs
-            if conversation
-            else self._prepare_user_inputs(
+            inputs=self._prepare_user_inputs(
                 user_inputs=inputs, variables=app_config.variables, tenant_id=app_model.tenant_id
             ),
             query=query,
@@ -182,6 +181,7 @@ class AgentChatAppGenerator(MessageBasedAppGenerator):
             target=self._generate_worker,
             kwargs={
                 "flask_app": current_app._get_current_object(),  # type: ignore
+                "context": contextvars.copy_context(),
                 "application_generate_entity": application_generate_entity,
                 "queue_manager": queue_manager,
                 "conversation_id": conversation.id,
@@ -206,6 +206,7 @@ class AgentChatAppGenerator(MessageBasedAppGenerator):
     def _generate_worker(
         self,
         flask_app: Flask,
+        context: contextvars.Context,
         application_generate_entity: AgentChatAppGenerateEntity,
         queue_manager: AppQueueManager,
         conversation_id: str,
@@ -220,6 +221,9 @@ class AgentChatAppGenerator(MessageBasedAppGenerator):
         :param message_id: message ID
         :return:
         """
+        for var, val in context.items():
+            var.set(val)
+
         with flask_app.app_context():
             try:
                 # get conversation and message
@@ -245,7 +249,7 @@ class AgentChatAppGenerator(MessageBasedAppGenerator):
             except ValidationError as e:
                 logger.exception("Validation Error when generating")
                 queue_manager.publish_error(e, PublishFrom.APPLICATION_MANAGER)
-            except (ValueError, InvokeError) as e:
+            except ValueError as e:
                 if dify_config.DEBUG:
                     logger.exception("Error when generating")
                 queue_manager.publish_error(e, PublishFrom.APPLICATION_MANAGER)

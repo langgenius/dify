@@ -35,7 +35,7 @@ const Tooltip: FC<TooltipProps> = ({
         </div>
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent style={{ zIndex: 1001 }}>
-        <div className='p-3 bg-white text-xs font-medium text-gray-500 rounded-lg shadow-lg'>
+        <div className='p-3 bg-components-tooltip-bg system-xs-medium text-text-quaternary rounded-lg shadow-lg'>
           {text} {data}
         </div>
       </PortalToFollowElemContent>

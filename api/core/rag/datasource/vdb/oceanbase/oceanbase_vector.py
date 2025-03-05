@@ -134,6 +134,8 @@ class OceanBaseVector(BaseVector):
         return bool(cur.rowcount != 0)
 
     def delete_by_ids(self, ids: list[str]) -> None:
+        if not ids:
+            return
         self._client.delete(table_name=self._collection_name, ids=ids)
 
     def get_ids_by_metadata_field(self, key: str, value: str) -> list[str]:

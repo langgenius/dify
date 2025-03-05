@@ -175,9 +175,13 @@ def setup_required(view):
     @wraps(view)
     def decorated(*args, **kwargs):
         # check setup
-        if dify_config.EDITION == "SELF_HOSTED" and os.environ.get("INIT_PASSWORD") and not DifySetup.query.first():
+        if (
+            dify_config.EDITION == "SELF_HOSTED"
+            and os.environ.get("INIT_PASSWORD")
+            and not db.session.query(DifySetup).first()
+        ):
             raise NotInitValidateError()
-        elif dify_config.EDITION == "SELF_HOSTED" and not DifySetup.query.first():
+        elif dify_config.EDITION == "SELF_HOSTED" and not db.session.query(DifySetup).first():
             raise NotSetupError()
 
         return view(*args, **kwargs)

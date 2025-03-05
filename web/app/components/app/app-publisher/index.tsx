@@ -143,22 +143,19 @@ const AppPublisher = ({
         </Button>
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent className='z-[11]'>
-        <div className='w-[336px] bg-white rounded-2xl border-[0.5px] border-gray-200 shadow-xl'>
+        <div className='w-[336px] bg-components-panel-bg rounded-2xl border-[0.5px] border-components-panel-border shadow-xl'>
           <div className='p-4 pt-3'>
-            <div className='flex items-center h-6 text-xs font-medium text-gray-500 uppercase'>
+            <div className='flex items-center h-6 system-xs-medium-uppercase text-text-tertiary'>
               {publishedAt ? t('workflow.common.latestPublished') : t('workflow.common.currentDraftUnpublished')}
             </div>
             {publishedAt
               ? (
                 <div className='flex justify-between items-center h-[18px]'>
-                  <div className='flex items-center mt-[3px] mb-[3px] leading-[18px] text-[13px] font-medium text-gray-700'>
+                  <div className='flex items-center mt-[3px] mb-[3px] leading-[18px] text-[13px] font-medium text-text-secondary'>
                     {t('workflow.common.publishedAt')} {formatTimeFromNow(publishedAt)}
                   </div>
                   <Button
-                    className={`
-                      ml-2 px-2 text-primary-600
-                      ${published && 'text-primary-300 border-gray-100'}
-                    `}
+                    variant='secondary-accent'
                     size='small'
                     onClick={handleRestore}
                     disabled={published}
@@ -168,7 +165,7 @@ const AppPublisher = ({
                 </div>
               )
               : (
-                <div className='flex items-center h-[18px] leading-[18px] text-[13px] font-medium text-gray-700'>
+                <div className='flex items-center h-[18px] leading-[18px] text-[13px] font-medium text-text-secondary'>
                   {t('workflow.common.autoSaved')} · {Boolean(draftUpdatedAt) && formatTimeFromNow(draftUpdatedAt!)}
                 </div>
               )}
@@ -196,7 +193,7 @@ const AppPublisher = ({
               )
             }
           </div>
-          <div className='p-4 pt-3 border-t-[0.5px] border-t-black/5'>
+          <div className='p-4 pt-3 border-t-[0.5px] border-divider-regular'>
             <SuggestedAction disabled={!publishedAt} link={appURL} icon={<PlayCircle />}>{t('workflow.common.runApp')}</SuggestedAction>
             {appDetail?.mode === 'workflow'
               ? (
@@ -222,7 +219,7 @@ const AppPublisher = ({
               )}
             <SuggestedAction
               onClick={() => {
-                handleOpenInExplore()
+                publishedAt && handleOpenInExplore()
               }}
               disabled={!publishedAt}
               icon={<RiPlanetLine className='w-4 h-4' />}

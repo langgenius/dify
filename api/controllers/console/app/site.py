@@ -50,7 +50,9 @@ class AppSite(Resource):
         if not current_user.is_editor:
             raise Forbidden()
 
-        site = Site.query.filter(Site.app_id == app_model.id).one_or_404()
+        site = db.session.query(Site).filter(Site.app_id == app_model.id).first()
+        if not site:
+            raise NotFound
 
         for attr_name in [
             "title",
