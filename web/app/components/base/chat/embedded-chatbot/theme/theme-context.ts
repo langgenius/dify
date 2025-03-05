@@ -48,10 +48,13 @@ export class ThemeBuilder {
   private buildChecker = false
 
   public get theme() {
-    if (this._theme === undefined)
-      throw new Error('The theme should be built first and then accessed')
-    else
+    if (this._theme === undefined) {
+      this._theme = new Theme()
       return this._theme
+    }
+    else {
+      return this._theme
+    }
   }
 
   public buildTheme(chatColorTheme: string | null = null, chatColorThemeInverted = false) {

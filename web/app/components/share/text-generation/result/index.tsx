@@ -240,8 +240,40 @@ const Result: FC<IResultProps> = ({
               } as any
             }))
           },
+          onLoopStart: ({ data }) => {
+            setWorkflowProcessData(produce(getWorkflowProcessData()!, (draft) => {
+              draft.expand = true
+              draft.tracing!.push({
+                ...data,
+                status: NodeRunningStatus.Running,
+                expand: true,
+              } as any)
+            }))
+          },
+          onLoopNext: () => {
+            setWorkflowProcessData(produce(getWorkflowProcessData()!, (draft) => {
+              draft.expand = true
+              const loops = draft.tracing.find(item => item.node_id === data.node_id
+                && (item.execution_metadata?.parallel_id === data.execution_metadata?.parallel_id || item.parallel_id === data.execution_metadata?.parallel_id))!
+              loops?.details!.push([])
+            }))
+          },
+          onLoopFinish: ({ data }) => {
+            setWorkflowProcessData(produce(getWorkflowProcessData()!, (draft) => {
+              draft.expand = true
+              const loopsIndex = draft.tracing.findIndex(item => item.node_id === data.node_id
+                && (item.execution_metadata?.parallel_id === data.execution_metadata?.parallel_id || item.parallel_id === data.execution_metadata?.parallel_id))!
+              draft.tracing[loopsIndex] = {
+                ...data,
+                expand: !!data.error,
+              } as any
+            }))
+          },
           onNodeStarted: ({ data }) => {
             if (data.iteration_id)
+              return
+
+            if (data.loop_id)
               return
 
             setWorkflowProcessData(produce(getWorkflowProcessData()!, (draft) => {
@@ -255,6 +287,9 @@ const Result: FC<IResultProps> = ({
           },
           onNodeFinished: ({ data }) => {
             if (data.iteration_id)
+              return
+
+            if (data.loop_id)
               return
 
             setWorkflowProcessData(produce(getWorkflowProcessData()!, (draft) => {

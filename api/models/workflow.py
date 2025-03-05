@@ -180,7 +180,7 @@ class Workflow(Base):
             features["file_upload"]["enabled"] = image_enabled
             features["file_upload"]["number_limits"] = image_number_limits
             features["file_upload"]["allowed_file_upload_methods"] = image_transfer_methods
-            features["file_upload"]["allowed_file_types"] = ["image"]
+            features["file_upload"]["allowed_file_types"] = features["file_upload"].get("allowed_file_types", ["image"])
             features["file_upload"]["allowed_file_extensions"] = []
             del features["file_upload"]["image"]
             self._features = json.dumps(features)
@@ -256,11 +256,10 @@ class Workflow(Base):
 
         # decrypt secret variables value
         def decrypt_func(var):
-            return (
-                var.model_copy(update={"value": encrypter.decrypt_token(tenant_id=tenant_id, token=var.value)})
-                if isinstance(var, SecretVariable)
-                else var
-            )
+            if isinstance(var, SecretVariable):
+                return var.model_copy(update={"value": encrypter.decrypt_token(tenant_id=tenant_id, token=var.value)})
+            else:
+                return var
 
         results = list(map(decrypt_func, results))
         return results
@@ -286,11 +285,10 @@ class Workflow(Base):
 
         # encrypt secret variables value
         def encrypt_func(var):
-            return (
-                var.model_copy(update={"value": encrypter.encrypt_token(tenant_id=tenant_id, token=var.value)})
-                if isinstance(var, SecretVariable)
-                else var
-            )
+            if isinstance(var, SecretVariable):
+                return var.model_copy(update={"value": encrypter.encrypt_token(tenant_id=tenant_id, token=var.value)})
+            else:
+                return var
 
         encrypted_vars = list(map(encrypt_func, value))
         environment_variables_json = json.dumps(
