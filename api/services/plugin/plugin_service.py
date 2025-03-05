@@ -1,7 +1,7 @@
 import logging
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from mimetypes import guess_type
-from typing import Mapping, Optional
+from typing import Optional
 
 from pydantic import BaseModel
 
