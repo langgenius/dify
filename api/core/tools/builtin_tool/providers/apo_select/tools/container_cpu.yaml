@@ -8,7 +8,7 @@ identity:
 display:
   type: metric
   title: 基础设施情况 - 容器CPU - 容器CPU使用率 - Containerd
-  uint: percent(0-100)百分比
+  unit: percent(0-100)百分比
 description:
   human:
     en_US: Query the CPU utilization of the container

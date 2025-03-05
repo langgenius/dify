@@ -14,7 +14,7 @@ description:
 display:
   type: log
   title: log
-  uint: log
+  unit: log
 parameters:
   - name: service
     type: string

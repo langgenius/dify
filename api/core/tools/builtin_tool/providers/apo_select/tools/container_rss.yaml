@@ -14,7 +14,7 @@ description:
 display:
   type: metric
   title: 基础设施情况 - 容器内存 - 容器内存使用率 - Containerd
-  uint: bytes 字节
+  unit: bytes 字节
 parameters:
   - name: pod
     type: string

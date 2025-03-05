@@ -1,33 +1,46 @@
 identity:
-  name: select_cpu
+  name: originx_service_red_avg_resp
   author: APO
   label:
     en_US: Query the CPU utilization of the host
-    zh_Hans: 查询主机CPU利用率
+    zh_Hans: Originx 北极星指标 (服务层级) - RED指标 - 平均响应时间
     pt_BR: Query the CPU utilization of the host
 description:
   human:
     en_US: Query the CPU utilization of the host
-    zh_Hans: 查询主机CPU利用率
+    zh_Hans: 服务平均响应时间(毫秒,按服务名和内容键统计,指定时间段内)
     pt_BR: Query the CPU utilization of the host
-  llm: Query the CPU utilization of the host
+  llm: 服务平均响应时间(毫秒,按服务名和内容键统计,指定时间段内)
 display:
   type: metric
-  title: 宿主机监控指标 - Quick CPU / Mem / Disk - CPU Busy
-  unit: percent(0-100)百分比
+  title: Originx 北极星指标 (服务层级) - RED指标 - 平均响应时间
+  unit: ms
 parameters:
-  - name: node
+  - name: service_name
     type: string
     required: true
     label:
-      en_US: node
-      zh_Hans: node
-      pt_BR: node
+      en_US: service_name
+      zh_Hans: service_name
+      pt_BR: service_name
     human_description:
-      en_US: Specified host name
-      zh_Hans: 指定的主机名
-      pt_BR: Specified host name
-    llm_description: Specified host name
+      en_US: Specified service name
+      zh_Hans: 指定的服务名
+      pt_BR: Specified service name
+    llm_description: 指定的服务名
+    form: llm
+  - name: content_key
+    type: string
+    required: true
+    label:
+      en_US: content_key
+      zh_Hans: content_key
+      pt_BR: content_key
+    human_description:
+      en_US: Specified endpoint name
+      zh_Hans: 指定的服务端点名
+      pt_BR: Specified endpoint name
+    llm_description: 指定的服务端点名
     form: llm
   - name: startTime
     type: number

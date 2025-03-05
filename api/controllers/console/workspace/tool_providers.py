@@ -563,6 +563,22 @@ class ToolBuiltinListApi(Resource):
             ]
         )
 
+class APOToolListApi(Resource):
+    def get(self):
+        user = current_user
+
+        user_id = user.id
+        tenant_id = user.current_tenant_id
+
+        return jsonable_encoder(
+            [
+                provider.to_dict()
+                for provider in BuiltinToolManageService.list_all_apo_tools(
+                    user_id,
+                    tenant_id,
+                )
+            ]
+        )
 
 class APOToolBuiltinListApi(Resource):
     def get(self):
@@ -785,6 +801,7 @@ api.add_resource(ToolWorkflowProviderListToolApi, "/workspaces/current/tool-prov
 
 api.add_resource(ToolBuiltinListApi, "/workspaces/current/tools/builtin")
 api.add_resource(APOToolBuiltinListApi, "/workspaces/current/tools/apo")
+api.add_resource(APOToolListApi, "/workspaces/current/tools/apo/list")
 api.add_resource(APOToolPreviewApi, "/workspaces/current/tools/apo/preview")
 api.add_resource(ToolApiListApi, "/workspaces/current/tools/api")
 api.add_resource(ToolWorkflowListApi, "/workspaces/current/tools/workflow")

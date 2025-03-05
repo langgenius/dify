@@ -14,7 +14,7 @@ description:
 display:
   type: alert
   title: alert
-  uint: alert
+  unit: alert
 parameters:
   - name: service
     type: string

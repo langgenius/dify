@@ -14,7 +14,7 @@ description:
 display:
   type: topology
   title: topology
-  uint: toplogy
+  unit: toplogy
 parameters:
   - name: service
     type: string

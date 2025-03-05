@@ -14,7 +14,7 @@ description:
 display:
   type: metric
   title: 基础设施情况 - 容器网络 - 与下游服务RTT
-  uint: s 秒
+  unit: s 秒
 parameters:
   - name: pod
     type: string
