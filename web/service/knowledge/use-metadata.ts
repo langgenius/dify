@@ -1,8 +1,9 @@
 import type { BuiltInMetadataItem, MetadataBatchEditToServer, MetadataItemWithValueLength } from '@/app/components/datasets/metadata/types'
 import { del, get, patch, post } from '../base'
 
-import { useMutation, useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useInvalid } from '../use-base'
+import type { DocumentDetailResponse } from '@/models/datasets'
 
 const NAME_SPACE = 'dataset-metadata'
 
@@ -68,14 +69,34 @@ export const useBuiltInMetaDataFields = () => {
   })
 }
 
+export const useDocumentMetaData = ({ datasetId, documentId }: { datasetId: string, documentId: string }) => {
+  return useQuery<DocumentDetailResponse>({
+    queryKey: [NAME_SPACE, 'document', datasetId, documentId],
+    queryFn: () => {
+      return get<DocumentDetailResponse>(`/datasets/${datasetId}/documents/${documentId}`, { params: { metadata: 'only' } })
+    },
+  })
+}
+
 export const useBatchUpdateDocMetadata = () => {
+  const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: (payload: {
+    mutationFn: async (payload: {
       dataset_id: string
       metadata_list: MetadataBatchEditToServer
     }) => {
-      // /console/api/datasets/{dataset_id}/documents/metadata
-      return post(`/datasets/${payload.dataset_id}/documents/metadata`, payload.metadata_list)
+      const documentIds = payload.metadata_list.map(item => item.document_id)
+      await post(`/datasets/${payload.dataset_id}/documents/metadata`, {
+        body: {
+          operation_data: payload.metadata_list,
+        },
+      })
+      // invalidate document metadata
+      await Promise.all(documentIds.map(documentId => queryClient.invalidateQueries(
+        {
+          queryKey: [NAME_SPACE, 'document', payload.dataset_id, documentId],
+        },
+      )))
     },
   })
 }

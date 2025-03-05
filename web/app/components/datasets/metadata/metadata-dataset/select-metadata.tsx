@@ -11,7 +11,7 @@ const i18nPrefix = 'dataset.metadata.selectMetadata'
 
 type Props = {
   list: MetadataItem[]
-  onSelect: (data: any) => void
+  onSelect: (data: MetadataItem) => void
   onNew: () => void
   onManage: () => void
 }
@@ -40,7 +40,11 @@ const SelectMetadata: FC<Props> = ({
             <div
               key={item.id}
               className='mx-1 flex items-center h-6  px-3 justify-between rounded-md hover:bg-state-base-hover cursor-pointer'
-              onClick={() => onSelect(item)}
+              onClick={() => onSelect({
+                id: item.id,
+                name: item.name,
+                type: item.type,
+              })}
             >
               <div className='w-0 grow flex items-center h-full text-text-secondary'>
                 <Icon className='shrink-0 mr-[5px] size-3.5' />

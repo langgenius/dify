@@ -1,4 +1,4 @@
-import { useBatchUpdateDocMetadata } from '@/service/knowledge/use-metadata'
+import { useBatchUpdateDocMetadata, useDocumentMetaData } from '@/service/knowledge/use-metadata'
 import type { BuiltInMetadataItem } from '../types'
 import { DataType, type MetadataItemWithValue } from '../types'
 import { useCallback, useState } from 'react'
@@ -9,27 +9,6 @@ import { useLanguages, useMetadataMap } from '@/hooks/use-metadata'
 import { get } from 'lodash-es'
 import { useCreateMetaData } from '@/service/knowledge/use-metadata'
 import useCheckMetadataName from './use-check-metadata-name'
-
-const testList = [
-  {
-    id: '1',
-    name: 'Doc type',
-    value: 'PDF',
-    type: DataType.string,
-  },
-  {
-    id: '2',
-    name: 'Title',
-    value: 'PDF',
-    type: DataType.string,
-  },
-  {
-    id: '3',
-    name: 'Date',
-    value: null,
-    type: DataType.time,
-  },
-]
 
 type Props = {
   datasetId: string
@@ -48,8 +27,14 @@ const useMetadataDocument = ({
   const { checkName } = useCheckMetadataName()
 
   const [isEdit, setIsEdit] = useState(false)
+  const { data: documentDetail } = useDocumentMetaData({
+    datasetId,
+    documentId,
+  })
 
-  const [list, setList] = useState<MetadataItemWithValue[]>(testList)
+  const allList = documentDetail?.doc_metadata || []
+  const list = allList.filter(item => item.id !== 'built-in')
+  const builtList = allList.filter(item => item.id === 'built-in')
   const [tempList, setTempList] = useState<MetadataItemWithValue[]>(list)
   const { mutate: doAddMetaData } = useCreateMetaData(datasetId)
   const handleSelectMetaData = useCallback((metaData: MetadataItemWithValue) => {
@@ -86,7 +71,6 @@ const useMetadataDocument = ({
         metadata_list: tempList,
       }],
     })
-    setList(tempList)
     setIsEdit(false)
     Toast.notify({
       type: 'success',
@@ -105,21 +89,6 @@ const useMetadataDocument = ({
   }
 
   const builtInEnabled = true
-
-  const builtList = [
-    {
-      id: '1',
-      name: 'OriginalfileNmae',
-      value: 'Steve Jobs The Man Who Thought Different.pdf',
-      type: DataType.string,
-    },
-    {
-      id: '2',
-      name: 'Title',
-      value: 'PDF',
-      type: DataType.string,
-    },
-  ]
 
   // old metadata and technical params
   const metadataMap = useMetadataMap()
@@ -165,7 +134,6 @@ const useMetadataDocument = ({
     isEdit,
     setIsEdit,
     list,
-    setList,
     tempList,
     setTempList,
     handleSelectMetaData,
