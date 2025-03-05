@@ -1,10 +1,8 @@
-import { memo, useContext } from 'react'
-import I18n from '@/context/i18n'
-import { getLanguage } from '@/i18n/language'
+import { useGetLanguage } from '@/context/i18n'
+import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
 const ParametersInfo = ({ parameter }) => {
-  const { locale } = useContext(I18n)
-  const language = getLanguage(locale)
+  const language = useGetLanguage()
   const { t } = useTranslation()
   const getType = (type: string) => {
     if (type === 'number-input')

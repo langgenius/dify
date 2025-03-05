@@ -14,6 +14,7 @@ const translation = {
     alert: 'Alert events',
     log: 'Log data',
     custom: 'Custom query return data',
+    metric: 'Metric Line Chart',
   },
 
 }

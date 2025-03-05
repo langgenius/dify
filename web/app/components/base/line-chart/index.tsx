@@ -2,62 +2,99 @@ import React, { memo, useEffect, useRef, useState } from 'react'
 import ReactECharts from 'echarts-for-react'
 import { useTranslation } from 'react-i18next'
 import dayjs from 'dayjs'
+const formatMGT = (y) => {
+  const yy = Math.abs(y)
+  if (yy >= 1024 * 1024) {
+    return y < 0
+      ? `${-1 * +(yy / (1024 * 1024)).toFixed(2)}T`
+      : `${(yy / (1024 * 1024)).toFixed(2)}T`
+  }
+  else if (yy >= 1024) {
+    return y < 0 ? `${-1 * +(yy / 1024).toFixed(2)}G` : `${(yy / 1024).toFixed(2)}G`
+  }
+  else if (yy < 1024 && yy >= 1) {
+    return y < 0 ? `${-1 * +yy.toFixed(2)}M` : `${yy.toFixed(2)}M`
+  }
+  else if (yy < 1 && yy > 0) {
+    return y < 0 ? `${-1 * yy}M` : `${yy}M`
+  }
+  else if (yy === 0) {
+    return 0
+  }
+  else {
+    return `${yy}M`
+  }
+}
 export const adjustAlpha = (color: string, alpha: number) => {
   const rgba = color.match(/\d+/g)
   return `rgba(${rgba[0]}, ${rgba[1]}, ${rgba[2]}, ${alpha})`
 }
 
 const formatTimeUTC = (value: number) => {
-  return dayjs(value * 1000).format('HH:mm:ss')
+  return dayjs(value).format('HH:mm:ss')
 }
 const formatDay = (value: number) => {
   return dayjs(value).format('YYYY-MM-DD HH:mm:ss')
 }
-type LineChartData = {
+type ChartData = {
   [key: string]: number;
 }
-type LineChartType = 'cpu' | 'network' | 'memory'
+type LineChartData = {
+  legend: string
+  legendFormat: string
+  labels: {
+    [key: string]: string;
+  }
+  chart: {
+    chartData: ChartData
+  }
+}
 type LineChartProps = {
-  data: LineChartData
-  type: LineChartType
+  data: LineChartData[]
+  unit: string
 }
-const DelayLineChartTitleMap: Record<LineChartType, string> = {
-  cpu: 'cpu指标',
-  network: '网络时延',
-  memory: '内存占用',
-}
-const MetricsLineChartColor = {
-  network: 'rgba(212, 164, 235, 1)',
-  memory: 'rgba(212, 164, 235, 1)',
-  cpu: 'rgba(55, 162,235, 1)',
-}
+// const DelayLineChartTitleMap: Record<LineChartType, string> = {
+//   cpu: 'cpu指标',
+//   network: '网络时延',
+//   memory: '内存占用',
+// }
+// const MetricsLineChartColor = {
+//   network: 'rgba(212, 164, 235, 1)',
+//   memory: 'rgba(212, 164, 235, 1)',
+//   cpu: 'rgba(55, 162,235, 1)',
+// }
 
 export const YValueMinInterval = {
   network: 0.01,
   memory: 0.01,
   cpu: 0.01,
 }
-const LineChart = ({ type, data }: LineChartProps) => {
+const LineChart = (props: LineChartProps) => {
+  const { data, unit } = props
   const { t } = useTranslation()
   const chartRef = useRef(null)
   const convertYValue = (value: number) => {
-    switch (type) {
-      case 'network':
+    switch (unit) {
+      // case 'network':
+      //   if (value > 0 && value < 0.01)
+      //     return '< 0.01 s'
+      //   return `${value}s`
+      // case 'memory':
+      //   if (value > 0 && value < 0.01)
+      //     return '< 0.01 bytes'
+      //   return `${value}bytes`
+      case 'percent':
         if (value > 0 && value < 0.01)
-          return '< 0.01 s'
-        return `${value}s`
-      case 'memory':
-        if (value > 0 && value < 0.01)
-          return '< 0.01 bytes'
-        return `${value}bytes`
-      case 'cpu':
-        if (value > 0 && value < 0.0001)
           return '< 0.01%'
-        return `${Number.parseFloat((value * 100).toFixed(2))}%`
-        //   case 'tps':
-        //     if (value > 0 && value < 0.01)
-        //       return `< 0.01${t('units.timesPerMinute')}`
-        // return Number.parseFloat((Math.floor(value * 100) / 100).toString()) + t('units.timesPerMinute')
+        return `${Number.parseFloat((value).toFixed(2))}%`
+      case 'bytes':
+        if (value > 0 && value < 0.01)
+          return `< 0.01 ${unit}`
+        return `${formatMGT(Number.parseFloat((value).toFixed(2)))} ${unit}`
+      default:
+        if (value > 0 && value < 0.01)
+          return `< 0.01 ${unit}`
+        return `${Number.parseFloat((value).toFixed(2))} ${unit}`
     }
   }
   const [option, setOption] = useState<any>({
@@ -76,14 +113,14 @@ const LineChart = ({ type, data }: LineChartProps) => {
             if (axisDimension === 'y')
               return convertYValue(value)
             else
-              return formatDay(value * 1000)
+              return formatDay(value)
 
             // return `自定义格式: ${params.value}`;
           },
         },
       },
       formatter: (params) => {
-        let result = `<div class="rgb(102, 102, 102)">${formatDay(params.data[0] * 1000)}<br/></div>
+        let result = `<div class="rgb(102, 102, 102)">${formatDay(params.data[0])}<br/></div>
         <div class="overflow-hidden w-full " >`
         result += `<div class="flex flex-row items-center justify-between">
                       <div class="flex flex-row items-center flex-nowrap flex-shrink flex-1 whitespace-normal break-words">
@@ -114,14 +151,9 @@ const LineChart = ({ type, data }: LineChartProps) => {
       left: '3%',
       right: '4%',
       bottom: '3%',
-      top: '4%',
+      top: '15%',
       containLabel: true,
     },
-    // toolbox: {
-    //   feature: {
-    //     saveAsImage: {},
-    //   },
-    // },
     xAxis: {
       type: 'time',
       boundaryGap: false,
@@ -136,27 +168,16 @@ const LineChart = ({ type, data }: LineChartProps) => {
           return formatTimeUTC(value)
         },
       },
-      // axisLine: {
-      //   lineStyle: {
-      //     color: '#000000', // 设置 x 轴刻度线颜色
-      //   },
-      // },
-      // axisTick: {
-      //   lineStyle: {
-      //     color: '#000000', // 设置 x 轴刻度线颜色
-      //   },
-      // },
     },
     yAxis: {
       type: 'value',
-      minInterval: YValueMinInterval[type],
+      minInterval: 0.01,
       min: 0,
       axisLabel: {
         formatter(value: number) {
-          if(type === 'cpu')
-            return Number.parseFloat((value * 100).toFixed(2))
-
-          return value
+          if(unit === 'bytes')
+            return formatMGT(Number.parseFloat((value).toFixed(2)))
+          return Number.parseFloat((value).toFixed(2))
         },
       },
     },
@@ -174,25 +195,9 @@ const LineChart = ({ type, data }: LineChartProps) => {
     },
   })
 
-  //   // 处理缺少数据的时间点并补0
-  //   const fillMissingData = () => {
-  //     const filledData = []
-  //     const { startTime, endTime } = timeRange
-  //     const step = getStep(startTime, endTime)
-
-  //     for (let time = startTime; time <= endTime; time += step) {
-  //       filledData.push({
-  //         timestamp: time, // 用于显示在图例中
-  //         value: data[time] || 0,
-  //       })
-  //     }
-  //     return filledData
-  //   }
-
   useEffect(() => {
     if (data) {
     //   const filledData = fillMissingData()
-
       setOption({
         ...option,
         xAxis: {
@@ -211,18 +216,22 @@ const LineChart = ({ type, data }: LineChartProps) => {
         //   min: timeRange.startTime / 1000,
         //   max: timeRange.endTime / 1000,
         },
-        series: [
-          {
-            data: Object.entries(data).map(([key, value]) => [Number(key) / 1000, value]),
-            type: 'line',
-            smooth: true,
-            name: DelayLineChartTitleMap[type],
-            color: MetricsLineChartColor[type],
-            areaStyle: {
-              color: adjustAlpha(MetricsLineChartColor[type], 0.3), // 设置区域填充颜色
-            },
-          },
-        ],
+        legend: {
+          type: 'scroll',
+          data: data.map(item => item.legend),
+        },
+        series: data.map(item => ({
+          data: Object.entries(item.chart.chartData)
+            .map(([key, value]) => [Number(key) / 1000, value]) // 处理微秒级时间戳
+            .sort((a, b) => a[0] - b[0]),
+          type: 'line',
+          smooth: true,
+          name: item.legend,
+          showSymbol: false,
+          // areaStyle: {
+          //   color: adjustAlpha(MetricsLineChartColor[type], 0.3), // 设置区域填充颜色
+          // },
+        })),
       })
     }
   }, [data])

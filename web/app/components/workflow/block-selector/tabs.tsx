@@ -34,7 +34,7 @@ const Tabs: FC<TabsProps> = ({
   const { data: workflowTools } = useAllWorkflowTools()
 
   return (
-    <div onClick={e => e.stopPropagation()}>
+    <div onClick={e => e.stopPropagation()} className='h-full flex flex-col'>
       {
         !noBlocks && (
           <div className='flex items-center px-3 border-b-[0.5px] border-divider-subtle'>
@@ -59,12 +59,12 @@ const Tabs: FC<TabsProps> = ({
       }
       {
         activeTab === TabsEnum.Blocks && !noBlocks && (
-          <><APOTools onSelect={onSelect} searchText={searchText}/>
+          <div className='h-0 grow overflow-y-auto'><APOTools onSelect={onSelect} searchText={searchText}/>
             <Blocks
               searchText={searchText}
               onSelect={onSelect}
               availableBlocksTypes={availableBlocksTypes}
-            /></>
+            /></div>
         )
       }
       {

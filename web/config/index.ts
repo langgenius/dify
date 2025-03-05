@@ -43,7 +43,7 @@ if(process.env.NEXT_PUBLIC_V1_API_PREFIX)
   v1ApiPrefix = process.env.NEXT_PUBLIC_V1_API_PREFIX
 
 else if(globalThis.document?.body?.getAttribute('data-v1-api-prefix'))
-  v1ApiPrefix =  globalThis.document?.body?.getAttribute('data-v1-api-prefix')
+  v1ApiPrefix = globalThis.document?.body?.getAttribute('data-v1-api-prefix')
 
 else
   v1ApiPrefix = 'http://localhost:5001/v1'

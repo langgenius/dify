@@ -167,3 +167,10 @@ export const fetchApoTools = (apoToolType: string, queryText: string) => {
     },
   })
 }
+export const testApoTools = (params: any) => {
+  return post('/workspaces/current/tools/apo/preview', { body: params })
+}
+
+export const fetchApoNode = () => {
+  return get('/workspaces/current/tools/apo/list')
+}

@@ -14,6 +14,7 @@ const translation = {
     alert: '告警事件',
     log: '日志数据',
     custom: '自定义查询返回数据',
+    metric: '指标折线图',
   },
 
 }
