@@ -76,7 +76,7 @@ export const correctToolProvider = (provider: string) => {
   if (provider.includes('/'))
     return provider
 
-  if (['stepfun', 'jina', 'siliconflow'].includes(provider))
+  if (['stepfun', 'jina', 'siliconflow', 'gitee_ai'].includes(provider))
     return `langgenius/${provider}_tool/${provider}`
 
   return `langgenius/${provider}/${provider}`
@@ -84,6 +84,6 @@ export const correctToolProvider = (provider: string) => {
 
 export const canFindTool = (providerId: string, oldToolId?: string) => {
   return providerId === oldToolId
-  || providerId === `langgenius/${oldToolId}/${oldToolId}`
-  || providerId === `langgenius/${oldToolId}_tool/${oldToolId}`
+    || providerId === `langgenius/${oldToolId}/${oldToolId}`
+    || providerId === `langgenius/${oldToolId}_tool/${oldToolId}`
 }
