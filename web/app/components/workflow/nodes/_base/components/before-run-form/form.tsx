@@ -1,6 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import React, { useCallback, useMemo } from 'react'
+import React, { useCallback, useEffect, useMemo, useRef } from 'react'
 import produce from 'immer'
 import type { InputVar } from '../../../../types'
 import FormItem from './form-item'
@@ -9,7 +9,7 @@ import { InputVarType } from '@/app/components/workflow/types'
 import AddButton from '@/app/components/base/button/add-button'
 import { RETRIEVAL_OUTPUT_STRUCT } from '@/app/components/workflow/constants'
 
-export interface Props {
+export type Props = {
   className?: string
   label?: string
   inputs: InputVar[]
@@ -46,17 +46,20 @@ const Form: FC<Props> = ({
 
     return m
   }, [inputs])
-
+  const valuesRef = useRef(values)
+  useEffect(() => {
+    valuesRef.current = values
+  }, [values])
   const handleChange = useCallback((key: string) => {
     const mKeys = mapKeysWithSameValueSelector.get(key) ?? [key]
     return (value: any) => {
-      const newValues = produce(values, (draft) => {
+      const newValues = produce(valuesRef.current, (draft) => {
         for (const k of mKeys)
           draft[k] = value
       })
       onChange(newValues)
     }
-  }, [values, onChange, mapKeysWithSameValueSelector])
+  }, [valuesRef, onChange, mapKeysWithSameValueSelector])
   const isArrayLikeType = [InputVarType.contexts, InputVarType.iterator].includes(inputs[0]?.type)
   const isContext = inputs[0]?.type === InputVarType.contexts
   const handleAddContext = useCallback(() => {
