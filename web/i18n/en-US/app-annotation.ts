@@ -17,7 +17,7 @@ const translation = {
       bulkImport: 'Bulk Import',
       bulkExport: 'Bulk Export',
       clearAll: 'Clear All Annotation',
-      clearAllConfirm: 'Are you sure you want to delete all annotations? This action cannot be undone.'
+      clearAllConfirm: 'Are you sure you want to delete all annotations? This action cannot be undone.',
     },
   },
   editModal: {
