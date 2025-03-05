@@ -126,8 +126,8 @@ x-shared-env: &shared-api-worker-env
   SUPABASE_BUCKET_NAME: ${SUPABASE_BUCKET_NAME:-your-bucket-name}
   SUPABASE_API_KEY: ${SUPABASE_API_KEY:-your-access-key}
   SUPABASE_URL: ${SUPABASE_URL:-your-server-url}
-  VECTOR_STORE: ${VECTOR_STORE:-weaviate}
-  WEAVIATE_ENDPOINT: ${WEAVIATE_ENDPOINT:-http://weaviate:8080}
+  VECTOR_STORE: ${VECTOR_STORE:-dify-weaviate}
+  WEAVIATE_ENDPOINT: ${WEAVIATE_ENDPOINT:-http://dify-weaviate:8080}
   WEAVIATE_API_KEY: ${WEAVIATE_API_KEY:-WVF5YThaHlkYwhGUSmCRgsX3tD5ngdN8pkih}
   QDRANT_URL: ${QDRANT_URL:-http://qdrant:6333}
   QDRANT_API_KEY: ${QDRANT_API_KEY:-difyai123456}
@@ -157,7 +157,7 @@ x-shared-env: &shared-api-worker-env
   PGVECTOR_DATABASE: ${PGVECTOR_DATABASE:-dify}
   PGVECTOR_MIN_CONNECTION: ${PGVECTOR_MIN_CONNECTION:-1}
   PGVECTOR_MAX_CONNECTION: ${PGVECTOR_MAX_CONNECTION:-5}
-  PGVECTO_RS_HOST: ${PGVECTO_RS_HOST:-pgvecto-rs}
+  PGVECTO_RS_HOST: ${PGVECTO_RS_HOST:-dify-pgvecto-rs}
   PGVECTO_RS_PORT: ${PGVECTO_RS_PORT:-5432}
   PGVECTO_RS_USER: ${PGVECTO_RS_USER:-postgres}
   PGVECTO_RS_PASSWORD: ${PGVECTO_RS_PASSWORD:-difyai123456}
@@ -286,7 +286,7 @@ x-shared-env: &shared-api-worker-env
   INDEXING_MAX_SEGMENTATION_TOKENS_LENGTH: ${INDEXING_MAX_SEGMENTATION_TOKENS_LENGTH:-4000}
   INVITE_EXPIRY_HOURS: ${INVITE_EXPIRY_HOURS:-72}
   RESET_PASSWORD_TOKEN_EXPIRY_MINUTES: ${RESET_PASSWORD_TOKEN_EXPIRY_MINUTES:-5}
-  CODE_EXECUTION_ENDPOINT: ${CODE_EXECUTION_ENDPOINT:-http://sandbox:8194}
+  CODE_EXECUTION_ENDPOINT: ${CODE_EXECUTION_ENDPOINT:-http://dify-sandbox:8194}
   CODE_EXECUTION_API_KEY: ${CODE_EXECUTION_API_KEY:-dify-sandbox}
   CODE_MAX_NUMBER: ${CODE_MAX_NUMBER:-9223372036854775807}
   CODE_MIN_NUMBER: ${CODE_MIN_NUMBER:--9223372036854775808}
@@ -378,7 +378,7 @@ x-shared-env: &shared-api-worker-env
   SSRF_HTTP_PORT: ${SSRF_HTTP_PORT:-3128}
   SSRF_COREDUMP_DIR: ${SSRF_COREDUMP_DIR:-/var/spool/squid}
   SSRF_REVERSE_PROXY_PORT: ${SSRF_REVERSE_PROXY_PORT:-8194}
-  SSRF_SANDBOX_HOST: ${SSRF_SANDBOX_HOST:-sandbox}
+  SSRF_SANDBOX_HOST: ${SSRF_SANDBOX_HOST:-dify-sandbox}
   SSRF_DEFAULT_TIME_OUT: ${SSRF_DEFAULT_TIME_OUT:-5}
   SSRF_DEFAULT_CONNECT_TIME_OUT: ${SSRF_DEFAULT_CONNECT_TIME_OUT:-5}
   SSRF_DEFAULT_READ_TIME_OUT: ${SSRF_DEFAULT_READ_TIME_OUT:-5}
@@ -415,7 +415,8 @@ x-shared-env: &shared-api-worker-env
 
 services:
   # API service
-  api:
+  dify-api:
+    container_name: dify-api
     image: langgenius/dify-api:1.0.0
     restart: always
     environment:
@@ -431,8 +432,8 @@ services:
       PLUGIN_MAX_PACKAGE_SIZE: ${PLUGIN_MAX_PACKAGE_SIZE:-52428800}
       INNER_API_KEY_FOR_PLUGIN: ${PLUGIN_DIFY_INNER_API_KEY:-QaHbTe77CtuXmsfyhR7+vRjI/+XbV1AaFy691iy+kGDv2Jvy0/eAh8Y1}
     depends_on:
-      - db
-      - redis
+      - dify-db
+      - dify-redis
     volumes:
       # Mount the storage directory to the container, for storing user files.
       - ./volumes/app/storage:/app/api/storage
@@ -442,7 +443,8 @@ services:
 
   # worker service
   # The Celery worker for processing the queue.
-  worker:
+  dify-worker:
+    container_name: dify-worker
     image: langgenius/dify-api:1.0.0
     restart: always
     environment:
@@ -456,8 +458,8 @@ services:
       PLUGIN_MAX_PACKAGE_SIZE: ${PLUGIN_MAX_PACKAGE_SIZE:-52428800}
       INNER_API_KEY_FOR_PLUGIN: ${PLUGIN_DIFY_INNER_API_KEY:-QaHbTe77CtuXmsfyhR7+vRjI/+XbV1AaFy691iy+kGDv2Jvy0/eAh8Y1}
     depends_on:
-      - db
-      - redis
+      - dify-db
+      - dify-redis
     volumes:
       # Mount the storage directory to the container, for storing user files.
       - ./volumes/app/storage:/app/api/storage
@@ -466,7 +468,8 @@ services:
       - default
 
   # Frontend web application.
-  web:
+  dify-web:
+    container_name: dify-web
     image: langgenius/dify-web:1.0.0
     restart: always
     environment:
@@ -483,7 +486,8 @@ services:
       PM2_INSTANCES: ${PM2_INSTANCES:-2}
 
   # The postgres database.
-  db:
+  dify-db:
+    container_name: dify-db
     image: postgres:15-alpine
     restart: always
     environment:
@@ -508,7 +512,8 @@ services:
       - '${EXPOSE_DB_PORT:-5432}:5432'
 
   # The redis cache.
-  redis:
+  dify-redis:
+    container_name: dify-redis
     image: redis:6-alpine
     restart: always
     environment:
@@ -522,7 +527,8 @@ services:
       test: [ 'CMD', 'redis-cli', 'ping' ]
 
   # The DifySandbox
-  sandbox:
+  dify-sandbox:
+    container_name: dify-sandbox
     image: langgenius/dify-sandbox:0.2.10
     restart: always
     environment:
@@ -545,7 +551,8 @@ services:
       - ssrf_proxy_network
 
   # plugin daemon
-  plugin_daemon:
+  dify-plugin_daemon:
+    container_name: dify-plugin_daemon
     image: langgenius/dify-plugin-daemon:0.0.3-local
     restart: always
     environment:
@@ -556,7 +563,7 @@ services:
       SERVER_KEY: ${PLUGIN_DAEMON_KEY:-lYkiYYT6owG+71oLerGzA7GXCgOT++6ovaezWAjpCjf+Sjc3ZtU+qUEi}
       MAX_PLUGIN_PACKAGE_SIZE: ${PLUGIN_MAX_PACKAGE_SIZE:-52428800}
       PPROF_ENABLED: ${PLUGIN_PPROF_ENABLED:-false}
-      DIFY_INNER_API_URL: ${PLUGIN_DIFY_INNER_API_URL:-http://api:5001}
+      DIFY_INNER_API_URL: ${PLUGIN_DIFY_INNER_API_URL:-http://dify-api:5001}
       DIFY_INNER_API_KEY: ${INNER_API_KEY_FOR_PLUGIN:-QaHbTe77CtuXmsfyhR7+vRjI/+XbV1AaFy691iy+kGDv2Jvy0/eAh8Y1}
       PLUGIN_REMOTE_INSTALLING_HOST: ${EXPOSE_PLUGIN_DEBUGGING_HOST:-localhost}
       PLUGIN_REMOTE_INSTALLING_PORT: ${EXPOSE_PLUGIN_DEBUGGING_PORT:-5003}
@@ -567,11 +574,11 @@ services:
     volumes:
       - ./volumes/plugin_daemon:/app/storage
 
-
   # ssrf_proxy server
   # for more information, please refer to
   # https://docs.dify.ai/learn-more/faq/install-faq#id-18.-why-is-ssrf_proxy-needed
-  ssrf_proxy:
+  dify-ssrf_proxy:
+    container_name: dify-ssrf_proxy
     image: ubuntu/squid:latest
     restart: always
     volumes:
@@ -583,7 +590,7 @@ services:
       HTTP_PORT: ${SSRF_HTTP_PORT:-3128}
       COREDUMP_DIR: ${SSRF_COREDUMP_DIR:-/var/spool/squid}
       REVERSE_PROXY_PORT: ${SSRF_REVERSE_PROXY_PORT:-8194}
-      SANDBOX_HOST: ${SSRF_SANDBOX_HOST:-sandbox}
+      SANDBOX_HOST: ${SSRF_SANDBOX_HOST:-dify-sandbox}
       SANDBOX_PORT: ${SANDBOX_PORT:-8194}
     networks:
       - ssrf_proxy_network
@@ -591,7 +598,8 @@ services:
 
   # Certbot service
   # use `docker-compose --profile certbot up` to start the certbot service.
-  certbot:
+  dify-certbot:
+    container_name: dify-certbot
     image: certbot/certbot
     profiles:
       - certbot
@@ -611,7 +619,8 @@ services:
 
   # The nginx reverse proxy.
   # used for reverse proxying the API service and Web service.
-  nginx:
+  dify-nginx:
+    container_name: dify-nginx
     image: nginx:latest
     restart: always
     volumes:
@@ -643,14 +652,15 @@ services:
       NGINX_ENABLE_CERTBOT_CHALLENGE: ${NGINX_ENABLE_CERTBOT_CHALLENGE:-false}
       CERTBOT_DOMAIN: ${CERTBOT_DOMAIN:-}
     depends_on:
-      - api
-      - web
+      - dify-api
+      - dify-web
     ports:
       - '${EXPOSE_NGINX_PORT:-80}:${NGINX_PORT:-80}'
       - '${EXPOSE_NGINX_SSL_PORT:-443}:${NGINX_SSL_PORT:-443}'
 
   # The Weaviate vector store.
-  weaviate:
+  dify-weaviate:
+    container_name: dify-weaviate
     image: semitechnologies/weaviate:1.19.0
     profiles:
       - ''
@@ -675,7 +685,8 @@ services:
 
   # Qdrant vector store.
   # (if used, you need to set VECTOR_STORE to qdrant in the api & worker service.)
-  qdrant:
+  dify-qdrant:
+    container_name: dify-qdrant
     image: langgenius/qdrant:v1.7.3
     profiles:
       - qdrant
@@ -686,7 +697,8 @@ services:
       QDRANT_API_KEY: ${QDRANT_API_KEY:-difyai123456}
 
   # The Couchbase vector store.
-  couchbase-server:
+  dify-couchbase-server:
+    container_name: dify-couchbase-server
     build: ./couchbase-server
     profiles:
       - couchbase
@@ -702,7 +714,6 @@ services:
       - COUCHBASE_INDEX_RAM_SIZE=512
       - COUCHBASE_FTS_RAM_SIZE=1024
     hostname: couchbase-server
-    container_name: couchbase-server
     working_dir: /opt/couchbase
     stdin_open: true
     tty: true
@@ -719,7 +730,8 @@ services:
       timeout: 10s
 
   # The pgvector vector database.
-  pgvector:
+  dify-pgvector:
+    container_name: dify-pgvector
     image: pgvector/pgvector:pg16
     profiles:
       - pgvector
@@ -741,7 +753,8 @@ services:
       retries: 30
 
   # pgvecto-rs vector store
-  pgvecto-rs:
+  dify-pgvecto-rs:
+    container_name: dify-pgvecto-rs
     image: tensorchord/pgvecto-rs:pg16-v0.3.0
     profiles:
       - pgvecto-rs
@@ -763,7 +776,8 @@ services:
       retries: 30
 
   # Chroma vector database
-  chroma:
+  dify-chroma:
+    container_name: dify-chroma
     image: ghcr.io/chroma-core/chroma:0.5.20
     profiles:
       - chroma
@@ -776,7 +790,8 @@ services:
       IS_PERSISTENT: ${CHROMA_IS_PERSISTENT:-TRUE}
 
   # OceanBase vector database
-  oceanbase:
+  dify-oceanbase:
+    container_name: dify-oceanbase
     image: quay.io/oceanbase/oceanbase-ce:4.3.3.0-100000142024101215
     profiles:
       - oceanbase
@@ -793,7 +808,8 @@ services:
       OB_SERVER_IP: '127.0.0.1'
 
   # Oracle vector database
-  oracle:
+  dify-oracle:
+    container_name: dify-oracle
     image: container-registry.oracle.com/database/free:latest
     profiles:
       - oracle
@@ -808,8 +824,8 @@ services:
       ORACLE_CHARACTERSET: ${ORACLE_CHARACTERSET:-AL32UTF8}
 
   # Milvus vector database services
-  etcd:
-    container_name: milvus-etcd
+  dify-etcd:
+    container_name: dify-milvus-etcd
     image: quay.io/coreos/etcd:v3.5.5
     profiles:
       - milvus
@@ -829,8 +845,8 @@ services:
     networks:
       - milvus
 
-  minio:
-    container_name: milvus-minio
+  dify-minio:
+    container_name: dify-milvus-minio
     image: minio/minio:RELEASE.2023-03-20T20-16-18Z
     profiles:
       - milvus
@@ -848,15 +864,15 @@ services:
     networks:
       - milvus
 
-  milvus-standalone:
-    container_name: milvus-standalone
+  dify-milvus-standalone:
+    container_name: dify-milvus-standalone
     image: milvusdb/milvus:v2.5.0-beta
     profiles:
       - milvus
     command: [ 'milvus', 'run', 'standalone' ]
     environment:
-      ETCD_ENDPOINTS: ${ETCD_ENDPOINTS:-etcd:2379}
-      MINIO_ADDRESS: ${MINIO_ADDRESS:-minio:9000}
+      ETCD_ENDPOINTS: ${ETCD_ENDPOINTS:-dify-etcd:2379}
+      MINIO_ADDRESS: ${MINIO_ADDRESS:-dify-minio:9000}
       common.security.authorizationEnabled: ${MILVUS_AUTHORIZATION_ENABLED:-true}
     volumes:
       - ./volumes/milvus/milvus:/var/lib/milvus
@@ -867,8 +883,8 @@ services:
       timeout: 20s
       retries: 3
     depends_on:
-      - etcd
-      - minio
+      - dify-etcd
+      - dify-minio
     ports:
       - 19530:19530
       - 9091:9091
@@ -876,8 +892,8 @@ services:
       - milvus
 
   # Opensearch vector database
-  opensearch:
-    container_name: opensearch
+  dify-opensearch:
+    container_name: dify-opensearch
     image: opensearchproject/opensearch:latest
     profiles:
       - opensearch
@@ -898,23 +914,23 @@ services:
     networks:
       - opensearch-net
 
-  opensearch-dashboards:
-    container_name: opensearch-dashboards
+  dify-opensearch-dashboards:
+    container_name: dify-opensearch-dashboards
     image: opensearchproject/opensearch-dashboards:latest
     profiles:
       - opensearch
     environment:
-      OPENSEARCH_HOSTS: '["https://opensearch:9200"]'
+      OPENSEARCH_HOSTS: '["https://dify-opensearch:9200"]'
     volumes:
       - ./volumes/opensearch/opensearch_dashboards.yml:/usr/share/opensearch-dashboards/config/opensearch_dashboards.yml
     networks:
       - opensearch-net
     depends_on:
-      - opensearch
+      - dify-opensearch
 
   # MyScale vector database
-  myscale:
-    container_name: myscale
+  dify-myscale:
+    container_name: dify-myscale
     image: myscale/myscaledb:1.6.4
     profiles:
       - myscale
@@ -929,9 +945,9 @@ services:
 
   # https://www.elastic.co/guide/en/elasticsearch/reference/current/settings.html
   # https://www.elastic.co/guide/en/elasticsearch/reference/current/docker.html#docker-prod-prerequisites
-  elasticsearch:
+  dify-elasticsearch:
+    container_name: dify-elasticsearch
     image: docker.elastic.co/elasticsearch/elasticsearch:8.14.3
-    container_name: elasticsearch
     profiles:
       - elasticsearch
       - elasticsearch-ja
@@ -964,24 +980,24 @@ services:
 
   # https://www.elastic.co/guide/en/kibana/current/docker.html
   # https://www.elastic.co/guide/en/kibana/current/settings.html
-  kibana:
+  dify-kibana:
+    container_name: dify-kibana
     image: docker.elastic.co/kibana/kibana:8.14.3
-    container_name: kibana
     profiles:
       - elasticsearch
     depends_on:
-      - elasticsearch
+      - dify-elasticsearch
     restart: always
     environment:
       XPACK_ENCRYPTEDSAVEDOBJECTS_ENCRYPTIONKEY: d1a66dfd-c4d3-4a0a-8290-2abcb83ab3aa
-      NO_PROXY: localhost,127.0.0.1,elasticsearch,kibana
+      NO_PROXY: localhost,127.0.0.1,dify-elasticsearch,dify-kibana
       XPACK_SECURITY_ENABLED: 'true'
       XPACK_SECURITY_ENROLLMENT_ENABLED: 'false'
       XPACK_SECURITY_HTTP_SSL_ENABLED: 'false'
       XPACK_FLEET_ISAIRGAPPED: 'true'
       I18N_LOCALE: zh-CN
       SERVER_PORT: '5601'
-      ELASTICSEARCH_HOSTS: http://elasticsearch:9200
+      ELASTICSEARCH_HOSTS: http://dify-elasticsearch:9200
     ports:
       - ${KIBANA_PORT:-5601}:5601
     healthcheck:
@@ -992,7 +1008,8 @@ services:
 
   # unstructured .
   # (if used, you need to set ETL_TYPE to Unstructured in the api & worker service.)
-  unstructured:
+  dify-unstructured:
+    container_name: dify-unstructured
     image: downloads.unstructured.io/unstructured-io/unstructured-api:latest
     profiles:
       - unstructured
