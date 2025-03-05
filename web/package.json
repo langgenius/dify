@@ -206,6 +206,7 @@
   },
   "pnpm": {
     "ignoredBuiltDependencies": [
+      "canvas",
       "core-js-pure",
       "esbuild",
       "sharp"
