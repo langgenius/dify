@@ -1,11 +1,14 @@
 import { useBatchUpdateDocMetadata } from '@/service/knowledge/use-metadata'
+import type { BuiltInMetadataItem } from '../types'
 import { DataType, type MetadataItemWithValue } from '../types'
-import { useState } from 'react'
+import { useCallback, useState } from 'react'
 import Toast from '@/app/components/base/toast'
 import type { FullDocumentDetail } from '@/models/datasets'
 import { useTranslation } from 'react-i18next'
 import { useLanguages, useMetadataMap } from '@/hooks/use-metadata'
 import { get } from 'lodash-es'
+import { useCreateMetaData } from '@/service/knowledge/use-metadata'
+import useCheckMetadataName from './use-check-metadata-name'
 
 const testList = [
   {
@@ -42,10 +45,38 @@ const useMetadataDocument = ({
   const { t } = useTranslation()
 
   const { mutate } = useBatchUpdateDocMetadata()
+  const { checkName } = useCheckMetadataName()
+
   const [isEdit, setIsEdit] = useState(false)
 
   const [list, setList] = useState<MetadataItemWithValue[]>(testList)
   const [tempList, setTempList] = useState<MetadataItemWithValue[]>(list)
+  const { mutate: doAddMetaData } = useCreateMetaData(datasetId)
+  const handleSelectMetaData = useCallback((metaData: MetadataItemWithValue) => {
+    setTempList((prev) => {
+      const index = prev.findIndex(item => item.id === metaData.id)
+      if (index === -1)
+        return [...prev, metaData]
+
+      return prev
+    })
+  }, [])
+  const handleAddMetaData = useCallback(async (payload: BuiltInMetadataItem) => {
+    const errorMsg = checkName(payload.name).errorMsg
+    if (errorMsg) {
+      Toast.notify({
+        message: errorMsg,
+        type: 'error',
+      })
+      return Promise.reject(new Error(errorMsg))
+    }
+    await doAddMetaData(payload)
+    Toast.notify({
+      type: 'success',
+      message: t('common.api.actionSuccess'),
+    })
+  }, [checkName, doAddMetaData, t])
+
   const hasData = list.length > 0
   const handleSave = async () => {
     await mutate({
@@ -137,6 +168,8 @@ const useMetadataDocument = ({
     setList,
     tempList,
     setTempList,
+    handleSelectMetaData,
+    handleAddMetaData,
     hasData,
     builtList,
     builtInEnabled,

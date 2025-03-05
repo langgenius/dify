@@ -26,12 +26,15 @@ const MetadataDocument: FC<Props> = ({
   docDetail,
 }) => {
   const { t } = useTranslation()
+
   const {
     isEdit,
     setIsEdit,
     list,
     tempList,
     setTempList,
+    handleSelectMetaData,
+    handleAddMetaData,
     hasData,
     builtList,
     builtInEnabled,
@@ -77,10 +80,8 @@ const MetadataDocument: FC<Props> = ({
               const newList = tempList.filter(i => i.name !== item.name)
               setTempList(newList)
             }}
-            onAdd={(payload) => {
-              const newList = [...tempList, payload]
-              setTempList(newList)
-            }}
+            onAdd={handleAddMetaData}
+            onSelect={handleSelectMetaData}
           />
           {builtInEnabled && (
             <>

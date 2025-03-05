@@ -7,11 +7,13 @@ import SelectMetadata from './select-metadata'
 import { PortalToFollowElem, PortalToFollowElemContent, PortalToFollowElemTrigger } from '../../../base/portal-to-follow-elem'
 import type { MetadataItem } from '../types'
 import type { Placement } from '@floating-ui/react'
-import { DataType } from '../types'
+import { useDatasetMetaData } from '@/service/knowledge/use-metadata'
 
 type Props = {
+  datasetId: string
   popupPlacement?: Placement
   popupOffset?: { mainAxis: number, crossAxis: number }
+  onSelect: (data: MetadataItem) => void
   onSave: (data: MetadataItem) => void
   trigger: React.ReactNode
   onManage: () => void
@@ -22,25 +24,23 @@ enum Step {
   create = 'create',
 }
 
-const testMetadataList: MetadataItem[] = [
-  { id: '1', name: 'name1', type: DataType.string },
-  { id: '2', name: 'name2', type: DataType.number },
-  { id: '3', name: 'name3', type: DataType.time },
-]
-
 const SelectMetadataModal: FC<Props> = ({
+  datasetId,
   popupPlacement = 'left-start',
   popupOffset = { mainAxis: -38, crossAxis: 4 },
   trigger,
+  onSelect,
   onSave,
   onManage,
 }) => {
+  const { data: datasetMetaData } = useDatasetMetaData(datasetId)
+
   const [open, setOpen] = useState(false)
   const [step, setStep] = useState(Step.select)
 
-  const handleSave = useCallback((data: MetadataItem) => {
-    onSave(data)
-    setOpen(false)
+  const handleSave = useCallback(async (data: MetadataItem) => {
+    await onSave(data)
+    setStep(Step.select)
   }, [onSave])
   return (
     <PortalToFollowElem
@@ -58,8 +58,11 @@ const SelectMetadataModal: FC<Props> = ({
       <PortalToFollowElemContent className='z-[1000]'>
         {step === Step.select ? (
           <SelectMetadata
-            onSelect={handleSave}
-            list={testMetadataList}
+            onSelect={(data) => {
+              onSelect(data)
+              setOpen(false)
+            }}
+            list={datasetMetaData?.doc_metadata || []}
             onNew={() => setStep(Step.create)}
             onManage={onManage}
           />

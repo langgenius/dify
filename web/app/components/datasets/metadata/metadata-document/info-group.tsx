@@ -25,6 +25,7 @@ type Props = {
   isEdit?: boolean
   onChange?: (item: MetadataItemWithValue) => void
   onDelete?: (item: MetadataItemWithValue) => void
+  onSelect?: (item: MetadataItemWithValue) => void
   onAdd?: (item: MetadataItemWithValue) => void
 }
 
@@ -41,6 +42,7 @@ const InfoGroup: FC<Props> = ({
   isEdit,
   onChange,
   onDelete,
+  onSelect,
   onAdd,
 }) => {
   const router = useRouter()
@@ -71,9 +73,11 @@ const InfoGroup: FC<Props> = ({
         {isEdit && (
           <div>
             <SelectMetadataModal
+              datasetId={dataSetId}
               trigger={
                 <AddMetadataButton />
               }
+              onSelect={data => onSelect?.(data as MetadataItemWithValue)}
               onSave={data => onAdd?.(data)}
               onManage={handleMangeMetadata}
             />
