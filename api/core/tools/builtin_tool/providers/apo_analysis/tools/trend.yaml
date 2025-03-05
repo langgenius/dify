@@ -1,0 +1,40 @@
+identity:
+  name: trend
+  author: APO
+  label:
+    en_US: trend
+    zh_Hans: 趋势分析
+    pt_BR: trend
+description:
+  human:
+    en_US: threshold judgement
+    zh_Hans: 基于趋势分析，分析数据是波动还是持续变化
+    pt_BR: threshold judgement
+  llm: threshold judgement
+parameters:
+  - name: metricData
+    type: string
+    required: true
+    label:
+      en_US: metricData
+      zh_Hans: metricData
+      pt_BR: metricData
+    human_description:
+      en_US: time series metric data
+      zh_Hans: 时序指标数据
+      pt_BR: time series metric data
+    llm_description: Time series indicator data
+    form: llm
+  - name: threshold
+    type: string
+    required: false
+    label:
+      en_US: threshold
+      zh_Hans: threshold
+      pt_BR: threshold
+    human_description:
+      en_US: threshold
+      zh_Hans: 趋势分析阈值
+      pt_BR: threshold
+    llm_description: threshold
+    form: llm
