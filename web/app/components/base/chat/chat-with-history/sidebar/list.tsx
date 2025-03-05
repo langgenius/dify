@@ -19,26 +19,20 @@ const List: FC<ListProps> = ({
   currentConversationId,
 }) => {
   return (
-    <div>
-      {
-        title && (
-          <div className='mb-0.5 px-3 h-[26px] text-xs font-medium text-gray-500'>
-            {title}
-          </div>
-        )
-      }
-      {
-        list.map(item => (
-          <Item
-            key={item.id}
-            isPin={isPin}
-            item={item}
-            onOperate={onOperate}
-            onChangeConversation={onChangeConversation}
-            currentConversationId={currentConversationId}
-          />
-        ))
-      }
+    <div className='space-y-0.5'>
+      {title && (
+        <div className='px-3 pt-2 pb-1 text-text-tertiary system-xs-medium-uppercase'>{title}</div>
+      )}
+      {list.map(item => (
+        <Item
+          key={item.id}
+          isPin={isPin}
+          item={item}
+          onOperate={onOperate}
+          onChangeConversation={onChangeConversation}
+          currentConversationId={currentConversationId}
+        />
+      ))}
     </div>
   )
 }

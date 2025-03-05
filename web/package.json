@@ -136,6 +136,7 @@
     "@eslint/eslintrc": "^3.1.0",
     "@eslint/js": "^9.13.0",
     "@faker-js/faker": "^9.0.3",
+    "@next/eslint-plugin-next": "^15.0.0",
     "@rgrove/parse-xml": "^4.1.0",
     "@storybook/addon-essentials": "^8.3.6",
     "@storybook/addon-interactions": "^8.3.6",

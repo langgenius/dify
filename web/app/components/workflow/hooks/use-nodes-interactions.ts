@@ -1117,9 +1117,12 @@ export const useNodesInteractions = () => {
     const {
       getNodes,
       setNodes,
+      edges,
+      setEdges,
     } = store.getState()
 
     const nodesToPaste: Node[] = []
+    const edgesToPaste: Edge[] = []
     const nodes = getNodes()
 
     if (clipboardElements.length) {
@@ -1128,6 +1131,7 @@ export const useNodesInteractions = () => {
       const currentPosition = screenToFlowPosition({ x: mousePosition.pageX, y: mousePosition.pageY })
       const offsetX = currentPosition.x - x
       const offsetY = currentPosition.y - y
+      let idMapping: Record<string, string> = {}
       clipboardElements.forEach((nodeToPaste, index) => {
         const nodeType = nodeToPaste.data.type
 
@@ -1159,7 +1163,13 @@ export const useNodesInteractions = () => {
           newIterationStartNode!.parentId = newNode.id;
           (newNode.data as IterationNodeType).start_node_id = newIterationStartNode!.id
 
-          newChildren = handleNodeIterationChildrenCopy(nodeToPaste.id, newNode.id)
+          const oldIterationStartNode = nodes
+            .find(n => n.parentId === nodeToPaste.id && n.type === CUSTOM_ITERATION_START_NODE)
+          idMapping[oldIterationStartNode!.id] = newIterationStartNode!.id
+
+          const { copyChildren, newIdMapping } = handleNodeIterationChildrenCopy(nodeToPaste.id, newNode.id, idMapping)
+          newChildren = copyChildren
+          idMapping = newIdMapping
           newChildren.forEach((child) => {
             newNode.data._children?.push(child.id)
           })
@@ -1172,7 +1182,27 @@ export const useNodesInteractions = () => {
           nodesToPaste.push(...newChildren)
       })
 
+      edges.forEach((edge) => {
+        const sourceId = idMapping[edge.source]
+        const targetId = idMapping[edge.target]
+
+        if (sourceId && targetId) {
+          const newEdge: Edge = {
+            ...edge,
+            id: `${sourceId}-${edge.sourceHandle}-${targetId}-${edge.targetHandle}`,
+            source: sourceId,
+            target: targetId,
+            data: {
+              ...edge.data,
+              _connectedNodeIsSelected: false,
+            },
+          }
+          edgesToPaste.push(newEdge)
+        }
+      })
+
       setNodes([...nodes, ...nodesToPaste])
+      setEdges([...edges, ...edgesToPaste])
       saveStateToHistory(WorkflowHistoryEvent.NodePaste)
       handleSyncWorkflowDraft()
     }

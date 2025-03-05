@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { unionBy } from 'lodash-es'
 import produce from 'immer'
@@ -139,6 +139,11 @@ const useOneStepRun = <T>({
   const checkValid = checkValidFns[data.type]
   const appId = useAppStore.getState().appDetail?.id
   const [runInputData, setRunInputData] = useState<Record<string, any>>(defaultRunInputData || {})
+  const runInputDataRef = useRef(runInputData)
+  const handleSetRunInputData = useCallback((data: Record<string, any>) => {
+    runInputDataRef.current = data
+    setRunInputData(data)
+  }, [])
   const iterationTimes = iteratorInputKey ? runInputData[iteratorInputKey].length : 0
   const [runResult, setRunResult] = useState<any>(null)
 
@@ -421,7 +426,8 @@ const useOneStepRun = <T>({
     handleRun,
     handleStop,
     runInputData,
-    setRunInputData,
+    runInputDataRef,
+    setRunInputData: handleSetRunInputData,
     runResult,
     iterationRunResult,
   }

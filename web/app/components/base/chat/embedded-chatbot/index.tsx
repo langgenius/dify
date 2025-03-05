@@ -4,7 +4,6 @@ import {
 } from 'react'
 import { useAsyncEffect } from 'ahooks'
 import { useTranslation } from 'react-i18next'
-import { RiLoopLeftLine } from '@remixicon/react'
 import {
   EmbeddedChatbotContext,
   useEmbeddedChatbotContext,
@@ -12,32 +11,30 @@ import {
 import { useEmbeddedChatbot } from './hooks'
 import { isDify } from './utils'
 import { useThemeContext } from './theme/theme-context'
-import cn from '@/utils/classnames'
+import { CssTransform } from './theme/utils'
 import { checkOrSetAccessToken } from '@/app/components/share/utils'
 import AppUnavailable from '@/app/components/base/app-unavailable'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import Loading from '@/app/components/base/loading'
 import LogoHeader from '@/app/components/base/logo/logo-embedded-chat-header'
 import Header from '@/app/components/base/chat/embedded-chatbot/header'
-import ConfigPanel from '@/app/components/base/chat/embedded-chatbot/config-panel'
 import ChatWrapper from '@/app/components/base/chat/embedded-chatbot/chat-wrapper'
-import Tooltip from '@/app/components/base/tooltip'
+import LogoSite from '@/app/components/base/logo/logo-site'
+import cn from '@/utils/classnames'
 
 const Chatbot = () => {
-  const { t } = useTranslation()
   const {
     isMobile,
     appInfoError,
     appInfoLoading,
     appData,
-    appPrevChatList,
-    showConfigPanelBeforeChat,
     appChatListDataLoading,
+    chatShouldReloadKey,
     handleNewConversation,
     themeBuilder,
   } = useEmbeddedChatbotContext()
+  const { t } = useTranslation()
 
-  const chatReady = (!showConfigPanelBeforeChat || !!appPrevChatList.length)
   const customConfig = appData?.custom_config
   const site = appData?.site
 
@@ -55,52 +52,76 @@ const Chatbot = () => {
 
   if (appInfoLoading) {
     return (
-      <Loading type='app' />
+      <>
+        {!isMobile && <Loading type='app' />}
+        {isMobile && (
+          <div className={cn('relative')}>
+            <div className={cn('flex flex-col h-[calc(100vh_-_60px)] border-[0.5px] border-components-panel-border rounded-2xl shadow-xs')}>
+              <Loading type='app' />
+            </div>
+          </div>
+        )}
+      </>
     )
   }
 
   if (appInfoError) {
     return (
-      <AppUnavailable />
+      <>
+        {!isMobile && <AppUnavailable />}
+        {isMobile && (
+          <div className={cn('relative')}>
+            <div className={cn('flex flex-col h-[calc(100vh_-_60px)] border-[0.5px] border-components-panel-border rounded-2xl shadow-xs')}>
+              <AppUnavailable />
+            </div>
+          </div>
+        )}
+      </>
     )
   }
   return (
-    <div>
-      <Header
-        isMobile={isMobile}
-        title={site?.title || ''}
-        customerIcon={isDify() ? difyIcon : ''}
-        theme={themeBuilder?.theme}
-        onCreateNewChat={handleNewConversation}
-      />
-      <div className='flex bg-white overflow-hidden'>
-        <div className={cn('h-[100vh] grow flex flex-col overflow-y-auto', isMobile && '!h-[calc(100vh_-_3rem)]')}>
-          {showConfigPanelBeforeChat && !appChatListDataLoading && !appPrevChatList.length && (
-            <div className={cn('flex w-full items-center justify-center h-full tablet:px-4', isMobile && 'px-4')}>
-              <ConfigPanel />
-            </div>
-          )}
-          {appChatListDataLoading && chatReady && (
+    <div className='relative'>
+      <div
+        className={cn(
+          'flex flex-col border border-components-panel-border-subtle rounded-2xl',
+          isMobile ? 'h-[calc(100vh_-_60px)] border-[0.5px] border-components-panel-border shadow-xs' : 'h-[100vh] bg-chatbot-bg',
+        )}
+        style={isMobile ? Object.assign({}, CssTransform(themeBuilder?.theme?.backgroundHeaderColorStyle ?? '')) : {}}
+      >
+        <Header
+          isMobile={isMobile}
+          title={site?.title || ''}
+          customerIcon={isDify() ? difyIcon : ''}
+          theme={themeBuilder?.theme}
+          onCreateNewChat={handleNewConversation}
+        />
+        <div className={cn('grow flex flex-col overflow-y-auto', isMobile && '!h-[calc(100vh_-_3rem)] bg-chatbot-bg rounded-2xl')}>
+          {appChatListDataLoading && (
             <Loading type='app' />
           )}
-          {chatReady && !appChatListDataLoading && (
-            <div className='relative h-full pt-8 mx-auto w-full max-w-[720px]'>
-              {!isMobile && (
-                <div className='absolute top-2.5 right-3 z-20'>
-                  <Tooltip
-                    popupContent={t('share.chat.resetChat')}
-                  >
-                    <div className='p-1.5 bg-white border-[0.5px] border-gray-100 rounded-lg shadow-md cursor-pointer' onClick={handleNewConversation}>
-                      <RiLoopLeftLine className="h-4 w-4 text-gray-500"/>
-                    </div>
-                  </Tooltip>
-                </div>
-              )}
-              <ChatWrapper />
-            </div>
+          {!appChatListDataLoading && (
+            <ChatWrapper key={chatShouldReloadKey} />
           )}
         </div>
       </div>
+      {/* powered by */}
+      {isMobile && (
+        <div className='shrink-0 h-[60px] pl-2 flex items-center'>
+          {!appData?.custom_config?.remove_webapp_brand && (
+            <div className={cn(
+              'shrink-0 px-2 flex items-center gap-1.5',
+            )}>
+              <div className='text-text-tertiary system-2xs-medium-uppercase'>{t('share.chat.poweredBy')}</div>
+              {appData?.custom_config?.replace_webapp_logo && (
+                <img src={appData?.custom_config?.replace_webapp_logo} alt='logo' className='block w-auto h-5' />
+              )}
+              {!appData?.custom_config?.replace_webapp_logo && (
+                <LogoSite className='!h-5' />
+              )}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   )
 }
@@ -122,7 +143,6 @@ const EmbeddedChatbotWrapper = () => {
     appPrevChatList,
     pinnedConversationList,
     conversationList,
-    showConfigPanelBeforeChat,
     newConversationInputs,
     newConversationInputsRef,
     handleNewConversationInputsChange,
@@ -150,7 +170,6 @@ const EmbeddedChatbotWrapper = () => {
     appPrevChatList,
     pinnedConversationList,
     conversationList,
-    showConfigPanelBeforeChat,
     newConversationInputs,
     newConversationInputsRef,
     handleNewConversationInputsChange,
