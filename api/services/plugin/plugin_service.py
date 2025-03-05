@@ -1,7 +1,7 @@
 import logging
 from collections.abc import Sequence
 from mimetypes import guess_type
-from typing import Optional
+from typing import Mapping, Optional
 
 from pydantic import BaseModel
 
@@ -36,12 +36,11 @@ class PluginService:
     REDIS_TTL = 60 * 5  # 5 minutes
 
     @staticmethod
-    def fetch_latest_plugin_version(plugin_ids: Sequence[str]) -> dict[str, Optional[LatestPluginCache]]:
+    def fetch_latest_plugin_version(plugin_ids: Sequence[str]) -> Mapping[str, Optional[LatestPluginCache]]:
         """
         Fetch the latest plugin version
         """
-
-        result = {}
+        result: dict[str, Optional[PluginService.LatestPluginCache]] = {}
 
         try:
             cache_not_exists = []
