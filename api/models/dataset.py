@@ -937,7 +937,7 @@ class RateLimitLog(db.Model):  # type: ignore[name-defined]
     __table_args__ = (
         db.PrimaryKeyConstraint("id", name="rate_limit_log_pkey"),
         db.Index("rate_limit_log_tenant_idx", "tenant_id"),
-        db.Index("rate_limit_log_operation_idx", "operation")
+        db.Index("rate_limit_log_operation_idx", "operation"),
     )
 
     id = db.Column(StringUUID, server_default=db.text("uuid_generate_v4()"))
