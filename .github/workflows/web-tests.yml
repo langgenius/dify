@@ -48,6 +48,10 @@ jobs:
           cache: pnpm
           cache-dependency-path: ./web/package.json
 
+      - name: Install OS dependencies
+        if: steps.changed-files.outputs.any_changed == 'true'
+        run: apt-get install build-essential libcairo2-dev libpango1.0-dev libjpeg-dev libgif-dev librsvg2-dev
+
       - name: Install dependencies
         if: steps.changed-files.outputs.any_changed == 'true'
         run: pnpm install --frozen-lockfile
