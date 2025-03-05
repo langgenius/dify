@@ -2,7 +2,7 @@ import json
 import logging
 from collections import defaultdict
 from collections.abc import Mapping, Sequence
-from typing import Any, cast, Optional
+from typing import Any, Optional, cast
 
 from sqlalchemy import func
 

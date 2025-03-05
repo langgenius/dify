@@ -48,12 +48,24 @@ class DatasetMetadataCreateApi(Resource):
         metadata = MetadataService.create_metadata(dataset_id_str, metadata_args)
         return metadata, 201
 
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @enterprise_license_required
+    def get(self, dataset_id):
+        dataset_id_str = str(dataset_id)
+        dataset = DatasetService.get_dataset(dataset_id_str)
+        if dataset is None:
+            raise NotFound("Dataset not found.")
+        return MetadataService.get_dataset_metadatas(dataset), 200
+
 
 class DatasetMetadataApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
     @enterprise_license_required
+    @marshal_with(dataset_metadata_fields)
     def patch(self, dataset_id, metadata_id):
         parser = reqparse.RequestParser()
         parser.add_argument("name", type=str, required=True, nullable=True, location="json")
@@ -92,7 +104,7 @@ class DatasetMetadataBuiltInFieldApi(Resource):
     @enterprise_license_required
     def get(self):
         built_in_fields = MetadataService.get_built_in_fields()
-        return built_in_fields, 200
+        return {"fields": built_in_fields}, 200
 
 
 class DatasetMetadataBuiltInFieldActionApi(Resource):
@@ -139,5 +151,5 @@ class DocumentMetadataEditApi(Resource):
 api.add_resource(DatasetMetadataCreateApi, "/datasets/<uuid:dataset_id>/metadata")
 api.add_resource(DatasetMetadataApi, "/datasets/<uuid:dataset_id>/metadata/<uuid:metadata_id>")
 api.add_resource(DatasetMetadataBuiltInFieldApi, "/datasets/metadata/built-in")
-api.add_resource(DatasetMetadataBuiltInFieldActionApi, "/datasets/metadata/built-in/<string:action>")
+api.add_resource(DatasetMetadataBuiltInFieldActionApi, "/datasets/<uuid:dataset_id>/metadata/built-in/<string:action>")
 api.add_resource(DocumentMetadataEditApi, "/datasets/<uuid:dataset_id>/documents/metadata")

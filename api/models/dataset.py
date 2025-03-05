@@ -474,7 +474,7 @@ class Document(db.Model):  # type: ignore[name-defined]
                 "id": "built-in",
                 "name": BuiltInField.upload_date,
                 "type": "date",
-                "value": self.created_at,
+                "value": self.created_at.timestamp(),
             }
         )
         built_in_fields.append(
@@ -482,7 +482,7 @@ class Document(db.Model):  # type: ignore[name-defined]
                 "id": "built-in",
                 "name": BuiltInField.last_update_date,
                 "type": "date",
-                "value": self.updated_at,
+                "value": self.updated_at.timestamp(),
             }
         )
         built_in_fields.append(
