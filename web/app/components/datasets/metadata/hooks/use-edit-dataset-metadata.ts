@@ -45,9 +45,17 @@ const useEditDatasetMetadata = ({
   }, [checkName, doAddMetaData])
 
   const { mutate: doRenameMetaData } = useRenameMeta(datasetId)
-  const handleRename = useCallback((payload: MetadataItemWithValueLength) => {
-    doRenameMetaData(payload)
-  }, [doRenameMetaData])
+  const handleRename = useCallback(async (payload: MetadataItemWithValueLength) => {
+    const errorMsg = checkName(payload.name).errorMsg
+    if (errorMsg) {
+      Toast.notify({
+        message: errorMsg,
+        type: 'error',
+      })
+      return Promise.reject(new Error(errorMsg))
+    }
+    await doRenameMetaData(payload)
+  }, [checkName, doRenameMetaData])
 
   const { mutate: doDeleteMetaData } = useDeleteMetaData(datasetId)
   const handleDeleteMetaData = useCallback((metaDataId: string) => {

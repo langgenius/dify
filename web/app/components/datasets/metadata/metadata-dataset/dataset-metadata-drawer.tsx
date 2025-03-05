@@ -152,7 +152,7 @@ const DatasetMetadataDrawer: FC<Props> = ({
       })
     }
     setIsShowRenameModal(false)
-  }, [userMetadata, currPayload?.id, onRename, templeName])
+  }, [userMetadata, currPayload?.id, onRename, templeName, t])
 
   const handleDelete = useCallback((payload: MetadataItemWithValueLength) => {
     return async () => {

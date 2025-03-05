@@ -36,15 +36,10 @@ export const useRenameMeta = (datasetId: string) => {
   const invalidDatasetMetaData = useInvalidDatasetMetaData(datasetId)
   return useMutation({
     mutationFn: async (payload: MetadataItemWithValueLength) => {
-      // datasetMetaData = datasetMetaData.map((item) => {
-      //   if (item.id === payload.id)
-      //     return payload
-
-      //   return item
-      // })
       await patch(`/datasets/${datasetId}/metadata/${payload.id}`, {
-        name: payload.name,
-        type: payload.type,
+        body: {
+          name: payload.name,
+        },
       })
       await invalidDatasetMetaData()
       return Promise.resolve(true)
