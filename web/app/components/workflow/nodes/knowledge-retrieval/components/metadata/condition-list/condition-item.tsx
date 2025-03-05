@@ -140,7 +140,7 @@ const ConditionItem = ({
                 onValueMethodChange={handleValueMethodChange}
                 nodesOutputVars={availableStringVars}
                 availableNodes={availableStringNodesWithParent}
-                value={valueAndValueMethod.value}
+                value={valueAndValueMethod.value as string}
                 onChange={handleValueChange}
               />
             )
@@ -160,7 +160,7 @@ const ConditionItem = ({
           {
             !comparisonOperatorNotRequireValue(condition.comparison_operator) && currentMetadata?.type === MetadataFilteringVariableType.time && (
               <ConditionDate
-                value={condition.value}
+                value={condition.value as number}
                 onChange={handleValueChange}
               />
             )
