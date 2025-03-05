@@ -2,7 +2,7 @@
 import type { FC } from 'react'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
-import { Plan } from '../type'
+import { Plan, SelfHostedPlan } from '../type'
 import VectorSpaceInfo from '../usage-info/vector-space-info'
 import AppsInfo from '../usage-info/apps-info'
 import UpgradeBtn from '../upgrade-btn'
@@ -26,7 +26,7 @@ const typeStyle = {
     textClassNames: 'text-[#3538CD]',
     bg: 'linear-gradient(113deg, rgba(255, 255, 255, 0.51) 3.51%, rgba(255, 255, 255, 0.00) 111.71%), #E0EAFF',
   },
-  [Plan.enterprise]: {
+  [SelfHostedPlan.enterprise]: {
     textClassNames: 'text-[#DC6803]',
     bg: 'linear-gradient(113deg, rgba(255, 255, 255, 0.51) 3.51%, rgba(255, 255, 255, 0.00) 111.71%), #FFEED3',
   },
@@ -89,7 +89,7 @@ const PlanComp: FC<Props> = ({
         <UsageInfo
           className='py-3'
           Icon={User01}
-          name={t('billing.plansCommon.teamMembers')}
+          name={t('billing.usagePage.teamMembers')}
           usage={usage.teamMembers}
           total={total.teamMembers}
         />
@@ -98,14 +98,14 @@ const PlanComp: FC<Props> = ({
         <UsageInfo
           className='py-3'
           Icon={MessageFastPlus}
-          name={t('billing.plansCommon.annotationQuota')}
+          name={t('billing.usagePage.annotationQuota')}
           usage={usage.annotatedResponse}
           total={total.annotatedResponse}
         />
         <UsageInfo
           className='py-3'
           Icon={FileUpload}
-          name={t('billing.plansCommon.documentsUploadQuota')}
+          name={t('billing.usagePage.documentsUploadQuota')}
           usage={usage.documentsUploadQuota}
           total={total.documentsUploadQuota}
         />
