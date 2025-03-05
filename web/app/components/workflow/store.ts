@@ -67,8 +67,8 @@ type Shape = {
   setDraftUpdatedAt: (draftUpdatedAt: number) => void
   publishedAt: number
   setPublishedAt: (publishedAt: number) => void
-  currentVersion: any // TODO version history item type
-  setCurrentVersion: (currentVersion: any) => void // TODO version history item type
+  currentVersion: VersionHistory | null
+  setCurrentVersion: (currentVersion: VersionHistory) => void
   showWorkflowVersionHistoryPanel: boolean
   setShowWorkflowVersionHistoryPanel: (showWorkflowVersionHistoryPanel: boolean) => void
   showInputsPanel: boolean
@@ -207,7 +207,7 @@ export const createWorkflowStore = () => {
     setDraftUpdatedAt: draftUpdatedAt => set(() => ({ draftUpdatedAt: draftUpdatedAt ? draftUpdatedAt * 1000 : 0 })),
     publishedAt: 0,
     setPublishedAt: publishedAt => set(() => ({ publishedAt: publishedAt ? publishedAt * 1000 : 0 })),
-    currentVersion: null, // todo version history item type
+    currentVersion: null,
     setCurrentVersion: currentVersion => set(() => ({ currentVersion })),
     showWorkflowVersionHistoryPanel: false,
     setShowWorkflowVersionHistoryPanel: showWorkflowVersionHistoryPanel => set(() => ({ showWorkflowVersionHistoryPanel })),

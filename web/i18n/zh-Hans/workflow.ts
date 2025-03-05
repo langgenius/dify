@@ -789,14 +789,26 @@ const translation = {
       reset: '重置',
       empty: '没有匹配的版本',
     },
+    defaultName: '未命名',
     nameThisVersion: '命名',
     editVersionInfo: '编辑信息',
     editField: {
       title: '标题',
       releaseNotes: '发布说明',
+      titleLengthLimit: '标题不能超过{{limit}}个字符',
+      releaseNotesLengthLimit: '发布说明不能超过{{limit}}个字符',
     },
-    restorationTip: '版本恢复后，当前草稿将被覆盖，并自动为当前草稿创建副本。',
+    releaseNotesPlaceholder: '请描述变更',
+    restorationTip: '版本回滚后，当前草稿将被覆盖。',
     deletionTip: '删除不可逆，请确认。',
+    action: {
+      restoreSuccess: '回滚成功',
+      restoreFailure: '回滚失败',
+      deleteSuccess: '版本已删除',
+      deleteFailure: '删除失败',
+      updateSuccess: '版本信息已更新',
+      updateFailure: '更新失败',
+    },
   },
 }
 

@@ -28,7 +28,7 @@ import {
   useWorkflowRun,
 } from '../hooks'
 import AppPublisher from '../../app/app-publisher'
-import { ToastContext } from '../../base/toast'
+import Toast, { ToastContext } from '../../base/toast'
 import Divider from '../../base/divider'
 import RunAndHistory from './run-and-history'
 import EditingTitle from './editing-title'
@@ -43,6 +43,7 @@ import { useStore as useAppStore } from '@/app/components/app/store'
 import { publishWorkflow } from '@/service/workflow'
 import { ArrowNarrowLeft } from '@/app/components/base/icons/src/vender/line/arrows'
 import { useFeatures } from '@/app/components/base/features/hooks'
+import { useResetWorkflowVersionHistory } from '@/service/use-workflow'
 
 const Header: FC = () => {
   const { t } = useTranslation()
@@ -112,11 +113,30 @@ const Header: FC = () => {
     setShowWorkflowVersionHistoryPanel(false)
   }, [workflowStore, handleLoadBackupDraft, setShowWorkflowVersionHistoryPanel])
 
+  const resetWorkflowVersionHistory = useResetWorkflowVersionHistory(appDetail!.id)
+
   const handleRestore = useCallback(() => {
+    setShowWorkflowVersionHistoryPanel(false)
     workflowStore.setState({ isRestoring: false })
     workflowStore.setState({ backupDraft: undefined })
-    handleSyncWorkflowDraft(true)
-  }, [handleSyncWorkflowDraft, workflowStore])
+    handleSyncWorkflowDraft(true, false, {
+      onSuccess: () => {
+        Toast.notify({
+          type: 'success',
+          message: t('workflow.versionHistory.action.restoreSuccess'),
+        })
+      },
+      onError: () => {
+        Toast.notify({
+          type: 'error',
+          message: t('workflow.versionHistory.action.restoreFailure'),
+        })
+      },
+      onSettled: () => {
+        resetWorkflowVersionHistory()
+      },
+    })
+  }, [handleSyncWorkflowDraft, workflowStore, setShowWorkflowVersionHistoryPanel, resetWorkflowVersionHistory, t])
 
   const onPublish = useCallback(async () => {
     if (handleCheckBeforePublish()) {
@@ -227,7 +247,7 @@ const Header: FC = () => {
           <div className='flex justify-end items-center gap-x-2'>
             <Button
               onClick={handleRestore}
-              disabled={currentVersion?.version === WorkflowVersion.Draft}
+              disabled={!currentVersion || currentVersion.version === WorkflowVersion.Draft}
               variant='primary'
             >
               {t('workflow.common.restore')}

@@ -403,7 +403,6 @@ export type VisionSetting = {
   detail: Resolution
 }
 
-// TODO check request params
 export enum WorkflowVersionFilterOptions {
   all = 'all',
   onlyYours = 'onlyYours',

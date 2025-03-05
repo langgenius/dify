@@ -9,9 +9,11 @@ import VersionHistoryItem from './version-history-item'
 import Filter from './filter'
 import type { VersionHistory } from '@/types/workflow'
 import { useStore as useAppStore } from '@/app/components/app/store'
-import Loading from '@/app/components/base/loading'
 import { useWorkflowVersionHistory } from '@/service/use-workflow'
 import Divider from '@/app/components/base/divider'
+import Loading from './loading'
+import Empty from './empty'
+import { useSelector as useAppContextSelector } from '@/context/app-context'
 
 const HISTORY_PER_PAGE = 5
 const INITIAL_PAGE = 1
@@ -25,6 +27,7 @@ const VersionHistoryPanel = () => {
   const setShowWorkflowVersionHistoryPanel = useStore(s => s.setShowWorkflowVersionHistoryPanel)
   const currentVersion = useStore(s => s.currentVersion)
   const setCurrentVersion = useStore(s => s.setCurrentVersion)
+  const userProfile = useAppContextSelector(s => s.userProfile)
   const { t } = useTranslation()
 
   const {
@@ -32,7 +35,13 @@ const VersionHistoryPanel = () => {
     fetchNextPage,
     hasNextPage,
     isFetching,
-  } = useWorkflowVersionHistory(appDetail!.id, INITIAL_PAGE, HISTORY_PER_PAGE)
+  } = useWorkflowVersionHistory({
+    appId: appDetail!.id,
+    initialPage: INITIAL_PAGE,
+    limit: HISTORY_PER_PAGE,
+    userId: filterValue === WorkflowVersionFilterOptions.onlyYours ? userProfile.id : '',
+    namedOnly: isOnlyShowNamedVersions,
+  })
 
   const handleVersionClick = (item: VersionHistory) => {
     if (item.version !== currentVersion?.version) {
@@ -60,6 +69,11 @@ const VersionHistoryPanel = () => {
     setIsOnlyShowNamedVersions(value)
   }, [])
 
+  const handleResetFilter = useCallback(() => {
+    setFilterValue(WorkflowVersionFilterOptions.all)
+    setIsOnlyShowNamedVersions(false)
+  }, [])
+
   return (
     <div className='flex flex-col w-[268px] bg-components-panel-bg rounded-l-2xl border-y-[0.5px] border-l-[0.5px] border-components-panel-border shadow-xl shadow-shadow-shadow-5'>
       <div className='flex items-center gap-x-2 px-4 pt-3'>
@@ -81,9 +95,8 @@ const VersionHistoryPanel = () => {
       <div className="flex-1 relative px-3 py-2 overflow-y-auto">
         {(isFetching && !versionHistory?.pages?.length)
           ? (
-            <div className='flex items-center justify-center h-10'>
-              {/* // TODO skeleton */}
-              <Loading/>
+            <div className='flex items-center justify-center h-full'>
+              <Loading />
             </div>
           )
           : (
@@ -120,12 +133,9 @@ const VersionHistoryPanel = () => {
                   </div>
                 </div>
               )}
-              {/* // TODO empty state */}
-              {/* {!isFetchingNextPage && !versionHistory?.items?.length && (
-                <div className='flex items-center justify-center h-10 text-gray-500'>
-                  {t('workflow.common.noHistory')}
-                </div>
-              )} */}
+              {!isFetching && !versionHistory?.pages?.length && (
+                <Empty onResetFilter={handleResetFilter} />
+              )}
             </>
           )}
       </div>

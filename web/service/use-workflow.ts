@@ -1,6 +1,13 @@
-import { get } from './base'
-import { useInfiniteQuery, useQuery } from '@tanstack/react-query'
-import type { FetchWorkflowDraftPageResponse, FetchWorkflowDraftResponse, WorkflowConfigResponse } from '@/types/workflow'
+import { del, get, patch } from './base'
+import { useInfiniteQuery, useMutation, useQuery } from '@tanstack/react-query'
+import type {
+  FetchWorkflowDraftPageParams,
+  FetchWorkflowDraftPageResponse,
+  FetchWorkflowDraftResponse,
+  UpdateWorkflowParams,
+  WorkflowConfigResponse,
+} from '@/types/workflow'
+import { useReset } from './use-base'
 
 const NAME_SPACE = 'workflow'
 
@@ -19,11 +26,44 @@ export const useWorkflowConfig = (appId: string) => {
   })
 }
 
-export const useWorkflowVersionHistory = (appId: string, initialPage: number, limit: number) => {
+const WorkflowVersionHistoryKey = [NAME_SPACE, 'versionHistory']
+
+export const useWorkflowVersionHistory = (params: FetchWorkflowDraftPageParams) => {
+  const { appId, initialPage, limit, userId, namedOnly } = params
   return useInfiniteQuery({
-    queryKey: [NAME_SPACE, 'versionHistory', appId, initialPage, limit],
-    queryFn: ({ pageParam = 1 }) => get<FetchWorkflowDraftPageResponse>(`/apps/${appId}/workflows?page=${pageParam}&limit=${limit}`),
+    queryKey: [...WorkflowVersionHistoryKey, appId, initialPage, limit, userId, namedOnly],
+    queryFn: ({ pageParam = 1 }) => get<FetchWorkflowDraftPageResponse>(`/apps/${appId}/workflows`, {
+      params: {
+        page: pageParam,
+        limit,
+        user_id: userId || '',
+        named_only: !!namedOnly,
+      },
+    }),
     getNextPageParam: lastPage => lastPage.has_more ? lastPage.page + 1 : null,
     initialPageParam: initialPage,
+  })
+}
+
+export const useResetWorkflowVersionHistory = (appId: string) => {
+  return useReset([...WorkflowVersionHistoryKey, appId])
+}
+
+export const useUpdateWorkflow = (appId: string) => {
+  return useMutation({
+    mutationKey: [NAME_SPACE, 'update'],
+    mutationFn: (params: UpdateWorkflowParams) => patch(`/apps/${appId}/workflows/${params.workflowId}`, {
+      body: {
+        marked_name: params.title,
+        marked_comment: params.releaseNotes,
+      },
+    }),
+  })
+}
+
+export const useDeleteWorkflow = (appId: string) => {
+  return useMutation({
+    mutationKey: [NAME_SPACE, 'delete'],
+    mutationFn: (workflowId: string) => del(`/apps/${appId}/workflows/${workflowId}`),
   })
 }

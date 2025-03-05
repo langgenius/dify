@@ -22,7 +22,7 @@ const RestoreConfirmModal: FC<RestoreConfirmModalProps> = ({
   return <Modal className='p-0' isShow={isOpen} onClose={onClose}>
     <div className='flex flex-col gap-y-2 p-6 pb-4 '>
       <div className='text-text-primary title-2xl-semi-bold'>
-        {`${t('workflow.common.restore')} ${versionInfo.version}`}
+        {`${t('workflow.common.restore')} ${versionInfo.marked_name || t('workflow.versionHistory.defaultName')}`}
       </div>
       <p className='text-text-secondary system-md-regular'>
         {t('workflow.versionHistory.restorationTip')}

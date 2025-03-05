@@ -108,9 +108,19 @@ export type FetchWorkflowDraftResponse = {
   environment_variables?: EnvironmentVariable[]
   conversation_variables?: ConversationVariable[]
   version: string
+  marked_name: string
+  marked_comment: string
 }
 
 export type VersionHistory = FetchWorkflowDraftResponse
+
+export type FetchWorkflowDraftPageParams = {
+  appId: string
+  initialPage: number
+  limit: number
+  userId?: string
+  namedOnly?: boolean
+}
 
 export type FetchWorkflowDraftPageResponse = {
   items: VersionHistory[]
@@ -293,4 +303,10 @@ export type IterationDurationMap = Record<string, number>
 
 export type WorkflowConfigResponse = {
   parallel_depth_limit: number
+}
+
+export type UpdateWorkflowParams = {
+  workflowId: string
+  title: string
+  releaseNotes: string
 }

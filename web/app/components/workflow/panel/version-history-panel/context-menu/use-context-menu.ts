@@ -1,4 +1,4 @@
-import { useMemo, useRef } from 'react'
+import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { VersionHistoryContextMenuOptions } from '../../../types'
 import type { ContextMenuProps } from './index'
@@ -9,10 +9,10 @@ const useContextMenu = (props: ContextMenuProps) => {
   } = props
   const { t } = useTranslation()
 
-  const deleteOperation = useRef({
+  const deleteOperation = {
     key: VersionHistoryContextMenuOptions.delete,
     name: t('common.operation.delete'),
-  })
+  }
 
   const options = useMemo(() => {
     return [
@@ -23,11 +23,11 @@ const useContextMenu = (props: ContextMenuProps) => {
       isNamedVersion
         ? {
           key: VersionHistoryContextMenuOptions.edit,
-          name: t('workflow.versionHistory.nameThisVersion'),
+          name: t('workflow.versionHistory.editVersionInfo'),
         }
         : {
           key: VersionHistoryContextMenuOptions.edit,
-          name: t('workflow.versionHistory.editVersionInfo'),
+          name: t('workflow.versionHistory.nameThisVersion'),
         },
     ]
     // eslint-disable-next-line react-hooks/exhaustive-deps
