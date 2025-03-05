@@ -191,6 +191,22 @@ class LLMNode(BaseNode[LLMNodeData]):
                     # deduct quota
                     self.deduct_llm_quota(tenant_id=self.tenant_id, model_instance=model_instance, usage=usage)
                     break
+            outputs = {"text": result_text, "usage": jsonable_encoder(usage), "finish_reason": finish_reason}
+
+            yield RunCompletedEvent(
+                run_result=NodeRunResult(
+                    status=WorkflowNodeExecutionStatus.SUCCEEDED,
+                    inputs=node_inputs,
+                    process_data=process_data,
+                    outputs=outputs,
+                    metadata={
+                        NodeRunMetadataKey.TOTAL_TOKENS: usage.total_tokens,
+                        NodeRunMetadataKey.TOTAL_PRICE: usage.total_price,
+                        NodeRunMetadataKey.CURRENCY: usage.currency,
+                    },
+                    llm_usage=usage,
+                )
+            )
         except LLMNodeError as e:
             yield RunCompletedEvent(
                 run_result=NodeRunResult(
@@ -210,23 +226,6 @@ class LLMNode(BaseNode[LLMNodeData]):
                     process_data=process_data,
                 )
             )
-
-        outputs = {"text": result_text, "usage": jsonable_encoder(usage), "finish_reason": finish_reason}
-
-        yield RunCompletedEvent(
-            run_result=NodeRunResult(
-                status=WorkflowNodeExecutionStatus.SUCCEEDED,
-                inputs=node_inputs,
-                process_data=process_data,
-                outputs=outputs,
-                metadata={
-                    NodeRunMetadataKey.TOTAL_TOKENS: usage.total_tokens,
-                    NodeRunMetadataKey.TOTAL_PRICE: usage.total_price,
-                    NodeRunMetadataKey.CURRENCY: usage.currency,
-                },
-                llm_usage=usage,
-            )
-        )
 
     def _invoke_llm(
         self,
@@ -459,6 +458,7 @@ class LLMNode(BaseNode[LLMNodeData]):
                 "index_node_hash": metadata.get("segment_index_node_hash"),
                 "content": context_dict.get("content"),
                 "page": metadata.get("page"),
+                "doc_metadata": metadata.get("doc_metadata"),
             }
 
             return source

@@ -123,6 +123,7 @@ class DatasetMultiRetrieverTool(DatasetRetrieverBaseTool):
                             "segment_id": segment.id,
                             "retriever_from": self.retriever_from,
                             "score": document_score_list.get(segment.index_node_id, None),
+                            "doc_metadata": document.doc_metadata,
                         }
 
                         if self.retriever_from == "dev":

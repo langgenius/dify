@@ -1,6 +1,5 @@
 import {
   useEffect,
-  useMemo,
   useState,
 } from 'react'
 import {
@@ -36,19 +35,6 @@ const WorkflowProcessItem = ({
   const succeeded = data.status === WorkflowRunningStatus.Succeeded
   const failed = data.status === WorkflowRunningStatus.Failed || data.status === WorkflowRunningStatus.Stopped
 
-  const background = useMemo(() => {
-    if (collapse)
-      return 'linear-gradient(90deg, rgba(200, 206, 218, 0.20) 0%, rgba(200, 206, 218, 0.04) 100%)'
-    if (running && !collapse)
-      return 'linear-gradient(180deg, #E1E4EA 0%, #EAECF0 100%)'
-
-    if (succeeded && !collapse)
-      return 'linear-gradient(180deg, #ECFDF3 0%, #F6FEF9 100%)'
-
-    if (failed && !collapse)
-      return 'linear-gradient(180deg, #FEE4E2 0%, #FEF3F2 100%)'
-  }, [running, succeeded, failed, collapse])
-
   useEffect(() => {
     setCollapse(!expand)
   }, [expand])
@@ -56,12 +42,13 @@ const WorkflowProcessItem = ({
   return (
     <div
       className={cn(
-        '-mx-1 px-2.5 rounded-xl border-[0.5px]',
-        collapse ? 'py-[7px] border-components-panel-border' : 'pt-[7px] px-1 pb-1 border-components-panel-border-subtle',
+        '-mx-1 px-2.5 rounded-xl',
+        collapse ? 'py-[7px] border-l-[0.25px] border-components-panel-border' : 'pt-[7px] px-1 pb-1 border-[0.5px] border-components-panel-border-subtle',
+        running && !collapse && 'bg-background-section-burn',
+        succeeded && !collapse && 'bg-state-success-hover',
+        failed && !collapse && 'bg-state-destructive-hover',
+        collapse && 'bg-workflow-process-bg',
       )}
-      style={{
-        background,
-      }}
     >
       <div
         className={cn('flex items-center cursor-pointer', !collapse && 'px-1.5', readonly && 'cursor-default')}
@@ -85,7 +72,7 @@ const WorkflowProcessItem = ({
         <div className={cn('system-xs-medium text-text-secondary', !collapse && 'grow')}>
           {t('workflow.common.workflowProcess')}
         </div>
-        {!readonly && <RiArrowRightSLine className={`'ml-1 w-4 h-4 text-text-tertiary' ${collapse ? '' : 'rotate-90'}`} />}
+        {!readonly && <RiArrowRightSLine className={cn('ml-1 w-4 h-4 text-text-tertiary', !collapse && 'rotate-90')} />}
       </div>
       {
         !collapse && !readonly && (
