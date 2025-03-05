@@ -204,13 +204,5 @@
     "**/*.ts?(x)": [
       "eslint --fix"
     ]
-  },
-  "pnpm": {
-    "ignoredBuiltDependencies": [
-      "canvas",
-      "core-js-pure",
-      "esbuild",
-      "sharp"
-    ]
   }
 }
