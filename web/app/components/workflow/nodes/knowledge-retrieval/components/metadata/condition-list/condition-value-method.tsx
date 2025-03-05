@@ -30,7 +30,7 @@ const ConditionValueMethod = ({
       placement='bottom-start'
       offset={{ mainAxis: 4, crossAxis: 0 }}
     >
-      <PortalToFollowElemTrigger onClick={() => setOpen(v => !v)}>
+      <PortalToFollowElemTrigger asChild onClick={() => setOpen(v => !v)}>
         <Button
           className='shrink-0'
           variant='ghost'

@@ -4,6 +4,7 @@ const useNodeCrud = <T>(id: string, data: CommonNodeType<T>) => {
   const { handleNodeDataUpdateWithSyncDraft } = useNodeDataUpdate()
 
   const setInputs = (newInputs: CommonNodeType<T>) => {
+    console.log(newInputs, 'xx')
     handleNodeDataUpdateWithSyncDraft({
       id,
       data: newInputs,

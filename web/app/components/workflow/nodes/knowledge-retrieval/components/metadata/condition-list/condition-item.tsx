@@ -3,7 +3,10 @@ import {
   useMemo,
   useState,
 } from 'react'
-import { RiDeleteBinLine } from '@remixicon/react'
+import {
+  RiDeleteBinLine,
+} from '@remixicon/react'
+import MetadataIcon from '../metadata-icon'
 import {
   VARIABLE_REGEX,
   comparisonOperatorNotRequireValue,
@@ -12,7 +15,6 @@ import ConditionOperator from './condition-operator'
 import ConditionString from './condition-string'
 import ConditionNumber from './condition-number'
 import ConditionDate from './condition-date'
-import { useCondition } from './hooks'
 import type {
   ComparisonOperator,
   HandleRemoveCondition,
@@ -21,11 +23,6 @@ import type {
   MetadataShape,
 } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
 import { MetadataFilteringVariableType } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
-
-import type {
-  Node,
-  NodeOutPutVar,
-} from '@/app/components/workflow/types'
 import cn from '@/utils/classnames'
 
 type ConditionItemProps = {
@@ -34,9 +31,7 @@ type ConditionItemProps = {
   condition: MetadataFilteringCondition // condition may the condition of case or condition of sub variable
   onRemoveCondition?: HandleRemoveCondition
   onUpdateCondition?: HandleUpdateCondition
-  nodesOutputVars: NodeOutPutVar[]
-  availableNodes: Node[]
-} & Pick<MetadataShape, 'metadataList'>
+} & Pick<MetadataShape, 'metadataList' | 'availableStringVars' | 'availableStringNodesWithParent' | 'availableNumberVars' | 'availableNumberNodesWithParent'>
 const ConditionItem = ({
   className,
   disabled,
@@ -44,11 +39,12 @@ const ConditionItem = ({
   onRemoveCondition,
   onUpdateCondition,
   metadataList = [],
-  nodesOutputVars,
-  availableNodes,
+  availableStringVars = [],
+  availableStringNodesWithParent = [],
+  availableNumberVars = [],
+  availableNumberNodesWithParent = [],
 }: ConditionItemProps) => {
   const [isHovered, setIsHovered] = useState(false)
-  const { getConditionVariableType } = useCondition()
 
   const canChooseOperator = useMemo(() => {
     if (disabled)
@@ -66,7 +62,13 @@ const ConditionItem = ({
   }, [metadataList, condition.name])
 
   const handleConditionOperatorChange = useCallback((operator: ComparisonOperator) => {
-    onUpdateCondition?.(condition.name, { ...condition, comparison_operator: operator })
+    onUpdateCondition?.(
+      condition.name,
+      {
+        ...condition,
+        value: comparisonOperatorNotRequireValue(condition.comparison_operator) ? undefined : condition.value,
+        comparison_operator: operator,
+      })
   }, [onUpdateCondition, condition])
 
   const valueAndValueMethod = useMemo(() => {
@@ -95,7 +97,7 @@ const ConditionItem = ({
       valueMethod: 'constant',
     }
   }, [currentMetadata, condition.value])
-  const [localValueMethod, setLocalValueMethod] = useState(valueAndValueMethod.value)
+  const [localValueMethod, setLocalValueMethod] = useState(valueAndValueMethod.valueMethod)
 
   const handleValueMethodChange = useCallback((v: string) => {
     setLocalValueMethod(v)
@@ -114,9 +116,12 @@ const ConditionItem = ({
       )}>
         <div className='flex items-center p-1'>
           <div className='grow w-0'>
-            <div className='inline-flex items-center h-6 border-[0.5px] border-components-panel-border-subtle bg-components-badge-white-to-dark rounded-md shadow-xs'>
-              <div className='mr-0.5 system-xs-medium text-text-secondary'>Language</div>
-              <div className='system-xs-regular text-text-tertiary'>string</div>
+            <div className='inline-flex items-center pl-1 pr-1.5 h-6 border-[0.5px] border-components-panel-border-subtle bg-components-badge-white-to-dark rounded-md shadow-xs'>
+              <div className='mr-0.5 p-[1px]'>
+                <MetadataIcon type={currentMetadata?.type} className='w-3 h-3' />
+              </div>
+              <div className='mr-0.5 system-xs-medium text-text-secondary'>{currentMetadata?.name}</div>
+              <div className='system-xs-regular text-text-tertiary'>{currentMetadata?.type}</div>
             </div>
           </div>
           <div className='mx-1 w-[1px] h-3 bg-divider-regular'></div>
@@ -127,38 +132,40 @@ const ConditionItem = ({
             onSelect={handleConditionOperatorChange}
           />
         </div>
-        {
-          !comparisonOperatorNotRequireValue(condition.comparison_operator) && getConditionVariableType(condition.name) === MetadataFilteringVariableType.string && (
-            <ConditionString
-              valueMethod={localValueMethod}
-              onValueMethodChange={handleValueMethodChange}
-              nodesOutputVars={nodesOutputVars}
-              availableNodes={availableNodes}
-              value={valueAndValueMethod.value}
-              onChange={handleValueChange}
-            />
-          )
-        }
-        {
-          !comparisonOperatorNotRequireValue(condition.comparison_operator) && getConditionVariableType(condition.name) === MetadataFilteringVariableType.number && (
-            <ConditionNumber
-              valueMethod={localValueMethod}
-              onValueMethodChange={handleValueMethodChange}
-              nodesOutputVars={nodesOutputVars}
-              availableNodes={availableNodes}
-              value={valueAndValueMethod.value}
-              onChange={handleValueChange}
-            />
-          )
-        }
-        {
-          !comparisonOperatorNotRequireValue(condition.comparison_operator) && getConditionVariableType(condition.name) === MetadataFilteringVariableType.date && (
-            <ConditionDate
-              value={condition.value}
-              onChange={handleValueChange}
-            />
-          )
-        }
+        <div className='border-t border-t-divider-subtle'>
+          {
+            !comparisonOperatorNotRequireValue(condition.comparison_operator) && currentMetadata?.type === MetadataFilteringVariableType.string && (
+              <ConditionString
+                valueMethod={localValueMethod}
+                onValueMethodChange={handleValueMethodChange}
+                nodesOutputVars={availableStringVars}
+                availableNodes={availableStringNodesWithParent}
+                value={valueAndValueMethod.value}
+                onChange={handleValueChange}
+              />
+            )
+          }
+          {
+            !comparisonOperatorNotRequireValue(condition.comparison_operator) && currentMetadata?.type === MetadataFilteringVariableType.number && (
+              <ConditionNumber
+                valueMethod={localValueMethod}
+                onValueMethodChange={handleValueMethodChange}
+                nodesOutputVars={availableNumberVars}
+                availableNodes={availableNumberNodesWithParent}
+                value={valueAndValueMethod.value}
+                onChange={handleValueChange}
+              />
+            )
+          }
+          {
+            !comparisonOperatorNotRequireValue(condition.comparison_operator) && currentMetadata?.type === MetadataFilteringVariableType.time && (
+              <ConditionDate
+                value={condition.value}
+                onChange={handleValueChange}
+              />
+            )
+          }
+        </div>
       </div>
       <div
         className='shrink-0 flex items-center justify-center ml-1 mt-1 w-6 h-6 rounded-lg cursor-pointer hover:bg-state-destructive-hover text-text-tertiary hover:text-text-destructive'

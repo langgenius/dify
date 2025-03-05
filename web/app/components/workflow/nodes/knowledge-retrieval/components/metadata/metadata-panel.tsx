@@ -28,11 +28,13 @@ const MetadataPanel = ({
       </div>
       <div className='px-1 py-2'>
         <div className='px-3 py-1'>
-          <ConditionList
-            metadataList={metadataList}
-            metadataFilteringConditions={metadataFilteringConditions}
-            {...restProps}
-          />
+          <div className='pb-2'>
+            <ConditionList
+              metadataList={metadataList}
+              metadataFilteringConditions={metadataFilteringConditions}
+              {...restProps}
+            />
+          </div>
           <AddCondition
             metadataList={metadataList}
             handleAddCondition={handleAddCondition}

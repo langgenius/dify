@@ -1,10 +1,12 @@
 import {
+  useCallback,
   useMemo,
   useState,
 } from 'react'
 import {
   RiAddLine,
 } from '@remixicon/react'
+import MetadataIcon from './metadata-icon'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
@@ -13,6 +15,7 @@ import {
 import Button from '@/app/components/base/button'
 import Input from '@/app/components/base/input'
 import type { MetadataShape } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
+import type { MetadataInDoc } from '@/models/datasets'
 
 const AddCondition = ({
   metadataList,
@@ -24,6 +27,11 @@ const AddCondition = ({
   const filteredMetadataList = useMemo(() => {
     return metadataList?.filter(metadata => metadata.name.includes(searchText))
   }, [metadataList, searchText])
+
+  const handleAddConditionWrapped = useCallback((item: MetadataInDoc) => {
+    handleAddCondition?.(item)
+    setOpen(false)
+  }, [handleAddCondition])
 
   return (
     <PortalToFollowElem
@@ -61,10 +69,13 @@ const AddCondition = ({
                   key={metadata.id}
                   className='flex items-center px-3 h-6 rounded-md system-sm-medium text-text-secondary cursor-pointer hover:bg-state-base-hover'
                 >
+                  <div className='mr-1 p-[1px]'>
+                    <MetadataIcon type={metadata.type} />
+                  </div>
                   <div
                     className='grow truncate'
                     title={metadata.name}
-                    onClick={() => handleAddCondition?.(metadata.name)}
+                    onClick={() => handleAddConditionWrapped(metadata)}
                   >
                     {metadata.name}
                   </div>

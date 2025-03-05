@@ -1,4 +1,7 @@
-import { useState } from 'react'
+import {
+  useCallback,
+  useState,
+} from 'react'
 import MetadataTrigger from '../metadata-trigger'
 import MetadataFilterSelector from './metadata-filter-selector'
 import Collapse from '@/app/components/workflow/nodes/_base/components/collapse'
@@ -12,7 +15,7 @@ type MetadataFilterProps = {
   handleMetadataFilterModeChange: (mode: MetadataFilteringModeEnum) => void
 } & MetadataShape
 const MetadataFilter = ({
-  metadataFilterMode,
+  metadataFilterMode = MetadataFilteringModeEnum.disabled,
   handleMetadataFilterModeChange,
   metadataModelConfig,
   handleMetadataModelChange,
@@ -20,6 +23,13 @@ const MetadataFilter = ({
   ...restProps
 }: MetadataFilterProps) => {
   const [collapsed, setCollapsed] = useState(true)
+
+  const handleMetadataFilterModeChangeWrapped = useCallback((mode: MetadataFilteringModeEnum) => {
+    if (mode === MetadataFilteringModeEnum.automatic)
+      setCollapsed(false)
+
+    handleMetadataFilterModeChange(mode)
+  }, [handleMetadataFilterModeChange])
 
   return (
     <Collapse
@@ -43,7 +53,7 @@ const MetadataFilter = ({
           <div className='flex items-center'>
             <MetadataFilterSelector
               value={metadataFilterMode}
-              onSelect={handleMetadataFilterModeChange}
+              onSelect={handleMetadataFilterModeChangeWrapped}
             />
             {
               metadataFilterMode === MetadataFilteringModeEnum.manual && (

@@ -55,6 +55,7 @@ const MetadataFilterSelector = ({
           e.stopPropagation()
           setOpen(!open)
         }}
+        asChild
       >
         <Button
           variant='secondary'

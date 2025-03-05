@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useCallback, useState } from 'react'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
@@ -13,6 +13,7 @@ import type {
   Var,
 } from '@/app/components/workflow/types'
 import { VarType } from '@/app/components/workflow/types'
+import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'
 
 type ConditionVariableSelectorProps = {
   valueSelector?: ValueSelector
@@ -31,6 +32,11 @@ const ConditionVariableSelector = ({
 }: ConditionVariableSelectorProps) => {
   const [open, setOpen] = useState(false)
 
+  const handleChange = useCallback((valueSelector: ValueSelector, varItem: Var) => {
+    onChange(valueSelector, varItem)
+    setOpen(false)
+  }, [onChange])
+
   return (
     <PortalToFollowElem
       open={open}
@@ -41,14 +47,31 @@ const ConditionVariableSelector = ({
         crossAxis: 0,
       }}
     >
-      <PortalToFollowElemTrigger onClick={() => setOpen(!open)}>
-        <div className="cursor-pointer">
-          <VariableTag
-            valueSelector={valueSelector}
-            varType={varType}
-            availableNodes={availableNodes}
-            isShort
-          />
+      <PortalToFollowElemTrigger asChild onClick={() => setOpen(!open)}>
+        <div className="grow flex items-center cursor-pointer h-6">
+          {
+            !!valueSelector.length && (
+              <VariableTag
+                valueSelector={valueSelector}
+                varType={varType}
+                availableNodes={availableNodes}
+                isShort
+              />
+            )
+          }
+          {
+            !valueSelector.length && (
+              <>
+                <div className='grow flex items-center text-components-input-text-placeholder system-sm-regular'>
+                  <Variable02 className='mr-1 w-4 h-4' />
+                  Select variable...
+                </div>
+                <div className='shrink-0 flex items-center px-[5px] h-5 border border-divider-deep rounded-[5px] system-2xs-medium text-text-tertiary'>
+                  string
+                </div>
+              </>
+            )
+          }
         </div>
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent className='z-[1000]'>
@@ -56,7 +79,7 @@ const ConditionVariableSelector = ({
           <VarReferenceVars
             vars={nodesOutputVars}
             isSupportFileVar
-            onChange={onChange}
+            onChange={handleChange}
           />
         </div>
       </PortalToFollowElemContent>

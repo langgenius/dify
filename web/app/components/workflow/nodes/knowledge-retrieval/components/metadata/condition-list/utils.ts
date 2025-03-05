@@ -23,12 +23,12 @@ export const getOperators = (type?: MetadataFilteringVariableType) => {
   switch (type) {
     case MetadataFilteringVariableType.string:
       return [
+        ComparisonOperator.is,
+        ComparisonOperator.isNot,
         ComparisonOperator.contains,
         ComparisonOperator.notContains,
         ComparisonOperator.startWith,
         ComparisonOperator.endWith,
-        ComparisonOperator.is,
-        ComparisonOperator.isNot,
         ComparisonOperator.empty,
         ComparisonOperator.notEmpty,
       ]
@@ -46,7 +46,8 @@ export const getOperators = (type?: MetadataFilteringVariableType) => {
     default:
       return [
         ComparisonOperator.is,
-        ComparisonOperator.isNot,
+        ComparisonOperator.before,
+        ComparisonOperator.after,
         ComparisonOperator.empty,
         ComparisonOperator.notEmpty,
       ]

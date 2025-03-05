@@ -55,6 +55,10 @@ const Panel: FC<NodePanelProps<KnowledgeRetrievalNodeType>> = ({
     handleUpdateCondition,
     handleMetadataModelChange,
     handleMetadataCompletionParamsChange,
+    availableStringVars,
+    availableStringNodesWithParent,
+    availableNumberVars,
+    availableNumberNodesWithParent,
   } = useConfig(id, data)
 
   const handleOpenFromPropsChange = useCallback((openFromProps: boolean) => {
@@ -71,7 +75,7 @@ const Panel: FC<NodePanelProps<KnowledgeRetrievalNodeType>> = ({
 
   return (
     <div className='pt-2'>
-      <div className='px-4 pb-4 space-y-4'>
+      <div className='px-4 pb-2 space-y-4'>
         {/* {JSON.stringify(inputs, null, 2)} */}
         <Field
           title={t(`${i18nPrefix}.queryVariable`)}
@@ -123,7 +127,7 @@ const Panel: FC<NodePanelProps<KnowledgeRetrievalNodeType>> = ({
           />
         </Field>
       </div>
-      <div className='py-2'>
+      <div className='mb-2 py-2'>
         <MetadataFilter
           metadataList={metadataList}
           metadataFilterMode={inputs.metadata_filtering_mode}
@@ -136,6 +140,10 @@ const Panel: FC<NodePanelProps<KnowledgeRetrievalNodeType>> = ({
           metadataModelConfig={inputs.metadata_model_config}
           handleMetadataModelChange={handleMetadataModelChange}
           handleMetadataCompletionParamsChange={handleMetadataCompletionParamsChange}
+          availableStringVars={availableStringVars}
+          availableStringNodesWithParent={availableStringNodesWithParent}
+          availableNumberVars={availableNumberVars}
+          availableNumberNodesWithParent={availableNumberNodesWithParent}
         />
       </div>
       <Split />

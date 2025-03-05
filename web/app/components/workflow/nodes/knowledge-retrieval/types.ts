@@ -1,4 +1,10 @@
-import type { CommonNodeType, ModelConfig, ValueSelector } from '@/app/components/workflow/types'
+import type {
+  CommonNodeType,
+  ModelConfig,
+  Node,
+  NodeOutPutVar,
+  ValueSelector,
+} from '@/app/components/workflow/types'
 import type { RETRIEVE_TYPE } from '@/types/app'
 import type {
   DataSet,
@@ -58,6 +64,8 @@ export enum ComparisonOperator {
   allOf = 'all of',
   exists = 'exists',
   notExists = 'not exists',
+  before = 'before',
+  after = 'after',
 }
 
 export enum MetadataFilteringModeEnum {
@@ -69,7 +77,7 @@ export enum MetadataFilteringModeEnum {
 export enum MetadataFilteringVariableType {
   string = 'string',
   number = 'number',
-  date = 'date',
+  time = 'time',
 }
 
 export type MetadataFilteringCondition = {
@@ -95,7 +103,7 @@ export type KnowledgeRetrievalNodeType = CommonNodeType & {
   metadata_model_config?: ModelConfig
 }
 
-export type HandleAddCondition = (name: string) => void
+export type HandleAddCondition = (metadataItem: MetadataInDoc) => void
 export type HandleRemoveCondition = (name: string) => void
 export type HandleUpdateCondition = (name: string, newCondition: MetadataFilteringCondition) => void
 export type HandleToggleConditionLogicalOperator = () => void
@@ -110,4 +118,8 @@ export type MetadataShape = {
   metadataModelConfig?: ModelConfig
   handleMetadataModelChange?: (model: { modelId: string; provider: string; mode?: string; features?: string[] }) => void
   handleMetadataCompletionParamsChange?: (params: Record<string, any>) => void
+  availableStringVars?: NodeOutPutVar[]
+  availableStringNodesWithParent?: Node[]
+  availableNumberVars?: NodeOutPutVar[]
+  availableNumberNodesWithParent?: Node[]
 }

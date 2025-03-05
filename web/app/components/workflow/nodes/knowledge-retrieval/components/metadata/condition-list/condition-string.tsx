@@ -7,6 +7,7 @@ import type {
   NodeOutPutVar,
   ValueSelector,
 } from '@/app/components/workflow/types'
+import Input from '@/app/components/base/input'
 
 type ConditionStringProps = {
   value?: string
@@ -17,7 +18,7 @@ type ConditionStringProps = {
 const ConditionString = ({
   value,
   onChange,
-  valueMethod,
+  valueMethod = 'constant',
   onValueMethodChange,
   nodesOutputVars,
   availableNodes,
@@ -36,7 +37,7 @@ const ConditionString = ({
       {
         valueMethod === 'variable' && (
           <ConditionVariableSelector
-            valueSelector={value!.split('.')}
+            valueSelector={value ? value!.split('.') : []}
             onChange={handleVariableValueChange}
             nodesOutputVars={nodesOutputVars}
             availableNodes={availableNodes}
@@ -45,9 +46,11 @@ const ConditionString = ({
       }
       {
         valueMethod === 'constant' && (
-          <input
+          <Input
+            className='bg-transparent hover:bg-transparent outline-none border-none focus:shadow-none focus:bg-transparent'
             value={value}
             onChange={e => onChange(e.target.value)}
+            placeholder='Enter value'
           />
         )
       }
