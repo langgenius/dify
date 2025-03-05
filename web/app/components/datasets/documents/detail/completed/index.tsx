@@ -357,6 +357,7 @@ const Completed: FC<ICompletedProps> = ({
           if (seg.id === segmentId) {
             seg.answer = res.data.answer
             seg.content = res.data.content
+            seg.sign_content = res.data.sign_content
             seg.keywords = res.data.keywords
             seg.word_count = res.data.word_count
             seg.hit_count = res.data.hit_count

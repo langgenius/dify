@@ -112,6 +112,7 @@ const translation = {
           operation: 'Documentație',
         },
       },
+      launch: 'Lansa',
     },
     apiInfo: {
       title: 'API serviciu backend',

@@ -34,3 +34,14 @@ export const formatTime = (num: number) => {
   }
   return `${num.toFixed(2)} ${units[index]}`
 }
+
+export const downloadFile = ({ data, fileName }: { data: Blob; fileName: string }) => {
+  const url = window.URL.createObjectURL(data)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = fileName
+  document.body.appendChild(a)
+  a.click()
+  a.remove()
+  window.URL.revokeObjectURL(url)
+}

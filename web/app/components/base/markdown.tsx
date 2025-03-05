@@ -7,11 +7,14 @@ import RehypeKatex from 'rehype-katex'
 import RemarkGfm from 'remark-gfm'
 import RehypeRaw from 'rehype-raw'
 import SyntaxHighlighter from 'react-syntax-highlighter'
-import { atelierHeathLight } from 'react-syntax-highlighter/dist/esm/styles/hljs'
+import {
+  atelierHeathDark,
+  atelierHeathLight,
+} from 'react-syntax-highlighter/dist/esm/styles/hljs'
 import { Component, memo, useMemo, useRef, useState } from 'react'
-import type { CodeComponent } from 'react-markdown/lib/ast-to-react'
-import cn from '@/utils/classnames'
-import CopyBtn from '@/app/components/base/copy-btn'
+import { flow } from 'lodash-es'
+import ActionButton from '@/app/components/base/action-button'
+import CopyIcon from '@/app/components/base/copy-icon'
 import SVGBtn from '@/app/components/base/svg'
 import Flowchart from '@/app/components/base/mermaid'
 import ImageGallery from '@/app/components/base/image-gallery'
@@ -21,6 +24,10 @@ import AudioGallery from '@/app/components/base/audio-gallery'
 import SVGRenderer from '@/app/components/base/svg-gallery'
 import MarkdownButton from '@/app/components/base/markdown-blocks/button'
 import MarkdownForm from '@/app/components/base/markdown-blocks/form'
+import ThinkBlock from '@/app/components/base/markdown-blocks/think-block'
+import { Theme } from '@/types/app'
+import useTheme from '@/hooks/use-theme'
+import cn from '@/utils/classnames'
 
 // Available language https://github.com/react-syntax-highlighter/react-syntax-highlighter/blob/master/AVAILABLE_LANGUAGES_HLJS.MD
 const capitalizationLanguageNameMap: Record<string, string> = {
@@ -58,9 +65,19 @@ const getCorrectCapitalizationLanguageName = (language: string) => {
 const preprocessLaTeX = (content: string) => {
   if (typeof content !== 'string')
     return content
-  return content.replace(/\\\[(.*?)\\\]/g, (_, equation) => `$$${equation}$$`)
-    .replace(/\\\((.*?)\\\)/g, (_, equation) => `$$${equation}$$`)
-    .replace(/(^|[^\\])\$(.+?)\$/g, (_, prefix, equation) => `${prefix}$${equation}$`)
+
+  return flow([
+    (str: string) => str.replace(/\\\[(.*?)\\\]/g, (_, equation) => `$$${equation}$$`),
+    (str: string) => str.replace(/\\\((.*?)\\\)/g, (_, equation) => `$$${equation}$$`),
+    (str: string) => str.replace(/(^|[^\\])\$(.+?)\$/g, (_, prefix, equation) => `${prefix}$${equation}$`),
+  ])(content)
+}
+
+const preprocessThinkTag = (content: string) => {
+  return flow([
+    (str: string) => str.replace('<think>\n', '<details data-think=true>\n'),
+    (str: string) => str.replace('\n</think>', '\n[ENDTHINKFLAG]</details>'),
+  ])(content)
 }
 
 export function PreCode(props: { children: any }) {
@@ -89,7 +106,8 @@ export function PreCode(props: { children: any }) {
 // visit https://reactjs.org/docs/error-decoder.html?invariant=185 for the full message
 // or use the non-minified dev environment for full errors and additional helpful warnings.
 
-const CodeBlock: CodeComponent = memo(({ inline, className, children, ...props }) => {
+const CodeBlock: any = memo(({ inline, className, children, ...props }: any) => {
+  const { theme } = useTheme()
   const [isSVG, setIsSVG] = useState(true)
   const match = /language-(\w+)/.exec(className || '')
   const language = match?.[1]
@@ -129,10 +147,12 @@ const CodeBlock: CodeComponent = memo(({ inline, className, children, ...props }
       return (
         <SyntaxHighlighter
           {...props}
-          style={atelierHeathLight}
+          style={theme === Theme.light ? atelierHeathLight : atelierHeathDark}
           customStyle={{
             paddingLeft: 12,
-            backgroundColor: '#fff',
+            borderBottomLeftRadius: '10px',
+            borderBottomRightRadius: '10px',
+            backgroundColor: 'var(--color-components-input-bg-normal)',
           }}
           language={match?.[1]}
           showLineNumbers
@@ -148,21 +168,14 @@ const CodeBlock: CodeComponent = memo(({ inline, className, children, ...props }
     return <code {...props} className={className}>{children}</code>
 
   return (
-    <div>
-      <div
-        className='flex justify-between h-8 items-center p-1 pl-3 border-b'
-        style={{
-          borderColor: 'rgba(0, 0, 0, 0.05)',
-        }}
-      >
-        <div className='text-[13px] text-gray-500 font-normal'>{languageShowName}</div>
-        <div style={{ display: 'flex' }}>
+    <div className='relative'>
+      <div className='bg-components-input-bg-normal rounded-t-[10px] flex justify-between h-8 items-center p-1 pl-3 border-b border-divider-subtle'>
+        <div className='system-xs-semibold-uppercase text-text-secondary'>{languageShowName}</div>
+        <div className='flex items-center gap-1'>
           {(['mermaid', 'svg']).includes(language!) && <SVGBtn isSVG={isSVG} setIsSVG={setIsSVG} />}
-          <CopyBtn
-            className='mr-1'
-            value={String(children).replace(/\n$/, '')}
-            isPlain
-          />
+          <ActionButton>
+            <CopyIcon content={String(children).replace(/\n$/, '')}/>
+          </ActionButton>
         </div>
       </div>
       {renderCodeContent}
@@ -171,16 +184,16 @@ const CodeBlock: CodeComponent = memo(({ inline, className, children, ...props }
 })
 CodeBlock.displayName = 'CodeBlock'
 
-const VideoBlock: CodeComponent = memo(({ node }) => {
-  const srcs = node.children.filter(child => 'properties' in child).map(child => (child as any).properties.src)
+const VideoBlock: any = memo(({ node }: any) => {
+  const srcs = node.children.filter((child: any) => 'properties' in child).map((child: any) => (child as any).properties.src)
   if (srcs.length === 0)
     return null
   return <VideoGallery key={srcs.join()} srcs={srcs} />
 })
 VideoBlock.displayName = 'VideoBlock'
 
-const AudioBlock: CodeComponent = memo(({ node }) => {
-  const srcs = node.children.filter(child => 'properties' in child).map(child => (child as any).properties.src)
+const AudioBlock: any = memo(({ node }: any) => {
+  const srcs = node.children.filter((child: any) => 'properties' in child).map((child: any) => (child as any).properties.src)
   if (srcs.length === 0)
     return null
   return <AudioGallery key={srcs.join()} srcs={srcs} />
@@ -200,7 +213,9 @@ const Paragraph = (paragraph: any) => {
     return (
       <>
         <ImageGallery srcs={[children_node[0].properties.src]} />
-        <p>{paragraph.children.slice(1)}</p>
+        {
+          Array.isArray(paragraph.children) ? <p>{paragraph.children.slice(1)}</p> : null
+        }
       </>
     )
   }
@@ -225,11 +240,18 @@ const Link = ({ node, ...props }: any) => {
 }
 
 export function Markdown(props: { content: string; className?: string }) {
-  const latexContent = preprocessLaTeX(props.content)
+  const latexContent = flow([
+    preprocessThinkTag,
+    preprocessLaTeX,
+  ])(props.content)
   return (
-    <div className={cn(props.className, 'markdown-body')}>
+    <div className={cn('markdown-body', '!text-text-primary', props.className)}>
       <ReactMarkdown
-        remarkPlugins={[RemarkGfm, RemarkMath, RemarkBreaks]}
+        remarkPlugins={[
+          RemarkGfm,
+          [RemarkMath, { singleDollarTextMath: false }],
+          RemarkBreaks,
+        ]}
         rehypePlugins={[
           RehypeKatex,
           RehypeRaw as any,
@@ -240,6 +262,11 @@ export function Markdown(props: { content: string; className?: string }) {
                 if (node.type === 'element' && node.properties?.ref)
                   delete node.properties.ref
 
+                if (node.type === 'element' && !/^[a-z][a-z0-9]*$/i.test(node.tagName)) {
+                  node.type = 'text'
+                  node.value = `<${node.tagName}`
+                }
+
                 if (node.children)
                   node.children.forEach(iterate)
               }
@@ -247,7 +274,7 @@ export function Markdown(props: { content: string; className?: string }) {
             }
           },
         ]}
-        disallowedElements={['iframe', 'head', 'html', 'meta', 'link', 'style', 'body']}
+        disallowedElements={['iframe', 'head', 'html', 'meta', 'link', 'style', 'body', 'input']}
         components={{
           code: CodeBlock,
           img: Img,
@@ -257,9 +284,9 @@ export function Markdown(props: { content: string; className?: string }) {
           p: Paragraph,
           button: MarkdownButton,
           form: MarkdownForm,
-          script: ScriptBlock,
+          script: ScriptBlock as any,
+          details: ThinkBlock,
         }}
-        linkTarget='_blank'
       >
         {/* Markdown detect has problem. */}
         {latexContent}
@@ -284,11 +311,11 @@ export default class ErrorBoundary extends Component {
   }
 
   render() {
-    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+    // eslint-disable-next-line ts/ban-ts-comment
     // @ts-expect-error
     if (this.state.hasError)
       return <div>Oops! An error occurred. This could be due to an ECharts runtime error or invalid SVG content. <br />(see the browser console for more information)</div>
-    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+    // eslint-disable-next-line ts/ban-ts-comment
     // @ts-expect-error
     return this.props.children
   }

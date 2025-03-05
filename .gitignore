@@ -163,6 +163,7 @@ docker/volumes/db/data/*
 docker/volumes/redis/data/*
 docker/volumes/weaviate/*
 docker/volumes/qdrant/*
+docker/tidb/volumes/*
 docker/volumes/etcd/*
 docker/volumes/minio/*
 docker/volumes/milvus/*
@@ -175,6 +176,7 @@ docker/volumes/pgvector/data/*
 docker/volumes/pgvecto_rs/data/*
 docker/volumes/couchbase/*
 docker/volumes/oceanbase/*
+docker/volumes/plugin_daemon/*
 !docker/volumes/oceanbase/init.d
 
 docker/nginx/conf.d/default.conf
@@ -193,3 +195,9 @@ api/.vscode
 
 .idea/
 .vscode
+
+# pnpm
+/.pnpm-store
+
+# plugin migrate
+plugins.jsonl
