@@ -344,6 +344,9 @@ importers:
       '@faker-js/faker':
         specifier: ^9.0.3
         version: 9.0.3
+      '@next/eslint-plugin-next':
+        specifier: ^15.0.0
+        version: 15.0.0
       '@rgrove/parse-xml':
         specifier: ^4.1.0
         version: 4.1.0
