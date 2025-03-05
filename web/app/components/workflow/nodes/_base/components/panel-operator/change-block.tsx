@@ -30,7 +30,7 @@ const ChangeBlock = ({
   const {
     availablePrevBlocks,
     availableNextBlocks,
-  } = useAvailableBlocks(nodeData.type, nodeData.isInIteration)
+  } = useAvailableBlocks(nodeData.type, nodeData.isInIteration, nodeData.isInLoop)
 
   const availableNodes = useMemo(() => {
     if (availablePrevBlocks.length && availableNextBlocks.length)
