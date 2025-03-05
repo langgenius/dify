@@ -1,6 +1,9 @@
 import logging
 from collections.abc import Sequence
 from mimetypes import guess_type
+from typing import Optional
+
+from cachetools import TTLCache
 
 from configs import dify_config
 from core.helper import marketplace
@@ -18,11 +21,59 @@ from core.plugin.entities.plugin_daemon import PluginInstallTask, PluginUploadRe
 from core.plugin.manager.asset import PluginAssetManager
 from core.plugin.manager.debugging import PluginDebuggingManager
 from core.plugin.manager.plugin import PluginInstallationManager
+from pydantic import BaseModel
 
 logger = logging.getLogger(__name__)
 
 
 class PluginService:
+    class LatestPluginCache(BaseModel):
+        plugin_id: str
+        version: str
+        unique_identifier: str
+
+    latest_plugin_cache: TTLCache[str, Optional[LatestPluginCache]] = TTLCache(maxsize=1024, ttl=60 * 5)
+
+    @staticmethod
+    def fetch_latest_plugin_version(plugin_ids: Sequence[str]) -> dict[str, Optional[LatestPluginCache]]:
+        """
+        Fetch the latest plugin version
+        """
+        result = {}
+
+        try:
+            cache_not_exists = []
+
+            for plugin_id in plugin_ids:
+                try:
+                    result[plugin_id] = PluginService.latest_plugin_cache[plugin_id]
+                except KeyError:
+                    cache_not_exists.append(plugin_id)
+
+            if cache_not_exists:
+                manifests = {
+                    manifest.plugin_id: manifest
+                    for manifest in marketplace.batch_fetch_plugin_manifests(cache_not_exists)
+                }
+
+                for plugin_id, manifest in manifests.items():
+                    PluginService.latest_plugin_cache[plugin_id] = PluginService.LatestPluginCache(
+                        plugin_id=plugin_id,
+                        version=manifest.latest_version,
+                        unique_identifier=manifest.latest_package_identifier,
+                    )
+
+                    # pop plugin_id from cache_not_exists
+                    cache_not_exists.remove(plugin_id)
+
+                for plugin_id in cache_not_exists:
+                    result[plugin_id] = None
+
+            return result
+        except Exception:
+            logger.exception("failed to fetch latest plugin version")
+            return result
+
     @staticmethod
     def get_debugging_key(tenant_id: str) -> str:
         """
@@ -41,7 +92,8 @@ class PluginService:
         plugin_ids = [plugin.plugin_id for plugin in plugins if plugin.source == PluginInstallationSource.Marketplace]
         try:
             manifests = {
-                manifest.plugin_id: manifest for manifest in marketplace.batch_fetch_plugin_manifests(plugin_ids)
+                plugin_id: manifest
+                for plugin_id, manifest in PluginService.fetch_latest_plugin_version(plugin_ids).items()
             }
         except Exception:
             manifests = {}
@@ -50,9 +102,11 @@ class PluginService:
         for plugin in plugins:
             if plugin.source == PluginInstallationSource.Marketplace:
                 if plugin.plugin_id in manifests:
-                    # set latest_version
-                    plugin.latest_version = manifests[plugin.plugin_id].latest_version
-                    plugin.latest_unique_identifier = manifests[plugin.plugin_id].latest_package_identifier
+                    latest_plugin_cache = manifests[plugin.plugin_id]
+                    if latest_plugin_cache:
+                        # set latest_version
+                        plugin.latest_version = latest_plugin_cache.version
+                        plugin.latest_unique_identifier = latest_plugin_cache.unique_identifier
 
         return plugins
 
