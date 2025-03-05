@@ -105,12 +105,15 @@ class MetadataService:
             if documents:
                 for document in documents:
                     if not document.doc_metadata:
-                        document.doc_metadata = {}
-                    document.doc_metadata[BuiltInField.document_name] = document.name
-                    document.doc_metadata[BuiltInField.uploader] = document.uploader
-                    document.doc_metadata[BuiltInField.upload_date] = document.upload_date.timestamp()
-                    document.doc_metadata[BuiltInField.last_update_date] = document.last_update_date.timestamp()
-                    document.doc_metadata[BuiltInField.source] = document.data_source_type
+                        doc_metadata = {}
+                    else:
+                        doc_metadata = document.doc_metadata
+                    doc_metadata[BuiltInField.document_name.value] = document.name
+                    doc_metadata[BuiltInField.uploader.value] = document.uploader
+                    doc_metadata[BuiltInField.upload_date.value] = document.upload_date.timestamp()
+                    doc_metadata[BuiltInField.last_update_date.value] = document.last_update_date.timestamp()
+                    doc_metadata[BuiltInField.source.value] = document.data_source_type
+                    document.doc_metadata = doc_metadata
                     db.session.add(document)
                 db.session.commit()
         except Exception:
@@ -131,11 +134,13 @@ class MetadataService:
             document_ids = []
             if documents:
                 for document in documents:
-                    document.doc_metadata.pop(BuiltInField.document_name)
-                    document.doc_metadata.pop(BuiltInField.uploader)
-                    document.doc_metadata.pop(BuiltInField.upload_date)
-                    document.doc_metadata.pop(BuiltInField.last_update_date)
-                    document.doc_metadata.pop(BuiltInField.source)
+                    doc_metadata = document.doc_metadata
+                    doc_metadata.pop(BuiltInField.document_name)
+                    doc_metadata.pop(BuiltInField.uploader)
+                    doc_metadata.pop(BuiltInField.upload_date)
+                    doc_metadata.pop(BuiltInField.last_update_date)
+                    doc_metadata.pop(BuiltInField.source)
+                    document.doc_metadata = doc_metadata
                     db.session.add(document)
                     document_ids.append(document.id)
             db.session.commit()
@@ -150,18 +155,21 @@ class MetadataService:
             lock_key = f"document_metadata_lock_{operation.document_id}"
             try:
                 MetadataService.knowledge_base_metadata_lock_check(None, operation.document_id)
-                document = DocumentService.get_document(operation.document_id)
+                document = DocumentService.get_document(dataset.id, operation.document_id)
                 if document is None:
                     raise ValueError("Document not found.")
-                document.doc_metadata = {}
-                for metadata_value in metadata_args.fields:
-                    document.doc_metadata[metadata_value.name] = metadata_value.value
-                if dataset.built_in_fields:
-                    document.doc_metadata[BuiltInField.document_name] = document.name
-                    document.doc_metadata[BuiltInField.uploader] = document.uploader
-                    document.doc_metadata[BuiltInField.upload_date] = document.upload_date.timestamp()
-                    document.doc_metadata[BuiltInField.last_update_date] = document.last_update_date.timestamp()
-                    document.doc_metadata[BuiltInField.source] = document.data_source_type
+                doc_metadata = {}
+                for metadata_value in operation.metadata_list:
+                    doc_metadata[metadata_value.name] = metadata_value.value
+                if dataset.built_in_field_enabled:
+                    doc_metadata[BuiltInField.document_name.value] = document.name
+                    doc_metadata[BuiltInField.uploader.value] = document.uploader
+                    doc_metadata[BuiltInField.upload_date.value] = document.upload_date.timestamp()
+                    doc_metadata[BuiltInField.last_update_date.value] = document.last_update_date.timestamp()
+                    doc_metadata[BuiltInField.source.value] = document.data_source_type
+                document.doc_metadata = doc_metadata
+                db.session.add(document)
+                db.session.commit()
                 # deal metadata bindding
                 DatasetMetadataBinding.query.filter_by(document_id=operation.document_id).delete()
                 for metadata_value in operation.metadata_list:
@@ -173,7 +181,6 @@ class MetadataService:
                         created_by=current_user.id,
                     )
                     db.session.add(dataset_metadata_binding)
-                db.session.add(document)
                 db.session.commit()
             except Exception:
                 logging.exception("Update documents metadata failed")
