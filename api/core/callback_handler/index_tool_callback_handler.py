@@ -48,7 +48,7 @@ class DatasetIndexToolCallbackHandler:
                 ).first()
                 if dataset_document.doc_form == IndexType.PARENT_CHILD_INDEX:
                     child_chunk = ChildChunk.query.filter(
-                        ChildChunk.id == document.metadata["doc_id"],
+                        ChildChunk.index_node_id == document.metadata["doc_id"],
                         ChildChunk.dataset_id == dataset_document.dataset_id,
                         ChildChunk.document_id == dataset_document.id,
                     ).first()
