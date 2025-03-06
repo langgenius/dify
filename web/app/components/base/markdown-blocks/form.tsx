@@ -4,6 +4,7 @@ import Input from '@/app/components/base/input'
 import Textarea from '@/app/components/base/textarea'
 import DatePicker from '@/app/components/base/date-and-time-picker/date-picker'
 import TimePicker from '@/app/components/base/date-and-time-picker/time-picker'
+import Checkbox from '@/app/components/base/checkbox'
 import { useChatContext } from '@/app/components/base/chat/chat/context'
 
 enum DATA_FORMAT {
@@ -24,6 +25,7 @@ enum SUPPORTED_TYPES {
   DATE = 'date',
   TIME = 'time',
   DATETIME = 'datetime',
+  CHECKBOX = 'checkbox',
 }
 const MarkdownForm = ({ node }: any) => {
   const { onSend } = useChatContext()
@@ -85,7 +87,7 @@ const MarkdownForm = ({ node }: any) => {
           )
         }
         if (child.tagName === SUPPORTED_TAGS.INPUT && Object.values(SUPPORTED_TYPES).includes(child.properties.type)) {
-          if (child.properties.type === SUPPORTED_TYPES.DATE) {
+          if (child.properties.type === SUPPORTED_TYPES.DATE || child.properties.type === SUPPORTED_TYPES.DATETIME) {
             return (
               <DatePicker
                 key={index}
@@ -124,6 +126,23 @@ const MarkdownForm = ({ node }: any) => {
                   }))
                 }}
               />
+            )
+          }
+          if (child.properties.type === SUPPORTED_TYPES.CHECKBOX) {
+            return (
+              <div className='mt-2 flex items-center h-6 space-x-2' key={index}>
+                <Checkbox
+                  key={index}
+                  checked={formValues[child.properties.name]}
+                  onCheck={() => {
+                    setFormValues(prevValues => ({
+                      ...prevValues,
+                      [child.properties.name]: !prevValues[child.properties.name],
+                    }))
+                  }}
+                />
+                <span>{child.properties.dataTip || child.properties['data-tip'] || ''}</span>
+              </div>
             )
           }
 
