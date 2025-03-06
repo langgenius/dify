@@ -899,7 +899,7 @@ class DatasetRetrieval:
             case "≥", ">=":
                 query = query.filter(Document.doc_metadata[metadata_name] >= value)
             case _:
-                raise ValueError(f"Invalid condition: {condition}")
+                 pass
 
     def _fetch_model_config(
         self, tenant_id: str, model: ModelConfig

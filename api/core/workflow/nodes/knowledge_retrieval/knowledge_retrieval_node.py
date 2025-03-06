@@ -407,7 +407,7 @@ class KnowledgeRetrievalNode(LLMNode):
             case "≥" | ">=":
                 query = query.filter(Document.doc_metadata[metadata_name] >= value)
             case _:
-                raise InvalidConditionError(f"Invalid condition: {condition}")
+                pass
 
     @classmethod
     def _extract_variable_selector_to_variable_mapping(

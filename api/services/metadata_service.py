@@ -1,3 +1,4 @@
+import copy
 import datetime
 import logging
 from typing import Optional
@@ -30,7 +31,8 @@ class MetadataService:
         return metadata
 
     @staticmethod
-    def update_metadata_name(dataset_id: str, metadata_id: str, name: str) -> DatasetMetadata:
+    def \
+            update_metadata_name(dataset_id: str, metadata_id: str, name: str) -> DatasetMetadata:
         lock_key = f"dataset_metadata_lock_{dataset_id}"
         try:
             MetadataService.knowledge_base_metadata_lock_check(dataset_id, None)
@@ -48,7 +50,10 @@ class MetadataService:
                 document_ids = [binding.document_id for binding in dataset_metadata_bindings]
                 documents = DocumentService.get_document_by_ids(document_ids)
                 for document in documents:
-                    document.doc_metadata[name] = document.doc_metadata.pop(old_name)
+                    doc_metadata = copy.deepcopy(document.doc_metadata)
+                    value = doc_metadata.pop(old_name, None)
+                    doc_metadata[name] = value
+                    document.doc_metadata = doc_metadata
                     db.session.add(document)
             db.session.commit()
             return metadata
@@ -67,13 +72,15 @@ class MetadataService:
                 raise ValueError("Metadata not found.")
             db.session.delete(metadata)
 
-            # delete related documents
+            # deal related documents
             dataset_metadata_bindings = DatasetMetadataBinding.query.filter_by(metadata_id=metadata_id).all()
             if dataset_metadata_bindings:
                 document_ids = [binding.document_id for binding in dataset_metadata_bindings]
                 documents = DocumentService.get_document_by_ids(document_ids)
                 for document in documents:
-                    document.doc_metadata.pop(metadata.name)
+                    doc_metadata = copy.deepcopy(document.doc_metadata)
+                    doc_metadata.pop(metadata.name, None)
+                    document.doc_metadata = doc_metadata
                     db.session.add(document)
             db.session.commit()
             return metadata
@@ -87,8 +94,8 @@ class MetadataService:
         return [
             {"name": BuiltInField.document_name, "type": "string"},
             {"name": BuiltInField.uploader, "type": "string"},
-            {"name": BuiltInField.upload_date, "type": "date"},
-            {"name": BuiltInField.last_update_date, "type": "date"},
+            {"name": BuiltInField.upload_date, "type": "time"},
+            {"name": BuiltInField.last_update_date, "type": "time"},
             {"name": BuiltInField.source, "type": "string"},
         ]
 
@@ -107,7 +114,7 @@ class MetadataService:
                     if not document.doc_metadata:
                         doc_metadata = {}
                     else:
-                        doc_metadata = document.doc_metadata
+                        doc_metadata = copy.deepcopy(document.doc_metadata)
                     doc_metadata[BuiltInField.document_name.value] = document.name
                     doc_metadata[BuiltInField.uploader.value] = document.uploader
                     doc_metadata[BuiltInField.upload_date.value] = document.upload_date.timestamp()
@@ -134,12 +141,12 @@ class MetadataService:
             document_ids = []
             if documents:
                 for document in documents:
-                    doc_metadata = document.doc_metadata
-                    doc_metadata.pop(BuiltInField.document_name)
-                    doc_metadata.pop(BuiltInField.uploader)
-                    doc_metadata.pop(BuiltInField.upload_date)
-                    doc_metadata.pop(BuiltInField.last_update_date)
-                    doc_metadata.pop(BuiltInField.source)
+                    doc_metadata = copy.deepcopy(document.doc_metadata)
+                    doc_metadata.pop(BuiltInField.document_name, None)
+                    doc_metadata.pop(BuiltInField.uploader, None)
+                    doc_metadata.pop(BuiltInField.upload_date, None)
+                    doc_metadata.pop(BuiltInField.last_update_date, None)
+                    doc_metadata.pop(BuiltInField.source, None)
                     document.doc_metadata = doc_metadata
                     db.session.add(document)
                     document_ids.append(document.id)
@@ -170,7 +177,7 @@ class MetadataService:
                 document.doc_metadata = doc_metadata
                 db.session.add(document)
                 db.session.commit()
-                # deal metadata bindding
+                # deal metadata binding
                 DatasetMetadataBinding.query.filter_by(document_id=operation.document_id).delete()
                 for metadata_value in operation.metadata_list:
                     dataset_metadata_binding = DatasetMetadataBinding(
