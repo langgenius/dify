@@ -113,6 +113,11 @@ const config = {
         'dataset-option-card-purple-gradient': 'var(--color-dataset-option-card-purple-gradient)',
         'dataset-option-card-orange-gradient': 'var(--color-dataset-option-card-orange-gradient)',
         'dataset-chunk-list-mask-bg': 'var(--color-dataset-chunk-list-mask-bg)',
+        'price-premium-badge-background': 'var(--color-premium-badge-background)',
+        'premium-yearly-tip-text-background': 'var(--color-premium-yearly-tip-text-background)',
+        'price-premium-text-background': 'var(--color-premium-text-background)',
+        'price-enterprise-background': 'var(--color-price-enterprise-background)',
+        'grid-mask-background': 'var(--color-grid-mask-background)',
       },
       animation: {
         'spin-slow': 'spin 2s linear infinite',

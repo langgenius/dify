@@ -21,6 +21,7 @@ export type TriggerProps = {
 
 export type DatePickerProps = {
   value: Dayjs | undefined
+  timezone?: string
   placeholder?: string
   needTimePicker?: boolean
   onChange: (date: Dayjs | undefined) => void
@@ -48,6 +49,7 @@ export type DatePickerFooterProps = {
 
 export type TimePickerProps = {
   value: Dayjs | undefined
+  timezone?: string
   placeholder?: string
   onChange: (date: Dayjs | undefined) => void
   onClear: () => void

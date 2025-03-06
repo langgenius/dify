@@ -427,6 +427,7 @@ class QueueAgentLogEvent(AppQueueEvent):
     status: str
     data: Mapping[str, Any]
     metadata: Optional[Mapping[str, Any]] = None
+    node_id: str
 
 
 class QueueNodeRetryEvent(QueueNodeStartedEvent):

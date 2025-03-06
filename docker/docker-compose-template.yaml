@@ -153,7 +153,8 @@ services:
       - "${EXPOSE_PLUGIN_DEBUGGING_PORT:-5003}:${PLUGIN_DEBUGGING_PORT:-5003}"
     volumes:
       - ./volumes/plugin_daemon:/app/storage
-
+    depends_on:
+      - db
 
   # ssrf_proxy server
   # for more information, please refer to
