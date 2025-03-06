@@ -154,7 +154,7 @@ services:
     volumes:
       - ./volumes/plugin_daemon:/app/storage
     depends_on:
-     - db
+      - db
 
   # ssrf_proxy server
   # for more information, please refer to
