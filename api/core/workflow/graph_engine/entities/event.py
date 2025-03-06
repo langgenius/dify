@@ -268,6 +268,7 @@ class AgentLogEvent(BaseAgentEvent):
     status: str = Field(..., description="status")
     data: Mapping[str, Any] = Field(..., description="data")
     metadata: Optional[Mapping[str, Any]] = Field(default=None, description="metadata")
+    node_id: str = Field(..., description="agent node id")
 
 
 InNodeEvent = BaseNodeEvent | BaseParallelBranchEvent | BaseIterationEvent | BaseAgentEvent | BaseLoopEvent

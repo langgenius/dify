@@ -959,5 +959,6 @@ class WorkflowCycleManage:
                 status=event.status,
                 data=event.data,
                 metadata=event.metadata,
+                node_id=event.node_id,
             ),
         )
