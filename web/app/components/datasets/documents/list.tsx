@@ -436,7 +436,7 @@ const DocumentList: FC<IDocumentListProps> = ({
     handleSave,
   } = useBatchEditDocumentMetadata({
     datasetId,
-    list: documents.filter(item => selectedIds.includes(item.id)),
+    docList: documents.filter(item => selectedIds.includes(item.id)),
   })
 
   useEffect(() => {

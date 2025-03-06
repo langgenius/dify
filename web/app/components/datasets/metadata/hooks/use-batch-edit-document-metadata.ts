@@ -7,12 +7,12 @@ import { useBatchUpdateDocMetadata } from '@/service/knowledge/use-metadata'
 
 type Props = {
   datasetId: string
-  list: SimpleDocumentDetail[]
+  docList: SimpleDocumentDetail[]
 }
 
 const useBatchEditDocumentMetadata = ({
   datasetId,
-  list,
+  docList,
 }: Props) => {
   const [isShowEditModal, {
     setTrue: showEditModal,
@@ -21,7 +21,7 @@ const useBatchEditDocumentMetadata = ({
 
   const metaDataList: MetadataItemWithValue[][] = (() => {
     const res: MetadataItemWithValue[][] = []
-    list.forEach((item) => {
+    docList.forEach((item) => {
       if (item.doc_metadata) {
         res.push(item.doc_metadata.filter(item => item.id !== 'built-in'))
         return
@@ -65,8 +65,7 @@ const useBatchEditDocumentMetadata = ({
     return res
   }, [metaDataList])
 
-  const formateToBackendList = (editedList: MetadataItemInBatchEdit[], isApplyToAllSelectDocument: boolean) => {
-    // TODO: add list should be not in updateList; and updated not refresh cash
+  const formateToBackendList = (editedList: MetadataItemInBatchEdit[], addedList: MetadataItemInBatchEdit[], isApplyToAllSelectDocument: boolean) => {
     const updatedList = editedList.filter((editedItem) => {
       const originalItem = originalList.find(i => i.id === editedItem.id)
       if (!originalItem) // added item
@@ -82,14 +81,13 @@ const useBatchEditDocumentMetadata = ({
       return false
     })
 
-    const res: MetadataBatchEditToServer = list.map((item, i) => {
+    const res: MetadataBatchEditToServer = docList.map((item, i) => {
       // the new metadata will override the old one
-      const oldMetadataList = item.doc_metadata || metaDataList[i]
-      let newMetadataList: MetadataItemWithValue[] = oldMetadataList
+      const oldMetadataList = metaDataList[i]
+      let newMetadataList: MetadataItemWithValue[] = [...oldMetadataList, ...addedList]
         .filter((item) => {
-          return item.id !== 'built-in' && !removedList.find(removedItem => removedItem.id === item.id)
+          return !removedList.find(removedItem => removedItem.id === item.id)
         })
-
         .map(item => ({
           id: item.id,
           name: item.name,
@@ -121,8 +119,8 @@ const useBatchEditDocumentMetadata = ({
 
   const { mutate } = useBatchUpdateDocMetadata()
 
-  const handleSave = (editedList: MetadataItemInBatchEdit[], isApplyToAllSelectDocument: boolean) => {
-    const backendList = formateToBackendList(editedList, isApplyToAllSelectDocument)
+  const handleSave = (editedList: MetadataItemInBatchEdit[], addedList: MetadataItemInBatchEdit[], isApplyToAllSelectDocument: boolean) => {
+    const backendList = formateToBackendList(editedList, addedList, isApplyToAllSelectDocument)
     mutate({
       dataset_id: datasetId,
       metadata_list: backendList,

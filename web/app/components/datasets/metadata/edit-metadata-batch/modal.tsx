@@ -25,7 +25,7 @@ type Props = {
   datasetId: string,
   documentNum: number
   list: MetadataItemInBatchEdit[]
-  onSave: (list: MetadataItemInBatchEdit[], isApplyToAllSelectDocument: boolean) => void
+  onSave: (editedList: MetadataItemInBatchEdit[], addedList: MetadataItemInBatchEdit[], isApplyToAllSelectDocument: boolean) => void
   onHide: () => void
   onShowManage: () => void
 }
@@ -109,7 +109,7 @@ const EditMetadataBatchModal: FC<Props> = ({
   const [isApplyToAllSelectDocument, setIsApplyToAllSelectDocument] = useState(false)
 
   const handleSave = useCallback(() => {
-    onSave([...templeList.filter(item => item.updateType !== UpdateType.delete), ...addedList], isApplyToAllSelectDocument)
+    onSave(templeList.filter(item => item.updateType !== UpdateType.delete), addedList, isApplyToAllSelectDocument)
   }, [templeList, addedList, isApplyToAllSelectDocument, onSave])
   return (
     <Modal
