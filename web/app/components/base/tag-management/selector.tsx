@@ -16,7 +16,7 @@ import Checkbox from '@/app/components/base/checkbox'
 import { bindTag, createTag, fetchTagList, unBindTag } from '@/service/tag'
 import { ToastContext } from '@/app/components/base/toast'
 
-interface TagSelectorProps {
+type TagSelectorProps = {
   targetID: string
   isPopover?: boolean
   position?: 'bl' | 'br'
@@ -215,6 +215,7 @@ const TagSelector: FC<TagSelectorProps> = ({
 }) => {
   const { t } = useTranslation()
 
+  const tagList = useTagStore(s => s.tagList)
   const setTagList = useTagStore(s => s.setTagList)
 
   const getTagList = async () => {
@@ -224,9 +225,9 @@ const TagSelector: FC<TagSelectorProps> = ({
 
   const triggerContent = useMemo(() => {
     if (selectedTags?.length)
-      return selectedTags.map(tag => tag.name).join(', ')
+      return selectedTags.filter(selectedTag => tagList.find(tag => tag.id === selectedTag.id)).map(tag => tag.name).join(', ')
     return ''
-  }, [selectedTags])
+  }, [selectedTags, tagList])
 
   const Trigger = () => {
     return (
