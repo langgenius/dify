@@ -391,21 +391,21 @@ class KnowledgeRetrievalNode(LLMNode):
                 query = query.filter(Document.doc_metadata[metadata_name].like(f"{value}%"))
             case "end with":
                 query = query.filter(Document.doc_metadata[metadata_name].like(f"%{value}"))
-            case "is", "=":
+            case "=" | "is":
                 query = query.filter(Document.doc_metadata[metadata_name] == value)
-            case "is not", "≠":
+            case "is not" | "≠":
                 query = query.filter(Document.doc_metadata[metadata_name] != value)
             case "is empty":
                 query = query.filter(Document.doc_metadata[metadata_name].is_(None))
             case "is not empty":
                 query = query.filter(Document.doc_metadata[metadata_name].isnot(None))
-            case "before", "<":
+            case "before" | "<":
                 query = query.filter(Document.doc_metadata[metadata_name] < value)
-            case "after", ">":
+            case "after" | ">":
                 query = query.filter(Document.doc_metadata[metadata_name] > value)
-            case "≤", ">=":
+            case "≤" | ">=":
                 query = query.filter(Document.doc_metadata[metadata_name] <= value)
-            case "≥", ">=":
+            case "≥" | ">=":
                 query = query.filter(Document.doc_metadata[metadata_name] >= value)
             case _:
                 raise InvalidConditionError(f"Invalid condition: {condition}")
