@@ -1,5 +1,12 @@
-import type { Dayjs } from 'dayjs'
-import type { Day } from './types'
+import dayjs, { type Dayjs } from 'dayjs'
+import type { Day } from '../types'
+import utc from 'dayjs/plugin/utc'
+import timezone from 'dayjs/plugin/timezone'
+
+dayjs.extend(utc)
+dayjs.extend(timezone)
+
+export default dayjs
 
 const monthMaps: Record<string, Day[]> = {}
 
@@ -58,7 +65,16 @@ export const getDaysInMonth = (currentDate: Dayjs) => {
   return days
 }
 
+export const clearMonthMapCache = () => {
+  for (const key in monthMaps)
+    delete monthMaps[key]
+}
+
 export const getHourIn12Hour = (date: Dayjs) => {
   const hour = date.hour()
   return hour === 0 ? 12 : hour >= 12 ? hour - 12 : hour
+}
+
+export const getDateWithTimezone = (props: { date?: Dayjs, timezone?: string }) => {
+  return props.date ? dayjs.tz(props.date, props.timezone) : dayjs().tz(props.timezone)
 }
