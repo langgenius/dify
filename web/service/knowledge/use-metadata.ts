@@ -80,6 +80,7 @@ export const useDocumentMetaData = ({ datasetId, documentId }: { datasetId: stri
 
 export const useBatchUpdateDocMetadata = () => {
   const queryClient = useQueryClient()
+
   return useMutation({
     mutationFn: async (payload: {
       dataset_id: string
@@ -90,6 +91,9 @@ export const useBatchUpdateDocMetadata = () => {
         body: {
           operation_data: payload.metadata_list,
         },
+      })
+      await queryClient.invalidateQueries({
+        queryKey: [NAME_SPACE, 'dataset', payload.dataset_id],
       })
       // invalidate document metadata
       await Promise.all(documentIds.map(documentId => queryClient.invalidateQueries(
