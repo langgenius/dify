@@ -84,7 +84,7 @@ const Item: FC<ItemProps> = ({
           <div className='shrink-0 system-xs-regular'>{payload.type}</div>
         </div>
         <div className='group-hover/item:hidden ml-2 shrink-0 system-xs-regular text-text-tertiary'>
-          {disabled ? t(`${i18nPrefix}.disabled`) : t(`${i18nPrefix}.values`, { num: payload.use_count || 0 })}
+          {disabled ? t(`${i18nPrefix}.disabled`) : t(`${i18nPrefix}.values`, { num: payload.count || 0 })}
         </div>
         <div className='group-hover/item:flex hidden ml-2 items-center text-text-tertiary space-x-1'>
           <RiEditLine className='size-4 cursor-pointer' onClick={handleRename} />

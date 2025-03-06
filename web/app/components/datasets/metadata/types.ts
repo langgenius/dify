@@ -18,7 +18,7 @@ export type MetadataItemWithValue = MetadataItem & {
 }
 
 export type MetadataItemWithValueLength = MetadataItem & {
-  use_count: number
+  count: number
 }
 
 export type MetadataItemInBatchEdit = MetadataItemWithValue & {
