@@ -1,4 +1,5 @@
 import { useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
 import dayjs from 'dayjs'
 import {
   RiCalendarLine,
@@ -17,6 +18,7 @@ const ConditionDate = ({
   value,
   onChange,
 }: ConditionDateProps) => {
+  const { t } = useTranslation()
   const { userProfile: { timezone } } = useAppContext()
 
   const handleDateChange = useCallback((date?: dayjs.Dayjs) => {
@@ -40,7 +42,7 @@ const ConditionDate = ({
           {
             value
               ? dayjs(value * 1000).tz(timezone).format('MMMM DD YYYY HH:mm A')
-              : 'Choose a time...'
+              : t('workflow.nodes.knowledgeRetrieval.metadata.panel.datePlaceholder')
           }
         </div>
         {
@@ -66,7 +68,7 @@ const ConditionDate = ({
         />
       </div>
     )
-  }, [value, handleDateChange, timezone])
+  }, [value, handleDateChange, timezone, t])
 
   return (
     <div className='px-2 py-1 h-8'>

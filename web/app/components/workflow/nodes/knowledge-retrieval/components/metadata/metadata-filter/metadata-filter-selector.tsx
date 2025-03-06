@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import {
   RiArrowDownSLine,
   RiCheckLine,
@@ -19,22 +20,23 @@ const MetadataFilterSelector = ({
   value = MetadataFilteringModeEnum.disabled,
   onSelect,
 }: MetadataFilterSelectorProps) => {
+  const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const options = [
     {
       key: MetadataFilteringModeEnum.disabled,
-      value: 'Disabled',
-      desc: 'Not enabling metadata filtering',
+      value: t('workflow.nodes.knowledgeRetrieval.metadata.options.disabled.title'),
+      desc: t('workflow.nodes.knowledgeRetrieval.metadata.options.disabled.subTitle'),
     },
     {
       key: MetadataFilteringModeEnum.automatic,
-      value: 'Automatic',
-      desc: 'Automatically generate metadata filtering conditions based on user query',
+      value: t('workflow.nodes.knowledgeRetrieval.metadata.options.automatic.title'),
+      desc: t('workflow.nodes.knowledgeRetrieval.metadata.options.automatic.subTitle'),
     },
     {
       key: MetadataFilteringModeEnum.manual,
-      value: 'Manual',
-      desc: 'Manually add metadata filtering conditions',
+      value: t('workflow.nodes.knowledgeRetrieval.metadata.options.manual.title'),
+      desc: t('workflow.nodes.knowledgeRetrieval.metadata.options.manual.subTitle'),
     },
   ]
 

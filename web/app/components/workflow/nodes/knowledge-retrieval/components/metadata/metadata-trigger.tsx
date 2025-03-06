@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { RiFilter3Line } from '@remixicon/react'
 import MetadataPanel from './metadata-panel'
 import Button from '@/app/components/base/button'
@@ -13,6 +14,7 @@ const MetadataTrigger = ({
   metadataFilteringConditions,
   ...restProps
 }: MetadataShape) => {
+  const { t } = useTranslation()
   const [open, setOpen] = useState(false)
 
   return (
@@ -28,7 +30,7 @@ const MetadataTrigger = ({
           size='small'
         >
           <RiFilter3Line className='mr-1 w-3.5 h-3.5' />
-          Conditions
+          {t('workflow.nodes.knowledgeRetrieval.metadata.panel.conditions')}
           <div className='flex items-center ml-1 px-1 rounded-[5px] border border-divider-deep system-2xs-medium-uppercase text-text-tertiary'>
             {metadataFilteringConditions?.conditions.length || 0}
           </div>

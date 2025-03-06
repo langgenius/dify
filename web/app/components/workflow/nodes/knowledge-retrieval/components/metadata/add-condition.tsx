@@ -3,6 +3,7 @@ import {
   useMemo,
   useState,
 } from 'react'
+import { useTranslation } from 'react-i18next'
 import {
   RiAddLine,
 } from '@remixicon/react'
@@ -21,6 +22,7 @@ const AddCondition = ({
   metadataList,
   handleAddCondition,
 }: Pick<MetadataShape, 'handleAddCondition' | 'metadataList'>) => {
+  const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const [searchText, setSearchText] = useState('')
 
@@ -49,7 +51,7 @@ const AddCondition = ({
           variant='secondary'
         >
           <RiAddLine className='w-3.5 h-3.5' />
-          Add Condition
+          {t('workflow.nodes.knowledgeRetrieval.metadata.panel.add')}
         </Button>
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent className='z-10'>
@@ -57,7 +59,7 @@ const AddCondition = ({
           <div className='p-2 pb-1'>
             <Input
               showLeftIcon
-              placeholder='Search metadata'
+              placeholder={t('workflow.nodes.knowledgeRetrieval.metadata.panel.search')}
               value={searchText}
               onChange={e => setSearchText(e.target.value)}
             />

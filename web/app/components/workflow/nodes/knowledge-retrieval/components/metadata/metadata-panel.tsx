@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next'
 import { RiCloseLine } from '@remixicon/react'
 import AddCondition from './add-condition'
 import ConditionList from './condition-list'
@@ -13,11 +14,13 @@ const MetadataPanel = ({
   handleAddCondition,
   ...restProps
 }: MetadataPanelProps) => {
+  const { t } = useTranslation()
+
   return (
     <div className='w-[420px] bg-components-panel-bg border-[0.5px] border-components-panel-border rounded-2xl shadow-2xl'>
       <div className='relative px-3 pt-3.5'>
         <div className='system-xl-semibold text-text-primary'>
-          Metadata Filter Conditions
+          {t('workflow.nodes.knowledgeRetrieval.metadata.panel.title')}
         </div>
         <div
           className='absolute right-2.5 bottom-0 flex items-center justify-center w-8 h-8 cursor-pointer'

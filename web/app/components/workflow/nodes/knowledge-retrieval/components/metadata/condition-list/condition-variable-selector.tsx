@@ -1,4 +1,5 @@
 import { useCallback, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
@@ -30,6 +31,7 @@ const ConditionVariableSelector = ({
   nodesOutputVars = [],
   onChange,
 }: ConditionVariableSelectorProps) => {
+  const { t } = useTranslation()
   const [open, setOpen] = useState(false)
 
   const handleChange = useCallback((valueSelector: ValueSelector, varItem: Var) => {
@@ -64,10 +66,10 @@ const ConditionVariableSelector = ({
               <>
                 <div className='grow flex items-center text-components-input-text-placeholder system-sm-regular'>
                   <Variable02 className='mr-1 w-4 h-4' />
-                  Select variable...
+                  {t('workflow.nodes.knowledgeRetrieval.metadata.panel.select')}
                 </div>
                 <div className='shrink-0 flex items-center px-[5px] h-5 border border-divider-deep rounded-[5px] system-2xs-medium text-text-tertiary'>
-                  string
+                  {varType}
                 </div>
               </>
             )

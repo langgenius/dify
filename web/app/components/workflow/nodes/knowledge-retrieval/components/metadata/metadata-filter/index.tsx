@@ -2,6 +2,7 @@ import {
   useCallback,
   useState,
 } from 'react'
+import { useTranslation } from 'react-i18next'
 import MetadataTrigger from '../metadata-trigger'
 import MetadataFilterSelector from './metadata-filter-selector'
 import Collapse from '@/app/components/workflow/nodes/_base/components/collapse'
@@ -22,6 +23,7 @@ const MetadataFilter = ({
   handleMetadataCompletionParamsChange,
   ...restProps
 }: MetadataFilterProps) => {
+  const { t } = useTranslation()
   const [collapsed, setCollapsed] = useState(true)
 
   const handleMetadataFilterModeChangeWrapped = useCallback((mode: MetadataFilteringModeEnum) => {
@@ -40,12 +42,12 @@ const MetadataFilter = ({
         <div className='grow flex items-center justify-between pr-4'>
           <div className='flex items-center'>
             <div className='mr-0.5 system-sm-semibold-uppercase text-text-secondary'>
-              metadata filtering
+              {t('workflow.nodes.knowledgeRetrieval.metadata.title')}
             </div>
             <Tooltip
               popupContent={(
                 <div className='w-[200px]'>
-                  Metadata filtering is the process of using metadata attributes (such as tags, categories, or access permissions) to refine and control the retrieval of relevant information within a system.
+                  {t('workflow.nodes.knowledgeRetrieval.metadata.tip')}
                 </div>
               )}
             />
@@ -71,7 +73,7 @@ const MetadataFilter = ({
           metadataFilterMode === MetadataFilteringModeEnum.automatic && (
             <>
               <div className='px-4 body-xs-regular text-text-tertiary'>
-                Automatically generate metadata filtering conditions based on Query Variable
+                {t('workflow.nodes.knowledgeRetrieval.metadata.options.automatic.desc')}
               </div>
               <div className='mt-1 px-4'>
                 <ModelParameterModal

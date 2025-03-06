@@ -1,4 +1,5 @@
 import { useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
 import ConditionValueMethod from './condition-value-method'
 import type { ConditionValueMethodProps } from './condition-value-method'
 import ConditionVariableSelector from './condition-variable-selector'
@@ -23,6 +24,7 @@ const ConditionString = ({
   nodesOutputVars,
   availableNodes,
 }: ConditionStringProps) => {
+  const { t } = useTranslation()
   const handleVariableValueChange = useCallback((v: ValueSelector) => {
     onChange(`{{#${v.join('.')}#}}`)
   }, [onChange])
@@ -50,7 +52,7 @@ const ConditionString = ({
             className='bg-transparent hover:bg-transparent outline-none border-none focus:shadow-none focus:bg-transparent'
             value={value}
             onChange={e => onChange(e.target.value)}
-            placeholder='Enter value'
+            placeholder={t('workflow.nodes.knowledgeRetrieval.metadata.panel.placeholder')}
           />
         )
       }
