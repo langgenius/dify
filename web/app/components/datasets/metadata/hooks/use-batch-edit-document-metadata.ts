@@ -5,6 +5,7 @@ import { useMemo } from 'react'
 import { isEqual } from 'lodash-es'
 import { useBatchUpdateDocMetadata } from '@/service/knowledge/use-metadata'
 import Toast from '@/app/components/base/toast'
+import { t } from 'i18next'
 
 type Props = {
   datasetId: string
@@ -132,7 +133,7 @@ const useBatchEditDocumentMetadata = ({
     hideEditModal()
     Toast.notify({
       type: 'success',
-      message: 'common.api.actionSuccess',
+      message: t('common.actionMsg.modifiedSuccessfully'),
     })
   }
 
