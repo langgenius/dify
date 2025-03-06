@@ -12,7 +12,7 @@ const useEditDatasetMetadata = ({
   // dataset,
 }: {
   datasetId: string,
-  dataset?: DataSet
+  dataset?: DataSet,
 }) => {
   const { t } = useTranslation()
   const [isShowEditModal, {
@@ -57,7 +57,7 @@ const useEditDatasetMetadata = ({
     await doRenameMetaData(payload)
   }, [checkName, doRenameMetaData])
 
-  const { mutate: doDeleteMetaData } = useDeleteMetaData(datasetId)
+  const { mutateAsync: doDeleteMetaData } = useDeleteMetaData(datasetId)
   const handleDeleteMetaData = useCallback((metaDataId: string) => {
     doDeleteMetaData(metaDataId)
   }, [doDeleteMetaData])
