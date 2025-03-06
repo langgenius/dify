@@ -2,7 +2,7 @@
 import type { FC } from 'react'
 import React from 'react'
 import { useRouter } from 'next/navigation'
-import { type MetadataItemWithValue, isShowManageMetadataLocalStorageKey } from '../types'
+import { DataType, type MetadataItemWithValue, isShowManageMetadataLocalStorageKey } from '../types'
 import Field from './field'
 import InputCombined from '../edit-metadata-batch/input-combined'
 import { RiDeleteBinLine, RiQuestionLine } from '@remixicon/react'
@@ -11,6 +11,8 @@ import cn from '@/utils/classnames'
 import Divider from '@/app/components/base/divider'
 import SelectMetadataModal from '../metadata-dataset/select-metadata-modal'
 import AddMetadataButton from '../add-metadata-button'
+import useTimestamp from '@/hooks/use-timestamp'
+import { useTranslation } from 'react-i18next'
 
 type Props = {
   dataSetId: string
@@ -46,6 +48,9 @@ const InfoGroup: FC<Props> = ({
   onAdd,
 }) => {
   const router = useRouter()
+  const { t } = useTranslation()
+  const { formatTime: formatTimestamp } = useTimestamp()
+
   const handleMangeMetadata = () => {
     localStorage.setItem(isShowManageMetadataLocalStorageKey, 'true')
     router.push(`/datasets/${dataSetId}/documents`)
@@ -96,7 +101,7 @@ const InfoGroup: FC<Props> = ({
                   <RiDeleteBinLine className='size-4' onClick={() => onDelete?.(item)} />
                 </div>
               </div>
-            ) : (<div className='py-1 system-xs-regular text-text-secondary'>{item.value}</div>)}
+            ) : (<div className='py-1 system-xs-regular text-text-secondary'>{(item.value && item.type === DataType.time) ? formatTimestamp((item.value as number), t('datasetDocuments.metadata.dateTimeFormat')) : item.value}</div>)}
           </Field>
         ))}
       </div>

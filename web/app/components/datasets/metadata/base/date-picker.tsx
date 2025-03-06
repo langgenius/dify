@@ -9,7 +9,6 @@ import cn from '@/utils/classnames'
 import type { TriggerProps } from '@/app/components/base/date-and-time-picker/types'
 import useTimestamp from '@/hooks/use-timestamp'
 import { useTranslation } from 'react-i18next'
-import { useAppContext } from '@/context/app-context'
 
 type Props = {
   className?: string
@@ -22,12 +21,12 @@ const WrappedDatePicker = ({
   onChange,
 }: Props) => {
   const { t } = useTranslation()
-  const { userProfile: { timezone } } = useAppContext()
+  // const { userProfile: { timezone } } = useAppContext()
   const { formatTime: formatTimestamp } = useTimestamp()
 
   const handleDateChange = useCallback((date?: dayjs.Dayjs) => {
     if (date)
-      onChange(date.valueOf())
+      onChange(date.unix())
     else
       onChange(null)
   }, [onChange])
@@ -43,7 +42,7 @@ const WrappedDatePicker = ({
             value ? 'text-text-secondary' : 'text-text-tertiary',
           )}
         >
-          {value ? formatTimestamp(dayjs.utc(value).tz(timezone).valueOf() / 1000, t('datasetDocuments.metadata.dateTimeFormat')) : 'Choose a time...'}
+          {value ? formatTimestamp(value, t('datasetDocuments.metadata.dateTimeFormat')) : t('dataset.metadata.chooseTime')}
         </div>
         <RiCloseCircleFill
           className={cn(
@@ -60,11 +59,11 @@ const WrappedDatePicker = ({
         />
       </div>
     )
-  }, [className, value, handleDateChange])
+  }, [className, value, formatTimestamp, t, handleDateChange])
 
   return (
     <DatePicker
-      value={dayjs(value || Date.now())}
+      value={dayjs(value ? value * 1000 : Date.now())}
       onChange={handleDateChange}
       onClear={handleDateChange}
       renderTrigger={renderTrigger}
