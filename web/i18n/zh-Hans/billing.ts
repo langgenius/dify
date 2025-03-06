@@ -1,7 +1,7 @@
 const translation = {
   currentPlan: '当前套餐',
   upgradeBtn: {
-    plain: '升级套餐',
+    plain: '查看套餐',
     encourage: '立即升级',
     encourageShort: '升级',
   },
@@ -81,21 +81,25 @@ const translation = {
   plans: {
     sandbox: {
       name: 'Sandbox',
+      for: '核心能力的免费试用',
       description: '200次 GPT 免费试用',
       includesTitle: '包括：',
     },
     professional: {
       name: 'Professional',
+      for: '适合独立开发者或小团队',
       description: '让个人和小团队能够以经济实惠的方式释放更多能力。',
       includesTitle: 'Sandbox 计划中的一切，加上：',
     },
     team: {
       name: 'Team',
+      for: '适合中等规模的团队',
       description: '协作无限制并享受顶级性能。',
       includesTitle: 'Professional 计划中的一切，加上：',
     },
     enterprise: {
       name: 'Enterprise',
+      for: '适合大人员规模的团队',
       description: '获得大规模关键任务系统的完整功能和支持。',
       includesTitle: 'Team 计划中的一切，加上：',
     },

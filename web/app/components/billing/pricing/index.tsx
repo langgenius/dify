@@ -31,7 +31,7 @@ const Pricing: FC<Props> = ({
     >
       <GridMask wrapperClassName='grow'>
         <div className='grow width-[0] mt-6 p-6 flex flex-col items-center'>
-          <div className='mb-3 leading-[38px] text-[30px] font-semibold text-gray-900'>
+          <div className='mb-3 leading-[38px] text-[30px] font-semibold text-text-primary'>
             {t('billing.plansCommon.title')}
           </div>
           <SelectPlanRange
@@ -68,10 +68,10 @@ const Pricing: FC<Props> = ({
       </GridMask>
 
       <div
-        className='fixed top-6 right-6 flex items-center justify-center w-10 h-10 bg-black/[0.05] rounded-full backdrop-blur-[2px] cursor-pointer z-[1001]'
+        className='fixed top-6 right-6 flex items-center justify-center w-10 h-10 bg-components-button-secondary-bg rounded-full backdrop-blur-[2px] cursor-pointer z-[1001]'
         onClick={onCancel}
       >
-        <RiCloseLine className='w-4 h-4 text-gray-900' />
+        <RiCloseLine className='w-4 h-4 text-text-primary' />
       </div>
     </div>,
     document.body,

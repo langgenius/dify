@@ -1,7 +1,7 @@
 const translation = {
   currentPlan: 'Current Plan',
   upgradeBtn: {
-    plain: 'Upgrade Plan',
+    plain: 'View Plan',
     encourage: 'Upgrade Now',
     encourageShort: 'Upgrade',
   },
@@ -81,21 +81,25 @@ const translation = {
   plans: {
     sandbox: {
       name: 'Sandbox',
+      for: 'Free Trial of Core Capabilities',
       description: '200 times GPT free trial',
       includesTitle: 'Includes:',
     },
     professional: {
       name: 'Professional',
+      for: 'For Independent Developers/Small Teams',
       description: 'For individuals and small teams to unlock more power affordably.',
       includesTitle: 'Everything in free plan, plus:',
     },
     team: {
       name: 'Team',
+      for: 'For Medium-sized Teams',
       description: 'Collaborate without limits and enjoy top-tier performance.',
       includesTitle: 'Everything in Professional plan, plus:',
     },
     enterprise: {
       name: 'Enterprise',
+      for: 'For large-sized Teams',
       description: 'Get full capabilities and support for large-scale mission-critical systems.',
       includesTitle: 'Everything in Team plan, plus:',
     },
