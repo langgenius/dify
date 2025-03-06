@@ -1,6 +1,6 @@
 import type { BuiltInMetadataItem, MetadataBatchEditToServer, MetadataItemWithValueLength } from '@/app/components/datasets/metadata/types'
 import { del, get, patch, post } from '../base'
-
+import { mutate } from 'swr'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useInvalid } from '../use-base'
 import type { DocumentDetailResponse } from '@/models/datasets'
@@ -32,9 +32,33 @@ export const useCreateMetaData = (datasetId: string) => {
     },
   })
 }
+export const useInvalidAllDocumentMetaData = (datasetId: string) => {
+  const queryClient = useQueryClient()
+  return () => {
+    queryClient.invalidateQueries({
+      queryKey: [NAME_SPACE, 'document', datasetId],
+      exact: false, // invalidate all document metadata: [NAME_SPACE, 'document', datasetId, documentId]
+    })
+  }
+}
+
+const useInvalidAllMetaData = (datasetId: string) => {
+  const invalidDatasetMetaData = useInvalidDatasetMetaData(datasetId)
+  const invalidateAllDocumentMetaData = useInvalidAllDocumentMetaData(datasetId)
+  return async () => {
+    // meta data in dataset
+    await invalidDatasetMetaData()
+    // meta data in document list
+    mutate(
+      (key: any) => typeof key === 'object' && key.action === 'fetchDocuments' && key.datasetId === datasetId,
+    )
+    // meta data in single document
+    await invalidateAllDocumentMetaData() // meta data in document
+  }
+}
 
 export const useRenameMeta = (datasetId: string) => {
-  const invalidDatasetMetaData = useInvalidDatasetMetaData(datasetId)
+  const invalidateAllMetaData = useInvalidAllMetaData(datasetId)
   return useMutation({
     mutationFn: async (payload: MetadataItemWithValueLength) => {
       await patch(`/datasets/${datasetId}/metadata/${payload.id}`, {
@@ -42,20 +66,18 @@ export const useRenameMeta = (datasetId: string) => {
           name: payload.name,
         },
       })
-      await invalidDatasetMetaData()
-      return Promise.resolve(true)
+      await invalidateAllMetaData()
     },
   })
 }
 
 export const useDeleteMetaData = (datasetId: string) => {
-  const invalidDatasetMetaData = useInvalidDatasetMetaData(datasetId)
+  const invalidateAllMetaData = useInvalidAllMetaData(datasetId)
   return useMutation({
     mutationFn: async (metaDataId: string) => {
       // datasetMetaData = datasetMetaData.filter(item => item.id !== metaDataId)
       await del(`/datasets/${datasetId}/metadata/${metaDataId}`)
-      await invalidDatasetMetaData()
-      return Promise.resolve(true)
+      await invalidateAllMetaData()
     },
   })
 }
@@ -80,7 +102,6 @@ export const useDocumentMetaData = ({ datasetId, documentId }: { datasetId: stri
 
 export const useBatchUpdateDocMetadata = () => {
   const queryClient = useQueryClient()
-
   return useMutation({
     mutationFn: async (payload: {
       dataset_id: string
@@ -92,10 +113,15 @@ export const useBatchUpdateDocMetadata = () => {
           operation_data: payload.metadata_list,
         },
       })
+      // meta data in dataset
       await queryClient.invalidateQueries({
         queryKey: [NAME_SPACE, 'dataset', payload.dataset_id],
       })
-      // invalidate document metadata
+      // meta data in document list
+      mutate(
+        (key: any) => typeof key === 'object' && key.action === 'fetchDocuments' && key.datasetId === payload.dataset_id,
+      )
+      // meta data in single document
       await Promise.all(documentIds.map(documentId => queryClient.invalidateQueries(
         {
           queryKey: [NAME_SPACE, 'document', payload.dataset_id, documentId],
