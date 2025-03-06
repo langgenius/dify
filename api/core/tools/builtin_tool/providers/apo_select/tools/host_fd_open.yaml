@@ -1,0 +1,57 @@
+identity:
+  name: host_cpu_iowait
+  author: APO
+  label:
+    en_US: Query the CPU utilization of the host
+    zh_Hans: 宿主机监控指标 - System Misc - File Descriptors - Open file descriptors
+    pt_BR: Query the CPU utilization of the host
+description:
+  human:
+    en_US: Query the CPU utilization of the host
+    zh_Hans: 宿主机当前打开文件描述符数
+    pt_BR: Query the CPU utilization of the host
+  llm: 宿主机监控指标 - System Misc - File Descriptors - Open file descriptors
+display:
+  type: metric
+  title: 宿主机监控指标 - System Misc - File Descriptors - Open file descriptors
+  unit: percent(0-100)百分比
+parameters:
+  - name: node
+    type: string
+    required: true
+    label:
+      en_US: node
+      zh_Hans: node
+      pt_BR: node
+    human_description:
+      en_US: Specified host name
+      zh_Hans: 指定的主机名
+      pt_BR: Specified host name
+    llm_description: Specified host name
+    form: llm
+  - name: startTime
+    type: number
+    required: true
+    label:
+      en_US: startTime
+      zh_Hans: startTime
+      pt_BR: startTime
+    human_description:
+      en_US: Data query start time
+      zh_Hans: 开始时间 (微秒)
+      pt_BR: Data query start time
+    llm_description: Data query start time
+    form: llm
+  - name: endTime
+    type: number
+    required: true
+    label:
+      en_US: endTime
+      zh_Hans: endTime
+      pt_BR: endTime
+    human_description:
+      en_US: Data query end time
+      zh_Hans: 结束时间 (微秒)
+      pt_BR: Data query end time
+    llm_description: Data query start time
+    form: llm

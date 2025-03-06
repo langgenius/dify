@@ -1,0 +1,57 @@
+identity:
+  name: polar_process_all_resp
+  author: APO
+  label:
+    en_US: Query the CPU utilization of the host
+    zh_Hans: Thread Polaris Metrics - 北极星指标（进程） - 各类型耗时折线图 - 所有类型列表
+    pt_BR: Query the CPU utilization of the host
+description:
+  human:
+    en_US: Query the CPU utilization of the host
+    zh_Hans: Thread Polaris Metrics - 北极星指标（进程） - 各类型耗时折线图 - 所有类型列表
+    pt_BR: Query the CPU utilization of the host
+  llm: Thread Polaris Metrics - 北极星指标（进程） - 各类型耗时折线图 - 所有类型列表
+display:
+  type: metric
+  title: Thread Polaris Metrics - 北极星指标（进程） - 各类型耗时折线图 - 所有类型列表
+  unit: ns
+parameters:
+  - name: pod
+    type: string
+    required: true
+    label:
+      en_US: pod
+      zh_Hans: pod
+      pt_BR: pod
+    human_description:
+      en_US: Specified pod name
+      zh_Hans: 指定的容器POD名称
+      pt_BR: Specified pod name
+    llm_description: Specified pod name
+    form: llm
+  - name: startTime
+    type: number
+    required: true
+    label:
+      en_US: startTime
+      zh_Hans: startTime
+      pt_BR: startTime
+    human_description:
+      en_US: Data query start time
+      zh_Hans: 开始时间 (微秒)
+      pt_BR: Data query start time
+    llm_description: Data query start time
+    form: llm
+  - name: endTime
+    type: number
+    required: true
+    label:
+      en_US: endTime
+      zh_Hans: endTime
+      pt_BR: endTime
+    human_description:
+      en_US: Data query end time
+      zh_Hans: 结束时间 (微秒)
+      pt_BR: Data query end time
+    llm_description: Data query start time
+    form: llm
