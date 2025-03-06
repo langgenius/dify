@@ -186,7 +186,7 @@ const Chat: FC<ChatProps> = ({
     if (chatContainer) {
       const setUserScrolled = () => {
         if (chatContainer)
-          userScrolledRef.current = chatContainer.scrollHeight - chatContainer.scrollTop >= chatContainer.clientHeight + 300
+          userScrolledRef.current = chatContainer.scrollHeight - chatContainer.scrollTop > chatContainer.clientHeight
       }
       chatContainer.addEventListener('scroll', setUserScrolled)
       return () => chatContainer.removeEventListener('scroll', setUserScrolled)
