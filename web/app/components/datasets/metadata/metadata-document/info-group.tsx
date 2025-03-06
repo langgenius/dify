@@ -83,7 +83,7 @@ const InfoGroup: FC<Props> = ({
           </div>
         )}
         {list.map((item, i) => (
-          <Field key={item.id || `${i}`} label={item.name}>
+          <Field key={(item.id && item.id !== 'built-in') ? item.id : `${i}`} label={item.name}>
             {isEdit ? (
               <div className='flex items-center space-x-0.5'>
                 <InputCombined
