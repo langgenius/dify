@@ -246,6 +246,80 @@ class WorkflowDraftRunIterationNodeApi(Resource):
             raise InternalServerError()
 
 
+class AdvancedChatDraftRunLoopNodeApi(Resource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @get_app_model(mode=[AppMode.ADVANCED_CHAT])
+    def post(self, app_model: App, node_id: str):
+        """
+        Run draft workflow loop node
+        """
+        # The role of the current user in the ta table must be admin, owner, or editor
+        if not current_user.is_editor:
+            raise Forbidden()
+
+        if not isinstance(current_user, Account):
+            raise Forbidden()
+
+        parser = reqparse.RequestParser()
+        parser.add_argument("inputs", type=dict, location="json")
+        args = parser.parse_args()
+
+        try:
+            response = AppGenerateService.generate_single_loop(
+                app_model=app_model, user=current_user, node_id=node_id, args=args, streaming=True
+            )
+
+            return helper.compact_generate_response(response)
+        except services.errors.conversation.ConversationNotExistsError:
+            raise NotFound("Conversation Not Exists.")
+        except services.errors.conversation.ConversationCompletedError:
+            raise ConversationCompletedError()
+        except ValueError as e:
+            raise e
+        except Exception:
+            logging.exception("internal server error.")
+            raise InternalServerError()
+
+
+class WorkflowDraftRunLoopNodeApi(Resource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @get_app_model(mode=[AppMode.WORKFLOW])
+    def post(self, app_model: App, node_id: str):
+        """
+        Run draft workflow loop node
+        """
+        # The role of the current user in the ta table must be admin, owner, or editor
+        if not current_user.is_editor:
+            raise Forbidden()
+
+        if not isinstance(current_user, Account):
+            raise Forbidden()
+
+        parser = reqparse.RequestParser()
+        parser.add_argument("inputs", type=dict, location="json")
+        args = parser.parse_args()
+
+        try:
+            response = AppGenerateService.generate_single_loop(
+                app_model=app_model, user=current_user, node_id=node_id, args=args, streaming=True
+            )
+
+            return helper.compact_generate_response(response)
+        except services.errors.conversation.ConversationNotExistsError:
+            raise NotFound("Conversation Not Exists.")
+        except services.errors.conversation.ConversationCompletedError:
+            raise ConversationCompletedError()
+        except ValueError as e:
+            raise e
+        except Exception:
+            logging.exception("internal server error.")
+            raise InternalServerError()
+
+
 class DraftWorkflowRunApi(Resource):
     @setup_required
     @login_required
@@ -512,6 +586,11 @@ api.add_resource(
 api.add_resource(
     WorkflowDraftRunIterationNodeApi, "/apps/<uuid:app_id>/workflows/draft/iteration/nodes/<string:node_id>/run"
 )
+api.add_resource(
+    AdvancedChatDraftRunLoopNodeApi,
+    "/apps/<uuid:app_id>/advanced-chat/workflows/draft/loop/nodes/<string:node_id>/run",
+)
+api.add_resource(WorkflowDraftRunLoopNodeApi, "/apps/<uuid:app_id>/workflows/draft/loop/nodes/<string:node_id>/run")
 api.add_resource(PublishedWorkflowApi, "/apps/<uuid:app_id>/workflows/publish")
 api.add_resource(PublishedAllWorkflowApi, "/apps/<uuid:app_id>/workflows")
 api.add_resource(DefaultBlockConfigsApi, "/apps/<uuid:app_id>/workflows/default-workflow-block-configs")

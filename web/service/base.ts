@@ -8,6 +8,9 @@ import type {
   IterationFinishedResponse,
   IterationNextResponse,
   IterationStartedResponse,
+  LoopFinishedResponse,
+  LoopNextResponse,
+  LoopStartedResponse,
   NodeFinishedResponse,
   NodeStartedResponse,
   ParallelBranchFinishedResponse,
@@ -54,6 +57,9 @@ export type IOnTextChunk = (textChunk: TextChunkResponse) => void
 export type IOnTTSChunk = (messageId: string, audioStr: string, audioType?: string) => void
 export type IOnTTSEnd = (messageId: string, audioStr: string, audioType?: string) => void
 export type IOnTextReplace = (textReplace: TextReplaceResponse) => void
+export type IOnLoopStarted = (workflowStarted: LoopStartedResponse) => void
+export type IOnLoopNext = (workflowStarted: LoopNextResponse) => void
+export type IOnLoopFinished = (workflowFinished: LoopFinishedResponse) => void
 export type IOnAgentLog = (agentLog: AgentLogResponse) => void
 
 export type IOtherOptions = {
@@ -86,6 +92,9 @@ export type IOtherOptions = {
   onTTSChunk?: IOnTTSChunk
   onTTSEnd?: IOnTTSEnd
   onTextReplace?: IOnTextReplace
+  onLoopStart?: IOnLoopStarted
+  onLoopNext?: IOnLoopNext
+  onLoopFinish?: IOnLoopFinished
   onAgentLog?: IOnAgentLog
 }
 
@@ -125,6 +134,9 @@ const handleStream = (
   onIterationStart?: IOnIterationStarted,
   onIterationNext?: IOnIterationNext,
   onIterationFinish?: IOnIterationFinished,
+  onLoopStart?: IOnLoopStarted,
+  onLoopNext?: IOnLoopNext,
+  onLoopFinish?: IOnLoopFinished,
   onNodeRetry?: IOnNodeRetry,
   onParallelBranchStarted?: IOnParallelBranchStarted,
   onParallelBranchFinished?: IOnParallelBranchFinished,
@@ -217,6 +229,15 @@ const handleStream = (
             }
             else if (bufferObj.event === 'iteration_completed') {
               onIterationFinish?.(bufferObj as IterationFinishedResponse)
+            }
+            else if (bufferObj.event === 'loop_started') {
+              onLoopStart?.(bufferObj as LoopStartedResponse)
+            }
+            else if (bufferObj.event === 'loop_next') {
+              onLoopNext?.(bufferObj as LoopNextResponse)
+            }
+            else if (bufferObj.event === 'loop_completed') {
+              onLoopFinish?.(bufferObj as LoopFinishedResponse)
             }
             else if (bufferObj.event === 'node_retry') {
               onNodeRetry?.(bufferObj as NodeFinishedResponse)
@@ -332,6 +353,9 @@ export const ssePost = (
     onAgentLog,
     onError,
     getAbortController,
+    onLoopStart,
+    onLoopNext,
+    onLoopFinish,
   } = otherOptions
   const abortController = new AbortController()
 
@@ -361,7 +385,7 @@ export const ssePost = (
     options.body = JSON.stringify(body)
 
   const accessToken = getAccessToken(isPublicAPI)
-  options.headers!.set('Authorization', `Bearer ${accessToken}`)
+  ;(options.headers as Headers).set('Authorization', `Bearer ${accessToken}`)
 
   globalThis.fetch(urlWithPrefix, options as RequestInit)
     .then((res) => {
@@ -400,7 +424,31 @@ export const ssePost = (
           return
         }
         onData?.(str, isFirstMessage, moreInfo)
-      }, onCompleted, onThought, onMessageEnd, onMessageReplace, onFile, onWorkflowStarted, onWorkflowFinished, onNodeStarted, onNodeFinished, onIterationStart, onIterationNext, onIterationFinish, onNodeRetry, onParallelBranchStarted, onParallelBranchFinished, onTextChunk, onTTSChunk, onTTSEnd, onTextReplace, onAgentLog)
+      },
+      onCompleted,
+      onThought,
+      onMessageEnd,
+      onMessageReplace,
+      onFile,
+      onWorkflowStarted,
+      onWorkflowFinished,
+      onNodeStarted,
+      onNodeFinished,
+      onIterationStart,
+      onIterationNext,
+      onIterationFinish,
+      onLoopStart,
+      onLoopNext,
+      onLoopFinish,
+      onNodeRetry,
+      onParallelBranchStarted,
+      onParallelBranchFinished,
+      onTextChunk,
+      onTTSChunk,
+      onTTSEnd,
+      onTextReplace,
+      onAgentLog,
+      )
     }).catch((e) => {
       if (e.toString() !== 'AbortError: The user aborted a request.' && !e.toString().errorMessage.includes('TypeError: Cannot assign to read only property'))
         Toast.notify({ type: 'error', message: e })

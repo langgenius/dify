@@ -42,6 +42,10 @@ export const getIterationSingleNodeRunUrl = (isChatFlow: boolean, appId: string,
   return `apps/${appId}/${isChatFlow ? 'advanced-chat/' : ''}workflows/draft/iteration/nodes/${nodeId}/run`
 }
 
+export const getLoopSingleNodeRunUrl = (isChatFlow: boolean, appId: string, nodeId: string) => {
+  return `apps/${appId}/${isChatFlow ? 'advanced-chat/' : ''}workflows/draft/loop/nodes/${nodeId}/run`
+}
+
 export const publishWorkflow = (url: string) => {
   return post<CommonResponse & { created_at: number }>(url)
 }
