@@ -103,9 +103,9 @@ class Condition(BaseModel):
     Conditon detail
     """
 
-    metadata_name: str
+    name: str
     comparison_operator: SupportedComparisonOperator
-    value: str | Sequence[str] | None = None
+    value: str | Sequence[str] | None | int | float = None
 
 
 class MetadataFilteringCondition(BaseModel):

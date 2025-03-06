@@ -302,7 +302,7 @@ class KnowledgeRetrievalNode(LLMNode):
                     )
         elif node_data.metadata_filtering_mode == "manual":
             for condition in node_data.metadata_filtering_conditions.conditions:
-                metadata_name = condition.metadata_name
+                metadata_name = condition.name
                 expected_value = condition.value
                 if isinstance(expected_value, str):
                     expected_value = self.graph_runtime_state.variable_pool.convert_template(expected_value).text
@@ -381,7 +381,7 @@ class KnowledgeRetrievalNode(LLMNode):
             return []
         return automatic_metadata_filters
 
-    def _process_metadata_filter_func(*, condition: str, metadata_name: str, value: str, query):
+    def _process_metadata_filter_func(self, condition: str, metadata_name: str, value: str, query):
         match condition:
             case "contains":
                 query = query.filter(Document.doc_metadata[metadata_name].like(f"%{value}%"))
