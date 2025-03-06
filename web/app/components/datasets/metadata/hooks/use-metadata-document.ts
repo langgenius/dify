@@ -1,4 +1,4 @@
-import { useBatchUpdateDocMetadata, useDocumentMetaData } from '@/service/knowledge/use-metadata'
+import { useBatchUpdateDocMetadata, useDatasetMetaData, useDocumentMetaData } from '@/service/knowledge/use-metadata'
 import type { BuiltInMetadataItem } from '../types'
 import { DataType, type MetadataItemWithValue } from '../types'
 import { useCallback, useState } from 'react'
@@ -88,7 +88,9 @@ const useMetadataDocument = ({
     setIsEdit(true)
   }
 
-  const builtInEnabled = true
+  // built in enabled is set in dataset
+  const { data: datasetMetaData } = useDatasetMetaData(datasetId)
+  const builtInEnabled = datasetMetaData?.built_in_field_enabled
 
   // old metadata and technical params
   const metadataMap = useMetadataMap()

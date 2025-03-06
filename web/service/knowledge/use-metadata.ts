@@ -102,9 +102,11 @@ export const useBatchUpdateDocMetadata = () => {
 }
 
 export const useUpdateBuiltInStatus = (datasetId: string) => {
+  const invalidDatasetMetaData = useInvalidDatasetMetaData(datasetId)
   return useMutation({
-    mutationFn: (enabled: boolean) => {
-      return post(`/datasets/${datasetId}/metadata/built-in/${enabled ? 'enable' : 'disable'}`)
+    mutationFn: async (enabled: boolean) => {
+      await post(`/datasets/${datasetId}/metadata/built-in/${enabled ? 'enable' : 'disable'}`)
+      invalidDatasetMetaData()
     },
   })
 }

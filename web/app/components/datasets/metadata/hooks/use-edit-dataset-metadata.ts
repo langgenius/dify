@@ -63,7 +63,7 @@ const useEditDatasetMetadata = ({
   }, [doDeleteMetaData])
 
   const [builtInEnabled, setBuiltInEnabled] = useState(datasetMetaData?.built_in_field_enabled)
-  const { mutate } = useUpdateBuiltInStatus(datasetId)
+  const { mutateAsync: toggleBuiltInStatus } = useUpdateBuiltInStatus(datasetId)
   const { data: builtInMetaData } = useBuiltInMetaDataFields()
   return {
     isShowEditModal,
@@ -76,7 +76,7 @@ const useEditDatasetMetadata = ({
     builtInMetaData: builtInMetaData?.fields,
     builtInEnabled,
     setBuiltInEnabled: async (enable: boolean) => {
-      await mutate(enable)
+      await toggleBuiltInStatus(enable)
       setBuiltInEnabled(enable)
       Toast.notify({
         message: t('common.actionMsg.modifiedSuccessfully'),
