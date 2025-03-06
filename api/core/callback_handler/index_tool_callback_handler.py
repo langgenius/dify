@@ -48,14 +48,14 @@ class DatasetIndexToolCallbackHandler:
                 ).first()
                 if dataset_document.doc_form == IndexType.PARENT_CHILD_INDEX:
                     child_chunk = ChildChunk.query.filter(
-                        ChildChunk.id == document.metadata["doc_id"],
+                        ChildChunk.index_node_id == document.metadata["doc_id"],
                         ChildChunk.dataset_id == dataset_document.dataset_id,
                         ChildChunk.document_id == dataset_document.id,
                     ).first()
                     if child_chunk:
-                        segment = DocumentSegment.query.filter(
-                            DocumentSegment.id == child_chunk.segment_id
-                        ).update({DocumentSegment.hit_count: DocumentSegment.hit_count + 1}, synchronize_session=False)
+                        segment = DocumentSegment.query.filter(DocumentSegment.id == child_chunk.segment_id).update(
+                            {DocumentSegment.hit_count: DocumentSegment.hit_count + 1}, synchronize_session=False
+                        )
                 else:
                     query = db.session.query(DocumentSegment).filter(
                         DocumentSegment.index_node_id == document.metadata["doc_id"]
