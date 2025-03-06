@@ -74,7 +74,9 @@ class Pdf2ImgTool(BuiltinTool):
     def handle(self, pdf_bytes, vector_max_size, bit_max_size, quality, direction, dpi=350):
         pdf_stream = io.BytesIO(pdf_bytes)
         doc = fitz.open(stream=pdf_stream, filetype="pdf")
-        if 'encryption' in doc.metadata and doc.metadata['encryption'] is not None:
+        if doc is None:
+            return
+        if doc.is_encrypted:
             if not doc.authenticate(""):
                 return
         zoom = int(math.ceil(dpi / 72))
