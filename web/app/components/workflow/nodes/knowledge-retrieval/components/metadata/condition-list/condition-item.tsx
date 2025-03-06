@@ -127,7 +127,7 @@ const ConditionItem = ({
           <div className='mx-1 w-[1px] h-3 bg-divider-regular'></div>
           <ConditionOperator
             disabled={!canChooseOperator}
-            variableType={currentMetadata!.type}
+            variableType={currentMetadata?.type || MetadataFilteringVariableType.string}
             value={condition.comparison_operator}
             onSelect={handleConditionOperatorChange}
           />

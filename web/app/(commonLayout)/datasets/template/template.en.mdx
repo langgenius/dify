@@ -1543,6 +1543,59 @@ import { Row, Col, Properties, Property, Heading, SubProperty, PropertyInstructi
 
 <hr className='ml-0 mr-0' />
 
+<Heading
+  url='/datasets/{dataset_id}/metadata'
+  method='POST'
+  title='Create a Knowledge metadata'
+  name='#create_metadata'
+/>
+<Row>
+  <Col>
+    ### POST
+    <Properties>
+      <Property name='dataset_id' type='string' key='dataset_id'>
+        Knowledge ID
+      </Property>
+    </Properties>
+
+    ### Request Body
+    <Properties>
+      <Property name='segment' type='object' key='segment'>
+        - <code>type</code> (string) metadata type, required
+        - <code>name</code> (string) metadata name, required
+      </Property>
+    </Properties>
+  </Col>
+  <Col sticky>
+    <CodeGroup
+      title="Request"
+      tag="POST"
+      label="/datasets/{dataset_id}/metadata"
+      targetCode={`curl --location --request POST '${props.apiBaseUrl}/datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json'\\\n--data-raw '{\"segment\": {\"content\": \"1\",\"answer\": \"1\", \"keywords\": [\"a\"], \"enabled\": false}}'`}
+    >
+    ```bash {{ title: 'cURL' }}
+    curl --location --request POST '${props.apiBaseUrl}/datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}' \
+    --header 'Content-Type: application/json' \
+    --data-raw '{
+      "segment": {
+          "content": "1",
+          "answer": "1",
+      }
+    }'
+    ```
+    </CodeGroup>
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {
+      "doc_form": "text_model"
+    }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
+<hr className='ml-0 mr-0' />
+
 <Row>
   <Col>
     ### Error message
