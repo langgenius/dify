@@ -124,7 +124,6 @@ class BillingService:
             cls.activation_rate_limit.increment_rate_limit(account.email)
             json = {
                 "account_id": account.id,
-                "email": account.email,
                 "token": token,
             }
             return BillingService._send_request("POST", "/education/", json=json)
