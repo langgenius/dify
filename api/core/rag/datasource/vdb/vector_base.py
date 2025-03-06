@@ -49,10 +49,6 @@ class BaseVector(ABC):
     def delete(self) -> None:
         raise NotImplementedError
 
-    @abstractmethod
-    def update_metadata(self, document_id: str, metadata: dict) -> None:
-        raise NotImplementedError
-
     def _filter_duplicate_texts(self, texts: list[Document]) -> list[Document]:
         for text in texts.copy():
             if text.metadata and "doc_id" in text.metadata:
