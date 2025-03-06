@@ -171,6 +171,7 @@ const translation = {
   metadata: {
     metadata: 'Metadata',
     addMetadata: 'Add Metadata',
+    chooseTime: 'Choose a time...',
     createMetadata: {
       title: 'New Metadata',
       back: 'Back',

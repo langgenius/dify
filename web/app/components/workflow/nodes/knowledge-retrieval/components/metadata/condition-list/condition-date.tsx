@@ -73,6 +73,7 @@ const ConditionDate = ({
   return (
     <div className='px-2 py-1 h-8'>
       <DatePicker
+        timezone={timezone}
         value={value ? dayjs(value * 1000) : undefined}
         onChange={handleDateChange}
         onClear={handleDateChange}

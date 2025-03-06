@@ -817,6 +817,7 @@ class AgentLogStreamResponse(StreamResponse):
         status: str
         data: Mapping[str, Any]
         metadata: Optional[Mapping[str, Any]] = None
+        node_id: str
 
     event: StreamEvent = StreamEvent.AGENT_LOG
     data: Data

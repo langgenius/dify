@@ -18,6 +18,7 @@ from core.workflow.entities.node_entities import AgentNodeStrategyInit, NodeRunM
 from core.workflow.entities.variable_pool import VariablePool, VariableValue
 from core.workflow.graph_engine.condition_handlers.condition_manager import ConditionManager
 from core.workflow.graph_engine.entities.event import (
+    BaseAgentEvent,
     BaseIterationEvent,
     BaseLoopEvent,
     GraphEngineEvent,
@@ -502,7 +503,7 @@ class GraphEngine:
                     break
 
                 yield event
-                if event.parallel_id == parallel_id:
+                if not isinstance(event, BaseAgentEvent) and event.parallel_id == parallel_id:
                     if isinstance(event, ParallelBranchRunSucceededEvent):
                         succeeded_count += 1
                         if succeeded_count == len(futures):

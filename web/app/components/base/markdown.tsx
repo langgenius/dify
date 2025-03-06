@@ -239,7 +239,7 @@ const Link = ({ node, ...props }: any) => {
   }
 }
 
-export function Markdown(props: { content: string; className?: string }) {
+export function Markdown(props: { content: string; className?: string; customDisallowedElements?: string[] }) {
   const latexContent = flow([
     preprocessThinkTag,
     preprocessLaTeX,
@@ -274,7 +274,7 @@ export function Markdown(props: { content: string; className?: string }) {
             }
           },
         ]}
-        disallowedElements={['iframe', 'head', 'html', 'meta', 'link', 'style', 'body', 'input']}
+        disallowedElements={['iframe', 'head', 'html', 'meta', 'link', 'style', 'body', ...(props.customDisallowedElements || [])]}
         components={{
           code: CodeBlock,
           img: Img,
