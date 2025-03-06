@@ -2,6 +2,7 @@ import type { FC } from 'react'
 import {
   memo,
   useCallback,
+  useMemo,
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import VarReferencePicker from '../_base/components/variable/var-reference-picker'
@@ -9,6 +10,7 @@ import useConfig from './use-config'
 import RetrievalConfig from './components/retrieval-config'
 import AddKnowledge from './components/add-dataset'
 import DatasetList from './components/dataset-list'
+import MetadataFilter from './components/metadata/metadata-filter'
 import type { KnowledgeRetrievalNodeType } from './types'
 import Field from '@/app/components/workflow/nodes/_base/components/field'
 import Split from '@/app/components/workflow/nodes/_base/components/split'
@@ -46,15 +48,34 @@ const Panel: FC<NodePanelProps<KnowledgeRetrievalNodeType>> = ({
     runResult,
     rerankModelOpen,
     setRerankModelOpen,
+    handleAddCondition,
+    handleMetadataFilterModeChange,
+    handleRemoveCondition,
+    handleToggleConditionLogicalOperator,
+    handleUpdateCondition,
+    handleMetadataModelChange,
+    handleMetadataCompletionParamsChange,
+    availableStringVars,
+    availableStringNodesWithParent,
+    availableNumberVars,
+    availableNumberNodesWithParent,
   } = useConfig(id, data)
 
   const handleOpenFromPropsChange = useCallback((openFromProps: boolean) => {
     setRerankModelOpen(openFromProps)
   }, [setRerankModelOpen])
 
+  const metadataList = useMemo(() => {
+    return selectedDatasets.filter((dataset) => {
+      return !!dataset.doc_metadata
+    }).map((dataset) => {
+      return dataset.doc_metadata!
+    }).flat()
+  }, [selectedDatasets])
+
   return (
     <div className='pt-2'>
-      <div className='px-4 pb-4 space-y-4'>
+      <div className='px-4 pb-2 space-y-4'>
         {/* {JSON.stringify(inputs, null, 2)} */}
         <Field
           title={t(`${i18nPrefix}.queryVariable`)}
@@ -106,7 +127,25 @@ const Panel: FC<NodePanelProps<KnowledgeRetrievalNodeType>> = ({
           />
         </Field>
       </div>
-
+      <div className='mb-2 py-2'>
+        <MetadataFilter
+          metadataList={metadataList}
+          metadataFilterMode={inputs.metadata_filtering_mode}
+          metadataFilteringConditions={inputs.metadata_filtering_conditions}
+          handleAddCondition={handleAddCondition}
+          handleMetadataFilterModeChange={handleMetadataFilterModeChange}
+          handleRemoveCondition={handleRemoveCondition}
+          handleToggleConditionLogicalOperator={handleToggleConditionLogicalOperator}
+          handleUpdateCondition={handleUpdateCondition}
+          metadataModelConfig={inputs.metadata_model_config}
+          handleMetadataModelChange={handleMetadataModelChange}
+          handleMetadataCompletionParamsChange={handleMetadataCompletionParamsChange}
+          availableStringVars={availableStringVars}
+          availableStringNodesWithParent={availableStringNodesWithParent}
+          availableNumberVars={availableNumberVars}
+          availableNumberNodesWithParent={availableNumberNodesWithParent}
+        />
+      </div>
       <Split />
       <div>
         <OutputVars>

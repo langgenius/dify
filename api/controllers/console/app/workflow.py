@@ -72,12 +72,17 @@ class DraftWorkflowApi(Resource):
 
         if "application/json" in content_type:
             parser = reqparse.RequestParser()
-            parser.add_argument("graph", type=dict, required=True, nullable=False, location="json")
-            parser.add_argument("features", type=dict, required=True, nullable=False, location="json")
-            parser.add_argument("hash", type=str, required=False, location="json")
+            parser.add_argument("graph", type=dict,
+                                required=True, nullable=False, location="json")
+            parser.add_argument("features", type=dict,
+                                required=True, nullable=False, location="json")
+            parser.add_argument(
+                "hash", type=str, required=False, location="json")
             # TODO: set this to required=True after frontend is updated
-            parser.add_argument("environment_variables", type=list, required=False, location="json")
-            parser.add_argument("conversation_variables", type=list, required=False, location="json")
+            parser.add_argument("environment_variables",
+                                type=list, required=False, location="json")
+            parser.add_argument("conversation_variables",
+                                type=list, required=False, location="json")
             args = parser.parse_args()
         elif "text/plain" in content_type:
             try:
@@ -106,11 +111,13 @@ class DraftWorkflowApi(Resource):
         workflow_service = WorkflowService()
 
         try:
-            environment_variables_list = args.get("environment_variables") or []
+            environment_variables_list = args.get(
+                "environment_variables") or []
             environment_variables = [
                 variable_factory.build_environment_variable_from_mapping(obj) for obj in environment_variables_list
             ]
-            conversation_variables_list = args.get("conversation_variables") or []
+            conversation_variables_list = args.get(
+                "conversation_variables") or []
             conversation_variables = [
                 variable_factory.build_conversation_variable_from_mapping(obj) for obj in conversation_variables_list
             ]
@@ -151,10 +158,13 @@ class AdvancedChatDraftWorkflowRunApi(Resource):
 
         parser = reqparse.RequestParser()
         parser.add_argument("inputs", type=dict, location="json")
-        parser.add_argument("query", type=str, required=True, location="json", default="")
+        parser.add_argument("query", type=str, required=True,
+                            location="json", default="")
         parser.add_argument("files", type=list, location="json")
-        parser.add_argument("conversation_id", type=uuid_value, location="json")
-        parser.add_argument("parent_message_id", type=uuid_value, required=False, location="json")
+        parser.add_argument("conversation_id",
+                            type=uuid_value, location="json")
+        parser.add_argument("parent_message_id",
+                            type=uuid_value, required=False, location="json")
 
         args = parser.parse_args()
 
@@ -340,8 +350,10 @@ class DraftWorkflowRunApi(Resource):
             raise Forbidden()
 
         parser = reqparse.RequestParser()
-        parser.add_argument("inputs", type=dict, required=True, nullable=False, location="json")
-        parser.add_argument("files", type=list, required=False, location="json")
+        parser.add_argument("inputs", type=dict, required=True,
+                            nullable=False, location="json")
+        parser.add_argument("files", type=list,
+                            required=False, location="json")
         args = parser.parse_args()
 
         response = AppGenerateService.generate(
@@ -368,7 +380,8 @@ class WorkflowTaskStopApi(Resource):
         if not current_user.is_editor:
             raise Forbidden()
 
-        AppQueueManager.set_stop_flag(task_id, InvokeFrom.DEBUGGER, current_user.id)
+        AppQueueManager.set_stop_flag(
+            task_id, InvokeFrom.DEBUGGER, current_user.id)
 
         return {"result": "success"}
 
@@ -391,7 +404,8 @@ class DraftWorkflowNodeRunApi(Resource):
             raise Forbidden()
 
         parser = reqparse.RequestParser()
-        parser.add_argument("inputs", type=dict, required=True, nullable=False, location="json")
+        parser.add_argument("inputs", type=dict, required=True,
+                            nullable=False, location="json")
         args = parser.parse_args()
 
         inputs = args.get("inputs")
@@ -443,8 +457,10 @@ class PublishedWorkflowApi(Resource):
             raise Forbidden()
 
         parser = reqparse.RequestParser()
-        parser.add_argument("marked_name", type=str, required=False, default="", location="json")
-        parser.add_argument("marked_comment", type=str, required=False, default="", location="json")
+        parser.add_argument("marked_name", type=str,
+                            required=False, default="", location="json")
+        parser.add_argument("marked_comment", type=str,
+                            required=False, default="", location="json")
         args = parser.parse_args()
 
         # Validate name and comment length
@@ -548,17 +564,22 @@ class ConvertToWorkflowApi(Resource):
 
         if request.data:
             parser = reqparse.RequestParser()
-            parser.add_argument("name", type=str, required=False, nullable=True, location="json")
-            parser.add_argument("icon_type", type=str, required=False, nullable=True, location="json")
-            parser.add_argument("icon", type=str, required=False, nullable=True, location="json")
-            parser.add_argument("icon_background", type=str, required=False, nullable=True, location="json")
+            parser.add_argument("name", type=str, required=False,
+                                nullable=True, location="json")
+            parser.add_argument("icon_type", type=str,
+                                required=False, nullable=True, location="json")
+            parser.add_argument("icon", type=str, required=False,
+                                nullable=True, location="json")
+            parser.add_argument("icon_background", type=str,
+                                required=False, nullable=True, location="json")
             args = parser.parse_args()
         else:
             args = {}
 
         # convert to workflow mode
         workflow_service = WorkflowService()
-        new_app_model = workflow_service.convert_to_workflow(app_model=app_model, account=current_user, args=args)
+        new_app_model = workflow_service.convert_to_workflow(
+            app_model=app_model, account=current_user, args=args)
 
         # return app id
         return {
@@ -593,10 +614,14 @@ class PublishedAllWorkflowApi(Resource):
             raise Forbidden()
 
         parser = reqparse.RequestParser()
-        parser.add_argument("page", type=inputs.int_range(1, 99999), required=False, default=1, location="args")
-        parser.add_argument("limit", type=inputs.int_range(1, 100), required=False, default=20, location="args")
-        parser.add_argument("user_id", type=str, required=False, location="args")
-        parser.add_argument("named_only", type=inputs.boolean, required=False, default=False, location="args")
+        parser.add_argument("page", type=inputs.int_range(
+            1, 99999), required=False, default=1, location="args")
+        parser.add_argument("limit", type=inputs.int_range(
+            1, 100), required=False, default=20, location="args")
+        parser.add_argument("user_id", type=str,
+                            required=False, location="args")
+        parser.add_argument("named_only", type=inputs.boolean,
+                            required=False, default=False, location="args")
         args = parser.parse_args()
         page = int(args.get("page", 1))
         limit = int(args.get("limit", 10))
@@ -645,8 +670,10 @@ class WorkflowByIdApi(Resource):
             raise Forbidden()
 
         parser = reqparse.RequestParser()
-        parser.add_argument("marked_name", type=str, required=False, location="json")
-        parser.add_argument("marked_comment", type=str, required=False, location="json")
+        parser.add_argument("marked_name", type=str,
+                            required=False, location="json")
+        parser.add_argument("marked_comment", type=str,
+                            required=False, location="json")
         args = parser.parse_args()
 
         # Validate name and comment length
@@ -753,6 +780,16 @@ api.add_resource(
     WorkflowDraftRunIterationNodeApi,
     "/apps/<uuid:app_id>/workflows/draft/iteration/nodes/<string:node_id>/run",
 )
+api.add_resource(
+    AdvancedChatDraftRunLoopNodeApi,
+    "/apps/<uuid:app_id>/advanced-chat/workflows/draft/loop/nodes/<string:node_id>/run",
+)
+api.add_resource(WorkflowDraftRunLoopNodeApi,
+                 "/apps/<uuid:app_id>/workflows/draft/loop/nodes/<string:node_id>/run")
+api.add_resource(PublishedWorkflowApi, "/apps/<uuid:app_id>/workflows/publish")
+api.add_resource(PublishedAllWorkflowApi, "/apps/<uuid:app_id>/workflows")
+api.add_resource(DefaultBlockConfigsApi,
+                 "/apps/<uuid:app_id>/workflows/default-workflow-block-configs")
 api.add_resource(
     AdvancedChatDraftRunLoopNodeApi,
     "/apps/<uuid:app_id>/advanced-chat/workflows/draft/loop/nodes/<string:node_id>/run",

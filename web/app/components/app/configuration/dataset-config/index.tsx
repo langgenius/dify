@@ -1,6 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import React, { useMemo } from 'react'
+import React, { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import produce from 'immer'
@@ -21,6 +21,19 @@ import { useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/com
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useSelector as useAppContextSelector } from '@/context/app-context'
 import { hasEditPermissionForDataset } from '@/utils/permission'
+import MetadataFilter from '@/app/components/workflow/nodes/knowledge-retrieval/components/metadata/metadata-filter'
+import type {
+  HandleAddCondition,
+  HandleRemoveCondition,
+  HandleToggleConditionLogicalOperator,
+  HandleUpdateCondition,
+  MetadataFilteringModeEnum,
+} from '@/app/components/workflow/nodes/knowledge-retrieval/types'
+import {
+  ComparisonOperator,
+  LogicalOperator,
+  MetadataFilteringVariableType,
+} from '@/app/components/workflow/nodes/knowledge-retrieval/types'
 
 const DatasetConfig: FC = () => {
   const { t } = useTranslation()
@@ -34,6 +47,7 @@ const DatasetConfig: FC = () => {
     showSelectDataSet,
     isAgent,
     datasetConfigs,
+    datasetConfigsRef,
     setDatasetConfigs,
     setRerankSettingModalOpen,
   } = useContext(ConfigContext)
@@ -115,6 +129,96 @@ const DatasetConfig: FC = () => {
     })
   }, [dataSet, userProfile?.id])
 
+  const metadataList = useMemo(() => {
+    return formattedDataset.filter((dataset) => {
+      return !!dataset.doc_metadata
+    }).map((dataset) => {
+      return dataset.doc_metadata!
+    }).flat()
+  }, [formattedDataset])
+
+  const handleMetadataFilterModeChange = useCallback((newMode: MetadataFilteringModeEnum) => {
+    setDatasetConfigs(produce(datasetConfigsRef.current!, (draft) => {
+      draft.metadata_filtering_mode = newMode
+    }))
+  }, [setDatasetConfigs, datasetConfigsRef])
+
+  const handleAddCondition = useCallback<HandleAddCondition>(({ name, type }) => {
+    let operator: ComparisonOperator = ComparisonOperator.is
+
+    if (type === MetadataFilteringVariableType.number)
+      operator = ComparisonOperator.equal
+
+    const newCondition = {
+      name,
+      comparison_operator: operator,
+    }
+
+    const newInputs = produce(datasetConfigsRef.current!, (draft) => {
+      if (draft.metadata_filtering_conditions) {
+        draft.metadata_filtering_conditions.conditions.push(newCondition)
+      }
+      else {
+        draft.metadata_filtering_conditions = {
+          logical_operator: LogicalOperator.and,
+          conditions: [newCondition],
+        }
+      }
+    })
+    setDatasetConfigs(newInputs)
+  }, [setDatasetConfigs, datasetConfigsRef])
+
+  const handleRemoveCondition = useCallback<HandleRemoveCondition>((name) => {
+    const conditions = datasetConfigsRef.current!.metadata_filtering_conditions?.conditions || []
+    const index = conditions.findIndex(c => c.name === name)
+    const newInputs = produce(datasetConfigsRef.current!, (draft) => {
+      if (index > -1)
+        draft.metadata_filtering_conditions?.conditions.splice(index, 1)
+    })
+    setDatasetConfigs(newInputs)
+  }, [setDatasetConfigs, datasetConfigsRef])
+
+  const handleUpdateCondition = useCallback<HandleUpdateCondition>((name, newCondition) => {
+    const conditions = datasetConfigsRef.current!.metadata_filtering_conditions?.conditions || []
+    const index = conditions.findIndex(c => c.name === name)
+    const newInputs = produce(datasetConfigsRef.current!, (draft) => {
+      if (index > -1)
+        draft.metadata_filtering_conditions!.conditions[index] = newCondition
+    })
+    setDatasetConfigs(newInputs)
+  }, [setDatasetConfigs, datasetConfigsRef])
+
+  const handleToggleConditionLogicalOperator = useCallback<HandleToggleConditionLogicalOperator>(() => {
+    const oldLogicalOperator = datasetConfigsRef.current!.metadata_filtering_conditions?.logical_operator
+    const newLogicalOperator = oldLogicalOperator === LogicalOperator.and ? LogicalOperator.or : LogicalOperator.and
+    const newInputs = produce(datasetConfigsRef.current!, (draft) => {
+      draft.metadata_filtering_conditions!.logical_operator = newLogicalOperator
+    })
+    setDatasetConfigs(newInputs)
+  }, [setDatasetConfigs, datasetConfigsRef])
+
+  const handleMetadataModelChange = useCallback((model: { provider: string; modelId: string; mode?: string }) => {
+    const newInputs = produce(datasetConfigsRef.current!, (draft) => {
+      draft.metadata_model_config = {
+        provider: model.provider,
+        name: model.modelId,
+        mode: model.mode || 'chat',
+        completion_params: draft.metadata_model_config?.completion_params || { temperature: 0.7 },
+      }
+    })
+    setDatasetConfigs(newInputs)
+  }, [setDatasetConfigs, datasetConfigsRef])
+
+  const handleMetadataCompletionParamsChange = useCallback((newParams: Record<string, any>) => {
+    const newInputs = produce(datasetConfigsRef.current!, (draft) => {
+      draft.metadata_model_config = {
+        ...draft.metadata_model_config!,
+        completion_params: newParams,
+      }
+    })
+    setDatasetConfigs(newInputs)
+  }, [setDatasetConfigs, datasetConfigsRef])
+
   return (
     <FeaturePanel
       className='mt-2'
@@ -147,6 +251,26 @@ const DatasetConfig: FC = () => {
             <div className='pt-2 pb-1 text-xs text-text-tertiary'>{t('appDebug.feature.dataSet.noData')}</div>
           </div>
         )}
+
+      <div className='py-2 border-t border-t-divider-subtle'>
+        <MetadataFilter
+          metadataList={metadataList}
+          metadataFilterMode={datasetConfigs.metadata_filtering_mode}
+          metadataFilteringConditions={datasetConfigs.metadata_filtering_conditions}
+          handleAddCondition={handleAddCondition}
+          handleMetadataFilterModeChange={handleMetadataFilterModeChange}
+          handleRemoveCondition={handleRemoveCondition}
+          handleToggleConditionLogicalOperator={handleToggleConditionLogicalOperator}
+          handleUpdateCondition={handleUpdateCondition}
+          metadataModelConfig={datasetConfigs.metadata_model_config}
+          handleMetadataModelChange={handleMetadataModelChange}
+          handleMetadataCompletionParamsChange={handleMetadataCompletionParamsChange}
+          availableStringVars={[]}
+          availableStringNodesWithParent={[]}
+          availableNumberVars={[]}
+          availableNumberNodesWithParent={[]}
+        />
+      </div>
 
       {mode === AppType.completion && dataSet.length > 0 && (
         <ContextVar

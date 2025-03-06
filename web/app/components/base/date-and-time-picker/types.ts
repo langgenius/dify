@@ -11,7 +11,7 @@ export enum Period {
   PM = 'PM',
 }
 
-type TriggerProps = {
+export type TriggerProps = {
   value: Dayjs | undefined
   selectedDate: Dayjs | undefined
   isOpen: boolean
@@ -25,7 +25,9 @@ export type DatePickerProps = {
   needTimePicker?: boolean
   onChange: (date: Dayjs | undefined) => void
   onClear: () => void
+  triggerWrapClassName?: string
   renderTrigger?: (props: TriggerProps) => React.ReactNode
+  popupZIndexClassname?: string
 }
 
 export type DatePickerHeaderProps = {
