@@ -5,6 +5,7 @@ import Textarea from '@/app/components/base/textarea'
 import DatePicker from '@/app/components/base/date-and-time-picker/date-picker'
 import TimePicker from '@/app/components/base/date-and-time-picker/time-picker'
 import Checkbox from '@/app/components/base/checkbox'
+import Select from '@/app/components/base/select'
 import { useChatContext } from '@/app/components/base/chat/chat/context'
 
 enum DATA_FORMAT {
@@ -26,6 +27,7 @@ enum SUPPORTED_TYPES {
   TIME = 'time',
   DATETIME = 'datetime',
   CHECKBOX = 'checkbox',
+  SELECT = 'select',
 }
 const MarkdownForm = ({ node }: any) => {
   const { onSend } = useChatContext()
@@ -143,6 +145,38 @@ const MarkdownForm = ({ node }: any) => {
                 />
                 <span>{child.properties.dataTip || child.properties['data-tip'] || ''}</span>
               </div>
+            )
+          }
+          if (child.properties.type === SUPPORTED_TYPES.SELECT) {
+            return (
+              <Select
+                key={index}
+                allowSearch={false}
+                className="w-full"
+                items={(() => {
+                  let options = child.properties.dataOptions || child.properties['data-options'] || []
+                  if (typeof options === 'string') {
+                    try {
+                      options = JSON.parse(options)
+                    }
+                    catch (e) {
+                      console.error('Failed to parse options:', e)
+                      options = []
+                    }
+                  }
+                  return options.map((option: string) => ({
+                    name: option,
+                    value: option,
+                  }))
+                })()}
+                defaultValue={formValues[child.properties.name]}
+                onSelect={(item) => {
+                  setFormValues(prevValues => ({
+                    ...prevValues,
+                    [child.properties.name]: item.value,
+                  }))
+                }}
+              />
             )
           }
 
