@@ -27,6 +27,8 @@ export const useNodeHelpLink = (nodeType: BlockEnum) => {
         [BlockEnum.Assigner]: 'variable-assigner',
         [BlockEnum.Iteration]: 'iteration',
         [BlockEnum.IterationStart]: 'iteration',
+        [BlockEnum.Loop]: 'loop',
+        [BlockEnum.LoopStart]: 'loop',
         [BlockEnum.ParameterExtractor]: 'parameter-extractor',
         [BlockEnum.HttpRequest]: 'http-request',
         [BlockEnum.Tool]: 'tools',
@@ -50,11 +52,14 @@ export const useNodeHelpLink = (nodeType: BlockEnum) => {
       [BlockEnum.Assigner]: 'variable-assigner',
       [BlockEnum.Iteration]: 'iteration',
       [BlockEnum.IterationStart]: 'iteration',
+      [BlockEnum.Loop]: 'loop',
+      [BlockEnum.LoopStart]: 'loop',
       [BlockEnum.ParameterExtractor]: 'parameter-extractor',
       [BlockEnum.HttpRequest]: 'http-request',
       [BlockEnum.Tool]: 'tools',
       [BlockEnum.DocExtractor]: 'doc-extractor',
       [BlockEnum.ListFilter]: 'list-operator',
+      [BlockEnum.Agent]: 'agent',
     }
   }, [language])
 

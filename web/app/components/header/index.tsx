@@ -18,8 +18,8 @@ import WorkplaceSelector from '@/app/components/header/account-dropdown/workplac
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import { useProviderContext } from '@/context/provider-context'
 import { useModalContext } from '@/context/modal-context'
-import LicenseNav from './license-env'
 import PlanBadge from './plan-badge'
+import LicenseNav from './license-env'
 import { Plan } from '../billing/type'
 
 const navClassName = `

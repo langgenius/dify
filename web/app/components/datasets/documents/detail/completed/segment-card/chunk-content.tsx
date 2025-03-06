@@ -50,6 +50,7 @@ const ChunkContent: FC<ChunkContentProps> = ({
       className,
     )}
     content={sign_content || content || ''}
+    customDisallowedElements={['input']}
   />
 }
 
