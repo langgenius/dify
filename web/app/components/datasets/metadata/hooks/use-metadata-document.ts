@@ -23,7 +23,7 @@ const useMetadataDocument = ({
 }: Props) => {
   const { t } = useTranslation()
 
-  const { mutate } = useBatchUpdateDocMetadata()
+  const { mutateAsync } = useBatchUpdateDocMetadata()
   const { checkName } = useCheckMetadataName()
 
   const [isEdit, setIsEdit] = useState(false)
@@ -36,7 +36,7 @@ const useMetadataDocument = ({
   const list = allList.filter(item => item.id !== 'built-in')
   const builtList = allList.filter(item => item.id === 'built-in')
   const [tempList, setTempList] = useState<MetadataItemWithValue[]>(list)
-  const { mutate: doAddMetaData } = useCreateMetaData(datasetId)
+  const { mutateAsync: doAddMetaData } = useCreateMetaData(datasetId)
   const handleSelectMetaData = useCallback((metaData: MetadataItemWithValue) => {
     setTempList((prev) => {
       const index = prev.findIndex(item => item.id === metaData.id)
@@ -64,7 +64,7 @@ const useMetadataDocument = ({
 
   const hasData = list.length > 0
   const handleSave = async () => {
-    await mutate({
+    await mutateAsync({
       dataset_id: datasetId,
       metadata_list: [{
         document_id: documentId,

@@ -10,7 +10,7 @@ import { RiIndeterminateCircleLine } from '@remixicon/react'
 type Props = {
   className?: string
   payload: MetadataItemWithEdit
-  onChange: (value: any) => void
+  onChange: (value: MetadataItemWithEdit) => void
   onRemove: () => void
 }
 
@@ -26,7 +26,7 @@ const AddRow: FC<Props> = ({
       <InputCombined
         type={payload.type}
         value={payload.value}
-        onChange={onChange}
+        onChange={value => onChange({ ...payload, value })}
       />
       <div
         className={

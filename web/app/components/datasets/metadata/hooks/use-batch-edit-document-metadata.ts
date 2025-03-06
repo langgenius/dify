@@ -4,15 +4,18 @@ import type { SimpleDocumentDetail } from '@/models/datasets'
 import { useMemo } from 'react'
 import { isEqual } from 'lodash-es'
 import { useBatchUpdateDocMetadata } from '@/service/knowledge/use-metadata'
+import Toast from '@/app/components/base/toast'
 
 type Props = {
   datasetId: string
   docList: SimpleDocumentDetail[]
+  onUpdate: () => void
 }
 
 const useBatchEditDocumentMetadata = ({
   datasetId,
   docList,
+  onUpdate,
 }: Props) => {
   const [isShowEditModal, {
     setTrue: showEditModal,
@@ -117,13 +120,19 @@ const useBatchEditDocumentMetadata = ({
     return res
   }
 
-  const { mutate } = useBatchUpdateDocMetadata()
+  const { mutateAsync } = useBatchUpdateDocMetadata()
 
-  const handleSave = (editedList: MetadataItemInBatchEdit[], addedList: MetadataItemInBatchEdit[], isApplyToAllSelectDocument: boolean) => {
+  const handleSave = async (editedList: MetadataItemInBatchEdit[], addedList: MetadataItemInBatchEdit[], isApplyToAllSelectDocument: boolean) => {
     const backendList = formateToBackendList(editedList, addedList, isApplyToAllSelectDocument)
-    mutate({
+    await mutateAsync({
       dataset_id: datasetId,
       metadata_list: backendList,
+    })
+    onUpdate()
+    hideEditModal()
+    Toast.notify({
+      type: 'success',
+      message: 'common.api.actionSuccess',
     })
   }
 
