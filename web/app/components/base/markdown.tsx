@@ -63,15 +63,20 @@ const getCorrectCapitalizationLanguageName = (language: string) => {
 }
 
 const preprocessLaTeX = (content: string) => {
-  if (typeof content !== 'string')
-    return content
+  if (typeof content !== "string") return content;
 
   return flow([
-    (str: string) => str.replace(/\\\[(.*?)\\\]/g, (_, equation) => `$$${equation}$$`),
-    (str: string) => str.replace(/\\\((.*?)\\\)/g, (_, equation) => `$$${equation}$$`),
-    (str: string) => str.replace(/(^|[^\\])\$(.+?)\$/g, (_, prefix, equation) => `${prefix}$${equation}$`),
-  ])(content)
-}
+    (str: string) =>
+      str.replace(/\\\[([\s\S]*?)\\\]/g, (_, equation) => `$$\n${equation.trim()}\n$$`),
+    (str: string) =>
+      str.replace(/\\\(([\s\S]*?)\\\)/g, (_, equation) => `$${equation.trim()}$`),
+    (str: string) =>
+      str.replace(/(^|[^\\])\$(.+?)\$/g, (_, prefix, equation) => `${prefix}$${equation}$`),
+    (str: string) => str.replace(/\\geq/g, '≥'),
+    (str: string) => str.replace(/\\leq/g, '≤'),
+    (str: string) => str.replace(/\\neq/g, '≠'),
+  ])(content);
+};
 
 const preprocessThinkTag = (content: string) => {
   return flow([
