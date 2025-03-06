@@ -164,6 +164,9 @@ class GenericProviderID:
         self.organization, self.plugin_name, self.provider_name = value.split("/")
         self.is_hardcoded = is_hardcoded
 
+    def is_langgenius(self) -> bool:
+        return self.organization == "langgenius"
+
     @property
     def plugin_id(self) -> str:
         return f"{self.organization}/{self.plugin_name}"
