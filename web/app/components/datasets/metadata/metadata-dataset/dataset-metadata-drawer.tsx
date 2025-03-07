@@ -219,7 +219,7 @@ const DatasetMetadataDrawer: FC<Props> = ({
 
       {isShowRenameModal && (
         <Modal isShow title={t(`${i18nPrefix}.rename`)} onClose={() => setIsShowRenameModal(false)}>
-          <Field label={t(`${i18nPrefix}.name`)}>
+          <Field label={t(`${i18nPrefix}.name`)} className='mt-4'>
             <Input
               value={templeName}
               onChange={e => setTempleName(e.target.value)}
