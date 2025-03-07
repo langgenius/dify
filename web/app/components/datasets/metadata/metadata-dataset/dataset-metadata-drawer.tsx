@@ -83,9 +83,11 @@ const Item: FC<ItemProps> = ({
           <div className='max-w-[250px] truncate system-sm-medium text-text-primary'>{payload.name}</div>
           <div className='shrink-0 system-xs-regular'>{payload.type}</div>
         </div>
-        <div className='group-hover/item:hidden ml-2 shrink-0 system-xs-regular text-text-tertiary'>
-          {disabled ? t(`${i18nPrefix}.disabled`) : t(`${i18nPrefix}.values`, { num: payload.count || 0 })}
-        </div>
+        {(!readonly || disabled) && (
+          <div className='group-hover/item:hidden ml-2 shrink-0 system-xs-regular text-text-tertiary'>
+            {disabled ? t(`${i18nPrefix}.disabled`) : t(`${i18nPrefix}.values`, { num: payload.count || 0 })}
+          </div>
+        )}
         <div className='group-hover/item:flex hidden ml-2 items-center text-text-tertiary space-x-1'>
           <RiEditLine className='size-4 cursor-pointer' onClick={handleRename} />
           <div ref={deleteBtnRef} className='hover:text-text-destructive'>
