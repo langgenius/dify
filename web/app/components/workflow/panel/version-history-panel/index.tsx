@@ -211,9 +211,7 @@ const VersionHistoryPanel = () => {
       <div className="flex-1 relative px-3 py-2 overflow-y-auto">
         {(isFetching && !versionHistory?.pages?.length)
           ? (
-            <div className='flex items-center justify-center h-full'>
-              <Loading />
-            </div>
+            <Loading />
           )
           : (
             <>
