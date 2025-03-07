@@ -31,8 +31,7 @@ class MetadataService:
         return metadata
 
     @staticmethod
-    def \
-            update_metadata_name(dataset_id: str, metadata_id: str, name: str) -> DatasetMetadata:
+    def update_metadata_name(dataset_id: str, metadata_id: str, name: str) -> DatasetMetadata:
         lock_key = f"dataset_metadata_lock_{dataset_id}"
         try:
             MetadataService.knowledge_base_metadata_lock_check(dataset_id, None)
@@ -61,7 +60,7 @@ class MetadataService:
             logging.exception("Update metadata name failed")
         finally:
             redis_client.delete(lock_key)
-        
+
     @staticmethod
     def delete_metadata(dataset_id: str, metadata_id: str):
         lock_key = f"dataset_metadata_lock_{dataset_id}"
@@ -215,7 +214,9 @@ class MetadataService:
                     "id": item.get("id"),
                     "name": item.get("name"),
                     "type": item.get("type"),
-                    "count": DatasetMetadataBinding.query.filter_by(metadata_id=item.get("id"), dataset_id=dataset.id).count(),
+                    "count": DatasetMetadataBinding.query.filter_by(
+                        metadata_id=item.get("id"), dataset_id=dataset.id
+                    ).count(),
                 }
                 for item in dataset.doc_metadata or []
             ],

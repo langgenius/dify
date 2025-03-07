@@ -203,7 +203,7 @@ class Dataset(db.Model):  # type: ignore[name-defined]
     def doc_metadata(self):
         dataset_metadatas = db.session.query(DatasetMetadata).filter(DatasetMetadata.dataset_id == self.id).all()
 
-        return [
+        doc_metadata = [
             {
                 "id": dataset_metadata.id,
                 "name": dataset_metadata.name,
@@ -211,6 +211,43 @@ class Dataset(db.Model):  # type: ignore[name-defined]
             }
             for dataset_metadata in dataset_metadatas
         ]
+        if self.built_in_field_enabled:
+            doc_metadata.append(
+                {
+                    "id": "built-in",
+                    "name": BuiltInField.document_name,
+                    "type": "string",
+                }
+            )
+            doc_metadata.append(
+                {
+                    "id": "built-in",
+                    "name": BuiltInField.uploader,
+                    "type": "string",
+                }
+            )
+            doc_metadata.append(
+                {
+                    "id": "built-in",
+                    "name": BuiltInField.upload_date,
+                    "type": "date",
+                }
+            )
+            doc_metadata.append(
+                {
+                    "id": "built-in",
+                    "name": BuiltInField.last_update_date,
+                    "type": "date",
+                }
+            )
+            doc_metadata.append(
+                {
+                    "id": "built-in",
+                    "name": BuiltInField.source,
+                    "type": "string",
+                }
+            )
+        return doc_metadata
 
     @staticmethod
     def gen_collection_name_by_id(dataset_id: str) -> str:
