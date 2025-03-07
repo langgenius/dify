@@ -3,14 +3,14 @@ identity:
   author: APO
   label:
     en_US: Query the CPU utilization of the host
-    zh_Hans: 宿主机监控指标 - Basic CPU / Mem / Net / Disk - CPU Basic - Busy Iowait
+    zh_Hans: 宿主机IO等待CPU繁忙率
     pt_BR: Query the CPU utilization of the host
 description:
   human:
     en_US: Query the CPU utilization of the host
-    zh_Hans: 宿主机监控指标 - Basic CPU / Mem / Net / Disk - CPU Basic - Busy Iowait
+    zh_Hans: 宿主机IO等待CPU繁忙率
     pt_BR: Query the CPU utilization of the host
-  llm: 宿主机监控指标 - Basic CPU / Mem / Net / Disk - CPU Basic - Busy Iowait
+  llm: 宿主机IO等待CPU繁忙率
 display:
   type: metric
   title: 宿主机监控指标 - Basic CPU / Mem / Net / Disk - CPU Basic - Busy Iowait

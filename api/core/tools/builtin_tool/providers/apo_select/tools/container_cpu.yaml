@@ -3,7 +3,7 @@ identity:
   author: APO
   label:
     en_US: Query the CPU utilization of the container
-    zh_Hans: 查询容器CPU利用率
+    zh_Hans: 容器CPU使用率(使用Containerd容器运行时,按容器和Pod统计)
     pt_BR: Query the CPU utilization of the container
 display:
   type: metric
@@ -12,7 +12,7 @@ display:
 description:
   human:
     en_US: Query the CPU utilization of the container
-    zh_Hans: 查询容器CPU利用率
+    zh_Hans: 容器CPU使用率(使用Containerd容器运行时,按容器和Pod统计)
     pt_BR: Query the CPU utilization of the container
   llm: Query the CPU utilization of the container
 parameters:

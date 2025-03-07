@@ -3,14 +3,14 @@ identity:
   author: APO
   label:
     en_US: Query the CPU utilization of the host
-    zh_Hans: 查询主机CPU利用率
+    zh_Hans: 宿主机CPU繁忙率(百分比)
     pt_BR: Query the CPU utilization of the host
 description:
   human:
     en_US: Query the CPU utilization of the host
-    zh_Hans: 查询主机CPU利用率
+    zh_Hans: 宿主机CPU繁忙率(百分比)
     pt_BR: Query the CPU utilization of the host
-  llm: Query the CPU utilization of the host
+  llm: 宿主机CPU繁忙率(百分比)
 display:
   type: metric
   title: 宿主机监控指标 - Quick CPU / Mem / Disk - CPU Busy

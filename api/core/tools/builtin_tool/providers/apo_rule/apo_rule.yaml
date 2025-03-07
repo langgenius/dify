@@ -3,7 +3,7 @@ identity:
   name: apo_rule
   label:
     en_US: APORule
-    zh_Hans: APO规则执行
+    zh_Hans: APO数据分析规则
     pt_BR: APORule
   description:
     en_US: The user inputs the rules described in natural language for large model reasoning

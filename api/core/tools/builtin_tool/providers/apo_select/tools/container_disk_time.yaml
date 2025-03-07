@@ -3,7 +3,7 @@ identity:
   author: APO
   label:
     en_US: Query the CPU utilization of the container
-    zh_Hans: 基础设施情况 - 容器磁盘 - 读写花费时间 /s - Read
+    zh_Hans: 容器磁盘读取耗时每秒(使用Containerd,按Pod和容器统计)
     pt_BR: Query the CPU utilization of the container
 display:
   type: metric
@@ -12,9 +12,9 @@ display:
 description:
   human:
     en_US: Query the CPU utilization of the container
-    zh_Hans: 基础设施情况 - 容器磁盘 - 读写花费时间 /s - Read
+    zh_Hans: 容器磁盘读取耗时每秒(使用Containerd,按Pod和容器统计)
     pt_BR: Query the CPU utilization of the container
-  llm: 基础设施情况 - 容器磁盘 - 读写花费时间 /s - Read
+  llm: 容器磁盘读取耗时每秒(使用Containerd,按Pod和容器统计)
 parameters:
   - name: pod
     type: string

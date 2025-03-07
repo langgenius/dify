@@ -3,14 +3,14 @@ identity:
   author: APO
   label:
     en_US: Query container rtt
-    zh_Hans: 查询容器网络与下游RTT
+    zh_Hans: 容器与下游服务的网络往返时间(RTT,按命名空间和Pod统计)
     pt_BR: Query container rtt
 description:
   human:
     en_US: Query container rtt
-    zh_Hans: 查询容器网络与下游RTT
+    zh_Hans: 容器与下游服务的网络往返时间(RTT,按命名空间和Pod统计)
     pt_BR: Query container rtt
-  llm: Query container rtt
+  llm: 容器与下游服务的网络往返时间(RTT,按命名空间和Pod统计)
 display:
   type: metric
   title: 基础设施情况 - 容器网络 - 与下游服务RTT

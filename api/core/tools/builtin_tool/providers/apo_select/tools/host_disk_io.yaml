@@ -1,19 +1,19 @@
 identity:
-  name: host_cpu_fd_open
+  name: 宿主机磁盘IO耗时速率
   author: APO
   label:
     en_US: Query the CPU utilization of the host
-    zh_Hans: 宿主机当前打开文件描述符数
+    zh_Hans: 宿主机磁盘IO耗时速率
     pt_BR: Query the CPU utilization of the host
 description:
   human:
     en_US: Query the CPU utilization of the host
-    zh_Hans: 宿主机当前打开文件描述符数
+    zh_Hans: 宿主机磁盘IO耗时速率
     pt_BR: Query the CPU utilization of the host
-  llm: 宿主机当前打开文件描述符数
+  llm: 宿主机磁盘IO耗时速率
 display:
   type: metric
-  title: 宿主机监控指标 - System Misc - File Descriptors - Open file descriptors
+  title: 宿主机监控指标 - Storage Disk - Time Spent Doing I/Os - IO
   unit: percent(0-100)百分比
 parameters:
   - name: node

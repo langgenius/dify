@@ -1,19 +1,19 @@
 identity:
-  name: Originx 北极星指标 (服务层级) - RED指标 - 平均响应时间
+  name: Originx 北极星指标 (服务层级) - RED指标 - 请求成功率
   author: APO
   label:
     en_US: Query the CPU utilization of the host
-    zh_Hans: 服务平均响应时间(毫秒,按服务名和内容键统计,指定时间段内)
+    zh_Hans: 服务请求成功率(按服务名和内容键统计,指定时间段内)
     pt_BR: Query the CPU utilization of the host
 description:
   human:
     en_US: Query the CPU utilization of the host
-    zh_Hans: 服务平均响应时间(毫秒,按服务名和内容键统计,指定时间段内)
+    zh_Hans: 服务请求成功率(按服务名和内容键统计,指定时间段内)
     pt_BR: Query the CPU utilization of the host
-  llm: 服务平均响应时间(毫秒,按服务名和内容键统计,指定时间段内)
+  llm: 服务请求成功率(按服务名和内容键统计,指定时间段内)
 display:
   type: metric
-  title: Originx 北极星指标 (服务层级) - RED指标 - 平均响应时间
+  title: Originx 北极星指标 (服务层级) - RED指标 - 请求成功率
   unit: ms
 parameters:
   - name: service_name
