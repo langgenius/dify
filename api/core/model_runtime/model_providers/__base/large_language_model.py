@@ -65,6 +65,7 @@ class LargeLanguageModel(AIModel):
             model_parameters = {}
 
         self.started_at = time.perf_counter()
+        self.last_chunked_at = self.started_at
 
         callbacks = callbacks or []
 
