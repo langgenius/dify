@@ -52,7 +52,6 @@ const Header: FC = () => {
   const workflowStore = useWorkflowStore()
   const appDetail = useAppStore(s => s.appDetail)
   const setAppDetail = useAppStore(s => s.setAppDetail)
-  const appSidebarExpand = useAppStore(s => s.appSidebarExpand)
   const systemFeatures = useContextSelector(AppContext, state => state.systemFeatures)
   const appID = appDetail?.id
   const isChatMode = useIsChatMode()
@@ -210,11 +209,6 @@ const Header: FC = () => {
       className='absolute top-0 left-0 z-10 flex items-center justify-between w-full px-3 h-14 bg-mask-top2bottom-gray-50-to-transparent'
     >
       <div>
-        {
-          appSidebarExpand === 'collapse' && (
-            <div className='system-xs-regular text-text-tertiary'>{appDetail?.name}</div>
-          )
-        }
         {
           normal && <EditingTitle />
         }

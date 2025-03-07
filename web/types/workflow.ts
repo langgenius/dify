@@ -111,6 +111,11 @@ export type FetchWorkflowDraftResponse = {
   }
   hash: string
   updated_at: number
+  updated_by: {
+    id: string
+    name: string
+    email: string
+  },
   tool_published: boolean
   environment_variables?: EnvironmentVariable[]
   conversation_variables?: ConversationVariable[]
