@@ -245,7 +245,7 @@ class DatasetService:
                 "No Embedding Model available. Please configure a valid provider in the Settings -> Model Provider."
             )
         except ProviderTokenNotInitError as ex:
-            raise ValueError(f"The dataset in unavailable, due to: {ex.description}")
+            raise ValueError(ex.description)
 
     @staticmethod
     def update_dataset(dataset_id, data, user):
@@ -327,31 +327,75 @@ class DatasetService:
                         raise ValueError(ex.description)
             else:
                 # add default plugin id to both setting sets, to make sure the plugin model provider is consistent
-                plugin_model_provider = dataset.embedding_model_provider
-                plugin_model_provider = str(ModelProviderID(plugin_model_provider))
-
-                new_plugin_model_provider = data["embedding_model_provider"]
-                new_plugin_model_provider = str(ModelProviderID(new_plugin_model_provider))
-
+                # Skip embedding model checks if not provided in the update request
                 if (
-                    new_plugin_model_provider != plugin_model_provider
-                    or data["embedding_model"] != dataset.embedding_model
+                    "embedding_model_provider" not in data
+                    or "embedding_model" not in data
+                    or not data.get("embedding_model_provider")
+                    or not data.get("embedding_model")
                 ):
-                    action = "update"
+                    # If the dataset already has embedding model settings, use those
+                    if dataset.embedding_model_provider and dataset.embedding_model:
+                        # Keep existing values
+                        filtered_data["embedding_model_provider"] = dataset.embedding_model_provider
+                        filtered_data["embedding_model"] = dataset.embedding_model
+                        # If collection_binding_id exists, keep it too
+                        if dataset.collection_binding_id:
+                            filtered_data["collection_binding_id"] = dataset.collection_binding_id
+                    # Otherwise, don't try to update embedding model settings at all
+                    # Remove these fields from filtered_data if they exist but are None/empty
+                    if "embedding_model_provider" in filtered_data and not filtered_data["embedding_model_provider"]:
+                        del filtered_data["embedding_model_provider"]
+                    if "embedding_model" in filtered_data and not filtered_data["embedding_model"]:
+                        del filtered_data["embedding_model"]
+                else:
+                    skip_embedding_update = False
                     try:
-                        model_manager = ModelManager()
-                        embedding_model = model_manager.get_model_instance(
-                            tenant_id=current_user.current_tenant_id,
-                            provider=data["embedding_model_provider"],
-                            model_type=ModelType.TEXT_EMBEDDING,
-                            model=data["embedding_model"],
-                        )
-                        filtered_data["embedding_model"] = embedding_model.model
-                        filtered_data["embedding_model_provider"] = embedding_model.provider
-                        dataset_collection_binding = DatasetCollectionBindingService.get_dataset_collection_binding(
-                            embedding_model.provider, embedding_model.model
-                        )
-                        filtered_data["collection_binding_id"] = dataset_collection_binding.id
+                        # Handle existing model provider
+                        plugin_model_provider = dataset.embedding_model_provider
+                        plugin_model_provider_str = None
+                        if plugin_model_provider:
+                            plugin_model_provider_str = str(ModelProviderID(plugin_model_provider))
+
+                        # Handle new model provider from request
+                        new_plugin_model_provider = data["embedding_model_provider"]
+                        new_plugin_model_provider_str = None
+                        if new_plugin_model_provider:
+                            new_plugin_model_provider_str = str(ModelProviderID(new_plugin_model_provider))
+
+                        # Only update embedding model if both values are provided and different from current
+                        if (
+                            plugin_model_provider_str != new_plugin_model_provider_str
+                            or data["embedding_model"] != dataset.embedding_model
+                        ):
+                            action = "update"
+                            model_manager = ModelManager()
+                            try:
+                                embedding_model = model_manager.get_model_instance(
+                                    tenant_id=current_user.current_tenant_id,
+                                    provider=data["embedding_model_provider"],
+                                    model_type=ModelType.TEXT_EMBEDDING,
+                                    model=data["embedding_model"],
+                                )
+                            except ProviderTokenNotInitError:
+                                # If we can't get the embedding model, skip updating it
+                                # and keep the existing settings if available
+                                if dataset.embedding_model_provider and dataset.embedding_model:
+                                    filtered_data["embedding_model_provider"] = dataset.embedding_model_provider
+                                    filtered_data["embedding_model"] = dataset.embedding_model
+                                    if dataset.collection_binding_id:
+                                        filtered_data["collection_binding_id"] = dataset.collection_binding_id
+                                # Skip the rest of the embedding model update
+                                skip_embedding_update = True
+                            if not skip_embedding_update:
+                                filtered_data["embedding_model"] = embedding_model.model
+                                filtered_data["embedding_model_provider"] = embedding_model.provider
+                                dataset_collection_binding = (
+                                    DatasetCollectionBindingService.get_dataset_collection_binding(
+                                        embedding_model.provider, embedding_model.model
+                                    )
+                                )
+                                filtered_data["collection_binding_id"] = dataset_collection_binding.id
                     except LLMBadRequestError:
                         raise ValueError(
                             "No Embedding Model available. Please configure a valid provider "
