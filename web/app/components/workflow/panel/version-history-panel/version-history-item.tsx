@@ -88,7 +88,7 @@ const VersionHistoryItem: React.FC<VersionHistoryItemProps> = ({
           isSelected ? 'border-text-accent' : 'border-text-quaternary',
         )}/>
       </div>
-      <div className='flex flex-col gap-y-0.5 overflow-hidden'>
+      <div className='flex flex-col gap-y-0.5 grow overflow-hidden'>
         <div className='flex items-center gap-x-1 h-5 mr-6'>
           <div className={cn(
             'py-[1px] system-sm-semibold truncate',
