@@ -168,6 +168,7 @@ const translation = {
   preprocessDocument: '{{num}} 个预处理文档',
   allKnowledge: '所有知识库',
   allKnowledgeDescription: '选择以显示该工作区内所有知识库。只有工作区所有者才能管理所有知识库。',
+  embeddingModelNotAvailable: 'Embedding 模型不可用。',
   metadata: {
     metadata: '元数据',
     addMetadata: '添加元数据',
