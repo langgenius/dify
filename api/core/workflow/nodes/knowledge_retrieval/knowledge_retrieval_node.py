@@ -30,7 +30,6 @@ from core.workflow.nodes.knowledge_retrieval.template_prompts import (
     METADATA_FILTER_USER_PROMPT_1,
     METADATA_FILTER_USER_PROMPT_3,
 )
-from core.workflow.nodes.list_operator.exc import InvalidConditionError
 from core.workflow.nodes.llm.entities import LLMNodeChatModelMessage, LLMNodeCompletionModelPromptTemplate
 from core.workflow.nodes.llm.node import LLMNode
 from core.workflow.nodes.question_classifier.template_prompts import QUESTION_CLASSIFIER_USER_PROMPT_2

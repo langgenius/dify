@@ -787,9 +787,9 @@ class DatasetRetrieval:
         user_id: str,
         metadata_filtering_mode: str,
         metadata_model_config: ModelConfig,
-        metadata_filtering_conditions: MetadataFilteringCondition,
+        metadata_filtering_conditions: Optional[MetadataFilteringCondition],
         inputs: dict,
-    ) -> dict[str, list[str]]:
+    ) -> Optional[dict[str, list[str]]]:
         document_query = db.session.query(Document).filter(
             Document.dataset_id.in_(dataset_ids),
             Document.indexing_status == "completed",
@@ -916,7 +916,7 @@ class DatasetRetrieval:
             case "≥", ">=":
                 query = query.filter(Document.doc_metadata[metadata_name] >= value)
             case _:
-                 pass
+                pass
 
     def _fetch_model_config(
         self, tenant_id: str, model: ModelConfig

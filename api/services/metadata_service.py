@@ -31,8 +31,7 @@ class MetadataService:
         return metadata
 
     @staticmethod
-    def \
-            update_metadata_name(dataset_id: str, metadata_id: str, name: str) -> DatasetMetadata:
+    def update_metadata_name(dataset_id: str, metadata_id: str, name: str) -> DatasetMetadata:
         lock_key = f"dataset_metadata_lock_{dataset_id}"
         try:
             MetadataService.knowledge_base_metadata_lock_check(dataset_id, None)
