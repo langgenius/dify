@@ -55,7 +55,7 @@ const ObjectChildrenTreePanel: FC<Props> = ({
   const schema = payload.schema
   const fieldNames = Object.keys(schema.properties)
   return (
-    <div>
+    <div className='w-[296px] p-1 pb-0 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-[5px]'>
       {fieldNames.map(name => (
         <Field
           key={name}
