@@ -1,16 +1,7 @@
-import {
-  uniq,
-  xorBy,
-} from 'lodash-es'
+import { uniq, xorBy } from 'lodash-es'
 import type { MultipleRetrievalConfig } from './types'
-import type {
-  DataSet,
-  SelectedDatasetsMode,
-} from '@/models/datasets'
-import {
-  DEFAULT_WEIGHTED_SCORE,
-  RerankingModeEnum,
-} from '@/models/datasets'
+import type { DataSet, SelectedDatasetsMode } from '@/models/datasets'
+import { DEFAULT_WEIGHTED_SCORE, RerankingModeEnum } from '@/models/datasets'
 import { RETRIEVE_METHOD } from '@/types/app'
 import { DATASET_DEFAULT } from '@/config'
 
@@ -126,6 +117,8 @@ export const getMultipleRetrievalConfig = (
     reranking_mode,
     reranking_model,
     weights,
+    // 기본값: ((allInternal && allEconomic) || allExternal) 조건이 만족되면 사용자가 설정한 reranking_enable 값을,
+    // 그렇지 않은 경우에는 shouldSetWeightDefaultValue 값을 사용합니다.
     reranking_enable: ((allInternal && allEconomic) || allExternal) ? reranking_enable : shouldSetWeightDefaultValue,
   }
 
@@ -154,7 +147,10 @@ export const getMultipleRetrievalConfig = (
     result.reranking_mode = RerankingModeEnum.RerankingModel
     if (!result.reranking_model?.provider || !result.reranking_model?.model) {
       if (rerankModelIsValid) {
-        result.reranking_enable = true
+        // 사용자가 명시적으로 off (false)를 설정한 경우에는 값을 변경하지 않습니다.
+        if (reranking_enable !== false) {
+          result.reranking_enable = true
+        }
         result.reranking_model = {
           provider: validRerankModel?.provider || '',
           model: validRerankModel?.model || '',
@@ -168,7 +164,9 @@ export const getMultipleRetrievalConfig = (
       }
     }
     else {
-      result.reranking_enable = true
+      if (reranking_enable !== false) {
+        result.reranking_enable = true
+      }
     }
   }
 
@@ -176,7 +174,9 @@ export const getMultipleRetrievalConfig = (
     if (!reranking_mode) {
       if (validRerankModel?.provider && validRerankModel?.model) {
         result.reranking_mode = RerankingModeEnum.RerankingModel
-        result.reranking_enable = true
+        if (reranking_enable !== false) {
+          result.reranking_enable = true
+        }
         result.reranking_model = {
           provider: validRerankModel.provider,
           model: validRerankModel.model,
@@ -194,7 +194,9 @@ export const getMultipleRetrievalConfig = (
     if (reranking_mode === RerankingModeEnum.WeightedScore && weights && shouldSetWeightDefaultValue) {
       if (rerankModelIsValid) {
         result.reranking_mode = RerankingModeEnum.RerankingModel
-        result.reranking_enable = true
+        if (reranking_enable !== false) {
+          result.reranking_enable = true
+        }
         result.reranking_model = {
           provider: validRerankModel.provider || '',
           model: validRerankModel.model || '',
