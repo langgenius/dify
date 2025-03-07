@@ -17,9 +17,9 @@ class ExternalDataFetch:
         tenant_id: str,
         app_id: str,
         external_data_tools: list[ExternalDataVariableEntity],
-        inputs: Mapping[str, Any],
+        inputs: dict[str, Any],
         query: str,
-    ) -> Mapping[str, Any]:
+    ) -> dict[str, Any]:
         """
         Fill in variable inputs from external data tools if exists.
 
@@ -31,7 +31,6 @@ class ExternalDataFetch:
         :return: the filled inputs
         """
         results: dict[str, Any] = {}
-        inputs = dict(inputs)
         with ThreadPoolExecutor() as executor:
             futures = {}
             for tool in external_data_tools:
