@@ -179,6 +179,7 @@ const DatasetConfig: FC = () => {
   }, [setDatasetConfigs, datasetConfigsRef])
 
   const handleUpdateCondition = useCallback<HandleUpdateCondition>((name, newCondition) => {
+    console.log(newCondition, 'newCondition')
     const conditions = datasetConfigsRef.current!.metadata_filtering_conditions?.conditions || []
     const index = conditions.findIndex(c => c.name === name)
     const newInputs = produce(datasetConfigsRef.current!, (draft) => {
@@ -265,10 +266,9 @@ const DatasetConfig: FC = () => {
           metadataModelConfig={datasetConfigs.metadata_model_config}
           handleMetadataModelChange={handleMetadataModelChange}
           handleMetadataCompletionParamsChange={handleMetadataCompletionParamsChange}
-          availableStringVars={[]}
-          availableStringNodesWithParent={[]}
-          availableNumberVars={[]}
-          availableNumberNodesWithParent={[]}
+          isCommonVariable
+          availableCommonStringVars={promptVariablesToSelect.filter(item => item.type === MetadataFilteringVariableType.string)}
+          availableCommonNumberVars={promptVariablesToSelect.filter(item => item.type === MetadataFilteringVariableType.number)}
         />
       </div>
 

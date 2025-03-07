@@ -64,7 +64,7 @@ const InfoGroup: FC<Props> = ({
             <div className={cn('text-text-secondary', uppercaseTitle ? 'system-xs-semibold-uppercase' : 'system-md-semibold')}>{title}</div>
             {titleTooltip && (
               <Tooltip popupContent={<div className='max-w-[240px]'>{titleTooltip}</div>}>
-                <RiQuestionLine className='size-3.5 text-text-tertiary' />
+                <div><RiQuestionLine className='size-3.5 text-text-tertiary' /></div>
               </Tooltip>
             )}
           </div>

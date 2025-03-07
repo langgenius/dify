@@ -1,4 +1,5 @@
 import { useBatchUpdateDocMetadata, useDatasetMetaData, useDocumentMetaData } from '@/service/knowledge/use-metadata'
+import { useDatasetDetailContext } from '@/context/dataset-detail'
 import type { BuiltInMetadataItem } from '../types'
 import { DataType, type MetadataItemWithValue } from '../types'
 import { useCallback, useState } from 'react'
@@ -22,6 +23,9 @@ const useMetadataDocument = ({
   docDetail,
 }: Props) => {
   const { t } = useTranslation()
+
+  const { dataset } = useDatasetDetailContext()
+  const embeddingAvailable = !!dataset?.embedding_available
 
   const { mutateAsync } = useBatchUpdateDocMetadata()
   const { checkName } = useCheckMetadataName()
@@ -133,6 +137,7 @@ const useMetadataDocument = ({
   const technicalParameters = getReadOnlyMetaData('technicalParameters')
 
   return {
+    embeddingAvailable,
     isEdit,
     setIsEdit,
     list,
