@@ -101,9 +101,9 @@ const ApiBasedExtensionModal: FC<ApiBasedExtensionModalProps> = ({
           <a
             href={t('common.apiBasedExtension.linkUrl') || '/'}
             target='_blank' rel='noopener noreferrer'
-            className='group flex items-center text-xs text-text-tertiary font-normal hover:text-text-accent'
+            className='group flex items-center text-xs text-text-accent font-normal'
           >
-            <BookOpen01 className='mr-1 w-3 h-3 text-text-tertiary group-hover:text-text-accent' />
+            <BookOpen01 className='mr-1 w-3 h-3' />
             {t('common.apiBasedExtension.link')}
           </a>
         </div>

@@ -60,7 +60,6 @@ const Pricing: FC<Props> = ({
             <div className='py-2 flex items-center justify-between h-[64px]'>
               <TabSlider
                 value={currentPlan}
-                itemWidth={170}
                 className='inline-flex'
                 options={[
                   {
