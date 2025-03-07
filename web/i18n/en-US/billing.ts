@@ -101,7 +101,7 @@ const translation = {
   plans: {
     sandbox: {
       name: 'Sandbox',
-      for: 'Free Trial of Core Capabilities',      
+      for: 'Free Trial of Core Capabilities',
       description: 'Free Trial of Core Capabilities',
     },
     professional: {
