@@ -120,6 +120,7 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
     }).finally(() => {
       setIsLoadingAppDetail(false)
     })
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [appId, pathname])
 
   useEffect(() => {

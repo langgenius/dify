@@ -15,7 +15,7 @@ html[data-theme="light"] {
     --color-dataset-option-card-blue-gradient: linear-gradient(90deg, #F2F4F7 0%, #F9FAFB 100%);
     --color-dataset-option-card-purple-gradient: linear-gradient(90deg, #F0EEFA 0%, #F9FAFB 100%);
     --color-dataset-option-card-orange-gradient: linear-gradient(90deg, #F8F2EE 0%, #F9FAFB 100%);
-    --color-dataset-chunk-list-mask-bg: linear-gradient(180deg, rgba(255, 255, 255, 0.00) 0%, #FCFCFD 100%);
+    --color-dataset-chunk-list-mask-bg: linear-gradient(180deg, rgba(255, 255, 255, 0.00) 0%, #FFF 100%);
     --mask-top2bottom-gray-50-to-transparent: linear-gradient(180deg,
             rgba(200, 206, 218, 0.2) 0%,
             rgba(255, 255, 255, 0) 100%);
