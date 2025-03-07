@@ -1087,9 +1087,9 @@ class Message(db.Model):  # type: ignore[name-defined]
                 file = file_factory.build_from_mapping(
                     mapping={
                         "id": message_file.id,
-                        "upload_file_id": message_file.upload_file_id,
-                        "transfer_method": message_file.transfer_method,
                         "type": message_file.type,
+                        "transfer_method": message_file.transfer_method,
+                        "upload_file_id": message_file.upload_file_id,
                     },
                     tenant_id=current_app.tenant_id,
                 )
@@ -1101,6 +1101,7 @@ class Message(db.Model):  # type: ignore[name-defined]
                         "id": message_file.id,
                         "type": message_file.type,
                         "transfer_method": message_file.transfer_method,
+                        "upload_file_id": message_file.upload_file_id,
                         "url": message_file.url,
                     },
                     tenant_id=current_app.tenant_id,
