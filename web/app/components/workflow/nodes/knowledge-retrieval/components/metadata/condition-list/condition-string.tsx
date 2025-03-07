@@ -10,6 +10,7 @@ import type {
   ValueSelector,
 } from '@/app/components/workflow/types'
 import Input from '@/app/components/base/input'
+import { VarType } from '@/app/components/workflow/types'
 
 type ConditionStringProps = {
   value?: string
@@ -52,6 +53,7 @@ const ConditionString = ({
             onChange={handleVariableValueChange}
             nodesOutputVars={nodesOutputVars}
             availableNodes={availableNodes}
+            varType={VarType.string}
           />
         )
       }
@@ -61,6 +63,7 @@ const ConditionString = ({
             variables={commonVariables}
             value={value}
             onChange={handleCommonVariableValueChange}
+            varType={VarType.string}
           />
         )
       }

@@ -9,6 +9,7 @@ import type {
   NodeOutPutVar,
   ValueSelector,
 } from '@/app/components/workflow/types'
+import { VarType } from '@/app/components/workflow/types'
 import Input from '@/app/components/base/input'
 
 type ConditionNumberProps = {
@@ -52,6 +53,7 @@ const ConditionNumber = ({
             onChange={handleVariableValueChange}
             nodesOutputVars={nodesOutputVars}
             availableNodes={availableNodes}
+            varType={VarType.number}
           />
         )
       }
@@ -61,6 +63,7 @@ const ConditionNumber = ({
             variables={commonVariables}
             value={value}
             onChange={handleCommonVariableValueChange}
+            varType={VarType.number}
           />
         )
       }
