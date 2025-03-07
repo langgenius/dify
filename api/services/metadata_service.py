@@ -219,6 +219,7 @@ class MetadataService:
                     ).count(),
                 }
                 for item in dataset.doc_metadata or []
+                if item.get("id") != "built-in"
             ],
             "built_in_field_enabled": dataset.built_in_field_enabled,
         }
