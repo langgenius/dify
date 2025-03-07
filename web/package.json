@@ -90,6 +90,8 @@
     "rc-textarea": "^1.8.2",
     "react": "~18.2.0",
     "react-18-input-autosize": "^3.0.0",
+    "react-dnd": "^16.0.1",
+    "react-dnd-html5-backend": "^16.0.1",
     "react-dom": "~18.2.0",
     "react-easy-crop": "^5.1.0",
     "react-error-boundary": "^4.1.2",
