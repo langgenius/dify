@@ -10,7 +10,7 @@ import {
   RiGroupLine,
   RiSquareLine,
 } from '@remixicon/react'
-import { Plan } from '../type'
+import { Plan, SelfHostedPlan } from '../type'
 import VectorSpaceInfo from '../usage-info/vector-space-info'
 import AppsInfo from '../usage-info/apps-info'
 import UpgradeBtn from '../upgrade-btn'
@@ -47,7 +47,7 @@ const PlanComp: FC<Props> = ({
         {plan.type === Plan.team && (
           <RiGroup3Line className='w-7 h-7 text-util-colors-indigo-indigo-600'/>
         )}
-        {plan.type === Plan.enterprise && (
+        {(plan.type as any) === SelfHostedPlan.enterprise && (
           <RiGroup3Line className='w-7 h-7 text-util-colors-indigo-indigo-600'/>
         )}
         <div className='mt-1 flex items-center'>
@@ -58,7 +58,7 @@ const PlanComp: FC<Props> = ({
             </div>
             <div className='system-xs-regular text-util-colors-gray-gray-600'>{t(`billing.plans.${type}.for`)}</div>
           </div>
-          {plan.type !== Plan.enterprise && (
+          {(plan.type as any) !== SelfHostedPlan.enterprise && (
             <UpgradeBtn
               className='shrink-0'
               isPlain={type === Plan.team}
@@ -73,20 +73,20 @@ const PlanComp: FC<Props> = ({
         <AppsInfo />
         <UsageInfo
           Icon={RiGroupLine}
-          name={t('billing.plansCommon.teamMembers')}
+          name={t('billing.usagePage.teamMembers')}
           usage={usage.teamMembers}
           total={total.teamMembers}
         />
         <UsageInfo
           Icon={RiBook2Line}
-          name={t('billing.plansCommon.documentsUploadQuota')}
+          name={t('billing.usagePage.documentsUploadQuota')}
           usage={usage.documentsUploadQuota}
           total={total.documentsUploadQuota}
         />
         <VectorSpaceInfo />
         <UsageInfo
           Icon={RiFileEditLine}
-          name={t('billing.plansCommon.annotationQuota')}
+          name={t('billing.usagePage.annotationQuota')}
           usage={usage.annotatedResponse}
           total={total.annotatedResponse}
         />

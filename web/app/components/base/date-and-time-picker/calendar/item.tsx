@@ -1,7 +1,7 @@
 import React, { type FC } from 'react'
 import type { CalendarItemProps } from '../types'
 import cn from '@/utils/classnames'
-import dayjs from 'dayjs'
+import dayjs from '../utils/dayjs'
 
 const Item: FC<CalendarItemProps> = ({
   day,

@@ -36,6 +36,9 @@ export const useWorkflowRun = () => {
     handleWorkflowNodeIterationStarted,
     handleWorkflowNodeIterationNext,
     handleWorkflowNodeIterationFinished,
+    handleWorkflowNodeLoopStarted,
+    handleWorkflowNodeLoopNext,
+    handleWorkflowNodeLoopFinished,
     handleWorkflowNodeRetry,
     handleWorkflowAgentLog,
     handleWorkflowTextChunk,
@@ -118,6 +121,9 @@ export const useWorkflowRun = () => {
       onIterationStart,
       onIterationNext,
       onIterationFinish,
+      onLoopStart,
+      onLoopNext,
+      onLoopFinish,
       onNodeRetry,
       onAgentLog,
       onError,
@@ -162,7 +168,7 @@ export const useWorkflowRun = () => {
       else
         ttsUrl = `/apps/${params.appId}/text-to-audio`
     }
-    const player = AudioPlayerManager.getInstance().getAudioPlayer(ttsUrl, ttsIsPublic, uuidV4(), 'none', 'none', (_: any): any => {})
+    const player = AudioPlayerManager.getInstance().getAudioPlayer(ttsUrl, ttsIsPublic, uuidV4(), 'none', 'none', (_: any): any => { })
 
     ssePost(
       url,
@@ -230,6 +236,30 @@ export const useWorkflowRun = () => {
           if (onIterationFinish)
             onIterationFinish(params)
         },
+        onLoopStart: (params) => {
+          handleWorkflowNodeLoopStarted(
+            params,
+            {
+              clientWidth,
+              clientHeight,
+            },
+          )
+
+          if (onLoopStart)
+            onLoopStart(params)
+        },
+        onLoopNext: (params) => {
+          handleWorkflowNodeLoopNext(params)
+
+          if (onLoopNext)
+            onLoopNext(params)
+        },
+        onLoopFinish: (params) => {
+          handleWorkflowNodeLoopFinished(params)
+
+          if (onLoopFinish)
+            onLoopFinish(params)
+        },
         onNodeRetry: (params) => {
           handleWorkflowNodeRetry(params)
 
@@ -260,7 +290,27 @@ export const useWorkflowRun = () => {
         ...restCallback,
       },
     )
-  }, [store, workflowStore, doSyncWorkflowDraft, handleWorkflowStarted, handleWorkflowFinished, handleWorkflowFailed, handleWorkflowNodeStarted, handleWorkflowNodeFinished, handleWorkflowNodeIterationStarted, handleWorkflowNodeIterationNext, handleWorkflowNodeIterationFinished, handleWorkflowNodeRetry, handleWorkflowTextChunk, handleWorkflowTextReplace, handleWorkflowAgentLog, pathname])
+  }, [
+    store,
+    workflowStore,
+    doSyncWorkflowDraft,
+    handleWorkflowStarted,
+    handleWorkflowFinished,
+    handleWorkflowFailed,
+    handleWorkflowNodeStarted,
+    handleWorkflowNodeFinished,
+    handleWorkflowNodeIterationStarted,
+    handleWorkflowNodeIterationNext,
+    handleWorkflowNodeIterationFinished,
+    handleWorkflowNodeLoopStarted,
+    handleWorkflowNodeLoopNext,
+    handleWorkflowNodeLoopFinished,
+    handleWorkflowNodeRetry,
+    handleWorkflowTextChunk,
+    handleWorkflowTextReplace,
+    handleWorkflowAgentLog,
+    pathname],
+  )
 
   const handleStopRun = useCallback((taskId: string) => {
     const appId = useAppStore.getState().appDetail?.id

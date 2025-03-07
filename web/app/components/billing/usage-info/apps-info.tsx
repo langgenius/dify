@@ -25,7 +25,7 @@ const AppsInfo: FC<Props> = ({
     <UsageInfo
       className={className}
       Icon={RiApps2Line}
-      name={t('billing.plansCommon.buildApps')}
+      name={t('billing.usagePage.buildApps')}
       usage={usage.buildApps}
       total={total.buildApps}
     />

@@ -79,7 +79,7 @@ const EndpointList = ({ detail }: Props) => {
                 </div>
                 <div className='text-text-tertiary system-xs-regular'>{t('plugin.detailPanel.endpointsTip')}</div>
                 <a
-                  href={`https://docs.dify.ai/${locale === LanguagesSupported[1] ? 'v/zh-hans/' : ''}guides/api-documentation/endpoint`}
+                  href={`https://docs.dify.ai/${locale === LanguagesSupported[1] ? 'v/zh-hans/' : ''}plugins/schema-definition/endpoint`}
                   target='_blank'
                   rel='noopener noreferrer'
                 >

@@ -18,7 +18,9 @@ from core.workflow.entities.node_entities import AgentNodeStrategyInit, NodeRunM
 from core.workflow.entities.variable_pool import VariablePool, VariableValue
 from core.workflow.graph_engine.condition_handlers.condition_manager import ConditionManager
 from core.workflow.graph_engine.entities.event import (
+    BaseAgentEvent,
     BaseIterationEvent,
+    BaseLoopEvent,
     GraphEngineEvent,
     GraphRunFailedEvent,
     GraphRunPartialSucceededEvent,
@@ -501,7 +503,7 @@ class GraphEngine:
                     break
 
                 yield event
-                if event.parallel_id == parallel_id:
+                if not isinstance(event, BaseAgentEvent) and event.parallel_id == parallel_id:
                     if isinstance(event, ParallelBranchRunSucceededEvent):
                         succeeded_count += 1
                         if succeeded_count == len(futures):
@@ -644,6 +646,12 @@ class GraphEngine:
                     if isinstance(item, GraphEngineEvent):
                         if isinstance(item, BaseIterationEvent):
                             # add parallel info to iteration event
+                            item.parallel_id = parallel_id
+                            item.parallel_start_node_id = parallel_start_node_id
+                            item.parent_parallel_id = parent_parallel_id
+                            item.parent_parallel_start_node_id = parent_parallel_start_node_id
+                        elif isinstance(item, BaseLoopEvent):
+                            # add parallel info to loop event
                             item.parallel_id = parallel_id
                             item.parallel_start_node_id = parallel_start_node_id
                             item.parent_parallel_id = parent_parallel_id

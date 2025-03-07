@@ -223,6 +223,61 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
             stream=streaming,
         )
 
+    def single_loop_generate(
+        self,
+        app_model: App,
+        workflow: Workflow,
+        node_id: str,
+        user: Account | EndUser,
+        args: Mapping,
+        streaming: bool = True,
+    ) -> Mapping[str, Any] | Generator[str | Mapping[str, Any], Any, None]:
+        """
+        Generate App response.
+
+        :param app_model: App
+        :param workflow: Workflow
+        :param user: account or end user
+        :param args: request args
+        :param invoke_from: invoke from source
+        :param stream: is stream
+        """
+        if not node_id:
+            raise ValueError("node_id is required")
+
+        if args.get("inputs") is None:
+            raise ValueError("inputs is required")
+
+        # convert to app config
+        app_config = AdvancedChatAppConfigManager.get_app_config(app_model=app_model, workflow=workflow)
+
+        # init application generate entity
+        application_generate_entity = AdvancedChatAppGenerateEntity(
+            task_id=str(uuid.uuid4()),
+            app_config=app_config,
+            conversation_id=None,
+            inputs={},
+            query="",
+            files=[],
+            user_id=user.id,
+            stream=streaming,
+            invoke_from=InvokeFrom.DEBUGGER,
+            extras={"auto_generate_conversation_name": False},
+            single_loop_run=AdvancedChatAppGenerateEntity.SingleLoopRunEntity(node_id=node_id, inputs=args["inputs"]),
+        )
+        contexts.tenant_id.set(application_generate_entity.app_config.tenant_id)
+        contexts.plugin_tool_providers.set({})
+        contexts.plugin_tool_providers_lock.set(threading.Lock())
+
+        return self._generate(
+            workflow=workflow,
+            user=user,
+            invoke_from=InvokeFrom.DEBUGGER,
+            application_generate_entity=application_generate_entity,
+            conversation=None,
+            stream=streaming,
+        )
+
     def _generate(
         self,
         *,
