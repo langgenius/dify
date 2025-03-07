@@ -355,6 +355,7 @@ class LargeLanguageModel(AIModel):
             total_price=prompt_price_info.total_amount + completion_price_info.total_amount,
             currency=prompt_price_info.currency,
             latency=time.perf_counter() - self.started_at,
+            ttft=self.ttft,
         )
 
         return usage
