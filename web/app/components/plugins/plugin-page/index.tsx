@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useContext } from 'use-context-selector'
 import Link from 'next/link'
 import {
   RiBookOpenLine,
@@ -36,6 +37,8 @@ import { sleep } from '@/utils'
 import { fetchBundleInfoFromMarketPlace, fetchManifestFromMarketPlace } from '@/service/plugins'
 import { marketplaceApiPrefix } from '@/config'
 import { SUPPORT_INSTALL_LOCAL_FILE_EXTENSIONS } from '@/config'
+import { LanguagesSupported } from '@/i18n/language'
+import I18n from '@/context/i18n'
 
 const PACKAGE_IDS_KEY = 'package-ids'
 const BUNDLE_INFO_KEY = 'bundle-info'
@@ -49,6 +52,7 @@ const PluginPage = ({
   marketplace,
 }: PluginPageProps) => {
   const { t } = useTranslation()
+  const { locale } = useContext(I18n)
   const searchParams = useSearchParams()
   const { replace } = useRouter()
 
@@ -164,7 +168,7 @@ const PluginPage = ({
               activeTab === 'discover' && (
                 <>
                   <Link
-                    href='https://docs.dify.ai/plugins/publish-plugins/publish-to-dify-marketplace'
+                    href={`https://docs.dify.ai/${locale === LanguagesSupported[1] ? 'v/zh-hans/' : ''}plugins/publish-plugins/publish-to-dify-marketplace`}
                     target='_blank'
                   >
                     <Button

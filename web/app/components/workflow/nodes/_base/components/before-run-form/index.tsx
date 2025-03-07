@@ -50,8 +50,11 @@ function formatValue(value: string | any, type: InputVarType) {
   if (type === InputVarType.multiFiles)
     return getProcessedFiles(value)
 
-  if (type === InputVarType.singleFile)
+  if (type === InputVarType.singleFile) {
+    if (Array.isArray(value))
+      return getProcessedFiles(value)
     return getProcessedFiles([value])[0]
+  }
 
   return value
 }
@@ -88,9 +91,20 @@ const BeforeRunForm: FC<BeforeRunFormProps> = ({
     let errMsg = ''
     forms.forEach((form) => {
       form.inputs.forEach((input) => {
-        const value = form.values[input.variable]
+        const value = form.values[input.variable] as any
         if (!errMsg && input.required && (value === '' || value === undefined || value === null || (input.type === InputVarType.files && value.length === 0)))
           errMsg = t('workflow.errorMsg.fieldRequired', { field: typeof input.label === 'object' ? input.label.variable : input.label })
+
+        if (!errMsg && (input.type === InputVarType.singleFile || input.type === InputVarType.multiFiles) && value) {
+          let fileIsUploading = false
+          if (Array.isArray(value))
+            fileIsUploading = value.find(item => item.transferMethod === TransferMethod.local_file && !item.uploadedId)
+          else
+            fileIsUploading = value.transferMethod === TransferMethod.local_file && !value.uploadedId
+
+          if (fileIsUploading)
+            errMsg = t('appDebug.errorMessage.waitForFileUpload')
+        }
       })
     })
     if (errMsg) {

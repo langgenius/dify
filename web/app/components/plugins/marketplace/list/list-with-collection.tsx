@@ -65,7 +65,7 @@ const ListWithCollection = ({
 
                   return (
                     <CardWrapper
-                      key={plugin.name}
+                      key={plugin.plugin_id}
                       plugin={plugin}
                       showInstallButton={showInstallButton}
                       locale={locale}

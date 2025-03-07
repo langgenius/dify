@@ -187,18 +187,30 @@ class ProviderConfiguration(BaseModel):
         :return:
         """
         # get provider
-        provider_record = (
-            db.session.query(Provider)
-            .filter(
-                Provider.tenant_id == self.tenant_id,
-                Provider.provider_type == ProviderType.CUSTOM.value,
-                or_(
-                    Provider.provider_name == ModelProviderID(self.provider.provider).plugin_name,
-                    Provider.provider_name == self.provider.provider,
-                ),
+        model_provider_id = ModelProviderID(self.provider.provider)
+        if model_provider_id.is_langgenius():
+            provider_record = (
+                db.session.query(Provider)
+                .filter(
+                    Provider.tenant_id == self.tenant_id,
+                    Provider.provider_type == ProviderType.CUSTOM.value,
+                    or_(
+                        Provider.provider_name == model_provider_id.provider_name,
+                        Provider.provider_name == self.provider.provider,
+                    ),
+                )
+                .first()
             )
-            .first()
-        )
+        else:
+            provider_record = (
+                db.session.query(Provider)
+                .filter(
+                    Provider.tenant_id == self.tenant_id,
+                    Provider.provider_type == ProviderType.CUSTOM.value,
+                    Provider.provider_name == self.provider.provider,
+                )
+                .first()
+            )
 
         # Get provider credential secret variables
         provider_credential_secret_variables = self.extract_secret_variables(

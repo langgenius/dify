@@ -181,6 +181,7 @@ const ChunkContent: FC<IChunkContentProps> = ({
       <Markdown
         className='h-full w-full !text-text-secondary'
         content={question}
+        customDisallowedElements={['input']}
       />
     )
   }

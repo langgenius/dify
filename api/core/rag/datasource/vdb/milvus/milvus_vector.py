@@ -72,7 +72,17 @@ class MilvusVector(BaseVector):
         self._client = self._init_client(config)
         self._consistency_level = "Session"  # Consistency level for Milvus operations
         self._fields: list[str] = []  # List of fields in the collection
+        if self._client.has_collection(collection_name):
+            self._load_collection_fields()
         self._hybrid_search_enabled = self._check_hybrid_search_support()  # Check if hybrid search is supported
+
+    def _load_collection_fields(self, fields: Optional[list[str]] = None) -> None:
+        if fields is None:
+            # Load collection fields from remote server
+            collection_info = self._client.describe_collection(self._collection_name)
+            fields = [field["name"] for field in collection_info["fields"]]
+        # Since primary field is auto-id, no need to track it
+        self._fields = [f for f in fields if f != Field.PRIMARY_KEY.value]
 
     def _check_hybrid_search_support(self) -> bool:
         """
@@ -306,10 +316,7 @@ class MilvusVector(BaseVector):
                     )
                     schema.add_function(bm25_function)
 
-                for x in schema.fields:
-                    self._fields.append(x.name)
-                # Since primary field is auto-id, no need to track it
-                self._fields.remove(Field.PRIMARY_KEY.value)
+                self._load_collection_fields([f.name for f in schema.fields])
 
                 # Create Index params for the collection
                 index_params_obj = IndexParams()

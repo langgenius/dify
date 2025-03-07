@@ -2,9 +2,7 @@ export enum Plan {
   sandbox = 'sandbox',
   professional = 'professional',
   team = 'team',
-  enterprise = 'enterprise',
 }
-
 export enum Priority {
   standard = 'standard',
   priority = 'priority',
@@ -14,21 +12,42 @@ export type PlanInfo = {
   level: number
   price: number
   modelProviders: string
+  teamWorkspace: number
   teamMembers: number
   buildApps: number
-  vectorSpace: number
+  documents: number
+  vectorSpace: string
   documentsUploadQuota: number
+  documentsRequestQuota: number
   documentProcessingPriority: Priority
   logHistory: number
-  customTools: string | number
-  messageRequest: {
-    en: string | number
-    zh: string | number
-  }
+  messageRequest: number
   annotatedResponse: number
 }
 
-export type UsagePlanInfo = Pick<PlanInfo, 'vectorSpace' | 'buildApps' | 'teamMembers' | 'annotatedResponse' | 'documentsUploadQuota'>
+export enum SelfHostedPlan {
+  community = 'community',
+  premium = 'premium',
+  enterprise = 'enterprise',
+}
+
+export type SelfHostedPlanInfo = {
+  level: number
+  price: number
+  modelProviders: string
+  teamWorkspace: number
+  teamMembers: number
+  buildApps: number
+  documents: number
+  vectorSpace: string
+  documentsRequestQuota: number
+  documentProcessingPriority: Priority
+  logHistory: number
+  messageRequest: number
+  annotatedResponse: number
+}
+
+export type UsagePlanInfo = Pick<PlanInfo, 'buildApps' | 'teamMembers' | 'annotatedResponse' | 'documentsUploadQuota'> & { vectorSpace: number }
 
 export enum DocumentProcessingPriority {
   standard = 'standard',

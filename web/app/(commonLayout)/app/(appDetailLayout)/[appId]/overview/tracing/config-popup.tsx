@@ -166,7 +166,7 @@ const ConfigPopup: FC<PopupProps> = ({
       <div className='flex justify-between items-center'>
         <div className='flex items-center'>
           <TracingIcon size='md' className='mr-2' />
-          <div className='text-text-primary title-2xl-semibold'>{t(`${I18N_PREFIX}.tracing`)}</div>
+          <div className='text-text-primary title-2xl-semi-bold'>{t(`${I18N_PREFIX}.tracing`)}</div>
         </div>
         <div className='flex items-center'>
           <Indicator color={enabled ? 'green' : 'gray'} />

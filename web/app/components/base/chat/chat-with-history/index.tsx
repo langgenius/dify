@@ -11,14 +11,15 @@ import {
 } from './context'
 import { useChatWithHistory } from './hooks'
 import Sidebar from './sidebar'
+import Header from './header'
 import HeaderInMobile from './header-in-mobile'
-import ConfigPanel from './config-panel'
 import ChatWrapper from './chat-wrapper'
 import type { InstalledApp } from '@/models/explore'
 import Loading from '@/app/components/base/loading'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import { checkOrSetAccessToken } from '@/app/components/share/utils'
 import AppUnavailable from '@/app/components/base/app-unavailable'
+import cn from '@/utils/classnames'
 
 type ChatWithHistoryProps = {
   className?: string
@@ -30,17 +31,17 @@ const ChatWithHistory: FC<ChatWithHistoryProps> = ({
     appInfoError,
     appData,
     appInfoLoading,
-    appPrevChatTree,
-    showConfigPanelBeforeChat,
     appChatListDataLoading,
     chatShouldReloadKey,
     isMobile,
     themeBuilder,
+    sidebarCollapseState,
   } = useChatWithHistoryContext()
-
-  const chatReady = (!showConfigPanelBeforeChat || !!appPrevChatTree.length)
+  const isSidebarCollapsed = sidebarCollapseState
   const customConfig = appData?.custom_config
   const site = appData?.site
+
+  const [showSidePanel, setShowSidePanel] = useState(false)
 
   useEffect(() => {
     themeBuilder?.buildTheme(site?.chat_color_theme, site?.chat_color_theme_inverted)
@@ -65,35 +66,44 @@ const ChatWithHistory: FC<ChatWithHistoryProps> = ({
   }
 
   return (
-    <div className={`h-full flex bg-white ${className} ${isMobile && 'flex-col'}`}>
-      {
-        !isMobile && (
+    <div className={cn(
+      'h-full flex bg-background-default-burn',
+      isMobile && 'flex-col',
+      className,
+    )}>
+      {!isMobile && (
+        <div className={cn(
+          'flex flex-col w-[236px] p-1 pr-0 transition-all duration-200 ease-in-out',
+          isSidebarCollapsed && 'w-0 !p-0 overflow-hidden',
+        )}>
           <Sidebar />
-        )
-      }
-      {
-        isMobile && (
-          <HeaderInMobile />
-        )
-      }
-      <div className={`grow overflow-hidden ${showConfigPanelBeforeChat && !appPrevChatTree.length && 'flex items-center justify-center'}`}>
-        {
-          showConfigPanelBeforeChat && !appChatListDataLoading && !appPrevChatTree.length && (
-            <div className={`flex w-full items-center justify-center h-full ${isMobile && 'px-4'}`}>
-              <ConfigPanel />
-            </div>
-          )
-        }
-        {
-          appChatListDataLoading && chatReady && (
+        </div>
+      )}
+      {isMobile && (
+        <HeaderInMobile />
+      )}
+      <div className={cn('relative grow p-2')}>
+        {isSidebarCollapsed && (
+          <div
+            className={cn(
+              'z-20 absolute top-0 w-[256px] h-full flex flex-col p-2 transition-all duration-500 ease-in-out',
+              showSidePanel ? 'left-0' : 'left-[-248px]',
+            )}
+            onMouseEnter={() => setShowSidePanel(true)}
+            onMouseLeave={() => setShowSidePanel(false)}
+          >
+            <Sidebar isPanel />
+          </div>
+        )}
+        <div className='h-full flex flex-col bg-chatbot-bg rounded-2xl border-[0,5px] border-components-panel-border-subtle overflow-hidden'>
+          {!isMobile && <Header />}
+          {appChatListDataLoading && (
             <Loading type='app' />
-          )
-        }
-        {
-          chatReady && !appChatListDataLoading && (
+          )}
+          {!appChatListDataLoading && (
             <ChatWrapper key={chatShouldReloadKey} />
-          )
-        }
+          )}
+        </div>
       </div>
     </div>
   )
@@ -123,7 +133,6 @@ const ChatWithHistoryWrap: FC<ChatWithHistoryWrapProps> = ({
     appPrevChatTree,
     pinnedConversationList,
     conversationList,
-    showConfigPanelBeforeChat,
     newConversationInputs,
     newConversationInputsRef,
     handleNewConversationInputsChange,
@@ -142,6 +151,8 @@ const ChatWithHistoryWrap: FC<ChatWithHistoryWrapProps> = ({
     appId,
     handleFeedback,
     currentChatInstanceRef,
+    sidebarCollapseState,
+    handleSidebarCollapse,
   } = useChatWithHistory(installedAppInfo)
 
   return (
@@ -157,7 +168,6 @@ const ChatWithHistoryWrap: FC<ChatWithHistoryWrapProps> = ({
       appPrevChatTree,
       pinnedConversationList,
       conversationList,
-      showConfigPanelBeforeChat,
       newConversationInputs,
       newConversationInputsRef,
       handleNewConversationInputsChange,
@@ -178,6 +188,8 @@ const ChatWithHistoryWrap: FC<ChatWithHistoryWrapProps> = ({
       handleFeedback,
       currentChatInstanceRef,
       themeBuilder,
+      sidebarCollapseState,
+      handleSidebarCollapse,
     }}>
       <ChatWithHistory className={className} />
     </ChatWithHistoryContext.Provider>

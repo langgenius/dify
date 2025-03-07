@@ -1,9 +1,11 @@
 from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.app.entities.queue_entities import QueueRetrieverResourcesEvent
+from core.rag.index_processor.constant.index_type import IndexType
 from core.rag.models.document import Document
 from extensions.ext_database import db
-from models.dataset import DatasetQuery, DocumentSegment
+from models.dataset import ChildChunk, DatasetQuery, DocumentSegment
+from models.dataset import Document as DatasetDocument
 from models.model import DatasetRetrieverResource
 
 
@@ -41,15 +43,29 @@ class DatasetIndexToolCallbackHandler:
         """Handle tool end."""
         for document in documents:
             if document.metadata is not None:
-                query = db.session.query(DocumentSegment).filter(
-                    DocumentSegment.index_node_id == document.metadata["doc_id"]
-                )
+                dataset_document = DatasetDocument.query.filter(
+                    DatasetDocument.id == document.metadata["document_id"]
+                ).first()
+                if dataset_document.doc_form == IndexType.PARENT_CHILD_INDEX:
+                    child_chunk = ChildChunk.query.filter(
+                        ChildChunk.index_node_id == document.metadata["doc_id"],
+                        ChildChunk.dataset_id == dataset_document.dataset_id,
+                        ChildChunk.document_id == dataset_document.id,
+                    ).first()
+                    if child_chunk:
+                        segment = DocumentSegment.query.filter(DocumentSegment.id == child_chunk.segment_id).update(
+                            {DocumentSegment.hit_count: DocumentSegment.hit_count + 1}, synchronize_session=False
+                        )
+                else:
+                    query = db.session.query(DocumentSegment).filter(
+                        DocumentSegment.index_node_id == document.metadata["doc_id"]
+                    )
 
-                if "dataset_id" in document.metadata:
-                    query = query.filter(DocumentSegment.dataset_id == document.metadata["dataset_id"])
+                    if "dataset_id" in document.metadata:
+                        query = query.filter(DocumentSegment.dataset_id == document.metadata["dataset_id"])
 
-                # add hit count to document segment
-                query.update({DocumentSegment.hit_count: DocumentSegment.hit_count + 1}, synchronize_session=False)
+                    # add hit count to document segment
+                    query.update({DocumentSegment.hit_count: DocumentSegment.hit_count + 1}, synchronize_session=False)
 
                 db.session.commit()
 

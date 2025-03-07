@@ -18,9 +18,11 @@ import type { InvitationResult } from '@/models/common'
 import LogoEmbeddedChatHeader from '@/app/components/base/logo/logo-embedded-chat-header'
 import { useProviderContext } from '@/context/provider-context'
 import { Plan } from '@/app/components/billing/type'
+import Button from '@/app/components/base/button'
 import UpgradeBtn from '@/app/components/billing/upgrade-btn'
 import { NUM_INFINITE } from '@/app/components/billing/config'
 import { LanguagesSupported } from '@/i18n/language'
+import cn from '@/utils/classnames'
 dayjs.extend(relativeTime)
 
 const MembersPage = () => {
@@ -35,7 +37,13 @@ const MembersPage = () => {
   const { locale } = useContext(I18n)
 
   const { userProfile, currentWorkspace, isCurrentWorkspaceOwner, isCurrentWorkspaceManager, systemFeatures } = useAppContext()
-  const { data, mutate } = useSWR({ url: '/workspaces/current/members' }, fetchMembers)
+  const { data, mutate } = useSWR(
+    {
+      url: '/workspaces/current/members',
+      params: {},
+    },
+    fetchMembers,
+  )
   const [inviteModalVisible, setInviteModalVisible] = useState(false)
   const [invitationResults, setInvitationResults] = useState<InvitationResult[]>([])
   const [invitedModalVisible, setInvitedModalVisible] = useState(false)
@@ -47,17 +55,17 @@ const MembersPage = () => {
   return (
     <>
       <div className='flex flex-col'>
-        <div className='flex items-center mb-4 p-3 gap-1 bg-gray-50 rounded-2xl'>
-          <LogoEmbeddedChatHeader className='!w-10 !h-10' />
-          <div className='grow mx-2'>
-            <div className='text-sm font-medium text-gray-900'>{currentWorkspace?.name}</div>
+        <div className='flex items-center mb-4 p-3 pr-5 gap-3 bg-gradient-to-r from-background-gradient-bg-fill-chat-bg-2 to-background-gradient-bg-fill-chat-bg-1 rounded-xl border-t-[0.5px] border-l-[0.5px] border-divider-subtle'>
+          <LogoEmbeddedChatHeader className='!w-12 !h-12' />
+          <div className='grow'>
+            <div className='system-md-semibold text-text-secondary'>{currentWorkspace?.name}</div>
             {enableBilling && (
-              <div className='text-xs text-gray-500'>
+              <div className='mt-1 system-xs-medium text-text-tertiary'>
                 {isNotUnlimitedMemberPlan
                   ? (
                     <div className='flex space-x-1'>
                       <div>{t('billing.plansCommon.member')}{locale !== LanguagesSupported[1] && accounts.length > 1 && 's'}</div>
-                      <div className='text-gray-700'>{accounts.length}</div>
+                      <div className=''>{accounts.length}</div>
                       <div>/</div>
                       <div>{plan.total.teamMembers === NUM_INFINITE ? t('billing.plansCommon.unlimited') : plan.total.teamMembers}</div>
                     </div>
@@ -75,14 +83,10 @@ const MembersPage = () => {
           {isMemberFull && (
             <UpgradeBtn className='mr-2' loc='member-invite' />
           )}
-          <div className={
-            `shrink-0 flex items-center py-[7px] px-3 border-[0.5px] border-gray-200
-            text-[13px] font-medium text-primary-600 bg-white
-            shadow-xs rounded-lg ${(isCurrentWorkspaceManager && !isMemberFull) ? 'cursor-pointer' : 'grayscale opacity-50 cursor-default'}`
-          } onClick={() => (isCurrentWorkspaceManager && !isMemberFull) && setInviteModalVisible(true)}>
-            <RiUserAddLine className='w-4 h-4 mr-2 ' />
+          <Button variant='primary' className={cn('shrink-0')} disabled={!isCurrentWorkspaceManager || isMemberFull} onClick={() => setInviteModalVisible(true)}>
+            <RiUserAddLine className='w-4 h-4 mr-1' />
             {t('common.members.invite')}
-          </div>
+          </Button>
         </div>
         <div className='overflow-visible lg:overflow-visible'>
           <div className='flex items-center py-[7px] border-b border-divider-regular min-w-[480px]'>
@@ -99,18 +103,18 @@ const MembersPage = () => {
                     <div className=''>
                       <div className='text-text-secondary system-sm-medium'>
                         {account.name}
-                        {account.status === 'pending' && <span className='ml-1 system-xs-regular text-[#DC6803]'>{t('common.members.pending')}</span>}
+                        {account.status === 'pending' && <span className='ml-1 system-xs-medium text-text-warning'>{t('common.members.pending')}</span>}
                         {userProfile.email === account.email && <span className='system-xs-regular text-text-tertiary'>{t('common.members.you')}</span>}
                       </div>
                       <div className='text-text-tertiary system-xs-regular'>{account.email}</div>
                     </div>
                   </div>
-                  <div className='shrink-0 flex items-center w-[104px] py-2 system-xs-regular text-text-secondary'>{dayjs(Number((account.last_active_at || account.created_at)) * 1000).locale(locale === 'zh-Hans' ? 'zh-cn' : 'en').fromNow()}</div>
+                  <div className='shrink-0 flex items-center w-[104px] py-2 system-sm-regular text-text-secondary'>{dayjs(Number((account.last_active_at || account.created_at)) * 1000).locale(locale === 'zh-Hans' ? 'zh-cn' : 'en').fromNow()}</div>
                   <div className='shrink-0 w-[96px] flex items-center'>
                     {
                       ((isCurrentWorkspaceOwner && account.role !== 'owner') || (isCurrentWorkspaceManager && !['owner', 'admin'].includes(account.role)))
                         ? <Operation member={account} operatorRole={currentWorkspace.role} onOperate={mutate} />
-                        : <div className='px-3 system-xs-regular text-text-secondary'>{RoleMap[account.role] || RoleMap.normal}</div>
+                        : <div className='px-3 system-sm-regular text-text-secondary'>{RoleMap[account.role] || RoleMap.normal}</div>
                     }
                   </div>
                 </div>

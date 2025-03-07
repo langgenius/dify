@@ -47,7 +47,11 @@ const ResultItem: FC<Props> = ({
 
       {/* Main */}
       <div className='mt-1 px-3'>
-        <Markdown className='line-clamp-2' content={sign_content || content} />
+        <Markdown
+          className='line-clamp-2'
+          content={sign_content || content}
+          customDisallowedElements={['input']}
+        />
         {isParentChildRetrieval && (
           <div className='mt-1'>
             <div
