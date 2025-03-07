@@ -33,7 +33,7 @@ jobs:
 
       - name: Set up Node.js
         if: env.FILES_CHANGED == 'true'
-        uses: actions/setup-node@v2
+        uses: actions/setup-node@v4
         with:
           node-version: 'lts/*'
 
