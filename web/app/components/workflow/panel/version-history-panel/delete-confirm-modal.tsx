@@ -8,7 +8,7 @@ type DeleteConfirmModalProps = {
   isOpen: boolean
   versionInfo: VersionHistory
   onClose: () => void
-  onDelete: () => void
+  onDelete: (id: string) => void
 }
 
 const DeleteConfirmModal: FC<DeleteConfirmModalProps> = ({
@@ -32,7 +32,7 @@ const DeleteConfirmModal: FC<DeleteConfirmModalProps> = ({
       <Button onClick={onClose}>
         {t('common.operation.cancel')}
       </Button>
-      <Button variant='warning' onClick={onDelete}>
+      <Button variant='warning' onClick={onDelete.bind(null, versionInfo.id)}>
         {t('common.operation.delete')}
       </Button>
     </div>

@@ -13,6 +13,7 @@ import Toast from '@/app/components/base/toast'
 import { createWorkflowToolProvider, fetchWorkflowToolDetailByAppID, saveWorkflowToolProvider } from '@/service/tools'
 import type { Emoji, WorkflowToolProviderParameter, WorkflowToolProviderRequest, WorkflowToolProviderResponse } from '@/app/components/tools/types'
 import type { InputVar } from '@/app/components/workflow/types'
+import type { PublishWorkflowParams } from '@/types/workflow'
 import { useAppContext } from '@/context/app-context'
 import { useInvalidateAllWorkflowTools } from '@/service/use-tools'
 
@@ -25,7 +26,7 @@ type Props = {
   name: string
   description: string
   inputs?: InputVar[]
-  handlePublish: () => void
+  handlePublish: (params?: PublishWorkflowParams) => Promise<void>
   onRefreshData?: () => void
 }
 

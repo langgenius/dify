@@ -1,12 +1,14 @@
-import { del, get, patch } from './base'
+import { del, get, patch, post } from './base'
 import { useInfiniteQuery, useMutation, useQuery } from '@tanstack/react-query'
 import type {
   FetchWorkflowDraftPageParams,
   FetchWorkflowDraftPageResponse,
   FetchWorkflowDraftResponse,
+  PublishWorkflowParams,
   UpdateWorkflowParams,
   WorkflowConfigResponse,
 } from '@/types/workflow'
+import type { CommonResponse } from '@/models/common'
 import { useReset } from './use-base'
 
 const NAME_SPACE = 'workflow'
@@ -65,5 +67,17 @@ export const useDeleteWorkflow = (appId: string) => {
   return useMutation({
     mutationKey: [NAME_SPACE, 'delete'],
     mutationFn: (workflowId: string) => del(`/apps/${appId}/workflows/${workflowId}`),
+  })
+}
+
+export const usePublishWorkflow = (appId: string) => {
+  return useMutation({
+    mutationKey: [NAME_SPACE, 'publish'],
+    mutationFn: (params: PublishWorkflowParams) => post<CommonResponse & { created_at: number }>(`/apps/${appId}/workflows/publish`, {
+      body: {
+        marked_name: params.title,
+        marked_comment: params.releaseNotes,
+      },
+    }),
   })
 }

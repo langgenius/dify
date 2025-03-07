@@ -45,10 +45,6 @@ export const getLoopSingleNodeRunUrl = (isChatFlow: boolean, appId: string, node
   return `apps/${appId}/${isChatFlow ? 'advanced-chat/' : ''}workflows/draft/loop/nodes/${nodeId}/run`
 }
 
-export const publishWorkflow = (url: string) => {
-  return post<CommonResponse & { created_at: number }>(url)
-}
-
 export const fetchPublishedWorkflow: Fetcher<FetchWorkflowDraftResponse, string> = (url) => {
   return get<FetchWorkflowDraftResponse>(url)
 }

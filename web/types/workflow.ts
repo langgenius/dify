@@ -334,6 +334,11 @@ export type WorkflowConfigResponse = {
   parallel_depth_limit: number
 }
 
+export type PublishWorkflowParams = {
+  title: string
+  releaseNotes: string
+}
+
 export type UpdateWorkflowParams = {
   workflowId: string
   title: string

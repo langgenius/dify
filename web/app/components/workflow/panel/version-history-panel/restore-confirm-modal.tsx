@@ -8,7 +8,7 @@ type RestoreConfirmModalProps = {
   isOpen: boolean
   versionInfo: VersionHistory
   onClose: () => void
-  onRestore: () => void
+  onRestore: (item: VersionHistory) => void
 }
 
 const RestoreConfirmModal: FC<RestoreConfirmModalProps> = ({
@@ -32,7 +32,7 @@ const RestoreConfirmModal: FC<RestoreConfirmModalProps> = ({
       <Button onClick={onClose}>
         {t('common.operation.cancel')}
       </Button>
-      <Button variant='primary' onClick={onRestore}>
+      <Button variant='primary' onClick={onRestore.bind(null, versionInfo)}>
         {t('workflow.common.restore')}
       </Button>
     </div>

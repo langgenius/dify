@@ -10,9 +10,9 @@ import Toast from '@/app/components/base/toast'
 
 type VersionInfoModalProps = {
   isOpen: boolean
-  versionInfo: VersionHistory
+  versionInfo?: VersionHistory
   onClose: () => void
-  onPublish: (params: { title: string; releaseNotes: string }) => void
+  onPublish: (params: { title: string; releaseNotes: string; id?: string }) => void
 }
 
 const TITLE_MAX_LENGTH = 15
@@ -25,8 +25,8 @@ const VersionInfoModal: FC<VersionInfoModalProps> = ({
   onPublish,
 }) => {
   const { t } = useTranslation()
-  const [title, setTitle] = useState(versionInfo.marked_name || '')
-  const [releaseNotes, setReleaseNotes] = useState(versionInfo.marked_comment || '')
+  const [title, setTitle] = useState(versionInfo?.marked_name || '')
+  const [releaseNotes, setReleaseNotes] = useState(versionInfo?.marked_comment || '')
   const [titleError, setTitleError] = useState(false)
   const [releaseNotesError, setReleaseNotesError] = useState(false)
 
@@ -47,7 +47,7 @@ const VersionInfoModal: FC<VersionInfoModalProps> = ({
       setReleaseNotesError(true)
       Toast.notify({
         type: 'error',
-        message: t('workflow.versionHistory.editField.releaseNotesLengthLimit', { limit: TITLE_MAX_LENGTH }),
+        message: t('workflow.versionHistory.editField.releaseNotesLengthLimit', { limit: RELEASE_NOTES_MAX_LENGTH }),
       })
       return
     }
@@ -55,7 +55,7 @@ const VersionInfoModal: FC<VersionInfoModalProps> = ({
       releaseNotesError && setReleaseNotesError(false)
     }
 
-    onPublish({ title, releaseNotes })
+    onPublish({ title, releaseNotes, id: versionInfo?.id })
     onClose()
   }
 
@@ -70,7 +70,7 @@ const VersionInfoModal: FC<VersionInfoModalProps> = ({
   return <Modal className='p-0' isShow={isOpen} onClose={onClose}>
     <div className='relative w-full p-6 pb-4 pr-14'>
       <div className='text-text-primary title-2xl-semi-bold first-letter:capitalize'>
-        {versionInfo.marked_name ? t('workflow.versionHistory.editVersionInfo') : t('workflow.versionHistory.nameThisVersion')}
+        {versionInfo?.marked_name ? t('workflow.versionHistory.editVersionInfo') : t('workflow.versionHistory.nameThisVersion')}
       </div>
       <div className='w-8 h-8 flex items-center justify-center p-1.5 absolute top-5 right-5 cursor-pointer' onClick={onClose}>
         <RiCloseLine className='w-[18px] h-[18px] text-text-tertiary' />

@@ -7,7 +7,7 @@ import {
 import { RiApps2AddLine, RiHistoryLine } from '@remixicon/react'
 import { useNodes } from 'reactflow'
 import { useTranslation } from 'react-i18next'
-import { useContext } from 'use-context-selector'
+import { useContext, useContextSelector } from 'use-context-selector'
 import {
   useStore,
   useWorkflowStore,
@@ -40,16 +40,20 @@ import EnvButton from './env-button'
 import VersionHistoryButton from './version-history-button'
 import Button from '@/app/components/base/button'
 import { useStore as useAppStore } from '@/app/components/app/store'
-import { publishWorkflow } from '@/service/workflow'
 import { ArrowNarrowLeft } from '@/app/components/base/icons/src/vender/line/arrows'
 import { useFeatures } from '@/app/components/base/features/hooks'
-import { useResetWorkflowVersionHistory } from '@/service/use-workflow'
+import { usePublishWorkflow, useResetWorkflowVersionHistory } from '@/service/use-workflow'
+import type { PublishWorkflowParams } from '@/types/workflow'
+import { fetchAppDetail, fetchAppSSO } from '@/service/apps'
+import AppContext from '@/context/app-context'
 
 const Header: FC = () => {
   const { t } = useTranslation()
   const workflowStore = useWorkflowStore()
   const appDetail = useAppStore(s => s.appDetail)
+  const setAppDetail = useAppStore(s => s.setAppDetail)
   const appSidebarExpand = useAppStore(s => s.appSidebarExpand)
+  const systemFeatures = useContextSelector(AppContext, state => state.systemFeatures)
   const appID = appDetail?.id
   const isChatMode = useIsChatMode()
   const { nodesReadOnly, getNodesReadOnly } = useNodesReadOnly()
@@ -138,19 +142,42 @@ const Header: FC = () => {
     })
   }, [handleSyncWorkflowDraft, workflowStore, setShowWorkflowVersionHistoryPanel, resetWorkflowVersionHistory, t])
 
-  const onPublish = useCallback(async () => {
+  const updateAppDetail = useCallback(async () => {
+    try {
+      const res = await fetchAppDetail({ url: '/apps', id: appID! })
+      if (systemFeatures.enable_web_sso_switch_component) {
+        const ssoRes = await fetchAppSSO({ appId: appID! })
+        setAppDetail({ ...res, enable_sso: ssoRes.enabled })
+      }
+      else {
+        setAppDetail({ ...res })
+      }
+    }
+    catch (error) {
+      console.error(error)
+    }
+  }, [appID, setAppDetail, systemFeatures.enable_web_sso_switch_component])
+
+  const { mutateAsync: publishWorkflow } = usePublishWorkflow(appID!)
+
+  const onPublish = useCallback(async (params?: PublishWorkflowParams) => {
     if (handleCheckBeforePublish()) {
-      const res = await publishWorkflow(`/apps/${appID}/workflows/publish`)
+      const res = await publishWorkflow({
+        title: params?.title || '',
+        releaseNotes: params?.releaseNotes || '',
+      })
 
       if (res) {
         notify({ type: 'success', message: t('common.api.actionSuccess') })
+        updateAppDetail()
         workflowStore.getState().setPublishedAt(res.created_at)
+        resetWorkflowVersionHistory()
       }
     }
     else {
       throw new Error('Checklist failed')
     }
-  }, [appID, handleCheckBeforePublish, notify, t, workflowStore])
+  }, [handleCheckBeforePublish, notify, t, workflowStore, publishWorkflow, resetWorkflowVersionHistory, updateAppDetail])
 
   const onStartRestoring = useCallback(() => {
     workflowStore.setState({ isRestoring: true })
