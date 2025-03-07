@@ -227,6 +227,7 @@ class MockModelClass(PluginModelManager):
                             total_price=Decimal(0.0003),
                             currency="USD",
                             latency=0.001,
+                            ttft=0,
                         ),
                     ),
                 )
