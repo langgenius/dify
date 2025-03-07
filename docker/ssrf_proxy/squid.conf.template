@@ -19,6 +19,8 @@ acl Safe_ports port 488		# gss-http
 acl Safe_ports port 591		# filemaker
 acl Safe_ports port 777		# multiling http
 acl CONNECT method CONNECT
+acl allowed_domains dstdomain .marketplace.dify.ai
+http_access allow allowed_domains
 http_access deny !Safe_ports
 http_access deny CONNECT !SSL_ports
 http_access allow localhost manager
