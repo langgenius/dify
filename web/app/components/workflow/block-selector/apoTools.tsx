@@ -60,6 +60,7 @@ const APOTools = ({ searchText, onSelect }: APOToolsProps) => {
               className="flex items-center px-3 w-full h-8 rounded-lg hover:bg-state-base-hover cursor-pointer"
             >
               <BlockIcon
+                size="md"
                 className="mr-2 shrink-0"
                 type={BlockEnum.Tool}
                 toolIcon={node.icon}

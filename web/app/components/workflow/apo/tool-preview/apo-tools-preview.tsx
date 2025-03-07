@@ -91,9 +91,9 @@ const ApoToolsPreview = ({ onSelect, apoToolType, hidePopover }: ApoToolsPreview
     }
   }, [apoToolType, searchText])
   return (
-    <div className="flex max-h-[70vh] overflow-hidden">
+    <div className="flex max-h-[70vh] overflow-hidden ">
       {/* left */}
-      <div className="w-[300px] h-full flex flex-col shrink-0">
+      <div className="w-[300px] h-full flex flex-col shrink-0 max-h-[70vh]">
         <div className="mb-3">
           <Input
             value={searchText}

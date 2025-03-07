@@ -235,7 +235,7 @@ const ProviderDetail = ({
       positionCenter={false}
       panelClassname={cn('justify-start mt-[64px] mr-2 mb-2 !w-[420px] !max-w-[420px] !p-0 !bg-components-panel-bg rounded-2xl border-[0.5px] border-components-panel-border shadow-xl')}
     >
-      <div className='p-4'>
+      <div className='p-4 overflow-auto'>
         <div className='mb-3 flex'>
           <Icon src={collection.icon} />
           <div className="ml-3 w-0 grow">
