@@ -230,14 +230,14 @@ class Dataset(db.Model):  # type: ignore[name-defined]
                 {
                     "id": "built-in",
                     "name": BuiltInField.upload_date,
-                    "type": "date",
+                    "type": "time",
                 }
             )
             doc_metadata.append(
                 {
                     "id": "built-in",
                     "name": BuiltInField.last_update_date,
-                    "type": "date",
+                    "type": "time",
                 }
             )
             doc_metadata.append(
@@ -510,7 +510,7 @@ class Document(db.Model):  # type: ignore[name-defined]
             {
                 "id": "built-in",
                 "name": BuiltInField.upload_date,
-                "type": "date",
+                "type": "time",
                 "value": self.created_at.timestamp(),
             }
         )
@@ -518,7 +518,7 @@ class Document(db.Model):  # type: ignore[name-defined]
             {
                 "id": "built-in",
                 "name": BuiltInField.last_update_date,
-                "type": "date",
+                "type": "time",
                 "value": self.updated_at.timestamp(),
             }
         )
