@@ -119,6 +119,10 @@ class Response:
             filename = msg.get_filename()  # Returns filename if present, None otherwise
             if disp_type == "attachment" or filename is not None:
                 return True
+        
+        # For 'text/' types, only 'csv' should be downloaded as file
+        if content_type.startswith("text/") and "csv" not in content_type:
+            return False
 
         # For application types, try to detect if it's a text-based format
         if content_type.startswith("application/"):
