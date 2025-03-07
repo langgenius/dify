@@ -101,3 +101,9 @@ class AccountInFreezeError(BaseHTTPException):
         "This email account has been deleted within the past 30 days"
         "and is temporarily unavailable for new account registration."
     )
+
+
+class CompilanceRateLimitError(BaseHTTPException):
+    error_code = "compilance_rate_limit"
+    description = "Rate limit exceeded for downloading compliance report."
+    code = 429
