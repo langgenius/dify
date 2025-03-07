@@ -18,6 +18,7 @@ from core.model_manager import ModelManager
 from core.model_runtime.entities.model_entities import ModelType
 from core.plugin.entities.plugin import ModelProviderID
 from core.rag.index_processor.constant.index_type import IndexType
+from core.rag.index_processor.index_processor_factory import IndexProcessorFactory
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from events.dataset_event import dataset_was_deleted
 from events.document_event import document_was_deleted
@@ -337,6 +338,22 @@ class DatasetService:
                     new_plugin_model_provider != plugin_model_provider
                     or data["embedding_model"] != dataset.embedding_model
                 ):
+                    indexing_documents = (
+                        db.session.query(Document)
+                        .filter(
+                            Document.dataset_id == dataset_id,
+                            Document.indexing_status == "indexing",
+                        )
+                        .count()
+                    )
+                    if indexing_documents > 0:
+                        raise ValueError("Cannot change embedding model while documents are being indexing.")
+
+                    # clean index
+                    index_type = dataset.doc_form or IndexType.PARAGRAPH_INDEX
+                    index_processor = IndexProcessorFactory(index_type).init_index_processor()
+                    index_processor.clean(dataset, None, with_keywords=False, delete_child_chunks=False)
+
                     action = "update"
                     try:
                         model_manager = ModelManager()
