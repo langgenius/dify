@@ -792,7 +792,7 @@ class DatasetRetrieval:
                     )
         elif metadata_filtering_mode == "manual":
             for condition in metadata_filtering_conditions.conditions:
-                metadata_name = condition.metadata_name
+                metadata_name = condition.name
                 expected_value = condition.value
                 if isinstance(expected_value, str):
                     expected_value = self._replace_metadata_filter_value(expected_value, inputs)
