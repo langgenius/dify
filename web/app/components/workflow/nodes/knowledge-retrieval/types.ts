@@ -122,4 +122,7 @@ export type MetadataShape = {
   availableStringNodesWithParent?: Node[]
   availableNumberVars?: NodeOutPutVar[]
   availableNumberNodesWithParent?: Node[]
+  isCommonVariable?: boolean
+  availableCommonStringVars?: { name: string; type: string; }[]
+  availableCommonNumberVars?: { name: string; type: string; }[]
 }

@@ -28,6 +28,7 @@ const MetadataDocument: FC<Props> = ({
   const { t } = useTranslation()
 
   const {
+    embeddingAvailable,
     isEdit,
     setIsEdit,
     list,
@@ -55,7 +56,7 @@ const MetadataDocument: FC<Props> = ({
             titleTooltip={t(`${i18nPrefix}.metadataToolTip`)}
             list={isEdit ? tempList : list}
             dataSetId={datasetId}
-            headerRight={isEdit ? (
+            headerRight={embeddingAvailable && (isEdit ? (
               <div className='flex space-x-1'>
                 <Button variant='ghost' size='small' onClick={handleCancel}>
                   <div>{t('common.operation.cancel')}</div>
@@ -69,7 +70,7 @@ const MetadataDocument: FC<Props> = ({
                 <RiEditLine className='mr-1 size-3.5 text-text-tertiary cursor-pointer' />
                 <div>{t('common.operation.edit')}</div>
               </Button>
-            )}
+            ))}
             isEdit={isEdit}
             contentClassName='mt-5'
             onChange={(item) => {
@@ -96,7 +97,7 @@ const MetadataDocument: FC<Props> = ({
           )}
         </div>
       ) : (
-        <NoData onStart={() => setIsEdit(true)} />
+        embeddingAvailable && <NoData onStart={() => setIsEdit(true)} />
       )}
 
       {/* Old Metadata */}

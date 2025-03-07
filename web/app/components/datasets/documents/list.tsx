@@ -522,12 +522,14 @@ const DocumentList: FC<IDocumentListProps> = ({
           <tr>
             <td className='w-12'>
               <div className='flex items-center' onClick={e => e.stopPropagation()}>
-                <Checkbox
-                  className='shrink-0 mr-2'
-                  checked={isAllSelected}
-                  mixed={!isAllSelected && isSomeSelected}
-                  onCheck={onSelectedAll}
-                />
+                {embeddingAvailable && (
+                  <Checkbox
+                    className='shrink-0 mr-2'
+                    checked={isAllSelected}
+                    mixed={!isAllSelected && isSomeSelected}
+                    onCheck={onSelectedAll}
+                  />
+                )}
                 #
               </div>
             </td>
@@ -561,17 +563,20 @@ const DocumentList: FC<IDocumentListProps> = ({
               }}>
               <td className='text-left align-middle text-text-tertiary text-xs'>
                 <div className='flex items-center' onClick={e => e.stopPropagation()}>
-                  <Checkbox
-                    className='shrink-0 mr-2'
-                    checked={selectedIds.includes(doc.id)}
-                    onCheck={() => {
-                      onSelectedIdChange(
-                        selectedIds.includes(doc.id)
-                          ? selectedIds.filter(id => id !== doc.id)
-                          : [...selectedIds, doc.id],
-                      )
-                    }}
-                  />
+                  {embeddingAvailable && (
+                    <Checkbox
+                      className='shrink-0 mr-2'
+                      checked={selectedIds.includes(doc.id)}
+                      onCheck={() => {
+                        onSelectedIdChange(
+                          selectedIds.includes(doc.id)
+                            ? selectedIds.filter(id => id !== doc.id)
+                            : [...selectedIds, doc.id],
+                        )
+                      }}
+                    />
+                  )}
+
                   {/* {doc.position} */}
                   {index + 1}
                 </div>
