@@ -1,5 +1,5 @@
 identity:
-  name: fault_log
+  name: 查询服务日志数据
   author: APO
   label:
     en_US: Query service log data

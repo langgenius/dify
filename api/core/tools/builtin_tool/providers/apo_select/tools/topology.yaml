@@ -1,5 +1,5 @@
 identity:
-  name: topology
+  name: 查询入口服务拓扑结构
   author: APO
   label:
     en_US: Query the entry service topology

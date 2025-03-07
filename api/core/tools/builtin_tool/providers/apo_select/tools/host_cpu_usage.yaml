@@ -1,33 +1,33 @@
 identity:
-  name: 查询主机CPU利用率
+  name: 查询宿主机CPU繁忙率
   author: APO
   label:
-    en_US: Query the CPU utilization of the host
-    zh_Hans: 查询主机CPU利用率
-    pt_BR: Query the CPU utilization of the host
+    en_US: Query host's CPU usage
+    zh_Hans: 查询宿主机CPU繁忙率
+    pt_BR: Query host's CPU usage
 description:
   human:
-    en_US: Query the CPU utilization of the host
-    zh_Hans: 查询主机CPU利用率
-    pt_BR: Query the CPU utilization of the host
-  llm: Query the CPU utilization of the host
+    en_US: Query host's CPU usage
+    zh_Hans: 查询宿主机CPU繁忙率
+    pt_BR: Query host's CPU usage
+  llm: Query host's CPU usage
 display:
   type: metric
   title: 宿主机监控指标 - Quick CPU / Mem / Disk - CPU Busy
-  unit: percent(0-100)百分比
+  unit: percent
 parameters:
   - name: node
     type: string
     required: true
     label:
-      en_US: node
-      zh_Hans: node
-      pt_BR: node
+      en_US: Host Node
+      zh_Hans: 宿主机节点
+      pt_BR: Host Node
     human_description:
-      en_US: Specified host name
-      zh_Hans: 指定的主机名
-      pt_BR: Specified host name
-    llm_description: Specified host name
+      en_US: Host node identifier
+      zh_Hans: 宿主机节点标识
+      pt_BR: Host node identifier
+    llm_description: Unique identifier for host node
     form: llm
   - name: startTime
     type: number

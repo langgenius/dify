@@ -1,5 +1,5 @@
 identity:
-  name: container_rtt
+  name: 查询容器网络与下游RTT
   author: APO
   label:
     en_US: Query container rtt

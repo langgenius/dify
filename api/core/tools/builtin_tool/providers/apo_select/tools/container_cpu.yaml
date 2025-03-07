@@ -1,5 +1,5 @@
 identity:
-  name: select_container_cpu
+  name: 查询容器CPU利用率
   author: APO
   label:
     en_US: Query the CPU utilization of the container

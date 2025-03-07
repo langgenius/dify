@@ -1,5 +1,5 @@
 identity:
-  name: originx_service_red_avg_resp
+  name: Originx 北极星指标 (服务层级) - RED指标 - 平均响应时间
   author: APO
   label:
     en_US: Query the CPU utilization of the host

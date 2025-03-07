@@ -1,5 +1,5 @@
 identity:
-  name: select_container_rss
+  name: 查询容器内存使用量
   author: APO
   label:
     en_US: Query container resident memory usage
