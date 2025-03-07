@@ -175,73 +175,73 @@ const DatasetMetadataDrawer: FC<Props> = ({
       footer={null}
       panelClassname='px-4 block !max-w-[420px] my-2 rounded-l-2xl'
     >
-      <div className='system-sm-regular text-text-tertiary'>{t(`${i18nPrefix}.description`)}</div>
-
-      <CreateModal
-        open={open}
-        setOpen={setOpen}
-        trigger={<Button variant='primary' className='mt-3'>
-          <RiAddLine className='mr-1' />
-          {t(`${i18nPrefix}.addMetaData`)}
-        </Button>} hasBack onSave={handleAdd}
-      />
-
-      <div className='mt-3 space-y-1'>
-        {userMetadata.map(payload => (
-          <Item
-            key={payload.id}
-            payload={payload}
-            onRename={handleRename(payload)}
-            onDelete={handleDelete(payload)}
-          />
-        ))}
-      </div>
-
-      <div className='mt-3 flex h-6 items-center'>
-        <Switch
-          defaultValue={isBuiltInEnabled}
-          onChange={onIsBuiltInEnabledChange}
+      <div className='h-full overflow-y-auto'>
+        <div className='system-sm-regular text-text-tertiary'>{t(`${i18nPrefix}.description`)}</div>
+        <CreateModal
+          open={open}
+          setOpen={setOpen}
+          trigger={<Button variant='primary' className='mt-3'>
+            <RiAddLine className='mr-1' />
+            {t(`${i18nPrefix}.addMetaData`)}
+          </Button>} hasBack onSave={handleAdd}
         />
-        <div className='ml-2 mr-0.5 system-sm-semibold text-text-secondary'>{t(`${i18nPrefix}.builtIn`)}</div>
-        <Tooltip popupContent={<div className='max-w-[100px]'>{t(`${i18nPrefix}.builtInDescription`)}</div>} />
-      </div>
 
-      <div className='mt-1 space-y-1'>
-        {builtInMetadata.map(payload => (
-          <Item
-            key={payload.name}
-            readonly
-            disabled={!isBuiltInEnabled}
-            payload={payload as MetadataItemWithValueLength}
-          />
-        ))}
-      </div>
-
-      {isShowRenameModal && (
-        <Modal isShow title={t(`${i18nPrefix}.rename`)} onClose={() => setIsShowRenameModal(false)}>
-          <Field label={t(`${i18nPrefix}.name`)} className='mt-4'>
-            <Input
-              value={templeName}
-              onChange={e => setTempleName(e.target.value)}
-              placeholder={t(`${i18nPrefix}.namePlaceholder`)}
+        <div className='mt-3 space-y-1'>
+          {userMetadata.map(payload => (
+            <Item
+              key={payload.id}
+              payload={payload}
+              onRename={handleRename(payload)}
+              onDelete={handleDelete(payload)}
             />
-          </Field>
-          <div className='mt-4 flex justify-end'>
-            <Button
-              className='mr-2'
-              onClick={() => {
-                setIsShowRenameModal(false)
-                setTempleName(currPayload!.name)
-              }}>{t('common.operation.cancel')}</Button>
-            <Button
-              onClick={handleRenamed}
-              variant='primary'
-              disabled={!templeName}
-            >{t('common.operation.save')}</Button>
-          </div>
-        </Modal>
-      )}
+          ))}
+        </div>
 
+        <div className='mt-3 flex h-6 items-center'>
+          <Switch
+            defaultValue={isBuiltInEnabled}
+            onChange={onIsBuiltInEnabledChange}
+          />
+          <div className='ml-2 mr-0.5 system-sm-semibold text-text-secondary'>{t(`${i18nPrefix}.builtIn`)}</div>
+          <Tooltip popupContent={<div className='max-w-[100px]'>{t(`${i18nPrefix}.builtInDescription`)}</div>} />
+        </div>
+
+        <div className='mt-1 space-y-1'>
+          {builtInMetadata.map(payload => (
+            <Item
+              key={payload.name}
+              readonly
+              disabled={!isBuiltInEnabled}
+              payload={payload as MetadataItemWithValueLength}
+            />
+          ))}
+        </div>
+
+        {isShowRenameModal && (
+          <Modal isShow title={t(`${i18nPrefix}.rename`)} onClose={() => setIsShowRenameModal(false)}>
+            <Field label={t(`${i18nPrefix}.name`)} className='mt-4'>
+              <Input
+                value={templeName}
+                onChange={e => setTempleName(e.target.value)}
+                placeholder={t(`${i18nPrefix}.namePlaceholder`)}
+              />
+            </Field>
+            <div className='mt-4 flex justify-end'>
+              <Button
+                className='mr-2'
+                onClick={() => {
+                  setIsShowRenameModal(false)
+                  setTempleName(currPayload!.name)
+                }}>{t('common.operation.cancel')}</Button>
+              <Button
+                onClick={handleRenamed}
+                variant='primary'
+                disabled={!templeName}
+              >{t('common.operation.save')}</Button>
+            </div>
+          </Modal>
+        )}
+      </div>
     </Drawer>
   )
 }
