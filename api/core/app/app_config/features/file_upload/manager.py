@@ -21,7 +21,8 @@ class FileUploadConfigManager:
                     "image_config": {
                         "number_limits": file_upload_dict["number_limits"],
                         "transfer_methods": transform_methods,
-                    }
+                    },
+                    "allowed_file_extensions": file_upload_dict.get("allowed_file_extensions", [])
                 }
 
                 if is_vision:
