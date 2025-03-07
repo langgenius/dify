@@ -2,7 +2,8 @@ import os
 from typing import Literal, Optional
 
 import httpx
-from tenacity import retry, retry_if_exception_type, stop_before_delay, wait_fixed
+from tenacity import (retry, retry_if_exception_type, stop_before_delay,
+                      wait_fixed)
 
 from extensions.ext_database import db
 from libs.helper import RateLimiter
@@ -115,15 +116,22 @@ class BillingService:
             return BillingService._send_request("GET", "/education/status", params=params)
 
         @classmethod
-        def activate(cls, account: Account, token: str):
+        def activate(cls, account: Account, token: str, institution: str):
             if cls.activation_rate_limit.is_rate_limited(account.email):
-                from controllers.console.error import EducationActivateLimitError
+                from controllers.console.error import \
+                    EducationActivateLimitError
 
                 raise EducationActivateLimitError()
 
             cls.activation_rate_limit.increment_rate_limit(account.email)
             json = {
                 "account_id": account.id,
+                "institution": institution,
                 "token": token,
             }
             return BillingService._send_request("POST", "/education/", json=json)
+
+        @classmethod
+        def autocomplete(cls, keywords: str, page: int = 0, limit: int = 20):
+            params = {"keywords": keywords, "page": page, "limit": limit}
+            return BillingService._send_request("GET", "/education/autocomplete", params=params)
