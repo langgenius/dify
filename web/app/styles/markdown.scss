@@ -425,7 +425,10 @@
 .markdown-body ol {
   padding-left: 2em;
 }
-
+.markdown-body ul[role="listbox"] {
+  list-style: none !important;
+  padding-left: 0 !important;
+}
 .markdown-body blockquote> :first-child {
   margin-top: 0;
 }

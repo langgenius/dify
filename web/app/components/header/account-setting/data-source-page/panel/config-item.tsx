@@ -52,7 +52,7 @@ const ConfigItem: FC<Props> = ({
           ? <Indicator className='shrink-0 mr-[6px]' color='green' />
           : <Indicator className='shrink-0 mr-[6px]' color='yellow' />
       }
-      <div className={`shrink-0 mr-3 text-xs font-medium uppercase ${payload.isActive ? 'text-util-colors-green-green-600' : 'text-util-colors-warning-warning-600'}`}>
+      <div className={`shrink-0 mr-3 system-xs-semibold-uppercase ${payload.isActive ? 'text-util-colors-green-green-600' : 'text-util-colors-warning-warning-600'}`}>
         {
           payload.isActive
             ? t(isNotion ? 'common.dataSource.notion.connected' : 'common.dataSource.website.active')
@@ -70,7 +70,7 @@ const ConfigItem: FC<Props> = ({
 
       {
         isWebsite && !readOnly && (
-          <div className='p-2 text-text-tertiary cursor-pointer rounded-md hover:bg-black/5' onClick={onRemove} >
+          <div className='p-2 text-text-tertiary cursor-pointer rounded-md hover:bg-state-base-hover' onClick={onRemove} >
             <RiDeleteBinLine className='w-4 h-4' />
           </div>
         )

@@ -37,11 +37,11 @@ const translation = {
     },
     operation: {
       detail: '세부 정보',
-      install: '설치하다',
+      install: '설치',
       viewDetail: '자세히보기',
       info: '플러그인 정보',
       update: '업데이트',
-      remove: '제거하다',
+      remove: '제거',
       checkUpdate: '업데이트 확인',
     },
     toolSelector: {
@@ -178,7 +178,7 @@ const translation = {
     pluginsResult: '{{num}} 결과',
     discover: '발견하다',
     moreFrom: 'Marketplace에서 더 보기',
-    sortBy: '블랙 시티',
+    sortBy: '정렬',
     and: '그리고',
   },
   task: {
