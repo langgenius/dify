@@ -773,7 +773,7 @@ class DatasetRetrieval:
         metadata_filtering_conditions: MetadataFilteringCondition,
         inputs: dict,
     ) -> dict[str, list[str]]:
-        document_query = db.session.query(Document.id).filter(
+        document_query = db.session.query(Document).filter(
             Document.dataset_id.in_(dataset_ids),
             Document.indexing_status == "completed",
             Document.enabled == True,
