@@ -234,7 +234,13 @@ class LargeLanguageModel(AIModel):
         real_model = model
 
         try:
+            is_first_chunk = True
             for chunk in result:
+                if is_first_chunk:
+                    now = time.perf_counter()
+                    self.ttft = now - self.last_chunked_at
+                    is_first_chunk = False
+
                 yield chunk
 
                 self._trigger_new_chunk_callbacks(
@@ -253,6 +259,7 @@ class LargeLanguageModel(AIModel):
                 assistant_message.content += chunk.delta.message.content
                 real_model = chunk.model
                 if chunk.delta.usage:
+                    chunk.delta.usage.ttft = self.ttft
                     usage = chunk.delta.usage
 
                 if chunk.system_fingerprint:

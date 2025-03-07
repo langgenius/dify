@@ -47,6 +47,7 @@ class LLMUsage(ModelUsage):
     total_price: Decimal
     currency: str
     latency: float
+    ttft: float
 
     @classmethod
     def empty_usage(cls):
@@ -63,6 +64,7 @@ class LLMUsage(ModelUsage):
             total_price=Decimal("0.0"),
             currency="USD",
             latency=0.0,
+            ttft=0.0,
         )
 
     def plus(self, other: "LLMUsage") -> "LLMUsage":
@@ -88,6 +90,7 @@ class LLMUsage(ModelUsage):
                 total_price=self.total_price + other.total_price,
                 currency=other.currency,
                 latency=self.latency + other.latency,
+                ttft=self.ttft,
             )
 
     def __add__(self, other: "LLMUsage") -> "LLMUsage":

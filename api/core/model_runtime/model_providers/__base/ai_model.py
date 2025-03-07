@@ -40,7 +40,8 @@ class AIModel(BaseModel):
     provider_name: str = Field(description="Provider")
     plugin_model_provider: PluginModelProviderEntity = Field(description="Plugin model provider")
     started_at: float = Field(description="Invoke start time", default=0)
-
+    last_chunked_at: float = Field(description="Last chunk time", default=0)
+    ttft: float = Field(description="Time to first token", default=0)
     # pydantic configs
     model_config = ConfigDict(protected_namespaces=())
 
