@@ -5,6 +5,7 @@ on:
     branches:
       - "main"
       - "deploy/dev"
+      - "fix/dataset-admin"
   release:
     types: [published]
 
