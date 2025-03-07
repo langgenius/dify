@@ -100,7 +100,7 @@ const translation = {
   plans: {
     sandbox: {
       name: 'Sandbox',
-      for: '核心能力的免费试用',      
+      for: '核心能力的免费试用',
       description: '核心功能免费试用',
     },
     professional: {
