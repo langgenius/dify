@@ -1,8 +1,7 @@
 import { useBoolean } from 'ahooks'
-import type { MetadataBatchEditToServer, MetadataItemInBatchEdit, MetadataItemWithValue } from '../types'
+import { type MetadataBatchEditToServer, type MetadataItemInBatchEdit, type MetadataItemWithEdit, type MetadataItemWithValue, UpdateType } from '../types'
 import type { SimpleDocumentDetail } from '@/models/datasets'
 import { useMemo } from 'react'
-import { isEqual } from 'lodash-es'
 import { useBatchUpdateDocMetadata } from '@/service/knowledge/use-metadata'
 import Toast from '@/app/components/base/toast'
 import { t } from 'i18next'
@@ -69,14 +68,9 @@ const useBatchEditDocumentMetadata = ({
     return res
   }, [metaDataList])
 
-  const formateToBackendList = (editedList: MetadataItemInBatchEdit[], addedList: MetadataItemInBatchEdit[], isApplyToAllSelectDocument: boolean) => {
+  const formateToBackendList = (editedList: MetadataItemWithEdit[], addedList: MetadataItemInBatchEdit[], isApplyToAllSelectDocument: boolean) => {
     const updatedList = editedList.filter((editedItem) => {
-      const originalItem = originalList.find(i => i.id === editedItem.id)
-      if (!originalItem) // added item
-        return true
-      if (!isEqual(originalItem, editedItem)) // no change
-        return true
-      return false
+      return editedItem.updateType === UpdateType.changeValue
     })
     const removedList = originalList.filter((originalItem) => {
       const editedItem = editedList.find(i => i.id === originalItem.id)
@@ -101,7 +95,7 @@ const useBatchEditDocumentMetadata = ({
       if (isApplyToAllSelectDocument) {
         // add missing metadata item
         updatedList.forEach((editedItem) => {
-          if (!newMetadataList.find(i => i.id === editedItem.id))
+          if (!newMetadataList.find(i => i.id === editedItem.id) && !editedItem.isMultipleValue)
             newMetadataList.push(editedItem)
         })
       }
