@@ -2,6 +2,7 @@ import json
 from abc import ABC, abstractmethod
 from collections.abc import Generator, Mapping, Sequence
 from typing import Any, Optional
+from configs import dify_config
 
 from core.agent.base_agent_runner import BaseAgentRunner
 from core.agent.entities import AgentScratchpadUnit
@@ -63,7 +64,7 @@ class CotAgentRunner(BaseAgentRunner, ABC):
         self._instruction = self._fill_in_inputs_from_external_data_tools(instruction, inputs)
 
         iteration_step = 1
-        max_iteration_steps = min(app_config.agent.max_iteration if app_config.agent else 5, 5) + 1
+        max_iteration_steps = min(app_config.agent.max_iteration if app_config.agent else dify_config.AGENT_SETTING_MAX_ITERATION, dify_config.AGENT_SETTING_MAX_ITERATION) + 1
 
         # convert tools into ModelRuntime Tool format
         tool_instances, prompt_messages_tools = self._init_prompt_tools()

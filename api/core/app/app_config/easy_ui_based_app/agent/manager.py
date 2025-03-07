@@ -1,4 +1,5 @@
 from typing import Optional
+from configs import dify_config
 
 from core.agent.entities import AgentEntity, AgentPromptEntity, AgentToolEntity
 from core.agent.prompt.template import REACT_PROMPT_TEMPLATES
@@ -75,7 +76,7 @@ class AgentConfigManager:
                     strategy=strategy,
                     prompt=agent_prompt_entity,
                     tools=agent_tools,
-                    max_iteration=agent_dict.get("max_iteration", 5),
+                    max_iteration=agent_dict.get("max_iteration", dify_config.AGENT_SETTING_MAX_ITERATION),
                 )
 
         return None
