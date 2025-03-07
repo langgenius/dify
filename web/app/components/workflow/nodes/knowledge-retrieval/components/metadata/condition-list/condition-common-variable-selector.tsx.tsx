@@ -40,7 +40,10 @@ const ConditionCommonVariableSelector = ({
         crossAxis: 0,
       }}
     >
-      <PortalToFollowElemTrigger asChild onClick={() => setOpen(!open)}>
+      <PortalToFollowElemTrigger asChild onClick={() => {
+        if (!variables.length) return
+        setOpen(!open)
+      }}>
         <div className="grow flex items-center cursor-pointer h-6">
           {
             selected && (
