@@ -11,6 +11,9 @@ from uuid import uuid4
 import httpx
 
 from configs import dify_config
+
+# init tool_file_parser
+from core.file.tool_file_parser import tool_file_manager
 from core.helper import ssrf_proxy
 from extensions.ext_database import db
 from extensions.ext_storage import storage
@@ -216,8 +219,5 @@ class ToolFileManager:
 
         return stream, tool_file
 
-
-# init tool_file_parser
-from core.file.tool_file_parser import tool_file_manager
 
 tool_file_manager["manager"] = ToolFileManager

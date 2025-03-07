@@ -1,9 +1,7 @@
 from core.hosting_configuration import HostingConfiguration
+from dify_app import DifyApp
 
 hosting_configuration = HostingConfiguration()
-
-
-from dify_app import DifyApp
 
 
 def init_app(app: DifyApp):
