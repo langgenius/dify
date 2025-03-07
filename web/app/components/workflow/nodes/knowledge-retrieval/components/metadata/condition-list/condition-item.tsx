@@ -8,6 +8,7 @@ import {
 } from '@remixicon/react'
 import MetadataIcon from '../metadata-icon'
 import {
+  COMMON_VARIABLE_REGEX,
   VARIABLE_REGEX,
   comparisonOperatorNotRequireValue,
 } from './utils'
@@ -31,7 +32,7 @@ type ConditionItemProps = {
   condition: MetadataFilteringCondition // condition may the condition of case or condition of sub variable
   onRemoveCondition?: HandleRemoveCondition
   onUpdateCondition?: HandleUpdateCondition
-} & Pick<MetadataShape, 'metadataList' | 'availableStringVars' | 'availableStringNodesWithParent' | 'availableNumberVars' | 'availableNumberNodesWithParent'>
+} & Pick<MetadataShape, 'metadataList' | 'availableStringVars' | 'availableStringNodesWithParent' | 'availableNumberVars' | 'availableNumberNodesWithParent' | 'isCommonVariable' | 'availableCommonStringVars' | 'availableCommonNumberVars'>
 const ConditionItem = ({
   className,
   disabled,
@@ -43,6 +44,9 @@ const ConditionItem = ({
   availableStringNodesWithParent = [],
   availableNumberVars = [],
   availableNumberNodesWithParent = [],
+  isCommonVariable,
+  availableCommonStringVars = [],
+  availableCommonNumberVars = [],
 }: ConditionItemProps) => {
   const [isHovered, setIsHovered] = useState(false)
 
@@ -76,11 +80,13 @@ const ConditionItem = ({
       (currentMetadata?.type === MetadataFilteringVariableType.string || currentMetadata?.type === MetadataFilteringVariableType.number)
       && typeof condition.value === 'string'
     ) {
-      const matched = condition.value.match(VARIABLE_REGEX)
+      const regex = isCommonVariable ? COMMON_VARIABLE_REGEX : VARIABLE_REGEX
+      const matchedStartNumber = isCommonVariable ? 2 : 3
+      const matched = condition.value.match(regex)
 
       if (matched?.length) {
         return {
-          value: matched[0].slice(3, -3),
+          value: matched[0].slice(matchedStartNumber, -matchedStartNumber),
           valueMethod: 'variable',
         }
       }
@@ -96,7 +102,7 @@ const ConditionItem = ({
       value: condition.value,
       valueMethod: 'constant',
     }
-  }, [currentMetadata, condition.value])
+  }, [currentMetadata, condition.value, isCommonVariable])
   const [localValueMethod, setLocalValueMethod] = useState(valueAndValueMethod.valueMethod)
 
   const handleValueMethodChange = useCallback((v: string) => {
@@ -142,6 +148,8 @@ const ConditionItem = ({
                 availableNodes={availableStringNodesWithParent}
                 value={valueAndValueMethod.value as string}
                 onChange={handleValueChange}
+                isCommonVariable={isCommonVariable}
+                commonVariables={availableCommonStringVars}
               />
             )
           }
@@ -154,6 +162,8 @@ const ConditionItem = ({
                 availableNodes={availableNumberNodesWithParent}
                 value={valueAndValueMethod.value}
                 onChange={handleValueChange}
+                isCommonVariable={isCommonVariable}
+                commonVariables={availableCommonNumberVars}
               />
             )
           }

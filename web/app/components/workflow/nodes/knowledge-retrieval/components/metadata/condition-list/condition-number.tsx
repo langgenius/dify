@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import ConditionValueMethod from './condition-value-method'
 import type { ConditionValueMethodProps } from './condition-value-method'
 import ConditionVariableSelector from './condition-variable-selector'
+import ConditionCommonVariableSelector from './condition-common-variable-selector.tsx'
 import type {
   Node,
   NodeOutPutVar,
@@ -15,6 +16,8 @@ type ConditionNumberProps = {
   onChange: (value: string | number) => void
   nodesOutputVars: NodeOutPutVar[]
   availableNodes: Node[]
+  isCommonVariable?: boolean
+  commonVariables: { name: string, type: string }[]
 } & ConditionValueMethodProps
 const ConditionNumber = ({
   value,
@@ -23,10 +26,16 @@ const ConditionNumber = ({
   onValueMethodChange,
   nodesOutputVars,
   availableNodes,
+  isCommonVariable,
+  commonVariables,
 }: ConditionNumberProps) => {
   const { t } = useTranslation()
   const handleVariableValueChange = useCallback((v: ValueSelector) => {
     onChange(`{{#${v.join('.')}#}}`)
+  }, [onChange])
+
+  const handleCommonVariableValueChange = useCallback((v: string) => {
+    onChange(`{{${v}}}`)
   }, [onChange])
 
   return (
@@ -37,12 +46,21 @@ const ConditionNumber = ({
       />
       <div className='ml-1 mr-1.5 w-[1px] h-4 bg-divider-regular'></div>
       {
-        valueMethod === 'variable' && (
+        valueMethod === 'variable' && !isCommonVariable && (
           <ConditionVariableSelector
             valueSelector={value ? (value as string).split('.') : []}
             onChange={handleVariableValueChange}
             nodesOutputVars={nodesOutputVars}
             availableNodes={availableNodes}
+          />
+        )
+      }
+      {
+        valueMethod === 'variable' && isCommonVariable && (
+          <ConditionCommonVariableSelector
+            variables={commonVariables}
+            value={value}
+            onChange={handleCommonVariableValueChange}
           />
         )
       }
