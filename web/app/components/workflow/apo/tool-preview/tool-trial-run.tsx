@@ -58,8 +58,8 @@ const ToolTrialRun = ({ infoSchemas, type, title }) => {
   }
   return <>
     <div className='py-2 text-text-primary system-sm-semibold-uppercase'>
-      {/* {t('tools.setBuiltInTools.parameters')} */}
-      数据测试
+
+      {t('apo.tool.test')}
     </div>
     <Form inputs={formInputs} values={formValues} onChange={newValues => setFormValues(newValues) }
     ></Form>

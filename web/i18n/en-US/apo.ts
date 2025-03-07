@@ -16,7 +16,14 @@ const translation = {
     custom: 'Custom query return data',
     metric: 'Metric Line Chart',
   },
-
+  tool: {
+    test: 'Test',
+    use: 'Use',
+    desc: 'Description',
+    output: 'Output',
+    input: 'Input',
+    unit: 'Unit',
+  },
 }
 
 export default translation

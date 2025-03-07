@@ -99,7 +99,7 @@ const NodeSelector: FC<NodeSelectorProps> = ({
       return t('workflow.tabs.searchTool')
     return ''
   }, [activeTab, t])
-  const TabContent = () => <div className={`flex flex-col overflow-hidden rounded-lg border-[0.5px] border-gray-200 bg-white shadow-lg ${popupClassName}`}>
+  const TabContent = () => <div className={`flex flex-col min-h-[80vh] overflow-hidden rounded-lg border-[0.5px] border-gray-200 bg-white shadow-lg ${popupClassName}`}>
     <div className='px-2 pt-2 ' onClick={e => e.stopPropagation()}>
       {activeTab === TabsEnum.Blocks && (
         <Input
@@ -124,7 +124,7 @@ const NodeSelector: FC<NodeSelectorProps> = ({
       )}
 
     </div>
-    <div className='h-0 grow'>
+    <div className='h-auto grow'>
 
       <Tabs
         activeTab={activeTab}

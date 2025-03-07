@@ -10,7 +10,13 @@ import cn from '@/utils/classnames'
 import type { App } from '@/types/app'
 import Confirm from '@/app/components/base/confirm'
 import Toast, { ToastContext } from '@/app/components/base/toast'
-import { copyApp, deleteApp, exportAppConfig, updateAppInfo } from '@/service/apps'
+import {
+  copyApp,
+  deleteApp,
+  exportAppConfig,
+  fetchApiKeysList,
+  updateAppInfo,
+} from '@/service/apps'
 import DuplicateAppModal from '@/app/components/app/duplicate-modal'
 import type { DuplicateAppModalProps } from '@/app/components/app/duplicate-modal'
 import AppIcon from '@/app/components/base/app-icon'
@@ -34,8 +40,8 @@ import { AppTypeIcon } from '@/app/components/app/type-selector'
 import Button from '@/app/components/base/button'
 
 export type AppCardProps = {
-  app: App
-  onRefresh?: () => void
+  app: App;
+  onRefresh?: () => void;
 }
 
 const AppCard = ({ app, onRefresh }: AppCardProps) => {
@@ -60,54 +66,62 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
     try {
       await deleteApp(app.id)
       notify({ type: 'success', message: t('app.appDeleted') })
-      if (onRefresh)
-        onRefresh()
+      if (onRefresh) onRefresh()
       mutateApps()
       onPlanInfoChanged()
     }
     catch (e: any) {
       notify({
         type: 'error',
-        message: `${t('app.appDeleteFailed')}${'message' in e ? `: ${e.message}` : ''}`,
+        message: `${t('app.appDeleteFailed')}${
+          'message' in e ? `: ${e.message}` : ''
+        }`,
       })
     }
     setShowConfirmDelete(false)
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [app.id])
 
-  const onEdit: CreateAppModalProps['onConfirm'] = useCallback(async ({
+  const onEdit: CreateAppModalProps['onConfirm'] = useCallback(
+    async ({
+      name,
+      icon_type,
+      icon,
+      icon_background,
+      description,
+      use_icon_as_answer_icon,
+    }) => {
+      try {
+        await updateAppInfo({
+          appID: app.id,
+          name,
+          icon_type,
+          icon,
+          icon_background,
+          description,
+          use_icon_as_answer_icon,
+        })
+        setShowEditModal(false)
+        notify({
+          type: 'success',
+          message: t('app.editDone'),
+        })
+        if (onRefresh) onRefresh()
+        mutateApps()
+      }
+      catch {
+        notify({ type: 'error', message: t('app.editFailed') })
+      }
+    },
+    [app.id, mutateApps, notify, onRefresh, t],
+  )
+
+  const onCopy: DuplicateAppModalProps['onConfirm'] = async ({
     name,
     icon_type,
     icon,
     icon_background,
-    description,
-    use_icon_as_answer_icon,
   }) => {
-    try {
-      await updateAppInfo({
-        appID: app.id,
-        name,
-        icon_type,
-        icon,
-        icon_background,
-        description,
-        use_icon_as_answer_icon,
-      })
-      setShowEditModal(false)
-      notify({
-        type: 'success',
-        message: t('app.editDone'),
-      })
-      if (onRefresh)
-        onRefresh()
-      mutateApps()
-    }
-    catch {
-      notify({ type: 'error', message: t('app.editFailed') })
-    }
-  }, [app.id, mutateApps, notify, onRefresh, t])
-
-  const onCopy: DuplicateAppModalProps['onConfirm'] = async ({ name, icon_type, icon, icon_background }) => {
     try {
       const newApp = await copyApp({
         appID: app.id,
@@ -123,8 +137,7 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
         message: t('app.newApp.appCreated'),
       })
       localStorage.setItem(NEED_REFRESH_APP_LIST_KEY, '1')
-      if (onRefresh)
-        onRefresh()
+      if (onRefresh) onRefresh()
       mutateApps()
       onPlanInfoChanged()
       getRedirection(isCurrentWorkspaceEditor, newApp, push)
@@ -157,8 +170,12 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
       return
     }
     try {
-      const workflowDraft = await fetchWorkflowDraft(`/apps/${app.id}/workflows/draft`)
-      const list = (workflowDraft.environment_variables || []).filter(env => env.value_type === 'secret')
+      const workflowDraft = await fetchWorkflowDraft(
+        `/apps/${app.id}/workflows/draft`,
+      )
+      const list = (workflowDraft.environment_variables || []).filter(
+        env => env.value_type === 'secret',
+      )
       if (list.length === 0) {
         onExport()
         return
@@ -171,8 +188,7 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
   }
 
   const onSwitch = () => {
-    if (onRefresh)
-      onRefresh()
+    if (onRefresh) onRefresh()
     mutateApps()
     setShowSwitchModal(false)
   }
@@ -211,16 +227,18 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
       e.preventDefault()
       setShowConfirmDelete(true)
     }
-    const onClickInstalledApp = async (e: React.MouseEvent<HTMLButtonElement>) => {
+    const onClickInstalledApp = async (
+      e: React.MouseEvent<HTMLButtonElement>,
+    ) => {
       e.stopPropagation()
       props.onClick?.()
       e.preventDefault()
       try {
-        const { installed_apps }: any = await fetchInstalledAppList(app.id) || {}
+        const { installed_apps }: any
+          = (await fetchInstalledAppList(app.id)) || {}
         if (installed_apps?.length > 0)
           window.open(`/explore/installed/${installed_apps[0].id}`, '_blank')
-        else
-          throw new Error('No app found in Explore')
+        else throw new Error('No app found in Explore')
       }
       catch (e: any) {
         Toast.notify({ type: 'error', message: `${e.message || e}` })
@@ -242,10 +260,12 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
           <>
             <Divider className="!my-1" />
             <div
-              className='h-9 py-2 px-3 mx-1 flex items-center hover:bg-gray-50 rounded-lg cursor-pointer'
+              className="h-9 py-2 px-3 mx-1 flex items-center hover:bg-gray-50 rounded-lg cursor-pointer"
               onClick={onClickSwitch}
             >
-              <span className='text-gray-700 text-sm leading-5'>{t('app.switch')}</span>
+              <span className="text-gray-700 text-sm leading-5">
+                {t('app.switch')}
+              </span>
             </div>
           </>
         )}
@@ -270,7 +290,15 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
   useEffect(() => {
     setTags(app.tags)
   }, [app.tags])
-
+  const runWorkflow = async (e, appId) => {
+    e.preventDefault()
+    e.stopPropagation()
+    const { data: apiKeysList } = await fetchApiKeysList({
+      url: `/apps/${appId}/api-keys`,
+    })
+    if (apiKeysList?.length > 0) push(`app/${appId}/run`)
+    else notify({ type: 'error', message: t('app.notPublish') })
+  }
   return (
     <>
       <div
@@ -278,10 +306,10 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
           e.preventDefault()
           getRedirection(isCurrentWorkspaceEditor, app, push)
         }}
-        className='relative h-[160px] group col-span-1 bg-components-card-bg border-[1px] border-solid border-components-card-border rounded-xl shadow-sm inline-flex flex-col transition-all duration-200 ease-in-out cursor-pointer hover:shadow-lg'
+        className="relative h-[160px] group col-span-1 bg-components-card-bg border-[1px] border-solid border-components-card-border rounded-xl shadow-sm inline-flex flex-col transition-all duration-200 ease-in-out cursor-pointer hover:shadow-lg"
       >
-        <div className='flex pt-[14px] px-[14px] pb-3 h-[66px] items-center gap-3 grow-0 shrink-0'>
-          <div className='relative shrink-0'>
+        <div className="flex pt-[14px] px-[14px] pb-3 h-[66px] items-center gap-3 grow-0 shrink-0">
+          <div className="relative shrink-0">
             <AppIcon
               size="large"
               iconType={app.icon_type}
@@ -289,53 +317,91 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
               background={app.icon_background}
               imageUrl={app.icon_url}
             />
-            <AppTypeIcon type={app.mode} wrapperClassName='absolute -bottom-0.5 -right-0.5 w-4 h-4 shadow-sm' className='w-3 h-3' />
+            <AppTypeIcon
+              type={app.mode}
+              wrapperClassName="absolute -bottom-0.5 -right-0.5 w-4 h-4 shadow-sm"
+              className="w-3 h-3"
+            />
           </div>
-          <div className='grow w-0 py-[1px]'>
-            <div className='flex items-center text-sm leading-5 font-semibold text-text-secondary'>
-              <div className='truncate' title={app.name}>{app.name}</div>
+          <div className="grow w-0 py-[1px]">
+            <div className="flex items-center text-sm leading-5 font-semibold text-text-secondary">
+              <div className="truncate" title={app.name}>
+                {app.name}
+              </div>
             </div>
-            <div className='flex items-center text-[10px] leading-[18px] text-text-tertiary font-medium'>
-              {app.mode === 'advanced-chat' && <div className='truncate'>{t('app.types.advanced').toUpperCase()}</div>}
-              {app.mode === 'chat' && <div className='truncate'>{t('app.types.chatbot').toUpperCase()}</div>}
-              {app.mode === 'agent-chat' && <div className='truncate'>{t('app.types.agent').toUpperCase()}</div>}
-              {app.mode === 'workflow' && <div className='truncate'>{t('app.types.workflow').toUpperCase()}</div>}
-              {app.mode === 'completion' && <div className='truncate'>{t('app.types.completion').toUpperCase()}</div>}
+            <div className="flex items-center text-[10px] leading-[18px] text-text-tertiary font-medium">
+              {app.mode === 'advanced-chat' && (
+                <div className="truncate">
+                  {t('app.types.advanced').toUpperCase()}
+                </div>
+              )}
+              {app.mode === 'chat' && (
+                <div className="truncate">
+                  {t('app.types.chatbot').toUpperCase()}
+                </div>
+              )}
+              {app.mode === 'agent-chat' && (
+                <div className="truncate">
+                  {t('app.types.agent').toUpperCase()}
+                </div>
+              )}
+              {app.mode === 'workflow' && (
+                <div className="truncate">
+                  {t('app.types.workflow').toUpperCase()}
+                </div>
+              )}
+              {app.mode === 'completion' && (
+                <div className="truncate">
+                  {t('app.types.completion').toUpperCase()}
+                </div>
+              )}
             </div>
           </div>
           <div>
-            <Button onClick={(e) => {
-              e.preventDefault()
-              e.stopPropagation()
-              push(`app/${app.id}/run`)
-            }}>运行</Button>
+            <Button
+              onClick={(e) => {
+                runWorkflow(e, app.id)
+              }}
+            >
+              {t('workflow.common.run')}
+            </Button>
           </div>
         </div>
-        <div className='title-wrapper h-[90px] px-[14px] text-xs leading-normal text-text-tertiary'>
+        <div className="title-wrapper h-[90px] px-[14px] text-xs leading-normal text-text-tertiary">
           <div
-            className={cn(tags.length ? 'line-clamp-2' : 'line-clamp-4', 'group-hover:line-clamp-2')}
+            className={cn(
+              tags.length ? 'line-clamp-2' : 'line-clamp-4',
+              'group-hover:line-clamp-2',
+            )}
             title={app.description}
           >
             {app.description}
           </div>
         </div>
-        <div className={cn(
-          'absolute bottom-1 left-0 right-0 items-center shrink-0 pt-1 pl-[14px] pr-[6px] pb-[6px] h-[42px]',
-          tags.length ? 'flex' : '!hidden group-hover:!flex',
-        )}>
+        <div
+          className={cn(
+            'absolute bottom-1 left-0 right-0 items-center shrink-0 pt-1 pl-[14px] pr-[6px] pb-[6px] h-[42px]',
+            tags.length ? 'flex' : '!hidden group-hover:!flex',
+          )}
+        >
           {isCurrentWorkspaceEditor && (
             <>
-              <div className={cn('grow flex items-center gap-1 w-0')} onClick={(e) => {
-                e.stopPropagation()
-                e.preventDefault()
-              }}>
-                <div className={cn(
-                  'group-hover:!block group-hover:!mr-0 mr-[41px] grow w-full',
-                  tags.length ? '!block' : '!hidden',
-                )}>
+              <div
+                className={cn('grow flex items-center gap-1 w-0')}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  e.preventDefault()
+                }}
+              >
+                <div
+                  className={cn(
+                    'group-hover:!block group-hover:!mr-0 mr-[41px] grow w-full',
+                    tags.length ? '!block' : '!hidden',
+                  )}
+                >
                   <TagSelector
-                    position='bl'
-                    type='app'
+                    position="bl"
+                    type="app"
                     targetID={app.id}
                     value={tags.map(tag => tag.id)}
                     selectedTags={tags}
@@ -344,17 +410,15 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
                   />
                 </div>
               </div>
-              <div className='!hidden group-hover:!flex shrink-0 mx-1 w-[1px] h-[14px]' />
-              <div className='!hidden group-hover:!flex shrink-0'>
+              <div className="!hidden group-hover:!flex shrink-0 mx-1 w-[1px] h-[14px]" />
+              <div className="!hidden group-hover:!flex shrink-0">
                 <CustomPopover
                   htmlContent={<Operations />}
                   position="br"
                   trigger="click"
                   btnElement={
-                    <div
-                      className='flex items-center justify-center w-8 h-8 cursor-pointer rounded-md'
-                    >
-                      <RiMoreFill className='w-4 h-4 text-text-tertiary' />
+                    <div className="flex items-center justify-center w-8 h-8 cursor-pointer rounded-md">
+                      <RiMoreFill className="w-4 h-4 text-text-tertiary" />
                     </div>
                   }
                   btnClassName={open =>
@@ -364,7 +428,7 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
                     )
                   }
                   popupClassName={
-                    (app.mode === 'completion' || app.mode === 'chat')
+                    app.mode === 'completion' || app.mode === 'chat'
                       ? '!w-[256px] translate-x-[-224px]'
                       : '!w-[160px] translate-x-[-128px]'
                   }

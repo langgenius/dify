@@ -180,6 +180,7 @@ const translation = {
     noParams: 'No parameters needed',
   },
   showMyCreatedAppsOnly: 'Created by me',
+  notPublish: 'This workflow has not been published or the API-Key has not been created',
 }
 
 export default translation

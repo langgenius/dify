@@ -29,7 +29,7 @@ import Loading from '@/app/components/base/loading'
 import { userInputsFormToPromptVariables } from '@/utils/model-config'
 import Res from '@/app/components/run/text-generation/result'
 import type { InstalledApp } from '@/models/explore'
-import { DEFAULT_VALUE_MAX_LEN, appDefaultIconBackground } from '@/config'
+import { appDefaultIconBackground } from '@/config'
 import Toast from '@/app/components/base/toast'
 import type { VisionFile, VisionSettings } from '@/types/app'
 import { Resolution, TransferMethod } from '@/types/app'
@@ -80,14 +80,8 @@ const TextGeneration: FC<IMainProps> = ({
 
   const router = useRouter()
   const pathname = usePathname()
-  useEffect(() => {
-    const params = new URLSearchParams(searchParams)
-    if (params.has('mode')) {
-      params.delete('mode')
-      router.replace(`${pathname}?${params.toString()}`)
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+
+  const [queryInputs, setQueryInputs] = useState<any>(null)
 
   // Notice this situation isCallBatchAPI but not in batch tab
   const [isCallBatchAPI, setIsCallBatchAPI] = useState(false)
@@ -143,7 +137,25 @@ const TextGeneration: FC<IMainProps> = ({
     // eslint-disable-next-line ts/no-use-before-define
     showResSidebar()
   }
+  useEffect(() => {
+    const params = new URLSearchParams(searchParams)
+    if (params.has('mode')) {
+      params.delete('mode')
+      router.replace(`${pathname}?${params.toString()}`)
+    }
+    const queryInputs = Object.fromEntries(searchParams.entries())
+    if(queryInputs) {
+      setQueryInputs(queryInputs)
+      setInputs(queryInputs)
+      router.replace(pathname)
+    }
 
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+  useEffect(() => {
+    if(queryInputs && typeof queryInputs === 'object' && Object.keys(queryInputs).length > 0)
+      handleSend()
+  }, [queryInputs])
   const [controlRetry, setControlRetry] = useState(0)
   const handleRetryAllFailedTask = () => {
     setControlRetry(Date.now())
@@ -193,137 +205,7 @@ const TextGeneration: FC<IMainProps> = ({
     res[t('share.generation.completionResult')] = result
     return res
   })
-  const checkBatchInputs = (data: string[][]) => {
-    if (!data || data.length === 0) {
-      notify({ type: 'error', message: t('share.generation.errorMsg.empty') })
-      return false
-    }
-    const headerData = data[0]
-    let isMapVarName = true
-    promptConfig?.prompt_variables.forEach((item, index) => {
-      if (!isMapVarName)
-        return
 
-      if (item.name !== headerData[index])
-        isMapVarName = false
-    })
-
-    if (!isMapVarName) {
-      notify({ type: 'error', message: t('share.generation.errorMsg.fileStructNotMatch') })
-      return false
-    }
-
-    let payloadData = data.slice(1)
-    if (payloadData.length === 0) {
-      notify({ type: 'error', message: t('share.generation.errorMsg.atLeastOne') })
-      return false
-    }
-
-    // check middle empty line
-    const allEmptyLineIndexes = payloadData.filter(item => item.every(i => i === '')).map(item => payloadData.indexOf(item))
-    if (allEmptyLineIndexes.length > 0) {
-      let hasMiddleEmptyLine = false
-      let startIndex = allEmptyLineIndexes[0] - 1
-      allEmptyLineIndexes.forEach((index) => {
-        if (hasMiddleEmptyLine)
-          return
-
-        if (startIndex + 1 !== index) {
-          hasMiddleEmptyLine = true
-          return
-        }
-        startIndex++
-      })
-
-      if (hasMiddleEmptyLine) {
-        notify({ type: 'error', message: t('share.generation.errorMsg.emptyLine', { rowIndex: startIndex + 2 }) })
-        return false
-      }
-    }
-
-    // check row format
-    payloadData = payloadData.filter(item => !item.every(i => i === ''))
-    // after remove empty rows in the end, checked again
-    if (payloadData.length === 0) {
-      notify({ type: 'error', message: t('share.generation.errorMsg.atLeastOne') })
-      return false
-    }
-    let errorRowIndex = 0
-    let requiredVarName = ''
-    let moreThanMaxLengthVarName = ''
-    let maxLength = 0
-    payloadData.forEach((item, index) => {
-      if (errorRowIndex !== 0)
-        return
-
-      promptConfig?.prompt_variables.forEach((varItem, varIndex) => {
-        if (errorRowIndex !== 0)
-          return
-        if (varItem.type === 'string') {
-          const maxLen = varItem.max_length || DEFAULT_VALUE_MAX_LEN
-          if (item[varIndex].length > maxLen) {
-            moreThanMaxLengthVarName = varItem.name
-            maxLength = maxLen
-            errorRowIndex = index + 1
-            return
-          }
-        }
-        if (!varItem.required)
-          return
-
-        if (item[varIndex].trim() === '') {
-          requiredVarName = varItem.name
-          errorRowIndex = index + 1
-        }
-      })
-    })
-
-    if (errorRowIndex !== 0) {
-      if (requiredVarName)
-        notify({ type: 'error', message: t('share.generation.errorMsg.invalidLine', { rowIndex: errorRowIndex + 1, varName: requiredVarName }) })
-
-      if (moreThanMaxLengthVarName)
-        notify({ type: 'error', message: t('share.generation.errorMsg.moreThanMaxLengthLine', { rowIndex: errorRowIndex + 1, varName: moreThanMaxLengthVarName, maxLength }) })
-
-      return false
-    }
-    return true
-  }
-  const handleRunBatch = (data: string[][]) => {
-    if (!checkBatchInputs(data))
-      return
-    if (!allTasksFinished) {
-      notify({ type: 'info', message: t('appDebug.errorMessage.waitForBatchResponse') })
-      return
-    }
-
-    const payloadData = data.filter(item => !item.every(i => i === '')).slice(1)
-    const varLen = promptConfig?.prompt_variables.length || 0
-    setIsCallBatchAPI(true)
-    const allTaskList: Task[] = payloadData.map((item, i) => {
-      const inputs: Record<string, string> = {}
-      if (varLen > 0) {
-        item.slice(0, varLen).forEach((input, index) => {
-          inputs[promptConfig?.prompt_variables[index].key as string] = input
-        })
-      }
-      return {
-        id: i + 1,
-        status: i < GROUP_SIZE ? TaskStatus.running : TaskStatus.pending,
-        params: {
-          inputs,
-        },
-      }
-    })
-    setAllTaskList(allTaskList)
-    setCurrGroupNum(0)
-    setControlSend(Date.now())
-    // clear run once task status
-    setControlStopResponding(Date.now())
-
-    // eslint-disable-next-line ts/no-use-before-define
-    showResSidebar()
-  }
   const handleCompleted = (completionRes: string, taskId?: number, isSuccess?: boolean) => {
     const allTaskListLatest = getLatestTaskList()
     const batchCompletionResLatest = getBatchCompletionRes()

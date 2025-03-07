@@ -34,7 +34,7 @@ const Tabs: FC<TabsProps> = ({
   const { data: workflowTools } = useAllWorkflowTools()
 
   return (
-    <div onClick={e => e.stopPropagation()} className='h-full flex flex-col'>
+    <div onClick={e => e.stopPropagation()} className='h-full flex flex-col min-h-[80vh]'>
       {
         !noBlocks && (
           <div className='flex items-center px-3 border-b-[0.5px] border-divider-subtle'>

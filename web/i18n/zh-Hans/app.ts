@@ -181,6 +181,7 @@ const translation = {
   },
   openInExplore: '在“探索”中打开',
   showMyCreatedAppsOnly: '我创建的',
+  notPublish: '此工作流还未被发布或未创建API-Key',
 }
 
 export default translation

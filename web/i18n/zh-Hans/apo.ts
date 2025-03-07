@@ -16,6 +16,14 @@ const translation = {
     custom: '自定义查询返回数据',
     metric: '指标折线图',
   },
+  tool: {
+    test: '数据测试',
+    use: '使用',
+    desc: '描述',
+    output: '输出',
+    input: '输入',
+    unit: '单位',
+  },
 
 }
 

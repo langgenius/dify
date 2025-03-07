@@ -110,18 +110,18 @@ const ApoToolsPreview = ({ onSelect, apoToolType, hidePopover }: ApoToolsPreview
           <div className='flex'>
             <div className='flex-1'>{toolDetail.label[language]}</div>
             <Button variant='primary' className=' space-x-2' onClick={() => handleSelect(toolDetail)}>
-              <div>使用</div>
+              <div>{t('apo.tool.use')}</div>
             </Button>
           </div>
           <div className="text-xs text-text-tertiary">
             <div className="pt-2">
-              描述：<>{toolDetail.description[language]}</>
+              {t('apo.tool.desc')}：<>{toolDetail.description[language]}</>
             </div>
             <div className="pt-2">
               {apoToolType === 'apo_select' ? (
                 <>
-                  {toolDetail?.display.type === 'metric' && <div className="pb-2">单位：{toolDetail.display.unit}</div>}
-                  {toolDetail?.display?.type && <div>输出：{t(`apo.displayType.${toolDetail?.display?.type}`)}</div>}
+                  {toolDetail?.display.type === 'metric' && <div className="pb-2">{t('apo.tool.unit')}：{toolDetail.display.unit}</div>}
+                  {toolDetail?.display?.type && <div>{t('apo.tool.output')}：{t(`apo.displayType.${toolDetail?.display?.type}`)}</div>}
                   <div className="px-4 py-2">
                     <div className="h-[0.5px] divider-subtle" />
                   </div>
@@ -132,7 +132,7 @@ const ApoToolsPreview = ({ onSelect, apoToolType, hidePopover }: ApoToolsPreview
                 </>
               ) : (
                 <div className="flex">
-                  <span>输入参数：</span>
+                  <span>{t('apo.tool.input')}：</span>
                   <div>
                     {toolDetail?.parameters.map(parameter => (
                       <ParametersInfo

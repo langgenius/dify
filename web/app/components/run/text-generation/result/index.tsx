@@ -330,9 +330,12 @@ const Result: FC<IResultProps> = ({
     }
   }
 
+  const controlSendRef = useRef<number | undefined>()
   const [controlClearMoreLikeThis, setControlClearMoreLikeThis] = useState(0)
   useEffect(() => {
-    if (controlSend) {
+    if (controlSend && controlSendRef?.current !== controlSend) {
+      controlSendRef.current = controlSend
+
       handleSend()
       setControlClearMoreLikeThis(Date.now())
     }

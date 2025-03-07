@@ -570,7 +570,6 @@ export const sseV1Post = (
   const abortController = new AbortController()
 
   const token = localStorage.getItem('console_token')
-  console.log(baseOptions)
   const options = Object.assign({}, baseOptions, {
     method: 'POST',
     signal: abortController.signal,
