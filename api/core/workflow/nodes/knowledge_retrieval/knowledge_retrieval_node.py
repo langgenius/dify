@@ -285,7 +285,7 @@ class KnowledgeRetrievalNode(LLMNode):
     def _get_metadata_filter_condition(
         self, dataset_ids: list, query: str, node_data: KnowledgeRetrievalNodeData
     ) -> Optional[dict[str, list[str]]]:
-        document_query = db.session.query(Document.id).filter(
+        document_query = db.session.query(Document).filter(
             Document.dataset_id.in_(dataset_ids),
             Document.indexing_status == "completed",
             Document.enabled == True,
