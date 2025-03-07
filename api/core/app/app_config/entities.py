@@ -171,7 +171,7 @@ class Condition(BaseModel):
     Conditon detail
     """
 
-    metadata_name: str
+    name: str
     comparison_operator: SupportedComparisonOperator
     value: str | Sequence[str] | None = None
 
