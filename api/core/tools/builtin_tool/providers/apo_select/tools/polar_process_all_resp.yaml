@@ -2,14 +2,14 @@ identity:
   name: polar_process_all_resp
   author: APO
   label:
-    en_US: Query the CPU utilization of the host
+    en_US:  Thread Polaris Metrics Process All 
     zh_Hans: Thread Polaris Metrics - 北极星指标（进程） - 各类型耗时折线图 - 所有类型列表
-    pt_BR: Query the CPU utilization of the host
+    pt_BR: Thread Polaris Metrics Process All
 description:
   human:
-    en_US: Query the CPU utilization of the host
+    en_US: Thread Polaris Metrics Process All 
     zh_Hans: Thread Polaris Metrics - 北极星指标（进程） - 各类型耗时折线图 - 所有类型列表
-    pt_BR: Query the CPU utilization of the host
+    pt_BR: Thread Polaris Metrics Process All
   llm: Thread Polaris Metrics - 北极星指标（进程） - 各类型耗时折线图 - 所有类型列表
 display:
   type: metric

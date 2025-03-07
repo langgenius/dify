@@ -2,14 +2,14 @@ identity:
   name: Originx 北极星指标 (服务层级) - RED指标 - 平均响应时间
   author: APO
   label:
-    en_US: Query the CPU utilization of the host
+    en_US: Average service response time
     zh_Hans: 服务平均响应时间(毫秒,按服务名和内容键统计,指定时间段内)
-    pt_BR: Query the CPU utilization of the host
+    pt_BR: Average service response time
 description:
   human:
-    en_US: Query the CPU utilization of the host
+    en_US: Average service response time
     zh_Hans: 服务平均响应时间(毫秒,按服务名和内容键统计,指定时间段内)
-    pt_BR: Query the CPU utilization of the host
+    pt_BR: Average service response time
   llm: 服务平均响应时间(毫秒,按服务名和内容键统计,指定时间段内)
 display:
   type: metric

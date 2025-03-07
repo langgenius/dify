@@ -2,14 +2,14 @@ identity:
   name: host_cpu_fd_open
   author: APO
   label:
-    en_US: Query the CPU utilization of the host
+    en_US: Query the file description open of the host
     zh_Hans: 宿主机当前打开文件描述符数
-    pt_BR: Query the CPU utilization of the host
+    pt_BR: Query the file description of the host
 description:
   human:
-    en_US: Query the CPU utilization of the host
+    en_US: Query the file description of the host
     zh_Hans: 宿主机当前打开文件描述符数
-    pt_BR: Query the CPU utilization of the host
+    pt_BR: Query the file description of the host
   llm: 宿主机当前打开文件描述符数
 display:
   type: metric

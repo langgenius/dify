@@ -2,19 +2,19 @@ identity:
   name: 容器CPU节流时长(使用Containerd容器运行时,按容器和Pod统计)
   author: APO
   label:
-    en_US: Query the CPU utilization of the container
+    en_US: Query the CPU cfs of the container
     zh_Hans: 容器CPU节流时长(使用Containerd容器运行时,按容器和Pod统计)
-    pt_BR: Query the CPU utilization of the container
+    pt_BR: Query the CPU cfs of the container
 display:
   type: metric
   title: 基础设施情况 - 容器CPU - 容器CPU节流时间 - Containerd
   unit: s 秒
 description:
   human:
-    en_US: Query the CPU utilization of the container
+    en_US: Query the CPU cfs of the container
     zh_Hans: 容器CPU节流时长(使用Containerd容器运行时,按容器和Pod统计)
-    pt_BR: Query the CPU utilization of the container
-  llm: Query the CPU utilization of the container
+    pt_BR: Query the CPU cfs of the container
+  llm: Query the CPU cfs of the container
 parameters:
   - name: pod
     type: string

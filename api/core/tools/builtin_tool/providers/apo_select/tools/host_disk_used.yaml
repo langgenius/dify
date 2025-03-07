@@ -2,14 +2,14 @@ identity:
   name: 宿主机磁盘使用率(百分比,不含rootfs)
   author: APO
   label:
-    en_US: Query the CPU utilization of the host
+    en_US: Query the Disk Used of the host
     zh_Hans: 宿主机磁盘使用率(百分比,不含rootfs)
-    pt_BR: Query the CPU utilization of the host
+    pt_BR: Query the Disk Used of the host
 description:
   human:
-    en_US: Query the CPU utilization of the host
+    en_US: Query the Disk Used of the host
     zh_Hans: 宿主机磁盘使用率(百分比,不含rootfs)
-    pt_BR: Query the CPU utilization of the host
+    pt_BR: Query the Disk Used of the host
   llm: 宿主机磁盘使用率(百分比,不含rootfs)
 display:
   type: metric

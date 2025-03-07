@@ -2,14 +2,14 @@ identity:
   name: 宿主机磁盘IO耗时速率
   author: APO
   label:
-    en_US: Query the CPU utilization of the host
+    en_US: Query the Disk IO of the host
     zh_Hans: 宿主机磁盘IO耗时速率
-    pt_BR: Query the CPU utilization of the host
+    pt_BR: Query the Disk IO of the host
 description:
   human:
-    en_US: Query the CPU utilization of the host
+    en_US: Query the Disk IO of the host
     zh_Hans: 宿主机磁盘IO耗时速率
-    pt_BR: Query the CPU utilization of the host
+    pt_BR: Query the Disk IO of the host
   llm: 宿主机磁盘IO耗时速率
 display:
   type: metric

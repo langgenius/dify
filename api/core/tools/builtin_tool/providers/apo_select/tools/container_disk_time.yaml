@@ -2,18 +2,18 @@ identity:
   name: select_container_cpu
   author: APO
   label:
-    en_US: Query the CPU utilization of the container
+    en_US: Query the disk read time of the container
     zh_Hans: 容器磁盘读取耗时每秒(使用Containerd,按Pod和容器统计)
-    pt_BR: Query the CPU utilization of the container
+    pt_BR: Query the disk read time of the container
 display:
   type: metric
   title: 基础设施情况 - 容器磁盘 - 读写花费时间 /s - Read
   unit: percent(0-100)百分比
 description:
   human:
-    en_US: Query the CPU utilization of the container
+    en_US: Query the disk read time of the container
     zh_Hans: 容器磁盘读取耗时每秒(使用Containerd,按Pod和容器统计)
-    pt_BR: Query the CPU utilization of the container
+    pt_BR: Query the disk read time of the container
   llm: 容器磁盘读取耗时每秒(使用Containerd,按Pod和容器统计)
 parameters:
   - name: pod

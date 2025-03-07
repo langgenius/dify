@@ -2,14 +2,14 @@ identity:
   name: 查询容器内存使用量
   author: APO
   label:
-    en_US: Query container resident memory usage
+    en_US: Query container memory usage (Containerd)
     zh_Hans: 容器内存使用字节数(使用Containerd容器运行时,按容器和Pod统计)
-    pt_BR: Query container resident memory usage
+    pt_BR: Query container memory usage
 description:
   human:
-    en_US: Query container resident memory usage
+    en_US: Query container memory usage (Containerd)
     zh_Hans: 容器内存使用字节数(使用Containerd容器运行时,按容器和Pod统计)
-    pt_BR: Query container resident memory usage
+    pt_BR: Query container memory usage (Containerd)
   llm: 容器内存使用字节数(使用Containerd容器运行时,按容器和Pod统计)
 display:
   type: metric

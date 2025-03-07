@@ -20,7 +20,7 @@ class TrendTool(BuiltinTool):
         metric = tool_parameters.get('metricData')
         metric_data = json.loads(metric)
         # threshold = float(tool_parameters.get('threshold'))
-        res = "ok"
+        res = "true"
         for serie in metric_data['data']['timeseries']:
             # for k, v in serie['chart']['chartData'].items():
             #     v = float(v)

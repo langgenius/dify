@@ -2,14 +2,14 @@ identity:
   name: 宿主机磁盘写入数据速率(字节/秒)
   author: APO
   label:
-    en_US: Query the CPU utilization of the host
+    en_US: Query the Disk write bytes of the host
     zh_Hans: 宿主机磁盘写入数据速率(字节/秒)
-    pt_BR: Query the CPU utilization of the host
+    pt_BR: Query the Disk write bytes of the host
 description:
   human:
-    en_US: Query the CPU utilization of the host
+    en_US: Query the Disk wirte bytes of the host
     zh_Hans: 宿主机磁盘写入数据速率(字节/秒)
-    pt_BR: Query the CPU utilization of the host
+    pt_BR: Query the Disk write bytes of the host
   llm: 宿主机磁盘写入数据速率(字节/秒)
 display:
   type: metric

@@ -2,14 +2,14 @@ identity:
   name: 宿主机网络接收速率(比特/秒)
   author: APO
   label:
-    en_US: Query the CPU utilization of the host
+    en_US: Query the Net recv of the host
     zh_Hans: 宿主机网络接收速率(比特/秒)
-    pt_BR: Query the CPU utilization of the host
+    pt_BR: Query the Net recv of the host
 description:
   human:
-    en_US: Query the CPU utilization of the host
+    en_US: Query the Net recv of the host
     zh_Hans: 宿主机网络接收速率(比特/秒)
-    pt_BR: Query the CPU utilization of the host
+    pt_BR: Query the Net recv of the host
   llm: 宿主机网络接收速率(比特/秒)
 display:
   type: metric

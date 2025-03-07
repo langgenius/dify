@@ -2,14 +2,14 @@ identity:
   name: host_cpu_iowait
   author: APO
   label:
-    en_US: Query the CPU utilization of the host
+    en_US: Query the CPU iowait of the host
     zh_Hans: 宿主机IO等待CPU繁忙率
-    pt_BR: Query the CPU utilization of the host
+    pt_BR: Query the CPU iowait of the host
 description:
   human:
-    en_US: Query the CPU utilization of the host
+    en_US: Query the CPU iowait of the host
     zh_Hans: 宿主机IO等待CPU繁忙率
-    pt_BR: Query the CPU utilization of the host
+    pt_BR: Query the CPU iowait of the host
   llm: 宿主机IO等待CPU繁忙率
 display:
   type: metric
