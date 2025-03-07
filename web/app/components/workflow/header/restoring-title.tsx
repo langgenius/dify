@@ -35,7 +35,7 @@ const RestoringTitle = () => {
             <>
               <span>{publishStatus}</span>
               <span>·</span>
-              <span>{`${formatTimeFromNow(currentVersion.created_at * 1000)} ${formatTime(currentVersion.created_at, 'HH:mm:ss')}`}</span>
+              <span>{`${formatTimeFromNow((isDraft ? currentVersion.updated_at : currentVersion.created_at) * 1000)} ${formatTime(currentVersion.created_at, 'HH:mm:ss')}`}</span>
               <span>·</span>
               <span>{currentVersion?.created_by?.name || ''}</span>
             </>
