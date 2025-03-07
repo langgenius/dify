@@ -1081,7 +1081,7 @@ class Message(db.Model):  # type: ignore[name-defined]
 
         files = []
         for message_file in message_files:
-            if message_file.transfer_method == "local_file":
+            if message_file.transfer_method == FileTransferMethod.LOCAL_FILE.value:
                 if message_file.upload_file_id is None:
                     raise ValueError(f"MessageFile {message_file.id} is a local file but has no upload_file_id")
                 file = file_factory.build_from_mapping(
@@ -1093,7 +1093,7 @@ class Message(db.Model):  # type: ignore[name-defined]
                     },
                     tenant_id=current_app.tenant_id,
                 )
-            elif message_file.transfer_method == "remote_url":
+            elif message_file.transfer_method == FileTransferMethod.REMOTE_URL.value:
                 if message_file.url is None:
                     raise ValueError(f"MessageFile {message_file.id} is a remote url but has no url")
                 file = file_factory.build_from_mapping(
@@ -1106,7 +1106,7 @@ class Message(db.Model):  # type: ignore[name-defined]
                     },
                     tenant_id=current_app.tenant_id,
                 )
-            elif message_file.transfer_method == "tool_file":
+            elif message_file.transfer_method == FileTransferMethod.TOOL_FILE.value:
                 if message_file.upload_file_id is None:
                     assert message_file.url is not None
                     message_file.upload_file_id = message_file.url.split("/")[-1].split(".")[0]
