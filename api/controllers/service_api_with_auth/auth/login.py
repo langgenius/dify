@@ -4,13 +4,13 @@ import flask_login  # type: ignore
 from configs import dify_config
 from constants.languages import languages
 from controllers.service_api_with_auth import api
-from controllers.service_api_with_auth.auth.error import EmailCodeError, InvalidEmailError, InvalidTokenError
-from controllers.service_api_with_auth.error import (
-    AccountInFreezeError,
-    AccountNotFound,
-    EmailSendIpLimitError,
-    TenantNotFoundError,
-)
+from controllers.service_api_with_auth.auth.error import (EmailCodeError,
+                                                          InvalidEmailError,
+                                                          InvalidTokenError)
+from controllers.service_api_with_auth.error import (AccountInFreezeError,
+                                                     AccountNotFound,
+                                                     EmailSendIpLimitError,
+                                                     TenantNotFoundError)
 from flask import request
 from flask_restful import Resource, reqparse  # type: ignore
 from libs.helper import email, extract_remote_ip
@@ -197,16 +197,23 @@ class EmailCodeLoginApi(Resource):
                     name=user_email,
                     interface_language=languages[0],
                 )
+                is_new_user = True
             except AccountRegisterError as are:
                 raise AccountInFreezeError()
         else:
+            is_new_user = False
             connected_tenant = TenantService.get_join_tenants(account)
             if connected_tenant is None or tenant not in connected_tenant:
                 TenantService.create_tenant_member(tenant, account, role="end_user")
 
         token_pair = AccountService.login(account, ip_address=extract_remote_ip(request))
         AccountService.reset_login_error_rate_limit(args["email"])
-        return {"result": "success", "data": token_pair.model_dump()}
+
+        # Add is_new_user field to response data
+        response_data = token_pair.model_dump()
+        response_data["is_new_user"] = is_new_user
+
+        return {"result": "success", "data": response_data}
 
 
 class RefreshTokenApi(Resource):
