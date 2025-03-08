@@ -70,12 +70,17 @@ class EndUserService:
             if 'major' in profile_data:
                 major = profile_data['major']
 
-                # Initialize extra_profile if it doesn't exist
-                if not end_user.extra_profile:
+                # Create a new dictionary if extra_profile is None
+                if end_user.extra_profile is None:
                     end_user.extra_profile = {}
 
-                # Update major in extra_profile
-                end_user.extra_profile['major'] = major
+                # Make a copy of the existing dictionary to ensure changes are detected
+                extra_profile = dict(end_user.extra_profile)
+                extra_profile['major'] = major
+                end_user.extra_profile = extra_profile
+
+                # Force the change to be detected
+                db.session.add(end_user)
 
             # Save changes to database
             db.session.commit()

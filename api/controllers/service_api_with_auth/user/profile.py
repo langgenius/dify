@@ -105,8 +105,12 @@ class UserProfile(Resource):
         # Validate major if provided
         if 'major' in data:
             major = data['major']
-            if len(major) > 20:
+
+            if isinstance(major, str) and len(major) > 20:
                 return {"success": False, "message": "Major exceeds maximum length"}, 400
+            elif major is not None:  # Handle non-string or None values appropriately
+                return {"success": False, "message": "Major must be a string value"}, 400
+
             validated_data['major'] = major
 
         # Use the service to update user profile
