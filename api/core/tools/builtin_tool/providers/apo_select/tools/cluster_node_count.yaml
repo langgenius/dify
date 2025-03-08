@@ -1,0 +1,53 @@
+identity:
+  name: K8s集群中节点的数量
+  author: APO
+  label:
+    en_US: The number of nodes in the K8s cluster
+    zh_Hans: K8s集群中节点的数量
+description:
+  human:
+    en_US: The number of nodes in the K8s cluster
+    zh_Hans: K8s集群中节点的数量
+  llm: The number of nodes in the K8s cluster
+display:
+  type: metric
+  title: 集群总览 - 总览 - 节点数
+  unit: ""
+parameters:
+  - name: cadvisor_job_name
+    type: string
+    required: False
+    label:
+      en_US: cAdvisor job name
+      zh_Hans: cAdvisor任务名称
+    human_description:
+      en_US: cAdvisor job name
+      zh_Hans: cAdvisor任务名称
+    llm_description: cAdvisor job name
+    form: llm
+  - name: startTime
+    type: number
+    required: true
+    label:
+      en_US: startTime
+      zh_Hans: startTime
+      pt_BR: startTime
+    human_description:
+      en_US: Data query start time
+      zh_Hans: 开始时间 (微秒)
+      pt_BR: Data query start time
+    llm_description: Data query start time
+    form: llm
+  - name: endTime
+    type: number
+    required: true
+    label:
+      en_US: endTime
+      zh_Hans: endTime
+      pt_BR: endTime
+    human_description:
+      en_US: Data query end time
+      zh_Hans: 结束时间 (微秒)
+      pt_BR: Data query end time
+    llm_description: Data query start time
+    form: llm
