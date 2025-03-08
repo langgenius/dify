@@ -2,14 +2,13 @@ from collections.abc import Mapping, Sequence
 from enum import Enum
 from typing import Any, Optional
 
-from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, field_validator
-
 from constants import UUID_NIL
 from core.app.app_config.entities import EasyUIBasedAppConfig, WorkflowUIBasedAppConfig
 from core.entities.provider_configuration import ProviderModelBundle
 from core.file import File, FileUploadConfig
 from core.model_runtime.entities.model_entities import AIModelEntity
 from core.ops.ops_trace_manager import TraceQueueManager
+from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, field_validator
 
 
 class InvokeFrom(Enum):
@@ -21,6 +20,7 @@ class InvokeFrom(Enum):
     WEB_APP = "web-app"
     EXPLORE = "explore"
     DEBUGGER = "debugger"
+    SCHEDULER = "scheduler"
 
     @classmethod
     def value_of(cls, value: str):
@@ -49,6 +49,8 @@ class InvokeFrom(Enum):
             return "explore_app"
         elif self == InvokeFrom.SERVICE_API:
             return "api"
+        elif self == InvokeFrom.SCHEDULER:
+            return "scheduler"
 
         return "dev"
 
