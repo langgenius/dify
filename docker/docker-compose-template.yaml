@@ -49,6 +49,29 @@ services:
       - ssrf_proxy_network
       - default
 
+  scheduler:
+    image: akiyu303/jim-api:latest
+    restart: always
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    environment:
+      # Use the shared environment variables.
+      <<: *shared-api-worker-env
+      # Startup mode, 'worker' starts the Celery worker for processing the queue.
+      MODE: beat
+      SENTRY_DSN: ${API_SENTRY_DSN:-}
+      SENTRY_TRACES_SAMPLE_RATE: ${API_SENTRY_TRACES_SAMPLE_RATE:-1.0}
+      SENTRY_PROFILES_SAMPLE_RATE: ${API_SENTRY_PROFILES_SAMPLE_RATE:-1.0}
+    depends_on:
+      - db
+      - redis
+    volumes:
+      # Mount the storage directory to the container, for storing user files.
+      - ./volumes/app/storage:/app/api/storage
+    networks:
+      - ssrf_proxy_network
+      - default
+
   # Frontend web application.
   web:
     image: langgenius/dify-web:0.15.2

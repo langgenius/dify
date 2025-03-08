@@ -396,6 +396,7 @@ x-shared-env: &shared-api-worker-env
   DEFAULT_APP_ID: ${DEFAULT_APP_ID:-}
   DEFAULT_TENANT_ID: ${DEFAULT_TENANT_ID:-}
   DEBUG_EMAIL_CODE_FOR_LOGIN: ${DEBUG_EMAIL_CODE_FOR_LOGIN:-}
+  USER_MEMORY_GENERATE_TASK_INTERVAL: ${USER_MEMORY_GENERATE_TASK_INTERVAL:-5}
 
 services:
   # API service
@@ -434,6 +435,29 @@ services:
       <<: *shared-api-worker-env
       # Startup mode, 'worker' starts the Celery worker for processing the queue.
       MODE: worker
+      SENTRY_DSN: ${API_SENTRY_DSN:-}
+      SENTRY_TRACES_SAMPLE_RATE: ${API_SENTRY_TRACES_SAMPLE_RATE:-1.0}
+      SENTRY_PROFILES_SAMPLE_RATE: ${API_SENTRY_PROFILES_SAMPLE_RATE:-1.0}
+    depends_on:
+      - db
+      - redis
+    volumes:
+      # Mount the storage directory to the container, for storing user files.
+      - ./volumes/app/storage:/app/api/storage
+    networks:
+      - ssrf_proxy_network
+      - default
+
+  scheduler:
+    image: akiyu303/jim-api:latest
+    restart: always
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    environment:
+      # Use the shared environment variables.
+      <<: *shared-api-worker-env
+      # Startup mode, 'worker' starts the Celery worker for processing the queue.
+      MODE: beat
       SENTRY_DSN: ${API_SENTRY_DSN:-}
       SENTRY_TRACES_SAMPLE_RATE: ${API_SENTRY_TRACES_SAMPLE_RATE:-1.0}
       SENTRY_PROFILES_SAMPLE_RATE: ${API_SENTRY_PROFILES_SAMPLE_RATE:-1.0}

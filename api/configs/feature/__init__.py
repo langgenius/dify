@@ -1,5 +1,6 @@
 from typing import Annotated, Literal, Optional
 
+from configs.feature.hosted_service import HostedServiceConfig
 from pydantic import (
     AliasChoices,
     Field,
@@ -11,8 +12,6 @@ from pydantic import (
     computed_field,
 )
 from pydantic_settings import BaseSettings
-
-from configs.feature.hosted_service import HostedServiceConfig
 
 
 class SecurityConfig(BaseSettings):
@@ -68,7 +67,7 @@ class CodeExecutionSandboxConfig(BaseSettings):
     Configuration for the code execution sandbox environment
     """
 
-    CODE_EXECUTION_ENDPOINT: HttpUrl = Field(
+    CODE_EXECUTION_ENDPOINT: str = Field(
         description="URL endpoint for the code execution service",
         default="http://sandbox:8194",
     )
@@ -689,6 +688,11 @@ class CeleryBeatConfig(BaseSettings):
     CELERY_BEAT_SCHEDULER_TIME: int = Field(
         description="Interval in days for Celery Beat scheduler execution, default to 1 day",
         default=1,
+    )
+
+    USER_MEMORY_GENERATE_TASK_INTERVAL: int = Field(
+        description="Interval in seconds for user memory generate task execution, default to 5 minutes",
+        default=5,
     )
 
 
