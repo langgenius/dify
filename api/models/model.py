@@ -1324,6 +1324,8 @@ class EndUser(UserMixin, db.Model):  # type: ignore[name-defined]
     session_id: Mapped[str] = mapped_column()
     gender = db.Column(db.Integer, nullable=False, server_default=db.text("0"))  # 0: unknown, 1: male, 2: female
     extra_profile = db.Column(db.JSON, nullable=True)  # JSON format, e.g. { "major":"engineer" }
+    memory = db.Column(db.Text, nullable=True)  # Long text to store user memory
+    memory_updated_at = db.Column(db.DateTime, nullable=True)  # To record when memory was last updated
     created_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
     updated_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
 
