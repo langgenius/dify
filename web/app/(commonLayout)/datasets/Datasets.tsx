@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useCallback } from 'react'
+import { useCallback, useEffect, useRef } from 'react'
 import useSWRInfinite from 'swr/infinite'
 import { debounce } from 'lodash-es'
 import { useTranslation } from 'react-i18next'
@@ -73,7 +73,7 @@ const Datasets = ({
           setSize(size => size + 1)
       }
     }, 50),
-    [setSize]
+    [setSize],
   )
 
   useEffect(() => {
