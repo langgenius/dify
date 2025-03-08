@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next'
 import { useBoolean } from 'ahooks'
 import TracingIcon from './tracing-icon'
 import ProviderPanel from './provider-panel'
-import type { LangFuseConfig, LangSmithConfig, OpikConfig } from './type'
+import type { LangFuseConfig, LangSmithConfig, OpikConfig, WeaveConfig } from './type'
 import { TracingProvider } from './type'
 import ProviderConfigModal from './provider-config-modal'
 import Indicator from '@/app/components/header/indicator'
@@ -26,7 +26,8 @@ export type PopupProps = {
   langSmithConfig: LangSmithConfig | null
   langFuseConfig: LangFuseConfig | null
   opikConfig: OpikConfig | null
-  onConfigUpdated: (provider: TracingProvider, payload: LangSmithConfig | LangFuseConfig | OpikConfig) => void
+  weaveConfig: WeaveConfig | null
+  onConfigUpdated: (provider: TracingProvider, payload: LangSmithConfig | LangFuseConfig | OpikConfig | WeaveConfig) => void
   onConfigRemoved: (provider: TracingProvider) => void
 }
 
@@ -40,6 +41,7 @@ const ConfigPopup: FC<PopupProps> = ({
   langSmithConfig,
   langFuseConfig,
   opikConfig,
+  weaveConfig,
   onConfigUpdated,
   onConfigRemoved,
 }) => {
@@ -63,7 +65,7 @@ const ConfigPopup: FC<PopupProps> = ({
     }
   }, [onChooseProvider])
 
-  const handleConfigUpdated = useCallback((payload: LangSmithConfig | LangFuseConfig | OpikConfig) => {
+  const handleConfigUpdated = useCallback((payload: LangSmithConfig | LangFuseConfig | OpikConfig | WeaveConfig) => {
     onConfigUpdated(currentProvider!, payload)
     hideConfigModal()
   }, [currentProvider, hideConfigModal, onConfigUpdated])
@@ -73,8 +75,8 @@ const ConfigPopup: FC<PopupProps> = ({
     hideConfigModal()
   }, [currentProvider, hideConfigModal, onConfigRemoved])
 
-  const providerAllConfigured = langSmithConfig && langFuseConfig && opikConfig
-  const providerAllNotConfigured = !langSmithConfig && !langFuseConfig && !opikConfig
+  const providerAllConfigured = langSmithConfig && langFuseConfig && opikConfig && weaveConfig
+  const providerAllNotConfigured = !langSmithConfig && !langFuseConfig && !opikConfig && !weaveConfig
 
   const switchContent = (
     <Switch
@@ -123,8 +125,23 @@ const ConfigPopup: FC<PopupProps> = ({
     />
   )
 
+  const weavePanel = (
+    <ProviderPanel
+      type={TracingProvider.weave}
+      readOnly={readOnly}
+      config={weaveConfig}
+      hasConfigured={!!weaveConfig}
+      onConfig={handleOnConfig(TracingProvider.weave)}
+      isChosen={chosenProvider === TracingProvider.weave}
+      onChoose={handleOnChoose(TracingProvider.weave)}
+      key="weave-provider-panel"
+    />
+  )
   const configuredProviderPanel = () => {
     const configuredPanels: any[] = []
+
+    if (weaveConfig)
+      configuredPanels.push(weavePanel)
 
     if (langSmithConfig)
       configuredPanels.push(langSmithPanel)
@@ -140,6 +157,8 @@ const ConfigPopup: FC<PopupProps> = ({
 
   const moreProviderPanel = () => {
     const notConfiguredPanels: any[] = []
+    if (!weaveConfig)
+      notConfiguredPanels.push(weavePanel)
 
     if (!langSmithConfig)
       notConfiguredPanels.push(langSmithPanel)
@@ -158,7 +177,9 @@ const ConfigPopup: FC<PopupProps> = ({
       return langSmithConfig
     if (currentProvider === TracingProvider.langfuse)
       return langFuseConfig
-    return opikConfig
+    if (currentProvider === TracingProvider.opik)
+      return opikConfig
+    return weaveConfig
   }
 
   return (
@@ -199,6 +220,7 @@ const ConfigPopup: FC<PopupProps> = ({
             <>
               <div className='system-xs-medium-uppercase text-text-tertiary'>{t(`${I18N_PREFIX}.configProviderTitle.${providerAllConfigured ? 'configured' : 'notConfigured'}`)}</div>
               <div className='mt-2 space-y-2'>
+                {weavePanel}
                 {langSmithPanel}
                 {langfusePanel}
                 {opikPanel}
