@@ -91,8 +91,6 @@ services:
       interval: 1s
       timeout: 3s
       retries: 30
-    ports:
-      - '${EXPOSE_DB_PORT:-5432}:5432'
 
   # The redis cache.
   redis:
