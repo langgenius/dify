@@ -106,12 +106,15 @@ class UserProfile(Resource):
         if 'major' in data:
             major = data['major']
 
-            if not isinstance(major, str):
-                return {"success": False, "message": "Major must be a string value"}, 400
-            if len(major) > 50:
+            # Allow None as a valid value (to clear the field)
+            if major is None:
+                validated_data['major'] = None
+            elif not isinstance(major, str):
+                return {"success": False, "message": "Major must be a string value or null"}, 400
+            elif len(major) > 50:
                 return {"success": False, "message": "Major exceeds maximum length of 50"}, 400
-
-            validated_data['major'] = major
+            else:
+                validated_data['major'] = major
 
         # Use the service to update user profile
         success, error = EndUserService.update_user_profile(end_user, validated_data)
