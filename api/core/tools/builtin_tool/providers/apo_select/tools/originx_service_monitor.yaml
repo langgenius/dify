@@ -1,0 +1,70 @@
+identity:
+  name: originx_service_monitor
+  author: APO
+  label:
+    en_US:  Thread Polaris Metrics Process All monitor
+    zh_Hans: 查询节点上被监控的服务列表
+    pt_BR: Thread Polaris Metrics Process All monitor
+description:
+  human:
+    en_US: Thread Polaris Metrics Process All monitor
+    zh_Hans: 查询节点上被监控的服务列表
+    pt_BR: Thread Polaris Metrics Process All monitor
+  llm: 查询节点上被监控的服务列表
+display:
+  type: metric
+  title: Thread Polaris Metrics - 北极星指标（进程） - 节点上被监控的服务列表
+  unit: ns
+parameters:
+  - name: node_name
+    type: string
+    required: true
+    label:
+      en_US: node_name
+      zh_Hans: node_name
+      pt_BR: node_name
+    human_description:
+      en_US: Specified node name
+      zh_Hans: 指定的主机名称
+      pt_BR: Specified pod name
+    llm_description: Specified pod name
+    form: llm
+  - name: pid
+    type: string
+    required: false
+    label:
+      en_US: pid
+      zh_Hans: pid
+      pt_BR: pid
+    human_description:
+      en_US: Specified Process ID
+      zh_Hans: 指定的进程ID
+      pt_BR: Specified Process ID
+    llm_description: Specified Process ID
+    form: llm
+  - name: startTime
+    type: number
+    required: true
+    label:
+      en_US: startTime
+      zh_Hans: startTime
+      pt_BR: startTime
+    human_description:
+      en_US: Data query start time
+      zh_Hans: 开始时间 (微秒)
+      pt_BR: Data query start time
+    llm_description: Data query start time
+    form: llm
+  - name: endTime
+    type: number
+    required: true
+    label:
+      en_US: endTime
+      zh_Hans: endTime
+      pt_BR: endTime
+    human_description:
+      en_US: Data query end time
+      zh_Hans: 结束时间 (微秒)
+      pt_BR: Data query end time
+    llm_description: Data query start time
+    form: llm
