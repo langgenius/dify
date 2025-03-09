@@ -29,7 +29,9 @@ logger = logging.getLogger(__name__)
 class ToolTransformService:
     @classmethod
     def get_plugin_icon_url(cls, tenant_id: str, filename: str) -> str:
-        url_prefix = URL(dify_config.CONSOLE_API_URL) / "console" / "api" / "workspaces" / "current" / "plugin" / "icon"
+        url_prefix = (
+            URL(dify_config.CONSOLE_API_URL or "/") / "console" / "api" / "workspaces" / "current" / "plugin" / "icon"
+        )
         return str(url_prefix % {"tenant_id": tenant_id, "filename": filename})
 
     @classmethod
@@ -37,7 +39,9 @@ class ToolTransformService:
         """
         get tool provider icon url
         """
-        url_prefix = URL(dify_config.CONSOLE_API_URL) / "console" / "api" / "workspaces" / "current" / "tool-provider"
+        url_prefix = (
+            URL(dify_config.CONSOLE_API_URL or "/") / "console" / "api" / "workspaces" / "current" / "tool-provider"
+        )
 
         if provider_type == ToolProviderType.BUILT_IN.value:
             return str(url_prefix / "builtin" / provider_name / "icon")

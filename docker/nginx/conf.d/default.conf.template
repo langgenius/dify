@@ -4,19 +4,6 @@ server {
     listen ${NGINX_PORT};
     server_name ${NGINX_SERVER_NAME};
 
-    # Rule 1: Handle application entry points (preserve /app/{id})
-    location ~ ^/app/[a-f0-9-]+$ {
-      proxy_pass http://api:5001;
-      include proxy.conf;
-    }
-
-    # Rule 2: Handle static resource requests (remove /app/{id} prefix)
-    location ~ ^/app/[a-f0-9-]+/(console/api/.*)$ {
-      rewrite ^/app/[a-f0-9-]+/(.*)$ /$1 break;
-      proxy_pass http://api:5001;
-      include proxy.conf;
-    }
-
     location /console/api {
       proxy_pass http://api:5001;
       include proxy.conf;
