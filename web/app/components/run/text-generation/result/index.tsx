@@ -350,7 +350,7 @@ const Result: FC<IResultProps> = ({
     <TracingPanel
       className='bg-background-section-burn'
       list={workflowProcessData?.tracing || []}
-      ifForRun={true}
+      isForRun={true}
     />
     // <TextGenerationRes
     //   isWorkflow={isWorkflow}

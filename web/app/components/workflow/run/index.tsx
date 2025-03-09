@@ -162,6 +162,7 @@ const RunPanel: FC<RunProps> = ({ hideResult, activeTab = 'RESULT', runID, getRe
           <TracingPanel
             className='bg-background-section-burn'
             list={list}
+            isForRun
           />
         )}
       </div>

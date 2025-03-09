@@ -24,7 +24,7 @@ type TracingPanelProps = {
   className?: string
   hideNodeInfo?: boolean
   hideNodeProcessDetail?: boolean
-  ifForRun?: boolean
+  isForRun?: boolean
 }
 
 const TracingPanel: FC<TracingPanelProps> = ({
@@ -32,7 +32,7 @@ const TracingPanel: FC<TracingPanelProps> = ({
   className,
   hideNodeInfo = false,
   hideNodeProcessDetail = false,
-  ifForRun = false,
+  isForRun = false,
 }) => {
   const { t } = useTranslation()
   const treeNodes = formatNodeList(list, t)
@@ -140,7 +140,7 @@ const TracingPanel: FC<TracingPanelProps> = ({
             {node?.parallelDetail?.branchTitle}
           </div>
           {
-            ifForRun ? <NodePanelForRun
+            isForRun ? <NodePanelForRun
               nodeInfo={node!}
               onShowIterationDetail={handleShowIterationResultList}
               onShowRetryDetail={handleShowRetryResultList}
