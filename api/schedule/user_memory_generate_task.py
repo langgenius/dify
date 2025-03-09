@@ -69,18 +69,10 @@ def update_memory_for_appid(app_id: str, memory_app_id: str):
     # Process in batches to avoid memory issues
     for i in range(0, len(users_to_update), batch_size):
         batch = users_to_update[i : i + batch_size]
-
         try:
-            # Process users in parallel
-            from concurrent.futures import ThreadPoolExecutor
-
-            with ThreadPoolExecutor(max_workers=min(len(batch), 5)) as executor:
-                futures = [executor.submit(process_user, user, memory_app_id, app_id) for user in batch]
-                # Wait for all futures to complete
-                for future in futures:
-                    future.result()  # This will raise any exceptions that occurred
-
-            updated_users_count += len(batch)
+            for user in batch:
+                process_user(user, memory_app_id, app_id)
+                updated_users_count += 1
 
             # Commit after each batch
             db.session.commit()
