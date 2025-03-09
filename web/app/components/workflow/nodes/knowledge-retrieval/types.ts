@@ -37,4 +37,6 @@ export type KnowledgeRetrievalNodeType = CommonNodeType & {
   multiple_retrieval_config?: MultipleRetrievalConfig
   single_retrieval_config?: SingleRetrievalConfig
   _datasets?: DataSet[]
+  dataset_ids_variable_selector: ValueSelector
+  dynamic_dataset_enable: boolean
 }

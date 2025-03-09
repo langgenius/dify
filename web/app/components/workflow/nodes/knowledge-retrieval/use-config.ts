@@ -261,6 +261,10 @@ const useConfig = (id: string, payload: KnowledgeRetrievalNodeType) => {
     return varPayload.type === VarType.string
   }, [])
 
+  const filterDatasetIdsVar = useCallback((varPayload: Var) => {
+    return varPayload.type === VarType.arrayString
+  }, [])
+
   // single run
   const {
     isShowSingleRun,
@@ -287,6 +291,30 @@ const useConfig = (id: string, payload: KnowledgeRetrievalNodeType) => {
     })
   }, [runInputData, setRunInputData])
 
+  const handleDatasetIdsVarChange = useCallback((newVar: ValueSelector | string) => {
+    const newInputs = produce(inputs, (draft) => {
+      draft.dataset_ids_variable_selector = newVar as ValueSelector
+    })
+    setInputs(newInputs)
+  }, [inputs, setInputs])
+
+  const setDynamicDatasetEnable = useCallback((newVar: boolean) => {
+    setSelectedDatasets([])
+    const newInputs = produce(inputs, (draft) => {
+      draft.dynamic_dataset_enable = newVar
+      draft.dataset_ids_variable_selector = []
+    })
+    setInputs(newInputs)
+  }, [inputs, setInputs, setSelectedDatasets])
+
+  const dataset_ids = runInputData.dataset_ids
+  const setDatasetIds = useCallback((newQuery: string[]) => {
+    setRunInputData({
+      ...runInputData,
+      dataset_ids: newQuery,
+    })
+  }, [runInputData, setRunInputData])
+
   return {
     readOnly,
     inputs,
@@ -308,6 +336,11 @@ const useConfig = (id: string, payload: KnowledgeRetrievalNodeType) => {
     runResult,
     rerankModelOpen,
     setRerankModelOpen,
+    setDynamicDatasetEnable,
+    filterDatasetIdsVar,
+    handleDatasetIdsVarChange,
+    dataset_ids,
+    setDatasetIds,
   }
 }
 
