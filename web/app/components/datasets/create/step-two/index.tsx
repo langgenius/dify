@@ -581,7 +581,7 @@ const StepTwo = ({
   return (
     <div className='flex w-full h-full'>
       <div className={cn('relative h-full w-1/2 py-6 overflow-y-auto', isMobile ? 'px-4' : 'px-12')}>
-        <div className={'system-md-semibold mb-1'}>{t('datasetCreation.stepTwo.segmentation')}</div>
+        <div className={'system-md-semibold text-text-secondary mb-1'}>{t('datasetCreation.stepTwo.segmentation')}</div>
         {((isInUpload && [ChunkingMode.text, ChunkingMode.qa].includes(currentDataset!.doc_form))
           || isUploadInEmptyDataset
           || isInInit)
@@ -832,10 +832,10 @@ const StepTwo = ({
             </div>
           </OptionCard>}
         <Divider className='my-5' />
-        <div className={'system-md-semibold mb-1'}>{t('datasetCreation.stepTwo.indexMode')}</div>
+        <div className={'system-md-semibold text-text-secondary mb-1'}>{t('datasetCreation.stepTwo.indexMode')}</div>
         <div className='flex items-center gap-2'>
           {(!hasSetIndexType || (hasSetIndexType && indexingType === IndexingType.QUALIFIED)) && (
-            <OptionCard className='flex-1'
+            <OptionCard className='flex-1 self-stretch'
               title={<div className='flex items-center'>
                 {t('datasetCreation.stepTwo.qualified')}
                 <Badge className={cn('ml-1 h-[18px]', (!hasSetIndexType && indexType === IndexingType.QUALIFIED) ? 'border-text-accent-secondary text-text-accent-secondary' : '')} uppercase>
@@ -889,7 +889,7 @@ const StepTwo = ({
                 placement={'top'}
               >
                 <PortalToFollowElemTrigger asChild>
-                  <OptionCard className='flex-1'
+                  <OptionCard className='flex-1 self-stretch'
                     title={t('datasetCreation.stepTwo.economical')}
                     description={t('datasetCreation.stepTwo.economicalTip')}
                     icon={<Image src={indexMethodIcon.economical} alt='' />}
@@ -916,11 +916,11 @@ const StepTwo = ({
         </div>
         {!hasSetIndexType && indexType === IndexingType.QUALIFIED && (
           <div className='mt-2 h-10 p-2 flex items-center gap-x-0.5 rounded-xl border-[0.5px] border-components-panel-border overflow-hidden bg-components-panel-bg-blur backdrop-blur-[5px] shadow-xs'>
-            <div className='absolute top-0 left-0 right-0 bottom-0 bg-[linear-gradient(92deg,rgba(247,144,9,0.25)_0%,rgba(255,255,255,0.00)_100%)] opacity-40'></div>
+            <div className='absolute top-0 left-0 right-0 bottom-0 bg-dataset-warning-message-bg opacity-40'></div>
             <div className='p-1'>
               <AlertTriangle className='size-4 text-text-warning-secondary' />
             </div>
-            <span className='system-xs-medium'>{t('datasetCreation.stepTwo.highQualityTip')}</span>
+            <span className='system-xs-medium text-text-primary'>{t('datasetCreation.stepTwo.highQualityTip')}</span>
           </div>
         )}
         {hasSetIndexType && indexType === IndexingType.ECONOMICAL && (
@@ -932,7 +932,7 @@ const StepTwo = ({
         {/* Embedding model */}
         {indexType === IndexingType.QUALIFIED && (
           <div className='mt-5'>
-            <div className={cn('system-md-semibold mb-1', datasetId && 'flex justify-between items-center')}>{t('datasetSettings.form.embeddingModel')}</div>
+            <div className={cn('system-md-semibold text-text-secondary mb-1', datasetId && 'flex justify-between items-center')}>{t('datasetSettings.form.embeddingModel')}</div>
             <ModelSelector
               readonly={isModelAndRetrievalConfigDisabled}
               triggerClassName={isModelAndRetrievalConfigDisabled ? 'opacity-50' : ''}
@@ -943,7 +943,7 @@ const StepTwo = ({
               }}
             />
             {isModelAndRetrievalConfigDisabled && (
-              <div className='mt-2 system-xs-medium'>
+              <div className='mt-2 system-xs-medium text-text-tertiary'>
                 {t('datasetCreation.stepTwo.indexSettingTip')}
                 <Link className='text-text-accent' href={`/datasets/${datasetId}/settings`}>{t('datasetCreation.stepTwo.datasetSettingLink')}</Link>
               </div>
@@ -956,7 +956,7 @@ const StepTwo = ({
           {!isModelAndRetrievalConfigDisabled
             ? (
               <div className={'mb-1'}>
-                <div className='system-md-semibold mb-0.5'>{t('datasetSettings.form.retrievalSetting.title')}</div>
+                <div className='system-md-semibold text-text-secondary mb-0.5'>{t('datasetSettings.form.retrievalSetting.title')}</div>
                 <div className='body-xs-regular text-text-tertiary'>
                   <a target='_blank' rel='noopener noreferrer' href='https://docs.dify.ai/guides/knowledge-base/create-knowledge-and-upload-documents#id-4-retrieval-settings' className='text-text-accent'>{t('datasetSettings.form.retrievalSetting.learnMore')}</a>
                   {t('datasetSettings.form.retrievalSetting.longDescription')}
@@ -964,7 +964,7 @@ const StepTwo = ({
               </div>
             )
             : (
-              <div className={cn('system-md-semibold mb-0.5', 'flex justify-between items-center')}>
+              <div className={cn('system-md-semibold text-text-secondary mb-0.5', 'flex justify-between items-center')}>
                 <div>{t('datasetSettings.form.retrievalSetting.title')}</div>
               </div>
             )}

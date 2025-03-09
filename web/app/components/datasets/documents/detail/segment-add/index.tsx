@@ -103,15 +103,13 @@ const SegmentAdd: FC<ISegmentAddProps> = ({
         manualClose
         trigger='click'
         htmlContent={
-          <div className='w-full p-1'>
-            <button
-              type='button'
-              className='w-full py-1.5 px-2 flex items-center hover:bg-state-base-hover rounded-lg text-text-secondary system-md-regular'
-              onClick={showBatchModal}
-            >
-              {t('datasetDocuments.list.action.batchAdd')}
-            </button>
-          </div>
+          <button
+            type='button'
+            className='w-full py-1.5 px-2 flex items-center rounded-lg text-text-secondary system-md-regular'
+            onClick={showBatchModal}
+          >
+            {t('datasetDocuments.list.action.batchAdd')}
+          </button>
         }
         btnElement={
           <div className='flex justify-center items-center' >
