@@ -1,8 +1,6 @@
 from collections.abc import Generator, Mapping
 from typing import Any, Union
 
-from openai._exceptions import RateLimitError
-
 from configs import dify_config
 from core.app.apps.advanced_chat.app_generator import AdvancedChatAppGenerator
 from core.app.apps.agent_chat.app_generator import AgentChatAppGenerator
@@ -13,6 +11,7 @@ from core.app.entities.app_invoke_entities import InvokeFrom
 from core.app.features.rate_limiting import RateLimit
 from models.model import Account, App, AppMode, EndUser
 from models.workflow import Workflow
+from openai._exceptions import RateLimitError
 from services.errors.llm import InvokeRateLimitError
 from services.workflow_service import WorkflowService
 
@@ -39,6 +38,17 @@ class AppGenerateService:
         max_active_request = AppGenerateService._get_max_active_requests(app_model)
         rate_limit = RateLimit(app_model.id, max_active_request)
         request_id = RateLimit.gen_request_key()
+
+        # extract user_memory from user if it is an EndUser
+        if isinstance(user, EndUser):
+            user_memory = user.memory
+        else:
+            user_memory = None
+
+        # add user_memory to args
+        new_args = dict(args)
+        new_args["inputs"]["user_memory"] = user_memory
+
         try:
             request_id = rate_limit.enter(request_id)
             if app_model.mode == AppMode.COMPLETION.value:
@@ -46,7 +56,7 @@ class AppGenerateService:
                     generator=CompletionAppGenerator().generate(
                         app_model=app_model,
                         user=user,
-                        args=args,
+                        args=new_args,
                         invoke_from=invoke_from,
                         streaming=streaming,
                     ),
@@ -56,7 +66,7 @@ class AppGenerateService:
                 generator = AgentChatAppGenerator().generate(
                     app_model=app_model,
                     user=user,
-                    args=args,
+                    args=new_args,
                     invoke_from=invoke_from,
                     streaming=streaming,
                 )
@@ -69,7 +79,7 @@ class AppGenerateService:
                     generator=ChatAppGenerator().generate(
                         app_model=app_model,
                         user=user,
-                        args=args,
+                        args=new_args,
                         invoke_from=invoke_from,
                         streaming=streaming,
                     ),
@@ -82,7 +92,7 @@ class AppGenerateService:
                         app_model=app_model,
                         workflow=workflow,
                         user=user,
-                        args=args,
+                        args=new_args,
                         invoke_from=invoke_from,
                         streaming=streaming,
                     ),
@@ -94,7 +104,7 @@ class AppGenerateService:
                     app_model=app_model,
                     workflow=workflow,
                     user=user,
-                    args=args,
+                    args=new_args,
                     invoke_from=invoke_from,
                     streaming=streaming,
                     call_depth=0,
