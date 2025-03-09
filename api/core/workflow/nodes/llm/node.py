@@ -94,6 +94,9 @@ class LLMNode(BaseNode[LLMNodeData]):
     def _run(self) -> Generator[NodeEvent | InNodeEvent, None, None]:
         node_inputs: Optional[dict[str, Any]] = None
         process_data = None
+        result_text = ""
+        usage = LLMUsage.empty_usage()
+        finish_reason = None
 
         try:
             # init messages template
@@ -178,9 +181,6 @@ class LLMNode(BaseNode[LLMNodeData]):
                 stop=stop,
             )
 
-            result_text = ""
-            usage = LLMUsage.empty_usage()
-            finish_reason = None
             for event in generator:
                 if isinstance(event, RunStreamChunkEvent):
                     yield event
