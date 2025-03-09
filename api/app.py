@@ -35,6 +35,11 @@ else:
     from app_factory import create_app
 
     app = create_app()
+
+    # fix:Flask solves the problem of Chinese garbled characters. If the response returns Chinese characters (such as \ uxxx, etc.), it is necessary to set secure_ascii=False
+    app.json.ensure_ascii = False
+    app.config['JSON_AS_ASCII'] = False
+
     celery = app.extensions["celery"]
 
 if __name__ == "__main__":
