@@ -69,7 +69,7 @@ class UserProfile(Resource):
                   enum: [male, female, unknown]
                 major:
                   type: string
-                  maxLength: 20
+                  maxLength: 50
         responses:
           200:
             description: Profile updated successfully
@@ -106,10 +106,10 @@ class UserProfile(Resource):
         if 'major' in data:
             major = data['major']
 
-            if isinstance(major, str) and len(major) > 20:
-                return {"success": False, "message": "Major exceeds maximum length"}, 400
-            elif major is not None:  # Handle non-string or None values appropriately
+            if not isinstance(major, str):
                 return {"success": False, "message": "Major must be a string value"}, 400
+            if len(major) > 50:
+                return {"success": False, "message": "Major exceeds maximum length of 50"}, 400
 
             validated_data['major'] = major
 
