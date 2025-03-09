@@ -134,7 +134,7 @@ def process_user(user: EndUser, memory_app_id: str, app_id: str):
     if user.memory_updated_at:
         message_query = message_query.filter(Message.created_at > user.memory_updated_at)
 
-    latest_messages = message_query.order_by(asc(Message.created_at)).limit(10).all()
+    latest_messages = message_query.order_by(asc(Message.created_at)).all()
 
     # Skip if no messages found (unlikely due to our query, but just to be safe)
     if not latest_messages:
@@ -163,14 +163,11 @@ def process_user(user: EndUser, memory_app_id: str, app_id: str):
         }
     }
 
-    click.echo(click.style(f"Args: {args}", fg="green"))
-
     # Call the memory generation service
+    click.echo(click.style(f"Start to generate memory for user {user.id} in app {app_id}", fg="green"))
     response = AppGenerateService.generate(
         app_model=memory_app_model, user=user, args=args, invoke_from=InvokeFrom.SCHEDULER, streaming=False
     )
-
-    click.echo(click.style(f"Response: {response}, type: {type(response)}", fg="green"))
 
     # Save the updated memory to the user
     if (
@@ -182,6 +179,6 @@ def process_user(user: EndUser, memory_app_id: str, app_id: str):
     ):
         user.memory = response["data"]["outputs"]["result"]
         user.memory_updated_at = latest_messages[-1].created_at
-        click.echo(click.style(f"Updated memory for user {user.id}", fg="green"))
+        click.echo(click.style(f"Updated memory for user {user.id} in app {app_id}", fg="green"))
     else:
-        click.echo(click.style(f"Failed to update memory for user {user.id}, invalid response", fg="yellow"))
+        click.echo(click.style(f"Failed to update memory for user {user.id}, invalid response format", fg="yellow"))
