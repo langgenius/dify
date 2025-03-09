@@ -930,3 +930,18 @@ class DatasetAutoDisableLog(db.Model):  # type: ignore[name-defined]
     document_id = db.Column(StringUUID, nullable=False)
     notified = db.Column(db.Boolean, nullable=False, server_default=db.text("false"))
     created_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
+
+
+class RateLimitLog(db.Model):  # type: ignore[name-defined]
+    __tablename__ = "rate_limit_logs"
+    __table_args__ = (
+        db.PrimaryKeyConstraint("id", name="rate_limit_log_pkey"),
+        db.Index("rate_limit_log_tenant_idx", "tenant_id"),
+        db.Index("rate_limit_log_operation_idx", "operation"),
+    )
+
+    id = db.Column(StringUUID, server_default=db.text("uuid_generate_v4()"))
+    tenant_id = db.Column(StringUUID, nullable=False)
+    subscription_plan = db.Column(db.String(255), nullable=False)
+    operation = db.Column(db.String(255), nullable=False)
+    created_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
