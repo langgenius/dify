@@ -10,12 +10,18 @@ import { useTranslation } from 'react-i18next'
 import { useBoolean } from 'ahooks'
 import { RiArrowDropDownLine } from '@remixicon/react'
 
-type Props = { name: string, payload: FieldType, depth?: number }
+type Props = {
+  name: string,
+  payload: FieldType,
+  required: boolean,
+  depth?: number,
+}
 
 const Field: FC<Props> = ({
   name,
   payload,
   depth = 1,
+  required,
 }) => {
   const { t } = useTranslation()
   const hasChildren = payload.type === Type.object && payload.properties
@@ -36,7 +42,7 @@ const Field: FC<Props> = ({
             )}
             <div className='h-6 truncate system-sm-medium text-text-secondary leading-6'>{name}</div>
             <div className='ml-3 shrink-0 system-xs-regular text-text-tertiary leading-6'>{getFieldType(payload)}</div>
-            <div className='ml-3 text-text-warning system-2xs-medium-uppercase leading-6'>{t('app.structOutput.required')}</div>
+            {required && <div className='ml-3 text-text-warning system-2xs-medium-uppercase leading-6'>{t('app.structOutput.required')}</div>}
           </div>
           {payload.description && (
             <div className='flex'>
@@ -54,6 +60,7 @@ const Field: FC<Props> = ({
               name={name}
               payload={payload.properties?.[name] as FieldType}
               depth={depth + 1}
+              required={!!payload.required?.includes(name)}
             />
           ))}
         </div>

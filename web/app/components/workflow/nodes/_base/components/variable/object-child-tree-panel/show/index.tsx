@@ -3,6 +3,7 @@ import type { FC } from 'react'
 import React from 'react'
 import type { StructuredOutput } from '../../../../../llm/types'
 import Field from './field'
+import { useTranslation } from 'react-i18next'
 
 type Props = {
   payload: StructuredOutput
@@ -11,17 +12,21 @@ type Props = {
 const ShowPanel: FC<Props> = ({
   payload,
 }) => {
-  const schema = payload.schema
-  const fieldNames = Object.keys(schema.properties)
+  const { t } = useTranslation()
+  const schema = {
+    ...payload,
+    schema: {
+      ...payload.schema,
+      description: t('app.structOutput.LLMResponse'),
+    },
+  }
   return (
     <div>
-      {fieldNames.map(name => (
-        <Field
-          key={name}
-          name={name}
-          payload={schema.properties[name]}
-        />
-      ))}
+      <Field
+        name={'response'}
+        payload={schema.schema}
+        required
+      />
     </div>
   )
 }

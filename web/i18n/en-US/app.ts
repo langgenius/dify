@@ -183,6 +183,7 @@ const translation = {
   structOutput: {
     moreFillTip: 'Showing max 10 levels of nesting',
     required: 'Required',
+    LLMResponse: 'LLM Response',
   },
 }
 

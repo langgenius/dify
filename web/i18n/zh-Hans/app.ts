@@ -184,6 +184,7 @@ const translation = {
   structOutput: {
     moreFillTip: '最多显示 10 级嵌套',
     required: '必填',
+    LLMResponse: 'LLM 的响应',
   },
 }
 
