@@ -69,9 +69,12 @@ export const correctModelProvider = (provider: string) => {
   return `langgenius/${provider}/${provider}`
 }
 
-export const correctToolProvider = (provider: string) => {
+export const correctToolProvider = (provider: string, toolInCollectionList?: boolean) => {
   if (!provider)
     return ''
+
+  if (toolInCollectionList)
+    return provider
 
   if (provider.includes('/'))
     return provider

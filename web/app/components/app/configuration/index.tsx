@@ -625,13 +625,14 @@ const Configuration: FC = () => {
               tools: modelConfig.agent_mode?.tools.filter((tool: any) => {
                 return !tool.dataset
               }).map((tool: any) => {
+                const toolInCollectionList = collectionList.find(c => tool.provider_id === c.id)
                 return {
                   ...tool,
                   isDeleted: res.deleted_tools?.some((deletedTool: any) => deletedTool.id === tool.id && deletedTool.tool_name === tool.tool_name),
-                  notAuthor: collectionList.find(c => tool.provider_id === c.id)?.is_team_authorization === false,
+                  notAuthor: toolInCollectionList?.is_team_authorization === false,
                   ...(tool.provider_type === 'builtin' ? {
-                    provider_id: correctToolProvider(tool.provider_name),
-                    provider_name: correctToolProvider(tool.provider_name),
+                    provider_id: correctToolProvider(tool.provider_name, !!toolInCollectionList),
+                    provider_name: correctToolProvider(tool.provider_name, !!toolInCollectionList),
                   } : {}),
                 }
               }),
