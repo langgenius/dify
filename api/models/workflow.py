@@ -1,4 +1,5 @@
 import json
+import uuid
 from collections.abc import Mapping, Sequence
 from datetime import UTC, datetime
 from enum import Enum
@@ -105,7 +106,7 @@ class Workflow(Base):
         db.Index("workflow_version_idx", "tenant_id", "app_id", "version"),
     )
 
-    id: Mapped[str] = mapped_column(StringUUID, server_default=db.text("uuid_generate_v4()"))
+    id: Mapped[str] = mapped_column(StringUUID, default=lambda: uuid.uuid4())
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     type: Mapped[str] = mapped_column(db.String(255), nullable=False)
@@ -400,7 +401,7 @@ class WorkflowRun(Base):
         db.Index("workflow_run_tenant_app_sequence_idx", "tenant_id", "app_id", "sequence_number"),
     )
 
-    id: Mapped[str] = mapped_column(StringUUID, server_default=db.text("uuid_generate_v4()"))
+    id: Mapped[str] = mapped_column(StringUUID, default=lambda: uuid.uuid4())
     tenant_id: Mapped[str] = mapped_column(StringUUID)
     app_id: Mapped[str] = mapped_column(StringUUID)
     sequence_number: Mapped[int] = mapped_column()
@@ -413,14 +414,14 @@ class WorkflowRun(Base):
     status: Mapped[str] = mapped_column(db.String(255))  # running, succeeded, failed, stopped, partial-succeeded
     outputs: Mapped[Optional[str]] = mapped_column(sa.Text, default="{}")
     error: Mapped[Optional[str]] = mapped_column(db.Text)
-    elapsed_time = db.Column(db.Float, nullable=False, server_default=sa.text("0"))
-    total_tokens: Mapped[int] = mapped_column(sa.BigInteger, server_default=sa.text("0"))
-    total_steps = db.Column(db.Integer, server_default=db.text("0"))
+    elapsed_time = db.Column(db.Float, nullable=False, default=0)
+    total_tokens: Mapped[int] = mapped_column(sa.BigInteger, default=0)
+    total_steps = db.Column(db.Integer, default=0)
     created_by_role: Mapped[str] = mapped_column(db.String(255))  # account, end_user
     created_by = db.Column(StringUUID, nullable=False)
     created_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
     finished_at = db.Column(db.DateTime)
-    exceptions_count = db.Column(db.Integer, server_default=db.text("0"))
+    exceptions_count = db.Column(db.Integer, default=0)
 
     @property
     def created_by_account(self):
@@ -629,7 +630,7 @@ class WorkflowNodeExecution(Base):
         ),
     )
 
-    id: Mapped[str] = mapped_column(StringUUID, server_default=db.text("uuid_generate_v4()"))
+    id: Mapped[str] = mapped_column(StringUUID, default=lambda: uuid.uuid4())
     tenant_id: Mapped[str] = mapped_column(StringUUID)
     app_id: Mapped[str] = mapped_column(StringUUID)
     workflow_id: Mapped[str] = mapped_column(StringUUID)
@@ -646,7 +647,7 @@ class WorkflowNodeExecution(Base):
     outputs: Mapped[Optional[str]] = mapped_column(db.Text)
     status: Mapped[str] = mapped_column(db.String(255))
     error: Mapped[Optional[str]] = mapped_column(db.Text)
-    elapsed_time: Mapped[float] = mapped_column(db.Float, server_default=db.text("0"))
+    elapsed_time: Mapped[float] = mapped_column(db.Float, default=0)
     execution_metadata: Mapped[Optional[str]] = mapped_column(db.Text)
     created_at: Mapped[datetime] = mapped_column(db.DateTime, server_default=func.current_timestamp())
     created_by_role: Mapped[str] = mapped_column(db.String(255))
@@ -758,7 +759,7 @@ class WorkflowAppLog(Base):
         db.Index("workflow_app_log_app_idx", "tenant_id", "app_id"),
     )
 
-    id: Mapped[str] = mapped_column(StringUUID, server_default=db.text("uuid_generate_v4()"))
+    id: Mapped[str] = mapped_column(StringUUID, default=lambda: uuid.uuid4())
     tenant_id: Mapped[str] = mapped_column(StringUUID)
     app_id: Mapped[str] = mapped_column(StringUUID)
     workflow_id = db.Column(StringUUID, nullable=False)
