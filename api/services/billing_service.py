@@ -124,12 +124,12 @@ class BillingService:
                 raise EducationActivateLimitError()
 
             cls.activation_rate_limit.increment_rate_limit(account.email)
+            params = {"account_id": account.id}
             json = {
-                "account_id": account.id,
                 "institution": institution,
                 "token": token,
             }
-            return BillingService._send_request("POST", "/education/", json=json)
+            return BillingService._send_request("POST", "/education/", json=json, params=params)
 
         @classmethod
         def autocomplete(cls, keywords: str, page: int = 0, limit: int = 20):
