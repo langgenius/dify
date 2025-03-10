@@ -3,19 +3,20 @@ import datetime
 import pytz
 from flask import request
 from flask_login import current_user  # type: ignore
-from flask_restful import Resource, fields, marshal_with, reqparse  # type: ignore
+from flask_restful import (Resource, fields, marshal_with,  # type: ignore
+                           reqparse)
 
 from configs import dify_config
 from constants.languages import supported_language
 from controllers.console import api
 from controllers.console.workspace.error import (
-    AccountAlreadyInitedError,
-    CurrentPasswordIncorrectError,
-    InvalidAccountDeletionCodeError,
-    InvalidInvitationCodeError,
-    RepeatPasswordNotMatchError,
-)
-from controllers.console.wraps import account_initialization_required, enterprise_license_required, setup_required
+    AccountAlreadyInitedError, CurrentPasswordIncorrectError,
+    InvalidAccountDeletionCodeError, InvalidInvitationCodeError,
+    RepeatPasswordNotMatchError)
+from controllers.console.wraps import (account_initialization_required,
+                                       cloud_edition_billing_enabled,
+                                       enterprise_license_required,
+                                       only_edition_cloud, setup_required)
 from extensions.ext_database import db
 from fields.member_fields import account_fields
 from libs.helper import TimestampField, timezone
@@ -23,7 +24,8 @@ from libs.login import login_required
 from models import AccountIntegrate, InvitationCode
 from services.account_service import AccountService
 from services.billing_service import BillingService
-from services.errors.account import CurrentPasswordIncorrectError as ServiceCurrentPasswordIncorrectError
+from services.errors.account import \
+    CurrentPasswordIncorrectError as ServiceCurrentPasswordIncorrectError
 
 
 class AccountInitApi(Resource):
@@ -292,6 +294,78 @@ class AccountDeleteUpdateFeedbackApi(Resource):
         return {"result": "success"}
 
 
+class EducationVerifyApi(Resource):
+    verify_fields = {
+        "token": fields.String,
+    }
+
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @only_edition_cloud
+    @cloud_edition_billing_enabled
+    @marshal_with(verify_fields)
+    def get(self):
+        account = current_user
+
+        return BillingService.EducationIdentity.verify(account.id, account.email)
+
+
+class EducationApi(Resource):
+    status_fields = {
+        "result": fields.Boolean,
+    }
+
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @only_edition_cloud
+    @cloud_edition_billing_enabled
+    def post(self):
+        account = current_user
+
+        parser = reqparse.RequestParser()
+        parser.add_argument("token", type=str, required=True, location="json")
+        parser.add_argument("institution", type=str, required=True, location="json")
+        args = parser.parse_args()
+
+        return BillingService.EducationIdentity.activate(account, args["token"], args["institution"])
+
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @only_edition_cloud
+    @cloud_edition_billing_enabled
+    @marshal_with(status_fields)
+    def get(self):
+        account = current_user
+
+        return BillingService.EducationIdentity.is_active(account.id)
+
+
+class EducationAutoCompleteApi(Resource):
+    data_fields = {
+        "data": fields.List(fields.String),
+        "curr_page": fields.Integer,
+        "has_next": fields.Boolean,
+    }
+
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @only_edition_cloud
+    @cloud_edition_billing_enabled
+    @marshal_with(data_fields)
+    def get(self):
+        parser = reqparse.RequestParser()
+        parser.add_argument("keywords", type=str, required=True, location="args")
+        parser.add_argument("page", type=int, required=False, location="args", default=0)
+        parser.add_argument("limit", type=int, required=False, location="args", default=20)
+        args = parser.parse_args()
+
+        return BillingService.EducationIdentity.autocomplete(args["keywords"], args["page"], args["limit"])
+
+
 # Register API resources
 api.add_resource(AccountInitApi, "/account/init")
 api.add_resource(AccountProfileApi, "/account/profile")
@@ -305,5 +379,8 @@ api.add_resource(AccountIntegrateApi, "/account/integrates")
 api.add_resource(AccountDeleteVerifyApi, "/account/delete/verify")
 api.add_resource(AccountDeleteApi, "/account/delete")
 api.add_resource(AccountDeleteUpdateFeedbackApi, "/account/delete/feedback")
+api.add_resource(EducationVerifyApi, "/account/education/verify")
+api.add_resource(EducationApi, "/account/education")
+api.add_resource(EducationAutoCompleteApi, "/account/education/autocomplete")
 # api.add_resource(AccountEmailApi, '/account/email')
 # api.add_resource(AccountEmailVerifyApi, '/account/email-verify')
