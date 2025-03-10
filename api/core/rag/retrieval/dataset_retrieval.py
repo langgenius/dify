@@ -773,11 +773,11 @@ class DatasetRetrieval:
         metadata_filtering_conditions: Optional[MetadataFilteringCondition],
         inputs: dict,
     ) -> Optional[dict[str, list[str]]]:
-        document_query = db.session.query(Document).filter(
-            Document.dataset_id.in_(dataset_ids),
-            Document.indexing_status == "completed",
-            Document.enabled == True,
-            Document.archived == False,
+        document_query = db.session.query(DatasetDocument).filter(
+            DatasetDocument.dataset_id.in_(dataset_ids),
+            DatasetDocument.indexing_status == "completed",
+            DatasetDocument.enabled == True,
+            DatasetDocument.archived == False,
         )
         if metadata_filtering_mode == "disabled":
             return None
@@ -821,7 +821,7 @@ class DatasetRetrieval:
     ) -> list[dict[str, Any]]:
         # get all metadata field
         metadata_fields = db.session.query(DatasetMetadata).filter(DatasetMetadata.dataset_id.in_(dataset_ids)).all()
-        all_metadata_fields = [metadata_field.field_name for metadata_field in metadata_fields]
+        all_metadata_fields = [metadata_field.name for metadata_field in metadata_fields]
         # get metadata model config
         if metadata_model_config is None:
             raise ValueError("metadata_model_config is required")
