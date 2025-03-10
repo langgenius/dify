@@ -79,12 +79,12 @@ SupportedComparisonOperator = Literal[
     # for string or array
     "contains",
     "not contains",
-    "starts with",
-    "ends with",
+    "start with",
+    "end with",
     "is",
     "is not",
     "empty",
-    "is not empty",
+    "not empty",
     # for number
     "=",
     "≠",
