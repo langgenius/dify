@@ -4,7 +4,7 @@ from collections import defaultdict
 from collections.abc import Mapping, Sequence
 from typing import Any, Optional, cast
 
-from sqlalchemy import func
+from sqlalchemy import and_, func, or_
 
 from core.app.app_config.entities import DatasetRetrieveConfigEntity
 from core.app.entities.app_invoke_entities import ModelConfigWithCredentialsEntity
@@ -16,6 +16,7 @@ from core.model_runtime.entities.model_entities import ModelFeature, ModelType
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
 from core.prompt.simple_prompt_transform import ModelMode
 from core.rag.datasource.retrieval_service import RetrievalService
+from core.rag.entities.metadata_entities import Condition, MetadataCondition
 from core.rag.retrieval.dataset_retrieval import DatasetRetrieval
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from core.variables import StringSegment
@@ -135,7 +136,7 @@ class KnowledgeRetrievalNode(LLMNode):
             if not dataset:
                 continue
             available_datasets.append(dataset)
-        metadata_filter_document_ids = self._get_metadata_filter_condition(
+        metadata_filter_document_ids, metadata_condition = self._get_metadata_filter_condition(
             [dataset.id for dataset in available_datasets], query, node_data
         )
         all_documents = []
@@ -168,6 +169,7 @@ class KnowledgeRetrievalNode(LLMNode):
                     model_instance=model_instance,
                     planning_strategy=planning_strategy,
                     metadata_filter_document_ids=metadata_filter_document_ids,
+                    metadata_condition=metadata_condition,
                 )
         elif node_data.retrieval_mode == DatasetRetrieveConfigEntity.RetrieveStrategy.MULTIPLE.value:
             if node_data.multiple_retrieval_config is None:
@@ -215,6 +217,7 @@ class KnowledgeRetrievalNode(LLMNode):
                 weights=weights,
                 reranking_enable=node_data.multiple_retrieval_config.reranking_enable,
                 metadata_filter_document_ids=metadata_filter_document_ids,
+                metadata_condition=metadata_condition,
             )
         dify_documents = [item for item in all_documents if item.provider == "dify"]
         external_documents = [item for item in all_documents if item.provider == "external"]
@@ -284,7 +287,7 @@ class KnowledgeRetrievalNode(LLMNode):
 
     def _get_metadata_filter_condition(
         self, dataset_ids: list, query: str, node_data: KnowledgeRetrievalNodeData
-    ) -> Optional[dict[str, list[str]]]:
+    ) -> tuple[Optional[dict[str, list[str]]], Optional[MetadataCondition]]:
         document_query = db.session.query(Document).filter(
             Document.dataset_id.in_(dataset_ids),
             Document.indexing_status == "completed",
@@ -292,33 +295,51 @@ class KnowledgeRetrievalNode(LLMNode):
             Document.archived == False,
         )
         if node_data.metadata_filtering_mode == "disabled":
-            return None
+            return None, None
         elif node_data.metadata_filtering_mode == "automatic":
             automatic_metadata_filters = self._automatic_metadata_filter_func(dataset_ids, query, node_data)
             if automatic_metadata_filters:
+                conditions = []
+                filters = []
                 for filter in automatic_metadata_filters:
-                    document_query = self._process_metadata_filter_func(
-                        filter.get("condition"), filter.get("metadata_name"), filter.get("value"), document_query
+                    self._process_metadata_filter_func(
+                        filter.get("condition"), filter.get("metadata_name"), filter.get("value"), filters
                     )
+                    conditions.append(Condition(
+                        name=filter.get("metadata_name"),
+                        comparison_operator=filter.get("condition"),
+                        value=filter.get("value"),
+                    ))
+                metadata_condition = MetadataCondition(
+                    logical_operator="or",
+                    conditions=conditions,
+                )
         elif node_data.metadata_filtering_mode == "manual":
             if node_data.metadata_filtering_conditions:
                 for condition in node_data.metadata_filtering_conditions.conditions:
+                    filters = []
                     metadata_name = condition.name
                     expected_value = condition.value
                     if expected_value:
                         if isinstance(expected_value, str):
                             expected_value = self.graph_runtime_state.variable_pool.convert_template(expected_value).text
-                        document_query = self._process_metadata_filter_func(
-                            condition.comparison_operator, metadata_name, expected_value, document_query
+
+                        filters = self._process_metadata_filter_func(
+                            condition.comparison_operator, metadata_name, expected_value, filters
                         )
         else:
             raise ValueError("Invalid metadata filtering mode")
+        if filters:
+            if node_data.metadata_filtering_conditions.logical_operator == "and":
+                document_query = document_query.filter(and_(*filters))
+            else:
+                document_query = document_query.filter(or_(*filters))
         documnents = document_query.all()
         # group by dataset_id
         metadata_filter_document_ids = defaultdict(list)
         for document in documnents:
             metadata_filter_document_ids[document.dataset_id].append(document.id)
-        return metadata_filter_document_ids
+        return metadata_filter_document_ids, metadata_condition
 
     def _automatic_metadata_filter_func(
         self, dataset_ids: list, query: str, node_data: KnowledgeRetrievalNodeData
@@ -383,41 +404,42 @@ class KnowledgeRetrievalNode(LLMNode):
             return []
         return automatic_metadata_filters
 
-    def _process_metadata_filter_func(self, condition: str, metadata_name: str, value: str, query):
+    def _process_metadata_filter_func(self, condition: str, metadata_name: str, value: str, filters: list):
         match condition:
             case "contains":
-                query = query.filter(Document.doc_metadata[metadata_name].like(f'"%{value}%"'))
+                filters.append(Document.doc_metadata[metadata_name].like(f'"%{value}%"'))
             case "not contains":
-                query = query.filter(Document.doc_metadata[metadata_name].notlike(f'"%{value}%"'))
+                filters.append(Document.doc_metadata[metadata_name].notlike(f'"%{value}%"'))
             case "start with":
-                query = query.filter(Document.doc_metadata[metadata_name].like(f'"{value}%"'))
+                filters.append(Document.doc_metadata[metadata_name].like(f'"{value}%"'))
             case "end with":
-                query = query.filter(Document.doc_metadata[metadata_name].like(f'"%{value}"'))
+                filters.append(Document.doc_metadata[metadata_name].like(f'"%{value}"'))
             case "=" | "is":
                 if isinstance(value, str):
-                    query = query.filter(Document.doc_metadata[metadata_name] == f'"{value}"')
+                    filters.append(Document.doc_metadata[metadata_name] == f'"{value}"')
                 else:
-                    query = query.filter(Document.doc_metadata[metadata_name] == value)
+                    filters.append(Document.doc_metadata[metadata_name] == value)
             case "is not" | "≠":
                 if isinstance(value, str):
-                    query = query.filter(Document.doc_metadata[metadata_name] != f'"{value}"')
+                    filters.append(Document.doc_metadata[metadata_name] != f'"{value}"')
                 else:
-                    query = query.filter(Document.doc_metadata[metadata_name] != value)
+                    filters.append(Document.doc_metadata[metadata_name] != value)
             case "is empty":
-                query = query.filter(Document.doc_metadata[metadata_name].is_(None))
+                filters.append(Document.doc_metadata[metadata_name].is_(None))
             case "is not empty":
-                query = query.filter(Document.doc_metadata[metadata_name].isnot(None))
+                filters.append(Document.doc_metadata[metadata_name].isnot(None))
             case "before" | "<":
-                query = query.filter(Document.doc_metadata[metadata_name] < value)
+                filters.append(Document.doc_metadata[metadata_name] < value)
             case "after" | ">":
-                query = query.filter(Document.doc_metadata[metadata_name] > value)
+                filters.append(Document.doc_metadata[metadata_name] > value)
             case "≤" | ">=":
-                query = query.filter(Document.doc_metadata[metadata_name] <= value)
+                filters.append(Document.doc_metadata[metadata_name] <= value)
             case "≥" | ">=":
-                query = query.filter(Document.doc_metadata[metadata_name] >= value)
+                filters.append(Document.doc_metadata[metadata_name] >= value)
             case _:
                 pass
-        return query
+        return filters
+    
     @classmethod
     def _extract_variable_selector_to_variable_mapping(
         cls,
