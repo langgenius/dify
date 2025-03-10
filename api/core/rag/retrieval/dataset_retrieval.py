@@ -547,8 +547,16 @@ class DatasetRetrieval:
             db.session.add_all(dataset_queries)
         db.session.commit()
 
-    def _retriever(self, flask_app: Flask, dataset_id: str, query: str, top_k: int, all_documents: list,
-                    document_ids_filter: Optional[list[str]] = None, metadata_condition: Optional[MetadataCondition] = None):
+    def _retriever(
+        self,
+        flask_app: Flask,
+        dataset_id: str,
+        query: str,
+        top_k: int,
+        all_documents: list,
+        document_ids_filter: Optional[list[str]] = None,
+        metadata_condition: Optional[MetadataCondition] = None,
+    ):
         with flask_app.app_context():
             dataset = db.session.query(Dataset).filter(Dataset.id == dataset_id).first()
 
@@ -822,11 +830,13 @@ class DatasetRetrieval:
                     self._process_metadata_filter_func(
                         filter.get("condition"), filter.get("metadata_name"), filter.get("value"), filters
                     )
-                    conditions.append(Condition(
-                        name=filter.get("metadata_name"),
-                        comparison_operator=filter.get("condition"),
-                        value=filter.get("value"),
-                    ))
+                    conditions.append(
+                        Condition(
+                            name=filter.get("metadata_name"),
+                            comparison_operator=filter.get("condition"),
+                            value=filter.get("value"),
+                        )
+                    )
                 metadata_condition = MetadataCondition(
                     logical_operator=metadata_filtering_conditions.logical_operator,
                     conditions=conditions,
@@ -935,12 +945,16 @@ class DatasetRetrieval:
                 if isinstance(value, str):
                     filters.append(DatasetDocument.doc_metadata[metadata_name] == f'"{value}"')
                 else:
-                    filters.append(sqlalchemy_cast(DatasetDocument.doc_metadata[metadata_name].astext, Integer) == value)
+                    filters.append(
+                        sqlalchemy_cast(DatasetDocument.doc_metadata[metadata_name].astext, Integer) == value
+                    )
             case "is not" | "≠":
                 if isinstance(value, str):
                     filters.append(DatasetDocument.doc_metadata[metadata_name] != f'"{value}"')
                 else:
-                    filters.append(sqlalchemy_cast(DatasetDocument.doc_metadata[metadata_name].astext, Integer) != value)
+                    filters.append(
+                        sqlalchemy_cast(DatasetDocument.doc_metadata[metadata_name].astext, Integer) != value
+                    )
             case "is empty":
                 filters.append(DatasetDocument.doc_metadata[metadata_name].is_(None))
             case "is not empty":

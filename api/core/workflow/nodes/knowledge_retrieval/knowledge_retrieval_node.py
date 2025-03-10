@@ -304,11 +304,13 @@ class KnowledgeRetrievalNode(LLMNode):
                     self._process_metadata_filter_func(
                         filter.get("condition"), filter.get("metadata_name"), filter.get("value"), filters
                     )
-                    conditions.append(Condition(
-                        name=filter.get("metadata_name"),
-                        comparison_operator=filter.get("condition"),
-                        value=filter.get("value"),
-                    ))
+                    conditions.append(
+                        Condition(
+                            name=filter.get("metadata_name"),
+                            comparison_operator=filter.get("condition"),
+                            value=filter.get("value"),
+                        )
+                    )
                 metadata_condition = MetadataCondition(
                     logical_operator="or",
                     conditions=conditions,
@@ -321,7 +323,9 @@ class KnowledgeRetrievalNode(LLMNode):
                     expected_value = condition.value
                     if expected_value:
                         if isinstance(expected_value, str):
-                            expected_value = self.graph_runtime_state.variable_pool.convert_template(expected_value).text
+                            expected_value = self.graph_runtime_state.variable_pool.convert_template(
+                                expected_value
+                            ).text
 
                         filters = self._process_metadata_filter_func(
                             condition.comparison_operator, metadata_name, expected_value, filters
@@ -438,7 +442,7 @@ class KnowledgeRetrievalNode(LLMNode):
             case _:
                 pass
         return filters
-    
+
     @classmethod
     def _extract_variable_selector_to_variable_mapping(
         cls,

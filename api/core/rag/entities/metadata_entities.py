@@ -13,14 +13,14 @@ SupportedComparisonOperator = Literal[
     "is not",
     "empty",
     "not empty",
-        # for number
+    # for number
     "=",
     "≠",
     ">",
     "<",
     "≥",
     "≤",
-        # for time
+    # for time
     "before",
     "after",
 ]
