@@ -238,7 +238,7 @@ const DatePicker = ({
           </div>
         )}
       </PortalToFollowElemTrigger>
-      <PortalToFollowElemContent className='z-50'>
+      <PortalToFollowElemContent className={popupZIndexClassname}>
         <div className='w-[252px] mt-1 bg-components-panel-bg rounded-xl shadow-lg shadow-shadow-shadow-5 border-[0.5px] border-components-panel-border'>
           {/* Header */}
           {view === ViewType.date ? (

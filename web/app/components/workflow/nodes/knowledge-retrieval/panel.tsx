@@ -37,6 +37,7 @@ const Panel: FC<NodePanelProps<KnowledgeRetrievalNodeType>> = ({
     handleRetrievalModeChange,
     handleMultipleRetrievalConfigChange,
     selectedDatasets,
+    selectedDatasetsLoaded,
     handleOnDatasetsChange,
     isShowSingleRun,
     hideSingleRun,
@@ -130,6 +131,7 @@ const Panel: FC<NodePanelProps<KnowledgeRetrievalNodeType>> = ({
       <div className='mb-2 py-2'>
         <MetadataFilter
           metadataList={metadataList}
+          selectedDatasetsLoaded={selectedDatasetsLoaded}
           metadataFilterMode={inputs.metadata_filtering_mode}
           metadataFilteringConditions={inputs.metadata_filtering_conditions}
           handleAddCondition={handleAddCondition}
