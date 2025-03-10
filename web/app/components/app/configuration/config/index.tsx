@@ -16,9 +16,6 @@ import type { ModelConfig, PromptVariable } from '@/models/debug'
 import type { AppType } from '@/types/app'
 import { ModelModeType } from '@/types/app'
 
-import mockStructData from '@/app/components/workflow/nodes/llm/mock-struct-data'
-import ObjectChildrenTreePanel from '@/app/components/workflow/nodes/_base/components/variable/object-child-tree-panel'
-
 const Config: FC = () => {
   const {
     mode,
@@ -62,13 +59,6 @@ const Config: FC = () => {
       <div
         className="grow h-0 relative px-6 pb-[50px] overflow-y-auto"
       >
-        <div className='mb-2'>
-          <ObjectChildrenTreePanel
-            root={{ nodeName: 'LLM', attrName: 'structured_output' }}
-            payload={mockStructData}
-            onSelect={() => { }}
-          />
-        </div>
         {/* Template */}
         <ConfigPrompt
           mode={mode as AppType}

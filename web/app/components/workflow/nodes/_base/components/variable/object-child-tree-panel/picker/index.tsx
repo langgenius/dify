@@ -1,7 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import React from 'react'
-import type { Field as FieldType, StructuredOutput } from '../../../../llm/types'
+import type { Field as FieldType, StructuredOutput } from '../../../../../llm/types'
 import Field from './field'
 
 type Props = {
@@ -10,7 +10,7 @@ type Props = {
   onSelect: (field: FieldType) => void
 }
 
-const ObjectChildrenTreePanel: FC<Props> = ({
+const PickerPanel: FC<Props> = ({
   root,
   payload,
 }) => {
@@ -38,4 +38,4 @@ const ObjectChildrenTreePanel: FC<Props> = ({
     </div>
   )
 }
-export default React.memo(ObjectChildrenTreePanel)
+export default React.memo(PickerPanel)

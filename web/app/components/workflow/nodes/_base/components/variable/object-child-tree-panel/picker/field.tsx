@@ -1,11 +1,11 @@
 'use client'
 import type { FC } from 'react'
 import React from 'react'
-import { Type } from '../../../../llm/types'
-import { getFieldType } from '../../../../llm/utils'
-import type { Field as FieldType } from '../../../../llm/types'
+import { Type } from '../../../../../llm/types'
+import { getFieldType } from '../../../../../llm/utils'
+import type { Field as FieldType } from '../../../../../llm/types'
 import cn from '@/utils/classnames'
-import TreeIndentLine from './tree-indent-line'
+import TreeIndentLine from '../tree-indent-line'
 import { RiMoreFill } from '@remixicon/react'
 import Tooltip from '@/app/components/base/tooltip'
 import { useTranslation } from 'react-i18next'
@@ -26,7 +26,7 @@ const Field: FC<Props> = ({
     <div>
       <Tooltip popupContent={t('app.structOutput.moreFillTip')} disabled={depth !== MAX_DEPTH + 1}>
         <div className={cn('flex pr-2 items-center justify-between rounded-md hover:bg-state-base-hover', depth !== MAX_DEPTH + 1 && 'cursor-pointer')}>
-          <div className='grow flex items-center'>
+          <div className='grow flex items-stretch'>
             <TreeIndentLine depth={depth} isMoreFill={depth === MAX_DEPTH + 1} />
             {depth === MAX_DEPTH + 1 ? (
               <RiMoreFill className='w-3 h-3 text-text-tertiary' />
