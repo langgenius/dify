@@ -10,6 +10,9 @@ build-backend = "poetry.core.masonry.api"
 [tool.poetry]
 package-mode = false
 
+[tool.mypy]
+plugins = ['pydantic.mypy']
+
 ############################################################
 # [ Main ] Dependency group
 ############################################################
