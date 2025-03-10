@@ -4,6 +4,7 @@ import React, { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import produce from 'immer'
+import { v4 as uuid4 } from 'uuid'
 import { useFormattingChangedDispatcher } from '../debug/hooks'
 import FeaturePanel from '../base/feature-panel'
 import OperationBtn from '../base/operation-btn'
@@ -150,6 +151,7 @@ const DatasetConfig: FC = () => {
       operator = ComparisonOperator.equal
 
     const newCondition = {
+      id: uuid4(),
       name,
       comparison_operator: operator,
     }
@@ -168,9 +170,9 @@ const DatasetConfig: FC = () => {
     setDatasetConfigs(newInputs)
   }, [setDatasetConfigs, datasetConfigsRef])
 
-  const handleRemoveCondition = useCallback<HandleRemoveCondition>((name) => {
+  const handleRemoveCondition = useCallback<HandleRemoveCondition>((id) => {
     const conditions = datasetConfigsRef.current!.metadata_filtering_conditions?.conditions || []
-    const index = conditions.findIndex(c => c.name === name)
+    const index = conditions.findIndex(c => c.id === id)
     const newInputs = produce(datasetConfigsRef.current!, (draft) => {
       if (index > -1)
         draft.metadata_filtering_conditions?.conditions.splice(index, 1)
@@ -178,10 +180,10 @@ const DatasetConfig: FC = () => {
     setDatasetConfigs(newInputs)
   }, [setDatasetConfigs, datasetConfigsRef])
 
-  const handleUpdateCondition = useCallback<HandleUpdateCondition>((name, newCondition) => {
+  const handleUpdateCondition = useCallback<HandleUpdateCondition>((id, newCondition) => {
     console.log(newCondition, 'newCondition')
     const conditions = datasetConfigsRef.current!.metadata_filtering_conditions?.conditions || []
-    const index = conditions.findIndex(c => c.name === name)
+    const index = conditions.findIndex(c => c.id === id)
     const newInputs = produce(datasetConfigsRef.current!, (draft) => {
       if (index > -1)
         draft.metadata_filtering_conditions!.conditions[index] = newCondition

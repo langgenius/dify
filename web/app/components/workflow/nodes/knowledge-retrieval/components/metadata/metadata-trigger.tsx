@@ -30,7 +30,7 @@ const MetadataTrigger = ({
     if (selectedDatasetsLoaded) {
       conditions.forEach((condition) => {
         if (!metadataList.find(metadata => metadata.name === condition.name))
-          handleRemoveCondition(condition.name)
+          handleRemoveCondition(condition.id)
       })
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps

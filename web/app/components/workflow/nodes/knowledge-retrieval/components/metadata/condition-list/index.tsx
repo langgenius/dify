@@ -51,7 +51,7 @@ const ConditionList = ({
         {
           conditions.map(condition => (
             <ConditionItem
-              key={condition.name}
+              key={`${condition.id}`}
               disabled={disabled}
               condition={condition}
               onUpdateCondition={handleUpdateCondition}

@@ -81,6 +81,7 @@ export enum MetadataFilteringVariableType {
 }
 
 export type MetadataFilteringCondition = {
+  id: string
   name: string
   comparison_operator: ComparisonOperator
   value?: string | number
@@ -104,8 +105,8 @@ export type KnowledgeRetrievalNodeType = CommonNodeType & {
 }
 
 export type HandleAddCondition = (metadataItem: MetadataInDoc) => void
-export type HandleRemoveCondition = (name: string) => void
-export type HandleUpdateCondition = (name: string, newCondition: MetadataFilteringCondition) => void
+export type HandleRemoveCondition = (id: string) => void
+export type HandleUpdateCondition = (id: string, newCondition: MetadataFilteringCondition) => void
 export type HandleToggleConditionLogicalOperator = () => void
 
 export type MetadataShape = {

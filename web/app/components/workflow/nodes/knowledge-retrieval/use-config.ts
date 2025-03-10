@@ -6,6 +6,7 @@ import {
 } from 'react'
 import produce from 'immer'
 import { isEqual } from 'lodash-es'
+import { v4 as uuid4 } from 'uuid'
 import type { ValueSelector, Var } from '../../types'
 import { BlockEnum, VarType } from '../../types'
 import {
@@ -317,6 +318,7 @@ const useConfig = (id: string, payload: KnowledgeRetrievalNodeType) => {
       operator = ComparisonOperator.equal
 
     const newCondition = {
+      id: uuid4(),
       name,
       comparison_operator: operator,
     }
@@ -335,9 +337,9 @@ const useConfig = (id: string, payload: KnowledgeRetrievalNodeType) => {
     setInputs(newInputs)
   }, [setInputs])
 
-  const handleRemoveCondition = useCallback<HandleRemoveCondition>((name) => {
+  const handleRemoveCondition = useCallback<HandleRemoveCondition>((id) => {
     const conditions = inputRef.current.metadata_filtering_conditions?.conditions || []
-    const index = conditions.findIndex(c => c.name === name)
+    const index = conditions.findIndex(c => c.id === id)
     const newInputs = produce(inputRef.current, (draft) => {
       if (index > -1)
         draft.metadata_filtering_conditions?.conditions.splice(index, 1)
@@ -345,9 +347,9 @@ const useConfig = (id: string, payload: KnowledgeRetrievalNodeType) => {
     setInputs(newInputs)
   }, [setInputs])
 
-  const handleUpdateCondition = useCallback<HandleUpdateCondition>((name, newCondition) => {
+  const handleUpdateCondition = useCallback<HandleUpdateCondition>((id, newCondition) => {
     const conditions = inputRef.current.metadata_filtering_conditions?.conditions || []
-    const index = conditions.findIndex(c => c.name === name)
+    const index = conditions.findIndex(c => c.id === id)
     const newInputs = produce(inputRef.current, (draft) => {
       if (index > -1)
         draft.metadata_filtering_conditions!.conditions[index] = newCondition
