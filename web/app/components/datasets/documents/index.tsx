@@ -1,11 +1,10 @@
 'use client'
 import type { FC } from 'react'
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
-import useSWR from 'swr'
 import { useTranslation } from 'react-i18next'
 import { useRouter } from 'next/navigation'
 import { useDebounce, useDebounceFn } from 'ahooks'
-import { groupBy, omit } from 'lodash-es'
+import { groupBy } from 'lodash-es'
 import { PlusIcon } from '@heroicons/react/24/solid'
 import { RiExternalLinkLine } from '@remixicon/react'
 import AutoDisabledDocument from '../common/document-status-with-action/auto-disabled-document'
@@ -15,16 +14,16 @@ import Loading from '@/app/components/base/loading'
 import Button from '@/app/components/base/button'
 import Input from '@/app/components/base/input'
 import { get } from '@/service/base'
-import { createDocument, fetchDocuments } from '@/service/datasets'
+import { createDocument } from '@/service/datasets'
 import { useDatasetDetailContext } from '@/context/dataset-detail'
 import { NotionPageSelectorModal } from '@/app/components/base/notion-page-selector'
 import type { NotionPage } from '@/models/common'
 import type { CreateDocumentReq } from '@/models/datasets'
-import { DataSourceType } from '@/models/datasets'
+import { DataSourceType, ProcessMode } from '@/models/datasets'
 import IndexFailed from '@/app/components/datasets/common/document-status-with-action/index-failed'
 import { useProviderContext } from '@/context/provider-context'
 import cn from '@/utils/classnames'
-import { useInvalidDocumentDetailKey } from '@/service/knowledge/use-document'
+import { useDocumentList, useInvalidDocumentDetailKey, useInvalidDocumentList } from '@/service/knowledge/use-document'
 import { useInvalid } from '@/service/use-base'
 import { useChildSegmentListKey, useSegmentListKey } from '@/service/knowledge/use-segment'
 
@@ -73,12 +72,12 @@ const EmptyElement: FC<{ canAdd: boolean; onClick: () => void; type?: 'upload' |
   </div>
 }
 
-interface IDocumentsProps {
+type IDocumentsProps = {
   datasetId: string
 }
 
 export const fetcher = (url: string) => get(url, {}, {})
-const DEFAULT_LIMIT = 15
+const DEFAULT_LIMIT = 10
 
 const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
   const { t } = useTranslation()
@@ -99,33 +98,33 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
 
   const debouncedSearchValue = useDebounce(searchValue, { wait: 500 })
 
-  const query = useMemo(() => {
-    return { page: currPage + 1, limit, keyword: debouncedSearchValue, fetch: isDataSourceNotion ? true : '' }
-  }, [currPage, debouncedSearchValue, isDataSourceNotion, limit])
-
-  const { data: documentsRes, mutate, isLoading: isListLoading } = useSWR(
-    {
-      action: 'fetchDocuments',
-      datasetId,
-      params: query,
+  const { data: documentsRes, isFetching: isListLoading } = useDocumentList({
+    datasetId,
+    query: {
+      page: currPage + 1,
+      limit,
+      keyword: debouncedSearchValue,
     },
-    apiParams => fetchDocuments(omit(apiParams, 'action')),
-    { refreshInterval: (isDataSourceNotion && timerCanRun) ? 2500 : 0 },
-  )
+    refetchInterval: (isDataSourceNotion && timerCanRun) ? 2500 : 0,
+  })
 
-  const [isMuting, setIsMuting] = useState(false)
+  const invalidDocumentList = useInvalidDocumentList(datasetId)
+
   useEffect(() => {
-    if (!isListLoading && isMuting)
-      setIsMuting(false)
-  }, [isListLoading, isMuting])
+    if (documentsRes) {
+      const totalPages = Math.ceil(documentsRes.total / limit)
+      if (totalPages < currPage + 1)
+        setCurrPage(totalPages === 0 ? 0 : totalPages - 1)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [documentsRes])
 
   const invalidDocumentDetail = useInvalidDocumentDetailKey()
   const invalidChunkList = useInvalid(useSegmentListKey)
   const invalidChildChunkList = useInvalid(useChildSegmentListKey)
 
   const handleUpdate = useCallback(() => {
-    setIsMuting(true)
-    mutate()
+    invalidDocumentList()
     invalidDocumentDetail()
     setTimeout(() => {
       invalidChunkList()
@@ -175,8 +174,6 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
     router.push(`/datasets/${datasetId}/documents/create`)
   }
 
-  const isLoading = isListLoading // !documentsRes && !error
-
   const handleSaveNotionPageSelected = async (selectedPages: NotionPage[]) => {
     const workspacesMap = groupBy(selectedPages, 'workspace_id')
     const workspaces = Object.keys(workspacesMap).map((workspaceId) => {
@@ -209,7 +206,7 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
       indexing_technique: dataset?.indexing_technique,
       process_rule: {
         rules: {},
-        mode: 'automatic',
+        mode: ProcessMode.general,
       },
     } as CreateDocumentReq
 
@@ -217,7 +214,7 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
       datasetId,
       body: params,
     })
-    mutate()
+    invalidDocumentList()
     setTimerCanRun(true)
     // mutateDatasetIndexingStatus(undefined, { revalidate: true })
     setNotionPageSelectorModalVisible(false)
@@ -272,7 +269,7 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
             )}
           </div>
         </div>
-        {(isLoading && !isMuting)
+        {isListLoading
           ? <Loading type='app' />
           : total > 0
             ? <List
