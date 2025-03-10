@@ -424,11 +424,7 @@ class ModelManager:
         :param model: model name
         :return:
         """
-        if not provider or not model:
-            # For TEXT_EMBEDDING, we don't want to use default models if none specified
-            if model_type == ModelType.TEXT_EMBEDDING:
-                raise ProviderTokenNotInitError(f"Provider or model not specified for {model_type}")
-            # For other model types, try to get default model
+        if not provider:
             return self.get_default_model_instance(tenant_id, model_type)
 
         provider_model_bundle = self._provider_manager.get_provider_model_bundle(
