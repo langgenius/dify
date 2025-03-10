@@ -129,6 +129,13 @@ class TextSplitter(BaseDocumentTransformer, ABC):
                     while total > self._chunk_overlap or (
                         total + _len + (separator_len if len(current_doc) > 0 else 0) > self._chunk_size and total > 0
                     ):
+                        if current_doc and len(current_doc[0]) == 0:
+                            current_doc = current_doc[1:]
+                            continue
+
+                        if len(current_doc) == 0:
+                            break
+
                         total -= self._length_function([current_doc[0]])[0] + (
                             separator_len if len(current_doc) > 1 else 0
                         )
