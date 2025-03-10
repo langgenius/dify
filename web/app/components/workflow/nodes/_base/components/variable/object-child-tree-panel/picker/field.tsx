@@ -27,7 +27,7 @@ const Field: FC<Props> = ({
       <Tooltip popupContent={t('app.structOutput.moreFillTip')} disabled={depth !== MAX_DEPTH + 1}>
         <div className={cn('flex pr-2 items-center justify-between rounded-md hover:bg-state-base-hover', depth !== MAX_DEPTH + 1 && 'cursor-pointer')}>
           <div className='grow flex items-stretch'>
-            <TreeIndentLine depth={depth} isMoreFill={depth === MAX_DEPTH + 1} />
+            <TreeIndentLine depth={depth} />
             {depth === MAX_DEPTH + 1 ? (
               <RiMoreFill className='w-3 h-3 text-text-tertiary' />
             ) : (<div className='h-6 leading-6 grow w-0 truncate system-sm-medium text-text-secondary'>{name}</div>)}

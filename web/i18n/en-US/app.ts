@@ -182,6 +182,7 @@ const translation = {
   showMyCreatedAppsOnly: 'Created by me',
   structOutput: {
     moreFillTip: 'Showing max 10 levels of nesting',
+    required: 'Required',
   },
 }
 

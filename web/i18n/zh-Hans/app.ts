@@ -183,6 +183,7 @@ const translation = {
   showMyCreatedAppsOnly: '我创建的',
   structOutput: {
     moreFillTip: '最多显示 10 级嵌套',
+    required: '必填',
   },
 }
 

@@ -6,14 +6,14 @@ const data: StructuredOutput = {
     properties: {
       string_field: {
         type: Type.string,
-        description: '可为空',
+        description: '这是一个字符串类型的字段',
       },
       obj_field: {
         type: Type.object,
         properties: {
           string_field_1: {
             type: Type.string,
-            description: '描述可为空',
+            description: 'this is a string type field',
           },
           number_field_2: {
             type: Type.number,
@@ -62,6 +62,7 @@ const data: StructuredOutput = {
                                                 properties: {
                                                   sub_item_12: {
                                                     type: Type.object,
+                                                    description: 'This is a object type field.This is a object type field.This is a object type field.',
                                                   },
                                                 },
                                               },

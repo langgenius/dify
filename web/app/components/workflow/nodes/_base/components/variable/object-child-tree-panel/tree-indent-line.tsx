@@ -5,12 +5,10 @@ import cn from '@/utils/classnames'
 
 type Props = {
   depth?: number
-  isMoreFill?: boolean
 }
 
 const TreeIndentLine: FC<Props> = ({
   depth = 1,
-  isMoreFill = false,
 }) => {
   const depthArray = Array.from({ length: depth }, (_, index) => index)
   return (
