@@ -246,7 +246,11 @@ class ExternalDatasetService:
 
     @staticmethod
     def fetch_external_knowledge_retrieval(
-        tenant_id: str, dataset_id: str, query: str, external_retrieval_parameters: dict, metadata_condition: Optional[MetadataCondition] = None
+        tenant_id: str,
+        dataset_id: str,
+        query: str,
+        external_retrieval_parameters: dict,
+        metadata_condition: Optional[MetadataCondition] = None,
     ) -> list:
         external_knowledge_binding = ExternalKnowledgeBindings.query.filter_by(
             dataset_id=dataset_id, tenant_id=tenant_id
