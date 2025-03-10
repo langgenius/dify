@@ -171,7 +171,7 @@ class DatabaseConfig(BaseSettings):
 
     RETRIEVAL_SERVICE_EXECUTORS: NonNegativeInt = Field(
         description="Number of processes for the retrieval service, default to CPU cores.",
-        default=os.cpu_count(),
+        default_factory=lambda: NonNegativeInt(os.cpu_count()),
     )
 
     @computed_field
