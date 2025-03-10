@@ -853,6 +853,7 @@ const translation = {
       },
       queryVariable: 'Spremenljivka poizvedbe',
       knowledge: 'Znanje',
+      dynamic: 'Dinamično',
     },
     http: {
       outputVars: {

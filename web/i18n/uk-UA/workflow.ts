@@ -416,6 +416,7 @@ const translation = {
         url: 'Сегментована URL',
         metadata: 'Інші метадані',
       },
+      dynamic: 'Динамічний',
     },
     http: {
       inputVars: 'Вхідні змінні',

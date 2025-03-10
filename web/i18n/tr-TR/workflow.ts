@@ -416,6 +416,7 @@ const translation = {
         url: 'Parça URL\'si',
         metadata: 'Diğer meta veriler',
       },
+      dynamic: 'Dinamik',
     },
     http: {
       inputVars: 'Giriş Değişkenleri',
