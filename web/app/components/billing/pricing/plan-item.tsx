@@ -1,18 +1,18 @@
 'use client'
-import type { FC } from 'react'
+import type { FC, ReactNode } from 'react'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
-import { useContext } from 'use-context-selector'
+import { RiApps2Line, RiBook2Line, RiBrain2Line, RiChatAiLine, RiFileEditLine, RiFolder6Line, RiGroupLine, RiHardDrive3Line, RiHistoryLine, RiProgress3Line, RiQuestionLine, RiSeoLine } from '@remixicon/react'
 import { Plan } from '../type'
-import { ALL_PLANS, NUM_INFINITE, contactSalesUrl, contractSales, unAvailable } from '../config'
+import { ALL_PLANS, NUM_INFINITE } from '../config'
 import Toast from '../../base/toast'
 import Tooltip from '../../base/tooltip'
+import Divider from '../../base/divider'
+import { ArCube1, Group2, Keyframe, SparklesSoft } from '../../base/icons/src/public/billing'
 import { PlanRange } from './select-plan-range'
 import cn from '@/utils/classnames'
 import { useAppContext } from '@/context/app-context'
 import { fetchSubscriptionUrls } from '@/service/billing'
-import { LanguagesSupported } from '@/i18n/language'
-import I18n from '@/context/i18n'
 
 type Props = {
   currentPlan: Plan
@@ -21,162 +21,76 @@ type Props = {
   canPay: boolean
 }
 
-const KeyValue = ({ label, value, tooltip }: { label: string; value: string | number | JSX.Element; tooltip?: string }) => {
+const KeyValue = ({ icon, label, tooltip }: { icon: ReactNode; label: string; tooltip?: ReactNode }) => {
   return (
-    <div className='mt-3.5 leading-[125%] text-[13px] font-medium'>
-      <div className='flex items-center text-gray-500 space-x-1'>
-        <div>{label}</div>
-        {tooltip && (
-          <Tooltip
-            popupContent={
-              <div className='w-[200px]'>{tooltip}</div>
-            }
-          />
-        )}
+    <div className='flex text-text-tertiary'>
+      <div className='size-4 flex items-center justify-center'>
+        {icon}
       </div>
-      <div className='mt-0.5 text-gray-900'>{value}</div>
+      <div className='ml-2 mr-0.5 text-text-primary system-sm-regular'>{label}</div>
+      {tooltip && (
+        <Tooltip
+          asChild
+          popupContent={tooltip}
+          popupClassName='w-[200px]'
+        >
+          <div className='size-4 flex items-center justify-center'>
+            <RiQuestionLine className='text-text-quaternary' />
+          </div>
+        </Tooltip>
+      )}
     </div>
   )
 }
 
-const priceClassName = 'leading-[32px] text-[28px] font-bold text-gray-900'
+const priceClassName = 'leading-[125%] text-[28px] font-bold text-text-primary'
 const style = {
   [Plan.sandbox]: {
-    bg: 'bg-[#F2F4F7]',
-    title: 'text-gray-900',
-    hoverAndActive: '',
+    icon: <ArCube1 className='text-text-primary size-7' />,
+    description: 'text-util-colors-gray-gray-600',
+    btnStyle: 'bg-components-button-secondary-bg hover:bg-components-button-secondary-bg-hover border-[0.5px] border-components-button-secondary-border text-text-primary',
+    btnDisabledStyle: 'bg-components-button-secondary-bg-disabled hover:bg-components-button-secondary-bg-disabled border-components-button-secondary-border-disabled text-components-button-secondary-text-disabled',
   },
   [Plan.professional]: {
-    bg: 'bg-[#E0F2FE]',
-    title: 'text-[#026AA2]',
-    hoverAndActive: 'hover:shadow-lg hover:!text-white hover:!bg-[#0086C9] hover:!border-[#026AA2] active:!text-white active:!bg-[#026AA2] active:!border-[#026AA2]',
+    icon: <Keyframe className='text-util-colors-blue-brand-blue-brand-600 size-7' />,
+    description: 'text-util-colors-blue-brand-blue-brand-600',
+    btnStyle: 'bg-components-button-primary-bg hover:bg-components-button-primary-bg-hover border border-components-button-primary-border text-components-button-primary-text',
+    btnDisabledStyle: 'bg-components-button-primary-bg-disabled hover:bg-components-button-primary-bg-disabled border-components-button-primary-border-disabled text-components-button-primary-text-disabled',
   },
   [Plan.team]: {
-    bg: 'bg-[#E0EAFF]',
-    title: 'text-[#3538CD]',
-    hoverAndActive: 'hover:shadow-lg hover:!text-white hover:!bg-[#444CE7] hover:!border-[#3538CD] active:!text-white active:!bg-[#3538CD] active:!border-[#3538CD]',
-  },
-  [Plan.enterprise]: {
-    bg: 'bg-[#FFEED3]',
-    title: 'text-[#DC6803]',
-    hoverAndActive: 'hover:shadow-lg hover:!text-white hover:!bg-[#F79009] hover:!border-[#DC6803] active:!text-white active:!bg-[#DC6803] active:!border-[#DC6803]',
+    icon: <Group2 className='text-util-colors-indigo-indigo-600 size-7' />,
+    description: 'text-util-colors-indigo-indigo-600',
+    btnStyle: 'bg-components-button-indigo-bg hover:bg-components-button-indigo-bg-hover border border-components-button-primary-border text-components-button-primary-text',
+    btnDisabledStyle: 'bg-components-button-indigo-bg-disabled hover:bg-components-button-indigo-bg-disabled border-components-button-indigo-border-disabled text-components-button-primary-text-disabled',
   },
 }
 const PlanItem: FC<Props> = ({
   plan,
   currentPlan,
   planRange,
-  canPay,
 }) => {
   const { t } = useTranslation()
-  const { locale } = useContext(I18n)
-
-  const isZh = locale === LanguagesSupported[1]
   const [loading, setLoading] = React.useState(false)
   const i18nPrefix = `billing.plans.${plan}`
   const isFreePlan = plan === Plan.sandbox
-  const isEnterprisePlan = plan === Plan.enterprise
   const isMostPopularPlan = plan === Plan.professional
   const planInfo = ALL_PLANS[plan]
   const isYear = planRange === PlanRange.yearly
   const isCurrent = plan === currentPlan
-  const isPlanDisabled = planInfo.level <= ALL_PLANS[currentPlan].level || (!canPay && plan !== Plan.enterprise)
+  const isPlanDisabled = planInfo.level <= ALL_PLANS[currentPlan].level
   const { isCurrentWorkspaceManager } = useAppContext()
-  const messagesRequest = (() => {
-    const value = planInfo.messageRequest[isZh ? 'zh' : 'en']
-    if (value === contractSales)
-      return t('billing.plansCommon.contractSales')
 
-    return value
-  })()
   const btnText = (() => {
-    if (!canPay && plan !== Plan.enterprise)
-      return t('billing.plansCommon.contractOwner')
-
     if (isCurrent)
       return t('billing.plansCommon.currentPlan')
 
     return ({
       [Plan.sandbox]: t('billing.plansCommon.startForFree'),
-      [Plan.professional]: <>{t('billing.plansCommon.getStartedWith')}<span className='capitalize'>&nbsp;{plan}</span></>,
-      [Plan.team]: <>{t('billing.plansCommon.getStartedWith')}<span className='capitalize'>&nbsp;{plan}</span></>,
-      [Plan.enterprise]: t('billing.plansCommon.talkToSales'),
+      [Plan.professional]: t('billing.plansCommon.getStarted'),
+      [Plan.team]: t('billing.plansCommon.getStarted'),
     })[plan]
   })()
-  const comingSoon = (
-    <div className='leading-[12px] text-[9px] font-semibold text-[#3538CD] uppercase'>{t('billing.plansCommon.comingSoon')}</div>
-  )
-  const supportContent = (() => {
-    switch (plan) {
-      case Plan.sandbox:
-        return (<div className='space-y-3.5'>
-          <div>{t('billing.plansCommon.supportItems.communityForums')}</div>
-          <div>{t('billing.plansCommon.supportItems.agentMode')}</div>
-          <div className='flex items-center space-x-1'>
-            <div className='flex items-center'>
-              <div className='mr-0.5'>&nbsp;{t('billing.plansCommon.supportItems.workflow')}</div>
-            </div>
-          </div>
-        </div>)
-      case Plan.professional:
-        return (
-          <div>
-            <div>{t('billing.plansCommon.supportItems.emailSupport')}</div>
-            <div className='mt-3.5 flex items-center space-x-1'>
-              <div>+ {t('billing.plansCommon.supportItems.logoChange')}</div>
-            </div>
-            <div className='mt-3.5 flex items-center space-x-1'>
-              <div>+ {t('billing.plansCommon.supportItems.bulkUpload')}</div>
-            </div>
-            <div className='mt-3.5 flex items-center space-x-1'>
-              <span>+ </span>
-              <div>{t('billing.plansCommon.supportItems.llmLoadingBalancing')}</div>
-              <Tooltip
-                popupContent={
-                  <div className='w-[200px]'>{t('billing.plansCommon.supportItems.llmLoadingBalancingTooltip')}</div>
-                }
-              />
-            </div>
-            <div className='mt-3.5 flex items-center space-x-1'>
-              <div className='flex items-center'>
-                +
-                <div className='mr-0.5'>&nbsp;{t('billing.plansCommon.supportItems.ragAPIRequest')}</div>
-                <Tooltip
-                  popupContent={
-                    <div className='w-[200px]'>{t('billing.plansCommon.ragAPIRequestTooltip')}</div>
-                  }
-                />
-              </div>
-              <div>{comingSoon}</div>
-            </div>
-          </div>
-        )
-      case Plan.team:
-        return (
-          <div>
-            <div>{t('billing.plansCommon.supportItems.priorityEmail')}</div>
-            <div className='mt-3.5 flex items-center space-x-1'>
-              <div>+ {t('billing.plansCommon.supportItems.SSOAuthentication')}</div>
-              <div>{comingSoon}</div>
-            </div>
-          </div>
-        )
-      case Plan.enterprise:
-        return (
-          <div>
-            <div>{t('billing.plansCommon.supportItems.personalizedSupport')}</div>
-            <div className='mt-3.5 flex items-center space-x-1'>
-              <div>+ {t('billing.plansCommon.supportItems.dedicatedAPISupport')}</div>
-            </div>
-            <div className='mt-3.5 flex items-center space-x-1'>
-              <div>+ {t('billing.plansCommon.supportItems.customIntegration')}</div>
-            </div>
-          </div>
-        )
-      default:
-        return ''
-    }
-  })()
+
   const handleGetPayUrl = async () => {
     if (loading)
       return
@@ -187,10 +101,6 @@ const PlanItem: FC<Props> = ({
     if (isFreePlan)
       return
 
-    if (isEnterprisePlan) {
-      window.location.href = contactSalesUrl
-      return
-    }
     // Only workspace manager can buy plan
     if (!isCurrentWorkspaceManager) {
       Toast.notify({
@@ -211,90 +121,103 @@ const PlanItem: FC<Props> = ({
     }
   }
   return (
-    <div className={cn(isMostPopularPlan ? 'bg-[#0086C9] p-0.5' : 'pt-7', 'flex flex-col min-w-[290px] w-[290px] rounded-xl')}>
-      {isMostPopularPlan && (
-        <div className='flex items-center h-7 justify-center leading-[12px] text-xs font-medium text-[#F5F8FF]'>{t('billing.plansCommon.mostPopular')}</div>
-      )}
-      <div className={cn(style[plan].bg, 'grow px-6 py-6 rounded-[10px]')}>
-        <div className={cn(style[plan].title, 'mb-1 leading-[125%] text-lg font-semibold')}>{t(`${i18nPrefix}.name`)}</div>
-        <div className={cn(isFreePlan ? 'mb-5 text-[#FB6514]' : 'mb-4 text-gray-500', 'h-8 leading-[125%] text-[13px] font-normal')}>{t(`${i18nPrefix}.description`)}</div>
-
+    <div className={cn('flex flex-col w-[373px] p-6 border-[0.5px] border-effects-highlight-lightmode-off bg-background-section-burn rounded-2xl',
+      isMostPopularPlan ? 'shadow-lg backdrop-blur-[5px] border-effects-highlight' : 'hover:shadow-lg hover:backdrop-blur-[5px] hover:border-effects-highlight',
+    )}>
+      <div className='flex flex-col gap-y-1'>
+        {style[plan].icon}
+        <div className='flex items-center'>
+          <div className='leading-[125%] text-lg font-semibold uppercase text-text-primary'>{t(`${i18nPrefix}.name`)}</div>
+          {isMostPopularPlan && <div className='ml-1 px-1 py-[3px] flex items-center justify-center rounded-full border-[0.5px] shadow-xs bg-price-premium-badge-background text-components-premium-badge-grey-text-stop-0'>
+            <div className='pl-0.5'>
+              <SparklesSoft className='size-3' />
+            </div>
+            <span className='px-0.5 system-2xs-semibold-uppercase bg-clip-text bg-price-premium-text-background text-transparent'>{t('billing.plansCommon.mostPopular')}</span>
+          </div>}
+        </div>
+        <div className={cn(style[plan].description, 'system-sm-regular')}>{t(`${i18nPrefix}.description`)}</div>
+      </div>
+      <div className='my-5'>
         {/* Price */}
         {isFreePlan && (
           <div className={priceClassName}>{t('billing.plansCommon.free')}</div>
         )}
-        {isEnterprisePlan && (
-          <div className={priceClassName}>{t('billing.plansCommon.contactSales')}</div>
-        )}
-        {!isFreePlan && !isEnterprisePlan && (
-          <div className='flex items-end h-9'>
+        {!isFreePlan && (
+          <div className='flex items-end'>
             <div className={priceClassName}>${isYear ? planInfo.price * 10 : planInfo.price}</div>
-            <div className='ml-1'>
-              {isYear && <div className='leading-[18px] text-xs font-medium text-[#F26725]'>{t('billing.plansCommon.save')}${planInfo.price * 2}</div>}
-              <div className='leading-[18px] text-[15px] font-normal text-gray-500'>/{t(`billing.plansCommon.${!isYear ? 'month' : 'year'}`)}</div>
+            <div className='ml-1 flex flex-col'>
+              {isYear && <div className='leading-[14px] text-[14px] font-normal italic text-text-warning'>{t('billing.plansCommon.save')}${planInfo.price * 2}</div>}
+              <div className='leading-normal text-[14px] font-normal text-text-tertiary'>
+                {t('billing.plansCommon.priceTip')}
+                {t(`billing.plansCommon.${!isYear ? 'month' : 'year'}`)}</div>
             </div>
           </div>
         )}
+      </div>
 
-        <div
-          className={cn(isMostPopularPlan && !isCurrent && '!bg-[#444CE7] !text-white !border !border-[#3538CD] shadow-sm', isPlanDisabled ? 'opacity-30' : `${style[plan].hoverAndActive} cursor-pointer`, 'mt-4 flex h-11 items-center justify-center border-[2px] border-gray-900 rounded-3xl text-sm font-semibold text-gray-900')}
-          onClick={handleGetPayUrl}
-        >
-          {btnText}
-        </div>
-
-        <div className='my-4 h-[1px] bg-black/5'></div>
-
-        <div className='leading-[125%] text-[13px] font-normal text-gray-900'>
-          {t(`${i18nPrefix}.includesTitle`)}
-        </div>
+      <div
+        className={cn('flex py-3 px-5 rounded-full justify-center items-center h-[42px]',
+          style[plan].btnStyle,
+          isPlanDisabled && style[plan].btnDisabledStyle,
+          isPlanDisabled ? 'cursor-not-allowed' : 'cursor-pointer')}
+        onClick={handleGetPayUrl}
+      >
+        {btnText}
+      </div>
+      <div className='flex flex-col gap-y-3 mt-6'>
         <KeyValue
-          label={t('billing.plansCommon.messageRequest.title')}
-          value={messagesRequest}
+          icon={<RiChatAiLine />}
+          label={isFreePlan
+            ? t('billing.plansCommon.messageRequest.title', { count: planInfo.messageRequest })
+            : t('billing.plansCommon.messageRequest.titlePerMonth', { count: planInfo.messageRequest })}
           tooltip={t('billing.plansCommon.messageRequest.tooltip') as string}
         />
         <KeyValue
+          icon={<RiBrain2Line />}
           label={t('billing.plansCommon.modelProviders')}
-          value={planInfo.modelProviders}
         />
         <KeyValue
-          label={t('billing.plansCommon.teamMembers')}
-          value={planInfo.teamMembers === NUM_INFINITE ? t('billing.plansCommon.unlimited') as string : planInfo.teamMembers}
+          icon={<RiFolder6Line />}
+          label={t('billing.plansCommon.teamWorkspace', { count: planInfo.teamWorkspace })}
         />
         <KeyValue
-          label={t('billing.plansCommon.buildApps')}
-          value={planInfo.buildApps === NUM_INFINITE ? t('billing.plansCommon.unlimited') as string : planInfo.buildApps}
+          icon={<RiGroupLine />}
+          label={t('billing.plansCommon.teamMember', { count: planInfo.teamMembers })}
         />
         <KeyValue
-          label={t('billing.plansCommon.vectorSpace')}
-          value={planInfo.vectorSpace === NUM_INFINITE ? t('billing.plansCommon.unlimited') as string : (planInfo.vectorSpace >= 1000 ? `${planInfo.vectorSpace / 1000}G` : `${planInfo.vectorSpace}MB`)}
-          tooltip={t('billing.plansCommon.vectorSpaceBillingTooltip') as string}
+          icon={<RiApps2Line />}
+          label={t('billing.plansCommon.buildApps', { count: planInfo.buildApps })}
+        />
+        <Divider bgStyle='gradient' />
+        <KeyValue
+          icon={<RiBook2Line />}
+          label={t('billing.plansCommon.documents', { count: planInfo.documents })}
+          tooltip={t('billing.plansCommon.documentsTooltip') as string}
         />
         <KeyValue
-          label={t('billing.plansCommon.documentsUploadQuota')}
-          value={planInfo.vectorSpace === NUM_INFINITE ? t('billing.plansCommon.unlimited') as string : planInfo.documentsUploadQuota}
-        />
-        <KeyValue
-          label={t('billing.plansCommon.documentProcessingPriority')}
-          value={t(`billing.plansCommon.priority.${planInfo.documentProcessingPriority}`) as string}
+          icon={<RiHardDrive3Line />}
+          label={t('billing.plansCommon.vectorSpace', { size: planInfo.vectorSpace })}
+          tooltip={t('billing.plansCommon.vectorSpaceTooltip') as string}
         />
 
         <KeyValue
-          label={t('billing.plansCommon.annotatedResponse.title')}
-          value={planInfo.annotatedResponse === NUM_INFINITE ? t('billing.plansCommon.unlimited') as string : `${planInfo.annotatedResponse}`}
+          icon={<RiSeoLine />}
+          label={t('billing.plansCommon.documentsRequestQuota', { count: planInfo.documentsRequestQuota })}
+          tooltip={t('billing.plansCommon.documentsRequestQuotaTooltip')}
+        />
+        <KeyValue
+          icon={<RiProgress3Line />}
+          label={[t(`billing.plansCommon.priority.${planInfo.documentProcessingPriority}`), t('billing.plansCommon.documentProcessingPriority')].join('')}
+        />
+        <Divider bgStyle='gradient' />
+        <KeyValue
+          icon={<RiFileEditLine />}
+          label={t('billing.plansCommon.annotatedResponse.title', { count: planInfo.annotatedResponse })}
           tooltip={t('billing.plansCommon.annotatedResponse.tooltip') as string}
         />
         <KeyValue
-          label={t('billing.plansCommon.logsHistory')}
-          value={planInfo.logHistory === NUM_INFINITE ? t('billing.plansCommon.unlimited') as string : `${planInfo.logHistory} ${t('billing.plansCommon.days')}`}
-        />
-        <KeyValue
-          label={t('billing.plansCommon.customTools')}
-          value={planInfo.customTools === NUM_INFINITE ? t('billing.plansCommon.unlimited') as string : (planInfo.customTools === unAvailable ? t('billing.plansCommon.unavailable') as string : `${planInfo.customTools}`)}
-        />
-        <KeyValue
-          label={t('billing.plansCommon.support')}
-          value={supportContent}
+          icon={<RiHistoryLine />}
+          label={t('billing.plansCommon.logsHistory', { days: planInfo.logHistory === NUM_INFINITE ? t('billing.plansCommon.unlimited') as string : `${planInfo.logHistory} ${t('billing.plansCommon.days')}` })}
         />
       </div>
     </div>

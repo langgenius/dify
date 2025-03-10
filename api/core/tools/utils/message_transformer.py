@@ -58,7 +58,7 @@ class ToolFileMessageTransformer:
                 # get mime type and save blob to storage
                 meta = message.meta or {}
 
-                mimetype = meta.get("mime_type", "octet/stream")
+                mimetype = meta.get("mime_type", "application/octet-stream")
                 # if message is str, encode it to bytes
 
                 if not isinstance(message.message, ToolInvokeMessage.BlobMessage):

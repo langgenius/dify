@@ -85,10 +85,10 @@ const DataSourceWebsite: FC<Props> = ({ provider }) => {
           logo: ({ className }: { className: string }) => (
             item.provider === DataSourceProvider.fireCrawl
               ? (
-                <div className={cn(className, 'flex items-center justify-center w-5 h-5 bg-white border border-gray-100 text-xs font-medium text-gray-500 rounded ml-3')}>🔥</div>
+                <div className={cn(className, 'flex items-center justify-center w-5 h-5 !bg-background-default border border-divider-subtle text-xs font-medium text-text-tertiary rounded ml-3')}>🔥</div>
               )
               : (
-                <div className={cn(className, 'flex items-center justify-center w-5 h-5 bg-white border border-gray-100 text-xs font-medium text-gray-500 rounded ml-3')}>
+                <div className={cn(className, 'flex items-center justify-center w-5 h-5 !bg-background-default border border-divider-subtle text-xs font-medium text-text-tertiary rounded ml-3')}>
                   <span className={s.jinaLogo} />
                 </div>
               )

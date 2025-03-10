@@ -1,7 +1,8 @@
 import { BlockEnum } from '@/app/components/workflow/types'
 import type { NodeTracing } from '@/types/workflow'
 import formatParallelNode from '../parallel'
-function addChildrenToIterationNode(iterationNode: NodeTracing, childrenNodes: NodeTracing[]): NodeTracing {
+
+export function addChildrenToIterationNode(iterationNode: NodeTracing, childrenNodes: NodeTracing[]): NodeTracing {
   const details: NodeTracing[][] = []
   childrenNodes.forEach((item, index) => {
     if (!item.execution_metadata) return

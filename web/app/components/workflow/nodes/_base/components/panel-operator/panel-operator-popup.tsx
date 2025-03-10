@@ -79,7 +79,7 @@ const PanelOperatorPopup = ({
     return customTools.find(toolWithProvider => toolWithProvider.id === data.provider_id)?.description[language]
   }, [data, nodesExtraData, language, buildInTools, customTools, workflowTools])
 
-  const showChangeBlock = data.type !== BlockEnum.Start && !nodesReadOnly && data.type !== BlockEnum.Iteration
+  const showChangeBlock = data.type !== BlockEnum.Start && !nodesReadOnly && data.type !== BlockEnum.Iteration && data.type !== BlockEnum.Loop
 
   const link = useNodeHelpLink(data.type)
 

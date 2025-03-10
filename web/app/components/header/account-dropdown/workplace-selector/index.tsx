@@ -6,16 +6,14 @@ import { RiArrowDownSLine } from '@remixicon/react'
 import cn from '@/utils/classnames'
 import { switchWorkspace } from '@/service/common'
 import { useWorkspacesContext } from '@/context/workspace-context'
-import { useProviderContext } from '@/context/provider-context'
 import { ToastContext } from '@/app/components/base/toast'
 
 const WorkplaceSelector = () => {
   const { t } = useTranslation()
-  const { plan } = useProviderContext()
   const { notify } = useContext(ToastContext)
   const { workspaces } = useWorkspacesContext()
   const currentWorkspace = workspaces.find(v => v.current)
-  const isFreePlan = plan.type === 'sandbox'
+
   const handleSwitchWorkspace = async (tenant_id: string) => {
     try {
       if (currentWorkspace?.id === tenant_id)

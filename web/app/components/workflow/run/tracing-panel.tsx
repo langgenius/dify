@@ -82,6 +82,12 @@ const TracingPanel: FC<TracingPanelProps> = ({
     iterationResultDurationMap,
     handleShowIterationResultList,
 
+    showLoopingDetail,
+    setShowLoopingDetailFalse,
+    loopResultList,
+    loopResultDurationMap,
+    handleShowLoopResultList,
+
     agentOrToolLogItemStack,
     agentOrToolLogListMap,
     handleShowAgentOrToolLog,
@@ -139,6 +145,7 @@ const TracingPanel: FC<TracingPanelProps> = ({
           <NodePanel
             nodeInfo={node!}
             onShowIterationDetail={handleShowIterationResultList}
+            onShowLoopDetail={handleShowLoopResultList}
             onShowRetryDetail={handleShowRetryResultList}
             onShowAgentOrToolLog={handleShowAgentOrToolLog}
             hideInfo={hideNodeInfo}
@@ -160,6 +167,11 @@ const TracingPanel: FC<TracingPanelProps> = ({
         setShowIteratingDetailFalse={setShowIteratingDetailFalse}
         iterationResultList={iterationResultList}
         iterationResultDurationMap={iterationResultDurationMap}
+
+        showLoopingDetail={showLoopingDetail}
+        setShowLoopingDetailFalse={setShowLoopingDetailFalse}
+        loopResultList={loopResultList}
+        loopResultDurationMap={loopResultDurationMap}
 
         agentOrToolLogItemStack={agentOrToolLogItemStack}
         agentOrToolLogListMap={agentOrToolLogListMap}

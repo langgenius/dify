@@ -1,7 +1,7 @@
 'use client'
 import { useCallback, useState } from 'react'
 import { useContext } from 'use-context-selector'
-import { XMarkIcon } from '@heroicons/react/24/outline'
+import { RiCloseLine } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
 import { ReactMultiEmail } from 'react-multi-email'
 import { RiErrorWarningFill } from '@remixicon/react'
@@ -59,10 +59,10 @@ const InviteModal = ({
     <div className={cn(s.wrap)}>
       <Modal overflowVisible isShow onClose={() => { }} className={cn(s.modal)}>
         <div className='flex justify-between mb-2'>
-          <div className='text-xl font-semibold text-gray-900'>{t('common.members.inviteTeamMember')}</div>
-          <XMarkIcon className='w-4 h-4 cursor-pointer' onClick={onCancel} />
+          <div className='text-xl font-semibold text-text-primary'>{t('common.members.inviteTeamMember')}</div>
+          <RiCloseLine className='w-4 h-4 cursor-pointer text-text-tertiary' onClick={onCancel} />
         </div>
-        <div className='mb-3 text-[13px] text-gray-500'>{t('common.members.inviteTeamMemberTip')}</div>
+        <div className='mb-3 text-[13px] text-text-tertiary'>{t('common.members.inviteTeamMemberTip')}</div>
         {!isEmailSetup && (
           <div className='grow basis-0 overflow-y-auto pb-4'>
             <div className='relative mb-1 p-2 rounded-xl border border-components-panel-border shadow-xs'>
@@ -80,19 +80,18 @@ const InviteModal = ({
         )}
 
         <div>
-          <div className='mb-2 text-sm font-medium text-gray-900'>{t('common.members.email')}</div>
+          <div className='mb-2 text-sm font-medium text-text-primary'>{t('common.members.email')}</div>
           <div className='mb-8 h-36 flex items-stretch'>
             <ReactMultiEmail
-              className={cn('w-full pt-2 px-3 outline-none border-none',
-                'appearance-none text-sm text-gray-900 rounded-lg overflow-y-auto',
-                s.emailsInput,
+              className={cn('w-full pt-2 px-3 outline-none !bg-components-input-bg-normal border-components-input-border-active',
+                'appearance-none text-sm !text-text-primary rounded-lg overflow-y-auto',
               )}
               autoFocus
               emails={emails}
               inputClassName='bg-transparent'
               onChange={setEmails}
               getLabel={(email, index, removeEmail) =>
-                <div data-tag key={index} className={cn(s.emailBackground)}>
+                <div data-tag key={index} className={cn('bg-components-button-secondary-bg')}>
                   <div data-tag-item>{email}</div>
                   <span data-tag-handle onClick={() => removeEmail(index)}>
                     ×
