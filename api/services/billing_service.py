@@ -2,8 +2,7 @@ import os
 from typing import Literal, Optional
 
 import httpx
-from tenacity import (retry, retry_if_exception_type, stop_before_delay,
-                      wait_fixed)
+from tenacity import retry, retry_if_exception_type, stop_before_delay, wait_fixed
 
 from extensions.ext_database import db
 from libs.helper import RateLimiter
@@ -95,8 +94,8 @@ class BillingService:
         return cls._send_request("POST", "/account/delete-feedback", json=json)
 
     class EducationIdentity:
-        verification_rate_limit = RateLimiter(prefix="edu_verification_rate_limit", limit=10, period=60)
-        activation_rate_limit = RateLimiter(prefix="edu_activation_rate_limit", limit=10, period=60)
+        verification_rate_limit = RateLimiter(prefix="edu_verification_rate_limit", max_attempts=10, time_window=60)
+        activation_rate_limit = RateLimiter(prefix="edu_activation_rate_limit", max_attempts=10, time_window=60)
 
         @classmethod
         def verify(cls, account_id: str, account_email: str):
@@ -118,8 +117,7 @@ class BillingService:
         @classmethod
         def activate(cls, account: Account, token: str, institution: str):
             if cls.activation_rate_limit.is_rate_limited(account.email):
-                from controllers.console.error import \
-                    EducationActivateLimitError
+                from controllers.console.error import EducationActivateLimitError
 
                 raise EducationActivateLimitError()
 
