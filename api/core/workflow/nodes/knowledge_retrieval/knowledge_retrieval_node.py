@@ -300,14 +300,16 @@ class KnowledgeRetrievalNode(LLMNode):
                         filter.get("condition"), filter.get("metadata_name"), filter.get("value"), document_query
                     )
         elif node_data.metadata_filtering_mode == "manual":
-            for condition in node_data.metadata_filtering_conditions.conditions:
-                metadata_name = condition.name
-                expected_value = condition.value
-                if isinstance(expected_value, str):
-                    expected_value = self.graph_runtime_state.variable_pool.convert_template(expected_value).text
-                document_query = self._process_metadata_filter_func(
-                    condition.comparison_operator, metadata_name, expected_value, document_query
-                )
+            if node_data.metadata_filtering_conditions:
+                for condition in node_data.metadata_filtering_conditions.conditions:
+                    metadata_name = condition.name
+                    expected_value = condition.value
+                    if expected_value:
+                        if isinstance(expected_value, str):
+                            expected_value = self.graph_runtime_state.variable_pool.convert_template(expected_value).text
+                        document_query = self._process_metadata_filter_func(
+                            condition.comparison_operator, metadata_name, expected_value, document_query
+                        )
         else:
             raise ValueError("Invalid metadata filtering mode")
         documnents = document_query.all()

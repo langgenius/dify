@@ -800,14 +800,16 @@ class DatasetRetrieval:
                         filter.get("condition"), filter.get("metadata_name"), filter.get("value"), document_query
                     )
         elif metadata_filtering_mode == "manual":
-            for condition in metadata_filtering_conditions.conditions:
-                metadata_name = condition.name
-                expected_value = condition.value
-                if isinstance(expected_value, str):
-                    expected_value = self._replace_metadata_filter_value(expected_value, inputs)
-                document_query = self._process_metadata_filter_func(
-                    condition.comparison_operator, metadata_name, expected_value, document_query
-                )
+            if metadata_filtering_conditions:
+                for condition in metadata_filtering_conditions.conditions:
+                    metadata_name = condition.name
+                    expected_value = condition.value
+                    if expected_value:
+                        if isinstance(expected_value, str):
+                            expected_value = self._replace_metadata_filter_value(expected_value, inputs)
+                        document_query = self._process_metadata_filter_func(
+                            condition.comparison_operator, metadata_name, expected_value, document_query
+                        )
         else:
             raise ValueError("Invalid metadata filtering mode")
         documnents = document_query.all()
