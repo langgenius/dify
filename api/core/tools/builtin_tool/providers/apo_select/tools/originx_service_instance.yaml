@@ -1,0 +1,57 @@
+identity:
+  name: originx_service_instance
+  author: APO
+  label:
+    en_US:  List service instances
+    zh_Hans: 列出该服务下的所有实例
+    pt_BR: List service instances
+description:
+  human:
+    en_US: List service instances
+    zh_Hans: 列出该服务下的所有实例
+    pt_BR: List service instances
+  llm: 列出该服务下的所有实例
+display:
+  type: metric
+  title: Originx 北极星指标 (服务层级) - 北极星指标 - 列出指定服务的所有实例
+  unit: ns
+parameters:
+  - name: service_name
+    type: string
+    required: true
+    label:
+      en_US: service_name
+      zh_Hans: service_name
+      pt_BR: service_name
+    human_description:
+      en_US: Specified service name
+      zh_Hans: 指定的服务名
+      pt_BR: Specified service name
+    llm_description: Specified service name
+    form: llm
+  - name: startTime
+    type: number
+    required: true
+    label:
+      en_US: startTime
+      zh_Hans: startTime
+      pt_BR: startTime
+    human_description:
+      en_US: Data query start time
+      zh_Hans: 开始时间 (微秒)
+      pt_BR: Data query start time
+    llm_description: Data query start time
+    form: llm
+  - name: endTime
+    type: number
+    required: true
+    label:
+      en_US: endTime
+      zh_Hans: endTime
+      pt_BR: endTime
+    human_description:
+      en_US: Data query end time
+      zh_Hans: 结束时间 (微秒)
+      pt_BR: Data query end time
+    llm_description: Data query start time
+    form: llm
