@@ -72,7 +72,7 @@ const ConditionNumber = ({
           <Input
             className='bg-transparent hover:bg-transparent outline-none border-none focus:shadow-none focus:bg-transparent'
             value={value}
-            onChange={e => onChange(e.target.value)}
+            onChange={e => onChange(Number(e.target.value))}
             placeholder={t('workflow.nodes.knowledgeRetrieval.metadata.panel.placeholder')}
             type='number'
           />
