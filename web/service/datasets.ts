@@ -5,7 +5,6 @@ import type {
   CreateDocumentReq,
   DataSet,
   DataSetListResponse,
-  DocumentListResponse,
   ErrorDocsResponse,
   ExternalAPIDeleteResponse,
   ExternalAPIItem,
@@ -120,10 +119,6 @@ export const fetchDefaultProcessRule: Fetcher<ProcessRuleResponse, { url: string
 }
 export const fetchProcessRule: Fetcher<ProcessRuleResponse, { params: { documentId: string } }> = ({ params: { documentId } }) => {
   return get<ProcessRuleResponse>('/datasets/process-rule', { params: { document_id: documentId } })
-}
-
-export const fetchDocuments: Fetcher<DocumentListResponse, { datasetId: string; params: { keyword: string; page: number; limit: number; sort?: SortType } }> = ({ datasetId, params }) => {
-  return get<DocumentListResponse>(`/datasets/${datasetId}/documents`, { params })
 }
 
 export const createFirstDocument: Fetcher<createDocumentResponse, { body: CreateDocumentReq }> = ({ body }) => {
