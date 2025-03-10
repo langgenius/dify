@@ -110,6 +110,7 @@ export type HandleToggleConditionLogicalOperator = () => void
 
 export type MetadataShape = {
   metadataList?: MetadataInDoc[]
+  selectedDatasetsLoaded?: boolean
   metadataFilteringConditions?: MetadataFilteringConditions
   handleAddCondition: HandleAddCondition
   handleRemoveCondition: HandleRemoveCondition

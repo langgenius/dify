@@ -2,6 +2,7 @@ import {
   useEffect,
   useState,
 } from 'react'
+import { unionBy } from 'lodash-es'
 import { useTranslation } from 'react-i18next'
 import { RiFilter3Line } from '@remixicon/react'
 import MetadataPanel from './metadata-panel'
@@ -15,21 +16,25 @@ import type { MetadataShape } from '@/app/components/workflow/nodes/knowledge-re
 
 const MetadataTrigger = ({
   metadataFilteringConditions,
-  metadataList = [],
+  metadataList: originalMetadataList = [],
   handleRemoveCondition,
+  selectedDatasetsLoaded,
   ...restProps
 }: MetadataShape) => {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const conditions = metadataFilteringConditions?.conditions || []
 
+  const metadataList = unionBy(originalMetadataList, 'name').sort(a => a.id === 'built-in' ? 1 : -1)
   useEffect(() => {
-    conditions.forEach((condition) => {
-      if (!metadataList.find(metadata => metadata.name === condition.name))
-        handleRemoveCondition(condition.name)
-    })
+    if (selectedDatasetsLoaded) {
+      conditions.forEach((condition) => {
+        if (!metadataList.find(metadata => metadata.name === condition.name))
+          handleRemoveCondition(condition.name)
+      })
+    }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [metadataList, handleRemoveCondition])
+  }, [metadataList, handleRemoveCondition, selectedDatasetsLoaded])
 
   return (
     <PortalToFollowElem

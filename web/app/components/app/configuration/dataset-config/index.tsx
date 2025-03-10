@@ -256,6 +256,7 @@ const DatasetConfig: FC = () => {
       <div className='py-2 border-t border-t-divider-subtle'>
         <MetadataFilter
           metadataList={metadataList}
+          selectedDatasetsLoaded
           metadataFilterMode={datasetConfigs.metadata_filtering_mode}
           metadataFilteringConditions={datasetConfigs.metadata_filtering_conditions}
           handleAddCondition={handleAddCondition}

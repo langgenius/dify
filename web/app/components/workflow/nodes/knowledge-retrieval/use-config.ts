@@ -211,6 +211,7 @@ const useConfig = (id: string, payload: KnowledgeRetrievalNodeType) => {
     setInputs(newInputs)
   }, [inputs, setInputs, selectedDatasets, currentRerankModel, currentRerankProvider])
 
+  const [selectedDatasetsLoaded, setSelectedDatasetsLoaded] = useState(false)
   // datasets
   useEffect(() => {
     (async () => {
@@ -225,6 +226,7 @@ const useConfig = (id: string, payload: KnowledgeRetrievalNodeType) => {
         draft._datasets = selectedDatasets
       })
       setInputs(newInputs)
+      setSelectedDatasetsLoaded(true)
     })()
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
@@ -418,6 +420,7 @@ const useConfig = (id: string, payload: KnowledgeRetrievalNodeType) => {
     handleModelChanged,
     handleCompletionParamsChange,
     selectedDatasets: selectedDatasets.filter(d => d.name),
+    selectedDatasetsLoaded,
     handleOnDatasetsChange,
     isShowSingleRun,
     hideSingleRun,
