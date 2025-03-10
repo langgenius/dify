@@ -297,18 +297,20 @@ class KnowledgeRetrievalNode(LLMNode):
             automatic_metadata_filters = self._automatic_metadata_filter_func(dataset_ids, query, node_data)
             if automatic_metadata_filters:
                 for filter in automatic_metadata_filters:
-                    self._process_metadata_filter_func(
+                    document_query = self._process_metadata_filter_func(
                         filter.get("condition"), filter.get("metadata_name"), filter.get("value"), document_query
                     )
         elif node_data.metadata_filtering_mode == "manual":
-            for condition in node_data.metadata_filtering_conditions.conditions:
-                metadata_name = condition.name
-                expected_value = condition.value
-                if isinstance(expected_value, str):
-                    expected_value = self.graph_runtime_state.variable_pool.convert_template(expected_value).text
-                self._process_metadata_filter_func(
-                    condition.comparison_operator, metadata_name, expected_value, document_query
-                )
+            if node_data.metadata_filtering_conditions:
+                for condition in node_data.metadata_filtering_conditions.conditions:
+                    metadata_name = condition.name
+                    expected_value = condition.value
+                    if expected_value:
+                        if isinstance(expected_value, str):
+                            expected_value = self.graph_runtime_state.variable_pool.convert_template(expected_value).text
+                        document_query = self._process_metadata_filter_func(
+                            condition.comparison_operator, metadata_name, expected_value, document_query
+                        )
         else:
             raise ValueError("Invalid metadata filtering mode")
         documnents = document_query.all()
@@ -384,17 +386,23 @@ class KnowledgeRetrievalNode(LLMNode):
     def _process_metadata_filter_func(self, condition: str, metadata_name: str, value: str, query):
         match condition:
             case "contains":
-                query = query.filter(Document.doc_metadata[metadata_name].like(f"%{value}%"))
+                query = query.filter(Document.doc_metadata[metadata_name].like(f'"%{value}%"'))
             case "not contains":
-                query = query.filter(Document.doc_metadata[metadata_name].notlike(f"%{value}%"))
+                query = query.filter(Document.doc_metadata[metadata_name].notlike(f'"%{value}%"'))
             case "start with":
-                query = query.filter(Document.doc_metadata[metadata_name].like(f"{value}%"))
+                query = query.filter(Document.doc_metadata[metadata_name].like(f'"{value}%"'))
             case "end with":
-                query = query.filter(Document.doc_metadata[metadata_name].like(f"%{value}"))
+                query = query.filter(Document.doc_metadata[metadata_name].like(f'"%{value}"'))
             case "=" | "is":
-                query = query.filter(Document.doc_metadata[metadata_name] == value)
+                if isinstance(value, str):
+                    query = query.filter(Document.doc_metadata[metadata_name] == f'"{value}"')
+                else:
+                    query = query.filter(Document.doc_metadata[metadata_name] == value)
             case "is not" | "≠":
-                query = query.filter(Document.doc_metadata[metadata_name] != value)
+                if isinstance(value, str):
+                    query = query.filter(Document.doc_metadata[metadata_name] != f'"{value}"')
+                else:
+                    query = query.filter(Document.doc_metadata[metadata_name] != value)
             case "is empty":
                 query = query.filter(Document.doc_metadata[metadata_name].is_(None))
             case "is not empty":
@@ -409,7 +417,7 @@ class KnowledgeRetrievalNode(LLMNode):
                 query = query.filter(Document.doc_metadata[metadata_name] >= value)
             case _:
                 pass
-
+        return query
     @classmethod
     def _extract_variable_selector_to_variable_mapping(
         cls,

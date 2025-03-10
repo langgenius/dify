@@ -812,18 +812,20 @@ class DatasetRetrieval:
             )
             if automatic_metadata_filters:
                 for filter in automatic_metadata_filters:
-                    self._process_metadata_filter_func(
+                    document_query = self._process_metadata_filter_func(
                         filter.get("condition"), filter.get("metadata_name"), filter.get("value"), document_query
                     )
         elif metadata_filtering_mode == "manual":
-            for condition in metadata_filtering_conditions.conditions:
-                metadata_name = condition.name
-                expected_value = condition.value
-                if isinstance(expected_value, str):
-                    expected_value = self._replace_metadata_filter_value(expected_value, inputs)
-                self._process_metadata_filter_func(
-                    condition.comparison_operator, metadata_name, expected_value, document_query
-                )
+            if metadata_filtering_conditions:
+                for condition in metadata_filtering_conditions.conditions:
+                    metadata_name = condition.name
+                    expected_value = condition.value
+                    if expected_value:
+                        if isinstance(expected_value, str):
+                            expected_value = self._replace_metadata_filter_value(expected_value, inputs)
+                        document_query = self._process_metadata_filter_func(
+                            condition.comparison_operator, metadata_name, expected_value, document_query
+                        )
         else:
             raise ValueError("Invalid metadata filtering mode")
         documnents = document_query.all()
@@ -899,31 +901,38 @@ class DatasetRetrieval:
     def _process_metadata_filter_func(self, condition: str, metadata_name: str, value: str, query):
         match condition:
             case "contains":
-                query = query.filter(Document.doc_metadata[metadata_name].like(f"%{value}%"))
+                query = query.filter(DatasetDocument.doc_metadata[metadata_name].like(f'"%{value}%"'))
             case "not contains":
-                query = query.filter(Document.doc_metadata[metadata_name].notlike(f"%{value}%"))
+                query = query.filter(DatasetDocument.doc_metadata[metadata_name].notlike(f'"%{value}%"'))
             case "start with":
-                query = query.filter(Document.doc_metadata[metadata_name].like(f"{value}%"))
+                query = query.filter(DatasetDocument.doc_metadata[metadata_name].like(f'"{value}%"'))
             case "end with":
-                query = query.filter(Document.doc_metadata[metadata_name].like(f"%{value}"))
-            case "is", "=":
-                query = query.filter(Document.doc_metadata[metadata_name] == value)
-            case "is not", "≠":
-                query = query.filter(Document.doc_metadata[metadata_name] != value)
+                query = query.filter(DatasetDocument.doc_metadata[metadata_name].like(f'"%{value}"'))
+            case "is" | "=":
+                if isinstance(value, str):
+                    query = query.filter(DatasetDocument.doc_metadata[metadata_name] == f'"{value}"')
+                else:
+                    query = query.filter(DatasetDocument.doc_metadata[metadata_name] == value)
+            case "is not" | "≠":
+                if isinstance(value, str):
+                    query = query.filter(DatasetDocument.doc_metadata[metadata_name] != f'"{value}"')
+                else:
+                    query = query.filter(DatasetDocument.doc_metadata[metadata_name] != value)
             case "is empty":
-                query = query.filter(Document.doc_metadata[metadata_name].is_(None))
+                query = query.filter(DatasetDocument.doc_metadata[metadata_name].is_(None))
             case "is not empty":
-                query = query.filter(Document.doc_metadata[metadata_name].isnot(None))
-            case "before", "<":
-                query = query.filter(Document.doc_metadata[metadata_name] < value)
-            case "after", ">":
-                query = query.filter(Document.doc_metadata[metadata_name] > value)
-            case "≤", ">=":
-                query = query.filter(Document.doc_metadata[metadata_name] <= value)
-            case "≥", ">=":
-                query = query.filter(Document.doc_metadata[metadata_name] >= value)
+                query = query.filter(DatasetDocument.doc_metadata[metadata_name].isnot(None))
+            case "before" | "<":
+                query = query.filter(DatasetDocument.doc_metadata[metadata_name] < value)
+            case "after" | ">":
+                query = query.filter(DatasetDocument.doc_metadata[metadata_name] > value)
+            case "≤" | ">=":
+                query = query.filter(DatasetDocument.doc_metadata[metadata_name] <= value)
+            case "≥" | ">=":
+                query = query.filter(DatasetDocument.doc_metadata[metadata_name] >= value)
             case _:
                 pass
+        return query
 
     def _fetch_model_config(
         self, tenant_id: str, model: ModelConfig
