@@ -5,7 +5,7 @@ from sqlalchemy import func
 from models.base import Base
 
 from .engine import db
-from .types import StringUUID
+from .types import StringUUID, adjusted_text, uuid_default, varchar_default
 
 
 class ProviderType(Enum):
@@ -52,15 +52,15 @@ class Provider(Base):
         ),
     )
 
-    id = db.Column(StringUUID, server_default=db.text("uuid_generate_v4()"))
+    id = db.Column(StringUUID, **uuid_default())
     tenant_id = db.Column(StringUUID, nullable=False)
     provider_name = db.Column(db.String(255), nullable=False)
-    provider_type = db.Column(db.String(40), nullable=False, server_default=db.text("'custom'::character varying"))
-    encrypted_config = db.Column(db.Text, nullable=True)
+    provider_type = db.Column(db.String(40), nullable=False, **varchar_default("custom"))
+    encrypted_config = db.Column(adjusted_text(), nullable=True)
     is_valid = db.Column(db.Boolean, nullable=False, server_default=db.text("false"))
     last_used = db.Column(db.DateTime, nullable=True)
 
-    quota_type = db.Column(db.String(40), nullable=True, server_default=db.text("''::character varying"))
+    quota_type = db.Column(db.String(40), nullable=True, **varchar_default(""))
     quota_limit = db.Column(db.BigInteger, nullable=True)
     quota_used = db.Column(db.BigInteger, default=0)
 
@@ -105,12 +105,12 @@ class ProviderModel(Base):
         ),
     )
 
-    id = db.Column(StringUUID, server_default=db.text("uuid_generate_v4()"))
+    id = db.Column(StringUUID, **uuid_default())
     tenant_id = db.Column(StringUUID, nullable=False)
     provider_name = db.Column(db.String(255), nullable=False)
     model_name = db.Column(db.String(255), nullable=False)
     model_type = db.Column(db.String(40), nullable=False)
-    encrypted_config = db.Column(db.Text, nullable=True)
+    encrypted_config = db.Column(adjusted_text(), nullable=True)
     is_valid = db.Column(db.Boolean, nullable=False, server_default=db.text("false"))
     created_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
     updated_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
@@ -123,7 +123,7 @@ class TenantDefaultModel(Base):
         db.Index("tenant_default_model_tenant_id_provider_type_idx", "tenant_id", "provider_name", "model_type"),
     )
 
-    id = db.Column(StringUUID, server_default=db.text("uuid_generate_v4()"))
+    id = db.Column(StringUUID, **uuid_default())
     tenant_id = db.Column(StringUUID, nullable=False)
     provider_name = db.Column(db.String(255), nullable=False)
     model_name = db.Column(db.String(255), nullable=False)
@@ -139,7 +139,7 @@ class TenantPreferredModelProvider(Base):
         db.Index("tenant_preferred_model_provider_tenant_provider_idx", "tenant_id", "provider_name"),
     )
 
-    id = db.Column(StringUUID, server_default=db.text("uuid_generate_v4()"))
+    id = db.Column(StringUUID, **uuid_default())
     tenant_id = db.Column(StringUUID, nullable=False)
     provider_name = db.Column(db.String(255), nullable=False)
     preferred_provider_type = db.Column(db.String(40), nullable=False)
@@ -154,7 +154,7 @@ class ProviderOrder(Base):
         db.Index("provider_order_tenant_provider_idx", "tenant_id", "provider_name"),
     )
 
-    id = db.Column(StringUUID, server_default=db.text("uuid_generate_v4()"))
+    id = db.Column(StringUUID, **uuid_default())
     tenant_id = db.Column(StringUUID, nullable=False)
     provider_name = db.Column(db.String(255), nullable=False)
     account_id = db.Column(StringUUID, nullable=False)
@@ -164,7 +164,7 @@ class ProviderOrder(Base):
     quantity = db.Column(db.Integer, nullable=False, server_default=db.text("1"))
     currency = db.Column(db.String(40))
     total_amount = db.Column(db.Integer)
-    payment_status = db.Column(db.String(40), nullable=False, server_default=db.text("'wait_pay'::character varying"))
+    payment_status = db.Column(db.String(40), nullable=False, **varchar_default("wait_pay"))
     paid_at = db.Column(db.DateTime)
     pay_failed_at = db.Column(db.DateTime)
     refunded_at = db.Column(db.DateTime)
@@ -183,7 +183,7 @@ class ProviderModelSetting(Base):
         db.Index("provider_model_setting_tenant_provider_model_idx", "tenant_id", "provider_name", "model_type"),
     )
 
-    id = db.Column(StringUUID, server_default=db.text("uuid_generate_v4()"))
+    id = db.Column(StringUUID, **uuid_default())
     tenant_id = db.Column(StringUUID, nullable=False)
     provider_name = db.Column(db.String(255), nullable=False)
     model_name = db.Column(db.String(255), nullable=False)
@@ -205,13 +205,13 @@ class LoadBalancingModelConfig(Base):
         db.Index("load_balancing_model_config_tenant_provider_model_idx", "tenant_id", "provider_name", "model_type"),
     )
 
-    id = db.Column(StringUUID, server_default=db.text("uuid_generate_v4()"))
+    id = db.Column(StringUUID, **uuid_default())
     tenant_id = db.Column(StringUUID, nullable=False)
     provider_name = db.Column(db.String(255), nullable=False)
     model_name = db.Column(db.String(255), nullable=False)
     model_type = db.Column(db.String(40), nullable=False)
     name = db.Column(db.String(255), nullable=False)
-    encrypted_config = db.Column(db.Text, nullable=True)
+    encrypted_config = db.Column(adjusted_text(), nullable=True)
     enabled = db.Column(db.Boolean, nullable=False, server_default=db.text("true"))
     created_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
     updated_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())

@@ -25,7 +25,7 @@ from models.enums import CreatedByRole
 
 from .account import Account
 from .engine import db
-from .types import StringUUID
+from .types import StringUUID, adjusted_text, no_length_string, uuid_default
 
 if TYPE_CHECKING:
     from models.model import AppMode
@@ -105,15 +105,15 @@ class Workflow(Base):
         db.Index("workflow_version_idx", "tenant_id", "app_id", "version"),
     )
 
-    id: Mapped[str] = mapped_column(StringUUID, server_default=db.text("uuid_generate_v4()"))
+    id: Mapped[str] = mapped_column(StringUUID, **uuid_default())
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     type: Mapped[str] = mapped_column(db.String(255), nullable=False)
-    version: Mapped[str]
-    marked_name: Mapped[str] = mapped_column(default="", server_default="")
-    marked_comment: Mapped[str] = mapped_column(default="", server_default="")
-    graph: Mapped[str] = mapped_column(sa.Text)
-    _features: Mapped[str] = mapped_column("features", sa.TEXT)
+    version: Mapped[str] = mapped_column(db.String(255))
+    marked_name: Mapped[str] = mapped_column(no_length_string(), default="", server_default="")
+    marked_comment: Mapped[str] = mapped_column(no_length_string(), default="", server_default="")
+    graph: Mapped[str] = mapped_column(adjusted_text())
+    _features: Mapped[str] = mapped_column("features", adjusted_text())
     created_by: Mapped[str] = mapped_column(StringUUID, nullable=False)
     created_at: Mapped[datetime] = mapped_column(db.DateTime, nullable=False, server_default=func.current_timestamp())
     updated_by: Mapped[Optional[str]] = mapped_column(StringUUID)
@@ -124,10 +124,10 @@ class Workflow(Base):
         server_onupdate=func.current_timestamp(),
     )
     _environment_variables: Mapped[str] = mapped_column(
-        "environment_variables", db.Text, nullable=False, server_default="{}"
+        "environment_variables", adjusted_text(), nullable=False, default="{}"
     )
     _conversation_variables: Mapped[str] = mapped_column(
-        "conversation_variables", db.Text, nullable=False, server_default="{}"
+        "conversation_variables", adjusted_text(), nullable=False, default="{}"
     )
 
     @classmethod
@@ -400,7 +400,7 @@ class WorkflowRun(Base):
         db.Index("workflow_run_tenant_app_sequence_idx", "tenant_id", "app_id", "sequence_number"),
     )
 
-    id: Mapped[str] = mapped_column(StringUUID, server_default=db.text("uuid_generate_v4()"))
+    id: Mapped[str] = mapped_column(StringUUID, **uuid_default())
     tenant_id: Mapped[str] = mapped_column(StringUUID)
     app_id: Mapped[str] = mapped_column(StringUUID)
     sequence_number: Mapped[int] = mapped_column()
@@ -408,8 +408,8 @@ class WorkflowRun(Base):
     type: Mapped[str] = mapped_column(db.String(255))
     triggered_from: Mapped[str] = mapped_column(db.String(255))
     version: Mapped[str] = mapped_column(db.String(255))
-    graph: Mapped[Optional[str]] = mapped_column(db.Text)
-    inputs: Mapped[Optional[str]] = mapped_column(db.Text)
+    graph: Mapped[Optional[str]] = mapped_column(adjusted_text())
+    inputs: Mapped[Optional[str]] = mapped_column(adjusted_text())
     status: Mapped[str] = mapped_column(db.String(255))  # running, succeeded, failed, stopped, partial-succeeded
     outputs: Mapped[Optional[str]] = mapped_column(sa.Text, default="{}")
     error: Mapped[Optional[str]] = mapped_column(db.Text)
@@ -629,7 +629,7 @@ class WorkflowNodeExecution(Base):
         ),
     )
 
-    id: Mapped[str] = mapped_column(StringUUID, server_default=db.text("uuid_generate_v4()"))
+    id: Mapped[str] = mapped_column(StringUUID, **uuid_default())
     tenant_id: Mapped[str] = mapped_column(StringUUID)
     app_id: Mapped[str] = mapped_column(StringUUID)
     workflow_id: Mapped[str] = mapped_column(StringUUID)
@@ -642,12 +642,12 @@ class WorkflowNodeExecution(Base):
     node_type: Mapped[str] = mapped_column(db.String(255))
     title: Mapped[str] = mapped_column(db.String(255))
     inputs: Mapped[Optional[str]] = mapped_column(db.Text)
-    process_data: Mapped[Optional[str]] = mapped_column(db.Text)
+    process_data: Mapped[Optional[str]] = mapped_column(adjusted_text())
     outputs: Mapped[Optional[str]] = mapped_column(db.Text)
     status: Mapped[str] = mapped_column(db.String(255))
     error: Mapped[Optional[str]] = mapped_column(db.Text)
     elapsed_time: Mapped[float] = mapped_column(db.Float, server_default=db.text("0"))
-    execution_metadata: Mapped[Optional[str]] = mapped_column(db.Text)
+    execution_metadata: Mapped[Optional[str]] = mapped_column(adjusted_text())
     created_at: Mapped[datetime] = mapped_column(db.DateTime, server_default=func.current_timestamp())
     created_by_role: Mapped[str] = mapped_column(db.String(255))
     created_by: Mapped[str] = mapped_column(StringUUID)
@@ -758,7 +758,7 @@ class WorkflowAppLog(Base):
         db.Index("workflow_app_log_app_idx", "tenant_id", "app_id"),
     )
 
-    id: Mapped[str] = mapped_column(StringUUID, server_default=db.text("uuid_generate_v4()"))
+    id: Mapped[str] = mapped_column(StringUUID, **uuid_default())
     tenant_id: Mapped[str] = mapped_column(StringUUID)
     app_id: Mapped[str] = mapped_column(StringUUID)
     workflow_id = db.Column(StringUUID, nullable=False)
@@ -796,7 +796,7 @@ class ConversationVariable(Base):
     id: Mapped[str] = mapped_column(StringUUID, primary_key=True)
     conversation_id: Mapped[str] = mapped_column(StringUUID, nullable=False, primary_key=True)
     app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
-    data = mapped_column(db.Text, nullable=False)
+    data = mapped_column(adjusted_text(), nullable=False)
     created_at = mapped_column(db.DateTime, nullable=False, server_default=func.current_timestamp())
     updated_at = mapped_column(
         db.DateTime, nullable=False, server_default=func.current_timestamp(), onupdate=func.current_timestamp()
