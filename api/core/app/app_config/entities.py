@@ -223,7 +223,7 @@ class DatasetRetrieveConfigEntity(BaseModel):
     reranking_enabled: Optional[bool] = True
     metadata_filtering_mode: Optional[Literal["disabled", "automatic", "manual"]] = "disabled"
     metadata_model_config: Optional[ModelConfig] = None
-    metadata_filtering_conditions: Optional[list[MetadataFilteringCondition]] = None
+    metadata_filtering_conditions: Optional[MetadataFilteringCondition] = None
 
 
 class DatasetEntity(BaseModel):
