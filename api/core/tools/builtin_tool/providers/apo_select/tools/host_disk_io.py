@@ -18,7 +18,7 @@ class HostDiskIOTool(BuiltinTool):
         app_id: Optional[str] = None,
         message_id: Optional[str] = None,
     ) -> Generator[ToolInvokeMessage, None, None]:
-        node = tool_parameters.get("node")
+        node = tool_parameters.get("node", '.*')
         start_time = tool_parameters.get("startTime")
         end_time = tool_parameters.get("endTime")
         params = {

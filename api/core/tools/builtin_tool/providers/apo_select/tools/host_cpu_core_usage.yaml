@@ -31,7 +31,7 @@ parameters:
     form: llm
   - name: node
     type: string
-    required: true
+    required: false
     label:
       en_US: Host Node
       zh_Hans: 宿主机节点

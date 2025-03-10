@@ -18,7 +18,7 @@ display:
 parameters:
   - name: node
     type: string
-    required: true
+    required: false
     label:
       en_US: node
       zh_Hans: node

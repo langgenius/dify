@@ -18,7 +18,7 @@ display:
 parameters:
   - name: pod
     type: string
-    required: true
+    required: false
     label:
       en_US: pod
       zh_Hans: pod
@@ -31,7 +31,7 @@ parameters:
     form: llm
   - name: namespace
     type: string
-    required: true
+    required: false
     label:
       en_US: namespace
       zh_Hans: namespace

@@ -18,7 +18,7 @@ display:
 parameters:
   - name: service_name
     type: string
-    required: true
+    required: false
     label:
       en_US: service_name
       zh_Hans: service_name
@@ -31,7 +31,7 @@ parameters:
     form: llm
   - name: content_key
     type: string
-    required: true
+    required: false
     label:
       en_US: content_key
       zh_Hans: content_key

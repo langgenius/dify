@@ -19,15 +19,15 @@ class HostSysLoad(BuiltinTool):
         app_id: Optional[str] = None,
         message_id: Optional[str] = None,
     ) -> Generator[ToolInvokeMessage, None, None]:
-        node = tool_parameters.get("node")
-        job = tool_parameters.get("job")
+        node = tool_parameters.get("node", '.*')
+        job = tool_parameters.get("job", '.*')
         start_time = tool_parameters.get("startTime")
         end_time = tool_parameters.get("endTime")
         params = {
           'metricName': "宿主机监控指标 - Quick CPU / Mem / Disk - Sys Load",
           'params': {
             'node': node,
-            **({'job': job} if job else {})
+            'job': job
           },
           'startTime': start_time,
           'endTime': end_time,

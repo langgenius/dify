@@ -18,7 +18,7 @@ display:
 parameters:
   - name: service
     type: string
-    required: true
+    required: false
     label:
       en_US: service
       zh_Hans: service
@@ -31,7 +31,7 @@ parameters:
     form: llm
   - name: endpoint
     type: string
-    required: true
+    required: false
     label:
       en_US: endpoint
       zh_Hans: endpoint

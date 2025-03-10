@@ -18,7 +18,7 @@ display:
 parameters:
   - name: node
     type: string
-    required: true
+    required: false
     label:
       en_US: node
       zh_Hans: node
@@ -31,7 +31,7 @@ parameters:
     form: llm
   - name: startTime
     type: number
-    required: true
+    required: false
     label:
       en_US: startTime
       zh_Hans: startTime

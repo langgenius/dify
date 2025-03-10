@@ -62,20 +62,15 @@ class ToolGenerator:
     
     def _build_python(self, tool: Dict) -> str:
         param_lines = "\n".join(
-            f"        {param['name']} = tool_parameters.get('{param['name']}')"
+            f"        {param['name']} = tool_parameters.get('{param['name']}', '.*')"
             for param in tool["params"]
         )
         
-        param_dict = []
-        for param in tool["params"]:
-            name = param.get("name", "").strip()
-            if not name:
-                continue
-            
-            if param.get("required", False):
-                param_dict.append(f"                '{name}': {name}")
-            else:
-                param_dict.append(f"                **({{'{name}': {name}}} if {name} else {{}})")
+        param_dict = [
+        f"                '{param['name']}': {param['name']}"
+        for param in tool["params"]
+        if param.get("name", "").strip()
+    ]
 
         params_content = ",\n".join(param_dict)
         
