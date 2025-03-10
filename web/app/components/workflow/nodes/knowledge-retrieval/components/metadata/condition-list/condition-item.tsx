@@ -107,11 +107,11 @@ const ConditionItem = ({
 
   const handleValueMethodChange = useCallback((v: string) => {
     setLocalValueMethod(v)
-    onUpdateCondition?.(condition.name, { ...condition, value: undefined })
+    onUpdateCondition?.(condition.id, { ...condition, value: undefined })
   }, [condition, onUpdateCondition])
 
   const handleValueChange = useCallback((v: any) => {
-    onUpdateCondition?.(condition.name, { ...condition, value: v })
+    onUpdateCondition?.(condition.id, { ...condition, value: v })
   }, [condition, onUpdateCondition])
 
   return (

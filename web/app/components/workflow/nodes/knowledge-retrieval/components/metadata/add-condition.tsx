@@ -68,7 +68,7 @@ const AddCondition = ({
             {
               filteredMetadataList?.map(metadata => (
                 <div
-                  key={metadata.id}
+                  key={metadata.name}
                   className='flex items-center px-3 h-6 rounded-md system-sm-medium text-text-secondary cursor-pointer hover:bg-state-base-hover'
                 >
                   <div className='mr-1 p-[1px]'>
