@@ -1,10 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import useSWR from 'swr'
-import s from './base.module.css'
+import { RiEqualizer2Line } from '@remixicon/react'
 import WorkspaceSelector from './workspace-selector'
 import SearchInput from './search-input'
 import PageSelector from './page-selector'
-import cn from '@/utils/classnames'
 import { preImportNotionPages } from '@/service/datasets'
 import { NotionConnector } from '@/app/components/datasets/create/step-one'
 import type { DataSourceNotionPageMap, DataSourceNotionWorkspace, NotionPage } from '@/models/common'
@@ -88,23 +87,24 @@ const NotionPageSelector = ({
   }, [firstWorkspaceId])
 
   return (
-    <div className='bg-gray-25 border border-gray-200 rounded-xl'>
+    <div className='bg-background-default-subtle border border-components-panel-border rounded-xl'>
       {
         data?.notion_info?.length
           ? (
             <>
-              <div className='flex items-center pl-[10px] pr-2 h-11 bg-white border-b border-b-gray-200 rounded-t-xl'>
-                <WorkspaceSelector
-                  value={currentWorkspaceId || firstWorkspaceId}
-                  items={notionWorkspaces}
-                  onSelect={handleSelectWorkspace}
-                />
-                <div className='mx-1 w-[1px] h-3 bg-gray-200' />
-                <div
-                  className={cn(s['setting-icon'], 'w-6 h-6 cursor-pointer')}
-                  onClick={() => setShowAccountSettingModal({ payload: 'data-source', onCancelCallback: mutate })}
-                />
-                <div className='grow' />
+              <div className='flex items-center gap-x-2 p-2 h-12 bg-components-panel-bg border-b border-b-divider-regular rounded-t-xl'>
+                <div className='grow flex items-center gap-x-1'>
+                  <WorkspaceSelector
+                    value={currentWorkspaceId || firstWorkspaceId}
+                    items={notionWorkspaces}
+                    onSelect={handleSelectWorkspace}
+                  />
+                  <div className='mx-1 w-[1px] h-3 bg-divider-regular' />
+                  <RiEqualizer2Line
+                    className='w-4 h-4 cursor-pointer text-text-tertiary'
+                    onClick={() => setShowAccountSettingModal({ payload: 'data-source', onCancelCallback: mutate })}
+                  />
+                </div>
                 <SearchInput
                   value={searchValue}
                   onChange={handleSearchValueChange}

@@ -76,31 +76,40 @@ const PermissionSelector = ({ disabled, permission, value, memberList, onChange,
           onClick={() => !disabled && setOpen(v => !v)}
           className='block'
         >
-          {isOnlyMe && (
-            <div className={cn('flex items-center px-3 py-[6px] rounded-lg bg-gray-100 cursor-pointer hover:bg-gray-200', open && 'bg-gray-200', disabled && 'hover:!bg-gray-100 !cursor-default')}>
-              <Avatar avatar={userProfile.avatar_url} name={userProfile.name} className='shrink-0 mr-2' size={24} />
-              <div className='grow mr-2 text-gray-900 text-sm leading-5'>{t('datasetSettings.form.permissionsOnlyMe')}</div>
-              {!disabled && <RiArrowDownSLine className='shrink-0 w-4 h-4 text-gray-700' />}
-            </div>
-          )}
-          {isAllTeamMembers && (
-            <div className={cn('flex items-center px-3 py-[6px] rounded-lg bg-gray-100 cursor-pointer hover:bg-gray-200', open && 'bg-gray-200')}>
-              <div className='mr-2 flex items-center justify-center w-6 h-6 rounded-lg bg-[#EEF4FF]'>
-                <Users01 className='w-3.5 h-3.5 text-[#444CE7]' />
-              </div>
-              <div className='grow mr-2 text-text-primary text-sm leading-5'>{t('datasetSettings.form.permissionsAllMember')}</div>
-              {!disabled && <RiArrowDownSLine className='shrink-0 w-4 h-4 text-text-secondary' />}
-            </div>
-          )}
-          {isPartialMembers && (
-            <div className={cn('flex items-center px-3 py-[6px] rounded-lg bg-gray-100 cursor-pointer hover:bg-gray-200', open && 'bg-gray-200')}>
-              <div className='mr-2 flex items-center justify-center w-6 h-6 rounded-lg bg-[#EEF4FF]'>
-                <Users01 className='w-3.5 h-3.5 text-[#444CE7]' />
-              </div>
-              <div title={selectedMembers} className='grow mr-2 text-text-primary text-sm leading-5 truncate'>{selectedMembers}</div>
-              {!disabled && <RiArrowDownSLine className='shrink-0 w-4 h-4 text-text-secondary' />}
-            </div>
-          )}
+          <div className={cn('flex items-center px-3 py-[6px] rounded-lg bg-components-input-bg-normal cursor-pointer hover:bg-state-base-hover-alt',
+            open && 'bg-state-base-hover-alt',
+            disabled && '!bg-components-input-bg-disabled hover:!bg-components-input-bg-disabled !cursor-not-allowed',
+          )}>
+            {
+              isOnlyMe && (
+                <>
+                  <Avatar avatar={userProfile.avatar_url} name={userProfile.name} className='shrink-0 mr-2' size={24} />
+                  <div className='grow mr-2 text-components-input-text-filled text-sm leading-5'>{t('datasetSettings.form.permissionsOnlyMe')}</div>
+                </>
+              )
+            }
+            {
+              isAllTeamMembers && (
+                <>
+                  <div className='mr-2 flex items-center justify-center w-6 h-6 rounded-lg bg-[#EEF4FF]'>
+                    <Users01 className='w-3.5 h-3.5 text-[#444CE7]' />
+                  </div>
+                  <div className='grow mr-2 text-components-input-text-filled text-sm leading-5'>{t('datasetSettings.form.permissionsAllMember')}</div>
+                </>
+              )
+            }
+            {
+              isPartialMembers && (
+                <>
+                  <div className='mr-2 flex items-center justify-center w-6 h-6 rounded-lg bg-[#EEF4FF]'>
+                    <Users01 className='w-3.5 h-3.5 text-[#444CE7]' />
+                  </div>
+                  <div title={selectedMembers} className='grow mr-2 text-components-input-text-filled text-sm leading-5 truncate'>{selectedMembers}</div>
+                </>
+              )
+            }
+            <RiArrowDownSLine className={cn('shrink-0 w-4 h-4 text-text-secondary', disabled && '!text-components-input-text-placeholder')} />
+          </div>
         </PortalToFollowElemTrigger>
         <PortalToFollowElemContent className='z-[1002]'>
           <div className='relative w-[480px] rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg-blur backdrop-blur-sm shadow-lg'>

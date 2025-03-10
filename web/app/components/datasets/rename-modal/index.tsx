@@ -14,7 +14,7 @@ import { ToastContext } from '@/app/components/base/toast'
 import type { DataSet } from '@/models/datasets'
 import { updateDatasetSetting } from '@/service/datasets'
 
-interface RenameDatasetModalProps {
+type RenameDatasetModalProps = {
   show: boolean
   dataset: DataSet
   onSuccess?: () => void
@@ -68,13 +68,13 @@ const RenameDatasetModal = ({ show, dataset, onSuccess, onClose }: RenameDataset
       isShow={show}
       onClose={() => { }}
     >
-      <div className='relative pb-2 text-xl font-medium leading-[30px] text-gray-900'>{t('datasetSettings.title')}</div>
+      <div className='relative pb-2 text-xl font-medium leading-[30px] text-text-primary'>{t('datasetSettings.title')}</div>
       <div className='absolute right-4 top-4 p-2 cursor-pointer' onClick={onClose}>
-        <RiCloseLine className='w-4 h-4 text-gray-500' />
+        <RiCloseLine className='w-4 h-4 text-text-tertiary' />
       </div>
       <div>
         <div className={cn('flex justify-between py-4 flex-wrap items-center')}>
-          <div className='shrink-0 py-2 text-sm font-medium leading-[20px] text-gray-900'>
+          <div className='shrink-0 py-2 text-sm font-medium leading-[20px] text-text-primary'>
             {t('datasetSettings.form.name')}
           </div>
           <Input
@@ -85,7 +85,7 @@ const RenameDatasetModal = ({ show, dataset, onSuccess, onClose }: RenameDataset
           />
         </div>
         <div className={cn('flex justify-between py-4 flex-wrap items-center')}>
-          <div className='shrink-0 py-2 text-sm font-medium leading-[20px] text-gray-900'>
+          <div className='shrink-0 py-2 text-sm font-medium leading-[20px] text-text-primary'>
             {t('datasetSettings.form.desc')}
           </div>
           <div className='w-full'>

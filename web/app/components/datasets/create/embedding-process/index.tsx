@@ -253,9 +253,9 @@ const EmbeddingProcess: FC<Props> = ({ datasetId, batchId, documents = [], index
   return (
     <>
       <div className="h-5 flex items-center mb-3">
-        <div className="flex items-center justify-between text-gray-900 font-medium text-sm mr-2">
+        <div className="flex items-center justify-between text-text-secondary font-medium text-sm mr-2">
           {isEmbedding && <div className='flex items-center'>
-            <RiLoader2Fill className='size-4 mr-1 animate-spin' />
+            <RiLoader2Fill className='size-4 mr-1 animate-spin text-text-secondary' />
             {t('datasetDocuments.embedding.processing')}
           </div>}
           {isEmbeddingCompleted && t('datasetDocuments.embedding.completed')}
@@ -304,7 +304,7 @@ const EmbeddingProcess: FC<Props> = ({ datasetId, batchId, documents = [], index
                 />
               )}
               <div className="grow flex items-center gap-1 w-0" title={getSourceName(indexingStatusDetail.id)}>
-                <div className="text-xs truncate">
+                <div className="system-xs-medium text-text-secondary truncate">
                   {getSourceName(indexingStatusDetail.id)}
                 </div>
                 {
@@ -314,7 +314,7 @@ const EmbeddingProcess: FC<Props> = ({ datasetId, batchId, documents = [], index
                 }
               </div>
               {isSourceEmbedding(indexingStatusDetail) && (
-                <div className="shrink-0 text-xs">{`${getSourcePercent(indexingStatusDetail)}%`}</div>
+                <div className="shrink-0 text-xs text-text-secondary">{`${getSourcePercent(indexingStatusDetail)}%`}</div>
               )}
               {indexingStatusDetail.indexing_status === 'error' && (
                 <Tooltip

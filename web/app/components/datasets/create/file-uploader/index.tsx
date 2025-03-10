@@ -256,7 +256,7 @@ const FileUploader = ({
         />
       )}
 
-      <div className={cn('text-text-tertiary text-sm font-semibold leading-6 mb-1', titleClassName)}>{t('datasetCreation.stepOne.uploader.title')}</div>
+      <div className={cn('text-text-secondary text-sm font-semibold leading-6 mb-1', titleClassName)}>{t('datasetCreation.stepOne.uploader.title')}</div>
 
       {!hideUpload && (
         <div ref={dropRef} className={cn('relative box-border flex flex-col justify-center items-center gap-1 mb-2 px-4 py-3 max-w-[640px] min-h-20 leading-4 text-xs text-text-tertiary bg-components-dropzone-bg border border-dashed border-components-dropzone-border rounded-xl', dragging && 'bg-components-dropzone-bg-accent border-components-dropzone-border-accent')}>

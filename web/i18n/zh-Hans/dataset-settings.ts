@@ -26,6 +26,7 @@ const translation = {
     embeddingModelTipLink: '设置',
     retrievalSetting: {
       title: '检索设置',
+      method: '检索方法',
       learnMore: '了解更多',
       description: '关于检索方法。',
       longDescription: '关于检索方法，您可以随时在知识库设置中更改此设置。',

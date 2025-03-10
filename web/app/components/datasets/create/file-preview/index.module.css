@@ -1,43 +1,29 @@
 .filePreview {
-    @apply flex flex-col border-l border-gray-200 shrink-0;
+    @apply flex flex-col border-l border-components-panel-border shrink-0 bg-background-default-lighter;
     width: 100%;
-    background-color: #fcfcfd;
   }
   
   .previewHeader {
-    @apply border-b border-gray-200 shrink-0;
+    @apply border-b border-divider-subtle shrink-0;
     margin: 42px 32px 0;
     padding-bottom: 16px;
   }
   
   .previewHeader .title {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    color: #101828;
-    font-weight: 600;
-    font-size: 18px;
-    line-height: 28px;
+    @apply flex justify-between items-center text-text-primary;
   }
   
   .previewHeader .fileName {
-    font-weight: 400;
-    font-size: 12px;
-    line-height: 18px;
-    color: #1D2939;
+    @apply text-text-tertiary;
   }
   
   .previewHeader .filetype {
-    color: #667085;
+    @apply text-text-tertiary;
   }
   
   .previewContent {
-    @apply overflow-y-auto grow;
+    @apply overflow-y-auto grow text-text-secondary;
     padding: 20px 32px;
-    font-weight: 400;
-    font-size: 16px;
-    line-height: 24px;
-    color: #344054;
   }
   
   .previewContent .loading {
@@ -46,6 +32,7 @@
     background: #f9fafb center no-repeat url(../assets/Loading.svg);
     background-size: contain;
   }
+  
   .fileContent {
     white-space: pre-line;
     word-break: break-all;

@@ -6,11 +6,10 @@
   @apply flex items-center place-content-between h-8;
 }
 .modalHeader .title {
-  @apply grow;
+  @apply grow text-text-primary;
   font-weight: 600;
   font-size: 20px;
   line-height: 32px;
-  color: #101828;
 }
 .modalHeader .close {
   @apply shrink-0 h-4 w-4 bg-center bg-no-repeat cursor-pointer;
@@ -19,20 +18,18 @@
 }
 
 .modal .tip {
-  @apply mt-1 mb-8;
+  @apply mt-1 mb-8 text-text-tertiary;
   font-weight: 400;
   font-size: 13px;
   line-height: 18px;
-  color: #667085;
 }
 
 .form {
   @apply mb-8;
 }
 .form .label {
-  @apply mb-2;
+  @apply mb-2 text-text-primary;
   font-weight: 500;
   font-size: 14px;
   line-height: 20px;
-  color: #101828;
 }
