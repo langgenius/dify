@@ -297,7 +297,9 @@ class ToolEngine:
                 # check if there is a mime type in meta
                 if response.meta and "mime_type" in response.meta:
                     yield ToolInvokeMessageBinary(
-                        mimetype=response.meta.get("mime_type", "application/octet-stream") if response.meta else "application/octet-stream",
+                        mimetype=response.meta.get("mime_type", "application/octet-stream")
+                        if response.meta
+                        else "application/octet-stream",
                         url=cast(ToolInvokeMessage.TextMessage, response.message).text,
                     )
 
