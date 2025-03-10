@@ -1,4 +1,4 @@
-blank_issues_enabled: false
+blank_issues_enabled: true
 contact_links:
   - name: "\U0001F4E7 Discussions"
     url: https://github.com/langgenius/dify/discussions/categories/general
