@@ -1,0 +1,13 @@
+name: "👾 Tracker"
+description: For inner usages, please donot use this template.
+title: "[Tracker] "
+labels: 
+  - tracker
+body:
+  - type: textarea
+    id: content
+    attributes:
+      label: Blockers
+      placeholder: "- [ ] ..."
+    validations:
+      required: true
