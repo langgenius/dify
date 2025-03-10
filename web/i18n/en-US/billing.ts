@@ -10,7 +10,7 @@ const translation = {
   },
   teamMembers: 'Team Members',
   upgradeBtn: {
-    plain: 'Upgrade Plan',
+    plain: 'View Plan',
     encourage: 'Upgrade Now',
     encourageShort: 'Upgrade',
   },
@@ -101,18 +101,22 @@ const translation = {
   plans: {
     sandbox: {
       name: 'Sandbox',
+      for: 'Free Trial of Core Capabilities',
       description: 'Free Trial of Core Capabilities',
     },
     professional: {
       name: 'Professional',
+      for: 'For Independent Developers/Small Teams',
       description: 'For Independent Developers/Small Teams',
     },
     team: {
       name: 'Team',
+      for: 'For Medium-sized Teams',
       description: 'For Medium-sized Teams',
     },
     community: {
       name: 'Community',
+      for: 'For Individual Users, Small Teams, or Non-commercial Projects',
       description: 'For Individual Users, Small Teams, or Non-commercial Projects',
       price: 'Free',
       btnText: 'Get Started with Community',
@@ -125,6 +129,7 @@ const translation = {
     },
     premium: {
       name: 'Premium',
+      for: 'For Mid-sized Organizations and Teams',
       description: 'For Mid-sized Organizations and Teams',
       price: 'Scalable',
       priceTip: 'Based on Cloud Marketplace',
@@ -140,6 +145,7 @@ const translation = {
     },
     enterprise: {
       name: 'Enterprise',
+      for: 'For large-sized Teams',
       description: 'For Enterprise Require Organization-wide Security, Compliance, Scalability, Control and More Advanced Features',
       price: 'Custom',
       priceTip: 'Annual Billing Only',

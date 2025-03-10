@@ -7,7 +7,7 @@ import httpx
 from sqlalchemy import select
 
 from constants import AUDIO_EXTENSIONS, DOCUMENT_EXTENSIONS, IMAGE_EXTENSIONS, VIDEO_EXTENSIONS
-from core.file import File, FileBelongsTo, FileTransferMethod, FileType, FileUploadConfig
+from core.file import File, FileBelongsTo, FileTransferMethod, FileType, FileUploadConfig, helpers
 from core.helper import ssrf_proxy
 from extensions.ext_database import db
 from models import MessageFile, ToolFile, UploadFile
@@ -158,6 +158,39 @@ def _build_from_remote_url(
     tenant_id: str,
     transfer_method: FileTransferMethod,
 ) -> File:
+    upload_file_id = mapping.get("upload_file_id")
+    if upload_file_id:
+        try:
+            uuid.UUID(upload_file_id)
+        except ValueError:
+            raise ValueError("Invalid upload file id format")
+        stmt = select(UploadFile).where(
+            UploadFile.id == upload_file_id,
+            UploadFile.tenant_id == tenant_id,
+        )
+
+        upload_file = db.session.scalar(stmt)
+        if upload_file is None:
+            raise ValueError("Invalid upload file")
+
+        file_type = FileType(mapping.get("type", "custom"))
+        file_type = _standardize_file_type(
+            file_type, extension="." + upload_file.extension, mime_type=upload_file.mime_type
+        )
+
+        return File(
+            id=mapping.get("id"),
+            filename=upload_file.name,
+            extension="." + upload_file.extension,
+            mime_type=upload_file.mime_type,
+            tenant_id=tenant_id,
+            type=file_type,
+            transfer_method=transfer_method,
+            remote_url=helpers.get_signed_file_url(upload_file_id=str(upload_file_id)),
+            related_id=mapping.get("upload_file_id"),
+            size=upload_file.size,
+            storage_key=upload_file.key,
+        )
     url = mapping.get("url") or mapping.get("remote_url")
     if not url:
         raise ValueError("Invalid file url")

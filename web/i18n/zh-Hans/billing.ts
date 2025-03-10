@@ -9,7 +9,7 @@ const translation = {
     vectorSpaceTooltip: '采用高质量索引模式的文档会消耗知识数据存储资源。当知识数据存储达到限制时，将不会上传新文档。',
   },
   upgradeBtn: {
-    plain: '升级套餐',
+    plain: '查看套餐',
     encourage: '立即升级',
     encourageShort: '升级',
   },
@@ -100,18 +100,22 @@ const translation = {
   plans: {
     sandbox: {
       name: 'Sandbox',
+      for: '核心能力的免费试用',
       description: '核心功能免费试用',
     },
     professional: {
       name: 'Professional',
+      for: '适合独立开发者或小团队',
       description: '对于独立开发者/小团队',
     },
     team: {
       name: 'Team',
+      for: '适合中等规模的团队',
       description: '对于中型团队',
     },
     community: {
       name: 'Community',
+      for: '适用于个人用户、小型团队或非商业项目',
       description: '适用于个人用户、小型团队或非商业项目',
       price: '免费',
       btnText: '开始使用',
@@ -124,6 +128,7 @@ const translation = {
     },
     premium: {
       name: 'Premium',
+      for: '对于中型组织和团队',
       description: '对于中型组织和团队',
       price: '可扩展',
       priceTip: '基于云市场',
@@ -139,6 +144,7 @@ const translation = {
     },
     enterprise: {
       name: 'Enterprise',
+      for: '适合大人员规模的团队',
       description: '对于需要组织范围内的安全性、合规性、可扩展性、控制和更高级功能的企业',
       price: '定制',
       priceTip: '仅按年计费',
