@@ -29,6 +29,64 @@ const data: StructuredOutput = {
             type: Type.boolean,
             description: '描述可为空',
           },
+          sub_item_d_2: {
+            type: Type.object,
+            properties: {
+              sub_item_3: {
+                type: Type.object,
+                // generate more than sub item 10 levels
+                properties: {
+                  sub_item_4: {
+                    type: Type.object,
+                    properties: {
+                      sub_item_5: {
+                        type: Type.object,
+                        properties: {
+                          sub_item_6: {
+                            type: Type.object,
+                            properties: {
+                              sub_item_7: {
+                                type: Type.object,
+                                properties: {
+                                  sub_item_8: {
+                                    type: Type.object,
+                                    properties: {
+                                      sub_item_9: {
+                                        type: Type.object,
+                                        properties: {
+                                          sub_item_10: {
+                                            type: Type.object,
+                                            properties: {
+                                              sub_item_11: {
+                                                type: Type.object,
+                                                properties: {
+                                                  sub_item_12: {
+                                                    type: Type.object,
+                                                  },
+                                                },
+                                              },
+                                            },
+                                          },
+                                        },
+                                      },
+                                    },
+                                  },
+                                },
+                              },
+                            },
+                          },
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+          number_field_3: {
+            type: Type.number,
+            description: '描述可为空',
+          },
         },
         required: [
           'string_field_1',

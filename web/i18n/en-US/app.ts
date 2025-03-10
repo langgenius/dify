@@ -180,6 +180,9 @@ const translation = {
     noParams: 'No parameters needed',
   },
   showMyCreatedAppsOnly: 'Created by me',
+  structOutput: {
+    moreFillTip: 'Showing max 10 levels of nesting',
+  },
 }
 
 export default translation

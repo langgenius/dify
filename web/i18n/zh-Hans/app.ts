@@ -181,6 +181,9 @@ const translation = {
   },
   openInExplore: '在“探索”中打开',
   showMyCreatedAppsOnly: '我创建的',
+  structOutput: {
+    moreFillTip: '最多显示 10 级嵌套',
+  },
 }
 
 export default translation
