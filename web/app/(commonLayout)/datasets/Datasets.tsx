@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef } from 'react'
+import { useCallback, useEffect, useRef } from 'react'
 import useSWRInfinite from 'swr/infinite'
 import { debounce } from 'lodash-es'
 import { useTranslation } from 'react-i18next'
@@ -62,21 +62,28 @@ const Datasets = ({
   useEffect(() => {
     loadingStateRef.current = isLoading
     document.title = `${t('dataset.knowledge')} - Dify`
-  }, [isLoading])
+  }, [isLoading, t])
 
-  useEffect(() => {
-    const onScroll = debounce(() => {
-      if (!loadingStateRef.current) {
-        const { scrollTop, clientHeight } = containerRef.current!
-        const anchorOffset = anchorRef.current!.offsetTop
+  const onScroll = useCallback(
+    debounce(() => {
+      if (!loadingStateRef.current && containerRef.current && anchorRef.current) {
+        const { scrollTop, clientHeight } = containerRef.current
+        const anchorOffset = anchorRef.current.offsetTop
         if (anchorOffset - scrollTop - clientHeight < 100)
           setSize(size => size + 1)
       }
-    }, 50)
+    }, 50),
+    [setSize],
+  )
 
-    containerRef.current?.addEventListener('scroll', onScroll)
-    return () => containerRef.current?.removeEventListener('scroll', onScroll)
-  }, [])
+  useEffect(() => {
+    const currentContainer = containerRef.current
+    currentContainer?.addEventListener('scroll', onScroll)
+    return () => {
+      currentContainer?.removeEventListener('scroll', onScroll)
+      onScroll.cancel()
+    }
+  }, [onScroll])
 
   return (
     <nav className='grid content-start grid-cols-1 gap-4 px-12 pt-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 grow shrink-0'>
