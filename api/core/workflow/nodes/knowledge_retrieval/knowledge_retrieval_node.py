@@ -214,6 +214,7 @@ class KnowledgeRetrievalNode(LLMNode):
                 reranking_model=reranking_model,
                 weights=weights,
                 reranking_enable=node_data.multiple_retrieval_config.reranking_enable,
+                metadata_filter_document_ids=metadata_filter_document_ids,
             )
         dify_documents = [item for item in all_documents if item.provider == "dify"]
         external_documents = [item for item in all_documents if item.provider == "external"]
