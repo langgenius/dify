@@ -12,26 +12,37 @@ import { useStore as useAppStore } from '@/app/components/app/store'
 import cn from '@/utils/classnames'
 
 export type IAppDetailNavProps = {
-  iconType?: 'app' | 'dataset' | 'notion'
-  title: string
-  desc: string
-  isExternal?: boolean
-  icon: string
-  icon_background: string
+  iconType?: 'app' | 'dataset' | 'notion';
+  title: string;
+  desc: string;
+  isExternal?: boolean;
+  icon: string;
+  icon_background: string;
   navigation: Array<{
-    name: string
-    href: string
-    icon: NavIcon
-    selectedIcon: NavIcon
-  }>
-  extraInfo?: (modeState: string) => React.ReactNode
+    name: string;
+    href: string;
+    icon: NavIcon;
+    selectedIcon: NavIcon;
+  }>;
+  extraInfo?: (modeState: string) => React.ReactNode;
 }
 
-const AppDetailNav = ({ title, desc, isExternal, icon, icon_background, navigation, extraInfo, iconType = 'app' }: IAppDetailNavProps) => {
-  const { appSidebarExpand, setAppSiderbarExpand } = useAppStore(useShallow(state => ({
-    appSidebarExpand: state.appSidebarExpand,
-    setAppSiderbarExpand: state.setAppSiderbarExpand,
-  })))
+const AppDetailNav = ({
+  title,
+  desc,
+  isExternal,
+  icon,
+  icon_background,
+  navigation,
+  extraInfo,
+  iconType = 'app',
+}: IAppDetailNavProps) => {
+  const { appSidebarExpand, setAppSiderbarExpand } = useAppStore(
+    useShallow(state => ({
+      appSidebarExpand: state.appSidebarExpand,
+      setAppSiderbarExpand: state.setAppSiderbarExpand,
+    })),
+  )
   const media = useBreakpoints()
   const isMobile = media === MediaType.mobile
   const expand = appSidebarExpand === 'expand'
@@ -51,7 +62,7 @@ const AppDetailNav = ({ title, desc, isExternal, icon, icon_background, navigati
     <div
       className={`
         shrink-0 flex flex-col bg-background-default-subtle border-r border-divider-burn transition-all
-        ${expand ? 'w-[216px]' : 'w-14'}
+        ${expand ? 'w-[340px]' : 'w-14'}
       `}
     >
       <div
@@ -60,9 +71,7 @@ const AppDetailNav = ({ title, desc, isExternal, icon, icon_background, navigati
           ${expand ? 'p-2' : 'p-1'}
         `}
       >
-        {iconType === 'app' && (
-          <AppInfo expand={expand} />
-        )}
+        {iconType === 'app' && <AppInfo expand={expand} />}
         {iconType === 'dataset' && (
           <DatasetInfo
             name={title}
@@ -84,8 +93,13 @@ const AppDetailNav = ({ title, desc, isExternal, icon, icon_background, navigati
           />
         )}
       </div>
-      <div className='px-4'>
-        <div className={cn('mt-1 mx-auto h-[1px] bg-divider-subtle', !expand && 'w-6')} />
+      <div className="px-4">
+        <div
+          className={cn(
+            'mt-1 mx-auto h-[1px] bg-divider-subtle',
+            !expand && 'w-6',
+          )}
+        />
       </div>
       <nav
         className={`
@@ -95,31 +109,35 @@ const AppDetailNav = ({ title, desc, isExternal, icon, icon_background, navigati
       >
         {navigation.map((item, index) => {
           return (
-            <NavLink key={index} mode={appSidebarExpand} iconMap={{ selected: item.selectedIcon, normal: item.icon }} name={item.name} href={item.href} />
+            <NavLink
+              key={index}
+              mode={appSidebarExpand}
+              iconMap={{ selected: item.selectedIcon, normal: item.icon }}
+              name={item.name}
+              href={item.href}
+            />
           )
         })}
       </nav>
-      {
-        !isMobile && (
-          <div
-            className={`
+      {!isMobile && (
+        <div
+          className={`
               shrink-0 py-3
               ${expand ? 'px-6' : 'px-4'}
             `}
+        >
+          <div
+            className="flex items-center justify-center w-6 h-6 text-gray-500 cursor-pointer"
+            onClick={() => handleToggle(appSidebarExpand)}
           >
-            <div
-              className='flex items-center justify-center w-6 h-6 text-gray-500 cursor-pointer'
-              onClick={() => handleToggle(appSidebarExpand)}
-            >
-              {
-                expand
-                  ? <RiLayoutRight2Line className='w-5 h-5 text-components-menu-item-text' />
-                  : <LayoutRight2LineMod className='w-5 h-5 text-components-menu-item-text' />
-              }
-            </div>
+            {expand ? (
+              <RiLayoutRight2Line className="w-5 h-5 text-components-menu-item-text" />
+            ) : (
+              <LayoutRight2LineMod className="w-5 h-5 text-components-menu-item-text" />
+            )}
           </div>
-        )
-      }
+        </div>
+      )}
     </div>
   )
 }
