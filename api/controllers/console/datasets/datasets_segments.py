@@ -19,6 +19,7 @@ from controllers.console.datasets.error import (
 from controllers.console.wraps import (
     account_initialization_required,
     cloud_edition_billing_knowledge_limit_check,
+    cloud_edition_billing_rate_limit_check,
     cloud_edition_billing_resource_check,
     setup_required,
 )
@@ -106,6 +107,7 @@ class DatasetDocumentSegmentListApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @cloud_edition_billing_rate_limit_check("knowledge")
     def delete(self, dataset_id, document_id):
         # check dataset
         dataset_id = str(dataset_id)
@@ -137,6 +139,7 @@ class DatasetDocumentSegmentApi(Resource):
     @login_required
     @account_initialization_required
     @cloud_edition_billing_resource_check("vector_space")
+    @cloud_edition_billing_rate_limit_check("knowledge")
     def patch(self, dataset_id, document_id, action):
         dataset_id = str(dataset_id)
         dataset = DatasetService.get_dataset(dataset_id)
@@ -191,6 +194,7 @@ class DatasetDocumentSegmentAddApi(Resource):
     @account_initialization_required
     @cloud_edition_billing_resource_check("vector_space")
     @cloud_edition_billing_knowledge_limit_check("add_segment")
+    @cloud_edition_billing_rate_limit_check("knowledge")
     def post(self, dataset_id, document_id):
         # check dataset
         dataset_id = str(dataset_id)
@@ -240,6 +244,7 @@ class DatasetDocumentSegmentUpdateApi(Resource):
     @login_required
     @account_initialization_required
     @cloud_edition_billing_resource_check("vector_space")
+    @cloud_edition_billing_rate_limit_check("knowledge")
     def patch(self, dataset_id, document_id, segment_id):
         # check dataset
         dataset_id = str(dataset_id)
@@ -299,6 +304,7 @@ class DatasetDocumentSegmentUpdateApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @cloud_edition_billing_rate_limit_check("knowledge")
     def delete(self, dataset_id, document_id, segment_id):
         # check dataset
         dataset_id = str(dataset_id)
@@ -336,6 +342,7 @@ class DatasetDocumentSegmentBatchImportApi(Resource):
     @account_initialization_required
     @cloud_edition_billing_resource_check("vector_space")
     @cloud_edition_billing_knowledge_limit_check("add_segment")
+    @cloud_edition_billing_rate_limit_check("knowledge")
     def post(self, dataset_id, document_id):
         # check dataset
         dataset_id = str(dataset_id)
@@ -402,6 +409,7 @@ class ChildChunkAddApi(Resource):
     @account_initialization_required
     @cloud_edition_billing_resource_check("vector_space")
     @cloud_edition_billing_knowledge_limit_check("add_segment")
+    @cloud_edition_billing_rate_limit_check("knowledge")
     def post(self, dataset_id, document_id, segment_id):
         # check dataset
         dataset_id = str(dataset_id)
@@ -499,6 +507,7 @@ class ChildChunkAddApi(Resource):
     @login_required
     @account_initialization_required
     @cloud_edition_billing_resource_check("vector_space")
+    @cloud_edition_billing_rate_limit_check("knowledge")
     def patch(self, dataset_id, document_id, segment_id):
         # check dataset
         dataset_id = str(dataset_id)
@@ -542,6 +551,7 @@ class ChildChunkUpdateApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @cloud_edition_billing_rate_limit_check("knowledge")
     def delete(self, dataset_id, document_id, segment_id, child_chunk_id):
         # check dataset
         dataset_id = str(dataset_id)
@@ -586,6 +596,7 @@ class ChildChunkUpdateApi(Resource):
     @login_required
     @account_initialization_required
     @cloud_edition_billing_resource_check("vector_space")
+    @cloud_edition_billing_rate_limit_check("knowledge")
     def patch(self, dataset_id, document_id, segment_id, child_chunk_id):
         # check dataset
         dataset_id = str(dataset_id)
