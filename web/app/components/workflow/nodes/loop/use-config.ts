@@ -17,12 +17,14 @@ import { getOperators } from './utils'
 import { LogicalOperator } from './types'
 import type { HandleAddCondition, HandleAddSubVariableCondition, HandleRemoveCondition, HandleToggleConditionLogicalOperator, HandleToggleSubVariableConditionLogicalOperator, HandleUpdateCondition, HandleUpdateSubVariableCondition, LoopNodeType } from './types'
 import useIsVarFileAttribute from './use-is-var-file-attribute'
+import { useStore } from '@/app/components/workflow/store'
 
 const DELIMITER = '@@@@@'
 const useConfig = (id: string, payload: LoopNodeType) => {
   const { nodesReadOnly: readOnly } = useNodesReadOnly()
   const { isNodeInLoop } = useIsNodeInLoop(id)
   const isChatMode = useIsChatMode()
+  const conversationVariables = useStore(s => s.conversationVariables)
 
   const { inputs, setInputs } = useNodeCrud<LoopNodeType>(id, payload)
 
@@ -35,7 +37,7 @@ const useConfig = (id: string, payload: LoopNodeType) => {
   const beforeNodes = getBeforeNodesInSameBranch(id)
   const loopChildrenNodes = getLoopNodeChildren(id)
   const canChooseVarNodes = [...beforeNodes, ...loopChildrenNodes]
-  const childrenNodeVars = toNodeOutputVars(loopChildrenNodes, isChatMode)
+  const childrenNodeVars = toNodeOutputVars(loopChildrenNodes, isChatMode, undefined, [], conversationVariables)
 
   // single run
   const loopInputKey = `${id}.input_selector`
