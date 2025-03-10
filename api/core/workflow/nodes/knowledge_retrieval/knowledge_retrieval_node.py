@@ -1,4 +1,5 @@
 import logging
+import time
 from collections.abc import Mapping, Sequence
 from typing import Any, cast
 
@@ -19,8 +20,10 @@ from core.workflow.entities.node_entities import NodeRunResult
 from core.workflow.nodes.base import BaseNode
 from core.workflow.nodes.enums import NodeType
 from extensions.ext_database import db
-from models.dataset import Dataset, Document
+from extensions.ext_redis import redis_client
+from models.dataset import Dataset, Document, RateLimitLog
 from models.workflow import WorkflowNodeExecutionStatus
+from services.feature_service import FeatureService
 
 from .entities import KnowledgeRetrievalNodeData
 from .exc import (
@@ -61,6 +64,31 @@ class KnowledgeRetrievalNode(BaseNode[KnowledgeRetrievalNodeData]):
             return NodeRunResult(
                 status=WorkflowNodeExecutionStatus.FAILED, inputs=variables, error="Query is required."
             )
+        # check rate limit
+        if self.tenant_id:
+            knowledge_rate_limit = FeatureService.get_knowledge_rate_limit(self.tenant_id)
+            if knowledge_rate_limit.enabled:
+                current_time = int(time.time() * 1000)
+                key = f"rate_limit_{self.tenant_id}"
+                redis_client.zadd(key, {current_time: current_time})
+                redis_client.zremrangebyscore(key, 0, current_time - 60000)
+                request_count = redis_client.zcard(key)
+                if request_count > knowledge_rate_limit.limit:
+                    # add ratelimit record
+                    rate_limit_log = RateLimitLog(
+                        tenant_id=self.tenant_id,
+                        subscription_plan=knowledge_rate_limit.subscription_plan,
+                        operation="knowledge",
+                    )
+                    db.session.add(rate_limit_log)
+                    db.session.commit()
+                    return NodeRunResult(
+                        status=WorkflowNodeExecutionStatus.FAILED,
+                        inputs=variables,
+                        error="Sorry, you have reached the knowledge base request rate limit of your subscription.",
+                        error_type="RateLimitExceeded",
+                    )
+
         # retrieve knowledge
         try:
             results = self._fetch_dataset_retriever(node_data=self.node_data, query=query)
