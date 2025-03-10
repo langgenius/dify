@@ -501,7 +501,7 @@ const DocumentList: FC<IDocumentListProps> = ({
 
   return (
     <div className='relative w-full h-full overflow-x-auto'>
-      <table className={`min-w-[700px] max-w-full w-full border-collapse border-0 text-sm mt-3 ${s.documentTable}`}>
+      <table className={`min-w-[700px] max-w-full w-full border-collapse border-0 text-sm mt-3 mb-12 ${s.documentTable}`}>
         <thead className="h-8 leading-8 border-b border-divider-subtle text-text-tertiary font-medium text-xs uppercase">
           <tr>
             <td className='w-12'>
