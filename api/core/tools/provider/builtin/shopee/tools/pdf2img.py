@@ -54,6 +54,7 @@ class Pdf2ImgTool(BuiltinTool):
         quality = tool_parameters.get("quality")
         dpi = tool_parameters.get("dpi")
         direction = tool_parameters.get("direction")
+        pages = tool_parameters.get("pages")
 
         logger.info(f'{file_variable}')
         # 不是pdf直接返回
@@ -65,13 +66,13 @@ class Pdf2ImgTool(BuiltinTool):
         if not image_binary:
             return self.create_text_message("Image not found, please request user to generate image firstly.")
 
-        res = self.handle(image_binary, vector_max_size, bit_max_size, quality, direction, dpi)
+        res = self.handle(image_binary, vector_max_size, bit_max_size, quality, direction, pages, dpi)
         if not res:
             return self.create_text_message("Pdf2Img error, maybe pdf is encrypted")
 
         return self.create_blob_message(blob=res, meta={"mime_type": "image/jpeg"})
 
-    def handle(self, pdf_bytes, vector_max_size, bit_max_size, quality, direction, dpi=350):
+    def handle(self, pdf_bytes, vector_max_size, bit_max_size, quality, direction, pages, dpi=350):
         pdf_stream = io.BytesIO(pdf_bytes)
         doc = fitz.open(stream=pdf_stream, filetype="pdf")
         if doc is None:
@@ -82,8 +83,16 @@ class Pdf2ImgTool(BuiltinTool):
         zoom = int(math.ceil(dpi / 72))
         matrix = fitz.Matrix(zoom, zoom)
         images = []
-        for pageNo in range(doc.page_count):
-            page = doc.load_page(pageNo)
+
+        target_pages = []
+        if pages is not None and pages != "":
+            for pageNo in pages.split(","):
+                target_pages.append(doc.load_page(pageNo))
+        else:
+            for pageNo in range(doc.page_count):
+                target_pages.append(doc.load_page(pageNo))
+
+        for page in target_pages:
             pix = page.get_pixmap(matrix=matrix)
             image = Image.frombytes("RGB", (pix.width, pix.height), pix.samples)
             original_width, original_length = image.size
