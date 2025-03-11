@@ -34,16 +34,16 @@ const AgentSetting: FC<Props> = ({
   const [tempPayload, setTempPayload] = useState(payload)
   const ref = useRef(null)
   const [mounted, setMounted] = useState(false)
-  
+
   useClickAway(() => {
     if (mounted)
       onCancel()
   }, ref)
-  
+
   useEffect(() => {
     setMounted(true)
   }, [])
-  
+
   const handleSave = () => {
     onSave(tempPayload)
   }
