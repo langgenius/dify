@@ -1,17 +1,18 @@
 'use client'
 import type { FC } from 'react'
 import React, { useRef } from 'react'
-import type { Field as FieldType, StructuredOutput } from '../../../../../llm/types'
+import type { StructuredOutput } from '../../../../../llm/types'
 import Field from './field'
 import cn from '@/utils/classnames'
 import { useHover } from 'ahooks'
+import type { ValueSelector } from '@/app/components/workflow/types'
 
 type Props = {
   className?: string
-  root: { nodeName?: string, attrName: string }
+  root: { nodeId?: string, nodeName?: string, attrName: string }
   payload: StructuredOutput
   readonly?: boolean
-  onSelect?: (field: FieldType) => void
+  onSelect?: (valueSelector: ValueSelector) => void
   onHovering?: (value: boolean) => void
 }
 
@@ -21,6 +22,7 @@ export const PickerPanelMain: FC<Props> = ({
   payload,
   readonly,
   onHovering,
+  onSelect,
 }) => {
   const ref = useRef<HTMLDivElement>(null)
   useHover(ref, {
@@ -59,6 +61,8 @@ export const PickerPanelMain: FC<Props> = ({
           name={name}
           payload={schema.properties[name]}
           readonly={readonly}
+          valueSelector={[root.nodeId!, root.attrName]}
+          onSelect={onSelect}
         />
       ))}
     </div>

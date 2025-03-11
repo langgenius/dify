@@ -8,22 +8,27 @@ import cn from '@/utils/classnames'
 import TreeIndentLine from '../tree-indent-line'
 import { RiMoreFill } from '@remixicon/react'
 import Tooltip from '@/app/components/base/tooltip'
+import type { ValueSelector } from '@/app/components/workflow/types'
 import { useTranslation } from 'react-i18next'
 
 const MAX_DEPTH = 10
 
 type Props = {
+  valueSelector: ValueSelector
   name: string,
   payload: FieldType,
   depth?: number
   readonly?: boolean
+  onSelect?: (valueSelector: ValueSelector) => void
 }
 
 const Field: FC<Props> = ({
+  valueSelector,
   name,
   payload,
   depth = 1,
   readonly,
+  onSelect,
 }) => {
   const { t } = useTranslation()
   const isLastFieldHighlight = readonly
@@ -34,7 +39,10 @@ const Field: FC<Props> = ({
   return (
     <div>
       <Tooltip popupContent={t('app.structOutput.moreFillTip')} disabled={depth !== MAX_DEPTH + 1}>
-        <div className={cn('flex pr-2 items-center justify-between rounded-md', !readonly && 'hover:bg-state-base-hover', depth !== MAX_DEPTH + 1 && 'cursor-pointer')}>
+        <div
+          className={cn('flex pr-2 items-center justify-between rounded-md', !readonly && 'hover:bg-state-base-hover', depth !== MAX_DEPTH + 1 && 'cursor-pointer')}
+          onClick={() => !readonly && onSelect?.([...valueSelector, name])}
+        >
           <div className='grow flex items-stretch'>
             <TreeIndentLine depth={depth} />
             {depth === MAX_DEPTH + 1 ? (
@@ -57,6 +65,8 @@ const Field: FC<Props> = ({
               payload={payload.properties?.[name] as FieldType}
               depth={depth + 1}
               readonly={readonly}
+              valueSelector={[...valueSelector, name]}
+              onSelect={onSelect}
             />
           ))}
         </div>

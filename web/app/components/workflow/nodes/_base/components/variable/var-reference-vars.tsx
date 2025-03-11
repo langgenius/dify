@@ -138,9 +138,12 @@ const Item: FC<ItemProps> = ({
       }}>
         {isStructureOutput && (
           <PickerStructurePanel
-            root={{ attrName: itemData.variable }}
+            root={{ nodeId, nodeName: title, attrName: itemData.variable }}
             payload={itemData.children as StructuredOutput}
             onHovering={setIsChildrenHovering}
+            onSelect={(valueSelector) => {
+              onChange(valueSelector, itemData)
+            }}
           />
         )}
         {(isObj && !isFile) && (
