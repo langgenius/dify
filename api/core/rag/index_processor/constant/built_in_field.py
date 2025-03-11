@@ -7,3 +7,9 @@ class BuiltInField(str, Enum):
     upload_date = "upload_date"
     last_update_date = "last_update_date"
     source = "source"
+
+
+class MetadataDataSource(Enum):
+    upload_file = "file"
+    website_crawl = "website"
+    notion_import = "notion"
