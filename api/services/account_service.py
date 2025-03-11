@@ -57,7 +57,10 @@ from tasks.mail_account_deletion_task import send_account_deletion_verification_
 from tasks.mail_email_code_login import send_email_code_login_mail_task
 from tasks.mail_invite_member_task import send_invite_member_mail_task
 from tasks.mail_reset_password_task import send_reset_password_mail_task
+from extensions.ext_ldap import get_ldap_connection, release_ldap_connection
+from ldap3 import Server, Connection, ALL
 
+from flask import current_app as app
 
 class TokenPair(BaseModel):
     access_token: str
@@ -146,10 +149,89 @@ class AccountService:
     @staticmethod
     def authenticate(email: str, password: str, invite_token: Optional[str] = None) -> Account:
         """authenticate account with email and password"""
+        account = None
+        is_ldap_success = False
 
-        account = db.session.query(Account).filter_by(email=email).first()
-        if not account:
-            raise AccountNotFoundError()
+        # Initialize LDAP connection parameters
+        def _get_ldap_connection():
+            return get_ldap_connection()
+
+        def _handle_ldap_user(conn: Connection, email: str, password: str) -> Account:
+            """Handle LDAP user authentication"""
+            conn.search(
+                search_base=dify_config.AUTH_LDAP_SEARCH_BASE_DN,
+                search_filter=f"(mail={email})",
+                attributes=list(dify_config.AUTH_LDAP_USER_ATTR_MAP.values())
+            )
+            if not conn.entries:
+                logging.warning(f"No LDAP entry found for: {email}")
+                raise ValueError("LDAP entry not found")
+
+            entry = conn.entries[0]
+            logging.info(f"LDAP entry found for: {entry}")
+            user_dn = entry.entry_dn  # Obtain the complete DN of the user
+            logging.info(f"LDAP user DN: {user_dn}")
+            # Add password verification steps
+            user_conn = Connection(
+                Server(dify_config.AUTH_LDAP_SERVER_URI),
+                user=user_dn,
+                password=password
+            )
+            if not user_conn.bind():
+                logging.error(f"LDAP password verification failed: {email}")
+                raise AccountPasswordError("Password error")
+
+            display_name = entry.cn.value if entry.cn else email.split('@')[0]
+            account = db.session.query(Account).filter_by(email=email).with_for_update().first()
+            if not account:
+                logging.info(f"Creating new LDAP account for: {email}")
+                return AccountService.create_ldap_user(
+                    email=email,
+                    name=display_name,
+                    ldap_attrs=entry
+                )
+
+            if account.name != display_name:
+                logging.info(f"Updating LDAP account name for: {email}")
+                account.name = display_name
+                db.session.commit()
+
+            return account
+
+        # Main certification process
+        try:
+            # Try LDAP authentication first
+            if hasattr(app, 'ldap_manager') and app.ldap_manager:
+                ldap_user = app.ldap_manager.authenticate(email, password)
+                logging.info(f"LDAP authentication successful for user: {email}")
+                if ldap_user and ldap_user.status:
+                    conn = _get_ldap_connection()
+                    try:
+                        if not conn.bind():
+                            logging.error("Failed to bind to LDAP server.")
+                            raise ValueError("Failed to bind to LDAP server.")
+                        account = _handle_ldap_user(conn, email, password)  # 传入password参数
+                        logging.info(f"Returning account {email} after successful LDAP authentication.")
+                        is_ldap_success = True
+                        return account
+                    finally:
+                        release_ldap_connection(conn)
+        except Exception as e:
+            logging.error(f"LDAP authentication error: {str(e)}")
+
+        # Perform local authentication only if LDAP authentication explicitly fails
+        if not is_ldap_success:
+            logging.info(f"Falling back to local authentication for: {email}")
+            account = db.session.query(Account).filter_by(email=email).first()
+            if not account:
+                logging.error(f"Account not found for: {email}")
+
+                raise AccountNotFoundError()
+
+            # Key modification: If it is an LDAP user, they must pass LDAP authentication
+            if account.password is None:
+                logging.error(f"LDAP user {email} attempted local authentication")
+                raise AccountPasswordError("LDAP users must authenticate via LDAP")
 
         if account.status == AccountStatus.BANNED.value:
             raise AccountLoginError("Account is banned.")
@@ -173,6 +255,56 @@ class AccountService:
         db.session.commit()
 
         return cast(Account, account)
+
+    @staticmethod
+    def create_ldap_user(email: str, name: str, ldap_attrs: dict) -> Account:
+        """
+        Create LDAP users and assign default permissions
+        Note: LDAP users do not require a local password, so password and password_stalt are set to None.
+        """
+        try:
+            # First check if the account already exists
+            account = db.session.query(Account).filter_by(email=email).first()
+            if account:
+                logging.info(f"Account {email} already exists, skipping creation.")
+            else:
+                account = Account(
+                    email=email,
+                    name=name,
+                    status=AccountStatus.ACTIVE.value,
+                    password=None,  # LDAP user has no local password
+                    password_salt=None,
+                    interface_language=languages[0]
+                )
+                db.session.add(account)
+                db.session.commit()  # Submit the transaction to ensure that the account is available
+                logging.info(f"Local account created successfully for: {email}")
+
+            # Get the default tenant (remove the specific name and only take the first one)
+            default_tenant = db.session.query(Tenant).first()
+            if not default_tenant:
+                default_tenant = TenantService.create_tenant(name="Default Workspace")
+                db.session.commit()
+                logging.info(f"Created default tenant: {default_tenant.id}")
+
+            # Check if the user has joined the tenant
+            existing_member = db.session.query(TenantAccountJoin).filter_by(
+            tenant_id=default_tenant.id, account_id=account.id
+        ).first()
+
+            if not existing_member:
+                TenantService.create_tenant_member(tenant=default_tenant, account=account,
+                                                   role="normal")
+                logging.info(f"User {email} added to tenant: {default_tenant.id}")
+            else:
+                logging.info(f"User {email} is already a member of tenant {default_tenant.id}")
+
+            return account  # Make sure to return a valid account
+
+        except Exception as e:
+            db.session.rollback()  # Transaction rollback to prevent database pollution
+            logging.error(f"Failed to create LDAP user or add to tenant: {str(e)}")
+            raise AccountRegisterError("Failed to create LDAP user.")
 
     @staticmethod
     def update_account_password(account, password, new_password):

@@ -5,6 +5,7 @@ from pydantic.fields import FieldInfo
 from pydantic_settings import BaseSettings, PydanticBaseSettingsSource, SettingsConfigDict
 
 from .deploy import DeploymentConfig
+from .ldap import AuthenticationConfig
 from .enterprise import EnterpriseFeatureConfig
 from .extra import ExtraServiceConfig
 from .feature import FeatureConfig
@@ -49,6 +50,8 @@ class RemoteSettingsSourceFactory(PydanticBaseSettingsSource):
 
 
 class DifyConfig(
+    # Authentication configs
+    AuthenticationConfig,
     # Packaging info
     PackagingInfo,
     # Deployment configs

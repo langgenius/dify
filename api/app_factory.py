@@ -38,6 +38,7 @@ def create_app() -> DifyApp:
 
 def initialize_extensions(app: DifyApp):
     from extensions import (
+        ext_ldap,
         ext_app_metrics,
         ext_blueprints,
         ext_celery,
@@ -61,6 +62,7 @@ def initialize_extensions(app: DifyApp):
     )
 
     extensions = [
+        ext_ldap,
         ext_timezone,
         ext_logging,
         ext_warnings,
