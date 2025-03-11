@@ -12,6 +12,20 @@ description:
     pt_BR: get root cause
   llm: get root cause node
 parameters:
+  - name: language
+    type: string
+    required: false
+    label:
+      en_US: language
+      zh_Hans: language
+      pt_BR: language
+    human_description:
+      en_US: text language
+      zh_Hans: 文本语言
+      pt_BR: text language
+    llm_description: rule
+    default: "zh-cn"
+    form: llm
   - name: text
     type: string
     required: false

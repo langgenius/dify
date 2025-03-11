@@ -19,12 +19,13 @@ class RootCauseTool(BuiltinTool):
         invoke tools
         """
         llm_text = tool_parameters.get("text")
-        node_lists, text = self._get_node_list(llm_text)
+        language = tool_parameters.get("language")
+        node_lists, text = self._get_node_list(llm_text, language)
         
         yield self.create_text_message(text)
         yield self.create_json_message({'nodelists': node_lists})
     
-    def _get_node_list(self, data: str) -> tuple[list, str]: 
+    def _get_node_list(self, data: str, language: str) -> tuple[list, str]: 
         data = data.strip('```')
         data = data.strip('json')
         text = ""
@@ -37,7 +38,10 @@ class RootCauseTool(BuiltinTool):
                 endpoint = ep.strip('"')
                 endpoint = endpoint.strip("'")
                 nodeList.append({'service': service, 'endpoint': endpoint, "isRoot": True})
-                text = text + f'造成根因的节点是{nodeinfo['nodeName']}\n'
+                if language == "zh-cn":
+                    text = text + f'造成根因的节点是{nodeinfo['nodeName']}\n'
+                else:
+                    text = text + f'The root cause node is {nodeinfo['nodeName']}\n'
     
             if "otherNodeName" in data:
                 for node in nodeinfo["otherNodeName"]:
@@ -47,7 +51,10 @@ class RootCauseTool(BuiltinTool):
                     tmpendpoint = tmpendpoint.strip("'")
                     nodeList.append({'service': tmpservice, 'endpoint': tmpendpoint, "isRoot": False})
                 otherstr = ",".join(nodeinfo["otherNodeName"])
-                text = text + f'疑似根因节点有{otherstr}\n'
+                if language == "zh-cn":
+                    text = text + f'疑似根因节点有{otherstr}\n'
+                else:
+                    text = text + f'Possible root cause nodes are {otherstr}\n'
             return nodeList, text
         except Exception as e:
             return [], ""
