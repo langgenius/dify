@@ -1,6 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import React, { useState, useRef, useEffect } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { RiCloseLine } from '@remixicon/react'
 import { useClickAway } from 'ahooks'
