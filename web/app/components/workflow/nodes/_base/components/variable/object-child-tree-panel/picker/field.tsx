@@ -12,25 +12,34 @@ import { useTranslation } from 'react-i18next'
 
 const MAX_DEPTH = 10
 
-type Props = { name: string, payload: FieldType, depth?: number }
+type Props = {
+  name: string,
+  payload: FieldType,
+  depth?: number
+  readonly?: boolean
+}
 
 const Field: FC<Props> = ({
   name,
   payload,
   depth = 1,
+  readonly,
 }) => {
   const { t } = useTranslation()
+  const isLastFieldHighlight = readonly
+  const hasChildren = payload.type === Type.object && payload.properties
+  const isHighlight = isLastFieldHighlight && !hasChildren
   if (depth > MAX_DEPTH + 1)
     return null
   return (
     <div>
       <Tooltip popupContent={t('app.structOutput.moreFillTip')} disabled={depth !== MAX_DEPTH + 1}>
-        <div className={cn('flex pr-2 items-center justify-between rounded-md hover:bg-state-base-hover', depth !== MAX_DEPTH + 1 && 'cursor-pointer')}>
+        <div className={cn('flex pr-2 items-center justify-between rounded-md', !readonly && 'hover:bg-state-base-hover', depth !== MAX_DEPTH + 1 && 'cursor-pointer')}>
           <div className='grow flex items-stretch'>
             <TreeIndentLine depth={depth} />
             {depth === MAX_DEPTH + 1 ? (
               <RiMoreFill className='w-3 h-3 text-text-tertiary' />
-            ) : (<div className='h-6 leading-6 grow w-0 truncate system-sm-medium text-text-secondary'>{name}</div>)}
+            ) : (<div className={cn('h-6 leading-6 grow w-0 truncate system-sm-medium text-text-secondary', isHighlight && 'text-text-accent')}>{name}</div>)}
 
           </div>
           {depth < MAX_DEPTH + 1 && (
@@ -47,6 +56,7 @@ const Field: FC<Props> = ({
               name={name}
               payload={payload.properties?.[name] as FieldType}
               depth={depth + 1}
+              readonly={readonly}
             />
           ))}
         </div>
