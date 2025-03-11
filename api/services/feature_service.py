@@ -36,6 +36,13 @@ class LicenseModel(BaseModel):
     expired_at: str = ""
 
 
+class BrandingModel(BaseModel):
+    enabled: bool = False
+    login_page_logo: str = ("",)
+    workspace_logo: str = ("",)
+    favicon: str = ("",)
+
+
 class FeatureModel(BaseModel):
     billing: BillingModel = BillingModel()
     members: LimitationModel = LimitationModel(size=0, limit=1)
@@ -65,6 +72,8 @@ class SystemFeatureModel(BaseModel):
     is_allow_create_workspace: bool = False
     is_email_setup: bool = False
     license: LicenseModel = LicenseModel()
+    is_enterprise: bool = False
+    branding: BrandingModel = BrandingModel()
 
 
 class FeatureService:
@@ -87,6 +96,7 @@ class FeatureService:
 
         if dify_config.ENTERPRISE_ENABLED:
             system_features.enable_web_sso_switch_component = True
+            system_features.is_enterprise = True
 
             cls._fulfill_params_from_enterprise(system_features)
 
@@ -171,6 +181,9 @@ class FeatureService:
 
         if "is_allow_create_workspace" in enterprise_info:
             features.is_allow_create_workspace = enterprise_info["is_allow_create_workspace"]
+
+        if "branding" in enterprise_info:
+            features.branding = enterprise_info["branding"]
 
         if "license" in enterprise_info:
             license_info = enterprise_info["license"]

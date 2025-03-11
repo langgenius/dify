@@ -39,6 +39,17 @@ def only_edition_cloud(view):
     return decorated
 
 
+def only_enterprise_edition(view):
+    @wraps(view)
+    def decorated(*args, **kwargs):
+        if not dify_config.ENTERPRISE_ENABLED:
+            abort(404)
+
+        return view(*args, **kwargs)
+
+    return decorated
+
+
 def only_edition_self_hosted(view):
     @wraps(view)
     def decorated(*args, **kwargs):

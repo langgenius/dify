@@ -33,8 +33,11 @@ def send_invite_member_mail_task(language: str, to: str, token: str, inviter_nam
     try:
         url = f"{dify_config.CONSOLE_WEB_URL}/activate?token={token}"
         if language == "zh-Hans":
+            template = "invite_member_mail_template_zh-CN.html"
+            if dify_config.ENTERPRISE_ENABLED:
+                template = "without-brand/invite_member_mail_template_zh-CN.html"
             html_content = render_template(
-                "invite_member_mail_template_zh-CN.html",
+                template,
                 to=to,
                 inviter_name=inviter_name,
                 workspace_name=workspace_name,
@@ -42,8 +45,11 @@ def send_invite_member_mail_task(language: str, to: str, token: str, inviter_nam
             )
             mail.send(to=to, subject="立即加入 Dify 工作空间", html=html_content)
         else:
+            template = "invite_member_mail_template_en-US.html"
+            if dify_config.ENTERPRISE_ENABLED:
+                template = "without-brand/invite_member_mail_template_en-US.html"
             html_content = render_template(
-                "invite_member_mail_template_en-US.html",
+                template,
                 to=to,
                 inviter_name=inviter_name,
                 workspace_name=workspace_name,
