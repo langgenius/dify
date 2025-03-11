@@ -457,10 +457,8 @@ class PublishedWorkflowApi(Resource):
             raise Forbidden()
 
         parser = reqparse.RequestParser()
-        parser.add_argument("marked_name", type=str,
-                            required=False, default="", location="json")
-        parser.add_argument("marked_comment", type=str,
-                            required=False, default="", location="json")
+        parser.add_argument("marked_name", type=str, required=False, default="", location="json")
+        parser.add_argument("marked_comment", type=str, required=False, default="", location="json")
         args = parser.parse_args()
 
         # Validate name and comment length
@@ -614,14 +612,10 @@ class PublishedAllWorkflowApi(Resource):
             raise Forbidden()
 
         parser = reqparse.RequestParser()
-        parser.add_argument("page", type=inputs.int_range(
-            1, 99999), required=False, default=1, location="args")
-        parser.add_argument("limit", type=inputs.int_range(
-            1, 100), required=False, default=20, location="args")
-        parser.add_argument("user_id", type=str,
-                            required=False, location="args")
-        parser.add_argument("named_only", type=inputs.boolean,
-                            required=False, default=False, location="args")
+        parser.add_argument("page", type=inputs.int_range(1, 99999), required=False, default=1, location="args")
+        parser.add_argument("limit", type=inputs.int_range(1, 100), required=False, default=20, location="args")
+        parser.add_argument("user_id", type=str, required=False, location="args")
+        parser.add_argument("named_only", type=inputs.boolean, required=False, default=False, location="args")
         args = parser.parse_args()
         page = int(args.get("page", 1))
         limit = int(args.get("limit", 10))
@@ -670,10 +664,8 @@ class WorkflowByIdApi(Resource):
             raise Forbidden()
 
         parser = reqparse.RequestParser()
-        parser.add_argument("marked_name", type=str,
-                            required=False, location="json")
-        parser.add_argument("marked_comment", type=str,
-                            required=False, location="json")
+        parser.add_argument("marked_name", type=str, required=False, location="json")
+        parser.add_argument("marked_comment", type=str, required=False, location="json")
         args = parser.parse_args()
 
         # Validate name and comment length
@@ -784,8 +776,6 @@ api.add_resource(
     AdvancedChatDraftRunLoopNodeApi,
     "/apps/<uuid:app_id>/advanced-chat/workflows/draft/loop/nodes/<string:node_id>/run",
 )
-api.add_resource(DefaultBlockConfigsApi,
-                 "/apps/<uuid:app_id>/workflows/default-workflow-block-configs")
 api.add_resource(
     WorkflowDraftRunLoopNodeApi,
     "/apps/<uuid:app_id>/workflows/draft/loop/nodes/<string:node_id>/run",
@@ -797,6 +787,10 @@ api.add_resource(
 api.add_resource(
     PublishedAllWorkflowApi,
     "/apps/<uuid:app_id>/workflows",
+)
+api.add_resource(
+    DefaultBlockConfigsApi,
+    "/apps/<uuid:app_id>/workflows/default-workflow-block-configs",
 )
 api.add_resource(
     DefaultBlockConfigApi,

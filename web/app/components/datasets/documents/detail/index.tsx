@@ -23,7 +23,7 @@ import FloatRightContainer from '@/app/components/base/float-right-container'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import { LayoutRight2LineMod } from '@/app/components/base/icons/src/public/knowledge'
 import { useCheckSegmentBatchImportProgress, useChildSegmentListKey, useSegmentBatchImport, useSegmentListKey } from '@/service/knowledge/use-segment'
-import { useDocumentDetail, useDocumentMetadata } from '@/service/knowledge/use-document'
+import { useDocumentDetail, useDocumentMetadata, useInvalidDocumentList } from '@/service/knowledge/use-document'
 import { useInvalid } from '@/service/use-base'
 
 type DocumentContextValue = {
@@ -152,17 +152,22 @@ const DocumentDetail: FC<Props> = ({ datasetId, documentId }) => {
 
   const invalidChunkList = useInvalid(useSegmentListKey)
   const invalidChildChunkList = useInvalid(useChildSegmentListKey)
+  const invalidDocumentList = useInvalidDocumentList(datasetId)
 
   const handleOperate = (operateName?: string) => {
+    invalidDocumentList()
     if (operateName === 'delete') {
       backToPrev()
     }
     else {
       detailMutate()
-      setTimeout(() => {
-        invalidChunkList()
-        invalidChildChunkList()
-      }, 5000)
+      // If operation is not rename, refresh the chunk list after 5 seconds
+      if (operateName) {
+        setTimeout(() => {
+          invalidChunkList()
+          invalidChildChunkList()
+        }, 5000)
+      }
     }
   }
 

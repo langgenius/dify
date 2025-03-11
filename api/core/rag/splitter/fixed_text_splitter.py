@@ -88,7 +88,10 @@ class FixedRecursiveCharacterTextSplitter(EnhanceRecursiveCharacterTextSplitter)
                 break
         # Now that we have the separator, split the text
         if separator:
-            splits = text.split(separator)
+            if separator == " ":
+                splits = text.split()
+            else:
+                splits = text.split(separator)
         else:
             splits = list(text)
         # Now go merging things, recursively splitting longer texts.

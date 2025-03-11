@@ -29,7 +29,7 @@ const MessageTypeSelector: FC<Props> = ({
         <ChevronSelectorVertical className='w-3 h-3 ' />
       </div>
       {showOption && (
-        <div className='absolute z-10 top-[30px] p-1 border border-gray-200 shadow-lg rounded-lg bg-white'>
+        <div className='absolute z-10 top-[30px] p-1 border border-components-panel-border shadow-lg rounded-lg bg-components-panel-bg'>
           {allTypes.map(type => (
             <div
               key={type}
@@ -37,7 +37,7 @@ const MessageTypeSelector: FC<Props> = ({
                 setHide()
                 onChange(type)
               }}
-              className='flex items-center h-9 min-w-[44px] px-3 rounded-lg cursor-pointer text-sm font-medium text-gray-700 uppercase hover:bg-gray-50'
+              className='flex items-center h-9 min-w-[44px] px-3 rounded-lg cursor-pointer text-sm font-medium text-text-secondary uppercase hover:bg-state-base-hover'
             >{type}</div>
           ))
           }

@@ -270,7 +270,9 @@ class ToolNode(BaseNode[ToolNodeData]):
                 if self.node_type == NodeType.AGENT:
                     msg_metadata = message.message.json_object.pop("execution_metadata", {})
                     agent_execution_metadata = {
-                        key: value for key, value in msg_metadata.items() if key in NodeRunMetadataKey
+                        key: value
+                        for key, value in msg_metadata.items()
+                        if key in NodeRunMetadataKey.__members__.values()
                     }
                 json.append(message.message.json_object)
             elif message.type == ToolInvokeMessage.MessageType.LINK:
