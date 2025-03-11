@@ -33,7 +33,6 @@ import WorkflowToolConfigureButton from '@/app/components/tools/workflow-tool/co
 import type { InputVar } from '@/app/components/workflow/types'
 import { appDefaultIconBackground } from '@/config'
 import type { PublishWorkflowParams } from '@/types/workflow'
-import VersionInfoModal from './version-info-modal'
 
 export type AppPublisherProps = {
   disabled?: boolean
@@ -73,7 +72,6 @@ const AppPublisher = ({
   const { t } = useTranslation()
   const [published, setPublished] = useState(false)
   const [open, setOpen] = useState(false)
-  const [publishModalOpen, setPublishModalOpen] = useState(false)
   const appDetail = useAppStore(state => state.appDetail)
   const { app_base_url: appBaseURL = '', access_token: accessToken = '' } = appDetail?.site ?? {}
   const appMode = (appDetail?.mode !== 'completion' && appDetail?.mode !== 'workflow') ? 'chat' : appDetail.mode
@@ -133,27 +131,11 @@ const AppPublisher = ({
 
   const [embeddingModalOpen, setEmbeddingModalOpen] = useState(false)
 
-  const openPublishModal = useCallback(() => {
-    setOpen(false)
-    setPublishModalOpen(true)
-  }, [])
-
-  const closePublishModal = useCallback(() => {
-    setPublishModalOpen(false)
-  }, [])
-
-  const onClickPublishBtn = useCallback(() => {
-    if (isChatApp)
-      handlePublish()
-    else
-      openPublishModal()
-  }, [isChatApp, handlePublish, openPublishModal])
-
   useKeyPress(`${getKeyboardKeyCodeBySystem('ctrl')}.shift.p`, (e) => {
     e.preventDefault()
     if (publishDisabled || published)
       return
-    onClickPublishBtn()
+    handlePublish()
   }
   , { exactMatch: true, useCapture: true })
 
@@ -217,7 +199,7 @@ const AppPublisher = ({
                   <Button
                     variant='primary'
                     className='w-full mt-3'
-                    onClick={onClickPublishBtn}
+                    onClick={() => handlePublish()}
                     disabled={publishDisabled || published}
                   >
                     {
@@ -314,13 +296,6 @@ const AppPublisher = ({
           accessToken={accessToken}
         />
       </PortalToFollowElem >
-      {publishModalOpen && (
-        <VersionInfoModal
-          isOpen={publishModalOpen}
-          onClose={closePublishModal}
-          onPublish={handlePublish}
-        />
-      )}
     </>
   )
 }
