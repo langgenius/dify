@@ -328,12 +328,13 @@ class TidbOnQdrantVector(BaseVector):
         )
         document_ids_filter = kwargs.get("document_ids_filter")
         if document_ids_filter:
-            filter.must.append(
-                models.FieldCondition(
-                    key="metadata.document_id",
-                    match=models.MatchAny(any=document_ids_filter),
+            for document_id_filter in document_ids_filter:
+                filter.should.append(
+                    models.FieldCondition(
+                        key="metadata.document_id",
+                        match=models.MatchValue(value=document_id_filter),
+                    )
                 )
-            )
         results = self._client.search(
             collection_name=self._collection_name,
             query_vector=query_vector,
