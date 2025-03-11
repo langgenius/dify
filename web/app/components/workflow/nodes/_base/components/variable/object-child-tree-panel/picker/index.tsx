@@ -1,9 +1,10 @@
 'use client'
 import type { FC } from 'react'
-import React from 'react'
+import React, { useRef } from 'react'
 import type { Field as FieldType, StructuredOutput } from '../../../../../llm/types'
 import Field from './field'
 import cn from '@/utils/classnames'
+import { useHover } from 'ahooks'
 
 type Props = {
   className?: string
@@ -11,6 +12,7 @@ type Props = {
   payload: StructuredOutput
   readonly?: boolean
   onSelect?: (field: FieldType) => void
+  onHovering?: (value: boolean) => void
 }
 
 export const PickerPanelMain: FC<Props> = ({
@@ -18,11 +20,25 @@ export const PickerPanelMain: FC<Props> = ({
   root,
   payload,
   readonly,
+  onHovering,
 }) => {
+  const ref = useRef<HTMLDivElement>(null)
+  useHover(ref, {
+    onChange: (hovering) => {
+      if (hovering) {
+        onHovering?.(true)
+      }
+      else {
+        setTimeout(() => {
+          onHovering?.(false)
+        }, 100)
+      }
+    },
+  })
   const schema = payload.schema
   const fieldNames = Object.keys(schema.properties)
   return (
-    <div className={cn(className)}>
+    <div className={cn(className)} ref={ref}>
       {/* Root info */}
       <div className='px-2 py-1 flex justify-between items-center'>
         <div className='flex'>

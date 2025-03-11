@@ -67,7 +67,7 @@ const Item: FC<ItemProps> = ({
         setIsItemHovering(true)
       }
       else {
-        if (isObj) {
+        if (isObj || isStructureOutput) {
           setTimeout(() => {
             setIsItemHovering(false)
           }, 100)
@@ -107,8 +107,8 @@ const Item: FC<ItemProps> = ({
         <div
           ref={itemRef}
           className={cn(
-            isObj ? ' pr-1' : 'pr-[18px]',
-            isHovering && (isObj ? 'bg-primary-50' : 'bg-state-base-hover'),
+            (isObj || isStructureOutput) ? ' pr-1' : 'pr-[18px]',
+            isHovering && ((isObj || isStructureOutput) ? 'bg-primary-50' : 'bg-state-base-hover'),
             'relative w-full flex items-center h-6 pl-3  rounded-md cursor-pointer')
           }
           onClick={handleChosen}
@@ -137,7 +137,11 @@ const Item: FC<ItemProps> = ({
         zIndex: 100,
       }}>
         {isStructureOutput && (
-          <PickerStructurePanel root={{ attrName: itemData.variable }} payload={itemData.children as StructuredOutput} />
+          <PickerStructurePanel
+            root={{ attrName: itemData.variable }}
+            payload={itemData.children as StructuredOutput}
+            onHovering={setIsChildrenHovering}
+          />
         )}
         {(isObj && !isFile) && (
           // eslint-disable-next-line ts/no-use-before-define
