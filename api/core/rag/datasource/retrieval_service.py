@@ -1,5 +1,4 @@
 import concurrent.futures
-import json
 from concurrent.futures import ThreadPoolExecutor
 from typing import Optional
 
