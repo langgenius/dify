@@ -82,7 +82,7 @@ jobs:
         uses: actions/setup-node@v4
         if: steps.changed-files.outputs.any_changed == 'true'
         with:
-          node-version: 20
+          node-version: 22
           cache: pnpm
           cache-dependency-path: ./web/package.json
 
@@ -153,6 +153,7 @@ jobs:
         env:
           BASH_SEVERITY: warning
           DEFAULT_BRANCH: main
+          FILTER_REGEX_INCLUDE: pnpm-lock.yaml
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           IGNORE_GENERATED_FILES: true
           IGNORE_GITIGNORED_FILES: true
