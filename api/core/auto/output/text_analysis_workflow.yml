@@ -1,0 +1,262 @@
+app:
+  description: ''
+  icon: 🤖
+  icon_background: '#FFEAD5'
+  mode: workflow
+  name: 文本分析工作流
+  use_icon_as_answer_icon: false
+kind: app
+version: 0.1.2
+workflow:
+  conversation_variables: []
+  environment_variables: []
+  features:
+    file_upload:
+      allowed_file_extensions:
+      - .JPG
+      - .JPEG
+      - .PNG
+      - .GIF
+      - .WEBP
+      - .SVG
+      allowed_file_types:
+      - image
+      allowed_file_upload_methods:
+      - local_file
+      - remote_url
+      enabled: false
+      fileUploadConfig:
+        audio_file_size_limit: 50
+        batch_count_limit: 5
+        file_size_limit: 15
+        image_file_size_limit: 10
+        video_file_size_limit: 100
+      image:
+        enabled: false
+        number_limits: 3
+        transfer_methods:
+        - local_file
+        - remote_url
+      number_limits: 3
+    opening_statement: ''
+    retriever_resource:
+      enabled: true
+    sensitive_word_avoidance:
+      enabled: false
+    speech_to_text:
+      enabled: false
+    suggested_questions: []
+    suggested_questions_after_answer:
+      enabled: false
+    text_to_speech:
+      enabled: false
+      language: ''
+      voice: ''
+  graph:
+    edges:
+    - id: 1740019130520-source-1740019130521-target
+      source: '1740019130520'
+      sourceHandle: source
+      target: '1740019130521'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+      data:
+        isInIteration: false
+        sourceType: start
+        targetType: llm
+    - id: 1740019130520-source-1740019130522-target
+      source: '1740019130520'
+      sourceHandle: source
+      target: '1740019130522'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+      data:
+        isInIteration: false
+        sourceType: start
+        targetType: code
+    - id: 1740019130521-source-1740019130523-target
+      source: '1740019130521'
+      sourceHandle: source
+      target: '1740019130523'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+      data:
+        isInIteration: false
+        sourceType: llm
+        targetType: template-transform
+    - id: 1740019130522-source-1740019130523-target
+      source: '1740019130522'
+      sourceHandle: source
+      target: '1740019130523'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+      data:
+        isInIteration: false
+        sourceType: code
+        targetType: template-transform
+    - id: 1740019130523-source-1740019130524-target
+      source: '1740019130523'
+      sourceHandle: source
+      target: '1740019130524'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+      data:
+        isInIteration: false
+        sourceType: template-transform
+        targetType: end
+    nodes:
+    - id: '1740019130520'
+      position:
+        x: 80
+        y: 282
+      height: 116
+      width: 244
+      positionAbsolute:
+        x: 80
+        y: 282
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      data:
+        title: 开始节点
+        desc: 接收用户输入的文本参数
+        type: start
+        variables:
+        - type: text-input
+          label: user_text
+          variable: user_text
+          required: true
+          max_length: 48
+          options: []
+    - id: '1740019130521'
+      position:
+        x: 380
+        y: 282
+      height: 98
+      width: 244
+      positionAbsolute:
+        x: 380
+        y: 282
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      data:
+        title: LLM节点
+        desc: 使用大语言模型进行情感分析，返回文本的情感结果
+        type: llm
+        model:
+          provider: zhipuai
+          name: glm-4-flash
+          mode: chat
+          completion_params:
+            temperature: 0.7
+        prompt_template:
+        - id: 1740019130521-system
+          text: 请分析以下文本的情感，返回积极、消极或中性
+          role: system
+        - id: 1740019130521-user
+          text: '{{user_text}}'
+          role: user
+        context:
+          enabled: false
+          variable_selector: []
+        vision:
+          enabled: false
+    - id: '1740019130522'
+      position:
+        x: 680
+        y: 282
+      height: 54
+      width: 244
+      positionAbsolute:
+        x: 680
+        y: 282
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      data:
+        title: 代码节点
+        desc: 计算文本的统计信息，包括字符数、单词数和句子数
+        type: code
+        variables:
+        - variable: text_for_analysis
+          value_selector:
+          - '1740019130520'
+          - user_text
+        code_language: python3
+        code: "import re\n\ndef main(text):\n    char_count = len(text)\n    word_count\
+          \ = len(text.split())\n    sentence_count = len(re.findall(r'[.!?]', text))\n\
+          \    return {'char_count': char_count, 'word_count': word_count, 'sentence_count':\
+          \ sentence_count}"
+        outputs:
+          text_statistics:
+            type: object
+    - id: '1740019130523'
+      position:
+        x: 980
+        y: 282
+      height: 54
+      width: 244
+      positionAbsolute:
+        x: 980
+        y: 282
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      data:
+        title: 模板节点
+        desc: 将情感分析结果和统计信息组合成格式化报告
+        type: template-transform
+        variables:
+        - variable: sentiment_result
+          value_selector:
+          - '1740019130521'
+          - sentiment_result
+        - variable: text_statistics
+          value_selector:
+          - '1740019130522'
+          - text_statistics
+        template: '情感分析结果：{{sentiment_result}}
+
+          文本统计信息：
+
+          字符数：{{text_statistics.char_count}}
+
+          单词数：{{text_statistics.word_count}}
+
+          句子数：{{text_statistics.sentence_count}}'
+    - id: '1740019130524'
+      position:
+        x: 1280
+        y: 282
+      height: 90
+      width: 244
+      positionAbsolute:
+        x: 1280
+        y: 282
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      data:
+        title: 结束节点
+        desc: 返回最终的分析报告
+        type: end
+        outputs:
+        - variable: final_report
+          value_selector:
+          - '1740019130523'
+          - output
+    viewport:
+      x: 92.96659905656679
+      y: 79.13437154762897
+      zoom: 0.9002006986311041

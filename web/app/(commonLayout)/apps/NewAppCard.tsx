@@ -12,6 +12,8 @@ import CreateFromDSLModal, { CreateFromDSLModalTab } from '@/app/components/app/
 import { useProviderContext } from '@/context/provider-context'
 import { FileArrow01, FilePlus01, FilePlus02 } from '@/app/components/base/icons/src/vender/line/files'
 import cn from '@/utils/classnames'
+import AutoGenerateModal from '@/app/components/app/auto-generate-modal'
+import { Agent } from '@/app/components/base/icons/src/vender/workflow'
 
 export type CreateAppCardProps = {
   className?: string
@@ -28,7 +30,7 @@ const CreateAppCard = forwardRef<HTMLDivElement, CreateAppCardProps>(({ classNam
   const [showNewAppTemplateDialog, setShowNewAppTemplateDialog] = useState(false)
   const [showNewAppModal, setShowNewAppModal] = useState(false)
   const [showCreateFromDSLModal, setShowCreateFromDSLModal] = useState(!!dslUrl)
-
+  const [showAutoGenerateModal, setShowAutoGenerateModal] = useState(false)
   const activeTab = useMemo(() => {
     if (dslUrl)
       return CreateFromDSLModalTab.FROM_URL
@@ -39,7 +41,7 @@ const CreateAppCard = forwardRef<HTMLDivElement, CreateAppCardProps>(({ classNam
   return (
     <div
       ref={ref}
-      className={cn('relative col-span-1 inline-flex flex-col justify-between h-[160px] bg-components-card-bg rounded-xl border-[0.5px] border-components-card-border', className)}
+      className={cn('relative col-span-1 inline-flex flex-col justify-between h-[180px] bg-components-card-bg rounded-xl border-[0.5px] border-components-card-border', className)}
     >
       <div className='grow p-2 rounded-t-xl'>
         <div className='px-6 pt-2 pb-1 text-xs font-medium leading-[18px] text-text-tertiary'>{t('app.createApp')}</div>
@@ -56,6 +58,12 @@ const CreateAppCard = forwardRef<HTMLDivElement, CreateAppCardProps>(({ classNam
           className='w-full flex items-center px-6 py-[7px] rounded-lg text-[13px] font-medium leading-[18px] text-text-tertiary cursor-pointer hover:text-text-secondary hover:bg-state-base-hover'>
           <FileArrow01 className='shrink-0 mr-2 w-4 h-4' />
           {t('app.importDSL')}
+        </button>
+        <button
+          onClick={() => setShowAutoGenerateModal(true)}
+          className='w-full flex items-center px-6 py-[7px] rounded-lg text-[13px] font-medium leading-[18px] text-text-tertiary cursor-pointer hover:text-text-secondary hover:bg-state-base-hover'>
+          <Agent className='shrink-0 mr-2 w-4 h-4' />
+          {t('app.autoGenerate')}
         </button>
       </div>
 
@@ -95,6 +103,15 @@ const CreateAppCard = forwardRef<HTMLDivElement, CreateAppCardProps>(({ classNam
         }}
         activeTab={activeTab}
         dslUrl={dslUrl}
+        onSuccess={() => {
+          onPlanInfoChanged()
+          if (onSuccess)
+            onSuccess()
+        }}
+      />
+      <AutoGenerateModal
+        isShow={showAutoGenerateModal}
+        onClose={() => setShowAutoGenerateModal(false)}
         onSuccess={() => {
           onPlanInfoChanged()
           if (onSuccess)

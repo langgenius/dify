@@ -1,0 +1,27 @@
+# 自定义配置文件
+workflow_generator:
+  # 用于生成工作流的模型配置
+  models:
+    default: my-gpt-4o-mini  # 默认使用的模型
+    available:  # 可用的模型列表
+      my-gpt-4o-mini:
+        model_name: gpt-4o-mini
+        base_url: https://api.pandalla.ai/v1
+        key_path: ./openai_key
+        max_tokens: 4096
+      my-gpt-4o:
+        model_name: gpt-4o
+        base_url: https://api.pandalla.ai/v1
+        key_path: ./openai_key
+        max_tokens: 4096
+
+# 调试配置
+debug:
+  enabled: false  # 默认不启用调试模式，可通过命令行参数 --debug 启用
+  dir: debug/     # 调试信息保存目录
+  save_options:   # 调试信息保存选项
+    prompt: true  # 保存提示词
+    response: true  # 保存大模型响应
+    json: true  # 保存JSON解析过程
+    workflow: true  # 保存工作流生成过程
+  case_id_format: "%Y%m%d_%H%M%S_%f"  # 运行ID格式，使用datetime.strftime格式

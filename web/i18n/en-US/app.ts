@@ -18,6 +18,7 @@ const translation = {
   export: 'Export DSL',
   exportFailed: 'Export DSL failed.',
   importDSL: 'Import DSL file',
+  autoGenerate: 'Auto Generate',
   createFromConfigFile: 'Create from DSL file',
   importFromDSL: 'Import from DSL',
   importFromDSLFile: 'From DSL file',

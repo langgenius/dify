@@ -3,13 +3,13 @@ import type { IOnCompleted, IOnData, IOnError, IOnFile, IOnMessageEnd, IOnMessag
 import type { ChatPromptConfig, CompletionPromptConfig } from '@/models/debug'
 import type { ModelModeType } from '@/types/app'
 import type { ModelParameterRule } from '@/app/components/header/account-setting/model-provider-page/declarations'
-export interface AutomaticRes {
+export type AutomaticRes = {
   prompt: string
   variables: string[]
   opening_statement: string
   error?: string
 }
-export interface CodeGenRes {
+export type CodeGenRes = {
   code: string
   language: string[]
   error?: string
@@ -78,6 +78,12 @@ export const generateRule = (body: Record<string, any>) => {
 }
 export const generateRuleCode = (body: Record<string, any>) => {
   return post<CodeGenRes>('/rule-code-generate', {
+    body,
+  })
+}
+
+export const generateWorkflow = (body: Record<string, any>) => {
+  return post<string>('/auto-generate', {
     body,
   })
 }

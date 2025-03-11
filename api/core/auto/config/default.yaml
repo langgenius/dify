@@ -1,0 +1,33 @@
+# 默认配置文件
+
+# 工作流生成器配置
+workflow_generator:
+  # 用于生成工作流的模型配置
+  models:
+    default: gpt-4  # 默认使用的模型
+    available:  # 可用的模型列表
+      gpt-4:
+        model_name: gpt-4
+        base_url: https://api.openai.com/v1
+        key_path: ./openai_key
+        max_tokens: 8192
+      gpt-4-turbo:
+        model_name: gpt-4-1106-preview
+        base_url: https://api.openai.com/v1
+        key_path: ./openai_key
+        max_tokens: 4096
+
+# 工作流节点配置
+workflow_nodes:
+  # LLM节点默认配置（使用 Dify 平台配置的模型）
+  llm:
+    provider: zhipuai
+    model: glm-4-flash
+    max_tokens: 16384
+    temperature: 0.7
+    mode: chat
+
+# 输出配置
+output:
+  dir: output/
+  filename: generated_workflow.yml 

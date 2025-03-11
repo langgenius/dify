@@ -18,6 +18,7 @@ const translation = {
   export: '导出 DSL',
   exportFailed: '导出 DSL 失败',
   importDSL: '导入 DSL 文件',
+  autoGenerate: '自动生成',
   createFromConfigFile: '通过 DSL 文件创建',
   importFromDSL: '导入 DSL',
   importFromDSLFile: '文件',

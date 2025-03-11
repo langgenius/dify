@@ -1,0 +1,247 @@
+app:
+  description: ''
+  icon: 🤖
+  icon_background: '#FFEAD5'
+  mode: workflow
+  name: 计算两个数字之和
+  use_icon_as_answer_icon: false
+kind: app
+version: 0.1.2
+workflow:
+  conversation_variables: []
+  environment_variables: []
+  features:
+    file_upload:
+      allowed_file_extensions:
+      - .JPG
+      - .JPEG
+      - .PNG
+      - .GIF
+      - .WEBP
+      - .SVG
+      allowed_file_types:
+      - image
+      allowed_file_upload_methods:
+      - local_file
+      - remote_url
+      enabled: false
+      fileUploadConfig:
+        audio_file_size_limit: 50
+        batch_count_limit: 5
+        file_size_limit: 15
+        image_file_size_limit: 10
+        video_file_size_limit: 100
+      image:
+        enabled: false
+        number_limits: 3
+        transfer_methods:
+        - local_file
+        - remote_url
+      number_limits: 3
+    opening_statement: ''
+    retriever_resource:
+      enabled: true
+    sensitive_word_avoidance:
+      enabled: false
+    speech_to_text:
+      enabled: false
+    suggested_questions: []
+    suggested_questions_after_answer:
+      enabled: false
+    text_to_speech:
+      enabled: false
+      language: ''
+      voice: ''
+  graph:
+    edges:
+    - id: 1740019130520-source-1740019130521-target
+      source: '1740019130520'
+      sourceHandle: source
+      target: '1740019130521'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+      data:
+        isInIteration: false
+        sourceType: start
+        targetType: llm
+    - id: 1740019130521-source-1740019130522-target
+      source: '1740019130521'
+      sourceHandle: source
+      target: '1740019130522'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+      data:
+        isInIteration: false
+        sourceType: llm
+        targetType: code
+    - id: 1740019130522-source-1740019130523-target
+      source: '1740019130522'
+      sourceHandle: source
+      target: '1740019130523'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+      data:
+        isInIteration: false
+        sourceType: code
+        targetType: template-transform
+    - id: 1740019130523-source-1740019130524-target
+      source: '1740019130523'
+      sourceHandle: source
+      target: '1740019130524'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+      data:
+        isInIteration: false
+        sourceType: template-transform
+        targetType: end
+    nodes:
+    - id: '1740019130520'
+      position:
+        x: 80
+        y: 282
+      height: 116
+      width: 244
+      positionAbsolute:
+        x: 80
+        y: 282
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      data:
+        title: 开始节点
+        desc: 开始节点，接收两个数字输入参数。
+        type: start
+        variables:
+        - type: number
+          label: num1
+          variable: num1
+          required: true
+          max_length: 48
+          options: []
+        - type: number
+          label: num2
+          variable: num2
+          required: true
+          max_length: 48
+          options: []
+    - id: '1740019130521'
+      position:
+        x: 380
+        y: 282
+      height: 98
+      width: 244
+      positionAbsolute:
+        x: 380
+        y: 282
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      data:
+        title: LLM节点
+        desc: LLM节点，根据输入的两个数字生成计算它们之和的Python函数。
+        type: llm
+        model:
+          provider: openai
+          name: gpt-4
+          mode: chat
+          completion_params:
+            temperature: 0.7
+        prompt_template:
+        - id: 1740019130521-system
+          text: 你是一个Python开发助手，请根据以下输入生成一个计算两数之和的Python函数。
+          role: system
+        - id: 1740019130521-user
+          text: 请为两个数字{{num1}}和{{num2}}生成一个Python函数，计算它们的和。
+          role: user
+        context:
+          enabled: false
+          variable_selector: []
+        vision:
+          enabled: false
+    - id: '1740019130522'
+      position:
+        x: 680
+        y: 282
+      height: 54
+      width: 244
+      positionAbsolute:
+        x: 680
+        y: 282
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      data:
+        title: 代码节点
+        desc: 代码节点，执行LLM生成的Python函数，并计算结果。
+        type: code
+        variables:
+        - variable: num1
+          value_selector:
+          - '1740019130520'
+          - num1
+        - variable: num2
+          value_selector:
+          - '1740019130520'
+          - num2
+        code_language: python3
+        code: "def calculate_sum(num1, num2):\n    return num1 + num2\n\nresult =\
+          \ calculate_sum({{num1}}, {{num2}})\nreturn result"
+        outputs:
+          result:
+            type: number
+    - id: '1740019130523'
+      position:
+        x: 980
+        y: 282
+      height: 54
+      width: 244
+      positionAbsolute:
+        x: 980
+        y: 282
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      data:
+        title: 模板节点
+        desc: 模板节点，将计算结果格式化为输出字符串。
+        type: template-transform
+        variables:
+        - variable: result
+          value_selector:
+          - '1740019130522'
+          - result
+        template: '计算结果为: {{result}}'
+    - id: '1740019130524'
+      position:
+        x: 1280
+        y: 282
+      height: 90
+      width: 244
+      positionAbsolute:
+        x: 1280
+        y: 282
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      data:
+        title: 结束节点
+        desc: 结束节点，输出格式化后的结果。
+        type: end
+        outputs:
+        - variable: output
+          value_selector:
+          - '1740019130523'
+          - output
+    viewport:
+      x: 92.96659905656679
+      y: 79.13437154762897
+      zoom: 0.9002006986311041
