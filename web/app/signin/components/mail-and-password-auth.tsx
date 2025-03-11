@@ -105,19 +105,18 @@ export default function MailAndPasswordAuth({ isInvite, isEmailSetup, allowRegis
   const autoLogin = async (data) => {
     const res = await login({
       url: '/login',
-      body: data,
+      body: data.account,
     })
+    localStorage.removeItem('auto-login')
     if (res.result === 'success') {
       localStorage.setItem('console_token', res.data.access_token)
       localStorage.setItem('refresh_token', res.data.refresh_token)
-      router.replace('/apps')
+      router.replace(data.src)
     }
   }
   useEffect(() => {
-    if(localStorage.getItem('auto-login')) {
+    if(localStorage.getItem('auto-login'))
       autoLogin(JSON.parse(localStorage.getItem('auto-login')))
-      localStorage.removeItem('auto-login')
-    }
   }, [])
 
   return <form onSubmit={() => { }}>
