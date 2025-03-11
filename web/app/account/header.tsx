@@ -22,7 +22,7 @@ const Header = () => {
         <div className='w-[1px] h-4 bg-divider-regular' />
         <p className='text-text-primary title-3xl-semi-bold'>{t('common.account.account')}</p>
       </div>
-      <div className='flex items-center flex-shrink-0 gap-3'>
+      <div className='flex items-center shrink-0 gap-3'>
         <Button className='gap-2 py-2 px-3 system-sm-medium' onClick={back}>
           <RiRobot2Line className='w-4 h-4' />
           <p>{t('common.account.studio')}</p>

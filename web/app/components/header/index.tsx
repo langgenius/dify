@@ -68,7 +68,7 @@ const Header = () => {
               <WorkspaceProvider>
                 <WorkplaceSelector />
               </WorkspaceProvider>
-              {enableBilling ? <PlanBadge allowHover sandboxAsUpgrade plan={plan.type} onClick={handlePlanClick} /> : <LicenseNav />}
+              {enableBilling ? <PlanBadge size='s' allowHover sandboxAsUpgrade plan={plan.type} onClick={handlePlanClick} /> : <LicenseNav />}
             </div>
           </div>
         }
@@ -79,7 +79,7 @@ const Header = () => {
             <LogoSite />
           </Link>
           <div className='font-light text-divider-deep'>/</div>
-          {enableBilling ? <PlanBadge allowHover sandboxAsUpgrade plan={plan.type} onClick={handlePlanClick} /> : <LicenseNav />}
+          {enableBilling ? <PlanBadge size='s' allowHover sandboxAsUpgrade plan={plan.type} onClick={handlePlanClick} /> : <LicenseNav />}
         </div >
       )}
       {
@@ -94,10 +94,10 @@ const Header = () => {
       }
       <div className='flex items-center shrink-0'>
         <EnvNav />
-        <div className='mr-3'>
+        <div className='mr-2'>
           <PluginsNav />
         </div>
-        <AccountDropdown isMobile={isMobile} />
+        <AccountDropdown />
       </div>
       {
         (isMobile && isShowNavMenu) && (
