@@ -331,7 +331,7 @@ class TidbOnQdrantVector(BaseVector):
             should_conditions = []
             for document_id_filter in document_ids_filter:
                 should_conditions.append(
-                        models.FieldCondition(
+                    models.FieldCondition(
                         key="metadata.document_id",
                         match=models.MatchValue(value=document_id_filter),
                     )

@@ -7,7 +7,7 @@ from collections.abc import Generator, Mapping
 from typing import Any, Optional, Union, cast
 
 from flask import Flask, current_app
-from sqlalchemy import Integer, and_, or_
+from sqlalchemy import Integer, and_, or_, text
 from sqlalchemy import cast as sqlalchemy_cast
 
 from core.app.app_config.entities import (
@@ -847,7 +847,7 @@ class DatasetRetrieval:
                 for condition in metadata_filtering_conditions.conditions:
                     metadata_name = condition.name
                     expected_value = condition.value
-                    if expected_value:
+                    if expected_value or condition.comparison_operator in ("empty", "not empty"):
                         if isinstance(expected_value, str):
                             expected_value = self._replace_metadata_filter_value(expected_value, inputs)
                         filters = self._process_metadata_filter_func(
@@ -930,17 +930,27 @@ class DatasetRetrieval:
             return None
         return automatic_metadata_filters
 
-    def _process_metadata_filter_func(self, condition: str, metadata_name: str, value: str, filters: list):
+    def _process_metadata_filter_func(self, condition: str, metadata_name: str, value: Optional[str], filters: list):
         match condition:
             case "contains":
-                filters.append(DatasetDocument.doc_metadata[metadata_name].like(f'"%{value}%"'))
+                filters.append(
+                    (text("documents.doc_metadata ->> :key LIKE :value")).params(key=metadata_name, value=f"%{value}%")
+                )
             case "not contains":
-                filters.append(DatasetDocument.doc_metadata[metadata_name].notlike(f'"%{value}%"'))
+                filters.append(
+                    (text("documents.doc_metadata ->> :key NOT LIKE :value")).params(
+                        key=metadata_name, value=f"%{value}%"
+                    )
+                )
             case "start with":
-                filters.append(DatasetDocument.doc_metadata[metadata_name].like(f'"{value}%"'))
+                filters.append(
+                    (text("documents.doc_metadata ->> :key LIKE :value")).params(key=metadata_name, value=f"{value}%")
+                )
 
             case "end with":
-                filters.append(DatasetDocument.doc_metadata[metadata_name].like(f'"%{value}"'))
+                filters.append(
+                    (text("documents.doc_metadata ->> :key LIKE :value")).params(key=metadata_name, value=f"%{value}")
+                )
             case "is" | "=":
                 if isinstance(value, str):
                     filters.append(DatasetDocument.doc_metadata[metadata_name] == f'"{value}"')
@@ -955,9 +965,9 @@ class DatasetRetrieval:
                     filters.append(
                         sqlalchemy_cast(DatasetDocument.doc_metadata[metadata_name].astext, Integer) != value
                     )
-            case "is empty":
+            case "empty":
                 filters.append(DatasetDocument.doc_metadata[metadata_name].is_(None))
-            case "is not empty":
+            case "not empty":
                 filters.append(DatasetDocument.doc_metadata[metadata_name].isnot(None))
             case "before" | "<":
                 filters.append(sqlalchemy_cast(DatasetDocument.doc_metadata[metadata_name].astext, Integer) < value)
