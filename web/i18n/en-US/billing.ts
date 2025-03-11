@@ -14,6 +14,7 @@ const translation = {
     encourage: 'Upgrade Now',
     encourageShort: 'Upgrade',
   },
+  educationVerification: 'Get Education Verified',
   viewBilling: 'Manage billing and subscriptions',
   buyPermissionDeniedTip: 'Please contact your enterprise administrator to subscribe',
   plansCommon: {

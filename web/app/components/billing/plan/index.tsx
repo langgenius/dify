@@ -6,6 +6,7 @@ import {
   RiBook2Line,
   RiBox3Line,
   RiFileEditLine,
+  RiGraduationCapLine,
   RiGroup3Line,
   RiGroupLine,
   RiSquareLine,
@@ -15,6 +16,7 @@ import VectorSpaceInfo from '../usage-info/vector-space-info'
 import AppsInfo from '../usage-info/apps-info'
 import UpgradeBtn from '../upgrade-btn'
 import { useProviderContext } from '@/context/provider-context'
+import Button from '@/app/components/base/button'
 import UsageInfo from '@/app/components/billing/usage-info'
 
 type Props = {
@@ -58,14 +60,22 @@ const PlanComp: FC<Props> = ({
             </div>
             <div className='system-xs-regular text-util-colors-gray-gray-600'>{t(`billing.plans.${type}.for`)}</div>
           </div>
-          {(plan.type as any) !== SelfHostedPlan.enterprise && (
-            <UpgradeBtn
-              className='shrink-0'
-              isPlain={type === Plan.team}
-              isShort
-              loc={loc}
-            />
-          )}
+          <div className='shrink-0 flex items-center gap-1'>
+            {/* {(plan.type === Plan.sandbox || plan.type === Plan.professional) && ( */}
+            <Button variant='ghost'>
+              <RiGraduationCapLine className='w-4 h-4 mr-1'/>
+              {t('billing.educationVerification')}
+            </Button>
+            {/* )} */}
+            {(plan.type as any) !== SelfHostedPlan.enterprise && (
+              <UpgradeBtn
+                className='shrink-0'
+                isPlain={type === Plan.team}
+                isShort
+                loc={loc}
+              />
+            )}
+          </div>
         </div>
       </div>
       {/* Plan detail */}
