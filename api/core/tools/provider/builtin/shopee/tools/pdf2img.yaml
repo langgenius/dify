@@ -83,3 +83,13 @@ parameters: # 参数列表
       en_US: direction
       zh_Hans: 合并图片方向
     form: form
+  - name: pages
+    type: string
+    required: false
+    label:
+      en_US: pages
+      zh_Hans: 目标页，以","分割
+    human_description:
+      en_US: pages
+      zh_Hans: 目标页，以","分割
+    form: form
