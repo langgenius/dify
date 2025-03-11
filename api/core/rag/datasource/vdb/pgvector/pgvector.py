@@ -67,7 +67,8 @@ class PGVector(BaseVector):
     def __init__(self, collection_name: str, config: PGVectorConfig):
         super().__init__(collection_name)
         self.pool = self._create_connection_pool(config)
-        self.table_name = f"embedding_{collection_name}"
+        # postgres use lowercase table name by default
+        self.table_name = f"embedding_{collection_name.lower()}"
 
     def get_type(self) -> str:
         return VectorType.PGVECTOR
@@ -140,7 +141,14 @@ class PGVector(BaseVector):
         if not ids:
             return
         with self._get_cursor() as cur:
-            cur.execute(f"DELETE FROM {self.table_name} WHERE id IN %s", (tuple(ids),))
+            # check if table exists
+            # postgres use lowercase table name by default
+            cur.execute(
+                "SELECT tablename FROM pg_catalog.pg_tables WHERE schemaname = 'public' AND tablename = %s",
+                (self.table_name.lower(),),
+            )
+            if cur.fetchone() is not None:
+                cur.execute(f"DELETE FROM {self.table_name} WHERE id IN %s", (tuple(ids),))
 
     def delete_by_metadata_field(self, key: str, value: str) -> None:
         with self._get_cursor() as cur:
