@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useContext } from 'use-context-selector'
@@ -102,6 +102,23 @@ export default function MailAndPasswordAuth({ isInvite, isEmailSetup, allowRegis
       setIsLoading(false)
     }
   }
+  const autoLogin = async (data) => {
+    const res = await login({
+      url: '/login',
+      body: data,
+    })
+    if (res.result === 'success') {
+      localStorage.setItem('console_token', res.data.access_token)
+      localStorage.setItem('refresh_token', res.data.refresh_token)
+      router.replace('/apps')
+    }
+  }
+  useEffect(() => {
+    if(localStorage.getItem('auto-login')) {
+      autoLogin(JSON.parse(localStorage.getItem('auto-login')))
+      localStorage.removeItem('auto-login')
+    }
+  }, [])
 
   return <form onSubmit={() => { }}>
     <div className='mb-3'>
