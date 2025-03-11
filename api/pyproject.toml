@@ -83,6 +83,8 @@ yarl = "~1.18.3"
 # Related transparent dependencies with pinned version
 # required by main implementations
 ############################################################
+flask-ldap3-login = "^1.0.2"
+ldap3 = "^2.9.1"
 [tool.poetry.group.indirect.dependencies]
 kaleido = "0.2.1"
 rank-bm25 = "~0.2.2"
