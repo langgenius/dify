@@ -1,7 +1,7 @@
 name: "👾 Tracker"
 description: For inner usages, please donot use this template.
 title: "[Tracker] "
-labels: 
+labels:
   - tracker
 body:
   - type: textarea
