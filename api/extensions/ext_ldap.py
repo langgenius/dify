@@ -1,17 +1,19 @@
-# -*- coding: utf-8 -*-
 """
 @File    : ext_ldap.py 
 @Time    : 2025/3/5 {TIME}
 @Author  : xxlaila
 @Software: dify
 """
-from flask_ldap3_login import LDAP3LoginManager
-from configs import dify_config
-from dify_app import DifyApp
 import json
 import logging
 from queue import Queue
-from ldap3 import Server, Connection, ALL
+
+from flask_ldap3_login import LDAP3LoginManager
+from ldap3 import ALL, Connection, Server
+
+from configs import dify_config
+from dify_app import DifyApp
+
 
 def is_enabled():
     return getattr(dify_config, 'LDAP_ENABLED', False)
@@ -54,7 +56,7 @@ def get_ldap_connection():
                     return new_conn
                 raise Exception("LDAP connection reconstruction failed")
         except Exception as e:
-            logging.error(f"LDAP connection recovery failed: {str(e)}")
+            logging.exception(f"LDAP connection recovery failed: {e}")
             raise
     return conn
 
@@ -67,7 +69,7 @@ def release_ldap_connection(conn):
         conn.open()  # Reopen connection without binding
         LDAP_POOL.put(conn)
     except Exception as e:
-        logging.error(f"Failed to recycle LDAP connection: {str(e)}")
+        logging.exception(f"Failed to recycle LDAP connection: {str(e)}")
         conn.unbind()
 
 def init_app(app: DifyApp):

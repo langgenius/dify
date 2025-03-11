@@ -8,6 +8,8 @@ from datetime import UTC, datetime, timedelta
 from hashlib import sha256
 from typing import Any, Optional, cast
 
+from flask import current_app as app
+from ldap3 import Connection, Server
 from pydantic import BaseModel
 from sqlalchemy import func
 from sqlalchemy.orm import Session
@@ -17,6 +19,7 @@ from configs import dify_config
 from constants.languages import language_timezone_mapping, languages
 from events.tenant_event import tenant_was_created
 from extensions.ext_database import db
+from extensions.ext_ldap import get_ldap_connection, release_ldap_connection
 from extensions.ext_redis import redis_client
 from libs.helper import RateLimiter, TokenManager
 from libs.passport import PassportService
@@ -57,10 +60,7 @@ from tasks.mail_account_deletion_task import send_account_deletion_verification_
 from tasks.mail_email_code_login import send_email_code_login_mail_task
 from tasks.mail_invite_member_task import send_invite_member_mail_task
 from tasks.mail_reset_password_task import send_reset_password_mail_task
-from extensions.ext_ldap import get_ldap_connection, release_ldap_connection
-from ldap3 import Server, Connection, ALL
 
-from flask import current_app as app
 
 class TokenPair(BaseModel):
     access_token: str
@@ -217,7 +217,7 @@ class AccountService:
                     finally:
                         release_ldap_connection(conn)
         except Exception as e:
-            logging.error(f"LDAP authentication error: {str(e)}")
+            logging.exception(f"LDAP authentication error: {str(e)}")
 
         # Perform local authentication only if LDAP authentication explicitly fails
         if not is_ldap_success:
@@ -303,7 +303,7 @@ class AccountService:
 
         except Exception as e:
             db.session.rollback()  # Transaction rollback to prevent database pollution
-            logging.error(f"Failed to create LDAP user or add to tenant: {str(e)}")
+            logging.exception(f"Failed to create LDAP user or add to tenant: {str(e)}")
             raise AccountRegisterError("Failed to create LDAP user.")
 
     @staticmethod

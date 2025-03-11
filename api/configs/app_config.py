@@ -5,10 +5,10 @@ from pydantic.fields import FieldInfo
 from pydantic_settings import BaseSettings, PydanticBaseSettingsSource, SettingsConfigDict
 
 from .deploy import DeploymentConfig
-from .ldap import AuthenticationConfig
 from .enterprise import EnterpriseFeatureConfig
 from .extra import ExtraServiceConfig
 from .feature import FeatureConfig
+from .ldap import AuthenticationConfig
 from .middleware import MiddlewareConfig
 from .packaging import PackagingInfo
 from .remote_settings_sources import RemoteSettingsSource, RemoteSettingsSourceConfig, RemoteSettingsSourceName

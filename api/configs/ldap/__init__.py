@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 @File    : __init__.py.py 
 @Time    : 2025/3/6 {TIME}
@@ -7,6 +6,7 @@
 """
 from pydantic import Field
 from pydantic_settings import BaseSettings
+
 
 class AuthenticationConfig(BaseSettings):
     """LDAP authentication related configuration"""
