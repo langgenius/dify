@@ -184,7 +184,8 @@ class ApiTool(Tool):
                     if "$ref" in body_schema: 
                         ref_path = body_schema["$ref"].split("/")
                         ref_name = ref_path[-1]
-                        if "components" in self.api_bundle.openapi and "schemas" in self.api_bundle.openapi["components"]:
+                        if ("components" in self.api_bundle.openapi
+                        and "schemas" in self.api_bundle.openapi["components"]):
                             if ref_name in self.api_bundle.openapi["components"]["schemas"]:
                                 body_schema = self.api_bundle.openapi["components"]["schemas"][ref_name]
                     
