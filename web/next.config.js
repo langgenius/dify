@@ -22,6 +22,29 @@ const nextConfig = {
         level: 'none',
         debug: false,
       }
+      config.watchOptions = {
+        ignored: [
+          // '**/node_modules/**',
+          // '**/.git/**',
+          // '**/.next/**',
+          // '**/public/**',
+          // '**/.storybook/**',
+          // '**/assets/**',
+          // '**/bin/**',
+          // '**/models/**',
+          // '**/themes/**',
+          // '**/utils/**',
+          '**/*',
+          '!**/app/**',
+          // '**/app/forgot-password**',
+          // '**/app/reset-password**',
+          // '**/app/account**',
+          // '**/app/repos**',
+
+        ],
+        aggregateTimeout: 300, // 延迟重新构建的时间，单位为毫秒
+        poll: 1000, // 检测文件变化的时间间隔，单位为毫秒
+      }
       config.optimization = {
         ...config.optimization,
         removeAvailableModules: false,
@@ -65,6 +88,7 @@ const nextConfig = {
 
       // 7. 源码映射优化
       config.devtool = 'eval-source-map'
+      // config.devtool = false
     }
     else {
       config.plugins.push(codeInspectorPlugin({ bundler: 'webpack' }))
@@ -78,12 +102,14 @@ const nextConfig = {
   },
   // fix all before production. Now it slow the develop speed.
   eslint: {
+    enabled: false,
     // Warning: This allows production builds to successfully complete even if
     // your project has ESLint errors.
     ignoreDuringBuilds: true,
-    dirs: ['app', 'bin', 'config', 'context', 'hooks', 'i18n', 'models', 'service', 'test', 'types', 'utils'],
+    // dirs: ['app', 'bin', 'config', 'context', 'hooks', 'i18n', 'models', 'service', 'test', 'types', 'utils'],
   },
   typescript: {
+    enabled: false,
     // https://nextjs.org/docs/api-reference/next.config.js/ignoring-typescript-errors
     ignoreBuildErrors: true,
   },

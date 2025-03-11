@@ -103,7 +103,7 @@ const Answer: FC<AnswerProps> = ({
   return (
     <div className='flex mb-2 last:mb-0'>
       <div className='shrink-0 relative w-10 h-10'>
-        {answerIcon || <AnswerIcon />}
+        {answerIcon || <AnswerIcon iconType="image" imageUrl={'/logo/logo.png'} background='#fff' />}
         {responding && (
           <div className='absolute -top-[3px] -left-[3px] pl-[6px] flex items-center w-4 h-4 bg-background-section-burn rounded-full shadow-xs border-[0.5px] border-divider-subtle'>
             <LoadingAnim type='avatar' />

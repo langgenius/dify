@@ -6,7 +6,7 @@
     "node": ">=18.17.0"
   },
   "scripts": {
-    "dev": "next dev --port",
+    "dev": "next dev",
     "dev:inspect": "cross-env NODE_OPTIONS='--inspect' next dev",
     "build": "rm -rf .next && rm -rf tsconfig.tsbuildinfo && next build",
     "start": "cp -r .next/static .next/standalone/.next/static && cp -r public .next/standalone/public && cross-env PORT=$npm_config_port HOSTNAME=$npm_config_host node .next/standalone/server.js",
