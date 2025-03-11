@@ -8,8 +8,7 @@ from datetime import UTC, datetime, timedelta
 from hashlib import sha256
 from typing import Any, Optional, cast
 
-from flask import current_app as app
-from ldap3 import Connection, Server
+from ldap3 import ALL, Connection, Server
 from pydantic import BaseModel
 from sqlalchemy import func
 from sqlalchemy.orm import Session
@@ -19,7 +18,7 @@ from configs import dify_config
 from constants.languages import language_timezone_mapping, languages
 from events.tenant_event import tenant_was_created
 from extensions.ext_database import db
-from extensions.ext_ldap import get_ldap_connection, release_ldap_connection
+from extensions.ext_ldap import is_enabled
 from extensions.ext_redis import redis_client
 from libs.helper import RateLimiter, TokenManager
 from libs.passport import PassportService
@@ -150,14 +149,17 @@ class AccountService:
     def authenticate(email: str, password: str, invite_token: Optional[str] = None) -> Account:
         """authenticate account with email and password"""
         account = None
-        is_ldap_success = False
 
-        # Initialize LDAP connection parameters
-        def _get_ldap_connection():
-            return get_ldap_connection()
-
-        def _handle_ldap_user(conn: Connection, email: str, password: str) -> Account:
+        def _handle_ldap_user(email: str, password: str) -> Optional[Account]:
             """Handle LDAP user authentication"""
+            server = Server(dify_config.AUTH_LDAP_SERVER_URI, get_info=ALL)
+            conn = Connection(
+                server,
+                user=dify_config.AUTH_LDAP_BIND_DN,
+                password=dify_config.AUTH_LDAP_BIND_PASSWORD,
+                receive_timeout=dify_config.LDAP_CONN_TIMEOUT,
+                auto_bind=True
+            )
             conn.search(
                 search_base=dify_config.AUTH_LDAP_SEARCH_BASE_DN,
                 search_filter=f"(mail={email})",
@@ -165,15 +167,13 @@ class AccountService:
             )
             if not conn.entries:
                 logging.warning(f"No LDAP entry found for: {email}")
-                raise ValueError("LDAP entry not found")
+                return None
 
             entry = conn.entries[0]
-            logging.info(f"LDAP entry found for: {entry}")
             user_dn = entry.entry_dn  # Obtain the complete DN of the user
-            logging.info(f"LDAP user DN: {user_dn}")
             # Add password verification steps
             user_conn = Connection(
-                Server(dify_config.AUTH_LDAP_SERVER_URI),
+                server,
                 user=user_dn,
                 password=password
             )
@@ -199,39 +199,38 @@ class AccountService:
             return account
 
         # Main certification process
-        try:
-            # Try LDAP authentication first
-            if hasattr(app, 'ldap_manager') and app.ldap_manager:
-                ldap_user = app.ldap_manager.authenticate(email, password)
-                logging.info(f"LDAP authentication successful for user: {email}")
-                if ldap_user and ldap_user.status:
-                    conn = _get_ldap_connection()
-                    try:
-                        if not conn.bind():
-                            logging.error("Failed to bind to LDAP server.")
-                            raise ValueError("Failed to bind to LDAP server.")
-                        account = _handle_ldap_user(conn, email, password)  # 传入password参数
-                        logging.info(f"Returning account {email} after successful LDAP authentication.")
-                        is_ldap_success = True
-                        return account
-                    finally:
-                        release_ldap_connection(conn)
-        except Exception as e:
-            logging.exception(f"LDAP authentication error: {str(e)}")
+        if is_enabled():
+            try:
+                # Try LDAP authentication first
+                server = Server(dify_config.AUTH_LDAP_SERVER_URI, get_info=ALL)
+                conn = Connection(
+                    server,
+                    user=dify_config.AUTH_LDAP_BIND_DN,
+                    password=dify_config.AUTH_LDAP_BIND_PASSWORD,
+                    receive_timeout=dify_config.LDAP_CONN_TIMEOUT,
+                    auto_bind=True
+                )
+                if not conn.bind():
+                    logging.error("Failed to bind to LDAP server.")
+                    raise ValueError("Failed to bind to LDAP server.")
+                account = _handle_ldap_user(email, password)
+                if account:
+                    logging.info(f"Returning account {email} after successful LDAP authentication.")
+
+                    return account
+            except Exception as e:
+                logging.info(f"LDAP authentication error: {e}")
 
         # Perform local authentication only if LDAP authentication explicitly fails
-        if not is_ldap_success:
-            logging.info(f"Falling back to local authentication for: {email}")
-            account = db.session.query(Account).filter_by(email=email).first()
-            if not account:
-                logging.error(f"Account not found for: {email}")
+        account = db.session.query(Account).filter_by(email=email).first()
+        if not account:
+            logging.error(f"Account not found for: {email}")
+            raise AccountNotFoundError()
 
-                raise AccountNotFoundError()
-
-            # Key modification: If it is an LDAP user, they must pass LDAP authentication
-            if account.password is None:
-                logging.error(f"LDAP user {email} attempted local authentication")
-                raise AccountPasswordError("LDAP users must authenticate via LDAP")
+        # LDAP users must authenticate via LDAP
+        if account.password is None and account.password_salt is None and not invite_token:
+            logging.error(f"LDAP user {email} attempted local authentication")
+            raise AccountPasswordError("LDAP users must authenticate via LDAP")
 
         if account.status == AccountStatus.BANNED.value:
             raise AccountLoginError("Account is banned.")
@@ -289,8 +288,8 @@ class AccountService:
 
             # Check if the user has joined the tenant
             existing_member = db.session.query(TenantAccountJoin).filter_by(
-            tenant_id=default_tenant.id, account_id=account.id
-        ).first()
+                tenant_id=default_tenant.id, account_id=account.id
+            ).first()
 
             if not existing_member:
                 TenantService.create_tenant_member(tenant=default_tenant, account=account,
@@ -303,7 +302,7 @@ class AccountService:
 
         except Exception as e:
             db.session.rollback()  # Transaction rollback to prevent database pollution
-            logging.exception(f"Failed to create LDAP user or add to tenant: {str(e)}")
+            logging.info(f"Failed to create LDAP user or add to tenant: {e}")
             raise AccountRegisterError("Failed to create LDAP user.")
 
     @staticmethod
