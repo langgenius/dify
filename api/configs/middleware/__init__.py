@@ -37,6 +37,7 @@ from .vdb.tidb_vector_config import TiDBVectorConfig
 from .vdb.upstash_config import UpstashConfig
 from .vdb.vikingdb_config import VikingDBConfig
 from .vdb.weaviate_config import WeaviateConfig
+from .vdb.opengauss_config import OpenGaussConfig
 
 
 class StorageConfig(BaseSettings):
@@ -275,5 +276,6 @@ class MiddlewareConfig(
     LindormConfig,
     OceanBaseVectorConfig,
     BaiduVectorDBConfig,
+    OpenGaussConfig,
 ):
     pass

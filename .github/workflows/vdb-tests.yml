@@ -65,6 +65,7 @@ jobs:
             milvus-standalone
             pgvecto-rs
             pgvector
+            opengauss
             chroma
             elasticsearch
             tidb

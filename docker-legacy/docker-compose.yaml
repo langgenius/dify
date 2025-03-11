@@ -172,6 +172,12 @@ services:
       ELASTICSEARCH_PORT: 9200
       ELASTICSEARCH_USERNAME: elastic
       ELASTICSEARCH_PASSWORD: elastic
+      # opengauss configurations
+      OPENGAUSS_HOST: opengauss
+      OPENGAUSS_PORT: 6600
+      OPENGAUSS_USER: postgres
+      OPENGAUSS_PASSWORD: Dify@123
+      OPENGAUSS_DATABASE: dify
       # Mail configuration, support: resend, smtp
       MAIL_TYPE: ''
       # default send from email address, if not specified
@@ -377,6 +383,12 @@ services:
       ELASTICSEARCH_PORT: 9200
       ELASTICSEARCH_USERNAME: elastic
       ELASTICSEARCH_PASSWORD: elastic
+      # opengauss configurations
+      OPENGAUSS_HOST: opengauss
+      OPENGAUSS_PORT: 6600
+      OPENGAUSS_USER: postgres
+      OPENGAUSS_PASSWORD: Dify@123
+      OPENGAUSS_DATABASE: dify
       # Notion import configuration, support public and internal
       NOTION_INTEGRATION_TYPE: public
       NOTION_CLIENT_SECRET: you-client-secret
