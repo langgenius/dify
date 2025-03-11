@@ -12,10 +12,63 @@ const withMDX = require('@next/mdx')({
   },
 })
 
+const isDev = process.env.NODE_ENV !== 'production'
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   webpack: (config, { dev, isServer }) => {
-    config.plugins.push(codeInspectorPlugin({ bundler: 'webpack' }))
+    if (dev) {
+      config.infrastructureLogging = {
+        level: 'none',
+        debug: false,
+      }
+      config.optimization = {
+        ...config.optimization,
+        removeAvailableModules: false,
+        removeEmptyChunks: false,
+        splitChunks: false,
+        // minimizer: false,
+        // concatenateModules: false,
+        // usedExports: false,
+      }
+      // 3. 缓存优化
+      // config.cache = {
+      //   type: 'filesystem',
+      //   version: `${process.env.NODE_ENV}-${process.version}`,
+      //   buildDependencies: {
+      //     config: [__filename],
+      //   },
+      //   // cacheDirectory: '.next/cache',
+      // }
+      // 4. 模块解析优化
+      // config.resolve = {
+      //   ...config.resolve,
+      //   symlinks: false,
+      //   preferRelative: true,
+      //   fallback: {
+      //     ...config.resolve.fallback,
+      //     fs: false,
+      //     path: false,
+      //   },
+      // }
+
+      // // 5. 开发环境性能提示关闭
+      // config.performance = {
+      //   hints: false,
+      // }
+
+      // // 6. 监听配置优化
+      // config.watchOptions = {
+      //   aggregateTimeout: 200,
+      //   ignored: ['**/node_modules/**', '**/.git/**', '**/.next/**'],
+      // }
+
+      // 7. 源码映射优化
+      config.devtool = 'eval-source-map'
+    }
+    else {
+      config.plugins.push(codeInspectorPlugin({ bundler: 'webpack' }))
+    }
     return config
   },
   productionBrowserSourceMaps: false, // enable browser source map generation during the production build
@@ -34,7 +87,16 @@ const nextConfig = {
     // https://nextjs.org/docs/api-reference/next.config.js/ignoring-typescript-errors
     ignoreBuildErrors: true,
   },
-  reactStrictMode: true,
+  // reactStrictMode: true,
+  // 关闭一些开发时不必要的功能
+  reactStrictMode: isDev,
+  // 优化开发服务器性能
+  onDemandEntries: {
+    // 页面缓存时间
+    maxInactiveAge: 25 * 1000,
+    // 同时缓存的页面数
+    pagesBufferLength: 2,
+  },
   async redirects() {
     return [
       {
@@ -44,6 +106,12 @@ const nextConfig = {
       },
     ]
   },
+  // 9. 开发服务器配置
+  devIndicators: {
+    buildActivity: false,
+  },
+  // 12. 压缩配置
+  compress: !isDev, // 开发时禁用压缩
   output: 'standalone',
 }
 

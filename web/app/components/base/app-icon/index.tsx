@@ -54,17 +54,18 @@ const AppIcon: FC<AppIconProps> = ({
   onClick,
 }) => {
   const isValidImageIcon = iconType === 'image' && imageUrl
-
   return <span
     className={classNames(appIconVariants({ size, rounded }), className)}
     style={{ background: isValidImageIcon ? undefined : (background || '#FFEAD5') }}
     onClick={onClick}
   >
-    {isValidImageIcon
+    <img src='/logo/logo.png' />
+    {/* 侧边栏头像 */}
+    {/* {isValidImageIcon
       // eslint-disable-next-line @next/next/no-img-element
       ? <img src={imageUrl} className="w-full h-full" alt="app icon" />
       : (innerIcon || ((icon && icon !== '') ? <em-emoji id={icon} /> : <em-emoji id='🤖' />))
-    }
+    } */}
   </span>
 }
 

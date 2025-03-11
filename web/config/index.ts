@@ -24,8 +24,8 @@ else {
   // const domainParts = globalThis.location?.host?.split('.');
   // in production env, the host is dify.app . In other env, the host is [dev].dify.app
   // const env = domainParts.length === 2 ? 'ai' : domainParts?.[0];
-  apiPrefix = 'http://localhost:5001/console/api'
-  publicApiPrefix = 'http://localhost:5001/api' // avoid browser private mode api cross origin
+  apiPrefix = 'http://localhost:80/console/api'
+  publicApiPrefix = 'http://localhost:80/api' // avoid browser private mode api cross origin
   marketplaceApiPrefix = 'http://localhost:5002/api'
 }
 

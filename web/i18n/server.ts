@@ -10,6 +10,7 @@ import type { Locale } from '.'
 
 // https://locize.com/blog/next-13-app-dir-i18n/
 const initI18next = async (lng: Locale, ns: string) => {
+  console.log('initI18next', lng, ns)
   const i18nInstance = createInstance()
   await i18nInstance
     .use(initReactI18next)
@@ -17,7 +18,7 @@ const initI18next = async (lng: Locale, ns: string) => {
     .init({
       lng: lng === 'zh-Hans' ? 'zh-Hans' : lng,
       ns,
-      fallbackLng: 'en-US',
+      fallbackLng: 'zh-Hans',
     })
   return i18nInstance
 }

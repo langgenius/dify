@@ -18,6 +18,7 @@ const I18n: FC<II18nProps> = ({
     setLocaleOnClient(locale, false)
   }, [locale])
 
+  console.log('I18n', locale)
   return (
     <I18NContext.Provider value={{
       locale,

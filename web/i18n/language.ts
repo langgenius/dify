@@ -29,7 +29,13 @@ export type I18nText = {
 }
 
 export const languages = data.languages
-
+// {
+//   "value": "en-US",
+//   "name": "English (United States)",
+//   "prompt_name": "English",
+//   "example": "Hello, Dify!",
+//   "supported": true
+// },
 export const LanguagesSupported = languages.filter(item => item.supported).map(item => item.value)
 
 export const getLanguage = (locale: string) => {
