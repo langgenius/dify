@@ -4,7 +4,7 @@ from collections import defaultdict
 from collections.abc import Mapping, Sequence
 from typing import Any, Optional, cast
 
-from sqlalchemy import and_, func, or_
+from sqlalchemy import and_, func, or_, text
 
 from core.app.app_config.entities import DatasetRetrieveConfigEntity
 from core.app.entities.app_invoke_entities import ModelConfigWithCredentialsEntity
@@ -294,13 +294,14 @@ class KnowledgeRetrievalNode(LLMNode):
             Document.enabled == True,
             Document.archived == False,
         )
+        filters = []
+        metadata_condition = None
         if node_data.metadata_filtering_mode == "disabled":
             return None, None
         elif node_data.metadata_filtering_mode == "automatic":
             automatic_metadata_filters = self._automatic_metadata_filter_func(dataset_ids, query, node_data)
             if automatic_metadata_filters:
                 conditions = []
-                filters = []
                 for filter in automatic_metadata_filters:
                     self._process_metadata_filter_func(
                         filter.get("condition"), filter.get("metadata_name"), filter.get("value"), filters
@@ -319,10 +320,9 @@ class KnowledgeRetrievalNode(LLMNode):
         elif node_data.metadata_filtering_mode == "manual":
             if node_data.metadata_filtering_conditions:
                 for condition in node_data.metadata_filtering_conditions.conditions:
-                    filters = []
                     metadata_name = condition.name
                     expected_value = condition.value
-                    if expected_value:
+                    if expected_value or condition.comparison_operator in ("empty", "not empty"):
                         if isinstance(expected_value, str):
                             expected_value = self.graph_runtime_state.variable_pool.convert_template(
                                 expected_value
@@ -408,16 +408,26 @@ class KnowledgeRetrievalNode(LLMNode):
             return []
         return automatic_metadata_filters
 
-    def _process_metadata_filter_func(self, condition: str, metadata_name: str, value: str, filters: list):
+    def _process_metadata_filter_func(self, condition: str, metadata_name: str, value: Optional[str], filters: list):
         match condition:
             case "contains":
-                filters.append(Document.doc_metadata[metadata_name].like(f'"%{value}%"'))
+                filters.append(
+                    (text("documents.doc_metadata ->> :key LIKE :value")).params(key=metadata_name, value=f"%{value}%")
+                )
             case "not contains":
-                filters.append(Document.doc_metadata[metadata_name].notlike(f'"%{value}%"'))
+                filters.append(
+                    (text("documents.doc_metadata ->> :key NOT LIKE :value")).params(
+                        key=metadata_name, value=f"%{value}%"
+                    )
+                )
             case "start with":
-                filters.append(Document.doc_metadata[metadata_name].like(f'"{value}%"'))
+                filters.append(
+                    (text("documents.doc_metadata ->> :key LIKE :value")).params(key=metadata_name, value=f"{value}%")
+                )
             case "end with":
-                filters.append(Document.doc_metadata[metadata_name].like(f'"%{value}"'))
+                filters.append(
+                    (text("documents.doc_metadata ->> :key LIKE :value")).params(key=metadata_name, value=f"%{value}")
+                )
             case "=" | "is":
                 if isinstance(value, str):
                     filters.append(Document.doc_metadata[metadata_name] == f'"{value}"')
@@ -428,9 +438,9 @@ class KnowledgeRetrievalNode(LLMNode):
                     filters.append(Document.doc_metadata[metadata_name] != f'"{value}"')
                 else:
                     filters.append(Document.doc_metadata[metadata_name] != value)
-            case "is empty":
+            case "empty":
                 filters.append(Document.doc_metadata[metadata_name].is_(None))
-            case "is not empty":
+            case "not empty":
                 filters.append(Document.doc_metadata[metadata_name].isnot(None))
             case "before" | "<":
                 filters.append(Document.doc_metadata[metadata_name] < value)
