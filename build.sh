@@ -10,7 +10,7 @@ cd $DIR/web
 docker build -t dify-web-local:1.0.0 .
 
 cd $DIR/docker
-docker-compose up -d api
-docker-compose up -d web
+docker-compose up -d api worker web
+# docker-compose up -d
 
 echo done
