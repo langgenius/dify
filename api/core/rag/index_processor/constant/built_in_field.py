@@ -10,6 +10,6 @@ class BuiltInField(str, Enum):
 
 
 class MetadataDataSource(Enum):
-    upload_file = "file"
+    upload_file = "file_upload"
     website_crawl = "website"
     notion_import = "notion"
