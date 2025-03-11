@@ -70,7 +70,7 @@ class CodeExecutionSandboxConfig(BaseSettings):
 
     CODE_EXECUTION_ENDPOINT: HttpUrl = Field(
         description="URL endpoint for the code execution service",
-        default="http://sandbox:8194",
+        default=HttpUrl("http://sandbox:8194"),
     )
 
     CODE_EXECUTION_API_KEY: str = Field(
@@ -141,7 +141,7 @@ class PluginConfig(BaseSettings):
 
     PLUGIN_DAEMON_URL: HttpUrl = Field(
         description="Plugin API URL",
-        default="http://localhost:5002",
+        default=HttpUrl("http://localhost:5002"),
     )
 
     PLUGIN_DAEMON_KEY: str = Field(
@@ -184,7 +184,7 @@ class MarketplaceConfig(BaseSettings):
 
     MARKETPLACE_API_URL: HttpUrl = Field(
         description="Marketplace API URL",
-        default="https://marketplace.dify.ai",
+        default=HttpUrl("https://marketplace.dify.ai"),
     )
 
 
