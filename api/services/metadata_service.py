@@ -5,7 +5,7 @@ from typing import Optional
 
 from flask_login import current_user  # type: ignore
 
-from core.rag.index_processor.constant.built_in_field import BuiltInField
+from core.rag.index_processor.constant.built_in_field import BuiltInField, MetadataDataSource
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from models.dataset import Dataset, DatasetMetadata, DatasetMetadataBinding
@@ -19,6 +19,9 @@ from services.entities.knowledge_entities.knowledge_entities import (
 class MetadataService:
     @staticmethod
     def create_metadata(dataset_id: str, metadata_args: MetadataArgs) -> DatasetMetadata:
+        # check if metadata name already exists
+        if DatasetMetadata.query.filter_by(tenant_id=current_user.current_tenant_id, dataset_id=dataset_id, name=metadata_args.name).first():
+            raise ValueError("Metadata name already exists.")
         metadata = DatasetMetadata(
             tenant_id=current_user.current_tenant_id,
             dataset_id=dataset_id,
@@ -33,6 +36,9 @@ class MetadataService:
     @staticmethod
     def update_metadata_name(dataset_id: str, metadata_id: str, name: str) -> DatasetMetadata:
         lock_key = f"dataset_metadata_lock_{dataset_id}"
+        # check if metadata name already exists
+        if DatasetMetadata.query.filter_by(tenant_id=current_user.current_tenant_id, dataset_id=dataset_id, name=name).first():
+            raise ValueError("Metadata name already exists.")
         try:
             MetadataService.knowledge_base_metadata_lock_check(dataset_id, None)
             metadata = DatasetMetadata.query.filter_by(id=metadata_id).first()
@@ -91,11 +97,11 @@ class MetadataService:
     @staticmethod
     def get_built_in_fields():
         return [
-            {"name": BuiltInField.document_name, "type": "string"},
-            {"name": BuiltInField.uploader, "type": "string"},
-            {"name": BuiltInField.upload_date, "type": "time"},
-            {"name": BuiltInField.last_update_date, "type": "time"},
-            {"name": BuiltInField.source, "type": "string"},
+            {"name": BuiltInField.document_name.value, "type": "string"},
+            {"name": BuiltInField.uploader.value, "type": "string"},
+            {"name": BuiltInField.upload_date.value, "type": "time"},
+            {"name": BuiltInField.last_update_date.value, "type": "time"},
+            {"name": BuiltInField.source.value, "type": "string"},
         ]
 
     @staticmethod
@@ -118,7 +124,7 @@ class MetadataService:
                     doc_metadata[BuiltInField.uploader.value] = document.uploader
                     doc_metadata[BuiltInField.upload_date.value] = document.upload_date.timestamp()
                     doc_metadata[BuiltInField.last_update_date.value] = document.last_update_date.timestamp()
-                    doc_metadata[BuiltInField.source.value] = document.data_source_type
+                    doc_metadata[BuiltInField.source.value] = MetadataDataSource[document.data_source_type].value
                     document.doc_metadata = doc_metadata
                     db.session.add(document)
                 db.session.commit()
@@ -141,11 +147,11 @@ class MetadataService:
             if documents:
                 for document in documents:
                     doc_metadata = copy.deepcopy(document.doc_metadata)
-                    doc_metadata.pop(BuiltInField.document_name, None)
-                    doc_metadata.pop(BuiltInField.uploader, None)
-                    doc_metadata.pop(BuiltInField.upload_date, None)
-                    doc_metadata.pop(BuiltInField.last_update_date, None)
-                    doc_metadata.pop(BuiltInField.source, None)
+                    doc_metadata.pop(BuiltInField.document_name.value, None)
+                    doc_metadata.pop(BuiltInField.uploader.value, None)
+                    doc_metadata.pop(BuiltInField.upload_date.value, None)
+                    doc_metadata.pop(BuiltInField.last_update_date.value, None)
+                    doc_metadata.pop(BuiltInField.source.value, None)
                     document.doc_metadata = doc_metadata
                     db.session.add(document)
                     document_ids.append(document.id)
@@ -172,7 +178,7 @@ class MetadataService:
                     doc_metadata[BuiltInField.uploader.value] = document.uploader
                     doc_metadata[BuiltInField.upload_date.value] = document.upload_date.timestamp()
                     doc_metadata[BuiltInField.last_update_date.value] = document.last_update_date.timestamp()
-                    doc_metadata[BuiltInField.source.value] = document.data_source_type
+                    doc_metadata[BuiltInField.source.value] = MetadataDataSource[document.data_source_type].value
                 document.doc_metadata = doc_metadata
                 db.session.add(document)
                 db.session.commit()

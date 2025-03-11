@@ -16,7 +16,7 @@ from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped
 
 from configs import dify_config
-from core.rag.index_processor.constant.built_in_field import BuiltInField
+from core.rag.index_processor.constant.built_in_field import BuiltInField, MetadataDataSource
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from extensions.ext_storage import storage
 from services.entities.knowledge_entities.knowledge_entities import ParentMode, Rule
@@ -215,35 +215,35 @@ class Dataset(db.Model):  # type: ignore[name-defined]
             doc_metadata.append(
                 {
                     "id": "built-in",
-                    "name": BuiltInField.document_name,
+                    "name": BuiltInField.document_name.value,
                     "type": "string",
                 }
             )
             doc_metadata.append(
                 {
                     "id": "built-in",
-                    "name": BuiltInField.uploader,
+                    "name": BuiltInField.uploader.value,
                     "type": "string",
                 }
             )
             doc_metadata.append(
                 {
                     "id": "built-in",
-                    "name": BuiltInField.upload_date,
+                    "name": BuiltInField.upload_date.value,
                     "type": "time",
                 }
             )
             doc_metadata.append(
                 {
                     "id": "built-in",
-                    "name": BuiltInField.last_update_date,
+                    "name": BuiltInField.last_update_date.value,
                     "type": "time",
                 }
             )
             doc_metadata.append(
                 {
                     "id": "built-in",
-                    "name": BuiltInField.source,
+                    "name": BuiltInField.source.value,
                     "type": "string",
                 }
             )
@@ -487,6 +487,12 @@ class Document(db.Model):  # type: ignore[name-defined]
 
             return metadata_list
         return None
+    
+    @property
+    def process_rule_dict(self):
+        if self.dataset_process_rule_id:
+            return self.dataset_process_rule.to_dict()
+        return None
 
     def get_built_in_fields(self):
         built_in_fields = []
@@ -527,15 +533,10 @@ class Document(db.Model):  # type: ignore[name-defined]
                 "id": "built-in",
                 "name": BuiltInField.source,
                 "type": "string",
-                "value": self.data_source_info,
+                "value": MetadataDataSource[self.data_source_type].value,
             }
         )
         return built_in_fields
-
-    def process_rule_dict(self):
-        if self.dataset_process_rule_id:
-            return self.dataset_process_rule.to_dict()
-        return None
 
     def to_dict(self):
         return {
