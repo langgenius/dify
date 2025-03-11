@@ -38,9 +38,9 @@ class LicenseModel(BaseModel):
 
 class BrandingModel(BaseModel):
     enabled: bool = False
-    login_page_logo: str = ("",)
-    workspace_logo: str = ("",)
-    favicon: str = ("",)
+    login_page_logo: str = ""
+    workspace_logo: str = ""
+    favicon: str = ""
 
 
 class FeatureModel(BaseModel):
