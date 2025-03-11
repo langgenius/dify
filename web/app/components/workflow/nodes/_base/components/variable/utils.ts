@@ -3,7 +3,7 @@ import { isArray, uniq } from 'lodash-es'
 import type { CodeNodeType } from '../../../code/types'
 import type { EndNodeType } from '../../../end/types'
 import type { AnswerNodeType } from '../../../answer/types'
-import type { LLMNodeType } from '../../../llm/types'
+import type { LLMNodeType, StructuredOutput } from '../../../llm/types'
 import type { KnowledgeRetrievalNodeType } from '../../../knowledge-retrieval/types'
 import type { IfElseNodeType } from '../../../if-else/types'
 import type { TemplateTransformNodeType } from '../../../template-transform/types'
@@ -20,6 +20,8 @@ import { BlockEnum, InputVarType, VarType } from '@/app/components/workflow/type
 import type { StartNodeType } from '@/app/components/workflow/nodes/start/types'
 import type { ConversationVariable, EnvironmentVariable, Node, NodeOutPutVar, ValueSelector, Var } from '@/app/components/workflow/types'
 import type { VariableAssignerNodeType } from '@/app/components/workflow/nodes/variable-assigner/types'
+import mockStructData from '@/app/components/workflow/nodes/llm/mock-struct-data'
+
 import {
   HTTP_REQUEST_OUTPUT_STRUCT,
   KNOWLEDGE_RETRIEVAL_OUTPUT_STRUCT,
@@ -59,15 +61,18 @@ const findExceptVarInObject = (obj: any, filterVar: (payload: Var, selector: Val
   const res: Var = {
     variable: obj.variable,
     type: isFile ? VarType.file : VarType.object,
-    children: children.filter((item: Var) => {
+    children: children.length > 0 ? children.filter((item: Var) => {
       const { children } = item
-      const currSelector = [...value_selector, item.variable]
-      if (!children)
-        return filterVar(item, currSelector)
-
-      const obj = findExceptVarInObject(item, filterVar, currSelector, false) // File doesn't contains file children
-      return obj.children && obj.children?.length > 0
-    }),
+      const isStructuredOutput = !!(children as StructuredOutput)?.schema
+      if (!isStructuredOutput) {
+        const currSelector = [...value_selector, item.variable]
+        if (!children)
+          return filterVar(item, currSelector)
+        const obj = findExceptVarInObject(item, filterVar, currSelector, false) // File doesn't contains file children
+        return obj.children && (obj.children as Var[])?.length > 0
+      }
+      return true // TODO: handle structured output
+    }) : (children || []),
   }
   return res
 }
@@ -138,7 +143,14 @@ const formatItem = (
     }
 
     case BlockEnum.LLM: {
-      res.vars = LLM_OUTPUT_STRUCT
+      res.vars = [
+        ...LLM_OUTPUT_STRUCT,
+        {
+          variable: 'structured_output',
+          type: VarType.object,
+          children: mockStructData,
+        },
+      ]
       break
     }
 
@@ -404,7 +416,7 @@ const formatItem = (
       return false
 
     const obj = findExceptVarInObject(isFile ? { ...v, children } : v, filterVar, selector, isFile)
-    return obj?.children && obj?.children.length > 0
+    return obj?.children && ((obj?.children as Var[]).length > 0 || Object.keys((obj?.children as StructuredOutput)?.schema?.properties || {}).length > 0)
   }).map((v) => {
     const isFile = v.type === VarType.file
 
@@ -427,6 +439,9 @@ const formatItem = (
 
     return findExceptVarInObject(isFile ? { ...v, children } : v, filterVar, selector, isFile)
   })
+
+  if (res.nodeId === 'llm')
+    console.log(res)
 
   return res
 }
@@ -527,8 +542,7 @@ export const getVarType = ({
   isConstant,
   environmentVariables = [],
   conversationVariables = [],
-}:
-{
+}: {
   valueSelector: ValueSelector
   parentNode?: Node | null
   isIterationItem?: boolean
@@ -1094,11 +1108,13 @@ const varToValueSelectorList = (v: Var, parentValueSelector: ValueSelector, res:
     return
 
   res.push([...parentValueSelector, v.variable])
-
-  if (v.children && v.children.length > 0) {
-    v.children.forEach((child) => {
-      varToValueSelectorList(child, [...parentValueSelector, v.variable], res)
-    })
+  if (v.children) {
+    if ((v.children as Var[])?.length > 0) {
+      (v.children as Var[]).forEach((child) => {
+        varToValueSelectorList(child, [...parentValueSelector, v.variable], res)
+      })
+    }
+    // TODO: handle structured output
   }
 }
 

@@ -16,8 +16,10 @@ import Input from '@/app/components/base/input'
 import { BubbleX, Env } from '@/app/components/base/icons/src/vender/line/others'
 import { checkKeys } from '@/utils/var'
 import { FILE_STRUCT } from '@/app/components/workflow/constants'
+import type { StructuredOutput } from '../../../llm/types'
+import PickerStructurePanel from '@/app/components/workflow/nodes/_base/components/variable/object-child-tree-panel/picker'
 
-interface ObjectChildrenProps {
+type ObjectChildrenProps = {
   nodeId: string
   title: string
   data: Var[]
@@ -28,7 +30,7 @@ interface ObjectChildrenProps {
   isSupportFileVar?: boolean
 }
 
-interface ItemProps {
+type ItemProps = {
   nodeId: string
   title: string
   objPath: string[]
@@ -51,8 +53,9 @@ const Item: FC<ItemProps> = ({
   isSupportFileVar,
   isException,
 }) => {
-  const isFile = itemData.type === VarType.file
-  const isObj = ([VarType.object, VarType.file].includes(itemData.type) && itemData.children && itemData.children.length > 0)
+  const isStructureOutput = itemData.type === VarType.object && (itemData.children as StructuredOutput)?.schema?.properties
+  const isFile = itemData.type === VarType.file && !isStructureOutput
+  const isObj = ([VarType.object, VarType.file].includes(itemData.type) && itemData.children && (itemData.children as Var[]).length > 0)
   const isSys = itemData.variable.startsWith('sys.')
   const isEnv = itemData.variable.startsWith('env.')
   const isChatVar = itemData.variable.startsWith('conversation.')
@@ -77,7 +80,7 @@ const Item: FC<ItemProps> = ({
   })
   const [isChildrenHovering, setIsChildrenHovering] = useState(false)
   const isHovering = isItemHovering || isChildrenHovering
-  const open = isObj && isHovering
+  const open = (isObj || isStructureOutput) && isHovering
   useEffect(() => {
     onHovering && onHovering(isHovering)
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -125,7 +128,7 @@ const Item: FC<ItemProps> = ({
             )}
           </div>
           <div className='ml-1 shrink-0 text-xs font-normal text-text-tertiary capitalize'>{itemData.type}</div>
-          {isObj && (
+          {(isObj || isStructureOutput) && (
             <ChevronRight className={cn('ml-0.5 w-3 h-3 text-text-quaternary', isHovering && 'text-text-tertiary')} />
           )}
         </div>
@@ -133,6 +136,9 @@ const Item: FC<ItemProps> = ({
       <PortalToFollowElemContent style={{
         zIndex: 100,
       }}>
+        {isStructureOutput && (
+          <PickerStructurePanel root={{ attrName: itemData.variable }} payload={itemData.children as StructuredOutput} />
+        )}
         {(isObj && !isFile) && (
           // eslint-disable-next-line ts/no-use-before-define
           <ObjectChildren
@@ -226,7 +232,7 @@ const ObjectChildren: FC<ObjectChildrenProps> = ({
   )
 }
 
-interface Props {
+type Props = {
   hideSearch?: boolean
   searchBoxClassName?: string
   vars: NodeOutPutVar[]
@@ -322,7 +328,7 @@ const VarReferenceVars: FC<Props> = ({
           }
         </div>
         : <div className='pl-3 leading-[18px] text-xs font-medium text-gray-500 uppercase'>{t('workflow.common.noVar')}</div>}
-    </ >
+    </>
   )
 }
 export default React.memo(VarReferenceVars)
