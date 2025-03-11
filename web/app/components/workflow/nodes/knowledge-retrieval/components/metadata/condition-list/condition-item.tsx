@@ -67,7 +67,7 @@ const ConditionItem = ({
 
   const handleConditionOperatorChange = useCallback((operator: ComparisonOperator) => {
     onUpdateCondition?.(
-      condition.name,
+      condition.id,
       {
         ...condition,
         value: comparisonOperatorNotRequireValue(condition.comparison_operator) ? undefined : condition.value,
