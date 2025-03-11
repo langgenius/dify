@@ -87,7 +87,7 @@ class Pdf2ImgTool(BuiltinTool):
         target_pages = []
         if pages is not None and pages != "":
             for pageNo in pages.split(","):
-                target_pages.append(doc.load_page(pageNo))
+                target_pages.append(doc.load_page(int(pageNo)))
         else:
             for pageNo in range(doc.page_count):
                 target_pages.append(doc.load_page(pageNo))
