@@ -10,7 +10,7 @@ from controllers.service_api.app.error import NotChatAppError
 from controllers.service_api.wraps import FetchUserArg, WhereisUserArg, validate_app_token
 from core.app.entities.app_invoke_entities import InvokeFrom
 from fields.conversation_fields import message_file_fields
-from fields.message_fields import feedback_fields, retriever_resource_fields
+from fields.message_fields import agent_thought_fields, feedback_fields, retriever_resource_fields
 from fields.raws import FilesContainedField
 from libs.helper import TimestampField, uuid_value
 from models.model import App, AppMode, EndUser
@@ -19,20 +19,6 @@ from services.message_service import MessageService
 
 
 class MessageListApi(Resource):
-    agent_thought_fields = {
-        "id": fields.String,
-        "chain_id": fields.String,
-        "message_id": fields.String,
-        "position": fields.Integer,
-        "thought": fields.String,
-        "tool": fields.String,
-        "tool_labels": fields.Raw,
-        "tool_input": fields.String,
-        "created_at": TimestampField,
-        "observation": fields.String,
-        "message_files": fields.List(fields.Nested(message_file_fields)),
-    }
-
     message_fields = {
         "id": fields.String,
         "conversation_id": fields.String,

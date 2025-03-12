@@ -82,7 +82,7 @@ const Panel: FC = () => {
         ? LangfuseIcon
         : inUseTracingProvider === TracingProvider.opik
           ? OpikIcon
-          : null
+          : LangsmithIcon
 
   const [langSmithConfig, setLangSmithConfig] = useState<LangSmithConfig | null>(null)
   const [langFuseConfig, setLangFuseConfig] = useState<LangFuseConfig | null>(null)

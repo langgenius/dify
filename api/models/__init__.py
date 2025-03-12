@@ -5,7 +5,6 @@ from .account import (
     InvitationCode,
     Tenant,
     TenantAccountJoin,
-    TenantAccountJoinRole,
     TenantAccountRole,
     TenantStatus,
 )
@@ -156,7 +155,6 @@ __all__ = [
     "TagBinding",
     "Tenant",
     "TenantAccountJoin",
-    "TenantAccountJoinRole",
     "TenantAccountRole",
     "TenantDefaultModel",
     "TenantPreferredModelProvider",
