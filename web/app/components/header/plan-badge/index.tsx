@@ -1,5 +1,4 @@
 import { useProviderContext } from '@/context/provider-context'
-import classNames from '@/utils/classnames'
 import type { FC } from 'react'
 import { useTranslation } from 'react-i18next'
 import { SparklesSoft } from '../../base/icons/src/public/common'
@@ -8,13 +7,12 @@ import { Plan } from '../../billing/type'
 
 type PlanBadgeProps = {
   plan: Plan
-  size?: 's' | 'm'
   allowHover?: boolean
   sandboxAsUpgrade?: boolean
   onClick?: () => void
 }
 
-const PlanBadge: FC<PlanBadgeProps> = ({ plan, allowHover, size = 'm', sandboxAsUpgrade = false, onClick }) => {
+const PlanBadge: FC<PlanBadgeProps> = ({ plan, allowHover, sandboxAsUpgrade = false, onClick }) => {
   const { isFetchedPlan } = useProviderContext()
   const { t } = useTranslation()
 
@@ -30,8 +28,8 @@ const PlanBadge: FC<PlanBadgeProps> = ({ plan, allowHover, size = 'm', sandboxAs
     </PremiumBadge>
   }
   if (plan === Plan.sandbox) {
-    return <PremiumBadge className='select-none' size={size} color='gray' allowHover={allowHover} onClick={onClick}>
-      <div className={classNames(size === 's' ? 'system-2xs-medium-uppercase' : 'system-xs-medium-uppercase')}>
+    return <PremiumBadge className='select-none' size='s' color='gray' allowHover={allowHover} onClick={onClick}>
+      <div className='system-2xs-medium-uppercase'>
         <span className='p-1'>
           {plan}
         </span>
@@ -39,8 +37,8 @@ const PlanBadge: FC<PlanBadgeProps> = ({ plan, allowHover, size = 'm', sandboxAs
     </PremiumBadge>
   }
   if (plan === Plan.professional) {
-    return <PremiumBadge className='select-none' size={size} color='blue' allowHover={allowHover} onClick={onClick}>
-      <div className={classNames(size === 's' ? 'system-2xs-medium-uppercase' : 'system-xs-medium-uppercase')}>
+    return <PremiumBadge className='select-none' size='s' color='blue' allowHover={allowHover} onClick={onClick}>
+      <div className='system-2xs-medium-uppercase'>
         <span className='p-1'>
           pro
         </span>
@@ -48,8 +46,8 @@ const PlanBadge: FC<PlanBadgeProps> = ({ plan, allowHover, size = 'm', sandboxAs
     </PremiumBadge>
   }
   if (plan === Plan.team) {
-    return <PremiumBadge className='select-none' size={size} color='indigo' allowHover={allowHover} onClick={onClick}>
-      <div className={classNames(size === 's' ? 'system-2xs-medium-uppercase' : 'system-xs-medium-uppercase')}>
+    return <PremiumBadge className='select-none' size='s' color='indigo' allowHover={allowHover} onClick={onClick}>
+      <div className='system-2xs-medium-uppercase'>
         <span className='p-1'>
           {plan}
         </span>
