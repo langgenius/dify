@@ -80,7 +80,7 @@ class AIModel(BaseModel):
                         )
                     )
                 elif isinstance(invoke_error, InvokeError):
-                    return invoke_error(description=f"[{self.provider_name}] {invoke_error.description}, {str(error)}")
+                    return InvokeError(description=f"[{self.provider_name}] {invoke_error.description}, {str(error)}")
                 else:
                     return error
 
