@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next'
 import Input from '@/app/components/base/input'
 import {
   PortalToFollowElem,
@@ -6,12 +7,14 @@ import {
 } from '@/app/components/base/portal-to-follow-elem'
 
 const SearchInput = () => {
+  const { t } = useTranslation()
+
   return (
     <PortalToFollowElem>
       <PortalToFollowElemTrigger className='block w-full'>
         <Input
           className='w-full'
-          placeholder='Enter the official, unabbreviated name of your school'
+          placeholder={t('education.form.schoolName.placeholder')}
         />
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent>
