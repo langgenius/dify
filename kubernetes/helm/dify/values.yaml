@@ -102,7 +102,7 @@ env:
   deployEnv: PRODUCTION
   difyBindAddress: 0.0.0.0
   difyInnerApiKey: QaHbTe77CtuXmsfyhR7+vRjI/+XbV1AaFy691iy+kGDv2Jvy0/eAh8Y1
-  difyInnerApiUrl: http://api:5001
+  difyInnerApiUrl: http://dify-api:5001
   difyPort: "5001"
   elasticsearchHost: 0.0.0.0
   elasticsearchPassword: elastic
@@ -259,7 +259,7 @@ env:
   pluginDebuggingHost: 0.0.0.0
   pluginDebuggingPort: "5003"
   pluginDifyInnerApiKey: QaHbTe77CtuXmsfyhR7+vRjI/+XbV1AaFy691iy+kGDv2Jvy0/eAh8Y1
-  pluginDifyInnerApiUrl: http://api:5001
+  pluginDifyInnerApiUrl: http://dify-api:5001
   pluginMaxExecutionTimeout: "600"
   pluginMaxPackageSize: "52428800"
   pluginPprofEnabled: "false"

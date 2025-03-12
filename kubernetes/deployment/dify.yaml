@@ -618,7 +618,7 @@ spec:
             - name: DIFY_INNER_API_KEY
               value: QaHbTe77CtuXmsfyhR7+vRjI/+XbV1AaFy691iy+kGDv2Jvy0/eAh8Y1
             - name: DIFY_INNER_API_URL
-              value: http://api:5001
+              value: http://dify-api:5001
             - name: DIFY_PORT
               value: '5001'
             - name: ELASTICSEARCH_HOST
@@ -905,7 +905,7 @@ spec:
             - name: PLUGIN_DIFY_INNER_API_KEY
               value: QaHbTe77CtuXmsfyhR7+vRjI/+XbV1AaFy691iy+kGDv2Jvy0/eAh8Y1
             - name: PLUGIN_DIFY_INNER_API_URL
-              value: http://api:5001
+              value: http://dify-api:5001
             - name: PLUGIN_MAX_EXECUTION_TIMEOUT
               value: '600'
             - name: PLUGIN_MAX_PACKAGE_SIZE
@@ -1910,7 +1910,7 @@ spec:
             - name: PLUGIN_DIFY_INNER_API_KEY
               value: QaHbTe77CtuXmsfyhR7+vRjI/+XbV1AaFy691iy+kGDv2Jvy0/eAh8Y1
             - name: PLUGIN_DIFY_INNER_API_URL
-              value: http://api:5001
+              value: http://dify-api:5001
             - name: PLUGIN_MAX_EXECUTION_TIMEOUT
               value: '600'
             - name: PLUGIN_MAX_PACKAGE_SIZE
@@ -2901,7 +2901,7 @@ spec:
             - name: PLUGIN_DIFY_INNER_API_KEY
               value: QaHbTe77CtuXmsfyhR7+vRjI/+XbV1AaFy691iy+kGDv2Jvy0/eAh8Y1
             - name: PLUGIN_DIFY_INNER_API_URL
-              value: http://api:5001
+              value: http://dify-api:5001
             - name: PLUGIN_MAX_EXECUTION_TIMEOUT
               value: '600'
             - name: PLUGIN_MAX_PACKAGE_SIZE
