@@ -557,6 +557,7 @@ const translation = {
       hitScore: '召回得分：',
     },
     inputPlaceholder: '和机器人聊天',
+    buttonInternet: '联网搜索',
     thinking: '深度思考中...',
     thought: '已深度思考',
   },

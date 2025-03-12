@@ -57,7 +57,10 @@ export const useChat = (
   const { notify } = useToastContext()
   const conversationId = useRef('')
   const hasStopResponded = useRef(false)
+  // 是否在回答
   const [isResponding, setIsResponding] = useState(false)
+  // 是否联网
+  const [isInternet, setIsInternet] = useState(false)
   const isRespondingRef = useRef(false)
   const taskIdRef = useRef('')
   const [suggestedQuestions, setSuggestQuestions] = useState<string[]>([])
@@ -688,6 +691,8 @@ export const useChat = (
     conversationId: conversationId.current,
     isResponding,
     setIsResponding,
+    isInternet,
+    setIsInternet,
     handleSend,
     suggestedQuestions,
     handleRestart,

@@ -6,6 +6,8 @@ import type { ChatProps } from './index'
 
 export type ChatContextValue = Pick<ChatProps, 'config'
   | 'isResponding'
+  | 'isInternet'
+  | 'onSetInternet'
   | 'chatList'
   | 'showPromptLog'
   | 'questionIcon'
@@ -30,6 +32,8 @@ export const ChatContextProvider = ({
   children,
   config,
   isResponding,
+  isInternet,
+  onSetInternet,
   chatList,
   showPromptLog,
   questionIcon,
@@ -45,6 +49,8 @@ export const ChatContextProvider = ({
     <ChatContext.Provider value={{
       config,
       isResponding,
+      isInternet,
+      onSetInternet,
       chatList: chatList || [],
       showPromptLog,
       questionIcon,
