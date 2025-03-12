@@ -165,12 +165,23 @@ const useConfig = (id: string, payload: ParameterExtractorNodeType) => {
     return [VarType.number, VarType.string].includes(varPayload.type)
   }, [])
 
+  const filterVisionInputVar = useCallback((varPayload: Var) => {
+    return [VarType.file, VarType.arrayFile].includes(varPayload.type)
+  }, [])
+
   const {
     availableVars,
     availableNodesWithParent,
   } = useAvailableVarList(id, {
     onlyLeafNodeVar: false,
     filterVar: filterInputVar,
+  })
+
+  const {
+    availableVars: availableVisionVars,
+  } = useAvailableVarList(id, {
+    onlyLeafNodeVar: false,
+    filterVar: filterVisionInputVar,
   })
 
   const handleCompletionParamsChange = useCallback((newParams: Record<string, any>) => {
@@ -223,13 +234,15 @@ const useConfig = (id: string, payload: ParameterExtractorNodeType) => {
     handleRun,
     handleStop,
     runInputData,
+    runInputDataRef,
     setRunInputData,
     runResult,
   } = useOneStepRun<ParameterExtractorNodeType>({
     id,
     data: inputs,
     defaultRunInputData: {
-      query: '',
+      'query': '',
+      '#files#': [],
     },
   })
 
@@ -246,6 +259,14 @@ const useConfig = (id: string, payload: ParameterExtractorNodeType) => {
   const setInputVarValues = useCallback((newPayload: Record<string, any>) => {
     setRunInputData(newPayload)
   }, [setRunInputData])
+
+  const visionFiles = runInputData['#files#']
+  const setVisionFiles = useCallback((newFiles: any[]) => {
+    setRunInputData({
+      ...runInputDataRef.current,
+      '#files#': newFiles,
+    })
+  }, [runInputDataRef, setRunInputData])
 
   return {
     readOnly,
@@ -264,6 +285,7 @@ const useConfig = (id: string, payload: ParameterExtractorNodeType) => {
     hasSetBlockStatus,
     availableVars,
     availableNodesWithParent,
+    availableVisionVars,
     isSupportFunctionCall,
     handleReasoningModeChange,
     handleMemoryChange,
@@ -279,6 +301,8 @@ const useConfig = (id: string, payload: ParameterExtractorNodeType) => {
     handleStop,
     runResult,
     setInputVarValues,
+    visionFiles,
+    setVisionFiles,
   }
 }
 

@@ -40,6 +40,7 @@ type ChatInputAreaProps = {
   inputsForm?: InputForm[]
   theme?: Theme | null
   isResponding?: boolean
+  disabled?: boolean
 }
 const ChatInputArea = ({
   showFeatureBar,
@@ -53,6 +54,7 @@ const ChatInputArea = ({
   inputsForm = [],
   theme,
   isResponding,
+  disabled,
 }: ChatInputAreaProps) => {
   const { t } = useTranslation()
   const { notify } = useToastContext()
@@ -155,6 +157,7 @@ const ChatInputArea = ({
         className={cn(
           'relative pb-[9px] bg-components-panel-bg-blur border border-components-chat-input-border rounded-xl shadow-md z-10',
           isDragActive && 'border border-dashed border-components-option-card-option-selected-border',
+          disabled && 'opacity-50 pointer-events-none border-components-panel-border shadow-none',
         )}
       >
         <div className='relative px-[9px] pt-[9px] max-h-[158px] overflow-x-hidden overflow-y-auto'>
@@ -173,7 +176,7 @@ const ChatInputArea = ({
               <Textarea
                 ref={textareaRef}
                 className={cn(
-                  'p-1 w-full leading-6 body-lg-regular text-text-tertiary outline-none',
+                  'p-1 w-full leading-6 body-lg-regular text-text-tertiary bg-transparent outline-none',
                 )}
                 placeholder={t('common.chat.inputPlaceholder') || ''}
                 autoFocus

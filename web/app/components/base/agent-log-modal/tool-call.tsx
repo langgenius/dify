@@ -33,7 +33,7 @@ const ToolCallItem: FC<Props> = ({ toolCall, isLLM = false, isFinal, tokens, obs
     if (time < 1)
       return `${(time * 1000).toFixed(3)} ms`
     if (time > 60)
-      return `${parseInt(Math.round(time / 60).toString())} m ${(time % 60).toFixed(3)} s`
+      return `${Number.parseInt(Math.round(time / 60).toString())} m ${(time % 60).toFixed(3)} s`
     return `${time.toFixed(3)} s`
   }
 
@@ -41,14 +41,14 @@ const ToolCallItem: FC<Props> = ({ toolCall, isLLM = false, isFinal, tokens, obs
     if (tokens < 1000)
       return tokens
     if (tokens >= 1000 && tokens < 1000000)
-      return `${parseFloat((tokens / 1000).toFixed(3))}K`
+      return `${Number.parseFloat((tokens / 1000).toFixed(3))}K`
     if (tokens >= 1000000)
-      return `${parseFloat((tokens / 1000000).toFixed(3))}M`
+      return `${Number.parseFloat((tokens / 1000000).toFixed(3))}M`
   }
 
   return (
     <div className={cn('py-1')}>
-      <div className={cn('group transition-all bg-white border border-gray-100 rounded-2xl shadow-xs hover:shadow-md')}>
+      <div className={cn('group transition-all bg-background-default border border-components-panel-border rounded-2xl shadow-xs hover:shadow-md')}>
         <div
           className={cn(
             'flex items-center py-3 pl-[6px] pr-3 cursor-pointer',
@@ -58,15 +58,15 @@ const ToolCallItem: FC<Props> = ({ toolCall, isLLM = false, isFinal, tokens, obs
         >
           <ChevronRight
             className={cn(
-              'shrink-0 w-3 h-3 mr-1 text-gray-400 transition-all group-hover:text-gray-500',
+              'shrink-0 w-3 h-3 mr-1 text-text-quaternary transition-all group-hover:text-text-tertiary',
               !collapseState && 'rotate-90',
             )}
           />
           <BlockIcon className={cn('shrink-0 mr-2')} type={isLLM ? BlockEnum.LLM : BlockEnum.Tool} toolIcon={toolCall.tool_icon} />
           <div className={cn(
-            'grow text-gray-700 text-[13px] leading-[16px] font-semibold truncate',
+            'grow text-text-secondary text-[13px] leading-[16px] font-semibold truncate',
           )} title={toolName}>{toolName}</div>
-          <div className='shrink-0 text-gray-500 text-xs leading-[18px]'>
+          <div className='shrink-0 text-text-tertiary text-xs leading-[18px]'>
             {toolCall.time_cost && (
               <span>{getTime(toolCall.time_cost || 0)}</span>
             )}

@@ -13,7 +13,7 @@ import { LanguagesSupported, languages } from '@/i18n/language'
 import { oneMoreStep } from '@/service/common'
 import Toast from '@/app/components/base/toast'
 
-type IState = {
+interface IState {
   formState: 'processing' | 'error' | 'success' | 'initial'
   invitation_code: string
   interface_language: string

@@ -25,6 +25,7 @@ import AppsFull from '@/app/components/billing/apps-full-in-dialog'
 import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
 import { getRedirection } from '@/utils/app-redirection'
 import cn from '@/utils/classnames'
+import { usePluginDependencies } from '@/app/components/workflow/plugin-dependency/hooks'
 
 type CreateFromDSLModalProps = {
   show: boolean
@@ -50,6 +51,7 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
   const [showErrorModal, setShowErrorModal] = useState(false)
   const [versions, setVersions] = useState<{ importedVersion: string; systemVersion: string }>()
   const [importId, setImportId] = useState<string>()
+  const { handleCheckPluginDependencies } = usePluginDependencies()
 
   const readFile = (file: File) => {
     const reader = new FileReader()
@@ -114,6 +116,8 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
           children: status === DSLImportStatus.COMPLETED_WITH_WARNINGS && t('app.newApp.appCreateDSLWarning'),
         })
         localStorage.setItem(NEED_REFRESH_APP_LIST_KEY, '1')
+        if (app_id)
+          await handleCheckPluginDependencies(app_id)
         getRedirection(isCurrentWorkspaceEditor, { id: app_id }, push)
       }
       else if (status === DSLImportStatus.PENDING) {
@@ -132,6 +136,7 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
         notify({ type: 'error', message: t('app.newApp.appCreateFailed') })
       }
     }
+    // eslint-disable-next-line unused-imports/no-unused-vars
     catch (e) {
       notify({ type: 'error', message: t('app.newApp.appCreateFailed') })
     }
@@ -158,6 +163,8 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
           type: 'success',
           message: t('app.newApp.appCreated'),
         })
+        if (app_id)
+          await handleCheckPluginDependencies(app_id)
         localStorage.setItem(NEED_REFRESH_APP_LIST_KEY, '1')
         getRedirection(isCurrentWorkspaceEditor, { id: app_id }, push)
       }
@@ -165,6 +172,7 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
         notify({ type: 'error', message: t('app.newApp.appCreateFailed') })
       }
     }
+    // eslint-disable-next-line unused-imports/no-unused-vars
     catch (e) {
       notify({ type: 'error', message: t('app.newApp.appCreateFailed') })
     }
@@ -268,7 +276,7 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
       >
         <div className='flex pb-4 flex-col items-start gap-2 self-stretch'>
           <div className='text-text-primary title-2xl-semi-bold'>{t('app.newApp.appCreateDSLErrorTitle')}</div>
-          <div className='flex flex-grow flex-col text-text-secondary system-md-regular'>
+          <div className='flex grow flex-col text-text-secondary system-md-regular'>
             <div>{t('app.newApp.appCreateDSLErrorPart1')}</div>
             <div>{t('app.newApp.appCreateDSLErrorPart2')}</div>
             <br />

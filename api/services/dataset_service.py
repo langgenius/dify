@@ -9,12 +9,14 @@ from typing import Any, Optional
 
 from flask_login import current_user  # type: ignore
 from sqlalchemy import func
+from sqlalchemy.orm import Session
 from werkzeug.exceptions import NotFound
 
 from configs import dify_config
 from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
 from core.model_manager import ModelManager
 from core.model_runtime.entities.model_entities import ModelType
+from core.plugin.entities.plugin import ModelProviderID
 from core.rag.index_processor.constant.index_type import IndexType
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from events.dataset_event import dataset_was_deleted
@@ -243,7 +245,7 @@ class DatasetService:
                 "No Embedding Model available. Please configure a valid provider in the Settings -> Model Provider."
             )
         except ProviderTokenNotInitError as ex:
-            raise ValueError(f"The dataset in unavailable, due to: {ex.description}")
+            raise ValueError(ex.description)
 
     @staticmethod
     def update_dataset(dataset_id, data, user):
@@ -268,7 +270,15 @@ class DatasetService:
             external_knowledge_api_id = data.get("external_knowledge_api_id", None)
             if not external_knowledge_api_id:
                 raise ValueError("External knowledge api id is required.")
-            external_knowledge_binding = ExternalKnowledgeBindings.query.filter_by(dataset_id=dataset_id).first()
+
+            with Session(db.engine) as session:
+                external_knowledge_binding = (
+                    session.query(ExternalKnowledgeBindings).filter_by(dataset_id=dataset_id).first()
+                )
+
+                if not external_knowledge_binding:
+                    raise ValueError("External knowledge binding not found.")
+
             if (
                 external_knowledge_binding.external_knowledge_id != external_knowledge_id
                 or external_knowledge_binding.external_knowledge_api_id != external_knowledge_api_id
@@ -316,25 +326,76 @@ class DatasetService:
                     except ProviderTokenNotInitError as ex:
                         raise ValueError(ex.description)
             else:
+                # add default plugin id to both setting sets, to make sure the plugin model provider is consistent
+                # Skip embedding model checks if not provided in the update request
                 if (
-                    data["embedding_model_provider"] != dataset.embedding_model_provider
-                    or data["embedding_model"] != dataset.embedding_model
+                    "embedding_model_provider" not in data
+                    or "embedding_model" not in data
+                    or not data.get("embedding_model_provider")
+                    or not data.get("embedding_model")
                 ):
-                    action = "update"
+                    # If the dataset already has embedding model settings, use those
+                    if dataset.embedding_model_provider and dataset.embedding_model:
+                        # Keep existing values
+                        filtered_data["embedding_model_provider"] = dataset.embedding_model_provider
+                        filtered_data["embedding_model"] = dataset.embedding_model
+                        # If collection_binding_id exists, keep it too
+                        if dataset.collection_binding_id:
+                            filtered_data["collection_binding_id"] = dataset.collection_binding_id
+                    # Otherwise, don't try to update embedding model settings at all
+                    # Remove these fields from filtered_data if they exist but are None/empty
+                    if "embedding_model_provider" in filtered_data and not filtered_data["embedding_model_provider"]:
+                        del filtered_data["embedding_model_provider"]
+                    if "embedding_model" in filtered_data and not filtered_data["embedding_model"]:
+                        del filtered_data["embedding_model"]
+                else:
+                    skip_embedding_update = False
                     try:
-                        model_manager = ModelManager()
-                        embedding_model = model_manager.get_model_instance(
-                            tenant_id=current_user.current_tenant_id,
-                            provider=data["embedding_model_provider"],
-                            model_type=ModelType.TEXT_EMBEDDING,
-                            model=data["embedding_model"],
-                        )
-                        filtered_data["embedding_model"] = embedding_model.model
-                        filtered_data["embedding_model_provider"] = embedding_model.provider
-                        dataset_collection_binding = DatasetCollectionBindingService.get_dataset_collection_binding(
-                            embedding_model.provider, embedding_model.model
-                        )
-                        filtered_data["collection_binding_id"] = dataset_collection_binding.id
+                        # Handle existing model provider
+                        plugin_model_provider = dataset.embedding_model_provider
+                        plugin_model_provider_str = None
+                        if plugin_model_provider:
+                            plugin_model_provider_str = str(ModelProviderID(plugin_model_provider))
+
+                        # Handle new model provider from request
+                        new_plugin_model_provider = data["embedding_model_provider"]
+                        new_plugin_model_provider_str = None
+                        if new_plugin_model_provider:
+                            new_plugin_model_provider_str = str(ModelProviderID(new_plugin_model_provider))
+
+                        # Only update embedding model if both values are provided and different from current
+                        if (
+                            plugin_model_provider_str != new_plugin_model_provider_str
+                            or data["embedding_model"] != dataset.embedding_model
+                        ):
+                            action = "update"
+                            model_manager = ModelManager()
+                            try:
+                                embedding_model = model_manager.get_model_instance(
+                                    tenant_id=current_user.current_tenant_id,
+                                    provider=data["embedding_model_provider"],
+                                    model_type=ModelType.TEXT_EMBEDDING,
+                                    model=data["embedding_model"],
+                                )
+                            except ProviderTokenNotInitError:
+                                # If we can't get the embedding model, skip updating it
+                                # and keep the existing settings if available
+                                if dataset.embedding_model_provider and dataset.embedding_model:
+                                    filtered_data["embedding_model_provider"] = dataset.embedding_model_provider
+                                    filtered_data["embedding_model"] = dataset.embedding_model
+                                    if dataset.collection_binding_id:
+                                        filtered_data["collection_binding_id"] = dataset.collection_binding_id
+                                # Skip the rest of the embedding model update
+                                skip_embedding_update = True
+                            if not skip_embedding_update:
+                                filtered_data["embedding_model"] = embedding_model.model
+                                filtered_data["embedding_model_provider"] = embedding_model.provider
+                                dataset_collection_binding = (
+                                    DatasetCollectionBindingService.get_dataset_collection_binding(
+                                        embedding_model.provider, embedding_model.model
+                                    )
+                                )
+                                filtered_data["collection_binding_id"] = dataset_collection_binding.id
                     except LLMBadRequestError:
                         raise ValueError(
                             "No Embedding Model available. Please configure a valid provider "
@@ -958,6 +1019,8 @@ class DocumentService:
                                     "notion_page_icon": page.page_icon.model_dump() if page.page_icon else None,
                                     "type": page.type,
                                 }
+                                # Truncate page name to 255 characters to prevent DB field length errors
+                                truncated_page_name = page.page_name[:255] if page.page_name else "nopagename"
                                 document = DocumentService.build_document(
                                     dataset,
                                     dataset_process_rule.id,  # type: ignore
@@ -968,7 +1031,7 @@ class DocumentService:
                                     created_from,
                                     position,
                                     account,
-                                    page.page_name,
+                                    truncated_page_name,
                                     batch,
                                     knowledge_config.metadata,
                                 )
@@ -1468,7 +1531,7 @@ class SegmentService:
                 model=dataset.embedding_model,
             )
             # calc embedding use tokens
-            tokens = embedding_model.get_text_embedding_num_tokens(texts=[content])
+            tokens = embedding_model.get_text_embedding_num_tokens(texts=[content])[0]
         lock_name = "add_segment_lock_document_id_{}".format(document.id)
         with redis_client.lock(lock_name, timeout=600):
             max_position = (
@@ -1545,9 +1608,12 @@ class SegmentService:
                 if dataset.indexing_technique == "high_quality" and embedding_model:
                     # calc embedding use tokens
                     if document.doc_form == "qa_model":
-                        tokens = embedding_model.get_text_embedding_num_tokens(texts=[content + segment_item["answer"]])
+                        tokens = embedding_model.get_text_embedding_num_tokens(
+                            texts=[content + segment_item["answer"]]
+                        )[0]
                     else:
-                        tokens = embedding_model.get_text_embedding_num_tokens(texts=[content])
+                        tokens = embedding_model.get_text_embedding_num_tokens(texts=[content])[0]
+
                 segment_document = DocumentSegment(
                     tenant_id=current_user.current_tenant_id,
                     dataset_id=document.dataset_id,
@@ -1695,9 +1761,9 @@ class SegmentService:
 
                     # calc embedding use tokens
                     if document.doc_form == "qa_model":
-                        tokens = embedding_model.get_text_embedding_num_tokens(texts=[content + segment.answer])
+                        tokens = embedding_model.get_text_embedding_num_tokens(texts=[content + segment.answer])[0]
                     else:
-                        tokens = embedding_model.get_text_embedding_num_tokens(texts=[content])
+                        tokens = embedding_model.get_text_embedding_num_tokens(texts=[content])[0]
                 segment.content = content
                 segment.index_node_hash = segment_hash
                 segment.word_count = len(content)

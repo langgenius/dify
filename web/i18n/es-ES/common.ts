@@ -50,6 +50,10 @@ const translation = {
     submit: 'Enviar',
     skip: 'Navío',
     imageCopied: 'Imagen copiada',
+    deleteApp: 'Eliminar aplicación',
+    in: 'en',
+    viewDetails: 'Ver detalles',
+    copied: 'Copiado',
   },
   errorMsg: {
     fieldRequired: '{{field}} es requerido',
@@ -126,6 +130,8 @@ const translation = {
       Custom: 'Personalizado',
     },
     addMoreModel: 'Ir a configuraciones para agregar más modelos',
+    capabilities: 'Capacidades multimodales',
+    settingsLink: 'Configuración del proveedor de modelos',
   },
   menus: {
     status: 'beta',
@@ -138,6 +144,7 @@ const translation = {
     newApp: 'Nueva App',
     newDataset: 'Crear Conocimiento',
     tools: 'Herramientas',
+    exploreMarketplace: 'Explora el mercado',
   },
   userProfile: {
     settings: 'Configuraciones',
@@ -163,6 +170,7 @@ const translation = {
     dataSource: 'Fuente de Datos',
     plugin: 'Plugins',
     apiBasedExtension: 'Extensión basada en API',
+    generalGroup: 'GENERAL',
   },
   account: {
     avatar: 'Avatar',
@@ -290,6 +298,7 @@ const translation = {
       usedUp: 'Cuota de prueba agotada. Agrega tu propio proveedor de modelos.',
       useYourModel: 'Actualmente usando tu propio proveedor de modelos.',
       close: 'Cerrar',
+      trialQuotaTip: 'Su cuota de prueba antrópica caducará el 11/03/2025 y ya no estará disponible a partir de entonces. Por favor, aprovéchelo a tiempo.',
     },
     anthropic: {
       using: 'La capacidad de incrustación está usando',
@@ -401,6 +410,12 @@ const translation = {
     loadBalancingLeastKeyWarning: 'Para habilitar el balanceo de carga se deben habilitar al menos 2 claves.',
     loadBalancingInfo: 'Por defecto, el balanceo de carga usa la estrategia Round-robin. Si se activa el límite de velocidad, se aplicará un período de enfriamiento de 1 minuto.',
     upgradeForLoadBalancing: 'Actualiza tu plan para habilitar el Balanceo de Carga.',
+    configureTip: 'Configurar la clave de API o agregar el modelo que se va a usar',
+    discoverMore: 'Descubre más en',
+    toBeConfigured: 'A configurar',
+    emptyProviderTip: 'Instale primero un proveedor de modelos.',
+    installProvider: 'Instalación de proveedores de modelos',
+    emptyProviderTitle: 'Proveedor de modelos no configurado',
   },
   dataSource: {
     add: 'Agregar una fuente de datos',
@@ -530,6 +545,8 @@ const translation = {
       hitScore: 'Puntuación de recuperación:',
     },
     inputPlaceholder: 'Hablar con el bot',
+    thinking: 'Pensamiento...',
+    thought: 'Pensamiento',
   },
   promptEditor: {
     placeholder: 'Escribe tu palabra de indicación aquí, ingresa \'{\' para insertar una variable, ingresa \'/\' para insertar un bloque de contenido de indicación',

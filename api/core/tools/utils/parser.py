@@ -18,7 +18,7 @@ from core.tools.errors import ToolApiSchemaError, ToolNotSupportedError, ToolPro
 class ApiBasedToolSchemaParser:
     @staticmethod
     def parse_openapi_to_tool_bundle(
-        openapi: dict, extra_info: Optional[dict], warning: Optional[dict]
+        openapi: dict, extra_info: dict | None = None, warning: dict | None = None
     ) -> list[ApiToolBundle]:
         warning = warning if warning is not None else {}
         extra_info = extra_info if extra_info is not None else {}
@@ -191,7 +191,7 @@ class ApiBasedToolSchemaParser:
 
     @staticmethod
     def parse_openapi_yaml_to_tool_bundle(
-        yaml: str, extra_info: Optional[dict], warning: Optional[dict]
+        yaml: str, extra_info: dict | None = None, warning: dict | None = None
     ) -> list[ApiToolBundle]:
         """
         parse openapi yaml to tool bundle
@@ -208,7 +208,8 @@ class ApiBasedToolSchemaParser:
         return ApiBasedToolSchemaParser.parse_openapi_to_tool_bundle(openapi, extra_info=extra_info, warning=warning)
 
     @staticmethod
-    def parse_swagger_to_openapi(swagger: dict, extra_info: Optional[dict], warning: Optional[dict]) -> dict:
+    def parse_swagger_to_openapi(swagger: dict, extra_info: dict | None = None, warning: dict | None = None) -> dict:
+        warning = warning or {}
         """
         parse swagger to openapi
 
@@ -271,7 +272,7 @@ class ApiBasedToolSchemaParser:
 
     @staticmethod
     def parse_openai_plugin_json_to_tool_bundle(
-        json: str, extra_info: Optional[dict], warning: Optional[dict]
+        json: str, extra_info: dict | None = None, warning: dict | None = None
     ) -> list[ApiToolBundle]:
         """
         parse openapi plugin yaml to tool bundle
@@ -287,7 +288,7 @@ class ApiBasedToolSchemaParser:
             api = openai_plugin["api"]
             api_url = api["url"]
             api_type = api["type"]
-        except:
+        except JSONDecodeError:
             raise ToolProviderNotFoundError("Invalid openai plugin json.")
 
         if api_type != "openapi":
@@ -305,7 +306,7 @@ class ApiBasedToolSchemaParser:
 
     @staticmethod
     def auto_parse_to_tool_bundle(
-        content: str, extra_info: Optional[dict] = None, warning: Optional[dict] = None
+        content: str, extra_info: dict | None = None, warning: dict | None = None
     ) -> tuple[list[ApiToolBundle], str]:
         """
         auto parse to tool bundle
