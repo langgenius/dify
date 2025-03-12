@@ -1,4 +1,5 @@
 import logging
+import re
 from logging.config import fileConfig
 
 from alembic import context
@@ -32,6 +33,7 @@ def get_engine_url():
 # target_metadata = mymodel.Base.metadata
 config.set_main_option('sqlalchemy.url', get_engine_url())
 
+
 # other values from the config, defined by the needs of env.py,
 # can be acquired:
 # my_important_option = config.get_main_option("my_important_option")
@@ -44,6 +46,8 @@ def get_metadata():
 
 def include_object(object, name, type_, reflected, compare_to):
     if type_ == "foreign_key_constraint":
+        return False
+    elif type_ == "table" and re.match(r"^embedding_vector_index_.*?_nod$", name):
         return False
     else:
         return True
@@ -107,4 +111,3 @@ if context.is_offline_mode():
     run_migrations_offline()
 else:
     run_migrations_online()
-
