@@ -46,6 +46,7 @@ export type Field = {
   items?: { // Array has items. Define the item type
     type: ArrayItemType
   }
+  enum?: string[] // Enum values
   additionalProperties?: false // Required in object by api. Just set false
 }
 
