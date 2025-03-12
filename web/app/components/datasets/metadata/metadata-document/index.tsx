@@ -84,20 +84,20 @@ const MetadataDocument: FC<Props> = ({
             onAdd={handleAddMetaData}
             onSelect={handleSelectMetaData}
           />
-          {builtInEnabled && (
-            <>
-              <Divider className='my-3' bgStyle='gradient' />
-              <InfoGroup
-                noHeader
-                titleTooltip='Built-in metadata is system-generated metadata that is automatically added to the document. You can enable or disable built-in metadata here.'
-                list={builtList}
-                dataSetId={datasetId}
-              />
-            </>
-          )}
         </div>
       ) : (
         embeddingAvailable && <NoData onStart={() => setIsEdit(true)} />
+      )}
+      {builtInEnabled && (
+        <div className='pl-2'>
+          <Divider className='my-3' bgStyle='gradient' />
+          <InfoGroup
+            noHeader
+            titleTooltip='Built-in metadata is system-generated metadata that is automatically added to the document. You can enable or disable built-in metadata here.'
+            list={builtList}
+            dataSetId={datasetId}
+          />
+        </div>
       )}
 
       {/* Old Metadata */}
