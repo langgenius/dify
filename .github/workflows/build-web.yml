@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
 
 env:
-  DOCKERHUB_REPO: registry.cn-hangzhou.aliyuncs.com/kindlingx/dify-web
+  DOCKERHUB_REPO: registry.cn-hangzhou.aliyuncs.com/kindlingx/apo-dify-web
 
 jobs:
   build-image:
