@@ -487,7 +487,7 @@ class Document(db.Model):  # type: ignore[name-defined]
 
             return metadata_list
         return None
-    
+
     @property
     def process_rule_dict(self):
         if self.dataset_process_rule_id:
@@ -763,7 +763,7 @@ class DocumentSegment(db.Model):  # type: ignore[name-defined]
         # Reconstruct the text with signed URLs
         offset = 0
         for start, end, signed_url in signed_urls:
-            text = text[: start + offset] + signed_url + text[end + offset :]
+            text = text[: start + offset] + signed_url + text[end + offset:]
             offset += len(signed_url) - (end - start)
 
         return text
@@ -1081,3 +1081,41 @@ class RateLimitLog(db.Model):  # type: ignore[name-defined]
     subscription_plan = db.Column(db.String(255), nullable=False)
     operation = db.Column(db.String(255), nullable=False)
     created_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
+
+
+class DatasetMetadata(db.Model):  # type: ignore[name-defined]
+    __tablename__ = "dataset_metadatas"
+    __table_args__ = (
+        db.PrimaryKeyConstraint("id", name="dataset_metadata_pkey"),
+        db.Index("dataset_metadata_tenant_idx", "tenant_id"),
+        db.Index("dataset_metadata_dataset_idx", "dataset_id"),
+    )
+
+    id = db.Column(StringUUID, server_default=db.text("uuid_generate_v4()"))
+    tenant_id = db.Column(StringUUID, nullable=False)
+    dataset_id = db.Column(StringUUID, nullable=False)
+    type = db.Column(db.String(255), nullable=False)
+    name = db.Column(db.String(255), nullable=False)
+    created_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
+    updated_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
+    created_by = db.Column(StringUUID, nullable=False)
+    updated_by = db.Column(StringUUID, nullable=True)
+
+
+class DatasetMetadataBinding(db.Model):  # type: ignore[name-defined]
+    __tablename__ = "dataset_metadata_bindings"
+    __table_args__ = (
+        db.PrimaryKeyConstraint("id", name="dataset_metadata_binding_pkey"),
+        db.Index("dataset_metadata_binding_tenant_idx", "tenant_id"),
+        db.Index("dataset_metadata_binding_dataset_idx", "dataset_id"),
+        db.Index("dataset_metadata_binding_metadata_idx", "metadata_id"),
+        db.Index("dataset_metadata_binding_document_idx", "document_id"),
+    )
+
+    id = db.Column(StringUUID, server_default=db.text("uuid_generate_v4()"))
+    tenant_id = db.Column(StringUUID, nullable=False)
+    dataset_id = db.Column(StringUUID, nullable=False)
+    metadata_id = db.Column(StringUUID, nullable=False)
+    document_id = db.Column(StringUUID, nullable=False)
+    created_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
+    created_by = db.Column(StringUUID, nullable=False)
