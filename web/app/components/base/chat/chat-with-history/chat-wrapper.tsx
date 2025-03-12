@@ -59,6 +59,8 @@ const ChatWrapper = () => {
     handleSend,
     handleStop,
     isResponding,
+    isInternet,
+    setIsInternet,
     suggestedQuestions,
   } = useChat(
     appConfig,
@@ -204,6 +206,8 @@ const ChatWrapper = () => {
         config={appConfig}
         chatList={messageList}
         isResponding={isResponding}
+        isInternet={isInternet}
+        onSetInternet={setIsInternet}
         chatContainerInnerClassName={`mx-auto pt-6 w-full max-w-[720px] ${isMobile && 'px-4'}`}
         chatFooterClassName='pb-4'
         chatFooterInnerClassName={`mx-auto w-full max-w-[720px] ${isMobile ? 'px-2' : 'px-4'}`}

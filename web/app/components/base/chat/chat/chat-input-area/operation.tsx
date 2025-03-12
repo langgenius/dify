@@ -3,8 +3,8 @@ import {
   memo,
 } from 'react'
 import {
+  RiArrowUpLine,
   RiMicLine,
-  RiSendPlane2Fill,
 } from '@remixicon/react'
 import type {
   EnableType,
@@ -15,6 +15,7 @@ import ActionButton from '@/app/components/base/action-button'
 import { FileUploaderInChatInput } from '@/app/components/base/file-uploader'
 import type { FileUpload } from '@/app/components/base/features/types'
 import cn from '@/utils/classnames'
+import { t } from 'i18next'
 
 type OperationProps = {
   fileConfig?: FileUpload
@@ -22,20 +23,40 @@ type OperationProps = {
   onShowVoiceInput?: () => void
   onSend: () => void
   theme?: Theme | null
+  isInternet?: boolean
+  onSetInternet?: (internet: boolean) => void
 }
 const Operation = forwardRef<HTMLDivElement, OperationProps>(({
   fileConfig,
   speechToTextConfig,
   onShowVoiceInput,
   onSend,
+  onSetInternet,
   theme,
+  isInternet = false,
 }, ref) => {
   return (
     <div
       className={cn(
-        'shrink-0 flex items-center justify-end',
+        'shrink-0 flex items-center justify-between',
       )}
     >
+      <div
+        className='flex items-center justify-center text-xs text-black px-6 py-4 h-6 rounded-full border border-gray-300'
+        style={
+          isInternet ? {
+            backgroundColor: theme?.backgroundHoverColor,
+            color: theme?.primaryColor,
+            cursor: 'pointer',
+          } : {
+            cursor: 'pointer',
+          }
+
+        }
+        onClick={() => onSetInternet?.(!isInternet)}
+      >
+        {t('common.chat.buttonInternet') || ''}
+      </div>
       <div
         className='flex items-center pl-1'
         ref={ref}
@@ -54,7 +75,7 @@ const Operation = forwardRef<HTMLDivElement, OperationProps>(({
           }
         </div>
         <Button
-          className='ml-3 px-0 w-8'
+          className='ml-3 px-0 w-8 rounded-full'
           variant='primary'
           onClick={onSend}
           style={
@@ -65,7 +86,7 @@ const Operation = forwardRef<HTMLDivElement, OperationProps>(({
               : {}
           }
         >
-          <RiSendPlane2Fill className='w-4 h-4' />
+          <RiArrowUpLine className='w-6 h-6' />
         </Button>
       </div>
     </div>

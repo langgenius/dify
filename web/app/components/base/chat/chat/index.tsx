@@ -40,6 +40,8 @@ export type ChatProps = {
   chatList: ChatItem[]
   config?: ChatConfig
   isResponding?: boolean
+  isInternet?: boolean
+  onSetInternet?: (isInternet: boolean) => void
   noStopResponding?: boolean
   onStopResponding?: () => void
   noChatInput?: boolean
@@ -83,6 +85,8 @@ const Chat: FC<ChatProps> = ({
   onRegenerate,
   chatList,
   isResponding,
+  isInternet,
+  onSetInternet,
   noStopResponding,
   onStopResponding,
   noChatInput,
@@ -200,6 +204,8 @@ const Chat: FC<ChatProps> = ({
       config={config}
       chatList={chatList}
       isResponding={isResponding}
+      isInternet={isInternet}
+      onSetInternet={onSetInternet}
       showPromptLog={showPromptLog}
       questionIcon={questionIcon}
       answerIcon={answerIcon}
@@ -296,6 +302,8 @@ const Chat: FC<ChatProps> = ({
                   inputsForm={inputsForm}
                   theme={themeBuilder?.theme}
                   isResponding={isResponding}
+                  onSetInternet={onSetInternet}
+                  isInternet={isInternet}
                 />
               )
             }
