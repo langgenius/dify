@@ -5,6 +5,7 @@ on:
     branches:
       - "main"
       - "deploy/dev"
+      - "release/1.0.1-fix1"
   release:
     types: [published]
 
