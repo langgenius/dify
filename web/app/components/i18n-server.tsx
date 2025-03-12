@@ -11,7 +11,7 @@ const I18NServer = ({
   children,
 }: II18NServerProps) => {
   const locale = getLocaleOnServer()
-  console.log('I18NServer', locale)
+
   return (
     <I18N {...{ locale }}>
       <ToastProvider>{children}</ToastProvider>

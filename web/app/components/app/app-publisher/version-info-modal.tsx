@@ -83,7 +83,7 @@ const VersionInfoModal: FC<VersionInfoModalProps> = ({
         </div>
         <Input
           value={title}
-          placeholder={t('workflow.versionHistory.nameThisVersion')}
+          placeholder={`${t('workflow.versionHistory.nameThisVersion')}${t('workflow.panel.optional')}`}
           onChange={handleTitleChange}
           destructive={titleError}
         />
@@ -94,7 +94,7 @@ const VersionInfoModal: FC<VersionInfoModalProps> = ({
         </div>
         <Textarea
           value={releaseNotes}
-          placeholder={t('workflow.versionHistory.releaseNotesPlaceholder')}
+          placeholder={`${t('workflow.versionHistory.releaseNotesPlaceholder')}${t('workflow.panel.optional')}`}
           onChange={handleDescriptionChange}
           destructive={releaseNotesError}
         />

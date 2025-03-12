@@ -56,7 +56,7 @@ const WorkflowProcessItem = ({
       >
         {
           running && (
-            <RiLoader2Line className='shrink-0 mr-1 w-3.5 h-3.5 text-text-tertiary' />
+            <RiLoader2Line className='shrink-0 mr-1 w-3.5 h-3.5 animate-spin text-text-tertiary' />
           )
         }
         {
