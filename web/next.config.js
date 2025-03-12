@@ -102,14 +102,12 @@ const nextConfig = {
   },
   // fix all before production. Now it slow the develop speed.
   eslint: {
-    enabled: false,
     // Warning: This allows production builds to successfully complete even if
     // your project has ESLint errors.
     ignoreDuringBuilds: true,
     // dirs: ['app', 'bin', 'config', 'context', 'hooks', 'i18n', 'models', 'service', 'test', 'types', 'utils'],
   },
   typescript: {
-    enabled: false,
     // https://nextjs.org/docs/api-reference/next.config.js/ignoring-typescript-errors
     ignoreBuildErrors: true,
   },
