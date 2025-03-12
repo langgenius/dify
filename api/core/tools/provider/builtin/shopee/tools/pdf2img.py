@@ -66,20 +66,25 @@ class Pdf2ImgTool(BuiltinTool):
         if not image_binary:
             return self.create_text_message("Image not found, please request user to generate image firstly.")
 
-        res = self.handle(image_binary, vector_max_size, bit_max_size, quality, direction, pages, dpi)
-        if not res:
-            return self.create_text_message("Pdf2Img error, maybe pdf is encrypted")
-
-        return self.create_blob_message(blob=res, meta={"mime_type": "image/jpeg"})
-
-    def handle(self, pdf_bytes, vector_max_size, bit_max_size, quality, direction, pages, dpi=350):
-        pdf_stream = io.BytesIO(pdf_bytes)
+        pdf_stream = io.BytesIO(image_binary)
         doc = fitz.open(stream=pdf_stream, filetype="pdf")
+        pdf_stream.close()
         if doc is None:
-            return
+            return self.create_text_message("open pdf failed")
         if doc.is_encrypted:
             if not doc.authenticate(""):
-                return
+                return self.create_text_message("auth encrypted pdf with empty string failed")
+
+        res = self.handle(doc, vector_max_size, bit_max_size, quality, direction, pages, dpi)
+        if not res:
+            return self.create_text_message("Pdf2Img error")
+
+        results = [self.create_blob_message(blob=res, meta={"mime_type": "image/jpeg"}),
+                   self.create_text_message(str(doc.page_count))]
+        return results
+
+    def handle(self, doc, vector_max_size, bit_max_size, quality, direction, pages, dpi=350):
+
         zoom = int(math.ceil(dpi / 72))
         matrix = fitz.Matrix(zoom, zoom)
         images = []
@@ -117,7 +122,6 @@ class Pdf2ImgTool(BuiltinTool):
             new_images = [images[0]]
             res = self.concat_images_horizontal(new_images, quality)
         doc.close()
-        pdf_stream.close()
         return res
 
     def concat_images_horizontal(self, images, quality):
