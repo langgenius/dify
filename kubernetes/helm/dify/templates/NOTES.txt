@@ -1,0 +1,19 @@
+1. Get the application URL by running these commands:
+{{- if eq .Values.nginx.type "NodePort" }}
+  # Get HTTP port
+  export HTTP_NODE_PORT=$(kubectl get --namespace {{ .Release.Namespace }} -o jsonpath="{.spec.ports[?(@.name=='http')].nodePort}" services {{ include "dify.fullname" . }}-nginx-service)
+
+  # Try to get ExternalIP first, fallback to InternalIP
+  export NODE_IP=$(kubectl get nodes --namespace {{ .Release.Namespace }} -o jsonpath="{.items[0].status.addresses[?(@.type=='ExternalIP')].address}")
+  if [ -z "$NODE_IP" ]; then
+    export NODE_IP=$(kubectl get nodes --namespace {{ .Release.Namespace }} -o jsonpath="{.items[0].status.addresses[?(@.type=='InternalIP')].address}")
+  fi
+
+  echo "HTTP URL: http://$NODE_IP:$HTTP_NODE_PORT"
+
+  # Check if HTTPS is enabled
+  if [ "$(kubectl get services {{ include "dify.fullname" . }}-nginx-service -n {{ .Release.Namespace }} -o jsonpath='{.spec.ports[?(@.name=="https")]}')" != "" ]; then
+    export HTTPS_NODE_PORT=$(kubectl get --namespace {{ .Release.Namespace }} -o jsonpath="{.spec.ports[?(@.name=='https')].nodePort}" services {{ include "dify.fullname" . }}-nginx-service)
+    echo "HTTPS URL: https://$NODE_IP:$HTTPS_NODE_PORT"
+  fi
+{{- end }}
