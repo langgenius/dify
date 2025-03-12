@@ -173,6 +173,7 @@ const ChatInputArea = ({
               >
                 {query}
               </div>
+              123
               <Textarea
                 ref={textareaRef}
                 className={cn(
