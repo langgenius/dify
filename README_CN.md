@@ -193,7 +193,18 @@ cp .env.example .env
 docker compose up -d
 ```
 
-运行后，可以在浏览器上访问 [http://localhost/install](http://localhost/install) 进入 Dify 控制台并开始初始化安装操作。
+你也可以通过使用 [kubectl](kubernetes/deployment/dify.yaml) 或者使用 [helm](kubernetes/helm/dify) 在 Kubernetes 上部署 Dify。
+
+```shell
+# 使用 YAML 文件部署
+kubectl create namespace dify
+kubectl apply -f deployment/dify.yaml -n dify
+
+# 使用 Helm 部署
+helm upgrade --install dify helm/dify -n dify --create-namespace
+```
+
+运行后，如果你使用docker部署的dify，可以在浏览器上访问 [http://localhost/install](http://localhost/install) 进入 Dify 控制台并开始初始化安装操作。如果你使用kubernetes部署的dify，可以在浏览器上访问 [http://kubernetes-host/install](http://kubernetes-host/install) 进入 Dify 控制台并开始初始化安装操作。
 
 ### 自定义配置
 

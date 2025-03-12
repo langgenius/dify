@@ -1,0 +1,38 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "dify.fullname" . }}-nginx
+  labels:
+    app: nginx
+  {{- include "dify.labels" . | nindent 4 }}
+data:
+  nginx.conf: |
+    {{ $.Files.Get "config/nginx/nginx.conf" | nindent 4 }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "dify.fullname" . }}-sandbox
+  labels:
+    app: sandbox
+  {{- include "dify.labels" . | nindent 4 }}
+data:
+  python-requirements.txt: |
+    {{ $.Files.Get "config/sandbox/dependencies/python-requirements.txt" | nindent 4 }}
+  config.yaml: |
+    {{ $.Files.Get "config/sandbox/conf/config.yaml" | nindent 4 }}
+  config.yaml.example: |
+    {{ $.Files.Get "config/sandbox/conf/config.yaml.example" | nindent 4 }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "dify.fullname" . }}-ssrf-proxy
+  labels:
+    app: ssrf-proxy
+  {{- include "dify.labels" . | nindent 4 }}
+data:
+  squid.conf.template: |
+    {{ $.Files.Get "config/ssrf_proxy/squid.conf.template" | nindent 4 }}
+  docker-entrypoint-mount.sh: |
+    {{ $.Files.Get "config/ssrf_proxy/docker-entrypoint.sh" | nindent 4 }}

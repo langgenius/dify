@@ -1,0 +1,2979 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "dify.fullname" . }}-api
+  labels:
+    app: api
+  {{- include "dify.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.api.replicas }}
+  selector:
+    matchLabels:
+      app: api
+    {{- include "dify.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        app: api
+      {{- include "dify.selectorLabels" . | nindent 8 }}
+    spec:
+      containers:
+      - env:
+        - name: ACCESS_TOKEN_EXPIRE_MINUTES
+          value: {{ quote .Values.env.accessTokenExpireMinutes }}
+        - name: ALIYUN_OSS_ACCESS_KEY
+          value: {{ quote .Values.env.aliyunOssAccessKey }}
+        - name: ALIYUN_OSS_AUTH_VERSION
+          value: {{ quote .Values.env.aliyunOssAuthVersion }}
+        - name: ALIYUN_OSS_BUCKET_NAME
+          value: {{ quote .Values.env.aliyunOssBucketName }}
+        - name: ALIYUN_OSS_ENDPOINT
+          value: {{ quote .Values.env.aliyunOssEndpoint }}
+        - name: ALIYUN_OSS_PATH
+          value: {{ quote .Values.env.aliyunOssPath }}
+        - name: ALIYUN_OSS_REGION
+          value: {{ quote .Values.env.aliyunOssRegion }}
+        - name: ALIYUN_OSS_SECRET_KEY
+          value: {{ quote .Values.env.aliyunOssSecretKey }}
+        - name: ANALYTICDB_ACCOUNT
+          value: {{ quote .Values.env.analyticdbAccount }}
+        - name: ANALYTICDB_HOST
+          value: {{ quote .Values.env.analyticdbHost }}
+        - name: ANALYTICDB_INSTANCE_ID
+          value: {{ quote .Values.env.analyticdbInstanceId }}
+        - name: ANALYTICDB_KEY_ID
+          value: {{ quote .Values.env.analyticdbKeyId }}
+        - name: ANALYTICDB_KEY_SECRET
+          value: {{ quote .Values.env.analyticdbKeySecret }}
+        - name: ANALYTICDB_MAX_CONNECTION
+          value: {{ quote .Values.env.analyticdbMaxConnection }}
+        - name: ANALYTICDB_MIN_CONNECTION
+          value: {{ quote .Values.env.analyticdbMinConnection }}
+        - name: ANALYTICDB_NAMESPACE
+          value: {{ quote .Values.env.analyticdbNamespace }}
+        - name: ANALYTICDB_NAMESPACE_PASSWORD
+          value: {{ quote .Values.env.analyticdbNamespacePassword }}
+        - name: ANALYTICDB_PASSWORD
+          value: {{ quote .Values.env.analyticdbPassword }}
+        - name: ANALYTICDB_PORT
+          value: {{ quote .Values.env.analyticdbPort }}
+        - name: ANALYTICDB_REGION_ID
+          value: {{ quote .Values.env.analyticdbRegionId }}
+        - name: API_SENTRY_DSN
+          value: {{ quote .Values.env.apiSentryDsn }}
+        - name: API_SENTRY_PROFILES_SAMPLE_RATE
+          value: {{ quote .Values.env.apiSentryProfilesSampleRate }}
+        - name: API_SENTRY_TRACES_SAMPLE_RATE
+          value: {{ quote .Values.env.apiSentryTracesSampleRate }}
+        - name: API_TOOL_DEFAULT_CONNECT_TIMEOUT
+          value: {{ quote .Values.env.apiToolDefaultConnectTimeout }}
+        - name: API_TOOL_DEFAULT_READ_TIMEOUT
+          value: {{ quote .Values.env.apiToolDefaultReadTimeout }}
+        - name: APP_API_URL
+          value: {{ quote .Values.env.appApiUrl }}
+        - name: APP_MAX_ACTIVE_REQUESTS
+          value: {{ quote .Values.env.appMaxActiveRequests }}
+        - name: APP_MAX_EXECUTION_TIME
+          value: {{ quote .Values.env.appMaxExecutionTime }}
+        - name: APP_WEB_URL
+          value: {{ quote .Values.env.appWebUrl }}
+        - name: AZURE_BLOB_ACCOUNT_KEY
+          value: {{ quote .Values.env.azureBlobAccountKey }}
+        - name: AZURE_BLOB_ACCOUNT_NAME
+          value: {{ quote .Values.env.azureBlobAccountName }}
+        - name: AZURE_BLOB_ACCOUNT_URL
+          value: {{ quote .Values.env.azureBlobAccountUrl }}
+        - name: AZURE_BLOB_CONTAINER_NAME
+          value: {{ quote .Values.env.azureBlobContainerName }}
+        - name: BAIDU_OBS_ACCESS_KEY
+          value: {{ quote .Values.env.baiduObsAccessKey }}
+        - name: BAIDU_OBS_BUCKET_NAME
+          value: {{ quote .Values.env.baiduObsBucketName }}
+        - name: BAIDU_OBS_ENDPOINT
+          value: {{ quote .Values.env.baiduObsEndpoint }}
+        - name: BAIDU_OBS_SECRET_KEY
+          value: {{ quote .Values.env.baiduObsSecretKey }}
+        - name: BAIDU_VECTOR_DB_ACCOUNT
+          value: {{ quote .Values.env.baiduVectorDbAccount }}
+        - name: BAIDU_VECTOR_DB_API_KEY
+          value: {{ quote .Values.env.baiduVectorDbApiKey }}
+        - name: BAIDU_VECTOR_DB_CONNECTION_TIMEOUT_MS
+          value: {{ quote .Values.env.baiduVectorDbConnectionTimeoutMs }}
+        - name: BAIDU_VECTOR_DB_DATABASE
+          value: {{ quote .Values.env.baiduVectorDbDatabase }}
+        - name: BAIDU_VECTOR_DB_ENDPOINT
+          value: {{ quote .Values.env.baiduVectorDbEndpoint }}
+        - name: BAIDU_VECTOR_DB_REPLICAS
+          value: {{ quote .Values.env.baiduVectorDbReplicas }}
+        - name: BAIDU_VECTOR_DB_SHARD
+          value: {{ quote .Values.env.baiduVectorDbShard }}
+        - name: BROKER_USE_SSL
+          value: {{ quote .Values.env.brokerUseSsl }}
+        - name: CELERY_AUTO_SCALE
+          value: {{ quote .Values.env.celeryAutoScale }}
+        - name: CELERY_BROKER_URL
+          value: {{ quote .Values.env.celeryBrokerUrl }}
+        - name: CELERY_MAX_WORKERS
+          value: {{ quote .Values.env.celeryMaxWorkers }}
+        - name: CELERY_MIN_WORKERS
+          value: {{ quote .Values.env.celeryMinWorkers }}
+        - name: CELERY_SENTINEL_MASTER_NAME
+          value: {{ quote .Values.env.celerySentinelMasterName }}
+        - name: CELERY_SENTINEL_SOCKET_TIMEOUT
+          value: {{ quote .Values.env.celerySentinelSocketTimeout }}
+        - name: CELERY_USE_SENTINEL
+          value: {{ quote .Values.env.celeryUseSentinel }}
+        - name: CELERY_WORKER_AMOUNT
+          value: {{ quote .Values.env.celeryWorkerAmount }}
+        - name: CELERY_WORKER_CLASS
+          value: {{ quote .Values.env.celeryWorkerClass }}
+        - name: CERTBOT_DOMAIN
+          value: {{ quote .Values.env.certbotDomain }}
+        - name: CERTBOT_EMAIL
+          value: {{ quote .Values.env.certbotEmail }}
+        - name: CERTBOT_OPTIONS
+          value: {{ quote .Values.env.certbotOptions }}
+        - name: CHECK_UPDATE_URL
+          value: {{ quote .Values.env.checkUpdateUrl }}
+        - name: CHROMA_AUTH_CREDENTIALS
+          value: {{ quote .Values.env.chromaAuthCredentials }}
+        - name: CHROMA_AUTH_PROVIDER
+          value: {{ quote .Values.env.chromaAuthProvider }}
+        - name: CHROMA_DATABASE
+          value: {{ quote .Values.env.chromaDatabase }}
+        - name: CHROMA_HOST
+          value: {{ quote .Values.env.chromaHost }}
+        - name: CHROMA_IS_PERSISTENT
+          value: {{ quote .Values.env.chromaIsPersistent }}
+        - name: CHROMA_PORT
+          value: {{ quote .Values.env.chromaPort }}
+        - name: CHROMA_SERVER_AUTHN_CREDENTIALS
+          value: {{ quote .Values.env.chromaServerAuthnCredentials }}
+        - name: CHROMA_SERVER_AUTHN_PROVIDER
+          value: {{ quote .Values.env.chromaServerAuthnProvider }}
+        - name: CHROMA_TENANT
+          value: {{ quote .Values.env.chromaTenant }}
+        - name: CODE_EXECUTION_API_KEY
+          value: {{ quote .Values.env.codeExecutionApiKey }}
+        - name: CODE_EXECUTION_CONNECT_TIMEOUT
+          value: {{ quote .Values.env.codeExecutionConnectTimeout }}
+        - name: CODE_EXECUTION_ENDPOINT
+          value: {{ quote .Values.env.codeExecutionEndpoint }}
+        - name: CODE_EXECUTION_READ_TIMEOUT
+          value: {{ quote .Values.env.codeExecutionReadTimeout }}
+        - name: CODE_EXECUTION_WRITE_TIMEOUT
+          value: {{ quote .Values.env.codeExecutionWriteTimeout }}
+        - name: CODE_GENERATION_MAX_TOKENS
+          value: {{ quote .Values.env.codeGenerationMaxTokens }}
+        - name: CODE_MAX_DEPTH
+          value: {{ quote .Values.env.codeMaxDepth }}
+        - name: CODE_MAX_NUMBER
+          value: {{ quote .Values.env.codeMaxNumber }}
+        - name: CODE_MAX_NUMBER_ARRAY_LENGTH
+          value: {{ quote .Values.env.codeMaxNumberArrayLength }}
+        - name: CODE_MAX_OBJECT_ARRAY_LENGTH
+          value: {{ quote .Values.env.codeMaxObjectArrayLength }}
+        - name: CODE_MAX_PRECISION
+          value: {{ quote .Values.env.codeMaxPrecision }}
+        - name: CODE_MAX_STRING_ARRAY_LENGTH
+          value: {{ quote .Values.env.codeMaxStringArrayLength }}
+        - name: CODE_MAX_STRING_LENGTH
+          value: {{ quote .Values.env.codeMaxStringLength }}
+        - name: CODE_MIN_NUMBER
+          value: {{ quote .Values.env.codeMinNumber }}
+        - name: CONSOLE_API_URL
+          value: {{ quote .Values.env.consoleApiUrl }}
+        - name: CONSOLE_CORS_ALLOW_ORIGINS
+          value: {{ quote .Values.env.consoleCorsAllowOrigins }}
+        - name: CONSOLE_WEB_URL
+          value: {{ quote .Values.env.consoleWebUrl }}
+        - name: COUCHBASE_BUCKET_NAME
+          value: {{ quote .Values.env.couchbaseBucketName }}
+        - name: COUCHBASE_CONNECTION_STRING
+          value: {{ quote .Values.env.couchbaseConnectionString }}
+        - name: COUCHBASE_PASSWORD
+          value: {{ quote .Values.env.couchbasePassword }}
+        - name: COUCHBASE_SCOPE_NAME
+          value: {{ quote .Values.env.couchbaseScopeName }}
+        - name: COUCHBASE_USER
+          value: {{ quote .Values.env.couchbaseUser }}
+        - name: CREATE_TIDB_SERVICE_JOB_ENABLED
+          value: {{ quote .Values.env.createTidbServiceJobEnabled }}
+        - name: CSP_WHITELIST
+          value: {{ quote .Values.env.cspWhitelist }}
+        - name: DB_DATABASE
+          value: {{ quote .Values.env.dbDatabase }}
+        - name: DB_HOST
+          value: {{ quote .Values.env.dbHost }}
+        - name: DB_PASSWORD
+          value: {{ quote .Values.env.dbPassword }}
+        - name: DB_PLUGIN_DATABASE
+          value: {{ quote .Values.env.dbPluginDatabase }}
+        - name: DB_PORT
+          value: {{ quote .Values.env.dbPort }}
+        - name: DB_USERNAME
+          value: {{ quote .Values.env.dbUsername }}
+        - name: DEBUG
+          value: {{ quote .Values.env.debug }}
+        - name: DEPLOY_ENV
+          value: {{ quote .Values.env.deployEnv }}
+        - name: DIFY_BIND_ADDRESS
+          value: {{ quote .Values.env.difyBindAddress }}
+        - name: DIFY_PORT
+          value: {{ quote .Values.env.difyPort }}
+        - name: ELASTICSEARCH_HOST
+          value: {{ quote .Values.env.elasticsearchHost }}
+        - name: ELASTICSEARCH_PASSWORD
+          value: {{ quote .Values.env.elasticsearchPassword }}
+        - name: ELASTICSEARCH_PORT
+          value: {{ quote .Values.env.elasticsearchPort }}
+        - name: ELASTICSEARCH_USERNAME
+          value: {{ quote .Values.env.elasticsearchUsername }}
+        - name: ENDPOINT_URL_TEMPLATE
+          value: {{ quote .Values.env.endpointUrlTemplate }}
+        - name: ETCD_AUTO_COMPACTION_MODE
+          value: {{ quote .Values.env.etcdAutoCompactionMode }}
+        - name: ETCD_AUTO_COMPACTION_RETENTION
+          value: {{ quote .Values.env.etcdAutoCompactionRetention }}
+        - name: ETCD_ENDPOINTS
+          value: {{ quote .Values.env.etcdEndpoints }}
+        - name: ETCD_QUOTA_BACKEND_BYTES
+          value: {{ quote .Values.env.etcdQuotaBackendBytes }}
+        - name: ETCD_SNAPSHOT_COUNT
+          value: {{ quote .Values.env.etcdSnapshotCount }}
+        - name: ETL_TYPE
+          value: {{ quote .Values.env.etlType }}
+        - name: EXPOSE_NGINX_PORT
+          value: {{ quote .Values.env.exposeNginxPort }}
+        - name: EXPOSE_NGINX_SSL_PORT
+          value: {{ quote .Values.env.exposeNginxSslPort }}
+        - name: EXPOSE_PLUGIN_DAEMON_PORT
+          value: {{ quote .Values.env.exposePluginDaemonPort }}
+        - name: EXPOSE_PLUGIN_DEBUGGING_HOST
+          value: {{ quote .Values.env.exposePluginDebuggingHost }}
+        - name: EXPOSE_PLUGIN_DEBUGGING_PORT
+          value: {{ quote .Values.env.exposePluginDebuggingPort }}
+        - name: FILES_ACCESS_TIMEOUT
+          value: {{ quote .Values.env.filesAccessTimeout }}
+        - name: FILES_URL
+          value: {{ quote .Values.env.filesUrl }}
+        - name: FLASK_DEBUG
+          value: {{ quote .Values.env.flaskDebug }}
+        - name: FORCE_VERIFYING_SIGNATURE
+          value: {{ quote .Values.env.forceVerifyingSignature }}
+        - name: GOOGLE_STORAGE_BUCKET_NAME
+          value: {{ quote .Values.env.googleStorageBucketName }}
+        - name: GOOGLE_STORAGE_SERVICE_ACCOUNT_JSON_BASE64
+          value: {{ quote .Values.env.googleStorageServiceAccountJsonBase64 }}
+        - name: GUNICORN_TIMEOUT
+          value: {{ quote .Values.env.gunicornTimeout }}
+        - name: HTTP_REQUEST_NODE_MAX_BINARY_SIZE
+          value: {{ quote .Values.env.httpRequestNodeMaxBinarySize }}
+        - name: HTTP_REQUEST_NODE_MAX_TEXT_SIZE
+          value: {{ quote .Values.env.httpRequestNodeMaxTextSize }}
+        - name: HUAWEI_OBS_ACCESS_KEY
+          value: {{ quote .Values.env.huaweiObsAccessKey }}
+        - name: HUAWEI_OBS_BUCKET_NAME
+          value: {{ quote .Values.env.huaweiObsBucketName }}
+        - name: HUAWEI_OBS_SECRET_KEY
+          value: {{ quote .Values.env.huaweiObsSecretKey }}
+        - name: HUAWEI_OBS_SERVER
+          value: {{ quote .Values.env.huaweiObsServer }}
+        - name: INDEXING_MAX_SEGMENTATION_TOKENS_LENGTH
+          value: {{ quote .Values.env.indexingMaxSegmentationTokensLength }}
+        - name: INIT_PASSWORD
+          value: {{ quote .Values.env.initPassword }}
+        - name: INNER_API_KEY_FOR_PLUGIN
+          value: {{ quote .Values.env.innerApiKeyForPlugin }}
+        - name: INVITE_EXPIRY_HOURS
+          value: {{ quote .Values.env.inviteExpiryHours }}
+        - name: KIBANA_PORT
+          value: {{ quote .Values.env.kibanaPort }}
+        - name: LINDORM_PASSWORD
+          value: {{ quote .Values.env.lindormPassword }}
+        - name: LINDORM_URL
+          value: {{ quote .Values.env.lindormUrl }}
+        - name: LINDORM_USERNAME
+          value: {{ quote .Values.env.lindormUsername }}
+        - name: LOG_DATEFORMAT
+          value: {{ quote .Values.env.logDateformat }}
+        - name: LOG_FILE
+          value: {{ quote .Values.env.logFile }}
+        - name: LOG_FILE_BACKUP_COUNT
+          value: {{ quote .Values.env.logFileBackupCount }}
+        - name: LOG_FILE_MAX_SIZE
+          value: {{ quote .Values.env.logFileMaxSize }}
+        - name: LOG_LEVEL
+          value: {{ quote .Values.env.logLevel }}
+        - name: LOG_TZ
+          value: {{ quote .Values.env.logTz }}
+        - name: LOOP_NODE_MAX_COUNT
+          value: {{ quote .Values.env.loopNodeMaxCount }}
+        - name: MAIL_DEFAULT_SEND_FROM
+          value: {{ quote .Values.env.mailDefaultSendFrom }}
+        - name: MAIL_TYPE
+          value: {{ quote .Values.env.mailType }}
+        - name: MARKETPLACE_API_URL
+          value: {{ quote .Values.env.marketplaceApiUrl }}
+        - name: MARKETPLACE_ENABLED
+          value: {{ quote .Values.env.marketplaceEnabled }}
+        - name: MAX_SUBMIT_COUNT
+          value: {{ quote .Values.env.maxSubmitCount }}
+        - name: MAX_VARIABLE_SIZE
+          value: {{ quote .Values.env.maxVariableSize }}
+        - name: MIGRATION_ENABLED
+          value: {{ quote .Values.env.migrationEnabled }}
+        - name: MILVUS_AUTHORIZATION_ENABLED
+          value: {{ quote .Values.env.milvusAuthorizationEnabled }}
+        - name: MILVUS_ENABLE_HYBRID_SEARCH
+          value: {{ quote .Values.env.milvusEnableHybridSearch }}
+        - name: MILVUS_PASSWORD
+          value: {{ quote .Values.env.milvusPassword }}
+        - name: MILVUS_TOKEN
+          value: {{ quote .Values.env.milvusToken }}
+        - name: MILVUS_URI
+          value: {{ quote .Values.env.milvusUri }}
+        - name: MILVUS_USER
+          value: {{ quote .Values.env.milvusUser }}
+        - name: MINIO_ACCESS_KEY
+          value: {{ quote .Values.env.minioAccessKey }}
+        - name: MINIO_ADDRESS
+          value: {{ quote .Values.env.minioAddress }}
+        - name: MINIO_SECRET_KEY
+          value: {{ quote .Values.env.minioSecretKey }}
+        - name: MODE
+          value: api
+        - name: MULTIMODAL_SEND_FORMAT
+          value: {{ quote .Values.env.multimodalSendFormat }}
+        - name: MYSCALE_DATABASE
+          value: {{ quote .Values.env.myscaleDatabase }}
+        - name: MYSCALE_FTS_PARAMS
+          value: {{ quote .Values.env.myscaleFtsParams }}
+        - name: MYSCALE_HOST
+          value: {{ quote .Values.env.myscaleHost }}
+        - name: MYSCALE_PASSWORD
+          value: {{ quote .Values.env.myscalePassword }}
+        - name: MYSCALE_PORT
+          value: {{ quote .Values.env.myscalePort }}
+        - name: MYSCALE_USER
+          value: {{ quote .Values.env.myscaleUser }}
+        - name: NGINX_CLIENT_MAX_BODY_SIZE
+          value: {{ quote .Values.env.nginxClientMaxBodySize }}
+        - name: NGINX_ENABLE_CERTBOT_CHALLENGE
+          value: {{ quote .Values.env.nginxEnableCertbotChallenge }}
+        - name: NGINX_HTTPS_ENABLED
+          value: {{ quote .Values.env.nginxHttpsEnabled }}
+        - name: NGINX_KEEPALIVE_TIMEOUT
+          value: {{ quote .Values.env.nginxKeepaliveTimeout }}
+        - name: NGINX_PORT
+          value: {{ quote .Values.env.nginxPort }}
+        - name: NGINX_PROXY_READ_TIMEOUT
+          value: {{ quote .Values.env.nginxProxyReadTimeout }}
+        - name: NGINX_PROXY_SEND_TIMEOUT
+          value: {{ quote .Values.env.nginxProxySendTimeout }}
+        - name: NGINX_SERVER_NAME
+          value: {{ quote .Values.env.nginxServerName }}
+        - name: NGINX_SSL_CERT_FILENAME
+          value: {{ quote .Values.env.nginxSslCertFilename }}
+        - name: NGINX_SSL_CERT_KEY_FILENAME
+          value: {{ quote .Values.env.nginxSslCertKeyFilename }}
+        - name: NGINX_SSL_PORT
+          value: {{ quote .Values.env.nginxSslPort }}
+        - name: NGINX_SSL_PROTOCOLS
+          value: {{ quote .Values.env.nginxSslProtocols }}
+        - name: NGINX_WORKER_PROCESSES
+          value: {{ quote .Values.env.nginxWorkerProcesses }}
+        - name: NOTION_CLIENT_ID
+          value: {{ quote .Values.env.notionClientId }}
+        - name: NOTION_CLIENT_SECRET
+          value: {{ quote .Values.env.notionClientSecret }}
+        - name: NOTION_INTEGRATION_TYPE
+          value: {{ quote .Values.env.notionIntegrationType }}
+        - name: NOTION_INTERNAL_SECRET
+          value: {{ quote .Values.env.notionInternalSecret }}
+        - name: OCEANBASE_CLUSTER_NAME
+          value: {{ quote .Values.env.oceanbaseClusterName }}
+        - name: OCEANBASE_MEMORY_LIMIT
+          value: {{ quote .Values.env.oceanbaseMemoryLimit }}
+        - name: OCEANBASE_VECTOR_DATABASE
+          value: {{ quote .Values.env.oceanbaseVectorDatabase }}
+        - name: OCEANBASE_VECTOR_HOST
+          value: {{ quote .Values.env.oceanbaseVectorHost }}
+        - name: OCEANBASE_VECTOR_PASSWORD
+          value: {{ quote .Values.env.oceanbaseVectorPassword }}
+        - name: OCEANBASE_VECTOR_PORT
+          value: {{ quote .Values.env.oceanbaseVectorPort }}
+        - name: OCEANBASE_VECTOR_USER
+          value: {{ quote .Values.env.oceanbaseVectorUser }}
+        - name: OCI_ACCESS_KEY
+          value: {{ quote .Values.env.ociAccessKey }}
+        - name: OCI_BUCKET_NAME
+          value: {{ quote .Values.env.ociBucketName }}
+        - name: OCI_ENDPOINT
+          value: {{ quote .Values.env.ociEndpoint }}
+        - name: OCI_REGION
+          value: {{ quote .Values.env.ociRegion }}
+        - name: OCI_SECRET_KEY
+          value: {{ quote .Values.env.ociSecretKey }}
+        - name: OPENAI_API_BASE
+          value: {{ quote .Values.env.openaiApiBase }}
+        - name: OPENDAL_FS_ROOT
+          value: {{ quote .Values.env.opendalFsRoot }}
+        - name: OPENDAL_SCHEME
+          value: {{ quote .Values.env.opendalScheme }}
+        - name: OPENSEARCH_BOOTSTRAP_MEMORY_LOCK
+          value: {{ quote .Values.env.opensearchBootstrapMemoryLock }}
+        - name: OPENSEARCH_DISCOVERY_TYPE
+          value: {{ quote .Values.env.opensearchDiscoveryType }}
+        - name: OPENSEARCH_HOST
+          value: {{ quote .Values.env.opensearchHost }}
+        - name: OPENSEARCH_INITIAL_ADMIN_PASSWORD
+          value: {{ quote .Values.env.opensearchInitialAdminPassword }}
+        - name: OPENSEARCH_JAVA_OPTS_MAX
+          value: {{ quote .Values.env.opensearchJavaOptsMax }}
+        - name: OPENSEARCH_JAVA_OPTS_MIN
+          value: {{ quote .Values.env.opensearchJavaOptsMin }}
+        - name: OPENSEARCH_MEMLOCK_HARD
+          value: {{ quote .Values.env.opensearchMemlockHard }}
+        - name: OPENSEARCH_MEMLOCK_SOFT
+          value: {{ quote .Values.env.opensearchMemlockSoft }}
+        - name: OPENSEARCH_NOFILE_HARD
+          value: {{ quote .Values.env.opensearchNofileHard }}
+        - name: OPENSEARCH_NOFILE_SOFT
+          value: {{ quote .Values.env.opensearchNofileSoft }}
+        - name: OPENSEARCH_PASSWORD
+          value: {{ quote .Values.env.opensearchPassword }}
+        - name: OPENSEARCH_PORT
+          value: {{ quote .Values.env.opensearchPort }}
+        - name: OPENSEARCH_SECURE
+          value: {{ quote .Values.env.opensearchSecure }}
+        - name: OPENSEARCH_USER
+          value: {{ quote .Values.env.opensearchUser }}
+        - name: ORACLE_CHARACTERSET
+          value: {{ quote .Values.env.oracleCharacterset }}
+        - name: ORACLE_CONFIG_DIR
+          value: {{ quote .Values.env.oracleConfigDir }}
+        - name: ORACLE_DSN
+          value: {{ quote .Values.env.oracleDsn }}
+        - name: ORACLE_IS_AUTONOMOUS
+          value: {{ quote .Values.env.oracleIsAutonomous }}
+        - name: ORACLE_PASSWORD
+          value: {{ quote .Values.env.oraclePassword }}
+        - name: ORACLE_PWD
+          value: {{ quote .Values.env.oraclePwd }}
+        - name: ORACLE_USER
+          value: {{ quote .Values.env.oracleUser }}
+        - name: ORACLE_WALLET_LOCATION
+          value: {{ quote .Values.env.oracleWalletLocation }}
+        - name: ORACLE_WALLET_PASSWORD
+          value: {{ quote .Values.env.oracleWalletPassword }}
+        - name: PGDATA
+          value: {{ quote .Values.env.pgdata }}
+        - name: PGUSER
+          value: {{ quote .Values.env.pguser }}
+        - name: PGVECTOR_DATABASE
+          value: {{ quote .Values.env.pgvectorDatabase }}
+        - name: PGVECTOR_HOST
+          value: {{ quote .Values.env.pgvectorHost }}
+        - name: PGVECTOR_MAX_CONNECTION
+          value: {{ quote .Values.env.pgvectorMaxConnection }}
+        - name: PGVECTOR_MIN_CONNECTION
+          value: {{ quote .Values.env.pgvectorMinConnection }}
+        - name: PGVECTOR_PASSWORD
+          value: {{ quote .Values.env.pgvectorPassword }}
+        - name: PGVECTOR_PGDATA
+          value: {{ quote .Values.env.pgvectorPgdata }}
+        - name: PGVECTOR_PGUSER
+          value: {{ quote .Values.env.pgvectorPguser }}
+        - name: PGVECTOR_PORT
+          value: {{ quote .Values.env.pgvectorPort }}
+        - name: PGVECTOR_POSTGRES_DB
+          value: {{ quote .Values.env.pgvectorPostgresDb }}
+        - name: PGVECTOR_POSTGRES_PASSWORD
+          value: {{ quote .Values.env.pgvectorPostgresPassword }}
+        - name: PGVECTOR_USER
+          value: {{ quote .Values.env.pgvectorUser }}
+        - name: PGVECTO_RS_DATABASE
+          value: {{ quote .Values.env.pgvectoRsDatabase }}
+        - name: PGVECTO_RS_HOST
+          value: {{ quote .Values.env.pgvectoRsHost }}
+        - name: PGVECTO_RS_PASSWORD
+          value: {{ quote .Values.env.pgvectoRsPassword }}
+        - name: PGVECTO_RS_PORT
+          value: {{ quote .Values.env.pgvectoRsPort }}
+        - name: PGVECTO_RS_USER
+          value: {{ quote .Values.env.pgvectoRsUser }}
+        - name: PIP_MIRROR_URL
+          value: {{ quote .Values.env.pipMirrorUrl }}
+        - name: PLUGIN_DAEMON_KEY
+          value: {{ quote .Values.env.pluginDaemonKey }}
+        - name: PLUGIN_DAEMON_PORT
+          value: {{ quote .Values.env.pluginDaemonPort }}
+        - name: PLUGIN_DAEMON_URL
+          value: {{ quote .Values.env.pluginDaemonUrl }}
+        - name: PLUGIN_DEBUGGING_HOST
+          value: {{ quote .Values.env.pluginDebuggingHost }}
+        - name: PLUGIN_DEBUGGING_PORT
+          value: {{ quote .Values.env.pluginDebuggingPort }}
+        - name: PLUGIN_DIFY_INNER_API_KEY
+          value: {{ quote .Values.env.pluginDifyInnerApiKey }}
+        - name: PLUGIN_DIFY_INNER_API_URL
+          value: {{ quote .Values.env.pluginDifyInnerApiUrl }}
+        - name: PLUGIN_MAX_EXECUTION_TIMEOUT
+          value: {{ quote .Values.env.pluginMaxExecutionTimeout }}
+        - name: PLUGIN_MAX_PACKAGE_SIZE
+          value: {{ quote .Values.env.pluginMaxPackageSize }}
+        - name: PLUGIN_PPROF_ENABLED
+          value: {{ quote .Values.env.pluginPprofEnabled }}
+        - name: PLUGIN_PYTHON_ENV_INIT_TIMEOUT
+          value: {{ quote .Values.env.pluginPythonEnvInitTimeout }}
+        - name: PLUGIN_REMOTE_INSTALL_HOST
+          value: {{ quote .Values.env.pluginRemoteInstallHost }}
+        - name: PLUGIN_REMOTE_INSTALL_PORT
+          value: {{ quote .Values.env.pluginRemoteInstallPort }}
+        - name: POSITION_PROVIDER_EXCLUDES
+          value: {{ quote .Values.env.positionProviderExcludes }}
+        - name: POSITION_PROVIDER_INCLUDES
+          value: {{ quote .Values.env.positionProviderIncludes }}
+        - name: POSITION_PROVIDER_PINS
+          value: {{ quote .Values.env.positionProviderPins }}
+        - name: POSITION_TOOL_EXCLUDES
+          value: {{ quote .Values.env.positionToolExcludes }}
+        - name: POSITION_TOOL_INCLUDES
+          value: {{ quote .Values.env.positionToolIncludes }}
+        - name: POSITION_TOOL_PINS
+          value: {{ quote .Values.env.positionToolPins }}
+        - name: POSTGRES_DB
+          value: {{ quote .Values.env.postgresDb }}
+        - name: POSTGRES_EFFECTIVE_CACHE_SIZE
+          value: {{ quote .Values.env.postgresEffectiveCacheSize }}
+        - name: POSTGRES_MAINTENANCE_WORK_MEM
+          value: {{ quote .Values.env.postgresMaintenanceWorkMem }}
+        - name: POSTGRES_MAX_CONNECTIONS
+          value: {{ quote .Values.env.postgresMaxConnections }}
+        - name: POSTGRES_PASSWORD
+          value: {{ quote .Values.env.postgresPassword }}
+        - name: POSTGRES_SHARED_BUFFERS
+          value: {{ quote .Values.env.postgresSharedBuffers }}
+        - name: POSTGRES_WORK_MEM
+          value: {{ quote .Values.env.postgresWorkMem }}
+        - name: PROMPT_GENERATION_MAX_TOKENS
+          value: {{ quote .Values.env.promptGenerationMaxTokens }}
+        - name: QDRANT_API_KEY
+          value: {{ quote .Values.env.qdrantApiKey }}
+        - name: QDRANT_CLIENT_TIMEOUT
+          value: {{ quote .Values.env.qdrantClientTimeout }}
+        - name: QDRANT_GRPC_ENABLED
+          value: {{ quote .Values.env.qdrantGrpcEnabled }}
+        - name: QDRANT_GRPC_PORT
+          value: {{ quote .Values.env.qdrantGrpcPort }}
+        - name: QDRANT_URL
+          value: {{ quote .Values.env.qdrantUrl }}
+        - name: REDIS_CLUSTERS
+          value: {{ quote .Values.env.redisClusters }}
+        - name: REDIS_CLUSTERS_PASSWORD
+          value: {{ quote .Values.env.redisClustersPassword }}
+        - name: REDIS_DB
+          value: {{ quote .Values.env.redisDb }}
+        - name: REDIS_HOST
+          value: {{ quote .Values.env.redisHost }}
+        - name: REDIS_PASSWORD
+          value: {{ quote .Values.env.redisPassword }}
+        - name: REDIS_PORT
+          value: {{ quote .Values.env.redisPort }}
+        - name: REDIS_SENTINELS
+          value: {{ quote .Values.env.redisSentinels }}
+        - name: REDIS_SENTINEL_PASSWORD
+          value: {{ quote .Values.env.redisSentinelPassword }}
+        - name: REDIS_SENTINEL_SERVICE_NAME
+          value: {{ quote .Values.env.redisSentinelServiceName }}
+        - name: REDIS_SENTINEL_SOCKET_TIMEOUT
+          value: {{ quote .Values.env.redisSentinelSocketTimeout }}
+        - name: REDIS_SENTINEL_USERNAME
+          value: {{ quote .Values.env.redisSentinelUsername }}
+        - name: REDIS_USERNAME
+          value: {{ quote .Values.env.redisUsername }}
+        - name: REDIS_USE_CLUSTERS
+          value: {{ quote .Values.env.redisUseClusters }}
+        - name: REDIS_USE_SENTINEL
+          value: {{ quote .Values.env.redisUseSentinel }}
+        - name: REDIS_USE_SSL
+          value: {{ quote .Values.env.redisUseSsl }}
+        - name: REFRESH_TOKEN_EXPIRE_DAYS
+          value: {{ quote .Values.env.refreshTokenExpireDays }}
+        - name: RELYT_DATABASE
+          value: {{ quote .Values.env.relytDatabase }}
+        - name: RELYT_HOST
+          value: {{ quote .Values.env.relytHost }}
+        - name: RELYT_PASSWORD
+          value: {{ quote .Values.env.relytPassword }}
+        - name: RELYT_PORT
+          value: {{ quote .Values.env.relytPort }}
+        - name: RELYT_USER
+          value: {{ quote .Values.env.relytUser }}
+        - name: RESEND_API_KEY
+          value: {{ quote .Values.env.resendApiKey }}
+        - name: RESEND_API_URL
+          value: {{ quote .Values.env.resendApiUrl }}
+        - name: RESET_PASSWORD_TOKEN_EXPIRY_MINUTES
+          value: {{ quote .Values.env.resetPasswordTokenExpiryMinutes }}
+        - name: S3_ACCESS_KEY
+          value: {{ quote .Values.env.s3AccessKey }}
+        - name: S3_BUCKET_NAME
+          value: {{ quote .Values.env.s3BucketName }}
+        - name: S3_ENDPOINT
+          value: {{ quote .Values.env.s3Endpoint }}
+        - name: S3_REGION
+          value: {{ quote .Values.env.s3Region }}
+        - name: S3_SECRET_KEY
+          value: {{ quote .Values.env.s3SecretKey }}
+        - name: S3_USE_AWS_MANAGED_IAM
+          value: {{ quote .Values.env.s3UseAwsManagedIam }}
+        - name: SANDBOX_API_KEY
+          value: {{ quote .Values.env.sandboxApiKey }}
+        - name: SANDBOX_ENABLE_NETWORK
+          value: {{ quote .Values.env.sandboxEnableNetwork }}
+        - name: SANDBOX_GIN_MODE
+          value: {{ quote .Values.env.sandboxGinMode }}
+        - name: SANDBOX_HTTPS_PROXY
+          value: {{ quote .Values.env.sandboxHttpsProxy }}
+        - name: SANDBOX_HTTP_PROXY
+          value: {{ quote .Values.env.sandboxHttpProxy }}
+        - name: SANDBOX_PORT
+          value: {{ quote .Values.env.sandboxPort }}
+        - name: SANDBOX_WORKER_TIMEOUT
+          value: {{ quote .Values.env.sandboxWorkerTimeout }}
+        - name: SCARF_NO_ANALYTICS
+          value: {{ quote .Values.env.scarfNoAnalytics }}
+        - name: SECRET_KEY
+          value: {{ quote .Values.env.secretKey }}
+        - name: SENTRY_DSN
+          value: {{ quote .Values.env.sentryDsn }}
+        - name: SENTRY_PROFILES_SAMPLE_RATE
+          value: {{ quote .Values.env.sentryProfilesSampleRate }}
+        - name: SENTRY_TRACES_SAMPLE_RATE
+          value: {{ quote .Values.env.sentryTracesSampleRate }}
+        - name: SERVER_WORKER_AMOUNT
+          value: {{ quote .Values.env.serverWorkerAmount }}
+        - name: SERVER_WORKER_CLASS
+          value: {{ quote .Values.env.serverWorkerClass }}
+        - name: SERVER_WORKER_CONNECTIONS
+          value: {{ quote .Values.env.serverWorkerConnections }}
+        - name: SERVICE_API_URL
+          value: {{ quote .Values.env.serviceApiUrl }}
+        - name: SMTP_OPPORTUNISTIC_TLS
+          value: {{ quote .Values.env.smtpOpportunisticTls }}
+        - name: SMTP_PASSWORD
+          value: {{ quote .Values.env.smtpPassword }}
+        - name: SMTP_PORT
+          value: {{ quote .Values.env.smtpPort }}
+        - name: SMTP_SERVER
+          value: {{ quote .Values.env.smtpServer }}
+        - name: SMTP_USERNAME
+          value: {{ quote .Values.env.smtpUsername }}
+        - name: SMTP_USE_TLS
+          value: {{ quote .Values.env.smtpUseTls }}
+        - name: SQLALCHEMY_ECHO
+          value: {{ quote .Values.env.sqlalchemyEcho }}
+        - name: SQLALCHEMY_POOL_RECYCLE
+          value: {{ quote .Values.env.sqlalchemyPoolRecycle }}
+        - name: SQLALCHEMY_POOL_SIZE
+          value: {{ quote .Values.env.sqlalchemyPoolSize }}
+        - name: SSRF_COREDUMP_DIR
+          value: {{ quote .Values.env.ssrfCoredumpDir }}
+        - name: SSRF_DEFAULT_CONNECT_TIME_OUT
+          value: {{ quote .Values.env.ssrfDefaultConnectTimeOut }}
+        - name: SSRF_DEFAULT_READ_TIME_OUT
+          value: {{ quote .Values.env.ssrfDefaultReadTimeOut }}
+        - name: SSRF_DEFAULT_TIME_OUT
+          value: {{ quote .Values.env.ssrfDefaultTimeOut }}
+        - name: SSRF_DEFAULT_WRITE_TIME_OUT
+          value: {{ quote .Values.env.ssrfDefaultWriteTimeOut }}
+        - name: SSRF_HTTP_PORT
+          value: {{ quote .Values.env.ssrfHttpPort }}
+        - name: SSRF_PROXY_HTTPS_URL
+          value: {{ quote .Values.env.ssrfProxyHttpsUrl }}
+        - name: SSRF_PROXY_HTTP_URL
+          value: {{ quote .Values.env.ssrfProxyHttpUrl }}
+        - name: SSRF_REVERSE_PROXY_PORT
+          value: {{ quote .Values.env.ssrfReverseProxyPort }}
+        - name: SSRF_SANDBOX_HOST
+          value: {{ quote .Values.env.ssrfSandboxHost }}
+        - name: STORAGE_TYPE
+          value: {{ quote .Values.env.storageType }}
+        - name: SUPABASE_API_KEY
+          value: {{ quote .Values.env.supabaseApiKey }}
+        - name: SUPABASE_BUCKET_NAME
+          value: {{ quote .Values.env.supabaseBucketName }}
+        - name: SUPABASE_URL
+          value: {{ quote .Values.env.supabaseUrl }}
+        - name: TEMPLATE_TRANSFORM_MAX_LENGTH
+          value: {{ quote .Values.env.templateTransformMaxLength }}
+        - name: TENCENT_COS_BUCKET_NAME
+          value: {{ quote .Values.env.tencentCosBucketName }}
+        - name: TENCENT_COS_REGION
+          value: {{ quote .Values.env.tencentCosRegion }}
+        - name: TENCENT_COS_SCHEME
+          value: {{ quote .Values.env.tencentCosScheme }}
+        - name: TENCENT_COS_SECRET_ID
+          value: {{ quote .Values.env.tencentCosSecretId }}
+        - name: TENCENT_COS_SECRET_KEY
+          value: {{ quote .Values.env.tencentCosSecretKey }}
+        - name: TENCENT_VECTOR_DB_API_KEY
+          value: {{ quote .Values.env.tencentVectorDbApiKey }}
+        - name: TENCENT_VECTOR_DB_DATABASE
+          value: {{ quote .Values.env.tencentVectorDbDatabase }}
+        - name: TENCENT_VECTOR_DB_REPLICAS
+          value: {{ quote .Values.env.tencentVectorDbReplicas }}
+        - name: TENCENT_VECTOR_DB_SHARD
+          value: {{ quote .Values.env.tencentVectorDbShard }}
+        - name: TENCENT_VECTOR_DB_TIMEOUT
+          value: {{ quote .Values.env.tencentVectorDbTimeout }}
+        - name: TENCENT_VECTOR_DB_URL
+          value: {{ quote .Values.env.tencentVectorDbUrl }}
+        - name: TENCENT_VECTOR_DB_USERNAME
+          value: {{ quote .Values.env.tencentVectorDbUsername }}
+        - name: TEXT_GENERATION_TIMEOUT_MS
+          value: {{ quote .Values.env.textGenerationTimeoutMs }}
+        - name: TIDB_API_URL
+          value: {{ quote .Values.env.tidbApiUrl }}
+        - name: TIDB_IAM_API_URL
+          value: {{ quote .Values.env.tidbIamApiUrl }}
+        - name: TIDB_ON_QDRANT_API_KEY
+          value: {{ quote .Values.env.tidbOnQdrantApiKey }}
+        - name: TIDB_ON_QDRANT_CLIENT_TIMEOUT
+          value: {{ quote .Values.env.tidbOnQdrantClientTimeout }}
+        - name: TIDB_ON_QDRANT_GRPC_ENABLED
+          value: {{ quote .Values.env.tidbOnQdrantGrpcEnabled }}
+        - name: TIDB_ON_QDRANT_GRPC_PORT
+          value: {{ quote .Values.env.tidbOnQdrantGrpcPort }}
+        - name: TIDB_ON_QDRANT_URL
+          value: {{ quote .Values.env.tidbOnQdrantUrl }}
+        - name: TIDB_PRIVATE_KEY
+          value: {{ quote .Values.env.tidbPrivateKey }}
+        - name: TIDB_PROJECT_ID
+          value: {{ quote .Values.env.tidbProjectId }}
+        - name: TIDB_PUBLIC_KEY
+          value: {{ quote .Values.env.tidbPublicKey }}
+        - name: TIDB_REGION
+          value: {{ quote .Values.env.tidbRegion }}
+        - name: TIDB_SPEND_LIMIT
+          value: {{ quote .Values.env.tidbSpendLimit }}
+        - name: TIDB_VECTOR_DATABASE
+          value: {{ quote .Values.env.tidbVectorDatabase }}
+        - name: TIDB_VECTOR_HOST
+          value: {{ quote .Values.env.tidbVectorHost }}
+        - name: TIDB_VECTOR_PASSWORD
+          value: {{ quote .Values.env.tidbVectorPassword }}
+        - name: TIDB_VECTOR_PORT
+          value: {{ quote .Values.env.tidbVectorPort }}
+        - name: TIDB_VECTOR_USER
+          value: {{ quote .Values.env.tidbVectorUser }}
+        - name: TOP_K_MAX_VALUE
+          value: {{ quote .Values.env.topKMaxValue }}
+        - name: UNSTRUCTURED_API_KEY
+          value: {{ quote .Values.env.unstructuredApiKey }}
+        - name: UNSTRUCTURED_API_URL
+          value: {{ quote .Values.env.unstructuredApiUrl }}
+        - name: UPLOAD_AUDIO_FILE_SIZE_LIMIT
+          value: {{ quote .Values.env.uploadAudioFileSizeLimit }}
+        - name: UPLOAD_FILE_BATCH_LIMIT
+          value: {{ quote .Values.env.uploadFileBatchLimit }}
+        - name: UPLOAD_FILE_SIZE_LIMIT
+          value: {{ quote .Values.env.uploadFileSizeLimit }}
+        - name: UPLOAD_IMAGE_FILE_SIZE_LIMIT
+          value: {{ quote .Values.env.uploadImageFileSizeLimit }}
+        - name: UPLOAD_VIDEO_FILE_SIZE_LIMIT
+          value: {{ quote .Values.env.uploadVideoFileSizeLimit }}
+        - name: UPSTASH_VECTOR_TOKEN
+          value: {{ quote .Values.env.upstashVectorToken }}
+        - name: UPSTASH_VECTOR_URL
+          value: {{ quote .Values.env.upstashVectorUrl }}
+        - name: VECTOR_STORE
+          value: {{ quote .Values.env.vectorStore }}
+        - name: VIKINGDB_ACCESS_KEY
+          value: {{ quote .Values.env.vikingdbAccessKey }}
+        - name: VIKINGDB_CONNECTION_TIMEOUT
+          value: {{ quote .Values.env.vikingdbConnectionTimeout }}
+        - name: VIKINGDB_HOST
+          value: {{ quote .Values.env.vikingdbHost }}
+        - name: VIKINGDB_REGION
+          value: {{ quote .Values.env.vikingdbRegion }}
+        - name: VIKINGDB_SCHEMA
+          value: {{ quote .Values.env.vikingdbSchema }}
+        - name: VIKINGDB_SECRET_KEY
+          value: {{ quote .Values.env.vikingdbSecretKey }}
+        - name: VIKINGDB_SOCKET_TIMEOUT
+          value: {{ quote .Values.env.vikingdbSocketTimeout }}
+        - name: VOLCENGINE_TOS_ACCESS_KEY
+          value: {{ quote .Values.env.volcengineTosAccessKey }}
+        - name: VOLCENGINE_TOS_BUCKET_NAME
+          value: {{ quote .Values.env.volcengineTosBucketName }}
+        - name: VOLCENGINE_TOS_ENDPOINT
+          value: {{ quote .Values.env.volcengineTosEndpoint }}
+        - name: VOLCENGINE_TOS_REGION
+          value: {{ quote .Values.env.volcengineTosRegion }}
+        - name: VOLCENGINE_TOS_SECRET_KEY
+          value: {{ quote .Values.env.volcengineTosSecretKey }}
+        - name: WEAVIATE_API_KEY
+          value: {{ quote .Values.env.weaviateApiKey }}
+        - name: WEAVIATE_AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED
+          value: {{ quote .Values.env.weaviateAuthenticationAnonymousAccessEnabled }}
+        - name: WEAVIATE_AUTHENTICATION_APIKEY_ALLOWED_KEYS
+          value: {{ quote .Values.env.weaviateAuthenticationApikeyAllowedKeys }}
+        - name: WEAVIATE_AUTHENTICATION_APIKEY_ENABLED
+          value: {{ quote .Values.env.weaviateAuthenticationApikeyEnabled }}
+        - name: WEAVIATE_AUTHENTICATION_APIKEY_USERS
+          value: {{ quote .Values.env.weaviateAuthenticationApikeyUsers }}
+        - name: WEAVIATE_AUTHORIZATION_ADMINLIST_ENABLED
+          value: {{ quote .Values.env.weaviateAuthorizationAdminlistEnabled }}
+        - name: WEAVIATE_AUTHORIZATION_ADMINLIST_USERS
+          value: {{ quote .Values.env.weaviateAuthorizationAdminlistUsers }}
+        - name: WEAVIATE_CLUSTER_HOSTNAME
+          value: {{ quote .Values.env.weaviateClusterHostname }}
+        - name: WEAVIATE_DEFAULT_VECTORIZER_MODULE
+          value: {{ quote .Values.env.weaviateDefaultVectorizerModule }}
+        - name: WEAVIATE_ENDPOINT
+          value: {{ quote .Values.env.weaviateEndpoint }}
+        - name: WEAVIATE_PERSISTENCE_DATA_PATH
+          value: {{ quote .Values.env.weaviatePersistenceDataPath }}
+        - name: WEAVIATE_QUERY_DEFAULTS_LIMIT
+          value: {{ quote .Values.env.weaviateQueryDefaultsLimit }}
+        - name: WEB_API_CORS_ALLOW_ORIGINS
+          value: {{ quote .Values.env.webApiCorsAllowOrigins }}
+        - name: WEB_SENTRY_DSN
+          value: {{ quote .Values.env.webSentryDsn }}
+        - name: WORKFLOW_CALL_MAX_DEPTH
+          value: {{ quote .Values.env.workflowCallMaxDepth }}
+        - name: WORKFLOW_FILE_UPLOAD_LIMIT
+          value: {{ quote .Values.env.workflowFileUploadLimit }}
+        - name: WORKFLOW_MAX_EXECUTION_STEPS
+          value: {{ quote .Values.env.workflowMaxExecutionSteps }}
+        - name: WORKFLOW_MAX_EXECUTION_TIME
+          value: {{ quote .Values.env.workflowMaxExecutionTime }}
+        - name: WORKFLOW_PARALLEL_DEPTH_LIMIT
+          value: {{ quote .Values.env.workflowParallelDepthLimit }}
+        image: {{ .Values.api.image.repository }}:{{ .Values.api.image.tag | default .Chart.AppVersion }}
+        name: api
+        imagePullPolicy: {{ .Values.api.image.pullPolicy | default "IfNotPresent" | quote }}
+        resources: {}
+        volumeMounts:
+        - mountPath: /app/api/storage
+          name: api-storage
+      restartPolicy: Always
+      volumes:
+      - name: api-storage
+        persistentVolumeClaim:
+          claimName: {{ include "dify.fullname" . }}-api-storage
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "dify.fullname" . }}-db
+  labels:
+    app: db
+  {{- include "dify.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.db.replicas }}
+  selector:
+    matchLabels:
+      app: db
+    {{- include "dify.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        app: db
+      {{- include "dify.selectorLabels" . | nindent 8 }}
+    spec:
+      containers:
+      - env:
+        - name: PGDATA
+          value: {{ quote .Values.env.pgdata }}
+        - name: PGUSER
+          value: {{ quote .Values.env.pguser }}
+        - name: POSTGRES_DB
+          value: {{ quote .Values.env.postgresDb }}
+        - name: POSTGRES_PASSWORD
+          value: {{ quote .Values.env.postgresPassword }}
+        image: {{ .Values.db.image.repository }}:{{ .Values.db.image.tag | default .Chart.AppVersion }}
+        name: db
+        imagePullPolicy: {{ .Values.db.image.pullPolicy | default "IfNotPresent" | quote }}
+        {{/*args: {{- toYaml .Values.db.args | nindent 8 }}*/}}
+        livenessProbe:
+          exec:
+            command:
+            - pg_isready
+          failureThreshold: 30
+          periodSeconds: 1
+          timeoutSeconds: 3
+        ports:
+        - containerPort: 5432
+          protocol: TCP
+        resources: {}
+        volumeMounts:
+        - mountPath: /var/lib/postgresql/data
+          name: db-storage
+      restartPolicy: Always
+      volumes:
+      - name: db-storage
+        persistentVolumeClaim:
+          claimName: {{ include "dify.fullname" . }}-db-storage
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "dify.fullname" . }}-nginx
+  labels:
+    app: nginx
+  {{- include "dify.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.nginx.replicas }}
+  selector:
+    matchLabels:
+      app: nginx
+    {{- include "dify.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        app: nginx
+      {{- include "dify.selectorLabels" . | nindent 8 }}
+    spec:
+      automountServiceAccountToken: false
+      containers:
+        - image: {{ .Values.nginx.image.repository }}:{{ .Values.nginx.image.tag | default .Chart.AppVersion }}
+          imagePullPolicy: {{ .Values.nginx.image.pullPolicy }}
+          name: dify-nginx
+          ports:
+            - containerPort: 80
+          volumeMounts:
+            - mountPath: /etc/nginx/nginx.conf
+              name: dify-nginx
+              subPath: nginx.conf
+            - mountPath: /etc/nginx/conf.d
+              name: dify-nginx-config
+      volumes:
+        - configMap:
+            name: {{ include "dify.fullname" . }}-nginx
+          name: dify-nginx
+        - emptyDir: {}
+          name: dify-nginx-config
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "dify.fullname" . }}-plugin-daemon
+  labels:
+    app: plugin-daemon
+  {{- include "dify.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.pluginDaemon.replicas }}
+  strategy:
+    type: {{ .Values.pluginDaemon.strategy.type | quote }}
+  selector:
+    matchLabels:
+      app: plugin-daemon
+    {{- include "dify.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        app: plugin-daemon
+      {{- include "dify.selectorLabels" . | nindent 8 }}
+    spec:
+      containers:
+      - env:
+        - name: ACCESS_TOKEN_EXPIRE_MINUTES
+          value: {{ quote .Values.env.accessTokenExpireMinutes }}
+        - name: ALIYUN_OSS_ACCESS_KEY
+          value: {{ quote .Values.env.aliyunOssAccessKey }}
+        - name: ALIYUN_OSS_AUTH_VERSION
+          value: {{ quote .Values.env.aliyunOssAuthVersion }}
+        - name: ALIYUN_OSS_BUCKET_NAME
+          value: {{ quote .Values.env.aliyunOssBucketName }}
+        - name: ALIYUN_OSS_ENDPOINT
+          value: {{ quote .Values.env.aliyunOssEndpoint }}
+        - name: ALIYUN_OSS_PATH
+          value: {{ quote .Values.env.aliyunOssPath }}
+        - name: ALIYUN_OSS_REGION
+          value: {{ quote .Values.env.aliyunOssRegion }}
+        - name: ALIYUN_OSS_SECRET_KEY
+          value: {{ quote .Values.env.aliyunOssSecretKey }}
+        - name: ANALYTICDB_ACCOUNT
+          value: {{ quote .Values.env.analyticdbAccount }}
+        - name: ANALYTICDB_HOST
+          value: {{ quote .Values.env.analyticdbHost }}
+        - name: ANALYTICDB_INSTANCE_ID
+          value: {{ quote .Values.env.analyticdbInstanceId }}
+        - name: ANALYTICDB_KEY_ID
+          value: {{ quote .Values.env.analyticdbKeyId }}
+        - name: ANALYTICDB_KEY_SECRET
+          value: {{ quote .Values.env.analyticdbKeySecret }}
+        - name: ANALYTICDB_MAX_CONNECTION
+          value: {{ quote .Values.env.analyticdbMaxConnection }}
+        - name: ANALYTICDB_MIN_CONNECTION
+          value: {{ quote .Values.env.analyticdbMinConnection }}
+        - name: ANALYTICDB_NAMESPACE
+          value: {{ quote .Values.env.analyticdbNamespace }}
+        - name: ANALYTICDB_NAMESPACE_PASSWORD
+          value: {{ quote .Values.env.analyticdbNamespacePassword }}
+        - name: ANALYTICDB_PASSWORD
+          value: {{ quote .Values.env.analyticdbPassword }}
+        - name: ANALYTICDB_PORT
+          value: {{ quote .Values.env.analyticdbPort }}
+        - name: ANALYTICDB_REGION_ID
+          value: {{ quote .Values.env.analyticdbRegionId }}
+        - name: API_SENTRY_DSN
+          value: {{ quote .Values.env.apiSentryDsn }}
+        - name: API_SENTRY_PROFILES_SAMPLE_RATE
+          value: {{ quote .Values.env.apiSentryProfilesSampleRate }}
+        - name: API_SENTRY_TRACES_SAMPLE_RATE
+          value: {{ quote .Values.env.apiSentryTracesSampleRate }}
+        - name: API_TOOL_DEFAULT_CONNECT_TIMEOUT
+          value: {{ quote .Values.env.apiToolDefaultConnectTimeout }}
+        - name: API_TOOL_DEFAULT_READ_TIMEOUT
+          value: {{ quote .Values.env.apiToolDefaultReadTimeout }}
+        - name: APP_API_URL
+          value: {{ quote .Values.env.appApiUrl }}
+        - name: APP_MAX_ACTIVE_REQUESTS
+          value: {{ quote .Values.env.appMaxActiveRequests }}
+        - name: APP_MAX_EXECUTION_TIME
+          value: {{ quote .Values.env.appMaxExecutionTime }}
+        - name: APP_WEB_URL
+          value: {{ quote .Values.env.appWebUrl }}
+        - name: AZURE_BLOB_ACCOUNT_KEY
+          value: {{ quote .Values.env.azureBlobAccountKey }}
+        - name: AZURE_BLOB_ACCOUNT_NAME
+          value: {{ quote .Values.env.azureBlobAccountName }}
+        - name: AZURE_BLOB_ACCOUNT_URL
+          value: {{ quote .Values.env.azureBlobAccountUrl }}
+        - name: AZURE_BLOB_CONTAINER_NAME
+          value: {{ quote .Values.env.azureBlobContainerName }}
+        - name: BAIDU_OBS_ACCESS_KEY
+          value: {{ quote .Values.env.baiduObsAccessKey }}
+        - name: BAIDU_OBS_BUCKET_NAME
+          value: {{ quote .Values.env.baiduObsBucketName }}
+        - name: BAIDU_OBS_ENDPOINT
+          value: {{ quote .Values.env.baiduObsEndpoint }}
+        - name: BAIDU_OBS_SECRET_KEY
+          value: {{ quote .Values.env.baiduObsSecretKey }}
+        - name: BAIDU_VECTOR_DB_ACCOUNT
+          value: {{ quote .Values.env.baiduVectorDbAccount }}
+        - name: BAIDU_VECTOR_DB_API_KEY
+          value: {{ quote .Values.env.baiduVectorDbApiKey }}
+        - name: BAIDU_VECTOR_DB_CONNECTION_TIMEOUT_MS
+          value: {{ quote .Values.env.baiduVectorDbConnectionTimeoutMs }}
+        - name: BAIDU_VECTOR_DB_DATABASE
+          value: {{ quote .Values.env.baiduVectorDbDatabase }}
+        - name: BAIDU_VECTOR_DB_ENDPOINT
+          value: {{ quote .Values.env.baiduVectorDbEndpoint }}
+        - name: BAIDU_VECTOR_DB_REPLICAS
+          value: {{ quote .Values.env.baiduVectorDbReplicas }}
+        - name: BAIDU_VECTOR_DB_SHARD
+          value: {{ quote .Values.env.baiduVectorDbShard }}
+        - name: BROKER_USE_SSL
+          value: {{ quote .Values.env.brokerUseSsl }}
+        - name: CELERY_AUTO_SCALE
+          value: {{ quote .Values.env.celeryAutoScale }}
+        - name: CELERY_BROKER_URL
+          value: {{ quote .Values.env.celeryBrokerUrl }}
+        - name: CELERY_MAX_WORKERS
+          value: {{ quote .Values.env.celeryMaxWorkers }}
+        - name: CELERY_MIN_WORKERS
+          value: {{ quote .Values.env.celeryMinWorkers }}
+        - name: CELERY_SENTINEL_MASTER_NAME
+          value: {{ quote .Values.env.celerySentinelMasterName }}
+        - name: CELERY_SENTINEL_SOCKET_TIMEOUT
+          value: {{ quote .Values.env.celerySentinelSocketTimeout }}
+        - name: CELERY_USE_SENTINEL
+          value: {{ quote .Values.env.celeryUseSentinel }}
+        - name: CELERY_WORKER_AMOUNT
+          value: {{ quote .Values.env.celeryWorkerAmount }}
+        - name: CELERY_WORKER_CLASS
+          value: {{ quote .Values.env.celeryWorkerClass }}
+        - name: CERTBOT_DOMAIN
+          value: {{ quote .Values.env.certbotDomain }}
+        - name: CERTBOT_EMAIL
+          value: {{ quote .Values.env.certbotEmail }}
+        - name: CERTBOT_OPTIONS
+          value: {{ quote .Values.env.certbotOptions }}
+        - name: CHECK_UPDATE_URL
+          value: {{ quote .Values.env.checkUpdateUrl }}
+        - name: CHROMA_AUTH_CREDENTIALS
+          value: {{ quote .Values.env.chromaAuthCredentials }}
+        - name: CHROMA_AUTH_PROVIDER
+          value: {{ quote .Values.env.chromaAuthProvider }}
+        - name: CHROMA_DATABASE
+          value: {{ quote .Values.env.chromaDatabase }}
+        - name: CHROMA_HOST
+          value: {{ quote .Values.env.chromaHost }}
+        - name: CHROMA_IS_PERSISTENT
+          value: {{ quote .Values.env.chromaIsPersistent }}
+        - name: CHROMA_PORT
+          value: {{ quote .Values.env.chromaPort }}
+        - name: CHROMA_SERVER_AUTHN_CREDENTIALS
+          value: {{ quote .Values.env.chromaServerAuthnCredentials }}
+        - name: CHROMA_SERVER_AUTHN_PROVIDER
+          value: {{ quote .Values.env.chromaServerAuthnProvider }}
+        - name: CHROMA_TENANT
+          value: {{ quote .Values.env.chromaTenant }}
+        - name: CODE_EXECUTION_API_KEY
+          value: {{ quote .Values.env.codeExecutionApiKey }}
+        - name: CODE_EXECUTION_CONNECT_TIMEOUT
+          value: {{ quote .Values.env.codeExecutionConnectTimeout }}
+        - name: CODE_EXECUTION_ENDPOINT
+          value: {{ quote .Values.env.codeExecutionEndpoint }}
+        - name: CODE_EXECUTION_READ_TIMEOUT
+          value: {{ quote .Values.env.codeExecutionReadTimeout }}
+        - name: CODE_EXECUTION_WRITE_TIMEOUT
+          value: {{ quote .Values.env.codeExecutionWriteTimeout }}
+        - name: CODE_GENERATION_MAX_TOKENS
+          value: {{ quote .Values.env.codeGenerationMaxTokens }}
+        - name: CODE_MAX_DEPTH
+          value: {{ quote .Values.env.codeMaxDepth }}
+        - name: CODE_MAX_NUMBER
+          value: {{ quote .Values.env.codeMaxNumber }}
+        - name: CODE_MAX_NUMBER_ARRAY_LENGTH
+          value: {{ quote .Values.env.codeMaxNumberArrayLength }}
+        - name: CODE_MAX_OBJECT_ARRAY_LENGTH
+          value: {{ quote .Values.env.codeMaxObjectArrayLength }}
+        - name: CODE_MAX_PRECISION
+          value: {{ quote .Values.env.codeMaxPrecision }}
+        - name: CODE_MAX_STRING_ARRAY_LENGTH
+          value: {{ quote .Values.env.codeMaxStringArrayLength }}
+        - name: CODE_MAX_STRING_LENGTH
+          value: {{ quote .Values.env.codeMaxStringLength }}
+        - name: CODE_MIN_NUMBER
+          value: {{ quote .Values.env.codeMinNumber }}
+        - name: CONSOLE_API_URL
+          value: {{ quote .Values.env.consoleApiUrl }}
+        - name: CONSOLE_CORS_ALLOW_ORIGINS
+          value: {{ quote .Values.env.consoleCorsAllowOrigins }}
+        - name: CONSOLE_WEB_URL
+          value: {{ quote .Values.env.consoleWebUrl }}
+        - name: COUCHBASE_BUCKET_NAME
+          value: {{ quote .Values.env.couchbaseBucketName }}
+        - name: COUCHBASE_CONNECTION_STRING
+          value: {{ quote .Values.env.couchbaseConnectionString }}
+        - name: COUCHBASE_PASSWORD
+          value: {{ quote .Values.env.couchbasePassword }}
+        - name: COUCHBASE_SCOPE_NAME
+          value: {{ quote .Values.env.couchbaseScopeName }}
+        - name: COUCHBASE_USER
+          value: {{ quote .Values.env.couchbaseUser }}
+        - name: CREATE_TIDB_SERVICE_JOB_ENABLED
+          value: {{ quote .Values.env.createTidbServiceJobEnabled }}
+        - name: CSP_WHITELIST
+          value: {{ quote .Values.env.cspWhitelist }}
+        - name: DB_DATABASE
+          value: {{ quote .Values.env.dbPluginDatabase }}
+        - name: DB_HOST
+          value: {{ quote .Values.env.dbHost }}
+        - name: DB_PASSWORD
+          value: {{ quote .Values.env.dbPassword }}
+        - name: DB_PLUGIN_DATABASE
+          value: {{ quote .Values.env.dbPluginDatabase }}
+        - name: DB_PORT
+          value: {{ quote .Values.env.dbPort }}
+        - name: DB_USERNAME
+          value: {{ quote .Values.env.dbUsername }}
+        - name: DEBUG
+          value: {{ quote .Values.env.debug }}
+        - name: DEPLOY_ENV
+          value: {{ quote .Values.env.deployEnv }}
+        - name: DIFY_BIND_ADDRESS
+          value: {{ quote .Values.env.difyBindAddress }}
+        - name: DIFY_INNER_API_KEY
+          value: {{ quote .Values.env.difyInnerApiKey }}
+        - name: DIFY_INNER_API_URL
+          value: {{ quote .Values.env.difyInnerApiUrl }}
+        - name: DIFY_PORT
+          value: {{ quote .Values.env.difyPort }}
+        - name: ELASTICSEARCH_HOST
+          value: {{ quote .Values.env.elasticsearchHost }}
+        - name: ELASTICSEARCH_PASSWORD
+          value: {{ quote .Values.env.elasticsearchPassword }}
+        - name: ELASTICSEARCH_PORT
+          value: {{ quote .Values.env.elasticsearchPort }}
+        - name: ELASTICSEARCH_USERNAME
+          value: {{ quote .Values.env.elasticsearchUsername }}
+        - name: ENDPOINT_URL_TEMPLATE
+          value: {{ quote .Values.env.endpointUrlTemplate }}
+        - name: ETCD_AUTO_COMPACTION_MODE
+          value: {{ quote .Values.env.etcdAutoCompactionMode }}
+        - name: ETCD_AUTO_COMPACTION_RETENTION
+          value: {{ quote .Values.env.etcdAutoCompactionRetention }}
+        - name: ETCD_ENDPOINTS
+          value: {{ quote .Values.env.etcdEndpoints }}
+        - name: ETCD_QUOTA_BACKEND_BYTES
+          value: {{ quote .Values.env.etcdQuotaBackendBytes }}
+        - name: ETCD_SNAPSHOT_COUNT
+          value: {{ quote .Values.env.etcdSnapshotCount }}
+        - name: ETL_TYPE
+          value: {{ quote .Values.env.etlType }}
+        - name: EXPOSE_NGINX_PORT
+          value: {{ quote .Values.env.exposeNginxPort }}
+        - name: EXPOSE_NGINX_SSL_PORT
+          value: {{ quote .Values.env.exposeNginxSslPort }}
+        - name: EXPOSE_PLUGIN_DAEMON_PORT
+          value: {{ quote .Values.env.exposePluginDaemonPort }}
+        - name: EXPOSE_PLUGIN_DEBUGGING_HOST
+          value: {{ quote .Values.env.exposePluginDebuggingHost }}
+        - name: EXPOSE_PLUGIN_DEBUGGING_PORT
+          value: {{ quote .Values.env.exposePluginDebuggingPort }}
+        - name: FILES_ACCESS_TIMEOUT
+          value: {{ quote .Values.env.filesAccessTimeout }}
+        - name: FILES_URL
+          value: {{ quote .Values.env.filesUrl }}
+        - name: FLASK_DEBUG
+          value: {{ quote .Values.env.flaskDebug }}
+        - name: FORCE_VERIFYING_SIGNATURE
+          value: {{ quote .Values.env.forceVerifyingSignature }}
+        - name: GOOGLE_STORAGE_BUCKET_NAME
+          value: {{ quote .Values.env.googleStorageBucketName }}
+        - name: GOOGLE_STORAGE_SERVICE_ACCOUNT_JSON_BASE64
+          value: {{ quote .Values.env.googleStorageServiceAccountJsonBase64 }}
+        - name: GUNICORN_TIMEOUT
+          value: {{ quote .Values.env.gunicornTimeout }}
+        - name: HTTP_REQUEST_NODE_MAX_BINARY_SIZE
+          value: {{ quote .Values.env.httpRequestNodeMaxBinarySize }}
+        - name: HTTP_REQUEST_NODE_MAX_TEXT_SIZE
+          value: {{ quote .Values.env.httpRequestNodeMaxTextSize }}
+        - name: HUAWEI_OBS_ACCESS_KEY
+          value: {{ quote .Values.env.huaweiObsAccessKey }}
+        - name: HUAWEI_OBS_BUCKET_NAME
+          value: {{ quote .Values.env.huaweiObsBucketName }}
+        - name: HUAWEI_OBS_SECRET_KEY
+          value: {{ quote .Values.env.huaweiObsSecretKey }}
+        - name: HUAWEI_OBS_SERVER
+          value: {{ quote .Values.env.huaweiObsServer }}
+        - name: INDEXING_MAX_SEGMENTATION_TOKENS_LENGTH
+          value: {{ quote .Values.env.indexingMaxSegmentationTokensLength }}
+        - name: INIT_PASSWORD
+          value: {{ quote .Values.env.initPassword }}
+        - name: INVITE_EXPIRY_HOURS
+          value: {{ quote .Values.env.inviteExpiryHours }}
+        - name: KIBANA_PORT
+          value: {{ quote .Values.env.kibanaPort }}
+        - name: LINDORM_PASSWORD
+          value: {{ quote .Values.env.lindormPassword }}
+        - name: LINDORM_URL
+          value: {{ quote .Values.env.lindormUrl }}
+        - name: LINDORM_USERNAME
+          value: {{ quote .Values.env.lindormUsername }}
+        - name: LOG_DATEFORMAT
+          value: {{ quote .Values.env.logDateformat }}
+        - name: LOG_FILE
+          value: {{ quote .Values.env.logFile }}
+        - name: LOG_FILE_BACKUP_COUNT
+          value: {{ quote .Values.env.logFileBackupCount }}
+        - name: LOG_FILE_MAX_SIZE
+          value: {{ quote .Values.env.logFileMaxSize }}
+        - name: LOG_LEVEL
+          value: {{ quote .Values.env.logLevel }}
+        - name: LOG_TZ
+          value: {{ quote .Values.env.logTz }}
+        - name: LOOP_NODE_MAX_COUNT
+          value: {{ quote .Values.env.loopNodeMaxCount }}
+        - name: MAIL_DEFAULT_SEND_FROM
+          value: {{ quote .Values.env.mailDefaultSendFrom }}
+        - name: MAIL_TYPE
+          value: {{ quote .Values.env.mailType }}
+        - name: MARKETPLACE_API_URL
+          value: {{ quote .Values.env.marketplaceApiUrl }}
+        - name: MARKETPLACE_ENABLED
+          value: {{ quote .Values.env.marketplaceEnabled }}
+        - name: MAX_PLUGIN_PACKAGE_SIZE
+          value: {{ quote .Values.env.maxPluginPackageSize }}
+        - name: MAX_SUBMIT_COUNT
+          value: {{ quote .Values.env.maxSubmitCount }}
+        - name: MAX_VARIABLE_SIZE
+          value: {{ quote .Values.env.maxVariableSize }}
+        - name: MIGRATION_ENABLED
+          value: {{ quote .Values.env.migrationEnabled }}
+        - name: MILVUS_AUTHORIZATION_ENABLED
+          value: {{ quote .Values.env.milvusAuthorizationEnabled }}
+        - name: MILVUS_ENABLE_HYBRID_SEARCH
+          value: {{ quote .Values.env.milvusEnableHybridSearch }}
+        - name: MILVUS_PASSWORD
+          value: {{ quote .Values.env.milvusPassword }}
+        - name: MILVUS_TOKEN
+          value: {{ quote .Values.env.milvusToken }}
+        - name: MILVUS_URI
+          value: {{ quote .Values.env.milvusUri }}
+        - name: MILVUS_USER
+          value: {{ quote .Values.env.milvusUser }}
+        - name: MINIO_ACCESS_KEY
+          value: {{ quote .Values.env.minioAccessKey }}
+        - name: MINIO_ADDRESS
+          value: {{ quote .Values.env.minioAddress }}
+        - name: MINIO_SECRET_KEY
+          value: {{ quote .Values.env.minioSecretKey }}
+        - name: MULTIMODAL_SEND_FORMAT
+          value: {{ quote .Values.env.multimodalSendFormat }}
+        - name: MYSCALE_DATABASE
+          value: {{ quote .Values.env.myscaleDatabase }}
+        - name: MYSCALE_FTS_PARAMS
+          value: {{ quote .Values.env.myscaleFtsParams }}
+        - name: MYSCALE_HOST
+          value: {{ quote .Values.env.myscaleHost }}
+        - name: MYSCALE_PASSWORD
+          value: {{ quote .Values.env.myscalePassword }}
+        - name: MYSCALE_PORT
+          value: {{ quote .Values.env.myscalePort }}
+        - name: MYSCALE_USER
+          value: {{ quote .Values.env.myscaleUser }}
+        - name: NGINX_CLIENT_MAX_BODY_SIZE
+          value: {{ quote .Values.env.nginxClientMaxBodySize }}
+        - name: NGINX_ENABLE_CERTBOT_CHALLENGE
+          value: {{ quote .Values.env.nginxEnableCertbotChallenge }}
+        - name: NGINX_HTTPS_ENABLED
+          value: {{ quote .Values.env.nginxHttpsEnabled }}
+        - name: NGINX_KEEPALIVE_TIMEOUT
+          value: {{ quote .Values.env.nginxKeepaliveTimeout }}
+        - name: NGINX_PORT
+          value: {{ quote .Values.env.nginxPort }}
+        - name: NGINX_PROXY_READ_TIMEOUT
+          value: {{ quote .Values.env.nginxProxyReadTimeout }}
+        - name: NGINX_PROXY_SEND_TIMEOUT
+          value: {{ quote .Values.env.nginxProxySendTimeout }}
+        - name: NGINX_SERVER_NAME
+          value: {{ quote .Values.env.nginxServerName }}
+        - name: NGINX_SSL_CERT_FILENAME
+          value: {{ quote .Values.env.nginxSslCertFilename }}
+        - name: NGINX_SSL_CERT_KEY_FILENAME
+          value: {{ quote .Values.env.nginxSslCertKeyFilename }}
+        - name: NGINX_SSL_PORT
+          value: {{ quote .Values.env.nginxSslPort }}
+        - name: NGINX_SSL_PROTOCOLS
+          value: {{ quote .Values.env.nginxSslProtocols }}
+        - name: NGINX_WORKER_PROCESSES
+          value: {{ quote .Values.env.nginxWorkerProcesses }}
+        - name: NOTION_CLIENT_ID
+          value: {{ quote .Values.env.notionClientId }}
+        - name: NOTION_CLIENT_SECRET
+          value: {{ quote .Values.env.notionClientSecret }}
+        - name: NOTION_INTEGRATION_TYPE
+          value: {{ quote .Values.env.notionIntegrationType }}
+        - name: NOTION_INTERNAL_SECRET
+          value: {{ quote .Values.env.notionInternalSecret }}
+        - name: OCEANBASE_CLUSTER_NAME
+          value: {{ quote .Values.env.oceanbaseClusterName }}
+        - name: OCEANBASE_MEMORY_LIMIT
+          value: {{ quote .Values.env.oceanbaseMemoryLimit }}
+        - name: OCEANBASE_VECTOR_DATABASE
+          value: {{ quote .Values.env.oceanbaseVectorDatabase }}
+        - name: OCEANBASE_VECTOR_HOST
+          value: {{ quote .Values.env.oceanbaseVectorHost }}
+        - name: OCEANBASE_VECTOR_PASSWORD
+          value: {{ quote .Values.env.oceanbaseVectorPassword }}
+        - name: OCEANBASE_VECTOR_PORT
+          value: {{ quote .Values.env.oceanbaseVectorPort }}
+        - name: OCEANBASE_VECTOR_USER
+          value: {{ quote .Values.env.oceanbaseVectorUser }}
+        - name: OCI_ACCESS_KEY
+          value: {{ quote .Values.env.ociAccessKey }}
+        - name: OCI_BUCKET_NAME
+          value: {{ quote .Values.env.ociBucketName }}
+        - name: OCI_ENDPOINT
+          value: {{ quote .Values.env.ociEndpoint }}
+        - name: OCI_REGION
+          value: {{ quote .Values.env.ociRegion }}
+        - name: OCI_SECRET_KEY
+          value: {{ quote .Values.env.ociSecretKey }}
+        - name: OPENAI_API_BASE
+          value: {{ quote .Values.env.openaiApiBase }}
+        - name: OPENDAL_FS_ROOT
+          value: {{ quote .Values.env.opendalFsRoot }}
+        - name: OPENDAL_SCHEME
+          value: {{ quote .Values.env.opendalScheme }}
+        - name: OPENSEARCH_BOOTSTRAP_MEMORY_LOCK
+          value: {{ quote .Values.env.opensearchBootstrapMemoryLock }}
+        - name: OPENSEARCH_DISCOVERY_TYPE
+          value: {{ quote .Values.env.opensearchDiscoveryType }}
+        - name: OPENSEARCH_HOST
+          value: {{ quote .Values.env.opensearchHost }}
+        - name: OPENSEARCH_INITIAL_ADMIN_PASSWORD
+          value: {{ quote .Values.env.opensearchInitialAdminPassword }}
+        - name: OPENSEARCH_JAVA_OPTS_MAX
+          value: {{ quote .Values.env.opensearchJavaOptsMax }}
+        - name: OPENSEARCH_JAVA_OPTS_MIN
+          value: {{ quote .Values.env.opensearchJavaOptsMin }}
+        - name: OPENSEARCH_MEMLOCK_HARD
+          value: {{ quote .Values.env.opensearchMemlockHard }}
+        - name: OPENSEARCH_MEMLOCK_SOFT
+          value: {{ quote .Values.env.opensearchMemlockSoft }}
+        - name: OPENSEARCH_NOFILE_HARD
+          value: {{ quote .Values.env.opensearchNofileHard }}
+        - name: OPENSEARCH_NOFILE_SOFT
+          value: {{ quote .Values.env.opensearchNofileSoft }}
+        - name: OPENSEARCH_PASSWORD
+          value: {{ quote .Values.env.opensearchPassword }}
+        - name: OPENSEARCH_PORT
+          value: {{ quote .Values.env.opensearchPort }}
+        - name: OPENSEARCH_SECURE
+          value: {{ quote .Values.env.opensearchSecure }}
+        - name: OPENSEARCH_USER
+          value: {{ quote .Values.env.opensearchUser }}
+        - name: ORACLE_CHARACTERSET
+          value: {{ quote .Values.env.oracleCharacterset }}
+        - name: ORACLE_CONFIG_DIR
+          value: {{ quote .Values.env.oracleConfigDir }}
+        - name: ORACLE_DSN
+          value: {{ quote .Values.env.oracleDsn }}
+        - name: ORACLE_IS_AUTONOMOUS
+          value: {{ quote .Values.env.oracleIsAutonomous }}
+        - name: ORACLE_PASSWORD
+          value: {{ quote .Values.env.oraclePassword }}
+        - name: ORACLE_PWD
+          value: {{ quote .Values.env.oraclePwd }}
+        - name: ORACLE_USER
+          value: {{ quote .Values.env.oracleUser }}
+        - name: ORACLE_WALLET_LOCATION
+          value: {{ quote .Values.env.oracleWalletLocation }}
+        - name: ORACLE_WALLET_PASSWORD
+          value: {{ quote .Values.env.oracleWalletPassword }}
+        - name: PGDATA
+          value: {{ quote .Values.env.pgdata }}
+        - name: PGUSER
+          value: {{ quote .Values.env.pguser }}
+        - name: PGVECTOR_DATABASE
+          value: {{ quote .Values.env.pgvectorDatabase }}
+        - name: PGVECTOR_HOST
+          value: {{ quote .Values.env.pgvectorHost }}
+        - name: PGVECTOR_MAX_CONNECTION
+          value: {{ quote .Values.env.pgvectorMaxConnection }}
+        - name: PGVECTOR_MIN_CONNECTION
+          value: {{ quote .Values.env.pgvectorMinConnection }}
+        - name: PGVECTOR_PASSWORD
+          value: {{ quote .Values.env.pgvectorPassword }}
+        - name: PGVECTOR_PGDATA
+          value: {{ quote .Values.env.pgvectorPgdata }}
+        - name: PGVECTOR_PGUSER
+          value: {{ quote .Values.env.pgvectorPguser }}
+        - name: PGVECTOR_PORT
+          value: {{ quote .Values.env.pgvectorPort }}
+        - name: PGVECTOR_POSTGRES_DB
+          value: {{ quote .Values.env.pgvectorPostgresDb }}
+        - name: PGVECTOR_POSTGRES_PASSWORD
+          value: {{ quote .Values.env.pgvectorPostgresPassword }}
+        - name: PGVECTOR_USER
+          value: {{ quote .Values.env.pgvectorUser }}
+        - name: PGVECTO_RS_DATABASE
+          value: {{ quote .Values.env.pgvectoRsDatabase }}
+        - name: PGVECTO_RS_HOST
+          value: {{ quote .Values.env.pgvectoRsHost }}
+        - name: PGVECTO_RS_PASSWORD
+          value: {{ quote .Values.env.pgvectoRsPassword }}
+        - name: PGVECTO_RS_PORT
+          value: {{ quote .Values.env.pgvectoRsPort }}
+        - name: PGVECTO_RS_USER
+          value: {{ quote .Values.env.pgvectoRsUser }}
+        - name: PIP_MIRROR_URL
+          value: {{ quote .Values.env.pipMirrorUrl }}
+        - name: PLUGIN_DAEMON_KEY
+          value: {{ quote .Values.env.pluginDaemonKey }}
+        - name: PLUGIN_DAEMON_PORT
+          value: {{ quote .Values.env.pluginDaemonPort }}
+        - name: PLUGIN_DAEMON_URL
+          value: {{ quote .Values.env.pluginDaemonUrl }}
+        - name: PLUGIN_DEBUGGING_HOST
+          value: {{ quote .Values.env.pluginDebuggingHost }}
+        - name: PLUGIN_DEBUGGING_PORT
+          value: {{ quote .Values.env.pluginDebuggingPort }}
+        - name: PLUGIN_DIFY_INNER_API_KEY
+          value: {{ quote .Values.env.pluginDifyInnerApiKey }}
+        - name: PLUGIN_DIFY_INNER_API_URL
+          value: {{ quote .Values.env.pluginDifyInnerApiUrl }}
+        - name: PLUGIN_MAX_EXECUTION_TIMEOUT
+          value: {{ quote .Values.env.pluginMaxExecutionTimeout }}
+        - name: PLUGIN_MAX_PACKAGE_SIZE
+          value: {{ quote .Values.env.pluginMaxPackageSize }}
+        - name: PLUGIN_PPROF_ENABLED
+          value: {{ quote .Values.env.pluginPprofEnabled }}
+        - name: PLUGIN_PYTHON_ENV_INIT_TIMEOUT
+          value: {{ quote .Values.env.pluginPythonEnvInitTimeout }}
+        - name: PLUGIN_REMOTE_INSTALLING_HOST
+          value: {{ quote .Values.env.pluginRemoteInstallingHost }}
+        - name: PLUGIN_REMOTE_INSTALLING_PORT
+          value: {{ quote .Values.env.pluginRemoteInstallingPort }}
+        - name: PLUGIN_WORKING_PATH
+          value: {{ quote .Values.env.pluginWorkingPath }}
+        - name: POSITION_PROVIDER_EXCLUDES
+          value: {{ quote .Values.env.positionProviderExcludes }}
+        - name: POSITION_PROVIDER_INCLUDES
+          value: {{ quote .Values.env.positionProviderIncludes }}
+        - name: POSITION_PROVIDER_PINS
+          value: {{ quote .Values.env.positionProviderPins }}
+        - name: POSITION_TOOL_EXCLUDES
+          value: {{ quote .Values.env.positionToolExcludes }}
+        - name: POSITION_TOOL_INCLUDES
+          value: {{ quote .Values.env.positionToolIncludes }}
+        - name: POSITION_TOOL_PINS
+          value: {{ quote .Values.env.positionToolPins }}
+        - name: POSTGRES_DB
+          value: {{ quote .Values.env.postgresDb }}
+        - name: POSTGRES_EFFECTIVE_CACHE_SIZE
+          value: {{ quote .Values.env.postgresEffectiveCacheSize }}
+        - name: POSTGRES_MAINTENANCE_WORK_MEM
+          value: {{ quote .Values.env.postgresMaintenanceWorkMem }}
+        - name: POSTGRES_MAX_CONNECTIONS
+          value: {{ quote .Values.env.postgresMaxConnections }}
+        - name: POSTGRES_PASSWORD
+          value: {{ quote .Values.env.postgresPassword }}
+        - name: POSTGRES_SHARED_BUFFERS
+          value: {{ quote .Values.env.postgresSharedBuffers }}
+        - name: POSTGRES_WORK_MEM
+          value: {{ quote .Values.env.postgresWorkMem }}
+        - name: PPROF_ENABLED
+          value: {{ quote .Values.env.pprofEnabled }}
+        - name: PROMPT_GENERATION_MAX_TOKENS
+          value: {{ quote .Values.env.promptGenerationMaxTokens }}
+        - name: PYTHON_ENV_INIT_TIMEOUT
+          value: {{ quote .Values.env.pythonEnvInitTimeout }}
+        - name: QDRANT_API_KEY
+          value: {{ quote .Values.env.qdrantApiKey }}
+        - name: QDRANT_CLIENT_TIMEOUT
+          value: {{ quote .Values.env.qdrantClientTimeout }}
+        - name: QDRANT_GRPC_ENABLED
+          value: {{ quote .Values.env.qdrantGrpcEnabled }}
+        - name: QDRANT_GRPC_PORT
+          value: {{ quote .Values.env.qdrantGrpcPort }}
+        - name: QDRANT_URL
+          value: {{ quote .Values.env.qdrantUrl }}
+        - name: REDIS_CLUSTERS
+          value: {{ quote .Values.env.redisClusters }}
+        - name: REDIS_CLUSTERS_PASSWORD
+          value: {{ quote .Values.env.redisClustersPassword }}
+        - name: REDIS_DB
+          value: {{ quote .Values.env.redisDb }}
+        - name: REDIS_HOST
+          value: {{ quote .Values.env.redisHost }}
+        - name: REDIS_PASSWORD
+          value: {{ quote .Values.env.redisPassword }}
+        - name: REDIS_PORT
+          value: {{ quote .Values.env.redisPort }}
+        - name: REDIS_SENTINELS
+          value: {{ quote .Values.env.redisSentinels }}
+        - name: REDIS_SENTINEL_PASSWORD
+          value: {{ quote .Values.env.redisSentinelPassword }}
+        - name: REDIS_SENTINEL_SERVICE_NAME
+          value: {{ quote .Values.env.redisSentinelServiceName }}
+        - name: REDIS_SENTINEL_SOCKET_TIMEOUT
+          value: {{ quote .Values.env.redisSentinelSocketTimeout }}
+        - name: REDIS_SENTINEL_USERNAME
+          value: {{ quote .Values.env.redisSentinelUsername }}
+        - name: REDIS_USERNAME
+          value: {{ quote .Values.env.redisUsername }}
+        - name: REDIS_USE_CLUSTERS
+          value: {{ quote .Values.env.redisUseClusters }}
+        - name: REDIS_USE_SENTINEL
+          value: {{ quote .Values.env.redisUseSentinel }}
+        - name: REDIS_USE_SSL
+          value: {{ quote .Values.env.redisUseSsl }}
+        - name: REFRESH_TOKEN_EXPIRE_DAYS
+          value: {{ quote .Values.env.refreshTokenExpireDays }}
+        - name: RELYT_DATABASE
+          value: {{ quote .Values.env.relytDatabase }}
+        - name: RELYT_HOST
+          value: {{ quote .Values.env.relytHost }}
+        - name: RELYT_PASSWORD
+          value: {{ quote .Values.env.relytPassword }}
+        - name: RELYT_PORT
+          value: {{ quote .Values.env.relytPort }}
+        - name: RELYT_USER
+          value: {{ quote .Values.env.relytUser }}
+        - name: RESEND_API_KEY
+          value: {{ quote .Values.env.resendApiKey }}
+        - name: RESEND_API_URL
+          value: {{ quote .Values.env.resendApiUrl }}
+        - name: RESET_PASSWORD_TOKEN_EXPIRY_MINUTES
+          value: {{ quote .Values.env.resetPasswordTokenExpiryMinutes }}
+        - name: S3_ACCESS_KEY
+          value: {{ quote .Values.env.s3AccessKey }}
+        - name: S3_BUCKET_NAME
+          value: {{ quote .Values.env.s3BucketName }}
+        - name: S3_ENDPOINT
+          value: {{ quote .Values.env.s3Endpoint }}
+        - name: S3_REGION
+          value: {{ quote .Values.env.s3Region }}
+        - name: S3_SECRET_KEY
+          value: {{ quote .Values.env.s3SecretKey }}
+        - name: S3_USE_AWS_MANAGED_IAM
+          value: {{ quote .Values.env.s3UseAwsManagedIam }}
+        - name: SANDBOX_API_KEY
+          value: {{ quote .Values.env.sandboxApiKey }}
+        - name: SANDBOX_ENABLE_NETWORK
+          value: {{ quote .Values.env.sandboxEnableNetwork }}
+        - name: SANDBOX_GIN_MODE
+          value: {{ quote .Values.env.sandboxGinMode }}
+        - name: SANDBOX_HTTPS_PROXY
+          value: {{ quote .Values.env.sandboxHttpsProxy }}
+        - name: SANDBOX_HTTP_PROXY
+          value: {{ quote .Values.env.sandboxHttpProxy }}
+        - name: SANDBOX_PORT
+          value: {{ quote .Values.env.sandboxPort }}
+        - name: SANDBOX_WORKER_TIMEOUT
+          value: {{ quote .Values.env.sandboxWorkerTimeout }}
+        - name: SCARF_NO_ANALYTICS
+          value: {{ quote .Values.env.scarfNoAnalytics }}
+        - name: SECRET_KEY
+          value: {{ quote .Values.env.secretKey }}
+        - name: SENTRY_DSN
+          value: {{ quote .Values.env.sentryDsn }}
+        - name: SERVER_KEY
+          value: {{ quote .Values.env.serverKey }}
+        - name: SERVER_PORT
+          value: {{ quote .Values.env.serverPort }}
+        - name: SERVER_WORKER_AMOUNT
+          value: {{ quote .Values.env.serverWorkerAmount }}
+        - name: SERVER_WORKER_CLASS
+          value: {{ quote .Values.env.serverWorkerClass }}
+        - name: SERVER_WORKER_CONNECTIONS
+          value: {{ quote .Values.env.serverWorkerConnections }}
+        - name: SERVICE_API_URL
+          value: {{ quote .Values.env.serviceApiUrl }}
+        - name: SMTP_OPPORTUNISTIC_TLS
+          value: {{ quote .Values.env.smtpOpportunisticTls }}
+        - name: SMTP_PASSWORD
+          value: {{ quote .Values.env.smtpPassword }}
+        - name: SMTP_PORT
+          value: {{ quote .Values.env.smtpPort }}
+        - name: SMTP_SERVER
+          value: {{ quote .Values.env.smtpServer }}
+        - name: SMTP_USERNAME
+          value: {{ quote .Values.env.smtpUsername }}
+        - name: SMTP_USE_TLS
+          value: {{ quote .Values.env.smtpUseTls }}
+        - name: SQLALCHEMY_ECHO
+          value: {{ quote .Values.env.sqlalchemyEcho }}
+        - name: SQLALCHEMY_POOL_RECYCLE
+          value: {{ quote .Values.env.sqlalchemyPoolRecycle }}
+        - name: SQLALCHEMY_POOL_SIZE
+          value: {{ quote .Values.env.sqlalchemyPoolSize }}
+        - name: SSRF_COREDUMP_DIR
+          value: {{ quote .Values.env.ssrfCoredumpDir }}
+        - name: SSRF_DEFAULT_CONNECT_TIME_OUT
+          value: {{ quote .Values.env.ssrfDefaultConnectTimeOut }}
+        - name: SSRF_DEFAULT_READ_TIME_OUT
+          value: {{ quote .Values.env.ssrfDefaultReadTimeOut }}
+        - name: SSRF_DEFAULT_TIME_OUT
+          value: {{ quote .Values.env.ssrfDefaultTimeOut }}
+        - name: SSRF_DEFAULT_WRITE_TIME_OUT
+          value: {{ quote .Values.env.ssrfDefaultWriteTimeOut }}
+        - name: SSRF_HTTP_PORT
+          value: {{ quote .Values.env.ssrfHttpPort }}
+        - name: SSRF_PROXY_HTTPS_URL
+          value: {{ quote .Values.env.ssrfProxyHttpsUrl }}
+        - name: SSRF_PROXY_HTTP_URL
+          value: {{ quote .Values.env.ssrfProxyHttpUrl }}
+        - name: SSRF_REVERSE_PROXY_PORT
+          value: {{ quote .Values.env.ssrfReverseProxyPort }}
+        - name: SSRF_SANDBOX_HOST
+          value: {{ quote .Values.env.ssrfSandboxHost }}
+        - name: STORAGE_TYPE
+          value: {{ quote .Values.env.storageType }}
+        - name: SUPABASE_API_KEY
+          value: {{ quote .Values.env.supabaseApiKey }}
+        - name: SUPABASE_BUCKET_NAME
+          value: {{ quote .Values.env.supabaseBucketName }}
+        - name: SUPABASE_URL
+          value: {{ quote .Values.env.supabaseUrl }}
+        - name: TEMPLATE_TRANSFORM_MAX_LENGTH
+          value: {{ quote .Values.env.templateTransformMaxLength }}
+        - name: TENCENT_COS_BUCKET_NAME
+          value: {{ quote .Values.env.tencentCosBucketName }}
+        - name: TENCENT_COS_REGION
+          value: {{ quote .Values.env.tencentCosRegion }}
+        - name: TENCENT_COS_SCHEME
+          value: {{ quote .Values.env.tencentCosScheme }}
+        - name: TENCENT_COS_SECRET_ID
+          value: {{ quote .Values.env.tencentCosSecretId }}
+        - name: TENCENT_COS_SECRET_KEY
+          value: {{ quote .Values.env.tencentCosSecretKey }}
+        - name: TENCENT_VECTOR_DB_API_KEY
+          value: {{ quote .Values.env.tencentVectorDbApiKey }}
+        - name: TENCENT_VECTOR_DB_DATABASE
+          value: {{ quote .Values.env.tencentVectorDbDatabase }}
+        - name: TENCENT_VECTOR_DB_REPLICAS
+          value: {{ quote .Values.env.tencentVectorDbReplicas }}
+        - name: TENCENT_VECTOR_DB_SHARD
+          value: {{ quote .Values.env.tencentVectorDbShard }}
+        - name: TENCENT_VECTOR_DB_TIMEOUT
+          value: {{ quote .Values.env.tencentVectorDbTimeout }}
+        - name: TENCENT_VECTOR_DB_URL
+          value: {{ quote .Values.env.tencentVectorDbUrl }}
+        - name: TENCENT_VECTOR_DB_USERNAME
+          value: {{ quote .Values.env.tencentVectorDbUsername }}
+        - name: TEXT_GENERATION_TIMEOUT_MS
+          value: {{ quote .Values.env.textGenerationTimeoutMs }}
+        - name: TIDB_API_URL
+          value: {{ quote .Values.env.tidbApiUrl }}
+        - name: TIDB_IAM_API_URL
+          value: {{ quote .Values.env.tidbIamApiUrl }}
+        - name: TIDB_ON_QDRANT_API_KEY
+          value: {{ quote .Values.env.tidbOnQdrantApiKey }}
+        - name: TIDB_ON_QDRANT_CLIENT_TIMEOUT
+          value: {{ quote .Values.env.tidbOnQdrantClientTimeout }}
+        - name: TIDB_ON_QDRANT_GRPC_ENABLED
+          value: {{ quote .Values.env.tidbOnQdrantGrpcEnabled }}
+        - name: TIDB_ON_QDRANT_GRPC_PORT
+          value: {{ quote .Values.env.tidbOnQdrantGrpcPort }}
+        - name: TIDB_ON_QDRANT_URL
+          value: {{ quote .Values.env.tidbOnQdrantUrl }}
+        - name: TIDB_PRIVATE_KEY
+          value: {{ quote .Values.env.tidbPrivateKey }}
+        - name: TIDB_PROJECT_ID
+          value: {{ quote .Values.env.tidbProjectId }}
+        - name: TIDB_PUBLIC_KEY
+          value: {{ quote .Values.env.tidbPublicKey }}
+        - name: TIDB_REGION
+          value: {{ quote .Values.env.tidbRegion }}
+        - name: TIDB_SPEND_LIMIT
+          value: {{ quote .Values.env.tidbSpendLimit }}
+        - name: TIDB_VECTOR_DATABASE
+          value: {{ quote .Values.env.tidbVectorDatabase }}
+        - name: TIDB_VECTOR_HOST
+          value: {{ quote .Values.env.tidbVectorHost }}
+        - name: TIDB_VECTOR_PASSWORD
+          value: {{ quote .Values.env.tidbVectorPassword }}
+        - name: TIDB_VECTOR_PORT
+          value: {{ quote .Values.env.tidbVectorPort }}
+        - name: TIDB_VECTOR_USER
+          value: {{ quote .Values.env.tidbVectorUser }}
+        - name: TOP_K_MAX_VALUE
+          value: {{ quote .Values.env.topKMaxValue }}
+        - name: UNSTRUCTURED_API_KEY
+          value: {{ quote .Values.env.unstructuredApiKey }}
+        - name: UNSTRUCTURED_API_URL
+          value: {{ quote .Values.env.unstructuredApiUrl }}
+        - name: UPLOAD_AUDIO_FILE_SIZE_LIMIT
+          value: {{ quote .Values.env.uploadAudioFileSizeLimit }}
+        - name: UPLOAD_FILE_BATCH_LIMIT
+          value: {{ quote .Values.env.uploadFileBatchLimit }}
+        - name: UPLOAD_FILE_SIZE_LIMIT
+          value: {{ quote .Values.env.uploadFileSizeLimit }}
+        - name: UPLOAD_IMAGE_FILE_SIZE_LIMIT
+          value: {{ quote .Values.env.uploadImageFileSizeLimit }}
+        - name: UPLOAD_VIDEO_FILE_SIZE_LIMIT
+          value: {{ quote .Values.env.uploadVideoFileSizeLimit }}
+        - name: UPSTASH_VECTOR_TOKEN
+          value: {{ quote .Values.env.upstashVectorToken }}
+        - name: UPSTASH_VECTOR_URL
+          value: {{ quote .Values.env.upstashVectorUrl }}
+        - name: VECTOR_STORE
+          value: {{ quote .Values.env.vectorStore }}
+        - name: VIKINGDB_ACCESS_KEY
+          value: {{ quote .Values.env.vikingdbAccessKey }}
+        - name: VIKINGDB_CONNECTION_TIMEOUT
+          value: {{ quote .Values.env.vikingdbConnectionTimeout }}
+        - name: VIKINGDB_HOST
+          value: {{ quote .Values.env.vikingdbHost }}
+        - name: VIKINGDB_REGION
+          value: {{ quote .Values.env.vikingdbRegion }}
+        - name: VIKINGDB_SCHEMA
+          value: {{ quote .Values.env.vikingdbSchema }}
+        - name: VIKINGDB_SECRET_KEY
+          value: {{ quote .Values.env.vikingdbSecretKey }}
+        - name: VIKINGDB_SOCKET_TIMEOUT
+          value: {{ quote .Values.env.vikingdbSocketTimeout }}
+        - name: VOLCENGINE_TOS_ACCESS_KEY
+          value: {{ quote .Values.env.volcengineTosAccessKey }}
+        - name: VOLCENGINE_TOS_BUCKET_NAME
+          value: {{ quote .Values.env.volcengineTosBucketName }}
+        - name: VOLCENGINE_TOS_ENDPOINT
+          value: {{ quote .Values.env.volcengineTosEndpoint }}
+        - name: VOLCENGINE_TOS_REGION
+          value: {{ quote .Values.env.volcengineTosRegion }}
+        - name: VOLCENGINE_TOS_SECRET_KEY
+          value: {{ quote .Values.env.volcengineTosSecretKey }}
+        - name: WEAVIATE_API_KEY
+          value: {{ quote .Values.env.weaviateApiKey }}
+        - name: WEAVIATE_AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED
+          value: {{ quote .Values.env.weaviateAuthenticationAnonymousAccessEnabled }}
+        - name: WEAVIATE_AUTHENTICATION_APIKEY_ALLOWED_KEYS
+          value: {{ quote .Values.env.weaviateAuthenticationApikeyAllowedKeys }}
+        - name: WEAVIATE_AUTHENTICATION_APIKEY_ENABLED
+          value: {{ quote .Values.env.weaviateAuthenticationApikeyEnabled }}
+        - name: WEAVIATE_AUTHENTICATION_APIKEY_USERS
+          value: {{ quote .Values.env.weaviateAuthenticationApikeyUsers }}
+        - name: WEAVIATE_AUTHORIZATION_ADMINLIST_ENABLED
+          value: {{ quote .Values.env.weaviateAuthorizationAdminlistEnabled }}
+        - name: WEAVIATE_AUTHORIZATION_ADMINLIST_USERS
+          value: {{ quote .Values.env.weaviateAuthorizationAdminlistUsers }}
+        - name: WEAVIATE_CLUSTER_HOSTNAME
+          value: {{ quote .Values.env.weaviateClusterHostname }}
+        - name: WEAVIATE_DEFAULT_VECTORIZER_MODULE
+          value: {{ quote .Values.env.weaviateDefaultVectorizerModule }}
+        - name: WEAVIATE_ENDPOINT
+          value: {{ quote .Values.env.weaviateEndpoint }}
+        - name: WEAVIATE_PERSISTENCE_DATA_PATH
+          value: {{ quote .Values.env.weaviatePersistenceDataPath }}
+        - name: WEAVIATE_QUERY_DEFAULTS_LIMIT
+          value: {{ quote .Values.env.weaviateQueryDefaultsLimit }}
+        - name: WEB_API_CORS_ALLOW_ORIGINS
+          value: {{ quote .Values.env.webApiCorsAllowOrigins }}
+        - name: WEB_SENTRY_DSN
+          value: {{ quote .Values.env.webSentryDsn }}
+        - name: WORKFLOW_CALL_MAX_DEPTH
+          value: {{ quote .Values.env.workflowCallMaxDepth }}
+        - name: WORKFLOW_FILE_UPLOAD_LIMIT
+          value: {{ quote .Values.env.workflowFileUploadLimit }}
+        - name: WORKFLOW_MAX_EXECUTION_STEPS
+          value: {{ quote .Values.env.workflowMaxExecutionSteps }}
+        - name: WORKFLOW_MAX_EXECUTION_TIME
+          value: {{ quote .Values.env.workflowMaxExecutionTime }}
+        - name: WORKFLOW_PARALLEL_DEPTH_LIMIT
+          value: {{ quote .Values.env.workflowParallelDepthLimit }}
+        image: {{ .Values.pluginDaemon.image.repository }}:{{ .Values.pluginDaemon.image.tag | default .Chart.AppVersion }}
+        imagePullPolicy: {{ .Values.pluginDaemon.image.pullPolicy | default "IfNotPresent" | quote }}
+        name: plugin-daemon
+        ports:
+        - containerPort: 5003
+          protocol: TCP
+        resources: {}
+        volumeMounts:
+        - mountPath: /app/storage
+          name: plugin-daemon-storage
+      restartPolicy: Always
+      volumes:
+      - name: plugin-daemon-storage
+        persistentVolumeClaim:
+          claimName: {{ include "dify.fullname" . }}-plugin-daemon-storage
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "dify.fullname" . }}-redis
+  labels:
+    app: redis
+  {{- include "dify.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.redis.replicas }}
+  selector:
+    matchLabels:
+      app: redis
+    {{- include "dify.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        app: redis
+      {{- include "dify.selectorLabels" . | nindent 8 }}
+    spec:
+      containers:
+      - args: {{- toYaml .Values.redis.args | nindent 8 }}
+        env:
+        - name: REDISCLI_AUTH
+          value: {{ quote .Values.env.redisPassword }}
+        image: {{ .Values.redis.image.repository }}:{{ .Values.redis.image.tag | default .Chart.AppVersion }}
+        imagePullPolicy: {{ .Values.redis.image.pullPolicy | default "IfNotPresent" | quote }}
+        name: redis
+        ports:
+          - containerPort: 6379
+            protocol: TCP
+        livenessProbe:
+          exec:
+            command:
+            - redis-cli
+            - ping
+        resources: {}
+        volumeMounts:
+        - mountPath: /data
+          name: redis-storage
+      restartPolicy: Always
+      volumes:
+      - name: redis-storage
+        persistentVolumeClaim:
+          claimName: {{ include "dify.fullname" . }}-redis-storage
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "dify.fullname" . }}-sandbox
+  labels:
+    app: sandbox
+  {{- include "dify.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.sandbox.replicas }}
+  strategy:
+    type: {{ .Values.sandbox.strategy.type | quote }}
+  selector:
+    matchLabels:
+      app: sandbox
+    {{- include "dify.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        app: sandbox
+      {{- include "dify.selectorLabels" . | nindent 8 }}
+    spec:
+      containers:
+      - env:
+        - name: API_KEY
+          value: {{ quote .Values.env.apiKey }}
+        - name: ENABLE_NETWORK
+          value: {{ quote .Values.env.enableNetwork }}
+        - name: GIN_MODE
+          value: {{ quote .Values.env.ginMode }}
+        - name: HTTPS_PROXY
+          value: {{ quote .Values.env.httpsProxy }}
+        - name: HTTP_PROXY
+          value: {{ quote .Values.env.httpProxy }}
+        - name: SANDBOX_PORT
+          value: {{ quote .Values.env.sandboxPort }}
+        - name: WORKER_TIMEOUT
+          value: {{ quote .Values.env.workerTimeout }}
+        image: {{ .Values.sandbox.image.repository }}:{{ .Values.sandbox.image.tag | default .Chart.AppVersion }}
+        imagePullPolicy: {{ .Values.sandbox.image.pullPolicy | default "IfNotPresent" | quote }}
+        name: sandbox
+        livenessProbe:
+          exec:
+            command:
+            - curl
+            - -f
+            - http://localhost:8194/health
+        resources: {}
+        volumeMounts:
+        - mountPath: /dependencies/python-requirements.txt
+          name: dify-sandbox
+          subPath: python-requirements.txt
+        - mountPath: /conf/config.yaml
+          name: dify-sandbox
+          subPath: config.yaml
+        - mountPath: /conf/config.yaml.example
+          name: dify-sandbox
+          subPath: config.yaml.example
+      restartPolicy: Always
+      volumes:
+      - configMap:
+          items:
+            - key: python-requirements.txt
+              path: python-requirements.txt
+            - key: config.yaml
+              path: config.yaml
+            - key: config.yaml.example
+              path: config.yaml.example
+          name: {{ include "dify.fullname" . }}-sandbox
+        name: dify-sandbox
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "dify.fullname" . }}-ssrf-proxy
+  labels:
+    app: ssrf-proxy
+  {{- include "dify.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.ssrfProxy.replicas }}
+  strategy:
+    type: {{ .Values.ssrfProxy.strategy.type | quote }}
+  selector:
+    matchLabels:
+      app: ssrf-proxy
+    {{- include "dify.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        app: ssrf-proxy
+      {{- include "dify.selectorLabels" . | nindent 8 }}
+    spec:
+      containers:
+      - command:
+          - sh
+          - -c
+          - "cp /docker-entrypoint-mount.sh /docker-entrypoint.sh && sed -i 's/\r$//' /docker-entrypoint.sh
+          && chmod +x /docker-entrypoint.sh && /docker-entrypoint.sh"
+        env:
+        - name: COREDUMP_DIR
+          value: {{ quote .Values.env.coredumpDir }}
+        - name: HTTP_PORT
+          value: {{ quote .Values.env.httpPort }}
+        - name: REVERSE_PROXY_PORT
+          value: {{ quote .Values.env.reverseProxyPort }}
+        - name: SANDBOX_HOST
+          value: {{ quote .Values.env.sandboxHost }}
+        - name: SANDBOX_PORT
+          value: {{ quote .Values.env.sandboxPort }}
+        image: {{ .Values.ssrfProxy.image.repository }}:{{ .Values.ssrfProxy.image.tag | default .Chart.AppVersion }}
+        imagePullPolicy: {{ .Values.ssrfProxy.image.pullPolicy | default "IfNotPresent" | quote }}
+        name: ssrf-proxy
+        resources: {}
+        volumeMounts:
+        - mountPath: /etc/squid/squid.conf.template
+          name: ssrf-proxy
+          subPath: squid.conf.template
+        - mountPath: /docker-entrypoint-mount.sh
+          name: ssrf-proxy
+          subPath: docker-entrypoint-mount.sh
+      restartPolicy: Always
+      volumes:
+      - configMap:
+          name: {{ include "dify.fullname" . }}-ssrf-proxy
+        name: ssrf-proxy
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "dify.fullname" . }}-web
+  labels:
+    app: web
+  {{- include "dify.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.web.replicas }}
+  selector:
+    matchLabels:
+      app: web
+    {{- include "dify.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        app: web
+      {{- include "dify.selectorLabels" . | nindent 8 }}
+    spec:
+      containers:
+      - env:
+        - name: APP_API_URL
+          value: {{ quote .Values.env.appApiUrl }}
+        - name: CONSOLE_API_URL
+          value: {{ quote .Values.env.consoleApiUrl }}
+        - name: CSP_WHITELIST
+          value: {{ quote .Values.env.cspWhitelist }}
+        - name: INDEXING_MAX_SEGMENTATION_TOKENS_LENGTH
+          value: {{ quote .Values.env.indexingMaxSegmentationTokensLength }}
+        - name: LOOP_NODE_MAX_COUNT
+          value: {{ quote .Values.env.loopNodeMaxCount }}
+        - name: MARKETPLACE_API_URL
+          value: {{ quote .Values.env.marketplaceApiUrl }}
+        - name: MARKETPLACE_URL
+          value: {{ quote .Values.env.marketplaceUrl }}
+        - name: NEXT_TELEMETRY_DISABLED
+          value: {{ quote .Values.env.nextTelemetryDisabled }}
+        - name: PM2_INSTANCES
+          value: {{ quote .Values.env.pm2Instances }}
+        - name: SENTRY_DSN
+          value: {{ quote .Values.env.sentryDsn }}
+        - name: TEXT_GENERATION_TIMEOUT_MS
+          value: {{ quote .Values.env.textGenerationTimeoutMs }}
+        - name: TOP_K_MAX_VALUE
+          value: {{ quote .Values.env.topKMaxValue }}
+        image: {{ .Values.web.image.repository }}:{{ .Values.web.image.tag | default .Chart.AppVersion }}
+        imagePullPolicy: {{ .Values.web.image.pullPolicy | default "IfNotPresent" | quote }}
+        name: web
+        resources: {}
+      restartPolicy: Always
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "dify.fullname" . }}-worker
+  labels:
+    app: worker
+  {{- include "dify.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.worker.replicas }}
+  selector:
+    matchLabels:
+      app: worker
+    {{- include "dify.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        app: worker
+      {{- include "dify.selectorLabels" . | nindent 8 }}
+    spec:
+      containers:
+      - env:
+        - name: ACCESS_TOKEN_EXPIRE_MINUTES
+          value: {{ quote .Values.env.accessTokenExpireMinutes }}
+        - name: ALIYUN_OSS_ACCESS_KEY
+          value: {{ quote .Values.env.aliyunOssAccessKey }}
+        - name: ALIYUN_OSS_AUTH_VERSION
+          value: {{ quote .Values.env.aliyunOssAuthVersion }}
+        - name: ALIYUN_OSS_BUCKET_NAME
+          value: {{ quote .Values.env.aliyunOssBucketName }}
+        - name: ALIYUN_OSS_ENDPOINT
+          value: {{ quote .Values.env.aliyunOssEndpoint }}
+        - name: ALIYUN_OSS_PATH
+          value: {{ quote .Values.env.aliyunOssPath }}
+        - name: ALIYUN_OSS_REGION
+          value: {{ quote .Values.env.aliyunOssRegion }}
+        - name: ALIYUN_OSS_SECRET_KEY
+          value: {{ quote .Values.env.aliyunOssSecretKey }}
+        - name: ANALYTICDB_ACCOUNT
+          value: {{ quote .Values.env.analyticdbAccount }}
+        - name: ANALYTICDB_HOST
+          value: {{ quote .Values.env.analyticdbHost }}
+        - name: ANALYTICDB_INSTANCE_ID
+          value: {{ quote .Values.env.analyticdbInstanceId }}
+        - name: ANALYTICDB_KEY_ID
+          value: {{ quote .Values.env.analyticdbKeyId }}
+        - name: ANALYTICDB_KEY_SECRET
+          value: {{ quote .Values.env.analyticdbKeySecret }}
+        - name: ANALYTICDB_MAX_CONNECTION
+          value: {{ quote .Values.env.analyticdbMaxConnection }}
+        - name: ANALYTICDB_MIN_CONNECTION
+          value: {{ quote .Values.env.analyticdbMinConnection }}
+        - name: ANALYTICDB_NAMESPACE
+          value: {{ quote .Values.env.analyticdbNamespace }}
+        - name: ANALYTICDB_NAMESPACE_PASSWORD
+          value: {{ quote .Values.env.analyticdbNamespacePassword }}
+        - name: ANALYTICDB_PASSWORD
+          value: {{ quote .Values.env.analyticdbPassword }}
+        - name: ANALYTICDB_PORT
+          value: {{ quote .Values.env.analyticdbPort }}
+        - name: ANALYTICDB_REGION_ID
+          value: {{ quote .Values.env.analyticdbRegionId }}
+        - name: API_SENTRY_DSN
+          value: {{ quote .Values.env.apiSentryDsn }}
+        - name: API_SENTRY_PROFILES_SAMPLE_RATE
+          value: {{ quote .Values.env.apiSentryProfilesSampleRate }}
+        - name: API_SENTRY_TRACES_SAMPLE_RATE
+          value: {{ quote .Values.env.apiSentryTracesSampleRate }}
+        - name: API_TOOL_DEFAULT_CONNECT_TIMEOUT
+          value: {{ quote .Values.env.apiToolDefaultConnectTimeout }}
+        - name: API_TOOL_DEFAULT_READ_TIMEOUT
+          value: {{ quote .Values.env.apiToolDefaultReadTimeout }}
+        - name: APP_API_URL
+          value: {{ quote .Values.env.appApiUrl }}
+        - name: APP_MAX_ACTIVE_REQUESTS
+          value: {{ quote .Values.env.appMaxActiveRequests }}
+        - name: APP_MAX_EXECUTION_TIME
+          value: {{ quote .Values.env.appMaxExecutionTime }}
+        - name: APP_WEB_URL
+          value: {{ quote .Values.env.appWebUrl }}
+        - name: AZURE_BLOB_ACCOUNT_KEY
+          value: {{ quote .Values.env.azureBlobAccountKey }}
+        - name: AZURE_BLOB_ACCOUNT_NAME
+          value: {{ quote .Values.env.azureBlobAccountName }}
+        - name: AZURE_BLOB_ACCOUNT_URL
+          value: {{ quote .Values.env.azureBlobAccountUrl }}
+        - name: AZURE_BLOB_CONTAINER_NAME
+          value: {{ quote .Values.env.azureBlobContainerName }}
+        - name: BAIDU_OBS_ACCESS_KEY
+          value: {{ quote .Values.env.baiduObsAccessKey }}
+        - name: BAIDU_OBS_BUCKET_NAME
+          value: {{ quote .Values.env.baiduObsBucketName }}
+        - name: BAIDU_OBS_ENDPOINT
+          value: {{ quote .Values.env.baiduObsEndpoint }}
+        - name: BAIDU_OBS_SECRET_KEY
+          value: {{ quote .Values.env.baiduObsSecretKey }}
+        - name: BAIDU_VECTOR_DB_ACCOUNT
+          value: {{ quote .Values.env.baiduVectorDbAccount }}
+        - name: BAIDU_VECTOR_DB_API_KEY
+          value: {{ quote .Values.env.baiduVectorDbApiKey }}
+        - name: BAIDU_VECTOR_DB_CONNECTION_TIMEOUT_MS
+          value: {{ quote .Values.env.baiduVectorDbConnectionTimeoutMs }}
+        - name: BAIDU_VECTOR_DB_DATABASE
+          value: {{ quote .Values.env.baiduVectorDbDatabase }}
+        - name: BAIDU_VECTOR_DB_ENDPOINT
+          value: {{ quote .Values.env.baiduVectorDbEndpoint }}
+        - name: BAIDU_VECTOR_DB_REPLICAS
+          value: {{ quote .Values.env.baiduVectorDbReplicas }}
+        - name: BAIDU_VECTOR_DB_SHARD
+          value: {{ quote .Values.env.baiduVectorDbShard }}
+        - name: BROKER_USE_SSL
+          value: {{ quote .Values.env.brokerUseSsl }}
+        - name: CELERY_AUTO_SCALE
+          value: {{ quote .Values.env.celeryAutoScale }}
+        - name: CELERY_BROKER_URL
+          value: {{ quote .Values.env.celeryBrokerUrl }}
+        - name: CELERY_MAX_WORKERS
+          value: {{ quote .Values.env.celeryMaxWorkers }}
+        - name: CELERY_MIN_WORKERS
+          value: {{ quote .Values.env.celeryMinWorkers }}
+        - name: CELERY_SENTINEL_MASTER_NAME
+          value: {{ quote .Values.env.celerySentinelMasterName }}
+        - name: CELERY_SENTINEL_SOCKET_TIMEOUT
+          value: {{ quote .Values.env.celerySentinelSocketTimeout }}
+        - name: CELERY_USE_SENTINEL
+          value: {{ quote .Values.env.celeryUseSentinel }}
+        - name: CELERY_WORKER_AMOUNT
+          value: {{ quote .Values.env.celeryWorkerAmount }}
+        - name: CELERY_WORKER_CLASS
+          value: {{ quote .Values.env.celeryWorkerClass }}
+        - name: CERTBOT_DOMAIN
+          value: {{ quote .Values.env.certbotDomain }}
+        - name: CERTBOT_EMAIL
+          value: {{ quote .Values.env.certbotEmail }}
+        - name: CERTBOT_OPTIONS
+          value: {{ quote .Values.env.certbotOptions }}
+        - name: CHECK_UPDATE_URL
+          value: {{ quote .Values.env.checkUpdateUrl }}
+        - name: CHROMA_AUTH_CREDENTIALS
+          value: {{ quote .Values.env.chromaAuthCredentials }}
+        - name: CHROMA_AUTH_PROVIDER
+          value: {{ quote .Values.env.chromaAuthProvider }}
+        - name: CHROMA_DATABASE
+          value: {{ quote .Values.env.chromaDatabase }}
+        - name: CHROMA_HOST
+          value: {{ quote .Values.env.chromaHost }}
+        - name: CHROMA_IS_PERSISTENT
+          value: {{ quote .Values.env.chromaIsPersistent }}
+        - name: CHROMA_PORT
+          value: {{ quote .Values.env.chromaPort }}
+        - name: CHROMA_SERVER_AUTHN_CREDENTIALS
+          value: {{ quote .Values.env.chromaServerAuthnCredentials }}
+        - name: CHROMA_SERVER_AUTHN_PROVIDER
+          value: {{ quote .Values.env.chromaServerAuthnProvider }}
+        - name: CHROMA_TENANT
+          value: {{ quote .Values.env.chromaTenant }}
+        - name: CODE_EXECUTION_API_KEY
+          value: {{ quote .Values.env.codeExecutionApiKey }}
+        - name: CODE_EXECUTION_CONNECT_TIMEOUT
+          value: {{ quote .Values.env.codeExecutionConnectTimeout }}
+        - name: CODE_EXECUTION_ENDPOINT
+          value: {{ quote .Values.env.codeExecutionEndpoint }}
+        - name: CODE_EXECUTION_READ_TIMEOUT
+          value: {{ quote .Values.env.codeExecutionReadTimeout }}
+        - name: CODE_EXECUTION_WRITE_TIMEOUT
+          value: {{ quote .Values.env.codeExecutionWriteTimeout }}
+        - name: CODE_GENERATION_MAX_TOKENS
+          value: {{ quote .Values.env.codeGenerationMaxTokens }}
+        - name: CODE_MAX_DEPTH
+          value: {{ quote .Values.env.codeMaxDepth }}
+        - name: CODE_MAX_NUMBER
+          value: {{ quote .Values.env.codeMaxNumber }}
+        - name: CODE_MAX_NUMBER_ARRAY_LENGTH
+          value: {{ quote .Values.env.codeMaxNumberArrayLength }}
+        - name: CODE_MAX_OBJECT_ARRAY_LENGTH
+          value: {{ quote .Values.env.codeMaxObjectArrayLength }}
+        - name: CODE_MAX_PRECISION
+          value: {{ quote .Values.env.codeMaxPrecision }}
+        - name: CODE_MAX_STRING_ARRAY_LENGTH
+          value: {{ quote .Values.env.codeMaxStringArrayLength }}
+        - name: CODE_MAX_STRING_LENGTH
+          value: {{ quote .Values.env.codeMaxStringLength }}
+        - name: CODE_MIN_NUMBER
+          value: {{ quote .Values.env.codeMinNumber }}
+        - name: CONSOLE_API_URL
+          value: {{ quote .Values.env.consoleApiUrl }}
+        - name: CONSOLE_CORS_ALLOW_ORIGINS
+          value: {{ quote .Values.env.consoleCorsAllowOrigins }}
+        - name: CONSOLE_WEB_URL
+          value: {{ quote .Values.env.consoleWebUrl }}
+        - name: COUCHBASE_BUCKET_NAME
+          value: {{ quote .Values.env.couchbaseBucketName }}
+        - name: COUCHBASE_CONNECTION_STRING
+          value: {{ quote .Values.env.couchbaseConnectionString }}
+        - name: COUCHBASE_PASSWORD
+          value: {{ quote .Values.env.couchbasePassword }}
+        - name: COUCHBASE_SCOPE_NAME
+          value: {{ quote .Values.env.couchbaseScopeName }}
+        - name: COUCHBASE_USER
+          value: {{ quote .Values.env.couchbaseUser }}
+        - name: CREATE_TIDB_SERVICE_JOB_ENABLED
+          value: {{ quote .Values.env.createTidbServiceJobEnabled }}
+        - name: CSP_WHITELIST
+          value: {{ quote .Values.env.cspWhitelist }}
+        - name: DB_DATABASE
+          value: {{ quote .Values.env.dbDatabase }}
+        - name: DB_HOST
+          value: {{ quote .Values.env.dbHost }}
+        - name: DB_PASSWORD
+          value: {{ quote .Values.env.dbPassword }}
+        - name: DB_PLUGIN_DATABASE
+          value: {{ quote .Values.env.dbPluginDatabase }}
+        - name: DB_PORT
+          value: {{ quote .Values.env.dbPort }}
+        - name: DB_USERNAME
+          value: {{ quote .Values.env.dbUsername }}
+        - name: DEBUG
+          value: {{ quote .Values.env.debug }}
+        - name: DEPLOY_ENV
+          value: {{ quote .Values.env.deployEnv }}
+        - name: DIFY_BIND_ADDRESS
+          value: {{ quote .Values.env.difyBindAddress }}
+        - name: DIFY_PORT
+          value: {{ quote .Values.env.difyPort }}
+        - name: ELASTICSEARCH_HOST
+          value: {{ quote .Values.env.elasticsearchHost }}
+        - name: ELASTICSEARCH_PASSWORD
+          value: {{ quote .Values.env.elasticsearchPassword }}
+        - name: ELASTICSEARCH_PORT
+          value: {{ quote .Values.env.elasticsearchPort }}
+        - name: ELASTICSEARCH_USERNAME
+          value: {{ quote .Values.env.elasticsearchUsername }}
+        - name: ENDPOINT_URL_TEMPLATE
+          value: {{ quote .Values.env.endpointUrlTemplate }}
+        - name: ETCD_AUTO_COMPACTION_MODE
+          value: {{ quote .Values.env.etcdAutoCompactionMode }}
+        - name: ETCD_AUTO_COMPACTION_RETENTION
+          value: {{ quote .Values.env.etcdAutoCompactionRetention }}
+        - name: ETCD_ENDPOINTS
+          value: {{ quote .Values.env.etcdEndpoints }}
+        - name: ETCD_QUOTA_BACKEND_BYTES
+          value: {{ quote .Values.env.etcdQuotaBackendBytes }}
+        - name: ETCD_SNAPSHOT_COUNT
+          value: {{ quote .Values.env.etcdSnapshotCount }}
+        - name: ETL_TYPE
+          value: {{ quote .Values.env.etlType }}
+        - name: EXPOSE_NGINX_PORT
+          value: {{ quote .Values.env.exposeNginxPort }}
+        - name: EXPOSE_NGINX_SSL_PORT
+          value: {{ quote .Values.env.exposeNginxSslPort }}
+        - name: EXPOSE_PLUGIN_DAEMON_PORT
+          value: {{ quote .Values.env.exposePluginDaemonPort }}
+        - name: EXPOSE_PLUGIN_DEBUGGING_HOST
+          value: {{ quote .Values.env.exposePluginDebuggingHost }}
+        - name: EXPOSE_PLUGIN_DEBUGGING_PORT
+          value: {{ quote .Values.env.exposePluginDebuggingPort }}
+        - name: FILES_ACCESS_TIMEOUT
+          value: {{ quote .Values.env.filesAccessTimeout }}
+        - name: FILES_URL
+          value: {{ quote .Values.env.filesUrl }}
+        - name: FLASK_DEBUG
+          value: {{ quote .Values.env.flaskDebug }}
+        - name: FORCE_VERIFYING_SIGNATURE
+          value: {{ quote .Values.env.forceVerifyingSignature }}
+        - name: GOOGLE_STORAGE_BUCKET_NAME
+          value: {{ quote .Values.env.googleStorageBucketName }}
+        - name: GOOGLE_STORAGE_SERVICE_ACCOUNT_JSON_BASE64
+          value: {{ quote .Values.env.googleStorageServiceAccountJsonBase64 }}
+        - name: GUNICORN_TIMEOUT
+          value: {{ quote .Values.env.gunicornTimeout }}
+        - name: HTTP_REQUEST_NODE_MAX_BINARY_SIZE
+          value: {{ quote .Values.env.httpRequestNodeMaxBinarySize }}
+        - name: HTTP_REQUEST_NODE_MAX_TEXT_SIZE
+          value: {{ quote .Values.env.httpRequestNodeMaxTextSize }}
+        - name: HUAWEI_OBS_ACCESS_KEY
+          value: {{ quote .Values.env.huaweiObsAccessKey }}
+        - name: HUAWEI_OBS_BUCKET_NAME
+          value: {{ quote .Values.env.huaweiObsBucketName }}
+        - name: HUAWEI_OBS_SECRET_KEY
+          value: {{ quote .Values.env.huaweiObsSecretKey }}
+        - name: HUAWEI_OBS_SERVER
+          value: {{ quote .Values.env.huaweiObsServer }}
+        - name: INDEXING_MAX_SEGMENTATION_TOKENS_LENGTH
+          value: {{ quote .Values.env.indexingMaxSegmentationTokensLength }}
+        - name: INIT_PASSWORD
+          value: {{ quote .Values.env.initPassword }}
+        - name: INNER_API_KEY_FOR_PLUGIN
+          value: {{ quote .Values.env.innerApiKeyForPlugin }}
+        - name: INVITE_EXPIRY_HOURS
+          value: {{ quote .Values.env.inviteExpiryHours }}
+        - name: KIBANA_PORT
+          value: {{ quote .Values.env.kibanaPort }}
+        - name: LINDORM_PASSWORD
+          value: {{ quote .Values.env.lindormPassword }}
+        - name: LINDORM_URL
+          value: {{ quote .Values.env.lindormUrl }}
+        - name: LINDORM_USERNAME
+          value: {{ quote .Values.env.lindormUsername }}
+        - name: LOG_DATEFORMAT
+          value: {{ quote .Values.env.logDateformat }}
+        - name: LOG_FILE
+          value: {{ quote .Values.env.logFile }}
+        - name: LOG_FILE_BACKUP_COUNT
+          value: {{ quote .Values.env.logFileBackupCount }}
+        - name: LOG_FILE_MAX_SIZE
+          value: {{ quote .Values.env.logFileMaxSize }}
+        - name: LOG_LEVEL
+          value: {{ quote .Values.env.logLevel }}
+        - name: LOG_TZ
+          value: {{ quote .Values.env.logTz }}
+        - name: LOOP_NODE_MAX_COUNT
+          value: {{ quote .Values.env.loopNodeMaxCount }}
+        - name: MAIL_DEFAULT_SEND_FROM
+          value: {{ quote .Values.env.mailDefaultSendFrom }}
+        - name: MAIL_TYPE
+          value: {{ quote .Values.env.mailType }}
+        - name: MARKETPLACE_API_URL
+          value: {{ quote .Values.env.marketplaceApiUrl }}
+        - name: MARKETPLACE_ENABLED
+          value: {{ quote .Values.env.marketplaceEnabled }}
+        - name: MAX_SUBMIT_COUNT
+          value: {{ quote .Values.env.maxSubmitCount }}
+        - name: MAX_VARIABLE_SIZE
+          value: {{ quote .Values.env.maxVariableSize }}
+        - name: MIGRATION_ENABLED
+          value: {{ quote .Values.env.migrationEnabled }}
+        - name: MILVUS_AUTHORIZATION_ENABLED
+          value: {{ quote .Values.env.milvusAuthorizationEnabled }}
+        - name: MILVUS_ENABLE_HYBRID_SEARCH
+          value: {{ quote .Values.env.milvusEnableHybridSearch }}
+        - name: MILVUS_PASSWORD
+          value: {{ quote .Values.env.milvusPassword }}
+        - name: MILVUS_TOKEN
+          value: {{ quote .Values.env.milvusToken }}
+        - name: MILVUS_URI
+          value: {{ quote .Values.env.milvusUri }}
+        - name: MILVUS_USER
+          value: {{ quote .Values.env.milvusUser }}
+        - name: MINIO_ACCESS_KEY
+          value: {{ quote .Values.env.minioAccessKey }}
+        - name: MINIO_ADDRESS
+          value: {{ quote .Values.env.minioAddress }}
+        - name: MINIO_SECRET_KEY
+          value: {{ quote .Values.env.minioSecretKey }}
+        - name: MODE
+          value: worker
+        - name: MULTIMODAL_SEND_FORMAT
+          value: {{ quote .Values.env.multimodalSendFormat }}
+        - name: MYSCALE_DATABASE
+          value: {{ quote .Values.env.myscaleDatabase }}
+        - name: MYSCALE_FTS_PARAMS
+          value: {{ quote .Values.env.myscaleFtsParams }}
+        - name: MYSCALE_HOST
+          value: {{ quote .Values.env.myscaleHost }}
+        - name: MYSCALE_PASSWORD
+          value: {{ quote .Values.env.myscalePassword }}
+        - name: MYSCALE_PORT
+          value: {{ quote .Values.env.myscalePort }}
+        - name: MYSCALE_USER
+          value: {{ quote .Values.env.myscaleUser }}
+        - name: NGINX_CLIENT_MAX_BODY_SIZE
+          value: {{ quote .Values.env.nginxClientMaxBodySize }}
+        - name: NGINX_ENABLE_CERTBOT_CHALLENGE
+          value: {{ quote .Values.env.nginxEnableCertbotChallenge }}
+        - name: NGINX_HTTPS_ENABLED
+          value: {{ quote .Values.env.nginxHttpsEnabled }}
+        - name: NGINX_KEEPALIVE_TIMEOUT
+          value: {{ quote .Values.env.nginxKeepaliveTimeout }}
+        - name: NGINX_PORT
+          value: {{ quote .Values.env.nginxPort }}
+        - name: NGINX_PROXY_READ_TIMEOUT
+          value: {{ quote .Values.env.nginxProxyReadTimeout }}
+        - name: NGINX_PROXY_SEND_TIMEOUT
+          value: {{ quote .Values.env.nginxProxySendTimeout }}
+        - name: NGINX_SERVER_NAME
+          value: {{ quote .Values.env.nginxServerName }}
+        - name: NGINX_SSL_CERT_FILENAME
+          value: {{ quote .Values.env.nginxSslCertFilename }}
+        - name: NGINX_SSL_CERT_KEY_FILENAME
+          value: {{ quote .Values.env.nginxSslCertKeyFilename }}
+        - name: NGINX_SSL_PORT
+          value: {{ quote .Values.env.nginxSslPort }}
+        - name: NGINX_SSL_PROTOCOLS
+          value: {{ quote .Values.env.nginxSslProtocols }}
+        - name: NGINX_WORKER_PROCESSES
+          value: {{ quote .Values.env.nginxWorkerProcesses }}
+        - name: NOTION_CLIENT_ID
+          value: {{ quote .Values.env.notionClientId }}
+        - name: NOTION_CLIENT_SECRET
+          value: {{ quote .Values.env.notionClientSecret }}
+        - name: NOTION_INTEGRATION_TYPE
+          value: {{ quote .Values.env.notionIntegrationType }}
+        - name: NOTION_INTERNAL_SECRET
+          value: {{ quote .Values.env.notionInternalSecret }}
+        - name: OCEANBASE_CLUSTER_NAME
+          value: {{ quote .Values.env.oceanbaseClusterName }}
+        - name: OCEANBASE_MEMORY_LIMIT
+          value: {{ quote .Values.env.oceanbaseMemoryLimit }}
+        - name: OCEANBASE_VECTOR_DATABASE
+          value: {{ quote .Values.env.oceanbaseVectorDatabase }}
+        - name: OCEANBASE_VECTOR_HOST
+          value: {{ quote .Values.env.oceanbaseVectorHost }}
+        - name: OCEANBASE_VECTOR_PASSWORD
+          value: {{ quote .Values.env.oceanbaseVectorPassword }}
+        - name: OCEANBASE_VECTOR_PORT
+          value: {{ quote .Values.env.oceanbaseVectorPort }}
+        - name: OCEANBASE_VECTOR_USER
+          value: {{ quote .Values.env.oceanbaseVectorUser }}
+        - name: OCI_ACCESS_KEY
+          value: {{ quote .Values.env.ociAccessKey }}
+        - name: OCI_BUCKET_NAME
+          value: {{ quote .Values.env.ociBucketName }}
+        - name: OCI_ENDPOINT
+          value: {{ quote .Values.env.ociEndpoint }}
+        - name: OCI_REGION
+          value: {{ quote .Values.env.ociRegion }}
+        - name: OCI_SECRET_KEY
+          value: {{ quote .Values.env.ociSecretKey }}
+        - name: OPENAI_API_BASE
+          value: {{ quote .Values.env.openaiApiBase }}
+        - name: OPENDAL_FS_ROOT
+          value: {{ quote .Values.env.opendalFsRoot }}
+        - name: OPENDAL_SCHEME
+          value: {{ quote .Values.env.opendalScheme }}
+        - name: OPENSEARCH_BOOTSTRAP_MEMORY_LOCK
+          value: {{ quote .Values.env.opensearchBootstrapMemoryLock }}
+        - name: OPENSEARCH_DISCOVERY_TYPE
+          value: {{ quote .Values.env.opensearchDiscoveryType }}
+        - name: OPENSEARCH_HOST
+          value: {{ quote .Values.env.opensearchHost }}
+        - name: OPENSEARCH_INITIAL_ADMIN_PASSWORD
+          value: {{ quote .Values.env.opensearchInitialAdminPassword }}
+        - name: OPENSEARCH_JAVA_OPTS_MAX
+          value: {{ quote .Values.env.opensearchJavaOptsMax }}
+        - name: OPENSEARCH_JAVA_OPTS_MIN
+          value: {{ quote .Values.env.opensearchJavaOptsMin }}
+        - name: OPENSEARCH_MEMLOCK_HARD
+          value: {{ quote .Values.env.opensearchMemlockHard }}
+        - name: OPENSEARCH_MEMLOCK_SOFT
+          value: {{ quote .Values.env.opensearchMemlockSoft }}
+        - name: OPENSEARCH_NOFILE_HARD
+          value: {{ quote .Values.env.opensearchNofileHard }}
+        - name: OPENSEARCH_NOFILE_SOFT
+          value: {{ quote .Values.env.opensearchNofileSoft }}
+        - name: OPENSEARCH_PASSWORD
+          value: {{ quote .Values.env.opensearchPassword }}
+        - name: OPENSEARCH_PORT
+          value: {{ quote .Values.env.opensearchPort }}
+        - name: OPENSEARCH_SECURE
+          value: {{ quote .Values.env.opensearchSecure }}
+        - name: OPENSEARCH_USER
+          value: {{ quote .Values.env.opensearchUser }}
+        - name: ORACLE_CHARACTERSET
+          value: {{ quote .Values.env.oracleCharacterset }}
+        - name: ORACLE_CONFIG_DIR
+          value: {{ quote .Values.env.oracleConfigDir }}
+        - name: ORACLE_DSN
+          value: {{ quote .Values.env.oracleDsn }}
+        - name: ORACLE_IS_AUTONOMOUS
+          value: {{ quote .Values.env.oracleIsAutonomous }}
+        - name: ORACLE_PASSWORD
+          value: {{ quote .Values.env.oraclePassword }}
+        - name: ORACLE_PWD
+          value: {{ quote .Values.env.oraclePwd }}
+        - name: ORACLE_USER
+          value: {{ quote .Values.env.oracleUser }}
+        - name: ORACLE_WALLET_LOCATION
+          value: {{ quote .Values.env.oracleWalletLocation }}
+        - name: ORACLE_WALLET_PASSWORD
+          value: {{ quote .Values.env.oracleWalletPassword }}
+        - name: PGDATA
+          value: {{ quote .Values.env.pgdata }}
+        - name: PGUSER
+          value: {{ quote .Values.env.pguser }}
+        - name: PGVECTOR_DATABASE
+          value: {{ quote .Values.env.pgvectorDatabase }}
+        - name: PGVECTOR_HOST
+          value: {{ quote .Values.env.pgvectorHost }}
+        - name: PGVECTOR_MAX_CONNECTION
+          value: {{ quote .Values.env.pgvectorMaxConnection }}
+        - name: PGVECTOR_MIN_CONNECTION
+          value: {{ quote .Values.env.pgvectorMinConnection }}
+        - name: PGVECTOR_PASSWORD
+          value: {{ quote .Values.env.pgvectorPassword }}
+        - name: PGVECTOR_PGDATA
+          value: {{ quote .Values.env.pgvectorPgdata }}
+        - name: PGVECTOR_PGUSER
+          value: {{ quote .Values.env.pgvectorPguser }}
+        - name: PGVECTOR_PORT
+          value: {{ quote .Values.env.pgvectorPort }}
+        - name: PGVECTOR_POSTGRES_DB
+          value: {{ quote .Values.env.pgvectorPostgresDb }}
+        - name: PGVECTOR_POSTGRES_PASSWORD
+          value: {{ quote .Values.env.pgvectorPostgresPassword }}
+        - name: PGVECTOR_USER
+          value: {{ quote .Values.env.pgvectorUser }}
+        - name: PGVECTO_RS_DATABASE
+          value: {{ quote .Values.env.pgvectoRsDatabase }}
+        - name: PGVECTO_RS_HOST
+          value: {{ quote .Values.env.pgvectoRsHost }}
+        - name: PGVECTO_RS_PASSWORD
+          value: {{ quote .Values.env.pgvectoRsPassword }}
+        - name: PGVECTO_RS_PORT
+          value: {{ quote .Values.env.pgvectoRsPort }}
+        - name: PGVECTO_RS_USER
+          value: {{ quote .Values.env.pgvectoRsUser }}
+        - name: PIP_MIRROR_URL
+          value: {{ quote .Values.env.pipMirrorUrl }}
+        - name: PLUGIN_DAEMON_KEY
+          value: {{ quote .Values.env.pluginDaemonKey }}
+        - name: PLUGIN_DAEMON_PORT
+          value: {{ quote .Values.env.pluginDaemonPort }}
+        - name: PLUGIN_DAEMON_URL
+          value: {{ quote .Values.env.pluginDaemonUrl }}
+        - name: PLUGIN_DEBUGGING_HOST
+          value: {{ quote .Values.env.pluginDebuggingHost }}
+        - name: PLUGIN_DEBUGGING_PORT
+          value: {{ quote .Values.env.pluginDebuggingPort }}
+        - name: PLUGIN_DIFY_INNER_API_KEY
+          value: {{ quote .Values.env.pluginDifyInnerApiKey }}
+        - name: PLUGIN_DIFY_INNER_API_URL
+          value: {{ quote .Values.env.pluginDifyInnerApiUrl }}
+        - name: PLUGIN_MAX_EXECUTION_TIMEOUT
+          value: {{ quote .Values.env.pluginMaxExecutionTimeout }}
+        - name: PLUGIN_MAX_PACKAGE_SIZE
+          value: {{ quote .Values.env.pluginMaxPackageSize }}
+        - name: PLUGIN_PPROF_ENABLED
+          value: {{ quote .Values.env.pluginPprofEnabled }}
+        - name: PLUGIN_PYTHON_ENV_INIT_TIMEOUT
+          value: {{ quote .Values.env.pluginPythonEnvInitTimeout }}
+        - name: POSITION_PROVIDER_EXCLUDES
+          value: {{ quote .Values.env.positionProviderExcludes }}
+        - name: POSITION_PROVIDER_INCLUDES
+          value: {{ quote .Values.env.positionProviderIncludes }}
+        - name: POSITION_PROVIDER_PINS
+          value: {{ quote .Values.env.positionProviderPins }}
+        - name: POSITION_TOOL_EXCLUDES
+          value: {{ quote .Values.env.positionToolExcludes }}
+        - name: POSITION_TOOL_INCLUDES
+          value: {{ quote .Values.env.positionToolIncludes }}
+        - name: POSITION_TOOL_PINS
+          value: {{ quote .Values.env.positionToolPins }}
+        - name: POSTGRES_DB
+          value: {{ quote .Values.env.postgresDb }}
+        - name: POSTGRES_EFFECTIVE_CACHE_SIZE
+          value: {{ quote .Values.env.postgresEffectiveCacheSize }}
+        - name: POSTGRES_MAINTENANCE_WORK_MEM
+          value: {{ quote .Values.env.postgresMaintenanceWorkMem }}
+        - name: POSTGRES_MAX_CONNECTIONS
+          value: {{ quote .Values.env.postgresMaxConnections }}
+        - name: POSTGRES_PASSWORD
+          value: {{ quote .Values.env.postgresPassword }}
+        - name: POSTGRES_SHARED_BUFFERS
+          value: {{ quote .Values.env.postgresSharedBuffers }}
+        - name: POSTGRES_WORK_MEM
+          value: {{ quote .Values.env.postgresWorkMem }}
+        - name: PROMPT_GENERATION_MAX_TOKENS
+          value: {{ quote .Values.env.promptGenerationMaxTokens }}
+        - name: QDRANT_API_KEY
+          value: {{ quote .Values.env.qdrantApiKey }}
+        - name: QDRANT_CLIENT_TIMEOUT
+          value: {{ quote .Values.env.qdrantClientTimeout }}
+        - name: QDRANT_GRPC_ENABLED
+          value: {{ quote .Values.env.qdrantGrpcEnabled }}
+        - name: QDRANT_GRPC_PORT
+          value: {{ quote .Values.env.qdrantGrpcPort }}
+        - name: QDRANT_URL
+          value: {{ quote .Values.env.qdrantUrl }}
+        - name: REDIS_CLUSTERS
+          value: {{ quote .Values.env.redisClusters }}
+        - name: REDIS_CLUSTERS_PASSWORD
+          value: {{ quote .Values.env.redisClustersPassword }}
+        - name: REDIS_DB
+          value: {{ quote .Values.env.redisDb }}
+        - name: REDIS_HOST
+          value: {{ quote .Values.env.redisHost }}
+        - name: REDIS_PASSWORD
+          value: {{ quote .Values.env.redisPassword }}
+        - name: REDIS_PORT
+          value: {{ quote .Values.env.redisPort }}
+        - name: REDIS_SENTINELS
+          value: {{ quote .Values.env.redisSentinels }}
+        - name: REDIS_SENTINEL_PASSWORD
+          value: {{ quote .Values.env.redisSentinelPassword }}
+        - name: REDIS_SENTINEL_SERVICE_NAME
+          value: {{ quote .Values.env.redisSentinelServiceName }}
+        - name: REDIS_SENTINEL_SOCKET_TIMEOUT
+          value: {{ quote .Values.env.redisSentinelSocketTimeout }}
+        - name: REDIS_SENTINEL_USERNAME
+          value: {{ quote .Values.env.redisSentinelUsername }}
+        - name: REDIS_USERNAME
+          value: {{ quote .Values.env.redisUsername }}
+        - name: REDIS_USE_CLUSTERS
+          value: {{ quote .Values.env.redisUseClusters }}
+        - name: REDIS_USE_SENTINEL
+          value: {{ quote .Values.env.redisUseSentinel }}
+        - name: REDIS_USE_SSL
+          value: {{ quote .Values.env.redisUseSsl }}
+        - name: REFRESH_TOKEN_EXPIRE_DAYS
+          value: {{ quote .Values.env.refreshTokenExpireDays }}
+        - name: RELYT_DATABASE
+          value: {{ quote .Values.env.relytDatabase }}
+        - name: RELYT_HOST
+          value: {{ quote .Values.env.relytHost }}
+        - name: RELYT_PASSWORD
+          value: {{ quote .Values.env.relytPassword }}
+        - name: RELYT_PORT
+          value: {{ quote .Values.env.relytPort }}
+        - name: RELYT_USER
+          value: {{ quote .Values.env.relytUser }}
+        - name: RESEND_API_KEY
+          value: {{ quote .Values.env.resendApiKey }}
+        - name: RESEND_API_URL
+          value: {{ quote .Values.env.resendApiUrl }}
+        - name: RESET_PASSWORD_TOKEN_EXPIRY_MINUTES
+          value: {{ quote .Values.env.resetPasswordTokenExpiryMinutes }}
+        - name: S3_ACCESS_KEY
+          value: {{ quote .Values.env.s3AccessKey }}
+        - name: S3_BUCKET_NAME
+          value: {{ quote .Values.env.s3BucketName }}
+        - name: S3_ENDPOINT
+          value: {{ quote .Values.env.s3Endpoint }}
+        - name: S3_REGION
+          value: {{ quote .Values.env.s3Region }}
+        - name: S3_SECRET_KEY
+          value: {{ quote .Values.env.s3SecretKey }}
+        - name: S3_USE_AWS_MANAGED_IAM
+          value: {{ quote .Values.env.s3UseAwsManagedIam }}
+        - name: SANDBOX_API_KEY
+          value: {{ quote .Values.env.sandboxApiKey }}
+        - name: SANDBOX_ENABLE_NETWORK
+          value: {{ quote .Values.env.sandboxEnableNetwork }}
+        - name: SANDBOX_GIN_MODE
+          value: {{ quote .Values.env.sandboxGinMode }}
+        - name: SANDBOX_HTTPS_PROXY
+          value: {{ quote .Values.env.sandboxHttpsProxy }}
+        - name: SANDBOX_HTTP_PROXY
+          value: {{ quote .Values.env.sandboxHttpProxy }}
+        - name: SANDBOX_PORT
+          value: {{ quote .Values.env.sandboxPort }}
+        - name: SANDBOX_WORKER_TIMEOUT
+          value: {{ quote .Values.env.sandboxWorkerTimeout }}
+        - name: SCARF_NO_ANALYTICS
+          value: {{ quote .Values.env.scarfNoAnalytics }}
+        - name: SECRET_KEY
+          value: {{ quote .Values.env.secretKey }}
+        - name: SENTRY_DSN
+          value: {{ quote .Values.env.sentryDsn }}
+        - name: SENTRY_PROFILES_SAMPLE_RATE
+          value: {{ quote .Values.env.sentryProfilesSampleRate }}
+        - name: SENTRY_TRACES_SAMPLE_RATE
+          value: {{ quote .Values.env.sentryTracesSampleRate }}
+        - name: SERVER_WORKER_AMOUNT
+          value: {{ quote .Values.env.serverWorkerAmount }}
+        - name: SERVER_WORKER_CLASS
+          value: {{ quote .Values.env.serverWorkerClass }}
+        - name: SERVER_WORKER_CONNECTIONS
+          value: {{ quote .Values.env.serverWorkerConnections }}
+        - name: SERVICE_API_URL
+          value: {{ quote .Values.env.serviceApiUrl }}
+        - name: SMTP_OPPORTUNISTIC_TLS
+          value: {{ quote .Values.env.smtpOpportunisticTls }}
+        - name: SMTP_PASSWORD
+          value: {{ quote .Values.env.smtpPassword }}
+        - name: SMTP_PORT
+          value: {{ quote .Values.env.smtpPort }}
+        - name: SMTP_SERVER
+          value: {{ quote .Values.env.smtpServer }}
+        - name: SMTP_USERNAME
+          value: {{ quote .Values.env.smtpUsername }}
+        - name: SMTP_USE_TLS
+          value: {{ quote .Values.env.smtpUseTls }}
+        - name: SQLALCHEMY_ECHO
+          value: {{ quote .Values.env.sqlalchemyEcho }}
+        - name: SQLALCHEMY_POOL_RECYCLE
+          value: {{ quote .Values.env.sqlalchemyPoolRecycle }}
+        - name: SQLALCHEMY_POOL_SIZE
+          value: {{ quote .Values.env.sqlalchemyPoolSize }}
+        - name: SSRF_COREDUMP_DIR
+          value: {{ quote .Values.env.ssrfCoredumpDir }}
+        - name: SSRF_DEFAULT_CONNECT_TIME_OUT
+          value: {{ quote .Values.env.ssrfDefaultConnectTimeOut }}
+        - name: SSRF_DEFAULT_READ_TIME_OUT
+          value: {{ quote .Values.env.ssrfDefaultReadTimeOut }}
+        - name: SSRF_DEFAULT_TIME_OUT
+          value: {{ quote .Values.env.ssrfDefaultTimeOut }}
+        - name: SSRF_DEFAULT_WRITE_TIME_OUT
+          value: {{ quote .Values.env.ssrfDefaultWriteTimeOut }}
+        - name: SSRF_HTTP_PORT
+          value: {{ quote .Values.env.ssrfHttpPort }}
+        - name: SSRF_PROXY_HTTPS_URL
+          value: {{ quote .Values.env.ssrfProxyHttpsUrl }}
+        - name: SSRF_PROXY_HTTP_URL
+          value: {{ quote .Values.env.ssrfProxyHttpUrl }}
+        - name: SSRF_REVERSE_PROXY_PORT
+          value: {{ quote .Values.env.ssrfReverseProxyPort }}
+        - name: SSRF_SANDBOX_HOST
+          value: {{ quote .Values.env.ssrfSandboxHost }}
+        - name: STORAGE_TYPE
+          value: {{ quote .Values.env.storageType }}
+        - name: SUPABASE_API_KEY
+          value: {{ quote .Values.env.supabaseApiKey }}
+        - name: SUPABASE_BUCKET_NAME
+          value: {{ quote .Values.env.supabaseBucketName }}
+        - name: SUPABASE_URL
+          value: {{ quote .Values.env.supabaseUrl }}
+        - name: TEMPLATE_TRANSFORM_MAX_LENGTH
+          value: {{ quote .Values.env.templateTransformMaxLength }}
+        - name: TENCENT_COS_BUCKET_NAME
+          value: {{ quote .Values.env.tencentCosBucketName }}
+        - name: TENCENT_COS_REGION
+          value: {{ quote .Values.env.tencentCosRegion }}
+        - name: TENCENT_COS_SCHEME
+          value: {{ quote .Values.env.tencentCosScheme }}
+        - name: TENCENT_COS_SECRET_ID
+          value: {{ quote .Values.env.tencentCosSecretId }}
+        - name: TENCENT_COS_SECRET_KEY
+          value: {{ quote .Values.env.tencentCosSecretKey }}
+        - name: TENCENT_VECTOR_DB_API_KEY
+          value: {{ quote .Values.env.tencentVectorDbApiKey }}
+        - name: TENCENT_VECTOR_DB_DATABASE
+          value: {{ quote .Values.env.tencentVectorDbDatabase }}
+        - name: TENCENT_VECTOR_DB_REPLICAS
+          value: {{ quote .Values.env.tencentVectorDbReplicas }}
+        - name: TENCENT_VECTOR_DB_SHARD
+          value: {{ quote .Values.env.tencentVectorDbShard }}
+        - name: TENCENT_VECTOR_DB_TIMEOUT
+          value: {{ quote .Values.env.tencentVectorDbTimeout }}
+        - name: TENCENT_VECTOR_DB_URL
+          value: {{ quote .Values.env.tencentVectorDbUrl }}
+        - name: TENCENT_VECTOR_DB_USERNAME
+          value: {{ quote .Values.env.tencentVectorDbUsername }}
+        - name: TEXT_GENERATION_TIMEOUT_MS
+          value: {{ quote .Values.env.textGenerationTimeoutMs }}
+        - name: TIDB_API_URL
+          value: {{ quote .Values.env.tidbApiUrl }}
+        - name: TIDB_IAM_API_URL
+          value: {{ quote .Values.env.tidbIamApiUrl }}
+        - name: TIDB_ON_QDRANT_API_KEY
+          value: {{ quote .Values.env.tidbOnQdrantApiKey }}
+        - name: TIDB_ON_QDRANT_CLIENT_TIMEOUT
+          value: {{ quote .Values.env.tidbOnQdrantClientTimeout }}
+        - name: TIDB_ON_QDRANT_GRPC_ENABLED
+          value: {{ quote .Values.env.tidbOnQdrantGrpcEnabled }}
+        - name: TIDB_ON_QDRANT_GRPC_PORT
+          value: {{ quote .Values.env.tidbOnQdrantGrpcPort }}
+        - name: TIDB_ON_QDRANT_URL
+          value: {{ quote .Values.env.tidbOnQdrantUrl }}
+        - name: TIDB_PRIVATE_KEY
+          value: {{ quote .Values.env.tidbPrivateKey }}
+        - name: TIDB_PROJECT_ID
+          value: {{ quote .Values.env.tidbProjectId }}
+        - name: TIDB_PUBLIC_KEY
+          value: {{ quote .Values.env.tidbPublicKey }}
+        - name: TIDB_REGION
+          value: {{ quote .Values.env.tidbRegion }}
+        - name: TIDB_SPEND_LIMIT
+          value: {{ quote .Values.env.tidbSpendLimit }}
+        - name: TIDB_VECTOR_DATABASE
+          value: {{ quote .Values.env.tidbVectorDatabase }}
+        - name: TIDB_VECTOR_HOST
+          value: {{ quote .Values.env.tidbVectorHost }}
+        - name: TIDB_VECTOR_PASSWORD
+          value: {{ quote .Values.env.tidbVectorPassword }}
+        - name: TIDB_VECTOR_PORT
+          value: {{ quote .Values.env.tidbVectorPort }}
+        - name: TIDB_VECTOR_USER
+          value: {{ quote .Values.env.tidbVectorUser }}
+        - name: TOP_K_MAX_VALUE
+          value: {{ quote .Values.env.topKMaxValue }}
+        - name: UNSTRUCTURED_API_KEY
+          value: {{ quote .Values.env.unstructuredApiKey }}
+        - name: UNSTRUCTURED_API_URL
+          value: {{ quote .Values.env.unstructuredApiUrl }}
+        - name: UPLOAD_AUDIO_FILE_SIZE_LIMIT
+          value: {{ quote .Values.env.uploadAudioFileSizeLimit }}
+        - name: UPLOAD_FILE_BATCH_LIMIT
+          value: {{ quote .Values.env.uploadFileBatchLimit }}
+        - name: UPLOAD_FILE_SIZE_LIMIT
+          value: {{ quote .Values.env.uploadFileSizeLimit }}
+        - name: UPLOAD_IMAGE_FILE_SIZE_LIMIT
+          value: {{ quote .Values.env.uploadImageFileSizeLimit }}
+        - name: UPLOAD_VIDEO_FILE_SIZE_LIMIT
+          value: {{ quote .Values.env.uploadVideoFileSizeLimit }}
+        - name: UPSTASH_VECTOR_TOKEN
+          value: {{ quote .Values.env.upstashVectorToken }}
+        - name: UPSTASH_VECTOR_URL
+          value: {{ quote .Values.env.upstashVectorUrl }}
+        - name: VECTOR_STORE
+          value: {{ quote .Values.env.vectorStore }}
+        - name: VIKINGDB_ACCESS_KEY
+          value: {{ quote .Values.env.vikingdbAccessKey }}
+        - name: VIKINGDB_CONNECTION_TIMEOUT
+          value: {{ quote .Values.env.vikingdbConnectionTimeout }}
+        - name: VIKINGDB_HOST
+          value: {{ quote .Values.env.vikingdbHost }}
+        - name: VIKINGDB_REGION
+          value: {{ quote .Values.env.vikingdbRegion }}
+        - name: VIKINGDB_SCHEMA
+          value: {{ quote .Values.env.vikingdbSchema }}
+        - name: VIKINGDB_SECRET_KEY
+          value: {{ quote .Values.env.vikingdbSecretKey }}
+        - name: VIKINGDB_SOCKET_TIMEOUT
+          value: {{ quote .Values.env.vikingdbSocketTimeout }}
+        - name: VOLCENGINE_TOS_ACCESS_KEY
+          value: {{ quote .Values.env.volcengineTosAccessKey }}
+        - name: VOLCENGINE_TOS_BUCKET_NAME
+          value: {{ quote .Values.env.volcengineTosBucketName }}
+        - name: VOLCENGINE_TOS_ENDPOINT
+          value: {{ quote .Values.env.volcengineTosEndpoint }}
+        - name: VOLCENGINE_TOS_REGION
+          value: {{ quote .Values.env.volcengineTosRegion }}
+        - name: VOLCENGINE_TOS_SECRET_KEY
+          value: {{ quote .Values.env.volcengineTosSecretKey }}
+        - name: WEAVIATE_API_KEY
+          value: {{ quote .Values.env.weaviateApiKey }}
+        - name: WEAVIATE_AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED
+          value: {{ quote .Values.env.weaviateAuthenticationAnonymousAccessEnabled }}
+        - name: WEAVIATE_AUTHENTICATION_APIKEY_ALLOWED_KEYS
+          value: {{ quote .Values.env.weaviateAuthenticationApikeyAllowedKeys }}
+        - name: WEAVIATE_AUTHENTICATION_APIKEY_ENABLED
+          value: {{ quote .Values.env.weaviateAuthenticationApikeyEnabled }}
+        - name: WEAVIATE_AUTHENTICATION_APIKEY_USERS
+          value: {{ quote .Values.env.weaviateAuthenticationApikeyUsers }}
+        - name: WEAVIATE_AUTHORIZATION_ADMINLIST_ENABLED
+          value: {{ quote .Values.env.weaviateAuthorizationAdminlistEnabled }}
+        - name: WEAVIATE_AUTHORIZATION_ADMINLIST_USERS
+          value: {{ quote .Values.env.weaviateAuthorizationAdminlistUsers }}
+        - name: WEAVIATE_CLUSTER_HOSTNAME
+          value: {{ quote .Values.env.weaviateClusterHostname }}
+        - name: WEAVIATE_DEFAULT_VECTORIZER_MODULE
+          value: {{ quote .Values.env.weaviateDefaultVectorizerModule }}
+        - name: WEAVIATE_ENDPOINT
+          value: {{ quote .Values.env.weaviateEndpoint }}
+        - name: WEAVIATE_PERSISTENCE_DATA_PATH
+          value: {{ quote .Values.env.weaviatePersistenceDataPath }}
+        - name: WEAVIATE_QUERY_DEFAULTS_LIMIT
+          value: {{ quote .Values.env.weaviateQueryDefaultsLimit }}
+        - name: WEB_API_CORS_ALLOW_ORIGINS
+          value: {{ quote .Values.env.webApiCorsAllowOrigins }}
+        - name: WEB_SENTRY_DSN
+          value: {{ quote .Values.env.webSentryDsn }}
+        - name: WORKFLOW_CALL_MAX_DEPTH
+          value: {{ quote .Values.env.workflowCallMaxDepth }}
+        - name: WORKFLOW_FILE_UPLOAD_LIMIT
+          value: {{ quote .Values.env.workflowFileUploadLimit }}
+        - name: WORKFLOW_MAX_EXECUTION_STEPS
+          value: {{ quote .Values.env.workflowMaxExecutionSteps }}
+        - name: WORKFLOW_MAX_EXECUTION_TIME
+          value: {{ quote .Values.env.workflowMaxExecutionTime }}
+        - name: WORKFLOW_PARALLEL_DEPTH_LIMIT
+          value: {{ quote .Values.env.workflowParallelDepthLimit }}
+        image: {{ .Values.worker.image.repository }}:{{ .Values.worker.image.tag | default .Chart.AppVersion }}
+        imagePullPolicy: {{ .Values.worker.image.pullPolicy | default "IfNotPresent" | quote }}
+        name: worker
+        resources: {}
+        volumeMounts:
+        - mountPath: /app/api/storage
+          name: worker-storage
+      restartPolicy: Always
+      volumes:
+      - name: worker-storage
+        persistentVolumeClaim:
+          claimName: {{ include "dify.fullname" . }}-worker-storage
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "dify.fullname" . }}-weaviate
+  labels:
+    app: weaviate
+  {{- include "dify.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.weaviate.replicas }}
+  selector:
+    matchLabels:
+      app: weaviate
+    {{- include "dify.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        app: weaviate
+      {{- include "dify.selectorLabels" . | nindent 8 }}
+    spec:
+      containers:
+      - env:
+        - name: QUERY_DEFAULTS_LIMIT
+          value: {{ quote .Values.env.weaviateQueryDefaultsLimit }}
+        - name: AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED
+          value: {{ quote .Values.env.weaviateAuthenticationAnonymousAccessEnabled }}
+        - name: PERSISTENCE_DATA_PATH
+          value: {{ quote .Values.env.weaviatePersistenceDataPath }}
+        - name: DEFAULT_VECTORIZER_MODULE
+          value: {{ quote .Values.env.weaviateDefaultVectorizerModule }}
+        - name: AUTHENTICATION_APIKEY_ENABLED
+          value: {{ quote .Values.env.weaviateAuthenticationApikeyEnabled }}
+        - name: AUTHENTICATION_APIKEY_ALLOWED_KEYS
+          value: {{ quote .Values.env.weaviateAuthenticationApikeyAllowedKeys }}
+        - name: AUTHENTICATION_APIKEY_USERS
+          value: {{ quote .Values.env.weaviateAuthenticationApikeyUsers }}
+        - name: AUTHORIZATION_ADMINLIST_ENABLED
+          value: {{ quote .Values.env.weaviateAuthorizationAdminlistEnabled }}
+        - name: AUTHORIZATION_ADMINLIST_USERS
+          value: {{ quote .Values.env.weaviateAuthorizationAdminlistUsers }}
+        image: {{ .Values.weaviate.image.repository }}:{{ .Values.weaviate.image.tag | default .Chart.AppVersion }}
+        imagePullPolicy: {{ .Values.weaviate.image.pullPolicy | default "IfNotPresent" | quote }}
+        name: weaviate
+        ports:
+          - containerPort: 8080
+            name: weaviate
+        volumeMounts:
+          - name: weaviate-storage
+            mountPath: /var/lib/weaviate
+      restartPolicy: Always
+      volumes:
+        - name: weaviate-storage
+          persistentVolumeClaim:
+            claimName: {{ include "dify.fullname" . }}-weaviate-storage

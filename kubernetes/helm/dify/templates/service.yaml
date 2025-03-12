@@ -1,0 +1,148 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "dify.fullname" . }}-db
+  labels:
+    app: db
+    {{- include "dify.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.db.type }}
+  selector:
+    app: db
+    {{- include "dify.selectorLabels" . | nindent 4 }}
+  ports:
+  {{- .Values.db.ports | toYaml | nindent 2 }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "dify.fullname" . }}-api
+  labels:
+    app: api
+    {{- include "dify.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.api.type }}
+  selector:
+    app: api
+    {{- include "dify.selectorLabels" . | nindent 4 }}
+  ports:
+  {{- .Values.api.ports | toYaml | nindent 2 }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "dify.fullname" . }}-worker
+  labels:
+    app: worker
+    {{- include "dify.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.worker.type }}
+  selector:
+    app: worker
+    {{- include "dify.selectorLabels" . | nindent 4 }}
+  ports:
+  {{- .Values.worker.ports | toYaml | nindent 2 }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "dify.fullname" . }}-nginx
+  labels:
+    app: nginx
+    {{- include "dify.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.nginx.type }}
+  selector:
+    app: nginx
+    {{- include "dify.selectorLabels" . | nindent 4 }}
+  ports:
+  {{- .Values.nginx.ports | toYaml | nindent 2 }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "dify.fullname" . }}-plugin-daemon
+  labels:
+    app: plugin-daemon
+    {{- include "dify.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.pluginDaemon.type }}
+  selector:
+    app: plugin-daemon
+    {{- include "dify.selectorLabels" . | nindent 4 }}
+  ports:
+  {{- .Values.pluginDaemon.ports | toYaml | nindent 2 }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "dify.fullname" . }}-redis
+  labels:
+    app: redis
+    {{- include "dify.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.redis.type }}
+  selector:
+    app: redis
+    {{- include "dify.selectorLabels" . | nindent 4 }}
+  ports:
+  {{- .Values.redis.ports | toYaml | nindent 2 }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "dify.fullname" . }}-sandbox
+  labels:
+    app: sandbox
+    {{- include "dify.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.sandbox.type }}
+  selector:
+    app: sandbox
+    {{- include "dify.selectorLabels" . | nindent 4 }}
+  ports:
+  {{- .Values.sandbox.ports | toYaml | nindent 2 }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ssrf-proxy
+  labels:
+    app: ssrf-proxy
+    {{- include "dify.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.ssrfProxy.type }}
+  selector:
+    app: ssrf-proxy
+    {{- include "dify.selectorLabels" . | nindent 4 }}
+  ports:
+  {{- .Values.ssrfProxy.ports | toYaml | nindent 2 }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "dify.fullname" . }}-web
+  labels:
+    app: web
+    {{- include "dify.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.web.type }}
+  selector:
+    app: web
+    {{- include "dify.selectorLabels" . | nindent 4 }}
+  ports:
+  {{- .Values.web.ports | toYaml | nindent 2 }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "dify.fullname" . }}-weaviate
+  labels:
+  {{- include "dify.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.weaviate.type }}
+  selector:
+    app: dify-weaviate
+    {{- include "dify.selectorLabels" . | nindent 4 }}
+  ports:
+  {{- .Values.weaviate.ports | toYaml | nindent 2 }}

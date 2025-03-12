@@ -74,7 +74,19 @@ cp .env.example .env
 docker compose up -d
 ```
 
-After running, you can access the Dify dashboard in your browser at [http://localhost/install](http://localhost/install) and start the initialization process.
+also you can deploy dify on kubernetes by using [kubectl](kubernetes/deployment/dify.yaml) or using [helm](kubernetes/helm/dify).
+```shell
+cd kubernetes
+
+# Using YAML
+kubectl create namespace dify
+kubectl apply -f deployment/dify.yaml -n dify
+
+# Using Helm
+helm upgrade --install dify helm/dify -n dify --create-namespace
+```
+
+After running, if you deploy dify on docker, you can access the Dify dashboard in your browser at [http://localhost/install](http://localhost/install) and start the initialization process. if you deploy dify on kubernetes, you can access the Dify dashboard in your browser at [http://kubernetes-host/install](http://kubernetes-host/install) and start the initialization process.
 
 #### Seeking help
 

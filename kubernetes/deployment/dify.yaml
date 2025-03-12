@@ -1,0 +1,3270 @@
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: api
+  name: dify-api
+  namespace: dify
+spec:
+  ports:
+    - name: api
+      port: 5001
+      protocol: TCP
+      targetPort: 5001
+  selector:
+    app: api
+  type: ClusterIP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: db
+  name: dify-db
+  namespace: dify
+spec:
+  ports:
+    - name: db
+      port: 5432
+      protocol: TCP
+      targetPort: 5432
+  selector:
+    app: db
+  type: ClusterIP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: nginx
+  name: dify-nginx
+  namespace: dify
+spec:
+  ports:
+    - name: http
+      port: 80
+      protocol: TCP
+      targetPort: 80
+      nodePort: 80
+    - name: https
+      port: 443
+      protocol: TCP
+      targetPort: 443
+      nodePort: 443
+  selector:
+    app: nginx
+  type: NodePort
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: plugin-daemon
+  name: dify-plugin-daemon
+  namespace: dify
+spec:
+  ports:
+    - name: server
+      port: 5002
+      protocol: TCP
+      targetPort: 5002
+    - name: remote
+      port: 5003
+      protocol: TCP
+      targetPort: 5003
+  selector:
+    app: plugin-daemon
+  type: ClusterIP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: redis
+  name: dify-redis
+  namespace: dify
+spec:
+  ports:
+    - name: redis
+      port: 6379
+      protocol: TCP
+      targetPort: 6379
+  selector:
+    app: redis
+  type: ClusterIP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: sandbox
+  name: dify-sandbox
+  namespace: dify
+spec:
+  ports:
+    - name: sandbox
+      port: 8194
+      protocol: TCP
+      targetPort: 8194
+  selector:
+    app: sandbox
+  type: ClusterIP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: weaviate
+  name: dify-weaviate
+  namespace: dify
+spec:
+  ports:
+    - name: weaviate
+      port: 8080
+      protocol: TCP
+      targetPort: 8080
+  selector:
+    app: dify-weaviate
+  type: ClusterIP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: web
+  name: dify-web
+  namespace: dify
+spec:
+  ports:
+    - name: web
+      port: 3000
+      protocol: TCP
+      targetPort: 3000
+  selector:
+    app: web
+  type: ClusterIP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: worker
+  name: dify-worker
+  namespace: dify
+spec:
+  ports:
+    - name: worker
+      port: 5001
+      protocol: TCP
+      targetPort: 5001
+  selector:
+    app: worker
+  type: ClusterIP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: ssrf-proxy
+  name: ssrf-proxy
+  namespace: dify
+spec:
+  ports:
+    - name: ssrf-proxy
+      port: 3128
+      protocol: TCP
+      targetPort: 3128
+  selector:
+    app: ssrf-proxy
+  type: ClusterIP
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: nginx
+  name: dify-nginx
+  namespace: dify
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: nginx
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      containers:
+        - image: nginx:latest
+          imagePullPolicy: IfNotPresent
+          name: dify-nginx
+          ports:
+            - containerPort: 80
+              protocol: TCP
+          resources: {}
+          volumeMounts:
+            - mountPath: /etc/nginx/nginx.conf
+              name: dify-nginx
+              subPath: nginx.conf
+            - mountPath: /etc/nginx/conf.d
+              name: dify-nginx-config
+      dnsPolicy: ClusterFirst
+      restartPolicy: Always
+      volumes:
+        - configMap:
+            defaultMode: 420
+            name: dify-nginx
+          name: dify-nginx
+        - emptyDir: {}
+          name: dify-nginx-config
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: plugin-daemon
+  name: dify-plugin-daemon
+  namespace: dify
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: plugin-daemon
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: plugin-daemon
+    spec:
+      containers:
+        - env:
+            - name: ACCESS_TOKEN_EXPIRE_MINUTES
+              value: '60'
+            - name: ALIYUN_OSS_ACCESS_KEY
+              value: your-access-key
+            - name: ALIYUN_OSS_AUTH_VERSION
+              value: v4
+            - name: ALIYUN_OSS_BUCKET_NAME
+              value: your-bucket-name
+            - name: ALIYUN_OSS_ENDPOINT
+              value: https://oss-ap-southeast-1-internal.aliyuncs.com
+            - name: ALIYUN_OSS_PATH
+              value: your-path
+            - name: ALIYUN_OSS_REGION
+              value: ap-southeast-1
+            - name: ALIYUN_OSS_SECRET_KEY
+              value: your-secret-key
+            - name: ANALYTICDB_ACCOUNT
+              value: testaccount
+            - name: ANALYTICDB_HOST
+              value: gp-test.aliyuncs.com
+            - name: ANALYTICDB_INSTANCE_ID
+              value: gp-ab123456
+            - name: ANALYTICDB_KEY_ID
+              value: your-ak
+            - name: ANALYTICDB_KEY_SECRET
+              value: your-sk
+            - name: ANALYTICDB_MAX_CONNECTION
+              value: '5'
+            - name: ANALYTICDB_MIN_CONNECTION
+              value: '1'
+            - name: ANALYTICDB_NAMESPACE
+              value: dify
+            - name: ANALYTICDB_NAMESPACE_PASSWORD
+              value: difypassword
+            - name: ANALYTICDB_PASSWORD
+              value: testpassword
+            - name: ANALYTICDB_PORT
+              value: '5432'
+            - name: ANALYTICDB_REGION_ID
+              value: cn-hangzhou
+            - name: API_SENTRY_DSN
+            - name: API_SENTRY_PROFILES_SAMPLE_RATE
+              value: '1.0'
+            - name: API_SENTRY_TRACES_SAMPLE_RATE
+              value: '1.0'
+            - name: API_TOOL_DEFAULT_CONNECT_TIMEOUT
+              value: '10'
+            - name: API_TOOL_DEFAULT_READ_TIMEOUT
+              value: '60'
+            - name: APP_API_URL
+            - name: APP_MAX_ACTIVE_REQUESTS
+              value: '0'
+            - name: APP_MAX_EXECUTION_TIME
+              value: '1200'
+            - name: APP_WEB_URL
+            - name: AZURE_BLOB_ACCOUNT_KEY
+              value: difyai
+            - name: AZURE_BLOB_ACCOUNT_NAME
+              value: difyai
+            - name: AZURE_BLOB_ACCOUNT_URL
+              value: https://<your_account_name>.blob.core.windows.net
+            - name: AZURE_BLOB_CONTAINER_NAME
+              value: difyai-container
+            - name: BAIDU_OBS_ACCESS_KEY
+              value: your-access-key
+            - name: BAIDU_OBS_BUCKET_NAME
+              value: your-bucket-name
+            - name: BAIDU_OBS_ENDPOINT
+              value: your-server-url
+            - name: BAIDU_OBS_SECRET_KEY
+              value: your-secret-key
+            - name: BAIDU_VECTOR_DB_ACCOUNT
+              value: root
+            - name: BAIDU_VECTOR_DB_API_KEY
+              value: dify
+            - name: BAIDU_VECTOR_DB_CONNECTION_TIMEOUT_MS
+              value: '30000'
+            - name: BAIDU_VECTOR_DB_DATABASE
+              value: dify
+            - name: BAIDU_VECTOR_DB_ENDPOINT
+              value: http://127.0.0.1:5287
+            - name: BAIDU_VECTOR_DB_REPLICAS
+              value: '3'
+            - name: BAIDU_VECTOR_DB_SHARD
+              value: '1'
+            - name: BROKER_USE_SSL
+              value: 'false'
+            - name: CELERY_AUTO_SCALE
+              value: 'false'
+            - name: CELERY_BROKER_URL
+              value: redis://:difyai123456@dify-redis:6379/1
+            - name: CELERY_MAX_WORKERS
+            - name: CELERY_MIN_WORKERS
+            - name: CELERY_SENTINEL_MASTER_NAME
+            - name: CELERY_SENTINEL_SOCKET_TIMEOUT
+              value: '0.1'
+            - name: CELERY_USE_SENTINEL
+              value: 'false'
+            - name: CELERY_WORKER_AMOUNT
+            - name: CELERY_WORKER_CLASS
+            - name: CERTBOT_DOMAIN
+              value: your_domain.com
+            - name: CERTBOT_EMAIL
+              value: your_email@example.com
+            - name: CERTBOT_OPTIONS
+            - name: CHECK_UPDATE_URL
+              value: https://updates.dify.ai
+            - name: CHROMA_AUTH_CREDENTIALS
+            - name: CHROMA_AUTH_PROVIDER
+              value: chromadb.auth.token_authn.TokenAuthClientProvider
+            - name: CHROMA_DATABASE
+              value: default_database
+            - name: CHROMA_HOST
+              value: 127.0.0.1
+            - name: CHROMA_IS_PERSISTENT
+              value: 'TRUE'
+            - name: CHROMA_PORT
+              value: '8000'
+            - name: CHROMA_SERVER_AUTHN_CREDENTIALS
+              value: difyai123456
+            - name: CHROMA_SERVER_AUTHN_PROVIDER
+              value: chromadb.auth.token_authn.TokenAuthenticationServerProvider
+            - name: CHROMA_TENANT
+              value: default_tenant
+            - name: CODE_EXECUTION_API_KEY
+              value: dify-sandbox
+            - name: CODE_EXECUTION_CONNECT_TIMEOUT
+              value: '10'
+            - name: CODE_EXECUTION_ENDPOINT
+              value: http://dify-sandbox:8194
+            - name: CODE_EXECUTION_READ_TIMEOUT
+              value: '60'
+            - name: CODE_EXECUTION_WRITE_TIMEOUT
+              value: '10'
+            - name: CODE_GENERATION_MAX_TOKENS
+              value: '1024'
+            - name: CODE_MAX_DEPTH
+              value: '5'
+            - name: CODE_MAX_NUMBER
+              value: '9223372036854775807'
+            - name: CODE_MAX_NUMBER_ARRAY_LENGTH
+              value: '1000'
+            - name: CODE_MAX_OBJECT_ARRAY_LENGTH
+              value: '30'
+            - name: CODE_MAX_PRECISION
+              value: '20'
+            - name: CODE_MAX_STRING_ARRAY_LENGTH
+              value: '30'
+            - name: CODE_MAX_STRING_LENGTH
+              value: '80000'
+            - name: CODE_MIN_NUMBER
+              value: '-9223372036854775808'
+            - name: CONSOLE_API_URL
+            - name: CONSOLE_CORS_ALLOW_ORIGINS
+              value: '*'
+            - name: CONSOLE_WEB_URL
+            - name: COUCHBASE_BUCKET_NAME
+              value: Embeddings
+            - name: COUCHBASE_CONNECTION_STRING
+              value: couchbase://couchbase-server
+            - name: COUCHBASE_PASSWORD
+              value: password
+            - name: COUCHBASE_SCOPE_NAME
+              value: _default
+            - name: COUCHBASE_USER
+              value: Administrator
+            - name: CREATE_TIDB_SERVICE_JOB_ENABLED
+              value: 'false'
+            - name: CSP_WHITELIST
+            - name: DB_DATABASE
+              value: dify_plugin
+            - name: DB_HOST
+              value: dify-db
+            - name: DB_PASSWORD
+              value: difyai123456
+            - name: DB_PLUGIN_DATABASE
+              value: dify_plugin
+            - name: DB_PORT
+              value: '5432'
+            - name: DB_USERNAME
+              value: postgres
+            - name: DEBUG
+              value: 'false'
+            - name: DEPLOY_ENV
+              value: PRODUCTION
+            - name: DIFY_BIND_ADDRESS
+              value: 0.0.0.0
+            - name: DIFY_INNER_API_KEY
+              value: QaHbTe77CtuXmsfyhR7+vRjI/+XbV1AaFy691iy+kGDv2Jvy0/eAh8Y1
+            - name: DIFY_INNER_API_URL
+              value: http://api:5001
+            - name: DIFY_PORT
+              value: '5001'
+            - name: ELASTICSEARCH_HOST
+              value: 0.0.0.0
+            - name: ELASTICSEARCH_PASSWORD
+              value: elastic
+            - name: ELASTICSEARCH_PORT
+              value: '9200'
+            - name: ELASTICSEARCH_USERNAME
+              value: elastic
+            - name: ENDPOINT_URL_TEMPLATE
+              value: http://localhost/e/{hook_id}
+            - name: ETCD_AUTO_COMPACTION_MODE
+              value: revision
+            - name: ETCD_AUTO_COMPACTION_RETENTION
+              value: '1000'
+            - name: ETCD_ENDPOINTS
+              value: etcd:2379
+            - name: ETCD_QUOTA_BACKEND_BYTES
+              value: '4294967296'
+            - name: ETCD_SNAPSHOT_COUNT
+              value: '50000'
+            - name: ETL_TYPE
+              value: dify
+            - name: EXPOSE_NGINX_PORT
+              value: '80'
+            - name: EXPOSE_NGINX_SSL_PORT
+              value: '443'
+            - name: EXPOSE_PLUGIN_DAEMON_PORT
+              value: '5002'
+            - name: EXPOSE_PLUGIN_DEBUGGING_HOST
+              value: localhost
+            - name: EXPOSE_PLUGIN_DEBUGGING_PORT
+              value: '5003'
+            - name: FILES_ACCESS_TIMEOUT
+              value: '300'
+            - name: FILES_URL
+            - name: FLASK_DEBUG
+              value: 'false'
+            - name: FORCE_VERIFYING_SIGNATURE
+              value: 'true'
+            - name: GOOGLE_STORAGE_BUCKET_NAME
+              value: your-bucket-name
+            - name: GOOGLE_STORAGE_SERVICE_ACCOUNT_JSON_BASE64
+            - name: GUNICORN_TIMEOUT
+              value: '360'
+            - name: HTTP_REQUEST_NODE_MAX_BINARY_SIZE
+              value: '10485760'
+            - name: HTTP_REQUEST_NODE_MAX_TEXT_SIZE
+              value: '1048576'
+            - name: HUAWEI_OBS_ACCESS_KEY
+              value: your-access-key
+            - name: HUAWEI_OBS_BUCKET_NAME
+              value: your-bucket-name
+            - name: HUAWEI_OBS_SECRET_KEY
+              value: your-secret-key
+            - name: HUAWEI_OBS_SERVER
+              value: your-server-url
+            - name: INDEXING_MAX_SEGMENTATION_TOKENS_LENGTH
+              value: '4000'
+            - name: INIT_PASSWORD
+            - name: INVITE_EXPIRY_HOURS
+              value: '72'
+            - name: KIBANA_PORT
+              value: '5601'
+            - name: LINDORM_PASSWORD
+              value: lindorm
+            - name: LINDORM_URL
+              value: http://lindorm:30070
+            - name: LINDORM_USERNAME
+              value: lindorm
+            - name: LOG_DATEFORMAT
+              value: '%Y-%m-%d %H:%M:%S'
+            - name: LOG_FILE
+              value: /app/logs/server.log
+            - name: LOG_FILE_BACKUP_COUNT
+              value: '5'
+            - name: LOG_FILE_MAX_SIZE
+              value: '20'
+            - name: LOG_LEVEL
+              value: INFO
+            - name: LOG_TZ
+              value: UTC
+            - name: LOOP_NODE_MAX_COUNT
+              value: '100'
+            - name: MAIL_DEFAULT_SEND_FROM
+            - name: MAIL_TYPE
+              value: resend
+            - name: MARKETPLACE_API_URL
+              value: https://marketplace.dify.ai
+            - name: MARKETPLACE_ENABLED
+              value: 'true'
+            - name: MAX_PLUGIN_PACKAGE_SIZE
+              value: '52428800'
+            - name: MAX_SUBMIT_COUNT
+              value: '100'
+            - name: MAX_VARIABLE_SIZE
+              value: '204800'
+            - name: MIGRATION_ENABLED
+              value: 'true'
+            - name: MILVUS_AUTHORIZATION_ENABLED
+              value: 'true'
+            - name: MILVUS_ENABLE_HYBRID_SEARCH
+              value: 'False'
+            - name: MILVUS_PASSWORD
+              value: Milvus
+            - name: MILVUS_TOKEN
+            - name: MILVUS_URI
+              value: http://127.0.0.1:19530
+            - name: MILVUS_USER
+              value: root
+            - name: MINIO_ACCESS_KEY
+              value: minioadmin
+            - name: MINIO_ADDRESS
+              value: minio:9000
+            - name: MINIO_SECRET_KEY
+              value: minioadmin
+            - name: MULTIMODAL_SEND_FORMAT
+              value: base64
+            - name: MYSCALE_DATABASE
+              value: dify
+            - name: MYSCALE_FTS_PARAMS
+            - name: MYSCALE_HOST
+              value: myscale
+            - name: MYSCALE_PASSWORD
+            - name: MYSCALE_PORT
+              value: '8123'
+            - name: MYSCALE_USER
+              value: default
+            - name: NGINX_CLIENT_MAX_BODY_SIZE
+              value: 15M
+            - name: NGINX_ENABLE_CERTBOT_CHALLENGE
+              value: 'false'
+            - name: NGINX_HTTPS_ENABLED
+              value: 'false'
+            - name: NGINX_KEEPALIVE_TIMEOUT
+              value: '65'
+            - name: NGINX_PORT
+              value: '80'
+            - name: NGINX_PROXY_READ_TIMEOUT
+              value: 3600s
+            - name: NGINX_PROXY_SEND_TIMEOUT
+              value: 3600s
+            - name: NGINX_SERVER_NAME
+              value: _
+            - name: NGINX_SSL_CERT_FILENAME
+              value: dify.crt
+            - name: NGINX_SSL_CERT_KEY_FILENAME
+              value: dify.key
+            - name: NGINX_SSL_PORT
+              value: '443'
+            - name: NGINX_SSL_PROTOCOLS
+              value: TLSv1.1 TLSv1.2 TLSv1.3
+            - name: NGINX_WORKER_PROCESSES
+              value: auto
+            - name: NOTION_CLIENT_ID
+            - name: NOTION_CLIENT_SECRET
+            - name: NOTION_INTEGRATION_TYPE
+              value: public
+            - name: NOTION_INTERNAL_SECRET
+            - name: OCEANBASE_CLUSTER_NAME
+              value: difyai
+            - name: OCEANBASE_MEMORY_LIMIT
+              value: 6G
+            - name: OCEANBASE_VECTOR_DATABASE
+              value: test
+            - name: OCEANBASE_VECTOR_HOST
+              value: oceanbase
+            - name: OCEANBASE_VECTOR_PASSWORD
+              value: difyai123456
+            - name: OCEANBASE_VECTOR_PORT
+              value: '2881'
+            - name: OCEANBASE_VECTOR_USER
+              value: root@test
+            - name: OCI_ACCESS_KEY
+              value: your-access-key
+            - name: OCI_BUCKET_NAME
+              value: your-bucket-name
+            - name: OCI_ENDPOINT
+              value: https://your-object-storage-namespace.compat.objectstorage.us-ashburn-1.oraclecloud.com
+            - name: OCI_REGION
+              value: us-ashburn-1
+            - name: OCI_SECRET_KEY
+              value: your-secret-key
+            - name: OPENAI_API_BASE
+              value: https://api.openai.com/v1
+            - name: OPENDAL_FS_ROOT
+              value: storage
+            - name: OPENDAL_SCHEME
+              value: fs
+            - name: OPENSEARCH_BOOTSTRAP_MEMORY_LOCK
+              value: 'true'
+            - name: OPENSEARCH_DISCOVERY_TYPE
+              value: single-node
+            - name: OPENSEARCH_HOST
+              value: opensearch
+            - name: OPENSEARCH_INITIAL_ADMIN_PASSWORD
+              value: Qazwsxedc!@#123
+            - name: OPENSEARCH_JAVA_OPTS_MAX
+              value: 1024m
+            - name: OPENSEARCH_JAVA_OPTS_MIN
+              value: 512m
+            - name: OPENSEARCH_MEMLOCK_HARD
+              value: '-1'
+            - name: OPENSEARCH_MEMLOCK_SOFT
+              value: '-1'
+            - name: OPENSEARCH_NOFILE_HARD
+              value: '65536'
+            - name: OPENSEARCH_NOFILE_SOFT
+              value: '65536'
+            - name: OPENSEARCH_PASSWORD
+              value: admin
+            - name: OPENSEARCH_PORT
+              value: '9200'
+            - name: OPENSEARCH_SECURE
+              value: 'true'
+            - name: OPENSEARCH_USER
+              value: admin
+            - name: ORACLE_CHARACTERSET
+              value: AL32UTF8
+            - name: ORACLE_CONFIG_DIR
+              value: /app/api/storage/wallet
+            - name: ORACLE_DSN
+              value: oracle:1521/FREEPDB1
+            - name: ORACLE_IS_AUTONOMOUS
+              value: 'false'
+            - name: ORACLE_PASSWORD
+              value: dify
+            - name: ORACLE_PWD
+              value: Dify123456
+            - name: ORACLE_USER
+              value: dify
+            - name: ORACLE_WALLET_LOCATION
+              value: /app/api/storage/wallet
+            - name: ORACLE_WALLET_PASSWORD
+              value: dify
+            - name: PGDATA
+              value: /var/lib/postgresql/data/pgdata
+            - name: PGUSER
+              value: postgres
+            - name: PGVECTOR_DATABASE
+              value: dify
+            - name: PGVECTOR_HOST
+              value: pgvector
+            - name: PGVECTOR_MAX_CONNECTION
+              value: '5'
+            - name: PGVECTOR_MIN_CONNECTION
+              value: '1'
+            - name: PGVECTOR_PASSWORD
+              value: difyai123456
+            - name: PGVECTOR_PGDATA
+              value: /var/lib/postgresql/data/pgdata
+            - name: PGVECTOR_PGUSER
+              value: postgres
+            - name: PGVECTOR_PORT
+              value: '5432'
+            - name: PGVECTOR_POSTGRES_DB
+              value: dify
+            - name: PGVECTOR_POSTGRES_PASSWORD
+              value: difyai123456
+            - name: PGVECTOR_USER
+              value: postgres
+            - name: PGVECTO_RS_DATABASE
+              value: dify
+            - name: PGVECTO_RS_HOST
+              value: pgvecto-rs
+            - name: PGVECTO_RS_PASSWORD
+              value: difyai123456
+            - name: PGVECTO_RS_PORT
+              value: '5432'
+            - name: PGVECTO_RS_USER
+              value: postgres
+            - name: PIP_MIRROR_URL
+            - name: PLUGIN_DAEMON_KEY
+              value: lYkiYYT6owG+71oLerGzA7GXCgOT++6ovaezWAjpCjf+Sjc3ZtU+qUEi
+            - name: PLUGIN_DAEMON_PORT
+              value: '5002'
+            - name: PLUGIN_DAEMON_URL
+              value: http://dify-plugin-daemon:5002
+            - name: PLUGIN_DEBUGGING_HOST
+              value: 0.0.0.0
+            - name: PLUGIN_DEBUGGING_PORT
+              value: '5003'
+            - name: PLUGIN_DIFY_INNER_API_KEY
+              value: QaHbTe77CtuXmsfyhR7+vRjI/+XbV1AaFy691iy+kGDv2Jvy0/eAh8Y1
+            - name: PLUGIN_DIFY_INNER_API_URL
+              value: http://api:5001
+            - name: PLUGIN_MAX_EXECUTION_TIMEOUT
+              value: '600'
+            - name: PLUGIN_MAX_PACKAGE_SIZE
+              value: '52428800'
+            - name: PLUGIN_PPROF_ENABLED
+              value: 'false'
+            - name: PLUGIN_PYTHON_ENV_INIT_TIMEOUT
+              value: '120'
+            - name: PLUGIN_REMOTE_INSTALLING_HOST
+              value: 0.0.0.0
+            - name: PLUGIN_REMOTE_INSTALLING_PORT
+              value: '5003'
+            - name: PLUGIN_WORKING_PATH
+              value: /app/storage/cwd
+            - name: POSITION_PROVIDER_EXCLUDES
+            - name: POSITION_PROVIDER_INCLUDES
+            - name: POSITION_PROVIDER_PINS
+            - name: POSITION_TOOL_EXCLUDES
+            - name: POSITION_TOOL_INCLUDES
+            - name: POSITION_TOOL_PINS
+            - name: POSTGRES_DB
+              value: dify
+            - name: POSTGRES_EFFECTIVE_CACHE_SIZE
+              value: 4096MB
+            - name: POSTGRES_MAINTENANCE_WORK_MEM
+              value: 64MB
+            - name: POSTGRES_MAX_CONNECTIONS
+              value: '100'
+            - name: POSTGRES_PASSWORD
+              value: difyai123456
+            - name: POSTGRES_SHARED_BUFFERS
+              value: 128MB
+            - name: POSTGRES_WORK_MEM
+              value: 4MB
+            - name: PPROF_ENABLED
+              value: 'false'
+            - name: PROMPT_GENERATION_MAX_TOKENS
+              value: '512'
+            - name: PYTHON_ENV_INIT_TIMEOUT
+              value: '120'
+            - name: QDRANT_API_KEY
+              value: difyai123456
+            - name: QDRANT_CLIENT_TIMEOUT
+              value: '20'
+            - name: QDRANT_GRPC_ENABLED
+              value: 'false'
+            - name: QDRANT_GRPC_PORT
+              value: '6334'
+            - name: QDRANT_URL
+              value: http://qdrant:6333
+            - name: REDIS_CLUSTERS
+            - name: REDIS_CLUSTERS_PASSWORD
+            - name: REDIS_DB
+              value: '0'
+            - name: REDIS_HOST
+              value: dify-redis
+            - name: REDIS_PASSWORD
+              value: difyai123456
+            - name: REDIS_PORT
+              value: '6379'
+            - name: REDIS_SENTINELS
+            - name: REDIS_SENTINEL_PASSWORD
+            - name: REDIS_SENTINEL_SERVICE_NAME
+            - name: REDIS_SENTINEL_SOCKET_TIMEOUT
+              value: '0.1'
+            - name: REDIS_SENTINEL_USERNAME
+            - name: REDIS_USERNAME
+            - name: REDIS_USE_CLUSTERS
+              value: 'false'
+            - name: REDIS_USE_SENTINEL
+              value: 'false'
+            - name: REDIS_USE_SSL
+              value: 'false'
+            - name: REFRESH_TOKEN_EXPIRE_DAYS
+              value: '30'
+            - name: RELYT_DATABASE
+              value: postgres
+            - name: RELYT_HOST
+              value: db
+            - name: RELYT_PASSWORD
+              value: difyai123456
+            - name: RELYT_PORT
+              value: '5432'
+            - name: RELYT_USER
+              value: postgres
+            - name: RESEND_API_KEY
+              value: your-resend-api-key
+            - name: RESEND_API_URL
+              value: https://api.resend.com
+            - name: RESET_PASSWORD_TOKEN_EXPIRY_MINUTES
+              value: '5'
+            - name: S3_ACCESS_KEY
+            - name: S3_BUCKET_NAME
+              value: difyai
+            - name: S3_ENDPOINT
+            - name: S3_REGION
+              value: us-east-1
+            - name: S3_SECRET_KEY
+            - name: S3_USE_AWS_MANAGED_IAM
+              value: 'false'
+            - name: SANDBOX_API_KEY
+              value: dify-sandbox
+            - name: SANDBOX_ENABLE_NETWORK
+              value: 'true'
+            - name: SANDBOX_GIN_MODE
+              value: release
+            - name: SANDBOX_HTTPS_PROXY
+              value: http://ssrf-proxy:3128
+            - name: SANDBOX_HTTP_PROXY
+              value: http://ssrf-proxy:3128
+            - name: SANDBOX_PORT
+              value: '8194'
+            - name: SANDBOX_WORKER_TIMEOUT
+              value: '15'
+            - name: SCARF_NO_ANALYTICS
+              value: 'true'
+            - name: SECRET_KEY
+              value: sk-9f73s3ljTXVcMT3Blb3ljTqtsKiGHXVcMT3BlbkFJLK7U
+            - name: SENTRY_DSN
+            - name: SERVER_KEY
+              value: lYkiYYT6owG+71oLerGzA7GXCgOT++6ovaezWAjpCjf+Sjc3ZtU+qUEi
+            - name: SERVER_PORT
+              value: '5002'
+            - name: SERVER_WORKER_AMOUNT
+              value: '1'
+            - name: SERVER_WORKER_CLASS
+              value: gevent
+            - name: SERVER_WORKER_CONNECTIONS
+              value: '10'
+            - name: SERVICE_API_URL
+            - name: SMTP_OPPORTUNISTIC_TLS
+              value: 'false'
+            - name: SMTP_PASSWORD
+            - name: SMTP_PORT
+              value: '465'
+            - name: SMTP_SERVER
+            - name: SMTP_USERNAME
+            - name: SMTP_USE_TLS
+              value: 'true'
+            - name: SQLALCHEMY_ECHO
+              value: 'false'
+            - name: SQLALCHEMY_POOL_RECYCLE
+              value: '3600'
+            - name: SQLALCHEMY_POOL_SIZE
+              value: '30'
+            - name: SSRF_COREDUMP_DIR
+              value: /var/spool/squid
+            - name: SSRF_DEFAULT_CONNECT_TIME_OUT
+              value: '5'
+            - name: SSRF_DEFAULT_READ_TIME_OUT
+              value: '5'
+            - name: SSRF_DEFAULT_TIME_OUT
+              value: '5'
+            - name: SSRF_DEFAULT_WRITE_TIME_OUT
+              value: '5'
+            - name: SSRF_HTTP_PORT
+              value: '3128'
+            - name: SSRF_PROXY_HTTPS_URL
+              value: http://ssrf-proxy:3128
+            - name: SSRF_PROXY_HTTP_URL
+              value: http://ssrf-proxy:3128
+            - name: SSRF_REVERSE_PROXY_PORT
+              value: '8194'
+            - name: SSRF_SANDBOX_HOST
+              value: dify-sandbox
+            - name: STORAGE_TYPE
+              value: opendal
+            - name: SUPABASE_API_KEY
+              value: your-access-key
+            - name: SUPABASE_BUCKET_NAME
+              value: your-bucket-name
+            - name: SUPABASE_URL
+              value: your-server-url
+            - name: TEMPLATE_TRANSFORM_MAX_LENGTH
+              value: '80000'
+            - name: TENCENT_COS_BUCKET_NAME
+              value: your-bucket-name
+            - name: TENCENT_COS_REGION
+              value: your-region
+            - name: TENCENT_COS_SCHEME
+              value: your-scheme
+            - name: TENCENT_COS_SECRET_ID
+              value: your-secret-id
+            - name: TENCENT_COS_SECRET_KEY
+              value: your-secret-key
+            - name: TENCENT_VECTOR_DB_API_KEY
+              value: dify
+            - name: TENCENT_VECTOR_DB_DATABASE
+              value: dify
+            - name: TENCENT_VECTOR_DB_REPLICAS
+              value: '2'
+            - name: TENCENT_VECTOR_DB_SHARD
+              value: '1'
+            - name: TENCENT_VECTOR_DB_TIMEOUT
+              value: '30'
+            - name: TENCENT_VECTOR_DB_URL
+              value: http://127.0.0.1
+            - name: TENCENT_VECTOR_DB_USERNAME
+              value: dify
+            - name: TEXT_GENERATION_TIMEOUT_MS
+              value: '60000'
+            - name: TIDB_API_URL
+              value: http://127.0.0.1
+            - name: TIDB_IAM_API_URL
+              value: http://127.0.0.1
+            - name: TIDB_ON_QDRANT_API_KEY
+              value: dify
+            - name: TIDB_ON_QDRANT_CLIENT_TIMEOUT
+              value: '20'
+            - name: TIDB_ON_QDRANT_GRPC_ENABLED
+              value: 'false'
+            - name: TIDB_ON_QDRANT_GRPC_PORT
+              value: '6334'
+            - name: TIDB_ON_QDRANT_URL
+              value: http://127.0.0.1
+            - name: TIDB_PRIVATE_KEY
+              value: dify
+            - name: TIDB_PROJECT_ID
+              value: dify
+            - name: TIDB_PUBLIC_KEY
+              value: dify
+            - name: TIDB_REGION
+              value: regions/aws-us-east-1
+            - name: TIDB_SPEND_LIMIT
+              value: '100'
+            - name: TIDB_VECTOR_DATABASE
+              value: dify
+            - name: TIDB_VECTOR_HOST
+              value: tidb
+            - name: TIDB_VECTOR_PASSWORD
+            - name: TIDB_VECTOR_PORT
+              value: '4000'
+            - name: TIDB_VECTOR_USER
+            - name: TOP_K_MAX_VALUE
+              value: '10'
+            - name: UNSTRUCTURED_API_KEY
+            - name: UNSTRUCTURED_API_URL
+            - name: UPLOAD_AUDIO_FILE_SIZE_LIMIT
+              value: '50'
+            - name: UPLOAD_FILE_BATCH_LIMIT
+              value: '5'
+            - name: UPLOAD_FILE_SIZE_LIMIT
+              value: '15'
+            - name: UPLOAD_IMAGE_FILE_SIZE_LIMIT
+              value: '10'
+            - name: UPLOAD_VIDEO_FILE_SIZE_LIMIT
+              value: '100'
+            - name: UPSTASH_VECTOR_TOKEN
+              value: dify
+            - name: UPSTASH_VECTOR_URL
+              value: https://xxx-vector.upstash.io
+            - name: VECTOR_STORE
+              value: weaviate
+            - name: VIKINGDB_ACCESS_KEY
+              value: your-ak
+            - name: VIKINGDB_CONNECTION_TIMEOUT
+              value: '30'
+            - name: VIKINGDB_HOST
+              value: api-vikingdb.xxx.volces.com
+            - name: VIKINGDB_REGION
+              value: cn-shanghai
+            - name: VIKINGDB_SCHEMA
+              value: http
+            - name: VIKINGDB_SECRET_KEY
+              value: your-sk
+            - name: VIKINGDB_SOCKET_TIMEOUT
+              value: '30'
+            - name: VOLCENGINE_TOS_ACCESS_KEY
+              value: your-access-key
+            - name: VOLCENGINE_TOS_BUCKET_NAME
+              value: your-bucket-name
+            - name: VOLCENGINE_TOS_ENDPOINT
+              value: your-server-url
+            - name: VOLCENGINE_TOS_REGION
+              value: your-region
+            - name: VOLCENGINE_TOS_SECRET_KEY
+              value: your-secret-key
+            - name: WEAVIATE_API_KEY
+              value: WVF5YThaHlkYwhGUSmCRgsX3tD5ngdN8pkih
+            - name: WEAVIATE_AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED
+              value: 'true'
+            - name: WEAVIATE_AUTHENTICATION_APIKEY_ALLOWED_KEYS
+              value: WVF5YThaHlkYwhGUSmCRgsX3tD5ngdN8pkih
+            - name: WEAVIATE_AUTHENTICATION_APIKEY_ENABLED
+              value: 'true'
+            - name: WEAVIATE_AUTHENTICATION_APIKEY_USERS
+              value: hello@dify.ai
+            - name: WEAVIATE_AUTHORIZATION_ADMINLIST_ENABLED
+              value: 'true'
+            - name: WEAVIATE_AUTHORIZATION_ADMINLIST_USERS
+              value: hello@dify.ai
+            - name: WEAVIATE_CLUSTER_HOSTNAME
+              value: node1
+            - name: WEAVIATE_DEFAULT_VECTORIZER_MODULE
+              value: none
+            - name: WEAVIATE_ENDPOINT
+              value: http://dify-weaviate:8080
+            - name: WEAVIATE_PERSISTENCE_DATA_PATH
+              value: /var/lib/weaviate
+            - name: WEAVIATE_QUERY_DEFAULTS_LIMIT
+              value: '25'
+            - name: WEB_API_CORS_ALLOW_ORIGINS
+              value: '*'
+            - name: WEB_SENTRY_DSN
+            - name: WORKFLOW_CALL_MAX_DEPTH
+              value: '5'
+            - name: WORKFLOW_FILE_UPLOAD_LIMIT
+              value: '10'
+            - name: WORKFLOW_MAX_EXECUTION_STEPS
+              value: '500'
+            - name: WORKFLOW_MAX_EXECUTION_TIME
+              value: '1200'
+            - name: WORKFLOW_PARALLEL_DEPTH_LIMIT
+              value: '3'
+          image: langgenius/dify-plugin-daemon:0.0.4-local
+          imagePullPolicy: IfNotPresent
+          name: plugin-daemon
+          ports:
+            - containerPort: 5003
+              protocol: TCP
+          resources: {}
+          volumeMounts:
+            - mountPath: /app/storage
+              name: plugin-daemon-storage
+      dnsPolicy: ClusterFirst
+      restartPolicy: Always
+      volumes:
+        - name: plugin-daemon-storage
+          persistentVolumeClaim:
+            claimName: dify-plugin-daemon-storage
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: sandbox
+  name: dify-sandbox
+  namespace: dify
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: sandbox
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: sandbox
+    spec:
+      containers:
+        - env:
+            - name: API_KEY
+              value: dify-sandbox
+            - name: ENABLE_NETWORK
+              value: 'true'
+            - name: GIN_MODE
+              value: release
+            - name: HTTPS_PROXY
+              value: http://ssrf-proxy:3128
+            - name: HTTP_PROXY
+              value: http://ssrf-proxy:3128
+            - name: SANDBOX_PORT
+              value: '8194'
+            - name: WORKER_TIMEOUT
+              value: '15'
+          image: langgenius/dify-sandbox:0.2.10
+          imagePullPolicy: IfNotPresent
+          livenessProbe:
+            exec:
+              command:
+                - curl
+                - -f
+                - http://localhost:8194/health
+            failureThreshold: 3
+            periodSeconds: 10
+            successThreshold: 1
+            timeoutSeconds: 1
+          name: sandbox
+          resources: {}
+          volumeMounts:
+            - mountPath: /dependencies/python-requirements.txt
+              name: dify-sandbox
+              subPath: python-requirements.txt
+            - mountPath: /conf/config.yaml
+              name: dify-sandbox
+              subPath: config.yaml
+            - mountPath: /conf/config.yaml.example
+              name: dify-sandbox
+              subPath: config.yaml.example
+      dnsPolicy: ClusterFirst
+      restartPolicy: Always
+      volumes:
+        - configMap:
+            defaultMode: 420
+            items:
+              - key: python-requirements.txt
+                path: python-requirements.txt
+              - key: config.yaml
+                path: config.yaml
+              - key: config.yaml.example
+                path: config.yaml.example
+            name: dify-sandbox
+          name: dify-sandbox
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: ssrf-proxy
+  name: dify-ssrf-proxy
+  namespace: dify
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ssrf-proxy
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: ssrf-proxy
+    spec:
+      containers:
+        - command:
+            - sh
+            - -c
+            - "cp /docker-entrypoint-mount.sh /docker-entrypoint.sh && sed -i 's/\r\
+              $//' /docker-entrypoint.sh && chmod +x /docker-entrypoint.sh && /docker-entrypoint.sh"
+          env:
+            - name: COREDUMP_DIR
+              value: /var/spool/squid
+            - name: HTTP_PORT
+              value: '3128'
+            - name: REVERSE_PROXY_PORT
+              value: '8194'
+            - name: SANDBOX_HOST
+              value: dify-sandbox
+            - name: SANDBOX_PORT
+              value: '8194'
+          image: ubuntu/squid:latest
+          imagePullPolicy: IfNotPresent
+          name: ssrf-proxy
+          resources: {}
+          volumeMounts:
+            - mountPath: /etc/squid/squid.conf.template
+              name: ssrf-proxy
+              subPath: squid.conf.template
+            - mountPath: /docker-entrypoint-mount.sh
+              name: ssrf-proxy
+              subPath: docker-entrypoint-mount.sh
+      dnsPolicy: ClusterFirst
+      restartPolicy: Always
+      volumes:
+        - configMap:
+            defaultMode: 420
+            name: dify-ssrf-proxy
+          name: ssrf-proxy
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: web
+  name: dify-web
+  namespace: dify
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: web
+  template:
+    metadata:
+      labels:
+        app: web
+    spec:
+      containers:
+        - env:
+            - name: APP_API_URL
+            - name: CONSOLE_API_URL
+            - name: CSP_WHITELIST
+            - name: INDEXING_MAX_SEGMENTATION_TOKENS_LENGTH
+              value: '4000'
+            - name: LOOP_NODE_MAX_COUNT
+              value: '100'
+            - name: MARKETPLACE_API_URL
+              value: https://marketplace.dify.ai
+            - name: MARKETPLACE_URL
+              value: https://marketplace.dify.ai
+            - name: NEXT_TELEMETRY_DISABLED
+              value: '0'
+            - name: PM2_INSTANCES
+              value: '2'
+            - name: SENTRY_DSN
+            - name: TEXT_GENERATION_TIMEOUT_MS
+              value: '60000'
+            - name: TOP_K_MAX_VALUE
+              value: '10'
+          image: langgenius/dify-web:1.0.1
+          imagePullPolicy: IfNotPresent
+          name: web
+          resources: {}
+      dnsPolicy: ClusterFirst
+      restartPolicy: Always
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  labels:
+    app: api
+  name: dify-api
+  namespace: dify
+spec:
+  persistentVolumeClaimRetentionPolicy:
+    whenDeleted: Retain
+    whenScaled: Retain
+  replicas: 1
+  selector:
+    matchLabels:
+      app: api
+  serviceName: ''
+  template:
+    metadata:
+      labels:
+        app: api
+    spec:
+      containers:
+        - env:
+            - name: ACCESS_TOKEN_EXPIRE_MINUTES
+              value: '60'
+            - name: ALIYUN_OSS_ACCESS_KEY
+              value: your-access-key
+            - name: ALIYUN_OSS_AUTH_VERSION
+              value: v4
+            - name: ALIYUN_OSS_BUCKET_NAME
+              value: your-bucket-name
+            - name: ALIYUN_OSS_ENDPOINT
+              value: https://oss-ap-southeast-1-internal.aliyuncs.com
+            - name: ALIYUN_OSS_PATH
+              value: your-path
+            - name: ALIYUN_OSS_REGION
+              value: ap-southeast-1
+            - name: ALIYUN_OSS_SECRET_KEY
+              value: your-secret-key
+            - name: ANALYTICDB_ACCOUNT
+              value: testaccount
+            - name: ANALYTICDB_HOST
+              value: gp-test.aliyuncs.com
+            - name: ANALYTICDB_INSTANCE_ID
+              value: gp-ab123456
+            - name: ANALYTICDB_KEY_ID
+              value: your-ak
+            - name: ANALYTICDB_KEY_SECRET
+              value: your-sk
+            - name: ANALYTICDB_MAX_CONNECTION
+              value: '5'
+            - name: ANALYTICDB_MIN_CONNECTION
+              value: '1'
+            - name: ANALYTICDB_NAMESPACE
+              value: dify
+            - name: ANALYTICDB_NAMESPACE_PASSWORD
+              value: difypassword
+            - name: ANALYTICDB_PASSWORD
+              value: testpassword
+            - name: ANALYTICDB_PORT
+              value: '5432'
+            - name: ANALYTICDB_REGION_ID
+              value: cn-hangzhou
+            - name: API_SENTRY_DSN
+            - name: API_SENTRY_PROFILES_SAMPLE_RATE
+              value: '1.0'
+            - name: API_SENTRY_TRACES_SAMPLE_RATE
+              value: '1.0'
+            - name: API_TOOL_DEFAULT_CONNECT_TIMEOUT
+              value: '10'
+            - name: API_TOOL_DEFAULT_READ_TIMEOUT
+              value: '60'
+            - name: APP_API_URL
+            - name: APP_MAX_ACTIVE_REQUESTS
+              value: '0'
+            - name: APP_MAX_EXECUTION_TIME
+              value: '1200'
+            - name: APP_WEB_URL
+            - name: AZURE_BLOB_ACCOUNT_KEY
+              value: difyai
+            - name: AZURE_BLOB_ACCOUNT_NAME
+              value: difyai
+            - name: AZURE_BLOB_ACCOUNT_URL
+              value: https://<your_account_name>.blob.core.windows.net
+            - name: AZURE_BLOB_CONTAINER_NAME
+              value: difyai-container
+            - name: BAIDU_OBS_ACCESS_KEY
+              value: your-access-key
+            - name: BAIDU_OBS_BUCKET_NAME
+              value: your-bucket-name
+            - name: BAIDU_OBS_ENDPOINT
+              value: your-server-url
+            - name: BAIDU_OBS_SECRET_KEY
+              value: your-secret-key
+            - name: BAIDU_VECTOR_DB_ACCOUNT
+              value: root
+            - name: BAIDU_VECTOR_DB_API_KEY
+              value: dify
+            - name: BAIDU_VECTOR_DB_CONNECTION_TIMEOUT_MS
+              value: '30000'
+            - name: BAIDU_VECTOR_DB_DATABASE
+              value: dify
+            - name: BAIDU_VECTOR_DB_ENDPOINT
+              value: http://127.0.0.1:5287
+            - name: BAIDU_VECTOR_DB_REPLICAS
+              value: '3'
+            - name: BAIDU_VECTOR_DB_SHARD
+              value: '1'
+            - name: BROKER_USE_SSL
+              value: 'false'
+            - name: CELERY_AUTO_SCALE
+              value: 'false'
+            - name: CELERY_BROKER_URL
+              value: redis://:difyai123456@dify-redis:6379/1
+            - name: CELERY_MAX_WORKERS
+            - name: CELERY_MIN_WORKERS
+            - name: CELERY_SENTINEL_MASTER_NAME
+            - name: CELERY_SENTINEL_SOCKET_TIMEOUT
+              value: '0.1'
+            - name: CELERY_USE_SENTINEL
+              value: 'false'
+            - name: CELERY_WORKER_AMOUNT
+            - name: CELERY_WORKER_CLASS
+            - name: CERTBOT_DOMAIN
+              value: your_domain.com
+            - name: CERTBOT_EMAIL
+              value: your_email@example.com
+            - name: CERTBOT_OPTIONS
+            - name: CHECK_UPDATE_URL
+              value: https://updates.dify.ai
+            - name: CHROMA_AUTH_CREDENTIALS
+            - name: CHROMA_AUTH_PROVIDER
+              value: chromadb.auth.token_authn.TokenAuthClientProvider
+            - name: CHROMA_DATABASE
+              value: default_database
+            - name: CHROMA_HOST
+              value: 127.0.0.1
+            - name: CHROMA_IS_PERSISTENT
+              value: 'TRUE'
+            - name: CHROMA_PORT
+              value: '8000'
+            - name: CHROMA_SERVER_AUTHN_CREDENTIALS
+              value: difyai123456
+            - name: CHROMA_SERVER_AUTHN_PROVIDER
+              value: chromadb.auth.token_authn.TokenAuthenticationServerProvider
+            - name: CHROMA_TENANT
+              value: default_tenant
+            - name: CODE_EXECUTION_API_KEY
+              value: dify-sandbox
+            - name: CODE_EXECUTION_CONNECT_TIMEOUT
+              value: '10'
+            - name: CODE_EXECUTION_ENDPOINT
+              value: http://dify-sandbox:8194
+            - name: CODE_EXECUTION_READ_TIMEOUT
+              value: '60'
+            - name: CODE_EXECUTION_WRITE_TIMEOUT
+              value: '10'
+            - name: CODE_GENERATION_MAX_TOKENS
+              value: '1024'
+            - name: CODE_MAX_DEPTH
+              value: '5'
+            - name: CODE_MAX_NUMBER
+              value: '9223372036854775807'
+            - name: CODE_MAX_NUMBER_ARRAY_LENGTH
+              value: '1000'
+            - name: CODE_MAX_OBJECT_ARRAY_LENGTH
+              value: '30'
+            - name: CODE_MAX_PRECISION
+              value: '20'
+            - name: CODE_MAX_STRING_ARRAY_LENGTH
+              value: '30'
+            - name: CODE_MAX_STRING_LENGTH
+              value: '80000'
+            - name: CODE_MIN_NUMBER
+              value: '-9223372036854775808'
+            - name: CONSOLE_API_URL
+            - name: CONSOLE_CORS_ALLOW_ORIGINS
+              value: '*'
+            - name: CONSOLE_WEB_URL
+            - name: COUCHBASE_BUCKET_NAME
+              value: Embeddings
+            - name: COUCHBASE_CONNECTION_STRING
+              value: couchbase://couchbase-server
+            - name: COUCHBASE_PASSWORD
+              value: password
+            - name: COUCHBASE_SCOPE_NAME
+              value: _default
+            - name: COUCHBASE_USER
+              value: Administrator
+            - name: CREATE_TIDB_SERVICE_JOB_ENABLED
+              value: 'false'
+            - name: CSP_WHITELIST
+            - name: DB_DATABASE
+              value: dify
+            - name: DB_HOST
+              value: dify-db
+            - name: DB_PASSWORD
+              value: difyai123456
+            - name: DB_PLUGIN_DATABASE
+              value: dify_plugin
+            - name: DB_PORT
+              value: '5432'
+            - name: DB_USERNAME
+              value: postgres
+            - name: DEBUG
+              value: 'false'
+            - name: DEPLOY_ENV
+              value: PRODUCTION
+            - name: DIFY_BIND_ADDRESS
+              value: 0.0.0.0
+            - name: DIFY_PORT
+              value: '5001'
+            - name: ELASTICSEARCH_HOST
+              value: 0.0.0.0
+            - name: ELASTICSEARCH_PASSWORD
+              value: elastic
+            - name: ELASTICSEARCH_PORT
+              value: '9200'
+            - name: ELASTICSEARCH_USERNAME
+              value: elastic
+            - name: ENDPOINT_URL_TEMPLATE
+              value: http://localhost/e/{hook_id}
+            - name: ETCD_AUTO_COMPACTION_MODE
+              value: revision
+            - name: ETCD_AUTO_COMPACTION_RETENTION
+              value: '1000'
+            - name: ETCD_ENDPOINTS
+              value: etcd:2379
+            - name: ETCD_QUOTA_BACKEND_BYTES
+              value: '4294967296'
+            - name: ETCD_SNAPSHOT_COUNT
+              value: '50000'
+            - name: ETL_TYPE
+              value: dify
+            - name: EXPOSE_NGINX_PORT
+              value: '80'
+            - name: EXPOSE_NGINX_SSL_PORT
+              value: '443'
+            - name: EXPOSE_PLUGIN_DAEMON_PORT
+              value: '5002'
+            - name: EXPOSE_PLUGIN_DEBUGGING_HOST
+              value: localhost
+            - name: EXPOSE_PLUGIN_DEBUGGING_PORT
+              value: '5003'
+            - name: FILES_ACCESS_TIMEOUT
+              value: '300'
+            - name: FILES_URL
+            - name: FLASK_DEBUG
+              value: 'false'
+            - name: FORCE_VERIFYING_SIGNATURE
+              value: 'true'
+            - name: GOOGLE_STORAGE_BUCKET_NAME
+              value: your-bucket-name
+            - name: GOOGLE_STORAGE_SERVICE_ACCOUNT_JSON_BASE64
+            - name: GUNICORN_TIMEOUT
+              value: '360'
+            - name: HTTP_REQUEST_NODE_MAX_BINARY_SIZE
+              value: '10485760'
+            - name: HTTP_REQUEST_NODE_MAX_TEXT_SIZE
+              value: '1048576'
+            - name: HUAWEI_OBS_ACCESS_KEY
+              value: your-access-key
+            - name: HUAWEI_OBS_BUCKET_NAME
+              value: your-bucket-name
+            - name: HUAWEI_OBS_SECRET_KEY
+              value: your-secret-key
+            - name: HUAWEI_OBS_SERVER
+              value: your-server-url
+            - name: INDEXING_MAX_SEGMENTATION_TOKENS_LENGTH
+              value: '4000'
+            - name: INIT_PASSWORD
+            - name: INNER_API_KEY_FOR_PLUGIN
+              value: QaHbTe77CtuXmsfyhR7+vRjI/+XbV1AaFy691iy+kGDv2Jvy0/eAh8Y1
+            - name: INVITE_EXPIRY_HOURS
+              value: '72'
+            - name: KIBANA_PORT
+              value: '5601'
+            - name: LINDORM_PASSWORD
+              value: lindorm
+            - name: LINDORM_URL
+              value: http://lindorm:30070
+            - name: LINDORM_USERNAME
+              value: lindorm
+            - name: LOG_DATEFORMAT
+              value: '%Y-%m-%d %H:%M:%S'
+            - name: LOG_FILE
+              value: /app/logs/server.log
+            - name: LOG_FILE_BACKUP_COUNT
+              value: '5'
+            - name: LOG_FILE_MAX_SIZE
+              value: '20'
+            - name: LOG_LEVEL
+              value: INFO
+            - name: LOG_TZ
+              value: UTC
+            - name: LOOP_NODE_MAX_COUNT
+              value: '100'
+            - name: MAIL_DEFAULT_SEND_FROM
+            - name: MAIL_TYPE
+              value: resend
+            - name: MARKETPLACE_API_URL
+              value: https://marketplace.dify.ai
+            - name: MARKETPLACE_ENABLED
+              value: 'true'
+            - name: MAX_SUBMIT_COUNT
+              value: '100'
+            - name: MAX_VARIABLE_SIZE
+              value: '204800'
+            - name: MIGRATION_ENABLED
+              value: 'true'
+            - name: MILVUS_AUTHORIZATION_ENABLED
+              value: 'true'
+            - name: MILVUS_ENABLE_HYBRID_SEARCH
+              value: 'False'
+            - name: MILVUS_PASSWORD
+              value: Milvus
+            - name: MILVUS_TOKEN
+            - name: MILVUS_URI
+              value: http://127.0.0.1:19530
+            - name: MILVUS_USER
+              value: root
+            - name: MINIO_ACCESS_KEY
+              value: minioadmin
+            - name: MINIO_ADDRESS
+              value: minio:9000
+            - name: MINIO_SECRET_KEY
+              value: minioadmin
+            - name: MODE
+              value: api
+            - name: MULTIMODAL_SEND_FORMAT
+              value: base64
+            - name: MYSCALE_DATABASE
+              value: dify
+            - name: MYSCALE_FTS_PARAMS
+            - name: MYSCALE_HOST
+              value: myscale
+            - name: MYSCALE_PASSWORD
+            - name: MYSCALE_PORT
+              value: '8123'
+            - name: MYSCALE_USER
+              value: default
+            - name: NGINX_CLIENT_MAX_BODY_SIZE
+              value: 15M
+            - name: NGINX_ENABLE_CERTBOT_CHALLENGE
+              value: 'false'
+            - name: NGINX_HTTPS_ENABLED
+              value: 'false'
+            - name: NGINX_KEEPALIVE_TIMEOUT
+              value: '65'
+            - name: NGINX_PORT
+              value: '80'
+            - name: NGINX_PROXY_READ_TIMEOUT
+              value: 3600s
+            - name: NGINX_PROXY_SEND_TIMEOUT
+              value: 3600s
+            - name: NGINX_SERVER_NAME
+              value: _
+            - name: NGINX_SSL_CERT_FILENAME
+              value: dify.crt
+            - name: NGINX_SSL_CERT_KEY_FILENAME
+              value: dify.key
+            - name: NGINX_SSL_PORT
+              value: '443'
+            - name: NGINX_SSL_PROTOCOLS
+              value: TLSv1.1 TLSv1.2 TLSv1.3
+            - name: NGINX_WORKER_PROCESSES
+              value: auto
+            - name: NOTION_CLIENT_ID
+            - name: NOTION_CLIENT_SECRET
+            - name: NOTION_INTEGRATION_TYPE
+              value: public
+            - name: NOTION_INTERNAL_SECRET
+            - name: OCEANBASE_CLUSTER_NAME
+              value: difyai
+            - name: OCEANBASE_MEMORY_LIMIT
+              value: 6G
+            - name: OCEANBASE_VECTOR_DATABASE
+              value: test
+            - name: OCEANBASE_VECTOR_HOST
+              value: oceanbase
+            - name: OCEANBASE_VECTOR_PASSWORD
+              value: difyai123456
+            - name: OCEANBASE_VECTOR_PORT
+              value: '2881'
+            - name: OCEANBASE_VECTOR_USER
+              value: root@test
+            - name: OCI_ACCESS_KEY
+              value: your-access-key
+            - name: OCI_BUCKET_NAME
+              value: your-bucket-name
+            - name: OCI_ENDPOINT
+              value: https://your-object-storage-namespace.compat.objectstorage.us-ashburn-1.oraclecloud.com
+            - name: OCI_REGION
+              value: us-ashburn-1
+            - name: OCI_SECRET_KEY
+              value: your-secret-key
+            - name: OPENAI_API_BASE
+              value: https://api.openai.com/v1
+            - name: OPENDAL_FS_ROOT
+              value: storage
+            - name: OPENDAL_SCHEME
+              value: fs
+            - name: OPENSEARCH_BOOTSTRAP_MEMORY_LOCK
+              value: 'true'
+            - name: OPENSEARCH_DISCOVERY_TYPE
+              value: single-node
+            - name: OPENSEARCH_HOST
+              value: opensearch
+            - name: OPENSEARCH_INITIAL_ADMIN_PASSWORD
+              value: Qazwsxedc!@#123
+            - name: OPENSEARCH_JAVA_OPTS_MAX
+              value: 1024m
+            - name: OPENSEARCH_JAVA_OPTS_MIN
+              value: 512m
+            - name: OPENSEARCH_MEMLOCK_HARD
+              value: '-1'
+            - name: OPENSEARCH_MEMLOCK_SOFT
+              value: '-1'
+            - name: OPENSEARCH_NOFILE_HARD
+              value: '65536'
+            - name: OPENSEARCH_NOFILE_SOFT
+              value: '65536'
+            - name: OPENSEARCH_PASSWORD
+              value: admin
+            - name: OPENSEARCH_PORT
+              value: '9200'
+            - name: OPENSEARCH_SECURE
+              value: 'true'
+            - name: OPENSEARCH_USER
+              value: admin
+            - name: ORACLE_CHARACTERSET
+              value: AL32UTF8
+            - name: ORACLE_CONFIG_DIR
+              value: /app/api/storage/wallet
+            - name: ORACLE_DSN
+              value: oracle:1521/FREEPDB1
+            - name: ORACLE_IS_AUTONOMOUS
+              value: 'false'
+            - name: ORACLE_PASSWORD
+              value: dify
+            - name: ORACLE_PWD
+              value: Dify123456
+            - name: ORACLE_USER
+              value: dify
+            - name: ORACLE_WALLET_LOCATION
+              value: /app/api/storage/wallet
+            - name: ORACLE_WALLET_PASSWORD
+              value: dify
+            - name: PGDATA
+              value: /var/lib/postgresql/data/pgdata
+            - name: PGUSER
+              value: postgres
+            - name: PGVECTOR_DATABASE
+              value: dify
+            - name: PGVECTOR_HOST
+              value: pgvector
+            - name: PGVECTOR_MAX_CONNECTION
+              value: '5'
+            - name: PGVECTOR_MIN_CONNECTION
+              value: '1'
+            - name: PGVECTOR_PASSWORD
+              value: difyai123456
+            - name: PGVECTOR_PGDATA
+              value: /var/lib/postgresql/data/pgdata
+            - name: PGVECTOR_PGUSER
+              value: postgres
+            - name: PGVECTOR_PORT
+              value: '5432'
+            - name: PGVECTOR_POSTGRES_DB
+              value: dify
+            - name: PGVECTOR_POSTGRES_PASSWORD
+              value: difyai123456
+            - name: PGVECTOR_USER
+              value: postgres
+            - name: PGVECTO_RS_DATABASE
+              value: dify
+            - name: PGVECTO_RS_HOST
+              value: pgvecto-rs
+            - name: PGVECTO_RS_PASSWORD
+              value: difyai123456
+            - name: PGVECTO_RS_PORT
+              value: '5432'
+            - name: PGVECTO_RS_USER
+              value: postgres
+            - name: PIP_MIRROR_URL
+            - name: PLUGIN_DAEMON_KEY
+              value: lYkiYYT6owG+71oLerGzA7GXCgOT++6ovaezWAjpCjf+Sjc3ZtU+qUEi
+            - name: PLUGIN_DAEMON_PORT
+              value: '5002'
+            - name: PLUGIN_DAEMON_URL
+              value: http://dify-plugin-daemon:5002
+            - name: PLUGIN_DEBUGGING_HOST
+              value: 0.0.0.0
+            - name: PLUGIN_DEBUGGING_PORT
+              value: '5003'
+            - name: PLUGIN_DIFY_INNER_API_KEY
+              value: QaHbTe77CtuXmsfyhR7+vRjI/+XbV1AaFy691iy+kGDv2Jvy0/eAh8Y1
+            - name: PLUGIN_DIFY_INNER_API_URL
+              value: http://api:5001
+            - name: PLUGIN_MAX_EXECUTION_TIMEOUT
+              value: '600'
+            - name: PLUGIN_MAX_PACKAGE_SIZE
+              value: '52428800'
+            - name: PLUGIN_PPROF_ENABLED
+              value: 'false'
+            - name: PLUGIN_PYTHON_ENV_INIT_TIMEOUT
+              value: '120'
+            - name: PLUGIN_REMOTE_INSTALL_HOST
+              value: localhost
+            - name: PLUGIN_REMOTE_INSTALL_PORT
+              value: '5003'
+            - name: POSITION_PROVIDER_EXCLUDES
+            - name: POSITION_PROVIDER_INCLUDES
+            - name: POSITION_PROVIDER_PINS
+            - name: POSITION_TOOL_EXCLUDES
+            - name: POSITION_TOOL_INCLUDES
+            - name: POSITION_TOOL_PINS
+            - name: POSTGRES_DB
+              value: dify
+            - name: POSTGRES_EFFECTIVE_CACHE_SIZE
+              value: 4096MB
+            - name: POSTGRES_MAINTENANCE_WORK_MEM
+              value: 64MB
+            - name: POSTGRES_MAX_CONNECTIONS
+              value: '100'
+            - name: POSTGRES_PASSWORD
+              value: difyai123456
+            - name: POSTGRES_SHARED_BUFFERS
+              value: 128MB
+            - name: POSTGRES_WORK_MEM
+              value: 4MB
+            - name: PROMPT_GENERATION_MAX_TOKENS
+              value: '512'
+            - name: QDRANT_API_KEY
+              value: difyai123456
+            - name: QDRANT_CLIENT_TIMEOUT
+              value: '20'
+            - name: QDRANT_GRPC_ENABLED
+              value: 'false'
+            - name: QDRANT_GRPC_PORT
+              value: '6334'
+            - name: QDRANT_URL
+              value: http://qdrant:6333
+            - name: REDIS_CLUSTERS
+            - name: REDIS_CLUSTERS_PASSWORD
+            - name: REDIS_DB
+              value: '0'
+            - name: REDIS_HOST
+              value: dify-redis
+            - name: REDIS_PASSWORD
+              value: difyai123456
+            - name: REDIS_PORT
+              value: '6379'
+            - name: REDIS_SENTINELS
+            - name: REDIS_SENTINEL_PASSWORD
+            - name: REDIS_SENTINEL_SERVICE_NAME
+            - name: REDIS_SENTINEL_SOCKET_TIMEOUT
+              value: '0.1'
+            - name: REDIS_SENTINEL_USERNAME
+            - name: REDIS_USERNAME
+            - name: REDIS_USE_CLUSTERS
+              value: 'false'
+            - name: REDIS_USE_SENTINEL
+              value: 'false'
+            - name: REDIS_USE_SSL
+              value: 'false'
+            - name: REFRESH_TOKEN_EXPIRE_DAYS
+              value: '30'
+            - name: RELYT_DATABASE
+              value: postgres
+            - name: RELYT_HOST
+              value: db
+            - name: RELYT_PASSWORD
+              value: difyai123456
+            - name: RELYT_PORT
+              value: '5432'
+            - name: RELYT_USER
+              value: postgres
+            - name: RESEND_API_KEY
+              value: your-resend-api-key
+            - name: RESEND_API_URL
+              value: https://api.resend.com
+            - name: RESET_PASSWORD_TOKEN_EXPIRY_MINUTES
+              value: '5'
+            - name: S3_ACCESS_KEY
+            - name: S3_BUCKET_NAME
+              value: difyai
+            - name: S3_ENDPOINT
+            - name: S3_REGION
+              value: us-east-1
+            - name: S3_SECRET_KEY
+            - name: S3_USE_AWS_MANAGED_IAM
+              value: 'false'
+            - name: SANDBOX_API_KEY
+              value: dify-sandbox
+            - name: SANDBOX_ENABLE_NETWORK
+              value: 'true'
+            - name: SANDBOX_GIN_MODE
+              value: release
+            - name: SANDBOX_HTTPS_PROXY
+              value: http://ssrf-proxy:3128
+            - name: SANDBOX_HTTP_PROXY
+              value: http://ssrf-proxy:3128
+            - name: SANDBOX_PORT
+              value: '8194'
+            - name: SANDBOX_WORKER_TIMEOUT
+              value: '15'
+            - name: SCARF_NO_ANALYTICS
+              value: 'true'
+            - name: SECRET_KEY
+              value: sk-9f73s3ljTXVcMT3Blb3ljTqtsKiGHXVcMT3BlbkFJLK7U
+            - name: SENTRY_DSN
+            - name: SENTRY_PROFILES_SAMPLE_RATE
+              value: '1.0'
+            - name: SENTRY_TRACES_SAMPLE_RATE
+              value: '1.0'
+            - name: SERVER_WORKER_AMOUNT
+              value: '1'
+            - name: SERVER_WORKER_CLASS
+              value: gevent
+            - name: SERVER_WORKER_CONNECTIONS
+              value: '10'
+            - name: SERVICE_API_URL
+            - name: SMTP_OPPORTUNISTIC_TLS
+              value: 'false'
+            - name: SMTP_PASSWORD
+            - name: SMTP_PORT
+              value: '465'
+            - name: SMTP_SERVER
+            - name: SMTP_USERNAME
+            - name: SMTP_USE_TLS
+              value: 'true'
+            - name: SQLALCHEMY_ECHO
+              value: 'false'
+            - name: SQLALCHEMY_POOL_RECYCLE
+              value: '3600'
+            - name: SQLALCHEMY_POOL_SIZE
+              value: '30'
+            - name: SSRF_COREDUMP_DIR
+              value: /var/spool/squid
+            - name: SSRF_DEFAULT_CONNECT_TIME_OUT
+              value: '5'
+            - name: SSRF_DEFAULT_READ_TIME_OUT
+              value: '5'
+            - name: SSRF_DEFAULT_TIME_OUT
+              value: '5'
+            - name: SSRF_DEFAULT_WRITE_TIME_OUT
+              value: '5'
+            - name: SSRF_HTTP_PORT
+              value: '3128'
+            - name: SSRF_PROXY_HTTPS_URL
+              value: http://ssrf-proxy:3128
+            - name: SSRF_PROXY_HTTP_URL
+              value: http://ssrf-proxy:3128
+            - name: SSRF_REVERSE_PROXY_PORT
+              value: '8194'
+            - name: SSRF_SANDBOX_HOST
+              value: dify-sandbox
+            - name: STORAGE_TYPE
+              value: opendal
+            - name: SUPABASE_API_KEY
+              value: your-access-key
+            - name: SUPABASE_BUCKET_NAME
+              value: your-bucket-name
+            - name: SUPABASE_URL
+              value: your-server-url
+            - name: TEMPLATE_TRANSFORM_MAX_LENGTH
+              value: '80000'
+            - name: TENCENT_COS_BUCKET_NAME
+              value: your-bucket-name
+            - name: TENCENT_COS_REGION
+              value: your-region
+            - name: TENCENT_COS_SCHEME
+              value: your-scheme
+            - name: TENCENT_COS_SECRET_ID
+              value: your-secret-id
+            - name: TENCENT_COS_SECRET_KEY
+              value: your-secret-key
+            - name: TENCENT_VECTOR_DB_API_KEY
+              value: dify
+            - name: TENCENT_VECTOR_DB_DATABASE
+              value: dify
+            - name: TENCENT_VECTOR_DB_REPLICAS
+              value: '2'
+            - name: TENCENT_VECTOR_DB_SHARD
+              value: '1'
+            - name: TENCENT_VECTOR_DB_TIMEOUT
+              value: '30'
+            - name: TENCENT_VECTOR_DB_URL
+              value: http://127.0.0.1
+            - name: TENCENT_VECTOR_DB_USERNAME
+              value: dify
+            - name: TEXT_GENERATION_TIMEOUT_MS
+              value: '60000'
+            - name: TIDB_API_URL
+              value: http://127.0.0.1
+            - name: TIDB_IAM_API_URL
+              value: http://127.0.0.1
+            - name: TIDB_ON_QDRANT_API_KEY
+              value: dify
+            - name: TIDB_ON_QDRANT_CLIENT_TIMEOUT
+              value: '20'
+            - name: TIDB_ON_QDRANT_GRPC_ENABLED
+              value: 'false'
+            - name: TIDB_ON_QDRANT_GRPC_PORT
+              value: '6334'
+            - name: TIDB_ON_QDRANT_URL
+              value: http://127.0.0.1
+            - name: TIDB_PRIVATE_KEY
+              value: dify
+            - name: TIDB_PROJECT_ID
+              value: dify
+            - name: TIDB_PUBLIC_KEY
+              value: dify
+            - name: TIDB_REGION
+              value: regions/aws-us-east-1
+            - name: TIDB_SPEND_LIMIT
+              value: '100'
+            - name: TIDB_VECTOR_DATABASE
+              value: dify
+            - name: TIDB_VECTOR_HOST
+              value: tidb
+            - name: TIDB_VECTOR_PASSWORD
+            - name: TIDB_VECTOR_PORT
+              value: '4000'
+            - name: TIDB_VECTOR_USER
+            - name: TOP_K_MAX_VALUE
+              value: '10'
+            - name: UNSTRUCTURED_API_KEY
+            - name: UNSTRUCTURED_API_URL
+            - name: UPLOAD_AUDIO_FILE_SIZE_LIMIT
+              value: '50'
+            - name: UPLOAD_FILE_BATCH_LIMIT
+              value: '5'
+            - name: UPLOAD_FILE_SIZE_LIMIT
+              value: '15'
+            - name: UPLOAD_IMAGE_FILE_SIZE_LIMIT
+              value: '10'
+            - name: UPLOAD_VIDEO_FILE_SIZE_LIMIT
+              value: '100'
+            - name: UPSTASH_VECTOR_TOKEN
+              value: dify
+            - name: UPSTASH_VECTOR_URL
+              value: https://xxx-vector.upstash.io
+            - name: VECTOR_STORE
+              value: weaviate
+            - name: VIKINGDB_ACCESS_KEY
+              value: your-ak
+            - name: VIKINGDB_CONNECTION_TIMEOUT
+              value: '30'
+            - name: VIKINGDB_HOST
+              value: api-vikingdb.xxx.volces.com
+            - name: VIKINGDB_REGION
+              value: cn-shanghai
+            - name: VIKINGDB_SCHEMA
+              value: http
+            - name: VIKINGDB_SECRET_KEY
+              value: your-sk
+            - name: VIKINGDB_SOCKET_TIMEOUT
+              value: '30'
+            - name: VOLCENGINE_TOS_ACCESS_KEY
+              value: your-access-key
+            - name: VOLCENGINE_TOS_BUCKET_NAME
+              value: your-bucket-name
+            - name: VOLCENGINE_TOS_ENDPOINT
+              value: your-server-url
+            - name: VOLCENGINE_TOS_REGION
+              value: your-region
+            - name: VOLCENGINE_TOS_SECRET_KEY
+              value: your-secret-key
+            - name: WEAVIATE_API_KEY
+              value: WVF5YThaHlkYwhGUSmCRgsX3tD5ngdN8pkih
+            - name: WEAVIATE_AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED
+              value: 'true'
+            - name: WEAVIATE_AUTHENTICATION_APIKEY_ALLOWED_KEYS
+              value: WVF5YThaHlkYwhGUSmCRgsX3tD5ngdN8pkih
+            - name: WEAVIATE_AUTHENTICATION_APIKEY_ENABLED
+              value: 'true'
+            - name: WEAVIATE_AUTHENTICATION_APIKEY_USERS
+              value: hello@dify.ai
+            - name: WEAVIATE_AUTHORIZATION_ADMINLIST_ENABLED
+              value: 'true'
+            - name: WEAVIATE_AUTHORIZATION_ADMINLIST_USERS
+              value: hello@dify.ai
+            - name: WEAVIATE_CLUSTER_HOSTNAME
+              value: node1
+            - name: WEAVIATE_DEFAULT_VECTORIZER_MODULE
+              value: none
+            - name: WEAVIATE_ENDPOINT
+              value: http://dify-weaviate:8080
+            - name: WEAVIATE_PERSISTENCE_DATA_PATH
+              value: /var/lib/weaviate
+            - name: WEAVIATE_QUERY_DEFAULTS_LIMIT
+              value: '25'
+            - name: WEB_API_CORS_ALLOW_ORIGINS
+              value: '*'
+            - name: WEB_SENTRY_DSN
+            - name: WORKFLOW_CALL_MAX_DEPTH
+              value: '5'
+            - name: WORKFLOW_FILE_UPLOAD_LIMIT
+              value: '10'
+            - name: WORKFLOW_MAX_EXECUTION_STEPS
+              value: '500'
+            - name: WORKFLOW_MAX_EXECUTION_TIME
+              value: '1200'
+            - name: WORKFLOW_PARALLEL_DEPTH_LIMIT
+              value: '3'
+          image: langgenius/dify-api:1.0.1
+          imagePullPolicy: IfNotPresent
+          name: api
+          resources: {}
+          volumeMounts:
+            - mountPath: /app/api/storage
+              name: api-storage
+      dnsPolicy: ClusterFirst
+      restartPolicy: Always
+      volumes:
+        - name: api-storage
+          persistentVolumeClaim:
+            claimName: dify-api-storage
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  labels:
+    app: db
+  name: dify-db
+  namespace: dify
+spec:
+  persistentVolumeClaimRetentionPolicy:
+    whenDeleted: Retain
+    whenScaled: Retain
+  replicas: 1
+  selector:
+    matchLabels:
+      app: db
+  serviceName: ''
+  template:
+    metadata:
+      labels:
+        app: db
+    spec:
+      containers:
+        - env:
+            - name: PGDATA
+              value: /var/lib/postgresql/data/pgdata
+            - name: PGUSER
+              value: postgres
+            - name: POSTGRES_DB
+              value: dify
+            - name: POSTGRES_PASSWORD
+              value: difyai123456
+          image: postgres:15-alpine
+          imagePullPolicy: IfNotPresent
+          livenessProbe:
+            exec:
+              command:
+                - pg_isready
+            failureThreshold: 30
+            periodSeconds: 1
+            successThreshold: 1
+            timeoutSeconds: 3
+          name: db
+          ports:
+            - containerPort: 5432
+              protocol: TCP
+          resources: {}
+          volumeMounts:
+            - mountPath: /var/lib/postgresql/data
+              name: db-storage
+      dnsPolicy: ClusterFirst
+      restartPolicy: Always
+      volumes:
+        - name: db-storage
+          persistentVolumeClaim:
+            claimName: dify-db-storage
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  labels:
+    app: redis
+  name: dify-redis
+  namespace: dify
+spec:
+  persistentVolumeClaimRetentionPolicy:
+    whenDeleted: Retain
+    whenScaled: Retain
+  replicas: 1
+  selector:
+    matchLabels:
+      app: redis
+  serviceName: ''
+  template:
+    metadata:
+      labels:
+        app: redis
+    spec:
+      containers:
+        - args:
+            - redis-server
+            - --requirepass
+            - difyai123456
+          env:
+            - name: REDISCLI_AUTH
+              value: difyai123456
+          image: redis:6-alpine
+          imagePullPolicy: IfNotPresent
+          livenessProbe:
+            exec:
+              command:
+                - redis-cli
+                - ping
+            failureThreshold: 3
+            periodSeconds: 10
+            successThreshold: 1
+            timeoutSeconds: 1
+          name: redis
+          ports:
+            - containerPort: 6379
+              protocol: TCP
+          resources: {}
+          volumeMounts:
+            - mountPath: /data
+              name: redis-storage
+      dnsPolicy: ClusterFirst
+      restartPolicy: Always
+      volumes:
+        - name: redis-storage
+          persistentVolumeClaim:
+            claimName: dify-redis-storage
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  labels:
+    app: weaviate
+  name: dify-weaviate
+  namespace: dify
+spec:
+  persistentVolumeClaimRetentionPolicy:
+    whenDeleted: Retain
+    whenScaled: Retain
+  replicas: 1
+  selector:
+    matchLabels:
+      app: weaviate
+  serviceName: ''
+  template:
+    metadata:
+      labels:
+        app: weaviate
+    spec:
+      containers:
+        - env:
+            - name: QUERY_DEFAULTS_LIMIT
+              value: '25'
+            - name: AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED
+              value: 'true'
+            - name: PERSISTENCE_DATA_PATH
+              value: /var/lib/weaviate
+            - name: DEFAULT_VECTORIZER_MODULE
+              value: none
+            - name: AUTHENTICATION_APIKEY_ENABLED
+              value: 'true'
+            - name: AUTHENTICATION_APIKEY_ALLOWED_KEYS
+              value: WVF5YThaHlkYwhGUSmCRgsX3tD5ngdN8pkih
+            - name: AUTHENTICATION_APIKEY_USERS
+              value: hello@dify.ai
+            - name: AUTHORIZATION_ADMINLIST_ENABLED
+              value: 'true'
+            - name: AUTHORIZATION_ADMINLIST_USERS
+              value: hello@dify.ai
+          image: semitechnologies/weaviate:1.19.0
+          imagePullPolicy: IfNotPresent
+          name: weaviate
+          ports:
+            - containerPort: 8080
+              name: weaviate
+              protocol: TCP
+          resources: {}
+          volumeMounts:
+            - mountPath: /var/lib/weaviate
+              name: weaviate-storage
+      dnsPolicy: ClusterFirst
+      restartPolicy: Always
+      volumes:
+        - name: weaviate-storage
+          persistentVolumeClaim:
+            claimName: dify-weaviate-storage
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  labels:
+    app: worker
+  name: dify-worker
+  namespace: dify
+spec:
+  persistentVolumeClaimRetentionPolicy:
+    whenDeleted: Retain
+    whenScaled: Retain
+  replicas: 1
+  selector:
+    matchLabels:
+      app: worker
+  serviceName: ''
+  template:
+    metadata:
+      labels:
+        app: worker
+    spec:
+      containers:
+        - env:
+            - name: ACCESS_TOKEN_EXPIRE_MINUTES
+              value: '60'
+            - name: ALIYUN_OSS_ACCESS_KEY
+              value: your-access-key
+            - name: ALIYUN_OSS_AUTH_VERSION
+              value: v4
+            - name: ALIYUN_OSS_BUCKET_NAME
+              value: your-bucket-name
+            - name: ALIYUN_OSS_ENDPOINT
+              value: https://oss-ap-southeast-1-internal.aliyuncs.com
+            - name: ALIYUN_OSS_PATH
+              value: your-path
+            - name: ALIYUN_OSS_REGION
+              value: ap-southeast-1
+            - name: ALIYUN_OSS_SECRET_KEY
+              value: your-secret-key
+            - name: ANALYTICDB_ACCOUNT
+              value: testaccount
+            - name: ANALYTICDB_HOST
+              value: gp-test.aliyuncs.com
+            - name: ANALYTICDB_INSTANCE_ID
+              value: gp-ab123456
+            - name: ANALYTICDB_KEY_ID
+              value: your-ak
+            - name: ANALYTICDB_KEY_SECRET
+              value: your-sk
+            - name: ANALYTICDB_MAX_CONNECTION
+              value: '5'
+            - name: ANALYTICDB_MIN_CONNECTION
+              value: '1'
+            - name: ANALYTICDB_NAMESPACE
+              value: dify
+            - name: ANALYTICDB_NAMESPACE_PASSWORD
+              value: difypassword
+            - name: ANALYTICDB_PASSWORD
+              value: testpassword
+            - name: ANALYTICDB_PORT
+              value: '5432'
+            - name: ANALYTICDB_REGION_ID
+              value: cn-hangzhou
+            - name: API_SENTRY_DSN
+            - name: API_SENTRY_PROFILES_SAMPLE_RATE
+              value: '1.0'
+            - name: API_SENTRY_TRACES_SAMPLE_RATE
+              value: '1.0'
+            - name: API_TOOL_DEFAULT_CONNECT_TIMEOUT
+              value: '10'
+            - name: API_TOOL_DEFAULT_READ_TIMEOUT
+              value: '60'
+            - name: APP_API_URL
+            - name: APP_MAX_ACTIVE_REQUESTS
+              value: '0'
+            - name: APP_MAX_EXECUTION_TIME
+              value: '1200'
+            - name: APP_WEB_URL
+            - name: AZURE_BLOB_ACCOUNT_KEY
+              value: difyai
+            - name: AZURE_BLOB_ACCOUNT_NAME
+              value: difyai
+            - name: AZURE_BLOB_ACCOUNT_URL
+              value: https://<your_account_name>.blob.core.windows.net
+            - name: AZURE_BLOB_CONTAINER_NAME
+              value: difyai-container
+            - name: BAIDU_OBS_ACCESS_KEY
+              value: your-access-key
+            - name: BAIDU_OBS_BUCKET_NAME
+              value: your-bucket-name
+            - name: BAIDU_OBS_ENDPOINT
+              value: your-server-url
+            - name: BAIDU_OBS_SECRET_KEY
+              value: your-secret-key
+            - name: BAIDU_VECTOR_DB_ACCOUNT
+              value: root
+            - name: BAIDU_VECTOR_DB_API_KEY
+              value: dify
+            - name: BAIDU_VECTOR_DB_CONNECTION_TIMEOUT_MS
+              value: '30000'
+            - name: BAIDU_VECTOR_DB_DATABASE
+              value: dify
+            - name: BAIDU_VECTOR_DB_ENDPOINT
+              value: http://127.0.0.1:5287
+            - name: BAIDU_VECTOR_DB_REPLICAS
+              value: '3'
+            - name: BAIDU_VECTOR_DB_SHARD
+              value: '1'
+            - name: BROKER_USE_SSL
+              value: 'false'
+            - name: CELERY_AUTO_SCALE
+              value: 'false'
+            - name: CELERY_BROKER_URL
+              value: redis://:difyai123456@dify-redis:6379/1
+            - name: CELERY_MAX_WORKERS
+            - name: CELERY_MIN_WORKERS
+            - name: CELERY_SENTINEL_MASTER_NAME
+            - name: CELERY_SENTINEL_SOCKET_TIMEOUT
+              value: '0.1'
+            - name: CELERY_USE_SENTINEL
+              value: 'false'
+            - name: CELERY_WORKER_AMOUNT
+            - name: CELERY_WORKER_CLASS
+            - name: CERTBOT_DOMAIN
+              value: your_domain.com
+            - name: CERTBOT_EMAIL
+              value: your_email@example.com
+            - name: CERTBOT_OPTIONS
+            - name: CHECK_UPDATE_URL
+              value: https://updates.dify.ai
+            - name: CHROMA_AUTH_CREDENTIALS
+            - name: CHROMA_AUTH_PROVIDER
+              value: chromadb.auth.token_authn.TokenAuthClientProvider
+            - name: CHROMA_DATABASE
+              value: default_database
+            - name: CHROMA_HOST
+              value: 127.0.0.1
+            - name: CHROMA_IS_PERSISTENT
+              value: 'TRUE'
+            - name: CHROMA_PORT
+              value: '8000'
+            - name: CHROMA_SERVER_AUTHN_CREDENTIALS
+              value: difyai123456
+            - name: CHROMA_SERVER_AUTHN_PROVIDER
+              value: chromadb.auth.token_authn.TokenAuthenticationServerProvider
+            - name: CHROMA_TENANT
+              value: default_tenant
+            - name: CODE_EXECUTION_API_KEY
+              value: dify-sandbox
+            - name: CODE_EXECUTION_CONNECT_TIMEOUT
+              value: '10'
+            - name: CODE_EXECUTION_ENDPOINT
+              value: http://dify-sandbox:8194
+            - name: CODE_EXECUTION_READ_TIMEOUT
+              value: '60'
+            - name: CODE_EXECUTION_WRITE_TIMEOUT
+              value: '10'
+            - name: CODE_GENERATION_MAX_TOKENS
+              value: '1024'
+            - name: CODE_MAX_DEPTH
+              value: '5'
+            - name: CODE_MAX_NUMBER
+              value: '9223372036854775807'
+            - name: CODE_MAX_NUMBER_ARRAY_LENGTH
+              value: '1000'
+            - name: CODE_MAX_OBJECT_ARRAY_LENGTH
+              value: '30'
+            - name: CODE_MAX_PRECISION
+              value: '20'
+            - name: CODE_MAX_STRING_ARRAY_LENGTH
+              value: '30'
+            - name: CODE_MAX_STRING_LENGTH
+              value: '80000'
+            - name: CODE_MIN_NUMBER
+              value: '-9223372036854775808'
+            - name: CONSOLE_API_URL
+            - name: CONSOLE_CORS_ALLOW_ORIGINS
+              value: '*'
+            - name: CONSOLE_WEB_URL
+            - name: COUCHBASE_BUCKET_NAME
+              value: Embeddings
+            - name: COUCHBASE_CONNECTION_STRING
+              value: couchbase://couchbase-server
+            - name: COUCHBASE_PASSWORD
+              value: password
+            - name: COUCHBASE_SCOPE_NAME
+              value: _default
+            - name: COUCHBASE_USER
+              value: Administrator
+            - name: CREATE_TIDB_SERVICE_JOB_ENABLED
+              value: 'false'
+            - name: CSP_WHITELIST
+            - name: DB_DATABASE
+              value: dify
+            - name: DB_HOST
+              value: dify-db
+            - name: DB_PASSWORD
+              value: difyai123456
+            - name: DB_PLUGIN_DATABASE
+              value: dify_plugin
+            - name: DB_PORT
+              value: '5432'
+            - name: DB_USERNAME
+              value: postgres
+            - name: DEBUG
+              value: 'false'
+            - name: DEPLOY_ENV
+              value: PRODUCTION
+            - name: DIFY_BIND_ADDRESS
+              value: 0.0.0.0
+            - name: DIFY_PORT
+              value: '5001'
+            - name: ELASTICSEARCH_HOST
+              value: 0.0.0.0
+            - name: ELASTICSEARCH_PASSWORD
+              value: elastic
+            - name: ELASTICSEARCH_PORT
+              value: '9200'
+            - name: ELASTICSEARCH_USERNAME
+              value: elastic
+            - name: ENDPOINT_URL_TEMPLATE
+              value: http://localhost/e/{hook_id}
+            - name: ETCD_AUTO_COMPACTION_MODE
+              value: revision
+            - name: ETCD_AUTO_COMPACTION_RETENTION
+              value: '1000'
+            - name: ETCD_ENDPOINTS
+              value: etcd:2379
+            - name: ETCD_QUOTA_BACKEND_BYTES
+              value: '4294967296'
+            - name: ETCD_SNAPSHOT_COUNT
+              value: '50000'
+            - name: ETL_TYPE
+              value: dify
+            - name: EXPOSE_NGINX_PORT
+              value: '80'
+            - name: EXPOSE_NGINX_SSL_PORT
+              value: '443'
+            - name: EXPOSE_PLUGIN_DAEMON_PORT
+              value: '5002'
+            - name: EXPOSE_PLUGIN_DEBUGGING_HOST
+              value: localhost
+            - name: EXPOSE_PLUGIN_DEBUGGING_PORT
+              value: '5003'
+            - name: FILES_ACCESS_TIMEOUT
+              value: '300'
+            - name: FILES_URL
+            - name: FLASK_DEBUG
+              value: 'false'
+            - name: FORCE_VERIFYING_SIGNATURE
+              value: 'true'
+            - name: GOOGLE_STORAGE_BUCKET_NAME
+              value: your-bucket-name
+            - name: GOOGLE_STORAGE_SERVICE_ACCOUNT_JSON_BASE64
+            - name: GUNICORN_TIMEOUT
+              value: '360'
+            - name: HTTP_REQUEST_NODE_MAX_BINARY_SIZE
+              value: '10485760'
+            - name: HTTP_REQUEST_NODE_MAX_TEXT_SIZE
+              value: '1048576'
+            - name: HUAWEI_OBS_ACCESS_KEY
+              value: your-access-key
+            - name: HUAWEI_OBS_BUCKET_NAME
+              value: your-bucket-name
+            - name: HUAWEI_OBS_SECRET_KEY
+              value: your-secret-key
+            - name: HUAWEI_OBS_SERVER
+              value: your-server-url
+            - name: INDEXING_MAX_SEGMENTATION_TOKENS_LENGTH
+              value: '4000'
+            - name: INIT_PASSWORD
+            - name: INNER_API_KEY_FOR_PLUGIN
+              value: QaHbTe77CtuXmsfyhR7+vRjI/+XbV1AaFy691iy+kGDv2Jvy0/eAh8Y1
+            - name: INVITE_EXPIRY_HOURS
+              value: '72'
+            - name: KIBANA_PORT
+              value: '5601'
+            - name: LINDORM_PASSWORD
+              value: lindorm
+            - name: LINDORM_URL
+              value: http://lindorm:30070
+            - name: LINDORM_USERNAME
+              value: lindorm
+            - name: LOG_DATEFORMAT
+              value: '%Y-%m-%d %H:%M:%S'
+            - name: LOG_FILE
+              value: /app/logs/server.log
+            - name: LOG_FILE_BACKUP_COUNT
+              value: '5'
+            - name: LOG_FILE_MAX_SIZE
+              value: '20'
+            - name: LOG_LEVEL
+              value: INFO
+            - name: LOG_TZ
+              value: UTC
+            - name: LOOP_NODE_MAX_COUNT
+              value: '100'
+            - name: MAIL_DEFAULT_SEND_FROM
+            - name: MAIL_TYPE
+              value: resend
+            - name: MARKETPLACE_API_URL
+              value: https://marketplace.dify.ai
+            - name: MARKETPLACE_ENABLED
+              value: 'true'
+            - name: MAX_SUBMIT_COUNT
+              value: '100'
+            - name: MAX_VARIABLE_SIZE
+              value: '204800'
+            - name: MIGRATION_ENABLED
+              value: 'true'
+            - name: MILVUS_AUTHORIZATION_ENABLED
+              value: 'true'
+            - name: MILVUS_ENABLE_HYBRID_SEARCH
+              value: 'False'
+            - name: MILVUS_PASSWORD
+              value: Milvus
+            - name: MILVUS_TOKEN
+            - name: MILVUS_URI
+              value: http://127.0.0.1:19530
+            - name: MILVUS_USER
+              value: root
+            - name: MINIO_ACCESS_KEY
+              value: minioadmin
+            - name: MINIO_ADDRESS
+              value: minio:9000
+            - name: MINIO_SECRET_KEY
+              value: minioadmin
+            - name: MODE
+              value: worker
+            - name: MULTIMODAL_SEND_FORMAT
+              value: base64
+            - name: MYSCALE_DATABASE
+              value: dify
+            - name: MYSCALE_FTS_PARAMS
+            - name: MYSCALE_HOST
+              value: myscale
+            - name: MYSCALE_PASSWORD
+            - name: MYSCALE_PORT
+              value: '8123'
+            - name: MYSCALE_USER
+              value: default
+            - name: NGINX_CLIENT_MAX_BODY_SIZE
+              value: 15M
+            - name: NGINX_ENABLE_CERTBOT_CHALLENGE
+              value: 'false'
+            - name: NGINX_HTTPS_ENABLED
+              value: 'false'
+            - name: NGINX_KEEPALIVE_TIMEOUT
+              value: '65'
+            - name: NGINX_PORT
+              value: '80'
+            - name: NGINX_PROXY_READ_TIMEOUT
+              value: 3600s
+            - name: NGINX_PROXY_SEND_TIMEOUT
+              value: 3600s
+            - name: NGINX_SERVER_NAME
+              value: _
+            - name: NGINX_SSL_CERT_FILENAME
+              value: dify.crt
+            - name: NGINX_SSL_CERT_KEY_FILENAME
+              value: dify.key
+            - name: NGINX_SSL_PORT
+              value: '443'
+            - name: NGINX_SSL_PROTOCOLS
+              value: TLSv1.1 TLSv1.2 TLSv1.3
+            - name: NGINX_WORKER_PROCESSES
+              value: auto
+            - name: NOTION_CLIENT_ID
+            - name: NOTION_CLIENT_SECRET
+            - name: NOTION_INTEGRATION_TYPE
+              value: public
+            - name: NOTION_INTERNAL_SECRET
+            - name: OCEANBASE_CLUSTER_NAME
+              value: difyai
+            - name: OCEANBASE_MEMORY_LIMIT
+              value: 6G
+            - name: OCEANBASE_VECTOR_DATABASE
+              value: test
+            - name: OCEANBASE_VECTOR_HOST
+              value: oceanbase
+            - name: OCEANBASE_VECTOR_PASSWORD
+              value: difyai123456
+            - name: OCEANBASE_VECTOR_PORT
+              value: '2881'
+            - name: OCEANBASE_VECTOR_USER
+              value: root@test
+            - name: OCI_ACCESS_KEY
+              value: your-access-key
+            - name: OCI_BUCKET_NAME
+              value: your-bucket-name
+            - name: OCI_ENDPOINT
+              value: https://your-object-storage-namespace.compat.objectstorage.us-ashburn-1.oraclecloud.com
+            - name: OCI_REGION
+              value: us-ashburn-1
+            - name: OCI_SECRET_KEY
+              value: your-secret-key
+            - name: OPENAI_API_BASE
+              value: https://api.openai.com/v1
+            - name: OPENDAL_FS_ROOT
+              value: storage
+            - name: OPENDAL_SCHEME
+              value: fs
+            - name: OPENSEARCH_BOOTSTRAP_MEMORY_LOCK
+              value: 'true'
+            - name: OPENSEARCH_DISCOVERY_TYPE
+              value: single-node
+            - name: OPENSEARCH_HOST
+              value: opensearch
+            - name: OPENSEARCH_INITIAL_ADMIN_PASSWORD
+              value: Qazwsxedc!@#123
+            - name: OPENSEARCH_JAVA_OPTS_MAX
+              value: 1024m
+            - name: OPENSEARCH_JAVA_OPTS_MIN
+              value: 512m
+            - name: OPENSEARCH_MEMLOCK_HARD
+              value: '-1'
+            - name: OPENSEARCH_MEMLOCK_SOFT
+              value: '-1'
+            - name: OPENSEARCH_NOFILE_HARD
+              value: '65536'
+            - name: OPENSEARCH_NOFILE_SOFT
+              value: '65536'
+            - name: OPENSEARCH_PASSWORD
+              value: admin
+            - name: OPENSEARCH_PORT
+              value: '9200'
+            - name: OPENSEARCH_SECURE
+              value: 'true'
+            - name: OPENSEARCH_USER
+              value: admin
+            - name: ORACLE_CHARACTERSET
+              value: AL32UTF8
+            - name: ORACLE_CONFIG_DIR
+              value: /app/api/storage/wallet
+            - name: ORACLE_DSN
+              value: oracle:1521/FREEPDB1
+            - name: ORACLE_IS_AUTONOMOUS
+              value: 'false'
+            - name: ORACLE_PASSWORD
+              value: dify
+            - name: ORACLE_PWD
+              value: Dify123456
+            - name: ORACLE_USER
+              value: dify
+            - name: ORACLE_WALLET_LOCATION
+              value: /app/api/storage/wallet
+            - name: ORACLE_WALLET_PASSWORD
+              value: dify
+            - name: PGDATA
+              value: /var/lib/postgresql/data/pgdata
+            - name: PGUSER
+              value: postgres
+            - name: PGVECTOR_DATABASE
+              value: dify
+            - name: PGVECTOR_HOST
+              value: pgvector
+            - name: PGVECTOR_MAX_CONNECTION
+              value: '5'
+            - name: PGVECTOR_MIN_CONNECTION
+              value: '1'
+            - name: PGVECTOR_PASSWORD
+              value: difyai123456
+            - name: PGVECTOR_PGDATA
+              value: /var/lib/postgresql/data/pgdata
+            - name: PGVECTOR_PGUSER
+              value: postgres
+            - name: PGVECTOR_PORT
+              value: '5432'
+            - name: PGVECTOR_POSTGRES_DB
+              value: dify
+            - name: PGVECTOR_POSTGRES_PASSWORD
+              value: difyai123456
+            - name: PGVECTOR_USER
+              value: postgres
+            - name: PGVECTO_RS_DATABASE
+              value: dify
+            - name: PGVECTO_RS_HOST
+              value: pgvecto-rs
+            - name: PGVECTO_RS_PASSWORD
+              value: difyai123456
+            - name: PGVECTO_RS_PORT
+              value: '5432'
+            - name: PGVECTO_RS_USER
+              value: postgres
+            - name: PIP_MIRROR_URL
+            - name: PLUGIN_DAEMON_KEY
+              value: lYkiYYT6owG+71oLerGzA7GXCgOT++6ovaezWAjpCjf+Sjc3ZtU+qUEi
+            - name: PLUGIN_DAEMON_PORT
+              value: '5002'
+            - name: PLUGIN_DAEMON_URL
+              value: http://dify-plugin-daemon:5002
+            - name: PLUGIN_DEBUGGING_HOST
+              value: 0.0.0.0
+            - name: PLUGIN_DEBUGGING_PORT
+              value: '5003'
+            - name: PLUGIN_DIFY_INNER_API_KEY
+              value: QaHbTe77CtuXmsfyhR7+vRjI/+XbV1AaFy691iy+kGDv2Jvy0/eAh8Y1
+            - name: PLUGIN_DIFY_INNER_API_URL
+              value: http://api:5001
+            - name: PLUGIN_MAX_EXECUTION_TIMEOUT
+              value: '600'
+            - name: PLUGIN_MAX_PACKAGE_SIZE
+              value: '52428800'
+            - name: PLUGIN_PPROF_ENABLED
+              value: 'false'
+            - name: PLUGIN_PYTHON_ENV_INIT_TIMEOUT
+              value: '120'
+            - name: POSITION_PROVIDER_EXCLUDES
+            - name: POSITION_PROVIDER_INCLUDES
+            - name: POSITION_PROVIDER_PINS
+            - name: POSITION_TOOL_EXCLUDES
+            - name: POSITION_TOOL_INCLUDES
+            - name: POSITION_TOOL_PINS
+            - name: POSTGRES_DB
+              value: dify
+            - name: POSTGRES_EFFECTIVE_CACHE_SIZE
+              value: 4096MB
+            - name: POSTGRES_MAINTENANCE_WORK_MEM
+              value: 64MB
+            - name: POSTGRES_MAX_CONNECTIONS
+              value: '100'
+            - name: POSTGRES_PASSWORD
+              value: difyai123456
+            - name: POSTGRES_SHARED_BUFFERS
+              value: 128MB
+            - name: POSTGRES_WORK_MEM
+              value: 4MB
+            - name: PROMPT_GENERATION_MAX_TOKENS
+              value: '512'
+            - name: QDRANT_API_KEY
+              value: difyai123456
+            - name: QDRANT_CLIENT_TIMEOUT
+              value: '20'
+            - name: QDRANT_GRPC_ENABLED
+              value: 'false'
+            - name: QDRANT_GRPC_PORT
+              value: '6334'
+            - name: QDRANT_URL
+              value: http://qdrant:6333
+            - name: REDIS_CLUSTERS
+            - name: REDIS_CLUSTERS_PASSWORD
+            - name: REDIS_DB
+              value: '0'
+            - name: REDIS_HOST
+              value: dify-redis
+            - name: REDIS_PASSWORD
+              value: difyai123456
+            - name: REDIS_PORT
+              value: '6379'
+            - name: REDIS_SENTINELS
+            - name: REDIS_SENTINEL_PASSWORD
+            - name: REDIS_SENTINEL_SERVICE_NAME
+            - name: REDIS_SENTINEL_SOCKET_TIMEOUT
+              value: '0.1'
+            - name: REDIS_SENTINEL_USERNAME
+            - name: REDIS_USERNAME
+            - name: REDIS_USE_CLUSTERS
+              value: 'false'
+            - name: REDIS_USE_SENTINEL
+              value: 'false'
+            - name: REDIS_USE_SSL
+              value: 'false'
+            - name: REFRESH_TOKEN_EXPIRE_DAYS
+              value: '30'
+            - name: RELYT_DATABASE
+              value: postgres
+            - name: RELYT_HOST
+              value: db
+            - name: RELYT_PASSWORD
+              value: difyai123456
+            - name: RELYT_PORT
+              value: '5432'
+            - name: RELYT_USER
+              value: postgres
+            - name: RESEND_API_KEY
+              value: your-resend-api-key
+            - name: RESEND_API_URL
+              value: https://api.resend.com
+            - name: RESET_PASSWORD_TOKEN_EXPIRY_MINUTES
+              value: '5'
+            - name: S3_ACCESS_KEY
+            - name: S3_BUCKET_NAME
+              value: difyai
+            - name: S3_ENDPOINT
+            - name: S3_REGION
+              value: us-east-1
+            - name: S3_SECRET_KEY
+            - name: S3_USE_AWS_MANAGED_IAM
+              value: 'false'
+            - name: SANDBOX_API_KEY
+              value: dify-sandbox
+            - name: SANDBOX_ENABLE_NETWORK
+              value: 'true'
+            - name: SANDBOX_GIN_MODE
+              value: release
+            - name: SANDBOX_HTTPS_PROXY
+              value: http://ssrf-proxy:3128
+            - name: SANDBOX_HTTP_PROXY
+              value: http://ssrf-proxy:3128
+            - name: SANDBOX_PORT
+              value: '8194'
+            - name: SANDBOX_WORKER_TIMEOUT
+              value: '15'
+            - name: SCARF_NO_ANALYTICS
+              value: 'true'
+            - name: SECRET_KEY
+              value: sk-9f73s3ljTXVcMT3Blb3ljTqtsKiGHXVcMT3BlbkFJLK7U
+            - name: SENTRY_DSN
+            - name: SENTRY_PROFILES_SAMPLE_RATE
+              value: '1.0'
+            - name: SENTRY_TRACES_SAMPLE_RATE
+              value: '1.0'
+            - name: SERVER_WORKER_AMOUNT
+              value: '1'
+            - name: SERVER_WORKER_CLASS
+              value: gevent
+            - name: SERVER_WORKER_CONNECTIONS
+              value: '10'
+            - name: SERVICE_API_URL
+            - name: SMTP_OPPORTUNISTIC_TLS
+              value: 'false'
+            - name: SMTP_PASSWORD
+            - name: SMTP_PORT
+              value: '465'
+            - name: SMTP_SERVER
+            - name: SMTP_USERNAME
+            - name: SMTP_USE_TLS
+              value: 'true'
+            - name: SQLALCHEMY_ECHO
+              value: 'false'
+            - name: SQLALCHEMY_POOL_RECYCLE
+              value: '3600'
+            - name: SQLALCHEMY_POOL_SIZE
+              value: '30'
+            - name: SSRF_COREDUMP_DIR
+              value: /var/spool/squid
+            - name: SSRF_DEFAULT_CONNECT_TIME_OUT
+              value: '5'
+            - name: SSRF_DEFAULT_READ_TIME_OUT
+              value: '5'
+            - name: SSRF_DEFAULT_TIME_OUT
+              value: '5'
+            - name: SSRF_DEFAULT_WRITE_TIME_OUT
+              value: '5'
+            - name: SSRF_HTTP_PORT
+              value: '3128'
+            - name: SSRF_PROXY_HTTPS_URL
+              value: http://ssrf-proxy:3128
+            - name: SSRF_PROXY_HTTP_URL
+              value: http://ssrf-proxy:3128
+            - name: SSRF_REVERSE_PROXY_PORT
+              value: '8194'
+            - name: SSRF_SANDBOX_HOST
+              value: dify-sandbox
+            - name: STORAGE_TYPE
+              value: opendal
+            - name: SUPABASE_API_KEY
+              value: your-access-key
+            - name: SUPABASE_BUCKET_NAME
+              value: your-bucket-name
+            - name: SUPABASE_URL
+              value: your-server-url
+            - name: TEMPLATE_TRANSFORM_MAX_LENGTH
+              value: '80000'
+            - name: TENCENT_COS_BUCKET_NAME
+              value: your-bucket-name
+            - name: TENCENT_COS_REGION
+              value: your-region
+            - name: TENCENT_COS_SCHEME
+              value: your-scheme
+            - name: TENCENT_COS_SECRET_ID
+              value: your-secret-id
+            - name: TENCENT_COS_SECRET_KEY
+              value: your-secret-key
+            - name: TENCENT_VECTOR_DB_API_KEY
+              value: dify
+            - name: TENCENT_VECTOR_DB_DATABASE
+              value: dify
+            - name: TENCENT_VECTOR_DB_REPLICAS
+              value: '2'
+            - name: TENCENT_VECTOR_DB_SHARD
+              value: '1'
+            - name: TENCENT_VECTOR_DB_TIMEOUT
+              value: '30'
+            - name: TENCENT_VECTOR_DB_URL
+              value: http://127.0.0.1
+            - name: TENCENT_VECTOR_DB_USERNAME
+              value: dify
+            - name: TEXT_GENERATION_TIMEOUT_MS
+              value: '60000'
+            - name: TIDB_API_URL
+              value: http://127.0.0.1
+            - name: TIDB_IAM_API_URL
+              value: http://127.0.0.1
+            - name: TIDB_ON_QDRANT_API_KEY
+              value: dify
+            - name: TIDB_ON_QDRANT_CLIENT_TIMEOUT
+              value: '20'
+            - name: TIDB_ON_QDRANT_GRPC_ENABLED
+              value: 'false'
+            - name: TIDB_ON_QDRANT_GRPC_PORT
+              value: '6334'
+            - name: TIDB_ON_QDRANT_URL
+              value: http://127.0.0.1
+            - name: TIDB_PRIVATE_KEY
+              value: dify
+            - name: TIDB_PROJECT_ID
+              value: dify
+            - name: TIDB_PUBLIC_KEY
+              value: dify
+            - name: TIDB_REGION
+              value: regions/aws-us-east-1
+            - name: TIDB_SPEND_LIMIT
+              value: '100'
+            - name: TIDB_VECTOR_DATABASE
+              value: dify
+            - name: TIDB_VECTOR_HOST
+              value: tidb
+            - name: TIDB_VECTOR_PASSWORD
+            - name: TIDB_VECTOR_PORT
+              value: '4000'
+            - name: TIDB_VECTOR_USER
+            - name: TOP_K_MAX_VALUE
+              value: '10'
+            - name: UNSTRUCTURED_API_KEY
+            - name: UNSTRUCTURED_API_URL
+            - name: UPLOAD_AUDIO_FILE_SIZE_LIMIT
+              value: '50'
+            - name: UPLOAD_FILE_BATCH_LIMIT
+              value: '5'
+            - name: UPLOAD_FILE_SIZE_LIMIT
+              value: '15'
+            - name: UPLOAD_IMAGE_FILE_SIZE_LIMIT
+              value: '10'
+            - name: UPLOAD_VIDEO_FILE_SIZE_LIMIT
+              value: '100'
+            - name: UPSTASH_VECTOR_TOKEN
+              value: dify
+            - name: UPSTASH_VECTOR_URL
+              value: https://xxx-vector.upstash.io
+            - name: VECTOR_STORE
+              value: weaviate
+            - name: VIKINGDB_ACCESS_KEY
+              value: your-ak
+            - name: VIKINGDB_CONNECTION_TIMEOUT
+              value: '30'
+            - name: VIKINGDB_HOST
+              value: api-vikingdb.xxx.volces.com
+            - name: VIKINGDB_REGION
+              value: cn-shanghai
+            - name: VIKINGDB_SCHEMA
+              value: http
+            - name: VIKINGDB_SECRET_KEY
+              value: your-sk
+            - name: VIKINGDB_SOCKET_TIMEOUT
+              value: '30'
+            - name: VOLCENGINE_TOS_ACCESS_KEY
+              value: your-access-key
+            - name: VOLCENGINE_TOS_BUCKET_NAME
+              value: your-bucket-name
+            - name: VOLCENGINE_TOS_ENDPOINT
+              value: your-server-url
+            - name: VOLCENGINE_TOS_REGION
+              value: your-region
+            - name: VOLCENGINE_TOS_SECRET_KEY
+              value: your-secret-key
+            - name: WEAVIATE_API_KEY
+              value: WVF5YThaHlkYwhGUSmCRgsX3tD5ngdN8pkih
+            - name: WEAVIATE_AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED
+              value: 'true'
+            - name: WEAVIATE_AUTHENTICATION_APIKEY_ALLOWED_KEYS
+              value: WVF5YThaHlkYwhGUSmCRgsX3tD5ngdN8pkih
+            - name: WEAVIATE_AUTHENTICATION_APIKEY_ENABLED
+              value: 'true'
+            - name: WEAVIATE_AUTHENTICATION_APIKEY_USERS
+              value: hello@dify.ai
+            - name: WEAVIATE_AUTHORIZATION_ADMINLIST_ENABLED
+              value: 'true'
+            - name: WEAVIATE_AUTHORIZATION_ADMINLIST_USERS
+              value: hello@dify.ai
+            - name: WEAVIATE_CLUSTER_HOSTNAME
+              value: node1
+            - name: WEAVIATE_DEFAULT_VECTORIZER_MODULE
+              value: none
+            - name: WEAVIATE_ENDPOINT
+              value: http://dify-weaviate:8080
+            - name: WEAVIATE_PERSISTENCE_DATA_PATH
+              value: /var/lib/weaviate
+            - name: WEAVIATE_QUERY_DEFAULTS_LIMIT
+              value: '25'
+            - name: WEB_API_CORS_ALLOW_ORIGINS
+              value: '*'
+            - name: WEB_SENTRY_DSN
+            - name: WORKFLOW_CALL_MAX_DEPTH
+              value: '5'
+            - name: WORKFLOW_FILE_UPLOAD_LIMIT
+              value: '10'
+            - name: WORKFLOW_MAX_EXECUTION_STEPS
+              value: '500'
+            - name: WORKFLOW_MAX_EXECUTION_TIME
+              value: '1200'
+            - name: WORKFLOW_PARALLEL_DEPTH_LIMIT
+              value: '3'
+          image: langgenius/dify-api:1.0.1
+          imagePullPolicy: IfNotPresent
+          name: worker
+          resources: {}
+          volumeMounts:
+            - mountPath: /app/api/storage
+              name: worker-storage
+      dnsPolicy: ClusterFirst
+      restartPolicy: Always
+      volumes:
+        - name: worker-storage
+          persistentVolumeClaim:
+            claimName: dify-worker-storage
+---
+apiVersion: v1
+data:
+  nginx.conf: "\nuser  nginx;\nworker_processes  auto;\nerror_log  /var/log/nginx/error.log\
+    \ notice;\npid        /var/run/nginx.pid;\nevents {\n    worker_connections  1024;\n\
+    }\nhttp {\n    include       /etc/nginx/mime.types;\n    default_type  application/octet-stream;\n\
+    \    log_format  main  '$remote_addr - $remote_user [$time_local] \"$request\"\
+    \ '\n                      '$status $body_bytes_sent \"$http_referer\" '\n   \
+    \                   '\"$http_user_agent\" \"$http_x_forwarded_for\"';\n    access_log\
+    \  /var/log/nginx/access.log  main;\n    sendfile        on;\n    #tcp_nopush\
+    \     on;\n    keepalive_timeout  65;\n    #gzip  on;\n    client_max_body_size\
+    \ 15M;\n    server {\n    listen 80;\n    server_name _;\n    location /console/api\
+    \ {\n      proxy_pass http://dify-api:5001;\n      proxy_set_header X-Forwarded-For\
+    \ $proxy_add_x_forwarded_for;\n      proxy_set_header X-Forwarded-Proto $scheme;\n\
+    \      proxy_set_header X-Forwarded-Port $server_port;\n      proxy_http_version\
+    \ 1.1;\n      proxy_set_header Connection \"\";\n      proxy_buffering off;\n\
+    \      proxy_read_timeout 3600s;\n      proxy_send_timeout 3600s;\n    }\n   \
+    \ location /api {\n      proxy_pass http://dify-api:5001;\n      proxy_set_header\
+    \ X-Forwarded-For $proxy_add_x_forwarded_for;\n      proxy_set_header X-Forwarded-Proto\
+    \ $scheme;\n      proxy_set_header X-Forwarded-Port $server_port;\n      proxy_http_version\
+    \ 1.1;\n      proxy_set_header Connection \"\";\n      proxy_buffering off;\n\
+    \      proxy_read_timeout 3600s;\n      proxy_send_timeout 3600s;\n    }\n   \
+    \ location /v1 {\n      proxy_pass http://dify-api:5001;\n      proxy_set_header\
+    \ X-Forwarded-For $proxy_add_x_forwarded_for;\n      proxy_set_header X-Forwarded-Proto\
+    \ $scheme;\n      proxy_set_header X-Forwarded-Port $server_port;\n      proxy_http_version\
+    \ 1.1;\n      proxy_set_header Connection \"\";\n      proxy_buffering off;\n\
+    \      proxy_read_timeout 3600s;\n      proxy_send_timeout 3600s;\n    }\n   \
+    \ location /files {\n      proxy_pass http://dify-api:5001;\n      proxy_set_header\
+    \ X-Forwarded-For $proxy_add_x_forwarded_for;\n      proxy_set_header X-Forwarded-Proto\
+    \ $scheme;\n      proxy_set_header X-Forwarded-Port $server_port;\n      proxy_http_version\
+    \ 1.1;\n      proxy_set_header Connection \"\";\n      proxy_buffering off;\n\
+    \      proxy_read_timeout 3600s;\n      proxy_send_timeout 3600s;\n    }\n   \
+    \ location /explore {\n      proxy_pass http://dify-web:3000;\n      proxy_set_header\
+    \ X-Forwarded-For $proxy_add_x_forwarded_for;\n      proxy_set_header X-Forwarded-Proto\
+    \ $scheme;\n      proxy_set_header X-Forwarded-Port $server_port;\n      proxy_http_version\
+    \ 1.1;\n      proxy_set_header Connection \"\";\n      proxy_buffering off;\n\
+    \      proxy_read_timeout 3600s;\n      proxy_send_timeout 3600s;\n    }\n   \
+    \ location /e/ {\n      proxy_pass http://dify-plugin-daemon:5002;\n      proxy_set_header\
+    \ Dify-Hook-Url ://;\n      proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;\n\
+    \      proxy_set_header X-Forwarded-Proto $scheme;\n      proxy_set_header X-Forwarded-Port\
+    \ $server_port;\n      proxy_http_version 1.1;\n      proxy_set_header Connection\
+    \ \"\";\n      proxy_buffering off;\n      proxy_read_timeout 3600s;\n      proxy_send_timeout\
+    \ 3600s;\n  }\n    location / {\n      proxy_pass http://dify-web:3000;\n    \
+    \  proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;\n      proxy_set_header\
+    \ X-Forwarded-Proto $scheme;\n      proxy_set_header X-Forwarded-Port $server_port;\n\
+    \      proxy_http_version 1.1;\n      proxy_set_header Connection \"\";\n    \
+    \  proxy_buffering off;\n      proxy_read_timeout 3600s;\n      proxy_send_timeout\
+    \ 3600s;\n    }\n    # If you want to support HTTPS, please uncomment the code\
+    \ snippet below\n    #listen 443 ssl;\n    #ssl_certificate ./../ssl/your_cert_file.cer;\n\
+    \    #ssl_certificate_key ./../ssl/your_cert_key.key;\n    #ssl_protocols TLSv1.1\
+    \ TLSv1.2 TLSv1.3;\n    #ssl_prefer_server_ciphers on;\n    #ssl_session_cache\
+    \ shared:SSL:10m;\n    #ssl_session_timeout 10m;\n}\n}\n"
+kind: ConfigMap
+metadata:
+  labels:
+    app: nginx
+  name: dify-nginx
+  namespace: dify
+---
+apiVersion: v1
+data:
+  config.yaml: "\napp:\n  port: 8194\n  debug: True\n  key: dify-sandbox\nmax_workers:\
+    \ 4\nmax_requests: 50\nworker_timeout: 5\npython_path: /usr/local/bin/python3\n\
+    enable_network: True # please make sure there is no network risk in your environment\n\
+    allowed_syscalls: # please leave it empty if you have no idea how seccomp works\n\
+    proxy:\n  socks5: ''\n  http: ''\n  https: ''\n"
+  config.yaml.example: "\napp:\n  port: 8194\n  debug: True\n  key: dify-sandbox\n\
+    max_workers: 4\nmax_requests: 50\nworker_timeout: 5\npython_path: /usr/local/bin/python3\n\
+    python_lib_path:\n  - /usr/local/lib/python3.10\n  - /usr/lib/python3.10\n  -\
+    \ /usr/lib/python3\n  - /usr/lib/x86_64-linux-gnu\n  - /etc/ssl/certs/ca-certificates.crt\n\
+    \  - /etc/nsswitch.conf\n  - /etc/hosts\n  - /etc/resolv.conf\n  - /run/systemd/resolve/stub-resolv.conf\n\
+    \  - /run/resolvconf/resolv.conf\n  - /etc/localtime\n  - /usr/share/zoneinfo\n\
+    \  - /etc/timezone\n  # add more paths if needed\npython_pip_mirror_url: https://pypi.tuna.tsinghua.edu.cn/simple\n\
+    nodejs_path: /usr/local/bin/node\nenable_network: True\nallowed_syscalls:\n  -\
+    \ 1\n  - 2\n  - 3\n  # add all the syscalls which you require\nproxy:\n  socks5:\
+    \ ''\n  http: ''\n  https: ''\n"
+  python-requirements.txt: ''
+kind: ConfigMap
+metadata:
+  labels:
+    app: sandbox
+  name: dify-sandbox
+  namespace: dify
+---
+apiVersion: v1
+data:
+  docker-entrypoint-mount.sh: "\n#!/bin/bash\n\n# Modified based on Squid OCI image\
+    \ entrypoint\n\n# This entrypoint aims to forward the squid logs to stdout to\
+    \ assist users of\n# common container related tooling (e.g., kubernetes, docker-compose,\
+    \ etc) to\n# access the service logs.\n\n# Moreover, it invokes the squid binary,\
+    \ leaving all the desired parameters to\n# be provided by the \"command\" passed\
+    \ to the spawned container. If no command\n# is provided by the user, the default\
+    \ behavior (as per the CMD statement in\n# the Dockerfile) will be to use Ubuntu's\
+    \ default configuration [1] and run\n# squid with the \"-NYC\" options to mimic\
+    \ the behavior of the Ubuntu provided\n# systemd unit.\n\n# [1] The default configuration\
+    \ is changed in the Dockerfile to allow local\n# network connections. See the\
+    \ Dockerfile for further information.\n\necho \"[ENTRYPOINT] re-create snakeoil\
+    \ self-signed certificate removed in the build process\"\nif [ ! -f /etc/ssl/private/ssl-cert-snakeoil.key\
+    \ ]; then\n    /usr/sbin/make-ssl-cert generate-default-snakeoil --force-overwrite\
+    \ > /dev/null 2>&1\nfi\n\ntail -F /var/log/squid/access.log 2>/dev/null &\ntail\
+    \ -F /var/log/squid/error.log 2>/dev/null &\ntail -F /var/log/squid/store.log\
+    \ 2>/dev/null &\ntail -F /var/log/squid/cache.log 2>/dev/null &\n\n# Replace environment\
+    \ variables in the template and output to the squid.conf\necho \"[ENTRYPOINT]\
+    \ replacing environment variables in the template\"\nawk '{\n    while(match($0,\
+    \ /\\${[A-Za-z_][A-Za-z_0-9]*}/)) {\n        var = substr($0, RSTART+2, RLENGTH-3)\n\
+    \        val = ENVIRON[var]\n        $0 = substr($0, 1, RSTART-1) val substr($0,\
+    \ RSTART+RLENGTH)\n    }\n    print\n}' /etc/squid/squid.conf.template > /etc/squid/squid.conf\n\
+    \n/usr/sbin/squid -Nz\necho \"[ENTRYPOINT] starting squid\"\n/usr/sbin/squid -f\
+    \ /etc/squid/squid.conf -NYC 1\n"
+  squid.conf.template: "\nacl localnet src 0.0.0.1-0.255.255.255\t# RFC 1122 \"this\"\
+    \ network (LAN)\nacl localnet src 10.0.0.0/8\t\t# RFC 1918 local private network\
+    \ (LAN)\nacl localnet src 100.64.0.0/10\t\t# RFC 6598 shared address space (CGN)\n\
+    acl localnet src 169.254.0.0/16 \t# RFC 3927 link-local (directly plugged) machines\n\
+    acl localnet src 172.16.0.0/12\t\t# RFC 1918 local private network (LAN)\nacl\
+    \ localnet src 192.168.0.0/16\t\t# RFC 1918 local private network (LAN)\nacl localnet\
+    \ src fc00::/7       \t# RFC 4193 local private network range\nacl localnet src\
+    \ fe80::/10      \t# RFC 4291 link-local (directly plugged) machines\nacl SSL_ports\
+    \ port 443\n# acl SSL_ports port 1025-65535   # Enable the configuration to resolve\
+    \ this issue: https://github.com/langgenius/dify/issues/12792\nacl Safe_ports\
+    \ port 80\t\t# http\nacl Safe_ports port 21\t\t# ftp\nacl Safe_ports port 443\t\
+    \t# https\nacl Safe_ports port 70\t\t# gopher\nacl Safe_ports port 210\t\t# wais\n\
+    acl Safe_ports port 1025-65535\t# unregistered ports\nacl Safe_ports port 280\t\
+    \t# http-mgmt\nacl Safe_ports port 488\t\t# gss-http\nacl Safe_ports port 591\t\
+    \t# filemaker\nacl Safe_ports port 777\t\t# multiling http\nacl CONNECT method\
+    \ CONNECT\nacl allowed_domains dstdomain .marketplace.dify.ai\nhttp_access allow\
+    \ allowed_domains\nhttp_access deny !Safe_ports\nhttp_access deny CONNECT !SSL_ports\n\
+    http_access allow localhost manager\nhttp_access deny manager\nhttp_access allow\
+    \ localhost\ninclude /etc/squid/conf.d/*.conf\nhttp_access deny all\n\n##################################\
+    \ Proxy Server ################################\nhttp_port ${HTTP_PORT}\ncoredump_dir\
+    \ ${COREDUMP_DIR}\nrefresh_pattern ^ftp:\t\t1440\t20%\t10080\nrefresh_pattern\
+    \ ^gopher:\t1440\t0%\t1440\nrefresh_pattern -i (/cgi-bin/|\\?) 0\t0%\t0\nrefresh_pattern\
+    \ \\/(Packages|Sources)(|\\.bz2|\\.gz|\\.xz)$ 0 0% 0 refresh-ims\nrefresh_pattern\
+    \ \\/Release(|\\.gpg)$ 0 0% 0 refresh-ims\nrefresh_pattern \\/InRelease$ 0 0%\
+    \ 0 refresh-ims\nrefresh_pattern \\/(Translation-.*)(|\\.bz2|\\.gz|\\.xz)$ 0 0%\
+    \ 0 refresh-ims\nrefresh_pattern .\t\t0\t20%\t4320\n\n\n# cache_dir ufs /var/spool/squid\
+    \ 100 16 256\n# upstream proxy, set to your own upstream proxy IP to avoid SSRF\
+    \ attacks\n# cache_peer 172.1.1.1 parent 3128 0 no-query no-digest no-netdb-exchange\
+    \ default \n\n################################## Reverse Proxy To Sandbox ################################\n\
+    http_port ${REVERSE_PROXY_PORT} accel vhost\ncache_peer ${SANDBOX_HOST} parent\
+    \ ${SANDBOX_PORT} 0 no-query originserver\nacl src_all src all\nhttp_access allow\
+    \ src_all\n"
+kind: ConfigMap
+metadata:
+  labels:
+    app: ssrf-proxy
+  name: dify-ssrf-proxy
+  namespace: dify
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  labels:
+    app: api-storage
+  name: dify-api-storage
+  namespace: dify
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 100Mi
+  volumeMode: Filesystem
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  labels:
+    app: db-storage
+  name: dify-db-storage
+  namespace: dify
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 100Mi
+  volumeMode: Filesystem
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  labels:
+    app: plugin-daemon-storage
+  name: dify-plugin-daemon-storage
+  namespace: dify
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 100Mi
+  volumeMode: Filesystem
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  labels:
+    app: redis-storage
+  name: dify-redis-storage
+  namespace: dify
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 100Mi
+  volumeMode: Filesystem
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  labels:
+    app: weaviate-storage
+  name: dify-weaviate-storage
+  namespace: dify
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 100Mi
+  volumeMode: Filesystem
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  labels:
+    app: worker-storage
+  name: dify-worker-storage
+  namespace: dify
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 100Mi
+  volumeMode: Filesystem
