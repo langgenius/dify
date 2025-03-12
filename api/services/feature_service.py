@@ -72,7 +72,6 @@ class SystemFeatureModel(BaseModel):
     is_allow_create_workspace: bool = False
     is_email_setup: bool = False
     license: LicenseModel = LicenseModel()
-    is_enterprise: bool = False
     branding: BrandingModel = BrandingModel()
 
 
@@ -96,8 +95,6 @@ class FeatureService:
 
         if dify_config.ENTERPRISE_ENABLED:
             system_features.enable_web_sso_switch_component = True
-            system_features.is_enterprise = True
-
             cls._fulfill_params_from_enterprise(system_features)
 
         return system_features
