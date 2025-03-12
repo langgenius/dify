@@ -68,17 +68,23 @@ class Pdf2ImgTool(BuiltinTool):
 
         pdf_stream = io.BytesIO(image_binary)
         doc = fitz.open(stream=pdf_stream, filetype="pdf")
-        pdf_stream.close()
         if doc is None:
+            pdf_stream.close()
             return self.create_text_message("open pdf failed")
         if doc.is_encrypted:
             if not doc.authenticate(""):
+                pdf_stream.close()
+                doc.close()
                 return self.create_text_message("auth encrypted pdf with empty string failed")
 
         res = self.handle(doc, vector_max_size, bit_max_size, quality, direction, pages, dpi)
         if not res:
+            pdf_stream.close()
+            doc.close()
             return self.create_text_message("Pdf2Img error")
 
+        pdf_stream.close()
+        doc.close()
         results = [self.create_blob_message(blob=res, meta={"mime_type": "image/jpeg"}),
                    self.create_text_message(str(doc.page_count))]
         return results
@@ -121,7 +127,6 @@ class Pdf2ImgTool(BuiltinTool):
         else:
             new_images = [images[0]]
             res = self.concat_images_horizontal(new_images, quality)
-        doc.close()
         return res
 
     def concat_images_horizontal(self, images, quality):
