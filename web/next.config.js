@@ -40,7 +40,6 @@ const nextConfig = {
           // '**/app/reset-password**',
           // '**/app/account**',
           // '**/app/repos**',
-
         ],
         aggregateTimeout: 300, // 延迟重新构建的时间，单位为毫秒
         poll: 1000, // 检测文件变化的时间间隔，单位为毫秒

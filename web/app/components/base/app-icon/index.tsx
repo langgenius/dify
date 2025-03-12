@@ -54,6 +54,7 @@ const AppIcon: FC<AppIconProps> = ({
   onClick,
 }) => {
   const isValidImageIcon = iconType === 'image' && imageUrl
+
   return <span
     className={classNames(appIconVariants({ size, rounded }), className)}
     style={{ background: isValidImageIcon ? undefined : (background || '#FFFFFF') }}
