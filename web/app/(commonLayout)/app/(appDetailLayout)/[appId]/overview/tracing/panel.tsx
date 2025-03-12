@@ -84,7 +84,7 @@ const Panel: FC = () => {
           ? OpikIcon
           : inUseTracingProvider === TracingProvider.weave
             ? WeaveIcon
-            : null
+            : LangsmithIcon
 
   const [langSmithConfig, setLangSmithConfig] = useState<LangSmithConfig | null>(null)
   const [langFuseConfig, setLangFuseConfig] = useState<LangFuseConfig | null>(null)
