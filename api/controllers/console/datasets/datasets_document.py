@@ -325,8 +325,8 @@ class DatasetInitApi(Resource):
     @cloud_edition_billing_resource_check("vector_space")
     @cloud_edition_billing_rate_limit_check("knowledge")
     def post(self):
-        # The role of the current user in the ta table must be admin, owner, or editor
-        if not current_user.is_editor:
+        # The role of the current user in the ta table must be admin, owner, dataset_operator, or editor
+        if not current_user.is_dataset_editor:
             raise Forbidden()
 
         parser = reqparse.RequestParser()
@@ -704,8 +704,8 @@ class DocumentProcessingApi(DocumentResource):
         document_id = str(document_id)
         document = self.get_document(dataset_id, document_id)
 
-        # The role of the current user in the ta table must be admin, owner, or editor
-        if not current_user.is_editor:
+        # The role of the current user in the ta table must be admin, owner, dataset_operator, or editor
+        if not current_user.is_dataset_editor:
             raise Forbidden()
 
         if action == "pause":
@@ -769,8 +769,8 @@ class DocumentMetadataApi(DocumentResource):
         doc_type = req_data.get("doc_type")
         doc_metadata = req_data.get("doc_metadata")
 
-        # The role of the current user in the ta table must be admin, owner, or editor
-        if not current_user.is_editor:
+        # The role of the current user in the ta table must be admin, owner, dataset_operator, or editor
+        if not current_user.is_dataset_editor:
             raise Forbidden()
 
         if doc_type is None or doc_metadata is None:

@@ -1,23 +1,23 @@
 import type { I18nText } from '@/i18n/language'
 
-export interface CommonResponse {
+export type CommonResponse = {
   result: 'success' | 'fail'
 }
 
-export interface OauthResponse {
+export type OauthResponse = {
   redirect_url: string
 }
 
-export interface SetupStatusResponse {
+export type SetupStatusResponse = {
   step: 'finished' | 'not_started'
   setup_at?: Date
 }
 
-export interface InitValidateStatusResponse {
+export type InitValidateStatusResponse = {
   status: 'finished' | 'not_started'
 }
 
-export interface UserProfileResponse {
+export type UserProfileResponse = {
   id: string
   name: string
   email: string
@@ -33,13 +33,13 @@ export interface UserProfileResponse {
   created_at?: string
 }
 
-export interface UserProfileOriginResponse {
+export type UserProfileOriginResponse = {
   json: () => Promise<UserProfileResponse>
   bodyUsed: boolean
   headers: any
 }
 
-export interface LangGeniusVersionResponse {
+export type LangGeniusVersionResponse = {
   current_version: string
   latest_version: string
   version: string
@@ -49,7 +49,7 @@ export interface LangGeniusVersionResponse {
   current_env: string
 }
 
-export interface TenantInfoResponse {
+export type TenantInfoResponse = {
   name: string
   created_at: string
   providers: Array<{
@@ -80,14 +80,14 @@ export enum ProviderName {
   Tongyi = 'tongyi',
   ChatGLM = 'chatglm',
 }
-export interface ProviderAzureToken {
+export type ProviderAzureToken = {
   openai_api_base?: string
   openai_api_key?: string
 }
-export interface ProviderAnthropicToken {
+export type ProviderAnthropicToken = {
   anthropic_api_key?: string
 }
-export interface ProviderTokenType {
+export type ProviderTokenType = {
   [ProviderName.OPENAI]: string
   [ProviderName.AZURE_OPENAI]: ProviderAzureToken
   [ProviderName.ANTHROPIC]: ProviderAnthropicToken
@@ -110,14 +110,14 @@ export type ProviderHosted = Provider & {
   quota_used: number
 }
 
-export interface AccountIntegrate {
+export type AccountIntegrate = {
   provider: 'google' | 'github'
   created_at: number
   is_bound: boolean
   link: string
 }
 
-export interface IWorkspace {
+export type IWorkspace = {
   id: string
   name: string
   plan: string
@@ -129,7 +129,6 @@ export interface IWorkspace {
 export type ICurrentWorkspace = Omit<IWorkspace, 'current'> & {
   role: 'owner' | 'admin' | 'editor' | 'dataset_operator' | 'normal'
   providers: Provider[]
-  in_trail: boolean
   trial_end_reason?: string
   custom_config?: {
     remove_webapp_brand?: boolean
@@ -137,7 +136,7 @@ export type ICurrentWorkspace = Omit<IWorkspace, 'current'> & {
   }
 }
 
-export interface DataSourceNotionPage {
+export type DataSourceNotionPage = {
   page_icon: null | {
     type: string | null
     url: string | null
@@ -156,7 +155,7 @@ export type NotionPage = DataSourceNotionPage & {
 
 export type DataSourceNotionPageMap = Record<string, DataSourceNotionPage & { workspace_id: string }>
 
-export interface DataSourceNotionWorkspace {
+export type DataSourceNotionWorkspace = {
   workspace_name: string
   workspace_id: string
   workspace_icon: string | null
@@ -166,7 +165,7 @@ export interface DataSourceNotionWorkspace {
 
 export type DataSourceNotionWorkspaceMap = Record<string, DataSourceNotionWorkspace>
 
-export interface DataSourceNotion {
+export type DataSourceNotion = {
   id: string
   provider: string
   is_bound: boolean
@@ -181,12 +180,12 @@ export enum DataSourceProvider {
   jinaReader = 'jinareader',
 }
 
-export interface FirecrawlConfig {
+export type FirecrawlConfig = {
   api_key: string
   base_url: string
 }
 
-export interface DataSourceItem {
+export type DataSourceItem = {
   id: string
   category: DataSourceCategory
   provider: DataSourceProvider
@@ -195,15 +194,15 @@ export interface DataSourceItem {
   updated_at: number
 }
 
-export interface DataSources {
+export type DataSources = {
   sources: DataSourceItem[]
 }
 
-export interface GithubRepo {
+export type GithubRepo = {
   stargazers_count: number
 }
 
-export interface PluginProvider {
+export type PluginProvider = {
   tool_name: string
   is_enabled: boolean
   credentials: {
@@ -211,7 +210,7 @@ export interface PluginProvider {
   } | null
 }
 
-export interface FileUploadConfigResponse {
+export type FileUploadConfigResponse = {
   batch_count_limit: number
   image_file_size_limit?: number | string // default is 10MB
   file_size_limit: number // default is 15MB
@@ -234,14 +233,14 @@ export type InvitationResponse = CommonResponse & {
   invitation_results: InvitationResult[]
 }
 
-export interface ApiBasedExtension {
+export type ApiBasedExtension = {
   id?: string
   name?: string
   api_endpoint?: string
   api_key?: string
 }
 
-export interface CodeBasedExtensionForm {
+export type CodeBasedExtensionForm = {
   type: string
   label: I18nText
   variable: string
@@ -252,17 +251,17 @@ export interface CodeBasedExtensionForm {
   max_length?: number
 }
 
-export interface CodeBasedExtensionItem {
+export type CodeBasedExtensionItem = {
   name: string
   label: any
   form_schema: CodeBasedExtensionForm[]
 }
-export interface CodeBasedExtension {
+export type CodeBasedExtension = {
   module: string
   data: CodeBasedExtensionItem[]
 }
 
-export interface ExternalDataTool {
+export type ExternalDataTool = {
   type?: string
   label?: string
   icon?: string
@@ -274,7 +273,7 @@ export interface ExternalDataTool {
   } & Partial<Record<string, any>>
 }
 
-export interface ModerateResponse {
+export type ModerateResponse = {
   flagged: boolean
   text: string
 }
