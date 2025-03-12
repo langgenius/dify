@@ -22,6 +22,9 @@ class MetadataService:
         # check if metadata name already exists
         if DatasetMetadata.query.filter_by(tenant_id=current_user.current_tenant_id, dataset_id=dataset_id, name=metadata_args.name).first():
             raise ValueError("Metadata name already exists.")
+        for field in BuiltInField:
+            if field.value == metadata_args.name:
+                raise ValueError("Metadata name already exists in Built-in fields.")
         metadata = DatasetMetadata(
             tenant_id=current_user.current_tenant_id,
             dataset_id=dataset_id,
@@ -39,6 +42,9 @@ class MetadataService:
         # check if metadata name already exists
         if DatasetMetadata.query.filter_by(tenant_id=current_user.current_tenant_id, dataset_id=dataset_id, name=name).first():
             raise ValueError("Metadata name already exists.")
+        for field in BuiltInField:
+            if field.value == name:
+                raise ValueError("Metadata name already exists in Built-in fields.")
         try:
             MetadataService.knowledge_base_metadata_lock_check(dataset_id, None)
             metadata = DatasetMetadata.query.filter_by(id=metadata_id).first()
