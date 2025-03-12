@@ -475,7 +475,6 @@ services:
   web:
     # image: langgenius/dify-web:1.0.1
     image: dify-web-local:1.0.0
-    image: langgenius/dify-web:1.0.1
     restart: always
     environment:
       CONSOLE_API_URL: ${CONSOLE_API_URL:-}
