@@ -3,7 +3,7 @@ import { isArray, uniq } from 'lodash-es'
 import type { CodeNodeType } from '../../../code/types'
 import type { EndNodeType } from '../../../end/types'
 import type { AnswerNodeType } from '../../../answer/types'
-import type { LLMNodeType, StructuredOutput } from '../../../llm/types'
+import { type LLMNodeType, type StructuredOutput, Type } from '../../../llm/types'
 import type { KnowledgeRetrievalNodeType } from '../../../knowledge-retrieval/types'
 import type { IfElseNodeType } from '../../../if-else/types'
 import type { TemplateTransformNodeType } from '../../../template-transform/types'
@@ -21,6 +21,7 @@ import type { StartNodeType } from '@/app/components/workflow/nodes/start/types'
 import type { ConversationVariable, EnvironmentVariable, Node, NodeOutPutVar, ValueSelector, Var } from '@/app/components/workflow/types'
 import type { VariableAssignerNodeType } from '@/app/components/workflow/nodes/variable-assigner/types'
 import mockStructData from '@/app/components/workflow/nodes/llm/mock-struct-data'
+import type { Field as StructField } from '@/app/components/workflow/nodes/llm/types'
 
 import {
   HTTP_REQUEST_OUTPUT_STRUCT,
@@ -56,23 +57,72 @@ const inputVarTypeToVarType = (type: InputVarType): VarType => {
   } as any)[type] || VarType.string
 }
 
+const structTypeToVarType = (type: Type): VarType => {
+  return ({
+    [Type.string]: VarType.string,
+    [Type.number]: VarType.number,
+    [Type.boolean]: VarType.boolean,
+    [Type.object]: VarType.object,
+    [Type.array]: VarType.array,
+  } as any)[type] || VarType.string
+}
+
+const findExceptVarInStructuredProperties = (properties: Record<string, StructField>, filterVar: (payload: Var, selector: ValueSelector) => boolean): Record<string, StructField> => {
+  const res = produce(properties, (draft) => {
+    Object.keys(properties).forEach((key) => {
+      const item = properties[key]
+      const isObj = item.type === Type.object
+      if (!isObj && !filterVar({
+        variable: key,
+        type: structTypeToVarType(item.type),
+      }, [key])) {
+        delete properties[key]
+        return
+      }
+      if (item.type === Type.object && item.properties)
+        item.properties = findExceptVarInStructuredProperties(item.properties, filterVar)
+    })
+    return draft
+  })
+  return res
+}
+
+const findExceptVarInStructuredOutput = (structuredOutput: StructuredOutput, filterVar: (payload: Var, selector: ValueSelector) => boolean): StructuredOutput => {
+  const res = produce(structuredOutput, (draft) => {
+    const properties = draft.schema.properties
+    Object.keys(properties).forEach((key) => {
+      const item = properties[key]
+      const isObj = item.type === Type.object
+      if (!isObj && !filterVar({
+        variable: key,
+        type: structTypeToVarType(item.type),
+      }, [key])) {
+        delete properties[key]
+        return
+      }
+      if (item.type === Type.object && item.properties)
+        item.properties = findExceptVarInStructuredProperties(item.properties, filterVar)
+    })
+    return draft
+  })
+  return res
+}
+
 const findExceptVarInObject = (obj: any, filterVar: (payload: Var, selector: ValueSelector) => boolean, value_selector: ValueSelector, isFile?: boolean): Var => {
   const { children } = obj
+  const isStructuredOutput = !!(children as StructuredOutput)?.schema?.properties
+
   const res: Var = {
     variable: obj.variable,
     type: isFile ? VarType.file : VarType.object,
-    children: children.length > 0 ? children.filter((item: Var) => {
+    children: isStructuredOutput ? findExceptVarInStructuredOutput(children, filterVar) : children.filter((item: Var) => {
       const { children } = item
-      const isStructuredOutput = !!(children as StructuredOutput)?.schema
-      if (!isStructuredOutput) {
-        const currSelector = [...value_selector, item.variable]
-        if (!children)
-          return filterVar(item, currSelector)
-        const obj = findExceptVarInObject(item, filterVar, currSelector, false) // File doesn't contains file children
-        return obj.children && (obj.children as Var[])?.length > 0
-      }
-      return true // TODO: handle structured output
-    }) : (children || []),
+      const currSelector = [...value_selector, item.variable]
+      if (!children)
+        return filterVar(item, currSelector)
+      const obj = findExceptVarInObject(item, filterVar, currSelector, false) // File doesn't contains file children
+      return obj.children && (obj.children as Var[])?.length > 0
+    }),
   }
   return res
 }
@@ -440,8 +490,8 @@ const formatItem = (
     return findExceptVarInObject(isFile ? { ...v, children } : v, filterVar, selector, isFile)
   })
 
-  if (res.nodeId === 'llm')
-    console.log(res)
+  // if (res.nodeId === 'llm')
+  //   console.log(res)
 
   return res
 }
@@ -1103,18 +1153,26 @@ export const updateNodeVars = (oldNode: Node, oldVarSelector: ValueSelector, new
   })
   return newNode
 }
+
 const varToValueSelectorList = (v: Var, parentValueSelector: ValueSelector, res: ValueSelector[]) => {
   if (!v.variable)
     return
 
   res.push([...parentValueSelector, v.variable])
-  if (v.children) {
-    if ((v.children as Var[])?.length > 0) {
-      (v.children as Var[]).forEach((child) => {
-        varToValueSelectorList(child, [...parentValueSelector, v.variable], res)
-      })
-    }
-    // TODO: handle structured output
+  const isStructuredOutput = !!(v.children as StructuredOutput)?.schema?.properties
+
+  if ((v.children as Var[])?.length > 0) {
+    (v.children as Var[]).forEach((child) => {
+      varToValueSelectorList(child, [...parentValueSelector, v.variable], res)
+    })
+  }
+  if (isStructuredOutput) {
+    Object.keys((v.children as StructuredOutput)?.schema?.properties || {}).forEach((key) => {
+      varToValueSelectorList({
+        variable: key,
+        type: structTypeToVarType((v.children as StructuredOutput)?.schema?.properties[key].type),
+      }, [...parentValueSelector, v.variable], res)
+    })
   }
 }
 
@@ -1149,7 +1207,15 @@ export const getNodeOutputVars = (node: Node, isChatMode: boolean): ValueSelecto
     }
 
     case BlockEnum.LLM: {
-      varsToValueSelectorList(LLM_OUTPUT_STRUCT, [id], res)
+      varsToValueSelectorList([
+        ...LLM_OUTPUT_STRUCT,
+        {
+          variable: 'structured_output',
+          type: VarType.object,
+          children: mockStructData,
+        },
+      ], [id], res)
+      console.log(res)
       break
     }
 
