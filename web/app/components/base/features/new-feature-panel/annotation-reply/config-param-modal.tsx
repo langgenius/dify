@@ -79,7 +79,7 @@ const ConfigParamModal: FC<Props> = ({
       onClose={onHide}
       className='!p-6 !mt-14 !max-w-none !w-[640px]'
     >
-      <div className='mb-2 title-2xl-semibold text-text-primary'>
+      <div className='mb-2 title-2xl-semi-bold text-text-primary'>
         {t(`appAnnotation.initSetup.${isInit ? 'title' : 'configTitle'}`)}
       </div>
 

@@ -46,18 +46,20 @@ class FunctionCallAgentRunner(BaseAgentRunner):
         # convert tools into ModelRuntime Tool format
         tool_instances, prompt_messages_tools = self._init_prompt_tools()
 
+        assert app_config.agent
+
         iteration_step = 1
         max_iteration_steps = min(app_config.agent.max_iteration, 5) + 1
 
         # continue to run until there is not any tool call
         function_call_state = True
-        llm_usage: dict[str, LLMUsage] = {"usage": LLMUsage.empty_usage()}
+        llm_usage: dict[str, Optional[LLMUsage]] = {"usage": None}
         final_answer = ""
 
         # get tracing instance
         trace_manager = app_generate_entity.trace_manager
 
-        def increase_usage(final_llm_usage_dict: dict[str, LLMUsage], usage: LLMUsage):
+        def increase_usage(final_llm_usage_dict: dict[str, Optional[LLMUsage]], usage: LLMUsage):
             if not final_llm_usage_dict["usage"]:
                 final_llm_usage_dict["usage"] = usage
             else:
@@ -107,7 +109,7 @@ class FunctionCallAgentRunner(BaseAgentRunner):
 
             current_llm_usage = None
 
-            if self.stream_tool_call and isinstance(chunks, Generator):
+            if isinstance(chunks, Generator):
                 is_first_chunk = True
                 for chunk in chunks:
                     if is_first_chunk:
@@ -124,7 +126,7 @@ class FunctionCallAgentRunner(BaseAgentRunner):
                             tool_call_inputs = json.dumps(
                                 {tool_call[1]: tool_call[2] for tool_call in tool_calls}, ensure_ascii=False
                             )
-                        except json.JSONDecodeError as e:
+                        except json.JSONDecodeError:
                             # ensure ascii to avoid encoding error
                             tool_call_inputs = json.dumps({tool_call[1]: tool_call[2] for tool_call in tool_calls})
 
@@ -140,7 +142,7 @@ class FunctionCallAgentRunner(BaseAgentRunner):
                         current_llm_usage = chunk.delta.usage
 
                     yield chunk
-            elif not self.stream_tool_call and isinstance(chunks, LLMResult):
+            else:
                 result = chunks
                 # check if there is any tool call
                 if self.check_blocking_tool_calls(result):
@@ -151,7 +153,7 @@ class FunctionCallAgentRunner(BaseAgentRunner):
                         tool_call_inputs = json.dumps(
                             {tool_call[1]: tool_call[2] for tool_call in tool_calls}, ensure_ascii=False
                         )
-                    except json.JSONDecodeError as e:
+                    except json.JSONDecodeError:
                         # ensure ascii to avoid encoding error
                         tool_call_inputs = json.dumps({tool_call[1]: tool_call[2] for tool_call in tool_calls})
 
@@ -183,8 +185,6 @@ class FunctionCallAgentRunner(BaseAgentRunner):
                         usage=result.usage,
                     ),
                 )
-            else:
-                raise RuntimeError(f"invalid chunks type: {type(chunks)}")
 
             assistant_message = AssistantPromptMessage(content="", tool_calls=[])
             if tool_calls:
@@ -243,15 +243,12 @@ class FunctionCallAgentRunner(BaseAgentRunner):
                         invoke_from=self.application_generate_entity.invoke_from,
                         agent_tool_callback=self.agent_callback,
                         trace_manager=trace_manager,
+                        app_id=self.application_generate_entity.app_config.app_id,
+                        message_id=self.message.id,
+                        conversation_id=self.conversation.id,
                     )
                     # publish files
-                    for message_file_id, save_as in message_files:
-                        if save_as:
-                            if self.variables_pool:
-                                self.variables_pool.set_file(
-                                    tool_name=tool_call_name, value=message_file_id, name=save_as
-                                )
-
+                    for message_file_id in message_files:
                         # publish message file
                         self.queue_manager.publish(
                             QueueMessageFileEvent(message_file_id=message_file_id), PublishFrom.APPLICATION_MANAGER
@@ -303,8 +300,6 @@ class FunctionCallAgentRunner(BaseAgentRunner):
 
             iteration_step += 1
 
-        if self.variables_pool and self.db_variables_pool:
-            self.update_db_variables(self.variables_pool, self.db_variables_pool)
         # publish end event
         self.queue_manager.publish(
             QueueMessageEndEvent(
@@ -335,9 +330,7 @@ class FunctionCallAgentRunner(BaseAgentRunner):
             return True
         return False
 
-    def extract_tool_calls(
-        self, llm_result_chunk: LLMResultChunk
-    ) -> Union[None, list[tuple[str, str, dict[str, Any]]]]:
+    def extract_tool_calls(self, llm_result_chunk: LLMResultChunk) -> list[tuple[str, str, dict[str, Any]]]:
         """
         Extract tool calls from llm result chunk
 
@@ -360,7 +353,7 @@ class FunctionCallAgentRunner(BaseAgentRunner):
 
         return tool_calls
 
-    def extract_blocking_tool_calls(self, llm_result: LLMResult) -> Union[None, list[tuple[str, str, dict[str, Any]]]]:
+    def extract_blocking_tool_calls(self, llm_result: LLMResult) -> list[tuple[str, str, dict[str, Any]]]:
         """
         Extract blocking tool calls from llm result
 
@@ -383,9 +376,7 @@ class FunctionCallAgentRunner(BaseAgentRunner):
 
         return tool_calls
 
-    def _init_system_message(
-        self, prompt_template: str, prompt_messages: Optional[list[PromptMessage]] = None
-    ) -> list[PromptMessage]:
+    def _init_system_message(self, prompt_template: str, prompt_messages: list[PromptMessage]) -> list[PromptMessage]:
         """
         Initialize system message
         """

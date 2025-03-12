@@ -112,6 +112,7 @@ const translation = {
           operation: '문서',
         },
       },
+      launch: '발사',
     },
     apiInfo: {
       title: '백엔드 서비스 API',

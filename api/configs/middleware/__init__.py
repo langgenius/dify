@@ -1,3 +1,4 @@
+import os
 from typing import Any, Literal, Optional
 from urllib.parse import quote_plus
 
@@ -25,6 +26,7 @@ from .vdb.lindorm_config import LindormConfig
 from .vdb.milvus_config import MilvusConfig
 from .vdb.myscale_config import MyScaleConfig
 from .vdb.oceanbase_config import OceanBaseVectorConfig
+from .vdb.opengauss_config import OpenGaussConfig
 from .vdb.opensearch_config import OpenSearchConfig
 from .vdb.oracle_config import OracleConfig
 from .vdb.pgvector_config import PGVectorConfig
@@ -37,7 +39,6 @@ from .vdb.tidb_vector_config import TiDBVectorConfig
 from .vdb.upstash_config import UpstashConfig
 from .vdb.vikingdb_config import VikingDBConfig
 from .vdb.weaviate_config import WeaviateConfig
-from .vdb.opengauss_config import OpenGaussConfig
 
 
 class StorageConfig(BaseSettings):
@@ -165,6 +166,11 @@ class DatabaseConfig(BaseSettings):
     SQLALCHEMY_ECHO: bool | str = Field(
         description="If True, SQLAlchemy will log all SQL statements.",
         default=False,
+    )
+
+    RETRIEVAL_SERVICE_EXECUTORS: NonNegativeInt = Field(
+        description="Number of processes for the retrieval service, default to CPU cores.",
+        default=os.cpu_count(),
     )
 
     @computed_field

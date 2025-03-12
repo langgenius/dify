@@ -13,13 +13,18 @@ from core.app.entities.app_invoke_entities import (
     WorkflowAppGenerateEntity,
 )
 from core.app.entities.queue_entities import (
+    QueueAgentLogEvent,
     QueueErrorEvent,
     QueueIterationCompletedEvent,
     QueueIterationNextEvent,
     QueueIterationStartEvent,
+    QueueLoopCompletedEvent,
+    QueueLoopNextEvent,
+    QueueLoopStartEvent,
     QueueNodeExceptionEvent,
     QueueNodeFailedEvent,
     QueueNodeInIterationFailedEvent,
+    QueueNodeInLoopFailedEvent,
     QueueNodeRetryEvent,
     QueueNodeStartedEvent,
     QueueNodeSucceededEvent,
@@ -190,7 +195,9 @@ class WorkflowAppGenerateTaskPipeline:
             and features_dict["text_to_speech"].get("enabled")
             and features_dict["text_to_speech"].get("autoPlay") == "enabled"
         ):
-            tts_publisher = AppGeneratorTTSPublisher(tenant_id, features_dict["text_to_speech"].get("voice"))
+            tts_publisher = AppGeneratorTTSPublisher(
+                tenant_id, features_dict["text_to_speech"].get("voice"), features_dict["text_to_speech"].get("language")
+            )
 
         for response in self._process_stream_response(tts_publisher=tts_publisher, trace_manager=trace_manager):
             while True:
@@ -320,7 +327,13 @@ class WorkflowAppGenerateTaskPipeline:
 
                 if node_success_response:
                     yield node_success_response
-            elif isinstance(event, QueueNodeFailedEvent | QueueNodeInIterationFailedEvent | QueueNodeExceptionEvent):
+            elif isinstance(
+                event,
+                QueueNodeFailedEvent
+                | QueueNodeInIterationFailedEvent
+                | QueueNodeInLoopFailedEvent
+                | QueueNodeExceptionEvent,
+            ):
                 with Session(db.engine, expire_on_commit=False) as session:
                     workflow_node_execution = self._workflow_cycle_manager._handle_workflow_node_execution_failed(
                         session=session,
@@ -426,6 +439,57 @@ class WorkflowAppGenerateTaskPipeline:
 
                 yield iter_finish_resp
 
+            elif isinstance(event, QueueLoopStartEvent):
+                if not self._workflow_run_id:
+                    raise ValueError("workflow run not initialized.")
+
+                with Session(db.engine, expire_on_commit=False) as session:
+                    workflow_run = self._workflow_cycle_manager._get_workflow_run(
+                        session=session, workflow_run_id=self._workflow_run_id
+                    )
+                    loop_start_resp = self._workflow_cycle_manager._workflow_loop_start_to_stream_response(
+                        session=session,
+                        task_id=self._application_generate_entity.task_id,
+                        workflow_run=workflow_run,
+                        event=event,
+                    )
+
+                yield loop_start_resp
+
+            elif isinstance(event, QueueLoopNextEvent):
+                if not self._workflow_run_id:
+                    raise ValueError("workflow run not initialized.")
+
+                with Session(db.engine, expire_on_commit=False) as session:
+                    workflow_run = self._workflow_cycle_manager._get_workflow_run(
+                        session=session, workflow_run_id=self._workflow_run_id
+                    )
+                    loop_next_resp = self._workflow_cycle_manager._workflow_loop_next_to_stream_response(
+                        session=session,
+                        task_id=self._application_generate_entity.task_id,
+                        workflow_run=workflow_run,
+                        event=event,
+                    )
+
+                yield loop_next_resp
+
+            elif isinstance(event, QueueLoopCompletedEvent):
+                if not self._workflow_run_id:
+                    raise ValueError("workflow run not initialized.")
+
+                with Session(db.engine, expire_on_commit=False) as session:
+                    workflow_run = self._workflow_cycle_manager._get_workflow_run(
+                        session=session, workflow_run_id=self._workflow_run_id
+                    )
+                    loop_finish_resp = self._workflow_cycle_manager._workflow_loop_completed_to_stream_response(
+                        session=session,
+                        task_id=self._application_generate_entity.task_id,
+                        workflow_run=workflow_run,
+                        event=event,
+                    )
+
+                yield loop_finish_resp
+
             elif isinstance(event, QueueWorkflowSucceededEvent):
                 if not self._workflow_run_id:
                     raise ValueError("workflow run not initialized.")
@@ -526,6 +590,10 @@ class WorkflowAppGenerateTaskPipeline:
                 self._task_state.answer += delta_text
                 yield self._text_chunk_to_stream_response(
                     delta_text, from_variable_selector=event.from_variable_selector
+                )
+            elif isinstance(event, QueueAgentLogEvent):
+                yield self._workflow_cycle_manager._handle_agent_log(
+                    task_id=self._application_generate_entity.task_id, event=event
                 )
             else:
                 continue

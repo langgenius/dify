@@ -10,6 +10,7 @@ from controllers.service_api.app.error import NotChatAppError
 from controllers.service_api.wraps import FetchUserArg, WhereisUserArg, validate_app_token
 from core.app.entities.app_invoke_entities import InvokeFrom
 from fields.conversation_fields import message_file_fields
+from fields.message_fields import agent_thought_fields, feedback_fields, retriever_resource_fields
 from fields.raws import FilesContainedField
 from libs.helper import TimestampField, uuid_value
 from models.model import App, AppMode, EndUser
@@ -18,40 +19,6 @@ from services.message_service import MessageService
 
 
 class MessageListApi(Resource):
-    feedback_fields = {"rating": fields.String}
-    retriever_resource_fields = {
-        "id": fields.String,
-        "message_id": fields.String,
-        "position": fields.Integer,
-        "dataset_id": fields.String,
-        "dataset_name": fields.String,
-        "document_id": fields.String,
-        "document_name": fields.String,
-        "data_source_type": fields.String,
-        "segment_id": fields.String,
-        "score": fields.Float,
-        "hit_count": fields.Integer,
-        "word_count": fields.Integer,
-        "segment_position": fields.Integer,
-        "index_node_hash": fields.String,
-        "content": fields.String,
-        "created_at": TimestampField,
-    }
-
-    agent_thought_fields = {
-        "id": fields.String,
-        "chain_id": fields.String,
-        "message_id": fields.String,
-        "position": fields.Integer,
-        "thought": fields.String,
-        "tool": fields.String,
-        "tool_labels": fields.Raw,
-        "tool_input": fields.String,
-        "created_at": TimestampField,
-        "observation": fields.String,
-        "message_files": fields.List(fields.Nested(message_file_fields)),
-    }
-
     message_fields = {
         "id": fields.String,
         "conversation_id": fields.String,

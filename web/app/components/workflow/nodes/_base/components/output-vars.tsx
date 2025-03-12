@@ -1,5 +1,5 @@
 'use client'
-import type { FC } from 'react'
+import type { FC, ReactNode } from 'react'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
 import { FieldCollapse } from '@/app/components/workflow/nodes/_base/components/collapse'
@@ -7,7 +7,7 @@ import { FieldCollapse } from '@/app/components/workflow/nodes/_base/components/
 type Props = {
   className?: string
   title?: string
-  children: JSX.Element
+  children: ReactNode
 }
 
 const OutputVars: FC<Props> = ({
@@ -42,7 +42,7 @@ export const VarItem: FC<VarItemProps> = ({
     <div className='py-1'>
       <div className='flex leading-[18px] items-center'>
         <div className='code-sm-semibold text-text-secondary'>{name}</div>
-        <div className='ml-2 system-xs-regular text-text-tertiary'>{type}</div>
+        <div className='ml-2 system-xs-regular text-text-tertiary capitalize'>{type}</div>
       </div>
       <div className='mt-0.5 system-xs-regular text-text-tertiary'>
         {description}

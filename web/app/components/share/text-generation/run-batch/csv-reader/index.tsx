@@ -5,7 +5,6 @@ import {
   useCSVReader,
 } from 'react-papaparse'
 import { useTranslation } from 'react-i18next'
-import s from './style.module.css'
 import cn from '@/utils/classnames'
 import { Csv as CSVIcon } from '@/app/components/base/icons/src/public/files'
 
@@ -41,7 +40,11 @@ const CSVReader: FC<Props> = ({
         <>
           <div
             {...getRootProps()}
-            className={cn(s.zone, zoneHover && s.zoneHover, acceptedFile ? 'px-6' : 'justify-center border-dashed text-gray-500')}
+            className={cn(
+              'flex items-center h-20 rounded-xl bg-components-dropzone-bg border border-dashed border-components-dropzone-border system-sm-regular',
+              acceptedFile && 'px-6 bg-components-panel-on-panel-item-bg border-solid border-components-panel-border hover:bg-components-panel-on-panel-item-bg-hover hover:border-components-panel-bg-blur',
+              zoneHover && 'bg-components-dropzone-bg-accent border border-components-dropzone-border-accent',
+            )}
           >
             {
               acceptedFile
@@ -49,15 +52,15 @@ const CSVReader: FC<Props> = ({
                   <div className='w-full flex items-center space-x-2'>
                     <CSVIcon className="shrink-0" />
                     <div className='flex w-0 grow'>
-                      <span className='max-w-[calc(100%_-_30px)] text-ellipsis whitespace-nowrap overflow-hidden text-gray-800'>{acceptedFile.name.replace(/.csv$/, '')}</span>
-                      <span className='shrink-0 text-gray-500'>.csv</span>
+                      <span className='max-w-[calc(100%_-_30px)] truncate text-text-secondary'>{acceptedFile.name.replace(/.csv$/, '')}</span>
+                      <span className='shrink-0 text-text-tertiary'>.csv</span>
                     </div>
                   </div>
                 )
                 : (
-                  <div className='flex items-center justify-center space-x-2'>
+                  <div className='w-full flex items-center justify-center space-x-2'>
                     <CSVIcon className="shrink-0" />
-                    <div className='text-gray-500'>{t('share.generation.csvUploadTitle')}<span className='text-primary-400'>{t('share.generation.browse')}</span></div>
+                    <div className='text-text-tertiary'>{t('share.generation.csvUploadTitle')}<span className='text-text-accent cursor-pointer'>{t('share.generation.browse')}</span></div>
                   </div>
                 )}
           </div>

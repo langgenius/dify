@@ -45,7 +45,6 @@ const Editor = ({
               onBlur={() => setShortcutsEnabled(true)}
               spellCheck={false}
               className='w-full h-full outline-none text-text-secondary caret-primary-600'
-              placeholder={placeholder}
             />
           </div>
         }

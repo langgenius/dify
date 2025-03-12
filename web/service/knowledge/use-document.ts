@@ -4,8 +4,8 @@ import {
 } from '@tanstack/react-query'
 import { del, get, patch } from '../base'
 import { useInvalid } from '../use-base'
-import type { MetadataType } from '../datasets'
-import type { DocumentDetailResponse, SimpleDocumentDetail, UpdateDocumentBatchParams } from '@/models/datasets'
+import type { MetadataType, SortType } from '../datasets'
+import type { DocumentDetailResponse, DocumentListResponse, UpdateDocumentBatchParams } from '@/models/datasets'
 import { DocumentActionType } from '@/models/datasets'
 import type { CommonResponse } from '@/models/common'
 
@@ -18,19 +18,23 @@ export const useDocumentList = (payload: {
     keyword: string
     page: number
     limit: number
-  }
+    sort?: SortType
+  },
+  refetchInterval?: number | false
 }) => {
-  const { query, datasetId } = payload
-  return useQuery<{ data: SimpleDocumentDetail[] }>({
-    queryKey: [...useDocumentListKey, datasetId, query],
-    queryFn: () => get<{ data: SimpleDocumentDetail[] }>(`/datasets/${datasetId}/documents`, {
+  const { query, datasetId, refetchInterval } = payload
+  const { keyword, page, limit, sort } = query
+  return useQuery<DocumentListResponse>({
+    queryKey: [...useDocumentListKey, datasetId, keyword, page, limit, sort],
+    queryFn: () => get<DocumentListResponse>(`/datasets/${datasetId}/documents`, {
       params: query,
     }),
+    refetchInterval,
   })
 }
 
-export const useInvalidDocumentList = () => {
-  return useInvalid(useDocumentListKey)
+export const useInvalidDocumentList = (datasetId?: string) => {
+  return useInvalid(datasetId ? [...useDocumentListKey, datasetId] : useDocumentListKey)
 }
 
 const useAutoDisabledDocumentKey = [NAME_SPACE, 'autoDisabledDocument']

@@ -5,6 +5,7 @@ import MemoryConfig from '../_base/components/memory-config'
 import VarReferencePicker from '../_base/components/variable/var-reference-picker'
 import ConfigVision from '../_base/components/config-vision'
 import useConfig from './use-config'
+import { findVariableWhenOnLLMVision } from '../utils'
 import type { LLMNodeType } from './types'
 import ConfigPrompt from './components/config-prompt'
 import VarList from '@/app/components/workflow/nodes/_base/components/variable/var-list'
@@ -19,7 +20,6 @@ import type { Props as FormProps } from '@/app/components/workflow/nodes/_base/c
 import ResultPanel from '@/app/components/workflow/run/result-panel'
 import Tooltip from '@/app/components/base/tooltip'
 import Editor from '@/app/components/workflow/nodes/_base/components/prompt/editor'
-import { useRetryDetailShowInSingleRun } from '@/app/components/workflow/nodes/_base/components/retry/hooks'
 
 const i18nPrefix = 'workflow.nodes.llm'
 
@@ -70,10 +70,6 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
     runResult,
     filterJinjia2InputVar,
   } = useConfig(id, data)
-  const {
-    retryDetails,
-    handleRetryDetailsChange,
-  } = useRetryDetailShowInSingleRun()
 
   const model = inputs.model
 
@@ -107,15 +103,16 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
       )
     }
 
-    if (isVisionModel) {
-      const variableName = data.vision.configs?.variable_selector?.[1] || t(`${i18nPrefix}.files`)!
+    if (isVisionModel && data.vision.enabled && data.vision.configs?.variable_selector) {
+      const currentVariable = findVariableWhenOnLLMVision(data.vision.configs.variable_selector, availableVars)
+
       forms.push(
         {
           label: t(`${i18nPrefix}.vision`)!,
           inputs: [{
-            label: variableName!,
+            label: currentVariable?.variable as any,
             variable: '#files#',
-            type: InputVarType.files,
+            type: currentVariable?.formType as any,
             required: false,
           }],
           values: { '#files#': visionFiles },
@@ -293,9 +290,7 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
           runningStatus={runningStatus}
           onRun={handleRun}
           onStop={handleStop}
-          retryDetails={retryDetails}
-          onRetryDetailBack={handleRetryDetailsChange}
-          result={<ResultPanel {...runResult} showSteps={false} onShowRetryDetail={handleRetryDetailsChange} />}
+          result={<ResultPanel {...runResult} showSteps={false} />}
         />
       )}
     </div>

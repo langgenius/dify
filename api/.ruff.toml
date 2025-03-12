@@ -7,7 +7,7 @@ line-length = 120
 quote-style = "double"
 
 [lint]
-preview = true
+preview = false
 select = [
     "B", # flake8-bugbear rules
     "C4", # flake8-comprehensions
@@ -18,7 +18,6 @@ select = [
     "N", # pep8-naming
     "PT", # flake8-pytest-style rules
     "PLC0208", # iteration-over-set
-    "PLC2801", # unnecessary-dunder-call
     "PLC0414", # useless-import-alias
     "PLE0604", # invalid-all-object
     "PLE0605", # invalid-all-format
@@ -46,7 +45,6 @@ ignore = [
     "E712", # true-false-comparison
     "E721", # type-comparison
     "E722", # bare-except
-    "E731", # lambda-assignment
     "F821", # undefined-name
     "F841", # unused-variable
     "FURB113", # repeated-append

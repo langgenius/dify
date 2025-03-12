@@ -1,19 +1,24 @@
 'use client'
 import type { FC } from 'react'
 import { useTranslation } from 'react-i18next'
-import {
-  RiArrowRightSLine,
-  RiRestartFill,
-} from '@remixicon/react'
 import StatusPanel from './status'
 import MetaData from './meta'
 import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
 import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
 import ErrorHandleTip from '@/app/components/workflow/nodes/_base/components/error-handle/error-handle-tip'
-import type { NodeTracing } from '@/types/workflow'
-import Button from '@/app/components/base/button'
+import type {
+  AgentLogItemWithChildren,
+  NodeTracing,
+} from '@/types/workflow'
+import { BlockEnum } from '@/app/components/workflow/types'
+import { hasRetryNode } from '@/app/components/workflow/utils'
+import { IterationLogTrigger } from '@/app/components/workflow/run/iteration-log'
+import { LoopLogTrigger } from '@/app/components/workflow/run/loop-log'
+import { RetryLogTrigger } from '@/app/components/workflow/run/retry-log'
+import { AgentLogTrigger } from '@/app/components/workflow/run/agent-log'
 
 type ResultPanelProps = {
+  nodeInfo?: NodeTracing
   inputs?: string
   process_data?: string
   outputs?: string
@@ -28,11 +33,14 @@ type ResultPanelProps = {
   showSteps?: boolean
   exceptionCounts?: number
   execution_metadata?: any
-  retry_events?: NodeTracing[]
-  onShowRetryDetail?: (retries: NodeTracing[]) => void
+  handleShowIterationResultList?: (detail: NodeTracing[][], iterDurationMap: any) => void
+  handleShowLoopResultList?: (detail: NodeTracing[][], loopDurationMap: any) => void
+  onShowRetryDetail?: (detail: NodeTracing[]) => void
+  handleShowAgentOrToolLog?: (detail?: AgentLogItemWithChildren) => void
 }
 
 const ResultPanel: FC<ResultPanelProps> = ({
+  nodeInfo,
   inputs,
   process_data,
   outputs,
@@ -46,10 +54,17 @@ const ResultPanel: FC<ResultPanelProps> = ({
   showSteps,
   exceptionCounts,
   execution_metadata,
-  retry_events,
+  handleShowIterationResultList,
+  handleShowLoopResultList,
   onShowRetryDetail,
+  handleShowAgentOrToolLog,
 }) => {
   const { t } = useTranslation()
+  const isIterationNode = nodeInfo?.node_type === BlockEnum.Iteration && !!nodeInfo?.details?.length
+  const isLoopNode = nodeInfo?.node_type === BlockEnum.Loop && !!nodeInfo?.details?.length
+  const isRetryNode = hasRetryNode(nodeInfo?.node_type) && !!nodeInfo?.retryDetail?.length
+  const isAgentNode = nodeInfo?.node_type === BlockEnum.Agent && !!nodeInfo?.agentLog?.length
+  const isToolNode = nodeInfo?.node_type === BlockEnum.Tool && !!nodeInfo?.agentLog?.length
 
   return (
     <div className='bg-components-panel-bg py-2'>
@@ -62,23 +77,40 @@ const ResultPanel: FC<ResultPanelProps> = ({
           exceptionCounts={exceptionCounts}
         />
       </div>
-      {
-        retry_events?.length && onShowRetryDetail && (
-          <div className='px-4'>
-            <Button
-              className='flex items-center justify-between w-full'
-              variant='tertiary'
-              onClick={() => onShowRetryDetail(retry_events)}
-            >
-              <div className='flex items-center'>
-                <RiRestartFill className='mr-0.5 w-4 h-4 text-components-button-tertiary-text flex-shrink-0' />
-                {t('workflow.nodes.common.retry.retries', { num: retry_events?.length })}
-              </div>
-              <RiArrowRightSLine className='w-4 h-4 text-components-button-tertiary-text flex-shrink-0' />
-            </Button>
-          </div>
-        )
-      }
+      <div className='px-4'>
+        {
+          isIterationNode && handleShowIterationResultList && (
+            <IterationLogTrigger
+              nodeInfo={nodeInfo}
+              onShowIterationResultList={handleShowIterationResultList}
+            />
+          )
+        }
+        {
+          isLoopNode && handleShowLoopResultList && (
+            <LoopLogTrigger
+              nodeInfo={nodeInfo}
+              onShowLoopResultList={handleShowLoopResultList}
+            />
+          )
+        }
+        {
+          isRetryNode && onShowRetryDetail && (
+            <RetryLogTrigger
+              nodeInfo={nodeInfo}
+              onShowRetryResultList={onShowRetryDetail}
+            />
+          )
+        }
+        {
+          (isAgentNode || isToolNode) && handleShowAgentOrToolLog && (
+            <AgentLogTrigger
+              nodeInfo={nodeInfo}
+              onShowAgentOrToolLog={handleShowAgentOrToolLog}
+            />
+          )
+        }
+      </div>
       <div className='px-4 py-2 flex flex-col gap-2'>
         <CodeEditor
           readOnly

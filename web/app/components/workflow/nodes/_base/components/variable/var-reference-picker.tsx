@@ -64,6 +64,7 @@ type Props = {
   placeholder?: string
   minWidth?: number
   popupFor?: 'assigned' | 'toAssigned'
+  zIndex?: number
 }
 
 const VarReferencePicker: FC<Props> = ({
@@ -90,6 +91,7 @@ const VarReferencePicker: FC<Props> = ({
   placeholder,
   minWidth,
   popupFor,
+  zIndex,
 }) => {
   const { t } = useTranslation()
   const store = useStoreApi()
@@ -111,6 +113,9 @@ const VarReferencePicker: FC<Props> = ({
   const node = getNodes().find(n => n.id === nodeId)
   const isInIteration = !!node?.data.isInIteration
   const iterationNode = isInIteration ? getNodes().find(n => n.id === node.parentId) : null
+
+  const isInLoop = !!node?.data.isInLoop
+  const loopNode = isInLoop ? getNodes().find(n => n.id === node.parentId) : null
 
   const triggerRef = useRef<HTMLDivElement>(null)
   const [triggerWidth, setTriggerWidth] = useState(TRIGGER_DEFAULT_WIDTH)
@@ -140,6 +145,14 @@ const VarReferencePicker: FC<Props> = ({
     return false
   }, [isInIteration, value, node])
 
+  const isLoopVar = useMemo(() => {
+    if (!isInLoop)
+      return false
+    if (value[0] === node?.parentId && ['item', 'index'].includes(value[1]))
+      return true
+    return false
+  }, [isInLoop, value, node])
+
   const outputVarNodeId = hasValue ? value[0] : ''
   const outputVarNode = useMemo(() => {
     if (!hasValue || isConstant)
@@ -148,11 +161,14 @@ const VarReferencePicker: FC<Props> = ({
     if (isIterationVar)
       return iterationNode?.data
 
+    if (isLoopVar)
+      return loopNode?.data
+
     if (isSystemVar(value as ValueSelector))
       return startNode?.data
 
     return getNodeInfoById(availableNodes, outputVarNodeId)?.data
-  }, [value, hasValue, isConstant, isIterationVar, iterationNode, availableNodes, outputVarNodeId, startNode])
+  }, [value, hasValue, isConstant, isIterationVar, iterationNode, availableNodes, outputVarNodeId, startNode, isLoopVar, loopNode])
 
   const varName = useMemo(() => {
     if (hasValue) {
@@ -218,7 +234,7 @@ const VarReferencePicker: FC<Props> = ({
   }, [onChange, varKindType])
 
   const type = getCurrentVariableType({
-    parentNode: iterationNode,
+    parentNode: isInIteration ? iterationNode : loopNode,
     valueSelector: value as ValueSelector,
     availableNodes,
     isChatMode,
@@ -386,7 +402,7 @@ const VarReferencePicker: FC<Props> = ({
           </>
         </WrapElem>
         <PortalToFollowElemContent style={{
-          zIndex: 100,
+          zIndex: zIndex || 100,
         }} className='mt-1'>
           {!isConstant && (
             <VarReferencePopup

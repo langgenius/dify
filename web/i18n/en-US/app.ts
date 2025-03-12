@@ -155,7 +155,7 @@ const translation = {
     },
     langfuse: {
       title: 'Langfuse',
-      description: 'Traces, evals, prompt management and metrics to debug and improve your LLM application.',
+      description: 'Open-source LLM observability, evaluation, prompt management and metrics to debug and improve your LLM application.',
     },
     opik: {
       title: 'Opik',
@@ -172,6 +172,12 @@ const translation = {
       removeConfirmTitle: 'Remove {{key}} configuration?',
       removeConfirmContent: 'The current configuration is in use, removing it will turn off the Tracing feature.',
     },
+  },
+  appSelector: {
+    label: 'APP',
+    placeholder: 'Select an app...',
+    params: 'APP PARAMETERS',
+    noParams: 'No parameters needed',
   },
   showMyCreatedAppsOnly: 'Created by me',
 }

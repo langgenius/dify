@@ -17,10 +17,10 @@ import ResultPanel from '@/app/components/workflow/run/result-panel'
 import Toast from '@/app/components/base/toast'
 import { TransferMethod } from '@/types/app'
 import { getProcessedFiles } from '@/app/components/base/file-uploader/utils'
-import type { NodeTracing } from '@/types/workflow'
-import RetryResultPanel from '@/app/components/workflow/run/retry-result-panel'
 import type { BlockEnum } from '@/app/components/workflow/types'
 import type { Emoji } from '@/app/components/tools/types'
+import type { SpecialResultPanelProps } from '@/app/components/workflow/run/special-result-panel'
+import SpecialResultPanel from '@/app/components/workflow/run/special-result-panel'
 
 const i18nPrefix = 'workflow.singleRun'
 
@@ -34,13 +34,12 @@ type BeforeRunFormProps = {
   runningStatus: NodeRunningStatus
   result?: JSX.Element
   forms: FormProps[]
-  retryDetails?: NodeTracing[]
-  onRetryDetailBack?: any
-}
+  showSpecialResultPanel?: boolean
+} & Partial<SpecialResultPanelProps>
 
 function formatValue(value: string | any, type: InputVarType) {
   if (type === InputVarType.number)
-    return parseFloat(value)
+    return Number.parseFloat(value)
   if (type === InputVarType.json)
     return JSON.parse(value)
   if (type === InputVarType.contexts) {
@@ -51,8 +50,11 @@ function formatValue(value: string | any, type: InputVarType) {
   if (type === InputVarType.multiFiles)
     return getProcessedFiles(value)
 
-  if (type === InputVarType.singleFile)
+  if (type === InputVarType.singleFile) {
+    if (Array.isArray(value))
+      return getProcessedFiles(value)
     return getProcessedFiles([value])[0]
+  }
 
   return value
 }
@@ -66,8 +68,8 @@ const BeforeRunForm: FC<BeforeRunFormProps> = ({
   runningStatus,
   result,
   forms,
-  retryDetails,
-  onRetryDetailBack = () => { },
+  showSpecialResultPanel,
+  ...restResultPanelParams
 }) => {
   const { t } = useTranslation()
 
@@ -89,9 +91,20 @@ const BeforeRunForm: FC<BeforeRunFormProps> = ({
     let errMsg = ''
     forms.forEach((form) => {
       form.inputs.forEach((input) => {
-        const value = form.values[input.variable]
+        const value = form.values[input.variable] as any
         if (!errMsg && input.required && (value === '' || value === undefined || value === null || (input.type === InputVarType.files && value.length === 0)))
           errMsg = t('workflow.errorMsg.fieldRequired', { field: typeof input.label === 'object' ? input.label.variable : input.label })
+
+        if (!errMsg && (input.type === InputVarType.singleFile || input.type === InputVarType.multiFiles) && value) {
+          let fileIsUploading = false
+          if (Array.isArray(value))
+            fileIsUploading = value.find(item => item.transferMethod === TransferMethod.local_file && !item.uploadedId)
+          else
+            fileIsUploading = value.transferMethod === TransferMethod.local_file && !value.uploadedId
+
+          if (fileIsUploading)
+            errMsg = t('appDebug.errorMessage.waitForFileUpload')
+        }
       })
     })
     if (errMsg) {
@@ -141,24 +154,14 @@ const BeforeRunForm: FC<BeforeRunFormProps> = ({
           </div>
         </div>
         {
-          retryDetails?.length && (
+          showSpecialResultPanel && (
             <div className='h-0 grow overflow-y-auto pb-4'>
-              <RetryResultPanel
-                list={retryDetails.map((item, index) => ({
-                  ...item,
-                  title: `${t('workflow.nodes.common.retry.retry')} ${index + 1}`,
-                  node_type: nodeType!,
-                  extras: {
-                    icon: toolIcon!,
-                  },
-                }))}
-                onBack={onRetryDetailBack}
-              />
+              <SpecialResultPanel {...restResultPanelParams} />
             </div>
           )
         }
         {
-          !retryDetails?.length && (
+          !showSpecialResultPanel && (
             <div className='h-0 grow overflow-y-auto pb-4'>
               <div className='mt-3 px-4 space-y-4'>
                 {forms.map((form, index) => (

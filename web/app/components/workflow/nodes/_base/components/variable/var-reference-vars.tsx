@@ -17,7 +17,7 @@ import { BubbleX, Env } from '@/app/components/base/icons/src/vender/line/others
 import { checkKeys } from '@/utils/var'
 import { FILE_STRUCT } from '@/app/components/workflow/constants'
 
-type ObjectChildrenProps = {
+interface ObjectChildrenProps {
   nodeId: string
   title: string
   data: Var[]
@@ -28,7 +28,7 @@ type ObjectChildrenProps = {
   isSupportFileVar?: boolean
 }
 
-type ItemProps = {
+interface ItemProps {
   nodeId: string
   title: string
   objPath: string[]
@@ -109,6 +109,7 @@ const Item: FC<ItemProps> = ({
             'relative w-full flex items-center h-6 pl-3  rounded-md cursor-pointer')
           }
           onClick={handleChosen}
+          onMouseDown={e => e.preventDefault()}
         >
           <div className='flex items-center w-0 grow'>
             {!isEnv && !isChatVar && <Variable02 className={cn('shrink-0 w-3.5 h-3.5 text-text-accent', isException && 'text-text-warning')} />}
@@ -134,7 +135,7 @@ const Item: FC<ItemProps> = ({
         zIndex: 100,
       }}>
         {(isObj && !isFile) && (
-          // eslint-disable-next-line @typescript-eslint/no-use-before-define
+          // eslint-disable-next-line ts/no-use-before-define
           <ObjectChildren
             nodeId={nodeId}
             title={title}
@@ -147,7 +148,7 @@ const Item: FC<ItemProps> = ({
           />
         )}
         {isFile && (
-          // eslint-disable-next-line @typescript-eslint/no-use-before-define
+          // eslint-disable-next-line ts/no-use-before-define
           <ObjectChildren
             nodeId={nodeId}
             title={title}
@@ -226,7 +227,7 @@ const ObjectChildren: FC<ObjectChildrenProps> = ({
   )
 }
 
-type Props = {
+interface Props {
   hideSearch?: boolean
   searchBoxClassName?: string
   vars: NodeOutPutVar[]

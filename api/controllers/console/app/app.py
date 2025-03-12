@@ -316,7 +316,7 @@ class AppTraceApi(Resource):
     @account_initialization_required
     def post(self, app_id):
         # add app trace
-        if not current_user.is_admin_or_owner:
+        if not current_user.is_editor:
             raise Forbidden()
         parser = reqparse.RequestParser()
         parser.add_argument("enabled", type=bool, required=True, location="json")

@@ -9,6 +9,7 @@ import FormGeneration from './form-generation'
 import ApiBasedExtensionSelector from '@/app/components/header/account-setting/api-based-extension-page/selector'
 import Modal from '@/app/components/base/modal'
 import Button from '@/app/components/base/button'
+import Divider from '@/app/components/base/divider'
 import { BookOpen01 } from '@/app/components/base/icons/src/vender/line/education'
 import type { ModerationConfig, ModerationContentConfig } from '@/models/debug'
 import { useToastContext } from '@/app/components/base/toast'
@@ -22,6 +23,7 @@ import { LanguagesSupported } from '@/i18n/language'
 import { InfoCircle } from '@/app/components/base/icons/src/vender/line/general'
 import { useModalContext } from '@/context/modal-context'
 import { CustomConfigurationStatusEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import cn from '@/utils/classnames'
 
 const systemTypes = ['openai_moderation', 'keywords', 'api']
 
@@ -60,7 +62,7 @@ const ModerationSettingModal: FC<ModerationSettingModalProps> = ({
     '/code-based-extension?module=moderation',
     fetchCodeBasedExtensionList,
   )
-  const openaiProvider = modelProviders?.data.find(item => item.provider === 'openai')
+  const openaiProvider = modelProviders?.data.find(item => item.provider === 'langgenius/openai/openai')
   const systemOpenaiProviderEnabled = openaiProvider?.system_configuration.enabled
   const systemOpenaiProviderQuota = systemOpenaiProviderEnabled ? openaiProvider?.system_configuration.quota_configurations.find(item => item.quota_type === openaiProvider.system_configuration.current_quota_type) : undefined
   const systemOpenaiProviderCanUse = systemOpenaiProviderQuota?.is_valid
@@ -245,7 +247,7 @@ const ModerationSettingModal: FC<ModerationSettingModalProps> = ({
         <div className='p-1 cursor-pointer' onClick={onCancel}><RiCloseLine className='w-4 h-4 text-text-tertiary'/></div>
       </div>
       <div className='py-2'>
-        <div className='leading-9 text-sm font-medium text-gray-900'>
+        <div className='leading-9 text-sm font-medium text-text-primary'>
           {t('appDebug.feature.moderation.modal.provider.title')}
         </div>
         <div className='grid gap-2.5 grid-cols-3'>
@@ -253,16 +255,18 @@ const ModerationSettingModal: FC<ModerationSettingModalProps> = ({
             providers.map(provider => (
               <div
                 key={provider.key}
-                className={`
-                  flex items-center px-3 py-2 rounded-lg text-sm text-gray-900 cursor-pointer
-                  ${localeData.type === provider.key ? 'bg-white border-[1.5px] border-primary-400 shadow-sm' : 'border border-gray-100 bg-gray-25'}
-                  ${localeData.type === 'openai_moderation' && provider.key === 'openai_moderation' && !isOpenAIProviderConfigured && 'opacity-50'}
-                `}
+                className={cn(
+                  'flex items-center px-2 h-8 rounded-md system-sm-regular bg-components-option-card-option-bg border border-components-option-card-option-border text-text-secondary cursor-default',
+                  localeData.type !== provider.key && 'hover:bg-components-option-card-option-bg-hover hover:border-components-option-card-option-border-hover hover:shadow-xs cursor-pointer',
+                  localeData.type === provider.key && 'bg-components-option-card-option-selected-bg border-[1.5px] border-components-option-card-option-selected-border system-sm-medium shadow-xs',
+                  localeData.type === 'openai_moderation' && provider.key === 'openai_moderation' && !isOpenAIProviderConfigured && 'text-text-disabled',
+                )}
                 onClick={() => handleDataTypeChange(provider.key)}
               >
-                <div className={`
-                  mr-2 w-4 h-4 rounded-full border
-                  ${localeData.type === provider.key ? 'border-[5px] border-primary-600' : 'border border-gray-300'}`} />
+                <div className={cn(
+                  'mr-2 w-4 h-4 border border-components-radio-border bg-components-radio-bg shadow-xs rounded-full',
+                  localeData.type === provider.key && 'border-[5px] border-components-radio-border-checked',
+                )}></div>
                 {provider.name}
               </div>
             ))
@@ -289,17 +293,17 @@ const ModerationSettingModal: FC<ModerationSettingModalProps> = ({
       {
         localeData.type === 'keywords' && (
           <div className='py-2'>
-            <div className='mb-1 text-sm font-medium text-gray-900'>{t('appDebug.feature.moderation.modal.provider.keywords')}</div>
-            <div className='mb-2 text-xs text-gray-500'>{t('appDebug.feature.moderation.modal.keywords.tip')}</div>
-            <div className='relative px-3 py-2 h-[88px] bg-gray-100 rounded-lg'>
+            <div className='mb-1 text-sm font-medium text-text-primary'>{t('appDebug.feature.moderation.modal.provider.keywords')}</div>
+            <div className='mb-2 text-xs text-text-tertiary'>{t('appDebug.feature.moderation.modal.keywords.tip')}</div>
+            <div className='relative px-3 py-2 h-[88px] bg-components-input-bg-normal rounded-lg'>
               <textarea
                 value={localeData.config?.keywords || ''}
                 onChange={handleDataKeywordsChange}
-                className='block w-full h-full bg-transparent text-sm outline-none appearance-none resize-none'
+                className='block w-full h-full bg-transparent text-sm text-text-secondary outline-none appearance-none resize-none'
                 placeholder={t('appDebug.feature.moderation.modal.keywords.placeholder') || ''}
               />
-              <div className='absolute bottom-2 right-2 flex items-center px-1 h-5 rounded-md bg-gray-50 text-xs font-medium text-gray-300'>
-                <span>{(localeData.config?.keywords || '').split('\n').filter(Boolean).length}</span>/<span className='text-gray-500'>100 {t('appDebug.feature.moderation.modal.keywords.line')}</span>
+              <div className='absolute bottom-2 right-2 flex items-center px-1 h-5 rounded-md bg-background-section text-xs font-medium text-text-quaternary'>
+                <span>{(localeData.config?.keywords || '').split('\n').filter(Boolean).length}</span>/<span className='text-text-tertiary'>100 {t('appDebug.feature.moderation.modal.keywords.line')}</span>
               </div>
             </div>
           </div>
@@ -309,13 +313,13 @@ const ModerationSettingModal: FC<ModerationSettingModalProps> = ({
         localeData.type === 'api' && (
           <div className='py-2'>
             <div className='flex items-center justify-between h-9'>
-              <div className='text-sm font-medium text-gray-900'>{t('common.apiBasedExtension.selector.title')}</div>
+              <div className='text-sm font-medium text-text-primary'>{t('common.apiBasedExtension.selector.title')}</div>
               <a
                 href={t('common.apiBasedExtension.linkUrl') || '/'}
                 target='_blank' rel='noopener noreferrer'
-                className='group flex items-center text-xs text-gray-500 hover:text-primary-600'
+                className='group flex items-center text-xs text-text-tertiary hover:text-primary-600'
               >
-                <BookOpen01 className='mr-1 w-3 h-3 text-gray-500 group-hover:text-primary-600' />
+                <BookOpen01 className='mr-1 w-3 h-3 text-text-tertiary group-hover:text-primary-600' />
                 {t('common.apiBasedExtension.link')}
               </a>
             </div>
@@ -337,7 +341,7 @@ const ModerationSettingModal: FC<ModerationSettingModalProps> = ({
           />
         )
       }
-      <div className='my-3 h-[1px] bg-gradient-to-r from-[#F3F4F6]'></div>
+      <Divider bgStyle='gradient' className='my-3 h-px' />
       <ModerationContent
         title={t('appDebug.feature.moderation.modal.content.input') || ''}
         config={localeData.config?.inputs_config || { enabled: false, preset_response: '' }}
@@ -352,7 +356,7 @@ const ModerationSettingModal: FC<ModerationSettingModalProps> = ({
         info={(localeData.type === 'api' && t('appDebug.feature.moderation.modal.content.fromApi')) || ''}
         showPreset={!(localeData.type === 'api')}
       />
-      <div className='mt-1 mb-8 text-xs font-medium text-gray-500'>{t('appDebug.feature.moderation.modal.content.condition')}</div>
+      <div className='mt-1 mb-8 text-xs font-medium text-text-tertiary'>{t('appDebug.feature.moderation.modal.content.condition')}</div>
       <div className='flex items-center justify-end'>
         <Button
           onClick={onCancel}
