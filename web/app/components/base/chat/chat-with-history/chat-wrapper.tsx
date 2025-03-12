@@ -40,6 +40,7 @@ const ChatWrapper = () => {
     currentChatInstanceRef,
     appData,
     themeBuilder,
+    sidebarCollapseState,
   } = useChatWithHistoryContext()
   const appConfig = useMemo(() => {
     const config = appParams || {}
@@ -249,6 +250,7 @@ const ChatWrapper = () => {
         switchSibling={siblingMessageId => setTargetMessageId(siblingMessageId)}
         inputDisabled={inputDisabled}
         isMobile={isMobile}
+        sidebarCollapseState={sidebarCollapseState}
       />
     </div>
   )
