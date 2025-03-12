@@ -19,6 +19,7 @@ import {
 } from '@/service/share'
 import AppIcon from '@/app/components/base/app-icon'
 import AnswerIcon from '@/app/components/base/answer-icon'
+import SuggestedQuestions from '@/app/components/base/chat/chat/answer/suggested-questions'
 import cn from '@/utils/classnames'
 
 const ChatWrapper = () => {
@@ -39,6 +40,7 @@ const ChatWrapper = () => {
     currentChatInstanceRef,
     appData,
     themeBuilder,
+    sidebarCollapseState,
   } = useChatWithHistoryContext()
   const appConfig = useMemo(() => {
     const config = appParams || {}
@@ -144,10 +146,10 @@ const ChatWrapper = () => {
   }, [chatList, doSend])
 
   const messageList = useMemo(() => {
-    if (currentConversationId)
+    if (currentConversationId || isResponding)
       return chatList
     return chatList.filter(item => !item.isOpeningStatement)
-  }, [chatList, currentConversationId])
+  }, [chatList, currentConversationId, isResponding])
 
   const [collapsed, setCollapsed] = useState(!!currentConversationId)
 
@@ -166,12 +168,33 @@ const ChatWrapper = () => {
 
   const welcome = useMemo(() => {
     const welcomeMessage = chatList.find(item => item.isOpeningStatement)
+    if (isResponding)
+      return null
     if (currentConversationId)
       return null
     if (!welcomeMessage)
       return null
     if (!collapsed && inputsForms.length > 0)
       return null
+    if (welcomeMessage.suggestedQuestions && welcomeMessage.suggestedQuestions?.length > 0) {
+      return (
+        <div className='h-[50vh] py-12 px-4 flex items-center justify-center'>
+          <div className='grow max-w-[720px] flex gap-4'>
+            <AppIcon
+              size='xl'
+              iconType={appData?.site.icon_type}
+              icon={appData?.site.icon}
+              background={appData?.site.icon_background}
+              imageUrl={appData?.site.icon_url}
+            />
+            <div className='grow px-4 py-3 bg-chat-bubble-bg text-text-primary rounded-2xl body-lg-regular'>
+              {welcomeMessage.content}
+              <SuggestedQuestions item={welcomeMessage} />
+            </div>
+          </div>
+        </div>
+      )
+    }
     return (
       <div className={cn('h-[50vh] py-12 flex flex-col items-center justify-center gap-3')}>
         <AppIcon
@@ -184,7 +207,7 @@ const ChatWrapper = () => {
         <div className='text-text-tertiary body-2xl-regular'>{welcomeMessage.content}</div>
       </div>
     )
-  }, [appData?.site.icon, appData?.site.icon_background, appData?.site.icon_type, appData?.site.icon_url, chatList, collapsed, currentConversationId, inputsForms.length])
+  }, [appData?.site.icon, appData?.site.icon_background, appData?.site.icon_type, appData?.site.icon_url, chatList, collapsed, currentConversationId, inputsForms.length, isResponding])
 
   const answerIcon = (appData?.site && appData.site.use_icon_as_answer_icon)
     ? <AnswerIcon
@@ -227,6 +250,7 @@ const ChatWrapper = () => {
         switchSibling={siblingMessageId => setTargetMessageId(siblingMessageId)}
         inputDisabled={inputDisabled}
         isMobile={isMobile}
+        sidebarCollapseState={sidebarCollapseState}
       />
     </div>
   )
