@@ -40,7 +40,6 @@ const nextConfig = {
           // '**/app/reset-password**',
           // '**/app/account**',
           // '**/app/repos**',
-
         ],
         aggregateTimeout: 300, // 延迟重新构建的时间，单位为毫秒
         poll: 1000, // 检测文件变化的时间间隔，单位为毫秒
@@ -75,17 +74,6 @@ const nextConfig = {
       //   },
       // }
 
-      // // 5. 开发环境性能提示关闭
-      // config.performance = {
-      //   hints: false,
-      // }
-
-      // // 6. 监听配置优化
-      // config.watchOptions = {
-      //   aggregateTimeout: 200,
-      //   ignored: ['**/node_modules/**', '**/.git/**', '**/.next/**'],
-      // }
-
       // 7. 源码映射优化
       config.devtool = 'eval-source-map'
       // config.devtool = false
@@ -102,20 +90,18 @@ const nextConfig = {
   },
   // fix all before production. Now it slow the develop speed.
   eslint: {
-    enabled: false,
     // Warning: This allows production builds to successfully complete even if
     // your project has ESLint errors.
     ignoreDuringBuilds: true,
     // dirs: ['app', 'bin', 'config', 'context', 'hooks', 'i18n', 'models', 'service', 'test', 'types', 'utils'],
   },
   typescript: {
-    enabled: false,
     // https://nextjs.org/docs/api-reference/next.config.js/ignoring-typescript-errors
     ignoreBuildErrors: true,
   },
   // reactStrictMode: true,
   // 关闭一些开发时不必要的功能
-  reactStrictMode: isDev,
+  reactStrictMode: false,
   // 优化开发服务器性能
   onDemandEntries: {
     // 页面缓存时间
@@ -138,7 +124,7 @@ const nextConfig = {
   },
   // 12. 压缩配置
   compress: !isDev, // 开发时禁用压缩
-  output: 'standalone',
+  output: isDev ? undefined : 'standalone',
 }
 
 module.exports = withMDX(nextConfig)

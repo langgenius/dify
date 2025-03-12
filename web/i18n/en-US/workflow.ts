@@ -673,6 +673,7 @@ const translation = {
       loop_other: '{{count}} Loops',
       currentLoop: 'Current Loop',
       breakCondition: 'Loop Termination Condition',
+      breakConditionTip: 'Only variables within loops with termination conditions and conversation variables can be referenced.',
       loopMaxCount: 'Maximum Loop Count',
       loopMaxCountError: 'Please enter a valid maximum loop count, ranging from 1 to {{maxCount}}',
       errorResponseMethod: 'Error Response Method',
