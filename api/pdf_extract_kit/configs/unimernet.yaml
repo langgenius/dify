@@ -1,0 +1,46 @@
+model:
+  arch: unimernet
+  model_type: unimernet
+  model_config:
+    model_name: ./models/unimernet_tiny
+    max_seq_len: 1536
+
+  load_pretrained: True
+  pretrained: './models/unimernet_tiny/pytorch_model.pth'
+  tokenizer_config:
+    path: ./models/unimernet_tiny
+
+datasets:
+  formula_rec_eval:
+    vis_processor:
+      eval:
+        name: "formula_image_eval"
+        image_size:
+          - 192
+          - 672
+   
+run:
+  runner: runner_iter
+  task: unimernet_train
+
+  batch_size_train: 64
+  batch_size_eval: 64
+  num_workers: 1
+
+  iters_per_inner_epoch: 2000
+  max_iters: 60000
+
+  seed: 42
+  output_dir: "../output/demo"
+
+  evaluate: True
+  test_splits: [ "eval" ]
+
+  device: "cuda"
+  world_size: 1
+  dist_url: "env://"
+  distributed: True
+  distributed_type: ddp  # or fsdp when train llm
+
+  generate_cfg:
+    temperature: 0.0

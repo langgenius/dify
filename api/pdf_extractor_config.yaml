@@ -1,0 +1,32 @@
+visualize: True
+merge2markdown: True
+tasks:
+  layout_detection:
+    model: layout_detection_yolo
+    model_config:
+      img_size: 1024
+      conf_thres: 0.25
+      iou_thres: 0.45
+      model_path: ./pdf-extract-kit-1.0/models/Layout/YOLO/doclayout_yolo_ft.pt
+  formula_detection:
+    model: formula_detection_yolo
+    model_config:
+      img_size: 1280
+      conf_thres: 0.25
+      iou_thres: 0.45
+      batch_size: 1
+      model_path: ./pdf-extract-kit-1.0/models/MFD/YOLO/yolo_v8_ft.pt
+  formula_recognition:
+    model: formula_recognition_unimernet
+    model_config:
+      batch_size: 128
+      cfg_path: pdf_extract_kit/configs/unimernet.yaml
+      model_path: ./pdf-extract-kit-1.0/models/MFR/unimernet_tiny
+  ocr:
+    model: ocr_ppocr
+    model_config:
+      lang: ch
+      show_log: True
+      det_model_dir: ./pdf-extract-kit-1.0/models/OCR/PaddleOCR/det/ch_PP-OCRv4_det
+      rec_model_dir: ./pdf-extract-kit-1.0/models/OCR/PaddleOCR/rec/ch_PP-OCRv4_rec
+      det_db_box_thresh: 0.3

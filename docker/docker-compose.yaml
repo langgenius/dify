@@ -105,7 +105,7 @@ x-shared-env: &shared-api-worker-env
   TENCENT_COS_SECRET_ID: ${TENCENT_COS_SECRET_ID:-your-secret-id}
   TENCENT_COS_REGION: ${TENCENT_COS_REGION:-your-region}
   TENCENT_COS_SCHEME: ${TENCENT_COS_SCHEME:-your-scheme}
-  OCI_ENDPOINT: ${OCI_ENDPOINT:-https://your-object-storage-namespace.compat.objectstorage.us-ashburn-1.oraclecloud.com}
+  OCI_ENDPOINT: ${OCI_ENDPOINT:-https://objectstorage.us-ashburn-1.oraclecloud.com}
   OCI_BUCKET_NAME: ${OCI_BUCKET_NAME:-your-bucket-name}
   OCI_ACCESS_KEY: ${OCI_ACCESS_KEY:-your-access-key}
   OCI_SECRET_KEY: ${OCI_SECRET_KEY:-your-secret-key}
@@ -197,13 +197,11 @@ x-shared-env: &shared-api-worker-env
   CHROMA_DATABASE: ${CHROMA_DATABASE:-default_database}
   CHROMA_AUTH_PROVIDER: ${CHROMA_AUTH_PROVIDER:-chromadb.auth.token_authn.TokenAuthClientProvider}
   CHROMA_AUTH_CREDENTIALS: ${CHROMA_AUTH_CREDENTIALS:-}
+  ORACLE_HOST: ${ORACLE_HOST:-oracle}
+  ORACLE_PORT: ${ORACLE_PORT:-1521}
   ORACLE_USER: ${ORACLE_USER:-dify}
   ORACLE_PASSWORD: ${ORACLE_PASSWORD:-dify}
-  ORACLE_DSN: ${ORACLE_DSN:-oracle:1521/FREEPDB1}
-  ORACLE_CONFIG_DIR: ${ORACLE_CONFIG_DIR:-/app/api/storage/wallet}
-  ORACLE_WALLET_LOCATION: ${ORACLE_WALLET_LOCATION:-/app/api/storage/wallet}
-  ORACLE_WALLET_PASSWORD: ${ORACLE_WALLET_PASSWORD:-dify}
-  ORACLE_IS_AUTONOMOUS: ${ORACLE_IS_AUTONOMOUS:-false}
+  ORACLE_DATABASE: ${ORACLE_DATABASE:-FREEPDB1}
   RELYT_HOST: ${RELYT_HOST:-db}
   RELYT_PORT: ${RELYT_PORT:-5432}
   RELYT_USER: ${RELYT_USER:-postgres}
@@ -310,7 +308,6 @@ x-shared-env: &shared-api-worker-env
   HTTP_REQUEST_NODE_MAX_TEXT_SIZE: ${HTTP_REQUEST_NODE_MAX_TEXT_SIZE:-1048576}
   SSRF_PROXY_HTTP_URL: ${SSRF_PROXY_HTTP_URL:-http://ssrf_proxy:3128}
   SSRF_PROXY_HTTPS_URL: ${SSRF_PROXY_HTTPS_URL:-http://ssrf_proxy:3128}
-  LOOP_NODE_MAX_COUNT: ${LOOP_NODE_MAX_COUNT:-100}
   TEXT_GENERATION_TIMEOUT_MS: ${TEXT_GENERATION_TIMEOUT_MS:-60000}
   PGUSER: ${PGUSER:-${DB_USERNAME}}
   POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-${DB_PASSWORD}}
@@ -413,42 +410,53 @@ x-shared-env: &shared-api-worker-env
   MARKETPLACE_ENABLED: ${MARKETPLACE_ENABLED:-true}
   MARKETPLACE_API_URL: ${MARKETPLACE_API_URL:-https://marketplace.dify.ai}
   FORCE_VERIFYING_SIGNATURE: ${FORCE_VERIFYING_SIGNATURE:-true}
-  PLUGIN_PYTHON_ENV_INIT_TIMEOUT: ${PLUGIN_PYTHON_ENV_INIT_TIMEOUT:-120}
-  PLUGIN_MAX_EXECUTION_TIMEOUT: ${PLUGIN_MAX_EXECUTION_TIMEOUT:-600}
-  PIP_MIRROR_URL: ${PIP_MIRROR_URL:-}
 
 services:
-  # API service
   api:
-    image: langgenius/dify-api:1.0.1
+    build: ../api
+    # image: docker-api
     restart: always
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
     environment:
-      # Use the shared environment variables.
       <<: *shared-api-worker-env
-      # Startup mode, 'api' starts the API server.
       MODE: api
+      CUDA_VISIBLE_DEVICES: "0"
       SENTRY_DSN: ${API_SENTRY_DSN:-}
       SENTRY_TRACES_SAMPLE_RATE: ${API_SENTRY_TRACES_SAMPLE_RATE:-1.0}
       SENTRY_PROFILES_SAMPLE_RATE: ${API_SENTRY_PROFILES_SAMPLE_RATE:-1.0}
-      PLUGIN_REMOTE_INSTALL_HOST: ${EXPOSE_PLUGIN_DEBUGGING_HOST:-localhost}
-      PLUGIN_REMOTE_INSTALL_PORT: ${EXPOSE_PLUGIN_DEBUGGING_PORT:-5003}
       PLUGIN_MAX_PACKAGE_SIZE: ${PLUGIN_MAX_PACKAGE_SIZE:-52428800}
       INNER_API_KEY_FOR_PLUGIN: ${PLUGIN_DIFY_INNER_API_KEY:-QaHbTe77CtuXmsfyhR7+vRjI/+XbV1AaFy691iy+kGDv2Jvy0/eAh8Y1}
     depends_on:
       - db
       - redis
     volumes:
-      # Mount the storage directory to the container, for storing user files.
       - ./volumes/app/storage:/app/api/storage
+      - ../../pdf_extract_models:/app/api/pdf_extract_models
     networks:
       - ssrf_proxy_network
       - default
 
+
+
   # worker service
   # The Celery worker for processing the queue.
   worker:
-    image: langgenius/dify-api:1.0.1
+    image: langgenius/dify-api:1.0.0
+    # image: docker-api
     restart: always
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
     environment:
       # Use the shared environment variables.
       <<: *shared-api-worker-env
@@ -465,13 +473,14 @@ services:
     volumes:
       # Mount the storage directory to the container, for storing user files.
       - ./volumes/app/storage:/app/api/storage
+      - ../../pdf_extract_models:/app/api/pdf_extract_models
     networks:
       - ssrf_proxy_network
       - default
 
   # Frontend web application.
   web:
-    image: langgenius/dify-web:1.0.1
+    image: langgenius/dify-web:1.0.0
     restart: always
     environment:
       CONSOLE_API_URL: ${CONSOLE_API_URL:-}
@@ -485,7 +494,6 @@ services:
       TOP_K_MAX_VALUE: ${TOP_K_MAX_VALUE:-}
       INDEXING_MAX_SEGMENTATION_TOKENS_LENGTH: ${INDEXING_MAX_SEGMENTATION_TOKENS_LENGTH:-}
       PM2_INSTANCES: ${PM2_INSTANCES:-2}
-      LOOP_NODE_MAX_COUNT: ${LOOP_NODE_MAX_COUNT:-100}
 
   # The postgres database.
   db:
@@ -509,6 +517,8 @@ services:
       interval: 1s
       timeout: 3s
       retries: 30
+    ports:
+      - '${EXPOSE_DB_PORT:-5432}:5432'
 
   # The redis cache.
   redis:
@@ -549,7 +559,7 @@ services:
 
   # plugin daemon
   plugin_daemon:
-    image: langgenius/dify-plugin-daemon:0.0.4-local
+    image: langgenius/dify-plugin-daemon:0.0.3-local
     restart: always
     environment:
       # Use the shared environment variables.
@@ -560,20 +570,16 @@ services:
       MAX_PLUGIN_PACKAGE_SIZE: ${PLUGIN_MAX_PACKAGE_SIZE:-52428800}
       PPROF_ENABLED: ${PLUGIN_PPROF_ENABLED:-false}
       DIFY_INNER_API_URL: ${PLUGIN_DIFY_INNER_API_URL:-http://api:5001}
-      DIFY_INNER_API_KEY: ${PLUGIN_DIFY_INNER_API_KEY:-QaHbTe77CtuXmsfyhR7+vRjI/+XbV1AaFy691iy+kGDv2Jvy0/eAh8Y1}
-      PLUGIN_REMOTE_INSTALLING_HOST: ${PLUGIN_DEBUGGING_HOST:-0.0.0.0}
-      PLUGIN_REMOTE_INSTALLING_PORT: ${PLUGIN_DEBUGGING_PORT:-5003}
+      DIFY_INNER_API_KEY: ${INNER_API_KEY_FOR_PLUGIN:-QaHbTe77CtuXmsfyhR7+vRjI/+XbV1AaFy691iy+kGDv2Jvy0/eAh8Y1}
+      PLUGIN_REMOTE_INSTALLING_HOST: ${PLUGIN_REMOTE_INSTALL_HOST:-0.0.0.0}
+      PLUGIN_REMOTE_INSTALLING_PORT: ${PLUGIN_REMOTE_INSTALL_PORT:-5003}
       PLUGIN_WORKING_PATH: ${PLUGIN_WORKING_PATH:-/app/storage/cwd}
       FORCE_VERIFYING_SIGNATURE: ${FORCE_VERIFYING_SIGNATURE:-true}
-      PYTHON_ENV_INIT_TIMEOUT: ${PLUGIN_PYTHON_ENV_INIT_TIMEOUT:-120}
-      PLUGIN_MAX_EXECUTION_TIMEOUT: ${PLUGIN_MAX_EXECUTION_TIMEOUT:-600}
-      PIP_MIRROR_URL: ${PIP_MIRROR_URL:-}
     ports:
       - "${EXPOSE_PLUGIN_DEBUGGING_PORT:-5003}:${PLUGIN_DEBUGGING_PORT:-5003}"
     volumes:
       - ./volumes/plugin_daemon:/app/storage
-    depends_on:
-      - db
+
 
   # ssrf_proxy server
   # for more information, please refer to

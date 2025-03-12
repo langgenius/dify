@@ -1,6 +1,6 @@
 [project]
 name = "dify-api"
-requires-python = ">=3.11,<3.13"
+requires-python = ">=3.10,<3.13"
 dynamic = [ "dependencies" ]
 
 [build-system]
@@ -18,7 +18,7 @@ package-mode = false
 authlib = "1.3.1"
 azure-identity = "1.16.1"
 beautifulsoup4 = "4.12.2"
-boto3 = "1.35.99"
+boto3 = "1.37.1"
 bs4 = "~0.0.1"
 cachetools = "~5.3.0"
 celery = "~5.4.0"
@@ -50,7 +50,7 @@ oci = "~2.135.1"
 openai = "~1.61.0"
 openpyxl = "~3.1.5"
 opik = "~1.3.4"
-pandas = { version = "~2.2.2", extras = ["performance", "excel", "output-formatting"] }
+pandas = { version = "~2.2.2", extras = ["performance", "excel"] }
 pandas-stubs = "~2.2.3.241009"
 psycogreen = "~1.0.2"
 psycopg2-binary = "~2.9.6"
@@ -71,11 +71,21 @@ sentry-sdk = { version = "~1.44.1", extras = ["flask"] }
 sqlalchemy = "~2.0.29"
 starlette = "0.41.0"
 tiktoken = "~0.8.0"
-tokenizers = "~0.15.0"
-transformers = "~4.35.0"
+tokenizers = ">=0.19,<0.20"
+transformers = "4.42.4"
 unstructured = { version = "~0.16.1", extras = ["docx", "epub", "md", "msg", "ppt", "pptx"] }
 validators = "0.21.0"
 yarl = "~1.18.3"
+omegaconf = "*"
+matplotlib = "*"
+PyMuPDF = "*"
+ultralytics = "8.2.85"
+doclayout-yolo = "*"
+unimernet = "0.2.1"
+paddlepaddle-gpu = "*"
+paddleocr = "2.7.3"
+struct-eqtable = "*"
+lmdeploy = "*"
 # Before adding new dependency, consider place it in alphabet order (a-z) and suitable group.
 
 ############################################################
@@ -105,7 +115,7 @@ bce-python-sdk = "~0.9.23"
 cos-python-sdk-v5 = "1.9.30"
 esdk-obs-python = "3.24.6.1"
 google-cloud-storage = "2.16.0"
-opendal = "~0.45.16"
+opendal = "~0.45.12"
 oss2 = "2.18.5"
 supabase = "~2.8.1"
 tos = "~2.7.1"
@@ -151,7 +161,6 @@ pytest-benchmark = "~4.0.0"
 pytest-env = "~1.1.3"
 pytest-mock = "~3.14.0"
 types-beautifulsoup4 = "~4.12.0.20241020"
-types-deprecated = "~1.2.15.20250304"
 types-flask-cors = "~5.0.0.20240902"
 types-flask-migrate = "~4.1.0.20250112"
 types-html5lib = "~1.1.11.20241018"
@@ -175,4 +184,4 @@ types-tqdm = "~4.67.0.20241221"
 optional = true
 [tool.poetry.group.lint.dependencies]
 dotenv-linter = "~0.5.0"
-ruff = "~0.9.9"
+ruff = "~0.9.2"
