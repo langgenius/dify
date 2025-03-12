@@ -28,9 +28,6 @@ const nodeDefault: NodeDefault<LoopNodeType> = {
   checkValid(payload: LoopNodeType, t: any) {
     let errorMessages = ''
 
-    if (!errorMessages && (!payload.break_conditions || payload.break_conditions.length === 0))
-      errorMessages = t(`${i18nPrefix}.fieldRequired`, { field: t('workflow.nodes.loop.breakCondition') })
-
     payload.break_conditions!.forEach((condition) => {
       if (!errorMessages && (!condition.variable_selector || condition.variable_selector.length === 0))
         errorMessages = t(`${i18nPrefix}.fieldRequired`, { field: t(`${i18nPrefix}.fields.variable`) })

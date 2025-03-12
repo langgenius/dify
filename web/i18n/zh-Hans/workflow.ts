@@ -674,6 +674,7 @@ const translation = {
       loop_other: '{{count}} 个循环',
       currentLoop: '当前循环',
       breakCondition: '循环终止条件',
+      breakConditionTip: '支持引用终止条件循环内的变量和会话变量。',
       loopMaxCount: '最大循环次数',
       loopMaxCountError: '请输入正确的 最大循环次数，范围为 1 到 {{maxCount}}',
       errorResponseMethod: '错误响应方法',
