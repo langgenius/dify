@@ -18,7 +18,6 @@ class WorkspaceService:
             "plan": tenant.plan,
             "status": tenant.status,
             "created_at": tenant.created_at,
-            "in_trail": True,
             "trial_end_reason": None,
             "role": "normal",
         }
