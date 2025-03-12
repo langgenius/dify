@@ -5,7 +5,7 @@ from flask import request
 from flask_restful import Resource, reqparse  # type: ignore
 from sqlalchemy import select
 from sqlalchemy.orm import Session
-
+from sqlalchemy.exc  import SQLAlchemyError
 from constants.languages import languages
 from controllers.console import api
 from controllers.console.auth.error import (
@@ -119,30 +119,41 @@ class ForgotPasswordResetApi(Resource):
         password_hashed = hash_password(new_password, salt)
         base64_password_hashed = base64.b64encode(password_hashed).decode()
 
-        with Session(db.engine) as session:
-            account = session.execute(select(Account).filter_by(email=reset_data.get("email"))).scalar_one_or_none()
-        if account:
-            account.password = base64_password_hashed
-            account.password_salt = base64_salt
-            db.session.commit()
-            tenant = TenantService.get_join_tenants(account)
-            if not tenant and not FeatureService.get_system_features().is_allow_create_workspace:
-                tenant = TenantService.create_tenant(f"{account.name}'s Workspace")
-                TenantService.create_tenant_member(tenant, account, role="owner")
-                account.current_tenant = tenant
-                tenant_was_created.send(tenant)
-        else:
-            try:
-                account = AccountService.create_account_and_tenant(
-                    email=reset_data.get("email", ""),
-                    name=reset_data.get("email", ""),
-                    password=password_confirm,
-                    interface_language=languages[0],
-                )
-            except WorkSpaceNotAllowedCreateError:
-                pass
-            except AccountRegisterError:
-                raise AccountInFreezeError()
+        try:
+            with Session(db.engine) as session:
+                # 查询匹配的账户信息
+                account = session.execute(select(Account).filter_by(email=reset_data.get("email"))).scalar_one_or_none()
+                if account:
+                    # 更新账户密码和盐值
+                    account.password = base64_password_hashed
+                    account.password_salt = base64_salt
+                    session.commit()
+
+                    # 获取账户加入的租户
+                    tenant = TenantService.get_join_tenants(account)
+
+                    # 如果账户没有加入租户且系统不允许创建工作区，则创建新租户
+                    if not tenant and not FeatureService.get_system_features().is_allow_create_workspace:
+                        tenant = TenantService.create_tenant(f"{account.name}'s Workspace")
+                        TenantService.create_tenant_member(tenant, account, role="owner")
+                        account.current_tenant = tenant
+                        # 发送租户创建事件通知
+                        tenant_was_created.send(tenant)
+                else:
+                    try:
+                        account = AccountService.create_account_and_tenant(
+                            email=reset_data.get("email", ""),
+                            name=reset_data.get("email", ""),
+                            password=password_confirm,
+                            interface_language=languages[0],
+                        )
+                    except WorkSpaceNotAllowedCreateError:
+                        pass
+                    except AccountRegisterError:
+                        raise AccountInFreezeError()
+        except SQLAlchemyError as e:
+            # 处理数据库操作异常
+            session.rollback()  # 回滚事务
 
         return {"result": "success"}
 
