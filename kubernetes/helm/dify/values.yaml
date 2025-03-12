@@ -450,6 +450,7 @@ api:
   ports:
     - name: api
       port: 5001
+      protocol: TCP
       targetPort: 5001
   type: ClusterIP
 worker:
@@ -463,6 +464,7 @@ worker:
   ports:
     - name: worker
       port: 5001
+      protocol: TCP
       targetPort: 5001
   type: ClusterIP
 db:
@@ -517,6 +519,7 @@ redis:
   ports:
     - name: redis
       port: 6379
+      protocol: TCP
       targetPort: 6379
   type: ClusterIP
   replicas: 1
@@ -533,6 +536,7 @@ sandbox:
   ports:
     - name: sandbox
       port: 8194
+      protocol: TCP
       targetPort: 8194
   type: ClusterIP
 ssrfProxy:
@@ -546,6 +550,7 @@ ssrfProxy:
   ports:
     - name: ssrf-proxy
       port: 3128
+      protocol: TCP
       targetPort: 3128
   type: ClusterIP
 web:
@@ -557,6 +562,7 @@ web:
   ports:
     - name: web
       port: 3000
+      protocol: TCP
       targetPort: 3000
   type: ClusterIP
 weaviate:
@@ -590,12 +596,14 @@ nginx:
   ports:
     - name: http
       port: 80
+      protocol: TCP
       targetPort: 80
-      nodePort: 80
+      #nodePort: 80
     - name: https
       port: 443
+      protocol: TCP
       targetPort: 443
-      nodePort: 443
+      #nodePort: 443
   replicas: 1
   strategy:
     type: Recreate

@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ include "dify.fullname" . }}-db
+  name: {{ include "dify.fullname" . }}-db-service
   labels:
     app: db
     {{- include "dify.labels" . | nindent 4 }}
@@ -16,7 +16,7 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ include "dify.fullname" . }}-api
+  name: {{ include "dify.fullname" . }}-api-service
   labels:
     app: api
     {{- include "dify.labels" . | nindent 4 }}
@@ -31,7 +31,7 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ include "dify.fullname" . }}-worker
+  name: {{ include "dify.fullname" . }}-worker-service
   labels:
     app: worker
     {{- include "dify.labels" . | nindent 4 }}
@@ -46,7 +46,7 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ include "dify.fullname" . }}-nginx
+  name: {{ include "dify.fullname" . }}-nginx-service
   labels:
     app: nginx
     {{- include "dify.labels" . | nindent 4 }}
@@ -61,7 +61,7 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ include "dify.fullname" . }}-plugin-daemon
+  name: {{ include "dify.fullname" . }}-plugin-daemon-service
   labels:
     app: plugin-daemon
     {{- include "dify.labels" . | nindent 4 }}
@@ -76,7 +76,7 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ include "dify.fullname" . }}-redis
+  name: {{ include "dify.fullname" . }}-redis-service
   labels:
     app: redis
     {{- include "dify.labels" . | nindent 4 }}
@@ -91,7 +91,7 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ include "dify.fullname" . }}-sandbox
+  name: {{ include "dify.fullname" . }}-sandbox-service
   labels:
     app: sandbox
     {{- include "dify.labels" . | nindent 4 }}
@@ -106,7 +106,7 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: ssrf-proxy
+  name: {{ include "dify.fullname" . }}-ssrf-proxy-service
   labels:
     app: ssrf-proxy
     {{- include "dify.labels" . | nindent 4 }}
@@ -121,7 +121,7 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ include "dify.fullname" . }}-web
+  name: {{ include "dify.fullname" . }}-web-service
   labels:
     app: web
     {{- include "dify.labels" . | nindent 4 }}
@@ -136,11 +136,170 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ include "dify.fullname" . }}-weaviate
+  name: {{ include "dify.fullname" . }}-weaviate-service
   labels:
   {{- include "dify.labels" . | nindent 4 }}
 spec:
   type: {{ .Values.weaviate.type }}
+  selector:
+    app: dify-weaviate
+    {{- include "dify.selectorLabels" . | nindent 4 }}
+  ports:
+  {{- .Values.weaviate.ports | toYaml | nindent 2 }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "dify.fullname" . }}-db
+  labels:
+    app: db
+    {{- include "dify.labels" . | nindent 4 }}
+spec:
+  type: ClusterIP
+  clusterIP: None
+  selector:
+    app: db
+    {{- include "dify.selectorLabels" . | nindent 4 }}
+  ports:
+  {{- .Values.db.ports | toYaml | nindent 2 }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "dify.fullname" . }}-api
+  labels:
+    app: api
+    {{- include "dify.labels" . | nindent 4 }}
+spec:
+  type: ClusterIP
+  clusterIP: None
+  selector:
+    app: api
+    {{- include "dify.selectorLabels" . | nindent 4 }}
+  ports:
+  {{- .Values.api.ports | toYaml | nindent 2 }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "dify.fullname" . }}-worker
+  labels:
+    app: worker
+    {{- include "dify.labels" . | nindent 4 }}
+spec:
+  type: ClusterIP
+  clusterIP: None
+  selector:
+    app: worker
+    {{- include "dify.selectorLabels" . | nindent 4 }}
+  ports:
+  {{- .Values.worker.ports | toYaml | nindent 2 }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "dify.fullname" . }}-nginx
+  labels:
+    app: nginx
+    {{- include "dify.labels" . | nindent 4 }}
+spec:
+  type: ClusterIP
+  clusterIP: None
+  selector:
+    app: nginx
+    {{- include "dify.selectorLabels" . | nindent 4 }}
+  ports:
+  {{- .Values.nginx.ports | toYaml | nindent 2 }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "dify.fullname" . }}-plugin-daemon
+  labels:
+    app: plugin-daemon
+    {{- include "dify.labels" . | nindent 4 }}
+spec:
+  type: ClusterIP
+  clusterIP: None
+  selector:
+    app: plugin-daemon
+    {{- include "dify.selectorLabels" . | nindent 4 }}
+  ports:
+  {{- .Values.pluginDaemon.ports | toYaml | nindent 2 }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "dify.fullname" . }}-redis
+  labels:
+    app: redis
+    {{- include "dify.labels" . | nindent 4 }}
+spec:
+  type: ClusterIP
+  clusterIP: None
+  selector:
+    app: redis
+    {{- include "dify.selectorLabels" . | nindent 4 }}
+  ports:
+  {{- .Values.redis.ports | toYaml | nindent 2 }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "dify.fullname" . }}-sandbox
+  labels:
+    app: sandbox
+    {{- include "dify.labels" . | nindent 4 }}
+spec:
+  type: ClusterIP
+  clusterIP: None
+  selector:
+    app: sandbox
+    {{- include "dify.selectorLabels" . | nindent 4 }}
+  ports:
+  {{- .Values.sandbox.ports | toYaml | nindent 2 }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ssrf-proxy
+  labels:
+    app: ssrf-proxy
+    {{- include "dify.labels" . | nindent 4 }}
+spec:
+  type: ClusterIP
+  clusterIP: None
+  selector:
+    app: ssrf-proxy
+    {{- include "dify.selectorLabels" . | nindent 4 }}
+  ports:
+  {{- .Values.ssrfProxy.ports | toYaml | nindent 2 }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "dify.fullname" . }}-web
+  labels:
+    app: web
+    {{- include "dify.labels" . | nindent 4 }}
+spec:
+  type: ClusterIP
+  clusterIP: None
+  selector:
+    app: web
+    {{- include "dify.selectorLabels" . | nindent 4 }}
+  ports:
+  {{- .Values.web.ports | toYaml | nindent 2 }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "dify.fullname" . }}-weaviate
+  labels:
+  {{- include "dify.labels" . | nindent 4 }}
+spec:
+  type: ClusterIP
+  clusterIP: None
   selector:
     app: dify-weaviate
     {{- include "dify.selectorLabels" . | nindent 4 }}

@@ -3,7 +3,7 @@ kind: Service
 metadata:
   labels:
     app: api
-  name: dify-api
+  name: dify-api-service
   namespace: dify
 spec:
   ports:
@@ -20,7 +20,7 @@ kind: Service
 metadata:
   labels:
     app: db
-  name: dify-db
+  name: dify-db-service
   namespace: dify
 spec:
   ports:
@@ -37,7 +37,7 @@ kind: Service
 metadata:
   labels:
     app: nginx
-  name: dify-nginx
+  name: dify-nginx-service
   namespace: dify
 spec:
   ports:
@@ -60,7 +60,7 @@ kind: Service
 metadata:
   labels:
     app: plugin-daemon
-  name: dify-plugin-daemon
+  name: dify-plugin-daemon-service
   namespace: dify
 spec:
   ports:
@@ -81,6 +81,188 @@ kind: Service
 metadata:
   labels:
     app: redis
+  name: dify-redis-service
+  namespace: dify
+spec:
+  ports:
+    - name: redis
+      port: 6379
+      protocol: TCP
+      targetPort: 6379
+  selector:
+    app: redis
+  type: ClusterIP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: sandbox
+  name: dify-sandbox-service
+  namespace: dify
+spec:
+  ports:
+    - name: sandbox
+      port: 8194
+      protocol: TCP
+      targetPort: 8194
+  selector:
+    app: sandbox
+  type: ClusterIP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: weaviate
+  name: dify-weaviate-service
+  namespace: dify
+spec:
+  ports:
+    - name: weaviate
+      port: 8080
+      protocol: TCP
+      targetPort: 8080
+  selector:
+    app: dify-weaviate
+  type: ClusterIP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: web
+  name: dify-web-service
+  namespace: dify
+spec:
+  ports:
+    - name: web
+      port: 3000
+      protocol: TCP
+      targetPort: 3000
+  selector:
+    app: web
+  type: ClusterIP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: worker
+  name: dify-worker-service
+  namespace: dify
+spec:
+  ports:
+    - name: worker
+      port: 5001
+      protocol: TCP
+      targetPort: 5001
+  selector:
+    app: worker
+  type: ClusterIP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: ssrf-proxy
+  name: ssrf-proxy-service
+  namespace: dify
+spec:
+  ports:
+    - name: ssrf-proxy
+      port: 3128
+      protocol: TCP
+      targetPort: 3128
+  selector:
+    app: ssrf-proxy
+  type: ClusterIP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: api
+  name: dify-api
+  namespace: dify
+spec:
+  ports:
+    - name: api
+      port: 5001
+      protocol: TCP
+      targetPort: 5001
+  selector:
+    app: api
+  type: ClusterIP
+  clusterIP: None
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: db
+  name: dify-db
+  namespace: dify
+spec:
+  ports:
+    - name: db
+      port: 5432
+      protocol: TCP
+      targetPort: 5432
+  selector:
+    app: db
+  type: ClusterIP
+  clusterIP: None
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: nginx
+  name: dify-nginx
+  namespace: dify
+spec:
+  ports:
+    - name: http
+      port: 80
+      protocol: TCP
+      targetPort: 80
+    - name: https
+      port: 443
+      protocol: TCP
+      targetPort: 443
+  selector:
+    app: nginx
+  type: ClusterIP
+  clusterIP: None
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: plugin-daemon
+  name: dify-plugin-daemon
+  namespace: dify
+spec:
+  ports:
+    - name: server
+      port: 5002
+      protocol: TCP
+      targetPort: 5002
+    - name: remote
+      port: 5003
+      protocol: TCP
+      targetPort: 5003
+  selector:
+    app: plugin-daemon
+  type: ClusterIP
+  clusterIP: None
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: redis
   name: dify-redis
   namespace: dify
 spec:
@@ -92,6 +274,7 @@ spec:
   selector:
     app: redis
   type: ClusterIP
+  clusterIP: None
 ---
 apiVersion: v1
 kind: Service
@@ -109,6 +292,7 @@ spec:
   selector:
     app: sandbox
   type: ClusterIP
+  clusterIP: None
 ---
 apiVersion: v1
 kind: Service
@@ -126,6 +310,7 @@ spec:
   selector:
     app: dify-weaviate
   type: ClusterIP
+  clusterIP: None
 ---
 apiVersion: v1
 kind: Service
@@ -143,6 +328,7 @@ spec:
   selector:
     app: web
   type: ClusterIP
+  clusterIP: None
 ---
 apiVersion: v1
 kind: Service
@@ -160,6 +346,7 @@ spec:
   selector:
     app: worker
   type: ClusterIP
+  clusterIP: None
 ---
 apiVersion: v1
 kind: Service
@@ -177,6 +364,7 @@ spec:
   selector:
     app: ssrf-proxy
   type: ClusterIP
+  clusterIP: None
 ---
 apiVersion: apps/v1
 kind: Deployment
