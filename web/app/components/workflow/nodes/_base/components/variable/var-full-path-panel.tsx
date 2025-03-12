@@ -6,16 +6,19 @@ import { Type } from '../../../llm/types'
 import { PickerPanelMain as Panel } from '@/app/components/workflow/nodes/_base/components/variable/object-child-tree-panel/picker'
 import BlockIcon from '@/app/components/workflow/block-icon'
 import { BlockEnum } from '@/app/components/workflow/types'
+
 type Props = {
   nodeName: string
   path: string[]
   varType: TypeWithArray
+  nodeType?: BlockEnum
 }
 
 const VarFullPathPanel: FC<Props> = ({
   nodeName,
   path,
   varType,
+  nodeType = BlockEnum.LLM,
 }) => {
   const schema: StructuredOutput = (() => {
     const schema: StructuredOutput['schema'] = {
@@ -41,7 +44,7 @@ const VarFullPathPanel: FC<Props> = ({
   return (
     <div className='w-[280px] pb-0 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-[5px]'>
       <div className='flex p-3 pb-2 border-b-[0.5px] border-divider-subtle space-x-1 '>
-        <BlockIcon size='xs' type={BlockEnum.LLM} />
+        <BlockIcon size='xs' type={nodeType} />
         <div className='w-0 grow system-xs-medium text-text-secondary truncate'>{nodeName}</div>
       </div>
       <Panel
