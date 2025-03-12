@@ -8,7 +8,7 @@ const bingTranslate = require('bing-translate-api')
 const { translate } = bingTranslate
 const data = require('./languages.json')
 
-const targetLanguage = 'en-US'
+const targetLanguage = 'zh-Hans'
 // https://github.com/plainheart/bing-translate-api/blob/master/src/met/lang.json
 const languageKeyMap = data.languages.reduce((map, language) => {
   if (language.supported) {

@@ -13,7 +13,7 @@ import { LanguagesSupported, languages } from '@/i18n/language'
 import { oneMoreStep } from '@/service/common'
 import Toast from '@/app/components/base/toast'
 
-interface IState {
+type IState = {
   formState: 'processing' | 'error' | 'success' | 'initial'
   invitation_code: string
   interface_language: string
@@ -33,8 +33,8 @@ const reducer = (state: IState, action: any) => {
     case 'failed':
       return {
         formState: 'initial',
-        invitation_code: '',
-        interface_language: 'en-US',
+        invitation_code: 'zh-Hans',
+        interface_language: '',
         timezone: 'Asia/Shanghai',
       }
     default:
@@ -50,7 +50,7 @@ const OneMoreStep = () => {
   const [state, dispatch] = useReducer(reducer, {
     formState: 'initial',
     invitation_code: searchParams.get('invitation_code') || '',
-    interface_language: 'en-US',
+    interface_language: 'zh-Hans',
     timezone: 'Asia/Shanghai',
   })
   const { data, error } = useSWR(state.formState === 'processing'

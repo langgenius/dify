@@ -37,10 +37,12 @@ const AnswerIcon: FC<AnswerIconProps> = ({
     className={wrapperClassName}
     style={{ background: background || '#D5F5F6' }}
   >
-    {isValidImageIcon
+    <img src='/logo/logo.png' />
+    {/* 对话框头像 */}
+    {/* {isValidImageIcon
       ? <img src={imageUrl} className="w-full h-full rounded-full" alt="answer icon" />
       : (icon && icon !== '') ? <em-emoji id={icon} /> : <em-emoji id='🤖' />
-    }
+    } */}
   </div>
 }
 
