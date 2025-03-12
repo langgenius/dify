@@ -8,8 +8,11 @@ import {
 const SearchInput = () => {
   return (
     <PortalToFollowElem>
-      <PortalToFollowElemTrigger>
-        <Input />
+      <PortalToFollowElemTrigger className='block w-full'>
+        <Input
+          className='w-full'
+          placeholder='Enter the official, unabbreviated name of your school'
+        />
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent>
         <div className='p-1 border-[0.5px] border-components-panel-border bg-components-panel-bg-blur rounded-xl'>

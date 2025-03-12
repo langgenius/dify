@@ -16,9 +16,7 @@ const Layout = ({ children }: { children: ReactNode }) => {
           <EventEmitterContextProvider>
             <ProviderContextProvider>
               <ModalContextProvider>
-                <div className='overflow-y-auto bg-components-panel-bg'>
-                  {children}
-                </div>
+                {children}
               </ModalContextProvider>
             </ProviderContextProvider>
           </EventEmitterContextProvider>
