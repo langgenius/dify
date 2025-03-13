@@ -219,7 +219,7 @@ class Executor:
                             files_list.append((key, list(segment.value)))
 
                     # get files from file_manager
-                    files: dict[str, list[tuple[str, bytes, str]]] = {}
+                    files: dict[str, list[tuple[str | None, bytes, str]]] = {}
                     for key, files_in_segment in files_list:
                         for file in files_in_segment:
                             if file.related_id is not None:
