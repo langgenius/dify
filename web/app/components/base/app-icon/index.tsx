@@ -60,13 +60,13 @@ const AppIcon: FC<AppIconProps> = ({
     style={{ background: isValidImageIcon ? undefined : (background || '#FFFFFF') }}
     onClick={onClick}
   >
-    <img src='/logo/logo.png' className="w-full h-full" alt="app icon" />
+    {/* <img src='/logo/logo.png' className="w-full h-full" alt="app icon" /> */}
     {/* 侧边栏头像 */}
-    {/* {isValidImageIcon
+    {isValidImageIcon
       // eslint-disable-next-line @next/next/no-img-element
       ? <img src={imageUrl} className="w-full h-full" alt="app icon" />
       : (innerIcon || ((icon && icon !== '') ? <em-emoji id={icon} /> : <em-emoji id='🤖' />))
-    } */}
+    }
   </span>
 }
 
