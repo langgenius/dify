@@ -33,7 +33,6 @@ const useBatchEditDocumentMetadata = ({
     })
     return res
   })()
-  console.log(metaDataList)
 
   // To check is key has multiple value
   const originalList: MetadataItemInBatchEdit[] = useMemo(() => {
