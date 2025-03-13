@@ -36,6 +36,12 @@ const translation = {
   },
   submit: 'Submit',
   learn: 'Learn how to get education verified',
+  successTitle: 'You Have Got Dify Education Verified',
+  successContent: 'We have issued a 50% discount coupon for the Dify Professional plan to your account. The coupon is valid for one year, please use it within the validity period.',
+  rejectTitle: 'Your Dify Education Verified Has Been Rejected',
+  rejectContent: 'We’re sorry, but You are now eligible for Education Verified status because you disagreed with our Terms & Agreements. Please review the terms of these clauses and reapply if eligible.',
+  rejectContent2: 'Unfortunately you are not eligible for a Education Verified status and receive an exclusive 50% coupon for the Dify Professional Plan if you use this email address.',
+  emailLabel: 'Your current email',
 }
 
 export default translation

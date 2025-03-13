@@ -16,8 +16,10 @@ import VectorSpaceInfo from '../usage-info/vector-space-info'
 import AppsInfo from '../usage-info/apps-info'
 import UpgradeBtn from '../upgrade-btn'
 import { useProviderContext } from '@/context/provider-context'
+import { useAppContext } from '@/context/app-context'
 import Button from '@/app/components/base/button'
 import UsageInfo from '@/app/components/billing/usage-info'
+import VerifyStateModal from '@/app/education-apply/components/verify-state-modal'
 
 type Props = {
   loc: string
@@ -27,6 +29,7 @@ const PlanComp: FC<Props> = ({
   loc,
 }) => {
   const { t } = useTranslation()
+  const { userProfile } = useAppContext()
   const { plan } = useProviderContext()
   const {
     type,
@@ -37,6 +40,7 @@ const PlanComp: FC<Props> = ({
     total,
   } = plan
 
+  const [showModal, setShowModal] = React.useState(false)
   return (
     <div className='bg-background-section-burn rounded-2xl border-[0.5px] border-effects-highlight-lightmode-off'>
       <div className='p-6 pb-2'>
@@ -62,9 +66,9 @@ const PlanComp: FC<Props> = ({
           </div>
           <div className='shrink-0 flex items-center gap-1'>
             {/* {(plan.type === Plan.sandbox || plan.type === Plan.professional) && ( */}
-            <Button variant='ghost'>
+            <Button variant='ghost' onClick={() => setShowModal(true)}>
               <RiGraduationCapLine className='w-4 h-4 mr-1'/>
-              {t('billing.educationVerification')}
+              {t('education.toVerified')}
             </Button>
             {/* )} */}
             {(plan.type as any) !== SelfHostedPlan.enterprise && (
@@ -102,6 +106,15 @@ const PlanComp: FC<Props> = ({
         />
 
       </div>
+      <VerifyStateModal
+        showLink
+        email={userProfile.email}
+        isShow={showModal}
+        title={t('education.rejectTitle')}
+        content={t('education.rejectContent2')}
+        onConfirm={() => setShowModal(false)}
+        onCancel={() => setShowModal(false)}
+      />
     </div>
   )
 }
