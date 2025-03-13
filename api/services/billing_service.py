@@ -115,7 +115,7 @@ class BillingService:
             return BillingService._send_request("GET", "/education/status", params=params)
 
         @classmethod
-        def activate(cls, account: Account, token: str, institution: str):
+        def activate(cls, account: Account, token: str, institution: str, role: str):
             if cls.activation_rate_limit.is_rate_limited(account.email):
                 from controllers.console.error import EducationActivateLimitError
 
@@ -126,6 +126,7 @@ class BillingService:
             json = {
                 "institution": institution,
                 "token": token,
+                "role": role,
             }
             return BillingService._send_request("POST", "/education/", json=json, params=params)
 

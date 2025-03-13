@@ -331,9 +331,10 @@ class EducationApi(Resource):
         parser = reqparse.RequestParser()
         parser.add_argument("token", type=str, required=True, location="json")
         parser.add_argument("institution", type=str, required=True, location="json")
+        parser.add_argument("role", type=str, required=True, location="json")
         args = parser.parse_args()
 
-        return BillingService.EducationIdentity.activate(account, args["token"], args["institution"])
+        return BillingService.EducationIdentity.activate(account, args["token"], args["institution"], args["role"])
 
     @setup_required
     @login_required
