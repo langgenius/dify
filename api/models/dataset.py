@@ -12,7 +12,6 @@ from json import JSONDecodeError
 from typing import Any, cast
 
 from sqlalchemy import func
-from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped
 
 from configs import dify_config
@@ -24,7 +23,7 @@ from services.entities.knowledge_entities.knowledge_entities import ParentMode, 
 from .account import Account
 from .engine import db
 from .model import App, Tag, TagBinding, UploadFile
-from .types import StringUUID
+from .types import JSONType, StringUUID, json_index
 
 
 class DatasetPermissionEnum(enum.StrEnum):
@@ -38,7 +37,7 @@ class Dataset(db.Model):  # type: ignore[name-defined]
     __table_args__ = (
         db.PrimaryKeyConstraint("id", name="dataset_pkey"),
         db.Index("dataset_tenant_idx", "tenant_id"),
-        db.Index("retrieval_model_idx", "retrieval_model", postgresql_using="gin"),
+        json_index("retrieval_model_idx", "retrieval_model"),
     )
 
     INDEXING_TECHNIQUE_LIST = ["high_quality", "economy", None]
@@ -60,7 +59,7 @@ class Dataset(db.Model):  # type: ignore[name-defined]
     embedding_model = db.Column(db.String(255), nullable=True)
     embedding_model_provider = db.Column(db.String(255), nullable=True)
     collection_binding_id = db.Column(StringUUID, nullable=True)
-    retrieval_model = db.Column(JSONB, nullable=True)
+    retrieval_model = db.Column(JSONType, nullable=True)
     built_in_field_enabled = db.Column(db.Boolean, nullable=False, server_default=db.text("false"))
 
     @property

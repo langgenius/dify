@@ -1,12 +1,11 @@
 import json
 
 from sqlalchemy import func
-from sqlalchemy.dialects.postgresql import JSONB
 
 from models.base import Base
 
 from .engine import db
-from .types import StringUUID
+from .types import JSONType, StringUUID, json_index
 
 
 class DataSourceOauthBinding(db.Model):  # type: ignore[name-defined]
@@ -14,14 +13,14 @@ class DataSourceOauthBinding(db.Model):  # type: ignore[name-defined]
     __table_args__ = (
         db.PrimaryKeyConstraint("id", name="source_binding_pkey"),
         db.Index("source_binding_tenant_id_idx", "tenant_id"),
-        db.Index("source_info_idx", "source_info", postgresql_using="gin"),
+        json_index("source_info_idx", "source_info"),
     )
 
     id = db.Column(StringUUID, server_default=db.text("uuid_generate_v4()"))
     tenant_id = db.Column(StringUUID, nullable=False)
     access_token = db.Column(db.String(255), nullable=False)
     provider = db.Column(db.String(255), nullable=False)
-    source_info = db.Column(JSONB, nullable=False)
+    source_info = db.Column(JSONType, nullable=False)
     created_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
     updated_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
     disabled = db.Column(db.Boolean, nullable=True, server_default=db.text("false"))
