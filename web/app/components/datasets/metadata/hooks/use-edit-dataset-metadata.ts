@@ -63,6 +63,9 @@ const useEditDatasetMetadata = ({
   }, [doDeleteMetaData])
 
   const [builtInEnabled, setBuiltInEnabled] = useState(datasetMetaData?.built_in_field_enabled)
+  useEffect(() => { // wait for api response to set the right value
+    setBuiltInEnabled(datasetMetaData?.built_in_field_enabled)
+  }, [datasetMetaData])
   const { mutateAsync: toggleBuiltInStatus } = useUpdateBuiltInStatus(datasetId)
   const { data: builtInMetaData } = useBuiltInMetaDataFields()
   return {
