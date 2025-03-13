@@ -3,7 +3,7 @@ const translation = {
   toVerifiedTip: {
     front: 'You are now eligible for Education Verified status. Please enter your education information below to complete the process and receive an',
     coupon: 'exclusive 50% coupon',
-    end: ' for the Dify Professional Plan.',
+    end: 'for the Dify Professional Plan.',
   },
   currentSigned: 'CURRENTLY SIGNED IN AS',
   form: {

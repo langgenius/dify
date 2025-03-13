@@ -1,7 +1,7 @@
 const translation = {
   toVerified: '获取教育版认证',
   toVerifiedTip: {
-    front: '您现在符合教育版认证的资格。请在下方输入您的教育信息，以完成认证流程，并领取 Dify  Professional 版 的',
+    front: '您现在符合教育版认证的资格。请在下方输入您的教育信息，以完成认证流程，并领取 Dify  Professional 版的',
     coupon: '50% 独家优惠券',
     end: '。',
   },

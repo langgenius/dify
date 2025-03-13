@@ -13,15 +13,15 @@ const RoleSelector = ({
   const { t } = useTranslation()
   const options = [
     {
-      key: 'student',
+      key: 'Student',
       value: t('education.form.schoolRole.option.student'),
     },
     {
-      key: 'teacher',
+      key: 'Teacher',
       value: t('education.form.schoolRole.option.teacher'),
     },
     {
-      key: 'school-administrator',
+      key: 'School-Administrator',
       value: t('education.form.schoolRole.option.administrator'),
     },
   ]
@@ -32,12 +32,12 @@ const RoleSelector = ({
         options.map(option => (
           <div
             key={option.key}
-            className='flex items-center mr-6 h-5 cursor-pointer'
+            className='flex items-center mr-6 h-5 cursor-pointer system-md-regular text-text-primary'
             onClick={() => onChange(option.key)}
           >
             <div
               className={cn(
-                'mr-2 w-4 h-4 bg-components-radio-bg rounded-full border border-components-radio-border shadow-xs system-md-regular text-text-primary',
+                'mr-2 w-4 h-4 bg-components-radio-bg rounded-full border border-components-radio-border shadow-xs',
                 option.key === value && 'border-[5px] border-components-radio-border-checked ',
               )}
             >
