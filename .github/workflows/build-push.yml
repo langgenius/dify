@@ -5,6 +5,7 @@ on:
     branches:
       - "main"
       - "deploy/dev"
+      - "deploy/enterprise"
   release:
     types: [published]
 
