@@ -54,12 +54,13 @@
     <div class="container">
         <div class="content">
             <p>Dear {{ to }},</p>
-            <p>{{ inviter_name }} is pleased to invite you to join our workspace, a platform specifically designed for LLM application development. On platform, you can explore, create, and collaborate to build and operate AI applications.</p>
-            <p>Click the button below to log in to platform and join the workspace.</p>
+            <p>{{ inviter_name }} is pleased to invite you to join our workspace on {{application_title}}, a platform specifically designed for LLM application development. On {{application_title}}, you can explore, create, and collaborate to build and operate AI applications.</p>
+            <p>Click the button below to log in to {{application_title}} and join the workspace.</p>
             <p style="text-align: center;"><a style="color: #fff; text-decoration: none" class="button" href="{{ url }}">Login Here</a></p>
         </div>
         <div class="footer">
-            <p>Best regards</p>
+            <p>Best regards,</p>
+            <p>{{application_title}} Team</p>
             <p>Please do not reply directly to this email; it is automatically sent by the system.</p>
         </div>
     </div>

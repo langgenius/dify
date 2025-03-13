@@ -55,12 +55,13 @@
     <div class="container">
         <div class="content">
             <p>尊敬的 {{ to }}，</p>
-            <p>{{ inviter_name }} 现邀请您加入我们的工作区，这是一个专为 LLM 应用开发而设计的平台。在平台上，您可以探索、创造和合作，构建和运营 AI 应用。</p>
-            <p>点击下方按钮即可登录并且加入空间。</p>
+            <p>{{ inviter_name }} 现邀请您加入我们在 {{application_title}} 的工作区，这是一个专为 LLM 应用开发而设计的平台。在 {{application_title}} 上，您可以探索、创造和合作，构建和运营 AI 应用。</p>
+            <p>点击下方按钮即可登录 {{application_title}} 并且加入空间。</p>
             <p style="text-align: center;"><a style="color: #fff; text-decoration: none" class="button" href="{{ url }}">在此登录</a></p>
         </div>
         <div class="footer">
-            <p>此致</p>
+            <p>此致，</p>
+            <p>{{application_title}} 团队</p>
             <p>请不要直接回复此电子邮件；由系统自动发送。</p>
         </div>
     </div>
