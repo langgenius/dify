@@ -5,6 +5,7 @@ from .account import (
     InvitationCode,
     Tenant,
     TenantAccountJoin,
+    TenantAccountJoinRole,
     TenantAccountRole,
     TenantStatus,
 )
@@ -72,6 +73,7 @@ from .task import CeleryTask, CeleryTaskSet
 from .tools import (
     ApiToolProvider,
     BuiltinToolProvider,
+    PublishedAppTool,
     ToolConversationVariables,
     ToolFile,
     ToolLabelBinding,
@@ -91,6 +93,7 @@ from .workflow import (
     WorkflowRunStatus,
     WorkflowType,
 )
+from .plan import Plan
 
 __all__ = [
     "APIBasedExtension",
@@ -148,6 +151,7 @@ __all__ = [
     "ProviderOrder",
     "ProviderQuotaType",
     "ProviderType",
+    "PublishedAppTool",
     "RecommendedApp",
     "SavedMessage",
     "Site",
@@ -155,6 +159,7 @@ __all__ = [
     "TagBinding",
     "Tenant",
     "TenantAccountJoin",
+    "TenantAccountJoinRole",
     "TenantAccountRole",
     "TenantDefaultModel",
     "TenantPreferredModelProvider",
@@ -179,5 +184,6 @@ __all__ = [
     "WorkflowRunTriggeredFrom",
     "WorkflowToolProvider",
     "WorkflowType",
+    "Plan",
     "db",
 ]

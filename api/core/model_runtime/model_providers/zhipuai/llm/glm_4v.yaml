@@ -1,0 +1,64 @@
+model: glm-4v
+label:
+  en_US: glm-4v
+model_type: llm
+model_properties:
+  mode: chat
+  context_size: 2048
+features:
+  - vision
+parameter_rules:
+  - name: temperature
+    use_template: temperature
+    default: 0.95
+    min: 0.0
+    max: 1.0
+    help:
+      zh_Hans: 采样温度，控制输出的随机性，必须为正数取值范围是：(0.0,1.0]，不能等于 0,默认值为 0.95 值越大，会使输出更随机，更具创造性；值越小，输出会更加稳定或确定建议您根据应用场景调整 top_p 或 temperature 参数，但不要同时调整两个参数。
+      en_US: Sampling temperature, controls the randomness of the output, must be a positive number. The value range is (0.0,1.0], which cannot be equal to 0. The default value is 0.95. The larger the value, the more random and creative the output will be; the smaller the value, The output will be more stable or certain. It is recommended that you adjust the top_p or temperature parameters according to the application scenario, but do not adjust both parameters at the same time.
+  - name: top_p
+    use_template: top_p
+    default: 0.6
+    help:
+      zh_Hans: 用温度取样的另一种方法，称为核取样取值范围是：(0.0, 1.0) 开区间，不能等于 0 或 1，默认值为 0.7 模型考虑具有 top_p 概率质量tokens的结果例如：0.1 意味着模型解码器只考虑从前 10% 的概率的候选集中取 tokens 建议您根据应用场景调整 top_p 或 temperature 参数，但不要同时调整两个参数。
+      en_US: Another method of temperature sampling is called kernel sampling. The value range is (0.0, 1.0) open interval, which cannot be equal to 0 or 1. The default value is 0.7. The model considers the results with top_p probability mass tokens. For example 0.1 means The model decoder only considers tokens from the candidate set with the top 10% probability. It is recommended that you adjust the top_p or temperature parameters according to the application scenario, but do not adjust both parameters at the same time.
+  - name: do_sample
+    label:
+      zh_Hans: 采样策略
+      en_US: Sampling strategy
+    type: boolean
+    help:
+      zh_Hans: do_sample 为 true 时启用采样策略，do_sample 为 false 时采样策略 temperature、top_p 将不生效。默认值为 true。
+      en_US: When `do_sample` is set to true, the sampling strategy is enabled. When `do_sample` is set to false, the sampling strategies such as `temperature` and `top_p` will not take effect. The default value is true.
+    default: true
+  - name: max_tokens
+    use_template: max_tokens
+    default: 1024
+    min: 1
+    max: 1024
+  - name: web_search
+    type: boolean
+    label:
+      zh_Hans: 联网搜索
+      en_US: Web Search
+    default: false
+    help:
+      zh_Hans: 模型内置了互联网搜索服务，该参数控制模型在生成文本时是否参考使用互联网搜索结果。启用互联网搜索，模型会将搜索结果作为文本生成过程中的参考信息，但模型会基于其内部逻辑“自行判断”是否使用互联网搜索结果。
+      en_US: The model has a built-in Internet search service. This parameter controls whether the model refers to Internet search results when generating text. When Internet search is enabled, the model will use the search results as reference information in the text generation process, but the model will "judge" whether to use Internet search results based on its internal logic.
+  - name: response_format
+    label:
+      zh_Hans: 回复格式
+      en_US: Response Format
+    type: string
+    help:
+      zh_Hans: 指定模型必须输出的格式
+      en_US: specifying the format that the model must output
+    required: false
+    options:
+      - text
+      - json_object
+pricing:
+  input: '0.05'
+  output: '0.05'
+  unit: '0.001'
+  currency: RMB

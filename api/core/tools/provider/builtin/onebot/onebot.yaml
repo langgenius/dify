@@ -1,0 +1,35 @@
+identity:
+  author: RockChinQ
+  name: onebot
+  label:
+    en_US: OneBot v11 Protocol
+    zh_Hans: OneBot v11 协议
+  description:
+    en_US: Unofficial OneBot v11 Protocol Tool
+    zh_Hans: 非官方 OneBot v11 协议工具
+  icon: icon.ico
+credentials_for_provider:
+  ob11_http_url:
+    type: text-input
+    required: true
+    label:
+      en_US: HTTP URL
+      zh_Hans: HTTP URL
+    description:
+      en_US: Forward HTTP URL of OneBot v11
+      zh_Hans: OneBot v11 正向 HTTP URL
+    help:
+      en_US: Fill this with the HTTP URL of your OneBot server
+      zh_Hans: 请在你的 OneBot 协议端开启 正向 HTTP 并填写其 URL
+  access_token:
+    type: secret-input
+    required: false
+    label:
+      en_US: Access Token
+      zh_Hans: 访问令牌
+    description:
+      en_US: Access Token for OneBot v11 Protocol
+      zh_Hans: OneBot 协议访问令牌
+    help:
+      en_US: Fill this if you set a access token in your OneBot server
+      zh_Hans: 如果你在 OneBot 服务器中设置了 access token，请填写此项

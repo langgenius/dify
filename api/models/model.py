@@ -3,31 +3,20 @@ import re
 import uuid
 from collections.abc import Mapping
 from datetime import datetime
-from enum import Enum
-from typing import TYPE_CHECKING, Optional
-
-from core.plugin.entities.plugin import GenericProviderID
-from core.tools.entities.tool_entities import ToolProviderType
-from services.plugin.plugin_service import PluginService
-
-if TYPE_CHECKING:
-    from models.workflow import Workflow
-
-from enum import StrEnum
-from typing import TYPE_CHECKING, Any, Literal, cast
+from enum import Enum, StrEnum
+from typing import TYPE_CHECKING, Any, Literal, Optional, cast
 
 import sqlalchemy as sa
 from flask import request
 from flask_login import UserMixin  # type: ignore
-from sqlalchemy import Float, Index, PrimaryKeyConstraint, func, text
-from sqlalchemy.orm import Mapped, Session, mapped_column
+from sqlalchemy import Float, func, text
+from sqlalchemy.orm import Mapped, mapped_column
 
 from configs import dify_config
 from core.file import FILE_MODEL_IDENTITY, File, FileTransferMethod, FileType
 from core.file import helpers as file_helpers
 from core.file.tool_file_parser import ToolFileParser
 from libs.helper import generate_string
-from models.base import Base
 from models.enums import CreatedByRole
 from models.workflow import WorkflowRunStatus
 
@@ -39,7 +28,7 @@ if TYPE_CHECKING:
     from .workflow import Workflow
 
 
-class DifySetup(Base):
+class DifySetup(db.Model):  # type: ignore[name-defined]
     __tablename__ = "dify_setups"
     __table_args__ = (db.PrimaryKeyConstraint("version", name="dify_setup_pkey"),)
 
@@ -74,7 +63,7 @@ class IconType(Enum):
     EMOJI = "emoji"
 
 
-class App(Base):
+class App(db.Model):  # type: ignore[name-defined]
     __tablename__ = "apps"
     __table_args__ = (db.PrimaryKeyConstraint("id", name="app_pkey"), db.Index("app_tenant_id_idx", "tenant_id"))
 
@@ -152,8 +141,7 @@ class App(Base):
             return False
         if not app_model_config.agent_mode:
             return False
-
-        if app_model_config.agent_mode_dict.get("enabled", False) and app_model_config.agent_mode_dict.get(
+        if self.app_model_config.agent_mode_dict.get("enabled", False) and self.app_model_config.agent_mode_dict.get(
             "strategy", ""
         ) in {"function_call", "react"}:
             self.mode = AppMode.AGENT_CHAT.value
@@ -170,113 +158,47 @@ class App(Base):
 
     @property
     def deleted_tools(self) -> list:
-        from core.tools.tool_manager import ToolManager
-
         # get agent mode tools
         app_model_config = self.app_model_config
         if not app_model_config:
             return []
-
         if not app_model_config.agent_mode:
             return []
-
         agent_mode = app_model_config.agent_mode_dict
         tools = agent_mode.get("tools", [])
 
-        api_provider_ids: list[str] = []
-        builtin_provider_ids: list[GenericProviderID] = []
+        provider_ids = []
 
         for tool in tools:
             keys = list(tool.keys())
             if len(keys) >= 4:
                 provider_type = tool.get("provider_type", "")
                 provider_id = tool.get("provider_id", "")
-                if provider_type == ToolProviderType.API.value:
+                if provider_type == "api":
+                    # check if provider id is a uuid string, if not, skip
                     try:
                         uuid.UUID(provider_id)
                     except Exception:
                         continue
-                    api_provider_ids.append(provider_id)
-                if provider_type == ToolProviderType.BUILT_IN.value:
-                    try:
-                        # check if it's hardcoded
-                        try:
-                            ToolManager.get_hardcoded_provider(provider_id)
-                            is_hardcoded = True
-                        except Exception:
-                            is_hardcoded = False
+                    provider_ids.append(provider_id)
 
-                        provider_id = GenericProviderID(provider_id, is_hardcoded)
-                    except Exception:
-                        continue
-
-                    builtin_provider_ids.append(provider_id)
-
-        if not api_provider_ids and not builtin_provider_ids:
+        if not provider_ids:
             return []
 
-        with Session(db.engine) as session:
-            if api_provider_ids:
-                existing_api_providers = [
-                    api_provider.id
-                    for api_provider in session.execute(
-                        text("SELECT id FROM tool_api_providers WHERE id IN :provider_ids"),
-                        {"provider_ids": tuple(api_provider_ids)},
-                    ).fetchall()
-                ]
-            else:
-                existing_api_providers = []
-
-        if builtin_provider_ids:
-            # get the non-hardcoded builtin providers
-            non_hardcoded_builtin_providers = [
-                provider_id for provider_id in builtin_provider_ids if not provider_id.is_hardcoded
-            ]
-            if non_hardcoded_builtin_providers:
-                existence = list(PluginService.check_tools_existence(self.tenant_id, non_hardcoded_builtin_providers))
-            else:
-                existence = []
-            # add the hardcoded builtin providers
-            existence.extend([True] * (len(builtin_provider_ids) - len(non_hardcoded_builtin_providers)))
-            builtin_provider_ids = non_hardcoded_builtin_providers + [
-                provider_id for provider_id in builtin_provider_ids if provider_id.is_hardcoded
-            ]
-        else:
-            existence = []
-
-        existing_builtin_providers = {
-            provider_id.provider_name: existence[i] for i, provider_id in enumerate(builtin_provider_ids)
-        }
+        api_providers = db.session.execute(
+            text("SELECT id FROM tool_api_providers WHERE id IN :provider_ids"), {"provider_ids": tuple(provider_ids)}
+        ).fetchall()
 
         deleted_tools = []
+        current_api_provider_ids = [str(api_provider.id) for api_provider in api_providers]
 
         for tool in tools:
             keys = list(tool.keys())
             if len(keys) >= 4:
                 provider_type = tool.get("provider_type", "")
                 provider_id = tool.get("provider_id", "")
-
-                if provider_type == ToolProviderType.API.value:
-                    if uuid.UUID(provider_id) not in existing_api_providers:
-                        deleted_tools.append(
-                            {
-                                "type": ToolProviderType.API.value,
-                                "tool_name": tool["tool_name"],
-                                "provider_id": provider_id,
-                            }
-                        )
-
-                if provider_type == ToolProviderType.BUILT_IN.value:
-                    generic_provider_id = GenericProviderID(provider_id)
-
-                    if not existing_builtin_providers[generic_provider_id.provider_name]:
-                        deleted_tools.append(
-                            {
-                                "type": ToolProviderType.BUILT_IN.value,
-                                "tool_name": tool["tool_name"],
-                                "provider_id": provider_id,  # use the original one
-                            }
-                        )
+                if provider_type == "api" and provider_id not in current_api_provider_ids:
+                    deleted_tools.append(tool["tool_name"])
 
         return deleted_tools
 
@@ -297,7 +219,7 @@ class App(Base):
         return tags or []
 
 
-class AppModelConfig(Base):
+class AppModelConfig(db.Model):  # type: ignore[name-defined]
     __tablename__ = "app_model_configs"
     __table_args__ = (db.PrimaryKeyConstraint("id", name="app_model_config_pkey"), db.Index("app_app_id_idx", "app_id"))
 
@@ -370,9 +292,6 @@ class AppModelConfig(Base):
         )
         if annotation_setting:
             collection_binding_detail = annotation_setting.collection_binding_detail
-            if not collection_binding_detail:
-                raise ValueError("Collection binding detail not found")
-
             return {
                 "id": annotation_setting.id,
                 "enabled": True,
@@ -403,7 +322,7 @@ class AppModelConfig(Base):
         return json.loads(self.external_data_tools) if self.external_data_tools else []
 
     @property
-    def user_input_form_list(self):
+    def user_input_form_list(self) -> list[dict]:
         return json.loads(self.user_input_form) if self.user_input_form else []
 
     @property
@@ -547,7 +466,7 @@ class AppModelConfig(Base):
         return new_app_model_config
 
 
-class RecommendedApp(Base):
+class RecommendedApp(db.Model):  # type: ignore[name-defined]
     __tablename__ = "recommended_apps"
     __table_args__ = (
         db.PrimaryKeyConstraint("id", name="recommended_app_pkey"),
@@ -575,7 +494,7 @@ class RecommendedApp(Base):
         return app
 
 
-class InstalledApp(Base):
+class InstalledApp(db.Model):  # type: ignore[name-defined]
     __tablename__ = "installed_apps"
     __table_args__ = (
         db.PrimaryKeyConstraint("id", name="installed_app_pkey"),
@@ -842,13 +761,13 @@ class Conversation(db.Model):  # type: ignore[name-defined]
 class Message(db.Model):  # type: ignore[name-defined]
     __tablename__ = "messages"
     __table_args__ = (
-        PrimaryKeyConstraint("id", name="message_pkey"),
-        Index("message_app_id_idx", "app_id", "created_at"),
-        Index("message_conversation_id_idx", "conversation_id"),
-        Index("message_end_user_idx", "app_id", "from_source", "from_end_user_id"),
-        Index("message_account_idx", "app_id", "from_source", "from_account_id"),
-        Index("message_workflow_run_id_idx", "conversation_id", "workflow_run_id"),
-        Index("message_created_at_idx", "created_at"),
+        db.PrimaryKeyConstraint("id", name="message_pkey"),
+        db.Index("message_app_id_idx", "app_id", "created_at"),
+        db.Index("message_conversation_id_idx", "conversation_id"),
+        db.Index("message_end_user_idx", "app_id", "from_source", "from_end_user_id"),
+        db.Index("message_account_idx", "app_id", "from_source", "from_account_id"),
+        db.Index("message_workflow_run_id_idx", "conversation_id", "workflow_run_id"),
+        db.Index("message_created_at_idx", "created_at"),
     )
 
     id: Mapped[str] = mapped_column(StringUUID, server_default=db.text("uuid_generate_v4()"))
@@ -1081,19 +1000,19 @@ class Message(db.Model):  # type: ignore[name-defined]
 
         files = []
         for message_file in message_files:
-            if message_file.transfer_method == FileTransferMethod.LOCAL_FILE.value:
+            if message_file.transfer_method == "local_file":
                 if message_file.upload_file_id is None:
                     raise ValueError(f"MessageFile {message_file.id} is a local file but has no upload_file_id")
                 file = file_factory.build_from_mapping(
                     mapping={
                         "id": message_file.id,
-                        "type": message_file.type,
-                        "transfer_method": message_file.transfer_method,
                         "upload_file_id": message_file.upload_file_id,
+                        "transfer_method": message_file.transfer_method,
+                        "type": message_file.type,
                     },
                     tenant_id=current_app.tenant_id,
                 )
-            elif message_file.transfer_method == FileTransferMethod.REMOTE_URL.value:
+            elif message_file.transfer_method == "remote_url":
                 if message_file.url is None:
                     raise ValueError(f"MessageFile {message_file.id} is a remote url but has no url")
                 file = file_factory.build_from_mapping(
@@ -1101,12 +1020,11 @@ class Message(db.Model):  # type: ignore[name-defined]
                         "id": message_file.id,
                         "type": message_file.type,
                         "transfer_method": message_file.transfer_method,
-                        "upload_file_id": message_file.upload_file_id,
                         "url": message_file.url,
                     },
                     tenant_id=current_app.tenant_id,
                 )
-            elif message_file.transfer_method == FileTransferMethod.TOOL_FILE.value:
+            elif message_file.transfer_method == "tool_file":
                 if message_file.upload_file_id is None:
                     assert message_file.url is not None
                     message_file.upload_file_id = message_file.url.split("/")[-1].split(".")[0]
@@ -1376,7 +1294,7 @@ class AppAnnotationSetting(db.Model):  # type: ignore[name-defined]
         return collection_binding_detail
 
 
-class OperationLog(Base):
+class OperationLog(db.Model):  # type: ignore[name-defined]
     __tablename__ = "operation_logs"
     __table_args__ = (
         db.PrimaryKeyConstraint("id", name="operation_log_pkey"),
@@ -1393,7 +1311,7 @@ class OperationLog(Base):
     updated_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
 
 
-class EndUser(Base, UserMixin):
+class EndUser(UserMixin, db.Model):  # type: ignore[name-defined]
     __tablename__ = "end_users"
     __table_args__ = (
         db.PrimaryKeyConstraint("id", name="end_user_pkey"),
@@ -1413,7 +1331,7 @@ class EndUser(Base, UserMixin):
     updated_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
 
 
-class Site(Base):
+class Site(db.Model):  # type: ignore[name-defined]
     __tablename__ = "sites"
     __table_args__ = (
         db.PrimaryKeyConstraint("id", name="site_pkey"),
@@ -1470,7 +1388,7 @@ class Site(Base):
         return dify_config.APP_WEB_URL or request.url_root.rstrip("/")
 
 
-class ApiToken(Base):
+class ApiToken(db.Model):  # type: ignore[name-defined]
     __tablename__ = "api_tokens"
     __table_args__ = (
         db.PrimaryKeyConstraint("id", name="api_token_pkey"),
@@ -1496,7 +1414,7 @@ class ApiToken(Base):
             return result
 
 
-class UploadFile(Base):
+class UploadFile(db.Model):  # type: ignore[name-defined]
     __tablename__ = "upload_files"
     __table_args__ = (
         db.PrimaryKeyConstraint("id", name="upload_file_pkey"),
@@ -1558,7 +1476,7 @@ class UploadFile(Base):
         self.source_url = source_url
 
 
-class ApiRequest(Base):
+class ApiRequest(db.Model):  # type: ignore[name-defined]
     __tablename__ = "api_requests"
     __table_args__ = (
         db.PrimaryKeyConstraint("id", name="api_request_pkey"),
@@ -1575,7 +1493,7 @@ class ApiRequest(Base):
     created_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
 
 
-class MessageChain(Base):
+class MessageChain(db.Model):  # type: ignore[name-defined]
     __tablename__ = "message_chains"
     __table_args__ = (
         db.PrimaryKeyConstraint("id", name="message_chain_pkey"),
@@ -1590,7 +1508,7 @@ class MessageChain(Base):
     created_at = db.Column(db.DateTime, nullable=False, server_default=db.func.current_timestamp())
 
 
-class MessageAgentThought(Base):
+class MessageAgentThought(db.Model):  # type: ignore[name-defined]
     __tablename__ = "message_agent_thoughts"
     __table_args__ = (
         db.PrimaryKeyConstraint("id", name="message_agent_thought_pkey"),
@@ -1645,7 +1563,7 @@ class MessageAgentThought(Base):
                 return cast(dict, json.loads(self.tool_labels_str))
             else:
                 return {}
-        except Exception:
+        except Exception as e:
             return {}
 
     @property
@@ -1655,7 +1573,7 @@ class MessageAgentThought(Base):
                 return cast(dict, json.loads(self.tool_meta_str))
             else:
                 return {}
-        except Exception:
+        except Exception as e:
             return {}
 
     @property
@@ -1676,11 +1594,11 @@ class MessageAgentThought(Base):
                 return result
             else:
                 return {tool: {} for tool in tools}
-        except Exception:
+        except Exception as e:
             return {}
 
     @property
-    def tool_outputs_dict(self):
+    def tool_outputs_dict(self) -> dict:
         tools = self.tools
         try:
             if self.observation:
@@ -1697,14 +1615,14 @@ class MessageAgentThought(Base):
                 return result
             else:
                 return {tool: {} for tool in tools}
-        except Exception:
+        except Exception as e:
             if self.observation:
                 return dict.fromkeys(tools, self.observation)
             else:
                 return {}
 
 
-class DatasetRetrieverResource(Base):
+class DatasetRetrieverResource(db.Model):  # type: ignore[name-defined]
     __tablename__ = "dataset_retriever_resources"
     __table_args__ = (
         db.PrimaryKeyConstraint("id", name="dataset_retriever_resource_pkey"),
@@ -1731,7 +1649,7 @@ class DatasetRetrieverResource(Base):
     created_at = db.Column(db.DateTime, nullable=False, server_default=db.func.current_timestamp())
 
 
-class Tag(Base):
+class Tag(db.Model):  # type: ignore[name-defined]
     __tablename__ = "tags"
     __table_args__ = (
         db.PrimaryKeyConstraint("id", name="tag_pkey"),
@@ -1749,7 +1667,7 @@ class Tag(Base):
     created_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
 
 
-class TagBinding(Base):
+class TagBinding(db.Model):  # type: ignore[name-defined]
     __tablename__ = "tag_bindings"
     __table_args__ = (
         db.PrimaryKeyConstraint("id", name="tag_binding_pkey"),
@@ -1765,7 +1683,7 @@ class TagBinding(Base):
     created_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
 
 
-class TraceAppConfig(Base):
+class TraceAppConfig(db.Model):  # type: ignore[name-defined]
     __tablename__ = "trace_app_config"
     __table_args__ = (
         db.PrimaryKeyConstraint("id", name="tracing_app_config_pkey"),

@@ -1,9 +1,9 @@
+import json
 from collections.abc import Generator
 from typing import cast
 
 from core.app.apps.base_app_generate_response_converter import AppGenerateResponseConverter
 from core.app.entities.task_entities import (
-    AppStreamResponse,
     ChatbotAppBlockingResponse,
     ChatbotAppStreamResponse,
     ErrorStreamResponse,
@@ -52,8 +52,9 @@ class ChatAppGenerateResponseConverter(AppGenerateResponseConverter):
 
     @classmethod
     def convert_stream_full_response(
-        cls, stream_response: Generator[AppStreamResponse, None, None]
-    ) -> Generator[dict | str, None, None]:
+        cls,
+        stream_response: Generator[ChatbotAppStreamResponse, None, None],  # type: ignore[override]
+    ) -> Generator[str, None, None]:
         """
         Convert stream full response.
         :param stream_response: stream response
@@ -79,12 +80,13 @@ class ChatAppGenerateResponseConverter(AppGenerateResponseConverter):
                 response_chunk.update(data)
             else:
                 response_chunk.update(sub_stream_response.to_dict())
-            yield response_chunk
+            yield json.dumps(response_chunk)
 
     @classmethod
     def convert_stream_simple_response(
-        cls, stream_response: Generator[AppStreamResponse, None, None]
-    ) -> Generator[dict | str, None, None]:
+        cls,
+        stream_response: Generator[ChatbotAppStreamResponse, None, None],  # type: ignore[override]
+    ) -> Generator[str, None, None]:
         """
         Convert stream simple response.
         :param stream_response: stream response
@@ -116,4 +118,4 @@ class ChatAppGenerateResponseConverter(AppGenerateResponseConverter):
             else:
                 response_chunk.update(sub_stream_response.to_dict())
 
-            yield response_chunk
+            yield json.dumps(response_chunk)

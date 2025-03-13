@@ -1,0 +1,42 @@
+identity:
+  name: github_repositories
+  author: CharlieWei
+  label:
+    en_US: Search Repositories
+    zh_Hans: 仓库搜索
+    pt_BR: Pesquisar Repositórios
+  icon: icon.svg
+description:
+  human:
+    en_US: Search the Github repository to retrieve the open source projects you need
+    zh_Hans: 搜索Github仓库，检索你需要的开源项目。
+    pt_BR: Pesquise o repositório do Github para recuperar os projetos de código aberto necessários.
+  llm: A tool when you wants to search for popular warehouses or open source projects for any keyword. format query condition like "keywords+language:js", language can be other dev languages.
+parameters:
+  - name: query
+    type: string
+    required: true
+    label:
+      en_US: query
+      zh_Hans: 关键字
+      pt_BR: consulta
+    human_description:
+      en_US: You want to find the project development language, keywords, For example. Find 10 Python developed PDF document parsing projects.
+      zh_Hans: 你想要找的项目开发语言、关键字，如：找10个Python开发的PDF文档解析项目。
+      pt_BR: Você deseja encontrar a linguagem de desenvolvimento do projeto, palavras-chave, Por exemplo. Encontre 10 projetos de análise de documentos PDF desenvolvidos em Python.
+    llm_description: The query of you want to search, format query condition like "keywords+language:js", language can be other dev languages.
+    form: llm
+  - name: top_n
+    type: number
+    default: 5
+    required: true
+    label:
+      en_US: Top N
+      zh_Hans: Top N
+      pt_BR: Topo N
+    human_description:
+      en_US: Number of records returned by sorting based on stars. 5 is returned by default.
+      zh_Hans: 基于stars排序返回的记录数, 默认返回5条。
+      pt_BR: Número de registros retornados por classificação com base em estrelas. 5 é retornado por padrão.
+    llm_description: Extract the first N records from the returned result.
+    form: llm

@@ -2,6 +2,8 @@ from enum import StrEnum
 
 from pydantic import BaseModel, ConfigDict
 
+from models.account import Tenant
+from models.plan import Plan
 from configs import dify_config
 from services.billing_service import BillingService
 from services.enterprise.enterprise_service import EnterpriseService
@@ -38,10 +40,9 @@ class LicenseModel(BaseModel):
 
 class FeatureModel(BaseModel):
     billing: BillingModel = BillingModel()
-    members: LimitationModel = LimitationModel(size=0, limit=1)
+    members: LimitationModel = LimitationModel(size=0, limit=2)
     apps: LimitationModel = LimitationModel(size=0, limit=10)
     vector_space: LimitationModel = LimitationModel(size=0, limit=5)
-    knowledge_rate_limit: int = 10
     annotation_quota_limit: LimitationModel = LimitationModel(size=0, limit=10)
     documents_upload_quota: LimitationModel = LimitationModel(size=0, limit=50)
     docs_processing: str = "standard"
@@ -53,20 +54,12 @@ class FeatureModel(BaseModel):
     model_config = ConfigDict(protected_namespaces=())
 
 
-class KnowledgeRateLimitModel(BaseModel):
-    enabled: bool = False
-    limit: int = 10
-    subscription_plan: str = ""
-
-
 class SystemFeatureModel(BaseModel):
     sso_enforced_for_signin: bool = False
     sso_enforced_for_signin_protocol: str = ""
     sso_enforced_for_web: bool = False
     sso_enforced_for_web_protocol: str = ""
     enable_web_sso_switch_component: bool = False
-    enable_marketplace: bool = False
-    max_plugin_package_size: int = dify_config.PLUGIN_MAX_PACKAGE_SIZE
     enable_email_code_login: bool = False
     enable_email_password_login: bool = True
     enable_social_oauth_login: bool = False
@@ -80,23 +73,11 @@ class FeatureService:
     @classmethod
     def get_features(cls, tenant_id: str) -> FeatureModel:
         features = FeatureModel()
-
         cls._fulfill_params_from_env(features)
-
-        if dify_config.BILLING_ENABLED and tenant_id:
+        if tenant_id:
             cls._fulfill_params_from_billing_api(features, tenant_id)
 
         return features
-
-    @classmethod
-    def get_knowledge_rate_limit(cls, tenant_id: str):
-        knowledge_rate_limit = KnowledgeRateLimitModel()
-        if dify_config.BILLING_ENABLED and tenant_id:
-            knowledge_rate_limit.enabled = True
-            limit_info = BillingService.get_knowledge_rate_limit(tenant_id)
-            knowledge_rate_limit.limit = limit_info.get("limit", 10)
-            knowledge_rate_limit.subscription_plan = limit_info.get("subscription_plan", "sandbox")
-        return knowledge_rate_limit
 
     @classmethod
     def get_system_features(cls) -> SystemFeatureModel:
@@ -108,9 +89,6 @@ class FeatureService:
             system_features.enable_web_sso_switch_component = True
 
             cls._fulfill_params_from_enterprise(system_features)
-
-        if dify_config.MARKETPLACE_ENABLED:
-            system_features.enable_marketplace = True
 
         return system_features
 
@@ -131,43 +109,56 @@ class FeatureService:
 
     @classmethod
     def _fulfill_params_from_billing_api(cls, features: FeatureModel, tenant_id: str):
-        billing_info = BillingService.get_info(tenant_id)
+        # billing_info = BillingService.get_info(tenant_id)
+        tenant = Tenant.query.filter_by(id=tenant_id).first()
+        if tenant:
+            plan = Plan.query.filter_by(id=tenant.plan_id).first()
+            if plan:
+                features.billing.enabled = True
+                features.billing.subscription.plan = plan.name
+                features.billing.subscription.interval = ""
+                features.members.size = 0
+                features.members.limit = plan.team_members
+                features.apps.size = 0
+                features.apps.limit = plan.app_count
+                features.vector_space.size = 0
+                features.vector_space.limit = plan.vector_space
+                features.documents_upload_quota.size = 0
+                features.documents_upload_quota.limit = plan.document_upload_quota
+                features.docs_processing = "standard"
+                
+        # features.billing.enabled = billing_info["enabled"]
+        # features.billing.subscription.plan = billing_info["subscription"]["plan"]
+        # features.billing.subscription.interval = billing_info["subscription"]["interval"]
 
-        features.billing.enabled = billing_info["enabled"]
-        features.billing.subscription.plan = billing_info["subscription"]["plan"]
-        features.billing.subscription.interval = billing_info["subscription"]["interval"]
+        # if "members" in billing_info:
+        #     features.members.size = billing_info["members"]["size"]
+        #     features.members.limit = billing_info["members"]["limit"]
 
-        if "members" in billing_info:
-            features.members.size = billing_info["members"]["size"]
-            features.members.limit = billing_info["members"]["limit"]
+        # if "apps" in billing_info:
+        #     features.apps.size = billing_info["apps"]["size"]
+        #     features.apps.limit = billing_info["apps"]["limit"]
 
-        if "apps" in billing_info:
-            features.apps.size = billing_info["apps"]["size"]
-            features.apps.limit = billing_info["apps"]["limit"]
+        # if "vector_space" in billing_info:
+        #     features.vector_space.size = billing_info["vector_space"]["size"]
+        #     features.vector_space.limit = billing_info["vector_space"]["limit"]
 
-        if "vector_space" in billing_info:
-            features.vector_space.size = billing_info["vector_space"]["size"]
-            features.vector_space.limit = billing_info["vector_space"]["limit"]
+        # if "documents_upload_quota" in billing_info:
+        #     features.documents_upload_quota.size = billing_info["documents_upload_quota"]["size"]
+        #     features.documents_upload_quota.limit = billing_info["documents_upload_quota"]["limit"]
 
-        if "documents_upload_quota" in billing_info:
-            features.documents_upload_quota.size = billing_info["documents_upload_quota"]["size"]
-            features.documents_upload_quota.limit = billing_info["documents_upload_quota"]["limit"]
+        # if "annotation_quota_limit" in billing_info:
+        #     features.annotation_quota_limit.size = billing_info["annotation_quota_limit"]["size"]
+        #     features.annotation_quota_limit.limit = billing_info["annotation_quota_limit"]["limit"]
 
-        if "annotation_quota_limit" in billing_info:
-            features.annotation_quota_limit.size = billing_info["annotation_quota_limit"]["size"]
-            features.annotation_quota_limit.limit = billing_info["annotation_quota_limit"]["limit"]
+        # if "docs_processing" in billing_info:
+        #     features.docs_processing = billing_info["docs_processing"]
 
-        if "docs_processing" in billing_info:
-            features.docs_processing = billing_info["docs_processing"]
+        # if "can_replace_logo" in billing_info:
+        #     features.can_replace_logo = billing_info["can_replace_logo"]
 
-        if "can_replace_logo" in billing_info:
-            features.can_replace_logo = billing_info["can_replace_logo"]
-
-        if "model_load_balancing_enabled" in billing_info:
-            features.model_load_balancing_enabled = billing_info["model_load_balancing_enabled"]
-
-        if "knowledge_rate_limit" in billing_info:
-            features.knowledge_rate_limit = billing_info["knowledge_rate_limit"]["limit"]
+        # if "model_load_balancing_enabled" in billing_info:
+        #     features.model_load_balancing_enabled = billing_info["model_load_balancing_enabled"]
 
     @classmethod
     def _fulfill_params_from_enterprise(cls, features):

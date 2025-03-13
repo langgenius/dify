@@ -1,0 +1,31 @@
+identity:
+  author: Dify
+  name: youtube
+  label:
+    en_US: YouTube
+    zh_Hans: YouTube
+    pt_BR: YouTube
+  description:
+    en_US: YouTube
+    zh_Hans: YouTube（油管）是全球最大的视频分享网站，用户可以在上面上传、观看和分享视频。
+    pt_BR: YouTube é o maior site de compartilhamento de vídeos do mundo, onde os usuários podem fazer upload, assistir e compartilhar vídeos.
+  icon: icon.svg
+  tags:
+    - videos
+credentials_for_provider:
+  google_api_key:
+    type: secret-input
+    required: true
+    label:
+      en_US: Google API key
+      zh_Hans: Google API key
+      pt_BR: Chave da API do Google
+    placeholder:
+      en_US: Please input your Google API key
+      zh_Hans: 请输入你的 Google API key
+      pt_BR: Insira sua chave da API do Google
+    help:
+      en_US: Get your Google API key from Google
+      zh_Hans: 从 Google 获取您的 Google API key
+      pt_BR: Obtenha sua chave da API do Google no Google
+    url: https://console.developers.google.com/apis/credentials

@@ -1,0 +1,34 @@
+identity:
+  name: searchDevDocs
+  author: Richards Tu
+  label:
+    en_US: Search Developer Docs
+    zh_Hans: 搜索开发者文档
+description:
+  human:
+    en_US: A tools for searching for a specific topic and path in DevDocs based on the provided documentation name and topic. Don't for get to add some shots in the system prompt; for example, the documentation name should be like \"vuex~4\", \"css\", or \"python~3.12\", while the topic should be like \"guide/actions\" for Vuex 4, \"display-box\" for CSS, or \"library/code\" for Python 3.12.
+    zh_Hans: 一个用于根据提供的文档名称和主题，在DevDocs中搜索特定主题和路径的工具。不要忘记在系统提示词中添加一些示例；例如，文档名称应该是\"vuex~4\"、\"css\"或\"python~3.12\"，而主题应该是\"guide/actions\"用于Vuex 4，\"display-box\"用于CSS，或\"library/code\"用于Python 3.12。
+  llm: A tools for searching for specific developer documentation in DevDocs based on the provided documentation name and topic.
+parameters:
+  - name: doc
+    type: string
+    required: true
+    label:
+      en_US: Documentation name
+      zh_Hans: 文档名称
+    human_description:
+      en_US: The name of the documentation.
+      zh_Hans: 文档名称。
+    llm_description: The name of the documentation, such as \"vuex~4\", \"css\", or \"python~3.12\". The exact value should be identified by the user.
+    form: llm
+  - name: topic
+    type: string
+    required: true
+    label:
+      en_US: Topic name
+      zh_Hans: 主题名称
+    human_description:
+      en_US: The path of the section/topic.
+      zh_Hans: 文档主题的路径。
+    llm_description: The path of the section/topic, such as \"guide/actions\" for Vuex 4, \"display-box\" for CSS, or \"library/code\" for Python 3.12.
+    form: llm

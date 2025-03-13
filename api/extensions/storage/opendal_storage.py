@@ -34,7 +34,7 @@ class OpenDALStorage(BaseStorage):
             root = kwargs.get("root", "storage")
             Path(root).mkdir(parents=True, exist_ok=True)
 
-        self.op = opendal.Operator(scheme=scheme, **kwargs)  # type: ignore
+        self.op = opendal.Operator(scheme=scheme, **kwargs)
         logger.debug(f"opendal operator created with scheme {scheme}")
         retry_layer = opendal.layers.RetryLayer(max_times=3, factor=2.0, jitter=True)
         self.op = self.op.layer(retry_layer)
@@ -71,8 +71,15 @@ class OpenDALStorage(BaseStorage):
         logger.debug(f"file {filename} downloaded to {target_filepath}")
 
     def exists(self, filename: str) -> bool:
-        res: bool = self.op.exists(path=filename)
-        return res
+        # FIXME this is a workaround for opendal python-binding do not have a exists method and no better
+        # error handler here when opendal python-binding has a exists method, we should use it
+        # more https://github.com/apache/opendal/blob/main/bindings/python/src/operator.rs
+        try:
+            res: bool = self.op.stat(path=filename).mode.is_file()
+            logger.debug(f"file {filename} checked")
+            return res
+        except Exception:
+            return False
 
     def delete(self, filename: str):
         if self.exists(filename):

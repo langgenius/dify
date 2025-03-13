@@ -1,0 +1,36 @@
+model: 360gpt-turbo
+label:
+  zh_Hans: 360gpt-turbo
+  en_US: 360gpt-turbo
+model_type: llm
+features:
+  - agent-thought
+model_properties:
+  mode: chat
+  context_size: 2048
+parameter_rules:
+  - name: temperature
+    use_template: temperature
+    min: 0
+    max: 1
+    default: 0.5
+  - name: top_p
+    use_template: top_p
+    min: 0
+    max: 1
+    default: 1
+  - name: max_tokens
+    use_template: max_tokens
+    min: 1
+    max: 2048
+    default: 1024
+  - name: frequency_penalty
+    use_template: frequency_penalty
+    min: -2
+    max: 2
+    default: 0
+  - name: presence_penalty
+    use_template: presence_penalty
+    min: -2
+    max: 2
+    default: 0

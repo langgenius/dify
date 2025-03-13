@@ -1,0 +1,54 @@
+identity:
+  name: add_event_attendees
+  author: Doug Lea
+  label:
+    en_US: Add Event Attendees
+    zh_Hans: 添加日程参会人
+description:
+  human:
+    en_US: Add Event Attendees
+    zh_Hans: 添加日程参会人
+  llm: A tool for adding attendees to events in Feishu. (在飞书中添加日程参会人)
+parameters:
+  - name: event_id
+    type: string
+    required: true
+    label:
+      en_US: Event ID
+      zh_Hans: 日程 ID
+    human_description:
+      en_US: |
+        The ID of the event, which will be returned when the event is created. For example: fb2a6406-26d6-4c8d-a487-6f0246c94d2f_0.
+      zh_Hans: |
+        创建日程时会返回日程 ID。例如: fb2a6406-26d6-4c8d-a487-6f0246c94d2f_0。
+    llm_description: |
+      日程 ID，创建日程时会返回日程 ID。例如: fb2a6406-26d6-4c8d-a487-6f0246c94d2f_0。
+    form: llm
+
+  - name: need_notification
+    type: boolean
+    required: false
+    default: true
+    label:
+      en_US: Need Notification
+      zh_Hans: 是否需要通知
+    human_description:
+      en_US: |
+        Whether to send a Bot notification to attendees. true: send, false: do not send.
+      zh_Hans: |
+        是否给参与人发送 Bot 通知，true: 发送，false: 不发送。
+    llm_description: |
+      是否给参与人发送 Bot 通知，true: 发送，false: 不发送。
+    form: form
+
+  - name: attendee_phone_or_email
+    type: string
+    required: true
+    label:
+      en_US: Attendee Phone or Email
+      zh_Hans: 参会人电话或邮箱
+    human_description:
+      en_US: The list of attendee emails or phone numbers, separated by commas.
+      zh_Hans: 日程参会人邮箱或者手机号列表，使用逗号分隔。
+    llm_description: 日程参会人邮箱或者手机号列表，使用逗号分隔。
+    form: llm

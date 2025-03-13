@@ -1,0 +1,47 @@
+identity:
+  name: nominatim_reverse
+  author: Charles Zhou
+  label:
+    en_US: Nominatim Reverse Geocoding
+    zh_Hans: Nominatim 反向地理编码
+    de_DE: Nominatim Rückwärts-Geocodierung
+    ja_JP: Nominatim リバースジオコーディング
+description:
+  human:
+    en_US: Convert coordinates to addresses using Nominatim
+    zh_Hans: 使用Nominatim将坐标转换为地址
+    de_DE: Konvertieren Sie Koordinaten in Adressen mit Nominatim
+    ja_JP: Nominatimを使用して座標を住所に変換
+  llm: A tool for reverse geocoding using Nominatim, which can convert latitude
+    and longitude coordinates to an address.
+parameters:
+  - name: lat
+    type: number
+    required: true
+    label:
+      en_US: Latitude
+      zh_Hans: 纬度
+      de_DE: Breitengrad
+      ja_JP: 緯度
+    human_description:
+      en_US: Latitude coordinate for reverse geocoding
+      zh_Hans: 用于反向地理编码的纬度坐标
+      de_DE: Breitengrad-Koordinate für die Rückwärts-Geocodierung
+      ja_JP: リバースジオコーディングの緯度座標
+    llm_description: The latitude coordinate for reverse geocoding.
+    form: llm
+  - name: lon
+    type: number
+    required: true
+    label:
+      en_US: Longitude
+      zh_Hans: 经度
+      de_DE: Längengrad
+      ja_JP: 経度
+    human_description:
+      en_US: Longitude coordinate for reverse geocoding
+      zh_Hans: 用于反向地理编码的经度坐标
+      de_DE: Längengrad-Koordinate für die Rückwärts-Geocodierung
+      ja_JP: リバースジオコーディングの経度座標
+    llm_description: The longitude coordinate for reverse geocoding.
+    form: llm

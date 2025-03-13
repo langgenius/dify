@@ -1,0 +1,9 @@
+model: embed-english-light-v3.0
+model_type: text-embedding
+model_properties:
+  context_size: 384
+  max_chunks: 48
+pricing:
+  input: '0.1'
+  unit: '0.000001'
+  currency: USD

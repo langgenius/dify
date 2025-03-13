@@ -42,6 +42,7 @@ class MessageBasedAppGenerator(BaseAppGenerator):
             ChatAppGenerateEntity,
             CompletionAppGenerateEntity,
             AgentChatAppGenerateEntity,
+            AgentChatAppGenerateEntity,
         ],
         queue_manager: AppQueueManager,
         conversation: Conversation,

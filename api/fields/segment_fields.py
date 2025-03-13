@@ -18,7 +18,6 @@ segment_fields = {
     "position": fields.Integer,
     "document_id": fields.String,
     "content": fields.String,
-    "sign_content": fields.String,
     "answer": fields.String,
     "word_count": fields.Integer,
     "tokens": fields.Integer,

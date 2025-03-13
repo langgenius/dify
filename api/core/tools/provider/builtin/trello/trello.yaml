@@ -1,0 +1,47 @@
+identity:
+  author: Yash Parmar
+  name: trello
+  label:
+    en_US: Trello
+    zh_Hans: Trello
+    pt_BR: Trello
+  description:
+    en_US: "Trello: A visual tool for organizing your work and life."
+    zh_Hans: "Trello: 一个用于组织工作和生活的视觉工具。"
+    pt_BR: "Trello: Uma ferramenta visual para organizar seu trabalho e vida."
+  icon: icon.svg
+  tags:
+    - productivity
+credentials_for_provider:
+  trello_api_key:
+    type: secret-input
+    required: true
+    label:
+      en_US: Trello API key
+      zh_Hans: Trello API key
+      pt_BR: Trello API key
+    placeholder:
+      en_US: Enter your Trello API key
+      zh_Hans: 输入您的 Trello API key
+      pt_BR: Insira sua chave API do Trello
+    help:
+      en_US: Obtain your API key from Trello's website.
+      zh_Hans: 从 Trello 网站获取您的 API key。
+      pt_BR: Obtenha sua chave API no site do Trello.
+    url: https://developer.atlassian.com/cloud/trello/guides/rest-api/api-introduction/
+  trello_api_token:
+    type: secret-input
+    required: true
+    label:
+      en_US: Trello API token
+      zh_Hans: Trello API token
+      pt_BR: Trello API token
+    placeholder:
+      en_US: Enter your Trello API token
+      zh_Hans: 输入您的 Trello API token
+      pt_BR: Insira seu token API do Trello
+    help:
+      en_US: Secure your API token from Trello's website.
+      zh_Hans: 从 Trello 网站获取您的 API token。
+      pt_BR: Garanta seu token API no site do Trello.
+    url: https://developer.atlassian.com/cloud/trello/guides/rest-api/api-introduction/

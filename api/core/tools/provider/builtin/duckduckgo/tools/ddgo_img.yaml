@@ -1,0 +1,99 @@
+identity:
+  name: ddgo_img
+  author: hjlarry
+  label:
+    en_US: DuckDuckGo Image Search
+    zh_Hans: DuckDuckGo 图片搜索
+description:
+  human:
+    en_US: Perform image searches on DuckDuckGo and get results.
+    zh_Hans: 在 DuckDuckGo 上进行图片搜索并获取结果。
+  llm: Perform image searches on DuckDuckGo and get results.
+parameters:
+  - name: query
+    type: string
+    required: true
+    label:
+      en_US: Query string
+      zh_Hans: 查询语句
+    human_description:
+      en_US: The search query.
+      zh_Hans: 搜索查询语句。
+    llm_description: Key words for searching
+    form: llm
+  - name: max_results
+    type: number
+    required: true
+    default: 3
+    label:
+      en_US: Max results
+      zh_Hans: 最大结果数量
+    human_description:
+      en_US: The max results.
+      zh_Hans: 最大结果数量
+    form: form
+  - name: timelimit
+    type: select
+    required: false
+    options:
+      - value: Day
+        label:
+          en_US: current day
+          zh_Hans: 当天
+      - value: Week
+        label:
+          en_US: current week
+          zh_Hans: 本周
+      - value: Month
+        label:
+          en_US: current month
+          zh_Hans: 当月
+      - value: Year
+        label:
+          en_US: current year
+          zh_Hans: 今年
+    label:
+      en_US: Result time limit
+      zh_Hans: 结果时间限制
+    human_description:
+      en_US: Use when querying results within a specific time range only.
+      zh_Hans: 只查询一定时间范围内的结果时使用
+    form: form
+  - name: size
+    type: select
+    required: false
+    options:
+      - value: Small
+        label:
+          en_US: small
+          zh_Hans: 小
+      - value: Medium
+        label:
+          en_US: medium
+          zh_Hans: 中
+      - value: Large
+        label:
+          en_US: large
+          zh_Hans: 大
+      - value: Wallpaper
+        label:
+          en_US: xl
+          zh_Hans: 超大
+    label:
+      en_US: image size
+      zh_Hans: 图片大小
+    human_description:
+      en_US: The size of the image to be searched.
+      zh_Hans: 要搜索的图片的大小
+    form: form
+  - name: query_prefix
+    label:
+      en_US: Query Prefix
+      zh_Hans: 查询前缀
+    type: string
+    required: false
+    default: ""
+    form: form
+    human_description:
+      en_US: Specific Search e.g. "site:unsplash.com"
+      zh_Hans: 定向搜索 e.g. "site:unsplash.com"

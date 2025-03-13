@@ -1,0 +1,29 @@
+provider: baichuan
+label:
+  en_US: Baichuan
+icon_small:
+  en_US: icon_s_en.svg
+icon_large:
+  en_US: icon_l_en.svg
+background: "#FFF6F2"
+help:
+  title:
+    en_US: Get your API Key from BAICHUAN AI
+    zh_Hans: 从百川智能获取您的 API Key
+  url:
+    en_US: https://www.baichuan-ai.com
+supported_model_types:
+  - llm
+  - text-embedding
+configurate_methods:
+  - predefined-model
+provider_credential_schema:
+  credential_form_schemas:
+    - variable: api_key
+      label:
+        en_US: API Key
+      type: secret-input
+      required: true
+      placeholder:
+        zh_Hans: 在此输入您的 API Key
+        en_US: Enter your API Key

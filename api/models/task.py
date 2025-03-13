@@ -2,12 +2,10 @@ from datetime import UTC, datetime
 
 from celery import states  # type: ignore
 
-from models.base import Base
-
 from .engine import db
 
 
-class CeleryTask(Base):
+class CeleryTask(db.Model):  # type: ignore[name-defined]
     """Task result/status."""
 
     __tablename__ = "celery_taskmeta"
@@ -31,7 +29,7 @@ class CeleryTask(Base):
     queue = db.Column(db.String(155), nullable=True)
 
 
-class CeleryTaskSet(Base):
+class CeleryTaskSet(db.Model):  # type: ignore[name-defined]
     """TaskSet result."""
 
     __tablename__ = "celery_tasksetmeta"

@@ -1,6 +1,5 @@
-import json
-from collections.abc import Generator, Mapping, Sequence
-from typing import TYPE_CHECKING, Any, Optional, Union
+from collections.abc import Mapping, Sequence
+from typing import TYPE_CHECKING, Any, Optional
 
 from core.app.app_config.entities import VariableEntityType
 from core.file import File, FileUploadConfig
@@ -139,21 +138,3 @@ class BaseAppGenerator:
         if isinstance(value, str):
             return value.replace("\x00", "")
         return value
-
-    @classmethod
-    def convert_to_event_stream(cls, generator: Union[Mapping, Generator[Mapping | str, None, None]]):
-        """
-        Convert messages into event stream
-        """
-        if isinstance(generator, dict):
-            return generator
-        else:
-
-            def gen():
-                for message in generator:
-                    if isinstance(message, (Mapping, dict)):
-                        yield f"data: {json.dumps(message)}\n\n"
-                    else:
-                        yield f"event: {message}\n\n"
-
-            return gen()

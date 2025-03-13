@@ -1,0 +1,13 @@
+identity:
+  author: Pink Banana
+  name: pubmed
+  label:
+    en_US: PubMed
+    zh_Hans: PubMed
+  description:
+    en_US: A search engine for biomedical literature.
+    zh_Hans: 一款生物医学文献搜索引擎。
+  icon: icon.svg
+  tags:
+    - medical
+    - search

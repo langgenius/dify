@@ -1,6 +1,6 @@
 import json
 from abc import ABC, abstractmethod
-from collections.abc import Generator, Mapping, Sequence
+from collections.abc import Generator, Mapping
 from typing import Any, Optional
 
 from core.agent.base_agent_runner import BaseAgentRunner
@@ -18,8 +18,8 @@ from core.model_runtime.entities.message_entities import (
 )
 from core.ops.ops_trace_manager import TraceQueueManager
 from core.prompt.agent_history_prompt_transform import AgentHistoryPromptTransform
-from core.tools.__base.tool import Tool
 from core.tools.entities.tool_entities import ToolInvokeMeta
+from core.tools.tool.tool import Tool
 from core.tools.tool_engine import ToolEngine
 from models.model import Message
 
@@ -27,11 +27,11 @@ from models.model import Message
 class CotAgentRunner(BaseAgentRunner, ABC):
     _is_first_iteration = True
     _ignore_observation_providers = ["wenxin"]
-    _historic_prompt_messages: list[PromptMessage]
-    _agent_scratchpad: list[AgentScratchpadUnit]
-    _instruction: str
-    _query: str
-    _prompt_messages_tools: Sequence[PromptMessageTool]
+    _historic_prompt_messages: list[PromptMessage] | None = None
+    _agent_scratchpad: list[AgentScratchpadUnit] | None = None
+    _instruction: str = ""  # FIXME this must be str for now
+    _query: str | None = None
+    _prompt_messages_tools: list[PromptMessageTool] = []
 
     def run(
         self,
@@ -42,7 +42,6 @@ class CotAgentRunner(BaseAgentRunner, ABC):
         """
         Run Cot agent application
         """
-
         app_generate_entity = self.application_generate_entity
         self._repack_app_generate_entity(app_generate_entity)
         self._init_react_state(query)
@@ -55,19 +54,17 @@ class CotAgentRunner(BaseAgentRunner, ABC):
                 app_generate_entity.model_conf.stop.append("Observation")
 
         app_config = self.app_config
-        assert app_config.agent
 
         # init instruction
         inputs = inputs or {}
-        instruction = app_config.prompt_template.simple_prompt_template or ""
-        self._instruction = self._fill_in_inputs_from_external_data_tools(instruction, inputs)
+        instruction = app_config.prompt_template.simple_prompt_template
+        self._instruction = self._fill_in_inputs_from_external_data_tools(instruction=instruction or "", inputs=inputs)
 
         iteration_step = 1
         max_iteration_steps = min(app_config.agent.max_iteration if app_config.agent else 5, 5) + 1
 
         # convert tools into ModelRuntime Tool format
-        tool_instances, prompt_messages_tools = self._init_prompt_tools()
-        self._prompt_messages_tools = prompt_messages_tools
+        tool_instances, self._prompt_messages_tools = self._init_prompt_tools()
 
         function_call_state = True
         llm_usage: dict[str, Optional[LLMUsage]] = {"usage": None}
@@ -119,7 +116,14 @@ class CotAgentRunner(BaseAgentRunner, ABC):
                 callbacks=[],
             )
 
-            usage_dict: dict[str, Optional[LLMUsage]] = {}
+            if not isinstance(chunks, Generator):
+                raise ValueError("Expected streaming response from LLM")
+
+            # check llm result
+            if not chunks:
+                raise ValueError("failed to invoke llm")
+
+            usage_dict: dict[str, Optional[LLMUsage]] = {"usage": None}
             react_chunks = CotAgentOutputParser.handle_react_stream_output(chunks, usage_dict)
             scratchpad = AgentScratchpadUnit(
                 agent_response="",
@@ -139,25 +143,25 @@ class CotAgentRunner(BaseAgentRunner, ABC):
                 if isinstance(chunk, AgentScratchpadUnit.Action):
                     action = chunk
                     # detect action
-                    assert scratchpad.agent_response is not None
-                    scratchpad.agent_response += json.dumps(chunk.model_dump())
+                    if scratchpad.agent_response is not None:
+                        scratchpad.agent_response += json.dumps(chunk.model_dump())
                     scratchpad.action_str = json.dumps(chunk.model_dump())
                     scratchpad.action = action
                 else:
-                    assert scratchpad.agent_response is not None
-                    scratchpad.agent_response += chunk
-                    assert scratchpad.thought is not None
-                    scratchpad.thought += chunk
+                    if scratchpad.agent_response is not None:
+                        scratchpad.agent_response += chunk
+                    if scratchpad.thought is not None:
+                        scratchpad.thought += chunk
                     yield LLMResultChunk(
                         model=self.model_config.model,
                         prompt_messages=prompt_messages,
                         system_fingerprint="",
                         delta=LLMResultChunkDelta(index=0, message=AssistantPromptMessage(content=chunk), usage=None),
                     )
-
-            assert scratchpad.thought is not None
-            scratchpad.thought = scratchpad.thought.strip() or "I am thinking about how to help you"
-            self._agent_scratchpad.append(scratchpad)
+            if scratchpad.thought is not None:
+                scratchpad.thought = scratchpad.thought.strip() or "I am thinking about how to help you"
+            if self._agent_scratchpad is not None:
+                self._agent_scratchpad.append(scratchpad)
 
             # get llm usage
             if "usage" in usage_dict:
@@ -252,6 +256,8 @@ class CotAgentRunner(BaseAgentRunner, ABC):
             answer=final_answer,
             messages_ids=[],
         )
+        if self.variables_pool is not None and self.db_variables_pool is not None:
+            self.update_db_variables(self.variables_pool, self.db_variables_pool)
         # publish end event
         self.queue_manager.publish(
             QueueMessageEndEvent(
@@ -269,7 +275,7 @@ class CotAgentRunner(BaseAgentRunner, ABC):
     def _handle_invoke_action(
         self,
         action: AgentScratchpadUnit.Action,
-        tool_instances: Mapping[str, Tool],
+        tool_instances: dict[str, Tool],
         message_file_ids: list[str],
         trace_manager: Optional[TraceQueueManager] = None,
     ) -> tuple[str, ToolInvokeMeta]:
@@ -309,7 +315,11 @@ class CotAgentRunner(BaseAgentRunner, ABC):
         )
 
         # publish files
-        for message_file_id in message_files:
+        for message_file_id, save_as in message_files:
+            if save_as is not None and self.variables_pool:
+                # FIXME the save_as type is confusing, it should be a string or not
+                self.variables_pool.set_file(tool_name=tool_call_name, value=message_file_id, name=str(save_as))
+
             # publish message file
             self.queue_manager.publish(
                 QueueMessageFileEvent(message_file_id=message_file_id), PublishFrom.APPLICATION_MANAGER
@@ -332,7 +342,7 @@ class CotAgentRunner(BaseAgentRunner, ABC):
         for key, value in inputs.items():
             try:
                 instruction = instruction.replace(f"{{{{{key}}}}}", str(value))
-            except Exception:
+            except Exception as e:
                 continue
 
         return instruction
@@ -369,7 +379,7 @@ class CotAgentRunner(BaseAgentRunner, ABC):
         return message
 
     def _organize_historic_prompt_messages(
-        self, current_session_messages: list[PromptMessage] | None = None
+        self, current_session_messages: Optional[list[PromptMessage]] = None
     ) -> list[PromptMessage]:
         """
         organize historic prompt messages
@@ -381,7 +391,8 @@ class CotAgentRunner(BaseAgentRunner, ABC):
         for message in self.history_prompt_messages:
             if isinstance(message, AssistantPromptMessage):
                 if not current_scratchpad:
-                    assert isinstance(message.content, str)
+                    if not isinstance(message.content, str | None):
+                        raise NotImplementedError("expected str type")
                     current_scratchpad = AgentScratchpadUnit(
                         agent_response=message.content,
                         thought=message.content or "I am thinking about how to help you",
@@ -400,8 +411,9 @@ class CotAgentRunner(BaseAgentRunner, ABC):
                     except:
                         pass
             elif isinstance(message, ToolPromptMessage):
-                if current_scratchpad:
-                    assert isinstance(message.content, str)
+                if not current_scratchpad:
+                    continue
+                if isinstance(message.content, str):
                     current_scratchpad.observation = message.content
                 else:
                     raise NotImplementedError("expected str type")

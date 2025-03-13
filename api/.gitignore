@@ -1,0 +1,8 @@
+# 忽略 __pycache__ 文件夹及其内容
+__pycache__/
+
+# 忽略所有 .pyc 文件
+*.pyc
+storage/
+
+.vscode/

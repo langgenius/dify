@@ -1,0 +1,88 @@
+provider: siliconflow
+label:
+  zh_Hans: 硅基流动
+  en_US: SiliconFlow
+icon_small:
+  en_US: siliconflow_square.svg
+icon_large:
+  en_US: siliconflow.svg
+background: "#ffecff"
+help:
+  title:
+    en_US: Get your API Key from SiliconFlow
+    zh_Hans: 从 SiliconFlow 获取 API Key
+  url:
+    en_US: https://cloud.siliconflow.cn/account/ak
+supported_model_types:
+  - llm
+  - text-embedding
+  - rerank
+  - speech2text
+  - tts
+configurate_methods:
+  - predefined-model
+  - customizable-model
+provider_credential_schema:
+  credential_form_schemas:
+    - variable: api_key
+      label:
+        en_US: API Key
+      type: secret-input
+      required: true
+      placeholder:
+        zh_Hans: 在此输入您的 API Key
+        en_US: Enter your API Key
+model_credential_schema:
+  model:
+    label:
+      en_US: Model Name
+      zh_Hans: 模型名称
+    placeholder:
+      en_US: Enter your model name
+      zh_Hans: 输入模型名称
+  credential_form_schemas:
+    - variable: api_key
+      label:
+        en_US: API Key
+      type: secret-input
+      required: true
+      placeholder:
+        zh_Hans: 在此输入您的 API Key
+        en_US: Enter your API Key
+    - variable: context_size
+      label:
+        zh_Hans: 模型上下文长度
+        en_US: Model context size
+      required: true
+      type: text-input
+      default: '4096'
+      placeholder:
+        zh_Hans: 在此输入您的模型上下文长度
+        en_US: Enter your Model context size
+    - variable: max_tokens
+      label:
+        zh_Hans: 最大 token 上限
+        en_US: Upper bound for max tokens
+      default: '4096'
+      type: text-input
+      show_on:
+        - variable: __model_type
+          value: llm
+    - variable: function_calling_type
+      label:
+        en_US: Function calling
+      type: select
+      required: false
+      default: no_call
+      options:
+        - value: no_call
+          label:
+            en_US: Not Support
+            zh_Hans: 不支持
+        - value: function_call
+          label:
+            en_US: Support
+            zh_Hans: 支持
+      show_on:
+        - variable: __model_type
+          value: llm

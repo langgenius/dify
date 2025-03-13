@@ -4,8 +4,7 @@ from core.app.app_config.entities import EasyUIBasedAppConfig
 from core.app.entities.app_invoke_entities import ModelConfigWithCredentialsEntity
 from core.entities.model_entities import ModelStatus
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
-from core.model_runtime.entities.llm_entities import LLMMode
-from core.model_runtime.entities.model_entities import ModelPropertyKey, ModelType
+from core.model_runtime.entities.model_entities import ModelType
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
 from core.provider_manager import ProviderManager
 
@@ -64,14 +63,14 @@ class ModelConfigConverter:
             stop = completion_params["stop"]
             del completion_params["stop"]
 
-        model_schema = model_type_instance.get_model_schema(model_config.model, model_credentials)
-
         # get model mode
         model_mode = model_config.mode
         if not model_mode:
-            model_mode = LLMMode.CHAT.value
-            if model_schema and model_schema.model_properties.get(ModelPropertyKey.MODE):
-                model_mode = LLMMode.value_of(model_schema.model_properties[ModelPropertyKey.MODE]).value
+            mode_enum = model_type_instance.get_model_mode(model=model_config.model, credentials=model_credentials)
+
+            model_mode = mode_enum.value
+
+        model_schema = model_type_instance.get_model_schema(model_config.model, model_credentials)
 
         if not model_schema:
             raise ValueError(f"Model {model_name} not exist.")

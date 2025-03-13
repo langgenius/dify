@@ -1,0 +1,46 @@
+model: accounts/fireworks/models/llama-v3p1-405b-instruct
+label:
+  zh_Hans: Llama3.1 405B Instruct
+  en_US: Llama3.1 405B Instruct
+model_type: llm
+features:
+  - agent-thought
+  - tool-call
+model_properties:
+  mode: chat
+  context_size: 131072
+parameter_rules:
+  - name: temperature
+    use_template: temperature
+  - name: top_p
+    use_template: top_p
+  - name: top_k
+    label:
+      zh_Hans: 取样数量
+      en_US: Top k
+    type: int
+    help:
+      zh_Hans: 仅从每个后续标记的前 K 个选项中采样。
+      en_US: Only sample from the top K options for each subsequent token.
+  - name: max_tokens
+    use_template: max_tokens
+  - name: context_length_exceeded_behavior
+    default: None
+    label:
+      zh_Hans: 上下文长度超出行为
+      en_US: Context Length Exceeded Behavior
+    help:
+      zh_Hans: 上下文长度超出行为
+      en_US: Context Length Exceeded Behavior
+    type: string
+    options:
+      - None
+      - truncate
+      - error
+  - name: response_format
+    use_template: response_format
+pricing:
+  input: '3'
+  output: '3'
+  unit: '0.000001'
+  currency: USD

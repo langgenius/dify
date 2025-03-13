@@ -3,18 +3,16 @@ from typing import Any, Literal, Union
 from pydantic import BaseModel, field_validator
 from pydantic_core.core_schema import ValidationInfo
 
-from core.tools.entities.tool_entities import ToolProviderType
-from core.workflow.nodes.base.entities import BaseNodeData
+from core.workflow.nodes.base import BaseNodeData
 
 
 class ToolEntity(BaseModel):
     provider_id: str
-    provider_type: ToolProviderType
+    provider_type: Literal["builtin", "api", "workflow"]
     provider_name: str  # redundancy
     tool_name: str
     tool_label: str  # redundancy
     tool_configurations: dict[str, Any]
-    plugin_unique_identifier: str | None = None  # redundancy
 
     @field_validator("tool_configurations", mode="before")
     @classmethod

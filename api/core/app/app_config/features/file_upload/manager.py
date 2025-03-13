@@ -17,15 +17,17 @@ class FileUploadConfigManager:
         if file_upload_dict:
             if file_upload_dict.get("enabled"):
                 transform_methods = file_upload_dict.get("allowed_file_upload_methods", [])
-                file_upload_dict["image_config"] = {
-                    "number_limits": file_upload_dict.get("number_limits", 1),
-                    "transfer_methods": transform_methods,
+                data = {
+                    "image_config": {
+                        "number_limits": file_upload_dict["number_limits"],
+                        "transfer_methods": transform_methods,
+                    }
                 }
 
                 if is_vision:
-                    file_upload_dict["image_config"]["detail"] = file_upload_dict.get("image", {}).get("detail", "high")
+                    data["image_config"]["detail"] = file_upload_dict.get("image", {}).get("detail", "low")
 
-                return FileUploadConfig.model_validate(file_upload_dict)
+                return FileUploadConfig.model_validate(data)
 
     @classmethod
     def validate_and_set_defaults(cls, config: dict) -> tuple[dict, list[str]]:

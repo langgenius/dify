@@ -95,6 +95,10 @@ model_config_fields = {
     "agent_mode": fields.Raw,
 }
 
+simple_configs_fields = {
+    "prompt_template": fields.String,
+}
+
 simple_model_config_fields = {
     "model": fields.Raw(attribute="model_dict"),
     "pre_prompt": fields.String,
@@ -207,4 +211,15 @@ conversation_infinite_scroll_pagination_fields = {
     "limit": fields.Integer,
     "has_more": fields.Boolean,
     "data": fields.List(fields.Nested(simple_conversation_fields)),
+}
+
+conversation_with_model_config_fields = {
+    **simple_conversation_fields,
+    "model_config": fields.Raw,
+}
+
+conversation_with_model_config_infinite_scroll_pagination_fields = {
+    "limit": fields.Integer,
+    "has_more": fields.Boolean,
+    "data": fields.List(fields.Nested(conversation_with_model_config_fields)),
 }

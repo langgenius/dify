@@ -1,0 +1,23 @@
+model: amazon.titan-text-lite-v1
+label:
+  en_US: Titan Text G1 - Lite
+model_type: llm
+model_properties:
+  mode: chat
+  context_size: 4096
+parameter_rules:
+  - name: temperature
+    use_template: temperature
+  - name: topP
+    use_template: top_p
+  - name: maxTokenCount
+    use_template: max_tokens
+    required: true
+    default: 2048
+    min: 1
+    max: 2048
+pricing:
+  input: '0.0003'
+  output: '0.0004'
+  unit: '0.001'
+  currency: USD

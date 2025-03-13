@@ -1,0 +1,39 @@
+provider: anthropic
+label:
+  en_US: Anthropic
+description:
+  en_US: Anthropic’s powerful models, such as Claude 3.
+  zh_Hans: Anthropic 的强大模型，例如 Claude 3。
+icon_small:
+  en_US: icon_s_en.svg
+icon_large:
+  en_US: icon_l_en.svg
+background: "#F0F0EB"
+help:
+  title:
+    en_US: Get your API Key from Anthropic
+    zh_Hans: 从 Anthropic 获取 API Key
+  url:
+    en_US: https://console.anthropic.com/account/keys
+supported_model_types:
+  - llm
+configurate_methods:
+  - predefined-model
+provider_credential_schema:
+  credential_form_schemas:
+    - variable: anthropic_api_key
+      label:
+        en_US: API Key
+      type: secret-input
+      required: true
+      placeholder:
+        zh_Hans: 在此输入您的 API Key
+        en_US: Enter your API Key
+    - variable: anthropic_api_url
+      label:
+        en_US: API URL
+      type: text-input
+      required: false
+      placeholder:
+        zh_Hans: 在此输入您的 API URL
+        en_US: Enter your API URL

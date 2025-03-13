@@ -1,0 +1,34 @@
+model: gpt-3.5-turbo-0613
+label:
+  zh_Hans: gpt-3.5-turbo-0613
+  en_US: gpt-3.5-turbo-0613
+model_type: llm
+features:
+  - multi-tool-call
+  - agent-thought
+  - stream-tool-call
+model_properties:
+  mode: chat
+  context_size: 4096
+parameter_rules:
+  - name: temperature
+    use_template: temperature
+  - name: top_p
+    use_template: top_p
+  - name: presence_penalty
+    use_template: presence_penalty
+  - name: frequency_penalty
+    use_template: frequency_penalty
+  - name: max_tokens
+    use_template: max_tokens
+    default: 512
+    min: 1
+    max: 4096
+  - name: response_format
+    use_template: response_format
+pricing:
+  input: '0.0015'
+  output: '0.002'
+  unit: '0.001'
+  currency: USD
+deprecated: true

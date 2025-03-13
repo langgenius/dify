@@ -1,0 +1,162 @@
+identity:
+  name: flux_1_1_pro_ultra
+  author: Kalo Chin
+  label:
+    en_US: FLUX 1.1 [pro] ultra
+    zh_Hans: FLUX 1.1 [pro] ultra
+  icon: icon.svg
+description:
+  human:
+    en_US: FLUX 1.1 [pro] ultra is the newest version of FLUX 1.1 [pro], maintaining professional-grade image quality while delivering up to 2K resolution with improved photo realism.
+    zh_Hans: FLUX 1.1 [pro] ultra 是 FLUX 1.1 [pro] 的最新版本，保持了专业级的图像质量，同时以改进的照片真实感提供高达 2K 的分辨率。
+  llm: This tool generates images from prompts using FAL's FLUX 1.1 [pro] ultra model.
+parameters:
+  - name: prompt
+    type: string
+    required: true
+    label:
+      en_US: Prompt
+      zh_Hans: 提示词
+    human_description:
+      en_US: The text prompt used to generate the image.
+      zh_Hans: 用于生成图像的文本提示。
+    llm_description: This prompt text will be used to generate the image.
+    form: llm
+  - name: aspect_ratio
+    type: select
+    required: false
+    options:
+      - value: '21:9'
+        label:
+          en_US: '21:9'
+          zh_Hans: '21:9'
+      - value: '16:9'
+        label:
+          en_US: '16:9'
+          zh_Hans: '16:9'
+      - value: '4:3'
+        label:
+          en_US: '4:3'
+          zh_Hans: '4:3'
+      - value: '1:1'
+        label:
+          en_US: '1:1'
+          zh_Hans: '1:1'
+      - value: '3:4'
+        label:
+          en_US: '3:4'
+          zh_Hans: '3:4'
+      - value: '9:16'
+        label:
+          en_US: '9:16'
+          zh_Hans: '9:16'
+      - value: '9:21'
+        label:
+          en_US: '9:21'
+          zh_Hans: '9:21'
+    default: '16:9'
+    label:
+      en_US: Aspect Ratio
+      zh_Hans: 纵横比
+    human_description:
+      en_US: The aspect ratio of the generated image.
+      zh_Hans: 生成图像的宽高比。
+    form: form
+  - name: num_images
+    type: number
+    required: false
+    default: 1
+    min: 1
+    max: 1
+    label:
+      en_US: Number of Images
+      zh_Hans: 图片数量
+    human_description:
+      en_US: The number of images to generate.
+      zh_Hans: 要生成的图像数量。
+    form: form
+  - name: safety_tolerance
+    type: select
+    required: false
+    options:
+      - value: "1"
+        label:
+          en_US: "1 (Most strict)"
+          zh_Hans: "1（最严格）"
+      - value: "2"
+        label:
+          en_US: "2"
+          zh_Hans: "2"
+      - value: "3"
+        label:
+          en_US: "3"
+          zh_Hans: "3"
+      - value: "4"
+        label:
+          en_US: "4"
+          zh_Hans: "4"
+      - value: "5"
+        label:
+          en_US: "5"
+          zh_Hans: "5"
+      - value: "6"
+        label:
+          en_US: "6 (Most permissive)"
+          zh_Hans: "6（最宽松）"
+    default: '2'
+    label:
+      en_US: Safety Tolerance
+      zh_Hans: 安全容忍度
+    human_description:
+      en_US: The safety tolerance level for the generated image. 1 being the most strict and 6 being the most permissive.
+      zh_Hans: 生成图像的安全容忍级别，1 为最严格，6 为最宽松。
+    form: form
+  - name: seed
+    type: number
+    required: false
+    min: 0
+    max: 9999999999
+    label:
+      en_US: Seed
+      zh_Hans: 种子
+    human_description:
+      en_US: The same seed and prompt can produce similar images.
+      zh_Hans: 相同的种子和提示词可以生成相似的图像。
+    form: form
+  - name: raw
+    type: boolean
+    required: false
+    default: false
+    label:
+      en_US: Raw Mode
+      zh_Hans: 原始模式
+    human_description:
+      en_US: Generate less processed, more natural-looking images.
+      zh_Hans: 生成较少处理、更自然的图像。
+    form: form
+  - name: enable_safety_checker
+    type: boolean
+    required: false
+    default: true
+    label:
+      en_US: Enable Safety Checker
+      zh_Hans: 启用安全检查器
+    human_description:
+      en_US: Enable or disable the safety checker.
+      zh_Hans: 启用或禁用安全检查器。
+    form: form
+  - name: sync_mode
+    type: boolean
+    required: false
+    default: false
+    label:
+      en_US: Sync Mode
+      zh_Hans: 同步模式
+    human_description:
+      en_US: >
+        If set to true, the function will wait for the image to be generated and uploaded before returning the response.
+        This will increase the latency but allows you to get the image directly in the response without going through the CDN.
+      zh_Hans: >
+        如果设置为 true，函数将在生成并上传图像后才返回响应。
+        这将增加延迟，但允许您直接在响应中获取图像，而无需通过 CDN。
+    form: form

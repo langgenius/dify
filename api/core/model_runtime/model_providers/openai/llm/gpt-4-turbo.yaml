@@ -1,0 +1,57 @@
+model: gpt-4-turbo
+label:
+  zh_Hans: gpt-4-turbo
+  en_US: gpt-4-turbo
+model_type: llm
+features:
+  - multi-tool-call
+  - agent-thought
+  - stream-tool-call
+  - vision
+model_properties:
+  mode: chat
+  context_size: 128000
+parameter_rules:
+  - name: temperature
+    use_template: temperature
+  - name: top_p
+    use_template: top_p
+  - name: presence_penalty
+    use_template: presence_penalty
+  - name: frequency_penalty
+    use_template: frequency_penalty
+  - name: max_tokens
+    use_template: max_tokens
+    default: 512
+    min: 1
+    max: 4096
+  - name: seed
+    label:
+      zh_Hans: 种子
+      en_US: Seed
+    type: int
+    help:
+      zh_Hans: 如果指定，模型将尽最大努力进行确定性采样，使得重复的具有相同种子和参数的请求应该返回相同的结果。不能保证确定性，您应该参考 system_fingerprint
+        响应参数来监视变化。
+      en_US: If specified, model will make a best effort to sample deterministically,
+        such that repeated requests with the same seed and parameters should return
+        the same result. Determinism is not guaranteed, and you should refer to the
+        system_fingerprint response parameter to monitor changes in the backend.
+    required: false
+  - name: response_format
+    label:
+      zh_Hans: 回复格式
+      en_US: Response Format
+    type: string
+    help:
+      zh_Hans: 指定模型必须输出的格式
+      en_US: specifying the format that the model must output
+    required: false
+    options:
+      - text
+      - json_object
+pricing:
+  input: '0.01'
+  output: '0.03'
+  unit: '0.001'
+  currency: USD

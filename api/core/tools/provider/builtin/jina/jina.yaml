@@ -1,0 +1,32 @@
+identity:
+  author: Dify
+  name: jina
+  label:
+    en_US: Jina AI
+    zh_Hans: Jina AI
+    pt_BR: Jina AI
+  description:
+    en_US: Your Search Foundation, Supercharged!
+    zh_Hans: 您的搜索底座，从此不同!
+    pt_BR: Your Search Foundation, Supercharged!
+  icon: icon.svg
+  tags:
+    - search
+    - productivity
+credentials_for_provider:
+  api_key:
+    type: secret-input
+    required: false
+    label:
+      en_US: API Key (leave empty if you don't have one)
+      zh_Hans: API 密钥（可留空）
+      pt_BR: Chave API (deixe vazio se você não tiver uma)
+    placeholder:
+      en_US: Please enter your Jina AI API key
+      zh_Hans: 请输入你的 Jina AI API 密钥
+      pt_BR: Por favor, insira sua chave de API do Jina AI
+    help:
+      en_US: Get your Jina AI API key from Jina AI (optional, but you can get a higher rate)
+      zh_Hans: 从 Jina AI 获取您的 Jina AI API 密钥（非必须，能得到更高的速率）
+      pt_BR: Obtenha sua chave de API do Jina AI na Jina AI (opcional, mas você pode obter uma taxa mais alta)
+    url: https://jina.ai

@@ -1,0 +1,39 @@
+identity:
+  author: Dify
+  name: vectorizer
+  label:
+    en_US: Vectorizer.AI
+    zh_Hans: Vectorizer.AI
+  description:
+    en_US: Convert your PNG and JPG images to SVG vectors quickly and easily. Fully automatically. Using AI.
+    zh_Hans: 一个将 PNG 和 JPG 图像快速轻松地转换为 SVG 矢量图的工具。
+  icon: icon.png
+  tags:
+    - productivity
+    - image
+credentials_for_provider:
+  api_key_name:
+    type: secret-input
+    required: true
+    label:
+      en_US: Vectorizer.AI API Key name
+      zh_Hans: Vectorizer.AI API Key name
+    placeholder:
+      en_US: Please input your Vectorizer.AI ApiKey name
+      zh_Hans: 请输入你的 Vectorizer.AI ApiKey name
+    help:
+      en_US: Get your Vectorizer.AI API Key from Vectorizer.AI.
+      zh_Hans: 从 Vectorizer.AI 获取您的 Vectorizer.AI API Key。
+    url: https://vectorizer.ai/api
+  api_key_value:
+    type: secret-input
+    required: true
+    label:
+      en_US: Vectorizer.AI API Key
+      zh_Hans: Vectorizer.AI API Key
+    placeholder:
+      en_US: Please input your Vectorizer.AI ApiKey
+      zh_Hans: 请输入你的 Vectorizer.AI ApiKey
+    help:
+      en_US: Get your Vectorizer.AI API Key from Vectorizer.AI.
+      zh_Hans: 从 Vectorizer.AI 获取您的 Vectorizer.AI API Key。

@@ -174,7 +174,7 @@ class LindormVectorStore(BaseVector):
             if self._using_ugc:
                 params["routing"] = self._routing
             response = self._client.search(index=self._collection_name, body=query, params=params)
-        except Exception:
+        except Exception as e:
             logger.exception(f"Error executing vector search, query: {query}")
             raise
 
@@ -347,8 +347,7 @@ def default_text_mapping(dimension: int, method_name: str, **kwargs: Any) -> dic
     }
 
     if excludes_from_source:
-        # e.g. {"excludes": ["vector_field"]}
-        mapping["mappings"]["_source"] = {"excludes": excludes_from_source}
+        mapping["mappings"]["_source"] = {"excludes": excludes_from_source}  # e.g. {"excludes": ["vector_field"]}
 
     if using_ugc and method_name == "ivfpq":
         mapping["settings"]["index"]["knn_routing"] = True

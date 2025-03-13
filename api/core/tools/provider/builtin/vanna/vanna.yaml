@@ -1,0 +1,35 @@
+identity:
+  author: QCTC
+  name: vanna
+  label:
+    en_US: Vanna.AI
+    zh_Hans: Vanna.AI
+  description:
+    en_US: The fastest way to get actionable insights from your database just by asking questions.
+    zh_Hans: 一个基于大模型和RAG的Text2SQL工具。
+  icon: icon.png
+  tags:
+    - utilities
+    - productivity
+credentials_for_provider:
+  api_key:
+    type: secret-input
+    required: true
+    label:
+      en_US: API key
+      zh_Hans: API key
+    placeholder:
+      en_US: Please input your API key
+      zh_Hans: 请输入你的 API key
+      pt_BR: Please input your API key
+    help:
+      en_US: Get your API key from Vanna.AI
+      zh_Hans: 从 Vanna.AI 获取你的 API key
+    url: https://vanna.ai/account/profile
+  base_url:
+    type: text-input
+    required: false
+    label:
+      en_US: Vanna.AI Endpoint Base URL
+    placeholder:
+      en_US: https://ask.vanna.ai/rpc

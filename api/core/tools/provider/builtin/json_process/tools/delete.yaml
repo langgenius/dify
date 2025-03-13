@@ -1,0 +1,52 @@
+identity:
+  name: json_delete
+  author: Mingwei Zhang
+  label:
+    en_US: JSON Delete
+    zh_Hans: JSON 删除
+    pt_BR: JSON Delete
+description:
+  human:
+    en_US: A tool for deleting JSON content
+    zh_Hans: 一个删除 JSON 内容的工具
+    pt_BR: A tool for deleting JSON content
+  llm: A tool for deleting JSON content
+parameters:
+  - name: content
+    type: string
+    required: true
+    label:
+      en_US: JSON content
+      zh_Hans: JSON 内容
+      pt_BR: JSON content
+    human_description:
+      en_US: JSON content to be processed
+      zh_Hans: 待处理的 JSON 内容
+      pt_BR: JSON content to be processed
+    llm_description: JSON content to be processed
+    form: llm
+  - name: query
+    type: string
+    required: true
+    label:
+      en_US: Query
+      zh_Hans: 查询
+      pt_BR: Query
+    human_description:
+      en_US: JSONPath query to locate the element to delete
+      zh_Hans: 用于定位要删除元素的 JSONPath 查询
+      pt_BR: JSONPath query to locate the element to delete
+    llm_description: JSONPath query to locate the element to delete
+    form: llm
+  - name: ensure_ascii
+    type: boolean
+    default: true
+    label:
+      en_US: Ensure ASCII
+      zh_Hans: 确保 ASCII
+      pt_BR: Ensure ASCII
+    human_description:
+      en_US: Ensure the JSON output is ASCII encoded
+      zh_Hans: 确保输出的 JSON 是 ASCII 编码
+      pt_BR: Ensure the JSON output is ASCII encoded
+    form: form

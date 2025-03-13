@@ -1,10 +1,8 @@
 import json
 import logging
-from typing import cast
 
 from flask import abort, request
 from flask_restful import Resource, inputs, marshal_with, reqparse  # type: ignore
-from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden, InternalServerError, NotFound
 
 import services
@@ -15,7 +13,6 @@ from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import account_initialization_required, setup_required
 from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.entities.app_invoke_entities import InvokeFrom
-from extensions.ext_database import db
 from factories import variable_factory
 from fields.workflow_fields import workflow_fields, workflow_pagination_fields
 from fields.workflow_run_fields import workflow_run_node_execution_fields
@@ -23,11 +20,10 @@ from libs import helper
 from libs.helper import TimestampField, uuid_value
 from libs.login import current_user, login_required
 from models import App
-from models.account import Account
 from models.model import AppMode
 from services.app_generate_service import AppGenerateService
 from services.errors.app import WorkflowHashNotEqualError
-from services.workflow_service import DraftWorkflowDeletionError, WorkflowInUseError, WorkflowService
+from services.workflow_service import WorkflowService
 
 logger = logging.getLogger(__name__)
 
@@ -100,9 +96,6 @@ class DraftWorkflowApi(Resource):
         else:
             abort(415)
 
-        if not isinstance(current_user, Account):
-            raise Forbidden()
-
         workflow_service = WorkflowService()
 
         try:
@@ -146,9 +139,6 @@ class AdvancedChatDraftWorkflowRunApi(Resource):
         if not current_user.is_editor:
             raise Forbidden()
 
-        if not isinstance(current_user, Account):
-            raise Forbidden()
-
         parser = reqparse.RequestParser()
         parser.add_argument("inputs", type=dict, location="json")
         parser.add_argument("query", type=str, required=True, location="json", default="")
@@ -170,7 +160,7 @@ class AdvancedChatDraftWorkflowRunApi(Resource):
             raise ConversationCompletedError()
         except ValueError as e:
             raise e
-        except Exception:
+        except Exception as e:
             logging.exception("internal server error.")
             raise InternalServerError()
 
@@ -188,9 +178,6 @@ class AdvancedChatDraftRunIterationNodeApi(Resource):
         if not current_user.is_editor:
             raise Forbidden()
 
-        if not isinstance(current_user, Account):
-            raise Forbidden()
-
         parser = reqparse.RequestParser()
         parser.add_argument("inputs", type=dict, location="json")
         args = parser.parse_args()
@@ -207,7 +194,7 @@ class AdvancedChatDraftRunIterationNodeApi(Resource):
             raise ConversationCompletedError()
         except ValueError as e:
             raise e
-        except Exception:
+        except Exception as e:
             logging.exception("internal server error.")
             raise InternalServerError()
 
@@ -225,9 +212,6 @@ class WorkflowDraftRunIterationNodeApi(Resource):
         if not current_user.is_editor:
             raise Forbidden()
 
-        if not isinstance(current_user, Account):
-            raise Forbidden()
-
         parser = reqparse.RequestParser()
         parser.add_argument("inputs", type=dict, location="json")
         args = parser.parse_args()
@@ -244,81 +228,7 @@ class WorkflowDraftRunIterationNodeApi(Resource):
             raise ConversationCompletedError()
         except ValueError as e:
             raise e
-        except Exception:
-            logging.exception("internal server error.")
-            raise InternalServerError()
-
-
-class AdvancedChatDraftRunLoopNodeApi(Resource):
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @get_app_model(mode=[AppMode.ADVANCED_CHAT])
-    def post(self, app_model: App, node_id: str):
-        """
-        Run draft workflow loop node
-        """
-        # The role of the current user in the ta table must be admin, owner, or editor
-        if not current_user.is_editor:
-            raise Forbidden()
-
-        if not isinstance(current_user, Account):
-            raise Forbidden()
-
-        parser = reqparse.RequestParser()
-        parser.add_argument("inputs", type=dict, location="json")
-        args = parser.parse_args()
-
-        try:
-            response = AppGenerateService.generate_single_loop(
-                app_model=app_model, user=current_user, node_id=node_id, args=args, streaming=True
-            )
-
-            return helper.compact_generate_response(response)
-        except services.errors.conversation.ConversationNotExistsError:
-            raise NotFound("Conversation Not Exists.")
-        except services.errors.conversation.ConversationCompletedError:
-            raise ConversationCompletedError()
-        except ValueError as e:
-            raise e
-        except Exception:
-            logging.exception("internal server error.")
-            raise InternalServerError()
-
-
-class WorkflowDraftRunLoopNodeApi(Resource):
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @get_app_model(mode=[AppMode.WORKFLOW])
-    def post(self, app_model: App, node_id: str):
-        """
-        Run draft workflow loop node
-        """
-        # The role of the current user in the ta table must be admin, owner, or editor
-        if not current_user.is_editor:
-            raise Forbidden()
-
-        if not isinstance(current_user, Account):
-            raise Forbidden()
-
-        parser = reqparse.RequestParser()
-        parser.add_argument("inputs", type=dict, location="json")
-        args = parser.parse_args()
-
-        try:
-            response = AppGenerateService.generate_single_loop(
-                app_model=app_model, user=current_user, node_id=node_id, args=args, streaming=True
-            )
-
-            return helper.compact_generate_response(response)
-        except services.errors.conversation.ConversationNotExistsError:
-            raise NotFound("Conversation Not Exists.")
-        except services.errors.conversation.ConversationCompletedError:
-            raise ConversationCompletedError()
-        except ValueError as e:
-            raise e
-        except Exception:
+        except Exception as e:
             logging.exception("internal server error.")
             raise InternalServerError()
 
@@ -334,9 +244,6 @@ class DraftWorkflowRunApi(Resource):
         """
         # The role of the current user in the ta table must be admin, owner, or editor
         if not current_user.is_editor:
-            raise Forbidden()
-
-        if not isinstance(current_user, Account):
             raise Forbidden()
 
         parser = reqparse.RequestParser()
@@ -387,20 +294,13 @@ class DraftWorkflowNodeRunApi(Resource):
         if not current_user.is_editor:
             raise Forbidden()
 
-        if not isinstance(current_user, Account):
-            raise Forbidden()
-
         parser = reqparse.RequestParser()
         parser.add_argument("inputs", type=dict, required=True, nullable=False, location="json")
         args = parser.parse_args()
 
-        inputs = args.get("inputs")
-        if inputs == None:
-            raise ValueError("missing inputs")
-
         workflow_service = WorkflowService()
         workflow_node_execution = workflow_service.run_draft_workflow_node(
-            app_model=app_model, node_id=node_id, user_inputs=inputs, account=current_user
+            app_model=app_model, node_id=node_id, user_inputs=args.get("inputs"), account=current_user
         )
 
         return workflow_node_execution
@@ -439,41 +339,10 @@ class PublishedWorkflowApi(Resource):
         if not current_user.is_editor:
             raise Forbidden()
 
-        if not isinstance(current_user, Account):
-            raise Forbidden()
-
-        parser = reqparse.RequestParser()
-        parser.add_argument("marked_name", type=str, required=False, default="", location="json")
-        parser.add_argument("marked_comment", type=str, required=False, default="", location="json")
-        args = parser.parse_args()
-
-        # Validate name and comment length
-        if args.marked_name and len(args.marked_name) > 20:
-            raise ValueError("Marked name cannot exceed 20 characters")
-        if args.marked_comment and len(args.marked_comment) > 100:
-            raise ValueError("Marked comment cannot exceed 100 characters")
-
         workflow_service = WorkflowService()
-        with Session(db.engine) as session:
-            workflow = workflow_service.publish_workflow(
-                session=session,
-                app_model=app_model,
-                account=current_user,
-                marked_name=args.marked_name or "",
-                marked_comment=args.marked_comment or "",
-            )
+        workflow = workflow_service.publish_workflow(app_model=app_model, account=current_user)
 
-            app_model.workflow_id = workflow.id
-            db.session.commit()
-
-            workflow_created_at = TimestampField().format(workflow.created_at)
-
-            session.commit()
-
-        return {
-            "result": "success",
-            "created_at": workflow_created_at,
-        }
+        return {"result": "success", "created_at": TimestampField().format(workflow.created_at)}
 
 
 class DefaultBlockConfigsApi(Resource):
@@ -507,17 +376,12 @@ class DefaultBlockConfigApi(Resource):
         if not current_user.is_editor:
             raise Forbidden()
 
-        if not isinstance(current_user, Account):
-            raise Forbidden()
-
         parser = reqparse.RequestParser()
         parser.add_argument("q", type=str, location="args")
         args = parser.parse_args()
 
-        q = args.get("q")
-
         filters = None
-        if q:
+        if args.get("q"):
             try:
                 filters = json.loads(args.get("q", ""))
             except json.JSONDecodeError:
@@ -541,9 +405,6 @@ class ConvertToWorkflowApi(Resource):
         """
         # The role of the current user in the ta table must be admin, owner, or editor
         if not current_user.is_editor:
-            raise Forbidden()
-
-        if not isinstance(current_user, Account):
             raise Forbidden()
 
         if request.data:
@@ -595,193 +456,32 @@ class PublishedAllWorkflowApi(Resource):
         parser = reqparse.RequestParser()
         parser.add_argument("page", type=inputs.int_range(1, 99999), required=False, default=1, location="args")
         parser.add_argument("limit", type=inputs.int_range(1, 100), required=False, default=20, location="args")
-        parser.add_argument("user_id", type=str, required=False, location="args")
-        parser.add_argument("named_only", type=inputs.boolean, required=False, default=False, location="args")
         args = parser.parse_args()
-        page = int(args.get("page", 1))
-        limit = int(args.get("limit", 10))
-        user_id = args.get("user_id")
-        named_only = args.get("named_only", False)
-
-        if user_id:
-            if user_id != current_user.id:
-                raise Forbidden()
-            user_id = cast(str, user_id)
-
+        page = args.get("page")
+        limit = args.get("limit")
         workflow_service = WorkflowService()
-        with Session(db.engine) as session:
-            workflows, has_more = workflow_service.get_all_published_workflow(
-                session=session,
-                app_model=app_model,
-                page=page,
-                limit=limit,
-                user_id=user_id,
-                named_only=named_only,
-            )
+        workflows, has_more = workflow_service.get_all_published_workflow(app_model=app_model, page=page, limit=limit)
 
-            return {
-                "items": workflows,
-                "page": page,
-                "limit": limit,
-                "has_more": has_more,
-            }
+        return {"items": workflows, "page": page, "limit": limit, "has_more": has_more}
 
 
-class WorkflowByIdApi(Resource):
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
-    @marshal_with(workflow_fields)
-    def patch(self, app_model: App, workflow_id: str):
-        """
-        Update workflow attributes
-        """
-        # Check permission
-        if not current_user.is_editor:
-            raise Forbidden()
-
-        if not isinstance(current_user, Account):
-            raise Forbidden()
-
-        parser = reqparse.RequestParser()
-        parser.add_argument("marked_name", type=str, required=False, location="json")
-        parser.add_argument("marked_comment", type=str, required=False, location="json")
-        args = parser.parse_args()
-
-        # Validate name and comment length
-        if args.marked_name and len(args.marked_name) > 20:
-            raise ValueError("Marked name cannot exceed 20 characters")
-        if args.marked_comment and len(args.marked_comment) > 100:
-            raise ValueError("Marked comment cannot exceed 100 characters")
-        args = parser.parse_args()
-
-        # Prepare update data
-        update_data = {}
-        if args.get("marked_name") is not None:
-            update_data["marked_name"] = args["marked_name"]
-        if args.get("marked_comment") is not None:
-            update_data["marked_comment"] = args["marked_comment"]
-
-        if not update_data:
-            return {"message": "No valid fields to update"}, 400
-
-        workflow_service = WorkflowService()
-
-        # Create a session and manage the transaction
-        with Session(db.engine, expire_on_commit=False) as session:
-            workflow = workflow_service.update_workflow(
-                session=session,
-                workflow_id=workflow_id,
-                tenant_id=app_model.tenant_id,
-                account_id=current_user.id,
-                data=update_data,
-            )
-
-            if not workflow:
-                raise NotFound("Workflow not found")
-
-            # Commit the transaction in the controller
-            session.commit()
-
-        return workflow
-
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
-    def delete(self, app_model: App, workflow_id: str):
-        """
-        Delete workflow
-        """
-        # Check permission
-        if not current_user.is_editor:
-            raise Forbidden()
-
-        if not isinstance(current_user, Account):
-            raise Forbidden()
-
-        workflow_service = WorkflowService()
-
-        # Create a session and manage the transaction
-        with Session(db.engine) as session:
-            try:
-                workflow_service.delete_workflow(
-                    session=session, workflow_id=workflow_id, tenant_id=app_model.tenant_id
-                )
-                # Commit the transaction in the controller
-                session.commit()
-            except WorkflowInUseError as e:
-                abort(400, description=str(e))
-            except DraftWorkflowDeletionError as e:
-                abort(400, description=str(e))
-            except ValueError as e:
-                raise NotFound(str(e))
-
-        return None, 204
-
-
-api.add_resource(
-    DraftWorkflowApi,
-    "/apps/<uuid:app_id>/workflows/draft",
-)
-api.add_resource(
-    WorkflowConfigApi,
-    "/apps/<uuid:app_id>/workflows/draft/config",
-)
-api.add_resource(
-    AdvancedChatDraftWorkflowRunApi,
-    "/apps/<uuid:app_id>/advanced-chat/workflows/draft/run",
-)
-api.add_resource(
-    DraftWorkflowRunApi,
-    "/apps/<uuid:app_id>/workflows/draft/run",
-)
-api.add_resource(
-    WorkflowTaskStopApi,
-    "/apps/<uuid:app_id>/workflow-runs/tasks/<string:task_id>/stop",
-)
-api.add_resource(
-    DraftWorkflowNodeRunApi,
-    "/apps/<uuid:app_id>/workflows/draft/nodes/<string:node_id>/run",
-)
+api.add_resource(DraftWorkflowApi, "/apps/<uuid:app_id>/workflows/draft")
+api.add_resource(WorkflowConfigApi, "/apps/<uuid:app_id>/workflows/draft/config")
+api.add_resource(AdvancedChatDraftWorkflowRunApi, "/apps/<uuid:app_id>/advanced-chat/workflows/draft/run")
+api.add_resource(DraftWorkflowRunApi, "/apps/<uuid:app_id>/workflows/draft/run")
+api.add_resource(WorkflowTaskStopApi, "/apps/<uuid:app_id>/workflow-runs/tasks/<string:task_id>/stop")
+api.add_resource(DraftWorkflowNodeRunApi, "/apps/<uuid:app_id>/workflows/draft/nodes/<string:node_id>/run")
 api.add_resource(
     AdvancedChatDraftRunIterationNodeApi,
     "/apps/<uuid:app_id>/advanced-chat/workflows/draft/iteration/nodes/<string:node_id>/run",
 )
 api.add_resource(
-    WorkflowDraftRunIterationNodeApi,
-    "/apps/<uuid:app_id>/workflows/draft/iteration/nodes/<string:node_id>/run",
+    WorkflowDraftRunIterationNodeApi, "/apps/<uuid:app_id>/workflows/draft/iteration/nodes/<string:node_id>/run"
 )
+api.add_resource(PublishedWorkflowApi, "/apps/<uuid:app_id>/workflows/publish")
+api.add_resource(PublishedAllWorkflowApi, "/apps/<uuid:app_id>/workflows")
+api.add_resource(DefaultBlockConfigsApi, "/apps/<uuid:app_id>/workflows/default-workflow-block-configs")
 api.add_resource(
-    AdvancedChatDraftRunLoopNodeApi,
-    "/apps/<uuid:app_id>/advanced-chat/workflows/draft/loop/nodes/<string:node_id>/run",
+    DefaultBlockConfigApi, "/apps/<uuid:app_id>/workflows/default-workflow-block-configs/<string:block_type>"
 )
-api.add_resource(
-    WorkflowDraftRunLoopNodeApi,
-    "/apps/<uuid:app_id>/workflows/draft/loop/nodes/<string:node_id>/run",
-)
-api.add_resource(
-    PublishedWorkflowApi,
-    "/apps/<uuid:app_id>/workflows/publish",
-)
-api.add_resource(
-    PublishedAllWorkflowApi,
-    "/apps/<uuid:app_id>/workflows",
-)
-api.add_resource(
-    DefaultBlockConfigsApi,
-    "/apps/<uuid:app_id>/workflows/default-workflow-block-configs",
-)
-api.add_resource(
-    DefaultBlockConfigApi,
-    "/apps/<uuid:app_id>/workflows/default-workflow-block-configs/<string:block_type>",
-)
-api.add_resource(
-    ConvertToWorkflowApi,
-    "/apps/<uuid:app_id>/convert-to-workflow",
-)
-api.add_resource(
-    WorkflowByIdApi,
-    "/apps/<uuid:app_id>/workflows/<string:workflow_id>",
-)
+api.add_resource(ConvertToWorkflowApi, "/apps/<uuid:app_id>/convert-to-workflow")

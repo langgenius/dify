@@ -1,0 +1,53 @@
+identity:
+  name: brave_search
+  author: Yash Parmar
+  label:
+    en_US: BraveSearch
+    zh_Hans: BraveSearch
+    pt_BR: BraveSearch
+description:
+  human:
+    en_US: BraveSearch is a privacy-focused search engine that leverages its own index to deliver unbiased, independent, and fast search results. It's designed to respect user privacy by not tracking searches or personal information, making it a secure choice for those concerned about online privacy.
+    zh_Hans: BraveSearch 是一个注重隐私的搜索引擎，它利用自己的索引来提供公正、独立和快速的搜索结果。它旨在通过不跟踪搜索或个人信息来尊重用户隐私，为那些关注在线隐私的用户提供了一个安全的选择。
+    pt_BR: BraveSearch é um mecanismo de busca focado na privacidade que utiliza seu próprio índice para entregar resultados de busca imparciais, independentes e rápidos. Ele é projetado para respeitar a privacidade do usuário, não rastreando buscas ou informações pessoais, tornando-se uma escolha segura para aqueles preocupados com a privacidade online.
+  llm: BraveSearch is a privacy-centric search engine utilizing its unique index to offer unbiased, independent, and swift search results. It aims to protect user privacy by avoiding the tracking of search activities or personal data, presenting a secure option for users mindful of their online privacy.
+parameters:
+  - name: query
+    type: string
+    required: true
+    label:
+      en_US: Query string
+      zh_Hans: 查询语句
+      pt_BR: Query string
+    human_description:
+      en_US: The text input used for initiating searches on the web, focusing on delivering relevant and accurate results without compromising user privacy.
+      zh_Hans: 用于在网上启动搜索的文本输入，专注于提供相关且准确的结果，同时不妨碍用户隐私。
+      pt_BR: A entrada de texto usada para iniciar pesquisas na web, focada em entregar resultados relevantes e precisos sem comprometer a privacidade do usuário.
+    llm_description: Keywords or phrases entered to perform searches, aimed at providing relevant and precise results while ensuring the privacy of the user is maintained.
+    form: llm
+  - name: count
+    type: number
+    required: false
+    default: 3
+    label:
+      en_US: Result count
+      zh_Hans: 结果数量
+      pt_BR: Contagem de resultados
+    human_description:
+      en_US: The number of search results to return, allowing users to control the breadth of their search output.
+      zh_Hans: 要返回的搜索结果数量，允许用户控制他们搜索输出的广度。
+      pt_BR: O número de resultados de pesquisa a serem retornados, permitindo que os usuários controlem a amplitude de sua saída de pesquisa.
+    llm_description: Specifies the amount of search results to be displayed, offering users the ability to adjust the scope of their search findings.
+    form: llm
+  - name: ensure_ascii
+    type: boolean
+    default: true
+    label:
+      en_US: Ensure ASCII
+      zh_Hans: 确保 ASCII
+      pt_BR: Ensure ASCII
+    human_description:
+      en_US: Ensure the JSON output is ASCII encoded
+      zh_Hans: 确保输出的 JSON 是 ASCII 编码
+      pt_BR: Ensure the JSON output is ASCII encoded
+    form: form

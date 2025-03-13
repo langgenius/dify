@@ -75,7 +75,6 @@ class AppService:
         """
         app_mode = AppMode.value_of(args["mode"])
         app_template = default_app_templates[app_mode]
-
         # get model config
         default_model_config = app_template.get("model_config")
         default_model_config = default_model_config.copy() if default_model_config else None

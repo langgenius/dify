@@ -1,0 +1,32 @@
+identity:
+  author: Dify
+  name: wolframalpha
+  label:
+    en_US: WolframAlpha
+    zh_Hans: WolframAlpha
+    pt_BR: WolframAlpha
+  description:
+    en_US: WolframAlpha is a powerful computational knowledge engine.
+    zh_Hans: WolframAlpha 是一个强大的计算知识引擎。
+    pt_BR: WolframAlpha is a powerful computational knowledge engine.
+  icon: icon.svg
+  tags:
+    - productivity
+    - utilities
+credentials_for_provider:
+  appid:
+    type: secret-input
+    required: true
+    label:
+      en_US: WolframAlpha AppID
+      zh_Hans: WolframAlpha AppID
+      pt_BR: WolframAlpha AppID
+    placeholder:
+      en_US: Please input your WolframAlpha AppID
+      zh_Hans: 请输入你的 WolframAlpha AppID
+      pt_BR: Please input your WolframAlpha AppID
+    help:
+      en_US: Get your WolframAlpha AppID from WolframAlpha, please use "full results" api access.
+      zh_Hans: 从 WolframAlpha 获取您的 WolframAlpha AppID，请使用 "full results" API。
+      pt_BR: Get your WolframAlpha AppID from WolframAlpha, please use "full results" api access.
+    url: https://products.wolframalpha.com/api

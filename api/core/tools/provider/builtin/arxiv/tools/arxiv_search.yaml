@@ -1,0 +1,27 @@
+identity:
+  name: arxiv_search
+  author: Yash Parmar
+  label:
+    en_US: Arxiv Search
+    zh_Hans: Arxiv 搜索
+    ja_JP: Arxiv 検索
+description:
+  human:
+    en_US: A tool for searching scientific papers and articles from the Arxiv repository. Input can be an Arxiv ID or an author's name.
+    zh_Hans: 一个用于从Arxiv存储库搜索科学论文和文章的工具。 输入可以是Arxiv ID或作者姓名。
+    ja_JP: Arxivリポジトリから科学論文や記事を検索するためのツールです。入力はArxiv IDまたは著者名にすることができます。
+  llm: A tool for searching scientific papers and articles from the Arxiv repository. Input can be an Arxiv ID or an author's name.
+parameters:
+  - name: query
+    type: string
+    required: true
+    label:
+      en_US: Query string
+      zh_Hans: 查询字符串
+      ja_JP: クエリ文字列
+    human_description:
+      en_US: The Arxiv ID or author's name used for searching.
+      zh_Hans: 用于搜索的Arxiv ID或作者姓名。
+      ja_JP: 検索に使用されるArxiv IDまたは著者名。
+    llm_description: The Arxiv ID or author's name used for searching.
+    form: llm

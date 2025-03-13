@@ -1,0 +1,39 @@
+identity:
+  author: Yash Parmar
+  name: brave
+  label:
+    en_US: Brave
+    zh_Hans: Brave
+    pt_BR: Brave
+  description:
+    en_US: Brave
+    zh_Hans: Brave
+    pt_BR: Brave
+  icon: icon.svg
+  tags:
+    - search
+credentials_for_provider:
+  brave_search_api_key:
+    type: secret-input
+    required: true
+    label:
+      en_US: Brave Search API key
+      zh_Hans: Brave Search API key
+      pt_BR: Brave Search API key
+    placeholder:
+      en_US: Please input your Brave Search API key
+      zh_Hans: 请输入你的 Brave Search API key
+      pt_BR: Please input your Brave Search API key
+    help:
+      en_US: Get your Brave Search API key from Brave
+      zh_Hans: 从 Brave 获取您的 Brave Search API key
+      pt_BR: Get your Brave Search API key from Brave
+    url: https://brave.com/search/api/
+  base_url:
+    type: text-input
+    required: false
+    label:
+      en_US: Brave server's Base URL
+      zh_Hans: Brave服务器的API URL
+    placeholder:
+      en_US: https://api.search.brave.com/res/v1/web/search

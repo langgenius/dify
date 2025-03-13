@@ -1,0 +1,49 @@
+provider: tencent
+label:
+  zh_Hans: 腾讯云
+  en_US: Tencent
+icon_small:
+  en_US: icon_s_en.svg
+icon_large:
+  zh_Hans: icon_l_zh.svg
+  en_US: icon_l_en.svg
+background: "#E5E7EB"
+help:
+  title:
+    en_US: Get your API key from Tencent AI
+    zh_Hans: 从腾讯云获取 API Key
+  url:
+    en_US: https://cloud.tencent.com/product/asr
+supported_model_types:
+  - speech2text
+configurate_methods:
+  - predefined-model
+provider_credential_schema:
+  credential_form_schemas:
+    - variable: app_id
+      label:
+        zh_Hans: APPID
+        en_US: APPID
+      type: text-input
+      required: true
+      placeholder:
+        zh_Hans: 在此输入您的腾讯语音识别服务的 APPID
+        en_US: Enter the APPID of your Tencent Cloud ASR service
+    - variable: secret_id
+      label:
+        zh_Hans: SecretId
+        en_US: SecretId
+      type: secret-input
+      required: true
+      placeholder:
+        zh_Hans: 在此输入您的腾讯语音识别服务的 SecretId
+        en_US: Enter the SecretId of your Tencent Cloud ASR service
+    - variable: secret_key
+      label:
+        zh_Hans: SecretKey
+        en_US: SecretKey
+      type: secret-input
+      required: true
+      placeholder:
+        zh_Hans: 在此输入您的腾讯语音识别服务的 SecretKey
+        en_US: Enter the SecretKey of your Tencent Cloud ASR service

@@ -23,7 +23,8 @@ from fields.app_fields import (
     app_pagination_fields,
 )
 from libs.login import login_required
-from models import Account, App
+from models import Account, App,Tenant,Plan
+
 from services.app_dsl_service import AppDslService, ImportMode
 from services.app_service import AppService
 
@@ -92,6 +93,14 @@ class AppListApi(Resource):
         if "mode" not in args or args["mode"] is None:
             raise BadRequest("mode is required")
 
+        # 检查应用数量限制
+        appCount = App.query.filter_by(tenant_id=current_user.current_tenant_id).count()
+        tenant = Tenant.query.filter_by(id=current_user.current_tenant_id).first()
+        if tenant:
+            plan = Plan.query.filter_by(id=tenant.plan_id).first()
+            if plan:
+                if plan.app_count <= appCount:
+                    raise BadRequest("创建应用已达到上线")
         app_service = AppService()
         app = app_service.create_app(current_user.current_tenant_id, args, current_user)
 
@@ -316,7 +325,7 @@ class AppTraceApi(Resource):
     @account_initialization_required
     def post(self, app_id):
         # add app trace
-        if not current_user.is_editor:
+        if not current_user.is_admin_or_owner:
             raise Forbidden()
         parser = reqparse.RequestParser()
         parser.add_argument("enabled", type=bool, required=True, location="json")

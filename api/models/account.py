@@ -5,8 +5,6 @@ from flask_login import UserMixin  # type: ignore
 from sqlalchemy import func
 from sqlalchemy.orm import Mapped, mapped_column
 
-from models.base import Base
-
 from .engine import db
 from .types import StringUUID
 
@@ -19,7 +17,7 @@ class AccountStatus(enum.StrEnum):
     CLOSED = "closed"
 
 
-class Account(UserMixin, Base):
+class Account(UserMixin, db.Model):  # type: ignore[name-defined]
     __tablename__ = "accounts"
     __table_args__ = (db.PrimaryKeyConstraint("id", name="account_pkey"), db.Index("account_email_idx", "email"))
 
@@ -56,8 +54,8 @@ class Account(UserMixin, Base):
         if ta:
             tenant.current_role = ta.role
         else:
+            # FIXME: fix the type error later, because the type is important maybe cause some bugs
             tenant = None  # type: ignore
-
         self._current_tenant = tenant
 
     @property
@@ -80,7 +78,7 @@ class Account(UserMixin, Base):
                 tenant.current_role = ta.role
             else:
                 tenant = None
-        except Exception:
+        except:
             tenant = None
 
         self._current_tenant = tenant
@@ -104,7 +102,6 @@ class Account(UserMixin, Base):
             return db.session.query(Account).filter(Account.id == account_integrate.account_id).one_or_none()
         return None
 
-    # check current_user.current_tenant.current_role in ['admin', 'owner']
     @property
     def is_admin_or_owner(self):
         return TenantAccountRole.is_privileged_role(self._current_tenant.current_role)
@@ -124,7 +121,12 @@ class Account(UserMixin, Base):
     @property
     def is_dataset_operator(self):
         return self._current_tenant.current_role == TenantAccountRole.DATASET_OPERATOR
-
+    
+    def get_account_info_by_email(self,email: str):
+        return db.session.query(Account).filter(Account.email == email).one_or_none()
+    
+    def get_account_info_by_name(self,name: str):
+        return db.session.query(Account).filter(Account.name == name).one_or_none()
 
 class TenantStatus(enum.StrEnum):
     NORMAL = "normal"
@@ -140,8 +142,6 @@ class TenantAccountRole(enum.StrEnum):
 
     @staticmethod
     def is_valid_role(role: str) -> bool:
-        if not role:
-            return False
         return role in {
             TenantAccountRole.OWNER,
             TenantAccountRole.ADMIN,
@@ -152,20 +152,14 @@ class TenantAccountRole(enum.StrEnum):
 
     @staticmethod
     def is_privileged_role(role: str) -> bool:
-        if not role:
-            return False
         return role in {TenantAccountRole.OWNER, TenantAccountRole.ADMIN}
 
     @staticmethod
     def is_admin_role(role: str) -> bool:
-        if not role:
-            return False
         return role == TenantAccountRole.ADMIN
 
     @staticmethod
     def is_non_owner_role(role: str) -> bool:
-        if not role:
-            return False
         return role in {
             TenantAccountRole.ADMIN,
             TenantAccountRole.EDITOR,
@@ -175,14 +169,10 @@ class TenantAccountRole(enum.StrEnum):
 
     @staticmethod
     def is_editing_role(role: str) -> bool:
-        if not role:
-            return False
         return role in {TenantAccountRole.OWNER, TenantAccountRole.ADMIN, TenantAccountRole.EDITOR}
 
     @staticmethod
     def is_dataset_edit_role(role: str) -> bool:
-        if not role:
-            return False
         return role in {
             TenantAccountRole.OWNER,
             TenantAccountRole.ADMIN,
@@ -203,7 +193,7 @@ class Tenant(db.Model):  # type: ignore[name-defined]
     custom_config = db.Column(db.Text)
     created_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
     updated_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
-
+    plan_id = db.Column(db.Integer, nullable=False, default=1)   # plan_id
     def get_accounts(self) -> list[Account]:
         return (
             db.session.query(Account)
@@ -218,6 +208,13 @@ class Tenant(db.Model):  # type: ignore[name-defined]
     @custom_config_dict.setter
     def custom_config_dict(self, value: dict):
         self.custom_config = json.dumps(value)
+
+
+class TenantAccountJoinRole(enum.Enum):
+    OWNER = "owner"
+    ADMIN = "admin"
+    NORMAL = "normal"
+    DATASET_OPERATOR = "dataset_operator"
 
 
 class TenantAccountJoin(db.Model):  # type: ignore[name-defined]
@@ -272,29 +269,4 @@ class InvitationCode(db.Model):  # type: ignore[name-defined]
     used_by_tenant_id = db.Column(StringUUID)
     used_by_account_id = db.Column(StringUUID)
     deprecated_at = db.Column(db.DateTime)
-    created_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
-
-
-class TenantPluginPermission(Base):
-    class InstallPermission(enum.StrEnum):
-        EVERYONE = "everyone"
-        ADMINS = "admins"
-        NOBODY = "noone"
-
-    class DebugPermission(enum.StrEnum):
-        EVERYONE = "everyone"
-        ADMINS = "admins"
-        NOBODY = "noone"
-
-    __tablename__ = "account_plugin_permissions"
-    __table_args__ = (
-        db.PrimaryKeyConstraint("id", name="account_plugin_permission_pkey"),
-        db.UniqueConstraint("tenant_id", name="unique_tenant_plugin"),
-    )
-
-    id: Mapped[str] = mapped_column(StringUUID, server_default=db.text("uuid_generate_v4()"))
-    tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
-    install_permission: Mapped[InstallPermission] = mapped_column(
-        db.String(16), nullable=False, server_default="everyone"
-    )
-    debug_permission: Mapped[DebugPermission] = mapped_column(db.String(16), nullable=False, server_default="noone")
+    created_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())

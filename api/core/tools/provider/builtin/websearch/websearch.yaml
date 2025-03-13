@@ -1,0 +1,34 @@
+identity:
+  name: websearch
+  author: Serply.io
+  label:
+    en_US: Serply.io
+    zh_Hans: Serply.io
+    pt_BR: Serply.io
+  description:
+    en_US: Serply.io is a robust real-time SERP API delivering structured data from a collection of search engines including Web Search, Jobs, News, and many more.
+    zh_Hans: Serply.io 是一个强大的实时 SERP API，可提供来自 搜索 招聘 新闻等搜索引擎集合的结构化数据。
+    pt_BR: Serply.io is a robust real-time SERP API delivering structured data from a collection of search engines including Web Search, Jobs, News, and many more.
+  icon: icon.svg
+  tags:
+    - search
+    - business
+    - news
+    - productivity
+credentials_for_provider:
+  serply_api_key:
+    type: secret-input
+    required: true
+    label:
+      en_US: Serply.io API key
+      zh_Hans: Serply.io API key
+      pt_BR: Serply.io API key
+    placeholder:
+      en_US: Please input your Serply.io API key
+      zh_Hans: 请输入你的 Serply.io API key
+      pt_BR: Please input your Serply.io API key
+    help:
+      en_US: Get your Serply.io API key from https://Serply.io/
+      zh_Hans: 从 Serply.io 获取您的 Serply.io API key
+      pt_BR: Get your Serply.io API key from Serply.io
+    url: https://Serply.io/

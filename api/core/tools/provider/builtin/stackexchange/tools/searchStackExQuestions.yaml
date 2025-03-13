@@ -1,0 +1,121 @@
+identity:
+  name: searchStackExQuestions
+  author: Richards Tu
+  label:
+    en_US: Search Stack Exchange Questions
+    zh_Hans: 搜索Stack Exchange问题
+description:
+  human:
+    en_US: A tool for searching questions on a Stack Exchange site.
+    zh_Hans: 在Stack Exchange站点上搜索问题的工具。
+  llm: A tool for searching questions on Stack Exchange site.
+parameters:
+  - name: intitle
+    type: string
+    required: true
+    label:
+      en_US: Search query
+      zh_Hans: 搜索查询
+    human_description:
+      en_US: The search query to use for finding questions.
+      zh_Hans: 用于查找问题的搜索查询。
+    llm_description: The search query.
+    form: llm
+  - name: sort
+    type: string
+    required: true
+    label:
+      en_US: Sort order
+      zh_Hans: 排序
+    human_description:
+      en_US: The sort order for the search results - relevance, activity, votes, or creation date.
+      zh_Hans: 搜索结果的排序顺序 - 相关性、活动、投票或创建日期。
+    llm_description: The sort order - 'relevance', 'activity', 'votes', or 'creation'.
+    form: llm
+  - name: order
+    type: select
+    required: true
+    label:
+      en_US: Sort direction
+      zh_Hans: 排序方向
+    human_description:
+      en_US: The direction to sort - ascending or descending.
+      zh_Hans: 排序方向 - 升序或降序。
+    form: form
+    options:
+      - value: asc
+        label:
+          en_US: Ascending
+          zh_Hans: 升序
+      - value: desc
+        label:
+          en_US: Descending
+          zh_Hans: 降序
+    default: desc
+  - name: site
+    type: string
+    required: true
+    label:
+      en_US: Stack Exchange site
+      zh_Hans: Stack Exchange 站点
+    human_description:
+      en_US: The Stack Exchange site to search, e.g. stackoverflow, unix, etc.
+      zh_Hans: 要搜索的Stack Exchange站点，例如stackoverflow、unix等。
+    llm_description: Stack Exchange site identifier - 'stackoverflow', 'serverfault', 'superuser', 'askubuntu', 'unix', 'cs', 'softwareengineering', 'codegolf', 'codereview', 'cstheory', 'security', 'cryptography', 'reverseengineering', 'datascience', 'devops', 'ux', 'dba', 'gis', 'webmasters', 'arduino', 'raspberrypi', 'networkengineering', 'iot', 'tor', 'sqa', 'mathoverflow', 'math', 'mathematica', 'dsp', 'gamedev', 'robotics', 'genai', 'computergraphics'.
+    form: llm
+  - name: tagged
+    type: string
+    required: false
+    label:
+      en_US: Include tags
+      zh_Hans: 包含标签
+    human_description:
+      en_US: A semicolon-separated list of tags that questions must have.
+      zh_Hans: 问题必须具有的标签的分号分隔列表。
+    llm_description: Semicolon-separated tags to include. Leave blank if not needed.
+    form: llm
+  - name: nottagged
+    type: string
+    required: false
+    label:
+      en_US: Exclude tags
+      zh_Hans: 排除标签
+    human_description:
+      en_US: A semicolon-separated list of tags to exclude from the search.
+      zh_Hans: 从搜索中排除的标签的分号分隔列表。
+    llm_description: Semicolon-separated tags to exclude. Leave blank if not needed.
+    form: llm
+  - name: accepted
+    type: boolean
+    required: true
+    label:
+      en_US: Has accepted answer
+      zh_Hans: 有已接受的答案
+    human_description:
+      en_US: Whether to limit to only questions that have an accepted answer.
+      zh_Hans: 是否限制为只有已接受答案的问题。
+    form: form
+    options:
+      - value: 'true'
+        label:
+          en_US: 'Yes'
+          zh_Hans: 是
+      - value: 'false'
+        label:
+          en_US: 'No'
+          zh_Hans: 否
+    default: 'true'
+  - name: pagesize
+    type: number
+    required: true
+    label:
+      en_US: Results per page
+      zh_Hans: 每页结果数
+    human_description:
+      en_US: The number of results to return per page.
+      zh_Hans: 每页返回的结果数。
+    llm_description: The number of results per page.
+    form: form
+    min: 1
+    max: 50
+    default: 10

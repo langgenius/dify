@@ -1,0 +1,4 @@
+model: BAAI/bge-m3
+model_type: text-embedding
+model_properties:
+  context_size: 32768

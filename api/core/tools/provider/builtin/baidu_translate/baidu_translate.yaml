@@ -1,0 +1,39 @@
+identity:
+  author: Xiao Ley
+  name: baidu_translate
+  label:
+    en_US: Baidu Translate
+    zh_Hans: 百度翻译
+  description:
+    en_US: Translate text using Baidu
+    zh_Hans: 使用百度进行翻译
+  icon: icon.png
+  tags:
+    - utilities
+credentials_for_provider:
+  appid:
+    type: secret-input
+    required: true
+    label:
+      en_US: Baidu translate appid
+      zh_Hans: Baidu translate appid
+    placeholder:
+      en_US: Please input your Baidu translate appid
+      zh_Hans: 请输入你的百度翻译 appid
+    help:
+      en_US: Get your Baidu translate appid from Baidu translate
+      zh_Hans: 从百度翻译开放平台获取你的 appid
+    url: https://api.fanyi.baidu.com
+  secret:
+    type: secret-input
+    required: true
+    label:
+      en_US: Baidu translate secret
+      zh_Hans: Baidu translate secret
+    placeholder:
+      en_US: Please input your Baidu translate secret
+      zh_Hans: 请输入你的百度翻译 secret
+    help:
+      en_US: Get your Baidu translate secret from Baidu translate
+      zh_Hans: 从百度翻译开放平台获取你的 secret
+    url: https://api.fanyi.baidu.com

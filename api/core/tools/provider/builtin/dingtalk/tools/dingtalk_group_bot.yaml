@@ -1,0 +1,52 @@
+identity:
+  name: dingtalk_group_bot
+  author: Bowen Liang
+  label:
+    en_US: Send Group Message
+    zh_Hans: 发送群消息
+    pt_BR: Send Group Message
+  icon: icon.svg
+description:
+  human:
+    en_US: Sending a group message on DingTalk via the webhook of group bot
+    zh_Hans: 通过钉钉的群机器人webhook发送群消息
+    pt_BR: Sending a group message on DingTalk via the webhook of group bot
+  llm: A tool for sending messages to a chat group on DingTalk(钉钉) .
+parameters:
+  - name: access_token
+    type: secret-input
+    required: true
+    label:
+      en_US: access token
+      zh_Hans: access token
+      pt_BR: access token
+    human_description:
+      en_US: access_token in the group robot webhook
+      zh_Hans: 群自定义机器人webhook中access_token字段的值
+      pt_BR: access_token in the group robot webhook
+    form: form
+  - name: sign_secret
+    type: secret-input
+    required: true
+    label:
+      en_US: secret key for signing
+      zh_Hans: 加签秘钥
+      pt_BR: secret key for signing
+    human_description:
+      en_US: secret key for signing
+      zh_Hans: 加签秘钥
+      pt_BR: secret key for signing
+    form: form
+  - name: content
+    type: string
+    required: true
+    label:
+      en_US: content
+      zh_Hans: 消息内容
+      pt_BR: content
+    human_description:
+      en_US: Content to sent to the group.
+      zh_Hans: 群消息文本
+      pt_BR: Content to sent to the group.
+    llm_description: Content of the message
+    form: llm

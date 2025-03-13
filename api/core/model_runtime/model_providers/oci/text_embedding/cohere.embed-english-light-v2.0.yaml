@@ -1,0 +1,9 @@
+model: cohere.embed-english-light-v2.0
+model_type: text-embedding
+model_properties:
+  context_size: 1024
+  max_chunks: 48
+pricing:
+  input: '0.001'
+  unit: '0.0001'
+  currency: USD

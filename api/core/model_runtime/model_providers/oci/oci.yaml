@@ -1,0 +1,42 @@
+provider: oci
+label:
+  en_US: OCIGenerativeAI
+description:
+  en_US: Models provided by OCI, such as Cohere Command R and Cohere Command R+.
+  zh_Hans: OCI 提供的模型，例如 Cohere Command R 和 Cohere Command R+。
+icon_small:
+  en_US: icon_s_en.svg
+icon_large:
+  en_US: icon_l_en.svg
+background: "#FFFFFF"
+help:
+  title:
+    en_US: Get your API Key from OCI
+    zh_Hans: 从 OCI 获取 API Key
+  url:
+    en_US: https://docs.cloud.oracle.com/Content/API/Concepts/sdkconfig.htm
+supported_model_types:
+  - llm
+  - text-embedding
+  #- rerank
+configurate_methods:
+  - predefined-model
+  #- customizable-model
+provider_credential_schema:
+  credential_form_schemas:
+    - variable: oci_config_content
+      label:
+        en_US: oci api key config file's content
+      type: text-input
+      required: true
+      placeholder:
+        zh_Hans: 在此输入您的 oci api key config 文件的内容(base64.b64encode("user_ocid/fingerprint/tenancy_ocid/region/compartment_ocid".encode('utf-8')) )
+        en_US: Enter your oci api key config file's content(base64.b64encode("user_ocid/fingerprint/tenancy_ocid/region/compartment_ocid".encode('utf-8')) )
+    - variable: oci_key_content
+      label:
+        en_US: oci api key file's content
+      type: text-input
+      required: true
+      placeholder:
+        zh_Hans: 在此输入您的 oci api key 文件的内容(base64.b64encode("pem file content".encode('utf-8')))
+        en_US: Enter your oci api key file's content(base64.b64encode("pem file content".encode('utf-8')))

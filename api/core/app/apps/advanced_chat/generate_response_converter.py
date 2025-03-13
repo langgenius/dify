@@ -1,3 +1,4 @@
+import json
 from collections.abc import Generator
 from typing import Any, cast
 
@@ -57,7 +58,7 @@ class AdvancedChatAppGenerateResponseConverter(AppGenerateResponseConverter):
     @classmethod
     def convert_stream_full_response(
         cls, stream_response: Generator[AppStreamResponse, None, None]
-    ) -> Generator[dict | str, Any, None]:
+    ) -> Generator[str, Any, None]:
         """
         Convert stream full response.
         :param stream_response: stream response
@@ -83,12 +84,12 @@ class AdvancedChatAppGenerateResponseConverter(AppGenerateResponseConverter):
                 response_chunk.update(data)
             else:
                 response_chunk.update(sub_stream_response.to_dict())
-            yield response_chunk
+            yield json.dumps(response_chunk)
 
     @classmethod
     def convert_stream_simple_response(
         cls, stream_response: Generator[AppStreamResponse, None, None]
-    ) -> Generator[dict | str, Any, None]:
+    ) -> Generator[str, Any, None]:
         """
         Convert stream simple response.
         :param stream_response: stream response
@@ -122,4 +123,4 @@ class AdvancedChatAppGenerateResponseConverter(AppGenerateResponseConverter):
             else:
                 response_chunk.update(sub_stream_response.to_dict())
 
-            yield response_chunk
+            yield json.dumps(response_chunk)

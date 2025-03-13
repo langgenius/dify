@@ -1,0 +1,13 @@
+identity:
+  author: Tao Wang
+  name: transcript
+  label:
+    en_US: Transcript
+    zh_Hans: Transcript
+  description:
+    en_US: Get transcripts from YouTube videos
+    zh_Hans: 获取 YouTube 视频的字幕/转录文本
+  icon: icon.svg
+  tags:
+    - videos
+credentials_for_provider:

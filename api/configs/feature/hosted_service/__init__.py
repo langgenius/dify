@@ -1,38 +1,7 @@
 from typing import Optional
 
-from pydantic import Field, NonNegativeInt, computed_field
+from pydantic import Field, NonNegativeInt
 from pydantic_settings import BaseSettings
-
-
-class HostedCreditConfig(BaseSettings):
-    HOSTED_MODEL_CREDIT_CONFIG: str = Field(
-        description="Model credit configuration in format 'model:credits,model:credits', e.g., 'gpt-4:20,gpt-4o:10'",
-        default="",
-    )
-
-    def get_model_credits(self, model_name: str) -> int:
-        """
-        Get credit value for a specific model name.
-        Returns 1 if model is not found in configuration (default credit).
-
-        :param model_name: The name of the model to search for
-        :return: The credit value for the model
-        """
-        if not self.HOSTED_MODEL_CREDIT_CONFIG:
-            return 1
-
-        try:
-            credit_map = dict(
-                item.strip().split(":", 1) for item in self.HOSTED_MODEL_CREDIT_CONFIG.split(",") if ":" in item
-            )
-
-            # Search for matching model pattern
-            for pattern, credit in credit_map.items():
-                if pattern.strip() == model_name:
-                    return int(credit)
-            return 1  # Default quota if no match found
-        except (ValueError, AttributeError):
-            return 1  # Return default quota if parsing fails
 
 
 class HostedOpenAiConfig(BaseSettings):
@@ -233,7 +202,5 @@ class HostedServiceConfig(
     HostedZhipuAIConfig,
     # moderation
     HostedModerationConfig,
-    # credit config
-    HostedCreditConfig,
 ):
     pass

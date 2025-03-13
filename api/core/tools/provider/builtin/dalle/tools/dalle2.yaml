@@ -1,0 +1,74 @@
+identity:
+  name: dalle2
+  author: Dify
+  label:
+    en_US: DALL-E 2
+    zh_Hans: DALL-E 2 绘画
+  description:
+    en_US: DALL-E 2 is a powerful drawing tool that can draw the image you want based on your prompt
+    zh_Hans: DALL-E 2 是一个强大的绘画工具，它可以根据您的提示词绘制出您想要的图像
+    pt_BR: DALL-E 2 is a powerful drawing tool that can draw the image you want based on your prompt
+description:
+  human:
+    en_US: DALL-E is a text to image tool
+    zh_Hans: DALL-E 是一个文本到图像的工具
+    pt_BR: DALL-E is a text to image tool
+  llm: DALL-E is a tool used to generate images from text
+parameters:
+  - name: prompt
+    type: string
+    required: true
+    label:
+      en_US: Prompt
+      zh_Hans: 提示词
+      pt_BR: Prompt
+    human_description:
+      en_US: Image prompt, you can check the official documentation of DallE 2
+      zh_Hans: 图像提示词，您可以查看 DallE 2 的官方文档
+      pt_BR: Image prompt, you can check the official documentation of DallE 2
+    llm_description: Image prompt of DallE 2, you should describe the image you want to generate as a list of words as possible as detailed
+    form: llm
+  - name: size
+    type: select
+    required: true
+    human_description:
+      en_US: used for selecting the image size
+      zh_Hans: 用于选择图像大小
+      pt_BR: used for selecting the image size
+    label:
+      en_US: Image size
+      zh_Hans: 图像大小
+      pt_BR: Image size
+    form: form
+    options:
+      - value: small
+        label:
+          en_US: Small(256x256)
+          zh_Hans: 小(256x256)
+          pt_BR: Small(256x256)
+      - value: medium
+        label:
+          en_US: Medium(512x512)
+          zh_Hans: 中(512x512)
+          pt_BR: Medium(512x512)
+      - value: large
+        label:
+          en_US: Large(1024x1024)
+          zh_Hans: 大(1024x1024)
+          pt_BR: Large(1024x1024)
+    default: large
+  - name: n
+    type: number
+    required: true
+    human_description:
+      en_US: used for selecting the number of images
+      zh_Hans: 用于选择图像数量
+      pt_BR: used for selecting the number of images
+    label:
+      en_US: Number of images
+      zh_Hans: 图像数量
+      pt_BR: Number of images
+    form: form
+    default: 1
+    min: 1
+    max: 10

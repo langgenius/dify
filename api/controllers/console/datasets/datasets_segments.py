@@ -19,7 +19,6 @@ from controllers.console.datasets.error import (
 from controllers.console.wraps import (
     account_initialization_required,
     cloud_edition_billing_knowledge_limit_check,
-    cloud_edition_billing_rate_limit_check,
     cloud_edition_billing_resource_check,
     setup_required,
 )
@@ -107,7 +106,6 @@ class DatasetDocumentSegmentListApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @cloud_edition_billing_rate_limit_check("knowledge")
     def delete(self, dataset_id, document_id):
         # check dataset
         dataset_id = str(dataset_id)
@@ -123,8 +121,8 @@ class DatasetDocumentSegmentListApi(Resource):
             raise NotFound("Document not found.")
         segment_ids = request.args.getlist("segment_id")
 
-        # The role of the current user in the ta table must be admin, owner, dataset_operator, or editor
-        if not current_user.is_dataset_editor:
+        # The role of the current user in the ta table must be admin or owner
+        if not current_user.is_editor:
             raise Forbidden()
         try:
             DatasetService.check_dataset_permission(dataset, current_user)
@@ -139,7 +137,6 @@ class DatasetDocumentSegmentApi(Resource):
     @login_required
     @account_initialization_required
     @cloud_edition_billing_resource_check("vector_space")
-    @cloud_edition_billing_rate_limit_check("knowledge")
     def patch(self, dataset_id, document_id, action):
         dataset_id = str(dataset_id)
         dataset = DatasetService.get_dataset(dataset_id)
@@ -151,8 +148,8 @@ class DatasetDocumentSegmentApi(Resource):
             raise NotFound("Document not found.")
         # check user's model setting
         DatasetService.check_dataset_model_setting(dataset)
-        # The role of the current user in the ta table must be admin, owner, dataset_operator, or editor
-        if not current_user.is_dataset_editor:
+        # The role of the current user in the ta table must be admin, owner, or editor
+        if not current_user.is_editor:
             raise Forbidden()
 
         try:
@@ -194,7 +191,6 @@ class DatasetDocumentSegmentAddApi(Resource):
     @account_initialization_required
     @cloud_edition_billing_resource_check("vector_space")
     @cloud_edition_billing_knowledge_limit_check("add_segment")
-    @cloud_edition_billing_rate_limit_check("knowledge")
     def post(self, dataset_id, document_id):
         # check dataset
         dataset_id = str(dataset_id)
@@ -206,7 +202,7 @@ class DatasetDocumentSegmentAddApi(Resource):
         document = DocumentService.get_document(dataset_id, document_id)
         if not document:
             raise NotFound("Document not found.")
-        if not current_user.is_dataset_editor:
+        if not current_user.is_editor:
             raise Forbidden()
         # check embedding model setting
         if dataset.indexing_technique == "high_quality":
@@ -244,7 +240,6 @@ class DatasetDocumentSegmentUpdateApi(Resource):
     @login_required
     @account_initialization_required
     @cloud_edition_billing_resource_check("vector_space")
-    @cloud_edition_billing_rate_limit_check("knowledge")
     def patch(self, dataset_id, document_id, segment_id):
         # check dataset
         dataset_id = str(dataset_id)
@@ -281,8 +276,8 @@ class DatasetDocumentSegmentUpdateApi(Resource):
         ).first()
         if not segment:
             raise NotFound("Segment not found.")
-        # The role of the current user in the ta table must be admin, owner, dataset_operator, or editor
-        if not current_user.is_dataset_editor:
+        # The role of the current user in the ta table must be admin, owner, or editor
+        if not current_user.is_editor:
             raise Forbidden()
         try:
             DatasetService.check_dataset_permission(dataset, current_user)
@@ -304,7 +299,6 @@ class DatasetDocumentSegmentUpdateApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @cloud_edition_billing_rate_limit_check("knowledge")
     def delete(self, dataset_id, document_id, segment_id):
         # check dataset
         dataset_id = str(dataset_id)
@@ -325,8 +319,8 @@ class DatasetDocumentSegmentUpdateApi(Resource):
         ).first()
         if not segment:
             raise NotFound("Segment not found.")
-        # The role of the current user in the ta table must be admin, owner, dataset_operator, or editor
-        if not current_user.is_dataset_editor:
+        # The role of the current user in the ta table must be admin or owner
+        if not current_user.is_editor:
             raise Forbidden()
         try:
             DatasetService.check_dataset_permission(dataset, current_user)
@@ -342,7 +336,6 @@ class DatasetDocumentSegmentBatchImportApi(Resource):
     @account_initialization_required
     @cloud_edition_billing_resource_check("vector_space")
     @cloud_edition_billing_knowledge_limit_check("add_segment")
-    @cloud_edition_billing_rate_limit_check("knowledge")
     def post(self, dataset_id, document_id):
         # check dataset
         dataset_id = str(dataset_id)
@@ -409,7 +402,6 @@ class ChildChunkAddApi(Resource):
     @account_initialization_required
     @cloud_edition_billing_resource_check("vector_space")
     @cloud_edition_billing_knowledge_limit_check("add_segment")
-    @cloud_edition_billing_rate_limit_check("knowledge")
     def post(self, dataset_id, document_id, segment_id):
         # check dataset
         dataset_id = str(dataset_id)
@@ -428,7 +420,7 @@ class ChildChunkAddApi(Resource):
         ).first()
         if not segment:
             raise NotFound("Segment not found.")
-        if not current_user.is_dataset_editor:
+        if not current_user.is_editor:
             raise Forbidden()
         # check embedding model setting
         if dataset.indexing_technique == "high_quality":
@@ -507,7 +499,6 @@ class ChildChunkAddApi(Resource):
     @login_required
     @account_initialization_required
     @cloud_edition_billing_resource_check("vector_space")
-    @cloud_edition_billing_rate_limit_check("knowledge")
     def patch(self, dataset_id, document_id, segment_id):
         # check dataset
         dataset_id = str(dataset_id)
@@ -528,8 +519,8 @@ class ChildChunkAddApi(Resource):
         ).first()
         if not segment:
             raise NotFound("Segment not found.")
-        # The role of the current user in the ta table must be admin, owner, dataset_operator, or editor
-        if not current_user.is_dataset_editor:
+        # The role of the current user in the ta table must be admin, owner, or editor
+        if not current_user.is_editor:
             raise Forbidden()
         try:
             DatasetService.check_dataset_permission(dataset, current_user)
@@ -551,7 +542,6 @@ class ChildChunkUpdateApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @cloud_edition_billing_rate_limit_check("knowledge")
     def delete(self, dataset_id, document_id, segment_id, child_chunk_id):
         # check dataset
         dataset_id = str(dataset_id)
@@ -579,8 +569,8 @@ class ChildChunkUpdateApi(Resource):
         ).first()
         if not child_chunk:
             raise NotFound("Child chunk not found.")
-        # The role of the current user in the ta table must be admin, owner, dataset_operator, or editor
-        if not current_user.is_dataset_editor:
+        # The role of the current user in the ta table must be admin or owner
+        if not current_user.is_editor:
             raise Forbidden()
         try:
             DatasetService.check_dataset_permission(dataset, current_user)
@@ -596,7 +586,6 @@ class ChildChunkUpdateApi(Resource):
     @login_required
     @account_initialization_required
     @cloud_edition_billing_resource_check("vector_space")
-    @cloud_edition_billing_rate_limit_check("knowledge")
     def patch(self, dataset_id, document_id, segment_id, child_chunk_id):
         # check dataset
         dataset_id = str(dataset_id)
@@ -624,8 +613,8 @@ class ChildChunkUpdateApi(Resource):
         ).first()
         if not child_chunk:
             raise NotFound("Child chunk not found.")
-        # The role of the current user in the ta table must be admin, owner, dataset_operator, or editor
-        if not current_user.is_dataset_editor:
+        # The role of the current user in the ta table must be admin or owner
+        if not current_user.is_editor:
             raise Forbidden()
         try:
             DatasetService.check_dataset_permission(dataset, current_user)

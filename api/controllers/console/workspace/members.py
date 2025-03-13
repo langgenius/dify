@@ -14,9 +14,10 @@ from controllers.console.wraps import (
 from extensions.ext_database import db
 from fields.member_fields import account_with_role_list_fields
 from libs.login import login_required
-from models.account import Account, TenantAccountRole
+from models.account import Account, TenantAccountRole,TenantAccountJoin,Tenant
+from models.plan import Plan
 from services.account_service import RegisterService, TenantService
-from services.errors.account import AccountAlreadyInTenantError
+from services.errors.account import AccountAlreadyInTenantError,AccountAlreadyInAnotherTenantError
 
 
 class MemberListApi(Resource):
@@ -50,8 +51,17 @@ class MemberInviteEmailApi(Resource):
         interface_language = args["language"]
         if not TenantAccountRole.is_non_owner_role(invitee_role):
             return {"code": "invalid-role", "message": "Invalid role"}, 400
-
+        
         inviter = current_user
+        # 判断团队成员数量
+        tenantAccountJoinCount = TenantAccountJoin.query.filter_by(tenant_id=current_user.current_tenant_id).count()
+        # 获取套餐团队数量
+        tenant = Tenant.query.filter_by(id=current_user.current_tenant_id).first()
+        if tenant:
+            plan = Plan.query.filter_by(id=tenant.plan_id).first()
+            if plan:
+                if plan.team_members<=tenantAccountJoinCount:
+                    return {"code": "failed", "message": "团对成员已满"}, 500
         invitation_results = []
         console_web_url = dify_config.CONSOLE_WEB_URL
         for invitee_email in invitee_emails:
@@ -67,6 +77,9 @@ class MemberInviteEmailApi(Resource):
                         "url": f"{console_web_url}/activate?email={encoded_invitee_email}&token={token}",
                     }
                 )
+            except AccountAlreadyInAnotherTenantError:
+                invitation_results.append({"status": "failed", "email": invitee_email, "message": str("Account already belongs to another tenant")})
+                break
             except AccountAlreadyInTenantError:
                 invitation_results.append(
                     {"status": "success", "email": invitee_email, "url": f"{console_web_url}/signin"}

@@ -1,0 +1,26 @@
+identity:
+  name: geocoder
+  author: Listeng
+  label:
+    en_US: Get coords converted from address name
+    zh_Hans: 地理编码
+    pt_BR: Get coords converted from address name
+description:
+  human:
+    en_US: Geocoder
+    zh_Hans: 中国区域地理编码查询
+    pt_BR: Geocoder
+  llm: A tool for geocoder in China
+parameters:
+  - name: keyword
+    type: string
+    required: true
+    label:
+      en_US: keyword
+      zh_Hans: 搜索的关键字
+      pt_BR: keyword
+    human_description:
+      en_US: keyword
+      zh_Hans: 搜索的关键字
+      pt_BR: keyword
+    form: llm

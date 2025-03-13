@@ -1,0 +1,102 @@
+identity:
+  name: scraper_crawler
+  author: William Espegren
+  label:
+    en_US: Web Scraper & Crawler
+    zh_Hans: 网页抓取与爬虫
+description:
+  human:
+    en_US: A tool for scraping & crawling webpages. Input should be a url.
+    zh_Hans: 用于抓取和爬取网页的工具。输入应该是一个网址。
+  llm: A tool for scraping & crawling webpages. Input should be a url.
+parameters:
+  - name: url
+    type: string
+    required: true
+    label:
+      en_US: URL
+      zh_Hans: 网址
+    human_description:
+      en_US: url to be scraped or crawled
+      zh_Hans: 要抓取或爬取的网址
+    llm_description: url to either be scraped or crawled
+    form: llm
+  - name: mode
+    type: select
+    required: true
+    options:
+      - value: scrape
+        label:
+          en_US: scrape
+          zh_Hans: 抓取
+      - value: crawl
+        label:
+          en_US: crawl
+          zh_Hans: 爬取
+    default: crawl
+    label:
+      en_US: Mode
+      zh_Hans: 模式
+    human_description:
+      en_US: used for selecting to either scrape the website or crawl the entire website following subpages
+      zh_Hans: 用于选择抓取网站或爬取整个网站及其子页面
+    form: form
+  - name: limit
+    type: number
+    required: false
+    label:
+      en_US: maximum number of pages to crawl
+      zh_Hans: 最大爬取页面数
+    human_description:
+      en_US: specify the maximum number of pages to crawl per website. the crawler will stop after reaching this limit.
+      zh_Hans: 指定每个网站要爬取的最大页面数。爬虫将在达到此限制后停止。
+    form: form
+    min: 0
+    default: 0
+  - name: depth
+    type: number
+    required: false
+    label:
+      en_US: maximum depth of pages to crawl
+      zh_Hans: 最大爬取深度
+    human_description:
+      en_US: the crawl limit for maximum depth.
+      zh_Hans: 最大爬取深度的限制。
+    form: form
+    min: 0
+    default: 0
+  - name: blacklist
+    type: string
+    required: false
+    label:
+      en_US: url patterns to exclude
+      zh_Hans: 要排除的URL模式
+    human_description:
+      en_US: blacklist a set of paths that you do not want to crawl. you can use regex patterns to help with the list.
+      zh_Hans: 指定一组不想爬取的路径。您可以使用正则表达式模式来帮助定义列表。
+    placeholder:
+      en_US: /blog/*, /about
+    form: form
+  - name: whitelist
+    type: string
+    required: false
+    label:
+      en_US: URL patterns to include
+      zh_Hans: 要包含的URL模式
+    human_description:
+      en_US: Whitelist a set of paths that you want to crawl, ignoring all other routes that do not match the patterns. You can use regex patterns to help with the list.
+      zh_Hans: 指定一组要爬取的路径，忽略所有不匹配模式的其他路由。您可以使用正则表达式模式来帮助定义列表。
+    placeholder:
+      en_US: /blog/*, /about
+    form: form
+  - name: readability
+    type: boolean
+    required: false
+    label:
+      en_US: Pre-process the content for LLM usage
+      zh_Hans: 仅返回页面的主要内容
+    human_description:
+      en_US: Use Mozilla's readability to pre-process the content for reading. This may drastically improve the content for LLM usage.
+      zh_Hans: 如果启用，爬虫将仅返回页面的主要内容，不包括标题、导航、页脚等。
+    form: form
+    default: false

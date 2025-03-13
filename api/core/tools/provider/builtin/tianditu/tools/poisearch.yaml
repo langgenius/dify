@@ -1,0 +1,38 @@
+identity:
+  name: point_of_interest_search
+  author: Listeng
+  label:
+    en_US: Point of Interest search
+    zh_Hans: 兴趣点搜索
+    pt_BR: Point of Interest search
+description:
+  human:
+    en_US: Search for certain types of points of interest around a location
+    zh_Hans: 搜索某个位置周边的5公里内某种类型的兴趣点
+    pt_BR: Search for certain types of points of interest around a location
+  llm: A tool for searching for certain types of points of interest around a location
+parameters:
+  - name: keyword
+    type: string
+    required: true
+    label:
+      en_US: poi keyword
+      zh_Hans: 兴趣点的关键字
+      pt_BR: poi keyword
+    human_description:
+      en_US: poi keyword
+      zh_Hans: 兴趣点的关键字
+      pt_BR: poi keyword
+    form: llm
+  - name: baseAddress
+    type: string
+    required: true
+    label:
+      en_US: base current point
+      zh_Hans: 当前位置的关键字
+      pt_BR: base current point
+    human_description:
+      en_US: base current point
+      zh_Hans: 当前位置的关键字
+      pt_BR: base current point
+    form: llm

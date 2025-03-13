@@ -1,0 +1,119 @@
+identity:
+  name: create_event
+  author: Doug Lea
+  label:
+    en_US: Create Event
+    zh_Hans: 创建日程
+description:
+  human:
+    en_US: Create Event
+    zh_Hans: 创建日程
+  llm: A tool for creating events in Feishu.(创建飞书日程)
+parameters:
+  - name: summary
+    type: string
+    required: false
+    label:
+      en_US: Summary
+      zh_Hans: 日程标题
+    human_description:
+      en_US: The title of the event. If not filled, the event title will display (No Subject).
+      zh_Hans: 日程标题，若不填则日程标题显示 (无主题)。
+    llm_description: 日程标题，若不填则日程标题显示 (无主题)。
+    form: llm
+
+  - name: description
+    type: string
+    required: false
+    label:
+      en_US: Description
+      zh_Hans: 日程描述
+    human_description:
+      en_US: The description of the event.
+      zh_Hans: 日程描述。
+    llm_description: 日程描述。
+    form: llm
+
+  - name: need_notification
+    type: boolean
+    required: false
+    default: true
+    label:
+      en_US: Need Notification
+      zh_Hans: 是否发送通知
+    human_description:
+      en_US: |
+        Whether to send a bot message when the event is created, true: send, false: do not send.
+      zh_Hans: 创建日程时是否发送 bot 消息，true：发送，false：不发送。
+    llm_description: 创建日程时是否发送 bot 消息，true：发送，false：不发送。
+    form: form
+
+  - name: start_time
+    type: string
+    required: true
+    label:
+      en_US: Start Time
+      zh_Hans: 开始时间
+    human_description:
+      en_US: |
+        The start time of the event, format: 2006-01-02 15:04:05.
+      zh_Hans: 日程开始时间，格式：2006-01-02 15:04:05。
+    llm_description: 日程开始时间，格式：2006-01-02 15:04:05。
+    form: llm
+
+  - name: end_time
+    type: string
+    required: true
+    label:
+      en_US: End Time
+      zh_Hans: 结束时间
+    human_description:
+      en_US: |
+        The end time of the event, format: 2006-01-02 15:04:05.
+      zh_Hans: 日程结束时间，格式：2006-01-02 15:04:05。
+    llm_description: 日程结束时间，格式：2006-01-02 15:04:05。
+    form: llm
+
+  - name: attendee_ability
+    type: select
+    required: false
+    options:
+      - value: none
+        label:
+          en_US: none
+          zh_Hans: 无
+      - value: can_see_others
+        label:
+          en_US: can_see_others
+          zh_Hans: 可以查看参与人列表
+      - value: can_invite_others
+        label:
+          en_US: can_invite_others
+          zh_Hans: 可以邀请其它参与人
+      - value: can_modify_event
+        label:
+          en_US: can_modify_event
+          zh_Hans: 可以编辑日程
+    default: "none"
+    label:
+      en_US: attendee_ability
+      zh_Hans: 参会人权限
+    human_description:
+      en_US: Attendee ability, optional values are none, can_see_others, can_invite_others, can_modify_event, with a default value of none.
+      zh_Hans: 参会人权限，可选值有无、可以查看参与人列表、可以邀请其它参与人、可以编辑日程，默认值为无。
+    llm_description: 参会人权限，可选值有无、可以查看参与人列表、可以邀请其它参与人、可以编辑日程，默认值为无。
+    form: form
+
+  - name: auto_record
+    type: boolean
+    required: false
+    default: false
+    label:
+      en_US: Auto Record
+      zh_Hans: 自动录制
+    human_description:
+      en_US: |
+        Whether to enable automatic recording, true: enabled, automatically record when the meeting starts; false: not enabled.
+      zh_Hans: 是否开启自动录制，true：开启，会议开始后自动录制；false：不开启。
+    llm_description: 是否开启自动录制，true：开启，会议开始后自动录制；false：不开启。
+    form: form

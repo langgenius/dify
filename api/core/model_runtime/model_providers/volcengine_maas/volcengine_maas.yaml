@@ -1,0 +1,314 @@
+provider: volcengine_maas
+label:
+  en_US: Volcengine
+description:
+  en_US: Volcengine Ark models.
+  zh_Hans: 火山方舟提供的模型，例如 Doubao-pro-4k、Doubao-pro-32k 和 Doubao-pro-128k。
+icon_small:
+  en_US: icon_s_en.svg
+icon_large:
+  en_US: icon_l_en.svg
+  zh_Hans: icon_l_zh.svg
+background: "#F9FAFB"
+help:
+  title:
+    en_US: Get your Access Key and Secret Access Key from Volcengine Console
+    zh_Hans: 从火山引擎控制台获取您的 Access Key 和 Secret Access Key
+  url:
+    en_US: https://console.volcengine.com/iam/keymanage/
+supported_model_types:
+  - llm
+  - text-embedding
+configurate_methods:
+  - customizable-model
+model_credential_schema:
+  model:
+    label:
+      en_US: Model Name
+      zh_Hans: 模型名称
+    placeholder:
+      en_US: Enter your Model Name
+      zh_Hans: 输入模型名称
+  credential_form_schemas:
+    - variable: auth_method
+      required: true
+      label:
+        en_US: Authentication Method
+        zh_Hans: 鉴权方式
+      type: select
+      default: aksk
+      options:
+        - label:
+            en_US: API Key
+          value: api_key
+        - label:
+            en_US: Access Key / Secret Access Key
+          value: aksk
+      placeholder:
+        en_US: Enter your Authentication Method
+        zh_Hans: 选择鉴权方式
+    - variable: volc_access_key_id
+      required: true
+      show_on:
+        - variable: auth_method
+          value: aksk
+      label:
+        en_US: Access Key
+        zh_Hans: Access Key
+      type: secret-input
+      placeholder:
+        en_US: Enter your Access Key
+        zh_Hans: 输入您的 Access Key
+    - variable: volc_secret_access_key
+      required: true
+      show_on:
+        - variable: auth_method
+          value: aksk
+      label:
+        en_US: Secret Access Key
+        zh_Hans: Secret Access Key
+      type: secret-input
+      placeholder:
+        en_US: Enter your Secret Access Key
+        zh_Hans: 输入您的 Secret Access Key
+    - variable: volc_api_key
+      required: true
+      show_on:
+        - variable: auth_method
+          value: api_key
+      label:
+        en_US: API Key
+      type: secret-input
+      placeholder:
+        en_US: Enter your API Key
+        zh_Hans: 输入您的 API Key
+    - variable: volc_region
+      required: true
+      label:
+        en_US: Volcengine Region
+        zh_Hans: 火山引擎地域
+      type: text-input
+      default: cn-beijing
+      placeholder:
+        en_US: Enter Volcengine Region
+        zh_Hans: 输入火山引擎地域
+    - variable: api_endpoint_host
+      required: true
+      label:
+        en_US: API Endpoint Host
+        zh_Hans: API Endpoint Host
+      type: text-input
+      default: https://ark.cn-beijing.volces.com/api/v3
+      placeholder:
+        en_US: Enter your API Endpoint Host
+        zh_Hans: 输入 API Endpoint Host
+    - variable: endpoint_id
+      required: true
+      label:
+        en_US: Endpoint ID
+        zh_Hans: Endpoint ID
+      type: text-input
+      placeholder:
+        en_US: Enter your Endpoint ID
+        zh_Hans: 输入您的 Endpoint ID
+    - variable: base_model_name
+      label:
+        en_US: Base Model
+        zh_Hans: 基础模型
+      type: select
+      required: true
+      options:
+        - label:
+            en_US: Doubao-1.5-vision-pro-32k
+          value: Doubao-1.5-vision-pro-32k
+          show_on:
+            - variable: __model_type
+              value: llm
+        - label:
+            en_US: Doubao-1.5-pro-32k
+          value: Doubao-1.5-pro-32k
+          show_on:
+            - variable: __model_type
+              value: llm
+        - label:
+            en_US: Doubao-1.5-lite-32k
+          value: Doubao-1.5-lite-32k
+          show_on:
+            - variable: __model_type
+              value: llm
+        - label:
+            en_US: Doubao-1.5-pro-256k
+          value: Doubao-1.5-pro-256k
+          show_on:
+            - variable: __model_type
+              value: llm
+        - label:
+            en_US: Doubao-vision-pro-32k
+          value: Doubao-vision-pro-32k
+          show_on:
+            - variable: __model_type
+              value: llm
+        - label:
+            en_US: Doubao-vision-lite-32k
+          value: Doubao-vision-lite-32k
+          show_on:
+            - variable: __model_type
+              value: llm
+        - label:
+            en_US: Doubao-pro-4k
+          value: Doubao-pro-4k
+          show_on:
+            - variable: __model_type
+              value: llm
+        - label:
+            en_US: Doubao-lite-4k
+          value: Doubao-lite-4k
+          show_on:
+            - variable: __model_type
+              value: llm
+        - label:
+            en_US: Doubao-pro-32k
+          value: Doubao-pro-32k
+          show_on:
+            - variable: __model_type
+              value: llm
+        - label:
+            en_US: Doubao-lite-32k
+          value: Doubao-lite-32k
+          show_on:
+            - variable: __model_type
+              value: llm
+        - label:
+            en_US: Doubao-pro-128k
+          value: Doubao-pro-128k
+          show_on:
+            - variable: __model_type
+              value: llm
+        - label:
+            en_US: Doubao-lite-128k
+          value: Doubao-lite-128k
+          show_on:
+            - variable: __model_type
+              value: llm
+        - label:
+            en_US: Doubao-pro-256k
+          value: Doubao-pro-256k
+          show_on:
+            - variable: __model_type
+              value: llm
+        - label:
+            en_US: Llama3-8B
+          value: Llama3-8B
+          show_on:
+            - variable: __model_type
+              value: llm
+        - label:
+            en_US: Llama3-70B
+          value: Llama3-70B
+          show_on:
+            - variable: __model_type
+              value: llm
+        - label:
+            en_US: Moonshot-v1-8k
+          value: Moonshot-v1-8k
+          show_on:
+            - variable: __model_type
+              value: llm
+        - label:
+            en_US: Moonshot-v1-32k
+          value: Moonshot-v1-32k
+          show_on:
+            - variable: __model_type
+              value: llm
+        - label:
+            en_US: Moonshot-v1-128k
+          value: Moonshot-v1-128k
+          show_on:
+            - variable: __model_type
+              value: llm
+        - label:
+            en_US: GLM3-130B
+          value: GLM3-130B
+          show_on:
+            - variable: __model_type
+              value: llm
+        - label:
+            en_US: GLM3-130B-Fin
+          value: GLM3-130B-Fin
+          show_on:
+            - variable: __model_type
+              value: llm
+        - label:
+            en_US: Mistral-7B
+          value: Mistral-7B
+          show_on:
+            - variable: __model_type
+              value: llm
+        - label:
+            en_US: Doubao-embedding
+          value: Doubao-embedding
+          show_on:
+            - variable: __model_type
+              value: text-embedding
+        - label:
+            en_US: Doubao-embedding-large
+          value: Doubao-embedding-large
+          show_on:
+            - variable: __model_type
+              value: text-embedding
+        - label:
+            en_US: Custom
+            zh_Hans: 自定义
+          value: Custom
+    - variable: mode
+      required: true
+      show_on:
+        - variable: __model_type
+          value: llm
+        - variable: base_model_name
+          value: Custom
+      label:
+        zh_Hans: 模型类型
+        en_US: Completion Mode
+      type: select
+      default: chat
+      placeholder:
+        zh_Hans: 选择对话类型
+        en_US: Select Completion Mode
+      options:
+        - value: completion
+          label:
+            en_US: Completion
+            zh_Hans: 补全
+        - value: chat
+          label:
+            en_US: Chat
+            zh_Hans: 对话
+    - variable: context_size
+      required: true
+      show_on:
+        - variable: base_model_name
+          value: Custom
+      label:
+        zh_Hans: 模型上下文长度
+        en_US: Model Context Size
+      type: text-input
+      default: "4096"
+      placeholder:
+        zh_Hans: 输入您的模型上下文长度
+        en_US: Enter your Model Context Size
+    - variable: max_tokens
+      required: true
+      show_on:
+        - variable: __model_type
+          value: llm
+        - variable: base_model_name
+          value: Custom
+      label:
+        zh_Hans: 最大 token 上限
+        en_US: Upper Bound for Max Tokens
+      default: "4096"
+      type: text-input
+      placeholder:
+        zh_Hans: 输入您的模型最大 token 上限
+        en_US: Enter your model Upper Bound for Max Tokens

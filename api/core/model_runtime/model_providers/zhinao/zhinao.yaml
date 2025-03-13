@@ -1,0 +1,32 @@
+provider: zhinao
+label:
+  en_US: 360 AI
+  zh_Hans: 360 智脑
+description:
+  en_US: Models provided by 360 AI.
+  zh_Hans: 360 智脑提供的模型。
+icon_small:
+  en_US: icon_s_en.svg
+icon_large:
+  en_US: icon_l_en.svg
+background: "#e3f0ff"
+help:
+  title:
+    en_US: Get your API Key from 360 AI.
+    zh_Hans: 从360 智脑获取 API Key
+  url:
+    en_US: https://ai.360.com/platform/keys
+supported_model_types:
+  - llm
+configurate_methods:
+  - predefined-model
+provider_credential_schema:
+  credential_form_schemas:
+    - variable: api_key
+      label:
+        en_US: API Key
+      type: secret-input
+      required: true
+      placeholder:
+        zh_Hans: 在此输入您的 API Key
+        en_US: Enter your API Key

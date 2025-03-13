@@ -1,0 +1,16 @@
+- llama-v3p1-405b-instruct
+- llama-v3p1-70b-instruct
+- llama-v3p1-8b-instruct
+- llama-v3-70b-instruct
+- mixtral-8x22b-instruct
+- mixtral-8x7b-instruct
+- firefunction-v2
+- firefunction-v1
+- gemma2-9b-it
+- llama-v3-70b-instruct-hf
+- llama-v3-8b-instruct
+- llama-v3-8b-instruct-hf
+- mixtral-8x7b-instruct-hf
+- mythomax-l2-13b
+- phi-3-vision-128k-instruct
+- yi-large

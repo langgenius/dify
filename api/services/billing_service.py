@@ -5,15 +5,15 @@ import httpx
 from tenacity import retry, retry_if_exception_type, stop_before_delay, wait_fixed
 
 from extensions.ext_database import db
-from libs.helper import RateLimiter
 from models.account import TenantAccountJoin, TenantAccountRole
+from models.model import MessageAnnotation
+from models import App,UploadFile
+
 
 
 class BillingService:
     base_url = os.environ.get("BILLING_API_URL", "BILLING_API_URL")
     secret_key = os.environ.get("BILLING_API_SECRET_KEY", "BILLING_API_SECRET_KEY")
-
-    compliance_download_rate_limiter = RateLimiter("compliance_download_rate_limiter", 4, 60)
 
     @classmethod
     def get_info(cls, tenant_id: str):
@@ -21,17 +21,6 @@ class BillingService:
 
         billing_info = cls._send_request("GET", "/subscription/info", params=params)
         return billing_info
-
-    @classmethod
-    def get_knowledge_rate_limit(cls, tenant_id: str):
-        params = {"tenant_id": tenant_id}
-
-        knowledge_rate_limit = cls._send_request("GET", "/subscription/knowledge-rate-limit", params=params)
-
-        return {
-            "limit": knowledge_rate_limit.get("limit", 10),
-            "subscription_plan": knowledge_rate_limit.get("subscription_plan", "sandbox"),
-        }
 
     @classmethod
     def get_subscription(cls, plan: str, interval: str, prefilled_email: str = "", tenant_id: str = ""):
@@ -107,27 +96,26 @@ class BillingService:
         return cls._send_request("POST", "/account/delete-feedback", json=json)
 
     @classmethod
-    def get_compliance_download_link(
-        cls,
-        doc_name: str,
-        account_id: str,
-        tenant_id: str,
-        ip: str,
-        device_info: str,
-    ):
-        limiter_key = f"{account_id}:{tenant_id}"
-        if cls.compliance_download_rate_limiter.is_rate_limited(limiter_key):
-            from controllers.console.error import CompilanceRateLimitError
-
-            raise CompilanceRateLimitError()
-
-        json = {
-            "doc_name": doc_name,
-            "account_id": account_id,
+    def plan_detail(cls,tenant_id: str = ""):
+        # 团队成员数量
+        tenantAccountJoinCount = TenantAccountJoin.query.filter_by(tenant_id=tenant_id).count()
+        # 应用程序数量
+        appCount = App.query.filter_by(tenant_id=tenant_id).count()
+        # 标注数量
+        annotationCount =(
+            db.session.query(MessageAnnotation)
+            .join(App, MessageAnnotation.app_id == App.id)
+            .filter(App.tenant_id == tenant_id, App.status == "normal").count()
+        ) 
+        # 文档数量
+        fileCount = UploadFile.query.filter_by(tenant_id=tenant_id).count()
+        # 返回结果
+        result = {
             "tenant_id": tenant_id,
-            "ip_address": ip,
-            "device_info": device_info,
+            "team_member_count": tenantAccountJoinCount,
+            "app_count": appCount,
+            "annotation_count": annotationCount,
+            "file_count": fileCount
         }
-        res = cls._send_request("POST", "/compliance/download", json=json)
-        cls.compliance_download_rate_limiter.increment_rate_limit(limiter_key)
-        return res
+
+        return result

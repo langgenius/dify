@@ -10,7 +10,8 @@ from werkzeug.exceptions import NotFound
 
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
-from models.model import App, AppAnnotationHitHistory, AppAnnotationSetting, Message, MessageAnnotation
+from models.model import App, AppAnnotationHitHistory, AppAnnotationSetting, Message, MessageAnnotation,Tenant
+from models.plan import Plan
 from services.feature_service import FeatureService
 from tasks.annotation.add_annotation_to_index_task import add_annotation_to_index_task
 from tasks.annotation.batch_import_annotations_task import batch_import_annotations_task
@@ -18,18 +19,33 @@ from tasks.annotation.delete_annotation_index_task import delete_annotation_inde
 from tasks.annotation.disable_annotation_reply_task import disable_annotation_reply_task
 from tasks.annotation.enable_annotation_reply_task import enable_annotation_reply_task
 from tasks.annotation.update_annotation_to_index_task import update_annotation_to_index_task
+from services.errors.message import(
+    AnnotationCountErr,
+)
 
 
 class AppAnnotationService:
     @classmethod
     def up_insert_app_annotation_from_message(cls, args: dict, app_id: str) -> MessageAnnotation:
+        # 检查标注上限
+        annotationCount =(
+            db.session.query(MessageAnnotation)
+            .join(App, MessageAnnotation.app_id == App.id)
+            .filter(
+            App.tenant_id == current_user.current_tenant_id, App.status == "normal").count()
+        ) 
+        tenant = Tenant.query.filter_by(id=current_user.current_tenant_id).first()
+        if tenant:
+            plan = Plan.query.filter_by(id=tenant.plan_id).first()
+            if plan:
+                if plan.annotation_count <= annotationCount:
+                    raise AnnotationCountErr("标注已达到上限")
         # get app info
         app = (
             db.session.query(App)
             .filter(App.id == app_id, App.tenant_id == current_user.current_tenant_id, App.status == "normal")
             .first()
         )
-
         if not app:
             raise NotFound("App not found")
         if args.get("message_id"):

@@ -1,9 +1,16 @@
 import logging
-from typing import Optional
+import mimetypes
+import os
+from pathlib import Path
+from typing import Optional, cast
+
+import requests
+from flask import current_app
 
 from core.entities.model_entities import ModelStatus, ModelWithProviderEntity, ProviderModelWithStatusEntity
 from core.model_runtime.entities.model_entities import ModelType, ParameterRule
-from core.model_runtime.model_providers.model_provider_factory import ModelProviderFactory
+from core.model_runtime.model_providers import model_provider_factory
+from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
 from core.provider_manager import ProviderManager
 from models.provider import ProviderType
 from services.entities.model_provider_entities import (
@@ -47,7 +54,6 @@ class ModelProviderService:
                     continue
 
             provider_response = ProviderResponse(
-                tenant_id=tenant_id,
                 provider=provider_configuration.provider.provider,
                 label=provider_configuration.provider.label,
                 description=provider_configuration.provider.description,
@@ -91,11 +97,10 @@ class ModelProviderService:
 
         # Get provider available models
         return [
-            ModelWithProviderEntityResponse(tenant_id=tenant_id, model=model)
-            for model in provider_configurations.get_models(provider=provider)
+            ModelWithProviderEntityResponse(model) for model in provider_configurations.get_models(provider=provider)
         ]
 
-    def get_provider_credentials(self, tenant_id: str, provider: str) -> Optional[dict]:
+    def get_provider_credentials(self, tenant_id: str, provider: str):
         """
         get provider credentials.
         """
@@ -163,7 +168,7 @@ class ModelProviderService:
         # Remove custom provider credentials.
         provider_configuration.delete_custom_credentials()
 
-    def get_model_credentials(self, tenant_id: str, provider: str, model_type: str, model: str) -> Optional[dict]:
+    def get_model_credentials(self, tenant_id: str, provider: str, model_type: str, model: str):
         """
         get model credentials.
 
@@ -297,7 +302,6 @@ class ModelProviderService:
 
             providers_with_models.append(
                 ProviderWithModelsResponse(
-                    tenant_id=tenant_id,
                     provider=provider,
                     label=first_model.provider.label,
                     icon_small=first_model.provider.icon_small,
@@ -339,17 +343,18 @@ class ModelProviderService:
         if not provider_configuration:
             raise ValueError(f"Provider {provider} does not exist.")
 
+        # Get model instance of LLM
+        model_type_instance = provider_configuration.get_model_type_instance(ModelType.LLM)
+        model_type_instance = cast(LargeLanguageModel, model_type_instance)
+
         # fetch credentials
         credentials = provider_configuration.get_current_credentials(model_type=ModelType.LLM, model=model)
 
         if not credentials:
             return []
 
-        model_schema = provider_configuration.get_model_schema(
-            model_type=ModelType.LLM, model=model, credentials=credentials
-        )
-
-        return model_schema.parameter_rules if model_schema else []
+        # Call get_parameter_rules method of model instance to get model parameter rules
+        return list(model_type_instance.get_parameter_rules(model=model, credentials=credentials))
 
     def get_default_model_of_model_type(self, tenant_id: str, model_type: str) -> Optional[DefaultModelResponse]:
         """
@@ -360,15 +365,13 @@ class ModelProviderService:
         :return:
         """
         model_type_enum = ModelType.value_of(model_type)
-
+        result = self.provider_manager.get_default_model(tenant_id=tenant_id, model_type=model_type_enum)
         try:
-            result = self.provider_manager.get_default_model(tenant_id=tenant_id, model_type=model_type_enum)
             return (
                 DefaultModelResponse(
                     model=result.model,
                     model_type=result.model_type,
                     provider=SimpleProviderEntityResponse(
-                        tenant_id=tenant_id,
                         provider=result.provider.provider,
                         label=result.provider.label,
                         icon_small=result.provider.icon_small,
@@ -380,7 +383,7 @@ class ModelProviderService:
                 else None
             )
         except Exception as e:
-            logger.debug(f"get_default_model_of_model_type error: {e}")
+            logger.info(f"get_default_model_of_model_type error: {e}")
             return None
 
     def update_default_model_of_model_type(self, tenant_id: str, model_type: str, provider: str, model: str) -> None:
@@ -399,21 +402,55 @@ class ModelProviderService:
         )
 
     def get_model_provider_icon(
-        self, tenant_id: str, provider: str, icon_type: str, lang: str
+        self, provider: str, icon_type: str, lang: str
     ) -> tuple[Optional[bytes], Optional[str]]:
         """
         get model provider icon.
 
-        :param tenant_id: workspace id
         :param provider: provider name
         :param icon_type: icon type (icon_small or icon_large)
         :param lang: language (zh_Hans or en_US)
         :return:
         """
-        model_provider_factory = ModelProviderFactory(tenant_id)
-        byte_data, mime_type = model_provider_factory.get_provider_icon(provider, icon_type, lang)
+        provider_instance = model_provider_factory.get_provider_instance(provider)
+        provider_schema = provider_instance.get_provider_schema()
+        file_name: str | None = None
 
-        return byte_data, mime_type
+        if icon_type.lower() == "icon_small":
+            if not provider_schema.icon_small:
+                raise ValueError(f"Provider {provider} does not have small icon.")
+
+            if lang.lower() == "zh_hans":
+                file_name = provider_schema.icon_small.zh_Hans
+            else:
+                file_name = provider_schema.icon_small.en_US
+        else:
+            if not provider_schema.icon_large:
+                raise ValueError(f"Provider {provider} does not have large icon.")
+
+            if lang.lower() == "zh_hans":
+                file_name = provider_schema.icon_large.zh_Hans
+            else:
+                file_name = provider_schema.icon_large.en_US
+        if not file_name:
+            return None, None
+
+        root_path = current_app.root_path
+        provider_instance_path = os.path.dirname(
+            os.path.join(root_path, provider_instance.__class__.__module__.replace(".", "/"))
+        )
+        file_path = os.path.join(provider_instance_path, "_assets")
+        file_path = os.path.join(file_path, file_name)
+
+        if not os.path.exists(file_path):
+            return None, None
+
+        mimetype, _ = mimetypes.guess_type(file_path)
+        mimetype = mimetype or "application/octet-stream"
+
+        # read binary from file
+        byte_data = Path(file_path).read_bytes()
+        return byte_data, mimetype
 
     def switch_preferred_provider(self, tenant_id: str, provider: str, preferred_provider_type: str) -> None:
         """
@@ -479,3 +516,48 @@ class ModelProviderService:
 
         # Enable model
         provider_configuration.disable_model(model=model, model_type=ModelType.value_of(model_type))
+
+    def free_quota_submit(self, tenant_id: str, provider: str):
+        api_key = os.environ.get("FREE_QUOTA_APPLY_API_KEY")
+        api_base_url = os.environ.get("FREE_QUOTA_APPLY_BASE_URL", "")
+        api_url = api_base_url + "/api/v1/providers/apply"
+
+        headers = {"Content-Type": "application/json", "Authorization": f"Bearer {api_key}"}
+        response = requests.post(api_url, headers=headers, json={"workspace_id": tenant_id, "provider_name": provider})
+        if not response.ok:
+            logger.error(f"Request FREE QUOTA APPLY SERVER Error: {response.status_code} ")
+            raise ValueError(f"Error: {response.status_code} ")
+
+        if response.json()["code"] != "success":
+            raise ValueError(f"error: {response.json()['message']}")
+
+        rst = response.json()
+
+        if rst["type"] == "redirect":
+            return {"type": rst["type"], "redirect_url": rst["redirect_url"]}
+        else:
+            return {"type": rst["type"], "result": "success"}
+
+    def free_quota_qualification_verify(self, tenant_id: str, provider: str, token: Optional[str]):
+        api_key = os.environ.get("FREE_QUOTA_APPLY_API_KEY")
+        api_base_url = os.environ.get("FREE_QUOTA_APPLY_BASE_URL", "")
+        api_url = api_base_url + "/api/v1/providers/qualification-verify"
+
+        headers = {"Content-Type": "application/json", "Authorization": f"Bearer {api_key}"}
+        json_data = {"workspace_id": tenant_id, "provider_name": provider}
+        if token:
+            json_data["token"] = token
+        response = requests.post(api_url, headers=headers, json=json_data)
+        if not response.ok:
+            logger.error(f"Request FREE QUOTA APPLY SERVER Error: {response.status_code} ")
+            raise ValueError(f"Error: {response.status_code} ")
+
+        rst = response.json()
+        if rst["code"] != "success":
+            raise ValueError(f"error: {rst['message']}")
+
+        data = rst["data"]
+        if data["qualified"] is True:
+            return {"result": "success", "provider_name": provider, "flag": True}
+        else:
+            return {"result": "success", "provider_name": provider, "flag": False, "reason": data["reason"]}

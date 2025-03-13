@@ -23,7 +23,9 @@ from .error import (
     NoFileUploadedError,
     TooManyFilesError,
     UnsupportedFileTypeError,
+    DocumentUploadQuotaErr,
 )
+from models import UploadFile,Tenant,Plan
 
 PREVIEW_WORDS_LIMIT = 3000
 
@@ -53,6 +55,14 @@ class FileApi(Resource):
         source_str = request.form.get("source")
         source: Literal["datasets"] | None = "datasets" if source_str == "datasets" else None
 
+        # 检查文档上传上限
+        fileCount = UploadFile.query.filter_by(tenant_id=current_user.current_tenant_id).count()
+        tenant = Tenant.query.filter_by(id=current_user.current_tenant_id).first()
+        if tenant:
+            plan = Plan.query.filter_by(id=tenant.plan_id).first()
+            if plan:
+                if plan.document_upload_quota <= fileCount:
+                    raise DocumentUploadQuotaErr()
         if "file" not in request.files:
             raise NoFileUploadedError()
 

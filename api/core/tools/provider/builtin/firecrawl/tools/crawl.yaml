@@ -1,0 +1,200 @@
+identity:
+  name: crawl
+  author: Richards Tu
+  label:
+    en_US: Crawl
+    zh_Hans: 深度爬取
+description:
+  human:
+    en_US: Recursively search through a urls subdomains, and gather the content.
+    zh_Hans: 递归爬取一个网址的子域名，并收集内容。
+  llm: This tool initiates a web crawl to extract data from a specified URL. It allows configuring crawler options such as including or excluding URL patterns, generating alt text for images using LLMs (paid plan required), limiting the maximum number of pages to crawl, and returning only the main content of the page. The tool can return either a list of crawled documents or a list of URLs based on the provided options.
+parameters:
+  - name: url
+    type: string
+    required: true
+    label:
+      en_US: Start URL
+      zh_Hans: 起始URL
+    human_description:
+      en_US: The base URL to start crawling from.
+      zh_Hans: 要爬取网站的起始URL。
+    llm_description: The URL of the website that needs to be crawled. This is a required parameter.
+    form: llm
+  - name: wait_for_results
+    type: boolean
+    default: true
+    label:
+      en_US: Wait For Results
+      zh_Hans: 等待爬取结果
+    human_description:
+      en_US: If you choose not to wait, it will directly return a job ID. You can use this job ID to check the crawling results or cancel the crawling task, which is usually very useful for a large-scale crawling task.
+      zh_Hans: 如果选择不等待，则会直接返回一个job_id，可以通过job_id查询爬取结果或取消爬取任务，这通常对于一个大型爬取任务来说非常有用。
+    form: form
+############## Payload #######################
+  - name: excludePaths
+    type: string
+    label:
+      en_US: URL patterns to exclude
+      zh_Hans: 要排除的URL模式
+    placeholder:
+      en_US: Use commas to separate multiple tags
+      zh_Hans: 多个标签时使用半角逗号分隔
+    human_description:
+      en_US: |
+        Pages matching these patterns will be skipped. Example: blog/*, about/*
+      zh_Hans: 匹配这些模式的页面将被跳过。示例：blog/*, about/*
+    form: form
+  - name: includePaths
+    type: string
+    required: false
+    label:
+      en_US: URL patterns to include
+      zh_Hans: 要包含的URL模式
+    placeholder:
+      en_US: Use commas to separate multiple tags
+      zh_Hans: 多个标签时使用半角逗号分隔
+    human_description:
+      en_US: |
+       Only pages matching these patterns will be crawled. Example: blog/*, about/*
+      zh_Hans: 只有与这些模式匹配的页面才会被爬取。示例：blog/*, about/*
+    form: form
+  - name: maxDepth
+    type: number
+    label:
+      en_US: Maximum crawl depth
+      zh_Hans: 爬取深度
+    human_description:
+      en_US: Maximum depth to crawl relative to the entered URL. A maxDepth of 0 scrapes only the entered URL. A maxDepth of 1 scrapes the entered URL and all pages one level deep. A maxDepth of 2 scrapes the entered URL and all pages up to two levels deep. Higher values follow the same pattern.
+      zh_Hans: 相对于输入的URL，爬取的最大深度。maxDepth为0时，仅抓取输入的URL。maxDepth为1时，抓取输入的URL以及所有一级深层页面。maxDepth为2时，抓取输入的URL以及所有两级深层页面。更高值遵循相同模式。
+    form: form
+    min: 0
+    default: 2
+  - name: ignoreSitemap
+    type: boolean
+    default: true
+    label:
+      en_US: ignore Sitemap
+      zh_Hans: 忽略站点地图
+    human_description:
+      en_US: Ignore the website sitemap when crawling.
+      zh_Hans: 爬取时忽略网站站点地图。
+    form: form
+  - name: limit
+    type: number
+    required: false
+    label:
+      en_US: Maximum pages to crawl
+      zh_Hans: 最大爬取页面数
+    human_description:
+      en_US: Specify the maximum number of pages to crawl. The crawler will stop after reaching this limit.
+      zh_Hans: 指定要爬取的最大页面数。爬虫将在达到此限制后停止。
+    form: form
+    min: 1
+    default: 5
+  - name: allowBackwardLinks
+    type: boolean
+    default: false
+    label:
+      en_US: allow Backward Crawling
+      zh_Hans: 允许向后爬取
+    human_description:
+      en_US: Enables the crawler to navigate from a specific URL to previously linked pages. For instance, from 'example.com/product/123' back to 'example.com/product'
+      zh_Hans: 使爬虫能够从特定URL导航到之前链接的页面。例如，从'example.com/product/123'返回到'example.com/product'
+    form: form
+  - name: allowExternalLinks
+    type: boolean
+    default: false
+    label:
+      en_US: allow External Content Links
+      zh_Hans: 允许爬取外链
+    human_description:
+      en_US: Allows the crawler to follow links to external websites.
+      zh_Hans:
+    form: form
+  - name: webhook
+    type: string
+    label:
+      en_US: webhook
+    human_description:
+      en_US: |
+       The URL to send the webhook to. This will trigger for crawl started (crawl.started) ,every page crawled (crawl.page) and when the crawl is completed (crawl.completed or crawl.failed). The response will be the same as the /scrape endpoint.
+      zh_Hans: 发送Webhook的URL。这将在开始爬取（crawl.started）、每爬取一个页面（crawl.page）以及爬取完成（crawl.completed或crawl.failed）时触发。响应将与/scrape端点相同。
+    form: form
+############## Scrape Options #######################
+  - name: formats
+    type: string
+    label:
+      en_US: Formats
+      zh_Hans: 结果的格式
+    placeholder:
+      en_US: Use commas to separate multiple tags
+      zh_Hans: 多个标签时使用半角逗号分隔
+    human_description:
+      en_US: |
+        Formats to include in the output. Available options: markdown, html, rawHtml, links, screenshot
+      zh_Hans: |
+        输出中应包含的格式。可以填入: markdown, html, rawHtml, links, screenshot
+    form: form
+  - name: headers
+    type: string
+    label:
+      en_US: headers
+      zh_Hans: 请求头
+    human_description:
+      en_US: |
+        Headers to send with the request. Can be used to send cookies, user-agent, etc. Example: {"cookies": "testcookies"}
+      zh_Hans: |
+        随请求发送的头部。可以用来发送cookies、用户代理等。示例：{"cookies": "testcookies"}
+    placeholder:
+      en_US: Please enter an object that can be serialized in JSON
+      zh_Hans: 请输入可以json序列化的对象
+    form: form
+  - name: includeTags
+    type: string
+    label:
+      en_US: Include Tags
+      zh_Hans: 仅抓取这些标签
+    placeholder:
+      en_US: Use commas to separate multiple tags
+      zh_Hans: 多个标签时使用半角逗号分隔
+    human_description:
+      en_US: |
+        Only include tags, classes and ids from the page in the final output. Use comma separated values. Example: script, .ad, #footer
+      zh_Hans: |
+        仅在最终输出中包含HTML页面的这些标签，可以通过标签名、类或ID来设定，使用逗号分隔值。示例：script, .ad, #footer
+    form: form
+  - name: excludeTags
+    type: string
+    label:
+      en_US: Exclude Tags
+      zh_Hans: 要移除这些标签
+    human_description:
+      en_US: |
+        Tags, classes and ids to remove from the page. Use comma separated values. Example: script, .ad, #footer
+      zh_Hans: |
+        要在最终输出中移除HTML页面的这些标签，可以通过标签名、类或ID来设定，使用逗号分隔值。示例：script, .ad, #footer
+    placeholder:
+      en_US: Use commas to separate multiple tags
+      zh_Hans: 多个标签时使用半角逗号分隔
+    form: form
+  - name: onlyMainContent
+    type: boolean
+    default: false
+    label:
+      en_US: only Main Content
+      zh_Hans: 仅抓取主要内容
+    human_description:
+      en_US: Only return the main content of the page excluding headers, navs, footers, etc.
+      zh_Hans: 只返回页面的主要内容，不包括头部、导航栏、尾部等。
+    form: form
+  - name: waitFor
+    type: number
+    min: 0
+    label:
+      en_US: wait For
+      zh_Hans: 等待时间
+    human_description:
+      en_US: Wait x amount of milliseconds for the page to load to fetch content.
+      zh_Hans: 等待x毫秒以使页面加载并获取内容。
+    form: form

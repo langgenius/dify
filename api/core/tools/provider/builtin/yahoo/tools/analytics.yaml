@@ -1,0 +1,54 @@
+identity:
+  name: yahoo_finance_analytics
+  author: Dify
+  label:
+    en_US: Analytics
+    zh_Hans: 分析
+    pt_BR: Análises
+  icon: icon.svg
+description:
+  human:
+    en_US: A tool for get analytics about a ticker from Yahoo Finance.
+    zh_Hans: 一个用于从雅虎财经获取分析数据的工具。
+    pt_BR: Uma ferramenta para obter análises sobre um ticker do Yahoo Finance.
+  llm: A tool for get analytics from Yahoo Finance. Input should be the ticker symbol like AAPL.
+parameters:
+  - name: symbol
+    type: string
+    required: true
+    label:
+      en_US: Ticker symbol
+      zh_Hans: 股票代码
+      pt_BR: Símbolo do ticker
+    human_description:
+      en_US: The ticker symbol of the company you want to analyze.
+      zh_Hans: 你想要搜索的公司的股票代码。
+      pt_BR: O símbolo do ticker da empresa que você deseja analisar.
+    llm_description: The ticker symbol of the company you want to analyze.
+    form: llm
+  - name: start_date
+    type: string
+    required: false
+    label:
+      en_US: Start date
+      zh_Hans: 开始日期
+      pt_BR: Data de início
+    human_description:
+      en_US: The start date of the analytics.
+      zh_Hans: 分析的开始日期。
+      pt_BR: A data de início das análises.
+    llm_description: The start date of the analytics, the format of the date must be YYYY-MM-DD like 2020-01-01.
+    form: llm
+  - name: end_date
+    type: string
+    required: false
+    label:
+      en_US: End date
+      zh_Hans: 结束日期
+      pt_BR: Data de término
+    human_description:
+      en_US: The end date of the analytics.
+      zh_Hans: 分析的结束日期。
+      pt_BR: A data de término das análises.
+    llm_description: The end date of the analytics, the format of the date must be YYYY-MM-DD like 2024-01-01.
+    form: llm

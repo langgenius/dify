@@ -1,0 +1,37 @@
+provider: openllm
+label:
+  en_US: OpenLLM
+icon_small:
+  en_US: icon_s_en.svg
+icon_large:
+  en_US: icon_l_en.svg
+background: "#F9FAFB"
+help:
+  title:
+    en_US: How to deploy OpenLLM
+    zh_Hans: 如何部署 OpenLLM
+  url:
+    en_US: https://github.com/bentoml/OpenLLM
+supported_model_types:
+  - llm
+  - text-embedding
+configurate_methods:
+  - customizable-model
+model_credential_schema:
+  model:
+    label:
+      en_US: Model Name
+      zh_Hans: 模型名称
+    placeholder:
+      en_US: Enter your model name
+      zh_Hans: 输入模型名称
+  credential_form_schemas:
+    - variable: server_url
+      label:
+        zh_Hans: 服务器URL
+        en_US: Server url
+      type: text-input
+      required: true
+      placeholder:
+        zh_Hans: 在此输入OpenLLM的服务器地址，如 http://192.168.1.100:3000
+        en_US: Enter the url of your OpenLLM, e.g. http://192.168.1.100:3000

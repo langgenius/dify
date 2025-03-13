@@ -1,0 +1,22 @@
+identity:
+  author: Gitee AI
+  name: gitee_ai
+  label:
+    en_US: Gitee AI
+    zh_Hans: Gitee AI
+  description:
+    en_US: Quickly experience large models and explore the leading AI open source world
+    zh_Hans: 快速体验大模型，领先探索 AI 开源世界
+  icon: icon.svg
+  tags:
+    - image
+credentials_for_provider:
+  api_key:
+    type: secret-input
+    required: true
+    label:
+      en_US: API Key
+    placeholder:
+      zh_Hans: 在此输入您的 API Key
+      en_US: Enter your API Key
+    url: https://ai.gitee.com/dashboard/settings/tokens

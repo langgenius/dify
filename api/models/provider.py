@@ -2,8 +2,6 @@ from enum import Enum
 
 from sqlalchemy import func
 
-from models.base import Base
-
 from .engine import db
 from .types import StringUUID
 
@@ -38,7 +36,7 @@ class ProviderQuotaType(Enum):
         raise ValueError(f"No matching enum found for value '{value}'")
 
 
-class Provider(Base):
+class Provider(db.Model):  # type: ignore[name-defined]
     """
     Provider model representing the API providers and their configurations.
     """
@@ -91,7 +89,7 @@ class Provider(Base):
             return self.is_valid and self.token_is_set
 
 
-class ProviderModel(Base):
+class ProviderModel(db.Model):  # type: ignore[name-defined]
     """
     Provider model representing the API provider_models and their configurations.
     """
@@ -116,7 +114,7 @@ class ProviderModel(Base):
     updated_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
 
 
-class TenantDefaultModel(Base):
+class TenantDefaultModel(db.Model):  # type: ignore[name-defined]
     __tablename__ = "tenant_default_models"
     __table_args__ = (
         db.PrimaryKeyConstraint("id", name="tenant_default_model_pkey"),
@@ -132,7 +130,7 @@ class TenantDefaultModel(Base):
     updated_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
 
 
-class TenantPreferredModelProvider(Base):
+class TenantPreferredModelProvider(db.Model):  # type: ignore[name-defined]
     __tablename__ = "tenant_preferred_model_providers"
     __table_args__ = (
         db.PrimaryKeyConstraint("id", name="tenant_preferred_model_provider_pkey"),
@@ -147,7 +145,7 @@ class TenantPreferredModelProvider(Base):
     updated_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
 
 
-class ProviderOrder(Base):
+class ProviderOrder(db.Model):  # type: ignore[name-defined]
     __tablename__ = "provider_orders"
     __table_args__ = (
         db.PrimaryKeyConstraint("id", name="provider_order_pkey"),
@@ -172,7 +170,7 @@ class ProviderOrder(Base):
     updated_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
 
 
-class ProviderModelSetting(Base):
+class ProviderModelSetting(db.Model):  # type: ignore[name-defined]
     """
     Provider model settings for record the model enabled status and load balancing status.
     """
@@ -194,7 +192,7 @@ class ProviderModelSetting(Base):
     updated_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
 
 
-class LoadBalancingModelConfig(Base):
+class LoadBalancingModelConfig(db.Model):  # type: ignore[name-defined]
     """
     Configurations for load balancing models.
     """

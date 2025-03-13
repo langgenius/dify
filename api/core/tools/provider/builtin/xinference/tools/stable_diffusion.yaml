@@ -1,0 +1,87 @@
+identity:
+  name: stable_diffusion
+  author: xinference
+  label:
+    en_US: Stable Diffusion
+    zh_Hans: Stable Diffusion
+description:
+  human:
+    en_US: Generate images using Stable Diffusion models.
+    zh_Hans: 使用 Stable Diffusion 模型生成图片。
+  llm: draw the image you want based on your prompt.
+parameters:
+  - name: prompt
+    type: string
+    required: true
+    label:
+      en_US: Prompt
+      zh_Hans: 提示词
+    human_description:
+      en_US: Image prompt
+      zh_Hans: 图像提示词
+    llm_description: Image prompt of Stable Diffusion, you should describe the image you want to generate as a list of words as possible as detailed, the prompt must be written in English.
+    form: llm
+  - name: model
+    type: string
+    required: false
+    label:
+      en_US: Model Name
+      zh_Hans: 模型名称
+    human_description:
+      en_US: Model Name
+      zh_Hans: 模型名称
+    form: form
+  - name: lora
+    type: string
+    required: false
+    label:
+      en_US: Lora
+      zh_Hans: Lora
+    human_description:
+      en_US: Lora
+      zh_Hans: Lora
+    form: form
+  - name: steps
+    type: number
+    required: false
+    label:
+      en_US: Steps
+      zh_Hans: Steps
+    human_description:
+      en_US: Steps
+      zh_Hans: Steps
+    form: form
+    default: 10
+  - name: width
+    type: number
+    required: false
+    label:
+      en_US: Width
+      zh_Hans: Width
+    human_description:
+      en_US: Width
+      zh_Hans: Width
+    form: form
+    default: 1024
+  - name: height
+    type: number
+    required: false
+    label:
+      en_US: Height
+      zh_Hans: Height
+    human_description:
+      en_US: Height
+      zh_Hans: Height
+    form: form
+    default: 1024
+  - name: negative_prompt
+    type: string
+    required: false
+    label:
+      en_US: Negative prompt
+      zh_Hans: Negative prompt
+    human_description:
+      en_US: Negative prompt
+      zh_Hans: Negative prompt
+    form: form
+    default: bad art, ugly, deformed, watermark, duplicated, discontinuous lines

@@ -58,6 +58,8 @@ class AccountNotFound(BaseHTTPException):
     code = 400
 
 
+
+
 class EmailSendIpLimitError(BaseHTTPException):
     error_code = "email_send_ip_limit"
     description = "Too many emails have been sent from this IP address recently. Please try again later."
@@ -102,8 +104,23 @@ class AccountInFreezeError(BaseHTTPException):
         "and is temporarily unavailable for new account registration."
     )
 
+class AccountIsRegisterError(BaseHTTPException):
+    error_code = "account_is_register"
+    code = 500
+    description = "This email account has been register"
 
-class CompilanceRateLimitError(BaseHTTPException):
-    error_code = "compilance_rate_limit"
-    description = "Rate limit exceeded for downloading compliance report."
-    code = 429
+
+class AccountAlreadyInAnotherTenantError(BaseHTTPException):
+    error_code = "account_already_in_another_tenant"
+    code = 500
+    description = "Account already belongs to another tenant."
+
+class DocumentUploadQuotaErr(BaseHTTPException):
+    error_code = "document_upload_quota"
+    code = 500
+    description = "文档已达到上传上限"
+
+class AnnotationCountErr(BaseHTTPException):
+    error_code = "标注已达到上限"
+    code = 500
+    description = "标注已达到上限"

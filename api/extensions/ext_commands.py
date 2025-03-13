@@ -6,11 +6,7 @@ def init_app(app: DifyApp):
         add_qdrant_doc_id_index,
         convert_to_agent_apps,
         create_tenant,
-        extract_plugins,
-        extract_unique_plugins,
         fix_app_site_missing,
-        install_plugins,
-        migrate_data_for_plugin,
         reset_email,
         reset_encrypt_key_pair,
         reset_password,
@@ -28,10 +24,6 @@ def init_app(app: DifyApp):
         create_tenant,
         upgrade_db,
         fix_app_site_missing,
-        migrate_data_for_plugin,
-        extract_plugins,
-        extract_unique_plugins,
-        install_plugins,
     ]
     for cmd in cmds_to_register:
         app.cli.add_command(cmd)

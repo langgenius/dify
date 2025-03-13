@@ -1,0 +1,12 @@
+identity:
+  author: Yash Parmar
+  name: duckduckgo
+  label:
+    en_US: DuckDuckGo
+    zh_Hans: DuckDuckGo
+  description:
+    en_US: A privacy-focused search engine.
+    zh_Hans: 一个注重隐私的搜索引擎。
+  icon: icon.svg
+  tags:
+    - search

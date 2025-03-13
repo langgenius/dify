@@ -1,0 +1,147 @@
+identity:
+  name: flux_1_1_pro
+  author: Kalo Chin
+  label:
+    en_US: FLUX 1.1 [pro]
+    zh_Hans: FLUX 1.1 [pro]
+  icon: icon.svg
+description:
+  human:
+    en_US: FLUX 1.1 [pro] is an enhanced version of FLUX.1 [pro], improved image generation capabilities, delivering superior composition, detail, and artistic fidelity compared to its predecessor.
+    zh_Hans: FLUX 1.1 [pro] 是 FLUX.1 [pro] 的增强版，改进了图像生成能力，与其前身相比，提供了更出色的构图、细节和艺术保真度。
+  llm: This tool generates images from prompts using FAL's FLUX 1.1 [pro] model.
+parameters:
+  - name: prompt
+    type: string
+    required: true
+    label:
+      en_US: Prompt
+      zh_Hans: 提示词
+    human_description:
+      en_US: The text prompt used to generate the image.
+      zh_Hans: 用于生成图片的文字提示词。
+    llm_description: This prompt text will be used to generate the image.
+    form: llm
+  - name: image_size
+    type: select
+    required: false
+    options:
+      - value: square_hd
+        label:
+          en_US: Square HD
+          zh_Hans: 方形高清
+      - value: square
+        label:
+          en_US: Square
+          zh_Hans: 方形
+      - value: portrait_4_3
+        label:
+          en_US: Portrait 4:3
+          zh_Hans: 竖屏 4:3
+      - value: portrait_16_9
+        label:
+          en_US: Portrait 16:9
+          zh_Hans: 竖屏 16:9
+      - value: landscape_4_3
+        label:
+          en_US: Landscape 4:3
+          zh_Hans: 横屏 4:3
+      - value: landscape_16_9
+        label:
+          en_US: Landscape 16:9
+          zh_Hans: 横屏 16:9
+    default: landscape_4_3
+    label:
+      en_US: Image Size
+      zh_Hans: 图片大小
+    human_description:
+      en_US: The size of the generated image.
+      zh_Hans: 生成图像的尺寸。
+    form: form
+  - name: num_images
+    type: number
+    required: false
+    default: 1
+    min: 1
+    max: 1
+    label:
+      en_US: Number of Images
+      zh_Hans: 图片数量
+    human_description:
+      en_US: The number of images to generate.
+      zh_Hans: 要生成的图片数量。
+    form: form
+  - name: safety_tolerance
+    type: select
+    required: false
+    options:
+      - value: "1"
+        label:
+          en_US: "1 (Most strict)"
+          zh_Hans: "1（最严格）"
+      - value: "2"
+        label:
+          en_US: "2"
+          zh_Hans: "2"
+      - value: "3"
+        label:
+          en_US: "3"
+          zh_Hans: "3"
+      - value: "4"
+        label:
+          en_US: "4"
+          zh_Hans: "4"
+      - value: "5"
+        label:
+          en_US: "5"
+          zh_Hans: "5"
+      - value: "6"
+        label:
+          en_US: "6 (Most permissive)"
+          zh_Hans: "6（最宽松）"
+    default: "2"
+    label:
+      en_US: Safety Tolerance
+      zh_Hans: 安全容忍度
+    human_description:
+      en_US: The safety tolerance level for the generated image. 1 being the most strict and 6 being the most permissive.
+      zh_Hans: 生成图像的安全容忍级别，1 为最严格，6 为最宽松。
+    form: form
+  - name: seed
+    type: number
+    required: false
+    min: 0
+    max: 9999999999
+    label:
+      en_US: Seed
+      zh_Hans: 种子
+    human_description:
+      en_US: The same seed and prompt can produce similar images.
+      zh_Hans: 相同的种子和提示词可以产生相似的图像。
+    form: form
+  - name: enable_safety_checker
+    type: boolean
+    required: false
+    default: true
+    label:
+      en_US: Enable Safety Checker
+      zh_Hans: 启用安全检查器
+    human_description:
+      en_US: Enable or disable the safety checker.
+      zh_Hans: 启用或禁用安全检查器。
+    form: form
+  - name: sync_mode
+    type: boolean
+    required: false
+    default: false
+    label:
+      en_US: Sync Mode
+      zh_Hans: 同步模式
+    human_description:
+      en_US: >
+        If set to true, the function will wait for the image to be generated and uploaded before returning the response.
+        This will increase the latency but allows you to get the image directly in the response without going through the CDN.
+      zh_Hans: >
+        如果设置为 true，函数将在生成并上传图像后再返回响应。
+        这将增加函数的延迟，但可以让您直接在响应中获取图像，而无需通过 CDN。
+    form: form

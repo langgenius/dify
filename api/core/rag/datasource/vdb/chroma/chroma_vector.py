@@ -111,9 +111,8 @@ class ChromaVector(BaseVector):
         for index in range(len(ids)):
             distance = distances[index]
             metadata = dict(metadatas[index])
-            score = 1 - distance
-            if score > score_threshold:
-                metadata["score"] = score
+            if distance >= score_threshold:
+                metadata["score"] = distance
                 doc = Document(
                     page_content=documents[index],
                     metadata=metadata,

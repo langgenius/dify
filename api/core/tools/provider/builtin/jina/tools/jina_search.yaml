@@ -1,0 +1,110 @@
+identity:
+  name: jina_search
+  author: Dify
+  label:
+    en_US: Search the web
+    zh_Hans: 联网搜索
+    pt_BR: Search the web
+description:
+  human:
+    en_US: Search on the public web of a given query and return the top results as LLM-friendly markdown.
+    zh_Hans: 针对给定的查询在互联网上进行搜索，并以适合大模型处理的 Markdown 格式返回最相关的结果。
+    pt_BR: Procurar na web pública de uma consulta fornecida e retornar os melhores resultados como markdown para LLMs.
+  llm: A tool for searching results on the web for grounding. Input should be a simple question.
+parameters:
+  - name: query
+    type: string
+    required: true
+    label:
+      en_US: Question (Query)
+      zh_Hans: 查询
+      pt_BR: Pergunta (Consulta)
+    human_description:
+      en_US: used to find information on the web
+      zh_Hans: 在网络上搜索信息
+      pt_BR: Usado para encontrar informações na web
+    llm_description: Pergunta simples para fazer na web
+    form: llm
+  - name: image_caption
+    type: boolean
+    required: false
+    default: false
+    label:
+      en_US: Image caption
+      zh_Hans: 图片说明
+      pt_BR: Legenda da imagem
+    human_description:
+      en_US: "Captions all images at the specified URL, adding 'Image [idx]: [caption]' as an alt tag for those without one. This allows downstream LLMs to interact with the images in activities such as reasoning and summarizing."
+      zh_Hans: "为指定 URL 上的所有图像添加标题，为没有标题的图像添加“Image [idx]: [caption]”作为 alt 标签，以支持下游模型的图像交互。"
+      pt_BR: "Captions all images at the specified URL, adding 'Image [idx]: [caption]' as an alt tag for those without one. This allows downstream LLMs to interact with the images in activities such as reasoning and summarizing."
+    llm_description: Captions all images at the specified URL
+    form: form
+  - name: gather_all_links_at_the_end
+    type: boolean
+    required: false
+    default: false
+    label:
+      en_US: Gather all links at the end
+      zh_Hans: 将所有链接集中到最后
+      pt_BR: Coletar todos os links ao final
+    human_description:
+      en_US: A "Buttons & Links" section will be created at the end. This helps the downstream LLMs or web agents navigating the page or take further actions.
+      zh_Hans: 末尾将添加“按钮和链接”部分，汇总页面上的所有链接。方便下游模型或网络代理做页面导航或执行进一步操作。
+      pt_BR: Um "Botão & Links" seção será criada no final. Isso ajuda os LLMs ou agentes da web navegando pela página ou executar ações adicionais.
+    llm_description: Gather all links at the end
+    form: form
+  - name: gather_all_images_at_the_end
+    type: boolean
+    required: false
+    default: false
+    label:
+      en_US: Gather all images at the end
+      zh_Hans: 将所有图片集中到最后
+      pt_BR: Coletar todas as imagens ao final
+    human_description:
+      en_US: An "Images" section will be created at the end. This gives the downstream LLMs an overview of all visuals on the page, which may improve reasoning.
+      zh_Hans: 末尾会新增“图片”部分，汇总页面上的所有图片。方便下游模型概览页面的视觉内容，提升推理效果。
+      pt_BR: Um "Imagens" seção será criada no final. Isso fornece uma visão geral de todas as imagens na página para os LLMs, que pode melhorar a razão.
+    llm_description: Gather all images at the end
+    form: form
+  - name: proxy_server
+    type: string
+    required: false
+    label:
+      en_US: Proxy server
+      zh_Hans: 代理服务器
+      pt_BR: Servidor de proxy
+    human_description:
+      en_US: Use proxy to access URLs
+      zh_Hans: 利用代理访问 URL
+      pt_BR: Usar proxy para acessar URLs
+    llm_description: Use proxy to access URLs
+    form: form
+  - name: no_cache
+    type: boolean
+    required: false
+    default: false
+    label:
+      en_US: Bypass the Cache
+      zh_Hans: 是否绕过缓存
+      pt_BR: Ignorar o cache
+    human_description:
+      en_US: Bypass the Cache
+      zh_Hans: 是否绕过缓存
+      pt_BR: Ignorar o cache
+    llm_description: bypass the cache
+    form: form
+  - name: max_retries
+    type: number
+    required: false
+    default: 3
+    label:
+      en_US: Retry
+      zh_Hans: 重试
+      pt_BR: Repetir
+    human_description:
+      en_US: Number of times to retry the request if it fails
+      zh_Hans: 请求失败时重试的次数
+      pt_BR: Número de vezes para repetir a solicitação se falhar
+    llm_description: Number of times to retry the request if it fails
+    form: form

@@ -1,0 +1,29 @@
+identity:
+  author: Matri Qi
+  name: getimgai
+  label:
+    en_US: getimg.ai
+    zh_CN: getimg.ai
+  description:
+    en_US: GetImg API integration for image generation and scraping.
+  icon: icon.svg
+  tags:
+    - image
+credentials_for_provider:
+  getimg_api_key:
+    type: secret-input
+    required: true
+    label:
+      en_US: getimg.ai API Key
+    placeholder:
+      en_US: Please input your getimg.ai API key
+    help:
+      en_US: Get your getimg.ai API key from your getimg.ai account settings. If you are using a self-hosted version, you may enter any key at your convenience.
+    url: https://dashboard.getimg.ai/api-keys
+  base_url:
+    type: text-input
+    required: false
+    label:
+      en_US: getimg.ai server's Base URL
+    placeholder:
+      en_US: https://api.getimg.ai/v1

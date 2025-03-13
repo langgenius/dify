@@ -1,0 +1,131 @@
+identity:
+  name: current_time
+  author: Dify
+  label:
+    en_US: Current Time
+    zh_Hans: 获取当前时间
+    pt_BR: Current Time
+description:
+  human:
+    en_US: A tool for getting the current time.
+    zh_Hans: 一个用于获取当前时间的工具。
+    pt_BR: A tool for getting the current time.
+  llm: A tool for getting the current time.
+parameters:
+  - name: format
+    type: string
+    required: false
+    label:
+      en_US: Format
+      zh_Hans: 格式
+      pt_BR: Format
+    human_description:
+      en_US: Time format in strftime standard.
+      zh_Hans: strftime 标准的时间格式。
+      pt_BR: Time format in strftime standard.
+    form: form
+    default: "%Y-%m-%d %H:%M:%S"
+  - name: timezone
+    type: select
+    required: false
+    label:
+      en_US: Timezone
+      zh_Hans: 时区
+      pt_BR: Timezone
+    human_description:
+      en_US: Timezone
+      zh_Hans: 时区
+      pt_BR: Timezone
+    form: form
+    default: UTC
+    options:
+      - value: UTC
+        label:
+          en_US: UTC
+          zh_Hans: UTC
+          pt_BR: UTC
+      - value: America/New_York
+        label:
+          en_US: America/New_York
+          zh_Hans: 美洲/纽约
+          pt_BR: America/New_York
+      - value: America/Los_Angeles
+        label:
+          en_US: America/Los_Angeles
+          zh_Hans: 美洲/洛杉矶
+          pt_BR: America/Los_Angeles
+      - value: America/Chicago
+        label:
+          en_US: America/Chicago
+          zh_Hans: 美洲/芝加哥
+          pt_BR: America/Chicago
+      - value: America/Sao_Paulo
+        label:
+          en_US: America/Sao_Paulo
+          zh_Hans: 美洲/圣保罗
+          pt_BR: América/São Paulo
+      - value: Asia/Shanghai
+        label:
+          en_US: Asia/Shanghai
+          zh_Hans: 亚洲/上海
+          pt_BR: Asia/Shanghai
+      - value: Asia/Ho_Chi_Minh
+        label:
+          en_US: Asia/Ho_Chi_Minh
+          zh_Hans: 亚洲/胡志明市
+          pt_BR: Ásia/Ho Chi Minh
+      - value: Asia/Tokyo
+        label:
+          en_US: Asia/Tokyo
+          zh_Hans: 亚洲/东京
+          pt_BR: Asia/Tokyo
+      - value: Asia/Dubai
+        label:
+          en_US: Asia/Dubai
+          zh_Hans: 亚洲/迪拜
+          pt_BR: Asia/Dubai
+      - value: Asia/Kolkata
+        label:
+          en_US: Asia/Kolkata
+          zh_Hans: 亚洲/加尔各答
+          pt_BR: Asia/Kolkata
+      - value: Asia/Seoul
+        label:
+          en_US: Asia/Seoul
+          zh_Hans: 亚洲/首尔
+          pt_BR: Asia/Seoul
+      - value: Asia/Singapore
+        label:
+          en_US: Asia/Singapore
+          zh_Hans: 亚洲/新加坡
+          pt_BR: Asia/Singapore
+      - value: Europe/London
+        label:
+          en_US: Europe/London
+          zh_Hans: 欧洲/伦敦
+          pt_BR: Europe/London
+      - value: Europe/Berlin
+        label:
+          en_US: Europe/Berlin
+          zh_Hans: 欧洲/柏林
+          pt_BR: Europe/Berlin
+      - value: Europe/Moscow
+        label:
+          en_US: Europe/Moscow
+          zh_Hans: 欧洲/莫斯科
+          pt_BR: Europe/Moscow
+      - value: Australia/Sydney
+        label:
+          en_US: Australia/Sydney
+          zh_Hans: 澳大利亚/悉尼
+          pt_BR: Australia/Sydney
+      - value: Pacific/Auckland
+        label:
+          en_US: Pacific/Auckland
+          zh_Hans: 太平洋/奥克兰
+          pt_BR: Pacific/Auckland
+      - value: Africa/Cairo
+        label:
+          en_US: Africa/Cairo
+          zh_Hans: 非洲/开罗
+          pt_BR: Africa/Cairo

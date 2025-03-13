@@ -5,7 +5,7 @@ from controllers.console import api
 from controllers.console.wraps import account_initialization_required, only_edition_cloud, setup_required
 from libs.login import login_required
 from services.billing_service import BillingService
-
+from flask import Blueprint
 
 class Subscription(Resource):
     @setup_required
@@ -29,11 +29,17 @@ class Invoices(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @only_edition_cloud
     def get(self):
         BillingService.is_tenant_owner_or_admin(current_user)
         return BillingService.get_invoices(current_user.email, current_user.current_tenant_id)
 
+class PlanDetail(Resource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    def get(self):
+        return BillingService.plan_detail(current_user.current_tenant_id)
 
 api.add_resource(Subscription, "/billing/subscription")
 api.add_resource(Invoices, "/billing/invoices")
+api.add_resource(PlanDetail, "/billing/plan_detail")

@@ -1,4 +1,3 @@
-import contextvars
 import logging
 import queue
 import time
@@ -14,13 +13,11 @@ from flask import Flask, current_app
 from configs import dify_config
 from core.app.apps.base_app_queue_manager import GenerateTaskStoppedError
 from core.app.entities.app_invoke_entities import InvokeFrom
-from core.workflow.entities.node_entities import AgentNodeStrategyInit, NodeRunMetadataKey, NodeRunResult
+from core.workflow.entities.node_entities import NodeRunMetadataKey, NodeRunResult
 from core.workflow.entities.variable_pool import VariablePool, VariableValue
 from core.workflow.graph_engine.condition_handlers.condition_manager import ConditionManager
 from core.workflow.graph_engine.entities.event import (
-    BaseAgentEvent,
     BaseIterationEvent,
-    BaseLoopEvent,
     GraphEngineEvent,
     GraphRunFailedEvent,
     GraphRunPartialSucceededEvent,
@@ -42,8 +39,6 @@ from core.workflow.graph_engine.entities.graph_init_params import GraphInitParam
 from core.workflow.graph_engine.entities.graph_runtime_state import GraphRuntimeState
 from core.workflow.graph_engine.entities.runtime_route_state import RouteNodeState
 from core.workflow.nodes import NodeType
-from core.workflow.nodes.agent.agent_node import AgentNode
-from core.workflow.nodes.agent.entities import AgentNodeData
 from core.workflow.nodes.answer.answer_stream_processor import AnswerStreamProcessor
 from core.workflow.nodes.answer.base_stream_processor import StreamProcessor
 from core.workflow.nodes.base import BaseNode
@@ -482,7 +477,6 @@ class GraphEngine:
                 **{
                     "flask_app": current_app._get_current_object(),  # type: ignore[attr-defined]
                     "q": q,
-                    "context": contextvars.copy_context(),
                     "parallel_id": parallel_id,
                     "parallel_start_node_id": edge.target_node_id,
                     "parent_parallel_id": in_parallel_id,
@@ -503,7 +497,7 @@ class GraphEngine:
                     break
 
                 yield event
-                if not isinstance(event, BaseAgentEvent) and event.parallel_id == parallel_id:
+                if event.parallel_id == parallel_id:
                     if isinstance(event, ParallelBranchRunSucceededEvent):
                         succeeded_count += 1
                         if succeeded_count == len(futures):
@@ -526,7 +520,6 @@ class GraphEngine:
     def _run_parallel_node(
         self,
         flask_app: Flask,
-        context: contextvars.Context,
         q: queue.Queue,
         parallel_id: str,
         parallel_start_node_id: str,
@@ -537,9 +530,6 @@ class GraphEngine:
         """
         Run parallel nodes
         """
-        for var, val in context.items():
-            var.set(val)
-
         with flask_app.app_context():
             try:
                 q.put(
@@ -610,14 +600,6 @@ class GraphEngine:
         Run node
         """
         # trigger node run start event
-        agent_strategy = (
-            AgentNodeStrategyInit(
-                name=cast(AgentNodeData, node_instance.node_data).agent_strategy_name,
-                icon=cast(AgentNode, node_instance).agent_strategy_icon,
-            )
-            if node_instance.node_type == NodeType.AGENT
-            else None
-        )
         yield NodeRunStartedEvent(
             id=node_instance.id,
             node_id=node_instance.node_id,
@@ -629,7 +611,6 @@ class GraphEngine:
             parallel_start_node_id=parallel_start_node_id,
             parent_parallel_id=parent_parallel_id,
             parent_parallel_start_node_id=parent_parallel_start_node_id,
-            agent_strategy=agent_strategy,
         )
 
         db.session.close()
@@ -646,12 +627,6 @@ class GraphEngine:
                     if isinstance(item, GraphEngineEvent):
                         if isinstance(item, BaseIterationEvent):
                             # add parallel info to iteration event
-                            item.parallel_id = parallel_id
-                            item.parallel_start_node_id = parallel_start_node_id
-                            item.parent_parallel_id = parent_parallel_id
-                            item.parent_parallel_start_node_id = parent_parallel_start_node_id
-                        elif isinstance(item, BaseLoopEvent):
-                            # add parallel info to loop event
                             item.parallel_id = parallel_id
                             item.parallel_start_node_id = parallel_start_node_id
                             item.parent_parallel_id = parent_parallel_id
@@ -673,7 +648,7 @@ class GraphEngine:
                                     retries += 1
                                     route_node_state.node_run_result = run_result
                                     yield NodeRunRetryEvent(
-                                        id=str(uuid.uuid4()),
+                                        id=node_instance.id,
                                         node_id=node_instance.node_id,
                                         node_type=node_instance.node_type,
                                         node_data=node_instance.node_data,
@@ -688,7 +663,7 @@ class GraphEngine:
                                         start_at=retry_start_at,
                                     )
                                     time.sleep(retry_interval)
-                                    break
+                                    continue
                             route_node_state.set_finished(run_result=run_result)
 
                             if run_result.status == WorkflowNodeExecutionStatus.FAILED:

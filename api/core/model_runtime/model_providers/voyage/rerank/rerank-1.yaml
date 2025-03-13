@@ -1,0 +1,4 @@
+model: rerank-1
+model_type: rerank
+model_properties:
+  context_size: 8000

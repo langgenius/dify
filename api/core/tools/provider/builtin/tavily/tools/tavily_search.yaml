@@ -1,0 +1,152 @@
+identity:
+  name: tavily_search
+  author: Yash Parmar
+  label:
+    en_US: Tavily Search
+    zh_Hans: Tavily Search
+description:
+  human:
+    en_US: A search engine tool built specifically for AI agents (LLMs), delivering real-time, accurate, and factual results at speed.
+    zh_Hans: 专为人工智能代理 (LLM) 构建的搜索引擎工具，可快速提供实时、准确和真实的结果。
+  llm: A tool for search engine built specifically for AI agents (LLMs), delivering real-time, accurate, and factual results at speed.
+parameters:
+  - name: query
+    type: string
+    required: true
+    label:
+      en_US: Query
+      zh_Hans: 查询
+    human_description:
+      en_US: The search query you want to execute with Tavily.
+      zh_Hans: 您想用 Tavily 执行的搜索查询。
+    llm_description: The search query.
+    form: llm
+  - name: search_depth
+    type: select
+    required: false
+    label:
+      en_US: Search Depth
+      zh_Hans: 搜索深度
+    human_description:
+      en_US: The depth of the search.
+      zh_Hans: 搜索的深度。
+    form: form
+    options:
+      - value: basic
+        label:
+          en_US: Basic
+          zh_Hans: 基本
+      - value: advanced
+        label:
+          en_US: Advanced
+          zh_Hans: 高级
+    default: basic
+  - name: topic
+    type: select
+    required: false
+    label:
+      en_US: Topic
+      zh_Hans: 主题
+    human_description:
+      en_US: The category of the search.
+      zh_Hans: 搜索的类别。
+    form: form
+    options:
+      - value: general
+        label:
+          en_US: General
+          zh_Hans: 一般
+      - value: news
+        label:
+          en_US: News
+          zh_Hans: 新闻
+    default: general
+  - name: days
+    type: number
+    required: false
+    label:
+      en_US: Days
+      zh_Hans: 天数
+    human_description:
+      en_US: The number of days back from the current date to include in the search results (only applicable when "topic" is "news").
+      zh_Hans: 从当前日期起向前追溯的天数，以包含在搜索结果中（仅当“topic”为“news”时适用）。
+    form: form
+    min: 1
+    default: 3
+  - name: max_results
+    type: number
+    required: false
+    label:
+      en_US: Max Results
+      zh_Hans: 最大结果数
+    human_description:
+      en_US: The maximum number of search results to return.
+      zh_Hans: 要返回的最大搜索结果数。
+    form: form
+    min: 1
+    max: 20
+    default: 5
+  - name: include_images
+    type: boolean
+    required: false
+    label:
+      en_US: Include Images
+      zh_Hans: 包含图片
+    human_description:
+      en_US: Include a list of query-related images in the response.
+      zh_Hans: 在响应中包含与查询相关的图片列表。
+    form: form
+    default: false
+  - name: include_image_descriptions
+    type: boolean
+    required: false
+    label:
+      en_US: Include Image Descriptions
+      zh_Hans: 包含图片描述
+    human_description:
+      en_US: When include_images is True, adds descriptive text for each image.
+      zh_Hans: 当 include_images 为 True 时，为每个图像添加描述文本。
+    form: form
+    default: false
+  - name: include_answer
+    type: boolean
+    required: false
+    label:
+      en_US: Include Answer
+      zh_Hans: 包含答案
+    human_description:
+      en_US: Include a short answer to the original query in the response.
+      zh_Hans: 在响应中包含对原始查询的简短回答。
+    form: form
+    default: false
+  - name: include_raw_content
+    type: boolean
+    required: false
+    label:
+      en_US: Include Raw Content
+      zh_Hans: 包含原始内容
+    human_description:
+      en_US: Include the cleaned and parsed HTML content of each search result.
+      zh_Hans: 包含每个搜索结果的已清理和解析的HTML内容。
+    form: form
+    default: false
+  - name: include_domains
+    type: string
+    required: false
+    label:
+      en_US: Include Domains
+      zh_Hans: 包含域
+    human_description:
+      en_US: A comma-separated list of domains to specifically include in the search results.
+      zh_Hans: 要在搜索结果中特别包含的域的逗号分隔列表。
+    form: form
+  - name: exclude_domains
+    type: string
+    required: false
+    label:
+      en_US: Exclude Domains
+      zh_Hans: 排除域
+    human_description:
+      en_US: A comma-separated list of domains to specifically exclude from the search results.
+      zh_Hans: 要从搜索结果中特别排除的域的逗号分隔列表。
+    form: form

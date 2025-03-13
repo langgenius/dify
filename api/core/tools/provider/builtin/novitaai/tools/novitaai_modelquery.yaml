@@ -1,0 +1,175 @@
+identity:
+  name: novitaai_modelquery
+  author: Xiao Ley
+  label:
+    en_US: Novita AI Model Query
+    zh_Hans: Novita AI 模型查询
+description:
+  human:
+    en_US: Retrieve information on both public and private models. It allows users to access details such as model specifications, status, and usage guidelines, ensuring comprehensive insight into the available modeling resources.
+    zh_Hans: 检索公开和私有模型信息。它允许用户访问模型规范、状态和使用指南等详细信息，确保了解可用的建模资源。
+  llm: A tool for retrieve information on both public and private Novita AI models.
+parameters:
+  - name: query
+    type: string
+    required: false
+    label:
+      en_US: query
+      zh_Hans: 查询
+    human_description:
+      en_US: Seaching the content of sd_name, name, tags.
+      zh_Hans: 搜索 sd_name、name、tags 中的内容
+    llm_description: Enter the content to search
+    form: llm
+  - name: result_type
+    type: select
+    default: "first sd_name"
+    required: true
+    label:
+      en_US: result format
+      zh_Hans: 结果格式
+    human_description:
+      en_US: The format of result
+      zh_Hans: 请求结果的格式
+    form: form
+    options:
+      - value: "first sd_name"
+        label:
+          en_US: "first sd_name"
+          zh_Hans: "第一个 sd_name"
+      - value: "first name sd_name pair"
+        label:
+          en_US: "first name and sd_name pair: {name, sd_name}"
+          zh_Hans: "第一个 name sd_name 组合：{name, sd_name}"
+      - value: "sd_name array"
+        label:
+          en_US: "sd_name array: [sd_name]"
+          zh_Hans: "sd_name 数组：[sd_name]"
+      - value: "name array"
+        label:
+          en_US: "name array: [name]"
+          zh_Hans: "name 数组：[name]"
+      - value: "name sd_name pair array"
+        label:
+          en_US: "name and sd_name pair array: [{name, sd_name}]"
+          zh_Hans: "name sd_name 组合数组：[{name, sd_name}]"
+      - value: "whole info array"
+        label:
+          en_US: whole info array
+          zh_Hans: 完整信息数组
+  - name: visibility
+    type: select
+    default: unspecified
+    required: false
+    label:
+      en_US: visibility
+      zh_Hans: 可见性
+    human_description:
+      en_US: Whether the model is public or private
+      zh_Hans: 模型是否公开或私有
+    form: form
+    options:
+      - value: unspecified
+        label:
+          en_US: Unspecified
+          zh_Hans: 未指定
+      - value: public
+        label:
+          en_US: Public
+          zh_Hans: 公开
+      - value: private
+        label:
+          en_US: Private
+          zh_Hans: 私有
+  - name: source
+    type: select
+    default: unspecified
+    required: false
+    label:
+      en_US: source
+      zh_Hans: 来源
+    human_description:
+      en_US: Source of the model
+      zh_Hans: 模型来源
+    form: form
+    options:
+      - value: unspecified
+        label:
+          en_US: Unspecified
+          zh_Hans: 未指定
+      - value: civitai
+        label:
+          en_US: Civitai
+          zh_Hans: Civitai
+      - value: training
+        label:
+          en_US: Training
+          zh_Hans: 训练
+      - value: uploading
+        label:
+          en_US: Uploading
+          zh_Hans: 上传
+  - name: type
+    type: select
+    default: unspecified
+    required: false
+    label:
+      en_US: type
+      zh_Hans: 类型
+    human_description:
+      en_US: Specifies the type of models to include in the query.
+      zh_Hans: 指定要查询的模型类型
+    form: form
+    options:
+      - value: unspecified
+        label:
+          en_US: Unspecified
+          zh_Hans: 未指定
+      - value: checkpoint
+        label:
+          en_US: Checkpoint
+          zh_Hans: Checkpoint
+      - value: lora
+        label:
+          en_US: LoRA
+          zh_Hans: LoRA
+      - value: vae
+        label:
+          en_US: VAE
+          zh_Hans: VAE
+      - value: controlnet
+        label:
+          en_US: ControlNet
+          zh_Hans: ControlNet
+      - value: upscaler
+        label:
+          en_US: Upscaler
+          zh_Hans: Upscaler
+      - value: textualinversion
+        label:
+          en_US: Textual inversion
+          zh_Hans: Textual Inversion
+  - name: is_sdxl
+    type: select
+    default: unspecified
+    required: false
+    label:
+      en_US: is sdxl
+      zh_Hans: 是否是 SDXL
+    human_description:
+      en_US: Whether sdxl model or not. Setting this parameter to `true` includes only sdxl models in the query results, which are typically large-scale, high-performance models designed for extensive data processing tasks. Conversely, setting it to `false` excludes these models from the results. If left unspecified, the filter will not discriminate based on the sdxl classification, including all model types in the search results.
+      zh_Hans: 是否是 SDXL 模型。设置此参数为 `是`，只查询 SDXL 模型，并包含大规模，高性能的模型。相反，设置为 `否`，将排除这些模型。如果未指定，将不会根据 SDXL 分类进行区分，包括查询结果中的所有模型类型。
+    form: form
+    options:
+      - value: unspecified
+        label:
+          en_US: Unspecified
+          zh_Hans: 未指定
+      - value: "true"
+        label:
+          en_US: "True"
+          zh_Hans: 是
+      - value: "false"
+        label:
+          en_US: "False"
+          zh_Hans: 否

@@ -1,0 +1,41 @@
+provider: replicate
+label:
+  en_US: Replicate
+icon_small:
+  en_US: icon_s_en.svg
+icon_large:
+  en_US: icon_l_en.svg
+background: "#E5E7EB"
+help:
+  title:
+    en_US: Get your API Key from Replicate
+    zh_Hans: 从 Replicate 获取 API Key
+  url:
+    en_US: https://replicate.com/account/api-tokens
+supported_model_types:
+  - llm
+  - text-embedding
+configurate_methods:
+  - customizable-model
+model_credential_schema:
+  model:
+    label:
+      en_US: Model Name
+      zh_Hans: 模型名称
+  credential_form_schemas:
+    - variable: replicate_api_token
+      label:
+        en_US: API Key
+      type: secret-input
+      required: true
+      placeholder:
+        zh_Hans: 在此输入您的 Replicate API Key
+        en_US: Enter your Replicate API Key
+    - variable: model_version
+      label:
+        en_US: Model Version
+      type: text-input
+      required: false
+      placeholder:
+        zh_Hans: 在此输入您的模型版本，默认为最新版本
+        en_US: Enter your model version, default to the latest version

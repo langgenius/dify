@@ -1,0 +1,83 @@
+identity:
+  author: wakaka6
+  name: email
+  label:
+    en_US: email
+    zh_Hans: 电子邮件
+  description:
+    en_US: send email through smtp protocol
+    zh_Hans: 通过smtp协议发送电子邮件
+  icon: icon.svg
+  tags:
+    - utilities
+credentials_for_provider:
+  email_account:
+    type: text-input
+    required: true
+    label:
+      en_US: email account
+      zh_Hans: 邮件账号
+    placeholder:
+      en_US: input you email account
+      zh_Hans: 输入你的邮箱账号
+    help:
+      en_US: email account
+      zh_Hans: 邮件账号
+  email_password:
+    type: secret-input
+    required: true
+    label:
+      en_US: email password
+      zh_Hans: 邮件密码
+    placeholder:
+      en_US: email password
+      zh_Hans: 邮件密码
+    help:
+      en_US: email password
+      zh_Hans: 邮件密码
+  smtp_server:
+    type: text-input
+    required: true
+    label:
+      en_US: smtp server
+      zh_Hans: 发信smtp服务器地址
+    placeholder:
+      en_US: smtp server
+      zh_Hans: 发信smtp服务器地址
+    help:
+      en_US: smtp server
+      zh_Hans: 发信smtp服务器地址
+  smtp_port:
+    type: text-input
+    required: true
+    label:
+      en_US: smtp server port
+      zh_Hans: 发信smtp服务器端口
+    placeholder:
+      en_US: smtp server port
+      zh_Hans: 发信smtp服务器端口
+    help:
+      en_US: smtp server port
+      zh_Hans: 发信smtp服务器端口
+  encrypt_method:
+    type: select
+    required: true
+    options:
+      - value: NONE
+        label:
+          en_US: NONE
+          zh_Hans: 无加密
+      - value: SSL
+        label:
+          en_US: SSL
+          zh_Hans: SSL加密
+      - value: TLS
+        label:
+          en_US: START TLS
+          zh_Hans: START TLS加密
+    label:
+      en_US: encrypt method
+      zh_Hans: 加密方式
+    help:
+      en_US: smtp server encrypt method
+      zh_Hans: 发信smtp服务器加密方式

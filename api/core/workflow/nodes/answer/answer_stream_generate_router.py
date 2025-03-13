@@ -158,7 +158,6 @@ class AnswerStreamGeneratorRouter:
                     NodeType.IF_ELSE,
                     NodeType.QUESTION_CLASSIFIER,
                     NodeType.ITERATION,
-                    NodeType.LOOP,
                     NodeType.VARIABLE_ASSIGNER,
                 }
                 or source_node_data.get("error_strategy") == ErrorStrategy.FAIL_BRANCH

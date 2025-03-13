@@ -99,6 +99,7 @@ class DatabaseRecommendAppRetrieval(RecommendAppRetrievalBase):
             "id": app_model.id,
             "name": app_model.name,
             "icon": app_model.icon,
+            "icon_type": app_model.icon_type,
             "icon_background": app_model.icon_background,
             "mode": app_model.mode,
             "export_data": AppDslService.export_dsl(app_model=app_model),

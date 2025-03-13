@@ -1,0 +1,4 @@
+model: jina-colbert-v1-en
+model_type: rerank
+model_properties:
+  context_size: 8192

@@ -1,0 +1,16 @@
+identity:
+  author: Bowen Liang
+  name: dingtalk
+  label:
+    en_US: DingTalk
+    zh_Hans: 钉钉
+    pt_BR: DingTalk
+  description:
+    en_US: DingTalk group robot
+    zh_Hans: 钉钉群机器人
+    pt_BR: DingTalk group robot
+  icon: icon.svg
+  tags:
+    - social
+    - productivity
+credentials_for_provider:

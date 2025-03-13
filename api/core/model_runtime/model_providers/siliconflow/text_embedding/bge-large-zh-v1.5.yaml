@@ -1,0 +1,5 @@
+model: BAAI/bge-large-zh-v1.5
+model_type: text-embedding
+model_properties:
+  context_size: 512
+  max_chunks: 1

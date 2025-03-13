@@ -1,0 +1,8 @@
+model: bge-large-zh-v1.5
+label:
+  zh_Hans: bge-large-zh-v1.5
+  en_US: bge-large-zh-v1.5
+model_type: text-embedding
+model_properties:
+  context_size: 200000
+  max_chunks: 20

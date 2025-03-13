@@ -1,5 +1,5 @@
 from decimal import Decimal
-from enum import StrEnum
+from enum import Enum
 from typing import Optional
 
 from pydantic import BaseModel
@@ -8,7 +8,7 @@ from core.model_runtime.entities.message_entities import AssistantPromptMessage,
 from core.model_runtime.entities.model_entities import ModelUsage, PriceInfo
 
 
-class LLMMode(StrEnum):
+class LLMMode(Enum):
     """
     Enum class for large language model mode.
     """

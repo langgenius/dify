@@ -1,0 +1,46 @@
+identity:
+  name: send_private_msg
+  author: RockChinQ
+  label:
+    en_US: Send Private Message
+    zh_Hans: 发送私聊消息
+description:
+  human:
+    en_US: Send a private message to a user
+    zh_Hans: 发送私聊消息给用户
+  llm: A tool for sending a message segment to a user in private chat
+parameters:
+  - name: user_id
+    type: number
+    required: true
+    label:
+      en_US: Target User ID
+      zh_Hans: 目标用户 ID
+    human_description:
+      en_US: The user ID of the target user
+      zh_Hans: 目标用户的用户 ID
+    llm_description: The user ID of the target user
+    form: llm
+  - name: message
+    type: string
+    required: true
+    label:
+      en_US: Message
+      zh_Hans: 消息
+    human_description:
+      en_US: The message to send
+      zh_Hans: 要发送的消息。支持 CQ码（需要同时设置 auto_escape 为 true）
+    llm_description: The message to send
+    form: llm
+  - name: auto_escape
+    type: boolean
+    required: false
+    default: false
+    label:
+      en_US: Auto Escape
+      zh_Hans: 自动转义
+    human_description:
+      en_US: If true, the message will be treated as a CQ code for parsing, otherwise it will be treated as plain text for direct sending. Since Dify currently does not support passing Object-format message chains, developers can send complex message components through CQ codes.
+      zh_Hans: 若为 true 则会把 message 视为 CQ 码解析，否则视为 纯文本 直接发送。由于 Dify 目前不支持传入 Object格式 的消息，故开发者可以通过 CQ 码来发送复杂消息组件。
+    llm_description: If true, the message will be treated as a CQ code for parsing, otherwise it will be treated as plain text for direct sending.
+    form: form

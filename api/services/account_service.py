@@ -10,7 +10,6 @@ from typing import Any, Optional, cast
 
 from pydantic import BaseModel
 from sqlalchemy import func
-from sqlalchemy.orm import Session
 from werkzeug.exceptions import Unauthorized
 
 from configs import dify_config
@@ -28,9 +27,11 @@ from models.account import (
     AccountStatus,
     Tenant,
     TenantAccountJoin,
+    TenantAccountJoinRole,
     TenantAccountRole,
     TenantStatus,
 )
+from models.plan import Plan
 from models.model import DifySetup
 from services.billing_service import BillingService
 from services.errors.account import (
@@ -48,6 +49,8 @@ from services.errors.account import (
     NoPermissionError,
     RoleAlreadyAssignedError,
     TenantNotFoundError,
+    AccountIsRegisterError,
+    AccountAlreadyInAnotherTenantError,
 )
 from services.errors.workspace import WorkSpaceNotAllowedCreateError
 from services.feature_service import FeatureService
@@ -77,7 +80,6 @@ class AccountService:
         prefix="email_code_account_deletion_rate_limit", max_attempts=1, time_window=60 * 1
     )
     LOGIN_MAX_ERROR_LIMITS = 5
-    FORGOT_PASSWORD_MAX_ERROR_LIMITS = 5
 
     @staticmethod
     def _get_refresh_token_key(refresh_token: str) -> str:
@@ -101,7 +103,7 @@ class AccountService:
 
     @staticmethod
     def load_user(user_id: str) -> None | Account:
-        account = db.session.query(Account).filter_by(id=user_id).first()
+        account = Account.query.filter_by(id=user_id).first()
         if not account:
             return None
 
@@ -125,7 +127,7 @@ class AccountService:
         if datetime.now(UTC).replace(tzinfo=None) - account.last_active_at > timedelta(minutes=10):
             account.last_active_at = datetime.now(UTC).replace(tzinfo=None)
             db.session.commit()
-
+        # 获取团体套餐信息
         return cast(Account, account)
 
     @staticmethod
@@ -146,7 +148,7 @@ class AccountService:
     def authenticate(email: str, password: str, invite_token: Optional[str] = None) -> Account:
         """authenticate account with email and password"""
 
-        account = db.session.query(Account).filter_by(email=email).first()
+        account = Account.query.filter_by(email=email).first()
         if not account:
             raise AccountNotFoundError()
 
@@ -218,9 +220,10 @@ class AccountService:
             )
 
         account = Account()
+        if account.get_account_info_by_email(email):
+            raise AccountIsRegisterError("该邮箱已注册")
         account.email = email
         account.name = name
-
         if password:
             # generate password salt
             salt = secrets.token_bytes(16)
@@ -505,32 +508,6 @@ class AccountService:
         redis_client.delete(key)
 
     @staticmethod
-    def add_forgot_password_error_rate_limit(email: str) -> None:
-        key = f"forgot_password_error_rate_limit:{email}"
-        count = redis_client.get(key)
-        if count is None:
-            count = 0
-        count = int(count) + 1
-        redis_client.setex(key, dify_config.FORGOT_PASSWORD_LOCKOUT_DURATION, count)
-
-    @staticmethod
-    def is_forgot_password_error_rate_limit(email: str) -> bool:
-        key = f"forgot_password_error_rate_limit:{email}"
-        count = redis_client.get(key)
-        if count is None:
-            return False
-
-        count = int(count)
-        if count > AccountService.FORGOT_PASSWORD_MAX_ERROR_LIMITS:
-            return True
-        return False
-
-    @staticmethod
-    def reset_forgot_password_error_rate_limit(email: str):
-        key = f"forgot_password_error_rate_limit:{email}"
-        redis_client.delete(key)
-
-    @staticmethod
     def is_email_send_ip_limit(ip_address: str):
         minute_key = f"email_send_ip_limit_minute:{ip_address}"
         freeze_key = f"email_send_ip_limit_freeze:{ip_address}"
@@ -624,8 +601,8 @@ class TenantService:
     @staticmethod
     def create_tenant_member(tenant: Tenant, account: Account, role: str = "normal") -> TenantAccountJoin:
         """Create tenant member"""
-        if role == TenantAccountRole.OWNER.value:
-            if TenantService.has_roles(tenant, [TenantAccountRole.OWNER]):
+        if role == TenantAccountJoinRole.OWNER.value:
+            if TenantService.has_roles(tenant, [TenantAccountJoinRole.OWNER]):
                 logging.error(f"Tenant {tenant.id} has already an owner.")
                 raise Exception("Tenant already has an owner.")
 
@@ -733,10 +710,10 @@ class TenantService:
         return updated_accounts
 
     @staticmethod
-    def has_roles(tenant: Tenant, roles: list[TenantAccountRole]) -> bool:
+    def has_roles(tenant: Tenant, roles: list[TenantAccountJoinRole]) -> bool:
         """Check if user has any of the given roles for a tenant"""
-        if not all(isinstance(role, TenantAccountRole) for role in roles):
-            raise ValueError("all roles must be TenantAccountRole")
+        if not all(isinstance(role, TenantAccountJoinRole) for role in roles):
+            raise ValueError("all roles must be TenantAccountJoinRole")
 
         return (
             db.session.query(TenantAccountJoin)
@@ -748,7 +725,7 @@ class TenantService:
         )
 
     @staticmethod
-    def get_user_role(account: Account, tenant: Tenant) -> Optional[TenantAccountRole]:
+    def get_user_role(account: Account, tenant: Tenant) -> Optional[TenantAccountJoinRole]:
         """Get the role of the current account for a given tenant"""
         join = (
             db.session.query(TenantAccountJoin)
@@ -860,16 +837,15 @@ class RegisterService:
 
             TenantService.create_owner_tenant_if_not_exist(account=account, is_setup=True)
 
-            dify_setup = DifySetup(version=dify_config.CURRENT_VERSION)
-            db.session.add(dify_setup)
+            # dify_setup = DifySetup(version=dify_config.CURRENT_VERSION)
+            # db.session.add(dify_setup)
             db.session.commit()
         except Exception as e:
-            db.session.query(DifySetup).delete()
-            db.session.query(TenantAccountJoin).delete()
-            db.session.query(Account).delete()
-            db.session.query(Tenant).delete()
-            db.session.commit()
-
+            # db.session.query(DifySetup).delete()
+            # db.session.query(TenantAccountJoin).delete()
+            # db.session.query(Account).delete()
+            # db.session.query(Tenant).delete()
+            # db.session.commit()
             logging.exception(f"Setup account failed, email: {email}, name: {name}")
             raise ValueError(f"Setup failed: {e}")
 
@@ -924,14 +900,11 @@ class RegisterService:
 
     @classmethod
     def invite_new_member(
-        cls, tenant: Tenant, email: str, language: str, role: str = "normal", inviter: Account | None = None
+        cls, tenant: Tenant, email: str, language: str, role: str = "normal", inviter: Optional[Account] = None
     ) -> str:
-        if not inviter:
-            raise ValueError("Inviter is required")
-
         """Invite new member"""
-        with Session(db.engine) as session:
-            account = session.query(Account).filter_by(email=email).first()
+        account = Account.query.filter_by(email=email).first()
+        assert inviter is not None, "Inviter must be provided."
 
         if not account:
             TenantService.check_member_permission(tenant, inviter, None, "add")
@@ -945,8 +918,11 @@ class RegisterService:
             TenantService.switch_tenant(account, tenant.id)
         else:
             TenantService.check_member_permission(tenant, inviter, account, "add")
+            # 检查该账户是否已经属于其他租户
+            existing_tenants = TenantAccountJoin.query.filter_by(account_id=account.id).all()
+            if existing_tenants:
+                raise AccountAlreadyInAnotherTenantError("Account already belongs to another tenant.")
             ta = TenantAccountJoin.query.filter_by(tenant_id=tenant.id, account_id=account.id).first()
-
             if not ta:
                 TenantService.create_tenant_member(tenant, account, role)
 

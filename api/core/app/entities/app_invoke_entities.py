@@ -63,9 +63,9 @@ class ModelConfigWithCredentialsEntity(BaseModel):
     model_schema: AIModelEntity
     mode: str
     provider_model_bundle: ProviderModelBundle
-    credentials: dict[str, Any] = Field(default_factory=dict)
-    parameters: dict[str, Any] = Field(default_factory=dict)
-    stop: list[str] = Field(default_factory=list)
+    credentials: dict[str, Any] = {}
+    parameters: dict[str, Any] = {}
+    stop: list[str] = []
 
     # pydantic configs
     model_config = ConfigDict(protected_namespaces=())
@@ -94,7 +94,7 @@ class AppGenerateEntity(BaseModel):
     call_depth: int = 0
 
     # extra parameters, like: auto_generate_conversation_name
-    extras: dict[str, Any] = Field(default_factory=dict)
+    extras: dict[str, Any] = {}
 
     # tracing instance
     trace_manager: Optional[TraceQueueManager] = None
@@ -183,19 +183,9 @@ class AdvancedChatAppGenerateEntity(ConversationAppGenerateEntity):
         """
 
         node_id: str
-        inputs: Mapping
+        inputs: dict
 
     single_iteration_run: Optional[SingleIterationRunEntity] = None
-
-    class SingleLoopRunEntity(BaseModel):
-        """
-        Single Loop Run Entity.
-        """
-
-        node_id: str
-        inputs: Mapping
-
-    single_loop_run: Optional[SingleLoopRunEntity] = None
 
 
 class WorkflowAppGenerateEntity(AppGenerateEntity):
@@ -216,13 +206,3 @@ class WorkflowAppGenerateEntity(AppGenerateEntity):
         inputs: dict
 
     single_iteration_run: Optional[SingleIterationRunEntity] = None
-
-    class SingleLoopRunEntity(BaseModel):
-        """
-        Single Loop Run Entity.
-        """
-
-        node_id: str
-        inputs: dict
-
-    single_loop_run: Optional[SingleLoopRunEntity] = None

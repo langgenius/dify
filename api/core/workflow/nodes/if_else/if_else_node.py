@@ -1,4 +1,5 @@
-from typing import Literal
+from collections.abc import Mapping, Sequence
+from typing import Any, Literal
 
 from typing_extensions import deprecated
 
@@ -86,6 +87,23 @@ class IfElseNode(BaseNode[IfElseNodeData]):
         )
 
         return data
+
+    @classmethod
+    def _extract_variable_selector_to_variable_mapping(
+        cls,
+        *,
+        graph_config: Mapping[str, Any],
+        node_id: str,
+        node_data: IfElseNodeData,
+    ) -> Mapping[str, Sequence[str]]:
+        """
+        Extract variable selector to variable mapping
+        :param graph_config: graph config
+        :param node_id: node id
+        :param node_data: node data
+        :return:
+        """
+        return {}
 
 
 @deprecated("This function is deprecated. You should use the new cases structure.")

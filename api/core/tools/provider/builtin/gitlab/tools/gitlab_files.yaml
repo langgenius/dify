@@ -1,0 +1,65 @@
+identity:
+  name: gitlab_files
+  author: Leo.Wang
+  label:
+    en_US: GitLab Files
+    zh_Hans: GitLab 文件获取
+description:
+  human:
+    en_US: A tool for query GitLab files, Input should be branch and a exists file or directory path.
+    zh_Hans: 一个用于查询 GitLab 文件的工具，输入的内容应该是分支和一个已存在文件或者文件夹路径。
+  llm: A tool for query GitLab files, Input should be a exists file or directory path.
+parameters:
+  - name: repository
+    type: string
+    required: false
+    label:
+      en_US: repository
+      zh_Hans: 仓库路径
+    human_description:
+      en_US: repository
+      zh_Hans: 仓库路径，以namespace/project_name的形式。
+    llm_description: Repository path for GitLab, like namespace/project_name.
+    form: llm
+  - name: project
+    type: string
+    required: false
+    label:
+      en_US: project
+      zh_Hans: 项目
+    human_description:
+      en_US: project
+      zh_Hans: 项目(和仓库路径二选一,都填写以仓库路径优先)
+    llm_description: Project for GitLab
+    form: llm
+  - name: branch
+    type: string
+    required: true
+    label:
+      en_US: branch
+      zh_Hans: 分支
+    human_description:
+      en_US: branch
+      zh_Hans: 分支
+    llm_description: Branch for GitLab
+    form: llm
+  - name: path
+    type: string
+    label:
+      en_US: path
+      zh_Hans: 文件夹
+    human_description:
+      en_US: path
+      zh_Hans: 文件夹
+    llm_description: Dir path for GitLab
+    form: llm
+  - name: file_path
+    type: string
+    label:
+      en_US: file_path
+      zh_Hans: 文件路径
+    human_description:
+      en_US: file_path
+      zh_Hans: 文件路径(和文件夹二选一,都填写以文件夹优先)
+    llm_description: File path for GitLab
+    form: llm

@@ -7,7 +7,6 @@ document_fields = {
     "data_source_type": fields.String,
     "name": fields.String,
     "doc_type": fields.String,
-    "doc_metadata": fields.Raw,
 }
 
 segment_fields = {
@@ -15,7 +14,6 @@ segment_fields = {
     "position": fields.Integer,
     "document_id": fields.String,
     "content": fields.String,
-    "sign_content": fields.String,
     "answer": fields.String,
     "word_count": fields.Integer,
     "tokens": fields.Integer,

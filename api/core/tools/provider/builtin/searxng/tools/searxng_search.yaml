@@ -1,0 +1,69 @@
+identity:
+  name: searxng_search
+  author: Junytang
+  label:
+    en_US: SearXNG Search
+    zh_Hans: SearXNG 搜索
+description:
+  human:
+    en_US: SearXNG is a free internet metasearch engine which aggregates results from more than 70 search services.
+    zh_Hans: SearXNG 是一个免费的互联网元搜索引擎，它从70多个不同的搜索服务中聚合搜索结果。
+  llm: Perform searches on SearXNG and get results.
+parameters:
+  - name: query
+    type: string
+    required: true
+    label:
+      en_US: Query string
+      zh_Hans: 查询语句
+    llm_description: Key words for searching
+    form: llm
+  - name: search_type
+    type: select
+    required: true
+    label:
+      en_US: search type
+      zh_Hans: 搜索类型
+    default: general
+    options:
+      - value: general
+        label:
+          en_US: General
+          zh_Hans: 综合
+      - value: images
+        label:
+          en_US: Images
+          zh_Hans: 图片
+      - value: videos
+        label:
+          en_US: Videos
+          zh_Hans: 视频
+      - value: news
+        label:
+          en_US: News
+          zh_Hans: 新闻
+      - value: map
+        label:
+          en_US: Map
+          zh_Hans: 地图
+      - value: music
+        label:
+          en_US: Music
+          zh_Hans: 音乐
+      - value: it
+        label:
+          en_US: It
+          zh_Hans: 信息技术
+      - value: science
+        label:
+          en_US: Science
+          zh_Hans: 科学
+      - value: files
+        label:
+          en_US: Files
+          zh_Hans: 文件
+      - value: social_media
+        label:
+          en_US: Social Media
+          zh_Hans: 社交媒体
+    form: form

@@ -1,0 +1,14 @@
+identity:
+  author: Mingwei Zhang
+  name: json_process
+  label:
+    en_US: JSON Process
+    zh_Hans: JSON 处理
+    pt_BR: JSON Process
+  description:
+    en_US: Tools for processing JSON content using jsonpath_ng
+    zh_Hans: 利用 jsonpath_ng 处理 JSON 内容的工具
+    pt_BR: Tools for processing JSON content using jsonpath_ng
+  icon: icon.svg
+  tags:
+    - utilities

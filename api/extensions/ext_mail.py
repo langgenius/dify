@@ -60,13 +60,11 @@ class Mail:
     def send(self, to: str, subject: str, html: str, from_: Optional[str] = None):
         if not self._client:
             raise ValueError("Mail client is not initialized")
-
+        
         if not from_ and self._default_send_from:
             from_ = self._default_send_from
-
         if not from_:
             raise ValueError("mail from is not set")
-
         if not to:
             raise ValueError("mail to is not set")
 
@@ -75,7 +73,7 @@ class Mail:
 
         if not html:
             raise ValueError("mail html is not set")
-
+      
         self._client.send(
             {
                 "from": from_,

@@ -1,0 +1,43 @@
+provider: vertex_ai
+label:
+  en_US: Vertex AI | Google Cloud Platform
+description:
+  en_US: Vertex AI in Google Cloud Platform.
+icon_small:
+  en_US: icon_s_en.svg
+icon_large:
+  en_US: icon_l_en.png
+background: "#FCFDFF"
+help:
+  title:
+    en_US: Get your Access Details from Google
+  url:
+    en_US: https://cloud.google.com/vertex-ai/
+supported_model_types:
+  - llm
+  - text-embedding
+configurate_methods:
+  - predefined-model
+provider_credential_schema:
+  credential_form_schemas:
+    - variable: vertex_project_id
+      label:
+        en_US: Project ID
+      type: text-input
+      required: true
+      placeholder:
+        en_US: Enter your Google Cloud Project ID
+    - variable: vertex_location
+      label:
+        en_US: Location
+      type: text-input
+      required: true
+      placeholder:
+        en_US: Enter your Google Cloud Location
+    - variable: vertex_service_account_key
+      label:
+        en_US: Service Account Key (Leave blank if you use Application Default Credentials)
+      type: secret-input
+      required: false
+      placeholder:
+        en_US: Enter your Google Cloud Service Account Key in base64 format

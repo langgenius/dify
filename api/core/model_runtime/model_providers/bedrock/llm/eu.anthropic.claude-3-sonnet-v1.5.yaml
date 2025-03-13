@@ -1,0 +1,60 @@
+model: eu.anthropic.claude-3-5-sonnet-20240620-v1:0
+label:
+  en_US: Claude 3.5 Sonnet(EU.Cross Region Inference)
+model_type: llm
+features:
+  - agent-thought
+  - vision
+  - tool-call
+  - stream-tool-call
+model_properties:
+  mode: chat
+  context_size: 200000
+# docs: https://docs.aws.amazon.com/bedrock/latest/userguide/model-parameters-anthropic-claude-messages.html
+parameter_rules:
+  - name: max_tokens
+    use_template: max_tokens
+    required: true
+    type: int
+    default: 4096
+    min: 1
+    max: 4096
+    help:
+      zh_Hans: 停止前生成的最大令牌数。请注意，Anthropic Claude 模型可能会在达到 max_tokens 的值之前停止生成令牌。不同的 Anthropic Claude 模型对此参数具有不同的最大值。
+      en_US: The maximum number of tokens to generate before stopping. Note that Anthropic Claude models might stop generating tokens before reaching the value of max_tokens. Different Anthropic Claude models have different maximum values for this parameter.
+  - name: temperature
+    use_template: temperature
+    required: false
+    type: float
+    default: 1
+    min: 0.0
+    max: 1.0
+    help:
+      zh_Hans: 生成内容的随机性。
+      en_US: The amount of randomness injected into the response.
+  - name: top_p
+    required: false
+    type: float
+    default: 0.999
+    min: 0.000
+    max: 1.000
+    help:
+      zh_Hans: 在核采样中，Anthropic Claude 按概率递减顺序计算每个后续标记的所有选项的累积分布，并在达到 top_p 指定的特定概率时将其切断。您应该更改温度或top_p，但不能同时更改两者。
+      en_US: In nucleus sampling, Anthropic Claude computes the cumulative distribution over all the options for each subsequent token in decreasing probability order and cuts it off once it reaches a particular probability specified by top_p. You should alter either temperature or top_p, but not both.
+  - name: top_k
+    required: false
+    type: int
+    default: 0
+    min: 0
+    # tip docs from aws has error, max value is 500
+    max: 500
+    help:
+      zh_Hans: 对于每个后续标记，仅从前 K 个选项中进行采样。使用 top_k 删除长尾低概率响应。
+      en_US: Only sample from the top K options for each subsequent token. Use top_k to remove long tail low probability responses.
+  - name: response_format
+    use_template: response_format
+pricing:
+  input: '0.003'
+  output: '0.015'
+  unit: '0.001'
+  currency: USD

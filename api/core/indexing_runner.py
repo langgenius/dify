@@ -30,7 +30,7 @@ from core.rag.splitter.fixed_text_splitter import (
     FixedRecursiveCharacterTextSplitter,
 )
 from core.rag.splitter.text_splitter import TextSplitter
-from core.tools.utils.rag_web_reader import get_image_upload_file_ids
+from core.tools.utils.web_reader_tool import get_image_upload_file_ids
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from extensions.ext_storage import storage
@@ -618,8 +618,10 @@ class IndexingRunner:
 
             tokens = 0
             if embedding_model_instance:
-                page_content_list = [document.page_content for document in chunk_documents]
-                tokens += sum(embedding_model_instance.get_text_embedding_num_tokens(page_content_list))
+                tokens += sum(
+                    embedding_model_instance.get_text_embedding_num_tokens([document.page_content])
+                    for document in chunk_documents
+                )
 
             # load index
             index_processor.load(dataset, chunk_documents, with_keywords=False)

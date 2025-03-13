@@ -59,3 +59,10 @@ class RoleAlreadyAssignedError(BaseServiceError):
 
 class RateLimitExceededError(BaseServiceError):
     pass
+
+
+class AccountIsRegisterError(BaseServiceError):
+    pass
+
+class AccountAlreadyInAnotherTenantError(BaseServiceError):
+    pass
