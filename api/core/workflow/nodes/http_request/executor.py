@@ -231,10 +231,11 @@ class Executor:
                                 files[key].append(file_tuple)
 
                     # convert files to list for httpx request
-                    self.files = []
-                    for key, file_tuples in files.items():
-                        for file_tuple in file_tuples:
-                            self.files.append((key, file_tuple))
+                    if files:
+                        self.files = []
+                        for key, file_tuples in files.items():
+                            for file_tuple in file_tuples:
+                                self.files.append((key, file_tuple))
 
                     self.data = form_data
 
