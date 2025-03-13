@@ -38,7 +38,6 @@ const EditMetadataBatchModal: FC<Props> = ({
   onHide,
   onShowManage,
 }) => {
-  console.log(list)
   const { t } = useTranslation()
   const [templeList, setTempleList] = useState<MetadataItemWithEdit[]>(list)
   const handleTemplesChange = useCallback((payload: MetadataItemWithEdit) => {
