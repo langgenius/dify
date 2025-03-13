@@ -58,8 +58,8 @@ const ConditionItem = ({
   }, [disabled])
 
   const doRemoveCondition = useCallback(() => {
-    onRemoveCondition?.(condition.name)
-  }, [onRemoveCondition, condition.name])
+    onRemoveCondition?.(condition.id)
+  }, [onRemoveCondition, condition.id])
 
   const currentMetadata = useMemo(() => {
     return metadataList.find(metadata => metadata.name === condition.name)
