@@ -86,10 +86,10 @@ const Sidebar = ({ isPanel }: Props) => {
         <div className='shrink-0'>
           <AppIcon
             size='large'
-            iconType={appData?.site.icon_type}
+            iconType={appData?.site.icon_type || 'image'}
             icon={appData?.site.icon}
             background={appData?.site.icon_background}
-            imageUrl={appData?.site.icon_url}
+            imageUrl={appData?.site.icon_url || '/logo/logo.png'}
           />
         </div>
         <div className={cn('grow text-text-secondary system-md-semibold truncate')}>{appData?.site.title}</div>

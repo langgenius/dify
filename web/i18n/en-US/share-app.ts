@@ -33,6 +33,8 @@ const translation = {
     },
     tryToSolve: 'Try to solve',
     temporarySystemIssue: 'Sorry, temporary system issue.',
+    chatWelComeTitle: 'Nice to meet you！',
+    chatWelComeDescription: 'I can help you write code, read files, and write various creative content~',
   },
   generation: {
     tabs: {

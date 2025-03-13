@@ -101,7 +101,7 @@ const Operation: FC<OperationProps> = ({
     <>
       <div
         className={cn(
-          'absolute flex justify-end gap-1',
+          'absolute flex justify-end',
           hasWorkflowProcess && '-bottom-4 right-2',
           !positionRight && '-bottom-4 right-2',
           !hasWorkflowProcess && positionRight && '!top-[9px]',
@@ -114,7 +114,8 @@ const Operation: FC<OperationProps> = ({
           </div>
         )}
         {!isOpeningStatement && (
-          <div className='hidden group-hover:flex ml-1 items-center gap-0.5 p-0.5 rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg shadow-md backdrop-blur-sm'>
+          <div className='flex items-center gap-0.5 p-0.5'>
+            {/* rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg shadow-md backdrop-blur-sm */}
             {(config?.text_to_speech?.enabled) && (
               <NewAudioButton
                 id={id}
@@ -141,7 +142,8 @@ const Operation: FC<OperationProps> = ({
           </div>
         )}
         {!isOpeningStatement && config?.supportFeedback && onFeedback && (
-          <div className='hidden group-hover:flex ml-1 items-center gap-0.5 p-0.5 rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg shadow-md backdrop-blur-sm'>
+          // rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg shadow-md backdrop-blur-sm
+          <div className='flex items-center gap-0.5 p-0.5'>
             {!localFeedback?.rating && (
               <>
                 <ActionButton onClick={() => handleFeedback('like')}>
