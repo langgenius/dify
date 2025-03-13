@@ -10,8 +10,9 @@ import httpx
 from configs import dify_config
 from core.file import file_manager
 from core.helper import ssrf_proxy
+from core.variables.segments import ArrayFileSegment, FileSegment
 from core.workflow.entities.variable_pool import VariablePool
-from core.variables.segments import FileSegment, ArrayFileSegment
+
 from .entities import (
     HttpRequestNodeAuthorization,
     HttpRequestNodeData,
@@ -222,7 +223,9 @@ class Executor:
                     for key, files_in_segment in files_list:
                         for file in files_in_segment:
                             if file.related_id is not None:
-                                file_tuple = (file.filename, file_manager.download(file), file.mime_type or "application/octet-stream")
+                                file_tuple = (file.filename,
+                                              file_manager.download(file),
+                                              file.mime_type or "application/octet-stream")
                                 if key not in files:
                                     files[key] = []
                                 files[key].append(file_tuple)
