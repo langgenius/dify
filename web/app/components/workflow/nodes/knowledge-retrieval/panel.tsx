@@ -4,6 +4,7 @@ import {
   useCallback,
   useMemo,
 } from 'react'
+import { intersectionBy } from 'lodash-es'
 import { useTranslation } from 'react-i18next'
 import VarReferencePicker from '../_base/components/variable/var-reference-picker'
 import useConfig from './use-config'
@@ -67,11 +68,11 @@ const Panel: FC<NodePanelProps<KnowledgeRetrievalNodeType>> = ({
   }, [setRerankModelOpen])
 
   const metadataList = useMemo(() => {
-    return selectedDatasets.filter((dataset) => {
+    return intersectionBy(...selectedDatasets.filter((dataset) => {
       return !!dataset.doc_metadata
     }).map((dataset) => {
       return dataset.doc_metadata!
-    }).flat()
+    }), 'name')
   }, [selectedDatasets])
 
   return (

@@ -2,7 +2,6 @@ import {
   useEffect,
   useState,
 } from 'react'
-import { unionBy } from 'lodash-es'
 import { useTranslation } from 'react-i18next'
 import { RiFilter3Line } from '@remixicon/react'
 import MetadataPanel from './metadata-panel'
@@ -16,7 +15,7 @@ import type { MetadataShape } from '@/app/components/workflow/nodes/knowledge-re
 
 const MetadataTrigger = ({
   metadataFilteringConditions,
-  metadataList: originalMetadataList = [],
+  metadataList = [],
   handleRemoveCondition,
   selectedDatasetsLoaded,
   ...restProps
@@ -25,7 +24,6 @@ const MetadataTrigger = ({
   const [open, setOpen] = useState(false)
   const conditions = metadataFilteringConditions?.conditions || []
 
-  const metadataList = unionBy(originalMetadataList, 'name').sort(a => a.id === 'built-in' ? 1 : -1)
   useEffect(() => {
     if (selectedDatasetsLoaded) {
       conditions.forEach((condition) => {

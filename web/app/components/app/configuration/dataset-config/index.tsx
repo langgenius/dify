@@ -2,6 +2,7 @@
 import type { FC } from 'react'
 import React, { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
+import { intersectionBy } from 'lodash-es'
 import { useContext } from 'use-context-selector'
 import produce from 'immer'
 import { v4 as uuid4 } from 'uuid'
@@ -131,11 +132,11 @@ const DatasetConfig: FC = () => {
   }, [dataSet, userProfile?.id])
 
   const metadataList = useMemo(() => {
-    return formattedDataset.filter((dataset) => {
+    return intersectionBy(...formattedDataset.filter((dataset) => {
       return !!dataset.doc_metadata
     }).map((dataset) => {
       return dataset.doc_metadata!
-    }).flat()
+    }), 'name')
   }, [formattedDataset])
 
   const handleMetadataFilterModeChange = useCallback((newMode: MetadataFilteringModeEnum) => {
