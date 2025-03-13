@@ -15,7 +15,7 @@ from extensions.ext_database import db
 from fields.member_fields import account_with_role_list_fields
 from libs.login import login_required
 from models.account import Account, TenantAccountRole
-from services.account_service import RegisterService, TenantService
+from services.account_service import RegisterService, TenantService, AccountService
 from services.errors.account import AccountAlreadyInTenantError
 
 
@@ -29,6 +29,40 @@ class MemberListApi(Resource):
     def get(self):
         members = TenantService.get_tenant_members(current_user.current_tenant)
         return {"result": "success", "accounts": members}, 200
+
+class APOAddMemberApi(Resource):
+    def post(self):
+        parser = reqparse.RequestParser()
+        parser.add_argument("username", type=str, required=True, location="json")
+        parser.add_argument("password", type=str, required=True, location="json")
+        parser.add_argument("role", type=str, required=True, default="admin", location="json")
+        parser.add_argument("language", type=str, required=False, location="json")
+        args = parser.parse_args()
+
+        invitee_email = args["username"]+"@apo.com"
+        password = args["password"]
+        invitee_role = args["role"]
+        interface_language = args["language"]
+        if not TenantAccountRole.is_non_owner_role(invitee_role):
+            return {"result": "failed", "message": "Invalid role"}, 400
+
+        # add member to admin tenant
+        inviter = AccountService.get_user_through_email("admin@apo.com")
+        tenant = TenantService.get_join_tenants(inviter)
+        
+        add_result = {}
+        
+        try:
+            RegisterService.apo_add_new_member(
+                tenant[0], invitee_email, password, interface_language, role=invitee_role, inviter=inviter
+            )    
+            add_result = {"result": "success","email": invitee_email}
+        except AccountAlreadyInTenantError:
+            add_result = {"result": "success", "email": invitee_email}
+        except Exception as e:
+            add_result = {"result": "failed", "email": invitee_email, "message": str(e)}
+
+        return add_result, 201
 
 
 class MemberInviteEmailApi(Resource):
@@ -106,6 +140,33 @@ class MemberCancelInviteApi(Resource):
         return {"result": "success"}, 204
 
 
+class APORemoveMemberApi(Resource):
+    """remove member by username"""
+    def delete(self, username):
+        member = db.session.query(Account).filter(Account.email == str(username+'@apo.com')).first()
+        if member is None or member.email == "admin@apo.com":
+            abort(404)
+        else:
+            admin = AccountService.get_user_through_email("admin@apo.com")
+            tenant = TenantService.get_join_tenants(admin)
+            try:
+                TenantService.remove_member_from_tenant(tenant[0], member, admin)
+                
+            except services.errors.account.CannotOperateSelfError as e:
+                return {"result": "failed", "code": "cannot-operate-self", "message": str(e)}, 400
+            except services.errors.account.NoPermissionError as e:
+                return {"result": "failed", "code": "forbidden", "message": str(e)}, 403
+            except services.errors.account.MemberNotInTenantError as e:
+                return {"result": "failed", "code": "member-not-found", "message": str(e)}, 404
+            except Exception as e:
+                return {"result": "failed", "message": str(e)}, 400
+            try:
+              AccountService.delete_apo_account(member)
+            except Exception as e:
+                return {"result": "failed", "message": str(e)}, 400
+
+        return {"result": "success", "message": "ok"}, 200
+
 class MemberUpdateRoleApi(Resource):
     """Update member role."""
 
@@ -147,7 +208,8 @@ class DatasetOperatorMemberListApi(Resource):
         members = TenantService.get_dataset_operator_members(current_user.current_tenant)
         return {"result": "success", "accounts": members}, 200
 
-
+api.add_resource(APOAddMemberApi, "/workspaces/apo/members/add")
+api.add_resource(APORemoveMemberApi, "/workspaces/apo/members/<string:username>")
 api.add_resource(MemberListApi, "/workspaces/current/members")
 api.add_resource(MemberInviteEmailApi, "/workspaces/current/members/invite-email")
 api.add_resource(MemberCancelInviteApi, "/workspaces/current/members/<uuid:member_id>")
