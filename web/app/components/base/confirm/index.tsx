@@ -46,13 +46,17 @@ function Confirm({
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape')
         onCancel()
+      if (event.key === 'Enter' && isShow) {
+        event.preventDefault()
+        onConfirm()
+      }
     }
 
     document.addEventListener('keydown', handleKeyDown)
     return () => {
       document.removeEventListener('keydown', handleKeyDown)
     }
-  }, [onCancel])
+  }, [onCancel, onConfirm, isShow])
 
   const handleClickOutside = (event: MouseEvent) => {
     if (maskClosable && dialogRef.current && !dialogRef.current.contains(event.target as Node))
