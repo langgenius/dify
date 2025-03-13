@@ -126,7 +126,7 @@ const Sidebar = ({ isPanel }: Props) => {
         )}
         {!!conversationList.length && (
           <List
-            title={(pinnedConversationList.length && t('share.chat.unpinnedTitle')) || ''}
+            title={'hah'}
             list={conversationList}
             onChangeConversation={handleChangeConversation}
             onOperate={handleOperate}
