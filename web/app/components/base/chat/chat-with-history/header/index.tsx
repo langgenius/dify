@@ -33,6 +33,7 @@ const Header = () => {
     handleNewConversation,
     sidebarCollapseState,
     handleSidebarCollapse,
+    isResponding,
   } = useChatWithHistoryContext()
   const { t } = useTranslation()
   const isSidebarCollapsed = sidebarCollapseState
@@ -111,7 +112,12 @@ const Header = () => {
               popupContent={t('share.chat.newChatTip')}
             >
               <div>
-                <ActionButton size='l' state={!currentConversationId ? ActionButtonState.Disabled : ActionButtonState.Default} disabled={!currentConversationId} onClick={handleNewConversation}>
+                <ActionButton
+                  size='l'
+                  state={(!currentConversationId || isResponding) ? ActionButtonState.Disabled : ActionButtonState.Default}
+                  disabled={!currentConversationId || isResponding}
+                  onClick={handleNewConversation}
+                >
                   <RiEditBoxLine className='w-[18px] h-[18px]' />
                 </ActionButton>
               </div>

@@ -20,6 +20,7 @@ import {
 import AppIcon from '@/app/components/base/app-icon'
 import AnswerIcon from '@/app/components/base/answer-icon'
 import SuggestedQuestions from '@/app/components/base/chat/chat/answer/suggested-questions'
+import { Markdown } from '@/app/components/base/markdown'
 import cn from '@/utils/classnames'
 
 const ChatWrapper = () => {
@@ -41,6 +42,9 @@ const ChatWrapper = () => {
     appData,
     themeBuilder,
     sidebarCollapseState,
+    clearChatList,
+    setClearChatList,
+    setIsResponding,
   } = useChatWithHistoryContext()
   const appConfig = useMemo(() => {
     const config = appParams || {}
@@ -60,7 +64,7 @@ const ChatWrapper = () => {
     setTargetMessageId,
     handleSend,
     handleStop,
-    isResponding,
+    isResponding: respondingState,
     suggestedQuestions,
   } = useChat(
     appConfig,
@@ -70,6 +74,8 @@ const ChatWrapper = () => {
     },
     appPrevChatTree,
     taskId => stopChatMessageResponding('', taskId, isInstalledApp, appId),
+    clearChatList,
+    setClearChatList,
   )
   const inputsFormValue = currentConversationId ? currentConversationItem?.inputs : newConversationInputsRef?.current
   const inputDisabled = useMemo(() => {
@@ -110,6 +116,10 @@ const ChatWrapper = () => {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
+  useEffect(() => {
+    setIsResponding(respondingState)
+  }, [respondingState, setIsResponding])
+
   const doSend: OnSend = useCallback((message, files, isRegenerate = false, parentAnswer: ChatItem | null = null) => {
     const data: any = {
       query: message,
@@ -146,10 +156,10 @@ const ChatWrapper = () => {
   }, [chatList, doSend])
 
   const messageList = useMemo(() => {
-    if (currentConversationId || isResponding)
+    if (currentConversationId)
       return chatList
     return chatList.filter(item => !item.isOpeningStatement)
-  }, [chatList, currentConversationId, isResponding])
+  }, [chatList, currentConversationId])
 
   const [collapsed, setCollapsed] = useState(!!currentConversationId)
 
@@ -168,7 +178,7 @@ const ChatWrapper = () => {
 
   const welcome = useMemo(() => {
     const welcomeMessage = chatList.find(item => item.isOpeningStatement)
-    if (isResponding)
+    if (respondingState)
       return null
     if (currentConversationId)
       return null
@@ -188,7 +198,7 @@ const ChatWrapper = () => {
               imageUrl={appData?.site.icon_url}
             />
             <div className='grow px-4 py-3 bg-chat-bubble-bg text-text-primary rounded-2xl body-lg-regular'>
-              {welcomeMessage.content}
+              <Markdown content={welcomeMessage.content} />
               <SuggestedQuestions item={welcomeMessage} />
             </div>
           </div>
@@ -204,10 +214,10 @@ const ChatWrapper = () => {
           background={appData?.site.icon_background}
           imageUrl={appData?.site.icon_url}
         />
-        <div className='text-text-tertiary body-2xl-regular'>{welcomeMessage.content}</div>
+        <Markdown className='!text-text-tertiary !body-2xl-regular' content={welcomeMessage.content} />
       </div>
     )
-  }, [appData?.site.icon, appData?.site.icon_background, appData?.site.icon_type, appData?.site.icon_url, chatList, collapsed, currentConversationId, inputsForms.length, isResponding])
+  }, [appData?.site.icon, appData?.site.icon_background, appData?.site.icon_type, appData?.site.icon_url, chatList, collapsed, currentConversationId, inputsForms.length, respondingState])
 
   const answerIcon = (appData?.site && appData.site.use_icon_as_answer_icon)
     ? <AnswerIcon
@@ -226,10 +236,10 @@ const ChatWrapper = () => {
         appData={appData}
         config={appConfig}
         chatList={messageList}
-        isResponding={isResponding}
-        chatContainerInnerClassName={`mx-auto pt-6 w-full max-w-[720px] ${isMobile && 'px-4'}`}
+        isResponding={respondingState}
+        chatContainerInnerClassName={`mx-auto pt-6 w-full max-w-[768px] ${isMobile && 'px-4'}`}
         chatFooterClassName='pb-4'
-        chatFooterInnerClassName={`mx-auto w-full max-w-[720px] ${isMobile ? 'px-2' : 'px-4'}`}
+        chatFooterInnerClassName={`mx-auto w-full max-w-[768px] ${isMobile ? 'px-2' : 'px-4'}`}
         onSend={doSend}
         inputs={currentConversationId ? currentConversationItem?.inputs as any : newConversationInputs}
         inputsForm={inputsForms}
