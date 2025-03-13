@@ -27,6 +27,7 @@ import { useFeatures } from '@/app/components/base/features/hooks'
 import { getLastAnswer, isValidGeneratedAnswer } from '@/app/components/base/chat/utils'
 import type { InputForm } from '@/app/components/base/chat/chat/type'
 import { canFindTool } from '@/utils'
+import { useThemeContext } from '@/app/components/base/chat/embedded-chatbot/theme/theme-context'
 
 type DebugWithSingleModelProps = {
   checkCanSend?: () => boolean
@@ -71,6 +72,8 @@ const DebugWithSingleModel = forwardRef<DebugWithSingleModelRefType, DebugWithSi
     chatList,
     setTargetMessageId,
     isResponding,
+    isInternet,
+    setIsInternet,
     handleSend,
     suggestedQuestions,
     handleStop,
@@ -88,6 +91,7 @@ const DebugWithSingleModel = forwardRef<DebugWithSingleModelRefType, DebugWithSi
     taskId => stopChatMessageResponding(appId, taskId),
   )
   useFormattingChangedSubscription(chatList)
+  const themeBuilder = useThemeContext()
 
   const doSend: OnSend = useCallback((message, files, isRegenerate = false, parentAnswer: ChatItem | null = null) => {
     if (checkCanSend && !checkCanSend())
@@ -153,6 +157,8 @@ const DebugWithSingleModel = forwardRef<DebugWithSingleModelRefType, DebugWithSi
       config={config}
       chatList={chatList}
       isResponding={isResponding}
+      isInternet={isInternet}
+      onSetInternet={setIsInternet}
       chatContainerClassName='px-3 pt-6'
       chatFooterClassName='px-3 pt-10 pb-0'
       showFeatureBar
@@ -172,6 +178,7 @@ const DebugWithSingleModel = forwardRef<DebugWithSingleModelRefType, DebugWithSi
       onAnnotationAdded={handleAnnotationAdded}
       onAnnotationRemoved={handleAnnotationRemoved}
       noSpacing
+      themeBuilder={themeBuilder}
     />
   )
 })
