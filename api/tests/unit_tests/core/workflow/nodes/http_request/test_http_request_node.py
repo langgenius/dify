@@ -221,13 +221,13 @@ def test_http_request_node_form_with_multiple_files(monkeypatch):
             ],
         ),
     )
-    
+
     # 创建变量池并添加文件数组变量
     variable_pool = VariablePool(
         system_variables={},
         user_inputs={},
     )
-    
+
     # 创建多个文件对象
     files = [
         File(
@@ -249,7 +249,7 @@ def test_http_request_node_form_with_multiple_files(monkeypatch):
             storage_key="",
         ),
     ]
-    
+
     # 添加文件数组变量到变量池
     variable_pool.add(
         ["1111", "files"],
@@ -258,7 +258,7 @@ def test_http_request_node_form_with_multiple_files(monkeypatch):
             value=files,
         ),
     )
-    
+
     # 创建节点
     node = HttpRequestNode(
         id="1",
@@ -293,39 +293,39 @@ def test_http_request_node_form_with_multiple_files(monkeypatch):
             start_at=0,
         ),
     )
-    
+
     # 模拟文件下载函数
     monkeypatch.setattr(
         "core.workflow.nodes.http_request.executor.file_manager.download",
         lambda file: b"test_image_data" if file.mime_type == "image/jpeg" else b"test_pdf_data",
     )
-    
+
     # 验证请求参数
     def attr_checker(*args, **kwargs):
         assert kwargs["data"] == {"description": "多文件测试"}
-        
+
         # 验证文件列表
         assert len(kwargs["files"]) == 2
         assert kwargs["files"][0][0] == "files"  # 第一个文件的键名
         assert kwargs["files"][1][0] == "files"  # 第二个文件的键名
-        
+
         # 验证文件内容和类型
         file_tuples = [f[1] for f in kwargs["files"]]
         file_contents = [f[1] for f in file_tuples]
         file_types = [f[2] for f in file_tuples]
-        
+
         assert b"test_image_data" in file_contents
         assert b"test_pdf_data" in file_contents
         assert "image/jpeg" in file_types
         assert "application/pdf" in file_types
-        
+
         return httpx.Response(200, content=b'{"status":"success"}')
-    
+
     monkeypatch.setattr(
         "core.helper.ssrf_proxy.post",
         attr_checker,
     )
-    
+
     # 执行节点并验证结果
     result = node._run()
     assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED

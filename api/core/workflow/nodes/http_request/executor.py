@@ -68,12 +68,12 @@ class Executor:
     boundary: str
 
     def __init__(
-            self,
-            *,
-            node_data: HttpRequestNodeData,
-            timeout: HttpRequestNodeTimeout,
-            variable_pool: VariablePool,
-            max_retries: int = dify_config.SSRF_DEFAULT_MAX_RETRIES,
+        self,
+        *,
+        node_data: HttpRequestNodeData,
+        timeout: HttpRequestNodeTimeout,
+        variable_pool: VariablePool,
+        max_retries: int = dify_config.SSRF_DEFAULT_MAX_RETRIES,
     ):
         # If authorization API key is present, convert the API key using the variable pool
         if node_data.authorization.type == "api-key":
@@ -223,9 +223,11 @@ class Executor:
                     for key, files_in_segment in files_list:
                         for file in files_in_segment:
                             if file.related_id is not None:
-                                file_tuple = (file.filename,
-                                              file_manager.download(file),
-                                              file.mime_type or "application/octet-stream")
+                                file_tuple = (
+                                    file.filename,
+                                    file_manager.download(file),
+                                    file.mime_type or "application/octet-stream",
+                                )
                                 if key not in files:
                                     files[key] = []
                                 files[key].append(file_tuple)
