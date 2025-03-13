@@ -2,7 +2,7 @@ import httpx
 
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.file import File, FileTransferMethod, FileType
-from core.variables import FileVariable, ArrayFileVariable
+from core.variables import ArrayFileVariable, FileVariable
 from core.workflow.entities.variable_pool import VariablePool
 from core.workflow.graph_engine import Graph, GraphInitParams, GraphRuntimeState
 from core.workflow.nodes.answer import AnswerStreamGenerateRoute
