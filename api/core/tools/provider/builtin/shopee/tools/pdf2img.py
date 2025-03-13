@@ -75,6 +75,7 @@ class Pdf2ImgTool(BuiltinTool):
             if not doc.authenticate(""):
                 pdf_stream.close()
                 doc.close()
+
                 return self.create_text_message("auth encrypted pdf with empty string failed")
 
         res = self.handle(doc, vector_max_size, bit_max_size, quality, direction, pages, dpi)
