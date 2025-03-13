@@ -1,5 +1,8 @@
 name: Deploy Enterprise
 
+permissions:
+  contents: read
+
 on:
   workflow_run:
     workflows: ["Build and Push API & Web"]
