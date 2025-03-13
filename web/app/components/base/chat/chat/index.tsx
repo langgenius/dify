@@ -74,6 +74,7 @@ export type ChatProps = {
   noSpacing?: boolean
   inputDisabled?: boolean
   isMobile?: boolean
+  sidebarCollapseState?: boolean
 }
 
 const Chat: FC<ChatProps> = ({
@@ -114,6 +115,7 @@ const Chat: FC<ChatProps> = ({
   noSpacing,
   inputDisabled,
   isMobile,
+  sidebarCollapseState,
 }) => {
   const { t } = useTranslation()
   const { currentLogItem, setCurrentLogItem, showPromptLogModal, setShowPromptLogModal, showAgentLogModal, setShowAgentLogModal } = useAppStore(useShallow(state => ({
@@ -197,6 +199,11 @@ const Chat: FC<ChatProps> = ({
     }
   }, [])
 
+  useEffect(() => {
+    if (!sidebarCollapseState)
+      setTimeout(() => handleWindowResize(), 200)
+  }, [sidebarCollapseState])
+
   const hasTryToAsk = config?.suggested_questions_after_answer?.enabled && !!suggestedQuestions?.length && onSend
 
   return (
@@ -261,7 +268,7 @@ const Chat: FC<ChatProps> = ({
           </div>
         </div>
         <div
-          className={`absolute bottom-0 bg-chat-input-mask ${(hasTryToAsk || !noChatInput || !noStopResponding) && chatFooterClassName}`}
+          className={`absolute bottom-0 bg-chat-input-mask flex justify-center ${(hasTryToAsk || !noChatInput || !noStopResponding) && chatFooterClassName}`}
           ref={chatFooterRef}
         >
           <div

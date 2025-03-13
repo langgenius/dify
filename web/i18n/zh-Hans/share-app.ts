@@ -6,6 +6,7 @@ const translation = {
   },
   chat: {
     newChat: '开启新对话',
+    newChatTip: '已在新对话中',
     chatSettingsTitle: '新对话设置',
     chatFormTip: '对话开始后，对话设置将无法修改。',
     pinnedTitle: '已置顶',
