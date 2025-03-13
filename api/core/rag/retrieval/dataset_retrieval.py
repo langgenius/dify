@@ -862,7 +862,7 @@ class DatasetRetrieval:
                 document_query = document_query.filter(and_(*filters))
         documents = document_query.all()
         # group by dataset_id
-        metadata_filter_document_ids = defaultdict(list)
+        metadata_filter_document_ids = defaultdict(list) if documents else None
         for document in documents:
             metadata_filter_document_ids[document.dataset_id].append(document.id)
         return metadata_filter_document_ids, metadata_condition

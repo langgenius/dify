@@ -4,7 +4,8 @@ from collections import defaultdict
 from collections.abc import Mapping, Sequence
 from typing import Any, Optional, cast
 
-from sqlalchemy import and_, func, or_, text
+from sqlalchemy import Integer, and_, func, or_, text
+from sqlalchemy import cast as sqlalchemy_cast
 
 from core.app.app_config.entities import DatasetRetrieveConfigEntity
 from core.app.entities.app_invoke_entities import ModelConfigWithCredentialsEntity
@@ -313,23 +314,25 @@ class KnowledgeRetrievalNode(LLMNode):
                         )
                     )
                 metadata_condition = MetadataCondition(
-                    logical_operator="or",
+                    logical_operator=node_data.metadata_filtering_conditions.logical_operator,
                     conditions=conditions,
                 )
         elif node_data.metadata_filtering_mode == "manual":
             if node_data.metadata_filtering_conditions:
-                for condition in node_data.metadata_filtering_conditions.conditions:
-                    metadata_name = condition.name
-                    expected_value = condition.value
-                    if expected_value or condition.comparison_operator in ("empty", "not empty"):
-                        if isinstance(expected_value, str):
-                            expected_value = self.graph_runtime_state.variable_pool.convert_template(
-                                expected_value
-                            ).text
+                metadata_condition = MetadataCondition(**node_data.metadata_filtering_conditions.model_dump())
+                if node_data.metadata_filtering_conditions:
+                    for condition in node_data.metadata_filtering_conditions.conditions:
+                        metadata_name = condition.name
+                        expected_value = condition.value
+                        if expected_value or condition.comparison_operator in ("empty", "not empty"):
+                            if isinstance(expected_value, str):
+                                expected_value = self.graph_runtime_state.variable_pool.convert_template(
+                                    expected_value
+                                ).text
 
-                        filters = self._process_metadata_filter_func(
-                            condition.comparison_operator, metadata_name, expected_value, filters
-                        )
+                            filters = self._process_metadata_filter_func(
+                                condition.comparison_operator, metadata_name, expected_value, filters
+                            )
         else:
             raise ValueError("Invalid metadata filtering mode")
         if filters:
@@ -337,10 +340,10 @@ class KnowledgeRetrievalNode(LLMNode):
                 document_query = document_query.filter(and_(*filters))
             else:
                 document_query = document_query.filter(or_(*filters))
-        documnents = document_query.all()
+        documents = document_query.all()
         # group by dataset_id
-        metadata_filter_document_ids = defaultdict(list)
-        for document in documnents:
+        metadata_filter_document_ids = defaultdict(list) if documents else None
+        for document in documents:
             metadata_filter_document_ids[document.dataset_id].append(document.id)
         return metadata_filter_document_ids, metadata_condition
 
@@ -431,24 +434,28 @@ class KnowledgeRetrievalNode(LLMNode):
                 if isinstance(value, str):
                     filters.append(Document.doc_metadata[metadata_name] == f'"{value}"')
                 else:
-                    filters.append(Document.doc_metadata[metadata_name] == value)
+                    filters.append(
+                        sqlalchemy_cast(Document.doc_metadata[metadata_name].astext, Integer) == value
+                    )
             case "is not" | "≠":
                 if isinstance(value, str):
                     filters.append(Document.doc_metadata[metadata_name] != f'"{value}"')
                 else:
-                    filters.append(Document.doc_metadata[metadata_name] != value)
+                    filters.append(
+                        sqlalchemy_cast(Document.doc_metadata[metadata_name].astext, Integer) != value
+                    )
             case "empty":
                 filters.append(Document.doc_metadata[metadata_name].is_(None))
             case "not empty":
                 filters.append(Document.doc_metadata[metadata_name].isnot(None))
             case "before" | "<":
-                filters.append(Document.doc_metadata[metadata_name] < value)
+                filters.append(sqlalchemy_cast(Document.doc_metadata[metadata_name].astext, Integer) < value)
             case "after" | ">":
-                filters.append(Document.doc_metadata[metadata_name] > value)
+                filters.append(sqlalchemy_cast(Document.doc_metadata[metadata_name].astext, Integer) > value)
             case "≤" | ">=":
-                filters.append(Document.doc_metadata[metadata_name] <= value)
+                filters.append(sqlalchemy_cast(Document.doc_metadata[metadata_name].astext, Integer) <= value)
             case "≥" | ">=":
-                filters.append(Document.doc_metadata[metadata_name] >= value)
+                filters.append(sqlalchemy_cast(Document.doc_metadata[metadata_name].astext, Integer) >= value)
             case _:
                 pass
         return filters
