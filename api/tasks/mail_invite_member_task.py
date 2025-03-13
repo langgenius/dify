@@ -7,6 +7,7 @@ from flask import render_template
 
 from configs import dify_config
 from extensions.ext_mail import mail
+from services.feature_service import FeatureService
 
 
 @shared_task(queue="mail")
@@ -35,6 +36,7 @@ def send_invite_member_mail_task(language: str, to: str, token: str, inviter_nam
         if language == "zh-Hans":
             template = "invite_member_mail_template_zh-CN.html"
             if dify_config.ENTERPRISE_ENABLED:
+                application_title = FeatureService.get_system_features().get("application_title", "Dify")
                 template = "without-brand/invite_member_mail_template_zh-CN.html"
             html_content = render_template(
                 template,
@@ -42,11 +44,13 @@ def send_invite_member_mail_task(language: str, to: str, token: str, inviter_nam
                 inviter_name=inviter_name,
                 workspace_name=workspace_name,
                 url=url,
+                application_title=application_title,
             )
             mail.send(to=to, subject="立即加入 Dify 工作空间", html=html_content)
         else:
             template = "invite_member_mail_template_en-US.html"
             if dify_config.ENTERPRISE_ENABLED:
+                application_title = FeatureService.get_system_features().get("application_title", "Dify")
                 template = "without-brand/invite_member_mail_template_en-US.html"
             html_content = render_template(
                 template,
@@ -54,6 +58,7 @@ def send_invite_member_mail_task(language: str, to: str, token: str, inviter_nam
                 inviter_name=inviter_name,
                 workspace_name=workspace_name,
                 url=url,
+                application_title=application_title,
             )
             mail.send(to=to, subject="Join Dify Workspace Now", html=html_content)
 
