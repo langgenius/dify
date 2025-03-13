@@ -153,6 +153,10 @@ const ChatWithHistoryWrap: FC<ChatWithHistoryWrapProps> = ({
     currentChatInstanceRef,
     sidebarCollapseState,
     handleSidebarCollapse,
+    clearChatList,
+    setClearChatList,
+    isResponding,
+    setIsResponding,
   } = useChatWithHistory(installedAppInfo)
 
   return (
@@ -190,6 +194,10 @@ const ChatWithHistoryWrap: FC<ChatWithHistoryWrapProps> = ({
       themeBuilder,
       sidebarCollapseState,
       handleSidebarCollapse,
+      clearChatList,
+      setClearChatList,
+      isResponding,
+      setIsResponding,
     }}>
       <ChatWithHistory className={className} />
     </ChatWithHistoryContext.Provider>
