@@ -198,7 +198,7 @@ def test_http_request_node_form_with_file(monkeypatch):
 
 def test_http_request_node_form_with_multiple_files(monkeypatch):
     data = HttpRequestNodeData(
-        title="测试多文件上传",
+        title="test",
         method="post",
         url="http://example.org/upload",
         authorization=HttpRequestNodeAuthorization(type="no-auth"),
@@ -213,9 +213,9 @@ def test_http_request_node_form_with_multiple_files(monkeypatch):
                     file=["1111", "files"],
                 ),
                 BodyData(
-                    key="description",
+                    key="name",
                     type="text",
-                    value="多文件测试",
+                    value="test",
                 ),
             ],
         ),
@@ -295,7 +295,7 @@ def test_http_request_node_form_with_multiple_files(monkeypatch):
     )
 
     def attr_checker(*args, **kwargs):
-        assert kwargs["data"] == {"description": "multiple files test"}
+        assert kwargs["data"] == {"name": "test"}
 
         assert len(kwargs["files"]) == 2
         assert kwargs["files"][0][0] == "files"
