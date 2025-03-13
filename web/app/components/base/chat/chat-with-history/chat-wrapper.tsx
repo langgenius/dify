@@ -19,6 +19,8 @@ import {
 } from '@/service/share'
 import AppIcon from '@/app/components/base/app-icon'
 import AnswerIcon from '@/app/components/base/answer-icon'
+import SuggestedQuestions from '@/app/components/base/chat/chat/answer/suggested-questions'
+import { Markdown } from '@/app/components/base/markdown'
 import cn from '@/utils/classnames'
 
 const ChatWrapper = () => {
@@ -39,6 +41,10 @@ const ChatWrapper = () => {
     currentChatInstanceRef,
     appData,
     themeBuilder,
+    sidebarCollapseState,
+    clearChatList,
+    setClearChatList,
+    setIsResponding,
   } = useChatWithHistoryContext()
   const appConfig = useMemo(() => {
     const config = appParams || {}
@@ -58,7 +64,7 @@ const ChatWrapper = () => {
     setTargetMessageId,
     handleSend,
     handleStop,
-    isResponding,
+    isResponding: respondingState,
     suggestedQuestions,
   } = useChat(
     appConfig,
@@ -68,6 +74,8 @@ const ChatWrapper = () => {
     },
     appPrevChatTree,
     taskId => stopChatMessageResponding('', taskId, isInstalledApp, appId),
+    clearChatList,
+    setClearChatList,
   )
   const inputsFormValue = currentConversationId ? currentConversationItem?.inputs : newConversationInputsRef?.current
   const inputDisabled = useMemo(() => {
@@ -107,6 +115,10 @@ const ChatWrapper = () => {
       currentChatInstanceRef.current.handleStop = handleStop
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  useEffect(() => {
+    setIsResponding(respondingState)
+  }, [respondingState, setIsResponding])
 
   const doSend: OnSend = useCallback((message, files, isRegenerate = false, parentAnswer: ChatItem | null = null) => {
     const data: any = {
@@ -166,12 +178,33 @@ const ChatWrapper = () => {
 
   const welcome = useMemo(() => {
     const welcomeMessage = chatList.find(item => item.isOpeningStatement)
+    if (respondingState)
+      return null
     if (currentConversationId)
       return null
     if (!welcomeMessage)
       return null
     if (!collapsed && inputsForms.length > 0)
       return null
+    if (welcomeMessage.suggestedQuestions && welcomeMessage.suggestedQuestions?.length > 0) {
+      return (
+        <div className='h-[50vh] py-12 px-4 flex items-center justify-center'>
+          <div className='grow max-w-[720px] flex gap-4'>
+            <AppIcon
+              size='xl'
+              iconType={appData?.site.icon_type}
+              icon={appData?.site.icon}
+              background={appData?.site.icon_background}
+              imageUrl={appData?.site.icon_url}
+            />
+            <div className='grow px-4 py-3 bg-chat-bubble-bg text-text-primary rounded-2xl body-lg-regular'>
+              <Markdown content={welcomeMessage.content} />
+              <SuggestedQuestions item={welcomeMessage} />
+            </div>
+          </div>
+        </div>
+      )
+    }
     return (
       <div className={cn('h-[50vh] py-12 flex flex-col items-center justify-center gap-3')}>
         <AppIcon
@@ -181,10 +214,10 @@ const ChatWrapper = () => {
           background={appData?.site.icon_background}
           imageUrl={appData?.site.icon_url}
         />
-        <div className='text-text-tertiary body-2xl-regular'>{welcomeMessage.content}</div>
+        <Markdown className='!text-text-tertiary !body-2xl-regular' content={welcomeMessage.content} />
       </div>
     )
-  }, [appData?.site.icon, appData?.site.icon_background, appData?.site.icon_type, appData?.site.icon_url, chatList, collapsed, currentConversationId, inputsForms.length])
+  }, [appData?.site.icon, appData?.site.icon_background, appData?.site.icon_type, appData?.site.icon_url, chatList, collapsed, currentConversationId, inputsForms.length, respondingState])
 
   const answerIcon = (appData?.site && appData.site.use_icon_as_answer_icon)
     ? <AnswerIcon
@@ -203,10 +236,10 @@ const ChatWrapper = () => {
         appData={appData}
         config={appConfig}
         chatList={messageList}
-        isResponding={isResponding}
-        chatContainerInnerClassName={`mx-auto pt-6 w-full max-w-[720px] ${isMobile && 'px-4'}`}
+        isResponding={respondingState}
+        chatContainerInnerClassName={`mx-auto pt-6 w-full max-w-[768px] ${isMobile && 'px-4'}`}
         chatFooterClassName='pb-4'
-        chatFooterInnerClassName={`mx-auto w-full max-w-[720px] ${isMobile ? 'px-2' : 'px-4'}`}
+        chatFooterInnerClassName={`mx-auto w-full max-w-[768px] ${isMobile ? 'px-2' : 'px-4'}`}
         onSend={doSend}
         inputs={currentConversationId ? currentConversationItem?.inputs as any : newConversationInputs}
         inputsForm={inputsForms}
@@ -227,6 +260,7 @@ const ChatWrapper = () => {
         switchSibling={siblingMessageId => setTargetMessageId(siblingMessageId)}
         inputDisabled={inputDisabled}
         isMobile={isMobile}
+        sidebarCollapseState={sidebarCollapseState}
       />
     </div>
   )
