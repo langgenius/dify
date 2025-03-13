@@ -1,6 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import React, { useState } from 'react'
+import React, { useMemo, useState } from 'react'
 import type { MetadataItem } from '../types'
 import SearchInput from '@/app/components/base/search-input'
 import { RiAddLine, RiArrowRightUpLine } from '@remixicon/react'
@@ -17,7 +17,7 @@ type Props = {
 }
 
 const SelectMetadata: FC<Props> = ({
-  list,
+  list: notFilteredList,
   onSelect,
   onNew,
   onManage,
@@ -25,6 +25,12 @@ const SelectMetadata: FC<Props> = ({
   const { t } = useTranslation()
 
   const [query, setQuery] = useState('')
+  const list = useMemo(() => {
+    if (!query) return notFilteredList
+    return notFilteredList.filter((item) => {
+      return item.name.toLowerCase().includes(query.toLowerCase())
+    })
+  }, [query, notFilteredList])
   return (
     <div className='w-[320px] pt-2 pb-0 rounded-xl bg-components-panel-bg-blur border-[0.5px] border-components-panel-border shadow-lg backdrop-blur-[5px]'>
       <SearchInput
