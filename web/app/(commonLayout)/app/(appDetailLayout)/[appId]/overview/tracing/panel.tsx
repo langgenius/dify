@@ -208,7 +208,7 @@ const Panel: FC = () => {
                 {t(`${I18N_PREFIX}.${enabled ? 'enabled' : 'disabled'}`)}
               </div>
             </div>
-            <InUseProviderIcon className='ml-1 h-4' />
+            {InUseProviderIcon && <InUseProviderIcon className='ml-1 h-4' />}
             <Divider type='vertical' className='h-3.5' />
             <div className='flex items-center' onClick={e => e.stopPropagation()}>
               <ConfigButton
