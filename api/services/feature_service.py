@@ -38,7 +38,7 @@ class LicenseModel(BaseModel):
 
 class BrandingModel(BaseModel):
     enabled: bool = False
-    application_title: str = ""
+    application_title: str = "Dify"
     login_page_logo: str = ""
     workspace_logo: str = ""
     favicon: str = ""
