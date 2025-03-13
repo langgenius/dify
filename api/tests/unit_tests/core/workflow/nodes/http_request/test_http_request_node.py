@@ -197,7 +197,6 @@ def test_http_request_node_form_with_file(monkeypatch):
 
 
 def test_http_request_node_form_with_multiple_files(monkeypatch):
-    """测试表单中上传多个文件的情况"""
     data = HttpRequestNodeData(
         title="测试多文件上传",
         method="post",
@@ -222,13 +221,11 @@ def test_http_request_node_form_with_multiple_files(monkeypatch):
         ),
     )
 
-    # 创建变量池并添加文件数组变量
     variable_pool = VariablePool(
         system_variables={},
         user_inputs={},
     )
 
-    # 创建多个文件对象
     files = [
         File(
             tenant_id="1",
@@ -250,7 +247,6 @@ def test_http_request_node_form_with_multiple_files(monkeypatch):
         ),
     ]
 
-    # 添加文件数组变量到变量池
     variable_pool.add(
         ["1111", "files"],
         ArrayFileVariable(
@@ -259,7 +255,6 @@ def test_http_request_node_form_with_multiple_files(monkeypatch):
         ),
     )
 
-    # 创建节点
     node = HttpRequestNode(
         id="1",
         config={
@@ -294,22 +289,18 @@ def test_http_request_node_form_with_multiple_files(monkeypatch):
         ),
     )
 
-    # 模拟文件下载函数
     monkeypatch.setattr(
         "core.workflow.nodes.http_request.executor.file_manager.download",
         lambda file: b"test_image_data" if file.mime_type == "image/jpeg" else b"test_pdf_data",
     )
 
-    # 验证请求参数
     def attr_checker(*args, **kwargs):
-        assert kwargs["data"] == {"description": "多文件测试"}
+        assert kwargs["data"] == {"description": "multiple files test"}
 
-        # 验证文件列表
         assert len(kwargs["files"]) == 2
-        assert kwargs["files"][0][0] == "files"  # 第一个文件的键名
-        assert kwargs["files"][1][0] == "files"  # 第二个文件的键名
+        assert kwargs["files"][0][0] == "files"
+        assert kwargs["files"][1][0] == "files"
 
-        # 验证文件内容和类型
         file_tuples = [f[1] for f in kwargs["files"]]
         file_contents = [f[1] for f in file_tuples]
         file_types = [f[2] for f in file_tuples]
@@ -326,7 +317,6 @@ def test_http_request_node_form_with_multiple_files(monkeypatch):
         attr_checker,
     )
 
-    # 执行节点并验证结果
     result = node._run()
     assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
     assert result.outputs is not None
