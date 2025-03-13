@@ -3,6 +3,7 @@ import uuid
 from contextlib import contextmanager
 from typing import Any
 
+import psycopg2.errors
 import psycopg2.extras  # type: ignore
 import psycopg2.pool  # type: ignore
 from pydantic import BaseModel, model_validator
@@ -142,12 +143,11 @@ class PGVector(BaseVector):
         with self._get_cursor() as cur:
             try:
                 cur.execute(f"DELETE FROM {self.table_name} WHERE id IN %s", (tuple(ids),))
-            except Exception as e:
+            except psycopg2.errors.UndefinedTable:
                 # table not exists
-                if e.pgcode == "42P01":
-                    return
-                else:
-                    raise e
+                return
+            except Exception as e:
+                raise e
 
     def delete_by_metadata_field(self, key: str, value: str) -> None:
         with self._get_cursor() as cur:
