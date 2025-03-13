@@ -7,7 +7,7 @@ features:
   - document
 model_properties:
   mode: chat
-  context_size: 5000000
+  context_size: 10000000
 parameter_rules:
   - name: temperature
     use_template: temperature
