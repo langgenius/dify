@@ -46,7 +46,7 @@ class PluginModelBackwardsInvocation(BaseBackwardsInvocation):
             model_parameters=payload.completion_params,
             tools=payload.tools,
             stop=payload.stop,
-            stream=payload.stream or True,
+            stream=True if payload.stream is None else payload.stream,
             user=user_id,
         )
 
