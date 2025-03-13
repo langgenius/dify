@@ -10,9 +10,11 @@ import { useTranslation } from 'react-i18next'
 const useEditDatasetMetadata = ({
   datasetId,
   // dataset,
+  onUpdateDocList,
 }: {
   datasetId: string,
   dataset?: DataSet,
+  onUpdateDocList: () => void
 }) => {
   const { t } = useTranslation()
   const [isShowEditModal, {
@@ -55,12 +57,14 @@ const useEditDatasetMetadata = ({
       return Promise.reject(new Error(errorMsg))
     }
     await doRenameMetaData(payload)
-  }, [checkName, doRenameMetaData])
+    onUpdateDocList()
+  }, [checkName, doRenameMetaData, onUpdateDocList])
 
   const { mutateAsync: doDeleteMetaData } = useDeleteMetaData(datasetId)
-  const handleDeleteMetaData = useCallback((metaDataId: string) => {
-    doDeleteMetaData(metaDataId)
-  }, [doDeleteMetaData])
+  const handleDeleteMetaData = useCallback(async (metaDataId: string) => {
+    await doDeleteMetaData(metaDataId)
+    onUpdateDocList()
+  }, [doDeleteMetaData, onUpdateDocList])
 
   const [builtInEnabled, setBuiltInEnabled] = useState(datasetMetaData?.built_in_field_enabled)
   useEffect(() => { // wait for api response to set the right value
