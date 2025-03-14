@@ -3,6 +3,7 @@ import type { RoleName } from './plugins/history-block'
 import type {
   Node,
   NodeOutPutVar,
+  ValueSelector,
 } from '@/app/components/workflow/types'
 
 export type Option = {
@@ -60,6 +61,10 @@ export type WorkflowVariableBlockType = {
   workflowNodesMap?: Record<string, Pick<Node['data'], 'title' | 'type'>>
   onInsert?: () => void
   onDelete?: () => void
+  getVarType?: (payload: {
+    nodeId: string,
+    valueSelector: ValueSelector,
+  }) => string
 }
 
 export type MenuTextMatch = {
