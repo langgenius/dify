@@ -126,7 +126,7 @@ class FeatureService:
         features.billing.enabled = billing_info["enabled"]
         features.billing.subscription.plan = billing_info["subscription"]["plan"]
         features.billing.subscription.interval = billing_info["subscription"]["interval"]
-        features.education.is_activated = billing_info["subscription"].get("education", False)
+        features.education.activated = billing_info["subscription"].get("education", False)
 
         if "members" in billing_info:
             features.members.size = billing_info["members"]["size"]
