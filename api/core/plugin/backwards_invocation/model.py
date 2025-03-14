@@ -64,17 +64,21 @@ class PluginModelBackwardsInvocation(BaseBackwardsInvocation):
         else:
             if response.usage:
                 LLMNode.deduct_llm_quota(tenant_id=tenant.id, model_instance=model_instance, usage=response.usage)
-            yield LLMResultChunk(
-                model=response.model,
-                prompt_messages=response.prompt_messages,
-                system_fingerprint=response.system_fingerprint,
-                delta=LLMResultChunkDelta(
-                    index=0,
-                    message=response.message,
-                    usage=response.usage,
-                    finish_reason="",
-                ),
-            )
+
+            def handle_non_streaming(response: LLMResult) -> Generator[LLMResultChunk, None, None]:
+                yield LLMResultChunk(
+                    model=response.model,
+                    prompt_messages=response.prompt_messages,
+                    system_fingerprint=response.system_fingerprint,
+                    delta=LLMResultChunkDelta(
+                        index=0,
+                        message=response.message,
+                        usage=response.usage,
+                        finish_reason="",
+                    ),
+                )
+
+            return handle_non_streaming(response)
 
     @classmethod
     def invoke_text_embedding(cls, user_id: str, tenant: Tenant, payload: RequestInvokeTextEmbedding):
