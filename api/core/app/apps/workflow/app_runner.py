@@ -81,6 +81,13 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
                 node_id=self.application_generate_entity.single_iteration_run.node_id,
                 user_inputs=self.application_generate_entity.single_iteration_run.inputs,
             )
+        elif self.application_generate_entity.single_loop_run:
+            # if only single loop run is requested
+            graph, variable_pool = self._get_graph_and_variable_pool_of_single_loop(
+                workflow=workflow,
+                node_id=self.application_generate_entity.single_loop_run.node_id,
+                user_inputs=self.application_generate_entity.single_loop_run.inputs,
+            )
         else:
             inputs = self.application_generate_entity.inputs
             files = self.application_generate_entity.files

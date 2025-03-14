@@ -179,6 +179,18 @@ class ApiTool(Tool):
                 for content_type in self.api_bundle.openapi["requestBody"]["content"]:
                     headers["Content-Type"] = content_type
                     body_schema = self.api_bundle.openapi["requestBody"]["content"][content_type]["schema"]
+
+                    # handle ref schema
+                    if "$ref" in body_schema:
+                        ref_path = body_schema["$ref"].split("/")
+                        ref_name = ref_path[-1]
+                        if (
+                            "components" in self.api_bundle.openapi
+                            and "schemas" in self.api_bundle.openapi["components"]
+                        ):
+                            if ref_name in self.api_bundle.openapi["components"]["schemas"]:
+                                body_schema = self.api_bundle.openapi["components"]["schemas"][ref_name]
+
                     required = body_schema.get("required", [])
                     properties = body_schema.get("properties", {})
                     for name, property in properties.items():
@@ -186,6 +198,8 @@ class ApiTool(Tool):
                             if property.get("format") == "binary":
                                 f = parameters[name]
                                 files.append((name, (f.filename, download(f), f.mime_type)))
+                            elif "$ref" in property:
+                                body[name] = parameters[name]
                             else:
                                 # convert type
                                 body[name] = self._convert_body_property_type(property, parameters[name])

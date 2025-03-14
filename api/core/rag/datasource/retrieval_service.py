@@ -1,5 +1,4 @@
 import concurrent.futures
-import json
 from concurrent.futures import ThreadPoolExecutor
 from typing import Optional
 
@@ -258,7 +257,7 @@ class RetrievalService:
 
     @staticmethod
     def escape_query_for_search(query: str) -> str:
-        return json.dumps(query).strip('"')
+        return query.replace('"', '\\"')
 
     @classmethod
     def format_retrieval_documents(cls, documents: list[Document]) -> list[RetrievalSegments]:

@@ -270,7 +270,9 @@ class ToolNode(BaseNode[ToolNodeData]):
                 if self.node_type == NodeType.AGENT:
                     msg_metadata = message.message.json_object.pop("execution_metadata", {})
                     agent_execution_metadata = {
-                        key: value for key, value in msg_metadata.items() if key in NodeRunMetadataKey
+                        key: value
+                        for key, value in msg_metadata.items()
+                        if key in NodeRunMetadataKey.__members__.values()
                     }
                 json.append(message.message.json_object)
             elif message.type == ToolInvokeMessage.MessageType.LINK:
@@ -338,6 +340,7 @@ class ToolNode(BaseNode[ToolNodeData]):
                     data=message.message.data,
                     label=message.message.label,
                     metadata=message.message.metadata,
+                    node_id=self.node_id,
                 )
 
                 # check if the agent log is already in the list

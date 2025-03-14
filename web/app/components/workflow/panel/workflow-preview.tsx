@@ -19,11 +19,11 @@ import { useStore } from '../store'
 import {
   WorkflowRunningStatus,
 } from '../types'
-import { SimpleBtn } from '../../app/text-generate/item'
 import Toast from '../../base/toast'
 import InputsPanel from './inputs-panel'
 import cn from '@/utils/classnames'
 import Loading from '@/app/components/base/loading'
+import Button from '@/app/components/base/button'
 
 const WorkflowPreview = () => {
   const { t } = useTranslation()
@@ -122,8 +122,8 @@ const WorkflowPreview = () => {
                 onClick={() => switchTab('DETAIL')}
               />
               {(workflowRunningData?.result.status === WorkflowRunningStatus.Succeeded && workflowRunningData?.resultText && typeof workflowRunningData?.resultText === 'string') && (
-                <SimpleBtn
-                  className={cn('ml-4 mb-4 inline-flex space-x-1')}
+                <Button
+                  className={cn('ml-4 mb-4 space-x-1')}
                   onClick={() => {
                     const content = workflowRunningData?.resultText
                     if (typeof content === 'string')
@@ -134,7 +134,7 @@ const WorkflowPreview = () => {
                   }}>
                   <RiClipboardLine className='w-3.5 h-3.5' />
                   <div>{t('common.operation.copy')}</div>
-                </SimpleBtn>
+                </Button>
               )}
             </>
           )}

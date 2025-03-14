@@ -1,6 +1,7 @@
 import json
 import logging
 from collections import defaultdict
+import time
 from collections.abc import Mapping, Sequence
 from typing import Any, Optional, cast
 
@@ -36,9 +37,11 @@ from core.workflow.nodes.llm.entities import LLMNodeChatModelMessage, LLMNodeCom
 from core.workflow.nodes.llm.node import LLMNode
 from core.workflow.nodes.question_classifier.template_prompts import QUESTION_CLASSIFIER_USER_PROMPT_2
 from extensions.ext_database import db
+extensions.ext_redis import redis_client
 from libs.json_in_md_parser import parse_and_check_json_markdown
-from models.dataset import Dataset, DatasetMetadata, Document
+from models.dataset import Dataset, DatasetMetadata, Document, RateLimitLog
 from models.workflow import WorkflowNodeExecutionStatus
+from services.feature_service import FeatureService
 
 from .entities import KnowledgeRetrievalNodeData, ModelConfig
 from .exc import (
@@ -81,6 +84,31 @@ class KnowledgeRetrievalNode(LLMNode):
             return NodeRunResult(
                 status=WorkflowNodeExecutionStatus.FAILED, inputs=variables, error="Query is required."
             )
+        # check rate limit
+        if self.tenant_id:
+            knowledge_rate_limit = FeatureService.get_knowledge_rate_limit(self.tenant_id)
+            if knowledge_rate_limit.enabled:
+                current_time = int(time.time() * 1000)
+                key = f"rate_limit_{self.tenant_id}"
+                redis_client.zadd(key, {current_time: current_time})
+                redis_client.zremrangebyscore(key, 0, current_time - 60000)
+                request_count = redis_client.zcard(key)
+                if request_count > knowledge_rate_limit.limit:
+                    # add ratelimit record
+                    rate_limit_log = RateLimitLog(
+                        tenant_id=self.tenant_id,
+                        subscription_plan=knowledge_rate_limit.subscription_plan,
+                        operation="knowledge",
+                    )
+                    db.session.add(rate_limit_log)
+                    db.session.commit()
+                    return NodeRunResult(
+                        status=WorkflowNodeExecutionStatus.FAILED,
+                        inputs=variables,
+                        error="Sorry, you have reached the knowledge base request rate limit of your subscription.",
+                        error_type="RateLimitExceeded",
+                    )
+
         # retrieve knowledge
         try:
             results = self._fetch_dataset_retriever(node_data=node_data, query=query)
@@ -267,6 +295,7 @@ class KnowledgeRetrievalNode(LLMNode):
                                 "segment_word_count": segment.word_count,
                                 "segment_position": segment.position,
                                 "segment_index_node_hash": segment.index_node_hash,
+                                "doc_metadata": document.doc_metadata,
                             },
                             "title": document.name,
                         }

@@ -6,7 +6,6 @@ import { useBoolean } from 'ahooks'
 import produce from 'immer'
 import { useContext } from 'use-context-selector'
 import ConfirmAddVar from './confirm-add-var'
-import s from './style.module.css'
 import PromptEditorHeightResizeWrap from './prompt-editor-height-resize-wrap'
 import cn from '@/utils/classnames'
 import type { PromptVariable } from '@/models/debug'
@@ -48,7 +47,6 @@ const Prompt: FC<ISimplePromptInput> = ({
   readonly = false,
   onChange,
   noTitle,
-  gradientBorder,
   editorHeight: initEditorHeight,
   noResize,
 }) => {
@@ -161,12 +159,12 @@ const Prompt: FC<ISimplePromptInput> = ({
   const [editorHeight, setEditorHeight] = useState(minHeight)
 
   return (
-    <div className={cn((!readonly || gradientBorder) ? `${s.gradientBorder}` : 'bg-gray-50', ' relative shadow-md')}>
-      <div className='rounded-xl bg-[#EEF4FF]'>
+    <div className={cn('relative bg-gradient-to-r from-components-input-border-active-prompt-1 to-components-input-border-active-prompt-2 rounded-xl p-0.5 shadow-xs')}>
+      <div className='rounded-xl bg-background-section-burn'>
         {!noTitle && (
-          <div className="flex justify-between items-center h-11 pl-3 pr-6">
+          <div className="flex justify-between items-center h-11 pl-3 pr-2.5">
             <div className="flex items-center space-x-1">
-              <div className='h2'>{mode !== AppType.completion ? t('appDebug.chatSubTitle') : t('appDebug.completionSubTitle')}</div>
+              <div className='h2 system-sm-semibold-uppercase text-text-secondary'>{mode !== AppType.completion ? t('appDebug.chatSubTitle') : t('appDebug.completionSubTitle')}</div>
               {!readonly && (
                 <Tooltip
                   popupContent={
@@ -186,14 +184,14 @@ const Prompt: FC<ISimplePromptInput> = ({
         )}
 
         <PromptEditorHeightResizeWrap
-          className='px-4 pt-2 min-h-[228px] bg-white rounded-t-xl text-sm text-gray-700'
+          className='px-4 pt-2 min-h-[228px] bg-background-default rounded-t-xl text-sm text-text-secondary'
           height={editorHeight}
           minHeight={minHeight}
           onHeightChange={setEditorHeight}
           hideResize={noResize}
           footer={(
-            <div className='pl-4 pb-2 flex bg-white rounded-b-xl'>
-              <div className="h-[18px] leading-[18px] px-1 rounded-md bg-gray-100 text-xs text-gray-500">{promptTemplate.length}</div>
+            <div className='pl-4 pb-2 flex bg-background-default rounded-b-xl'>
+              <div className="h-[18px] leading-[18px] px-1 rounded-md bg-components-badge-bg-gray-soft text-xs text-text-tertiary">{promptTemplate.length}</div>
             </div>
           )}
         >

@@ -25,6 +25,7 @@ class PGVectorConfig(BaseModel):
     database: str
     min_connection: int
     max_connection: int
+    pg_bigm: bool = False
 
     @model_validator(mode="before")
     @classmethod
@@ -62,12 +63,18 @@ CREATE INDEX IF NOT EXISTS embedding_cosine_v1_idx ON {table_name}
 USING hnsw (embedding vector_cosine_ops) WITH (m = 16, ef_construction = 64);
 """
 
+SQL_CREATE_INDEX_PG_BIGM = """
+CREATE INDEX IF NOT EXISTS bigm_idx ON {table_name}
+USING gin (text gin_bigm_ops);
+"""
+
 
 class PGVector(BaseVector):
     def __init__(self, collection_name: str, config: PGVectorConfig):
         super().__init__(collection_name)
         self.pool = self._create_connection_pool(config)
         self.table_name = f"embedding_{collection_name}"
+        self.pg_bigm = config.pg_bigm
 
     def get_type(self) -> str:
         return VectorType.PGVECTOR
@@ -187,16 +194,29 @@ class PGVector(BaseVector):
             if document_ids_filter:
                 document_ids = ", ".join(f"'{id}'" for id in document_ids_filter)
                 where_clause = f" AND metadata->>'document_id' in ({document_ids}) "
-            cur.execute(
-                f"""SELECT meta, text, ts_rank(to_tsvector(coalesce(text, '')), plainto_tsquery(%s)) AS score
-                FROM {self.table_name}
-                WHERE to_tsvector(text) @@ plainto_tsquery(%s)
-                {where_clause}
-                ORDER BY score DESC
-                LIMIT {top_k}""",
-                # f"'{query}'" is required in order to account for whitespace in query
-                (f"'{query}'", f"'{query}'"),
-            )
+            if self.pg_bigm:
+                cur.execute("SET pg_bigm.similarity_limit TO 0.000001")
+                cur.execute(
+                    f"""SELECT meta, text, bigm_similarity(unistr(%s), coalesce(text, '')) AS score
+                    FROM {self.table_name}
+                    WHERE text =%% unistr(%s)
+                    {where_clause}
+                    ORDER BY score DESC
+                    LIMIT {top_k}""",
+                    # f"'{query}'" is required in order to account for whitespace in query
+                    (f"'{query}'", f"'{query}'"),
+                )
+            else:
+                cur.execute(
+                    f"""SELECT meta, text, ts_rank(to_tsvector(coalesce(text, '')), plainto_tsquery(%s)) AS score
+                    FROM {self.table_name}
+                    WHERE to_tsvector(text) @@ plainto_tsquery(%s)
+                    {where_clause}
+                    ORDER BY score DESC
+                    LIMIT {top_k}""",
+                    # f"'{query}'" is required in order to account for whitespace in query
+                    (f"'{query}'", f"'{query}'"),
+                )
 
             docs = []
 
@@ -226,6 +246,9 @@ class PGVector(BaseVector):
                 # ref: https://github.com/pgvector/pgvector?tab=readme-ov-file#indexing
                 if dimension <= 2000:
                     cur.execute(SQL_CREATE_INDEX.format(table_name=self.table_name))
+                if self.pg_bigm:
+                    cur.execute("CREATE EXTENSION IF NOT EXISTS pg_bigm")
+                    cur.execute(SQL_CREATE_INDEX_PG_BIGM.format(table_name=self.table_name))
             redis_client.set(collection_exist_cache_key, 1, ex=3600)
 
 
@@ -249,5 +272,6 @@ class PGVectorFactory(AbstractVectorFactory):
                 database=dify_config.PGVECTOR_DATABASE or "postgres",
                 min_connection=dify_config.PGVECTOR_MIN_CONNECTION,
                 max_connection=dify_config.PGVECTOR_MAX_CONNECTION,
+                pg_bigm=dify_config.PGVECTOR_PG_BIGM,
             ),
         )

@@ -88,6 +88,7 @@ class RetrievalModel(BaseModel):
     search_method: Literal["hybrid_search", "semantic_search", "full_text_search"]
     reranking_enable: bool
     reranking_model: Optional[RerankingModel] = None
+    reranking_mode: Optional[str] = None
     top_k: int
     score_threshold_enabled: bool
     score_threshold: Optional[float] = None

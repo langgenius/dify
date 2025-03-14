@@ -15,10 +15,12 @@ import VariableAssignerDefault from './nodes/variable-assigner/default'
 import AssignerDefault from './nodes/assigner/default'
 import EndNodeDefault from './nodes/end/default'
 import IterationDefault from './nodes/iteration/default'
+import LoopDefault from './nodes/loop/default'
 import DocExtractorDefault from './nodes/document-extractor/default'
 import ListFilterDefault from './nodes/list-operator/default'
 import IterationStartDefault from './nodes/iteration-start/default'
 import AgentDefault from './nodes/agent/default'
+import LoopStartDefault from './nodes/loop-start/default'
 
 type NodesExtraData = {
   author: string
@@ -101,6 +103,24 @@ export const NODES_EXTRA_DATA: Record<BlockEnum, NodesExtraData> = {
     getAvailablePrevNodes: IterationStartDefault.getAvailablePrevNodes,
     getAvailableNextNodes: IterationStartDefault.getAvailableNextNodes,
     checkValid: IterationStartDefault.checkValid,
+  },
+  [BlockEnum.Loop]: {
+    author: 'AICT-Team',
+    about: '',
+    availablePrevNodes: [],
+    availableNextNodes: [],
+    getAvailablePrevNodes: LoopDefault.getAvailablePrevNodes,
+    getAvailableNextNodes: LoopDefault.getAvailableNextNodes,
+    checkValid: LoopDefault.checkValid,
+  },
+  [BlockEnum.LoopStart]: {
+    author: 'AICT-Team',
+    about: '',
+    availablePrevNodes: [],
+    availableNextNodes: [],
+    getAvailablePrevNodes: LoopStartDefault.getAvailablePrevNodes,
+    getAvailableNextNodes: LoopStartDefault.getAvailableNextNodes,
+    checkValid: LoopStartDefault.checkValid,
   },
   [BlockEnum.Code]: {
     author: 'Dify',
@@ -265,6 +285,18 @@ export const NODES_INITIAL_DATA = {
     desc: '',
     ...IterationStartDefault.defaultValue,
   },
+  [BlockEnum.Loop]: {
+    type: BlockEnum.Loop,
+    title: '',
+    desc: '',
+    ...LoopDefault.defaultValue,
+  },
+  [BlockEnum.LoopStart]: {
+    type: BlockEnum.LoopStart,
+    title: '',
+    desc: '',
+    ...LoopStartDefault.defaultValue,
+  },
   [BlockEnum.Code]: {
     type: BlockEnum.Code,
     title: '',
@@ -355,6 +387,7 @@ export const NODES_INITIAL_DATA = {
 export const MAX_ITERATION_PARALLEL_NUM = 10
 export const MIN_ITERATION_PARALLEL_NUM = 1
 export const DEFAULT_ITER_TIMES = 1
+export const DEFAULT_LOOP_TIMES = 1
 export const NODE_WIDTH = 240
 export const X_OFFSET = 60
 export const NODE_WIDTH_X_OFFSET = NODE_WIDTH + X_OFFSET
@@ -373,6 +406,16 @@ export const ITERATION_PADDING = {
   bottom: 20,
   left: 16,
 }
+
+export const LOOP_NODE_Z_INDEX = 1
+export const LOOP_CHILDREN_Z_INDEX = 1002
+export const LOOP_PADDING = {
+  top: 65,
+  right: 16,
+  bottom: 20,
+  left: 16,
+}
+
 export const PARALLEL_LIMIT = 10
 export const PARALLEL_DEPTH_LIMIT = 3
 
@@ -399,7 +442,7 @@ export const RETRIEVAL_OUTPUT_STRUCT = `{
 export const SUPPORT_OUTPUT_VARS_NODE = [
   BlockEnum.Start, BlockEnum.LLM, BlockEnum.KnowledgeRetrieval, BlockEnum.Code, BlockEnum.TemplateTransform,
   BlockEnum.HttpRequest, BlockEnum.Tool, BlockEnum.VariableAssigner, BlockEnum.VariableAggregator, BlockEnum.QuestionClassifier,
-  BlockEnum.ParameterExtractor, BlockEnum.Iteration,
+  BlockEnum.ParameterExtractor, BlockEnum.Iteration, BlockEnum.Loop,
   BlockEnum.DocExtractor, BlockEnum.ListFilter,
   BlockEnum.Agent,
 ]
