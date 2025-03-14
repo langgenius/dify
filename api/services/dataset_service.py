@@ -1,3 +1,4 @@
+import copy
 import datetime
 import json
 import logging
@@ -767,10 +768,11 @@ class DocumentService:
 
         if dataset.built_in_field_enabled:
             if document.doc_metadata:
-                document.doc_metadata[BuiltInField.document_name] = name
-        else:
-            document.name = name
+                doc_metadata = copy.deepcopy(document.doc_metadata)
+                doc_metadata[BuiltInField.document_name.value] = name
+                document.doc_metadata = doc_metadata
 
+        document.name = name
         db.session.add(document)
         db.session.commit()
 
