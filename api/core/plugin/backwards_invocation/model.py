@@ -3,7 +3,7 @@ from binascii import hexlify, unhexlify
 from collections.abc import Generator
 
 from core.model_manager import ModelManager
-from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk
+from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta
 from core.model_runtime.entities.message_entities import (
     PromptMessage,
     SystemPromptMessage,
@@ -64,7 +64,17 @@ class PluginModelBackwardsInvocation(BaseBackwardsInvocation):
         else:
             if response.usage:
                 LLMNode.deduct_llm_quota(tenant_id=tenant.id, model_instance=model_instance, usage=response.usage)
-            return response
+            yield LLMResultChunk(
+                model=response.model,
+                prompt_messages=response.prompt_messages,
+                system_fingerprint=response.system_fingerprint,
+                delta=LLMResultChunkDelta(
+                    index=0,
+                    message=response.message,
+                    usage=response.usage,
+                    finish_reason="",
+                ),
+            )
 
     @classmethod
     def invoke_text_embedding(cls, user_id: str, tenant: Tenant, payload: RequestInvokeTextEmbedding):
