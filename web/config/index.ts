@@ -173,7 +173,7 @@ export const MAX_TOOLS_NUM = maxToolsNum
 
 export const DEFAULT_AGENT_SETTING = {
   enabled: false,
-  max_iteration: 5,
+  max_iteration: process.env.AGENT_SETTING_MAX_ITERATION || 5,
   strategy: AgentStrategy.functionCall,
   tools: [],
 }

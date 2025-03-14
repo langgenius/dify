@@ -1,6 +1,6 @@
+from configs import dify_config
 from enum import StrEnum
 from typing import Any, Optional, Union
-
 from pydantic import BaseModel, Field
 
 from core.tools.entities.tool_entities import ToolInvokeMessage, ToolProviderType
@@ -82,7 +82,7 @@ class AgentEntity(BaseModel):
     strategy: Strategy
     prompt: Optional[AgentPromptEntity] = None
     tools: Optional[list[AgentToolEntity]] = None
-    max_iteration: int = 5
+    max_iteration: int = dify_config.AGENT_SETTING_MAX_ITERATION
 
 
 class AgentInvokeMessage(ToolInvokeMessage):
