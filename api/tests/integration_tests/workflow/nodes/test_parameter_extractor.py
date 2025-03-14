@@ -13,11 +13,11 @@ from core.workflow.graph_engine.entities.graph_runtime_state import GraphRuntime
 from core.workflow.nodes.parameter_extractor.parameter_extractor_node import ParameterExtractorNode
 from extensions.ext_database import db
 from models.enums import UserFrom
-from tests.integration_tests.workflow.nodes.__mock.model import get_mocked_fetch_model_config
 
-"""FOR MOCK FIXTURES, DO NOT REMOVE"""
+# FOR MOCK FIXTURES, DO NOT REMOVE
 from models.workflow import WorkflowNodeExecutionStatus, WorkflowType
 from tests.integration_tests.model_runtime.__mock.plugin_daemon import setup_model_mock
+from tests.integration_tests.workflow.nodes.__mock.model import get_mocked_fetch_model_config
 
 
 def get_mocked_fetch_memory(memory_text: str):
