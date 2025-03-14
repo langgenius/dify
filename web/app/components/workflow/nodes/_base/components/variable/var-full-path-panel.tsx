@@ -28,7 +28,7 @@ const VarFullPathPanel: FC<Props> = ({
       additionalProperties: false,
     }
     let current = schema
-    for (let i = 0; i < path.length; i++) {
+    for (let i = 1; i < path.length; i++) {
       const isLast = i === path.length - 1
       const name = path[i]
       current.properties[name] = {
@@ -49,7 +49,7 @@ const VarFullPathPanel: FC<Props> = ({
       </div>
       <Panel
         className='pt-2 pb-3 px-1'
-        root={{ attrName: 'structured_output' }} // now only LLM support this, so hard code the root
+        root={{ attrName: path[0] }}
         payload={schema}
         readonly
       />

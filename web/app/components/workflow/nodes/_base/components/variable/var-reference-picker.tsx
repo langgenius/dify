@@ -6,6 +6,7 @@ import {
   RiArrowDownSLine,
   RiCloseLine,
   RiErrorWarningFill,
+  RiMoreLine,
 } from '@remixicon/react'
 import produce from 'immer'
 import { useStoreApi } from 'reactflow'
@@ -37,6 +38,8 @@ import AddButton from '@/app/components/base/button/add-button'
 import Badge from '@/app/components/base/badge'
 import Tooltip from '@/app/components/base/tooltip'
 import { isExceptionVariable } from '@/app/components/workflow/utils'
+import VarFullPathPanel from './var-full-path-panel'
+import { Type } from '../../../llm/types'
 
 const TRIGGER_DEFAULT_WIDTH = 227
 
@@ -156,16 +159,15 @@ const VarReferencePicker: FC<Props> = ({
     return getNodeInfoById(availableNodes, outputVarNodeId)?.data
   }, [value, hasValue, isConstant, isIterationVar, iterationNode, availableNodes, outputVarNodeId, startNode])
 
-  const varName = useMemo(() => {
-    if (hasValue) {
-      const isSystem = isSystemVar(value as ValueSelector)
-      let varName = ''
-      if (Array.isArray(value))
-        varName = value.length >= 3 ? (value as ValueSelector).slice(-2).join('.') : value[value.length - 1]
+  const isShowAPart = (value as ValueSelector).length > 2
 
-      return `${isSystem ? 'sys.' : ''}${varName}`
-    }
-    return ''
+  const varName = useMemo(() => {
+    if (!hasValue)
+      return ''
+
+    const isSystem = isSystemVar(value as ValueSelector)
+    const varName = Array.isArray(value) ? value[(value as ValueSelector).length - 1] : ''
+    return `${isSystem ? 'sys.' : ''}${varName}`
   }, [hasValue, value])
 
   const varKindTypes = [
@@ -253,6 +255,22 @@ const VarReferencePicker: FC<Props> = ({
 
   const WrapElem = isSupportConstantValue ? 'div' : PortalToFollowElemTrigger
   const VarPickerWrap = !isSupportConstantValue ? 'div' : PortalToFollowElemTrigger
+
+  const tooltipPopup = useMemo(() => {
+    if (isValidVar && isShowAPart) {
+      return (
+        <VarFullPathPanel
+          nodeName={outputVarNode?.title}
+          path={(value as ValueSelector).slice(1)}
+          varType={Type.string}
+          nodeType={outputVarNode?.type}
+        />)
+    }
+    if (!isValidVar && hasValue)
+      return t('workflow.errorMsg.invalidVariable')
+
+    return null
+  }, [isValidVar, isShowAPart, hasValue, t, outputVarNode?.title, outputVarNode?.type, value])
   return (
     <div className={cn(className, !readonly && 'cursor-pointer')}>
       <PortalToFollowElem
@@ -317,7 +335,7 @@ const VarReferencePicker: FC<Props> = ({
                       className='grow h-full'
                     >
                       <div ref={isSupportConstantValue ? triggerRef : null} className={cn('h-full', isSupportConstantValue && 'flex items-center pl-1 py-1 rounded-lg bg-gray-100')}>
-                        <Tooltip popupContent={!isValidVar && hasValue && t('workflow.errorMsg.invalidVariable')}>
+                        <Tooltip popupContent={tooltipPopup} noDecoration={isShowAPart}>
                           <div className={cn('h-full items-center px-1.5 rounded-[5px]', hasValue ? 'bg-white inline-flex' : 'flex')}>
                             {hasValue
                               ? (
@@ -334,6 +352,12 @@ const VarReferencePicker: FC<Props> = ({
                                         maxWidth: maxNodeNameWidth,
                                       }}>{outputVarNode?.title}</div>
                                       <Line3 className='mr-0.5'></Line3>
+                                    </div>
+                                  )}
+                                  {isShowAPart && (
+                                    <div className='flex items-center'>
+                                      <RiMoreLine className='w-3 h-3 text-text-secondary' />
+                                      <Line3 className='mr-0.5 text-divider-deep'></Line3>
                                     </div>
                                   )}
                                   <div className='flex items-center text-primary-600'>
