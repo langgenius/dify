@@ -1,6 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import React, { useEffect, useRef, useState } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { useHover } from 'ahooks'
 import { useTranslation } from 'react-i18next'
 import cn from '@/utils/classnames'
@@ -15,20 +15,12 @@ import {
 import Input from '@/app/components/base/input'
 import { BubbleX, Env } from '@/app/components/base/icons/src/vender/line/others'
 import { checkKeys } from '@/utils/var'
-import { FILE_STRUCT } from '@/app/components/workflow/constants'
 import type { StructuredOutput } from '../../../llm/types'
+import { Type } from '../../../llm/types'
 import PickerStructurePanel from '@/app/components/workflow/nodes/_base/components/variable/object-child-tree-panel/picker'
-
-type ObjectChildrenProps = {
-  nodeId: string
-  title: string
-  data: Var[]
-  objPath: string[]
-  onChange: (value: ValueSelector, item: Var) => void
-  onHovering?: (value: boolean) => void
-  itemWidth?: number
-  isSupportFileVar?: boolean
-}
+import { varTypeToStructType } from './utils'
+import type { Field } from '@/app/components/workflow/nodes/llm/types'
+import { FILE_STRUCT } from '@/app/components/workflow/constants'
 
 type ItemProps = {
   nodeId: string
@@ -49,7 +41,6 @@ const Item: FC<ItemProps> = ({
   itemData,
   onChange,
   onHovering,
-  itemWidth,
   isSupportFileVar,
   isException,
 }) => {
@@ -59,6 +50,31 @@ const Item: FC<ItemProps> = ({
   const isSys = itemData.variable.startsWith('sys.')
   const isEnv = itemData.variable.startsWith('env.')
   const isChatVar = itemData.variable.startsWith('conversation.')
+
+  const objStructuredOutput: StructuredOutput | null = useMemo(() => {
+    if (!isObj) return null
+    const properties: Record<string, Field> = {};
+    (isFile ? FILE_STRUCT : (itemData.children as Var[])).forEach((c) => {
+      properties[c.variable] = {
+        type: varTypeToStructType(c.type),
+      }
+    })
+    return {
+      schema: {
+        type: Type.object,
+        properties,
+        required: [],
+        additionalProperties: false,
+      },
+    }
+  }, [isFile, isObj, itemData.children])
+
+  const structuredOutput = (() => {
+    if (isStructureOutput)
+      return itemData.children as StructuredOutput
+    return objStructuredOutput
+  })()
+
   const itemRef = useRef(null)
   const [isItemHovering, setIsItemHovering] = useState(false)
   const _ = useHover(itemRef, {
@@ -136,106 +152,18 @@ const Item: FC<ItemProps> = ({
       <PortalToFollowElemContent style={{
         zIndex: 100,
       }}>
-        {isStructureOutput && (
+        {(isStructureOutput || isObj) && (
           <PickerStructurePanel
             root={{ nodeId, nodeName: title, attrName: itemData.variable }}
-            payload={itemData.children as StructuredOutput}
+            payload={structuredOutput!}
             onHovering={setIsChildrenHovering}
             onSelect={(valueSelector) => {
               onChange(valueSelector, itemData)
             }}
           />
         )}
-        {(isObj && !isFile) && (
-          // eslint-disable-next-line ts/no-use-before-define
-          <ObjectChildren
-            nodeId={nodeId}
-            title={title}
-            objPath={[...objPath, itemData.variable]}
-            data={itemData.children as Var[]}
-            onChange={onChange}
-            onHovering={setIsChildrenHovering}
-            itemWidth={itemWidth}
-            isSupportFileVar={isSupportFileVar}
-          />
-        )}
-        {isFile && (
-          // eslint-disable-next-line ts/no-use-before-define
-          <ObjectChildren
-            nodeId={nodeId}
-            title={title}
-            objPath={[...objPath, itemData.variable]}
-            data={FILE_STRUCT}
-            onChange={onChange}
-            onHovering={setIsChildrenHovering}
-            itemWidth={itemWidth}
-            isSupportFileVar={isSupportFileVar}
-          />
-        )}
       </PortalToFollowElemContent>
     </PortalToFollowElem>
-  )
-}
-
-const ObjectChildren: FC<ObjectChildrenProps> = ({
-  title,
-  nodeId,
-  objPath,
-  data,
-  onChange,
-  onHovering,
-  itemWidth,
-  isSupportFileVar,
-}) => {
-  const currObjPath = objPath
-  const itemRef = useRef(null)
-  const [isItemHovering, setIsItemHovering] = useState(false)
-  const _ = useHover(itemRef, {
-    onChange: (hovering) => {
-      if (hovering) {
-        setIsItemHovering(true)
-      }
-      else {
-        setTimeout(() => {
-          setIsItemHovering(false)
-        }, 100)
-      }
-    },
-  })
-  const [isChildrenHovering, setIsChildrenHovering] = useState(false)
-  const isHovering = isItemHovering || isChildrenHovering
-  useEffect(() => {
-    onHovering && onHovering(isHovering)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isHovering])
-  useEffect(() => {
-    onHovering && onHovering(isItemHovering)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isItemHovering])
-  // absolute top-[-2px]
-  return (
-    <div ref={itemRef} className=' bg-white rounded-lg border border-gray-200 shadow-lg space-y-1' style={{
-      right: itemWidth ? itemWidth - 10 : 215,
-      minWidth: 252,
-    }}>
-      <div className='flex items-center h-[22px] px-3 text-xs font-normal text-gray-700'><span className='text-gray-500'>{title}.</span>{currObjPath.join('.')}</div>
-      {
-        (data && data.length > 0)
-        && data.map((v, i) => (
-          <Item
-            key={i}
-            nodeId={nodeId}
-            title={title}
-            objPath={objPath}
-            itemData={v}
-            onChange={onChange}
-            onHovering={setIsChildrenHovering}
-            isSupportFileVar={isSupportFileVar}
-            isException={v.isException}
-          />
-        ))
-      }
-    </div>
   )
 }
 

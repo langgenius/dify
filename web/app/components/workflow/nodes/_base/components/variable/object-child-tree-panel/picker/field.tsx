@@ -58,11 +58,11 @@ const Field: FC<Props> = ({
 
       {depth <= MAX_DEPTH && payload.type === Type.object && payload.properties && (
         <div>
-          {Object.keys(payload.properties).map(name => (
+          {Object.keys(payload.properties).map(propName => (
             <Field
-              key={name}
-              name={name}
-              payload={payload.properties?.[name] as FieldType}
+              key={propName}
+              name={propName}
+              payload={payload.properties?.[propName] as FieldType}
               depth={depth + 1}
               readonly={readonly}
               valueSelector={[...valueSelector, name]}
