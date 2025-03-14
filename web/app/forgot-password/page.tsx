@@ -6,8 +6,10 @@ import Header from '../signin/_header'
 import style from '../signin/page.module.css'
 import ForgotPasswordForm from './ForgotPasswordForm'
 import ChangePasswordForm from '@/app/forgot-password/ChangePasswordForm'
+import useDocumentTitle from '@/hooks/use-document-title'
 
 const ForgotPassword = () => {
+  useDocumentTitle('')
   const searchParams = useSearchParams()
   const token = searchParams.get('token')
 

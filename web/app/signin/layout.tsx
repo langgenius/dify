@@ -4,9 +4,11 @@ import style from './page.module.css'
 
 import cn from '@/utils/classnames'
 import { useGlobalPublicStore } from '@/context/global-public-context'
+import useDocumentTitle from '@/hooks/use-document-title'
 
 export default function SignInLayout({ children }: any) {
   const { systemFeatures } = useGlobalPublicStore()
+  useDocumentTitle('')
   return <>
     <div className={cn(
       style.background,

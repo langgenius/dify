@@ -12,9 +12,11 @@ import Input from '@/app/components/base/input'
 import Toast from '@/app/components/base/toast'
 import { sendResetPasswordCode } from '@/service/common'
 import I18NContext from '@/context/i18n'
+import useDocumentTitle from '@/hooks/use-document-title'
 
 export default function CheckCode() {
   const { t } = useTranslation()
+  useDocumentTitle('')
   const searchParams = useSearchParams()
   const router = useRouter()
   const [email, setEmail] = useState('')
