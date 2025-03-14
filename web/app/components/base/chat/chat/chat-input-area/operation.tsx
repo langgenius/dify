@@ -4,6 +4,7 @@ import {
 } from 'react'
 import {
   RiArrowUpLine,
+  RiGlobalLine,
   RiMicLine,
 } from '@remixicon/react'
 import type {
@@ -42,19 +43,22 @@ const Operation = forwardRef<HTMLDivElement, OperationProps>(({
       )}
     >
       <div
-        className='flex items-center justify-center text-xs text-black px-6 py-4 h-6 rounded-full border border-gray-300'
+        className='flex items-center justify-center text-xs text-black px-4 py-4 h-6 rounded-full'
         style={
           isInternet ? {
             backgroundColor: theme?.backgroundHoverColor,
             color: theme?.primaryColor,
             cursor: 'pointer',
+            border: '1px solid rgab(0,0,0,0.12)',
           } : {
             cursor: 'pointer',
+            border: '1px solid rgba(0,122,255,0.15)',
           }
 
         }
         onClick={() => onSetInternet?.(!isInternet)}
       >
+        <RiGlobalLine className='w-5 h-5 mr-2' />
         {t('common.chat.buttonInternet') || ''}
       </div>
       <div
