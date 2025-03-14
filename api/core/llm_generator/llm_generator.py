@@ -48,7 +48,7 @@ class LLMGenerator:
             response = cast(
                 LLMResult,
                 model_instance.invoke_llm(
-                    prompt_messages=list(prompts), model_parameters={"max_tokens": 100, "temperature": 1}, stream=False
+                    prompt_messages=list(prompts), model_parameters={"max_tokens": 1000, "temperature": 1}, stream=False
                 ),
             )
         answer = cast(str, response.message.content)
