@@ -14,7 +14,7 @@ import Input from '@/app/components/base/input'
 
 type ConditionNumberProps = {
   value?: string | number
-  onChange: (value: string | number) => void
+  onChange: (value?: string | number) => void
   nodesOutputVars: NodeOutPutVar[]
   availableNodes: Node[]
   isCommonVariable?: boolean
@@ -72,7 +72,10 @@ const ConditionNumber = ({
           <Input
             className='bg-transparent hover:bg-transparent outline-none border-none focus:shadow-none focus:bg-transparent'
             value={value}
-            onChange={e => onChange(Number(e.target.value))}
+            onChange={(e) => {
+              const v = e.target.value
+              onChange(v ? Number(e.target.value) : undefined)
+            }}
             placeholder={t('workflow.nodes.knowledgeRetrieval.metadata.panel.placeholder')}
             type='number'
           />
