@@ -107,7 +107,7 @@ def update_documents_metadata_task(
                                 child_document.metadata.update(dataset_document.doc_metadata)
                             child_documents.append(child_document)
                         document.children = child_documents
-                documents.append(document)  # noqa: B909
+                documents.append(document)
             # save vector index
             index_processor.load(dataset, documents)
         end_at = time.perf_counter()

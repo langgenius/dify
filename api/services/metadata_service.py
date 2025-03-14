@@ -20,7 +20,9 @@ class MetadataService:
     @staticmethod
     def create_metadata(dataset_id: str, metadata_args: MetadataArgs) -> DatasetMetadata:
         # check if metadata name already exists
-        if DatasetMetadata.query.filter_by(tenant_id=current_user.current_tenant_id, dataset_id=dataset_id, name=metadata_args.name).first():
+        if DatasetMetadata.query.filter_by(
+            tenant_id=current_user.current_tenant_id, dataset_id=dataset_id, name=metadata_args.name
+        ).first():
             raise ValueError("Metadata name already exists.")
         for field in BuiltInField:
             if field.value == metadata_args.name:
@@ -40,7 +42,9 @@ class MetadataService:
     def update_metadata_name(dataset_id: str, metadata_id: str, name: str) -> DatasetMetadata:
         lock_key = f"dataset_metadata_lock_{dataset_id}"
         # check if metadata name already exists
-        if DatasetMetadata.query.filter_by(tenant_id=current_user.current_tenant_id, dataset_id=dataset_id, name=name).first():
+        if DatasetMetadata.query.filter_by(
+            tenant_id=current_user.current_tenant_id, dataset_id=dataset_id, name=name
+        ).first():
             raise ValueError("Metadata name already exists.")
         for field in BuiltInField:
             if field.value == name:
