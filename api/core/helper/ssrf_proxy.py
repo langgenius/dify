@@ -11,6 +11,19 @@ from configs import dify_config
 
 SSRF_DEFAULT_MAX_RETRIES = dify_config.SSRF_DEFAULT_MAX_RETRIES
 
+HTTP_REQUEST_NODE_SSL_VERIFY = True  # Default value for HTTP_REQUEST_NODE_SSL_VERIFY is True
+try:
+    HTTP_REQUEST_NODE_SSL_VERIFY = dify_config.HTTP_REQUEST_NODE_SSL_VERIFY
+    http_request_node_ssl_verify_lower = str(HTTP_REQUEST_NODE_SSL_VERIFY).lower()
+    if http_request_node_ssl_verify_lower == "true":
+        HTTP_REQUEST_NODE_SSL_VERIFY = True
+    elif http_request_node_ssl_verify_lower == "false":
+        HTTP_REQUEST_NODE_SSL_VERIFY = False
+    else:
+        raise ValueError("Invalid value. HTTP_REQUEST_NODE_SSL_VERIFY should be 'True' or 'False'")
+except NameError:
+    HTTP_REQUEST_NODE_SSL_VERIFY = True
+
 BACKOFF_FACTOR = 0.5
 STATUS_FORCELIST = [429, 500, 502, 503, 504]
 
@@ -39,17 +52,17 @@ def make_request(method, url, max_retries=SSRF_DEFAULT_MAX_RETRIES, **kwargs):
     while retries <= max_retries:
         try:
             if dify_config.SSRF_PROXY_ALL_URL:
-                with httpx.Client(proxy=dify_config.SSRF_PROXY_ALL_URL) as client:
+                with httpx.Client(proxy=dify_config.SSRF_PROXY_ALL_URL, verify=HTTP_REQUEST_NODE_SSL_VERIFY) as client:
                     response = client.request(method=method, url=url, **kwargs)
             elif dify_config.SSRF_PROXY_HTTP_URL and dify_config.SSRF_PROXY_HTTPS_URL:
                 proxy_mounts = {
                     "http://": httpx.HTTPTransport(proxy=dify_config.SSRF_PROXY_HTTP_URL),
                     "https://": httpx.HTTPTransport(proxy=dify_config.SSRF_PROXY_HTTPS_URL),
                 }
-                with httpx.Client(mounts=proxy_mounts) as client:
+                with httpx.Client(mounts=proxy_mounts, verify=HTTP_REQUEST_NODE_SSL_VERIFY) as client:
                     response = client.request(method=method, url=url, **kwargs)
             else:
-                with httpx.Client() as client:
+                with httpx.Client(verify=HTTP_REQUEST_NODE_SSL_VERIFY) as client:
                     response = client.request(method=method, url=url, **kwargs)
 
             if response.status_code not in STATUS_FORCELIST:
