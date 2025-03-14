@@ -26,6 +26,7 @@ from libs.helper import TimestampField
 from libs.login import login_required
 from models.account import Tenant, TenantStatus
 from services.account_service import TenantService
+from services.feature_service import FeatureService
 from services.file_service import FileService
 from services.workspace_service import WorkspaceService
 
@@ -68,6 +69,11 @@ class TenantListApi(Resource):
         tenants = TenantService.get_join_tenants(current_user)
 
         for tenant in tenants:
+            features = FeatureService.get_features(tenant.id)
+            if features.billing.enabled:
+                tenant.plan = features.billing.subscription.plan
+            else:
+                tenant.plan = "sandbox"
             if tenant.id == current_user.current_tenant_id:
                 tenant.current = True  # Set current=True for current tenant
         return {"workspaces": marshal(tenants, tenants_fields)}, 200
