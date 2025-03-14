@@ -8,6 +8,10 @@ on:
 
 env:
   DOCKERHUB_REPO: registry.cn-hangzhou.aliyuncs.com/kindlingx/apo-dify-web
+  REGISTRY_HOST: registry.cn-hangzhou.aliyuncs.com
+  CONTAINER_NAME: dify-web
+  DEPLOYMENT_NAME: apo-dify-web
+  NAMESPACE: apo
 
 jobs:
   build-image:
@@ -15,7 +19,8 @@ jobs:
       matrix:
         os: [ubuntu-latest]
     runs-on: ${{ matrix.os }}
-
+    outputs:
+      IMAGE_TAG_NAME: ${{ steps.build-image.outputs.IMAGE_TAG_NAME }}
     steps:
       - name: Checkout
         uses: actions/checkout@v2
@@ -29,33 +34,22 @@ jobs:
       - name: Login to DockerHub
         uses: docker/login-action@v3
         with:
-          registry: registry.cn-hangzhou.aliyuncs.com
+          registry: ${{ env.REGISTRY_HOST }}
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
-
-      - name: Generate App Version (AMD64)
-        if: ${{ matrix.os == 'ubuntu-latest' }}
-        run: |
-          TAG=$(git describe --tags --exact-match 2>/dev/null || echo "")
-          if [ -n "$TAG" ]; then
-            echo "APP_VERSION=$TAG" >> $GITHUB_ENV
-          else
-            BRANCH=$(git rev-parse --abbrev-ref HEAD | sed 's#[^a-zA-Z0-9._-]#-#g')
-            COMMIT=$(git rev-parse --short HEAD)
-            echo "APP_VERSION=${BRANCH}-${COMMIT}" >> $GITHUB_ENV
-          fi
       
-      - name: Generate App Version (ARM64)
-        if: ${{ matrix.os == 'ubuntu-24.04-arm' }}
+      - name: Generate image metadata
+        id: build-image
+        env:
+          BRANCH_NAME: ${{ github.ref_name }}
+          COMMIT_HASH: ${{ github.sha }}
         run: |
-          TAG=$(git describe --tags --exact-match 2>/dev/null || echo "")
-          if [ -n "$TAG" ]; then
-            echo "APP_VERSION=$TAG-arm64" >> $GITHUB_ENV
-          else
-            BRANCH=$(git rev-parse --abbrev-ref HEAD | sed 's#[^a-zA-Z0-9._-]#-#g')
-            COMMIT=$(git rev-parse --short HEAD)
-            echo "APP_VERSION=${BRANCH}-${COMMIT}-arm64" >> $GITHUB_ENV
-          fi
+          DATE=$(date +"%Y%m%d%H%M%S%Z")
+          BRANCH_NAME=$(echo "$BRANCH_NAME" | sed 's#[^a-zA-Z0-9._-]#-#g')
+          IMAGE_TAG_NAME="${BRANCH_NAME}-${COMMIT_HASH::7}-${DATE}"
+          echo "IMAGE_TAG_NAME=$IMAGE_TAG_NAME" >> "$GITHUB_OUTPUT"
+          echo "IMAGE_FULL_TAG_AMD64=${{ env.REGISTRY_HOST }}/${{ secrets.DOCKERHUB_USERNAME }}/${{ env.DEPLOYMENT_NAME }}:${IMAGE_TAG_NAME}" >> $GITHUB_ENV  
+          echo "IMAGE_FULL_TAG_ARM64=${{ env.REGISTRY_HOST }}/${{ secrets.DOCKERHUB_USERNAME }}/${{ env.DEPLOYMENT_NAME }}:${IMAGE_TAG_NAME}-arm64" >> $GITHUB_ENV
 
       - name: Build and push
         uses: docker/build-push-action@v6
@@ -63,4 +57,17 @@ jobs:
           context: ./web
           push: true
           tags: |
-            ${{ env.DOCKERHUB_REPO }}:${{ env.APP_VERSION }}
+            ${{ env.DOCKERHUB_REPO }}:${{ env.IMAGE_FULL_TAG_AMD64 }}
+
+  deploy-dev:
+    runs-on: [self-hosted, dev]
+    needs: [build-image]
+    steps:
+    - name: Deploy to dev
+      env: 
+        IMAGE_TAG_NAME: ${{ needs.build-image.outputs.IMAGE_TAG_NAME }}
+      run: |
+        IMAGE_FULL_NAME="${{ env.REGISTRY_HOST }}/${{ secrets.DOCKERHUB_USERNAME }}/${{ env.DEPLOYMENT_NAME }}:$IMAGE_TAG_NAME"
+        echo "IMAGE_FULL_NAME=$IMAGE_FULL_NAME"
+        export KUBECONFIG="/root/.kube/config"
+        kubectl set image deployment ${{ env.DEPLOYMENT_NAME }} ${{ env.CONTAINER_NAME }}=$IMAGE_FULL_NAME -n ${{ env.NAMESPACE }}
