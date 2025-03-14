@@ -1,7 +1,7 @@
 exclude = [
     "migrations/*",
 ]
-line-length = 120
+line-length = 200
 
 [format]
 quote-style = "double"
