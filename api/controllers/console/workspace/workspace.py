@@ -92,7 +92,7 @@ class WorkspaceListApi(Resource):
 
         has_more = False
         if len(tenants.items) == args["limit"]:
-            current_page_first_tenant = tenants[-1]
+            current_page_first_tenant = tenants.items[-1]
             rest_count = (
                 db.session.query(Tenant)
                 .filter(
