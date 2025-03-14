@@ -15,7 +15,7 @@
     <a href="https://discord.gg/FngNHpbcY7" target="_blank">
         <img src="https://img.shields.io/discord/1082486657678311454?logo=discord&labelColor=%20%235462eb&logoColor=%20%23f5f5f5&color=%20%235462eb"
             alt="Discordでチャット"></a>
-    <a href="https://reddit.com/r/difyai" target="_blank">  
+    <a href="https://reddit.com/r/difyai" target="_blank">
         <img src="https://img.shields.io/reddit/subreddit-subscribers/difyai?style=plastic&logo=reddit&label=r%2Fdifyai&labelColor=white"
             alt="Reddit"></a>
     <a href="https://twitter.com/intent/follow?screen_name=dify_ai" target="_blank">
@@ -45,6 +45,7 @@
   <a href="./README_AR.md"><img alt="README بالعربية" src="https://img.shields.io/badge/العربية-d9d9d9"></a>
   <a href="./README_TR.md"><img alt="Türkçe README" src="https://img.shields.io/badge/Türkçe-d9d9d9"></a>
   <a href="./README_VI.md"><img alt="README Tiếng Việt" src="https://img.shields.io/badge/Ti%E1%BA%BFng%20Vi%E1%BB%87t-d9d9d9"></a>
+  <a href="./README_BN.md"><img alt="README in বাংলা" src="https://img.shields.io/badge/বাংলা-d9d9d9"></a>
 </p>
 
 #
@@ -56,7 +57,7 @@
 DifyはオープンソースのLLMアプリケーション開発プラットフォームです。直感的なインターフェイスには、AIワークフロー、RAGパイプライン、エージェント機能、モデル管理、観測機能などが組み合わさっており、プロトタイプから生産まで迅速に進めることができます。以下の機能が含まれます：
 </br> </br>
 
-**1. ワークフロー**: 
+**1. ワークフロー**:
   強力なAIワークフローをビジュアルキャンバス上で構築し、テストできます。すべての機能、および以下の機能を使用できます。
 
 
@@ -64,25 +65,25 @@ DifyはオープンソースのLLMアプリケーション開発プラットフ�
 
 
 
-**2. 総合的なモデルサポート**: 
+**2. 総合的なモデルサポート**:
   数百ものプロプライエタリ/オープンソースのLLMと、数十もの推論プロバイダーおよびセルフホスティングソリューションとのシームレスな統合を提供します。GPT、Mistral、Llama3、OpenAI APIと互換性のあるすべてのモデルを統合されています。サポートされているモデルプロバイダーの完全なリストは[こちら](https://docs.dify.ai/getting-started/readme/model-providers)をご覧ください。
 
 ![providers-v5](https://github.com/langgenius/dify/assets/13230914/5a17bdbe-097a-4100-8363-40255b70f6e3)
 
 
-**3. プロンプトIDE**: 
+**3. プロンプトIDE**:
   プロンプトの作成、モデルパフォーマンスの比較が行え、チャットベースのアプリに音声合成などの機能も追加できます。
 
-**4. RAGパイプライン**: 
+**4. RAGパイプライン**:
   ドキュメントの取り込みから検索までをカバーする広範なRAG機能ができます。ほかにもPDF、PPT、その他の一般的なドキュメントフォーマットからのテキスト抽出のサポートも提供します。
 
-**5. エージェント機能**: 
+**5. エージェント機能**:
   LLM Function CallingやReActに基づくエージェントの定義が可能で、AIエージェント用のプリビルトまたはカスタムツールを追加できます。Difyには、Google検索、DALL·E、Stable Diffusion、WolframAlphaなどのAIエージェント用の50以上の組み込みツールが提供します。
 
-**6. LLMOps**: 
+**6. LLMOps**:
   アプリケーションのログやパフォーマンスを監視と分析し、生産のデータと注釈に基づいて、プロンプト、データセット、モデルを継続的に改善できます。
 
-**7. Backend-as-a-Service**: 
+**7. Backend-as-a-Service**:
   すべての機能はAPIを提供されており、Difyを自分のビジネスロジックに簡単に統合できます。
 
 
@@ -164,7 +165,7 @@ DifyはオープンソースのLLMアプリケーション開発プラットフ�
 
 - **企業/組織向けのDify</br>**
 企業中心の機能を提供しています。[メールを送信](mailto:business@dify.ai?subject=[GitHub]Business%20License%20Inquiry)して企業のニーズについて相談してください。 </br>
-  > AWSを使用しているスタートアップ企業や中小企業の場合は、[AWS Marketplace](https://aws.amazon.com/marketplace/pp/prodview-t23mebxzwjhu6)のDify Premiumをチェックして、ワンクリックで自分のAWS VPCにデプロイできます。さらに、手頃な価格のAMIオファリングとして、ロゴやブランディングをカスタマイズしてアプリケーションを作成するオプションがあります。
+  > AWSを使用しているスタートアップ企業や中小企業の場合は、[AWS Marketplace](https://aws.amazon.com/marketplace/pp/prodview-t22mebxzwjhu6)のDify Premiumをチェックして、ワンクリックで自分のAWS VPCにデプロイできます。さらに、手頃な価格のAMIオファリングとして、ロゴやブランディングをカスタマイズしてアプリケーションを作成するオプションがあります。
 
 
 ## 最新の情報を入手
@@ -177,7 +178,7 @@ GitHub上でDifyにスターを付けることで、Difyに関する新しいニ
 
 ## クイックスタート
 > Difyをインストールする前に、お使いのマシンが以下の最小システム要件を満たしていることを確認してください：
-> 
+>
 >- CPU >= 2コア
 >- RAM >= 4GB
 
@@ -219,7 +220,7 @@ docker compose up -d
 
 [CDK](https://aws.amazon.com/cdk/) を使用して、DifyをAWSにデプロイします
 
-##### AWS 
+##### AWS
 - [@KevinZhaoによるAWS CDK](https://github.com/aws-samples/solution-for-deploying-dify-on-aws)
 
 ## 貢献

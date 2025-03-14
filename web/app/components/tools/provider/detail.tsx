@@ -337,7 +337,7 @@ const ProviderDetail = ({
           {/* Custom type */}
           {!isDetailLoading && (collection.type === CollectionType.custom) && (
             <div className='text-text-secondary system-sm-semibold-uppercase'>
-              <span className=''>{t('tools.includeToolNum', { num: toolList.length }).toLocaleUpperCase()}</span>
+              <span className=''>{t('tools.includeToolNum', { num: toolList.length, action: toolList.length > 1 ? 'actions' : 'action' }).toLocaleUpperCase()}</span>
             </div>
           )}
           {/* Workflow type */}

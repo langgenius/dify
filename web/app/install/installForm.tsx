@@ -1,6 +1,7 @@
 'use client'
-import React, { useEffect } from 'react'
+import React, { useCallback, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useDebounceFn } from 'ahooks'
 
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
@@ -39,7 +40,7 @@ const InstallForm = () => {
   const {
     register,
     handleSubmit,
-    formState: { errors },
+    formState: { errors, isSubmitting },
   } = useForm<AccountFormValues>({
     resolver: zodResolver(accountFormSchema),
     defaultValues: {
@@ -59,8 +60,21 @@ const InstallForm = () => {
   }
 
   const handleSetting = async () => {
+    if (isSubmitting) return
     handleSubmit(onSubmit)()
   }
+
+  const { run: debouncedHandleKeyDown } = useDebounceFn(
+    (e: React.KeyboardEvent) => {
+      if (e.key === 'Enter') {
+        e.preventDefault()
+        handleSetting()
+      }
+    },
+    { wait: 200 },
+  )
+
+  const handleKeyDown = useCallback(debouncedHandleKeyDown, [debouncedHandleKeyDown])
 
   useEffect(() => {
     fetchSetupStatus().then((res: SetupStatusResponse) => {
@@ -90,7 +104,7 @@ const InstallForm = () => {
         </div>
         <div className="grow mt-8 sm:mx-auto sm:w-full sm:max-w-md">
           <div className="bg-white ">
-            <form onSubmit={handleSubmit(onSubmit)}>
+            <form onSubmit={handleSubmit(onSubmit)} onKeyDown={handleKeyDown}>
               <div className='mb-5'>
                 <label htmlFor="email" className="my-2 flex items-center justify-between text-sm font-medium text-gray-900">
                   {t('login.email')}
@@ -99,7 +113,7 @@ const InstallForm = () => {
                   <input
                     {...register('email')}
                     placeholder={t('login.emailPlaceholder') || ''}
-                    className={'appearance-none block w-full rounded-lg pl-[14px] px-3 py-2 border border-gray-200 hover:border-gray-300 hover:shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 placeholder-gray-400 caret-primary-600 sm:text-sm'}
+                    className={'appearance-none block w-full rounded-lg pl-[14px] px-3 py-2 border border-gray-200 hover:border-gray-300 hover:shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 placeholder:text-gray-400 caret-primary-600 sm:text-sm'}
                   />
                   {errors.email && <span className='text-red-400 text-sm'>{t(`${errors.email?.message}`)}</span>}
                 </div>
@@ -114,7 +128,7 @@ const InstallForm = () => {
                   <input
                     {...register('name')}
                     placeholder={t('login.namePlaceholder') || ''}
-                    className={'appearance-none block w-full rounded-lg pl-[14px] px-3 py-2 border border-gray-200 hover:border-gray-300 hover:shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 placeholder-gray-400 caret-primary-600 sm:text-sm pr-10'}
+                    className={'appearance-none block w-full rounded-lg pl-[14px] px-3 py-2 border border-gray-200 hover:border-gray-300 hover:shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 placeholder:text-gray-400 caret-primary-600 sm:text-sm pr-10'}
                   />
                 </div>
                 {errors.name && <span className='text-red-400 text-sm'>{t(`${errors.name.message}`)}</span>}
@@ -129,7 +143,7 @@ const InstallForm = () => {
                     {...register('password')}
                     type={showPassword ? 'text' : 'password'}
                     placeholder={t('login.passwordPlaceholder') || ''}
-                    className={'appearance-none block w-full rounded-lg pl-[14px] px-3 py-2 border border-gray-200 hover:border-gray-300 hover:shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 placeholder-gray-400 caret-primary-600 sm:text-sm pr-10'}
+                    className={'appearance-none block w-full rounded-lg pl-[14px] px-3 py-2 border border-gray-200 hover:border-gray-300 hover:shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 placeholder:text-gray-400 caret-primary-600 sm:text-sm pr-10'}
                   />
 
                   <div className="absolute inset-y-0 right-0 flex items-center pr-3">

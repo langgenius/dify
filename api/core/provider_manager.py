@@ -111,6 +111,12 @@ class ProviderManager:
 
         # Get all provider model records of the workspace
         provider_name_to_provider_model_records_dict = self._get_all_provider_models(tenant_id)
+        for provider_name in list(provider_name_to_provider_model_records_dict.keys()):
+            provider_id = ModelProviderID(provider_name)
+            if str(provider_id) not in provider_name_to_provider_model_records_dict:
+                provider_name_to_provider_model_records_dict[str(provider_id)] = (
+                    provider_name_to_provider_model_records_dict[provider_name]
+                )
 
         # Get all provider entities
         model_provider_factory = ModelProviderFactory(tenant_id)
