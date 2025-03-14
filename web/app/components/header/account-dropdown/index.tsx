@@ -190,7 +190,9 @@ export default function AppSelector({ isMobile }: IAppSelector) {
                       )
                     }
                   </div>
-                  <Menu.Item>
+                  {
+                    !sessionStorage.getItem('disable_log_out')
+                  && <Menu.Item>
                     {({ active }) => <div className='p-1' onClick={() => handleLogout()}>
                       <div
                         className={
@@ -202,6 +204,8 @@ export default function AppSelector({ isMobile }: IAppSelector) {
                       </div>
                     </div>}
                   </Menu.Item>
+                  }
+
                 </Menu.Items>
               </Transition>
             </>
