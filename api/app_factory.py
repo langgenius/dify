@@ -47,6 +47,7 @@ def initialize_extensions(app: DifyApp):
         ext_database,
         ext_hosting_provider,
         ext_import_modules,
+        ext_ldap,
         ext_logging,
         ext_login,
         ext_mail,
@@ -61,6 +62,7 @@ def initialize_extensions(app: DifyApp):
     )
 
     extensions = [
+        ext_ldap,
         ext_timezone,
         ext_logging,
         ext_warnings,

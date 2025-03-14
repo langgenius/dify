@@ -2210,6 +2210,7 @@ files = [
 brotli = {version = "*", markers = "platform_python_implementation != \"PyPy\""}
 brotlicffi = {version = "*", markers = "platform_python_implementation == \"PyPy\""}
 flask = "*"
+ldap3 = ">=2.0.7"
 zstandard = [
     {version = "*", markers = "platform_python_implementation != \"PyPy\""},
     {version = "*", extras = ["cffi"], markers = "platform_python_implementation == \"PyPy\""},
@@ -2230,6 +2231,18 @@ files = [
 
 [package.dependencies]
 Flask = ">=0.9"
+
+[[package]]
+name = "flask-ldap3-login"
+version = "1.0.2"
+description = "LDAP Support for Flask"
+optional = false
+python-versions = ">=3.5"
+groups = ["main"]
+files = [
+    {file = "flask_ldap3_login-1.0.2-py3-none-any.whl", hash = "sha256:72368ea58b5faac4935d1f3e5ec1fcfdce51cc16adbec41a74c834247422ac61"},
+    {file = "flask_ldap3_login-1.0.2.tar.gz", hash = "sha256:969d2e4263aa0908383174d9700e03198a5eb3db483b26a18f9ea634032cbdd4"},
+]
 
 [[package]]
 name = "flask-login"
@@ -4052,6 +4065,18 @@ requests-toolbelt = ">=1.0.0,<2.0.0"
 
 [package.extras]
 langsmith-pyo3 = ["langsmith-pyo3 (>=0.1.0rc2,<0.2.0)"]
+
+[[package]]
+name = "ldap3"
+version = "2.9.1"
+description = "A strictly RFC 4510 conforming LDAP V3 pure Python client library"
+optional = false
+python-versions = "*"
+groups = ["main"]
+files = [
+    {file = "ldap3-2.9.1-py2.py3-none-any.whl", hash = "sha256:5869596fc4948797020d3f03b7939da938778a0f9e2009f7a072ccf92b8e8d70"},
+    {file = "ldap3-2.9.1.tar.gz", hash = "sha256:f3e7fc4718e3f09dda568b57100095e0ce58633bcabbed8667ce3f8fbaa4229f"},
+]
 
 [[package]]
 name = "levenshtein"
