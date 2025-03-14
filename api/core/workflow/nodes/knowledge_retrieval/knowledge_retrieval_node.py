@@ -37,7 +37,7 @@ from core.workflow.nodes.llm.entities import LLMNodeChatModelMessage, LLMNodeCom
 from core.workflow.nodes.llm.node import LLMNode
 from core.workflow.nodes.question_classifier.template_prompts import QUESTION_CLASSIFIER_USER_PROMPT_2
 from extensions.ext_database import db
-extensions.ext_redis import redis_client
+from extensions.ext_redis import redis_client
 from libs.json_in_md_parser import parse_and_check_json_markdown
 from models.dataset import Dataset, DatasetMetadata, Document, RateLimitLog
 from models.workflow import WorkflowNodeExecutionStatus
