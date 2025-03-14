@@ -214,6 +214,8 @@ class OpsTraceManager:
                 provider_config_map[tracing_provider]["trace_instance"],
                 provider_config_map[tracing_provider]["config_class"],
             )
+            if not decrypt_trace_config:
+                return None
             tracing_instance = trace_instance(config_class(**decrypt_trace_config))
             return tracing_instance
 
