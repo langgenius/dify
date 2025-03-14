@@ -15,7 +15,9 @@ from models.dataset import Document as DatasetDocument
 def disable_segments_from_index_task(segment_ids: list, dataset_id: str, document_id: str):
     """
     Async disable segments from index
-    :param segment_ids:
+    :param segment_ids: list of segment ids
+    :param dataset_id: dataset id
+    :param document_id: document id
 
     Usage: disable_segments_from_index_task.delay(segment_ids, dataset_id, document_id)
     """

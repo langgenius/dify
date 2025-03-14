@@ -21,7 +21,7 @@ def batch_clean_document_task(document_ids: list[str], dataset_id: str, doc_form
     :param doc_form: doc_form
     :param file_ids: file ids
 
-    Usage: clean_document_task.delay(document_id, dataset_id)
+    Usage: batch_clean_document_task.delay(document_ids, dataset_id)
     """
     logging.info(click.style("Start batch clean documents when documents deleted", fg="green"))
     start_at = time.perf_counter()

@@ -20,7 +20,7 @@ def duplicate_document_indexing_task(dataset_id: str, document_ids: list):
     :param dataset_id:
     :param document_ids:
 
-    Usage: duplicate_document_indexing_task.delay(dataset_id, document_id)
+    Usage: duplicate_document_indexing_task.delay(dataset_id, document_ids)
     """
     documents = []
     start_at = time.perf_counter()
