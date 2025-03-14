@@ -11,7 +11,7 @@ from configs import dify_config
 
 SSRF_DEFAULT_MAX_RETRIES = dify_config.SSRF_DEFAULT_MAX_RETRIES
 
-HTTP_REQUEST_NODE_SSL_VERIFY = None
+HTTP_REQUEST_NODE_SSL_VERIFY = True # Default value for HTTP_REQUEST_NODE_SSL_VERIFY is True
 try:
     HTTP_REQUEST_NODE_SSL_VERIFY = dify_config.HTTP_REQUEST_NODE_SSL_VERIFY
     http_request_node_ssl_verify_lower = str(HTTP_REQUEST_NODE_SSL_VERIFY).lower()
@@ -20,7 +20,7 @@ try:
     elif http_request_node_ssl_verify_lower == "false":
         HTTP_REQUEST_NODE_SSL_VERIFY = False
     else:
-        raise ValueError(f"'{s}' is not a valid value for HTTP_REQUEST_NODE_SSL_VERIFY it should be 'True' or 'False'")
+        raise ValueError("Invalid value. HTTP_REQUEST_NODE_SSL_VERIFY should be 'True' or 'False'")
 except NameError:
     HTTP_REQUEST_NODE_SSL_VERIFY = True
 
