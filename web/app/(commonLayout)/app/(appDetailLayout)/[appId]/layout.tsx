@@ -15,17 +15,17 @@ import {
 } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
 import { useShallow } from 'zustand/react/shallow'
-import { useContextSelector } from 'use-context-selector'
 import s from './style.module.css'
 import cn from '@/utils/classnames'
 import { useStore } from '@/app/components/app/store'
 import AppSideBar from '@/app/components/app-sidebar'
 import type { NavIcon } from '@/app/components/app-sidebar/navLink'
 import { fetchAppDetail, fetchAppSSO } from '@/service/apps'
-import AppContext, { useAppContext } from '@/context/app-context'
+import { useAppContext } from '@/context/app-context'
 import Loading from '@/app/components/base/loading'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import type { App } from '@/types/app'
+import { useGlobalPublicStore } from '@/context/global-public-context'
 
 export type IAppDetailLayoutProps = {
   children: React.ReactNode
@@ -56,7 +56,7 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
     icon: NavIcon
     selectedIcon: NavIcon
   }>>([])
-  const systemFeatures = useContextSelector(AppContext, state => state.systemFeatures)
+  const { systemFeatures } = useGlobalPublicStore()
 
   const getNavigations = useCallback((appId: string, isCurrentWorkspaceEditor: boolean, mode: string) => {
     const navs = [
@@ -98,7 +98,11 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
 
   useEffect(() => {
     if (appDetail) {
-      document.title = `${(appDetail.name || 'App')} - Dify`
+      if (systemFeatures.branding.enabled)
+        document.title = `${(appDetail.name || 'App')} - ${systemFeatures.branding.application_title}`
+      else
+        document.title = `${(appDetail.name || 'App')} - Dify`
+
       const localeMode = localStorage.getItem('app-detail-collapse-or-expand') || 'expand'
       const mode = isMobile ? 'collapse' : 'expand'
       setAppSiderbarExpand(isMobile ? mode : localeMode)
@@ -106,7 +110,7 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
       // if ((appDetail.mode === 'advanced-chat' || appDetail.mode === 'workflow') && (pathname).endsWith('workflow'))
       //   setAppSiderbarExpand('collapse')
     }
-  }, [appDetail, isMobile])
+  }, [appDetail, isMobile, pathname, setAppSiderbarExpand, systemFeatures])
 
   useEffect(() => {
     setAppDetail()

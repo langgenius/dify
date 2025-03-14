@@ -5,9 +5,11 @@ import { useRouter } from 'next/navigation'
 import Button from '../components/base/button'
 import Avatar from './avatar'
 import LogoSite from '@/app/components/base/logo/logo-site'
+import { useGlobalPublicStore } from '@/context/global-public-context'
 
 const Header = () => {
   const { t } = useTranslation()
+  const { systemFeatures } = useGlobalPublicStore()
   const router = useRouter()
 
   const back = () => {
@@ -25,7 +27,7 @@ const Header = () => {
       <div className='flex items-center flex-shrink-0 gap-3'>
         <Button className='gap-2 py-2 px-3 system-sm-medium' onClick={back}>
           <RiRobot2Line className='w-4 h-4' />
-          <p>{t('common.account.studio')}</p>
+          <p>{!systemFeatures.branding.enabled && 'Dify '}{t('common.account.studio')}</p>
           <RiArrowRightUpLine className='w-4 h-4' />
         </Button>
         <div className='w-[1px] h-4 bg-divider-regular' />

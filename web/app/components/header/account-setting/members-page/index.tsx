@@ -21,6 +21,7 @@ import { Plan } from '@/app/components/billing/type'
 import UpgradeBtn from '@/app/components/billing/upgrade-btn'
 import { NUM_INFINITE } from '@/app/components/billing/config'
 import { LanguagesSupported } from '@/i18n/language'
+import { useGlobalPublicStore } from '@/context/global-public-context'
 dayjs.extend(relativeTime)
 
 const MembersPage = () => {
@@ -34,7 +35,8 @@ const MembersPage = () => {
   }
   const { locale } = useContext(I18n)
 
-  const { userProfile, currentWorkspace, isCurrentWorkspaceOwner, isCurrentWorkspaceManager, systemFeatures } = useAppContext()
+  const { userProfile, currentWorkspace, isCurrentWorkspaceOwner, isCurrentWorkspaceManager } = useAppContext()
+  const { systemFeatures } = useGlobalPublicStore()
   const { data, mutate } = useSWR({ url: '/workspaces/current/members' }, fetchMembers)
   const [inviteModalVisible, setInviteModalVisible] = useState(false)
   const [invitationResults, setInvitationResults] = useState<InvitationResult[]>([])

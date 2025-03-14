@@ -20,6 +20,7 @@ import { useModalContext } from '@/context/modal-context'
 import { LanguagesSupported } from '@/i18n/language'
 import { useProviderContext } from '@/context/provider-context'
 import { Plan } from '@/app/components/billing/type'
+import { useGlobalPublicStore } from '@/context/global-public-context'
 
 export type IAppSelector = {
   isMobile: boolean
@@ -32,6 +33,7 @@ export default function AppSelector({ isMobile }: IAppSelector) {
   `
   const router = useRouter()
   const [aboutVisible, setAboutVisible] = useState(false)
+  const { systemFeatures } = useGlobalPublicStore()
 
   const { locale } = useContext(I18n)
   const { t } = useTranslation()
@@ -122,78 +124,80 @@ export default function AppSelector({ isMobile }: IAppSelector) {
                         <div>{t('common.userProfile.settings')}</div>
                       </div>}
                     </Menu.Item>
-                    {canEmailSupport && <Menu.Item>
-                      {({ active }) => <a
-                        className={classNames(itemClassName, 'group justify-between',
-                          active && 'bg-state-base-hover',
-                        )}
-                        href={mailToSupport(userProfile.email, plan.type, langeniusVersionInfo.current_version)}
-                        target='_blank' rel='noopener noreferrer'>
-                        <div>{t('common.userProfile.emailSupport')}</div>
-                        <ArrowUpRight className='hidden w-[14px] h-[14px] text-text-tertiary group-hover:flex' />
-                      </a>}
-                    </Menu.Item>}
-                    <Menu.Item>
-                      {({ active }) => <Link
-                        className={classNames(itemClassName, 'group justify-between',
-                          active && 'bg-state-base-hover',
-                        )}
-                        href='https://github.com/langgenius/dify/discussions/categories/feedbacks'
-                        target='_blank' rel='noopener noreferrer'>
-                        <div>{t('common.userProfile.communityFeedback')}</div>
-                        <ArrowUpRight className='hidden w-[14px] h-[14px] text-text-tertiary group-hover:flex' />
-                      </Link>}
-                    </Menu.Item>
-                    <Menu.Item>
-                      {({ active }) => <Link
-                        className={classNames(itemClassName, 'group justify-between',
-                          active && 'bg-state-base-hover',
-                        )}
-                        href='https://discord.gg/5AEfbxcd9k'
-                        target='_blank' rel='noopener noreferrer'>
-                        <div>{t('common.userProfile.community')}</div>
-                        <ArrowUpRight className='hidden w-[14px] h-[14px] text-text-tertiary group-hover:flex' />
-                      </Link>}
-                    </Menu.Item>
-                    <Menu.Item>
-                      {({ active }) => <Link
-                        className={classNames(itemClassName, 'group justify-between',
-                          active && 'bg-state-base-hover',
-                        )}
-                        href={
-                          locale !== LanguagesSupported[1] ? 'https://docs.dify.ai/' : `https://docs.dify.ai/v/${locale.toLowerCase()}/`
-                        }
-                        target='_blank' rel='noopener noreferrer'>
-                        <div>{t('common.userProfile.helpCenter')}</div>
-                        <ArrowUpRight className='hidden w-[14px] h-[14px] text-text-tertiary group-hover:flex' />
-                      </Link>}
-                    </Menu.Item>
-                    <Menu.Item>
-                      {({ active }) => <Link
-                        className={classNames(itemClassName, 'group justify-between',
-                          active && 'bg-state-base-hover',
-                        )}
-                        href='https://roadmap.dify.ai'
-                        target='_blank' rel='noopener noreferrer'>
-                        <div>{t('common.userProfile.roadmap')}</div>
-                        <ArrowUpRight className='hidden w-[14px] h-[14px] text-text-tertiary group-hover:flex' />
-                      </Link>}
-                    </Menu.Item>
-                    {
-                      document?.body?.getAttribute('data-public-site-about') !== 'hide' && (
-                        <Menu.Item>
-                          {({ active }) => <div className={classNames(itemClassName, 'justify-between',
+                    {!systemFeatures.branding.enabled && <>
+                      {canEmailSupport && <Menu.Item>
+                        {({ active }) => <a
+                          className={classNames(itemClassName, 'group justify-between',
                             active && 'bg-state-base-hover',
-                          )} onClick={() => setAboutVisible(true)}>
-                            <div>{t('common.userProfile.about')}</div>
-                            <div className='flex items-center'>
-                              <div className='mr-2 system-xs-regular text-text-tertiary'>{langeniusVersionInfo.current_version}</div>
-                              <Indicator color={langeniusVersionInfo.current_version === langeniusVersionInfo.latest_version ? 'green' : 'orange'} />
-                            </div>
-                          </div>}
-                        </Menu.Item>
-                      )
-                    }
+                          )}
+                          href={mailToSupport(userProfile.email, plan.type, langeniusVersionInfo.current_version)}
+                          target='_blank' rel='noopener noreferrer'>
+                          <div>{t('common.userProfile.emailSupport')}</div>
+                          <ArrowUpRight className='hidden w-[14px] h-[14px] text-text-tertiary group-hover:flex' />
+                        </a>}
+                      </Menu.Item>}
+                      <Menu.Item>
+                        {({ active }) => <Link
+                          className={classNames(itemClassName, 'group justify-between',
+                            active && 'bg-state-base-hover',
+                          )}
+                          href='https://github.com/langgenius/dify/discussions/categories/feedbacks'
+                          target='_blank' rel='noopener noreferrer'>
+                          <div>{t('common.userProfile.communityFeedback')}</div>
+                          <ArrowUpRight className='hidden w-[14px] h-[14px] text-text-tertiary group-hover:flex' />
+                        </Link>}
+                      </Menu.Item>
+                      <Menu.Item>
+                        {({ active }) => <Link
+                          className={classNames(itemClassName, 'group justify-between',
+                            active && 'bg-state-base-hover',
+                          )}
+                          href='https://discord.gg/5AEfbxcd9k'
+                          target='_blank' rel='noopener noreferrer'>
+                          <div>{t('common.userProfile.community')}</div>
+                          <ArrowUpRight className='hidden w-[14px] h-[14px] text-text-tertiary group-hover:flex' />
+                        </Link>}
+                      </Menu.Item>
+                      <Menu.Item>
+                        {({ active }) => <Link
+                          className={classNames(itemClassName, 'group justify-between',
+                            active && 'bg-state-base-hover',
+                          )}
+                          href={
+                            locale !== LanguagesSupported[1] ? 'https://docs.dify.ai/' : `https://docs.dify.ai/v/${locale.toLowerCase()}/`
+                          }
+                          target='_blank' rel='noopener noreferrer'>
+                          <div>{t('common.userProfile.helpCenter')}</div>
+                          <ArrowUpRight className='hidden w-[14px] h-[14px] text-text-tertiary group-hover:flex' />
+                        </Link>}
+                      </Menu.Item>
+                      <Menu.Item>
+                        {({ active }) => <Link
+                          className={classNames(itemClassName, 'group justify-between',
+                            active && 'bg-state-base-hover',
+                          )}
+                          href='https://roadmap.dify.ai'
+                          target='_blank' rel='noopener noreferrer'>
+                          <div>{t('common.userProfile.roadmap')}</div>
+                          <ArrowUpRight className='hidden w-[14px] h-[14px] text-text-tertiary group-hover:flex' />
+                        </Link>}
+                      </Menu.Item>
+                      {
+                        document?.body?.getAttribute('data-public-site-about') !== 'hide' && (
+                          <Menu.Item>
+                            {({ active }) => <div className={classNames(itemClassName, 'justify-between',
+                              active && 'bg-state-base-hover',
+                            )} onClick={() => setAboutVisible(true)}>
+                              <div>{t('common.userProfile.about')}</div>
+                              <div className='flex items-center'>
+                                <div className='mr-2 system-xs-regular text-text-tertiary'>{langeniusVersionInfo.current_version}</div>
+                                <Indicator color={langeniusVersionInfo.current_version === langeniusVersionInfo.latest_version ? 'green' : 'orange'} />
+                              </div>
+                            </div>}
+                          </Menu.Item>
+                        )
+                      }
+                    </>}
                   </div>
                   <Menu.Item>
                     {({ active }) => <div className='p-1' onClick={() => handleLogout()}>

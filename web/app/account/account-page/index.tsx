@@ -16,6 +16,7 @@ import { ToastContext } from '@/app/components/base/toast'
 import AppIcon from '@/app/components/base/app-icon'
 import { IS_CE_EDITION } from '@/config'
 import Input from '@/app/components/base/input'
+import { useGlobalPublicStore } from '@/context/global-public-context'
 
 const titleClassName = `
   system-sm-semibold text-text-secondary
@@ -28,7 +29,7 @@ const validPassword = /^(?=.*[a-zA-Z])(?=.*\d).{8,}$/
 
 export default function AccountPage() {
   const { t } = useTranslation()
-  const { systemFeatures } = useAppContext()
+  const { systemFeatures } = useGlobalPublicStore()
   const { mutateUserProfile, userProfile, apps } = useAppContext()
   const { notify } = useContext(ToastContext)
   const [editNameModalVisible, setEditNameModalVisible] = useState(false)
@@ -133,7 +134,7 @@ export default function AccountPage() {
         <h4 className='title-2xl-semi-bold text-text-primary'>{t('common.account.myAccount')}</h4>
       </div>
       <div className='mb-8 p-6 rounded-xl flex items-center bg-gradient-to-r from-background-gradient-bg-fill-chat-bg-2 to-background-gradient-bg-fill-chat-bg-1'>
-        <AvatarWithEdit avatar={userProfile.avatar_url} name={userProfile.name} onSave={ mutateUserProfile } size={64} />
+        <AvatarWithEdit avatar={userProfile.avatar_url} name={userProfile.name} onSave={mutateUserProfile} size={64} />
         <div className='ml-4'>
           <p className='system-xl-semibold text-text-primary'>{userProfile.name}</p>
           <p className='system-xs-regular text-text-tertiary'>{userProfile.email}</p>

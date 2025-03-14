@@ -31,6 +31,13 @@ export type SystemFeatures = {
   is_allow_register: boolean
   is_email_setup: boolean
   license: License
+  branding: {
+    enabled: boolean
+    login_page_logo: string
+    workspace_logo: string
+    favicon: string
+    application_title: string
+  }
 }
 
 export const defaultSystemFeatures: SystemFeatures = {
@@ -48,5 +55,12 @@ export const defaultSystemFeatures: SystemFeatures = {
   license: {
     status: LicenseStatus.NONE,
     expired_at: '',
+  },
+  branding: {
+    enabled: false,
+    login_page_logo: '',
+    workspace_logo: '',
+    favicon: '',
+    application_title: 'test title',
   },
 }
