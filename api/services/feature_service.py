@@ -10,7 +10,6 @@ from services.enterprise.enterprise_service import EnterpriseService
 class SubscriptionModel(BaseModel):
     plan: str = "sandbox"
     interval: str = ""
-    education: bool = False
 
 
 class BillingModel(BaseModel):
