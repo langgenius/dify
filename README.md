@@ -204,8 +204,8 @@ If you'd like to configure a highly-available setup, there are community-contrib
 
 - [Helm Chart by @LeoQuote](https://github.com/douban/charts/tree/master/charts/dify)
 - [Helm Chart by @BorisPolonsky](https://github.com/BorisPolonsky/dify-helm)
+- [Helm Chart by @magicsong](https://github.com/magicsong/ai-charts)
 - [YAML file by @Winson-030](https://github.com/Winson-030/dify-kubernetes)
-- [Helm Chart by @magicsong](https://github.com/magicsong/ai-charts): support latest 1.0.1 version
 
 #### Using Terraform for Deployment
 
