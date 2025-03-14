@@ -455,7 +455,9 @@ class DatasetRetrieval:
                             query = query.filter(DocumentSegment.dataset_id == document.metadata["dataset_id"])
 
                         # add hit count to document segment
-                        query.update({DocumentSegment.hit_count: DocumentSegment.hit_count + 1}, synchronize_session=False)
+                        query.update(
+                            {DocumentSegment.hit_count: DocumentSegment.hit_count + 1}, synchronize_session=False
+                        )
 
                     db.session.commit()
 
