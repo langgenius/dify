@@ -433,30 +433,33 @@ class DatasetRetrieval:
                 dataset_document = DatasetDocument.query.filter(
                     DatasetDocument.id == document.metadata["document_id"]
                 ).first()
-                if dataset_document.doc_form == IndexType.PARENT_CHILD_INDEX:
-                    child_chunk = ChildChunk.query.filter(
-                        ChildChunk.index_node_id == document.metadata["doc_id"],
-                        ChildChunk.dataset_id == dataset_document.dataset_id,
-                        ChildChunk.document_id == dataset_document.id,
-                    ).first()
-                    if child_chunk:
-                        segment = DocumentSegment.query.filter(DocumentSegment.id == child_chunk.segment_id).update(
+                if dataset_document:
+                    if dataset_document.doc_form == IndexType.PARENT_CHILD_INDEX:
+                        child_chunk = ChildChunk.query.filter(
+                            ChildChunk.index_node_id == document.metadata["doc_id"],
+                            ChildChunk.dataset_id == dataset_document.dataset_id,
+                            ChildChunk.document_id == dataset_document.id,
+                        ).first()
+                        if child_chunk:
+                            segment = DocumentSegment.query.filter(DocumentSegment.id == child_chunk.segment_id).update(
+                                {DocumentSegment.hit_count: DocumentSegment.hit_count + 1}, synchronize_session=False
+                            )
+                            db.session.commit()
+                    else:
+                        query = db.session.query(DocumentSegment).filter(
+                            DocumentSegment.index_node_id == document.metadata["doc_id"]
+                        )
+
+                        # if 'dataset_id' in document.metadata:
+                        if "dataset_id" in document.metadata:
+                            query = query.filter(DocumentSegment.dataset_id == document.metadata["dataset_id"])
+
+                        # add hit count to document segment
+                        query.update(
                             {DocumentSegment.hit_count: DocumentSegment.hit_count + 1}, synchronize_session=False
                         )
-                        db.session.commit()
-                else:
-                    query = db.session.query(DocumentSegment).filter(
-                        DocumentSegment.index_node_id == document.metadata["doc_id"]
-                    )
 
-                    # if 'dataset_id' in document.metadata:
-                    if "dataset_id" in document.metadata:
-                        query = query.filter(DocumentSegment.dataset_id == document.metadata["dataset_id"])
-
-                    # add hit count to document segment
-                    query.update({DocumentSegment.hit_count: DocumentSegment.hit_count + 1}, synchronize_session=False)
-
-                db.session.commit()
+                    db.session.commit()
 
         # get tracing instance
         trace_manager: TraceQueueManager | None = (
