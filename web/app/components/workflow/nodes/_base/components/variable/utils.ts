@@ -67,6 +67,16 @@ const structTypeToVarType = (type: Type): VarType => {
   } as any)[type] || VarType.string
 }
 
+export const varTypeToStructType = (type: VarType): Type => {
+  return ({
+    [VarType.string]: Type.string,
+    [VarType.number]: Type.number,
+    [VarType.boolean]: Type.boolean,
+    [VarType.object]: Type.object,
+    [VarType.array]: Type.array,
+  } as any)[type] || Type.string
+}
+
 const findExceptVarInStructuredProperties = (properties: Record<string, StructField>, filterVar: (payload: Var, selector: ValueSelector) => boolean): Record<string, StructField> => {
   const res = produce(properties, (draft) => {
     Object.keys(properties).forEach((key) => {
