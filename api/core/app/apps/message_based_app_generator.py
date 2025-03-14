@@ -161,7 +161,7 @@ class MessageBasedAppGenerator(BaseAppGenerator):
             model_provider = None
             model_id = None
         else:
-            app_model_config_id = app_config.app_model_config_id
+            app_model_config_id = app_config.app_model_config_issd
             model_provider = application_generate_entity.model_conf.provider
             model_id = application_generate_entity.model_conf.model
             override_model_configs = None
@@ -183,7 +183,7 @@ class MessageBasedAppGenerator(BaseAppGenerator):
                 model_id=model_id,
                 override_model_configs=json.dumps(override_model_configs) if override_model_configs else None,
                 mode=app_config.app_mode.value,
-                name="New conversation",
+                name="新的对话",
                 inputs=application_generate_entity.inputs,
                 introduction=introduction,
                 system_instruction="",
