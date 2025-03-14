@@ -194,6 +194,24 @@ class AccountService:
         account.password_salt = base64_salt
         db.session.commit()
         return account
+    
+    @staticmethod
+    def apo_reset_account_password(account, new_password):
+        """reset account password"""
+        # may be raised
+        valid_password(new_password)
+
+        # generate password salt
+        salt = secrets.token_bytes(16)
+        base64_salt = base64.b64encode(salt).decode()
+
+        # encrypt password with salt
+        password_hashed = hash_password(new_password, salt)
+        base64_password_hashed = base64.b64encode(password_hashed).decode()
+        account.password = base64_password_hashed
+        account.password_salt = base64_salt
+        db.session.commit()
+        return account
 
     @staticmethod
     def create_account(

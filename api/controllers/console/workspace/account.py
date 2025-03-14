@@ -215,6 +215,24 @@ class APOAccountPasswordApi(Resource):
         return {"result": "success"}
 
 
+class APOAccountResetPasswordApi(Resource):
+    def post(self):
+        parser = reqparse.RequestParser()
+        parser.add_argument("username", type=str, required=True, location="json")
+        parser.add_argument("new_password", type=str, required=True, location="json")
+        args = parser.parse_args()
+
+        current_user = AccountService.get_user_through_email(args["username"]+"@apo.com")
+        if not current_user:
+            return {"result": "failed", "message": "Account not found"}
+
+        try:
+            AccountService.apo_reset_account_password(current_user, args["new_password"])
+        except ServiceCurrentPasswordIncorrectError:
+            return {"result": "failed", "message": "Current password incorrect"}
+
+        return {"result": "success"}
+
 class AccountIntegrateApi(Resource):
     integrate_fields = {
         "provider": fields.String,
@@ -325,6 +343,7 @@ api.add_resource(AccountInterfaceThemeApi, "/account/interface-theme")
 api.add_resource(AccountTimezoneApi, "/account/timezone")
 api.add_resource(AccountPasswordApi, "/account/password")
 api.add_resource(APOAccountPasswordApi, "/apo/account/password")
+api.add_resource(APOAccountResetPasswordApi, "/apo/account/reset-password")
 api.add_resource(AccountIntegrateApi, "/account/integrates")
 api.add_resource(AccountDeleteVerifyApi, "/account/delete/verify")
 api.add_resource(AccountDeleteApi, "/account/delete")
