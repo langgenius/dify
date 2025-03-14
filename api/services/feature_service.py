@@ -19,7 +19,7 @@ class BillingModel(BaseModel):
 
 class EducationModel(BaseModel):
     enabled: bool = False
-    is_activated: bool = False
+    activated: bool = False
 
 
 class LimitationModel(BaseModel):
