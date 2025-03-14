@@ -4,7 +4,6 @@ import Link from 'next/link'
 import { useBoolean } from 'ahooks'
 import { useSelectedLayoutSegment } from 'next/navigation'
 import { Bars3Icon } from '@heroicons/react/20/solid'
-import { useContextSelector } from 'use-context-selector'
 import HeaderBillingBtn from '../billing/header-billing-btn'
 import AccountDropdown from './account-dropdown'
 import AppNav from './app-nav'
@@ -15,12 +14,13 @@ import ToolsNav from './tools-nav'
 import GithubStar from './github-star'
 import LicenseNav from './license-env'
 import { WorkspaceProvider } from '@/context/workspace-context'
-import AppContext, { useAppContext } from '@/context/app-context'
+import { useAppContext } from '@/context/app-context'
 import LogoSite from '@/app/components/base/logo/logo-site'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import { useProviderContext } from '@/context/provider-context'
 import { useModalContext } from '@/context/modal-context'
 import { LicenseStatus } from '@/types/feature'
+import { useGlobalPublicStore } from '@/context/global-public-context'
 
 const navClassName = `
   flex items-center relative mr-0 sm:mr-3 px-3 h-8 rounded-xl
@@ -30,7 +30,7 @@ const navClassName = `
 
 const Header = () => {
   const { isCurrentWorkspaceEditor, isCurrentWorkspaceDatasetOperator } = useAppContext()
-  const systemFeatures = useContextSelector(AppContext, v => v.systemFeatures)
+  const { systemFeatures } = useGlobalPublicStore()
   const selectedSegment = useSelectedLayoutSegment()
   const media = useBreakpoints()
   const isMobile = media === MediaType.mobile

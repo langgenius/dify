@@ -1,4 +1,4 @@
-import type { Viewport } from 'next'
+import type { Metadata, Viewport } from 'next'
 import I18nServer from './components/i18n-server'
 import BrowserInitor from './components/browser-initor'
 import SentryInitor from './components/sentry-initor'
@@ -6,10 +6,8 @@ import { getLocaleOnServer } from '@/i18n/server'
 import { TanstackQueryIniter } from '@/context/query-client'
 import './styles/globals.css'
 import './styles/markdown.scss'
-
-export const metadata = {
-  title: 'Dify',
-}
+import GlobalPublicStoreProvider from '@/context/global-public-context'
+import { fetchSystemFeatures } from '@/service/share'
 
 export const viewport: Viewport = {
   width: 'device-width',
@@ -17,6 +15,16 @@ export const viewport: Viewport = {
   maximumScale: 1,
   viewportFit: 'cover',
   userScalable: false,
+}
+
+export async function generateMetadata(): Promise<Metadata> {
+  const config = await fetchSystemFeatures()
+  if (config.branding.enabled)
+    return { title: config.branding.application_title ?? '-', icons: config.branding.favicon }
+
+  return {
+    title: 'Dify',
+  }
 }
 
 const LocaleLayout = ({
@@ -50,7 +58,11 @@ const LocaleLayout = ({
         <BrowserInitor>
           <SentryInitor>
             <TanstackQueryIniter>
-              <I18nServer>{children}</I18nServer>
+              <I18nServer>
+                <GlobalPublicStoreProvider>
+                  {children}
+                </GlobalPublicStoreProvider>
+              </I18nServer>
             </TanstackQueryIniter>
           </SentryInitor>
         </BrowserInitor>

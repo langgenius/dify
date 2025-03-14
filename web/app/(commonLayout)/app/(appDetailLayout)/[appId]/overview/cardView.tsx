@@ -2,7 +2,7 @@
 import type { FC } from 'react'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
-import { useContext, useContextSelector } from 'use-context-selector'
+import { useContext } from 'use-context-selector'
 import AppCard from '@/app/components/app/overview/appCard'
 import Loading from '@/app/components/base/loading'
 import { ToastContext } from '@/app/components/base/toast'
@@ -20,7 +20,7 @@ import { asyncRunSafe } from '@/utils'
 import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
 import type { IAppCardProps } from '@/app/components/app/overview/appCard'
 import { useStore as useAppStore } from '@/app/components/app/store'
-import AppContext from '@/context/app-context'
+import { useGlobalPublicStore } from '@/context/global-public-context'
 
 export type ICardViewProps = {
   appId: string
@@ -31,7 +31,7 @@ const CardView: FC<ICardViewProps> = ({ appId }) => {
   const { notify } = useContext(ToastContext)
   const appDetail = useAppStore(state => state.appDetail)
   const setAppDetail = useAppStore(state => state.setAppDetail)
-  const systemFeatures = useContextSelector(AppContext, state => state.systemFeatures)
+  const { systemFeatures } = useGlobalPublicStore()
 
   const updateAppDetail = async () => {
     try {

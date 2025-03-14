@@ -5,10 +5,11 @@ import { LicenseStatus } from '@/types/feature'
 import { useTranslation } from 'react-i18next'
 import { useContextSelector } from 'use-context-selector'
 import dayjs from 'dayjs'
+import { useGlobalPublicStore } from '@/context/global-public-context'
 
 const LicenseNav = () => {
   const { t } = useTranslation()
-  const systemFeatures = useContextSelector(AppContext, s => s.systemFeatures)
+  const { systemFeatures } = useGlobalPublicStore()
 
   if (systemFeatures.license?.status === LicenseStatus.EXPIRING) {
     const expiredAt = systemFeatures.license?.expired_at

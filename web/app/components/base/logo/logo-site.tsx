@@ -2,6 +2,7 @@
 import type { FC } from 'react'
 import classNames from '@/utils/classnames'
 import { useSelector } from '@/context/app-context'
+import { useGlobalPublicStore } from '@/context/global-public-context'
 
 type LogoSiteProps = {
   className?: string
@@ -10,13 +11,17 @@ type LogoSiteProps = {
 const LogoSite: FC<LogoSiteProps> = ({
   className,
 }) => {
+  const { systemFeatures } = useGlobalPublicStore()
   const { theme } = useSelector((s) => {
     return {
       theme: s.theme,
     }
   })
 
-  const src = theme === 'light' ? '/logo/logo-site.png' : `/logo/logo-site-${theme}.png`
+  let src = theme === 'light' ? '/logo/logo-site.png' : `/logo/logo-site-${theme}.png`
+  if (systemFeatures.branding.enabled)
+    src = systemFeatures.branding.login_page_logo
+
   return (
     <img
       src={src}

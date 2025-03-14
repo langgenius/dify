@@ -4,7 +4,7 @@ import React, { useCallback, useEffect, useState } from 'react'
 import { RiArrowRightSLine, RiCloseLine } from '@remixicon/react'
 import Link from 'next/link'
 import { Trans, useTranslation } from 'react-i18next'
-import { useContext, useContextSelector } from 'use-context-selector'
+import { useContext } from 'use-context-selector'
 import { SparklesSoft } from '@/app/components/base/icons/src/public/common'
 import Modal from '@/app/components/base/modal'
 import ActionButton from '@/app/components/base/action-button'
@@ -21,13 +21,14 @@ import type { AppIconType, AppSSO, Language } from '@/types/app'
 import { useToastContext } from '@/app/components/base/toast'
 import { LanguagesSupported, languages } from '@/i18n/language'
 import Tooltip from '@/app/components/base/tooltip'
-import AppContext, { useAppContext } from '@/context/app-context'
+import { useAppContext } from '@/context/app-context'
 import { useProviderContext } from '@/context/provider-context'
 import { useModalContext } from '@/context/modal-context'
 import type { AppIconSelection } from '@/app/components/base/app-icon-picker'
 import AppIconPicker from '@/app/components/base/app-icon-picker'
 import I18n from '@/context/i18n'
 import cn from '@/utils/classnames'
+import { useGlobalPublicStore } from '@/context/global-public-context'
 
 export type ISettingsModalProps = {
   isChat: boolean
@@ -65,7 +66,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
   onClose,
   onSave,
 }) => {
-  const systemFeatures = useContextSelector(AppContext, state => state.systemFeatures)
+  const { systemFeatures } = useGlobalPublicStore()
   const { isCurrentWorkspaceEditor } = useAppContext()
   const { notify } = useToastContext()
   const [isShowMore, setIsShowMore] = useState(false)
@@ -354,7 +355,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
                 <div className={cn('py-1 text-text-secondary system-sm-semibold')}>{t(`${prefixSettings}.more.entry`)}</div>
                 <p className={cn('pb-0.5 text-text-tertiary body-xs-regular')}>{t(`${prefixSettings}.more.copyRightPlaceholder`)} & {t(`${prefixSettings}.more.privacyPolicyPlaceholder`)}</p>
               </div>
-              <RiArrowRightSLine className='shrink-0 ml-1 w-4 h-4 text-text-secondary'/>
+              <RiArrowRightSLine className='shrink-0 ml-1 w-4 h-4 text-text-secondary' />
             </div>
           )}
           {/* more settings */}

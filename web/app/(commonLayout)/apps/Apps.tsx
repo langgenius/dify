@@ -26,6 +26,7 @@ import { useStore as useTagStore } from '@/app/components/base/tag-management/st
 import TagManagementModal from '@/app/components/base/tag-management'
 import TagFilter from '@/app/components/base/tag-management/filter'
 import CheckboxWithLabel from '@/app/components/datasets/create/website/base/checkbox-with-label'
+import { useGlobalPublicStore } from '@/context/global-public-context'
 
 const getKey = (
   pageIndex: number,
@@ -55,6 +56,7 @@ const Apps = () => {
   const { t } = useTranslation()
   const router = useRouter()
   const { isCurrentWorkspaceEditor, isCurrentWorkspaceDatasetOperator } = useAppContext()
+  const { systemFeatures } = useGlobalPublicStore()
   const showTagManagementModal = useTagStore(s => s.showTagManagementModal)
   const [activeTab, setActiveTab] = useTabSearchParams({
     defaultTab: 'all',
@@ -85,12 +87,16 @@ const Apps = () => {
   ]
 
   useEffect(() => {
-    document.title = `${t('common.menus.apps')} -  Dify`
+    if (systemFeatures.branding.enabled)
+      document.title = `${t('common.menus.apps')} -  ${systemFeatures.branding.application_title}`
+    else
+      document.title = `${t('common.menus.apps')} -  Dify`
+
     if (localStorage.getItem(NEED_REFRESH_APP_LIST_KEY) === '1') {
       localStorage.removeItem(NEED_REFRESH_APP_LIST_KEY)
       mutate()
     }
-  }, [mutate, t])
+  }, [mutate, t, systemFeatures])
 
   useEffect(() => {
     if (isCurrentWorkspaceDatasetOperator)
