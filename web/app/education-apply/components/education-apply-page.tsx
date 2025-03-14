@@ -7,9 +7,13 @@ import { useTranslation } from 'react-i18next'
 import UserInfo from './user-info'
 import SearchInput from './search-input'
 import RoleSelector from './role-selector'
+import Confirm from './verify-state-modal'
 import Button from '@/app/components/base/button'
 import Checkbox from '@/app/components/base/checkbox'
-import { useEducationAdd } from '@/service/use-education'
+import {
+  useEducationAdd,
+  useEducationVerify,
+} from '@/service/use-education'
 
 const EducationApplyAge = () => {
   const { t } = useTranslation()
@@ -18,14 +22,30 @@ const EducationApplyAge = () => {
   const [ageChecked, setAgeChecked] = useState(false)
   const [inSchoolChecked, setInSchoolChecked] = useState(false)
   const {
-    mutate: educationAdd,
+    isPending,
+    mutateAsync: educationAdd,
   } = useEducationAdd({ onSuccess: () => {} })
+  const [modalShow, setShowModal] = useState<undefined | { title: string; desc: string }>(undefined)
+  const { data } = useEducationVerify()
 
   const handleSubmit = () => {
     educationAdd({
-      token: '',
+      token: data?.token || '',
       role,
       institution: schoolName,
+    }).then((res) => {
+      if (res.message === 'success') {
+        setShowModal({
+          title: t('education.successTitle'),
+          desc: t('education.successContent'),
+        })
+      }
+      else {
+        setShowModal({
+          title: t('education.rejectTitle'),
+          desc: t('education.rejectContent'),
+        })
+      }
     })
   }
 
@@ -108,13 +128,20 @@ const EducationApplyAge = () => {
           </div>
           <Button
             variant='primary'
-            disabled={!ageChecked || !inSchoolChecked || !schoolName || !role}
+            disabled={!ageChecked || !inSchoolChecked || !schoolName || !role || isPending}
             onClick={handleSubmit}
           >
             {t('education.submit')}
           </Button>
         </div>
       </div>
+      <Confirm
+        isShow={!!modalShow}
+        title={modalShow?.title || ''}
+        content={modalShow?.desc}
+        onConfirm={() => setShowModal(undefined)}
+        onCancel={() => setShowModal(undefined)}
+      />
     </div>
   )
 }

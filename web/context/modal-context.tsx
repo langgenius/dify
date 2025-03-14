@@ -121,6 +121,10 @@ export const ModalContextProvider = ({
   const [showPricingModal, setShowPricingModal] = useState(searchParams.get('show-pricing') === '1')
   const [showAnnotationFullModal, setShowAnnotationFullModal] = useState(false)
   const handleCancelAccountSettingModal = () => {
+    const action = searchParams.get('action')
+
+    if (action === 'getEducationVerify')
+      router.push(location.pathname, { forceOptimisticNavigation: true } as any)
     setShowAccountSettingModal(null)
     if (showAccountSettingModal?.onCancelCallback)
       showAccountSettingModal?.onCancelCallback()

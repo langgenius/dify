@@ -1,10 +1,21 @@
 import { get, post } from './base'
 import {
   useMutation,
+  useQuery,
 } from '@tanstack/react-query'
 import type { EducationAddParams } from '@/app/education-apply/components/types'
 
 const NAME_SPACE = 'education'
+
+export const useEducationVerify = () => {
+  return useQuery({
+    queryKey: [NAME_SPACE, 'education-verify'],
+    queryFn: () => {
+      return get<{ token: string }>('/account/education/verify')
+    },
+    retry: false,
+  })
+}
 
 export const useEducationAdd = ({
   onSuccess,
@@ -14,7 +25,7 @@ export const useEducationAdd = ({
   return useMutation({
     mutationKey: [NAME_SPACE, 'education-add'],
     mutationFn: (params: EducationAddParams) => {
-      return post('/account/education/add', {
+      return post<{ message: string }>('/account/education', {
         body: params,
       })
     },

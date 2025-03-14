@@ -1,7 +1,10 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { useRouter } from 'next/navigation'
+import {
+  useRouter,
+  useSearchParams,
+} from 'next/navigation'
 import useSWRInfinite from 'swr/infinite'
 import { useTranslation } from 'react-i18next'
 import { useDebounceFn } from 'ahooks'
@@ -26,6 +29,7 @@ import { useStore as useTagStore } from '@/app/components/base/tag-management/st
 import TagManagementModal from '@/app/components/base/tag-management'
 import TagFilter from '@/app/components/base/tag-management/filter'
 import CheckboxWithLabel from '@/app/components/datasets/create/website/base/checkbox-with-label'
+import { useModalContextSelector } from '@/context/modal-context'
 
 const getKey = (
   pageIndex: number,
@@ -131,6 +135,15 @@ const Apps = () => {
     setIsCreatedByMe(newValue)
     setQuery(prev => ({ ...prev, isCreatedByMe: newValue }))
   }, [isCreatedByMe, setQuery])
+
+  const searchParams = useSearchParams()
+  const action = searchParams.get('action')
+  const setShowAccountSettingModal = useModalContextSelector(s => s.setShowAccountSettingModal)
+
+  useEffect(() => {
+    if (action === 'getEducationVerify')
+      setShowAccountSettingModal({ payload: 'billing' })
+  }, [action, setShowAccountSettingModal])
 
   return (
     <>
