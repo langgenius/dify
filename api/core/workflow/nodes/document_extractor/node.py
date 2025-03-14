@@ -2,7 +2,6 @@ import csv
 import io
 import json
 import logging
-import operator
 import os
 import tempfile
 from collections.abc import Mapping, Sequence
@@ -12,6 +11,9 @@ import docx
 import pandas as pd
 import pypdfium2  # type: ignore
 import yaml  # type: ignore
+from docx.document import Document
+from docx.oxml.table import CT_Tbl
+from docx.oxml.text.paragraph import CT_P
 from docx.table import Table
 from docx.text.paragraph import Paragraph
 
@@ -231,6 +233,13 @@ def _extract_text_from_doc(file_content: bytes) -> str:
         raise TextExtractionError(f"Failed to extract text from DOC: {str(e)}") from e
 
 
+def paser_docx_part(block, doc: Document, content_items, i):
+    if isinstance(block, CT_P):
+        content_items.append((i, "paragraph", Paragraph(block, doc)))
+    elif isinstance(block, CT_Tbl):
+        content_items.append((i, "table", Table(block, doc)))
+
+
 def _extract_text_from_docx(file_content: bytes) -> str:
     """
     Extract text from a DOCX file.
@@ -244,16 +253,13 @@ def _extract_text_from_docx(file_content: bytes) -> str:
         # Keep track of paragraph and table positions
         content_items: list[tuple[int, str, Table | Paragraph]] = []
 
-        # Process paragraphs and tables
-        for i, paragraph in enumerate(doc.paragraphs):
-            if paragraph.text.strip():
-                content_items.append((i, "paragraph", paragraph))
-
-        for i, table in enumerate(doc.tables):
-            content_items.append((i, "table", table))
-
-        # Sort content items based on their original position
-        content_items.sort(key=operator.itemgetter(0))
+        it = iter(doc.element.body)
+        part = next(it, None)
+        i = 0
+        while part is not None:
+            paser_docx_part(part, doc, content_items, i)
+            i = i + 1
+            part = next(it, None)
 
         # Process sorted content
         for _, item_type, item in content_items:

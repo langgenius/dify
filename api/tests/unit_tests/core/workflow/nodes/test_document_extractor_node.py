@@ -1,6 +1,7 @@
 from unittest.mock import Mock, patch
 
 import pytest
+from docx.oxml.text.paragraph import CT_P
 
 from core.file import File, FileTransferMethod
 from core.variables import ArrayFileSegment
@@ -169,7 +170,12 @@ def test_extract_text_from_docx(mock_document):
     mock_paragraph2 = Mock()
     mock_paragraph2.text = "Paragraph 2"
     mock_document.return_value.paragraphs = [mock_paragraph1, mock_paragraph2]
-
+    mock_ct_p1 = Mock(spec=CT_P)
+    mock_ct_p1.text = "Paragraph 1"
+    mock_ct_p2 = Mock(spec=CT_P)
+    mock_ct_p2.text = "Paragraph 2"
+    mock_element = Mock(body=[mock_ct_p1, mock_ct_p2])
+    mock_document.return_value.element = mock_element
     text = _extract_text_from_docx(b"PK\x03\x04")
     assert text == "Paragraph 1\nParagraph 2"
 
