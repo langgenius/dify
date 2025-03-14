@@ -157,35 +157,35 @@ class FeatureService:
         enterprise_info = EnterpriseService.get_info()
 
         if "SSOEnforcedForSignin" in enterprise_info:
-            features.sso_enforced_for_signin = enterprise_info["sso_enforced_for_signin"]
+            features.sso_enforced_for_signin = enterprise_info["SSOEnforcedForSignin"]
 
         if "SSOEnforcedForSigninProtocol" in enterprise_info:
-            features.sso_enforced_for_signin_protocol = enterprise_info["sso_enforced_for_signin_protocol"]
+            features.sso_enforced_for_signin_protocol = enterprise_info["SSOEnforcedForSigninProtocol"]
 
         if "SSOEnforcedForWeb" in enterprise_info:
-            features.sso_enforced_for_web = enterprise_info["sso_enforced_for_web"]
+            features.sso_enforced_for_web = enterprise_info["SSOEnforcedForWeb"]
 
         if "SSOEnforcedForWebProtocol" in enterprise_info:
-            features.sso_enforced_for_web_protocol = enterprise_info["sso_enforced_for_web_protocol"]
+            features.sso_enforced_for_web_protocol = enterprise_info["SSOEnforcedForWebProtocol"]
 
         if "EnableEmailCodeLogin" in enterprise_info:
-            features.enable_email_code_login = enterprise_info["enable_email_code_login"]
+            features.enable_email_code_login = enterprise_info["EnableEmailCodeLogin"]
 
         if "EnableEmailPasswordLogin" in enterprise_info:
-            features.enable_email_password_login = enterprise_info["enable_email_password_login"]
+            features.enable_email_password_login = enterprise_info["EnableEmailPasswordLogin"]
 
         if "IsAllowRegister" in enterprise_info:
-            features.is_allow_register = enterprise_info["is_allow_register"]
+            features.is_allow_register = enterprise_info["IsAllowRegister"]
 
         if "IsAllowCreateWorkspace" in enterprise_info:
-            features.is_allow_create_workspace = enterprise_info["is_allow_create_workspace"]
+            features.is_allow_create_workspace = enterprise_info["IsAllowCreateWorkspace"]
 
         if "Branding" in enterprise_info:
-            features.branding.enabled = enterprise_info["branding"].get("enabled", False)
-            features.branding.application_title = enterprise_info["branding"].get("applicationTitle", "")
-            features.branding.login_page_logo = enterprise_info["branding"].get("loginPageLogo", "")
-            features.branding.workspace_logo = enterprise_info["branding"].get("workspaceLogo", "")
-            features.branding.favicon = enterprise_info["branding"].get("favicon", "")
+            features.branding.enabled = enterprise_info["Branding"].get("enabled", False)
+            features.branding.application_title = enterprise_info["Branding"].get("applicationTitle", "")
+            features.branding.login_page_logo = enterprise_info["Branding"].get("loginPageLogo", "")
+            features.branding.workspace_logo = enterprise_info["Branding"].get("workspaceLogo", "")
+            features.branding.favicon = enterprise_info["Branding"].get("favicon", "")
 
         if "License" in enterprise_info:
             license_info = enterprise_info["License"]
