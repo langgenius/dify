@@ -1,6 +1,6 @@
 import React, { type FC, useCallback, useState } from 'react'
 import Modal from '../../../../../base/modal'
-import { type StructuredOutput, Type } from '../../types'
+import { type Field, Type } from '../../types'
 import { RiBracesLine, RiCloseLine, RiExternalLinkLine, RiTimelineView } from '@remixicon/react'
 import { SegmentedControl } from '../../../../../base/segmented-control'
 import JsonSchemaGenerator from './json-schema-generator'
@@ -8,11 +8,12 @@ import Divider from '@/app/components/base/divider'
 import JsonImporter from './json-importer'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
+import VisualEditor from './visual-editor'
 
 type JsonSchemaConfigModalProps = {
   isShow: boolean
-  defaultSchema: StructuredOutput
-  onSave: (schema: StructuredOutput) => void
+  defaultSchema?: Field
+  onSave: (schema: Field) => void
   onClose: () => void
 }
 
@@ -21,18 +22,16 @@ enum SchemaView {
   JsonSchema = 'jsonSchema',
 }
 
-const options = [
+const VIEW_TABS = [
   { Icon: RiTimelineView, text: 'Visual Editor', value: SchemaView.VisualEditor },
   { Icon: RiBracesLine, text: 'JSON Schema', value: SchemaView.JsonSchema },
 ]
 
-const DEFAULT_SCHEMA = {
-  schema: {
-    type: Type.object,
-    properties: {},
-    required: [],
-    additionalProperties: false,
-  },
+const DEFAULT_SCHEMA: Field = {
+  type: Type.object,
+  properties: {},
+  required: [],
+  additionalProperties: false,
 }
 
 const JsonSchemaConfigModal: FC<JsonSchemaConfigModalProps> = ({
@@ -54,6 +53,10 @@ const JsonSchemaConfigModal: FC<JsonSchemaConfigModalProps> = ({
 
   const handleSubmit = useCallback(() => {}, [])
 
+  const handleUpdateSchema = useCallback((schema: Field) => {
+    setJsonSchema(schema)
+  }, [])
+
   const handleResetDefaults = useCallback(() => {
     setJsonSchema(defaultSchema || DEFAULT_SCHEMA)
   }, [defaultSchema])
@@ -73,7 +76,7 @@ const JsonSchemaConfigModal: FC<JsonSchemaConfigModalProps> = ({
       onClose={onClose}
       className='max-w-[960px] h-[800px] p-0'
     >
-      <div className='flex flex-col'>
+      <div className='flex flex-col h-full'>
         {/* Header */}
         <div className='relative flex p-6 pr-14 pb-3'>
           <div className='text-text-primary title-2xl-semi-bold grow truncate'>
@@ -87,7 +90,7 @@ const JsonSchemaConfigModal: FC<JsonSchemaConfigModalProps> = ({
         <div className='flex items-center justify-between px-6 py-2'>
           {/* Tab */}
           <SegmentedControl<SchemaView>
-            options={options}
+            options={VIEW_TABS}
             value={currentTab}
             onChange={(value: SchemaView) => {
               setCurrentTab(value)
@@ -108,8 +111,15 @@ const JsonSchemaConfigModal: FC<JsonSchemaConfigModalProps> = ({
           </div>
         </div>
         <div className='px-6 grow'>
-          {currentTab === SchemaView.VisualEditor && <div className='h-full bg-components-input-bg-normal'>Visual Editor</div>}
-          {currentTab === SchemaView.JsonSchema && <div className='h-full bg-components-input-bg-normal'>JSON Schema</div>}
+          {currentTab === SchemaView.VisualEditor && (
+            <VisualEditor
+              schema={jsonSchema}
+              onChange={handleUpdateSchema}
+            />
+          )}
+          {currentTab === SchemaView.JsonSchema && (
+            <div className='h-full rounded-xl bg-components-input-bg-normal'>JSON Schema</div>
+          )}
         </div>
         {/* Footer */}
         <div className='flex items-center p-6 pt-5 gap-x-2'>

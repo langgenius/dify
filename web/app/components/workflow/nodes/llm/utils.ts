@@ -12,3 +12,13 @@ export const getFieldType = (field: Field) => {
 
   return ArrayType[items.type]
 }
+
+export const getHasChildren = (schema: Field) => {
+  const complexTypes = [Type.object, Type.array]
+  if (!complexTypes.includes(schema.type))
+    return false
+  if (schema.type === Type.object)
+    return schema.properties && Object.keys(schema.properties).length > 0
+  if (schema.type === Type.array)
+    return schema.items && schema.items.type === Type.object && schema.items.properties && Object.keys(schema.items.properties).length > 0
+}

@@ -35,6 +35,9 @@ export enum ArrayType {
 export type TypeWithArray = Type | ArrayType
 
 type ArrayItemType = Exclude<Type, Type.array>
+export type ArrayItems = Omit<Field, 'type'> & { type: ArrayItemType }
+
+export type SchemaEnumType = string[] | number[]
 
 export type Field = {
   type: Type
@@ -43,18 +46,18 @@ export type Field = {
   }
   required?: string[] // Key of required properties in object
   description?: string
-  items?: { // Array has items. Define the item type
-    type: ArrayItemType
-  }
-  enum?: string[] // Enum values
+  items?: ArrayItems // Array has items. Define the item type
+  enum?: SchemaEnumType // Enum values
   additionalProperties?: false // Required in object by api. Just set false
 }
 
 export type StructuredOutput = {
-  schema: {
-    type: Type.object,
-    properties: Record<string, Field>
-    required: string[]
-    additionalProperties: false
-  }
+  schema: SchemaRoot
+}
+
+export type SchemaRoot = {
+  type: Type.object
+  properties: Record<string, Field>
+  required?: string[]
+  additionalProperties: false
 }

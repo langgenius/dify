@@ -33,7 +33,7 @@ html[data-theme="light"] {
       rgba(240, 68, 56, 0.25) 0%,
       rgba(255, 255, 255, 0) 100%);
   --color-toast-info-bg: linear-gradient(92deg,
-      rgba(11, 165, 236, 0.25) 0%),
+      rgba(11, 165, 236, 0.25) 0%);
   --color-account-teams-bg: linear-gradient(271deg,
     rgba(249, 250, 251, 0.9) -0.1%,
     rgba(242, 244, 247, 0.9) 98.26%
@@ -61,4 +61,5 @@ html[data-theme="light"] {
     180deg,
     rgba(200, 206, 218, 0.2) 0%,
     rgba(255, 255, 255, 0) 100%);
+  --color-line-divider-bg: linear-gradient(90deg, rgba(16, 24, 40, 0.08) 0%, rgba(255, 255, 255, 0) 100%);
 }

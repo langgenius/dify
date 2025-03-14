@@ -1,5 +1,5 @@
 import React, { type FC, useCallback, useRef, useState } from 'react'
-import type { StructuredOutput } from '../../../types'
+import type { SchemaRoot } from '../../../types'
 import { RiArrowLeftLine, RiClipboardLine, RiCloseLine, RiSparklingLine } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
 import Editor from '@monaco-editor/react'
@@ -7,7 +7,7 @@ import copy from 'copy-to-clipboard'
 import Button from '@/app/components/base/button'
 
 type GeneratedResultProps = {
-  schema: StructuredOutput
+  schema: SchemaRoot
   onBack: () => void
   onRegenerate: () => void
   onClose: () => void

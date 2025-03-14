@@ -426,6 +426,13 @@ const translation = {
         apply: 'Apply',
         doc: 'Learn more about structured output',
         resetDefaults: 'Reset Defaults',
+        required: 'required',
+        addField: 'Add Field',
+        addChildField: 'Add Child Field',
+        showAdvancedOptions: 'Show advanced options',
+        stringValidations: 'String Validations',
+        fieldNamePlaceholder: 'Field Name',
+        descriptionPlaceholder: 'Add description',
       },
     },
     knowledgeRetrieval: {

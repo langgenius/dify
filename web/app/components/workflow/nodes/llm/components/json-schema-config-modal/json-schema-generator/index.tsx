@@ -1,5 +1,5 @@
 import React, { type FC, useCallback, useState } from 'react'
-import { type StructuredOutput, Type } from '../../../types'
+import { type SchemaRoot, Type } from '../../../types'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
@@ -13,7 +13,7 @@ import PromptEditor from './prompt-editor'
 import GeneratedResult from './generated-result'
 
 type JsonSchemaGeneratorProps = {
-  onApply: (schema: StructuredOutput) => void
+  onApply: (schema: SchemaRoot) => void
   crossAxisOffset?: number
 }
 
@@ -30,7 +30,7 @@ export const JsonSchemaGenerator: FC<JsonSchemaGeneratorProps> = ({
   const { theme } = useTheme()
   const [view, setView] = useState(GeneratorView.promptEditor)
   const [instruction, setInstruction] = useState('')
-  const [schema, setSchema] = useState<StructuredOutput | null>(null)
+  const [schema, setSchema] = useState<SchemaRoot | null>(null)
   const SchemaGenerator = theme === Theme.light ? SchemaGeneratorLight : SchemaGeneratorDark
 
   const handleTrigger = useCallback((e: React.MouseEvent<HTMLElement, MouseEvent>) => {
@@ -47,23 +47,21 @@ export const JsonSchemaGenerator: FC<JsonSchemaGeneratorProps> = ({
     await new Promise<void>((resolve) => {
       setTimeout(() => {
         setSchema({
-          schema: {
-            type: Type.object,
-            properties: {
-              string_field_1: {
-                type: Type.string,
-                description: '可为空可为空可为空可为空可为空可为空可为空可为空可为空可为空',
-              },
-              string_field_2: {
-                type: Type.string,
-                description: '可为空可为空可为空可为空可为空可为空可为空可为空可为空可为空',
-              },
+          type: Type.object,
+          properties: {
+            string_field_1: {
+              type: Type.string,
+              description: '可为空可为空可为空可为空可为空可为空可为空可为空可为空可为空',
             },
-            required: [
-              'string_field_1',
-            ],
-            additionalProperties: false,
+            string_field_2: {
+              type: Type.string,
+              description: '可为空可为空可为空可为空可为空可为空可为空可为空可为空可为空',
+            },
           },
+          required: [
+            'string_field_1',
+          ],
+          additionalProperties: false,
         })
         resolve()
       }, 1000)

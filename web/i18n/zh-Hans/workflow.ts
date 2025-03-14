@@ -426,6 +426,13 @@ const translation = {
         apply: '应用',
         doc: '了解有关结构化输出的更多信息',
         resetDefaults: '恢复默认值',
+        required: '必填',
+        addField: '添加字段',
+        addChildField: '添加子字段',
+        showAdvancedOptions: '显示高级选项',
+        stringValidations: '字符串验证',
+        fieldNamePlaceholder: '字段名',
+        descriptionPlaceholder: '添加描述',
       },
     },
     knowledgeRetrieval: {
