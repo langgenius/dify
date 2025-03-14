@@ -148,6 +148,10 @@ class Vector:
                 from core.rag.datasource.vdb.oceanbase.oceanbase_vector import OceanBaseVectorFactory
 
                 return OceanBaseVectorFactory
+            case VectorType.OPENGAUSS:
+                from core.rag.datasource.vdb.opengauss.opengauss import OpenGaussFactory
+
+                return OpenGaussFactory
             case _:
                 raise ValueError(f"Vector store {vector_type} is not supported.")
 
