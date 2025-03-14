@@ -878,6 +878,7 @@ class GraphEngine:
         new_instance = copy(self)
         new_instance.graph_runtime_state = copy(self.graph_runtime_state)
         new_instance.graph_runtime_state.variable_pool = deepcopy(self.graph_runtime_state.variable_pool)
+        new_instance.graph_runtime_state.total_tokens = 0
         return new_instance
 
     def _handle_continue_on_error(
