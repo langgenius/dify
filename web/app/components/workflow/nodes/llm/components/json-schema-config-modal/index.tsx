@@ -9,6 +9,7 @@ import JsonImporter from './json-importer'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import VisualEditor from './visual-editor'
+import SchemaEditor from './schema-editor'
 
 type JsonSchemaConfigModalProps = {
   isShow: boolean
@@ -43,6 +44,7 @@ const JsonSchemaConfigModal: FC<JsonSchemaConfigModalProps> = ({
   const { t } = useTranslation()
   const [currentTab, setCurrentTab] = useState(SchemaView.VisualEditor)
   const [jsonSchema, setJsonSchema] = useState(defaultSchema || DEFAULT_SCHEMA)
+  const [json, setJson] = useState(JSON.stringify(jsonSchema, null, 2))
   const [btnWidth, setBtnWidth] = useState(0)
 
   const updateBtnWidth = useCallback((width: number) => {
@@ -55,6 +57,10 @@ const JsonSchemaConfigModal: FC<JsonSchemaConfigModalProps> = ({
 
   const handleUpdateSchema = useCallback((schema: Field) => {
     setJsonSchema(schema)
+  }, [])
+
+  const handleSchemaEditorUpdate = useCallback((schema: string) => {
+    setJson(schema)
   }, [])
 
   const handleResetDefaults = useCallback(() => {
@@ -118,7 +124,10 @@ const JsonSchemaConfigModal: FC<JsonSchemaConfigModalProps> = ({
             />
           )}
           {currentTab === SchemaView.JsonSchema && (
-            <div className='h-full rounded-xl bg-components-input-bg-normal'>JSON Schema</div>
+            <SchemaEditor
+              schema={json}
+              onUpdate={handleSchemaEditorUpdate}
+            />
           )}
         </div>
         {/* Footer */}

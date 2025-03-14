@@ -166,7 +166,6 @@ const JsonImporter: FC<JsonImporterProps> = ({
                       alwaysConsumeMouseWheel: false,
                     },
                   }}
-
                 />
               </div>
             </div>

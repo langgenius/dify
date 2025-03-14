@@ -131,7 +131,6 @@ const GeneratedResult: FC<GeneratedResultProps> = ({
                   alwaysConsumeMouseWheel: false,
                 },
               }}
-
             />
           </div>
         </div>
