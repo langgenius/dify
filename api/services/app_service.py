@@ -19,7 +19,7 @@ from core.tools.utils.configuration import ToolParameterConfigurationManager
 from events.app_event import app_was_created
 from extensions.ext_database import db
 from models.account import Account
-from models.model import App, AppMode, AppModelConfig
+from models.model import App, AppMode, AppModelConfig, Site
 from models.tools import ApiToolProvider
 from services.tag_service import TagService
 from tasks.remove_app_and_related_data_task import remove_app_and_related_data_task
@@ -229,6 +229,18 @@ class AppService:
         app.use_icon_as_answer_icon = args.get("use_icon_as_answer_icon", False)
         app.updated_by = current_user.id
         app.updated_at = datetime.now(UTC).replace(tzinfo=None)
+        
+        site = db.session.query(Site).filter(Site.app_id == app.id).first()
+        if site:
+            site.title = app.name
+            site.description = app.description
+            site.icon_type = app.icon_type
+            site.icon = app.icon
+            site.icon_background = app.icon_background
+            site.use_icon_as_answer_icon = app.use_icon_as_answer_icon
+            site.updated_by = current_user.id
+            site.updated_at = datetime.now(UTC).replace(tzinfo=None)
+        
         db.session.commit()
 
         if app.max_active_requests is not None:
@@ -246,6 +258,13 @@ class AppService:
         app.name = name
         app.updated_by = current_user.id
         app.updated_at = datetime.now(UTC).replace(tzinfo=None)
+        
+        site = db.session.query(Site).filter(Site.app_id == app.id).first()
+        if site:
+            site.title = name
+            site.updated_by = current_user.id
+            site.updated_at = datetime.now(UTC).replace(tzinfo=None)
+        
         db.session.commit()
 
         return app
@@ -262,6 +281,14 @@ class AppService:
         app.icon_background = icon_background
         app.updated_by = current_user.id
         app.updated_at = datetime.now(UTC).replace(tzinfo=None)
+        
+        site = db.session.query(Site).filter(Site.app_id == app.id).first()
+        if site:
+            site.icon = icon
+            site.icon_background = icon_background
+            site.updated_by = current_user.id
+            site.updated_at = datetime.now(UTC).replace(tzinfo=None)
+        
         db.session.commit()
 
         return app
