@@ -129,7 +129,7 @@ const ChatWrapper = () => {
       inputs: currentConversationId ? currentConversationItem?.inputs : newConversationInputs,
       conversation_id: currentConversationId,
       parent_message_id: (isRegenerate ? parentAnswer?.id : getLastAnswer(chatList)?.id) || null,
-      isInternet: !!isInternet,
+      internet: isInternet ? '是' : '否',
     }
 
     handleSend(
