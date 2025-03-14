@@ -7,7 +7,6 @@ on:
   workflow_dispatch:
 
 env:
-  DOCKERHUB_REPO: registry.cn-hangzhou.aliyuncs.com/kindlingx/apo-dify-web
   REGISTRY_HOST: registry.cn-hangzhou.aliyuncs.com
   CONTAINER_NAME: dify-web
   DEPLOYMENT_NAME: apo-dify-web
@@ -56,8 +55,7 @@ jobs:
         with:
           context: ./web
           push: true
-          tags: |
-            ${{ env.DOCKERHUB_REPO }}:${{ env.IMAGE_FULL_TAG_AMD64 }}
+          tags: ${{ env.IMAGE_FULL_TAG_AMD64 }}
 
   deploy-dev:
     runs-on: [self-hosted, dev]
