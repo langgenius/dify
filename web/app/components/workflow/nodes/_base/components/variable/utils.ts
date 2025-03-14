@@ -656,10 +656,30 @@ export const getVarType = ({
 
   let type: VarType = VarType.string
   let curr: any = targetVar.vars
+
   if (isSystem || isEnv || isChatVar) {
     return curr.find((v: any) => v.variable === (valueSelector as ValueSelector).join('.'))?.type
   }
   else {
+    const targetVar = curr.find((v: any) => v.variable === valueSelector[1])
+    if (!targetVar)
+      return VarType.string
+
+    const isStructuredOutputVar = !!targetVar.children.schema?.properties
+    if (isStructuredOutputVar) {
+      let currProperties = targetVar.children.schema;
+      (valueSelector as ValueSelector).slice(2).forEach((key, i) => {
+        const isLast = i === valueSelector.length - 3
+        if (!currProperties)
+          return
+
+        currProperties = currProperties.properties[key]
+        if (isLast)
+          type = structTypeToVarType(currProperties?.type)
+      })
+      return type
+    }
+
     (valueSelector as ValueSelector).slice(1).forEach((key, i) => {
       const isLast = i === valueSelector.length - 2
       if (Array.isArray(curr))

@@ -13,7 +13,7 @@ import { useStoreApi } from 'reactflow'
 import RemoveButton from '../remove-button'
 import useAvailableVarList from '../../hooks/use-available-var-list'
 import VarReferencePopup from './var-reference-popup'
-import { getNodeInfoById, isConversationVar, isENV, isSystemVar } from './utils'
+import { getNodeInfoById, isConversationVar, isENV, isSystemVar, varTypeToStructType } from './utils'
 import ConstantField from './constant-field'
 import cn from '@/utils/classnames'
 import type { Node, NodeOutPutVar, ValueSelector, Var } from '@/app/components/workflow/types'
@@ -39,7 +39,6 @@ import Badge from '@/app/components/base/badge'
 import Tooltip from '@/app/components/base/tooltip'
 import { isExceptionVariable } from '@/app/components/workflow/utils'
 import VarFullPathPanel from './var-full-path-panel'
-import { Type } from '../../../llm/types'
 
 const TRIGGER_DEFAULT_WIDTH = 227
 
@@ -262,7 +261,7 @@ const VarReferencePicker: FC<Props> = ({
         <VarFullPathPanel
           nodeName={outputVarNode?.title}
           path={(value as ValueSelector).slice(1)}
-          varType={Type.string}
+          varType={varTypeToStructType(type)}
           nodeType={outputVarNode?.type}
         />)
     }
@@ -270,7 +269,7 @@ const VarReferencePicker: FC<Props> = ({
       return t('workflow.errorMsg.invalidVariable')
 
     return null
-  }, [isValidVar, isShowAPart, hasValue, t, outputVarNode?.title, outputVarNode?.type, value])
+  }, [isValidVar, isShowAPart, hasValue, t, outputVarNode?.title, outputVarNode?.type, value, type])
   return (
     <div className={cn(className, !readonly && 'cursor-pointer')}>
       <PortalToFollowElem
