@@ -41,6 +41,7 @@ const Sidebar = ({ isPanel }: Props) => {
     sidebarCollapseState,
     handleSidebarCollapse,
     isMobile,
+    isResponding,
   } = useChatWithHistoryContext()
   const isSidebarCollapsed = sidebarCollapseState
 
@@ -105,7 +106,7 @@ const Sidebar = ({ isPanel }: Props) => {
         )}
       </div>
       <div className='shrink-0 px-3 py-4'>
-        <Button variant='secondary-accent' className='w-full justify-center' onClick={handleNewConversation}>
+        <Button variant='secondary-accent' disabled={isResponding} className='w-full justify-center' onClick={handleNewConversation}>
           <RiEditBoxLine className='w-4 h-4 mr-1' />
           {t('share.chat.newChat')}
         </Button>
