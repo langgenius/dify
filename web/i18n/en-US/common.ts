@@ -131,6 +131,7 @@ const translation = {
     status: 'beta',
     explore: 'Explore',
     apps: 'Studio',
+    appDetail: 'App Detail',
     plugins: 'Plugins',
     pluginsTips: 'Integrate third-party plugins or create ChatGPT-compatible AI-Plugins.',
     datasets: 'Knowledge',

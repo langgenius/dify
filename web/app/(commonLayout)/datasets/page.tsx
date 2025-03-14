@@ -1,11 +1,12 @@
+'use client'
+import { useTranslation } from 'react-i18next'
 import Container from './Container'
+import useDocumentTitle from '@/hooks/use-document-title'
 
-const AppList = async () => {
+const AppList = () => {
+  const { t } = useTranslation()
+  useDocumentTitle(t('common.menus.datasets'))
   return <Container />
-}
-
-export const metadata = {
-  title: 'Datasets - Dify',
 }
 
 export default AppList

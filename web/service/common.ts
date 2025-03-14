@@ -36,6 +36,7 @@ import type {
   ModelTypeEnum,
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { RETRIEVE_METHOD } from '@/types/app'
+import type { SystemFeatures } from '@/types/feature'
 
 type LoginSuccess = {
   result: 'success'
@@ -301,6 +302,10 @@ type RetrievalMethodsRes = {
 }
 export const fetchSupportRetrievalMethods: Fetcher<RetrievalMethodsRes, string> = (url) => {
   return get<RetrievalMethodsRes>(url)
+}
+
+export const getSystemFeatures = () => {
+  return get<SystemFeatures>('/system-features')
 }
 
 export const enableModel = (url: string, body: { model: string; model_type: ModelTypeEnum }) =>

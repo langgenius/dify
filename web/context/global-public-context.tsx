@@ -5,7 +5,7 @@ import type { FC, PropsWithChildren } from 'react'
 import { useEffect } from 'react'
 import type { SystemFeatures } from '@/types/feature'
 import { defaultSystemFeatures } from '@/types/feature'
-import { fetchSystemFeatures } from '@/service/share'
+import { getSystemFeatures } from '@/service/common'
 
 type GlobalPublicStore = {
   systemFeatures: SystemFeatures
@@ -22,7 +22,7 @@ const GlobalPublicStoreProvider: FC<PropsWithChildren> = ({
 }) => {
   const { data } = useQuery({
     queryKey: ['systemFeatures'],
-    queryFn: fetchSystemFeatures,
+    queryFn: getSystemFeatures,
   })
   const { setSystemFeatures } = useGlobalPublicStore()
   useEffect(() => {

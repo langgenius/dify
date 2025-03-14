@@ -7,7 +7,9 @@ import { TanstackQueryIniter } from '@/context/query-client'
 import './styles/globals.css'
 import './styles/markdown.scss'
 import GlobalPublicStoreProvider from '@/context/global-public-context'
-import { fetchSystemFeatures } from '@/service/share'
+import type { SystemFeatures } from '@/types/feature'
+import { defaultSystemFeatures } from '@/types/feature'
+import { API_PREFIX } from '@/config'
 
 export const viewport: Viewport = {
   width: 'device-width',
@@ -18,12 +20,19 @@ export const viewport: Viewport = {
 }
 
 export async function generateMetadata(): Promise<Metadata> {
-  const config = await fetchSystemFeatures()
-  if (config.branding.enabled)
-    return { title: config.branding.application_title ?? '-', icons: config.branding.favicon }
-
+  const ret = await fetch(`${API_PREFIX}/system-features`, { cache: 'no-cache' }).then(res => res.json())
+  const config: SystemFeatures = { ...defaultSystemFeatures, ...ret.data }
+  if (config.branding.enabled) {
+    return {
+      title: { template: `%s - ${config.branding.application_title}`, default: config.branding.application_title },
+      icons: config.branding.favicon,
+    }
+  }
   return {
-    title: 'Dify',
+    title: {
+      template: '%s - Dify',
+      default: 'Dify',
+    },
   }
 }
 

@@ -61,6 +61,6 @@ export const defaultSystemFeatures: SystemFeatures = {
     login_page_logo: '',
     workspace_logo: '',
     favicon: '',
-    application_title: '',
+    application_title: 'test title',
   },
 }

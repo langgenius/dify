@@ -1,3 +1,4 @@
+'use client'
 import Header from './_header'
 import style from './page.module.css'
 

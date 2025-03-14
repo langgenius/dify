@@ -127,6 +127,7 @@ const translation = {
     status: 'beta',
     explore: '探索',
     apps: '工作室',
+    appDetail: '應用詳情',
     plugins: '外掛',
     pluginsTips: '整合第三方外掛或建立與 ChatGPT 相容的 AI 外掛。',
     datasets: '知識庫',

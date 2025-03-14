@@ -1,5 +1,6 @@
 import React from 'react'
 import type { ReactNode } from 'react'
+import { t } from 'i18next'
 import Header from './header'
 import SwrInitor from '@/app/components/swr-initor'
 import { AppContextProvider } from '@/context/app-context'
@@ -34,7 +35,7 @@ const Layout = ({ children }: { children: ReactNode }) => {
 }
 
 export const metadata = {
-  title: 'Dify',
+  title: t('common.menus.account'),
 }
 
 export default Layout

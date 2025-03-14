@@ -131,6 +131,7 @@ const translation = {
     status: 'ベータ版',
     explore: '探索',
     apps: 'スタジオ',
+    appDetail: 'アプリの詳細',
     plugins: 'プラグイン',
     pluginsTips: 'サードパーティのプラグインを統合するか、ChatGPT互換のAIプラグインを作成します。',
     datasets: 'ナレッジ',
