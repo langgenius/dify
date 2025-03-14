@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { Fragment, useMemo } from 'react'
 import { useContext } from 'use-context-selector'
 import { Menu, Transition } from '@headlessui/react'
-import { CheckIcon, ChevronDownIcon } from '@heroicons/react/24/outline'
+import { CheckIcon } from '@heroicons/react/24/outline'
 import s from './index.module.css'
 import { useProviderContext } from '@/context/provider-context'
 import cn from '@/utils/classnames'
@@ -90,15 +90,15 @@ const Operation = ({
       {
         ({ open }) => (
           <>
-            <Menu.Button className={cn(
+            <Menu.Button disabled className={cn(
               `
                   group flex items-center justify-between w-full h-full
-                  hover:bg-gray-100 cursor-pointer ${open && 'bg-gray-100'}
+                ${open && 'bg-gray-100'}
                   text-[13px] text-gray-700 px-3
                 `,
             )}>
               {RoleMap[member.role] || RoleMap.normal}
-              <ChevronDownIcon className={`w-4 h-4 group-hover:block ${open ? 'block' : 'hidden'}`} />
+              {/* <ChevronDownIcon className={`w-4 h-4 group-hover:block ${open ? 'block' : 'hidden'}`} /> */}
             </Menu.Button>
             <Transition
               as={Fragment}

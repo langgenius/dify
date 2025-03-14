@@ -5,7 +5,6 @@ import dayjs from 'dayjs'
 import 'dayjs/locale/zh-cn'
 import relativeTime from 'dayjs/plugin/relativeTime'
 import { useContext } from 'use-context-selector'
-import { RiUserAddLine } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
 import InviteModal from './invite-modal'
 import InvitedModal from './invited-modal'
@@ -75,14 +74,14 @@ const MembersPage = () => {
           {isMemberFull && (
             <UpgradeBtn className='mr-2' loc='member-invite' />
           )}
-          <div className={
+          {/* <div className={
             `shrink-0 flex items-center py-[7px] px-3 border-[0.5px] border-gray-200
             text-[13px] font-medium text-primary-600 bg-white
             shadow-xs rounded-lg ${(isCurrentWorkspaceManager && !isMemberFull) ? 'cursor-pointer' : 'grayscale opacity-50 cursor-default'}`
           } onClick={() => (isCurrentWorkspaceManager && !isMemberFull) && setInviteModalVisible(true)}>
             <RiUserAddLine className='w-4 h-4 mr-2 ' />
             {t('common.members.invite')}
-          </div>
+          </div> */}
         </div>
         <div className='overflow-visible lg:overflow-visible'>
           <div className='flex items-center py-[7px] border-b border-divider-regular min-w-[480px]'>
