@@ -6,6 +6,7 @@ import { useEffect } from 'react'
 import type { SystemFeatures } from '@/types/feature'
 import { defaultSystemFeatures } from '@/types/feature'
 import { getSystemFeatures } from '@/service/common'
+import Loading from '@/app/components/base/loading'
 
 type GlobalPublicStore = {
   systemFeatures: SystemFeatures
@@ -20,7 +21,7 @@ export const useGlobalPublicStore = create<GlobalPublicStore>(set => ({
 const GlobalPublicStoreProvider: FC<PropsWithChildren> = ({
   children,
 }) => {
-  const { data } = useQuery({
+  const { isPending, data } = useQuery({
     queryKey: ['systemFeatures'],
     queryFn: getSystemFeatures,
   })
@@ -29,6 +30,8 @@ const GlobalPublicStoreProvider: FC<PropsWithChildren> = ({
     if (data)
       setSystemFeatures({ ...defaultSystemFeatures, ...data })
   }, [data, setSystemFeatures])
+  if (isPending)
+    return <div className='w-screen h-screen flex items-center justify-center'><Loading /></div>
   return <>{children}</>
 }
 export default GlobalPublicStoreProvider
