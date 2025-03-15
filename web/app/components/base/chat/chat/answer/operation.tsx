@@ -8,7 +8,7 @@ import { useTranslation } from 'react-i18next'
 import {
   RiClipboardLine,
   RiEditLine,
-  RiReplay15Line,
+  RiResetLeftLine,
   RiThumbDownLine,
   RiThumbUpLine,
 } from '@remixicon/react'
@@ -130,7 +130,7 @@ const Operation: FC<OperationProps> = ({
             </ActionButton>
             {!noChatInput && (
               <ActionButton onClick={() => onRegenerate?.(item)}>
-                <RiReplay15Line className='w-4 h-4' />
+                <RiResetLeftLine className='w-4 h-4' />
               </ActionButton>
             )}
             {(config?.supportAnnotation && config.annotation_reply?.enabled) && (

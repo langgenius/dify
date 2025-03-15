@@ -2,7 +2,7 @@ x-shared-env: &shared-api-worker-env
 services:
   # API service
   api:
-    image: langgenius/dify-api:1.0.0
+    image: langgenius/dify-api:1.0.1
     restart: always
     environment:
       # Use the shared environment variables.
@@ -29,7 +29,7 @@ services:
   # worker service
   # The Celery worker for processing the queue.
   worker:
-    image: langgenius/dify-api:1.0.0
+    image: langgenius/dify-api:1.0.1
     restart: always
     environment:
       # Use the shared environment variables.
@@ -53,7 +53,7 @@ services:
 
   # Frontend web application.
   web:
-    image: langgenius/dify-web:1.0.0
+    image: langgenius/dify-web:1.0.1
     restart: always
     environment:
       CONSOLE_API_URL: ${CONSOLE_API_URL:-}
@@ -68,6 +68,7 @@ services:
       INDEXING_MAX_SEGMENTATION_TOKENS_LENGTH: ${INDEXING_MAX_SEGMENTATION_TOKENS_LENGTH:-}
       PM2_INSTANCES: ${PM2_INSTANCES:-2}
       LOOP_NODE_MAX_COUNT: ${LOOP_NODE_MAX_COUNT:-100}
+      MAX_TOOLS_NUM: ${MAX_TOOLS_NUM:-10}
 
   # The postgres database.
   db:
@@ -131,7 +132,7 @@ services:
 
   # plugin daemon
   plugin_daemon:
-    image: langgenius/dify-plugin-daemon:0.0.3-local
+    image: langgenius/dify-plugin-daemon:0.0.4-local
     restart: always
     environment:
       # Use the shared environment variables.
@@ -321,8 +322,13 @@ services:
       POSTGRES_DB: ${PGVECTOR_POSTGRES_DB:-dify}
       # postgres data directory
       PGDATA: ${PGVECTOR_PGDATA:-/var/lib/postgresql/data/pgdata}
+      # pg_bigm module for full text search
+      PG_BIGM: ${PGVECTOR_PG_BIGM:-false}
+      PG_BIGM_VERSION: ${PGVECTOR_PG_BIGM_VERSION:-1.2-20240606}
     volumes:
       - ./volumes/pgvector/data:/var/lib/postgresql/data
+      - ./pgvector/docker-entrypoint.sh:/docker-entrypoint.sh
+    entrypoint: [ '/docker-entrypoint.sh' ]
     healthcheck:
       test: [ 'CMD', 'pg_isready' ]
       interval: 1s

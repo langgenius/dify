@@ -55,6 +55,7 @@ const Panel: FC<NodePanelProps<LoopNodeType>> = ({
       <div>
         <Field
           title={<div className='pl-3'>{t(`${i18nPrefix}.breakCondition`)}</div>}
+          tooltip={t(`${i18nPrefix}.breakConditionTip`)}
         >
           <ConditionWrap
             nodeId={id}

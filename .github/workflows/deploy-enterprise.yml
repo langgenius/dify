@@ -1,0 +1,29 @@
+name: Deploy Enterprise
+
+permissions:
+  contents: read
+
+on:
+  workflow_run:
+    workflows: ["Build and Push API & Web"]
+    branches:
+      - "deploy/enterprise"
+    types:
+      - completed
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    if: |
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.head_branch == 'deploy/enterprise'
+
+    steps:
+      - name: Deploy to server
+        uses: appleboy/ssh-action@v0.1.8
+        with:
+          host: ${{ secrets.ENTERPRISE_SSH_HOST }}
+          username: ${{ secrets.ENTERPRISE_SSH_USER }}
+          password: ${{ secrets.ENTERPRISE_SSH_PASSWORD }}
+          script: |
+            ${{ vars.ENTERPRISE_SSH_SCRIPT || secrets.ENTERPRISE_SSH_SCRIPT }}
