@@ -5,6 +5,7 @@ import ImagePreview from '@/app/components/base/image-uploader/image-preview'
 export const SVGRenderer = ({ content }: { content: string }) => {
   const svgRef = useRef<HTMLDivElement>(null)
   const [imagePreview, setImagePreview] = useState('')
+  const [isRendering, setIsRendering] = useState(true)
   const [windowSize, setWindowSize] = useState({
     width: typeof window !== 'undefined' ? window.innerWidth : 0,
     height: typeof window !== 'undefined' ? window.innerHeight : 0,
@@ -49,26 +50,43 @@ export const SVGRenderer = ({ content }: { content: string }) => {
         rootElement.click(() => {
           setImagePreview(svgToDataURL(svgElement as Element))
         })
+        
+        setIsRendering(false)
       }
       catch (error) {
         if (svgRef.current)
           svgRef.current.innerHTML = '<span style="padding: 1rem;">Error rendering SVG. Wait for the image content to complete.</span>'
+        setIsRendering(true)
       }
     }
   }, [content, windowSize])
 
   return (
     <>
-      <div ref={svgRef} style={{
-        maxHeight: '80vh',
-        display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'center',
-        cursor: 'pointer',
-        wordBreak: 'break-word',
-        whiteSpace: 'normal',
-        margin: '0 auto',
-      }} />
+      {isRendering && (
+        <pre style={{
+          padding: '1rem',
+          overflow: 'auto',
+          maxHeight: '80vh',
+          wordBreak: 'break-word',
+          whiteSpace: 'pre-wrap'
+        }}>
+          {content}
+        </pre>
+      )}
+      <div 
+        ref={svgRef} 
+        style={{
+          maxHeight: '80vh',
+          display: isRendering ? 'none' : 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          cursor: 'pointer',
+          wordBreak: 'break-word',
+          whiteSpace: 'normal',
+          margin: '0 auto',
+        }} 
+      />
       {imagePreview && (<ImagePreview url={imagePreview} title='Preview' onCancel={() => setImagePreview('')} />)}
     </>
   )
