@@ -53,7 +53,7 @@ export const SVGRenderer = ({ content }: { content: string }) => {
         
         setIsRendering(false)
       }
-      catch (error) {
+      catch {
         if (svgRef.current)
           svgRef.current.innerHTML = '<span style="padding: 1rem;">Error rendering SVG. Wait for the image content to complete.</span>'
         setIsRendering(true)

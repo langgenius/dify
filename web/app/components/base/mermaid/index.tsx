@@ -54,7 +54,7 @@ const Flowchart = React.forwardRef((props: {
         setErrMsg((error as Error).message)
       }
     }
-  }, [props.PrimitiveCode])
+  }, [props.PrimitiveCode, prevPrimitiveCode])
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -70,7 +70,7 @@ const Flowchart = React.forwardRef((props: {
 
       renderFlowchart(props.PrimitiveCode)
     }
-  }, [look])
+  }, [look, props.PrimitiveCode, renderFlowchart])
 
   useEffect(() => {
     if (timeRef.current)
@@ -79,7 +79,7 @@ const Flowchart = React.forwardRef((props: {
     timeRef.current = window.setTimeout(() => {
       renderFlowchart(props.PrimitiveCode)
     }, 300)
-  }, [props.PrimitiveCode])
+  }, [props.PrimitiveCode, renderFlowchart])
 
   return (
     // eslint-disable-next-line ts/ban-ts-comment
@@ -116,7 +116,7 @@ const Flowchart = React.forwardRef((props: {
           overflow: 'auto',
           maxHeight: '80vh',
           wordBreak: 'break-word',
-          whiteSpace: 'pre-wrap'
+          whiteSpace: 'pre-wrap',
         }}>
           {props.PrimitiveCode}
         </pre>
