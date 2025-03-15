@@ -85,7 +85,7 @@ const InstallPluginDropdown = ({
             <div className='w-full'>
               {[
                 ...(
-                  (enable_marketplace || true)
+                  (enable_marketplace && true)
                     ? [{ icon: MagicBox, text: t('plugin.source.marketplace'), action: 'marketplace' }]
                     : []
                 ),
