@@ -239,6 +239,8 @@ export const useChat = (
       isAnswer: false,
       message_files: data.files,
       parentMessageId: data.parent_message_id,
+      siblingIndex: 1,
+      siblingCount: 2,
     }
 
     const placeholderAnswerId = `answer-placeholder-${Date.now()}`

@@ -255,6 +255,7 @@ const Chat: FC<ChatProps> = ({
                     item={item}
                     questionIcon={questionIcon}
                     theme={themeBuilder?.theme}
+                    switchSibling={switchSibling}
                   />
                 )
               })
