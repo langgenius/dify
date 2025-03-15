@@ -137,47 +137,9 @@ const CodeBlock: any = memo(({ inline, className, children, ...props }: any) => 
         </div>
       )
     }
-    else if (language === 'svg') {
-      // Always show the SVG code when isSVG is false
-      if (!isSVG) {
-        return (
-          <SyntaxHighlighter
-            {...props}
-            style={theme === Theme.light ? atelierHeathLight : atelierHeathDark}
-            customStyle={{
-              paddingLeft: 12,
-              borderBottomLeftRadius: '10px',
-              borderBottomRightRadius: '10px',
-              backgroundColor: 'var(--color-components-input-bg-normal)',
-            }}
-            language="xml"
-            showLineNumbers
-            PreTag="div"
-          >
-            {content}
-          </SyntaxHighlighter>
-        )
-      }
-      
-      // Try to render SVG when isSVG is true
+    else if (language === 'svg' && isSVG) {
       return (
-        <ErrorBoundary fallback={
-          <SyntaxHighlighter
-            {...props}
-            style={theme === Theme.light ? atelierHeathLight : atelierHeathDark}
-            customStyle={{
-              paddingLeft: 12,
-              borderBottomLeftRadius: '10px',
-              borderBottomRightRadius: '10px',
-              backgroundColor: 'var(--color-components-input-bg-normal)',
-            }}
-            language="xml"
-            showLineNumbers
-            PreTag="div"
-          >
-            {content}
-          </SyntaxHighlighter>
-        }>
+        <ErrorBoundary>
           <SVGRenderer content={content} />
         </ErrorBoundary>
       )
@@ -201,7 +163,7 @@ const CodeBlock: any = memo(({ inline, className, children, ...props }: any) => 
         </SyntaxHighlighter>
       )
     }
-  }, [language, match, props, children, chartData, isSVG, theme])
+  }, [language, match, props, children, chartData, isSVG])
 
   if (inline || !match)
     return <code {...props} className={className}>{children}</code>
@@ -352,16 +314,8 @@ export default class ErrorBoundary extends Component {
   render() {
     // eslint-disable-next-line ts/ban-ts-comment
     // @ts-expect-error
-    if (this.state.hasError) {
-      // eslint-disable-next-line ts/ban-ts-comment
-      // @ts-expect-error
-      if (this.props.fallback) {
-        // eslint-disable-next-line ts/ban-ts-comment
-        // @ts-expect-error
-        return this.props.fallback
-      }
+    if (this.state.hasError)
       return <div>Oops! An error occurred. This could be due to an ECharts runtime error or invalid SVG content. <br />(see the browser console for more information)</div>
-    }
     // eslint-disable-next-line ts/ban-ts-comment
     // @ts-expect-error
     return this.props.children
