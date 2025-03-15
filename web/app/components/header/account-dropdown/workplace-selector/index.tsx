@@ -22,7 +22,7 @@ const WorkplaceSelector = () => {
         return
       await switchWorkspace({ url: '/workspaces/switch', body: { tenant_id } })
       notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
-      location.assign(`${location.origin}`)
+      location.assign(`${location.origin}${process.env.NEXT_PUBLIC_BASE_PATH || ''}`)
     }
     catch (e) {
       notify({ type: 'error', message: t('common.provider.saveFailed') })

@@ -163,7 +163,7 @@ const ChangePasswordForm = () => {
           </div>
           <div className="w-full mx-auto mt-6">
             <Button variant='primary' className='w-full'>
-              <a href="/signin">{t('login.passwordChanged')}</a>
+              <a href={`${process.env.NEXT_PUBLIC_BASE_PATH || ''}/signin`}>{t('login.passwordChanged')}</a>
             </Button>
           </div>
         </div>
