@@ -1,12 +1,120 @@
 from typing import Any, Dict, Optional, Tuple
 
 from extensions.ext_database import db
-from models.account import Account
-from models.model import EndUser
-from services.account_service import AccountService
+from models.account import Account, TenantAccountJoin
+from models.model import App, Conversation, EndUser, Message
+from sqlalchemy import and_, desc, func
 
 
 class EndUserService:
+    @staticmethod
+    def get_user_list(app_model: App, filters: Dict[str, Any], offset: int, limit: int) -> Dict[str, Any]:
+        """
+        Get a list of end users with filtering and pagination
+
+        Args:
+            filters: Dictionary containing filter criteria
+            offset: Number of records to skip
+            limit: Maximum number of records to return
+
+        Returns:
+            Dictionary containing total count and list of end users
+        """
+        # Get message data to calculate active days
+        message_days_subq = (
+            db.session.query(
+                Message.from_end_user_id,
+                func.count(
+                    func.distinct(func.date(func.timezone('UTC+8', func.timezone('UTC', Message.created_at))))
+                ).label('active_days'),
+            )
+            .filter(Message.app_id == app_model.id)
+            .group_by(Message.from_end_user_id)
+            .subquery()
+        )
+
+        # Start with base query - using join and subqueries for the chat timing data
+        subq = (
+            db.session.query(
+                Conversation.from_end_user_id,
+                func.max(Conversation.created_at).label('last_chat_at'),
+                func.min(Conversation.created_at).label('first_chat_at'),
+                func.count(Message.id).label('total_messages'),
+            )
+            .filter(Conversation.app_id == app_model.id)
+            .join(Message, Message.conversation_id == Conversation.id)
+            .group_by(Conversation.from_end_user_id)
+            .subquery()
+        )
+
+        query = (
+            db.session.query(
+                EndUser,
+                subq.c.last_chat_at,
+                subq.c.first_chat_at,
+                subq.c.total_messages,
+                message_days_subq.c.active_days,
+            )
+            .outerjoin(subq, EndUser.id == subq.c.from_end_user_id)
+            .outerjoin(message_days_subq, EndUser.id == message_days_subq.c.from_end_user_id)
+            .filter(EndUser.app_id == app_model.id)
+            .filter(EndUser.external_user_id != None)
+        )
+
+        # Apply filters
+        filter_conditions = []
+
+        if 'health_status' in filters:
+            filter_conditions.append(EndUser.health_status == filters['health_status'])
+
+        if 'last_chat_at__gte' in filters:
+            filter_conditions.append(subq.c.last_chat_at >= filters['last_chat_at__gte'])
+
+        if 'last_chat_at__lte' in filters:
+            filter_conditions.append(subq.c.last_chat_at <= filters['last_chat_at__lte'])
+
+        # Apply all filter conditions
+        if filter_conditions:
+            query = query.filter(and_(*filter_conditions))
+
+        # Get total count before applying pagination
+        total_count = query.count()
+
+        # Apply pagination - now ordering by the joined column
+        query = query.order_by(desc(subq.c.last_chat_at))
+        query = query.offset(offset).limit(limit)
+
+        # Execute query
+        results = query.all()
+
+        # Process results to include the chat timing data
+        users = []
+        for result in results:
+            end_user = result[0]
+            end_user.last_chat_at = result[1]
+            end_user.first_chat_at = result[2]
+            end_user.total_messages = result[3] if result[3] is not None else 0
+            end_user.active_days = result[4] if result[4] is not None else 0
+
+            # Convert to dictionary for JSON serialization
+            end_user_dict = {
+                'id': end_user.id,
+                'email': end_user.email,
+                'first_chat_at': end_user.first_chat_at,
+                'last_chat_at': end_user.last_chat_at,
+                'total_messages': end_user.total_messages,
+                'active_days': end_user.active_days,
+                'health_status': end_user.health_status,
+                'topics': end_user.topics,
+                'summary': end_user.summary,
+                'major': end_user.major,
+            }
+
+            users.append(end_user_dict)
+
+        # Format and return results
+        return {'total': total_count, 'users': users}
+
     @staticmethod
     def get_user_profile(end_user_id: str) -> Dict[str, Any]:
         """
@@ -27,20 +135,11 @@ class EndUserService:
         # Map numeric gender to string representation
         gender_map = {0: "unknown", 1: "male", 2: "female"}
 
-        # Get major from extra_profile if it exists
-        major = None
-        if end_user.extra_profile and 'major' in end_user.extra_profile:
-            major = end_user.extra_profile.get('major')
-
-        # Get email from Account table
-        account = db.session.query(Account).filter(Account.id == end_user_id).first()
-        email = account.email if account else None
-
         return {
             "username": end_user.name,
             "gender": gender_map.get(end_user.gender, "unknown"),
-            "major": major,
-            "email": email,
+            "major": end_user.major,
+            "email": end_user.email,
         }
 
     @staticmethod

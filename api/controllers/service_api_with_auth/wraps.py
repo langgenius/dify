@@ -11,7 +11,7 @@ from flask_login import user_logged_in  # type: ignore
 from flask_restful import Resource  # type: ignore
 from libs.login import _get_user
 from libs.passport import PassportService
-from models.account import Account, AccountStatus, Tenant, TenantAccountJoin, TenantStatus
+from models.account import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountJoinRole, TenantStatus
 from models.model import ApiToken, App, EndUser
 from pydantic import BaseModel  # type: ignore
 from services.account_service import AccountService
@@ -66,6 +66,8 @@ def validate_user_token_and_extract_info(view: Optional[Callable] = None):
                 raise Unauthorized("Invalid token: user not found")
             if account.status != AccountStatus.ACTIVE:
                 raise Unauthorized("Invalid token: account is not active")
+            if account.current_role != TenantAccountJoinRole.END_USER:
+                raise Unauthorized("Invalid token: account is not end user")
 
             app_id = request.headers.get("X-App-Id")
             if not app_id:

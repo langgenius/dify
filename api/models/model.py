@@ -140,7 +140,7 @@ class App(db.Model):  # type: ignore[name-defined]
             return False
         if not app_model_config.agent_mode:
             return False
-        if self.app_model_config.agent_mode_dict.get("enabled", False) and self.app_model_config.agent_mode_dict.get(
+        if app_model_config.agent_mode_dict.get("enabled", False) and app_model_config.agent_mode_dict.get(
             "strategy", ""
         ) in {"function_call", "react"}:
             self.mode = AppMode.AGENT_CHAT.value
@@ -1323,11 +1323,64 @@ class EndUser(UserMixin, db.Model):  # type: ignore[name-defined]
     is_anonymous = db.Column(db.Boolean, nullable=False, server_default=db.text("true"))
     session_id: Mapped[str] = mapped_column()
     gender = db.Column(db.Integer, nullable=False, server_default=db.text("0"))  # 0: unknown, 1: male, 2: female
-    extra_profile = db.Column(db.JSON, nullable=True)  # JSON format, e.g. { "major":"engineer" }
-    memory = db.Column(db.Text, nullable=True)  # Long text to store user memory
+    memory = db.Column(db.Text, nullable=True)  # Long text to store user memory"
     memory_updated_at = db.Column(db.DateTime, nullable=True)  # To record when memory was last updated
+    health_status = db.Column(db.String(255), nullable=True)  # Only accept for "normal", "potential", "critical"
+    extra_profile = db.Column(
+        db.JSON, nullable=True
+    )  # JSON format, e.g. { "major":"engineer", "topics":["math", "physics"], "summary": "This is a summary of the user's profile"}
     created_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
     updated_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
+
+    @property
+    def account(self):
+        return db.session.query(Account).filter(Account.id == self.external_user_id).first()
+
+    @property
+    def email(self):
+        if self.account is None:
+            return None
+
+        return self.account.email
+
+    @property
+    def summary(self):
+        if self.extra_profile is None:
+            return None
+        return self.extra_profile.get("summary")
+
+    @property
+    def topics(self):
+        if self.extra_profile is None:
+            return []
+        return self.extra_profile.get("topics")
+
+    @property
+    def major(self):
+        if self.extra_profile is None:
+            return None
+        return self.extra_profile.get("major")
+
+    def update_summary(self, summary: str):
+        self.extra_profile = {
+            "summary": summary,
+            "topics": self.topics,
+            "major": self.major,
+        }
+
+    def update_topics(self, topics: list[str]):
+        self.extra_profile = {
+            "summary": self.summary,
+            "topics": topics,
+            "major": self.major,
+        }
+
+    def update_major(self, major: str):
+        self.extra_profile = {
+            "summary": self.summary,
+            "topics": self.topics,
+            "major": major,
+        }
 
 
 class Site(db.Model):  # type: ignore[name-defined]
