@@ -50,6 +50,7 @@ export const SVGRenderer = ({ content }: { content: string }) => {
         rootElement.click(() => {
           setImagePreview(svgToDataURL(svgElement as Element))
         })
+        
         setIsRendering(false)
       }
       catch {
