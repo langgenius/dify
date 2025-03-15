@@ -9,6 +9,7 @@ import { Menu, Transition } from '@headlessui/react'
 import Avatar from '@/app/components/base/avatar'
 import { logout } from '@/service/common'
 import { useAppContext } from '@/context/app-context'
+import { useProviderContext } from '@/context/provider-context'
 import { LogOut01 } from '@/app/components/base/icons/src/vender/line/general'
 import PremiumBadge from '@/app/components/base/premium-badge'
 
@@ -20,6 +21,7 @@ export default function AppSelector() {
   const router = useRouter()
   const { t } = useTranslation()
   const { userProfile } = useAppContext()
+  const { isEducationAccount } = useProviderContext()
 
   const handleLogout = async () => {
     await logout({
@@ -74,10 +76,12 @@ export default function AppSelector() {
                       <div className='grow'>
                         <div className='system-md-medium text-text-primary break-all'>
                           {userProfile.name}
-                          <PremiumBadge size='s' color='blue' className='ml-1 !px-2'>
-                            <RiGraduationCapFill className='w-3 h-3 mr-1' />
-                            <span className='system-2xs-medium'>EDU</span>
-                          </PremiumBadge>
+                          {isEducationAccount && (
+                            <PremiumBadge size='s' color='blue' className='ml-1 !px-2'>
+                              <RiGraduationCapFill className='w-3 h-3 mr-1' />
+                              <span className='system-2xs-medium'>EDU</span>
+                            </PremiumBadge>
+                          )}
                         </div>
                         <div className='system-xs-regular text-text-tertiary break-all'>{userProfile.email}</div>
                       </div>

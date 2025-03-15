@@ -14,6 +14,7 @@ import Modal from '@/app/components/base/modal'
 import Button from '@/app/components/base/button'
 import { updateUserProfile } from '@/service/common'
 import { useAppContext } from '@/context/app-context'
+import { useProviderContext } from '@/context/provider-context'
 import { ToastContext } from '@/app/components/base/toast'
 import AppIcon from '@/app/components/base/app-icon'
 import { IS_CE_EDITION } from '@/config'
@@ -33,6 +34,7 @@ export default function AccountPage() {
   const { t } = useTranslation()
   const { systemFeatures } = useAppContext()
   const { mutateUserProfile, userProfile, apps } = useAppContext()
+  const { isEducationAccount } = useProviderContext()
   const { notify } = useContext(ToastContext)
   const [editNameModalVisible, setEditNameModalVisible] = useState(false)
   const [editName, setEditName] = useState('')
@@ -140,10 +142,12 @@ export default function AccountPage() {
         <div className='ml-4'>
           <p className='system-xl-semibold text-text-primary'>
             {userProfile.name}
-            <PremiumBadge size='s' color='blue' className='ml-1 !px-2'>
-              <RiGraduationCapFill className='w-3 h-3 mr-1' />
-              <span className='system-2xs-medium'>EDU</span>
-            </PremiumBadge>
+            {isEducationAccount && (
+              <PremiumBadge size='s' color='blue' className='ml-1 !px-2'>
+                <RiGraduationCapFill className='w-3 h-3 mr-1' />
+                <span className='system-2xs-medium'>EDU</span>
+              </PremiumBadge>
+            )}
           </p>
           <p className='system-xs-regular text-text-tertiary'>{userProfile.email}</p>
         </div>

@@ -6,16 +6,14 @@ import {
 } from 'react'
 import { useRouter } from 'next/navigation'
 import EducationApplyAge from './components/education-apply-page'
-import { IS_CE_EDITION } from '@/config'
-import { useAppContext } from '@/context/app-context'
-import { LicenseStatus } from '@/types/feature'
+import { useProviderContext } from '@/context/provider-context'
 
 export default function EducationApply() {
   const router = useRouter()
-  const { systemFeatures } = useAppContext()
+  const { enableEducationPlan, isEducationAccount } = useProviderContext()
   const hiddenEducationApply = useMemo(() => {
-    return IS_CE_EDITION || (systemFeatures.license.status !== LicenseStatus.NONE)
-  }, [systemFeatures.license.status])
+    return enableEducationPlan && isEducationAccount
+  }, [enableEducationPlan, isEducationAccount])
 
   useEffect(() => {
     if (hiddenEducationApply)

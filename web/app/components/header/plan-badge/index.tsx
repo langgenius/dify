@@ -1,9 +1,9 @@
 import { useProviderContext } from '@/context/provider-context'
 import type { FC } from 'react'
 import { useTranslation } from 'react-i18next'
-// import {
-//   RiGraduationCapFill,
-// } from '@remixicon/react'
+import {
+  RiGraduationCapFill,
+} from '@remixicon/react'
 import { SparklesSoft } from '../../base/icons/src/public/common'
 import PremiumBadge from '../../base/premium-badge'
 import { Plan } from '../../billing/type'
@@ -16,7 +16,7 @@ type PlanBadgeProps = {
 }
 
 const PlanBadge: FC<PlanBadgeProps> = ({ plan, allowHover, sandboxAsUpgrade = false, onClick }) => {
-  const { isFetchedPlan } = useProviderContext()
+  const { isFetchedPlan, isEducationWorkspace } = useProviderContext()
   const { t } = useTranslation()
 
   if (!isFetchedPlan) return null
@@ -42,7 +42,8 @@ const PlanBadge: FC<PlanBadgeProps> = ({ plan, allowHover, sandboxAsUpgrade = fa
   if (plan === Plan.professional) {
     return <PremiumBadge className='select-none' size='s' color='blue' allowHover={allowHover} onClick={onClick}>
       <div className='system-2xs-medium-uppercase'>
-        <span className='p-1'>
+        <span className='p-1 inline-flex items-center gap-1'>
+          {isEducationWorkspace && <RiGraduationCapFill className='w-3 h-3' />}
           pro
         </span>
       </div>

@@ -68,7 +68,7 @@ const Header = () => {
               <WorkspaceProvider>
                 <WorkplaceSelector />
               </WorkspaceProvider>
-              {enableBilling ? <PlanBadge size='s' allowHover sandboxAsUpgrade plan={plan.type} onClick={handlePlanClick} /> : <LicenseNav />}
+              {enableBilling ? <PlanBadge allowHover sandboxAsUpgrade plan={plan.type} onClick={handlePlanClick} /> : <LicenseNav />}
             </div>
           </div>
         }
@@ -79,7 +79,7 @@ const Header = () => {
             <LogoSite />
           </Link>
           <div className='font-light text-divider-deep'>/</div>
-          {enableBilling ? <PlanBadge size='s' allowHover sandboxAsUpgrade plan={plan.type} onClick={handlePlanClick} /> : <LicenseNav />}
+          {enableBilling ? <PlanBadge allowHover sandboxAsUpgrade plan={plan.type} onClick={handlePlanClick} /> : <LicenseNav />}
         </div >
       )}
       {

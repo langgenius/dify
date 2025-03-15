@@ -27,6 +27,7 @@ import I18n from '@/context/i18n'
 import Avatar from '@/app/components/base/avatar'
 import { logout } from '@/service/common'
 import AppContext, { useAppContext } from '@/context/app-context'
+import { useProviderContext } from '@/context/provider-context'
 import { useModalContext } from '@/context/modal-context'
 import { LanguagesSupported } from '@/i18n/language'
 import { LicenseStatus } from '@/types/feature'
@@ -45,6 +46,7 @@ export default function AppSelector() {
   const { locale } = useContext(I18n)
   const { t } = useTranslation()
   const { userProfile, langeniusVersionInfo, isCurrentWorkspaceOwner } = useAppContext()
+  const { isEducationAccount } = useProviderContext()
   const { setShowAccountSettingModal } = useModalContext()
 
   const handleLogout = async () => {
@@ -90,10 +92,12 @@ export default function AppSelector() {
                       <div className='grow'>
                         <div className='system-md-medium text-text-primary break-all'>
                           {userProfile.name}
-                          <PremiumBadge size='s' color='blue' className='ml-1 !px-2'>
-                            <RiGraduationCapFill className='w-3 h-3 mr-1' />
-                            <span className='system-2xs-medium'>EDU</span>
-                          </PremiumBadge>
+                          {isEducationAccount && (
+                            <PremiumBadge size='s' color='blue' className='ml-1 !px-2'>
+                              <RiGraduationCapFill className='w-3 h-3 mr-1' />
+                              <span className='system-2xs-medium'>EDU</span>
+                            </PremiumBadge>
+                          )}
                         </div>
                         <div className='system-xs-regular text-text-tertiary break-all'>{userProfile.email}</div>
                       </div>

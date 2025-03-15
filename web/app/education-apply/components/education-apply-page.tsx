@@ -13,7 +13,9 @@ import Checkbox from '@/app/components/base/checkbox'
 import {
   useEducationAdd,
   useEducationVerify,
+  useInvalidateEducationStatus,
 } from '@/service/use-education'
+import { useProviderContext } from '@/context/provider-context'
 
 const EducationApplyAge = () => {
   const { t } = useTranslation()
@@ -25,8 +27,16 @@ const EducationApplyAge = () => {
     isPending,
     mutateAsync: educationAdd,
   } = useEducationAdd({ onSuccess: () => {} })
-  const [modalShow, setShowModal] = useState<undefined | { title: string; desc: string }>(undefined)
+  const [modalShow, setShowModal] = useState<undefined | { title: string; desc: string; onConfirm?: () => void }>(undefined)
   const { data } = useEducationVerify()
+  const { onPlanInfoChanged } = useProviderContext()
+  const updateEducationStatus = useInvalidateEducationStatus()
+
+  const handleModalConfirm = () => {
+    setShowModal(undefined)
+    onPlanInfoChanged()
+    updateEducationStatus()
+  }
 
   const handleSubmit = () => {
     educationAdd({
@@ -38,6 +48,7 @@ const EducationApplyAge = () => {
         setShowModal({
           title: t('education.successTitle'),
           desc: t('education.successContent'),
+          onConfirm: handleModalConfirm,
         })
       }
       else {
@@ -139,7 +150,7 @@ const EducationApplyAge = () => {
         isShow={!!modalShow}
         title={modalShow?.title || ''}
         content={modalShow?.desc}
-        onConfirm={() => setShowModal(undefined)}
+        onConfirm={modalShow?.onConfirm || (() => {})}
         onCancel={() => setShowModal(undefined)}
       />
     </div>

@@ -3,6 +3,7 @@ import {
   useMutation,
   useQuery,
 } from '@tanstack/react-query'
+import { useInvalid } from './use-base'
 import type { EducationAddParams } from '@/app/education-apply/components/types'
 
 const NAME_SPACE = 'education'
@@ -49,4 +50,19 @@ export const useEducationAutocomplete = () => {
       return get<{ data: string[]; has_next: boolean; curr_page: number }>(`/account/education/autocomplete?keywords=${keywords}&page=${page}&limit=${limit}`)
     },
   })
+}
+
+export const useEducationStatus = (disable?: boolean) => {
+  return useQuery({
+    enabled: !disable,
+    queryKey: [NAME_SPACE, 'education-status'],
+    queryFn: () => {
+      return get<{ result: boolean }>('/account/education')
+    },
+    retry: false,
+  })
+}
+
+export const useInvalidateEducationStatus = () => {
+  return useInvalid([NAME_SPACE, 'education-status'])
 }
