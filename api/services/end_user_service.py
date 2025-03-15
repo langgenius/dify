@@ -1,14 +1,16 @@
 from typing import Any, Dict, Optional, Tuple
 
 from extensions.ext_database import db
-from models.account import Account, TenantAccountJoin
+from libs.infinite_scroll_pagination import InfiniteScrollPagination
 from models.model import App, Conversation, EndUser, Message
 from sqlalchemy import and_, desc, func
 
 
 class EndUserService:
     @staticmethod
-    def get_user_list(app_model: App, filters: Dict[str, Any], offset: int, limit: int) -> Dict[str, Any]:
+    def pagination_by_filters(
+        app_model: App, filters: Dict[str, Any], offset: int, limit: int
+    ) -> InfiniteScrollPagination:
         """
         Get a list of end users with filtering and pagination
 
@@ -98,7 +100,7 @@ class EndUserService:
 
             # Convert to dictionary for JSON serialization
             end_user_dict = {
-                'id': end_user.id,
+                'id': end_user.external_user_id,
                 'email': end_user.email,
                 'first_chat_at': end_user.first_chat_at,
                 'last_chat_at': end_user.last_chat_at,
@@ -113,7 +115,11 @@ class EndUserService:
             users.append(end_user_dict)
 
         # Format and return results
-        return {'total': total_count, 'users': users}
+        return InfiniteScrollPagination(data=users, limit=limit, has_more=total_count > offset + limit)
+
+    @staticmethod
+    def load_end_user_by_id(end_user_id: str) -> EndUser:
+        return db.session.query(EndUser).filter(EndUser.external_user_id == end_user_id).first()
 
     @staticmethod
     def get_user_profile(end_user_id: str) -> Dict[str, Any]:

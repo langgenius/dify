@@ -1,6 +1,5 @@
-from flask_restful import fields  # type: ignore
-
 from fields.member_fields import simple_account_fields
+from flask_restful import fields  # type: ignore
 from libs.helper import TimestampField
 
 from .raws import FilesContainedField

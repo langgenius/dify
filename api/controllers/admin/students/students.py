@@ -1,13 +1,15 @@
 from controllers.admin import api
 from controllers.admin.wraps import validate_admin_token_and_extract_info
+from fields.end_user_fields import end_users_infinite_scroll_pagination_fields
 from flask import Blueprint
-from flask_restful import Api, Resource  # type: ignore
+from flask_restful import Api, Resource, marshal_with  # type: ignore
 from models.model import App
 from services.end_user_service import EndUserService
 
 
 class StudentList(Resource):
     @validate_admin_token_and_extract_info
+    @marshal_with(end_users_infinite_scroll_pagination_fields)
     def get(self, app_model: App):
         """Get all end_user list related with the app_model with filters with pagination.
         ---
@@ -131,76 +133,7 @@ class StudentList(Resource):
         # Get students with pagination
         offset = (page - 1) * limit
 
-        # Query students from database (implementation will depend on your ORM/database structure)
-        data = EndUserService.get_user_list(app_model=app_model, filters=filters, offset=offset, limit=limit)
-
-        return {"result": "success", "data": data}, 200
-
-
-class StudentConversation(Resource):
-    @validate_admin_token_and_extract_info
-    def get(self, app_model: App):
-        """Get student's conversation history.
-        ---
-        tags:
-          - admin/students
-        summary: Get student conversation history
-        description: Get complete conversation history for a specific student
-        security:
-          - ApiKeyAuth: []
-        parameters:
-          - name: student_id
-            in: path
-            type: string
-            required: true
-            description: ID of the student
-          - name: start_time
-            in: query
-            type: string
-            format: date-time
-            description: Filter conversations after this time
-          - name: end_time
-            in: query
-            type: string
-            format: date-time
-            description: Filter conversations before this time
-          - name: page
-            in: query
-            type: integer
-            default: 1
-            description: Page number
-          - name: per_page
-            in: query
-            type: integer
-            default: 50
-            description: Conversations per page
-        responses:
-          200:
-            description: Conversation history retrieved successfully
-            schema:
-              type: object
-              properties:
-                total:
-                  type: integer
-                conversations:
-                  type: array
-                  items:
-                    type: object
-                    properties:
-                      timestamp:
-                        type: string
-                        format: date-time
-                      role:
-                        type: string
-                        enum: [user, assistant]
-                      content:
-                        type: string
-          401:
-            description: Invalid or missing API key
-          404:
-            description: Student not found
-        """
-        pass
+        return EndUserService.pagination_by_filters(app_model=app_model, filters=filters, offset=offset, limit=limit)
 
 
 class StudentAnalysis(Resource):
@@ -443,7 +376,6 @@ class StudentNote(Resource):
 
 
 api.add_resource(StudentList, '/students')
-api.add_resource(StudentConversation, '/students/<string:student_id>/conversation')
-api.add_resource(StudentAnalysis, '/students/<string:student_id>/analysis')
-api.add_resource(StudentStatus, '/students/<string:student_id>/status')
-api.add_resource(StudentNote, '/students/<string:student_id>/note')
+# api.add_resource(StudentAnalysis, '/students/<string:student_id>/analysis')
+# api.add_resource(StudentStatus, '/students/<string:student_id>/status')
+# api.add_resource(StudentNote, '/students/<string:student_id>/note')
