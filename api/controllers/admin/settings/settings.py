@@ -1,14 +1,14 @@
-from flask import Blueprint
-from flask_restful import Api, Resource # type: ignore
-
 from controllers.admin import api
+from flask import Blueprint
+from flask_restful import Api, Resource  # type: ignore
+
 
 class WatermarkSettings(Resource):
     def get(self):
         """Get watermark settings.
         ---
         tags:
-          - admin/settings
+          - admin/api/settings
         summary: Get watermark settings
         description: Get current watermark settings for the system
         security:
@@ -31,7 +31,7 @@ class WatermarkSettings(Resource):
         """Update watermark settings.
         ---
         tags:
-          - admin/settings
+          - admin/api/settings
         summary: Update watermark settings
         description: Update system watermark settings
         security:
@@ -62,12 +62,13 @@ class WatermarkSettings(Resource):
         """
         pass
 
+
 class SystemInfo(Resource):
     def get(self):
         """Get system information.
         ---
         tags:
-          - admin/settings
+          - admin/api/settings
         summary: Get system information
         description: Get system version, manual link and other system information
         security:
@@ -101,12 +102,13 @@ class SystemInfo(Resource):
         """
         pass
 
+
 class OperationLogs(Resource):
     def get(self):
         """Get operation logs.
         ---
         tags:
-          - admin/settings
+          - admin/api/settings
         summary: Get operation logs
         description: Get system operation logs with filters
         security:
@@ -177,6 +179,7 @@ class OperationLogs(Resource):
             description: Invalid filter parameters
         """
         pass
+
 
 api.add_resource(WatermarkSettings, '/settings/watermark')
 api.add_resource(SystemInfo, '/settings/info')

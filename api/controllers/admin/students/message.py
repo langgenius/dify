@@ -77,7 +77,7 @@ class MessageListApi(Resource):
         """Get messages list.
         ---
         tags:
-          - admin/students
+          - admin/api/students
         summary: List messages
         description: Get a paginated list of messages for a conversation
         security:

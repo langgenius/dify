@@ -17,7 +17,7 @@ class SendVerificationCodeApi(Resource):
         """Send verification code to admin's phone number.
         ---
         tags:
-          - admin/auth
+          - admin/api/auth
         summary: Send Verification Code
         description: Sends a verification code to the provided admin phone number for authentication
         parameters:
@@ -75,7 +75,7 @@ class LoginApi(Resource):
         """Admin login with phone number and verification code.
         ---
         tags:
-          - admin/auth
+          - admin/api/auth
         summary: Admin Login
         description: Authenticates an admin using phone number and verification code
         parameters:
@@ -172,7 +172,7 @@ class LogoutApi(Resource):
         """Admin logout.
         ---
         tags:
-          - admin/auth
+          - admin/api/auth
         summary: Admin Logout
         description: Logs out the authenticated admin and invalidates the JWT token
         security:
@@ -204,7 +204,7 @@ class RefreshTokenApi(Resource):
         """Refresh authentication token.
         ---
         tags:
-          - admin/auth
+          - admin/api/auth
         summary: Refresh Token
         description: Refreshes an access token using a valid refresh token
         security:

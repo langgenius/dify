@@ -1,14 +1,14 @@
-from flask import Blueprint
-from flask_restful import Api, Resource # type: ignore
-
 from controllers.admin import api
+from flask import Blueprint
+from flask_restful import Api, Resource  # type: ignore
+
 
 class RiskStats(Resource):
     def get(self):
         """Get risk level statistics.
         ---
         tags:
-          - admin/stats
+          - admin/api/stats
         summary: Get risk level user counts
         description: Get counts of users at different risk levels and their changes
         security:
@@ -21,7 +21,7 @@ class RiskStats(Resource):
             required: true
             description: Start date of the statistics period (YYYY-MM-DD)
           - name: end_date
-            in: query  
+            in: query
             type: string
             format: date
             required: true
@@ -42,19 +42,20 @@ class RiskStats(Resource):
                       type: integer
                       description: Change in high risk users compared to yesterday
                     from_last_week:
-                      type: integer 
+                      type: integer
                       description: Change in high risk users compared to last week
           400:
             description: Invalid date parameters
         """
         pass
 
+
 class UserStats(Resource):
     def get(self):
         """Get daily user statistics.
         ---
         tags:
-          - admin/stats
+          - admin/api/stats
         summary: Get daily active and new user counts
         description: Get statistics of daily active users and new users
         security:
@@ -68,7 +69,7 @@ class UserStats(Resource):
             description: Start date of the statistics period (YYYY-MM-DD)
           - name: end_date
             in: query
-            type: string 
+            type: string
             format: date
             required: true
             description: End date of the statistics period (YYYY-MM-DD)
@@ -97,12 +98,13 @@ class UserStats(Resource):
         """
         pass
 
+
 class ConversationStats(Resource):
     def get(self):
         """Get daily conversation statistics.
         ---
         tags:
-          - admin/stats
+          - admin/api/stats
         summary: Get daily conversation counts and averages
         description: Get statistics of daily total conversations and average conversations per user
         security:
@@ -117,7 +119,7 @@ class ConversationStats(Resource):
           - name: end_date
             in: query
             type: string
-            format: date 
+            format: date
             required: true
             description: End date of the statistics period (YYYY-MM-DD)
         responses:
@@ -146,6 +148,7 @@ class ConversationStats(Resource):
         """
         pass
 
+
 api.add_resource(RiskStats, '/stats/risk')
-api.add_resource(UserStats, '/stats/user') 
+api.add_resource(UserStats, '/stats/user')
 api.add_resource(ConversationStats, '/stats/conversation')

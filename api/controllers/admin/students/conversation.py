@@ -22,7 +22,7 @@ class StudentConversation(Resource):
         """Get student's conversation history.
         ---
         tags:
-          - admin/students
+          - admin/api/students
         summary: Get student conversation history
         description: Get complete conversation history for a specific student
         security:

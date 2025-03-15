@@ -24,7 +24,7 @@ server {
       include proxy.conf;
     }
 
-    location /admin {
+    location /admin/api {
       proxy_pass http://api:5001;
       include proxy.conf;
     }
@@ -37,6 +37,11 @@ server {
     location /openapi {
       proxy_pass http://api:5001;
       include proxy.conf; 
+    }
+
+    location /admin {
+      proxy_pass http://host.docker.internal:3000;
+      include proxy.conf;
     }
 
     location / {

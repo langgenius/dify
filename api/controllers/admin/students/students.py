@@ -14,7 +14,7 @@ class StudentList(Resource):
         """Get all end_user list related with the app_model with filters with pagination.
         ---
         tags:
-          - admin/students
+          - admin/api/students
         summary: Get filtered student list
         description: Get list of students with various filter options
         security:
@@ -142,7 +142,7 @@ class StudentAnalysis(Resource):
         """Get AI analysis and intervention suggestions.
         ---
         tags:
-          - admin/students
+          - admin/api/students
         summary: Get AI analysis for student
         description: Get AI generated analysis, summary and intervention suggestions based on conversation history
         security:
@@ -185,7 +185,7 @@ class StudentStatus(Resource):
         """Update student follow-up status.
         ---
         tags:
-          - admin/students
+          - admin/api/students
         summary: Update student status
         description: Update the follow-up status of a student
         security:
@@ -238,7 +238,7 @@ class StudentStatus(Resource):
         """Get student follow-up status history.
         ---
         tags:
-          - admin/students
+          - admin/api/students
         summary: Get status history
         description: Get the history of status changes for a student
         security:
@@ -286,7 +286,7 @@ class StudentNote(Resource):
         """Update student follow-up note.
         ---
         tags:
-          - admin/students
+          - admin/api/students
         summary: Update student note
         description: Update the follow-up note for a student (max 1000 characters)
         security:
@@ -335,7 +335,7 @@ class StudentNote(Resource):
         """Get student follow-up note history.
         ---
         tags:
-          - admin/students
+          - admin/api/students
         summary: Get note history
         description: Get the history of note changes for a student
         security:
