@@ -17,8 +17,8 @@ class DeploymentConfig(BaseSettings):
         default=False,
     )
 
-    DEBUG_EMAIL_CODE_FOR_LOGIN: str = Field(
-        description="Default email code for login",
+    DEBUG_CODE_FOR_LOGIN: str = Field(
+        description="Default code for login",
         default="111111",
     )
 

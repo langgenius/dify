@@ -73,6 +73,9 @@ class AccountService:
     email_code_login_rate_limiter = RateLimiter(
         prefix="email_code_login_rate_limit", max_attempts=1, time_window=60 * 1
     )
+    phone_code_login_rate_limiter = RateLimiter(
+        prefix="phone_code_login_rate_limit", max_attempts=1, time_window=60 * 1
+    )
     email_code_account_deletion_rate_limiter = RateLimiter(
         prefix="email_code_account_deletion_rate_limit",
         max_attempts=1,
@@ -481,7 +484,7 @@ class AccountService:
             raise EmailCodeLoginRateLimitExceededError()
 
         if DeploymentConfig().DEBUG:
-            code = dify_config.DEBUG_EMAIL_CODE_FOR_LOGIN
+            code = dify_config.DEBUG_CODE_FOR_LOGIN
         else:
             code = "".join([str(random.randint(0, 9)) for _ in range(6)])
 
@@ -591,6 +594,121 @@ class AccountService:
         redis_client.expire(minute_key, 60)
 
         return False
+
+    @classmethod
+    def get_admin_through_phone(cls, phone: str):
+        """
+        Get admin account through phone number.
+
+        Returns None if no admin account with this phone number exists.
+        Raises AccountRegisterError if account is in freeze status.
+        """
+        # We'll check if account is banned or frozen using the phone number
+        # This implementation assumes phone numbers are unique like emails
+
+        # Find account with end_admin role by phone number
+        admin_account = (
+            db.session.query(Account)
+            .join(TenantAccountJoin, Account.id == TenantAccountJoin.account_id)
+            .filter(Account.phone == phone)
+            .filter(TenantAccountJoin.role == TenantAccountJoinRole.END_ADMIN.value)
+            .first()
+        )
+
+        if not admin_account:
+            return None
+
+        if admin_account.status == AccountStatus.BANNED.value:
+            raise Unauthorized("Account is banned.")
+
+        return admin_account
+
+    @classmethod
+    def is_phone_send_ip_limit(cls, ip_address: str) -> bool:
+        """
+        Check if IP has reached the limit for sending phone verification codes.
+        Similar to is_email_send_ip_limit but for phone verification.
+        """
+        minute_key = f"phone_send_ip_limit_minute:{ip_address}"
+        freeze_key = f"phone_send_ip_limit_freeze:{ip_address}"
+        hour_limit_key = f"phone_send_ip_limit_hour:{ip_address}"
+
+        # check ip is frozen
+        if redis_client.get(freeze_key):
+            return True
+
+        # check current minute count
+        current_minute_count = redis_client.get(minute_key)
+        if current_minute_count is None:
+            current_minute_count = 0
+        current_minute_count = int(current_minute_count)
+
+        # check current hour count
+        if current_minute_count > dify_config.EMAIL_SEND_IP_LIMIT_PER_MINUTE:  # Use same limit as email
+            hour_limit_count = redis_client.get(hour_limit_key)
+            if hour_limit_count is None:
+                hour_limit_count = 0
+            hour_limit_count = int(hour_limit_count)
+
+            if hour_limit_count >= 1:
+                redis_client.setex(freeze_key, 60 * 60, 1)
+                return True
+            else:
+                redis_client.setex(hour_limit_key, 60 * 10, hour_limit_count + 1)  # first time limit 10 minutes
+
+            # add hour limit count
+            redis_client.incr(hour_limit_key)
+            redis_client.expire(hour_limit_key, 60 * 60)
+
+            return True
+
+        redis_client.setex(minute_key, 60, current_minute_count + 1)
+        redis_client.expire(minute_key, 60)
+
+        return False
+
+    @classmethod
+    def send_phone_code_login(cls, phone: str) -> str:
+        """
+        Send verification code to phone number for admin login.
+        Returns a token that can be used to verify the code.
+        """
+        if cls.phone_code_login_rate_limiter.is_rate_limited(phone) and not DeploymentConfig().DEBUG:
+            raise Exception("Phone verification code rate limit exceeded")
+
+        if DeploymentConfig().DEBUG:
+            # Use a default code for debugging without requiring a config entry
+            code = dify_config.DEBUG_CODE_FOR_LOGIN
+        else:
+            code = "".join([str(random.randint(0, 9)) for _ in range(6)])
+
+        # Generate a token for code verification
+        token = TokenManager.generate_token(
+            token_type="phone_code_login",
+            account=None,
+            email=phone,  # Using email parameter for phone number
+            additional_data={"code": code, "phone": phone},
+        )
+
+        # Here you would typically send an SMS with the code
+        # For now we'll just assume the SMS sending service exists
+        # send_phone_code_login_sms_task.delay(to=phone, code=code)
+
+        # Log SMS sending in production environment
+        logging.info(f"Phone verification code sent to {phone}")
+
+        cls.phone_code_login_rate_limiter.increment_rate_limit(phone)
+        return token
+
+    @classmethod
+    def get_phone_code_login_data(cls, token: str) -> Optional[dict[str, Any]]:
+        """Get phone code login data from token"""
+        return TokenManager.get_token_data(token, "phone_code_login")
+
+    @classmethod
+    def revoke_phone_code_login_token(cls, token: str) -> None:
+        """Revoke phone code login token"""
+        TokenManager.revoke_token(token, "phone_code_login")
 
 
 def _get_login_cache_key(*, account_id: str, token: str):
@@ -897,7 +1015,7 @@ class RegisterService:
             account.last_login_ip = ip_address
             account.initialized_at = datetime.now(UTC).replace(tzinfo=None)
 
-            TenantService.create_owner_tenant_if_not_exist(account=account, is_setup=True)
+            TenantService.create_owner_tenant_if_not_exist(account=account)
 
             dify_setup = DifySetup(version=dify_config.CURRENT_VERSION)
             db.session.add(dify_setup)

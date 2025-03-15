@@ -1,7 +1,16 @@
-from flask import Blueprint
-from flask_restful import Api, Resource # type: ignore
+from typing import cast
 
+import flask_login  # type: ignore
 from controllers.admin import api
+from controllers.service_api_with_auth.auth.error import InvalidTokenError
+from controllers.service_api_with_auth.error import AccountInFreezeError, AccountNotFound
+from flask import Blueprint, request
+from flask_restful import Api, Resource, reqparse  # type: ignore
+from libs.helper import extract_remote_ip
+from models.account import Account
+from services.account_service import AccountService
+from services.errors.account import AccountRegisterError
+
 
 class SendVerificationCodeApi(Resource):
     def post(self):
@@ -30,16 +39,36 @@ class SendVerificationCodeApi(Resource):
             schema:
               type: object
               properties:
-                success:
-                  type: boolean
-                message:
+                result:
+                  type: string
+                data:
                   type: string
           400:
             description: Invalid phone number format
           404:
             description: Phone number not registered as admin
         """
-        pass
+        parser = reqparse.RequestParser()
+        parser.add_argument("phone", type=str, required=True, location="json")
+        args = parser.parse_args()
+
+        ip_address = extract_remote_ip(request)
+        if AccountService.is_phone_send_ip_limit(ip_address):
+            return {"result": "fail", "data": "Too many requests from this IP address"}, 429
+
+        try:
+            # find account by phone number & chech role is end_admin
+            account = AccountService.get_admin_through_phone(args["phone"])
+        except AccountRegisterError:
+            raise AccountInFreezeError()
+
+        if account is None:
+            return {"result": "fail", "data": "Phone number not registered as admin"}, 404
+
+        token = AccountService.send_phone_code_login(phone=args["phone"])
+
+        return {"result": "success", "data": token}
+
 
 class LoginApi(Resource):
     def post(self):
@@ -58,6 +87,7 @@ class LoginApi(Resource):
               required:
                 - phone
                 - code
+                - token
               properties:
                 phone:
                   type: string
@@ -66,34 +96,76 @@ class LoginApi(Resource):
                 code:
                   type: string
                   description: Verification code
-                  example: "123456"
+                  example: "111111"
+                token:
+                  type: string
+                  description: Verification token
         responses:
           200:
             description: Login successful
             schema:
               type: object
               properties:
-                token:
+                result:
                   type: string
-                  description: JWT access token
-                user:
+                data:
                   type: object
                   properties:
-                    id:
+                    token:
                       type: string
-                    phone:
-                      type: string
-                    name:
-                      type: string
-                    role:
-                      type: string
-                      enum: [admin, super_admin]
+                    user:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        phone:
+                          type: string
+                        name:
+                          type: string
+                        role:
+                          type: string
+                          enum: [admin, super_admin]
           400:
             description: Invalid or expired verification code
           404:
             description: Phone number not registered
         """
-        pass
+        parser = reqparse.RequestParser()
+        parser.add_argument("phone", type=str, required=True, location="json")
+        parser.add_argument("code", type=str, required=True, location="json")
+        parser.add_argument("token", type=str, required=True, location="json")
+        args = parser.parse_args()
+
+        # Verify the token and code
+        token_data = AccountService.get_phone_code_login_data(args["token"])
+        if token_data is None:
+            return {"result": "fail", "data": "Invalid or expired token"}, 400
+
+        if token_data["phone"] != args["phone"]:
+            return {"result": "fail", "data": "Phone number does not match"}, 400
+
+        if token_data["code"] != args["code"]:
+            return {"result": "fail", "data": "Invalid verification code"}, 400
+
+        # Revoke the token after successful verification
+        AccountService.revoke_phone_code_login_token(args["token"])
+
+        try:
+            account = AccountService.get_admin_through_phone(args["phone"])
+        except AccountRegisterError:
+            raise AccountInFreezeError()
+
+        if account is None:
+            return {"result": "fail", "data": "Phone number not registered as admin"}, 404
+
+        # Generate token for the authenticated admin
+        token_pair = AccountService.login(account, ip_address=extract_remote_ip(request))
+        AccountService.reset_login_error_rate_limit(args["phone"])
+
+        response_data = token_pair.model_dump()
+
+        return {"result": "success", "data": response_data}
+
 
 class LogoutApi(Resource):
     def post(self):
@@ -111,12 +183,21 @@ class LogoutApi(Resource):
             schema:
               type: object
               properties:
-                success:
-                  type: boolean
+                result:
+                  type: string
           401:
             description: Missing or invalid token
         """
-        pass
+        account = cast(Account, flask_login.current_user)
+
+        if isinstance(account, flask_login.AnonymousUserMixin):
+            return {"result": "success"}
+
+        AccountService.logout(account=account)
+        flask_login.logout_user()
+
+        return {"result": "success"}
+
 
 class RefreshTokenApi(Resource):
     def post(self):
@@ -148,14 +229,22 @@ class RefreshTokenApi(Resource):
               properties:
                 result:
                   type: string
-                  example: "success"
                 data:
                   type: object
                   description: New token pair data
           401:
             description: Unauthorized, invalid or missing token
         """
-        pass
+        parser = reqparse.RequestParser()
+        parser.add_argument("refresh_token", type=str, required=True, location="json")
+        args = parser.parse_args()
+
+        try:
+            new_token_pair = AccountService.refresh_token(args["refresh_token"])
+            return {"result": "success", "data": new_token_pair.model_dump()}
+        except Exception as e:
+            return {"result": "fail", "data": str(e)}, 401
+
 
 # Register the resources
 api.add_resource(SendVerificationCodeApi, '/auth/send-code')

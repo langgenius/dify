@@ -31,6 +31,11 @@ class SecurityConfig(BaseSettings):
         default=5,
     )
 
+    PHONE_CODE_LOGIN_TOKEN_EXPIRY_MINUTES: PositiveInt = Field(
+        description="Duration in minutes for which a phone code login token remains valid",
+        default=5,
+    )
+
     LOGIN_DISABLED: bool = Field(
         description="Whether to disable login checks",
         default=False,

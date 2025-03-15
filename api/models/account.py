@@ -24,6 +24,7 @@ class Account(UserMixin, db.Model):  # type: ignore[name-defined]
     id: Mapped[str] = mapped_column(StringUUID, server_default=db.text("uuid_generate_v4()"))
     name = db.Column(db.String(255), nullable=False)
     email = db.Column(db.String(255), nullable=False)
+    phone = db.Column(db.String(255), nullable=True)
     password = db.Column(db.String(255), nullable=True)
     password_salt = db.Column(db.String(255), nullable=True)
     avatar = db.Column(db.String(255))

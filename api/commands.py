@@ -5,9 +5,6 @@ import secrets
 from typing import Optional
 
 import click
-from flask import current_app
-from werkzeug.exceptions import NotFound
-
 from configs import dify_config
 from constants.languages import languages
 from core.rag.datasource.vdb.vector_factory import Vector
@@ -16,15 +13,18 @@ from core.rag.models.document import Document
 from events.app_event import app_was_created
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
+from flask import current_app
 from libs.helper import email as email_validate
 from libs.password import hash_password, password_pattern, valid_password
 from libs.rsa import generate_key_pair
-from models import Tenant
-from models.dataset import Dataset, DatasetCollectionBinding, DocumentSegment
+from models import Account, Tenant, TenantAccountJoin, TenantAccountJoinRole
+from models.dataset import Dataset, DatasetCollectionBinding
 from models.dataset import Document as DatasetDocument
-from models.model import Account, App, AppAnnotationSetting, AppMode, Conversation, MessageAnnotation
+from models.dataset import DocumentSegment
+from models.model import App, AppAnnotationSetting, AppMode, Conversation, MessageAnnotation
 from models.provider import Provider, ProviderModel
 from services.account_service import RegisterService, TenantService
+from werkzeug.exceptions import NotFound
 
 
 @click.command("reset-password", help="Reset the account password.")
@@ -490,10 +490,9 @@ def add_qdrant_doc_id_index(field: str):
             click.echo(click.style("No dataset collection bindings found.", fg="red"))
             return
         import qdrant_client
+        from core.rag.datasource.vdb.qdrant.qdrant_vector import QdrantConfig
         from qdrant_client.http.exceptions import UnexpectedResponse
         from qdrant_client.http.models import PayloadSchemaType
-
-        from core.rag.datasource.vdb.qdrant.qdrant_vector import QdrantConfig
 
         for binding in bindings:
             if dify_config.QDRANT_URL is None:
@@ -649,3 +648,81 @@ where sites.id is null limit 1000"""
                 break
 
     click.echo(click.style("Fix for missing app-related sites completed successfully!", fg="green"))
+
+
+@click.command("create-admin-with-phone", help="Create or update an admin account with a phone number.")
+@click.option("--name", prompt=True, help="Admin account name")
+@click.option("--phone", prompt=True, help="Admin account phone number")
+@click.option("--tenant-id", prompt=False, help="Tenant ID (optional, uses first tenant if not provided)")
+def create_admin_with_phone(name: str, phone: str, tenant_id: Optional[str] = None):
+    """
+    Create or update an admin account with a phone number.
+    This command will create a new account if the phone doesn't exist,
+    or update an existing account with the specified admin role.
+    """
+    try:
+        # Check if account exists with this phone number
+        account = db.session.query(Account).filter(Account.phone == phone).first()
+
+        if account:
+            click.echo(f"Account with phone {phone} already exists. Updating account...")
+
+            # Update account
+            account.name = name
+            db.session.commit()
+        else:
+            click.echo(f"Creating new account with phone {phone}...")
+
+            # Create new account with phone
+            account = Account(
+                name=name,
+                email=f"{phone}@qingsu.chat",
+                phone=phone,
+                interface_language=languages[0],
+                interface_theme="light",
+                status="active",
+            )
+
+            db.session.add(account)
+            db.session.commit()
+
+        # Get or create tenant
+        tenant_id = tenant_id or dify_config.DEFAULT_TENANT_ID
+        tenant = db.session.query(Tenant).filter(Tenant.id == tenant_id).first()
+        if not tenant:
+            click.echo(click.style(f"Tenant with ID {tenant_id} not found.", fg="red"))
+            return
+
+        # Check if account is already a member of the tenant
+        ta_join = (
+            db.session.query(TenantAccountJoin)
+            .filter(TenantAccountJoin.tenant_id == tenant.id, TenantAccountJoin.account_id == account.id)
+            .first()
+        )
+
+        if ta_join:
+            # Update role to end_admin
+            ta_join.role = TenantAccountJoinRole.END_ADMIN.value
+            click.echo(f"Updated account role to {TenantAccountJoinRole.END_ADMIN.value} in tenant {tenant.name}")
+        else:
+            # Add account to tenant with end_admin role
+            ta_join = TenantAccountJoin(
+                tenant_id=tenant.id, account_id=account.id, role=TenantAccountJoinRole.END_ADMIN.value
+            )
+            db.session.add(ta_join)
+            click.echo(f"Added account to tenant {tenant.name} with role {TenantAccountJoinRole.END_ADMIN.value}")
+
+        db.session.commit()
+
+        click.echo(
+            click.style(
+                f"Successfully {'updated' if account else 'created'} admin account with phone number.", fg="green"
+            )
+        )
+        click.echo(f"Name: {name}")
+        click.echo(f"Phone: {phone}")
+        click.echo(f"Tenant: {tenant.name} (ID: {tenant.id})")
+
+    except Exception as e:
+        db.session.rollback()
+        click.echo(click.style(f"Error: {str(e)}", fg="red"))

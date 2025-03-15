@@ -5,6 +5,7 @@ def init_app(app: DifyApp):
     from commands import (
         add_qdrant_doc_id_index,
         convert_to_agent_apps,
+        create_admin_with_phone,
         create_tenant,
         fix_app_site_missing,
         reset_email,
@@ -24,6 +25,7 @@ def init_app(app: DifyApp):
         create_tenant,
         upgrade_db,
         fix_app_site_missing,
+        create_admin_with_phone,
     ]
     for cmd in cmds_to_register:
         app.cli.add_command(cmd)
