@@ -593,6 +593,8 @@ services:
   nginx:
     image: nginx:latest
     restart: always
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     volumes:
       - ./nginx/nginx.conf.template:/etc/nginx/nginx.conf.template
       - ./nginx/proxy.conf.template:/etc/nginx/proxy.conf.template
