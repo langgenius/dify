@@ -227,6 +227,11 @@ def process_user_health_summary(user: EndUser, new_messages: str):
         import json
 
         result = response["data"]["outputs"]["result"]
+
+        # preprocess result in case of ```json xxxx```
+        if result.startswith("```json") or result.endswith("```"):
+            result = result.strip("```json").strip("```")
+
         result = json.loads(result)
         if "health_status" in result:
             user.health_status = result["health_status"]
