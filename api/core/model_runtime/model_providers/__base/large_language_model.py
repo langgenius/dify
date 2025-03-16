@@ -234,7 +234,21 @@ class LargeLanguageModel(AIModel):
         real_model = model
 
         try:
+            is_first_chunk = True
             for chunk in result:
+                # When 'encouraged_response_prefix' is enabled, the first chunk should add this prefix
+                # if it is not appeared.
+                if (
+                        is_first_chunk
+                        and len(prompt_messages) > 0
+                        and isinstance(prompt_messages[-1], AssistantPromptMessage)
+                        and (encouraged_response_prefix := model_parameters.get("encouraged_response_prefix", "")) != ""
+                        and prompt_messages[-1].content == encouraged_response_prefix
+                        and not chunk.delta.message.content.startswith(encouraged_response_prefix)
+                ):
+                    chunk.delta.message.content = encouraged_response_prefix + chunk.delta.message.content
+                is_first_chunk = False
+
                 yield chunk
 
                 self._trigger_new_chunk_callbacks(
