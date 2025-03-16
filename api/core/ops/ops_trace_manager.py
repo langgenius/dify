@@ -8,6 +8,7 @@ from datetime import timedelta
 from typing import Any, Optional, Union
 from uuid import UUID, uuid4
 
+from cachetools import LRUCache
 from flask import current_app
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -61,6 +62,8 @@ provider_config_map: dict[str, dict[str, Any]] = {
         "trace_instance": OpikDataTrace,
     },
 }
+
+ops_trace_instances_cache = LRUCache(maxsize=128)
 
 
 class OpsTraceManager:
@@ -198,28 +201,31 @@ class OpsTraceManager:
             return None
 
         app_ops_trace_config = json.loads(app.tracing) if app.tracing else None
-
         if app_ops_trace_config is None:
+            return None
+        if not app_ops_trace_config.get("enabled"):
             return None
 
         tracing_provider = app_ops_trace_config.get("tracing_provider")
-
         if tracing_provider is None or tracing_provider not in provider_config_map:
             return None
 
         # decrypt_token
         decrypt_trace_config = cls.get_decrypted_tracing_config(app_id, tracing_provider)
-        if app_ops_trace_config.get("enabled"):
-            trace_instance, config_class = (
-                provider_config_map[tracing_provider]["trace_instance"],
-                provider_config_map[tracing_provider]["config_class"],
-            )
-            if not decrypt_trace_config:
-                return None
-            tracing_instance = trace_instance(config_class(**decrypt_trace_config))
-            return tracing_instance
+        if not decrypt_trace_config:
+            return None
 
-        return None
+        trace_instance, config_class = (
+            provider_config_map[tracing_provider]["trace_instance"],
+            provider_config_map[tracing_provider]["config_class"],
+        )
+        decrypt_trace_config_key = str(decrypt_trace_config)
+        tracing_instance = ops_trace_instances_cache.get(decrypt_trace_config_key)
+        if tracing_instance is None:
+            tracing_instance = trace_instance(config_class(**decrypt_trace_config))
+            ops_trace_instances_cache[decrypt_trace_config_key] = tracing_instance
+            logging.info(f"new tracing_instance for app_id: {app_id}")
+        return tracing_instance
 
     @classmethod
     def get_app_config_through_message_id(cls, message_id: str):
