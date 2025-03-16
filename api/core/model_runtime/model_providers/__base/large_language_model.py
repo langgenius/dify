@@ -193,6 +193,14 @@ class LargeLanguageModel(AIModel):
                 callbacks=callbacks,
             )
         elif isinstance(result, LLMResult):
+            # When 'encouraged_response_prefix' is enabled, the result should add this prefix
+            # if it is not appeared.
+            if (
+                (encouraged_response_prefix := model_parameters.get("encouraged_response_prefix", "")) != ""
+                and self._is_encouraged_response_prefix_enabled(prompt_messages, encouraged_response_prefix)
+                and not result.message.content.startswith(encouraged_response_prefix)
+            ):
+                result.message.content = encouraged_response_prefix + result.message.content
             self._trigger_after_invoke_callbacks(
                 model=model,
                 result=result,
@@ -239,12 +247,10 @@ class LargeLanguageModel(AIModel):
                 # When 'encouraged_response_prefix' is enabled, the first chunk should add this prefix
                 # if it is not appeared.
                 if (
-                        is_first_chunk
-                        and len(prompt_messages) > 0
-                        and isinstance(prompt_messages[-1], AssistantPromptMessage)
-                        and (encouraged_response_prefix := model_parameters.get("encouraged_response_prefix", "")) != ""
-                        and prompt_messages[-1].content == encouraged_response_prefix
-                        and not chunk.delta.message.content.startswith(encouraged_response_prefix)
+                    is_first_chunk
+                    and (encouraged_response_prefix := model_parameters.get("encouraged_response_prefix", "")) != ""
+                    and self._is_encouraged_response_prefix_enabled(prompt_messages, encouraged_response_prefix)
+                    and not chunk.delta.message.content.startswith(encouraged_response_prefix)
                 ):
                     chunk.delta.message.content = encouraged_response_prefix + chunk.delta.message.content
                 is_first_chunk = False
@@ -552,3 +558,15 @@ class LargeLanguageModel(AIModel):
                         raise e
                     else:
                         logger.warning(f"Callback {callback.__class__.__name__} on_invoke_error failed with error {e}")
+
+    def _is_encouraged_response_prefix_enabled(
+        self, prompt_messages: list[PromptMessage], encouraged_response_prefix: str
+    ) -> bool:
+        """
+        Check if encouraged response prefix is enabled
+        """
+        return (
+            len(prompt_messages) > 0
+            and isinstance(prompt_messages[-1], AssistantPromptMessage)
+            and prompt_messages[-1].content == encouraged_response_prefix
+        )
