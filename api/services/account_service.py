@@ -483,7 +483,7 @@ class AccountService:
 
             raise EmailCodeLoginRateLimitExceededError()
 
-        if DeploymentConfig().DEBUG:
+        if dify_config.DEBUG_CODE_FOR_LOGIN and dify_config.DEBUG_CODE_FOR_LOGIN != "":
             code = dify_config.DEBUG_CODE_FOR_LOGIN
         else:
             code = "".join([str(random.randint(0, 9)) for _ in range(6)])
@@ -676,8 +676,7 @@ class AccountService:
         if cls.phone_code_login_rate_limiter.is_rate_limited(phone) and not DeploymentConfig().DEBUG:
             raise Exception("Phone verification code rate limit exceeded")
 
-        if DeploymentConfig().DEBUG:
-            # Use a default code for debugging without requiring a config entry
+        if dify_config.DEBUG_CODE_FOR_LOGIN and dify_config.DEBUG_CODE_FOR_LOGIN != "":
             code = dify_config.DEBUG_CODE_FOR_LOGIN
         else:
             code = "".join([str(random.randint(0, 9)) for _ in range(6)])

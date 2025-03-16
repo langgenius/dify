@@ -19,7 +19,7 @@ class DeploymentConfig(BaseSettings):
 
     DEBUG_CODE_FOR_LOGIN: str = Field(
         description="Default code for login",
-        default="111111",
+        default="",
     )
 
     EDITION: str = Field(
