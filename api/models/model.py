@@ -1338,6 +1338,20 @@ class EndUser(UserMixin, db.Model):  # type: ignore[name-defined]
         return self.extra_profile.get("memory")
 
     @property
+    def profile(self):
+        if self.extra_profile is None:
+            return None
+
+        return f"""
+        专业：{self.major}
+        心理健康评级：{self.health_status}
+        话题标签：{self.topics}
+
+        总结分析与建议：
+        {self.summary}
+        """
+
+    @property
     def account(self):
         return db.session.query(Account).filter(Account.id == self.external_user_id).first()
 
@@ -1381,6 +1395,7 @@ class EndUser(UserMixin, db.Model):  # type: ignore[name-defined]
             "summary": value,
             "topics": self.topics,
             "major": self.major,
+            "memory": self.memory,
         }
 
     @topics.setter
@@ -1389,6 +1404,7 @@ class EndUser(UserMixin, db.Model):  # type: ignore[name-defined]
             "summary": self.summary,
             "topics": value,
             "major": self.major,
+            "memory": self.memory,
         }
 
     @major.setter
@@ -1397,6 +1413,7 @@ class EndUser(UserMixin, db.Model):  # type: ignore[name-defined]
             "summary": self.summary,
             "topics": self.topics,
             "major": value,
+            "memory": self.memory,
         }
 
 
