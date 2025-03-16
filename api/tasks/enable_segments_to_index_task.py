@@ -18,9 +18,11 @@ from models.dataset import Document as DatasetDocument
 def enable_segments_to_index_task(segment_ids: list, dataset_id: str, document_id: str):
     """
     Async enable segments to index
-    :param segment_ids:
+    :param segment_ids: list of segment ids
+    :param dataset_id: dataset id
+    :param document_id: document id
 
-    Usage: enable_segments_to_index_task.delay(segment_ids)
+    Usage: enable_segments_to_index_task.delay(segment_ids, dataset_id, document_id)
     """
     start_at = time.perf_counter()
     dataset = db.session.query(Dataset).filter(Dataset.id == dataset_id).first()
