@@ -1323,14 +1323,19 @@ class EndUser(UserMixin, db.Model):  # type: ignore[name-defined]
     is_anonymous = db.Column(db.Boolean, nullable=False, server_default=db.text("true"))
     session_id: Mapped[str] = mapped_column()
     gender = db.Column(db.Integer, nullable=False, server_default=db.text("0"))  # 0: unknown, 1: male, 2: female
-    memory = db.Column(db.Text, nullable=True)  # Long text to store user memory"
-    memory_updated_at = db.Column(db.DateTime, nullable=True)  # To record when memory was last updated
+    profile_updated_at = db.Column(db.DateTime, nullable=True)  # To record when profile was last updated
     health_status = db.Column(db.String(255), nullable=True)  # Only accept for "normal", "potential", "critical"
     extra_profile = db.Column(
         db.JSON, nullable=True
-    )  # JSON format, e.g. { "major":"engineer", "topics":["math", "physics"], "summary": "This is a summary of the user's profile"}
+    )  # JSON format, e.g. { "major":"engineer", "topics":["math", "physics"], "summary": "This is a summary of the user's profile", "memory": "This is the user's memory"}
     created_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
     updated_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
+
+    @property
+    def memory(self):
+        if self.extra_profile is None:
+            return None
+        return self.extra_profile.get("memory")
 
     @property
     def account(self):
