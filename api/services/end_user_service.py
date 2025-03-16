@@ -1,16 +1,14 @@
 from typing import Any, Dict, Optional, Tuple
 
 from extensions.ext_database import db
-from libs.infinite_scroll_pagination import InfiniteScrollPagination
+from libs.infinite_scroll_pagination import MultiPagePagination
 from models.model import App, Conversation, EndUser, Message
 from sqlalchemy import and_, desc, func
 
 
 class EndUserService:
     @staticmethod
-    def pagination_by_filters(
-        app_model: App, filters: Dict[str, Any], offset: int, limit: int
-    ) -> InfiniteScrollPagination:
+    def pagination_by_filters(app_model: App, filters: Dict[str, Any], offset: int, limit: int) -> MultiPagePagination:
         """
         Get a list of end users with filtering and pagination
 
@@ -115,7 +113,7 @@ class EndUserService:
             users.append(end_user_dict)
 
         # Format and return results
-        return InfiniteScrollPagination(data=users, limit=limit, has_more=total_count > offset + limit)
+        return MultiPagePagination(data=users, total=total_count)
 
     @staticmethod
     def load_end_user_by_id(end_user_id: str) -> EndUser:

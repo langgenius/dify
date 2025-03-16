@@ -54,7 +54,7 @@ class StudentList(Resource):
                 total:
                   type: integer
                   description: Total number of students matching filters
-                students:
+                data:
                   type: array
                   items:
                     type: object

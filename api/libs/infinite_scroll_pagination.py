@@ -3,3 +3,9 @@ class InfiniteScrollPagination:
         self.data = data
         self.limit = limit
         self.has_more = has_more
+
+
+class MultiPagePagination:
+    def __init__(self, data, total):
+        self.data = data
+        self.total = total

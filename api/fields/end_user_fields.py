@@ -23,7 +23,6 @@ detailed_end_user_fields = {
 }
 
 end_users_infinite_scroll_pagination_fields = {
-    "limit": fields.Integer,
-    "has_more": fields.Boolean,
+    "total": fields.Integer,
     "data": fields.List(fields.Nested(detailed_end_user_fields)),
 }
