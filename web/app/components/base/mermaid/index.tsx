@@ -116,7 +116,7 @@ const Flowchart = React.forwardRef((props: {
           overflow: 'auto',
           maxHeight: '80vh',
           wordBreak: 'break-word',
-          whiteSpace: 'pre-wrap'
+          whiteSpace: 'pre-wrap',
         }}>
           {props.PrimitiveCode}
         </pre>
@@ -135,7 +135,6 @@ const Flowchart = React.forwardRef((props: {
           {errMsg}
         </div>
       )}
-      
       {imagePreviewUrl && (<ImagePreview title='mermaid_chart' url={imagePreviewUrl} onCancel={() => setImagePreviewUrl('')} />)}
     </div>
   )

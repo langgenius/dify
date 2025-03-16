@@ -50,7 +50,6 @@ export const SVGRenderer = ({ content }: { content: string }) => {
         rootElement.click(() => {
           setImagePreview(svgToDataURL(svgElement as Element))
         })
-        
         setIsRendering(false)
       }
       catch (error) {
@@ -69,13 +68,13 @@ export const SVGRenderer = ({ content }: { content: string }) => {
           overflow: 'auto',
           maxHeight: '80vh',
           wordBreak: 'break-word',
-          whiteSpace: 'pre-wrap'
+          whiteSpace: 'pre-wrap',
         }}>
           {content}
         </pre>
       )}
-      <div 
-        ref={svgRef} 
+      <div
+        ref={svgRef}
         style={{
           maxHeight: '80vh',
           display: isRendering ? 'none' : 'flex',
@@ -85,7 +84,7 @@ export const SVGRenderer = ({ content }: { content: string }) => {
           wordBreak: 'break-word',
           whiteSpace: 'normal',
           margin: '0 auto',
-        }} 
+        }}
       />
       {imagePreview && (<ImagePreview url={imagePreview} title='Preview' onCancel={() => setImagePreview('')} />)}
     </>
