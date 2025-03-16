@@ -66,7 +66,7 @@ def validate_user_token_and_extract_info(view: Optional[Callable] = None):
                 raise Unauthorized("Invalid token: user not found")
             if account.status != AccountStatus.ACTIVE:
                 raise Unauthorized("Invalid token: account is not active")
-            if account.current_role != TenantAccountJoinRole.END_USER:
+            if account.current_role != TenantAccountJoinRole.END_USER.value:
                 raise Unauthorized("Invalid token: account is not end user")
 
             app_id = request.headers.get("X-App-Id")
