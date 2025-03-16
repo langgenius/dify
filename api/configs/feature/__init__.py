@@ -695,7 +695,7 @@ class CeleryBeatConfig(BaseSettings):
         default=1,
     )
 
-    USER_MEMORY_GENERATE_TASK_INTERVAL: int = Field(
+    USER_PROFILE_GENERATE_TASK_INTERVAL: int = Field(
         description="Interval in seconds for user memory generate task execution, default to 5 minutes",
         default=5,
     )

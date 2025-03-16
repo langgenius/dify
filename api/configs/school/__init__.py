@@ -12,7 +12,7 @@ class SchoolConfig(BaseSettings):
         default="",
     )
 
-    NEED_MEMORY_GENERATION_APP_IDS: str = Field(
+    NEED_USER_PROFILE_GENERATION_APP_IDS: str = Field(
         description="Development app ids for school-level features.",
         default="",
     )
@@ -22,7 +22,12 @@ class SchoolConfig(BaseSettings):
         default="",
     )
 
-    MEMORY_GENERATION_APP_ID: str = Field(
+    USER_MEMORY_GENERATION_APP_ID: str = Field(
         description="App id for memory generation.",
+        default="",
+    )
+
+    USER_HEALTH_SUMMARY_GENERATION_APP_ID: str = Field(
+        description="App id for health summary generation.",
         default="",
     )

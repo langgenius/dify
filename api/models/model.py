@@ -1366,25 +1366,37 @@ class EndUser(UserMixin, db.Model):  # type: ignore[name-defined]
             return None
         return self.extra_profile.get("major")
 
-    def update_summary(self, summary: str):
+    @memory.setter
+    def memory(self, value: str):
         self.extra_profile = {
-            "summary": summary,
+            "summary": self.summary,
+            "topics": self.topics,
+            "major": self.major,
+            "memory": value,
+        }
+
+    @summary.setter
+    def summary(self, value: str):
+        self.extra_profile = {
+            "summary": value,
             "topics": self.topics,
             "major": self.major,
         }
 
-    def update_topics(self, topics: list[str]):
+    @topics.setter
+    def topics(self, value: list[str]):
         self.extra_profile = {
             "summary": self.summary,
-            "topics": topics,
+            "topics": value,
             "major": self.major,
         }
 
-    def update_major(self, major: str):
+    @major.setter
+    def major(self, value: str):
         self.extra_profile = {
             "summary": self.summary,
             "topics": self.topics,
-            "major": major,
+            "major": value,
         }
 
 
