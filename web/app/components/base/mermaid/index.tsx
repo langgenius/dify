@@ -50,9 +50,8 @@ const Flowchart = React.forwardRef((props: {
       }
     }
     catch (error) {
-      if (prevPrimitiveCode === props.PrimitiveCode) {
+      if (prevPrimitiveCode === props.PrimitiveCode)
         setErrMsg((error as Error).message)
-      }
     }
   }, [props.PrimitiveCode])
 
