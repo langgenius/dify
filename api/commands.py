@@ -161,7 +161,7 @@ def migrate_annotation_vector_database():
         try:
             # get apps info
             apps = (
-                App.query.filter(App.status == "normal")
+                db.session.query(App).filter(App.status == "normal")
                 .order_by(App.created_at.desc())
                 .paginate(page=page, per_page=50)
             )
