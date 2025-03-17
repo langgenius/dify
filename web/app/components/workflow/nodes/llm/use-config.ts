@@ -9,7 +9,7 @@ import {
 } from '../../hooks'
 import useAvailableVarList from '../_base/hooks/use-available-var-list'
 import useConfigVision from '../../hooks/use-config-vision'
-import type { LLMNodeType } from './types'
+import type { LLMNodeType, StructuredOutput } from './types'
 import { useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import {
   ModelTypeEnum,
@@ -277,6 +277,13 @@ const useConfig = (id: string, payload: LLMNodeType) => {
     setInputs(newInputs)
   }, [inputs, setInputs])
 
+  const handleStructureOutputChange = useCallback((newOutput: StructuredOutput) => {
+    const newInputs = produce(inputs, (draft) => {
+      draft.structured_output = newOutput
+    })
+    setInputs(newInputs)
+  }, [inputs, setInputs])
+
   const filterInputVar = useCallback((varPayload: Var) => {
     return [VarType.number, VarType.string, VarType.secret, VarType.arrayString, VarType.arrayNumber, VarType.file, VarType.arrayFile].includes(varPayload.type)
   }, [])
@@ -408,6 +415,7 @@ const useConfig = (id: string, payload: LLMNodeType) => {
     setContexts,
     varInputs,
     runningStatus,
+    handleStructureOutputChange,
     handleRun,
     handleStop,
     runResult,

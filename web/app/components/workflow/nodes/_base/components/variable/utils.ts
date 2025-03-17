@@ -665,7 +665,7 @@ export const getVarType = ({
     if (!targetVar)
       return VarType.string
 
-    const isStructuredOutputVar = !!targetVar.children.schema?.properties
+    const isStructuredOutputVar = !!targetVar.children?.schema?.properties
     if (isStructuredOutputVar) {
       let currProperties = targetVar.children.schema;
       (valueSelector as ValueSelector).slice(2).forEach((key, i) => {

@@ -20,6 +20,7 @@ import type { Props as FormProps } from '@/app/components/workflow/nodes/_base/c
 import ResultPanel from '@/app/components/workflow/run/result-panel'
 import Tooltip from '@/app/components/base/tooltip'
 import Editor from '@/app/components/workflow/nodes/_base/components/prompt/editor'
+import StructureOutput from './components/structure-output'
 
 const i18nPrefix = 'workflow.nodes.llm'
 
@@ -64,6 +65,7 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
     contexts,
     setContexts,
     runningStatus,
+    handleStructureOutputChange,
     handleRun,
     handleStop,
     varInputs,
@@ -278,6 +280,10 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
             name='text'
             type='string'
             description={t(`${i18nPrefix}.outputVars.output`)}
+          />
+          <StructureOutput
+            value={inputs.structured_output}
+            onChange={handleStructureOutputChange}
           />
         </>
       </OutputVars>

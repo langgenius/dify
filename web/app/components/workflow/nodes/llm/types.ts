@@ -15,6 +15,8 @@ export type LLMNodeType = CommonNodeType & {
     enabled: boolean
     configs?: VisionSetting
   }
+  structured_output_enabled?: boolean
+  structured_output?: StructuredOutput
 }
 
 export enum Type {
