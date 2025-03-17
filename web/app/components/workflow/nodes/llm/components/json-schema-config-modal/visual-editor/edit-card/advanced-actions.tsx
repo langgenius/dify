@@ -3,11 +3,13 @@ import Button from '@/app/components/base/button'
 import { useTranslation } from 'react-i18next'
 
 type AdvancedActionsProps = {
+  isConfirmDisabled: boolean
   onCancel: () => void
   onConfirm: () => void
 }
 
 const AdvancedActions: FC<AdvancedActionsProps> = ({
+  isConfirmDisabled,
   onCancel,
   onConfirm,
 }) => {
@@ -18,7 +20,12 @@ const AdvancedActions: FC<AdvancedActionsProps> = ({
       <Button size='small' variant='secondary' onClick={onCancel}>
         {t('common.operation.cancel')}
       </Button>
-      <Button size='small' variant='primary' onClick={onConfirm}>
+      <Button
+        disabled={isConfirmDisabled}
+        size='small'
+        variant='primary'
+        onClick={onConfirm}
+      >
         {t('common.operation.confirm')}
       </Button>
     </div>

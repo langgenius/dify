@@ -1,30 +1,32 @@
-import { type FC, useState } from 'react'
-import type { Field } from '../../../types'
 import Button from '@/app/components/base/button'
 import { RiAddCircleFill } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
+import { useJsonSchemaConfigStore } from '../store'
+import { useCallback } from 'react'
+import { useMittContext } from '../context'
 
-type AddToRootProps = {
-  addField: (path: string[], updates: Field) => void
-}
-
-const AddField: FC<AddToRootProps> = ({
-  addField,
-}) => {
+const AddField = () => {
   const { t } = useTranslation()
-  const [isEditing, setIsEditing] = useState(false)
+  const setIsAddingNewField = useJsonSchemaConfigStore(state => state.setIsAddingNewField)
+  const { emit } = useMittContext()
 
-  const handleAddField = () => {
-    setIsEditing(true)
-  }
+  const handleAddField = useCallback(() => {
+    setIsAddingNewField(true)
+    emit('addField', { path: [] })
+  }, [setIsAddingNewField, emit])
 
   return (
-    <>
-      <Button size='small' className='flex items-center gap-x-[1px]' onClick={handleAddField}>
+    <div className='pl-5 py-2'>
+      <Button
+        size='small'
+        variant='secondary-accent'
+        className='flex items-center gap-x-[1px]'
+        onClick={handleAddField}
+      >
         <RiAddCircleFill className='w-3.5 h-3.5'/>
         <span className='px-[3px]'>{t('workflow.nodes.llm.jsonSchema.addField')}</span>
       </Button>
-    </>
+    </div>
   )
 }
 

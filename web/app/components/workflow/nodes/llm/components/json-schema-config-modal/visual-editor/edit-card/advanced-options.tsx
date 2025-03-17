@@ -29,11 +29,6 @@ const AdvancedOptions: FC<AdvancedOptionsProps> = ({
     onChange({ enum: e.target.value })
   }, [onChange])
 
-  // const handleEnumChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
-  //   const value = e.target.value
-  //   onChange({ enum: value })
-  // }, [onChange])
-
   const handleToggleAdvancedOptions = useCallback(() => {
     setShowAdvancedOptions(prev => !prev)
   }, [])

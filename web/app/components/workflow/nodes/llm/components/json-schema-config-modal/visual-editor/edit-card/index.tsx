@@ -9,8 +9,10 @@ import Actions from './actions'
 import AdvancedActions from './advanced-actions'
 import AdvancedOptions, { type AdvancedOptionsType } from './advanced-options'
 import { useTranslation } from 'react-i18next'
-import { useUnmount } from 'ahooks'
 import classNames from '@/utils/classnames'
+import { useJsonSchemaConfigStore } from '../../store'
+import { useMittContext } from '../../context'
+import produce from 'immer'
 
 export type EditData = {
   name: string
@@ -20,15 +22,16 @@ export type EditData = {
   enum?: SchemaEnumType
 }
 
+type Options = {
+  description: string
+  enum?: SchemaEnumType
+}
+
 type EditCardProps = {
   fields: EditData
-  onPropertyNameChange: (name: string) => void
-  onTypeChange: (type: Type | ArrayType) => void
-  onRequiredChange: (name: string) => void
-  onDescriptionChange: (description: string) => void
-  onAdvancedOptionsChange: (options: AdvancedOptionsType) => void
-  onDelete: (name: string) => void
-  onCancel: () => void
+  depth: number
+  path: string[]
+  parentPath: string[]
 }
 
 const TYPE_OPTIONS = [
@@ -42,93 +45,165 @@ const TYPE_OPTIONS = [
   { value: ArrayType.object, text: 'array[object]' },
 ]
 
+const DEPTH_LIMIT = 10
+
 const EditCard: FC<EditCardProps> = ({
   fields,
-  onPropertyNameChange,
-  onTypeChange,
-  onRequiredChange,
-  onDescriptionChange,
-  onAdvancedOptionsChange,
-  onDelete,
-  onCancel,
+  depth,
+  path,
+  parentPath,
 }) => {
   const { t } = useTranslation()
-  const [propertyName, setPropertyName] = useState(fields.name)
-  const [description, setDescription] = useState(fields.description)
-  const [AdvancedEditing, setAdvancedEditing] = useState(!fields)
+  const [currentFields, setCurrentFields] = useState(fields)
+  const [backupFields, setBackupFields] = useState<EditData | null>(null)
+  const isAddingNewField = useJsonSchemaConfigStore(state => state.isAddingNewField)
+  const setIsAddingNewField = useJsonSchemaConfigStore(state => state.setIsAddingNewField)
+  const advancedEditing = useJsonSchemaConfigStore(state => state.advancedEditing)
+  const setAdvancedEditing = useJsonSchemaConfigStore(state => state.setAdvancedEditing)
+  const { emit, useSubscribe } = useMittContext()
+
+  const disableAddBtn = fields.type !== Type.object && fields.type !== ArrayType.object && depth < DEPTH_LIMIT
+  const hasAdvancedOptions = fields.type === Type.string || fields.type === Type.number
+  const isAdvancedEditing = advancedEditing || isAddingNewField
+
+  const advancedOptions = useMemo(() => {
+    return { enum: (currentFields.enum || []).join(', ') }
+  }, [currentFields.enum])
+
+  useSubscribe('restorePropertyName', () => {
+    setCurrentFields(prev => ({ ...prev, name: fields.name }))
+  })
+
+  useSubscribe('fieldChangeSuccess', () => {
+    if (isAddingNewField) {
+      setIsAddingNewField(false)
+      return
+    }
+    setAdvancedEditing(false)
+  })
+
+  const emitPropertyNameChange = useCallback((name: string) => {
+    const newFields = produce(fields, (draft) => {
+      draft.name = name
+    })
+    emit('propertyNameChange', { path, parentPath, oldFields: fields, fields: newFields })
+  }, [fields, path, parentPath, emit])
+
+  const emitPropertyTypeChange = useCallback((type: Type | ArrayType) => {
+    const newFields = produce(fields, (draft) => {
+      draft.type = type
+    })
+    emit('propertyTypeChange', { path, parentPath, oldFields: fields, fields: newFields })
+  }, [fields, path, parentPath, emit])
+
+  const emitPropertyRequiredToggle = useCallback(() => {
+    emit('propertyRequiredToggle', { path, parentPath, oldFields: fields, fields: currentFields })
+  }, [emit, path, parentPath, fields, currentFields])
+
+  const emitPropertyOptionsChange = useCallback((options: Options) => {
+    emit('propertyOptionsChange', { path, parentPath, oldFields: fields, fields: { ...currentFields, ...options } })
+  }, [emit, path, parentPath, fields, currentFields])
+
+  const emitPropertyDelete = useCallback(() => {
+    emit('propertyDelete', { path, parentPath, oldFields: fields, fields: currentFields })
+  }, [emit, path, parentPath, fields, currentFields])
+
+  const emitPropertyAdd = useCallback(() => {
+    emit('addField', { path })
+  }, [emit, path])
+
+  const emitFieldChange = useCallback(() => {
+    emit('fieldChange', { path, parentPath, oldFields: fields, fields: currentFields })
+  }, [emit, path, parentPath, fields, currentFields])
 
   const handlePropertyNameChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    setPropertyName(e.target.value)
+    setCurrentFields(prev => ({ ...prev, name: e.target.value }))
   }, [])
 
   const handlePropertyNameBlur = useCallback((e: React.FocusEvent<HTMLInputElement>) => {
-    onPropertyNameChange(e.target.value)
-  }, [onPropertyNameChange])
+    if (isAdvancedEditing) return
+    emitPropertyNameChange(e.target.value)
+  }, [isAdvancedEditing, emitPropertyNameChange])
 
   const handleTypeChange = useCallback((item: TypeItem) => {
-    onTypeChange(item.value)
-  }, [onTypeChange])
+    setCurrentFields(prev => ({ ...prev, type: item.value }))
+    if (isAdvancedEditing) return
+    emitPropertyTypeChange(item.value)
+  }, [isAdvancedEditing, emitPropertyTypeChange])
 
   const toggleRequired = useCallback(() => {
-    onRequiredChange(propertyName)
-  }, [onRequiredChange, propertyName])
+    setCurrentFields(prev => ({ ...prev, required: !prev.required }))
+    if (isAdvancedEditing) return
+    emitPropertyRequiredToggle()
+  }, [isAdvancedEditing, emitPropertyRequiredToggle])
 
   const handleDescriptionChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    setDescription(e.target.value)
+    setCurrentFields(prev => ({ ...prev, description: e.target.value }))
   }, [])
 
   const handleDescriptionBlur = useCallback((e: React.FocusEvent<HTMLInputElement>) => {
-    onDescriptionChange(e.target.value)
-  }, [onDescriptionChange])
-
-  const advancedOptions = useMemo(() => {
-    return { enum: (fields.enum || []).join(', ') }
-  }, [fields.enum])
+    if (isAdvancedEditing) return
+    emitPropertyOptionsChange({ description: e.target.value, enum: fields.enum })
+  }, [isAdvancedEditing, emitPropertyOptionsChange, fields])
 
   const handleAdvancedOptionsChange = useCallback((options: AdvancedOptionsType) => {
-    onAdvancedOptionsChange(options)
-  }, [onAdvancedOptionsChange])
-
-  const handleConfirm = useCallback(() => {
-    setAdvancedEditing(false)
-  }, [])
+    if (isAdvancedEditing) return
+    const enumValue = options.enum.replace(' ', '').split(',')
+    emitPropertyOptionsChange({ description: fields.description, enum: enumValue })
+  }, [isAdvancedEditing, emitPropertyOptionsChange, fields])
 
   const handleDelete = useCallback(() => {
-    onDelete(propertyName)
-  }, [onDelete, propertyName])
+    emitPropertyDelete()
+  }, [emitPropertyDelete])
 
-  const handleEdit = useCallback(() => {
+  const handleAdvancedEdit = useCallback(() => {
+    setBackupFields({ ...currentFields })
     setAdvancedEditing(true)
-  }, [])
+  }, [currentFields, setAdvancedEditing])
 
-  useUnmount(() => {
-    onPropertyNameChange(propertyName)
-  })
+  const handleAddChildField = useCallback(() => {
+    emitPropertyAdd()
+  }, [emitPropertyAdd])
 
-  const disableAddBtn = fields.type !== Type.object && fields.type !== ArrayType.object
-  const hasAdvancedOptions = fields.type === Type.string || fields.type === Type.number
+  const handleConfirm = useCallback(() => {
+    emitFieldChange()
+  }, [emitFieldChange])
+
+  const handleCancel = useCallback(() => {
+    if (isAddingNewField) {
+      emit('restoreSchema')
+      setIsAddingNewField(false)
+      return
+    }
+    if (backupFields) {
+      setCurrentFields(backupFields)
+      setBackupFields(null)
+    }
+    setAdvancedEditing(false)
+  }, [isAddingNewField, emit, setIsAddingNewField, setAdvancedEditing, backupFields])
 
   return (
     <div className='flex flex-col py-0.5 rounded-lg bg-components-panel-bg shadow-sm shadow-shadow-shadow-4'>
       <div className='flex items-center pl-1 pr-0.5'>
         <div className='flex items-center gap-x-1 grow'>
           <input
-            value={propertyName}
+            value={currentFields.name}
             className='max-w-20 h-5 rounded-[5px] px-1 py-0.5 text-text-primary system-sm-semibold placeholder:text-text-placeholder
             placeholder:system-sm-semibold hover:bg-state-base-hover border border-transparent focus:border-components-input-border-active
             focus:bg-components-input-bg-active focus:shadow-xs shadow-shadow-shadow-3 caret-[#295EFF] outline-none'
             placeholder={t('workflow.nodes.llm.jsonSchema.fieldNamePlaceholder')}
             onChange={handlePropertyNameChange}
             onBlur={handlePropertyNameBlur}
+            onKeyUp={e => e.key === 'Enter' && e.currentTarget.blur()}
           />
           <TypeSelector
-            currentValue={fields.type}
+            currentValue={currentFields.type}
             items={TYPE_OPTIONS}
             onSelect={handleTypeChange}
             popupClassName={'z-[1000]'}
           />
           {
-            fields.required && (
+            currentFields.required && (
               <div className='px-1 py-0.5 text-text-warning system-2xs-medium-uppercase'>
                 {t('workflow.nodes.llm.jsonSchema.required')}
               </div>
@@ -136,37 +211,40 @@ const EditCard: FC<EditCardProps> = ({
           }
         </div>
         <RequiredSwitch
-          defaultValue={fields.required}
+          defaultValue={currentFields.required}
           toggleRequired={toggleRequired}
         />
         <Divider type='vertical' className='h-3' />
-        {AdvancedEditing ? (
+        {isAdvancedEditing ? (
           <AdvancedActions
-            onCancel={() => { }}
+            isConfirmDisabled={currentFields.name === ''}
+            onCancel={handleCancel}
             onConfirm={handleConfirm}
           />
         ) : (
           <Actions
             disableAddBtn={disableAddBtn}
-            onAddChildField={() => { }}
+            onAddChildField={handleAddChildField}
             onDelete={handleDelete}
-            onEdit={handleEdit}/>
+            onEdit={handleAdvancedEdit}
+          />
         )}
       </div>
 
-      {(description || AdvancedEditing) && (
-        <div className={classNames(AdvancedEditing ? 'p-2 pt-1' : 'px-2 pb-1')}>
+      {(currentFields.description || isAdvancedEditing) && (
+        <div className={classNames(isAdvancedEditing ? 'p-2 pt-1' : 'px-2 pb-1')}>
           <input
-            value={description}
+            value={currentFields.description}
             className='w-full h-4 p-0 text-text-tertiary system-xs-regular placeholder:text-text-placeholder placeholder:system-xs-regular caret-[#295EFF] outline-none'
             placeholder={t('workflow.nodes.llm.jsonSchema.descriptionPlaceholder')}
             onChange={handleDescriptionChange}
             onBlur={handleDescriptionBlur}
+            onKeyUp={e => e.key === 'Enter' && e.currentTarget.blur()}
           />
         </div>
       )}
 
-      {AdvancedEditing && hasAdvancedOptions && (
+      {isAdvancedEditing && hasAdvancedOptions && (
         <AdvancedOptions
           options={advancedOptions}
           onChange={handleAdvancedOptionsChange}

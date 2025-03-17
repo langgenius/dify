@@ -1,12 +1,12 @@
 'use client'
 
 import { useState } from 'react'
-import { type Field, Type } from '../components/workflow/nodes/llm/types'
+import { type SchemaRoot, Type } from '../components/workflow/nodes/llm/types'
 import JsonSchemaConfigModal from '../components/workflow/nodes/llm/components/json-schema-config-modal'
 
 export default function Page() {
   const [show, setShow] = useState(false)
-  const [schema, setSchema] = useState<Field>({
+  const [schema, setSchema] = useState<SchemaRoot>({
     type: Type.object,
     properties: {
       userId: {
@@ -18,9 +18,6 @@ export default function Page() {
       },
       title: {
         type: Type.string,
-      },
-      completed: {
-        type: Type.boolean,
       },
       locations: {
         type: Type.array,
@@ -51,6 +48,9 @@ export default function Page() {
           ],
         },
       },
+      completed: {
+        type: Type.boolean,
+      },
     },
     required: [
       'userId',
@@ -62,14 +62,16 @@ export default function Page() {
 
   return <div className='flex flex-col p-20 h-full w-full overflow-hidden'>
     <button onClick={() => setShow(true)} className='shrink-0'>Open Json Schema Config</button>
-    {show && <JsonSchemaConfigModal
-      isShow={show}
-      defaultSchema={schema}
-      onSave={(schema) => {
-        setSchema(schema)
-      }}
-      onClose={() => setShow(false)}
-    />}
+    {show && (
+      <JsonSchemaConfigModal
+        isShow={show}
+        defaultSchema={schema}
+        onSave={(schema) => {
+          setSchema(schema)
+        }}
+        onClose={() => setShow(false)}
+      />
+    )}
     <pre className='bg-gray-50 p-4 rounded-lg overflow-auto grow'>
       {JSON.stringify(schema, null, 2)}
     </pre>

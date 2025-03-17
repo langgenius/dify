@@ -4,20 +4,18 @@ import SchemaNode from './schema-node'
 
 type VisualEditorProps = {
   schema: Field
-  onChange: (schema: Field) => void
 }
 
 const VisualEditor: FC<VisualEditorProps> = ({
   schema,
-  onChange,
 }) => {
   return (
-    <div className='h-full rounded-xl p-1 pl-2 bg-background-section-burn'>
+    <div className='h-full rounded-xl p-1 pl-2 bg-background-section-burn overflow-auto'>
       <SchemaNode
         name='structured_output'
         schema={schema}
         required={false}
-        onChange={onChange}
+        path={[]}
         depth={0}
       />
     </div>
