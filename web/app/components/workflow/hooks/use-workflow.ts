@@ -59,6 +59,7 @@ import { CollectionType } from '@/app/components/tools/types'
 import { CUSTOM_ITERATION_START_NODE } from '@/app/components/workflow/nodes/iteration-start/constants'
 import { CUSTOM_LOOP_START_NODE } from '@/app/components/workflow/nodes/loop-start/constants'
 import { useWorkflowConfig } from '@/service/use-workflow'
+import { basePath } from '@/utils/var'
 import { canFindTool } from '@/utils'
 
 export const useIsChatMode = () => {
@@ -440,7 +441,6 @@ export const useWorkflow = () => {
 }
 
 export const useFetchToolsData = () => {
-  const basePath = process.env.NEXT_PUBLIC_BASE_PATH || ''
   const workflowStore = useWorkflowStore()
 
   const handleFetchAllTools = useCallback(async (type: string) => {

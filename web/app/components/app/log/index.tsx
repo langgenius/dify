@@ -7,6 +7,7 @@ import { usePathname } from 'next/navigation'
 import { useDebounce } from 'ahooks'
 import { omit } from 'lodash-es'
 import dayjs from 'dayjs'
+import { basePath } from '@/utils/var'
 import { Trans, useTranslation } from 'react-i18next'
 import List from './list'
 import Filter, { TIME_PERIOD_MAPPING } from './filter'
@@ -99,7 +100,6 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
     : null, fetchCompletionConversations)
 
   const total = isChatMode ? chatConversations?.total : completionConversations?.total
-  const basePath = process.env.NEXT_PUBLIC_BASE_PATH || ''
   return (
     <div className='grow flex flex-col h-full'>
       <p className='shrink-0 text-text-tertiary system-sm-regular'>{t('appLog.description')}</p>

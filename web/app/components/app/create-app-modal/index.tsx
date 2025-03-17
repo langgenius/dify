@@ -14,6 +14,7 @@ import type { AppIconSelection } from '../../base/app-icon-picker'
 import Button from '@/app/components/base/button'
 import Divider from '@/app/components/base/divider'
 import cn from '@/utils/classnames'
+import { basePath } from '@/utils/var'
 import AppsContext, { useAppContext } from '@/context/app-context'
 import { useProviderContext } from '@/context/provider-context'
 import { ToastContext } from '@/app/components/base/toast'
@@ -34,7 +35,6 @@ type CreateAppProps = {
   onClose: () => void
   onCreateFromTemplate?: () => void
 }
-const basePath = process.env.NEXT_PUBLIC_BASE_PATH || ''
 function CreateApp({ onClose, onSuccess, onCreateFromTemplate }: CreateAppProps) {
   const { t } = useTranslation()
   const { push } = useRouter()

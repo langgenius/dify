@@ -1,13 +1,12 @@
 'use client'
 
+import { basePath } from '@/utils/var'
 import { useEffect } from 'react'
 import { usePathname } from 'next/navigation'
 
 export default function RoutePrefixHandle() {
   const pathname = usePathname()
-  const basePath = process.env.NEXT_PUBLIC_BASE_PATH || ''
   console.log('basePath:', basePath)
-
   const handleRouteChange = () => {
     console.log('已切换到:', pathname)
     const addPrefixToImg = (e) => {

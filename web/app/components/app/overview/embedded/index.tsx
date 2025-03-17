@@ -13,6 +13,7 @@ import { IS_CE_EDITION } from '@/config'
 import type { SiteInfo } from '@/models/share'
 import { useThemeContext } from '@/app/components/base/chat/embedded-chatbot/theme/theme-context'
 import ActionButton from '@/app/components/base/action-button'
+import { basePath } from '@/utils/var'
 import cn from '@/utils/classnames'
 
 type Props = {
@@ -23,7 +24,6 @@ type Props = {
   appBaseUrl: string
   className?: string
 }
-const basePath = process.env.NEXT_PUBLIC_BASE_PATH || ''
 const OPTION_MAP = {
   iframe: {
     getContent: (url: string, token: string) =>

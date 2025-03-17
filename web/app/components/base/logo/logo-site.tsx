@@ -1,7 +1,7 @@
 'use client'
 import type { FC } from 'react'
+import { basePath } from '@/utils/var'
 import classNames from '@/utils/classnames'
-const basePath = process.env.NEXT_PUBLIC_BASE_PATH || ''
 
 type LogoSiteProps = {
   className?: string

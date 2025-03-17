@@ -5,6 +5,7 @@ import { Openai } from '@/app/components/base/icons/src/vender/other'
 import { AnthropicDark, AnthropicLight } from '@/app/components/base/icons/src/public/llm'
 import { renderI18nObject } from '@/hooks/use-i18n'
 import { Theme } from '@/types/app'
+import { basePath } from '@/utils/var'
 import cn from '@/utils/classnames'
 import useTheme from '@/hooks/use-theme'
 
@@ -35,7 +36,6 @@ const ProviderIcon: FC<ProviderIconProps> = ({
       </div>
     )
   }
-  const basePath = process.env.NEXT_PUBLIC_BASE_PATH || ''
 
   return (
     <div className={cn('inline-flex items-center gap-2', className)}>

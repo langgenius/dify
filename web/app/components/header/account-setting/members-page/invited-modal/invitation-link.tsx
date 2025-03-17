@@ -5,13 +5,13 @@ import copy from 'copy-to-clipboard'
 import s from './index.module.css'
 import type { SuccessInvitationResult } from '.'
 import Tooltip from '@/app/components/base/tooltip'
+import { basePath } from '@/utils/var'
 import { randomString } from '@/utils'
 
 type IInvitationLinkProps = {
   value: SuccessInvitationResult
 }
 
-const basePath = process.env.NEXT_PUBLIC_BASE_PATH || ''
 const InvitationLink = ({
   value,
 }: IInvitationLinkProps) => {

@@ -1,5 +1,5 @@
 import type { FC } from 'react'
-const basePath = process.env.NEXT_PUBLIC_BASE_PATH || ''
+import { basePath } from '@/utils/var'
 
 type LogoEmbeddedChatHeaderProps = {
   className?: string

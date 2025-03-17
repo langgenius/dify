@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { Menu, Transition } from '@headlessui/react'
 import { RiArrowDownSLine } from '@remixicon/react'
 import cn from '@/utils/classnames'
+import { basePath } from '@/utils/var'
 import { switchWorkspace } from '@/service/common'
 import { useWorkspacesContext } from '@/context/workspace-context'
 import { ToastContext } from '@/app/components/base/toast'
@@ -22,7 +23,7 @@ const WorkplaceSelector = () => {
         return
       await switchWorkspace({ url: '/workspaces/switch', body: { tenant_id } })
       notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
-      location.assign(`${location.origin}${process.env.NEXT_PUBLIC_BASE_PATH || ''}`)
+      location.assign(`${location.origin}${basePath}`)
     }
     catch (e) {
       notify({ type: 'error', message: t('common.provider.saveFailed') })

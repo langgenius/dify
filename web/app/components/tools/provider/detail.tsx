@@ -9,6 +9,7 @@ import { AuthHeaderPrefix, AuthType, CollectionType } from '../types'
 import type { Collection, CustomCollectionBackend, Tool, WorkflowToolProviderRequest, WorkflowToolProviderResponse } from '../types'
 import ToolItem from './tool-item'
 import cn from '@/utils/classnames'
+import { basePath } from '@/utils/var'
 import I18n from '@/context/i18n'
 import { getLanguage } from '@/i18n/language'
 import Confirm from '@/app/components/base/confirm'
@@ -276,7 +277,7 @@ const ProviderDetail = ({
                 variant='primary'
                 className={cn('shrink-0 my-3 w-[183px]')}
               >
-                <a className='flex items-center text-text-primary' href={`${process.env.NEXT_PUBLIC_BASE_PATH || ''}/app/${(customCollection as WorkflowToolProviderResponse).workflow_app_id}/workflow`} rel='noreferrer' target='_blank'>
+                <a className='flex items-center text-text-primary' href={`${basePath}/app/${(customCollection as WorkflowToolProviderResponse).workflow_app_id}/workflow`} rel='noreferrer' target='_blank'>
                   <div className='system-sm-medium'>{t('tools.openInStudio')}</div>
                   <LinkExternal02 className='ml-1 w-4 h-4' />
                 </a>

@@ -2,6 +2,7 @@
 import type { FC } from 'react'
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import useSWR from 'swr'
+import { basePath } from '@/utils/var'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import { usePathname } from 'next/navigation'
@@ -504,7 +505,6 @@ const Configuration: FC = () => {
 
   useEffect(() => {
     (async () => {
-      const basePath = process.env.NEXT_PUBLIC_BASE_PATH || ''
       const collectionList = await fetchCollectionList()
       if (basePath) {
         collectionList.forEach((item) => {
