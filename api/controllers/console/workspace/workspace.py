@@ -97,11 +97,11 @@ class WorkspaceListApi(Resource):
             has_more = True
 
         return {
-                   "data": marshal(tenants.items, workspace_fields),
-                   "has_more": has_more,
-                   "limit": args["limit"],
-                   "page": args["page"],
-                   "total": tenants.total,
+            "data": marshal(tenants.items, workspace_fields),
+            "has_more": has_more,
+            "limit": args["limit"],
+            "page": args["page"],
+            "total": tenants.total,
         }, 200
 
 
