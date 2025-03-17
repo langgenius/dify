@@ -46,11 +46,12 @@ def send_invite_member_mail_task(language: str, to: str, token: str, inviter_nam
                     url=url,
                     application_title=application_title,
                 )
+                mail.send(to=to, subject=f"立即加入 {application_title} 工作空间", html=html_content)
             else:
                 html_content = render_template(
                     template, to=to, inviter_name=inviter_name, workspace_name=workspace_name, url=url
                 )
-            mail.send(to=to, subject="立即加入 Dify 工作空间", html=html_content)
+                mail.send(to=to, subject="立即加入 Dify 工作空间", html=html_content)
         else:
             template = "invite_member_mail_template_en-US.html"
             if dify_config.ENTERPRISE_ENABLED:
@@ -64,11 +65,12 @@ def send_invite_member_mail_task(language: str, to: str, token: str, inviter_nam
                     url=url,
                     application_title=application_title,
                 )
+                mail.send(to=to, subject=f"Join {application_title} Workspace Now", html=html_content)
             else:
                 html_content = render_template(
                     template, to=to, inviter_name=inviter_name, workspace_name=workspace_name, url=url
                 )
-            mail.send(to=to, subject="Join Dify Workspace Now", html=html_content)
+                mail.send(to=to, subject="Join Dify Workspace Now", html=html_content)
 
         end_at = time.perf_counter()
         logging.info(

@@ -198,8 +198,8 @@ class FeatureService:
 
     @classmethod
     def get_enterprise_application_title(cls):
-        branding = cls.get_system_features().get("branding", None)
+        branding = cls.get_system_features().branding
         application_title = "Dify"
-        if branding and branding.get("enabled", False):
-            application_title = branding.get("application_title", "Dify")
+        if branding.enabled:
+            application_title = branding.application_title
         return application_title
