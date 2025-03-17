@@ -76,6 +76,7 @@ const Panel: FC = () => {
       }
       {
         showDebugAndPreviewPanel && isChatMode && (
+          // 编排对话框面板
           <DebugAndPreview />
         )
       }
