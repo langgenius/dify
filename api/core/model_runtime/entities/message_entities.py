@@ -1,5 +1,5 @@
 from abc import ABC
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from enum import Enum, StrEnum
 from typing import Optional
 
@@ -119,6 +119,15 @@ class DocumentPromptMessageContent(MultiModalPromptMessageContent):
     type: PromptMessageContentType = PromptMessageContentType.DOCUMENT
 
 
+CONTENT_TYPE_MAPPING: Mapping[PromptMessageContentType, type[PromptMessageContent]] = {
+    PromptMessageContentType.TEXT: TextPromptMessageContent,
+    PromptMessageContentType.IMAGE: ImagePromptMessageContent,
+    PromptMessageContentType.AUDIO: AudioPromptMessageContent,
+    PromptMessageContentType.VIDEO: VideoPromptMessageContent,
+    PromptMessageContentType.DOCUMENT: DocumentPromptMessageContent,
+}
+
+
 class PromptMessage(ABC, BaseModel):
     """
     Model class for prompt message.
@@ -135,6 +144,23 @@ class PromptMessage(ABC, BaseModel):
         :return: True if prompt message is empty, False otherwise
         """
         return not self.content
+
+    @field_validator("content", mode="before")
+    @classmethod
+    def validate_content(cls, v):
+        if isinstance(v, list):
+            prompts = []
+            for prompt in v:
+                if isinstance(prompt, PromptMessageContent):
+                    if not isinstance(prompt, TextPromptMessageContent | MultiModalPromptMessageContent):
+                        prompt = CONTENT_TYPE_MAPPING[prompt.type].model_validate(prompt.model_dump())
+                elif isinstance(prompt, dict):
+                    prompt = CONTENT_TYPE_MAPPING[prompt["type"]].model_validate(prompt)
+                else:
+                    raise ValueError(f"invalid prompt message {prompt}")
+                prompts.append(prompt)
+            return prompts
+        return v
 
 
 class UserPromptMessage(PromptMessage):

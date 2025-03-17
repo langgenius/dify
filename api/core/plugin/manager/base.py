@@ -171,7 +171,7 @@ class BasePluginManager:
             line_data = None
             try:
                 line_data = json.loads(line)
-                rep = PluginDaemonBasicResponse[type](**line_data)  # type: ignore
+                rep = PluginDaemonBasicResponse[type](**line_data)
             except Exception:
                 # TODO modify this when line_data has code and message
                 if line_data and "error" in line_data:
