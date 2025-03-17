@@ -40,6 +40,8 @@ select = [
 ]
 
 ignore = [
+    "SIM110",# unnecessary-comprehension
+    "E501",# line-too-long
     "E402", # module-import-not-at-top-of-file
     "E711", # none-comparison
     "E712", # true-false-comparison
