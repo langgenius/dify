@@ -198,6 +198,7 @@ class LargeLanguageModel(AIModel):
             if (
                 (encouraged_response_prefix := model_parameters.get("encouraged_response_prefix", "")) != ""
                 and self._is_encouraged_response_prefix_enabled(prompt_messages, encouraged_response_prefix)
+                and isinstance(result.message.content, str)
                 and not result.message.content.startswith(encouraged_response_prefix)
             ):
                 result.message.content = encouraged_response_prefix + result.message.content
