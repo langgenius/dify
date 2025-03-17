@@ -63,10 +63,10 @@ provider_config_map: dict[str, dict[str, Any]] = {
     },
 }
 
-ops_trace_instances_cache = LRUCache(maxsize=128)
-
 
 class OpsTraceManager:
+    ops_trace_instances_cache: LRUCache = LRUCache(maxsize=128)
+
     @classmethod
     def encrypt_tracing_config(
         cls, tenant_id: str, tracing_provider: str, tracing_config: dict, current_trace_config=None
@@ -220,10 +220,10 @@ class OpsTraceManager:
             provider_config_map[tracing_provider]["config_class"],
         )
         decrypt_trace_config_key = str(decrypt_trace_config)
-        tracing_instance = ops_trace_instances_cache.get(decrypt_trace_config_key)
+        tracing_instance = cls.ops_trace_instances_cache.get(decrypt_trace_config_key)
         if tracing_instance is None:
             tracing_instance = trace_instance(config_class(**decrypt_trace_config))
-            ops_trace_instances_cache[decrypt_trace_config_key] = tracing_instance
+            cls.ops_trace_instances_cache[decrypt_trace_config_key] = tracing_instance
             logging.info(f"new tracing_instance for app_id: {app_id}")
         return tracing_instance
 
