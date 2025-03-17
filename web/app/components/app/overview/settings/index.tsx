@@ -29,6 +29,8 @@ import AppIconPicker from '@/app/components/base/app-icon-picker'
 import I18n from '@/context/i18n'
 import cn from '@/utils/classnames'
 import { useGlobalPublicStore } from '@/context/global-public-context'
+import { IS_CE_EDITION } from '@/config'
+import { LicenseStatus } from '@/types/feature'
 
 export type ISettingsModalProps = {
   isChat: boolean
@@ -178,7 +180,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
       chat_color_theme: inputInfo.chatColorTheme,
       chat_color_theme_inverted: inputInfo.chatColorThemeInverted,
       prompt_public: false,
-      copyright: isFreePlan
+      copyright: IS_CE_EDITION
         ? ''
         : inputInfo.copyrightSwitchValue
           ? inputInfo.copyright
@@ -381,14 +383,14 @@ const SettingsModal: FC<ISettingsModalProps> = ({
                     )}
                   </div>
                   <Tooltip
-                    disabled={!isFreePlan}
+                    disabled={systemFeatures.license.status !== LicenseStatus.NONE}
                     popupContent={
                       <div className='w-[260px]'>{t(`${prefixSettings}.more.copyrightTooltip`)}</div>
                     }
                     asChild={false}
                   >
                     <Switch
-                      disabled={isFreePlan}
+                      disabled={IS_CE_EDITION}
                       defaultValue={inputInfo.copyrightSwitchValue}
                       onChange={v => setInputInfo({ ...inputInfo, copyrightSwitchValue: v })}
                     />
