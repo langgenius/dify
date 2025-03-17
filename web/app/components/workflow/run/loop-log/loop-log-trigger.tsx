@@ -37,18 +37,24 @@ const LoopLogTrigger = ({
     e.nativeEvent.stopImmediatePropagation()
     onShowLoopResultList(nodeInfo.details || [], nodeInfo?.loopDurationMap || nodeInfo.execution_metadata?.loop_duration_map || {})
   }
+  
+  const loopText = t('workflow.nodes.loop.loop', { count: getCount(nodeInfo.details?.length, nodeInfo.metadata?.loop_length) }) + 
+    (getErrorCount(nodeInfo.details) > 0 ? 
+      `${t('workflow.nodes.loop.comma')}${t('workflow.nodes.loop.error', { count: getErrorCount(nodeInfo.details) })}` : 
+      '')
+  
   return (
     <Button
       className='flex items-center w-full self-stretch gap-2 px-3 py-2 bg-components-button-tertiary-bg-hover hover:bg-components-button-tertiary-bg-hover rounded-lg cursor-pointer border-none'
       onClick={handleOnShowLoopDetail}
     >
       <Loop className='w-4 h-4 text-components-button-tertiary-text shrink-0' />
-      <div className='flex-1 text-left system-sm-medium text-components-button-tertiary-text'>{t('workflow.nodes.loop.loop', { count: getCount(nodeInfo.details?.length, nodeInfo.metadata?.loop_length) })}{getErrorCount(nodeInfo.details) > 0 && (
-        <>
-          {t('workflow.nodes.loop.comma')}
-          {t('workflow.nodes.loop.error', { count: getErrorCount(nodeInfo.details) })}
-        </>
-      )}</div>
+      <div 
+        className='flex-1 text-left system-sm-medium text-components-button-tertiary-text whitespace-nowrap overflow-hidden text-ellipsis'
+        title={loopText}
+      >
+        {loopText}
+      </div>
       <RiArrowRightSLine className='w-4 h-4 text-components-button-tertiary-text shrink-0' />
     </Button>
   )
