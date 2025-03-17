@@ -17,7 +17,7 @@ const GithubStar: FC<{ className: string }> = (props) => {
     queryKey: ['github-star'],
     queryFn: getStar,
     enabled: process.env.NODE_ENV !== 'development',
-    initialData: { stargazers_count: 6000 },
+    initialData: { stargazers_count: 81204 },
   })
   if (isFetching)
     return null
