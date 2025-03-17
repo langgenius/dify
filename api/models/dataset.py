@@ -62,6 +62,12 @@ class Dataset(db.Model):  # type: ignore[name-defined]
     retrieval_model = db.Column(JSONB, nullable=True)
 
     @property
+    def created_name(self):
+        if self.created_by:
+            account = db.session.query(Account).filter(Account.id == self.created_by).first()
+            return account.name if account else None
+        return None
+    @property
     def dataset_keyword_table(self):
         dataset_keyword_table = (
             db.session.query(DatasetKeywordTable).filter(DatasetKeywordTable.dataset_id == self.id).first()
