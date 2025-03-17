@@ -31,6 +31,7 @@ import { getLocaleOnClient } from '@/i18n'
 import { useAppContext } from '@/context/app-context'
 import Tooltip from '@/app/components/base/tooltip'
 import LinkedAppsPanel from '@/app/components/base/linked-apps-panel'
+import useDocumentTitle from '@/hooks/use-document-title'
 
 export type IAppDetailLayoutProps = {
   children: React.ReactNode
@@ -186,11 +187,7 @@ const DatasetDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
     }
     return baseNavigation
   }, [datasetRes?.provider, datasetId, t])
-
-  useEffect(() => {
-    if (datasetRes)
-      document.title = `${datasetRes.name || 'Dataset'} - Dify`
-  }, [datasetRes])
+  useDocumentTitle(`${datasetRes?.name || 'Dataset'}`)
 
   const setAppSiderbarExpand = useStore(state => state.setAppSiderbarExpand)
 
