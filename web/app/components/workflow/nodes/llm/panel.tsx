@@ -21,6 +21,7 @@ import ResultPanel from '@/app/components/workflow/run/result-panel'
 import Tooltip from '@/app/components/base/tooltip'
 import Editor from '@/app/components/workflow/nodes/_base/components/prompt/editor'
 import StructureOutput from './components/structure-output'
+import Switch from '@/app/components/base/switch'
 
 const i18nPrefix = 'workflow.nodes.llm'
 
@@ -65,6 +66,7 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
     contexts,
     setContexts,
     runningStatus,
+    handleStructureOutputEnableChange,
     handleStructureOutputChange,
     handleRun,
     handleStop,
@@ -274,17 +276,34 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
         />
       </div>
       <Split />
-      <OutputVars>
+      <OutputVars
+        operations={
+          <div className='mr-4'>
+            <Switch
+              defaultValue={!!inputs.structured_output_enabled}
+              onChange={handleStructureOutputEnableChange}
+              size='md'
+              disabled={readOnly}
+            />
+          </div>
+        }
+      >
         <>
           <VarItem
             name='text'
             type='string'
             description={t(`${i18nPrefix}.outputVars.output`)}
           />
-          <StructureOutput
-            value={inputs.structured_output}
-            onChange={handleStructureOutputChange}
-          />
+          {inputs.structured_output_enabled && (
+            <>
+              <Split className='mt-3' />
+              <StructureOutput
+                className='mt-4'
+                value={inputs.structured_output}
+                onChange={handleStructureOutputChange}
+              />
+            </>
+          )}
         </>
       </OutputVars>
       {isShowSingleRun && (

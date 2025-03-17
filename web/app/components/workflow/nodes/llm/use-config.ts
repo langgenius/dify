@@ -277,6 +277,13 @@ const useConfig = (id: string, payload: LLMNodeType) => {
     setInputs(newInputs)
   }, [inputs, setInputs])
 
+  const handleStructureOutputEnableChange = useCallback((enabled: boolean) => {
+    const newInputs = produce(inputs, (draft) => {
+      draft.structured_output_enabled = enabled
+    })
+    setInputs(newInputs)
+  }, [inputs, setInputs])
+
   const handleStructureOutputChange = useCallback((newOutput: StructuredOutput) => {
     const newInputs = produce(inputs, (draft) => {
       draft.structured_output = newOutput
@@ -416,6 +423,7 @@ const useConfig = (id: string, payload: LLMNodeType) => {
     varInputs,
     runningStatus,
     handleStructureOutputChange,
+    handleStructureOutputEnableChange,
     handleRun,
     handleStop,
     runResult,

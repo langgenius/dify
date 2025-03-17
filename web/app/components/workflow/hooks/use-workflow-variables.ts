@@ -94,7 +94,7 @@ export const useWorkflowVariableType = () => {
   }) => {
     // debugger
     const node = getNodes().find(n => n.id === nodeId)
-    console.log(nodeId, valueSelector)
+    // console.log(nodeId, valueSelector)
     const isInIteration = !!node?.data.isInIteration
     const iterationNode = isInIteration ? getNodes().find(n => n.id === node.parentId) : null
     const availableNodes = getBeforeNodesInSameBranch(nodeId)

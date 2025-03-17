@@ -7,13 +7,16 @@ import type { SchemaRoot, StructuredOutput } from '../types'
 import ShowPanel from '@/app/components/workflow/nodes/_base/components/variable/object-child-tree-panel/show'
 import { useBoolean } from 'ahooks'
 import JsonSchemaConfigModal from './json-schema-config-modal'
+import cn from '@/utils/classnames'
 
 type Props = {
+  className?: string
   value?: StructuredOutput
   onChange: (value: StructuredOutput) => void,
 }
 
 const StructureOutput: FC<Props> = ({
+  className,
   value,
   onChange,
 }) => {
@@ -28,13 +31,18 @@ const StructureOutput: FC<Props> = ({
     })
   }, [onChange])
   return (
-    <div>
+    <div className={cn(className)}>
       <div className='flex justify-between'>
         <div className='flex leading-[18px] items-center'>
           <div className='code-sm-semibold text-text-secondary'>structured_output</div>
           <div className='ml-2 system-xs-regular text-text-tertiary'>object</div>
         </div>
-        <Button className='flex' variant='secondary' onClick={showConfigModal}>
+        <Button
+          size='small'
+          variant='secondary'
+          className='flex'
+          onClick={showConfigModal}
+        >
           <RiEditLine className='size-3.5 mr-1' />
           <div className='system-xs-medium text-components-button-secondary-text'>Configure</div>
         </Button>
@@ -43,7 +51,7 @@ const StructureOutput: FC<Props> = ({
         <ShowPanel
           payload={value}
         />) : (
-        <div className='flex items-center h-10 justify-center rounded-[10px] bg-background-section system-xs-regular text-text-tertiary'>no data</div>
+        <div className='mt-1.5 flex items-center h-10 justify-center rounded-[10px] bg-background-section system-xs-regular text-text-tertiary'>no data</div>
       )}
 
       {showConfig && (

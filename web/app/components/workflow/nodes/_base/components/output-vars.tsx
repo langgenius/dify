@@ -8,15 +8,20 @@ type Props = {
   className?: string
   title?: string
   children: ReactNode
+  operations?: ReactNode
 }
 
 const OutputVars: FC<Props> = ({
   title,
   children,
+  operations,
 }) => {
   const { t } = useTranslation()
   return (
-    <FieldCollapse title={title || t('workflow.nodes.common.outputVars')}>
+    <FieldCollapse
+      title={title || t('workflow.nodes.common.outputVars')}
+      operations={operations}
+    >
       {children}
     </FieldCollapse>
   )
@@ -40,9 +45,11 @@ export const VarItem: FC<VarItemProps> = ({
 }) => {
   return (
     <div className='py-1'>
-      <div className='flex leading-[18px] items-center'>
-        <div className='code-sm-semibold text-text-secondary'>{name}</div>
-        <div className='ml-2 system-xs-regular text-text-tertiary'>{type}</div>
+      <div className='flex justify-between'>
+        <div className='flex leading-[18px] items-center'>
+          <div className='code-sm-semibold text-text-secondary'>{name}</div>
+          <div className='ml-2 system-xs-regular text-text-tertiary'>{type}</div>
+        </div>
       </div>
       <div className='mt-0.5 system-xs-regular text-text-tertiary'>
         {description}
