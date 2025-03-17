@@ -9,7 +9,7 @@ import {
 } from '../../hooks'
 import useAvailableVarList from '../_base/hooks/use-available-var-list'
 import useConfigVision from '../../hooks/use-config-vision'
-import type { LLMNodeType } from './types'
+import type { LLMNodeType, StructuredOutput } from './types'
 import { useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import {
   ModelTypeEnum,
@@ -18,6 +18,8 @@ import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-cr
 import useOneStepRun from '@/app/components/workflow/nodes/_base/hooks/use-one-step-run'
 import { RETRIEVAL_OUTPUT_STRUCT } from '@/app/components/workflow/constants'
 import { checkHasContextBlock, checkHasHistoryBlock, checkHasQueryBlock } from '@/app/components/base/prompt-editor/constants'
+import useSWR from 'swr'
+import { fetchModelParameterRules } from '@/service/common'
 
 const useConfig = (id: string, payload: LLMNodeType) => {
   const { nodesReadOnly: readOnly } = useNodesReadOnly()
@@ -277,6 +279,25 @@ const useConfig = (id: string, payload: LLMNodeType) => {
     setInputs(newInputs)
   }, [inputs, setInputs])
 
+  // structure output
+  // TODO: this method has problem, different model has different parameter rules that show support structured output
+  const { data: parameterRulesData } = useSWR((model?.provider && model?.name) ? `/workspaces/current/model-providers/${model.provider}/models/parameter-rules?model=${model.name}` : null, fetchModelParameterRules)
+  const isModelSupportStructuredOutput = parameterRulesData?.data?.some((rule: any) => rule.name === 'json_schema')
+
+  const handleStructureOutputEnableChange = useCallback((enabled: boolean) => {
+    const newInputs = produce(inputs, (draft) => {
+      draft.structured_output_enabled = enabled
+    })
+    setInputs(newInputs)
+  }, [inputs, setInputs])
+
+  const handleStructureOutputChange = useCallback((newOutput: StructuredOutput) => {
+    const newInputs = produce(inputs, (draft) => {
+      draft.structured_output = newOutput
+    })
+    setInputs(newInputs)
+  }, [inputs, setInputs])
+
   const filterInputVar = useCallback((varPayload: Var) => {
     return [VarType.number, VarType.string, VarType.secret, VarType.arrayString, VarType.arrayNumber, VarType.file, VarType.arrayFile].includes(varPayload.type)
   }, [])
@@ -408,6 +429,9 @@ const useConfig = (id: string, payload: LLMNodeType) => {
     setContexts,
     varInputs,
     runningStatus,
+    isModelSupportStructuredOutput,
+    handleStructureOutputChange,
+    handleStructureOutputEnableChange,
     handleRun,
     handleStop,
     runResult,

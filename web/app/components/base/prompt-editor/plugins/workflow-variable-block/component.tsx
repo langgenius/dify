@@ -29,18 +29,24 @@ import { isConversationVar, isENV, isSystemVar } from '@/app/components/workflow
 import Tooltip from '@/app/components/base/tooltip'
 import { isExceptionVariable } from '@/app/components/workflow/utils'
 import VarFullPathPanel from '@/app/components/workflow/nodes/_base/components/variable/var-full-path-panel'
-import { Type } from '@/app/components/workflow/nodes/llm/types'
+import type { Type } from '@/app/components/workflow/nodes/llm/types'
+import type { ValueSelector } from '@/app/components/workflow/types'
 
 type WorkflowVariableBlockComponentProps = {
   nodeKey: string
   variables: string[]
   workflowNodesMap: WorkflowNodesMap
+  getVarType: (payload: {
+    nodeId: string,
+    valueSelector: ValueSelector,
+  }) => Type
 }
 
 const WorkflowVariableBlockComponent = ({
   nodeKey,
   variables,
   workflowNodesMap = {},
+  getVarType,
 }: WorkflowVariableBlockComponentProps) => {
   const { t } = useTranslation()
   const [editor] = useLexicalComposerContext()
@@ -144,7 +150,10 @@ const WorkflowVariableBlockComponent = ({
         <VarFullPathPanel
           nodeName={node.title}
           path={variables.slice(1)}
-          varType={Type.string}
+          varType={getVarType({
+            nodeId: variables[0],
+            valueSelector: variables,
+          })}
           nodeType={node?.type}
         />}
       disabled={!isShowAPart}
