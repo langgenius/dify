@@ -873,11 +873,12 @@ class GraphEngine:
     def create_copy(self):
         """
         create a graph engine copy
-        :return: with a new variable pool instance of graph engine
+        :return: graph engine with a new variable pool and initialized total tokens
         """
         new_instance = copy(self)
         new_instance.graph_runtime_state = copy(self.graph_runtime_state)
         new_instance.graph_runtime_state.variable_pool = deepcopy(self.graph_runtime_state.variable_pool)
+        new_instance.graph_runtime_state.total_tokens = 0
         return new_instance
 
     def _handle_continue_on_error(
