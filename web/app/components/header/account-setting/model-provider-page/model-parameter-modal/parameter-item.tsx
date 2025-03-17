@@ -10,6 +10,8 @@ import Slider from '@/app/components/base/slider'
 import Radio from '@/app/components/base/radio'
 import { SimpleSelect } from '@/app/components/base/select'
 import TagInput from '@/app/components/base/tag-input'
+import Badge from '@/app/components/base/badge'
+import { useTranslation } from 'react-i18next'
 
 export type ParameterValue = number | string | string[] | boolean | undefined
 
@@ -27,6 +29,7 @@ const ParameterItem: FC<ParameterItemProps> = ({
   onSwitch,
   isInWorkflow,
 }) => {
+  const { t } = useTranslation()
   const language = useLanguage()
   const [localValue, setLocalValue] = useState(value)
   const numberInputRef = useRef<HTMLInputElement>(null)
@@ -278,6 +281,19 @@ const ParameterItem: FC<ParameterItemProps> = ({
               />
             )
           }
+          {/* TODO: wait api return and product design */}
+          {parameterRule.name === 'json_schema' && (
+            <Tooltip
+              popupContent={(
+                <div className='w-[232px]'>
+                  <div className='mb-1 body-xs-regular text-text-secondary'>{t('app.structOutput.legacyTip')}</div>
+                  <a className='' target='_blank' href='https://todo'>{t('app.structOutput.learnMore')}</a>
+                </div>
+              )}
+            >
+              <Badge uppercase className='text-text-accent-secondary'>{t('app.structOutput.legacy')}</Badge>
+            </Tooltip>
+          )}
         </div>
         {
           parameterRule.type === 'tag' && (

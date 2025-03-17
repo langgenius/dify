@@ -191,6 +191,9 @@ const translation = {
     structuredTip: '结构化输出是一项功能，可确保模型始终生成符合您提供的 JSON 模式的响应',
     modelNotSupported: '模型不支持',
     modelNotSupportedTip: '当前模型不支持此功能，将自动降级为提示注入。',
+    legacy: '遗留',
+    legacyTip: '此功能将在未来版本中删除',
+    learnMore: '了解更多',
   },
 }
 

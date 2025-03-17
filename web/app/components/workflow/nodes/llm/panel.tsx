@@ -67,6 +67,7 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
     contexts,
     setContexts,
     runningStatus,
+    isModelSupportStructuredOutput,
     handleStructureOutputEnableChange,
     handleStructureOutputChange,
     handleRun,
@@ -280,16 +281,18 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
       <OutputVars
         operations={
           <div className='mr-4 flex items-center'>
-            <Tooltip noDecoration popupContent={
-              <div className='w-[232px] px-4 py-3.5 rounded-xl bg-components-tooltip-bg border-[0.5px] border-components-panel-border shadow-lg backdrop-blur-[5px]'>
-                <div className='title-xs-semi-bold text-text-primary'>{t('app.structOutput.modelNotSupported')}</div>
-                <div className='mt-1 body-xs-regular text-text-secondary'>{t('app.structOutput.modelNotSupportedTip')}</div>
-              </div>
-            }>
-              <div>
-                <RiAlertFill className='mr-1 size-4 text-text-warning-secondary' />
-              </div>
-            </Tooltip>
+            {!isModelSupportStructuredOutput && (
+              <Tooltip noDecoration popupContent={
+                <div className='w-[232px] px-4 py-3.5 rounded-xl bg-components-tooltip-bg border-[0.5px] border-components-panel-border shadow-lg backdrop-blur-[5px]'>
+                  <div className='title-xs-semi-bold text-text-primary'>{t('app.structOutput.modelNotSupported')}</div>
+                  <div className='mt-1 body-xs-regular text-text-secondary'>{t('app.structOutput.modelNotSupportedTip')}</div>
+                </div>
+              }>
+                <div>
+                  <RiAlertFill className='mr-1 size-4 text-text-warning-secondary' />
+                </div>
+              </Tooltip>
+            )}
             <div className='mr-0.5 system-xs-medium-uppercase text-text-tertiary'>{t('app.structOutput.structured')}</div>
             <Tooltip popupContent={
               <div className='max-w-[150px]'>{t('app.structOutput.structuredTip')}</div>

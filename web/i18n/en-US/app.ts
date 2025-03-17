@@ -190,6 +190,9 @@ const translation = {
     structuredTip: 'Structured Outputs is a feature that ensures the model will always generate responses that adhere to your supplied JSON Schema',
     modelNotSupported: 'Model not supported',
     modelNotSupportedTip: 'The current model does not support this feature and is automatically downgraded to prompt injection.',
+    legacy: 'Legacy',
+    legacyTip: 'JSON Schema will be removed from model parameters, you can use the structured output functionality under nodes instead.',
+    learnMore: 'Learn more',
   },
 }
 
