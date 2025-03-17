@@ -173,6 +173,25 @@ class AccountService:
         db.session.commit()
 
         return cast(Account, account)
+    
+    @staticmethod
+    def anonymous(email: str) -> Account:
+        """authenticate account with email and password"""
+
+        account = db.session.query(Account).filter_by(email=email).first()
+        if not account:
+            raise AccountNotFoundError()
+
+        if account.status == AccountStatus.BANNED.value:
+            raise AccountLoginError("Account is banned.")
+
+        if account.status == AccountStatus.PENDING.value:
+            account.status = AccountStatus.ACTIVE.value
+            account.initialized_at = datetime.now(UTC).replace(tzinfo=None)
+
+        db.session.commit()
+
+        return cast(Account, account)
 
     @staticmethod
     def update_account_password(account, password, new_password):
