@@ -510,6 +510,28 @@ services:
     depends_on:
       - opensearch
 
+  # opengauss vector database.
+  opengauss:
+    image: opengauss/opengauss:7.0.0-RC1
+    profiles:
+      - opengauss
+    privileged: true
+    restart: always
+    environment:
+      GS_USERNAME: ${OPENGAUSS_USER:-postgres}
+      GS_PASSWORD: ${OPENGAUSS_PASSWORD:-Dify@123}
+      GS_PORT: ${OPENGAUSS_PORT:-6600}
+      GS_DB: ${OPENGAUSS_DATABASE:-dify}
+    volumes:
+      - ./volumes/opengauss/data:/var/lib/opengauss/data
+    healthcheck:
+      test: ["CMD-SHELL", "netstat -lntp | grep tcp6 > /dev/null 2>&1"]
+      interval: 10s
+      timeout: 10s
+      retries: 10
+    ports:
+      - ${OPENGAUSS_PORT:-6600}:${OPENGAUSS_PORT:-6600}
+
   # MyScale vector database
   myscale:
     container_name: myscale
