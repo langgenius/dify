@@ -31,14 +31,18 @@ def send_reset_password_mail_task(language: str, to: str, code: str):
             if dify_config.ENTERPRISE_ENABLED:
                 application_title = FeatureService.get_system_features().get("application_title", "Dify")
                 template = "without-brand/reset_password_mail_template_zh-CN.html"
-            html_content = render_template(template, to=to, code=code, application_title=application_title)
+                html_content = render_template(template, to=to, code=code, application_title=application_title)
+            else:
+                html_content = render_template(template, to=to, code=code)
             mail.send(to=to, subject="设置您的 Dify 密码", html=html_content)
         else:
             template = "reset_password_mail_template_en-US.html"
             if dify_config.ENTERPRISE_ENABLED:
                 application_title = FeatureService.get_system_features().get("application_title", "Dify")
                 template = "without-brand/reset_password_mail_template_en-US.html"
-            html_content = render_template(template, to=to, code=code, application_title=application_title)
+                html_content = render_template(template, to=to, code=code, application_title=application_title)
+            else:
+                html_content = render_template(template, to=to, code=code)
             mail.send(to=to, subject="Set Your Dify Password", html=html_content)
 
         end_at = time.perf_counter()

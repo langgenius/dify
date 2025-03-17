@@ -31,14 +31,18 @@ def send_email_code_login_mail_task(language: str, to: str, code: str):
             if dify_config.ENTERPRISE_ENABLED:
                 application_title = FeatureService.get_system_features().get("application_title", "Dify")
                 template = "without-brand/email_code_login_mail_template_zh-CN_enterprise.html"
-            html_content = render_template(template, to=to, code=code, application_title=application_title)
+                html_content = render_template(template, to=to, code=code, application_title=application_title)
+            else:
+                html_content = render_template(template, to=to, code=code)
             mail.send(to=to, subject="邮箱验证码", html=html_content)
         else:
             template = "email_code_login_mail_template_en-US.html"
             if dify_config.ENTERPRISE_ENABLED:
                 application_title = FeatureService.get_system_features().get("application_title", "Dify")
                 template = "without-brand/email_code_login_mail_template_en-US_enterprise.html"
-            html_content = render_template(template, to=to, code=code, application_title=application_title)
+                html_content = render_template(template, to=to, code=code, application_title=application_title)
+            else:
+                html_content = render_template(template, to=to, code=code)
             mail.send(to=to, subject="Email Code", html=html_content)
 
         end_at = time.perf_counter()
