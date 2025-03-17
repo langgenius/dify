@@ -17,7 +17,7 @@ detailed_end_user_fields = {
     "total_messages": fields.Integer,
     "active_days": fields.Integer,
     "health_status": fields.String,
-    "topics": fields.String,
+    "topics": fields.List(fields.String),
     "summary": fields.String,
     "major": fields.String,
 }
