@@ -345,6 +345,8 @@ export type App = {
   /** Model configuration */
   model_config: ModelConfig
   app_model_config: ModelConfig
+  created_by: string
+  created_name: string
   /** Timestamp of creation */
   created_at: number
   /** Web Application Configuration */

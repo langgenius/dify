@@ -31,6 +31,7 @@ export type DataSet = {
   data_source_type: DataSourceType
   indexing_technique: IndexingType
   created_by: string
+  created_name: string
   updated_by: string
   updated_at: number
   app_count: number

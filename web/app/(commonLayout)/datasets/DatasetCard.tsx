@@ -156,6 +156,8 @@ const DatasetCard = ({
                     <span>{dataset.app_count}{t('dataset.appCount')}</span>
                   </>
                 }
+                &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+                创建人: {dataset.created_name}
               </div>
             </div>
           </div>

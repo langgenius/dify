@@ -24,7 +24,7 @@ class InstalledAppsListApi(Resource):
     def get(self):
         app_id = request.args.get("app_id", default=None, type=str)
         current_tenant_id = current_user.current_tenant_id
-
+        current_user_id = current_user.id
         if app_id:
             installed_apps = (
                 db.session.query(InstalledApp)
@@ -32,7 +32,20 @@ class InstalledAppsListApi(Resource):
                 .all()
             )
         else:
-            installed_apps = db.session.query(InstalledApp).filter(InstalledApp.tenant_id == current_tenant_id).all()
+            # 修改后的部分
+            ##判断是否管理员
+            filters = [App.tenant_id == current_tenant_id, App.is_universal == False]
+            if not current_user.is_admin_or_owner:  # 只有当不是管理员时才进行以下过滤
+                created_by_me_filter = App.created_by == current_user_id
+                public_filter = App.is_public == True  # 创建 is_public 的过滤器
+                filters.append(db.or_(created_by_me_filter, public_filter))  # 使用 db.or_ 连接两个过滤器
+
+            app_models = db.session.query(App).filter(*filters).all()
+            # 获取 app_models 中的所有 app_id 列表
+            app_ids = [app.id for app in app_models]  # 假设 App 模型有 id 属性
+
+            # 修改结束
+            installed_apps = db.session.query(InstalledApp).filter(InstalledApp.tenant_id == current_tenant_id, InstalledApp.app_id.in_(app_ids)).all()
 
         current_user.role = TenantService.get_user_role(current_user, current_user.current_tenant)
         installed_app_list: list[dict[str, Any]] = [
