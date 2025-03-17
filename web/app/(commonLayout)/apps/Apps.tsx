@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   useRouter,
-  useSearchParams,
 } from 'next/navigation'
 import useSWRInfinite from 'swr/infinite'
 import { useTranslation } from 'react-i18next'
@@ -30,6 +29,7 @@ import TagManagementModal from '@/app/components/base/tag-management'
 import TagFilter from '@/app/components/base/tag-management/filter'
 import CheckboxWithLabel from '@/app/components/datasets/create/website/base/checkbox-with-label'
 import { useModalContextSelector } from '@/context/modal-context'
+import { EDUCATION_VERIFYING_LOCALSTORAGE_ITEM } from '@/app/education-apply/components/constants'
 
 const getKey = (
   pageIndex: number,
@@ -136,14 +136,13 @@ const Apps = () => {
     setQuery(prev => ({ ...prev, isCreatedByMe: newValue }))
   }, [isCreatedByMe, setQuery])
 
-  const searchParams = useSearchParams()
-  const action = searchParams.get('action')
   const setShowAccountSettingModal = useModalContextSelector(s => s.setShowAccountSettingModal)
+  const educationVerifying = localStorage.getItem(EDUCATION_VERIFYING_LOCALSTORAGE_ITEM)
 
   useEffect(() => {
-    if (action === 'getEducationVerify')
+    if (educationVerifying === 'yes')
       setShowAccountSettingModal({ payload: 'billing' })
-  }, [action, setShowAccountSettingModal])
+  }, [setShowAccountSettingModal, educationVerifying])
 
   return (
     <>

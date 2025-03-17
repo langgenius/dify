@@ -35,12 +35,12 @@ const translation = {
     },
   },
   submit: '提交',
+  submitError: '提交表单失败，请稍后重新提交问卷。',
   learn: '了解如何获取教育版认证',
-  successTitle: '您已获得 Dify 教育版认证',
-  successContent: '我们已向您的账户发放了 Dify Professional 计划的 50% 折扣券。该券有效期为一年，请在有效期内使用。',
+  successTitle: '您已成功获得 Dify 教育版认证！',
+  successContent: '我们已向您的账户发放 Dify Professional 版 50% 折扣优惠券。该优惠券有效期为一年，请在有效期内使用。',
   rejectTitle: '您的 Dify 教育版认证已被拒绝',
-  rejectContent: '很抱歉，由于您不同意我们的条款与协议，您现在不符合教育版认证的资格。请查看这些条款的内容，如果符合资格，请重新申请。',
-  rejectContent2: '很抱歉，由于您的邮箱地址不符合教育版认证的资格，也无法获得 Dify Professional 计划的 50% 独家优惠券。',
+  rejectContent: '非常遗憾，您无法使用此电子邮件以获得教育版认证资格，也无法领取 Dify Professional 版的 50% 独家优惠券。',
   emailLabel: '您当前的邮箱',
 
 }

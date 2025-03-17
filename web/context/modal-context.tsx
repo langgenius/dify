@@ -17,6 +17,9 @@ import type {
   ModelLoadBalancingConfigEntry,
   ModelProvider,
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import {
+  EDUCATION_VERIFYING_LOCALSTORAGE_ITEM,
+} from '@/app/education-apply/components/constants'
 
 import Pricing from '@/app/components/billing/pricing'
 import type { ModerationConfig, PromptVariable } from '@/models/debug'
@@ -121,10 +124,10 @@ export const ModalContextProvider = ({
   const [showPricingModal, setShowPricingModal] = useState(searchParams.get('show-pricing') === '1')
   const [showAnnotationFullModal, setShowAnnotationFullModal] = useState(false)
   const handleCancelAccountSettingModal = () => {
-    const action = searchParams.get('action')
+    const educationVerifying = localStorage.getItem(EDUCATION_VERIFYING_LOCALSTORAGE_ITEM)
 
-    if (action === 'getEducationVerify')
-      router.push(location.pathname, { forceOptimisticNavigation: true } as any)
+    if (educationVerifying === 'yes')
+      localStorage.removeItem(EDUCATION_VERIFYING_LOCALSTORAGE_ITEM)
     setShowAccountSettingModal(null)
     if (showAccountSettingModal?.onCancelCallback)
       showAccountSettingModal?.onCancelCallback()

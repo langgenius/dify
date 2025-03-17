@@ -35,7 +35,13 @@ const translation = {
     },
   },
   submit: '送信',
+  submitError: 'フォームの送信に失敗しました。しばらくしてから再度ご提出ください。',
   learn: '教育認証の取得方法はこちら',
+  successTitle: 'Dify教育認証を取得しました！',
+  successContent: 'お客様のアカウントに Difyプロフェッショナルプランの50%割引クーポン を発行しました。有効期間は 1年間 ですので、期限内にご利用ください。',
+  rejectTitle: 'Dify教育認証が拒否されました',
+  rejectContent: '申し訳ございませんが、このメールアドレスでは 教育認証 の資格を取得できず、Difyプロフェッショナルプランの50％割引クーポン を受け取ることはできません。',
+  emailLabel: '現在のメールアドレス',
 }
 
 export default translation

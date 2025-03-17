@@ -4,6 +4,7 @@ import {
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useRouter } from 'next/navigation'
 import UserInfo from './user-info'
 import SearchInput from './search-input'
 import RoleSelector from './role-selector'
@@ -16,6 +17,8 @@ import {
   useInvalidateEducationStatus,
 } from '@/service/use-education'
 import { useProviderContext } from '@/context/provider-context'
+import { useToastContext } from '@/app/components/base/toast'
+import { EDUCATION_VERIFYING_LOCALSTORAGE_ITEM } from '@/app/education-apply/components/constants'
 
 const EducationApplyAge = () => {
   const { t } = useTranslation()
@@ -31,11 +34,15 @@ const EducationApplyAge = () => {
   const { data } = useEducationVerify()
   const { onPlanInfoChanged } = useProviderContext()
   const updateEducationStatus = useInvalidateEducationStatus()
+  const { notify } = useToastContext()
+  const router = useRouter()
 
   const handleModalConfirm = () => {
     setShowModal(undefined)
     onPlanInfoChanged()
     updateEducationStatus()
+    localStorage.removeItem(EDUCATION_VERIFYING_LOCALSTORAGE_ITEM)
+    router.replace('/')
   }
 
   const handleSubmit = () => {
@@ -52,9 +59,9 @@ const EducationApplyAge = () => {
         })
       }
       else {
-        setShowModal({
-          title: t('education.rejectTitle'),
-          desc: t('education.rejectContent'),
+        notify({
+          type: 'error',
+          message: t('education.submitError'),
         })
       }
     })
@@ -113,9 +120,9 @@ const EducationApplyAge = () => {
             </div>
             <div className='mb-1 system-md-regular text-text-tertiary'>
               {t('education.form.terms.desc.front')}&nbsp;
-              <a href='' className='text-text-secondary hover:underline'>{t('education.form.terms.desc.termsOfService')}</a>&nbsp;
+              <a href='https://dify.ai/terms' target='_blank' className='text-text-secondary hover:underline'>{t('education.form.terms.desc.termsOfService')}</a>&nbsp;
               {t('education.form.terms.desc.and')}&nbsp;
-              <a href='' className='text-text-secondary hover:underline'>{t('education.form.terms.desc.privacyPolicy')}</a>&nbsp;
+              <a href='https://dify.ai/privacy' target='_blank' className='text-text-secondary hover:underline'>{t('education.form.terms.desc.privacyPolicy')}</a>&nbsp;
               {t('education.form.terms.desc.end')}
             </div>
             <div className='py-2 system-md-regular text-text-primary'>
@@ -151,7 +158,7 @@ const EducationApplyAge = () => {
         title={modalShow?.title || ''}
         content={modalShow?.desc}
         onConfirm={modalShow?.onConfirm || (() => {})}
-        onCancel={() => setShowModal(undefined)}
+        onCancel={modalShow?.onConfirm || (() => {})}
       />
     </div>
   )

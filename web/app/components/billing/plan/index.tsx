@@ -21,6 +21,7 @@ import { useAppContext } from '@/context/app-context'
 import Button from '@/app/components/base/button'
 import UsageInfo from '@/app/components/billing/usage-info'
 import VerifyStateModal from '@/app/education-apply/components/verify-state-modal'
+import { EDUCATION_VERIFYING_LOCALSTORAGE_ITEM } from '@/app/education-apply/components/constants'
 
 type Props = {
   loc: string
@@ -44,10 +45,13 @@ const PlanComp: FC<Props> = ({
 
   const [showModal, setShowModal] = React.useState(false)
   const handleVerify = () => {
-    if (userProfile.email.endsWith('.edu'))
+    if (userProfile.email.endsWith('.edu')) {
+      localStorage.removeItem(EDUCATION_VERIFYING_LOCALSTORAGE_ITEM)
       router.push('/education-apply')
-    else
+    }
+    else {
       setShowModal(true)
+    }
   }
   return (
     <div className='bg-background-section-burn rounded-2xl border-[0.5px] border-effects-highlight-lightmode-off'>
@@ -119,7 +123,7 @@ const PlanComp: FC<Props> = ({
         email={userProfile.email}
         isShow={showModal}
         title={t('education.rejectTitle')}
-        content={t('education.rejectContent2')}
+        content={t('education.rejectContent')}
         onConfirm={() => setShowModal(false)}
         onCancel={() => setShowModal(false)}
       />
