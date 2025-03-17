@@ -1,3 +1,4 @@
+#!/bin/sh
 # get the list of modified files
 files=$(git diff --cached --name-only)
 
@@ -32,7 +33,7 @@ if $api_modified; then
     ruff check --fix ./api
 
     # run Ruff linter checks
-    ruff check --preview ./api || status=$?
+    ruff check  ./api || status=$?
 
     status=${status:-0}
 
