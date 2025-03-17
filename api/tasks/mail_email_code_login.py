@@ -29,7 +29,7 @@ def send_email_code_login_mail_task(language: str, to: str, code: str):
         if language == "zh-Hans":
             template = "email_code_login_mail_template_zh-CN.html"
             if dify_config.ENTERPRISE_ENABLED:
-                application_title = FeatureService.get_system_features().get("application_title", "Dify")
+                application_title = FeatureService.get_enterprise_application_title()
                 template = "without-brand/email_code_login_mail_template_zh-CN_enterprise.html"
                 html_content = render_template(template, to=to, code=code, application_title=application_title)
             else:
@@ -38,7 +38,7 @@ def send_email_code_login_mail_task(language: str, to: str, code: str):
         else:
             template = "email_code_login_mail_template_en-US.html"
             if dify_config.ENTERPRISE_ENABLED:
-                application_title = FeatureService.get_system_features().get("application_title", "Dify")
+                application_title = FeatureService.get_enterprise_application_title()
                 template = "without-brand/email_code_login_mail_template_en-US_enterprise.html"
                 html_content = render_template(template, to=to, code=code, application_title=application_title)
             else:

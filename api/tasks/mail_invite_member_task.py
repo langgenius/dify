@@ -36,7 +36,7 @@ def send_invite_member_mail_task(language: str, to: str, token: str, inviter_nam
         if language == "zh-Hans":
             template = "invite_member_mail_template_zh-CN.html"
             if dify_config.ENTERPRISE_ENABLED:
-                application_title = FeatureService.get_system_features().get("application_title", "Dify")
+                application_title = FeatureService.get_enterprise_application_title()
                 template = "without-brand/invite_member_mail_template_zh-CN.html"
                 html_content = render_template(
                     template,
@@ -54,7 +54,7 @@ def send_invite_member_mail_task(language: str, to: str, token: str, inviter_nam
         else:
             template = "invite_member_mail_template_en-US.html"
             if dify_config.ENTERPRISE_ENABLED:
-                application_title = FeatureService.get_system_features().get("application_title", "Dify")
+                application_title = FeatureService.get_enterprise_application_title()
                 template = "without-brand/invite_member_mail_template_en-US.html"
                 html_content = render_template(
                     template,
