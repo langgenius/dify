@@ -203,17 +203,17 @@ const formatItem = (
     }
 
     case BlockEnum.LLM: {
-      res.vars = [
-        ...LLM_OUTPUT_STRUCT,
-        {
+      res.vars = [...LLM_OUTPUT_STRUCT]
+      if (data.structured_output_enabled && data.structured_output?.schema?.properties && Object.keys(data.structured_output.schema.properties).length > 0) {
+        res.vars.push({
           variable: 'structured_output',
           type: VarType.object,
-          children: mockStructData,
-        },
-      ]
+          children: data.structured_output,
+        })
+      }
+
       break
     }
-
     case BlockEnum.KnowledgeRetrieval: {
       res.vars = KNOWLEDGE_RETRIEVAL_OUTPUT_STRUCT
       break
