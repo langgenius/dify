@@ -74,7 +74,7 @@ class IconType(Enum):
     EMOJI = "emoji"
 
 
-class App(Base):
+class App(db.Model):  # type: ignore[name-defined]
     __tablename__ = "apps"
     __table_args__ = (db.PrimaryKeyConstraint("id", name="app_pkey"), db.Index("app_tenant_id_idx", "tenant_id"))
 
