@@ -37,7 +37,7 @@ const ListWrapper = ({
   }, [handleQueryPlugins, marketplaceCollections, marketplaceCollectionsFromClient, isSuccessCollections])
 
   return (
-    <div 
+    <div
       style={{ scrollbarGutter: 'stable' }}
       className='relative flex flex-col grow px-12 py-2 bg-background-default-subtle'>
       {
