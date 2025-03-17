@@ -276,6 +276,8 @@ class RetrievalService:
                     continue
 
                 dataset_document = dataset_documents[document_id]
+                if not dataset_document:
+                    continue
 
                 if dataset_document.doc_form == IndexType.PARENT_CHILD_INDEX:
                     # Handle parent-child documents
