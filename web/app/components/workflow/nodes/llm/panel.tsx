@@ -22,6 +22,7 @@ import Tooltip from '@/app/components/base/tooltip'
 import Editor from '@/app/components/workflow/nodes/_base/components/prompt/editor'
 import StructureOutput from './components/structure-output'
 import Switch from '@/app/components/base/switch'
+import { RiAlertFill, RiQuestionLine } from '@remixicon/react'
 
 const i18nPrefix = 'workflow.nodes.llm'
 
@@ -278,8 +279,27 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
       <Split />
       <OutputVars
         operations={
-          <div className='mr-4'>
+          <div className='mr-4 flex items-center'>
+            <Tooltip noDecoration popupContent={
+              <div className='w-[232px] px-4 py-3.5 rounded-xl bg-components-tooltip-bg border-[0.5px] border-components-panel-border shadow-lg backdrop-blur-[5px]'>
+                <div className='title-xs-semi-bold text-text-primary'>{t('app.structOutput.modelNotSupported')}</div>
+                <div className='mt-1 body-xs-regular text-text-secondary'>{t('app.structOutput.modelNotSupportedTip')}</div>
+              </div>
+            }>
+              <div>
+                <RiAlertFill className='mr-1 size-4 text-text-warning-secondary' />
+              </div>
+            </Tooltip>
+            <div className='mr-0.5 system-xs-medium-uppercase text-text-tertiary'>{t('app.structOutput.structured')}</div>
+            <Tooltip popupContent={
+              <div className='max-w-[150px]'>{t('app.structOutput.structuredTip')}</div>
+            }>
+              <div>
+                <RiQuestionLine className='size-3.5 text-text-quaternary' />
+              </div>
+            </Tooltip>
             <Switch
+              className='ml-2'
               defaultValue={!!inputs.structured_output_enabled}
               onChange={handleStructureOutputEnableChange}
               size='md'

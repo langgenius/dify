@@ -8,6 +8,7 @@ import ShowPanel from '@/app/components/workflow/nodes/_base/components/variable
 import { useBoolean } from 'ahooks'
 import JsonSchemaConfigModal from './json-schema-config-modal'
 import cn from '@/utils/classnames'
+import { useTranslation } from 'react-i18next'
 
 type Props = {
   className?: string
@@ -20,6 +21,7 @@ const StructureOutput: FC<Props> = ({
   value,
   onChange,
 }) => {
+  const { t } = useTranslation()
   const [showConfig, {
     setTrue: showConfigModal,
     setFalse: hideConfigModal,
@@ -44,14 +46,14 @@ const StructureOutput: FC<Props> = ({
           onClick={showConfigModal}
         >
           <RiEditLine className='size-3.5 mr-1' />
-          <div className='system-xs-medium text-components-button-secondary-text'>Configure</div>
+          <div className='system-xs-medium text-components-button-secondary-text'>{t('app.structOutput.configure')}</div>
         </Button>
       </div>
       {value?.schema ? (
         <ShowPanel
           payload={value}
         />) : (
-        <div className='mt-1.5 flex items-center h-10 justify-center rounded-[10px] bg-background-section system-xs-regular text-text-tertiary'>no data</div>
+        <div className='mt-1.5 flex items-center h-10 justify-center rounded-[10px] bg-background-section system-xs-regular text-text-tertiary'>{t('app.structOutput.notConfiguredTip')}</div>
       )}
 
       {showConfig && (
