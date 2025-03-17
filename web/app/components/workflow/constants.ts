@@ -416,7 +416,7 @@ export const LOOP_PADDING = {
   left: 16,
 }
 
-export const PARALLEL_LIMIT = 10
+export const PARALLEL_LIMIT = Number.parseInt(process.env.NEXT_PUBLIC_MAX_PARALLEL_LIMIT || '10')
 export const PARALLEL_DEPTH_LIMIT = 3
 
 export const RETRIEVAL_OUTPUT_STRUCT = `{
