@@ -1301,7 +1301,7 @@ class DocumentService:
             document.name = document_data.name
         # update doc_type and doc_metadata if provided
         if document_data.metadata is not None:
-            document.doc_metadata = document_data.metadata.doc_type
+            document.doc_metadata = document_data.metadata.doc_metadata
             document.doc_type = document_data.metadata.doc_type
         # update document to be waiting
         document.indexing_status = "waiting"

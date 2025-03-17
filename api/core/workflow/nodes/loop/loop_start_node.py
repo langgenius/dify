@@ -5,7 +5,7 @@ from core.workflow.nodes.loop.entities import LoopStartNodeData
 from models.workflow import WorkflowNodeExecutionStatus
 
 
-class LoopStartNode(BaseNode):
+class LoopStartNode(BaseNode[LoopStartNodeData]):
     """
     Loop Start Node.
     """
