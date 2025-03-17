@@ -161,7 +161,7 @@ class MessageBasedAppGenerator(BaseAppGenerator):
             model_provider = None
             model_id = None
         else:
-            app_model_config_id = app_config.app_model_config_issd
+            app_model_config_id = app_config.app_model_config_id
             model_provider = application_generate_entity.model_conf.provider
             model_id = application_generate_entity.model_conf.model
             override_model_configs = None
