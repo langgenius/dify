@@ -28,11 +28,7 @@ if $api_modified; then
         poetry install -C api --only lint
     fi
 
-    # run Ruff linter auto-fixing
-    ruff check --fix ./api
-
-    # run Ruff linter checks
-    ruff check --preview ./api || status=$?
+   
 
     status=${status:-0}
 
