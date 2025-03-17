@@ -3,7 +3,7 @@ import Button from '@/app/components/base/button'
 import { RiEditLine } from '@remixicon/react'
 import type { FC } from 'react'
 import React, { useCallback } from 'react'
-import type { SchemaRoot, StructuredOutput } from '../types'
+import { type SchemaRoot, type StructuredOutput, Type } from '../types'
 import ShowPanel from '@/app/components/workflow/nodes/_base/components/variable/object-child-tree-panel/show'
 import { useBoolean } from 'ahooks'
 import JsonSchemaConfigModal from './json-schema-config-modal'
@@ -59,7 +59,12 @@ const StructureOutput: FC<Props> = ({
       {showConfig && (
         <JsonSchemaConfigModal
           isShow
-          defaultSchema={(value?.schema || {}) as any} // wait for types change
+          defaultSchema={(value?.schema || {
+            type: Type.object,
+            properties: {},
+            required: [],
+            additionalProperties: false,
+          }) as any} // wait for types change
           onSave={handleChange as any} // wait for types change
           onClose={hideConfigModal}
         />
