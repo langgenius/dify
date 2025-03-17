@@ -184,7 +184,7 @@ const JsonImporter: FC<JsonImporterProps> = ({
               {t('common.operation.cancel')}
             </Button>
             <Button variant='primary' onClick={handleSubmit}>
-              {t('common.operation.confirm')}
+              {t('common.operation.submit')}
             </Button>
           </div>
         </div>

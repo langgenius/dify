@@ -1,9 +1,9 @@
 import type { FC } from 'react'
-import type { Field } from '../../../types'
+import type { SchemaRoot } from '../../../types'
 import SchemaNode from './schema-node'
 
 type VisualEditorProps = {
-  schema: Field
+  schema: SchemaRoot
 }
 
 const VisualEditor: FC<VisualEditorProps> = ({

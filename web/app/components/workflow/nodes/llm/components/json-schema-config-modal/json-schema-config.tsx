@@ -14,6 +14,7 @@ import { useMittContext } from './context'
 import type { EditData } from './visual-editor/edit-card'
 import produce from 'immer'
 import Toast from '@/app/components/base/toast'
+import { jsonToSchema } from '../../utils'
 
 type JsonSchemaConfigProps = {
   defaultSchema?: SchemaRoot
@@ -470,9 +471,14 @@ const JsonSchemaConfig: FC<JsonSchemaConfigProps> = ({
     setBtnWidth(width + 32)
   }, [])
 
-  const handleApplySchema = useCallback(() => {}, [])
+  const handleApplySchema = useCallback((schema: SchemaRoot) => {
+    setJsonSchema(schema)
+  }, [])
 
-  const handleSubmit = useCallback(() => {}, [])
+  const handleSubmit = useCallback((schema: string) => {
+    const jsonSchema = jsonToSchema(schema) as SchemaRoot
+    setJsonSchema(jsonSchema)
+  }, [])
 
   const handleSchemaEditorUpdate = useCallback((schema: string) => {
     setJson(schema)
@@ -541,7 +547,7 @@ const JsonSchemaConfig: FC<JsonSchemaConfigProps> = ({
       <div className='flex items-center p-6 pt-5 gap-x-2'>
         <a
           className='flex items-center gap-x-1 grow text-text-accent'
-          href='https://json-schema.org/'
+          href='https://json-schema.org/' // todo: replace with documentation link
           target='_blank'
           rel='noopener noreferrer'
         >
