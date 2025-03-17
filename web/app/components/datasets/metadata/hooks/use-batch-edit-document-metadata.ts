@@ -111,7 +111,7 @@ const useBatchEditDocumentMetadata = ({
         document_id: item.id,
         metadata_list: newMetadataList,
       }
-    }).filter(item => item.metadata_list.length > 0)
+    })
     return res
   }
 
