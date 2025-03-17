@@ -195,3 +195,11 @@ class FeatureService:
 
             if "expired_at" in license_info:
                 features.license.expired_at = license_info["expiredAt"]
+
+    @classmethod
+    def get_enterprise_application_title(cls):
+        branding = cls.get_system_features().get("branding", None)
+        application_title = "Dify"
+        if branding and branding.get("enabled", False):
+            application_title = branding.get("application_title", "Dify")
+        return application_title
