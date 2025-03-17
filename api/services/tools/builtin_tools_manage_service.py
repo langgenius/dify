@@ -289,7 +289,7 @@ class BuiltinToolManageService:
         return BuiltinToolProviderSort.sort(result)
     
     @staticmethod
-    def list_apo_tools(user_id: str, tenant_id: str, tool_type: str, query: str|None) -> list[ToolProviderApiEntity]:
+    def list_apo_tools(user_id: str, tenant_id: str, tool_type: str, query: str|None, language: str) -> list[ToolProviderApiEntity]:
         """
         list apo tools
         """
@@ -348,9 +348,14 @@ class BuiltinToolManageService:
                                 )
                             )
                     else:
+                        if language == "zh":
+                            match_raw = [tool.entity.identity.label.zh_Hans for tool in tools]
+                        else:
+                            match_raw = [tool.entity.identity.label.en_US for tool in tools]
+                        
                         match_tools = process.extract(
                             query,
-                            [tool.entity.identity.label.zh_Hans for tool in tools],
+                            match_raw,
                             limit=50,
                         )
                         for match_name, score, index in match_tools or []:
@@ -368,7 +373,7 @@ class BuiltinToolManageService:
                 except Exception as e:
                     raise e
 
-        return BuiltinToolProviderSort.sort(result)
+        return result
     
     @staticmethod
     def list_all_apo_tools(user_id: str, tenant_id: str) -> list[ToolProviderApiEntity]:

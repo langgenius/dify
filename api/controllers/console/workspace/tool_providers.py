@@ -589,6 +589,7 @@ class APOToolBuiltinListApi(Resource):
         parser = reqparse.RequestParser()
         parser.add_argument("tool_type", type=str, required=True, nullable=False, location="args")
         parser.add_argument("query", type=str, required=False, nullable=True, location="args")
+        parser.add_argument("language", type=int, required=False, nullable=True, location="args")
 
         args = parser.parse_args()
 
@@ -600,6 +601,7 @@ class APOToolBuiltinListApi(Resource):
                     tenant_id,
                     args["tool_type"],
                     args.get("query", None),
+                    args.get("language", "zh")
                 )
             ]
         )
