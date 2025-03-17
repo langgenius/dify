@@ -7,6 +7,8 @@ from core.rag.extractor.blob.blob import Blob
 from core.rag.extractor.extractor_base import BaseExtractor
 from core.rag.models.document import Document
 from extensions.ext_storage import storage
+import numpy as np
+
 
 
 class PdfExtractor(BaseExtractor):
@@ -53,16 +55,42 @@ class PdfExtractor(BaseExtractor):
     def parse(self, blob: Blob) -> Iterator[Document]:
         """Lazily parse the blob."""
         import pypdfium2  # type: ignore
+        from rapidocr_onnxruntime import RapidOCR
+
+        ocr_engine = RapidOCR()
 
         with blob.as_bytes_io() as file_path:
             pdf_reader = pypdfium2.PdfDocument(file_path, autoclose=True)
             try:
                 for page_number, page in enumerate(pdf_reader):
+                    # First attempt to directly extract the text
                     text_page = page.get_textpage()
                     content = text_page.get_text_range()
+
+                    # If the extracted text content is very little or empty, use OCR
+                    if not content or len(content.strip()) < 10:
+                        try:
+                            # convert to image
+                            bitmap = page.render(scale=2.0)  
+                            pil_image = bitmap.to_pil()
+                            img_array = np.array(pil_image)
+                            result, _ = ocr_engine(img_array)
+                            if result:
+                                content = "\n".join([item[1] for item in result if item[1]])
+                            else:
+                                content = ""
+                        except Exception as e:
+                            print(f"OCR failed for page {page_number}: {str(e)}")
+                            content = ""
+                        finally:
+                            if 'pil_image' in locals():
+                                pil_image.close()
                     text_page.close()
                     page.close()
                     metadata = {"source": blob.source, "page": page_number}
                     yield Document(page_content=content, metadata=metadata)
+            except Exception as e:
+                print(f"Error processing PDF: {str(e)}")
+                raise
             finally:
                 pdf_reader.close()
