@@ -52,14 +52,17 @@ RUN apt-get update \
     && apt-get install -y --no-install-recommends curl nodejs libgmp-dev libmpfr-dev libmpc-dev \
     # if you located in China, you can use aliyun mirror to speed up
     # && echo "deb http://mirrors.aliyun.com/debian testing main" > /etc/apt/sources.list \
-    && echo "deb http://deb.debian.org/debian testing main" > /etc/apt/sources.list \
+    # Don't replace the sources.list file, create a separate testing.list file
+    && echo "deb http://deb.debian.org/debian testing main" > /etc/apt/sources.list.d/testing.list \
+    # Create apt preferences to prioritize main repository
+    && echo 'Package: *\nPin: release a=bookworm\nPin-Priority: 900\n\nPackage: *\nPin: release a=testing\nPin-Priority: 400' > /etc/apt/preferences.d/priority \
     && apt-get update \
-    # For Security - without pinned versions to avoid compatibility issues
+    # For Security
     && apt-get install -y --no-install-recommends expat libldap-2.5-0 perl libsqlite3-0 zlib1g \
     # install a chinese font to support the use of tools like matplotlib
     && apt-get install -y fonts-noto-cjk \
-    # Add libmagic1 installation without pinned versions
-    && apt-get install -y libmagic1 libmagic-mgc \
+    # Add libmagic1 installation - specify version from bookworm
+    && apt-get install -y -t bookworm libmagic1 libmagic-mgc \
     && apt-get autoremove -y \
     && rm -rf /var/lib/apt/lists/*
 
