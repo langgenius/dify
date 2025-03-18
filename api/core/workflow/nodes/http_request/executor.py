@@ -283,7 +283,7 @@ class Executor:
 
             return executor_response
         except Exception as e:
-            # 确保在发生异常时关闭响应
+            # Ensure response is closed when an exception occurs
             response.close()
             raise e
 
@@ -310,12 +310,12 @@ class Executor:
             "max_retries": self.max_retries,
         }
         
-        # 使用 with 语句来确保资源正确释放
+        # Use with statement to ensure proper resource cleanup
         with httpx.Client() as client:
             try:
                 response = getattr(client, self.method.lower())(**request_args)
-                # 创建一个新的 Response 对象并复制需要的数据
-                # 这样可以安全地关闭原始响应
+                # Create a new Response object and copy required data
+                # This allows safe closure of the original response
                 copied_response = response.copy()
                 response.close()
                 return copied_response
