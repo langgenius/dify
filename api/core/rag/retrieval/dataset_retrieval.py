@@ -848,8 +848,8 @@ class DatasetRetrieval:
                 conditions = []
                 for filter in automatic_metadata_filters:
                     self._process_metadata_filter_func(
-                        filter.get("condition"),
-                        filter.get("metadata_name"),
+                        filter.get("condition"),  # type: ignore
+                        filter.get("metadata_name"),  # type: ignore
                         filter.get("value"),
                         filters,  # type: ignore
                     )
