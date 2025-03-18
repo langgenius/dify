@@ -1,4 +1,3 @@
-from abc import ABC
 from collections.abc import Sequence
 from enum import Enum, StrEnum
 from typing import Optional
@@ -119,7 +118,7 @@ class DocumentPromptMessageContent(MultiModalPromptMessageContent):
     type: PromptMessageContentType = PromptMessageContentType.DOCUMENT
 
 
-class PromptMessage(ABC, BaseModel):
+class PromptMessage(BaseModel):
     """
     Model class for prompt message.
     """
