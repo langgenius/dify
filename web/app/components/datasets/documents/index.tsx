@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation'
 import { useDebounce, useDebounceFn } from 'ahooks'
 import { groupBy } from 'lodash-es'
 import { PlusIcon } from '@heroicons/react/24/solid'
-import { RiExternalLinkLine } from '@remixicon/react'
+import { RiDraftLine, RiExternalLinkLine } from '@remixicon/react'
 import AutoDisabledDocument from '../common/document-status-with-action/auto-disabled-document'
 import List from './list'
 import s from './style.module.css'
@@ -26,6 +26,9 @@ import cn from '@/utils/classnames'
 import { useDocumentList, useInvalidDocumentDetailKey, useInvalidDocumentList } from '@/service/knowledge/use-document'
 import { useInvalid } from '@/service/use-base'
 import { useChildSegmentListKey, useSegmentListKey } from '@/service/knowledge/use-segment'
+import useEditDocumentMetadata from '../metadata/hooks/use-edit-dataset-metadata'
+import DatasetMetadataDrawer from '../metadata/metadata-dataset/dataset-metadata-drawer'
+import StatusWithAction from '../common/document-status-with-action/status-with-action'
 
 const FolderPlusIcon = ({ className }: React.SVGProps<SVGElement>) => {
   return <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" className={className ?? ''}>
@@ -116,7 +119,7 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
       if (totalPages < currPage + 1)
         setCurrPage(totalPages === 0 ? 0 : totalPages - 1)
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [documentsRes])
 
   const invalidDocumentDetail = useInvalidDocumentDetailKey()
@@ -231,6 +234,23 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
     handleSearch()
   }
 
+  const {
+    isShowEditModal: isShowEditMetadataModal,
+    showEditModal: showEditMetadataModal,
+    hideEditModal: hideEditMetadataModal,
+    datasetMetaData,
+    handleAddMetaData,
+    handleRename,
+    handleDeleteMetaData,
+    builtInEnabled,
+    setBuiltInEnabled,
+    builtInMetaData,
+  } = useEditDocumentMetadata({
+    datasetId,
+    dataset,
+    onUpdateDocList: invalidDocumentList,
+  })
+
   return (
     <div className='flex flex-col h-full overflow-y-auto'>
       <div className='flex flex-col justify-center gap-1 px-6 pt-4'>
@@ -259,6 +279,25 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
           <div className='flex gap-2 justify-center items-center !h-8'>
             {!isFreePlan && <AutoDisabledDocument datasetId={datasetId} />}
             <IndexFailed datasetId={datasetId} />
+            {!embeddingAvailable && <StatusWithAction type='warning' description={t('dataset.embeddingModelNotAvailable')} />}
+            {embeddingAvailable && (
+              <Button variant='secondary' className='shrink-0' onClick={showEditMetadataModal}>
+                <RiDraftLine className='size-4 mr-1' />
+                {t('dataset.metadata.metadata')}
+              </Button>
+            )}
+            {isShowEditMetadataModal && (
+              <DatasetMetadataDrawer
+                userMetadata={datasetMetaData || []}
+                onClose={hideEditMetadataModal}
+                onAdd={handleAddMetaData}
+                onRename={handleRename}
+                onRemove={handleDeleteMetaData}
+                builtInMetadata={builtInMetaData || []}
+                isBuiltInEnabled={!!builtInEnabled}
+                onIsBuiltInEnabledChange={setBuiltInEnabled}
+              />
+            )}
             {embeddingAvailable && (
               <Button variant='primary' onClick={routeToDocCreate} className='shrink-0'>
                 <PlusIcon className={cn('h-4 w-4 mr-2 stroke-current')} />
@@ -286,6 +325,7 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
                 current: currPage,
                 onChange: setCurrPage,
               }}
+              onManageMetadata={showEditMetadataModal}
             />
             : <EmptyElement canAdd={embeddingAvailable} onClick={routeToDocCreate} type={isDataSourceNotion ? 'sync' : 'upload'} />
         }

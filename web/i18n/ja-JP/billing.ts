@@ -55,6 +55,7 @@ const translation = {
     documentsRequestQuota: '{{count,number}}/分のナレッジ リクエストのレート制限',
     documentsRequestQuotaTooltip: 'ナレッジベース内でワークスペースが1分間に実行できる操作の総数を示します。これには、データセットの作成、削除、更新、ドキュメントのアップロード、修正、アーカイブ、およびナレッジベースクエリが含まれます。この指標は、ナレッジベースリクエストのパフォーマンスを評価するために使用されます。例えば、Sandbox ユーザーが1分間に10回連続でヒットテストを実行した場合、そのワークスペースは次の1分間、データセットの作成、削除、更新、ドキュメントのアップロードや修正などの操作を一時的に実行できなくなります。',
     documentProcessingPriority: '文書処理',
+    documentProcessingPriorityUpgrade: 'より高い精度と高速な速度でデータを処理します。',
     priority: {
       'standard': '標準',
       'priority': '優先',
