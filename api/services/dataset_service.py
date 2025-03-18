@@ -14,7 +14,7 @@ from sqlalchemy.orm import Session
 from werkzeug.exceptions import NotFound
 
 from configs import dify_config
-from core.errors.error import LLMBadRequestError, ProviderNotInitializeError, ProviderTokenNotInitError
+from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
 from core.model_manager import ModelManager
 from core.model_runtime.entities.model_entities import ModelType
 from core.plugin.entities.plugin import ModelProviderID
@@ -2218,11 +2218,12 @@ class SegmentService:
                     model=dataset.embedding_model,
                 )
             except LLMBadRequestError:
-                raise ProviderNotInitializeError(
-                    "No Embedding Model available. Please configure a valid provider in the Settings -> Model Provider."
+                raise ValueError(
+                    "No Embedding Model available. "
+                    "Please configure a valid provider in the Settings -> Model Provider."
                 )
             except ProviderTokenNotInitError as ex:
-                raise ProviderNotInitializeError(ex.description)
+                raise ValueError(ex.description)
 
         # check segment
         segment = DocumentSegment.query.filter(
@@ -2242,6 +2243,14 @@ class SegmentService:
         )
 
         return updated_segment, document
+
+    @classmethod
+    def get_segment_by_id(cls, segment_id: str, tenant_id: str) -> Optional[DocumentSegment]:
+        """Get a segment by its ID."""
+        return DocumentSegment.query.filter(
+            DocumentSegment.id == segment_id,
+            DocumentSegment.tenant_id == tenant_id
+        ).first()
 
 
 class DatasetCollectionBindingService:

@@ -14,7 +14,7 @@ from core.model_manager import ModelManager
 from core.model_runtime.entities.model_entities import ModelType
 from extensions.ext_database import db
 from fields.segment_fields import child_chunk_fields, segment_fields
-from models.dataset import ChildChunk, Dataset, DocumentSegment
+from models.dataset import ChildChunk, Dataset
 from services.dataset_service import DatasetService, DocumentService, SegmentService
 from services.entities.knowledge_entities.knowledge_entities import ChildChunkUpdateArgs, SegmentUpdateArgs
 from services.errors.chunk import (
@@ -140,9 +140,11 @@ class DatasetSegmentApi(DatasetApiResource):
         if not document:
             raise NotFound("Document not found.")
         # check segment
-        segment = DocumentSegment.query.filter(
-            DocumentSegment.id == str(segment_id), DocumentSegment.tenant_id == current_user.current_tenant_id
-        ).first()
+        segment_id = str(segment_id)
+        segment = SegmentService.get_segment_by_id(
+            segment_id=segment_id,
+            tenant_id=current_user.current_tenant_id
+        )
         if not segment:
             raise NotFound("Segment not found.")
         SegmentService.delete_segment(segment, document, dataset)
@@ -181,9 +183,10 @@ class DatasetSegmentApi(DatasetApiResource):
                 raise ProviderNotInitializeError(ex.description)
             # check segment
         segment_id = str(segment_id)
-        segment = DocumentSegment.query.filter(
-            DocumentSegment.id == str(segment_id), DocumentSegment.tenant_id == current_user.current_tenant_id
-        ).first()
+        segment = SegmentService.get_segment_by_id(
+            segment_id=segment_id,
+            tenant_id=current_user.current_tenant_id
+        )
         if not segment:
             raise NotFound("Segment not found.")
 
@@ -223,9 +226,10 @@ class ChildChunkApi (DatasetApiResource):
 
         # check segment
         segment_id = str(segment_id)
-        segment = DocumentSegment.query.filter(
-            DocumentSegment.id == str(segment_id), DocumentSegment.tenant_id == current_user.current_tenant_id
-        ).first()
+        segment = SegmentService.get_segment_by_id(
+            segment_id=segment_id,
+            tenant_id=current_user.current_tenant_id
+        )
         if not segment:
             raise NotFound("Segment not found.")
 
@@ -275,9 +279,10 @@ class ChildChunkApi (DatasetApiResource):
 
         # check segment
         segment_id = str(segment_id)
-        segment = DocumentSegment.query.filter(
-            DocumentSegment.id == str(segment_id), DocumentSegment.tenant_id == current_user.current_tenant_id
-        ).first()
+        segment = SegmentService.get_segment_by_id(
+            segment_id=segment_id,
+            tenant_id=current_user.current_tenant_id
+        )
         if not segment:
             raise NotFound("Segment not found.")
 
@@ -322,9 +327,10 @@ class DatasetChildChunkApi(DatasetApiResource):
 
         # check segment
         segment_id = str(segment_id)
-        segment = DocumentSegment.query.filter(
-            DocumentSegment.id == str(segment_id), DocumentSegment.tenant_id == current_user.current_tenant_id
-        ).first()
+        segment = SegmentService.get_segment_by_id(
+            segment_id=segment_id,
+            tenant_id=current_user.current_tenant_id
+        )
         if not segment:
             raise NotFound("Segment not found.")
 
@@ -361,9 +367,10 @@ class DatasetChildChunkApi(DatasetApiResource):
 
         # check segment
         segment_id = str(segment_id)
-        segment = DocumentSegment.query.filter(
-            DocumentSegment.id == str(segment_id), DocumentSegment.tenant_id == current_user.current_tenant_id
-        ).first()
+        segment = SegmentService.get_segment_by_id(
+            segment_id=segment_id,
+            tenant_id=current_user.current_tenant_id
+        )
         if not segment:
             raise NotFound("Segment not found.")
 
