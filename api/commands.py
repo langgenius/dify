@@ -6,8 +6,6 @@ from typing import Optional
 
 import click
 from flask import current_app
-from sqlalchemy import select
-from sqlalchemy.orm import Session
 from werkzeug.exceptions import NotFound
 
 from configs import dify_config
@@ -162,12 +160,17 @@ def migrate_annotation_vector_database():
     while True:
         try:
             # get apps info
-            with Session(db.engine) as session:
-                query = select(App).where(App.status == "normal").order_by(App.created_at.desc())
-                apps = session.execute(query).scalars().all()
-                start = (page - 1) * 50
-                end = start + 50
-                apps = apps[start:end]
+            per_page = 50
+            apps = (
+                db.session.query(App)
+                .filter(App.status == "normal")
+                .order_by(App.created_at.desc())
+                .limit(per_page)
+                .offset((page - 1) * per_page)
+                .all()
+            )
+            if not apps:
+                break
         except NotFound:
             break
 
