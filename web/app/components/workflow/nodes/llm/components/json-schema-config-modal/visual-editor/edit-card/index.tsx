@@ -20,12 +20,12 @@ export type EditData = {
   name: string
   type: Type | ArrayType
   required: boolean
-  description: string
+  description?: string
   enum?: SchemaEnumType
 }
 
 type Options = {
-  description: string
+  description?: string
   enum?: SchemaEnumType
 }
 

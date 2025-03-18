@@ -116,6 +116,7 @@ export const useSchemaNodeOperations = (props: VisualEditorProps) => {
           schema.type = Type.object
           schema.properties = {}
           schema.required = []
+          schema.additionalProperties = false
           break
         case ArrayType.string:
           schema.type = Type.array
@@ -141,6 +142,7 @@ export const useSchemaNodeOperations = (props: VisualEditorProps) => {
             type: Type.object,
             properties: {},
             required: [],
+            additionalProperties: false,
           }
           break
         default:
@@ -212,8 +214,6 @@ export const useSchemaNodeOperations = (props: VisualEditorProps) => {
           ...(schema.properties || {}),
           '': {
             type: Type.string,
-            description: '',
-            enum: [],
           },
         }
         setHoveringProperty([...path, 'properties', ''].join('.'))
@@ -223,8 +223,6 @@ export const useSchemaNodeOperations = (props: VisualEditorProps) => {
           ...(schema.items.properties || {}),
           '': {
             type: Type.string,
-            description: '',
-            enum: [],
           },
         }
         setHoveringProperty([...path, 'items', 'properties', ''].join('.'))
@@ -292,6 +290,7 @@ export const useSchemaNodeOperations = (props: VisualEditorProps) => {
               schema.type = Type.object
               schema.properties = {}
               schema.required = []
+              schema.additionalProperties = false
               break
             case ArrayType.string:
               schema.type = Type.array
@@ -317,6 +316,7 @@ export const useSchemaNodeOperations = (props: VisualEditorProps) => {
                 type: Type.object,
                 properties: {},
                 required: [],
+                additionalProperties: false,
               }
               break
             default:
@@ -379,6 +379,7 @@ export const useSchemaNodeOperations = (props: VisualEditorProps) => {
               schema.type = Type.object
               schema.properties = {}
               schema.required = []
+              schema.additionalProperties = false
               break
             case ArrayType.string:
               schema.type = Type.array
@@ -404,6 +405,7 @@ export const useSchemaNodeOperations = (props: VisualEditorProps) => {
                 type: Type.object,
                 properties: {},
                 required: [],
+                additionalProperties: false,
               }
               break
             default:

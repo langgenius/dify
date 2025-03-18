@@ -114,8 +114,8 @@ const SchemaNode: FC<SchemaNodeProps> = ({
                 name,
                 type,
                 required,
-                description: schema.description || '',
-                enum: schema.enum || [],
+                description: schema.description,
+                enum: schema.enum,
               }}
               path={path}
               parentPath={parentPath!}
