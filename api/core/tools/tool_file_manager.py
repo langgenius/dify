@@ -73,7 +73,7 @@ class ToolFileManager:
         if filename is not None:
             has_extension = len(filename.split(".")) > 1
             # Add extension flexibly
-            present_filename = filename if has_extension  else f"{filename}{extension}"
+            present_filename = filename if has_extension else f"{filename}{extension}"
         filepath = f"tools/{tenant_id}/{unique_filename}"
         storage.save(filepath, file_binary)
 
