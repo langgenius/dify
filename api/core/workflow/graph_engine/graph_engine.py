@@ -738,8 +738,10 @@ class GraphEngine:
                                     )
                                 should_continue_retry = False
                             elif run_result.status == WorkflowNodeExecutionStatus.SUCCEEDED:
-                                if node_instance.should_continue_on_error and self.graph.edge_mapping.get(
-                                    node_instance.node_id
+                                if (
+                                    node_instance.should_continue_on_error
+                                    and self.graph.edge_mapping.get(node_instance.node_id)
+                                    and node_instance.node_data.error_strategy is ErrorStrategy.FAIL_BRANCH
                                 ):
                                     run_result.edge_source_handle = FailBranchSourceHandle.SUCCESS
                                 if run_result.metadata and run_result.metadata.get(NodeRunMetadataKey.TOTAL_TOKENS):
@@ -873,11 +875,12 @@ class GraphEngine:
     def create_copy(self):
         """
         create a graph engine copy
-        :return: with a new variable pool instance of graph engine
+        :return: graph engine with a new variable pool and initialized total tokens
         """
         new_instance = copy(self)
         new_instance.graph_runtime_state = copy(self.graph_runtime_state)
         new_instance.graph_runtime_state.variable_pool = deepcopy(self.graph_runtime_state.variable_pool)
+        new_instance.graph_runtime_state.total_tokens = 0
         return new_instance
 
     def _handle_continue_on_error(

@@ -11,7 +11,7 @@ import type { CommonResponse } from '@/models/common'
 
 const NAME_SPACE = 'knowledge/document'
 
-const useDocumentListKey = [NAME_SPACE, 'documentList']
+export const useDocumentListKey = [NAME_SPACE, 'documentList']
 export const useDocumentList = (payload: {
   datasetId: string
   query: {

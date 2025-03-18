@@ -439,23 +439,25 @@ const SettingsModal: FC<ISettingsModalProps> = ({
           <Button className='mr-2' onClick={onHide}>{t('common.operation.cancel')}</Button>
           <Button variant='primary' onClick={onClickSave} loading={saveLoading}>{t('common.operation.save')}</Button>
         </div>
-      </Modal >
-      {showAppIconPicker && (
-        <AppIconPicker
-          onSelect={(payload) => {
-            setAppIcon(payload)
-            setShowAppIconPicker(false)
-          }}
-          onClose={() => {
-            setAppIcon(icon_type === 'image'
-              ? { type: 'image', url: icon_url!, fileId: icon }
-              : { type: 'emoji', icon, background: icon_background! })
-            setShowAppIconPicker(false)
-          }}
-        />
-      )}
-    </>
 
+        {showAppIconPicker && (
+          <div onClick={e => e.stopPropagation()}>
+            <AppIconPicker
+              onSelect={(payload) => {
+                setAppIcon(payload)
+                setShowAppIconPicker(false)
+              }}
+              onClose={() => {
+                setAppIcon(icon_type === 'image'
+                  ? { type: 'image', url: icon_url!, fileId: icon }
+                  : { type: 'emoji', icon, background: icon_background! })
+                setShowAppIconPicker(false)
+              }}
+            />
+          </div>
+        )}
+      </Modal>
+    </>
   )
 }
 export default React.memo(SettingsModal)

@@ -102,8 +102,7 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
 
       if (!response)
         return
-
-      const { id, status, app_id, imported_dsl_version, current_dsl_version } = response
+      const { id, status, app_id, app_mode, imported_dsl_version, current_dsl_version } = response
       if (status === DSLImportStatus.COMPLETED || status === DSLImportStatus.COMPLETED_WITH_WARNINGS) {
         if (onSuccess)
           onSuccess()
@@ -118,7 +117,7 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
         localStorage.setItem(NEED_REFRESH_APP_LIST_KEY, '1')
         if (app_id)
           await handleCheckPluginDependencies(app_id)
-        getRedirection(isCurrentWorkspaceEditor, { id: app_id }, push)
+        getRedirection(isCurrentWorkspaceEditor, { id: app_id!, mode: app_mode }, push)
       }
       else if (status === DSLImportStatus.PENDING) {
         setVersions({
@@ -151,7 +150,7 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
         import_id: importId,
       })
 
-      const { status, app_id } = response
+      const { status, app_id, app_mode } = response
 
       if (status === DSLImportStatus.COMPLETED) {
         if (onSuccess)
@@ -166,7 +165,7 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
         if (app_id)
           await handleCheckPluginDependencies(app_id)
         localStorage.setItem(NEED_REFRESH_APP_LIST_KEY, '1')
-        getRedirection(isCurrentWorkspaceEditor, { id: app_id }, push)
+        getRedirection(isCurrentWorkspaceEditor, { id: app_id!, mode: app_mode }, push)
       }
       else if (status === DSLImportStatus.FAILED) {
         notify({ type: 'error', message: t('app.newApp.appCreateFailed') })

@@ -1,6 +1,6 @@
 import logging
 from collections.abc import Generator, Mapping, Sequence
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any, cast
 
 from configs import dify_config
@@ -80,7 +80,7 @@ class LoopNode(BaseNode[LoopNodeData]):
             thread_pool_id=self.thread_pool_id,
         )
 
-        start_at = datetime.now(timezone.utc).replace(tzinfo=None)
+        start_at = datetime.now(UTC).replace(tzinfo=None)
         condition_processor = ConditionProcessor()
 
         # Start Loop event
