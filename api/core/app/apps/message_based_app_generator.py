@@ -4,8 +4,6 @@ from collections.abc import Generator
 from datetime import UTC, datetime
 from typing import Optional, Union, cast
 
-from sqlalchemy import and_
-
 from core.app.app_config.entities import EasyUIBasedAppConfig, EasyUIBasedAppModelConfigFrom
 from core.app.apps.base_app_generator import BaseAppGenerator
 from core.app.apps.base_app_queue_manager import AppQueueManager, GenerateTaskStoppedError
@@ -30,7 +28,7 @@ from models import Account
 from models.enums import CreatedByRole
 from models.model import App, AppMode, AppModelConfig, Conversation, EndUser, Message, MessageFile
 from services.errors.app_model_config import AppModelConfigBrokenError
-from services.errors.conversation import ConversationCompletedError, ConversationNotExistsError
+from services.errors.conversation import ConversationNotExistsError
 
 logger = logging.getLogger(__name__)
 

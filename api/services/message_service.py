@@ -15,7 +15,6 @@ from libs.infinite_scroll_pagination import InfiniteScrollPagination
 from models.account import Account
 from models.model import App, AppMode, AppModelConfig, EndUser, Message, MessageFeedback
 from services.conversation_service import ConversationService
-from services.errors.conversation import ConversationCompletedError, ConversationNotExistsError
 from services.errors.message import (
     FirstMessageNotExistsError,
     LastMessageNotExistsError,
