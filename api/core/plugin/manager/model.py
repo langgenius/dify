@@ -202,9 +202,6 @@ class PluginModelManager(BasePluginManager):
         prompt_messages: list[PromptMessage],
         tools: Optional[list[PromptMessageTool]] = None,
     ) -> int:
-        """
-        Get number of tokens for llm
-        """
         response = self._request_with_plugin_daemon_response_stream(
             method="POST",
             path=f"plugin/{tenant_id}/dispatch/llm/num_tokens",

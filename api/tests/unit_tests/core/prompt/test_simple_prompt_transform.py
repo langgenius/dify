@@ -235,7 +235,6 @@ def test__get_completion_model_prompt_messages():
         "#context#": context,
         "#query#": query,
         "#histories#": memory.get_history_prompt_text(
-            max_token_limit=2000,
             human_prefix=prompt_rules.get("human_prefix", "Human"),
             ai_prefix=prompt_rules.get("assistant_prefix", "Assistant"),
         ),

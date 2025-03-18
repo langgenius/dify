@@ -27,7 +27,7 @@ from core.model_runtime.entities.message_entities import (
     SystemPromptMessage,
     UserPromptMessage,
 )
-from core.model_runtime.entities.model_entities import ModelFeature, ModelPropertyKey, ModelType
+from core.model_runtime.entities.model_entities import ModelFeature, ModelType
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
 from core.model_runtime.utils.encoders import jsonable_encoder
 from core.plugin.entities.plugin import ModelProviderID
@@ -91,7 +91,7 @@ class LLMNode(BaseNode[LLMNodeData]):
     _node_data_cls = LLMNodeData
     _node_type = NodeType.LLM
 
-    def _run(self) -> Generator[NodeEvent | InNodeEvent, None, None]:
+    def _run(self) -> Generator[NodeEvent | InNodeEvent, None, None] | NodeRunResult:
         node_inputs: Optional[dict[str, Any]] = None
         process_data = None
         result_text = ""
@@ -624,7 +624,6 @@ class LLMNode(BaseNode[LLMNodeData]):
             memory_text = _handle_memory_completion_mode(
                 memory=memory,
                 memory_config=memory_config,
-                model_config=model_config,
             )
             # Insert histories into the prompt
             prompt_content = prompt_messages[0].content
@@ -960,36 +959,6 @@ def _render_jinja2_message(
     return result_text
 
 
-def _calculate_rest_token(
-    *, prompt_messages: list[PromptMessage], model_config: ModelConfigWithCredentialsEntity
-) -> int:
-    rest_tokens = 2000
-
-    model_context_tokens = model_config.model_schema.model_properties.get(ModelPropertyKey.CONTEXT_SIZE)
-    if model_context_tokens:
-        model_instance = ModelInstance(
-            provider_model_bundle=model_config.provider_model_bundle, model=model_config.model
-        )
-
-        curr_message_tokens = model_instance.get_llm_num_tokens(prompt_messages)
-
-        max_tokens = 0
-        for parameter_rule in model_config.model_schema.parameter_rules:
-            if parameter_rule.name == "max_tokens" or (
-                parameter_rule.use_template and parameter_rule.use_template == "max_tokens"
-            ):
-                max_tokens = (
-                    model_config.parameters.get(parameter_rule.name)
-                    or model_config.parameters.get(str(parameter_rule.use_template))
-                    or 0
-                )
-
-        rest_tokens = model_context_tokens - max_tokens - curr_message_tokens
-        rest_tokens = max(rest_tokens, 0)
-
-    return rest_tokens
-
-
 def _handle_memory_chat_mode(
     *,
     memory: TokenBufferMemory | None,
@@ -999,9 +968,7 @@ def _handle_memory_chat_mode(
     memory_messages: Sequence[PromptMessage] = []
     # Get messages from memory for chat model
     if memory and memory_config:
-        rest_tokens = _calculate_rest_token(prompt_messages=[], model_config=model_config)
         memory_messages = memory.get_history_prompt_messages(
-            max_token_limit=rest_tokens,
             message_limit=memory_config.window.size if memory_config.window.enabled else None,
         )
     return memory_messages
@@ -1011,16 +978,13 @@ def _handle_memory_completion_mode(
     *,
     memory: TokenBufferMemory | None,
     memory_config: MemoryConfig | None,
-    model_config: ModelConfigWithCredentialsEntity,
 ) -> str:
     memory_text = ""
     # Get history text from memory for completion model
     if memory and memory_config:
-        rest_tokens = _calculate_rest_token(prompt_messages=[], model_config=model_config)
         if not memory_config.role_prefix:
             raise MemoryRolePrefixRequiredError("Memory role prefix is required for completion model.")
         memory_text = memory.get_history_prompt_text(
-            max_token_limit=rest_tokens,
             message_limit=memory_config.window.size if memory_config.window.enabled else None,
             human_prefix=memory_config.role_prefix.user,
             ai_prefix=memory_config.role_prefix.assistant,

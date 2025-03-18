@@ -280,9 +280,11 @@ class ParameterExtractorNode(LLMNode):
         )
 
         prompt_transform = AdvancedPromptTransform(with_variable_tmpl=True)
-        rest_token = self._calculate_rest_token(node_data, query, variable_pool, model_config, "")
         prompt_template = self._get_function_calling_prompt_template(
-            node_data, query, variable_pool, memory, rest_token
+            node_data=node_data,
+            query=query,
+            variable_pool=variable_pool,
+            memory=memory,
         )
         prompt_messages = prompt_transform.get_prompt(
             prompt_template=prompt_template,
@@ -396,11 +398,8 @@ class ParameterExtractorNode(LLMNode):
         Generate completion prompt.
         """
         prompt_transform = AdvancedPromptTransform(with_variable_tmpl=True)
-        rest_token = self._calculate_rest_token(
-            node_data=node_data, query=query, variable_pool=variable_pool, model_config=model_config, context=""
-        )
         prompt_template = self._get_prompt_engineering_prompt_template(
-            node_data=node_data, query=query, variable_pool=variable_pool, memory=memory, max_token_limit=rest_token
+            node_data=node_data, query=query, variable_pool=variable_pool, memory=memory
         )
         prompt_messages = prompt_transform.get_prompt(
             prompt_template=prompt_template,
@@ -430,9 +429,6 @@ class ParameterExtractorNode(LLMNode):
         Generate chat prompt.
         """
         prompt_transform = AdvancedPromptTransform(with_variable_tmpl=True)
-        rest_token = self._calculate_rest_token(
-            node_data=node_data, query=query, variable_pool=variable_pool, model_config=model_config, context=""
-        )
         prompt_template = self._get_prompt_engineering_prompt_template(
             node_data=node_data,
             query=CHAT_GENERATE_JSON_USER_MESSAGE_TEMPLATE.format(
@@ -440,7 +436,6 @@ class ParameterExtractorNode(LLMNode):
             ),
             variable_pool=variable_pool,
             memory=memory,
-            max_token_limit=rest_token,
         )
 
         prompt_messages = prompt_transform.get_prompt(
@@ -652,11 +647,11 @@ class ParameterExtractorNode(LLMNode):
 
     def _get_function_calling_prompt_template(
         self,
+        *,
         node_data: ParameterExtractorNodeData,
         query: str,
         variable_pool: VariablePool,
         memory: Optional[TokenBufferMemory],
-        max_token_limit: int = 2000,
     ) -> list[ChatModelMessage]:
         model_mode = ModelMode.value_of(node_data.model.mode)
         input_text = query
@@ -664,9 +659,7 @@ class ParameterExtractorNode(LLMNode):
         instruction = variable_pool.convert_template(node_data.instruction or "").text
 
         if memory and node_data.memory and node_data.memory.window:
-            memory_str = memory.get_history_prompt_text(
-                max_token_limit=max_token_limit, message_limit=node_data.memory.window.size
-            )
+            memory_str = memory.get_history_prompt_text(message_limit=node_data.memory.window.size)
         if model_mode == ModelMode.CHAT:
             system_prompt_messages = ChatModelMessage(
                 role=PromptMessageRole.SYSTEM,
@@ -683,7 +676,6 @@ class ParameterExtractorNode(LLMNode):
         query: str,
         variable_pool: VariablePool,
         memory: Optional[TokenBufferMemory],
-        max_token_limit: int = 2000,
     ):
         model_mode = ModelMode.value_of(node_data.model.mode)
         input_text = query
@@ -691,9 +683,7 @@ class ParameterExtractorNode(LLMNode):
         instruction = variable_pool.convert_template(node_data.instruction or "").text
 
         if memory and node_data.memory and node_data.memory.window:
-            memory_str = memory.get_history_prompt_text(
-                max_token_limit=max_token_limit, message_limit=node_data.memory.window.size
-            )
+            memory_str = memory.get_history_prompt_text(message_limit=node_data.memory.window.size)
         if model_mode == ModelMode.CHAT:
             system_prompt_messages = ChatModelMessage(
                 role=PromptMessageRole.SYSTEM,
@@ -732,9 +722,19 @@ class ParameterExtractorNode(LLMNode):
             raise ModelSchemaNotFoundError("Model schema not found")
 
         if set(model_schema.features or []) & {ModelFeature.MULTI_TOOL_CALL, ModelFeature.MULTI_TOOL_CALL}:
-            prompt_template = self._get_function_calling_prompt_template(node_data, query, variable_pool, None, 2000)
+            prompt_template = self._get_function_calling_prompt_template(
+                node_data=node_data,
+                query=query,
+                variable_pool=variable_pool,
+                memory=None,
+            )
         else:
-            prompt_template = self._get_prompt_engineering_prompt_template(node_data, query, variable_pool, None, 2000)
+            prompt_template = self._get_prompt_engineering_prompt_template(
+                node_data=node_data,
+                query=query,
+                variable_pool=variable_pool,
+                memory=None,
+            )
 
         prompt_messages = prompt_transform.get_prompt(
             prompt_template=prompt_template,

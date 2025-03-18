@@ -271,7 +271,6 @@ class MessageService:
         memory = TokenBufferMemory(conversation=conversation, model_instance=model_instance)
 
         histories = memory.get_history_prompt_text(
-            max_token_limit=3000,
             message_limit=3,
         )
 

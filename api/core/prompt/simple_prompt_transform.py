@@ -238,9 +238,6 @@ class SimplePromptTransform(PromptTransform):
         )
 
         if memory:
-            tmp_human_message = UserPromptMessage(content=prompt)
-
-            rest_tokens = self._calculate_rest_token([tmp_human_message], model_config)
             histories = self._get_history_messages_from_memory(
                 memory=memory,
                 memory_config=MemoryConfig(
@@ -248,7 +245,6 @@ class SimplePromptTransform(PromptTransform):
                         enabled=False,
                     )
                 ),
-                max_token_limit=rest_tokens,
                 human_prefix=prompt_rules.get("human_prefix", "Human"),
                 ai_prefix=prompt_rules.get("assistant_prefix", "Assistant"),
             )
