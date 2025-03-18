@@ -1,4 +1,4 @@
-import React, { type FC, useCallback, useMemo, useState } from 'react'
+import React, { type FC, useCallback, useMemo, useRef, useState } from 'react'
 import type { SchemaEnumType } from '../../../../types'
 import { ArrayType, Type } from '../../../../types'
 import type { TypeItem } from './type-selector'
@@ -13,6 +13,7 @@ import classNames from '@/utils/classnames'
 import { useJsonSchemaConfigStore } from '../../store'
 import { useMittContext } from '../../context'
 import produce from 'immer'
+import { useUnmount } from 'ahooks'
 
 export type EditData = {
   name: string
@@ -61,6 +62,7 @@ const EditCard: FC<EditCardProps> = ({
   const advancedEditing = useJsonSchemaConfigStore(state => state.advancedEditing)
   const setAdvancedEditing = useJsonSchemaConfigStore(state => state.setAdvancedEditing)
   const { emit, useSubscribe } = useMittContext()
+  const blurWithActions = useRef(false)
 
   const disableAddBtn = fields.type !== Type.object && fields.type !== ArrayType.object && depth < DEPTH_LIMIT
   const hasAdvancedOptions = fields.type === Type.string || fields.type === Type.number
@@ -153,6 +155,7 @@ const EditCard: FC<EditCardProps> = ({
   }, [isAdvancedEditing, emitPropertyOptionsChange, fields])
 
   const handleDelete = useCallback(() => {
+    blurWithActions.current = true
     emitPropertyDelete()
   }, [emitPropertyDelete])
 
@@ -162,6 +165,7 @@ const EditCard: FC<EditCardProps> = ({
   }, [currentFields, setAdvancedEditing])
 
   const handleAddChildField = useCallback(() => {
+    blurWithActions.current = true
     emitPropertyAdd()
   }, [emitPropertyAdd])
 
@@ -171,6 +175,7 @@ const EditCard: FC<EditCardProps> = ({
 
   const handleCancel = useCallback(() => {
     if (isAddingNewField) {
+      blurWithActions.current = true
       emit('restoreSchema')
       setIsAddingNewField(false)
       return
@@ -182,6 +187,11 @@ const EditCard: FC<EditCardProps> = ({
     setAdvancedEditing(false)
   }, [isAddingNewField, emit, setIsAddingNewField, setAdvancedEditing, backupFields])
 
+  useUnmount(() => {
+    if (isAdvancedEditing || isAddingNewField || blurWithActions.current) return
+    emitFieldChange()
+  })
+
   return (
     <div className='flex flex-col py-0.5 rounded-lg bg-components-panel-bg shadow-sm shadow-shadow-shadow-4'>
       <div className='flex items-center pl-1 pr-0.5'>
@@ -189,8 +199,8 @@ const EditCard: FC<EditCardProps> = ({
           <input
             value={currentFields.name}
             className='max-w-20 h-5 rounded-[5px] px-1 py-0.5 text-text-primary system-sm-semibold placeholder:text-text-placeholder
-            placeholder:system-sm-semibold hover:bg-state-base-hover border border-transparent focus:border-components-input-border-active
-            focus:bg-components-input-bg-active focus:shadow-xs shadow-shadow-shadow-3 caret-[#295EFF] outline-none'
+              placeholder:system-sm-semibold hover:bg-state-base-hover border border-transparent focus:border-components-input-border-active
+              focus:bg-components-input-bg-active focus:shadow-xs shadow-shadow-shadow-3 caret-[#295EFF] outline-none'
             placeholder={t('workflow.nodes.llm.jsonSchema.fieldNamePlaceholder')}
             onChange={handlePropertyNameChange}
             onBlur={handlePropertyNameBlur}
@@ -232,7 +242,7 @@ const EditCard: FC<EditCardProps> = ({
       </div>
 
       {(currentFields.description || isAdvancedEditing) && (
-        <div className={classNames(isAdvancedEditing ? 'p-2 pt-1' : 'px-2 pb-1')}>
+        <div className={classNames('flex', isAdvancedEditing ? 'p-2 pt-1' : 'px-2 pb-1')}>
           <input
             value={currentFields.description}
             className='w-full h-4 p-0 text-text-tertiary system-xs-regular placeholder:text-text-placeholder placeholder:system-xs-regular caret-[#295EFF] outline-none'
