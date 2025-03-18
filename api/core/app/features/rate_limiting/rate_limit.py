@@ -45,9 +45,6 @@ class RateLimit:
             self.max_active_requests = int(redis_client.get(self.max_active_requests_key).decode("utf-8"))
             redis_client.expire(self.max_active_requests_key, timedelta(days=1))
 
-                self.max_active_requests = int(redis_client.get(self.max_active_requests_key).decode("utf-8"))
-                redis_client.expire(self.max_active_requests_key, timedelta(days=1))
-
         # flush max active requests (in-transit request list)
         if not redis_client.exists(self.active_requests_key):
             return
