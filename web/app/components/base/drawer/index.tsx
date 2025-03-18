@@ -53,15 +53,17 @@ export default function Drawer({
         />
         <div className={cn('relative z-50 flex flex-col justify-between bg-components-panel-bg w-full max-w-sm p-6 overflow-hidden text-left align-middle shadow-xl', panelClassname)}>
           <>
-            {title && <Dialog.Title
-              as="h3"
-              className="text-lg font-medium leading-6 text-text-primary"
-            >
-              {title}
-            </Dialog.Title>}
-            {showClose && <Dialog.Title className="flex items-center mb-4" as="div">
-              <XMarkIcon className='w-4 h-4 text-text-tertiary' onClick={onClose} />
-            </Dialog.Title>}
+            <div className='flex justify-between'>
+              {title && <Dialog.Title
+                as="h3"
+                className="text-lg font-medium leading-6 text-text-primary"
+              >
+                {title}
+              </Dialog.Title>}
+              {showClose && <Dialog.Title className="flex items-center mb-4 cursor-pointer" as="div">
+                <XMarkIcon className='w-4 h-4 text-text-tertiary' onClick={onClose} />
+              </Dialog.Title>}
+            </div>
             {description && <Dialog.Description className='text-text-tertiary text-xs font-normal mt-2'>{description}</Dialog.Description>}
             {children}
           </>
