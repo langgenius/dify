@@ -173,10 +173,16 @@ class PGVector(BaseVector):
         top_k = kwargs.get("top_k", 4)
         if not isinstance(top_k, int) or top_k <= 0:
             raise ValueError("top_k must be a positive integer")
+        document_ids_filter = kwargs.get("document_ids_filter")
+        where_clause = ""
+        if document_ids_filter:
+            document_ids = ", ".join(f"'{id}'" for id in document_ids_filter)
+            where_clause = f" WHERE metadata->>'document_id' in ({document_ids}) "
 
         with self._get_cursor() as cur:
             cur.execute(
                 f"SELECT meta, text, embedding <=> %s AS distance FROM {self.table_name}"
+                f" {where_clause}"
                 f" ORDER BY distance LIMIT {top_k}",
                 (json.dumps(query_vector),),
             )
@@ -195,12 +201,18 @@ class PGVector(BaseVector):
         if not isinstance(top_k, int) or top_k <= 0:
             raise ValueError("top_k must be a positive integer")
         with self._get_cursor() as cur:
+            document_ids_filter = kwargs.get("document_ids_filter")
+            where_clause = ""
+            if document_ids_filter:
+                document_ids = ", ".join(f"'{id}'" for id in document_ids_filter)
+                where_clause = f" AND metadata->>'document_id' in ({document_ids}) "
             if self.pg_bigm:
                 cur.execute("SET pg_bigm.similarity_limit TO 0.000001")
                 cur.execute(
                     f"""SELECT meta, text, bigm_similarity(unistr(%s), coalesce(text, '')) AS score
                     FROM {self.table_name}
                     WHERE text =%% unistr(%s)
+                    {where_clause}
                     ORDER BY score DESC
                     LIMIT {top_k}""",
                     # f"'{query}'" is required in order to account for whitespace in query
@@ -211,6 +223,7 @@ class PGVector(BaseVector):
                     f"""SELECT meta, text, ts_rank(to_tsvector(coalesce(text, '')), plainto_tsquery(%s)) AS score
                     FROM {self.table_name}
                     WHERE to_tsvector(text) @@ plainto_tsquery(%s)
+                    {where_clause}
                     ORDER BY score DESC
                     LIMIT {top_k}""",
                     # f"'{query}'" is required in order to account for whitespace in query
