@@ -9,7 +9,7 @@ import { OperationAction, StatusItem } from '../list'
 import DocumentPicker from '../../common/document-picker'
 import Completed from './completed'
 import Embedding from './embedding'
-import Metadata from './metadata'
+import Metadata from '@/app/components/datasets/metadata/metadata-document'
 import SegmentAdd, { ProcessStatus } from './segment-add'
 import BatchModal from './batch-modal'
 import style from './style.module.css'
@@ -281,9 +281,10 @@ const DocumentDetail: FC<Props> = ({ datasetId, documentId }) => {
           }
           <FloatRightContainer showClose isOpen={showMetadata} onClose={() => setShowMetadata(false)} isMobile={isMobile} panelClassname='!justify-start' footer={null}>
             <Metadata
+              className='mr-2 mt-3'
+              datasetId={datasetId}
+              documentId={documentId}
               docDetail={{ ...documentDetail, ...documentMetadata, doc_type: documentMetadata?.doc_type === 'others' ? '' : documentMetadata?.doc_type } as any}
-              loading={isMetadataLoading}
-              onUpdate={metadataMutate}
             />
           </FloatRightContainer>
         </div>

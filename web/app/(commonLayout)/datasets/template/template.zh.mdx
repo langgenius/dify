@@ -1547,6 +1547,254 @@ import { Row, Col, Properties, Property, Heading, SubProperty, PropertyInstructi
   </Col>
 </Row>
 
+<hr className='ml-0 mr-0' />
+
+<Heading
+  url='/datasets/{dataset_id}/metadata'
+  method='POST'
+  title='新增元数据'
+  name='#create_metadata'
+/>
+<Row>
+  <Col>
+    ### Params
+    <Properties>
+      <Property name='dataset_id' type='string' key='dataset_id'>
+        知识库 ID
+      </Property>
+    </Properties>
+
+    ### Request Body
+    <Properties>
+      <Property name='segment' type='object' key='segment'>
+        - <code>type</code> (string) 元数据类型，必填
+        - <code>name</code> (string) 元数据名称，必填
+      </Property>
+    </Properties>
+  </Col>
+  <Col sticky>
+    <CodeGroup
+      title="Request"
+      tag="POST"
+      label="/datasets/{dataset_id}/metadata"
+      targetCode={`curl --location --request POST '${props.apiBaseUrl}/datasets/{dataset_id}/metadata' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json'\\\n--data-raw '{"type": "string", "name": "test"}'`}
+    >
+    ```bash {{ title: 'cURL' }}
+    ```
+    </CodeGroup>
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {
+      "id": "abc",
+      "type": "string",
+      "name": "test",
+    }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
+<hr className='ml-0 mr-0' />
+
+<Heading
+  url='/datasets/{dataset_id}/metadata/{metadata_id}'
+  method='PATCH'
+  title='更新元数据'
+  name='#update_metadata'
+/>
+<Row>
+  <Col>
+    ### Params
+    <Properties>
+      <Property name='dataset_id' type='string' key='dataset_id'>
+        知识库 ID
+      </Property>
+      <Property name='metadata_id' type='string' key='metadata_id'>
+        元数据 ID
+      </Property>
+    </Properties>
+
+    ### Request Body
+    <Properties>
+      <Property name='segment' type='object' key='segment'>
+        - <code>name</code> (string) 元数据名称，必填
+      </Property>
+    </Properties>
+  </Col>
+  <Col sticky>
+    <CodeGroup
+      title="Request"
+      tag="POST"
+      label="/datasets/{dataset_id}/metadata/{metadata_id}"
+      targetCode={`curl --location --request POST '${props.apiBaseUrl}/datasets/{dataset_id}/metadata/{metadata_id}' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json'\\\n--data-raw '{"name": "test"}'`}
+    >
+    ```bash {{ title: 'cURL' }}
+    ```
+    </CodeGroup>
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {
+      "id": "abc",
+      "type": "string",
+      "name": "test",
+    }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
+<hr className='ml-0 mr-0' />
+
+<Heading
+  url='/datasets/{dataset_id}/metadata/{metadata_id}'
+  method='DELETE'
+  title='删除元数据'
+  name='#delete_metadata'
+/>
+<Row>
+  <Col>
+    ### Params
+    <Properties>
+      <Property name='dataset_id' type='string' key='dataset_id'>
+        知识库 ID
+      </Property>
+      <Property name='metadata_id' type='string' key='metadata_id'>
+        元数据 ID
+      </Property>
+    </Properties>
+  </Col>
+  <Col sticky>
+    <CodeGroup
+      title="Request"
+      tag="DELETE"
+      label="/datasets/{dataset_id}/metadata/{metadata_id}"
+      targetCode={`curl --location --request DELETE '${props.apiBaseUrl}/datasets/{dataset_id}/metadata/{metadata_id}' \\\n--header 'Authorization: Bearer {api_key}'`}
+    >
+    ```bash {{ title: 'cURL' }}
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
+<hr className='ml-0 mr-0' />
+
+<Heading
+  url='/datasets/{dataset_id}/metadata/built-in/{action}'
+  method='POST'
+  title='启用/禁用内置元数据'
+  name='#toggle_metadata'
+/>
+<Row>
+  <Col>
+    ### Params
+    <Properties>
+      <Property name='dataset_id' type='string' key='dataset_id'>
+        知识库 ID
+      </Property>
+      <Property name='action' type='string' key='action'>
+        disable/enable
+      </Property>
+    </Properties>
+  </Col>
+  <Col sticky>
+    <CodeGroup
+      title="Request"
+      tag="POST"
+      label="/datasets/{dataset_id}/metadata/built-in/{action}"
+      targetCode={`curl --location --request POST '${props.apiBaseUrl}/datasets/{dataset_id}/metadata/built-in/{action}' \\\n--header 'Authorization: Bearer {api_key}'`}
+    >
+    ```bash {{ title: 'cURL' }}
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
+<hr className='ml-0 mr-0' />
+
+<Heading
+  url='/datasets/{dataset_id}/documents/metadata'
+  method='POST'
+  title='更新文档元数据'
+  name='#update_documents_metadata'
+/>
+<Row>
+  <Col>
+    ### Params
+    <Properties>
+      <Property name='dataset_id' type='string' key='dataset_id'>
+        知识库 ID
+      </Property>
+    </Properties>
+
+    ### Request Body
+    <Properties>
+      <Property name='operation_data' type='object list' key='segments'>
+        - <code>document_id</code> (string) 文档 ID
+        - <code>metadata_list</code> (list) 元数据列表
+          - <code>id</code> (string) 元数据 ID
+          - <code>type</code> (string) 元数据类型
+          - <code>name</code> (string) 元数据名称
+      </Property>
+    </Properties>
+  </Col>
+  <Col sticky>
+    <CodeGroup
+      title="Request"
+      tag="POST"
+      label="/datasets/{dataset_id}/documents/metadata"
+      targetCode={`curl --location --request POST '${props.apiBaseUrl}/datasets/{dataset_id}/documents/metadata' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json'\\\n--data-raw '{"operation_data": [{"document_id": "document_id", "metadata_list": [{"id": "id", "value": "value", "name": "name"}]}]}'`}
+    >
+    ```bash {{ title: 'cURL' }}
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
+<hr className='ml-0 mr-0' />
+
+<Heading
+  url='/datasets/{dataset_id}/metadata'
+  method='GET'
+  title='查询知识库元数据列表'
+  name='#dataset_metadata_list'
+/>
+<Row>
+  <Col>
+    ### Query
+    <Properties>
+      <Property name='dataset_id' type='string' key='dataset_id'>
+        知识库 ID
+      </Property>
+    </Properties>
+  </Col>
+  <Col sticky>
+    <CodeGroup
+      title="Request"
+      tag="GET"
+      label="/datasets/{dataset_id}/metadata"
+      targetCode={`curl --location --request GET '${props.apiBaseUrl}/datasets/{dataset_id}/metadata' \\\n--header 'Authorization: Bearer {api_key}'`}
+    >
+    ```bash {{ title: 'cURL' }}
+    ```
+    </CodeGroup>
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {
+      "doc_metadata": [
+        {
+          "id": "",
+          "name": "name",
+          "type": "string",
+          "use_count": 0,
+        },
+        ...
+      ],
+      "built_in_field_enabled": true
+    }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
 
 <hr className='ml-0 mr-0' />
 
