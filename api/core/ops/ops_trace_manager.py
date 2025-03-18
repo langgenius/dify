@@ -222,6 +222,7 @@ class OpsTraceManager:
         decrypt_trace_config_key = str(decrypt_trace_config)
         tracing_instance = cls.ops_trace_instances_cache.get(decrypt_trace_config_key)
         if tracing_instance is None:
+            # create new tracing_instance and update the cache if it absent
             tracing_instance = trace_instance(config_class(**decrypt_trace_config))
             cls.ops_trace_instances_cache[decrypt_trace_config_key] = tracing_instance
             logging.info(f"new tracing_instance for app_id: {app_id}")
