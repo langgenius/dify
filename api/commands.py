@@ -27,6 +27,8 @@ from models.provider import Provider, ProviderModel
 from services.account_service import RegisterService, TenantService
 from services.plugin.data_migration import PluginDataMigration
 from services.plugin.plugin_migration import PluginMigration
+from sqlalchemy.orm import Session
+from sqlalchemy import select
 
 
 @click.command("reset-password", help="Reset the account password.")
@@ -160,11 +162,12 @@ def migrate_annotation_vector_database():
     while True:
         try:
             # get apps info
-            apps = (
-                App.query.filter(App.status == "normal")
-                .order_by(App.created_at.desc())
-                .paginate(page=page, per_page=50)
-            )
+            with Session(db.engine) as session:
+                query = select(App).where(App.status == "normal").order_by(App.created_at.desc())
+                apps = session.execute(query).scalars().all()
+                start = (page - 1) * 50
+                end = start + 50
+                apps = apps[start:end]
         except NotFound:
             break
 
