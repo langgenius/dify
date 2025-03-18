@@ -1176,10 +1176,8 @@ class DocumentService:
             doc_metadata = {
                 BuiltInField.document_name: name,
                 BuiltInField.uploader: account.name,
-                BuiltInField.upload_date: datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%d %H:%M:%S"),
-                BuiltInField.last_update_date: datetime.datetime.now(datetime.timezone.utc).strftime(
-                    "%Y-%m-%d %H:%M:%S"
-                ),
+                BuiltInField.upload_date: datetime.datetime.now(datetime.UTC).strftime("%Y-%m-%d %H:%M:%S"),
+                BuiltInField.last_update_date: datetime.datetime.now(datetime.UTC).strftime("%Y-%m-%d %H:%M:%S"),
                 BuiltInField.source: data_source_type,
             }
         if metadata is not None:
