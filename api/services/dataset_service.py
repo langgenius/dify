@@ -2156,6 +2156,14 @@ class SegmentService:
         return query.paginate(page=page, per_page=limit, max_per_page=100, error_out=False)
 
     @classmethod
+    def get_child_chunk_by_id(cls, child_chunk_id: str, tenant_id: str) -> Optional[ChildChunk]:
+        """Get a child chunk by its ID."""
+        return ChildChunk.query.filter(
+            ChildChunk.id == child_chunk_id,
+            ChildChunk.tenant_id == tenant_id
+        ).first()
+
+    @classmethod
     def get_segments(
         cls,
         document_id: str,

@@ -14,7 +14,7 @@ from core.model_manager import ModelManager
 from core.model_runtime.entities.model_entities import ModelType
 from extensions.ext_database import db
 from fields.segment_fields import child_chunk_fields, segment_fields
-from models.dataset import ChildChunk, Dataset
+from models.dataset import  Dataset
 from services.dataset_service import DatasetService, DocumentService, SegmentService
 from services.entities.knowledge_entities.knowledge_entities import ChildChunkUpdateArgs, SegmentUpdateArgs
 from services.errors.chunk import (
@@ -336,9 +336,10 @@ class DatasetChildChunkApi(DatasetApiResource):
 
         # check child chunk
         child_chunk_id = str(child_chunk_id)
-        child_chunk = ChildChunk.query.filter(
-            ChildChunk.id == str(child_chunk_id), ChildChunk.tenant_id == current_user.current_tenant_id
-        ).first()
+        child_chunk = SegmentService.get_child_chunk_by_id(
+            child_chunk_id=child_chunk_id,
+            tenant_id=current_user.current_tenant_id
+        )
         if not child_chunk:
             raise NotFound("Child chunk not found.")
 
@@ -376,9 +377,10 @@ class DatasetChildChunkApi(DatasetApiResource):
 
         # check child chunk
         child_chunk_id = str(child_chunk_id)
-        child_chunk = ChildChunk.query.filter(
-            ChildChunk.id == str(child_chunk_id), ChildChunk.tenant_id == current_user.current_tenant_id
-        ).first()
+        child_chunk = SegmentService.get_child_chunk_by_id(
+            child_chunk_id=child_chunk_id,
+            tenant_id=current_user.current_tenant_id
+        )
         if not child_chunk:
             raise NotFound("Child chunk not found.")
 
