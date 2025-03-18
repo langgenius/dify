@@ -2156,7 +2156,13 @@ class SegmentService:
         return query.paginate(page=page, per_page=limit, max_per_page=100, error_out=False)
 
     @classmethod
-    def get_segments(cls, document_id: str, tenant_id: str, status_list: list = None, keyword: str = None):
+    def get_segments(
+        cls,
+        document_id: str,
+        tenant_id: str,
+        status_list: list[str] | None = None,
+        keyword: str | None = None
+    ):
         """Get segments for a document with optional filtering."""
         query = DocumentSegment.query.filter(
             DocumentSegment.document_id == document_id,
