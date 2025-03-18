@@ -16,6 +16,7 @@ from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped
 
 from configs import dify_config
+from core.rag.index_processor.constant.built_in_field import BuiltInField, MetadataDataSource
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from extensions.ext_storage import storage
 from services.entities.knowledge_entities.knowledge_entities import ParentMode, Rule
@@ -60,6 +61,7 @@ class Dataset(db.Model):  # type: ignore[name-defined]
     embedding_model_provider = db.Column(db.String(255), nullable=True)
     collection_binding_id = db.Column(StringUUID, nullable=True)
     retrieval_model = db.Column(JSONB, nullable=True)
+    built_in_field_enabled = db.Column(db.Boolean, nullable=False, server_default=db.text("false"))
 
     @property
     def dataset_keyword_table(self):
@@ -197,6 +199,56 @@ class Dataset(db.Model):  # type: ignore[name-defined]
             "external_knowledge_api_endpoint": json.loads(external_knowledge_api.settings).get("endpoint", ""),
         }
 
+    @property
+    def doc_metadata(self):
+        dataset_metadatas = db.session.query(DatasetMetadata).filter(DatasetMetadata.dataset_id == self.id).all()
+
+        doc_metadata = [
+            {
+                "id": dataset_metadata.id,
+                "name": dataset_metadata.name,
+                "type": dataset_metadata.type,
+            }
+            for dataset_metadata in dataset_metadatas
+        ]
+        if self.built_in_field_enabled:
+            doc_metadata.append(
+                {
+                    "id": "built-in",
+                    "name": BuiltInField.document_name.value,
+                    "type": "string",
+                }
+            )
+            doc_metadata.append(
+                {
+                    "id": "built-in",
+                    "name": BuiltInField.uploader.value,
+                    "type": "string",
+                }
+            )
+            doc_metadata.append(
+                {
+                    "id": "built-in",
+                    "name": BuiltInField.upload_date.value,
+                    "type": "time",
+                }
+            )
+            doc_metadata.append(
+                {
+                    "id": "built-in",
+                    "name": BuiltInField.last_update_date.value,
+                    "type": "time",
+                }
+            )
+            doc_metadata.append(
+                {
+                    "id": "built-in",
+                    "name": BuiltInField.source.value,
+                    "type": "string",
+                }
+            )
+        return doc_metadata
+
     @staticmethod
     def gen_collection_name_by_id(dataset_id: str) -> str:
         normalized_dataset_id = dataset_id.replace("-", "_")
@@ -250,6 +302,7 @@ class Document(db.Model):  # type: ignore[name-defined]
         db.Index("document_dataset_id_idx", "dataset_id"),
         db.Index("document_is_paused_idx", "is_paused"),
         db.Index("document_tenant_idx", "tenant_id"),
+        db.Index("document_metadata_idx", "doc_metadata", postgresql_using="gin"),
     )
 
     # initial fields
@@ -306,7 +359,7 @@ class Document(db.Model):  # type: ignore[name-defined]
     archived_at = db.Column(db.DateTime, nullable=True)
     updated_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
     doc_type = db.Column(db.String(40), nullable=True)
-    doc_metadata = db.Column(db.JSON, nullable=True)
+    doc_metadata = db.Column(JSONB, nullable=True)
     doc_form = db.Column(db.String(255), nullable=False, server_default=db.text("'text_model'::character varying"))
     doc_language = db.Column(db.String(255), nullable=True)
 
@@ -397,10 +450,93 @@ class Document(db.Model):  # type: ignore[name-defined]
         )
 
     @property
+    def uploader(self):
+        user = db.session.query(Account).filter(Account.id == self.created_by).first()
+        return user.name if user else None
+
+    @property
+    def upload_date(self):
+        return self.created_at
+
+    @property
+    def last_update_date(self):
+        return self.updated_at
+
+    @property
+    def doc_metadata_details(self):
+        if self.doc_metadata:
+            document_metadatas = (
+                db.session.query(DatasetMetadata)
+                .join(DatasetMetadataBinding, DatasetMetadataBinding.metadata_id == DatasetMetadata.id)
+                .filter(
+                    DatasetMetadataBinding.dataset_id == self.dataset_id, DatasetMetadataBinding.document_id == self.id
+                )
+                .all()
+            )
+            metadata_list = []
+            for metadata in document_metadatas:
+                metadata_dict = {
+                    "id": metadata.id,
+                    "name": metadata.name,
+                    "type": metadata.type,
+                    "value": self.doc_metadata.get(metadata.name),
+                }
+                metadata_list.append(metadata_dict)
+            # deal built-in fields
+            metadata_list.extend(self.get_built_in_fields())
+
+            return metadata_list
+        return None
+
+    @property
     def process_rule_dict(self):
         if self.dataset_process_rule_id:
             return self.dataset_process_rule.to_dict()
         return None
+
+    def get_built_in_fields(self):
+        built_in_fields = []
+        built_in_fields.append(
+            {
+                "id": "built-in",
+                "name": BuiltInField.document_name,
+                "type": "string",
+                "value": self.name,
+            }
+        )
+        built_in_fields.append(
+            {
+                "id": "built-in",
+                "name": BuiltInField.uploader,
+                "type": "string",
+                "value": self.uploader,
+            }
+        )
+        built_in_fields.append(
+            {
+                "id": "built-in",
+                "name": BuiltInField.upload_date,
+                "type": "time",
+                "value": self.created_at.timestamp(),
+            }
+        )
+        built_in_fields.append(
+            {
+                "id": "built-in",
+                "name": BuiltInField.last_update_date,
+                "type": "time",
+                "value": self.updated_at.timestamp(),
+            }
+        )
+        built_in_fields.append(
+            {
+                "id": "built-in",
+                "name": BuiltInField.source,
+                "type": "string",
+                "value": MetadataDataSource[self.data_source_type].value,
+            }
+        )
+        return built_in_fields
 
     def to_dict(self):
         return {
@@ -945,3 +1081,41 @@ class RateLimitLog(db.Model):  # type: ignore[name-defined]
     subscription_plan = db.Column(db.String(255), nullable=False)
     operation = db.Column(db.String(255), nullable=False)
     created_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
+
+
+class DatasetMetadata(db.Model):  # type: ignore[name-defined]
+    __tablename__ = "dataset_metadatas"
+    __table_args__ = (
+        db.PrimaryKeyConstraint("id", name="dataset_metadata_pkey"),
+        db.Index("dataset_metadata_tenant_idx", "tenant_id"),
+        db.Index("dataset_metadata_dataset_idx", "dataset_id"),
+    )
+
+    id = db.Column(StringUUID, server_default=db.text("uuid_generate_v4()"))
+    tenant_id = db.Column(StringUUID, nullable=False)
+    dataset_id = db.Column(StringUUID, nullable=False)
+    type = db.Column(db.String(255), nullable=False)
+    name = db.Column(db.String(255), nullable=False)
+    created_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
+    updated_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
+    created_by = db.Column(StringUUID, nullable=False)
+    updated_by = db.Column(StringUUID, nullable=True)
+
+
+class DatasetMetadataBinding(db.Model):  # type: ignore[name-defined]
+    __tablename__ = "dataset_metadata_bindings"
+    __table_args__ = (
+        db.PrimaryKeyConstraint("id", name="dataset_metadata_binding_pkey"),
+        db.Index("dataset_metadata_binding_tenant_idx", "tenant_id"),
+        db.Index("dataset_metadata_binding_dataset_idx", "dataset_id"),
+        db.Index("dataset_metadata_binding_metadata_idx", "metadata_id"),
+        db.Index("dataset_metadata_binding_document_idx", "document_id"),
+    )
+
+    id = db.Column(StringUUID, server_default=db.text("uuid_generate_v4()"))
+    tenant_id = db.Column(StringUUID, nullable=False)
+    dataset_id = db.Column(StringUUID, nullable=False)
+    metadata_id = db.Column(StringUUID, nullable=False)
+    document_id = db.Column(StringUUID, nullable=False)
+    created_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
+    created_by = db.Column(StringUUID, nullable=False)

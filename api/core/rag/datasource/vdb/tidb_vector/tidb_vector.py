@@ -196,6 +196,11 @@ class TiDBVector(BaseVector):
 
         docs = []
         tidb_dist_func = self._get_distance_func()
+        document_ids_filter = kwargs.get("document_ids_filter")
+        where_clause = ""
+        if document_ids_filter:
+            document_ids = ", ".join(f"'{id}'" for id in document_ids_filter)
+            where_clause = f" WHERE meta->>'$.document_id' in ({document_ids}) "
 
         with Session(self._engine) as session:
             select_statement = sql_text(f"""
@@ -206,6 +211,7 @@ class TiDBVector(BaseVector):
                     text,
                     {tidb_dist_func}(vector, :query_vector_str) AS distance
                   FROM {self._collection_name}
+                  {where_clause}
                   ORDER BY distance ASC
                   LIMIT :top_k
                 ) t
