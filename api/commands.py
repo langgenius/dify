@@ -6,6 +6,8 @@ from typing import Optional
 
 import click
 from flask import current_app
+from sqlalchemy import select
+from sqlalchemy.orm import Session
 from werkzeug.exceptions import NotFound
 
 from configs import dify_config
@@ -27,8 +29,6 @@ from models.provider import Provider, ProviderModel
 from services.account_service import RegisterService, TenantService
 from services.plugin.data_migration import PluginDataMigration
 from services.plugin.plugin_migration import PluginMigration
-from sqlalchemy.orm import Session
-from sqlalchemy import select
 
 
 @click.command("reset-password", help="Reset the account password.")
