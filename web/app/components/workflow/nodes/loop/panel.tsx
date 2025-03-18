@@ -1,13 +1,14 @@
 import type { FC } from 'react'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
-
+import { RiAddLine } from '@remixicon/react'
 import Split from '../_base/components/split'
 import ResultPanel from '../../run/result-panel'
 import InputNumberWithSlider from '../_base/components/input-number-with-slider'
 import type { LoopNodeType } from './types'
 import useConfig from './use-config'
 import ConditionWrap from './components/condition-wrap'
+import LoopVariable from './components/loop-variables'
 import type { NodePanelProps } from '@/app/components/workflow/types'
 import Field from '@/app/components/workflow/nodes/_base/components/field'
 import BeforeRunForm from '@/app/components/workflow/nodes/_base/components/before-run-form'
@@ -53,6 +54,22 @@ const Panel: FC<NodePanelProps<LoopNodeType>> = ({
   return (
     <div className='mt-2'>
       <div>
+        <Field
+          title={<div className='pl-3'>Loop  Variables</div>}
+          operations={
+            <div className='flex items-center justify-center mr-4 w-5 h-5 cursor-pointer'>
+              <RiAddLine className='w-4 h-4 text-text-tertiary' />
+            </div>
+          }
+        >
+          <div className='px-4 pb-2'>
+            <LoopVariable
+              nodeId={id}
+              variables={[]}
+            />
+          </div>
+        </Field>
+        <Split className='my-2' />
         <Field
           title={<div className='pl-3'>{t(`${i18nPrefix}.breakCondition`)}</div>}
           tooltip={t(`${i18nPrefix}.breakConditionTip`)}

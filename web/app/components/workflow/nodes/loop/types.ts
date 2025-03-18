@@ -65,6 +65,12 @@ export type handleRemoveSubVariableCondition = (conditionId: string, subConditio
 export type HandleUpdateSubVariableCondition = (conditionId: string, subConditionId: string, newSubCondition: Condition) => void
 export type HandleToggleSubVariableConditionLogicalOperator = (conditionId: string) => void
 
+export type LoopVariable = {
+  label: string
+  var_type: VarType
+  value_type: string
+  value: any
+}
 export type LoopNodeType = CommonNodeType & {
   startNodeType?: BlockEnum
   start_node_id: string
@@ -73,4 +79,5 @@ export type LoopNodeType = CommonNodeType & {
   break_conditions?: Condition[]
   loop_count: number
   error_handle_mode: ErrorHandleMode // how to handle error in the iteration
+  loop_variables?: LoopVariable[]
 }
