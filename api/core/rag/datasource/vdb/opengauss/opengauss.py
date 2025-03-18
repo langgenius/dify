@@ -1,10 +1,8 @@
 import json
-import logging
 import uuid
 from contextlib import contextmanager
 from typing import Any
 
-import psycopg2.errors
 import psycopg2.extras  # type: ignore
 import psycopg2.pool  # type: ignore
 from pydantic import BaseModel, model_validator
@@ -19,7 +17,7 @@ from extensions.ext_redis import redis_client
 from models.dataset import Dataset
 
 
-class PGVectorConfig(BaseModel):
+class OpenGaussConfig(BaseModel):
     host: str
     port: int
     user: str
@@ -27,27 +25,26 @@ class PGVectorConfig(BaseModel):
     database: str
     min_connection: int
     max_connection: int
-    pg_bigm: bool = False
 
     @model_validator(mode="before")
     @classmethod
     def validate_config(cls, values: dict) -> dict:
         if not values["host"]:
-            raise ValueError("config PGVECTOR_HOST is required")
+            raise ValueError("config OPENGAUSS_HOST is required")
         if not values["port"]:
-            raise ValueError("config PGVECTOR_PORT is required")
+            raise ValueError("config OPENGAUSS_PORT is required")
         if not values["user"]:
-            raise ValueError("config PGVECTOR_USER is required")
+            raise ValueError("config OPENGAUSS_USER is required")
         if not values["password"]:
-            raise ValueError("config PGVECTOR_PASSWORD is required")
+            raise ValueError("config OPENGAUSS_PASSWORD is required")
         if not values["database"]:
-            raise ValueError("config PGVECTOR_DATABASE is required")
+            raise ValueError("config OPENGAUSS_DATABASE is required")
         if not values["min_connection"]:
-            raise ValueError("config PGVECTOR_MIN_CONNECTION is required")
+            raise ValueError("config OPENGAUSS_MIN_CONNECTION is required")
         if not values["max_connection"]:
-            raise ValueError("config PGVECTOR_MAX_CONNECTION is required")
+            raise ValueError("config OPENGAUSS_MAX_CONNECTION is required")
         if values["min_connection"] > values["max_connection"]:
-            raise ValueError("config PGVECTOR_MIN_CONNECTION should less than PGVECTOR_MAX_CONNECTION")
+            raise ValueError("config OPENGAUSS_MIN_CONNECTION should less than OPENGAUSS_MAX_CONNECTION")
         return values
 
 
@@ -57,31 +54,25 @@ CREATE TABLE IF NOT EXISTS {table_name} (
     text TEXT NOT NULL,
     meta JSONB NOT NULL,
     embedding vector({dimension}) NOT NULL
-) using heap;
+);
 """
 
 SQL_CREATE_INDEX = """
-CREATE INDEX IF NOT EXISTS embedding_cosine_v1_idx ON {table_name} 
+CREATE INDEX IF NOT EXISTS embedding_cosine_{table_name}_idx ON {table_name} 
 USING hnsw (embedding vector_cosine_ops) WITH (m = 16, ef_construction = 64);
 """
 
-SQL_CREATE_INDEX_PG_BIGM = """
-CREATE INDEX IF NOT EXISTS bigm_idx ON {table_name}
-USING gin (text gin_bigm_ops);
-"""
 
-
-class PGVector(BaseVector):
-    def __init__(self, collection_name: str, config: PGVectorConfig):
+class OpenGauss(BaseVector):
+    def __init__(self, collection_name: str, config: OpenGaussConfig):
         super().__init__(collection_name)
         self.pool = self._create_connection_pool(config)
         self.table_name = f"embedding_{collection_name}"
-        self.pg_bigm = config.pg_bigm
 
     def get_type(self) -> str:
-        return VectorType.PGVECTOR
+        return VectorType.OPENGAUSS
 
-    def _create_connection_pool(self, config: PGVectorConfig):
+    def _create_connection_pool(self, config: OpenGaussConfig):
         return psycopg2.pool.SimpleConnectionPool(
             config.min_connection,
             config.max_connection,
@@ -149,14 +140,7 @@ class PGVector(BaseVector):
         if not ids:
             return
         with self._get_cursor() as cur:
-            try:
-                cur.execute(f"DELETE FROM {self.table_name} WHERE id IN %s", (tuple(ids),))
-            except psycopg2.errors.UndefinedTable:
-                # table not exists
-                logging.warning(f"Table {self.table_name} not found, skipping delete operation.")
-                return
-            except Exception as e:
-                raise e
+            cur.execute(f"DELETE FROM {self.table_name} WHERE id IN %s", (tuple(ids),))
 
     def delete_by_metadata_field(self, key: str, value: str) -> None:
         with self._get_cursor() as cur:
@@ -192,27 +176,15 @@ class PGVector(BaseVector):
         top_k = kwargs.get("top_k", 5)
 
         with self._get_cursor() as cur:
-            if self.pg_bigm:
-                cur.execute("SET pg_bigm.similarity_limit TO 0.000001")
-                cur.execute(
-                    f"""SELECT meta, text, bigm_similarity(unistr(%s), coalesce(text, '')) AS score
-                    FROM {self.table_name}
-                    WHERE text =%% unistr(%s)
-                    ORDER BY score DESC
-                    LIMIT {top_k}""",
-                    # f"'{query}'" is required in order to account for whitespace in query
-                    (f"'{query}'", f"'{query}'"),
-                )
-            else:
-                cur.execute(
-                    f"""SELECT meta, text, ts_rank(to_tsvector(coalesce(text, '')), plainto_tsquery(%s)) AS score
-                    FROM {self.table_name}
-                    WHERE to_tsvector(text) @@ plainto_tsquery(%s)
-                    ORDER BY score DESC
-                    LIMIT {top_k}""",
-                    # f"'{query}'" is required in order to account for whitespace in query
-                    (f"'{query}'", f"'{query}'"),
-                )
+            cur.execute(
+                f"""SELECT meta, text, ts_rank(to_tsvector(coalesce(text, '')), plainto_tsquery(%s)) AS score
+                FROM {self.table_name}
+                WHERE to_tsvector(text) @@ plainto_tsquery(%s)
+                ORDER BY score DESC
+                LIMIT {top_k}""",
+                # f"'{query}'" is required in order to account for whitespace in query
+                (f"'{query}'", f"'{query}'"),
+            )
 
             docs = []
 
@@ -236,38 +208,31 @@ class PGVector(BaseVector):
                 return
 
             with self._get_cursor() as cur:
-                cur.execute("CREATE EXTENSION IF NOT EXISTS vector")
                 cur.execute(SQL_CREATE_TABLE.format(table_name=self.table_name, dimension=dimension))
-                # PG hnsw index only support 2000 dimension or less
-                # ref: https://github.com/pgvector/pgvector?tab=readme-ov-file#indexing
                 if dimension <= 2000:
                     cur.execute(SQL_CREATE_INDEX.format(table_name=self.table_name))
-                if self.pg_bigm:
-                    cur.execute("CREATE EXTENSION IF NOT EXISTS pg_bigm")
-                    cur.execute(SQL_CREATE_INDEX_PG_BIGM.format(table_name=self.table_name))
             redis_client.set(collection_exist_cache_key, 1, ex=3600)
 
 
-class PGVectorFactory(AbstractVectorFactory):
-    def init_vector(self, dataset: Dataset, attributes: list, embeddings: Embeddings) -> PGVector:
+class OpenGaussFactory(AbstractVectorFactory):
+    def init_vector(self, dataset: Dataset, attributes: list, embeddings: Embeddings) -> OpenGauss:
         if dataset.index_struct_dict:
             class_prefix: str = dataset.index_struct_dict["vector_store"]["class_prefix"]
             collection_name = class_prefix
         else:
             dataset_id = dataset.id
             collection_name = Dataset.gen_collection_name_by_id(dataset_id)
-            dataset.index_struct = json.dumps(self.gen_index_struct_dict(VectorType.PGVECTOR, collection_name))
+            dataset.index_struct = json.dumps(self.gen_index_struct_dict(VectorType.OPENGAUSS, collection_name))
 
-        return PGVector(
+        return OpenGauss(
             collection_name=collection_name,
-            config=PGVectorConfig(
-                host=dify_config.PGVECTOR_HOST or "localhost",
-                port=dify_config.PGVECTOR_PORT,
-                user=dify_config.PGVECTOR_USER or "postgres",
-                password=dify_config.PGVECTOR_PASSWORD or "",
-                database=dify_config.PGVECTOR_DATABASE or "postgres",
-                min_connection=dify_config.PGVECTOR_MIN_CONNECTION,
-                max_connection=dify_config.PGVECTOR_MAX_CONNECTION,
-                pg_bigm=dify_config.PGVECTOR_PG_BIGM,
+            config=OpenGaussConfig(
+                host=dify_config.OPENGAUSS_HOST or "localhost",
+                port=dify_config.OPENGAUSS_PORT,
+                user=dify_config.OPENGAUSS_USER or "postgres",
+                password=dify_config.OPENGAUSS_PASSWORD or "",
+                database=dify_config.OPENGAUSS_DATABASE or "dify",
+                min_connection=dify_config.OPENGAUSS_MIN_CONNECTION,
+                max_connection=dify_config.OPENGAUSS_MAX_CONNECTION,
             ),
         )
