@@ -73,6 +73,7 @@ class IconType(Enum):
     IMAGE = "image"
     EMOJI = "emoji"
 
+
 class App(Base):
     __tablename__ = "apps"
     __table_args__ = (db.PrimaryKeyConstraint("id", name="app_pkey"), db.Index("app_tenant_id_idx", "tenant_id"))
