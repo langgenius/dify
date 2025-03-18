@@ -6,7 +6,6 @@ import { useContext } from 'use-context-selector'
 import { useTranslation } from 'react-i18next'
 import { RiCloseLine } from '@remixicon/react'
 import AppIconPicker from '../../base/app-icon-picker'
-import s from './style.module.css'
 import cn from '@/utils/classnames'
 import Checkbox from '@/app/components/base/checkbox'
 import Button from '@/app/components/base/button'
@@ -25,7 +24,7 @@ import { AlertTriangle } from '@/app/components/base/icons/src/vender/solid/aler
 import AppIcon from '@/app/components/base/app-icon'
 import { useStore as useAppStore } from '@/app/components/app/store'
 
-interface SwitchAppModalProps {
+type SwitchAppModalProps = {
   show: boolean
   appDetail: App
   onSuccess?: () => void
@@ -95,24 +94,24 @@ const SwitchAppModal = ({ show, appDetail, inAppDetail = false, onSuccess, onClo
   return (
     <>
       <Modal
-        className={cn('p-8 max-w-[600px] w-[600px]', s.bg)}
+        className={cn('p-8 max-w-[600px] w-[600px]')}
         isShow={show}
         onClose={() => { }}
       >
         <div className='absolute right-4 top-4 p-2 cursor-pointer' onClick={onClose}>
-          <RiCloseLine className='w-4 h-4 text-gray-500' />
+          <RiCloseLine className='w-4 h-4 text-text-tertiary' />
         </div>
-        <div className='w-12 h-12 p-3 bg-white rounded-xl border-[0.5px] border-gray-100 shadow-xl'>
+        <div className='w-12 h-12 p-3 bg-background-default-burn rounded-xl border-[0.5px] border-divider-regular shadow-xl'>
           <AlertTriangle className='w-6 h-6 text-[rgb(247,144,9)]' />
         </div>
-        <div className='relative mt-3 text-xl font-semibold leading-[30px] text-gray-900'>{t('app.switch')}</div>
-        <div className='my-1 text-gray-500 text-sm leading-5'>
+        <div className='relative mt-3 text-xl font-semibold leading-[30px] text-text-primary'>{t('app.switch')}</div>
+        <div className='my-1 text-text-tertiary text-sm leading-5'>
           <span>{t('app.switchTipStart')}</span>
-          <span className='text-gray-700 font-medium'>{t('app.switchTip')}</span>
+          <span className='text-text-secondary font-medium'>{t('app.switchTip')}</span>
           <span>{t('app.switchTipEnd')}</span>
         </div>
         <div className='pb-4'>
-          <div className='py-2 text-sm font-medium leading-[20px] text-gray-900'>{t('app.switchLabel')}</div>
+          <div className='py-2 text-sm font-medium leading-[20px] text-text-primary'>{t('app.switchLabel')}</div>
           <div className='flex items-center justify-between space-x-2'>
             <AppIcon
               size='large'
@@ -147,7 +146,7 @@ const SwitchAppModal = ({ show, appDetail, inAppDetail = false, onSuccess, onClo
         <div className='pt-6 flex justify-between items-center'>
           <div className='flex items-center'>
             <Checkbox className='shrink-0' checked={removeOriginal} onCheck={() => setRemoveOriginal(!removeOriginal)} />
-            <div className="ml-2 text-sm leading-5 text-gray-700 cursor-pointer" onClick={() => setRemoveOriginal(!removeOriginal)}>{t('app.removeOriginal')}</div>
+            <div className="ml-2 text-sm leading-5 text-text-secondary cursor-pointer" onClick={() => setRemoveOriginal(!removeOriginal)}>{t('app.removeOriginal')}</div>
           </div>
           <div className='flex items-center'>
             <Button className='mr-2' onClick={onClose}>{t('app.newApp.Cancel')}</Button>
