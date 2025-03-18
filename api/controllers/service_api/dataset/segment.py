@@ -360,14 +360,12 @@ class DatasetChildChunkApi(DatasetApiResource):
         if not dataset:
             raise NotFound("Dataset not found.")
 
-        # check document
-        document_id = str(document_id)
-        document = DocumentService.get_document(dataset.id, document_id)
+        # get document
+        document = DocumentService.get_document(dataset_id, document_id)
         if not document:
             raise NotFound("Document not found.")
 
-        # check segment
-        segment_id = str(segment_id)
+        # get segment
         segment = SegmentService.get_segment_by_id(
             segment_id=segment_id,
             tenant_id=current_user.current_tenant_id
@@ -375,8 +373,7 @@ class DatasetChildChunkApi(DatasetApiResource):
         if not segment:
             raise NotFound("Segment not found.")
 
-        # check child chunk
-        child_chunk_id = str(child_chunk_id)
+        # get child chunk
         child_chunk = SegmentService.get_child_chunk_by_id(
             child_chunk_id=child_chunk_id,
             tenant_id=current_user.current_tenant_id
@@ -391,12 +388,9 @@ class DatasetChildChunkApi(DatasetApiResource):
 
         try:
             child_chunk = SegmentService.update_child_chunk(
-                ChildChunkUpdateArgs(content=args["content"]),
-                child_chunk,
-                segment,
-                document,
-                dataset
+                args.get("content"), child_chunk, segment, document, dataset
             )
+
         except ChildChunkIndexingServiceError as e:
             raise ChildChunkIndexingError(str(e))
 
