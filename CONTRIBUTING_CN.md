@@ -26,7 +26,7 @@
   | [@jyong](https://github.com/JohnJyong)                       | RAG 流水线设计                                  |
   | [@GarfieldDai](https://github.com/GarfieldDai)               | 构建 workflow 编排                     |
   | [@iamjoel](https://github.com/iamjoel) & [@zxhlyh](https://github.com/zxhlyh) | 让我们的前端更易用                  |
-  | [@guchenhe](https://github.com/guchenhe) & [@crazywoola](https://github.com/crazywoola) | 开发人员体验, 综合事项联系人 |
+  | [@guchenhe](https://github.com/guchenhe) & [@crazywoola](https://github.com/crazywoola) | 开发人员体验，综合事项联系人 |
   | [@takatost](https://github.com/takatost)                     | 产品整体方向和架构           |
 
   事项优先级：
@@ -47,7 +47,7 @@
   | ------------------------------------------------------------ | --------------- |
   | 核心功能的 Bugs（例如无法登录、应用无法工作、安全漏洞） | 紧急        |
   | 非紧急 bugs, 性能提升                        | 中等优先级 |
-  | 小幅修复(错别字, 能正常工作但存在误导的 UI)                | 低优先级    |
+  | 小幅修复 (错别字，能正常工作但存在误导的 UI)                | 低优先级    |
 
 ## 安装
 
