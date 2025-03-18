@@ -430,6 +430,34 @@ const translation = {
         url: '分段链接',
         metadata: '其他元数据',
       },
+      metadata: {
+        title: '元数据过滤',
+        tip: '元数据过滤是使用元数据属性（例如标签、类别或访问权限）来细化和控制系统内相关信息的检索过程。',
+        options: {
+          disabled: {
+            title: '禁用',
+            subTitle: '禁用元数据过滤',
+          },
+          automatic: {
+            title: '自动',
+            subTitle: '根据用户查询自动生成元数据过滤条件',
+            desc: '根据 Query Variable 自动生成元数据过滤条件',
+          },
+          manual: {
+            title: '手动',
+            subTitle: '手动添加元数据过滤条件',
+          },
+        },
+        panel: {
+          title: '元数据过滤条件',
+          conditions: '条件',
+          add: '添加条件',
+          search: '搜索元数据',
+          placeholder: '输入值',
+          datePlaceholder: '选择日期...',
+          select: '选择变量...',
+        },
+      },
     },
     http: {
       inputVars: '输入变量',
@@ -518,6 +546,8 @@ const translation = {
         'all of': '全部是',
         'exists': '存在',
         'not exists': '不存在',
+        'before': '早于',
+        'after': '晚于',
       },
       optionName: {
         image: '图片',

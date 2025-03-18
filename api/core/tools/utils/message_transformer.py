@@ -59,6 +59,8 @@ class ToolFileMessageTransformer:
                 meta = message.meta or {}
 
                 mimetype = meta.get("mime_type", "application/octet-stream")
+                # get filename from meta
+                filename = meta.get("file_name", None)
                 # if message is str, encode it to bytes
 
                 if not isinstance(message.message, ToolInvokeMessage.BlobMessage):
@@ -72,6 +74,7 @@ class ToolFileMessageTransformer:
                     conversation_id=conversation_id,
                     file_binary=message.message.blob,
                     mimetype=mimetype,
+                    filename=filename,
                 )
 
                 url = cls.get_tool_file_url(tool_file_id=file.id, extension=guess_extension(file.mimetype))

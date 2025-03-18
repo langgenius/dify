@@ -160,11 +160,17 @@ def migrate_annotation_vector_database():
     while True:
         try:
             # get apps info
+            per_page = 50
             apps = (
-                App.query.filter(App.status == "normal")
+                db.session.query(App)
+                .filter(App.status == "normal")
                 .order_by(App.created_at.desc())
-                .paginate(page=page, per_page=50)
+                .limit(per_page)
+                .offset((page - 1) * per_page)
+                .all()
             )
+            if not apps:
+                break
         except NotFound:
             break
 
