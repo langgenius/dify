@@ -80,7 +80,7 @@ class SegmentApi(DatasetApiResource):
             return {"error": "Segments is required"}, 400
 
     def get(self, tenant_id, dataset_id, document_id):
-        """Create single segment."""
+        """Get segments."""
         # check dataset
         dataset_id = str(dataset_id)
         tenant_id = str(tenant_id)
@@ -114,21 +114,13 @@ class SegmentApi(DatasetApiResource):
         parser.add_argument("keyword", type=str, default=None, location="args")
         args = parser.parse_args()
 
-        status_list = args["status"]
-        keyword = args["keyword"]
-
-        query = DocumentSegment.query.filter(
-            DocumentSegment.document_id == str(document_id), DocumentSegment.tenant_id == current_user.current_tenant_id
+        segments, total = SegmentService.get_segments(
+            document_id=document_id,
+            tenant_id=current_user.current_tenant_id,
+            status_list=args["status"],
+            keyword=args["keyword"]
         )
 
-        if status_list:
-            query = query.filter(DocumentSegment.status.in_(status_list))
-
-        if keyword:
-            query = query.where(DocumentSegment.content.ilike(f"%{keyword}%"))
-
-        total = query.count()
-        segments = query.order_by(DocumentSegment.position).all()
         return {"data": marshal(segments, segment_fields), "doc_form": document.doc_form, "total": total}, 200
 
 

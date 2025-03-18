@@ -2155,6 +2155,25 @@ class SegmentService:
             query = query.where(ChildChunk.content.ilike(f"%{keyword}%"))
         return query.paginate(page=page, per_page=limit, max_per_page=100, error_out=False)
 
+    @classmethod
+    def get_segments(cls, document_id: str, tenant_id: str, status_list: list = None, keyword: str = None):
+        """Get segments for a document with optional filtering."""
+        query = DocumentSegment.query.filter(
+            DocumentSegment.document_id == document_id,
+            DocumentSegment.tenant_id == tenant_id
+        )
+
+        if status_list:
+            query = query.filter(DocumentSegment.status.in_(status_list))
+
+        if keyword:
+            query = query.filter(DocumentSegment.content.ilike(f"%{keyword}%"))
+
+        segments = query.order_by(DocumentSegment.position.asc()).all()
+        total = len(segments)
+
+        return segments, total
+
 
 class DatasetCollectionBindingService:
     @classmethod
