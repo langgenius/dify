@@ -8,7 +8,7 @@ import type {
   ValueSelector,
   Var,
 } from '@/app/components/workflow/types'
-import { useIsChatMode, useWorkflow } from './use-workflow'
+import { useIsChatMode } from './use-workflow'
 import { useStoreApi } from 'reactflow'
 
 export const useWorkflowVariables = () => {
@@ -80,7 +80,6 @@ export const useWorkflowVariableType = () => {
   const {
     getNodes,
   } = store.getState()
-  const { getBeforeNodesInSameBranch } = useWorkflow()
   const { getCurrentVariableType } = useWorkflowVariables()
 
   const isChatMode = useIsChatMode()
@@ -92,12 +91,10 @@ export const useWorkflowVariableType = () => {
     nodeId: string,
     valueSelector: ValueSelector,
   }) => {
-    // debugger
     const node = getNodes().find(n => n.id === nodeId)
-    // console.log(nodeId, valueSelector)
     const isInIteration = !!node?.data.isInIteration
     const iterationNode = isInIteration ? getNodes().find(n => n.id === node.parentId) : null
-    const availableNodes = getBeforeNodesInSameBranch(nodeId)
+    const availableNodes = [node]
 
     const type = getCurrentVariableType({
       parentNode: iterationNode,
