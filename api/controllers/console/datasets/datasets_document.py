@@ -621,7 +621,7 @@ class DocumentDetailApi(DocumentResource):
             raise InvalidMetadataError(f"Invalid metadata value: {metadata}")
 
         if metadata == "only":
-            response = {"id": document.id, "doc_type": document.doc_type, "doc_metadata": document.doc_metadata}
+            response = {"id": document.id, "doc_type": document.doc_type, "doc_metadata": document.doc_metadata_details}
         elif metadata == "without":
             dataset_process_rules = DatasetService.get_process_rules(dataset_id)
             document_process_rules = document.dataset_process_rule.to_dict()
@@ -682,7 +682,7 @@ class DocumentDetailApi(DocumentResource):
                 "disabled_by": document.disabled_by,
                 "archived": document.archived,
                 "doc_type": document.doc_type,
-                "doc_metadata": document.doc_metadata,
+                "doc_metadata": document.doc_metadata_details,
                 "segment_count": document.segment_count,
                 "average_segment_length": document.average_segment_length,
                 "hit_count": document.hit_count,
