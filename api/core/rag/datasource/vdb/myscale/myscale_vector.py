@@ -125,6 +125,8 @@ class MyScaleVector(BaseVector):
 
     def _search(self, dist: str, order: SortOrder, **kwargs: Any) -> list[Document]:
         top_k = kwargs.get("top_k", 4)
+        if not isinstance(top_k, int) or top_k <= 0:
+            raise ValueError("top_k must be a positive integer")
         score_threshold = float(kwargs.get("score_threshold") or 0.0)
         where_str = (
             f"WHERE dist < {1 - score_threshold}"

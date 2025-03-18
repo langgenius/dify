@@ -194,6 +194,8 @@ class AnalyticdbVectorBySql:
 
     def search_by_vector(self, query_vector: list[float], **kwargs: Any) -> list[Document]:
         top_k = kwargs.get("top_k", 4)
+        if not isinstance(top_k, int) or top_k <= 0:
+            raise ValueError("top_k must be a positive integer")
         document_ids_filter = kwargs.get("document_ids_filter")
         where_clause = "WHERE 1=1"
         if document_ids_filter:
@@ -225,6 +227,8 @@ class AnalyticdbVectorBySql:
 
     def search_by_full_text(self, query: str, **kwargs: Any) -> list[Document]:
         top_k = kwargs.get("top_k", 4)
+        if not isinstance(top_k, int) or top_k <= 0:
+            raise ValueError("top_k must be a positive integer")
         document_ids_filter = kwargs.get("document_ids_filter")
         where_clause = ""
         if document_ids_filter:
