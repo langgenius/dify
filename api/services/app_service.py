@@ -37,9 +37,13 @@ class AppService:
         filters = [App.tenant_id == tenant_id, App.is_universal == False]
 
         if args["mode"] == "workflow":
-            filters.append(App.mode.in_([AppMode.WORKFLOW.value, AppMode.COMPLETION.value]))
+            filters.append(App.mode == AppMode.WORKFLOW.value)
+        elif args["mode"] == "completion":
+            filters.append(App.mode == AppMode.COMPLETION.value)
         elif args["mode"] == "chat":
-            filters.append(App.mode.in_([AppMode.CHAT.value, AppMode.ADVANCED_CHAT.value]))
+            filters.append(App.mode == AppMode.CHAT.value)
+        elif args["mode"] == "advanced-chat":
+            filters.append(App.mode == AppMode.ADVANCED_CHAT.value)
         elif args["mode"] == "agent-chat":
             filters.append(App.mode == AppMode.AGENT_CHAT.value)
         elif args["mode"] == "channel":
