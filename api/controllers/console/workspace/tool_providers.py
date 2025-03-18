@@ -601,7 +601,7 @@ class APOToolBuiltinListApi(Resource):
                     tenant_id,
                     args["tool_type"],
                     args.get("query", None),
-                    args.get("language", "zh")
+                    args.get("language", "zh_Hans")
                 )
             ]
         )

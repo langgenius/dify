@@ -348,7 +348,7 @@ class BuiltinToolManageService:
                                 )
                             )
                     else:
-                        if language == "zh":
+                        if language == "zh_Hans":
                             match_raw = [tool.entity.identity.label.zh_Hans for tool in tools]
                         else:
                             match_raw = [tool.entity.identity.label.en_US for tool in tools]
