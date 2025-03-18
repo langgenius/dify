@@ -11,7 +11,7 @@ from core.tools.errors import ToolInvokeError
 from extensions.ext_database import db
 from factories.file_factory import build_from_mapping
 from models.account import Account
-from models.model import App, EndUser
+from models.model import EndUser
 from models.workflow import Workflow
 
 logger = logging.getLogger(__name__)
@@ -72,7 +72,10 @@ class WorkflowTool(Tool):
         """
         invoke the tool
         """
-        app = self._get_app(app_id=self.workflow_app_id)
+        from services.app_service import AppService
+
+        app = AppService.get_app_by_id(self.workflow_app_id)
+
         workflow = self._get_workflow(app_id=self.workflow_app_id, version=self.version)
 
         # transform the tool parameters
@@ -161,16 +164,6 @@ class WorkflowTool(Tool):
             raise ValueError("workflow not found or not published")
 
         return workflow
-
-    def _get_app(self, app_id: str) -> App:
-        """
-        get the app by app id
-        """
-        app = db.session.query(App).filter(App.id == app_id).first()
-        if not app:
-            raise ValueError("app not found")
-
-        return app
 
     def _transform_args(self, tool_parameters: dict) -> tuple[dict, list[dict]]:
         """

@@ -2,7 +2,8 @@ from typing import Optional
 
 from core.ops.ops_trace_manager import OpsTraceManager, provider_config_map
 from extensions.ext_database import db
-from models.model import App, TraceAppConfig
+from models.model import TraceAppConfig
+from services.app_service import AppService
 
 
 class OpsService:
@@ -24,8 +25,9 @@ class OpsService:
             return None
 
         # decrypt_token and obfuscated_token
-        app = db.session.query(App).filter(App.id == app_id).first()
-        if not app:
+        try:
+            app = AppService.get_app_by_id(app_id)
+        except:
             return None
         tenant_id = app.tenant_id
         decrypt_tracing_config = OpsTraceManager.decrypt_tracing_config(
@@ -117,8 +119,9 @@ class OpsService:
             return None
 
         # get tenant id
-        app = db.session.query(App).filter(App.id == app_id).first()
-        if not app:
+        try:
+            app = AppService.get_app_by_id(app_id)
+        except:
             return None
         tenant_id = app.tenant_id
         tracing_config = OpsTraceManager.encrypt_tracing_config(tenant_id, tracing_provider, tracing_config)
@@ -157,8 +160,9 @@ class OpsService:
             return None
 
         # get tenant id
-        app = db.session.query(App).filter(App.id == app_id).first()
-        if not app:
+        try:
+            app = AppService.get_app_by_id(app_id)
+        except:
             return None
         tenant_id = app.tenant_id
         tracing_config = OpsTraceManager.encrypt_tracing_config(

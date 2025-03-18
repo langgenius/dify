@@ -3,7 +3,6 @@ from typing import cast
 
 from flask_login import current_user  # type: ignore
 from flask_restful import Resource, inputs, marshal, marshal_with, reqparse  # type: ignore
-from sqlalchemy import select
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import BadRequest, Forbidden, abort
 
@@ -23,7 +22,7 @@ from fields.app_fields import (
     app_pagination_fields,
 )
 from libs.login import login_required
-from models import Account, App
+from models import Account
 from services.app_dsl_service import AppDslService, ImportMode
 from services.app_service import AppService
 
@@ -191,8 +190,7 @@ class AppCopyApi(Resource):
             )
             session.commit()
 
-            stmt = select(App).where(App.id == result.app_id)
-            app = session.scalar(stmt)
+            app = AppService.get_app_by_id(result.app_id)
 
         return app, 201
 

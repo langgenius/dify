@@ -24,6 +24,7 @@ from core.workflow.nodes.node_mapping import LATEST_VERSION, NODE_TYPE_CLASSES_M
 from core.workflow.workflow_entry import WorkflowEntry
 from events.app_event import app_draft_workflow_was_synced, app_published_workflow_was_updated
 from extensions.ext_database import db
+from extensions.ext_redis import redis_client
 from models.account import Account
 from models.enums import CreatedByRole
 from models.model import App, AppMode
@@ -36,7 +37,6 @@ from models.workflow import (
 )
 from services.errors.app import WorkflowHashNotEqualError
 from services.workflow.workflow_converter import WorkflowConverter
-
 from .errors.workflow_service import DraftWorkflowDeletionError, WorkflowInUseError
 
 
@@ -44,6 +44,45 @@ class WorkflowService:
     """
     Workflow Service
     """
+
+    @staticmethod
+    def _generate_workflow_cache_key(workflow_id: str) -> str:
+        """
+        Generate workflow cache key
+        :param workflow_id: workflow_id
+        :return:
+        """
+        return f"workflow:{workflow_id}"
+
+    @classmethod
+    def get_workflow_by_id(cls, workflow_id: str) -> Workflow:
+        """
+        Get workflow by id
+        :param workflow_id: workflow id
+        :return:
+        """
+        workflow_cache_key = cls._generate_workflow_cache_key(workflow_id)
+        workflow_content = redis_client.get(workflow_cache_key)
+        if not workflow_content:
+            workflow = db.session.query(Workflow).filter(Workflow.id == workflow_id).first()
+            if not workflow:
+                raise ValueError(f"Workflow {workflow_id} is not found: ")
+            app_dict = workflow.to_cache_dict()
+            redis_client.setex(workflow_cache_key, 300, json.dumps(app_dict))
+        else:
+            workflow_dict = json.loads(workflow_content)
+            workflow = Workflow.from_cache_dict(workflow_dict)
+        return workflow
+
+    @classmethod
+    def remove_workflow_cache_by_id(cls, workflow_id: str) -> None:
+        workflow_cache_key = cls._generate_workflow_cache_key(workflow_id)
+        redis_client.delete(workflow_cache_key)
+
+    @classmethod
+    def remove_workflow_cache_by_ids(cls, workflow_ids: list[str]) -> None:
+        workflow_cache_keys = [cls._generate_workflow_cache_key(workflow_id) for workflow_id in workflow_ids]
+        redis_client.delete(*workflow_cache_keys)
 
     def get_draft_workflow(self, app_model: App) -> Optional[Workflow]:
         """
@@ -70,15 +109,7 @@ class WorkflowService:
             return None
 
         # fetch published workflow by workflow_id
-        workflow = (
-            db.session.query(Workflow)
-            .filter(
-                Workflow.tenant_id == app_model.tenant_id,
-                Workflow.app_id == app_model.id,
-                Workflow.id == app_model.workflow_id,
-            )
-            .first()
-        )
+        workflow = self.get_workflow_by_id(app_model.workflow_id)
 
         return workflow
 
@@ -169,7 +200,7 @@ class WorkflowService:
 
         # commit db session changes
         db.session.commit()
-
+        self.remove_workflow_cache_by_id(workflow.id)
         # trigger app workflow events
         app_draft_workflow_was_synced.send(app_model, synced_draft_workflow=workflow)
 
@@ -469,11 +500,7 @@ class WorkflowService:
         :param data: Dictionary containing fields to update
         :return: Updated workflow or None if not found
         """
-        stmt = select(Workflow).where(Workflow.id == workflow_id, Workflow.tenant_id == tenant_id)
-        workflow = session.scalar(stmt)
-
-        if not workflow:
-            return None
+        workflow = WorkflowService.get_workflow_by_id(workflow_id)
 
         allowed_fields = ["marked_name", "marked_comment"]
 
@@ -498,11 +525,7 @@ class WorkflowService:
         :raises: WorkflowInUseError if workflow is in use
         :raises: DraftWorkflowDeletionError if workflow is a draft version
         """
-        stmt = select(Workflow).where(Workflow.id == workflow_id, Workflow.tenant_id == tenant_id)
-        workflow = session.scalar(stmt)
-
-        if not workflow:
-            raise ValueError(f"Workflow with ID {workflow_id} not found")
+        workflow = self.get_workflow_by_id(workflow_id)
 
         # Check if workflow is a draft version
         if workflow.version == "draft":

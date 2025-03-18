@@ -13,9 +13,9 @@ from core.tools.utils.workflow_configuration_sync import WorkflowToolConfigurati
 from core.tools.workflow_as_tool.provider import WorkflowToolProviderController
 from core.tools.workflow_as_tool.tool import WorkflowTool
 from extensions.ext_database import db
-from models.model import App
 from models.tools import WorkflowToolProvider
 from models.workflow import Workflow
+from services.app_service import AppService
 from services.tools.tools_transform_service import ToolTransformService
 
 
@@ -53,11 +53,7 @@ class WorkflowToolManageService:
 
         if existing_workflow_tool_provider is not None:
             raise ValueError(f"Tool with name {name} or app_id {workflow_app_id} already exists")
-
-        app: App | None = db.session.query(App).filter(App.id == workflow_app_id, App.tenant_id == tenant_id).first()
-
-        if app is None:
-            raise ValueError(f"App {workflow_app_id} not found")
+        app = AppService.get_app_by_id(workflow_app_id)
 
         workflow: Workflow | None = app.workflow
         if workflow is None:
@@ -143,12 +139,7 @@ class WorkflowToolManageService:
         if workflow_tool_provider is None:
             raise ValueError(f"Tool {workflow_tool_id} not found")
 
-        app: App | None = (
-            db.session.query(App).filter(App.id == workflow_tool_provider.app_id, App.tenant_id == tenant_id).first()
-        )
-
-        if app is None:
-            raise ValueError(f"App {workflow_tool_provider.app_id} not found")
+        app = AppService.get_app_by_id(workflow_tool_provider.app_id)
 
         workflow: Workflow | None = app.workflow
         if workflow is None:
@@ -274,12 +265,7 @@ class WorkflowToolManageService:
         if db_tool is None:
             raise ValueError("Tool not found")
 
-        workflow_app: App | None = (
-            db.session.query(App).filter(App.id == db_tool.app_id, App.tenant_id == db_tool.tenant_id).first()
-        )
-
-        if workflow_app is None:
-            raise ValueError(f"App {db_tool.app_id} not found")
+        workflow_app = AppService.get_app_by_id(db_tool.app_id)
 
         workflow = workflow_app.workflow
         if not workflow:

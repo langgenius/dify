@@ -13,8 +13,9 @@ from controllers.console.wraps import account_initialization_required, cloud_edi
 from extensions.ext_database import db
 from fields.installed_app_fields import installed_app_list_fields
 from libs.login import login_required
-from models import App, InstalledApp, RecommendedApp
+from models import InstalledApp, RecommendedApp
 from services.account_service import TenantService
+from services.app_service import AppService
 
 
 class InstalledAppsListApi(Resource):
@@ -71,10 +72,7 @@ class InstalledAppsListApi(Resource):
             raise NotFound("App not found")
 
         current_tenant_id = current_user.current_tenant_id
-        app = db.session.query(App).filter(App.id == args["app_id"]).first()
-
-        if app is None:
-            raise NotFound("App not found")
+        app = AppService.get_app_by_id(args["app_id"])
 
         if not app.is_public:
             raise Forbidden("You can't install a non-public app")

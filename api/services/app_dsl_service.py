@@ -9,7 +9,6 @@ from uuid import uuid4
 import yaml  # type: ignore
 from packaging import version
 from pydantic import BaseModel, Field
-from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from core.helper import ssrf_proxy
@@ -27,6 +26,7 @@ from factories import variable_factory
 from models import Account, App, AppMode
 from models.model import AppModelConfig
 from models.workflow import Workflow
+from services.app_service import AppService
 from services.plugin.dependencies_analysis import DependenciesAnalysisService
 from services.workflow_service import WorkflowService
 
@@ -211,10 +211,9 @@ class AppDslService:
             # If app_id is provided, check if it exists
             app = None
             if app_id:
-                stmt = select(App).where(App.id == app_id, App.tenant_id == account.current_tenant_id)
-                app = self._session.scalar(stmt)
-
-                if not app:
+                try:
+                    app = AppService.get_app_by_id(app_id)
+                except:
                     return Import(
                         id=import_id,
                         status=ImportStatus.FAILED,
@@ -331,8 +330,10 @@ class AppDslService:
 
             app = None
             if pending_data.app_id:
-                stmt = select(App).where(App.id == pending_data.app_id, App.tenant_id == account.current_tenant_id)
-                app = self._session.scalar(stmt)
+                try:
+                    app = AppService.get_app_by_id(pending_data.app_id)
+                except:
+                    app = None
 
             # Create or update app
             app = self._create_or_update_app(

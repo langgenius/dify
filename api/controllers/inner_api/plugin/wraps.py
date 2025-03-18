@@ -8,9 +8,9 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from extensions.ext_database import db
-from models.account import Account, Tenant
+from models.account import Account
 from models.model import EndUser
-from services.account_service import AccountService
+from services.account_service import AccountService, TenantService
 
 
 def get_user(tenant_id: str, user_id: str | None) -> Account | EndUser:
@@ -65,19 +65,7 @@ def get_user_tenant(view: Optional[Callable] = None):
             del kwargs["tenant_id"]
             del kwargs["user_id"]
 
-            try:
-                tenant_model = (
-                    db.session.query(Tenant)
-                    .filter(
-                        Tenant.id == tenant_id,
-                    )
-                    .first()
-                )
-            except Exception:
-                raise ValueError("tenant not found")
-
-            if not tenant_model:
-                raise ValueError("tenant not found")
+            tenant_model = TenantService.get_tenant_by_id(tenant_id)
 
             kwargs["tenant_model"] = tenant_model
             kwargs["user_model"] = get_user(tenant_id, user_id)

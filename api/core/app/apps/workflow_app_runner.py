@@ -1,5 +1,5 @@
 from collections.abc import Mapping
-from typing import Any, Optional, cast
+from typing import Any, cast
 
 from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
 from core.app.apps.base_app_runner import AppRunner
@@ -63,8 +63,6 @@ from core.workflow.graph_engine.entities.graph import Graph
 from core.workflow.nodes import NodeType
 from core.workflow.nodes.node_mapping import NODE_TYPE_CLASSES_MAPPING
 from core.workflow.workflow_entry import WorkflowEntry
-from extensions.ext_database import db
-from models.model import App
 from models.workflow import Workflow
 
 
@@ -133,7 +131,7 @@ class WorkflowBasedAppRunner(AppRunner):
             edge
             for edge in graph_config.get("edges", [])
             if (edge.get("source") is None or edge.get("source") in node_ids)
-            and (edge.get("target") is None or edge.get("target") in node_ids)
+               and (edge.get("target") is None or edge.get("target") in node_ids)
         ]
 
         graph_config["edges"] = edge_configs
@@ -671,22 +669,6 @@ class WorkflowBasedAppRunner(AppRunner):
                     error=event.error if isinstance(event, LoopRunFailedEvent) else None,
                 )
             )
-
-    def get_workflow(self, app_model: App, workflow_id: str) -> Optional[Workflow]:
-        """
-        Get workflow
-        """
-        # fetch workflow by workflow_id
-        workflow = (
-            db.session.query(Workflow)
-            .filter(
-                Workflow.tenant_id == app_model.tenant_id, Workflow.app_id == app_model.id, Workflow.id == workflow_id
-            )
-            .first()
-        )
-
-        # return workflow
-        return workflow
 
     def _publish_event(self, event: AppQueueEvent) -> None:
         self.queue_manager.publish(event, PublishFrom.APPLICATION_MANAGER)

@@ -10,7 +10,8 @@ from core.rag.models.document import Document
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from models.dataset import Dataset
-from models.model import App, AppAnnotationSetting, MessageAnnotation
+from models.model import AppAnnotationSetting, MessageAnnotation
+from services.app_service import AppService
 from services.dataset_service import DatasetCollectionBindingService
 
 
@@ -29,7 +30,7 @@ def batch_import_annotations_task(job_id: str, content_list: list[dict], app_id:
     start_at = time.perf_counter()
     indexing_cache_key = "app_annotation_batch_import_{}".format(str(job_id))
     # get app info
-    app = db.session.query(App).filter(App.id == app_id, App.tenant_id == tenant_id, App.status == "normal").first()
+    app = AppService.get_app_by_id(app_id)
 
     if app:
         try:

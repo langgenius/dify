@@ -688,12 +688,9 @@ class WorkflowByIdApi(Resource):
                 account_id=current_user.id,
                 data=update_data,
             )
-
-            if not workflow:
-                raise NotFound("Workflow not found")
-
             # Commit the transaction in the controller
             session.commit()
+            workflow_service.remove_workflow_cache_by_id(workflow_id)
 
         return workflow
 
@@ -722,6 +719,7 @@ class WorkflowByIdApi(Resource):
                 )
                 # Commit the transaction in the controller
                 session.commit()
+                workflow_service.remove_workflow_cache_by_id(workflow_id)
             except WorkflowInUseError as e:
                 abort(400, description=str(e))
             except DraftWorkflowDeletionError as e:

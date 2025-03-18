@@ -58,13 +58,13 @@ from models.account import Account
 from models.enums import CreatedByRole, WorkflowRunTriggeredFrom
 from models.model import EndUser
 from models.workflow import (
-    Workflow,
     WorkflowNodeExecution,
     WorkflowNodeExecutionStatus,
     WorkflowNodeExecutionTriggeredFrom,
     WorkflowRun,
     WorkflowRunStatus,
 )
+from services.workflow_service import WorkflowService
 
 from .exc import WorkflowRunNotFoundError
 
@@ -89,10 +89,7 @@ class WorkflowCycleManage:
         user_id: str,
         created_by_role: CreatedByRole,
     ) -> WorkflowRun:
-        workflow_stmt = select(Workflow).where(Workflow.id == workflow_id)
-        workflow = session.scalar(workflow_stmt)
-        if not workflow:
-            raise ValueError(f"Workflow not found: {workflow_id}")
+        workflow = WorkflowService.get_workflow_by_id(workflow_id)
 
         max_sequence_stmt = select(func.max(WorkflowRun.sequence_number)).where(
             WorkflowRun.tenant_id == workflow.tenant_id,

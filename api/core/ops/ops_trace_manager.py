@@ -37,7 +37,7 @@ from core.ops.opik_trace.opik_trace import OpikDataTrace
 from core.ops.utils import get_message_data
 from extensions.ext_database import db
 from extensions.ext_storage import storage
-from models.model import App, AppModelConfig, Conversation, Message, MessageFile, TraceAppConfig
+from models.model import AppModelConfig, Conversation, Message, MessageFile, TraceAppConfig
 from models.workflow import WorkflowAppLog, WorkflowRun
 from tasks.ops_trace_task import process_trace_tasks
 
@@ -165,9 +165,9 @@ class OpsTraceManager:
             return None
 
         # decrypt_token
-        app = db.session.query(App).filter(App.id == app_id).first()
-        if not app:
-            raise ValueError("App not found")
+        from services.app_service import AppService
+
+        app = AppService.get_app_by_id(app_id)
 
         tenant_id = app.tenant_id
         decrypt_tracing_config = cls.decrypt_tracing_config(
@@ -192,9 +192,11 @@ class OpsTraceManager:
         if app_id is None:
             return None
 
-        app: Optional[App] = db.session.query(App).filter(App.id == app_id).first()
+        try:
+            from services.app_service import AppService
 
-        if app is None:
+            app = AppService.get_app_by_id(app_id)
+        except:
             return None
 
         app_ops_trace_config = json.loads(app.tracing) if app.tracing else None
@@ -256,9 +258,7 @@ class OpsTraceManager:
         if tracing_provider not in provider_config_map and tracing_provider is not None:
             raise ValueError(f"Invalid tracing provider: {tracing_provider}")
 
-        app_config: Optional[App] = db.session.query(App).filter(App.id == app_id).first()
-        if not app_config:
-            raise ValueError("App not found")
+        app_config = AppService.get_app_by_id(app_id)
         app_config.tracing = json.dumps(
             {
                 "enabled": enabled,
@@ -274,9 +274,9 @@ class OpsTraceManager:
         :param app_id: app id
         :return:
         """
-        app: Optional[App] = db.session.query(App).filter(App.id == app_id).first()
-        if not app:
-            raise ValueError("App not found")
+        from services.app_service import AppService
+
+        app = AppService.get_app_by_id(app_id)
         if not app.tracing:
             return {"enabled": False, "tracing_provider": None}
         app_trace_config = json.loads(app.tracing)

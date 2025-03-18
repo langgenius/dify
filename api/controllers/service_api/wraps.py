@@ -1,6 +1,5 @@
 import time
 from collections.abc import Callable
-from datetime import UTC, datetime, timedelta
 from enum import Enum
 from functools import wraps
 from typing import Optional
@@ -9,8 +8,6 @@ from flask import current_app, request
 from flask_login import user_logged_in  # type: ignore
 from flask_restful import Resource  # type: ignore
 from pydantic import BaseModel
-from sqlalchemy import select, update
-from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden, Unauthorized
 
 from extensions.ext_database import db
@@ -19,6 +16,8 @@ from libs.login import _get_user
 from models.account import Account, Tenant, TenantAccountJoin, TenantStatus
 from models.dataset import RateLimitLog
 from models.model import ApiToken, App, EndUser
+from services.account_service import TenantService
+from services.app_service import AppService
 from services.feature_service import FeatureService
 
 
@@ -43,9 +42,7 @@ def validate_app_token(view: Optional[Callable] = None, *, fetch_user_arg: Optio
         def decorated_view(*args, **kwargs):
             api_token = validate_and_get_api_token("app")
 
-            app_model = db.session.query(App).filter(App.id == api_token.app_id).first()
-            if not app_model:
-                raise Forbidden("The app no longer exists.")
+            app_model = AppService.get_app_by_id(api_token.app_id)
 
             if app_model.status != "normal":
                 raise Forbidden("The app's status is abnormal.")
@@ -53,9 +50,7 @@ def validate_app_token(view: Optional[Callable] = None, *, fetch_user_arg: Optio
             if not app_model.enable_api:
                 raise Forbidden("The app's API service has been disabled.")
 
-            tenant = db.session.query(Tenant).filter(Tenant.id == app_model.tenant_id).first()
-            if tenant is None:
-                raise ValueError("Tenant does not exist.")
+            tenant = TenantService.get_tenant_by_id(app_model.tenant_id)
             if tenant.status == TenantStatus.ARCHIVE:
                 raise Forbidden("The workspace's status is archived.")
 

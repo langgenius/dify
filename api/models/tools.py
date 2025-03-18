@@ -12,8 +12,9 @@ from core.tools.entities.tool_bundle import ApiToolBundle
 from core.tools.entities.tool_entities import ApiProviderSchemaType, WorkflowToolParameterConfiguration
 from models.base import Base
 
+from .account import Tenant
 from .engine import db
-from .model import Account, App, Tenant
+from .model import Account, App
 from .types import StringUUID
 
 
@@ -108,7 +109,13 @@ class ApiToolProvider(Base):
 
     @property
     def tenant(self) -> Tenant | None:
-        return db.session.query(Tenant).filter(Tenant.id == self.tenant_id).first()
+        from services.account_service import TenantService
+
+        try:
+            tenant = TenantService.get_tenant_by_id(self.tenant_id)
+        except:
+            tenant = None
+        return tenant
 
 
 class ToolLabelBinding(Base):
@@ -182,7 +189,13 @@ class WorkflowToolProvider(Base):
 
     @property
     def tenant(self) -> Tenant | None:
-        return db.session.query(Tenant).filter(Tenant.id == self.tenant_id).first()
+        from services.account_service import TenantService
+
+        try:
+            tenant = TenantService.get_tenant_by_id(self.tenant_id)
+        except:
+            tenant = None
+        return tenant
 
     @property
     def parameter_configurations(self) -> list[WorkflowToolParameterConfiguration]:
@@ -190,7 +203,12 @@ class WorkflowToolProvider(Base):
 
     @property
     def app(self) -> App | None:
-        return db.session.query(App).filter(App.id == self.app_id).first()
+        from services.app_service import AppService
+        try:
+            app = AppService.get_app_by_id(self.app_id)
+        except:
+            app = None
+        return app
 
 
 class ToolModelInvoke(Base):

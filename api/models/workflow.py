@@ -145,9 +145,13 @@ class Workflow(Base):
         conversation_variables: Sequence[Variable],
         marked_name: str = "",
         marked_comment: str = "",
+        id: Optional[str] = None,
     ) -> Self:
         workflow = Workflow()
-        workflow.id = str(uuid4())
+        if id is not None:
+            workflow.id = id
+        else:
+            workflow.id = str(uuid4())
         workflow.tenant_id = tenant_id
         workflow.app_id = app_id
         workflow.type = type
@@ -342,6 +346,39 @@ class Workflow(Base):
             ensure_ascii=False,
         )
 
+    @classmethod
+    def from_cache_dict(cls, data: dict):
+        result = cls(
+            id=data["id"],
+            tenant_id=data["tenant_id"],
+            app_id=data["app_id"],
+            type=data["type"],
+            version=data["version"],
+            graph=data["graph"],
+            features=data["features"],
+            created_by=data["created_by"],
+            environment_variables=[],
+            conversation_variables=[],
+        )
+        result._environment_variables = data["_environment_variables"]
+        result._conversation_variables = data["_conversation_variables"]
+
+        return result
+
+    def to_cache_dict(self) -> dict:
+        return {
+            "id": self.id,
+            "tenant_id": self.tenant_id,
+            "app_id": self.app_id,
+            "type": self.type,
+            "version": self.version,
+            "graph": self.graph,
+            "features": self.features,
+            "created_by": self.created_by,
+            "_environment_variables": self._environment_variables,
+            "_conversation_variables": self._conversation_variables,
+        }
+
 
 class WorkflowRunStatus(StrEnum):
     """
@@ -456,7 +493,10 @@ class WorkflowRun(Base):
 
     @property
     def workflow(self):
-        return db.session.query(Workflow).filter(Workflow.id == self.workflow_id).first()
+        from services.workflow_service import WorkflowService
+
+        workflow = WorkflowService.get_workflow_by_id(self.workflow_id)
+        return workflow
 
     def to_dict(self):
         return {

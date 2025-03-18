@@ -1,5 +1,6 @@
 import enum
 import json
+from datetime import datetime
 
 from flask_login import UserMixin  # type: ignore
 from sqlalchemy import func
@@ -218,6 +219,31 @@ class Tenant(db.Model):  # type: ignore[name-defined]
     @custom_config_dict.setter
     def custom_config_dict(self, value: dict):
         self.custom_config = json.dumps(value)
+
+    def to_dict(self) -> dict:
+        return {
+            "id": self.id,
+            "name": self.name,
+            "encrypt_public_key": self.encrypt_public_key,
+            "plan": self.plan,
+            "status": self.status,
+            "custom_config": self.custom_config,
+            "created_at": self.created_at.isoformat(),
+            "updated_at": self.updated_at.isoformat(),
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict) -> "Tenant":
+        return cls(
+            id=data.get("id"),
+            name=data.get("name"),
+            encrypt_public_key=data.get("encrypt_public_key"),
+            plan=data.get("plan"),
+            status=data.get("status"),
+            custom_config=data.get("custom_config"),
+            created_at=datetime.fromisoformat(data.get("created_at")),
+            updated_at=datetime.fromisoformat(data.get("updated_at")),
+        )
 
 
 class TenantAccountJoin(db.Model):  # type: ignore[name-defined]

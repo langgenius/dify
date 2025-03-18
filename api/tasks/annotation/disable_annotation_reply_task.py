@@ -9,7 +9,8 @@ from core.rag.datasource.vdb.vector_factory import Vector
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from models.dataset import Dataset
-from models.model import App, AppAnnotationSetting, MessageAnnotation
+from models.model import AppAnnotationSetting, MessageAnnotation
+from services.app_service import AppService
 
 
 @shared_task(queue="dataset")
@@ -20,7 +21,7 @@ def disable_annotation_reply_task(job_id: str, app_id: str, tenant_id: str):
     logging.info(click.style("Start delete app annotations index: {}".format(app_id), fg="green"))
     start_at = time.perf_counter()
     # get app info
-    app = db.session.query(App).filter(App.id == app_id, App.tenant_id == tenant_id, App.status == "normal").first()
+    app = AppService.get_app_by_id(app_id)
     annotations_count = db.session.query(MessageAnnotation).filter(MessageAnnotation.app_id == app_id).count()
     if not app:
         raise NotFound("App not found")

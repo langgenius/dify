@@ -31,7 +31,7 @@ from models.base import Base
 from models.enums import CreatedByRole
 from models.workflow import WorkflowRunStatus
 
-from .account import Account, Tenant
+from .account import Account
 from .engine import db
 from .types import StringUUID
 
@@ -130,9 +130,10 @@ class App(Base):
     @property
     def workflow(self) -> Optional["Workflow"]:
         if self.workflow_id:
-            from .workflow import Workflow
+            from services.workflow_service import WorkflowService
 
-            return db.session.query(Workflow).filter(Workflow.id == self.workflow_id).first()
+            workflow = WorkflowService.get_workflow_by_id(self.workflow_id)
+            return workflow
 
         return None
 
@@ -142,7 +143,9 @@ class App(Base):
 
     @property
     def tenant(self):
-        tenant = db.session.query(Tenant).filter(Tenant.id == self.tenant_id).first()
+        from services.account_service import TenantService
+
+        tenant = TenantService.get_tenant_by_id(self.tenant_id)
         return tenant
 
     @property
@@ -296,6 +299,66 @@ class App(Base):
 
         return tags or []
 
+    def to_dict(self) -> dict:
+        return {
+            "id": self.id,
+            "tenant_id": self.tenant_id,
+            "name": self.name,
+            "description": self.description,
+            "mode": self.mode,
+            "icon_type": self.icon_type,
+            "icon": self.icon,
+            "icon_background": self.icon_background,
+            "app_model_config_id": self.app_model_config_id,
+            "workflow_id": self.workflow_id,
+            "status": self.status,
+            "enable_site": self.enable_site,
+            "enable_api": self.enable_api,
+            "api_rpm": self.api_rpm,
+            "api_rph": self.api_rph,
+            "is_demo": self.is_demo,
+            "is_public": self.is_public,
+            "is_universal": self.is_universal,
+            "tracing": self.tracing,
+            "max_active_requests": self.max_active_requests,
+            "created_by": self.created_by,
+            "created_at": self.created_at.isoformat(),
+            "updated_by": self.updated_by,
+            "updated_at": self.updated_at.isoformat(),
+            "use_icon_as_answer_icon": self.use_icon_as_answer_icon,
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict) -> "APP":
+        app = cls(
+            id=data.get("id"),
+            tenant_id=data.get("tenant_id"),
+            name=data.get("name"),
+            description=data.get("description"),
+            mode=data.get("mode"),
+            icon_type=data.get("icon_type"),
+            icon=data.get("icon"),
+            icon_background=data.get("icon_background"),
+            app_model_config_id=data.get("app_model_config_id"),
+            workflow_id=data.get("workflow_id"),
+            status=data.get("status"),
+            enable_site=data.get("enable_site"),
+            enable_api=data.get("enable_api"),
+            api_rpm=data.get("api_rpm"),
+            api_rph=data.get("api_rph"),
+            is_demo=data.get("is_demo"),
+            is_public=data.get("is_public"),
+            is_universal=data.get("is_universal"),
+            tracing=data.get("tracing"),
+            max_active_requests=data.get("max_active_requests"),
+            created_by=data.get("created_by"),
+            created_at=datetime.fromisoformat(data.get("created_at")),
+            updated_by=data.get("updated_by"),
+            updated_at=datetime.fromisoformat(data.get("updated_at")),
+            use_icon_as_answer_icon=data.get("use_icon_as_answer_icon"),
+        )
+        return app
+
 
 class AppModelConfig(Base):
     __tablename__ = "app_model_configs"
@@ -332,7 +395,9 @@ class AppModelConfig(Base):
 
     @property
     def app(self):
-        app = db.session.query(App).filter(App.id == self.app_id).first()
+        from services.app_service import AppService
+
+        app = AppService.get_app_by_id(self.app_id)
         return app
 
     @property
@@ -571,7 +636,9 @@ class RecommendedApp(Base):
 
     @property
     def app(self):
-        app = db.session.query(App).filter(App.id == self.app_id).first()
+        from services.app_service import AppService
+
+        app = AppService.get_app_by_id(self.app_id)
         return app
 
 
@@ -595,12 +662,16 @@ class InstalledApp(Base):
 
     @property
     def app(self):
-        app = db.session.query(App).filter(App.id == self.app_id).first()
+        from services.app_service import AppService
+
+        app = AppService.get_app_by_id(self.app_id)
         return app
 
     @property
     def tenant(self):
-        tenant = db.session.query(Tenant).filter(Tenant.id == self.tenant_id).first()
+        from services.account_service import TenantService
+
+        tenant = TenantService.get_tenant_by_id(self.tenant_id)
         return tenant
 
 
@@ -814,7 +885,10 @@ class Conversation(db.Model):  # type: ignore[name-defined]
 
     @property
     def app(self):
-        return db.session.query(App).filter(App.id == self.app_id).first()
+        from services.app_service import AppService
+
+        app = AppService.get_app_by_id(self.app_id)
+        return app
 
     @property
     def from_end_user_session_id(self):
@@ -1073,11 +1147,11 @@ class Message(db.Model):  # type: ignore[name-defined]
     @property
     def message_files(self):
         from factories import file_factory
+        from services.app_service import AppService
 
         message_files = db.session.query(MessageFile).filter(MessageFile.message_id == self.id).all()
-        current_app = db.session.query(App).filter(App.id == self.app_id).first()
-        if not current_app:
-            raise ValueError(f"App {self.app_id} not found")
+
+        current_app = AppService.get_app_by_id(self.app_id)
 
         files = []
         for message_file in message_files:

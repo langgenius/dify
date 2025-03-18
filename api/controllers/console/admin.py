@@ -4,14 +4,15 @@ from flask import request
 from flask_restful import Resource, reqparse  # type: ignore
 from sqlalchemy import select
 from sqlalchemy.orm import Session
-from werkzeug.exceptions import NotFound, Unauthorized
+from werkzeug.exceptions import Unauthorized
 
 from configs import dify_config
 from constants.languages import supported_language
 from controllers.console import api
 from controllers.console.wraps import only_edition_cloud
 from extensions.ext_database import db
-from models.model import App, InstalledApp, RecommendedApp
+from models.model import InstalledApp, RecommendedApp
+from services.app_service import AppService
 
 
 def admin_required(view):
@@ -56,10 +57,7 @@ class InsertExploreAppListApi(Resource):
         parser.add_argument("position", type=int, required=True, nullable=False, location="json")
         args = parser.parse_args()
 
-        with Session(db.engine) as session:
-            app = session.execute(select(App).filter(App.id == args["app_id"])).scalar_one_or_none()
-        if not app:
-            raise NotFound(f"App '{args['app_id']}' is not found")
+        app = AppService.get_app_by_id(args["app_id"])
 
         site = app.site
         if not site:
@@ -124,8 +122,7 @@ class InsertExploreAppApi(Resource):
         if not recommended_app:
             return {"result": "success"}, 204
 
-        with Session(db.engine) as session:
-            app = session.execute(select(App).filter(App.id == recommended_app.app_id)).scalar_one_or_none()
+        app = AppService.get_app_by_id(recommended_app.app_id)
 
         if app:
             app.is_public = False

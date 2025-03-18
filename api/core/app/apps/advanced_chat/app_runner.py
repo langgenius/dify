@@ -24,6 +24,8 @@ from extensions.ext_database import db
 from models.enums import UserFrom
 from models.model import App, Conversation, EndUser, Message
 from models.workflow import ConversationVariable, WorkflowType
+from services.app_service import AppService
+from services.workflow_service import WorkflowService
 
 logger = logging.getLogger(__name__)
 
@@ -52,13 +54,9 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
         app_config = self.application_generate_entity.app_config
         app_config = cast(AdvancedChatAppConfig, app_config)
 
-        app_record = db.session.query(App).filter(App.id == app_config.app_id).first()
-        if not app_record:
-            raise ValueError("App not found")
+        app_record = AppService.get_app_by_id(app_config.app_id)
 
-        workflow = self.get_workflow(app_model=app_record, workflow_id=app_config.workflow_id)
-        if not workflow:
-            raise ValueError("Workflow not initialized")
+        workflow = WorkflowService.get_workflow_by_id(app_config.workflow_id)
 
         user_id = None
         if self.application_generate_entity.invoke_from in {InvokeFrom.WEB_APP, InvokeFrom.SERVICE_API}:
