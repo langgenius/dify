@@ -194,6 +194,8 @@ class AnalyticdbVectorBySql:
 
     def search_by_vector(self, query_vector: list[float], **kwargs: Any) -> list[Document]:
         top_k = kwargs.get("top_k", 4)
+        if not isinstance(top_k, int) or top_k <= 0:
+            raise ValueError("top_k must be a positive integer")
         score_threshold = float(kwargs.get("score_threshold") or 0.0)
         with self._get_cursor() as cur:
             query_vector_str = json.dumps(query_vector)
@@ -220,6 +222,8 @@ class AnalyticdbVectorBySql:
 
     def search_by_full_text(self, query: str, **kwargs: Any) -> list[Document]:
         top_k = kwargs.get("top_k", 4)
+        if not isinstance(top_k, int) or top_k <= 0:
+            raise ValueError("top_k must be a positive integer")
         with self._get_cursor() as cur:
             cur.execute(
                 f"""SELECT id, vector, page_content, metadata_, 
