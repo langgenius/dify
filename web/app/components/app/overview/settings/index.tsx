@@ -30,7 +30,6 @@ import I18n from '@/context/i18n'
 import cn from '@/utils/classnames'
 import { useGlobalPublicStore } from '@/context/global-public-context'
 import { IS_CE_EDITION } from '@/config'
-import { LicenseStatus } from '@/types/feature'
 
 export type ISettingsModalProps = {
   isChat: boolean
@@ -113,7 +112,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
       : { type: 'emoji', icon, background: icon_background! },
   )
 
-  const { enableBilling, plan } = useProviderContext()
+  const { enableBilling, plan, webappCopyrightEnabled } = useProviderContext()
   const { setShowPricingModal, setShowAccountSettingModal } = useModalContext()
   const isFreePlan = plan.type === 'sandbox'
   const handlePlanClick = useCallback(() => {
@@ -383,14 +382,14 @@ const SettingsModal: FC<ISettingsModalProps> = ({
                     )}
                   </div>
                   <Tooltip
-                    disabled={systemFeatures.license.status !== LicenseStatus.NONE}
+                    disabled={webappCopyrightEnabled}
                     popupContent={
-                      <div className='w-[260px]'>{t(`${prefixSettings}.more.copyrightTooltip`)}</div>
+                      <div className='w-[180px]'>{t(`${prefixSettings}.more.copyrightTooltip`)}</div>
                     }
                     asChild={false}
                   >
                     <Switch
-                      disabled={IS_CE_EDITION}
+                      disabled={!webappCopyrightEnabled}
                       defaultValue={inputInfo.copyrightSwitchValue}
                       onChange={v => setInputInfo({ ...inputInfo, copyrightSwitchValue: v })}
                     />
@@ -442,20 +441,22 @@ const SettingsModal: FC<ISettingsModalProps> = ({
           <Button variant='primary' onClick={onClickSave} loading={saveLoading}>{t('common.operation.save')}</Button>
         </div>
       </Modal >
-      {showAppIconPicker && (
-        <AppIconPicker
-          onSelect={(payload) => {
-            setAppIcon(payload)
-            setShowAppIconPicker(false)
-          }}
-          onClose={() => {
-            setAppIcon(icon_type === 'image'
-              ? { type: 'image', url: icon_url!, fileId: icon }
-              : { type: 'emoji', icon, background: icon_background! })
-            setShowAppIconPicker(false)
-          }}
-        />
-      )}
+      {
+        showAppIconPicker && (
+          <AppIconPicker
+            onSelect={(payload) => {
+              setAppIcon(payload)
+              setShowAppIconPicker(false)
+            }}
+            onClose={() => {
+              setAppIcon(icon_type === 'image'
+                ? { type: 'image', url: icon_url!, fileId: icon }
+                : { type: 'emoji', icon, background: icon_background! })
+              setShowAppIconPicker(false)
+            }}
+          />
+        )
+      }
     </>
 
   )

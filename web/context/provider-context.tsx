@@ -35,6 +35,7 @@ type ProviderContextState = {
   enableReplaceWebAppLogo: boolean
   modelLoadBalancingEnabled: boolean
   datasetOperatorEnabled: boolean
+  webappCopyrightEnabled: boolean
 }
 const ProviderContext = createContext<ProviderContextState>({
   modelProviders: [],
@@ -64,6 +65,7 @@ const ProviderContext = createContext<ProviderContextState>({
   enableReplaceWebAppLogo: false,
   modelLoadBalancingEnabled: false,
   datasetOperatorEnabled: false,
+  webappCopyrightEnabled: false,
 })
 
 export const useProviderContext = () => useContext(ProviderContext)
@@ -91,6 +93,7 @@ export const ProviderContextProvider = ({
   const [enableReplaceWebAppLogo, setEnableReplaceWebAppLogo] = useState(false)
   const [modelLoadBalancingEnabled, setModelLoadBalancingEnabled] = useState(false)
   const [datasetOperatorEnabled, setDatasetOperatorEnabled] = useState(false)
+  const [webappCopyrightEnabled, setWebappCopyrightEnabled] = useState(false)
 
   const fetchPlan = async () => {
     const data = await fetchCurrentPlanInfo()
@@ -105,6 +108,8 @@ export const ProviderContextProvider = ({
       setModelLoadBalancingEnabled(true)
     if (data.dataset_operator_enabled)
       setDatasetOperatorEnabled(true)
+    if (data.webapp_copyright_enabled)
+      setWebappCopyrightEnabled(true)
   }
   useEffect(() => {
     fetchPlan()
@@ -123,6 +128,7 @@ export const ProviderContextProvider = ({
       enableReplaceWebAppLogo,
       modelLoadBalancingEnabled,
       datasetOperatorEnabled,
+      webappCopyrightEnabled,
     }}>
       {children}
     </ProviderContext.Provider>
