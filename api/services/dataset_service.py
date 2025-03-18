@@ -14,7 +14,7 @@ from sqlalchemy.orm import Session
 from werkzeug.exceptions import NotFound
 
 from configs import dify_config
-from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError, ProviderNotInitializeError
+from core.errors.error import LLMBadRequestError, ProviderNotInitializeError, ProviderTokenNotInitError
 from core.model_manager import ModelManager
 from core.model_runtime.entities.model_entities import ModelType
 from core.plugin.entities.plugin import ModelProviderID
