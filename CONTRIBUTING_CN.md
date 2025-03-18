@@ -49,39 +49,6 @@
   | 非紧急 bugs, 性能提升                        | 中等优先级 |
   | 小幅修复(错别字, 能正常工作但存在误导的 UI)                | 低优先级    |
 
-## 安装
-
-以下是设置 Dify 进行开发的步骤：
-
-### 1. Fork 该仓库
-
-### 2. 克隆仓库
-
-从终端克隆代码仓库：
-
-```
-git clone git@github.com:<github_username>/dify.git
-```
-
-### 3. 验证依赖项
-
-Dify 依赖以下工具和库：
-
-- [Docker](https://www.docker.com/)
-- [Docker Compose](https://docs.docker.com/compose/install/)
-- [Node.js v18.x (LTS)](http://nodejs.org)
-- [pnpm](https://pnpm.io/)
-- [Python](https://www.python.org/) version 3.11.x or 3.12.x
-
-### 4. 安装
-
-Dify 由后端和前端组成。通过 `cd api/` 导航到后端目录，然后按照 [后端 README](api/README.md) 进行安装。在另一个终端中，通过 `cd web/` 导航到前端目录，然后按照 [前端 README](web/README.md) 进行安装。
-
-查看 [安装常见问题解答](https://docs.dify.ai/v/zh-hans/learn-more/faq/install-faq) 以获取常见问题列表和故障排除步骤。
-
-### 5. 在浏览器中访问 Dify
-
-为了验证您的设置，打开浏览器并访问 [http://localhost:3000](http://localhost:3000)（默认或您自定义的 URL 和端口）。现在您应该看到 Dify 正在运行。
 
 ## 开发
 
