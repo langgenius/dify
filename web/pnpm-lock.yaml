@@ -103,6 +103,9 @@ importers:
       ahooks:
         specifier: ^3.8.1
         version: 3.8.1(react@18.2.0)
+      ajv:
+        specifier: ^8.17.1
+        version: 8.17.1
       class-variance-authority:
         specifier: ^0.7.0
         version: 0.7.0

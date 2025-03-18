@@ -1,3 +1,4 @@
+import React from 'react'
 import type { FC } from 'react'
 import { RiCloseLine, RiSparklingFill } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
@@ -85,4 +86,4 @@ const PromptEditor: FC<PromptEditorProps> = ({
   )
 }
 
-export default PromptEditor
+export default React.memo(PromptEditor)

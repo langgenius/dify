@@ -9,8 +9,9 @@ import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import VisualEditor from './visual-editor'
 import SchemaEditor from './schema-editor'
-import { jsonToSchema } from '../../utils'
+import { getValidationErrorMessage, jsonToSchema, validateSchemaAgainstDraft7 } from '../../utils'
 import { MittProvider, VisualEditorContextProvider } from './visual-editor/context'
+import ErrorMessage from './error-message'
 
 type JsonSchemaConfigProps = {
   defaultSchema?: SchemaRoot
@@ -45,10 +46,44 @@ const JsonSchemaConfig: FC<JsonSchemaConfigProps> = ({
   const [jsonSchema, setJsonSchema] = useState(defaultSchema || DEFAULT_SCHEMA)
   const [json, setJson] = useState(JSON.stringify(jsonSchema, null, 2))
   const [btnWidth, setBtnWidth] = useState(0)
+  const [parseError, setParseError] = useState<Error | null>(null)
+  const [validationError, setValidationError] = useState<string>('')
 
   const updateBtnWidth = useCallback((width: number) => {
     setBtnWidth(width + 32)
   }, [])
+
+  const handleTabChange = useCallback((value: SchemaView) => {
+    if (currentTab === value) return
+    if (currentTab === SchemaView.JsonSchema) {
+      try {
+        const schema = JSON.parse(json)
+        setParseError(null)
+        const ajvError = validateSchemaAgainstDraft7(schema)
+        if (ajvError.length > 0) {
+          setValidationError(getValidationErrorMessage(ajvError))
+          return
+        }
+        else {
+          setJsonSchema(schema)
+          setValidationError('')
+        }
+      }
+      catch (error) {
+        setValidationError('')
+        if (error instanceof Error)
+          setParseError(error)
+        else
+          setParseError(new Error('Invalid JSON'))
+        return
+      }
+    }
+    else if (currentTab === SchemaView.VisualEditor) {
+      setJson(JSON.stringify(jsonSchema, null, 2))
+    }
+
+    setCurrentTab(value)
+  }, [currentTab, jsonSchema, json])
 
   const handleApplySchema = useCallback((schema: SchemaRoot) => {
     setJsonSchema(schema)
@@ -69,6 +104,7 @@ const JsonSchemaConfig: FC<JsonSchemaConfigProps> = ({
 
   const handleResetDefaults = useCallback(() => {
     setJsonSchema(defaultSchema || DEFAULT_SCHEMA)
+    setJson(JSON.stringify(defaultSchema || DEFAULT_SCHEMA, null, 2))
   }, [defaultSchema])
 
   const handleCancel = useCallback(() => {
@@ -76,9 +112,33 @@ const JsonSchemaConfig: FC<JsonSchemaConfigProps> = ({
   }, [onClose])
 
   const handleSave = useCallback(() => {
-    onSave(jsonSchema)
+    let schema = jsonSchema
+    if (currentTab === SchemaView.JsonSchema) {
+      try {
+        schema = JSON.parse(json)
+        setParseError(null)
+        const ajvError = validateSchemaAgainstDraft7(schema)
+        if (ajvError.length > 0) {
+          setValidationError(getValidationErrorMessage(ajvError))
+          return
+        }
+        else {
+          setJsonSchema(schema)
+          setValidationError('')
+        }
+      }
+      catch (error) {
+        setValidationError('')
+        if (error instanceof Error)
+          setParseError(error)
+        else
+          setParseError(new Error('Invalid JSON'))
+        return
+      }
+    }
+    onSave(schema)
     onClose()
-  }, [jsonSchema, onSave, onClose])
+  }, [currentTab, jsonSchema, json, onSave, onClose])
 
   return (
     <div className='flex flex-col h-full'>
@@ -97,9 +157,7 @@ const JsonSchemaConfig: FC<JsonSchemaConfigProps> = ({
         <SegmentedControl<SchemaView>
           options={VIEW_TABS}
           value={currentTab}
-          onChange={(value: SchemaView) => {
-            setCurrentTab(value)
-          }}
+          onChange={handleTabChange}
         />
         <div className='flex items-center gap-x-0.5'>
           {/* JSON Schema Generator */}
@@ -115,7 +173,7 @@ const JsonSchemaConfig: FC<JsonSchemaConfigProps> = ({
           />
         </div>
       </div>
-      <div className='px-6 grow overflow-hidden'>
+      <div className='flex flex-col gap-y-1 px-6 grow overflow-hidden'>
         {currentTab === SchemaView.VisualEditor && (
           <MittProvider>
             <VisualEditorContextProvider>
@@ -132,6 +190,8 @@ const JsonSchemaConfig: FC<JsonSchemaConfigProps> = ({
             onUpdate={handleSchemaEditorUpdate}
           />
         )}
+        {parseError && <ErrorMessage message={parseError.message} />}
+        {validationError && <ErrorMessage message={validationError} />}
       </div>
       {/* Footer */}
       <div className='flex items-center p-6 pt-5 gap-x-2'>

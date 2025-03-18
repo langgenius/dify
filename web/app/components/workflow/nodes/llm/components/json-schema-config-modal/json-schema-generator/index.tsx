@@ -83,6 +83,7 @@ export const JsonSchemaGenerator: FC<JsonSchemaGeneratorProps> = ({
 
   const handleApply = () => {
     onApply(schema!)
+    setOpen(false)
   }
 
   return (

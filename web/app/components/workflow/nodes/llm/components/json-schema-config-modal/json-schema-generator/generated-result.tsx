@@ -1,17 +1,18 @@
-import React, { type FC, useCallback, useRef, useState } from 'react'
+import React, { type FC, useCallback, useMemo, useState } from 'react'
 import type { SchemaRoot } from '../../../types'
-import { RiArrowLeftLine, RiClipboardLine, RiCloseLine, RiSparklingLine } from '@remixicon/react'
+import { RiArrowLeftLine, RiCloseLine, RiSparklingLine } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
-import Editor from '@monaco-editor/react'
-import copy from 'copy-to-clipboard'
 import Button from '@/app/components/base/button'
+import CodeEditor from '../code-editor'
+import ErrorMessage from '../error-message'
+import { getValidationErrorMessage, validateSchemaAgainstDraft7 } from '../../../utils'
 
 type GeneratedResultProps = {
   schema: SchemaRoot
   onBack: () => void
   onRegenerate: () => void
   onClose: () => void
-  onApply: (schema: any) => void
+  onApply: () => void
 }
 
 const GeneratedResult: FC<GeneratedResultProps> = ({
@@ -22,57 +23,36 @@ const GeneratedResult: FC<GeneratedResultProps> = ({
   onApply,
 }) => {
   const { t } = useTranslation()
-  const monacoRef = useRef<any>(null)
-  const editorRef = useRef<any>(null)
+  const [parseError, setParseError] = useState<Error | null>(null)
+  const [validationError, setValidationError] = useState<string>('')
 
-  const formatJSON = (json: any): string => {
+  const formatJSON = (json: SchemaRoot) => {
     try {
-      if (typeof json === 'string') {
-        const parsed = JSON.parse(json)
-        return JSON.stringify(parsed, null, 2)
-      }
-      return JSON.stringify(json, null, 2)
+      const schema = JSON.stringify(json, null, 2)
+      setParseError(null)
+      return schema
     }
     catch (e) {
-      console.error('Failed to format JSON:', e)
-      return typeof json === 'string' ? json : JSON.stringify(json)
+      if (e instanceof Error)
+        setParseError(e)
+      else
+        setParseError(new Error('Invalid JSON'))
+      return ''
     }
   }
 
-  const [jsonSchema, setJsonSchema] = useState(formatJSON(schema))
-
-  const handleEditorDidMount = useCallback((editor: any, monaco: any) => {
-    editorRef.current = editor
-    monacoRef.current = monaco
-    monaco.editor.defineTheme('light-theme', {
-      base: 'vs',
-      inherit: true,
-      rules: [],
-      colors: {
-        'editor.background': '#00000000',
-        'editor.lineHighlightBackground': '#00000000',
-        'focusBorder': '#00000000',
-      },
-    })
-    monaco.editor.setTheme('light-theme')
-  }, [])
-
-  const handleEditorChange = useCallback((value: string | undefined) => {
-    if (!value)
-      return
-    setJsonSchema(value)
-  }, [])
+  const jsonSchema = useMemo(() => formatJSON(schema), [schema])
 
   const handleApply = useCallback(() => {
-    try {
-      // Parse the JSON to ensure it's valid before applying
-      const parsedJSON = JSON.parse(jsonSchema)
-      onApply(parsedJSON)
+    const ajvError = validateSchemaAgainstDraft7(schema)
+    if (ajvError.length > 0) {
+      setValidationError(getValidationErrorMessage(ajvError))
     }
-    catch {
-      // TODO: Handle invalid JSON error
+    else {
+      onApply()
+      setValidationError('')
     }
-  }, [jsonSchema, onApply])
+  }, [schema, onApply])
 
   return (
     <div className='flex flex-col w-[480px] rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-2xl shadow-shadow-shadow-9'>
@@ -89,51 +69,16 @@ const GeneratedResult: FC<GeneratedResultProps> = ({
         </div>
       </div>
       {/* Content */}
-      <div className='w-full h-[468px] px-4 py-2'>
-        <div className='flex flex-col h-full rounded-lg bg-components-input-bg-normal overflow-hidden'>
-          <div className='flex items-center justify-between pl-2 pt-1 pr-1'>
-            <div className='py-0.5 text-text-secondary system-xs-semibold-uppercase'>
-              <span className='px-1 py-0.5'>JSON</span>
-            </div>
-            <button
-              type='button'
-              className='flex items-center justify-center h-6 w-6'
-              onClick={() => copy(jsonSchema)}>
-              <RiClipboardLine className='w-4 h-4 text-text-tertiary' />
-            </button>
-          </div>
-          <div className='relative grow'>
-            <Editor
-              height='100%'
-              defaultLanguage='json'
-              value={jsonSchema}
-              onChange={handleEditorChange}
-              onMount={handleEditorDidMount}
-              options={{
-                readOnly: true,
-                domReadOnly: true,
-                minimap: { enabled: false },
-                tabSize: 2,
-                scrollBeyondLastLine: false,
-                wordWrap: 'on',
-                wrappingIndent: 'same',
-                // Add these options
-                overviewRulerBorder: false,
-                hideCursorInOverviewRuler: true,
-                renderLineHighlightOnlyWhenFocus: false,
-                renderLineHighlight: 'none',
-                // Hide scrollbar borders
-                scrollbar: {
-                  vertical: 'hidden',
-                  horizontal: 'hidden',
-                  verticalScrollbarSize: 0,
-                  horizontalScrollbarSize: 0,
-                  alwaysConsumeMouseWheel: false,
-                },
-              }}
-            />
-          </div>
-        </div>
+      <div className='px-4 py-2'>
+        <CodeEditor
+          className='rounded-lg'
+          editorWrapperClassName='h-[424px]'
+          value={jsonSchema}
+          readOnly
+          showFormatButton={false}
+        />
+        {parseError && <ErrorMessage message={parseError.message} />}
+        {validationError && <ErrorMessage message={validationError} />}
       </div>
       {/* Footer */}
       <div className='flex items-center justify-between p-4 pt-2'>
@@ -155,4 +100,4 @@ const GeneratedResult: FC<GeneratedResultProps> = ({
   )
 }
 
-export default GeneratedResult
+export default React.memo(GeneratedResult)
