@@ -55,6 +55,7 @@ class FeatureModel(BaseModel):
     can_replace_logo: bool = False
     model_load_balancing_enabled: bool = False
     dataset_operator_enabled: bool = False
+    webapp_copyright_enabled: bool = False
 
     # pydantic configs
     model_config = ConfigDict(protected_namespaces=())
@@ -85,6 +86,9 @@ class FeatureService:
 
         if dify_config.BILLING_ENABLED and tenant_id:
             cls._fulfill_params_from_billing_api(features, tenant_id)
+
+        if dify_config.ENTERPRISE_ENABLED:
+            features.webapp_copyright_enabled = True
 
         return features
 
@@ -122,6 +126,9 @@ class FeatureService:
         features.billing.enabled = billing_info["enabled"]
         features.billing.subscription.plan = billing_info["subscription"]["plan"]
         features.billing.subscription.interval = billing_info["subscription"]["interval"]
+
+        if features.billing.subscription.plan != "sandbox":
+            features.webapp_copyright_enabled = True
 
         if "members" in billing_info:
             features.members.size = billing_info["members"]["size"]
