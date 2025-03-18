@@ -533,7 +533,7 @@ class ImagePromptMessageContent(PromptMessageContent):
 所有 Role 消息体的基类，仅作为参数声明用，不可初始化。
 
 ```python
-class PromptMessage(ABC, BaseModel):
+class PromptMessage(BaseModel):
     """
     Model class for prompt message.
     """
