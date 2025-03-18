@@ -2158,7 +2158,8 @@ class SegmentService:
     @classmethod
     def get_child_chunk_by_id(cls, child_chunk_id: str, tenant_id: str) -> Optional[ChildChunk]:
         """Get a child chunk by its ID."""
-        return ChildChunk.query.filter(ChildChunk.id == child_chunk_id, ChildChunk.tenant_id == tenant_id).first()
+        result = ChildChunk.query.filter(ChildChunk.id == child_chunk_id, ChildChunk.tenant_id == tenant_id).first()
+        return result if isinstance(result, ChildChunk) else None
 
     @classmethod
     def get_segments(
@@ -2231,9 +2232,10 @@ class SegmentService:
     @classmethod
     def get_segment_by_id(cls, segment_id: str, tenant_id: str) -> Optional[DocumentSegment]:
         """Get a segment by its ID."""
-        return DocumentSegment.query.filter(
+        result = DocumentSegment.query.filter(
             DocumentSegment.id == segment_id, DocumentSegment.tenant_id == tenant_id
         ).first()
+        return result if isinstance(result, DocumentSegment) else None
 
 
 class DatasetCollectionBindingService:
