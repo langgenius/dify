@@ -332,6 +332,11 @@ class HttpConfig(BaseSettings):
         default=1 * 1024 * 1024,
     )
 
+    HTTP_REQUEST_NODE_SSL_VERIFY: bool = Field(
+        description="Enable or disable SSL verification for HTTP requests",
+        default=True,
+    )
+
     SSRF_DEFAULT_MAX_RETRIES: PositiveInt = Field(
         description="Maximum number of retries for network requests (SSRF)",
         default=3,
@@ -387,11 +392,6 @@ class InnerAPIConfig(BaseSettings):
     INNER_API: bool = Field(
         description="Enable or disable the internal API",
         default=False,
-    )
-
-    INNER_API_KEY: Optional[str] = Field(
-        description="API key for accessing the internal API",
-        default=None,
     )
 
 

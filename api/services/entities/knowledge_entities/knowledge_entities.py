@@ -88,6 +88,7 @@ class RetrievalModel(BaseModel):
     search_method: Literal["hybrid_search", "semantic_search", "full_text_search"]
     reranking_enable: bool
     reranking_model: Optional[RerankingModel] = None
+    reranking_mode: Optional[str] = None
     top_k: int
     score_threshold_enabled: bool
     score_threshold: Optional[float] = None
@@ -124,3 +125,36 @@ class SegmentUpdateArgs(BaseModel):
 class ChildChunkUpdateArgs(BaseModel):
     id: Optional[str] = None
     content: str
+
+
+class MetadataArgs(BaseModel):
+    type: Literal["string", "number", "time"]
+    name: str
+
+
+class MetadataUpdateArgs(BaseModel):
+    name: str
+    value: Optional[str | int | float] = None
+
+
+class MetadataValueUpdateArgs(BaseModel):
+    fields: list[MetadataUpdateArgs]
+
+
+class MetadataDetail(BaseModel):
+    id: str
+    name: str
+    value: Optional[str | int | float] = None
+
+
+class DocumentMetadataOperation(BaseModel):
+    document_id: str
+    metadata_list: list[MetadataDetail]
+
+
+class MetadataOperationData(BaseModel):
+    """
+    Metadata operation data
+    """
+
+    operation_data: list[DocumentMetadataOperation]

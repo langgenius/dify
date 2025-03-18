@@ -185,7 +185,7 @@ class ToolInvokeMessage(BaseModel):
     """
         plain text, image url or link url
     """
-    message: JsonMessage | TextMessage | BlobMessage | VariableMessage | FileMessage | LogMessage | None
+    message: JsonMessage | TextMessage | BlobMessage | LogMessage | FileMessage | None | VariableMessage
     meta: dict[str, Any] | None = None
 
     @field_validator("message", mode="before")

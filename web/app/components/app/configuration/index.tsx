@@ -94,7 +94,7 @@ const Configuration: FC = () => {
   })))
   const { data: fileUploadConfigResponse } = useSWR({ url: '/files/upload' }, fetchFileUploadConfig)
 
-  const latestPublishedAt = useMemo(() => appDetail?.model_config.updated_at, [appDetail])
+  const latestPublishedAt = useMemo(() => appDetail?.model_config?.updated_at, [appDetail])
   const [formattingChanged, setFormattingChanged] = useState(false)
   const { setShowAccountSettingModal } = useModalContext()
   const [hasFetchedDetail, setHasFetchedDetail] = useState(false)
@@ -191,7 +191,6 @@ const Configuration: FC = () => {
     dataSets: [],
     agentConfig: DEFAULT_AGENT_SETTING,
   })
-
   const isAgent = mode === 'agent-chat'
 
   const isOpenAI = modelConfig.provider === 'langgenius/openai/openai'
@@ -200,7 +199,7 @@ const Configuration: FC = () => {
   useEffect(() => {
 
   }, [])
-  const [datasetConfigs, setDatasetConfigs] = useState<DatasetConfigs>({
+  const [datasetConfigs, doSetDatasetConfigs] = useState<DatasetConfigs>({
     retrieval_model: RETRIEVE_TYPE.multiWay,
     reranking_model: {
       reranking_provider_name: '',
@@ -213,6 +212,11 @@ const Configuration: FC = () => {
       datasets: [],
     },
   })
+  const datasetConfigsRef = useRef(datasetConfigs)
+  const setDatasetConfigs = useCallback((newDatasetConfigs: DatasetConfigs) => {
+    doSetDatasetConfigs(newDatasetConfigs)
+    datasetConfigsRef.current = newDatasetConfigs
+  }, [])
 
   const setModelConfig = (newModelConfig: ModelConfig) => {
     doSetModelConfig(newModelConfig)
@@ -292,6 +296,7 @@ const Configuration: FC = () => {
     })
 
     setDatasetConfigs({
+      ...datasetConfigsRef.current,
       ...retrievalConfig,
       reranking_model: {
         reranking_provider_name: retrievalConfig?.reranking_model?.provider || '',
@@ -625,13 +630,14 @@ const Configuration: FC = () => {
               tools: modelConfig.agent_mode?.tools.filter((tool: any) => {
                 return !tool.dataset
               }).map((tool: any) => {
+                const toolInCollectionList = collectionList.find(c => tool.provider_id === c.id)
                 return {
                   ...tool,
                   isDeleted: res.deleted_tools?.some((deletedTool: any) => deletedTool.id === tool.id && deletedTool.tool_name === tool.tool_name),
-                  notAuthor: collectionList.find(c => tool.provider_id === c.id)?.is_team_authorization === false,
+                  notAuthor: toolInCollectionList?.is_team_authorization === false,
                   ...(tool.provider_type === 'builtin' ? {
-                    provider_id: correctToolProvider(tool.provider_name),
-                    provider_name: correctToolProvider(tool.provider_name),
+                    provider_id: correctToolProvider(tool.provider_name, !!toolInCollectionList),
+                    provider_name: correctToolProvider(tool.provider_name, !!toolInCollectionList),
                   } : {}),
                 }
               }),
@@ -883,6 +889,7 @@ const Configuration: FC = () => {
       dataSets,
       setDataSets,
       datasetConfigs,
+      datasetConfigsRef,
       setDatasetConfigs,
       hasSetContextVar,
       isShowVisionConfig,

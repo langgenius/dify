@@ -47,29 +47,29 @@ const Popup: FC<PopupProps> = ({
       }}
     >
       <PortalToFollowElemTrigger onClick={() => setOpen(v => !v)}>
-        <div className='flex items-center px-2 max-w-[240px] h-7 bg-white rounded-lg'>
+        <div className='flex items-center px-2 max-w-[240px] h-7 bg-components-button-secondary-bg rounded-lg'>
           <FileIcon type={fileType} className='shrink-0 mr-1 w-4 h-4' />
-          <div className='text-xs text-gray-600 truncate'>{data.documentName}</div>
+          <div className='text-xs text-text-tertiary truncate'>{data.documentName}</div>
         </div>
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent style={{ zIndex: 1000 }}>
-        <div className='max-w-[360px] bg-gray-50 rounded-xl shadow-lg'>
+        <div className='max-w-[360px] bg-background-section-burn rounded-xl shadow-lg'>
           <div className='px-4 pt-3 pb-2'>
             <div className='flex items-center h-[18px]'>
               <FileIcon type={fileType} className='shrink-0 mr-1 w-4 h-4' />
-              <div className='text-xs font-medium text-gray-600 truncate'>{data.documentName}</div>
+              <div className='system-xs-medium text-text-tertiary truncate'>{data.documentName}</div>
             </div>
           </div>
-          <div className='px-4 py-0.5 max-h-[450px] bg-white rounded-lg overflow-y-auto'>
+          <div className='px-4 py-0.5 max-h-[450px] bg-components-panel-bg rounded-lg overflow-y-auto'>
             <div className='w-full'>
               {
                 data.sources.map((source, index) => (
                   <Fragment key={index}>
                     <div className='group py-3'>
                       <div className='flex items-center justify-between mb-2'>
-                        <div className='flex items-center px-1.5 h-5 border border-gray-200 rounded-md'>
-                          <Hash02 className='mr-0.5 w-3 h-3 text-gray-400' />
-                          <div className='text-[11px] font-medium text-gray-500'>
+                        <div className='flex items-center px-1.5 h-5 border border-divider-subtle rounded-md'>
+                          <Hash02 className='mr-0.5 w-3 h-3 text-text-quaternary' />
+                          <div className='text-[11px] font-medium text-text-tertiary'>
                             {source.segment_position || index + 1}
                           </div>
                         </div>
@@ -77,17 +77,17 @@ const Popup: FC<PopupProps> = ({
                           showHitInfo && (
                             <Link
                               href={`/datasets/${source.dataset_id}/documents/${source.document_id}`}
-                              className='hidden items-center h-[18px] text-xs text-primary-600 group-hover:flex'>
+                              className='hidden items-center h-[18px] text-xs text-text-accent group-hover:flex'>
                               {t('common.chat.citation.linkToDataset')}
                               <ArrowUpRight className='ml-1 w-3 h-3' />
                             </Link>
                           )
                         }
                       </div>
-                      <div className='text-[13px] text-gray-800 break-words'>{source.content}</div>
+                      <div className='text-[13px] text-text-secondary break-words'>{source.content}</div>
                       {
                         showHitInfo && (
-                          <div className='flex items-center mt-2 text-xs font-medium text-gray-500 flex-wrap'>
+                          <div className='flex items-center mt-2 system-xs-medium text-text-quaternary flex-wrap'>
                             <Tooltip
                               text={t('common.chat.citation.characters')}
                               data={source.word_count}
@@ -114,7 +114,7 @@ const Popup: FC<PopupProps> = ({
                     </div>
                     {
                       index !== data.sources.length - 1 && (
-                        <div className='my-1 h-[1px] bg-black/5' />
+                        <div className='my-1 h-[1px] bg-divider-regular' />
                       )
                     }
                   </Fragment>

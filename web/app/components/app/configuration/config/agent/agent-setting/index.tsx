@@ -1,8 +1,9 @@
 'use client'
 import type { FC } from 'react'
-import React, { useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { RiCloseLine } from '@remixicon/react'
+import { useClickAway } from 'ahooks'
 import ItemPanel from './item-panel'
 import Button from '@/app/components/base/button'
 import { CuteRobot } from '@/app/components/base/icons/src/vender/solid/communication'
@@ -31,6 +32,18 @@ const AgentSetting: FC<Props> = ({
 }) => {
   const { t } = useTranslation()
   const [tempPayload, setTempPayload] = useState(payload)
+  const ref = useRef(null)
+  const [mounted, setMounted] = useState(false)
+
+  useClickAway(() => {
+    if (mounted)
+      onCancel()
+  }, ref)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
   const handleSave = () => {
     onSave(tempPayload)
   }
@@ -42,6 +55,7 @@ const AgentSetting: FC<Props> = ({
       }}
     >
       <div
+        ref={ref}
         className='w-[640px] flex flex-col h-full overflow-hidden bg-components-panel-bg border-[0.5px] border-components-panel-border rounded-xl shadow-xl'
       >
         <div className='shrink-0 flex justify-between items-center pl-6 pr-5 h-14 border-b border-divider-regular'>

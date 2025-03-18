@@ -1,13 +1,12 @@
 'use client'
 import type { FC } from 'react'
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
-import useSWR from 'swr'
 import { useTranslation } from 'react-i18next'
 import { useRouter } from 'next/navigation'
 import { useDebounce, useDebounceFn } from 'ahooks'
-import { groupBy, omit } from 'lodash-es'
+import { groupBy } from 'lodash-es'
 import { PlusIcon } from '@heroicons/react/24/solid'
-import { RiExternalLinkLine } from '@remixicon/react'
+import { RiDraftLine, RiExternalLinkLine } from '@remixicon/react'
 import AutoDisabledDocument from '../common/document-status-with-action/auto-disabled-document'
 import List from './list'
 import s from './style.module.css'
@@ -15,18 +14,21 @@ import Loading from '@/app/components/base/loading'
 import Button from '@/app/components/base/button'
 import Input from '@/app/components/base/input'
 import { get } from '@/service/base'
-import { createDocument, fetchDocuments } from '@/service/datasets'
+import { createDocument } from '@/service/datasets'
 import { useDatasetDetailContext } from '@/context/dataset-detail'
 import { NotionPageSelectorModal } from '@/app/components/base/notion-page-selector'
 import type { NotionPage } from '@/models/common'
 import type { CreateDocumentReq } from '@/models/datasets'
-import { DataSourceType } from '@/models/datasets'
+import { DataSourceType, ProcessMode } from '@/models/datasets'
 import IndexFailed from '@/app/components/datasets/common/document-status-with-action/index-failed'
 import { useProviderContext } from '@/context/provider-context'
 import cn from '@/utils/classnames'
-import { useInvalidDocumentDetailKey } from '@/service/knowledge/use-document'
+import { useDocumentList, useInvalidDocumentDetailKey, useInvalidDocumentList } from '@/service/knowledge/use-document'
 import { useInvalid } from '@/service/use-base'
 import { useChildSegmentListKey, useSegmentListKey } from '@/service/knowledge/use-segment'
+import useEditDocumentMetadata from '../metadata/hooks/use-edit-dataset-metadata'
+import DatasetMetadataDrawer from '../metadata/metadata-dataset/dataset-metadata-drawer'
+import StatusWithAction from '../common/document-status-with-action/status-with-action'
 
 const FolderPlusIcon = ({ className }: React.SVGProps<SVGElement>) => {
   return <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" className={className ?? ''}>
@@ -73,12 +75,12 @@ const EmptyElement: FC<{ canAdd: boolean; onClick: () => void; type?: 'upload' |
   </div>
 }
 
-interface IDocumentsProps {
+type IDocumentsProps = {
   datasetId: string
 }
 
 export const fetcher = (url: string) => get(url, {}, {})
-const DEFAULT_LIMIT = 15
+const DEFAULT_LIMIT = 10
 
 const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
   const { t } = useTranslation()
@@ -99,33 +101,33 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
 
   const debouncedSearchValue = useDebounce(searchValue, { wait: 500 })
 
-  const query = useMemo(() => {
-    return { page: currPage + 1, limit, keyword: debouncedSearchValue, fetch: isDataSourceNotion ? true : '' }
-  }, [currPage, debouncedSearchValue, isDataSourceNotion, limit])
-
-  const { data: documentsRes, mutate, isLoading: isListLoading } = useSWR(
-    {
-      action: 'fetchDocuments',
-      datasetId,
-      params: query,
+  const { data: documentsRes, isFetching: isListLoading } = useDocumentList({
+    datasetId,
+    query: {
+      page: currPage + 1,
+      limit,
+      keyword: debouncedSearchValue,
     },
-    apiParams => fetchDocuments(omit(apiParams, 'action')),
-    { refreshInterval: (isDataSourceNotion && timerCanRun) ? 2500 : 0 },
-  )
+    refetchInterval: (isDataSourceNotion && timerCanRun) ? 2500 : 0,
+  })
 
-  const [isMuting, setIsMuting] = useState(false)
+  const invalidDocumentList = useInvalidDocumentList(datasetId)
+
   useEffect(() => {
-    if (!isListLoading && isMuting)
-      setIsMuting(false)
-  }, [isListLoading, isMuting])
+    if (documentsRes) {
+      const totalPages = Math.ceil(documentsRes.total / limit)
+      if (totalPages < currPage + 1)
+        setCurrPage(totalPages === 0 ? 0 : totalPages - 1)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [documentsRes])
 
   const invalidDocumentDetail = useInvalidDocumentDetailKey()
   const invalidChunkList = useInvalid(useSegmentListKey)
   const invalidChildChunkList = useInvalid(useChildSegmentListKey)
 
   const handleUpdate = useCallback(() => {
-    setIsMuting(true)
-    mutate()
+    invalidDocumentList()
     invalidDocumentDetail()
     setTimeout(() => {
       invalidChunkList()
@@ -175,8 +177,6 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
     router.push(`/datasets/${datasetId}/documents/create`)
   }
 
-  const isLoading = isListLoading // !documentsRes && !error
-
   const handleSaveNotionPageSelected = async (selectedPages: NotionPage[]) => {
     const workspacesMap = groupBy(selectedPages, 'workspace_id')
     const workspaces = Object.keys(workspacesMap).map((workspaceId) => {
@@ -209,7 +209,7 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
       indexing_technique: dataset?.indexing_technique,
       process_rule: {
         rules: {},
-        mode: 'automatic',
+        mode: ProcessMode.general,
       },
     } as CreateDocumentReq
 
@@ -217,7 +217,7 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
       datasetId,
       body: params,
     })
-    mutate()
+    invalidDocumentList()
     setTimerCanRun(true)
     // mutateDatasetIndexingStatus(undefined, { revalidate: true })
     setNotionPageSelectorModalVisible(false)
@@ -233,6 +233,23 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
     setInputValue(value)
     handleSearch()
   }
+
+  const {
+    isShowEditModal: isShowEditMetadataModal,
+    showEditModal: showEditMetadataModal,
+    hideEditModal: hideEditMetadataModal,
+    datasetMetaData,
+    handleAddMetaData,
+    handleRename,
+    handleDeleteMetaData,
+    builtInEnabled,
+    setBuiltInEnabled,
+    builtInMetaData,
+  } = useEditDocumentMetadata({
+    datasetId,
+    dataset,
+    onUpdateDocList: invalidDocumentList,
+  })
 
   return (
     <div className='flex flex-col h-full overflow-y-auto'>
@@ -262,6 +279,25 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
           <div className='flex gap-2 justify-center items-center !h-8'>
             {!isFreePlan && <AutoDisabledDocument datasetId={datasetId} />}
             <IndexFailed datasetId={datasetId} />
+            {!embeddingAvailable && <StatusWithAction type='warning' description={t('dataset.embeddingModelNotAvailable')} />}
+            {embeddingAvailable && (
+              <Button variant='secondary' className='shrink-0' onClick={showEditMetadataModal}>
+                <RiDraftLine className='size-4 mr-1' />
+                {t('dataset.metadata.metadata')}
+              </Button>
+            )}
+            {isShowEditMetadataModal && (
+              <DatasetMetadataDrawer
+                userMetadata={datasetMetaData || []}
+                onClose={hideEditMetadataModal}
+                onAdd={handleAddMetaData}
+                onRename={handleRename}
+                onRemove={handleDeleteMetaData}
+                builtInMetadata={builtInMetaData || []}
+                isBuiltInEnabled={!!builtInEnabled}
+                onIsBuiltInEnabledChange={setBuiltInEnabled}
+              />
+            )}
             {embeddingAvailable && (
               <Button variant='primary' onClick={routeToDocCreate} className='shrink-0'>
                 <PlusIcon className={cn('h-4 w-4 mr-2 stroke-current')} />
@@ -272,7 +308,7 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
             )}
           </div>
         </div>
-        {(isLoading && !isMuting)
+        {isListLoading
           ? <Loading type='app' />
           : total > 0
             ? <List
@@ -289,6 +325,7 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
                 current: currPage,
                 onChange: setCurrPage,
               }}
+              onManageMetadata={showEditMetadataModal}
             />
             : <EmptyElement canAdd={embeddingAvailable} onClick={routeToDocCreate} type={isDataSourceNotion ? 'sync' : 'upload'} />
         }

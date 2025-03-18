@@ -1,3 +1,4 @@
+#!/bin/sh
 # get the list of modified files
 files=$(git diff --cached --name-only)
 
@@ -8,13 +9,17 @@ web_modified=false
 
 for file in $files
 do
-    if [[ $file == "api/"* && $file == *.py ]]; then
-        # set api_modified flag to true
-        api_modified=true
-    elif [[ $file == "web/"* ]]; then
-        # set web_modified flag to true
-        web_modified=true
-    fi
+    # Use POSIX compliant pattern matching
+    case "$file" in
+        api/*.py)
+            # set api_modified flag to true
+            api_modified=true
+            ;;
+        web/*)
+            # set web_modified flag to true
+            web_modified=true
+            ;;
+    esac
 done
 
 # run linters based on the modified modules
@@ -23,7 +28,7 @@ if $api_modified; then
     echo "Running Ruff linter on api module"
 
     # python style checks rely on `ruff` in path
-    if ! command -v ruff &> /dev/null; then
+    if ! command -v ruff > /dev/null 2>&1; then
         echo "Installing linting tools (Ruff, dotenv-linter ...) ..."
         poetry install -C api --only lint
     fi
@@ -32,7 +37,7 @@ if $api_modified; then
     ruff check --fix ./api
 
     # run Ruff linter checks
-    ruff check --preview ./api || status=$?
+    ruff check  ./api || status=$?
 
     status=${status:-0}
 

@@ -49,7 +49,6 @@ const initialWorkspaceInfo: ICurrentWorkspace = {
   created_at: 0,
   role: 'normal',
   providers: [],
-  in_trail: true,
 }
 
 const AppContext = createContext<AppContextValue>({

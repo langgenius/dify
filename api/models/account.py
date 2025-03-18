@@ -220,13 +220,6 @@ class Tenant(db.Model):  # type: ignore[name-defined]
         self.custom_config = json.dumps(value)
 
 
-class TenantAccountJoinRole(enum.Enum):
-    OWNER = "owner"
-    ADMIN = "admin"
-    NORMAL = "normal"
-    DATASET_OPERATOR = "dataset_operator"
-
-
 class TenantAccountJoin(db.Model):  # type: ignore[name-defined]
     __tablename__ = "tenant_account_joins"
     __table_args__ = (
