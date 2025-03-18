@@ -63,11 +63,18 @@ class ToolFileManager:
         conversation_id: Optional[str],
         file_binary: bytes,
         mimetype: str,
+        filename: Optional[str] = None,
     ) -> ToolFile:
         extension = guess_extension(mimetype) or ".bin"
         unique_name = uuid4().hex
-        filename = f"{unique_name}{extension}"
-        filepath = f"tools/{tenant_id}/{filename}"
+        unique_filename = f"{unique_name}{extension}"
+        # default just as before
+        present_filename = unique_filename
+        if filename is not None:
+            has_extension = len(filename.split(".")) > 1
+            # Add extension flexibly
+            present_filename = filename if has_extension else f"{filename}{extension}"
+        filepath = f"tools/{tenant_id}/{unique_filename}"
         storage.save(filepath, file_binary)
 
         tool_file = ToolFile(
@@ -76,7 +83,7 @@ class ToolFileManager:
             conversation_id=conversation_id,
             file_key=filepath,
             mimetype=mimetype,
-            name=filename,
+            name=present_filename,
             size=len(file_binary),
         )
 
