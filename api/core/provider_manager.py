@@ -195,6 +195,20 @@ class ProviderManager:
                 provider_name
             )
 
+            provider_id_entity = ModelProviderID(provider_name)
+
+            if provider_id_entity.is_langgenius():
+                if provider_model_settings is not None:
+                    provider_model_settings.extend(
+                        provider_name_to_provider_model_settings_dict.get(provider_id_entity.provider_name, [])
+                    )
+                if provider_load_balancing_configs is not None:
+                    provider_load_balancing_configs.extend(
+                        provider_name_to_provider_load_balancing_model_configs_dict.get(
+                            provider_id_entity.provider_name, []
+                        )
+                    )
+
             # Convert to model settings
             model_settings = self._to_model_settings(
                 provider_entity=provider_entity,
