@@ -8,12 +8,10 @@ import Header from '@/app/components/header'
 import { EventEmitterContextProvider } from '@/context/event-emitter'
 import { ProviderContextProvider } from '@/context/provider-context'
 import { ModalContextProvider } from '@/context/modal-context'
-import MessageListener from '../components/base/message-listener'
 
 const Layout = ({ children }: { children: ReactNode }) => {
   return (
     <>
-      <MessageListener />
       <GA gaType={GaType.admin} />
       <SwrInitor>
         <AppContextProvider>

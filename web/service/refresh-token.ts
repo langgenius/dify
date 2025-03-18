@@ -24,7 +24,7 @@ function waitUntilTokenRefreshed() {
 const isRefreshingSignAvailable = function (delta: number) {
   const nowTime = new Date().getTime()
   const lastTime = globalThis.localStorage.getItem('last_refresh_time') || '0'
-  return nowTime - parseInt(lastTime) <= delta
+  return nowTime - Number.parseInt(lastTime) <= delta
 }
 
 // only one request can send
@@ -63,6 +63,7 @@ async function getNewAccessToken(timeout: number): Promise<void> {
         const { data } = await ret.json()
         globalThis.localStorage.setItem('console_token', data.access_token)
         globalThis.localStorage.setItem('refresh_token', data.refresh_token)
+        globalThis.window.parent.postMessage({ type: 'refresh_token', data }, window.location.origin)
       }
     }
   }
