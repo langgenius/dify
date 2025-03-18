@@ -192,9 +192,13 @@ class DatasetSegmentApi(DatasetApiResource):
         parser.add_argument("segment", type=dict, required=False, nullable=True, location="json")
         args = parser.parse_args()
 
-        SegmentService.segment_create_args_validate(args["segment"], document)
-        segment = SegmentService.update_segment(SegmentUpdateArgs(**args["segment"]), segment, document, dataset)
-        return {"data": marshal(segment, segment_fields), "doc_form": document.doc_form}, 200
+        updated_segment = SegmentService.update_segment(
+            SegmentUpdateArgs(**args["segment"]),
+            segment,
+            document,
+            dataset
+        )
+        return {"data": marshal(updated_segment, segment_fields), "doc_form": document.doc_form}, 200
 
 
 class ChildChunkApi (DatasetApiResource):
