@@ -54,12 +54,12 @@ RUN apt-get update \
     # && echo "deb http://mirrors.aliyun.com/debian testing main" > /etc/apt/sources.list \
     && echo "deb http://deb.debian.org/debian testing main" > /etc/apt/sources.list \
     && apt-get update \
-    # For Security
-    && apt-get install -y --no-install-recommends expat=2.6.4-1 libldap-2.5-0 perl libsqlite3-0=3.46.1-1 zlib1g=1:1.3.dfsg+really1.3.1-1+b1 \
+    # For Security - without pinned versions to avoid compatibility issues
+    && apt-get install -y --no-install-recommends expat libldap-2.5-0 perl libsqlite3-0 zlib1g \
     # install a chinese font to support the use of tools like matplotlib
     && apt-get install -y fonts-noto-cjk \
-    # Add libmagic1 installation
-    && apt-get install -y libmagic1 libmagic-mgc=1:5.44-3 \
+    # Add libmagic1 installation without pinned versions
+    && apt-get install -y libmagic1 libmagic-mgc \
     && apt-get autoremove -y \
     && rm -rf /var/lib/apt/lists/*
 
