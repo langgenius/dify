@@ -7,7 +7,7 @@ import { getFieldType, getHasChildren } from '../../../utils'
 import Divider from '@/app/components/base/divider'
 import EditCard from './edit-card'
 import Card from './card'
-import { useJsonSchemaConfigStore } from '../store'
+import { useVisualEditorStore } from './store'
 import { useDebounceFn } from 'ahooks'
 import AddField from './add-field'
 import { JSON_SCHEMA_MAX_DEPTH } from '@/config'
@@ -56,10 +56,10 @@ const SchemaNode: FC<SchemaNodeProps> = ({
   depth,
 }) => {
   const [isExpanded, setIsExpanded] = useState(true)
-  const hoveringProperty = useJsonSchemaConfigStore(state => state.hoveringProperty)
-  const setHoveringProperty = useJsonSchemaConfigStore(state => state.setHoveringProperty)
-  const isAddingNewField = useJsonSchemaConfigStore(state => state.isAddingNewField)
-  const advancedEditing = useJsonSchemaConfigStore(state => state.advancedEditing)
+  const hoveringProperty = useVisualEditorStore(state => state.hoveringProperty)
+  const setHoveringProperty = useVisualEditorStore(state => state.setHoveringProperty)
+  const isAddingNewField = useVisualEditorStore(state => state.isAddingNewField)
+  const advancedEditing = useVisualEditorStore(state => state.advancedEditing)
 
   const { run: setHoveringPropertyDebounced } = useDebounceFn((path: string) => {
     setHoveringProperty(path)

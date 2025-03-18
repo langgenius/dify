@@ -72,3 +72,10 @@ export const checkDepth = (json: any, currentDepth = 1) => {
   }
   return maxDepth
 }
+
+export const findPropertyWithPath = (target: any, path: string[]) => {
+  let current = target
+  for (const key of path)
+    current = current[key]
+  return current
+}

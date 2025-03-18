@@ -1,9 +1,9 @@
 import { useContext } from 'react'
 import { createStore, useStore } from 'zustand'
-import type { SchemaRoot } from '../../types'
-import { JsonSchemaConfigContext } from './context'
+import type { SchemaRoot } from '../../../types'
+import { VisualEditorContext } from './context'
 
-type JsonSchemaConfigStore = {
+type VisualEditorStore = {
   hoveringProperty: string | ''
   setHoveringProperty: (propertyPath: string) => void
   isAddingNewField: boolean
@@ -14,7 +14,7 @@ type JsonSchemaConfigStore = {
   setBackupSchema: (schema: SchemaRoot | null) => void
 }
 
-export const createJsonSchemaConfigStore = () => createStore<JsonSchemaConfigStore>(set => ({
+export const createVisualEditorStore = () => createStore<VisualEditorStore>(set => ({
   hoveringProperty: '',
   setHoveringProperty: (propertyPath: string) => set({ hoveringProperty: propertyPath }),
   isAddingNewField: false,
@@ -25,10 +25,10 @@ export const createJsonSchemaConfigStore = () => createStore<JsonSchemaConfigSto
   setBackupSchema: (schema: SchemaRoot | null) => set({ backupSchema: schema }),
 }))
 
-export const useJsonSchemaConfigStore = <T>(selector: (state: JsonSchemaConfigStore) => T): T => {
-  const store = useContext(JsonSchemaConfigContext)
+export const useVisualEditorStore = <T>(selector: (state: VisualEditorStore) => T): T => {
+  const store = useContext(VisualEditorContext)
   if (!store)
-    throw new Error('Missing JsonSchemaConfigContext.Provider in the tree')
+    throw new Error('Missing VisualEditorContext.Provider in the tree')
 
   return useStore(store, selector)
 }

@@ -10,8 +10,8 @@ import AdvancedActions from './advanced-actions'
 import AdvancedOptions, { type AdvancedOptionsType } from './advanced-options'
 import { useTranslation } from 'react-i18next'
 import classNames from '@/utils/classnames'
-import { useJsonSchemaConfigStore } from '../../store'
-import { useMittContext } from '../../context'
+import { useVisualEditorStore } from '../store'
+import { useMittContext } from '../context'
 import produce from 'immer'
 import { useUnmount } from 'ahooks'
 import { JSON_SCHEMA_MAX_DEPTH } from '@/config'
@@ -56,10 +56,10 @@ const EditCard: FC<EditCardProps> = ({
   const { t } = useTranslation()
   const [currentFields, setCurrentFields] = useState(fields)
   const [backupFields, setBackupFields] = useState<EditData | null>(null)
-  const isAddingNewField = useJsonSchemaConfigStore(state => state.isAddingNewField)
-  const setIsAddingNewField = useJsonSchemaConfigStore(state => state.setIsAddingNewField)
-  const advancedEditing = useJsonSchemaConfigStore(state => state.advancedEditing)
-  const setAdvancedEditing = useJsonSchemaConfigStore(state => state.setAdvancedEditing)
+  const isAddingNewField = useVisualEditorStore(state => state.isAddingNewField)
+  const setIsAddingNewField = useVisualEditorStore(state => state.setIsAddingNewField)
+  const advancedEditing = useVisualEditorStore(state => state.advancedEditing)
+  const setAdvancedEditing = useVisualEditorStore(state => state.setAdvancedEditing)
   const { emit, useSubscribe } = useMittContext()
   const blurWithActions = useRef(false)
 

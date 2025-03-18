@@ -1,14 +1,17 @@
 import type { FC } from 'react'
 import type { SchemaRoot } from '../../../types'
 import SchemaNode from './schema-node'
+import { useSchemaNodeOperations } from './hooks'
 
-type VisualEditorProps = {
+export type VisualEditorProps = {
   schema: SchemaRoot
+  onChange: (schema: SchemaRoot) => void
 }
 
-const VisualEditor: FC<VisualEditorProps> = ({
-  schema,
-}) => {
+const VisualEditor: FC<VisualEditorProps> = (props) => {
+  const { schema } = props
+  useSchemaNodeOperations(props)
+
   return (
     <div className='h-full rounded-xl p-1 pl-2 bg-background-section-burn overflow-auto'>
       <SchemaNode

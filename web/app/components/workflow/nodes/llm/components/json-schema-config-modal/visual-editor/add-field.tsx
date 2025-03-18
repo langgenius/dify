@@ -1,13 +1,13 @@
 import Button from '@/app/components/base/button'
 import { RiAddCircleFill } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
-import { useJsonSchemaConfigStore } from '../store'
+import { useVisualEditorStore } from './store'
 import { useCallback } from 'react'
-import { useMittContext } from '../context'
+import { useMittContext } from './context'
 
 const AddField = () => {
   const { t } = useTranslation()
-  const setIsAddingNewField = useJsonSchemaConfigStore(state => state.setIsAddingNewField)
+  const setIsAddingNewField = useVisualEditorStore(state => state.setIsAddingNewField)
   const { emit } = useMittContext()
 
   const handleAddField = useCallback(() => {
