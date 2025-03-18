@@ -20,7 +20,6 @@ import { BlockEnum, InputVarType, VarType } from '@/app/components/workflow/type
 import type { StartNodeType } from '@/app/components/workflow/nodes/start/types'
 import type { ConversationVariable, EnvironmentVariable, Node, NodeOutPutVar, ValueSelector, Var } from '@/app/components/workflow/types'
 import type { VariableAssignerNodeType } from '@/app/components/workflow/nodes/variable-assigner/types'
-import mockStructData from '@/app/components/workflow/nodes/llm/mock-struct-data'
 import type { Field as StructField } from '@/app/components/workflow/nodes/llm/types'
 
 import {
@@ -499,9 +498,6 @@ const formatItem = (
 
     return findExceptVarInObject(isFile ? { ...v, children } : v, filterVar, selector, isFile)
   })
-
-  // if (res.nodeId === 'llm')
-  //   console.log(res)
 
   return res
 }
@@ -1237,15 +1233,16 @@ export const getNodeOutputVars = (node: Node, isChatMode: boolean): ValueSelecto
     }
 
     case BlockEnum.LLM: {
-      varsToValueSelectorList([
-        ...LLM_OUTPUT_STRUCT,
-        {
+      const vars = [...LLM_OUTPUT_STRUCT]
+      const llmNodeData = data as LLMNodeType
+      if (llmNodeData.structured_output_enabled && llmNodeData.structured_output?.schema?.properties && Object.keys(llmNodeData.structured_output.schema.properties).length > 0) {
+        vars.push({
           variable: 'structured_output',
           type: VarType.object,
-          children: mockStructData,
-        },
-      ], [id], res)
-      console.log(res)
+          children: llmNodeData.structured_output,
+        })
+      }
+      varsToValueSelectorList(vars, [id], res)
       break
     }
 
