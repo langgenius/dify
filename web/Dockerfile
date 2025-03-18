@@ -36,6 +36,7 @@ RUN pnpm build
 
 # production stage
 FROM base AS production
+
 ENV NODE_ENV=production
 ENV EDITION=SELF_HOSTED
 ENV DEPLOY_ENV=PRODUCTION
