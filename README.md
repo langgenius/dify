@@ -205,6 +205,7 @@ If you'd like to configure a highly-available setup, there are community-contrib
 - [Helm Chart by @LeoQuote](https://github.com/douban/charts/tree/master/charts/dify)
 - [Helm Chart by @BorisPolonsky](https://github.com/BorisPolonsky/dify-helm)
 - [YAML file by @Winson-030](https://github.com/Winson-030/dify-kubernetes)
+- [YAML file by @wyy-holding](https://github.com/wyy-holding/dify-k8s): All configuration items in docker-compose.yaml are retained
 
 #### Using Terraform for Deployment
 
