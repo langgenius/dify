@@ -13,15 +13,19 @@ from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
 from core.model_manager import ModelManager
 from core.model_runtime.entities.model_entities import ModelType
 from extensions.ext_database import db
-from fields.segment_fields import segment_fields, child_chunk_fields
-from models.dataset import Dataset, DocumentSegment, ChildChunk
+from fields.segment_fields import child_chunk_fields, segment_fields
+from models.dataset import ChildChunk, Dataset, DocumentSegment
 from services.dataset_service import DatasetService, DocumentService, SegmentService
 from services.entities.knowledge_entities.knowledge_entities import SegmentUpdateArgs
 from services.errors.chunk import (
-    ChildChunkDeleteIndexError as ChildChunkDeleteIndexServiceError,
-    ChildChunkIndexingError as ChildChunkIndexingServiceError,
+    ChildChunkDeleteIndexError,
     ChildChunkIndexingError,
-    ChildChunkDeleteIndexError
+)
+from services.errors.chunk import (
+    ChildChunkDeleteIndexError as ChildChunkDeleteIndexServiceError,
+)
+from services.errors.chunk import (
+    ChildChunkIndexingError as ChildChunkIndexingServiceError,
 )
 
 
@@ -203,9 +207,9 @@ class DatasetSegmentApi(DatasetApiResource):
 
 class ChildChunkAddApi(DatasetApiResource):
     """Resource for child chunks."""
-    
+
     @cloud_edition_billing_resource_check("vector_space", "dataset")
-    @cloud_edition_billing_knowledge_limit_check("add_segment", "dataset") 
+    @cloud_edition_billing_knowledge_limit_check("add_segment", "dataset")
     def post(self, tenant_id, dataset_id, document_id, segment_id):
         """Create child chunk."""
         # check dataset
@@ -224,8 +228,7 @@ class ChildChunkAddApi(DatasetApiResource):
         # check segment
         segment_id = str(segment_id)
         segment = DocumentSegment.query.filter(
-            DocumentSegment.id == str(segment_id), 
-            DocumentSegment.tenant_id == current_user.current_tenant_id
+            DocumentSegment.id == str(segment_id), DocumentSegment.tenant_id == current_user.current_tenant_id
         ).first()
         if not segment:
             raise NotFound("Segment not found.")
@@ -277,8 +280,7 @@ class ChildChunkAddApi(DatasetApiResource):
         # check segment
         segment_id = str(segment_id)
         segment = DocumentSegment.query.filter(
-            DocumentSegment.id == str(segment_id),
-            DocumentSegment.tenant_id == current_user.current_tenant_id
+            DocumentSegment.id == str(segment_id), DocumentSegment.tenant_id == current_user.current_tenant_id
         ).first()
         if not segment:
             raise NotFound("Segment not found.")
@@ -294,7 +296,7 @@ class ChildChunkAddApi(DatasetApiResource):
         keyword = args["keyword"]
 
         child_chunks = SegmentService.get_child_chunks(segment_id, document_id, dataset_id, page, limit, keyword)
-        
+
         return {
             "data": marshal(child_chunks.items, child_chunk_fields),
             "total": child_chunks.total,
@@ -325,8 +327,7 @@ class ChildChunkUpdateApi(DatasetApiResource):
         # check segment
         segment_id = str(segment_id)
         segment = DocumentSegment.query.filter(
-            DocumentSegment.id == str(segment_id),
-            DocumentSegment.tenant_id == current_user.current_tenant_id
+            DocumentSegment.id == str(segment_id), DocumentSegment.tenant_id == current_user.current_tenant_id
         ).first()
         if not segment:
             raise NotFound("Segment not found.")
@@ -334,8 +335,7 @@ class ChildChunkUpdateApi(DatasetApiResource):
         # check child chunk
         child_chunk_id = str(child_chunk_id)
         child_chunk = ChildChunk.query.filter(
-            ChildChunk.id == str(child_chunk_id),
-            ChildChunk.tenant_id == current_user.current_tenant_id
+            ChildChunk.id == str(child_chunk_id), ChildChunk.tenant_id == current_user.current_tenant_id
         ).first()
         if not child_chunk:
             raise NotFound("Child chunk not found.")
@@ -366,8 +366,7 @@ class ChildChunkUpdateApi(DatasetApiResource):
         # check segment
         segment_id = str(segment_id)
         segment = DocumentSegment.query.filter(
-            DocumentSegment.id == str(segment_id),
-            DocumentSegment.tenant_id == current_user.current_tenant_id
+            DocumentSegment.id == str(segment_id), DocumentSegment.tenant_id == current_user.current_tenant_id
         ).first()
         if not segment:
             raise NotFound("Segment not found.")
@@ -375,8 +374,7 @@ class ChildChunkUpdateApi(DatasetApiResource):
         # check child chunk
         child_chunk_id = str(child_chunk_id)
         child_chunk = ChildChunk.query.filter(
-            ChildChunk.id == str(child_chunk_id),
-            ChildChunk.tenant_id == current_user.current_tenant_id
+            ChildChunk.id == str(child_chunk_id), ChildChunk.tenant_id == current_user.current_tenant_id
         ).first()
         if not child_chunk:
             raise NotFound("Child chunk not found.")
@@ -401,10 +399,9 @@ api.add_resource(
     DatasetSegmentApi, "/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/segments/<uuid:segment_id>"
 )
 api.add_resource(
-    ChildChunkAddApi,
-    "/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/segments/<uuid:segment_id>/child_chunks"
+    ChildChunkAddApi, "/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/segments/<uuid:segment_id>/child_chunks"
 )
 api.add_resource(
     ChildChunkUpdateApi,
-    "/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/segments/<uuid:segment_id>/child_chunks/<uuid:child_chunk_id>"
+    "/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/segments/<uuid:segment_id>/child_chunks/<uuid:child_chunk_id>",
 )
