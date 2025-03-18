@@ -356,7 +356,9 @@ class DatasetChildChunkApi(DatasetApiResource):
         # check dataset
         dataset_id = str(dataset_id)
         tenant_id = str(tenant_id)
-        dataset = db.session.query(Dataset).filter(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id).first()
+        dataset = db.session.query(Dataset).filter(
+            Dataset.tenant_id == tenant_id, Dataset.id == dataset_id
+        ).first()
         if not dataset:
             raise NotFound("Dataset not found.")
 
@@ -390,7 +392,6 @@ class DatasetChildChunkApi(DatasetApiResource):
             child_chunk = SegmentService.update_child_chunk(
                 args.get("content"), child_chunk, segment, document, dataset
             )
-
         except ChildChunkIndexingServiceError as e:
             raise ChildChunkIndexingError(str(e))
 
