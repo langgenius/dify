@@ -399,6 +399,7 @@ const translation = {
       outputVars: {
         output: 'İçerik Üret',
         usage: 'Model Kullanım Bilgileri',
+        json: 'İçerik Üret JSON',
       },
       singleRun: {
         variable: 'Değişken',

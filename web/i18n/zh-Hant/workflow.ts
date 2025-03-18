@@ -401,6 +401,7 @@ const translation = {
       outputVars: {
         output: '生成內容',
         usage: '模型用量信息',
+        json: '生成內容 JSON',
       },
       singleRun: {
         variable: '變量',

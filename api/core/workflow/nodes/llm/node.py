@@ -191,8 +191,18 @@ class LLMNode(BaseNode[LLMNodeData]):
                     # deduct quota
                     self.deduct_llm_quota(tenant_id=self.tenant_id, model_instance=model_instance, usage=usage)
                     break
-            outputs = {"text": result_text, "usage": jsonable_encoder(usage), "finish_reason": finish_reason}
-
+            outputs = {
+                "text": result_text,
+                "usage": jsonable_encoder(usage),
+                "finish_reason": finish_reason,
+                "json": {},
+            }
+            if model_config.parameters.get("response_format") == "json_object":
+                try:
+                    result_dict = json.loads(result_text)
+                except:
+                    result_dict = {}
+                outputs.update({"json": result_dict})
             yield RunCompletedEvent(
                 run_result=NodeRunResult(
                     status=WorkflowNodeExecutionStatus.SUCCEEDED,

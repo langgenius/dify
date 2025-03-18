@@ -412,6 +412,7 @@ const translation = {
       outputVars: {
         output: 'सामग्री उत्पन्न करें',
         usage: 'मॉडल उपयोग जानकारी',
+        json: 'सामग्री उत्पन्न करें JSON',
       },
       singleRun: {
         variable: 'वेरिएबल',

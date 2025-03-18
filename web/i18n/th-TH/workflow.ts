@@ -399,6 +399,7 @@ const translation = {
       outputVars: {
         output: 'สร้างเนื้อหา',
         usage: 'ข้อมูลการใช้งานรุ่น',
+        json: 'สร้างเนื้อหา JSON',
       },
       singleRun: {
         variable: 'ตัวแปร',
