@@ -16,7 +16,7 @@ from extensions.ext_database import db
 from fields.segment_fields import child_chunk_fields, segment_fields
 from models.dataset import ChildChunk, Dataset, DocumentSegment
 from services.dataset_service import DatasetService, DocumentService, SegmentService
-from services.entities.knowledge_entities.knowledge_entities import SegmentUpdateArgs, ChildChunkUpdateArgs
+from services.entities.knowledge_entities.knowledge_entities import ChildChunkUpdateArgs, SegmentUpdateArgs
 from services.errors.chunk import (
     ChildChunkDeleteIndexError,
     ChildChunkIndexingError,
