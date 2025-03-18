@@ -6,6 +6,7 @@ import {
   flip,
   offset,
   shift,
+  size,
   useDismiss,
   useFloating,
   useFocus,
@@ -27,6 +28,7 @@ export type PortalToFollowElemOptions = {
   open?: boolean
   offset?: number | OffsetOptions
   onOpenChange?: (open: boolean) => void
+  triggerPopupSameWidth?: boolean
 }
 
 export function usePortalToFollowElem({
@@ -34,6 +36,7 @@ export function usePortalToFollowElem({
   open,
   offset: offsetValue = 0,
   onOpenChange: setControlledOpen,
+  triggerPopupSameWidth,
 }: PortalToFollowElemOptions = {}) {
   const setOpen = setControlledOpen
 
@@ -50,6 +53,12 @@ export function usePortalToFollowElem({
         padding: 5,
       }),
       shift({ padding: 5 }),
+      size({
+        apply({ rects, elements }) {
+          if (triggerPopupSameWidth)
+            elements.floating.style.width = `${rects.reference.width}px`
+        },
+      }),
     ],
   })
 

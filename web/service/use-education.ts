@@ -44,8 +44,8 @@ export const useEducationAutocomplete = () => {
     mutationFn: (searchParams: SearchParams) => {
       const {
         keywords = '',
-        page = 1,
-        limit = 20,
+        page = 0,
+        limit = 40,
       } = searchParams
       return get<{ data: string[]; has_next: boolean; curr_page: number }>(`/account/education/autocomplete?keywords=${keywords}&page=${page}&limit=${limit}`)
     },

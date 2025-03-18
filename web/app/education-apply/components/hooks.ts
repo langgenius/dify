@@ -10,15 +10,16 @@ export const useEducation = () => {
   const {
     mutateAsync,
     isPending,
+    data,
   } = useEducationAutocomplete()
 
   const [prevSchools, setPrevSchools] = useState<string[]>([])
   const handleUpdateSchools = useCallback((searchParams: SearchParams) => {
     if (searchParams.keywords) {
       mutateAsync(searchParams).then((res) => {
-        const currentPage = searchParams.page || 1
+        const currentPage = searchParams.page || 0
         const resSchools = res.data
-        if (currentPage > 1)
+        if (currentPage > 0)
           setPrevSchools(prevSchools => [...(prevSchools || []), ...resSchools])
         else
           setPrevSchools(resSchools)
@@ -29,12 +30,15 @@ export const useEducation = () => {
   const { run: querySchoolsWithDebounced } = useDebounceFn((searchParams: SearchParams) => {
     handleUpdateSchools(searchParams)
   }, {
-    wait: 1000,
+    wait: 300,
   })
 
   return {
     schools: prevSchools,
+    setSchools: setPrevSchools,
     querySchoolsWithDebounced,
+    handleUpdateSchools,
     isLoading: isPending,
+    hasNext: data?.has_next,
   }
 }
