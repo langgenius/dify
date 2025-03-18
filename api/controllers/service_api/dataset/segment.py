@@ -13,10 +13,16 @@ from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
 from core.model_manager import ModelManager
 from core.model_runtime.entities.model_entities import ModelType
 from extensions.ext_database import db
-from fields.segment_fields import segment_fields
-from models.dataset import Dataset, DocumentSegment
+from fields.segment_fields import segment_fields, child_chunk_fields
+from models.dataset import Dataset, DocumentSegment, ChildChunk
 from services.dataset_service import DatasetService, DocumentService, SegmentService
 from services.entities.knowledge_entities.knowledge_entities import SegmentUpdateArgs
+from services.errors.chunk import (
+    ChildChunkDeleteIndexError as ChildChunkDeleteIndexServiceError,
+    ChildChunkIndexingError as ChildChunkIndexingServiceError,
+    ChildChunkIndexingError,
+    ChildChunkDeleteIndexError
+)
 
 
 class SegmentApi(DatasetApiResource):
@@ -195,7 +201,210 @@ class DatasetSegmentApi(DatasetApiResource):
         return {"data": marshal(segment, segment_fields), "doc_form": document.doc_form}, 200
 
 
+class ChildChunkAddApi(DatasetApiResource):
+    """Resource for child chunks."""
+    
+    @cloud_edition_billing_resource_check("vector_space", "dataset")
+    @cloud_edition_billing_knowledge_limit_check("add_segment", "dataset") 
+    def post(self, tenant_id, dataset_id, document_id, segment_id):
+        """Create child chunk."""
+        # check dataset
+        dataset_id = str(dataset_id)
+        tenant_id = str(tenant_id)
+        dataset = db.session.query(Dataset).filter(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id).first()
+        if not dataset:
+            raise NotFound("Dataset not found.")
+
+        # check document
+        document_id = str(document_id)
+        document = DocumentService.get_document(dataset.id, document_id)
+        if not document:
+            raise NotFound("Document not found.")
+
+        # check segment
+        segment_id = str(segment_id)
+        segment = DocumentSegment.query.filter(
+            DocumentSegment.id == str(segment_id), 
+            DocumentSegment.tenant_id == current_user.current_tenant_id
+        ).first()
+        if not segment:
+            raise NotFound("Segment not found.")
+
+        # check embedding model setting
+        if dataset.indexing_technique == "high_quality":
+            try:
+                model_manager = ModelManager()
+                model_manager.get_model_instance(
+                    tenant_id=current_user.current_tenant_id,
+                    provider=dataset.embedding_model_provider,
+                    model_type=ModelType.TEXT_EMBEDDING,
+                    model=dataset.embedding_model,
+                )
+            except LLMBadRequestError:
+                raise ProviderNotInitializeError(
+                    "No Embedding Model available. Please configure a valid provider in the Settings -> Model Provider."
+                )
+            except ProviderTokenNotInitError as ex:
+                raise ProviderNotInitializeError(ex.description)
+
+        # validate args
+        parser = reqparse.RequestParser()
+        parser.add_argument("content", type=str, required=True, nullable=False, location="json")
+        args = parser.parse_args()
+
+        try:
+            child_chunk = SegmentService.create_child_chunk(args.get("content"), segment, document, dataset)
+        except ChildChunkIndexingServiceError as e:
+            raise ChildChunkIndexingError(str(e))
+
+        return {"data": marshal(child_chunk, child_chunk_fields)}, 200
+
+    def get(self, tenant_id, dataset_id, document_id, segment_id):
+        """Get child chunks."""
+        # check dataset
+        dataset_id = str(dataset_id)
+        tenant_id = str(tenant_id)
+        dataset = db.session.query(Dataset).filter(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id).first()
+        if not dataset:
+            raise NotFound("Dataset not found.")
+
+        # check document
+        document_id = str(document_id)
+        document = DocumentService.get_document(dataset.id, document_id)
+        if not document:
+            raise NotFound("Document not found.")
+
+        # check segment
+        segment_id = str(segment_id)
+        segment = DocumentSegment.query.filter(
+            DocumentSegment.id == str(segment_id),
+            DocumentSegment.tenant_id == current_user.current_tenant_id
+        ).first()
+        if not segment:
+            raise NotFound("Segment not found.")
+
+        parser = reqparse.RequestParser()
+        parser.add_argument("limit", type=int, default=20, location="args")
+        parser.add_argument("keyword", type=str, default=None, location="args")
+        parser.add_argument("page", type=int, default=1, location="args")
+        args = parser.parse_args()
+
+        page = args["page"]
+        limit = min(args["limit"], 100)
+        keyword = args["keyword"]
+
+        child_chunks = SegmentService.get_child_chunks(segment_id, document_id, dataset_id, page, limit, keyword)
+        
+        return {
+            "data": marshal(child_chunks.items, child_chunk_fields),
+            "total": child_chunks.total,
+            "total_pages": child_chunks.pages,
+            "page": page,
+            "limit": limit,
+        }, 200
+
+
+class ChildChunkUpdateApi(DatasetApiResource):
+    """Resource for updating child chunks."""
+
+    def delete(self, tenant_id, dataset_id, document_id, segment_id, child_chunk_id):
+        """Delete child chunk."""
+        # check dataset
+        dataset_id = str(dataset_id)
+        tenant_id = str(tenant_id)
+        dataset = db.session.query(Dataset).filter(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id).first()
+        if not dataset:
+            raise NotFound("Dataset not found.")
+
+        # check document
+        document_id = str(document_id)
+        document = DocumentService.get_document(dataset.id, document_id)
+        if not document:
+            raise NotFound("Document not found.")
+
+        # check segment
+        segment_id = str(segment_id)
+        segment = DocumentSegment.query.filter(
+            DocumentSegment.id == str(segment_id),
+            DocumentSegment.tenant_id == current_user.current_tenant_id
+        ).first()
+        if not segment:
+            raise NotFound("Segment not found.")
+
+        # check child chunk
+        child_chunk_id = str(child_chunk_id)
+        child_chunk = ChildChunk.query.filter(
+            ChildChunk.id == str(child_chunk_id),
+            ChildChunk.tenant_id == current_user.current_tenant_id
+        ).first()
+        if not child_chunk:
+            raise NotFound("Child chunk not found.")
+
+        try:
+            SegmentService.delete_child_chunk(child_chunk, dataset)
+        except ChildChunkDeleteIndexServiceError as e:
+            raise ChildChunkDeleteIndexError(str(e))
+
+        return {"result": "success"}, 200
+
+    @cloud_edition_billing_resource_check("vector_space", "dataset")
+    def patch(self, tenant_id, dataset_id, document_id, segment_id, child_chunk_id):
+        """Update child chunk."""
+        # check dataset
+        dataset_id = str(dataset_id)
+        tenant_id = str(tenant_id)
+        dataset = db.session.query(Dataset).filter(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id).first()
+        if not dataset:
+            raise NotFound("Dataset not found.")
+
+        # check document
+        document_id = str(document_id)
+        document = DocumentService.get_document(dataset.id, document_id)
+        if not document:
+            raise NotFound("Document not found.")
+
+        # check segment
+        segment_id = str(segment_id)
+        segment = DocumentSegment.query.filter(
+            DocumentSegment.id == str(segment_id),
+            DocumentSegment.tenant_id == current_user.current_tenant_id
+        ).first()
+        if not segment:
+            raise NotFound("Segment not found.")
+
+        # check child chunk
+        child_chunk_id = str(child_chunk_id)
+        child_chunk = ChildChunk.query.filter(
+            ChildChunk.id == str(child_chunk_id),
+            ChildChunk.tenant_id == current_user.current_tenant_id
+        ).first()
+        if not child_chunk:
+            raise NotFound("Child chunk not found.")
+
+        # validate args
+        parser = reqparse.RequestParser()
+        parser.add_argument("content", type=str, required=True, nullable=False, location="json")
+        args = parser.parse_args()
+
+        try:
+            child_chunk = SegmentService.update_child_chunk(
+                args.get("content"), child_chunk, segment, document, dataset
+            )
+        except ChildChunkIndexingServiceError as e:
+            raise ChildChunkIndexingError(str(e))
+
+        return {"data": marshal(child_chunk, child_chunk_fields)}, 200
+
+
 api.add_resource(SegmentApi, "/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/segments")
 api.add_resource(
     DatasetSegmentApi, "/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/segments/<uuid:segment_id>"
+)
+api.add_resource(
+    ChildChunkAddApi,
+    "/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/segments/<uuid:segment_id>/child_chunks"
+)
+api.add_resource(
+    ChildChunkUpdateApi,
+    "/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/segments/<uuid:segment_id>/child_chunks/<uuid:child_chunk_id>"
 )
