@@ -9,12 +9,11 @@ import type { EducationAddParams } from '@/app/education-apply/components/types'
 const NAME_SPACE = 'education'
 
 export const useEducationVerify = () => {
-  return useQuery({
-    queryKey: [NAME_SPACE, 'education-verify'],
-    queryFn: () => {
+  return useMutation({
+    mutationKey: [NAME_SPACE, 'education-verify'],
+    mutationFn: () => {
       return get<{ token: string }>('/account/education/verify')
     },
-    retry: false,
   })
 }
 

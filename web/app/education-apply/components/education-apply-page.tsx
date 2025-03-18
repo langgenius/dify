@@ -4,7 +4,10 @@ import {
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useRouter } from 'next/navigation'
+import {
+  useRouter,
+  useSearchParams,
+} from 'next/navigation'
 import UserInfo from './user-info'
 import SearchInput from './search-input'
 import RoleSelector from './role-selector'
@@ -13,7 +16,6 @@ import Button from '@/app/components/base/button'
 import Checkbox from '@/app/components/base/checkbox'
 import {
   useEducationAdd,
-  useEducationVerify,
   useInvalidateEducationStatus,
 } from '@/service/use-education'
 import { useProviderContext } from '@/context/provider-context'
@@ -31,7 +33,6 @@ const EducationApplyAge = () => {
     mutateAsync: educationAdd,
   } = useEducationAdd({ onSuccess: () => {} })
   const [modalShow, setShowModal] = useState<undefined | { title: string; desc: string; onConfirm?: () => void }>(undefined)
-  const { data } = useEducationVerify()
   const { onPlanInfoChanged } = useProviderContext()
   const updateEducationStatus = useInvalidateEducationStatus()
   const { notify } = useToastContext()
@@ -45,9 +46,11 @@ const EducationApplyAge = () => {
     router.replace('/')
   }
 
+  const searchParams = useSearchParams()
+  const token = searchParams.get('token')
   const handleSubmit = () => {
     educationAdd({
-      token: data?.token || '',
+      token: token || '',
       role,
       institution: schoolName,
     }).then((res) => {
