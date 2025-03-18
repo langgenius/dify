@@ -16,7 +16,7 @@ from extensions.ext_database import db
 from fields.segment_fields import child_chunk_fields, segment_fields
 from models.dataset import ChildChunk, Dataset, DocumentSegment
 from services.dataset_service import DatasetService, DocumentService, SegmentService
-from services.entities.knowledge_entities.knowledge_entities import SegmentUpdateArgs
+from services.entities.knowledge_entities.knowledge_entities import SegmentUpdateArgs, ChildChunkUpdateArgs
 from services.errors.chunk import (
     ChildChunkDeleteIndexError,
     ChildChunkIndexingError,
@@ -205,7 +205,7 @@ class DatasetSegmentApi(DatasetApiResource):
         return {"data": marshal(segment, segment_fields), "doc_form": document.doc_form}, 200
 
 
-class ChildChunkAddApi(DatasetApiResource):
+class ChildChunkApi (DatasetApiResource):
     """Resource for child chunks."""
 
     @cloud_edition_billing_resource_check("vector_space", "dataset")
@@ -306,7 +306,7 @@ class ChildChunkAddApi(DatasetApiResource):
         }, 200
 
 
-class ChildChunkUpdateApi(DatasetApiResource):
+class DatasetChildChunkApi(DatasetApiResource):
     """Resource for updating child chunks."""
 
     def delete(self, tenant_id, dataset_id, document_id, segment_id, child_chunk_id):
@@ -386,7 +386,11 @@ class ChildChunkUpdateApi(DatasetApiResource):
 
         try:
             child_chunk = SegmentService.update_child_chunk(
-                args.get("content"), child_chunk, segment, document, dataset
+                ChildChunkUpdateArgs(content=args["content"]),
+                child_chunk,
+                segment,
+                document,
+                dataset
             )
         except ChildChunkIndexingServiceError as e:
             raise ChildChunkIndexingError(str(e))
@@ -399,9 +403,9 @@ api.add_resource(
     DatasetSegmentApi, "/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/segments/<uuid:segment_id>"
 )
 api.add_resource(
-    ChildChunkAddApi, "/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/segments/<uuid:segment_id>/child_chunks"
+    ChildChunkApi , "/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/segments/<uuid:segment_id>/child_chunks"
 )
 api.add_resource(
-    ChildChunkUpdateApi,
+    DatasetChildChunkApi,
     "/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/segments/<uuid:segment_id>/child_chunks/<uuid:child_chunk_id>",
 )
