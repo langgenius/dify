@@ -252,6 +252,13 @@ x-shared-env: &shared-api-worker-env
   OCEANBASE_VECTOR_DATABASE: ${OCEANBASE_VECTOR_DATABASE:-test}
   OCEANBASE_CLUSTER_NAME: ${OCEANBASE_CLUSTER_NAME:-difyai}
   OCEANBASE_MEMORY_LIMIT: ${OCEANBASE_MEMORY_LIMIT:-6G}
+  OPENGAUSS_HOST: ${OPENGAUSS_HOST:-opengauss}
+  OPENGAUSS_PORT: ${OPENGAUSS_PORT:-6600}
+  OPENGAUSS_USER: ${OPENGAUSS_USER:-postgres}
+  OPENGAUSS_PASSWORD: ${OPENGAUSS_PASSWORD:-Dify@123}
+  OPENGAUSS_DATABASE: ${OPENGAUSS_DATABASE:-dify}
+  OPENGAUSS_MIN_CONNECTION: ${OPENGAUSS_MIN_CONNECTION:-1}
+  OPENGAUSS_MAX_CONNECTION: ${OPENGAUSS_MAX_CONNECTION:-5}
   UPSTASH_VECTOR_URL: ${UPSTASH_VECTOR_URL:-https://xxx-vector.upstash.io}
   UPSTASH_VECTOR_TOKEN: ${UPSTASH_VECTOR_TOKEN:-dify}
   UPLOAD_FILE_SIZE_LIMIT: ${UPLOAD_FILE_SIZE_LIMIT:-15}
@@ -315,6 +322,7 @@ x-shared-env: &shared-api-worker-env
   SSRF_PROXY_HTTPS_URL: ${SSRF_PROXY_HTTPS_URL:-http://ssrf_proxy:3128}
   LOOP_NODE_MAX_COUNT: ${LOOP_NODE_MAX_COUNT:-100}
   MAX_TOOLS_NUM: ${MAX_TOOLS_NUM:-10}
+  MAX_PARALLEL_LIMIT: ${MAX_PARALLEL_LIMIT:-10}
   TEXT_GENERATION_TIMEOUT_MS: ${TEXT_GENERATION_TIMEOUT_MS:-60000}
   PGUSER: ${PGUSER:-${DB_USERNAME}}
   POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-${DB_PASSWORD}}
@@ -491,6 +499,7 @@ services:
       PM2_INSTANCES: ${PM2_INSTANCES:-2}
       LOOP_NODE_MAX_COUNT: ${LOOP_NODE_MAX_COUNT:-100}
       MAX_TOOLS_NUM: ${MAX_TOOLS_NUM:-10}
+      MAX_PARALLEL_LIMIT: ${MAX_PARALLEL_LIMIT:-10}
 
   # The postgres database.
   db:
@@ -928,6 +937,28 @@ services:
       - opensearch-net
     depends_on:
       - opensearch
+
+  # opengauss vector database.
+  opengauss:
+    image: opengauss/opengauss:7.0.0-RC1
+    profiles:
+      - opengauss
+    privileged: true
+    restart: always
+    environment:
+      GS_USERNAME: ${OPENGAUSS_USER:-postgres}
+      GS_PASSWORD: ${OPENGAUSS_PASSWORD:-Dify@123}
+      GS_PORT: ${OPENGAUSS_PORT:-6600}
+      GS_DB: ${OPENGAUSS_DATABASE:-dify}
+    volumes:
+      - ./volumes/opengauss/data:/var/lib/opengauss/data
+    healthcheck:
+      test: ["CMD-SHELL", "netstat -lntp | grep tcp6 > /dev/null 2>&1"]
+      interval: 10s
+      timeout: 10s
+      retries: 10
+    ports:
+      - ${OPENGAUSS_PORT:-6600}:${OPENGAUSS_PORT:-6600}
 
   # MyScale vector database
   myscale:

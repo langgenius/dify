@@ -69,6 +69,7 @@ services:
       PM2_INSTANCES: ${PM2_INSTANCES:-2}
       LOOP_NODE_MAX_COUNT: ${LOOP_NODE_MAX_COUNT:-100}
       MAX_TOOLS_NUM: ${MAX_TOOLS_NUM:-10}
+      MAX_PARALLEL_LIMIT: ${MAX_PARALLEL_LIMIT:-10}
 
   # The postgres database.
   db:
@@ -506,6 +507,28 @@ services:
       - opensearch-net
     depends_on:
       - opensearch
+
+  # opengauss vector database.
+  opengauss:
+    image: opengauss/opengauss:7.0.0-RC1
+    profiles:
+      - opengauss
+    privileged: true
+    restart: always
+    environment:
+      GS_USERNAME: ${OPENGAUSS_USER:-postgres}
+      GS_PASSWORD: ${OPENGAUSS_PASSWORD:-Dify@123}
+      GS_PORT: ${OPENGAUSS_PORT:-6600}
+      GS_DB: ${OPENGAUSS_DATABASE:-dify}
+    volumes:
+      - ./volumes/opengauss/data:/var/lib/opengauss/data
+    healthcheck:
+      test: ["CMD-SHELL", "netstat -lntp | grep tcp6 > /dev/null 2>&1"]
+      interval: 10s
+      timeout: 10s
+      retries: 10
+    ports:
+      - ${OPENGAUSS_PORT:-6600}:${OPENGAUSS_PORT:-6600}
 
   # MyScale vector database
   myscale:

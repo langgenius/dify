@@ -71,7 +71,7 @@ const Empty = () => {
             <div className='w-full flex flex-col gap-y-1'>
               {[
                 ...(
-                  (enable_marketplace || true)
+                  (enable_marketplace && true)
                     ? [{ icon: MagicBox, text: t('plugin.list.source.marketplace'), action: 'marketplace' }]
                     : []
                 ),

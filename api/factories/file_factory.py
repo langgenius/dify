@@ -289,9 +289,15 @@ def _is_file_valid_with_config(
     ):
         return False
 
-    if input_file_type == FileType.IMAGE and config.image_config:
-        if config.image_config.transfer_methods and file_transfer_method not in config.image_config.transfer_methods:
+    if input_file_type == FileType.IMAGE:
+        if (
+            config.image_config
+            and config.image_config.transfer_methods
+            and file_transfer_method not in config.image_config.transfer_methods
+        ):
             return False
+    elif config.allowed_file_upload_methods and file_transfer_method not in config.allowed_file_upload_methods:
+        return False
 
     return True
 
