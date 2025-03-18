@@ -153,8 +153,8 @@ class DatasetRetrieval:
             query,
             tenant_id,
             user_id,
-            retrieve_config.metadata_filtering_mode,
-            retrieve_config.metadata_model_config,
+            retrieve_config.metadata_filtering_mode,  # type: ignore
+            retrieve_config.metadata_model_config,  # type: ignore
             retrieve_config.metadata_filtering_conditions,
             inputs,
         )
@@ -836,7 +836,7 @@ class DatasetRetrieval:
             DatasetDocument.enabled == True,
             DatasetDocument.archived == False,
         )
-        filters = []
+        filters = []  # type: ignore
         metadata_condition = None
         if metadata_filtering_mode == "disabled":
             return None, None
@@ -848,23 +848,26 @@ class DatasetRetrieval:
                 conditions = []
                 for filter in automatic_metadata_filters:
                     self._process_metadata_filter_func(
-                        filter.get("condition"), filter.get("metadata_name"), filter.get("value"), filters
+                        filter.get("condition"),
+                        filter.get("metadata_name"),
+                        filter.get("value"),
+                        filters,  # type: ignore
                     )
                     conditions.append(
                         Condition(
-                            name=filter.get("metadata_name"),
-                            comparison_operator=filter.get("condition"),
+                            name=filter.get("metadata_name"),  # type: ignore
+                            comparison_operator=filter.get("condition"),  # type: ignore
                             value=filter.get("value"),
                         )
                     )
                 metadata_condition = MetadataCondition(
-                    logical_operator=metadata_filtering_conditions.logical_operator,
+                    logical_operator=metadata_filtering_conditions.logical_operator,  # type: ignore
                     conditions=conditions,
                 )
         elif metadata_filtering_mode == "manual":
             if metadata_filtering_conditions:
                 metadata_condition = MetadataCondition(**metadata_filtering_conditions.model_dump())
-                for condition in metadata_filtering_conditions.conditions:
+                for condition in metadata_filtering_conditions.conditions:  # type: ignore
                     metadata_name = condition.name
                     expected_value = condition.value
                     if expected_value or condition.comparison_operator in ("empty", "not empty"):
@@ -876,15 +879,15 @@ class DatasetRetrieval:
         else:
             raise ValueError("Invalid metadata filtering mode")
         if filters:
-            if metadata_filtering_conditions.logical_operator == "or":
+            if metadata_filtering_conditions.logical_operator == "or":  # type: ignore
                 document_query = document_query.filter(or_(*filters))
             else:
                 document_query = document_query.filter(and_(*filters))
         documents = document_query.all()
         # group by dataset_id
-        metadata_filter_document_ids = defaultdict(list) if documents else None
+        metadata_filter_document_ids = defaultdict(list) if documents else None  # type: ignore
         for document in documents:
-            metadata_filter_document_ids[document.dataset_id].append(document.id)
+            metadata_filter_document_ids[document.dataset_id].append(document.id)  # type: ignore
         return metadata_filter_document_ids, metadata_condition
 
     def _replace_metadata_filter_value(self, text: str, inputs: dict) -> str:
@@ -950,7 +953,7 @@ class DatasetRetrieval:
             return None
         return automatic_metadata_filters
 
-    def _process_metadata_filter_func(self, condition: str, metadata_name: str, value: Optional[str], filters: list):
+    def _process_metadata_filter_func(self, condition: str, metadata_name: str, value: Optional[Any], filters: list):
         match condition:
             case "contains":
                 filters.append(

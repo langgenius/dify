@@ -332,12 +332,13 @@ class QdrantVector(BaseVector):
         )
         document_ids_filter = kwargs.get("document_ids_filter")
         if document_ids_filter:
-            filter.must.append(
-                models.FieldCondition(
-                    key="metadata.document_id",
-                    match=models.MatchAny(any=document_ids_filter),
+            if filter.must:
+                filter.must.append(
+                    models.FieldCondition(
+                        key="metadata.document_id",
+                        match=models.MatchAny(any=document_ids_filter),
+                    )
                 )
-            )
         results = self._client.search(
             collection_name=self._collection_name,
             query_vector=query_vector,
@@ -386,12 +387,13 @@ class QdrantVector(BaseVector):
         )
         document_ids_filter = kwargs.get("document_ids_filter")
         if document_ids_filter:
-            scroll_filter.must.append(
-                models.FieldCondition(
-                    key="metadata.document_id",
-                    match=models.MatchAny(any=document_ids_filter),
+            if scroll_filter.must:
+                scroll_filter.must.append(
+                    models.FieldCondition(
+                        key="metadata.document_id",
+                        match=models.MatchAny(any=document_ids_filter),
+                    )
                 )
-            )
         response = self._client.scroll(
             collection_name=self._collection_name,
             scroll_filter=scroll_filter,

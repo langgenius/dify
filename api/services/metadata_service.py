@@ -39,7 +39,7 @@ class MetadataService:
         return metadata
 
     @staticmethod
-    def update_metadata_name(dataset_id: str, metadata_id: str, name: str) -> DatasetMetadata:
+    def update_metadata_name(dataset_id: str, metadata_id: str, name: str) -> DatasetMetadata:  # type: ignore
         lock_key = f"dataset_metadata_lock_{dataset_id}"
         # check if metadata name already exists
         if DatasetMetadata.query.filter_by(
@@ -71,7 +71,7 @@ class MetadataService:
                     document.doc_metadata = doc_metadata
                     db.session.add(document)
             db.session.commit()
-            return metadata
+            return metadata  # type: ignore
         except Exception:
             logging.exception("Update metadata name failed")
         finally:

@@ -150,7 +150,7 @@ class ElasticSearchVector(BaseVector):
         query_str = {"match": {Field.CONTENT_KEY.value: query}}
         document_ids_filter = kwargs.get("document_ids_filter")
         if document_ids_filter:
-            query_str["filter"] = {"terms": {"metadata.document_id": document_ids_filter}}
+            query_str["filter"] = {"terms": {"metadata.document_id": document_ids_filter}}  # type: ignore
         results = self._client.search(index=self._collection_name, query=query_str, size=kwargs.get("top_k", 4))
         docs = []
         for hit in results["hits"]["hits"]:

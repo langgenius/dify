@@ -1,7 +1,7 @@
 import json
 import logging
-from collections import defaultdict
 import time
+from collections import defaultdict
 from collections.abc import Mapping, Sequence
 from typing import Any, Optional, cast
 
@@ -65,10 +65,10 @@ default_retrieval_model = {
 
 
 class KnowledgeRetrievalNode(LLMNode):
-    _node_data_cls = KnowledgeRetrievalNodeData
+    _node_data_cls = KnowledgeRetrievalNodeData  # type: ignore
     _node_type = NodeType.KNOWLEDGE_RETRIEVAL
 
-    def _run(self) -> NodeRunResult:
+    def _run(self) -> NodeRunResult:  # type: ignore
         node_data = cast(KnowledgeRetrievalNodeData, self.node_data)
         # extract variables
         variable = self.graph_runtime_state.variable_pool.get(node_data.query_variable_selector)
@@ -172,7 +172,7 @@ class KnowledgeRetrievalNode(LLMNode):
         dataset_retrieval = DatasetRetrieval()
         if node_data.retrieval_mode == DatasetRetrieveConfigEntity.RetrieveStrategy.SINGLE.value:
             # fetch model config
-            model_instance, model_config = self._fetch_model_config(node_data.single_retrieval_config.model)
+            model_instance, model_config = self._fetch_model_config(node_data.single_retrieval_config.model)  # type: ignore
             # check model is support tool calling
             model_type_instance = model_config.provider_model_bundle.model_type_instance
             model_type_instance = cast(LargeLanguageModel, model_type_instance)
@@ -323,7 +323,7 @@ class KnowledgeRetrievalNode(LLMNode):
             Document.enabled == True,
             Document.archived == False,
         )
-        filters = []
+        filters = []  # type: ignore
         metadata_condition = None
         if node_data.metadata_filtering_mode == "disabled":
             return None, None
@@ -333,24 +333,27 @@ class KnowledgeRetrievalNode(LLMNode):
                 conditions = []
                 for filter in automatic_metadata_filters:
                     self._process_metadata_filter_func(
-                        filter.get("condition"), filter.get("metadata_name"), filter.get("value"), filters
+                        filter.get("condition"),
+                        filter.get("metadata_name"),
+                        filter.get("value"),
+                        filters,  # type: ignore
                     )
                     conditions.append(
                         Condition(
-                            name=filter.get("metadata_name"),
-                            comparison_operator=filter.get("condition"),
+                            name=filter.get("metadata_name"),  # type: ignore
+                            comparison_operator=filter.get("condition"),  # type: ignore
                             value=filter.get("value"),
                         )
                     )
                 metadata_condition = MetadataCondition(
-                    logical_operator=node_data.metadata_filtering_conditions.logical_operator,
+                    logical_operator=node_data.metadata_filtering_conditions.logical_operator,  # type: ignore
                     conditions=conditions,
                 )
         elif node_data.metadata_filtering_mode == "manual":
             if node_data.metadata_filtering_conditions:
                 metadata_condition = MetadataCondition(**node_data.metadata_filtering_conditions.model_dump())
                 if node_data.metadata_filtering_conditions:
-                    for condition in node_data.metadata_filtering_conditions.conditions:
+                    for condition in node_data.metadata_filtering_conditions.conditions:  # type: ignore
                         metadata_name = condition.name
                         expected_value = condition.value
                         if expected_value or condition.comparison_operator in ("empty", "not empty"):
@@ -365,15 +368,15 @@ class KnowledgeRetrievalNode(LLMNode):
         else:
             raise ValueError("Invalid metadata filtering mode")
         if filters:
-            if node_data.metadata_filtering_conditions.logical_operator == "and":
+            if node_data.metadata_filtering_conditions.logical_operator == "and":  # type: ignore
                 document_query = document_query.filter(and_(*filters))
             else:
                 document_query = document_query.filter(or_(*filters))
         documents = document_query.all()
         # group by dataset_id
-        metadata_filter_document_ids = defaultdict(list) if documents else None
+        metadata_filter_document_ids = defaultdict(list) if documents else None  # type: ignore
         for document in documents:
-            metadata_filter_document_ids[document.dataset_id].append(document.id)
+            metadata_filter_document_ids[document.dataset_id].append(document.id)  # type: ignore
         return metadata_filter_document_ids, metadata_condition
 
     def _automatic_metadata_filter_func(
@@ -388,7 +391,7 @@ class KnowledgeRetrievalNode(LLMNode):
             raise ValueError("metadata_model_config is required")
         # get metadata model instance
         # fetch model config
-        model_instance, model_config = self._fetch_model_config(node_data.metadata_model_config)
+        model_instance, model_config = self._fetch_model_config(node_data.metadata_model_config)  # type: ignore
         # fetch prompt messages
         prompt_template = self._get_prompt_template(
             node_data=node_data,
@@ -411,7 +414,7 @@ class KnowledgeRetrievalNode(LLMNode):
         try:
             # handle invoke result
             generator = self._invoke_llm(
-                node_data_model=node_data.model,
+                node_data_model=node_data.metadata_model_config,  # type: ignore
                 model_instance=model_instance,
                 prompt_messages=prompt_messages,
                 stop=stop,
@@ -463,16 +466,12 @@ class KnowledgeRetrievalNode(LLMNode):
                 if isinstance(value, str):
                     filters.append(Document.doc_metadata[metadata_name] == f'"{value}"')
                 else:
-                    filters.append(
-                        sqlalchemy_cast(Document.doc_metadata[metadata_name].astext, Integer) == value
-                    )
+                    filters.append(sqlalchemy_cast(Document.doc_metadata[metadata_name].astext, Integer) == value)
             case "is not" | "≠":
                 if isinstance(value, str):
                     filters.append(Document.doc_metadata[metadata_name] != f'"{value}"')
                 else:
-                    filters.append(
-                        sqlalchemy_cast(Document.doc_metadata[metadata_name].astext, Integer) != value
-                    )
+                    filters.append(sqlalchemy_cast(Document.doc_metadata[metadata_name].astext, Integer) != value)
             case "empty":
                 filters.append(Document.doc_metadata[metadata_name].is_(None))
             case "not empty":
@@ -495,7 +494,7 @@ class KnowledgeRetrievalNode(LLMNode):
         *,
         graph_config: Mapping[str, Any],
         node_id: str,
-        node_data: KnowledgeRetrievalNodeData,
+        node_data: KnowledgeRetrievalNodeData,  # type: ignore
     ) -> Mapping[str, Sequence[str]]:
         """
         Extract variable selector to variable mapping
@@ -508,7 +507,7 @@ class KnowledgeRetrievalNode(LLMNode):
         variable_mapping[node_id + ".query"] = node_data.query_variable_selector
         return variable_mapping
 
-    def _fetch_model_config(self, model: ModelConfig) -> tuple[ModelInstance, ModelConfigWithCredentialsEntity]:
+    def _fetch_model_config(self, model: ModelConfig) -> tuple[ModelInstance, ModelConfigWithCredentialsEntity]:  # type: ignore
         """
         Fetch model config
         :param model: model
@@ -574,7 +573,7 @@ class KnowledgeRetrievalNode(LLMNode):
         )
 
     def _get_prompt_template(self, node_data: KnowledgeRetrievalNodeData, metadata_fields: list, query: str):
-        model_mode = ModelMode.value_of(node_data.metadata_model_config.mode)
+        model_mode = ModelMode.value_of(node_data.metadata_model_config.mode)  # type: ignore
         input_text = query
         memory_str = ""
 

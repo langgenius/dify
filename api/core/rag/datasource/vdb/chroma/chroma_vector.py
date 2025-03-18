@@ -100,10 +100,10 @@ class ChromaVector(BaseVector):
             results: QueryResult = collection.query(
                 query_embeddings=query_vector,
                 n_results=kwargs.get("top_k", 4),
-                where={"document_id": {"$in": document_ids_filter}},
+                where={"document_id": {"$in": document_ids_filter}},  # type: ignore
             )
         else:
-            results: QueryResult = collection.query(query_embeddings=query_vector, n_results=kwargs.get("top_k", 4))
+            results: QueryResult = collection.query(query_embeddings=query_vector, n_results=kwargs.get("top_k", 4))  # type: ignore
         score_threshold = float(kwargs.get("score_threshold") or 0.0)
 
         # Check if results contain data
