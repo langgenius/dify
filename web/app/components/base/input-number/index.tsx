@@ -12,6 +12,7 @@ export type InputNumberProps = {
   max?: number
   min?: number
   defaultValue?: number
+  disabled?: boolean
   wrapClassName?: string
   controlWrapClassName?: string
   controlClassName?: string
