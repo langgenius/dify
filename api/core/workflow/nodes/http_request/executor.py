@@ -192,7 +192,7 @@ class Executor:
                         self.content = file_manager.download(file)
                     except Exception as e:
                         # 确保在发生异常时也能清理资源
-                        if hasattr(self.content, 'close'):
+                        if hasattr(self.content, "close"):
                             self.content.close()
                         raise e
                 case "x-www-form-urlencoded":
@@ -298,8 +298,20 @@ class Executor:
         do http request depending on api bundle
         """
         if self.method not in {
-            "get", "head", "post", "put", "delete", "patch", "options",
-            "GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS",
+            "get",
+            "head",
+            "post",
+            "put",
+            "delete",
+            "patch",
+            "options",
+            "GET",
+            "POST",
+            "PUT",
+            "PATCH",
+            "DELETE",
+            "HEAD",
+            "OPTIONS",
         }:
             raise InvalidHttpMethodError(f"Invalid http method {self.method}")
 
@@ -315,7 +327,7 @@ class Executor:
             "follow_redirects": True,
             "max_retries": self.max_retries,
         }
-        
+
         # 使用 with 语句来确保资源正确释放
         with httpx.Client() as client:
             try:
