@@ -139,7 +139,7 @@ const formatItem = (
     }
 
     case BlockEnum.LLM: {
-        res.vars = [
+      res.vars = [
         ...LLM_OUTPUT_STRUCT,
         ...(['json_object', 'JSON'].includes(data.model?.completion_params?.response_format)
           ? [{
