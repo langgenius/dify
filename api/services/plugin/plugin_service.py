@@ -1,6 +1,9 @@
 import logging
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from mimetypes import guess_type
+from typing import Optional
+
+from pydantic import BaseModel
 
 from configs import dify_config
 from core.helper import marketplace
@@ -18,11 +21,71 @@ from core.plugin.entities.plugin_daemon import PluginInstallTask, PluginUploadRe
 from core.plugin.manager.asset import PluginAssetManager
 from core.plugin.manager.debugging import PluginDebuggingManager
 from core.plugin.manager.plugin import PluginInstallationManager
+from extensions.ext_redis import redis_client
 
 logger = logging.getLogger(__name__)
 
 
 class PluginService:
+    class LatestPluginCache(BaseModel):
+        plugin_id: str
+        version: str
+        unique_identifier: str
+
+    REDIS_KEY_PREFIX = "plugin_service:latest_plugin:"
+    REDIS_TTL = 60 * 5  # 5 minutes
+
+    @staticmethod
+    def fetch_latest_plugin_version(plugin_ids: Sequence[str]) -> Mapping[str, Optional[LatestPluginCache]]:
+        """
+        Fetch the latest plugin version
+        """
+        result: dict[str, Optional[PluginService.LatestPluginCache]] = {}
+
+        try:
+            cache_not_exists = []
+
+            # Try to get from Redis first
+            for plugin_id in plugin_ids:
+                cached_data = redis_client.get(f"{PluginService.REDIS_KEY_PREFIX}{plugin_id}")
+                if cached_data:
+                    result[plugin_id] = PluginService.LatestPluginCache.model_validate_json(cached_data)
+                else:
+                    cache_not_exists.append(plugin_id)
+
+            if cache_not_exists:
+                manifests = {
+                    manifest.plugin_id: manifest
+                    for manifest in marketplace.batch_fetch_plugin_manifests(cache_not_exists)
+                }
+
+                for plugin_id, manifest in manifests.items():
+                    latest_plugin = PluginService.LatestPluginCache(
+                        plugin_id=plugin_id,
+                        version=manifest.latest_version,
+                        unique_identifier=manifest.latest_package_identifier,
+                    )
+
+                    # Store in Redis
+                    redis_client.setex(
+                        f"{PluginService.REDIS_KEY_PREFIX}{plugin_id}",
+                        PluginService.REDIS_TTL,
+                        latest_plugin.model_dump_json(),
+                    )
+
+                    result[plugin_id] = latest_plugin
+
+                    # pop plugin_id from cache_not_exists
+                    cache_not_exists.remove(plugin_id)
+
+                for plugin_id in cache_not_exists:
+                    result[plugin_id] = None
+
+            return result
+        except Exception:
+            logger.exception("failed to fetch latest plugin version")
+            return result
+
     @staticmethod
     def get_debugging_key(tenant_id: str) -> str:
         """
@@ -40,9 +103,7 @@ class PluginService:
         plugins = manager.list_plugins(tenant_id)
         plugin_ids = [plugin.plugin_id for plugin in plugins if plugin.source == PluginInstallationSource.Marketplace]
         try:
-            manifests = {
-                manifest.plugin_id: manifest for manifest in marketplace.batch_fetch_plugin_manifests(plugin_ids)
-            }
+            manifests = PluginService.fetch_latest_plugin_version(plugin_ids)
         except Exception:
             manifests = {}
             logger.exception("failed to fetch plugin manifests")
@@ -50,9 +111,11 @@ class PluginService:
         for plugin in plugins:
             if plugin.source == PluginInstallationSource.Marketplace:
                 if plugin.plugin_id in manifests:
-                    # set latest_version
-                    plugin.latest_version = manifests[plugin.plugin_id].latest_version
-                    plugin.latest_unique_identifier = manifests[plugin.plugin_id].latest_package_identifier
+                    latest_plugin_cache = manifests[plugin.plugin_id]
+                    if latest_plugin_cache:
+                        # set latest_version
+                        plugin.latest_version = latest_plugin_cache.version
+                        plugin.latest_unique_identifier = latest_plugin_cache.unique_identifier
 
         return plugins
 

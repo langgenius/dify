@@ -23,7 +23,7 @@ import type {
 } from './types'
 import { NodeRunningStatus } from './types'
 import { getEdgeColor } from './utils'
-import { ITERATION_CHILDREN_Z_INDEX } from './constants'
+import { ITERATION_CHILDREN_Z_INDEX, LOOP_CHILDREN_Z_INDEX } from './constants'
 import CustomEdgeLinearGradientRender from './custom-edge-linear-gradient-render'
 import cn from '@/utils/classnames'
 import { ErrorHandleTypeEnum } from '@/app/components/workflow/nodes/_base/components/error-handle/types'
@@ -56,8 +56,8 @@ const CustomEdge = ({
   })
   const [open, setOpen] = useState(false)
   const { handleNodeAdd } = useNodesInteractions()
-  const { availablePrevBlocks } = useAvailableBlocks((data as Edge['data'])!.targetType, (data as Edge['data'])?.isInIteration)
-  const { availableNextBlocks } = useAvailableBlocks((data as Edge['data'])!.sourceType, (data as Edge['data'])?.isInIteration)
+  const { availablePrevBlocks } = useAvailableBlocks((data as Edge['data'])!.targetType, (data as Edge['data'])?.isInIteration, (data as Edge['data'])?.isInLoop)
+  const { availableNextBlocks } = useAvailableBlocks((data as Edge['data'])!.sourceType, (data as Edge['data'])?.isInIteration, (data as Edge['data'])?.isInLoop)
   const {
     _sourceRunningStatus,
     _targetRunningStatus,
@@ -144,6 +144,7 @@ const CustomEdge = ({
             data?._hovering ? 'block' : 'hidden',
             open && '!block',
             data.isInIteration && `z-[${ITERATION_CHILDREN_Z_INDEX}]`,
+            data.isInLoop && `z-[${LOOP_CHILDREN_Z_INDEX}]`,
           )}
           style={{
             position: 'absolute',

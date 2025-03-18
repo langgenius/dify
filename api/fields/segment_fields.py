@@ -40,9 +40,3 @@ segment_fields = {
     "stopped_at": TimestampField,
     "child_chunks": fields.List(fields.Nested(child_chunk_fields)),
 }
-
-segment_list_response = {
-    "data": fields.List(fields.Nested(segment_fields)),
-    "has_more": fields.Boolean,
-    "limit": fields.Integer,
-}

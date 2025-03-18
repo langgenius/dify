@@ -1,6 +1,7 @@
 import json
 import logging
 from collections.abc import Generator, Mapping, Sequence
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any, Optional, cast
 
 from configs import dify_config
@@ -29,6 +30,7 @@ from core.model_runtime.entities.message_entities import (
 from core.model_runtime.entities.model_entities import ModelFeature, ModelPropertyKey, ModelType
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
 from core.model_runtime.utils.encoders import jsonable_encoder
+from core.plugin.entities.plugin import ModelProviderID
 from core.prompt.entities.advanced_prompt_entities import CompletionModelPromptTemplate, MemoryConfig
 from core.prompt.utils.prompt_message_util import PromptMessageUtil
 from core.variables import (
@@ -92,6 +94,9 @@ class LLMNode(BaseNode[LLMNodeData]):
     def _run(self) -> Generator[NodeEvent | InNodeEvent, None, None]:
         node_inputs: Optional[dict[str, Any]] = None
         process_data = None
+        result_text = ""
+        usage = LLMUsage.empty_usage()
+        finish_reason = None
 
         try:
             # init messages template
@@ -176,9 +181,6 @@ class LLMNode(BaseNode[LLMNodeData]):
                 stop=stop,
             )
 
-            result_text = ""
-            usage = LLMUsage.empty_usage()
-            finish_reason = None
             for event in generator:
                 if isinstance(event, RunStreamChunkEvent):
                     yield event
@@ -189,6 +191,22 @@ class LLMNode(BaseNode[LLMNodeData]):
                     # deduct quota
                     self.deduct_llm_quota(tenant_id=self.tenant_id, model_instance=model_instance, usage=usage)
                     break
+            outputs = {"text": result_text, "usage": jsonable_encoder(usage), "finish_reason": finish_reason}
+
+            yield RunCompletedEvent(
+                run_result=NodeRunResult(
+                    status=WorkflowNodeExecutionStatus.SUCCEEDED,
+                    inputs=node_inputs,
+                    process_data=process_data,
+                    outputs=outputs,
+                    metadata={
+                        NodeRunMetadataKey.TOTAL_TOKENS: usage.total_tokens,
+                        NodeRunMetadataKey.TOTAL_PRICE: usage.total_price,
+                        NodeRunMetadataKey.CURRENCY: usage.currency,
+                    },
+                    llm_usage=usage,
+                )
+            )
         except LLMNodeError as e:
             yield RunCompletedEvent(
                 run_result=NodeRunResult(
@@ -208,23 +226,6 @@ class LLMNode(BaseNode[LLMNodeData]):
                     process_data=process_data,
                 )
             )
-
-        outputs = {"text": result_text, "usage": jsonable_encoder(usage), "finish_reason": finish_reason}
-
-        yield RunCompletedEvent(
-            run_result=NodeRunResult(
-                status=WorkflowNodeExecutionStatus.SUCCEEDED,
-                inputs=node_inputs,
-                process_data=process_data,
-                outputs=outputs,
-                metadata={
-                    NodeRunMetadataKey.TOTAL_TOKENS: usage.total_tokens,
-                    NodeRunMetadataKey.TOTAL_PRICE: usage.total_price,
-                    NodeRunMetadataKey.CURRENCY: usage.currency,
-                },
-                llm_usage=usage,
-            )
-        )
 
     def _invoke_llm(
         self,
@@ -457,6 +458,7 @@ class LLMNode(BaseNode[LLMNodeData]):
                 "index_node_hash": metadata.get("segment_index_node_hash"),
                 "content": context_dict.get("content"),
                 "page": metadata.get("page"),
+                "doc_metadata": metadata.get("doc_metadata"),
             }
 
             return source
@@ -758,11 +760,17 @@ class LLMNode(BaseNode[LLMNodeData]):
         if used_quota is not None and system_configuration.current_quota_type is not None:
             db.session.query(Provider).filter(
                 Provider.tenant_id == tenant_id,
-                Provider.provider_name == model_instance.provider,
+                # TODO: Use provider name with prefix after the data migration.
+                Provider.provider_name == ModelProviderID(model_instance.provider).provider_name,
                 Provider.provider_type == ProviderType.SYSTEM.value,
                 Provider.quota_type == system_configuration.current_quota_type.value,
                 Provider.quota_limit > Provider.quota_used,
-            ).update({"quota_used": Provider.quota_used + used_quota})
+            ).update(
+                {
+                    "quota_used": Provider.quota_used + used_quota,
+                    "last_used": datetime.now(tz=UTC).replace(tzinfo=None),
+                }
+            )
             db.session.commit()
 
     @classmethod

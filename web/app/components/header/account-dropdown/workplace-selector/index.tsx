@@ -6,17 +6,16 @@ import { RiArrowDownSLine } from '@remixicon/react'
 import cn from '@/utils/classnames'
 import { switchWorkspace } from '@/service/common'
 import { useWorkspacesContext } from '@/context/workspace-context'
-import { useProviderContext } from '@/context/provider-context'
 import { ToastContext } from '@/app/components/base/toast'
-import PremiumBadge from '@/app/components/base/premium-badge'
+import PlanBadge from '../../plan-badge'
+import type { Plan } from '@/app/components/billing/type'
 
 const WorkplaceSelector = () => {
   const { t } = useTranslation()
-  const { plan } = useProviderContext()
   const { notify } = useContext(ToastContext)
   const { workspaces } = useWorkspacesContext()
   const currentWorkspace = workspaces.find(v => v.current)
-  const isFreePlan = plan.type === 'sandbox'
+
   const handleSwitchWorkspace = async (tenant_id: string) => {
     try {
       if (currentWorkspace?.id === tenant_id)
@@ -72,15 +71,7 @@ const WorkplaceSelector = () => {
                       <div className='flex py-1 pl-3 pr-2 items-center gap-2 self-stretch hover:bg-state-base-hover rounded-lg' key={workspace.id} onClick={() => handleSwitchWorkspace(workspace.id)}>
                         <div className='flex items-center justify-center w-6 h-6 bg-[#EFF4FF] rounded-md text-xs font-medium text-primary-600'>{workspace.name[0].toLocaleUpperCase()}</div>
                         <div className='line-clamp-1 grow overflow-hidden text-text-secondary text-ellipsis system-md-regular cursor-pointer'>{workspace.name}</div>
-                        {
-                          <PremiumBadge size='s' color='gray' allowHover={false}>
-                            <div className='system-2xs-medium'>
-                              <span className='p-[2px]'>
-                                {plan.type === 'professional' ? 'PRO' : plan.type.toUpperCase()}
-                              </span>
-                            </div>
-                          </PremiumBadge>
-                        }
+                        <PlanBadge plan={workspace.plan as Plan} />
                       </div>
                     ))
                   }

@@ -36,7 +36,7 @@ const ChangeItem = ({
   const {
     availablePrevBlocks,
     availableNextBlocks,
-  } = useAvailableBlocks(data.type, data.isInIteration)
+  } = useAvailableBlocks(data.type, data.isInIteration, data.isInLoop)
 
   const handleSelect = useCallback<OnSelectBlock>((type, toolDefaultValue) => {
     handleNodeChange(nodeId, type, sourceHandle, toolDefaultValue)

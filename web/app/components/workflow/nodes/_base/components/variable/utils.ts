@@ -13,6 +13,7 @@ import { VarType as ToolVarType } from '../../../tool/types'
 import type { ToolNodeType } from '../../../tool/types'
 import type { ParameterExtractorNodeType } from '../../../parameter-extractor/types'
 import type { IterationNodeType } from '../../../iteration/types'
+import type { LoopNodeType } from '../../../loop/types'
 import type { ListFilterNodeType } from '../../../list-operator/types'
 import { OUTPUT_FILE_SUB_VARIABLES } from '../../../constants'
 import type { DocExtractorNodeType } from '../../../document-extractor/types'
@@ -249,8 +250,8 @@ const formatItem = (
           outputSchema.push({
             variable: outputKey,
             type: output.type === 'array'
-              ? `Array[${output.items?.type.slice(0, 1).toLocaleUpperCase()}${output.items?.type.slice(1)}]`
-              : `${output.type.slice(0, 1).toLocaleUpperCase()}${output.type.slice(1)}`,
+              ? `array[${output.items?.type.slice(0, 1).toLocaleLowerCase()}${output.items?.type.slice(1)}]`
+              : `${output.type.slice(0, 1).toLocaleLowerCase()}${output.type.slice(1)}`,
             description: output.description,
           })
         })
@@ -518,10 +519,61 @@ const getIterationItemType = ({
   }
 }
 
+const getLoopItemType = ({
+  valueSelector,
+  beforeNodesOutputVars,
+}: {
+  valueSelector: ValueSelector
+  beforeNodesOutputVars: NodeOutPutVar[]
+}): VarType => {
+  const outputVarNodeId = valueSelector[0]
+  const isSystem = isSystemVar(valueSelector)
+
+  const targetVar = isSystem ? beforeNodesOutputVars.find(v => v.isStartNode) : beforeNodesOutputVars.find(v => v.nodeId === outputVarNodeId)
+  if (!targetVar)
+    return VarType.string
+
+  let arrayType: VarType = VarType.string
+
+  let curr: any = targetVar.vars
+  if (isSystem) {
+    arrayType = curr.find((v: any) => v.variable === (valueSelector).join('.'))?.type
+  }
+  else {
+    (valueSelector).slice(1).forEach((key, i) => {
+      const isLast = i === valueSelector.length - 2
+      curr = curr?.find((v: any) => v.variable === key)
+      if (isLast) {
+        arrayType = curr?.type
+      }
+      else {
+        if (curr?.type === VarType.object || curr?.type === VarType.file)
+          curr = curr.children
+      }
+    })
+  }
+
+  switch (arrayType as VarType) {
+    case VarType.arrayString:
+      return VarType.string
+    case VarType.arrayNumber:
+      return VarType.number
+    case VarType.arrayObject:
+      return VarType.object
+    case VarType.array:
+      return VarType.any
+    case VarType.arrayFile:
+      return VarType.file
+    default:
+      return VarType.string
+  }
+}
+
 export const getVarType = ({
   parentNode,
   valueSelector,
   isIterationItem,
+  isLoopItem,
   availableNodes,
   isChatMode,
   isConstant,
@@ -532,6 +584,7 @@ export const getVarType = ({
   valueSelector: ValueSelector
   parentNode?: Node | null
   isIterationItem?: boolean
+  isLoopItem?: boolean
   availableNodes: any[]
   isChatMode: boolean
   isConstant?: boolean
@@ -567,6 +620,26 @@ export const getVarType = ({
     if (valueSelector[1] === 'index')
       return VarType.number
   }
+
+  const isLoopInnerVar = parentNode?.data.type === BlockEnum.Loop
+  if (isLoopItem) {
+    return getLoopItemType({
+      valueSelector,
+      beforeNodesOutputVars,
+    })
+  }
+  if (isLoopInnerVar) {
+    if (valueSelector[1] === 'item') {
+      const itemType = getLoopItemType({
+        valueSelector: (parentNode?.data as any).iterator_selector || [],
+        beforeNodesOutputVars,
+      })
+      return itemType
+    }
+    if (valueSelector[1] === 'index')
+      return VarType.number
+  }
+
   const isSystem = isSystemVar(valueSelector)
   const isEnv = isENV(valueSelector)
   const isChatVar = isConversationVar(valueSelector)
@@ -799,6 +872,14 @@ export const getNodeUsedVars = (node: Node): ValueSelector[] => {
 
     case BlockEnum.Iteration: {
       res = [(data as IterationNodeType).iterator_selector]
+      break
+    }
+
+    case BlockEnum.Loop: {
+      const payload = data as LoopNodeType
+      res = payload.break_conditions?.map((c) => {
+        return c.variable_selector || []
+      }) || []
       break
     }
 
@@ -1079,6 +1160,17 @@ export const updateNodeVars = (oldNode: Node, oldVarSelector: ValueSelector, new
 
         break
       }
+      case BlockEnum.Loop: {
+        const payload = data as LoopNodeType
+        if (payload.break_conditions) {
+          payload.break_conditions = payload.break_conditions.map((c) => {
+            if (c.variable_selector?.join('.') === oldVarSelector.join('.'))
+              c.variable_selector = newVarSelector
+            return c
+          })
+        }
+        break
+      }
       case BlockEnum.ListFilter: {
         const payload = data as ListFilterNodeType
         if (payload.variable.join('.') === oldVarSelector.join('.'))
@@ -1196,6 +1288,11 @@ export const getNodeOutputVars = (node: Node, isChatMode: boolean): ValueSelecto
     }
 
     case BlockEnum.Iteration: {
+      res.push([id, 'output'])
+      break
+    }
+
+    case BlockEnum.Loop: {
       res.push([id, 'output'])
       break
     }

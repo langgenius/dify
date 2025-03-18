@@ -38,7 +38,7 @@ const Add = ({
   const [open, setOpen] = useState(false)
   const { handleNodeAdd } = useNodesInteractions()
   const { nodesReadOnly } = useNodesReadOnly()
-  const { availableNextBlocks } = useAvailableBlocks(nodeData.type, nodeData.isInIteration)
+  const { availableNextBlocks } = useAvailableBlocks(nodeData.type, nodeData.isInIteration, nodeData.isInLoop)
   const { checkParallelLimit } = useWorkflow()
 
   const handleSelect = useCallback<OnSelectBlock>((type, toolDefaultValue) => {

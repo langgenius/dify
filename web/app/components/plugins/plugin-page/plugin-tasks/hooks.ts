@@ -19,7 +19,7 @@ export const usePluginTaskStatus = () => {
   } = usePluginTaskList()
   const { mutateAsync } = useMutationClearTaskPlugin()
   const { mutateAsync: mutateAsyncClearAll } = useMutationClearAllTaskPlugin()
-  const allPlugins = pluginTasks.filter(task => task.status !== TaskStatus.success).map(task => task.plugins.map((plugin) => {
+  const allPlugins = pluginTasks.map(task => task.plugins.map((plugin) => {
     return {
       ...plugin,
       taskId: task.id,

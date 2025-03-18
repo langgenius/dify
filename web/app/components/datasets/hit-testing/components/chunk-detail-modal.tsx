@@ -60,6 +60,7 @@ const ChunkDetailModal: FC<Props> = ({
           <Markdown
             className={cn('!mt-2 !text-text-secondary', heighClassName)}
             content={sign_content || content}
+            customDisallowedElements={['input']}
           />
           {!isParentChildRetrieval && keywords && keywords.length > 0 && (
             <div className='mt-6'>

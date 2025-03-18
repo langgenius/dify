@@ -8,6 +8,7 @@ const translation = {
     published: 'Published',
     publish: 'Publish',
     update: 'Update',
+    publishUpdate: 'Publish Update',
     run: 'Run',
     running: 'Running',
     inRunMode: 'In Run Mode',
@@ -30,6 +31,8 @@ const translation = {
     latestPublished: 'Latest Published',
     publishedAt: 'Published',
     restore: 'Restore',
+    versionHistory: 'Version History',
+    exitVersions: 'Exit Versions',
     runApp: 'Run App',
     batchRunApp: 'Batch Run App',
     openInExplore: 'Open in Explore',
@@ -104,7 +107,7 @@ const translation = {
     branch: 'BRANCH',
     onFailure: 'On Failure',
     addFailureBranch: 'Add Fail Branch',
-    loadMore: 'Load More Workflows',
+    loadMore: 'Load More',
     noHistory: 'No History',
   },
   env: {
@@ -205,6 +208,7 @@ const translation = {
     testRunIteration: 'Test Run Iteration',
     back: 'Back',
     iteration: 'Iteration',
+    loop: 'Loop',
   },
   tabs: {
     'searchBlock': 'Search block',
@@ -242,6 +246,8 @@ const translation = {
     'document-extractor': 'Doc Extractor',
     'list-operator': 'List Operator',
     'agent': 'Agent',
+    'loop-start': 'Loop Start',
+    'loop': 'Loop',
   },
   blocksAbout: {
     'start': 'Define the initial parameters for launching a workflow',
@@ -258,6 +264,7 @@ const translation = {
     'assigner': 'The variable assignment node is used for assigning values to writable variables(like conversation variables).',
     'variable-aggregator': 'Aggregate multi-branch variables into a single variable for unified configuration of downstream nodes.',
     'iteration': 'Perform multiple steps on a list object until all results are outputted.',
+    'loop': 'Execute a loop of logic until the termination condition is met or the maximum loop count is reached.',
     'parameter-extractor': 'Use LLM to extract structured parameters from natural language for tool invocations or HTTP requests.',
     'document-extractor': 'Used to parse uploaded documents into text content that is easily understandable by LLM.',
     'list-operator': 'Used to filter or sort array content.',
@@ -422,6 +429,34 @@ const translation = {
         url: 'Segmented URL',
         metadata: 'Other metadata',
       },
+      metadata: {
+        title: 'Metadata Filtering',
+        tip: 'Metadata filtering is the process of using metadata attributes (such as tags, categories, or access permissions) to refine and control the retrieval of relevant information within a system.',
+        options: {
+          disabled: {
+            title: 'Disabled',
+            subTitle: 'Not enabling metadata filtering',
+          },
+          automatic: {
+            title: 'Automatic',
+            subTitle: 'Automatically generate metadata filtering conditions based on user query',
+            desc: 'Automatically generate metadata filtering conditions based on Query Variable',
+          },
+          manual: {
+            title: 'Manual',
+            subTitle: 'Manually add metadata filtering conditions',
+          },
+        },
+        panel: {
+          title: 'Metadata Filter Conditions',
+          conditions: 'Conditions',
+          add: 'Add Condition',
+          search: 'Search metadata',
+          placeholder: 'Enter value',
+          datePlaceholder: 'Choose a time...',
+          select: 'Select variable...',
+        },
+      },
     },
     http: {
       inputVars: 'Input Variables',
@@ -510,6 +545,8 @@ const translation = {
         'all of': 'all of',
         'exists': 'exists',
         'not exists': 'not exists',
+        'before': 'before',
+        'after': 'after',
       },
       optionName: {
         image: 'Image',
@@ -657,6 +694,25 @@ const translation = {
       },
       answerNodeWarningDesc: 'Parallel mode warning: Answer nodes, conversation variable assignments, and persistent read/write operations within iterations may cause exceptions.',
     },
+    loop: {
+      deleteTitle: 'Delete Loop Node?',
+      deleteDesc: 'Deleting the loop node will remove all child nodes',
+      input: 'Input',
+      output: 'Output Variable',
+      loop_one: '{{count}} Loop',
+      loop_other: '{{count}} Loops',
+      currentLoop: 'Current Loop',
+      breakCondition: 'Loop Termination Condition',
+      breakConditionTip: 'Only variables within loops with termination conditions and conversation variables can be referenced.',
+      loopMaxCount: 'Maximum Loop Count',
+      loopMaxCountError: 'Please enter a valid maximum loop count, ranging from 1 to {{maxCount}}',
+      errorResponseMethod: 'Error Response Method',
+      ErrorMethod: {
+        operationTerminated: 'Terminated',
+        continueOnError: 'Continue on Error',
+        removeAbnormalOutput: 'Remove Abnormal Output',
+      },
+    },
     note: {
       addNote: 'Add Note',
       editor: {
@@ -774,6 +830,38 @@ const translation = {
   },
   tracing: {
     stopBy: 'Stop by {{user}}',
+  },
+  versionHistory: {
+    title: 'Versions',
+    currentDraft: 'Current Draft',
+    latest: 'Latest',
+    filter: {
+      all: 'All',
+      onlyYours: 'Only yours',
+      onlyShowNamedVersions: 'Only show named versions',
+      reset: 'Reset Filter',
+      empty: 'No matching version history found',
+    },
+    defaultName: 'Untitled Version',
+    nameThisVersion: 'Name this version',
+    editVersionInfo: 'Edit version info',
+    editField: {
+      title: 'Title',
+      releaseNotes: 'Release Notes',
+      titleLengthLimit: 'Title can\'t exceed {{limit}} characters',
+      releaseNotesLengthLimit: 'Release notes can\'t exceed {{limit}} characters',
+    },
+    releaseNotesPlaceholder: 'Describe what changed',
+    restorationTip: 'After version restoration, the current draft will be overwritten.',
+    deletionTip: 'Deletion is irreversible, please confirm.',
+    action: {
+      restoreSuccess: 'Version restored',
+      restoreFailure: 'Failed to restore version',
+      deleteSuccess: 'Version deleted',
+      deleteFailure: 'Failed to delete version',
+      updateSuccess: 'Version updated',
+      updateFailure: 'Failed to update version',
+    },
   },
 }
 

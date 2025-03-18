@@ -40,9 +40,27 @@ importers:
       '@hookform/resolvers':
         specifier: ^3.9.0
         version: 3.9.0(react-hook-form@7.53.1(react@18.2.0))
+      '@lexical/code':
+        specifier: ^0.18.0
+        version: 0.18.0
+      '@lexical/link':
+        specifier: ^0.18.0
+        version: 0.18.0
+      '@lexical/list':
+        specifier: ^0.18.0
+        version: 0.18.0
       '@lexical/react':
         specifier: ^0.18.0
         version: 0.18.0(react-dom@18.2.0(react@18.2.0))(react@18.2.0)(yjs@13.6.20)
+      '@lexical/selection':
+        specifier: ^0.18.0
+        version: 0.18.0
+      '@lexical/text':
+        specifier: ^0.18.0
+        version: 0.18.0
+      '@lexical/utils':
+        specifier: ^0.18.0
+        version: 0.18.0
       '@mdx-js/loader':
         specifier: ^3.1.0
         version: 3.1.0(acorn@8.13.0)(webpack@5.95.0(esbuild@0.23.1)(uglify-js@3.19.3))
@@ -172,6 +190,9 @@ importers:
       next:
         specifier: ^14.2.10
         version: 14.2.15(@babel/core@7.25.8)(react-dom@18.2.0(react@18.2.0))(react@18.2.0)(sass@1.80.3)
+      next-themes:
+        specifier: ^0.4.3
+        version: 0.4.4(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
       pinyin-pro:
         specifier: ^3.25.0
         version: 3.25.0
@@ -323,6 +344,9 @@ importers:
       '@faker-js/faker':
         specifier: ^9.0.3
         version: 9.0.3
+      '@next/eslint-plugin-next':
+        specifier: ^15.0.0
+        version: 15.0.0
       '@rgrove/parse-xml':
         specifier: ^4.1.0
         version: 4.1.0
@@ -6298,6 +6322,12 @@ packages:
 
   neo-async@2.6.2:
     resolution: {integrity: sha512-Yd3UES5mWCSqR+qNT93S3UoYUkqAZ9lLg8a7g9rimsWmYGK8cVToA4/sF3RrshdyV3sAGMXVUmpMYOw+dLpOuw==}
+
+  next-themes@0.4.4:
+    resolution: {integrity: sha512-LDQ2qIOJF0VnuVrrMSMLrWGjRMkq+0mpgl6e0juCLqdJ+oo8Q84JRWT6Wh11VDQKkMMe+dVzDKLWs5n87T+PkQ==}
+    peerDependencies:
+      react: ^16.8 || ^17 || ^18 || ^19 || ^19.0.0-rc
+      react-dom: ^16.8 || ^17 || ^18 || ^19 || ^19.0.0-rc
 
   next@14.2.15:
     resolution: {integrity: sha512-h9ctmOokpoDphRvMGnwOJAedT6zKhwqyZML9mDtspgf4Rh3Pn7UTYKqePNoDvhsWBAO5GoPNYshnAUGIazVGmw==}
@@ -15965,6 +15995,11 @@ snapshots:
   negotiator@0.6.4: {}
 
   neo-async@2.6.2: {}
+
+  next-themes@0.4.4(react-dom@18.2.0(react@18.2.0))(react@18.2.0):
+    dependencies:
+      react: 18.2.0
+      react-dom: 18.2.0(react@18.2.0)
 
   next@14.2.15(@babel/core@7.25.8)(react-dom@18.2.0(react@18.2.0))(react@18.2.0)(sass@1.80.3):
     dependencies:

@@ -41,7 +41,7 @@ const QuotaPanel: FC<QuotaPanelProps> = ({
       {
         currentQuota && (
           <div className='flex items-center h-4 text-xs text-text-tertiary'>
-            <span className='mr-0.5 system-md-semibold-uppercase text-text-secondary'>{formatNumber((currentQuota?.quota_limit || 0) - (currentQuota?.quota_used || 0))}</span>
+            <span className='mr-0.5 system-md-semibold-uppercase text-text-secondary'>{formatNumber(Math.max((currentQuota?.quota_limit || 0) - (currentQuota?.quota_used || 0), 0))}</span>
             {
               currentQuota?.quota_unit === QuotaUnitEnum.tokens && 'Tokens'
             }

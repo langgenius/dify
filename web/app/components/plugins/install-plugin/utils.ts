@@ -38,7 +38,7 @@ export const pluginManifestInMarketToPluginProps = (pluginManifest: PluginManife
     label: pluginManifest.label,
     brief: pluginManifest.brief,
     icon: pluginManifest.icon,
-    verified: pluginManifest.verified,
+    verified: true,
     introduction: pluginManifest.introduction,
     repository: '',
     install_count: 0,
@@ -46,6 +46,7 @@ export const pluginManifestInMarketToPluginProps = (pluginManifest: PluginManife
       settings: [],
     },
     tags: [],
+    badges: pluginManifest.badges,
   }
 }
 

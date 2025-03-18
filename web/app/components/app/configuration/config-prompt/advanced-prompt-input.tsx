@@ -20,6 +20,7 @@ import {
   Clipboard,
   ClipboardCheck,
 } from '@/app/components/base/icons/src/vender/line/files'
+import Button from '@/app/components/base/button'
 import Tooltip from '@/app/components/base/tooltip'
 import PromptEditor from '@/app/components/base/prompt-editor'
 import ConfigContext from '@/context/debug-configuration'
@@ -150,19 +151,20 @@ const AdvancedPromptInput: FC<Props> = ({
         <RiErrorWarningFill className='mr-1 w-4 h-4 text-[#F79009]' />
         <div className='leading-[18px] text-[13px] font-medium text-[#DC6803]'>{t('appDebug.promptMode.contextMissing')}</div>
       </div>
-      <div
-        className='flex items-center h-6 px-2 rounded-md bg-[#fff] border border-gray-200 shadow-xs text-xs font-medium text-primary-600 cursor-pointer'
+      <Button
+        size='small'
+        variant='secondary-accent'
         onClick={onHideContextMissingTip}
-      >{t('common.operation.ok')}</div>
+      >{t('common.operation.ok')}</Button>
     </div>
   )
   return (
-    <div className={`relative ${!isContextMissing ? s.gradientBorder : s.warningBorder}`}>
-      <div className='rounded-xl bg-white'>
+    <div className={`bg-gradient-to-r from-components-input-border-active-prompt-1 to-components-input-border-active-prompt-2 rounded-xl p-0.5 shadow-xs ${!isContextMissing ? '' : s.warningBorder}`}>
+      <div className='rounded-xl bg-background-default'>
         {isContextMissing
           ? contextMissing
           : (
-            <div className={cn(s.boxHeader, 'flex justify-between items-center h-11 pt-2 pr-3 pb-1 pl-4 rounded-tl-xl rounded-tr-xl bg-white hover:shadow-xs')}>
+            <div className={cn(s.boxHeader, 'flex justify-between items-center h-11 pt-2 pr-3 pb-1 pl-4 rounded-tl-xl rounded-tr-xl bg-background-default hover:shadow-xs')}>
               {isChatMode
                 ? (
                   <MessageTypeSelector value={type} onChange={onTypeChange} />
@@ -182,30 +184,30 @@ const AdvancedPromptInput: FC<Props> = ({
                   </div>)}
               <div className={cn(s.optionWrap, 'items-center space-x-1')}>
                 {canDelete && (
-                  <RiDeleteBinLine onClick={onDelete} className='h-6 w-6 p-1 text-gray-500 cursor-pointer' />
+                  <RiDeleteBinLine onClick={onDelete} className='h-6 w-6 p-1 text-text-tertiary cursor-pointer' />
                 )}
                 {!isCopied
                   ? (
-                    <Clipboard className='h-6 w-6 p-1 text-gray-500 cursor-pointer' onClick={() => {
+                    <Clipboard className='h-6 w-6 p-1 text-text-tertiary cursor-pointer' onClick={() => {
                       copy(value)
                       setIsCopied(true)
                     }} />
                   )
                   : (
-                    <ClipboardCheck className='h-6 w-6 p-1 text-gray-500' />
+                    <ClipboardCheck className='h-6 w-6 p-1 text-text-tertiary' />
                   )}
               </div>
             </div>
           )}
 
         <PromptEditorHeightResizeWrap
-          className='px-4 min-h-[102px] overflow-y-auto text-sm text-gray-700'
+          className='px-4 min-h-[102px] overflow-y-auto text-sm text-text-secondary'
           height={editorHeight}
           minHeight={minHeight}
           onHeightChange={setEditorHeight}
           footer={(
             <div className='pl-4 pb-2 flex'>
-              <div className="h-[18px] leading-[18px] px-1 rounded-md bg-gray-100 text-xs text-gray-500">{value.length}</div>
+              <div className="h-[18px] leading-[18px] px-1 rounded-md bg-divider-regular text-xs text-text-tertiary">{value.length}</div>
             </div>
           )}
           hideResize={noResize}

@@ -21,7 +21,7 @@ def add_document_to_index_task(dataset_document_id: str):
     Async Add document to index
     :param dataset_document_id:
 
-    Usage: add_document_to_index.delay(dataset_document_id)
+    Usage: add_document_to_index_task.delay(dataset_document_id)
     """
     logging.info(click.style("Start add document to index: {}".format(dataset_document_id), fg="green"))
     start_at = time.perf_counter()

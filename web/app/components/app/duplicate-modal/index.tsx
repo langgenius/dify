@@ -1,8 +1,8 @@
 'use client'
 import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { RiCloseLine } from '@remixicon/react'
 import AppIconPicker from '../../base/app-icon-picker'
-import s from './style.module.css'
 import cn from '@/utils/classnames'
 import Modal from '@/app/components/base/modal'
 import Button from '@/app/components/base/button'
@@ -13,7 +13,7 @@ import { useProviderContext } from '@/context/provider-context'
 import AppsFull from '@/app/components/billing/apps-full-in-dialog'
 import type { AppIconType } from '@/types/app'
 
-export interface DuplicateAppModalProps {
+export type DuplicateAppModalProps = {
   appName: string
   icon_type: AppIconType | null
   icon: string
@@ -72,12 +72,14 @@ const DuplicateAppModal = ({
       <Modal
         isShow={show}
         onClose={() => { }}
-        className={cn(s.modal, '!max-w-[480px]', 'px-8')}
+        className={cn('relative !max-w-[480px]', 'px-8')}
       >
-        <span className={s.close} onClick={onHide} />
-        <div className={s.title}>{t('app.duplicateTitle')}</div>
-        <div className={s.content}>
-          <div className={s.subTitle}>{t('explore.appCustomize.subTitle')}</div>
+        <div className='absolute right-4 top-4 p-2 cursor-pointer' onClick={onHide}>
+          <RiCloseLine className='w-4 h-4 text-text-tertiary' />
+        </div>
+        <div className='relative mt-3 mb-9 text-xl font-semibold leading-[30px] text-text-primary'>{t('app.duplicateTitle')}</div>
+        <div className='mb-9 system-sm-regular text-text-secondary'>
+          <div className='mb-2 system-md-medium'>{t('explore.appCustomize.subTitle')}</div>
           <div className='flex items-center justify-between space-x-2'>
             <AppIcon
               size='large'
