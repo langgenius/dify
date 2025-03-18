@@ -32,12 +32,12 @@ export const inferType = (value: any): Type => {
   return Type.string
 }
 
-export function jsonToSchema(json: any): Field {
+export const jsonToSchema = (json: any): Field => {
   const schema: Field = {
     type: inferType(json),
   }
 
-  if (schema.type === 'object') {
+  if (schema.type === Type.object) {
     schema.properties = {}
     schema.required = []
     schema.additionalProperties = false
@@ -52,4 +52,23 @@ export function jsonToSchema(json: any): Field {
   }
 
   return schema
+}
+
+export const checkDepth = (json: any, currentDepth = 1) => {
+  const type = inferType(json)
+  if (type !== Type.object && type !== Type.array)
+    return currentDepth
+
+  let maxDepth = currentDepth
+  if (type === Type.object) {
+    Object.keys(json).forEach((key) => {
+      const depth = checkDepth(json[key], currentDepth + 1)
+      maxDepth = Math.max(maxDepth, depth)
+    })
+  }
+  else if (type === Type.array && json.length > 0) {
+    const depth = checkDepth(json[0], currentDepth + 1)
+    maxDepth = Math.max(maxDepth, depth)
+  }
+  return maxDepth
 }

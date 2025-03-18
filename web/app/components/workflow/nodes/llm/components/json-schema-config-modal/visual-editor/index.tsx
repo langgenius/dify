@@ -16,7 +16,7 @@ const VisualEditor: FC<VisualEditorProps> = ({
         schema={schema}
         required={false}
         path={[]}
-        depth={0}
+        depth={1}
       />
     </div>
   )

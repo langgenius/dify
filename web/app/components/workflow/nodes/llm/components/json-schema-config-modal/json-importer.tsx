@@ -6,6 +6,8 @@ import { RiClipboardLine, RiCloseLine, RiErrorWarningFill, RiIndentIncrease } fr
 import copy from 'copy-to-clipboard'
 import { Editor } from '@monaco-editor/react'
 import Button from '@/app/components/base/button'
+import { checkDepth } from '../../utils'
+import { JSON_SCHEMA_MAX_DEPTH } from '@/config'
 
 type JsonImporterProps = {
   onSubmit: (schema: string) => void
@@ -71,8 +73,17 @@ const JsonImporter: FC<JsonImporterProps> = ({
   const handleSubmit = useCallback(() => {
     try {
       const parsedJSON = JSON.parse(json)
+      const maxDepth = checkDepth(parsedJSON)
+      if (maxDepth > JSON_SCHEMA_MAX_DEPTH) {
+        setParseError({
+          type: 'error',
+          message: `Schema exceeds maximum depth of ${JSON_SCHEMA_MAX_DEPTH}.`,
+        })
+        return
+      }
       onSubmit(parsedJSON)
       setParseError(null)
+      setOpen(false)
     }
     catch (e: any) {
       if (e instanceof SyntaxError)

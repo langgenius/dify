@@ -10,6 +10,7 @@ import Card from './card'
 import { useJsonSchemaConfigStore } from '../store'
 import { useDebounceFn } from 'ahooks'
 import AddField from './add-field'
+import { JSON_SCHEMA_MAX_DEPTH } from '@/config'
 
 type SchemaNodeProps = {
   name: string
@@ -22,28 +23,28 @@ type SchemaNodeProps = {
 
 // Support 10 levels of indentation
 const indentPadding: Record<number, string> = {
-  0: 'pl-0',
-  1: 'pl-[20px]',
-  2: 'pl-[40px]',
-  3: 'pl-[60px]',
-  4: 'pl-[80px]',
-  5: 'pl-[100px]',
-  6: 'pl-[120px]',
-  7: 'pl-[140px]',
-  8: 'pl-[160px]',
-  9: 'pl-[180px]',
+  1: 'pl-0',
+  2: 'pl-[20px]',
+  3: 'pl-[40px]',
+  4: 'pl-[60px]',
+  5: 'pl-[80px]',
+  6: 'pl-[100px]',
+  7: 'pl-[120px]',
+  8: 'pl-[140px]',
+  9: 'pl-[160px]',
+  10: 'pl-[180px]',
 }
 
 const indentLeft: Record<number, string> = {
-  1: 'left-0',
-  2: 'left-[20px]',
-  3: 'left-[40px]',
-  4: 'left-[60px]',
-  5: 'left-[80px]',
-  6: 'left-[100px]',
-  7: 'left-[120px]',
-  8: 'left-[140px]',
-  9: 'left-[160px]',
+  2: 'left-0',
+  3: 'left-[20px]',
+  4: 'left-[40px]',
+  5: 'left-[60px]',
+  6: 'left-[80px]',
+  7: 'left-[100px]',
+  8: 'left-[120px]',
+  9: 'left-[140px]',
+  10: 'left-[160px]',
 }
 
 const SchemaNode: FC<SchemaNodeProps> = ({
@@ -66,7 +67,7 @@ const SchemaNode: FC<SchemaNodeProps> = ({
 
   const hasChildren = getHasChildren(schema)
   const type = getFieldType(schema)
-  const isHovering = hoveringProperty === path.join('.') && depth > 0
+  const isHovering = hoveringProperty === path.join('.') && depth > 1
 
   const handleExpand = () => {
     setIsExpanded(!isExpanded)
@@ -85,7 +86,7 @@ const SchemaNode: FC<SchemaNodeProps> = ({
   return (
     <div className='relative'>
       <div className={classNames('relative z-10', indentPadding[depth])}>
-        {depth > 0 && hasChildren && (
+        {depth > 1 && hasChildren && (
           <div className={classNames(
             'flex items-center absolute top-0 w-5 h-7 px-0.5 z-10 bg-background-section-burn',
             indentLeft[depth],
@@ -139,7 +140,7 @@ const SchemaNode: FC<SchemaNodeProps> = ({
         <Divider type='vertical' className='bg-divider-subtle mx-0' />
       </div>
 
-      {isExpanded && hasChildren && (
+      {isExpanded && hasChildren && depth < JSON_SCHEMA_MAX_DEPTH && (
         <>
           {schema.type === Type.object && schema.properties && (
             Object.entries(schema.properties).map(([key, childSchema]) => (
@@ -176,7 +177,7 @@ const SchemaNode: FC<SchemaNodeProps> = ({
       )}
 
       {
-        depth === 0 && !isAddingNewField && (
+        depth === 1 && !isAddingNewField && (
           <AddField />
         )
       }

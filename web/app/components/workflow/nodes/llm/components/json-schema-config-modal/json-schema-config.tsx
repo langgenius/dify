@@ -281,6 +281,7 @@ const JsonSchemaConfig: FC<JsonSchemaConfigProps> = ({
   })
 
   useSubscribe('fieldChange', (params) => {
+    let samePropertyNameError = false
     const { parentPath, oldFields, fields } = params as ChangeEventParams
     const newSchema = produce(jsonSchema, (draft) => {
       const parentSchema = findPropertyWithPath(draft, parentPath) as Field
@@ -295,7 +296,7 @@ const JsonSchemaConfig: FC<JsonSchemaConfigProps> = ({
               type: 'error',
               message: 'Property name already exists',
             })
-            return
+            samePropertyNameError = true
           }
 
           const newProperties = Object.entries(properties).reduce((acc, [key, value]) => {
@@ -384,8 +385,7 @@ const JsonSchemaConfig: FC<JsonSchemaConfigProps> = ({
               type: 'error',
               message: 'Property name already exists',
             })
-            emit('restorePropertyName')
-            return
+            samePropertyNameError = true
           }
 
           const newProperties = Object.entries(properties).reduce((acc, [key, value]) => {
@@ -463,6 +463,7 @@ const JsonSchemaConfig: FC<JsonSchemaConfigProps> = ({
         schema.enum = fields.enum
       }
     })
+    if (samePropertyNameError) return
     setJsonSchema(newSchema)
     emit('fieldChangeSuccess')
   })

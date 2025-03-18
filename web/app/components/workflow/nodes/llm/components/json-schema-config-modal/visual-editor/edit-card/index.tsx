@@ -14,6 +14,7 @@ import { useJsonSchemaConfigStore } from '../../store'
 import { useMittContext } from '../../context'
 import produce from 'immer'
 import { useUnmount } from 'ahooks'
+import { JSON_SCHEMA_MAX_DEPTH } from '@/config'
 
 export type EditData = {
   name: string
@@ -46,8 +47,6 @@ const TYPE_OPTIONS = [
   { value: ArrayType.object, text: 'array[object]' },
 ]
 
-const DEPTH_LIMIT = 10
-
 const EditCard: FC<EditCardProps> = ({
   fields,
   depth,
@@ -64,7 +63,7 @@ const EditCard: FC<EditCardProps> = ({
   const { emit, useSubscribe } = useMittContext()
   const blurWithActions = useRef(false)
 
-  const disableAddBtn = fields.type !== Type.object && fields.type !== ArrayType.object && depth < DEPTH_LIMIT
+  const disableAddBtn = depth >= JSON_SCHEMA_MAX_DEPTH || (fields.type !== Type.object && fields.type !== ArrayType.object)
   const hasAdvancedOptions = fields.type === Type.string || fields.type === Type.number
   const isAdvancedEditing = advancedEditing || isAddingNewField
 
