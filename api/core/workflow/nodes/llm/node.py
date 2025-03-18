@@ -197,7 +197,7 @@ class LLMNode(BaseNode[LLMNodeData]):
                 "finish_reason": finish_reason,
                 "json": {},
             }
-            if model_config.parameters.get("response_format") == "json_object":
+            if model_config.parameters.get("response_format") in ["json_object", "JSON"]:
                 try:
                     result_dict = json.loads(result_text)
                 except:
