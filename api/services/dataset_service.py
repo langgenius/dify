@@ -2158,23 +2158,15 @@ class SegmentService:
     @classmethod
     def get_child_chunk_by_id(cls, child_chunk_id: str, tenant_id: str) -> Optional[ChildChunk]:
         """Get a child chunk by its ID."""
-        return ChildChunk.query.filter(
-            ChildChunk.id == child_chunk_id,
-            ChildChunk.tenant_id == tenant_id
-        ).first()
+        return ChildChunk.query.filter(ChildChunk.id == child_chunk_id, ChildChunk.tenant_id == tenant_id).first()
 
     @classmethod
     def get_segments(
-        cls,
-        document_id: str,
-        tenant_id: str,
-        status_list: list[str] | None = None,
-        keyword: str | None = None
+        cls, document_id: str, tenant_id: str, status_list: list[str] | None = None, keyword: str | None = None
     ):
         """Get segments for a document with optional filtering."""
         query = DocumentSegment.query.filter(
-            DocumentSegment.document_id == document_id,
-            DocumentSegment.tenant_id == tenant_id
+            DocumentSegment.document_id == document_id, DocumentSegment.tenant_id == tenant_id
         )
 
         if status_list:
@@ -2190,20 +2182,11 @@ class SegmentService:
 
     @classmethod
     def update_segment_by_id(
-        cls,
-        tenant_id: str,
-        dataset_id: str,
-        document_id: str,
-        segment_id: str,
-        segment_data: dict,
-        user_id: str
+        cls, tenant_id: str, dataset_id: str, document_id: str, segment_id: str, segment_data: dict, user_id: str
     ) -> tuple[DocumentSegment, Document]:
         """Update a segment by its ID with validation and checks."""
         # check dataset
-        dataset = db.session.query(Dataset).filter(
-            Dataset.tenant_id == tenant_id,
-            Dataset.id == dataset_id
-        ).first()
+        dataset = db.session.query(Dataset).filter(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id).first()
         if not dataset:
             raise NotFound("Dataset not found.")
 
@@ -2227,28 +2210,21 @@ class SegmentService:
                 )
             except LLMBadRequestError:
                 raise ValueError(
-                    "No Embedding Model available. "
-                    "Please configure a valid provider in the Settings -> Model Provider."
+                    "No Embedding Model available. Please configure a valid provider in the Settings -> Model Provider."
                 )
             except ProviderTokenNotInitError as ex:
                 raise ValueError(ex.description)
 
         # check segment
         segment = DocumentSegment.query.filter(
-            DocumentSegment.id == segment_id,
-            DocumentSegment.tenant_id == user_id
+            DocumentSegment.id == segment_id, DocumentSegment.tenant_id == user_id
         ).first()
         if not segment:
             raise NotFound("Segment not found.")
 
         # validate and update segment
         cls.segment_create_args_validate(segment_data, document)
-        updated_segment = cls.update_segment(
-            SegmentUpdateArgs(**segment_data),
-            segment,
-            document,
-            dataset
-        )
+        updated_segment = cls.update_segment(SegmentUpdateArgs(**segment_data), segment, document, dataset)
 
         return updated_segment, document
 
@@ -2256,8 +2232,7 @@ class SegmentService:
     def get_segment_by_id(cls, segment_id: str, tenant_id: str) -> Optional[DocumentSegment]:
         """Get a segment by its ID."""
         return DocumentSegment.query.filter(
-            DocumentSegment.id == segment_id,
-            DocumentSegment.tenant_id == tenant_id
+            DocumentSegment.id == segment_id, DocumentSegment.tenant_id == tenant_id
         ).first()
 
 
