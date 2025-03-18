@@ -84,6 +84,7 @@ export type AppDetailResponse = App
 export type DSLImportResponse = {
   id: string
   status: DSLImportStatus
+  app_mode: AppMode
   app_id?: string
   current_dsl_version?: string
   imported_dsl_version?: string
