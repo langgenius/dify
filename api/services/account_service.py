@@ -55,6 +55,7 @@ from tasks.mail_account_deletion_task import send_account_deletion_verification_
 from tasks.mail_email_code_login import send_email_code_login_mail_task
 from tasks.mail_invite_member_task import send_invite_member_mail_task
 from tasks.mail_reset_password_task import send_reset_password_mail_task
+from tasks.phone_sms_code_login import send_phone_sms_code_login_task
 from werkzeug.exceptions import Unauthorized
 
 
@@ -676,7 +677,7 @@ class AccountService:
         if cls.phone_code_login_rate_limiter.is_rate_limited(phone) and not DeploymentConfig().DEBUG:
             raise Exception("Phone verification code rate limit exceeded")
 
-        if dify_config.DEBUG_CODE_FOR_LOGIN and dify_config.DEBUG_CODE_FOR_LOGIN != "":
+        if dify_config.DEBUG_CODE_FOR_LOGIN:
             code = dify_config.DEBUG_CODE_FOR_LOGIN
         else:
             code = "".join([str(random.randint(0, 9)) for _ in range(6)])
@@ -689,12 +690,11 @@ class AccountService:
             additional_data={"code": code, "phone": phone},
         )
 
-        # Here you would typically send an SMS with the code
-        # For now we'll just assume the SMS sending service exists
-        # send_phone_code_login_sms_task.delay(to=phone, code=code)
-
-        # Log SMS sending in production environment
-        logging.info(f"Phone verification code sent to {phone}")
+        if dify_config.DEBUG_CODE_FOR_LOGIN:
+            logging.info(f"Mock Code, Skip sending phone verification code to {phone}")
+        else:
+            send_phone_sms_code_login_task.delay(phone=phone, code=code)
+            logging.info(f"Phone verification code sent to {phone}")
 
         cls.phone_code_login_rate_limiter.increment_rate_limit(phone)
         return token

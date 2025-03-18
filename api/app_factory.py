@@ -44,14 +44,15 @@ def initialize_extensions(app: DifyApp):
         ext_login,
         ext_mail,
         ext_migrate,
+        ext_phone_sms,
         ext_proxy_fix,
         ext_redis,
         ext_sentry,
         ext_set_secretkey,
         ext_storage,
+        ext_swagger,
         ext_timezone,
         ext_warnings,
-        ext_swagger
     )
 
     extensions = [
@@ -70,12 +71,13 @@ def initialize_extensions(app: DifyApp):
         ext_celery,
         ext_login,
         ext_mail,
+        ext_phone_sms,
         ext_hosting_provider,
         ext_sentry,
         ext_proxy_fix,
         ext_blueprints,
         ext_commands,
-        ext_swagger
+        ext_swagger,
     ]
     for ext in extensions:
         short_name = ext.__name__.split(".")[-1]

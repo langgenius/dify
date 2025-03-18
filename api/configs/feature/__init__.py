@@ -586,6 +586,32 @@ class MailConfig(BaseSettings):
     )
 
 
+class PhoneSmsConfig(BaseSettings):
+    """
+    Configuration for phone SMS services
+    """
+
+    ALIYUN_ACCESS_KEY_ID: Optional[str] = Field(
+        description="Aliyun access key id",
+        default=None,
+    )
+
+    ALIYUN_ACCESS_KEY_SECRET: Optional[str] = Field(
+        description="Aliyun access key secret",
+        default=None,
+    )
+
+    ALIYUN_SIGN_NAME: Optional[str] = Field(
+        description="Aliyun sign name",
+        default=None,
+    )
+
+    ALIYUN_TEMPLATE_CODE: Optional[str] = Field(
+        description="Aliyun template code",
+        default=None,
+    )
+
+
 class RagEtlConfig(BaseSettings):
     """
     Configuration for RAG ETL processes
@@ -809,6 +835,7 @@ class FeatureConfig(
     ModelLoadBalanceConfig,
     ModerationConfig,
     MultiModalTransferConfig,
+    PhoneSmsConfig,
     PositionConfig,
     RagEtlConfig,
     SecurityConfig,

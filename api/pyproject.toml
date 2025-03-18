@@ -112,6 +112,7 @@ zhipuai = "~2.1.5"
 # required by main implementations
 ############################################################
 flasgger = "^0.9.7.1"
+alibabacloud-dysmsapi20170525 = "^3.1.1"
 [tool.poetry.group.indirect.dependencies]
 kaleido = "0.2.1"
 rank-bm25 = "~0.2.2"

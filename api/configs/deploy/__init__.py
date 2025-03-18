@@ -1,3 +1,5 @@
+from typing import Optional
+
 from pydantic import Field
 from pydantic_settings import BaseSettings
 
@@ -17,9 +19,9 @@ class DeploymentConfig(BaseSettings):
         default=False,
     )
 
-    DEBUG_CODE_FOR_LOGIN: str = Field(
+    DEBUG_CODE_FOR_LOGIN: Optional[str] = Field(
         description="Default code for login",
-        default="",
+        default=None,
     )
 
     EDITION: str = Field(
