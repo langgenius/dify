@@ -1,9 +1,13 @@
-import {
-  useState,
-} from 'react'
 import PureSelect from '@/app/components/base/select/pure'
 
-const InputModeSelect = () => {
+type InputModeSelectProps = {
+  value?: string
+  onChange: (value: string) => void
+}
+const InputModeSelect = ({
+  value,
+  onChange,
+}: InputModeSelectProps) => {
   const options = [
     {
       label: 'Variable',
@@ -14,15 +18,15 @@ const InputModeSelect = () => {
       value: 'constant',
     },
   ]
-  const [value, setValue] = useState('variable')
 
   return (
     <PureSelect
       options={options}
       value={value}
-      onChange={setValue}
+      onChange={onChange}
       popupProps={{
         title: 'Input Mode',
+        className: 'w-[132px]',
       }}
     />
   )

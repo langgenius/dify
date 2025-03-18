@@ -1,22 +1,25 @@
 import Empty from './empty'
 import Item from './item'
+import type {
+  LoopVariable,
+  LoopVariablesComponentShape,
+} from '@/app/components/workflow/nodes/loop/types'
 
 type LoopVariableProps = {
-  nodeId: string
-  variables: any[]
-}
+  variables?: LoopVariable[]
+} & LoopVariablesComponentShape
 const LoopVariable = ({
-  nodeId,
-  variables,
+  variables = [],
+  ...restProps
 }: LoopVariableProps) => {
   if (!variables.length)
     return <Empty />
 
-  return variables.map((variable, index) => (
+  return variables.map(variable => (
     <Item
-      key={index}
-      nodeId={nodeId}
+      key={variable.id}
       item={variable}
+      {...restProps}
     />
   ))
 }

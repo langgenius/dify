@@ -256,6 +256,11 @@ export enum VarType {
   any = 'any',
 }
 
+export enum ValueType {
+  variable = 'variable',
+  constant = 'constant',
+}
+
 export type Var = {
   variable: string
   type: VarType

@@ -46,6 +46,9 @@ const Panel: FC<NodePanelProps<LoopNodeType>> = ({
     handleUpdateSubVariableCondition,
     handleToggleSubVariableConditionLogicalOperator,
     handleUpdateLoopCount,
+    handleAddLoopVariable,
+    handleRemoveLoopVariable,
+    handleUpdateLoopVariable,
   } = useConfig(id, data)
 
   const nodeInfo = formatTracing(loopRunResult, t)[0]
@@ -57,15 +60,20 @@ const Panel: FC<NodePanelProps<LoopNodeType>> = ({
         <Field
           title={<div className='pl-3'>Loop  Variables</div>}
           operations={
-            <div className='flex items-center justify-center mr-4 w-5 h-5 cursor-pointer'>
+            <div
+              className='flex items-center justify-center mr-4 w-5 h-5 cursor-pointer'
+              onClick={handleAddLoopVariable}
+            >
               <RiAddLine className='w-4 h-4 text-text-tertiary' />
             </div>
           }
         >
-          <div className='px-4 pb-2'>
+          <div className='px-4'>
             <LoopVariable
+              variables={inputs.loop_variables}
               nodeId={id}
-              variables={[]}
+              handleRemoveLoopVariable={handleRemoveLoopVariable}
+              handleUpdateLoopVariable={handleUpdateLoopVariable}
             />
           </div>
         </Field>

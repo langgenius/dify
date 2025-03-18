@@ -34,7 +34,9 @@ type PureSelectProps = {
     className?: string
   },
   popupProps?: {
+    wrapperClassName?: string
     className?: string
+    itemClassName?: string
     title?: string
   },
 }
@@ -57,7 +59,9 @@ const PureSelect = ({
     className: triggerClassName,
   } = triggerProps || {}
   const {
+    wrapperClassName: popupWrapperClassName,
     className: popupClassName,
+    itemClassName: popupItemClassName,
     title: popupTitle,
   } = popupProps || {}
 
@@ -70,6 +74,7 @@ const PureSelect = ({
   }, [onOpenChange])
 
   const selectedOption = options.find(option => option.value === value)
+  const triggerText = selectedOption?.label || t('common.placeholder.select')
 
   return (
     <PortalToFollowElem
@@ -84,21 +89,29 @@ const PureSelect = ({
       >
         <div
           className={cn(
-            'group flex items-center px-2 h-8 bg-components-input-bg-normal hover:bg-state-base-hover-alt rounded-lg',
+            'group flex items-center px-2 h-8 bg-components-input-bg-normal hover:bg-state-base-hover-alt rounded-lg system-sm-regular text-components-input-text-filled cursor-pointer',
             mergedOpen && 'bg-state-base-hover-alt',
             triggerClassName,
           )}
         >
-          {selectedOption?.label || t('common.placeholder.select')}
+          <div
+            className='grow'
+            title={triggerText}
+          >
+            {triggerText}
+          </div>
           <RiArrowDownSLine
             className={cn(
-              'group-hover:text-text-secondary w-4 h-4 text-text-quaternary',
+              'shrink-0 group-hover:text-text-secondary w-4 h-4 text-text-quaternary',
               mergedOpen && 'text-text-secondary',
             )}
           />
         </div>
       </PortalToFollowElemTrigger>
-      <PortalToFollowElemContent>
+      <PortalToFollowElemContent className={cn(
+        'z-10',
+        popupWrapperClassName,
+      )}>
         <div
           className={cn(
             'p-1 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg',
@@ -116,11 +129,17 @@ const PureSelect = ({
             options.map(option => (
               <div
                 key={option.value}
-                className='flex items-center px-2 h-8 hover:bg-state-base-hover rounded-lg cursor-pointer'
+                className={cn(
+                  'flex items-center px-2 h-8 hover:bg-state-base-hover rounded-lg cursor-pointer system-sm-medium text-text-secondary',
+                  popupItemClassName,
+                )}
                 title={option.label}
-                onClick={() => onChange?.(option.value)}
+                onClick={() => {
+                  onChange?.(option.value)
+                  handleOpenChange(false)
+                }}
               >
-                <div className='grow truncate'>
+                <div className='grow mr-1 px-1 truncate'>
                   {option.label}
                 </div>
                 {
