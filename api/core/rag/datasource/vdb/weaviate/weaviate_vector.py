@@ -168,16 +168,16 @@ class WeaviateVector(BaseVector):
         # check whether the index already exists
         schema = self._default_schema(self._collection_name)
         if self._client.schema.contains(schema):
-            try:
-                self._client.batch.delete_objects(
-                    class_name=self._collection_name,
-                    where={"operator": "ContainsAny", "path": ["id"], "valueTextArray": ids},
-                    output="minimal",
-                )
-            except weaviate.UnexpectedStatusCodeException as e:
-                # tolerate not found error
-                if e.status_code != 404:
-                    raise e
+            for uuid in ids:
+                try:
+                    self._client.data_object.delete(
+                        class_name=self._collection_name,
+                        uuid=uuid,
+                    )
+                except weaviate.UnexpectedStatusCodeException as e:
+                    # tolerate not found error
+                    if e.status_code != 404:
+                        raise e
 
     def search_by_vector(self, query_vector: list[float], **kwargs: Any) -> list[Document]:
         """Look up similar documents by embedding vector in Weaviate."""
