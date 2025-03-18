@@ -81,31 +81,6 @@ class MessageBasedAppGenerator(BaseAppGenerator):
                 logger.exception(f"Failed to handle response, conversation_id: {conversation.id}")
                 raise e
 
-    def _get_conversation_by_user(
-        self, app_model: App, conversation_id: str, user: Union[Account, EndUser]
-    ) -> Conversation:
-        conversation_filter = [
-            Conversation.id == conversation_id,
-            Conversation.app_id == app_model.id,
-            Conversation.status == "normal",
-            Conversation.is_deleted.is_(False),
-        ]
-
-        if isinstance(user, Account):
-            conversation_filter.append(Conversation.from_account_id == user.id)
-        else:
-            conversation_filter.append(Conversation.from_end_user_id == user.id if user else None)
-
-        conversation = db.session.query(Conversation).filter(and_(*conversation_filter)).first()
-
-        if not conversation:
-            raise ConversationNotExistsError()
-
-        if conversation.status != "normal":
-            raise ConversationCompletedError()
-
-        return conversation
-
     def _get_app_model_config(self, app_model: App, conversation: Optional[Conversation] = None) -> AppModelConfig:
         if conversation:
             app_model_config = (

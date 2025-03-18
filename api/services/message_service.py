@@ -210,12 +210,6 @@ class MessageService:
             app_model=app_model, conversation_id=message.conversation_id, user=user
         )
 
-        if not conversation:
-            raise ConversationNotExistsError()
-
-        if conversation.status != "normal":
-            raise ConversationCompletedError()
-
         model_manager = ModelManager()
 
         if app_model.mode == AppMode.ADVANCED_CHAT.value:
