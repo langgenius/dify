@@ -5,6 +5,8 @@ import classNames from '@/utils/classnames'
 import { Editor } from '@monaco-editor/react'
 import { RiClipboardLine, RiIndentIncrease } from '@remixicon/react'
 import copy from 'copy-to-clipboard'
+import Tooltip from '@/app/components/base/tooltip'
+import { useTranslation } from 'react-i18next'
 
 type CodeEditorProps = {
   value: string
@@ -22,6 +24,7 @@ const CodeEditor: FC<CodeEditorProps> = ({
   readOnly = false,
   className,
 }) => {
+  const { t } = useTranslation()
   const { theme } = useTheme()
   const monacoRef = useRef<any>(null)
   const editorRef = useRef<any>(null)
@@ -79,20 +82,24 @@ const CodeEditor: FC<CodeEditorProps> = ({
         </div>
         <div className='flex items-center gap-x-0.5'>
           {showFormatButton && (
+            <Tooltip popupContent={t('common.operation.format')}>
+              <button
+                type='button'
+                className='flex items-center justify-center h-6 w-6'
+                onClick={formatJsonContent}
+              >
+                <RiIndentIncrease className='w-4 h-4 text-text-tertiary' />
+              </button>
+            </Tooltip>
+          )}
+          <Tooltip popupContent={t('common.operation.copy')}>
             <button
               type='button'
               className='flex items-center justify-center h-6 w-6'
-              onClick={formatJsonContent}
-            >
-              <RiIndentIncrease className='w-4 h-4 text-text-tertiary' />
+              onClick={() => copy(value)}>
+              <RiClipboardLine className='w-4 h-4 text-text-tertiary' />
             </button>
-          )}
-          <button
-            type='button'
-            className='flex items-center justify-center h-6 w-6'
-            onClick={() => copy(value)}>
-            <RiClipboardLine className='w-4 h-4 text-text-tertiary' />
-          </button>
+          </Tooltip>
         </div>
       </div>
       <div className={classNames('relative', editorWrapperClassName)}>

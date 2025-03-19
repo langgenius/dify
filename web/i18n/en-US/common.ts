@@ -54,6 +54,7 @@ const translation = {
     regenerate: 'Regenerate',
     submit: 'Submit',
     skip: 'Skip',
+    format: 'Format',
   },
   errorMsg: {
     fieldRequired: '{{field}} is required',

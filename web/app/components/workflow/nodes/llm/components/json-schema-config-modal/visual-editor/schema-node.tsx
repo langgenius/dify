@@ -1,5 +1,5 @@
 import type { FC } from 'react'
-import React, { useState } from 'react'
+import React, { useMemo, useState } from 'react'
 import { type Field, Type } from '../../../types'
 import classNames from '@/utils/classnames'
 import { RiArrowDropDownLine, RiArrowDropRightLine } from '@remixicon/react'
@@ -65,8 +65,8 @@ const SchemaNode: FC<SchemaNodeProps> = ({
     setHoveringProperty(path)
   }, { wait: 50 })
 
-  const hasChildren = getHasChildren(schema)
-  const type = getFieldType(schema)
+  const hasChildren = useMemo(() => getHasChildren(schema), [schema])
+  const type = useMemo(() => getFieldType(schema), [schema])
   const isHovering = hoveringProperty === path.join('.') && depth > 1
 
   const handleExpand = () => {
@@ -137,7 +137,10 @@ const SchemaNode: FC<SchemaNodeProps> = ({
         schema.description ? 'h-[calc(100%-3rem)]' : 'h-[calc(100%-1.75rem)]',
         indentLeft[depth + 1],
       )}>
-        <Divider type='vertical' className='bg-divider-subtle mx-0' />
+        <Divider
+          type='vertical'
+          className={classNames('mx-0', isHovering ? 'bg-divider-deep' : 'bg-divider-subtle')}
+        />
       </div>
 
       {isExpanded && hasChildren && depth < JSON_SCHEMA_MAX_DEPTH && (

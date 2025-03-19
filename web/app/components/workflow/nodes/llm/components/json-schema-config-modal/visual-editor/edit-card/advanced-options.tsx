@@ -75,4 +75,4 @@ const AdvancedOptions: FC<AdvancedOptionsProps> = ({
   )
 }
 
-export default AdvancedOptions
+export default React.memo(AdvancedOptions)

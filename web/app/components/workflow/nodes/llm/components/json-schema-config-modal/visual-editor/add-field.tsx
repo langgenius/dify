@@ -1,8 +1,8 @@
+import React, { useCallback } from 'react'
 import Button from '@/app/components/base/button'
 import { RiAddCircleFill } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
 import { useVisualEditorStore } from './store'
-import { useCallback } from 'react'
 import { useMittContext } from './context'
 
 const AddField = () => {
@@ -30,4 +30,4 @@ const AddField = () => {
   )
 }
 
-export default AddField
+export default React.memo(AddField)

@@ -12,7 +12,6 @@ import { useTranslation } from 'react-i18next'
 import classNames from '@/utils/classnames'
 import { useVisualEditorStore } from '../store'
 import { useMittContext } from '../context'
-import produce from 'immer'
 import { useUnmount } from 'ahooks'
 import { JSON_SCHEMA_MAX_DEPTH } from '@/config'
 
@@ -63,13 +62,16 @@ const EditCard: FC<EditCardProps> = ({
   const { emit, useSubscribe } = useMittContext()
   const blurWithActions = useRef(false)
 
-  const disableAddBtn = depth >= JSON_SCHEMA_MAX_DEPTH || (fields.type !== Type.object && fields.type !== ArrayType.object)
-  const hasAdvancedOptions = fields.type === Type.string || fields.type === Type.number
+  const disableAddBtn = depth >= JSON_SCHEMA_MAX_DEPTH || (currentFields.type !== Type.object && currentFields.type !== ArrayType.object)
+  const hasAdvancedOptions = currentFields.type === Type.string || currentFields.type === Type.number
   const isAdvancedEditing = advancedEditing || isAddingNewField
 
   const advancedOptions = useMemo(() => {
-    return { enum: (currentFields.enum || []).join(', ') }
-  }, [currentFields.enum])
+    let enumValue = ''
+    if (currentFields.type === Type.string || currentFields.type === Type.number)
+      enumValue = (currentFields.enum || []).join(', ')
+    return { enum: enumValue }
+  }, [currentFields.type, currentFields.enum])
 
   useSubscribe('restorePropertyName', () => {
     setCurrentFields(prev => ({ ...prev, name: fields.name }))
@@ -83,19 +85,13 @@ const EditCard: FC<EditCardProps> = ({
     setAdvancedEditing(false)
   })
 
-  const emitPropertyNameChange = useCallback((name: string) => {
-    const newFields = produce(fields, (draft) => {
-      draft.name = name
-    })
-    emit('propertyNameChange', { path, parentPath, oldFields: fields, fields: newFields })
-  }, [fields, path, parentPath, emit])
+  const emitPropertyNameChange = useCallback(() => {
+    emit('propertyNameChange', { path, parentPath, oldFields: fields, fields: currentFields })
+  }, [fields, currentFields, path, parentPath, emit])
 
-  const emitPropertyTypeChange = useCallback((type: Type | ArrayType) => {
-    const newFields = produce(fields, (draft) => {
-      draft.type = type
-    })
-    emit('propertyTypeChange', { path, parentPath, oldFields: fields, fields: newFields })
-  }, [fields, path, parentPath, emit])
+  const emitPropertyTypeChange = useCallback(() => {
+    emit('propertyTypeChange', { path, parentPath, oldFields: fields, fields: currentFields })
+  }, [fields, currentFields, path, parentPath, emit])
 
   const emitPropertyRequiredToggle = useCallback(() => {
     emit('propertyRequiredToggle', { path, parentPath, oldFields: fields, fields: currentFields })
@@ -121,15 +117,15 @@ const EditCard: FC<EditCardProps> = ({
     setCurrentFields(prev => ({ ...prev, name: e.target.value }))
   }, [])
 
-  const handlePropertyNameBlur = useCallback((e: React.FocusEvent<HTMLInputElement>) => {
+  const handlePropertyNameBlur = useCallback(() => {
     if (isAdvancedEditing) return
-    emitPropertyNameChange(e.target.value)
+    emitPropertyNameChange()
   }, [isAdvancedEditing, emitPropertyNameChange])
 
   const handleTypeChange = useCallback((item: TypeItem) => {
     setCurrentFields(prev => ({ ...prev, type: item.value }))
     if (isAdvancedEditing) return
-    emitPropertyTypeChange(item.value)
+    emitPropertyTypeChange()
   }, [isAdvancedEditing, emitPropertyTypeChange])
 
   const toggleRequired = useCallback(() => {
@@ -142,16 +138,17 @@ const EditCard: FC<EditCardProps> = ({
     setCurrentFields(prev => ({ ...prev, description: e.target.value }))
   }, [])
 
-  const handleDescriptionBlur = useCallback((e: React.FocusEvent<HTMLInputElement>) => {
+  const handleDescriptionBlur = useCallback(() => {
     if (isAdvancedEditing) return
-    emitPropertyOptionsChange({ description: e.target.value, enum: fields.enum })
-  }, [isAdvancedEditing, emitPropertyOptionsChange, fields])
+    emitPropertyOptionsChange({ description: currentFields.description, enum: currentFields.enum })
+  }, [isAdvancedEditing, emitPropertyOptionsChange, currentFields])
 
   const handleAdvancedOptionsChange = useCallback((options: AdvancedOptionsType) => {
+    const enumValue = options.enum.replace(/\s/g, '').split(',')
+    setCurrentFields(prev => ({ ...prev, enum: enumValue }))
     if (isAdvancedEditing) return
-    const enumValue = options.enum.replace(' ', '').split(',')
-    emitPropertyOptionsChange({ description: fields.description, enum: enumValue })
-  }, [isAdvancedEditing, emitPropertyOptionsChange, fields])
+    emitPropertyOptionsChange({ description: currentFields.description, enum: enumValue })
+  }, [isAdvancedEditing, emitPropertyOptionsChange, currentFields])
 
   const handleDelete = useCallback(() => {
     blurWithActions.current = true
