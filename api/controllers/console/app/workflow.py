@@ -6,11 +6,15 @@ from flask import abort, request
 from flask_restful import Resource, inputs, marshal_with, reqparse  # type: ignore
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden, InternalServerError, NotFound
-
+from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
 import services
 from configs import dify_config
 from controllers.console import api
-from controllers.console.app.error import ConversationCompletedError, DraftWorkflowNotExist, DraftWorkflowNotSync
+from controllers.console.app.error import (
+    ConversationCompletedError,
+    DraftWorkflowNotExist,
+    DraftWorkflowNotSync,
+)
 from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import account_initialization_required, setup_required
 from core.app.apps.base_app_queue_manager import AppQueueManager
@@ -28,6 +32,7 @@ from models.model import AppMode
 from services.app_generate_service import AppGenerateService
 from services.errors.app import WorkflowHashNotEqualError
 from services.workflow_service import DraftWorkflowDeletionError, WorkflowInUseError, WorkflowService
+from services.errors.llm import InvokeRateLimitError
 
 logger = logging.getLogger(__name__)
 
@@ -168,6 +173,8 @@ class AdvancedChatDraftWorkflowRunApi(Resource):
             raise NotFound("Conversation Not Exists.")
         except services.errors.conversation.ConversationCompletedError:
             raise ConversationCompletedError()
+        except InvokeRateLimitError as ex:
+            raise InvokeRateLimitHttpError(ex.description)
         except ValueError as e:
             raise e
         except Exception:
@@ -344,15 +351,18 @@ class DraftWorkflowRunApi(Resource):
         parser.add_argument("files", type=list, required=False, location="json")
         args = parser.parse_args()
 
-        response = AppGenerateService.generate(
-            app_model=app_model,
-            user=current_user,
-            args=args,
-            invoke_from=InvokeFrom.DEBUGGER,
-            streaming=True,
-        )
+        try:
+            response = AppGenerateService.generate(
+                app_model=app_model,
+                user=current_user,
+                args=args,
+                invoke_from=InvokeFrom.DEBUGGER,
+                streaming=True,
+            )
 
-        return helper.compact_generate_response(response)
+            return helper.compact_generate_response(response)
+        except InvokeRateLimitError as ex:
+            raise InvokeRateLimitHttpError(ex.description)
 
 
 class WorkflowTaskStopApi(Resource):

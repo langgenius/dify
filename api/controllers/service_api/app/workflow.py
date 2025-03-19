@@ -30,6 +30,8 @@ from models.model import App, AppMode, EndUser
 from models.workflow import WorkflowRun, WorkflowRunStatus
 from services.app_generate_service import AppGenerateService
 from services.workflow_app_service import WorkflowAppService
+from services.errors.llm import InvokeRateLimitError
+from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
 
 logger = logging.getLogger(__name__)
 
@@ -93,11 +95,13 @@ class WorkflowRunApi(Resource):
             raise ProviderQuotaExceededError()
         except ModelCurrentlyNotSupportError:
             raise ProviderModelCurrentlyNotSupportError()
+        except InvokeRateLimitError as ex:
+            raise InvokeRateLimitHttpError(ex.description)
         except InvokeError as e:
             raise CompletionRequestError(e.description)
         except ValueError as e:
             raise e
-        except Exception as e:
+        except Exception:
             logging.exception("internal server error.")
             raise InternalServerError()
 

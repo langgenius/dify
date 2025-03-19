@@ -27,6 +27,8 @@ from libs import helper
 from libs.helper import uuid_value
 from models.model import App, AppMode, EndUser
 from services.app_generate_service import AppGenerateService
+from services.errors.llm import InvokeRateLimitError
+from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
 
 
 class CompletionApi(Resource):
@@ -75,7 +77,7 @@ class CompletionApi(Resource):
             raise CompletionRequestError(e.description)
         except ValueError as e:
             raise e
-        except Exception as e:
+        except Exception:
             logging.exception("internal server error.")
             raise InternalServerError()
 
@@ -130,11 +132,13 @@ class ChatApi(Resource):
             raise ProviderQuotaExceededError()
         except ModelCurrentlyNotSupportError:
             raise ProviderModelCurrentlyNotSupportError()
+        except InvokeRateLimitError as ex:
+            raise InvokeRateLimitHttpError(ex.description)
         except InvokeError as e:
             raise CompletionRequestError(e.description)
         except ValueError as e:
             raise e
-        except Exception as e:
+        except Exception:
             logging.exception("internal server error.")
             raise InternalServerError()
 
