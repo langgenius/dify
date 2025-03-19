@@ -15,7 +15,6 @@ from ..enums import SystemVariableKey
 
 VariableValue = Union[str, int, float, dict, list, File]
 
-
 VARIABLE_PATTERN = re.compile(r"\{\{#([a-zA-Z0-9_]{1,50}(?:\.[a-zA-Z_][a-zA-Z0-9_]{0,29}){1,10})#\}\}")
 
 
@@ -131,7 +130,7 @@ class VariablePool(BaseModel):
             if attr not in {item.value for item in FileAttribute}:
                 return None
             value = self.get(selector)
-            if not isinstance(value, (FileSegment, NoneSegment)):
+            if not isinstance(value, FileSegment | NoneSegment):
                 return None
             if isinstance(value, FileSegment):
                 attr = FileAttribute(attr)

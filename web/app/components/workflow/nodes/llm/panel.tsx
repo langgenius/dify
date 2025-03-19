@@ -103,7 +103,7 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
       )
     }
 
-    if (isVisionModel && data.vision.enabled && data.vision.configs?.variable_selector) {
+    if (isVisionModel && data.vision?.enabled && data.vision?.configs?.variable_selector) {
       const currentVariable = findVariableWhenOnLLMVision(data.vision.configs.variable_selector, availableVars)
 
       forms.push(
