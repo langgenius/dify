@@ -44,6 +44,8 @@ import Pagination from '@/app/components/base/pagination'
 import Checkbox from '@/app/components/base/checkbox'
 import { useDocumentArchive, useDocumentDelete, useDocumentDisable, useDocumentEnable, useDocumentUnArchive, useSyncDocument, useSyncWebsite } from '@/service/knowledge/use-document'
 import { extensionToFileType } from '@/app/components/datasets/hit-testing/utils/extension-to-file-type'
+import useBatchEditDocumentMetadata from '../metadata/hooks/use-batch-edit-document-metadata'
+import EditMetadataBatchModal from '@/app/components/datasets/metadata/edit-metadata-batch/modal'
 
 export const useIndexStatus = () => {
   const { t } = useTranslation()
@@ -106,7 +108,8 @@ export const StatusItem: FC<{
     const [e] = await asyncRunSafe<CommonResponse>(opApi({ datasetId, documentId: id }) as Promise<CommonResponse>)
     if (!e) {
       notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
-      onUpdate?.(operationName)
+      onUpdate?.()
+      // onUpdate?.(operationName)
     }
     else { notify({ type: 'error', message: t('common.actionMsg.modifiedUnsuccessfully') }) }
   }
@@ -400,6 +403,7 @@ type IDocumentListProps = {
   datasetId: string
   pagination: PaginationProps
   onUpdate: () => void
+  onManageMetadata: () => void
 }
 
 /**
@@ -413,6 +417,7 @@ const DocumentList: FC<IDocumentListProps> = ({
   datasetId,
   pagination,
   onUpdate,
+  onManageMetadata,
 }) => {
   const { t } = useTranslation()
   const { formatTime } = useTimestamp()
@@ -423,6 +428,17 @@ const DocumentList: FC<IDocumentListProps> = ({
   const isQAMode = chunkingMode === ChunkingMode.qa
   const [localDocs, setLocalDocs] = useState<LocalDoc[]>(documents)
   const [enableSort, setEnableSort] = useState(true)
+  const {
+    isShowEditModal,
+    showEditModal,
+    hideEditModal,
+    originalList,
+    handleSave,
+  } = useBatchEditDocumentMetadata({
+    datasetId,
+    docList: documents.filter(item => selectedIds.includes(item.id)),
+    onUpdate,
+  })
 
   useEffect(() => {
     setLocalDocs(documents)
@@ -499,121 +515,125 @@ const DocumentList: FC<IDocumentListProps> = ({
   }
 
   return (
-    <div className='relative w-full h-full overflow-x-auto'>
-      <table className={`min-w-[700px] max-w-full w-full border-collapse border-0 text-sm mt-3 ${s.documentTable}`}>
-        <thead className="h-8 leading-8 border-b border-divider-subtle text-text-tertiary font-medium text-xs uppercase">
-          <tr>
-            <td className='w-12'>
-              <div className='flex items-center' onClick={e => e.stopPropagation()}>
-                <Checkbox
-                  className='shrink-0 mr-2'
-                  checked={isAllSelected}
-                  mixed={!isAllSelected && isSomeSelected}
-                  onCheck={onSelectedAll}
-                />
-                #
-              </div>
-            </td>
-            <td>
-              <div className='flex'>
-                {t('datasetDocuments.list.table.header.fileName')}
-              </div>
-            </td>
-            <td className='w-[130px]'>{t('datasetDocuments.list.table.header.chunkingMode')}</td>
-            <td className='w-24'>{t('datasetDocuments.list.table.header.words')}</td>
-            <td className='w-44'>{t('datasetDocuments.list.table.header.hitCount')}</td>
-            <td className='w-44'>
-              <div className='flex items-center' onClick={onClickSort}>
-                {t('datasetDocuments.list.table.header.uploadTime')}
-                <ArrowDownIcon className={cn('ml-0.5 h-3 w-3 stroke-current stroke-2 cursor-pointer', enableSort ? 'text-text-tertiary' : 'text-text-disabled')} />
-              </div>
-            </td>
-            <td className='w-40'>{t('datasetDocuments.list.table.header.status')}</td>
-            <td className='w-20'>{t('datasetDocuments.list.table.header.action')}</td>
-          </tr>
-        </thead>
-        <tbody className="text-text-secondary">
-          {localDocs.map((doc, index) => {
-            const isFile = doc.data_source_type === DataSourceType.FILE
-            const fileType = isFile ? doc.data_source_detail_dict?.upload_file?.extension : ''
-            return <tr
-              key={doc.id}
-              className={'border-b border-divider-subtle h-8 hover:bg-background-default-hover cursor-pointer'}
-              onClick={() => {
-                router.push(`/datasets/${datasetId}/documents/${doc.id}`)
-              }}>
-              <td className='text-left align-middle text-text-tertiary text-xs'>
+    <div className='flex flex-col relative w-full h-full'>
+      <div className='relative grow overflow-x-auto'>
+        <table className={`min-w-[700px] max-w-full w-full border-collapse border-0 text-sm mt-3 ${s.documentTable}`}>
+          <thead className="h-8 leading-8 border-b border-divider-subtle text-text-tertiary font-medium text-xs uppercase">
+            <tr>
+              <td className='w-12'>
                 <div className='flex items-center' onClick={e => e.stopPropagation()}>
-                  <Checkbox
-                    className='shrink-0 mr-2'
-                    checked={selectedIds.includes(doc.id)}
-                    onCheck={() => {
-                      onSelectedIdChange(
-                        selectedIds.includes(doc.id)
-                          ? selectedIds.filter(id => id !== doc.id)
-                          : [...selectedIds, doc.id],
-                      )
-                    }}
-                  />
-                  {/* {doc.position} */}
-                  {index + 1}
+                  {embeddingAvailable && (
+                    <Checkbox
+                      className='shrink-0 mr-2'
+                      checked={isAllSelected}
+                      mixed={!isAllSelected && isSomeSelected}
+                      onCheck={onSelectedAll}
+                    />
+                  )}
+                  #
                 </div>
               </td>
               <td>
-                <div className={'group flex items-center mr-6 hover:mr-0 max-w-[460px]'}>
-                  <div className='shrink-0'>
-                    {doc?.data_source_type === DataSourceType.NOTION && <NotionIcon className='inline-flex -mt-[3px] mr-1.5 align-middle' type='page' src={doc.data_source_info.notion_page_icon} />}
-                    {doc?.data_source_type === DataSourceType.FILE && <FileTypeIcon type={extensionToFileType(doc?.data_source_info?.upload_file?.extension ?? fileType)} className='mr-1.5' />}
-                    {doc?.data_source_type === DataSourceType.WEB && <Globe01 className='inline-flex -mt-[3px] mr-1.5 align-middle' />}
-                  </div>
-                  <span className='text-sm truncate grow-1'>{doc.name}</span>
-                  <div className='group-hover:flex group-hover:ml-auto hidden shrink-0'>
-                    <Tooltip
-                      popupContent={t('datasetDocuments.list.table.rename')}
-                    >
-                      <div
-                        className='p-1 rounded-md cursor-pointer hover:bg-state-base-hover'
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          handleShowRenameModal(doc)
-                        }}
-                      >
-                        <RiEditLine className='w-4 h-4 text-text-tertiary' />
-                      </div>
-                    </Tooltip>
-                  </div>
+                <div className='flex'>
+                  {t('datasetDocuments.list.table.header.fileName')}
                 </div>
               </td>
-              <td>
-                <ChunkingModeLabel
-                  isGeneralMode={isGeneralMode}
-                  isQAMode={isQAMode}
-                />
+              <td className='w-[130px]'>{t('datasetDocuments.list.table.header.chunkingMode')}</td>
+              <td className='w-24'>{t('datasetDocuments.list.table.header.words')}</td>
+              <td className='w-44'>{t('datasetDocuments.list.table.header.hitCount')}</td>
+              <td className='w-44'>
+                <div className='flex items-center' onClick={onClickSort}>
+                  {t('datasetDocuments.list.table.header.uploadTime')}
+                  <ArrowDownIcon className={cn('ml-0.5 h-3 w-3 stroke-current stroke-2 cursor-pointer', enableSort ? 'text-text-tertiary' : 'text-text-disabled')} />
+                </div>
               </td>
-              <td>{renderCount(doc.word_count)}</td>
-              <td>{renderCount(doc.hit_count)}</td>
-              <td className='text-text-secondary text-[13px]'>
-                {formatTime(doc.created_at, t('datasetHitTesting.dateTimeFormat') as string)}
-              </td>
-              <td>
-                {
-                  (['indexing', 'splitting', 'parsing', 'cleaning'].includes(doc.indexing_status) && doc?.data_source_type === DataSourceType.NOTION)
-                    ? <ProgressBar percent={doc.percent || 0} />
-                    : <StatusItem status={doc.display_status} />
-                }
-              </td>
-              <td>
-                <OperationAction
-                  embeddingAvailable={embeddingAvailable}
-                  datasetId={datasetId}
-                  detail={pick(doc, ['name', 'enabled', 'archived', 'id', 'data_source_type', 'doc_form'])}
-                  onUpdate={onUpdate}
-                />
-              </td>
+              <td className='w-40'>{t('datasetDocuments.list.table.header.status')}</td>
+              <td className='w-20'>{t('datasetDocuments.list.table.header.action')}</td>
             </tr>
-          })}
-        </tbody>
-      </table>
+          </thead>
+          <tbody className="text-text-secondary">
+            {localDocs.map((doc, index) => {
+              const isFile = doc.data_source_type === DataSourceType.FILE
+              const fileType = isFile ? doc.data_source_detail_dict?.upload_file?.extension : ''
+              return <tr
+                key={doc.id}
+                className={'border-b border-divider-subtle h-8 hover:bg-background-default-hover cursor-pointer'}
+                onClick={() => {
+                  router.push(`/datasets/${datasetId}/documents/${doc.id}`)
+                }}>
+                <td className='text-left align-middle text-text-tertiary text-xs'>
+                  <div className='flex items-center' onClick={e => e.stopPropagation()}>
+                    <Checkbox
+                      className='shrink-0 mr-2'
+                      checked={selectedIds.includes(doc.id)}
+                      onCheck={() => {
+                        onSelectedIdChange(
+                          selectedIds.includes(doc.id)
+                            ? selectedIds.filter(id => id !== doc.id)
+                            : [...selectedIds, doc.id],
+                        )
+                      }}
+                    />
+                    {/* {doc.position} */}
+                    {index + 1}
+                  </div>
+                </td>
+                <td>
+                  <div className={'group flex items-center mr-6 hover:mr-0 max-w-[460px]'}>
+                    <div className='shrink-0'>
+                      {doc?.data_source_type === DataSourceType.NOTION && <NotionIcon className='inline-flex mt-[-3px] mr-1.5 align-middle' type='page' src={doc.data_source_info.notion_page_icon} />}
+                      {doc?.data_source_type === DataSourceType.FILE && <FileTypeIcon type={extensionToFileType(doc?.data_source_info?.upload_file?.extension ?? fileType)} className='mr-1.5' />}
+                      {doc?.data_source_type === DataSourceType.WEB && <Globe01 className='inline-flex mt-[-3px] mr-1.5 align-middle' />}
+                    </div>
+                    <span className='text-sm truncate grow-1'>{doc.name}</span>
+                    <div className='group-hover:flex group-hover:ml-auto hidden shrink-0'>
+                      <Tooltip
+                        popupContent={t('datasetDocuments.list.table.rename')}
+                      >
+                        <div
+                          className='p-1 rounded-md cursor-pointer hover:bg-state-base-hover'
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            handleShowRenameModal(doc)
+                          }}
+                        >
+                          <RiEditLine className='w-4 h-4 text-text-tertiary' />
+                        </div>
+                      </Tooltip>
+                    </div>
+                  </div>
+                </td>
+                <td>
+                  <ChunkingModeLabel
+                    isGeneralMode={isGeneralMode}
+                    isQAMode={isQAMode}
+                  />
+                </td>
+                <td>{renderCount(doc.word_count)}</td>
+                <td>{renderCount(doc.hit_count)}</td>
+                <td className='text-text-secondary text-[13px]'>
+                  {formatTime(doc.created_at, t('datasetHitTesting.dateTimeFormat') as string)}
+                </td>
+                <td>
+                  {
+                    (['indexing', 'splitting', 'parsing', 'cleaning'].includes(doc.indexing_status) && doc?.data_source_type === DataSourceType.NOTION)
+                      ? <ProgressBar percent={doc.percent || 0} />
+                      : <StatusItem status={doc.display_status} />
+                  }
+                </td>
+                <td>
+                  <OperationAction
+                    embeddingAvailable={embeddingAvailable}
+                    datasetId={datasetId}
+                    detail={pick(doc, ['name', 'enabled', 'archived', 'id', 'data_source_type', 'doc_form'])}
+                    onUpdate={onUpdate}
+                  />
+                </td>
+              </tr>
+            })}
+          </tbody>
+        </table>
+      </div>
       {(selectedIds.length > 0) && (
         <BatchAction
           className='absolute left-0 bottom-16 z-20'
@@ -622,16 +642,17 @@ const DocumentList: FC<IDocumentListProps> = ({
           onBatchEnable={handleAction(DocumentActionType.enable)}
           onBatchDisable={handleAction(DocumentActionType.disable)}
           onBatchDelete={handleAction(DocumentActionType.delete)}
+          onEditMetadata={showEditModal}
           onCancel={() => {
             onSelectedIdChange([])
           }}
         />
       )}
       {/* Show Pagination only if the total is more than the limit */}
-      {pagination.total && pagination.total > (pagination.limit || 10) && (
+      {pagination.total && (
         <Pagination
           {...pagination}
-          className='absolute bottom-0 left-0 w-full px-0 pb-0'
+          className='shrink-0 w-full px-0 pb-0'
         />
       )}
 
@@ -642,6 +663,20 @@ const DocumentList: FC<IDocumentListProps> = ({
           name={currDocument.name}
           onClose={setShowRenameModalFalse}
           onSaved={handleRenamed}
+        />
+      )}
+
+      {isShowEditModal && (
+        <EditMetadataBatchModal
+          datasetId={datasetId}
+          documentNum={selectedIds.length}
+          list={originalList}
+          onSave={handleSave}
+          onHide={hideEditModal}
+          onShowManage={() => {
+            hideEditModal()
+            onManageMetadata()
+          }}
         />
       )}
     </div>

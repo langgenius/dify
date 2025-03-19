@@ -156,7 +156,7 @@ export default function AppSelector({ isMobile }: IAppSelector) {
                         className={classNames(itemClassName, 'group justify-between',
                           active && 'bg-state-base-hover',
                         )}
-                        href='https://github.com/langgenius/dify/stargazers'
+                        href='https://github.com/langgenius/dify'
                         target='_blank' rel='noopener noreferrer'>
                         <RiGithubLine className='shrink-0 size-4 text-text-tertiary' />
                         <div className='grow system-md-regular text-text-secondary px-1'>{t('common.userProfile.github')}</div>

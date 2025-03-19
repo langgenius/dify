@@ -109,14 +109,12 @@ class Response:
         3. MIME type analysis
         """
         content_type = self.content_type.split(";")[0].strip().lower()
-        content_disposition = self.response.headers.get("content-disposition", "")
+        parsed_content_disposition = self.parsed_content_disposition
 
         # Check if it's explicitly marked as an attachment
-        if content_disposition:
-            msg = Message()
-            msg["content-disposition"] = content_disposition
-            disp_type = msg.get_content_disposition()  # Returns 'attachment', 'inline', or None
-            filename = msg.get_filename()  # Returns filename if present, None otherwise
+        if parsed_content_disposition:
+            disp_type = parsed_content_disposition.get_content_disposition()  # Returns 'attachment', 'inline', or None
+            filename = parsed_content_disposition.get_filename()  # Returns filename if present, None otherwise
             if disp_type == "attachment" or filename is not None:
                 return True
 
@@ -182,3 +180,12 @@ class Response:
             return f"{(self.size / 1024):.2f} KB"
         else:
             return f"{(self.size / 1024 / 1024):.2f} MB"
+
+    @property
+    def parsed_content_disposition(self) -> Optional[Message]:
+        content_disposition = self.headers.get("content-disposition", "")
+        if content_disposition:
+            msg = Message()
+            msg["content-disposition"] = content_disposition
+            return msg
+        return None

@@ -9,7 +9,7 @@ import { OperationAction, StatusItem } from '../list'
 import DocumentPicker from '../../common/document-picker'
 import Completed from './completed'
 import Embedding from './embedding'
-import Metadata from './metadata'
+import Metadata from '@/app/components/datasets/metadata/metadata-document'
 import SegmentAdd, { ProcessStatus } from './segment-add'
 import BatchModal from './batch-modal'
 import style from './style.module.css'
@@ -23,7 +23,7 @@ import FloatRightContainer from '@/app/components/base/float-right-container'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import { LayoutRight2LineMod } from '@/app/components/base/icons/src/public/knowledge'
 import { useCheckSegmentBatchImportProgress, useChildSegmentListKey, useSegmentBatchImport, useSegmentListKey } from '@/service/knowledge/use-segment'
-import { useDocumentDetail, useDocumentMetadata } from '@/service/knowledge/use-document'
+import { useDocumentDetail, useDocumentMetadata, useInvalidDocumentList } from '@/service/knowledge/use-document'
 import { useInvalid } from '@/service/use-base'
 
 type DocumentContextValue = {
@@ -152,17 +152,22 @@ const DocumentDetail: FC<Props> = ({ datasetId, documentId }) => {
 
   const invalidChunkList = useInvalid(useSegmentListKey)
   const invalidChildChunkList = useInvalid(useChildSegmentListKey)
+  const invalidDocumentList = useInvalidDocumentList(datasetId)
 
   const handleOperate = (operateName?: string) => {
+    invalidDocumentList()
     if (operateName === 'delete') {
       backToPrev()
     }
     else {
       detailMutate()
-      setTimeout(() => {
-        invalidChunkList()
-        invalidChildChunkList()
-      }, 5000)
+      // If operation is not rename, refresh the chunk list after 5 seconds
+      if (operateName) {
+        setTimeout(() => {
+          invalidChunkList()
+          invalidChildChunkList()
+        }, 5000)
+      }
     }
   }
 
@@ -276,9 +281,10 @@ const DocumentDetail: FC<Props> = ({ datasetId, documentId }) => {
           }
           <FloatRightContainer showClose isOpen={showMetadata} onClose={() => setShowMetadata(false)} isMobile={isMobile} panelClassname='!justify-start' footer={null}>
             <Metadata
+              className='mr-2 mt-3'
+              datasetId={datasetId}
+              documentId={documentId}
               docDetail={{ ...documentDetail, ...documentMetadata, doc_type: documentMetadata?.doc_type === 'others' ? '' : documentMetadata?.doc_type } as any}
-              loading={isMetadataLoading}
-              onUpdate={metadataMutate}
             />
           </FloatRightContainer>
         </div>

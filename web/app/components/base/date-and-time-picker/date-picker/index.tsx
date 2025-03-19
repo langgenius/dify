@@ -34,6 +34,8 @@ const DatePicker = ({
   placeholder,
   needTimePicker = true,
   renderTrigger,
+  triggerWrapClassName,
+  popupZIndexClassname = 'z-[11]',
 }: DatePickerProps) => {
   const { t } = useTranslation()
   const [isOpen, setIsOpen] = useState(false)
@@ -127,7 +129,9 @@ const DatePicker = ({
   }
 
   const handleConfirmDate = () => {
-    onChange(selectedDate)
+    // debugger
+    console.log(selectedDate, selectedDate?.tz(timezone))
+    onChange(selectedDate ? selectedDate.tz(timezone) : undefined)
     setIsOpen(false)
   }
 
@@ -200,7 +204,7 @@ const DatePicker = ({
       onOpenChange={setIsOpen}
       placement='bottom-end'
     >
-      <PortalToFollowElemTrigger>
+      <PortalToFollowElemTrigger className={triggerWrapClassName}>
         {renderTrigger ? (renderTrigger({
           value,
           selectedDate,
@@ -234,7 +238,7 @@ const DatePicker = ({
           </div>
         )}
       </PortalToFollowElemTrigger>
-      <PortalToFollowElemContent className='z-50'>
+      <PortalToFollowElemContent className={popupZIndexClassname}>
         <div className='w-[252px] mt-1 bg-components-panel-bg rounded-xl shadow-lg shadow-shadow-shadow-5 border-[0.5px] border-components-panel-border'>
           {/* Header */}
           {view === ViewType.date ? (
