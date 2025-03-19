@@ -218,13 +218,15 @@ const useConfig = (id: string, payload: KnowledgeRetrievalNodeType) => {
     (async () => {
       const inputs = inputRef.current
       const datasetIds = inputs.dataset_ids
+      let _datasets = selectedDatasets
       if (datasetIds?.length > 0) {
         const { data: dataSetsWithDetail } = await fetchDatasets({ url: '/datasets', params: { page: 1, ids: datasetIds } as any })
+        _datasets = dataSetsWithDetail
         setSelectedDatasets(dataSetsWithDetail)
       }
       const newInputs = produce(inputs, (draft) => {
         draft.dataset_ids = datasetIds
-        draft._datasets = selectedDatasets
+        draft._datasets = _datasets
       })
       setInputs(newInputs)
       setSelectedDatasetsLoaded(true)
