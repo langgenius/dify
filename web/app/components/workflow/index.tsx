@@ -51,7 +51,6 @@ import {
   useWorkflow,
   useWorkflowInit,
   useWorkflowReadOnly,
-  useWorkflowUpdate,
 } from './hooks'
 import Header from './header'
 import CustomNode from './nodes'
@@ -187,13 +186,10 @@ const Workflow: FC<WorkflowProps> = memo(({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  const { handleRefreshWorkflowDraft } = useWorkflowUpdate()
   const handleSyncWorkflowDraftWhenPageClose = useCallback(() => {
     if (document.visibilityState === 'hidden')
       syncWorkflowDraftWhenPageClose()
-    else if (document.visibilityState === 'visible')
-      setTimeout(() => handleRefreshWorkflowDraft(), 500)
-  }, [syncWorkflowDraftWhenPageClose, handleRefreshWorkflowDraft])
+  }, [syncWorkflowDraftWhenPageClose])
 
   useEffect(() => {
     document.addEventListener('visibilitychange', handleSyncWorkflowDraftWhenPageClose)
