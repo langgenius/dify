@@ -31,9 +31,13 @@ const Item = ({
     handleUpdateLoopVariable(item.id, { value_type: value, value: undefined })
   }, [item.id, handleUpdateLoopVariable])
 
+  const handleUpdateItemValue = useCallback((value: any) => {
+    handleUpdateLoopVariable(item.id, { value })
+  }, [item.id, handleUpdateLoopVariable])
+
   return (
     <div className='flex mb-4 last-of-type:mb-0'>
-      <div className='grow'>
+      <div className='grow w-0'>
         <div className='grid grid-cols-3 gap-1 mb-1'>
           <Input
             value={item.label}
@@ -53,6 +57,7 @@ const Item = ({
           <FormItem
             nodeId={nodeId}
             item={item}
+            onChange={handleUpdateItemValue}
           />
         </div>
       </div>

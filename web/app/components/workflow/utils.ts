@@ -46,6 +46,7 @@ import type { LoopNodeType } from './nodes/loop/types'
 import { CollectionType } from '@/app/components/tools/types'
 import { toolParametersToFormSchemas } from '@/app/components/tools/utils/to-form-schema'
 import { canFindTool, correctModelProvider } from '@/utils'
+import { CUSTOM_SIMPLE_NODE } from '@/app/components/workflow/simple-node/constants'
 
 const WHITE = 'WHITE'
 const GRAY = 'GRAY'
@@ -919,4 +920,9 @@ export const isExceptionVariable = (variable: string, nodeType?: BlockEnum) => {
 
 export const hasRetryNode = (nodeType?: BlockEnum) => {
   return nodeType === BlockEnum.LLM || nodeType === BlockEnum.Tool || nodeType === BlockEnum.HttpRequest || nodeType === BlockEnum.Code
+}
+
+export const getNodeCustomTypeByNodeDataType = (nodeType: BlockEnum) => {
+  if (nodeType === BlockEnum.LoopEnd)
+    return CUSTOM_SIMPLE_NODE
 }

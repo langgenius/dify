@@ -249,6 +249,7 @@ const translation = {
     'agent': 'Agent',
     'loop-start': '循环开始',
     'loop': '循环',
+    'loop-end': '循环结束',
   },
   blocksAbout: {
     'start': '定义一个 workflow 流程启动的初始参数',
@@ -266,6 +267,7 @@ const translation = {
     'variable-aggregator': '将多路分支的变量聚合为一个变量，以实现下游节点统一配置。',
     'iteration': '对列表对象执行多次步骤直至输出所有结果。',
     'loop': '循环执行一段逻辑直到满足结束条件或者到达循环次数上限。',
+    'loop-end': '定义循环结束的条件。',
     'parameter-extractor': '利用 LLM 从自然语言内推理提取出结构化参数，用于后置的工具调用或 HTTP 请求。',
     'document-extractor': '用于将用户上传的文档解析为 LLM 便于理解的文本内容。',
     'list-operator': '用于过滤或排序数组内容。',

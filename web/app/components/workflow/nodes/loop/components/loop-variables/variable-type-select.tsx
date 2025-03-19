@@ -22,6 +22,18 @@ const VariableTypeSelect = ({
       label: 'Object',
       value: VarType.object,
     },
+    {
+      label: 'Array[string]',
+      value: VarType.arrayString,
+    },
+    {
+      label: 'Array[number]',
+      value: VarType.arrayNumber,
+    },
+    {
+      label: 'Array[object]',
+      value: VarType.arrayObject,
+    },
   ]
 
   return (

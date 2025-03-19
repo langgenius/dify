@@ -39,6 +39,7 @@ import {
 import {
   genNewNodeTitleFromOld,
   generateNewNode,
+  getNodeCustomTypeByNodeDataType,
   getNodesConnectedSourceOrTargetHandleIdsMap,
   getTopLeftNodePosition,
 } from '../utils'
@@ -686,6 +687,7 @@ export const useNodesInteractions = () => {
       newIterationStartNode,
       newLoopStartNode,
     } = generateNewNode({
+      type: getNodeCustomTypeByNodeDataType(nodeType),
       data: {
         ...NODES_INITIAL_DATA[nodeType],
         title: nodesWithSameType.length > 0 ? `${t(`workflow.blocks.${nodeType}`)} ${nodesWithSameType.length + 1}` : t(`workflow.blocks.${nodeType}`),
@@ -853,7 +855,7 @@ export const useNodesInteractions = () => {
 
       let newEdge
 
-      if ((nodeType !== BlockEnum.IfElse) && (nodeType !== BlockEnum.QuestionClassifier)) {
+      if ((nodeType !== BlockEnum.IfElse) && (nodeType !== BlockEnum.QuestionClassifier) && (nodeType !== BlockEnum.LoopEnd)) {
         newEdge = {
           id: `${newNode.id}-${sourceHandle}-${nextNodeId}-${nextNodeTargetHandle}`,
           type: CUSTOM_EDGE,
@@ -1004,7 +1006,7 @@ export const useNodesInteractions = () => {
       const isNextNodeInIteration = !!nextNodeParentNode && nextNodeParentNode.data.type === BlockEnum.Iteration
       const isNextNodeInLoop = !!nextNodeParentNode && nextNodeParentNode.data.type === BlockEnum.Loop
 
-      if (nodeType !== BlockEnum.IfElse && nodeType !== BlockEnum.QuestionClassifier) {
+      if (nodeType !== BlockEnum.IfElse && nodeType !== BlockEnum.QuestionClassifier && nodeType !== BlockEnum.LoopEnd) {
         newNextEdge = {
           id: `${newNode.id}-${sourceHandle}-${nextNodeId}-${nextNodeTargetHandle}`,
           type: CUSTOM_EDGE,
@@ -1117,6 +1119,7 @@ export const useNodesInteractions = () => {
       newIterationStartNode,
       newLoopStartNode,
     } = generateNewNode({
+      type: getNodeCustomTypeByNodeDataType(nodeType),
       data: {
         ...NODES_INITIAL_DATA[nodeType],
         title: nodesWithSameType.length > 0 ? `${t(`workflow.blocks.${nodeType}`)} ${nodesWithSameType.length + 1}` : t(`workflow.blocks.${nodeType}`),
@@ -1240,7 +1243,7 @@ export const useNodesInteractions = () => {
     if (nodeId) {
       // If nodeId is provided, copy that specific node
       const nodeToCopy = nodes.find(node => node.id === nodeId && node.data.type !== BlockEnum.Start
-        && node.type !== CUSTOM_ITERATION_START_NODE && node.type !== CUSTOM_LOOP_START_NODE)
+        && node.type !== CUSTOM_ITERATION_START_NODE && node.type !== CUSTOM_LOOP_START_NODE && node.data.type !== BlockEnum.LoopEnd)
       if (nodeToCopy)
         setClipboardElements([nodeToCopy])
     }
@@ -1254,7 +1257,7 @@ export const useNodesInteractions = () => {
         return
       }
 
-      const selectedNode = nodes.find(node => node.data.selected && node.data.type !== BlockEnum.Start)
+      const selectedNode = nodes.find(node => node.data.selected && node.data.type !== BlockEnum.Start && node.data.type !== BlockEnum.LoopEnd)
 
       if (selectedNode)
         setClipboardElements([selectedNode])
