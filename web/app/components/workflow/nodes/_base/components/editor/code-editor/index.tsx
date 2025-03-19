@@ -18,11 +18,11 @@ const CODE_EDITOR_LINE_HEIGHT = 18
 
 export type Props = {
   value?: string | object
-  placeholder?: JSX.Element | string
+  placeholder?: React.JSX.Element | string
   onChange?: (value: string) => void
-  title?: JSX.Element
+  title?: React.JSX.Element
   language: CodeLanguage
-  headerRight?: JSX.Element
+  headerRight?: React.JSX.Element
   readOnly?: boolean
   isJSONStringifyBeauty?: boolean
   height?: number
@@ -34,7 +34,7 @@ export type Props = {
   onGenerated?: (value: string) => void
   showCodeGenerator?: boolean
   className?: string
-  tip?: JSX.Element
+  tip?: React.JSX.Element
 }
 
 export const languageMap = {

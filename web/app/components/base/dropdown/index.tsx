@@ -11,7 +11,7 @@ import {
 
 export type Item = {
   value: string | number
-  text: string | JSX.Element
+  text: string | React.JSX.Element
 }
 type DropdownProps = {
   items: Item[]

@@ -23,7 +23,7 @@ import { TransferMethod } from '@/types/app'
 type Option = {
   value: string
   label: string
-  icon: JSX.Element
+  icon: React.JSX.Element
 }
 type FileUploaderInAttachmentProps = {
   fileConfig: FileUpload

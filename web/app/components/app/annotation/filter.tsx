@@ -6,15 +6,15 @@ import useSWR from 'swr'
 import Input from '@/app/components/base/input'
 import { fetchAnnotationsCount } from '@/service/log'
 
-export interface QueryParam {
+export type QueryParam = {
   keyword?: string
 }
 
-interface IFilterProps {
+type IFilterProps = {
   appId: string
   queryParams: QueryParam
   setQueryParams: (v: QueryParam) => void
-  children: JSX.Element
+  children: React.JSX.Element
 }
 
 const Filter: FC<IFilterProps> = ({

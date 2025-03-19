@@ -2,8 +2,8 @@ import { memo } from 'react'
 
 type VariableMenuItemProps = {
   title: string
-  icon?: JSX.Element
-  extraElement?: JSX.Element
+  icon?: React.JSX.Element
+  extraElement?: React.JSX.Element
   isSelected: boolean
   queryString: string | null
   onClick: () => void

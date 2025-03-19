@@ -1,7 +1,7 @@
 import { memo } from 'react'
 
 type PromptMenuItemMenuItemProps = {
-  icon: JSX.Element
+  icon: React.JSX.Element
   title: string
   disabled?: boolean
   isSelected: boolean

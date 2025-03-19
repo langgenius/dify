@@ -45,8 +45,8 @@ type GroupItem = {
   key: string
   name: string
   description?: string
-  icon: JSX.Element
-  activeIcon: JSX.Element
+  icon: React.JSX.Element
+  activeIcon: React.JSX.Element
 }
 
 export default function AccountSetting({

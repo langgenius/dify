@@ -41,7 +41,7 @@ type Props = {
   className?: string
   headerClassName?: string
   instanceId?: string
-  title: string | JSX.Element
+  title: string | React.JSX.Element
   value: string
   onChange: (value: string) => void
   readOnly?: boolean

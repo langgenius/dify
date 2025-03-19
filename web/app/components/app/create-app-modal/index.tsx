@@ -279,7 +279,7 @@ const CreateAppModal = ({ show, onClose, onSuccess, onCreateFromTemplate }: Crea
 export default CreateAppModal
 
 type AppTypeCardProps = {
-  icon: JSX.Element
+  icon: React.JSX.Element
   beta?: boolean
   title: string
   description: string

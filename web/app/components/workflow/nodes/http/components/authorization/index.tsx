@@ -17,7 +17,7 @@ import cn from '@/utils/classnames'
 
 const i18nPrefix = 'workflow.nodes.http.authorization'
 
-interface Props {
+type Props = {
   nodeId: string
   payload: AuthorizationPayloadType
   onChange: (payload: AuthorizationPayloadType) => void
@@ -25,7 +25,7 @@ interface Props {
   onHide: () => void
 }
 
-const Field = ({ title, isRequired, children }: { title: string; isRequired?: boolean; children: JSX.Element }) => {
+const Field = ({ title, isRequired, children }: { title: string; isRequired?: boolean; children: React.JSX.Element }) => {
   return (
     <div>
       <div className='leading-8 text-[13px] font-medium text-gray-700'>

@@ -14,10 +14,10 @@ type Props = {
   contentClassName?: string
   headerClassName?: string
   height?: number | string
-  title: string | JSX.Element
-  titleDescription?: string | JSX.Element
-  body: JSX.Element
-  foot?: JSX.Element
+  title: string | React.JSX.Element
+  titleDescription?: string | React.JSX.Element
+  body: React.JSX.Element
+  foot?: React.JSX.Element
   isShowMask?: boolean
   clickOutsideNotOpen?: boolean
   positionCenter?: boolean

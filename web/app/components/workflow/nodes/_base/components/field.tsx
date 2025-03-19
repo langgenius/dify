@@ -14,8 +14,8 @@ type Props = {
   tooltip?: ReactNode
   isSubTitle?: boolean
   supportFold?: boolean
-  children?: JSX.Element | string | null
-  operations?: JSX.Element
+  children?: React.JSX.Element | string | null
+  operations?: React.JSX.Element
   inline?: boolean
 }
 

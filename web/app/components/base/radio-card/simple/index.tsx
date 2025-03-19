@@ -6,12 +6,12 @@ import cn from '@/utils/classnames'
 
 type Props = {
   className?: string
-  title: string | JSX.Element | null
+  title: string | React.JSX.Element | null
   description: string
   isChosen: boolean
   onChosen: () => void
   chosenConfig?: React.ReactNode
-  icon?: JSX.Element
+  icon?: React.JSX.Element
   extra?: React.ReactNode
 }
 

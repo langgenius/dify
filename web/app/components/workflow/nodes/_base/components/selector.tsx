@@ -11,7 +11,7 @@ type Item = {
 }
 type Props = {
   className?: string
-  trigger?: JSX.Element
+  trigger?: React.JSX.Element
   DropDownIcon?: any
   noLeft?: boolean
   options: Item[]

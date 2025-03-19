@@ -9,8 +9,8 @@ type Props = {
   height: number
   minHeight: number
   onHeightChange: (height: number) => void
-  children: JSX.Element
-  footer?: JSX.Element
+  children: React.JSX.Element
+  footer?: React.JSX.Element
   hideResize?: boolean
 }
 

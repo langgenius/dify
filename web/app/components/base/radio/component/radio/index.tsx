@@ -23,7 +23,7 @@ export default function Radio({
   value,
   disabled,
   onChange,
-}: IRadioProps): JSX.Element {
+}: IRadioProps): React.JSX.Element {
   const groupContext = useContext(RadioGroupContext)
   const labelId = useId()
   const handleChange = (e: IRadioProps['value']) => {
