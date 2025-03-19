@@ -1,4 +1,4 @@
-import type { ReactElement } from 'react'
+import type { ReactNode } from 'react'
 import { useId } from 'react'
 import { useContext } from 'use-context-selector'
 import RadioGroupContext from '../../context'
@@ -8,7 +8,7 @@ import cn from '@/utils/classnames'
 export type IRadioProps = {
   className?: string
   labelClassName?: string
-  children?: string | ReactElement
+  children?: string | ReactNode
   checked?: boolean
   value?: string | number
   disabled?: boolean

@@ -1,6 +1,6 @@
 import type {
   FC,
-  ReactElement,
+  ReactNode,
 } from 'react'
 import {
   cloneElement,
@@ -48,7 +48,7 @@ import { useStore as useAppStore } from '@/app/components/app/store'
 import { useStore } from '@/app/components/workflow/store'
 
 type BasePanelProps = {
-  children: ReactElement
+  children: ReactNode
 } & Node
 
 const BasePanel: FC<BasePanelProps> = ({
