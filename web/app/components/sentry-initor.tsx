@@ -14,9 +14,8 @@ const SentryInit = ({
       Sentry.init({
         dsn: SENTRY_DSN,
         integrations: [
-          new Sentry.BrowserTracing({
-          }),
-          new Sentry.Replay(),
+          Sentry.browserTracingIntegration(),
+          Sentry.replayIntegration(),
         ],
         tracesSampleRate: 0.1,
         replaysSessionSampleRate: 0.1,
