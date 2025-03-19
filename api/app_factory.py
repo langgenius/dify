@@ -30,6 +30,8 @@ def create_app() -> DifyApp:
     start_time = time.perf_counter()
     app = create_flask_app_with_configs()
     initialize_extensions(app)
+    from initializer import run_initializers
+    run_initializers(app)
     end_time = time.perf_counter()
     if dify_config.DEBUG:
         logging.info(f"Finished create_app ({round((end_time - start_time) * 1000, 2)} ms)")

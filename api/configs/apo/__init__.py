@@ -15,3 +15,11 @@ class APOConfig(BaseSettings):
         description="apo vm url",
         default="http://localhost:8080",
     )
+    INITIAL_LANGUAGE: str = Field(
+        description="Initial workflows' language",
+        default="en-US"
+    )
+    WORKFLOW_DIR: str = Field(
+        description="Directory of workflows yaml file.",
+        default="./workflows"
+    )
