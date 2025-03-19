@@ -121,7 +121,7 @@
     "sharp": "^0.33.2",
     "shave": "^5.0.4",
     "sortablejs": "^1.15.0",
-    "swr": "^2.1.0",
+    "swr": "^2.3.0",
     "tailwind-merge": "^2.5.4",
     "use-context-selector": "^2.0.0",
     "uuid": "^10.0.0",
