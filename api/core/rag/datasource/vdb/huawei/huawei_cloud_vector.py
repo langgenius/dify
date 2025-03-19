@@ -3,6 +3,9 @@ import logging
 import ssl
 from typing import Any, Optional
 
+from elasticsearch import Elasticsearch
+from pydantic import BaseModel, model_validator
+
 from configs import dify_config
 from core.rag.datasource.vdb.field import Field
 from core.rag.datasource.vdb.vector_base import BaseVector
@@ -10,10 +13,8 @@ from core.rag.datasource.vdb.vector_factory import AbstractVectorFactory
 from core.rag.datasource.vdb.vector_type import VectorType
 from core.rag.embedding.embedding_base import Embeddings
 from core.rag.models.document import Document
-from elasticsearch import Elasticsearch
 from extensions.ext_redis import redis_client
 from models.dataset import Dataset
-from pydantic import BaseModel, model_validator
 
 logger = logging.getLogger(__name__)
 
@@ -49,10 +50,9 @@ class HuaweiCloudVectorConfig(BaseModel):
 
 
 class HuaweiCloudVector(BaseVector):
-    def __init__(self, index_name: str, config: HuaweiCloudVectorConfig, attributes: list):
+    def __init__(self, index_name: str, config: HuaweiCloudVectorConfig):
         super().__init__(index_name.lower())
         self._client = Elasticsearch(**config.to_elasticsearch_params())
-        self._attributes = attributes
 
     def get_type(self) -> str:
         return VectorType.HUAWEI_CLOUD
@@ -103,7 +103,7 @@ class HuaweiCloudVector(BaseVector):
                         "topk": top_k,
                     }
                 }
-            }
+            },
         }
 
         results = self._client.search(index=self._collection_name, body=query, request_timeout=120)
@@ -152,10 +152,10 @@ class HuaweiCloudVector(BaseVector):
         self.add_texts(texts, embeddings, **kwargs)
 
     def create_collection(
-            self,
-            embeddings: list[list[float]],
-            metadatas: Optional[list[dict[Any, Any]]] = None,
-            index_params: Optional[dict] = None,
+        self,
+        embeddings: list[list[float]],
+        metadatas: Optional[list[dict[Any, Any]]] = None,
+        index_params: Optional[dict] = None,
     ):
         lock_name = f"vector_indexing_lock_{self._collection_name}"
         with redis_client.lock(lock_name, timeout=20):
@@ -176,7 +176,7 @@ class HuaweiCloudVector(BaseVector):
                             "algorithm": "GRAPH",
                             "metric": "cosine",
                             "neighbors": 32,
-                            "efc": 128
+                            "efc": 128,
                         },
                         Field.METADATA_KEY.value: {
                             "type": "object",
@@ -186,9 +186,7 @@ class HuaweiCloudVector(BaseVector):
                         },
                     }
                 }
-                settings = {
-                    "index.vector": True
-                }
+                settings = {"index.vector": True}
                 self._client.indices.create(index=self._collection_name, mappings=mappings, settings=settings)
 
             redis_client.set(collection_exist_cache_key, 1, ex=3600)
@@ -211,5 +209,4 @@ class HuaweiCloudVectorFactory(AbstractVectorFactory):
                 username=dify_config.HUAWEI_CLOUD_USER,
                 password=dify_config.HUAWEI_CLOUD_PASSWORD,
             ),
-            attributes=[],
         )
