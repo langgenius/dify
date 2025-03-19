@@ -197,10 +197,9 @@ class ElasticSearchVector(BaseVector):
                             "type": "object",
                             "properties": {
                                 "doc_id": {"type": "keyword"},  # Map doc_id to keyword type
-                                "document_id": {"type": "keyword"}  # Map doc_id to keyword type
+                                "document_id": {"type": "keyword"},  # Map doc_id to keyword type
                             },
                         },
-
                     }
                 }
                 self._client.indices.create(index=self._collection_name, mappings=mappings)
