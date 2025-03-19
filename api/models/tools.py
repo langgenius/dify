@@ -12,8 +12,9 @@ from core.tools.entities.tool_bundle import ApiToolBundle
 from core.tools.entities.tool_entities import ApiProviderSchemaType, WorkflowToolParameterConfiguration
 from models.base import Base
 
+from .account import Tenant
 from .engine import db
-from .model import Account, App, Tenant
+from .model import Account, App
 from .types import StringUUID
 
 
