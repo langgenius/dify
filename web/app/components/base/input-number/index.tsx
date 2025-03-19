@@ -13,10 +13,13 @@ export type InputNumberProps = {
   min?: number
   defaultValue?: number
   disabled?: boolean
+  wrapClassName?: string
+  controlWrapClassName?: string
+  controlClassName?: string
 } & Omit<InputProps, 'value' | 'onChange' | 'size' | 'min' | 'max' | 'defaultValue'>
 
 export const InputNumber: FC<InputNumberProps> = (props) => {
-  const { unit, className, onChange, amount = 1, value, size = 'md', max, min, defaultValue, disabled, ...rest } = props
+  const { unit, className, onChange, amount = 1, value, size = 'md', max, min, defaultValue, wrapClassName, controlWrapClassName, controlClassName, disabled, ...rest } = props
 
   const isValidValue = (v: number) => {
     if (max && v > max)
@@ -51,7 +54,7 @@ export const InputNumber: FC<InputNumberProps> = (props) => {
     onChange(newValue)
   }
 
-  return <div className='flex'>
+  return <div className={classNames('flex', wrapClassName)}>
     <Input {...rest}
       // disable default controller
       type='text'
@@ -77,16 +80,14 @@ export const InputNumber: FC<InputNumberProps> = (props) => {
     <div className={classNames(
       'flex flex-col bg-components-input-bg-normal rounded-r-md border-l border-divider-subtle text-text-tertiary focus:shadow-xs',
       disabled && 'opacity-50 cursor-not-allowed',
-    )}>
-      <button
-        onClick={inc}
-        disabled={disabled}
-        className={classNames(
-          size === 'sm' ? 'pt-1' : 'pt-1.5',
-          'px-1.5 hover:bg-components-input-bg-hover',
-          disabled && 'cursor-not-allowed hover:bg-transparent',
-        )}
-      >
+      controlWrapClassName)}
+    >
+      <button onClick={inc} disabled={disabled} className={classNames(
+        size === 'sm' ? 'pt-1' : 'pt-1.5',
+        'px-1.5 hover:bg-components-input-bg-hover',
+        disabled && 'cursor-not-allowed hover:bg-transparent',
+        controlClassName,
+      )}>
         <RiArrowUpSLine className='size-3' />
       </button>
       <button
@@ -96,8 +97,8 @@ export const InputNumber: FC<InputNumberProps> = (props) => {
           size === 'sm' ? 'pb-1' : 'pb-1.5',
           'px-1.5 hover:bg-components-input-bg-hover',
           disabled && 'cursor-not-allowed hover:bg-transparent',
-        )}
-      >
+          controlClassName,
+        )}>
         <RiArrowDownSLine className='size-3' />
       </button>
     </div>

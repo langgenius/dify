@@ -56,6 +56,7 @@ const translation = {
     documentsRequestQuota: '{{count,number}}/min Knowledge Request Rate Limit',
     documentsRequestQuotaTooltip: 'Specifies the total number of actions a workspace can perform per minute within the knowledge base, including dataset creation, deletion, updates, document uploads, modifications, archiving, and knowledge base queries. This metric is used to evaluate the performance of knowledge base requests. For example, if a Sandbox user performs 10 consecutive hit tests within one minute, their workspace will be temporarily restricted from performing the following actions for the next minute: dataset creation, deletion, updates, and document uploads or modifications. ',
     documentProcessingPriority: ' Document Processing',
+    documentProcessingPriorityUpgrade: 'Process more data with higher accuracy at faster speeds.',
     priority: {
       'standard': 'Standard',
       'priority': 'Priority',
