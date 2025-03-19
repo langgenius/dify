@@ -435,7 +435,7 @@ services:
     image: langgenius/dify-api:1.0.1
     restart: always
     security_opt:
-      - seccomp=unconfined
+      - seccomp=./seccomp_custom.json
     environment:
       # Use the shared environment variables.
       <<: *shared-api-worker-env
@@ -464,7 +464,7 @@ services:
     image: langgenius/dify-api:1.0.1
     restart: always
     security_opt:
-      - seccomp=unconfined
+      - seccomp=./seccomp_custom.json
     environment:
       # Use the shared environment variables.
       <<: *shared-api-worker-env
@@ -547,7 +547,7 @@ services:
     image: langgenius/dify-sandbox:0.2.10
     restart: always
     security_opt:
-      - seccomp=unconfined
+      - seccomp=./seccomp_custom.json
     environment:
       # The DifySandbox configurations
       # Make sure you are changing this key for your deployment with a strong key.
