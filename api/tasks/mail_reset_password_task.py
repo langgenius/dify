@@ -5,7 +5,6 @@ import click
 from celery import shared_task  # type: ignore
 from flask import render_template
 
-from configs import dify_config
 from extensions.ext_mail import mail
 from services.feature_service import FeatureService
 
@@ -28,8 +27,9 @@ def send_reset_password_mail_task(language: str, to: str, code: str):
     try:
         if language == "zh-Hans":
             template = "reset_password_mail_template_zh-CN.html"
-            if dify_config.ENTERPRISE_ENABLED:
-                application_title = FeatureService.get_enterprise_application_title()
+            system_features = FeatureService.get_system_features()
+            if system_features.branding.enabled:
+                application_title = system_features.branding.application_title
                 template = "without-brand/reset_password_mail_template_zh-CN.html"
                 html_content = render_template(template, to=to, code=code, application_title=application_title)
                 mail.send(to=to, subject=f"设置您的 {application_title} 密码", html=html_content)
@@ -38,8 +38,9 @@ def send_reset_password_mail_task(language: str, to: str, code: str):
                 mail.send(to=to, subject="设置您的 Dify 密码", html=html_content)
         else:
             template = "reset_password_mail_template_en-US.html"
-            if dify_config.ENTERPRISE_ENABLED:
-                application_title = FeatureService.get_enterprise_application_title()
+            system_features = FeatureService.get_system_features()
+            if system_features.branding.enabled:
+                application_title = system_features.branding.application_title
                 template = "without-brand/reset_password_mail_template_en-US.html"
                 html_content = render_template(template, to=to, code=code, application_title=application_title)
                 mail.send(to=to, subject=f"Set Your {application_title} Password", html=html_content)

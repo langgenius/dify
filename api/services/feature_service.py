@@ -100,6 +100,7 @@ class FeatureService:
 
         if dify_config.ENTERPRISE_ENABLED:
             system_features.enable_web_sso_switch_component = True
+            system_features.branding.enabled = True
             cls._fulfill_params_from_enterprise(system_features)
 
         return system_features
@@ -188,7 +189,6 @@ class FeatureService:
             features.is_allow_create_workspace = enterprise_info["IsAllowCreateWorkspace"]
 
         if "Branding" in enterprise_info:
-            features.branding.enabled = enterprise_info["Branding"].get("enabled", False)
             features.branding.application_title = enterprise_info["Branding"].get("applicationTitle", "")
             features.branding.login_page_logo = enterprise_info["Branding"].get("loginPageLogo", "")
             features.branding.workspace_logo = enterprise_info["Branding"].get("workspaceLogo", "")
@@ -202,11 +202,3 @@ class FeatureService:
 
             if "expired_at" in license_info:
                 features.license.expired_at = license_info["expiredAt"]
-
-    @classmethod
-    def get_enterprise_application_title(cls):
-        branding = cls.get_system_features().branding
-        application_title = "Dify"
-        if branding.enabled:
-            application_title = branding.application_title
-        return application_title
