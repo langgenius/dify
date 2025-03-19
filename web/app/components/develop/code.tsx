@@ -24,7 +24,7 @@ const languageNames = {
 } as { [key: string]: string }
 
 type IChildrenProps = {
-  children: React.ReactElement
+  children: React.ReactNode
   [key: string]: any
 }
 
@@ -122,7 +122,7 @@ function CodePanelHeader({ tag, label }: { tag: string; label: string }) {
 }
 
 type ICodePanelProps = {
-  children: React.ReactElement
+  children: React.ReactNode
   tag?: string
   code?: string
   label?: string
@@ -182,7 +182,7 @@ function CodeGroupHeader({ title, children, selectedIndex }: IChildrenProps) {
 }
 
 type ICodeGroupPanelsProps = {
-  children: React.ReactElement
+  children: React.ReactNode
   [key: string]: any
 }
 function CodeGroupPanels({ children, targetCode, ...props }: ICodeGroupPanelsProps) {
