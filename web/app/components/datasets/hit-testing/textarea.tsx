@@ -15,7 +15,7 @@ import { asyncRunSafe } from '@/utils'
 import { RETRIEVE_METHOD, type RetrievalConfig } from '@/types/app'
 import promptS from '@/app/components/app/configuration/config-prompt/style.module.css'
 
-interface TextAreaWithButtonIProps {
+type TextAreaWithButtonIProps = {
   datasetId: string
   onUpdateList: () => void
   setHitResult: (res: HitTestingResponse) => void
@@ -108,7 +108,7 @@ const TextAreaWithButton = ({
   return (
     <>
       <div className={cn('relative rounded-xl', promptS.gradientBorder)}>
-        <div className='relative pt-1.5 rounded-tl-xl rounded-tr-xl bg-background-section-burn'>
+        <div className='relative pt-1.5 rounded-t-xl bg-background-section-burn'>
           <div className="pl-4 pr-1.5 pb-1 flex justify-between h-8 items-center">
             <span className="text-text-secondary font-semibold text-[13px] leading-4 uppercase">
               {t('datasetHitTesting.input.title')}
@@ -145,11 +145,11 @@ const TextAreaWithButton = ({
               />
             )
           }
-          <div className='h-2 rounded-tl-xl rounded-tr-xl bg-background-default'></div>
+          <div className='h-2 rounded-t-xl bg-background-default'></div>
         </div>
         <div className='px-4 pb-11 bg-background-default rounded-b-xl'>
           <textarea
-            className='h-[220px] border-none resize-none font-normal caret-primary-600 text-text-secondary text-sm w-full focus-visible:outline-none  placeholder:text-gray-300 placeholder:text-sm placeholder:font-normal'
+            className='h-[220px] border-none resize-none font-normal caret-[#295EFF] text-text-secondary text-sm w-full focus-visible:outline-none  placeholder:text-components-input-text-placeholder placeholder:text-sm placeholder:font-normal bg-transparent'
             value={text}
             onChange={handleTextChange}
             placeholder={t('datasetHitTesting.input.placeholder') as string}

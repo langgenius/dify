@@ -34,8 +34,8 @@ const StepThree = ({ datasetId, datasetName, indexingType, creationCache, retrie
                 <div className="flex gap-4">
                   <AppIcon {...creationCache?.dataset} className="size-14 text-2xl self-center" />
                   <div className="grow flex flex-col gap-1">
-                    <div className="text-[13px] leading-6 font-semibold">{t('datasetCreation.stepThree.label')}</div>
-                    <div className="w-full px-3 py-2 text-[13px] leading-4 bg-components-input-bg-normal rounded-lg truncate">{datasetName || creationCache?.dataset?.name}</div>
+                    <div className="text-[13px] leading-6 font-semibold text-text-secondary">{t('datasetCreation.stepThree.label')}</div>
+                    <div className="w-full px-3 py-2 text-[13px] leading-4 bg-components-input-bg-normal rounded-lg truncate text-components-input-text-filled">{datasetName || creationCache?.dataset?.name}</div>
                   </div>
                 </div>
               </div>

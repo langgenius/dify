@@ -234,8 +234,8 @@ const TagSelector: FC<TagSelectorProps> = ({
       <div className={cn(
         'group/tip relative w-full flex items-center gap-1 px-2 py-[7px] rounded-md cursor-pointer hover:bg-state-base-hover',
       )}>
-        <Tag01 className='shrink-0 w-3 h-3' />
-        <div className='grow text-xs text-start leading-[18px] font-normal truncate'>
+        <Tag01 className='shrink-0 w-3 h-3 text-components-input-text-placeholder' />
+        <div className='grow text-start system-sm-regular  text-components-input-text-placeholder truncate'>
           {!triggerContent ? t('common.tag.addTag') : triggerContent}
         </div>
       </div>
