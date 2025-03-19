@@ -15,6 +15,7 @@ from controllers.service_api.app.error import (
     ProviderQuotaExceededError,
 )
 from controllers.service_api.wraps import FetchUserArg, WhereisUserArg, validate_app_token
+from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
 from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.errors.error import (
@@ -29,9 +30,8 @@ from libs import helper
 from models.model import App, AppMode, EndUser
 from models.workflow import WorkflowRun, WorkflowRunStatus
 from services.app_generate_service import AppGenerateService
-from services.workflow_app_service import WorkflowAppService
 from services.errors.llm import InvokeRateLimitError
-from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
+from services.workflow_app_service import WorkflowAppService
 
 logger = logging.getLogger(__name__)
 

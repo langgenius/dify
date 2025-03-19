@@ -6,7 +6,7 @@ from flask import abort, request
 from flask_restful import Resource, inputs, marshal_with, reqparse  # type: ignore
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden, InternalServerError, NotFound
-from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
+
 import services
 from configs import dify_config
 from controllers.console import api
@@ -17,6 +17,7 @@ from controllers.console.app.error import (
 )
 from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import account_initialization_required, setup_required
+from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
 from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.entities.app_invoke_entities import InvokeFrom
 from extensions.ext_database import db
@@ -31,8 +32,8 @@ from models.account import Account
 from models.model import AppMode
 from services.app_generate_service import AppGenerateService
 from services.errors.app import WorkflowHashNotEqualError
-from services.workflow_service import DraftWorkflowDeletionError, WorkflowInUseError, WorkflowService
 from services.errors.llm import InvokeRateLimitError
+from services.workflow_service import DraftWorkflowDeletionError, WorkflowInUseError, WorkflowService
 
 logger = logging.getLogger(__name__)
 
