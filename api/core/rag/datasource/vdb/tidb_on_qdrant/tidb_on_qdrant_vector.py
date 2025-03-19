@@ -129,7 +129,7 @@ class TidbOnQdrantVector(BaseVector):
                     max_indexing_threads=0,
                     on_disk=False,
                 )
-                self._client.recreate_collection(
+                self._client.create_collection(
                     collection_name=collection_name,
                     vectors_config=vectors_config,
                     hnsw_config=hnsw_config,
