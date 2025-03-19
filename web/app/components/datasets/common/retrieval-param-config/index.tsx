@@ -215,8 +215,8 @@ const RetrievalParamConfig: FC<Props> = ({
                 <WeightedScore
                   value={{
                     value: [
-                      value.weights!.vector_setting.vector_weight,
-                      value.weights!.keyword_setting.keyword_weight,
+                      value.weights?.vector_setting.vector_weight ?? 0,
+                      value.weights?.keyword_setting.keyword_weight ?? 0,
                     ],
                   }}
                   onChange={(v) => {
