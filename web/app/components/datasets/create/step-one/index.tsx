@@ -19,6 +19,7 @@ import { useDatasetDetailContext } from '@/context/dataset-detail'
 import { useProviderContext } from '@/context/provider-context'
 import VectorSpaceFull from '@/app/components/billing/vector-space-full'
 import classNames from '@/utils/classnames'
+import { Icon3Dots } from '@/app/components/base/icons/src/vender/line/others'
 
 type IStepOneProps = {
   datasetId?: string
@@ -48,10 +49,15 @@ export const NotionConnector = ({ onSetting }: NotionConnectorProps) => {
   const { t } = useTranslation()
 
   return (
-    <div className={s.notionConnectionTip}>
-      <span className={s.notionIcon} />
-      <div className={s.title}>{t('datasetCreation.stepOne.notionSyncTitle')}</div>
-      <div className={s.tip}>{t('datasetCreation.stepOne.notionSyncTip')}</div>
+    <div className='flex flex-col items-start p-6 w-[640px] rounded-2xl bg-workflow-process-bg'>
+      <span className={cn(s.notionIcon, 'w-12 h-12 p-3 border-[0.5px] border-components-card-border rounded-[10px] shadow-lg shadow-shadow-shadow-5 mb-2')} />
+      <div className='flex flex-col gap-y-1 pt-1 pb-3 mb-1'>
+        <span className='text-text-secondary system-md-semibold'>
+          {t('datasetCreation.stepOne.notionSyncTitle')}
+          <Icon3Dots className='inline relative -top-2.5 -left-1.5 w-4 h-4 text-text-secondary' />
+        </span>
+        <div className='text-text-tertiary system-sm-regular'>{t('datasetCreation.stepOne.notionSyncTip')}</div>
+      </div>
       <Button className='h-8' variant='primary' onClick={onSetting}>{t('datasetCreation.stepOne.connect')}</Button>
     </div>
   )
@@ -132,7 +138,9 @@ const StepOne = ({
           <div className={classNames(s.form)}>
             {
               shouldShowDataSourceTypeList && (
-                <div className={classNames(s.stepHeader, 'z-10 text-text-secondary bg-components-panel-bg-blur')}>{t('datasetCreation.steps.one')}</div>
+                <div className={classNames(s.stepHeader, 'text-text-secondary system-md-semibold')}>
+                  {t('datasetCreation.steps.one')}
+                </div>
               )
             }
             {
@@ -141,6 +149,7 @@ const StepOne = ({
                   <div
                     className={cn(
                       s.dataSourceItem,
+                      'system-sm-medium',
                       dataSourceType === DataSourceType.FILE && s.active,
                       dataSourceTypeDisable && dataSourceType !== DataSourceType.FILE && s.disabled,
                     )}
@@ -163,6 +172,7 @@ const StepOne = ({
                   <div
                     className={cn(
                       s.dataSourceItem,
+                      'system-sm-medium',
                       dataSourceType === DataSourceType.NOTION && s.active,
                       dataSourceTypeDisable && dataSourceType !== DataSourceType.NOTION && s.disabled,
                     )}
@@ -185,6 +195,7 @@ const StepOne = ({
                   <div
                     className={cn(
                       s.dataSourceItem,
+                      'system-sm-medium',
                       dataSourceType === DataSourceType.WEB && s.active,
                       dataSourceTypeDisable && dataSourceType !== DataSourceType.WEB && s.disabled,
                     )}
@@ -205,7 +216,7 @@ const StepOne = ({
               <>
                 <FileUploader
                   fileList={files}
-                  titleClassName={!shouldShowDataSourceTypeList ? 'mt-[30px] !mb-[44px] !text-lg !font-semibold !text-gray-900' : undefined}
+                  titleClassName={!shouldShowDataSourceTypeList ? 'mt-[30px] !mb-[44px] !text-lg' : undefined}
                   prepareFileList={updateFileList}
                   onFileListUpdate={updateFileList}
                   onFileUpdate={updateFile}

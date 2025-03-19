@@ -27,8 +27,8 @@ export default function Support() {
             cn('flex items-center pl-3 pr-2 py-2 h-9 w-full group hover:bg-state-base-hover rounded-lg gap-1',
               open && 'bg-state-base-hover',
             )}>
-            <RiQuestionLine className='flex-shrink-0 size-4 text-text-tertiary' />
-            <div className='flex-grow text-left system-md-regular text-text-secondary px-1'>{t('common.userProfile.support')}</div>
+            <RiQuestionLine className='shrink-0 size-4 text-text-tertiary' />
+            <div className='grow text-left system-md-regular text-text-secondary px-1'>{t('common.userProfile.support')}</div>
             <RiArrowRightSLine className='shrink-0 size-[14px] text-text-tertiary' />
           </Menu.Button>
           <Transition
@@ -55,9 +55,9 @@ export default function Support() {
                     )}
                     href={mailToSupport(userProfile.email, plan.type, langeniusVersionInfo.current_version)}
                     target='_blank' rel='noopener noreferrer'>
-                    <RiMailSendLine className='flex-shrink-0 size-4 text-text-tertiary' />
-                    <div className='flex-grow system-md-regular text-text-secondary px-1'>{t('common.userProfile.emailSupport')}</div>
-                    <RiArrowRightUpLine className='flex-shrink-0 size-[14px] text-text-tertiary' />
+                    <RiMailSendLine className='shrink-0 size-4 text-text-tertiary' />
+                    <div className='grow system-md-regular text-text-secondary px-1'>{t('common.userProfile.emailSupport')}</div>
+                    <RiArrowRightUpLine className='shrink-0 size-[14px] text-text-tertiary' />
                   </a>}
                 </Menu.Item>}
                 <Menu.Item>
@@ -67,9 +67,9 @@ export default function Support() {
                     )}
                     href='https://github.com/langgenius/dify/discussions/categories/feedbacks'
                     target='_blank' rel='noopener noreferrer'>
-                    <RiFeedbackLine className='flex-shrink-0 size-4 text-text-tertiary' />
-                    <div className='flex-grow system-md-regular text-text-secondary px-1'>{t('common.userProfile.communityFeedback')}</div>
-                    <RiArrowRightUpLine className='flex-shrink-0 size-[14px] text-text-tertiary' />
+                    <RiFeedbackLine className='shrink-0 size-4 text-text-tertiary' />
+                    <div className='grow system-md-regular text-text-secondary px-1'>{t('common.userProfile.communityFeedback')}</div>
+                    <RiArrowRightUpLine className='shrink-0 size-[14px] text-text-tertiary' />
                   </Link>}
                 </Menu.Item>
                 <Menu.Item>
@@ -79,9 +79,9 @@ export default function Support() {
                     )}
                     href='https://discord.gg/5AEfbxcd9k'
                     target='_blank' rel='noopener noreferrer'>
-                    <RiDiscordLine className='flex-shrink-0 size-4 text-text-tertiary' />
-                    <div className='flex-grow system-md-regular text-text-secondary px-1'>{t('common.userProfile.community')}</div>
-                    <RiArrowRightUpLine className='flex-shrink-0 size-[14px] text-text-tertiary' />
+                    <RiDiscordLine className='shrink-0 size-4 text-text-tertiary' />
+                    <div className='grow system-md-regular text-text-secondary px-1'>{t('common.userProfile.community')}</div>
+                    <RiArrowRightUpLine className='shrink-0 size-[14px] text-text-tertiary' />
                   </Link>}
                 </Menu.Item>
               </div>

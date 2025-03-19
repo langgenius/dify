@@ -16,7 +16,6 @@ import { useContext } from 'use-context-selector'
 import { useRouter } from 'next/navigation'
 import { useTranslation } from 'react-i18next'
 import dayjs from 'dayjs'
-import { Edit03 } from '../../base/icons/src/vender/solid/general'
 import { Globe01 } from '../../base/icons/src/vender/line/mapsAndTravel'
 import ChunkingModeLabel from '../common/chunking-mode-label'
 import FileTypeIcon from '../../base/file-uploader/file-type-icon'
@@ -343,7 +342,7 @@ export const OperationAction: FC<{
           position='br'
           btnElement={
             <div className={cn(s.commonIcon)}>
-              <RiMoreFill className='w-4 h-4 text-text-components-button-secondary-text' />
+              <RiMoreFill className='w-4 h-4 text-components-button-secondary-text' />
             </div>
           }
           btnClassName={open => cn(isListScene ? s.actionIconWrapperList : s.actionIconWrapperDetail, open ? '!hover:bg-state-base-hover !shadow-none' : '!bg-transparent')}
@@ -598,7 +597,7 @@ const DocumentList: FC<IDocumentListProps> = ({
                             handleShowRenameModal(doc)
                           }}
                         >
-                          <Edit03 className='w-4 h-4 text-text-tertiary' />
+                          <RiEditLine className='w-4 h-4 text-text-tertiary' />
                         </div>
                       </Tooltip>
                     </div>

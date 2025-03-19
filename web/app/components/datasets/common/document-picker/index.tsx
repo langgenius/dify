@@ -78,7 +78,7 @@ const DocumentPicker: FC<Props> = ({
           <FileIcon name={name} extension={extension} size='lg' />
           <div className='flex flex-col items-start ml-1 mr-0.5'>
             <div className='flex items-center space-x-0.5'>
-              <span className={cn('system-md-semibold')}> {name || '--'}</span>
+              <span className={cn('system-md-semibold text-text-primary')}> {name || '--'}</span>
               <ArrowIcon className={'h-4 w-4 text-text-primary'} />
             </div>
             <div className='flex items-center h-3 text-text-tertiary space-x-0.5'>
