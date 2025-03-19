@@ -191,7 +191,6 @@ const Configuration: FC = () => {
     dataSets: [],
     agentConfig: DEFAULT_AGENT_SETTING,
   })
-
   const isAgent = mode === 'agent-chat'
 
   const isOpenAI = modelConfig.provider === 'langgenius/openai/openai'
@@ -200,7 +199,7 @@ const Configuration: FC = () => {
   useEffect(() => {
 
   }, [])
-  const [datasetConfigs, setDatasetConfigs] = useState<DatasetConfigs>({
+  const [datasetConfigs, doSetDatasetConfigs] = useState<DatasetConfigs>({
     retrieval_model: RETRIEVE_TYPE.multiWay,
     reranking_model: {
       reranking_provider_name: '',
@@ -213,6 +212,11 @@ const Configuration: FC = () => {
       datasets: [],
     },
   })
+  const datasetConfigsRef = useRef(datasetConfigs)
+  const setDatasetConfigs = useCallback((newDatasetConfigs: DatasetConfigs) => {
+    doSetDatasetConfigs(newDatasetConfigs)
+    datasetConfigsRef.current = newDatasetConfigs
+  }, [])
 
   const setModelConfig = (newModelConfig: ModelConfig) => {
     doSetModelConfig(newModelConfig)
@@ -292,6 +296,7 @@ const Configuration: FC = () => {
     })
 
     setDatasetConfigs({
+      ...datasetConfigsRef.current,
       ...retrievalConfig,
       reranking_model: {
         reranking_provider_name: retrievalConfig?.reranking_model?.provider || '',
@@ -884,6 +889,7 @@ const Configuration: FC = () => {
       dataSets,
       setDataSets,
       datasetConfigs,
+      datasetConfigsRef,
       setDatasetConfigs,
       hasSetContextVar,
       isShowVisionConfig,

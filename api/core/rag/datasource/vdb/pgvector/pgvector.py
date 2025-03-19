@@ -1,8 +1,10 @@
 import json
+import logging
 import uuid
 from contextlib import contextmanager
 from typing import Any
 
+import psycopg2.errors
 import psycopg2.extras  # type: ignore
 import psycopg2.pool  # type: ignore
 from pydantic import BaseModel, model_validator
@@ -25,6 +27,7 @@ class PGVectorConfig(BaseModel):
     database: str
     min_connection: int
     max_connection: int
+    pg_bigm: bool = False
 
     @model_validator(mode="before")
     @classmethod
@@ -62,12 +65,18 @@ CREATE INDEX IF NOT EXISTS embedding_cosine_v1_idx ON {table_name}
 USING hnsw (embedding vector_cosine_ops) WITH (m = 16, ef_construction = 64);
 """
 
+SQL_CREATE_INDEX_PG_BIGM = """
+CREATE INDEX IF NOT EXISTS bigm_idx ON {table_name}
+USING gin (text gin_bigm_ops);
+"""
+
 
 class PGVector(BaseVector):
     def __init__(self, collection_name: str, config: PGVectorConfig):
         super().__init__(collection_name)
         self.pool = self._create_connection_pool(config)
         self.table_name = f"embedding_{collection_name}"
+        self.pg_bigm = config.pg_bigm
 
     def get_type(self) -> str:
         return VectorType.PGVECTOR
@@ -140,7 +149,14 @@ class PGVector(BaseVector):
         if not ids:
             return
         with self._get_cursor() as cur:
-            cur.execute(f"DELETE FROM {self.table_name} WHERE id IN %s", (tuple(ids),))
+            try:
+                cur.execute(f"DELETE FROM {self.table_name} WHERE id IN %s", (tuple(ids),))
+            except psycopg2.errors.UndefinedTable:
+                # table not exists
+                logging.warning(f"Table {self.table_name} not found, skipping delete operation.")
+                return
+            except Exception as e:
+                raise e
 
     def delete_by_metadata_field(self, key: str, value: str) -> None:
         with self._get_cursor() as cur:
@@ -155,10 +171,18 @@ class PGVector(BaseVector):
         :return: List of Documents that are nearest to the query vector.
         """
         top_k = kwargs.get("top_k", 4)
+        if not isinstance(top_k, int) or top_k <= 0:
+            raise ValueError("top_k must be a positive integer")
+        document_ids_filter = kwargs.get("document_ids_filter")
+        where_clause = ""
+        if document_ids_filter:
+            document_ids = ", ".join(f"'{id}'" for id in document_ids_filter)
+            where_clause = f" WHERE metadata->>'document_id' in ({document_ids}) "
 
         with self._get_cursor() as cur:
             cur.execute(
                 f"SELECT meta, text, embedding <=> %s AS distance FROM {self.table_name}"
+                f" {where_clause}"
                 f" ORDER BY distance LIMIT {top_k}",
                 (json.dumps(query_vector),),
             )
@@ -174,17 +198,37 @@ class PGVector(BaseVector):
 
     def search_by_full_text(self, query: str, **kwargs: Any) -> list[Document]:
         top_k = kwargs.get("top_k", 5)
-
+        if not isinstance(top_k, int) or top_k <= 0:
+            raise ValueError("top_k must be a positive integer")
         with self._get_cursor() as cur:
-            cur.execute(
-                f"""SELECT meta, text, ts_rank(to_tsvector(coalesce(text, '')), plainto_tsquery(%s)) AS score
-                FROM {self.table_name}
-                WHERE to_tsvector(text) @@ plainto_tsquery(%s)
-                ORDER BY score DESC
-                LIMIT {top_k}""",
-                # f"'{query}'" is required in order to account for whitespace in query
-                (f"'{query}'", f"'{query}'"),
-            )
+            document_ids_filter = kwargs.get("document_ids_filter")
+            where_clause = ""
+            if document_ids_filter:
+                document_ids = ", ".join(f"'{id}'" for id in document_ids_filter)
+                where_clause = f" AND metadata->>'document_id' in ({document_ids}) "
+            if self.pg_bigm:
+                cur.execute("SET pg_bigm.similarity_limit TO 0.000001")
+                cur.execute(
+                    f"""SELECT meta, text, bigm_similarity(unistr(%s), coalesce(text, '')) AS score
+                    FROM {self.table_name}
+                    WHERE text =%% unistr(%s)
+                    {where_clause}
+                    ORDER BY score DESC
+                    LIMIT {top_k}""",
+                    # f"'{query}'" is required in order to account for whitespace in query
+                    (f"'{query}'", f"'{query}'"),
+                )
+            else:
+                cur.execute(
+                    f"""SELECT meta, text, ts_rank(to_tsvector(coalesce(text, '')), plainto_tsquery(%s)) AS score
+                    FROM {self.table_name}
+                    WHERE to_tsvector(text) @@ plainto_tsquery(%s)
+                    {where_clause}
+                    ORDER BY score DESC
+                    LIMIT {top_k}""",
+                    # f"'{query}'" is required in order to account for whitespace in query
+                    (f"'{query}'", f"'{query}'"),
+                )
 
             docs = []
 
@@ -214,6 +258,9 @@ class PGVector(BaseVector):
                 # ref: https://github.com/pgvector/pgvector?tab=readme-ov-file#indexing
                 if dimension <= 2000:
                     cur.execute(SQL_CREATE_INDEX.format(table_name=self.table_name))
+                if self.pg_bigm:
+                    cur.execute("CREATE EXTENSION IF NOT EXISTS pg_bigm")
+                    cur.execute(SQL_CREATE_INDEX_PG_BIGM.format(table_name=self.table_name))
             redis_client.set(collection_exist_cache_key, 1, ex=3600)
 
 
@@ -237,5 +284,6 @@ class PGVectorFactory(AbstractVectorFactory):
                 database=dify_config.PGVECTOR_DATABASE or "postgres",
                 min_connection=dify_config.PGVECTOR_MIN_CONNECTION,
                 max_connection=dify_config.PGVECTOR_MAX_CONNECTION,
+                pg_bigm=dify_config.PGVECTOR_PG_BIGM,
             ),
         )

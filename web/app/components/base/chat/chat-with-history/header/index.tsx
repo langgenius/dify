@@ -9,7 +9,7 @@ import {
   useChatWithHistoryContext,
 } from '../context'
 import Operation from './operation'
-import ActionButton from '@/app/components/base/action-button'
+import ActionButton, { ActionButtonState } from '@/app/components/base/action-button'
 import AppIcon from '@/app/components/base/app-icon'
 import Tooltip from '@/app/components/base/tooltip'
 import ViewFormDropdown from '@/app/components/base/chat/chat-with-history/inputs-form/view-form-dropdown'
@@ -33,6 +33,7 @@ const Header = () => {
     handleNewConversation,
     sidebarCollapseState,
     handleSidebarCollapse,
+    isResponding,
   } = useChatWithHistoryContext()
   const { t } = useTranslation()
   const isSidebarCollapsed = sidebarCollapseState
@@ -106,9 +107,21 @@ const Header = () => {
             <div className='h-[14px] w-px bg-divider-regular'></div>
           </div>
           {isSidebarCollapsed && (
-            <ActionButton size='l' onClick={handleNewConversation}>
-              <RiEditBoxLine className='w-[18px] h-[18px]' />
-            </ActionButton>
+            <Tooltip
+              disabled={!!currentConversationId}
+              popupContent={t('share.chat.newChatTip')}
+            >
+              <div>
+                <ActionButton
+                  size='l'
+                  state={(!currentConversationId || isResponding) ? ActionButtonState.Disabled : ActionButtonState.Default}
+                  disabled={!currentConversationId || isResponding}
+                  onClick={handleNewConversation}
+                >
+                  <RiEditBoxLine className='w-[18px] h-[18px]' />
+                </ActionButton>
+              </div>
+            </Tooltip>
           )}
         </div>
         <div className='flex items-center gap-1'>

@@ -102,6 +102,8 @@ class ApiToolProvider(Base):
 
     @property
     def user(self) -> Account | None:
+        if not self.user_id:
+            return None
         return db.session.query(Account).filter(Account.id == self.user_id).first()
 
     @property

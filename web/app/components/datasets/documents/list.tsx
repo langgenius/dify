@@ -16,7 +16,6 @@ import { useContext } from 'use-context-selector'
 import { useRouter } from 'next/navigation'
 import { useTranslation } from 'react-i18next'
 import dayjs from 'dayjs'
-import { Edit03 } from '../../base/icons/src/vender/solid/general'
 import { Globe01 } from '../../base/icons/src/vender/line/mapsAndTravel'
 import ChunkingModeLabel from '../common/chunking-mode-label'
 import FileTypeIcon from '../../base/file-uploader/file-type-icon'
@@ -45,6 +44,8 @@ import Pagination from '@/app/components/base/pagination'
 import Checkbox from '@/app/components/base/checkbox'
 import { useDocumentArchive, useDocumentDelete, useDocumentDisable, useDocumentEnable, useDocumentUnArchive, useSyncDocument, useSyncWebsite } from '@/service/knowledge/use-document'
 import { extensionToFileType } from '@/app/components/datasets/hit-testing/utils/extension-to-file-type'
+import useBatchEditDocumentMetadata from '../metadata/hooks/use-batch-edit-document-metadata'
+import EditMetadataBatchModal from '@/app/components/datasets/metadata/edit-metadata-batch/modal'
 
 export const useIndexStatus = () => {
   const { t } = useTranslation()
@@ -107,7 +108,8 @@ export const StatusItem: FC<{
     const [e] = await asyncRunSafe<CommonResponse>(opApi({ datasetId, documentId: id }) as Promise<CommonResponse>)
     if (!e) {
       notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
-      onUpdate?.(operationName)
+      onUpdate?.()
+      // onUpdate?.(operationName)
     }
     else { notify({ type: 'error', message: t('common.actionMsg.modifiedUnsuccessfully') }) }
   }
@@ -340,7 +342,7 @@ export const OperationAction: FC<{
           position='br'
           btnElement={
             <div className={cn(s.commonIcon)}>
-              <RiMoreFill className='w-4 h-4 text-text-components-button-secondary-text' />
+              <RiMoreFill className='w-4 h-4 text-components-button-secondary-text' />
             </div>
           }
           btnClassName={open => cn(isListScene ? s.actionIconWrapperList : s.actionIconWrapperDetail, open ? '!hover:bg-state-base-hover !shadow-none' : '!bg-transparent')}
@@ -401,6 +403,7 @@ type IDocumentListProps = {
   datasetId: string
   pagination: PaginationProps
   onUpdate: () => void
+  onManageMetadata: () => void
 }
 
 /**
@@ -414,6 +417,7 @@ const DocumentList: FC<IDocumentListProps> = ({
   datasetId,
   pagination,
   onUpdate,
+  onManageMetadata,
 }) => {
   const { t } = useTranslation()
   const { formatTime } = useTimestamp()
@@ -424,6 +428,17 @@ const DocumentList: FC<IDocumentListProps> = ({
   const isQAMode = chunkingMode === ChunkingMode.qa
   const [localDocs, setLocalDocs] = useState<LocalDoc[]>(documents)
   const [enableSort, setEnableSort] = useState(true)
+  const {
+    isShowEditModal,
+    showEditModal,
+    hideEditModal,
+    originalList,
+    handleSave,
+  } = useBatchEditDocumentMetadata({
+    datasetId,
+    docList: documents.filter(item => selectedIds.includes(item.id)),
+    onUpdate,
+  })
 
   useEffect(() => {
     setLocalDocs(documents)
@@ -501,18 +516,20 @@ const DocumentList: FC<IDocumentListProps> = ({
 
   return (
     <div className='flex flex-col relative w-full h-full'>
-      <div className='grow overflow-x-auto'>
+      <div className='relative grow overflow-x-auto'>
         <table className={`min-w-[700px] max-w-full w-full border-collapse border-0 text-sm mt-3 ${s.documentTable}`}>
           <thead className="h-8 leading-8 border-b border-divider-subtle text-text-tertiary font-medium text-xs uppercase">
             <tr>
               <td className='w-12'>
                 <div className='flex items-center' onClick={e => e.stopPropagation()}>
-                  <Checkbox
-                    className='shrink-0 mr-2'
-                    checked={isAllSelected}
-                    mixed={!isAllSelected && isSomeSelected}
-                    onCheck={onSelectedAll}
-                  />
+                  {embeddingAvailable && (
+                    <Checkbox
+                      className='shrink-0 mr-2'
+                      checked={isAllSelected}
+                      mixed={!isAllSelected && isSomeSelected}
+                      onCheck={onSelectedAll}
+                    />
+                  )}
                   #
                 </div>
               </td>
@@ -580,7 +597,7 @@ const DocumentList: FC<IDocumentListProps> = ({
                             handleShowRenameModal(doc)
                           }}
                         >
-                          <Edit03 className='w-4 h-4 text-text-tertiary' />
+                          <RiEditLine className='w-4 h-4 text-text-tertiary' />
                         </div>
                       </Tooltip>
                     </div>
@@ -625,6 +642,7 @@ const DocumentList: FC<IDocumentListProps> = ({
           onBatchEnable={handleAction(DocumentActionType.enable)}
           onBatchDisable={handleAction(DocumentActionType.disable)}
           onBatchDelete={handleAction(DocumentActionType.delete)}
+          onEditMetadata={showEditModal}
           onCancel={() => {
             onSelectedIdChange([])
           }}
@@ -645,6 +663,20 @@ const DocumentList: FC<IDocumentListProps> = ({
           name={currDocument.name}
           onClose={setShowRenameModalFalse}
           onSaved={handleRenamed}
+        />
+      )}
+
+      {isShowEditModal && (
+        <EditMetadataBatchModal
+          datasetId={datasetId}
+          documentNum={selectedIds.length}
+          list={originalList}
+          onSave={handleSave}
+          onHide={hideEditModal}
+          onShowManage={() => {
+            hideEditModal()
+            onManageMetadata()
+          }}
         />
       )}
     </div>

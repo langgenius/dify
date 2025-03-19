@@ -1,5 +1,5 @@
 import React, { type FC } from 'react'
-import { RiArchive2Line, RiCheckboxCircleLine, RiCloseCircleLine, RiDeleteBinLine } from '@remixicon/react'
+import { RiArchive2Line, RiCheckboxCircleLine, RiCloseCircleLine, RiDeleteBinLine, RiDraftLine } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
 import { useBoolean } from 'ahooks'
 import Divider from '@/app/components/base/divider'
@@ -14,6 +14,7 @@ type IBatchActionProps = {
   onBatchDisable: () => void
   onBatchDelete: () => Promise<void>
   onArchive?: () => void
+  onEditMetadata?: () => void
   onCancel: () => void
 }
 
@@ -24,6 +25,7 @@ const BatchAction: FC<IBatchActionProps> = ({
   onBatchDisable,
   onArchive,
   onBatchDelete,
+  onEditMetadata,
   onCancel,
 }) => {
   const { t } = useTranslation()
@@ -62,6 +64,15 @@ const BatchAction: FC<IBatchActionProps> = ({
             {t(`${i18nPrefix}.disable`)}
           </button>
         </div>
+        {onEditMetadata && (
+          <div className='flex items-center gap-x-0.5 px-3 py-2'>
+            <RiDraftLine className='w-4 h-4 text-components-button-ghost-text' />
+            <button type='button' className='px-0.5 text-components-button-ghost-text text-[13px] font-medium leading-[16px]' onClick={onEditMetadata}>
+              {t('dataset.metadata.metadata')}
+            </button>
+          </div>
+        )}
+
         {onArchive && (
           <div className='flex items-center gap-x-0.5 px-3 py-2'>
             <RiArchive2Line className='w-4 h-4 text-components-button-ghost-text' />
