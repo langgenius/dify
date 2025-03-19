@@ -26,7 +26,7 @@ const ApoToolsPreview = ({ onSelect, apoToolType, hidePopover }: ApoToolsPreview
   const [provider, setProvider] = useState()
   const [searchText, setSearchText] = useState<string>()
   const getAllTools = async () => {
-    const tools = await fetchApoTools(apoToolType, searchText)
+    const tools = await fetchApoTools(apoToolType, searchText, language)
     // setSearchText('')
     setProvider(tools[0])
     setTools(tools[0]?.tools)

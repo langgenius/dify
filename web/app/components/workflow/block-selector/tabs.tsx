@@ -1,6 +1,6 @@
 import type { FC } from 'react'
 import { memo } from 'react'
-import { useAllBuiltInTools, useAllCustomTools, useAllWorkflowTools } from '@/service/use-tools'
+import { useAllBuiltInTools, useAllCustomTools, useAllWorkflowTools, useApoNodes } from '@/service/use-tools'
 import type { BlockEnum } from '../types'
 import { useTabs } from './hooks'
 import type { ToolDefaultValue } from './types'
@@ -32,7 +32,7 @@ const Tabs: FC<TabsProps> = ({
   const { data: buildInTools } = useAllBuiltInTools()
   const { data: customTools } = useAllCustomTools()
   const { data: workflowTools } = useAllWorkflowTools()
-
+  const { data: apoNodes } = useApoNodes()
   return (
     <div onClick={e => e.stopPropagation()} className='h-full flex flex-col min-h-[80vh]'>
       {
@@ -59,7 +59,7 @@ const Tabs: FC<TabsProps> = ({
       }
       {
         activeTab === TabsEnum.Blocks && !noBlocks && (
-          <div className='h-0 grow overflow-y-auto'><APOTools onSelect={onSelect} searchText={searchText}/>
+          <div className='h-0 grow overflow-y-auto'><APOTools apoNodes={apoNodes} onSelect={onSelect} searchText={searchText}/>
             <Blocks
               searchText={searchText}
               onSelect={onSelect}

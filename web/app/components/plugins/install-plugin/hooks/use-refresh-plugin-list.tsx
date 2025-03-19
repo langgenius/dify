@@ -2,7 +2,7 @@ import { useModelList } from '@/app/components/header/account-setting/model-prov
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useProviderContext } from '@/context/provider-context'
 import { useInvalidateInstalledPluginList } from '@/service/use-plugins'
-import { useInvalidateAllBuiltInTools, useInvalidateAllToolProviders } from '@/service/use-tools'
+import { useInvalidateAllBuiltInTools, useInvalidateAllToolProviders, useInvalidateApoNodes } from '@/service/use-tools'
 import { useInvalidateStrategyProviders } from '@/service/use-strategy'
 import type { Plugin, PluginDeclaration, PluginManifestInMarket } from '../../types'
 import { PluginType } from '../../types'
@@ -16,6 +16,7 @@ const useRefreshPluginList = () => {
 
   const invalidateAllToolProviders = useInvalidateAllToolProviders()
   const invalidateAllBuiltInTools = useInvalidateAllBuiltInTools()
+  const invalidateApoNodes = useInvalidateApoNodes()
 
   const invalidateStrategyProviders = useInvalidateStrategyProviders()
   return {
@@ -27,6 +28,7 @@ const useRefreshPluginList = () => {
       if ((manifest && PluginType.tool.includes(manifest.category)) || refreshAllType) {
         invalidateAllToolProviders()
         invalidateAllBuiltInTools()
+        invalidateApoNodes()
         // TODO: update suggested tools. It's a function in hook useMarketplacePlugins,handleUpdatePlugins
       }
 

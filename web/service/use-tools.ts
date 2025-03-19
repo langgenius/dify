@@ -119,3 +119,14 @@ export const useRemoveProviderCredentials = ({
     onSuccess,
   })
 }
+
+const useApoNodesKey = [NAME_SPACE, 'apoNodes']
+export const useApoNodes = () => {
+  return useQuery<ToolWithProvider[]>({
+    queryKey: useApoNodesKey,
+    queryFn: () => get<ToolWithProvider[]>('/workspaces/current/tools/apo/list'),
+  })
+}
+export const useInvalidateApoNodes = () => {
+  return useInvalid(useApoNodesKey)
+}
