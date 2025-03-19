@@ -1,6 +1,7 @@
 from flask_login import current_user  # type: ignore  # type: ignore
-from flask_restful import Resource, marshal_with, reqparse, marshal  # type: ignore
+from flask_restful import marshal, reqparse  # type: ignore
 from werkzeug.exceptions import NotFound
+
 from controllers.service_api import api
 from controllers.service_api.wraps import DatasetApiResource
 from fields.dataset_fields import dataset_metadata_fields
@@ -119,5 +120,7 @@ class DocumentMetadataEditServiceApi(DatasetApiResource):
 api.add_resource(DatasetMetadataCreateServiceApi, "/datasets/<uuid:dataset_id>/metadata")
 api.add_resource(DatasetMetadataServiceApi, "/datasets/<uuid:dataset_id>/metadata/<uuid:metadata_id>")
 api.add_resource(DatasetMetadataBuiltInFieldServiceApi, "/datasets/metadata/built-in")
-api.add_resource(DatasetMetadataBuiltInFieldActionServiceApi, "/datasets/<uuid:dataset_id>/metadata/built-in/<string:action>")
+api.add_resource(
+    DatasetMetadataBuiltInFieldActionServiceApi, "/datasets/<uuid:dataset_id>/metadata/built-in/<string:action>"
+)
 api.add_resource(DocumentMetadataEditServiceApi, "/datasets/<uuid:dataset_id>/documents/metadata")
