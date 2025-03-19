@@ -1,0 +1,136 @@
+{
+    "query": "深圳天气",
+    "inputs": {},
+    "model_config": {
+        "pre_prompt": "```xml\n<instruction>\n你是一个超级智能体，根据用户的问题，提供清晰、准确的回答。默认使用中文回答。请按照以下步骤完成任务：\n1. 读取用户的问题，问题内容为：{sys.query}。\n2. 分析问题的含义，确保理解用户的需求。\n3. 根据你的知识和能力，生成一个准确、简洁的回答。\n4. 确保回答内容不包含任何XML标签。\n5. 将回答输出给用户。\n</instruction>\n\n<input>\n用户的问题：{sys.query}\n</input>\n\n<output>\n回答：\n</output>\n\n<example>\n<input>\n用户的问题：什么是人工智能？\n</input>\n<output>\n回答：人工智能是指通过计算机系统模拟人类智能的技术，包括学习、推理、问题解决和语言理解等能力。\n</output>\n</example>\n\n<example>\n<input>\n用户的问题：如何学习编程？\n</input>\n<output>\n回答：学习编程可以从选择一门编程语言开始，如Python或Java，然后通过在线课程、书籍和实践项目逐步掌握编程技能。\n</output>\n</example>\n```",
+        "prompt_type": "simple",
+        "chat_prompt_config": {},
+        "completion_prompt_config": {},
+        "user_input_form": [],
+        "dataset_query_variable": "",
+        "opening_statement": "你好！我是一个超级智能体，随时准备为你提供帮助。无论你是否选择联网搜索，我都能根据你的问题给出清晰、准确的回答。如果你需要最新的实时信息，我可以联网搜索获取；如果你更倾向于基于我的知识库获取答案，我也会尽力满足你的需求。请随时告诉我你的问题，我会以专业、友好的态度为你解答！",
+        "more_like_this": {
+            "enabled": false
+        },
+        "suggested_questions": [],
+        "suggested_questions_after_answer": {
+            "enabled": false
+        },
+        "text_to_speech": {
+            "enabled": false,
+            "voice": "",
+            "language": ""
+        },
+        "speech_to_text": {
+            "enabled": false
+        },
+        "retriever_resource": {
+            "enabled": true
+        },
+        "sensitive_word_avoidance": {
+            "enabled": false,
+            "type": "",
+            "configs": []
+        },
+        "agent_mode": {
+            "max_iteration": 5,
+            "enabled": true,
+            "strategy": "react",
+            "tools": [
+                {
+                    "provider_id": "time",
+                    "provider_type": "builtin",
+                    "provider_name": "time",
+                    "tool_name": "current_time",
+                    "tool_label": "获取当前时间",
+                    "tool_parameters": {
+                        "format": "",
+                        "timezone": ""
+                    },
+                    "notAuthor": false,
+                    "enabled": true,
+                    "isDeleted": false
+                },
+                {
+                    "provider_id": "14fd8283-8da4-42ae-95ca-7d13e9494865",
+                    "provider_type": "api",
+                    "provider_name": "BochaWebSearch",
+                    "tool_name": "BochaWebSearch",
+                    "tool_label": "BochaWebSearch",
+                    "tool_parameters": {
+                        "query": "",
+                        "summary": "",
+                        "freshness": "",
+                        "count": ""
+                    },
+                    "notAuthor": false,
+                    "enabled": true,
+                    "isDeleted": false
+                }
+            ],
+            "prompt": null
+        },
+        "dataset_configs": {
+            "retrieval_model": "multiple",
+            "top_k": 4,
+            "reranking_enable": false,
+            "datasets": {
+                "datasets": []
+            }
+        },
+        "file_upload": {
+            "image": {
+                "detail": "high",
+                "enabled": false,
+                "number_limits": 3,
+                "transfer_methods": [
+                    "remote_url",
+                    "local_file"
+                ]
+            },
+            "enabled": false,
+            "allowed_file_types": [],
+            "allowed_file_extensions": [
+                ".JPG",
+                ".JPEG",
+                ".PNG",
+                ".GIF",
+                ".WEBP",
+                ".SVG",
+                ".MP4",
+                ".MOV",
+                ".MPEG",
+                ".MPGA"
+            ],
+            "allowed_file_upload_methods": [
+                "remote_url",
+                "local_file"
+            ],
+            "number_limits": 3,
+            "fileUploadConfig": {
+                "file_size_limit": 15,
+                "batch_count_limit": 5,
+                "image_file_size_limit": 10,
+                "video_file_size_limit": 100,
+                "audio_file_size_limit": 50,
+                "workflow_file_upload_limit": 10
+            }
+        },
+        "annotation_reply": {
+            "enabled": false
+        },
+        "supportAnnotation": true,
+        "appId": "b91bfb49-4b94-4fbf-bd6d-fc344d149e41",
+        "supportCitationHitInfo": true,
+        "model": {
+            "provider": "langgenius/volcengine_maas/volcengine_maas",
+            "name": "deepseek-V3",
+            "mode": "chat",
+            "completion_params": {
+                "stop": []
+            }
+        }
+    },
+    "isInternet": "否",
+    "parent_message_id": null
+}

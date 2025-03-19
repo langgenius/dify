@@ -121,6 +121,7 @@ const DebugWithSingleModel = forwardRef<DebugWithSingleModelRefType, DebugWithSi
     if ((config.file_upload as any)?.enabled && files?.length && supportVision)
       data.files = files
 
+    console.log('doSend', JSON.stringify(data))
     handleSend(
       `apps/${appId}/chat-messages`,
       data,
