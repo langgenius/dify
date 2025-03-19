@@ -60,7 +60,15 @@ How we prioritize:
   | Valuable but not immediate                                   | Future-Feature  |
 ## Submitting your PR
 
+### Pull Request Process
 
+1. Fork the repository
+2. Before you draft a PR, please create an issue to discuss the changes you want to make
+3. Create a new branch for your changes
+4. Please add tests for your changes accordingly
+5. Ensure your code passes the existing tests
+6. Please link the issue in the PR description, `fixes #<issue_number>`
+7. Get merrged! 
 ### Setup the project
 
 #### Frontend
