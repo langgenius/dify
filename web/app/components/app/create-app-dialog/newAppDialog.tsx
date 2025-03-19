@@ -26,21 +26,21 @@ const NewAppDialog = ({
             cn(
               'fixed inset-0 bg-black bg-opacity-25',
               'data-[closed]:opacity-0',
-              'data-[enter]:ease-out data-[enter]:duration-300 data-[enter]:opacity-100',
-              'data-[leave]:ease-in data-[leave]:duration-200 data-[leave]:opacity-0',
+              'data-[enter]:opacity-100 data-[enter]:duration-300 data-[enter]:ease-out',
+              'data-[leave]:opacity-0 data-[leave]:duration-200 data-[leave]:ease-in',
             )
 
           } />
         </TransitionChild>
 
         <div className="fixed inset-0">
-          <div className="flex flex-col items-center justify-center min-h-full pt-[56px]">
+          <div className="flex min-h-full flex-col items-center justify-center pt-[56px]">
             <TransitionChild>
               <DialogPanel className={cn(
-                'grow relative w-full h-[calc(100vh-56px)] p-0 overflow-hidden text-left align-middle transition-all transform bg-white shadow-xl rounded-t-xl',
-                'data-[closed]:opacity-0  data-[closed]:scale-95',
-                'data-[enter]:ease-out data-[enter]:duration-300 data-[enter]:opacity-100 data-[enter]:scale-100',
-                'data-[leave]:ease-in data-[leave]:duration-200 data-[leave]:opacity-0 data-[enter]:scale-95',
+                'relative h-[calc(100vh-56px)] w-full grow overflow-hidden rounded-t-xl bg-white p-0 text-left align-middle shadow-xl transition-all',
+                'data-[closed]:scale-95  data-[closed]:opacity-0',
+                'data-[enter]:scale-100 data-[enter]:opacity-100 data-[enter]:duration-300 data-[enter]:ease-out',
+                'data-[enter]:scale-95 data-[leave]:opacity-0 data-[leave]:duration-200 data-[leave]:ease-in',
                 className)}>
                 {children}
               </DialogPanel>

@@ -51,7 +51,7 @@ export default function Radio({
     >
       {children && (
         <label className={
-          cn(labelClassName, 'text-sm cursor-pointer')
+          cn(labelClassName, 'cursor-pointer text-sm')
         }
         id={labelId}
         >

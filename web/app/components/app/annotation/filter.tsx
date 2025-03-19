@@ -29,7 +29,7 @@ const Filter: FC<IFilterProps> = ({
   if (!data)
     return null
   return (
-    <div className='flex justify-between flex-row flex-wrap gap-2 items-center mb-2'>
+    <div className='mb-2 flex flex-row flex-wrap items-center justify-between gap-2'>
       <Input
         wrapperClassName='w-[200px]'
         showLeftIcon

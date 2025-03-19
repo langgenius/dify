@@ -83,13 +83,13 @@ const AvatarWithEdit = ({ onSave, ...props }: AvatarWithEditProps) => {
   return (
     <>
       <div>
-        <div className="relative group">
+        <div className="group relative">
           <Avatar {...props} />
           <div
             onClick={() => { setIsShowAvatarPicker(true) }}
-            className="absolute inset-0 bg-black bg-opacity-50 rounded-full opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer flex items-center justify-center"
+            className="absolute inset-0 flex cursor-pointer items-center justify-center rounded-full bg-black bg-opacity-50 opacity-0 transition-opacity group-hover:opacity-100"
           >
-            <span className="text-white text-xs">
+            <span className="text-xs text-white">
               <RiPencilLine />
             </span>
           </div>
@@ -105,7 +105,7 @@ const AvatarWithEdit = ({ onSave, ...props }: AvatarWithEditProps) => {
         <ImageInput onImageInput={handleImageInput} cropShape='round' />
         <Divider className='m-0' />
 
-        <div className='w-full flex items-center justify-center p-3 gap-2'>
+        <div className='flex w-full items-center justify-center gap-2 p-3'>
           <Button className='w-full' onClick={() => setIsShowAvatarPicker(false)}>
             {t('app.iconPicker.cancel')}
           </Button>

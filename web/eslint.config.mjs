@@ -7,7 +7,7 @@ import storybook from 'eslint-plugin-storybook'
 // import { fixupConfigRules } from '@eslint/compat'
 import tailwind from 'eslint-plugin-tailwindcss'
 import reactHooks from 'eslint-plugin-react-hooks'
-import reactRefresh from 'eslint-plugin-react-refresh'
+// import reactRefresh from 'eslint-plugin-react-refresh'
 
 export default combine(
   stylistic({
@@ -130,7 +130,7 @@ export default combine(
     },
   },
   storybook.configs['flat/recommended'],
-  reactRefresh.configs.recommended,
+  // reactRefresh.configs.recommended,
   {
     rules: reactHooks.configs.recommended.rules,
     plugins: {

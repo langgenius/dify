@@ -62,12 +62,12 @@ export default function Modal({
                 >
                   {title}
                 </DialogTitle>}
-                {description && <div className='text-text-secondary body-md-regular mt-2'>
+                {description && <div className='body-md-regular mt-2 text-text-secondary'>
                   {description}
                 </div>}
                 {closable
-                  && <div className='absolute z-10 top-6 right-6 w-5 h-5 rounded-2xl flex items-center justify-center hover:cursor-pointer hover:bg-state-base-hover'>
-                    <RiCloseLine className='w-4 h-4 text-text-tertiary' onClick={
+                  && <div className='absolute right-6 top-6 z-10 flex h-5 w-5 items-center justify-center rounded-2xl hover:cursor-pointer hover:bg-state-base-hover'>
+                    <RiCloseLine className='h-4 w-4 text-text-tertiary' onClick={
                       (e) => {
                         e.stopPropagation()
                         onClose()

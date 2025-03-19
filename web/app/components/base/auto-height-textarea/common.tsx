@@ -39,7 +39,7 @@ const AutoHeightTextarea = (
         <textarea
           ref={ref}
           placeholder={placeholder}
-          className={cn(className, 'disabled:bg-transparent absolute inset-0 outline-none border-none appearance-none resize-none w-full h-full')}
+          className={cn(className, 'absolute inset-0 h-full w-full resize-none appearance-none border-none outline-none disabled:bg-transparent')}
           value={value}
           disabled={disabled}
           {...rest}

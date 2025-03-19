@@ -35,7 +35,7 @@ const Operation = (
   return (
     <div
       className={cn(
-        'shrink-0 flex items-center justify-end',
+        'flex shrink-0 items-center justify-end',
       )}
     >
       <div
@@ -50,13 +50,13 @@ const Operation = (
                 size='l'
                 onClick={onShowVoiceInput}
               >
-                <RiMicLine className='w-5 h-5' />
+                <RiMicLine className='h-5 w-5' />
               </ActionButton>
             )
           }
         </div>
         <Button
-          className='ml-3 px-0 w-8'
+          className='ml-3 w-8 px-0'
           variant='primary'
           onClick={onSend}
           style={
@@ -67,7 +67,7 @@ const Operation = (
               : {}
           }
         >
-          <RiSendPlane2Fill className='w-4 h-4' />
+          <RiSendPlane2Fill className='h-4 w-4' />
         </Button>
       </div>
     </div>

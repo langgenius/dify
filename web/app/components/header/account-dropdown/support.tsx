@@ -19,17 +19,17 @@ export default function Support() {
   const { userProfile, langeniusVersionInfo } = useAppContext()
   const canEmailSupport = plan.type === Plan.professional || plan.type === Plan.team || plan.type === Plan.enterprise
 
-  return <Menu as="div" className="relative w-full h-full">
+  return <Menu as="div" className="relative h-full w-full">
     {
       ({ open }) => (
         <>
           <MenuButton className={
-            cn('flex items-center pl-3 pr-2 py-2 h-9 w-full group hover:bg-state-base-hover rounded-lg gap-1',
+            cn('group flex h-9 w-full items-center gap-1 rounded-lg py-2 pl-3 pr-2 hover:bg-state-base-hover',
               open && 'bg-state-base-hover',
             )}>
-            <RiQuestionLine className='shrink-0 size-4 text-text-tertiary' />
-            <div className='grow text-left system-md-regular text-text-secondary px-1'>{t('common.userProfile.support')}</div>
-            <RiArrowRightSLine className='shrink-0 size-[14px] text-text-tertiary' />
+            <RiQuestionLine className='size-4 shrink-0 text-text-tertiary' />
+            <div className='system-md-regular grow px-1 text-left text-text-secondary'>{t('common.userProfile.support')}</div>
+            <RiArrowRightSLine className='size-[14px] shrink-0 text-text-tertiary' />
           </MenuButton>
           <Transition
             as={Fragment}
@@ -42,8 +42,8 @@ export default function Support() {
           >
             <MenuItems
               className={cn(
-                `absolute top-[1px] w-[216px] max-h-[70vh] overflow-y-scroll z-10 bg-components-panel-bg-blur backdrop-blur-[5px] border-[0.5px] border-components-panel-border
-                divide-y divide-divider-subtle origin-top-right rounded-xl focus:outline-none shadow-lg -translate-x-full
+                `absolute top-[1px] z-10 max-h-[70vh] w-[216px] origin-top-right -translate-x-full divide-y divide-divider-subtle overflow-y-scroll
+                rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-[5px] focus:outline-none
               `,
               )}
             >
@@ -55,9 +55,9 @@ export default function Support() {
                     )}
                     href={mailToSupport(userProfile.email, plan.type, langeniusVersionInfo.current_version)}
                     target='_blank' rel='noopener noreferrer'>
-                    <RiMailSendLine className='shrink-0 size-4 text-text-tertiary' />
-                    <div className='grow system-md-regular text-text-secondary px-1'>{t('common.userProfile.emailSupport')}</div>
-                    <RiArrowRightUpLine className='shrink-0 size-[14px] text-text-tertiary' />
+                    <RiMailSendLine className='size-4 shrink-0 text-text-tertiary' />
+                    <div className='system-md-regular grow px-1 text-text-secondary'>{t('common.userProfile.emailSupport')}</div>
+                    <RiArrowRightUpLine className='size-[14px] shrink-0 text-text-tertiary' />
                   </a>
                 </MenuItem>}
                 <MenuItem>
@@ -67,9 +67,9 @@ export default function Support() {
                     )}
                     href='https://github.com/langgenius/dify/discussions/categories/feedbacks'
                     target='_blank' rel='noopener noreferrer'>
-                    <RiFeedbackLine className='shrink-0 size-4 text-text-tertiary' />
-                    <div className='grow system-md-regular text-text-secondary px-1'>{t('common.userProfile.communityFeedback')}</div>
-                    <RiArrowRightUpLine className='shrink-0 size-[14px] text-text-tertiary' />
+                    <RiFeedbackLine className='size-4 shrink-0 text-text-tertiary' />
+                    <div className='system-md-regular grow px-1 text-text-secondary'>{t('common.userProfile.communityFeedback')}</div>
+                    <RiArrowRightUpLine className='size-[14px] shrink-0 text-text-tertiary' />
                   </Link>
                 </MenuItem>
                 <MenuItem>
@@ -79,9 +79,9 @@ export default function Support() {
                     )}
                     href='https://discord.gg/5AEfbxcd9k'
                     target='_blank' rel='noopener noreferrer'>
-                    <RiDiscordLine className='shrink-0 size-4 text-text-tertiary' />
-                    <div className='grow system-md-regular text-text-secondary px-1'>{t('common.userProfile.community')}</div>
-                    <RiArrowRightUpLine className='shrink-0 size-[14px] text-text-tertiary' />
+                    <RiDiscordLine className='size-4 shrink-0 text-text-tertiary' />
+                    <div className='system-md-regular grow px-1 text-text-secondary'>{t('common.userProfile.community')}</div>
+                    <RiArrowRightUpLine className='size-[14px] shrink-0 text-text-tertiary' />
                   </Link>
                 </MenuItem>
               </div>

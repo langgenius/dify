@@ -48,8 +48,8 @@ export default function Operate({
       {
         ({ open }) => (
           <>
-            <MenuButton className={cn('flex items-center justify-center w-8 h-8 rounded-lg hover:bg-state-base-hover', open && 'bg-state-base-hover')}>
-              <RiMoreFill className='w-4 h-4 text-text-secondary' />
+            <MenuButton className={cn('flex h-8 w-8 items-center justify-center rounded-lg hover:bg-state-base-hover', open && 'bg-state-base-hover')}>
+              <RiMoreFill className='h-4 w-4 text-text-secondary' />
             </MenuButton>
             <Transition
               as={Fragment}
@@ -60,33 +60,33 @@ export default function Operate({
               leaveFrom="transform opacity-100 scale-100"
               leaveTo="transform opacity-0 scale-95"
             >
-              <MenuItems className="absolute right-0 top-9 w-60 max-w-80 origin-top-right rounded-xl bg-components-panel-bg-blur backdrop-blur-sm border-[0.5px] border-components-panel-border shadow-lg">
+              <MenuItems className="absolute right-0 top-9 w-60 max-w-80 origin-top-right rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-sm">
                 <div className="px-1 py-1">
                   <MenuItem>
                     <div
-                      className='flex px-3 py-2 hover:bg-state-base-hover rounded-lg cursor-pointer'
+                      className='flex cursor-pointer rounded-lg px-3 py-2 hover:bg-state-base-hover'
                       onClick={onAuthAgain}
                     >
-                      <RiStickyNoteAddLine className='mr-2 mt-[2px] w-4 h-4 text-text-tertiary' />
+                      <RiStickyNoteAddLine className='mr-2 mt-[2px] h-4 w-4 text-text-tertiary' />
                       <div>
                         <div className='system-sm-semibold text-text-secondary'>{t('common.dataSource.notion.changeAuthorizedPages')}</div>
-                        <div className='text-text-tertiary system-xs-regular'>
+                        <div className='system-xs-regular text-text-tertiary'>
                           {payload.total} {t('common.dataSource.notion.pagesAuthorized')}
                         </div>
                       </div>
                     </div>
                   </MenuItem>
                   <MenuItem>
-                    <div className='flex px-3 py-2 hover:bg-state-base-hover rounded-lg cursor-pointer' onClick={handleSync}>
-                      <RiLoopLeftLine className='mr-2 mt-[2px] w-4 h-4 text-text-tertiary' />
+                    <div className='flex cursor-pointer rounded-lg px-3 py-2 hover:bg-state-base-hover' onClick={handleSync}>
+                      <RiLoopLeftLine className='mr-2 mt-[2px] h-4 w-4 text-text-tertiary' />
                       <div className='system-sm-semibold text-text-secondary'>{t('common.dataSource.notion.sync')}</div>
                     </div>
                   </MenuItem>
                 </div>
                 <MenuItem>
-                  <div className='p-1 border-t border-divider-subtle'>
-                    <div className='flex px-3 py-2 hover:bg-state-base-hover rounded-lg cursor-pointer' onClick={handleRemove}>
-                      <RiDeleteBinLine className='mr-2 mt-[2px] w-4 h-4 text-text-tertiary' />
+                  <div className='border-t border-divider-subtle p-1'>
+                    <div className='flex cursor-pointer rounded-lg px-3 py-2 hover:bg-state-base-hover' onClick={handleRemove}>
+                      <RiDeleteBinLine className='mr-2 mt-[2px] h-4 w-4 text-text-tertiary' />
                       <div className='system-sm-semibold text-text-secondary'>{t('common.dataSource.notion.remove')}</div>
                     </div>
                   </div>

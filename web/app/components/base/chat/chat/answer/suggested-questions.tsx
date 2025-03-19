@@ -25,7 +25,7 @@ const SuggestedQuestions: FC<SuggestedQuestionsProps> = ({
         <Button
           key={index}
           variant='secondary-accent'
-          className='mt-1 mr-1 max-w-full last:mr-0 shrink-0'
+          className='mr-1 mt-1 max-w-full shrink-0 last:mr-0'
           onClick={() => onSend?.(question)}
         >
           {question}

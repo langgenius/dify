@@ -40,10 +40,10 @@ const RetryOnNode = ({
   return (
     <div className='px-3'>
       <div className={cn(
-        'flex items-center justify-between px-[5px] py-1 bg-workflow-block-parma-bg border-[0.5px] border-transparent rounded-md system-xs-medium-uppercase text-text-tertiary',
-        isRunning && 'bg-state-accent-hover border-state-accent-active text-text-accent',
-        isSuccessful && 'bg-state-success-hover border-state-success-active text-text-success',
-        (isException || isFailed) && 'bg-state-warning-hover border-state-warning-active text-text-warning',
+        'system-xs-medium-uppercase flex items-center justify-between rounded-md border-[0.5px] border-transparent bg-workflow-block-parma-bg px-[5px] py-1 text-text-tertiary',
+        isRunning && 'border-state-accent-active bg-state-accent-hover text-text-accent',
+        isSuccessful && 'border-state-success-active bg-state-success-hover text-text-success',
+        (isException || isFailed) && 'border-state-warning-active bg-state-warning-hover text-text-warning',
       )}>
         <div className='flex items-center'>
           {
@@ -54,7 +54,7 @@ const RetryOnNode = ({
           {
             isRunning && (
               <>
-                <RiLoader2Line className='animate-spin mr-1 w-3.5 h-3.5' />
+                <RiLoader2Line className='mr-1 h-3.5 w-3.5 animate-spin' />
                 {t('workflow.nodes.common.retry.retrying')}
               </>
             )
@@ -62,7 +62,7 @@ const RetryOnNode = ({
           {
             isSuccessful && (
               <>
-                <RiCheckboxCircleFill className='mr-1 w-3.5 h-3.5' />
+                <RiCheckboxCircleFill className='mr-1 h-3.5 w-3.5' />
                 {t('workflow.nodes.common.retry.retrySuccessful')}
               </>
             )
@@ -70,7 +70,7 @@ const RetryOnNode = ({
           {
             (isFailed || isException) && (
               <>
-                <RiAlertFill className='mr-1 w-3.5 h-3.5' />
+                <RiAlertFill className='mr-1 h-3.5 w-3.5' />
                 {t('workflow.nodes.common.retry.retryFailed')}
               </>
             )

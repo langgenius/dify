@@ -102,7 +102,7 @@ const Select: FC<ISelectProps> = ({
         <div className='group text-text-secondary'>
           {allowSearch
             ? <ComboboxInput
-              className={`w-full rounded-lg border-0 ${bgClassName} py-1.5 pl-3 pr-10 shadow-sm sm:text-sm sm:leading-6 focus-visible:outline-none focus-visible:bg-state-base-hover group-hover:bg-state-base-hover ${disabled ? 'cursor-not-allowed' : 'cursor-pointer'}`}
+              className={`w-full rounded-lg border-0 ${bgClassName} py-1.5 pl-3 pr-10 shadow-sm focus-visible:bg-state-base-hover focus-visible:outline-none group-hover:bg-state-base-hover sm:text-sm sm:leading-6 ${disabled ? 'cursor-not-allowed' : 'cursor-pointer'}`}
               onChange={(event) => {
                 if (!disabled)
                   setQuery(event.target.value)
@@ -115,7 +115,7 @@ const Select: FC<ISelectProps> = ({
                   setOpen(!open)
               }
             } className={classNames(`flex items-center h-9 w-full rounded-lg border-0 ${bgClassName} py-1.5 pl-3 pr-10 shadow-sm sm:text-sm sm:leading-6 focus-visible:outline-none focus-visible:bg-state-base-hover group-hover:bg-state-base-hover`, optionClassName)}>
-              <div className='w-0 grow text-left truncate' title={selectedItem?.name}>{selectedItem?.name}</div>
+              <div className='w-0 grow truncate text-left' title={selectedItem?.name}>{selectedItem?.name}</div>
             </ComboboxButton>}
           <ComboboxButton className="absolute inset-y-0 right-0 flex items-center rounded-r-md px-2 focus:outline-none" onClick={
             () => {
@@ -128,7 +128,7 @@ const Select: FC<ISelectProps> = ({
         </div>
 
         {(filteredItems.length > 0 && open) && (
-          <ComboboxOptions className={`absolute z-10 mt-1 px-1 max-h-60 w-full overflow-auto rounded-md bg-components-panel-bg-blur backdrop-blur-sm py-1 text-base shadow-lg border-components-panel-border border-[0.5px] focus:outline-none sm:text-sm ${overlayClassName}`}>
+          <ComboboxOptions className={`absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-md border-[0.5px] border-components-panel-border bg-components-panel-bg-blur px-1 py-1 text-base shadow-lg backdrop-blur-sm focus:outline-none sm:text-sm ${overlayClassName}`}>
             {filteredItems.map((item: Item) => (
               <ComboboxOption
                 key={item.value}
@@ -223,7 +223,7 @@ const SimpleSelect: FC<ISelectProps> = ({
                       setSelectedItem(null)
                       onSelect({ name: '', value: '' })
                     }}
-                    className="h-4 w-4 text-text-quaternary cursor-pointer"
+                    className="h-4 w-4 cursor-pointer text-text-quaternary"
                     aria-hidden="false"
                   />
                 )
@@ -345,7 +345,7 @@ const PortalSelect: FC<PortalSelectProps> = ({
                 {selectedItem?.name ?? localPlaceholder}
               </span>
               <div className='mx-0.5'>{installedValue && selectedItem && selectedItem.value !== installedValue && <Badge>{installedValue} {'->'} {selectedItem.value} </Badge>}</div>
-              <ChevronDownIcon className='shrink-0 h-4 w-4 text-text-quaternary group-hover:text-text-secondary' />
+              <ChevronDownIcon className='h-4 w-4 shrink-0 text-text-quaternary group-hover:text-text-secondary' />
             </div>
           )}
 
@@ -358,7 +358,7 @@ const PortalSelect: FC<PortalSelectProps> = ({
             <div
               key={item.value}
               className={`
-                flex items-center justify-between px-2.5 h-9 cursor-pointer rounded-lg hover:bg-state-base-hover text-text-secondary
+                flex h-9 cursor-pointer items-center justify-between rounded-lg px-2.5 text-text-secondary hover:bg-state-base-hover
                 ${item.value === value && 'bg-state-base-hover'}
               `}
               title={item.name}
@@ -373,11 +373,11 @@ const PortalSelect: FC<PortalSelectProps> = ({
               >
                 <span className='truncate'>{item.name}</span>
                 {item.value === installedValue && (
-                  <Badge uppercase={true} className='shrink-0 ml-1'>INSTALLED</Badge>
+                  <Badge uppercase={true} className='ml-1 shrink-0'>INSTALLED</Badge>
                 )}
               </span>
               {!hideChecked && item.value === value && (
-                <RiCheckLine className='shrink-0 h-4 w-4 text-text-accent' />
+                <RiCheckLine className='h-4 w-4 shrink-0 text-text-accent' />
               )}
             </div>
           ))}

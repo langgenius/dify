@@ -12,6 +12,7 @@
     "lint": "pnpm eslint",
     "fix": "next lint --fix",
     "eslint-fix": "eslint --fix",
+    "eslint-fix-only-show-error": "eslint --fix --quiet",
     "prepare": "cd ../ && node -e \"if (process.env.NODE_ENV !== 'production'){process.exit(1)} \" || husky ./web/.husky",
     "gen-icons": "node ./app/components/base/icons/script.mjs",
     "uglify-embed": "node ./bin/uglify-embed",

@@ -50,12 +50,12 @@ const AddCondition = ({
           size='small'
           variant='secondary'
         >
-          <RiAddLine className='w-3.5 h-3.5' />
+          <RiAddLine className='h-3.5 w-3.5' />
           {t('workflow.nodes.knowledgeRetrieval.metadata.panel.add')}
         </Button>
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent className='z-10'>
-        <div className='w-[320px] bg-components-panel-bg-blur border-[0.5px] border-components-panel-border rounded-xl shadow-lg'>
+        <div className='w-[320px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg'>
           <div className='p-2 pb-1'>
             <Input
               showLeftIcon
@@ -69,7 +69,7 @@ const AddCondition = ({
               filteredMetadataList?.map(metadata => (
                 <div
                   key={metadata.name}
-                  className='flex items-center px-3 h-6 rounded-md system-sm-medium text-text-secondary cursor-pointer hover:bg-state-base-hover'
+                  className='system-sm-medium flex h-6 cursor-pointer items-center rounded-md px-3 text-text-secondary hover:bg-state-base-hover'
                 >
                   <div className='mr-1 p-[1px]'>
                     <MetadataIcon type={metadata.type} />
@@ -81,7 +81,7 @@ const AddCondition = ({
                   >
                     {metadata.name}
                   </div>
-                  <div className='shrink-0 system-xs-regular text-text-tertiary'>{metadata.type}</div>
+                  <div className='system-xs-regular shrink-0 text-text-tertiary'>{metadata.type}</div>
                 </div>
               ))
             }

@@ -19,8 +19,8 @@ const Crawling: FC<Props> = ({
 
   return (
     <div className={className}>
-      <div className='flex items-center h-[34px] px-4 shadow-xs shadow-shadow-shadow-3
-        border-y-[0.5px] border-divider-regular text-xs text-text-tertiary'>
+      <div className='flex h-[34px] items-center border-y-[0.5px] border-divider-regular px-4
+        text-xs text-text-tertiary shadow-xs shadow-shadow-shadow-3'>
         {t('datasetCreation.stepOne.website.totalPageScraped')} {crawledNum}/{totalNum}
       </div>
 

@@ -66,7 +66,7 @@ const SegmentList = (
     )
   }
   return (
-    <div ref={ref} className={'flex flex-col grow overflow-y-auto'}>
+    <div ref={ref} className={'flex grow flex-col overflow-y-auto'}>
       {
         items.map((segItem) => {
           const isLast = items[items.length - 1].id === segItem.id
@@ -79,11 +79,11 @@ const SegmentList = (
             <div key={segItem.id} className='flex items-start gap-x-2'>
               <Checkbox
                 key={`${segItem.id}-checkbox`}
-                className='shrink-0 mt-3.5'
+                className='mt-3.5 shrink-0'
                 checked={selectedSegmentIds.includes(segItem.id)}
                 onCheck={() => onSelected(segItem.id)}
               />
-              <div className='grow min-w-0'>
+              <div className='min-w-0 grow'>
                 <SegmentCard
                   key={`${segItem.id}-card`}
                   detail={segItem}
@@ -103,7 +103,7 @@ const SegmentList = (
                   }}
                 />
                 {!isLast && <div className='w-full px-3'>
-                  <Divider type='horizontal' className='bg-divider-subtle my-1' />
+                  <Divider type='horizontal' className='my-1 bg-divider-subtle' />
                 </div>}
               </div>
             </div>

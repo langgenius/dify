@@ -42,26 +42,26 @@ const SavedItems: FC<ISavedItemsProps> = ({
           {list.map(({ id, answer }) => (
             <div key={id} className='relative'>
               <div className={cn(
-                'p-4 bg-background-section-burn rounded-2xl',
+                'rounded-2xl bg-background-section-burn p-4',
               )}>
                 <Markdown content={answer} />
               </div>
-              <div className='mt-1 h-4 px-4 text-text-quaternary system-xs-regular'>
+              <div className='system-xs-regular mt-1 h-4 px-4 text-text-quaternary'>
                 <span>{answer.length} {t('common.unit.char')}</span>
               </div>
-              <div className='absolute right-2 bottom-1'>
-                <div className='ml-1 flex items-center gap-0.5 p-0.5 rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg shadow-md backdrop-blur-sm'>
+              <div className='absolute bottom-1 right-2'>
+                <div className='ml-1 flex items-center gap-0.5 rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-md backdrop-blur-sm'>
                   {isShowTextToSpeech && <NewAudioButton value={answer}/>}
                   <ActionButton onClick={() => {
                     copy(answer)
                     Toast.notify({ type: 'success', message: t('common.actionMsg.copySuccessfully') })
                   }}>
-                    <RiClipboardLine className='w-4 h-4' />
+                    <RiClipboardLine className='h-4 w-4' />
                   </ActionButton>
                   <ActionButton onClick={() => {
                     onRemove(id)
                   }}>
-                    <RiDeleteBinLine className='w-4 h-4' />
+                    <RiDeleteBinLine className='h-4 w-4' />
                   </ActionButton>
                 </div>
               </div>

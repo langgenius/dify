@@ -64,25 +64,25 @@ const MetadataFilterSelector = ({
           size='small'
         >
           {selectedOption.value}
-          <RiArrowDownSLine className='w-3.5 h-3.5' />
+          <RiArrowDownSLine className='h-3.5 w-3.5' />
         </Button>
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent className='z-10'>
-        <div className='p-1 w-[280px] bg-components-panel-bg-blur border-[0.5px] border-components-panel-border rounded-xl shadow-lg'>
+        <div className='w-[280px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-1 shadow-lg'>
           {
             options.map(option => (
               <div
                 key={option.key}
-                className='flex p-2 pr-3 rounded-lg cursor-pointer hover:bg-state-base-hover'
+                className='flex cursor-pointer rounded-lg p-2 pr-3 hover:bg-state-base-hover'
                 onClick={() => {
                   onSelect(option.key)
                   setOpen(false)
                 }}
               >
-                <div className='shrink-0 w-4'>
+                <div className='w-4 shrink-0'>
                   {
                     option.key === value && (
-                      <RiCheckLine className='w-4 h-4 text-text-accent' />
+                      <RiCheckLine className='h-4 w-4 text-text-accent' />
                     )
                   }
                 </div>

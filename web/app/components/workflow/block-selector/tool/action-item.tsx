@@ -44,13 +44,13 @@ const ToolItem: FC<Props> = ({
             toolIcon={provider.icon}
           />
           <div className='mb-1 text-sm leading-5 text-text-primary'>{payload.label[language]}</div>
-          <div className='text-xs text-text-secondary leading-[18px]'>{payload.description[language]}</div>
+          <div className='text-xs leading-[18px] text-text-secondary'>{payload.description[language]}</div>
         </div>
       )}
     >
       <div
         key={payload.name}
-        className='flex justify-between items-center pr-1 rounded-lg pl-[21px] hover:bg-state-base-hover cursor-pointer'
+        className='flex cursor-pointer items-center justify-between rounded-lg pl-[21px] pr-1 hover:bg-state-base-hover'
         onClick={() => {
           if (disabled) return
           const params: Record<string, string> = {}
@@ -73,12 +73,12 @@ const ToolItem: FC<Props> = ({
           })
         }}
       >
-        <div className={cn('h-8 leading-8 border-l-2 border-divider-subtle pl-4 truncate text-text-secondary system-sm-medium', disabled && 'opacity-30')}>{payload.label[language]}</div>
+        <div className={cn('system-sm-medium h-8 truncate border-l-2 border-divider-subtle pl-4 leading-8 text-text-secondary', disabled && 'opacity-30')}>{payload.label[language]}</div>
         {disabled && <Badge
-          className='flex items-center h-5 text-text-tertiary space-x-0.5'
+          className='flex h-5 items-center space-x-0.5 text-text-tertiary'
           uppercase
         >
-          <RiCheckLine className='w-3 h-3 ' />
+          <RiCheckLine className='h-3 w-3 ' />
           <div>{t('tools.addToolModal.added')}</div>
         </Badge>
         }

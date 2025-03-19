@@ -63,8 +63,8 @@ export default function CustomPopover({
                 ref={buttonRef}
                 disabled={disabled}
                 className={cn(
-                  'group inline-flex items-center bg-components-button-secondary-bg px-3 py-2 rounded-lg text-base border border-components-button-secondary-border font-medium hover:bg-components-button-secondary-bg-hover hover:border-components-button-secondary-border-hover focus:outline-none',
-                  open && 'bg-components-button-secondary-bg-hover border-components-button-secondary-border',
+                  'group inline-flex items-center rounded-lg border border-components-button-secondary-border bg-components-button-secondary-bg px-3 py-2 text-base font-medium hover:border-components-button-secondary-border-hover hover:bg-components-button-secondary-bg-hover focus:outline-none',
+                  open && 'border-components-button-secondary-border bg-components-button-secondary-bg-hover',
                   (btnClassName && typeof btnClassName === 'string') && btnClassName,
                   (btnClassName && typeof btnClassName !== 'string') && btnClassName?.(open),
                 )}
@@ -74,8 +74,8 @@ export default function CustomPopover({
               <Transition as={Fragment}>
                 <PopoverPanel
                   className={cn(
-                    'absolute z-10 w-full max-w-sm px-4 mt-1 sm:px-0 lg:max-w-3xl',
-                    position === 'bottom' && '-translate-x-1/2 left-1/2',
+                    'absolute z-10 mt-1 w-full max-w-sm px-4 sm:px-0 lg:max-w-3xl',
+                    position === 'bottom' && 'left-1/2 -translate-x-1/2',
                     position === 'bl' && 'left-0',
                     position === 'br' && 'right-0',
                     className,
@@ -90,7 +90,7 @@ export default function CustomPopover({
                 >
                   {({ close }) => (
                     <div
-                      className={cn('overflow-hidden bg-components-panel-bg w-fit min-w-[130px] rounded-lg shadow-lg ring-1 ring-black ring-opacity-5', popupClassName)}
+                      className={cn('w-fit min-w-[130px] overflow-hidden rounded-lg bg-components-panel-bg shadow-lg ring-1 ring-black ring-opacity-5', popupClassName)}
                       {...(trigger !== 'hover'
                         ? {}
                         : {
