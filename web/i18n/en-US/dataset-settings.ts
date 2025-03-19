@@ -26,6 +26,7 @@ const translation = {
     embeddingModelTipLink: 'Settings',
     retrievalSetting: {
       title: 'Retrieval Setting',
+      method: 'Retrieval Method',
       learnMore: 'Learn more',
       description: ' about retrieval method.',
       longDescription: ' about retrieval method, you can change this at any time in the Knowledge settings.',

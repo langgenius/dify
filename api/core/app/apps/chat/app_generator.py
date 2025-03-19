@@ -24,6 +24,7 @@ from extensions.ext_database import db
 from factories import file_factory
 from models.account import Account
 from models.model import App, EndUser
+from services.conversation_service import ConversationService
 from services.errors.message import MessageNotExistsError
 
 logger = logging.getLogger(__name__)
@@ -91,9 +92,11 @@ class ChatAppGenerator(MessageBasedAppGenerator):
 
         # get conversation
         conversation = None
-        if args.get("conversation_id"):
-            conversation = self._get_conversation_by_user(app_model, args.get("conversation_id", ""), user)
-
+        conversation_id = args.get("conversation_id")
+        if conversation_id:
+            conversation = ConversationService.get_conversation(
+                app_model=app_model, conversation_id=conversation_id, user=user
+            )
         # get app model config
         app_model_config = self._get_app_model_config(app_model=app_model, conversation=conversation)
 

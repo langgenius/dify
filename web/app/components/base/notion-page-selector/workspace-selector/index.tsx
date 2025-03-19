@@ -2,9 +2,8 @@
 import { useTranslation } from 'react-i18next'
 import { Fragment } from 'react'
 import { Menu, Transition } from '@headlessui/react'
+import { RiArrowDownSLine } from '@remixicon/react'
 import NotionIcon from '../../notion-icon'
-import s from './index.module.css'
-import cn from '@/utils/classnames'
 import type { DataSourceNotionWorkspace } from '@/models/common'
 
 type WorkspaceSelectorProps = {
@@ -25,15 +24,15 @@ export default function WorkspaceSelector({
       {
         ({ open }) => (
           <>
-            <Menu.Button className={`flex items-center justify-center h-7 rounded-md hover:bg-gray-50 ${open && 'bg-gray-50'} cursor-pointer`}>
+            <Menu.Button className={`flex items-center justify-center h-7 p-1 pr-2 rounded-md hover:bg-state-base-hover ${open && 'bg-state-base-hover'} cursor-pointer`}>
               <NotionIcon
-                className='ml-1 mr-2'
+                className='mr-2'
                 src={currentWorkspace?.workspace_icon}
                 name={currentWorkspace?.workspace_name}
               />
-              <div className='mr-1 w-[90px] text-left text-sm font-medium text-gray-700 truncate' title={currentWorkspace?.workspace_name}>{currentWorkspace?.workspace_name}</div>
-              <div className='mr-1 px-1 h-[18px] bg-primary-50 rounded-lg text-xs font-medium text-primary-600'>{currentWorkspace?.pages.length}</div>
-              <div className={cn(s['down-arrow'], 'mr-2 w-3 h-3')} />
+              <div className='mr-1 w-[90px] text-left text-sm font-medium text-text-secondary truncate' title={currentWorkspace?.workspace_name}>{currentWorkspace?.workspace_name}</div>
+              {/* <div className='mr-1 px-1 h-[18px] bg-primary-50 rounded-lg text-xs font-medium text-text-accent'>{currentWorkspace?.pages.length}</div> */}
+              <RiArrowDownSLine className='w-4 h-4 text-text-secondary' />
             </Menu.Button>
             <Transition
               as={Fragment}
@@ -45,19 +44,16 @@ export default function WorkspaceSelector({
               leaveTo="transform opacity-0 scale-95"
             >
               <Menu.Items
-                className={cn(
-                  s.popup,
-                  `absolute left-0 top-8 w-80
-                  origin-top-right rounded-lg bg-white
-                  border-[0.5px] border-gray-200`,
-                )}
+                className='absolute left-0 top-8 z-10 w-80
+                  origin-top-right rounded-lg bg-components-panel-bg-blur
+                  border-[0.5px] border-components-panel-border shadow-lg shadow-shadow-shadow-5 backdrop-blur-[5px]'
               >
                 <div className="p-1 max-h-50 overflow-auto">
                   {
                     items.map(item => (
                       <Menu.Item key={item.workspace_id}>
                         <div
-                          className='flex items-center px-3 h-9 hover:bg-gray-50 cursor-pointer'
+                          className='flex items-center px-3 h-9 rounded-lg hover:bg-state-base-hover cursor-pointer'
                           onClick={() => onSelect(item.workspace_id)}
                         >
                           <NotionIcon
@@ -65,8 +61,8 @@ export default function WorkspaceSelector({
                             src={item.workspace_icon}
                             name={item.workspace_name}
                           />
-                          <div className='grow mr-2 text-sm text-gray-700 truncate' title={item.workspace_name}>{item.workspace_name}</div>
-                          <div className='shrink-0 text-xs font-medium text-primary-600'>
+                          <div className='grow mr-2 system-sm-medium text-text-secondary truncate' title={item.workspace_name}>{item.workspace_name}</div>
+                          <div className='shrink-0 system-xs-medium text-text-accent'>
                             {item.pages.length} {t('common.dataSource.notion.selector.pageSelected')}
                           </div>
                         </div>

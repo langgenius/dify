@@ -203,6 +203,7 @@ Si vous souhaitez configurer une configuration haute disponibilité, la communau
 
 - [Helm Chart par @LeoQuote](https://github.com/douban/charts/tree/master/charts/dify)
 - [Helm Chart par @BorisPolonsky](https://github.com/BorisPolonsky/dify-helm)
+- [Helm Chart par @magicsong](https://github.com/magicsong/ai-charts)
 - [Fichier YAML par @Winson-030](https://github.com/Winson-030/dify-kubernetes)
 
 #### Utilisation de Terraform pour le déploiement

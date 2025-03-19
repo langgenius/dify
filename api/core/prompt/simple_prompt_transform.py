@@ -93,7 +93,7 @@ class SimplePromptTransform(PromptTransform):
 
         return prompt_messages, stops
 
-    def get_prompt_str_and_rules(
+    def _get_prompt_str_and_rules(
         self,
         app_mode: AppMode,
         model_config: ModelConfigWithCredentialsEntity,
@@ -184,7 +184,7 @@ class SimplePromptTransform(PromptTransform):
         prompt_messages: list[PromptMessage] = []
 
         # get prompt
-        prompt, _ = self.get_prompt_str_and_rules(
+        prompt, _ = self._get_prompt_str_and_rules(
             app_mode=app_mode,
             model_config=model_config,
             pre_prompt=pre_prompt,
@@ -209,9 +209,9 @@ class SimplePromptTransform(PromptTransform):
             )
 
         if query:
-            prompt_messages.append(self.get_last_user_message(query, files, image_detail_config))
+            prompt_messages.append(self._get_last_user_message(query, files, image_detail_config))
         else:
-            prompt_messages.append(self.get_last_user_message(prompt, files, image_detail_config))
+            prompt_messages.append(self._get_last_user_message(prompt, files, image_detail_config))
 
         return prompt_messages, None
 
@@ -228,7 +228,7 @@ class SimplePromptTransform(PromptTransform):
         image_detail_config: Optional[ImagePromptMessageContent.DETAIL] = None,
     ) -> tuple[list[PromptMessage], Optional[list[str]]]:
         # get prompt
-        prompt, prompt_rules = self.get_prompt_str_and_rules(
+        prompt, prompt_rules = self._get_prompt_str_and_rules(
             app_mode=app_mode,
             model_config=model_config,
             pre_prompt=pre_prompt,
@@ -254,7 +254,7 @@ class SimplePromptTransform(PromptTransform):
             )
 
             # get prompt
-            prompt, prompt_rules = self.get_prompt_str_and_rules(
+            prompt, prompt_rules = self._get_prompt_str_and_rules(
                 app_mode=app_mode,
                 model_config=model_config,
                 pre_prompt=pre_prompt,
@@ -268,9 +268,9 @@ class SimplePromptTransform(PromptTransform):
         if stops is not None and len(stops) == 0:
             stops = None
 
-        return [self.get_last_user_message(prompt, files, image_detail_config)], stops
+        return [self._get_last_user_message(prompt, files, image_detail_config)], stops
 
-    def get_last_user_message(
+    def _get_last_user_message(
         self,
         prompt: str,
         files: Sequence["File"],
