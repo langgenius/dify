@@ -5,7 +5,6 @@ import click
 from celery import shared_task  # type: ignore
 from flask import render_template
 
-from configs import dify_config
 from extensions.ext_mail import mail
 from services.feature_service import FeatureService
 
@@ -28,8 +27,9 @@ def send_email_code_login_mail_task(language: str, to: str, code: str):
     try:
         if language == "zh-Hans":
             template = "email_code_login_mail_template_zh-CN.html"
-            if dify_config.ENTERPRISE_ENABLED:
-                application_title = FeatureService.get_enterprise_application_title()
+            system_features = FeatureService.get_system_features()
+            if system_features.branding.enabled:
+                application_title = system_features.branding.application_title
                 template = "without-brand/email_code_login_mail_template_zh-CN.html"
                 html_content = render_template(template, to=to, code=code, application_title=application_title)
             else:
@@ -37,8 +37,9 @@ def send_email_code_login_mail_task(language: str, to: str, code: str):
             mail.send(to=to, subject="邮箱验证码", html=html_content)
         else:
             template = "email_code_login_mail_template_en-US.html"
-            if dify_config.ENTERPRISE_ENABLED:
-                application_title = FeatureService.get_enterprise_application_title()
+            system_features = FeatureService.get_system_features()
+            if system_features.branding.enabled:
+                application_title = system_features.branding.application_title
                 template = "without-brand/email_code_login_mail_template_en-US.html"
                 html_content = render_template(template, to=to, code=code, application_title=application_title)
             else:
