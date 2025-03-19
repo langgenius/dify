@@ -3,6 +3,7 @@ const translation = {
     header: {
       creation: 'ज्ञान बनाएं',
       update: 'डेटा जोड़ें',
+      fallbackRoute: 'ज्ञान',
     },
     one: 'डेटा स्रोत चुनें',
     two: 'पाठ पूर्व-प्रसंस्करण और सफाई',

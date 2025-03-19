@@ -305,7 +305,7 @@ export const useChat = (
       else
         ttsUrl = `/apps/${params.appId}/text-to-audio`
     }
-    const player = AudioPlayerManager.getInstance().getAudioPlayer(ttsUrl, ttsIsPublic, uuidV4(), 'none', 'none', (_: any): any => {})
+    const player = AudioPlayerManager.getInstance().getAudioPlayer(ttsUrl, ttsIsPublic, uuidV4(), 'none', 'none', (_: any): any => { })
     ssePost(
       url,
       {
@@ -397,6 +397,7 @@ export const useChat = (
               )
               setSuggestQuestions(data)
             }
+            // eslint-disable-next-line unused-imports/no-unused-vars
             catch (e) {
               setSuggestQuestions([])
             }
@@ -536,6 +537,9 @@ export const useChat = (
           if (nodeStartedData.iteration_id)
             return
 
+          if (data.loop_id)
+            return
+
           responseItem.workflowProcess!.tracing!.push({
             ...nodeStartedData,
             status: WorkflowRunningStatus.Running,
@@ -551,11 +555,14 @@ export const useChat = (
           if (nodeFinishedData.iteration_id)
             return
 
+          if (data.loop_id)
+            return
+
           const currentIndex = responseItem.workflowProcess!.tracing!.findIndex((item) => {
             if (!item.execution_metadata?.parallel_id)
               return item.node_id === nodeFinishedData.node_id
 
-            return item.node_id === nodeFinishedData.node_id && (item.execution_metadata?.parallel_id === nodeFinishedData.execution_metadata.parallel_id)
+            return item.node_id === nodeFinishedData.node_id && (item.execution_metadata?.parallel_id === nodeFinishedData.execution_metadata?.parallel_id)
           })
           responseItem.workflowProcess!.tracing[currentIndex] = nodeFinishedData as any
 
@@ -574,6 +581,35 @@ export const useChat = (
         },
         onTTSEnd: (messageId: string, audio: string) => {
           player.playAudioWithAudio(audio, false)
+        },
+        onLoopStart: ({ data: loopStartedData }) => {
+          responseItem.workflowProcess!.tracing!.push({
+            ...loopStartedData,
+            status: WorkflowRunningStatus.Running,
+          } as any)
+          updateCurrentQAOnTree({
+            placeholderQuestionId,
+            questionItem,
+            responseItem,
+            parentId: data.parent_message_id,
+          })
+        },
+        onLoopFinish: ({ data: loopFinishedData }) => {
+          const tracing = responseItem.workflowProcess!.tracing!
+          const loopIndex = tracing.findIndex(item => item.node_id === loopFinishedData.node_id
+            && (item.execution_metadata?.parallel_id === loopFinishedData.execution_metadata?.parallel_id || item.parallel_id === loopFinishedData.execution_metadata?.parallel_id))!
+          tracing[loopIndex] = {
+            ...tracing[loopIndex],
+            ...loopFinishedData,
+            status: WorkflowRunningStatus.Succeeded,
+          } as any
+
+          updateCurrentQAOnTree({
+            placeholderQuestionId,
+            questionItem,
+            responseItem,
+            parentId: data.parent_message_id,
+          })
         },
       })
     return true

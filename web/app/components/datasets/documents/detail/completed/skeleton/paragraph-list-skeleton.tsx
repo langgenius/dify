@@ -52,7 +52,7 @@ const ParagraphListSkeleton = () => {
   return (
     <div className='relative flex flex-col h-full overflow-y-hidden z-10'>
       <div className='absolute top-0 left-0 w-full h-full bg-dataset-chunk-list-mask-bg z-20' />
-      {[...Array(10)].map((_, index) => {
+      {[...Array.from({ length: 10 })].map((_, index) => {
         return (
           <div key={index} className='flex items-start gap-x-2'>
             <Checkbox

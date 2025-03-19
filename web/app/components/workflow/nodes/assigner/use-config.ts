@@ -39,6 +39,8 @@ const useConfig = (id: string, rawPayload: AssignerNodeType) => {
   const currentNode = getNodes().find(n => n.id === id)
   const isInIteration = payload.isInIteration
   const iterationNode = isInIteration ? getNodes().find(n => n.id === currentNode!.parentId) : null
+  const isInLoop = payload.isInLoop
+  const loopNode = isInLoop ? getNodes().find(n => n.id === currentNode!.parentId) : null
   const availableNodes = useMemo(() => {
     return getBeforeNodesInSameBranch(id)
   }, [getBeforeNodesInSameBranch, id])
@@ -54,13 +56,13 @@ const useConfig = (id: string, rawPayload: AssignerNodeType) => {
   const { getCurrentVariableType } = useWorkflowVariables()
   const getAssignedVarType = useCallback((valueSelector: ValueSelector) => {
     return getCurrentVariableType({
-      parentNode: iterationNode,
+      parentNode: isInIteration ? iterationNode : loopNode,
       valueSelector: valueSelector || [],
       availableNodes,
       isChatMode,
       isConstant: false,
     })
-  }, [getCurrentVariableType, iterationNode, availableNodes, isChatMode])
+  }, [getCurrentVariableType, isInIteration, iterationNode, loopNode, availableNodes, isChatMode])
 
   const handleOperationListChanges = useCallback((items: AssignerNodeOperation[]) => {
     const newInputs = produce(inputs, (draft) => {

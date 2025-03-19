@@ -3,6 +3,7 @@ import mermaid from 'mermaid'
 import { usePrevious } from 'ahooks'
 import { useTranslation } from 'react-i18next'
 import { ExclamationTriangleIcon } from '@heroicons/react/24/outline'
+import { cleanUpSvgCode } from './utils'
 import LoadingAnim from '@/app/components/base/chat/chat/loading-anim'
 import cn from '@/utils/classnames'
 import ImagePreview from '@/app/components/base/image-uploader/image-preview'
@@ -33,7 +34,7 @@ const Flowchart = React.forwardRef((props: {
 
   const prevPrimitiveCode = usePrevious(props.PrimitiveCode)
   const [isLoading, setIsLoading] = useState(true)
-  const timeRef = useRef<NodeJS.Timeout>()
+  const timeRef = useRef<number>()
   const [errMsg, setErrMsg] = useState('')
   const [imagePreviewUrl, setImagePreviewUrl] = useState('')
 
@@ -44,7 +45,7 @@ const Flowchart = React.forwardRef((props: {
     try {
       if (typeof window !== 'undefined' && mermaidAPI) {
         const svgGraph = await mermaidAPI.render('flowchart', PrimitiveCode)
-        const base64Svg: any = await svgToBase64(svgGraph.svg)
+        const base64Svg: any = await svgToBase64(cleanUpSvgCode(svgGraph.svg))
         setSvgCode(base64Svg)
         setIsLoading(false)
       }
@@ -75,15 +76,15 @@ const Flowchart = React.forwardRef((props: {
 
   useEffect(() => {
     if (timeRef.current)
-      clearTimeout(timeRef.current)
+      window.clearTimeout(timeRef.current)
 
-    timeRef.current = setTimeout(() => {
+    timeRef.current = window.setTimeout(() => {
       renderFlowchart(props.PrimitiveCode)
     }, 300)
   }, [props.PrimitiveCode])
 
   return (
-    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+    // eslint-disable-next-line ts/ban-ts-comment
     // @ts-expect-error
     <div ref={ref}>
       <div className="msh-segmented msh-segmented-sm css-23bs09 css-var-r1">
@@ -135,5 +136,7 @@ const Flowchart = React.forwardRef((props: {
     </div>
   )
 })
+
+Flowchart.displayName = 'Flowchart'
 
 export default Flowchart

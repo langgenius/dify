@@ -129,7 +129,6 @@ export type IWorkspace = {
 export type ICurrentWorkspace = Omit<IWorkspace, 'current'> & {
   role: 'owner' | 'admin' | 'editor' | 'dataset_operator' | 'normal'
   providers: Provider[]
-  in_trail: boolean
   trial_end_reason?: string
   custom_config?: {
     remove_webapp_brand?: boolean

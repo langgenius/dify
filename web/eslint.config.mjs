@@ -8,6 +8,9 @@ import storybook from 'eslint-plugin-storybook'
 import tailwind from 'eslint-plugin-tailwindcss'
 import reactHooks from 'eslint-plugin-react-hooks'
 import reactRefresh from 'eslint-plugin-react-refresh'
+import globals from 'globals'
+import storybook from 'eslint-plugin-storybook'
+import tailwind from 'eslint-plugin-tailwindcss'
 
 export default combine(
   stylistic({

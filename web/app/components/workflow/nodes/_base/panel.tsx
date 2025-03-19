@@ -61,14 +61,14 @@ const BasePanel: FC<BasePanelProps> = ({
     showMessageLogModal: state.showMessageLogModal,
   })))
   const showSingleRunPanel = useStore(s => s.showSingleRunPanel)
-  const panelWidth = localStorage.getItem('workflow-node-panel-width') ? parseFloat(localStorage.getItem('workflow-node-panel-width')!) : 420
+  const panelWidth = localStorage.getItem('workflow-node-panel-width') ? Number.parseFloat(localStorage.getItem('workflow-node-panel-width')!) : 420
   const {
     setPanelWidth,
   } = useWorkflow()
   const { handleNodeSelect } = useNodesInteractions()
   const { handleSyncWorkflowDraft } = useNodesSyncDraft()
   const { nodesReadOnly } = useNodesReadOnly()
-  const { availableNextBlocks } = useAvailableBlocks(data.type, data.isInIteration)
+  const { availableNextBlocks } = useAvailableBlocks(data.type, data.isInIteration, data.isInLoop)
   const toolIcon = useToolIcon(data)
 
   const handleResize = useCallback((width: number) => {

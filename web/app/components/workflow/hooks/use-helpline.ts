@@ -21,11 +21,22 @@ export const useHelpline = () => {
         showVerticalHelpLineNodes: [],
       }
     }
+
+    if (node.data.isInLoop) {
+      return {
+        showHorizontalHelpLineNodes: [],
+        showVerticalHelpLineNodes: [],
+      }
+    }
+
     const showHorizontalHelpLineNodes = nodes.filter((n) => {
       if (n.id === node.id)
         return false
 
       if (n.data.isInIteration)
+        return false
+
+      if (n.data.isInLoop)
         return false
 
       const nY = Math.ceil(n.position.y)
@@ -66,6 +77,8 @@ export const useHelpline = () => {
       if (n.id === node.id)
         return false
       if (n.data.isInIteration)
+        return false
+      if (n.data.isInLoop)
         return false
 
       const nX = Math.ceil(n.position.x)

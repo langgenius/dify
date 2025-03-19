@@ -1,3 +1,4 @@
+import time
 from collections.abc import Callable
 from datetime import UTC, datetime, timedelta
 from enum import Enum
@@ -13,8 +14,10 @@ from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden, Unauthorized
 
 from extensions.ext_database import db
+from extensions.ext_redis import redis_client
 from libs.login import _get_user
 from models.account import Account, Tenant, TenantAccountJoin, TenantStatus
+from models.dataset import RateLimitLog
 from models.model import ApiToken, App, EndUser
 from services.feature_service import FeatureService
 
@@ -139,6 +142,43 @@ def cloud_edition_billing_knowledge_limit_check(resource: str, api_token_type: s
     return interceptor
 
 
+def cloud_edition_billing_rate_limit_check(resource: str, api_token_type: str):
+    def interceptor(view):
+        @wraps(view)
+        def decorated(*args, **kwargs):
+            api_token = validate_and_get_api_token(api_token_type)
+
+            if resource == "knowledge":
+                knowledge_rate_limit = FeatureService.get_knowledge_rate_limit(api_token.tenant_id)
+                if knowledge_rate_limit.enabled:
+                    current_time = int(time.time() * 1000)
+                    key = f"rate_limit_{api_token.tenant_id}"
+
+                    redis_client.zadd(key, {current_time: current_time})
+
+                    redis_client.zremrangebyscore(key, 0, current_time - 60000)
+
+                    request_count = redis_client.zcard(key)
+
+                    if request_count > knowledge_rate_limit.limit:
+                        # add ratelimit record
+                        rate_limit_log = RateLimitLog(
+                            tenant_id=api_token.tenant_id,
+                            subscription_plan=knowledge_rate_limit.subscription_plan,
+                            operation="knowledge",
+                        )
+                        db.session.add(rate_limit_log)
+                        db.session.commit()
+                        raise Forbidden(
+                            "Sorry, you have reached the knowledge base request rate limit of your subscription."
+                        )
+            return view(*args, **kwargs)
+
+        return decorated
+
+    return interceptor
+
+
 def validate_dataset_token(view=None):
     def decorator(view):
         @wraps(view)
@@ -154,7 +194,7 @@ def validate_dataset_token(view=None):
             )  # TODO: only owner information is required, so only one is returned.
             if tenant_account_join:
                 tenant, ta = tenant_account_join
-                account = Account.query.filter_by(id=ta.account_id).first()
+                account = db.session.query(Account).filter(Account.id == ta.account_id).first()
                 # Login admin
                 if account:
                     account.current_tenant = tenant

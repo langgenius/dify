@@ -48,18 +48,20 @@ ENV TZ=UTC
 
 WORKDIR /app/api
 
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends curl nodejs libgmp-dev libmpfr-dev libmpc-dev \
-    # if you located in China, you can use aliyun mirror to speed up
-    # && echo "deb http://mirrors.aliyun.com/debian testing main" > /etc/apt/sources.list \
-    && echo "deb http://deb.debian.org/debian bookworm main" > /etc/apt/sources.list \
-    && apt-get update \
-    # For Security
-    && apt-get install -y --no-install-recommends expat libldap-2.5-0 perl libsqlite3-0 zlib1g \
-    # install a chinese font to support the use of tools like matplotlib
-    && apt-get install -y fonts-noto-cjk \
-    # install libmagic to support the use of python-magic guess MIMETYPE
-    && apt-get install -y libmagic1 \
+RUN \
+    apt-get update \
+    # Install dependencies
+    && apt-get install -y --no-install-recommends \
+        # basic environment
+        curl nodejs libgmp-dev libmpfr-dev libmpc-dev \
+        # For Security
+        expat libldap-2.5-0 perl libsqlite3-0 zlib1g \
+        # install a chinese font to support the use of tools like matplotlib
+        fonts-noto-cjk \
+        # install a package to improve the accuracy of guessing mime type and file extension
+        media-types \
+        # install libmagic to support the use of python-magic guess MIMETYPE
+        libmagic1 \
     && apt-get autoremove -y \
     && rm -rf /var/lib/apt/lists/*
 
@@ -71,13 +73,16 @@ ENV PATH="${VIRTUAL_ENV}/bin:${PATH}"
 # Download nltk data
 RUN python -c "import nltk; nltk.download('punkt'); nltk.download('averaged_perceptron_tagger')"
 
+ENV TIKTOKEN_CACHE_DIR=/app/api/.tiktoken_cache
+
+RUN python -c "import tiktoken; tiktoken.encoding_for_model('gpt2')"
+
 # Copy source code
 COPY . /app/api/
 
 # Copy entrypoint
 COPY docker/entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
-
 
 ARG COMMIT_SHA
 ENV COMMIT_SHA=${COMMIT_SHA}

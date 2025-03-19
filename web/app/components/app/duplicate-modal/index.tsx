@@ -13,7 +13,7 @@ import { useProviderContext } from '@/context/provider-context'
 import AppsFull from '@/app/components/billing/apps-full-in-dialog'
 import type { AppIconType } from '@/types/app'
 
-export type DuplicateAppModalProps = {
+export interface DuplicateAppModalProps {
   appName: string
   icon_type: AppIconType | null
   icon: string

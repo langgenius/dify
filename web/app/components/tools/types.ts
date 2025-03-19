@@ -1,4 +1,5 @@
 import type { TypeWithI18N } from '../header/account-setting/model-provider-page/declarations'
+
 export enum LOC {
   tools = 'tools',
   app = 'app',
@@ -16,10 +17,10 @@ export enum AuthHeaderPrefix {
 }
 
 export type Credential = {
-  'auth_type': AuthType
-  'api_key_header'?: string
-  'api_key_value'?: string
-  'api_key_header_prefix'?: AuthHeaderPrefix
+  auth_type: AuthType
+  api_key_header?: string
+  api_key_value?: string
+  api_key_header_prefix?: AuthHeaderPrefix
 }
 
 export enum CollectionType {
@@ -47,6 +48,8 @@ export type Collection = {
   is_team_authorization: boolean
   allow_delete: boolean
   labels: string[]
+  plugin_id?: string
+  letter?: string
 }
 
 export type ToolParameter = {
@@ -66,6 +69,7 @@ export type ToolParameter = {
   max?: number
 }
 
+// Action
 export type Tool = {
   name: string
   author: string
@@ -73,12 +77,13 @@ export type Tool = {
   description: any
   parameters: ToolParameter[]
   labels: string[]
+  output_schema: Record<string, any>
 }
 
 export type ToolCredential = {
   name: string
   label: TypeWithI18N
-  help: TypeWithI18N
+  help: TypeWithI18N | null
   placeholder: TypeWithI18N
   type: string
   required: boolean

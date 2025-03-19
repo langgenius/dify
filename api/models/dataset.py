@@ -584,6 +584,10 @@ class DocumentSegment(db.Model):  # type: ignore[name-defined]
         else:
             return []
 
+    @property
+    def sign_content(self):
+        return self.get_sign_content()
+
     def get_sign_content(self):
         signed_urls = []
         text = self.content
@@ -781,7 +785,7 @@ class DatasetCollectionBinding(db.Model):  # type: ignore[name-defined]
     )
 
     id = db.Column(StringUUID, primary_key=True, server_default=db.text("uuid_generate_v4()"))
-    provider_name = db.Column(db.String(40), nullable=False)
+    provider_name = db.Column(db.String(255), nullable=False)
     model_name = db.Column(db.String(255), nullable=False)
     type = db.Column(db.String(40), server_default=db.text("'dataset'::character varying"), nullable=False)
     collection_name = db.Column(db.String(64), nullable=False)
@@ -925,4 +929,19 @@ class DatasetAutoDisableLog(db.Model):  # type: ignore[name-defined]
     dataset_id = db.Column(StringUUID, nullable=False)
     document_id = db.Column(StringUUID, nullable=False)
     notified = db.Column(db.Boolean, nullable=False, server_default=db.text("false"))
+    created_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
+
+
+class RateLimitLog(db.Model):  # type: ignore[name-defined]
+    __tablename__ = "rate_limit_logs"
+    __table_args__ = (
+        db.PrimaryKeyConstraint("id", name="rate_limit_log_pkey"),
+        db.Index("rate_limit_log_tenant_idx", "tenant_id"),
+        db.Index("rate_limit_log_operation_idx", "operation"),
+    )
+
+    id = db.Column(StringUUID, server_default=db.text("uuid_generate_v4()"))
+    tenant_id = db.Column(StringUUID, nullable=False)
+    subscription_plan = db.Column(db.String(255), nullable=False)
+    operation = db.Column(db.String(255), nullable=False)
     created_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))

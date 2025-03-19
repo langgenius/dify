@@ -8,7 +8,7 @@ from core.entities.model_entities import (
     ModelWithProviderEntity,
     ProviderModelWithStatusEntity,
 )
-from core.entities.provider_entities import QuotaConfiguration
+from core.entities.provider_entities import ProviderQuotaType, QuotaConfiguration
 from core.model_runtime.entities.common_entities import I18nObject
 from core.model_runtime.entities.model_entities import ModelType
 from core.model_runtime.entities.provider_entities import (
@@ -18,7 +18,7 @@ from core.model_runtime.entities.provider_entities import (
     ProviderHelpEntity,
     SimpleProviderEntity,
 )
-from models.provider import ProviderQuotaType, ProviderType
+from models.provider import ProviderType
 
 
 class CustomConfigurationStatus(Enum):
@@ -53,6 +53,7 @@ class ProviderResponse(BaseModel):
     Model class for provider response.
     """
 
+    tenant_id: str
     provider: str
     label: I18nObject
     description: Optional[I18nObject] = None
@@ -74,7 +75,9 @@ class ProviderResponse(BaseModel):
     def __init__(self, **data) -> None:
         super().__init__(**data)
 
-        url_prefix = dify_config.CONSOLE_API_URL + f"/console/api/workspaces/current/model-providers/{self.provider}"
+        url_prefix = (
+            dify_config.CONSOLE_API_URL + f"/console/api/workspaces/{self.tenant_id}/model-providers/{self.provider}"
+        )
         if self.icon_small is not None:
             self.icon_small = I18nObject(
                 en_US=f"{url_prefix}/icon_small/en_US", zh_Hans=f"{url_prefix}/icon_small/zh_Hans"
@@ -91,6 +94,7 @@ class ProviderWithModelsResponse(BaseModel):
     Model class for provider with models response.
     """
 
+    tenant_id: str
     provider: str
     label: I18nObject
     icon_small: Optional[I18nObject] = None
@@ -101,7 +105,9 @@ class ProviderWithModelsResponse(BaseModel):
     def __init__(self, **data) -> None:
         super().__init__(**data)
 
-        url_prefix = dify_config.CONSOLE_API_URL + f"/console/api/workspaces/current/model-providers/{self.provider}"
+        url_prefix = (
+            dify_config.CONSOLE_API_URL + f"/console/api/workspaces/{self.tenant_id}/model-providers/{self.provider}"
+        )
         if self.icon_small is not None:
             self.icon_small = I18nObject(
                 en_US=f"{url_prefix}/icon_small/en_US", zh_Hans=f"{url_prefix}/icon_small/zh_Hans"
@@ -118,10 +124,14 @@ class SimpleProviderEntityResponse(SimpleProviderEntity):
     Simple provider entity response.
     """
 
+    tenant_id: str
+
     def __init__(self, **data) -> None:
         super().__init__(**data)
 
-        url_prefix = dify_config.CONSOLE_API_URL + f"/console/api/workspaces/current/model-providers/{self.provider}"
+        url_prefix = (
+            dify_config.CONSOLE_API_URL + f"/console/api/workspaces/{self.tenant_id}/model-providers/{self.provider}"
+        )
         if self.icon_small is not None:
             self.icon_small = I18nObject(
                 en_US=f"{url_prefix}/icon_small/en_US", zh_Hans=f"{url_prefix}/icon_small/zh_Hans"
@@ -146,13 +156,14 @@ class DefaultModelResponse(BaseModel):
     model_config = ConfigDict(protected_namespaces=())
 
 
-class ModelWithProviderEntityResponse(ModelWithProviderEntity):
+class ModelWithProviderEntityResponse(ProviderModelWithStatusEntity):
     """
     Model with provider entity.
     """
 
-    # FIXME type error ignore here
-    provider: SimpleProviderEntityResponse  # type: ignore
+    provider: SimpleProviderEntityResponse
 
-    def __init__(self, model: ModelWithProviderEntity) -> None:
-        super().__init__(**model.model_dump())
+    def __init__(self, tenant_id: str, model: ModelWithProviderEntity) -> None:
+        dump_model = model.model_dump()
+        dump_model["provider"]["tenant_id"] = tenant_id
+        super().__init__(**dump_model)
