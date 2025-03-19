@@ -589,7 +589,7 @@ class APOToolBuiltinListApi(Resource):
         parser = reqparse.RequestParser()
         parser.add_argument("tool_type", type=str, required=True, nullable=False, location="args")
         parser.add_argument("query", type=str, required=False, nullable=True, location="args")
-        parser.add_argument("language", type=int, required=False, nullable=True, location="args")
+        parser.add_argument("language", type=str, required=False, nullable=True, location="args")
 
         args = parser.parse_args()
 
