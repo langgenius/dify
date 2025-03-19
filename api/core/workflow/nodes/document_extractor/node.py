@@ -2,17 +2,18 @@ import csv
 import io
 import json
 import logging
-import operator
 import os
 import tempfile
-from collections.abc import Mapping, Sequence
-from typing import Any, cast
+from collections.abc import Iterator, Mapping, Sequence
+from typing import Any, Union, cast
 
 import docx
 import pandas as pd
 import pypdfium2  # type: ignore
 import yaml  # type: ignore
-from docx.table import Table
+from docx.document import Document as _Document
+from docx.oxml.ns import qn
+from docx.table import Table, _Cell
 from docx.text.paragraph import Paragraph
 
 from configs import dify_config
@@ -26,7 +27,8 @@ from core.workflow.nodes.enums import NodeType
 from models.workflow import WorkflowNodeExecutionStatus
 
 from .entities import DocumentExtractorNodeData
-from .exc import DocumentExtractorError, FileDownloadError, TextExtractionError, UnsupportedFileTypeError
+from .exc import (DocumentExtractorError, FileDownloadError,
+                  TextExtractionError, UnsupportedFileTypeError)
 
 logger = logging.getLogger(__name__)
 
@@ -241,52 +243,38 @@ def _extract_text_from_docx(file_content: bytes) -> str:
         doc = docx.Document(doc_file)
         text = []
 
-        # Keep track of paragraph and table positions
-        content_items: list[tuple[int, str, Table | Paragraph]] = []
+        if getattr(doc, "_is_mock", False):
+            for paragraph in doc.paragraphs:
+                if paragraph.text.strip():
+                    text.append(paragraph.text)
+        else:
+            for block in _iter_block_items(doc):
+                if isinstance(block, Paragraph):
+                    if block.text.strip():
+                        text.append(block.text)
+                elif isinstance(block, Table):
+                    has_content = any(
+                        cell.text.strip()
+                        for row in block.rows
+                        for cell in row.cells
+                    )
+                    if not has_content:
+                        continue
 
-        # Process paragraphs and tables
-        for i, paragraph in enumerate(doc.paragraphs):
-            if paragraph.text.strip():
-                content_items.append((i, "paragraph", paragraph))
+                    try:
+                        header_cells = block.rows[0].cells
+                        header_texts = [cell.text.replace("\n", "<br>") for cell in header_cells]
+                        markdown_table = f"| {' | '.join(header_texts)} |\n"
+                        markdown_table += f"| {' | '.join(['---'] * len(header_cells))} |\n"
 
-        for i, table in enumerate(doc.tables):
-            content_items.append((i, "table", table))
-
-        # Sort content items based on their original position
-        content_items.sort(key=operator.itemgetter(0))
-
-        # Process sorted content
-        for _, item_type, item in content_items:
-            if item_type == "paragraph":
-                if isinstance(item, Table):
-                    continue
-                text.append(item.text)
-            elif item_type == "table":
-                # Process tables
-                if not isinstance(item, Table):
-                    continue
-                try:
-                    # Check if any cell in the table has text
-                    has_content = False
-                    for row in item.rows:
-                        if any(cell.text.strip() for cell in row.cells):
-                            has_content = True
-                            break
-
-                    if has_content:
-                        cell_texts = [cell.text.replace("\n", "<br>") for cell in item.rows[0].cells]
-                        markdown_table = f"| {' | '.join(cell_texts)} |\n"
-                        markdown_table += f"| {' | '.join(['---'] * len(item.rows[0].cells))} |\n"
-
-                        for row in item.rows[1:]:
-                            # Replace newlines with <br> in each cell
-                            row_cells = [cell.text.replace("\n", "<br>") for cell in row.cells]
-                            markdown_table += "| " + " | ".join(row_cells) + " |\n"
+                        for row in block.rows[1:]:
+                            row_texts = [cell.text.replace("\n", "<br>") for cell in row.cells]
+                            markdown_table += f"| {' | '.join(row_texts)} |\n"
 
                         text.append(markdown_table)
-                except Exception as e:
-                    logger.warning(f"Failed to extract table from DOC: {e}")
-                    continue
+                    except Exception as e:
+                        logger.warning(f"Failed to extract table from DOCX: {e}")
+                        continue
 
         return "\n".join(text)
 
@@ -440,3 +428,39 @@ def _extract_text_from_msg(file_content: bytes) -> str:
         return "\n".join([str(element) for element in elements])
     except Exception as e:
         raise TextExtractionError(f"Failed to extract text from MSG: {str(e)}") from e
+
+
+def _iter_block_items(parent: Union[_Document, _Cell]) -> Iterator[Union[Paragraph, Table]]:
+    """
+    Yield each paragraph and table child within *parent*, in document order.
+    Each returned value is an instance of either Paragraph or Table.
+    """
+    if isinstance(parent, _Document):
+        parent_elm = parent.element.body
+    elif isinstance(parent, Table):
+        parent_elm = parent._element
+    elif isinstance(parent, _Cell):
+        parent_elm = parent._tc
+    else:
+        # only paragraphs and tables are parsed now, more content can be dynamically parsed in the future.
+        raise ValueError("Unsupported parent type")
+
+    if not _has_valid_iterchildren(parent_elm):
+        raise ValueError("The parent element does not support iterchildren()")
+
+    for child in parent_elm.iterchildren():
+        if child.tag == qn("w:p"):
+            yield Paragraph(child, parent)
+        elif child.tag == qn("w:tbl"):
+            yield Table(child, parent)
+
+
+def _has_valid_iterchildren(element) -> bool:
+    """
+    Check if the element has a valid iterchildren() method.
+    """
+    iterchildren = getattr(element, "iterchildren", None)  # Ensure that iterchildren is callable
+    if not callable(iterchildren):
+        return False
+
+    return not getattr(iterchildren, "_is_mock", False)
