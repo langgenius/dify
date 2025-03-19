@@ -1,3 +1,4 @@
+import copy
 import datetime
 import json
 import logging
@@ -17,6 +18,7 @@ from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
 from core.model_manager import ModelManager
 from core.model_runtime.entities.model_entities import ModelType
 from core.plugin.entities.plugin import ModelProviderID
+from core.rag.index_processor.constant.built_in_field import BuiltInField
 from core.rag.index_processor.constant.index_type import IndexType
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from events.dataset_event import dataset_was_deleted
@@ -644,8 +646,44 @@ class DocumentService:
         return document
 
     @staticmethod
+    def get_document_by_ids(document_ids: list[str]) -> list[Document]:
+        documents = (
+            db.session.query(Document)
+            .filter(
+                Document.id.in_(document_ids),
+                Document.enabled == True,
+                Document.indexing_status == "completed",
+                Document.archived == False,
+            )
+            .all()
+        )
+        return documents
+
+    @staticmethod
     def get_document_by_dataset_id(dataset_id: str) -> list[Document]:
-        documents = db.session.query(Document).filter(Document.dataset_id == dataset_id, Document.enabled == True).all()
+        documents = (
+            db.session.query(Document)
+            .filter(
+                Document.dataset_id == dataset_id,
+                Document.enabled == True,
+            )
+            .all()
+        )
+
+        return documents
+
+    @staticmethod
+    def get_working_documents_by_dataset_id(dataset_id: str) -> list[Document]:
+        documents = (
+            db.session.query(Document)
+            .filter(
+                Document.dataset_id == dataset_id,
+                Document.enabled == True,
+                Document.indexing_status == "completed",
+                Document.archived == False,
+            )
+            .all()
+        )
 
         return documents
 
@@ -728,8 +766,13 @@ class DocumentService:
         if document.tenant_id != current_user.current_tenant_id:
             raise ValueError("No permission.")
 
-        document.name = name
+        if dataset.built_in_field_enabled:
+            if document.doc_metadata:
+                doc_metadata = copy.deepcopy(document.doc_metadata)
+                doc_metadata[BuiltInField.document_name.value] = name
+                document.doc_metadata = doc_metadata
 
+        document.name = name
         db.session.add(document)
         db.session.commit()
 
@@ -1128,9 +1171,20 @@ class DocumentService:
             doc_form=document_form,
             doc_language=document_language,
         )
+        doc_metadata = {}
+        if dataset.built_in_field_enabled:
+            doc_metadata = {
+                BuiltInField.document_name: name,
+                BuiltInField.uploader: account.name,
+                BuiltInField.upload_date: datetime.datetime.now(datetime.UTC).strftime("%Y-%m-%d %H:%M:%S"),
+                BuiltInField.last_update_date: datetime.datetime.now(datetime.UTC).strftime("%Y-%m-%d %H:%M:%S"),
+                BuiltInField.source: data_source_type,
+            }
         if metadata is not None:
-            document.doc_metadata = metadata.doc_metadata
+            doc_metadata.update(metadata.doc_metadata)
             document.doc_type = metadata.doc_type
+        if doc_metadata:
+            document.doc_metadata = doc_metadata
         return document
 
     @staticmethod

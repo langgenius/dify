@@ -2,8 +2,7 @@ x-shared-env: &shared-api-worker-env
 services:
   # API service
   api:
-    # image: langgenius/dify-api:1.0.1
-    image: dify-api-local:1.0.0
+    image: langgenius/dify-api:1.1.0
     restart: always
     environment:
       # Use the shared environment variables.
@@ -30,8 +29,12 @@ services:
   # worker service
   # The Celery worker for processing the queue.
   worker:
+<<<<<<< HEAD
     # image: langgenius/dify-api:1.0.1
     image: dify-api-local:1.0.0
+=======
+    image: langgenius/dify-api:1.1.0
+>>>>>>> dify
     restart: always
     environment:
       # Use the shared environment variables.
@@ -55,8 +58,12 @@ services:
 
   # Frontend web application.
   web:
+<<<<<<< HEAD
     # image: langgenius/dify-web:1.0.1
     image: dify-web-local:1.0.0
+=======
+    image: langgenius/dify-web:1.1.0
+>>>>>>> dify
     restart: always
     environment:
       CONSOLE_API_URL: ${CONSOLE_API_URL:-}
@@ -136,7 +143,7 @@ services:
 
   # plugin daemon
   plugin_daemon:
-    image: langgenius/dify-plugin-daemon:0.0.4-local
+    image: langgenius/dify-plugin-daemon:0.0.5-local
     restart: always
     environment:
       # Use the shared environment variables.

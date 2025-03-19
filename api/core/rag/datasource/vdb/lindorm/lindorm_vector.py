@@ -168,7 +168,12 @@ class LindormVectorStore(BaseVector):
             raise ValueError("All elements in query_vector should be floats")
 
         top_k = kwargs.get("top_k", 10)
-        query = default_vector_search_query(query_vector=query_vector, k=top_k, **kwargs)
+        document_ids_filter = kwargs.get("document_ids_filter")
+        filters = []
+        if document_ids_filter:
+            filters.append({"terms": {"metadata.document_id": document_ids_filter}})
+        query = default_vector_search_query(query_vector=query_vector, k=top_k, filters=filters, **kwargs)
+
         try:
             params = {}
             if self._using_ugc:
@@ -206,7 +211,10 @@ class LindormVectorStore(BaseVector):
         should = kwargs.get("should")
         minimum_should_match = kwargs.get("minimum_should_match", 0)
         top_k = kwargs.get("top_k", 10)
-        filters = kwargs.get("filter")
+        filters = kwargs.get("filter", [])
+        document_ids_filter = kwargs.get("document_ids_filter")
+        if document_ids_filter:
+            filters.append({"terms": {"metadata.document_id": document_ids_filter}})
         routing = self._routing
         full_text_query = default_text_search_query(
             query_text=query,
