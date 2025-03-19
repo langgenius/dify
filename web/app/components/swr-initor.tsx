@@ -6,7 +6,7 @@ import type { ReactNode } from 'react'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { fetchSetupStatus } from '@/service/common'
 
-interface SwrInitorProps {
+type SwrInitorProps = {
   children: ReactNode
 }
 const SwrInitor = ({
@@ -54,7 +54,11 @@ const SwrInitor = ({
         if (searchParams.has('access_token') || searchParams.has('refresh_token')) {
           consoleToken && localStorage.setItem('console_token', consoleToken)
           refreshToken && localStorage.setItem('refresh_token', refreshToken)
-          router.replace(pathname)
+          const params = new URLSearchParams(searchParams)
+          params.delete('access_token')
+          params.delete('refresh_token')
+          const newUrl = `${pathname}${params.toString() ? `?${params.toString()}` : ''}`
+          router.replace(newUrl)
         }
 
         setInit(true)
