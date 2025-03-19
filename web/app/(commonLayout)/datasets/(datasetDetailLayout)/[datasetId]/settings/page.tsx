@@ -3,7 +3,7 @@ import { getLocaleOnServer, useTranslation as translate } from '@/i18n/server'
 import Form from '@/app/components/datasets/settings/form'
 
 const Settings = async () => {
-  const locale = getLocaleOnServer()
+  const locale = await getLocaleOnServer()
   const { t } = await translate(locale, 'dataset-settings')
 
   return (

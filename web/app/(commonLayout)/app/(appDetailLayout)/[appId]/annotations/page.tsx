@@ -3,7 +3,7 @@ import Main from '@/app/components/app/log-annotation'
 import { PageType } from '@/app/components/base/features/new-feature-panel/annotation-reply/type'
 
 export type IProps = {
-  params: { appId: string }
+  params: Promise<{ appId: string }>
 }
 
 const Logs = async () => {

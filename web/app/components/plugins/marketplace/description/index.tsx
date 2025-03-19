@@ -9,7 +9,7 @@ type DescriptionProps = {
 const Description = async ({
   locale: localeFromProps,
 }: DescriptionProps) => {
-  const localeDefault = getLocaleOnServer()
+  const localeDefault = await getLocaleOnServer()
   const { t } = await translate(localeFromProps || localeDefault, 'plugin')
   const { t: tCommon } = await translate(localeFromProps || localeDefault, 'common')
   const isZhHans = localeFromProps === 'zh-Hans'
