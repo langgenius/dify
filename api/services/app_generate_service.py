@@ -41,7 +41,7 @@ class AppGenerateService:
         :return:
         """
         # system level rate limiter
-        if not dify_config.BILLING_ENABLED:
+        if dify_config.BILLING_ENABLED:
             # check if it's free plan
             limit_info = BillingService.get_info(app_model.tenant_id)
             if limit_info["subscription"]["plan"] == "sandbox":
