@@ -8,7 +8,7 @@ import {
   RiMoreFill,
   RiStickyNoteAddLine,
 } from '@remixicon/react'
-import { Menu, Transition } from '@headlessui/react'
+import { Menu, MenuButton, MenuItem, MenuItems, Transition } from '@headlessui/react'
 import { syncDataSourceNotion, updateDataSourceNotionAction } from '@/service/common'
 import Toast from '@/app/components/base/toast'
 import cn from '@/utils/classnames'
@@ -48,9 +48,9 @@ export default function Operate({
       {
         ({ open }) => (
           <>
-            <Menu.Button className={cn('flex items-center justify-center w-8 h-8 rounded-lg hover:bg-state-base-hover', open && 'bg-state-base-hover')}>
+            <MenuButton className={cn('flex items-center justify-center w-8 h-8 rounded-lg hover:bg-state-base-hover', open && 'bg-state-base-hover')}>
               <RiMoreFill className='w-4 h-4 text-text-secondary' />
-            </Menu.Button>
+            </MenuButton>
             <Transition
               as={Fragment}
               enter="transition ease-out duration-100"
@@ -60,9 +60,9 @@ export default function Operate({
               leaveFrom="transform opacity-100 scale-100"
               leaveTo="transform opacity-0 scale-95"
             >
-              <Menu.Items className="absolute right-0 top-9 w-60 max-w-80 origin-top-right rounded-xl bg-components-panel-bg-blur backdrop-blur-sm border-[0.5px] border-components-panel-border shadow-lg">
+              <MenuItems className="absolute right-0 top-9 w-60 max-w-80 origin-top-right rounded-xl bg-components-panel-bg-blur backdrop-blur-sm border-[0.5px] border-components-panel-border shadow-lg">
                 <div className="px-1 py-1">
-                  <Menu.Item>
+                  <MenuItem>
                     <div
                       className='flex px-3 py-2 hover:bg-state-base-hover rounded-lg cursor-pointer'
                       onClick={onAuthAgain}
@@ -75,23 +75,23 @@ export default function Operate({
                         </div>
                       </div>
                     </div>
-                  </Menu.Item>
-                  <Menu.Item>
+                  </MenuItem>
+                  <MenuItem>
                     <div className='flex px-3 py-2 hover:bg-state-base-hover rounded-lg cursor-pointer' onClick={handleSync}>
                       <RiLoopLeftLine className='mr-2 mt-[2px] w-4 h-4 text-text-tertiary' />
                       <div className='system-sm-semibold text-text-secondary'>{t('common.dataSource.notion.sync')}</div>
                     </div>
-                  </Menu.Item>
+                  </MenuItem>
                 </div>
-                <Menu.Item>
+                <MenuItem>
                   <div className='p-1 border-t border-divider-subtle'>
                     <div className='flex px-3 py-2 hover:bg-state-base-hover rounded-lg cursor-pointer' onClick={handleRemove}>
                       <RiDeleteBinLine className='mr-2 mt-[2px] w-4 h-4 text-text-tertiary' />
                       <div className='system-sm-semibold text-text-secondary'>{t('common.dataSource.notion.remove')}</div>
                     </div>
                   </div>
-                </Menu.Item>
-              </Menu.Items>
+                </MenuItem>
+              </MenuItems>
             </Transition>
           </>
         )

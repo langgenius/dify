@@ -1,4 +1,4 @@
-import { Menu, Transition } from '@headlessui/react'
+import { Menu, MenuButton, MenuItem, MenuItems, Transition } from '@headlessui/react'
 import { RiArrowDownCircleLine, RiArrowRightSLine, RiVerifiedBadgeLine } from '@remixicon/react'
 import type { FC, MouseEvent } from 'react'
 import { Fragment, useCallback } from 'react'
@@ -110,14 +110,14 @@ export default function Compliance() {
     {
       ({ open }) => (
         <>
-          <Menu.Button className={
+          <MenuButton className={
             cn('flex items-center pl-3 pr-2 py-2 h-9 w-full group hover:bg-state-base-hover rounded-lg gap-1',
               open && 'bg-state-base-hover',
             )}>
             <RiVerifiedBadgeLine className='shrink-0 size-4 text-text-tertiary' />
             <div className='grow text-left system-md-regular text-text-secondary px-1'>{t('common.userProfile.compliance')}</div>
             <RiArrowRightSLine className='shrink-0 size-[14px] text-text-tertiary' />
-          </Menu.Button>
+          </MenuButton>
           <Transition
             as={Fragment}
             enter="transition ease-out duration-100"
@@ -127,7 +127,7 @@ export default function Compliance() {
             leaveFrom="transform opacity-100 scale-100"
             leaveTo="transform opacity-0 scale-95"
           >
-            <Menu.Items
+            <MenuItems
               className={cn(
                 `absolute top-[1px] w-[337px] max-h-[70vh] overflow-y-scroll z-10 bg-components-panel-bg-blur backdrop-blur-[5px] border-[0.5px] border-components-panel-border
                 divide-y divide-divider-subtle origin-top-right rounded-xl focus:outline-none shadow-lg -translate-x-full
@@ -135,48 +135,48 @@ export default function Compliance() {
               )}
             >
               <div className="px-1 py-1">
-                <Menu.Item>
-                  {({ active }) => <div
+                <MenuItem>
+                  <div
                     className={cn(itemClassName, 'group justify-between',
-                      active && 'bg-state-base-hover',
+                      'data-[active]:bg-state-base-hover',
                     )}>
                     <Soc2 className='shrink-0 size-7' />
                     <div className='system-md-regular grow text-text-secondary px-1 truncate'>{t('common.compliance.soc2Type1')}</div>
                     <UpgradeOrDownload doc_name={DocName.SOC2_Type_I} />
-                  </div>}
-                </Menu.Item>
-                <Menu.Item>
-                  {({ active }) => <div
+                  </div>
+                </MenuItem>
+                <MenuItem>
+                  <div
                     className={cn(itemClassName, 'group justify-between',
-                      active && 'bg-state-base-hover',
+                      'data-[active]:bg-state-base-hover',
                     )}>
                     <Soc2 className='shrink-0 size-7' />
                     <div className='system-md-regular grow text-text-secondary px-1 truncate'>{t('common.compliance.soc2Type2')}</div>
                     <UpgradeOrDownload doc_name={DocName.SOC2_Type_II} />
-                  </div>}
-                </Menu.Item>
-                <Menu.Item>
-                  {({ active }) => <div
+                  </div>
+                </MenuItem>
+                <MenuItem>
+                  <div
                     className={cn(itemClassName, 'group justify-between',
-                      active && 'bg-state-base-hover',
+                      'data-[active]:bg-state-base-hover',
                     )}>
                     <Iso className='shrink-0 size-7' />
                     <div className='system-md-regular grow text-text-secondary px-1 truncate'>{t('common.compliance.iso27001')}</div>
                     <UpgradeOrDownload doc_name={DocName.ISO_27001} />
-                  </div>}
-                </Menu.Item>
-                <Menu.Item>
-                  {({ active }) => <div
+                  </div>
+                </MenuItem>
+                <MenuItem>
+                  <div
                     className={cn(itemClassName, 'group justify-between',
-                      active && 'bg-state-base-hover',
+                      'data-[active]:bg-state-base-hover',
                     )}>
                     <Gdpr className='shrink-0 size-7' />
                     <div className='system-md-regular grow text-text-secondary px-1 truncate'>{t('common.compliance.gdpr')}</div>
                     <UpgradeOrDownload doc_name={DocName.GDPR} />
-                  </div>}
-                </Menu.Item>
+                  </div>
+                </MenuItem>
               </div>
-            </Menu.Items>
+            </MenuItems>
           </Transition>
         </>
       )

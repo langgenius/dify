@@ -7,7 +7,7 @@ import {
   useRef,
   useState,
 } from 'react'
-import { Tab } from '@headlessui/react'
+import { Tab, TabList, TabPanel, TabPanels } from '@headlessui/react'
 import { Tag } from './tag'
 import classNames from '@/utils/classnames'
 import { writeTextToClipboard } from '@/utils/clipboard'
@@ -162,7 +162,7 @@ function CodeGroupHeader({ title, children, selectedIndex }: IChildrenProps) {
         </h3>
       )}
       {hasTabs && (
-        <Tab.List className="flex gap-4 -mb-px text-xs font-medium">
+        <TabList className="flex gap-4 -mb-px text-xs font-medium">
           {Children.map(children, (child, childIndex) => (
             <Tab
               className={classNames(
@@ -175,7 +175,7 @@ function CodeGroupHeader({ title, children, selectedIndex }: IChildrenProps) {
               {getPanelTitle(child.props.children.props)}
             </Tab>
           ))}
-        </Tab.List>
+        </TabList>
       )}
     </div>
   )
@@ -190,13 +190,13 @@ function CodeGroupPanels({ children, targetCode, ...props }: ICodeGroupPanelsPro
 
   if (hasTabs) {
     return (
-      <Tab.Panels>
+      <TabPanels>
         {Children.map(children, child => (
-          <Tab.Panel>
+          <TabPanel>
             <CodePanel {...props}>{child}</CodePanel>
-          </Tab.Panel>
+          </TabPanel>
         ))}
-      </Tab.Panels>
+      </TabPanels>
     )
   }
 

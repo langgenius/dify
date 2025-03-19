@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useContext, useContextSelector } from 'use-context-selector'
 import { RiAccountCircleLine, RiArrowDownSLine, RiArrowRightUpLine, RiBookOpenLine, RiGithubLine, RiInformation2Line, RiLogoutBoxRLine, RiMap2Line, RiSettings3Line, RiStarLine } from '@remixicon/react'
 import Link from 'next/link'
-import { Menu, Transition } from '@headlessui/react'
+import { Menu, MenuButton, MenuItem, MenuItems, Transition } from '@headlessui/react'
 import Indicator from '../indicator'
 import AccountAbout from '../account-about'
 import GithubStar from '../github-star'
@@ -58,7 +58,7 @@ export default function AppSelector({ isMobile }: IAppSelector) {
         {
           ({ open }) => (
             <>
-              <Menu.Button
+              <MenuButton
                 className={`
                     inline-flex items-center
                     rounded-[20px] py-1 pr-2.5 pl-1 text-sm
@@ -72,7 +72,7 @@ export default function AppSelector({ isMobile }: IAppSelector) {
                   {userProfile.name}
                   <RiArrowDownSLine className="w-3 h-3 ml-1 text-text-tertiary" />
                 </>}
-              </Menu.Button>
+              </MenuButton>
               <Transition
                 as={Fragment}
                 enter="transition ease-out duration-100"
@@ -82,14 +82,14 @@ export default function AppSelector({ isMobile }: IAppSelector) {
                 leaveFrom="transform opacity-100 scale-100"
                 leaveTo="transform opacity-0 scale-95"
               >
-                <Menu.Items
+                <MenuItems
                   className="
                     absolute right-0 mt-1.5 w-60 max-w-80
                     divide-y divide-divider-subtle origin-top-right rounded-lg bg-components-panel-bg-blur
                     shadow-lg focus:outline-none
                   "
                 >
-                  <Menu.Item disabled>
+                  <MenuItem disabled>
                     <div className='flex flex-nowrap items-center pl-3 pr-2 py-[13px]'>
                       <div className='grow'>
                         <div className='system-md-medium text-text-primary break-all'>{userProfile.name}</div>
@@ -97,34 +97,34 @@ export default function AppSelector({ isMobile }: IAppSelector) {
                       </div>
                       <Avatar avatar={userProfile.avatar_url} name={userProfile.name} size={36} className='mr-3' />
                     </div>
-                  </Menu.Item>
+                  </MenuItem>
                   <div className="px-1 py-1">
-                    <Menu.Item>
-                      {({ active }) => <Link
+                    <MenuItem>
+                      <Link
                         className={classNames(itemClassName, 'group',
-                          active && 'bg-state-base-hover',
+                          'data-[active]:bg-state-base-hover',
                         )}
                         href='/account'
                         target='_self' rel='noopener noreferrer'>
                         <RiAccountCircleLine className='size-4 shrink-0 text-text-tertiary' />
                         <div className='grow system-md-regular text-text-secondary px-1'>{t('common.account.account')}</div>
                         <RiArrowRightUpLine className='size-[14px] shrink-0 text-text-tertiary' />
-                      </Link>}
-                    </Menu.Item>
-                    <Menu.Item>
-                      {({ active }) => <div className={classNames(itemClassName,
-                        active && 'bg-state-base-hover',
+                      </Link>
+                    </MenuItem>
+                    <MenuItem>
+                      <div className={classNames(itemClassName,
+                        'data-[active]:bg-state-base-hover',
                       )} onClick={() => setShowAccountSettingModal({ payload: 'members' })}>
                         <RiSettings3Line className='size-4 shrink-0 text-text-tertiary' />
                         <div className='grow system-md-regular text-text-secondary px-1'>{t('common.userProfile.settings')}</div>
-                      </div>}
-                    </Menu.Item>
+                      </div>
+                    </MenuItem>
                   </div>
                   <div className='p-1'>
-                    <Menu.Item>
-                      {({ active }) => <Link
+                    <MenuItem>
+                      <Link
                         className={classNames(itemClassName, 'group justify-between',
-                          active && 'bg-state-base-hover',
+                          'data-[active]:bg-state-base-hover',
                         )}
                         href={
                           locale !== LanguagesSupported[1] ? 'https://docs.dify.ai/' : `https://docs.dify.ai/v/${locale.toLowerCase()}/`
@@ -133,28 +133,28 @@ export default function AppSelector({ isMobile }: IAppSelector) {
                         <RiBookOpenLine className='shrink-0 size-4 text-text-tertiary' />
                         <div className='grow system-md-regular text-text-secondary px-1'>{t('common.userProfile.helpCenter')}</div>
                         <RiArrowRightUpLine className='shrink-0 size-[14px] text-text-tertiary' />
-                      </Link>}
-                    </Menu.Item>
+                      </Link>
+                    </MenuItem>
                     <Support />
                     {IS_CLOUD_EDITION && isCurrentWorkspaceOwner && <Compliance />}
                   </div>
                   <div className='p-1'>
-                    <Menu.Item>
-                      {({ active }) => <Link
+                    <MenuItem>
+                      <Link
                         className={classNames(itemClassName, 'group justify-between',
-                          active && 'bg-state-base-hover',
+                          'data-[active]:bg-state-base-hover',
                         )}
                         href='https://roadmap.dify.ai'
                         target='_blank' rel='noopener noreferrer'>
                         <RiMap2Line className='shrink-0 size-4 text-text-tertiary' />
                         <div className='grow system-md-regular text-text-secondary px-1'>{t('common.userProfile.roadmap')}</div>
                         <RiArrowRightUpLine className='shrink-0 size-[14px] text-text-tertiary' />
-                      </Link>}
-                    </Menu.Item>
-                    {systemFeatures.license.status === LicenseStatus.NONE && <Menu.Item>
-                      {({ active }) => <Link
+                      </Link>
+                    </MenuItem>
+                    {systemFeatures.license.status === LicenseStatus.NONE && <MenuItem>
+                      <Link
                         className={classNames(itemClassName, 'group justify-between',
-                          active && 'bg-state-base-hover',
+                          'data-[active]:bg-state-base-hover',
                         )}
                         href='https://github.com/langgenius/dify'
                         target='_blank' rel='noopener noreferrer'>
@@ -164,13 +164,13 @@ export default function AppSelector({ isMobile }: IAppSelector) {
                           <RiStarLine className='shrink-0 size-3 text-text-tertiary' />
                           <GithubStar className='system-2xs-medium-uppercase text-text-tertiary' />
                         </div>
-                      </Link>}
-                    </Menu.Item>}
+                      </Link>
+                    </MenuItem>}
                     {
                       document?.body?.getAttribute('data-public-site-about') !== 'hide' && (
-                        <Menu.Item>
-                          {({ active }) => <div className={classNames(itemClassName, 'justify-between',
-                            active && 'bg-state-base-hover',
+                        <MenuItem>
+                          <div className={classNames(itemClassName, 'justify-between',
+                            'data-[active]:bg-state-base-hover',
                           )} onClick={() => setAboutVisible(true)}>
                             <RiInformation2Line className='shrink-0 size-4 text-text-tertiary' />
                             <div className='grow system-md-regular text-text-secondary px-1'>{t('common.userProfile.about')}</div>
@@ -178,24 +178,24 @@ export default function AppSelector({ isMobile }: IAppSelector) {
                               <div className='mr-2 system-xs-regular text-text-tertiary'>{langeniusVersionInfo.current_version}</div>
                               <Indicator color={langeniusVersionInfo.current_version === langeniusVersionInfo.latest_version ? 'green' : 'orange'} />
                             </div>
-                          </div>}
-                        </Menu.Item>
+                          </div>
+                        </MenuItem>
                       )
                     }
                   </div>
-                  <Menu.Item>
-                    {({ active }) => <div className='p-1' onClick={() => handleLogout()}>
+                  <MenuItem>
+                    <div className='p-1' onClick={() => handleLogout()}>
                       <div
                         className={classNames(itemClassName, 'group justify-between',
-                          active && 'bg-state-base-hover',
+                          'data-[active]:bg-state-base-hover',
                         )}
                       >
                         <RiLogoutBoxRLine className='shrink-0 size-4 text-text-tertiary' />
                         <div className='grow system-md-regular text-text-secondary px-1'>{t('common.userProfile.logout')}</div>
                       </div>
-                    </div>}
-                  </Menu.Item>
-                </Menu.Items>
+                    </div>
+                  </MenuItem>
+                </MenuItems>
               </Transition>
             </>
           )

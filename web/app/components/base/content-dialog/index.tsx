@@ -1,5 +1,5 @@
-import { Fragment, type ReactNode } from 'react'
-import { Transition } from '@headlessui/react'
+import type { ReactNode } from 'react'
+import { Transition, TransitionChild } from '@headlessui/react'
 import classNames from '@/utils/classnames'
 
 type ContentDialogProps = {
@@ -21,37 +21,29 @@ const ContentDialog = ({
       as="div"
       className="absolute left-0 top-0 w-full h-full z-20 p-2 box-border"
     >
-      <Transition.Child
-        as={Fragment}
-        enter="ease-out duration-300"
-        enterFrom="opacity-0"
-        enterTo="opacity-100"
-        leave="ease-in duration-200"
-        leaveFrom="opacity-100"
-        leaveTo="opacity-0"
-      >
+      <TransitionChild>
         <div
-          className="absolute left-0 inset-0 w-full bg-app-detail-overlay-bg"
+          className={classNames(
+            'absolute left-0 inset-0 w-full bg-app-detail-overlay-bg',
+            'data-[closed]:opacity-0',
+            'data-[enter]:ease-out data-[enter]:duration-300 data-[enter]:opacity-100',
+            'data-[leave]:ease-in data-[leave]:duration-200 data-[leave]:opacity-0',
+          )}
           onClick={onClose}
         />
-      </Transition.Child>
+      </TransitionChild>
 
-      <Transition.Child
-        as={Fragment}
-        enter="transform transition ease-out duration-300"
-        enterFrom="-translate-x-full"
-        enterTo="translate-x-0"
-        leave="transform transition ease-in duration-200"
-        leaveFrom="translate-x-0"
-        leaveTo="-translate-x-full"
-      >
+      <TransitionChild>
         <div className={classNames(
           'absolute left-0 w-full bg-app-detail-bg border-r border-divider-burn',
+          'data-[closed]:-translate-x-full',
+          'data-[enter]:ease-out data-[enter]:duration-300 data-[enter]:translate-x-0',
+          'data-[leave]:ease-in data-[leave]:duration-200 data-[leave]:-translate-x-full',
           className,
         )}>
           {children}
         </div>
-      </Transition.Child>
+      </TransitionChild>
     </Transition>
   )
 }

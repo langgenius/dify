@@ -2,7 +2,7 @@
 import { useTranslation } from 'react-i18next'
 import { Fragment, useMemo } from 'react'
 import { useContext } from 'use-context-selector'
-import { Menu, Transition } from '@headlessui/react'
+import { Menu, MenuButton, MenuItem, MenuItems, Transition } from '@headlessui/react'
 import { CheckIcon, ChevronDownIcon } from '@heroicons/react/24/outline'
 import { useProviderContext } from '@/context/provider-context'
 import cn from '@/utils/classnames'
@@ -76,10 +76,10 @@ const Operation = ({
       {
         ({ open }) => (
           <>
-            <Menu.Button className={cn('group px-3 flex items-center justify-between w-full h-full system-sm-regular text-text-secondary cursor-pointer hover:bg-state-base-hover', open && 'bg-state-base-hover')}>
+            <MenuButton className={cn('group px-3 flex items-center justify-between w-full h-full system-sm-regular text-text-secondary cursor-pointer hover:bg-state-base-hover', open && 'bg-state-base-hover')}>
               {RoleMap[member.role] || RoleMap.normal}
               <ChevronDownIcon className={cn('w-4 h-4 group-hover:block', open ? 'block' : 'hidden')} />
-            </Menu.Button>
+            </MenuButton>
             <Transition
               as={Fragment}
               enter="transition ease-out duration-100"
@@ -89,13 +89,13 @@ const Operation = ({
               leaveFrom="transform opacity-100 scale-100"
               leaveTo="transform opacity-0 scale-95"
             >
-              <Menu.Items
+              <MenuItems
                 className={cn('absolute origin-top-right right-0 top-[52px] z-10 bg-components-panel-bg-blur backdrop-blur-sm rounded-xl border-[0.5px] border-components-panel-border shadow-lg')}
               >
                 <div className="p-1">
                   {
                     roleList.map(role => (
-                      <Menu.Item key={role}>
+                      <MenuItem key={role}>
                         <div className='flex px-3 py-2 cursor-pointer hover:bg-state-base-hover rounded-lg' onClick={() => handleUpdateMemberRole(role)}>
                           {
                             role === member.role
@@ -107,11 +107,11 @@ const Operation = ({
                             <div className='system-xs-regular text-text-tertiary whitespace-nowrap'>{t(`common.members.${toHump(role)}Tip`)}</div>
                           </div>
                         </div>
-                      </Menu.Item>
+                      </MenuItem>
                     ))
                   }
                 </div>
-                <Menu.Item>
+                <MenuItem>
                   <div className='p-1 border-t border-divider-subtle'>
                     <div className='flex px-3 py-2 cursor-pointer hover:bg-state-base-hover rounded-lg' onClick={handleDeleteMemberOrCancelInvitation}>
                       <div className='w-4 h-4 mt-[2px] mr-1 text-text-accent' />
@@ -121,8 +121,8 @@ const Operation = ({
                       </div>
                     </div>
                   </div>
-                </Menu.Item>
-              </Menu.Items>
+                </MenuItem>
+              </MenuItems>
             </Transition>
           </>
         )

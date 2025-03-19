@@ -1,7 +1,7 @@
 'use client'
 import { useTranslation } from 'react-i18next'
 import { Fragment } from 'react'
-import { Menu, Transition } from '@headlessui/react'
+import { Menu, MenuButton, MenuItem, MenuItems, Transition } from '@headlessui/react'
 import { RiArrowDownSLine } from '@remixicon/react'
 import NotionIcon from '../../notion-icon'
 import type { DataSourceNotionWorkspace } from '@/models/common'
@@ -24,7 +24,7 @@ export default function WorkspaceSelector({
       {
         ({ open }) => (
           <>
-            <Menu.Button className={`flex items-center justify-center h-7 p-1 pr-2 rounded-md hover:bg-state-base-hover ${open && 'bg-state-base-hover'} cursor-pointer`}>
+            <MenuButton className={`flex items-center justify-center h-7 p-1 pr-2 rounded-md hover:bg-state-base-hover ${open && 'bg-state-base-hover'} cursor-pointer`}>
               <NotionIcon
                 className='mr-2'
                 src={currentWorkspace?.workspace_icon}
@@ -33,7 +33,7 @@ export default function WorkspaceSelector({
               <div className='mr-1 w-[90px] text-left text-sm font-medium text-text-secondary truncate' title={currentWorkspace?.workspace_name}>{currentWorkspace?.workspace_name}</div>
               {/* <div className='mr-1 px-1 h-[18px] bg-primary-50 rounded-lg text-xs font-medium text-text-accent'>{currentWorkspace?.pages.length}</div> */}
               <RiArrowDownSLine className='w-4 h-4 text-text-secondary' />
-            </Menu.Button>
+            </MenuButton>
             <Transition
               as={Fragment}
               enter="transition ease-out duration-100"
@@ -43,7 +43,7 @@ export default function WorkspaceSelector({
               leaveFrom="transform opacity-100 scale-100"
               leaveTo="transform opacity-0 scale-95"
             >
-              <Menu.Items
+              <MenuItems
                 className='absolute left-0 top-8 z-10 w-80
                   origin-top-right rounded-lg bg-components-panel-bg-blur
                   border-[0.5px] border-components-panel-border shadow-lg shadow-shadow-shadow-5 backdrop-blur-[5px]'
@@ -51,7 +51,7 @@ export default function WorkspaceSelector({
                 <div className="p-1 max-h-50 overflow-auto">
                   {
                     items.map(item => (
-                      <Menu.Item key={item.workspace_id}>
+                      <MenuItem key={item.workspace_id}>
                         <div
                           className='flex items-center px-3 h-9 rounded-lg hover:bg-state-base-hover cursor-pointer'
                           onClick={() => onSelect(item.workspace_id)}
@@ -66,11 +66,11 @@ export default function WorkspaceSelector({
                             {item.pages.length} {t('common.dataSource.notion.selector.pageSelected')}
                           </div>
                         </div>
-                      </Menu.Item>
+                      </MenuItem>
                     ))
                   }
                 </div>
-              </Menu.Items>
+              </MenuItems>
             </Transition>
           </>
         )

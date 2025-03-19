@@ -6,7 +6,7 @@ import {
   RiArrowDownSLine,
   RiArrowRightSLine,
 } from '@remixicon/react'
-import { Menu, Transition } from '@headlessui/react'
+import { Menu, MenuButton, MenuItems, Transition } from '@headlessui/react'
 import { useRouter } from 'next/navigation'
 import { debounce } from 'lodash-es'
 import cn from '@/utils/classnames'
@@ -57,7 +57,7 @@ const NavSelector = ({ curNav, navs, createText, isApp, onCreate, onLoadmore }: 
       <Menu as="div" className="relative inline-block text-left">
         {({ open }) => (
           <>
-            <Menu.Button className={cn(
+            <MenuButton className={cn(
               'group inline-flex items-center w-full h-7 justify-center rounded-[10px] pl-2 pr-2.5 text-[14px] font-semibold text-components-main-nav-nav-button-text-active hover:hover:bg-components-main-nav-nav-button-bg-active-hover',
               open && 'bg-components-main-nav-nav-button-bg-active',
             )}>
@@ -66,8 +66,8 @@ const NavSelector = ({ curNav, navs, createText, isApp, onCreate, onLoadmore }: 
                 className={cn('shrink-0 w-3 h-3 ml-1 opacity-50 group-hover:opacity-100', open && '!opacity-100')}
                 aria-hidden="true"
               />
-            </Menu.Button>
-            <Menu.Items
+            </MenuButton>
+            <MenuItems
               className="
                 absolute -left-11 right-0 mt-1.5 w-60 max-w-80
                 divide-y divide-gray-100 origin-top-right rounded-lg bg-white
@@ -77,7 +77,7 @@ const NavSelector = ({ curNav, navs, createText, isApp, onCreate, onLoadmore }: 
               <div className="px-1 py-1 overflow-auto" style={{ maxHeight: '50vh' }} onScroll={handleScroll}>
                 {
                   navs.map(nav => (
-                    <Menu.Item key={nav.id}>
+                    <MenuItems key={nav.id}>
                       <div className='flex items-center w-full px-3 py-[6px] text-gray-700 text-[14px] rounded-lg font-normal hover:bg-gray-100 cursor-pointer truncate' onClick={() => {
                         if (curNav?.id === nav.id)
                           return
@@ -85,7 +85,7 @@ const NavSelector = ({ curNav, navs, createText, isApp, onCreate, onLoadmore }: 
                         router.push(nav.link)
                       }} title={nav.name}>
                         <div className='relative w-6 h-6 mr-2 rounded-md'>
-                          <AppIcon size='tiny' iconType={nav.icon_type} icon={nav.icon} background={nav.icon_background} imageUrl={nav.icon_url}/>
+                          <AppIcon size='tiny' iconType={nav.icon_type} icon={nav.icon} background={nav.icon_background} imageUrl={nav.icon_url} />
                           {!!nav.mode && (
                             <span className={cn(
                               'absolute w-3.5 h-3.5 -bottom-0.5 -right-0.5 p-0.5 bg-white rounded border-[0.5px] border-[rgba(0,0,0,0.02)] shadow-sm',
@@ -112,12 +112,12 @@ const NavSelector = ({ curNav, navs, createText, isApp, onCreate, onLoadmore }: 
                           {nav.name}
                         </div>
                       </div>
-                    </Menu.Item>
+                    </MenuItems>
                   ))
                 }
               </div>
               {!isApp && isCurrentWorkspaceEditor && (
-                <Menu.Button className='p-1 w-full'>
+                <MenuButton className='p-1 w-full'>
                   <div onClick={() => onCreate('')} className={cn(
                     'flex items-center gap-2 px-3 py-[6px] rounded-lg cursor-pointer hover:bg-gray-100',
                   )}>
@@ -126,13 +126,13 @@ const NavSelector = ({ curNav, navs, createText, isApp, onCreate, onLoadmore }: 
                     </div>
                     <div className='grow text-left font-normal text-[14px] text-gray-700'>{createText}</div>
                   </div>
-                </Menu.Button>
+                </MenuButton>
               )}
               {isApp && isCurrentWorkspaceEditor && (
                 <Menu as="div" className="relative w-full h-full">
                   {({ open }) => (
                     <>
-                      <Menu.Button className='p-1 w-full'>
+                      <MenuButton className='p-1 w-full'>
                         <div className={cn(
                           'flex items-center gap-2 px-3 py-[6px] rounded-lg cursor-pointer hover:bg-gray-100',
                           open && '!bg-gray-100',
@@ -143,7 +143,7 @@ const NavSelector = ({ curNav, navs, createText, isApp, onCreate, onLoadmore }: 
                           <div className='grow text-left font-normal text-[14px] text-gray-700'>{createText}</div>
                           <RiArrowRightSLine className='shrink-0 w-3.5 h-3.5  text-gray-500' />
                         </div>
-                      </Menu.Button>
+                      </MenuButton>
                       <Transition
                         as={Fragment}
                         enter="transition ease-out duration-100"
@@ -153,7 +153,7 @@ const NavSelector = ({ curNav, navs, createText, isApp, onCreate, onLoadmore }: 
                         leaveFrom="transform opacity-100 scale-100"
                         leaveTo="transform opacity-0 scale-95"
                       >
-                        <Menu.Items className={cn(
+                        <MenuItems className={cn(
                           'absolute top-[3px] right-[-198px] min-w-[200px] z-10 bg-white border-[0.5px] border-gray-200 rounded-lg shadow-lg',
                         )}>
                           <div className='p-1'>
@@ -172,13 +172,13 @@ const NavSelector = ({ curNav, navs, createText, isApp, onCreate, onLoadmore }: 
                               {t('app.importDSL')}
                             </div>
                           </div>
-                        </Menu.Items>
+                        </MenuItems>
                       </Transition>
                     </>
                   )}
                 </Menu>
               )}
-            </Menu.Items>
+            </MenuItems>
           </>
         )}
       </Menu>

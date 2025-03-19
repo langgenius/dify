@@ -1,4 +1,4 @@
-import { Menu, Transition } from '@headlessui/react'
+import { Menu, MenuButton, MenuItem, MenuItems, Transition } from '@headlessui/react'
 import { RiArrowRightSLine, RiArrowRightUpLine, RiDiscordLine, RiFeedbackLine, RiMailSendLine, RiQuestionLine } from '@remixicon/react'
 import { Fragment } from 'react'
 import Link from 'next/link'
@@ -23,14 +23,14 @@ export default function Support() {
     {
       ({ open }) => (
         <>
-          <Menu.Button className={
+          <MenuButton className={
             cn('flex items-center pl-3 pr-2 py-2 h-9 w-full group hover:bg-state-base-hover rounded-lg gap-1',
               open && 'bg-state-base-hover',
             )}>
             <RiQuestionLine className='shrink-0 size-4 text-text-tertiary' />
             <div className='grow text-left system-md-regular text-text-secondary px-1'>{t('common.userProfile.support')}</div>
             <RiArrowRightSLine className='shrink-0 size-[14px] text-text-tertiary' />
-          </Menu.Button>
+          </MenuButton>
           <Transition
             as={Fragment}
             enter="transition ease-out duration-100"
@@ -40,7 +40,7 @@ export default function Support() {
             leaveFrom="transform opacity-100 scale-100"
             leaveTo="transform opacity-0 scale-95"
           >
-            <Menu.Items
+            <MenuItems
               className={cn(
                 `absolute top-[1px] w-[216px] max-h-[70vh] overflow-y-scroll z-10 bg-components-panel-bg-blur backdrop-blur-[5px] border-[0.5px] border-components-panel-border
                 divide-y divide-divider-subtle origin-top-right rounded-xl focus:outline-none shadow-lg -translate-x-full
@@ -48,44 +48,44 @@ export default function Support() {
               )}
             >
               <div className="px-1 py-1">
-                {canEmailSupport && <Menu.Item>
-                  {({ active }) => <a
+                {canEmailSupport && <MenuItem>
+                  <a
                     className={cn(itemClassName, 'group justify-between',
-                      active && 'bg-state-base-hover',
+                      'data-[active]:bg-state-base-hover',
                     )}
                     href={mailToSupport(userProfile.email, plan.type, langeniusVersionInfo.current_version)}
                     target='_blank' rel='noopener noreferrer'>
                     <RiMailSendLine className='shrink-0 size-4 text-text-tertiary' />
                     <div className='grow system-md-regular text-text-secondary px-1'>{t('common.userProfile.emailSupport')}</div>
                     <RiArrowRightUpLine className='shrink-0 size-[14px] text-text-tertiary' />
-                  </a>}
-                </Menu.Item>}
-                <Menu.Item>
-                  {({ active }) => <Link
+                  </a>
+                </MenuItem>}
+                <MenuItem>
+                  <Link
                     className={cn(itemClassName, 'group justify-between',
-                      active && 'bg-state-base-hover',
+                      'data-[active]:bg-state-base-hover',
                     )}
                     href='https://github.com/langgenius/dify/discussions/categories/feedbacks'
                     target='_blank' rel='noopener noreferrer'>
                     <RiFeedbackLine className='shrink-0 size-4 text-text-tertiary' />
                     <div className='grow system-md-regular text-text-secondary px-1'>{t('common.userProfile.communityFeedback')}</div>
                     <RiArrowRightUpLine className='shrink-0 size-[14px] text-text-tertiary' />
-                  </Link>}
-                </Menu.Item>
-                <Menu.Item>
-                  {({ active }) => <Link
+                  </Link>
+                </MenuItem>
+                <MenuItem>
+                  <Link
                     className={cn(itemClassName, 'group justify-between',
-                      active && 'bg-state-base-hover',
+                      'data-[active]:bg-state-base-hover',
                     )}
                     href='https://discord.gg/5AEfbxcd9k'
                     target='_blank' rel='noopener noreferrer'>
                     <RiDiscordLine className='shrink-0 size-4 text-text-tertiary' />
                     <div className='grow system-md-regular text-text-secondary px-1'>{t('common.userProfile.community')}</div>
                     <RiArrowRightUpLine className='shrink-0 size-[14px] text-text-tertiary' />
-                  </Link>}
-                </Menu.Item>
+                  </Link>
+                </MenuItem>
               </div>
-            </Menu.Items>
+            </MenuItems>
           </Transition>
         </>
       )
