@@ -1,6 +1,10 @@
+import json
 import logging
 from collections.abc import Callable, Generator, Iterable, Sequence
 from typing import IO, Any, Literal, Optional, Union, cast, overload
+
+from packaging import version
+from packaging.version import Version
 
 from configs import dify_config
 from core.entities.embedding_type import EmbeddingInputType
@@ -9,8 +13,8 @@ from core.entities.provider_entities import ModelLoadBalancingConfiguration
 from core.errors.error import ProviderTokenNotInitError
 from core.model_runtime.callbacks.base_callback import Callback
 from core.model_runtime.entities.llm_entities import LLMResult
-from core.model_runtime.entities.message_entities import PromptMessage, PromptMessageTool
-from core.model_runtime.entities.model_entities import ModelType
+from core.model_runtime.entities.message_entities import PromptMessage, PromptMessageTool, UserPromptMessage
+from core.model_runtime.entities.model_entities import AIModelEntity, ModelType
 from core.model_runtime.entities.rerank_entities import RerankResult
 from core.model_runtime.entities.text_embedding_entities import TextEmbeddingResult
 from core.model_runtime.errors.invoke import InvokeAuthorizationError, InvokeConnectionError, InvokeRateLimitError
@@ -20,7 +24,9 @@ from core.model_runtime.model_providers.__base.rerank_model import RerankModel
 from core.model_runtime.model_providers.__base.speech2text_model import Speech2TextModel
 from core.model_runtime.model_providers.__base.text_embedding_model import TextEmbeddingModel
 from core.model_runtime.model_providers.__base.tts_model import TTSModel
+from core.model_runtime.model_providers.model_provider_factory import ModelProviderFactory
 from core.provider_manager import ProviderManager
+from core.workflow.utils.structured_output.prompt import STRUCTURED_OUTPUT_PROMPT
 from extensions.ext_redis import redis_client
 from models.provider import ProviderType
 
@@ -160,6 +166,13 @@ class ModelInstance:
             raise Exception("Model type instance is not LargeLanguageModel")
 
         self.model_type_instance = cast(LargeLanguageModel, self.model_type_instance)
+        if model_parameters and model_parameters.get("structured_output_schema"):
+            result = self._handle_structured_output(
+                model_parameters=model_parameters,
+                prompt=prompt_messages,
+            )
+            prompt_messages = result["prompt"]
+            model_parameters = result["parameters"]
         return cast(
             Union[LLMResult, Generator],
             self._round_robin_invoke(
@@ -408,6 +421,83 @@ class ModelInstance:
         self.model_type_instance = cast(TTSModel, self.model_type_instance)
         return self.model_type_instance.get_tts_model_voices(
             model=self.model, credentials=self.credentials, language=language
+        )
+
+    def _handle_structured_output(self, model_parameters: dict, prompt: Sequence[PromptMessage]) -> dict:
+        """
+        Handle structured output
+
+        :param model_parameters: model parameters
+        :param provider: provider name
+        :return: updated model parameters
+        """
+        structured_output_schema = model_parameters.pop("structured_output_schema")
+        if not structured_output_schema:
+            raise ValueError("Please provide a valid structured output schema")
+
+        try:
+            schema = json.loads(structured_output_schema)
+        except json.JSONDecodeError:
+            raise ValueError("structured_output_schema is not valid JSON format")
+
+        model_schema = self._fetch_model_schema(self.provider, self.model_type_instance.model_type, self.model)
+        if not model_schema:
+            raise ValueError("Unable to fetch model schema")
+
+        supported_schema_keys = ["json_schema", "format"]
+        rules = model_schema.parameter_rules
+        schema_key = next((rule.name for rule in rules if rule.name in supported_schema_keys), None)
+
+        if schema_key == "json_schema":
+            name = {"name": "llm_response"}
+            if "gemini" in self.model:
+
+                def remove_additional_properties(schema):
+                    if isinstance(schema, dict):
+                        for key, value in list(schema.items()):
+                            if key == "additionalProperties":
+                                del schema[key]
+                            else:
+                                remove_additional_properties(value)
+
+                remove_additional_properties(schema)
+                schema_json = schema
+            else:
+                schema_json = {"schema": schema, **name}
+
+            model_parameters["json_schema"] = json.dumps(schema_json, ensure_ascii=False)
+
+        elif schema_key == "format" and self.plugin_version > version.parse("0.0.3"):
+            model_parameters["format"] = json.dumps(schema, ensure_ascii=False)
+        else:
+            content = prompt[-1].content if isinstance(prompt[-1].content, str) else ""
+            structured_output_prompt = STRUCTURED_OUTPUT_PROMPT.replace("{{schema}}", structured_output_schema).replace(
+                "{{question}}", content
+            )
+            structured_output_prompt_message = UserPromptMessage(content=structured_output_prompt)
+            prompt = list(prompt[:-1]) + [structured_output_prompt_message]
+            return {"prompt": prompt, "parameters": model_parameters}
+        for rule in rules:
+            if rule.name == "response_format":
+                model_parameters["response_format"] = "JSON" if "JSON" in rule.options else "json_schema"
+        return {"prompt": prompt, "parameters": model_parameters}
+
+    def _fetch_model_schema(self, provider: str, model_type: ModelType, model: str) -> AIModelEntity | None:
+        """
+        Fetch model schema
+        """
+        model_provider = ModelProviderFactory(self.model_type_instance.tenant_id)
+        return model_provider.get_model_schema(
+            provider=provider, model_type=model_type, model=model, credentials=self.credentials
+        )
+
+    @property
+    def plugin_version(self) -> Version:
+        """
+        Check if the model is a plugin model
+        """
+        return version.parse(
+            self.model_type_instance.plugin_model_provider.plugin_unique_identifier.split(":")[1].split("@")[0]
         )
 
 

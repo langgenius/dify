@@ -1,5 +1,6 @@
 import json
 import logging
+import re
 from collections.abc import Generator, Mapping, Sequence
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any, Optional, cast
@@ -57,6 +58,7 @@ from core.workflow.nodes.event import (
     RunRetrieverResourceEvent,
     RunStreamChunkEvent,
 )
+from core.workflow.utils.structured_output.utils import parse_partial_json
 from core.workflow.utils.variable_template_parser import VariableTemplateParser
 from extensions.ext_database import db
 from models.model import Conversation
@@ -192,7 +194,19 @@ class LLMNode(BaseNode[LLMNodeData]):
                     self.deduct_llm_quota(tenant_id=self.tenant_id, model_instance=model_instance, usage=usage)
                     break
             outputs = {"text": result_text, "usage": jsonable_encoder(usage), "finish_reason": finish_reason}
-
+            if self.node_data.structured_output_enabled and self.node_data.structured_output:
+                structured_output = {}
+                try:
+                    structured_output = parse_partial_json(result_text)
+                except json.JSONDecodeError:
+                    # Try to find JSON string within triple backticks
+                    _json_markdown_re = re.compile(r"```(json)?(.*)", re.DOTALL)
+                    match = _json_markdown_re.search(result_text)
+                    # If no match found, assume the entire string is a JSON string
+                    # Else, use the content within the backticks
+                    json_str = result_text if match is None else match.group(2)
+                    structured_output = parse_partial_json(json_str)
+                outputs["structured_output"] = structured_output
             yield RunCompletedEvent(
                 run_result=NodeRunResult(
                     status=WorkflowNodeExecutionStatus.SUCCEEDED,
@@ -499,6 +513,10 @@ class LLMNode(BaseNode[LLMNodeData]):
 
         # model config
         completion_params = node_data_model.completion_params
+        if self.node_data.structured_output_enabled and self.node_data.structured_output:
+            completion_params["structured_output_schema"] = json.dumps(
+                self.node_data.structured_output.get("schema", {}), ensure_ascii=False
+            )
         stop = []
         if "stop" in completion_params:
             stop = completion_params["stop"]
