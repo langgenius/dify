@@ -292,8 +292,20 @@ class Executor:
         do http request depending on api bundle
         """
         if self.method not in {
-            "get", "head", "post", "put", "delete", "patch", "options",
-            "GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS",
+            "get",
+            "head",
+            "post",
+            "put",
+            "delete",
+            "patch",
+            "options",
+            "GET",
+            "POST",
+            "PUT",
+            "PATCH",
+            "DELETE",
+            "HEAD",
+            "OPTIONS",
         }:
             raise InvalidHttpMethodError(f"Invalid http method {self.method}")
 
@@ -309,7 +321,7 @@ class Executor:
             "follow_redirects": True,
             "max_retries": self.max_retries,
         }
-        
+
         # Use with statement to ensure proper resource cleanup
         with httpx.Client() as client:
             try:
