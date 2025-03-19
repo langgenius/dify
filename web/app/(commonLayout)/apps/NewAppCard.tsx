@@ -1,6 +1,6 @@
 'use client'
 
-import { forwardRef, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import {
   useRouter,
   useSearchParams,
@@ -18,7 +18,15 @@ export type CreateAppCardProps = {
   onSuccess?: () => void
 }
 
-const CreateAppCard = forwardRef<HTMLDivElement, CreateAppCardProps>(({ className, onSuccess }, ref) => {
+const CreateAppCard = (
+  {
+    ref,
+    className,
+    onSuccess,
+  }: CreateAppCardProps & {
+    ref: React.RefObject<HTMLDivElement>;
+  },
+) => {
   const { t } = useTranslation()
   const { onPlanInfoChanged } = useProviderContext()
   const searchParams = useSearchParams()
@@ -103,7 +111,7 @@ const CreateAppCard = forwardRef<HTMLDivElement, CreateAppCardProps>(({ classNam
       />
     </div>
   )
-})
+}
 
 CreateAppCard.displayName = 'CreateAppCard'
 export default CreateAppCard

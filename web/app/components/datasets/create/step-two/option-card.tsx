@@ -1,4 +1,4 @@
-import { type ComponentProps, type FC, type ReactNode, forwardRef } from 'react'
+import type { ComponentProps, FC, ReactNode } from 'react'
 import Image from 'next/image'
 import classNames from '@/utils/classnames'
 
@@ -57,7 +57,12 @@ type OptionCardProps = {
   disabled?: boolean
 } & Omit<ComponentProps<'div'>, 'title' | 'onClick'>
 
-export const OptionCard: FC<OptionCardProps> = forwardRef((props, ref) => {
+export const OptionCard: FC<OptionCardProps> = (
+  {
+    ref,
+    ...props
+  },
+) => {
   const { icon, className, title, description, isActive, children, actions, activeHeaderClassName, style, effectImg, onSwitched, noHighlight, disabled, ...rest } = props
   return <div
     className={classNames(
@@ -96,6 +101,6 @@ export const OptionCard: FC<OptionCardProps> = forwardRef((props, ref) => {
       }
     </div>}
   </div>
-})
+}
 
 OptionCard.displayName = 'OptionCard'

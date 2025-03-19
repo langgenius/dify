@@ -1,4 +1,4 @@
-import React, { type ForwardedRef, useMemo } from 'react'
+import React, { useMemo } from 'react'
 import { useDocumentContext } from '../index'
 import SegmentCard from './segment-card'
 import Empty from './common/empty'
@@ -25,22 +25,25 @@ type ISegmentListProps = {
   onClearFilter: () => void
 }
 
-const SegmentList = React.forwardRef(({
-  isLoading,
-  items,
-  selectedSegmentIds,
-  onSelected,
-  onClick: onClickCard,
-  onChangeSwitch,
-  onDelete,
-  onDeleteChildChunk,
-  handleAddNewChildChunk,
-  onClickSlice,
-  archived,
-  embeddingAvailable,
-  onClearFilter,
-}: ISegmentListProps,
-ref: ForwardedRef<HTMLDivElement>,
+const SegmentList = (
+  {
+    ref,
+    isLoading,
+    items,
+    selectedSegmentIds,
+    onSelected,
+    onClick: onClickCard,
+    onChangeSwitch,
+    onDelete,
+    onDeleteChildChunk,
+    handleAddNewChildChunk,
+    onClickSlice,
+    archived,
+    embeddingAvailable,
+    onClearFilter,
+  }: ISegmentListProps & {
+    ref: React.RefObject<unknown>;
+  },
 ) => {
   const mode = useDocumentContext(s => s.mode)
   const parentMode = useDocumentContext(s => s.parentMode)
@@ -109,7 +112,7 @@ ref: ForwardedRef<HTMLDivElement>,
       }
     </div>
   )
-})
+}
 
 SegmentList.displayName = 'SegmentList'
 
