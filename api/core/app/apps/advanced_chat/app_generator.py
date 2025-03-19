@@ -29,6 +29,7 @@ from factories import file_factory
 from models.account import Account
 from models.model import App, Conversation, EndUser, Message
 from models.workflow import Workflow
+from services.conversation_service import ConversationService
 from services.errors.message import MessageNotExistsError
 
 logger = logging.getLogger(__name__)
@@ -105,7 +106,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         conversation = None
         conversation_id = args.get("conversation_id")
         if conversation_id:
-            conversation = self._get_conversation_by_user(
+            conversation = ConversationService.get_conversation(
                 app_model=app_model, conversation_id=conversation_id, user=user
             )
 
