@@ -39,7 +39,7 @@ const APOTools = ({ searchText, onSelect, apoNodes = [] }: APOToolsProps) => {
   }
 
   return (
-    <div className="mb-1 last-of-type:mb-0">
+    <div className="last-of-type:mb-0 px-1">
       {filteredApoNodes.map(node => (
         <Popover
           key={node.id}
