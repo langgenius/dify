@@ -25,6 +25,7 @@ from core.rag.extractor.unstructured.unstructured_msg_extractor import Unstructu
 from core.rag.extractor.unstructured.unstructured_ppt_extractor import UnstructuredPPTExtractor
 from core.rag.extractor.unstructured.unstructured_pptx_extractor import UnstructuredPPTXExtractor
 from core.rag.extractor.unstructured.unstructured_xml_extractor import UnstructuredXmlExtractor
+from core.rag.extractor.watercrawl.extractor import WaterCrawlWebExtractor
 from core.rag.extractor.word_extractor import WordExtractor
 from core.rag.models.document import Document
 from extensions.ext_storage import storage
@@ -40,7 +41,7 @@ USER_AGENT = (
 class ExtractProcessor:
     @classmethod
     def load_from_upload_file(
-        cls, upload_file: UploadFile, return_text: bool = False, is_automatic: bool = False
+            cls, upload_file: UploadFile, return_text: bool = False, is_automatic: bool = False
     ) -> Union[list[Document], str]:
         extract_setting = ExtractSetting(
             datasource_type="upload_file", upload_file=upload_file, document_model="text_model"
@@ -173,6 +174,15 @@ class ExtractProcessor:
             assert extract_setting.website_info is not None, "website_info is required"
             if extract_setting.website_info.provider == "firecrawl":
                 extractor = FirecrawlWebExtractor(
+                    url=extract_setting.website_info.url,
+                    job_id=extract_setting.website_info.job_id,
+                    tenant_id=extract_setting.website_info.tenant_id,
+                    mode=extract_setting.website_info.mode,
+                    only_main_content=extract_setting.website_info.only_main_content,
+                )
+                return extractor.extract()
+            elif extract_setting.website_info.provider == "watercrawl":
+                extractor = WaterCrawlWebExtractor(
                     url=extract_setting.website_info.url,
                     job_id=extract_setting.website_info.job_id,
                     tenant_id=extract_setting.website_info.tenant_id,
