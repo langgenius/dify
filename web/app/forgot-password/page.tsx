@@ -7,11 +7,13 @@ import style from '../signin/page.module.css'
 import ForgotPasswordForm from './ForgotPasswordForm'
 import ChangePasswordForm from '@/app/forgot-password/ChangePasswordForm'
 import useDocumentTitle from '@/hooks/use-document-title'
+import { useGlobalPublicStore } from '@/context/global-public-context'
 
 const ForgotPassword = () => {
   useDocumentTitle('')
   const searchParams = useSearchParams()
   const token = searchParams.get('token')
+  const { systemFeatures } = useGlobalPublicStore()
 
   return (
     <div className={classNames(
@@ -29,9 +31,9 @@ const ForgotPassword = () => {
       }>
         <Header />
         {token ? <ChangePasswordForm /> : <ForgotPasswordForm />}
-        <div className='px-8 py-6 text-sm font-normal text-gray-500'>
+        {!systemFeatures.branding.enabled && <div className='px-8 py-6 text-sm font-normal text-gray-500'>
           © {new Date().getFullYear()} LangGenius, Inc. All rights reserved.
-        </div>
+        </div>}
       </div>
     </div>
   )

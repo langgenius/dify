@@ -1,9 +1,12 @@
+'use client'
 import Header from '../signin/_header'
 import style from '../signin/page.module.css'
 
 import cn from '@/utils/classnames'
+import { useGlobalPublicStore } from '@/context/global-public-context'
 
-export default async function SignInLayout({ children }: any) {
+export default function SignInLayout({ children }: any) {
+  const { systemFeatures } = useGlobalPublicStore()
   return <>
     <div className={cn(
       style.background,
@@ -30,9 +33,9 @@ export default async function SignInLayout({ children }: any) {
             {children}
           </div>
         </div>
-        <div className='px-8 py-6 system-xs-regular text-text-tertiary'>
+        {!systemFeatures.branding.enabled && <div className='px-8 py-6 system-xs-regular text-text-tertiary'>
           © {new Date().getFullYear()} LangGenius, Inc. All rights reserved.
-        </div>
+        </div>}
       </div>
     </div>
   </>
