@@ -50,7 +50,21 @@
       return compressedInputs;
     }
 
-    const params = new URLSearchParams(await getCompressedInputsFromConfig());
+    async function getCompressedSystemVariablesFromConfig() {
+      const systemVariables = config?.systemVariables || {};
+      const compressedSystemVariables = {};
+      await Promise.all(
+        Object.entries(systemVariables).map(async ([key, value]) => {
+          compressedSystemVariables[`sys.${key}`] = await compressAndEncodeBase64(value);
+        })
+      );
+      return compressedSystemVariables;
+    }
+
+    const params = new URLSearchParams({
+      ...await getCompressedInputsFromConfig(),
+      ...await getCompressedSystemVariablesFromConfig()
+    });
 
     const baseUrl =
       config.baseUrl || `https://${config.isDev ? "dev." : ""}udify.app`;
