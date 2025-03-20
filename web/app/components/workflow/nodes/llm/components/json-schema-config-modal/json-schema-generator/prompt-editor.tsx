@@ -1,34 +1,45 @@
-import React from 'react'
+import React, { useCallback } from 'react'
 import type { FC } from 'react'
 import { RiCloseLine, RiSparklingFill } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
-import ModelSelector from '@/app/components/header/account-setting/model-provider-page/model-selector'
-import { useTextGenerationCurrentProviderAndModelAndModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import Textarea from '@/app/components/base/textarea'
 import Tooltip from '@/app/components/base/tooltip'
 import Button from '@/app/components/base/button'
+import type { FormValue } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import ModelParameterModal from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
+import type { Model } from '@/types/app'
+
+export type ModelInfo = {
+  modelId: string
+  provider: string
+  mode?: string
+  features?: string[]
+}
 
 type PromptEditorProps = {
   instruction: string
+  model: Model
   onInstructionChange: (instruction: string) => void
+  onCompletionParamsChange: (newParams: FormValue) => void
+  onModelChange: (model: ModelInfo) => void
   onClose: () => void
   onGenerate: () => void
 }
 
 const PromptEditor: FC<PromptEditorProps> = ({
   instruction,
+  model,
   onInstructionChange,
+  onCompletionParamsChange,
   onClose,
   onGenerate,
+  onModelChange,
 }) => {
   const { t } = useTranslation()
 
-  const {
-    activeTextGenerationModelList,
-  } = useTextGenerationCurrentProviderAndModelAndModelList()
-
-  const handleChangeModel = () => {
-  }
+  const handleInstructionChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    onInstructionChange(e.target.value)
+  }, [onInstructionChange])
 
   return (
     <div className='flex flex-col relative w-[480px] rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-2xl shadow-shadow-shadow-9'>
@@ -49,9 +60,17 @@ const PromptEditor: FC<PromptEditorProps> = ({
         <div className='flex items-center h-6 text-text-secondary system-sm-semibold-uppercase'>
           {t('common.modelProvider.model')}
         </div>
-        <ModelSelector
-          modelList={activeTextGenerationModelList}
-          onSelect={handleChangeModel}
+        <ModelParameterModal
+          popupClassName='!w-[448px]'
+          portalToFollowElemContentClassName='z-[1000]'
+          isAdvancedMode={true}
+          provider={model.provider}
+          mode={model.mode}
+          completionParams={model.completion_params}
+          modelId={model.name}
+          setModel={onModelChange}
+          onCompletionParamsChange={onCompletionParamsChange}
+          hideDebugWithMultipleModel
         />
       </div>
       <div className='flex flex-col gap-y-1 px-4 py-2'>
@@ -64,7 +83,7 @@ const PromptEditor: FC<PromptEditorProps> = ({
             className='h-[364px] px-2 py-1 resize-none'
             value={instruction}
             placeholder={t('workflow.nodes.llm.jsonSchema.promptPlaceholder')}
-            onChange={e => onInstructionChange(e.target.value)}
+            onChange={handleInstructionChange}
           />
         </div>
       </div>
