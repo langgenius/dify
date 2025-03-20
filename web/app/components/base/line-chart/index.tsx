@@ -3,7 +3,7 @@ import ReactECharts from 'echarts-for-react'
 import { useTranslation } from 'react-i18next'
 import dayjs from 'dayjs'
 const formatMGT = (y) => {
-  const yy = Math.abs(y)
+  const yy = Math.abs(y / 1024 / 1024)
   if (yy >= 1024 * 1024) {
     return y < 0
       ? `${-1 * +(yy / (1024 * 1024)).toFixed(2)}T`
@@ -88,9 +88,9 @@ const LineChart = (props: LineChartProps) => {
           return '< 0.01%'
         return `${Number.parseFloat((value).toFixed(2))}%`
       case 'bytes':
-        if (value > 0 && value < 0.01)
-          return `< 0.01 ${unit}`
-        return `${formatMGT(Number.parseFloat((value).toFixed(2)))} ${unit}`
+        if (value > 0 && value < 1024 * 0.01)
+          return '< 0.01M'
+        return `${formatMGT(Number.parseFloat((value).toFixed(2)))}`
       default:
         if (value > 0 && value < 0.01)
           return `< 0.01 ${unit}`
