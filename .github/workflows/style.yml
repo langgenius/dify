@@ -52,6 +52,51 @@ jobs:
         if: failure()
         run: echo "Please run 'dev/reformat' to fix the fixable linting errors."
 
+  python-style-on-uv:
+    name: Python Style on UV
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Check changed files
+        id: changed-files
+        uses: tj-actions/changed-files@v45
+        with:
+          files: |
+            api/**
+            .github/workflows/style.yml
+
+      - name: Setup UV and Python
+        if: steps.changed-files.outputs.any_changed == 'true'
+        uses: ./.github/actions/setup-uv
+        with:
+          uv-lockfile: api/uv.lock
+          enable-cache: false
+
+      - name: Install dependencies
+        if: steps.changed-files.outputs.any_changed == 'true'
+        run: uv sync --project api --only-group lint
+
+      - name: Ruff check
+        if: steps.changed-files.outputs.any_changed == 'true'
+        run: |
+          uv run --project api ruff --version
+          uv run --project api ruff check ./api
+          uv run --project api ruff format --check ./api
+
+      - name: Dotenv check
+        if: steps.changed-files.outputs.any_changed == 'true'
+        run: uv run --project api dotenv-linter ./api/.env.example ./web/.env.example
+
+      - name: Lint hints
+        if: failure()
+        run: echo "Please run 'dev/reformat' to fix the fixable linting errors."
+
   web-style:
     name: Web Style
     runs-on: ubuntu-latest
