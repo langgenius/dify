@@ -6,6 +6,7 @@ on:
       - "main"
     paths:
       - api/Dockerfile
+      - api/Dockerfile_uv
       - web/Dockerfile
 
 concurrency:
@@ -24,6 +25,14 @@ jobs:
           - service_name: "api-arm64"
             platform: linux/arm64
             context: "api"
+          - service_name: "api-amd64-uv"
+            platform: linux/amd64
+            context: "api"
+            file: "Dockerfile_uv"
+          - service_name: "api-arm64-uv"
+            platform: linux/arm64
+            context: "api"
+            file: "Dockerfile_uv"
           - service_name: "web-amd64"
             platform: linux/amd64
             context: "web"
