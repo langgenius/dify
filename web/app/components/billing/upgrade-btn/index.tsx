@@ -3,8 +3,8 @@ import type { FC } from 'react'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
 import PremiumBadge from '../../base/premium-badge'
+import Button from '@/app/components/base/button'
 import { SparklesSoft } from '@/app/components/base/icons/src/public/common'
-import cn from '@/utils/classnames'
 import { useModalContext } from '@/context/modal-context'
 
 type Props = {
@@ -17,23 +17,7 @@ type Props = {
   loc?: string
 }
 
-const PlainBtn = ({ className, onClick }: { className?: string; onClick: () => void }) => {
-  const { t } = useTranslation()
-
-  return (
-    <div
-      className={cn(className, 'flex items-center h-8 px-3 rounded-lg border border-gray-200 bg-white shadow-sm cursor-pointer')}
-      onClick={onClick}
-    >
-      <div className='leading-[18px] text-[13px] font-medium text-gray-700'>
-        {t('billing.upgradeBtn.plain')}
-      </div>
-    </div>
-  )
-}
-
 const UpgradeBtn: FC<Props> = ({
-  className,
   isPlain = false,
   isShort = false,
   onClick: _onClick,
@@ -56,8 +40,13 @@ const UpgradeBtn: FC<Props> = ({
     }
   }
 
-  if (isPlain)
-    return <PlainBtn onClick={onClick} className={className} />
+  if (isPlain) {
+    return (
+      <Button onClick={onClick}>
+        {t('billing.upgradeBtn.plain')}
+      </Button>
+    )
+  }
 
   return (
     <PremiumBadge

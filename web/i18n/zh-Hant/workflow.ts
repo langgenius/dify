@@ -243,6 +243,8 @@ const translation = {
     'list-operator': '清單運算子',
     'document-extractor': '文件提取器',
     'agent': '代理',
+    'loop-start': '循環開始',
+    'loop': '循環',
   },
   blocksAbout: {
     'start': '定義一個 workflow 流程啟動的參數',

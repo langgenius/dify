@@ -47,11 +47,15 @@ const ResultItem: FC<Props> = ({
 
       {/* Main */}
       <div className='mt-1 px-3'>
-        <Markdown className='line-clamp-2' content={sign_content || content} />
+        <Markdown
+          className='line-clamp-2'
+          content={sign_content || content}
+          customDisallowedElements={['input']}
+        />
         {isParentChildRetrieval && (
           <div className='mt-1'>
             <div
-              className={cn('inline-flex items-center h-6 space-x-0.5 text-text-secondary select-none rounded-lg cursor-pointer', isFold && 'pl-1 bg-[linear-gradient(90deg,_rgba(200,_206,_218,_0.20)_0%,_rgba(200,_206,_218,_0.04)_100%)]')}
+              className={cn('inline-flex items-center h-6 space-x-0.5 text-text-secondary select-none rounded-lg cursor-pointer', isFold && 'pl-1 bg-workflow-process-bg')}
               onClick={(e) => {
                 e.stopPropagation()
                 toggleFold()

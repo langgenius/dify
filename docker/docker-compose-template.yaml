@@ -2,7 +2,7 @@ x-shared-env: &shared-api-worker-env
 services:
   # API service
   api:
-    image: langgenius/dify-api:1.0.0
+    image: langgenius/dify-api:1.1.0
     restart: always
     environment:
       # Use the shared environment variables.
@@ -12,6 +12,8 @@ services:
       SENTRY_DSN: ${API_SENTRY_DSN:-}
       SENTRY_TRACES_SAMPLE_RATE: ${API_SENTRY_TRACES_SAMPLE_RATE:-1.0}
       SENTRY_PROFILES_SAMPLE_RATE: ${API_SENTRY_PROFILES_SAMPLE_RATE:-1.0}
+      PLUGIN_REMOTE_INSTALL_HOST: ${EXPOSE_PLUGIN_DEBUGGING_HOST:-localhost}
+      PLUGIN_REMOTE_INSTALL_PORT: ${EXPOSE_PLUGIN_DEBUGGING_PORT:-5003}
       PLUGIN_MAX_PACKAGE_SIZE: ${PLUGIN_MAX_PACKAGE_SIZE:-52428800}
       INNER_API_KEY_FOR_PLUGIN: ${PLUGIN_DIFY_INNER_API_KEY:-QaHbTe77CtuXmsfyhR7+vRjI/+XbV1AaFy691iy+kGDv2Jvy0/eAh8Y1}
     depends_on:
@@ -27,7 +29,7 @@ services:
   # worker service
   # The Celery worker for processing the queue.
   worker:
-    image: langgenius/dify-api:1.0.0
+    image: langgenius/dify-api:1.1.0
     restart: always
     environment:
       # Use the shared environment variables.
@@ -51,7 +53,7 @@ services:
 
   # Frontend web application.
   web:
-    image: langgenius/dify-web:1.0.0
+    image: langgenius/dify-web:1.1.0
     restart: always
     environment:
       CONSOLE_API_URL: ${CONSOLE_API_URL:-}
@@ -65,6 +67,9 @@ services:
       TOP_K_MAX_VALUE: ${TOP_K_MAX_VALUE:-}
       INDEXING_MAX_SEGMENTATION_TOKENS_LENGTH: ${INDEXING_MAX_SEGMENTATION_TOKENS_LENGTH:-}
       PM2_INSTANCES: ${PM2_INSTANCES:-2}
+      LOOP_NODE_MAX_COUNT: ${LOOP_NODE_MAX_COUNT:-100}
+      MAX_TOOLS_NUM: ${MAX_TOOLS_NUM:-10}
+      MAX_PARALLEL_LIMIT: ${MAX_PARALLEL_LIMIT:-10}
 
   # The postgres database.
   db:
@@ -88,8 +93,6 @@ services:
       interval: 1s
       timeout: 3s
       retries: 30
-    ports:
-      - '${EXPOSE_DB_PORT:-5432}:5432'
 
   # The redis cache.
   redis:
@@ -130,7 +133,7 @@ services:
 
   # plugin daemon
   plugin_daemon:
-    image: langgenius/dify-plugin-daemon:0.0.3-local
+    image: langgenius/dify-plugin-daemon:0.0.5-local
     restart: always
     environment:
       # Use the shared environment variables.
@@ -141,16 +144,20 @@ services:
       MAX_PLUGIN_PACKAGE_SIZE: ${PLUGIN_MAX_PACKAGE_SIZE:-52428800}
       PPROF_ENABLED: ${PLUGIN_PPROF_ENABLED:-false}
       DIFY_INNER_API_URL: ${PLUGIN_DIFY_INNER_API_URL:-http://api:5001}
-      DIFY_INNER_API_KEY: ${INNER_API_KEY_FOR_PLUGIN:-QaHbTe77CtuXmsfyhR7+vRjI/+XbV1AaFy691iy+kGDv2Jvy0/eAh8Y1}
-      PLUGIN_REMOTE_INSTALLING_HOST: ${PLUGIN_REMOTE_INSTALL_HOST:-0.0.0.0}
-      PLUGIN_REMOTE_INSTALLING_PORT: ${PLUGIN_REMOTE_INSTALL_PORT:-5003}
+      DIFY_INNER_API_KEY: ${PLUGIN_DIFY_INNER_API_KEY:-QaHbTe77CtuXmsfyhR7+vRjI/+XbV1AaFy691iy+kGDv2Jvy0/eAh8Y1}
+      PLUGIN_REMOTE_INSTALLING_HOST: ${PLUGIN_DEBUGGING_HOST:-0.0.0.0}
+      PLUGIN_REMOTE_INSTALLING_PORT: ${PLUGIN_DEBUGGING_PORT:-5003}
       PLUGIN_WORKING_PATH: ${PLUGIN_WORKING_PATH:-/app/storage/cwd}
       FORCE_VERIFYING_SIGNATURE: ${FORCE_VERIFYING_SIGNATURE:-true}
+      PYTHON_ENV_INIT_TIMEOUT: ${PLUGIN_PYTHON_ENV_INIT_TIMEOUT:-120}
+      PLUGIN_MAX_EXECUTION_TIMEOUT: ${PLUGIN_MAX_EXECUTION_TIMEOUT:-600}
+      PIP_MIRROR_URL: ${PIP_MIRROR_URL:-}
     ports:
       - "${EXPOSE_PLUGIN_DEBUGGING_PORT:-5003}:${PLUGIN_DEBUGGING_PORT:-5003}"
     volumes:
       - ./volumes/plugin_daemon:/app/storage
-
+    depends_on:
+      - db
 
   # ssrf_proxy server
   # for more information, please refer to
@@ -316,8 +323,13 @@ services:
       POSTGRES_DB: ${PGVECTOR_POSTGRES_DB:-dify}
       # postgres data directory
       PGDATA: ${PGVECTOR_PGDATA:-/var/lib/postgresql/data/pgdata}
+      # pg_bigm module for full text search
+      PG_BIGM: ${PGVECTOR_PG_BIGM:-false}
+      PG_BIGM_VERSION: ${PGVECTOR_PG_BIGM_VERSION:-1.2-20240606}
     volumes:
       - ./volumes/pgvector/data:/var/lib/postgresql/data
+      - ./pgvector/docker-entrypoint.sh:/docker-entrypoint.sh
+    entrypoint: [ '/docker-entrypoint.sh' ]
     healthcheck:
       test: [ 'CMD', 'pg_isready' ]
       interval: 1s
@@ -495,6 +507,28 @@ services:
       - opensearch-net
     depends_on:
       - opensearch
+
+  # opengauss vector database.
+  opengauss:
+    image: opengauss/opengauss:7.0.0-RC1
+    profiles:
+      - opengauss
+    privileged: true
+    restart: always
+    environment:
+      GS_USERNAME: ${OPENGAUSS_USER:-postgres}
+      GS_PASSWORD: ${OPENGAUSS_PASSWORD:-Dify@123}
+      GS_PORT: ${OPENGAUSS_PORT:-6600}
+      GS_DB: ${OPENGAUSS_DATABASE:-dify}
+    volumes:
+      - ./volumes/opengauss/data:/var/lib/opengauss/data
+    healthcheck:
+      test: ["CMD-SHELL", "netstat -lntp | grep tcp6 > /dev/null 2>&1"]
+      interval: 10s
+      timeout: 10s
+      retries: 10
+    ports:
+      - ${OPENGAUSS_PORT:-6600}:${OPENGAUSS_PORT:-6600}
 
   # MyScale vector database
   myscale:

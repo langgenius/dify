@@ -32,11 +32,7 @@ class AwsS3Storage(BaseStorage):
                 aws_access_key_id=dify_config.S3_ACCESS_KEY,
                 endpoint_url=dify_config.S3_ENDPOINT,
                 region_name=dify_config.S3_REGION,
-                config=Config(
-                    s3={"addressing_style": dify_config.S3_ADDRESS_STYLE},
-                    request_checksum_calculation="when_required",
-                    response_checksum_validation="when_required",
-                ),
+                config=Config(s3={"addressing_style": dify_config.S3_ADDRESS_STYLE}),
             )
         # create bucket
         try:

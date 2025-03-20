@@ -26,6 +26,7 @@ from .vdb.lindorm_config import LindormConfig
 from .vdb.milvus_config import MilvusConfig
 from .vdb.myscale_config import MyScaleConfig
 from .vdb.oceanbase_config import OceanBaseVectorConfig
+from .vdb.opengauss_config import OpenGaussConfig
 from .vdb.opensearch_config import OpenSearchConfig
 from .vdb.oracle_config import OracleConfig
 from .vdb.pgvector_config import PGVectorConfig
@@ -283,5 +284,6 @@ class MiddlewareConfig(
     LindormConfig,
     OceanBaseVectorConfig,
     BaiduVectorDBConfig,
+    OpenGaussConfig,
 ):
     pass

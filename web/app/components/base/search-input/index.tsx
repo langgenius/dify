@@ -1,9 +1,8 @@
 import type { FC } from 'react'
 import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { RiSearchLine } from '@remixicon/react'
+import { RiCloseCircleFill, RiSearchLine } from '@remixicon/react'
 import cn from '@/utils/classnames'
-import { XCircle } from '@/app/components/base/icons/src/vender/solid/general'
 
 type SearchInputProps = {
   placeholder?: string
@@ -27,22 +26,19 @@ const SearchInput: FC<SearchInputProps> = ({
 
   return (
     <div className={cn(
-      'group flex items-center px-2 h-8 rounded-lg bg-gray-200 hover:bg-gray-300 border border-transparent overflow-hidden',
-      focus && '!bg-white hover:bg-white shadow-xs !border-gray-300',
-      !focus && value && 'hover:!bg-gray-200 hover:!shadow-xs hover:!border-black/5',
+      'group flex items-center px-2 h-8 rounded-lg bg-components-input-bg-normal hover:bg-components-input-bg-hover border-none overflow-hidden',
+      focus && '!bg-components-input-bg-active',
       white && '!bg-white hover:!bg-white shadow-xs !border-gray-300 hover:!border-gray-300',
       className,
     )}>
       <div className="pointer-events-none shrink-0 flex items-center mr-1.5 justify-center w-4 h-4">
-        <RiSearchLine className="h-3.5 w-3.5 text-gray-500" aria-hidden="true" />
+        <RiSearchLine className="h-4 w-4 text-components-input-text-placeholder" aria-hidden="true" />
       </div>
       <input
         type="text"
         name="query"
         className={cn(
-          'grow block h-[18px] bg-gray-200 border-0 text-gray-700 text-[13px] placeholder:text-gray-500 appearance-none outline-none group-hover:bg-gray-300 caret-blue-600',
-          focus && '!bg-white hover:bg-white group-hover:bg-white placeholder:!text-gray-400',
-          !focus && value && 'hover:!bg-gray-200 group-hover:!bg-gray-200',
+          'grow block h-[18px] bg-transparent border-0 text-components-input-text-filled system-sm-regular placeholder:text-components-input-text-placeholder appearance-none outline-none caret-#295EFF',
           white && '!bg-white hover:!bg-white group-hover:!bg-white placeholder:!text-gray-400',
         )}
         placeholder={placeholder || t('common.operation.search')!}
@@ -71,7 +67,7 @@ const SearchInput: FC<SearchInputProps> = ({
             setInternalValue('')
           }}
         >
-          <XCircle className='w-3.5 h-3.5 text-gray-400 group-hover/clear:text-gray-600' />
+          <RiCloseCircleFill className='w-4 h-4 text-text-quaternary group-hover/clear:text-text-tertiary' />
         </div>
       )}
     </div>

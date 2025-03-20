@@ -149,6 +149,11 @@ class ProviderManager:
             provider_name = provider_entity.provider
             provider_records = provider_name_to_provider_records_dict.get(provider_entity.provider, [])
             provider_model_records = provider_name_to_provider_model_records_dict.get(provider_entity.provider, [])
+            provider_id_entity = ModelProviderID(provider_name)
+            if provider_id_entity.is_langgenius():
+                provider_model_records.extend(
+                    provider_name_to_provider_model_records_dict.get(provider_id_entity.provider_name, [])
+                )
 
             # Convert to custom configuration
             custom_configuration = self._to_custom_configuration(
@@ -190,6 +195,20 @@ class ProviderManager:
                 provider_name
             )
 
+            provider_id_entity = ModelProviderID(provider_name)
+
+            if provider_id_entity.is_langgenius():
+                if provider_model_settings is not None:
+                    provider_model_settings.extend(
+                        provider_name_to_provider_model_settings_dict.get(provider_id_entity.provider_name, [])
+                    )
+                if provider_load_balancing_configs is not None:
+                    provider_load_balancing_configs.extend(
+                        provider_name_to_provider_load_balancing_model_configs_dict.get(
+                            provider_id_entity.provider_name, []
+                        )
+                    )
+
             # Convert to model settings
             model_settings = self._to_model_settings(
                 provider_entity=provider_entity,
@@ -207,7 +226,7 @@ class ProviderManager:
                 model_settings=model_settings,
             )
 
-            provider_configurations[str(ModelProviderID(provider_name))] = provider_configuration
+            provider_configurations[str(provider_id_entity)] = provider_configuration
 
         # Return the encapsulated object
         return provider_configurations

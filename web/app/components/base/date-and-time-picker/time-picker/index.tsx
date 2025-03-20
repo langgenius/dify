@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
-import dayjs from 'dayjs'
 import type { Period, TimePickerProps } from '../types'
-import { cloneTime, getHourIn12Hour } from '../utils'
+import dayjs, { cloneTime, getDateWithTimezone, getHourIn12Hour } from '../utils/dayjs'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
@@ -16,6 +15,7 @@ import cn from '@/utils/classnames'
 
 const TimePicker = ({
   value,
+  timezone,
   placeholder,
   onChange,
   onClear,
@@ -24,7 +24,8 @@ const TimePicker = ({
   const { t } = useTranslation()
   const [isOpen, setIsOpen] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
-  const [selectedTime, setSelectedTime] = useState(value)
+  const isInitial = useRef(true)
+  const [selectedTime, setSelectedTime] = useState(value ? getDateWithTimezone({ timezone, date: value }) : undefined)
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -35,6 +36,22 @@ const TimePicker = ({
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
+  useEffect(() => {
+    if (isInitial.current) {
+      isInitial.current = false
+      return
+    }
+    if (value) {
+      const newValue = getDateWithTimezone({ date: value, timezone })
+      setSelectedTime(newValue)
+      onChange(newValue)
+    }
+    else {
+      setSelectedTime(prev => prev ? getDateWithTimezone({ date: prev, timezone }) : undefined)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [timezone])
+
   const handleClickTrigger = (e: React.MouseEvent) => {
     e.stopPropagation()
     if (isOpen) {
@@ -42,6 +59,8 @@ const TimePicker = ({
       return
     }
     setIsOpen(true)
+    if (value)
+      setSelectedTime(value)
   }
 
   const handleClear = (e: React.MouseEvent) => {
@@ -74,11 +93,11 @@ const TimePicker = ({
   }, [selectedTime])
 
   const handleSelectCurrentTime = useCallback(() => {
-    const newDate = dayjs()
+    const newDate = getDateWithTimezone({ timezone })
     setSelectedTime(newDate)
     onChange(newDate)
     setIsOpen(false)
-  }, [onChange])
+  }, [onChange, timezone])
 
   const handleConfirm = useCallback(() => {
     onChange(selectedTime)
@@ -123,7 +142,7 @@ const TimePicker = ({
           </div>
         )}
       </PortalToFollowElemTrigger>
-      <PortalToFollowElemContent>
+      <PortalToFollowElemContent className='z-50'>
         <div className='w-[252px] mt-1 bg-components-panel-bg rounded-xl shadow-lg shadow-shadow-shadow-5 border-[0.5px] border-components-panel-border'>
           {/* Header */}
           <Header />

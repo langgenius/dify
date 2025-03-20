@@ -34,7 +34,7 @@ export const OptionCardHeader: FC<OptionCardHeaderProps> = (props) => {
       </div>
     </div>
     <TriangleArrow
-      className='absolute left-4 -bottom-1.5 text-components-panel-bg'
+      className={classNames('absolute left-4 -bottom-1.5 text-transparent', isActive && 'text-components-panel-bg')}
     />
     <div className='flex-1 space-y-0.5 py-3 pr-4'>
       <div className='text-text-secondary system-md-semibold'>{title}</div>

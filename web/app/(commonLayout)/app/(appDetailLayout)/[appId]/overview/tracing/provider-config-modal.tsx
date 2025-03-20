@@ -172,7 +172,7 @@ const ProviderConfigModal: FC<Props> = ({
                 <div className='mx-2 w-[640px] max-h-[calc(100vh-120px)] bg-components-panel-bg shadow-xl rounded-2xl overflow-y-auto'>
                   <div className='px-8 pt-8'>
                     <div className='flex justify-between items-center mb-4'>
-                      <div className='title-2xl-semibold text-text-primary'>{t(`${I18N_PREFIX}.title`)}{t(`app.tracing.${type}.title`)}</div>
+                      <div className='title-2xl-semi-bold text-text-primary'>{t(`${I18N_PREFIX}.title`)}{t(`app.tracing.${type}.title`)}</div>
                     </div>
 
                     <div className='space-y-4'>
