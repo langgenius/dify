@@ -1,8 +1,8 @@
 'use client'
 import type { FC } from 'react'
-import { useAppContext } from '@/context/app-context'
 import { Theme } from '@/types/app'
 import cn from '@/utils/classnames'
+import useTheme from '@/hooks/use-theme'
 
 type Props = {
   status: string
@@ -13,7 +13,7 @@ const StatusContainer: FC<Props> = ({
   status,
   children,
 }) => {
-  const { theme } = useAppContext()
+  const { theme } = useTheme()
   return (
     <div
       className={cn(

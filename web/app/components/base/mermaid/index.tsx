@@ -3,6 +3,7 @@ import mermaid from 'mermaid'
 import { usePrevious } from 'ahooks'
 import { useTranslation } from 'react-i18next'
 import { ExclamationTriangleIcon } from '@heroicons/react/24/outline'
+import { cleanUpSvgCode } from './utils'
 import LoadingAnim from '@/app/components/base/chat/chat/loading-anim'
 import cn from '@/utils/classnames'
 import ImagePreview from '@/app/components/base/image-uploader/image-preview'
@@ -44,7 +45,7 @@ const Flowchart = React.forwardRef((props: {
     try {
       if (typeof window !== 'undefined' && mermaidAPI) {
         const svgGraph = await mermaidAPI.render('flowchart', PrimitiveCode)
-        const base64Svg: any = await svgToBase64(svgGraph.svg)
+        const base64Svg: any = await svgToBase64(cleanUpSvgCode(svgGraph.svg))
         setSvgCode(base64Svg)
         setIsLoading(false)
       }

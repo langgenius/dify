@@ -84,17 +84,17 @@ const DatasetCard = ({
     }
     return (
       <div className="relative w-full py-1" onMouseLeave={onMouseLeave}>
-        <div className='h-8 py-[6px] px-3 mx-1 flex items-center gap-2 hover:bg-gray-100 rounded-lg cursor-pointer' onClick={onClickRename}>
-          <span className='text-gray-700 text-sm'>{t('common.operation.settings')}</span>
+        <div className='h-8 py-[6px] px-3 mx-1 flex items-center gap-2 hover:bg-state-base-hover rounded-lg cursor-pointer' onClick={onClickRename}>
+          <span className='text-text-secondary text-sm'>{t('common.operation.settings')}</span>
         </div>
         {props.showDelete && (
           <>
             <Divider className="!my-1" />
             <div
-              className='group h-8 py-[6px] px-3 mx-1 flex items-center gap-2 hover:bg-red-50 rounded-lg cursor-pointer'
+              className='group h-8 py-[6px] px-3 mx-1 flex items-center gap-2 hover:bg-state-destructive-hover rounded-lg cursor-pointer'
               onClick={onClickDelete}
             >
-              <span className={cn('text-gray-700 text-sm', 'group-hover:text-red-500')}>
+              <span className={cn('text-text-secondary text-sm', 'group-hover:text-text-destructive')}>
                 {t('common.operation.delete')}
               </span>
             </div>
@@ -135,7 +135,7 @@ const DatasetCard = ({
                 <Tooltip
                   popupContent={t('dataset.unavailableTip')}
                 >
-                  <span className='shrink-0 inline-flex w-max ml-1 px-1 border border-gray-200 rounded-md text-gray-500 text-xs font-normal leading-[18px]'>{t('dataset.unavailable')}</span>
+                  <span className='shrink-0 inline-flex w-max ml-1 px-1 border border-divider-regular rounded-md text-text-tertiary text-xs font-normal leading-[18px]'>{t('dataset.unavailable')}</span>
                 </Tooltip>
               )}
             </div>
@@ -150,9 +150,9 @@ const DatasetCard = ({
                   </>
                   : <>
                     <span>{dataset.document_count}{t('dataset.documentCount')}</span>
-                    <span className='shrink-0 mx-0.5 w-1 text-gray-400'>·</span>
+                    <span className='shrink-0 mx-0.5 w-1 text-text-tertiary'>·</span>
                     <span>{Math.round(dataset.word_count / 1000)}{t('dataset.wordCount')}</span>
-                    <span className='shrink-0 mx-0.5 w-1 text-gray-400'>·</span>
+                    <span className='shrink-0 mx-0.5 w-1 text-text-tertiary'>·</span>
                     <span>{dataset.app_count}{t('dataset.appCount')}</span>
                   </>
                 }
@@ -192,7 +192,7 @@ const DatasetCard = ({
               />
             </div>
           </div>
-          <div className='!hidden group-hover:!flex shrink-0 mx-1 w-[1px] h-[14px] bg-gray-200' />
+          <div className='!hidden group-hover:!flex shrink-0 mx-1 w-[1px] h-[14px] bg-divider-regular' />
           <div className='!hidden group-hover:!flex shrink-0'>
             <CustomPopover
               htmlContent={<Operations showDelete={!isCurrentWorkspaceDatasetOperator} />}
@@ -202,7 +202,7 @@ const DatasetCard = ({
                 <div
                   className='flex items-center justify-center w-8 h-8 cursor-pointer rounded-md'
                 >
-                  <RiMoreFill className='w-4 h-4 text-gray-700' />
+                  <RiMoreFill className='w-4 h-4 text-text-secondary' />
                 </div>
               }
               btnClassName={open =>

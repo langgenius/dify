@@ -1,5 +1,5 @@
 import concurrent.futures
-import json
+from concurrent.futures import ThreadPoolExecutor
 from typing import Optional
 
 from flask import Flask, current_app
@@ -41,6 +41,7 @@ class RetrievalService:
         reranking_model: Optional[dict] = None,
         reranking_mode: str = "reranking_model",
         weights: Optional[dict] = None,
+        document_ids_filter: Optional[list[str]] = None,
     ):
         if not query:
             return []
@@ -52,7 +53,7 @@ class RetrievalService:
         exceptions: list[str] = []
 
         # Optimize multithreading with thread pools
-        with concurrent.futures.ThreadPoolExecutor(max_workers=dify_config.RETRIEVAL_SERVICE_WORKER) as executor:  # type: ignore
+        with ThreadPoolExecutor(max_workers=dify_config.RETRIEVAL_SERVICE_EXECUTORS) as executor:  # type: ignore
             futures = []
             if retrieval_method == "keyword_search":
                 futures.append(
@@ -64,6 +65,7 @@ class RetrievalService:
                         top_k=top_k,
                         all_documents=all_documents,
                         exceptions=exceptions,
+                        document_ids_filter=document_ids_filter,
                     )
                 )
             if RetrievalMethod.is_support_semantic_search(retrieval_method):
@@ -79,6 +81,7 @@ class RetrievalService:
                         all_documents=all_documents,
                         retrieval_method=retrieval_method,
                         exceptions=exceptions,
+                        document_ids_filter=document_ids_filter,
                     )
                 )
             if RetrievalMethod.is_support_fulltext_search(retrieval_method):
@@ -130,7 +133,14 @@ class RetrievalService:
 
     @classmethod
     def keyword_search(
-        cls, flask_app: Flask, dataset_id: str, query: str, top_k: int, all_documents: list, exceptions: list
+        cls,
+        flask_app: Flask,
+        dataset_id: str,
+        query: str,
+        top_k: int,
+        all_documents: list,
+        exceptions: list,
+        document_ids_filter: Optional[list[str]] = None,
     ):
         with flask_app.app_context():
             try:
@@ -139,7 +149,10 @@ class RetrievalService:
                     raise ValueError("dataset not found")
 
                 keyword = Keyword(dataset=dataset)
-                documents = keyword.search(cls.escape_query_for_search(query), top_k=top_k)
+
+                documents = keyword.search(
+                    cls.escape_query_for_search(query), top_k=top_k, document_ids_filter=document_ids_filter
+                )
                 all_documents.extend(documents)
             except Exception as e:
                 exceptions.append(str(e))
@@ -156,6 +169,7 @@ class RetrievalService:
         all_documents: list,
         retrieval_method: str,
         exceptions: list,
+        document_ids_filter: Optional[list[str]] = None,
     ):
         with flask_app.app_context():
             try:
@@ -170,6 +184,7 @@ class RetrievalService:
                     top_k=top_k,
                     score_threshold=score_threshold,
                     filter={"group_id": [dataset.id]},
+                    document_ids_filter=document_ids_filter,
                 )
 
                 if documents:
@@ -242,7 +257,7 @@ class RetrievalService:
 
     @staticmethod
     def escape_query_for_search(query: str) -> str:
-        return json.dumps(query).strip('"')
+        return query.replace('"', '\\"')
 
     @classmethod
     def format_retrieval_documents(cls, documents: list[Document]) -> list[RetrievalSegments]:
@@ -276,6 +291,8 @@ class RetrievalService:
                     continue
 
                 dataset_document = dataset_documents[document_id]
+                if not dataset_document:
+                    continue
 
                 if dataset_document.doc_form == IndexType.PARENT_CHILD_INDEX:
                     # Handle parent-child documents
@@ -301,7 +318,6 @@ class RetrievalService:
                                 DocumentSegment.id,
                                 DocumentSegment.content,
                                 DocumentSegment.answer,
-                                DocumentSegment.doc_metadata,
                             )
                         )
                         .first()
@@ -362,7 +378,6 @@ class RetrievalService:
                     record = {
                         "segment": segment,
                         "score": document.metadata.get("score"),  # type: ignore
-                        "segment_metadata": segment.doc_metadata,
                     }
                     records.append(record)
 
@@ -376,5 +391,3 @@ class RetrievalService:
         except Exception as e:
             db.session.rollback()
             raise e
-        finally:
-            db.session.close()

@@ -59,6 +59,8 @@ import CustomNoteNode from './note-node'
 import { CUSTOM_NOTE_NODE } from './note-node/constants'
 import CustomIterationStartNode from './nodes/iteration-start'
 import { CUSTOM_ITERATION_START_NODE } from './nodes/iteration-start/constants'
+import CustomLoopStartNode from './nodes/loop-start'
+import { CUSTOM_LOOP_START_NODE } from './nodes/loop-start/constants'
 import Operator from './operator'
 import CustomEdge from './custom-edge'
 import CustomConnectionLine from './custom-connection-line'
@@ -82,6 +84,7 @@ import {
   initialNodes,
 } from './utils'
 import {
+  CUSTOM_EDGE,
   CUSTOM_NODE,
   DSL_EXPORT_CHECK,
   ITERATION_CHILDREN_Z_INDEX,
@@ -101,9 +104,10 @@ const nodeTypes = {
   [CUSTOM_NODE]: CustomNode,
   [CUSTOM_NOTE_NODE]: CustomNoteNode,
   [CUSTOM_ITERATION_START_NODE]: CustomIterationStartNode,
+  [CUSTOM_LOOP_START_NODE]: CustomLoopStartNode,
 }
 const edgeTypes = {
-  [CUSTOM_NODE]: CustomEdge,
+  [CUSTOM_EDGE]: CustomEdge,
 }
 
 type WorkflowProps = {
@@ -352,6 +356,7 @@ const Workflow: FC<WorkflowProps> = memo(({
         onSelectionDrag={handleSelectionDrag}
         onPaneContextMenu={handlePaneContextMenu}
         connectionLineComponent={CustomConnectionLine}
+        // TODO: For LOOP node, how to distinguish between ITERATION and LOOP here? Maybe both are the same?
         connectionLineContainerStyle={{ zIndex: ITERATION_CHILDREN_Z_INDEX }}
         defaultViewport={viewport}
         multiSelectionKeyCode={null}

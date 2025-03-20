@@ -1,6 +1,6 @@
 {
   "name": "dify-web",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "private": true,
   "engines": {
     "node": ">=18.17.0"
@@ -33,7 +33,13 @@
     "@headlessui/react": "^1.7.13",
     "@heroicons/react": "^2.0.16",
     "@hookform/resolvers": "^3.9.0",
+    "@lexical/code": "^0.18.0",
+    "@lexical/link": "^0.18.0",
+    "@lexical/list": "^0.18.0",
     "@lexical/react": "^0.18.0",
+    "@lexical/selection": "^0.18.0",
+    "@lexical/text": "^0.18.0",
+    "@lexical/utils": "^0.18.0",
     "@mdx-js/loader": "^3.1.0",
     "@mdx-js/react": "^3.1.0",
     "@monaco-editor/react": "^4.6.0",
@@ -77,6 +83,7 @@
     "mitt": "^3.0.1",
     "negotiator": "^0.6.3",
     "next": "^14.2.10",
+    "next-themes": "^0.4.3",
     "pinyin-pro": "^3.25.0",
     "qrcode.react": "^4.1.0",
     "qs": "^6.13.0",
@@ -129,6 +136,7 @@
     "@eslint/eslintrc": "^3.1.0",
     "@eslint/js": "^9.13.0",
     "@faker-js/faker": "^9.0.3",
+    "@next/eslint-plugin-next": "^15.0.0",
     "@rgrove/parse-xml": "^4.1.0",
     "@storybook/addon-essentials": "^8.3.6",
     "@storybook/addon-interactions": "^8.3.6",

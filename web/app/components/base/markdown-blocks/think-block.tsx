@@ -68,6 +68,9 @@ export const ThinkBlock = ({ children, ...props }: any) => {
   const displayContent = removeEndThink(children)
   const { t } = useTranslation()
 
+  if (!(props['data-think'] ?? false))
+    return (<details {...props}>{children}</details>)
+
   return (
     <details {...(!isComplete && { open: true })} className="group">
       <summary className="text-gray-500 font-bold list-none pl-2 flex items-center cursor-pointer select-none whitespace-nowrap">

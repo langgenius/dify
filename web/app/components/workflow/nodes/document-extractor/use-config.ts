@@ -32,6 +32,8 @@ const useConfig = (id: string, payload: DocExtractorNodeType) => {
   const currentNode = getNodes().find(n => n.id === id)
   const isInIteration = payload.isInIteration
   const iterationNode = isInIteration ? getNodes().find(n => n.id === currentNode!.parentId) : null
+  const isInLoop = payload.isInLoop
+  const loopNode = isInLoop ? getNodes().find(n => n.id === currentNode!.parentId) : null
   const availableNodes = useMemo(() => {
     return getBeforeNodesInSameBranch(id)
   }, [getBeforeNodesInSameBranch, id])
@@ -39,14 +41,14 @@ const useConfig = (id: string, payload: DocExtractorNodeType) => {
   const { getCurrentVariableType } = useWorkflowVariables()
   const getType = useCallback((variable?: ValueSelector) => {
     const varType = getCurrentVariableType({
-      parentNode: iterationNode,
+      parentNode: isInIteration ? iterationNode : loopNode,
       valueSelector: variable || [],
       availableNodes,
       isChatMode,
       isConstant: false,
     })
     return varType
-  }, [getCurrentVariableType, availableNodes, isChatMode, iterationNode])
+  }, [getCurrentVariableType, isInIteration, availableNodes, isChatMode, iterationNode, loopNode])
 
   const handleVarChanges = useCallback((variable: ValueSelector | string) => {
     const newInputs = produce(inputs, (draft) => {

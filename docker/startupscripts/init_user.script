@@ -5,6 +5,6 @@ create user dify identified by dify DEFAULT TABLESPACE users quota unlimited on 
 grant DB_DEVELOPER_ROLE to dify;
 
 BEGIN
-CTX_DDL.CREATE_PREFERENCE('my_chinese_vgram_lexer','CHINESE_VGRAM_LEXER');
+CTX_DDL.CREATE_PREFERENCE('dify.world_lexer','WORLD_LEXER');
 END;
 /

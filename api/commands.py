@@ -160,11 +160,17 @@ def migrate_annotation_vector_database():
     while True:
         try:
             # get apps info
+            per_page = 50
             apps = (
-                App.query.filter(App.status == "normal")
+                db.session.query(App)
+                .filter(App.status == "normal")
                 .order_by(App.created_at.desc())
-                .paginate(page=page, per_page=50)
+                .limit(per_page)
+                .offset((page - 1) * per_page)
+                .all()
             )
+            if not apps:
+                break
         except NotFound:
             break
 
@@ -267,6 +273,7 @@ def migrate_knowledge_vector_database():
         VectorType.WEAVIATE,
         VectorType.ORACLE,
         VectorType.ELASTICSEARCH,
+        VectorType.OPENGAUSS,
     }
     lower_collection_vector_types = {
         VectorType.ANALYTICDB,
@@ -707,12 +714,13 @@ def extract_unique_plugins(output_file: str, input_file: str):
 @click.option(
     "--output_file", prompt=True, help="The file to store the installed plugins.", default="installed_plugins.jsonl"
 )
-def install_plugins(input_file: str, output_file: str):
+@click.option("--workers", prompt=True, help="The number of workers to install plugins.", default=100)
+def install_plugins(input_file: str, output_file: str, workers: int):
     """
     Install plugins.
     """
     click.echo(click.style("Starting install plugins.", fg="white"))
 
-    PluginMigration.install_plugins(input_file, output_file)
+    PluginMigration.install_plugins(input_file, output_file, workers)
 
     click.echo(click.style("Install plugins completed.", fg="green"))

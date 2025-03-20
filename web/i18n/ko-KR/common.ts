@@ -51,6 +51,9 @@ const translation = {
     skip: '배',
     imageCopied: '복사된 이미지',
     deleteApp: '앱 삭제',
+    copied: '복사',
+    viewDetails: '세부 정보보기',
+    in: '안으로',
   },
   placeholder: {
     input: '입력해주세요',
@@ -119,6 +122,8 @@ const translation = {
       Custom: '사용자 정의',
     },
     addMoreModel: '설정에서 다른 모델을 추가하세요',
+    capabilities: '멀티모달 기능',
+    settingsLink: '모델 공급자 설정',
   },
   menus: {
     status: '베타 버전',
@@ -131,6 +136,7 @@ const translation = {
     newApp: '새로운 앱',
     newDataset: '지식 만들기',
     tools: '도구',
+    exploreMarketplace: 'Marketplace 둘러보기',
   },
   userProfile: {
     settings: '설정',
@@ -156,6 +162,7 @@ const translation = {
     dataSource: '데이터 소스',
     plugin: '플러그인',
     apiBasedExtension: 'API 확장',
+    generalGroup: '일반',
   },
   account: {
     avatar: '아바타',
@@ -395,6 +402,12 @@ const translation = {
     loadBalancingInfo: '기본적으로 부하 분산은 라운드 로빈 전략을 사용합니다. 속도 제한이 트리거되면 1분의 휴지 기간이 적용됩니다.',
     loadBalancingLeastKeyWarning: '로드 밸런싱을 사용하려면 최소 2개의 키를 사용하도록 설정해야 합니다.',
     providerManagedDescription: '모델 공급자가 제공하는 단일 자격 증명 집합을 사용합니다.',
+    installProvider: '모델 공급자 설치',
+    discoverMore: '더 알아보기',
+    emptyProviderTitle: '모델 공급자가 설정되지 않음',
+    configureTip: 'api-key 설정 또는 사용할 모델 추가',
+    emptyProviderTip: '먼저 모델 공급자를 설치하십시오.',
+    toBeConfigured: '구성 예정',
   },
   dataSource: {
     add: '데이터 소스 추가하기',
@@ -524,6 +537,8 @@ const translation = {
       hitScore: '검색 점수:',
     },
     inputPlaceholder: '봇과 대화',
+    thought: '생각',
+    thinking: '생각...',
   },
   promptEditor: {
     placeholder: '여기에 프롬프트 단어를 입력하세요. 변수를 삽입하려면 "{{"를 입력하고, 프롬프트 컨텐츠 블록을 삽입하려면 "/"를 입력하세요.',

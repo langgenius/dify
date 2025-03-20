@@ -194,12 +194,12 @@ export default function AccountSetting({
           </div>
           <div ref={scrollRef} className='w-full pb-4 bg-components-panel-bg overflow-y-auto'>
             <div className={cn('sticky top-0 mx-8 pt-[27px] pb-2 mb-[18px] flex items-center bg-components-panel-bg z-20', scrolled && 'border-b border-divider-regular')}>
-              <div className='shrink-0 text-text-primary title-2xl-semi-bold'>{activeItem?.name}</div>
-              {
-                activeItem?.description && (
-                  <div className='shrink-0 ml-2 text-xs text-text-tertiary'>{activeItem?.description}</div>
-                )
-              }
+              <div className='shrink-0 text-text-primary title-2xl-semi-bold'>
+                {activeItem?.name}
+                {activeItem?.description && (
+                  <div className='mt-1 system-sm-regular text-text-tertiary'>{activeItem?.description}</div>
+                )}
+              </div>
               {activeItem?.key === 'provider' && (
                 <div className='grow flex justify-end'>
                   <Input

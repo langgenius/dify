@@ -9,6 +9,7 @@ from core.file import File, FileTransferMethod
 from core.plugin.manager.exc import PluginDaemonClientSideError
 from core.plugin.manager.plugin import PluginInstallationManager
 from core.tools.entities.tool_entities import ToolInvokeMessage, ToolParameter
+from core.tools.errors import ToolInvokeError
 from core.tools.tool_engine import ToolEngine
 from core.tools.utils.message_transformer import ToolFileMessageTransformer
 from core.variables.segments import ArrayAnySegment
@@ -119,13 +120,14 @@ class ToolNode(BaseNode[ToolNodeData]):
         try:
             # convert tool messages
             yield from self._transform_message(message_stream, tool_info, parameters_for_log)
-        except PluginDaemonClientSideError as e:
+        except (PluginDaemonClientSideError, ToolInvokeError) as e:
             yield RunCompletedEvent(
                 run_result=NodeRunResult(
                     status=WorkflowNodeExecutionStatus.FAILED,
                     inputs=parameters_for_log,
                     metadata={NodeRunMetadataKey.TOOL_INFO: tool_info},
                     error=f"Failed to transform tool message: {str(e)}",
+                    error_type=type(e).__name__,
                 )
             )
 
@@ -270,7 +272,9 @@ class ToolNode(BaseNode[ToolNodeData]):
                 if self.node_type == NodeType.AGENT:
                     msg_metadata = message.message.json_object.pop("execution_metadata", {})
                     agent_execution_metadata = {
-                        key: value for key, value in msg_metadata.items() if key in NodeRunMetadataKey
+                        key: value
+                        for key, value in msg_metadata.items()
+                        if key in NodeRunMetadataKey.__members__.values()
                     }
                 json.append(message.message.json_object)
             elif message.type == ToolInvokeMessage.MessageType.LINK:
@@ -338,6 +342,7 @@ class ToolNode(BaseNode[ToolNodeData]):
                     data=message.message.data,
                     label=message.message.label,
                     metadata=message.message.metadata,
+                    node_id=self.node_id,
                 )
 
                 # check if the agent log is already in the list

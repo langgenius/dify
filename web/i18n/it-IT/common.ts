@@ -51,6 +51,9 @@ const translation = {
     skip: 'Nave',
     imageCopied: 'Immagine copiata',
     deleteApp: 'Elimina app',
+    in: 'in',
+    viewDetails: 'Visualizza dettagli',
+    copied: 'Copiato',
   },
   errorMsg: {
     fieldRequired: '{{field}} è obbligatorio',
@@ -130,6 +133,8 @@ const translation = {
       Custom: 'Personalizzato',
     },
     addMoreModel: 'Vai alle impostazioni per aggiungere altri modelli',
+    capabilities: 'Funzionalità multimodali',
+    settingsLink: 'Impostazioni del fornitore del modello',
   },
   menus: {
     status: 'beta',
@@ -144,6 +149,7 @@ const translation = {
     newApp: 'Nuova App',
     newDataset: 'Crea Conoscenza',
     tools: 'Strumenti',
+    exploreMarketplace: 'Esplora il Marketplace',
   },
   userProfile: {
     settings: 'Impostazioni',
@@ -169,6 +175,7 @@ const translation = {
     dataSource: 'Fonte Dati',
     plugin: 'Plugin',
     apiBasedExtension: 'Estensione API',
+    generalGroup: 'GENERALE',
   },
   account: {
     avatar: 'Avatar',
@@ -426,6 +433,12 @@ const translation = {
       'Per impostazione predefinita, il bilanciamento del carico utilizza la strategia Round-robin. Se viene attivato il rate limiting, verrà applicato un periodo di cooldown di 1 minuto.',
     upgradeForLoadBalancing:
       'Aggiorna il tuo piano per abilitare il Bilanciamento del Carico.',
+    configureTip: 'Configura la chiave API o aggiungi il modello da utilizzare',
+    installProvider: 'Installare i provider di modelli',
+    toBeConfigured: 'Da configurare',
+    emptyProviderTip: 'Si prega di installare prima un fornitore di modelli.',
+    discoverMore: 'Scopri di più in',
+    emptyProviderTitle: 'Provider di modelli non configurato',
   },
   dataSource: {
     add: 'Aggiungi una fonte di dati',
@@ -559,6 +572,8 @@ const translation = {
       hitScore: 'Punteggio di recupero:',
     },
     inputPlaceholder: 'Parla con il bot',
+    thinking: 'Pensante...',
+    thought: 'Pensiero',
   },
   promptEditor: {
     placeholder:

@@ -2,6 +2,7 @@ import logging
 import time
 
 from configs import dify_config
+from contexts.wrapper import RecyclableContextVar
 from dify_app import DifyApp
 
 
@@ -15,6 +16,12 @@ def create_flask_app_with_configs() -> DifyApp:
     """
     dify_app = DifyApp(__name__)
     dify_app.config.from_mapping(dify_config.model_dump())
+
+    # add before request hook
+    @dify_app.before_request
+    def before_request():
+        # add an unique identifier to each request
+        RecyclableContextVar.increment_thread_recycles()
 
     return dify_app
 

@@ -23,25 +23,30 @@ oracledb.defaults.fetch_lobs = False
 
 
 class OracleVectorConfig(BaseModel):
-    host: str
-    port: int
     user: str
     password: str
-    database: str
+    dsn: str
+    config_dir: str | None = None
+    wallet_location: str | None = None
+    wallet_password: str | None = None
+    is_autonomous: bool = False
 
     @model_validator(mode="before")
     @classmethod
     def validate_config(cls, values: dict) -> dict:
-        if not values["host"]:
-            raise ValueError("config ORACLE_HOST is required")
-        if not values["port"]:
-            raise ValueError("config ORACLE_PORT is required")
         if not values["user"]:
             raise ValueError("config ORACLE_USER is required")
         if not values["password"]:
             raise ValueError("config ORACLE_PASSWORD is required")
-        if not values["database"]:
-            raise ValueError("config ORACLE_DB is required")
+        if not values["dsn"]:
+            raise ValueError("config ORACLE_DSN is required")
+        if values.get("is_autonomous", False):
+            if not values.get("config_dir"):
+                raise ValueError("config_dir is required for autonomous database")
+            if not values.get("wallet_location"):
+                raise ValueError("wallet_location is required for autonomous database")
+            if not values.get("wallet_password"):
+                raise ValueError("wallet_password is required for autonomous database")
         return values
 
 
@@ -56,7 +61,7 @@ CREATE TABLE IF NOT EXISTS {table_name} (
 SQL_CREATE_INDEX = """
 CREATE INDEX IF NOT EXISTS idx_docs_{table_name} ON {table_name}(text) 
 INDEXTYPE IS CTXSYS.CONTEXT PARAMETERS 
-('FILTER CTXSYS.NULL_FILTER SECTION GROUP CTXSYS.HTML_SECTION_GROUP LEXER sys.my_chinese_vgram_lexer')
+('FILTER CTXSYS.NULL_FILTER SECTION GROUP CTXSYS.HTML_SECTION_GROUP LEXER world_lexer')
 """
 
 
@@ -103,14 +108,25 @@ class OracleVector(BaseVector):
             )
 
     def _create_connection_pool(self, config: OracleVectorConfig):
-        return oracledb.create_pool(
-            user=config.user,
-            password=config.password,
-            dsn="{}:{}/{}".format(config.host, config.port, config.database),
-            min=1,
-            max=50,
-            increment=1,
-        )
+        pool_params = {
+            "user": config.user,
+            "password": config.password,
+            "dsn": config.dsn,
+            "min": 1,
+            "max": 50,
+            "increment": 1,
+        }
+
+        if config.is_autonomous:
+            pool_params.update(
+                {
+                    "config_dir": config.config_dir,
+                    "wallet_location": config.wallet_location,
+                    "wallet_password": config.wallet_password,
+                }
+            )
+
+        return oracledb.create_pool(**pool_params)
 
     @contextmanager
     def _get_cursor(self):
@@ -185,10 +201,15 @@ class OracleVector(BaseVector):
         :return: List of Documents that are nearest to the query vector.
         """
         top_k = kwargs.get("top_k", 4)
+        document_ids_filter = kwargs.get("document_ids_filter")
+        where_clause = ""
+        if document_ids_filter:
+            document_ids = ", ".join(f"'{id}'" for id in document_ids_filter)
+            where_clause = f"WHERE metadata->>'document_id' in ({document_ids})"
         with self._get_cursor() as cur:
             cur.execute(
                 f"SELECT meta, text, vector_distance(embedding,:1) AS distance FROM {self.table_name}"
-                f" ORDER BY distance fetch first {top_k} rows only",
+                f" {where_clause} ORDER BY distance fetch first {top_k} rows only",
                 [numpy.array(query_vector)],
             )
             docs = []
@@ -241,9 +262,15 @@ class OracleVector(BaseVector):
                     if token not in stop_words:
                         entities.append(token)
             with self._get_cursor() as cur:
+                document_ids_filter = kwargs.get("document_ids_filter")
+                where_clause = ""
+                if document_ids_filter:
+                    document_ids = ", ".join(f"'{id}'" for id in document_ids_filter)
+                    where_clause = f" AND metadata->>'document_id' in ({document_ids}) "
                 cur.execute(
                     f"select meta, text, embedding FROM {self.table_name}"
-                    f" WHERE CONTAINS(text, :1, 1) > 0 order by score(1) desc fetch first {top_k} rows only",
+                    f"WHERE CONTAINS(text, :1, 1) > 0 {where_clause} "
+                    f"order by score(1) desc fetch first {top_k} rows only",
                     [" ACCUM ".join(entities)],
                 )
                 docs = []
@@ -287,10 +314,12 @@ class OracleVectorFactory(AbstractVectorFactory):
         return OracleVector(
             collection_name=collection_name,
             config=OracleVectorConfig(
-                host=dify_config.ORACLE_HOST or "localhost",
-                port=dify_config.ORACLE_PORT,
                 user=dify_config.ORACLE_USER or "system",
                 password=dify_config.ORACLE_PASSWORD or "oracle",
-                database=dify_config.ORACLE_DATABASE or "orcl",
+                dsn=dify_config.ORACLE_DSN or "oracle:1521/freepdb1",
+                config_dir=dify_config.ORACLE_CONFIG_DIR,
+                wallet_location=dify_config.ORACLE_WALLET_LOCATION,
+                wallet_password=dify_config.ORACLE_WALLET_PASSWORD,
+                is_autonomous=dify_config.ORACLE_IS_AUTONOMOUS,
             ),
         )

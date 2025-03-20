@@ -1,3 +1,4 @@
+import type { RefObject } from 'react'
 import { createContext, useContext } from 'use-context-selector'
 import { PromptMode } from '@/models/debug'
 import type {
@@ -92,6 +93,7 @@ type IDebugConfiguration = {
   showSelectDataSet: () => void
   // dataset config
   datasetConfigs: DatasetConfigs
+  datasetConfigsRef: RefObject<DatasetConfigs>
   setDatasetConfigs: (config: DatasetConfigs) => void
   hasSetContextVar: boolean
   isShowVisionConfig: boolean
@@ -235,6 +237,9 @@ const DebugConfigurationContext = createContext<IDebugConfiguration>({
     datasets: {
       datasets: [],
     },
+  },
+  datasetConfigsRef: {
+    current: null,
   },
   setDatasetConfigs: () => { },
   hasSetContextVar: false,

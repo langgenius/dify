@@ -1,10 +1,11 @@
 import type { FC } from 'react'
-import React from 'react'
+import React, { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import MemoryConfig from '../_base/components/memory-config'
 import VarReferencePicker from '../_base/components/variable/var-reference-picker'
 import ConfigVision from '../_base/components/config-vision'
 import useConfig from './use-config'
+import { findVariableWhenOnLLMVision } from '../utils'
 import type { LLMNodeType } from './types'
 import ConfigPrompt from './components/config-prompt'
 import VarList from '@/app/components/workflow/nodes/_base/components/variable/var-list'
@@ -102,15 +103,16 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
       )
     }
 
-    if (isVisionModel) {
-      const variableName = data.vision.configs?.variable_selector?.[1] || t(`${i18nPrefix}.files`)!
+    if (isVisionModel && data.vision?.enabled && data.vision?.configs?.variable_selector) {
+      const currentVariable = findVariableWhenOnLLMVision(data.vision.configs.variable_selector, availableVars)
+
       forms.push(
         {
           label: t(`${i18nPrefix}.vision`)!,
           inputs: [{
-            label: variableName!,
+            label: currentVariable?.variable as any,
             variable: '#files#',
-            type: InputVarType.files,
+            type: currentVariable?.formType as any,
             required: false,
           }],
           values: { '#files#': visionFiles },
@@ -121,6 +123,16 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
 
     return forms
   })()
+
+  const handleModelChange = useCallback((model: {
+    provider: string
+    modelId: string
+    mode?: string
+  }) => {
+    handleCompletionParamsChange({})
+    handleModelChanged(model)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   return (
     <div className='mt-2'>
@@ -136,7 +148,7 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
             provider={model?.provider}
             completionParams={model?.completion_params}
             modelId={model?.name}
-            setModel={handleModelChanged}
+            setModel={handleModelChange}
             onCompletionParamsChange={handleCompletionParamsChange}
             hideDebugWithMultipleModel
             debugWithMultipleModel={false}

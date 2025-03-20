@@ -10,12 +10,14 @@ async function decodeBase64AndDecompress(base64String: string) {
   return new TextDecoder().decode(decompressedArrayBuffer)
 }
 
-function getProcessedInputsFromUrlParams(): Record<string, any> {
+async function getProcessedInputsFromUrlParams(): Promise<Record<string, any>> {
   const urlParams = new URLSearchParams(window.location.search)
   const inputs: Record<string, any> = {}
-  urlParams.forEach(async (value, key) => {
-    inputs[key] = await decodeBase64AndDecompress(decodeURIComponent(value))
-  })
+  await Promise.all(
+    urlParams.entries().map(async ([key, value]) => {
+      inputs[key] = await decodeBase64AndDecompress(decodeURIComponent(value))
+    }),
+  )
   return inputs
 }
 
@@ -100,7 +102,7 @@ function getThreadMessages(tree: ChatItemInTree[], targetMessageId?: string): Ch
   let targetNode: ChatItemInTree | undefined
 
   // find path to the target message
-  const stack = tree.toReversed().map(rootNode => ({
+  const stack = tree.slice().reverse().map(rootNode => ({
     node: rootNode,
     path: [rootNode],
   }))

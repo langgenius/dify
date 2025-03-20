@@ -246,10 +246,11 @@ class ToolEngine:
                     + "you do not need to create it, just tell the user to check it now."
                 )
             elif response.type == ToolInvokeMessage.MessageType.JSON:
-                text = json.dumps(cast(ToolInvokeMessage.JsonMessage, response.message).json_object, ensure_ascii=False)
-                result += f"tool response: {text}."
+                result = json.dumps(
+                    cast(ToolInvokeMessage.JsonMessage, response.message).json_object, ensure_ascii=False
+                )
             else:
-                result += f"tool response: {response.message!r}."
+                result += str(response.message)
 
         return result
 
@@ -289,14 +290,16 @@ class ToolEngine:
                     raise ValueError("missing meta data")
 
                 yield ToolInvokeMessageBinary(
-                    mimetype=response.meta.get("mime_type", "octet/stream"),
+                    mimetype=response.meta.get("mime_type", "application/octet-stream"),
                     url=cast(ToolInvokeMessage.TextMessage, response.message).text,
                 )
             elif response.type == ToolInvokeMessage.MessageType.LINK:
                 # check if there is a mime type in meta
                 if response.meta and "mime_type" in response.meta:
                     yield ToolInvokeMessageBinary(
-                        mimetype=response.meta.get("mime_type", "octet/stream") if response.meta else "octet/stream",
+                        mimetype=response.meta.get("mime_type", "application/octet-stream")
+                        if response.meta
+                        else "application/octet-stream",
                         url=cast(ToolInvokeMessage.TextMessage, response.message).text,
                     )
 

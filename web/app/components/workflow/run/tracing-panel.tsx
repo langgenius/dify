@@ -82,6 +82,12 @@ const TracingPanel: FC<TracingPanelProps> = ({
     iterationResultDurationMap,
     handleShowIterationResultList,
 
+    showLoopingDetail,
+    setShowLoopingDetailFalse,
+    loopResultList,
+    loopResultDurationMap,
+    handleShowLoopResultList,
+
     agentOrToolLogItemStack,
     agentOrToolLogListMap,
     handleShowAgentOrToolLog,
@@ -139,6 +145,7 @@ const TracingPanel: FC<TracingPanelProps> = ({
           <NodePanel
             nodeInfo={node!}
             onShowIterationDetail={handleShowIterationResultList}
+            onShowLoopDetail={handleShowLoopResultList}
             onShowRetryDetail={handleShowRetryResultList}
             onShowAgentOrToolLog={handleShowAgentOrToolLog}
             hideInfo={hideNodeInfo}
@@ -161,6 +168,11 @@ const TracingPanel: FC<TracingPanelProps> = ({
         iterationResultList={iterationResultList}
         iterationResultDurationMap={iterationResultDurationMap}
 
+        showLoopingDetail={showLoopingDetail}
+        setShowLoopingDetailFalse={setShowLoopingDetailFalse}
+        loopResultList={loopResultList}
+        loopResultDurationMap={loopResultDurationMap}
+
         agentOrToolLogItemStack={agentOrToolLogItemStack}
         agentOrToolLogListMap={agentOrToolLogListMap}
         handleShowAgentOrToolLog={handleShowAgentOrToolLog}
@@ -170,7 +182,7 @@ const TracingPanel: FC<TracingPanelProps> = ({
 
   return (
     <div
-      className={cn(className || 'bg-components-panel-bg', 'py-2')}
+      className={cn('py-2', className)}
       onClick={(e) => {
         e.stopPropagation()
         e.nativeEvent.stopImmediatePropagation()
