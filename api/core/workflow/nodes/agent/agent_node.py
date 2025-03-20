@@ -1,3 +1,4 @@
+from ast import literal_eval
 import json
 from collections.abc import Generator, Mapping, Sequence
 from typing import Any, cast
@@ -151,7 +152,10 @@ class AgentNode(ToolNode):
             if (parameter_value.startswith("{") and parameter_value.endswith("}")) or (
                 parameter_value.startswith("[") and parameter_value.endswith("]")
             ):
-                value = json.loads(parameter_value.replace("'", '"'))  # transform string to python object
+                try:
+                    value = literal_eval(parameter_value)
+                except:
+                    value = json.loads(parameter_value.replace("'", '"'))  # transform string to python object
             if parameter.type == "array[tools]":
                 value = cast(list[dict[str, Any]], value)
                 value = [tool for tool in value if tool.get("enabled", False)]
