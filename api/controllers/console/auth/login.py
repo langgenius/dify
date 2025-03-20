@@ -353,8 +353,14 @@ class RefreshTokenApi(Resource):
             return {"result": "success", "data": new_token_pair.model_dump()}
         except Exception as e:
             return {"result": "fail", "data": str(e)}, 401
+        
 
+class APOReadyApi(Resource):
+    def get(self):
+        return {"result": "success"}
+    
 
+api.add_resource(APOReadyApi, "/ready")
 api.add_resource(LoginApi, "/login")
 api.add_resource(APOLoginApi, "/login/apo")
 api.add_resource(APOAnonymousApi, "/login/apo/anonymous")
