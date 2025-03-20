@@ -100,9 +100,9 @@ def reset_email(email, new_email, email_confirm):
 @click.command(
     "reset-encrypt-key-pair",
     help="Reset the asymmetric key pair of workspace for encrypt LLM credentials. "
-         "After the reset, all LLM credentials will become invalid, "
-         "requiring re-entry."
-         "Only support SELF_HOSTED mode.",
+    "After the reset, all LLM credentials will become invalid, "
+    "requiring re-entry."
+    "Only support SELF_HOSTED mode.",
 )
 @click.confirmation_option(
     prompt=click.style(
@@ -559,10 +559,11 @@ def old_metadata_migration():
             if document.doc_metadata:
                 doc_metadata = document.doc_metadata
                 for key, value in doc_metadata.items():
-                    dataset_metadata = db.session.query(DatasetMetadata).filter(
-                        DatasetMetadata.dataset_id == document.dataset_id,
-                        DatasetMetadata.name == key
-                    ).first()
+                    dataset_metadata = (
+                        db.session.query(DatasetMetadata)
+                        .filter(DatasetMetadata.dataset_id == document.dataset_id, DatasetMetadata.name == key)
+                        .first()
+                    )
                     if not dataset_metadata:
                         dataset_metadata = DatasetMetadata(
                             tenant_id=document.tenant_id,
@@ -585,7 +586,7 @@ def old_metadata_migration():
                         dataset_metadata_binding = DatasetMetadataBinding.query.filter(
                             DatasetMetadataBinding.dataset_id == document.dataset_id,
                             DatasetMetadataBinding.document_id == document.id,
-                            DatasetMetadataBinding.metadata_id == dataset_metadata.id
+                            DatasetMetadataBinding.metadata_id == dataset_metadata.id,
                         ).first()
                         if not dataset_metadata_binding:
                             dataset_metadata_binding = DatasetMetadataBinding(
