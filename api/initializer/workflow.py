@@ -27,7 +27,7 @@ def init_workflow():
     workflows = []
     dir = f'{workflow_dir}/{sub_dir}'
     if not os.path.isdir(dir):
-        logging.ERROR(f"Invalid directory: {dir}")
+        logging.error(f"Invalid directory: {dir}")
         return
 
     for file_entry in os.scandir(dir):
@@ -38,7 +38,7 @@ def init_workflow():
                 content = file.read()
                 workflows.append(content)
         except Exception as e:
-            logging.ERROR(f"Failed to read file: {file_entry.path}")
+            logging.error(f"Failed to read file: {file_entry.path}")
     
     admin = get_admin()
     try:
