@@ -4,14 +4,14 @@
 import * as React from 'react'
 import data from './Refresh.json'
 import IconBase from '@/app/components/base/icons/IconBase'
-import type { IconBaseProps, IconData } from '@/app/components/base/icons/IconBase'
+import type { IconData } from '@/app/components/base/icons/IconBase'
 
 const Icon = (
   {
     ref,
     ...props
-  }: Omit<IconBaseProps, 'data'> & {
-    ref: React.RefObject<React.MutableRefObject<SVGElement>>;
+  }: React.SVGProps<SVGSVGElement> & {
+    ref?: React.RefObject<React.MutableRefObject<HTMLOrSVGElement>>;
   },
 ) => <IconBase {...props} ref={ref} data={data as IconData} />
 

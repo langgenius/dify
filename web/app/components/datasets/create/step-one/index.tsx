@@ -132,189 +132,191 @@ const StepOne = ({
   }, [files, isShowVectorSpaceFull])
 
   return (
-    <div className='flex h-full w-full'>
-      <div className='relative h-full w-1/2 overflow-y-auto'>
-        <div className='flex justify-end'>
-          <div className={classNames(s.form)}>
-            {
-              shouldShowDataSourceTypeList && (
-                <div className={classNames(s.stepHeader, 'text-text-secondary system-md-semibold')}>
-                  {t('datasetCreation.steps.one')}
-                </div>
-              )
-            }
-            {
-              shouldShowDataSourceTypeList && (
-                <div className='mb-8 grid grid-cols-3 gap-4'>
-                  <div
-                    className={cn(
-                      s.dataSourceItem,
-                      'system-sm-medium',
-                      dataSourceType === DataSourceType.FILE && s.active,
-                      dataSourceTypeDisable && dataSourceType !== DataSourceType.FILE && s.disabled,
-                    )}
-                    onClick={() => {
-                      if (dataSourceTypeDisable)
-                        return
-                      changeType(DataSourceType.FILE)
-                      hideFilePreview()
-                      hideNotionPagePreview()
-                    }}
-                  >
-                    <span className={cn(s.datasetIcon)} />
-                    <span
-                      title={t('datasetCreation.stepOne.dataSourceType.file')}
-                      className='truncate'
+    <div className='h-full w-full overflow-x-auto'>
+      <div className='flex h-full w-full min-w-[1440px]'>
+        <div className='relative h-full w-1/2 overflow-y-auto'>
+          <div className='flex justify-end'>
+            <div className={classNames(s.form)}>
+              {
+                shouldShowDataSourceTypeList && (
+                  <div className={classNames(s.stepHeader, 'text-text-secondary system-md-semibold')}>
+                    {t('datasetCreation.steps.one')}
+                  </div>
+                )
+              }
+              {
+                shouldShowDataSourceTypeList && (
+                  <div className='mb-8 grid grid-cols-3 gap-4'>
+                    <div
+                      className={cn(
+                        s.dataSourceItem,
+                        'system-sm-medium',
+                        dataSourceType === DataSourceType.FILE && s.active,
+                        dataSourceTypeDisable && dataSourceType !== DataSourceType.FILE && s.disabled,
+                      )}
+                      onClick={() => {
+                        if (dataSourceTypeDisable)
+                          return
+                        changeType(DataSourceType.FILE)
+                        hideFilePreview()
+                        hideNotionPagePreview()
+                      }}
                     >
-                      {t('datasetCreation.stepOne.dataSourceType.file')}
-                    </span>
-                  </div>
-                  <div
-                    className={cn(
-                      s.dataSourceItem,
-                      'system-sm-medium',
-                      dataSourceType === DataSourceType.NOTION && s.active,
-                      dataSourceTypeDisable && dataSourceType !== DataSourceType.NOTION && s.disabled,
-                    )}
-                    onClick={() => {
-                      if (dataSourceTypeDisable)
-                        return
-                      changeType(DataSourceType.NOTION)
-                      hideFilePreview()
-                      hideNotionPagePreview()
-                    }}
-                  >
-                    <span className={cn(s.datasetIcon, s.notion)} />
-                    <span
-                      title={t('datasetCreation.stepOne.dataSourceType.notion')}
-                      className='truncate'
-                    >
-                      {t('datasetCreation.stepOne.dataSourceType.notion')}
-                    </span>
-                  </div>
-                  <div
-                    className={cn(
-                      s.dataSourceItem,
-                      'system-sm-medium',
-                      dataSourceType === DataSourceType.WEB && s.active,
-                      dataSourceTypeDisable && dataSourceType !== DataSourceType.WEB && s.disabled,
-                    )}
-                    onClick={() => changeType(DataSourceType.WEB)}
-                  >
-                    <span className={cn(s.datasetIcon, s.web)} />
-                    <span
-                      title={t('datasetCreation.stepOne.dataSourceType.web')}
-                      className='truncate'
-                    >
-                      {t('datasetCreation.stepOne.dataSourceType.web')}
-                    </span>
-                  </div>
-                </div>
-              )
-            }
-            {dataSourceType === DataSourceType.FILE && (
-              <>
-                <FileUploader
-                  fileList={files}
-                  titleClassName={!shouldShowDataSourceTypeList ? 'mt-[30px] !mb-[44px] !text-lg' : undefined}
-                  prepareFileList={updateFileList}
-                  onFileListUpdate={updateFileList}
-                  onFileUpdate={updateFile}
-                  onPreview={updateCurrentFile}
-                  notSupportBatchUpload={notSupportBatchUpload}
-                />
-                {isShowVectorSpaceFull && (
-                  <div className='mb-4 max-w-[640px]'>
-                    <VectorSpaceFull />
-                  </div>
-                )}
-                <div className="flex max-w-[640px] justify-end gap-2">
-                  {/* <Button>{t('datasetCreation.stepOne.cancel')}</Button> */}
-                  <Button disabled={nextDisabled} variant='primary' onClick={onStepChange}>
-                    <span className="flex gap-0.5 px-[10px]">
-                      <span className="px-0.5">{t('datasetCreation.stepOne.button')}</span>
-                      <RiArrowRightLine className="size-4" />
-                    </span>
-                  </Button>
-                </div>
-              </>
-            )}
-            {dataSourceType === DataSourceType.NOTION && (
-              <>
-                {!hasConnection && <NotionConnector onSetting={onSetting} />}
-                {hasConnection && (
-                  <>
-                    <div className='mb-8 w-[640px]'>
-                      <NotionPageSelector
-                        value={notionPages.map(page => page.page_id)}
-                        onSelect={updateNotionPages}
-                        onPreview={updateCurrentPage}
-                      />
+                      <span className={cn(s.datasetIcon)} />
+                      <span
+                        title={t('datasetCreation.stepOne.dataSourceType.file')}
+                        className='truncate'
+                      >
+                        {t('datasetCreation.stepOne.dataSourceType.file')}
+                      </span>
                     </div>
-                    {isShowVectorSpaceFull && (
-                      <div className='mb-4 max-w-[640px]'>
-                        <VectorSpaceFull />
-                      </div>
-                    )}
-                    <div className="flex max-w-[640px] justify-end gap-2">
-                      {/* <Button>{t('datasetCreation.stepOne.cancel')}</Button> */}
-                      <Button disabled={isShowVectorSpaceFull || !notionPages.length} variant='primary' onClick={onStepChange}>
-                        <span className="flex gap-0.5 px-[10px]">
-                          <span className="px-0.5">{t('datasetCreation.stepOne.button')}</span>
-                          <RiArrowRightLine className="size-4" />
-                        </span>
-                      </Button>
+                    <div
+                      className={cn(
+                        s.dataSourceItem,
+                        'system-sm-medium',
+                        dataSourceType === DataSourceType.NOTION && s.active,
+                        dataSourceTypeDisable && dataSourceType !== DataSourceType.NOTION && s.disabled,
+                      )}
+                      onClick={() => {
+                        if (dataSourceTypeDisable)
+                          return
+                        changeType(DataSourceType.NOTION)
+                        hideFilePreview()
+                        hideNotionPagePreview()
+                      }}
+                    >
+                      <span className={cn(s.datasetIcon, s.notion)} />
+                      <span
+                        title={t('datasetCreation.stepOne.dataSourceType.notion')}
+                        className='truncate'
+                      >
+                        {t('datasetCreation.stepOne.dataSourceType.notion')}
+                      </span>
                     </div>
-                  </>
-                )}
-              </>
-            )}
-            {dataSourceType === DataSourceType.WEB && (
-              <>
-                <div className={cn('mb-8 w-[640px]', !shouldShowDataSourceTypeList && 'mt-12')}>
-                  <Website
-                    onPreview={setCurrentWebsite}
-                    checkedCrawlResult={websitePages}
-                    onCheckedCrawlResultChange={updateWebsitePages}
-                    onCrawlProviderChange={onWebsiteCrawlProviderChange}
-                    onJobIdChange={onWebsiteCrawlJobIdChange}
-                    crawlOptions={crawlOptions}
-                    onCrawlOptionsChange={onCrawlOptionsChange}
+                    <div
+                      className={cn(
+                        s.dataSourceItem,
+                        'system-sm-medium',
+                        dataSourceType === DataSourceType.WEB && s.active,
+                        dataSourceTypeDisable && dataSourceType !== DataSourceType.WEB && s.disabled,
+                      )}
+                      onClick={() => changeType(DataSourceType.WEB)}
+                    >
+                      <span className={cn(s.datasetIcon, s.web)} />
+                      <span
+                        title={t('datasetCreation.stepOne.dataSourceType.web')}
+                        className='truncate'
+                      >
+                        {t('datasetCreation.stepOne.dataSourceType.web')}
+                      </span>
+                    </div>
+                  </div>
+                )
+              }
+              {dataSourceType === DataSourceType.FILE && (
+                <>
+                  <FileUploader
+                    fileList={files}
+                    titleClassName={!shouldShowDataSourceTypeList ? 'mt-[30px] !mb-[44px] !text-lg' : undefined}
+                    prepareFileList={updateFileList}
+                    onFileListUpdate={updateFileList}
+                    onFileUpdate={updateFile}
+                    onPreview={updateCurrentFile}
+                    notSupportBatchUpload={notSupportBatchUpload}
                   />
-                </div>
-                {isShowVectorSpaceFull && (
-                  <div className='mb-4 max-w-[640px]'>
-                    <VectorSpaceFull />
+                  {isShowVectorSpaceFull && (
+                    <div className='mb-4 max-w-[640px]'>
+                      <VectorSpaceFull />
+                    </div>
+                  )}
+                  <div className="flex max-w-[640px] justify-end gap-2">
+                    {/* <Button>{t('datasetCreation.stepOne.cancel')}</Button> */}
+                    <Button disabled={nextDisabled} variant='primary' onClick={onStepChange}>
+                      <span className="flex gap-0.5 px-[10px]">
+                        <span className="px-0.5">{t('datasetCreation.stepOne.button')}</span>
+                        <RiArrowRightLine className="size-4" />
+                      </span>
+                    </Button>
                   </div>
-                )}
-                <div className="flex max-w-[640px] justify-end gap-2">
-                  {/* <Button>{t('datasetCreation.stepOne.cancel')}</Button> */}
-                  <Button disabled={isShowVectorSpaceFull || !websitePages.length} variant='primary' onClick={onStepChange}>
-                    <span className="flex gap-0.5 px-[10px]">
-                      <span className="px-0.5">{t('datasetCreation.stepOne.button')}</span>
-                      <RiArrowRightLine className="size-4" />
-                    </span>
-                  </Button>
-                </div>
-              </>
-            )}
-            {!datasetId && (
-              <>
-                <div className={s.dividerLine} />
-                <span className="inline-flex cursor-pointer items-center text-[13px] leading-4 text-text-accent" onClick={modalShowHandle}>
-                  <RiFolder6Line className="mr-1 size-4" />
-                  {t('datasetCreation.stepOne.emptyDatasetCreation')}
-                </span>
-              </>
-            )}
+                </>
+              )}
+              {dataSourceType === DataSourceType.NOTION && (
+                <>
+                  {!hasConnection && <NotionConnector onSetting={onSetting} />}
+                  {hasConnection && (
+                    <>
+                      <div className='mb-8 w-[640px]'>
+                        <NotionPageSelector
+                          value={notionPages.map(page => page.page_id)}
+                          onSelect={updateNotionPages}
+                          onPreview={updateCurrentPage}
+                        />
+                      </div>
+                      {isShowVectorSpaceFull && (
+                        <div className='mb-4 max-w-[640px]'>
+                          <VectorSpaceFull />
+                        </div>
+                      )}
+                      <div className="flex max-w-[640px] justify-end gap-2">
+                        {/* <Button>{t('datasetCreation.stepOne.cancel')}</Button> */}
+                        <Button disabled={isShowVectorSpaceFull || !notionPages.length} variant='primary' onClick={onStepChange}>
+                          <span className="flex gap-0.5 px-[10px]">
+                            <span className="px-0.5">{t('datasetCreation.stepOne.button')}</span>
+                            <RiArrowRightLine className="size-4" />
+                          </span>
+                        </Button>
+                      </div>
+                    </>
+                  )}
+                </>
+              )}
+              {dataSourceType === DataSourceType.WEB && (
+                <>
+                  <div className={cn('mb-8 w-[640px]', !shouldShowDataSourceTypeList && 'mt-12')}>
+                    <Website
+                      onPreview={setCurrentWebsite}
+                      checkedCrawlResult={websitePages}
+                      onCheckedCrawlResultChange={updateWebsitePages}
+                      onCrawlProviderChange={onWebsiteCrawlProviderChange}
+                      onJobIdChange={onWebsiteCrawlJobIdChange}
+                      crawlOptions={crawlOptions}
+                      onCrawlOptionsChange={onCrawlOptionsChange}
+                    />
+                  </div>
+                  {isShowVectorSpaceFull && (
+                    <div className='mb-4 max-w-[640px]'>
+                      <VectorSpaceFull />
+                    </div>
+                  )}
+                  <div className="flex max-w-[640px] justify-end gap-2">
+                    {/* <Button>{t('datasetCreation.stepOne.cancel')}</Button> */}
+                    <Button disabled={isShowVectorSpaceFull || !websitePages.length} variant='primary' onClick={onStepChange}>
+                      <span className="flex gap-0.5 px-[10px]">
+                        <span className="px-0.5">{t('datasetCreation.stepOne.button')}</span>
+                        <RiArrowRightLine className="size-4" />
+                      </span>
+                    </Button>
+                  </div>
+                </>
+              )}
+              {!datasetId && (
+                <>
+                  <div className={s.dividerLine} />
+                  <span className="inline-flex cursor-pointer items-center text-[13px] leading-4 text-text-accent" onClick={modalShowHandle}>
+                    <RiFolder6Line className="mr-1 size-4" />
+                    {t('datasetCreation.stepOne.emptyDatasetCreation')}
+                  </span>
+                </>
+              )}
+            </div>
+            <EmptyDatasetCreationModal show={showModal} onHide={modalCloseHandle} />
           </div>
-          <EmptyDatasetCreationModal show={showModal} onHide={modalCloseHandle} />
         </div>
-      </div>
-      <div className='h-full w-1/2 overflow-y-auto'>
-        {currentFile && <FilePreview file={currentFile} hidePreview={hideFilePreview} />}
-        {currentNotionPage && <NotionPagePreview currentPage={currentNotionPage} hidePreview={hideNotionPagePreview} />}
-        {currentWebsite && <WebsitePreview payload={currentWebsite} hidePreview={hideWebsitePreview} />}
+        <div className='h-full w-1/2 overflow-y-auto'>
+          {currentFile && <FilePreview file={currentFile} hidePreview={hideFilePreview} />}
+          {currentNotionPage && <NotionPagePreview currentPage={currentNotionPage} hidePreview={hideNotionPagePreview} />}
+          {currentWebsite && <WebsitePreview payload={currentWebsite} hidePreview={hideWebsitePreview} />}
+        </div>
       </div>
     </div>
   )
