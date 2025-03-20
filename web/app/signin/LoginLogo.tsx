@@ -4,11 +4,11 @@ import classNames from '@/utils/classnames'
 import { useSelector } from '@/context/app-context'
 import { useGlobalPublicStore } from '@/context/global-public-context'
 
-type LogoSiteProps = {
+type LoginLogoProps = {
   className?: string
 }
 
-const LogoSite: FC<LogoSiteProps> = ({
+const LoginLogo: FC<LoginLogoProps> = ({
   className,
 }) => {
   const { systemFeatures } = useGlobalPublicStore()
@@ -20,7 +20,7 @@ const LogoSite: FC<LogoSiteProps> = ({
 
   let src = theme === 'light' ? '/logo/logo-site.png' : `/logo/logo-site-${theme}.png`
   if (systemFeatures.branding.enabled)
-    src = systemFeatures.branding.workspace_logo
+    src = systemFeatures.branding.login_page_logo
 
   return (
     <img
@@ -31,4 +31,4 @@ const LogoSite: FC<LogoSiteProps> = ({
   )
 }
 
-export default LogoSite
+export default LoginLogo
