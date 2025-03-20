@@ -27,8 +27,9 @@ def init_workflow():
     workflows = []
     dir = f'{workflow_dir}/{sub_dir}'
     if not os.path.isdir(dir):
-        raise ValueError(f"Invalid directory: {dir}")
-    
+        logging.ERROR(f"Invalid directory: {dir}")
+        return
+
     for file_entry in os.scandir(dir):
         if not file_entry.name.endswith('.yaml') and not file_entry.name.endswith('.yml') or file_entry.name.startswith('.'):
             continue
