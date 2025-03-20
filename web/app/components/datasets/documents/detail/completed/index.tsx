@@ -410,9 +410,9 @@ const Completed: FC<ICompletedProps> = ({
     setSelectedSegmentIds((prev) => {
       const currentAllSegIds = segments.map(seg => seg.id)
       const prevSelectedIds = prev.filter(item => !currentAllSegIds.includes(item))
-      return [...prevSelectedIds, ...((isAllSelected || selectedSegmentIds.length > 0) ? [] : currentAllSegIds)]
+      return [...prevSelectedIds, ...(isAllSelected ? [] : currentAllSegIds)]
     })
-  }, [segments, isAllSelected, selectedSegmentIds])
+  }, [segments, isAllSelected])
 
   const totalText = useMemo(() => {
     const isSearch = searchValue !== '' || selectedStatus !== 'all'

@@ -15,9 +15,9 @@ const Checkbox = ({ checked, onCheck, className, disabled, mixed }: CheckboxProp
     return (
       <div
         className={cn(
-          'h-4 w-4 cursor-pointer rounded-[4px] border border-components-checkbox-border bg-components-checkbox-bg-unchecked shadow-xs hover:border-components-checkbox-border-hover hover:bg-components-checkbox-bg-unchecked-hover',
+          'h-4 w-4 cursor-pointer rounded-[4px] border border-components-checkbox-border bg-components-checkbox-bg-unchecked shadow-xs hover:border-components-checkbox-border-hover',
+          mixed ? s.mixed : 'hover:bg-components-checkbox-bg-unchecked-hover',
           disabled && 'cursor-not-allowed border-components-checkbox-border-disabled bg-components-checkbox-bg-disabled hover:border-components-checkbox-border-disabled hover:bg-components-checkbox-bg-disabled',
-          mixed && s.mixed,
           className,
         )}
         onClick={() => {
