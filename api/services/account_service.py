@@ -100,8 +100,11 @@ class AccountService:
         redis_client.delete(AccountService._get_account_refresh_token_key(account_id))
 
     @staticmethod
-    def load_user(user_id: str) -> None | Account:
-        account = db.session.query(Account).filter_by(id=user_id).first()
+    def load_user(user_id: str, email:str = None) -> None | Account:
+        if email:
+            account = db.session.query(Account).filter_by(email=email).first()
+        else:
+            account = db.session.query(Account).filter_by(id=user_id).first()
         if not account:
             return None
 
@@ -238,7 +241,7 @@ class AccountService:
 
         # Set timezone based on language
         account.timezone = language_timezone_mapping.get(interface_language, "UTC")
-
+        account.status ="active"
         db.session.add(account)
         db.session.commit()
         return account
@@ -249,10 +252,10 @@ class AccountService:
     ) -> Account:
         """create account"""
         account = AccountService.create_account(
-            email=email, name=name, interface_language=interface_language, password=password
+            email=email, name=name, interface_language=interface_language, password=password, is_setup=True
         )
 
-        TenantService.create_owner_tenant_if_not_exist(account=account)
+        TenantService.create_owner_tenant_if_not_exist(account=account, is_setup=True)
 
         return account
 
@@ -388,8 +391,8 @@ class AccountService:
         return TokenPair(access_token=new_access_token, refresh_token=new_refresh_token)
 
     @staticmethod
-    def load_logged_in_account(*, account_id: str):
-        return AccountService.load_user(account_id)
+    def load_logged_in_account(*, account_id: str, email:str = None):
+        return AccountService.load_user(account_id, email=email)
 
     @classmethod
     def send_reset_password_email(
@@ -762,6 +765,9 @@ class TenantService:
         """Get tenant count"""
         return cast(int, db.session.query(func.count(Tenant.id)).scalar())
 
+    @staticmethod
+    def get_first_tenant():
+        return db.session.query(Tenant).first()
     @staticmethod
     def check_member_permission(tenant: Tenant, operator: Account, member: Account | None, action: str) -> None:
         """Check member permission"""
