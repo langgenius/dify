@@ -1,5 +1,5 @@
 import type { FC } from 'react'
-import React from 'react'
+import React, { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import MemoryConfig from '../_base/components/memory-config'
 import VarReferencePicker from '../_base/components/variable/var-reference-picker'
@@ -131,7 +131,7 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
   }) => {
     handleCompletionParamsChange({})
     handleModelChanged(model)
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   return (
