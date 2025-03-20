@@ -51,7 +51,7 @@ const Toast = ({
     'top-0',
     'right-0',
   )}>
-    <div className={`absolute inset-0 opacity-40 ${
+    <div className={`absolute inset-0 -z-10 opacity-40 ${
       (type === 'success' && 'bg-toast-success-bg')
       || (type === 'warning' && 'bg-toast-warning-bg')
       || (type === 'error' && 'bg-toast-error-bg')
@@ -66,7 +66,10 @@ const Toast = ({
         {type === 'info' && <RiInformation2Fill className={`${size === 'md' ? 'h-5 w-5' : 'h-4 w-4'} text-text-accent`} aria-hidden="true" />}
       </div>
       <div className={`flex py-1 ${size === 'md' ? 'px-1' : 'px-0.5'} grow flex-col items-start gap-1`}>
-        <div className='system-sm-semibold text-text-primary'>{message}</div>
+        <div className='flex items-center gap-1'>
+          <div className='system-sm-semibold text-text-primary'>{message}</div>
+          {customComponent}
+        </div>
         {children && <div className='system-xs-regular text-text-secondary'>
           {children}
         </div>
