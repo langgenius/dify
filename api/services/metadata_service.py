@@ -137,7 +137,7 @@ class MetadataService:
                     doc_metadata[BuiltInField.source.value] = MetadataDataSource[document.data_source_type].value
                     document.doc_metadata = doc_metadata
                     db.session.add(document)
-                db.session.commit()
+            db.session.commit()
         except Exception:
             logging.exception("Enable built-in field failed")
         finally:
