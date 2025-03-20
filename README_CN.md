@@ -207,6 +207,7 @@ docker compose up -d
 - [Helm Chart by @BorisPolonsky](https://github.com/BorisPolonsky/dify-helm)
 - [Helm Chart by @magicsong](https://github.com/magicsong/ai-charts)
 - [YAML 文件 by @Winson-030](https://github.com/Winson-030/dify-kubernetes)
+- [YAML file by @wyy-holding](https://github.com/wyy-holding/dify-k8s)
 
 #### 使用 Terraform 部署
 
