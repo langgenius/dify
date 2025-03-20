@@ -1,10 +1,10 @@
-from datetime import datetime, timezone
+from datetime import datetime
 
 from core.rag.extractor.watercrawl.client import WaterCrawlAPIClient
 
 
 class WaterCrawlProvider:
-    def __init__(self, api_key, base_url: str = None):
+    def __init__(self, api_key, base_url: str | None = None):
         self.client = WaterCrawlAPIClient(api_key, base_url)
 
     def crawl_url(self, url, options):
@@ -25,7 +25,7 @@ class WaterCrawlProvider:
         page_options = {
             "exclude_tags": options.get("exclude_tags", '').split(",") if options.get("exclude_tags") else [],
             "include_tags": options.get("include_tags", '').split(",") if options.get("include_tags") else [],
-            "wait_time": wait_time if wait_time > 1000 else 1000,  # minimum wait time is 1 second
+            "wait_time": max(1000, wait_time),  # minimum wait time is 1 second
             "include_html": False,
             "only_main_content": options.get("only_main_content", True),
             "include_links": False,
@@ -55,7 +55,10 @@ class WaterCrawlProvider:
         time_consuming = 0
         if time_str:
             time_obj = datetime.strptime(time_str, "%H:%M:%S.%f")
-            time_consuming = time_obj.hour * 3600 + time_obj.minute * 60 + time_obj.second + time_obj.microsecond / 1_000_000
+            time_consuming = (time_obj.hour * 3600 + 
+                             time_obj.minute * 60 + 
+                             time_obj.second + 
+                             time_obj.microsecond / 1_000_000)
 
         return {
             "status": status,
@@ -98,7 +101,7 @@ class WaterCrawlProvider:
             "markdown": result_object.get('result').get("markdown"),
         }
 
-    def _get_results(self, crawl_request_id: str, query_params: dict = None):
+    def _get_results(self, crawl_request_id: str, query_params: dict | None = None):
         page = 0
         page_size = 100
 

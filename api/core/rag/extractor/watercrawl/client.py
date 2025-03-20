@@ -1,5 +1,6 @@
 import json
-from typing import Union, Generator
+from collections.abc import Generator
+from typing import Union
 from urllib.parse import urljoin
 
 import requests
@@ -21,35 +22,35 @@ class BaseAPIClient:
         session.headers.update({'Accept-Language': 'en-US'})
         return session
 
-    def _get(self, endpoint: str, query_params: dict = None, **kwargs):
+    def _get(self, endpoint: str, query_params: dict | None = None, **kwargs):
         return self.session.get(
             urljoin(self.base_url, endpoint),
             params=query_params,
             **kwargs
         )
 
-    def _post(self, endpoint: str, query_params: dict = None, data: dict = None, **kwargs):
+    def _post(self, endpoint: str, query_params: dict | None = None, data: dict | None = None, **kwargs):
         return self.session.post(
             urljoin(self.base_url, endpoint),
             params=query_params,
             json=data, **kwargs
         )
 
-    def _put(self, endpoint: str, query_params: dict = None, data: dict = None, **kwargs):
+    def _put(self, endpoint: str, query_params: dict | None = None, data: dict | None = None, **kwargs):
         return self.session.put(
             urljoin(self.base_url, endpoint),
             params=query_params,
             json=data, **kwargs
         )
 
-    def _delete(self, endpoint: str, query_params: dict = None, **kwargs):
+    def _delete(self, endpoint: str, query_params: dict | None = None, **kwargs):
         return self.session.delete(
             urljoin(self.base_url, endpoint),
             params=query_params,
             **kwargs
         )
 
-    def _patch(self, endpoint: str, query_params: dict = None, data: dict = None, **kwargs):
+    def _patch(self, endpoint: str, query_params: dict | None = None, data: dict | None = None, **kwargs):
         return self.session.patch(
             urljoin(self.base_url, endpoint),
             params=query_params,
@@ -58,7 +59,7 @@ class BaseAPIClient:
 
 
 class WaterCrawlAPIClient(BaseAPIClient):
-    def __init__(self, api_key, base_url: str = 'https://app.watercrawl.dev/'):
+    def __init__(self, api_key, base_url: str | None = 'https://app.watercrawl.dev/'):
         super().__init__(api_key, base_url)
 
     def process_eventstream(self, response: Response, download: bool = False):
@@ -86,7 +87,7 @@ class WaterCrawlAPIClient(BaseAPIClient):
 
         raise Exception(f'Unknown response type: {response.headers.get("Content-Type")}')
 
-    def get_crawl_requests_list(self, page: int = None, page_size: int = None):
+    def get_crawl_requests_list(self, page: int | None = None, page_size: int | None = None):
         query_params = {
             'page': page or 1,
             'page_size': page_size or 10
@@ -107,10 +108,10 @@ class WaterCrawlAPIClient(BaseAPIClient):
 
     def create_crawl_request(
             self,
-            url: Union[list, str] = None,
-            spider_options: dict = None,
-            page_options: dict = None,
-            plugin_options: dict = None
+            url: Union[list, str] | None = None,
+            spider_options: dict | None = None,
+            page_options: dict | None = None,
+            plugin_options: dict | None = None
     ):
         data = {
             # 'urls': url if isinstance(url, list) else [url],
@@ -154,7 +155,13 @@ class WaterCrawlAPIClient(BaseAPIClient):
             ),
         )
 
-    def get_crawl_request_results(self, item_id: str, page: int = 1, page_size: int = 25, query_params: dict = None):
+    def get_crawl_request_results(
+        self, 
+        item_id: str, 
+        page: int = 1, 
+        page_size: int = 25, 
+        query_params: dict | None = None
+    ):
         query_params = query_params or {}
         query_params.update({
             'page': page or 1,
@@ -169,22 +176,22 @@ class WaterCrawlAPIClient(BaseAPIClient):
 
     def scrape_url(self,
                    url: str,
-                   page_options: dict = None,
-                   plugin_options: dict = None,
+                   page_options: dict | None = None,
+                   plugin_options: dict | None = None,
                    sync: bool = True,
                    prefetched: bool = True
                    ):
-        result = self.create_crawl_request(
+        response_result = self.create_crawl_request(
             url=url,
             page_options=page_options,
             plugin_options=plugin_options
         )
         if not sync:
-            return result
+            return response_result
 
-        for result in self.monitor_crawl_request(result['uuid'], prefetched):
-            if result['type'] == 'result':
-                return result['data']
+        for event_data in self.monitor_crawl_request(response_result['uuid'], prefetched):
+            if event_data['type'] == 'result':
+                return event_data['data']
 
     def download_result(self, result_object: dict):
         response = requests.get(result_object['result'])
