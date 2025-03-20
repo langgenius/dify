@@ -29,6 +29,7 @@ from .vdb.oceanbase_config import OceanBaseVectorConfig
 from .vdb.opensearch_config import OpenSearchConfig
 from .vdb.oracle_config import OracleConfig
 from .vdb.pgvector_config import PGVectorConfig
+from .vdb.vastbase_vector_config import VastbaseVectorConfig
 from .vdb.pgvectors_config import PGVectoRSConfig
 from .vdb.qdrant_config import QdrantConfig
 from .vdb.relyt_config import RelytConfig
@@ -266,6 +267,7 @@ class MiddlewareConfig(
     OpenSearchConfig,
     OracleConfig,
     PGVectorConfig,
+    VastbaseVectorConfig,
     PGVectoRSConfig,
     QdrantConfig,
     RelytConfig,

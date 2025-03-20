@@ -263,6 +263,7 @@ def migrate_knowledge_vector_database():
     upper_collection_vector_types = {
         VectorType.MILVUS,
         VectorType.PGVECTOR,
+        VectorType.VASTBASE,
         VectorType.RELYT,
         VectorType.WEAVIATE,
         VectorType.ORACLE,

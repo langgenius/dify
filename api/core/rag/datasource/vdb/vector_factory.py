@@ -74,6 +74,10 @@ class Vector:
                 from core.rag.datasource.vdb.pgvector.pgvector import PGVectorFactory
 
                 return PGVectorFactory
+            case VectorType.VASTBASE:
+                from core.rag.datasource.vdb.pyvastbase.vastbase_vector import VastbaseVectorFactory
+
+                return VastbaseVectorFactory
             case VectorType.PGVECTO_RS:
                 from core.rag.datasource.vdb.pgvecto_rs.pgvecto_rs import PGVectoRSFactory
 
