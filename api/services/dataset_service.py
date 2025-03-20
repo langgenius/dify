@@ -33,6 +33,8 @@ from models.dataset import (
     Dataset,
     DatasetAutoDisableLog,
     DatasetCollectionBinding,
+    DatasetMetadata,
+    DatasetMetadataBinding,
     DatasetPermission,
     DatasetPermissionEnum,
     DatasetProcessRule,
@@ -1131,6 +1133,27 @@ class DocumentService:
                     document_indexing_task.delay(dataset.id, document_ids)
                 if duplicate_document_ids:
                     duplicate_document_indexing_task.delay(dataset.id, duplicate_document_ids)
+
+        # save dataset_metadata_binding
+        if knowledge_config.metadata:
+            metadata_list = DatasetMetadata.query.filter_by(tenant_id=current_user.current_tenant_id,
+                                                            dataset_id=dataset.id).all()
+            for document in documents:
+                if document.metadata:
+                    DatasetMetadataBinding.query.filter_by(document_id=document.id).delete()
+                    for metadata in metadata_list:
+                        for key, value in document.metadata.items():
+                            if metadata.name == key:
+                                dataset_metadata_binding = DatasetMetadataBinding(
+                                    tenant_id=current_user.current_tenant_id,
+                                    dataset_id=dataset.id,
+                                    document_id=document.id,
+                                    metadata_id=metadata.id,
+                                    created_by=current_user.id,
+                                )
+                                db.session.add(dataset_metadata_binding)
+                                db.session.commit()  # small batch import, considering memory limitations
+                                break  # only one metadata is suitable
 
         return documents, batch
 
