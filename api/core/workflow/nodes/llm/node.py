@@ -513,7 +513,11 @@ class LLMNode(BaseNode[LLMNodeData]):
 
         # model config
         completion_params = node_data_model.completion_params
-        if self.node_data.structured_output_enabled and self.node_data.structured_output:
+        if (
+            isinstance(self.node_data, LLMNodeData)
+            and self.node_data.structured_output_enabled
+            and self.node_data.structured_output
+        ):
             completion_params["structured_output_schema"] = json.dumps(
                 self.node_data.structured_output.get("schema", {}), ensure_ascii=False
             )
