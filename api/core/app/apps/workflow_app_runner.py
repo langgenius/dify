@@ -131,7 +131,7 @@ class WorkflowBasedAppRunner(AppRunner):
             edge
             for edge in graph_config.get("edges", [])
             if (edge.get("source") is None or edge.get("source") in node_ids)
-               and (edge.get("target") is None or edge.get("target") in node_ids)
+            and (edge.get("target") is None or edge.get("target") in node_ids)
         ]
 
         graph_config["edges"] = edge_configs

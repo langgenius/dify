@@ -204,6 +204,7 @@ class WorkflowToolProvider(Base):
     @property
     def app(self) -> App | None:
         from services.app_service import AppService
+
         try:
             app = AppService.get_app_by_id(self.app_id)
         except:
