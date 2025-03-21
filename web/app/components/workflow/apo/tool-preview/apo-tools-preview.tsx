@@ -17,7 +17,55 @@ type ApoToolsPreviewProps = {
   apoToolType: ApoToolTypeInfo | null;
   hidePopover: any
 }
+type ToolDetailProps = {
+  toolDetail: any
+  handleSelect: (item: any) => void
+  apoToolType: ApoToolTypeInfo | null;
+}
+const ToolDetail = ({ toolDetail, handleSelect, apoToolType }: ToolDetailProps) => {
+  const { t } = useTranslation()
+  const language = useGetLanguage()
+  return <div className="px-4">
+    <div className='flex'>
+      <div className='flex-1'>{toolDetail.label[language]}</div>
+      <Button variant='primary' className=' space-x-2' onClick={() => handleSelect(toolDetail)}>
+        <div>{t('apo.tool.use')}</div>
+      </Button>
+    </div>
+    <div className="text-xs text-text-tertiary">
+      <div className="pt-2">
+        {t('apo.tool.desc')}：<>{toolDetail.description[language]}</>
+      </div>
+      <div className="pt-2">
+        {apoToolType === 'apo_select' ? (
+          <>
+            {toolDetail?.display.type === 'metric' && <div className="pb-2">{t('apo.tool.unit')}：{toolDetail.display.unit}</div>}
+            {toolDetail?.display?.type && <div>{t('apo.tool.output')}：{t(`apo.displayType.${toolDetail?.display?.type}`)}</div>}
+            <div className="px-4 py-2">
+              <div className="h-[0.5px] divider-subtle" />
+            </div>
+            <div className="pb-2">
+              <ToolTrialRun infoSchemas={toolDetail.parameters} type={toolDetail.display?.type} title={toolDetail?.display?.title}/>
+            </div>
 
+          </>
+        ) : (
+          <div className="flex">
+            <span>{t('apo.tool.input')}：</span>
+            <div>
+              {toolDetail?.parameters.map(parameter => (
+                <ParametersInfo
+                  key={parameter.name}
+                  parameter={parameter}
+                />
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  </div>
+}
 const ApoToolsPreview = ({ onSelect, apoToolType, hidePopover }: ApoToolsPreviewProps) => {
   const language = useGetLanguage()
   const { t } = useTranslation()
@@ -25,15 +73,14 @@ const ApoToolsPreview = ({ onSelect, apoToolType, hidePopover }: ApoToolsPreview
   const [tools, setTools] = useState<any>([])
   const [provider, setProvider] = useState()
   const [searchText, setSearchText] = useState<string>()
+  const [openKey, setOpenKey] = useState<string | null>(null)
+
   const getAllTools = async () => {
     const tools = await fetchApoTools(apoToolType, searchText, language)
     // setSearchText('')
     setProvider(tools[0])
     setTools(tools[0]?.tools)
   }
-  const handlePopoverOpen = useCallback((item) => {
-    setToolDetail(item)
-  }, [])
   const handleSelect = (item) => {
     const params: Record<string, string> = {}
     if (item.parameters) {
@@ -58,12 +105,12 @@ const ApoToolsPreview = ({ onSelect, apoToolType, hidePopover }: ApoToolsPreview
   const convertMetricsListToMenuItems = useCallback(() => {
     return tools.map((item, index) => (
       <div
-        key={index}
+        key={item.name + index}
         className={cn(
           'flex items-center justify-between pl-3 pr-1 w-full rounded-lg hover:bg-state-base-hover cursor-pointer select-none',
-          item.name === toolDetail?.name && 'bg-state-base-active text-red-500',
+          (item.name + index) === openKey && 'bg-state-base-active text-red-500',
         )}
-        onMouseEnter={() => handlePopoverOpen(item)}
+        onMouseEnter={() => setOpenKey(item.name + index)}
       >
         <div className="flex grow items-center h-8">
           {/* <BlockIcon
@@ -77,7 +124,7 @@ const ApoToolsPreview = ({ onSelect, apoToolType, hidePopover }: ApoToolsPreview
         </div>
       </div>
     ))
-  }, [tools, handlePopoverOpen, toolDetail])
+  }, [tools, toolDetail, openKey])
 
   useEffect(() => {
     const fetchTools = debounce(() => {
@@ -104,50 +151,13 @@ const ApoToolsPreview = ({ onSelect, apoToolType, hidePopover }: ApoToolsPreview
           {tools?.length > 0 && convertMetricsListToMenuItems()}
         </div>
       </div>
-      {toolDetail && (<div className="flex-1 min-w-[500px] overflow-auto max-w-[800px]">
-
-        <div className="px-4">
-          <div className='flex'>
-            <div className='flex-1'>{toolDetail.label[language]}</div>
-            <Button variant='primary' className=' space-x-2' onClick={() => handleSelect(toolDetail)}>
-              <div>{t('apo.tool.use')}</div>
-            </Button>
-          </div>
-          <div className="text-xs text-text-tertiary">
-            <div className="pt-2">
-              {t('apo.tool.desc')}：<>{toolDetail.description[language]}</>
-            </div>
-            <div className="pt-2">
-              {apoToolType === 'apo_select' ? (
-                <>
-                  {toolDetail?.display.type === 'metric' && <div className="pb-2">{t('apo.tool.unit')}：{toolDetail.display.unit}</div>}
-                  {toolDetail?.display?.type && <div>{t('apo.tool.output')}：{t(`apo.displayType.${toolDetail?.display?.type}`)}</div>}
-                  <div className="px-4 py-2">
-                    <div className="h-[0.5px] divider-subtle" />
-                  </div>
-                  <div className="pb-2">
-                    <ToolTrialRun infoSchemas={toolDetail.parameters} type={toolDetail.display?.type} title={toolDetail?.display?.title}/>
-                  </div>
-
-                </>
-              ) : (
-                <div className="flex">
-                  <span>{t('apo.tool.input')}：</span>
-                  <div>
-                    {toolDetail?.parameters.map(parameter => (
-                      <ParametersInfo
-                        key={parameter.name}
-                        parameter={parameter}
-                      />
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
-      )}
+      {openKey && tools?.length > 0 && <div className="relative flex-1 min-w-[500px] overflow-auto max-w-[800px]">
+        {
+          tools?.map((item, index) => (
+            <div key={item + index} className={(item.name + index) === openKey ? 'block' : 'hidden'}><ToolDetail toolDetail={item} handleSelect={handleSelect} apoToolType={apoToolType} /></div>
+          ))
+        }
+      </div>}
     </div>
   )
 }
