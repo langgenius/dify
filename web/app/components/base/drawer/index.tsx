@@ -50,6 +50,9 @@ export default function Drawer({
         {/* mask */}
         <DialogBackdrop
           className={cn('fixed inset-0 z-40', mask && 'bg-black bg-opacity-30')}
+          onClick={() => {
+            !clickOutsideNotOpen && onClose()
+          }}
         />
         <div className={cn('relative z-50 flex w-full max-w-sm flex-col justify-between overflow-hidden bg-components-panel-bg p-6 text-left align-middle shadow-xl', panelClassname)}>
           <>
