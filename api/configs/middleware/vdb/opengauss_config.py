@@ -43,3 +43,8 @@ class OpenGaussConfig(BaseSettings):
         description="Max connection of the OpenGauss database",
         default=5,
     )
+
+    OPENGAUSS_ENABLE_PQ: bool = Field(
+        description="Enable openGauss PQ acceleration feature",
+        default=False,
+    )
