@@ -20,8 +20,10 @@ const MenuDialog = ({
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape')
+      if (event.key === 'Escape') {
+        event.preventDefault()
         close()
+      }
     }
 
     document.addEventListener('keydown', handleKeyDown)
