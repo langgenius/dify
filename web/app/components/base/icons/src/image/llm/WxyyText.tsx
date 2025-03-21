@@ -6,7 +6,7 @@ import cn from '@/utils/classnames'
 import s from './WxyyText.module.css'
 
 const Icon = (
-  { 
+  {
     ref,
     className,
     ...restProps

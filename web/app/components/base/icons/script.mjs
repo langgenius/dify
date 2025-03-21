@@ -116,7 +116,7 @@ import cn from '@/utils/classnames'
 import s from './<%= fileName %>.module.css'
 
 const Icon = (
-  { 
+  {
     ref,
     className,
     ...restProps
