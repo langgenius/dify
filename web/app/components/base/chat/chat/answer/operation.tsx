@@ -108,7 +108,7 @@ const Operation: FC<OperationProps> = ({
         )}
         style={(!hasWorkflowProcess && positionRight) ? { left: contentWidth + 8 } : {}}
       >
-        {showPromptLog && (
+        {showPromptLog && !isOpeningStatement && (
           <div className='hidden group-hover:block'>
             <Log logItem={item} />
           </div>
