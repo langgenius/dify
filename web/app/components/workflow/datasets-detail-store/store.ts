@@ -2,16 +2,20 @@ import { useContext } from 'react'
 import { createStore, useStore } from 'zustand'
 import type { DataSet } from '@/models/datasets'
 import { DatasetsDetailContext } from './provider'
+import { fetchDatasets } from '@/service/datasets'
 
 type DatasetsDetailStore = {
   datasetsDetail: DataSet[]
-  setDatasetsDetail: (datasetsDetail: DataSet[]) => void
+  updateDatasetsDetail: (allDatasetIds: string[]) => Promise<void>
 }
 
 export const createDatasetsDetailStore = () => {
   return createStore<DatasetsDetailStore>(set => ({
     datasetsDetail: [],
-    setDatasetsDetail: datasetsDetail => set({ datasetsDetail }),
+    updateDatasetsDetail: async (allDatasetIds) => {
+      const { data: dataSetsWithDetail } = await fetchDatasets({ url: '/datasets', params: { page: 1, ids: allDatasetIds } })
+      set({ datasetsDetail: dataSetsWithDetail })
+    },
   }))
 }
 

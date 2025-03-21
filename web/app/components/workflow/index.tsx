@@ -449,7 +449,7 @@ const WorkflowWrap = memo(() => {
         nodes={nodesData}
         edges={edgesData} >
         <FeaturesProvider features={initialFeatures}>
-          <DatasetsDetailProvider>
+          <DatasetsDetailProvider nodes={nodesData}>
             <Workflow
               nodes={nodesData}
               edges={edgesData}
