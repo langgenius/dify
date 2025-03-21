@@ -223,7 +223,7 @@ const ConfigVar: FC<IConfigVarProps> = ({ promptVariables, readonly, onPromptVar
         </div>
       )}
       {hasVar && (
-        <div className='mt-1 flex flex-wrap justify-between px-3 pb-3'>
+        <div className='mt-1 px-3 pb-3'>
           {promptVariables.map(({ key, name, type, required, config, icon, icon_background }, index) => (
             <VarItem
               key={index}
