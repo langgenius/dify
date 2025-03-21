@@ -200,5 +200,5 @@ class FeatureService:
             if "status" in license_info:
                 features.license.status = LicenseStatus(license_info.get("status", LicenseStatus.INACTIVE))
 
-            if "expired_at" in license_info:
+            if "expiredAt" in license_info:
                 features.license.expired_at = license_info["expiredAt"]
