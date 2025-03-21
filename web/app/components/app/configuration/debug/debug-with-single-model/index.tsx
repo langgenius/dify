@@ -65,6 +65,7 @@ const DebugWithSingleModel = forwardRef<DebugWithSingleModelRefType, DebugWithSi
       annotation_reply: features.annotationReply,
     } as ChatConfig
   }, [configTemplate, features])
+
   const inputsForm = useMemo(() => {
     return modelConfig.configs.prompt_variables.filter(item => item.type !== 'api').map(item => ({ ...item, label: item.name, variable: item.key })) as InputForm[]
   }, [modelConfig.configs.prompt_variables])
@@ -100,8 +101,17 @@ const DebugWithSingleModel = forwardRef<DebugWithSingleModelRefType, DebugWithSi
     const currentModel = currentProvider?.models.find(model => model.model === modelConfig.model_id)
     const supportVision = currentModel?.features?.includes(ModelFeatureEnum.vision)
 
+    const tools = config.agent_mode.tools?.map((item: any) => ({
+      ...item,
+      enabled: item.tool_name === 'BochaWebSearch' ? isInternet : item.enabled,
+    }))
+
     const configData = {
       ...config,
+      agent_mode: {
+        ...config.agent_mode,
+        tools,
+      },
       model: {
         provider: modelConfig.provider,
         name: modelConfig.model_id,
@@ -109,9 +119,10 @@ const DebugWithSingleModel = forwardRef<DebugWithSingleModelRefType, DebugWithSi
         completion_params: completionParams,
       },
     }
+    console.log('doSend', config, modelConfig, configData)
 
     const data: any = {
-      query: message,
+      query: `${message}${isInternet ? '@isInternet@' : ''}`,
       inputs,
       model_config: configData,
       isInternet: isInternet ? '是' : '否',

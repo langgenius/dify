@@ -88,7 +88,8 @@ const ChatWrapper = forwardRef<ChatWrapperRefType, ChatWrapperProps>(({
   const doSend: OnSend = useCallback((message, files, isRegenerate = false, parentAnswer: ChatItem | null = null) => {
     handleSend(
       {
-        query: message,
+        // query: message,
+        query: `${message}${isInternet ? '@isInternet@' : ''}`,
         files,
         inputs: workflowStore.getState().inputs,
         conversation_id: conversationId,

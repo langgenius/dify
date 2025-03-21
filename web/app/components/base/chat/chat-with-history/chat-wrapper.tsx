@@ -124,7 +124,8 @@ const ChatWrapper = () => {
 
   const doSend: OnSend = useCallback((message, files, isRegenerate = false, parentAnswer: ChatItem | null = null) => {
     const data: any = {
-      query: message,
+      // query: message,
+      query: `${message}${isInternet ? '@isInternet@' : ''}`,
       files,
       inputs: currentConversationId ? currentConversationItem?.inputs : newConversationInputs,
       conversation_id: currentConversationId,
