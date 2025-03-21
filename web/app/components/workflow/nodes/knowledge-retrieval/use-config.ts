@@ -218,15 +218,12 @@ const useConfig = (id: string, payload: KnowledgeRetrievalNodeType) => {
     (async () => {
       const inputs = inputRef.current
       const datasetIds = inputs.dataset_ids
-      let _datasets = selectedDatasets
       if (datasetIds?.length > 0) {
         const { data: dataSetsWithDetail } = await fetchDatasets({ url: '/datasets', params: { page: 1, ids: datasetIds } as any })
-        _datasets = dataSetsWithDetail
         setSelectedDatasets(dataSetsWithDetail)
       }
       const newInputs = produce(inputs, (draft) => {
         draft.dataset_ids = datasetIds
-        draft._datasets = _datasets
       })
       setInputs(newInputs)
       setSelectedDatasetsLoaded(true)
@@ -256,7 +253,6 @@ const useConfig = (id: string, payload: KnowledgeRetrievalNodeType) => {
     } = getSelectedDatasetsMode(newDatasets)
     const newInputs = produce(inputs, (draft) => {
       draft.dataset_ids = newDatasets.map(d => d.id)
-      draft._datasets = newDatasets
 
       if (payload.retrieval_mode === RETRIEVE_TYPE.multiWay && newDatasets.length > 0) {
         const multipleRetrievalConfig = draft.multiple_retrieval_config
