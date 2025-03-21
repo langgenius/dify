@@ -35,7 +35,7 @@ const ConditionDate = ({
       <div className='group flex items-center' onClick={handleClickTrigger}>
         <div
           className={cn(
-            'grow flex items-center mr-0.5 px-1 h-6 system-sm-regular cursor-pointer',
+            'system-sm-regular mr-0.5 flex h-6 grow cursor-pointer items-center px-1',
             value ? 'text-text-secondary' : 'text-text-tertiary',
           )}
         >
@@ -49,7 +49,7 @@ const ConditionDate = ({
           value && (
             <RiCloseCircleFill
               className={cn(
-                'hidden group-hover:block shrink-0 w-4 h-4 cursor-pointer hover:text-components-input-text-filled',
+                'hidden h-4 w-4 shrink-0 cursor-pointer hover:text-components-input-text-filled group-hover:block',
                 value && 'text-text-quaternary',
               )}
               onClick={(e) => {
@@ -61,7 +61,7 @@ const ConditionDate = ({
         }
         <RiCalendarLine
           className={cn(
-            'block shrink-0 w-4 h-4',
+            'block h-4 w-4 shrink-0',
             value ? 'text-text-quaternary' : 'text-text-tertiary',
             value && 'group-hover:hidden',
           )}
@@ -71,7 +71,7 @@ const ConditionDate = ({
   }, [value, handleDateChange, timezone, t])
 
   return (
-    <div className='px-2 py-1 h-8'>
+    <div className='h-8 px-2 py-1'>
       <DatePicker
         timezone={timezone}
         value={value ? dayjs(value * 1000) : undefined}

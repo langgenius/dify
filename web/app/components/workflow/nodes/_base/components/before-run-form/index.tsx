@@ -32,7 +32,7 @@ type BeforeRunFormProps = {
   onRun: (submitData: Record<string, any>) => void
   onStop: () => void
   runningStatus: NodeRunningStatus
-  result?: JSX.Element
+  result?: React.JSX.Element
   forms: FormProps[]
   showSpecialResultPanel?: boolean
 } & Partial<SpecialResultPanelProps>
@@ -142,15 +142,15 @@ const BeforeRunForm: FC<BeforeRunFormProps> = ({
     <div className='absolute inset-0 z-10 rounded-2xl pt-10' style={{
       backgroundColor: 'rgba(16, 24, 40, 0.20)',
     }}>
-      <div className='h-full rounded-2xl bg-white flex flex-col'>
-        <div className='shrink-0 flex justify-between items-center h-8 pl-4 pr-3 pt-3'>
-          <div className='text-base font-semibold text-gray-900 truncate'>
+      <div className='flex h-full flex-col rounded-2xl bg-white'>
+        <div className='flex h-8 shrink-0 items-center justify-between pl-4 pr-3 pt-3'>
+          <div className='truncate text-base font-semibold text-gray-900'>
             {t(`${i18nPrefix}.testRun`)} {nodeName}
           </div>
-          <div className='ml-2 shrink-0 p-1 cursor-pointer' onClick={() => {
+          <div className='ml-2 shrink-0 cursor-pointer p-1' onClick={() => {
             onHide()
           }}>
-            <RiCloseLine className='w-4 h-4 text-gray-500 ' />
+            <RiCloseLine className='h-4 w-4 text-gray-500 ' />
           </div>
         </div>
         {
@@ -163,7 +163,7 @@ const BeforeRunForm: FC<BeforeRunFormProps> = ({
         {
           !showSpecialResultPanel && (
             <div className='h-0 grow overflow-y-auto pb-4'>
-              <div className='mt-3 px-4 space-y-4'>
+              <div className='mt-3 space-y-4 px-4'>
                 {forms.map((form, index) => (
                   <div key={index}>
                     <Form
@@ -178,14 +178,14 @@ const BeforeRunForm: FC<BeforeRunFormProps> = ({
               <div className='mt-4 flex justify-between space-x-2 px-4' >
                 {isRunning && (
                   <div
-                    className='p-2 rounded-lg border border-gray-200 bg-white shadow-xs cursor-pointer'
+                    className='cursor-pointer rounded-lg border border-gray-200 bg-white p-2 shadow-xs'
                     onClick={onStop}
                   >
-                    <StopCircle className='w-4 h-4 text-gray-500' />
+                    <StopCircle className='h-4 w-4 text-gray-500' />
                   </div>
                 )}
                 <Button disabled={!isFileLoaded || isRunning} variant='primary' className='w-0 grow space-x-2' onClick={handleRun}>
-                  {isRunning && <RiLoader2Line className='animate-spin w-4 h-4 text-white' />}
+                  {isRunning && <RiLoader2Line className='h-4 w-4 animate-spin text-white' />}
                   <div>{t(`${i18nPrefix}.${isRunning ? 'running' : 'startRun'}`)}</div>
                 </Button>
               </div>

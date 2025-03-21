@@ -40,12 +40,12 @@ const ConditionNumber = ({
   }, [onChange])
 
   return (
-    <div className='flex items-center pl-1 pr-2 h-8'>
+    <div className='flex h-8 items-center pl-1 pr-2'>
       <ConditionValueMethod
         valueMethod={valueMethod}
         onValueMethodChange={onValueMethodChange}
       />
-      <div className='ml-1 mr-1.5 w-[1px] h-4 bg-divider-regular'></div>
+      <div className='ml-1 mr-1.5 h-4 w-[1px] bg-divider-regular'></div>
       {
         valueMethod === 'variable' && !isCommonVariable && (
           <ConditionVariableSelector
@@ -70,7 +70,7 @@ const ConditionNumber = ({
       {
         valueMethod === 'constant' && (
           <Input
-            className='bg-transparent hover:bg-transparent outline-none border-none focus:shadow-none focus:bg-transparent'
+            className='border-none bg-transparent outline-none hover:bg-transparent focus:bg-transparent focus:shadow-none'
             value={value}
             onChange={(e) => {
               const v = e.target.value

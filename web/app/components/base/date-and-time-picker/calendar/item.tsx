@@ -16,13 +16,13 @@ const Item: FC<CalendarItemProps> = ({
     <button
       onClick={() => onClick(date)}
       className={cn(
-        'relative px-1 py-2 rounded-lg flex items-center justify-center system-sm-medium',
+        'system-sm-medium relative flex items-center justify-center rounded-lg px-1 py-2',
         isCurrentMonth ? 'text-text-secondary' : 'text-text-quaternary hover:text-text-secondary',
-        isSelected ? 'text-components-button-primary-text system-sm-medium bg-components-button-primary-bg' : 'hover:bg-state-base-hover',
+        isSelected ? 'system-sm-medium bg-components-button-primary-bg text-components-button-primary-text' : 'hover:bg-state-base-hover',
       )}
     >
       {date.date()}
-      {isToday && <div className='absolute bottom-1 mx-auto w-1 h-1 rounded-full bg-components-button-primary-bg' />}
+      {isToday && <div className='absolute bottom-1 mx-auto h-1 w-1 rounded-full bg-components-button-primary-bg' />}
     </button>
   )
 }

@@ -169,10 +169,10 @@ const Form = () => {
   }
 
   return (
-    <div className='w-full sm:w-[880px] px-14 py-8 flex flex-col gap-y-4'>
+    <div className='flex w-full flex-col gap-y-4 px-14 py-8 sm:w-[880px]'>
       <div className={rowClass}>
         <div className={labelClass}>
-          <div className='text-text-secondary system-sm-semibold'>{t('datasetSettings.form.name')}</div>
+          <div className='system-sm-semibold text-text-secondary'>{t('datasetSettings.form.name')}</div>
         </div>
         <div className='grow'>
           <Input
@@ -185,7 +185,7 @@ const Form = () => {
       </div>
       <div className={rowClass}>
         <div className={labelClass}>
-          <div className='text-text-secondary system-sm-semibold'>{t('datasetSettings.form.desc')}</div>
+          <div className='system-sm-semibold text-text-secondary'>{t('datasetSettings.form.desc')}</div>
         </div>
         <div className='grow'>
           <Textarea
@@ -199,7 +199,7 @@ const Form = () => {
       </div>
       <div className={rowClass}>
         <div className={labelClass}>
-          <div className='text-text-secondary system-sm-semibold'>{t('datasetSettings.form.permissions')}</div>
+          <div className='system-sm-semibold text-text-secondary'>{t('datasetSettings.form.permissions')}</div>
         </div>
         <div className='grow'>
           <PermissionSelector
@@ -214,10 +214,10 @@ const Form = () => {
       </div>
       {currentDataset && currentDataset.indexing_technique && (
         <>
-          <div className='w-full h-0 border-b border-divider-subtle my-1' />
+          <div className='my-1 h-0 w-full border-b border-divider-subtle' />
           <div className={rowClass}>
             <div className={labelClass}>
-              <div className='text-text-secondary system-sm-semibold'>{t('datasetSettings.form.indexMethod')}</div>
+              <div className='system-sm-semibold text-text-secondary'>{t('datasetSettings.form.indexMethod')}</div>
             </div>
             <div className='grow'>
               <IndexMethodRadio
@@ -227,8 +227,8 @@ const Form = () => {
                 docForm={currentDataset.doc_form}
                 currentValue={currentDataset.indexing_technique}
               />
-              {currentDataset.indexing_technique === IndexingType.ECONOMICAL && indexMethod === IndexingType.QUALIFIED && <div className='mt-2 h-10 p-2 flex items-center gap-x-0.5 rounded-xl border-[0.5px] border-components-panel-border overflow-hidden bg-components-panel-bg-blur backdrop-blur-[5px] shadow-xs'>
-                <div className='absolute top-0 left-0 right-0 bottom-0 bg-[linear-gradient(92deg,rgba(247,144,9,0.25)_0%,rgba(255,255,255,0.00)_100%)] opacity-40'></div>
+              {currentDataset.indexing_technique === IndexingType.ECONOMICAL && indexMethod === IndexingType.QUALIFIED && <div className='mt-2 flex h-10 items-center gap-x-0.5 overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-2 shadow-xs backdrop-blur-[5px]'>
+                <div className='absolute bottom-0 left-0 right-0 top-0 bg-[linear-gradient(92deg,rgba(247,144,9,0.25)_0%,rgba(255,255,255,0.00)_100%)] opacity-40'></div>
                 <div className='p-1'>
                   <AlertTriangle className='size-4 text-text-warning-secondary' />
                 </div>
@@ -242,7 +242,7 @@ const Form = () => {
         <>
           <div className={rowClass}>
             <div className={labelClass}>
-              <div className='text-text-secondary system-sm-semibold'>{t('datasetSettings.form.embeddingModel')}</div>
+              <div className='system-sm-semibold text-text-secondary'>{t('datasetSettings.form.embeddingModel')}</div>
             </div>
             <div className='grow'>
               <ModelSelector
@@ -260,10 +260,10 @@ const Form = () => {
       {/* Retrieval Method Config */}
       {currentDataset?.provider === 'external'
         ? <>
-          <div className='w-full h-0 border-b border-divider-subtle my-1' />
+          <div className='my-1 h-0 w-full border-b border-divider-subtle' />
           <div className={rowClass}>
             <div className={labelClass}>
-              <div className='text-text-secondary system-sm-semibold'>{t('datasetSettings.form.retrievalSetting.title')}</div>
+              <div className='system-sm-semibold text-text-secondary'>{t('datasetSettings.form.retrievalSetting.title')}</div>
             </div>
             <RetrievalSettings
               topK={topK}
@@ -273,40 +273,40 @@ const Form = () => {
               isInRetrievalSetting={true}
             />
           </div>
-          <div className='w-full h-0 border-b border-divider-subtle my-1' />
+          <div className='my-1 h-0 w-full border-b border-divider-subtle' />
           <div className={rowClass}>
             <div className={labelClass}>
-              <div className='text-text-secondary system-sm-semibold'>{t('datasetSettings.form.externalKnowledgeAPI')}</div>
+              <div className='system-sm-semibold text-text-secondary'>{t('datasetSettings.form.externalKnowledgeAPI')}</div>
             </div>
             <div className='w-full'>
-              <div className='flex h-full px-3 py-2 items-center gap-1 rounded-lg bg-components-input-bg-normal'>
-                <ApiConnectionMod className='w-4 h-4 text-text-secondary' />
-                <div className='overflow-hidden text-text-secondary text-ellipsis system-sm-medium'>
+              <div className='flex h-full items-center gap-1 rounded-lg bg-components-input-bg-normal px-3 py-2'>
+                <ApiConnectionMod className='h-4 w-4 text-text-secondary' />
+                <div className='system-sm-medium overflow-hidden text-ellipsis text-text-secondary'>
                   {currentDataset?.external_knowledge_info.external_knowledge_api_name}
                 </div>
-                <div className='text-text-tertiary system-xs-regular'>·</div>
-                <div className='text-text-tertiary system-xs-regular'>{currentDataset?.external_knowledge_info.external_knowledge_api_endpoint}</div>
+                <div className='system-xs-regular text-text-tertiary'>·</div>
+                <div className='system-xs-regular text-text-tertiary'>{currentDataset?.external_knowledge_info.external_knowledge_api_endpoint}</div>
               </div>
             </div>
           </div>
           <div className={rowClass}>
             <div className={labelClass}>
-              <div className='text-text-secondary system-sm-semibold'>{t('datasetSettings.form.externalKnowledgeID')}</div>
+              <div className='system-sm-semibold text-text-secondary'>{t('datasetSettings.form.externalKnowledgeID')}</div>
             </div>
             <div className='w-full'>
-              <div className='flex h-full px-3 py-2 items-center gap-1 rounded-lg bg-components-input-bg-normal'>
-                <div className='text-text-tertiary system-xs-regular'>{currentDataset?.external_knowledge_info.external_knowledge_id}</div>
+              <div className='flex h-full items-center gap-1 rounded-lg bg-components-input-bg-normal px-3 py-2'>
+                <div className='system-xs-regular text-text-tertiary'>{currentDataset?.external_knowledge_info.external_knowledge_id}</div>
               </div>
             </div>
           </div>
         </>
         : indexMethod
           ? <>
-            <div className='w-full h-0 border-b border-divider-subtle my-1' />
+            <div className='my-1 h-0 w-full border-b border-divider-subtle' />
             <div className={rowClass}>
               <div className={labelClass}>
                 <div>
-                  <div className='text-text-secondary system-sm-semibold'>{t('datasetSettings.form.retrievalSetting.title')}</div>
+                  <div className='system-sm-semibold text-text-secondary'>{t('datasetSettings.form.retrievalSetting.title')}</div>
                   <div className='body-xs-regular text-text-tertiary'>
                     <a target='_blank' rel='noopener noreferrer' href='https://docs.dify.ai/guides/knowledge-base/create-knowledge-and-upload-documents#id-4-retrieval-settings' className='text-text-accent'>{t('datasetSettings.form.retrievalSetting.learnMore')}</a>
                     {t('datasetSettings.form.retrievalSetting.description')}
@@ -332,7 +332,7 @@ const Form = () => {
           </>
           : null
       }
-      <div className='w-full h-0 border-b border-divider-subtle my-1' />
+      <div className='my-1 h-0 w-full border-b border-divider-subtle' />
       <div className={rowClass}>
         <div className={labelClass} />
         <div className='grow'>

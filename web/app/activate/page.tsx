@@ -8,14 +8,14 @@ const Activate = () => {
   return (
     <div className={cn(
       style.background,
-      'flex w-full min-h-screen',
+      'flex min-h-screen w-full',
       'sm:p-4 lg:p-8',
       'gap-x-20',
       'justify-center lg:justify-start',
     )}>
       <div className={
         cn(
-          'flex w-full flex-col bg-white shadow rounded-2xl shrink-0',
+          'flex w-full shrink-0 flex-col rounded-2xl bg-white shadow',
           'space-between',
         )
       }>

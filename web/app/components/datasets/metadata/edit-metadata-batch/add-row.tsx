@@ -31,7 +31,7 @@ const AddRow: FC<Props> = ({
       <div
         className={
           cn(
-            'p-1 rounded-md text-text-tertiary hover:bg-state-destructive-hover hover:text-text-destructive cursor-pointer',
+            'cursor-pointer rounded-md p-1 text-text-tertiary hover:bg-state-destructive-hover hover:text-text-destructive',
           )
         }
         onClick={onRemove}

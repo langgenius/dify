@@ -67,8 +67,8 @@ const VersionHistoryItem: React.FC<VersionHistoryItemProps> = ({
   return (
     <div
       className={cn(
-        'flex gap-x-1 relative p-2 rounded-lg group',
-        isSelected ? 'bg-state-accent-active cursor-not-allowed' : 'hover:bg-state-base-hover cursor-pointer',
+        'group relative flex gap-x-1 rounded-lg p-2',
+        isSelected ? 'cursor-not-allowed bg-state-accent-active' : 'cursor-pointer hover:bg-state-base-hover',
       )}
       onClick={handleClickItem}
       onMouseEnter={() => setIsHovering(true)}
@@ -81,38 +81,38 @@ const VersionHistoryItem: React.FC<VersionHistoryItemProps> = ({
         setOpen(true)
       }}
     >
-      {!isLast && <div className='absolute w-0.5 h-[calc(100%-0.75rem)] left-4 top-6 bg-divider-subtle' />}
-      <div className=' flex items-center justify-center shrink-0 w-[18px] h-5'>
+      {!isLast && <div className='absolute left-4 top-6 h-[calc(100%-0.75rem)] w-0.5 bg-divider-subtle' />}
+      <div className=' flex h-5 w-[18px] shrink-0 items-center justify-center'>
         <div className={cn(
-          'w-2 h-2 border-[2px] rounded-lg',
+          'h-2 w-2 rounded-lg border-[2px]',
           isSelected ? 'border-text-accent' : 'border-text-quaternary',
         )}/>
       </div>
-      <div className='flex flex-col gap-y-0.5 grow overflow-hidden'>
-        <div className='flex items-center gap-x-1 h-5 mr-6'>
+      <div className='flex grow flex-col gap-y-0.5 overflow-hidden'>
+        <div className='mr-6 flex h-5 items-center gap-x-1'>
           <div className={cn(
-            'py-[1px] system-sm-semibold truncate',
+            'system-sm-semibold truncate py-[1px]',
             isSelected ? 'text-text-accent' : 'text-text-secondary',
           )}>
             {isDraft ? t('workflow.versionHistory.currentDraft') : item.marked_name || t('workflow.versionHistory.defaultName')}
           </div>
           {isLatest && (
-            <div className='flex items-center shrink-0 h-5 px-[5px] rounded-md border border-text-accent-secondary
-            bg-components-badge-bg-dimm text-text-accent-secondary system-2xs-medium-uppercase'>
+            <div className='system-2xs-medium-uppercase flex h-5 shrink-0 items-center rounded-md border border-text-accent-secondary
+            bg-components-badge-bg-dimm px-[5px] text-text-accent-secondary'>
               {t('workflow.versionHistory.latest')}
             </div>
           )}
         </div>
         {
           !isDraft && (
-            <div className='text-text-secondary system-xs-regular break-words'>
+            <div className='system-xs-regular break-words text-text-secondary'>
               {item.marked_comment || ''}
             </div>
           )
         }
         {
           !isDraft && (
-            <div className='text-text-tertiary system-xs-regular truncate'>
+            <div className='system-xs-regular truncate text-text-tertiary'>
               {`${formatTime(item.created_at)} · ${item.created_by.name}`}
             </div>
           )

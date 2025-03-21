@@ -18,7 +18,7 @@ const AddedMetadataButton: FC<Props> = ({
   const { t } = useTranslation()
   return (
     <Button
-      className={cn('w-full flex items-center', className)}
+      className={cn('flex w-full items-center', className)}
       size='small'
       variant='tertiary'
       onClick={onClick}

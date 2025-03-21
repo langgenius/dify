@@ -7,7 +7,7 @@ import {
   useRef,
   useState,
 } from 'react'
-import { Tab } from '@headlessui/react'
+import { Tab, TabList, TabPanel, TabPanels } from '@headlessui/react'
 import { Tag } from './tag'
 import classNames from '@/utils/classnames'
 import { writeTextToClipboard } from '@/utils/clipboard'
@@ -24,7 +24,7 @@ const languageNames = {
 } as { [key: string]: string }
 
 type IChildrenProps = {
-  children: React.ReactElement
+  children: React.ReactNode
   [key: string]: any
 }
 
@@ -84,7 +84,7 @@ function CopyButton({ code }: { code: string }) {
           copied && '-translate-y-1.5 opacity-0',
         )}
       >
-        <ClipboardIcon className="w-5 h-5 transition-colors fill-zinc-500/20 stroke-zinc-500 group-hover/button:stroke-zinc-400" />
+        <ClipboardIcon className="h-5 w-5 fill-zinc-500/20 stroke-zinc-500 transition-colors group-hover/button:stroke-zinc-400" />
         Copy
       </span>
       <span
@@ -105,9 +105,9 @@ function CodePanelHeader({ tag, label }: { tag: string; label: string }) {
     return null
 
   return (
-    <div className="flex h-9 items-center gap-2 border-y border-t-transparent border-b-white/7.5 bg-zinc-900 bg-white/2.5 px-4 dark:border-b-white/5 dark:bg-white/1">
+    <div className="border-b-white/7.5 bg-white/2.5 dark:bg-white/1 flex h-9 items-center gap-2 border-y border-t-transparent bg-zinc-900 px-4 dark:border-b-white/5">
       {tag && (
-        <div className="flex dark">
+        <div className="dark flex">
           <Tag variant="small">{tag}</Tag>
         </div>
       )}
@@ -122,7 +122,7 @@ function CodePanelHeader({ tag, label }: { tag: string; label: string }) {
 }
 
 type ICodePanelProps = {
-  children: React.ReactElement
+  children: React.ReactNode
   tag?: string
   code?: string
   label?: string
@@ -132,7 +132,7 @@ function CodePanel({ tag, label, code, children, targetCode }: ICodePanelProps) 
   const child = Children.only(children)
 
   return (
-    <div className="group dark:bg-white/2.5">
+    <div className="dark:bg-white/2.5 group">
       <CodePanelHeader
         tag={child.props.tag ?? tag}
         label={child.props.label ?? label}
@@ -141,7 +141,7 @@ function CodePanel({ tag, label, code, children, targetCode }: ICodePanelProps) 
         {/* <pre className="p-4 overflow-x-auto text-xs text-white">{children}</pre> */}
         {/* <CopyButton code={child.props.code ?? code} /> */}
         {/* <CopyButton code={child.props.children.props.children} /> */}
-        <pre className="p-4 overflow-x-auto text-xs text-white">{targetCode || children}</pre>
+        <pre className="overflow-x-auto p-4 text-xs text-white">{targetCode || children}</pre>
         <CopyButton code={targetCode || child.props.children.props.children} />
       </div>
     </div>
@@ -157,12 +157,12 @@ function CodeGroupHeader({ title, children, selectedIndex }: IChildrenProps) {
   return (
     <div className="flex min-h-[calc(theme(spacing.12)+1px)] flex-wrap items-start gap-x-4 border-b border-zinc-700 bg-zinc-800 px-4 dark:border-zinc-800 dark:bg-transparent">
       {title && (
-        <h3 className="pt-3 mr-auto text-xs font-semibold text-white">
+        <h3 className="mr-auto pt-3 text-xs font-semibold text-white">
           {title}
         </h3>
       )}
       {hasTabs && (
-        <Tab.List className="flex gap-4 -mb-px text-xs font-medium">
+        <TabList className="-mb-px flex gap-4 text-xs font-medium">
           {Children.map(children, (child, childIndex) => (
             <Tab
               className={classNames(
@@ -175,14 +175,14 @@ function CodeGroupHeader({ title, children, selectedIndex }: IChildrenProps) {
               {getPanelTitle(child.props.children.props)}
             </Tab>
           ))}
-        </Tab.List>
+        </TabList>
       )}
     </div>
   )
 }
 
 type ICodeGroupPanelsProps = {
-  children: React.ReactElement
+  children: React.ReactNode
   [key: string]: any
 }
 function CodeGroupPanels({ children, targetCode, ...props }: ICodeGroupPanelsProps) {
@@ -190,13 +190,13 @@ function CodeGroupPanels({ children, targetCode, ...props }: ICodeGroupPanelsPro
 
   if (hasTabs) {
     return (
-      <Tab.Panels>
+      <TabPanels>
         {Children.map(children, child => (
-          <Tab.Panel>
+          <TabPanel>
             <CodePanel {...props}>{child}</CodePanel>
-          </Tab.Panel>
+          </TabPanel>
         ))}
-      </Tab.Panels>
+      </TabPanels>
     )
   }
 
@@ -271,7 +271,7 @@ export function CodeGroup({ children, title, inputs, targetCode, ...props }: ICh
     <CodeGroupContext.Provider value={true}>
       <Container
         {...containerProps}
-        className="my-6 overflow-hidden shadow-md not-prose rounded-2xl bg-zinc-900 dark:ring-1 dark:ring-white/10"
+        className="not-prose my-6 overflow-hidden rounded-2xl bg-zinc-900 shadow-md dark:ring-1 dark:ring-white/10"
       >
         <CodeGroupHeader title={title} {...headerProps}>
           {children}
