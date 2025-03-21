@@ -105,7 +105,7 @@ const translation = {
           step2Tip: '點選此處將倉庫匯入到 Vercel 中部署',
           step2Operation: '匯入倉庫',
           step3: '配置環境變數',
-          step3Tip: '在 Vecel 環境變數中新增以下環境變數',
+          step3Tip: '在 Vercel 環境變數中新增以下環境變數',
         },
         way2: {
           name: '編寫客戶端呼叫 API 並部署到伺服器中',

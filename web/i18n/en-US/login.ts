@@ -19,7 +19,7 @@ const translation = {
   setAdminAccountDesc: 'Maximum privileges for admin account, which can be used to create applications and manage LLM providers, etc.',
   createAndSignIn: 'Create and sign in',
   oneMoreStep: 'One more step',
-  createSample: 'Based on this information, we’ll create sample application for you',
+  createSample: 'Based on this information, we\'ll create sample application for you',
   invitationCode: 'Invitation Code',
   invitationCodePlaceholder: 'Your invitation code',
   interfaceLanguage: 'Interface Language',
