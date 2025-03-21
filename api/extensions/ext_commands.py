@@ -4,6 +4,7 @@ from dify_app import DifyApp
 def init_app(app: DifyApp):
     from commands import (
         add_qdrant_index,
+        clear_free_plan_tenant_expired_logs,
         convert_to_agent_apps,
         create_tenant,
         extract_plugins,
@@ -34,6 +35,7 @@ def init_app(app: DifyApp):
         extract_unique_plugins,
         install_plugins,
         old_metadata_migration,
+        clear_free_plan_tenant_expired_logs,
     ]
     for cmd in cmds_to_register:
         app.cli.add_command(cmd)
