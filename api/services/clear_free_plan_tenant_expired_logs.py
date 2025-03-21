@@ -149,7 +149,9 @@ class ClearFreePlanTenantExpiredLogs:
 
             while True:
                 with Session(db.engine).no_autoflush as session:
-                    workflow_runs = session.query(WorkflowRun).filter(WorkflowRun.tenant_id == tenant_id).all()
+                    workflow_runs = (
+                        session.query(WorkflowRun).filter(WorkflowRun.tenant_id == tenant_id).limit(batch).all()
+                    )
 
                     if len(workflow_runs) == 0:
                         break
