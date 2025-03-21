@@ -194,7 +194,7 @@ function Form<
             )}
             {tooltipContent}
           </div>
-          <div className={`grid-cols- grid${options?.length} gap-3`}>
+          <div className={cn('grid gap-3', `grid-cols-${options?.length}`)}>
             {options.filter((option) => {
               if (option.show_on.length)
                 return option.show_on.every(showOnItem => value[showOnItem.variable] === showOnItem.value)
