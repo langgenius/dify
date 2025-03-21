@@ -144,9 +144,7 @@ class SwitchWorkspaceApi(Resource):
         except Exception:
             raise AccountNotLinkTenantError("Account not link tenant")
 
-        new_tenant = db.session.query(Tenant).get(args["tenant_id"])  # Get new tenant
-        if new_tenant is None:
-            raise ValueError("Tenant not found")
+        new_tenant = TenantService.get_tenant_by_id(args["tenant_id"])
 
         return {"result": "success", "new_tenant": marshal(WorkspaceService.get_tenant_info(new_tenant), tenant_fields)}
 
@@ -162,8 +160,7 @@ class CustomConfigWorkspaceApi(Resource):
         parser.add_argument("replace_webapp_logo", type=str, location="json")
         args = parser.parse_args()
 
-        tenant = Tenant.query.filter(Tenant.id == current_user.current_tenant_id).one_or_404()
-
+        tenant = TenantService.get_tenant_by_id(current_user.current_tenant_id)
         custom_config_dict = {
             "remove_webapp_brand": args["remove_webapp_brand"],
             "replace_webapp_logo": args["replace_webapp_logo"]

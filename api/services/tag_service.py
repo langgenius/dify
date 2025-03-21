@@ -7,7 +7,7 @@ from werkzeug.exceptions import NotFound
 
 from extensions.ext_database import db
 from models.dataset import Dataset
-from models.model import App, Tag, TagBinding
+from models.model import Tag, TagBinding
 
 
 class TagService:
@@ -147,12 +147,8 @@ class TagService:
             if not dataset:
                 raise NotFound("Dataset not found")
         elif type == "app":
-            app = (
-                db.session.query(App)
-                .filter(App.tenant_id == current_user.current_tenant_id, App.id == target_id)
-                .first()
-            )
-            if not app:
-                raise NotFound("App not found")
+            from services.app_service import AppService
+
+            app = AppService.get_app_by_id(target_id)
         else:
             raise NotFound("Invalid binding type")

@@ -7,7 +7,8 @@ from werkzeug.exceptions import BadRequest, NotFound, Unauthorized
 from controllers.web.error import WebSSOAuthRequiredError
 from extensions.ext_database import db
 from libs.passport import PassportService
-from models.model import App, EndUser, Site
+from models.model import EndUser, Site
+from services.app_service import AppService
 from services.enterprise.enterprise_service import EnterpriseService
 from services.feature_service import FeatureService
 
@@ -45,10 +46,8 @@ def decode_jwt_token():
             raise Unauthorized("Invalid Authorization header format. Expected 'Bearer <api-key>' format.")
         decoded = PassportService().verify(tk)
         app_code = decoded.get("app_code")
-        app_model = db.session.query(App).filter(App.id == decoded["app_id"]).first()
+        app_model = AppService.get_app_by_id(decoded["app_id"])
         site = db.session.query(Site).filter(Site.code == app_code).first()
-        if not app_model:
-            raise NotFound()
         if not app_code or not site:
             raise BadRequest("Site URL is no longer valid.")
         if app_model.enable_site is False:

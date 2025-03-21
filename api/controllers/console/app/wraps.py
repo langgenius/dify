@@ -3,9 +3,8 @@ from functools import wraps
 from typing import Optional, Union
 
 from controllers.console.app.error import AppNotFoundError
-from extensions.ext_database import db
-from libs.login import current_user
-from models import App, AppMode
+from models import AppMode
+from services.app_service import AppService
 
 
 def get_app_model(view: Optional[Callable] = None, *, mode: Union[AppMode, list[AppMode], None] = None):
@@ -19,15 +18,7 @@ def get_app_model(view: Optional[Callable] = None, *, mode: Union[AppMode, list[
             app_id = str(app_id)
 
             del kwargs["app_id"]
-
-            app_model = (
-                db.session.query(App)
-                .filter(App.id == app_id, App.tenant_id == current_user.current_tenant_id, App.status == "normal")
-                .first()
-            )
-
-            if not app_model:
-                raise AppNotFoundError()
+            app_model = AppService.get_app_by_id(app_id)
 
             app_mode = AppMode.value_of(app_model.mode)
             if app_mode == AppMode.CHANNEL:

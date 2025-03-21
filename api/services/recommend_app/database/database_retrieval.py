@@ -2,8 +2,9 @@ from typing import Optional
 
 from constants.languages import languages
 from extensions.ext_database import db
-from models.model import App, RecommendedApp
+from models.model import RecommendedApp
 from services.app_dsl_service import AppDslService
+from services.app_service import AppService
 from services.recommend_app.recommend_app_base import RecommendAppRetrievalBase
 from services.recommend_app.recommend_app_type import RecommendAppType
 
@@ -91,8 +92,11 @@ class DatabaseRecommendAppRetrieval(RecommendAppRetrievalBase):
             return None
 
         # get app detail
-        app_model = db.session.query(App).filter(App.id == app_id).first()
-        if not app_model or not app_model.is_public:
+        try:
+            app_model = AppService.get_app_by_id(app_id)
+        except:
+            return None
+        if not app_model.is_public:
             return None
 
         return {

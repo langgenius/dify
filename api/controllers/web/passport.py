@@ -8,7 +8,8 @@ from controllers.web import api
 from controllers.web.error import WebSSOAuthRequiredError
 from extensions.ext_database import db
 from libs.passport import PassportService
-from models.model import App, EndUser, Site
+from models.model import EndUser, Site
+from services.app_service import AppService
 from services.enterprise.enterprise_service import EnterpriseService
 from services.feature_service import FeatureService
 
@@ -32,8 +33,8 @@ class PassportResource(Resource):
         if not site:
             raise NotFound()
         # get app from db and check if it is normal and enable_site
-        app_model = db.session.query(App).filter(App.id == site.app_id).first()
-        if not app_model or app_model.status != "normal" or not app_model.enable_site:
+        app_model = AppService.get_app_by_id(site.app_id)
+        if app_model.status != "normal" or not app_model.enable_site:
             raise NotFound()
 
         end_user = EndUser(

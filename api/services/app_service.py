@@ -18,6 +18,7 @@ from core.tools.tool_manager import ToolManager
 from core.tools.utils.configuration import ToolParameterConfigurationManager
 from events.app_event import app_was_created
 from extensions.ext_database import db
+from extensions.ext_redis import redis_client
 from models.account import Account
 from models.model import App, AppMode, AppModelConfig
 from models.tools import ApiToolProvider
@@ -154,6 +155,44 @@ class AppService:
 
         return app
 
+    @staticmethod
+    def _generate_app_cache_key(app_id: str) -> str:
+        """
+        Generate app cache key
+        :param app_id: app id
+        :return:
+        """
+        return f"app:{app_id}"
+
+    @classmethod
+    def get_app_by_id(cls, app_id: str) -> App:
+        """
+        Get app by id
+        :param app_id: app id
+        :return: App
+        """
+        app_cache_key = cls._generate_app_cache_key(app_id)
+        app_content = redis_client.get(app_cache_key)
+        if not app_content:
+            app = App.query.filter(App.id == app_id, App.status == "normal").first()
+            if not app:
+                raise ValueError(f"App '{app_id}' is not found")
+            app_dict = app.to_dict()
+            redis_client.setex(app_cache_key, 300, json.dumps(app_dict))
+        else:
+            app = App.from_dict(json.loads(app_content))
+        return app
+
+    @classmethod
+    def remove_app_cache_by_id(cls, app_id: str) -> None:
+        app_cache_key = cls._generate_app_cache_key(app_id)
+        redis_client.delete(app_cache_key)
+
+    @classmethod
+    def remove_app_cache_by_ids(cls, app_ids: list[str]) -> None:
+        app_cache_keys = [cls._generate_app_cache_key(app_id) for app_id in app_ids]
+        redis_client.delete(*app_cache_keys)
+
     def get_app(self, app: App) -> App:
         """
         Get App
@@ -234,6 +273,7 @@ class AppService:
         if app.max_active_requests is not None:
             rate_limit = RateLimit(app.id, app.max_active_requests)
             rate_limit.flush_cache(use_local_value=True)
+        self.remove_app_cache_by_id(app.id)
         return app
 
     def update_app_name(self, app: App, name: str) -> App:
@@ -247,6 +287,7 @@ class AppService:
         app.updated_by = current_user.id
         app.updated_at = datetime.now(UTC).replace(tzinfo=None)
         db.session.commit()
+        self.remove_app_cache_by_id(app.id)
 
         return app
 
@@ -263,6 +304,7 @@ class AppService:
         app.updated_by = current_user.id
         app.updated_at = datetime.now(UTC).replace(tzinfo=None)
         db.session.commit()
+        self.remove_app_cache_by_id(app.id)
 
         return app
 
@@ -280,6 +322,7 @@ class AppService:
         app.updated_by = current_user.id
         app.updated_at = datetime.now(UTC).replace(tzinfo=None)
         db.session.commit()
+        self.remove_app_cache_by_id(app.id)
 
         return app
 
@@ -297,6 +340,7 @@ class AppService:
         app.updated_by = current_user.id
         app.updated_at = datetime.now(UTC).replace(tzinfo=None)
         db.session.commit()
+        self.remove_app_cache_by_id(app.id)
 
         return app
 
@@ -307,6 +351,7 @@ class AppService:
         """
         db.session.delete(app)
         db.session.commit()
+        self.remove_app_cache_by_id(app.id)
 
         # Trigger asynchronous deletion of app and related data
         remove_app_and_related_data_task.delay(tenant_id=app.tenant_id, app_id=app.id)

@@ -15,7 +15,8 @@ from core.model_runtime.entities.message_entities import ImagePromptMessageConte
 from core.moderation.base import ModerationError
 from core.rag.retrieval.dataset_retrieval import DatasetRetrieval
 from extensions.ext_database import db
-from models.model import App, Conversation, Message
+from models.model import Conversation, Message
+from services.app_service import AppService
 
 logger = logging.getLogger(__name__)
 
@@ -43,9 +44,7 @@ class ChatAppRunner(AppRunner):
         app_config = application_generate_entity.app_config
         app_config = cast(ChatAppConfig, app_config)
 
-        app_record = db.session.query(App).filter(App.id == app_config.app_id).first()
-        if not app_record:
-            raise ValueError("App not found")
+        app_record = AppService.get_app_by_id(app_config.app_id)
 
         inputs = application_generate_entity.inputs
         query = application_generate_entity.query

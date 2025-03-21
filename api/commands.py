@@ -26,6 +26,7 @@ from models.dataset import Document as DatasetDocument
 from models.model import Account, App, AppAnnotationSetting, AppMode, Conversation, MessageAnnotation
 from models.provider import Provider, ProviderModel
 from services.account_service import RegisterService, TenantService
+from services.app_service import AppService
 from services.plugin.data_migration import PluginDataMigration
 from services.plugin.plugin_migration import PluginMigration
 
@@ -131,7 +132,7 @@ def reset_encrypt_key_pair():
         db.session.query(Provider).filter(Provider.provider_type == "custom", Provider.tenant_id == tenant.id).delete()
         db.session.query(ProviderModel).filter(ProviderModel.tenant_id == tenant.id).delete()
         db.session.commit()
-
+        TenantService.remove_tenant_cache_by_id(tenant.id)
         click.echo(
             click.style(
                 "Congratulations! The asymmetric key pair of workspace {} has been reset.".format(tenant.id),
@@ -457,7 +458,7 @@ def convert_to_agent_apps():
                 app_id = str(i.id)
                 if app_id not in proceeded_app_ids:
                     proceeded_app_ids.append(app_id)
-                    app = db.session.query(App).filter(App.id == app_id).first()
+                    app = AppService.get_app_by_id(app_id)
                     if app is not None:
                         apps.append(app)
 
@@ -701,8 +702,9 @@ where sites.id is null limit 1000"""
                     continue
 
                 try:
-                    app = db.session.query(App).filter(App.id == app_id).first()
-                    if not app:
+                    try:
+                        app = AppService.get_app_by_id(app_id)
+                    except:
                         print(f"App {app_id} not found")
                         continue
 

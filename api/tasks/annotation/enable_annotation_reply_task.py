@@ -4,14 +4,14 @@ import time
 
 import click
 from celery import shared_task  # type: ignore
-from werkzeug.exceptions import NotFound
 
 from core.rag.datasource.vdb.vector_factory import Vector
 from core.rag.models.document import Document
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from models.dataset import Dataset
-from models.model import App, AppAnnotationSetting, MessageAnnotation
+from models.model import AppAnnotationSetting, MessageAnnotation
+from services.app_service import AppService
 from services.dataset_service import DatasetCollectionBindingService
 
 
@@ -31,10 +31,7 @@ def enable_annotation_reply_task(
     logging.info(click.style("Start add app annotation to index: {}".format(app_id), fg="green"))
     start_at = time.perf_counter()
     # get app info
-    app = db.session.query(App).filter(App.id == app_id, App.tenant_id == tenant_id, App.status == "normal").first()
-
-    if not app:
-        raise NotFound("App not found")
+    app = AppService.get_app_by_id(app_id)
 
     annotations = db.session.query(MessageAnnotation).filter(MessageAnnotation.app_id == app_id).all()
     enable_app_annotation_key = "enable_app_annotation_{}".format(str(app_id))

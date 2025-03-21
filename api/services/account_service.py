@@ -577,6 +577,39 @@ def _get_login_cache_key(*, account_id: str, token: str):
 
 class TenantService:
     @staticmethod
+    def _generate_tenant_cache_key(tenant_id: str) -> str:
+        """
+        Generate tenant cache key
+        :param tenant_id: tenant id
+        :return:
+        """
+        return f"tenant:{tenant_id}"
+
+    @classmethod
+    def get_tenant_by_id(cls, tenant_id: str) -> Tenant:
+        """
+        Get tenant by id
+        :param tenant_id: tenant id
+        :return:
+        """
+        tenant_cache_key = cls._generate_tenant_cache_key(tenant_id)
+        tenant_content = redis_client.get(tenant_cache_key)
+        if not tenant_content:
+            tenant = Tenant.query.filter(Tenant.id == tenant_id, Tenant.status == TenantStatus.NORMAL).first()
+            if not tenant:
+                raise ValueError(f"Tenant '{tenant_id}' is not found")
+            tenant_dict = tenant.to_dict()
+            redis_client.setex(tenant_cache_key, 300, json.dumps(tenant_dict))
+        else:
+            tenant = Tenant.from_dict(json.loads(tenant_content))
+        return tenant
+
+    @classmethod
+    def remove_tenant_cache_by_id(cls, tenant_id: str) -> None:
+        tenant_cache_key = cls._generate_tenant_cache_key(tenant_id)
+        redis_client.delete(tenant_cache_key)
+
+    @staticmethod
     def create_tenant(name: str, is_setup: Optional[bool] = False, is_from_dashboard: Optional[bool] = False) -> Tenant:
         """Create tenant"""
         if (
@@ -1002,14 +1035,9 @@ class RegisterService:
         invitation_data = cls._get_invitation_by_token(token, workspace_id, email)
         if not invitation_data:
             return None
-
-        tenant = (
-            db.session.query(Tenant)
-            .filter(Tenant.id == invitation_data["workspace_id"], Tenant.status == "normal")
-            .first()
-        )
-
-        if not tenant:
+        try:
+            tenant = TenantService.get_tenant_by_id(invitation_data["workspace_id"])
+        except:
             return None
 
         tenant_account = (

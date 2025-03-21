@@ -9,7 +9,6 @@ from configs import dify_config
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from models.model import (
-    App,
     Message,
     MessageAgentThought,
     MessageAnnotation,
@@ -18,6 +17,7 @@ from models.model import (
     MessageFile,
 )
 from models.web import SavedMessage
+from services.app_service import AppService
 from services.feature_service import FeatureService
 
 
@@ -46,7 +46,7 @@ def clean_messages():
             break
         for message in messages:
             plan_sandbox_clean_message_day = message.created_at
-            app = App.query.filter_by(id=message.app_id).first()
+            app = AppService.get_app_by_id(message.app_id)
             features_cache_key = f"features:{app.tenant_id}"
             plan_cache = redis_client.get(features_cache_key)
             if plan_cache is None:

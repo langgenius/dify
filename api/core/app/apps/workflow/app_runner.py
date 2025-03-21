@@ -15,8 +15,10 @@ from core.workflow.enums import SystemVariableKey
 from core.workflow.workflow_entry import WorkflowEntry
 from extensions.ext_database import db
 from models.enums import UserFrom
-from models.model import App, EndUser
+from models.model import EndUser
 from models.workflow import WorkflowType
+from services.app_service import AppService
+from services.workflow_service import WorkflowService
 
 logger = logging.getLogger(__name__)
 
@@ -59,13 +61,9 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
         else:
             user_id = self.application_generate_entity.user_id
 
-        app_record = db.session.query(App).filter(App.id == app_config.app_id).first()
-        if not app_record:
-            raise ValueError("App not found")
+        app_record = AppService.get_app_by_id(app_config.app_id)
 
-        workflow = self.get_workflow(app_model=app_record, workflow_id=app_config.workflow_id)
-        if not workflow:
-            raise ValueError("Workflow not initialized")
+        workflow = WorkflowService.get_workflow_by_id(app_config.workflow_id)
 
         db.session.close()
 

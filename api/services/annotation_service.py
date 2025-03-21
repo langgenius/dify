@@ -10,7 +10,8 @@ from werkzeug.exceptions import NotFound
 
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
-from models.model import App, AppAnnotationHitHistory, AppAnnotationSetting, Message, MessageAnnotation
+from models.model import AppAnnotationHitHistory, AppAnnotationSetting, Message, MessageAnnotation
+from services.app_service import AppService
 from services.feature_service import FeatureService
 from tasks.annotation.add_annotation_to_index_task import add_annotation_to_index_task
 from tasks.annotation.batch_import_annotations_task import batch_import_annotations_task
@@ -24,14 +25,8 @@ class AppAnnotationService:
     @classmethod
     def up_insert_app_annotation_from_message(cls, args: dict, app_id: str) -> MessageAnnotation:
         # get app info
-        app = (
-            db.session.query(App)
-            .filter(App.id == app_id, App.tenant_id == current_user.current_tenant_id, App.status == "normal")
-            .first()
-        )
+        app = AppService.get_app_by_id(app_id)
 
-        if not app:
-            raise NotFound("App not found")
         if args.get("message_id"):
             message_id = str(args["message_id"])
             # get message info
@@ -115,14 +110,7 @@ class AppAnnotationService:
     @classmethod
     def get_annotation_list_by_app_id(cls, app_id: str, page: int, limit: int, keyword: str):
         # get app info
-        app = (
-            db.session.query(App)
-            .filter(App.id == app_id, App.tenant_id == current_user.current_tenant_id, App.status == "normal")
-            .first()
-        )
-
-        if not app:
-            raise NotFound("App not found")
+        app = AppService.get_app_by_id(app_id)
         if keyword:
             annotations = (
                 MessageAnnotation.query.filter(MessageAnnotation.app_id == app_id)
@@ -146,14 +134,7 @@ class AppAnnotationService:
     @classmethod
     def export_annotation_list_by_app_id(cls, app_id: str):
         # get app info
-        app = (
-            db.session.query(App)
-            .filter(App.id == app_id, App.tenant_id == current_user.current_tenant_id, App.status == "normal")
-            .first()
-        )
-
-        if not app:
-            raise NotFound("App not found")
+        app = AppService.get_app_by_id(app_id)
         annotations = (
             db.session.query(MessageAnnotation)
             .filter(MessageAnnotation.app_id == app_id)
@@ -165,14 +146,7 @@ class AppAnnotationService:
     @classmethod
     def insert_app_annotation_directly(cls, args: dict, app_id: str) -> MessageAnnotation:
         # get app info
-        app = (
-            db.session.query(App)
-            .filter(App.id == app_id, App.tenant_id == current_user.current_tenant_id, App.status == "normal")
-            .first()
-        )
-
-        if not app:
-            raise NotFound("App not found")
+        app = AppService.get_app_by_id(app_id)
 
         annotation = MessageAnnotation(
             app_id=app.id, content=args["answer"], question=args["question"], account_id=current_user.id
@@ -196,14 +170,7 @@ class AppAnnotationService:
     @classmethod
     def update_app_annotation_directly(cls, args: dict, app_id: str, annotation_id: str):
         # get app info
-        app = (
-            db.session.query(App)
-            .filter(App.id == app_id, App.tenant_id == current_user.current_tenant_id, App.status == "normal")
-            .first()
-        )
-
-        if not app:
-            raise NotFound("App not found")
+        app = AppService.get_app_by_id(app_id)
 
         annotation = db.session.query(MessageAnnotation).filter(MessageAnnotation.id == annotation_id).first()
 
@@ -233,14 +200,7 @@ class AppAnnotationService:
     @classmethod
     def delete_app_annotation(cls, app_id: str, annotation_id: str):
         # get app info
-        app = (
-            db.session.query(App)
-            .filter(App.id == app_id, App.tenant_id == current_user.current_tenant_id, App.status == "normal")
-            .first()
-        )
-
-        if not app:
-            raise NotFound("App not found")
+        app = AppService.get_app_by_id(app_id)
 
         annotation = db.session.query(MessageAnnotation).filter(MessageAnnotation.id == annotation_id).first()
 
@@ -272,14 +232,7 @@ class AppAnnotationService:
     @classmethod
     def batch_import_app_annotations(cls, app_id, file: FileStorage) -> dict:
         # get app info
-        app = (
-            db.session.query(App)
-            .filter(App.id == app_id, App.tenant_id == current_user.current_tenant_id, App.status == "normal")
-            .first()
-        )
-
-        if not app:
-            raise NotFound("App not found")
+        app = AppService.get_app_by_id(app_id)
 
         try:
             # Skip the first row
@@ -311,14 +264,7 @@ class AppAnnotationService:
     @classmethod
     def get_annotation_hit_histories(cls, app_id: str, annotation_id: str, page, limit):
         # get app info
-        app = (
-            db.session.query(App)
-            .filter(App.id == app_id, App.tenant_id == current_user.current_tenant_id, App.status == "normal")
-            .first()
-        )
-
-        if not app:
-            raise NotFound("App not found")
+        app = AppService.get_app_by_id(app_id)
 
         annotation = db.session.query(MessageAnnotation).filter(MessageAnnotation.id == annotation_id).first()
 
@@ -378,14 +324,7 @@ class AppAnnotationService:
     @classmethod
     def get_app_annotation_setting_by_app_id(cls, app_id: str):
         # get app info
-        app = (
-            db.session.query(App)
-            .filter(App.id == app_id, App.tenant_id == current_user.current_tenant_id, App.status == "normal")
-            .first()
-        )
-
-        if not app:
-            raise NotFound("App not found")
+        app = AppService.get_app_by_id(app_id)
 
         annotation_setting = (
             db.session.query(AppAnnotationSetting).filter(AppAnnotationSetting.app_id == app_id).first()
@@ -406,14 +345,7 @@ class AppAnnotationService:
     @classmethod
     def update_app_annotation_setting(cls, app_id: str, annotation_setting_id: str, args: dict):
         # get app info
-        app = (
-            db.session.query(App)
-            .filter(App.id == app_id, App.tenant_id == current_user.current_tenant_id, App.status == "normal")
-            .first()
-        )
-
-        if not app:
-            raise NotFound("App not found")
+        app = AppService.get_app_by_id(app_id)
 
         annotation_setting = (
             db.session.query(AppAnnotationSetting)

@@ -12,11 +12,10 @@ def obfuscated_token(token: str):
 
 
 def encrypt_token(tenant_id: str, token: str):
-    from models.account import Tenant
-    from models.engine import db
+    from services.account_service import TenantService
 
-    if not (tenant := db.session.query(Tenant).filter(Tenant.id == tenant_id).first()):
-        raise ValueError(f"Tenant with id {tenant_id} not found")
+    tenant = TenantService.get_tenant_by_id(tenant_id)
+
     encrypted_token = rsa.encrypt(token, tenant.encrypt_public_key)
     return base64.b64encode(encrypted_token).decode()
 

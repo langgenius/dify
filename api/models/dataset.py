@@ -824,7 +824,10 @@ class AppDatasetJoin(db.Model):  # type: ignore[name-defined]
 
     @property
     def app(self):
-        return db.session.get(App, self.app_id)
+        from services.app_service import AppService
+
+        app = AppService.get_app_by_id(self.app_id)
+        return app
 
 
 class DatasetQuery(db.Model):  # type: ignore[name-defined]
