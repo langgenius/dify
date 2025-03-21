@@ -46,7 +46,6 @@ from models.source import DataSourceOauthBinding
 from services.entities.knowledge_entities.knowledge_entities import (
     ChildChunkUpdateArgs,
     KnowledgeConfig,
-    MetaDataConfig,
     RerankingModel,
     RetrievalModel,
     SegmentUpdateArgs,
@@ -999,9 +998,6 @@ class DocumentService:
                                 document.data_source_info = json.dumps(data_source_info)
                                 document.batch = batch
                                 document.indexing_status = "waiting"
-                                if knowledge_config.metadata:
-                                    document.doc_type = knowledge_config.metadata.doc_type
-                                    document.metadata = knowledge_config.metadata.doc_metadata
                                 db.session.add(document)
                                 documents.append(document)
                                 duplicate_document_ids.append(document.id)
@@ -1018,7 +1014,6 @@ class DocumentService:
                             account,
                             file_name,
                             batch,
-                            knowledge_config.metadata,
                         )
                         db.session.add(document)
                         db.session.flush()
@@ -1076,7 +1071,6 @@ class DocumentService:
                                     account,
                                     truncated_page_name,
                                     batch,
-                                    knowledge_config.metadata,
                                 )
                                 db.session.add(document)
                                 db.session.flush()
@@ -1117,7 +1111,6 @@ class DocumentService:
                             account,
                             document_name,
                             batch,
-                            knowledge_config.metadata,
                         )
                         db.session.add(document)
                         db.session.flush()
@@ -1155,7 +1148,6 @@ class DocumentService:
         account: Account,
         name: str,
         batch: str,
-        metadata: Optional[MetaDataConfig] = None,
     ):
         document = Document(
             tenant_id=dataset.tenant_id,
@@ -1180,9 +1172,6 @@ class DocumentService:
                 BuiltInField.last_update_date: datetime.datetime.now(datetime.UTC).strftime("%Y-%m-%d %H:%M:%S"),
                 BuiltInField.source: data_source_type,
             }
-        if metadata is not None:
-            doc_metadata.update(metadata.doc_metadata)
-            document.doc_type = metadata.doc_type
         if doc_metadata:
             document.doc_metadata = doc_metadata
         return document
@@ -1297,10 +1286,6 @@ class DocumentService:
         # update document name
         if document_data.name:
             document.name = document_data.name
-        # update doc_type and doc_metadata if provided
-        if document_data.metadata is not None:
-            document.doc_metadata = document_data.metadata.doc_metadata
-            document.doc_type = document_data.metadata.doc_type
         # update document to be waiting
         document.indexing_status = "waiting"
         document.completed_at = None

@@ -27,7 +27,7 @@ Welcome to the new `docker` directory for deploying Dify using Docker Compose. T
     - Execute `docker compose up` from the `docker` directory to start the services.
     - To specify a vector database, set the `VECTOR_STORE` variable in your `.env` file to your desired vector database service, such as `milvus`, `weaviate`, or `opensearch`.
 4. **SSL Certificate Setup**:
-    - Rrefer `docker/certbot/README.md` to set up SSL certificates using Certbot.
+    - Refer `docker/certbot/README.md` to set up SSL certificates using Certbot.
 
 ### How to Deploy Middleware for Developing Dify
 
@@ -54,7 +54,7 @@ For users migrating from the `docker-legacy` setup:
 
 - **Vector Database Services**: Depending on the type of vector database used (`VECTOR_STORE`), users can set specific endpoints, ports, and authentication details.
 - **Storage Services**: Depending on the storage type (`STORAGE_TYPE`), users can configure specific settings for S3, Azure Blob, Google Storage, etc.
-- **API and Web Services**: Users can define URLs and other settings that affect how the API and web frontends operate.
+- **API and Web Services**: Users can define URLs and other settings that affect how the API and web frontend operate.
 
 #### Other notable variables
 
