@@ -66,7 +66,7 @@ class FilePreviewApi(Resource):
 
         response = Response(
             generator,
-            mimetype="application/octet-stream",
+            mimetype=upload_file.mime_type,
             direct_passthrough=True,
             headers={},
         )
@@ -75,6 +75,7 @@ class FilePreviewApi(Resource):
         if args["as_attachment"]:
             encoded_filename = quote(upload_file.name)
             response.headers["Content-Disposition"] = f"attachment; filename*=UTF-8''{encoded_filename}"
+        response.headers["Content-Type"] = "application/octet-stream"
 
         return response
 
