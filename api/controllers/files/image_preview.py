@@ -62,6 +62,7 @@ class FilePreviewApi(Resource):
                 sign=args["sign"],
             )
         except services.errors.file.UnsupportedFileTypeError:
+
             raise UnsupportedFileTypeError()
 
         response = Response(
