@@ -166,19 +166,28 @@ const Chat: FC<ChatProps> = ({
 
   useEffect(() => {
     if (chatFooterRef.current && chatContainerRef.current) {
-      const resizeObserver = new ResizeObserver((entries) => {
+      // container padding bottom
+      const resizeContainerObserver = new ResizeObserver((entries) => {
         for (const entry of entries) {
           const { blockSize } = entry.borderBoxSize[0]
-
           chatContainerRef.current!.style.paddingBottom = `${blockSize}px`
           handleScrollToBottom()
         }
       })
+      resizeContainerObserver.observe(chatFooterRef.current)
 
-      resizeObserver.observe(chatFooterRef.current)
+      // footer width
+      const resizeFooterObserver = new ResizeObserver((entries) => {
+        for (const entry of entries) {
+          const { inlineSize } = entry.borderBoxSize[0]
+          chatFooterRef.current!.style.width = `${inlineSize}px`
+        }
+      })
+      resizeFooterObserver.observe(chatContainerRef.current)
 
       return () => {
-        resizeObserver.disconnect()
+        resizeContainerObserver.disconnect()
+        resizeFooterObserver.disconnect()
       }
     }
   }, [handleScrollToBottom])
