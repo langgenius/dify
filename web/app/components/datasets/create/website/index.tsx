@@ -73,16 +73,16 @@ const Website: FC<Props> = ({
   return (
     <div>
       <div className="mb-4">
-        <div className="system-md-medium text-text-secondary mb-2">
+        <div className="system-md-medium mb-2 text-text-secondary">
           {t('datasetCreation.stepOne.website.chooseProvider')}
         </div>
         <div className="flex space-x-2">
           <button
-            className={cn('px-4 py-2 rounded-lg flex items-center justify-center',
+            className={cn('flex items-center justify-center rounded-lg px-4 py-2',
               selectedProvider === DataSourceProvider.jinaReader
-                ? 'system-sm-medium bg-components-option-card-option-selected-bg text-text-primary border-[1.5px] border-components-option-card-option-selected-border'
-                : `system-sm-regular bg-components-option-card-option-bg text-text-secondary border border-components-option-card-option-border
-                hover:bg-components-option-card-option-bg-hover hover:border-components-option-card-option-border-hover hover:shadow-xs hover:shadow-shadow-shadow-3`,
+                ? 'system-sm-medium border-[1.5px] border-components-option-card-option-selected-border bg-components-option-card-option-selected-bg text-text-primary'
+                : `system-sm-regular border border-components-option-card-option-border bg-components-option-card-option-bg text-text-secondary
+                hover:border-components-option-card-option-border-hover hover:bg-components-option-card-option-bg-hover hover:shadow-xs hover:shadow-shadow-shadow-3`,
             )}
             onClick={() => setSelectedProvider(DataSourceProvider.jinaReader)}
           >
@@ -90,11 +90,11 @@ const Website: FC<Props> = ({
             <span>Jina Reader</span>
           </button>
           <button
-            className={cn('px-4 py-2 rounded-lg',
+            className={cn('rounded-lg px-4 py-2',
               selectedProvider === DataSourceProvider.fireCrawl
-                ? 'system-sm-medium bg-components-option-card-option-selected-bg text-text-primary border-[1.5px] border-components-option-card-option-selected-border'
-                : `system-sm-regular bg-components-option-card-option-bg text-text-secondary border border-components-option-card-option-border
-                hover:bg-components-option-card-option-bg-hover hover:border-components-option-card-option-border-hover hover:shadow-xs hover:shadow-shadow-shadow-3`,
+                ? 'system-sm-medium border-[1.5px] border-components-option-card-option-selected-border bg-components-option-card-option-selected-bg text-text-primary'
+                : `system-sm-regular border border-components-option-card-option-border bg-components-option-card-option-bg text-text-secondary
+                hover:border-components-option-card-option-border-hover hover:bg-components-option-card-option-bg-hover hover:shadow-xs hover:shadow-shadow-shadow-3`,
             )}
             onClick={() => setSelectedProvider(DataSourceProvider.fireCrawl)}
           >

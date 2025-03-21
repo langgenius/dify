@@ -31,11 +31,11 @@ const StrategyItem = ({
   return (
     <>
       <div
-        className={cn('mb-2 px-4 py-3 bg-components-panel-item-bg rounded-xl border-[0.5px] border-components-panel-border-subtle shadow-xs cursor-pointer hover:bg-components-panel-on-panel-item-bg-hover')}
+        className={cn('bg-components-panel-item-bg mb-2 cursor-pointer rounded-xl border-[0.5px] border-components-panel-border-subtle px-4 py-3 shadow-xs hover:bg-components-panel-on-panel-item-bg-hover')}
         onClick={() => setShowDetail(true)}
       >
-        <div className='pb-0.5 text-text-secondary system-md-semibold'>{getValueFromI18nObject(detail.identity.label)}</div>
-        <div className='text-text-tertiary system-xs-regular line-clamp-2' title={getValueFromI18nObject(detail.description)}>{getValueFromI18nObject(detail.description)}</div>
+        <div className='system-md-semibold pb-0.5 text-text-secondary'>{getValueFromI18nObject(detail.identity.label)}</div>
+        <div className='system-xs-regular line-clamp-2 text-text-tertiary' title={getValueFromI18nObject(detail.description)}>{getValueFromI18nObject(detail.description)}</div>
       </div>
       {showDetail && (
         <StrategyDetailPanel

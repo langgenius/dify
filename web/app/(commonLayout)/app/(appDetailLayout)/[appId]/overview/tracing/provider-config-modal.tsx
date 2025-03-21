@@ -167,11 +167,11 @@ const ProviderConfigModal: FC<Props> = ({
       {!isShowRemoveConfirm
         ? (
           <PortalToFollowElem open>
-            <PortalToFollowElemContent className='w-full h-full z-[60]'>
+            <PortalToFollowElemContent className='z-[60] h-full w-full'>
               <div className='fixed inset-0 flex items-center justify-center bg-background-overlay'>
-                <div className='mx-2 w-[640px] max-h-[calc(100vh-120px)] bg-components-panel-bg shadow-xl rounded-2xl overflow-y-auto'>
+                <div className='mx-2 max-h-[calc(100vh-120px)] w-[640px] overflow-y-auto rounded-2xl bg-components-panel-bg shadow-xl'>
                   <div className='px-8 pt-8'>
-                    <div className='flex justify-between items-center mb-4'>
+                    <div className='mb-4 flex items-center justify-between'>
                       <div className='title-2xl-semi-bold text-text-primary'>{t(`${I18N_PREFIX}.title`)}{t(`app.tracing.${type}.title`)}</div>
                     </div>
 
@@ -265,14 +265,14 @@ const ProviderConfigModal: FC<Props> = ({
                       )}
 
                     </div>
-                    <div className='my-8 flex justify-between items-center h-8'>
+                    <div className='my-8 flex h-8 items-center justify-between'>
                       <a
-                        className='flex items-center space-x-1 leading-[18px] text-xs font-normal text-[#155EEF]'
+                        className='flex items-center space-x-1 text-xs font-normal leading-[18px] text-[#155EEF]'
                         target='_blank'
                         href={docURL[type]}
                       >
                         <span>{t(`${I18N_PREFIX}.viewDocsLink`, { key: t(`app.tracing.${type}.title`) })}</span>
-                        <LinkExternal02 className='w-3 h-3' />
+                        <LinkExternal02 className='h-3 w-3' />
                       </a>
                       <div className='flex items-center'>
                         {isEdit && (
@@ -305,11 +305,11 @@ const ProviderConfigModal: FC<Props> = ({
                     </div>
                   </div>
                   <div className='border-t-[0.5px] border-divider-regular'>
-                    <div className='flex justify-center items-center py-3 bg-background-section-burn text-xs text-text-tertiary'>
-                      <Lock01 className='mr-1 w-3 h-3 text-text-tertiary' />
+                    <div className='flex items-center justify-center bg-background-section-burn py-3 text-xs text-text-tertiary'>
+                      <Lock01 className='mr-1 h-3 w-3 text-text-tertiary' />
                       {t('common.modelProvider.encrypted.front')}
                       <a
-                        className='text-primary-600 mx-1'
+                        className='mx-1 text-primary-600'
                         target='_blank' rel='noopener noreferrer'
                         href='https://pycryptodome.readthedocs.io/en/latest/src/cipher/oaep.html'
                       >

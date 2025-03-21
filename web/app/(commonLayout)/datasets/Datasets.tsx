@@ -86,7 +86,7 @@ const Datasets = ({
   }, [onScroll])
 
   return (
-    <nav className='grid content-start grid-cols-1 gap-4 px-12 pt-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 grow shrink-0'>
+    <nav className='grid shrink-0 grow grid-cols-1 content-start gap-4 px-12 pt-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4'>
       { isCurrentWorkspaceEditor && <NewDatasetCard ref={anchorRef} /> }
       {data?.map(({ data: datasets }) => datasets.map(dataset => (
         <DatasetCard key={dataset.id} dataset={dataset} onSuccess={mutate} />),

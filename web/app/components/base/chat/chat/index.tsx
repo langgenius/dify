@@ -166,19 +166,28 @@ const Chat: FC<ChatProps> = ({
 
   useEffect(() => {
     if (chatFooterRef.current && chatContainerRef.current) {
-      const resizeObserver = new ResizeObserver((entries) => {
+      // container padding bottom
+      const resizeContainerObserver = new ResizeObserver((entries) => {
         for (const entry of entries) {
           const { blockSize } = entry.borderBoxSize[0]
-
           chatContainerRef.current!.style.paddingBottom = `${blockSize}px`
           handleScrollToBottom()
         }
       })
+      resizeContainerObserver.observe(chatFooterRef.current)
 
-      resizeObserver.observe(chatFooterRef.current)
+      // footer width
+      const resizeFooterObserver = new ResizeObserver((entries) => {
+        for (const entry of entries) {
+          const { inlineSize } = entry.borderBoxSize[0]
+          chatFooterRef.current!.style.width = `${inlineSize}px`
+        }
+      })
+      resizeFooterObserver.observe(chatContainerRef.current)
 
       return () => {
-        resizeObserver.disconnect()
+        resizeContainerObserver.disconnect()
+        resizeFooterObserver.disconnect()
       }
     }
   }, [handleScrollToBottom])
@@ -262,7 +271,7 @@ const Chat: FC<ChatProps> = ({
           </div>
         </div>
         <div
-          className={`absolute bottom-0 bg-chat-input-mask flex justify-center ${(hasTryToAsk || !noChatInput || !noStopResponding) && chatFooterClassName}`}
+          className={`absolute bottom-0 flex justify-center bg-chat-input-mask ${(hasTryToAsk || !noChatInput || !noStopResponding) && chatFooterClassName}`}
           ref={chatFooterRef}
         >
           <div
@@ -271,10 +280,10 @@ const Chat: FC<ChatProps> = ({
           >
             {
               !noStopResponding && isResponding && (
-                <div className='flex justify-center mb-2'>
+                <div className='mb-2 flex justify-center'>
                   <Button onClick={onStopResponding}>
-                    <StopCircle className='mr-[5px] w-3.5 h-3.5 text-gray-500' />
-                    <span className='text-xs text-gray-500 font-normal'>{t('appDebug.operation.stopResponding')}</span>
+                    <StopCircle className='mr-[5px] h-3.5 w-3.5 text-gray-500' />
+                    <span className='text-xs font-normal text-gray-500'>{t('appDebug.operation.stopResponding')}</span>
                   </Button>
                 </div>
               )

@@ -31,7 +31,7 @@ const Field: FC<Props> = ({
   return (
     <div className={cn(className)}>
       <div className='flex py-[7px]'>
-        <div className={cn(labelClassName, 'flex items-center h-[16px] text-[13px] font-semibold text-text-secondary')}>{label} </div>
+        <div className={cn(labelClassName, 'flex h-[16px] items-center text-[13px] font-semibold text-text-secondary')}>{label} </div>
         {isRequired && <span className='ml-0.5 text-xs font-semibold text-text-destructive'>*</span>}
         {tooltip && (
           <Tooltip

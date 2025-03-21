@@ -113,7 +113,7 @@ const CustomWebAppBrand = () => {
 
   return (
     <div className='py-4'>
-      <div className='flex items-center justify-between mb-2 p-4 rounded-xl bg-background-section-burn system-md-medium text-text-primary'>
+      <div className='system-md-medium mb-2 flex items-center justify-between rounded-xl bg-background-section-burn p-4 text-text-primary'>
         {t('custom.webapp.removeBrand')}
         <Switch
           size='l'
@@ -122,7 +122,7 @@ const CustomWebAppBrand = () => {
           onChange={handleSwitch}
         />
       </div>
-      <div className={cn('flex items-center justify-between h-14 px-4 rounded-xl bg-background-section-burn', webappBrandRemoved && 'opacity-30')}>
+      <div className={cn('flex h-14 items-center justify-between rounded-xl bg-background-section-burn px-4', webappBrandRemoved && 'opacity-30')}>
         <div>
           <div className='system-md-medium text-text-primary'>{t('custom.webapp.changeLogo')}</div>
           <div className='system-xs-regular text-text-tertiary'>{t('custom.webapp.changeLogoTip')}</div>
@@ -146,14 +146,14 @@ const CustomWebAppBrand = () => {
                 className='relative mr-2'
                 disabled={uploadDisabled}
               >
-                <RiImageAddLine className='mr-1 w-4 h-4' />
+                <RiImageAddLine className='mr-1 h-4 w-4' />
                 {
                   (webappLogo || fileId)
                     ? t('custom.change')
                     : t('custom.upload')
                 }
                 <input
-                  className={cn('absolute block inset-0 opacity-0 text-[0] w-full', uploadDisabled ? 'cursor-not-allowed' : 'cursor-pointer')}
+                  className={cn('absolute inset-0 block w-full text-[0] opacity-0', uploadDisabled ? 'cursor-not-allowed' : 'cursor-pointer')}
                   onClick={e => (e.target as HTMLInputElement).value = ''}
                   type='file'
                   accept={ALLOW_FILE_EXTENSIONS.map(ext => `.${ext}`).join(',')}
@@ -169,7 +169,7 @@ const CustomWebAppBrand = () => {
                 className='relative mr-2'
                 disabled={true}
               >
-                <RiLoader2Line className='animate-spin mr-1 w-4 h-4' />
+                <RiLoader2Line className='mr-1 h-4 w-4 animate-spin' />
                 {t('custom.uploading')}
               </Button>
             )
@@ -200,52 +200,52 @@ const CustomWebAppBrand = () => {
       {uploadProgress === -1 && (
         <div className='mt-2 text-xs text-[#D92D20]'>{t('custom.uploadedFail')}</div>
       )}
-      <div className='mt-5 mb-2 flex items-center gap-2'>
-        <div className='shrink-0 system-xs-medium-uppercase text-text-tertiary'>{t('appOverview.overview.appInfo.preview')}</div>
+      <div className='mb-2 mt-5 flex items-center gap-2'>
+        <div className='system-xs-medium-uppercase shrink-0 text-text-tertiary'>{t('appOverview.overview.appInfo.preview')}</div>
         <Divider bgStyle='gradient' className='grow' />
       </div>
       <div className='relative mb-2 flex items-center gap-3'>
         {/* chat card */}
-        <div className='grow basis-1/2 h-[320px] flex bg-background-default-burn rounded-2xl border-[0.5px] border-components-panel-border-subtle overflow-hidden'>
-          <div className='shrink-0 h-full w-[232px] p-1 pr-0 flex flex-col'>
-            <div className='p-3 pr-2 flex items-center gap-3'>
-              <div className={cn('w-8 h-8 inline-flex items-center justify-center rounded-lg border border-divider-regular', 'bg-components-icon-bg-blue-light-solid')}>
-                <BubbleTextMod className='w-4 h-4 text-components-avatar-shape-fill-stop-100' />
+        <div className='flex h-[320px] grow basis-1/2 overflow-hidden rounded-2xl border-[0.5px] border-components-panel-border-subtle bg-background-default-burn'>
+          <div className='flex h-full w-[232px] shrink-0 flex-col p-1 pr-0'>
+            <div className='flex items-center gap-3 p-3 pr-2'>
+              <div className={cn('inline-flex h-8 w-8 items-center justify-center rounded-lg border border-divider-regular', 'bg-components-icon-bg-blue-light-solid')}>
+                <BubbleTextMod className='h-4 w-4 text-components-avatar-shape-fill-stop-100' />
               </div>
-              <div className='grow system-md-semibold text-text-secondary'>Chatflow App</div>
+              <div className='system-md-semibold grow text-text-secondary'>Chatflow App</div>
               <div className='p-1.5'>
-                <RiLayoutLeft2Line className='w-4 h-4 text-text-tertiary' />
+                <RiLayoutLeft2Line className='h-4 w-4 text-text-tertiary' />
               </div>
             </div>
             <div className='shrink-0 px-4 py-3'>
               <Button variant='secondary-accent' className='w-full justify-center'>
-                <RiEditBoxLine className='w-4 h-4 mr-1' />
+                <RiEditBoxLine className='mr-1 h-4 w-4' />
                 <div className='p-1 opacity-20'>
                   <div className='h-2 w-[94px] rounded-sm bg-text-accent-light-mode-only'></div>
                 </div>
               </Button>
             </div>
             <div className='grow px-3 pt-5'>
-              <div className='h-8 px-3 py-1 flex items-center'>
-                <div className='w-14 h-2 rounded-sm bg-text-quaternary opacity-20'></div>
+              <div className='flex h-8 items-center px-3 py-1'>
+                <div className='h-2 w-14 rounded-sm bg-text-quaternary opacity-20'></div>
               </div>
-              <div className='h-8 px-3 py-1 flex items-center'>
-                <div className='w-[168px] h-2 rounded-sm bg-text-quaternary opacity-20'></div>
+              <div className='flex h-8 items-center px-3 py-1'>
+                <div className='h-2 w-[168px] rounded-sm bg-text-quaternary opacity-20'></div>
               </div>
-              <div className='h-8 px-3 py-1 flex items-center'>
-                <div className='w-[128px] h-2 rounded-sm bg-text-quaternary opacity-20'></div>
+              <div className='flex h-8 items-center px-3 py-1'>
+                <div className='h-2 w-[128px] rounded-sm bg-text-quaternary opacity-20'></div>
               </div>
             </div>
-            <div className='shrink-0 p-3 flex items-center justify-between'>
+            <div className='flex shrink-0 items-center justify-between p-3'>
               <div className='p-1.5'>
-                <RiEqualizer2Line className='w-4 h-4 text-text-tertiary' />
+                <RiEqualizer2Line className='h-4 w-4 text-text-tertiary' />
               </div>
               <div className='flex items-center gap-1.5'>
                 {!webappBrandRemoved && (
                   <>
-                    <div className='text-text-tertiary system-2xs-medium-uppercase'>POWERED BY</div>
+                    <div className='system-2xs-medium-uppercase text-text-tertiary'>POWERED BY</div>
                     {webappLogo
-                      ? <img src={`${webappLogo}?hash=${imgKey}`} alt='logo' className='block w-auto h-5' />
+                      ? <img src={`${webappLogo}?hash=${imgKey}`} alt='logo' className='block h-5 w-auto' />
                       : <LogoSite className='!h-5' />
                     }
                   </>
@@ -253,58 +253,58 @@ const CustomWebAppBrand = () => {
               </div>
             </div>
           </div>
-          <div className='grow flex flex-col justify-between w-[138px] p-2 pr-0'>
-            <div className='grow pt-16 pl-[22px] pb-4 flex flex-col justify-between bg-chatbot-bg rounded-l-2xl border-[0.5px] border-r-0 border-components-panel-border-subtle'>
-              <div className='w-[720px] px-4 py-3 bg-chat-bubble-bg rounded-2xl border border-divider-subtle'>
-                <div className='mb-1 text-text-primary body-md-regular'>Hello! How can I assist you today?</div>
+          <div className='flex w-[138px] grow flex-col justify-between p-2 pr-0'>
+            <div className='flex grow flex-col justify-between rounded-l-2xl border-[0.5px] border-r-0 border-components-panel-border-subtle bg-chatbot-bg pb-4 pl-[22px] pt-16'>
+              <div className='w-[720px] rounded-2xl border border-divider-subtle bg-chat-bubble-bg px-4 py-3'>
+                <div className='body-md-regular mb-1 text-text-primary'>Hello! How can I assist you today?</div>
                 <Button size='small'>
-                  <div className='w-[144px] h-2 rounded-sm bg-text-quaternary opacity-20'></div>
+                  <div className='h-2 w-[144px] rounded-sm bg-text-quaternary opacity-20'></div>
                 </Button>
               </div>
-              <div className='w-[578px] h-[52px] flex items-center pl-3.5 rounded-xl bg-components-panel-bg-blur backdrop-blur-sm border border-components-chat-input-border shadow-md text-text-placeholder body-lg-regular'>Talk to Dify</div>
+              <div className='body-lg-regular flex h-[52px] w-[578px] items-center rounded-xl border border-components-chat-input-border bg-components-panel-bg-blur pl-3.5 text-text-placeholder shadow-md backdrop-blur-sm'>Talk to Dify</div>
             </div>
           </div>
         </div>
         {/* workflow card */}
-        <div className='grow basis-1/2 h-[320px] flex flex-col bg-background-default-burn rounded-2xl border-[0.5px] border-components-panel-border-subtle overflow-hidden'>
-          <div className='w-full p-4 pb-0 border-b-[0.5px] border-divider-subtle'>
+        <div className='flex h-[320px] grow basis-1/2 flex-col overflow-hidden rounded-2xl border-[0.5px] border-components-panel-border-subtle bg-background-default-burn'>
+          <div className='w-full border-b-[0.5px] border-divider-subtle p-4 pb-0'>
             <div className='mb-2 flex items-center gap-3'>
-              <div className={cn('w-8 h-8 inline-flex items-center justify-center rounded-lg border border-divider-regular', 'bg-components-icon-bg-indigo-solid')}>
-                <RiExchange2Fill className='w-4 h-4 text-components-avatar-shape-fill-stop-100' />
+              <div className={cn('inline-flex h-8 w-8 items-center justify-center rounded-lg border border-divider-regular', 'bg-components-icon-bg-indigo-solid')}>
+                <RiExchange2Fill className='h-4 w-4 text-components-avatar-shape-fill-stop-100' />
               </div>
-              <div className='grow system-md-semibold text-text-secondary'>Workflow App</div>
+              <div className='system-md-semibold grow text-text-secondary'>Workflow App</div>
               <div className='p-1.5'>
-                <RiLayoutLeft2Line className='w-4 h-4 text-text-tertiary' />
+                <RiLayoutLeft2Line className='h-4 w-4 text-text-tertiary' />
               </div>
             </div>
             <div className='flex items-center gap-4'>
-              <div className='shrink-0 h-10 flex items-center border-b-2 border-components-tab-active text-text-primary system-md-semibold-uppercase'>RUN ONCE</div>
-              <div className='grow h-10 flex items-center border-b-2 border-transparent text-text-tertiary system-md-semibold-uppercase'>RUN BATCH</div>
+              <div className='system-md-semibold-uppercase flex h-10 shrink-0 items-center border-b-2 border-components-tab-active text-text-primary'>RUN ONCE</div>
+              <div className='system-md-semibold-uppercase flex h-10 grow items-center border-b-2 border-transparent text-text-tertiary'>RUN BATCH</div>
             </div>
           </div>
           <div className='grow bg-components-panel-bg'>
             <div className='p-4 pb-1'>
               <div className='mb-1 py-2'>
-                <div className='w-20 h-2 rounded-sm bg-text-quaternary opacity-20'></div>
+                <div className='h-2 w-20 rounded-sm bg-text-quaternary opacity-20'></div>
               </div>
-              <div className='w-full h-16 rounded-lg bg-components-input-bg-normal '></div>
+              <div className='h-16 w-full rounded-lg bg-components-input-bg-normal '></div>
             </div>
-            <div className='px-4 py-3 flex items-center justify-between'>
+            <div className='flex items-center justify-between px-4 py-3'>
               <Button size='small'>
-                <div className='w-10 h-2 rounded-sm bg-text-quaternary opacity-20'></div>
+                <div className='h-2 w-10 rounded-sm bg-text-quaternary opacity-20'></div>
               </Button>
               <Button variant='primary' size='small' disabled>
-                <RiPlayLargeLine className='mr-1 w-4 h-4' />
+                <RiPlayLargeLine className='mr-1 h-4 w-4' />
                 <span>Execute</span>
               </Button>
             </div>
           </div>
-          <div className='shrink-0 h-12 p-4 pt-3 flex items-center gap-1.5 bg-components-panel-bg'>
+          <div className='flex h-12 shrink-0 items-center gap-1.5 bg-components-panel-bg p-4 pt-3'>
             {!webappBrandRemoved && (
               <>
-                <div className='text-text-tertiary system-2xs-medium-uppercase'>POWERED BY</div>
+                <div className='system-2xs-medium-uppercase text-text-tertiary'>POWERED BY</div>
                 {webappLogo
-                  ? <img src={`${webappLogo}?hash=${imgKey}`} alt='logo' className='block w-auto h-5' />
+                  ? <img src={`${webappLogo}?hash=${imgKey}`} alt='logo' className='block h-5 w-auto' />
                   : <LogoSite className='!h-5' />
                 }
               </>

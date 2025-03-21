@@ -46,14 +46,14 @@ const WrappedDatePicker = ({
         </div>
         <RiCloseCircleFill
           className={cn(
-            'hidden group-hover:block w-4 h-4 cursor-pointer hover:text-components-input-text-filled',
+            'hidden h-4 w-4 cursor-pointer hover:text-components-input-text-filled group-hover:block',
             value && 'text-text-quaternary',
           )}
           onClick={() => handleDateChange()}
         />
         <RiCalendarLine
           className={cn(
-            'block group-hover:hidden shrink-0 w-4 h-4',
+            'block h-4 w-4 shrink-0 group-hover:hidden',
             value ? 'text-text-quaternary' : 'text-text-tertiary',
           )}
         />

@@ -19,10 +19,10 @@ const SearchInput = ({
   }, [onChange])
 
   return (
-    <div className={cn('w-[200px] flex items-center p-2 h-8 rounded-lg bg-components-input-bg-normal')}>
-      <RiSearchLine className={'w-4 h-4 mr-0.5 shrink-0 text-components-input-text-placeholder'} />
+    <div className={cn('flex h-8 w-[200px] items-center rounded-lg bg-components-input-bg-normal p-2')}>
+      <RiSearchLine className={'mr-0.5 h-4 w-4 shrink-0 text-components-input-text-placeholder'} />
       <input
-        className='min-w-0 grow px-1 text-[13px] leading-[16px] bg-transparent text-components-input-text-filled placeholder:text-components-input-text-placeholder border-0 outline-0 appearance-none'
+        className='min-w-0 grow appearance-none border-0 bg-transparent px-1 text-[13px] leading-[16px] text-components-input-text-filled outline-0 placeholder:text-components-input-text-placeholder'
         value={value}
         onChange={(e: ChangeEvent<HTMLInputElement>) => onChange(e.target.value)}
         placeholder={t('common.dataSource.notion.selector.searchPages') || ''}
@@ -30,7 +30,7 @@ const SearchInput = ({
       {
         value && (
           <RiCloseCircleFill
-            className={'w-4 h-4 shrink-0 cursor-pointer text-components-input-text-placeholder'}
+            className={'h-4 w-4 shrink-0 cursor-pointer text-components-input-text-placeholder'}
             onClick={handleClear}
           />
         )
