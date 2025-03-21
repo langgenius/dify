@@ -61,6 +61,7 @@ const ImagePreview: FC<ImagePreviewProps> = ({
     if (url.startsWith('http') || url.startsWith('https')) {
       const a = document.createElement('a')
       a.href = url
+      a.target = '_blank'
       a.download = title
       a.click()
     }
@@ -68,6 +69,7 @@ const ImagePreview: FC<ImagePreviewProps> = ({
       // Base64 image
       const a = document.createElement('a')
       a.href = url
+      a.target = '_blank'
       a.download = title
       a.click()
     }
@@ -103,7 +105,7 @@ const ImagePreview: FC<ImagePreviewProps> = ({
       for (let i = 0; i < slice.length; i++)
         byteNumbers[i] = slice.charCodeAt(i)
 
-      const byteArray = new Uint8Array(byteNumbers)
+      const byteArray = new Uint8Array(byteNumbers as any)
       byteArrays.push(byteArray)
     }
 
