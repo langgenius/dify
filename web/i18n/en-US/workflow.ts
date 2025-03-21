@@ -429,6 +429,34 @@ const translation = {
         url: 'Segmented URL',
         metadata: 'Other metadata',
       },
+      metadata: {
+        title: 'Metadata Filtering',
+        tip: 'Metadata filtering is the process of using metadata attributes (such as tags, categories, or access permissions) to refine and control the retrieval of relevant information within a system.',
+        options: {
+          disabled: {
+            title: 'Disabled',
+            subTitle: 'Not enabling metadata filtering',
+          },
+          automatic: {
+            title: 'Automatic',
+            subTitle: 'Automatically generate metadata filtering conditions based on user query',
+            desc: 'Automatically generate metadata filtering conditions based on Query Variable',
+          },
+          manual: {
+            title: 'Manual',
+            subTitle: 'Manually add metadata filtering conditions',
+          },
+        },
+        panel: {
+          title: 'Metadata Filter Conditions',
+          conditions: 'Conditions',
+          add: 'Add Condition',
+          search: 'Search metadata',
+          placeholder: 'Enter value',
+          datePlaceholder: 'Choose a time...',
+          select: 'Select variable...',
+        },
+      },
     },
     http: {
       inputVars: 'Input Variables',
@@ -517,6 +545,8 @@ const translation = {
         'all of': 'all of',
         'exists': 'exists',
         'not exists': 'not exists',
+        'before': 'before',
+        'after': 'after',
       },
       optionName: {
         image: 'Image',

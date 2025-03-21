@@ -19,10 +19,10 @@ import { useModalContext } from '@/context/modal-context'
 import { getDocDownloadUrl } from '@/service/common'
 
 enum DocName {
-  'SOC2_Type_I' = 'SOC2_Type_I',
-  'SOC2_Type_II' = 'SOC2_Type_II',
-  'ISO_27001' = 'ISO_27001',
-  'GDPR' = 'GDPR',
+  SOC2_Type_I = 'SOC2_Type_I',
+  SOC2_Type_II = 'SOC2_Type_II',
+  ISO_27001 = 'ISO_27001',
+  GDPR = 'GDPR',
 }
 
 type UpgradeOrDownloadProps = {
@@ -114,8 +114,8 @@ export default function Compliance() {
             cn('flex items-center pl-3 pr-2 py-2 h-9 w-full group hover:bg-state-base-hover rounded-lg gap-1',
               open && 'bg-state-base-hover',
             )}>
-            <RiVerifiedBadgeLine className='flex-shrink-0 size-4 text-text-tertiary' />
-            <div className='flex-grow text-left system-md-regular text-text-secondary px-1'>{t('common.userProfile.compliance')}</div>
+            <RiVerifiedBadgeLine className='shrink-0 size-4 text-text-tertiary' />
+            <div className='grow text-left system-md-regular text-text-secondary px-1'>{t('common.userProfile.compliance')}</div>
             <RiArrowRightSLine className='shrink-0 size-[14px] text-text-tertiary' />
           </Menu.Button>
           <Transition
@@ -140,8 +140,8 @@ export default function Compliance() {
                     className={cn(itemClassName, 'group justify-between',
                       active && 'bg-state-base-hover',
                     )}>
-                    <Soc2 className='flex-shrink-0 size-7' />
-                    <div className='system-md-regular flex-grow text-text-secondary px-1 truncate'>{t('common.compliance.soc2Type1')}</div>
+                    <Soc2 className='shrink-0 size-7' />
+                    <div className='system-md-regular grow text-text-secondary px-1 truncate'>{t('common.compliance.soc2Type1')}</div>
                     <UpgradeOrDownload doc_name={DocName.SOC2_Type_I} />
                   </div>}
                 </Menu.Item>
@@ -150,8 +150,8 @@ export default function Compliance() {
                     className={cn(itemClassName, 'group justify-between',
                       active && 'bg-state-base-hover',
                     )}>
-                    <Soc2 className='flex-shrink-0 size-7' />
-                    <div className='system-md-regular flex-grow text-text-secondary px-1 truncate'>{t('common.compliance.soc2Type2')}</div>
+                    <Soc2 className='shrink-0 size-7' />
+                    <div className='system-md-regular grow text-text-secondary px-1 truncate'>{t('common.compliance.soc2Type2')}</div>
                     <UpgradeOrDownload doc_name={DocName.SOC2_Type_II} />
                   </div>}
                 </Menu.Item>
@@ -160,8 +160,8 @@ export default function Compliance() {
                     className={cn(itemClassName, 'group justify-between',
                       active && 'bg-state-base-hover',
                     )}>
-                    <Iso className='flex-shrink-0 size-7' />
-                    <div className='system-md-regular flex-grow text-text-secondary px-1 truncate'>{t('common.compliance.iso27001')}</div>
+                    <Iso className='shrink-0 size-7' />
+                    <div className='system-md-regular grow text-text-secondary px-1 truncate'>{t('common.compliance.iso27001')}</div>
                     <UpgradeOrDownload doc_name={DocName.ISO_27001} />
                   </div>}
                 </Menu.Item>
@@ -170,8 +170,8 @@ export default function Compliance() {
                     className={cn(itemClassName, 'group justify-between',
                       active && 'bg-state-base-hover',
                     )}>
-                    <Gdpr className='flex-shrink-0 size-7' />
-                    <div className='system-md-regular flex-grow text-text-secondary px-1 truncate'>{t('common.compliance.gdpr')}</div>
+                    <Gdpr className='shrink-0 size-7' />
+                    <div className='system-md-regular grow text-text-secondary px-1 truncate'>{t('common.compliance.gdpr')}</div>
                     <UpgradeOrDownload doc_name={DocName.GDPR} />
                   </div>}
                 </Menu.Item>

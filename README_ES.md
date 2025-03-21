@@ -77,9 +77,7 @@ Dify es una plataforma de desarrollo de aplicaciones de LLM de código abierto. 
   Amplias capacidades de RAG que cubren todo, desde la ingestión de documentos hasta la recuperación, con soporte listo para usar para la extracción de texto de PDF, PPT y otros formatos de documento comunes.
 
 **5. Capacidades de agente**: 
-  Puedes definir agent
-
-es basados en LLM Function Calling o ReAct, y agregar herramientas preconstruidas o personalizadas para el agente. Dify proporciona más de 50 herramientas integradas para agentes de IA, como Búsqueda de Google, DALL·E, Difusión Estable y WolframAlpha.
+  Puedes definir agentes basados en LLM Function Calling o ReAct, y agregar herramientas preconstruidas o personalizadas para el agente. Dify proporciona más de 50 herramientas integradas para agentes de IA, como Búsqueda de Google, DALL·E, Difusión Estable y WolframAlpha.
 
 **6. LLMOps**: 
   Supervisa y analiza registros de aplicaciones y rendimiento a lo largo del tiempo. Podrías mejorar continuamente prompts, conjuntos de datos y modelos basados en datos de producción y anotaciones.
@@ -207,7 +205,9 @@ Si desea configurar una configuración de alta disponibilidad, la comunidad prop
 
 - [Gráfico Helm por @LeoQuote](https://github.com/douban/charts/tree/master/charts/dify)
 - [Gráfico Helm por @BorisPolonsky](https://github.com/BorisPolonsky/dify-helm)
+- [Gráfico Helm por @magicsong](https://github.com/magicsong/ai-charts)
 - [Ficheros YAML por @Winson-030](https://github.com/Winson-030/dify-kubernetes)
+- [Ficheros YAML por @wyy-holding](https://github.com/wyy-holding/dify-k8s)
 
 #### Uso de Terraform para el despliegue
 

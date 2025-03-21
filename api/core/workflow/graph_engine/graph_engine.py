@@ -738,8 +738,10 @@ class GraphEngine:
                                     )
                                 should_continue_retry = False
                             elif run_result.status == WorkflowNodeExecutionStatus.SUCCEEDED:
-                                if node_instance.should_continue_on_error and self.graph.edge_mapping.get(
-                                    node_instance.node_id
+                                if (
+                                    node_instance.should_continue_on_error
+                                    and self.graph.edge_mapping.get(node_instance.node_id)
+                                    and node_instance.node_data.error_strategy is ErrorStrategy.FAIL_BRANCH
                                 ):
                                     run_result.edge_source_handle = FailBranchSourceHandle.SUCCESS
                                 if run_result.metadata and run_result.metadata.get(NodeRunMetadataKey.TOTAL_TOKENS):

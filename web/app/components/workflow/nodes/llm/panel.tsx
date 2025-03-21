@@ -1,5 +1,5 @@
 import type { FC } from 'react'
-import React from 'react'
+import React, { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import MemoryConfig from '../_base/components/memory-config'
 import VarReferencePicker from '../_base/components/variable/var-reference-picker'
@@ -124,6 +124,16 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
     return forms
   })()
 
+  const handleModelChange = useCallback((model: {
+    provider: string
+    modelId: string
+    mode?: string
+  }) => {
+    handleCompletionParamsChange({})
+    handleModelChanged(model)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   return (
     <div className='mt-2'>
       <div className='px-4 pb-4 space-y-4'>
@@ -138,7 +148,7 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
             provider={model?.provider}
             completionParams={model?.completion_params}
             modelId={model?.name}
-            setModel={handleModelChanged}
+            setModel={handleModelChange}
             onCompletionParamsChange={handleCompletionParamsChange}
             hideDebugWithMultipleModel
             debugWithMultipleModel={false}

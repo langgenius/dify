@@ -84,6 +84,22 @@ class RerankingModel(BaseModel):
     reranking_model_name: Optional[str] = None
 
 
+class WeightVectorSetting(BaseModel):
+    vector_weight: float
+    embedding_provider_name: str
+    embedding_model_name: str
+
+
+class WeightKeywordSetting(BaseModel):
+    keyword_weight: float
+
+
+class WeightModel(BaseModel):
+    weight_type: str
+    vector_setting: Optional[WeightVectorSetting] = None
+    keyword_setting: Optional[WeightKeywordSetting] = None
+
+
 class RetrievalModel(BaseModel):
     search_method: Literal["hybrid_search", "semantic_search", "full_text_search"]
     reranking_enable: bool
@@ -92,6 +108,7 @@ class RetrievalModel(BaseModel):
     top_k: int
     score_threshold_enabled: bool
     score_threshold: Optional[float] = None
+    weights: Optional[WeightModel] = None
 
 
 class MetaDataConfig(BaseModel):
@@ -111,7 +128,6 @@ class KnowledgeConfig(BaseModel):
     embedding_model: Optional[str] = None
     embedding_model_provider: Optional[str] = None
     name: Optional[str] = None
-    metadata: Optional[MetaDataConfig] = None
 
 
 class SegmentUpdateArgs(BaseModel):
@@ -125,3 +141,36 @@ class SegmentUpdateArgs(BaseModel):
 class ChildChunkUpdateArgs(BaseModel):
     id: Optional[str] = None
     content: str
+
+
+class MetadataArgs(BaseModel):
+    type: Literal["string", "number", "time"]
+    name: str
+
+
+class MetadataUpdateArgs(BaseModel):
+    name: str
+    value: Optional[str | int | float] = None
+
+
+class MetadataValueUpdateArgs(BaseModel):
+    fields: list[MetadataUpdateArgs]
+
+
+class MetadataDetail(BaseModel):
+    id: str
+    name: str
+    value: Optional[str | int | float] = None
+
+
+class DocumentMetadataOperation(BaseModel):
+    document_id: str
+    metadata_list: list[MetadataDetail]
+
+
+class MetadataOperationData(BaseModel):
+    """
+    Metadata operation data
+    """
+
+    operation_data: list[DocumentMetadataOperation]
