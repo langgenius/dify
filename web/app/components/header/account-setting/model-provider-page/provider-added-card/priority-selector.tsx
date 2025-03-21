@@ -32,7 +32,7 @@ const Selector: FC<SelectorProps> = ({
 
   return (
     <Popover className='relative'>
-      <PopoverButton>
+      <PopoverButton as='div'>
         {
           ({ open }) => (
             <Button className={cn(
