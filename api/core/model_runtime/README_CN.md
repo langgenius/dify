@@ -10,7 +10,7 @@
 - 支持 5 种模型类型的能力调用
 
   - `LLM` - LLM 文本补全、对话，预计算 tokens 能力
-  - `Text Embedidng Model` - 文本 Embedding ，预计算 tokens 能力
+  - `Text Embedding Model` - 文本 Embedding ，预计算 tokens 能力
   - `Rerank Model` - 分段 Rerank 能力
   - `Speech-to-text Model` - 语音转文本能力
   - `Text-to-speech Model` - 文本转语音能力
