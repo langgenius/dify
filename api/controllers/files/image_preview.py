@@ -66,7 +66,7 @@ class FilePreviewApi(Resource):
 
         response = Response(
             generator,
-            mimetype=upload_file.mime_type,
+            mimetype="application/octet-stream",
             direct_passthrough=True,
             headers={},
         )
