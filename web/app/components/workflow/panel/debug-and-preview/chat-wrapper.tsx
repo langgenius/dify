@@ -20,6 +20,7 @@ import {
 } from '@/service/debug'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { getLastAnswer, isValidGeneratedAnswer } from '@/app/components/base/chat/utils'
+import { useThemeContext } from '@/app/components/base/chat/embedded-chatbot/theme/theme-context'
 
 type ChatWrapperProps = {
   showConversationVariableModal: boolean
@@ -46,6 +47,7 @@ const ChatWrapper = (
   const workflowStore = useWorkflowStore()
   const inputs = useStore(s => s.inputs)
   const features = useFeatures(s => s.features)
+  const themeBuilder = useThemeContext()
   const config = useMemo(() => {
     return {
       opening_statement: features.opening?.enabled ? (features.opening?.opening_statement || '') : '',
@@ -65,6 +67,8 @@ const ChatWrapper = (
     chatList,
     handleStop,
     isResponding,
+    setIsInternet,
+    isInternet,
     suggestedQuestions,
     handleSend,
     handleRestart,
@@ -82,10 +86,12 @@ const ChatWrapper = (
   const doSend: OnSend = useCallback((message, files, isRegenerate = false, parentAnswer: ChatItem | null = null) => {
     handleSend(
       {
-        query: message,
+        // query: message,
+        query: `${message}${isInternet ? '@isInternet@' : ''}`,
         files,
         inputs: workflowStore.getState().inputs,
         conversation_id: conversationId,
+        isInternet: isInternet ? '是' : '否',
         parent_message_id: (isRegenerate ? parentAnswer?.id : getLastAnswer(chatList)?.id) || undefined,
       },
       {
@@ -111,6 +117,8 @@ const ChatWrapper = (
       onHide()
   }, [isResponding, onHide])
 
+  console.log('ChatWrapper', { isResponding, isInternet })
+
   return (
     <>
       <Chat
@@ -120,6 +128,8 @@ const ChatWrapper = (
         } as any}
         chatList={chatList}
         isResponding={isResponding}
+        onSetInternet={setIsInternet}
+        isInternet={isInternet}
         chatContainerClassName='px-3'
         chatContainerInnerClassName='pt-6 w-full max-w-full mx-auto'
         chatFooterClassName='px-4 rounded-bl-2xl'
@@ -147,6 +157,7 @@ const ChatWrapper = (
         showPromptLog
         chatAnswerContainerInner='!pr-2'
         switchSibling={setTargetMessageId}
+        themeBuilder={themeBuilder}
       />
       {showConversationVariableModal && (
         <ConversationVariableModal

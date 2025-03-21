@@ -6,8 +6,9 @@
     "node": ">=18.18.0"
   },
   "scripts": {
-    "dev": "cross-env NODE_OPTIONS='--inspect' next dev",
-    "build": "next build",
+    "dev": "next dev",
+    "dev:inspect": "cross-env NODE_OPTIONS='--inspect' next dev",
+    "build": "rm -rf .next && rm -rf tsconfig.tsbuildinfo && next build",
     "start": "cp -r .next/static .next/standalone/.next/static && cp -r public .next/standalone/public && cross-env PORT=$npm_config_port HOSTNAME=$npm_config_host node .next/standalone/server.js",
     "lint": "pnpm eslint",
     "fix": "next lint --fix",
@@ -57,6 +58,7 @@
     "ahooks": "^3.8.4",
     "class-variance-authority": "^0.7.0",
     "classnames": "^2.5.1",
+    "clsx": "^2.1.1",
     "copy-to-clipboard": "^3.3.3",
     "crypto-js": "^4.2.0",
     "dayjs": "^1.11.13",
@@ -210,5 +212,13 @@
     "@types/react": "19.0.11",
     "@types/react-dom": "19.0.4",
     "@storybook/test": "8.5.0"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "canvas",
+      "core-js-pure",
+      "esbuild",
+      "sharp"
+    ]
   }
 }

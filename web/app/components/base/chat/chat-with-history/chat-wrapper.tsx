@@ -65,6 +65,8 @@ const ChatWrapper = () => {
     handleSend,
     handleStop,
     isResponding: respondingState,
+    isInternet,
+    setIsInternet,
     suggestedQuestions,
   } = useChat(
     appConfig,
@@ -122,11 +124,13 @@ const ChatWrapper = () => {
 
   const doSend: OnSend = useCallback((message, files, isRegenerate = false, parentAnswer: ChatItem | null = null) => {
     const data: any = {
-      query: message,
+      // query: message,
+      query: `${message}${isInternet ? '@isInternet@' : ''}`,
       files,
       inputs: currentConversationId ? currentConversationItem?.inputs : newConversationInputs,
       conversation_id: currentConversationId,
       parent_message_id: (isRegenerate ? parentAnswer?.id : getLastAnswer(chatList)?.id) || null,
+      isInternet: isInternet ? '是' : '否',
     }
 
     handleSend(
@@ -239,6 +243,8 @@ const ChatWrapper = () => {
         config={appConfig}
         chatList={messageList}
         isResponding={respondingState}
+        isInternet={isInternet}
+        onSetInternet={setIsInternet}
         chatContainerInnerClassName={`mx-auto pt-6 w-full max-w-[768px] ${isMobile && 'px-4'}`}
         chatFooterClassName='pb-4'
         chatFooterInnerClassName={`mx-auto w-full max-w-[768px] ${isMobile ? 'px-2' : 'px-4'}`}

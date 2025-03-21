@@ -156,7 +156,7 @@ class MessageBasedAppGenerator(BaseAppGenerator):
                 model_id=model_id,
                 override_model_configs=json.dumps(override_model_configs) if override_model_configs else None,
                 mode=app_config.app_mode.value,
-                name="New conversation",
+                name="新的对话",
                 inputs=application_generate_entity.inputs,
                 introduction=introduction,
                 system_instruction="",

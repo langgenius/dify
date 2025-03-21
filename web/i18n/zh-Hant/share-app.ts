@@ -10,7 +10,7 @@ const translation = {
     unpinnedTitle: '對話列表',
     newChatDefaultName: '新的對話',
     resetChat: '重置對話',
-    poweredBy: 'Powered by',
+    poweredBy: '技术支持',
     prompt: '提示詞',
     privatePromptConfigTitle: '對話設定',
     publicPromptConfigTitle: '對話前提示詞',

@@ -57,9 +57,11 @@ const AppIcon: FC<AppIconProps> = ({
 
   return <span
     className={classNames(appIconVariants({ size, rounded }), className)}
-    style={{ background: isValidImageIcon ? undefined : (background || '#FFEAD5') }}
+    style={{ background: isValidImageIcon ? undefined : (background || '#FFFFFF') }}
     onClick={onClick}
   >
+    {/* <img src='/logo/logo.png' className="w-full h-full" alt="app icon" /> */}
+    {/* 侧边栏头像 */}
     {isValidImageIcon
 
       ? <img src={imageUrl} className="h-full w-full" alt="app icon" />

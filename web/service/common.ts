@@ -324,14 +324,14 @@ export const uploadRemoteFileInfo = (url: string, isPublic?: boolean) => {
   return post<{ id: string; name: string; size: number; mime_type: string; url: string }>('/remote-files/upload', { body: { url } }, { isPublicAPI: isPublic })
 }
 
-export const sendEMailLoginCode = (email: string, language = 'en-US') =>
+export const sendEMailLoginCode = (email: string, language = 'zh-Hans') =>
   post<CommonResponse & { data: string }>('/email-code-login', { body: { email, language } })
 
 export const emailLoginWithCode = (data: { email: string; code: string; token: string }) =>
   post<LoginResponse>('/email-code-login/validity', { body: data })
 
-export const sendResetPasswordCode = (email: string, language = 'en-US') =>
-  post<CommonResponse & { data: string; message?: string; code?: string }>('/forgot-password', { body: { email, language } })
+export const sendResetPasswordCode = (email: string, language = 'zh-Hans') =>
+  post<CommonResponse & { data: string;message?: string ;code?: string }>('/forgot-password', { body: { email, language } })
 
 export const verifyResetPasswordCode = (body: { email: string; code: string; token: string }) =>
   post<CommonResponse & { is_valid: boolean }>('/forgot-password/validity', { body })

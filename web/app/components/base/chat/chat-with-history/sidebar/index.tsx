@@ -87,10 +87,10 @@ const Sidebar = ({ isPanel }: Props) => {
         <div className='shrink-0'>
           <AppIcon
             size='large'
-            iconType={appData?.site.icon_type}
+            iconType={appData?.site.icon_type || 'image'}
             icon={appData?.site.icon}
             background={appData?.site.icon_background}
-            imageUrl={appData?.site.icon_url}
+            imageUrl={appData?.site.icon_url || '/logo/logo.png'}
           />
         </div>
         <div className={cn('system-md-semibold grow truncate text-text-secondary')}>{appData?.site.title}</div>
@@ -127,7 +127,7 @@ const Sidebar = ({ isPanel }: Props) => {
         )}
         {!!conversationList.length && (
           <List
-            title={(pinnedConversationList.length && t('share.chat.unpinnedTitle')) || ''}
+            title={'hah'}
             list={conversationList}
             onChangeConversation={handleChangeConversation}
             onOperate={handleOperate}

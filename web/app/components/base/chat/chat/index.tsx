@@ -40,6 +40,8 @@ export type ChatProps = {
   chatList: ChatItem[]
   config?: ChatConfig
   isResponding?: boolean
+  isInternet?: boolean
+  onSetInternet?: (isInternet: boolean) => void
   noStopResponding?: boolean
   onStopResponding?: () => void
   noChatInput?: boolean
@@ -145,6 +147,15 @@ const Chat: FC<ChatProps> = ({
       chatFooterInnerRef.current.style.width = `${chatContainerInnerRef.current.clientWidth}px`
   }, [])
 
+  const chatWellcome = () => {
+    return (
+      <div className='flex justify-center items-center flex-col h-full w-full'>
+        <div className='text-[22px] mb-2'>{t('share.chat.chatWelComeTitle')}</div>
+        <div className='text-[14px] text-text-tertiary'>{t('share.chat.chatWelComeDescription')}</div>
+      </div>
+    )
+  }
+
   useEffect(() => {
     handleScrollToBottom()
     handleWindowResize()
@@ -216,6 +227,8 @@ const Chat: FC<ChatProps> = ({
       config={config}
       chatList={chatList}
       isResponding={isResponding}
+      isInternet={isInternet}
+      onSetInternet={onSetInternet}
       showPromptLog={showPromptLog}
       questionIcon={questionIcon}
       answerIcon={answerIcon}
@@ -237,7 +250,7 @@ const Chat: FC<ChatProps> = ({
             className={cn('w-full', !noSpacing && 'px-8', chatContainerInnerClassName)}
           >
             {
-              chatList.map((item, index) => {
+              chatList?.length ? chatList.map((item, index) => {
                 if (item.isAnswer) {
                   const isLast = item.id === chatList[chatList.length - 1]?.id
                   return (
@@ -266,7 +279,7 @@ const Chat: FC<ChatProps> = ({
                     theme={themeBuilder?.theme}
                   />
                 )
-              })
+              }) : chatWellcome()
             }
           </div>
         </div>

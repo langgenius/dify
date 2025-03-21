@@ -51,7 +51,11 @@ export const useChat = (
   const workflowStore = useWorkflowStore()
   const conversationId = useRef('')
   const taskIdRef = useRef('')
+
+  // 是否在回答
   const [isResponding, setIsResponding] = useState(false)
+  // 是否联网
+  const [isInternet, setIsInternet] = useState(false)
   const isRespondingRef = useRef(false)
   const [suggestedQuestions, setSuggestQuestions] = useState<string[]>([])
   const suggestedQuestionsAbortControllerRef = useRef<AbortController | null>(null)
@@ -510,6 +514,8 @@ export const useChat = (
     handleStop,
     handleRestart,
     isResponding,
+    setIsInternet,
+    isInternet,
     suggestedQuestions,
   }
 }

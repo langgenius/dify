@@ -242,7 +242,7 @@ const Chart: React.FC<IChartProps> = ({
             ? ''
             : <span>{t('appOverview.analysis.tokenUsage.consumed')} Tokens<span className='text-sm'>
               <span className='ml-1 text-text-tertiary'>(</span>
-              <span className='text-orange-400'>~{sum(statistics.map(item => Number.parseFloat(get(item, 'total_price', '0')))).toLocaleString('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 4 })}</span>
+              <span className='text-orange-400'>~{sum(statistics.map(item => Number.parseFloat(get(item, 'total_price', '0')))).toLocaleString('zh-Hans', { style: 'currency', currency: 'USD', minimumFractionDigits: 4 })}</span>
               <span className='text-text-tertiary'>)</span>
             </span></span>}
           textStyle={{ main: `!text-3xl !font-normal ${sumData === 0 ? '!text-text-quaternary' : ''}` }} />

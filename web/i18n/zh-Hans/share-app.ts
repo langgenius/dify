@@ -14,7 +14,7 @@ const translation = {
     newChatDefaultName: '新的对话',
     resetChat: '重置对话',
     viewChatSettings: '查看对话设置',
-    poweredBy: 'Powered by',
+    poweredBy: '技术支持',
     prompt: '提示词',
     privatePromptConfigTitle: '对话设置',
     publicPromptConfigTitle: '对话前提示词',
@@ -30,6 +30,9 @@ const translation = {
     },
     tryToSolve: '尝试解决',
     temporarySystemIssue: '抱歉，临时系统问题。',
+    chatWelComeTitle: '很高兴见到你！',
+    chatWelComeDescription: '我可以帮你写代码、读文件、写作各种创意内容，请把你的任务交给我吧~',
+
   },
   generation: {
     tabs: {

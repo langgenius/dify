@@ -47,6 +47,15 @@ class AppService:
 
         if args.get("is_created_by_me", False):
             filters.append(App.created_by == user_id)
+        # 修改后的部分
+        else:
+            #logging.info(f"user is admin: {current_user.is_admin_or_owner}")
+            if not current_user.is_admin_or_owner:  # 只有当不是管理员时才进行以下过滤
+                created_by_me_filter = App.created_by == user_id
+                public_filter = App.is_public == True  # 创建 is_public 的过滤器
+                filters.append(db.or_(created_by_me_filter, public_filter))  # 使用 db.or_ 连接两个过滤器
+        # 修改结束
+
         if args.get("name"):
             name = args["name"][:30]
             filters.append(App.name.ilike(f"%{name}%"))

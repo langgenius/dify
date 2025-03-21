@@ -5,7 +5,8 @@ LABEL maintainer="takatost@gmail.com"
 # if you located in China, you can use aliyun mirror to speed up
 # RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g' /etc/apk/repositories
 
-RUN apk add --no-cache tzdata
+# RUN apk add --no-cache tzdata
+RUN apk add tzdata
 RUN npm install -g pnpm@9.12.2
 ENV PNPM_HOME="/pnpm"
 ENV PATH="$PNPM_HOME:$PATH"
@@ -20,9 +21,9 @@ COPY package.json .
 COPY pnpm-lock.yaml .
 
 # if you located in China, you can use taobao registry to speed up
-# RUN pnpm install --frozen-lockfile --registry https://registry.npmmirror.com/
+RUN pnpm install --frozen-lockfile --registry https://registry.npmmirror.com/
 
-RUN pnpm install --frozen-lockfile
+# RUN pnpm install --frozen-lockfile
 
 # build resources
 FROM base AS builder

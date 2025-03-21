@@ -40,6 +40,8 @@ type ChatInputAreaProps = {
   inputsForm?: InputForm[]
   theme?: Theme | null
   isResponding?: boolean
+  onSetInternet?: (internet: boolean) => void
+  isInternet?: boolean
   disabled?: boolean
 }
 const ChatInputArea = ({
@@ -54,6 +56,8 @@ const ChatInputArea = ({
   inputsForm = [],
   theme,
   isResponding,
+  onSetInternet,
+  isInternet,
   disabled,
 }: ChatInputAreaProps) => {
   const { t } = useTranslation()
@@ -148,6 +152,8 @@ const ChatInputArea = ({
       onShowVoiceInput={handleShowVoiceInput}
       onSend={handleSend}
       theme={theme}
+      isInternet={isInternet}
+      onSetInternet={onSetInternet}
     />
   )
 
@@ -180,7 +186,7 @@ const ChatInputArea = ({
                 )}
                 placeholder={t('common.chat.inputPlaceholder') || ''}
                 autoFocus
-                autoSize={{ minRows: 1 }}
+                autoSize={{ minRows: 2 }}
                 onResize={handleTextareaResize}
                 value={query}
                 onChange={(e) => {

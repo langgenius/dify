@@ -105,6 +105,12 @@ class App(Base):
     use_icon_as_answer_icon = db.Column(db.Boolean, nullable=False, server_default=db.text("false"))
 
     @property
+    def created_name(self):
+        if self.created_by:
+            account = db.session.query(Account).filter(Account.id == self.created_by).first()
+            return account.name if account else None
+        return None
+    @property
     def desc_or_prompt(self):
         if self.description:
             return self.description

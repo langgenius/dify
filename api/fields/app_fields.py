@@ -94,6 +94,7 @@ app_partial_fields = {
     "workflow": fields.Nested(workflow_partial_fields, allow_null=True),
     "use_icon_as_answer_icon": fields.Boolean,
     "created_by": fields.String,
+    "created_name": fields.String(attribute="created_name"),
     "created_at": TimestampField,
     "updated_by": fields.String,
     "updated_at": TimestampField,

@@ -3,7 +3,7 @@ const fs = require('node:fs')
 const path = require('node:path')
 const transpile = require('typescript').transpile
 
-const targetLanguage = 'en-US'
+const targetLanguage = 'zh-Hans'
 const data = require('./languages.json')
 const languages = data.languages.filter(language => language.supported).map(language => language.value)
 

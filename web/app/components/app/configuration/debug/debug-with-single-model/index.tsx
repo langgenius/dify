@@ -21,6 +21,7 @@ import { useFeatures } from '@/app/components/base/features/hooks'
 import { getLastAnswer, isValidGeneratedAnswer } from '@/app/components/base/chat/utils'
 import type { InputForm } from '@/app/components/base/chat/chat/type'
 import { canFindTool } from '@/utils'
+import { useThemeContext } from '@/app/components/base/chat/embedded-chatbot/theme/theme-context'
 
 type DebugWithSingleModelProps = {
   checkCanSend?: () => boolean
@@ -63,6 +64,7 @@ const DebugWithSingleModel = (
       annotation_reply: features.annotationReply,
     } as ChatConfig
   }, [configTemplate, features])
+
   const inputsForm = useMemo(() => {
     return modelConfig.configs.prompt_variables.filter(item => item.type !== 'api').map(item => ({ ...item, label: item.name, variable: item.key })) as InputForm[]
   }, [modelConfig.configs.prompt_variables])
@@ -70,6 +72,8 @@ const DebugWithSingleModel = (
     chatList,
     setTargetMessageId,
     isResponding,
+    isInternet,
+    setIsInternet,
     handleSend,
     suggestedQuestions,
     handleStop,
@@ -87,6 +91,7 @@ const DebugWithSingleModel = (
     taskId => stopChatMessageResponding(appId, taskId),
   )
   useFormattingChangedSubscription(chatList)
+  const themeBuilder = useThemeContext()
 
   const doSend: OnSend = useCallback((message, files, isRegenerate = false, parentAnswer: ChatItem | null = null) => {
     if (checkCanSend && !checkCanSend())
@@ -95,8 +100,17 @@ const DebugWithSingleModel = (
     const currentModel = currentProvider?.models.find(model => model.model === modelConfig.model_id)
     const supportVision = currentModel?.features?.includes(ModelFeatureEnum.vision)
 
+    const tools = config.agent_mode.tools?.map((item: any) => ({
+      ...item,
+      enabled: item.tool_name === 'BochaWebSearch' ? isInternet : item.enabled,
+    }))
+
     const configData = {
       ...config,
+      agent_mode: {
+        ...config.agent_mode,
+        tools,
+      },
       model: {
         provider: modelConfig.provider,
         name: modelConfig.model_id,
@@ -104,17 +118,20 @@ const DebugWithSingleModel = (
         completion_params: completionParams,
       },
     }
+    console.log('doSend', config, modelConfig, configData)
 
     const data: any = {
-      query: message,
+      query: `${message}${isInternet ? '@isInternet@' : ''}`,
       inputs,
       model_config: configData,
+      isInternet: isInternet ? '是' : '否',
       parent_message_id: (isRegenerate ? parentAnswer?.id : getLastAnswer(chatList)?.id) || null,
     }
 
     if ((config.file_upload as any)?.enabled && files?.length && supportVision)
       data.files = files
 
+    console.log('doSend', JSON.stringify(data))
     handleSend(
       `apps/${appId}/chat-messages`,
       data,
@@ -123,7 +140,7 @@ const DebugWithSingleModel = (
         onGetSuggestedQuestions: (responseItemId, getAbortController) => fetchSuggestedQuestions(appId, responseItemId, getAbortController),
       },
     )
-  }, [appId, chatList, checkCanSend, completionParams, config, handleSend, inputs, modelConfig.mode, modelConfig.model_id, modelConfig.provider, textGenerationModelList])
+  }, [appId, chatList, checkCanSend, completionParams, config, handleSend, inputs, modelConfig.mode, modelConfig.model_id, modelConfig.provider, textGenerationModelList, isInternet])
 
   const doRegenerate = useCallback((chatItem: ChatItemInTree) => {
     const question = chatList.find(item => item.id === chatItem.parentMessageId)!
@@ -152,6 +169,8 @@ const DebugWithSingleModel = (
       config={config}
       chatList={chatList}
       isResponding={isResponding}
+      isInternet={isInternet}
+      onSetInternet={setIsInternet}
       chatContainerClassName='px-3 pt-6'
       chatFooterClassName='px-3 pt-10 pb-0'
       showFeatureBar
@@ -171,6 +190,7 @@ const DebugWithSingleModel = (
       onAnnotationAdded={handleAnnotationAdded}
       onAnnotationRemoved={handleAnnotationRemoved}
       noSpacing
+      themeBuilder={themeBuilder}
     />
   )
 }

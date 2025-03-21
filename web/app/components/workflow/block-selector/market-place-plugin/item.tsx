@@ -29,7 +29,7 @@ const Item: FC<Props> = ({
   const [open, setOpen] = React.useState(false)
   const { locale } = useContext(I18n)
   const getLocalizedText = (obj: Record<string, string> | undefined) =>
-    obj?.[locale] || obj?.['en-US'] || obj?.en_US || ''
+    obj?.[locale] || obj?.['zh-Hans'] || obj?.en_US || ''
   const [isShowInstallModal, {
     setTrue: showInstallModal,
     setFalse: hideInstallModal,
