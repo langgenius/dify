@@ -910,7 +910,7 @@ class Embedding(db.Model):  # type: ignore[name-defined]
         self.embedding = pickle.dumps(embedding_data, protocol=pickle.HIGHEST_PROTOCOL)
 
     def get_embedding(self) -> list[float]:
-        return cast(list[float], pickle.loads(self.embedding))
+        return cast(list[float], pickle.loads(self.embedding))  # noqa: S301
 
 
 class DatasetCollectionBinding(db.Model):  # type: ignore[name-defined]
