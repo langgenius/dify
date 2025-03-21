@@ -3,7 +3,7 @@ import type { FC } from 'react'
 import React from 'react'
 import cn from '@/utils/classnames'
 
-interface Props {
+type Props = {
   className?: string
 }
 

@@ -126,7 +126,7 @@ const TextGenerationItem: FC<TextGenerationItemProps> = ({
 
   return (
     <TextGeneration
-      className='flex flex-col h-full overflow-y-auto border-none'
+      className='flex h-full flex-col overflow-y-auto border-none'
       content={completion}
       isLoading={!completion && isResponding}
       isResponding={isResponding}

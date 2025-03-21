@@ -183,7 +183,10 @@ export const useEmbeddedChatbot = () => {
 
   useEffect(() => {
     // init inputs from url params
-    setInitInputs(getProcessedInputsFromUrlParams())
+    (async () => {
+      const inputs = await getProcessedInputsFromUrlParams()
+      setInitInputs(inputs)
+    })()
   }, [])
   useEffect(() => {
     const conversationInputs: Record<string, any> = {}
@@ -288,11 +291,11 @@ export const useEmbeddedChatbot = () => {
     if (conversationId)
       setClearChatList(false)
   }, [handleConversationIdInfoChange, setClearChatList])
-  const handleNewConversation = useCallback(() => {
+  const handleNewConversation = useCallback(async () => {
     currentChatInstanceRef.current.handleStop()
     setShowNewConversationItemInList(true)
     handleChangeConversation('')
-    handleNewConversationInputsChange({})
+    handleNewConversationInputsChange(await getProcessedInputsFromUrlParams())
     setClearChatList(true)
   }, [handleChangeConversation, setShowNewConversationItemInList, handleNewConversationInputsChange, setClearChatList])
 

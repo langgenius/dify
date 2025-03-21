@@ -42,12 +42,12 @@ export const Heading = function H2({
     <>
       <span id={name?.replace(/^#/, '')} className='relative -top-28' />
       <div className="flex items-center gap-x-3" >
-        <span className={`font-mono text-[0.625rem] font-semibold leading-6 rounded-lg px-1.5 ring-1 ring-inset ${style}`}>{method}</span>
+        <span className={`rounded-lg px-1.5 font-mono text-[0.625rem] font-semibold leading-6 ring-1 ring-inset ${style}`}>{method}</span>
         {/* <span className="h-0.5 w-0.5 rounded-full bg-zinc-300 dark:bg-zinc-600"></span> */}
         <span className="font-mono text-xs text-zinc-400">{url}</span>
       </div>
       <h2 className='mt-2 scroll-mt-32'>
-        <a href={name} className='no-underline group text-inherit hover:text-inherit'>{title}</a>
+        <a href={name} className='group text-inherit no-underline hover:text-inherit'>{title}</a>
       </h2>
     </>
 
@@ -56,7 +56,7 @@ export const Heading = function H2({
 
 export function Row({ children }: IChildrenProps) {
   return (
-    <div className="grid items-start grid-cols-1 gap-x-16 gap-y-10 xl:!max-w-none xl:grid-cols-2">
+    <div className="grid grid-cols-1 items-start gap-x-16 gap-y-10 xl:!max-w-none xl:grid-cols-2">
       {children}
     </div>
   )
@@ -97,8 +97,8 @@ type IProperty = IChildrenProps & {
 }
 export function Property({ name, type, children }: IProperty) {
   return (
-    <li className="px-0 py-4 m-0 first:pt-0 last:pb-0">
-      <dl className="flex flex-wrap items-center m-0 gap-x-3 gap-y-2">
+    <li className="m-0 px-0 py-4 first:pt-0 last:pb-0">
+      <dl className="m-0 flex flex-wrap items-center gap-x-3 gap-y-2">
         <dt className="sr-only">Name</dt>
         <dd>
           <code>{name}</code>
@@ -122,8 +122,8 @@ type ISubProperty = IChildrenProps & {
 }
 export function SubProperty({ name, type, children }: ISubProperty) {
   return (
-    <li className="px-0 py-1 m-0 last:pb-0">
-      <dl className="flex flex-wrap items-center m-0 gap-x-3">
+    <li className="m-0 px-0 py-1 last:pb-0">
+      <dl className="m-0 flex flex-wrap items-center gap-x-3">
         <dt className="sr-only">Name</dt>
         <dd>
           <code>{name}</code>
@@ -143,6 +143,6 @@ export function SubProperty({ name, type, children }: ISubProperty) {
 
 export function PropertyInstruction({ children }: PropsWithChildren<{}>) {
   return (
-    <li className="m-0 px-0 py-4 first:pt-0 italic">{children}</li>
+    <li className="m-0 px-0 py-4 italic first:pt-0">{children}</li>
   )
 }

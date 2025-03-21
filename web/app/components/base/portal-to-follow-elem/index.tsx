@@ -114,12 +114,16 @@ export function PortalToFollowElem({
   )
 }
 
-export const PortalToFollowElemTrigger = React.forwardRef<
-  HTMLElement,
-React.HTMLProps<HTMLElement> & { asChild?: boolean }
->(({ children, asChild = false, ...props }, propRef) => {
+export const PortalToFollowElemTrigger = (
+  {
+    ref: propRef,
+    children,
+    asChild = false,
+    ...props
+  }: React.HTMLProps<HTMLElement> & { ref?: React.RefObject<HTMLElement>, asChild?: boolean },
+) => {
   const context = usePortalToFollowElemContext()
-  const childrenRef = (children as any).ref
+  const childrenRef = (children as any).props?.ref
   const ref = useMergeRefs([context.refs.setReference, propRef, childrenRef])
 
   // `asChild` allows the user to pass any element as the anchor
@@ -146,13 +150,18 @@ React.HTMLProps<HTMLElement> & { asChild?: boolean }
       {children}
     </div>
   )
-})
+}
 PortalToFollowElemTrigger.displayName = 'PortalToFollowElemTrigger'
 
-export const PortalToFollowElemContent = React.forwardRef<
-  HTMLDivElement,
-  React.HTMLProps<HTMLDivElement>
->(({ style, ...props }, propRef) => {
+export const PortalToFollowElemContent = (
+  {
+    ref: propRef,
+    style,
+    ...props
+  }: React.HTMLProps<HTMLDivElement> & {
+    ref?: React.RefObject<HTMLDivElement>;
+  },
+) => {
   const context = usePortalToFollowElemContext()
   const ref = useMergeRefs([context.refs.setFloating, propRef])
 
@@ -173,6 +182,6 @@ export const PortalToFollowElemContent = React.forwardRef<
       />
     </FloatingPortal>
   )
-})
+}
 
 PortalToFollowElemContent.displayName = 'PortalToFollowElemContent'

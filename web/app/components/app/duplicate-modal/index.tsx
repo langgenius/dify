@@ -1,8 +1,8 @@
 'use client'
 import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { RiCloseLine } from '@remixicon/react'
 import AppIconPicker from '../../base/app-icon-picker'
-import s from './style.module.css'
 import cn from '@/utils/classnames'
 import Modal from '@/app/components/base/modal'
 import Button from '@/app/components/base/button'
@@ -13,7 +13,7 @@ import { useProviderContext } from '@/context/provider-context'
 import AppsFull from '@/app/components/billing/apps-full-in-dialog'
 import type { AppIconType } from '@/types/app'
 
-export interface DuplicateAppModalProps {
+export type DuplicateAppModalProps = {
   appName: string
   icon_type: AppIconType | null
   icon: string
@@ -72,12 +72,14 @@ const DuplicateAppModal = ({
       <Modal
         isShow={show}
         onClose={() => { }}
-        className={cn(s.modal, '!max-w-[480px]', 'px-8')}
+        className={cn('relative !max-w-[480px]', 'px-8')}
       >
-        <span className={s.close} onClick={onHide} />
-        <div className={s.title}>{t('app.duplicateTitle')}</div>
-        <div className={s.content}>
-          <div className={s.subTitle}>{t('explore.appCustomize.subTitle')}</div>
+        <div className='absolute right-4 top-4 cursor-pointer p-2' onClick={onHide}>
+          <RiCloseLine className='h-4 w-4 text-text-tertiary' />
+        </div>
+        <div className='relative mb-9 mt-3 text-xl font-semibold leading-[30px] text-text-primary'>{t('app.duplicateTitle')}</div>
+        <div className='system-sm-regular mb-9 text-text-secondary'>
+          <div className='system-md-medium mb-2'>{t('explore.appCustomize.subTitle')}</div>
           <div className='flex items-center justify-between space-x-2'>
             <AppIcon
               size='large'
@@ -97,7 +99,7 @@ const DuplicateAppModal = ({
           {isAppsFull && <AppsFull loc='app-duplicate-create' />}
         </div>
         <div className='flex flex-row-reverse'>
-          <Button disabled={isAppsFull} className='w-24 ml-2' variant='primary' onClick={submit}>{t('app.duplicate')}</Button>
+          <Button disabled={isAppsFull} className='ml-2 w-24' variant='primary' onClick={submit}>{t('app.duplicate')}</Button>
           <Button className='w-24' onClick={onHide}>{t('common.operation.cancel')}</Button>
         </div>
       </Modal>

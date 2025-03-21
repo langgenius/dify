@@ -285,7 +285,7 @@ const Workflow: FC<WorkflowProps> = memo(({
     <div
       id='workflow-container'
       className={`
-        relative w-full min-w-[960px] h-full 
+        relative h-full w-full min-w-[960px] 
         ${workflowReadOnly && 'workflow-panel-animation'}
         ${nodeAnimation && 'workflow-node-animation'}
       `}
@@ -409,7 +409,7 @@ const WorkflowWrap = memo(() => {
 
   if (!data || isLoading) {
     return (
-      <div className='flex justify-center items-center relative w-full h-full'>
+      <div className='relative flex h-full w-full items-center justify-center'>
         <Loading />
       </div>
     )

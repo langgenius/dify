@@ -2,6 +2,7 @@ export enum Plan {
   sandbox = 'sandbox',
   professional = 'professional',
   team = 'team',
+  enterprise = 'enterprise',
 }
 export enum Priority {
   standard = 'standard',

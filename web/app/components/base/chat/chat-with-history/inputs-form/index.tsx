@@ -25,23 +25,23 @@ const InputsFormNode = ({
   } = useChatWithHistoryContext()
 
   return (
-    <div className={cn('pt-6 px-4 flex flex-col items-center', isMobile && 'pt-4')}>
+    <div className={cn('flex flex-col items-center px-4 pt-6', isMobile && 'pt-4')}>
       <div className={cn(
-        'w-full max-w-[672px] bg-components-panel-bg rounded-2xl border-[0.5px] border-components-panel-border shadow-md',
-        collapsed && 'bg-components-card-bg border border-components-card-border shadow-none',
+        'w-full max-w-[672px] rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-md',
+        collapsed && 'border border-components-card-border bg-components-card-bg shadow-none',
       )}>
         <div className={cn(
-          'flex items-center gap-3 px-6 py-4 rounded-t-2xl',
+          'flex items-center gap-3 rounded-t-2xl px-6 py-4',
           !collapsed && 'border-b border-divider-subtle',
           isMobile && 'px-4 py-3',
         )}>
-          <Message3Fill className='shrink-0 w-6 h-6' />
-          <div className='grow text-text-secondary system-xl-semibold'>{t('share.chat.chatSettingsTitle')}</div>
+          <Message3Fill className='h-6 w-6 shrink-0' />
+          <div className='system-xl-semibold grow text-text-secondary'>{t('share.chat.chatSettingsTitle')}</div>
           {collapsed && (
-            <Button className='text-text-tertiary uppercase' size='small' variant='ghost' onClick={() => setCollapsed(false)}>{currentConversationId ? t('common.operation.view') : t('common.operation.edit')}</Button>
+            <Button className='uppercase text-text-tertiary' size='small' variant='ghost' onClick={() => setCollapsed(false)}>{currentConversationId ? t('common.operation.view') : t('common.operation.edit')}</Button>
           )}
           {!collapsed && currentConversationId && (
-            <Button className='text-text-tertiary uppercase' size='small' variant='ghost' onClick={() => setCollapsed(true)}>{t('common.operation.close')}</Button>
+            <Button className='uppercase text-text-tertiary' size='small' variant='ghost' onClick={() => setCollapsed(true)}>{t('common.operation.close')}</Button>
           )}
         </div>
         {!collapsed && (
@@ -67,9 +67,9 @@ const InputsFormNode = ({
         )}
       </div>
       {collapsed && (
-        <div className='py-4 flex items-center w-full max-w-[720px]'>
-          <Divider bgStyle='gradient' className='basis-1/2 h-px rotate-180' />
-          <Divider bgStyle='gradient' className='basis-1/2 h-px' />
+        <div className='flex w-full max-w-[720px] items-center py-4'>
+          <Divider bgStyle='gradient' className='h-px basis-1/2 rotate-180' />
+          <Divider bgStyle='gradient' className='h-px basis-1/2' />
         </div>
       )}
     </div>

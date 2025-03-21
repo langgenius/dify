@@ -79,7 +79,7 @@ class DatasetListApi(Resource):
         data = marshal(datasets, dataset_detail_fields)
         for item in data:
             # convert embedding_model_provider to plugin standard format
-            if item["indexing_technique"] == "high_quality":
+            if item["indexing_technique"] == "high_quality" and item["embedding_model_provider"]:
                 item["embedding_model_provider"] = str(ModelProviderID(item["embedding_model_provider"]))
                 item_model = f"{item['embedding_model']}:{item['embedding_model_provider']}"
                 if item_model in model_names:
@@ -184,6 +184,10 @@ class DatasetApi(Resource):
         except services.errors.account.NoPermissionError as e:
             raise Forbidden(str(e))
         data = marshal(dataset, dataset_detail_fields)
+        if dataset.indexing_technique == "high_quality":
+            if dataset.embedding_model_provider:
+                provider_id = ModelProviderID(dataset.embedding_model_provider)
+                data["embedding_model_provider"] = str(provider_id)
         if data.get("permission") == "partial_members":
             part_users_list = DatasetPermissionService.get_dataset_partial_member_list(dataset_id_str)
             data.update({"partial_member_list": part_users_list})
@@ -659,6 +663,7 @@ class DatasetRetrievalSettingApi(Resource):
                 | VectorType.LINDORM
                 | VectorType.COUCHBASE
                 | VectorType.MILVUS
+                | VectorType.OPENGAUSS
             ):
                 return {
                     "retrieval_method": [
@@ -702,6 +707,7 @@ class DatasetRetrievalSettingMockApi(Resource):
                 | VectorType.COUCHBASE
                 | VectorType.PGVECTOR
                 | VectorType.LINDORM
+                | VectorType.OPENGAUSS
             ):
                 return {
                     "retrieval_method": [

@@ -19,7 +19,7 @@ const MenuItem: FC<MenuItemProps> = ({
   return (
     <div
       className={cn(
-        'flex items-center justify-between px-2 py-1.5 cursor-pointer rounded-lg ',
+        'flex cursor-pointer items-center justify-between rounded-lg px-2 py-1.5 ',
         isDestructive ? 'hover:bg-state-destructive-hover' : 'hover:bg-state-base-hover',
       )}
       onClick={() => {
@@ -27,7 +27,7 @@ const MenuItem: FC<MenuItemProps> = ({
       }}
     >
       <div className={cn(
-        'flex-1 text-text-primary system-md-regular',
+        'system-md-regular flex-1 text-text-primary',
         isDestructive && 'hover:text-text-destructive',
       )}>
         {item.name}

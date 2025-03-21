@@ -13,25 +13,25 @@ const More: FC<MoreProps> = ({
   const { t } = useTranslation()
 
   return (
-    <div className='mt-1 flex items-center system-xs-regular text-text-quaternary opacity-0 group-hover:opacity-100'>
+    <div className='system-xs-regular mt-1 flex items-center text-text-quaternary opacity-0 group-hover:opacity-100'>
       {
         more && (
           <>
             <div
-              className='mr-2 shrink-0 truncate max-w-[33.3%]'
+              className='mr-2 max-w-[33.3%] shrink-0 truncate'
               title={`${t('appLog.detail.timeConsuming')} ${more.latency}${t('appLog.detail.second')}`}
             >
               {`${t('appLog.detail.timeConsuming')} ${more.latency}${t('appLog.detail.second')}`}
             </div>
             <div
-              className='shrink-0 truncate max-w-[33.3%]'
+              className='max-w-[33.3%] shrink-0 truncate'
               title={`${t('appLog.detail.tokenCost')} ${formatNumber(more.tokens)}`}
             >
               {`${t('appLog.detail.tokenCost')} ${formatNumber(more.tokens)}`}
             </div>
-            <div className='shrink-0 mx-2'>·</div>
+            <div className='mx-2 shrink-0'>·</div>
             <div
-              className='shrink-0 truncate max-w-[33.3%]'
+              className='max-w-[33.3%] shrink-0 truncate'
               title={more.time}
             >
               {more.time}
