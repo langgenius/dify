@@ -175,13 +175,15 @@ class DatabaseConfig(BaseSettings):
 
     @computed_field
     def SQLALCHEMY_ENGINE_OPTIONS(self) -> dict[str, Any]:
-        return {
+        options = {
             "pool_size": self.SQLALCHEMY_POOL_SIZE,
             "max_overflow": self.SQLALCHEMY_MAX_OVERFLOW,
             "pool_recycle": self.SQLALCHEMY_POOL_RECYCLE,
             "pool_pre_ping": self.SQLALCHEMY_POOL_PRE_PING,
-            "connect_args": {"options": "-c timezone=UTC"},
         }
+        if self.SQLALCHEMY_DATABASE_URI_SCHEME == "postgresql":
+            options["connect_args"] = {"options": "-c timezone=UTC"}
+        return options
 
 
 class CeleryConfig(DatabaseConfig):
