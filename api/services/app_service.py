@@ -222,7 +222,8 @@ class AppService:
         """
         app.name = args.get("name")
         app.description = args.get("description", "")
-        app.max_active_requests = args.get("max_active_requests")
+        if args.get("max_active_requests"):
+            app.max_active_requests = args.get("max_active_requests")
         app.icon_type = args.get("icon_type", "emoji")
         app.icon = args.get("icon")
         app.icon_background = args.get("icon_background")
