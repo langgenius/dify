@@ -66,7 +66,7 @@ class DatasetMetadataServiceApi(DatasetApiResource):
         metadata = MetadataService.update_metadata_name(dataset_id_str, metadata_id_str, args.get("name"))
         return marshal(metadata, dataset_metadata_fields), 200
 
-    def delete(self, dataset_id, metadata_id):
+    def delete(self, tenant_id, dataset_id, metadata_id):
         dataset_id_str = str(dataset_id)
         metadata_id_str = str(metadata_id)
         dataset = DatasetService.get_dataset(dataset_id_str)
