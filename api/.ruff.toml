@@ -37,6 +37,12 @@ select = [
     "UP", # pyupgrade rules
     "W191", # tab-indentation
     "W605", # invalid-escape-sequence
+    # security related linting rules
+    # RCE proctection (sort of)
+    "S102", # exec-builtin, disallow use of `exec`
+    "S307", # suspicious-eval-usage, disallow use of `eval` and `ast.literal_eval`
+    "S301", # suspicious-pickle-usage, disallow use of `pickle` and its wrappers.
+    "S302", # suspicious-marshal-usage, disallow use of `marshal` module
 ]
 
 ignore = [
