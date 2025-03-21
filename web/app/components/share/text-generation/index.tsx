@@ -2,9 +2,7 @@
 import type { FC } from 'react'
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import {
-  RiErrorWarningFill,
-} from '@remixicon/react'
+import { RiErrorWarningFill } from '@remixicon/react'
 import { useBoolean, useClickAway } from 'ahooks'
 import { XMarkIcon } from '@heroicons/react/24/outline'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
@@ -17,7 +15,13 @@ import ResDownload from './run-batch/res-download'
 import cn from '@/utils/classnames'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import RunOnce from '@/app/components/share/text-generation/run-once'
-import { fetchSavedMessage as doFetchSavedMessage, fetchAppInfo, fetchAppParams, removeMessage, saveMessage } from '@/service/share'
+import {
+  fetchSavedMessage as doFetchSavedMessage,
+  fetchAppInfo,
+  fetchAppParams,
+  removeMessage,
+  saveMessage,
+} from '@/service/share'
 import type { SiteInfo } from '@/models/share'
 import type {
   MoreLikeThisConfig,
@@ -38,7 +42,7 @@ import type { VisionFile, VisionSettings } from '@/types/app'
 import { Resolution, TransferMethod } from '@/types/app'
 import { useAppFavicon } from '@/hooks/use-app-favicon'
 
-const GROUP_SIZE = 5 // to avoid RPM(Request per minute) limit. The group task finished then the next group.
+const GROUP_SIZE = 100 // to avoid RPM(Request per minute) limit. The group task finished then the next group.
 enum TaskStatus {
   pending = 'pending',
   running = 'running',
@@ -47,19 +51,19 @@ enum TaskStatus {
 }
 
 type TaskParam = {
-  inputs: Record<string, any>
+  inputs: Record<string, any>;
 }
 
 type Task = {
-  id: number
-  status: TaskStatus
-  params: TaskParam
+  id: number;
+  status: TaskStatus;
+  params: TaskParam;
 }
 
 export type IMainProps = {
-  isInstalledApp?: boolean
-  installedAppInfo?: InstalledApp
-  isWorkflow?: boolean
+  isInstalledApp?: boolean;
+  installedAppInfo?: InstalledApp;
+  isWorkflow?: boolean;
 }
 
 const TextGeneration: FC<IMainProps> = ({
@@ -77,7 +81,9 @@ const TextGeneration: FC<IMainProps> = ({
 
   const searchParams = useSearchParams()
   const mode = searchParams.get('mode') || 'create'
-  const [currentTab, setCurrentTab] = useState<string>(['create', 'batch'].includes(mode) ? mode : 'create')
+  const [currentTab, setCurrentTab] = useState<string>(
+    ['create', 'batch'].includes(mode) ? mode : 'create',
+  )
 
   const router = useRouter()
   const pathname = usePathname()
@@ -103,13 +109,18 @@ const TextGeneration: FC<IMainProps> = ({
   const [siteInfo, setSiteInfo] = useState<SiteInfo | null>(null)
   const [canReplaceLogo, setCanReplaceLogo] = useState<boolean>(false)
   const [promptConfig, setPromptConfig] = useState<PromptConfig | null>(null)
-  const [moreLikeThisConfig, setMoreLikeThisConfig] = useState<MoreLikeThisConfig | null>(null)
-  const [textToSpeechConfig, setTextToSpeechConfig] = useState<TextToSpeechConfig | null>(null)
+  const [moreLikeThisConfig, setMoreLikeThisConfig]
+    = useState<MoreLikeThisConfig | null>(null)
+  const [textToSpeechConfig, setTextToSpeechConfig]
+    = useState<TextToSpeechConfig | null>(null)
 
   // save message
   const [savedMessages, setSavedMessages] = useState<SavedMessage[]>([])
   const fetchSavedMessage = async () => {
-    const res: any = await doFetchSavedMessage(isInstalledApp, installedAppInfo?.id)
+    const res: any = await doFetchSavedMessage(
+      isInstalledApp,
+      installedAppInfo?.id,
+    )
     setSavedMessages(res.data)
   }
   const handleSaveMessage = async (messageId: string) => {
@@ -156,9 +167,13 @@ const TextGeneration: FC<IMainProps> = ({
     doSetAllTaskList(taskList)
     allTaskListRef.current = taskList
   }
-  const pendingTaskList = allTaskList.filter(task => task.status === TaskStatus.pending)
+  const pendingTaskList = allTaskList.filter(
+    task => task.status === TaskStatus.pending,
+  )
   const noPendingTask = pendingTaskList.length === 0
-  const showTaskList = allTaskList.filter(task => task.status !== TaskStatus.pending)
+  const showTaskList = allTaskList.filter(
+    task => task.status !== TaskStatus.pending,
+  )
   const [currGroupNum, doSetCurrGroupNum] = useState(0)
   const currGroupNumRef = useRef(0)
   const setCurrGroupNum = (num: number) => {
@@ -168,11 +183,21 @@ const TextGeneration: FC<IMainProps> = ({
   const getCurrGroupNum = () => {
     return currGroupNumRef.current
   }
-  const allSuccessTaskList = allTaskList.filter(task => task.status === TaskStatus.completed)
-  const allFailedTaskList = allTaskList.filter(task => task.status === TaskStatus.failed)
-  const allTasksFinished = allTaskList.every(task => task.status === TaskStatus.completed)
-  const allTasksRun = allTaskList.every(task => [TaskStatus.completed, TaskStatus.failed].includes(task.status))
-  const [batchCompletionRes, doSetBatchCompletionRes] = useState<Record<string, string>>({})
+  const allSuccessTaskList = allTaskList.filter(
+    task => task.status === TaskStatus.completed,
+  )
+  const allFailedTaskList = allTaskList.filter(
+    task => task.status === TaskStatus.failed,
+  )
+  const allTasksFinished = allTaskList.every(
+    task => task.status === TaskStatus.completed,
+  )
+  const allTasksRun = allTaskList.every(task =>
+    [TaskStatus.completed, TaskStatus.failed].includes(task.status),
+  )
+  const [batchCompletionRes, doSetBatchCompletionRes] = useState<
+    Record<string, string>
+  >({})
   const batchCompletionResRef = useRef<Record<string, string>>({})
   const setBatchCompletionRes = (res: Record<string, string>) => {
     doSetBatchCompletionRes(res)
@@ -202,32 +227,37 @@ const TextGeneration: FC<IMainProps> = ({
     const headerData = data[0]
     let isMapVarName = true
     promptConfig?.prompt_variables.forEach((item, index) => {
-      if (!isMapVarName)
-        return
+      if (!isMapVarName) return
 
-      if (item.name !== headerData[index])
-        isMapVarName = false
+      if (item.name !== headerData[index]) isMapVarName = false
     })
 
     if (!isMapVarName) {
-      notify({ type: 'error', message: t('share.generation.errorMsg.fileStructNotMatch') })
+      notify({
+        type: 'error',
+        message: t('share.generation.errorMsg.fileStructNotMatch'),
+      })
       return false
     }
 
     let payloadData = data.slice(1)
     if (payloadData.length === 0) {
-      notify({ type: 'error', message: t('share.generation.errorMsg.atLeastOne') })
+      notify({
+        type: 'error',
+        message: t('share.generation.errorMsg.atLeastOne'),
+      })
       return false
     }
 
     // check middle empty line
-    const allEmptyLineIndexes = payloadData.filter(item => item.every(i => i === '')).map(item => payloadData.indexOf(item))
+    const allEmptyLineIndexes = payloadData
+      .filter(item => item.every(i => i === ''))
+      .map(item => payloadData.indexOf(item))
     if (allEmptyLineIndexes.length > 0) {
       let hasMiddleEmptyLine = false
       let startIndex = allEmptyLineIndexes[0] - 1
       allEmptyLineIndexes.forEach((index) => {
-        if (hasMiddleEmptyLine)
-          return
+        if (hasMiddleEmptyLine) return
 
         if (startIndex + 1 !== index) {
           hasMiddleEmptyLine = true
@@ -237,7 +267,12 @@ const TextGeneration: FC<IMainProps> = ({
       })
 
       if (hasMiddleEmptyLine) {
-        notify({ type: 'error', message: t('share.generation.errorMsg.emptyLine', { rowIndex: startIndex + 2 }) })
+        notify({
+          type: 'error',
+          message: t('share.generation.errorMsg.emptyLine', {
+            rowIndex: startIndex + 2,
+          }),
+        })
         return false
       }
     }
@@ -246,7 +281,10 @@ const TextGeneration: FC<IMainProps> = ({
     payloadData = payloadData.filter(item => !item.every(i => i === ''))
     // after remove empty rows in the end, checked again
     if (payloadData.length === 0) {
-      notify({ type: 'error', message: t('share.generation.errorMsg.atLeastOne') })
+      notify({
+        type: 'error',
+        message: t('share.generation.errorMsg.atLeastOne'),
+      })
       return false
     }
     let errorRowIndex = 0
@@ -254,12 +292,10 @@ const TextGeneration: FC<IMainProps> = ({
     let moreThanMaxLengthVarName = ''
     let maxLength = 0
     payloadData.forEach((item, index) => {
-      if (errorRowIndex !== 0)
-        return
+      if (errorRowIndex !== 0) return
 
       promptConfig?.prompt_variables.forEach((varItem, varIndex) => {
-        if (errorRowIndex !== 0)
-          return
+        if (errorRowIndex !== 0) return
         if (varItem.type === 'string') {
           const maxLen = varItem.max_length || DEFAULT_VALUE_MAX_LEN
           if (item[varIndex].length > maxLen) {
@@ -269,8 +305,7 @@ const TextGeneration: FC<IMainProps> = ({
             return
           }
         }
-        if (!varItem.required)
-          return
+        if (!varItem.required) return
 
         if (item[varIndex].trim() === '') {
           requiredVarName = varItem.name
@@ -280,25 +315,44 @@ const TextGeneration: FC<IMainProps> = ({
     })
 
     if (errorRowIndex !== 0) {
-      if (requiredVarName)
-        notify({ type: 'error', message: t('share.generation.errorMsg.invalidLine', { rowIndex: errorRowIndex + 1, varName: requiredVarName }) })
+      if (requiredVarName) {
+        notify({
+          type: 'error',
+          message: t('share.generation.errorMsg.invalidLine', {
+            rowIndex: errorRowIndex + 1,
+            varName: requiredVarName,
+          }),
+        })
+      }
 
-      if (moreThanMaxLengthVarName)
-        notify({ type: 'error', message: t('share.generation.errorMsg.moreThanMaxLengthLine', { rowIndex: errorRowIndex + 1, varName: moreThanMaxLengthVarName, maxLength }) })
+      if (moreThanMaxLengthVarName) {
+        notify({
+          type: 'error',
+          message: t('share.generation.errorMsg.moreThanMaxLengthLine', {
+            rowIndex: errorRowIndex + 1,
+            varName: moreThanMaxLengthVarName,
+            maxLength,
+          }),
+        })
+      }
 
       return false
     }
     return true
   }
   const handleRunBatch = (data: string[][]) => {
-    if (!checkBatchInputs(data))
-      return
+    if (!checkBatchInputs(data)) return
     if (!allTasksFinished) {
-      notify({ type: 'info', message: t('appDebug.errorMessage.waitForBatchResponse') })
+      notify({
+        type: 'info',
+        message: t('appDebug.errorMessage.waitForBatchResponse'),
+      })
       return
     }
 
-    const payloadData = data.filter(item => !item.every(i => i === '')).slice(1)
+    const payloadData = data
+      .filter(item => !item.every(i => i === ''))
+      .slice(1)
     const varLen = promptConfig?.prompt_variables.length || 0
     setIsCallBatchAPI(true)
     const allTaskList: Task[] = payloadData.map((item, i) => {
@@ -325,17 +379,32 @@ const TextGeneration: FC<IMainProps> = ({
     // eslint-disable-next-line ts/no-use-before-define
     showResSidebar()
   }
-  const handleCompleted = (completionRes: string, taskId?: number, isSuccess?: boolean) => {
+  const handleCompleted = (
+    completionRes: string,
+    taskId?: number,
+    isSuccess?: boolean,
+  ) => {
     const allTaskListLatest = getLatestTaskList()
     const batchCompletionResLatest = getBatchCompletionRes()
-    const pendingTaskList = allTaskListLatest.filter(task => task.status === TaskStatus.pending)
-    const runTasksCount = 1 + allTaskListLatest.filter(task => [TaskStatus.completed, TaskStatus.failed].includes(task.status)).length
-    const needToAddNextGroupTask = (getCurrGroupNum() !== runTasksCount) && pendingTaskList.length > 0 && (runTasksCount % GROUP_SIZE === 0 || (allTaskListLatest.length - runTasksCount < GROUP_SIZE))
+    const pendingTaskList = allTaskListLatest.filter(
+      task => task.status === TaskStatus.pending,
+    )
+    const runTasksCount
+      = 1
+      + allTaskListLatest.filter(task =>
+        [TaskStatus.completed, TaskStatus.failed].includes(task.status),
+      ).length
+    const needToAddNextGroupTask
+      = getCurrGroupNum() !== runTasksCount
+      && pendingTaskList.length > 0
+      && (runTasksCount % GROUP_SIZE === 0
+        || allTaskListLatest.length - runTasksCount < GROUP_SIZE)
     // avoid add many task at the same time
-    if (needToAddNextGroupTask)
-      setCurrGroupNum(runTasksCount)
+    if (needToAddNextGroupTask) setCurrGroupNum(runTasksCount)
 
-    const nextPendingTaskIds = needToAddNextGroupTask ? pendingTaskList.slice(0, GROUP_SIZE).map(item => item.id) : []
+    const nextPendingTaskIds = needToAddNextGroupTask
+      ? pendingTaskList.slice(0, GROUP_SIZE).map(item => item.id)
+      : []
     const newAllTaskList = allTaskListLatest.map((item) => {
       if (item.id === taskId) {
         return {
@@ -361,8 +430,7 @@ const TextGeneration: FC<IMainProps> = ({
   }
 
   const fetchInitData = async () => {
-    if (!isInstalledApp)
-      await checkOrSetAccessToken()
+    if (!isInstalledApp) await checkOrSetAccessToken()
 
     return Promise.all([
       isInstalledApp
@@ -379,9 +447,7 @@ const TextGeneration: FC<IMainProps> = ({
         }
         : fetchAppInfo(),
       fetchAppParams(isInstalledApp, installedAppInfo?.id),
-      !isWorkflow
-        ? fetchSavedMessage()
-        : {},
+      !isWorkflow ? fetchSavedMessage() : {},
     ])
   }
 
@@ -394,13 +460,21 @@ const TextGeneration: FC<IMainProps> = ({
       setCanReplaceLogo(can_replace_logo)
       changeLanguage(siteInfo.default_language)
 
-      const { user_input_form, more_like_this, file_upload, text_to_speech }: any = appParams
+      const {
+        user_input_form,
+        more_like_this,
+        file_upload,
+        text_to_speech,
+      }: any = appParams
       setVisionConfig({
         // legacy of image upload compatible
         ...file_upload,
-        transfer_methods: file_upload.allowed_file_upload_methods || file_upload.allowed_upload_methods,
+        transfer_methods:
+          file_upload.allowed_file_upload_methods
+          || file_upload.allowed_upload_methods,
         // legacy of image upload compatible
-        image_file_size_limit: appParams?.system_parameters?.image_file_size_limit,
+        image_file_size_limit:
+          appParams?.system_parameters?.image_file_size_limit,
         fileUploadConfig: appParams?.system_parameters,
       })
       const prompt_variables = userInputsFormToPromptVariables(user_input_form)
@@ -416,10 +490,8 @@ const TextGeneration: FC<IMainProps> = ({
   // Can Use metadata(https://beta.nextjs.org/docs/api-reference/metadata) to set title. But it only works in server side client.
   useEffect(() => {
     if (siteInfo?.title) {
-      if (canReplaceLogo)
-        document.title = `${siteInfo.title}`
-      else
-        document.title = `${siteInfo.title} - Powered by Dify`
+      if (canReplaceLogo) document.title = `${siteInfo.title}`
+      else document.title = `${siteInfo.title} - Powered by Dify`
     }
   }, [siteInfo?.title, canReplaceLogo])
 
@@ -431,7 +503,10 @@ const TextGeneration: FC<IMainProps> = ({
     icon_url: siteInfo?.icon_url,
   })
 
-  const [isShowResSidebar, { setTrue: doShowResSidebar, setFalse: hideResSidebar }] = useBoolean(false)
+  const [
+    isShowResSidebar,
+    { setTrue: doShowResSidebar, setFalse: hideResSidebar },
+  ] = useBoolean(false)
   const showResSidebar = () => {
     // fix: useClickAway hideResSidebar will close sidebar
     setTimeout(() => {
@@ -443,41 +518,41 @@ const TextGeneration: FC<IMainProps> = ({
     hideResSidebar()
   }, resRef)
 
-  const renderRes = (task?: Task) => (<Res
-    key={task?.id}
-    isWorkflow={isWorkflow}
-    isCallBatchAPI={isCallBatchAPI}
-    isPC={isPC}
-    isMobile={isMobile}
-    isInstalledApp={isInstalledApp}
-    installedAppInfo={installedAppInfo}
-    isError={task?.status === TaskStatus.failed}
-    promptConfig={promptConfig}
-    moreLikeThisEnabled={!!moreLikeThisConfig?.enabled}
-    inputs={isCallBatchAPI ? (task as Task).params.inputs : inputs}
-    controlSend={controlSend}
-    controlRetry={task?.status === TaskStatus.failed ? controlRetry : 0}
-    controlStopResponding={controlStopResponding}
-    onShowRes={showResSidebar}
-    handleSaveMessage={handleSaveMessage}
-    taskId={task?.id}
-    onCompleted={handleCompleted}
-    visionConfig={visionConfig}
-    completionFiles={completionFiles}
-    isShowTextToSpeech={!!textToSpeechConfig?.enabled}
-    siteInfo={siteInfo}
-  />)
+  const renderRes = (task?: Task) => (
+    <Res
+      key={task?.id}
+      isWorkflow={isWorkflow}
+      isCallBatchAPI={isCallBatchAPI}
+      isPC={isPC}
+      isMobile={isMobile}
+      isInstalledApp={isInstalledApp}
+      installedAppInfo={installedAppInfo}
+      isError={task?.status === TaskStatus.failed}
+      promptConfig={promptConfig}
+      moreLikeThisEnabled={!!moreLikeThisConfig?.enabled}
+      inputs={isCallBatchAPI ? (task as Task).params.inputs : inputs}
+      controlSend={controlSend}
+      controlRetry={task?.status === TaskStatus.failed ? controlRetry : 0}
+      controlStopResponding={controlStopResponding}
+      onShowRes={showResSidebar}
+      handleSaveMessage={handleSaveMessage}
+      taskId={task?.id}
+      onCompleted={handleCompleted}
+      visionConfig={visionConfig}
+      completionFiles={completionFiles}
+      isShowTextToSpeech={!!textToSpeechConfig?.enabled}
+      siteInfo={siteInfo}
+    />
+  )
 
   const renderBatchRes = () => {
-    return (showTaskList.map(task => renderRes(task)))
+    return showTaskList.map(task => renderRes(task))
   }
 
   const resWrapClassNames = (() => {
-    if (isPC)
-      return 'grow h-full'
+    if (isPC) return 'grow h-full'
 
-    if (!isShowResSidebar)
-      return 'none'
+    if (!isShowResSidebar) return 'none'
 
     return cn('fixed z-50 inset-0', isTablet ? 'pl-[128px]' : 'pl-6')
   })()
@@ -485,54 +560,59 @@ const TextGeneration: FC<IMainProps> = ({
   const renderResWrap = (
     <div
       ref={resRef}
-      className={
-        cn(
-          'flex flex-col h-full shrink-0',
-          isPC ? 'px-10 py-8' : 'bg-gray-50',
-          isTablet && 'p-6', isMobile && 'p-4')
-      }
+      className={cn(
+        'flex flex-col h-full shrink-0',
+        isPC ? 'px-10 py-8' : 'bg-gray-50',
+        isTablet && 'p-6',
+        isMobile && 'p-4',
+      )}
     >
       <>
-        <div className='flex items-center justify-between shrink-0'>
-          <div className='flex items-center space-x-3'>
+        <div className="flex items-center justify-between shrink-0">
+          <div className="flex items-center space-x-3">
             <div className={s.starIcon}></div>
-            <div className='text-lg font-semibold text-gray-800'>{t('share.generation.title')}</div>
+            <div className="text-lg font-semibold text-gray-800">
+              {t('share.generation.title')}
+            </div>
           </div>
-          <div className='flex items-center space-x-2'>
+          <div className="flex items-center space-x-2">
             {allFailedTaskList.length > 0 && (
-              <div className='flex items-center'>
-                <RiErrorWarningFill className='w-4 h-4 text-[#D92D20]' />
-                <div className='ml-1 text-[#D92D20]'>{t('share.generation.batchFailed.info', { num: allFailedTaskList.length })}</div>
+              <div className="flex items-center">
+                <RiErrorWarningFill className="w-4 h-4 text-[#D92D20]" />
+                <div className="ml-1 text-[#D92D20]">
+                  {t('share.generation.batchFailed.info', {
+                    num: allFailedTaskList.length,
+                  })}
+                </div>
                 <Button
-                  variant='primary'
-                  className='ml-2'
+                  variant="primary"
+                  className="ml-2"
                   onClick={handleRetryAllFailedTask}
-                >{t('share.generation.batchFailed.retry')}</Button>
-                <div className='mx-3 w-[1px] h-3.5 bg-gray-200'></div>
+                >
+                  {t('share.generation.batchFailed.retry')}
+                </Button>
+                <div className="mx-3 w-[1px] h-3.5 bg-gray-200"></div>
               </div>
             )}
             {allSuccessTaskList.length > 0 && (
-              <ResDownload
-                isMobile={isMobile}
-                values={exportRes}
-              />
+              <ResDownload isMobile={isMobile} values={exportRes} />
             )}
             {!isPC && (
               <div
-                className='flex items-center justify-center cursor-pointer'
+                className="flex items-center justify-center cursor-pointer"
                 onClick={hideResSidebar}
               >
-                <XMarkIcon className='w-4 h-4 text-gray-800' />
+                <XMarkIcon className="w-4 h-4 text-gray-800" />
               </div>
             )}
           </div>
         </div>
 
-        <div className='overflow-y-auto grow'>
+        <div className="overflow-y-auto grow">
           {!isCallBatchAPI ? renderRes() : renderBatchRes()}
           {!noPendingTask && (
-            <div className='mt-4'>
-              <Loading type='area' />
+            <div className="mt-4">
+              <Loading type="area" />
             </div>
           )}
         </div>
@@ -542,42 +622,48 @@ const TextGeneration: FC<IMainProps> = ({
 
   if (!appId || !siteInfo || !promptConfig) {
     return (
-      <div className='flex items-center h-screen'>
-        <Loading type='app' />
-      </div>)
+      <div className="flex items-center h-screen">
+        <Loading type="app" />
+      </div>
+    )
   }
 
   return (
     <>
-      <div className={cn(
-        isPC && 'flex',
-        isInstalledApp ? s.installedApp : 'h-screen',
-        'bg-gray-50',
-      )}>
+      <div
+        className={cn(
+          isPC && 'flex',
+          isInstalledApp ? s.installedApp : 'h-screen',
+          'bg-gray-50',
+        )}
+      >
         {/* Left */}
-        <div className={cn(
-          isPC ? 'w-[600px] max-w-[50%] p-8' : 'p-4',
-          isInstalledApp && 'rounded-l-2xl',
-          'shrink-0 relative flex flex-col pb-10 h-full border-r border-gray-100 bg-white',
-        )}>
-          <div className='mb-6'>
-            <div className='flex items-center justify-between'>
-              <div className='flex items-center space-x-3'>
+        <div
+          className={cn(
+            isPC ? 'w-[600px] max-w-[50%] p-8' : 'p-4',
+            isInstalledApp && 'rounded-l-2xl',
+            'shrink-0 relative flex flex-col pb-10 h-full border-r border-gray-100 bg-white',
+          )}
+        >
+          <div className="mb-6">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-3">
                 <AppIcon
                   size="small"
                   iconType={siteInfo.icon_type}
                   icon={siteInfo.icon}
-                  background={siteInfo.icon_background || appDefaultIconBackground}
+                  background={
+                    siteInfo.icon_background || appDefaultIconBackground
+                  }
                   imageUrl={siteInfo.icon_url}
                 />
-                <div className='text-lg font-semibold text-gray-800'>{siteInfo.title}</div>
+                <div className="text-lg font-semibold text-gray-800">
+                  {siteInfo.title}
+                </div>
               </div>
               {!isPC && (
-                <Button
-                  className='shrink-0 ml-2'
-                  onClick={showResSidebar}
-                >
-                  <div className='flex items-center space-x-2 text-primary-600 text-[13px] font-medium'>
+                <Button className="shrink-0 ml-2" onClick={showResSidebar}>
+                  <div className="flex items-center space-x-2 text-primary-600 text-[13px] font-medium">
                     <div className={s.starIcon}></div>
                     <span>{t('share.generation.title')}</span>
                   </div>
@@ -585,7 +671,9 @@ const TextGeneration: FC<IMainProps> = ({
               )}
             </div>
             {siteInfo.description && (
-              <div className='mt-2 text-xs text-gray-500'>{siteInfo.description}</div>
+              <div className="mt-2 text-xs text-gray-500">
+                {siteInfo.description}
+              </div>
             )}
           </div>
           <TabHeader
@@ -593,24 +681,25 @@ const TextGeneration: FC<IMainProps> = ({
               { id: 'create', name: t('share.generation.tabs.create') },
               { id: 'batch', name: t('share.generation.tabs.batch') },
               ...(!isWorkflow
-                ? [{
-                  id: 'saved',
-                  name: t('share.generation.tabs.saved'),
-                  isRight: true,
-                  extra: savedMessages.length > 0
-                    ? (
-                      <div className='ml-1 flex items-center h-5 px-1.5 rounded-md border border-gray-200 text-gray-500 text-xs font-medium'>
-                        {savedMessages.length}
-                      </div>
-                    )
-                    : null,
-                }]
+                ? [
+                  {
+                    id: 'saved',
+                    name: t('share.generation.tabs.saved'),
+                    isRight: true,
+                    extra:
+                        savedMessages.length > 0 ? (
+                          <div className="ml-1 flex items-center h-5 px-1.5 rounded-md border border-gray-200 text-gray-500 text-xs font-medium">
+                            {savedMessages.length}
+                          </div>
+                        ) : null,
+                  },
+                ]
                 : []),
             ]}
             value={currentTab}
             onChange={setCurrentTab}
           />
-          <div className='h-20 overflow-y-auto grow'>
+          <div className="h-20 overflow-y-auto grow">
             <div className={cn(currentTab === 'create' ? 'block' : 'hidden')}>
               <RunOnce
                 siteInfo={siteInfo}
@@ -633,7 +722,7 @@ const TextGeneration: FC<IMainProps> = ({
 
             {currentTab === 'saved' && (
               <SavedItems
-                className='mt-4'
+                className="mt-4"
                 isShowTextToSpeech={textToSpeechConfig?.enabled}
                 list={savedMessages}
                 onRemove={handleRemoveSavedMessage}
@@ -643,21 +732,30 @@ const TextGeneration: FC<IMainProps> = ({
           </div>
 
           {/* copyright */}
-          <div className={cn(
-            isInstalledApp ? 'left-[248px]' : 'left-8',
-            'fixed  bottom-4  flex space-x-2 text-gray-400 font-normal text-xs',
-          )}>
+          <div
+            className={cn(
+              isInstalledApp ? 'left-[248px]' : 'left-8',
+              'fixed  bottom-4  flex space-x-2 text-gray-400 font-normal text-xs',
+            )}
+          >
             {siteInfo.copyright && (
-              <div className="">© {(new Date()).getFullYear()} {siteInfo.copyright}</div>
+              <div className="">
+                © {new Date().getFullYear()} {siteInfo.copyright}
+              </div>
             )}
             {siteInfo.privacy_policy && (
               <>
                 {siteInfo.copyright && <div>·</div>}
-                <div>{t('share.chat.privacyPolicyLeft')}
+                <div>
+                  {t('share.chat.privacyPolicyLeft')}
                   <a
-                    className='text-gray-500 px-1'
+                    className="text-gray-500 px-1"
                     href={siteInfo.privacy_policy}
-                    target='_blank' rel='noopener noreferrer'>{t('share.chat.privacyPolicyMiddle')}</a>
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    {t('share.chat.privacyPolicyMiddle')}
+                  </a>
                   {t('share.chat.privacyPolicyRight')}
                 </div>
               </>
@@ -669,7 +767,8 @@ const TextGeneration: FC<IMainProps> = ({
         <div
           className={resWrapClassNames}
           style={{
-            background: (!isPC && isShowResSidebar) ? 'rgba(35, 56, 118, 0.2)' : 'none',
+            background:
+              !isPC && isShowResSidebar ? 'rgba(35, 56, 118, 0.2)' : 'none',
           }}
         >
           {renderResWrap}
