@@ -39,7 +39,7 @@ const DialogWrapper = ({
                 inWorkflow ? 'rounded-l-2xl border-b-[0.5px] border-l-[0.5px] border-t-[0.5px]' : 'rounded-2xl border-[0.5px]',
                 'data-[closed]:scale-95  data-[closed]:opacity-0',
                 'data-[enter]:scale-100 data-[enter]:opacity-100 data-[enter]:duration-300 data-[enter]:ease-out',
-                'data-[enter]:scale-95 data-[leave]:opacity-0 data-[leave]:duration-200 data-[leave]:ease-in',
+                'data-[leave]:scale-95 data-[leave]:opacity-0 data-[leave]:duration-200 data-[leave]:ease-in',
                 className,
               )}>
                 {children}

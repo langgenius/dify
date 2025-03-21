@@ -1,5 +1,4 @@
 import { Dialog, DialogPanel, Transition, TransitionChild } from '@headlessui/react'
-import { Fragment } from 'react'
 import { RiCloseLargeLine } from '@remixicon/react'
 import classNames from '@/utils/classnames'
 
@@ -25,14 +24,14 @@ export default function FullScreenModal({
   overflowVisible = false,
 }: IModal) {
   return (
-    <Transition show={open} as={Fragment}>
+    <Transition show={open} appear>
       <Dialog as="div" className={classNames('modal-dialog', wrapperClassName)} onClose={onClose}>
         <TransitionChild>
           <div className={classNames(
             'fixed inset-0 bg-background-overlay-backdrop backdrop-blur-[6px]',
-            'data-[closed]:opacity-0',
-            'data-[enter]:ease-out data-[enter]:duration-300 data-[enter]:opacity-100',
-            'data-[leave]:ease-in data-[leave]:duration-200 data-[leave]:opacity-0',
+            'duration-300 ease-in data-[closed]:opacity-0',
+            'data-[enter]:opacity-100',
+            'data-[leave]:opacity-0',
           )} />
         </TransitionChild>
 
@@ -48,9 +47,9 @@ export default function FullScreenModal({
               <DialogPanel className={classNames(
                 'h-full',
                 overflowVisible ? 'overflow-visible' : 'overflow-hidden',
-                'data-[closed]:opacity-0  data-[closed]:scale-95',
-                'data-[enter]:ease-out data-[enter]:duration-300 data-[enter]:opacity-100 data-[enter]:scale-100',
-                'data-[leave]:ease-in data-[leave]:duration-200 data-[leave]:opacity-0 data-[enter]:scale-95',
+                'duration-100 ease-in data-[closed]:opacity-0 data-[closed]:scale-95',
+                'data-[enter]:opacity-100 data-[enter]:scale-100',
+                'data-[leave]:opacity-0 data-[enter]:scale-95',
                 className,
               )}>
                 {closable

@@ -36,10 +36,10 @@ const CustomDialog = ({
       <Dialog as="div" className="relative z-40" onClose={close}>
         <TransitionChild>
           <div className={classNames(
-            'fixed inset-0 bg-black bg-opacity-25',
-            'data-[closed]:opacity-0',
-            'data-[enter]:ease-out data-[enter]:duration-300 data-[enter]:opacity-100',
-            'data-[leave]:ease-in data-[leave]:duration-200 data-[leave]:opacity-0',
+            'fixed inset-0 bg-background-overlay-backdrop backdrop-blur-[6px]',
+            'duration-300 ease-in data-[closed]:opacity-0',
+            'data-[enter]:opacity-100',
+            'data-[leave]:opacity-0',
           )} />
         </TransitionChild>
 
@@ -48,9 +48,9 @@ const CustomDialog = ({
             <TransitionChild>
               <DialogPanel className={classNames(
                 'w-full max-w-[800px] p-6 overflow-hidden transition-all transform bg-components-panel-bg border-[0.5px] border-components-panel-border shadow-xl rounded-2xl',
-                'data-[closed]:opacity-0  data-[closed]:scale-95',
-                'data-[enter]:ease-out data-[enter]:duration-300 data-[enter]:opacity-100 data-[enter]:scale-100',
-                'data-[leave]:ease-in data-[leave]:duration-200 data-[leave]:opacity-0 data-[enter]:scale-95',
+                'duration-100 ease-in data-[closed]:opacity-0 data-[closed]:scale-95',
+                'data-[enter]:opacity-100 data-[enter]:scale-100',
+                'data-[leave]:opacity-0 data-[enter]:scale-95',
                 className,
               )}>
                 {Boolean(title) && (

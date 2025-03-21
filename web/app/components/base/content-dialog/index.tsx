@@ -25,9 +25,9 @@ const ContentDialog = ({
         <div
           className={classNames(
             'absolute left-0 inset-0 w-full bg-app-detail-overlay-bg',
-            'data-[closed]:opacity-0',
-            'data-[enter]:ease-out data-[enter]:duration-300 data-[enter]:opacity-100',
-            'data-[leave]:ease-in data-[leave]:duration-200 data-[leave]:opacity-0',
+            'duration-300 ease-in data-[closed]:opacity-0',
+            'data-[enter]:opacity-100',
+            'data-[leave]:opacity-0',
           )}
           onClick={onClose}
         />
@@ -36,7 +36,7 @@ const ContentDialog = ({
       <TransitionChild>
         <div className={classNames(
           'absolute left-0 w-full bg-app-detail-bg border-r border-divider-burn',
-          'data-[closed]:-translate-x-full',
+          'duration-100 ease-in data-[closed]:-translate-x-full',
           'data-[enter]:ease-out data-[enter]:duration-300 data-[enter]:translate-x-0',
           'data-[leave]:ease-in data-[leave]:duration-200 data-[leave]:-translate-x-full',
           className,

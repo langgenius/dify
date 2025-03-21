@@ -33,9 +33,9 @@ export default function Modal({
         <TransitionChild>
           <div className={classNames(
             'fixed inset-0 bg-background-overlay',
-            'data-[closed]:opacity-0',
-            'data-[enter]:ease-out data-[enter]:duration-300 data-[enter]:opacity-100',
-            'data-[leave]:ease-in data-[leave]:duration-200 data-[leave]:opacity-0',
+            'duration-300 ease-in data-[closed]:opacity-0',
+            'data-[enter]:opacity-100',
+            'data-[leave]:opacity-0',
           )} />
         </TransitionChild>
 
@@ -51,9 +51,9 @@ export default function Modal({
               <DialogPanel className={classNames(
                 'w-full max-w-[480px] transform rounded-2xl bg-components-panel-bg p-6 text-left align-middle shadow-xl transition-all',
                 overflowVisible ? 'overflow-visible' : 'overflow-hidden',
-                'data-[closed]:opacity-0  data-[closed]:scale-95',
-                'data-[enter]:ease-out data-[enter]:duration-300 data-[enter]:opacity-100 data-[enter]:scale-100',
-                'data-[leave]:ease-in data-[leave]:duration-200 data-[leave]:opacity-0 data-[enter]:scale-95',
+                'duration-100 ease-in data-[closed]:opacity-0 data-[closed]:scale-95',
+                'data-[enter]:opacity-100 data-[enter]:scale-100',
+                'data-[leave]:opacity-0 data-[enter]:scale-95',
                 className,
               )}>
                 {title && <DialogTitle

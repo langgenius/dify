@@ -40,9 +40,9 @@ const MenuDialog = ({
             <TransitionChild>
               <DialogPanel className={cn(
                 'relative h-full w-full grow overflow-hidden bg-background-sidenav-bg p-0 text-left align-middle backdrop-blur-md transition-all',
-                'data-[closed]:scale-95  data-[closed]:opacity-0',
-                'data-[enter]:scale-100 data-[enter]:opacity-100 data-[enter]:duration-300 data-[enter]:ease-out',
-                'data-[enter]:scale-95 data-[leave]:opacity-0 data-[leave]:duration-200 data-[leave]:ease-in',
+                'duration-300 ease-in data-[closed]:scale-95 data-[closed]:opacity-0',
+                'data-[enter]:scale-100 data-[enter]:opacity-100',
+                'data-[enter]:scale-95 data-[leave]:opacity-0',
                 className,
               )}>
                 <div className='absolute right-0 top-0 h-full w-1/2 bg-components-panel-bg' />
