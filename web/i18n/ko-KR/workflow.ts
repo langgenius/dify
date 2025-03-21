@@ -399,6 +399,7 @@ const translation = {
       outputVars: {
         output: '생성된 내용',
         usage: '모델 사용 정보',
+        json: '생성된 내용 JSON',
       },
       singleRun: {
         variable: '변수',

@@ -399,6 +399,7 @@ const translation = {
       outputVars: {
         output: 'Nội dung được tạo',
         usage: 'Thông tin sử dụng mô hình',
+        json: 'Nội dung được tạo JSON',
       },
       singleRun: {
         variable: 'Biến',
