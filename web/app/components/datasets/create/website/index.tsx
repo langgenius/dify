@@ -108,11 +108,12 @@ const Website: FC<Props> = ({
             🔥 Firecrawl
           </button>
           <button
-            className={`flex items-center justify-center rounded-md px-4 py-2 text-sm font-medium ${
+            className={cn('flex items-center justify-center rounded-lg px-4 py-2',
               selectedProvider === DataSourceProvider.waterCrawl
-                ? 'bg-primary-50 text-primary-600'
-                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-            }`}
+                ? 'system-sm-medium border-[1.5px] border-components-option-card-option-selected-border bg-components-option-card-option-selected-bg text-text-primary'
+                : `system-sm-regular border border-components-option-card-option-border bg-components-option-card-option-bg text-text-secondary
+                hover:border-components-option-card-option-border-hover hover:bg-components-option-card-option-bg-hover hover:shadow-xs hover:shadow-shadow-shadow-3`,
+            )}
             onClick={() => setSelectedProvider(DataSourceProvider.waterCrawl)}
           >
             <span className={cn(s.watercrawlLogo, 'mr-2')}/>
