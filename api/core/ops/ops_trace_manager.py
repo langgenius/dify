@@ -34,7 +34,6 @@ from core.ops.entities.trace_entity import (
 )
 from core.ops.langfuse_trace.langfuse_trace import LangFuseDataTrace
 from core.ops.langsmith_trace.langsmith_trace import LangSmithDataTrace
-from core.ops.opik_trace.opik_trace import OpikDataTrace
 from core.ops.utils import get_message_data
 from core.ops.weave_trace.weave_trace import WeaveDataTrace
 from extensions.ext_database import db
@@ -42,6 +41,13 @@ from extensions.ext_storage import storage
 from models.model import App, AppModelConfig, Conversation, Message, MessageFile, TraceAppConfig
 from models.workflow import WorkflowAppLog, WorkflowRun
 from tasks.ops_trace_task import process_trace_tasks
+
+
+def build_opik_trace_instance(config: OpikConfig):
+    from core.ops.opik_trace.opik_trace import OpikDataTrace
+
+    return OpikDataTrace(config)
+
 
 provider_config_map: dict[str, dict[str, Any]] = {
     TracingProviderEnum.LANGFUSE.value: {
@@ -60,7 +66,7 @@ provider_config_map: dict[str, dict[str, Any]] = {
         "config_class": OpikConfig,
         "secret_keys": ["api_key"],
         "other_keys": ["project", "url", "workspace"],
-        "trace_instance": OpikDataTrace,
+        "trace_instance": lambda config: build_opik_trace_instance(config),
     },
     TracingProviderEnum.WEAVE.value: {
         "config_class": WeaveConfig,
