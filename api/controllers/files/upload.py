@@ -8,7 +8,7 @@ from controllers.files import api
 from controllers.files.error import UnsupportedFileTypeError
 from controllers.inner_api.plugin.wraps import get_user
 from controllers.service_api.app.error import FileTooLargeError
-from core.file.helpers import verify_plugin_file_signature
+from core.file.helpers import get_signed_file_url, verify_plugin_file_signature
 from fields.file_fields import file_fields
 from services.file_service import FileService
 
@@ -63,6 +63,8 @@ class PluginUploadFileApi(Resource):
         except services.errors.file.UnsupportedFileTypeError:
             raise UnsupportedFileTypeError()
 
+        preview_url = get_signed_file_url(upload_file.id)
+        upload_file.preview_url = preview_url
         return upload_file, 201
 
 
