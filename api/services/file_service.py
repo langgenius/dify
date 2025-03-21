@@ -37,6 +37,11 @@ class FileService:
         source: Literal["datasets"] | None = None,
         source_url: str = "",
     ) -> UploadFile:
+        # check mime type, if file is an image, make sure it in PNG, JPG, JPEG, WEBP or GIF.
+        if mimetype.startswith("image/"):
+            if mimetype not in ["image/png", "image/jpeg", "image/jpg", "image/webp", "image/gif"]:
+                raise UnsupportedFileTypeError()
+
         # get file extension
         extension = filename.split(".")[-1].lower()
         if len(filename) > 200:
