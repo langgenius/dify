@@ -7,6 +7,7 @@ import { useLanguage } from '../hooks'
 import { Group } from '@/app/components/base/icons/src/vender/other'
 import { OpenaiBlue, OpenaiViolet } from '@/app/components/base/icons/src/public/llm'
 import cn from '@/utils/classnames'
+import { basePath } from '@/utils/var'
 import { renderI18nObject } from '@/hooks/use-i18n'
 
 type ModelIconProps = {
@@ -30,7 +31,7 @@ const ModelIcon: FC<ModelIconProps> = ({
   if (provider?.icon_small) {
     return (
       <div className={cn('flex items-center justify-center w-5 h-5', isDeprecated && 'opacity-50', className)}>
-        <img alt='model-icon' src={renderI18nObject(provider.icon_small, language)}/>
+        <img alt='model-icon' src={basePath + renderI18nObject(provider.icon_small, language)}/>
       </div>
     )
   }
