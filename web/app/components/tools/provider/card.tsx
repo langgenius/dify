@@ -36,11 +36,11 @@ const ProviderCard = ({
   }, [collection.labels, labelList, language])
 
   return (
-    <div className={cn('group col-span-1 bg-white border-2 border-solid border-transparent rounded-xl shadow-sm min-h-[160px] flex flex-col transition-all duration-200 ease-in-out cursor-pointer hover:shadow-lg', active && '!border-primary-400')} onClick={onSelect}>
-      <div className='flex pt-[14px] px-[14px] pb-3 h-[66px] items-center gap-3 grow-0 shrink-0'>
+    <div className={cn('group col-span-1 flex min-h-[160px] cursor-pointer flex-col rounded-xl border-2 border-solid border-transparent bg-white shadow-sm transition-all duration-200 ease-in-out hover:shadow-lg', active && '!border-primary-400')} onClick={onSelect}>
+      <div className='flex h-[66px] shrink-0 grow-0 items-center gap-3 px-[14px] pb-3 pt-[14px]'>
         <div className='relative shrink-0'>
           {typeof collection.icon === 'string' && (
-            <div className='w-10 h-10 bg-center bg-cover bg-no-repeat rounded-md' style={{ backgroundImage: `url(${collection.icon})` }} />
+            <div className='h-10 w-10 rounded-md bg-cover bg-center bg-no-repeat' style={{ backgroundImage: `url(${collection.icon})` }} />
           )}
           {typeof collection.icon !== 'string' && (
             <AppIcon
@@ -50,18 +50,18 @@ const ProviderCard = ({
             />
           )}
         </div>
-        <div className='grow w-0 py-[1px]'>
-          <div className='flex items-center text-sm leading-5 font-semibold text-gray-800'>
+        <div className='w-0 grow py-[1px]'>
+          <div className='flex items-center text-sm font-semibold leading-5 text-gray-800'>
             <div className='truncate' title={collection.label[language]}>{collection.label[language]}</div>
           </div>
-          <div className='flex items-center text-[10px] leading-[18px] text-gray-500 font-medium'>
+          <div className='flex items-center text-[10px] font-medium leading-[18px] text-gray-500'>
             <div className='truncate'>{t('tools.author')}&nbsp;{collection.author}</div>
           </div>
         </div>
       </div>
       <div
         className={cn(
-          'grow mb-2 px-[14px] max-h-[72px] text-xs leading-normal text-gray-500',
+          'mb-2 max-h-[72px] grow px-[14px] text-xs leading-normal text-gray-500',
           collection.labels?.length ? 'line-clamp-2' : 'line-clamp-4',
           collection.labels?.length > 0 && 'group-hover:line-clamp-2 group-hover:max-h-[36px]',
         )}
@@ -70,10 +70,10 @@ const ProviderCard = ({
         {collection.description[language]}
       </div>
       {collection.labels?.length > 0 && (
-        <div className='flex items-center shrink-0 mt-1 pt-1 pl-[14px] pr-[6px] pb-[6px] h-[42px]'>
-          <div className='relative w-full flex items-center gap-1 py-[7px] rounded-md text-gray-500' title={labelContent}>
-            <Tag01 className='shrink-0 w-3 h-3' />
-            <div className='grow text-xs text-start leading-[18px] font-normal truncate'>{labelContent}</div>
+        <div className='mt-1 flex h-[42px] shrink-0 items-center pb-[6px] pl-[14px] pr-[6px] pt-1'>
+          <div className='relative flex w-full items-center gap-1 rounded-md py-[7px] text-gray-500' title={labelContent}>
+            <Tag01 className='h-3 w-3 shrink-0' />
+            <div className='grow truncate text-start text-xs font-normal leading-[18px]'>{labelContent}</div>
           </div>
         </div>
       )}

@@ -42,7 +42,7 @@ const InsertBlock = ({
     <div
       className={cn(
         'nopan nodrag',
-        'hidden group-hover/insert:block absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2',
+        'absolute left-1/2 top-1/2 hidden -translate-x-1/2 -translate-y-1/2 group-hover/insert:block',
         open && '!block',
       )}
     >

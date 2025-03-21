@@ -22,7 +22,7 @@ const Description: FC<Props> = ({
       return 'h-12 line-clamp-3'
   }, [descriptionLineRows])
   return (
-    <div className={cn('text-text-tertiary system-xs-regular', lineClassName, className)}>
+    <div className={cn('system-xs-regular text-text-tertiary', lineClassName, className)}>
       {text}
     </div>
   )

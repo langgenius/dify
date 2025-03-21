@@ -60,12 +60,12 @@ export default function CheckCode() {
   }
 
   return <div className='flex flex-col gap-3'>
-    <div className='bg-background-default-dodge text-text-accent-light-mode-only border border-components-panel-border-subtle shadow-lg inline-flex w-14 h-14 justify-center items-center rounded-2xl'>
-      <RiMailSendFill className='w-6 h-6 text-2xl' />
+    <div className='inline-flex h-14 w-14 items-center justify-center rounded-2xl border border-components-panel-border-subtle bg-background-default-dodge text-text-accent-light-mode-only shadow-lg'>
+      <RiMailSendFill className='h-6 w-6 text-2xl' />
     </div>
-    <div className='pt-2 pb-4'>
+    <div className='pb-4 pt-2'>
       <h2 className='title-4xl-semi-bold text-text-primary'>{t('login.checkCode.checkYourEmail')}</h2>
-      <p className='mt-2 body-md-regular text-text-secondary'>
+      <p className='body-md-regular mt-2 text-text-secondary'>
         <span dangerouslySetInnerHTML={{ __html: t('login.checkCode.tips', { email }) as string }}></span>
         <br />
         {t('login.checkCode.validTime')}
@@ -74,19 +74,19 @@ export default function CheckCode() {
 
     <form action="">
       <input type='text' className='hidden' />
-      <label htmlFor="code" className='system-md-semibold text-text-secondary mb-1'>{t('login.checkCode.verificationCode')}</label>
+      <label htmlFor="code" className='system-md-semibold mb-1 text-text-secondary'>{t('login.checkCode.verificationCode')}</label>
       <Input value={code} onChange={e => setVerifyCode(e.target.value)} max-length={6} className='mt-1' placeholder={t('login.checkCode.verificationCodePlaceholder') as string} />
       <Button loading={loading} disabled={loading} className='my-3 w-full' variant='primary' onClick={verify}>{t('login.checkCode.verify')}</Button>
       <Countdown onResend={resendCode} />
     </form>
     <div className='py-2'>
-      <div className='bg-gradient-to-r from-background-gradient-mask-transparent via-divider-regular to-background-gradient-mask-transparent h-px'></div>
+      <div className='h-px bg-gradient-to-r from-background-gradient-mask-transparent via-divider-regular to-background-gradient-mask-transparent'></div>
     </div>
-    <div onClick={() => router.back()} className='flex items-center justify-center h-9 text-text-tertiary cursor-pointer'>
-      <div className='inline-block p-1 rounded-full bg-background-default-dimm'>
+    <div onClick={() => router.back()} className='flex h-9 cursor-pointer items-center justify-center text-text-tertiary'>
+      <div className='bg-background-default-dimm inline-block rounded-full p-1'>
         <RiArrowLeftLine size={12} />
       </div>
-      <span className='ml-2 system-xs-regular'>{t('login.back')}</span>
+      <span className='system-xs-regular ml-2'>{t('login.back')}</span>
     </div>
   </div>
 }

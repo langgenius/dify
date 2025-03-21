@@ -67,7 +67,7 @@ const MetadataDocument: FC<Props> = ({
               </div>
             ) : (
               <Button variant='ghost' size='small' onClick={startToEdit}>
-                <RiEditLine className='mr-1 size-3.5 text-text-tertiary cursor-pointer' />
+                <RiEditLine className='mr-1 size-3.5 cursor-pointer text-text-tertiary' />
                 <div>{t('common.operation.edit')}</div>
               </Button>
             ))}

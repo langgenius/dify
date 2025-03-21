@@ -92,21 +92,21 @@ const DataSourceWebsite: FC<Props> = ({ provider }) => {
             if (item.provider === DataSourceProvider.fireCrawl) {
               return (
                 <div
-                  className={cn(className, 'flex items-center justify-center w-5 h-5 !bg-background-default border border-divider-subtle text-xs font-medium text-text-tertiary rounded ml-3')}>🔥</div>
+                  className={cn(className, 'ml-3 flex h-5 w-5 items-center justify-center rounded border border-divider-subtle !bg-background-default text-xs font-medium text-text-tertiary')}>🔥</div>
               )
             }
 
             if (item.provider === DataSourceProvider.waterCrawl) {
               return (
                 <div
-                  className={cn(className, 'flex items-center justify-center w-5 h-5 !bg-background-default border border-divider-subtle text-xs font-medium text-text-tertiary rounded ml-3')}>
+                  className={cn(className, 'ml-3 flex h-5 w-5 items-center justify-center rounded border border-divider-subtle !bg-background-default text-xs font-medium text-text-tertiary')}>
                   <span className={s.watercrawlLogo}/>
                 </div>
               )
             }
             return (
               <div
-                className={cn(className, 'flex items-center justify-center w-5 h-5 !bg-background-default border border-divider-subtle text-xs font-medium text-text-tertiary rounded ml-3')}>
+                className={cn(className, 'ml-3 flex h-5 w-5 items-center justify-center rounded border border-divider-subtle !bg-background-default text-xs font-medium text-text-tertiary')}>
                 <span className={s.jinaLogo}/>
               </div>
             )

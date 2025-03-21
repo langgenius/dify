@@ -32,7 +32,7 @@ type IFilterProps = {
 const Filter: FC<IFilterProps> = ({ queryParams, setQueryParams }: IFilterProps) => {
   const { t } = useTranslation()
   return (
-    <div className='flex flex-row flex-wrap gap-2 mb-2'>
+    <div className='mb-2 flex flex-row flex-wrap gap-2'>
       <Chip
         value={queryParams.status || 'all'}
         onSelect={(item) => {

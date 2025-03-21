@@ -49,18 +49,18 @@ const Header = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedSegment])
   return (
-    <div className='flex flex-1 items-center justify-between px-4 bg-background-body'>
+    <div className='flex flex-1 items-center justify-between bg-background-body px-4'>
       <div className='flex items-center'>
         {isMobile && <div
-          className='flex items-center justify-center h-8 w-8 cursor-pointer'
+          className='flex h-8 w-8 cursor-pointer items-center justify-center'
           onClick={toggle}
         >
           <Bars3Icon className="h-4 w-4 text-gray-500" />
         </div>}
         {
           !isMobile
-          && <div className='flex w-64 p-2 pl-3 gap-1.5 items-center shrink-0 self-stretch'>
-            <Link href="/apps" className='flex w-8 h-8 items-center justify-center gap-2 shrink-0'>
+          && <div className='flex w-64 shrink-0 items-center gap-1.5 self-stretch p-2 pl-3'>
+            <Link href="/apps" className='flex h-8 w-8 shrink-0 items-center justify-center gap-2'>
               <LogoSite className='object-contain' />
             </Link>
             <div className='font-light text-divider-deep'>/</div>
@@ -75,7 +75,7 @@ const Header = () => {
       </div >
       {isMobile && (
         <div className='flex'>
-          <Link href="/apps" className='flex items-center mr-4'>
+          <Link href="/apps" className='mr-4 flex items-center'>
             <LogoSite />
           </Link>
           <div className='font-light text-divider-deep'>/</div>
@@ -92,7 +92,7 @@ const Header = () => {
           </div>
         )
       }
-      <div className='flex items-center shrink-0'>
+      <div className='flex shrink-0 items-center'>
         <EnvNav />
         <div className='mr-3'>
           <PluginsNav />
@@ -101,7 +101,7 @@ const Header = () => {
       </div>
       {
         (isMobile && isShowNavMenu) && (
-          <div className='w-full flex flex-col p-2 gap-y-1'>
+          <div className='flex w-full flex-col gap-y-1 p-2'>
             {!isCurrentWorkspaceDatasetOperator && <ExploreNav className={navClassName} />}
             {!isCurrentWorkspaceDatasetOperator && <AppNav />}
             {(isCurrentWorkspaceEditor || isCurrentWorkspaceDatasetOperator) && <DatasetNav />}

@@ -61,8 +61,8 @@ const AppIcon: FC<AppIconProps> = ({
     onClick={onClick}
   >
     {isValidImageIcon
-      // eslint-disable-next-line @next/next/no-img-element
-      ? <img src={imageUrl} className="w-full h-full" alt="app icon" />
+
+      ? <img src={imageUrl} className="h-full w-full" alt="app icon" />
       : (innerIcon || ((icon && icon !== '') ? <em-emoji id={icon} /> : <em-emoji id='🤖' />))
     }
   </span>

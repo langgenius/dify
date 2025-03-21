@@ -94,14 +94,14 @@ const ItemComponent = ({ index, style, data }: ListChildComponentProps<{
     if (hasChild) {
       return (
         <div
-          className='flex items-center justify-center shrink-0 mr-1 w-5 h-5 hover:bg-components-button-ghost-bg-hover rounded-md'
+          className='mr-1 flex h-5 w-5 shrink-0 items-center justify-center rounded-md hover:bg-components-button-ghost-bg-hover'
           style={{ marginLeft: current.depth * 8 }}
           onClick={() => handleToggle(index)}
         >
           {
             current.expand
-              ? <RiArrowDownSLine className='w-4 h-4 text-text-tertiary' />
-              : <RiArrowRightSLine className='w-4 h-4 text-text-tertiary' />
+              ? <RiArrowDownSLine className='h-4 w-4 text-text-tertiary' />
+              : <RiArrowRightSLine className='h-4 w-4 text-text-tertiary' />
           }
         </div>
       )
@@ -112,18 +112,18 @@ const ItemComponent = ({ index, style, data }: ListChildComponentProps<{
       )
     }
     return (
-      <div className='shrink-0 mr-1 w-5 h-5' style={{ marginLeft: current.depth * 8 }} />
+      <div className='mr-1 h-5 w-5 shrink-0' style={{ marginLeft: current.depth * 8 }} />
     )
   }
 
   return (
     <div
-      className={cn('group flex items-center pl-2 pr-[2px] rounded-md hover:bg-state-base-hover cursor-pointer',
+      className={cn('group flex cursor-pointer items-center rounded-md pl-2 pr-[2px] hover:bg-state-base-hover',
         previewPageId === current.page_id && 'bg-state-base-hover')}
       style={{ ...style, top: style.top as number + 8, left: 8, right: 8, width: 'calc(100% - 16px)' }}
     >
       <Checkbox
-        className='shrink-0 mr-2'
+        className='mr-2 shrink-0'
         checked={checkedIds.has(current.page_id)}
         disabled={disabled}
         onCheck={() => {
@@ -134,12 +134,12 @@ const ItemComponent = ({ index, style, data }: ListChildComponentProps<{
       />
       {!searchValue && renderArrow()}
       <NotionIcon
-        className='shrink-0 mr-1'
+        className='mr-1 shrink-0'
         type='page'
         src={current.page_icon}
       />
       <div
-        className='grow text-[13px] leading-4 font-medium text-text-secondary truncate'
+        className='grow truncate text-[13px] font-medium leading-4 text-text-secondary'
         title={current.page_name}
       >
         {current.page_name}
@@ -147,9 +147,9 @@ const ItemComponent = ({ index, style, data }: ListChildComponentProps<{
       {
         canPreview && (
           <div
-            className='shrink-0 hidden group-hover:flex items-center ml-1 px-2 h-6 rounded-md text-xs leading-4 font-medium text-components-button-secondary-text
-            cursor-pointer bg-components-button-secondary-bg border-[0.5px] border-components-button-secondary-border shadow-xs shadow-shadow-shadow-3
-            backdrop-blur-[10px] hover:bg-components-button-secondary-bg-hover hover:border-components-button-secondary-border-hover'
+            className='ml-1 hidden h-6 shrink-0 cursor-pointer items-center rounded-md border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg px-2 text-xs
+            font-medium leading-4 text-components-button-secondary-text shadow-xs shadow-shadow-shadow-3 backdrop-blur-[10px]
+            hover:border-components-button-secondary-border-hover hover:bg-components-button-secondary-bg-hover group-hover:flex'
             onClick={() => handlePreview(index)}>
             {t('common.dataSource.notion.selector.preview')}
           </div>
@@ -158,7 +158,7 @@ const ItemComponent = ({ index, style, data }: ListChildComponentProps<{
       {
         searchValue && (
           <div
-            className='shrink-0 ml-1 max-w-[120px] text-xs text-text-quaternary truncate'
+            className='ml-1 max-w-[120px] shrink-0 truncate text-xs text-text-quaternary'
             title={breadCrumbs.join(' / ')}
           >
             {breadCrumbs.join(' / ')}
@@ -284,7 +284,7 @@ const PageSelector = ({
 
   if (!currentDataList.length) {
     return (
-      <div className='flex items-center justify-center h-[296px] text-[13px] text-text-tertiary'>
+      <div className='flex h-[296px] items-center justify-center text-[13px] text-text-tertiary'>
         {t('common.dataSource.notion.selector.noSearchResult')}
       </div>
     )

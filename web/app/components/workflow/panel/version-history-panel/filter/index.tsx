@@ -47,15 +47,15 @@ const Filter: FC<FilterProps> = ({
       <PortalToFollowElemTrigger onClick={() => setOpen(v => !v)}>
         <div
           className={cn(
-            'flex items-center justify-center w-6 h-6 p-0.5 cursor-pointer rounded-md',
+            'flex h-6 w-6 cursor-pointer items-center justify-center rounded-md p-0.5',
             isFiltering ? 'bg-state-accent-active-alt' : 'hover:bg-state-base-hover',
           )}
         >
-          <RiFilter3Line className={cn('w-4 h-4', isFiltering ? 'text-text-accent' : ' text-text-tertiary')} />
+          <RiFilter3Line className={cn('h-4 w-4', isFiltering ? 'text-text-accent' : ' text-text-tertiary')} />
         </div>
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent className='z-[12]'>
-        <div className='flex flex-col w-[248px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg shadow-shadow-shadow-5 backdrop-blur-[5px]'>
+        <div className='flex w-[248px] flex-col rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg shadow-shadow-shadow-5 backdrop-blur-[5px]'>
           <div className='flex flex-col p-1'>
             {
               options.map((option) => {
@@ -70,7 +70,7 @@ const Filter: FC<FilterProps> = ({
               })
             }
           </div>
-          <Divider type='horizontal' className='h-[1px] bg-divider-subtle my-0' />
+          <Divider type='horizontal' className='my-0 h-[1px] bg-divider-subtle' />
           <FilterSwitch enabled={isOnlyShowNamedVersions} handleSwitch={handleSwitch} />
         </div>
       </PortalToFollowElemContent>

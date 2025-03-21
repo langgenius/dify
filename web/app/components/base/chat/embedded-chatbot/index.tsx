@@ -56,7 +56,7 @@ const Chatbot = () => {
         {!isMobile && <Loading type='app' />}
         {isMobile && (
           <div className={cn('relative')}>
-            <div className={cn('flex flex-col h-[calc(100vh_-_60px)] border-[0.5px] border-components-panel-border rounded-2xl shadow-xs')}>
+            <div className={cn('flex h-[calc(100vh_-_60px)] flex-col rounded-2xl border-[0.5px] border-components-panel-border shadow-xs')}>
               <Loading type='app' />
             </div>
           </div>
@@ -71,7 +71,7 @@ const Chatbot = () => {
         {!isMobile && <AppUnavailable />}
         {isMobile && (
           <div className={cn('relative')}>
-            <div className={cn('flex flex-col h-[calc(100vh_-_60px)] border-[0.5px] border-components-panel-border rounded-2xl shadow-xs')}>
+            <div className={cn('flex h-[calc(100vh_-_60px)] flex-col rounded-2xl border-[0.5px] border-components-panel-border shadow-xs')}>
               <AppUnavailable />
             </div>
           </div>
@@ -83,7 +83,7 @@ const Chatbot = () => {
     <div className='relative'>
       <div
         className={cn(
-          'flex flex-col border border-components-panel-border-subtle rounded-2xl',
+          'flex flex-col rounded-2xl border border-components-panel-border-subtle',
           isMobile ? 'h-[calc(100vh_-_60px)] border-[0.5px] border-components-panel-border shadow-xs' : 'h-[100vh] bg-chatbot-bg',
         )}
         style={isMobile ? Object.assign({}, CssTransform(themeBuilder?.theme?.backgroundHeaderColorStyle ?? '')) : {}}
@@ -95,7 +95,7 @@ const Chatbot = () => {
           theme={themeBuilder?.theme}
           onCreateNewChat={handleNewConversation}
         />
-        <div className={cn('grow flex flex-col overflow-y-auto', isMobile && '!h-[calc(100vh_-_3rem)] bg-chatbot-bg rounded-2xl')}>
+        <div className={cn('flex grow flex-col overflow-y-auto', isMobile && '!h-[calc(100vh_-_3rem)] rounded-2xl bg-chatbot-bg')}>
           {appChatListDataLoading && (
             <Loading type='app' />
           )}
@@ -106,14 +106,14 @@ const Chatbot = () => {
       </div>
       {/* powered by */}
       {isMobile && (
-        <div className='shrink-0 h-[60px] pl-2 flex items-center'>
+        <div className='flex h-[60px] shrink-0 items-center pl-2'>
           {!appData?.custom_config?.remove_webapp_brand && (
             <div className={cn(
-              'shrink-0 px-2 flex items-center gap-1.5',
+              'flex shrink-0 items-center gap-1.5 px-2',
             )}>
-              <div className='text-text-tertiary system-2xs-medium-uppercase'>{t('share.chat.poweredBy')}</div>
+              <div className='system-2xs-medium-uppercase text-text-tertiary'>{t('share.chat.poweredBy')}</div>
               {appData?.custom_config?.replace_webapp_logo && (
-                <img src={appData?.custom_config?.replace_webapp_logo} alt='logo' className='block w-auto h-5' />
+                <img src={appData?.custom_config?.replace_webapp_logo} alt='logo' className='block h-5 w-auto' />
               )}
               {!appData?.custom_config?.replace_webapp_logo && (
                 <LogoSite className='!h-5' />

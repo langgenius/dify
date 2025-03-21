@@ -108,7 +108,7 @@ const BlockIcon: FC<BlockIconProps> = ({
               typeof toolIcon === 'string'
                 ? (
                   <div
-                    className='shrink-0 w-full h-full bg-cover bg-center rounded-md'
+                    className='h-full w-full shrink-0 rounded-md bg-cover bg-center'
                     style={{
                       backgroundImage: `url(${toolIcon})`,
                     }}
@@ -116,7 +116,7 @@ const BlockIcon: FC<BlockIconProps> = ({
                 )
                 : (
                   <AppIcon
-                    className='shrink-0 !w-full !h-full'
+                    className='!h-full !w-full shrink-0'
                     size='tiny'
                     icon={toolIcon?.content}
                     background={toolIcon?.background}

@@ -49,7 +49,7 @@ const CreateContent: FC<Props> = ({
       onConfirm={handleSave}
       hideCloseBtn={hasBack}
       beforeHeader={hasBack && (
-        <div className='relative left-[-4px] mb-1 flex items-center py-1 space-x-1 text-text-accent cursor-pointer' onClick={onBack}>
+        <div className='relative left-[-4px] mb-1 flex cursor-pointer items-center space-x-1 py-1 text-text-accent' onClick={onBack}>
           <RiArrowLeftLine className='size-4' />
           <div className='system-xs-semibold-uppercase'>{t(`${i18nPrefix}.back`)}</div>
         </div>

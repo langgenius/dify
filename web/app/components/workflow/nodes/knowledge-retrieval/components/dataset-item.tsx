@@ -55,28 +55,28 @@ const DatasetItem: FC<Props> = ({
   }, [onRemove])
 
   return (
-    <div className={`flex items-center h-10 justify-between rounded-xl px-2 border-[0.5px] 
-      border-components-panel-border-subtle cursor-pointer group/dataset-item 
+    <div className={`group/dataset-item flex h-10 cursor-pointer items-center justify-between rounded-xl 
+      border-[0.5px] border-components-panel-border-subtle px-2 
       ${isDeleteHovered
-      ? 'bg-state-destructive-hover border-state-destructive-border'
+      ? 'border-state-destructive-border bg-state-destructive-hover'
       : 'bg-components-panel-on-panel-item-bg hover:bg-components-panel-on-panel-item-bg-hover'
     }`}>
-      <div className='w-0 grow flex items-center space-x-1.5'>
+      <div className='flex w-0 grow items-center space-x-1.5'>
         {
           payload.data_source_type === DataSourceType.NOTION
             ? (
-              <div className='shrink-0 flex items-center justify-center w-6 h-6 rounded-md border-[0.5px] border-[#EAECF5]'>
-                <FileIcon type='notion' className='w-4 h-4' />
+              <div className='flex h-6 w-6 shrink-0 items-center justify-center rounded-md border-[0.5px] border-[#EAECF5]'>
+                <FileIcon type='notion' className='h-4 w-4' />
               </div>
             )
-            : <div className='shrink-0 flex items-center justify-center w-6 h-6 bg-[#F5F8FF] rounded-md border-[0.5px] border-[#E0EAFF]'>
-              <Folder className='w-4 h-4 text-[#444CE7]' />
+            : <div className='flex h-6 w-6 shrink-0 items-center justify-center rounded-md border-[0.5px] border-[#E0EAFF] bg-[#F5F8FF]'>
+              <Folder className='h-4 w-4 text-[#444CE7]' />
             </div>
         }
-        <div className='w-0 grow text-text-secondary system-sm-medium truncate'>{payload.name}</div>
+        <div className='system-sm-medium w-0 grow truncate text-text-secondary'>{payload.name}</div>
       </div>
       {!readonly && (
-        <div className='hidden group-hover/dataset-item:flex shrink-0 ml-2  items-center space-x-1'>
+        <div className='ml-2 hidden shrink-0 items-center  space-x-1 group-hover/dataset-item:flex'>
           {
             editable && <ActionButton
               onClick={(e) => {
@@ -84,7 +84,7 @@ const DatasetItem: FC<Props> = ({
                 showSettingsModal()
               }}
             >
-              <RiEditLine className='w-4 h-4 shrink-0 text-text-tertiary' />
+              <RiEditLine className='h-4 w-4 shrink-0 text-text-tertiary' />
             </ActionButton>
           }
           <ActionButton
@@ -93,19 +93,19 @@ const DatasetItem: FC<Props> = ({
             onMouseEnter={() => setIsDeleteHovered(true)}
             onMouseLeave={() => setIsDeleteHovered(false)}
           >
-            <RiDeleteBinLine className={`w-4 h-4 shrink-0 ${isDeleteHovered ? 'text-text-destructive' : 'text-text-tertiary'}`} />
+            <RiDeleteBinLine className={`h-4 w-4 shrink-0 ${isDeleteHovered ? 'text-text-destructive' : 'text-text-tertiary'}`} />
           </ActionButton>
         </div>
       )}
       {
         payload.indexing_technique && <Badge
-          className='group-hover/dataset-item:hidden shrink-0'
+          className='shrink-0 group-hover/dataset-item:hidden'
           text={formatIndexingTechniqueAndMethod(payload.indexing_technique, payload.retrieval_model_dict?.search_method)}
         />
       }
       {
         payload.provider === 'external' && <Badge
-          className='group-hover/dataset-item:hidden shrink-0'
+          className='shrink-0 group-hover/dataset-item:hidden'
           text={t('dataset.externalTag') as string}
         />
       }

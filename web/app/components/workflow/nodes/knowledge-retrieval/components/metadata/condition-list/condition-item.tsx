@@ -115,22 +115,22 @@ const ConditionItem = ({
   }, [condition, onUpdateCondition])
 
   return (
-    <div className={cn('flex mb-1 last-of-type:mb-0', className)}>
+    <div className={cn('mb-1 flex last-of-type:mb-0', className)}>
       <div className={cn(
-        'grow bg-components-input-bg-normal rounded-lg',
+        'grow rounded-lg bg-components-input-bg-normal',
         isHovered && 'bg-state-destructive-hover',
       )}>
         <div className='flex items-center p-1'>
-          <div className='grow w-0'>
-            <div className='inline-flex items-center pl-1 pr-1.5 h-6 border-[0.5px] border-components-panel-border-subtle bg-components-badge-white-to-dark rounded-md shadow-xs'>
+          <div className='w-0 grow'>
+            <div className='inline-flex h-6 items-center rounded-md border-[0.5px] border-components-panel-border-subtle bg-components-badge-white-to-dark pl-1 pr-1.5 shadow-xs'>
               <div className='mr-0.5 p-[1px]'>
-                <MetadataIcon type={currentMetadata?.type} className='w-3 h-3' />
+                <MetadataIcon type={currentMetadata?.type} className='h-3 w-3' />
               </div>
-              <div className='mr-0.5 system-xs-medium text-text-secondary'>{currentMetadata?.name}</div>
+              <div className='system-xs-medium mr-0.5 text-text-secondary'>{currentMetadata?.name}</div>
               <div className='system-xs-regular text-text-tertiary'>{currentMetadata?.type}</div>
             </div>
           </div>
-          <div className='mx-1 w-[1px] h-3 bg-divider-regular'></div>
+          <div className='mx-1 h-3 w-[1px] bg-divider-regular'></div>
           <ConditionOperator
             disabled={!canChooseOperator}
             variableType={currentMetadata?.type || MetadataFilteringVariableType.string}
@@ -178,12 +178,12 @@ const ConditionItem = ({
         </div>
       </div>
       <div
-        className='shrink-0 flex items-center justify-center ml-1 mt-1 w-6 h-6 rounded-lg cursor-pointer hover:bg-state-destructive-hover text-text-tertiary hover:text-text-destructive'
+        className='ml-1 mt-1 flex h-6 w-6 shrink-0 cursor-pointer items-center justify-center rounded-lg text-text-tertiary hover:bg-state-destructive-hover hover:text-text-destructive'
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
         onClick={doRemoveCondition}
       >
-        <RiDeleteBinLine className='w-4 h-4' />
+        <RiDeleteBinLine className='h-4 w-4' />
       </div>
     </div>
   )

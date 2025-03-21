@@ -65,8 +65,8 @@ const RunOnce: FC<IRunOnceProps> = ({
         {/* input form */}
         <form onSubmit={onSubmit}>
           {promptConfig.prompt_variables.map(item => (
-            <div className='w-full mt-4' key={item.key}>
-              <label className='h-6 flex items-center text-text-secondary system-md-semibold'>{item.name}</label>
+            <div className='mt-4 w-full' key={item.key}>
+              <label className='system-md-semibold flex h-6 items-center text-text-secondary'>{item.name}</label>
               <div className='mt-1'>
                 {item.type === 'select' && (
                   <Select
@@ -125,8 +125,8 @@ const RunOnce: FC<IRunOnceProps> = ({
           ))}
           {
             visionConfig?.enabled && (
-              <div className="w-full mt-4">
-                <div className="h-6 flex items-center text-text-secondary system-md-semibold">{t('common.imageUploader.imageUpload')}</div>
+              <div className="mt-4 w-full">
+                <div className="system-md-semibold flex h-6 items-center text-text-secondary">{t('common.imageUploader.imageUpload')}</div>
                 <div className='mt-1'>
                   <TextGenerationImageUploader
                     settings={visionConfig}
@@ -141,7 +141,7 @@ const RunOnce: FC<IRunOnceProps> = ({
               </div>
             )
           }
-          <div className='w-full mt-6 mb-3'>
+          <div className='mb-3 mt-6 w-full'>
             <div className="flex items-center justify-between gap-2">
               <Button
                 onClick={onClear}
@@ -155,7 +155,7 @@ const RunOnce: FC<IRunOnceProps> = ({
                 variant="primary"
                 disabled={false}
               >
-                <RiPlayLargeLine className="shrink-0 w-4 h-4 mr-1" aria-hidden="true" />
+                <RiPlayLargeLine className="mr-1 h-4 w-4 shrink-0" aria-hidden="true" />
                 <span className='text-[13px]'>{t('share.generation.run')}</span>
               </Button>
             </div>
