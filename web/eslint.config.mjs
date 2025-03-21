@@ -195,9 +195,9 @@ export default combine(
       'tailwindcss/no-custom-classname': 'off',
       'tailwindcss/no-unnecessary-arbitrary-value': 'off',
 
+      'tailwindcss/no-arbitrary-value': 'off',
       'tailwindcss/classnames-order': 'warn',
       'tailwindcss/enforces-negative-arbitrary-values': 'warn',
-      'tailwindcss/no-arbitrary-value': 'warn',
       'tailwindcss/migration-from-tailwind-2': 'warn',
     },
   },
