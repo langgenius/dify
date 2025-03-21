@@ -18,22 +18,22 @@ const NodeStatusIcon = ({
     <>
       {
         status === 'succeeded' && (
-          <RiCheckboxCircleFill className={cn('shrink-0 w-4 h-4 text-text-success', className)} />
+          <RiCheckboxCircleFill className={cn('h-4 w-4 shrink-0 text-text-success', className)} />
         )
       }
       {
         status === 'failed' && (
-          <RiErrorWarningLine className={cn('shrink-0 w-4 h-4 text-text-warning', className)} />
+          <RiErrorWarningLine className={cn('h-4 w-4 shrink-0 text-text-warning', className)} />
         )
       }
       {
         (status === 'stopped' || status === 'exception') && (
-          <RiAlertFill className={cn('shrink-0 w-4 h-4 text-text-warning-secondary', className)} />
+          <RiAlertFill className={cn('h-4 w-4 shrink-0 text-text-warning-secondary', className)} />
         )
       }
       {
         status === 'running' && (
-          <RiLoader2Line className={cn('shrink-0 w-4 h-4 text-text-accent animate-spin', className)} />
+          <RiLoader2Line className={cn('h-4 w-4 shrink-0 animate-spin text-text-accent', className)} />
         )
       }
     </>

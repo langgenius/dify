@@ -178,44 +178,44 @@ const WorkflowToolConfigureButton = ({
       <Divider type='horizontal' className='h-[1px] bg-divider-subtle' />
       {(!published || !isLoading) && (
         <div className={cn(
-          'group bg-background-section-burn rounded-lg transition-colors',
-          disabled ? 'shadow-xs opacity-30 cursor-not-allowed' : 'cursor-pointer',
+          'group rounded-lg bg-background-section-burn transition-colors',
+          disabled ? 'cursor-not-allowed opacity-30 shadow-xs' : 'cursor-pointer',
           !disabled && !published && 'hover:bg-state-accent-hover',
         )}>
           {isCurrentWorkspaceManager
             ? (
               <div
-                className='flex justify-start items-center gap-2 p-2 pl-2.5'
+                className='flex items-center justify-start gap-2 p-2 pl-2.5'
                 onClick={() => !disabled && !published && setShowModal(true)}
               >
-                <RiHammerLine className={cn('relative w-4 h-4 text-text-secondary', !disabled && !published && 'group-hover:text-text-accent')} />
+                <RiHammerLine className={cn('relative h-4 w-4 text-text-secondary', !disabled && !published && 'group-hover:text-text-accent')} />
                 <div
                   title={t('workflow.common.workflowAsTool') || ''}
-                  className={cn('grow shrink basis-0 system-sm-medium text-text-secondary truncate', !disabled && !published && 'group-hover:text-text-accent')}
+                  className={cn('system-sm-medium shrink grow basis-0 truncate text-text-secondary', !disabled && !published && 'group-hover:text-text-accent')}
                 >
                   {t('workflow.common.workflowAsTool')}
                 </div>
                 {!published && (
-                  <span className='shrink-0 px-1 py-0.5 border border-divider-deep rounded-[5px] bg-components-badge-bg-dimm system-2xs-medium-uppercase text-text-tertiary'>
+                  <span className='system-2xs-medium-uppercase shrink-0 rounded-[5px] border border-divider-deep bg-components-badge-bg-dimm px-1 py-0.5 text-text-tertiary'>
                     {t('workflow.common.configureRequired')}
                   </span>
                 )}
               </div>)
             : (
               <div
-                className='flex justify-start items-center gap-2 p-2 pl-2.5'
+                className='flex items-center justify-start gap-2 p-2 pl-2.5'
               >
-                <RiHammerLine className='w-4 h-4 text-text-tertiary' />
+                <RiHammerLine className='h-4 w-4 text-text-tertiary' />
                 <div
                   title={t('workflow.common.workflowAsTool') || ''}
-                  className='grow shrink basis-0 system-sm-medium truncate text-text-tertiary'
+                  className='system-sm-medium shrink grow basis-0 truncate text-text-tertiary'
                 >
                   {t('workflow.common.workflowAsTool')}
                 </div>
               </div>
             )}
           {published && (
-            <div className='px-2.5 py-2 border-t-[0.5px] border-divider-regular'>
+            <div className='border-t-[0.5px] border-divider-regular px-2.5 py-2'>
               <div className='flex justify-between gap-x-2'>
                 <Button
                   size='small'
@@ -232,7 +232,7 @@ const WorkflowToolConfigureButton = ({
                   onClick={() => router.push('/tools?category=workflow')}
                 >
                   {t('workflow.common.manageInTools')}
-                  <RiArrowRightUpLine className='ml-1 w-4 h-4' />
+                  <RiArrowRightUpLine className='ml-1 h-4 w-4' />
                 </Button>
               </div>
               {outdated && <div className='mt-1 text-xs leading-[18px] text-text-warning'>

@@ -112,7 +112,7 @@ const Panel: FC<NodePanelProps<ParameterExtractorNodeType>> = ({
 
   return (
     <div className='pt-2'>
-      <div className='px-4 space-y-4'>
+      <div className='space-y-4 px-4'>
         <Field
           title={t(`${i18nCommonPrefix}.model`)}
         >
@@ -164,7 +164,7 @@ const Panel: FC<NodePanelProps<ParameterExtractorNodeType>> = ({
                   {!readOnly && (
                     <ImportFromTool onImport={handleImportFromTool} />
                   )}
-                  {!readOnly && (<div className='w-px h-3 bg-gray-200'></div>)}
+                  {!readOnly && (<div className='h-3 w-px bg-gray-200'></div>)}
                   <AddExtractParameter type='add' onSave={addExtractParameter} />
                 </div>
               )

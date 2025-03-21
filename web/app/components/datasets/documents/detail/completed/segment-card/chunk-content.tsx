@@ -25,17 +25,17 @@ const ChunkContent: FC<ChunkContentProps> = ({
     return (
       <div className={className}>
         <div className='flex gap-x-1'>
-          <div className='w-4 text-[13px] font-medium leading-[20px] text-text-tertiary shrink-0'>Q</div>
+          <div className='w-4 shrink-0 text-[13px] font-medium leading-[20px] text-text-tertiary'>Q</div>
           <div
-            className={cn('text-text-secondary body-md-regular',
+            className={cn('body-md-regular text-text-secondary',
               isCollapsed ? 'line-clamp-2' : 'line-clamp-20',
             )}>
             {content}
           </div>
         </div>
         <div className='flex gap-x-1'>
-          <div className='w-4 text-[13px] font-medium leading-[20px] text-text-tertiary shrink-0'>A</div>
-          <div className={cn('text-text-secondary body-md-regular',
+          <div className='w-4 shrink-0 text-[13px] font-medium leading-[20px] text-text-tertiary'>A</div>
+          <div className={cn('body-md-regular text-text-secondary',
             isCollapsed ? 'line-clamp-2' : 'line-clamp-20',
           )}>
             {answer}
@@ -45,7 +45,7 @@ const ChunkContent: FC<ChunkContentProps> = ({
     )
   }
   return <Markdown
-    className={cn('!text-text-secondary !mt-0.5',
+    className={cn('!mt-0.5 !text-text-secondary',
       isFullDocMode ? 'line-clamp-3' : isCollapsed ? 'line-clamp-2' : 'line-clamp-20',
       className,
     )}

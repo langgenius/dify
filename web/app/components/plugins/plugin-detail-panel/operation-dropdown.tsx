@@ -53,19 +53,19 @@ const OperationDropdown: FC<Props> = ({
       <PortalToFollowElemTrigger onClick={handleTrigger}>
         <div>
           <ActionButton className={cn(open && 'bg-state-base-hover')}>
-            <RiMoreFill className='w-4 h-4' />
+            <RiMoreFill className='h-4 w-4' />
           </ActionButton>
         </div>
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent className='z-50'>
-        <div className='w-[160px] p-1 bg-components-panel-bg-blur rounded-xl border-[0.5px] border-components-panel-border shadow-lg'>
+        <div className='w-[160px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-1 shadow-lg'>
           {source === PluginSource.github && (
             <div
               onClick={() => {
                 onInfo()
                 handleTrigger()
               }}
-              className='px-3 py-1.5 rounded-lg text-text-secondary system-md-regular cursor-pointer hover:bg-state-base-hover'
+              className='system-md-regular cursor-pointer rounded-lg px-3 py-1.5 text-text-secondary hover:bg-state-base-hover'
             >{t('plugin.detailPanel.operation.info')}</div>
           )}
           {source === PluginSource.github && (
@@ -74,13 +74,13 @@ const OperationDropdown: FC<Props> = ({
                 onCheckVersion()
                 handleTrigger()
               }}
-              className='px-3 py-1.5 rounded-lg text-text-secondary system-md-regular cursor-pointer hover:bg-state-base-hover'
+              className='system-md-regular cursor-pointer rounded-lg px-3 py-1.5 text-text-secondary hover:bg-state-base-hover'
             >{t('plugin.detailPanel.operation.checkUpdate')}</div>
           )}
           {(source === PluginSource.marketplace || source === PluginSource.github) && (
-            <a href={detailUrl} target='_blank' className='flex items-center px-3 py-1.5 rounded-lg text-text-secondary system-md-regular cursor-pointer hover:bg-state-base-hover'>
+            <a href={detailUrl} target='_blank' className='system-md-regular flex cursor-pointer items-center rounded-lg px-3 py-1.5 text-text-secondary hover:bg-state-base-hover'>
               <span className='grow'>{t('plugin.detailPanel.operation.viewDetail')}</span>
-              <RiArrowRightUpLine className='shrink-0 w-3.5 h-3.5 text-text-tertiary' />
+              <RiArrowRightUpLine className='h-3.5 w-3.5 shrink-0 text-text-tertiary' />
             </a>
           )}
           {(source === PluginSource.marketplace || source === PluginSource.github) && (
@@ -91,7 +91,7 @@ const OperationDropdown: FC<Props> = ({
               onRemove()
               handleTrigger()
             }}
-            className='px-3 py-1.5 rounded-lg text-text-secondary system-md-regular cursor-pointer hover:text-text-destructive hover:bg-state-destructive-hover'
+            className='system-md-regular cursor-pointer rounded-lg px-3 py-1.5 text-text-secondary hover:bg-state-destructive-hover hover:text-text-destructive'
           >{t('plugin.detailPanel.operation.remove')}</div>
         </div>
       </PortalToFollowElemContent>

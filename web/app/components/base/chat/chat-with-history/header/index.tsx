@@ -72,12 +72,12 @@ const Header = () => {
 
   return (
     <>
-      <div className='shrink-0 h-14 p-3 flex items-center justify-between'>
-        <div className={cn('flex items-center gap-1 transition-all duration-200 ease-in-out', !isSidebarCollapsed && 'opacity-0 user-select-none')}>
+      <div className='flex h-14 shrink-0 items-center justify-between p-3'>
+        <div className={cn('flex items-center gap-1 transition-all duration-200 ease-in-out', !isSidebarCollapsed && 'user-select-none opacity-0')}>
           <ActionButton className={cn(!isSidebarCollapsed && 'cursor-default')} size='l' onClick={() => handleSidebarCollapse(false)}>
-            <RiLayoutRight2Line className='w-[18px] h-[18px]' />
+            <RiLayoutRight2Line className='h-[18px] w-[18px]' />
           </ActionButton>
-          <div className='shrink-0 mr-1'>
+          <div className='mr-1 shrink-0'>
             <AppIcon
               size='large'
               iconType={appData?.site.icon_type}
@@ -87,7 +87,7 @@ const Header = () => {
             />
           </div>
           {!currentConversationId && (
-            <div className={cn('grow text-text-secondary system-md-semibold truncate')}>{appData?.site.title}</div>
+            <div className={cn('system-md-semibold grow truncate text-text-secondary')}>{appData?.site.title}</div>
           )}
           {currentConversationId && currentConversationItem && isSidebarCollapsed && (
             <>
@@ -103,7 +103,7 @@ const Header = () => {
               />
             </>
           )}
-          <div className='px-1 flex items-center'>
+          <div className='flex items-center px-1'>
             <div className='h-[14px] w-px bg-divider-regular'></div>
           </div>
           {isSidebarCollapsed && (
@@ -118,7 +118,7 @@ const Header = () => {
                   disabled={!currentConversationId || isResponding}
                   onClick={handleNewConversation}
                 >
-                  <RiEditBoxLine className='w-[18px] h-[18px]' />
+                  <RiEditBoxLine className='h-[18px] w-[18px]' />
                 </ActionButton>
               </div>
             </Tooltip>
@@ -130,7 +130,7 @@ const Header = () => {
               popupContent={t('share.chat.resetChat')}
             >
               <ActionButton size='l' onClick={handleNewConversation}>
-                <RiResetLeftLine className='w-[18px] h-[18px]' />
+                <RiResetLeftLine className='h-[18px] w-[18px]' />
               </ActionButton>
             </Tooltip>
           )}

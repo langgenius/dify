@@ -105,10 +105,12 @@ class TiDBVector(BaseVector):
                         text TEXT NOT NULL,
                         meta JSON NOT NULL,
                         doc_id VARCHAR(64) AS (JSON_UNQUOTE(JSON_EXTRACT(meta, '$.doc_id'))) STORED,
+                        document_id VARCHAR(64) AS (JSON_UNQUOTE(JSON_EXTRACT(meta, '$.document_id'))) STORED,
                         vector VECTOR<FLOAT>({dimension}) NOT NULL,
                         create_time DATETIME DEFAULT CURRENT_TIMESTAMP,
                         update_time DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
                         KEY (doc_id),
+                        KEY (document_id),
                         VECTOR INDEX idx_vector (({tidb_dist_func}(vector))) USING HNSW
                     );
                 """)

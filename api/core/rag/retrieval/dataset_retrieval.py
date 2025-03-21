@@ -870,7 +870,7 @@ class DatasetRetrieval:
                 for condition in metadata_filtering_conditions.conditions:  # type: ignore
                     metadata_name = condition.name
                     expected_value = condition.value
-                    if expected_value or condition.comparison_operator in ("empty", "not empty"):
+                    if expected_value is not None or condition.comparison_operator in ("empty", "not empty"):
                         if isinstance(expected_value, str):
                             expected_value = self._replace_metadata_filter_value(expected_value, inputs)
                         filters = self._process_metadata_filter_func(

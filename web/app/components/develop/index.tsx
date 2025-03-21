@@ -24,24 +24,24 @@ const DevelopMain = ({ appId }: IDevelopMainProps) => {
   }
 
   return (
-    <div className='relative flex flex-col h-full overflow-hidden'>
-      <div className='flex items-center justify-between flex-shrink-0 px-6 border-b border-solid py-2 border-b-gray-100'>
+    <div className='relative flex h-full flex-col overflow-hidden'>
+      <div className='flex shrink-0 items-center justify-between border-b border-solid border-b-gray-100 px-6 py-2'>
         <div className='text-lg font-medium text-gray-900'></div>
-        <div className='flex items-center flex-wrap gap-y-1'>
-          <InputCopy className='flex-shrink-0 mr-1 w-52 sm:w-80' value={appDetail.api_base_url}>
-            <div className={`ml-2 border border-gray-200 border-solid flex-shrink-0 px-2 py-0.5 rounded-[6px] text-gray-500 text-[0.625rem] ${s.customApi}`}>
+        <div className='flex flex-wrap items-center gap-y-1'>
+          <InputCopy className='mr-1 w-52 shrink-0 sm:w-80' value={appDetail.api_base_url}>
+            <div className={`ml-2 shrink-0 rounded-[6px] border border-solid border-gray-200 px-2 py-0.5 text-[0.625rem] text-gray-500 ${s.customApi}`}>
               {t('appApi.apiServer')}
             </div>
           </InputCopy>
-          <div className={`flex items-center h-9 px-3 rounded-lg 
-                        text-[13px] font-normal  mr-2 ${appDetail.enable_api ? 'text-green-500 bg-green-50' : 'text-yellow-500 bg-yellow-50'}`}>
+          <div className={`mr-2 flex h-9 items-center rounded-lg 
+                        px-3 text-[13px]  font-normal ${appDetail.enable_api ? 'bg-green-50 text-green-500' : 'bg-yellow-50 text-yellow-500'}`}>
             <div className='mr-1'>{t('appApi.status')}</div>
             <div className='font-semibold'>{appDetail.enable_api ? `${t('appApi.ok')}` : `${t('appApi.disabled')}`}</div>
           </div>
-          <SecretKeyButton className='flex-shrink-0' appId={appId} />
+          <SecretKeyButton className='shrink-0' appId={appId} />
         </div>
       </div>
-      <div className='px-4 sm:px-10 py-4 overflow-auto grow'>
+      <div className='grow overflow-auto px-4 py-4 sm:px-10'>
         <Doc appDetail={appDetail} />
       </div>
     </div>

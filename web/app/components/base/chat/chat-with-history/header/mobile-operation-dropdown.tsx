@@ -32,17 +32,17 @@ const MobileOperationDropdown = ({
         onClick={() => setOpen(v => !v)}
       >
         <ActionButton size='l' state={open ? ActionButtonState.Hover : ActionButtonState.Default}>
-          <RiMoreFill className='w-[18px] h-[18px]' />
+          <RiMoreFill className='h-[18px] w-[18px]' />
         </ActionButton>
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent className="z-40">
         <div
-          className={'min-w-[160px] p-1 bg-components-panel-bg-blur backdrop-blur-sm rounded-xl border-[0.5px] border-components-panel-border shadow-lg'}
+          className={'min-w-[160px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-1 shadow-lg backdrop-blur-sm'}
         >
-          <div className='flex items-center space-x-1 px-3 py-1.5 rounded-lg text-text-secondary system-md-regular cursor-pointer hover:bg-state-base-hover' onClick={handleResetChat}>
+          <div className='system-md-regular flex cursor-pointer items-center space-x-1 rounded-lg px-3 py-1.5 text-text-secondary hover:bg-state-base-hover' onClick={handleResetChat}>
             <span className='grow'>{t('share.chat.resetChat')}</span>
           </div>
-          <div className='flex items-center space-x-1 px-3 py-1.5 rounded-lg text-text-secondary system-md-regular cursor-pointer hover:bg-state-base-hover' onClick={handleViewChatSettings}>
+          <div className='system-md-regular flex cursor-pointer items-center space-x-1 rounded-lg px-3 py-1.5 text-text-secondary hover:bg-state-base-hover' onClick={handleViewChatSettings}>
             <span className='grow'>{t('share.chat.viewChatSettings')}</span>
           </div>
         </div>

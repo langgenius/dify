@@ -189,7 +189,10 @@ class WeaviateVector(BaseVector):
         vector = {"vector": query_vector}
         document_ids_filter = kwargs.get("document_ids_filter")
         if document_ids_filter:
-            where_filter = {"operator": "ContainsAny", "path": ["document_id"], "valueTextArray": document_ids_filter}
+            operands = []
+            for document_id_filter in document_ids_filter:
+                operands.append({"path": ["document_id"], "operator": "Equal", "valueText": document_id_filter})
+            where_filter = {"operator": "Or", "operands": operands}
             query_obj = query_obj.with_where(where_filter)
         result = (
             query_obj.with_near_vector(vector)
@@ -237,7 +240,10 @@ class WeaviateVector(BaseVector):
         query_obj = self._client.query.get(collection_name, properties)
         document_ids_filter = kwargs.get("document_ids_filter")
         if document_ids_filter:
-            where_filter = {"operator": "ContainsAny", "path": ["document_id"], "valueTextArray": document_ids_filter}
+            operands = []
+            for document_id_filter in document_ids_filter:
+                operands.append({"path": ["document_id"], "operator": "Equal", "valueText": document_id_filter})
+            where_filter = {"operator": "Or", "operands": operands}
             query_obj = query_obj.with_where(where_filter)
         query_obj = query_obj.with_additional(["vector"])
         properties = ["text"]
