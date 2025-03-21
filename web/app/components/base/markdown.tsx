@@ -18,7 +18,7 @@ import ImageGallery from '@/app/components/base/image-gallery'
 import { useChatContext } from '@/app/components/base/chat/chat/context'
 import VideoGallery from '@/app/components/base/video-gallery'
 import AudioGallery from '@/app/components/base/audio-gallery'
-import SVGRenderer from '@/app/components/base/svg-gallery'
+// import SVGRenderer from '@/app/components/base/svg-gallery'
 import MarkdownButton from '@/app/components/base/markdown-blocks/button'
 import MarkdownForm from '@/app/components/base/markdown-blocks/form'
 
@@ -118,13 +118,13 @@ const CodeBlock: CodeComponent = memo(({ inline, className, children, ...props }
         </div>
       )
     }
-    else if (language === 'svg' && isSVG) {
-      return (
-        <ErrorBoundary>
-          <SVGRenderer content={content} />
-        </ErrorBoundary>
-      )
-    }
+    // else if (language === 'svg' && isSVG) {
+    //   return (
+    //     <ErrorBoundary>
+    //       <SVGRenderer content={content} />
+    //     </ErrorBoundary>
+    //   )
+    // }
     else {
       return (
         <SyntaxHighlighter
@@ -224,8 +224,16 @@ const Link = ({ node, ...props }: any) => {
   }
 }
 
+function escapeSVGTags(htmlString: string): string {
+  return htmlString.replace(/(<svg[\s\S]*?>)([\s\S]*?)(<\/svg>)/gi, (match: string, openTag: string, innerContent: string, closeTag: string): string => {
+    return openTag.replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      + innerContent.replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      + closeTag.replace(/</g, '&lt;').replace(/>/g, '&gt;')
+  })
+}
+
 export function Markdown(props: { content: string; className?: string }) {
-  const latexContent = preprocessLaTeX(props.content)
+  const latexContent = preprocessLaTeX(escapeSVGTags(props.content))
   return (
     <div className={cn(props.className, 'markdown-body')}>
       <ReactMarkdown
