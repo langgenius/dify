@@ -22,6 +22,7 @@ from .vdb.baidu_vector_config import BaiduVectorDBConfig
 from .vdb.chroma_config import ChromaConfig
 from .vdb.couchbase_config import CouchbaseConfig
 from .vdb.elasticsearch_config import ElasticsearchConfig
+from .vdb.huawei_cloud_config import HuaweiCloudConfig
 from .vdb.lindorm_config import LindormConfig
 from .vdb.milvus_config import MilvusConfig
 from .vdb.myscale_config import MyScaleConfig
@@ -262,6 +263,7 @@ class MiddlewareConfig(
     VectorStoreConfig,
     AnalyticdbConfig,
     ChromaConfig,
+    HuaweiCloudConfig,
     MilvusConfig,
     MyScaleConfig,
     OpenSearchConfig,

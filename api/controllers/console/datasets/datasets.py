@@ -664,6 +664,7 @@ class DatasetRetrievalSettingApi(Resource):
                 | VectorType.COUCHBASE
                 | VectorType.MILVUS
                 | VectorType.OPENGAUSS
+                | VectorType.HUAWEI_CLOUD
             ):
                 return {
                     "retrieval_method": [
@@ -708,6 +709,7 @@ class DatasetRetrievalSettingMockApi(Resource):
                 | VectorType.PGVECTOR
                 | VectorType.LINDORM
                 | VectorType.OPENGAUSS
+                | VectorType.HUAWEI_CLOUD
             ):
                 return {
                     "retrieval_method": [
