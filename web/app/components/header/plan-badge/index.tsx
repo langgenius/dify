@@ -19,9 +19,9 @@ const PlanBadge: FC<PlanBadgeProps> = ({ plan, allowHover, sandboxAsUpgrade = fa
   if (!isFetchedPlan) return null
   if (plan === Plan.sandbox && sandboxAsUpgrade) {
     return <PremiumBadge className='select-none' color='blue' allowHover={allowHover} onClick={onClick}>
-      <SparklesSoft className='flex items-center py-[1px] pl-[3px] w-3.5 h-3.5 text-components-premium-badge-indigo-text-stop-0' />
+      <SparklesSoft className='flex h-3.5 w-3.5 items-center py-[1px] pl-[3px] text-components-premium-badge-indigo-text-stop-0' />
       <div className='system-xs-medium'>
-        <span className='p-1'>
+        <span className='whitespace-nowrap p-1'>
           {t('billing.upgradeBtn.encourageShort')}
         </span>
       </div>

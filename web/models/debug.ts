@@ -3,6 +3,11 @@ import type {
   RerankingModeEnum,
 } from '@/models/datasets'
 import type { FileUpload } from '@/app/components/base/features/types'
+import type {
+  MetadataFilteringConditions,
+  MetadataFilteringModeEnum,
+} from '@/app/components/workflow/nodes/knowledge-retrieval/types'
+import type { ModelConfig as NodeModelConfig } from '@/app/components/workflow/types'
 export type Inputs = Record<string, string | number | object>
 
 export enum PromptMode {
@@ -10,25 +15,25 @@ export enum PromptMode {
   advanced = 'advanced',
 }
 
-export interface PromptItem {
+export type PromptItem = {
   role?: PromptRole
   text: string
 }
 
-export interface ChatPromptConfig {
+export type ChatPromptConfig = {
   prompt: PromptItem[]
 }
 
-export interface ConversationHistoriesRole {
+export type ConversationHistoriesRole = {
   user_prefix: string
   assistant_prefix: string
 }
-export interface CompletionPromptConfig {
+export type CompletionPromptConfig = {
   prompt: PromptItem
   conversation_histories_role: ConversationHistoriesRole
 }
 
-export interface BlockStatus {
+export type BlockStatus = {
   context: boolean
   history: boolean
   query: boolean
@@ -40,7 +45,7 @@ export enum PromptRole {
   assistant = 'assistant',
 }
 
-export interface PromptVariable {
+export type PromptVariable = {
   key: string
   name: string
   type: string // "string" | "number" | "select",
@@ -55,7 +60,7 @@ export interface PromptVariable {
   icon_background?: string
 }
 
-export interface CompletionParams {
+export type CompletionParams = {
   max_tokens: number
   temperature: number
   top_p: number
@@ -66,12 +71,12 @@ export interface CompletionParams {
 
 export type ModelId = 'gpt-3.5-turbo' | 'text-davinci-003'
 
-export interface PromptConfig {
+export type PromptConfig = {
   prompt_template: string
   prompt_variables: PromptVariable[]
 }
 
-export interface MoreLikeThisConfig {
+export type MoreLikeThisConfig = {
   enabled: boolean
 }
 
@@ -79,7 +84,7 @@ export type SuggestedQuestionsAfterAnswerConfig = MoreLikeThisConfig
 
 export type SpeechToTextConfig = MoreLikeThisConfig
 
-export interface TextToSpeechConfig {
+export type TextToSpeechConfig = {
   enabled: boolean
   voice?: string
   language?: string
@@ -88,7 +93,7 @@ export interface TextToSpeechConfig {
 
 export type CitationConfig = MoreLikeThisConfig
 
-export interface AnnotationReplyConfig {
+export type AnnotationReplyConfig = {
   id: string
   enabled: boolean
   score_threshold: number
@@ -98,7 +103,7 @@ export interface AnnotationReplyConfig {
   }
 }
 
-export interface ModerationContentConfig {
+export type ModerationContentConfig = {
   enabled: boolean
   preset_response?: string
 }
@@ -113,14 +118,14 @@ export type ModerationConfig = MoreLikeThisConfig & {
 }
 
 export type RetrieverResourceConfig = MoreLikeThisConfig
-export interface AgentConfig {
+export type AgentConfig = {
   enabled: boolean
   strategy: AgentStrategy
   max_iteration: number
   tools: ToolItem[]
 }
 // frontend use. Not the same as backend
-export interface ModelConfig {
+export type ModelConfig = {
   provider: string // LLM Provider: for example "OPENAI"
   model_id: string
   mode: ModelModeType
@@ -138,12 +143,12 @@ export interface ModelConfig {
   dataSets: any[]
   agentConfig: AgentConfig
 }
-export interface DatasetConfigItem {
+export type DatasetConfigItem = {
   enable: boolean
   value: number
 }
 
-export interface DatasetConfigs {
+export type DatasetConfigs = {
   retrieval_model: RETRIEVE_TYPE
   reranking_model: {
     reranking_provider_name: string
@@ -170,41 +175,44 @@ export interface DatasetConfigs {
     }
   }
   reranking_enable?: boolean
+  metadata_filtering_mode?: MetadataFilteringModeEnum
+  metadata_filtering_conditions?: MetadataFilteringConditions
+  metadata_model_config?: NodeModelConfig
 }
 
-export interface DebugRequestBody {
+export type DebugRequestBody = {
   inputs: Inputs
   query: string
   completion_params: CompletionParams
   model_config: ModelConfig
 }
 
-export interface DebugResponse {
+export type DebugResponse = {
   id: string
   answer: string
   created_at: string
 }
 
-export interface DebugResponseStream {
+export type DebugResponseStream = {
   id: string
   data: string
   created_at: string
 }
 
-export interface FeedBackRequestBody {
+export type FeedBackRequestBody = {
   message_id: string
   rating: 'like' | 'dislike'
   content?: string
   from_source: 'api' | 'log'
 }
 
-export interface FeedBackResponse {
+export type FeedBackResponse = {
   message_id: string
   rating: 'like' | 'dislike'
 }
 
 // Log session list
-export interface LogSessionListQuery {
+export type LogSessionListQuery = {
   keyword?: string
   start?: string // format datetime(YYYY-mm-dd HH:ii)
   end?: string // format datetime(YYYY-mm-dd HH:ii)
@@ -212,7 +220,7 @@ export interface LogSessionListQuery {
   limit: number // default 20. 1-100
 }
 
-export interface LogSessionListResponse {
+export type LogSessionListResponse = {
   data: {
     id: string
     conversation_id: string
@@ -226,7 +234,7 @@ export interface LogSessionListResponse {
 }
 
 // log session detail and debug
-export interface LogSessionDetailResponse {
+export type LogSessionDetailResponse = {
   id: string
   conversation_id: string
   model_provider: string
@@ -240,7 +248,7 @@ export interface LogSessionDetailResponse {
   from_source: 'api' | 'log'
 }
 
-export interface SavedMessage {
+export type SavedMessage = {
   id: string
   answer: string
 }

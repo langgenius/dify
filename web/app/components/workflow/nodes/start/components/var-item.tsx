@@ -13,12 +13,12 @@ import { Edit03 } from '@/app/components/base/icons/src/vender/solid/general'
 import Badge from '@/app/components/base/badge'
 import ConfigVarModal from '@/app/components/app/configuration/config-var/config-modal'
 
-interface Props {
+type Props = {
   readonly: boolean
   payload: InputVar
   onChange?: (item: InputVar, moreInfo?: MoreInfo) => void
   onRemove?: () => void
-  rightContent?: JSX.Element
+  rightContent?: React.JSX.Element
   varKeys?: string[]
   showLegacyBadge?: boolean
 }
@@ -46,10 +46,10 @@ const VarItem: FC<Props> = ({
     hideEditVarModal()
   }, [onChange, hideEditVarModal])
   return (
-    <div ref={ref} className='flex items-center h-8 justify-between px-2.5 bg-white rounded-lg border border-gray-200 shadow-xs cursor-pointer hover:shadow-md'>
-      <div className='flex items-center space-x-1 grow w-0'>
-        <Variable02 className='w-3.5 h-3.5 text-primary-500' />
-        <div title={payload.variable} className='shrink-0 max-w-[130px] truncate text-[13px] font-medium text-gray-700'>{payload.variable}</div>
+    <div ref={ref} className='flex h-8 cursor-pointer items-center justify-between rounded-lg border border-gray-200 bg-white px-2.5 shadow-xs hover:shadow-md'>
+      <div className='flex w-0 grow items-center space-x-1'>
+        <Variable02 className='h-3.5 w-3.5 text-primary-500' />
+        <div title={payload.variable} className='max-w-[130px] shrink-0 truncate text-[13px] font-medium text-gray-700'>{payload.variable}</div>
         {payload.label && (<><div className='shrink-0 text-xs font-medium text-gray-400'>·</div>
           <div title={payload.label as string} className='max-w-[130px] truncate text-[13px] font-medium text-gray-500'>{payload.label as string}</div>
         </>)}
@@ -60,7 +60,7 @@ const VarItem: FC<Props> = ({
           />
         )}
       </div>
-      <div className='shrink-0 ml-2 flex items-center'>
+      <div className='ml-2 flex shrink-0 items-center'>
         {rightContent || (<>
           {(!isHovering || readonly)
             ? (
@@ -68,16 +68,16 @@ const VarItem: FC<Props> = ({
                 {payload.required && (
                   <div className='mr-2 text-xs font-normal text-gray-500'>{t('workflow.nodes.start.required')}</div>
                 )}
-                <InputVarTypeIcon type={payload.type} className='w-3.5 h-3.5 text-gray-500' />
+                <InputVarTypeIcon type={payload.type} className='h-3.5 w-3.5 text-gray-500' />
               </>
             )
             : (!readonly && (
               <>
-                <div onClick={showEditVarModal} className='mr-1 p-1 rounded-md cursor-pointer hover:bg-black/5'>
-                  <Edit03 className='w-4 h-4 text-gray-500' />
+                <div onClick={showEditVarModal} className='mr-1 cursor-pointer rounded-md p-1 hover:bg-black/5'>
+                  <Edit03 className='h-4 w-4 text-gray-500' />
                 </div>
-                <div onClick={onRemove} className='p-1 rounded-md cursor-pointer hover:bg-black/5'>
-                  <RiDeleteBinLine className='w-4 h-4 text-gray-500' />
+                <div onClick={onRemove} className='cursor-pointer rounded-md p-1 hover:bg-black/5'>
+                  <RiDeleteBinLine className='h-4 w-4 text-gray-500' />
                 </div>
               </>
             ))}

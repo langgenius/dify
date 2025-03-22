@@ -13,7 +13,7 @@ import { LanguagesSupported, languages } from '@/i18n/language'
 import { oneMoreStep } from '@/service/common'
 import Toast from '@/app/components/base/toast'
 
-interface IState {
+type IState = {
   formState: 'processing' | 'error' | 'success' | 'initial'
   invitation_code: string
   interface_language: string
@@ -75,21 +75,21 @@ const OneMoreStep = () => {
 
   return (
     <>
-      <div className="w-full mx-auto">
+      <div className="mx-auto w-full">
         <h2 className="title-4xl-semi-bold text-text-secondary">{t('login.oneMoreStep')}</h2>
-        <p className='mt-1 body-md-regular text-text-tertiary'>{t('login.createSample')}</p>
+        <p className='body-md-regular mt-1 text-text-tertiary'>{t('login.createSample')}</p>
       </div>
 
-      <div className="w-full mx-auto mt-6">
+      <div className="mx-auto mt-6 w-full">
         <div className="bg-white">
           <div className="mb-5">
-            <label className="my-2 flex items-center justify-between system-md-semibold text-text-secondary">
+            <label className="system-md-semibold my-2 flex items-center justify-between text-text-secondary">
               {t('login.invitationCode')}
               <Tooltip
                 popupContent={
                   <div className='w-[256px] text-xs font-medium'>
                     <div className='font-medium'>{t('login.sendUsMail')}</div>
-                    <div className='text-xs font-medium cursor-pointer text-text-accent-secondary'>
+                    <div className='cursor-pointer text-xs font-medium text-text-accent-secondary'>
                       <a href="mailto:request-invitation@langgenius.ai">request-invitation@langgenius.ai</a>
                     </div>
                   </div>
@@ -112,7 +112,7 @@ const OneMoreStep = () => {
             </div>
           </div>
           <div className='mb-5'>
-            <label htmlFor="name" className="my-2 system-md-semibold text-text-secondary">
+            <label htmlFor="name" className="system-md-semibold my-2 text-text-secondary">
               {t('login.interfaceLanguage')}
             </label>
             <div className="mt-1">
@@ -151,7 +151,7 @@ const OneMoreStep = () => {
               {t('login.go')}
             </Button>
           </div>
-          <div className="block w-full mt-2 system-xs-regular text-text-tertiary">
+          <div className="system-xs-regular mt-2 block w-full text-text-tertiary">
             {t('login.license.tip')}
             &nbsp;
             <Link

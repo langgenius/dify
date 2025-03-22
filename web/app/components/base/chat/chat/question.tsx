@@ -74,26 +74,26 @@ const Question: FC<QuestionProps> = ({
   }, [switchSibling, item.prevSibling, item.nextSibling])
 
   return (
-    <div className='flex justify-end mb-2 last:mb-0 pl-14'>
-      <div className={cn('group relative flex items-start mr-4 max-w-full', isEditing && 'flex-1')}>
-        <div className={cn('gap-1 mr-2', isEditing ? 'hidden' : 'flex')}>
+    <div className='mb-2 flex justify-end pl-14 last:mb-0'>
+      <div className={cn('group relative mr-4 flex max-w-full items-start', isEditing && 'flex-1')}>
+        <div className={cn('mr-2 gap-1', isEditing ? 'hidden' : 'flex')}>
           <div className="
-            hidden group-hover:flex absolutegap-0.5 p-0.5 rounded-[10px]
-            border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg shadow-md backdrop-blur-sm
+            absolutegap-0.5 hidden rounded-[10px] border-[0.5px] border-components-actionbar-border
+            bg-components-actionbar-bg p-0.5 shadow-md backdrop-blur-sm group-hover:flex
           ">
             <ActionButton onClick={() => {
               copy(content)
               Toast.notify({ type: 'success', message: t('common.actionMsg.copySuccessfully') })
             }}>
-              <RiClipboardLine className='w-4 h-4' />
+              <RiClipboardLine className='h-4 w-4' />
             </ActionButton>
             <ActionButton onClick={handleEdit}>
-              <RiEditLine className='w-4 h-4' />
+              <RiEditLine className='h-4 w-4' />
             </ActionButton>
           </div>
         </div>
         <div
-          className='w-full px-4 py-3 bg-[#D1E9FF]/50 rounded-2xl text-sm text-gray-900'
+          className='w-full rounded-2xl bg-[#D1E9FF]/50 px-4 py-3 text-sm text-gray-900'
           style={theme?.chatBubbleColorStyle ? CssTransform(theme.chatBubbleColorStyle) : {}}
         >
           {
@@ -109,13 +109,13 @@ const Question: FC<QuestionProps> = ({
           { !isEditing
             ? <Markdown content={content} />
             : <div className="
-                flex flex-col gap-2 p-[9px]
-                bg-components-panel-bg-blur border border-components-chat-input-border rounded-xl shadow-md
+                flex flex-col gap-2 rounded-xl
+                border border-components-chat-input-border bg-components-panel-bg-blur p-[9px] shadow-md
               ">
-              <div className="max-h-[158px] overflow-x-hidden overflow-y-auto">
+              <div className="max-h-[158px] overflow-y-auto overflow-x-hidden">
                 <Textarea
                   className={cn(
-                    'p-1 w-full leading-6 body-lg-regular text-text-tertiary outline-none',
+                    'body-lg-regular w-full p-1 leading-6 text-text-tertiary outline-none',
                   )}
                   autoFocus
                   autoSize={{ minRows: 1 }}
@@ -138,11 +138,11 @@ const Question: FC<QuestionProps> = ({
         </div>
         <div className='mt-1 h-[18px]' />
       </div>
-      <div className='shrink-0 w-10 h-10'>
+      <div className='h-10 w-10 shrink-0'>
         {
           questionIcon || (
-            <div className='w-full h-full rounded-full border-[0.5px] border-black/5'>
-              <User className='w-full h-full' />
+            <div className='h-full w-full rounded-full border-[0.5px] border-black/5'>
+              <User className='h-full w-full' />
             </div>
           )
         }

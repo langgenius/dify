@@ -12,6 +12,7 @@ from configs import dify_config
 from constants.languages import languages
 from core.rag.datasource.vdb.vector_factory import Vector
 from core.rag.datasource.vdb.vector_type import VectorType
+from core.rag.index_processor.constant.built_in_field import BuiltInField
 from core.rag.models.document import Document
 from events.app_event import app_was_created
 from extensions.ext_database import db
@@ -20,11 +21,12 @@ from libs.helper import email as email_validate
 from libs.password import hash_password, password_pattern, valid_password
 from libs.rsa import generate_key_pair
 from models import Tenant
-from models.dataset import Dataset, DatasetCollectionBinding, DocumentSegment
+from models.dataset import Dataset, DatasetCollectionBinding, DatasetMetadata, DatasetMetadataBinding, DocumentSegment
 from models.dataset import Document as DatasetDocument
 from models.model import Account, App, AppAnnotationSetting, AppMode, Conversation, MessageAnnotation
 from models.provider import Provider, ProviderModel
 from services.account_service import RegisterService, TenantService
+from services.clear_free_plan_tenant_expired_logs import ClearFreePlanTenantExpiredLogs
 from services.plugin.data_migration import PluginDataMigration
 from services.plugin.plugin_migration import PluginMigration
 
@@ -160,11 +162,17 @@ def migrate_annotation_vector_database():
     while True:
         try:
             # get apps info
+            per_page = 50
             apps = (
-                App.query.filter(App.status == "normal")
+                db.session.query(App)
+                .filter(App.status == "normal")
                 .order_by(App.created_at.desc())
-                .paginate(page=page, per_page=50)
+                .limit(per_page)
+                .offset((page - 1) * per_page)
+                .all()
             )
+            if not apps:
+                break
         except NotFound:
             break
 
@@ -267,6 +275,7 @@ def migrate_knowledge_vector_database():
         VectorType.WEAVIATE,
         VectorType.ORACLE,
         VectorType.ELASTICSEARCH,
+        VectorType.OPENGAUSS,
     }
     lower_collection_vector_types = {
         VectorType.ANALYTICDB,
@@ -476,14 +485,11 @@ def convert_to_agent_apps():
     click.echo(click.style("Conversion complete. Converted {} agent apps.".format(len(proceeded_app_ids)), fg="green"))
 
 
-@click.command("add-qdrant-doc-id-index", help="Add Qdrant doc_id index.")
+@click.command("add-qdrant-index", help="Add Qdrant index.")
 @click.option("--field", default="metadata.doc_id", prompt=False, help="Index field , default is metadata.doc_id.")
-def add_qdrant_doc_id_index(field: str):
-    click.echo(click.style("Starting Qdrant doc_id index creation.", fg="green"))
-    vector_type = dify_config.VECTOR_STORE
-    if vector_type != "qdrant":
-        click.echo(click.style("This command only supports Qdrant vector store.", fg="red"))
-        return
+def add_qdrant_index(field: str):
+    click.echo(click.style("Starting Qdrant index creation.", fg="green"))
+
     create_count = 0
 
     try:
@@ -530,6 +536,76 @@ def add_qdrant_doc_id_index(field: str):
         click.echo(click.style("Failed to create Qdrant client.", fg="red"))
 
     click.echo(click.style(f"Index creation complete. Created {create_count} collection indexes.", fg="green"))
+
+
+@click.command("old-metadata-migration", help="Old metadata migration.")
+def old_metadata_migration():
+    """
+    Old metadata migration.
+    """
+    click.echo(click.style("Starting old metadata migration.", fg="green"))
+
+    page = 1
+    while True:
+        try:
+            documents = (
+                DatasetDocument.query.filter(DatasetDocument.doc_metadata is not None)
+                .order_by(DatasetDocument.created_at.desc())
+                .paginate(page=page, per_page=50)
+            )
+        except NotFound:
+            break
+        if not documents:
+            break
+        for document in documents:
+            if document.doc_metadata:
+                doc_metadata = document.doc_metadata
+                for key, value in doc_metadata.items():
+                    for field in BuiltInField:
+                        if field.value == key:
+                            break
+                    else:
+                        dataset_metadata = (
+                            db.session.query(DatasetMetadata)
+                            .filter(DatasetMetadata.dataset_id == document.dataset_id, DatasetMetadata.name == key)
+                            .first()
+                        )
+                        if not dataset_metadata:
+                            dataset_metadata = DatasetMetadata(
+                                tenant_id=document.tenant_id,
+                                dataset_id=document.dataset_id,
+                                name=key,
+                                type="string",
+                                created_by=document.created_by,
+                            )
+                            db.session.add(dataset_metadata)
+                            db.session.flush()
+                            dataset_metadata_binding = DatasetMetadataBinding(
+                                tenant_id=document.tenant_id,
+                                dataset_id=document.dataset_id,
+                                metadata_id=dataset_metadata.id,
+                                document_id=document.id,
+                                created_by=document.created_by,
+                            )
+                            db.session.add(dataset_metadata_binding)
+                        else:
+                            dataset_metadata_binding = DatasetMetadataBinding.query.filter(
+                                DatasetMetadataBinding.dataset_id == document.dataset_id,
+                                DatasetMetadataBinding.document_id == document.id,
+                                DatasetMetadataBinding.metadata_id == dataset_metadata.id,
+                            ).first()
+                            if not dataset_metadata_binding:
+                                dataset_metadata_binding = DatasetMetadataBinding(
+                                    tenant_id=document.tenant_id,
+                                    dataset_id=document.dataset_id,
+                                    metadata_id=dataset_metadata.id,
+                                    document_id=document.id,
+                                    created_by=document.created_by,
+                                )
+                                db.session.add(dataset_metadata_binding)
+                        db.session.commit()
+        page += 1
+    click.echo(click.style("Old metadata migration completed.", fg="green"))
 
 
 @click.command("create-tenant", help="Create account and tenant.")
@@ -717,3 +793,23 @@ def install_plugins(input_file: str, output_file: str, workers: int):
     PluginMigration.install_plugins(input_file, output_file, workers)
 
     click.echo(click.style("Install plugins completed.", fg="green"))
+
+
+@click.command("clear-free-plan-tenant-expired-logs", help="Clear free plan tenant expired logs.")
+@click.option("--days", prompt=True, help="The days to clear free plan tenant expired logs.", default=30)
+@click.option("--batch", prompt=True, help="The batch size to clear free plan tenant expired logs.", default=100)
+@click.option(
+    "--tenant_ids",
+    prompt=True,
+    multiple=True,
+    help="The tenant ids to clear free plan tenant expired logs.",
+)
+def clear_free_plan_tenant_expired_logs(days: int, batch: int, tenant_ids: list[str]):
+    """
+    Clear free plan tenant expired logs.
+    """
+    click.echo(click.style("Starting clear free plan tenant expired logs.", fg="white"))
+
+    ClearFreePlanTenantExpiredLogs.process(days, batch, tenant_ids)
+
+    click.echo(click.style("Clear free plan tenant expired logs completed.", fg="green"))

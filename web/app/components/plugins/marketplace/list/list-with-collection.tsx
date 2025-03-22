@@ -15,7 +15,7 @@ type ListWithCollectionProps = {
   showInstallButton?: boolean
   locale: string
   cardContainerClassName?: string
-  cardRender?: (plugin: Plugin) => JSX.Element | null
+  cardRender?: (plugin: Plugin) => React.JSX.Element | null
   onMoreClick?: (searchParams?: SearchParamsFromCollection) => void
 }
 const ListWithCollection = ({
@@ -37,7 +37,7 @@ const ListWithCollection = ({
             key={collection.name}
             className='py-3'
           >
-            <div className='flex justify-between items-end'>
+            <div className='flex items-end justify-between'>
               <div>
                 <div className='title-xl-semi-bold text-text-primary'>{collection.label[getLanguage(locale)]}</div>
                 <div className='system-xs-regular text-text-tertiary'>{collection.description[getLanguage(locale)]}</div>
@@ -45,17 +45,17 @@ const ListWithCollection = ({
               {
                 collection.searchable && onMoreClick && (
                   <div
-                    className='flex items-center system-xs-medium text-text-accent cursor-pointer '
+                    className='system-xs-medium flex cursor-pointer items-center text-text-accent '
                     onClick={() => onMoreClick?.(collection.search_params)}
                   >
                     {t('plugin.marketplace.viewMore')}
-                    <RiArrowRightSLine className='w-4 h-4' />
+                    <RiArrowRightSLine className='h-4 w-4' />
                   </div>
                 )
               }
             </div>
             <div className={cn(
-              'grid grid-cols-4 gap-3 mt-2',
+              'mt-2 grid grid-cols-4 gap-3',
               cardContainerClassName,
             )}>
               {

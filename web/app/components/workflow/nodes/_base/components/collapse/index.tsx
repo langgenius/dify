@@ -6,8 +6,8 @@ export { default as FieldCollapse } from './field-collapse'
 
 type CollapseProps = {
   disabled?: boolean
-  trigger: JSX.Element
-  children: JSX.Element
+  trigger: React.JSX.Element
+  children: React.JSX.Element
   collapsed?: boolean
   onCollapse?: (collapsed: boolean) => void
 }
@@ -32,13 +32,13 @@ const Collapse = ({
           }
         }}
       >
-        <div className='shrink-0 w-4 h-4'>
+        <div className='h-4 w-4 shrink-0'>
           {
             !disabled && (
               <RiArrowDropRightLine
                 className={cn(
-                  'w-4 h-4 text-text-tertiary',
-                  !collapsedMerged && 'transform rotate-90',
+                  'h-4 w-4 text-text-tertiary',
+                  !collapsedMerged && 'rotate-90',
                 )}
               />
             )

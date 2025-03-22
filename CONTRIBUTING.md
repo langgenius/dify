@@ -10,28 +10,47 @@ In terms of licensing, please take a minute to read our short [License and Contr
 
 ## Before you jump in
 
-[Find](https://github.com/langgenius/dify/issues?q=is:issue+is:open) an existing issue, or [open](https://github.com/langgenius/dify/issues/new/choose) a new one. We categorize issues into 2 types:
+Looking for something to tackle? Browse our [good first issues](https://github.com/langgenius/dify/issues?q=is%3Aissue%20state%3Aopen%20label%3A%22good%20first%20issue%22) and pick one to get started!
+
+Got a cool new model runtime or tool to add? Open a PR in our [plugin repo](https://github.com/langgenius/dify-plugins) and show us what you've built.
+
+Need to update an existing model runtime, tool, or squash some bugs? Head over to our [official plugin repo](https://github.com/langgenius/dify-official-plugins) and make your magic happen!
+
+Join the fun, contribute, and let's build something awesome together! 💡✨
+
+Don't forget to link an existing issue or open an new issue in the PR's description.
+
+### Bug reports
+
+> [!IMPORTANT]
+> Please make sure to include the following information when submitting a bug report:
+
+- A clear and descriptive title
+- A detailed description of the bug, including any error messages
+- Steps to reproduce the bug
+- Expected behavior
+- **Logs**, if available, for backend issues, this is really important, you can find them in docker-compose logs
+- Screenshots or videos, if applicable
+
+How we prioritize:
+
+  | Issue Type                                                   | Priority        |
+  | ------------------------------------------------------------ | --------------- |
+  | Bugs in core functions (cloud service, cannot login, applications not working, security loopholes) | Critical        |
+  | Non-critical bugs, performance boosts                        | Medium Priority |
+  | Minor fixes (typos, confusing but working UI)                | Low Priority    |
 
 ### Feature requests
 
-* If you're opening a new feature request, we'd like you to explain what the proposed feature achieves, and include as much context as possible. [@perzeusss](https://github.com/perzeuss) has made a solid [Feature Request Copilot](https://udify.app/chat/MK2kVSnw1gakVwMX) that helps you draft out your needs. Feel free to give it a try.
+> [!NOTE]
+> Please make sure to include the following information when submitting a feature request:
 
-* If you want to pick one up from the existing issues, simply drop a comment below it saying so.
+- A clear and descriptive title
+- A detailed description of the feature
+- A use case for the feature
+- Any other context or screenshots about the feature request
 
-  A team member working in the related direction will be looped in. If all looks good, they will give the go-ahead for you to start coding. We ask that you hold off working on the feature until then, so none of your work goes to waste should we propose changes.
-
-  Depending on whichever area the proposed feature falls under, you might talk to different team members. Here's rundown of the areas each our team members are working on at the moment:
-
-  | Member                                                       | Scope                                                |
-  | ------------------------------------------------------------ | ---------------------------------------------------- |
-  | [@yeuoly](https://github.com/Yeuoly)                         | Architecting Agents                                  |
-  | [@jyong](https://github.com/JohnJyong)                       | RAG pipeline design                                  |
-  | [@GarfieldDai](https://github.com/GarfieldDai)               | Building workflow orchestrations                     |
-  | [@iamjoel](https://github.com/iamjoel) & [@zxhlyh](https://github.com/zxhlyh) | Making our frontend a breeze to use                  |
-  | [@guchenhe](https://github.com/guchenhe) & [@crazywoola](https://github.com/crazywoola) | Developer experience, points of contact for anything |
-  | [@takatost](https://github.com/takatost)                     | Overall product direction and architecture           |
-
-  How we prioritize:
+How we prioritize:
 
   | Feature Type                                                 | Priority        |
   | ------------------------------------------------------------ | --------------- |
@@ -39,119 +58,36 @@ In terms of licensing, please take a minute to read our short [License and Contr
   | Popular feature requests from our [community feedback board](https://github.com/langgenius/dify/discussions/categories/feedbacks) | Medium Priority |
   | Non-core features and minor enhancements                     | Low Priority    |
   | Valuable but not immediate                                   | Future-Feature  |
-
-### Anything else (e.g. bug report, performance optimization, typo correction)
-
-* Start coding right away.
-
-  How we prioritize:
-
-  | Issue Type                                                   | Priority        |
-  | ------------------------------------------------------------ | --------------- |
-  | Bugs in core functions (cannot login, applications not working, security loopholes) | Critical        |
-  | Non-critical bugs, performance boosts                        | Medium Priority |
-  | Minor fixes (typos, confusing but working UI)                | Low Priority    |
-
-## Installing
-
-Here are the steps to set up Dify for development:
-
-### 1. Fork this repository
-
-### 2. Clone the repo
-
- Clone the forked repository from your terminal:
-
-```shell
-git clone git@github.com:<github_username>/dify.git
-```
-
-### 3. Verify dependencies
-
-Dify requires the following dependencies to build, make sure they're installed on your system:
-
-* [Docker](https://www.docker.com/)
-* [Docker Compose](https://docs.docker.com/compose/install/)
-* [Node.js v18.x (LTS)](http://nodejs.org)
-* [pnpm](https://pnpm.io/)
-* [Python](https://www.python.org/) version 3.11.x or 3.12.x
-
-### 4. Installations
-
-Dify is composed of a backend and a frontend. Navigate to the backend directory by `cd api/`, then follow the [Backend README](api/README.md) to install it. In a separate terminal, navigate to the frontend directory by `cd web/`, then follow the [Frontend README](web/README.md) to install.
-
-Check the [installation FAQ](https://docs.dify.ai/learn-more/faq/install-faq) for a list of common issues and steps to troubleshoot.
-
-### 5. Visit dify in your browser
-
-To validate your set up, head over to [http://localhost:3000](http://localhost:3000) (the default, or your self-configured URL and port) in your browser. You should now see Dify up and running.
-
-## Developing
-
-If you are adding a model provider, [this guide](https://github.com/langgenius/dify/blob/main/api/core/model_runtime/README.md) is for you.
-
-If you are adding a tool provider to Agent or Workflow, [this guide](./api/core/tools/README.md) is for you.
-
-To help you quickly navigate where your contribution fits, a brief, annotated outline of Dify's backend & frontend is as follows:
-
-### Backend
-
-Dify’s backend is written in Python using [Flask](https://flask.palletsprojects.com/en/3.0.x/). It uses [SQLAlchemy](https://www.sqlalchemy.org/) for ORM and [Celery](https://docs.celeryq.dev/en/stable/getting-started/introduction.html) for task queueing. Authorization logic goes via Flask-login.
-
-```text
-[api/]
-├── constants             // Constant settings used throughout code base.
-├── controllers           // API route definitions and request handling logic.           
-├── core                  // Core application orchestration, model integrations, and tools.
-├── docker                // Docker & containerization related configurations.
-├── events                // Event handling and processing
-├── extensions            // Extensions with 3rd party frameworks/platforms.
-├── fields                // field definitions for serialization/marshalling.
-├── libs                  // Reusable libraries and helpers.
-├── migrations            // Scripts for database migration.
-├── models                // Database models & schema definitions.
-├── services              // Specifies business logic.
-├── storage               // Private key storage.      
-├── tasks                 // Handling of async tasks and background jobs.
-└── tests
-```
-
-### Frontend
-
-The website is bootstrapped on [Next.js](https://nextjs.org/) boilerplate in Typescript and uses [Tailwind CSS](https://tailwindcss.com/) for styling. [React-i18next](https://react.i18next.com/) is used for internationalization.
-
-```text
-[web/]
-├── app                   // layouts, pages, and components
-│   ├── (commonLayout)    // common layout used throughout the app
-│   ├── (shareLayout)     // layouts specifically shared across token-specific sessions 
-│   ├── activate          // activate page
-│   ├── components        // shared by pages and layouts
-│   ├── install           // install page
-│   ├── signin            // signin page
-│   └── styles            // globally shared styles
-├── assets                // Static assets
-├── bin                   // scripts ran at build step
-├── config                // adjustable settings and options 
-├── context               // shared contexts used by different portions of the app
-├── dictionaries          // Language-specific translate files 
-├── docker                // container configurations
-├── hooks                 // Reusable hooks
-├── i18n                  // Internationalization configuration
-├── models                // describes data models & shapes of API responses
-├── public                // meta assets like favicon
-├── service               // specifies shapes of API actions
-├── test                  
-├── types                 // descriptions of function params and return values
-└── utils                 // Shared utility functions
-```
-
 ## Submitting your PR
 
-At last, time to open a pull request (PR) to our repo. For major features, we first merge them into the `deploy/dev` branch for testing, before they go into the `main` branch. If you run into issues like merge conflicts or don't know how to open a pull request, check out [GitHub's pull request tutorial](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests).
+### Pull Request Process
 
-And that's it! Once your PR is merged, you will be featured as a contributor in our [README](https://github.com/langgenius/dify/blob/main/README.md).
+1. Fork the repository
+2. Before you draft a PR, please create an issue to discuss the changes you want to make
+3. Create a new branch for your changes
+4. Please add tests for your changes accordingly
+5. Ensure your code passes the existing tests
+6. Please link the issue in the PR description, `fixes #<issue_number>`
+7. Get merrged! 
+### Setup the project
 
+#### Frontend
+
+For setting up the frontend service, please refer to our comprehensive [guide](https://github.com/langgenius/dify/blob/main/web/README.md) in the `web/README.md` file. This document provides detailed instructions to help you set up the frontend environment properly.
+
+#### Backend
+
+For setting up the backend service, kindly refer to our detailed [instructions](https://github.com/langgenius/dify/blob/main/api/README.md) in the `api/README.md` file. This document contains step-by-step guidance to help you get the backend up and running smoothly.
+
+#### Other things to note
+
+We recommend reviewing this document carefully before proceeding with the setup, as it contains essential information about:
+- Prerequisites and dependencies
+- Installation steps
+- Configuration details
+- Common troubleshooting tips
+
+Feel free to reach out if you encounter any issues during the setup process.
 ## Getting Help
 
 If you ever get stuck or got a burning question while contributing, simply shoot your queries our way via the related GitHub issue, or hop onto our [Discord](https://discord.gg/8Tpq4AcN9c) for a quick chat.

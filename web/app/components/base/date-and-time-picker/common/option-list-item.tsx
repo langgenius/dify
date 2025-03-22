@@ -22,7 +22,7 @@ const OptionListItem: FC<OptionListItemProps> = ({
     <li
       ref={listItemRef}
       className={cn(
-        'px-1.5 py-1 rounded-md flex items-center justify-center text-components-button-ghost-text system-xs-medium cursor-pointer',
+        'system-xs-medium flex cursor-pointer items-center justify-center rounded-md px-1.5 py-1 text-components-button-ghost-text',
         isSelected ? 'bg-components-button-ghost-bg-hover' : 'hover:bg-components-button-ghost-bg-hover',
       )}
       onClick={() => {

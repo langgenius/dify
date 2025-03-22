@@ -493,7 +493,7 @@ If inputting a combination of text and images, the images need to be constructed
 The base class for all Role message bodies, used only for parameter declaration and cannot be initialized.
 
 ```python
-class PromptMessage(ABC, BaseModel):
+class PromptMessage(BaseModel):
     """
     Model class for prompt message.
     """

@@ -55,12 +55,12 @@ const MembersPage = () => {
   return (
     <>
       <div className='flex flex-col'>
-        <div className='flex items-center mb-4 p-3 pr-5 gap-3 bg-gradient-to-r from-background-gradient-bg-fill-chat-bg-2 to-background-gradient-bg-fill-chat-bg-1 rounded-xl border-t-[0.5px] border-l-[0.5px] border-divider-subtle'>
-          <LogoEmbeddedChatHeader className='!w-12 !h-12' />
+        <div className='mb-4 flex items-center gap-3 rounded-xl border-l-[0.5px] border-t-[0.5px] border-divider-subtle bg-gradient-to-r from-background-gradient-bg-fill-chat-bg-2 to-background-gradient-bg-fill-chat-bg-1 p-3 pr-5'>
+          <LogoEmbeddedChatHeader className='!h-12 !w-12' />
           <div className='grow'>
             <div className='system-md-semibold text-text-secondary'>{currentWorkspace?.name}</div>
             {enableBilling && (
-              <div className='mt-1 system-xs-medium text-text-tertiary'>
+              <div className='system-xs-medium mt-1 text-text-tertiary'>
                 {isNotUnlimitedMemberPlan
                   ? (
                     <div className='flex space-x-1'>
@@ -84,37 +84,37 @@ const MembersPage = () => {
             <UpgradeBtn className='mr-2' loc='member-invite' />
           )}
           <Button variant='primary' className={cn('shrink-0')} disabled={!isCurrentWorkspaceManager || isMemberFull} onClick={() => setInviteModalVisible(true)}>
-            <RiUserAddLine className='w-4 h-4 mr-1' />
+            <RiUserAddLine className='mr-1 h-4 w-4' />
             {t('common.members.invite')}
           </Button>
         </div>
         <div className='overflow-visible lg:overflow-visible'>
-          <div className='flex items-center py-[7px] border-b border-divider-regular min-w-[480px]'>
-            <div className='grow px-3 system-xs-medium-uppercase text-text-tertiary'>{t('common.members.name')}</div>
-            <div className='shrink-0 w-[104px] system-xs-medium-uppercase text-text-tertiary'>{t('common.members.lastActive')}</div>
-            <div className='shrink-0 w-[96px] px-3 system-xs-medium-uppercase text-text-tertiary'>{t('common.members.role')}</div>
+          <div className='flex min-w-[480px] items-center border-b border-divider-regular py-[7px]'>
+            <div className='system-xs-medium-uppercase grow px-3 text-text-tertiary'>{t('common.members.name')}</div>
+            <div className='system-xs-medium-uppercase w-[104px] shrink-0 text-text-tertiary'>{t('common.members.lastActive')}</div>
+            <div className='system-xs-medium-uppercase w-[96px] shrink-0 px-3 text-text-tertiary'>{t('common.members.role')}</div>
           </div>
-          <div className='min-w-[480px] relative'>
+          <div className='relative min-w-[480px]'>
             {
               accounts.map(account => (
                 <div key={account.id} className='flex border-b border-divider-subtle'>
-                  <div className='grow flex items-center py-2 px-3'>
+                  <div className='flex grow items-center px-3 py-2'>
                     <Avatar avatar={account.avatar_url} size={24} className='mr-2' name={account.name} />
                     <div className=''>
-                      <div className='text-text-secondary system-sm-medium'>
+                      <div className='system-sm-medium text-text-secondary'>
                         {account.name}
-                        {account.status === 'pending' && <span className='ml-1 system-xs-medium text-text-warning'>{t('common.members.pending')}</span>}
+                        {account.status === 'pending' && <span className='system-xs-medium ml-1 text-text-warning'>{t('common.members.pending')}</span>}
                         {userProfile.email === account.email && <span className='system-xs-regular text-text-tertiary'>{t('common.members.you')}</span>}
                       </div>
-                      <div className='text-text-tertiary system-xs-regular'>{account.email}</div>
+                      <div className='system-xs-regular text-text-tertiary'>{account.email}</div>
                     </div>
                   </div>
-                  <div className='shrink-0 flex items-center w-[104px] py-2 system-sm-regular text-text-secondary'>{dayjs(Number((account.last_active_at || account.created_at)) * 1000).locale(locale === 'zh-Hans' ? 'zh-cn' : 'en').fromNow()}</div>
-                  <div className='shrink-0 w-[96px] flex items-center'>
+                  <div className='system-sm-regular flex w-[104px] shrink-0 items-center py-2 text-text-secondary'>{dayjs(Number((account.last_active_at || account.created_at)) * 1000).locale(locale === 'zh-Hans' ? 'zh-cn' : 'en').fromNow()}</div>
+                  <div className='flex w-[96px] shrink-0 items-center'>
                     {
                       ((isCurrentWorkspaceOwner && account.role !== 'owner') || (isCurrentWorkspaceManager && !['owner', 'admin'].includes(account.role)))
                         ? <Operation member={account} operatorRole={currentWorkspace.role} onOperate={mutate} />
-                        : <div className='px-3 system-sm-regular text-text-secondary'>{RoleMap[account.role] || RoleMap.normal}</div>
+                        : <div className='system-sm-regular px-3 text-text-secondary'>{RoleMap[account.role] || RoleMap.normal}</div>
                     }
                   </div>
                 </div>

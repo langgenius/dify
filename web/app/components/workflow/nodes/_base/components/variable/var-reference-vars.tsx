@@ -17,7 +17,7 @@ import { BubbleX, Env } from '@/app/components/base/icons/src/vender/line/others
 import { checkKeys } from '@/utils/var'
 import { FILE_STRUCT } from '@/app/components/workflow/constants'
 
-interface ObjectChildrenProps {
+type ObjectChildrenProps = {
   nodeId: string
   title: string
   data: Var[]
@@ -28,7 +28,7 @@ interface ObjectChildrenProps {
   isSupportFileVar?: boolean
 }
 
-interface ItemProps {
+type ItemProps = {
   nodeId: string
   title: string
   objPath: string[]
@@ -106,28 +106,28 @@ const Item: FC<ItemProps> = ({
           className={cn(
             isObj ? ' pr-1' : 'pr-[18px]',
             isHovering && (isObj ? 'bg-primary-50' : 'bg-state-base-hover'),
-            'relative w-full flex items-center h-6 pl-3  rounded-md cursor-pointer')
+            'relative flex h-6 w-full cursor-pointer items-center  rounded-md pl-3')
           }
           onClick={handleChosen}
           onMouseDown={e => e.preventDefault()}
         >
-          <div className='flex items-center w-0 grow'>
-            {!isEnv && !isChatVar && <Variable02 className={cn('shrink-0 w-3.5 h-3.5 text-text-accent', isException && 'text-text-warning')} />}
-            {isEnv && <Env className='shrink-0 w-3.5 h-3.5 text-util-colors-violet-violet-600' />}
-            {isChatVar && <BubbleX className='w-3.5 h-3.5 text-util-colors-teal-teal-700' />}
+          <div className='flex w-0 grow items-center'>
+            {!isEnv && !isChatVar && <Variable02 className={cn('h-3.5 w-3.5 shrink-0 text-text-accent', isException && 'text-text-warning')} />}
+            {isEnv && <Env className='h-3.5 w-3.5 shrink-0 text-util-colors-violet-violet-600' />}
+            {isChatVar && <BubbleX className='h-3.5 w-3.5 text-util-colors-teal-teal-700' />}
             {!isEnv && !isChatVar && (
-              <div title={itemData.variable} className='ml-1 w-0 grow truncate text-text-secondary system-sm-medium'>{itemData.variable}</div>
+              <div title={itemData.variable} className='system-sm-medium ml-1 w-0 grow truncate text-text-secondary'>{itemData.variable}</div>
             )}
             {isEnv && (
-              <div title={itemData.variable} className='ml-1 w-0 grow truncate text-text-secondary system-sm-medium'>{itemData.variable.replace('env.', '')}</div>
+              <div title={itemData.variable} className='system-sm-medium ml-1 w-0 grow truncate text-text-secondary'>{itemData.variable.replace('env.', '')}</div>
             )}
             {isChatVar && (
-              <div title={itemData.des} className='ml-1 w-0 grow truncate text-text-secondary system-sm-medium'>{itemData.variable.replace('conversation.', '')}</div>
+              <div title={itemData.des} className='system-sm-medium ml-1 w-0 grow truncate text-text-secondary'>{itemData.variable.replace('conversation.', '')}</div>
             )}
           </div>
-          <div className='ml-1 shrink-0 text-xs font-normal text-text-tertiary capitalize'>{itemData.type}</div>
+          <div className='ml-1 shrink-0 text-xs font-normal capitalize text-text-tertiary'>{itemData.type}</div>
           {isObj && (
-            <ChevronRight className={cn('ml-0.5 w-3 h-3 text-text-quaternary', isHovering && 'text-text-tertiary')} />
+            <ChevronRight className={cn('ml-0.5 h-3 w-3 text-text-quaternary', isHovering && 'text-text-tertiary')} />
           )}
         </div>
       </PortalToFollowElemTrigger>
@@ -202,11 +202,11 @@ const ObjectChildren: FC<ObjectChildrenProps> = ({
   }, [isItemHovering])
   // absolute top-[-2px]
   return (
-    <div ref={itemRef} className=' bg-white rounded-lg border border-gray-200 shadow-lg space-y-1' style={{
+    <div ref={itemRef} className=' space-y-1 rounded-lg border border-gray-200 bg-white shadow-lg' style={{
       right: itemWidth ? itemWidth - 10 : 215,
       minWidth: 252,
     }}>
-      <div className='flex items-center h-[22px] px-3 text-xs font-normal text-gray-700'><span className='text-gray-500'>{title}.</span>{currObjPath.join('.')}</div>
+      <div className='flex h-[22px] items-center px-3 text-xs font-normal text-gray-700'><span className='text-gray-500'>{title}.</span>{currObjPath.join('.')}</div>
       {
         (data && data.length > 0)
         && data.map((v, i) => (
@@ -227,7 +227,7 @@ const ObjectChildren: FC<ObjectChildrenProps> = ({
   )
 }
 
-interface Props {
+type Props = {
   hideSearch?: boolean
   searchBoxClassName?: string
   vars: NodeOutPutVar[]
@@ -278,7 +278,7 @@ const VarReferenceVars: FC<Props> = ({
       {
         !hideSearch && (
           <>
-            <div className={cn('mb-1 mx-2 mt-2', searchBoxClassName)} onClick={e => e.stopPropagation()}>
+            <div className={cn('mx-2 mb-1 mt-2', searchBoxClassName)} onClick={e => e.stopPropagation()}>
               <Input
                 showLeftIcon
                 showClearIcon
@@ -289,7 +289,7 @@ const VarReferenceVars: FC<Props> = ({
                 autoFocus
               />
             </div>
-            <div className='h-[0.5px] bg-black/5 relative left-[-4px]' style={{
+            <div className='relative left-[-4px] h-[0.5px] bg-black/5' style={{
               width: 'calc(100% + 8px)',
             }}></div>
           </>
@@ -303,7 +303,7 @@ const VarReferenceVars: FC<Props> = ({
             filteredVars.map((item, i) => (
               <div key={i}>
                 <div
-                  className='leading-[22px] px-3 text-text-tertiary system-xs-medium-uppercase truncate'
+                  className='system-xs-medium-uppercase truncate px-3 leading-[22px] text-text-tertiary'
                   title={item.title}
                 >{item.title}</div>
                 {item.vars.map((v, j) => (
@@ -322,7 +322,7 @@ const VarReferenceVars: FC<Props> = ({
               </div>))
           }
         </div>
-        : <div className='pl-3 leading-[18px] text-xs font-medium text-gray-500 uppercase'>{t('workflow.common.noVar')}</div>}
+        : <div className='pl-3 text-xs font-medium uppercase leading-[18px] text-gray-500'>{t('workflow.common.noVar')}</div>}
     </ >
   )
 }
