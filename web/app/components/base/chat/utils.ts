@@ -96,7 +96,7 @@ function buildChatItemTree(allMessages: IChatItem[]): ChatItemInTree[] {
       else {
         if (isSameQuestionNode(questionNode, leftSibling)) {
           questionNode.siblingIndex = leftSibling.siblingIndex!
-          answerNode.siblingIndex = leftSibling.siblingIndex! + 1
+          answerNode.siblingIndex = leftSibling.children?.at(-1)?.siblingIndex || 0 + 1
         }
         else {
           questionNode.siblingIndex = leftSibling.siblingIndex! + 1

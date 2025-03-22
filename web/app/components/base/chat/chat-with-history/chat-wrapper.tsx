@@ -120,7 +120,7 @@ const ChatWrapper = () => {
     setIsResponding(respondingState)
   }, [respondingState, setIsResponding])
 
-  const doSend: OnSend = useCallback((message, files, isRegenerate = false, parentAnswer: ChatItem | null = null) => {
+  const doSend: OnSend = useCallback((message, files, isRegenerate = false, parentAnswer: ChatItem | null = null, editedQuestionSiblingIndex: number | undefined = undefined) => {
     const data: any = {
       query: message,
       files,
@@ -136,6 +136,7 @@ const ChatWrapper = () => {
         onGetSuggestedQuestions: responseItemId => fetchSuggestedQuestions(responseItemId, isInstalledApp, appId),
         onConversationComplete: currentConversationId ? undefined : handleNewConversationCompleted,
         isPublicAPI: !isInstalledApp,
+        editedQuestionSiblingIndex,
       },
     )
   }, [
@@ -157,6 +158,7 @@ const ChatWrapper = () => {
       editedQuestion ? editedQuestion.files : question.message_files,
       true,
       isValidGeneratedAnswer(parentAnswer) ? parentAnswer : null,
+      editedQuestion ? question.siblingIndex : undefined,
     )
   }, [chatList, doSend])
 

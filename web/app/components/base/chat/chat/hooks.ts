@@ -36,12 +36,12 @@ import {
 } from '@/app/components/base/file-uploader/utils'
 
 type GetAbortController = (abortController: AbortController) => void
-type SendCallback = {
+type HandleSendOptions = {
   onGetConversationMessages?: (conversationId: string, getAbortController: GetAbortController) => Promise<any>
   onGetSuggestedQuestions?: (responseItemId: string, getAbortController: GetAbortController) => Promise<any>
   onConversationComplete?: (conversationId: string) => void
   isPublicAPI?: boolean
-  isQuestionEditedAndResend?: boolean
+  editedQuestionSiblingIndex?: number
 }
 
 export const useChat = (
@@ -222,8 +222,8 @@ export const useChat = (
       onGetSuggestedQuestions,
       onConversationComplete,
       isPublicAPI,
-      isQuestionEditedAndResend,
-    }: SendCallback,
+      editedQuestionSiblingIndex,
+    }: HandleSendOptions,
   ) => {
     setSuggestQuestions([])
 
@@ -232,9 +232,10 @@ export const useChat = (
       return false
     }
 
-    const parentMessage = threadMessages.find(item => item.id === data.parent_message_id)
-    const leftSiblingIndex = parentMessage?.children?.at(-1)?.siblingIndex || 0
-    const parentQuestion = threadMessages.find(item => item.id === parentMessage?.parentMessageId)
+    const isQuestionEdited = editedQuestionSiblingIndex !== undefined
+
+    const parentAnswer = threadMessages.find(item => item.id === data.parent_message_id)
+    const siblingQuestions = parentAnswer ? parentAnswer.children : chatTree
 
     const placeholderQuestionId = `question-${Date.now()}`
     const questionItem = {
@@ -243,15 +244,27 @@ export const useChat = (
       isAnswer: false,
       message_files: data.files,
       parentMessageId: data.parent_message_id,
-      siblingIndex: leftSiblingIndex + 1,
+      siblingIndex: (function () {
+        if (editedQuestionSiblingIndex === 0) return 1
+        console.log({
+          isQuestionEdited,
+          siblingQuestions,
+          editedQuestionSiblingIndex,
+        })
+
+        return isQuestionEdited
+          ? (((siblingQuestions?.[editedQuestionSiblingIndex])?.siblingIndex || 0) + 1)
+          : siblingQuestions?.at(-1)?.siblingIndex || 0
+      })(),
     }
 
-    // if the question is edited and resend,
-    // and it's different from the last sibling,
-    // then reset the siblingIndex to the leftSiblingIndex
-    // const lastSibling = parentMessage?.children?.at(-1)
-    // if (isQuestionEditedAndResend && lastSibling && !isSameQuestionNode(questionItem, lastSibling))
-    //   questionItem.siblingIndex = leftSiblingIndex
+    function answerSiblingIndex() {
+      if (isQuestionEdited) return 0
+      if (!siblingQuestions) throw new Error('Unexpected error: siblingQuestions is undefined')
+      const siblingAnswers = siblingQuestions.map(item => item.children?.[0])
+      const lastSiblingAnswer = siblingAnswers.at(-1)
+      return lastSiblingAnswer ? (lastSiblingAnswer.siblingIndex || 0) + 1 : 0
+    }
 
     const placeholderAnswerId = `answer-placeholder-${Date.now()}`
     const placeholderAnswerItem = {
@@ -259,10 +272,10 @@ export const useChat = (
       content: '',
       isAnswer: true,
       parentMessageId: questionItem.id,
-      siblingIndex: isQuestionEditedAndResend ? 0 : null,
+      siblingIndex: answerSiblingIndex(),
     }
 
-    setTargetMessageId(parentMessage?.id)
+    setTargetMessageId(parentAnswer?.id)
     updateCurrentQAOnTree({
       parentId: data.parent_message_id,
       responseItem: placeholderAnswerItem,
@@ -278,7 +291,7 @@ export const useChat = (
       message_files: [],
       isAnswer: true,
       parentMessageId: questionItem.id,
-      siblingIndex: parentMessage?.children?.length ?? chatTree.length,
+      siblingIndex: answerSiblingIndex(),
     }
 
     handleResponding(true)
@@ -628,21 +641,7 @@ export const useChat = (
         },
       })
     return true
-  }, [
-    t,
-    chatTree.length,
-    threadMessages,
-    config?.suggested_questions_after_answer,
-    updateCurrentQAOnTree,
-    updateChatTreeNode,
-    notify,
-    handleResponding,
-    formatTime,
-    params.token,
-    params.appId,
-    pathname,
-    formSettings,
-  ])
+  }, [threadMessages, chatTree, updateCurrentQAOnTree, handleResponding, formSettings?.inputsForm, params.token, params.appId, notify, t, pathname, config?.suggested_questions_after_answer?.enabled, updateChatTreeNode, formatTime])
 
   const handleAnnotationEdited = useCallback((query: string, answer: string, index: number) => {
     const targetQuestionId = chatList[index - 1].id
