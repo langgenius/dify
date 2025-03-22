@@ -41,6 +41,12 @@ const Panel: FC<Props> = ({
   const isNotion = type === DataSourceType.notion
   const isWebsite = type === DataSourceType.website
 
+  const getProviderName = (): string => {
+    if (provider === DataSourceProvider.fireCrawl) return '🔥 Firecrawl'
+    if (provider === DataSourceProvider.waterCrawl) return 'WaterCrawl'
+    return 'Jina Reader'
+  }
+
   return (
     <div className='mb-2 rounded-xl bg-background-section-burn'>
       <div className='flex items-center px-3 py-[9px]'>
@@ -50,7 +56,7 @@ const Panel: FC<Props> = ({
             <div className='text-sm font-medium text-text-primary'>{t(`common.dataSource.${type}.title`)}</div>
             {isWebsite && (
               <div className='ml-1 rounded-md bg-components-badge-white-to-dark px-1.5 text-xs font-medium leading-[18px] text-text-secondary'>
-                <span className='text-text-tertiary'>{t('common.dataSource.website.with')}</span> { provider === DataSourceProvider.fireCrawl ? '🔥 Firecrawl' : 'Jina Reader'}
+                <span className='text-text-tertiary'>{t('common.dataSource.website.with')}</span> {getProviderName()}
               </div>
             )}
           </div>

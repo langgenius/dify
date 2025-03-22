@@ -15,6 +15,7 @@ export default function DataSourcePage() {
       <DataSourceNotion workspaces={notionWorkspaces} />
       <DataSourceWebsite provider={DataSourceProvider.jinaReader} />
       <DataSourceWebsite provider={DataSourceProvider.fireCrawl} />
+      <DataSourceWebsite provider={DataSourceProvider.waterCrawl} />
     </div>
   )
 }
