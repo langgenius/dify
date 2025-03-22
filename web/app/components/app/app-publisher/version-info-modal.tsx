@@ -69,16 +69,16 @@ const VersionInfoModal: FC<VersionInfoModalProps> = ({
 
   return <Modal className='p-0' isShow={isOpen} onClose={onClose}>
     <div className='relative w-full p-6 pb-4 pr-14'>
-      <div className='text-text-primary title-2xl-semi-bold first-letter:capitalize'>
+      <div className='title-2xl-semi-bold text-text-primary first-letter:capitalize'>
         {versionInfo?.marked_name ? t('workflow.versionHistory.editVersionInfo') : t('workflow.versionHistory.nameThisVersion')}
       </div>
-      <div className='w-8 h-8 flex items-center justify-center p-1.5 absolute top-5 right-5 cursor-pointer' onClick={onClose}>
-        <RiCloseLine className='w-[18px] h-[18px] text-text-tertiary' />
+      <div className='absolute right-5 top-5 flex h-8 w-8 cursor-pointer items-center justify-center p-1.5' onClick={onClose}>
+        <RiCloseLine className='h-[18px] w-[18px] text-text-tertiary' />
       </div>
     </div>
     <div className='flex flex-col gap-y-4 px-6 py-3'>
       <div className='flex flex-col gap-y-1'>
-        <div className='flex items-center h-6 text-text-secondary system-sm-semibold'>
+        <div className='system-sm-semibold flex h-6 items-center text-text-secondary'>
           {t('workflow.versionHistory.editField.title')}
         </div>
         <Input
@@ -89,7 +89,7 @@ const VersionInfoModal: FC<VersionInfoModalProps> = ({
         />
       </div>
       <div className='flex flex-col gap-y-1'>
-        <div className='flex items-center h-6 text-text-secondary system-sm-semibold'>
+        <div className='system-sm-semibold flex h-6 items-center text-text-secondary'>
           {t('workflow.versionHistory.editField.releaseNotes')}
         </div>
         <Textarea

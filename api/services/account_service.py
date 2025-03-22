@@ -785,8 +785,10 @@ class TenantService:
     @staticmethod
     def remove_member_from_tenant(tenant: Tenant, account: Account, operator: Account) -> None:
         """Remove member from tenant"""
-        if operator.id == account.id and TenantService.check_member_permission(tenant, operator, account, "remove"):
+        if operator.id == account.id:
             raise CannotOperateSelfError("Cannot operate self.")
+
+        TenantService.check_member_permission(tenant, operator, account, "remove")
 
         ta = TenantAccountJoin.query.filter_by(tenant_id=tenant.id, account_id=account.id).first()
         if not ta:

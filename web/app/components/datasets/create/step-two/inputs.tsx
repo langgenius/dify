@@ -7,11 +7,11 @@ import type { InputNumberProps } from '@/app/components/base/input-number'
 import { InputNumber } from '@/app/components/base/input-number'
 
 const TextLabel: FC<PropsWithChildren> = (props) => {
-  return <label className='text-text-secondary text-xs font-semibold leading-none'>{props.children}</label>
+  return <label className='text-xs font-semibold leading-none text-text-secondary'>{props.children}</label>
 }
 
 const FormField: FC<PropsWithChildren<{ label: ReactNode }>> = (props) => {
-  return <div className='space-y-2 flex-1'>
+  return <div className='flex-1 space-y-2'>
     <TextLabel>{props.label}</TextLabel>
     {props.children}
   </div>
@@ -19,7 +19,7 @@ const FormField: FC<PropsWithChildren<{ label: ReactNode }>> = (props) => {
 
 export const DelimiterInput: FC<InputProps & { tooltip?: string }> = (props) => {
   const { t } = useTranslation()
-  return <FormField label={<div className='flex items-center mb-1'>
+  return <FormField label={<div className='mb-1 flex items-center'>
     <span className='system-sm-semibold mr-0.5'>{t('datasetCreation.stepTwo.separator')}</span>
     <Tooltip
       popupContent={
@@ -39,7 +39,7 @@ export const DelimiterInput: FC<InputProps & { tooltip?: string }> = (props) => 
 }
 
 export const MaxLengthInput: FC<InputNumberProps> = (props) => {
-  const maxValue = parseInt(globalThis.document?.body?.getAttribute('data-public-indexing-max-segmentation-tokens-length') || '4000', 10)
+  const maxValue = Number.parseInt(globalThis.document?.body?.getAttribute('data-public-indexing-max-segmentation-tokens-length') || '4000', 10)
 
   const { t } = useTranslation()
   return <FormField label={<div className='system-sm-semibold mb-1'>
@@ -58,7 +58,7 @@ export const MaxLengthInput: FC<InputNumberProps> = (props) => {
 
 export const OverlapInput: FC<InputNumberProps> = (props) => {
   const { t } = useTranslation()
-  return <FormField label={<div className='flex items-center mb-1'>
+  return <FormField label={<div className='mb-1 flex items-center'>
     <span className='system-sm-semibold'>{t('datasetCreation.stepTwo.overlap')}</span>
     <Tooltip
       popupContent={

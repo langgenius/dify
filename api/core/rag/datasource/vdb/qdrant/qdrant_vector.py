@@ -119,7 +119,7 @@ class QdrantVector(BaseVector):
                     max_indexing_threads=0,
                     on_disk=False,
                 )
-                self._client.recreate_collection(
+                self._client.create_collection(
                     collection_name=collection_name,
                     vectors_config=vectors_config,
                     hnsw_config=hnsw_config,
@@ -133,6 +133,10 @@ class QdrantVector(BaseVector):
                 # create doc_id payload index
                 self._client.create_payload_index(
                     collection_name, Field.DOC_ID.value, field_schema=PayloadSchemaType.KEYWORD
+                )
+                # create document_id payload index
+                self._client.create_payload_index(
+                    collection_name, Field.DOCUMENT_ID.value, field_schema=PayloadSchemaType.KEYWORD
                 )
                 # create full text index
                 text_index_params = TextIndexParams(

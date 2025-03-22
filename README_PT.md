@@ -203,7 +203,9 @@ Se deseja configurar uma instalação de alta disponibilidade, há [Helm Charts]
 
 - [Helm Chart de @LeoQuote](https://github.com/douban/charts/tree/master/charts/dify)
 - [Helm Chart de @BorisPolonsky](https://github.com/BorisPolonsky/dify-helm)
-- [Arquivo YAML de @Winson-030](https://github.com/Winson-030/dify-kubernetes)
+- [Helm Chart de @magicsong](https://github.com/magicsong/ai-charts)
+- [Arquivo YAML por @Winson-030](https://github.com/Winson-030/dify-kubernetes)
+- [Arquivo YAML por @wyy-holding](https://github.com/wyy-holding/dify-k8s)
 
 #### Usando o Terraform para Implantação
 

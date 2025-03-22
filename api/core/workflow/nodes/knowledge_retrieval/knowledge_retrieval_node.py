@@ -356,7 +356,7 @@ class KnowledgeRetrievalNode(LLMNode):
                     for condition in node_data.metadata_filtering_conditions.conditions:  # type: ignore
                         metadata_name = condition.name
                         expected_value = condition.value
-                        if expected_value or condition.comparison_operator in ("empty", "not empty"):
+                        if expected_value is not None or condition.comparison_operator in ("empty", "not empty"):
                             if isinstance(expected_value, str):
                                 expected_value = self.graph_runtime_state.variable_pool.convert_template(
                                     expected_value

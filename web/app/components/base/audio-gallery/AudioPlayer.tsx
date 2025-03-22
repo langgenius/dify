@@ -286,32 +286,32 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ src }) => {
   }, [duration])
 
   return (
-    <div className='flex items-end gap-2 h-9 min-w-[240px] max-w-[420px] p-2 bg-components-chat-input-audio-bg-alt backdrop-blur-sm rounded-[10px] border border-components-panel-border-subtle shadow-xs'>
+    <div className='flex h-9 min-w-[240px] max-w-[420px] items-end gap-2 rounded-[10px] border border-components-panel-border-subtle bg-components-chat-input-audio-bg-alt p-2 shadow-xs backdrop-blur-sm'>
       <audio ref={audioRef} src={src} preload="auto"/>
-      <button className='shrink-0 inline-flex items-center justify-center border-none text-text-accent hover:text-text-accent-secondary transition-all cursor-pointer disabled:text-components-button-primary-bg-disabled' onClick={togglePlay} disabled={!isAudioAvailable}>
+      <button className='inline-flex shrink-0 cursor-pointer items-center justify-center border-none text-text-accent transition-all hover:text-text-accent-secondary disabled:text-components-button-primary-bg-disabled' onClick={togglePlay} disabled={!isAudioAvailable}>
         {isPlaying
           ? (
-            <RiPauseCircleFill className='w-5 h-5' />
+            <RiPauseCircleFill className='h-5 w-5' />
           )
           : (
-            <RiPlayLargeFill className='w-5 h-5' />
+            <RiPlayLargeFill className='h-5 w-5' />
           )}
       </button>
       <div className={cn(isAudioAvailable && 'grow')} hidden={!isAudioAvailable}>
-        <div className='h-8 flex items-center justify-center'>
+        <div className='flex h-8 items-center justify-center'>
           <canvas
             ref={canvasRef}
-            className='relative grow h-6 w-full flex items-center justify-center cursor-pointer'
+            className='relative flex h-6 w-full grow cursor-pointer items-center justify-center'
             onClick={handleCanvasInteraction}
             onMouseMove={handleMouseMove}
             onMouseDown={handleCanvasInteraction}
           />
-          <div className='inline-flex items-center justify-center min-w-[50px] text-text-accent-secondary system-xs-medium'>
-            <span className='px-0.5 py-1 rounded-[10px]'>{formatTime(duration)}</span>
+          <div className='system-xs-medium inline-flex min-w-[50px] items-center justify-center text-text-accent-secondary'>
+            <span className='rounded-[10px] px-0.5 py-1'>{formatTime(duration)}</span>
           </div>
         </div>
       </div>
-      <div className='absolute top-0 left-0 w-full h-full flex items-center justify-center text-text-quaternary' hidden={isAudioAvailable}>{t('common.operation.audioSourceUnavailable')}</div>
+      <div className='absolute left-0 top-0 flex h-full w-full items-center justify-center text-text-quaternary' hidden={isAudioAvailable}>{t('common.operation.audioSourceUnavailable')}</div>
     </div>
   )
 }

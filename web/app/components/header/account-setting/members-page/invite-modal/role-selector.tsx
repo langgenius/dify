@@ -34,53 +34,53 @@ const RoleSelector = ({ value, onChange }: RoleSelectorProps) => {
           onClick={() => setOpen(v => !v)}
           className='block'
         >
-          <div className={cn('flex items-center px-3 py-2 rounded-lg bg-components-input-bg-normal cursor-pointer hover:bg-state-base-hover', open && 'bg-state-base-hover')}>
-            <div className='grow mr-2 text-text-primary text-sm leading-5'>{t('common.members.invitedAsRole', { role: t(`common.members.${toHump(value)}`) })}</div>
-            <RiArrowDownSLine className='shrink-0 w-4 h-4 text-text-secondary' />
+          <div className={cn('flex cursor-pointer items-center rounded-lg bg-components-input-bg-normal px-3 py-2 hover:bg-state-base-hover', open && 'bg-state-base-hover')}>
+            <div className='mr-2 grow text-sm leading-5 text-text-primary'>{t('common.members.invitedAsRole', { role: t(`common.members.${toHump(value)}`) })}</div>
+            <RiArrowDownSLine className='h-4 w-4 shrink-0 text-text-secondary' />
           </div>
         </PortalToFollowElemTrigger>
         <PortalToFollowElemContent className='z-[1002]'>
           <div className='relative w-[336px] rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg'>
             <div className='p-1'>
-              <div className='p-2 rounded-lg hover:bg-state-base-hover cursor-pointer' onClick={() => {
+              <div className='cursor-pointer rounded-lg p-2 hover:bg-state-base-hover' onClick={() => {
                 onChange('normal')
                 setOpen(false)
               }}>
                 <div className='relative pl-5'>
-                  <div className='text-text-secondary text-sm leading-5'>{t('common.members.normal')}</div>
-                  <div className='text-text-tertiary text-xs leading-[18px]'>{t('common.members.normalTip')}</div>
-                  {value === 'normal' && <Check className='absolute top-0.5 left-0 w-4 h-4 text-text-accent'/>}
+                  <div className='text-sm leading-5 text-text-secondary'>{t('common.members.normal')}</div>
+                  <div className='text-xs leading-[18px] text-text-tertiary'>{t('common.members.normalTip')}</div>
+                  {value === 'normal' && <Check className='absolute left-0 top-0.5 h-4 w-4 text-text-accent'/>}
                 </div>
               </div>
-              <div className='p-2 rounded-lg hover:bg-state-base-hover cursor-pointer' onClick={() => {
+              <div className='cursor-pointer rounded-lg p-2 hover:bg-state-base-hover' onClick={() => {
                 onChange('editor')
                 setOpen(false)
               }}>
                 <div className='relative pl-5'>
-                  <div className='text-text-secondary text-sm leading-5'>{t('common.members.editor')}</div>
-                  <div className='text-text-tertiary text-xs leading-[18px]'>{t('common.members.editorTip')}</div>
-                  {value === 'editor' && <Check className='absolute top-0.5 left-0 w-4 h-4 text-text-accent'/>}
+                  <div className='text-sm leading-5 text-text-secondary'>{t('common.members.editor')}</div>
+                  <div className='text-xs leading-[18px] text-text-tertiary'>{t('common.members.editorTip')}</div>
+                  {value === 'editor' && <Check className='absolute left-0 top-0.5 h-4 w-4 text-text-accent'/>}
                 </div>
               </div>
-              <div className='p-2 rounded-lg hover:bg-state-base-hover cursor-pointer' onClick={() => {
+              <div className='cursor-pointer rounded-lg p-2 hover:bg-state-base-hover' onClick={() => {
                 onChange('admin')
                 setOpen(false)
               }}>
                 <div className='relative pl-5'>
-                  <div className='text-text-secondary text-sm leading-5'>{t('common.members.admin')}</div>
-                  <div className='text-text-tertiary text-xs leading-[18px]'>{t('common.members.adminTip')}</div>
-                  {value === 'admin' && <Check className='absolute top-0.5 left-0 w-4 h-4 text-text-accent'/>}
+                  <div className='text-sm leading-5 text-text-secondary'>{t('common.members.admin')}</div>
+                  <div className='text-xs leading-[18px] text-text-tertiary'>{t('common.members.adminTip')}</div>
+                  {value === 'admin' && <Check className='absolute left-0 top-0.5 h-4 w-4 text-text-accent'/>}
                 </div>
               </div>
               {datasetOperatorEnabled && (
-                <div className='p-2 rounded-lg hover:bg-state-base-hover cursor-pointer' onClick={() => {
+                <div className='cursor-pointer rounded-lg p-2 hover:bg-state-base-hover' onClick={() => {
                   onChange('dataset_operator')
                   setOpen(false)
                 }}>
                   <div className='relative pl-5'>
-                    <div className='text-text-secondary text-sm leading-5'>{t('common.members.datasetOperator')}</div>
-                    <div className='text-text-tertiary text-xs leading-[18px]'>{t('common.members.datasetOperatorTip')}</div>
-                    {value === 'dataset_operator' && <Check className='absolute top-0.5 left-0 w-4 h-4 text-text-accent'/>}
+                    <div className='text-sm leading-5 text-text-secondary'>{t('common.members.datasetOperator')}</div>
+                    <div className='text-xs leading-[18px] text-text-tertiary'>{t('common.members.datasetOperatorTip')}</div>
+                    {value === 'dataset_operator' && <Check className='absolute left-0 top-0.5 h-4 w-4 text-text-accent'/>}
                   </div>
                 </div>
               )}
