@@ -5,6 +5,7 @@ import {
 import { useTranslation } from 'react-i18next'
 import { useStoreApi } from 'reactflow'
 import type {
+  CommonNodeType,
   Edge,
   Node,
 } from '../types'
@@ -27,6 +28,8 @@ import { useGetLanguage } from '@/context/i18n'
 import type { AgentNodeType } from '../nodes/agent/types'
 import { useStrategyProviders } from '@/service/use-strategy'
 import { canFindTool } from '@/utils'
+import { useDatasetsDetailStore } from '../datasets-detail-store/store'
+import type { KnowledgeRetrievalNodeType } from '../nodes/knowledge-retrieval/types'
 
 export const useChecklist = (nodes: Node[], edges: Edge[]) => {
   const { t } = useTranslation()
@@ -37,6 +40,7 @@ export const useChecklist = (nodes: Node[], edges: Edge[]) => {
   const customTools = useStore(s => s.customTools)
   const workflowTools = useStore(s => s.workflowTools)
   const { data: strategyProviders } = useStrategyProviders()
+  const datasetsDetail = useDatasetsDetailStore(s => s.datasetsDetail)
 
   const needWarningNodes = useMemo(() => {
     const list = []
@@ -75,7 +79,15 @@ export const useChecklist = (nodes: Node[], edges: Edge[]) => {
       }
 
       if (node.type === CUSTOM_NODE) {
-        const { errorMessage } = nodesExtraData[node.data.type].checkValid(node.data, t, moreDataForCheckValid)
+        let checkData = node.data
+        if (node.data.type === BlockEnum.KnowledgeRetrieval) {
+          const _datasets = datasetsDetail.filter(dataset => (node.data as CommonNodeType<KnowledgeRetrievalNodeType>).dataset_ids.includes(dataset.id))
+          checkData = {
+            ...node.data,
+            _datasets,
+          } as CommonNodeType<KnowledgeRetrievalNodeType>
+        }
+        const { errorMessage } = nodesExtraData[node.data.type].checkValid(checkData, t, moreDataForCheckValid)
 
         if (errorMessage || !validNodes.find(n => n.id === node.id)) {
           list.push({
@@ -109,7 +121,7 @@ export const useChecklist = (nodes: Node[], edges: Edge[]) => {
     }
 
     return list
-  }, [nodes, edges, isChatMode, buildInTools, customTools, workflowTools, language, nodesExtraData, t, strategyProviders])
+  }, [nodes, edges, isChatMode, buildInTools, customTools, workflowTools, language, nodesExtraData, t, strategyProviders, datasetsDetail])
 
   return needWarningNodes
 }

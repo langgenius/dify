@@ -99,6 +99,7 @@ import { useEventEmitterContextContext } from '@/context/event-emitter'
 import Confirm from '@/app/components/base/confirm'
 import { FILE_EXTS } from '@/app/components/base/prompt-editor/constants'
 import { fetchFileUploadConfig } from '@/service/common'
+import DatasetsDetailProvider from './datasets-detail-store/provider'
 
 const nodeTypes = {
   [CUSTOM_NODE]: CustomNode,
@@ -448,11 +449,13 @@ const WorkflowWrap = memo(() => {
         nodes={nodesData}
         edges={edgesData} >
         <FeaturesProvider features={initialFeatures}>
-          <Workflow
-            nodes={nodesData}
-            edges={edgesData}
-            viewport={data?.graph.viewport}
-          />
+          <DatasetsDetailProvider nodes={nodesData}>
+            <Workflow
+              nodes={nodesData}
+              edges={edgesData}
+              viewport={data?.graph.viewport}
+            />
+          </DatasetsDetailProvider>
         </FeaturesProvider>
       </WorkflowHistoryProvider>
     </ReactFlowProvider>
