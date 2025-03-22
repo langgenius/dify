@@ -25,6 +25,8 @@ from core.rag.extractor.unstructured.unstructured_msg_extractor import Unstructu
 from core.rag.extractor.unstructured.unstructured_ppt_extractor import UnstructuredPPTExtractor
 from core.rag.extractor.unstructured.unstructured_pptx_extractor import UnstructuredPPTXExtractor
 from core.rag.extractor.unstructured.unstructured_xml_extractor import UnstructuredXmlExtractor
+from core.rag.extractor.unstructured.unstructured_pdf_extractor import UnstructuredPDFExtractor
+
 from core.rag.extractor.word_extractor import WordExtractor
 from core.rag.models.document import Document
 from extensions.ext_storage import storage
@@ -110,7 +112,7 @@ class ExtractProcessor:
                     if file_extension in {".xlsx", ".xls"}:
                         extractor = ExcelExtractor(file_path)
                     elif file_extension == ".pdf":
-                        extractor = PdfExtractor(file_path)
+                        extractor = UnstructuredPDFExtractor(file_path, api_url=None, api_key=None)
                     elif file_extension in {".md", ".markdown", ".mdx"}:
                         extractor = (
                             UnstructuredMarkdownExtractor(file_path, unstructured_api_url, unstructured_api_key)
