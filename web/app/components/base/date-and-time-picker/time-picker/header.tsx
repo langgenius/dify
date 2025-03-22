@@ -6,7 +6,7 @@ const Header = () => {
 
   return (
     <div className='flex flex-col border-b-[0.5px] border-divider-regular'>
-      <div className='flex items-center px-2 py-1.5 text-text-primary system-md-semibold'>
+      <div className='system-md-semibold flex items-center px-2 py-1.5 text-text-primary'>
         {t('time.title.pickTime')}
       </div>
     </div>

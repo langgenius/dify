@@ -82,7 +82,7 @@ const MarkdownForm = ({ node }: any) => {
             <label
               key={index}
               htmlFor={child.properties.for}
-              className="my-2 system-md-semibold text-text-secondary"
+              className="system-md-semibold my-2 text-text-secondary"
             >
               {child.children[0]?.value || ''}
             </label>
@@ -132,7 +132,7 @@ const MarkdownForm = ({ node }: any) => {
           }
           if (child.properties.type === SUPPORTED_TYPES.CHECKBOX) {
             return (
-              <div className='mt-2 flex items-center h-6 space-x-2' key={index}>
+              <div className='mt-2 flex h-6 items-center space-x-2' key={index}>
                 <Checkbox
                   key={index}
                   checked={formValues[child.properties.name]}

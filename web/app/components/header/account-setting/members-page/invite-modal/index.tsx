@@ -58,20 +58,20 @@ const InviteModal = ({
   return (
     <div className={cn(s.wrap)}>
       <Modal overflowVisible isShow onClose={() => { }} className={cn(s.modal)}>
-        <div className='flex justify-between mb-2'>
+        <div className='mb-2 flex justify-between'>
           <div className='text-xl font-semibold text-text-primary'>{t('common.members.inviteTeamMember')}</div>
-          <RiCloseLine className='w-4 h-4 cursor-pointer text-text-tertiary' onClick={onCancel} />
+          <RiCloseLine className='h-4 w-4 cursor-pointer text-text-tertiary' onClick={onCancel} />
         </div>
         <div className='mb-3 text-[13px] text-text-tertiary'>{t('common.members.inviteTeamMemberTip')}</div>
         {!isEmailSetup && (
           <div className='grow basis-0 overflow-y-auto pb-4'>
-            <div className='relative mb-1 p-2 rounded-xl border border-components-panel-border shadow-xs'>
-              <div className='absolute top-0 left-0 w-full h-full rounded-xl opacity-40' style={{ background: 'linear-gradient(92deg, rgba(255, 171, 0, 0.25) 18.12%, rgba(255, 255, 255, 0.00) 167.31%)' }}></div>
-              <div className='relative flex items-start w-full h-full'>
-                <div className='shrink-0 mr-0.5 p-0.5'>
-                  <RiErrorWarningFill className='w-5 h-5 text-text-warning' />
+            <div className='relative mb-1 rounded-xl border border-components-panel-border p-2 shadow-xs'>
+              <div className='absolute left-0 top-0 h-full w-full rounded-xl opacity-40' style={{ background: 'linear-gradient(92deg, rgba(255, 171, 0, 0.25) 18.12%, rgba(255, 255, 255, 0.00) 167.31%)' }}></div>
+              <div className='relative flex h-full w-full items-start'>
+                <div className='mr-0.5 shrink-0 p-0.5'>
+                  <RiErrorWarningFill className='h-5 w-5 text-text-warning' />
                 </div>
-                <div className='text-text-primary system-xs-medium'>
+                <div className='system-xs-medium text-text-primary'>
                   <span>{t('common.members.emailNotSetup')}</span>
                 </div>
               </div>
@@ -81,10 +81,10 @@ const InviteModal = ({
 
         <div>
           <div className='mb-2 text-sm font-medium text-text-primary'>{t('common.members.email')}</div>
-          <div className='mb-8 h-36 flex items-stretch'>
+          <div className='mb-8 flex h-36 items-stretch'>
             <ReactMultiEmail
-              className={cn('w-full pt-2 px-3 outline-none !bg-components-input-bg-normal border-components-input-border-active',
-                'appearance-none text-sm !text-text-primary rounded-lg overflow-y-auto',
+              className={cn('w-full border-components-input-border-active !bg-components-input-bg-normal px-3 pt-2 outline-none',
+                'appearance-none overflow-y-auto rounded-lg text-sm !text-text-primary',
               )}
               autoFocus
               emails={emails}

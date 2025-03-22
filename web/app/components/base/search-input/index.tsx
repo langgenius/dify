@@ -26,20 +26,20 @@ const SearchInput: FC<SearchInputProps> = ({
 
   return (
     <div className={cn(
-      'group flex items-center px-2 h-8 rounded-lg bg-components-input-bg-normal hover:bg-components-input-bg-hover border-none overflow-hidden',
+      'group flex h-8 items-center overflow-hidden rounded-lg border-none bg-components-input-bg-normal px-2 hover:bg-components-input-bg-hover',
       focus && '!bg-components-input-bg-active',
-      white && '!bg-white hover:!bg-white shadow-xs !border-gray-300 hover:!border-gray-300',
+      white && '!border-gray-300 !bg-white shadow-xs hover:!border-gray-300 hover:!bg-white',
       className,
     )}>
-      <div className="pointer-events-none shrink-0 flex items-center mr-1.5 justify-center w-4 h-4">
+      <div className="pointer-events-none mr-1.5 flex h-4 w-4 shrink-0 items-center justify-center">
         <RiSearchLine className="h-4 w-4 text-components-input-text-placeholder" aria-hidden="true" />
       </div>
       <input
         type="text"
         name="query"
         className={cn(
-          'grow block h-[18px] bg-transparent border-0 text-components-input-text-filled system-sm-regular placeholder:text-components-input-text-placeholder appearance-none outline-none caret-#295EFF',
-          white && '!bg-white hover:!bg-white group-hover:!bg-white placeholder:!text-gray-400',
+          'system-sm-regular caret-#295EFF block h-[18px] grow appearance-none border-0 bg-transparent text-components-input-text-filled outline-none placeholder:text-components-input-text-placeholder',
+          white && '!bg-white placeholder:!text-gray-400 hover:!bg-white group-hover:!bg-white',
         )}
         placeholder={placeholder || t('common.operation.search')!}
         value={internalValue}
@@ -61,13 +61,13 @@ const SearchInput: FC<SearchInputProps> = ({
       />
       {value && (
         <div
-          className='shrink-0 flex items-center justify-center w-4 h-4 cursor-pointer group/clear'
+          className='group/clear flex h-4 w-4 shrink-0 cursor-pointer items-center justify-center'
           onClick={() => {
             onChange('')
             setInternalValue('')
           }}
         >
-          <RiCloseCircleFill className='w-4 h-4 text-text-quaternary group-hover/clear:text-text-tertiary' />
+          <RiCloseCircleFill className='h-4 w-4 text-text-quaternary group-hover/clear:text-text-tertiary' />
         </div>
       )}
     </div>

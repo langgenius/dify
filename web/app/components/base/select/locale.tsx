@@ -1,5 +1,5 @@
 'use client'
-import { Menu, Transition } from '@headlessui/react'
+import { Menu, MenuButton, MenuItem, MenuItems, Transition } from '@headlessui/react'
 import { Fragment } from 'react'
 import { GlobeAltIcon } from '@heroicons/react/24/outline'
 
@@ -21,14 +21,14 @@ export default function Select({
     <div className="w-56 text-right">
       <Menu as="div" className="relative inline-block text-left">
         <div>
-          <Menu.Button className="inline-flex w-full h-[44px]justify-center items-center
-          rounded-lg px-[10px] py-[6px]
-          text-gray-900 text-[13px] font-medium
-          border border-gray-200
+          <MenuButton className="h-[44px]justify-center inline-flex w-full items-center
+          rounded-lg border border-gray-200
+          px-[10px] py-[6px] text-[13px]
+          font-medium text-gray-900
           hover:bg-gray-100">
-            <GlobeAltIcon className="w-5 h-5 mr-1" aria-hidden="true" />
+            <GlobeAltIcon className="mr-1 h-5 w-5" aria-hidden="true" />
             {item?.name}
-          </Menu.Button>
+          </MenuButton>
         </div>
         <Transition
           as={Fragment}
@@ -39,28 +39,25 @@ export default function Select({
           leaveFrom="transform opacity-100 scale-100"
           leaveTo="transform opacity-0 scale-95"
         >
-          <Menu.Items className="absolute right-0 mt-2 w-[200px] origin-top-right divide-y divide-gray-100 rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none z-10">
+          <MenuItems className="absolute right-0 z-10 mt-2 w-[200px] origin-top-right divide-y divide-gray-100 rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
             <div className="px-1 py-1 ">
               {items.map((item) => {
-                return <Menu.Item key={item.value}>
-                  {({ active }) => (
-                    <button
-                      className={`${active ? 'bg-gray-100' : ''
-                      } group flex w-full items-center rounded-lg px-3 py-2 text-sm text-gray-700`}
-                      onClick={(evt) => {
-                        evt.preventDefault()
-                        onChange && onChange(item.value)
-                      }}
-                    >
-                      {item.name}
-                    </button>
-                  )}
-                </Menu.Item>
+                return <MenuItem key={item.value}>
+                  <button
+                    className={'group flex w-full items-center rounded-lg px-3 py-2 text-sm text-gray-700 data-[active]:bg-gray-100'}
+                    onClick={(evt) => {
+                      evt.preventDefault()
+                      onChange && onChange(item.value)
+                    }}
+                  >
+                    {item.name}
+                  </button>
+                </MenuItem>
               })}
 
             </div>
 
-          </Menu.Items>
+          </MenuItems>
         </Transition>
       </Menu>
     </div>
@@ -77,9 +74,9 @@ export function InputSelect({
     <div className="w-full">
       <Menu as="div" className="w-full">
         <div>
-          <Menu.Button className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 sm:text-sm h-[38px] text-left">
+          <MenuButton className="block h-[38px] w-full appearance-none rounded-md border border-gray-300 px-3 py-2 text-left shadow-sm placeholder:text-gray-400 sm:text-sm">
             {item?.name}
-          </Menu.Button>
+          </MenuButton>
         </div>
         <Transition
           as={Fragment}
@@ -90,27 +87,24 @@ export function InputSelect({
           leaveFrom="transform opacity-100 scale-100"
           leaveTo="transform opacity-0 scale-95"
         >
-          <Menu.Items className="absolute right-0 mt-2 w-full origin-top-right divide-y divide-gray-100 rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none z-10">
+          <MenuItems className="absolute right-0 z-10 mt-2 w-full origin-top-right divide-y divide-gray-100 rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
             <div className="px-1 py-1 ">
               {items.map((item) => {
-                return <Menu.Item key={item.value}>
-                  {({ active }) => (
-                    <button
-                      className={`${active ? 'bg-gray-100' : ''
-                      } group flex w-full items-center rounded-md px-2 py-2 text-sm`}
-                      onClick={() => {
-                        onChange && onChange(item.value)
-                      }}
-                    >
-                      {item.name}
-                    </button>
-                  )}
-                </Menu.Item>
+                return <MenuItem key={item.value}>
+                  <button
+                    className={'group flex w-full items-center rounded-md px-2 py-2 text-sm data-[active]:bg-gray-100'}
+                    onClick={() => {
+                      onChange && onChange(item.value)
+                    }}
+                  >
+                    {item.name}
+                  </button>
+                </MenuItem>
               })}
 
             </div>
 
-          </Menu.Items>
+          </MenuItems>
         </Transition>
       </Menu>
     </div>

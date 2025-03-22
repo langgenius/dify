@@ -28,13 +28,13 @@ const ModalLikeWrap: FC<Props> = ({
   const { t } = useTranslation()
 
   return (
-    <div className={cn('w-[320px] px-3 pt-3.5 pb-4 bg-components-panel-bg shadow-xl rounded-2xl border-[0.5px] border-components-panel-border', className)}>
+    <div className={cn('w-[320px] rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg px-3 pb-4 pt-3.5 shadow-xl', className)}>
       {beforeHeader || null}
       <div className='mb-1 flex h-6 items-center justify-between'>
         <div className='system-xl-semibold text-text-primary'>{title}</div>
         {!hideCloseBtn && (
           <div
-            className='p-1.5 text-text-tertiary cursor-pointer'
+            className='cursor-pointer p-1.5 text-text-tertiary'
             onClick={onClose}
           >
             <RiCloseLine className='size-4' />

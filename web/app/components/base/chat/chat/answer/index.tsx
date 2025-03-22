@@ -101,20 +101,20 @@ const Answer: FC<AnswerProps> = ({
   }, [])
 
   return (
-    <div className='flex mb-2 last:mb-0'>
-      <div className='shrink-0 relative w-10 h-10'>
+    <div className='mb-2 flex last:mb-0'>
+      <div className='relative h-10 w-10 shrink-0'>
         {answerIcon || <AnswerIcon />}
         {responding && (
-          <div className='absolute -top-[3px] -left-[3px] pl-[6px] flex items-center w-4 h-4 bg-background-section-burn rounded-full shadow-xs border-[0.5px] border-divider-subtle'>
+          <div className='absolute -left-[3px] -top-[3px] flex h-4 w-4 items-center rounded-full border-[0.5px] border-divider-subtle bg-background-section-burn pl-[6px] shadow-xs'>
             <LoadingAnim type='avatar' />
           </div>
         )}
       </div>
-      <div className='chat-answer-container group grow w-0 ml-4 pb-4' ref={containerRef}>
+      <div className='chat-answer-container group ml-4 w-0 grow pb-4' ref={containerRef}>
         <div className={cn('group relative pr-10', chatAnswerContainerInner)}>
           <div
             ref={contentRef}
-            className={cn('relative inline-block px-4 py-3 max-w-full bg-chat-bubble-bg rounded-2xl body-lg-regular text-text-primary', workflowProcess && 'w-full')}
+            className={cn('body-lg-regular relative inline-block max-w-full rounded-2xl bg-chat-bubble-bg px-4 py-3 text-text-primary', workflowProcess && 'w-full')}
           >
             {
               !responding && (
@@ -153,7 +153,7 @@ const Answer: FC<AnswerProps> = ({
             }
             {
               responding && !content && !hasAgentThoughts && (
-                <div className='flex items-center justify-center w-6 h-5'>
+                <div className='flex h-5 w-6 items-center justify-center'>
                   <LoadingAnim type='text' />
                 </div>
               )
@@ -207,13 +207,13 @@ const Answer: FC<AnswerProps> = ({
                 <Citation data={citation} showHitInfo={config?.supportCitationHitInfo} />
               )
             }
-            {item.siblingCount && item.siblingCount > 1 && item.siblingIndex !== undefined && <div className="pt-3.5 flex justify-center items-center text-sm">
+            {item.siblingCount && item.siblingCount > 1 && item.siblingIndex !== undefined && <div className="flex items-center justify-center pt-3.5 text-sm">
               <button
                 className={`${item.prevSibling ? 'opacity-100' : 'opacity-30'}`}
                 disabled={!item.prevSibling}
                 onClick={() => item.prevSibling && switchSibling?.(item.prevSibling)}
               >
-                <ChevronRight className="w-[14px] h-[14px] rotate-180 text-text-primary" />
+                <ChevronRight className="h-[14px] w-[14px] rotate-180 text-text-primary" />
               </button>
               <span className="px-2 text-xs text-text-primary">{item.siblingIndex + 1} / {item.siblingCount}</span>
               <button
@@ -221,7 +221,7 @@ const Answer: FC<AnswerProps> = ({
                 disabled={!item.nextSibling}
                 onClick={() => item.nextSibling && switchSibling?.(item.nextSibling)}
               >
-                <ChevronRight className="w-[14px] h-[14px] text-text-primary" />
+                <ChevronRight className="h-[14px] w-[14px] text-text-primary" />
               </button>
             </div>}
           </div>

@@ -201,26 +201,26 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
   return (
     <>
       <Modal
-        className='p-0 w-[520px] rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-xl'
+        className='w-[520px] rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg p-0 shadow-xl'
         isShow={show}
         onClose={() => { }}
       >
-        <div className='flex items-center justify-between pt-6 pl-6 pr-5 pb-3 text-text-primary title-2xl-semi-bold'>
+        <div className='title-2xl-semi-bold flex items-center justify-between pb-3 pl-6 pr-5 pt-6 text-text-primary'>
           {t('app.importFromDSL')}
           <div
-            className='flex items-center w-8 h-8 cursor-pointer'
+            className='flex h-8 w-8 cursor-pointer items-center'
             onClick={() => onClose()}
           >
-            <RiCloseLine className='w-5 h-5 text-text-tertiary' />
+            <RiCloseLine className='h-5 w-5 text-text-tertiary' />
           </div>
         </div>
-        <div className='flex items-center px-6 h-9 space-x-6 system-md-semibold text-text-tertiary border-b border-divider-subtle'>
+        <div className='system-md-semibold flex h-9 items-center space-x-6 border-b border-divider-subtle px-6 text-text-tertiary'>
           {
             tabs.map(tab => (
               <div
                 key={tab.key}
                 className={cn(
-                  'relative flex items-center h-full cursor-pointer',
+                  'relative flex h-full cursor-pointer items-center',
                   currentTab === tab.key && 'text-text-primary',
                 )}
                 onClick={() => setCurrentTab(tab.key)}
@@ -228,7 +228,7 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
                 {tab.label}
                 {
                   currentTab === tab.key && (
-                    <div className='absolute bottom-0 w-full h-[2px] bg-util-colors-blue-brand-blue-brand-600'></div>
+                    <div className='absolute bottom-0 h-[2px] w-full bg-util-colors-blue-brand-blue-brand-600'></div>
                   )
                 }
               </div>
@@ -248,7 +248,7 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
           {
             currentTab === CreateFromDSLModalTab.FROM_URL && (
               <div>
-                <div className='mb-1 system-md-semibold leading6'>DSL URL</div>
+                <div className='system-md-semibold leading6 mb-1'>DSL URL</div>
                 <Input
                   placeholder={t('app.importFromDSLUrlPlaceholder') || ''}
                   value={dslUrlValue}
@@ -273,9 +273,9 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
         onClose={() => setShowErrorModal(false)}
         className='w-[480px]'
       >
-        <div className='flex pb-4 flex-col items-start gap-2 self-stretch'>
-          <div className='text-text-primary title-2xl-semi-bold'>{t('app.newApp.appCreateDSLErrorTitle')}</div>
-          <div className='flex grow flex-col text-text-secondary system-md-regular'>
+        <div className='flex flex-col items-start gap-2 self-stretch pb-4'>
+          <div className='title-2xl-semi-bold text-text-primary'>{t('app.newApp.appCreateDSLErrorTitle')}</div>
+          <div className='system-md-regular flex grow flex-col text-text-secondary'>
             <div>{t('app.newApp.appCreateDSLErrorPart1')}</div>
             <div>{t('app.newApp.appCreateDSLErrorPart2')}</div>
             <br />
@@ -283,7 +283,7 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
             <div>{t('app.newApp.appCreateDSLErrorPart4')}<span className='system-md-medium'>{versions?.systemVersion}</span></div>
           </div>
         </div>
-        <div className='flex pt-6 justify-end items-start gap-2 self-stretch'>
+        <div className='flex items-start justify-end gap-2 self-stretch pt-6'>
           <Button variant='secondary' onClick={() => setShowErrorModal(false)}>{t('app.newApp.Cancel')}</Button>
           <Button variant='primary' destructive onClick={onDSLConfirm}>{t('app.newApp.Confirm')}</Button>
         </div>
