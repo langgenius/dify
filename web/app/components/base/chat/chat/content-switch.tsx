@@ -14,9 +14,7 @@ export default function ContentSwitch({
   switchSibling: (direction: 'prev' | 'next') => void
 }) {
   return (
-    count
-        && count > 1
-        && currentIndex !== undefined && (
+    count && count > 1 && currentIndex !== undefined && (
       <div className="pt-3.5 flex justify-center items-center text-sm">
         <button
           className={`${prevDisabled ? 'opacity-30' : 'opacity-100'}`}

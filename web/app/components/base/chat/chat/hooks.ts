@@ -41,6 +41,7 @@ type SendCallback = {
   onGetSuggestedQuestions?: (responseItemId: string, getAbortController: GetAbortController) => Promise<any>
   onConversationComplete?: (conversationId: string) => void
   isPublicAPI?: boolean
+  isQuestionEditedAndResend?: boolean
 }
 
 export const useChat = (
@@ -221,6 +222,7 @@ export const useChat = (
       onGetSuggestedQuestions,
       onConversationComplete,
       isPublicAPI,
+      isQuestionEditedAndResend,
     }: SendCallback,
   ) => {
     setSuggestQuestions([])
@@ -231,6 +233,8 @@ export const useChat = (
     }
 
     const parentMessage = threadMessages.find(item => item.id === data.parent_message_id)
+    const leftSiblingIndex = parentMessage?.children?.at(-1)?.siblingIndex || 0
+    const parentQuestion = threadMessages.find(item => item.id === parentMessage?.parentMessageId)
 
     const placeholderQuestionId = `question-${Date.now()}`
     const questionItem = {
@@ -239,9 +243,15 @@ export const useChat = (
       isAnswer: false,
       message_files: data.files,
       parentMessageId: data.parent_message_id,
-      siblingIndex: 1,
-      siblingCount: 2,
+      siblingIndex: leftSiblingIndex + 1,
     }
+
+    // if the question is edited and resend,
+    // and it's different from the last sibling,
+    // then reset the siblingIndex to the leftSiblingIndex
+    // const lastSibling = parentMessage?.children?.at(-1)
+    // if (isQuestionEditedAndResend && lastSibling && !isSameQuestionNode(questionItem, lastSibling))
+    //   questionItem.siblingIndex = leftSiblingIndex
 
     const placeholderAnswerId = `answer-placeholder-${Date.now()}`
     const placeholderAnswerItem = {
@@ -249,7 +259,7 @@ export const useChat = (
       content: '',
       isAnswer: true,
       parentMessageId: questionItem.id,
-      siblingIndex: parentMessage?.children?.length ?? chatTree.length,
+      siblingIndex: isQuestionEditedAndResend ? 0 : null,
     }
 
     setTargetMessageId(parentMessage?.id)
