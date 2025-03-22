@@ -68,6 +68,16 @@ ENV VIRTUAL_ENV=/app/api/.venv
 COPY --from=packages ${VIRTUAL_ENV} ${VIRTUAL_ENV}
 ENV PATH="${VIRTUAL_ENV}/bin:${PATH}"
 
+# Install unstructured[all-docs]
+RUN pip install "unstructured[all-docs]"
+RUN \
+apt-get update \
+&& apt-get install -y libgl1-mesa-glx libglu1-mesa \
+&& apt-get install -y libglib2.0-0 \
+&& apt-get install -y poppler-utils \
+&& apt-get install -y tesseract-ocr
+
+
 # Download nltk data
 RUN python -c "import nltk; nltk.download('punkt'); nltk.download('averaged_perceptron_tagger')"
 
