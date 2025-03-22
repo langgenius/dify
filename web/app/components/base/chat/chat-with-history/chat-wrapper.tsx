@@ -3,7 +3,7 @@ import Chat from '../chat'
 import type {
   ChatConfig,
   ChatItem,
-  ChatItemInTree,
+  OnRegenerate,
   OnSend,
 } from '../types'
 import { useChat } from '../chat/hooks'
@@ -120,7 +120,7 @@ const ChatWrapper = () => {
     setIsResponding(respondingState)
   }, [respondingState, setIsResponding])
 
-  const doSend: OnSend = useCallback((message, files, isRegenerate = false, parentAnswer: ChatItem | null = null) => {
+  const doSend: OnSend = useCallback((message, files, isRegenerate = false, parentAnswer: ChatItem | null = null, editedQuestionSiblingIndex: number | undefined = undefined) => {
     const data: any = {
       query: message,
       files,
@@ -136,6 +136,7 @@ const ChatWrapper = () => {
         onGetSuggestedQuestions: responseItemId => fetchSuggestedQuestions(responseItemId, isInstalledApp, appId),
         onConversationComplete: currentConversationId ? undefined : handleNewConversationCompleted,
         isPublicAPI: !isInstalledApp,
+        editedQuestionSiblingIndex,
       },
     )
   }, [
@@ -149,10 +150,16 @@ const ChatWrapper = () => {
     appId,
   ])
 
-  const doRegenerate = useCallback((chatItem: ChatItemInTree) => {
-    const question = chatList.find(item => item.id === chatItem.parentMessageId)!
+  const doRegenerate = useCallback<OnRegenerate>((chatItem, editedQuestion) => {
+    const question = editedQuestion ? chatItem : chatList.find(item => item.id === chatItem.parentMessageId)!
     const parentAnswer = chatList.find(item => item.id === question.parentMessageId)
-    doSend(question.content, question.message_files, true, isValidGeneratedAnswer(parentAnswer) ? parentAnswer : null)
+    doSend(
+      editedQuestion ? editedQuestion.message : question.content,
+      editedQuestion ? editedQuestion.files : question.message_files,
+      true,
+      isValidGeneratedAnswer(parentAnswer) ? parentAnswer : null,
+      editedQuestion ? question.siblingIndex : undefined,
+    )
   }, [chatList, doSend])
 
   const messageList = useMemo(() => {
