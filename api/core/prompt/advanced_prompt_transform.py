@@ -284,14 +284,10 @@ class AdvancedPromptTransform(PromptTransform):
                 inputs = {"#histories#": "", **prompt_inputs}
                 parser = PromptTemplateParser(template=raw_prompt, with_variable_tmpl=self.with_variable_tmpl)
                 prompt_inputs = {k: inputs[k] for k in parser.variable_keys if k in inputs}
-                tmp_human_message = UserPromptMessage(content=parser.format(prompt_inputs))
-
-                rest_tokens = self._calculate_rest_token([tmp_human_message], model_config)
 
                 histories = self._get_history_messages_from_memory(
                     memory=memory,
                     memory_config=memory_config,
-                    max_token_limit=rest_tokens,
                     human_prefix=role_prefix.user,
                     ai_prefix=role_prefix.assistant,
                 )

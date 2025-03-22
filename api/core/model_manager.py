@@ -2,6 +2,8 @@ import logging
 from collections.abc import Callable, Generator, Iterable, Sequence
 from typing import IO, Any, Literal, Optional, Union, cast, overload
 
+from typing_extensions import deprecated
+
 from configs import dify_config
 from core.entities.embedding_type import EmbeddingInputType
 from core.entities.provider_configuration import ProviderConfiguration, ProviderModelBundle
@@ -176,6 +178,7 @@ class ModelInstance:
             ),
         )
 
+    @deprecated("invoke_llm is deprecated, see https://github.com/langgenius/dify/issues/16090")
     def get_llm_num_tokens(
         self, prompt_messages: list[PromptMessage], tools: Optional[list[PromptMessageTool]] = None
     ) -> int:

@@ -1,4 +1,4 @@
-from typing import Any, Optional
+from typing import Optional
 
 from core.app.entities.app_invoke_entities import ModelConfigWithCredentialsEntity
 from core.memory.token_buffer_memory import TokenBufferMemory
@@ -16,8 +16,7 @@ class PromptTransform:
         prompt_messages: list[PromptMessage],
         model_config: ModelConfigWithCredentialsEntity,
     ) -> list[PromptMessage]:
-        rest_tokens = self._calculate_rest_token(prompt_messages, model_config)
-        histories = self._get_history_messages_list_from_memory(memory, memory_config, rest_tokens)
+        histories = self._get_history_messages_list_from_memory(memory=memory, memory_config=memory_config)
         prompt_messages.extend(histories)
 
         return prompt_messages
@@ -54,31 +53,29 @@ class PromptTransform:
         self,
         memory: TokenBufferMemory,
         memory_config: MemoryConfig,
-        max_token_limit: int,
         human_prefix: Optional[str] = None,
         ai_prefix: Optional[str] = None,
     ) -> str:
-        """Get memory messages."""
-        kwargs: dict[str, Any] = {"max_token_limit": max_token_limit}
-
-        if human_prefix:
-            kwargs["human_prefix"] = human_prefix
-
-        if ai_prefix:
-            kwargs["ai_prefix"] = ai_prefix
-
+        human_prefix = human_prefix or "Human"
+        ai_prefix = ai_prefix or "Assistant"
         if memory_config.window.enabled and memory_config.window.size is not None and memory_config.window.size > 0:
-            kwargs["message_limit"] = memory_config.window.size
-
-        return memory.get_history_prompt_text(**kwargs)
+            message_limit = memory_config.window.size
+        else:
+            message_limit = None
+        return memory.get_history_prompt_text(
+            human_prefix=human_prefix,
+            ai_prefix=ai_prefix,
+            message_limit=message_limit,
+        )
 
     def _get_history_messages_list_from_memory(
-        self, memory: TokenBufferMemory, memory_config: MemoryConfig, max_token_limit: int
+        self,
+        memory: TokenBufferMemory,
+        memory_config: MemoryConfig,
     ) -> list[PromptMessage]:
         """Get memory messages."""
         return list(
             memory.get_history_prompt_messages(
-                max_token_limit=max_token_limit,
                 message_limit=memory_config.window.size
                 if (
                     memory_config.window.enabled

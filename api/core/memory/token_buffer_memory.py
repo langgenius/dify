@@ -25,9 +25,7 @@ class TokenBufferMemory:
         self.conversation = conversation
         self.model_instance = model_instance
 
-    def get_history_prompt_messages(
-        self, max_token_limit: int = 2000, message_limit: Optional[int] = None
-    ) -> Sequence[PromptMessage]:
+    def get_history_prompt_messages(self, message_limit: Optional[int] = None) -> Sequence[PromptMessage]:
         """
         Get history prompt messages.
         :param max_token_limit: max token limit
@@ -118,33 +116,23 @@ class TokenBufferMemory:
         if not prompt_messages:
             return []
 
-        # prune the chat message if it exceeds the max token limit
-        curr_message_tokens = self.model_instance.get_llm_num_tokens(prompt_messages)
-
-        if curr_message_tokens > max_token_limit:
-            pruned_memory = []
-            while curr_message_tokens > max_token_limit and len(prompt_messages) > 1:
-                pruned_memory.append(prompt_messages.pop(0))
-                curr_message_tokens = self.model_instance.get_llm_num_tokens(prompt_messages)
-
         return prompt_messages
 
     def get_history_prompt_text(
         self,
+        *,
         human_prefix: str = "Human",
         ai_prefix: str = "Assistant",
-        max_token_limit: int = 2000,
         message_limit: Optional[int] = None,
     ) -> str:
         """
         Get history prompt text.
         :param human_prefix: human prefix
         :param ai_prefix: ai prefix
-        :param max_token_limit: max token limit
         :param message_limit: message limit
         :return:
         """
-        prompt_messages = self.get_history_prompt_messages(max_token_limit=max_token_limit, message_limit=message_limit)
+        prompt_messages = self.get_history_prompt_messages(message_limit=message_limit)
 
         string_messages = []
         for m in prompt_messages:
