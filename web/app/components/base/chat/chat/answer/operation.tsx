@@ -101,69 +101,86 @@ const Operation: FC<OperationProps> = ({
     <>
       <div
         className={cn(
-          'absolute flex justify-end gap-1',
+          'absolute flex gap-1',
           hasWorkflowProcess && '-bottom-4 right-2',
           !positionRight && '-bottom-4 right-2',
           !hasWorkflowProcess && positionRight && '!top-[9px]',
         )}
         style={(!hasWorkflowProcess && positionRight) ? { left: contentWidth + 8 } : {}}
       >
-        {showPromptLog && !isOpeningStatement && (
-          <div className='hidden group-hover:block'>
-            <Log logItem={item} />
+        {!isOpeningStatement && item.feedback && (
+          <div className="flex justify-start rounded-md bg-gray-50 px-2 py-1 text-xs">
+            <div className={cn(
+              'm-[0.5px] flex items-center gap-1 p-0.5',
+              item.feedback.rating === 'like' ? 'text-primary-600' : 'text-red-600',
+            )}
+            >
+              {item.feedback.rating === 'like' ? (
+                <RiThumbUpLine className="h-4 w-4" />
+              ) : (
+                <RiThumbDownLine className="h-4 w-4" />
+              )}
+            </div>
           </div>
         )}
-        {!isOpeningStatement && (
-          <div className='ml-1 hidden items-center gap-0.5 rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-md backdrop-blur-sm group-hover:flex'>
-            {(config?.text_to_speech?.enabled) && (
-              <NewAudioButton
-                id={id}
-                value={content}
-                voice={config?.text_to_speech?.voice}
-              />
-            )}
-            <ActionButton onClick={() => {
-              copy(content)
-              Toast.notify({ type: 'success', message: t('common.actionMsg.copySuccessfully') })
-            }}>
-              <RiClipboardLine className='h-4 w-4' />
-            </ActionButton>
-            {!noChatInput && (
-              <ActionButton onClick={() => onRegenerate?.(item)}>
-                <RiResetLeftLine className='h-4 w-4' />
+        <div className='flex justify-end'>
+          {showPromptLog && !isOpeningStatement && (
+            <div className='hidden group-hover:block'>
+              <Log logItem={item} />
+            </div>
+          )}
+          {!isOpeningStatement && (
+            <div className='ml-1 hidden items-center gap-0.5 rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-md backdrop-blur-sm group-hover:flex'>
+              {(config?.text_to_speech?.enabled) && (
+                <NewAudioButton
+                  id={id}
+                  value={content}
+                  voice={config?.text_to_speech?.voice}
+                />
+              )}
+              <ActionButton onClick={() => {
+                copy(content)
+                Toast.notify({ type: 'success', message: t('common.actionMsg.copySuccessfully') })
+              }}>
+                <RiClipboardLine className='h-4 w-4' />
               </ActionButton>
-            )}
-            {(config?.supportAnnotation && config.annotation_reply?.enabled) && (
-              <ActionButton onClick={() => setIsShowReplyModal(true)}>
-                <RiEditLine className='h-4 w-4' />
-              </ActionButton>
-            )}
-          </div>
-        )}
-        {!isOpeningStatement && config?.supportFeedback && onFeedback && (
-          <div className='ml-1 hidden items-center gap-0.5 rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-md backdrop-blur-sm group-hover:flex'>
-            {!localFeedback?.rating && (
-              <>
-                <ActionButton onClick={() => handleFeedback('like')}>
+              {!noChatInput && (
+                <ActionButton onClick={() => onRegenerate?.(item)}>
+                  <RiResetLeftLine className='h-4 w-4' />
+                </ActionButton>
+              )}
+              {(config?.supportAnnotation && config.annotation_reply?.enabled) && (
+                <ActionButton onClick={() => setIsShowReplyModal(true)}>
+                  <RiEditLine className='h-4 w-4' />
+                </ActionButton>
+              )}
+            </div>
+          )}
+          {!isOpeningStatement && config?.supportFeedback && onFeedback && (
+            <div className='ml-1 hidden items-center gap-0.5 rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-md backdrop-blur-sm group-hover:flex'>
+              {!localFeedback?.rating && (
+                <>
+                  <ActionButton onClick={() => handleFeedback('like')}>
+                    <RiThumbUpLine className='h-4 w-4' />
+                  </ActionButton>
+                  <ActionButton onClick={() => handleFeedback('dislike')}>
+                    <RiThumbDownLine className='h-4 w-4' />
+                  </ActionButton>
+                </>
+              )}
+              {localFeedback?.rating === 'like' && (
+                <ActionButton state={ActionButtonState.Active} onClick={() => handleFeedback(null)}>
                   <RiThumbUpLine className='h-4 w-4' />
                 </ActionButton>
-                <ActionButton onClick={() => handleFeedback('dislike')}>
+              )}
+              {localFeedback?.rating === 'dislike' && (
+                <ActionButton state={ActionButtonState.Destructive} onClick={() => handleFeedback(null)}>
                   <RiThumbDownLine className='h-4 w-4' />
                 </ActionButton>
-              </>
-            )}
-            {localFeedback?.rating === 'like' && (
-              <ActionButton state={ActionButtonState.Active} onClick={() => handleFeedback(null)}>
-                <RiThumbUpLine className='h-4 w-4' />
-              </ActionButton>
-            )}
-            {localFeedback?.rating === 'dislike' && (
-              <ActionButton state={ActionButtonState.Destructive} onClick={() => handleFeedback(null)}>
-                <RiThumbDownLine className='h-4 w-4' />
-              </ActionButton>
-            )}
-          </div>
-        )}
+              )}
+            </div>
+          )}
+        </div>
       </div>
       <EditReplyModal
         isShow={isShowReplyModal}
