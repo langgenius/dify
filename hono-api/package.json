@@ -1,0 +1,23 @@
+{
+  "name": "hiragana-api",
+  "version": "1.0.0",
+  "description": "日本語テキストをひらがなに変換するAPI",
+  "main": "index.js",
+  "type": "commonjs",
+  "scripts": {
+    "dev": "tsx watch index.ts",
+    "build": "tsc --skipLibCheck",
+    "start": "node dist/index.js"
+  },
+  "dependencies": {
+    "@hono/node-server": "^1.2.0",
+    "hono": "^4.0.0",
+    "kuromoji": "^0.1.2"
+  },
+  "devDependencies": {
+    "@types/kuromoji": "^0.1.1",
+    "@types/node": "^20.17.25",
+    "tsx": "^3.12.10",
+    "typescript": "^5.2.2"
+  }
+}

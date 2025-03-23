@@ -960,6 +960,16 @@ services:
     ports:
       - ${OPENGAUSS_PORT:-6600}:${OPENGAUSS_PORT:-6600}
 
+  hono-api:
+    build:
+      context: ./hono-api
+    container_name: hono-api
+    ports:
+      - "3001:3000"
+    restart: always
+    networks:
+      - default
+
   # MyScale vector database
   myscale:
     container_name: myscale
