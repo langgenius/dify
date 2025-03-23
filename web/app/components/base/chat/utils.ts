@@ -13,8 +13,9 @@ async function decodeBase64AndDecompress(base64String: string) {
 async function getProcessedInputsFromUrlParams(): Promise<Record<string, any>> {
   const urlParams = new URLSearchParams(window.location.search)
   const inputs: Record<string, any> = {}
+  const entriesArray = Array.from(urlParams.entries())
   await Promise.all(
-    urlParams.entries().map(async ([key, value]) => {
+    entriesArray.map(async ([key, value]) => {
       inputs[key] = await decodeBase64AndDecompress(decodeURIComponent(value))
     }),
   )
