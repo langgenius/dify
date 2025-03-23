@@ -50,7 +50,15 @@ class AppListApi(Resource):
         parser.add_argument(
             "mode",
             type=str,
-            choices=["chat", "workflow", "agent-chat", "channel", "all"],
+            choices=[
+                "completion",
+                "chat",
+                "advanced-chat",
+                "workflow",
+                "agent-chat",
+                "channel",
+                "all",
+            ],
             default="all",
             location="args",
             required=False,
