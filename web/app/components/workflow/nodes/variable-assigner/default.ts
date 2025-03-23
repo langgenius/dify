@@ -25,31 +25,26 @@ const nodeDefault: NodeDefault<VariableAssignerNodeType> = {
     const { variables, advanced_settings } = payload
     const { group_enabled = false, groups = [] } = advanced_settings || {}
     // enable group
-    if (group_enabled) {
-      // no groups
-      if (!groups || groups.length === 0)
-        errorMessages = t(`${i18nPrefix}.errorMsg.fieldRequired`, { field: t(`${i18nPrefix}.nodes.variableAssigner.title`) })
-
-      if (!errorMessages) {
-        groups.forEach((group) => {
-          const { variables = [] } = group
-          variables.forEach((variable) => {
-            if (!variable || variable.length === 0)
-              errorMessages = t(`${i18nPrefix}.errorMsg.fieldRequired`, { field: t(`${i18nPrefix}.errorMsg.fields.variableValue`) })
-          })
-        })
-      }
+    const validateVariables = (variables: any[], field: string) => {
+      variables.forEach((variable) => {
+      if (!variable || variable.length === 0)
+        errorMessages = t(`${i18nPrefix}.errorMsg.fieldRequired`, { field: t(field) })
+      })
     }
-    else {
-      // no groups and no variables
-      if (!variables || variables.length === 0)
-        errorMessages = t(`${i18nPrefix}.errorMsg.fieldRequired`, { field: t(`${i18nPrefix}.nodes.variableAssigner.title`) })
 
-      if (!errorMessages) {
-        variables.forEach((variable) => {
-          if (!variable || variable.length === 0)
-            errorMessages = t(`${i18nPrefix}.errorMsg.fieldRequired`, { field: t(`${i18nPrefix}.errorMsg.fields.variableValue`) })
-        })
+    if (group_enabled) {
+      if (!groups || groups.length === 0) {
+      errorMessages = t(`${i18nPrefix}.errorMsg.fieldRequired`, { field: t(`${i18nPrefix}.nodes.variableAssigner.title`) })
+      } else if (!errorMessages) {
+      groups.forEach((group) => {
+        validateVariables(group.variables || [], `${i18nPrefix}.errorMsg.fields.variableValue`)
+      })
+      }
+    } else {
+      if (!variables || variables.length === 0) {
+      errorMessages = t(`${i18nPrefix}.errorMsg.fieldRequired`, { field: t(`${i18nPrefix}.nodes.variableAssigner.title`) })
+      } else if (!errorMessages) {
+      validateVariables(variables, `${i18nPrefix}.errorMsg.fields.variableValue`)
       }
     }
 
