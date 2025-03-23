@@ -59,16 +59,16 @@ const ModifyRetrievalModal: FC<Props> = ({
 
   return (
     <div
-      className='w-full flex flex-col bg-components-panel-bg border-[0.5px] border-components-panel-border rounded-2xl shadow-2xl shadow-shadow-shadow-9'
+      className='flex w-full flex-col rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-2xl shadow-shadow-shadow-9'
       style={{
         height: 'calc(100vh - 72px)',
       }}
       ref={ref}
     >
-      <div className='shrink-0 flex justify-between pt-3.5 pb-1 px-3 h-15'>
+      <div className='h-15 flex shrink-0 justify-between px-3 pb-1 pt-3.5'>
         <div className='text-base font-semibold text-text-primary'>
           <div>{t('datasetSettings.form.retrievalSetting.title')}</div>
-          <div className='leading-[18px] text-xs font-normal text-text-tertiary'>
+          <div className='text-xs font-normal leading-[18px] text-text-tertiary'>
             <a
               target='_blank'
               rel='noopener noreferrer'
@@ -83,15 +83,15 @@ const ModifyRetrievalModal: FC<Props> = ({
         <div className='flex'>
           <div
             onClick={onHide}
-            className='flex justify-center items-center w-8 h-8 cursor-pointer'
+            className='flex h-8 w-8 cursor-pointer items-center justify-center'
           >
-            <RiCloseLine className='w-4 h-4 text-text-tertiary' />
+            <RiCloseLine className='h-4 w-4 text-text-tertiary' />
           </div>
         </div>
       </div>
 
       <div className='px-4 py-2'>
-        <div className='mb-1 text-text-secondary text-[13px] leading-6 font-semibold'>
+        <div className='mb-1 text-[13px] font-semibold leading-6 text-text-secondary'>
           {t('datasetSettings.form.retrievalSetting.method')}
         </div>
         {indexMethod === 'high_quality'
@@ -109,8 +109,8 @@ const ModifyRetrievalModal: FC<Props> = ({
           )}
       </div>
       <div className='flex justify-end p-4 pt-2'>
-        <Button className='mr-2 flex-shrink-0' onClick={onHide}>{t('common.operation.cancel')}</Button>
-        <Button variant='primary' className='flex-shrink-0' onClick={handleSave} >{t('common.operation.save')}</Button>
+        <Button className='mr-2 shrink-0' onClick={onHide}>{t('common.operation.cancel')}</Button>
+        <Button variant='primary' className='shrink-0' onClick={handleSave} >{t('common.operation.save')}</Button>
       </div>
     </div>
   )

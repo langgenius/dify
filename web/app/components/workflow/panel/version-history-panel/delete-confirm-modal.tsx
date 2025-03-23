@@ -21,10 +21,10 @@ const DeleteConfirmModal: FC<DeleteConfirmModalProps> = ({
 
   return <Modal className='p-0' isShow={isOpen} onClose={onClose}>
     <div className='flex flex-col gap-y-2 p-6 pb-4 '>
-      <div className='text-text-primary title-2xl-semi-bold'>
+      <div className='title-2xl-semi-bold text-text-primary'>
         {`${t('common.operation.delete')} ${versionInfo.marked_name || t('workflow.versionHistory.defaultName')}`}
       </div>
-      <p className='text-text-secondary system-md-regular'>
+      <p className='system-md-regular text-text-secondary'>
         {t('workflow.versionHistory.deletionTip')}
       </p>
     </div>

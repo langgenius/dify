@@ -108,13 +108,13 @@ const Operation: FC<OperationProps> = ({
         )}
         style={(!hasWorkflowProcess && positionRight) ? { left: contentWidth + 8 } : {}}
       >
-        {showPromptLog && (
+        {showPromptLog && !isOpeningStatement && (
           <div className='hidden group-hover:block'>
             <Log logItem={item} />
           </div>
         )}
         {!isOpeningStatement && (
-          <div className='hidden group-hover:flex ml-1 items-center gap-0.5 p-0.5 rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg shadow-md backdrop-blur-sm'>
+          <div className='ml-1 hidden items-center gap-0.5 rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-md backdrop-blur-sm group-hover:flex'>
             {(config?.text_to_speech?.enabled) && (
               <NewAudioButton
                 id={id}
@@ -126,40 +126,40 @@ const Operation: FC<OperationProps> = ({
               copy(content)
               Toast.notify({ type: 'success', message: t('common.actionMsg.copySuccessfully') })
             }}>
-              <RiClipboardLine className='w-4 h-4' />
+              <RiClipboardLine className='h-4 w-4' />
             </ActionButton>
             {!noChatInput && (
               <ActionButton onClick={() => onRegenerate?.(item)}>
-                <RiResetLeftLine className='w-4 h-4' />
+                <RiResetLeftLine className='h-4 w-4' />
               </ActionButton>
             )}
             {(config?.supportAnnotation && config.annotation_reply?.enabled) && (
               <ActionButton onClick={() => setIsShowReplyModal(true)}>
-                <RiEditLine className='w-4 h-4' />
+                <RiEditLine className='h-4 w-4' />
               </ActionButton>
             )}
           </div>
         )}
         {!isOpeningStatement && config?.supportFeedback && onFeedback && (
-          <div className='hidden group-hover:flex ml-1 items-center gap-0.5 p-0.5 rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg shadow-md backdrop-blur-sm'>
+          <div className='ml-1 hidden items-center gap-0.5 rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-md backdrop-blur-sm group-hover:flex'>
             {!localFeedback?.rating && (
               <>
                 <ActionButton onClick={() => handleFeedback('like')}>
-                  <RiThumbUpLine className='w-4 h-4' />
+                  <RiThumbUpLine className='h-4 w-4' />
                 </ActionButton>
                 <ActionButton onClick={() => handleFeedback('dislike')}>
-                  <RiThumbDownLine className='w-4 h-4' />
+                  <RiThumbDownLine className='h-4 w-4' />
                 </ActionButton>
               </>
             )}
             {localFeedback?.rating === 'like' && (
               <ActionButton state={ActionButtonState.Active} onClick={() => handleFeedback(null)}>
-                <RiThumbUpLine className='w-4 h-4' />
+                <RiThumbUpLine className='h-4 w-4' />
               </ActionButton>
             )}
             {localFeedback?.rating === 'dislike' && (
               <ActionButton state={ActionButtonState.Destructive} onClick={() => handleFeedback(null)}>
-                <RiThumbDownLine className='w-4 h-4' />
+                <RiThumbDownLine className='h-4 w-4' />
               </ActionButton>
             )}
           </div>

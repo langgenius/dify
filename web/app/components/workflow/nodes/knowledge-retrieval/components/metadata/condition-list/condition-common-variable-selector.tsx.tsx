@@ -44,11 +44,11 @@ const ConditionCommonVariableSelector = ({
         if (!variables.length) return
         setOpen(!open)
       }}>
-        <div className="grow flex items-center cursor-pointer h-6">
+        <div className="flex h-6 grow cursor-pointer items-center">
           {
             selected && (
-              <div className='inline-flex items-center pl-[5px] pr-1.5 h-6 text-text-secondary rounded-md system-xs-medium border-[0.5px] border-components-panel-border-subtle shadow-xs bg-components-badge-white-to-dark'>
-                <Variable02 className='mr-1 w-3.5 h-3.5 text-text-accent' />
+              <div className='system-xs-medium inline-flex h-6 items-center rounded-md border-[0.5px] border-components-panel-border-subtle bg-components-badge-white-to-dark pl-[5px] pr-1.5 text-text-secondary shadow-xs'>
+                <Variable02 className='mr-1 h-3.5 w-3.5 text-text-accent' />
                 {selected.name}
               </div>
             )
@@ -56,11 +56,11 @@ const ConditionCommonVariableSelector = ({
           {
             !selected && (
               <>
-                <div className='grow flex items-center text-components-input-text-placeholder system-sm-regular'>
-                  <Variable02 className='mr-1 w-4 h-4' />
+                <div className='system-sm-regular flex grow items-center text-components-input-text-placeholder'>
+                  <Variable02 className='mr-1 h-4 w-4' />
                   {t('workflow.nodes.knowledgeRetrieval.metadata.panel.select')}
                 </div>
-                <div className='shrink-0 flex items-center px-[5px] h-5 border border-divider-deep rounded-[5px] system-2xs-medium text-text-tertiary'>
+                <div className='system-2xs-medium flex h-5 shrink-0 items-center rounded-[5px] border border-divider-deep px-[5px] text-text-tertiary'>
                   {varType}
                 </div>
               </>
@@ -69,15 +69,15 @@ const ConditionCommonVariableSelector = ({
         </div>
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent className='z-[1000]'>
-        <div className='p-1 w-[200px] bg-components-panel-bg-blur rounded-lg border-[0.5px] border-components-panel-border shadow-lg'>
+        <div className='w-[200px] rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-1 shadow-lg'>
           {
             variables.map(v => (
               <div
                 key={v.name}
-                className='flex items-center px-2 h-6 cursor-pointer rounded-md text-text-secondary system-xs-medium hover:bg-state-base-hover'
+                className='system-xs-medium flex h-6 cursor-pointer items-center rounded-md px-2 text-text-secondary hover:bg-state-base-hover'
                 onClick={() => handleChange(v.name)}
               >
-                <Variable02 className='mr-1 w-4 h-4 text-text-accent' />
+                <Variable02 className='mr-1 h-4 w-4 text-text-accent' />
                 {v.name}
               </div>
             ))

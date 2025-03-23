@@ -21,12 +21,12 @@ const EditedBeacon: FC<Props> = ({
     <div ref={ref} className='size-4 cursor-pointer'>
       {isHovering ? (
         <Tooltip popupContent={t('common.operation.reset')}>
-          <div className='flex justify-center items-center size-4 bg-text-accent-secondary rounded-full' onClick={onReset}>
+          <div className='flex size-4 items-center justify-center rounded-full bg-text-accent-secondary' onClick={onReset}>
             <RiResetLeftLine className='size-[10px] text-text-primary-on-surface' />
           </div>
         </Tooltip>
       ) : (
-        <div className='flex items-center justify-center size-4'>
+        <div className='flex size-4 items-center justify-center'>
           <div className='size-1 rounded-full bg-text-accent-secondary'></div>
         </div>
       )}

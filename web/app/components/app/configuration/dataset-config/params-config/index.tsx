@@ -121,7 +121,7 @@ const ParamsConfig = ({
         }}
         disabled={disabled}
       >
-        <RiEqualizer2Line className='mr-1 w-3.5 h-3.5' />
+        <RiEqualizer2Line className='mr-1 h-3.5 w-3.5' />
         {t('dataset.retrievalSettings')}
       </Button>
       {

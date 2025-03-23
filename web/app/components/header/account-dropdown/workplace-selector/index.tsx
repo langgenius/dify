@@ -1,7 +1,7 @@
 import { Fragment } from 'react'
 import { useContext } from 'use-context-selector'
 import { useTranslation } from 'react-i18next'
-import { Menu, Transition } from '@headlessui/react'
+import { Menu, MenuButton, MenuItems, Transition } from '@headlessui/react'
 import { RiArrowDownSLine } from '@remixicon/react'
 import cn from '@/utils/classnames'
 import { switchWorkspace } from '@/service/common'
@@ -30,22 +30,22 @@ const WorkplaceSelector = () => {
   }
 
   return (
-    <Menu as="div" className="relative w-full h-full">
+    <Menu as="div" className="relative h-full w-full">
       {
         ({ open }) => (
           <>
-            <Menu.Button className={cn(
+            <MenuButton className={cn(
               `
-                flex items-center p-0.5 gap-1.5 w-full
-                group hover:bg-state-base-hover cursor-pointer ${open && 'bg-state-base-hover'} rounded-[10px]
+                group flex w-full cursor-pointer items-center
+                gap-1.5 p-0.5 hover:bg-state-base-hover ${open && 'bg-state-base-hover'} rounded-[10px]
               `,
             )}>
-              <div className='flex items-center justify-center w-7 h-7 bg-[#EFF4FF] rounded-lg text-xs font-medium text-primary-600'>{currentWorkspace?.name[0].toLocaleUpperCase()}</div>
+              <div className='flex h-7 w-7 items-center justify-center rounded-lg bg-[#EFF4FF] text-xs font-medium text-primary-600'>{currentWorkspace?.name[0].toLocaleUpperCase()}</div>
               <div className='flex flex-row'>
-                <div className={'truncate max-w-[80px] text-text-secondary system-sm-medium'}>{currentWorkspace?.name}</div>
-                <RiArrowDownSLine className='w-4 h-4 text-text-secondary' />
+                <div className={'system-sm-medium max-w-[80px] truncate text-text-secondary'}>{currentWorkspace?.name}</div>
+                <RiArrowDownSLine className='h-4 w-4 text-text-secondary' />
               </div>
-            </Menu.Button>
+            </MenuButton>
             <Transition
               as={Fragment}
               enter="transition ease-out duration-100"
@@ -55,28 +55,28 @@ const WorkplaceSelector = () => {
               leaveFrom="transform opacity-100 scale-100"
               leaveTo="transform opacity-0 scale-95"
             >
-              <Menu.Items
+              <MenuItems
                 className={cn(
                   `
-                    flex w-[280px] flex-col items-start absolute left-[-15px] mt-1 rounded-xl shadows-shadow-lg
+                    shadows-shadow-lg absolute left-[-15px] mt-1 flex w-[280px] flex-col items-start rounded-xl
                   `,
                 )}
               >
-                <div className="flex flex-col p-1 pb-2 items-start self-stretch w-full rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg ">
-                  <div className='flex px-3 pt-1 pb-0.5 items-start self-stretch'>
-                    <span className='flex-1 text-text-tertiary system-xs-medium-uppercase'>{t('common.userProfile.workspace')}</span>
+                <div className="flex w-full flex-col items-start self-stretch rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-1 pb-2 shadow-lg ">
+                  <div className='flex items-start self-stretch px-3 pb-0.5 pt-1'>
+                    <span className='system-xs-medium-uppercase flex-1 text-text-tertiary'>{t('common.userProfile.workspace')}</span>
                   </div>
                   {
                     workspaces.map(workspace => (
-                      <div className='flex py-1 pl-3 pr-2 items-center gap-2 self-stretch hover:bg-state-base-hover rounded-lg' key={workspace.id} onClick={() => handleSwitchWorkspace(workspace.id)}>
-                        <div className='flex items-center justify-center w-6 h-6 bg-[#EFF4FF] rounded-md text-xs font-medium text-primary-600'>{workspace.name[0].toLocaleUpperCase()}</div>
-                        <div className='line-clamp-1 grow overflow-hidden text-text-secondary text-ellipsis system-md-regular cursor-pointer'>{workspace.name}</div>
+                      <div className='flex items-center gap-2 self-stretch rounded-lg py-1 pl-3 pr-2 hover:bg-state-base-hover' key={workspace.id} onClick={() => handleSwitchWorkspace(workspace.id)}>
+                        <div className='flex h-6 w-6 items-center justify-center rounded-md bg-[#EFF4FF] text-xs font-medium text-primary-600'>{workspace.name[0].toLocaleUpperCase()}</div>
+                        <div className='system-md-regular line-clamp-1 grow cursor-pointer overflow-hidden text-ellipsis text-text-secondary'>{workspace.name}</div>
                         <PlanBadge plan={workspace.plan as Plan} />
                       </div>
                     ))
                   }
                 </div>
-              </Menu.Items>
+              </MenuItems>
             </Transition>
           </>
         )

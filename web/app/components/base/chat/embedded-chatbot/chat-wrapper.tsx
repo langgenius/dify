@@ -187,8 +187,8 @@ const ChatWrapper = () => {
       return null
     if (welcomeMessage.suggestedQuestions && welcomeMessage.suggestedQuestions?.length > 0) {
       return (
-        <div className='h-[50vh] py-12 px-4 flex items-center justify-center'>
-          <div className='grow max-w-[720px] flex gap-4'>
+        <div className='flex h-[50vh] items-center justify-center px-4 py-12'>
+          <div className='flex max-w-[720px] grow gap-4'>
             <AppIcon
               size='xl'
               iconType={appData?.site.icon_type}
@@ -196,7 +196,7 @@ const ChatWrapper = () => {
               background={appData?.site.icon_background}
               imageUrl={appData?.site.icon_url}
             />
-            <div className='grow px-4 py-3 bg-chat-bubble-bg text-text-primary rounded-2xl body-lg-regular'>
+            <div className='body-lg-regular grow rounded-2xl bg-chat-bubble-bg px-4 py-3 text-text-primary'>
               <Markdown content={welcomeMessage.content} />
               <SuggestedQuestions item={welcomeMessage} />
             </div>
@@ -205,7 +205,7 @@ const ChatWrapper = () => {
       )
     }
     return (
-      <div className={cn('h-[50vh] py-12 flex flex-col items-center justify-center gap-3')}>
+      <div className={cn('flex h-[50vh] flex-col items-center justify-center gap-3 py-12')}>
         <AppIcon
           size='xl'
           iconType={appData?.site.icon_type}
@@ -213,8 +213,8 @@ const ChatWrapper = () => {
           background={appData?.site.icon_background}
           imageUrl={appData?.site.icon_url}
         />
-        <div className='px-4 max-w-[768px]'>
-          <Markdown className='!text-text-tertiary !body-2xl-regular' content={welcomeMessage.content} />
+        <div className='max-w-[768px] px-4'>
+          <Markdown className='!body-2xl-regular !text-text-tertiary' content={welcomeMessage.content} />
         </div>
       </div>
     )

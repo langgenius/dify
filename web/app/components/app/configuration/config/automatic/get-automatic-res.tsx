@@ -54,10 +54,10 @@ const TryLabel: FC<{
 }> = ({ Icon, text, onClick }) => {
   return (
     <div
-      className='mt-2 mr-1 shrink-0 flex h-7 items-center px-2 bg-components-button-secondary-bg rounded-lg cursor-pointer'
+      className='mr-1 mt-2 flex h-7 shrink-0 cursor-pointer items-center rounded-lg bg-components-button-secondary-bg px-2'
       onClick={onClick}
     >
-      <Icon className='w-4 h-4 text-text-tertiary'></Icon>
+      <Icon className='h-4 w-4 text-text-tertiary'></Icon>
       <div className='ml-1 text-xs font-medium text-text-secondary'>{text}</div>
     </div>
   )
@@ -138,16 +138,16 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
   const [res, setRes] = React.useState<AutomaticRes | null>(null)
 
   const renderLoading = (
-    <div className='w-0 grow flex flex-col items-center justify-center h-full space-y-3'>
+    <div className='flex h-full w-0 grow flex-col items-center justify-center space-y-3'>
       <Loading />
       <div className='text-[13px] text-text-tertiary'>{t('appDebug.generate.loading')}</div>
     </div>
   )
 
   const renderNoData = (
-    <div className='w-0 grow flex flex-col items-center px-8 justify-center h-full space-y-3'>
-      <Generator className='w-14 h-14 text-text-tertiary' />
-      <div className='leading-5 text-center text-[13px] font-normal text-text-tertiary'>
+    <div className='flex h-full w-0 grow flex-col items-center justify-center space-y-3 px-8'>
+      <Generator className='h-14 w-14 text-text-tertiary' />
+      <div className='text-center text-[13px] font-normal leading-5 text-text-tertiary'>
         <div>{t('appDebug.generate.noDataLine1')}</div>
         <div>{t('appDebug.generate.noDataLine2')}</div>
       </div>
@@ -189,18 +189,18 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
     <Modal
       isShow={isShow}
       onClose={onClose}
-      className='!p-0 min-w-[1140px]'
+      className='min-w-[1140px] !p-0'
       closable
     >
       <div className='flex h-[680px] flex-wrap'>
-        <div className='w-[570px] shrink-0 p-6 h-full overflow-y-auto border-r border-divider-regular'>
+        <div className='h-full w-[570px] shrink-0 overflow-y-auto border-r border-divider-regular p-6'>
           <div className='mb-8'>
-            <div className={`leading-[28px] text-lg font-bold ${s.textGradient}`}>{t('appDebug.generate.title')}</div>
+            <div className={`text-lg font-bold leading-[28px] ${s.textGradient}`}>{t('appDebug.generate.title')}</div>
             <div className='mt-1 text-[13px] font-normal text-text-tertiary'>{t('appDebug.generate.description')}</div>
           </div>
-          <div className='flex items-center mb-8'>
+          <div className='mb-8 flex items-center'>
             <ModelIcon
-              className='shrink-0 mr-1.5 '
+              className='mr-1.5 shrink-0 '
               provider={currentProvider}
               modelName={currentModel?.model}
             />
@@ -213,8 +213,8 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
           </div>
           <div >
             <div className='flex items-center'>
-              <div className='mr-3 shrink-0 leading-[18px] text-xs font-semibold text-text-tertiary uppercase'>{t('appDebug.generate.tryIt')}</div>
-              <div className='grow h-px' style={{
+              <div className='mr-3 shrink-0 text-xs font-semibold uppercase leading-[18px] text-text-tertiary'>{t('appDebug.generate.tryIt')}</div>
+              <div className='h-px grow' style={{
                 background: 'linear-gradient(to right, rgba(243, 244, 246, 1), rgba(243, 244, 246, 0))',
               }}></div>
             </div>
@@ -232,7 +232,7 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
           {/* inputs */}
           <div className='mt-6'>
             <div className='text-[0px]'>
-              <div className='mb-2 leading-5 text-sm font-medium text-text-primary'>{t('appDebug.generate.instruction')}</div>
+              <div className='mb-2 text-sm font-medium leading-5 text-text-primary'>{t('appDebug.generate.instruction')}</div>
               <Textarea
                 className="h-[200px] resize-none"
                 placeholder={t('appDebug.generate.instructionPlaceHolder') as string}
@@ -247,7 +247,7 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
                 onClick={onGenerate}
                 disabled={isLoading}
               >
-                <Generator className='w-4 h-4 text-white' />
+                <Generator className='h-4 w-4 text-white' />
                 <span className='text-xs font-semibold text-white'>{t('appDebug.generate.generate')}</span>
               </Button>
             </div>
@@ -255,8 +255,8 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
         </div>
 
         {(!isLoading && res) && (
-          <div className='w-0 grow p-6 pb-0 h-full'>
-            <div className='shrink-0 mb-3 leading-[160%] text-base font-semibold text-text-secondary'>{t('appDebug.generate.resTitle')}</div>
+          <div className='h-full w-0 grow p-6 pb-0'>
+            <div className='mb-3 shrink-0 text-base font-semibold leading-[160%] text-text-secondary'>{t('appDebug.generate.resTitle')}</div>
             <div className={cn('max-h-[555px] overflow-y-auto', !isInLLMNode && 'pb-2')}>
               <ConfigPrompt
                 mode={mode}
@@ -283,17 +283,17 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
                     <div className='mt-7'>
                       <GroupName name={t('appDebug.feature.groupChat.title')} />
                       <div
-                        className='mb-1 p-3 border-t-[0.5px] border-l-[0.5px] border-effects-highlight rounded-xl bg-background-section-burn'
+                        className='mb-1 rounded-xl border-l-[0.5px] border-t-[0.5px] border-effects-highlight bg-background-section-burn p-3'
                       >
                         <div className='mb-2 flex items-center gap-2'>
-                          <div className='shrink-0 p-1 rounded-lg border-[0.5px] border-divider-subtle shadow-xs bg-util-colors-blue-light-blue-light-500'>
-                            <LoveMessage className='w-4 h-4 text-text-primary-on-surface' />
+                          <div className='shrink-0 rounded-lg border-[0.5px] border-divider-subtle bg-util-colors-blue-light-blue-light-500 p-1 shadow-xs'>
+                            <LoveMessage className='h-4 w-4 text-text-primary-on-surface' />
                           </div>
-                          <div className='grow flex items-center text-text-secondary system-sm-semibold'>
+                          <div className='system-sm-semibold flex grow items-center text-text-secondary'>
                             {t('appDebug.feature.conversationOpener.title')}
                           </div>
                         </div>
-                        <div className='min-h-8 text-text-tertiary system-xs-regular'>{res.opening_statement}</div>
+                        <div className='system-xs-regular min-h-8 text-text-tertiary'>{res.opening_statement}</div>
                       </div>
                     </div>
                   )}
@@ -301,7 +301,7 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
               )}
             </div>
 
-            <div className='flex justify-end py-4 bg-background-default'>
+            <div className='flex justify-end bg-background-default py-4'>
               <Button onClick={onClose}>{t('common.operation.cancel')}</Button>
               <Button variant='primary' className='ml-2' onClick={() => {
                 setShowConfirmOverwrite(true)

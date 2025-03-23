@@ -87,21 +87,21 @@ const NotionPageSelector = ({
   }, [firstWorkspaceId])
 
   return (
-    <div className='bg-background-default-subtle border border-components-panel-border rounded-xl'>
+    <div className='rounded-xl border border-components-panel-border bg-background-default-subtle'>
       {
         data?.notion_info?.length
           ? (
             <>
-              <div className='flex items-center gap-x-2 p-2 h-12 bg-components-panel-bg border-b border-b-divider-regular rounded-t-xl'>
-                <div className='grow flex items-center gap-x-1'>
+              <div className='flex h-12 items-center gap-x-2 rounded-t-xl border-b border-b-divider-regular bg-components-panel-bg p-2'>
+                <div className='flex grow items-center gap-x-1'>
                   <WorkspaceSelector
                     value={currentWorkspaceId || firstWorkspaceId}
                     items={notionWorkspaces}
                     onSelect={handleSelectWorkspace}
                   />
-                  <div className='mx-1 w-[1px] h-3 bg-divider-regular' />
+                  <div className='mx-1 h-3 w-[1px] bg-divider-regular' />
                   <RiEqualizer2Line
-                    className='w-4 h-4 cursor-pointer text-text-tertiary'
+                    className='h-4 w-4 cursor-pointer text-text-tertiary'
                     onClick={() => setShowAccountSettingModal({ payload: 'data-source', onCancelCallback: mutate })}
                   />
                 </div>
@@ -110,7 +110,7 @@ const NotionPageSelector = ({
                   onChange={handleSearchValueChange}
                 />
               </div>
-              <div className='rounded-b-xl overflow-hidden'>
+              <div className='overflow-hidden rounded-b-xl'>
                 <PageSelector
                   value={selectedPagesId}
                   disabledValue={getPagesMapAndSelectedPagesId[2]}

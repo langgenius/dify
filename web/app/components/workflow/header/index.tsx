@@ -206,7 +206,7 @@ const Header: FC = () => {
 
   return (
     <div
-      className='absolute top-0 left-0 z-10 flex items-center justify-between w-full px-3 h-14 bg-mask-top2bottom-gray-50-to-transparent'
+      className='absolute left-0 top-0 z-10 flex h-14 w-full items-center justify-between bg-mask-top2bottom-gray-50-to-transparent px-3'
     >
       <div>
         {
@@ -225,10 +225,10 @@ const Header: FC = () => {
             {/* <GlobalVariableButton disabled={nodesReadOnly} /> */}
             {isChatMode && <ChatVariableButton disabled={nodesReadOnly} />}
             <EnvButton disabled={nodesReadOnly} />
-            <Divider type='vertical' className='h-3.5 mx-auto' />
+            <Divider type='vertical' className='mx-auto h-3.5' />
             <RunAndHistory />
             <Button className='text-components-button-secondary-text' onClick={handleShowFeatures}>
-              <RiApps2AddLine className='w-4 h-4 mr-1 text-components-button-secondary-text' />
+              <RiApps2AddLine className='mr-1 h-4 w-4 text-components-button-secondary-text' />
               {t('workflow.common.features')}
             </Button>
             <AppPublisher
@@ -252,12 +252,12 @@ const Header: FC = () => {
         viewHistory && (
           <div className='flex items-center space-x-2'>
             <ViewHistory withText />
-            <Divider type='vertical' className='h-3.5 mx-auto' />
+            <Divider type='vertical' className='mx-auto h-3.5' />
             <Button
               variant='primary'
               onClick={handleGoBackToEdit}
             >
-              <ArrowNarrowLeft className='w-4 h-4 mr-1' />
+              <ArrowNarrowLeft className='mr-1 h-4 w-4' />
               {t('workflow.common.goBackToEdit')}
             </Button>
           </div>
@@ -265,7 +265,7 @@ const Header: FC = () => {
       }
       {
         restoring && (
-          <div className='flex justify-end items-center gap-x-2'>
+          <div className='flex items-center justify-end gap-x-2'>
             <Button
               onClick={handleRestore}
               disabled={!currentVersion || currentVersion.version === WorkflowVersion.Draft}
@@ -278,7 +278,7 @@ const Header: FC = () => {
               onClick={handleCancelRestore}
             >
               <div className='flex items-center gap-x-0.5'>
-                <RiHistoryLine className='w-4 h-4' />
+                <RiHistoryLine className='h-4 w-4' />
                 <span className='px-0.5'>{t('workflow.common.exitVersions')}</span>
               </div>
             </Button>

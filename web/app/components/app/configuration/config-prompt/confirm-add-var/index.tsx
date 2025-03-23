@@ -46,11 +46,11 @@ const ConfirmAddVar: FC<IConfirmAddVarProps> = ({
       >
         <div className='flex items-start space-x-3'>
           <div
-            className='shrink-0 flex items-center justify-center h-10 w-10 bg-components-card-bg-alt rounded-xl border border-components-card-border shadow-lg'
+            className='flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-components-card-border bg-components-card-bg-alt shadow-lg'
           >{VarIcon}</div>
           <div className='grow-1'>
             <div className='text-sm font-medium text-text-primary'>{t('appDebug.autoAddVar')}</div>
-            <div className='flex flex-wrap mt-[15px] max-h-[66px] overflow-y-auto px-1 space-x-1'>
+            <div className='mt-[15px] flex max-h-[66px] flex-wrap space-x-1 overflow-y-auto px-1'>
               {varNameArr.map(name => (
                 <VarHighlight key={name} name={name} />
               ))}
