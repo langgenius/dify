@@ -164,16 +164,20 @@ class OceanBaseVector(BaseVector):
             self._client.set_ob_hnsw_ef_search(ef_search)
             self._hnsw_ef_search = ef_search
         topk = kwargs.get("top_k", 10)
-        cur = self._client.ann_search(
-            table_name=self._collection_name,
-            vec_column_name="vector",
-            vec_data=query_vector,
-            topk=topk,
-            distance_func=func.l2_distance,
-            output_column_names=["text", "metadata"],
-            with_dist=True,
-            where_clause=where_clause,
-        )
+        try:
+            from sqlalchemy import text
+            cur = self._client.ann_search(
+                table_name=self._collection_name,
+                vec_column_name="vector",
+                vec_data=query_vector,
+                topk=topk,
+                distance_func=func.l2_distance,
+                output_column_names=["text", "metadata"],
+                with_dist=True,
+                where_clause=[text(where_clause)],
+            )
+        except Exception as e:
+            raise Exception("Failed to search by vector. ", e)
         docs = []
         for text, metadata, distance in cur:
             metadata = json.loads(metadata)
