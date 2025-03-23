@@ -50,7 +50,15 @@ class AppListApi(Resource):
         parser.add_argument(
             "mode",
             type=str,
-            choices=["chat", "workflow", "agent-chat", "channel", "all"],
+            choices=[
+                "completion",
+                "chat",
+                "advanced-chat",
+                "workflow",
+                "agent-chat",
+                "channel",
+                "all",
+            ],
             default="all",
             location="args",
             required=False,
@@ -130,7 +138,6 @@ class AppApi(Resource):
         parser.add_argument("icon_type", type=str, location="json")
         parser.add_argument("icon", type=str, location="json")
         parser.add_argument("icon_background", type=str, location="json")
-        parser.add_argument("max_active_requests", type=int, location="json")
         parser.add_argument("use_icon_as_answer_icon", type=bool, location="json")
         args = parser.parse_args()
 

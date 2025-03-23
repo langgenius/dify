@@ -24,6 +24,7 @@ vector_setting_fields = {
 }
 
 weighted_score_fields = {
+    "weight_type": fields.String,
     "keyword_setting": fields.Nested(keyword_setting_fields),
     "vector_setting": fields.Nested(vector_setting_fields),
 }
