@@ -1,4 +1,5 @@
 import type { FC } from 'react'
+import { basePath } from '@/utils/var'
 import type {
   Model,
   ModelProvider,
@@ -30,7 +31,7 @@ const ModelIcon: FC<ModelIconProps> = ({
   if (provider?.icon_small) {
     return (
       <div className={cn('flex h-5 w-5 items-center justify-center', isDeprecated && 'opacity-50', className)}>
-        <img alt='model-icon' src={renderI18nObject(provider.icon_small, language)}/>
+        <img alt='model-icon' src={basePath+renderI18nObject(provider.icon_small, language)}/>
       </div>
     )
   }
