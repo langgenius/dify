@@ -31,9 +31,9 @@ const RunMode = memo(() => {
     <>
       <div
         className={cn(
-          'flex items-center px-2.5 h-7 rounded-md text-[13px] font-medium text-components-button-secondary-accent-text',
-          'hover:bg-state-accent-hover cursor-pointer',
-          isRunning && 'bg-state-accent-hover !cursor-not-allowed',
+          'flex h-7 items-center rounded-md px-2.5 text-[13px] font-medium text-components-button-secondary-accent-text',
+          'cursor-pointer hover:bg-state-accent-hover',
+          isRunning && '!cursor-not-allowed bg-state-accent-hover',
         )}
         onClick={() => {
           handleWorkflowStartRunInWorkflow()
@@ -43,13 +43,13 @@ const RunMode = memo(() => {
           isRunning
             ? (
               <>
-                <RiLoader2Line className='mr-1 w-4 h-4 animate-spin' />
+                <RiLoader2Line className='mr-1 h-4 w-4 animate-spin' />
                 {t('workflow.common.running')}
               </>
             )
             : (
               <>
-                <RiPlayLargeLine className='mr-1 w-4 h-4' />
+                <RiPlayLargeLine className='mr-1 h-4 w-4' />
                 {t('workflow.common.run')}
               </>
             )
@@ -58,10 +58,10 @@ const RunMode = memo(() => {
       {
         isRunning && (
           <div
-            className='flex items-center justify-center ml-0.5 w-7 h-7 cursor-pointer hover:bg-black/5 rounded-md'
+            className='ml-0.5 flex h-7 w-7 cursor-pointer items-center justify-center rounded-md hover:bg-black/5'
             onClick={() => handleStopRun(workflowRunningData?.task_id || '')}
           >
-            <StopCircle className='w-4 h-4 text-components-button-ghost-text' />
+            <StopCircle className='h-4 w-4 text-components-button-ghost-text' />
           </div>
         )
       }
@@ -77,12 +77,12 @@ const PreviewMode = memo(() => {
   return (
     <div
       className={cn(
-        'flex items-center px-2.5 h-7 rounded-md text-[13px] font-medium text-components-button-secondary-accent-text',
-        'hover:bg-state-accent-hover cursor-pointer',
+        'flex h-7 items-center rounded-md px-2.5 text-[13px] font-medium text-components-button-secondary-accent-text',
+        'cursor-pointer hover:bg-state-accent-hover',
       )}
       onClick={() => handleWorkflowStartRunInChatflow()}
     >
-      <RiPlayLargeLine className='mr-1 w-4 h-4' />
+      <RiPlayLargeLine className='mr-1 h-4 w-4' />
       {t('workflow.common.debugAndPreview')}
     </div>
   )
@@ -94,14 +94,14 @@ const RunAndHistory: FC = () => {
   const { nodesReadOnly } = useNodesReadOnly()
 
   return (
-    <div className='flex items-center px-0.5 h-8 rounded-lg border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg shadow-xs'>
+    <div className='flex h-8 items-center rounded-lg border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg px-0.5 shadow-xs'>
       {
         !isChatMode && <RunMode />
       }
       {
         isChatMode && <PreviewMode />
       }
-      <div className='mx-0.5 w-[1px] h-3.5 bg-divider-regular'></div>
+      <div className='mx-0.5 h-3.5 w-[1px] bg-divider-regular'></div>
       <ViewHistory />
       <Checklist disabled={nodesReadOnly} />
     </div>

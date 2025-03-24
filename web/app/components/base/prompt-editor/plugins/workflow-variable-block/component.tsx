@@ -104,7 +104,7 @@ const WorkflowVariableBlockComponent = ({
               </div>
             )
           }
-          <div className='shrink-0 mx-0.5 max-w-[60px] text-xs font-medium text-text-secondary truncate' title={node?.title} style={{
+          <div className='mx-0.5 max-w-[60px] shrink-0 truncate text-xs font-medium text-text-secondary' title={node?.title} style={{
           }}>{node?.title}</div>
           <Line3 className='mr-0.5 text-divider-deep'></Line3>
         </div>
@@ -117,18 +117,18 @@ const WorkflowVariableBlockComponent = ({
       )}
 
       <div className='flex items-center text-text-accent'>
-        {!isEnv && !isChatVar && <Variable02 className={cn('shrink-0 w-3.5 h-3.5', isException && 'text-text-warning')} />}
-        {isEnv && <Env className='shrink-0 w-3.5 h-3.5 text-util-colors-violet-violet-600' />}
-        {isChatVar && <BubbleX className='w-3.5 h-3.5 text-util-colors-teal-teal-700' />}
+        {!isEnv && !isChatVar && <Variable02 className={cn('h-3.5 w-3.5 shrink-0', isException && 'text-text-warning')} />}
+        {isEnv && <Env className='h-3.5 w-3.5 shrink-0 text-util-colors-violet-violet-600' />}
+        {isChatVar && <BubbleX className='h-3.5 w-3.5 text-util-colors-teal-teal-700' />}
         <div className={cn(
-          'shrink-0 ml-0.5 text-xs font-medium truncate',
+          'ml-0.5 shrink-0 truncate text-xs font-medium',
           isEnv && 'text-util-colors-violet-violet-600',
           isChatVar && 'text-util-colors-teal-teal-700',
           isException && 'text-text-warning',
         )} title={varName}>{varName}</div>
         {
           !node && !isEnv && !isChatVar && (
-            <RiErrorWarningFill className='ml-0.5 w-3 h-3 text-text-destructive' />
+            <RiErrorWarningFill className='ml-0.5 h-3 w-3 text-text-destructive' />
           )
         }
       </div>

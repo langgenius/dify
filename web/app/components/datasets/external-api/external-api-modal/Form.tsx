@@ -50,8 +50,8 @@ const Form: FC<FormProps> = React.memo(({
 
     return (
       <div key={variable} className={cn(itemClassName, 'flex flex-col items-start gap-1 self-stretch')}>
-        <div className="flex justify-between items-center w-full">
-          <label className={cn(fieldLabelClassName, 'text-text-secondary system-sm-semibold')} htmlFor={variable}>
+        <div className="flex w-full items-center justify-between">
+          <label className={cn(fieldLabelClassName, 'system-sm-semibold text-text-secondary')} htmlFor={variable}>
             {label[i18n.language] || label.en_US}
             {required && <span className='ml-1 text-red-500'>*</span>}
           </label>
@@ -60,9 +60,9 @@ const Form: FC<FormProps> = React.memo(({
               href={'https://docs.dify.ai/guides/knowledge-base/external-knowledge-api-documentation' || '/'}
               target='_blank'
               rel='noopener noreferrer'
-              className='text-text-accent body-xs-regular flex items-center'
+              className='body-xs-regular flex items-center text-text-accent'
             >
-              <RiBookOpenLine className='w-3 h-3 text-text-accent mr-1' />
+              <RiBookOpenLine className='mr-1 h-3 w-3 text-text-accent' />
               {t('dataset.externalAPIPanelDocumentation')}
             </a>
           )}
@@ -81,7 +81,7 @@ const Form: FC<FormProps> = React.memo(({
   }
 
   return (
-    <form className={cn('flex flex-col justify-center items-start gap-4 self-stretch', className)}>
+    <form className={cn('flex flex-col items-start justify-center gap-4 self-stretch', className)}>
       {formSchemas.map(formSchema => renderField(formSchema))}
     </form>
   )

@@ -51,7 +51,7 @@ export const VarItem: FC<VarItemProps> = ({
           <div className='ml-2 system-xs-regular text-text-tertiary'>{type}</div>
         </div>
       </div>
-      <div className='mt-0.5 system-xs-regular text-text-tertiary'>
+      <div className='system-xs-regular mt-0.5 text-text-tertiary'>
         {description}
         {subItems && (
           <div className='ml-2 border-l border-gray-200 pl-2'>

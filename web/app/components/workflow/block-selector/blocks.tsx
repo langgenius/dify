@@ -58,7 +58,7 @@ const Blocks = ({
       >
         {
           classification !== '-' && !!list.length && (
-            <div className='flex items-start px-3 h-[22px] text-xs font-medium text-text-tertiary'>
+            <div className='flex h-[22px] items-start px-3 text-xs font-medium text-text-tertiary'>
               {t(`workflow.tabs.${classification}`)}
             </div>
           )
@@ -76,14 +76,14 @@ const Blocks = ({
                     className='mb-2'
                     type={block.type}
                   />
-                  <div className='mb-1 system-md-medium text-text-primary'>{block.title}</div>
-                  <div className='text-text-tertiary system-xs-regular'>{nodesExtraData[block.type].about}</div>
+                  <div className='system-md-medium mb-1 text-text-primary'>{block.title}</div>
+                  <div className='system-xs-regular text-text-tertiary'>{nodesExtraData[block.type].about}</div>
                 </div>
               )}
             >
               <div
                 key={block.type}
-                className='flex items-center px-3 w-full h-8 rounded-lg hover:bg-state-base-hover cursor-pointer'
+                className='flex h-8 w-full cursor-pointer items-center rounded-lg px-3 hover:bg-state-base-hover'
                 onClick={() => onSelect(block.type)}
               >
                 <BlockIcon
@@ -103,7 +103,7 @@ const Blocks = ({
     <div className='p-1'>
       {
         isEmpty && (
-          <div className='flex items-center px-3 h-[22px] text-xs font-medium text-text-tertiary'>{t('workflow.tabs.noResult')}</div>
+          <div className='flex h-[22px] items-center px-3 text-xs font-medium text-text-tertiary'>{t('workflow.tabs.noResult')}</div>
         )
       }
       {

@@ -187,6 +187,16 @@ class AdvancedChatAppGenerateEntity(ConversationAppGenerateEntity):
 
     single_iteration_run: Optional[SingleIterationRunEntity] = None
 
+    class SingleLoopRunEntity(BaseModel):
+        """
+        Single Loop Run Entity.
+        """
+
+        node_id: str
+        inputs: Mapping
+
+    single_loop_run: Optional[SingleLoopRunEntity] = None
+
 
 class WorkflowAppGenerateEntity(AppGenerateEntity):
     """
@@ -206,3 +216,13 @@ class WorkflowAppGenerateEntity(AppGenerateEntity):
         inputs: dict
 
     single_iteration_run: Optional[SingleIterationRunEntity] = None
+
+    class SingleLoopRunEntity(BaseModel):
+        """
+        Single Loop Run Entity.
+        """
+
+        node_id: str
+        inputs: dict
+
+    single_loop_run: Optional[SingleLoopRunEntity] = None

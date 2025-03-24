@@ -26,6 +26,7 @@ from libs.helper import TimestampField
 from libs.login import login_required
 from models.account import Tenant, TenantStatus
 from services.account_service import TenantService
+from services.feature_service import FeatureService
 from services.file_service import FileService
 from services.workspace_service import WorkspaceService
 
@@ -68,6 +69,11 @@ class TenantListApi(Resource):
         tenants = TenantService.get_join_tenants(current_user)
 
         for tenant in tenants:
+            features = FeatureService.get_features(tenant.id)
+            if features.billing.enabled:
+                tenant.plan = features.billing.subscription.plan
+            else:
+                tenant.plan = "sandbox"
             if tenant.id == current_user.current_tenant_id:
                 tenant.current = True  # Set current=True for current tenant
         return {"workspaces": marshal(tenants, tenants_fields)}, 200
@@ -82,28 +88,20 @@ class WorkspaceListApi(Resource):
         parser.add_argument("limit", type=inputs.int_range(1, 100), required=False, default=20, location="args")
         args = parser.parse_args()
 
-        tenants = Tenant.query.order_by(Tenant.created_at.desc()).paginate(page=args["page"], per_page=args["limit"])
-
+        tenants = Tenant.query.order_by(Tenant.created_at.desc()).paginate(
+            page=args["page"], per_page=args["limit"], error_out=False
+        )
         has_more = False
-        if len(tenants.items) == args["limit"]:
-            current_page_first_tenant = tenants[-1]
-            rest_count = (
-                db.session.query(Tenant)
-                .filter(
-                    Tenant.created_at < current_page_first_tenant.created_at, Tenant.id != current_page_first_tenant.id
-                )
-                .count()
-            )
 
-            if rest_count > 0:
-                has_more = True
-        total = db.session.query(Tenant).count()
+        if tenants.has_next:
+            has_more = True
+
         return {
             "data": marshal(tenants.items, workspace_fields),
             "has_more": has_more,
             "limit": args["limit"],
             "page": args["page"],
-            "total": total,
+            "total": tenants.total,
         }, 200
 
 

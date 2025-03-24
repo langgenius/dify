@@ -133,9 +133,9 @@ const ComponentPicker = ({
             // The `LexicalMenu` will try to calculate the position of the floating menu based on the first child.
             // Since we use floating ui, we need to wrap it with a div to prevent the position calculation being affected.
             // See https://github.com/facebook/lexical/blob/ac97dfa9e14a73ea2d6934ff566282d7f758e8bb/packages/lexical-react/src/shared/LexicalMenu.ts#L493
-            <div className='w-0 h-0'>
+            <div className='h-0 w-0'>
               <div
-                className='p-1 w-[260px] bg-components-panel-bg-blur rounded-lg border-[0.5px] border-components-panel-border shadow-lg'
+                className='w-[260px] rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-1 shadow-lg'
                 style={{
                   ...floatingStyles,
                   visibility: isPositioned ? 'visible' : 'hidden',
@@ -148,7 +148,7 @@ const ComponentPicker = ({
                       {
                         // Divider
                         index !== 0 && options.at(index - 1)?.group !== option.group && (
-                          <div className='h-px bg-divider-subtle my-1 w-full -translate-x-1'></div>
+                          <div className='my-1 h-px w-full -translate-x-1 bg-divider-subtle'></div>
                         )
                       }
                       {option.renderMenuOption({
@@ -169,7 +169,7 @@ const ComponentPicker = ({
                     <>
                       {
                         (!!options.length) && (
-                          <div className='h-px bg-divider-subtle my-1 w-full -translate-x-1'></div>
+                          <div className='my-1 h-px w-full -translate-x-1 bg-divider-subtle'></div>
                         )
                       }
                       <div className='p-1'>

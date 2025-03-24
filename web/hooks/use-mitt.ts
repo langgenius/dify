@@ -43,7 +43,7 @@ const defaultSubscribeOption: UseSubscribeOption = {
 function useMitt<Events extends _Events>(
   mitt?: Emitter<Events>,
 ): UseMittReturn<Events> {
-  const emitterRef = useRef<Emitter<Events>>()
+  const emitterRef = useRef<Emitter<Events> | undefined>(undefined)
   if (!emitterRef.current)
     emitterRef.current = mitt ?? create<Events>()
 

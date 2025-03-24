@@ -10,7 +10,12 @@ from controllers.console import api
 from controllers.console.apikey import api_key_fields, api_key_list
 from controllers.console.app.error import ProviderNotInitializeError
 from controllers.console.datasets.error import DatasetInUseError, DatasetNameDuplicateError, IndexingEstimateError
-from controllers.console.wraps import account_initialization_required, enterprise_license_required, setup_required
+from controllers.console.wraps import (
+    account_initialization_required,
+    cloud_edition_billing_rate_limit_check,
+    enterprise_license_required,
+    setup_required,
+)
 from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
 from core.indexing_runner import IndexingRunner
 from core.model_runtime.entities.model_entities import ModelType
@@ -74,7 +79,7 @@ class DatasetListApi(Resource):
         data = marshal(datasets, dataset_detail_fields)
         for item in data:
             # convert embedding_model_provider to plugin standard format
-            if item["indexing_technique"] == "high_quality":
+            if item["indexing_technique"] == "high_quality" and item["embedding_model_provider"]:
                 item["embedding_model_provider"] = str(ModelProviderID(item["embedding_model_provider"]))
                 item_model = f"{item['embedding_model']}:{item['embedding_model_provider']}"
                 if item_model in model_names:
@@ -96,6 +101,7 @@ class DatasetListApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @cloud_edition_billing_rate_limit_check("knowledge")
     def post(self):
         parser = reqparse.RequestParser()
         parser.add_argument(
@@ -178,6 +184,10 @@ class DatasetApi(Resource):
         except services.errors.account.NoPermissionError as e:
             raise Forbidden(str(e))
         data = marshal(dataset, dataset_detail_fields)
+        if dataset.indexing_technique == "high_quality":
+            if dataset.embedding_model_provider:
+                provider_id = ModelProviderID(dataset.embedding_model_provider)
+                data["embedding_model_provider"] = str(provider_id)
         if data.get("permission") == "partial_members":
             part_users_list = DatasetPermissionService.get_dataset_partial_member_list(dataset_id_str)
             data.update({"partial_member_list": part_users_list})
@@ -210,6 +220,7 @@ class DatasetApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @cloud_edition_billing_rate_limit_check("knowledge")
     def patch(self, dataset_id):
         dataset_id_str = str(dataset_id)
         dataset = DatasetService.get_dataset(dataset_id_str)
@@ -276,7 +287,11 @@ class DatasetApi(Resource):
         data = request.get_json()
 
         # check embedding model setting
-        if data.get("indexing_technique") == "high_quality":
+        if (
+            data.get("indexing_technique") == "high_quality"
+            and data.get("embedding_model_provider") is not None
+            and data.get("embedding_model") is not None
+        ):
             DatasetService.check_embedding_model_setting(
                 dataset.tenant_id, data.get("embedding_model_provider"), data.get("embedding_model")
             )
@@ -313,6 +328,7 @@ class DatasetApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @cloud_edition_billing_rate_limit_check("knowledge")
     def delete(self, dataset_id):
         dataset_id_str = str(dataset_id)
 
@@ -647,6 +663,7 @@ class DatasetRetrievalSettingApi(Resource):
                 | VectorType.LINDORM
                 | VectorType.COUCHBASE
                 | VectorType.MILVUS
+                | VectorType.OPENGAUSS
             ):
                 return {
                     "retrieval_method": [
@@ -690,6 +707,7 @@ class DatasetRetrievalSettingMockApi(Resource):
                 | VectorType.COUCHBASE
                 | VectorType.PGVECTOR
                 | VectorType.LINDORM
+                | VectorType.OPENGAUSS
             ):
                 return {
                     "retrieval_method": [

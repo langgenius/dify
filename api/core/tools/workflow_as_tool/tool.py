@@ -7,6 +7,7 @@ from core.file import FILE_MODEL_IDENTITY, File, FileTransferMethod
 from core.tools.__base.tool import Tool
 from core.tools.__base.tool_runtime import ToolRuntime
 from core.tools.entities.tool_entities import ToolEntity, ToolInvokeMessage, ToolParameter, ToolProviderType
+from core.tools.errors import ToolInvokeError
 from extensions.ext_database import db
 from factories.file_factory import build_from_mapping
 from models.account import Account
@@ -96,11 +97,8 @@ class WorkflowTool(Tool):
         assert isinstance(result, dict)
         data = result.get("data", {})
 
-        if data.get("error"):
-            raise Exception(data.get("error"))
-
-        if data.get("error"):
-            raise Exception(data.get("error"))
+        if err := data.get("error"):
+            raise ToolInvokeError(err)
 
         outputs = data.get("outputs")
         if outputs is None:

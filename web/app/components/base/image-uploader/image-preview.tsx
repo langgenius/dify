@@ -7,7 +7,7 @@ import { useHotkeys } from 'react-hotkeys-hook'
 import Tooltip from '@/app/components/base/tooltip'
 import Toast from '@/app/components/base/toast'
 
-interface ImagePreviewProps {
+type ImagePreviewProps = {
   url: string
   title: string
   onCancel: () => void
@@ -61,6 +61,7 @@ const ImagePreview: FC<ImagePreviewProps> = ({
     if (url.startsWith('http') || url.startsWith('https')) {
       const a = document.createElement('a')
       a.href = url
+      a.target = '_blank'
       a.download = title
       a.click()
     }
@@ -68,6 +69,7 @@ const ImagePreview: FC<ImagePreviewProps> = ({
       // Base64 image
       const a = document.createElement('a')
       a.href = url
+      a.target = '_blank'
       a.download = title
       a.click()
     }
@@ -103,7 +105,7 @@ const ImagePreview: FC<ImagePreviewProps> = ({
       for (let i = 0; i < slice.length; i++)
         byteNumbers[i] = slice.charCodeAt(i)
 
-      const byteArray = new Uint8Array(byteNumbers)
+      const byteArray = new Uint8Array(byteNumbers as any)
       byteArrays.push(byteArray)
     }
 
@@ -196,11 +198,11 @@ const ImagePreview: FC<ImagePreviewProps> = ({
   useHotkeys('esc', onCancel)
   useHotkeys('up', zoomIn)
   useHotkeys('down', zoomOut)
-  useHotkeys('left', onPrev || (() => {}))
-  useHotkeys('right', onNext || (() => {}))
+  useHotkeys('left', onPrev || (() => { }))
+  useHotkeys('right', onNext || (() => { }))
 
   return createPortal(
-    <div className='fixed inset-0 p-8 flex items-center justify-center bg-black/80 z-[1000] image-preview-container'
+    <div className='image-preview-container fixed inset-0 z-[1000] flex items-center justify-center bg-black/80 p-8'
       onClick={e => e.stopPropagation()}
       onWheel={handleWheel}
       onMouseDown={handleMouseDown}
@@ -208,54 +210,54 @@ const ImagePreview: FC<ImagePreviewProps> = ({
       onMouseUp={handleMouseUp}
       style={{ cursor: scale > 1 ? 'move' : 'default' }}
       tabIndex={-1}>
-      {/* eslint-disable-next-line @next/next/no-img-element */}
+      { }
       <img
         ref={imgRef}
         alt={title}
         src={isBase64(url) ? `data:image/png;base64,${url}` : url}
-        className='max-w-full max-h-full'
+        className='max-h-full max-w-full'
         style={{
           transform: `scale(${scale}) translate(${position.x}px, ${position.y}px)`,
           transition: isDragging ? 'none' : 'transform 0.2s ease-in-out',
         }}
       />
       <Tooltip popupContent={t('common.operation.copyImage')}>
-        <div className='absolute top-6 right-48 flex items-center justify-center w-8 h-8 rounded-lg cursor-pointer'
+        <div className='absolute right-48 top-6 flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg'
           onClick={imageCopy}>
           {isCopied
-            ? <RiFileCopyLine className='w-4 h-4 text-green-500'/>
-            : <RiFileCopyLine className='w-4 h-4 text-gray-500'/>}
+            ? <RiFileCopyLine className='h-4 w-4 text-green-500' />
+            : <RiFileCopyLine className='h-4 w-4 text-gray-500' />}
         </div>
       </Tooltip>
       <Tooltip popupContent={t('common.operation.zoomOut')}>
-        <div className='absolute top-6 right-40 flex items-center justify-center w-8 h-8 rounded-lg cursor-pointer'
+        <div className='absolute right-40 top-6 flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg'
           onClick={zoomOut}>
-          <RiZoomOutLine className='w-4 h-4 text-gray-500'/>
+          <RiZoomOutLine className='h-4 w-4 text-gray-500' />
         </div>
       </Tooltip>
       <Tooltip popupContent={t('common.operation.zoomIn')}>
-        <div className='absolute top-6 right-32 flex items-center justify-center w-8 h-8 rounded-lg cursor-pointer'
+        <div className='absolute right-32 top-6 flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg'
           onClick={zoomIn}>
-          <RiZoomInLine className='w-4 h-4 text-gray-500'/>
+          <RiZoomInLine className='h-4 w-4 text-gray-500' />
         </div>
       </Tooltip>
       <Tooltip popupContent={t('common.operation.download')}>
-        <div className='absolute top-6 right-24 flex items-center justify-center w-8 h-8 rounded-lg cursor-pointer'
+        <div className='absolute right-24 top-6 flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg'
           onClick={downloadImage}>
-          <RiDownloadCloud2Line className='w-4 h-4 text-gray-500'/>
+          <RiDownloadCloud2Line className='h-4 w-4 text-gray-500' />
         </div>
       </Tooltip>
       <Tooltip popupContent={t('common.operation.openInNewTab')}>
-        <div className='absolute top-6 right-16 flex items-center justify-center w-8 h-8 rounded-lg cursor-pointer'
+        <div className='absolute right-16 top-6 flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg'
           onClick={openInNewTab}>
-          <RiAddBoxLine className='w-4 h-4 text-gray-500'/>
+          <RiAddBoxLine className='h-4 w-4 text-gray-500' />
         </div>
       </Tooltip>
       <Tooltip popupContent={t('common.operation.cancel')}>
         <div
-          className='absolute top-6 right-6 flex items-center justify-center w-8 h-8 bg-white/8 rounded-lg backdrop-blur-[2px] cursor-pointer'
+          className='absolute right-6 top-6 flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg bg-white/8 backdrop-blur-[2px]'
           onClick={onCancel}>
-          <RiCloseLine className='w-4 h-4 text-gray-500'/>
+          <RiCloseLine className='h-4 w-4 text-gray-500' />
         </div>
       </Tooltip>
     </div>,

@@ -43,18 +43,9 @@ Workflow applications offers non-session support and is ideal for translation, a
       - `inputs` (object) Required
         Allows the entry of various variable values defined by the App.
         The `inputs` parameter contains multiple key/value pairs, with each key corresponding to a specific variable and each value being the specific value for that variable.
-        The workflow application requires at least one key/value pair to be inputted.
-        If the variable is of File type, specify an object that has the keys described in `files` below.
-      - `response_mode` (string) Required
-        The mode of response return, supporting:
-        - `streaming` Streaming mode (recommended), implements a typewriter-like output through SSE ([Server-Sent Events](https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events/Using_server-sent_events)).
-        - `blocking` Blocking mode, returns result after execution is complete. (Requests may be interrupted if the process is long)
-        <i>Due to Cloudflare restrictions, the request will be interrupted without a return after 100 seconds.</i>
-      - `user` (string) Required
-        User identifier, used to define the identity of the end-user for retrieval and statistics.
-        Should be uniquely defined by the developer within the application.
-      - `files` (array[object]) Optional
-        File list, suitable for inputting files combined with text understanding and answering questions, available only when the model supports file parsing and understanding capability.
+        The workflow application requires at least one key/value pair to be inputted. The variable can be of File Array type.
+        File Array type variable is suitable for inputting files combined with text understanding and answering questions, available only when the model supports file parsing and understanding capability.
+        If the variable is of File Array type, the corresponding value should be a list whose elements contain following attributions: 
           - `type` (string) Supported type: 
             - `document` ('TXT', 'MD', 'MARKDOWN', 'PDF', 'HTML', 'XLSX', 'XLS', 'DOCX', 'CSV', 'EML', 'MSG', 'PPTX', 'PPT', 'XML', 'EPUB')
             - `image` ('JPG', 'JPEG', 'PNG', 'GIF', 'WEBP', 'SVG')
@@ -64,6 +55,15 @@ Workflow applications offers non-session support and is ideal for translation, a
           - `transfer_method` (string) Transfer method, `remote_url` for image URL / `local_file` for file upload
           - `url` (string) Image URL (when the transfer method is `remote_url`)
           - `upload_file_id` (string) Uploaded file ID, which must be obtained by uploading through the File Upload API in advance (when the transfer method is `local_file`)
+
+      - `response_mode` (string) Required
+        The mode of response return, supporting:
+        - `streaming` Streaming mode (recommended), implements a typewriter-like output through SSE ([Server-Sent Events](https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events/Using_server-sent_events)).
+        - `blocking` Blocking mode, returns result after execution is complete. (Requests may be interrupted if the process is long)
+        <i>Due to Cloudflare restrictions, the request will be interrupted without a return after 100 seconds.</i>
+      - `user` (string) Required
+        User identifier, used to define the identity of the end-user for retrieval and statistics.
+        Should be uniquely defined by the developer within the application.
 
     ### Response
     When `response_mode` is `blocking`, return a CompletionResponse object.
@@ -190,15 +190,18 @@ Workflow applications offers non-session support and is ideal for translation, a
     ```
 
     </CodeGroup>
-    <CodeGroup title="File variable example">
+    <CodeGroup title="Example: file array as an input variable">
       ```json {{ title: 'File variable example' }}
       {
         "inputs": {
-          "{variable_name}": {
+          "{variable_name}": 
+          [
+            {
             "transfer_method": "local_file",
             "upload_file_id": "{upload_file_id}",
             "type": "{document_type}"
-          }
+            }
+          ]
         }
       }
       ```
@@ -279,11 +282,11 @@ Workflow applications offers non-session support and is ideal for translation, a
 
           data = {
               "inputs": {
-                  "orig_mail": {
+                  "orig_mail": [{
                       "transfer_method": "local_file",
                       "upload_file_id": file_id,
                       "type": "document"
-                  }
+                  }]
               },
               "response_mode": response_mode,
               "user": user

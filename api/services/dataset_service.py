@@ -1,3 +1,4 @@
+import copy
 import datetime
 import json
 import logging
@@ -17,6 +18,7 @@ from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
 from core.model_manager import ModelManager
 from core.model_runtime.entities.model_entities import ModelType
 from core.plugin.entities.plugin import ModelProviderID
+from core.rag.index_processor.constant.built_in_field import BuiltInField
 from core.rag.index_processor.constant.index_type import IndexType
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from events.dataset_event import dataset_was_deleted
@@ -44,7 +46,6 @@ from models.source import DataSourceOauthBinding
 from services.entities.knowledge_entities.knowledge_entities import (
     ChildChunkUpdateArgs,
     KnowledgeConfig,
-    MetaDataConfig,
     RerankingModel,
     RetrievalModel,
     SegmentUpdateArgs,
@@ -245,7 +246,7 @@ class DatasetService:
                 "No Embedding Model available. Please configure a valid provider in the Settings -> Model Provider."
             )
         except ProviderTokenNotInitError as ex:
-            raise ValueError(f"The dataset in unavailable, due to: {ex.description}")
+            raise ValueError(ex.description)
 
     @staticmethod
     def update_dataset(dataset_id, data, user):
@@ -327,31 +328,75 @@ class DatasetService:
                         raise ValueError(ex.description)
             else:
                 # add default plugin id to both setting sets, to make sure the plugin model provider is consistent
-                plugin_model_provider = dataset.embedding_model_provider
-                plugin_model_provider = str(ModelProviderID(plugin_model_provider))
-
-                new_plugin_model_provider = data["embedding_model_provider"]
-                new_plugin_model_provider = str(ModelProviderID(new_plugin_model_provider))
-
+                # Skip embedding model checks if not provided in the update request
                 if (
-                    new_plugin_model_provider != plugin_model_provider
-                    or data["embedding_model"] != dataset.embedding_model
+                    "embedding_model_provider" not in data
+                    or "embedding_model" not in data
+                    or not data.get("embedding_model_provider")
+                    or not data.get("embedding_model")
                 ):
-                    action = "update"
+                    # If the dataset already has embedding model settings, use those
+                    if dataset.embedding_model_provider and dataset.embedding_model:
+                        # Keep existing values
+                        filtered_data["embedding_model_provider"] = dataset.embedding_model_provider
+                        filtered_data["embedding_model"] = dataset.embedding_model
+                        # If collection_binding_id exists, keep it too
+                        if dataset.collection_binding_id:
+                            filtered_data["collection_binding_id"] = dataset.collection_binding_id
+                    # Otherwise, don't try to update embedding model settings at all
+                    # Remove these fields from filtered_data if they exist but are None/empty
+                    if "embedding_model_provider" in filtered_data and not filtered_data["embedding_model_provider"]:
+                        del filtered_data["embedding_model_provider"]
+                    if "embedding_model" in filtered_data and not filtered_data["embedding_model"]:
+                        del filtered_data["embedding_model"]
+                else:
+                    skip_embedding_update = False
                     try:
-                        model_manager = ModelManager()
-                        embedding_model = model_manager.get_model_instance(
-                            tenant_id=current_user.current_tenant_id,
-                            provider=data["embedding_model_provider"],
-                            model_type=ModelType.TEXT_EMBEDDING,
-                            model=data["embedding_model"],
-                        )
-                        filtered_data["embedding_model"] = embedding_model.model
-                        filtered_data["embedding_model_provider"] = embedding_model.provider
-                        dataset_collection_binding = DatasetCollectionBindingService.get_dataset_collection_binding(
-                            embedding_model.provider, embedding_model.model
-                        )
-                        filtered_data["collection_binding_id"] = dataset_collection_binding.id
+                        # Handle existing model provider
+                        plugin_model_provider = dataset.embedding_model_provider
+                        plugin_model_provider_str = None
+                        if plugin_model_provider:
+                            plugin_model_provider_str = str(ModelProviderID(plugin_model_provider))
+
+                        # Handle new model provider from request
+                        new_plugin_model_provider = data["embedding_model_provider"]
+                        new_plugin_model_provider_str = None
+                        if new_plugin_model_provider:
+                            new_plugin_model_provider_str = str(ModelProviderID(new_plugin_model_provider))
+
+                        # Only update embedding model if both values are provided and different from current
+                        if (
+                            plugin_model_provider_str != new_plugin_model_provider_str
+                            or data["embedding_model"] != dataset.embedding_model
+                        ):
+                            action = "update"
+                            model_manager = ModelManager()
+                            try:
+                                embedding_model = model_manager.get_model_instance(
+                                    tenant_id=current_user.current_tenant_id,
+                                    provider=data["embedding_model_provider"],
+                                    model_type=ModelType.TEXT_EMBEDDING,
+                                    model=data["embedding_model"],
+                                )
+                            except ProviderTokenNotInitError:
+                                # If we can't get the embedding model, skip updating it
+                                # and keep the existing settings if available
+                                if dataset.embedding_model_provider and dataset.embedding_model:
+                                    filtered_data["embedding_model_provider"] = dataset.embedding_model_provider
+                                    filtered_data["embedding_model"] = dataset.embedding_model
+                                    if dataset.collection_binding_id:
+                                        filtered_data["collection_binding_id"] = dataset.collection_binding_id
+                                # Skip the rest of the embedding model update
+                                skip_embedding_update = True
+                            if not skip_embedding_update:
+                                filtered_data["embedding_model"] = embedding_model.model
+                                filtered_data["embedding_model_provider"] = embedding_model.provider
+                                dataset_collection_binding = (
+                                    DatasetCollectionBindingService.get_dataset_collection_binding(
+                                        embedding_model.provider, embedding_model.model
+                                    )
+                                )
+                                filtered_data["collection_binding_id"] = dataset_collection_binding.id
                     except LLMBadRequestError:
                         raise ValueError(
                             "No Embedding Model available. Please configure a valid provider "
@@ -600,8 +645,44 @@ class DocumentService:
         return document
 
     @staticmethod
+    def get_document_by_ids(document_ids: list[str]) -> list[Document]:
+        documents = (
+            db.session.query(Document)
+            .filter(
+                Document.id.in_(document_ids),
+                Document.enabled == True,
+                Document.indexing_status == "completed",
+                Document.archived == False,
+            )
+            .all()
+        )
+        return documents
+
+    @staticmethod
     def get_document_by_dataset_id(dataset_id: str) -> list[Document]:
-        documents = db.session.query(Document).filter(Document.dataset_id == dataset_id, Document.enabled == True).all()
+        documents = (
+            db.session.query(Document)
+            .filter(
+                Document.dataset_id == dataset_id,
+                Document.enabled == True,
+            )
+            .all()
+        )
+
+        return documents
+
+    @staticmethod
+    def get_working_documents_by_dataset_id(dataset_id: str) -> list[Document]:
+        documents = (
+            db.session.query(Document)
+            .filter(
+                Document.dataset_id == dataset_id,
+                Document.enabled == True,
+                Document.indexing_status == "completed",
+                Document.archived == False,
+            )
+            .all()
+        )
 
         return documents
 
@@ -684,8 +765,13 @@ class DocumentService:
         if document.tenant_id != current_user.current_tenant_id:
             raise ValueError("No permission.")
 
-        document.name = name
+        if dataset.built_in_field_enabled:
+            if document.doc_metadata:
+                doc_metadata = copy.deepcopy(document.doc_metadata)
+                doc_metadata[BuiltInField.document_name.value] = name
+                document.doc_metadata = doc_metadata
 
+        document.name = name
         db.session.add(document)
         db.session.commit()
 
@@ -905,16 +991,13 @@ class DocumentService:
                             ).first()
                             if document:
                                 document.dataset_process_rule_id = dataset_process_rule.id  # type: ignore
-                                document.updated_at = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
+                                document.updated_at = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
                                 document.created_from = created_from
                                 document.doc_form = knowledge_config.doc_form
                                 document.doc_language = knowledge_config.doc_language
                                 document.data_source_info = json.dumps(data_source_info)
                                 document.batch = batch
                                 document.indexing_status = "waiting"
-                                if knowledge_config.metadata:
-                                    document.doc_type = knowledge_config.metadata.doc_type
-                                    document.metadata = knowledge_config.metadata.doc_metadata
                                 db.session.add(document)
                                 documents.append(document)
                                 duplicate_document_ids.append(document.id)
@@ -931,7 +1014,6 @@ class DocumentService:
                             account,
                             file_name,
                             batch,
-                            knowledge_config.metadata,
                         )
                         db.session.add(document)
                         db.session.flush()
@@ -989,7 +1071,6 @@ class DocumentService:
                                     account,
                                     truncated_page_name,
                                     batch,
-                                    knowledge_config.metadata,
                                 )
                                 db.session.add(document)
                                 db.session.flush()
@@ -1030,7 +1111,6 @@ class DocumentService:
                             account,
                             document_name,
                             batch,
-                            knowledge_config.metadata,
                         )
                         db.session.add(document)
                         db.session.flush()
@@ -1068,7 +1148,6 @@ class DocumentService:
         account: Account,
         name: str,
         batch: str,
-        metadata: Optional[MetaDataConfig] = None,
     ):
         document = Document(
             tenant_id=dataset.tenant_id,
@@ -1084,9 +1163,17 @@ class DocumentService:
             doc_form=document_form,
             doc_language=document_language,
         )
-        if metadata is not None:
-            document.doc_metadata = metadata.doc_metadata
-            document.doc_type = metadata.doc_type
+        doc_metadata = {}
+        if dataset.built_in_field_enabled:
+            doc_metadata = {
+                BuiltInField.document_name: name,
+                BuiltInField.uploader: account.name,
+                BuiltInField.upload_date: datetime.datetime.now(datetime.UTC).strftime("%Y-%m-%d %H:%M:%S"),
+                BuiltInField.last_update_date: datetime.datetime.now(datetime.UTC).strftime("%Y-%m-%d %H:%M:%S"),
+                BuiltInField.source: data_source_type,
+            }
+        if doc_metadata:
+            document.doc_metadata = doc_metadata
         return document
 
     @staticmethod
@@ -1199,10 +1286,6 @@ class DocumentService:
         # update document name
         if document_data.name:
             document.name = document_data.name
-        # update doc_type and doc_metadata if provided
-        if document_data.metadata is not None:
-            document.doc_metadata = document_data.metadata.doc_type
-            document.doc_type = document_data.metadata.doc_type
         # update document to be waiting
         document.indexing_status = "waiting"
         document.completed_at = None
@@ -1872,7 +1955,7 @@ class SegmentService:
                 if cache_result is not None:
                     continue
                 segment.enabled = False
-                segment.disabled_at = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
+                segment.disabled_at = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
                 segment.disabled_by = current_user.id
                 db.session.add(segment)
                 real_deal_segmment_ids.append(segment.id)
@@ -1964,7 +2047,7 @@ class SegmentService:
                         child_chunk.content = child_chunk_update_args.content
                         child_chunk.word_count = len(child_chunk.content)
                         child_chunk.updated_by = current_user.id
-                        child_chunk.updated_at = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
+                        child_chunk.updated_at = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
                         child_chunk.type = "customized"
                         update_child_chunks.append(child_chunk)
             else:
@@ -2021,7 +2104,7 @@ class SegmentService:
             child_chunk.content = content
             child_chunk.word_count = len(content)
             child_chunk.updated_by = current_user.id
-            child_chunk.updated_at = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
+            child_chunk.updated_at = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
             child_chunk.type = "customized"
             db.session.add(child_chunk)
             VectorService.update_child_chunk_vector([], [child_chunk], [], dataset)

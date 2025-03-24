@@ -154,6 +154,11 @@ class OceanBaseVector(BaseVector):
         return []
 
     def search_by_vector(self, query_vector: list[float], **kwargs: Any) -> list[Document]:
+        document_ids_filter = kwargs.get("document_ids_filter")
+        where_clause = None
+        if document_ids_filter:
+            document_ids = ", ".join(f"'{id}'" for id in document_ids_filter)
+            where_clause = f"metadata->>'$.document_id' in ({document_ids})"
         ef_search = kwargs.get("ef_search", self._hnsw_ef_search)
         if ef_search != self._hnsw_ef_search:
             self._client.set_ob_hnsw_ef_search(ef_search)
@@ -167,6 +172,7 @@ class OceanBaseVector(BaseVector):
             distance_func=func.l2_distance,
             output_column_names=["text", "metadata"],
             with_dist=True,
+            where_clause=where_clause,
         )
         docs = []
         for text, metadata, distance in cur:

@@ -1,7 +1,9 @@
 import logging
+from datetime import datetime
 
 from flask_restful import Resource, fields, marshal_with, reqparse  # type: ignore
 from flask_restful.inputs import int_range  # type: ignore
+from sqlalchemy.orm import Session
 from werkzeug.exceptions import InternalServerError
 
 from controllers.service_api import api
@@ -13,6 +15,7 @@ from controllers.service_api.app.error import (
     ProviderQuotaExceededError,
 )
 from controllers.service_api.wraps import FetchUserArg, WhereisUserArg, validate_app_token
+from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
 from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.errors.error import (
@@ -25,8 +28,9 @@ from extensions.ext_database import db
 from fields.workflow_app_log_fields import workflow_app_log_pagination_fields
 from libs import helper
 from models.model import App, AppMode, EndUser
-from models.workflow import WorkflowRun
+from models.workflow import WorkflowRun, WorkflowRunStatus
 from services.app_generate_service import AppGenerateService
+from services.errors.llm import InvokeRateLimitError
 from services.workflow_app_service import WorkflowAppService
 
 logger = logging.getLogger(__name__)
@@ -91,11 +95,13 @@ class WorkflowRunApi(Resource):
             raise ProviderQuotaExceededError()
         except ModelCurrentlyNotSupportError:
             raise ProviderModelCurrentlyNotSupportError()
+        except InvokeRateLimitError as ex:
+            raise InvokeRateLimitHttpError(ex.description)
         except InvokeError as e:
             raise CompletionRequestError(e.description)
         except ValueError as e:
             raise e
-        except Exception as e:
+        except Exception:
             logging.exception("internal server error.")
             raise InternalServerError()
 
@@ -125,17 +131,34 @@ class WorkflowAppLogApi(Resource):
         parser = reqparse.RequestParser()
         parser.add_argument("keyword", type=str, location="args")
         parser.add_argument("status", type=str, choices=["succeeded", "failed", "stopped"], location="args")
+        parser.add_argument("created_at__before", type=str, location="args")
+        parser.add_argument("created_at__after", type=str, location="args")
         parser.add_argument("page", type=int_range(1, 99999), default=1, location="args")
         parser.add_argument("limit", type=int_range(1, 100), default=20, location="args")
         args = parser.parse_args()
 
+        args.status = WorkflowRunStatus(args.status) if args.status else None
+        if args.created_at__before:
+            args.created_at__before = datetime.fromisoformat(args.created_at__before.replace("Z", "+00:00"))
+
+        if args.created_at__after:
+            args.created_at__after = datetime.fromisoformat(args.created_at__after.replace("Z", "+00:00"))
+
         # get paginate workflow app logs
         workflow_app_service = WorkflowAppService()
-        workflow_app_log_pagination = workflow_app_service.get_paginate_workflow_app_logs(
-            app_model=app_model, args=args
-        )
+        with Session(db.engine) as session:
+            workflow_app_log_pagination = workflow_app_service.get_paginate_workflow_app_logs(
+                session=session,
+                app_model=app_model,
+                keyword=args.keyword,
+                status=args.status,
+                created_at_before=args.created_at__before,
+                created_at_after=args.created_at__after,
+                page=args.page,
+                limit=args.limit,
+            )
 
-        return workflow_app_log_pagination
+            return workflow_app_log_pagination
 
 
 api.add_resource(WorkflowRunApi, "/workflows/run")

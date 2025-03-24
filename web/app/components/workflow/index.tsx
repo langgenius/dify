@@ -59,6 +59,8 @@ import CustomNoteNode from './note-node'
 import { CUSTOM_NOTE_NODE } from './note-node/constants'
 import CustomIterationStartNode from './nodes/iteration-start'
 import { CUSTOM_ITERATION_START_NODE } from './nodes/iteration-start/constants'
+import CustomLoopStartNode from './nodes/loop-start'
+import { CUSTOM_LOOP_START_NODE } from './nodes/loop-start/constants'
 import Operator from './operator'
 import CustomEdge from './custom-edge'
 import CustomConnectionLine from './custom-connection-line'
@@ -102,6 +104,7 @@ const nodeTypes = {
   [CUSTOM_NODE]: CustomNode,
   [CUSTOM_NOTE_NODE]: CustomNoteNode,
   [CUSTOM_ITERATION_START_NODE]: CustomIterationStartNode,
+  [CUSTOM_LOOP_START_NODE]: CustomLoopStartNode,
 }
 const edgeTypes = {
   [CUSTOM_EDGE]: CustomEdge,
@@ -282,7 +285,7 @@ const Workflow: FC<WorkflowProps> = memo(({
     <div
       id='workflow-container'
       className={`
-        relative w-full min-w-[960px] h-full 
+        relative h-full w-full min-w-[960px] 
         ${workflowReadOnly && 'workflow-panel-animation'}
         ${nodeAnimation && 'workflow-node-animation'}
       `}
@@ -353,6 +356,7 @@ const Workflow: FC<WorkflowProps> = memo(({
         onSelectionDrag={handleSelectionDrag}
         onPaneContextMenu={handlePaneContextMenu}
         connectionLineComponent={CustomConnectionLine}
+        // TODO: For LOOP node, how to distinguish between ITERATION and LOOP here? Maybe both are the same?
         connectionLineContainerStyle={{ zIndex: ITERATION_CHILDREN_Z_INDEX }}
         defaultViewport={viewport}
         multiSelectionKeyCode={null}
@@ -405,7 +409,7 @@ const WorkflowWrap = memo(() => {
 
   if (!data || isLoading) {
     return (
-      <div className='flex justify-center items-center relative w-full h-full'>
+      <div className='relative flex h-full w-full items-center justify-center'>
         <Loading />
       </div>
     )

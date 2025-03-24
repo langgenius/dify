@@ -10,7 +10,7 @@ export type SerializedNode = SerializedLexicalNode & {
   getVarType: any
 }
 
-export class WorkflowVariableBlockNode extends DecoratorNode<JSX.Element> {
+export class WorkflowVariableBlockNode extends DecoratorNode<React.JSX.Element> {
   __variables: string[]
   __workflowNodesMap: WorkflowNodesMap
   __getVarType: any
@@ -45,7 +45,7 @@ export class WorkflowVariableBlockNode extends DecoratorNode<JSX.Element> {
     return false
   }
 
-  decorate(): JSX.Element {
+  decorate(): React.JSX.Element {
     return (
       <WorkflowVariableBlockComponent
         nodeKey={this.getKey()}

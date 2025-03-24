@@ -155,7 +155,7 @@ const translation = {
     },
     langfuse: {
       title: 'Langfuse',
-      description: 'Traces, evals, prompt management and metrics to debug and improve your LLM application.',
+      description: 'Open-source LLM observability, evaluation, prompt management and metrics to debug and improve your LLM application.',
     },
     opik: {
       title: 'Opik',

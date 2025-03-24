@@ -1,10 +1,16 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import dayjs, { type Dayjs } from 'dayjs'
 import { RiCalendarLine, RiCloseCircleFill } from '@remixicon/react'
 import cn from '@/utils/classnames'
 import type { DatePickerProps, Period } from '../types'
 import { ViewType } from '../types'
-import { cloneTime, getDaysInMonth, getHourIn12Hour } from '../utils'
+import type { Dayjs } from 'dayjs'
+import dayjs, {
+  clearMonthMapCache,
+  cloneTime,
+  getDateWithTimezone,
+  getDaysInMonth,
+  getHourIn12Hour,
+} from '../utils/dayjs'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
@@ -22,22 +28,28 @@ import { useTranslation } from 'react-i18next'
 
 const DatePicker = ({
   value,
+  timezone,
   onChange,
   onClear,
   placeholder,
   needTimePicker = true,
   renderTrigger,
+  triggerWrapClassName,
+  popupZIndexClassname = 'z-[11]',
 }: DatePickerProps) => {
   const { t } = useTranslation()
   const [isOpen, setIsOpen] = useState(false)
   const [view, setView] = useState(ViewType.date)
   const containerRef = useRef<HTMLDivElement>(null)
+  const isInitial = useRef(true)
+  const inputValue = useRef(value ? value.tz(timezone) : undefined).current
+  const defaultValue = useRef(getDateWithTimezone({ timezone })).current
 
-  const [currentDate, setCurrentDate] = useState(value || dayjs())
-  const [selectedDate, setSelectedDate] = useState(value)
+  const [currentDate, setCurrentDate] = useState(inputValue || defaultValue)
+  const [selectedDate, setSelectedDate] = useState(inputValue)
 
-  const [selectedMonth, setSelectedMonth] = useState((value || dayjs()).month())
-  const [selectedYear, setSelectedYear] = useState((value || dayjs()).year())
+  const [selectedMonth, setSelectedMonth] = useState((inputValue || defaultValue).month())
+  const [selectedYear, setSelectedYear] = useState((inputValue || defaultValue).year())
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -50,6 +62,25 @@ const DatePicker = ({
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
+  useEffect(() => {
+    if (isInitial.current) {
+      isInitial.current = false
+      return
+    }
+    clearMonthMapCache()
+    if (value) {
+      const newValue = getDateWithTimezone({ date: value, timezone })
+      setCurrentDate(newValue)
+      setSelectedDate(newValue)
+      onChange(newValue)
+    }
+    else {
+      setCurrentDate(prev => getDateWithTimezone({ date: prev, timezone }))
+      setSelectedDate(prev => prev ? getDateWithTimezone({ date: prev, timezone }) : undefined)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [timezone])
+
   const handleClickTrigger = (e: React.MouseEvent) => {
     e.stopPropagation()
     if (isOpen) {
@@ -58,15 +89,15 @@ const DatePicker = ({
     }
     setView(ViewType.date)
     setIsOpen(true)
+    if (value) {
+      setCurrentDate(value)
+      setSelectedDate(value)
+    }
   }
 
   const handleClear = (e: React.MouseEvent) => {
-    const newDate = dayjs()
     e.stopPropagation()
     setSelectedDate(undefined)
-    setCurrentDate(prev => prev || newDate)
-    setSelectedMonth(prev => prev || newDate.month())
-    setSelectedYear(prev => prev || newDate.year())
     if (!isOpen)
       onClear()
   }
@@ -84,13 +115,13 @@ const DatePicker = ({
   }, [currentDate])
 
   const handleDateSelect = useCallback((day: Dayjs) => {
-    const newDate = cloneTime(day, selectedDate || dayjs())
+    const newDate = cloneTime(day, selectedDate || getDateWithTimezone({ timezone }))
     setCurrentDate(newDate)
     setSelectedDate(newDate)
-  }, [selectedDate])
+  }, [selectedDate, timezone])
 
   const handleSelectCurrentDate = () => {
-    const newDate = dayjs()
+    const newDate = getDateWithTimezone({ timezone })
     setCurrentDate(newDate)
     setSelectedDate(newDate)
     onChange(newDate)
@@ -98,7 +129,9 @@ const DatePicker = ({
   }
 
   const handleConfirmDate = () => {
-    onChange(selectedDate)
+    // debugger
+    console.log(selectedDate, selectedDate?.tz(timezone))
+    onChange(selectedDate ? selectedDate.tz(timezone) : undefined)
     setIsOpen(false)
   }
 
@@ -119,19 +152,19 @@ const DatePicker = ({
   }
 
   const handleSelectHour = useCallback((hour: string) => {
-    const selectedTime = selectedDate || dayjs()
+    const selectedTime = selectedDate || getDateWithTimezone({ timezone })
     handleTimeSelect(hour, selectedTime.minute().toString().padStart(2, '0'), selectedTime.format('A') as Period)
-  }, [selectedDate])
+  }, [selectedDate, timezone])
 
   const handleSelectMinute = useCallback((minute: string) => {
-    const selectedTime = selectedDate || dayjs()
+    const selectedTime = selectedDate || getDateWithTimezone({ timezone })
     handleTimeSelect(getHourIn12Hour(selectedTime).toString().padStart(2, '0'), minute, selectedTime.format('A') as Period)
-  }, [selectedDate])
+  }, [selectedDate, timezone])
 
   const handleSelectPeriod = useCallback((period: Period) => {
-    const selectedTime = selectedDate || dayjs()
+    const selectedTime = selectedDate || getDateWithTimezone({ timezone })
     handleTimeSelect(getHourIn12Hour(selectedTime).toString().padStart(2, '0'), selectedTime.minute().toString().padStart(2, '0'), period)
-  }, [selectedDate])
+  }, [selectedDate, timezone])
 
   const handleOpenYearMonthPicker = () => {
     setSelectedMonth(currentDate.month())
@@ -156,15 +189,13 @@ const DatePicker = ({
   }, [])
 
   const handleYearMonthConfirm = () => {
-    setCurrentDate((prev) => {
-      return prev ? prev.clone().month(selectedMonth).year(selectedYear) : dayjs().month(selectedMonth).year(selectedYear)
-    })
+    setCurrentDate(prev => prev.clone().month(selectedMonth).year(selectedYear))
     setView(ViewType.date)
   }
 
   const timeFormat = needTimePicker ? 'MMMM D, YYYY hh:mm A' : 'MMMM D, YYYY'
   const displayValue = value?.format(timeFormat) || ''
-  const displayTime = (selectedDate || dayjs().startOf('day')).format('hh:mm A')
+  const displayTime = selectedDate?.format('hh:mm A') || '--:-- --'
   const placeholderDate = isOpen && selectedDate ? selectedDate.format(timeFormat) : (placeholder || t('time.defaultPlaceholder'))
 
   return (
@@ -173,7 +204,7 @@ const DatePicker = ({
       onOpenChange={setIsOpen}
       placement='bottom-end'
     >
-      <PortalToFollowElemTrigger>
+      <PortalToFollowElemTrigger className={triggerWrapClassName}>
         {renderTrigger ? (renderTrigger({
           value,
           selectedDate,
@@ -182,33 +213,33 @@ const DatePicker = ({
           handleClickTrigger,
         })) : (
           <div
-            className='w-[252px] flex items-center gap-x-0.5 rounded-lg px-2 py-1 bg-components-input-bg-normal cursor-pointer group hover:bg-state-base-hover-alt'
+            className='group flex w-[252px] cursor-pointer items-center gap-x-0.5 rounded-lg bg-components-input-bg-normal px-2 py-1 hover:bg-state-base-hover-alt'
             onClick={handleClickTrigger}
           >
             <input
-              className='flex-1 p-1 bg-transparent text-components-input-text-filled placeholder:text-components-input-text-placeholder truncate system-xs-regular
-            outline-none appearance-none cursor-pointer'
+              className='system-xs-regular flex-1 cursor-pointer appearance-none truncate bg-transparent p-1
+            text-components-input-text-filled outline-none placeholder:text-components-input-text-placeholder'
               readOnly
               value={isOpen ? '' : displayValue}
               placeholder={placeholderDate}
             />
             <RiCalendarLine className={cn(
-              'shrink-0 w-4 h-4 text-text-quaternary',
+              'h-4 w-4 shrink-0 text-text-quaternary',
               isOpen ? 'text-text-secondary' : 'group-hover:text-text-secondary',
               (displayValue || (isOpen && selectedDate)) && 'group-hover:hidden',
             )} />
             <RiCloseCircleFill
               className={cn(
-                'hidden shrink-0 w-4 h-4 text-text-quaternary',
-                (displayValue || (isOpen && selectedDate)) && 'group-hover:inline-block hover:text-text-secondary',
+                'hidden h-4 w-4 shrink-0 text-text-quaternary',
+                (displayValue || (isOpen && selectedDate)) && 'hover:text-text-secondary group-hover:inline-block',
               )}
               onClick={handleClear}
             />
           </div>
         )}
       </PortalToFollowElemTrigger>
-      <PortalToFollowElemContent>
-        <div className='w-[252px] mt-1 bg-components-panel-bg rounded-xl shadow-lg shadow-shadow-shadow-5 border-[0.5px] border-components-panel-border'>
+      <PortalToFollowElemContent className={popupZIndexClassname}>
+        <div className='mt-1 w-[252px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg shadow-shadow-shadow-5'>
           {/* Header */}
           {view === ViewType.date ? (
             <DatePickerHeader

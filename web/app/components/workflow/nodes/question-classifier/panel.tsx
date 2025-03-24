@@ -77,7 +77,7 @@ const Panel: FC<NodePanelProps<QuestionClassifierNodeType>> = ({
       },
     )
 
-    if (isVisionModel && data.vision.enabled && data.vision.configs?.variable_selector) {
+    if (isVisionModel && data.vision?.enabled && data.vision?.configs?.variable_selector) {
       const currentVariable = findVariableWhenOnLLMVision(data.vision.configs.variable_selector, availableVisionVars)
 
       forms.push(
@@ -100,7 +100,7 @@ const Panel: FC<NodePanelProps<QuestionClassifierNodeType>> = ({
 
   return (
     <div className='pt-2'>
-      <div className='px-4 space-y-4'>
+      <div className='space-y-4 px-4'>
         <Field
           title={t(`${i18nPrefix}.model`)}
         >

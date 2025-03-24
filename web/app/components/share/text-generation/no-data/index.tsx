@@ -9,10 +9,10 @@ export type INoDataProps = {}
 const NoData: FC<INoDataProps> = () => {
   const { t } = useTranslation()
   return (
-    <div className='flex flex-col h-full w-full justify-center items-center'>
-      <RiSparklingFill className='w-12 h-12 text-text-empty-state-icon' />
+    <div className='flex h-full w-full flex-col items-center justify-center'>
+      <RiSparklingFill className='h-12 w-12 text-text-empty-state-icon' />
       <div
-        className='mt-2 text-text-quaternary system-sm-regular'
+        className='system-sm-regular mt-2 text-text-quaternary'
       >
         {t('share.generation.noData')}
       </div>

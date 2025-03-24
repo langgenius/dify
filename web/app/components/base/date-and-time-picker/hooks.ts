@@ -1,4 +1,4 @@
-import dayjs from 'dayjs'
+import dayjs from './utils/dayjs'
 import { Period } from './types'
 import { useTranslation } from 'react-i18next'
 
