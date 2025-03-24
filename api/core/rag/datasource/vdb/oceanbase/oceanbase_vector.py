@@ -107,7 +107,8 @@ class OceanBaseVector(BaseVector):
             except Exception as e:
                 raise Exception(
                     "Failed to add fulltext index to the target table, your OceanBase version must be 4.3.5.1 or above "
-                    + "to support fulltext index and vector index in the same table", e
+                    + "to support fulltext index and vector index in the same table",
+                    e,
                 )
             vals = []
             params = self._client.perform_raw_text_sql("SHOW PARAMETERS LIKE '%ob_vector_memory_limit_percentage%'")
@@ -137,10 +138,11 @@ class OceanBaseVector(BaseVector):
 
         try:
             from packaging import version
+
             # return OceanBase_CE 4.3.5.1 (r101000042025031818-bxxxx) (Built Mar 18 2025 18:13:36)
             result = self._client.perform_raw_text_sql("SELECT @@version_comment AS version")
-            ob_full_version=result.fetchone()[0]
-            ob_version=ob_full_version.split()[1]
+            ob_full_version = result.fetchone()[0]
+            ob_version = ob_full_version.split()[1]
             logger.debug("Current OceanBase version is %s", ob_version)
             return version.parse(ob_version).base_version >= version.parse("4.3.5.1").base_version
         except Exception as e:
@@ -171,6 +173,7 @@ class OceanBaseVector(BaseVector):
 
     def get_ids_by_metadata_field(self, key: str, value: str) -> list[str]:
         from sqlalchemy import text
+
         cur = self._client.get(
             table_name=self._collection_name,
             ids=None,
@@ -208,19 +211,20 @@ class OceanBaseVector(BaseVector):
             with self._client.engine.connect() as conn:
                 with conn.begin():
                     from sqlalchemy import text
+
                     result = conn.execute(text(full_sql), {"query": query})
                     rows = result.fetchall()
 
                     docs = []
                     for row in rows:
-                        metadata_str, text, score = row
+                        metadata_str, _text, score = row
                         try:
                             metadata = json.loads(metadata_str)
                         except json.JSONDecodeError:
                             print(f"Invalid JSON metadata: {metadata_str}")
                             metadata = {}
                         metadata["score"] = score
-                        docs.append(Document(page_content=text, metadata=metadata))
+                        docs.append(Document(page_content=_text, metadata=metadata))
 
                     return docs
         except Exception as e:
@@ -229,12 +233,13 @@ class OceanBaseVector(BaseVector):
 
     def search_by_vector(self, query_vector: list[float], **kwargs: Any) -> list[Document]:
         document_ids_filter = kwargs.get("document_ids_filter")
-        where_clause = None
+        _where_clause = None
         if document_ids_filter:
             document_ids = ", ".join(f"'{id}'" for id in document_ids_filter)
             where_clause = f"metadata->>'$.document_id' in ({document_ids})"
             from sqlalchemy import text
-            where_clause = [text(where_clause)]
+
+            _where_clause = [text(where_clause)]
         ef_search = kwargs.get("ef_search", self._hnsw_ef_search)
         if ef_search != self._hnsw_ef_search:
             self._client.set_ob_hnsw_ef_search(ef_search)
@@ -249,17 +254,17 @@ class OceanBaseVector(BaseVector):
                 distance_func=func.l2_distance,
                 output_column_names=["text", "metadata"],
                 with_dist=True,
-                where_clause=where_clause,
+                where_clause=_where_clause,
             )
         except Exception as e:
             raise Exception("Failed to search by vector. ", e)
         docs = []
-        for text, metadata, distance in cur:
+        for _text, metadata, distance in cur:
             metadata = json.loads(metadata)
             metadata["score"] = 1 - distance / math.sqrt(2)
             docs.append(
                 Document(
-                    page_content=text,
+                    page_content=_text,
                     metadata=metadata,
                 )
             )

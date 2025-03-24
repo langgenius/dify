@@ -36,6 +36,6 @@ class OceanBaseVectorConfig(BaseSettings):
 
     OCEANBASE_ENABLE_HYBRID_SEARCH: bool = Field(
         description="Enable hybrid search features (requires OceanBase >= 4.3.5.1). Set to false for compatibility "
-                    "with older versions",
+        "with older versions",
         default=False,
     )

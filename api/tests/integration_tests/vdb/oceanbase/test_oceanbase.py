@@ -1,5 +1,3 @@
-
-
 from core.rag.datasource.vdb.oceanbase.oceanbase_vector import (
     OceanBaseVector,
     OceanBaseVectorConfig,
@@ -22,9 +20,10 @@ def oceanbase_vector():
             user="root@sys",
             database="test",
             password="difyai123456",
-            enable_hybrid_search=True
+            enable_hybrid_search=True,
         ),
     )
+
 
 def get_example_document(doc_id: str) -> Document:
     doc = Document(
@@ -43,7 +42,7 @@ class OceanBaseVectorTest(AbstractVectorTest):
     def __init__(self, vector: OceanBaseVector):
         super().__init__()
         self.vector = vector
-        
+
     def create_vector(self):
         self.vector.create(
             texts=[get_example_document(doc_id=self.example_doc_id)],
