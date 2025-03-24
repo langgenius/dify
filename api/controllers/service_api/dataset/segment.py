@@ -119,14 +119,14 @@ class SegmentApi(DatasetApiResource):
 
         status_list = args["status"]
         keyword = args["keyword"]
-        
+
         segments, total = SegmentService.get_segments(
             document_id=document_id,
             tenant_id=current_user.current_tenant_id,
             status_list=args["status"],
             keyword=args["keyword"],
         )
-    
+
         response = {
             "data": marshal(segments, segment_fields),
             "doc_form": document.doc_form,
