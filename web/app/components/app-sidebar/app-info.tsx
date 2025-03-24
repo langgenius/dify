@@ -242,7 +242,7 @@ const AppInfo = ({ expand }: IAppInfoProps) => {
             <div className='system-xs-regular text-text-tertiary'>{appDetail.description}</div>
           )}
           {/* operations */}
-          <div className='flex items-center gap-1 self-stretch'>
+          <div className='flex flex-wrap items-center gap-1 self-stretch'>
             <Button
               size={'small'}
               variant={'secondary'}
