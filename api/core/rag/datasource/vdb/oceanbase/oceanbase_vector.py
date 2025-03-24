@@ -159,21 +159,26 @@ class OceanBaseVector(BaseVector):
         if document_ids_filter:
             document_ids = ", ".join(f"'{id}'" for id in document_ids_filter)
             where_clause = f"metadata->>'$.document_id' in ({document_ids})"
+            from sqlalchemy import text
+            where_clause = [text(where_clause)]
         ef_search = kwargs.get("ef_search", self._hnsw_ef_search)
         if ef_search != self._hnsw_ef_search:
             self._client.set_ob_hnsw_ef_search(ef_search)
             self._hnsw_ef_search = ef_search
         topk = kwargs.get("top_k", 10)
-        cur = self._client.ann_search(
-            table_name=self._collection_name,
-            vec_column_name="vector",
-            vec_data=query_vector,
-            topk=topk,
-            distance_func=func.l2_distance,
-            output_column_names=["text", "metadata"],
-            with_dist=True,
-            where_clause=where_clause,
-        )
+        try:
+            cur = self._client.ann_search(
+                table_name=self._collection_name,
+                vec_column_name="vector",
+                vec_data=query_vector,
+                topk=topk,
+                distance_func=func.l2_distance,
+                output_column_names=["text", "metadata"],
+                with_dist=True,
+                where_clause=where_clause,
+            )
+        except Exception as e:
+            raise Exception("Failed to search by vector. ", e)
         docs = []
         for text, metadata, distance in cur:
             metadata = json.loads(metadata)
