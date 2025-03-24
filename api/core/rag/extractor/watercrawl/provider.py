@@ -1,4 +1,6 @@
+from collections.abc import Generator
 from datetime import datetime
+from typing import Any
 
 from core.rag.extractor.watercrawl.client import WaterCrawlAPIClient
 
@@ -7,7 +9,8 @@ class WaterCrawlProvider:
     def __init__(self, api_key, base_url: str | None = None):
         self.client = WaterCrawlAPIClient(api_key, base_url)
 
-    def crawl_url(self, url, options):
+    def crawl_url(self, url, options: dict | Any = None) -> dict:
+        options = options or {}
         spider_options = {
             "max_depth": 1,
             "page_limit": 1,
@@ -38,7 +41,7 @@ class WaterCrawlProvider:
 
         return {"status": "active", "job_id": result.get("uuid")}
 
-    def get_crawl_status(self, crawl_request_id):
+    def get_crawl_status(self, crawl_request_id) -> dict:
         response = self.client.get_crawl_request(crawl_request_id)
         data = []
         if response["status"] in ["new", "running"]:
@@ -48,7 +51,7 @@ class WaterCrawlProvider:
             data = list(self._get_results(crawl_request_id))
 
         time_str = response.get("duration")
-        time_consuming = 0
+        time_consuming: float = 0
         if time_str:
             time_obj = datetime.strptime(time_str, "%H:%M:%S.%f")
             time_consuming = (
@@ -64,7 +67,7 @@ class WaterCrawlProvider:
             "time_consuming": time_consuming,
         }
 
-    def get_crawl_url_data(self, job_id, url):
+    def get_crawl_url_data(self, job_id, url) -> dict | None:
         if not job_id:
             return self.scrape_url(url)
 
@@ -79,11 +82,11 @@ class WaterCrawlProvider:
 
         return None
 
-    def scrape_url(self, url):
+    def scrape_url(self, url: str) -> dict:
         response = self.client.scrape_url(url=url, sync=True, prefetched=True)
         return self._structure_data(response)
 
-    def _structure_data(self, result_object: dict):
+    def _structure_data(self, result_object: dict) -> dict:
         if isinstance(result_object.get("result", {}), str):
             raise ValueError("Invalid result object. Expected a dictionary.")
 
@@ -92,10 +95,10 @@ class WaterCrawlProvider:
             "title": metadata.get("og:title") or metadata.get("title"),
             "description": metadata.get("description"),
             "source_url": result_object.get("url"),
-            "markdown": result_object.get("result").get("markdown"),
+            "markdown": result_object.get("result", {}).get("markdown"),
         }
 
-    def _get_results(self, crawl_request_id: str, query_params: dict | None = None):
+    def _get_results(self, crawl_request_id: str, query_params: dict | None = None) -> Generator[dict, None, None]:
         page = 0
         page_size = 100
 

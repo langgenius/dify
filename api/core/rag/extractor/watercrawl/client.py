@@ -42,7 +42,7 @@ class WaterCrawlAPIClient(BaseAPIClient):
     def __init__(self, api_key, base_url: str | None = "https://app.watercrawl.dev/"):
         super().__init__(api_key, base_url)
 
-    def process_eventstream(self, response: Response, download: bool = False):
+    def process_eventstream(self, response: Response, download: bool = False) -> Generator:
         for line in response.iter_lines():
             line = line.decode("utf-8")
             if line.startswith("data:"):
@@ -52,12 +52,12 @@ class WaterCrawlAPIClient(BaseAPIClient):
                     data["data"] = self.download_result(data["data"])
                 yield data
 
-    def process_response(self, response: Response) -> Union[dict, bytes, list, None, Generator]:
+    def process_response(self, response: Response) -> dict | bytes | list | None | Generator:
         response.raise_for_status()
         if response.status_code == 204:
             return None
         if response.headers.get("Content-Type") == "application/json":
-            return response.json()
+            return response.json() or {}
 
         if response.headers.get("Content-Type") == "application/octet-stream":
             return response.content
@@ -122,9 +122,12 @@ class WaterCrawlAPIClient(BaseAPIClient):
 
     def monitor_crawl_request(self, item_id: str, prefetched=False) -> Generator:
         query_params = {"prefetched": str(prefetched).lower()}
-        return self.process_response(
+        generator = self.process_response(
             self._get(f"/api/v1/core/crawl-requests/{item_id}/status/", stream=True, query_params=query_params),
         )
+        if not isinstance(generator, Generator):
+            raise ValueError("Generator expected")
+        yield from generator
 
     def get_crawl_request_results(
         self, item_id: str, page: int = 1, page_size: int = 25, query_params: dict | None = None
