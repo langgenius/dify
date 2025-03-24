@@ -102,7 +102,8 @@ class OceanBaseVector(BaseVector):
             )
             try:
                 if self._hybrid_search_enabled:
-                    self._client.perform_raw_text_sql(f"""ALTER TABLE {self._collection_name} ADD FULLTEXT INDEX fulltext_index_for_col_text (text) WITH PARSER ik""")
+                    self._client.perform_raw_text_sql(f"""ALTER TABLE {self._collection_name}
+                    ADD FULLTEXT INDEX fulltext_index_for_col_text (text) WITH PARSER ik""")
             except Exception as e:
                 raise Exception(
                     "Failed to add fulltext index to the target table, your OceanBase version must be 4.3.5.1 or above "
@@ -230,13 +231,14 @@ class OceanBaseVector(BaseVector):
         if document_ids_filter:
             document_ids = ", ".join(f"'{id}'" for id in document_ids_filter)
             where_clause = f"metadata->>'$.document_id' in ({document_ids})"
+            from sqlalchemy import text
+            where_clause = [text(where_clause)]
         ef_search = kwargs.get("ef_search", self._hnsw_ef_search)
         if ef_search != self._hnsw_ef_search:
             self._client.set_ob_hnsw_ef_search(ef_search)
             self._hnsw_ef_search = ef_search
         topk = kwargs.get("top_k", 10)
         try:
-            from sqlalchemy import text
             cur = self._client.ann_search(
                 table_name=self._collection_name,
                 vec_column_name="vector",
@@ -245,7 +247,7 @@ class OceanBaseVector(BaseVector):
                 distance_func=func.l2_distance,
                 output_column_names=["text", "metadata"],
                 with_dist=True,
-                where_clause=[text(where_clause)],
+                where_clause=where_clause,
             )
         except Exception as e:
             raise Exception("Failed to search by vector. ", e)
