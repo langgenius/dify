@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { SVG } from '@svgdotjs/svg.js'
 import ImagePreview from '@/app/components/base/image-uploader/image-preview'
+import DOMPurify from 'dompurify'
 
 export const SVGRenderer = ({ content }: { content: string }) => {
   const svgRef = useRef<HTMLDivElement>(null)
@@ -44,7 +45,7 @@ export const SVGRenderer = ({ content }: { content: string }) => {
 
         svgRef.current.style.width = `${Math.min(originalWidth, 298)}px`
 
-        const rootElement = draw.svg(content)
+        const rootElement = draw.svg(DOMPurify.sanitize(content))
 
         rootElement.click(() => {
           setImagePreview(svgToDataURL(svgElement as Element))
