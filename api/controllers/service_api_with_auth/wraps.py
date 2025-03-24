@@ -13,8 +13,10 @@ from libs.login import _get_user
 from libs.passport import PassportService
 from models.account import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountJoinRole, TenantStatus
 from models.model import ApiToken, App, EndUser
+from models.organization import Organization
 from pydantic import BaseModel  # type: ignore
 from services.account_service import AccountService
+from services.end_user_service import EndUserService
 from services.feature_service import FeatureService
 from sqlalchemy import select, update  # type: ignore
 from sqlalchemy.orm import Session  # type: ignore
@@ -241,29 +243,8 @@ def create_or_update_end_user_for_user_id(app_model: App, user_id: Optional[str]
     if not user_id:
         user_id = "DEFAULT-USER"
 
-    end_user = (
-        db.session.query(EndUser)
-        .filter(
-            EndUser.tenant_id == app_model.tenant_id,
-            EndUser.app_id == app_model.id,
-            EndUser.external_user_id == user_id,
-            EndUser.type == "service_api_with_auth",
-        )
-        .first()
-    )
-
-    if end_user is None:
-        end_user = EndUser(
-            tenant_id=app_model.tenant_id,
-            app_id=app_model.id,
-            type="service_api_with_auth",
-            session_id=user_id,
-            external_user_id=user_id,
-        )
-        db.session.add(end_user)
-        db.session.commit()
-
-    return end_user
+    # Use EndUserService to get or create end user with organization awareness
+    return EndUserService.get_or_create_end_user(app_model, user_id)
 
 
 class DatasetApiResource(Resource):

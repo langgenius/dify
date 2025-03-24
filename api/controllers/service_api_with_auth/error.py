@@ -102,7 +102,20 @@ class AccountInFreezeError(BaseHTTPException):
         "and is temporarily unavailable for new account registration."
     )
 
+
 class TenantNotFoundError(BaseHTTPException):
     error_code = "tenant_not_found"
     description = "Tenant not found."
+    code = 400
+
+
+class OrganizationNotFoundError(BaseHTTPException):
+    error_code = "organization_not_found"
+    description = "Organization not found."
+    code = 400
+
+
+class OrganizationMismatchError(BaseHTTPException):
+    error_code = "organization_mismatch"
+    description = "Organization mismatch."
     code = 400

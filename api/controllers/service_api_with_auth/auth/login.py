@@ -4,21 +4,22 @@ import flask_login  # type: ignore
 from configs import dify_config
 from constants.languages import languages
 from controllers.service_api_with_auth import api
-from controllers.service_api_with_auth.auth.error import (EmailCodeError,
-                                                          InvalidEmailError,
-                                                          InvalidTokenError)
-from controllers.service_api_with_auth.error import (AccountInFreezeError,
-                                                     AccountNotFound,
-                                                     EmailSendIpLimitError,
-                                                     TenantNotFoundError)
+from controllers.service_api_with_auth.auth.error import EmailCodeError, InvalidEmailError, InvalidTokenError
+from controllers.service_api_with_auth.error import (
+    AccountInFreezeError,
+    EmailSendIpLimitError,
+    OrganizationMismatchError,
+    OrganizationNotFoundError,
+    TenantNotFoundError,
+)
+from extensions.ext_database import db
 from flask import request
 from flask_restful import Resource, reqparse  # type: ignore
 from libs.helper import email, extract_remote_ip
 from models.account import Account
 from services.account_service import AccountService, TenantService
 from services.errors.account import AccountRegisterError
-from services.errors.workspace import WorkSpaceNotAllowedCreateError
-from services.feature_service import FeatureService
+from services.organization_service import OrganizationService
 
 
 class LogoutApi(Resource):
@@ -189,19 +190,38 @@ class EmailCodeLoginApi(Resource):
         if tenant is None:
             raise TenantNotFoundError()
 
+        # Find organization based on email domain
+        organization = OrganizationService.find_organization_by_email_domain(user_email, tenant.id)
+
+        if organization is None:
+            raise OrganizationNotFoundError()
+
+        is_new_user = account is None
+
         if account is None:
-            try:
-                account = AccountService.create_account_in_tenant(
-                    tenant=tenant,
-                    email=user_email,
-                    name=user_email,
-                    interface_language=languages[0],
-                )
-                is_new_user = True
-            except AccountRegisterError as are:
-                raise AccountInFreezeError()
+
+            # Create new account
+            account = AccountService.create_account_in_tenant(
+                tenant=tenant,
+                email=user_email,
+                name=user_email,
+                interface_language=languages[0],
+            )
+
+            # Assign organization if found
+            if organization:
+                OrganizationService.assign_account_to_organization(account, organization.id)
+
         else:
-            is_new_user = False
+
+            if account.organization_id is not None and account.organization_id != organization.id:
+                raise OrganizationMismatchError()
+
+            # Update organization if needed
+            if organization:
+                OrganizationService.assign_account_to_organization(account, organization.id)
+
+            # Ensure account is member of tenant
             connected_tenant = TenantService.get_join_tenants(account)
             if connected_tenant is None or tenant not in connected_tenant:
                 TenantService.create_tenant_member(tenant, account, role="end_user")

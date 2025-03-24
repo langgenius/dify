@@ -2,7 +2,9 @@ from typing import Any, Dict, Optional, Tuple
 
 from extensions.ext_database import db
 from libs.infinite_scroll_pagination import MultiPagePagination
+from models.account import Account
 from models.model import App, Conversation, EndUser, Message
+from services.organization_service import OrganizationService
 from sqlalchemy import and_, desc, func
 
 
@@ -192,3 +194,110 @@ class EndUserService:
         except Exception as e:
             db.session.rollback()
             return False, str(e)
+
+    @classmethod
+    def get_or_create_end_user(cls, app_model: App, user_id: str, user_type: str = "service_api_with_auth") -> EndUser:
+        """
+        Get or create an end user with organization awareness
+
+        Args:
+            app_model: The app model
+            user_id: The external user ID (often an account ID)
+            user_type: The type of end user (default: service_api_with_auth)
+
+        Returns:
+            The end user
+        """
+        if not user_id:
+            user_id = "DEFAULT-USER"
+
+        # Find existing end user
+        end_user = (
+            db.session.query(EndUser)
+            .filter(
+                EndUser.tenant_id == app_model.tenant_id,
+                EndUser.app_id == app_model.id,
+                EndUser.external_user_id == user_id,
+                EndUser.type == user_type,
+            )
+            .first()
+        )
+
+        # Get organization if the user has an account
+        organization_id = None
+        if user_id != "DEFAULT-USER":
+            account = db.session.query(Account).filter(Account.id == user_id).first()
+            if account:
+                organization = OrganizationService.get_organization_for_account_or_assign(account, app_model.tenant_id)
+                if organization:
+                    organization_id = organization.id
+
+        if not end_user:
+            # Create new end user
+            end_user = EndUser(
+                tenant_id=app_model.tenant_id,
+                app_id=app_model.id,
+                type=user_type,
+                external_user_id=user_id,
+                session_id=user_id,
+                organization_id=organization_id,
+            )
+            db.session.add(end_user)
+            db.session.commit()
+        elif organization_id and end_user.organization_id != organization_id:
+            # Update organization if needed
+            OrganizationService.assign_end_user_to_organization(end_user, organization_id)
+
+        return end_user
+
+    @classmethod
+    def get_organization_for_end_user(cls, end_user: EndUser) -> Optional[dict]:
+        """
+        Get organization info for an end user
+
+        Args:
+            end_user: The end user
+
+        Returns:
+            Organization info as dict or None
+        """
+        if not end_user or not end_user.organization_id:
+            return None
+
+        organization = OrganizationService.get_organization_by_id(end_user.organization_id)
+        if organization:
+            return {
+                "id": organization.id,
+                "name": organization.name,
+                "code": organization.code,
+                "type": organization.type,
+            }
+
+        return None
+
+    @classmethod
+    def update_end_user(
+        cls, end_user: EndUser, name: Optional[str] = None, organization_id: Optional[str] = None
+    ) -> EndUser:
+        """
+        Update an end user's properties
+
+        Args:
+            end_user: The end user to update
+            name: New name (optional)
+            organization_id: New organization ID (optional)
+
+        Returns:
+            The updated end user
+        """
+        if not end_user:
+            raise ValueError("End user cannot be None")
+
+        if name:
+            end_user.name = name
+
+        if organization_id and end_user.organization_id != organization_id:
+            OrganizationService.assign_end_user_to_organization(end_user, organization_id)
+
+        db.session.commit()
+        return end_user
