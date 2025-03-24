@@ -25,7 +25,7 @@ class OpenGaussConfig(BaseModel):
     database: str
     min_connection: int
     max_connection: int
-    enable_pq: bool = False # Enable PQ acceleration
+    enable_pq: bool = False  # Enable PQ acceleration
 
     @model_validator(mode="before")
     @classmethod
@@ -118,7 +118,7 @@ class OpenGauss(BaseVector):
             with self._get_cursor() as cur:
                 if dimension <= 2000:
                     if self.pq_enabled:
-                        cur.execute(SQL_CREATE_INDEX_PQ.format(table_name=self.table_name, pq_m=int(dimension/4)))
+                        cur.execute(SQL_CREATE_INDEX_PQ.format(table_name=self.table_name, pq_m=int(dimension / 4)))
                         cur.execute("SET hnsw_earlystop_threshold = 320")
 
                     if not self.pq_enabled:
