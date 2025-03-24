@@ -35,15 +35,18 @@ const nodeDefault: NodeDefault<VariableAssignerNodeType> = {
     if (group_enabled) {
       if (!groups || groups.length === 0) {
         errorMessages = t(`${i18nPrefix}.errorMsg.fieldRequired`, { field: t(`${i18nPrefix}.nodes.variableAssigner.title`) })
-      } else if (!errorMessages)
+      }
+      else if (!errorMessages) {
         groups.forEach((group) => {
           validateVariables(group.variables || [], `${i18nPrefix}.errorMsg.fields.variableValue`)
-        });
-    } else {
+        })
+      }
+    }
+    else {
       if (!variables || variables.length === 0)
-        errorMessages = t(`${i18nPrefix}.errorMsg.fieldRequired`, { field: t(`${i18nPrefix}.nodes.variableAssigner.title`) });
+        errorMessages = t(`${i18nPrefix}.errorMsg.fieldRequired`, { field: t(`${i18nPrefix}.nodes.variableAssigner.title`) })
       else if (!errorMessages)
-        validateVariables(variables, `${i18nPrefix}.errorMsg.fields.variableValue`);
+        validateVariables(variables, `${i18nPrefix}.errorMsg.fields.variableValue`)
     }
 
     return {
