@@ -1,0 +1,370 @@
+app:
+  description: ''
+  icon: 🤖
+  icon_background: '#FFEAD5'
+  mode: workflow
+  name: Network anomalies analysis
+  use_icon_as_answer_icon: false
+dependencies:
+- current_identifier: null
+  type: package
+  value:
+    plugin_unique_identifier: langgenius/deepseek:0.0.5@fd6efd37c2a931911de8ab9ca3ba2da303bef146d45ee87ad896b04b36d09403
+kind: app
+version: 0.1.5
+workflow:
+  conversation_variables: []
+  environment_variables: []
+  features:
+    file_upload:
+      allowed_file_extensions:
+      - .JPG
+      - .JPEG
+      - .PNG
+      - .GIF
+      - .WEBP
+      - .SVG
+      allowed_file_types:
+      - image
+      allowed_file_upload_methods:
+      - local_file
+      - remote_url
+      enabled: false
+      fileUploadConfig:
+        audio_file_size_limit: 50
+        batch_count_limit: 5
+        file_size_limit: 15
+        image_file_size_limit: 10
+        video_file_size_limit: 100
+        workflow_file_upload_limit: 10
+      image:
+        enabled: false
+        number_limits: 3
+        transfer_methods:
+        - local_file
+        - remote_url
+      number_limits: 3
+    opening_statement: ''
+    retriever_resource:
+      enabled: true
+    sensitive_word_avoidance:
+      enabled: false
+    speech_to_text:
+      enabled: false
+    suggested_questions: []
+    suggested_questions_after_answer:
+      enabled: false
+    text_to_speech:
+      enabled: false
+      language: ''
+      voice: ''
+  graph:
+    edges:
+    - data:
+        isInIteration: false
+        sourceType: llm
+        targetType: end
+      id: 1741075304942-source-1741075309105-target
+      selected: false
+      source: '1741075304942'
+      sourceHandle: source
+      target: '1741075309105'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: start
+        targetType: tool
+      id: 1741075107082-source-1742526484280-target
+      source: '1741075107082'
+      sourceHandle: source
+      target: '1742526484280'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: tool
+        targetType: llm
+      id: 1742526484280-source-1741075304942-target
+      source: '1742526484280'
+      sourceHandle: source
+      target: '1741075304942'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    nodes:
+    - data:
+        desc: ''
+        selected: true
+        title: 开始
+        type: start
+        variables:
+        - label: Pod
+          max_length: 48
+          options: []
+          required: true
+          type: text-input
+          variable: pod
+        - label: Namespace
+          max_length: 48
+          options: []
+          required: true
+          type: text-input
+          variable: namespace
+        - label: Query start time(Microsecond)
+          max_length: 48
+          options: []
+          required: true
+          type: number
+          variable: startTime
+        - label: Query end time(Microsecond)
+          max_length: 48
+          options: []
+          required: true
+          type: number
+          variable: endTime
+        - label: Threshold
+          max_length: 48
+          options: []
+          required: true
+          type: text-input
+          variable: threshold
+      height: 193
+      id: '1741075107082'
+      position:
+        x: 80
+        y: 282
+      positionAbsolute:
+        x: 80
+        y: 282
+      selected: true
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 243
+    - data:
+        context:
+          enabled: false
+          variable_selector: []
+        desc: ''
+        model:
+          completion_params:
+            temperature: 0.7
+          mode: chat
+          name: deepseek-chat
+          provider: langgenius/deepseek/deepseek
+        prompt_template:
+        - id: 04b40dd5-a59a-4747-a425-1d214b49d6f1
+          role: system
+          text: You function as an intelligent observability assistant with domain
+            expertise in log/metric/trace correlation analysis. Your primary task
+            is to methodically examine provided telemetry data and determine if operational
+            abnormalities requiring intervention exist.
+        - id: 4afae74e-f76e-40df-aa51-e0b73ea5cc7c
+          role: user
+          text: "# Purpose  \nAnalyze whether there are network anomalies for **{{#1741075107082.pod#}}**\
+            \ based on metric data.  \n\n# Analysis Process  \n1. **Review Raw Data**\
+            \  \n   Examine the metric data **{{#1742526484280.text#}}** to retrieve\
+            \ the downstream network Round-Trip Time (RTT) for the Pod.  \n2. **Analyze\
+            \ Trend of Related Metrics**  \n   If the user has provided a network\
+            \ RTT threshold **{{#1741075107082.threshold#}}**, compare it with the\
+            \ RTT values in the metric data **{{#1742526484280.text#}}**. If no threshold\
+            \ is provided, select an appropriate value for comparison.  \n3. **Conclusion**\
+            \  \n   Highlight abrupt changes in abnormal time periods based on the\
+            \ comparison. For example:  \n   *\"Network anomalies were detected in\
+            \ Pod **{{#1741075107082.pod#}}** from [start time] to [end time], with\
+            \ RTT surging from [initial value] to [final value].\"*  \n\n# Output\
+            \  \nAnalysis Result of Network Anomalies for Container **{{#1741075107082.pod#}}**"
+        selected: false
+        title: LLM
+        type: llm
+        variables: []
+        vision:
+          enabled: false
+      height: 89
+      id: '1741075304942'
+      position:
+        x: 680.1938546436463
+        y: 282
+      positionAbsolute:
+        x: 680.1938546436463
+        y: 282
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 243
+    - data:
+        desc: ''
+        outputs:
+        - value_selector:
+          - '1741075304942'
+          - text
+          variable: text
+        selected: false
+        title: 结束
+        type: end
+      height: 89
+      id: '1741075309105'
+      position:
+        x: 992.4771121801355
+        y: 282
+      positionAbsolute:
+        x: 992.4771121801355
+        y: 282
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 243
+    - data:
+        desc: ''
+        is_team_authorization: true
+        output_schema: null
+        paramSchemas:
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: Specified pod name
+            ja_JP: Specified pod name
+            pt_BR: Specified pod name
+            zh_Hans: 指定的容器POD名称
+          label:
+            en_US: pod
+            ja_JP: pod
+            pt_BR: pod
+            zh_Hans: pod
+          llm_description: Specified pod name
+          max: null
+          min: null
+          name: pod
+          options: []
+          placeholder: null
+          precision: null
+          required: false
+          scope: null
+          template: null
+          type: string
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: Specified namespace
+            ja_JP: Specified namespace
+            pt_BR: Specified namespace
+            zh_Hans: 指定的容器所在Namespace
+          label:
+            en_US: namespace
+            ja_JP: namespace
+            pt_BR: namespace
+            zh_Hans: namespace
+          llm_description: Specified namespace
+          max: null
+          min: null
+          name: namespace
+          options: []
+          placeholder: null
+          precision: null
+          required: false
+          scope: null
+          template: null
+          type: string
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: Data query start time(Microsecond)
+            ja_JP: Data query start time(Microsecond)
+            pt_BR: Data query start time(Microsecond)
+            zh_Hans: 开始时间 (微秒)
+          label:
+            en_US: startTime
+            ja_JP: startTime
+            pt_BR: startTime
+            zh_Hans: startTime
+          llm_description: Data query start time(Microsecond)
+          max: null
+          min: null
+          name: startTime
+          options: []
+          placeholder: null
+          precision: null
+          required: true
+          scope: null
+          template: null
+          type: number
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: Data query end time(Microsecond)
+            ja_JP: Data query end time(Microsecond)
+            pt_BR: Data query end time(Microsecond)
+            zh_Hans: 结束时间 (微秒)
+          label:
+            en_US: endTime
+            ja_JP: endTime
+            pt_BR: endTime
+            zh_Hans: endTime
+          llm_description: Data query end time(Microsecond)
+          max: null
+          min: null
+          name: endTime
+          options: []
+          placeholder: null
+          precision: null
+          required: true
+          scope: null
+          template: null
+          type: number
+        params:
+          endTime: ''
+          namespace: ''
+          pod: ''
+          startTime: ''
+        provider_id: apo_select
+        provider_name: apo_select
+        provider_type: builtin
+        selected: false
+        title: 容器与下游服务的网络往返时间(RTT,按命名空间和Pod统计)
+        tool_configurations: {}
+        tool_label: 容器与下游服务的网络往返时间(RTT,按命名空间和Pod统计)
+        tool_name: 查询容器网络与下游RTT
+        tool_parameters:
+          endTime:
+            type: variable
+            value:
+            - '1741075107082'
+            - endTime
+          namespace:
+            type: mixed
+            value: '{{#1741075107082.namespace#}}'
+          pod:
+            type: mixed
+            value: '{{#1741075107082.pod#}}'
+          startTime:
+            type: variable
+            value:
+            - '1741075107082'
+            - startTime
+        type: tool
+      height: 53
+      id: '1742526484280'
+      position:
+        x: 381.76254987897516
+        y: 282
+      positionAbsolute:
+        x: 381.76254987897516
+        y: 282
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 243
+    viewport:
+      x: 234.34228733775194
+      y: 72.11959428262679
+      zoom: 0.7039267963088532

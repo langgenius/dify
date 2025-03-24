@@ -1,0 +1,805 @@
+app:
+  description: ''
+  icon: 🤖
+  icon_background: '#FFEAD5'
+  mode: workflow
+  name: 告警有效性确认_通过functionCalling实现
+  use_icon_as_answer_icon: false
+dependencies:
+- current_identifier: null
+  type: package
+  value:
+    plugin_unique_identifier: langgenius/deepseek:0.0.5@fd6efd37c2a931911de8ab9ca3ba2da303bef146d45ee87ad896b04b36d09403
+kind: app
+version: 0.1.5
+workflow:
+  conversation_variables: []
+  environment_variables: []
+  features:
+    file_upload:
+      allowed_file_extensions:
+      - .JPG
+      - .JPEG
+      - .PNG
+      - .GIF
+      - .WEBP
+      - .SVG
+      allowed_file_types:
+      - image
+      allowed_file_upload_methods:
+      - local_file
+      - remote_url
+      enabled: false
+      fileUploadConfig:
+        audio_file_size_limit: 50
+        batch_count_limit: 5
+        file_size_limit: 15
+        image_file_size_limit: 10
+        video_file_size_limit: 100
+        workflow_file_upload_limit: 10
+      image:
+        enabled: false
+        number_limits: 3
+        transfer_methods:
+        - local_file
+        - remote_url
+      number_limits: 3
+    opening_statement: ''
+    retriever_resource:
+      enabled: true
+    sensitive_word_avoidance:
+      enabled: false
+    speech_to_text:
+      enabled: false
+    suggested_questions: []
+    suggested_questions_after_answer:
+      enabled: false
+    text_to_speech:
+      enabled: false
+      language: ''
+      voice: ''
+  graph:
+    edges:
+    - data:
+        isInIteration: false
+        sourceType: start
+        targetType: agent
+      id: 1741157526222-source-1741159085487-target
+      source: '1741157526222'
+      sourceHandle: source
+      target: '1741159085487'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: agent
+        targetType: question-classifier
+      id: 1741159085487-source-1741240469445-target
+      source: '1741159085487'
+      sourceHandle: source
+      target: '1741240469445'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: question-classifier
+        targetType: code
+      id: 1741240469445-1-1741240720274-target
+      source: '1741240469445'
+      sourceHandle: '1'
+      target: '1741240720274'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: question-classifier
+        targetType: code
+      id: 1741240469445-2-1741240720274-target
+      source: '1741240469445'
+      sourceHandle: '2'
+      target: '1741240720274'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: code
+        targetType: end
+      id: 1741240720274-source-1741157560922-target
+      source: '1741240720274'
+      sourceHandle: source
+      target: '1741157560922'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    nodes:
+    - data:
+        desc: ''
+        selected: true
+        title: 开始
+        type: start
+        variables:
+        - allowed_file_extensions: []
+          allowed_file_types:
+          - document
+          allowed_file_upload_methods:
+          - local_file
+          - remote_url
+          label: alert
+          max_length: 256
+          options: []
+          required: true
+          type: text-input
+          variable: alert
+        - label: params
+          max_length: 256
+          options: []
+          required: true
+          type: text-input
+          variable: params
+        - label: startTime（微秒）
+          max_length: 48
+          options: []
+          required: true
+          type: number
+          variable: startTime
+        - label: endTime（微秒）
+          max_length: 48
+          options: []
+          required: true
+          type: number
+          variable: endTime
+        - allowed_file_extensions:
+          - .json
+          allowed_file_types:
+          - custom
+          allowed_file_upload_methods:
+          - local_file
+          - remote_url
+          label: input
+          max_length: 48
+          options: []
+          required: false
+          type: file
+          variable: input
+      height: 193
+      id: '1741157526222'
+      position:
+        x: -61.80147086990212
+        y: 342.4507007225618
+      positionAbsolute:
+        x: -61.80147086990212
+        y: 342.4507007225618
+      selected: true
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 243
+    - data:
+        desc: ''
+        outputs:
+        - value_selector:
+          - '1741240720274'
+          - result
+          variable: text
+        selected: false
+        title: 结束
+        type: end
+      height: 89
+      id: '1741157560922'
+      position:
+        x: 1904.6754701143086
+        y: 404.7851940902575
+      positionAbsolute:
+        x: 1904.6754701143086
+        y: 404.7851940902575
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 243
+    - data:
+        agent_parameters:
+          instruction:
+            type: constant
+            value: 根据告警事件的描述，选择工具查询数据，返回工具查询内容
+          model:
+            type: constant
+            value:
+              completion_params: {}
+              mode: chat
+              model: deepseek-chat
+              model_type: llm
+              provider: langgenius/deepseek/deepseek
+              type: model-selector
+          query:
+            type: constant
+            value: '# 告警描述
+
+              {{#1741157526222.alert#}}
+
+              # 数据参数
+
+              {{#1741157526222.params#}}
+
+              # 开始时间
+
+              {{#1741157526222.startTime#}}
+
+              # 结束时间
+
+              {{#1741157526222.endTime#}}
+
+              请判断指标数据是抖动还是持续升高,回答简短'
+          tools:
+            type: constant
+            value:
+            - enabled: true
+              extra:
+                description: ''
+              parameters:
+                cadvisor_job_name:
+                  auto: 1
+                  value: null
+                endTime:
+                  auto: 1
+                  value: null
+                namespace:
+                  auto: 1
+                  value: null
+                pod:
+                  auto: 1
+                  value: null
+                startTime:
+                  auto: 1
+                  value: null
+              provider_name: apo_select
+              schemas:
+              - auto_generate: null
+                default: null
+                form: llm
+                human_description:
+                  en_US: cAdvisor job name
+                  ja_JP: cAdvisor job name
+                  pt_BR: cAdvisor job name
+                  zh_Hans: cAdvisor任务名称
+                label:
+                  en_US: cAdvisor job name
+                  ja_JP: cAdvisor job name
+                  pt_BR: cAdvisor job name
+                  zh_Hans: cAdvisor任务名称
+                llm_description: cAdvisor job name
+                max: null
+                min: null
+                name: cadvisor_job_name
+                options: []
+                placeholder: null
+                precision: null
+                required: false
+                scope: null
+                template: null
+                type: string
+              - auto_generate: null
+                default: null
+                form: llm
+                human_description:
+                  en_US: Namespace
+                  ja_JP: Namespace
+                  pt_BR: Namespace
+                  zh_Hans: 命名空间
+                label:
+                  en_US: Namespace
+                  ja_JP: Namespace
+                  pt_BR: Namespace
+                  zh_Hans: 命名空间
+                llm_description: Namespace
+                max: null
+                min: null
+                name: namespace
+                options: []
+                placeholder: null
+                precision: null
+                required: false
+                scope: null
+                template: null
+                type: string
+              - auto_generate: null
+                default: null
+                form: llm
+                human_description:
+                  en_US: Pod name
+                  ja_JP: Pod name
+                  pt_BR: Pod name
+                  zh_Hans: Pod名称
+                label:
+                  en_US: Pod name
+                  ja_JP: Pod name
+                  pt_BR: Pod name
+                  zh_Hans: Pod名称
+                llm_description: Pod name
+                max: null
+                min: null
+                name: pod
+                options: []
+                placeholder: null
+                precision: null
+                required: false
+                scope: null
+                template: null
+                type: string
+              - auto_generate: null
+                default: null
+                form: llm
+                human_description:
+                  en_US: Data query start time(Microsecond)
+                  ja_JP: Data query start time(Microsecond)
+                  pt_BR: Data query start time(Microsecond)
+                  zh_Hans: 开始时间 (微秒)
+                label:
+                  en_US: startTime
+                  ja_JP: startTime
+                  pt_BR: startTime
+                  zh_Hans: startTime
+                llm_description: Data query start time(Microsecond)
+                max: null
+                min: null
+                name: startTime
+                options: []
+                placeholder: null
+                precision: null
+                required: true
+                scope: null
+                template: null
+                type: number
+              - auto_generate: null
+                default: null
+                form: llm
+                human_description:
+                  en_US: Data query end time(Microsecond)
+                  ja_JP: Data query end time(Microsecond)
+                  pt_BR: Data query end time(Microsecond)
+                  zh_Hans: 结束时间 (微秒)
+                label:
+                  en_US: endTime
+                  ja_JP: endTime
+                  pt_BR: endTime
+                  zh_Hans: endTime
+                llm_description: Data query end time(Microsecond)
+                max: null
+                min: null
+                name: endTime
+                options: []
+                placeholder: null
+                precision: null
+                required: true
+                scope: null
+                template: null
+                type: number
+              settings: {}
+              tool_label: 容器CPU使用率(使用Containerd容器运行时,按容器和Pod统计)
+              tool_name: 容器CPU使用率(使用Containerd容器运行时,按容器和Pod统计)
+              type: builtin
+            - enabled: true
+              extra:
+                description: ''
+              parameters:
+                endTime:
+                  auto: 1
+                  value: null
+                namespace:
+                  auto: 1
+                  value: null
+                pod:
+                  auto: 1
+                  value: null
+                startTime:
+                  auto: 1
+                  value: null
+              provider_name: apo_select
+              schemas:
+              - auto_generate: null
+                default: null
+                form: llm
+                human_description:
+                  en_US: Specified pod name
+                  ja_JP: Specified pod name
+                  pt_BR: Specified pod name
+                  zh_Hans: 指定的容器POD名称
+                label:
+                  en_US: pod
+                  ja_JP: pod
+                  pt_BR: pod
+                  zh_Hans: pod
+                llm_description: Specified pod name
+                max: null
+                min: null
+                name: pod
+                options: []
+                placeholder: null
+                precision: null
+                required: false
+                scope: null
+                template: null
+                type: string
+              - auto_generate: null
+                default: null
+                form: llm
+                human_description:
+                  en_US: Specified namespace
+                  ja_JP: Specified namespace
+                  pt_BR: Specified namespace
+                  zh_Hans: 指定的容器所在Namespace
+                label:
+                  en_US: namespace
+                  ja_JP: namespace
+                  pt_BR: namespace
+                  zh_Hans: namespace
+                llm_description: Specified namespace
+                max: null
+                min: null
+                name: namespace
+                options: []
+                placeholder: null
+                precision: null
+                required: false
+                scope: null
+                template: null
+                type: string
+              - auto_generate: null
+                default: null
+                form: llm
+                human_description:
+                  en_US: Data query start time(Microsecond)
+                  ja_JP: Data query start time(Microsecond)
+                  pt_BR: Data query start time(Microsecond)
+                  zh_Hans: 开始时间 (微秒)
+                label:
+                  en_US: startTime
+                  ja_JP: startTime
+                  pt_BR: startTime
+                  zh_Hans: startTime
+                llm_description: Data query start time(Microsecond)
+                max: null
+                min: null
+                name: startTime
+                options: []
+                placeholder: null
+                precision: null
+                required: true
+                scope: null
+                template: null
+                type: number
+              - auto_generate: null
+                default: null
+                form: llm
+                human_description:
+                  en_US: Data query end time(Microsecond)
+                  ja_JP: Data query end time(Microsecond)
+                  pt_BR: Data query end time(Microsecond)
+                  zh_Hans: 结束时间 (微秒)
+                label:
+                  en_US: endTime
+                  ja_JP: endTime
+                  pt_BR: endTime
+                  zh_Hans: endTime
+                llm_description: Data query end time(Microsecond)
+                max: null
+                min: null
+                name: endTime
+                options: []
+                placeholder: null
+                precision: null
+                required: true
+                scope: null
+                template: null
+                type: number
+              settings: {}
+              tool_label: 容器与下游服务的网络往返时间(RTT,按命名空间和Pod统计)
+              tool_name: 查询容器网络与下游RTT
+              type: builtin
+            - enabled: true
+              extra:
+                description: ''
+              parameters:
+                endTime:
+                  auto: 1
+                  value: null
+                node:
+                  auto: 1
+                  value: null
+                startTime:
+                  auto: 1
+                  value: null
+              provider_name: apo_select
+              schemas:
+              - auto_generate: null
+                default: null
+                form: llm
+                human_description:
+                  en_US: Host node identifier
+                  ja_JP: Host node identifier
+                  pt_BR: Host node identifier
+                  zh_Hans: 宿主机节点标识
+                label:
+                  en_US: Host Node
+                  ja_JP: Host Node
+                  pt_BR: Host Node
+                  zh_Hans: 宿主机节点
+                llm_description: Unique identifier for host node
+                max: null
+                min: null
+                name: node
+                options: []
+                placeholder: null
+                precision: null
+                required: false
+                scope: null
+                template: null
+                type: string
+              - auto_generate: null
+                default: null
+                form: llm
+                human_description:
+                  en_US: Data query start time(Microsecond)
+                  ja_JP: Data query start time(Microsecond)
+                  pt_BR: Data query start time(Microsecond)
+                  zh_Hans: 开始时间 (微秒)
+                label:
+                  en_US: startTime
+                  ja_JP: startTime
+                  pt_BR: startTime
+                  zh_Hans: startTime
+                llm_description: Data query start time(Microsecond)
+                max: null
+                min: null
+                name: startTime
+                options: []
+                placeholder: null
+                precision: null
+                required: true
+                scope: null
+                template: null
+                type: number
+              - auto_generate: null
+                default: null
+                form: llm
+                human_description:
+                  en_US: Data query end time(Microsecond)
+                  ja_JP: Data query end time(Microsecond)
+                  pt_BR: Data query end time(Microsecond)
+                  zh_Hans: 结束时间 (微秒)
+                label:
+                  en_US: endTime
+                  ja_JP: endTime
+                  pt_BR: endTime
+                  zh_Hans: endTime
+                llm_description: Data query end time(Microsecond)
+                max: null
+                min: null
+                name: endTime
+                options: []
+                placeholder: null
+                precision: null
+                required: true
+                scope: null
+                template: null
+                type: number
+              settings: {}
+              tool_label: 查询宿主机CPU繁忙率
+              tool_name: 查询宿主机CPU繁忙率
+              type: builtin
+            - enabled: true
+              extra:
+                description: ''
+              parameters:
+                endTime:
+                  auto: 1
+                  value: null
+                job:
+                  auto: 1
+                  value: null
+                node:
+                  auto: 1
+                  value: null
+                startTime:
+                  auto: 1
+                  value: null
+              provider_name: apo_select
+              schemas:
+              - auto_generate: null
+                default: null
+                form: llm
+                human_description:
+                  en_US: Prometheus job name for host metrics
+                  ja_JP: Prometheus job name for host metrics
+                  pt_BR: Prometheus job name for host metrics
+                  zh_Hans: Prometheus任务名称（宿主机指标）
+                label:
+                  en_US: Prometheus Job
+                  ja_JP: Prometheus Job
+                  pt_BR: Tarefa Prometheus
+                  zh_Hans: Prometheus任务
+                llm_description: Unique identifier for metrics scrape job
+                max: null
+                min: null
+                name: job
+                options: []
+                placeholder: null
+                precision: null
+                required: false
+                scope: null
+                template: null
+                type: string
+              - auto_generate: null
+                default: null
+                form: llm
+                human_description:
+                  en_US: Host node identifier
+                  ja_JP: Host node identifier
+                  pt_BR: Host node identifier
+                  zh_Hans: 宿主机节点标识
+                label:
+                  en_US: Host Node
+                  ja_JP: Host Node
+                  pt_BR: Host Node
+                  zh_Hans: 宿主机节点
+                llm_description: Unique identifier for host node
+                max: null
+                min: null
+                name: node
+                options: []
+                placeholder: null
+                precision: null
+                required: false
+                scope: null
+                template: null
+                type: string
+              - auto_generate: null
+                default: null
+                form: llm
+                human_description:
+                  en_US: Data query start time(Microsecond)
+                  ja_JP: Data query start time(Microsecond)
+                  pt_BR: Data query start time(Microsecond)
+                  zh_Hans: 开始时间 (微秒)
+                label:
+                  en_US: startTime
+                  ja_JP: startTime
+                  pt_BR: startTime
+                  zh_Hans: startTime
+                llm_description: Data query start time(Microsecond)
+                max: null
+                min: null
+                name: startTime
+                options: []
+                placeholder: null
+                precision: null
+                required: true
+                scope: null
+                template: null
+                type: number
+              - auto_generate: null
+                default: null
+                form: llm
+                human_description:
+                  en_US: Data query end time(Microsecond)
+                  ja_JP: Data query end time(Microsecond)
+                  pt_BR: Data query end time(Microsecond)
+                  zh_Hans: 结束时间 (微秒)
+                label:
+                  en_US: endTime
+                  ja_JP: endTime
+                  pt_BR: endTime
+                  zh_Hans: endTime
+                llm_description: Data query end time(Microsecond)
+                max: null
+                min: null
+                name: endTime
+                options: []
+                placeholder: null
+                precision: null
+                required: true
+                scope: null
+                template: null
+                type: number
+              settings: {}
+              tool_label: 查询宿主机RAM使用率
+              tool_name: 查询宿主机RAM使用率
+              type: builtin
+        agent_strategy_label: FunctionCalling
+        agent_strategy_name: function_calling
+        agent_strategy_provider_name: langgenius/agent/agent
+        desc: ''
+        output_schema: null
+        plugin_unique_identifier: langgenius/agent:0.0.9@f16916b704a20067317dbe9030f62aa28f0832021a3ef6d4ce699504074c5e13
+        selected: false
+        title: Agent
+        type: agent
+      height: 197
+      id: '1741159085487'
+      position:
+        x: 458.49132435051126
+        y: 342.4507007225618
+      positionAbsolute:
+        x: 458.49132435051126
+        y: 342.4507007225618
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 243
+    - data:
+        classes:
+        - id: '1'
+          name: 抖动
+        - id: '2'
+          name: 持续
+        desc: ''
+        instruction: 判断输入的结论是抖动还是持续
+        instructions: ''
+        model:
+          completion_params:
+            temperature: 0.7
+          mode: chat
+          name: deepseek-chat
+          provider: langgenius/deepseek/deepseek
+        query_variable_selector:
+        - '1741159085487'
+        - text
+        selected: false
+        title: 问题分类器
+        topics: []
+        type: question-classifier
+        vision:
+          enabled: false
+      height: 167
+      id: '1741240469445'
+      position:
+        x: 1051.73807978915
+        y: 342.4507007225618
+      positionAbsolute:
+        x: 1051.73807978915
+        y: 342.4507007225618
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 243
+    - data:
+        code: "\ndef main(arg1: str) -> dict:\n    res = \"true\"\n    if arg1 ==\
+          \ \"持续\":\n        res = \"false\"\n    return {\n        \"result\": res,\n\
+          \    }\n"
+        code_language: python3
+        desc: ''
+        outputs:
+          result:
+            children: null
+            type: string
+        selected: false
+        title: 代码执行
+        type: code
+        variables:
+        - value_selector:
+          - '1741240469445'
+          - class_name
+          variable: arg1
+      height: 53
+      id: '1741240720274'
+      position:
+        x: 1416.4535710138914
+        y: 404.7851940902575
+      positionAbsolute:
+        x: 1416.4535710138914
+        y: 404.7851940902575
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 243
+    viewport:
+      x: 238.9033199500173
+      y: -10.101447204616534
+      zoom: 0.6318418919921089

@@ -1,0 +1,368 @@
+app:
+  description: ''
+  icon: 🤖
+  icon_background: '#FFEAD5'
+  mode: workflow
+  name: 服务告警事件确认
+  use_icon_as_answer_icon: false
+dependencies:
+- current_identifier: null
+  type: package
+  value:
+    plugin_unique_identifier: langgenius/deepseek:0.0.5@fd6efd37c2a931911de8ab9ca3ba2da303bef146d45ee87ad896b04b36d09403
+kind: app
+version: 0.1.5
+workflow:
+  conversation_variables: []
+  environment_variables: []
+  features:
+    file_upload:
+      allowed_file_extensions:
+      - .JPG
+      - .JPEG
+      - .PNG
+      - .GIF
+      - .WEBP
+      - .SVG
+      allowed_file_types:
+      - image
+      allowed_file_upload_methods:
+      - local_file
+      - remote_url
+      enabled: false
+      fileUploadConfig:
+        audio_file_size_limit: 50
+        batch_count_limit: 5
+        file_size_limit: 15
+        image_file_size_limit: 10
+        video_file_size_limit: 100
+        workflow_file_upload_limit: 10
+      image:
+        enabled: false
+        number_limits: 3
+        transfer_methods:
+        - local_file
+        - remote_url
+      number_limits: 3
+    opening_statement: ''
+    retriever_resource:
+      enabled: true
+    sensitive_word_avoidance:
+      enabled: false
+    speech_to_text:
+      enabled: false
+    suggested_questions: []
+    suggested_questions_after_answer:
+      enabled: false
+    text_to_speech:
+      enabled: false
+      language: ''
+      voice: ''
+  graph:
+    edges:
+    - data:
+        isInIteration: false
+        sourceType: llm
+        targetType: end
+      id: 1741075304942-source-1741075309105-target
+      source: '1741075304942'
+      sourceHandle: source
+      target: '1741075309105'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: start
+        targetType: tool
+      id: 1741075107082-source-1742537242313-target
+      source: '1741075107082'
+      sourceHandle: source
+      target: '1742537242313'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: tool
+        targetType: llm
+      id: 1742537242313-source-1741075304942-target
+      source: '1742537242313'
+      sourceHandle: source
+      target: '1741075304942'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    nodes:
+    - data:
+        desc: ''
+        selected: false
+        title: 开始
+        type: start
+        variables:
+        - label: startTime（微秒）
+          max_length: 48
+          options: []
+          required: true
+          type: number
+          variable: startTime
+        - label: endTime（微秒）
+          max_length: 48
+          options: []
+          required: true
+          type: number
+          variable: endTime
+        - label: 服务名
+          max_length: 48
+          options: []
+          required: false
+          type: text-input
+          variable: service
+        - label: 服务端点
+          max_length: 48
+          options: []
+          required: false
+          type: text-input
+          variable: endpoint
+      height: 167
+      id: '1741075107082'
+      position:
+        x: 80
+        y: 282
+      positionAbsolute:
+        x: 80
+        y: 282
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 243
+    - data:
+        context:
+          enabled: false
+          variable_selector: []
+        desc: ''
+        model:
+          completion_params:
+            temperature: 0.7
+          mode: chat
+          name: deepseek-chat
+          provider: langgenius/deepseek/deepseek
+        prompt_template:
+        - id: 04b40dd5-a59a-4747-a425-1d214b49d6f1
+          role: system
+          text: 你是一个智能助手和可观测领域专家，帮助用户分析是否存在问题。
+        - id: 924b8b02-39cd-4dfc-bcbc-f97752d75ac4
+          role: user
+          text: '# 目的
+
+            根据指标数据分析网络是否存在异常。
+
+            # 分析过程
+
+            1. 查看原始数据
+
+            查看指标数据，获取Pod的下游网络RTT时间。
+
+            2. 查看相关指标变化趋势
+
+            如果用户提供了网络RTT阈值，请与指标数据中的RTT时间进行比对，如果没有请选择一个合适的值进行比对。
+
+            3. 给出结论
+
+            根据你的比对结果将异常时间段的突变值变化展示出来。如xx Pod在xx-xx时间内网络存在异常，RTT从xx突变到xx。
+
+            # 输出
+
+            容器
+
+            的网络异常分析结果
+
+            '
+        selected: false
+        title: LLM
+        type: llm
+        variables: []
+        vision:
+          enabled: false
+      height: 89
+      id: '1741075304942'
+      position:
+        x: 906.7638642048873
+        y: 282
+      positionAbsolute:
+        x: 906.7638642048873
+        y: 282
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 243
+    - data:
+        desc: ''
+        outputs:
+        - value_selector:
+          - '1741075304942'
+          - text
+          variable: text
+        selected: false
+        title: 结束
+        type: end
+      height: 89
+      id: '1741075309105'
+      position:
+        x: 1286.0557841572368
+        y: 282
+      positionAbsolute:
+        x: 1286.0557841572368
+        y: 282
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 243
+    - data:
+        desc: ''
+        is_team_authorization: true
+        output_schema: null
+        paramSchemas:
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: entry service
+            ja_JP: entry service
+            pt_BR: entry service
+            zh_Hans: 拓扑入口服务名
+          label:
+            en_US: service
+            ja_JP: service
+            pt_BR: service
+            zh_Hans: service
+          llm_description: toplogy service name
+          max: null
+          min: null
+          name: service
+          options: []
+          placeholder: null
+          precision: null
+          required: false
+          scope: null
+          template: null
+          type: string
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: toplogy endpoint
+            ja_JP: toplogy endpoint
+            pt_BR: toplogy endpoint
+            zh_Hans: 拓扑入口服务端点
+          label:
+            en_US: endpoint
+            ja_JP: endpoint
+            pt_BR: endpoint
+            zh_Hans: endpoint
+          llm_description: toplogy endpoint
+          max: null
+          min: null
+          name: endpoint
+          options: []
+          placeholder: null
+          precision: null
+          required: false
+          scope: null
+          template: null
+          type: string
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: Data query start time(Microsecond)
+            ja_JP: Data query start time(Microsecond)
+            pt_BR: Data query start time(Microsecond)
+            zh_Hans: 开始时间 (微秒)
+          label:
+            en_US: startTime
+            ja_JP: startTime
+            pt_BR: startTime
+            zh_Hans: startTime
+          llm_description: Data query start time(Microsecond)
+          max: null
+          min: null
+          name: startTime
+          options: []
+          placeholder: null
+          precision: null
+          required: true
+          scope: null
+          template: null
+          type: number
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: Data query end time(Microsecond)
+            ja_JP: Data query end time(Microsecond)
+            pt_BR: Data query end time(Microsecond)
+            zh_Hans: 结束时间 (微秒)
+          label:
+            en_US: endTime
+            ja_JP: endTime
+            pt_BR: endTime
+            zh_Hans: endTime
+          llm_description: Data query end time(Microsecond)
+          max: null
+          min: null
+          name: endTime
+          options: []
+          placeholder: null
+          precision: null
+          required: true
+          scope: null
+          template: null
+          type: number
+        params:
+          endTime: ''
+          endpoint: ''
+          service: ''
+          startTime: ''
+        provider_id: apo_select
+        provider_name: apo_select
+        provider_type: builtin
+        selected: false
+        title: 查询入口服务告警事件
+        tool_configurations: {}
+        tool_label: 查询入口服务告警事件
+        tool_name: alert
+        tool_parameters:
+          endTime:
+            type: constant
+            value: 1742537133321000
+          endpoint:
+            type: mixed
+            value: '{{#1741075107082.endpoint#}}'
+          service:
+            type: mixed
+            value: '{{#1741075107082.service#}}'
+          startTime:
+            type: constant
+            value: 1742535932000000
+        type: tool
+      height: 53
+      id: '1742537242313'
+      position:
+        x: 467.4980580862814
+        y: 282
+      positionAbsolute:
+        x: 467.4980580862814
+        y: 282
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 243
+    viewport:
+      x: 77.82408418093883
+      y: 14.458691182194116
+      zoom: 0.7039267963088531

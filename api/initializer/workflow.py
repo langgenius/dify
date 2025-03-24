@@ -1,6 +1,7 @@
 import os
 import yaml
 import logging
+import json
 
 from sqlalchemy.exc import SQLAlchemyError
 from services.app_dsl_service import AppDslService
@@ -12,6 +13,7 @@ from models import App, ApiToken, Workflow, InstalledApp
 from contexts import tenant_id
 from configs.app_config import APOConfig
 from typing import Union
+from sqlalchemy.dialects.postgresql import JSONB
 
 @initializer(priority=3)
 def init_workflow():
@@ -90,8 +92,12 @@ def _check_workflow_to_update(session, content, account) -> Union[str, bool, Non
     try:
         content_dict = yaml.safe_load(content)
         app_name = content_dict.get('app', {}).get('name')
-        graph = content_dict.get('workflow', {}).get('graph')
-        features = content_dict.get('workflow', {}).get('features')
+        graph = json.dumps(
+            content_dict.get('workflow', {}).get('graph'), 
+            sort_keys=True)
+        features = json.dumps(
+            content_dict.get('workflow', {}).get('features'),
+            sort_keys=True)
         
         app_model = (
             session.query(App)
@@ -106,19 +112,23 @@ def _check_workflow_to_update(session, content, account) -> Union[str, bool, Non
         if not app_model:
             return None
 
-        workflow = (
+        workflows = (
             session.query(Workflow)
-            .filter(
-                Workflow.graph == graph,
-                Workflow.features == features,
-            )
-            .first()
+            .filter(Workflow.app_id == app_model.id)
+            .all()
         )
 
-        if workflow:
-            return False
-        else:
+        to_update = True
+
+        for w in workflows:
+            if graph == w.graph and features == w.features:
+                to_update = False
+                break
+        
+        if to_update:
             return app_model.id
+        else:
+            return False
 
     except Exception as e:
         logging.error(f"Failed to check workflow: {str(e)}")

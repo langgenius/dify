@@ -1,0 +1,453 @@
+app:
+  description: ''
+  icon: 🤖
+  icon_background: '#FFEAD5'
+  mode: workflow
+  name: CPU异常分析确认
+  use_icon_as_answer_icon: false
+dependencies:
+- current_identifier: null
+  type: package
+  value:
+    plugin_unique_identifier: langgenius/deepseek:0.0.5@fd6efd37c2a931911de8ab9ca3ba2da303bef146d45ee87ad896b04b36d09403
+kind: app
+version: 0.1.5
+workflow:
+  conversation_variables: []
+  environment_variables: []
+  features:
+    file_upload:
+      allowed_file_extensions:
+      - .JPG
+      - .JPEG
+      - .PNG
+      - .GIF
+      - .WEBP
+      - .SVG
+      allowed_file_types:
+      - image
+      allowed_file_upload_methods:
+      - local_file
+      - remote_url
+      enabled: false
+      fileUploadConfig:
+        audio_file_size_limit: 50
+        batch_count_limit: 5
+        file_size_limit: 15
+        image_file_size_limit: 10
+        video_file_size_limit: 100
+        workflow_file_upload_limit: 10
+      image:
+        enabled: false
+        number_limits: 3
+        transfer_methods:
+        - local_file
+        - remote_url
+      number_limits: 3
+    opening_statement: ''
+    retriever_resource:
+      enabled: true
+    sensitive_word_avoidance:
+      enabled: false
+    speech_to_text:
+      enabled: false
+    suggested_questions: []
+    suggested_questions_after_answer:
+      enabled: false
+    text_to_speech:
+      enabled: false
+      language: ''
+      voice: ''
+  graph:
+    edges:
+    - data:
+        isInIteration: false
+        sourceType: start
+        targetType: tool
+      id: 1741075107082-source-1741075292023-target
+      source: '1741075107082'
+      sourceHandle: source
+      target: '1741075292023'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: tool
+        targetType: tool
+      id: 1741075292023-source-1741075297532-target
+      source: '1741075292023'
+      sourceHandle: source
+      target: '1741075297532'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: tool
+        targetType: llm
+      id: 1741075297532-source-1741075304942-target
+      source: '1741075297532'
+      sourceHandle: source
+      target: '1741075304942'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: llm
+        targetType: end
+      id: 1741075304942-source-1741075309105-target
+      source: '1741075304942'
+      sourceHandle: source
+      target: '1741075309105'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    nodes:
+    - data:
+        desc: ''
+        selected: true
+        title: 开始
+        type: start
+        variables:
+        - label: pod
+          max_length: 48
+          options: []
+          required: true
+          type: text-input
+          variable: pod
+        - label: namespace
+          max_length: 48
+          options: []
+          required: true
+          type: text-input
+          variable: namespace
+        - label: startTime（微秒）
+          max_length: 48
+          options: []
+          required: true
+          type: number
+          variable: startTime
+        - label: endTime（微秒）
+          max_length: 48
+          options: []
+          required: true
+          type: number
+          variable: endTime
+        - label: 内存阈值
+          max_length: 48
+          options: []
+          required: true
+          type: text-input
+          variable: threshold
+      height: 193
+      id: '1741075107082'
+      position:
+        x: 80
+        y: 282
+      positionAbsolute:
+        x: 80
+        y: 282
+      selected: true
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 243
+    - data:
+        desc: ''
+        is_team_authorization: true
+        output_schema: null
+        paramSchemas:
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: Specified pod name
+            ja_JP: Specified pod name
+            pt_BR: Specified pod name
+            zh_Hans: 指定的容器POD名称
+          label:
+            en_US: pod
+            ja_JP: pod
+            pt_BR: pod
+            zh_Hans: pod
+          llm_description: Specified pod name
+          max: null
+          min: null
+          name: pod
+          options: []
+          placeholder: null
+          precision: null
+          required: true
+          scope: null
+          template: null
+          type: string
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: Specified namespace
+            ja_JP: Specified namespace
+            pt_BR: Specified namespace
+            zh_Hans: 指定的容器所在Namespace
+          label:
+            en_US: namespace
+            ja_JP: namespace
+            pt_BR: namespace
+            zh_Hans: namespace
+          llm_description: Specified namespace
+          max: null
+          min: null
+          name: namespace
+          options: []
+          placeholder: null
+          precision: null
+          required: true
+          scope: null
+          template: null
+          type: string
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: Data query start time
+            ja_JP: Data query start time
+            pt_BR: Data query start time
+            zh_Hans: 开始时间 (微秒)
+          label:
+            en_US: startTime
+            ja_JP: startTime
+            pt_BR: startTime
+            zh_Hans: startTime
+          llm_description: Data query start time
+          max: null
+          min: null
+          name: startTime
+          options: []
+          placeholder: null
+          precision: null
+          required: true
+          scope: null
+          template: null
+          type: number
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: Data query end time
+            ja_JP: Data query end time
+            pt_BR: Data query end time
+            zh_Hans: 结束时间 (微秒)
+          label:
+            en_US: endTime
+            ja_JP: endTime
+            pt_BR: endTime
+            zh_Hans: endTime
+          llm_description: Data query start time
+          max: null
+          min: null
+          name: endTime
+          options: []
+          placeholder: null
+          precision: null
+          required: true
+          scope: null
+          template: null
+          type: number
+        params:
+          endTime: ''
+          namespace: ''
+          pod: ''
+          startTime: ''
+        provider_id: apo_select
+        provider_name: apo_select
+        provider_type: builtin
+        selected: false
+        title: 查询容器内存使用量
+        tool_configurations: {}
+        tool_label: 查询容器内存使用量
+        tool_name: select_container_rss
+        tool_parameters:
+          endTime:
+            type: variable
+            value:
+            - '1741075107082'
+            - endTime
+          namespace:
+            type: mixed
+            value: '{{#1741075107082.namespace#}}'
+          pod:
+            type: mixed
+            value: '{{#1741075107082.pod#}}'
+          startTime:
+            type: variable
+            value:
+            - '1741075107082'
+            - startTime
+        type: tool
+      height: 53
+      id: '1741075292023'
+      position:
+        x: 384
+        y: 282
+      positionAbsolute:
+        x: 384
+        y: 282
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 243
+    - data:
+        desc: ''
+        is_team_authorization: true
+        output_schema: null
+        paramSchemas:
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: time series metric data
+            ja_JP: time series metric data
+            pt_BR: time series metric data
+            zh_Hans: 时序指标数据
+          label:
+            en_US: metricData
+            ja_JP: metricData
+            pt_BR: metricData
+            zh_Hans: metricData
+          llm_description: Time series indicator data
+          max: null
+          min: null
+          name: metricData
+          options: []
+          placeholder: null
+          precision: null
+          required: true
+          scope: null
+          template: null
+          type: string
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: threshold
+            ja_JP: threshold
+            pt_BR: threshold
+            zh_Hans: 检测指标类型数据是否超过阈值
+          label:
+            en_US: threshold
+            ja_JP: threshold
+            pt_BR: threshold
+            zh_Hans: threshold
+          llm_description: threshold
+          max: null
+          min: null
+          name: threshold
+          options: []
+          placeholder: null
+          precision: null
+          required: true
+          scope: null
+          template: null
+          type: string
+        params:
+          metricData: ''
+          threshold: ''
+        provider_id: apo_analysis
+        provider_name: apo_analysis
+        provider_type: builtin
+        selected: false
+        title: 阈值判定
+        tool_configurations: {}
+        tool_label: 阈值判定
+        tool_name: threshold
+        tool_parameters:
+          metricData:
+            type: mixed
+            value: '{{#1741075292023.text#}}'
+          threshold:
+            type: mixed
+            value: '{{#1741075292023.text#}}'
+        type: tool
+      height: 53
+      id: '1741075297532'
+      position:
+        x: 688
+        y: 282
+      positionAbsolute:
+        x: 688
+        y: 282
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 243
+    - data:
+        context:
+          enabled: false
+          variable_selector: []
+        desc: ''
+        model:
+          completion_params:
+            temperature: 0.7
+          mode: chat
+          name: deepseek-chat
+          provider: langgenius/deepseek/deepseek
+        prompt_template:
+        - id: 04b40dd5-a59a-4747-a425-1d214b49d6f1
+          role: system
+          text: '这是pod{{#1741075292023.text#}}
+
+            内存上涨情况
+
+            {{#1741075297532.text#}}
+
+            请分析当前容器内存占用是否正常'
+        selected: false
+        title: LLM
+        type: llm
+        variables: []
+        vision:
+          enabled: false
+      height: 89
+      id: '1741075304942'
+      position:
+        x: 992
+        y: 282
+      positionAbsolute:
+        x: 992
+        y: 282
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 243
+    - data:
+        desc: ''
+        outputs:
+        - value_selector:
+          - '1741075304942'
+          - text
+          variable: text
+        selected: false
+        title: 结束
+        type: end
+      height: 89
+      id: '1741075309105'
+      position:
+        x: 1296
+        y: 282
+      positionAbsolute:
+        x: 1296
+        y: 282
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 243
+    viewport:
+      x: 126.3029578804244
+      y: 157.3974879117509
+      zoom: 0.5334767533879591

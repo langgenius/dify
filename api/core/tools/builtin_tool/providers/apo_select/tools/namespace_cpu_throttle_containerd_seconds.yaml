@@ -44,10 +44,10 @@ parameters:
       zh_Hans: startTime
       pt_BR: startTime
     human_description:
-      en_US: Data query start time
+      en_US: Data query start time(Microsecond)
       zh_Hans: 开始时间 (微秒)
-      pt_BR: Data query start time
-    llm_description: Data query start time
+      pt_BR: Data query start time(Microsecond)
+    llm_description: Data query start time(Microsecond)
     form: llm
   - name: endTime
     type: number
@@ -57,8 +57,8 @@ parameters:
       zh_Hans: endTime
       pt_BR: endTime
     human_description:
-      en_US: Data query end time
+      en_US: Data query end time(Microsecond)
       zh_Hans: 结束时间 (微秒)
-      pt_BR: Data query end time
-    llm_description: Data query start time
+      pt_BR: Data query end time(Microsecond)
+    llm_description: Data query end time(Microsecond)
     form: llm

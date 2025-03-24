@@ -1,0 +1,693 @@
+app:
+  description: ''
+  icon: 🤖
+  icon_background: '#FFEAD5'
+  mode: workflow
+  name: 容器CPU使用率分析
+  use_icon_as_answer_icon: false
+dependencies:
+- current_identifier: null
+  type: package
+  value:
+    plugin_unique_identifier: langgenius/deepseek:0.0.5@fd6efd37c2a931911de8ab9ca3ba2da303bef146d45ee87ad896b04b36d09403
+kind: app
+version: 0.1.5
+workflow:
+  conversation_variables: []
+  environment_variables: []
+  features:
+    file_upload:
+      allowed_file_extensions:
+      - .JPG
+      - .JPEG
+      - .PNG
+      - .GIF
+      - .WEBP
+      - .SVG
+      allowed_file_types:
+      - image
+      allowed_file_upload_methods:
+      - local_file
+      - remote_url
+      enabled: false
+      fileUploadConfig:
+        audio_file_size_limit: 50
+        batch_count_limit: 5
+        file_size_limit: 15
+        image_file_size_limit: 10
+        video_file_size_limit: 100
+        workflow_file_upload_limit: 10
+      image:
+        enabled: false
+        number_limits: 3
+        transfer_methods:
+        - local_file
+        - remote_url
+      number_limits: 3
+    opening_statement: ''
+    retriever_resource:
+      enabled: true
+    sensitive_word_avoidance:
+      enabled: false
+    speech_to_text:
+      enabled: false
+    suggested_questions: []
+    suggested_questions_after_answer:
+      enabled: false
+    text_to_speech:
+      enabled: false
+      language: ''
+      voice: ''
+  graph:
+    edges:
+    - data:
+        isInIteration: false
+        sourceType: start
+        targetType: if-else
+      id: 1742544447442-source-1742544615331-target
+      selected: false
+      source: '1742544447442'
+      sourceHandle: source
+      target: '1742544615331'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: if-else
+        targetType: tool
+      id: 1742544615331-false-1742544602116-target
+      selected: false
+      source: '1742544615331'
+      sourceHandle: 'false'
+      target: '1742544602116'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: if-else
+        targetType: tool
+      id: 1742544615331-true-1742544596775-target
+      selected: false
+      source: '1742544615331'
+      sourceHandle: 'true'
+      target: '1742544596775'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: tool
+        targetType: variable-aggregator
+      id: 1742544596775-source-1742544844516-target
+      selected: false
+      source: '1742544596775'
+      sourceHandle: source
+      target: '1742544844516'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: tool
+        targetType: variable-aggregator
+      id: 1742544602116-source-1742544844516-target
+      selected: false
+      source: '1742544602116'
+      sourceHandle: source
+      target: '1742544844516'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: variable-aggregator
+        targetType: llm
+      id: 1742544844516-source-1742548125977-target
+      selected: false
+      source: '1742544844516'
+      sourceHandle: source
+      target: '1742548125977'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: llm
+        targetType: end
+      id: 1742548125977-source-1742545032360-target
+      source: '1742548125977'
+      sourceHandle: source
+      target: '1742545032360'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    nodes:
+    - data:
+        desc: ''
+        selected: true
+        title: 开始
+        type: start
+        variables:
+        - label: 容器运行时类型（containered或docker）
+          max_length: 48
+          options: []
+          required: true
+          type: text-input
+          variable: runtime_type
+        - label: cAdvisor Job名
+          max_length: 48
+          options: []
+          required: false
+          type: text-input
+          variable: cadvisor_job
+        - label: 命名空间
+          max_length: 48
+          options: []
+          required: true
+          type: text-input
+          variable: namespace
+        - label: Pod名
+          max_length: 48
+          options: []
+          required: true
+          type: text-input
+          variable: pod
+        - label: 查询开始时间（微秒）
+          max_length: 48
+          options: []
+          required: true
+          type: number
+          variable: start_time
+        - label: 查询结束时间（微秒）
+          max_length: 48
+          options: []
+          required: true
+          type: number
+          variable: end_time
+        - label: 阈值
+          max_length: 48
+          options: []
+          required: true
+          type: text-input
+          variable: threshold
+      height: 245
+      id: '1742544447442'
+      position:
+        x: 42.8575698426215
+        y: 287.52904760035375
+      positionAbsolute:
+        x: 42.8575698426215
+        y: 287.52904760035375
+      selected: true
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 243
+    - data:
+        desc: ''
+        is_team_authorization: true
+        output_schema: null
+        paramSchemas:
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: cAdvisor job name
+            ja_JP: cAdvisor job name
+            pt_BR: cAdvisor job name
+            zh_Hans: cAdvisor任务名称
+          label:
+            en_US: cAdvisor job name
+            ja_JP: cAdvisor job name
+            pt_BR: cAdvisor job name
+            zh_Hans: cAdvisor任务名称
+          llm_description: cAdvisor job name
+          max: null
+          min: null
+          name: cadvisor_job_name
+          options: []
+          placeholder: null
+          precision: null
+          required: false
+          scope: null
+          template: null
+          type: string
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: Namespace
+            ja_JP: Namespace
+            pt_BR: Namespace
+            zh_Hans: 命名空间
+          label:
+            en_US: Namespace
+            ja_JP: Namespace
+            pt_BR: Namespace
+            zh_Hans: 命名空间
+          llm_description: Namespace
+          max: null
+          min: null
+          name: namespace
+          options: []
+          placeholder: null
+          precision: null
+          required: false
+          scope: null
+          template: null
+          type: string
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: Pod name
+            ja_JP: Pod name
+            pt_BR: Pod name
+            zh_Hans: Pod名称
+          label:
+            en_US: Pod name
+            ja_JP: Pod name
+            pt_BR: Pod name
+            zh_Hans: Pod名称
+          llm_description: Pod name
+          max: null
+          min: null
+          name: pod
+          options: []
+          placeholder: null
+          precision: null
+          required: false
+          scope: null
+          template: null
+          type: string
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: Data query start time(Microsecond)
+            ja_JP: Data query start time(Microsecond)
+            pt_BR: Data query start time(Microsecond)
+            zh_Hans: 开始时间 (微秒)
+          label:
+            en_US: startTime
+            ja_JP: startTime
+            pt_BR: startTime
+            zh_Hans: startTime
+          llm_description: Data query start time(Microsecond)
+          max: null
+          min: null
+          name: startTime
+          options: []
+          placeholder: null
+          precision: null
+          required: true
+          scope: null
+          template: null
+          type: number
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: Data query end time(Microsecond)
+            ja_JP: Data query end time(Microsecond)
+            pt_BR: Data query end time(Microsecond)
+            zh_Hans: 结束时间 (微秒)
+          label:
+            en_US: endTime
+            ja_JP: endTime
+            pt_BR: endTime
+            zh_Hans: endTime
+          llm_description: Data query end time(Microsecond)
+          max: null
+          min: null
+          name: endTime
+          options: []
+          placeholder: null
+          precision: null
+          required: true
+          scope: null
+          template: null
+          type: number
+        params:
+          cadvisor_job_name: ''
+          endTime: ''
+          namespace: ''
+          pod: ''
+          startTime: ''
+        provider_id: apo_select
+        provider_name: apo_select
+        provider_type: builtin
+        selected: false
+        title: 容器CPU使用率(使用Containerd容器运行时,按容器和Pod统计)
+        tool_configurations: {}
+        tool_label: 容器CPU使用率(使用Containerd容器运行时,按容器和Pod统计)
+        tool_name: 容器CPU使用率(使用Containerd容器运行时,按容器和Pod统计)
+        tool_parameters:
+          cadvisor_job_name:
+            type: mixed
+            value: '{{#1742544447442.cadvisor_job#}}'
+          endTime:
+            type: variable
+            value:
+            - '1742544447442'
+            - end_time
+          namespace:
+            type: mixed
+            value: '{{#1742544447442.namespace#}}'
+          pod:
+            type: mixed
+            value: '{{#1742544447442.pod#}}'
+          startTime:
+            type: variable
+            value:
+            - '1742544447442'
+            - start_time
+        type: tool
+      height: 53
+      id: '1742544596775'
+      position:
+        x: 645.511423939121
+        y: 271.4731107508206
+      positionAbsolute:
+        x: 645.511423939121
+        y: 271.4731107508206
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 243
+    - data:
+        desc: ''
+        is_team_authorization: true
+        output_schema: null
+        paramSchemas:
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: cAdvisor job name
+            ja_JP: cAdvisor job name
+            pt_BR: cAdvisor job name
+            zh_Hans: cAdvisor任务名称
+          label:
+            en_US: cAdvisor job name
+            ja_JP: cAdvisor job name
+            pt_BR: cAdvisor job name
+            zh_Hans: cAdvisor任务名称
+          llm_description: cAdvisor job name
+          max: null
+          min: null
+          name: cadvisor_job_name
+          options: []
+          placeholder: null
+          precision: null
+          required: false
+          scope: null
+          template: null
+          type: string
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: Namespace
+            ja_JP: Namespace
+            pt_BR: Namespace
+            zh_Hans: 命名空间
+          label:
+            en_US: Namespace
+            ja_JP: Namespace
+            pt_BR: Namespace
+            zh_Hans: 命名空间
+          llm_description: Namespace
+          max: null
+          min: null
+          name: namespace
+          options: []
+          placeholder: null
+          precision: null
+          required: false
+          scope: null
+          template: null
+          type: string
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: Pod name
+            ja_JP: Pod name
+            pt_BR: Pod name
+            zh_Hans: Pod名称
+          label:
+            en_US: Pod name
+            ja_JP: Pod name
+            pt_BR: Pod name
+            zh_Hans: Pod名称
+          llm_description: Pod name
+          max: null
+          min: null
+          name: pod
+          options: []
+          placeholder: null
+          precision: null
+          required: false
+          scope: null
+          template: null
+          type: string
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: Data query start time(Microsecond)
+            ja_JP: Data query start time(Microsecond)
+            pt_BR: Data query start time(Microsecond)
+            zh_Hans: 开始时间 (微秒)
+          label:
+            en_US: startTime
+            ja_JP: startTime
+            pt_BR: startTime
+            zh_Hans: startTime
+          llm_description: Data query start time(Microsecond)
+          max: null
+          min: null
+          name: startTime
+          options: []
+          placeholder: null
+          precision: null
+          required: true
+          scope: null
+          template: null
+          type: number
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: Data query end time(Microsecond)
+            ja_JP: Data query end time(Microsecond)
+            pt_BR: Data query end time(Microsecond)
+            zh_Hans: 结束时间 (微秒)
+          label:
+            en_US: endTime
+            ja_JP: endTime
+            pt_BR: endTime
+            zh_Hans: endTime
+          llm_description: Data query end time(Microsecond)
+          max: null
+          min: null
+          name: endTime
+          options: []
+          placeholder: null
+          precision: null
+          required: true
+          scope: null
+          template: null
+          type: number
+        params:
+          cadvisor_job_name: ''
+          endTime: ''
+          namespace: ''
+          pod: ''
+          startTime: ''
+        provider_id: apo_select
+        provider_name: apo_select
+        provider_type: builtin
+        selected: false
+        title: 容器CPU使用率(使用Docker容器运行时,按Pod统计)
+        tool_configurations: {}
+        tool_label: 容器CPU使用率(使用Docker容器运行时,按Pod统计)
+        tool_name: 容器CPU使用率(使用Docker容器运行时,按Pod统计)
+        tool_parameters:
+          cadvisor_job_name:
+            type: mixed
+            value: '{{#1742544447442.cadvisor_job#}}'
+          endTime:
+            type: variable
+            value:
+            - '1742544447442'
+            - end_time
+          namespace:
+            type: mixed
+            value: '{{#1742544447442.namespace#}}'
+          pod:
+            type: mixed
+            value: '{{#1742544447442.pod#}}'
+          startTime:
+            type: variable
+            value:
+            - '1742544447442'
+            - start_time
+        type: tool
+      height: 53
+      id: '1742544602116'
+      position:
+        x: 645.511423939121
+        y: 358.78247478209
+      positionAbsolute:
+        x: 645.511423939121
+        y: 358.78247478209
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 243
+    - data:
+        cases:
+        - case_id: 'true'
+          conditions:
+          - comparison_operator: contains
+            id: 0d7b487d-778b-4456-a523-911ec27789ec
+            value: containered
+            varType: string
+            variable_selector:
+            - '1742544447442'
+            - runtime_type
+          id: 'true'
+          logical_operator: and
+        desc: ''
+        selected: false
+        title: 条件分支
+        type: if-else
+      height: 125
+      id: '1742544615331'
+      position:
+        x: 333.78563786147083
+        y: 287.52904760035375
+      positionAbsolute:
+        x: 333.78563786147083
+        y: 287.52904760035375
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 243
+    - data:
+        desc: ''
+        output_type: string
+        selected: false
+        title: 变量聚合器
+        type: variable-aggregator
+        variables:
+        - - '1742544602116'
+          - text
+        - - '1742544596775'
+          - text
+      height: 128
+      id: '1742544844516'
+      position:
+        x: 972.4274666755517
+        y: 312.5996979050388
+      positionAbsolute:
+        x: 972.4274666755517
+        y: 312.5996979050388
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 243
+    - data:
+        desc: ''
+        outputs:
+        - value_selector:
+          - '1742548125977'
+          - text
+          variable: text
+        selected: false
+        title: 结束
+        type: end
+      height: 89
+      id: '1742545032360'
+      position:
+        x: 1733.7835311915119
+        y: 312.5996979050388
+      positionAbsolute:
+        x: 1733.7835311915119
+        y: 312.5996979050388
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 243
+    - data:
+        context:
+          enabled: false
+          variable_selector: []
+        desc: ''
+        model:
+          completion_params:
+            temperature: 0.7
+          mode: chat
+          name: deepseek-chat
+          provider: langgenius/deepseek/deepseek
+        prompt_template:
+        - id: c8f8941d-d686-4e61-9b53-ad2501b008f5
+          role: system
+          text: 你是一个智能助手和可观测领域专家，帮助用户分析是否存在问题。
+        - id: 22c763a6-b080-4ac7-b2fa-3c10a8df5a93
+          role: user
+          text: '# 目的
+
+            根据指标数据分析容器{{#1742544447442.pod#}}CPU使用率是否存在异常。
+
+            # 分析过程
+
+            1. 查看原始数据
+
+            查看指标数据{{#1742544844516.output#}}，获取容器CPU使用率。
+
+            2. 查看相关指标变化趋势
+
+            如果用户提供了阈值{{#1742544447442.threshold#}}，请与指标数据中的值进行比对，如果没有请选择一个合适的值进行比对。
+
+            3. 给出结论
+
+            根据你的比对结果将异常时间段的突变值变化展示出来。如xx容器在xx-xx时间内CPU使用率存在异常，从xx突变到xx。
+
+            # 输出
+
+            容器{{#1742544447442.pod#}}的CPU异常分析结果
+
+            '
+        selected: false
+        title: LLM
+        type: llm
+        variables: []
+        vision:
+          enabled: false
+      height: 89
+      id: '1742548125977'
+      position:
+        x: 1328.5577845817636
+        y: 312.5996979050388
+      positionAbsolute:
+        x: 1328.5577845817636
+        y: 312.5996979050388
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 243
+    viewport:
+      x: 105.12546337703543
+      y: 83.89903433733394
+      zoom: 0.6597539553864473

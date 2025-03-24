@@ -30,7 +30,12 @@ class FaultLogTool(BuiltinTool):
           }
         url = dify_config.APO_BACKEND_URL + "/api/log/fault/pagelist" 
         resp = requests.post(url, json=params)
-        list = resp.json()['list'][0]
+        log_list = resp.json().get('list', [])
+        list = []
+        if not log_list:
+            yield self.create_text_message('')
+        else:
+            list = log_list[0]
         
         content_url = dify_config.APO_BACKEND_URL + "/api/log/fault/content"
         content = requests.post(content_url, json=list).json()

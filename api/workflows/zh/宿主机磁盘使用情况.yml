@@ -1,0 +1,336 @@
+app:
+  description: ''
+  icon: 🤖
+  icon_background: '#FFEAD5'
+  mode: workflow
+  name: 宿主机磁盘使用情况
+  use_icon_as_answer_icon: false
+dependencies:
+- current_identifier: null
+  type: package
+  value:
+    plugin_unique_identifier: langgenius/deepseek:0.0.5@fd6efd37c2a931911de8ab9ca3ba2da303bef146d45ee87ad896b04b36d09403
+kind: app
+version: 0.1.5
+workflow:
+  conversation_variables: []
+  environment_variables: []
+  features:
+    file_upload:
+      allowed_file_extensions:
+      - .JPG
+      - .JPEG
+      - .PNG
+      - .GIF
+      - .WEBP
+      - .SVG
+      allowed_file_types:
+      - image
+      allowed_file_upload_methods:
+      - local_file
+      - remote_url
+      enabled: false
+      fileUploadConfig:
+        audio_file_size_limit: 50
+        batch_count_limit: 5
+        file_size_limit: 15
+        image_file_size_limit: 10
+        video_file_size_limit: 100
+        workflow_file_upload_limit: 10
+      image:
+        enabled: false
+        number_limits: 3
+        transfer_methods:
+        - local_file
+        - remote_url
+      number_limits: 3
+    opening_statement: ''
+    retriever_resource:
+      enabled: true
+    sensitive_word_avoidance:
+      enabled: false
+    speech_to_text:
+      enabled: false
+    suggested_questions: []
+    suggested_questions_after_answer:
+      enabled: false
+    text_to_speech:
+      enabled: false
+      language: ''
+      voice: ''
+  graph:
+    edges:
+    - data:
+        isInIteration: false
+        sourceType: start
+        targetType: tool
+      id: 1742548736120-source-1742548763699-target
+      source: '1742548736120'
+      sourceHandle: source
+      target: '1742548763699'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: tool
+        targetType: llm
+      id: 1742548763699-source-1742549014473-target
+      source: '1742548763699'
+      sourceHandle: source
+      target: '1742549014473'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: llm
+        targetType: end
+      id: 1742549014473-source-1742549028365-target
+      source: '1742549014473'
+      sourceHandle: source
+      target: '1742549028365'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    nodes:
+    - data:
+        desc: ''
+        selected: true
+        title: 开始
+        type: start
+        variables:
+        - label: 主机名
+          max_length: 48
+          options: []
+          required: true
+          type: text-input
+          variable: node_name
+        - label: 查询开始时间（微秒）
+          max_length: 48
+          options: []
+          required: true
+          type: number
+          variable: start_time
+        - label: 查询结束时间（微秒）
+          max_length: 48
+          options: []
+          required: true
+          type: number
+          variable: end_time
+      height: 141
+      id: '1742548736120'
+      position:
+        x: 72.08295253536267
+        y: 282
+      positionAbsolute:
+        x: 72.08295253536267
+        y: 282
+      selected: true
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 243
+    - data:
+        desc: ''
+        is_team_authorization: true
+        output_schema: null
+        paramSchemas:
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: Specified host name
+            ja_JP: Specified host name
+            pt_BR: Specified host name
+            zh_Hans: 指定的主机名
+          label:
+            en_US: node
+            ja_JP: node
+            pt_BR: node
+            zh_Hans: node
+          llm_description: Specified host name
+          max: null
+          min: null
+          name: node
+          options: []
+          placeholder: null
+          precision: null
+          required: false
+          scope: null
+          template: null
+          type: string
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: Data query start time(Microsecond)
+            ja_JP: Data query start time(Microsecond)
+            pt_BR: Data query start time(Microsecond)
+            zh_Hans: 开始时间 (微秒)
+          label:
+            en_US: startTime
+            ja_JP: startTime
+            pt_BR: startTime
+            zh_Hans: startTime
+          llm_description: Data query start time(Microsecond)
+          max: null
+          min: null
+          name: startTime
+          options: []
+          placeholder: null
+          precision: null
+          required: true
+          scope: null
+          template: null
+          type: number
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: Data query end time(Microsecond)
+            ja_JP: Data query end time(Microsecond)
+            pt_BR: Data query end time(Microsecond)
+            zh_Hans: 结束时间 (微秒)
+          label:
+            en_US: endTime
+            ja_JP: endTime
+            pt_BR: endTime
+            zh_Hans: endTime
+          llm_description: Data query end time(Microsecond)
+          max: null
+          min: null
+          name: endTime
+          options: []
+          placeholder: null
+          precision: null
+          required: true
+          scope: null
+          template: null
+          type: number
+        params:
+          endTime: ''
+          node: ''
+          startTime: ''
+        provider_id: apo_select
+        provider_name: apo_select
+        provider_type: builtin
+        selected: false
+        title: 宿主机磁盘使用率(百分比,不含rootfs)
+        tool_configurations: {}
+        tool_label: 宿主机磁盘使用率(百分比,不含rootfs)
+        tool_name: 宿主机磁盘使用率(百分比,不含rootfs)
+        tool_parameters:
+          endTime:
+            type: variable
+            value:
+            - '1742548736120'
+            - end_time
+          node:
+            type: mixed
+            value: '{{#1742548736120.node_name#}}'
+          startTime:
+            type: variable
+            value:
+            - '1742548736120'
+            - start_time
+        type: tool
+      height: 53
+      id: '1742548763699'
+      position:
+        x: 387
+        y: 282
+      positionAbsolute:
+        x: 387
+        y: 282
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 243
+    - data:
+        context:
+          enabled: false
+          variable_selector: []
+        desc: ''
+        model:
+          completion_params:
+            temperature: 0.7
+          mode: chat
+          name: deepseek-chat
+          provider: langgenius/deepseek/deepseek
+        prompt_template:
+        - id: 3dee2638-1569-47be-a5ac-db155a932893
+          role: system
+          text: 你是一个智能助手和可观测领域专家，帮助用户分析是否存在问题。
+        - id: d7721625-d3dc-4c04-97f1-dbd59b9bff9a
+          role: user
+          text: '# 目的
+
+            根据指标数据分析宿主机{{#1742548736120.node_name#}}磁盘使用情况，并给出建议。
+
+            # 分析过程
+
+            1. 查看原始数据
+
+            查看指标数据{{#1742548763699.text#}}。
+
+            2. 查看相关指标变化趋势
+
+            如果用户提供了网络RTT阈值，请与指标数据中的RTT时间进行比对，如果没有请选择一个合适的值进行比对。
+
+            3. 给出结论
+
+            根据你的比对结果将异常时间段的突变值变化展示出来。如xx主机在xx-xx时间内存在异常，从xx突变到xx。
+
+            # 输出
+
+            主机{{#1742548736120.node_name#}}的磁盘异常分析结果
+
+            '
+        selected: false
+        title: LLM
+        type: llm
+        variables: []
+        vision:
+          enabled: false
+      height: 89
+      id: '1742549014473'
+      position:
+        x: 693.279103229957
+        y: 282
+      positionAbsolute:
+        x: 693.279103229957
+        y: 282
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 243
+    - data:
+        desc: ''
+        outputs:
+        - value_selector:
+          - '1742549014473'
+          - text
+          variable: text
+        selected: false
+        title: 结束
+        type: end
+      height: 89
+      id: '1742549028365'
+      position:
+        x: 1009.9610018154515
+        y: 282
+      positionAbsolute:
+        x: 1009.9610018154515
+        y: 282
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 243
+    viewport:
+      x: 80.31268252787203
+      y: 123.95956188985468
+      zoom: 0.49999999999999994

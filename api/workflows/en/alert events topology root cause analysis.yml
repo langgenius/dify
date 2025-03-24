@@ -1,0 +1,1462 @@
+app:
+  description: ''
+  icon: 🤖
+  icon_background: '#FFEAD5'
+  mode: workflow
+  name: alert events topology root cause analysis
+  use_icon_as_answer_icon: false
+dependencies:
+- current_identifier: null
+  type: package
+  value:
+    plugin_unique_identifier: langgenius/deepseek:0.0.5@fd6efd37c2a931911de8ab9ca3ba2da303bef146d45ee87ad896b04b36d09403
+kind: app
+version: 0.1.5
+workflow:
+  conversation_variables: []
+  environment_variables: []
+  features:
+    file_upload:
+      allowed_file_extensions:
+      - .JPG
+      - .JPEG
+      - .PNG
+      - .GIF
+      - .WEBP
+      - .SVG
+      allowed_file_types:
+      - image
+      allowed_file_upload_methods:
+      - local_file
+      - remote_url
+      enabled: false
+      fileUploadConfig:
+        audio_file_size_limit: 50
+        batch_count_limit: 5
+        file_size_limit: 15
+        image_file_size_limit: 10
+        video_file_size_limit: 100
+        workflow_file_upload_limit: 10
+      image:
+        enabled: false
+        number_limits: 3
+        transfer_methods:
+        - local_file
+        - remote_url
+      number_limits: 3
+    opening_statement: ''
+    retriever_resource:
+      enabled: true
+    sensitive_word_avoidance:
+      enabled: false
+    speech_to_text:
+      enabled: false
+    suggested_questions: []
+    suggested_questions_after_answer:
+      enabled: false
+    text_to_speech:
+      enabled: false
+      language: ''
+      voice: ''
+  graph:
+    edges:
+    - data:
+        isInIteration: false
+        sourceType: tool
+        targetType: tool
+      id: 1740103457500-source-1740483937644-target
+      source: '1740103457500'
+      sourceHandle: source
+      target: '1740483937644'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: tool
+        targetType: tool
+      id: 1740483937644-source-1740620413020-target
+      source: '1740483937644'
+      sourceHandle: source
+      target: '1740620413020'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: tool
+        targetType: llm
+      id: 1740620413020-source-1740619353044-target
+      selected: false
+      source: '1740620413020'
+      sourceHandle: source
+      target: '1740619353044'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: llm
+        targetType: tool
+      id: 1740619353044-source-1740620917572-target
+      source: '1740619353044'
+      sourceHandle: source
+      target: '1740620917572'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: tool
+        targetType: llm
+      id: 1740620917572-source-17406208202230-target
+      source: '1740620917572'
+      sourceHandle: source
+      target: '17406208202230'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: llm
+        targetType: tool
+      id: 17406208202230-source-1740620994135-target
+      source: '17406208202230'
+      sourceHandle: source
+      target: '1740620994135'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: tool
+        targetType: llm
+      id: 1740620994135-source-17406208182010-target
+      source: '1740620994135'
+      sourceHandle: source
+      target: '17406208182010'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: llm
+        targetType: tool
+      id: 17406208182010-source-1740621003098-target
+      source: '17406208182010'
+      sourceHandle: source
+      target: '1740621003098'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: tool
+        targetType: llm
+      id: 1740621003098-source-17406213332120-target
+      source: '1740621003098'
+      sourceHandle: source
+      target: '17406213332120'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: llm
+        targetType: llm
+      id: 17406213332120-source-17406213642580-target
+      source: '17406213332120'
+      sourceHandle: source
+      target: '17406213642580'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: llm
+        targetType: tool
+      id: 17406213642580-source-1740991358287-target
+      source: '17406213642580'
+      sourceHandle: source
+      target: '1740991358287'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: tool
+        targetType: end
+      id: 1740991358287-source-1740031015432-target
+      source: '1740991358287'
+      sourceHandle: source
+      target: '1740031015432'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: start
+        targetType: tool
+      id: 1740030989850-source-1741576377961-target
+      source: '1740030989850'
+      sourceHandle: source
+      target: '1741576377961'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: tool
+        targetType: tool
+      id: 1741576377961-source-1740103457500-target
+      source: '1741576377961'
+      sourceHandle: source
+      target: '1740103457500'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    nodes:
+    - data:
+        desc: ''
+        selected: true
+        title: start
+        type: start
+        variables:
+        - label: service
+          max_length: 48
+          options: []
+          required: true
+          type: text-input
+          variable: service
+        - label: endpoint
+          max_length: 48
+          options: []
+          required: true
+          type: text-input
+          variable: endpoint
+        - label: startTime(Microsecond)
+          max_length: 48
+          options: []
+          required: true
+          type: number
+          variable: startTime
+        - label: endTime(Microsecond)
+          max_length: 48
+          options: []
+          required: true
+          type: number
+          variable: endTime
+      height: 167
+      id: '1740030989850'
+      position:
+        x: -179.81475539997666
+        y: 216.6370137480357
+      positionAbsolute:
+        x: -179.81475539997666
+        y: 216.6370137480357
+      selected: true
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 243
+    - data:
+        desc: ''
+        outputs:
+        - value_selector:
+          - '1740991358287'
+          - text
+          variable: text
+        - value_selector:
+          - '1740991358287'
+          - json
+          variable: json
+        selected: false
+        title: End
+        type: end
+      height: 115
+      id: '1740031015432'
+      position:
+        x: 2821.3783011999635
+        y: 486.25205395404754
+      positionAbsolute:
+        x: 2821.3783011999635
+        y: 486.25205395404754
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 243
+    - data:
+        desc: ''
+        provider_id: apo_select
+        provider_name: apo_select
+        provider_type: builtin
+        selected: false
+        title: query entry service topology alert events
+        tool_configurations: {}
+        tool_label: 获取当前入口拓扑的告警事件
+        tool_name: alert
+        tool_parameters:
+          endTime:
+            type: variable
+            value:
+            - '1740030989850'
+            - endTime
+          end_time:
+            type: variable
+            value:
+            - '1740030989850'
+            - startTime
+          endpoint:
+            type: mixed
+            value: '{{#1740030989850.endpoint#}}'
+          service:
+            type: mixed
+            value: '{{#1740030989850.service#}}'
+          startTime:
+            type: variable
+            value:
+            - '1740030989850'
+            - startTime
+          start_time:
+            type: variable
+            value:
+            - '1740030989850'
+            - startTime
+        type: tool
+      height: 53
+      id: '1740103457500'
+      position:
+        x: 181.23066933933768
+        y: 381.7053247659096
+      positionAbsolute:
+        x: 181.23066933933768
+        y: 381.7053247659096
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 243
+    - data:
+        desc: ''
+        provider_id: apo_analysis
+        provider_name: apo_analysis
+        provider_type: builtin
+        selected: false
+        title: Correlate topology and alarms
+        tool_configurations: {}
+        tool_label: 关联拓扑和告警数据
+        tool_name: alert_associate
+        tool_parameters:
+          alertData:
+            type: mixed
+            value: '{{#1740103457500.text#}}'
+          alert_data:
+            type: mixed
+            value: '{{#1740103457500.text#}}'
+          topologyData:
+            type: mixed
+            value: '{{#1741576377961.text#}}'
+          topology_data:
+            type: mixed
+            value: '{{#1740832825737.text#}}'
+        type: tool
+      height: 53
+      id: '1740483937644'
+      position:
+        x: 473.3676055728321
+        y: 231.9640710593971
+      positionAbsolute:
+        x: 473.3676055728321
+        y: 231.9640710593971
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 243
+    - data:
+        context:
+          enabled: false
+          variable_selector: []
+        desc: ''
+        model:
+          completion_params:
+            temperature: 0.7
+          mode: chat
+          name: deepseek-chat
+          provider: langgenius/deepseek/deepseek
+        prompt_template:
+        - id: fd6c6155-9b33-4e8e-880f-0f536f4f4537
+          role: system
+          text: You are an intelligent reasoning assistant. Your task is to analyze
+            the root cause nodes according to the data and rules provided by the user.
+        - id: b48ad458-e31b-4a35-9dae-535df50f3e54
+          role: user
+          text: "#background#\n    Here is a microservice topology diagram with node\
+            \ names at each layer. Upper-layer nodes and lower-layer nodes form upstream\
+            \ and downstream relationships, where the upstream calls the downstream.\
+            \ Please remember the topology structure based on the provided data.\n\
+            \    #attention#\n    topology data information:\n    1.The number at\
+            \ the beginning of each node name indicates its layer. For example, a\
+            \ node with the number \"0\" is the entry service node. The larger the\
+            \ number, the deeper the layer. For non-entry nodes, the first node with\
+            \ a smaller number upwards is considered its upstream node.\n    2.A node\
+            \ may have multiple downstream nodes and may also be called by multiple\
+            \ upstream nodes. Please do not overlook any nodes.\n    3.Do not create\
+            \ non-existent upstream-downstream relationships, do not reverse the relationships,\
+            \ and do not miss any upstream-downstream calls. There should be no loops\
+            \ in the topology structure, and do not introduce any unrelated concepts.\n\
+            \    4.Node names are relatively long, so do not abbreviate them (do not\
+            \ include layer information such as \"1--\" at the beginning of the node\
+            \ name).\n    The topology data will be provided later.\n    #output#\n\
+            \    The topology data information has been memorized. Please respond\
+            \ concisely.\n"
+        - id: e60ae457-5f3b-4f5b-a8dc-7ac6198a4c14
+          role: assistant
+          text: The topology data information format is remembered.
+        - id: 8ecd0c9e-b236-461c-a711-86904171e6af
+          role: user
+          text: "#background#\n    For each node in the topology data, if there is\
+            \ an alarm event, the alarm event will be appended to the node's name.\
+            \ Nodes without any alarm events will have no additional information after\
+            \ their name.\n    #attention#\n    The alarm event data is in JSON format,\
+            \ and its meaning is as follows:\n    The first level's key represents\
+            \ the type of alarm event, represented by a number:\n    1: Interface-level\
+            \ alarm\n    2: Container anomaly\n    3: Infrastructure anomaly\n   \
+            \ 4: Network program anomaly\n    5: Error anomaly\n    The second level's\
+            \ key contains information specific to that alarm type, with the following\
+            \ fields:\n    - add: Number of newly added alarm events\n    - duplicate:\
+            \ Number of duplicate alarm events\n    - resolve: Number of resolved\
+            \ alarm events\n    - keep: Number of unresolved alarm events\n    - firstTime:\
+            \ The first occurrence time of this type of alarm event\n    - lastTime:\
+            \ The last occurrence time of this type of alarm event\n    - resolveTime:\
+            \ The time when the alarm event was resolved (only present if the alarm\
+            \ has been resolved)\n    #processing#\n    Please process the data carefully.\
+            \ For each node (with the node name starting after the number-- symbol),\
+            \ ensure that the node name is recorded fully and correctly. Do not include\
+            \ other content in the response, only the necessary data.\n    Nodes with\
+            \ alarm events are defined as those that appear in the JSON data.\n  \
+            \  Nodes without alarm events are defined as those that do not appear\
+            \ in the JSON data.\n    #output#\n    I have remembered the alarm events.\
+            \ Please respond concisely and briefly.\n    #Topology and Alarm Event\
+            \ Data#\n    The topology and alarm event data are as follows:\n{{#1740483937644.text#}}"
+        - id: 83e3d53e-a468-49eb-a624-1c01ea0d8660
+          role: assistant
+          text: These alert events are remembered.
+        - id: 321dad3d-8100-43ef-9192-83678743bfec
+          role: user
+          text: "#objective#\n    Based on the provided microservice topology diagram\
+            \ and the alarm events for each node, you will be given a set of rules\
+            \ to identify the root cause nodes that match each rule.\n    #rootcause\
+            \ node process#\n    - Record the sequence in which abnormal events propagate\
+            \ from downstream to upstream, based on the type of abnormality and its\
+            \ occurrence frequency in the alarm events.\n    - For each rule provided,\
+            \ continue filtering out the nodes that meet the rule from the suspected\
+            \ root cause nodes identified in the previous rule. Do not restart the\
+            \ entire derivation process from scratch. Only summarize the relevant\
+            \ data.\n    #attention#\n    In the topology, an upstream node may have\
+            \ multiple downstream nodes. These downstream nodes are considered at\
+            \ the same level. If all services of these same-level nodes satisfy the\
+            \ criteria for abnormality propagation upstream, all these downstream\
+            \ nodes can be considered as potential root causes. Exclude the upstream\
+            \ node and ensure that no node is missed.\n    Always exclude entry nodes\
+            \ from the analysis.\n    Use the full names of the nodes throughout the\
+            \ process,do not abbreviate.\n    #output#\n    Follow the derivation\
+            \ process carefully and provide concise and brief answers."
+        - id: 47201076-79d5-494a-b292-4abb6c7b0255
+          role: assistant
+          text: The reasoning process is memorized.
+        - id: 0a47ba60-f808-4aee-baf8-6eb335075005
+          role: user
+          text: '{{#1740620413020.text#}}'
+        selected: false
+        title: LLM
+        type: llm
+        variables: []
+        vision:
+          enabled: false
+      height: 89
+      id: '1740619353044'
+      position:
+        x: 880.2421960154973
+        y: 263.6222226962782
+      positionAbsolute:
+        x: 880.2421960154973
+        y: 263.6222226962782
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 243
+    - data:
+        desc: rule1
+        provider_id: apo_rule
+        provider_name: apo_rule
+        provider_type: builtin
+        selected: false
+        title: alert analysis rule
+        tool_configurations: {}
+        tool_label: 告警规则执行
+        tool_name: alert_rule
+        tool_parameters:
+          rule:
+            type: mixed
+            value: 'Rule 1
+
+              Please list the names of nodes without alarm events from the topology
+              data and alarm event data, exclude the nodes without alarm events, and
+              list the names of nodes with alarm events, marking them as suspected
+              nodes.
+
+              ''Output''
+
+              The list of nodes that meet the current rules should be concise and
+              short, and the node names should be complete and consistent with the
+              source data, and cannot be omitted'
+        type: tool
+      height: 81
+      id: '1740620413020'
+      position:
+        x: 839.8693009526128
+        y: 42.259266516881894
+      positionAbsolute:
+        x: 839.8693009526128
+        y: 42.259266516881894
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 243
+    - data:
+        context:
+          enabled: false
+          variable_selector: []
+        desc: ''
+        model:
+          completion_params:
+            temperature: 0.7
+          mode: chat
+          name: deepseek-chat
+          provider: langgenius/deepseek/deepseek
+        prompt_template:
+        - id: fd6c6155-9b33-4e8e-880f-0f536f4f4537
+          role: system
+          text: You are an intelligent reasoning assistant. Your task is to analyze
+            the root cause nodes according to the data and rules provided by the user.
+        - id: b48ad458-e31b-4a35-9dae-535df50f3e54
+          role: user
+          text: "#background#\n    Here is a microservice topology diagram with node\
+            \ names at each layer. Upper-layer nodes and lower-layer nodes form upstream\
+            \ and downstream relationships, where the upstream calls the downstream.\
+            \ Please remember the topology structure based on the provided data.\n\
+            \    #attention#\n    topology data information:\n    1.The number at\
+            \ the beginning of each node name indicates its layer. For example, a\
+            \ node with the number \"0\" is the entry service node. The larger the\
+            \ number, the deeper the layer. For non-entry nodes, the first node with\
+            \ a smaller number upwards is considered its upstream node.\n    2.A node\
+            \ may have multiple downstream nodes and may also be called by multiple\
+            \ upstream nodes. Please do not overlook any nodes.\n    3.Do not create\
+            \ non-existent upstream-downstream relationships, do not reverse the relationships,\
+            \ and do not miss any upstream-downstream calls. There should be no loops\
+            \ in the topology structure, and do not introduce any unrelated concepts.\n\
+            \    4.Node names are relatively long, so do not abbreviate them (do not\
+            \ include layer information such as \"1--\" at the beginning of the node\
+            \ name).\n    The topology data will be provided later.\n    #output#\n\
+            \    The topology data information has been memorized. Please respond\
+            \ concisely."
+        - id: e60ae457-5f3b-4f5b-a8dc-7ac6198a4c14
+          role: assistant
+          text: The topology data information format is remembered.
+        - id: 8ecd0c9e-b236-461c-a711-86904171e6af
+          role: user
+          text: "#background#\n    For each node in the topology data, if there is\
+            \ an alarm event, the alarm event will be appended to the node's name.\
+            \ Nodes without any alarm events will have no additional information after\
+            \ their name.\n    #attention#\n    The alarm event data is in JSON format,\
+            \ and its meaning is as follows:\n    The first level's key represents\
+            \ the type of alarm event, represented by a number:\n    1: Interface-level\
+            \ alarm\n    2: Container anomaly\n    3: Infrastructure anomaly\n   \
+            \ 4: Network program anomaly\n    5: Error anomaly\n    The second level's\
+            \ key contains information specific to that alarm type, with the following\
+            \ fields:\n    - add: Number of newly added alarm events\n    - duplicate:\
+            \ Number of duplicate alarm events\n    - resolve: Number of resolved\
+            \ alarm events\n    - keep: Number of unresolved alarm events\n    - firstTime:\
+            \ The first occurrence time of this type of alarm event\n    - lastTime:\
+            \ The last occurrence time of this type of alarm event\n    - resolveTime:\
+            \ The time when the alarm event was resolved (only present if the alarm\
+            \ has been resolved)\n    #processing#\n    Please process the data carefully.\
+            \ For each node (with the node name starting after the number-- symbol),\
+            \ ensure that the node name is recorded fully and correctly. Do not include\
+            \ other content in the response, only the necessary data.\n    Nodes with\
+            \ alarm events are defined as those that appear in the JSON data.\n  \
+            \  Nodes without alarm events are defined as those that do not appear\
+            \ in the JSON data.\n    #output#\n    I have remembered the alarm events.\
+            \ Please respond concisely and briefly.\n    #Topology and Alarm Event\
+            \ Data#\n    The topology and alarm event data are as follows:\n{{#1740483937644.text#}}"
+        - id: 83e3d53e-a468-49eb-a624-1c01ea0d8660
+          role: assistant
+          text: These alert events are remembered.
+        - id: 321dad3d-8100-43ef-9192-83678743bfec
+          role: user
+          text: "#objective#\n    Based on the provided microservice topology diagram\
+            \ and the alarm events for each node, you will be given a set of rules\
+            \ to identify the root cause nodes that match each rule.\n    #rootcause\
+            \ node process#\n    - Record the sequence in which abnormal events propagate\
+            \ from downstream to upstream, based on the type of abnormality and its\
+            \ occurrence frequency in the alarm events.\n    - For each rule provided,\
+            \ continue filtering out the nodes that meet the rule from the suspected\
+            \ root cause nodes identified in the previous rule. Do not restart the\
+            \ entire derivation process from scratch. Only summarize the relevant\
+            \ data.\n    #attention#\n    In the topology, an upstream node may have\
+            \ multiple downstream nodes. These downstream nodes are considered at\
+            \ the same level. If all services of these same-level nodes satisfy the\
+            \ criteria for abnormality propagation upstream, all these downstream\
+            \ nodes can be considered as potential root causes. Exclude the upstream\
+            \ node and ensure that no node is missed.\n    Always exclude entry nodes\
+            \ from the analysis.\n    Use the full names of the nodes throughout the\
+            \ process,do not abbreviate.\n    #output#\n    Follow the derivation\
+            \ process carefully and provide concise and brief answers."
+        - id: 47201076-79d5-494a-b292-4abb6c7b0255
+          role: assistant
+          text: The reasoning process is memorized.
+        - id: 0a47ba60-f808-4aee-baf8-6eb335075005
+          role: user
+          text: '{{#1740620413020.text#}}'
+        - id: c0312b56-3ec7-40d4-a632-3a61641b397b
+          role: assistant
+          text: '{{#1740619353044.text#}}'
+        - id: 5684cffc-6b73-4c54-b1ea-5f1a0706ec4d
+          role: user
+          text: '{{#1740620917572.text#}}'
+        - id: 3a13fc17-2615-4150-8157-82d63c3dc7ee
+          role: assistant
+          text: '{{#17406208202230.text#}}'
+        - id: 878332b7-a064-4a71-abfd-f5e4b94e3b4e
+          role: user
+          text: '{{#1740620994135.text#}}'
+        selected: false
+        title: LLM 3
+        type: llm
+        variables: []
+        vision:
+          enabled: false
+      height: 89
+      id: '17406208182010'
+      position:
+        x: 1629.523646097407
+        y: 263.6222226962782
+      positionAbsolute:
+        x: 1629.523646097407
+        y: 263.6222226962782
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 243
+    - data:
+        context:
+          enabled: false
+          variable_selector: []
+        desc: ''
+        model:
+          completion_params:
+            temperature: 0.7
+          mode: chat
+          name: deepseek-chat
+          provider: langgenius/deepseek/deepseek
+        prompt_template:
+        - id: fd6c6155-9b33-4e8e-880f-0f536f4f4537
+          role: system
+          text: You are an intelligent reasoning assistant. Your task is to analyze
+            the root cause nodes according to the data and rules provided by the user.
+        - id: b48ad458-e31b-4a35-9dae-535df50f3e54
+          role: user
+          text: "#background#\n    Here is a microservice topology diagram with node\
+            \ names at each layer. Upper-layer nodes and lower-layer nodes form upstream\
+            \ and downstream relationships, where the upstream calls the downstream.\
+            \ Please remember the topology structure based on the provided data.\n\
+            \    #attention#\n    topology data information:\n    1.The number at\
+            \ the beginning of each node name indicates its layer. For example, a\
+            \ node with the number \"0\" is the entry service node. The larger the\
+            \ number, the deeper the layer. For non-entry nodes, the first node with\
+            \ a smaller number upwards is considered its upstream node.\n    2.A node\
+            \ may have multiple downstream nodes and may also be called by multiple\
+            \ upstream nodes. Please do not overlook any nodes.\n    3.Do not create\
+            \ non-existent upstream-downstream relationships, do not reverse the relationships,\
+            \ and do not miss any upstream-downstream calls. There should be no loops\
+            \ in the topology structure, and do not introduce any unrelated concepts.\n\
+            \    4.Node names are relatively long, so do not abbreviate them (do not\
+            \ include layer information such as \"1--\" at the beginning of the node\
+            \ name).\n    The topology data will be provided later.\n    #output#\n\
+            \    The topology data information has been memorized. Please respond\
+            \ concisely."
+        - id: e60ae457-5f3b-4f5b-a8dc-7ac6198a4c14
+          role: assistant
+          text: The topology data information format is remembered.
+        - id: 8ecd0c9e-b236-461c-a711-86904171e6af
+          role: user
+          text: "#background#\n    For each node in the topology data, if there is\
+            \ an alarm event, the alarm event will be appended to the node's name.\
+            \ Nodes without any alarm events will have no additional information after\
+            \ their name.\n    #attention#\n    The alarm event data is in JSON format,\
+            \ and its meaning is as follows:\n    The first level's key represents\
+            \ the type of alarm event, represented by a number:\n    1: Interface-level\
+            \ alarm\n    2: Container anomaly\n    3: Infrastructure anomaly\n   \
+            \ 4: Network program anomaly\n    5: Error anomaly\n    The second level's\
+            \ key contains information specific to that alarm type, with the following\
+            \ fields:\n    - add: Number of newly added alarm events\n    - duplicate:\
+            \ Number of duplicate alarm events\n    - resolve: Number of resolved\
+            \ alarm events\n    - keep: Number of unresolved alarm events\n    - firstTime:\
+            \ The first occurrence time of this type of alarm event\n    - lastTime:\
+            \ The last occurrence time of this type of alarm event\n    - resolveTime:\
+            \ The time when the alarm event was resolved (only present if the alarm\
+            \ has been resolved)\n    #processing#\n    Please process the data carefully.\
+            \ For each node (with the node name starting after the number-- symbol),\
+            \ ensure that the node name is recorded fully and correctly. Do not include\
+            \ other content in the response, only the necessary data.\n    Nodes with\
+            \ alarm events are defined as those that appear in the JSON data.\n  \
+            \  Nodes without alarm events are defined as those that do not appear\
+            \ in the JSON data.\n    #output#\n    I have remembered the alarm events.\
+            \ Please respond concisely and briefly.\n    #Topology and Alarm Event\
+            \ Data#\n    The topology and alarm event data are as follows:\n{{#1740483937644.text#}}"
+        - id: 83e3d53e-a468-49eb-a624-1c01ea0d8660
+          role: assistant
+          text: These alert events are remembered.
+        - id: 321dad3d-8100-43ef-9192-83678743bfec
+          role: user
+          text: "#objective#\n    Based on the provided microservice topology diagram\
+            \ and the alarm events for each node, you will be given a set of rules\
+            \ to identify the root cause nodes that match each rule.\n    #rootcause\
+            \ node process#\n    - Record the sequence in which abnormal events propagate\
+            \ from downstream to upstream, based on the type of abnormality and its\
+            \ occurrence frequency in the alarm events.\n    - For each rule provided,\
+            \ continue filtering out the nodes that meet the rule from the suspected\
+            \ root cause nodes identified in the previous rule. Do not restart the\
+            \ entire derivation process from scratch. Only summarize the relevant\
+            \ data.\n    #attention#\n    In the topology, an upstream node may have\
+            \ multiple downstream nodes. These downstream nodes are considered at\
+            \ the same level. If all services of these same-level nodes satisfy the\
+            \ criteria for abnormality propagation upstream, all these downstream\
+            \ nodes can be considered as potential root causes. Exclude the upstream\
+            \ node and ensure that no node is missed.\n    Always exclude entry nodes\
+            \ from the analysis.\n    Use the full names of the nodes throughout the\
+            \ process,do not abbreviate.\n    #output#\n    Follow the derivation\
+            \ process carefully and provide concise and brief answers."
+        - id: 47201076-79d5-494a-b292-4abb6c7b0255
+          role: assistant
+          text: The reasoning process is memorized.
+        - id: 0a47ba60-f808-4aee-baf8-6eb335075005
+          role: user
+          text: '{{#1740620413020.text#}}'
+        - id: 828c0968-487a-4a70-a647-b76ee59dd33a
+          role: assistant
+          text: '{{#1740619353044.text#}}'
+        - id: e0522816-d592-4951-a5b3-de0d390d9c9a
+          role: user
+          text: '{{#1740620917572.text#}}'
+        selected: false
+        title: LLM 2
+        type: llm
+        variables: []
+        vision:
+          enabled: false
+      height: 89
+      id: '17406208202230'
+      position:
+        x: 1222.2131696489557
+        y: 268.2444553409973
+      positionAbsolute:
+        x: 1222.2131696489557
+        y: 268.2444553409973
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 243
+    - data:
+        desc: rule2
+        provider_id: apo_rule
+        provider_name: apo_rule
+        provider_type: builtin
+        selected: false
+        title: alert analysis rule
+        tool_configurations: {}
+        tool_label: 告警规则执行
+        tool_name: alert_rule
+        tool_parameters:
+          rule:
+            type: mixed
+            value: 'Rule 2
+
+              Starting from the application interface layer alarm, follow the topology
+              of the business entrance and trace each node from upstream to downstream
+              in turn (use topology data, do not confuse upstream and downstream).
+              Please output the reasoning process
+
+              When analyzing downstream nodes, be sure to compare the number with
+              the downstream node.
+
+              Analyze each node during the tracing process:
+
+              If there is an interface layer alarm, continue to trace the node with
+              a number greater than the number in front of the node to the same number
+              as it.
+
+              If there is no interface layer alarm, stop tracing, return to the previous
+              node, and exclude the current node.
+
+              The node is considered as a suspected root cause node in the following
+              cases:
+
+              1. There are other types of alarms
+
+              2. There are no alarms of the same type as the node from the number
+              in front of the node to the number in front of the node that is the
+              same as it
+
+              3. If the node is the deepest node (the number in front of the node
+              is the largest), and the node has an interface alarm
+
+              4. During the tracing process, for each node with an interface alarm
+              of type 1 or 5: {
+
+              Check whether there are other types of alarms of type 1 or 5. If so,
+              the node is a suspected root cause, record and continue to analyze the
+              downstream node tracing.
+
+              If there are no other alarms of type 1 or 5, and there are no interface
+              alarms of type 1 or 5 from the number in front of the node to the number
+              in front of the node that is the same as it, then the node is a suspected
+              root cause node
+
+              ''Note''
+
+              The number in front of the node in the topology diagram indicates the
+              depth in the topology diagram. The depth in the topology diagram has
+              nothing to do with the order of the nodes in the text. The same number
+              indicates that there is no upstream and downstream relationship between
+              the siblings.
+
+              Downstream node definition: the number in front of the node to the node
+              with the same number as it is greater than the number in front of the
+              node.
+
+              The depth definition of the most downstream node: the largest number
+              in front of the suspected root cause node. If the number in front of
+              the suspected root cause is the same as the depth of the most downstream
+              node, it is the priority candidate for the suspected root cause.
+
+              ''Output''
+
+              A list of nodes that meet the current rules, concise and short, and
+              the node name needs to be complete and cannot be omitted'
+        type: tool
+      height: 81
+      id: '1740620917572'
+      position:
+        x: 1252.6094398690695
+        y: 72.16511471161112
+      positionAbsolute:
+        x: 1252.6094398690695
+        y: 72.16511471161112
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 243
+    - data:
+        desc: rule3
+        provider_id: apo_rule
+        provider_name: apo_rule
+        provider_type: builtin
+        selected: false
+        title: alert analysis rule
+        tool_configurations: {}
+        tool_label: 告警规则执行
+        tool_name: alert_rule
+        tool_parameters:
+          rule:
+            type: mixed
+            value: 'Rule 3
+
+              The root cause node needs to meet the condition that the exception is
+              transmitted upstream from this node, and the abnormal alarm event of
+              this type is continuous, not sporadic.
+
+              ''Note''
+
+              If the interface layer type alarm has both new and resolved alarms,
+              and the time of the resolved alarm event is close to the time of the
+              first alarm event, the node can be considered sporadic.
+
+              However, if the interface layer type alarm has a retained alarm, the
+              node should be used as a suspected root cause node.
+
+              If the abnormal alarm of the node is sporadic, it should not be identified
+              as a root cause node
+
+              ''Output''
+
+              A list of nodes that meet the current rules, concise and short, and
+              the node name needs to be complete and consistent with the source data,
+              and cannot be omitted'
+        type: tool
+      height: 81
+      id: '1740620994135'
+      position:
+        x: 1629.523646097407
+        y: 83.3551495522311
+      positionAbsolute:
+        x: 1629.523646097407
+        y: 83.3551495522311
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 243
+    - data:
+        desc: rule4
+        provider_id: apo_rule
+        provider_name: apo_rule
+        provider_type: builtin
+        selected: false
+        title: alert analysis rule
+        tool_configurations: {}
+        tool_label: 告警规则执行
+        tool_name: alert_rule
+        tool_parameters:
+          rule:
+            type: mixed
+            value: 'Rule 4
+
+              If a node has an exception, but the upstream node has no interface exception
+              alarm, this node and its branches can be excluded.
+
+              ''Output''
+
+              A list of nodes that meet the current rules, concise and short, and
+              the node name needs to be complete and consistent with the source data,
+              and cannot be omitted'
+        type: tool
+      height: 81
+      id: '1740621003098'
+      position:
+        x: 1979.7459725445985
+        y: 83.3551495522311
+      positionAbsolute:
+        x: 1979.7459725445985
+        y: 83.3551495522311
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 243
+    - data:
+        context:
+          enabled: false
+          variable_selector: []
+        desc: ''
+        model:
+          completion_params:
+            temperature: 0.7
+          mode: chat
+          name: deepseek-chat
+          provider: langgenius/deepseek/deepseek
+        prompt_template:
+        - id: fd6c6155-9b33-4e8e-880f-0f536f4f4537
+          role: system
+          text: You are an intelligent reasoning assistant. Your task is to analyze
+            the root cause nodes according to the data and rules provided by the user.
+        - id: b48ad458-e31b-4a35-9dae-535df50f3e54
+          role: user
+          text: "#background#\n    Here is a microservice topology diagram with node\
+            \ names at each layer. Upper-layer nodes and lower-layer nodes form upstream\
+            \ and downstream relationships, where the upstream calls the downstream.\
+            \ Please remember the topology structure based on the provided data.\n\
+            \    #attention#\n    topology data information:\n    1.The number at\
+            \ the beginning of each node name indicates its layer. For example, a\
+            \ node with the number \"0\" is the entry service node. The larger the\
+            \ number, the deeper the layer. For non-entry nodes, the first node with\
+            \ a smaller number upwards is considered its upstream node.\n    2.A node\
+            \ may have multiple downstream nodes and may also be called by multiple\
+            \ upstream nodes. Please do not overlook any nodes.\n    3.Do not create\
+            \ non-existent upstream-downstream relationships, do not reverse the relationships,\
+            \ and do not miss any upstream-downstream calls. There should be no loops\
+            \ in the topology structure, and do not introduce any unrelated concepts.\n\
+            \    4.Node names are relatively long, so do not abbreviate them (do not\
+            \ include layer information such as \"1--\" at the beginning of the node\
+            \ name).\n    The topology data will be provided later.\n    #output#\n\
+            \    The topology data information has been memorized. Please respond\
+            \ concisely."
+        - id: e60ae457-5f3b-4f5b-a8dc-7ac6198a4c14
+          role: assistant
+          text: The topology data information format is remembered.
+        - id: 8ecd0c9e-b236-461c-a711-86904171e6af
+          role: user
+          text: "#background#\n    For each node in the topology data, if there is\
+            \ an alarm event, the alarm event will be appended to the node's name.\
+            \ Nodes without any alarm events will have no additional information after\
+            \ their name.\n    #attention#\n    The alarm event data is in JSON format,\
+            \ and its meaning is as follows:\n    The first level's key represents\
+            \ the type of alarm event, represented by a number:\n    1: Interface-level\
+            \ alarm\n    2: Container anomaly\n    3: Infrastructure anomaly\n   \
+            \ 4: Network program anomaly\n    5: Error anomaly\n    The second level's\
+            \ key contains information specific to that alarm type, with the following\
+            \ fields:\n    - add: Number of newly added alarm events\n    - duplicate:\
+            \ Number of duplicate alarm events\n    - resolve: Number of resolved\
+            \ alarm events\n    - keep: Number of unresolved alarm events\n    - firstTime:\
+            \ The first occurrence time of this type of alarm event\n    - lastTime:\
+            \ The last occurrence time of this type of alarm event\n    - resolveTime:\
+            \ The time when the alarm event was resolved (only present if the alarm\
+            \ has been resolved)\n    #processing#\n    Please process the data carefully.\
+            \ For each node (with the node name starting after the number-- symbol),\
+            \ ensure that the node name is recorded fully and correctly. Do not include\
+            \ other content in the response, only the necessary data.\n    Nodes with\
+            \ alarm events are defined as those that appear in the JSON data.\n  \
+            \  Nodes without alarm events are defined as those that do not appear\
+            \ in the JSON data.\n    #output#\n    I have remembered the alarm events.\
+            \ Please respond concisely and briefly.\n    #Topology and Alarm Event\
+            \ Data#\n    The topology and alarm event data are as follows:\n{{#1740483937644.text#}}"
+        - id: 83e3d53e-a468-49eb-a624-1c01ea0d8660
+          role: assistant
+          text: These alert events are remembered.
+        - id: 321dad3d-8100-43ef-9192-83678743bfec
+          role: user
+          text: "#objective#\n    Based on the provided microservice topology diagram\
+            \ and the alarm events for each node, you will be given a set of rules\
+            \ to identify the root cause nodes that match each rule.\n    #rootcause\
+            \ node process#\n    - Record the sequence in which abnormal events propagate\
+            \ from downstream to upstream, based on the type of abnormality and its\
+            \ occurrence frequency in the alarm events.\n    - For each rule provided,\
+            \ continue filtering out the nodes that meet the rule from the suspected\
+            \ root cause nodes identified in the previous rule. Do not restart the\
+            \ entire derivation process from scratch. Only summarize the relevant\
+            \ data.\n    #attention#\n    In the topology, an upstream node may have\
+            \ multiple downstream nodes. These downstream nodes are considered at\
+            \ the same level. If all services of these same-level nodes satisfy the\
+            \ criteria for abnormality propagation upstream, all these downstream\
+            \ nodes can be considered as potential root causes. Exclude the upstream\
+            \ node and ensure that no node is missed.\n    Always exclude entry nodes\
+            \ from the analysis.\n    Use the full names of the nodes throughout the\
+            \ process,do not abbreviate.\n    #output#\n    Follow the derivation\
+            \ process carefully and provide concise and brief answers."
+        - id: 47201076-79d5-494a-b292-4abb6c7b0255
+          role: assistant
+          text: The reasoning process is memorized.
+        - id: 0a47ba60-f808-4aee-baf8-6eb335075005
+          role: user
+          text: '{{#1740620413020.text#}}'
+        - id: c0312b56-3ec7-40d4-a632-3a61641b397b
+          role: assistant
+          text: '{{#1740619353044.text#}}'
+        - id: 5684cffc-6b73-4c54-b1ea-5f1a0706ec4d
+          role: user
+          text: '{{#1740620917572.text#}}'
+        - id: 3a13fc17-2615-4150-8157-82d63c3dc7ee
+          role: assistant
+          text: '{{#17406208202230.text#}}'
+        - id: 878332b7-a064-4a71-abfd-f5e4b94e3b4e
+          role: user
+          text: '{{#1740620994135.text#}}'
+        - id: 6793984b-1ebd-4440-9d85-56846eb3f0b2
+          role: assistant
+          text: '{{#17406208182010.text#}}'
+        - id: b38b8c24-c325-4c67-9f25-18f00869da81
+          role: user
+          text: '{{#1740621003098.text#}}'
+        selected: false
+        title: LLM 4
+        type: llm
+        variables: []
+        vision:
+          enabled: false
+      height: 89
+      id: '17406213332120'
+      position:
+        x: 1979.7459725445985
+        y: 268.2444553409973
+      positionAbsolute:
+        x: 1979.7459725445985
+        y: 268.2444553409973
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 243
+    - data:
+        context:
+          enabled: false
+          variable_selector: []
+        desc: 汇总
+        model:
+          completion_params:
+            temperature: 0.7
+          mode: chat
+          name: deepseek-chat
+          provider: langgenius/deepseek/deepseek
+        prompt_template:
+        - id: fd6c6155-9b33-4e8e-880f-0f536f4f4537
+          role: system
+          text: You are an intelligent reasoning assistant. Your task is to analyze
+            the root cause nodes according to the data and rules provided by the user.
+        - id: b48ad458-e31b-4a35-9dae-535df50f3e54
+          role: user
+          text: "#background#\n    Here is a microservice topology diagram with node\
+            \ names at each layer. Upper-layer nodes and lower-layer nodes form upstream\
+            \ and downstream relationships, where the upstream calls the downstream.\
+            \ Please remember the topology structure based on the provided data.\n\
+            \    #attention#\n    topology data information:\n    1.The number at\
+            \ the beginning of each node name indicates its layer. For example, a\
+            \ node with the number \"0\" is the entry service node. The larger the\
+            \ number, the deeper the layer. For non-entry nodes, the first node with\
+            \ a smaller number upwards is considered its upstream node.\n    2.A node\
+            \ may have multiple downstream nodes and may also be called by multiple\
+            \ upstream nodes. Please do not overlook any nodes.\n    3.Do not create\
+            \ non-existent upstream-downstream relationships, do not reverse the relationships,\
+            \ and do not miss any upstream-downstream calls. There should be no loops\
+            \ in the topology structure, and do not introduce any unrelated concepts.\n\
+            \    4.Node names are relatively long, so do not abbreviate them (do not\
+            \ include layer information such as \"1--\" at the beginning of the node\
+            \ name).\n    The topology data will be provided later.\n    #output#\n\
+            \    The topology data information has been memorized. Please respond\
+            \ concisely."
+        - id: e60ae457-5f3b-4f5b-a8dc-7ac6198a4c14
+          role: assistant
+          text: The topology data information format is remembered.
+        - id: 8ecd0c9e-b236-461c-a711-86904171e6af
+          role: user
+          text: "#background#\n    For each node in the topology data, if there is\
+            \ an alarm event, the alarm event will be appended to the node's name.\
+            \ Nodes without any alarm events will have no additional information after\
+            \ their name.\n    #attention#\n    The alarm event data is in JSON format,\
+            \ and its meaning is as follows:\n    The first level's key represents\
+            \ the type of alarm event, represented by a number:\n    1: Interface-level\
+            \ alarm\n    2: Container anomaly\n    3: Infrastructure anomaly\n   \
+            \ 4: Network program anomaly\n    5: Error anomaly\n    The second level's\
+            \ key contains information specific to that alarm type, with the following\
+            \ fields:\n    - add: Number of newly added alarm events\n    - duplicate:\
+            \ Number of duplicate alarm events\n    - resolve: Number of resolved\
+            \ alarm events\n    - keep: Number of unresolved alarm events\n    - firstTime:\
+            \ The first occurrence time of this type of alarm event\n    - lastTime:\
+            \ The last occurrence time of this type of alarm event\n    - resolveTime:\
+            \ The time when the alarm event was resolved (only present if the alarm\
+            \ has been resolved)\n    #processing#\n    Please process the data carefully.\
+            \ For each node (with the node name starting after the number-- symbol),\
+            \ ensure that the node name is recorded fully and correctly. Do not include\
+            \ other content in the response, only the necessary data.\n    Nodes with\
+            \ alarm events are defined as those that appear in the JSON data.\n  \
+            \  Nodes without alarm events are defined as those that do not appear\
+            \ in the JSON data.\n    #output#\n    I have remembered the alarm events.\
+            \ Please respond concisely and briefly.\n    #Topology and Alarm Event\
+            \ Data#\n    The topology and alarm event data are as follows:\n{{#1740483937644.text#}}"
+        - id: 83e3d53e-a468-49eb-a624-1c01ea0d8660
+          role: assistant
+          text: These alert events are remembered.
+        - id: 321dad3d-8100-43ef-9192-83678743bfec
+          role: user
+          text: "#objective#\n    Based on the provided microservice topology diagram\
+            \ and the alarm events for each node, you will be given a set of rules\
+            \ to identify the root cause nodes that match each rule.\n    #rootcause\
+            \ node process#\n    - Record the sequence in which abnormal events propagate\
+            \ from downstream to upstream, based on the type of abnormality and its\
+            \ occurrence frequency in the alarm events.\n    - For each rule provided,\
+            \ continue filtering out the nodes that meet the rule from the suspected\
+            \ root cause nodes identified in the previous rule. Do not restart the\
+            \ entire derivation process from scratch. Only summarize the relevant\
+            \ data.\n    #attention#\n    In the topology, an upstream node may have\
+            \ multiple downstream nodes. These downstream nodes are considered at\
+            \ the same level. If all services of these same-level nodes satisfy the\
+            \ criteria for abnormality propagation upstream, all these downstream\
+            \ nodes can be considered as potential root causes. Exclude the upstream\
+            \ node and ensure that no node is missed.\n    Always exclude entry nodes\
+            \ from the analysis.\n    Use the full names of the nodes throughout the\
+            \ process,do not abbreviate.\n    #output#\n    Follow the derivation\
+            \ process carefully and provide concise and brief answers."
+        - id: 47201076-79d5-494a-b292-4abb6c7b0255
+          role: assistant
+          text: The reasoning process is memorized.
+        - id: 0a47ba60-f808-4aee-baf8-6eb335075005
+          role: user
+          text: '{{#1740620413020.text#}}'
+        - id: c0312b56-3ec7-40d4-a632-3a61641b397b
+          role: assistant
+          text: '{{#1740619353044.text#}}'
+        - id: 5684cffc-6b73-4c54-b1ea-5f1a0706ec4d
+          role: user
+          text: '{{#1740620917572.text#}}'
+        - id: 3a13fc17-2615-4150-8157-82d63c3dc7ee
+          role: assistant
+          text: '{{#17406208202230.text#}}'
+        - id: 878332b7-a064-4a71-abfd-f5e4b94e3b4e
+          role: user
+          text: '{{#1740620994135.text#}}'
+        - id: 4537a3f2-85b5-4156-8db1-c8533dabc80f
+          role: assistant
+          text: '{{#17406208182010.text#}}'
+        - id: 5f5edef3-3bd1-46d6-ab82-f8e4561efb91
+          role: user
+          text: '{{#1740621003098.text#}}'
+        - id: f0d72fb5-747d-405a-8769-0ba96f5aa710
+          role: assistant
+          text: '{{#17406213332120.text#}}'
+        - id: 6785fe4d-1f47-4938-b50d-1d5b65bb26d1
+          role: user
+          text: '#Purpose#
+
+            Summarize the previous node information, return a root cause node that
+            meets the most rules and up to three suspected root cause nodes.
+
+            #Note#
+
+            No other additional information is required, and the node name must be
+            complete and consistent with the source data.
+
+            The final root cause node must not be the entry node (the top node in
+            the topology graph).
+
+            The node name must be complete and consistent with the topology data,
+            and no special symbols such as spaces, *, `, etc. should be used before
+            and after the node name.
+
+            xxx must be followed by the word node, do not give xxx directly.
+
+            #Output#
+
+            The output is in JSON format, only containing the fields nodeName and
+            otherNodeName. The node name in josn must be complete, retaining any original
+            symbols, and cannot be omitted.
+
+            nodeName gives the node that causes the root cause. (Do not give None,
+            there must be a node such as the root cause is node A)
+
+            otherNodeName gives a list of suspected root cause nodes. (There can be
+            multiple nodes in the list, but they cannot be the same as the root cause
+            node)'
+        selected: false
+        title: LLM 5
+        type: llm
+        variables: []
+        vision:
+          enabled: false
+      height: 117
+      id: '17406213642580'
+      position:
+        x: 1957.0410005791687
+        y: 486.25205395404754
+      positionAbsolute:
+        x: 1957.0410005791687
+        y: 486.25205395404754
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 243
+    - data:
+        desc: ''
+        is_team_authorization: true
+        output_schema: null
+        paramSchemas:
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: llm text
+            ja_JP: llm text
+            pt_BR: llm text
+            zh_Hans: 大模型返回文本结果
+          label:
+            en_US: text
+            ja_JP: text
+            pt_BR: text
+            zh_Hans: text
+          llm_description: rule
+          max: null
+          min: null
+          name: text
+          options: []
+          placeholder: null
+          precision: null
+          required: false
+          scope: null
+          template: null
+          type: string
+        params:
+          text: ''
+        provider_id: apo_rule
+        provider_name: apo_rule
+        provider_type: builtin
+        selected: false
+        title: get root cause node
+        tool_configurations: {}
+        tool_label: 提取根因节点
+        tool_name: root_cause
+        tool_parameters:
+          language:
+            type: mixed
+            value: en
+          text:
+            type: mixed
+            value: '{{#17406213642580.text#}}'
+        type: tool
+      height: 53
+      id: '1740991358287'
+      position:
+        x: 2388.1123042552454
+        y: 486.25205395404754
+      positionAbsolute:
+        x: 2388.1123042552454
+        y: 486.25205395404754
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 243
+    - data:
+        desc: ''
+        is_team_authorization: true
+        output_schema: null
+        paramSchemas:
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: entry service
+            ja_JP: entry service
+            pt_BR: entry service
+            zh_Hans: 拓扑入口服务名
+          label:
+            en_US: service
+            ja_JP: service
+            pt_BR: service
+            zh_Hans: service
+          llm_description: toplogy service name
+          max: null
+          min: null
+          name: service
+          options: []
+          placeholder: null
+          precision: null
+          required: true
+          scope: null
+          template: null
+          type: string
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: toplogy endpoint
+            ja_JP: toplogy endpoint
+            pt_BR: toplogy endpoint
+            zh_Hans: 拓扑入口服务端点
+          label:
+            en_US: endpoint
+            ja_JP: endpoint
+            pt_BR: endpoint
+            zh_Hans: endpoint
+          llm_description: toplogy endpoint
+          max: null
+          min: null
+          name: endpoint
+          options: []
+          placeholder: null
+          precision: null
+          required: true
+          scope: null
+          template: null
+          type: string
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: Data query start time
+            ja_JP: Data query start time
+            pt_BR: Data query start time
+            zh_Hans: 开始时间 (微秒)
+          label:
+            en_US: startTime
+            ja_JP: startTime
+            pt_BR: startTime
+            zh_Hans: startTime
+          llm_description: Data query start time
+          max: null
+          min: null
+          name: startTime
+          options: []
+          placeholder: null
+          precision: null
+          required: true
+          scope: null
+          template: null
+          type: number
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: Data query end time
+            ja_JP: Data query end time
+            pt_BR: Data query end time
+            zh_Hans: 结束时间 (微秒)
+          label:
+            en_US: endTime
+            ja_JP: endTime
+            pt_BR: endTime
+            zh_Hans: endTime
+          llm_description: Data query start time
+          max: null
+          min: null
+          name: endTime
+          options: []
+          placeholder: null
+          precision: null
+          required: true
+          scope: null
+          template: null
+          type: number
+        params:
+          endTime: ''
+          endpoint: ''
+          service: ''
+          startTime: ''
+        provider_id: apo_select
+        provider_name: apo_select
+        provider_type: builtin
+        selected: false
+        title: query entry service topology
+        tool_configurations: {}
+        tool_label: 查询入口服务拓扑结构
+        tool_name: 查询入口服务拓扑结构
+        tool_parameters:
+          endTime:
+            type: variable
+            value:
+            - '1740030989850'
+            - endTime
+          endpoint:
+            type: mixed
+            value: '{{#1740030989850.endpoint#}}'
+          service:
+            type: mixed
+            value: '{{#1740030989850.service#}}'
+          startTime:
+            type: variable
+            value:
+            - '1740030989850'
+            - startTime
+        type: tool
+      height: 53
+      id: '1741576377961'
+      position:
+        x: 152.2095509987039
+        y: 100.4720021403999
+      positionAbsolute:
+        x: 152.2095509987039
+        y: 100.4720021403999
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 243
+    viewport:
+      x: 488.07867306792195
+      y: 89.57805645721811
+      zoom: 0.6680370391950523

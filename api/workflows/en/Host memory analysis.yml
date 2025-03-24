@@ -1,0 +1,534 @@
+app:
+  description: ''
+  icon: 🤖
+  icon_background: '#FFEAD5'
+  mode: workflow
+  name: Host memory analysis
+  use_icon_as_answer_icon: false
+dependencies:
+- current_identifier: null
+  type: package
+  value:
+    plugin_unique_identifier: langgenius/deepseek:0.0.5@fd6efd37c2a931911de8ab9ca3ba2da303bef146d45ee87ad896b04b36d09403
+kind: app
+version: 0.1.5
+workflow:
+  conversation_variables: []
+  environment_variables: []
+  features:
+    file_upload:
+      allowed_file_extensions:
+      - .JPG
+      - .JPEG
+      - .PNG
+      - .GIF
+      - .WEBP
+      - .SVG
+      allowed_file_types:
+      - image
+      allowed_file_upload_methods:
+      - local_file
+      - remote_url
+      enabled: false
+      fileUploadConfig:
+        audio_file_size_limit: 50
+        batch_count_limit: 5
+        file_size_limit: 15
+        image_file_size_limit: 10
+        video_file_size_limit: 100
+        workflow_file_upload_limit: 10
+      image:
+        enabled: false
+        number_limits: 3
+        transfer_methods:
+        - local_file
+        - remote_url
+      number_limits: 3
+    opening_statement: ''
+    retriever_resource:
+      enabled: true
+    sensitive_word_avoidance:
+      enabled: false
+    speech_to_text:
+      enabled: false
+    suggested_questions: []
+    suggested_questions_after_answer:
+      enabled: false
+    text_to_speech:
+      enabled: false
+      language: ''
+      voice: ''
+  graph:
+    edges:
+    - data:
+        isInIteration: false
+        sourceType: start
+        targetType: tool
+      id: 1742546426270-source-1742546452789-target
+      source: '1742546426270'
+      sourceHandle: source
+      target: '1742546452789'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: start
+        targetType: tool
+      id: 1742546426270-source-1742546457440-target
+      source: '1742546426270'
+      sourceHandle: source
+      target: '1742546457440'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: tool
+        targetType: llm
+      id: 1742546452789-source-1742546481644-target
+      source: '1742546452789'
+      sourceHandle: source
+      target: '1742546481644'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: tool
+        targetType: llm
+      id: 1742546457440-source-1742546481644-target
+      source: '1742546457440'
+      sourceHandle: source
+      target: '1742546481644'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: llm
+        targetType: end
+      id: 1742546481644-source-1742546671231-target
+      source: '1742546481644'
+      sourceHandle: source
+      target: '1742546671231'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    nodes:
+    - data:
+        desc: ''
+        selected: false
+        title: 开始
+        type: start
+        variables:
+        - label: Query start time(Microsecond)
+          max_length: 48
+          options: []
+          required: true
+          type: number
+          variable: start_time
+        - label: Query end time(Microsecond)
+          max_length: 48
+          options: []
+          required: true
+          type: number
+          variable: end_time
+        - label: Prometheus Job
+          max_length: 48
+          options: []
+          required: false
+          type: text-input
+          variable: prometheus_job
+        - label: Node name
+          max_length: 48
+          options: []
+          required: true
+          type: text-input
+          variable: node_name
+        - label: Threshold
+          max_length: 48
+          options: []
+          required: true
+          type: number
+          variable: threshold
+      height: 193
+      id: '1742546426270'
+      position:
+        x: 70
+        y: 313
+      positionAbsolute:
+        x: 70
+        y: 313
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 243
+    - data:
+        desc: ''
+        is_team_authorization: true
+        output_schema: null
+        paramSchemas:
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: Prometheus job name for host metrics
+            ja_JP: Prometheus job name for host metrics
+            pt_BR: Prometheus job name for host metrics
+            zh_Hans: Prometheus任务名称（宿主机指标）
+          label:
+            en_US: Prometheus Job
+            ja_JP: Prometheus Job
+            pt_BR: Tarefa Prometheus
+            zh_Hans: Prometheus任务
+          llm_description: Unique identifier for metrics scrape job
+          max: null
+          min: null
+          name: job
+          options: []
+          placeholder: null
+          precision: null
+          required: false
+          scope: null
+          template: null
+          type: string
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: Host node identifier
+            ja_JP: Host node identifier
+            pt_BR: Host node identifier
+            zh_Hans: 宿主机节点标识
+          label:
+            en_US: Host Node
+            ja_JP: Host Node
+            pt_BR: Host Node
+            zh_Hans: 宿主机节点
+          llm_description: Unique identifier for host node
+          max: null
+          min: null
+          name: node
+          options: []
+          placeholder: null
+          precision: null
+          required: false
+          scope: null
+          template: null
+          type: string
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: Data query start time(Microsecond)
+            ja_JP: Data query start time(Microsecond)
+            pt_BR: Data query start time(Microsecond)
+            zh_Hans: 开始时间 (微秒)
+          label:
+            en_US: startTime
+            ja_JP: startTime
+            pt_BR: startTime
+            zh_Hans: startTime
+          llm_description: Data query start time(Microsecond)
+          max: null
+          min: null
+          name: startTime
+          options: []
+          placeholder: null
+          precision: null
+          required: true
+          scope: null
+          template: null
+          type: number
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: Data query end time(Microsecond)
+            ja_JP: Data query end time(Microsecond)
+            pt_BR: Data query end time(Microsecond)
+            zh_Hans: 结束时间 (微秒)
+          label:
+            en_US: endTime
+            ja_JP: endTime
+            pt_BR: endTime
+            zh_Hans: endTime
+          llm_description: Data query end time(Microsecond)
+          max: null
+          min: null
+          name: endTime
+          options: []
+          placeholder: null
+          precision: null
+          required: true
+          scope: null
+          template: null
+          type: number
+        params:
+          endTime: ''
+          job: ''
+          node: ''
+          startTime: ''
+        provider_id: apo_select
+        provider_name: apo_select
+        provider_type: builtin
+        selected: false
+        title: 查询宿主机RAM使用率
+        tool_configurations: {}
+        tool_label: 查询宿主机RAM使用率
+        tool_name: 查询宿主机RAM使用率
+        tool_parameters:
+          endTime:
+            type: variable
+            value:
+            - '1742546426270'
+            - end_time
+          job:
+            type: mixed
+            value: '{{#1742546426270.prometheus_job#}}'
+          node:
+            type: mixed
+            value: '{{#1742546426270.node_name#}}'
+          startTime:
+            type: variable
+            value:
+            - '1742546426270'
+            - end_time
+        type: tool
+      height: 53
+      id: '1742546452789'
+      position:
+        x: 419
+        y: 277
+      positionAbsolute:
+        x: 419
+        y: 277
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 243
+    - data:
+        desc: ''
+        is_team_authorization: true
+        output_schema: null
+        paramSchemas:
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: Prometheus job name for host metrics
+            ja_JP: Prometheus job name for host metrics
+            pt_BR: Prometheus job name for host metrics
+            zh_Hans: Prometheus任务名称（宿主机指标）
+          label:
+            en_US: Prometheus Job
+            ja_JP: Prometheus Job
+            pt_BR: Tarefa Prometheus
+            zh_Hans: Prometheus任务
+          llm_description: Unique identifier for metrics scrape job
+          max: null
+          min: null
+          name: job
+          options: []
+          placeholder: null
+          precision: null
+          required: false
+          scope: null
+          template: null
+          type: string
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: Host node identifier
+            ja_JP: Host node identifier
+            pt_BR: Host node identifier
+            zh_Hans: 宿主机节点标识
+          label:
+            en_US: Host Node
+            ja_JP: Host Node
+            pt_BR: Host Node
+            zh_Hans: 宿主机节点
+          llm_description: Unique identifier for host node
+          max: null
+          min: null
+          name: node
+          options: []
+          placeholder: null
+          precision: null
+          required: true
+          scope: null
+          template: null
+          type: string
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: Data query start time(Microsecond)
+            ja_JP: Data query start time(Microsecond)
+            pt_BR: Data query start time(Microsecond)
+            zh_Hans: 开始时间 (微秒)
+          label:
+            en_US: startTime
+            ja_JP: startTime
+            pt_BR: startTime
+            zh_Hans: startTime
+          llm_description: Data query start time(Microsecond)
+          max: null
+          min: null
+          name: startTime
+          options: []
+          placeholder: null
+          precision: null
+          required: false
+          scope: null
+          template: null
+          type: number
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: Data query end time(Microsecond)
+            ja_JP: Data query end time(Microsecond)
+            pt_BR: Data query end time(Microsecond)
+            zh_Hans: 结束时间 (微秒)
+          label:
+            en_US: endTime
+            ja_JP: endTime
+            pt_BR: endTime
+            zh_Hans: endTime
+          llm_description: Data query end time(Microsecond)
+          max: null
+          min: null
+          name: endTime
+          options: []
+          placeholder: null
+          precision: null
+          required: true
+          scope: null
+          template: null
+          type: number
+        params:
+          endTime: ''
+          job: ''
+          node: ''
+          startTime: ''
+        provider_id: apo_select
+        provider_name: apo_select
+        provider_type: builtin
+        selected: false
+        title: 查询宿主机RAM总大小
+        tool_configurations: {}
+        tool_label: 查询宿主机RAM总大小
+        tool_name: 查询宿主机RAM总大小
+        tool_parameters:
+          endTime:
+            type: variable
+            value:
+            - '1742546426270'
+            - end_time
+          job:
+            type: mixed
+            value: '{{#1742546426270.prometheus_job#}}'
+          node:
+            type: mixed
+            value: '{{#1742546426270.node_name#}}'
+          startTime:
+            type: variable
+            value:
+            - '1742546426270'
+            - start_time
+        type: tool
+      height: 53
+      id: '1742546457440'
+      position:
+        x: 419
+        y: 384
+      positionAbsolute:
+        x: 419
+        y: 384
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 243
+    - data:
+        context:
+          enabled: false
+          variable_selector: []
+        desc: ''
+        model:
+          completion_params:
+            temperature: 0.7
+          mode: chat
+          name: deepseek-chat
+          provider: langgenius/deepseek/deepseek
+        prompt_template:
+        - id: fa3330e1-30ec-4355-b5ee-ed175aebee07
+          role: system
+          text: You are an intelligent assistant. Please help the user analyze the
+            logs to check for any potential issues.
+        - id: a8b12002-eb47-4fa7-a81a-035ce69decc5
+          role: user
+          text: "# Purpose  \nAnalyze whether there are memory anomalies in the host\
+            \ **{{#1742546426270.node_name#}}** based on metric data.  \n\n# Analysis\
+            \ Process  \n1. **Review Raw Data**  \n   Examine the metric data **{{#1742546452789.text#}}**\
+            \ and **{{#1742546457440.text#}}** to obtain the host's memory usage rate\
+            \ and total memory size.  \n2. **Analyze Trend of Related Metrics**  \n\
+            \   If the user has provided a threshold **{{#1742546426270.threshold#}}**,\
+            \ compare it with the memory usage rate **{{#1742546452789.text#}}**.\
+            \ If no threshold is provided, select an appropriate value for comparison.\
+            \  \n3. **Conclusion**  \n   Highlight abrupt changes in abnormal time\
+            \ periods based on the comparison. For example:  \n   *\"Memory anomalies\
+            \ were detected in host **{{#1742546426270.node_name#}}** from [start\
+            \ time] to [end time], spiking from [initial value] to [final value].\"\
+            *  \n\n# Output  \nAnalysis Result of Memory Anomalies for Host **{{#1742546426270.node_name#}}**"
+        selected: true
+        title: LLM
+        type: llm
+        variables: []
+        vision:
+          enabled: false
+      height: 89
+      id: '1742546481644'
+      position:
+        x: 838.1041129274082
+        y: 323.8391939960704
+      positionAbsolute:
+        x: 838.1041129274082
+        y: 323.8391939960704
+      selected: true
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 243
+    - data:
+        desc: ''
+        outputs:
+        - value_selector:
+          - '1742546481644'
+          - text
+          variable: text
+        selected: false
+        title: 结束
+        type: end
+      height: 89
+      id: '1742546671231'
+      position:
+        x: 1194.5045972085811
+        y: 323.8391939960704
+      positionAbsolute:
+        x: 1194.5045972085811
+        y: 323.8391939960704
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 243
+    viewport:
+      x: -154.6051712912406
+      y: 20.397496672184502
+      zoom: 0.7578582832551992

@@ -1,0 +1,328 @@
+app:
+  description: ''
+  icon: 🤖
+  icon_background: '#FFEAD5'
+  mode: workflow
+  name: Host CPU IO Wait
+  use_icon_as_answer_icon: false
+dependencies:
+- current_identifier: null
+  type: package
+  value:
+    plugin_unique_identifier: langgenius/deepseek:0.0.5@fd6efd37c2a931911de8ab9ca3ba2da303bef146d45ee87ad896b04b36d09403
+kind: app
+version: 0.1.5
+workflow:
+  conversation_variables: []
+  environment_variables: []
+  features:
+    file_upload:
+      allowed_file_extensions:
+      - .JPG
+      - .JPEG
+      - .PNG
+      - .GIF
+      - .WEBP
+      - .SVG
+      allowed_file_types:
+      - image
+      allowed_file_upload_methods:
+      - local_file
+      - remote_url
+      enabled: false
+      fileUploadConfig:
+        audio_file_size_limit: 50
+        batch_count_limit: 5
+        file_size_limit: 15
+        image_file_size_limit: 10
+        video_file_size_limit: 100
+        workflow_file_upload_limit: 10
+      image:
+        enabled: false
+        number_limits: 3
+        transfer_methods:
+        - local_file
+        - remote_url
+      number_limits: 3
+    opening_statement: ''
+    retriever_resource:
+      enabled: true
+    sensitive_word_avoidance:
+      enabled: false
+    speech_to_text:
+      enabled: false
+    suggested_questions: []
+    suggested_questions_after_answer:
+      enabled: false
+    text_to_speech:
+      enabled: false
+      language: ''
+      voice: ''
+  graph:
+    edges:
+    - data:
+        isInIteration: false
+        sourceType: start
+        targetType: tool
+      id: 1742548374719-source-1742548431447-target
+      source: '1742548374719'
+      sourceHandle: source
+      target: '1742548431447'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: tool
+        targetType: llm
+      id: 1742548431447-source-1742548501572-target
+      source: '1742548431447'
+      sourceHandle: source
+      target: '1742548501572'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: llm
+        targetType: end
+      id: 1742548501572-source-1742548523246-target
+      source: '1742548501572'
+      sourceHandle: source
+      target: '1742548523246'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    nodes:
+    - data:
+        desc: ''
+        selected: false
+        title: 开始
+        type: start
+        variables:
+        - label: Query start time(Microsecond)
+          max_length: 48
+          options: []
+          required: true
+          type: number
+          variable: start_time
+        - label: Query end time(Microsecond)
+          max_length: 48
+          options: []
+          required: true
+          type: number
+          variable: end_time
+        - label: Node name
+          max_length: 48
+          options: []
+          required: true
+          type: text-input
+          variable: node_name
+      height: 141
+      id: '1742548374719'
+      position:
+        x: 76.04147626768133
+        y: 289
+      positionAbsolute:
+        x: 76.04147626768133
+        y: 289
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 243
+    - data:
+        desc: ''
+        is_team_authorization: true
+        output_schema: null
+        paramSchemas:
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: Specified host name
+            ja_JP: Specified host name
+            pt_BR: Specified host name
+            zh_Hans: 指定的主机名
+          label:
+            en_US: node
+            ja_JP: node
+            pt_BR: node
+            zh_Hans: node
+          llm_description: Specified host name
+          max: null
+          min: null
+          name: node
+          options: []
+          placeholder: null
+          precision: null
+          required: false
+          scope: null
+          template: null
+          type: string
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: Data query start time(Microsecond)
+            ja_JP: Data query start time(Microsecond)
+            pt_BR: Data query start time(Microsecond)
+            zh_Hans: 开始时间 (微秒)
+          label:
+            en_US: startTime
+            ja_JP: startTime
+            pt_BR: startTime
+            zh_Hans: startTime
+          llm_description: Data query start time(Microsecond)
+          max: null
+          min: null
+          name: startTime
+          options: []
+          placeholder: null
+          precision: null
+          required: true
+          scope: null
+          template: null
+          type: number
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: Data query end time(Microsecond)
+            ja_JP: Data query end time(Microsecond)
+            pt_BR: Data query end time(Microsecond)
+            zh_Hans: 结束时间 (微秒)
+          label:
+            en_US: endTime
+            ja_JP: endTime
+            pt_BR: endTime
+            zh_Hans: endTime
+          llm_description: Data query end time(Microsecond)
+          max: null
+          min: null
+          name: endTime
+          options: []
+          placeholder: null
+          precision: null
+          required: true
+          scope: null
+          template: null
+          type: number
+        params:
+          endTime: ''
+          node: ''
+          startTime: ''
+        provider_id: apo_select
+        provider_name: apo_select
+        provider_type: builtin
+        selected: false
+        title: 宿主机IO等待CPU繁忙率
+        tool_configurations: {}
+        tool_label: 宿主机IO等待CPU繁忙率
+        tool_name: host_cpu_iowait
+        tool_parameters:
+          endTime:
+            type: variable
+            value:
+            - '1742548374719'
+            - end_time
+          node:
+            type: mixed
+            value: '{{#1742548374719.node_name#}}'
+          startTime:
+            type: variable
+            value:
+            - '1742548374719'
+            - start_time
+        type: tool
+      height: 53
+      id: '1742548431447'
+      position:
+        x: 411.9416519259926
+        y: 289
+      positionAbsolute:
+        x: 411.9416519259926
+        y: 289
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 243
+    - data:
+        context:
+          enabled: false
+          variable_selector: []
+        desc: ''
+        model:
+          completion_params:
+            temperature: 0.7
+          mode: chat
+          name: deepseek-chat
+          provider: langgenius/deepseek/deepseek
+        prompt_template:
+        - id: 55d3d7b6-b59d-4bc2-a9b6-9fa7da663781
+          role: system
+          text: You function as an intelligent observability assistant with domain
+            expertise in log/metric/trace correlation analysis. Your primary task
+            is to methodically examine provided telemetry data and determine if operational
+            abnormalities requiring intervention exist.
+        - id: facc911f-4cc8-42fb-91b3-e0e3b4d9f062
+          role: user
+          text: "# Purpose  \nAnalyze whether there are abnormalities in the CPU I/O\
+            \ Wait of the host **{{#1742548374719.node_name#}}** based on metric data.\
+            \  \n\n# Analysis Process  \n1. **Review Raw Data**  \n   Examine the\
+            \ metric data **{{#1742548431447.text#}}**.  \n2. **Analyze Trend of Related\
+            \ Metrics**  \n   If a network RTT threshold is provided by the user,\
+            \ compare it with the RTT values in the metric data. If not provided,\
+            \ select an appropriate value for comparison.  \n3. **Conclusion**  \n\
+            \   Highlight abrupt changes in abnormal time periods based on the comparison.\
+            \ For example:  \n   *\"The CPU I/O Wait for host **{{#1742548374719.node_name#}}**\
+            \ showed anomalies from [start time] to [end time], surging from [initial\
+            \ value] to [final value].\"*  \n\n# Output  \nAnalysis Result of CPU\
+            \ I/O Wait Anomalies for Host **{{#1742548374719.node_name#}}**"
+        selected: true
+        title: LLM
+        type: llm
+        variables: []
+        vision:
+          enabled: false
+      height: 89
+      id: '1742548501572'
+      position:
+        x: 744.4313155830969
+        y: 289
+      positionAbsolute:
+        x: 744.4313155830969
+        y: 289
+      selected: true
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 243
+    - data:
+        desc: ''
+        outputs:
+        - value_selector:
+          - '1742548501572'
+          - text
+          variable: text
+        selected: false
+        title: 结束
+        type: end
+      height: 89
+      id: '1742548523246'
+      position:
+        x: 1076.947309097866
+        y: 289
+      positionAbsolute:
+        x: 1076.947309097866
+        y: 289
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 243
+    viewport:
+      x: -38.6971565499864
+      y: 70.65442674656634
+      zoom: 0.5743491774985175
