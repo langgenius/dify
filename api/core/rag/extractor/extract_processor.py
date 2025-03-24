@@ -41,7 +41,7 @@ USER_AGENT = (
 class ExtractProcessor:
     @classmethod
     def load_from_upload_file(
-            cls, upload_file: UploadFile, return_text: bool = False, is_automatic: bool = False
+        cls, upload_file: UploadFile, return_text: bool = False, is_automatic: bool = False
     ) -> Union[list[Document], str]:
         extract_setting = ExtractSetting(
             datasource_type="upload_file", upload_file=upload_file, document_model="text_model"
