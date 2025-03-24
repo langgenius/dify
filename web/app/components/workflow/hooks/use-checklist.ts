@@ -42,7 +42,6 @@ export const useChecklist = (nodes: Node[], edges: Edge[]) => {
   const workflowTools = useStore(s => s.workflowTools)
   const { data: strategyProviders } = useStrategyProviders()
   const datasetsDetail = useDatasetsDetailStore(s => s.datasetsDetail)
-  console.log('🚀 ~ useChecklist ~ datasetsDetail:', datasetsDetail)
 
   const needWarningNodes = useMemo(() => {
     const list = []
