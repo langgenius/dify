@@ -65,10 +65,7 @@ class WebsiteService:
             api_key = encrypter.decrypt_token(
                 tenant_id=current_user.current_tenant_id, token=credentials.get("config").get("api_key")
             )
-            return WaterCrawlProvider(
-                api_key,
-                credentials.get("config").get("base_url", None)
-            ).crawl_url(url, options)
+            return WaterCrawlProvider(api_key, credentials.get("config").get("base_url", None)).crawl_url(url, options)
 
         elif provider == "jinareader":
             api_key = encrypter.decrypt_token(
@@ -133,8 +130,7 @@ class WebsiteService:
                 tenant_id=current_user.current_tenant_id, token=credentials.get("config").get("api_key")
             )
             crawl_status_data = WaterCrawlProvider(
-                api_key,
-                credentials.get("config").get("base_url", None)
+                api_key, credentials.get("config").get("base_url", None)
             ).get_crawl_status(job_id)
         elif provider == "jinareader":
             api_key = encrypter.decrypt_token(
@@ -202,10 +198,9 @@ class WebsiteService:
             return None
         elif provider == "watercrawl":
             api_key = encrypter.decrypt_token(tenant_id=tenant_id, token=credentials.get("config").get("api_key"))
-            return WaterCrawlProvider(
-                api_key,
-                credentials.get("config").get("base_url", None)
-            ).get_crawl_url_data(job_id, url)
+            return WaterCrawlProvider(api_key, credentials.get("config").get("base_url", None)).get_crawl_url_data(
+                job_id, url
+            )
         elif provider == "jinareader":
             if not job_id:
                 response = requests.get(
@@ -251,9 +246,6 @@ class WebsiteService:
             return result
         elif provider == "watercrawl":
             api_key = encrypter.decrypt_token(tenant_id=tenant_id, token=credentials.get("config").get("api_key"))
-            return WaterCrawlProvider(
-                api_key,
-                credentials.get("config").get("base_url", None)
-            ).scrape_url(url)
+            return WaterCrawlProvider(api_key, credentials.get("config").get("base_url", None)).scrape_url(url)
         else:
             raise ValueError("Invalid provider")
