@@ -14,7 +14,7 @@ from core.errors.error import ProviderTokenNotInitError
 from core.model_runtime.callbacks.base_callback import Callback
 from core.model_runtime.entities.llm_entities import LLMResult
 from core.model_runtime.entities.message_entities import PromptMessage, PromptMessageTool, UserPromptMessage
-from core.model_runtime.entities.model_entities import AIModelEntity, ModelType
+from core.model_runtime.entities.model_entities import AIModelEntity, ModelType, ParameterRule
 from core.model_runtime.entities.rerank_entities import RerankResult
 from core.model_runtime.entities.text_embedding_entities import TextEmbeddingResult
 from core.model_runtime.errors.invoke import InvokeAuthorizationError, InvokeConnectionError, InvokeRateLimitError
@@ -443,11 +443,8 @@ class ModelInstance:
         model_schema = self._fetch_model_schema(self.provider, self.model_type_instance.model_type, self.model)
         if not model_schema:
             raise ValueError("Unable to fetch model schema")
-
-        supported_schema_keys = ["json_schema", "format"]
         rules = model_schema.parameter_rules
-        schema_key = next((rule.name for rule in rules if rule.name in supported_schema_keys), None)
-
+        schema_key = self._retrieve_structured_output_key(rules)
         if schema_key == "json_schema":
             name = {"name": "llm_response"}
             if "gemini" in self.model:
@@ -467,8 +464,9 @@ class ModelInstance:
 
             model_parameters["json_schema"] = json.dumps(schema_json, ensure_ascii=False)
 
-        elif schema_key == "format" and self.plugin_version > version.parse("0.0.3"):
+        elif schema_key == "format" and self.fetch_model_version() > version.parse("0.0.3"):
             model_parameters["format"] = json.dumps(schema, ensure_ascii=False)
+
         else:
             content = prompt[-1].content if isinstance(prompt[-1].content, str) else ""
             structured_output_prompt = STRUCTURED_OUTPUT_PROMPT.replace("{{schema}}", structured_output_schema).replace(
@@ -491,14 +489,25 @@ class ModelInstance:
             provider=provider, model_type=model_type, model=model, credentials=self.credentials
         )
 
-    @property
-    def plugin_version(self) -> Version:
+    def fetch_model_version(self) -> Version:
         """
         Check if the model is a plugin model
         """
-        return version.parse(
-            self.model_type_instance.plugin_model_provider.plugin_unique_identifier.split(":")[1].split("@")[0]
-        )
+        try:
+            unique_id = self.model_type_instance.plugin_model_provider.plugin_unique_identifier
+            if not unique_id or ":" not in unique_id or "@" not in unique_id:
+                return version.parse("0.0.0")
+            return version.parse(unique_id.split(":")[1].split("@")[0])
+        except (AttributeError, IndexError) as e:
+            return version.parse("0.0.0")
+
+    def _retrieve_structured_output_key(self, parameter_rules: list[ParameterRule]) -> str | None:
+        """
+        Check if the model is supported structured output
+        """
+        supported_schema_keys = ["json_schema", "format"]
+        schema_key = next((rule.name for rule in parameter_rules if rule.name in supported_schema_keys), None)
+        return schema_key
 
 
 class ModelManager:
