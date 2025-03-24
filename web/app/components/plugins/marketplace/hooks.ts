@@ -89,7 +89,7 @@ export const useMarketplacePlugins = () => {
     handleUpdatePlugins(pluginsSearchParams)
   }, [handleUpdatePlugins])
 
-  const { run: queryPluginsWithDebounced } = useDebounceFn((pluginsSearchParams: PluginsSearchParams) => {
+  const { run: queryPluginsWithDebounced, cancel: cancelQueryPluginsWithDebounced } = useDebounceFn((pluginsSearchParams: PluginsSearchParams) => {
     handleUpdatePlugins(pluginsSearchParams)
   }, {
     wait: 500,
@@ -101,6 +101,7 @@ export const useMarketplacePlugins = () => {
     resetPlugins,
     queryPlugins,
     queryPluginsWithDebounced,
+    cancelQueryPluginsWithDebounced,
     isLoading: isPending,
   }
 }
