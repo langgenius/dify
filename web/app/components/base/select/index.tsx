@@ -1,7 +1,7 @@
 'use client'
 import type { FC } from 'react'
-import React, { Fragment, useEffect, useState } from 'react'
-import { Combobox, ComboboxButton, ComboboxInput, ComboboxOption, ComboboxOptions, Listbox, ListboxButton, ListboxOption, ListboxOptions, Transition } from '@headlessui/react'
+import React, { useEffect, useState } from 'react'
+import { Combobox, ComboboxButton, ComboboxInput, ComboboxOption, ComboboxOptions, Listbox, ListboxButton, ListboxOption, ListboxOptions } from '@headlessui/react'
 import { ChevronDownIcon, ChevronUpIcon, XMarkIcon } from '@heroicons/react/20/solid'
 import Badge from '../badge/index'
 import { RiCheckLine } from '@remixicon/react'
@@ -238,48 +238,40 @@ const SimpleSelect: FC<ISelectProps> = ({
         )}
 
         {!disabled && (
-          <Transition
-            as={Fragment}
-            leave="transition ease-in duration-100"
-            leaveFrom="opacity-100"
-            leaveTo="opacity-0"
-          >
-
-            <ListboxOptions className={classNames('absolute z-10 mt-1 px-1 max-h-60 w-full overflow-auto rounded-md bg-components-panel-bg-blur backdrop-blur-sm py-1 text-base shadow-lg border-components-panel-border border-[0.5px] focus:outline-none sm:text-sm', optionWrapClassName)}>
-              {items.map((item: Item) => (
-                <ListboxOption
-                  key={item.value}
-                  className={
-                    classNames(
-                      'relative cursor-pointer select-none py-2 pl-3 pr-9 rounded-lg hover:bg-state-base-hover text-text-secondary',
-                      optionClassName,
-                    )
-                  }
-                  value={item}
-                  disabled={disabled}
-                >
-                  {({ /* active, */ selected }) => (
-                    <>
-                      {renderOption
-                        ? renderOption({ item, selected })
-                        : (<>
-                          <span className={classNames('block', selected && 'font-normal')}>{item.name}</span>
-                          {selected && !hideChecked && (
-                            <span
-                              className={classNames(
-                                'absolute inset-y-0 right-0 flex items-center pr-4 text-text-accent',
-                              )}
-                            >
-                              <RiCheckLine className="h-4 w-4" aria-hidden="true" />
-                            </span>
-                          )}
-                        </>)}
-                    </>
-                  )}
-                </ListboxOption>
-              ))}
-            </ListboxOptions>
-          </Transition>
+          <ListboxOptions className={classNames('absolute z-10 mt-1 px-1 max-h-60 w-full overflow-auto rounded-md bg-components-panel-bg-blur backdrop-blur-sm py-1 text-base shadow-lg border-components-panel-border border-[0.5px] focus:outline-none sm:text-sm', optionWrapClassName)}>
+            {items.map((item: Item) => (
+              <ListboxOption
+                key={item.value}
+                className={
+                  classNames(
+                    'relative cursor-pointer select-none py-2 pl-3 pr-9 rounded-lg hover:bg-state-base-hover text-text-secondary',
+                    optionClassName,
+                  )
+                }
+                value={item}
+                disabled={disabled}
+              >
+                {({ /* active, */ selected }) => (
+                  <>
+                    {renderOption
+                      ? renderOption({ item, selected })
+                      : (<>
+                        <span className={classNames('block', selected && 'font-normal')}>{item.name}</span>
+                        {selected && !hideChecked && (
+                          <span
+                            className={classNames(
+                              'absolute inset-y-0 right-0 flex items-center pr-4 text-text-accent',
+                            )}
+                          >
+                            <RiCheckLine className="h-4 w-4" aria-hidden="true" />
+                          </span>
+                        )}
+                      </>)}
+                  </>
+                )}
+              </ListboxOption>
+            ))}
+          </ListboxOptions>
         )}
       </div>
     </Listbox>
