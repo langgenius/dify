@@ -27,6 +27,7 @@ import ThinkBlock from '@/app/components/base/markdown-blocks/think-block'
 import { Theme } from '@/types/app'
 import useTheme from '@/hooks/use-theme'
 import cn from '@/utils/classnames'
+import SVGRenderer from './svg-gallery'
 
 // Available language https://github.com/react-syntax-highlighter/react-syntax-highlighter/blob/master/AVAILABLE_LANGUAGES_HLJS.MD
 const capitalizationLanguageNameMap: Record<string, string> = {
@@ -136,14 +137,13 @@ const CodeBlock: any = memo(({ inline, className, children, ...props }: any) => 
         </div>
       )
     }
-    // Attention: SVGRenderer has xss vulnerability
-    // else if (language === 'svg' && isSVG) {
-    //   return (
-    //     <ErrorBoundary>
-    //       <SVGRenderer content={content} />
-    //     </ErrorBoundary>
-    //   )
-    // }
+    else if (language === 'svg' && isSVG) {
+      return (
+        <ErrorBoundary>
+          <SVGRenderer content={content} />
+        </ErrorBoundary>
+      )
+    }
     else {
       return (
         <SyntaxHighlighter
@@ -240,19 +240,11 @@ const Link = ({ node, ...props }: any) => {
   }
 }
 
-function escapeSVGTags(htmlString: string): string {
-  return htmlString.replace(/(<svg[\s\S]*?>)([\s\S]*?)(<\/svg>)/gi, (match: string, openTag: string, innerContent: string, closeTag: string): string => {
-    return openTag.replace(/</g, '&lt;').replace(/>/g, '&gt;')
-      + innerContent.replace(/</g, '&lt;').replace(/>/g, '&gt;')
-      + closeTag.replace(/</g, '&lt;').replace(/>/g, '&gt;')
-  })
-}
-
 export function Markdown(props: { content: string; className?: string; customDisallowedElements?: string[] }) {
   const latexContent = flow([
     preprocessThinkTag,
     preprocessLaTeX,
-  ])(escapeSVGTags(props.content))
+  ])(props.content)
 
   return (
     <div className={cn('markdown-body', '!text-text-primary', props.className)}>
