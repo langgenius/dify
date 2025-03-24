@@ -51,6 +51,7 @@
     "crypto-js": "^4.2.0",
     "dayjs": "^1.11.7",
     "decimal.js": "^10.4.3",
+    "dompurify": "^3.2.4",
     "echarts": "^5.5.1",
     "echarts-for-react": "^3.0.2",
     "elkjs": "^0.9.3",
