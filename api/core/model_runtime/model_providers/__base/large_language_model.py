@@ -537,7 +537,6 @@ if you are not sure about the structure.
         """
         raise NotImplementedError
 
-    @abstractmethod
     def get_num_tokens(
         self,
         model: str,
@@ -554,7 +553,8 @@ if you are not sure about the structure.
         :param tools: tools for tool calling
         :return:
         """
-        raise NotImplementedError
+        # Disable the token count in LLMs for profermance testing.
+        return 0
 
     def enforce_stop_tokens(self, text: str, stop: list[str]) -> str:
         """Cut off the text as soon as any stop words occur."""

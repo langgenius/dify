@@ -25,8 +25,7 @@ class GPT2Tokenizer:
         # future = _executor.submit(GPT2Tokenizer._get_num_tokens_by_gpt2, text)
         # result = future.result()
         # return cast(int, result)
-        # return GPT2Tokenizer._get_num_tokens_by_gpt2(text)
-        return 0
+        return GPT2Tokenizer._get_num_tokens_by_gpt2(text)
 
     @staticmethod
     def get_encoder() -> Any:
