@@ -161,7 +161,7 @@ class OceanBaseVector(BaseVector):
             )
 
     def text_exists(self, id: str) -> bool:
-        cur = self._client.get(table_name=self._collection_name, id=id)
+        cur = self._client.get(table_name=self._collection_name, ids=id)
         return bool(cur.rowcount != 0)
 
     def delete_by_ids(self, ids: list[str]) -> None:
@@ -170,9 +170,11 @@ class OceanBaseVector(BaseVector):
         self._client.delete(table_name=self._collection_name, ids=ids)
 
     def get_ids_by_metadata_field(self, key: str, value: str) -> list[str]:
+        from sqlalchemy import text
         cur = self._client.get(
             table_name=self._collection_name,
-            where_clause=f"metadata->>'$.{key}' = '{value}'",
+            ids=None,
+            where_clause=[text(f"metadata->>'$.{key}' = '{value}'")],
             output_column_name=["id"],
         )
         return [row[0] for row in cur]

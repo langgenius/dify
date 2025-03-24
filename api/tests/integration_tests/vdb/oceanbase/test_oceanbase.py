@@ -16,12 +16,12 @@ from core.rag.models.document import Document
 
 def oceanbase_vector():
     return OceanBaseVector(
-        "dify_test_collection",
+        "dify_test_collection_a",
         config=OceanBaseVectorConfig(
             host="127.0.0.1",
             port="2881",
-            user="root@test",
-            database="difyai",
+            user="root@sys",
+            database="test",
             password="difyai123456",
             enable_hybrid_search=True
         ),
