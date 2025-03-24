@@ -192,17 +192,27 @@ class MessageService:
 
     @classmethod
     def get_message(cls, app_model: App, user: Optional[Union[Account, EndUser]], message_id: str):
-        message = (
-            db.session.query(Message)
-            .filter(
-                Message.id == message_id,
-                Message.app_id == app_model.id,
-                Message.from_source == ("api" if isinstance(user, EndUser) else "console"),
-                Message.from_end_user_id == (user.id if isinstance(user, EndUser) else None),
-                Message.from_account_id == (user.id if isinstance(user, Account) else None),
-            )
-            .first()
+        # Get organization_id if available
+        organization_id = None
+        if user:
+            if isinstance(user, EndUser) and user.organization_id:
+                organization_id = user.organization_id
+            elif isinstance(user, Account) and user.current_organization_id:
+                organization_id = user.current_organization_id
+
+        query = db.session.query(Message).filter(
+            Message.id == message_id,
+            Message.app_id == app_model.id,
+            Message.from_source == ("api" if isinstance(user, EndUser) else "console"),
+            Message.from_end_user_id == (user.id if isinstance(user, EndUser) else None),
+            Message.from_account_id == (user.id if isinstance(user, Account) else None),
         )
+
+        # Add organization filter if available
+        if organization_id:
+            query = query.filter(Message.organization_id == organization_id)
+
+        message = query.first()
 
         if not message:
             raise MessageNotExistsError()

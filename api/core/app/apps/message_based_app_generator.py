@@ -4,8 +4,6 @@ from collections.abc import Generator
 from datetime import UTC, datetime
 from typing import Optional, Union, cast
 
-from sqlalchemy import and_
-
 from core.app.app_config.entities import EasyUIBasedAppConfig, EasyUIBasedAppModelConfigFrom
 from core.app.apps.base_app_generator import BaseAppGenerator
 from core.app.apps.base_app_queue_manager import AppQueueManager, GenerateTaskStoppedError
@@ -26,11 +24,12 @@ from core.app.entities.task_entities import (
 from core.app.task_pipeline.easy_ui_based_generate_task_pipeline import EasyUIBasedGenerateTaskPipeline
 from core.prompt.utils.prompt_template_parser import PromptTemplateParser
 from extensions.ext_database import db
-from models import Account
+from models import Account, EndUser
 from models.enums import CreatedByRole
-from models.model import App, AppMode, AppModelConfig, Conversation, EndUser, Message, MessageFile
+from models.model import App, AppMode, AppModelConfig, Conversation, Message, MessageFile
 from services.errors.app_model_config import AppModelConfigBrokenError
 from services.errors.conversation import ConversationCompletedError, ConversationNotExistsError
+from sqlalchemy import and_
 
 logger = logging.getLogger(__name__)
 
@@ -139,22 +138,32 @@ class MessageBasedAppGenerator(BaseAppGenerator):
         conversation: Optional[Conversation] = None,
     ) -> tuple[Conversation, Message]:
         """
-        Initialize generate records
-        :param application_generate_entity: application generate entity
-        :conversation conversation
-        :return:
+        Initialize generation records, including conversation and message
         """
-        app_config: EasyUIBasedAppConfig = cast(EasyUIBasedAppConfig, application_generate_entity.app_config)
+        app_config = cast(EasyUIBasedAppConfig, application_generate_entity.app_config)
 
-        # get from source
         end_user_id = None
         account_id = None
+        organization_id = None
+
         if application_generate_entity.invoke_from in {InvokeFrom.WEB_APP, InvokeFrom.SERVICE_API}:
             from_source = "api"
             end_user_id = application_generate_entity.user_id
+
+            # Get organization_id from end_user if available
+            if end_user_id:
+                end_user = db.session.query(EndUser).filter(EndUser.id == end_user_id).first()
+                if end_user and end_user.organization_id:
+                    organization_id = end_user.organization_id
         else:
             from_source = "console"
             account_id = application_generate_entity.user_id
+
+            # Get organization_id from account if available
+            if account_id:
+                account = db.session.query(Account).filter(Account.id == account_id).first()
+                if account and account.current_organization_id:
+                    organization_id = account.current_organization_id
 
         if isinstance(application_generate_entity, AdvancedChatAppGenerateEntity):
             app_model_config_id = None
@@ -179,6 +188,7 @@ class MessageBasedAppGenerator(BaseAppGenerator):
         if not conversation:
             conversation = Conversation(
                 app_id=app_config.app_id,
+                organization_id=organization_id,
                 app_model_config_id=app_model_config_id,
                 model_provider=model_provider,
                 model_id=model_id,
@@ -205,6 +215,7 @@ class MessageBasedAppGenerator(BaseAppGenerator):
 
         message = Message(
             app_id=app_config.app_id,
+            organization_id=organization_id,
             model_provider=model_provider,
             model_id=model_id,
             override_model_configs=json.dumps(override_model_configs) if override_model_configs else None,

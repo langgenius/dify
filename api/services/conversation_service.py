@@ -2,9 +2,6 @@ from collections.abc import Callable, Sequence
 from datetime import UTC, datetime
 from typing import Optional, Union
 
-from sqlalchemy import asc, desc, func, or_, select
-from sqlalchemy.orm import Session
-
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.llm_generator.llm_generator import LLMGenerator
 from extensions.ext_database import db
@@ -13,6 +10,8 @@ from models.account import Account
 from models.model import App, Conversation, EndUser, Message
 from services.errors.conversation import ConversationNotExistsError, LastConversationNotExistsError
 from services.errors.message import MessageNotExistsError
+from sqlalchemy import asc, desc, func, or_, select
+from sqlalchemy.orm import Session
 
 
 class ConversationService:
@@ -33,6 +32,13 @@ class ConversationService:
         if not user:
             return InfiniteScrollPagination(data=[], limit=limit, has_more=False)
 
+        # Get organization_id if available
+        organization_id = None
+        if isinstance(user, EndUser) and user.organization_id:
+            organization_id = user.organization_id
+        elif isinstance(user, Account) and user.current_organization_id:
+            organization_id = user.current_organization_id
+
         stmt = select(Conversation).where(
             Conversation.is_deleted == False,
             Conversation.app_id == app_model.id,
@@ -41,6 +47,11 @@ class ConversationService:
             Conversation.from_account_id == (user.id if isinstance(user, Account) else None),
             or_(Conversation.invoke_from.is_(None), Conversation.invoke_from == invoke_from.value),
         )
+
+        # Add organization filter if available
+        if organization_id:
+            stmt = stmt.where(Conversation.organization_id == organization_id)
+
         if include_ids is not None:
             stmt = stmt.where(Conversation.id.in_(include_ids))
         if exclude_ids is not None:
@@ -141,18 +152,28 @@ class ConversationService:
 
     @classmethod
     def get_conversation(cls, app_model: App, conversation_id: str, user: Optional[Union[Account, EndUser]]):
-        conversation = (
-            db.session.query(Conversation)
-            .filter(
-                Conversation.id == conversation_id,
-                Conversation.app_id == app_model.id,
-                Conversation.from_source == ("api" if isinstance(user, EndUser) else "console"),
-                Conversation.from_end_user_id == (user.id if isinstance(user, EndUser) else None),
-                Conversation.from_account_id == (user.id if isinstance(user, Account) else None),
-                Conversation.is_deleted == False,
-            )
-            .first()
+        # Get organization_id if available
+        organization_id = None
+        if user:
+            if isinstance(user, EndUser) and user.organization_id:
+                organization_id = user.organization_id
+            elif isinstance(user, Account) and user.current_organization_id:
+                organization_id = user.current_organization_id
+
+        query = db.session.query(Conversation).filter(
+            Conversation.id == conversation_id,
+            Conversation.app_id == app_model.id,
+            Conversation.from_source == ("api" if isinstance(user, EndUser) else "console"),
+            Conversation.from_end_user_id == (user.id if isinstance(user, EndUser) else None),
+            Conversation.from_account_id == (user.id if isinstance(user, Account) else None),
+            Conversation.is_deleted == False,
         )
+
+        # Add organization filter if available
+        if organization_id:
+            query = query.filter(Conversation.organization_id == organization_id)
+
+        conversation = query.first()
 
         if not conversation:
             raise ConversationNotExistsError()

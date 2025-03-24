@@ -31,6 +31,7 @@ class Account(UserMixin, db.Model):  # type: ignore[name-defined]
     interface_language = db.Column(db.String(255))
     interface_theme = db.Column(db.String(255))
     timezone = db.Column(db.String(255))
+    current_organization_id = db.Column(StringUUID, nullable=True)  # Added for organization support
     last_login_at = db.Column(db.DateTime)
     last_login_ip = db.Column(db.String(255))
     last_active_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
@@ -38,6 +39,7 @@ class Account(UserMixin, db.Model):  # type: ignore[name-defined]
     initialized_at = db.Column(db.DateTime)
     created_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
     updated_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
+    _current_tenant = None  # Initialize to avoid AttributeError
 
     @property
     def is_password_set(self):
@@ -123,6 +125,70 @@ class Account(UserMixin, db.Model):  # type: ignore[name-defined]
     def is_dataset_operator(self):
         return self.current_role == TenantAccountRole.DATASET_OPERATOR
 
+    @property
+    def organizations(self):
+        """Get all organizations the account is a member of"""
+        from .organization import Organization, OrganizationMember
+
+        org_members = db.session.query(OrganizationMember).filter(OrganizationMember.account_id == self.id).all()
+
+        organization_ids = [om.organization_id for om in org_members]
+        if not organization_ids:
+            return []
+
+        return db.session.query(Organization).filter(Organization.id.in_(organization_ids)).all()
+
+    @property
+    def current_organization(self):
+        """Get the current organization for this account"""
+        if not self.current_organization_id:
+            return None
+
+        from .organization import Organization
+
+        return db.session.query(Organization).filter(Organization.id == self.current_organization_id).first()
+
+    @property
+    def current_org_role(self):
+        """Get the role in the current organization"""
+        if not self.current_organization_id:
+            return None
+
+        from .organization import OrganizationMember
+
+        member = (
+            db.session.query(OrganizationMember)
+            .filter(
+                OrganizationMember.organization_id == self.current_organization_id,
+                OrganizationMember.account_id == self.id,
+            )
+            .first()
+        )
+
+        if not member:
+            return None
+
+        return member.role
+
+    def is_org_admin(self, organization_id=None):
+        """Check if user is admin in the specified or current organization"""
+        from .organization import OrganizationMember, OrganizationRole
+
+        org_id = organization_id or self.current_organization_id
+        if not org_id:
+            return False
+
+        member = (
+            db.session.query(OrganizationMember)
+            .filter(OrganizationMember.organization_id == org_id, OrganizationMember.account_id == self.id)
+            .first()
+        )
+
+        if not member:
+            return False
+
+        return member.role == OrganizationRole.ADMIN
+
 
 class TenantStatus(enum.StrEnum):
     NORMAL = "normal"
@@ -196,6 +262,12 @@ class Tenant(db.Model):  # type: ignore[name-defined]
             .filter(Account.id == TenantAccountJoin.account_id, TenantAccountJoin.tenant_id == self.id)
             .all()
         )
+
+    def get_organizations(self) -> list:
+        """Get all organizations under this tenant"""
+        from .organization import Organization
+
+        return db.session.query(Organization).filter(Organization.tenant_id == self.id).all()
 
     @property
     def custom_config_dict(self) -> dict:

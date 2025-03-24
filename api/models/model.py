@@ -217,6 +217,19 @@ class App(db.Model):  # type: ignore[name-defined]
 
         return tags or []
 
+    @property
+    def organization_access(self):
+        """Get list of organizations with access to this app"""
+        from .organization import AppOrganizationAccess, Organization
+
+        access_records = db.session.query(AppOrganizationAccess).filter(AppOrganizationAccess.app_id == self.id).all()
+
+        if not access_records:
+            return []
+
+        organization_ids = [record.organization_id for record in access_records]
+        return db.session.query(Organization).filter(Organization.id.in_(organization_ids)).all()
+
 
 class AppModelConfig(db.Model):  # type: ignore[name-defined]
     __tablename__ = "app_model_configs"
@@ -527,10 +540,12 @@ class Conversation(db.Model):  # type: ignore[name-defined]
     __table_args__ = (
         db.PrimaryKeyConstraint("id", name="conversation_pkey"),
         db.Index("conversation_app_from_user_idx", "app_id", "from_source", "from_end_user_id"),
+        db.Index("conversation_organization_idx", "organization_id"),
     )
 
     id: Mapped[str] = mapped_column(StringUUID, server_default=db.text("uuid_generate_v4()"))
     app_id = db.Column(StringUUID, nullable=False)
+    organization_id = db.Column(StringUUID, nullable=True)
     app_model_config_id = db.Column(StringUUID, nullable=True)
     model_provider = db.Column(db.String(255), nullable=True)
     override_model_configs = db.Column(db.Text)
@@ -559,6 +574,16 @@ class Conversation(db.Model):  # type: ignore[name-defined]
     )
 
     is_deleted = db.Column(db.Boolean, nullable=False, server_default=db.text("false"))
+
+    @property
+    def organization(self):
+        """Get the organization this conversation belongs to"""
+        if not self.organization_id:
+            return None
+
+        from .organization import Organization
+
+        return db.session.query(Organization).filter(Organization.id == self.organization_id).first()
 
     @property
     def inputs(self):
@@ -767,10 +792,12 @@ class Message(db.Model):  # type: ignore[name-defined]
         db.Index("message_account_idx", "app_id", "from_source", "from_account_id"),
         db.Index("message_workflow_run_id_idx", "conversation_id", "workflow_run_id"),
         db.Index("message_created_at_idx", "created_at"),
+        db.Index("message_organization_id_idx", "organization_id"),
     )
 
     id: Mapped[str] = mapped_column(StringUUID, server_default=db.text("uuid_generate_v4()"))
     app_id = db.Column(StringUUID, nullable=False)
+    organization_id = db.Column(StringUUID, nullable=True)
     model_provider = db.Column(db.String(255), nullable=True)
     model_id = db.Column(db.String(255), nullable=True)
     override_model_configs = db.Column(db.Text)
@@ -800,6 +827,16 @@ class Message(db.Model):  # type: ignore[name-defined]
     updated_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
     agent_based = db.Column(db.Boolean, nullable=False, server_default=db.text("false"))
     workflow_run_id = db.Column(StringUUID)
+
+    @property
+    def organization(self):
+        """Get the organization this message belongs to"""
+        if not self.organization_id:
+            return None
+
+        from .organization import Organization
+
+        return db.session.query(Organization).filter(Organization.id == self.organization_id).first()
 
     @property
     def inputs(self):
@@ -1312,10 +1349,12 @@ class EndUser(UserMixin, db.Model):  # type: ignore[name-defined]
         db.PrimaryKeyConstraint("id", name="end_user_pkey"),
         db.Index("end_user_session_id_idx", "session_id", "type"),
         db.Index("end_user_tenant_session_id_idx", "tenant_id", "session_id", "type"),
+        db.Index("end_user_organization_id_idx", "organization_id"),
     )
 
     id = db.Column(StringUUID, server_default=db.text("uuid_generate_v4()"))
     tenant_id = db.Column(StringUUID, nullable=False)
+    organization_id = db.Column(StringUUID, nullable=True)
     app_id = db.Column(StringUUID, nullable=True)
     type = db.Column(db.String(255), nullable=False)
     external_user_id = db.Column(db.String(255), nullable=True)
