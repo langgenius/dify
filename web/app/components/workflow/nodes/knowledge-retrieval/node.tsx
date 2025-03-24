@@ -1,33 +1,30 @@
-import { type FC, useEffect, useRef, useState } from 'react'
+import { type FC, useEffect, useState } from 'react'
 import React from 'react'
 import type { KnowledgeRetrievalNodeType } from './types'
 import { Folder } from '@/app/components/base/icons/src/vender/solid/files'
 import type { NodeProps } from '@/app/components/workflow/types'
-import { fetchDatasets } from '@/service/datasets'
 import type { DataSet } from '@/models/datasets'
+import { useDatasetsDetailStore } from '../../datasets-detail-store/store'
 
 const Node: FC<NodeProps<KnowledgeRetrievalNodeType>> = ({
   data,
 }) => {
   const [selectedDatasets, setSelectedDatasets] = useState<DataSet[]>([])
-  const updateTime = useRef(0)
-  useEffect(() => {
-    (async () => {
-      updateTime.current = updateTime.current + 1
-      const currUpdateTime = updateTime.current
+  const datasetsDetail = useDatasetsDetailStore(s => s.datasetsDetail)
 
-      if (data.dataset_ids?.length > 0) {
-        const { data: dataSetsWithDetail } = await fetchDatasets({ url: '/datasets', params: { page: 1, ids: data.dataset_ids } })
-        //  avoid old data overwrite new data
-        if (currUpdateTime < updateTime.current)
-          return
-        setSelectedDatasets(dataSetsWithDetail)
-      }
-      else {
-        setSelectedDatasets([])
-      }
-    })()
-  }, [data.dataset_ids])
+  useEffect(() => {
+    if (data.dataset_ids?.length > 0) {
+      const dataSetsWithDetail = data.dataset_ids.reduce<DataSet[]>((acc, id) => {
+        if (datasetsDetail[id])
+          acc.push(datasetsDetail[id])
+        return acc
+      }, [])
+      setSelectedDatasets(dataSetsWithDetail)
+    }
+    else {
+      setSelectedDatasets([])
+    }
+  }, [data.dataset_ids, datasetsDetail])
 
   if (!selectedDatasets.length)
     return null

@@ -143,6 +143,7 @@ export const MarketplaceContextProvider = ({
     resetPlugins,
     queryPlugins,
     queryPluginsWithDebounced,
+    cancelQueryPluginsWithDebounced,
     isLoading: isPluginsLoading,
   } = useMarketplacePlugins()
 
@@ -209,12 +210,13 @@ export const MarketplaceContextProvider = ({
 
   const handleQuery = useCallback((debounced?: boolean) => {
     if (!searchPluginTextRef.current && !filterPluginTagsRef.current.length) {
+      cancelQueryPluginsWithDebounced()
       handleQueryMarketplaceCollectionsAndPlugins()
       return
     }
 
     handleQueryPlugins(debounced)
-  }, [handleQueryMarketplaceCollectionsAndPlugins, handleQueryPlugins])
+  }, [handleQueryMarketplaceCollectionsAndPlugins, handleQueryPlugins, cancelQueryPluginsWithDebounced])
 
   const handleSearchPluginTextChange = useCallback((text: string) => {
     setSearchPluginText(text)

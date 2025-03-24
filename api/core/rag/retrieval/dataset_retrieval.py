@@ -610,7 +610,11 @@ class DatasetRetrieval:
                 if dataset.indexing_technique == "economy":
                     # use keyword table query
                     documents = RetrievalService.retrieve(
-                        retrieval_method="keyword_search", dataset_id=dataset.id, query=query, top_k=top_k
+                        retrieval_method="keyword_search",
+                        dataset_id=dataset.id,
+                        query=query,
+                        top_k=top_k,
+                        document_ids_filter=document_ids_filter,
                     )
                     if documents:
                         all_documents.extend(documents)
