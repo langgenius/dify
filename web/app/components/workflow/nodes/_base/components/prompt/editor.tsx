@@ -41,7 +41,7 @@ type Props = {
   className?: string
   headerClassName?: string
   instanceId?: string
-  title: string | JSX.Element
+  title: string | React.JSX.Element
   value: string
   onChange: (value: string) => void
   readOnly?: boolean
@@ -146,19 +146,19 @@ const Editor: FC<Props> = ({
   return (
     <Wrap className={cn(className, wrapClassName)} style={wrapStyle} isInNode isExpand={isExpand}>
       <div ref={ref} className={cn(isFocus ? (gradientBorder && s.gradientBorder) : 'bg-gray-100', isExpand && 'h-full', '!rounded-[9px] p-0.5', containerClassName)}>
-        <div className={cn(isFocus ? 'bg-gray-50' : 'bg-gray-100', isExpand && 'h-full flex flex-col', 'rounded-lg', containerClassName)}>
-          <div className={cn('pt-1 pl-3 pr-2 flex justify-between items-center', headerClassName)}>
+        <div className={cn(isFocus ? 'bg-gray-50' : 'bg-gray-100', isExpand && 'flex h-full flex-col', 'rounded-lg', containerClassName)}>
+          <div className={cn('flex items-center justify-between pl-3 pr-2 pt-1', headerClassName)}>
             <div className='flex gap-2'>
-              <div className={cn('leading-4 text-xs font-semibold text-gray-700 uppercase', titleClassName)}>{title} {required && <span className='text-red-500'>*</span>}</div>
+              <div className={cn('text-xs font-semibold uppercase leading-4 text-gray-700', titleClassName)}>{title} {required && <span className='text-red-500'>*</span>}</div>
               {titleTooltip && <Tooltip popupContent={titleTooltip} />}
             </div>
             <div className='flex items-center'>
-              <div className='leading-[18px] text-xs font-medium text-gray-500'>{value?.length || 0}</div>
+              <div className='text-xs font-medium leading-[18px] text-gray-500'>{value?.length || 0}</div>
               {isSupportPromptGenerator && (
                 <PromptGeneratorBtn className='ml-[5px]' onGenerated={onGenerated} modelConfig={modelConfig} />
               )}
 
-              <div className='w-px h-3 ml-2 mr-2 bg-gray-200'></div>
+              <div className='ml-2 mr-2 h-3 w-px bg-gray-200'></div>
               {/* Operations */}
               <div className='flex items-center space-x-[2px]'>
                 {isSupportJinja && (
@@ -171,8 +171,8 @@ const Editor: FC<Props> = ({
                     }
                     needsDelay
                   >
-                    <div className={cn(editionType === EditionType.jinja2 && 'border-black/5 bg-white', 'flex h-[22px] items-center px-1.5 rounded-[5px] border border-transparent hover:border-black/5 space-x-0.5')}>
-                      <Jinja className='w-6 h-3 text-gray-300' />
+                    <div className={cn(editionType === EditionType.jinja2 && 'border-black/5 bg-white', 'flex h-[22px] items-center space-x-0.5 rounded-[5px] border border-transparent px-1.5 hover:border-black/5')}>
+                      <Jinja className='h-3 w-6 text-gray-300' />
                       <Switch
                         size='sm'
                         defaultValue={editionType === EditionType.jinja2}
@@ -189,24 +189,24 @@ const Editor: FC<Props> = ({
                     popupContent={`${t('workflow.common.insertVarTip')}`}
                   >
                     <ActionButton onClick={handleInsertVariable}>
-                      <Variable02 className='w-4 h-4' />
+                      <Variable02 className='h-4 w-4' />
                     </ActionButton>
                   </Tooltip>
                 )}
                 {showRemove && (
                   <ActionButton onClick={onRemove}>
-                    <RiDeleteBinLine className='w-4 h-4' />
+                    <RiDeleteBinLine className='h-4 w-4' />
                   </ActionButton>
                 )}
                 {!isCopied
                   ? (
                     <ActionButton onClick={handleCopy}>
-                      <Clipboard className='w-4 h-4' />
+                      <Clipboard className='h-4 w-4' />
                     </ActionButton>
                   )
                   : (
                     <ActionButton>
-                      <ClipboardCheck className='w-4 h-4' />
+                      <ClipboardCheck className='h-4 w-4' />
                     </ActionButton>
                   )
                 }
@@ -217,10 +217,10 @@ const Editor: FC<Props> = ({
           </div>
 
           {/* Min: 80 Max: 560. Header: 24 */}
-          <div className={cn('pb-2', isExpand && 'flex flex-col grow')}>
+          <div className={cn('pb-2', isExpand && 'flex grow flex-col')}>
             {!(isSupportJinja && editionType === EditionType.jinja2)
               ? (
-                <div className={cn(isExpand ? 'grow' : 'max-h-[536px]', 'relative px-3 min-h-[56px]  overflow-y-auto', editorContainerClassName)}>
+                <div className={cn(isExpand ? 'grow' : 'max-h-[536px]', 'relative min-h-[56px] overflow-y-auto  px-3', editorContainerClassName)}>
                   <PromptEditor
                     key={controlPromptEditorRerenderKey}
                     placeholderClassName={placeholderClassName}
@@ -274,7 +274,7 @@ const Editor: FC<Props> = ({
                 </div>
               )
               : (
-                <div className={cn(isExpand ? 'grow' : 'max-h-[536px]', 'relative px-3 min-h-[56px]  overflow-y-auto', editorContainerClassName)}>
+                <div className={cn(isExpand ? 'grow' : 'max-h-[536px]', 'relative min-h-[56px] overflow-y-auto  px-3', editorContainerClassName)}>
                   <CodeEditor
                     availableVars={nodesOutputVars || []}
                     varList={varList}

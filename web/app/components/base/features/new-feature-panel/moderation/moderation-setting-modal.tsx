@@ -240,31 +240,31 @@ const ModerationSettingModal: FC<ModerationSettingModalProps> = ({
     <Modal
       isShow
       onClose={() => { }}
-      className='!p-6 !mt-14 !max-w-none !w-[600px]'
+      className='!mt-14 !w-[600px] !max-w-none !p-6'
     >
       <div className='flex items-center justify-between'>
-        <div className='text-text-primary title-2xl-semi-bold'>{t('appDebug.feature.moderation.modal.title')}</div>
-        <div className='p-1 cursor-pointer' onClick={onCancel}><RiCloseLine className='w-4 h-4 text-text-tertiary'/></div>
+        <div className='title-2xl-semi-bold text-text-primary'>{t('appDebug.feature.moderation.modal.title')}</div>
+        <div className='cursor-pointer p-1' onClick={onCancel}><RiCloseLine className='h-4 w-4 text-text-tertiary'/></div>
       </div>
       <div className='py-2'>
-        <div className='leading-9 text-sm font-medium text-text-primary'>
+        <div className='text-sm font-medium leading-9 text-text-primary'>
           {t('appDebug.feature.moderation.modal.provider.title')}
         </div>
-        <div className='grid gap-2.5 grid-cols-3'>
+        <div className='grid grid-cols-3 gap-2.5'>
           {
             providers.map(provider => (
               <div
                 key={provider.key}
                 className={cn(
-                  'flex items-center px-2 h-8 rounded-md system-sm-regular bg-components-option-card-option-bg border border-components-option-card-option-border text-text-secondary cursor-default',
-                  localeData.type !== provider.key && 'hover:bg-components-option-card-option-bg-hover hover:border-components-option-card-option-border-hover hover:shadow-xs cursor-pointer',
-                  localeData.type === provider.key && 'bg-components-option-card-option-selected-bg border-[1.5px] border-components-option-card-option-selected-border system-sm-medium shadow-xs',
+                  'system-sm-regular flex h-8 cursor-default items-center rounded-md border border-components-option-card-option-border bg-components-option-card-option-bg px-2 text-text-secondary',
+                  localeData.type !== provider.key && 'cursor-pointer hover:border-components-option-card-option-border-hover hover:bg-components-option-card-option-bg-hover hover:shadow-xs',
+                  localeData.type === provider.key && 'system-sm-medium border-[1.5px] border-components-option-card-option-selected-border bg-components-option-card-option-selected-bg shadow-xs',
                   localeData.type === 'openai_moderation' && provider.key === 'openai_moderation' && !isOpenAIProviderConfigured && 'text-text-disabled',
                 )}
                 onClick={() => handleDataTypeChange(provider.key)}
               >
                 <div className={cn(
-                  'mr-2 w-4 h-4 border border-components-radio-border bg-components-radio-bg shadow-xs rounded-full',
+                  'mr-2 h-4 w-4 rounded-full border border-components-radio-border bg-components-radio-bg shadow-xs',
                   localeData.type === provider.key && 'border-[5px] border-components-radio-border-checked',
                 )}></div>
                 {provider.name}
@@ -274,12 +274,12 @@ const ModerationSettingModal: FC<ModerationSettingModalProps> = ({
         </div>
         {
           !isLoading && !isOpenAIProviderConfigured && localeData.type === 'openai_moderation' && (
-            <div className='flex items-center mt-2 px-3 py-2 bg-[#FFFAEB] rounded-lg border border-[#FEF0C7]'>
-              <InfoCircle className='mr-1 w-4 h-4 text-[#F79009]' />
+            <div className='mt-2 flex items-center rounded-lg border border-[#FEF0C7] bg-[#FFFAEB] px-3 py-2'>
+              <InfoCircle className='mr-1 h-4 w-4 text-[#F79009]' />
               <div className='flex items-center text-xs font-medium text-gray-700'>
                 {t('appDebug.feature.moderation.modal.openaiNotConfig.before')}
                 <span
-                  className='text-primary-600 cursor-pointer'
+                  className='cursor-pointer text-primary-600'
                   onClick={handleOpenSettingsModal}
                 >
                   &nbsp;{t('common.settings.provider')}&nbsp;
@@ -295,14 +295,14 @@ const ModerationSettingModal: FC<ModerationSettingModalProps> = ({
           <div className='py-2'>
             <div className='mb-1 text-sm font-medium text-text-primary'>{t('appDebug.feature.moderation.modal.provider.keywords')}</div>
             <div className='mb-2 text-xs text-text-tertiary'>{t('appDebug.feature.moderation.modal.keywords.tip')}</div>
-            <div className='relative px-3 py-2 h-[88px] bg-components-input-bg-normal rounded-lg'>
+            <div className='relative h-[88px] rounded-lg bg-components-input-bg-normal px-3 py-2'>
               <textarea
                 value={localeData.config?.keywords || ''}
                 onChange={handleDataKeywordsChange}
-                className='block w-full h-full bg-transparent text-sm text-text-secondary outline-none appearance-none resize-none'
+                className='block h-full w-full resize-none appearance-none bg-transparent text-sm text-text-secondary outline-none'
                 placeholder={t('appDebug.feature.moderation.modal.keywords.placeholder') || ''}
               />
-              <div className='absolute bottom-2 right-2 flex items-center px-1 h-5 rounded-md bg-background-section text-xs font-medium text-text-quaternary'>
+              <div className='absolute bottom-2 right-2 flex h-5 items-center rounded-md bg-background-section px-1 text-xs font-medium text-text-quaternary'>
                 <span>{(localeData.config?.keywords || '').split('\n').filter(Boolean).length}</span>/<span className='text-text-tertiary'>100 {t('appDebug.feature.moderation.modal.keywords.line')}</span>
               </div>
             </div>
@@ -312,14 +312,14 @@ const ModerationSettingModal: FC<ModerationSettingModalProps> = ({
       {
         localeData.type === 'api' && (
           <div className='py-2'>
-            <div className='flex items-center justify-between h-9'>
+            <div className='flex h-9 items-center justify-between'>
               <div className='text-sm font-medium text-text-primary'>{t('common.apiBasedExtension.selector.title')}</div>
               <a
                 href={t('common.apiBasedExtension.linkUrl') || '/'}
                 target='_blank' rel='noopener noreferrer'
                 className='group flex items-center text-xs text-text-tertiary hover:text-primary-600'
               >
-                <BookOpen01 className='mr-1 w-3 h-3 text-text-tertiary group-hover:text-primary-600' />
+                <BookOpen01 className='mr-1 h-3 w-3 text-text-tertiary group-hover:text-primary-600' />
                 {t('common.apiBasedExtension.link')}
               </a>
             </div>
@@ -356,7 +356,7 @@ const ModerationSettingModal: FC<ModerationSettingModalProps> = ({
         info={(localeData.type === 'api' && t('appDebug.feature.moderation.modal.content.fromApi')) || ''}
         showPreset={!(localeData.type === 'api')}
       />
-      <div className='mt-1 mb-8 text-xs font-medium text-text-tertiary'>{t('appDebug.feature.moderation.modal.content.condition')}</div>
+      <div className='mb-8 mt-1 text-xs font-medium text-text-tertiary'>{t('appDebug.feature.moderation.modal.content.condition')}</div>
       <div className='flex items-center justify-end'>
         <Button
           onClick={onCancel}

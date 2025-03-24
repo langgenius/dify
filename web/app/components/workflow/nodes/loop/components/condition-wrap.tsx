@@ -75,7 +75,7 @@ const ConditionWrap: FC<Props> = ({
         <div
           className={cn(
             'group relative rounded-[10px] bg-components-panel-bg',
-            !isSubVariable && 'py-1 px-3 min-h-[40px] ',
+            !isSubVariable && 'min-h-[40px] px-3 py-1 ',
             isSubVariable && 'px-1 py-2',
           )}
         >
@@ -122,7 +122,7 @@ const ConditionWrap: FC<Props> = ({
                       size='small'
                       disabled={readOnly}
                     >
-                      <RiAddLine className='mr-1 w-3.5 h-3.5' />
+                      <RiAddLine className='mr-1 h-3.5 w-3.5' />
                       {t('workflow.nodes.ifElse.addSubVariable')}
                     </Button>
                   )}
@@ -139,7 +139,7 @@ const ConditionWrap: FC<Props> = ({
           </div>
         </div>
         {!isSubVariable && (
-          <div className='my-2 mx-3 h-[1px] bg-divider-subtle'></div>
+          <div className='mx-3 my-2 h-[1px] bg-divider-subtle'></div>
         )}
       </div>
     </>

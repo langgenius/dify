@@ -43,18 +43,10 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
       - `inputs` (object) 必須
         アプリで定義されたさまざまな変数値の入力を許可します。
         `inputs`パラメータには複数のキー/値ペアが含まれ、各キーは特定の変数に対応し、各値はその変数の特定の値です。
-        ワークフローアプリケーションは少なくとも1つのキー/値ペアの入力を必要とします。
-        変数がファイルタイプの場合、以下の`files`で説明されているキーを持つオブジェクトを指定してください。
-      - `response_mode` (string) 必須
-        応答の返却モードを指定します。サポートされているモード：
-        - `streaming` ストリーミングモード（推奨）、SSE（[Server-Sent Events](https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events/Using_server-sent_events)）を通じてタイプライターのような出力を実装します。
-        - `blocking` ブロッキングモード、実行完了後に結果を返します。（プロセスが長い場合、リクエストが中断される可能性があります）
-        <i>Cloudflareの制限により、100秒後に応答がない場合、リクエストは中断されます。</i>
-      - `user` (string) 必須
-        ユーザー識別子、エンドユーザーのアイデンティティを定義するために使用されます。
-        アプリケーション内で開発者によって一意に定義される必要があります。
-      - `files` (array[object]) オプション
+        ワークフローアプリケーションは少なくとも1つのキー/値ペアの入力を必要とします。値はファイルリストである場合もあります。
         ファイルリストは、テキスト理解と質問への回答を組み合わせたファイルの入力に適しています。モデルがファイルの解析と理解機能をサポートしている場合にのみ使用できます。
+
+        変数がファイルリストの場合、リストの各要素は以下の属性を持つ必要があります。
           - `type` (string) サポートされているタイプ: 
             - `document` ('TXT', 'MD', 'MARKDOWN', 'PDF', 'HTML', 'XLSX', 'XLS', 'DOCX', 'CSV', 'EML', 'MSG', 'PPTX', 'PPT', 'XML', 'EPUB')
             - `image` ('JPG', 'JPEG', 'PNG', 'GIF', 'WEBP', 'SVG')
@@ -64,6 +56,17 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
           - `transfer_method` (string) 転送方法、画像URLの場合は`remote_url` / ファイルアップロードの場合は`local_file`
           - `url` (string) 画像URL（転送方法が`remote_url`の場合）
           - `upload_file_id` (string) アップロードされたファイルID、事前にファイルアップロードAPIを通じて取得する必要があります（転送方法が`local_file`の場合）
+
+      - `response_mode` (string) 必須
+        応答の返却モードを指定します。サポートされているモード：
+        - `streaming` ストリーミングモード（推奨）、SSE（[Server-Sent Events](https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events/Using_server-sent_events)）を通じてタイプライターのような出力を実装します。
+        - `blocking` ブロッキングモード、実行完了後に結果を返します。（プロセスが長い場合、リクエストが中断される可能性があります）
+        <i>Cloudflareの制限により、100秒後に応答がない場合、リクエストは中断されます。</i>
+      - `user` (string) 必須
+        ユーザー識別子、エンドユーザーのアイデンティティを定義するために使用されます。
+        アプリケーション内で開発者によって一意に定義される必要があります。
+      - `files` (array[object]) オプション
+        
 
     ### 応答
     `response_mode`が`blocking`の場合、CompletionResponseオブジェクトを返します。
@@ -194,11 +197,14 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
       ```json {{ title: 'ファイル変数の例' }}
       {
         "inputs": {
-          "{variable_name}": {
+          "{variable_name}": 
+          [
+            {
             "transfer_method": "local_file",
             "upload_file_id": "{upload_file_id}",
             "type": "{document_type}"
-          }
+            }
+          ]
         }
       }
       ```
@@ -279,11 +285,11 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
 
           data = {
               "inputs": {
-                  "orig_mail": {
+                  "orig_mail": [{
                       "transfer_method": "local_file",
                       "upload_file_id": file_id,
                       "type": "document"
-                  }
+                  }]
               },
               "response_mode": response_mode,
               "user": user

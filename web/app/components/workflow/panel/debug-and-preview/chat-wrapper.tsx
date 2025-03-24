@@ -1,11 +1,4 @@
-import {
-  forwardRef,
-  memo,
-  useCallback,
-  useEffect,
-  useImperativeHandle,
-  useMemo,
-} from 'react'
+import { memo, useCallback, useEffect, useImperativeHandle, useMemo } from 'react'
 import { useNodes } from 'reactflow'
 import { BlockEnum } from '../../types'
 import {
@@ -35,12 +28,17 @@ type ChatWrapperProps = {
   onHide: () => void
 }
 
-const ChatWrapper = forwardRef<ChatWrapperRefType, ChatWrapperProps>(({
-  showConversationVariableModal,
-  onConversationModalHide,
-  showInputsFieldsPanel,
-  onHide,
-}, ref) => {
+const ChatWrapper = (
+  {
+    ref,
+    showConversationVariableModal,
+    onConversationModalHide,
+    showInputsFieldsPanel,
+    onHide,
+  }: ChatWrapperProps & {
+    ref: React.RefObject<ChatWrapperRefType>;
+  },
+) => {
   const nodes = useNodes<StartNodeType>()
   const startNode = nodes.find(node => node.data.type === BlockEnum.Start)
   const startVariables = startNode?.data.variables
@@ -158,7 +156,7 @@ const ChatWrapper = forwardRef<ChatWrapperRefType, ChatWrapperProps>(({
       )}
     </>
   )
-})
+}
 
 ChatWrapper.displayName = 'ChatWrapper'
 

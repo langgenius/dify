@@ -38,7 +38,7 @@ const AnswerIcon: FC<AnswerIconProps> = ({
     style={{ background: background || '#D5F5F6' }}
   >
     {isValidImageIcon
-      ? <img src={imageUrl} className="w-full h-full rounded-full" alt="answer icon" />
+      ? <img src={imageUrl} className="h-full w-full rounded-full" alt="answer icon" />
       : (icon && icon !== '') ? <em-emoji id={icon} /> : <em-emoji id='🤖' />
     }
   </div>

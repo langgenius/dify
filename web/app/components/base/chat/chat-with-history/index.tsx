@@ -67,14 +67,14 @@ const ChatWithHistory: FC<ChatWithHistoryProps> = ({
 
   return (
     <div className={cn(
-      'h-full flex bg-background-default-burn',
+      'flex h-full bg-background-default-burn',
       isMobile && 'flex-col',
       className,
     )}>
       {!isMobile && (
         <div className={cn(
-          'flex flex-col w-[236px] p-1 pr-0 transition-all duration-200 ease-in-out',
-          isSidebarCollapsed && 'w-0 !p-0 overflow-hidden',
+          'flex w-[236px] flex-col p-1 pr-0 transition-all duration-200 ease-in-out',
+          isSidebarCollapsed && 'w-0 overflow-hidden !p-0',
         )}>
           <Sidebar />
         </div>
@@ -86,7 +86,7 @@ const ChatWithHistory: FC<ChatWithHistoryProps> = ({
         {isSidebarCollapsed && (
           <div
             className={cn(
-              'z-20 absolute top-0 w-[256px] h-full flex flex-col p-2 transition-all duration-500 ease-in-out',
+              'absolute top-0 z-20 flex h-full w-[256px] flex-col p-2 transition-all duration-500 ease-in-out',
               showSidePanel ? 'left-0' : 'left-[-248px]',
             )}
             onMouseEnter={() => setShowSidePanel(true)}
@@ -95,7 +95,7 @@ const ChatWithHistory: FC<ChatWithHistoryProps> = ({
             <Sidebar isPanel />
           </div>
         )}
-        <div className={cn('h-full flex flex-col bg-chatbot-bg border-[0,5px] border-components-panel-border-subtle overflow-hidden', isMobile ? 'rounded-t-2xl' : 'rounded-2xl')}>
+        <div className={cn('flex h-full flex-col overflow-hidden border-[0,5px] border-components-panel-border-subtle bg-chatbot-bg', isMobile ? 'rounded-t-2xl' : 'rounded-2xl')}>
           {!isMobile && <Header />}
           {appChatListDataLoading && (
             <Loading type='app' />

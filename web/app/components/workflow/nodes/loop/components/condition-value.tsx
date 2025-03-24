@@ -66,10 +66,10 @@ const ConditionValue = ({
   }, [isSelect, t, value])
 
   return (
-    <div className='flex items-center px-1 h-6 rounded-md bg-workflow-block-parma-bg'>
-      {!isEnvVar && !isChatVar && <Variable02 className='shrink-0 mr-1 w-3.5 h-3.5 text-text-accent' />}
-      {isEnvVar && <Env className='shrink-0 mr-1 w-3.5 h-3.5 text-util-colors-violet-violet-600' />}
-      {isChatVar && <BubbleX className='w-3.5 h-3.5 text-util-colors-teal-teal-700' />}
+    <div className='flex h-6 items-center rounded-md bg-workflow-block-parma-bg px-1'>
+      {!isEnvVar && !isChatVar && <Variable02 className='mr-1 h-3.5 w-3.5 shrink-0 text-text-accent' />}
+      {isEnvVar && <Env className='mr-1 h-3.5 w-3.5 shrink-0 text-util-colors-violet-violet-600' />}
+      {isChatVar && <BubbleX className='h-3.5 w-3.5 text-util-colors-teal-teal-700' />}
 
       <div
         className={cn(
@@ -81,7 +81,7 @@ const ConditionValue = ({
         {variableName}
       </div>
       <div
-        className='shrink-0 mx-1 text-xs font-medium text-text-primary'
+        className='mx-1 shrink-0 text-xs font-medium text-text-primary'
         title={operatorName}
       >
         {operatorName}

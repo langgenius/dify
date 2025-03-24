@@ -1,11 +1,11 @@
 import type { FC } from 'react'
 import type { ModelProvider } from '../declarations'
+import { basePath } from '@/utils/var'
 import { useLanguage } from '../hooks'
 import { Openai } from '@/app/components/base/icons/src/vender/other'
 import { AnthropicDark, AnthropicLight } from '@/app/components/base/icons/src/public/llm'
 import { renderI18nObject } from '@/hooks/use-i18n'
 import { Theme } from '@/types/app'
-import { basePath } from '@/utils/var'
 import cn from '@/utils/classnames'
 import useTheme from '@/hooks/use-theme'
 
@@ -23,8 +23,8 @@ const ProviderIcon: FC<ProviderIconProps> = ({
   if (provider.provider === 'langgenius/anthropic/anthropic') {
     return (
       <div className='mb-2 py-[7px]'>
-        {theme === Theme.dark && <AnthropicLight className='w-[90px] h-2.5' />}
-        {theme === Theme.light && <AnthropicDark className='w-[90px] h-2.5' />}
+        {theme === Theme.dark && <AnthropicLight className='h-2.5 w-[90px]' />}
+        {theme === Theme.light && <AnthropicDark className='h-2.5 w-[90px]' />}
       </div>
     )
   }
@@ -32,7 +32,7 @@ const ProviderIcon: FC<ProviderIconProps> = ({
   if (provider.provider === 'langgenius/openai/openai') {
     return (
       <div className='mb-2'>
-        <Openai className='w-auto h-6 text-text-inverted-dimmed' />
+        <Openai className='h-6 w-auto text-text-inverted-dimmed' />
       </div>
     )
   }
@@ -41,8 +41,8 @@ const ProviderIcon: FC<ProviderIconProps> = ({
     <div className={cn('inline-flex items-center gap-2', className)}>
       <img
         alt='provider-icon'
-        src={basePath + renderI18nObject(provider.icon_small, language)}
-        className='w-6 h-6'
+        src={basePath+renderI18nObject(provider.icon_small, language)}
+        className='h-6 w-6'
       />
       <div className='system-md-semibold text-text-primary'>
         {renderI18nObject(provider.label, language)}

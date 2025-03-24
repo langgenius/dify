@@ -6,10 +6,10 @@ import {
   RiCloseLine,
 } from '@remixicon/react'
 import { AuthHeaderPrefix, AuthType, CollectionType } from '../types'
+import { basePath } from '@/utils/var'
 import type { Collection, CustomCollectionBackend, Tool, WorkflowToolProviderRequest, WorkflowToolProviderResponse } from '../types'
 import ToolItem from './tool-item'
 import cn from '@/utils/classnames'
-import { basePath } from '@/utils/var'
 import I18n from '@/context/i18n'
 import { getLanguage } from '@/i18n/language'
 import Confirm from '@/app/components/base/confirm'
@@ -234,16 +234,16 @@ const ProviderDetail = ({
       footer={null}
       mask={false}
       positionCenter={false}
-      panelClassname={cn('justify-start mt-[64px] mr-2 mb-2 !w-[420px] !max-w-[420px] !p-0 !bg-components-panel-bg rounded-2xl border-[0.5px] border-components-panel-border shadow-xl')}
+      panelClassname={cn('mb-2 mr-2 mt-[64px] !w-[420px] !max-w-[420px] justify-start rounded-2xl border-[0.5px] border-components-panel-border !bg-components-panel-bg !p-0 shadow-xl')}
     >
       <div className='p-4'>
         <div className='mb-3 flex'>
           <Icon src={collection.icon} />
           <div className="ml-3 w-0 grow">
-            <div className="flex items-center h-5">
+            <div className="flex h-5 items-center">
               <Title title={collection.label[language]} />
             </div>
-            <div className='mb-1 flex justify-between items-center h-4'>
+            <div className='mb-1 flex h-4 items-center justify-between'>
               <OrgInfo
                 className="mt-0.5"
                 packageNameClassName='w-auto'
@@ -254,7 +254,7 @@ const ProviderDetail = ({
           </div>
           <div className='flex gap-1'>
             <ActionButton onClick={onHide}>
-              <RiCloseLine className='w-4 h-4' />
+              <RiCloseLine className='h-4 w-4' />
             </ActionButton>
           </div>
         </div>
@@ -264,10 +264,10 @@ const ProviderDetail = ({
         <div className='flex gap-1 border-b-[0.5px] border-divider-subtle'>
           {collection.type === CollectionType.custom && !isDetailLoading && (
             <Button
-              className={cn('shrink-0 my-3 w-full')}
+              className={cn('my-3 w-full shrink-0')}
               onClick={() => setIsShowEditCustomCollectionModal(true)}
             >
-              <Settings01 className='mr-1 w-4 h-4 text-text-tertiary' />
+              <Settings01 className='mr-1 h-4 w-4 text-text-tertiary' />
               <div className='system-sm-medium text-text-secondary'>{t('tools.createTool.editAction')}</div>
             </Button>
           )}
@@ -275,15 +275,15 @@ const ProviderDetail = ({
             <>
               <Button
                 variant='primary'
-                className={cn('shrink-0 my-3 w-[183px]')}
+                className={cn('my-3 w-[183px] shrink-0')}
               >
-                <a className='flex items-center text-text-primary' href={`${basePath}/app/${(customCollection as WorkflowToolProviderResponse).workflow_app_id}/workflow`} rel='noreferrer' target='_blank'>
+                <a className='flex items-center' href={basePath+`/app/${(customCollection as WorkflowToolProviderResponse).workflow_app_id}/workflow`} rel='noreferrer' target='_blank'>
                   <div className='system-sm-medium'>{t('tools.openInStudio')}</div>
-                  <LinkExternal02 className='ml-1 w-4 h-4' />
+                  <LinkExternal02 className='ml-1 h-4 w-4' />
                 </a>
               </Button>
               <Button
-                className={cn('shrink-0 my-3 w-[183px]')}
+                className={cn('my-3 w-[183px] shrink-0')}
                 onClick={() => setIsShowEditWorkflowToolModal(true)}
                 disabled={!isCurrentWorkspaceManager}
               >
@@ -297,7 +297,7 @@ const ProviderDetail = ({
           {isDetailLoading && <div className='flex h-[200px]'><Loading type='app' /></div>}
           {/* Builtin type */}
           {!isDetailLoading && (collection.type === CollectionType.builtIn) && isAuthed && (
-            <div className='mb-1 h-6 flex items-center justify-between text-text-secondary system-sm-semibold-uppercase'>
+            <div className='system-sm-semibold-uppercase mb-1 flex h-6 items-center justify-between text-text-secondary'>
               {t('plugin.detailPanel.actionNum', { num: toolList.length, action: toolList.length > 1 ? 'actions' : 'action' })}
               {needAuth && (
                 <Button
@@ -317,14 +317,14 @@ const ProviderDetail = ({
           )}
           {!isDetailLoading && (collection.type === CollectionType.builtIn) && needAuth && !isAuthed && (
             <>
-              <div className='text-text-secondary system-sm-semibold-uppercase'>
+              <div className='system-sm-semibold-uppercase text-text-secondary'>
                 <span className=''>{t('tools.includeToolNum', { num: toolList.length, action: toolList.length > 1 ? 'actions' : 'action' }).toLocaleUpperCase()}</span>
                 <span className='px-1'>·</span>
                 <span className='text-util-colors-orange-orange-600'>{t('tools.auth.setup').toLocaleUpperCase()}</span>
               </div>
               <Button
                 variant='primary'
-                className={cn('shrink-0 my-3 w-full')}
+                className={cn('my-3 w-full shrink-0')}
                 onClick={() => {
                   if (collection.type === CollectionType.builtIn || collection.type === CollectionType.model)
                     showSettingAuthModal()
@@ -337,13 +337,13 @@ const ProviderDetail = ({
           )}
           {/* Custom type */}
           {!isDetailLoading && (collection.type === CollectionType.custom) && (
-            <div className='text-text-secondary system-sm-semibold-uppercase'>
+            <div className='system-sm-semibold-uppercase text-text-secondary'>
               <span className=''>{t('tools.includeToolNum', { num: toolList.length, action: toolList.length > 1 ? 'actions' : 'action' }).toLocaleUpperCase()}</span>
             </div>
           )}
           {/* Workflow type */}
           {!isDetailLoading && (collection.type === CollectionType.workflow) && (
-            <div className='text-text-secondary system-sm-semibold-uppercase'>
+            <div className='system-sm-semibold-uppercase text-text-secondary'>
               <span className=''>{t('tools.createTool.toolInput.title').toLocaleUpperCase()}</span>
             </div>
           )}
@@ -363,11 +363,11 @@ const ProviderDetail = ({
               {collection.type === CollectionType.workflow && (customCollection as WorkflowToolProviderResponse)?.tool?.parameters.map(item => (
                 <div key={item.name} className='mb-1 py-1'>
                   <div className='mb-1 flex items-center gap-2'>
-                    <span className='text-text-secondary code-sm-semibold'>{item.name}</span>
-                    <span className='text-text-tertiary system-xs-regular'>{item.type}</span>
-                    <span className='text-text-warning-secondary system-xs-medium'>{item.required ? t('tools.createTool.toolInput.required') : ''}</span>
+                    <span className='code-sm-semibold text-text-secondary'>{item.name}</span>
+                    <span className='system-xs-regular text-text-tertiary'>{item.type}</span>
+                    <span className='system-xs-medium text-text-warning-secondary'>{item.required ? t('tools.createTool.toolInput.required') : ''}</span>
                   </div>
-                  <div className='text-text-tertiary system-xs-regular'>{item.llm_description}</div>
+                  <div className='system-xs-regular text-text-tertiary'>{item.llm_description}</div>
                 </div>
               ))}
             </div>

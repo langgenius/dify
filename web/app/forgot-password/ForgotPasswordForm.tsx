@@ -89,7 +89,7 @@ const ForgotPasswordForm = () => {
             {isEmailSent ? t('login.checkEmailForResetLink') : t('login.forgotPasswordDesc')}
           </p>
         </div>
-        <div className="grow mt-8 sm:mx-auto sm:w-full sm:max-w-md">
+        <div className="mt-8 grow sm:mx-auto sm:w-full sm:max-w-md">
           <div className="bg-white ">
             <form>
               {!isEmailSent && (
@@ -103,7 +103,7 @@ const ForgotPasswordForm = () => {
                       {...register('email')}
                       placeholder={t('login.emailPlaceholder') || ''}
                     />
-                    {errors.email && <span className='text-red-400 text-sm'>{t(`${errors.email?.message}`)}</span>}
+                    {errors.email && <span className='text-sm text-red-400'>{t(`${errors.email?.message}`)}</span>}
                   </div>
                 </div>
               )}

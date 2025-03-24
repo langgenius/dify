@@ -1,6 +1,6 @@
 import { Fragment, useCallback, useEffect } from 'react'
 import type { ReactNode } from 'react'
-import { Dialog, Transition } from '@headlessui/react'
+import { Dialog, DialogPanel, Transition, TransitionChild } from '@headlessui/react'
 import cn from '@/utils/classnames'
 
 type DialogProps = {
@@ -20,8 +20,10 @@ const MenuDialog = ({
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape')
+      if (event.key === 'Escape') {
+        event.preventDefault()
         close()
+      }
     }
 
     document.addEventListener('keydown', handleKeyDown)
@@ -32,23 +34,21 @@ const MenuDialog = ({
 
   return (
     <Transition appear show={show} as={Fragment}>
-      <Dialog as="div" className="relative z-[60]" onClose={() => {}}>
+      <Dialog as="div" className="relative z-[60]" onClose={() => { }}>
         <div className="fixed inset-0">
-          <div className="flex flex-col items-center justify-center min-h-full">
-            <Transition.Child
-              as={Fragment}
-              enter="ease-out duration-300"
-              enterFrom="opacity-0 scale-95"
-              enterTo="opacity-100 scale-100"
-              leave="ease-in duration-200"
-              leaveFrom="opacity-100 scale-100"
-              leaveTo="opacity-0 scale-95"
-            >
-              <Dialog.Panel className={cn('grow relative w-full h-full p-0 overflow-hidden text-left align-middle transition-all transform bg-background-sidenav-bg backdrop-blur-md', className)}>
-                <div className='absolute top-0 right-0 h-full w-1/2 bg-components-panel-bg' />
+          <div className="flex min-h-full flex-col items-center justify-center">
+            <TransitionChild>
+              <DialogPanel className={cn(
+                'relative h-full w-full grow overflow-hidden bg-background-sidenav-bg p-0 text-left align-middle backdrop-blur-md transition-all',
+                'duration-300 ease-in data-[closed]:scale-95 data-[closed]:opacity-0',
+                'data-[enter]:scale-100 data-[enter]:opacity-100',
+                'data-[enter]:scale-95 data-[leave]:opacity-0',
+                className,
+              )}>
+                <div className='absolute right-0 top-0 h-full w-1/2 bg-components-panel-bg' />
                 {children}
-              </Dialog.Panel>
-            </Transition.Child>
+              </DialogPanel>
+            </TransitionChild>
           </div>
         </div>
       </Dialog>

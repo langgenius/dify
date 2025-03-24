@@ -46,22 +46,22 @@ const NotionPagePreview = ({
   return (
     <div className={cn(s.filePreview, 'h-full')}>
       <div className={cn(s.previewHeader)}>
-        <div className={cn(s.title)}>
+        <div className={cn(s.title, 'title-md-semi-bold')}>
           <span>{t('datasetCreation.stepOne.pagePreview')}</span>
-          <div className='flex items-center justify-center w-6 h-6 cursor-pointer' onClick={hidePreview}>
+          <div className='flex h-6 w-6 cursor-pointer items-center justify-center' onClick={hidePreview}>
             <XMarkIcon className='h-4 w-4'></XMarkIcon>
           </div>
         </div>
-        <div className={cn(s.fileName)}>
+        <div className={cn(s.fileName, 'system-xs-medium')}>
           <NotionIcon
-            className='shrink-0 mr-1'
+            className='mr-1 shrink-0'
             type='page'
             src={currentPage?.page_icon}
           />
           {currentPage?.page_name}
         </div>
       </div>
-      <div className={cn(s.previewContent)}>
+      <div className={cn(s.previewContent, 'body-md-regular')}>
         {loading && <div className={cn(s.loading)} />}
         {!loading && (
           <div className={cn(s.fileContent, 'body-md-regular')}>{previewContent}</div>

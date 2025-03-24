@@ -5,11 +5,11 @@ export const DaysOfWeek = () => {
   const daysOfWeek = useDaysOfWeek()
 
   return (
-    <div className='grid grid-cols-7 gap-x-0.5 p-2 border-b-[0.5px] border-divider-regular'>
+    <div className='grid grid-cols-7 gap-x-0.5 border-b-[0.5px] border-divider-regular p-2'>
       {daysOfWeek.map(day => (
         <div
           key={day}
-          className='flex items-center justify-center text-text-tertiary system-2xs-medium'
+          className='system-2xs-medium flex items-center justify-center text-text-tertiary'
         >
           {day}
         </div>

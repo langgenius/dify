@@ -10,11 +10,11 @@ export const GroupLabel: FC<GroupLabelProps> = (props) => {
   </div>
 }
 
-export type Group = PropsWithChildren<{
+export type GroupProps = PropsWithChildren<{
   label: ReactNode
 }>
 
-export const Group: FC<Group> = (props) => {
+export const Group: FC<GroupProps> = (props) => {
   const { children, label } = props
   return <div className={classNames('py-1')}>
     {label}

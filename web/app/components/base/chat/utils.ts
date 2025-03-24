@@ -10,12 +10,15 @@ async function decodeBase64AndDecompress(base64String: string) {
   return new TextDecoder().decode(decompressedArrayBuffer)
 }
 
-function getProcessedInputsFromUrlParams(): Record<string, any> {
+async function getProcessedInputsFromUrlParams(): Promise<Record<string, any>> {
   const urlParams = new URLSearchParams(window.location.search)
   const inputs: Record<string, any> = {}
-  urlParams.forEach(async (value, key) => {
-    inputs[key] = await decodeBase64AndDecompress(decodeURIComponent(value))
-  })
+  const entriesArray = Array.from(urlParams.entries())
+  await Promise.all(
+    entriesArray.map(async ([key, value]) => {
+      inputs[key] = await decodeBase64AndDecompress(decodeURIComponent(value))
+    }),
+  )
   return inputs
 }
 
