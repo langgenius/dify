@@ -32,8 +32,8 @@ const ConditionVarSelector = ({
         crossAxis: 0,
       }}
     >
-      <PortalToFollowElemTrigger onClick={() => onOpenChange(!open)}>
-        <div className="cursor-pointer">
+      <PortalToFollowElemTrigger asChild onClick={() => onOpenChange(!open)}>
+        <div className="w-full cursor-pointer">
           <VariableTag
             valueSelector={valueSelector}
             varType={varType}
