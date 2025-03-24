@@ -24,9 +24,7 @@ class TableStoreVectorTest(AbstractVectorTest):
         )
 
     def get_ids_by_metadata_field(self):
-        ids = self.vector.get_ids_by_metadata_field(
-            key="doc_id", value=self.example_doc_id
-        )
+        ids = self.vector.get_ids_by_metadata_field(key="doc_id", value=self.example_doc_id)
         assert ids is not None
         assert len(ids) == 1
         assert ids[0] == self.example_doc_id

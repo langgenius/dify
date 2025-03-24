@@ -58,9 +58,7 @@ class TableStoreVector(BaseVector):
         self._create_collection(dimension)
         self.add_texts(documents=texts, embeddings=embeddings, **kwargs)
 
-    def add_texts(
-        self, documents: list[Document], embeddings: list[list[float]], **kwargs
-    ):
+    def add_texts(self, documents: list[Document], embeddings: list[list[float]], **kwargs):
         uuids = self._get_uuids(documents)
 
         for i in range(len(documents)):
@@ -94,9 +92,7 @@ class TableStoreVector(BaseVector):
         ids = self.get_ids_by_metadata_field(key, value)
         self.delete_by_ids(ids)
 
-    def search_by_vector(
-        self, query_vector: list[float], **kwargs: Any
-    ) -> list[Document]:
+    def search_by_vector(self, query_vector: list[float], **kwargs: Any) -> list[Document]:
         top_k = kwargs.get("top_k", 4)
         return self._search_by_vector(query_vector, top_k)
 
@@ -127,18 +123,12 @@ class TableStoreVector(BaseVector):
         schema_of_primary_key = [("id", "STRING")]
         table_meta = tablestore.TableMeta(self._table_name, schema_of_primary_key)
         table_options = tablestore.TableOptions()
-        reserved_throughput = tablestore.ReservedThroughput(
-            tablestore.CapacityUnit(0, 0)
-        )
-        self._tablestore_client.create_table(
-            table_meta, table_options, reserved_throughput
-        )
+        reserved_throughput = tablestore.ReservedThroughput(tablestore.CapacityUnit(0, 0))
+        self._tablestore_client.create_table(table_meta, table_options, reserved_throughput)
         logging.info("Tablestore create table[%s] successfully.", self._table_name)
 
     def _create_search_index_if_not_exist(self, dimension: int) -> None:
-        search_index_list = self._tablestore_client.list_search_index(
-            table_name=self._table_name
-        )
+        search_index_list = self._tablestore_client.list_search_index(table_name=self._table_name)
         if self._index_name in [t[1] for t in search_index_list]:
             logging.info("Tablestore system index[%s] already exists", self._index_name)
             return None
@@ -177,25 +167,17 @@ class TableStoreVector(BaseVector):
         ]
 
         index_meta = tablestore.SearchIndexMeta(field_schemas)
-        self._tablestore_client.create_search_index(
-            self._table_name, self._index_name, index_meta
-        )
-        logging.info(
-            "Tablestore create system index[%s] successfully.", self._index_name
-        )
+        self._tablestore_client.create_search_index(self._table_name, self._index_name, index_meta)
+        logging.info("Tablestore create system index[%s] successfully.", self._index_name)
 
     def _delete_table_if_exist(self):
-        search_index_list = self._tablestore_client.list_search_index(
-            table_name=self._table_name
-        )
+        search_index_list = self._tablestore_client.list_search_index(table_name=self._table_name)
         for resp_tuple in search_index_list:
             self._tablestore_client.delete_search_index(resp_tuple[0], resp_tuple[1])
             logging.info("Tablestore delete index[%s] successfully.", self._index_name)
 
         self._tablestore_client.delete_table(self._table_name)
-        logging.info(
-            "Tablestore delete system table[%s] successfully.", self._index_name
-        )
+        logging.info("Tablestore delete system table[%s] successfully.", self._index_name)
 
     def _delete_search_index(self) -> None:
         self._tablestore_client.delete_search_index(self._table_name, self._index_name)
@@ -237,35 +219,25 @@ class TableStoreVector(BaseVector):
             table_name=self._table_name,
             index_name=self._index_name,
             search_query=query,
-            columns_to_get=tablestore.ColumnsToGet(
-                return_type=tablestore.ColumnReturnType.ALL_FROM_INDEX
-            ),
+            columns_to_get=tablestore.ColumnsToGet(return_type=tablestore.ColumnReturnType.ALL_FROM_INDEX),
         )
 
         return [row[0][0][1] for row in search_response.rows]
 
-    def _search_by_vector(
-        self, query_vector: list[float], top_k: int
-    ) -> list[Document]:
+    def _search_by_vector(self, query_vector: list[float], top_k: int) -> list[Document]:
         ots_query = tablestore.KnnVectorQuery(
             field_name=Field.VECTOR.value,
             top_k=top_k,
             float32_query_vector=query_vector,
         )
-        sort = tablestore.Sort(
-            sorters=[tablestore.ScoreSort(sort_order=tablestore.SortOrder.DESC)]
-        )
-        search_query = tablestore.SearchQuery(
-            ots_query, limit=top_k, get_total_count=False, sort=sort
-        )
+        sort = tablestore.Sort(sorters=[tablestore.ScoreSort(sort_order=tablestore.SortOrder.DESC)])
+        search_query = tablestore.SearchQuery(ots_query, limit=top_k, get_total_count=False, sort=sort)
 
         search_response = self._tablestore_client.search(
             table_name=self._table_name,
             index_name=self._index_name,
             search_query=search_query,
-            columns_to_get=tablestore.ColumnsToGet(
-                return_type=tablestore.ColumnReturnType.ALL_FROM_INDEX
-            ),
+            columns_to_get=tablestore.ColumnsToGet(return_type=tablestore.ColumnReturnType.ALL_FROM_INDEX),
         )
         logging.info(
             "Tablestore search successfully. request_id:%s",
@@ -273,9 +245,7 @@ class TableStoreVector(BaseVector):
         )
         return self._to_query_result(search_response)
 
-    def _to_query_result(
-        self, search_response: tablestore.SearchResponse
-    ) -> list[Document]:
+    def _to_query_result(self, search_response: tablestore.SearchResponse) -> list[Document]:
         documents = []
         for row in search_response.rows:
             documents.append(
@@ -291,38 +261,28 @@ class TableStoreVector(BaseVector):
     def _search_by_full_text(self, query: str) -> list[Document]:
         search_query = tablestore.SearchQuery(
             query=tablestore.MatchQuery(text=query, field_name=Field.CONTENT_KEY.value),
-            sort=tablestore.Sort(
-                sorters=[tablestore.ScoreSort(sort_order=tablestore.SortOrder.DESC)]
-            ),
+            sort=tablestore.Sort(sorters=[tablestore.ScoreSort(sort_order=tablestore.SortOrder.DESC)]),
             limit=100,
         )
         search_response = self._tablestore_client.search(
             table_name=self._table_name,
             index_name=self._index_name,
             search_query=search_query,
-            columns_to_get=tablestore.ColumnsToGet(
-                return_type=tablestore.ColumnReturnType.ALL_FROM_INDEX
-            ),
+            columns_to_get=tablestore.ColumnsToGet(return_type=tablestore.ColumnReturnType.ALL_FROM_INDEX),
         )
 
         return self._to_query_result(search_response)
 
 
 class TableStoreVectorFactory(AbstractVectorFactory):
-    def init_vector(
-        self, dataset: Dataset, attributes: list, embeddings: Embeddings
-    ) -> TableStoreVector:
+    def init_vector(self, dataset: Dataset, attributes: list, embeddings: Embeddings) -> TableStoreVector:
         if dataset.index_struct_dict:
-            class_prefix: str = dataset.index_struct_dict["vector_store"][
-                "class_prefix"
-            ]
+            class_prefix: str = dataset.index_struct_dict["vector_store"]["class_prefix"]
             collection_name = class_prefix
         else:
             dataset_id = dataset.id
             collection_name = Dataset.gen_collection_name_by_id(dataset_id)
-            dataset.index_struct = json.dumps(
-                self.gen_index_struct_dict(VectorType.TABLESTORE, collection_name)
-            )
+            dataset.index_struct = json.dumps(self.gen_index_struct_dict(VectorType.TABLESTORE, collection_name))
 
         return TableStoreVector(
             collection_name=collection_name,
