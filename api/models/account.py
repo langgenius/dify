@@ -85,8 +85,8 @@ class Account(UserMixin, db.Model):  # type: ignore[name-defined]
         self._current_tenant = tenant
 
     @property
-    def current_role(self):
-        return self._current_tenant.current_role
+    def current_role(self) -> str:
+        return self._current_tenant.current_role if self._current_tenant else TenantAccountJoinRole.UNKNOWN.value
 
     def get_status(self) -> AccountStatus:
         status_str = self.status
@@ -105,23 +105,23 @@ class Account(UserMixin, db.Model):  # type: ignore[name-defined]
 
     @property
     def is_admin_or_owner(self):
-        return TenantAccountRole.is_privileged_role(self._current_tenant.current_role)
+        return TenantAccountRole.is_privileged_role(self.current_role)
 
     @property
     def is_admin(self):
-        return TenantAccountRole.is_admin_role(self._current_tenant.current_role)
+        return TenantAccountRole.is_admin_role(self.current_role)
 
     @property
     def is_editor(self):
-        return TenantAccountRole.is_editing_role(self._current_tenant.current_role)
+        return TenantAccountRole.is_editing_role(self.current_role)
 
     @property
     def is_dataset_editor(self):
-        return TenantAccountRole.is_dataset_edit_role(self._current_tenant.current_role)
+        return TenantAccountRole.is_dataset_edit_role(self.current_role)
 
     @property
     def is_dataset_operator(self):
-        return self._current_tenant.current_role == TenantAccountRole.DATASET_OPERATOR
+        return self.current_role == TenantAccountRole.DATASET_OPERATOR
 
 
 class TenantStatus(enum.StrEnum):
@@ -213,6 +213,7 @@ class TenantAccountJoinRole(enum.Enum):
     DATASET_OPERATOR = "dataset_operator"
     END_USER = "end_user"
     END_ADMIN = "end_admin"
+    UNKNOWN = "unknown"
 
 
 class TenantAccountJoin(db.Model):  # type: ignore[name-defined]
