@@ -6,6 +6,7 @@ on:
       - "main"
       - "deploy/dev"
       - "deploy/enterprise"
+      - "e-0154"
   release:
     types: [published]
 
