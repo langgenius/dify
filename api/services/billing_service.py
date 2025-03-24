@@ -122,7 +122,7 @@ class BillingService:
                 raise EducationActivateLimitError()
 
             cls.activation_rate_limit.increment_rate_limit(account.email)
-            params = {"account_id": account.id}
+            params = {"account_id": account.id, "curr_tenant_id": account.current_tenant_id}
             json = {
                 "institution": institution,
                 "token": token,
