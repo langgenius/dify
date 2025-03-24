@@ -310,6 +310,7 @@ class ChildChunkApi(DatasetApiResource):
 class DatasetChildChunkApi(DatasetApiResource):
     """Resource for updating child chunks."""
 
+    @cloud_edition_billing_knowledge_limit_check("delete_segment", "dataset")
     def delete(self, tenant_id, dataset_id, document_id, segment_id, child_chunk_id):
         """Delete child chunk."""
         # check dataset
@@ -347,6 +348,7 @@ class DatasetChildChunkApi(DatasetApiResource):
         return {"result": "success"}, 200
 
     @cloud_edition_billing_resource_check("vector_space", "dataset")
+    @cloud_edition_billing_knowledge_limit_check("add_segment", "dataset")
     def patch(self, tenant_id, dataset_id, document_id, segment_id, child_chunk_id):
         """Update child chunk."""
         # check dataset
