@@ -312,7 +312,7 @@ function AppPreview({ mode }: { mode: AppMode }) {
     'chat': {
       title: t('app.types.chatbot'),
       description: t('app.newApp.chatbotUserDescription'),
-      link: 'https://docs.dify.ai/guides/application-orchestrate/conversation-application?fallback=true',
+      link: 'https://docs.dify.ai/guides/application-orchestrate#application_type',
     },
     'advanced-chat': {
       title: t('app.types.advanced'),
