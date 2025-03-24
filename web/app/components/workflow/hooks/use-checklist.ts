@@ -1,10 +1,12 @@
 import {
   useCallback,
   useMemo,
+  useRef,
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStoreApi } from 'reactflow'
 import type {
+  CommonNodeType,
   Edge,
   Node,
 } from '../types'
@@ -27,6 +29,10 @@ import { useGetLanguage } from '@/context/i18n'
 import type { AgentNodeType } from '../nodes/agent/types'
 import { useStrategyProviders } from '@/service/use-strategy'
 import { canFindTool } from '@/utils'
+import { useDatasetsDetailStore } from '../datasets-detail-store/store'
+import type { KnowledgeRetrievalNodeType } from '../nodes/knowledge-retrieval/types'
+import type { DataSet } from '@/models/datasets'
+import { fetchDatasets } from '@/service/datasets'
 
 export const useChecklist = (nodes: Node[], edges: Edge[]) => {
   const { t } = useTranslation()
@@ -37,6 +43,24 @@ export const useChecklist = (nodes: Node[], edges: Edge[]) => {
   const customTools = useStore(s => s.customTools)
   const workflowTools = useStore(s => s.workflowTools)
   const { data: strategyProviders } = useStrategyProviders()
+  const datasetsDetail = useDatasetsDetailStore(s => s.datasetsDetail)
+
+  const getCheckData = useCallback((data: CommonNodeType<{}>) => {
+    let checkData = data
+    if (data.type === BlockEnum.KnowledgeRetrieval) {
+      const datasetIds = (data as CommonNodeType<KnowledgeRetrievalNodeType>).dataset_ids
+      const _datasets = datasetIds.reduce<DataSet[]>((acc, id) => {
+        if (datasetsDetail[id])
+          acc.push(datasetsDetail[id])
+        return acc
+      }, [])
+      checkData = {
+        ...data,
+        _datasets,
+      } as CommonNodeType<KnowledgeRetrievalNodeType>
+    }
+    return checkData
+  }, [datasetsDetail])
 
   const needWarningNodes = useMemo(() => {
     const list = []
@@ -75,7 +99,8 @@ export const useChecklist = (nodes: Node[], edges: Edge[]) => {
       }
 
       if (node.type === CUSTOM_NODE) {
-        const { errorMessage } = nodesExtraData[node.data.type].checkValid(node.data, t, moreDataForCheckValid)
+        const checkData = getCheckData(node.data)
+        const { errorMessage } = nodesExtraData[node.data.type].checkValid(checkData, t, moreDataForCheckValid)
 
         if (errorMessage || !validNodes.find(n => n.id === node.id)) {
           list.push({
@@ -109,7 +134,7 @@ export const useChecklist = (nodes: Node[], edges: Edge[]) => {
     }
 
     return list
-  }, [nodes, edges, isChatMode, buildInTools, customTools, workflowTools, language, nodesExtraData, t, strategyProviders])
+  }, [nodes, edges, isChatMode, buildInTools, customTools, workflowTools, language, nodesExtraData, t, strategyProviders, getCheckData])
 
   return needWarningNodes
 }
@@ -125,8 +150,31 @@ export const useChecklistBeforePublish = () => {
   const store = useStoreApi()
   const nodesExtraData = useNodesExtraData()
   const { data: strategyProviders } = useStrategyProviders()
+  const updateDatasetsDetail = useDatasetsDetailStore(s => s.updateDatasetsDetail)
+  const updateTime = useRef(0)
 
-  const handleCheckBeforePublish = useCallback(() => {
+  const getCheckData = useCallback((data: CommonNodeType<{}>, datasets: DataSet[]) => {
+    let checkData = data
+    if (data.type === BlockEnum.KnowledgeRetrieval) {
+      const datasetIds = (data as CommonNodeType<KnowledgeRetrievalNodeType>).dataset_ids
+      const datasetsDetail = datasets.reduce<Record<string, DataSet>>((acc, dataset) => {
+        acc[dataset.id] = dataset
+        return acc
+      }, {})
+      const _datasets = datasetIds.reduce<DataSet[]>((acc, id) => {
+        if (datasetsDetail[id])
+          acc.push(datasetsDetail[id])
+        return acc
+      }, [])
+      checkData = {
+        ...data,
+        _datasets,
+      } as CommonNodeType<KnowledgeRetrievalNodeType>
+    }
+    return checkData
+  }, [])
+
+  const handleCheckBeforePublish = useCallback(async () => {
     const {
       getNodes,
       edges,
@@ -140,6 +188,24 @@ export const useChecklistBeforePublish = () => {
     if (maxDepth > MAX_TREE_DEPTH) {
       notify({ type: 'error', message: t('workflow.common.maxTreeDepth', { depth: MAX_TREE_DEPTH }) })
       return false
+    }
+    // Before publish, we need to fetch datasets detail, in case of the settings of datasets have been changed
+    const knowledgeRetrievalNodes = nodes.filter(node => node.data.type === BlockEnum.KnowledgeRetrieval)
+    const allDatasetIds = knowledgeRetrievalNodes.reduce<string[]>((acc, node) => {
+      return Array.from(new Set([...acc, ...(node.data as CommonNodeType<KnowledgeRetrievalNodeType>).dataset_ids]))
+    }, [])
+    let datasets: DataSet[] = []
+    if (allDatasetIds.length > 0) {
+      updateTime.current = updateTime.current + 1
+      const currUpdateTime = updateTime.current
+      const { data: datasetsDetail } = await fetchDatasets({ url: '/datasets', params: { page: 1, ids: allDatasetIds } })
+      if (datasetsDetail && datasetsDetail.length > 0) {
+        // avoid old data to overwrite the new data
+        if (currUpdateTime < updateTime.current)
+          return false
+        datasets = datasetsDetail
+        updateDatasetsDetail(datasetsDetail)
+      }
     }
 
     for (let i = 0; i < nodes.length; i++) {
@@ -161,7 +227,8 @@ export const useChecklistBeforePublish = () => {
         }
       }
 
-      const { errorMessage } = nodesExtraData[node.data.type as BlockEnum].checkValid(node.data, t, moreDataForCheckValid)
+      const checkData = getCheckData(node.data, datasets)
+      const { errorMessage } = nodesExtraData[node.data.type as BlockEnum].checkValid(checkData, t, moreDataForCheckValid)
 
       if (errorMessage) {
         notify({ type: 'error', message: `[${node.data.title}] ${errorMessage}` })
@@ -185,7 +252,7 @@ export const useChecklistBeforePublish = () => {
     }
 
     return true
-  }, [store, isChatMode, notify, t, buildInTools, customTools, workflowTools, language, nodesExtraData, strategyProviders])
+  }, [store, isChatMode, notify, t, buildInTools, customTools, workflowTools, language, nodesExtraData, strategyProviders, updateDatasetsDetail, getCheckData])
 
   return {
     handleCheckBeforePublish,

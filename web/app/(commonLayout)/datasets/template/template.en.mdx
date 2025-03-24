@@ -961,6 +961,12 @@ import { Row, Col, Properties, Property, Heading, SubProperty, PropertyInstructi
       <Property name='status' type='string' key='status'>
         Search status, completed
       </Property>
+      <Property name='page' type='string' key='page'>
+        Page number (optional)
+      </Property>
+      <Property name='limit' type='string' key='limit'>
+        Number of items returned, default 20, range 1-100 (optional)
+      </Property>
     </Properties>
   </Col>
   <Col sticky>
@@ -1004,7 +1010,11 @@ import { Row, Col, Properties, Property, Heading, SubProperty, PropertyInstructi
         "error": null,
         "stopped_at": null
       }],
-      "doc_form": "text_model"
+      "doc_form": "text_model",
+      "has_more": false,
+      "limit": 20,
+      "total": 9,
+      "page": 1
     }
     ```
     </CodeGroup>

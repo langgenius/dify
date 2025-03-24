@@ -961,6 +961,12 @@ import { Row, Col, Properties, Property, Heading, SubProperty, PropertyInstructi
       <Property name='status' type='string' key='status'>
         搜索状态，completed
       </Property>
+      <Property name='page' type='string' key='page'>
+        页码，可选
+      </Property>
+      <Property name='limit' type='string' key='limit'>
+        返回条数，可选，默认 20，范围 1-100
+      </Property>
     </Properties>
   </Col>
   <Col sticky>
@@ -1004,7 +1010,11 @@ import { Row, Col, Properties, Property, Heading, SubProperty, PropertyInstructi
         "error": null,
         "stopped_at": null
       }],
-      "doc_form": "text_model"
+      "doc_form": "text_model",
+      "has_more": false,
+      "limit": 20,
+      "total": 9,
+      "page": 1
     }
     ```
     </CodeGroup>
