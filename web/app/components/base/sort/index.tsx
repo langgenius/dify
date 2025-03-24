@@ -14,7 +14,7 @@ export type Item = {
   name: string
 } & Record<string, any>
 
-interface Props {
+type Props = {
   order?: string
   value: number | string
   items: Item[]
@@ -47,11 +47,11 @@ const Sort: FC<Props> = ({
             className='block'
           >
             <div className={cn(
-              'flex items-center px-2 py-1 rounded-l-lg bg-components-input-bg-normal cursor-pointer hover:bg-state-base-hover-alt',
+              'flex cursor-pointer items-center rounded-l-lg bg-components-input-bg-normal px-2 py-1 hover:bg-state-base-hover-alt',
               open && '!bg-state-base-hover-alt hover:bg-state-base-hover-alt',
             )}>
-              <div className='p-1 flex items-center gap-0.5'>
-                <div className='text-text-tertiary system-sm-regular'>{t('appLog.filter.sortBy')}</div>
+              <div className='flex items-center gap-0.5 p-1'>
+                <div className='system-sm-regular text-text-tertiary'>{t('appLog.filter.sortBy')}</div>
                 <div className={cn('system-sm-regular text-text-tertiary', !!value && 'text-text-secondary')}>
                   {triggerContent}
                 </div>
@@ -60,19 +60,19 @@ const Sort: FC<Props> = ({
             </div>
           </PortalToFollowElemTrigger>
           <PortalToFollowElemContent className='z-[1002]'>
-            <div className='relative w-[240px] bg-components-panel-bg-blur rounded-xl border-[0.5px] border-components-panel-border shadow-lg'>
-              <div className='p-1 max-h-72 overflow-auto'>
+            <div className='relative w-[240px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg'>
+              <div className='max-h-72 overflow-auto p-1'>
                 {items.map(item => (
                   <div
                     key={item.value}
-                    className='flex items-center gap-2 pl-3 py-[6px] px-2 rounded-lg cursor-pointer hover:bg-state-base-hover'
+                    className='flex cursor-pointer items-center gap-2 rounded-lg px-2 py-[6px] pl-3 hover:bg-state-base-hover'
                     onClick={() => {
                       onSelect(`${order}${item.value}`)
                       setOpen(false)
                     }}
                   >
-                    <div title={item.name} className='grow text-text-secondary system-sm-medium truncate'>{item.name}</div>
-                    {value === item.value && <RiCheckLine className='shrink-0 w-4 h-4 text-util-colors-blue-light-blue-light-600' />}
+                    <div title={item.name} className='system-sm-medium grow truncate text-text-secondary'>{item.name}</div>
+                    {value === item.value && <RiCheckLine className='h-4 w-4 shrink-0 text-util-colors-blue-light-blue-light-600' />}
                   </div>
                 ))}
               </div>
@@ -80,9 +80,9 @@ const Sort: FC<Props> = ({
           </PortalToFollowElemContent>
         </div>
       </PortalToFollowElem>
-      <div className='ml-px p-2 rounded-r-lg bg-components-button-tertiary-bg hover:bg-components-button-tertiary-bg-hover cursor-pointer' onClick={() => onSelect(`${order ? '' : '-'}${value}`)}>
-        {!order && <RiSortAsc className='w-4 h-4 text-components-button-tertiary-text' />}
-        {order && <RiSortDesc className='w-4 h-4 text-components-button-tertiary-text' />}
+      <div className='ml-px cursor-pointer rounded-r-lg bg-components-button-tertiary-bg p-2 hover:bg-components-button-tertiary-bg-hover' onClick={() => onSelect(`${order ? '' : '-'}${value}`)}>
+        {!order && <RiSortAsc className='h-4 w-4 text-components-button-tertiary-text' />}
+        {order && <RiSortDesc className='h-4 w-4 text-components-button-tertiary-text' />}
       </div>
     </div>
 

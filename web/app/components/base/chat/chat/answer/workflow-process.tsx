@@ -42,8 +42,8 @@ const WorkflowProcessItem = ({
   return (
     <div
       className={cn(
-        '-mx-1 px-2.5 rounded-xl',
-        collapse ? 'py-[7px] border-l-[0.25px] border-components-panel-border' : 'pt-[7px] px-1 pb-1 border-[0.5px] border-components-panel-border-subtle',
+        '-mx-1 rounded-xl px-2.5',
+        collapse ? 'border-l-[0.25px] border-components-panel-border py-[7px]' : 'border-[0.5px] border-components-panel-border-subtle px-1 pb-1 pt-[7px]',
         running && !collapse && 'bg-background-section-burn',
         succeeded && !collapse && 'bg-state-success-hover',
         failed && !collapse && 'bg-state-destructive-hover',
@@ -51,28 +51,28 @@ const WorkflowProcessItem = ({
       )}
     >
       <div
-        className={cn('flex items-center cursor-pointer', !collapse && 'px-1.5', readonly && 'cursor-default')}
+        className={cn('flex cursor-pointer items-center', !collapse && 'px-1.5', readonly && 'cursor-default')}
         onClick={() => !readonly && setCollapse(!collapse)}
       >
         {
           running && (
-            <RiLoader2Line className='shrink-0 mr-1 w-3.5 h-3.5 animate-spin text-text-tertiary' />
+            <RiLoader2Line className='mr-1 h-3.5 w-3.5 shrink-0 animate-spin text-text-tertiary' />
           )
         }
         {
           succeeded && (
-            <CheckCircle className='shrink-0 mr-1 w-3.5 h-3.5 text-text-success' />
+            <CheckCircle className='mr-1 h-3.5 w-3.5 shrink-0 text-text-success' />
           )
         }
         {
           failed && (
-            <RiErrorWarningFill className='shrink-0 mr-1 w-3.5 h-3.5 text-text-destructive' />
+            <RiErrorWarningFill className='mr-1 h-3.5 w-3.5 shrink-0 text-text-destructive' />
           )
         }
         <div className={cn('system-xs-medium text-text-secondary', !collapse && 'grow')}>
           {t('workflow.common.workflowProcess')}
         </div>
-        {!readonly && <RiArrowRightSLine className={cn('ml-1 w-4 h-4 text-text-tertiary', !collapse && 'rotate-90')} />}
+        {!readonly && <RiArrowRightSLine className={cn('ml-1 h-4 w-4 text-text-tertiary', !collapse && 'rotate-90')} />}
       </div>
       {
         !collapse && !readonly && (

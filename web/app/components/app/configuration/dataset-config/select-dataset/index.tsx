@@ -104,7 +104,7 @@ const SelectDataSet: FC<ISelectDataSetProps> = ({
       )}
 
       {(loaded && hasNoData) && (
-        <div className='flex items-center justify-center mt-6 rounded-lg space-x-1  h-[128px] text-[13px] border'
+        <div className='mt-6 flex h-[128px] items-center justify-center space-x-1  rounded-lg border text-[13px]'
           style={{
             background: 'rgba(0, 0, 0, 0.02)',
             borderColor: 'rgba(0, 0, 0, 0.02',
@@ -117,13 +117,13 @@ const SelectDataSet: FC<ISelectDataSetProps> = ({
 
       {datasets && datasets?.length > 0 && (
         <>
-          <div ref={listRef} className='mt-7 space-y-1 max-h-[286px] overflow-y-auto'>
+          <div ref={listRef} className='mt-7 max-h-[286px] space-y-1 overflow-y-auto'>
             {datasets.map(item => (
               <div
                 key={item.id}
                 className={cn(
-                  'flex justify-between items-center h-10 px-2 rounded-lg bg-components-panel-on-panel-item-bg border-components-panel-border-subtle border-[0.5px] shadow-xs cursor-pointer hover:border-components-panel-border hover:bg-components-panel-on-panel-item-bg-hover hover:shadow-sm',
-                  selected.some(i => i.id === item.id) && 'border-[1.5px] border-components-option-card-option-selected-border bg-state-accent-hover shadow-xs hover:shadow-xs hover:border-components-option-card-option-selected-border hover:bg-state-accent-hover',
+                  'flex h-10 cursor-pointer items-center justify-between rounded-lg border-[0.5px] border-components-panel-border-subtle bg-components-panel-on-panel-item-bg px-2 shadow-xs hover:border-components-panel-border hover:bg-components-panel-on-panel-item-bg-hover hover:shadow-sm',
+                  selected.some(i => i.id === item.id) && 'border-[1.5px] border-components-option-card-option-selected-border bg-state-accent-hover shadow-xs hover:border-components-option-card-option-selected-border hover:bg-state-accent-hover hover:shadow-xs',
                   !item.embedding_available && 'hover:border-components-panel-border-subtle hover:bg-components-panel-on-panel-item-bg hover:shadow-xs',
                 )}
                 onClick={() => {
@@ -136,9 +136,9 @@ const SelectDataSet: FC<ISelectDataSetProps> = ({
                   <div className={cn('mr-2', !item.embedding_available && 'opacity-30')}>
                     <TypeIcon type="upload_file" size='md' />
                   </div>
-                  <div className={cn('max-w-[200px] text-[13px] font-medium text-text-secondary truncate', !item.embedding_available && 'opacity-30 !max-w-[120px]')}>{item.name}</div>
+                  <div className={cn('max-w-[200px] truncate text-[13px] font-medium text-text-secondary', !item.embedding_available && '!max-w-[120px] opacity-30')}>{item.name}</div>
                   {!item.embedding_available && (
-                    <span className='ml-1 shrink-0 px-1 border border-divider-deep rounded-md text-text-tertiary text-xs font-normal leading-[18px]'>{t('dataset.unavailable')}</span>
+                    <span className='ml-1 shrink-0 rounded-md border border-divider-deep px-1 text-xs font-normal leading-[18px] text-text-tertiary'>{t('dataset.unavailable')}</span>
                   )}
                 </div>
                 {
@@ -160,7 +160,7 @@ const SelectDataSet: FC<ISelectDataSetProps> = ({
         </>
       )}
       {loaded && (
-        <div className='flex justify-between items-center mt-8'>
+        <div className='mt-8 flex items-center justify-between'>
           <div className='text-sm  font-medium text-text-secondary'>
             {selected.length > 0 && `${selected.length} ${t('appDebug.feature.dataSet.selected')}`}
           </div>

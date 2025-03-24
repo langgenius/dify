@@ -17,7 +17,7 @@ const AutomaticBtn: FC<IAutomaticBtnProps> = ({
 
   return (
     <Button variant='secondary-accent' size='small' onClick={onClick}>
-      <RiSparklingFill className='w-3.5 h-3.5 mr-1' />
+      <RiSparklingFill className='mr-1 h-3.5 w-3.5' />
       <span className=''>{t('appDebug.operation.automatic')}</span>
     </Button>
   )

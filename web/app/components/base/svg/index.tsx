@@ -14,7 +14,7 @@ const SVGBtn = ({
 }: ISVGBtnProps) => {
   return (
     <ActionButton onClick={() => { setIsSVG(prevIsSVG => !prevIsSVG) }}>
-      <div className={cn('w-4 h-4', isSVG ? s.svgIconed : s.svgIcon)}></div>
+      <div className={cn('h-4 w-4', isSVG ? s.svgIconed : s.svgIcon)}></div>
     </ActionButton>
   )
 }

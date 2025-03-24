@@ -38,8 +38,8 @@ export const SVGRenderer = ({ content }: { content: string }) => {
         if (!(svgElement instanceof SVGElement))
           throw new Error('Invalid SVG content')
 
-        const originalWidth = parseInt(svgElement.getAttribute('width') || '400', 10)
-        const originalHeight = parseInt(svgElement.getAttribute('height') || '600', 10)
+        const originalWidth = Number.parseInt(svgElement.getAttribute('width') || '400', 10)
+        const originalHeight = Number.parseInt(svgElement.getAttribute('height') || '600', 10)
         draw.viewbox(0, 0, originalWidth, originalHeight)
 
         svgRef.current.style.width = `${Math.min(originalWidth, 298)}px`

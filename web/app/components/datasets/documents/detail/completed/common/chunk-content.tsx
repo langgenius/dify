@@ -17,7 +17,7 @@ const Textarea: FC<IContentProps> = React.memo(({
   return (
     <textarea
       className={classNames(
-        'disabled:bg-transparent inset-0 outline-none border-none appearance-none resize-none w-full overflow-y-auto',
+        'bg-transparent inset-0 outline-none border-none appearance-none resize-none w-full overflow-y-auto',
         className,
       )}
       placeholder={placeholder}
@@ -83,7 +83,7 @@ const AutoResizeTextArea: FC<IAutoResizeTextAreaProps> = React.memo(({
     <textarea
       ref={textareaRef}
       className={classNames(
-        'disabled:bg-transparent inset-0 outline-none border-none appearance-none resize-none w-full',
+        'bg-transparent inset-0 outline-none border-none appearance-none resize-none w-full',
         className,
       )}
       style={{
@@ -120,9 +120,9 @@ const QATextArea: FC<IQATextAreaProps> = React.memo(({
 
   return (
     <div ref={containerRef} className='h-full overflow-hidden'>
-      <div ref={labelRef} className='text-text-tertiary text-xs font-medium mb-1'>QUESTION</div>
+      <div ref={labelRef} className='mb-1 text-xs font-medium text-text-tertiary'>QUESTION</div>
       <AutoResizeTextArea
-        className='text-text-secondary text-sm tracking-[-0.07px] caret-[#295EFF]'
+        className='text-sm tracking-[-0.07px] text-text-secondary caret-[#295EFF]'
         value={question}
         placeholder={t('datasetDocuments.segment.questionPlaceholder') || ''}
         onChange={e => onQuestionChange(e.target.value)}
@@ -130,9 +130,9 @@ const QATextArea: FC<IQATextAreaProps> = React.memo(({
         containerRef={containerRef}
         labelRef={labelRef}
       />
-      <div className='text-text-tertiary text-xs font-medium mb-1 mt-6'>ANSWER</div>
+      <div className='mb-1 mt-6 text-xs font-medium text-text-tertiary'>ANSWER</div>
       <AutoResizeTextArea
-        className='text-text-secondary text-sm tracking-[-0.07px] caret-[#295EFF]'
+        className='text-sm tracking-[-0.07px] text-text-secondary caret-[#295EFF]'
         value={answer}
         placeholder={t('datasetDocuments.segment.answerPlaceholder') || ''}
         onChange={e => onAnswerChange?.(e.target.value)}
@@ -188,7 +188,7 @@ const ChunkContent: FC<IChunkContentProps> = ({
 
   return (
     <Textarea
-      className='h-full w-full pb-6 body-md-regular text-text-secondary tracking-[-0.07px] caret-[#295EFF]'
+      className='body-md-regular h-full w-full pb-6 tracking-[-0.07px] text-text-secondary caret-[#295EFF]'
       value={question}
       placeholder={t('datasetDocuments.segment.contentPlaceholder') || ''}
       onChange={e => onQuestionChange(e.target.value)}

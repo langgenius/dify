@@ -23,7 +23,7 @@ import { TransferMethod } from '@/types/app'
 type Option = {
   value: string
   label: string
-  icon: JSX.Element
+  icon: React.JSX.Element
 }
 type FileUploaderInAttachmentProps = {
   fileConfig: FileUpload
@@ -41,12 +41,12 @@ const FileUploaderInAttachment = ({
     {
       value: TransferMethod.local_file,
       label: t('common.fileUploader.uploadFromComputer'),
-      icon: <RiUploadCloud2Line className='w-4 h-4' />,
+      icon: <RiUploadCloud2Line className='h-4 w-4' />,
     },
     {
       value: TransferMethod.remote_url,
       label: t('common.fileUploader.pasteFileLink'),
-      icon: <RiLink className='w-4 h-4' />,
+      icon: <RiLink className='h-4 w-4' />,
     },
   ]
 
@@ -55,7 +55,7 @@ const FileUploaderInAttachment = ({
       <Button
         key={option.value}
         variant='tertiary'
-        className={cn('grow relative', open && 'bg-components-button-tertiary-bg-hover')}
+        className={cn('relative grow', open && 'bg-components-button-tertiary-bg-hover')}
         disabled={!!(fileConfig.number_limits && files.length >= fileConfig.number_limits)}
       >
         {option.icon}

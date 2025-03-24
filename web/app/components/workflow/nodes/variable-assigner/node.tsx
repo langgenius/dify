@@ -43,7 +43,7 @@ const Node: FC<NodeProps<VariableAssignerNodeType>> = (props) => {
   }, [t, advanced_settings, data, id])
 
   return (
-    <div className='relative mb-1 px-1 space-y-0.5' ref={ref}>
+    <div className='relative mb-1 space-y-0.5 px-1' ref={ref}>
       {
         groups.map((item) => {
           return (

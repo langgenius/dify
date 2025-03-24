@@ -6,9 +6,9 @@ const ProgressBar = ({
 }: ProgressBarProps) => {
   return (
     <div className='flex items-center'>
-      <div className='mr-2 w-[100px] bg-gray-100 rounded-lg'>
+      <div className='mr-2 w-[100px] rounded-lg bg-gray-100'>
         <div
-          className='h-1 bg-[#2970FF] rounded-lg'
+          className='h-1 rounded-lg bg-[#2970FF]'
           style={{ width: `${percent}%` }}
         />
       </div>

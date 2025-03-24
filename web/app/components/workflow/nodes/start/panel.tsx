@@ -40,7 +40,7 @@ const Panel: FC<NodePanelProps<StartNodeType>> = ({
 
   return (
     <div className='mt-2'>
-      <div className='px-4 pb-2 space-y-4'>
+      <div className='space-y-4 px-4 pb-2'>
         <Field
           title={t(`${i18nPrefix}.inputField`)}
           operations={

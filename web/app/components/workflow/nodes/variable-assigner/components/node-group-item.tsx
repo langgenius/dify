@@ -81,17 +81,17 @@ const NodeGroupItem = ({
   return (
     <div
       className={cn(
-        'relative pt-1 px-1.5 pb-1.5 rounded-lg border-[1.5px] border-transparent',
-        showSelectionBorder && '!border-gray-300 !border-dashed bg-black/[0.02]',
+        'relative rounded-lg border-[1.5px] border-transparent px-1.5 pb-1.5 pt-1',
+        showSelectionBorder && '!border-dashed !border-gray-300 bg-black/[0.02]',
         showSelectedBorder && '!border-primary-600 !bg-primary-50',
       )}
       onMouseEnter={() => groupEnabled && handleGroupItemMouseEnter(item.targetHandleId)}
       onMouseLeave={handleGroupItemMouseLeave}
     >
-      <div className='flex items-center justify-between h-4 text-[10px] font-medium text-gray-500'>
+      <div className='flex h-4 items-center justify-between text-[10px] font-medium text-gray-500'>
         <span
           className={cn(
-            'grow uppercase truncate',
+            'grow truncate uppercase',
             showSelectedBorder && 'text-primary-600',
           )}
           title={item.title}
@@ -99,8 +99,8 @@ const NodeGroupItem = ({
           {item.title}
         </span>
         <div className='flex items-center'>
-          <span className='shrink-0 ml-2'>{item.type}</span>
-          <div className='ml-2 mr-1 w-[1px] h-2.5 bg-gray-200'></div>
+          <span className='ml-2 shrink-0'>{item.type}</span>
+          <div className='ml-2 mr-1 h-2.5 w-[1px] bg-gray-200'></div>
           <AddVariable
             availableVars={availableVars}
             variableAssignerNodeId={item.variableAssignerNodeId}
@@ -113,7 +113,7 @@ const NodeGroupItem = ({
         !item.variables.length && (
           <div
             className={cn(
-              'relative flex items-center px-1 h-[22px] justify-between bg-gray-100 rounded-md space-x-1 text-[10px] font-normal text-gray-400 uppercase',
+              'relative flex h-[22px] items-center justify-between space-x-1 rounded-md bg-gray-100 px-1 text-[10px] font-normal uppercase text-gray-400',
               (showSelectedBorder || showSelectionBorder) && '!bg-black/[0.02]',
             )}
           >
