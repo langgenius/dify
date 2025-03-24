@@ -12,7 +12,6 @@ export class AudioPlayerManager {
   private audioPlayers: AudioPlayer | null = null
   private msgId: string | undefined
 
-  // eslint-disable-next-line
   private constructor() {
   }
 

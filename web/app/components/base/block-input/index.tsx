@@ -134,8 +134,8 @@ const BlockInput: FC<IBlockInputProps> = ({
       {textAreaContent}
       {/* footer */}
       {!readonly && (
-        <div className='pl-4 pb-2 flex'>
-          <div className="h-[18px] leading-[18px] px-1 rounded-md bg-gray-100 text-xs text-gray-500">{currentValue?.length}</div>
+        <div className='flex pb-2 pl-4'>
+          <div className="h-[18px] rounded-md bg-gray-100 px-1 text-xs leading-[18px] text-gray-500">{currentValue?.length}</div>
         </div>
       )}
 

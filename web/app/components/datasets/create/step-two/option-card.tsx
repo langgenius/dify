@@ -1,4 +1,4 @@
-import { type ComponentProps, type FC, type ReactNode, forwardRef } from 'react'
+import type { ComponentProps, FC, ReactNode } from 'react'
 import Image from 'next/image'
 import classNames from '@/utils/classnames'
 
@@ -25,20 +25,20 @@ export const OptionCardHeader: FC<OptionCardHeaderProps> = (props) => {
     isActive && activeClassName,
     !disabled && 'cursor-pointer',
   )}>
-    <div className='size-14 flex items-center justify-center relative overflow-hidden'>
-      {isActive && effectImg && <Image src={effectImg} className='absolute top-0 left-0 w-full h-full' alt='' width={56} height={56} />}
+    <div className='relative flex size-14 items-center justify-center overflow-hidden'>
+      {isActive && effectImg && <Image src={effectImg} className='absolute left-0 top-0 h-full w-full' alt='' width={56} height={56} />}
       <div className='p-1'>
-        <div className='size-8 rounded-lg border p-1.5 shadow-md border-components-panel-border-subtle justify-center flex bg-background-default-dodge'>
+        <div className='flex size-8 justify-center rounded-lg border border-components-panel-border-subtle bg-background-default-dodge p-1.5 shadow-md'>
           {icon}
         </div>
       </div>
     </div>
     <TriangleArrow
-      className='absolute left-4 -bottom-1.5 text-components-panel-bg'
+      className={classNames('absolute left-4 -bottom-1.5 text-transparent', isActive && 'text-components-panel-bg')}
     />
     <div className='flex-1 space-y-0.5 py-3 pr-4'>
-      <div className='text-text-secondary system-md-semibold'>{title}</div>
-      <div className='text-text-tertiary system-xs-regular'>{description}</div>
+      <div className='system-md-semibold text-text-secondary'>{title}</div>
+      <div className='system-xs-regular text-text-tertiary'>{description}</div>
     </div>
   </div>
 }
@@ -57,7 +57,12 @@ type OptionCardProps = {
   disabled?: boolean
 } & Omit<ComponentProps<'div'>, 'title' | 'onClick'>
 
-export const OptionCard: FC<OptionCardProps> = forwardRef((props, ref) => {
+export const OptionCard: FC<OptionCardProps> = (
+  {
+    ref,
+    ...props
+  },
+) => {
   const { icon, className, title, description, isActive, children, actions, activeHeaderClassName, style, effectImg, onSwitched, noHighlight, disabled, ...rest } = props
   return <div
     className={classNames(
@@ -88,14 +93,14 @@ export const OptionCard: FC<OptionCardProps> = forwardRef((props, ref) => {
       disabled={disabled}
     />
     {/** Body */}
-    {isActive && (children || actions) && <div className='py-3 px-4 bg-components-panel-bg rounded-b-xl'>
+    {isActive && (children || actions) && <div className='rounded-b-xl bg-components-panel-bg px-4 py-3'>
       {children}
-      {actions && <div className='flex gap-2 mt-4'>
+      {actions && <div className='mt-4 flex gap-2'>
         {actions}
       </div>
       }
     </div>}
   </div>
-})
+}
 
 OptionCard.displayName = 'OptionCard'

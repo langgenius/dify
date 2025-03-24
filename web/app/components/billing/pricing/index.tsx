@@ -35,19 +35,19 @@ const Pricing: FC<Props> = ({
 
   return createPortal(
     <div
-      className='fixed inset-0 top-0 right-0 bottom-0 left-0 p-4 bg-background-overlay-backdrop backdrop-blur-[6px] z-[1000]'
+      className='fixed inset-0 bottom-0 left-0 right-0 top-0 z-[1000] bg-background-overlay-backdrop p-4 backdrop-blur-[6px]'
       onClick={e => e.stopPropagation()}
     >
-      <div className='w-full h-full relative overflow-auto rounded-2xl border border-effects-highlight bg-saas-background'>
+      <div className='relative h-full w-full overflow-auto rounded-2xl border border-effects-highlight bg-saas-background'>
         <div
-          className='fixed top-7 right-7 flex items-center justify-center w-9 h-9 bg-components-button-tertiary-bg hover:bg-components-button-tertiary-bg-hover rounded-[10px] cursor-pointer z-[1001]'
+          className='fixed right-7 top-7 z-[1001] flex h-9 w-9 cursor-pointer items-center justify-center rounded-[10px] bg-components-button-tertiary-bg hover:bg-components-button-tertiary-bg-hover'
           onClick={onCancel}
         >
           <RiCloseLine className='size-5 text-components-button-tertiary-text' />
         </div>
         <GridMask wrapperClassName='w-full min-h-full' canvasClassName='min-h-full'>
-          <div className='pt-12 px-8 pb-7 flex flex-col items-center'>
-            <div className='mb-2 title-5xl-bold text-text-primary'>
+          <div className='flex flex-col items-center px-8 pb-7 pt-12'>
+            <div className='title-5xl-bold mb-2 text-text-primary'>
               {t('billing.plansCommon.title')}
             </div>
             <div className='system-sm-regular text-text-secondary'>
@@ -56,8 +56,8 @@ const Pricing: FC<Props> = ({
               <span>{t('billing.plansCommon.freeTrialTipSuffix')}</span>
             </div>
           </div>
-          <div className='w-[1152px] mx-auto'>
-            <div className='py-2 flex items-center justify-between h-[64px]'>
+          <div className='mx-auto w-[1152px]'>
+            <div className='flex h-[64px] items-center justify-between py-2'>
               <TabSlider
                 value={currentPlan}
                 className='inline-flex'
@@ -67,14 +67,14 @@ const Pricing: FC<Props> = ({
                     text: <div className={
                       classNames('inline-flex items-center system-md-semibold-uppercase text-text-secondary',
                         currentPlan === 'cloud' && 'text-text-accent-light-mode-only')} >
-                      <RiCloudFill className='size-4 mr-2' />{t('billing.plansCommon.cloud')}</div>,
+                      <RiCloudFill className='mr-2 size-4' />{t('billing.plansCommon.cloud')}</div>,
                   },
                   {
                     value: 'self',
                     text: <div className={
                       classNames('inline-flex items-center system-md-semibold-uppercase text-text-secondary',
                         currentPlan === 'self' && 'text-text-accent-light-mode-only')}>
-                      <RiTerminalBoxFill className='size-4 mr-2' />{t('billing.plansCommon.self')}</div>,
+                      <RiTerminalBoxFill className='mr-2 size-4' />{t('billing.plansCommon.self')}</div>,
                   }]}
                 onChange={v => setCurrentPlan(v)} />
 
@@ -83,8 +83,8 @@ const Pricing: FC<Props> = ({
                 onChange={setPlanRange}
               />}
             </div>
-            <div className='pt-3 pb-8'>
-              <div className='flex justify-center flex-nowrap gap-x-4'>
+            <div className='pb-8 pt-3'>
+              <div className='flex flex-nowrap justify-center gap-x-4'>
                 {currentPlan === 'cloud' && <>
                   <PlanItem
                     currentPlan={plan.type}
@@ -125,8 +125,8 @@ const Pricing: FC<Props> = ({
               </div>
             </div>
           </div>
-          <div className='py-4 flex items-center justify-center'>
-            <div className='px-3 py-2 flex items-center justify-center gap-x-0.5 text-components-button-secondary-accent-text rounded-lg hover:bg-state-accent-hover hover:cursor-pointer'>
+          <div className='flex items-center justify-center py-4'>
+            <div className='flex items-center justify-center gap-x-0.5 rounded-lg px-3 py-2 text-components-button-secondary-accent-text hover:cursor-pointer hover:bg-state-accent-hover'>
               <Link href='https://dify.ai/pricing#plans-and-features' className='system-sm-medium'>{t('billing.plansCommon.comparePlanAndFeatures')}</Link>
               <RiArrowRightUpLine className='size-4' />
             </div>

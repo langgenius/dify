@@ -10,16 +10,16 @@ const CardMoreInfo = ({
   tags,
 }: Props) => {
   return (
-    <div className="flex items-center h-5">
+    <div className="flex h-5 items-center">
       {downloadCount !== undefined && <DownloadCount downloadCount={downloadCount} />}
-      {downloadCount !== undefined && tags && tags.length > 0 && <div className="mx-2 text-text-quaternary system-xs-regular">·</div>}
+      {downloadCount !== undefined && tags && tags.length > 0 && <div className="system-xs-regular mx-2 text-text-quaternary">·</div>}
       {tags && tags.length > 0 && (
         <>
-          <div className="flex flex-wrap space-x-2 h-4 overflow-hidden">
+          <div className="flex h-4 flex-wrap space-x-2 overflow-hidden">
             {tags.map(tag => (
               <div
                 key={tag}
-                className="flex space-x-1 system-xs-regular max-w-[120px] overflow-hidden"
+                className="system-xs-regular flex max-w-[120px] space-x-1 overflow-hidden"
                 title={`# ${tag}`}
               >
                 <span className="text-text-quaternary">#</span>

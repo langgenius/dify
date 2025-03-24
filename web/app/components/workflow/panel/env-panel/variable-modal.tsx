@@ -12,7 +12,7 @@ import type { EnvironmentVariable } from '@/app/components/workflow/types'
 import cn from '@/utils/classnames'
 import { checkKeys } from '@/utils/var'
 
-export interface ModalPropsType {
+export type ModalPropsType = {
   env?: EnvironmentVariable
   onClose: () => void
   onSave: (env: EnvironmentVariable) => void
@@ -68,39 +68,39 @@ const VariableModal = ({
 
   return (
     <div
-      className={cn('flex flex-col w-[360px] bg-components-panel-bg rounded-2xl h-full border-[0.5px] border-components-panel-border shadow-2xl')}
+      className={cn('flex h-full w-[360px] flex-col rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-2xl')}
     >
-      <div className='shrink-0 flex items-center justify-between mb-3 p-4 pb-0 text-text-primary system-xl-semibold'>
+      <div className='system-xl-semibold mb-3 flex shrink-0 items-center justify-between p-4 pb-0 text-text-primary'>
         {!env ? t('workflow.env.modal.title') : t('workflow.env.modal.editTitle')}
         <div className='flex items-center'>
           <div
-            className='flex items-center justify-center w-6 h-6 cursor-pointer'
+            className='flex h-6 w-6 cursor-pointer items-center justify-center'
             onClick={onClose}
           >
-            <RiCloseLine className='w-4 h-4 text-text-tertiary' />
+            <RiCloseLine className='h-4 w-4 text-text-tertiary' />
           </div>
         </div>
       </div>
       <div className='px-4 py-2'>
         {/* type */}
         <div className='mb-4'>
-          <div className='mb-1 h-6 flex items-center text-text-secondary system-sm-semibold'>{t('workflow.env.modal.type')}</div>
+          <div className='system-sm-semibold mb-1 flex h-6 items-center text-text-secondary'>{t('workflow.env.modal.type')}</div>
           <div className='flex gap-2'>
             <div className={cn(
-              'w-[106px] flex items-center justify-center p-2 radius-md bg-components-option-card-option-bg border border-components-option-card-option-border text-text-secondary system-sm-regular cursor-pointer hover:shadow-xs hover:bg-components-option-card-option-bg-hover hover:border-components-option-card-option-border-hover',
-              type === 'string' && 'text-text-primary system-sm-medium border-[1.5px] shadow-xs bg-components-option-card-option-selected-bg border-components-option-card-option-selected-border hover:border-components-option-card-option-selected-border',
+              'radius-md system-sm-regular flex w-[106px] cursor-pointer items-center justify-center border border-components-option-card-option-border bg-components-option-card-option-bg p-2 text-text-secondary hover:border-components-option-card-option-border-hover hover:bg-components-option-card-option-bg-hover hover:shadow-xs',
+              type === 'string' && 'system-sm-medium border-[1.5px] border-components-option-card-option-selected-border bg-components-option-card-option-selected-bg text-text-primary shadow-xs hover:border-components-option-card-option-selected-border',
             )} onClick={() => setType('string')}>String</div>
             <div className={cn(
-              'w-[106px] flex items-center justify-center p-2 radius-md bg-components-option-card-option-bg border border-components-option-card-option-border text-text-secondary system-sm-regular cursor-pointer hover:shadow-xs hover:bg-components-option-card-option-bg-hover hover:border-components-option-card-option-border-hover',
-              type === 'number' && 'text-text-primary font-medium border-[1.5px] shadow-xs bg-components-option-card-option-selected-bg border-components-option-card-option-selected-border hover:border-components-option-card-option-selected-border',
+              'radius-md system-sm-regular flex w-[106px] cursor-pointer items-center justify-center border border-components-option-card-option-border bg-components-option-card-option-bg p-2 text-text-secondary hover:border-components-option-card-option-border-hover hover:bg-components-option-card-option-bg-hover hover:shadow-xs',
+              type === 'number' && 'border-[1.5px] border-components-option-card-option-selected-border bg-components-option-card-option-selected-bg font-medium text-text-primary shadow-xs hover:border-components-option-card-option-selected-border',
             )} onClick={() => {
               setType('number')
               if (!(/^[0-9]$/).test(value))
                 setValue('')
             }}>Number</div>
             <div className={cn(
-              'w-[106px] flex items-center justify-center p-2 radius-md bg-components-option-card-option-bg border border-components-option-card-option-border text-text-secondary system-sm-regular cursor-pointer hover:shadow-xs hover:bg-components-option-card-option-bg-hover hover:border-components-option-card-option-border-hover',
-              type === 'secret' && 'text-text-primary font-medium border-[1.5px] shadow-xs bg-components-option-card-option-selected-bg border-components-option-card-option-selected-border hover:border-components-option-card-option-selected-border',
+              'radius-md system-sm-regular flex w-[106px] cursor-pointer items-center justify-center border border-components-option-card-option-border bg-components-option-card-option-bg p-2 text-text-secondary hover:border-components-option-card-option-border-hover hover:bg-components-option-card-option-bg-hover hover:shadow-xs',
+              type === 'secret' && 'border-[1.5px] border-components-option-card-option-selected-border bg-components-option-card-option-selected-bg font-medium text-text-primary shadow-xs hover:border-components-option-card-option-selected-border',
             )} onClick={() => setType('secret')}>
               <span>Secret</span>
               <Tooltip
@@ -116,7 +116,7 @@ const VariableModal = ({
         </div>
         {/* name */}
         <div className='mb-4'>
-          <div className='mb-1 h-6 flex items-center text-text-secondary system-sm-semibold'>{t('workflow.env.modal.name')}</div>
+          <div className='system-sm-semibold mb-1 flex h-6 items-center text-text-secondary'>{t('workflow.env.modal.name')}</div>
           <div className='flex'>
             <Input
               placeholder={t('workflow.env.modal.namePlaceholder') || ''}
@@ -129,7 +129,7 @@ const VariableModal = ({
         </div>
         {/* value */}
         <div className=''>
-          <div className='mb-1 h-6 flex items-center text-text-secondary system-sm-semibold'>{t('workflow.env.modal.value')}</div>
+          <div className='system-sm-semibold mb-1 flex h-6 items-center text-text-secondary'>{t('workflow.env.modal.value')}</div>
           <div className='flex'>
             <Input
               placeholder={t('workflow.env.modal.valuePlaceholder') || ''}
@@ -140,7 +140,7 @@ const VariableModal = ({
           </div>
         </div>
       </div>
-      <div className='p-4 pt-2 flex flex-row-reverse rounded-b-2xl'>
+      <div className='flex flex-row-reverse rounded-b-2xl p-4 pt-2'>
         <div className='flex gap-2'>
           <Button onClick={onClose}>{t('common.operation.cancel')}</Button>
           <Button variant='primary' onClick={handleSave}>{t('common.operation.save')}</Button>

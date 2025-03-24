@@ -1,10 +1,4 @@
-import {
-  forwardRef,
-  memo,
-  useCallback,
-  useImperativeHandle,
-  useMemo,
-} from 'react'
+import { memo, useCallback, useImperativeHandle, useMemo } from 'react'
 import {
   useConfigFromDebugContext,
   useFormattingChangedSubscription,
@@ -34,9 +28,14 @@ type DebugWithSingleModelProps = {
 export type DebugWithSingleModelRefType = {
   handleRestart: () => void
 }
-const DebugWithSingleModel = forwardRef<DebugWithSingleModelRefType, DebugWithSingleModelProps>(({
-  checkCanSend,
-}, ref) => {
+const DebugWithSingleModel = (
+  {
+    ref,
+    checkCanSend,
+  }: DebugWithSingleModelProps & {
+    ref: React.RefObject<DebugWithSingleModelRefType>;
+  },
+) => {
   const { userProfile } = useAppContext()
   const {
     modelConfig,
@@ -174,7 +173,7 @@ const DebugWithSingleModel = forwardRef<DebugWithSingleModelRefType, DebugWithSi
       noSpacing
     />
   )
-})
+}
 
 DebugWithSingleModel.displayName = 'DebugWithSingleModel'
 

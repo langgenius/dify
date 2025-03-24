@@ -230,7 +230,7 @@ const Chart: React.FC<IChartProps> = ({
   const sumData = isAvg ? (sum(yData) / yData.length) : sum(yData)
 
   return (
-    <div className={`flex flex-col w-full px-6 py-4 rounded-xl bg-components-chart-bg shadow-xs ${className ?? ''}`}>
+    <div className={`flex w-full flex-col rounded-xl bg-components-chart-bg px-6 py-4 shadow-xs ${className ?? ''}`}>
       <div className='mb-3'>
         <Basic name={title} type={timePeriod} hoverTip={explanation} />
       </div>

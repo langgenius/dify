@@ -45,7 +45,7 @@ Object.defineProperty(globalThis, 'sessionStorage', {
 
 const BrowserInitor = ({
   children,
-}: { children: React.ReactElement }) => {
+}: { children: React.ReactNode }) => {
   return children
 }
 

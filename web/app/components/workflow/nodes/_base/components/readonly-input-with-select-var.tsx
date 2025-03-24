@@ -35,7 +35,7 @@ const ReadonlyInputWithSelectVar: FC<Props> = ({
       return VAR_PLACEHOLDER
     })
 
-    const html: JSX.Element[] = strWithVarPlaceholder.split(VAR_PLACEHOLDER).map((str, index) => {
+    const html: React.JSX.Element[] = strWithVarPlaceholder.split(VAR_PLACEHOLDER).map((str, index) => {
       if (!vars[index])
         return <span className='relative top-[-3px] leading-[16px]' key={index}>{str}</span>
 
@@ -48,7 +48,7 @@ const ReadonlyInputWithSelectVar: FC<Props> = ({
 
       return (<span key={index}>
         <span className='relative top-[-3px] leading-[16px]'>{str}</span>
-        <div className=' inline-flex h-[16px] items-center px-1.5 rounded-[5px] bg-white'>
+        <div className=' inline-flex h-[16px] items-center rounded-[5px] bg-white px-1.5'>
           {!isEnv && !isChatVar && (
             <div className='flex items-center'>
               <div className='p-[1px]'>
@@ -57,15 +57,15 @@ const ReadonlyInputWithSelectVar: FC<Props> = ({
                   type={node?.type || BlockEnum.Start}
                 />
               </div>
-              <div className='max-w-[60px] mx-0.5 text-xs font-medium text-gray-700 truncate' title={node?.title}>{node?.title}</div>
+              <div className='mx-0.5 max-w-[60px] truncate text-xs font-medium text-gray-700' title={node?.title}>{node?.title}</div>
               <Line3 className='mr-0.5'></Line3>
             </div>
           )}
           <div className='flex items-center text-primary-600'>
-            {!isEnv && !isChatVar && <Variable02 className='shrink-0 w-3.5 h-3.5' />}
-            {isEnv && <Env className='shrink-0 w-3.5 h-3.5 text-util-colors-violet-violet-600' />}
-            {isChatVar && <BubbleX className='w-3.5 h-3.5 text-util-colors-teal-teal-700' />}
-            <div className={cn('max-w-[50px] ml-0.5 text-xs font-medium truncate', (isEnv || isChatVar) && 'text-gray-900')} title={varName}>{varName}</div>
+            {!isEnv && !isChatVar && <Variable02 className='h-3.5 w-3.5 shrink-0' />}
+            {isEnv && <Env className='h-3.5 w-3.5 shrink-0 text-util-colors-violet-violet-600' />}
+            {isChatVar && <BubbleX className='h-3.5 w-3.5 text-util-colors-teal-teal-700' />}
+            <div className={cn('ml-0.5 max-w-[50px] truncate text-xs font-medium', (isEnv || isChatVar) && 'text-gray-900')} title={varName}>{varName}</div>
           </div>
         </div>
       </span>)

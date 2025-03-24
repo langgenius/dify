@@ -1,6 +1,6 @@
 import type {
   FC,
-  ReactElement,
+  ReactNode,
 } from 'react'
 import {
   cloneElement,
@@ -48,7 +48,7 @@ import { useStore as useAppStore } from '@/app/components/app/store'
 import { useStore } from '@/app/components/workflow/store'
 
 type BasePanelProps = {
-  children: ReactElement
+  children: ReactNode
 } & Node
 
 const BasePanel: FC<BasePanelProps> = ({
@@ -105,24 +105,24 @@ const BasePanel: FC<BasePanelProps> = ({
   return (
     <div className={cn(
       'relative mr-2 h-full',
-      showMessageLogModal && '!absolute !mr-0 w-[384px] overflow-hidden -top-[5px] right-[416px] z-0 shadow-lg border-[0.5px] border-components-panel-border rounded-2xl transition-all',
+      showMessageLogModal && '!absolute -top-[5px] right-[416px] z-0 !mr-0 w-[384px] overflow-hidden rounded-2xl border-[0.5px] border-components-panel-border shadow-lg transition-all',
     )}>
       <div
         ref={triggerRef}
-        className='absolute top-1/2 -translate-y-1/2 -left-2 w-3 h-6 cursor-col-resize resize-x'>
-        <div className='w-1 h-6 bg-divider-regular rounded-sm'></div>
+        className='absolute -left-2 top-1/2 h-6 w-3 -translate-y-1/2 cursor-col-resize resize-x'>
+        <div className='h-6 w-1 rounded-sm bg-divider-regular'></div>
       </div>
       <div
         ref={containerRef}
-        className={cn('h-full bg-components-panel-bg shadow-lg border-[0.5px] border-components-panel-border rounded-2xl', showSingleRunPanel ? 'overflow-hidden' : 'overflow-y-auto')}
+        className={cn('h-full rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg', showSingleRunPanel ? 'overflow-hidden' : 'overflow-y-auto')}
         style={{
           width: `${panelWidth}px`,
         }}
       >
-        <div className='sticky top-0 bg-components-panel-bg border-b-[0.5px] border-black/5 z-10'>
-          <div className='flex items-center px-4 pt-4 pb-1'>
+        <div className='sticky top-0 z-10 border-b-[0.5px] border-black/5 bg-components-panel-bg'>
+          <div className='flex items-center px-4 pb-1 pt-4'>
             <BlockIcon
-              className='shrink-0 mr-1'
+              className='mr-1 shrink-0'
               type={data.type}
               toolIcon={toolIcon}
               size='md'
@@ -131,7 +131,7 @@ const BasePanel: FC<BasePanelProps> = ({
               value={data.title || ''}
               onBlur={handleTitleBlur}
             />
-            <div className='shrink-0 flex items-center text-gray-500'>
+            <div className='flex shrink-0 items-center text-gray-500'>
               {
                 canRunBySingle(data.type) && !nodesReadOnly && (
                   <Tooltip
@@ -139,25 +139,25 @@ const BasePanel: FC<BasePanelProps> = ({
                     popupClassName='mr-1'
                   >
                     <div
-                      className='flex items-center justify-center mr-1 w-6 h-6 rounded-md hover:bg-black/5 cursor-pointer'
+                      className='mr-1 flex h-6 w-6 cursor-pointer items-center justify-center rounded-md hover:bg-black/5'
                       onClick={() => {
                         handleNodeDataUpdate({ id, data: { _isSingleRun: true } })
                         handleSyncWorkflowDraft(true)
                       }}
                     >
-                      <RiPlayLargeLine className='w-4 h-4 text-text-tertiary' />
+                      <RiPlayLargeLine className='h-4 w-4 text-text-tertiary' />
                     </div>
                   </Tooltip>
                 )
               }
               <HelpLink nodeType={data.type} />
               <PanelOperator id={id} data={data} showHelpLink={false} />
-              <div className='mx-3 w-[1px] h-3.5 bg-divider-regular' />
+              <div className='mx-3 h-3.5 w-[1px] bg-divider-regular' />
               <div
-                className='flex items-center justify-center w-6 h-6 cursor-pointer'
+                className='flex h-6 w-6 cursor-pointer items-center justify-center'
                 onClick={() => handleNodeSelect(id, true)}
               >
-                <RiCloseLine className='w-4 h-4 text-text-tertiary' />
+                <RiCloseLine className='h-4 w-4 text-text-tertiary' />
               </div>
             </div>
           </div>
@@ -190,11 +190,11 @@ const BasePanel: FC<BasePanelProps> = ({
         }
         {
           !!availableNextBlocks.length && (
-            <div className='p-4 border-t-[0.5px] border-t-black/5'>
-              <div className='flex items-center mb-1 system-sm-semibold-uppercase text-text-secondary'>
+            <div className='border-t-[0.5px] border-t-black/5 p-4'>
+              <div className='system-sm-semibold-uppercase mb-1 flex items-center text-text-secondary'>
                 {t('workflow.panel.nextStep').toLocaleUpperCase()}
               </div>
-              <div className='mb-2 system-xs-regular text-text-tertiary'>
+              <div className='system-xs-regular mb-2 text-text-tertiary'>
                 {t('workflow.panel.addNextStep')}
               </div>
               <NextStep selectedNode={{ id, data } as Node} />

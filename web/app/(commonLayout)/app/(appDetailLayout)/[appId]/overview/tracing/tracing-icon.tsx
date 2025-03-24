@@ -21,7 +21,7 @@ const TracingIcon: FC<Props> = ({
   const sizeClass = sizeClassMap[size]
   return (
     <div className={cn(className, sizeClass, 'bg-primary-500 shadow-md')}>
-      <Icon className='w-full h-full' />
+      <Icon className='h-full w-full' />
     </div>
   )
 }

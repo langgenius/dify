@@ -47,44 +47,6 @@ import { Row, Col, Properties, Property, Heading, SubProperty, PropertyInstructi
       <Property name='text' type='string' key='text'>
         Document content
       </Property>
-      <Property name='doc_type' type='string' key='doc_type'>
-        Type of document (optional):
-          - <code>book</code> Book
-          - <code>web_page</code> Web page
-          - <code>paper</code> Academic paper/article 
-          - <code>social_media_post</code> Social media post
-          - <code>wikipedia_entry</code> Wikipedia entry
-          - <code>personal_document</code> Personal document
-          - <code>business_document</code> Business document
-          - <code>im_chat_log</code> Chat log
-          - <code>synced_from_notion</code> Notion document
-          - <code>synced_from_github</code> GitHub document
-          - <code>others</code> Other document types
-      </Property>
-      <Property name='doc_metadata' type='object' key='doc_metadata'>
-        Document metadata (required if doc_type is provided). Fields vary by doc_type:
-          For <code>book</code>:
-          - <code>title</code> Book title 
-          - <code>language</code> Book language
-          - <code>author</code> Book author
-          - <code>publisher</code> Publisher name
-          - <code>publication_date</code> Publication date
-          - <code>isbn</code> ISBN number
-          - <code>category</code> Book category
-
-          For <code>web_page</code>:
-          - <code>title</code> Page title
-          - <code>url</code> Page URL
-          - <code>language</code> Page language
-          - <code>publish_date</code> Publish date
-          - <code>author/publisher</code> Author or publisher
-          - <code>topic/keywords</code> Topic or keywords
-          - <code>description</code> Page description
-
-          Please check [api/services/dataset_service.py](https://github.com/langgenius/dify/blob/main/api/services/dataset_service.py#L475) for more details on the fields required for each doc_type.
-
-          For doc_type "others", any valid JSON object is accepted
-      </Property>
       <Property name='indexing_technique' type='string' key='indexing_technique'>
         Index mode
           - <code>high_quality</code> High quality: embedding using embedding model, built as vector database index
@@ -233,68 +195,6 @@ import { Row, Col, Properties, Property, Heading, SubProperty, PropertyInstructi
           - <code>hierarchical_model</code> Parent-child mode
           - <code>qa_model</code> Q&A Mode: Generates Q&A pairs for segmented documents and then embeds the questions
 
-        - <code>doc_type</code> Type of document (optional)
-          - <code>book</code> Book
-            Document records a book or publication
-          - <code>web_page</code> Web page 
-            Document records web page content
-          - <code>paper</code> Academic paper/article
-            Document records academic paper or research article
-          - <code>social_media_post</code> Social media post
-            Content from social media posts
-          - <code>wikipedia_entry</code> Wikipedia entry
-            Content from Wikipedia entries
-          - <code>personal_document</code> Personal document
-            Documents related to personal content
-          - <code>business_document</code> Business document
-            Documents related to business content
-          - <code>im_chat_log</code> Chat log
-            Records of instant messaging chats
-          - <code>synced_from_notion</code> Notion document
-            Documents synchronized from Notion
-          - <code>synced_from_github</code> GitHub document
-            Documents synchronized from GitHub
-          - <code>others</code> Other document types
-            Other document types not listed above
-
-        - <code>doc_metadata</code> Document metadata (required if doc_type is provided)
-          Fields vary by doc_type:
-
-          For <code>book</code>:
-          - <code>title</code> Book title
-            Title of the book
-          - <code>language</code> Book language
-            Language of the book
-          - <code>author</code> Book author
-            Author of the book
-          - <code>publisher</code> Publisher name
-            Name of the publishing house
-          - <code>publication_date</code> Publication date
-            Date when the book was published
-          - <code>isbn</code> ISBN number
-            International Standard Book Number
-          - <code>category</code> Book category
-            Category or genre of the book
-
-          For <code>web_page</code>:
-          - <code>title</code> Page title
-            Title of the web page
-          - <code>url</code> Page URL
-            URL address of the web page
-          - <code>language</code> Page language
-            Language of the web page
-          - <code>publish_date</code> Publish date
-            Date when the web page was published
-          - <code>author/publisher</code> Author or publisher
-            Author or publisher of the web page
-          - <code>topic/keywords</code> Topic or keywords
-            Topics or keywords of the web page
-          - <code>description</code> Page description
-            Description of the web page content
-
-          Please check [api/services/dataset_service.py](https://github.com/langgenius/dify/blob/main/api/services/dataset_service.py#L475) for more details on the fields required for each doc_type.
-          For doc_type "others", any valid JSON object is accepted
-
         - <code>doc_language</code> In Q&A mode, specify the language of the document, for example: <code>English</code>, <code>Chinese</code>
 
         - <code>process_rule</code> Processing rules
@@ -406,44 +306,6 @@ import { Row, Col, Properties, Property, Heading, SubProperty, PropertyInstructi
       </Property>
       <Property name='description' type='string' key='description'>
         Knowledge description (optional)
-      </Property>
-      <Property name='doc_type' type='string' key='doc_type'>
-        Type of document (optional):
-          - <code>book</code> Book
-          - <code>web_page</code> Web page
-          - <code>paper</code> Academic paper/article 
-          - <code>social_media_post</code> Social media post
-          - <code>wikipedia_entry</code> Wikipedia entry
-          - <code>personal_document</code> Personal document
-          - <code>business_document</code> Business document
-          - <code>im_chat_log</code> Chat log
-          - <code>synced_from_notion</code> Notion document
-          - <code>synced_from_github</code> GitHub document
-          - <code>others</code> Other document types
-      </Property>
-      <Property name='doc_metadata' type='object' key='doc_metadata'>
-        Document metadata (required if doc_type is provided). Fields vary by doc_type:
-          For <code>book</code>:
-          - <code>title</code> Book title 
-          - <code>language</code> Book language
-          - <code>author</code> Book author
-          - <code>publisher</code> Publisher name
-          - <code>publication_date</code> Publication date
-          - <code>isbn</code> ISBN number
-          - <code>category</code> Book category
-
-          For <code>web_page</code>:
-          - <code>title</code> Page title
-          - <code>url</code> Page URL
-          - <code>language</code> Page language
-          - <code>publish_date</code> Publish date
-          - <code>author/publisher</code> Author or publisher
-          - <code>topic/keywords</code> Topic or keywords
-          - <code>description</code> Page description
-
-          Please check [api/services/dataset_service.py](https://github.com/langgenius/dify/blob/main/api/services/dataset_service.py#L475) for more details on the fields required for each doc_type.
-
-          For doc_type "others", any valid JSON object is accepted
       </Property>
       <Property name='indexing_technique' type='string' key='indexing_technique'>
         Index technique (optional)
@@ -762,67 +624,6 @@ import { Row, Col, Properties, Property, Heading, SubProperty, PropertyInstructi
               - <code>separator</code> Segmentation identifier. Currently, only one delimiter is allowed. The default is <code>***</code>
               - <code>max_tokens</code> The maximum length (tokens) must be validated to be shorter than the length of the parent chunk
               - <code>chunk_overlap</code> Define the overlap between adjacent chunks (optional)
-            - <code>doc_type</code> Type of document (optional)
-              - <code>book</code> Book
-                Document records a book or publication
-              - <code>web_page</code> Web page 
-                Document records web page content
-              - <code>paper</code> Academic paper/article
-                Document records academic paper or research article
-              - <code>social_media_post</code> Social media post
-                Content from social media posts
-              - <code>wikipedia_entry</code> Wikipedia entry
-                Content from Wikipedia entries
-              - <code>personal_document</code> Personal document
-                Documents related to personal content
-              - <code>business_document</code> Business document
-                Documents related to business content
-              - <code>im_chat_log</code> Chat log
-                Records of instant messaging chats
-              - <code>synced_from_notion</code> Notion document
-                Documents synchronized from Notion
-              - <code>synced_from_github</code> GitHub document
-                Documents synchronized from GitHub
-              - <code>others</code> Other document types
-                Other document types not listed above
-
-            - <code>doc_metadata</code> Document metadata (required if doc_type is provided)
-              Fields vary by doc_type:
-
-              For <code>book</code>:
-              - <code>title</code> Book title
-                Title of the book
-              - <code>language</code> Book language
-                Language of the book
-              - <code>author</code> Book author
-                Author of the book
-              - <code>publisher</code> Publisher name
-                Name of the publishing house
-              - <code>publication_date</code> Publication date
-                Date when the book was published
-              - <code>isbn</code> ISBN number
-                International Standard Book Number
-              - <code>category</code> Book category
-                Category or genre of the book
-
-              For <code>web_page</code>:
-              - <code>title</code> Page title
-                Title of the web page
-              - <code>url</code> Page URL
-                URL address of the web page
-              - <code>language</code> Page language
-                Language of the web page
-              - <code>publish_date</code> Publish date
-                Date when the web page was published
-              - <code>author/publisher</code> Author or publisher
-                Author or publisher of the web page
-              - <code>topic/keywords</code> Topic or keywords
-                Topics or keywords of the web page
-              - <code>description</code> Page description
-                Description of the web page content
-
-              Please check [api/services/dataset_service.py](https://github.com/langgenius/dify/blob/main/api/services/dataset_service.py#L475) for more details on the fields required for each doc_type.
-              For doc_type "others", any valid JSON object is accepted
       </Property>
     </Properties>
   </Col>
@@ -1160,6 +961,12 @@ import { Row, Col, Properties, Property, Heading, SubProperty, PropertyInstructi
       <Property name='status' type='string' key='status'>
         Search status, completed
       </Property>
+      <Property name='page' type='string' key='page'>
+        Page number (optional)
+      </Property>
+      <Property name='limit' type='string' key='limit'>
+        Number of items returned, default 20, range 1-100 (optional)
+      </Property>
     </Properties>
   </Col>
   <Col sticky>
@@ -1203,7 +1010,11 @@ import { Row, Col, Properties, Property, Heading, SubProperty, PropertyInstructi
         "error": null,
         "stopped_at": null
       }],
-      "doc_form": "text_model"
+      "doc_form": "text_model",
+      "has_more": false,
+      "limit": 20,
+      "total": 9,
+      "page": 1
     }
     ```
     </CodeGroup>
@@ -1528,13 +1339,261 @@ import { Row, Col, Properties, Property, Heading, SubProperty, PropertyInstructi
               "id": "a8c6c36f-9f5d-4d7a-8472-f5d7b75d71d2",
               "data_source_type": "upload_file",
               "name": "readme.txt",
-              "doc_type": null
             }
           },
           "score": 3.730463140527718e-05,
           "tsne_position": null
         }
       ]
+    }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
+<hr className='ml-0 mr-0' />
+
+<Heading
+  url='/datasets/{dataset_id}/metadata'
+  method='POST'
+  title='Create a Knowledge Metadata'
+  name='#create_metadata'
+/>
+<Row>
+  <Col>
+    ### Params
+    <Properties>
+      <Property name='dataset_id' type='string' key='dataset_id'>
+        Knowledge ID
+      </Property>
+    </Properties>
+
+    ### Request Body
+    <Properties>
+      <Property name='segment' type='object' key='segment'>
+        - <code>type</code> (string) Metadata type, required
+        - <code>name</code> (string) Metadata name, required
+      </Property>
+    </Properties>
+  </Col>
+  <Col sticky>
+    <CodeGroup
+      title="Request"
+      tag="POST"
+      label="/datasets/{dataset_id}/metadata"
+      targetCode={`curl --location --request POST '${props.apiBaseUrl}/datasets/{dataset_id}/metadata' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json'\\\n--data-raw '{"type": "string", "name": "test"}'`}
+    >
+    ```bash {{ title: 'cURL' }}
+    ```
+    </CodeGroup>
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {
+      "id": "abc",
+      "type": "string",
+      "name": "test",
+    }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
+<hr className='ml-0 mr-0' />
+
+<Heading
+  url='/datasets/{dataset_id}/metadata/{metadata_id}'
+  method='PATCH'
+  title='Update a Knowledge Metadata'
+  name='#update_metadata'
+/>
+<Row>
+  <Col>
+    ### Params
+    <Properties>
+      <Property name='dataset_id' type='string' key='dataset_id'>
+        Knowledge ID
+      </Property>
+      <Property name='metadata_id' type='string' key='metadata_id'>
+        Metadata ID
+      </Property>
+    </Properties>
+
+    ### Request Body
+    <Properties>
+      <Property name='segment' type='object' key='segment'>
+        - <code>name</code> (string) Metadata name, required
+      </Property>
+    </Properties>
+  </Col>
+  <Col sticky>
+    <CodeGroup
+      title="Request"
+      tag="POST"
+      label="/datasets/{dataset_id}/metadata/{metadata_id}"
+      targetCode={`curl --location --request POST '${props.apiBaseUrl}/datasets/{dataset_id}/metadata/{metadata_id}' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json'\\\n--data-raw '{"name": "test"}'`}
+    >
+    ```bash {{ title: 'cURL' }}
+    ```
+    </CodeGroup>
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {
+      "id": "abc",
+      "type": "string",
+      "name": "test",
+    }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
+<hr className='ml-0 mr-0' />
+
+<Heading
+  url='/datasets/{dataset_id}/metadata/{metadata_id}'
+  method='DELETE'
+  title='Delete a Knowledge Metadata'
+  name='#delete_metadata'
+/>
+<Row>
+  <Col>
+    ### Params
+    <Properties>
+      <Property name='dataset_id' type='string' key='dataset_id'>
+        Knowledge ID
+      </Property>
+      <Property name='metadata_id' type='string' key='metadata_id'>
+        Metadata ID
+      </Property>
+    </Properties>
+  </Col>
+  <Col sticky>
+    <CodeGroup
+      title="Request"
+      tag="DELETE"
+      label="/datasets/{dataset_id}/metadata/{metadata_id}"
+      targetCode={`curl --location --request DELETE '${props.apiBaseUrl}/datasets/{dataset_id}/metadata/{metadata_id}' \\\n--header 'Authorization: Bearer {api_key}'`}
+    >
+    ```bash {{ title: 'cURL' }}
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
+<hr className='ml-0 mr-0' />
+
+<Heading
+  url='/datasets/{dataset_id}/metadata/built-in/{action}'
+  method='POST'
+  title='Disable Or Enable Built-in Metadata'
+  name='#toggle_metadata'
+/>
+<Row>
+  <Col>
+    ### Params
+    <Properties>
+      <Property name='dataset_id' type='string' key='dataset_id'>
+        Knowledge ID
+      </Property>
+      <Property name='action' type='string' key='action'>
+        disable/enable
+      </Property>
+    </Properties>
+  </Col>
+  <Col sticky>
+    <CodeGroup
+      title="Request"
+      tag="POST"
+      label="/datasets/{dataset_id}/metadata/built-in/{action}"
+      targetCode={`curl --location --request POST '${props.apiBaseUrl}/datasets/{dataset_id}/metadata/built-in/{action}' \\\n--header 'Authorization: Bearer {api_key}'`}
+    >
+    ```bash {{ title: 'cURL' }}
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
+<hr className='ml-0 mr-0' />
+
+<Heading
+  url='/datasets/{dataset_id}/documents/metadata'
+  method='POST'
+  title='Update Documents Metadata'
+  name='#update_documents_metadata'
+/>
+<Row>
+  <Col>
+    ### Params
+    <Properties>
+      <Property name='dataset_id' type='string' key='dataset_id'>
+        Knowledge ID
+      </Property>
+    </Properties>
+
+    ### Request Body
+    <Properties>
+      <Property name='operation_data' type='object list' key='segments'>
+        - <code>document_id</code> (string) Document ID
+        - <code>metadata_list</code> (list) Metadata list
+          - <code>id</code> (string) Metadata ID
+          - <code>value</code> (string) Metadata value
+          - <code>name</code> (string) Metadata name
+      </Property>
+    </Properties>
+  </Col>
+  <Col sticky>
+    <CodeGroup
+      title="Request"
+      tag="POST"
+      label="/datasets/{dataset_id}/documents/metadata"
+      targetCode={`curl --location --request POST '${props.apiBaseUrl}/datasets/{dataset_id}/documents/metadata' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json'\\\n--data-raw '{"operation_data": [{"document_id": "document_id", "metadata_list": [{"id": "id", "value": "value", "name": "name"}]}]}'`}
+    >
+    ```bash {{ title: 'cURL' }}
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
+<hr className='ml-0 mr-0' />
+
+<Heading
+  url='/datasets/{dataset_id}/metadata'
+  method='GET'
+  title='Get Knowledge Metadata List'
+  name='#dataset_metadata_list'
+/>
+<Row>
+  <Col>
+    ### Params
+    <Properties>
+      <Property name='dataset_id' type='string' key='dataset_id'>
+        Knowledge ID
+      </Property>
+    </Properties>
+  </Col>
+  <Col sticky>
+    <CodeGroup
+      title="Request"
+      tag="GET"
+      label="/datasets/{dataset_id}/metadata"
+      targetCode={`curl --location --request GET '${props.apiBaseUrl}/datasets/{dataset_id}/metadata' \\\n--header 'Authorization: Bearer {api_key}'`}
+    >
+    ```bash {{ title: 'cURL' }}
+    ```
+    </CodeGroup>
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {
+      "doc_metadata": [
+        {
+          "id": "",
+          "name": "name",
+          "type": "string",
+          "use_count": 0,
+        },
+        ...
+      ],
+      "built_in_field_enabled": true
     }
     ```
     </CodeGroup>

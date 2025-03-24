@@ -191,7 +191,6 @@ const Configuration: FC = () => {
     dataSets: [],
     agentConfig: DEFAULT_AGENT_SETTING,
   })
-
   const isAgent = mode === 'agent-chat'
 
   const isOpenAI = modelConfig.provider === 'langgenius/openai/openai'
@@ -200,7 +199,7 @@ const Configuration: FC = () => {
   useEffect(() => {
 
   }, [])
-  const [datasetConfigs, setDatasetConfigs] = useState<DatasetConfigs>({
+  const [datasetConfigs, doSetDatasetConfigs] = useState<DatasetConfigs>({
     retrieval_model: RETRIEVE_TYPE.multiWay,
     reranking_model: {
       reranking_provider_name: '',
@@ -213,6 +212,11 @@ const Configuration: FC = () => {
       datasets: [],
     },
   })
+  const datasetConfigsRef = useRef(datasetConfigs)
+  const setDatasetConfigs = useCallback((newDatasetConfigs: DatasetConfigs) => {
+    doSetDatasetConfigs(newDatasetConfigs)
+    datasetConfigsRef.current = newDatasetConfigs
+  }, [])
 
   const setModelConfig = (newModelConfig: ModelConfig) => {
     doSetModelConfig(newModelConfig)
@@ -292,6 +296,7 @@ const Configuration: FC = () => {
     })
 
     setDatasetConfigs({
+      ...datasetConfigsRef.current,
       ...retrievalConfig,
       reranking_model: {
         reranking_provider_name: retrievalConfig?.reranking_model?.provider || '',
@@ -815,7 +820,7 @@ const Configuration: FC = () => {
   }
 
   if (isLoading) {
-    return <div className='flex items-center justify-center h-full'>
+    return <div className='flex h-full items-center justify-center'>
       <Loading type='area' />
     </div>
   }
@@ -884,6 +889,7 @@ const Configuration: FC = () => {
       dataSets,
       setDataSets,
       datasetConfigs,
+      datasetConfigsRef,
       setDatasetConfigs,
       hasSetContextVar,
       isShowVisionConfig,
@@ -897,16 +903,16 @@ const Configuration: FC = () => {
     >
       <FeaturesProvider features={featuresData}>
         <>
-          <div className="flex flex-col h-full">
-            <div className='relative flex grow h-[200px] pt-14'>
+          <div className="flex h-full flex-col">
+            <div className='relative flex h-[200px] grow pt-14'>
               {/* Header */}
-              <div className='absolute top-0 left-0 w-full bg-default-subtle h-14'>
-                <div className='flex items-center justify-between px-6 h-14'>
+              <div className='bg-default-subtle absolute left-0 top-0 h-14 w-full'>
+                <div className='flex h-14 items-center justify-between px-6'>
                   <div className='flex items-center'>
                     <div className='system-xl-semibold text-text-primary'>{t('appDebug.orchestrate')}</div>
-                    <div className='flex items-center h-[14px] space-x-1 text-xs'>
+                    <div className='flex h-[14px] items-center space-x-1 text-xs'>
                       {isAdvancedMode && (
-                        <div className='ml-1 flex items-center h-5 px-1.5 border border-components-button-secondary-border rounded-md system-xs-medium-uppercase text-text-tertiary uppercase'>{t('appDebug.promptMode.advanced')}</div>
+                        <div className='system-xs-medium-uppercase ml-1 flex h-5 items-center rounded-md border border-components-button-secondary-border px-1.5 uppercase text-text-tertiary'>{t('appDebug.promptMode.advanced')}</div>
                       )}
                     </div>
                   </div>
@@ -948,7 +954,7 @@ const Configuration: FC = () => {
                     {isMobile && (
                       <Button className='mr-2 !h-8 !text-[13px] font-medium' onClick={showDebugPanel}>
                         <span className='mr-1'>{t('appDebug.operation.debugConfig')}</span>
-                        <CodeBracketIcon className="w-4 h-4 text-text-tertiary" />
+                        <CodeBracketIcon className="h-4 w-4 text-text-tertiary" />
                       </Button>
                     )}
                     <AppPublisher {...{
@@ -963,11 +969,11 @@ const Configuration: FC = () => {
                   </div>
                 </div>
               </div>
-              <div className={`w-full sm:w-1/2 shrink-0 flex flex-col h-full ${debugWithMultipleModel && 'max-w-[560px]'}`}>
+              <div className={`flex h-full w-full shrink-0 flex-col sm:w-1/2 ${debugWithMultipleModel && 'max-w-[560px]'}`}>
                 <Config />
               </div>
-              {!isMobile && <div className="relative flex flex-col w-1/2 h-full overflow-y-auto grow " style={{ borderColor: 'rgba(0, 0, 0, 0.02)' }}>
-                <div className='grow flex flex-col border-t-[0.5px] border-l-[0.5px] rounded-tl-2xl border-components-panel-border bg-chatbot-bg '>
+              {!isMobile && <div className="relative flex h-full w-1/2 grow flex-col overflow-y-auto " style={{ borderColor: 'rgba(0, 0, 0, 0.02)' }}>
+                <div className='flex grow flex-col rounded-tl-2xl border-l-[0.5px] border-t-[0.5px] border-components-panel-border bg-chatbot-bg '>
                   <Debug
                     isAPIKeySet={isAPIKeySet}
                     onSetting={() => setShowAccountSettingModal({ payload: 'provider' })}

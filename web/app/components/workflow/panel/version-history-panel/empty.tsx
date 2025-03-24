@@ -12,11 +12,11 @@ const Empty: FC<EmptyProps> = ({
 }) => {
   const { t } = useTranslation()
 
-  return <div className='h-5/6 w-full flex flex-col justify-center gap-y-2'>
+  return <div className='flex h-5/6 w-full flex-col justify-center gap-y-2'>
     <div className='flex justify-center'>
-      <RiHistoryLine className='w-10 h-10 text-text-empty-state-icon' />
+      <RiHistoryLine className='h-10 w-10 text-text-empty-state-icon' />
     </div>
-    <div className='flex justify-center text-text-tertiary system-xs-regular'>
+    <div className='system-xs-regular flex justify-center text-text-tertiary'>
       {t('workflow.versionHistory.filter.empty')}
     </div>
     <div className='flex justify-center'>

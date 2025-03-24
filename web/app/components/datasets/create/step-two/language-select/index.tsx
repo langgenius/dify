@@ -6,7 +6,7 @@ import cn from '@/utils/classnames'
 import Popover from '@/app/components/base/popover'
 import { languages } from '@/i18n/language'
 
-export interface ILanguageSelectProps {
+export type ILanguageSelectProps = {
   currentLanguage: string
   onSelect: (language: string) => void
   disabled?: boolean
@@ -28,10 +28,10 @@ const LanguageSelect: FC<ILanguageSelectProps> = ({
           {languages.filter(language => language.supported).map(({ prompt_name }) => (
             <div
               key={prompt_name}
-              className='w-full py-2 px-3 inline-flex items-center justify-between hover:bg-state-base-hover rounded-lg cursor-pointer'
+              className='inline-flex w-full cursor-pointer items-center justify-between rounded-lg px-3 py-2 hover:bg-state-base-hover'
               onClick={() => onSelect(prompt_name)}
             >
-              <span className='text-text-secondary system-sm-medium'>{prompt_name}</span>
+              <span className='system-sm-medium text-text-secondary'>{prompt_name}</span>
               {(currentLanguage === prompt_name) && <RiCheckLine className='size-4 text-text-accent' />}
             </div>
           ))}
@@ -40,7 +40,7 @@ const LanguageSelect: FC<ILanguageSelectProps> = ({
       btnElement={
         <div className={cn('inline-flex items-center gap-x-[1px]', disabled && 'cursor-not-allowed')}>
           <span className={cn(
-            'px-[3px] system-xs-semibold text-components-button-tertiary-text',
+            'system-xs-semibold px-[3px] text-components-button-tertiary-text',
             disabled ? 'text-components-button-tertiary-text-disabled' : '',
           )}>
             {currentLanguage}
@@ -52,10 +52,10 @@ const LanguageSelect: FC<ILanguageSelectProps> = ({
         </div>
       }
       btnClassName={() => cn(
-        '!border-0 rounded-md !px-1.5 !py-1 !mx-1 !bg-components-button-tertiary-bg !hover:bg-components-button-tertiary-bg',
+        '!hover:bg-components-button-tertiary-bg !mx-1 rounded-md !border-0 !bg-components-button-tertiary-bg !px-1.5 !py-1',
         disabled ? 'bg-components-button-tertiary-bg-disabled' : '',
       )}
-      className='!w-[140px] h-fit !z-20 !translate-x-0 !left-1'
+      className='!left-1 !z-20 h-fit !w-[140px] !translate-x-0'
     />
   )
 }

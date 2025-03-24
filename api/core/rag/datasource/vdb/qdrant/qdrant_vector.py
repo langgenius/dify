@@ -119,7 +119,7 @@ class QdrantVector(BaseVector):
                     max_indexing_threads=0,
                     on_disk=False,
                 )
-                self._client.recreate_collection(
+                self._client.create_collection(
                     collection_name=collection_name,
                     vectors_config=vectors_config,
                     hnsw_config=hnsw_config,
@@ -133,6 +133,10 @@ class QdrantVector(BaseVector):
                 # create doc_id payload index
                 self._client.create_payload_index(
                     collection_name, Field.DOC_ID.value, field_schema=PayloadSchemaType.KEYWORD
+                )
+                # create document_id payload index
+                self._client.create_payload_index(
+                    collection_name, Field.DOCUMENT_ID.value, field_schema=PayloadSchemaType.KEYWORD
                 )
                 # create full text index
                 text_index_params = TextIndexParams(
@@ -286,27 +290,26 @@ class QdrantVector(BaseVector):
         from qdrant_client.http import models
         from qdrant_client.http.exceptions import UnexpectedResponse
 
-        for node_id in ids:
-            try:
-                filter = models.Filter(
-                    must=[
-                        models.FieldCondition(
-                            key="metadata.doc_id",
-                            match=models.MatchValue(value=node_id),
-                        ),
-                    ],
-                )
-                self._client.delete(
-                    collection_name=self._collection_name,
-                    points_selector=FilterSelector(filter=filter),
-                )
-            except UnexpectedResponse as e:
-                # Collection does not exist, so return
-                if e.status_code == 404:
-                    return
-                # Some other error occurred, so re-raise the exception
-                else:
-                    raise e
+        try:
+            filter = models.Filter(
+                must=[
+                    models.FieldCondition(
+                        key="metadata.doc_id",
+                        match=models.MatchAny(any=ids),
+                    ),
+                ],
+            )
+            self._client.delete(
+                collection_name=self._collection_name,
+                points_selector=FilterSelector(filter=filter),
+            )
+        except UnexpectedResponse as e:
+            # Collection does not exist, so return
+            if e.status_code == 404:
+                return
+            # Some other error occurred, so re-raise the exception
+            else:
+                raise e
 
     def text_exists(self, id: str) -> bool:
         all_collection_name = []
@@ -331,6 +334,15 @@ class QdrantVector(BaseVector):
                 ),
             ],
         )
+        document_ids_filter = kwargs.get("document_ids_filter")
+        if document_ids_filter:
+            if filter.must:
+                filter.must.append(
+                    models.FieldCondition(
+                        key="metadata.document_id",
+                        match=models.MatchAny(any=document_ids_filter),
+                    )
+                )
         results = self._client.search(
             collection_name=self._collection_name,
             query_vector=query_vector,
@@ -377,6 +389,15 @@ class QdrantVector(BaseVector):
                 ),
             ]
         )
+        document_ids_filter = kwargs.get("document_ids_filter")
+        if document_ids_filter:
+            if scroll_filter.must:
+                scroll_filter.must.append(
+                    models.FieldCondition(
+                        key="metadata.document_id",
+                        match=models.MatchAny(any=document_ids_filter),
+                    )
+                )
         response = self._client.scroll(
             collection_name=self._collection_name,
             scroll_filter=scroll_filter,

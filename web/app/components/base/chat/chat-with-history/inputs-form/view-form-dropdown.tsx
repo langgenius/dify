@@ -26,14 +26,14 @@ const ViewFormDropdown = () => {
         onClick={() => setOpen(v => !v)}
       >
         <ActionButton size='l' state={open ? ActionButtonState.Hover : ActionButtonState.Default}>
-          <RiChatSettingsLine className='w-[18px] h-[18px]' />
+          <RiChatSettingsLine className='h-[18px] w-[18px]' />
         </ActionButton>
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent className="z-50">
-        <div className='w-[400px] bg-components-panel-bg backdrop-blur-sm rounded-2xl border-[0.5px] border-components-panel-border shadow-lg'>
-          <div className='flex items-center gap-3 px-6 py-4 rounded-t-2xl border-b border-divider-subtle'>
-            <Message3Fill className='shrink-0 w-6 h-6' />
-            <div className='grow text-text-secondary system-xl-semibold'>{t('share.chat.chatSettingsTitle')}</div>
+        <div className='w-[400px] rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg backdrop-blur-sm'>
+          <div className='flex items-center gap-3 rounded-t-2xl border-b border-divider-subtle px-6 py-4'>
+            <Message3Fill className='h-6 w-6 shrink-0' />
+            <div className='system-xl-semibold grow text-text-secondary'>{t('share.chat.chatSettingsTitle')}</div>
           </div>
           <div className='p-6'>
             <InputsFormContent showTip />

@@ -8,6 +8,7 @@ import { useDebounceFn } from 'ahooks'
 import {
   RiApps2Line,
   RiExchange2Line,
+  RiFile4Line,
   RiMessage3Line,
   RiRobot3Line,
 } from '@remixicon/react'
@@ -78,10 +79,12 @@ const Apps = () => {
 
   const anchorRef = useRef<HTMLDivElement>(null)
   const options = [
-    { value: 'all', text: t('app.types.all'), icon: <RiApps2Line className='w-[14px] h-[14px] mr-1' /> },
-    { value: 'chat', text: t('app.types.chatbot'), icon: <RiMessage3Line className='w-[14px] h-[14px] mr-1' /> },
-    { value: 'agent-chat', text: t('app.types.agent'), icon: <RiRobot3Line className='w-[14px] h-[14px] mr-1' /> },
-    { value: 'workflow', text: t('app.types.workflow'), icon: <RiExchange2Line className='w-[14px] h-[14px] mr-1' /> },
+    { value: 'all', text: t('app.types.all'), icon: <RiApps2Line className='mr-1 h-[14px] w-[14px]' /> },
+    { value: 'chat', text: t('app.types.chatbot'), icon: <RiMessage3Line className='mr-1 h-[14px] w-[14px]' /> },
+    { value: 'agent-chat', text: t('app.types.agent'), icon: <RiRobot3Line className='mr-1 h-[14px] w-[14px]' /> },
+    { value: 'completion', text: t('app.types.completion'), icon: <RiFile4Line className='mr-1 h-[14px] w-[14px]' /> },
+    { value: 'advanced-chat', text: t('app.types.advanced'), icon: <RiMessage3Line className='mr-1 h-[14px] w-[14px]' /> },
+    { value: 'workflow', text: t('app.types.workflow'), icon: <RiExchange2Line className='mr-1 h-[14px] w-[14px]' /> },
   ]
 
   useEffect(() => {
@@ -134,7 +137,7 @@ const Apps = () => {
 
   return (
     <>
-      <div className='sticky top-0 flex justify-between items-center pt-4 px-12 pb-2 leading-[56px] bg-background-body z-10 flex-wrap gap-y-2'>
+      <div className='sticky top-0 z-10 flex flex-wrap items-center justify-between gap-y-2 bg-background-body px-12 pb-2 pt-4 leading-[56px]'>
         <TabSliderNew
           value={activeTab}
           onChange={setActiveTab}
@@ -159,14 +162,14 @@ const Apps = () => {
         </div>
       </div>
       {(data && data[0].total > 0)
-        ? <div className='grid content-start grid-cols-1 sm:grid-cols-1 md:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-5 2k:grid-cols-6 gap-4 px-12 pt-2 grow relative'>
+        ? <div className='relative grid grow grid-cols-1 content-start gap-4 px-12 pt-2 sm:grid-cols-1 md:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-5 2k:grid-cols-6'>
           {isCurrentWorkspaceEditor
             && <NewAppCard onSuccess={mutate} />}
           {data.map(({ data: apps }) => apps.map(app => (
             <AppCard key={app.id} app={app} onRefresh={mutate} />
           )))}
         </div>
-        : <div className='grid content-start grid-cols-1 sm:grid-cols-1 md:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-5 2k:grid-cols-6 gap-4 px-12 pt-2 grow relative overflow-hidden'>
+        : <div className='relative grid grow grid-cols-1 content-start gap-4 overflow-hidden px-12 pt-2 sm:grid-cols-1 md:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-5 2k:grid-cols-6'>
           {isCurrentWorkspaceEditor
             && <NewAppCard className='z-10' onSuccess={mutate} />}
           <NoAppsFound />
@@ -186,14 +189,14 @@ function NoAppsFound() {
   const { t } = useTranslation()
   function renderDefaultCard() {
     const defaultCards = Array.from({ length: 36 }, (_, index) => (
-      <div key={index} className='h-[160px] inline-flex rounded-xl bg-background-default-lighter'></div>
+      <div key={index} className='inline-flex h-[160px] rounded-xl bg-background-default-lighter'></div>
     ))
     return defaultCards
   }
   return (
     <>
       {renderDefaultCard()}
-      <div className='absolute top-0 left-0 right-0 bottom-0 flex items-center justify-center bg-gradient-to-t from-background-body to-transparent'>
+      <div className='absolute bottom-0 left-0 right-0 top-0 flex items-center justify-center bg-gradient-to-t from-background-body to-transparent'>
         <span className='system-md-medium text-text-tertiary'>{t('app.newApp.noAppsFound')}</span>
       </div>
     </>

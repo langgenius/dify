@@ -84,8 +84,8 @@ const PluginTasks = () => {
           <Tooltip popupContent={tip}>
             <div
               className={cn(
-                'relative flex items-center justify-center w-8 h-8 rounded-lg border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg shadow-xs hover:bg-components-button-secondary-bg-hover',
-                (isInstallingWithError || isFailed) && 'border-components-button-destructive-secondary-border-hover bg-state-destructive-hover hover:bg-state-destructive-hover-alt cursor-pointer',
+                'relative flex h-8 w-8 items-center justify-center rounded-lg border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg shadow-xs hover:bg-components-button-secondary-bg-hover',
+                (isInstallingWithError || isFailed) && 'cursor-pointer border-components-button-destructive-secondary-border-hover bg-state-destructive-hover hover:bg-state-destructive-hover-alt',
               )}
               id="plugin-task-trigger"
             >
@@ -98,7 +98,7 @@ const PluginTasks = () => {
                 !(isInstalling || isInstallingWithError) && (
                   <RiInstallLine
                     className={cn(
-                      'w-4 h-4 text-components-button-secondary-text',
+                      'h-4 w-4 text-components-button-secondary-text',
                       (isInstallingWithError || isFailed) && 'text-components-button-destructive-secondary-text',
                     )}
                   />
@@ -125,12 +125,12 @@ const PluginTasks = () => {
                 }
                 {
                   isSuccess && (
-                    <RiCheckboxCircleFill className='w-3.5 h-3.5 text-text-success' />
+                    <RiCheckboxCircleFill className='h-3.5 w-3.5 text-text-success' />
                   )
                 }
                 {
                   isFailed && (
-                    <RiErrorWarningFill className='w-3.5 h-3.5 text-text-destructive' />
+                    <RiErrorWarningFill className='h-3.5 w-3.5 text-text-destructive' />
                   )
                 }
               </div>
@@ -138,8 +138,8 @@ const PluginTasks = () => {
           </Tooltip>
         </PortalToFollowElemTrigger>
         <PortalToFollowElemContent className='z-[11]'>
-          <div className='p-1 pb-2 w-[320px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg'>
-            <div className='sticky top-0 flex items-center justify-between px-2 pt-1 h-7 system-sm-semibold-uppercase'>
+          <div className='w-[320px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-1 pb-2 shadow-lg'>
+            <div className='system-sm-semibold-uppercase sticky top-0 flex h-7 items-center justify-between px-2 pt-1'>
               {t('plugin.task.installedError', { errorLength: errorPluginsLength })}
               <Button
                 className='shrink-0'
@@ -155,20 +155,20 @@ const PluginTasks = () => {
                 errorPlugins.map(errorPlugin => (
                   <div
                     key={errorPlugin.plugin_unique_identifier}
-                    className='flex p-2 rounded-lg hover:bg-state-base-hover'
+                    className='flex rounded-lg p-2 hover:bg-state-base-hover'
                   >
-                    <div className='relative flex items-center justify-center mr-2 w-6 h-6 rounded-md border-[0.5px] border-components-panel-border-subtle bg-background-default-dodge'>
-                      <RiErrorWarningFill className='absolute -right-0.5 -bottom-0.5 z-10 w-3 h-3 text-text-destructive' />
+                    <div className='relative mr-2 flex h-6 w-6 items-center justify-center rounded-md border-[0.5px] border-components-panel-border-subtle bg-background-default-dodge'>
+                      <RiErrorWarningFill className='absolute -bottom-0.5 -right-0.5 z-10 h-3 w-3 text-text-destructive' />
                       <CardIcon
                         size='tiny'
                         src={getIconUrl(errorPlugin.icon)}
                       />
                     </div>
                     <div className='grow'>
-                      <div className='system-md-regular text-text-secondary truncate'>
+                      <div className='system-md-regular truncate text-text-secondary'>
                         {errorPlugin.labels[language]}
                       </div>
-                      <div className='system-xs-regular text-text-destructive break-all'>
+                      <div className='system-xs-regular break-all text-text-destructive'>
                         {errorPlugin.message}
                       </div>
                     </div>

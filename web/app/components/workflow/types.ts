@@ -345,6 +345,7 @@ export type RunFile = {
   transfer_method: TransferMethod[]
   url?: string
   upload_file_id?: string
+  related_id?: string
 }
 
 export type WorkflowRunningData = {
