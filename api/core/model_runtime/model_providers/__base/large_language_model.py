@@ -553,8 +553,7 @@ if you are not sure about the structure.
         :param tools: tools for tool calling
         :return:
         """
-        # Disable the token count in LLMs for profermance testing.
-        return 0
+        raise NotImplementedError
 
     def enforce_stop_tokens(self, text: str, stop: list[str]) -> str:
         """Cut off the text as soon as any stop words occur."""
@@ -915,3 +914,7 @@ if you are not sure about the structure.
             filtered_model_parameters[parameter_name] = parameter_value
 
         return filtered_model_parameters
+
+    def _get_num_tokens_by_gpt2(self, text: str) -> int:
+        # Disable the token count in LLMs for profermance testing.
+        return 0
