@@ -56,8 +56,6 @@ export const useEducationInit = () => {
   const searchParams = useSearchParams()
   const educationVerifyAction = searchParams.get('action')
 
-  console.log(educationVerifyAction, 'educationVerifyAction')
-
   useEffect(() => {
     if (educationVerifying === 'yes' || educationVerifyAction === EDUCATION_VERIFY_URL_SEARCHPARAMS_ACTION) {
       setShowAccountSettingModal({ payload: 'billing' })
