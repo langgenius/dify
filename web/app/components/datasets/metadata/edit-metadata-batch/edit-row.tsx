@@ -26,7 +26,7 @@ const EditMetadatabatchItem: FC<Props> = ({
   const isDeleted = payload.updateType === UpdateType.delete
   return (
     <div className='flex h-6 items-center space-x-0.5'>
-      {isUpdated ? <EditedBeacon onReset={() => onReset(payload.id)} /> : <div className='shrink-0 size-4' />}
+      {isUpdated ? <EditedBeacon onReset={() => onReset(payload.id)} /> : <div className='size-4 shrink-0' />}
       <Label text={payload.name} isDeleted={isDeleted} />
       {payload.isMultipleValue
         ? <InputHasSetMultipleValue
@@ -43,7 +43,7 @@ const EditMetadatabatchItem: FC<Props> = ({
       <div
         className={
           cn(
-            'p-1 rounded-md text-text-tertiary hover:bg-state-destructive-hover hover:text-text-destructive cursor-pointer',
+            'cursor-pointer rounded-md p-1 text-text-tertiary hover:bg-state-destructive-hover hover:text-text-destructive',
             isDeleted && 'cursor-default bg-state-destructive-hover  text-text-destructive')
         }
         onClick={() => onRemove(payload.id)}

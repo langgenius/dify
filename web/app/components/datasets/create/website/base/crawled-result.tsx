@@ -58,7 +58,7 @@ const CrawledResult: FC<Props> = ({
 
   return (
     <div className={cn(className, 'border-t-[0.5px] border-divider-regular shadow-xs shadow-shadow-shadow-3')}>
-      <div className='flex items-center justify-between h-[34px] px-4'>
+      <div className='flex h-[34px] items-center justify-between px-4'>
         <CheckboxWithLabel
           isChecked={isCheckAll}
           onChange={handleCheckedAll} label={isCheckAll ? t(`${I18N_PREFIX}.resetAll`) : t(`${I18N_PREFIX}.selectAll`)}

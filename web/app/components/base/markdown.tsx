@@ -21,7 +21,6 @@ import ImageGallery from '@/app/components/base/image-gallery'
 import { useChatContext } from '@/app/components/base/chat/chat/context'
 import VideoGallery from '@/app/components/base/video-gallery'
 import AudioGallery from '@/app/components/base/audio-gallery'
-import SVGRenderer from '@/app/components/base/svg-gallery'
 import MarkdownButton from '@/app/components/base/markdown-blocks/button'
 import MarkdownForm from '@/app/components/base/markdown-blocks/form'
 import ThinkBlock from '@/app/components/base/markdown-blocks/think-block'
@@ -137,13 +136,14 @@ const CodeBlock: any = memo(({ inline, className, children, ...props }: any) => 
         </div>
       )
     }
-    else if (language === 'svg' && isSVG) {
-      return (
-        <ErrorBoundary>
-          <SVGRenderer content={content} />
-        </ErrorBoundary>
-      )
-    }
+    // Attention: SVGRenderer has xss vulnerability
+    // else if (language === 'svg' && isSVG) {
+    //   return (
+    //     <ErrorBoundary>
+    //       <SVGRenderer content={content} />
+    //     </ErrorBoundary>
+    //   )
+    // }
     else {
       return (
         <SyntaxHighlighter
@@ -170,12 +170,12 @@ const CodeBlock: any = memo(({ inline, className, children, ...props }: any) => 
 
   return (
     <div className='relative'>
-      <div className='bg-components-input-bg-normal rounded-t-[10px] flex justify-between h-8 items-center p-1 pl-3 border-b border-divider-subtle'>
+      <div className='flex h-8 items-center justify-between rounded-t-[10px] border-b border-divider-subtle bg-components-input-bg-normal p-1 pl-3'>
         <div className='system-xs-semibold-uppercase text-text-secondary'>{languageShowName}</div>
         <div className='flex items-center gap-1'>
           {(['mermaid', 'svg']).includes(language!) && <SVGBtn isSVG={isSVG} setIsSVG={setIsSVG} />}
           <ActionButton>
-            <CopyIcon content={String(children).replace(/\n$/, '')}/>
+            <CopyIcon content={String(children).replace(/\n$/, '')} />
           </ActionButton>
         </div>
       </div>
@@ -233,18 +233,27 @@ const Link = ({ node, ...props }: any) => {
     const { onSend } = useChatContext()
     const hidden_text = decodeURIComponent(node.properties.href.toString().split('abbr:')[1])
 
-    return <abbr className="underline decoration-dashed !decoration-primary-700 cursor-pointer" onClick={() => onSend?.(hidden_text)} title={node.children[0]?.value}>{node.children[0]?.value}</abbr>
+    return <abbr className="cursor-pointer underline !decoration-primary-700 decoration-dashed" onClick={() => onSend?.(hidden_text)} title={node.children[0]?.value}>{node.children[0]?.value}</abbr>
   }
   else {
-    return <a {...props} target="_blank" className="underline decoration-dashed !decoration-primary-700 cursor-pointer">{node.children[0] ? node.children[0]?.value : 'Download'}</a>
+    return <a {...props} target="_blank" className="cursor-pointer underline !decoration-primary-700 decoration-dashed">{node.children[0] ? node.children[0]?.value : 'Download'}</a>
   }
+}
+
+function escapeSVGTags(htmlString: string): string {
+  return htmlString.replace(/(<svg[\s\S]*?>)([\s\S]*?)(<\/svg>)/gi, (match: string, openTag: string, innerContent: string, closeTag: string): string => {
+    return openTag.replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      + innerContent.replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      + closeTag.replace(/</g, '&lt;').replace(/>/g, '&gt;')
+  })
 }
 
 export function Markdown(props: { content: string; className?: string; customDisallowedElements?: string[] }) {
   const latexContent = flow([
     preprocessThinkTag,
     preprocessLaTeX,
-  ])(props.content)
+  ])(escapeSVGTags(props.content))
+
   return (
     <div className={cn('markdown-body', '!text-text-primary', props.className)}>
       <ReactMarkdown

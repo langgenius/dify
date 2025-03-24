@@ -129,7 +129,7 @@ class TidbOnQdrantVector(BaseVector):
                     max_indexing_threads=0,
                     on_disk=False,
                 )
-                self._client.recreate_collection(
+                self._client.create_collection(
                     collection_name=collection_name,
                     vectors_config=vectors_config,
                     hnsw_config=hnsw_config,
@@ -143,6 +143,10 @@ class TidbOnQdrantVector(BaseVector):
                 # create doc_id payload index
                 self._client.create_payload_index(
                     collection_name, Field.DOC_ID.value, field_schema=PayloadSchemaType.KEYWORD
+                )
+                # create document_id payload index
+                self._client.create_payload_index(
+                    collection_name, Field.DOCUMENT_ID.value, field_schema=PayloadSchemaType.KEYWORD
                 )
                 # create full text index
                 text_index_params = TextIndexParams(
@@ -318,26 +322,17 @@ class TidbOnQdrantVector(BaseVector):
     def search_by_vector(self, query_vector: list[float], **kwargs: Any) -> list[Document]:
         from qdrant_client.http import models
 
-        filter = models.Filter(
-            must=[
-                models.FieldCondition(
-                    key="group_id",
-                    match=models.MatchValue(value=self._group_id),
-                ),
-            ],
-        )
+        filter = None
         document_ids_filter = kwargs.get("document_ids_filter")
         if document_ids_filter:
-            should_conditions = []
-            for document_id_filter in document_ids_filter:
-                should_conditions.append(
+            filter = models.Filter(
+                must=[
                     models.FieldCondition(
                         key="metadata.document_id",
-                        match=models.MatchValue(value=document_id_filter),
+                        match=models.MatchAny(any=document_ids_filter),
                     )
-                )
-            if should_conditions:
-                filter.should = should_conditions  # type: ignore
+                ],
+            )
         results = self._client.search(
             collection_name=self._collection_name,
             query_vector=query_vector,
@@ -372,26 +367,17 @@ class TidbOnQdrantVector(BaseVector):
         """
         from qdrant_client.http import models
 
-        scroll_filter = models.Filter(
-            must=[
-                models.FieldCondition(
-                    key="page_content",
-                    match=models.MatchText(text=query),
-                )
-            ]
-        )
+        scroll_filter = None
         document_ids_filter = kwargs.get("document_ids_filter")
         if document_ids_filter:
-            should_conditions = []
-            for document_id_filter in document_ids_filter:
-                should_conditions.append(
+            scroll_filter = models.Filter(
+                must=[
                     models.FieldCondition(
                         key="metadata.document_id",
-                        match=models.MatchValue(value=document_id_filter),
+                        match=models.MatchAny(any=document_ids_filter),
                     )
-                )
-            if should_conditions:
-                scroll_filter.should = should_conditions  # type: ignore
+                ]
+            )
         response = self._client.scroll(
             collection_name=self._collection_name,
             scroll_filter=scroll_filter,

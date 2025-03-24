@@ -22,7 +22,7 @@ const InputCombined: FC<Props> = ({
   onChange,
   readOnly,
 }) => {
-  const className = cn('grow p-0.5 h-6 text-xs')
+  const className = cn('h-6 grow p-0.5 text-xs')
   if (type === DataType.time) {
     return (
       <Datepicker

@@ -1,5 +1,5 @@
 'use client'
-import React, { forwardRef, useEffect, useImperativeHandle, useMemo, useRef } from 'react'
+import React, { useEffect, useImperativeHandle, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import useStickyScroll, { ScrollPosition } from '../use-sticky-scroll'
 import Item from './item'
@@ -19,14 +19,17 @@ type Props = {
   disableMaxWidth?: boolean
 }
 
-const List = forwardRef<{ handleScroll: () => void }, Props>(({
-  wrapElemRef,
-  searchText,
-  tags,
-  list,
-  toolContentClassName,
-  disableMaxWidth = false,
-}, ref) => {
+const List = (
+  {
+    ref,
+    wrapElemRef,
+    searchText,
+    tags,
+    list,
+    toolContentClassName,
+    disableMaxWidth = false,
+  },
+) => {
   const { t } = useTranslation()
   const hasFilter = !searchText
   const hasRes = list.length > 0
@@ -68,12 +71,12 @@ const List = forwardRef<{ handleScroll: () => void }, Props>(({
   if (hasFilter) {
     return (
       <Link
-        className='sticky bottom-0 z-10 flex h-8 px-4 py-1 system-sm-medium items-center border-t border-[0.5px] border-components-panel-border bg-components-panel-bg-blur rounded-b-lg shadow-lg text-text-accent-light-mode-only cursor-pointer'
+        className='system-sm-medium sticky bottom-0 z-10 flex h-8 cursor-pointer items-center rounded-b-lg border-[0.5px] border-t border-components-panel-border bg-components-panel-bg-blur px-4 py-1 text-text-accent-light-mode-only shadow-lg'
         href={`${marketplaceUrlPrefix}/`}
         target='_blank'
       >
         <span>{t('plugin.findMoreInMarketplace')}</span>
-        <RiArrowRightUpLine className='ml-0.5 w-3 h-3' />
+        <RiArrowRightUpLine className='ml-0.5 h-3 w-3' />
       </Link>
     )
   }
@@ -84,7 +87,7 @@ const List = forwardRef<{ handleScroll: () => void }, Props>(({
     <>
       {hasRes && (
         <div
-          className={cn('sticky z-10 flex justify-between h-8 px-4 py-1 text-text-primary system-sm-medium cursor-pointer', stickyClassName, !disableMaxWidth && maxWidthClassName)}
+          className={cn('system-sm-medium sticky z-10 flex h-8 cursor-pointer justify-between px-4 py-1 text-text-primary', stickyClassName, !disableMaxWidth && maxWidthClassName)}
           onClick={handleHeadClick}
         >
           <span>{t('plugin.fromMarketplace')}</span>
@@ -95,7 +98,7 @@ const List = forwardRef<{ handleScroll: () => void }, Props>(({
             onClick={e => e.stopPropagation()}
           >
             <span>{t('plugin.searchInMarketplace')}</span>
-            <RiArrowRightUpLine className='ml-0.5 w-3 h-3' />
+            <RiArrowRightUpLine className='ml-0.5 h-3 w-3' />
           </Link>
         </div>
       )}
@@ -107,22 +110,22 @@ const List = forwardRef<{ handleScroll: () => void }, Props>(({
             onAction={() => { }}
           />
         ))}
-        <div className='mt-2 mb-3 flex items-center justify-center space-x-2'>
-          <div className="w-[90px] h-[2px] bg-gradient-to-l from-[rgba(16,24,40,0.08)] to-[rgba(255,255,255,0.01)]"></div>
+        <div className='mb-3 mt-2 flex items-center justify-center space-x-2'>
+          <div className="h-[2px] w-[90px] bg-gradient-to-l from-[rgba(16,24,40,0.08)] to-[rgba(255,255,255,0.01)]"></div>
           <Link
             href={urlWithSearchText}
             target='_blank'
-            className='shrink-0 flex items-center h-4 system-sm-medium text-text-accent-light-mode-only'
+            className='system-sm-medium flex h-4 shrink-0 items-center text-text-accent-light-mode-only'
           >
-            <RiSearchLine className='mr-0.5 w-3 h-3' />
+            <RiSearchLine className='mr-0.5 h-3 w-3' />
             <span>{t('plugin.searchInMarketplace')}</span>
           </Link>
-          <div className="w-[90px] h-[2px] bg-gradient-to-l from-[rgba(255,255,255,0.01)] to-[rgba(16,24,40,0.08)]"></div>
+          <div className="h-[2px] w-[90px] bg-gradient-to-l from-[rgba(255,255,255,0.01)] to-[rgba(16,24,40,0.08)]"></div>
         </div>
       </div>
     </>
   )
-})
+}
 
 List.displayName = 'List'
 

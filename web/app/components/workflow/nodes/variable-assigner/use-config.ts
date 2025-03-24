@@ -120,7 +120,7 @@ const useConfig = (id: string, payload: VariableAssignerNodeType) => {
     inputs.advanced_settings.groups.forEach((item) => {
       const match = item.group_name.match(/(\d+)$/)
       if (match) {
-        const num = parseInt(match[1], 10)
+        const num = Number.parseInt(match[1], 10)
         if (num > maxInGroupName)
           maxInGroupName = num
       }

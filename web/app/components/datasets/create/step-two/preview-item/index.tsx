@@ -44,9 +44,9 @@ const PreviewItem: FC<IPreviewItemProps> = ({
   const formattedIndex = (() => String(index).padStart(3, '0'))()
 
   return (
-    <div className='p-4 rounded-xl bg-gray-50'>
-      <div className='flex items-center justify-between h-5 text-xs text-gray-500'>
-        <div className='flex items-center h-[18px] space-x-1 border border-gray-200 box-border rounded-md italic pl-1 pr-1.5 font-medium'>
+    <div className='rounded-xl bg-gray-50 p-4'>
+      <div className='flex h-5 items-center justify-between text-xs text-gray-500'>
+        <div className='box-border flex h-[18px] items-center space-x-1 rounded-md border border-gray-200 pl-1 pr-1.5 font-medium italic'>
           {sharpIcon}
           <span>{formattedIndex}</span>
         </div>
@@ -55,18 +55,18 @@ const PreviewItem: FC<IPreviewItemProps> = ({
           <span>{charNums} {t('datasetCreation.stepTwo.characters')}</span>
         </div>
       </div>
-      <div className='mt-2 max-h-[120px] line-clamp-6 overflow-hidden text-sm text-gray-800'>
+      <div className='mt-2 line-clamp-6 max-h-[120px] overflow-hidden text-sm text-gray-800'>
         {type === PreviewType.TEXT && (
           <div style={{ whiteSpace: 'pre-line' }}>{content}</div>
         )}
         {type === PreviewType.QA && (
           <div style={{ whiteSpace: 'pre-line' }}>
             <div className='flex'>
-              <div className='shrink-0 mr-2 text-medium text-gray-400'>Q</div>
+              <div className='text-medium mr-2 shrink-0 text-gray-400'>Q</div>
               <div style={{ whiteSpace: 'pre-line' }}>{qa?.question}</div>
             </div>
             <div className='flex'>
-              <div className='shrink-0 mr-2 text-medium text-gray-400'>A</div>
+              <div className='text-medium mr-2 shrink-0 text-gray-400'>A</div>
               <div style={{ whiteSpace: 'pre-line' }}>{qa?.answer}</div>
             </div>
           </div>

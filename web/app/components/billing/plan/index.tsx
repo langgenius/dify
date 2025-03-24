@@ -36,25 +36,25 @@ const PlanComp: FC<Props> = ({
   } = plan
 
   return (
-    <div className='bg-background-section-burn rounded-2xl border-[0.5px] border-effects-highlight-lightmode-off'>
+    <div className='rounded-2xl border-[0.5px] border-effects-highlight-lightmode-off bg-background-section-burn'>
       <div className='p-6 pb-2'>
         {plan.type === Plan.sandbox && (
-          <RiBox3Line className='w-7 h-7 text-text-primary'/>
+          <RiBox3Line className='h-7 w-7 text-text-primary'/>
         )}
         {plan.type === Plan.professional && (
-          <RiSquareLine className='w-7 h-7 rotate-90 text-util-colors-blue-brand-blue-brand-600'/>
+          <RiSquareLine className='h-7 w-7 rotate-90 text-util-colors-blue-brand-blue-brand-600'/>
         )}
         {plan.type === Plan.team && (
-          <RiGroup3Line className='w-7 h-7 text-util-colors-indigo-indigo-600'/>
+          <RiGroup3Line className='h-7 w-7 text-util-colors-indigo-indigo-600'/>
         )}
         {(plan.type as any) === SelfHostedPlan.enterprise && (
-          <RiGroup3Line className='w-7 h-7 text-util-colors-indigo-indigo-600'/>
+          <RiGroup3Line className='h-7 w-7 text-util-colors-indigo-indigo-600'/>
         )}
         <div className='mt-1 flex items-center'>
           <div className='grow'>
             <div className='mb-1 flex items-center gap-1'>
-              <div className='text-text-primary system-md-semibold-uppercase'>{t(`billing.plans.${type}.name`)}</div>
-              <div className='px-1 py-0.5 border border-divider-deep rounded-[5px] text-text-tertiary system-2xs-medium-uppercase'>{t('billing.currentPlan')}</div>
+              <div className='system-md-semibold-uppercase text-text-primary'>{t(`billing.plans.${type}.name`)}</div>
+              <div className='system-2xs-medium-uppercase rounded-[5px] border border-divider-deep px-1 py-0.5 text-text-tertiary'>{t('billing.currentPlan')}</div>
             </div>
             <div className='system-xs-regular text-util-colors-gray-gray-600'>{t(`billing.plans.${type}.for`)}</div>
           </div>
@@ -69,7 +69,7 @@ const PlanComp: FC<Props> = ({
         </div>
       </div>
       {/* Plan detail */}
-      <div className='p-2 grid content-start grid-cols-3 gap-1'>
+      <div className='grid grid-cols-3 content-start gap-1 p-2'>
         <AppsInfo />
         <UsageInfo
           Icon={RiGroupLine}

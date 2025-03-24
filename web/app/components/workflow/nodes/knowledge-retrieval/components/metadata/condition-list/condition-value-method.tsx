@@ -37,17 +37,17 @@ const ConditionValueMethod = ({
           size='small'
         >
           {capitalize(valueMethod)}
-          <RiArrowDownSLine className='ml-[1px] w-3.5 h-3.5' />
+          <RiArrowDownSLine className='ml-[1px] h-3.5 w-3.5' />
         </Button>
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent className='z-[1000]'>
-        <div className='p-1 w-[112px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg'>
+        <div className='w-[112px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-1 shadow-lg'>
           {
             options.map(option => (
               <div
                 key={option}
                 className={cn(
-                  'flex items-center px-3 h-7 rounded-md hover:bg-state-base-hover cursor-pointer',
+                  'flex h-7 cursor-pointer items-center rounded-md px-3 hover:bg-state-base-hover',
                   'text-[13px] font-medium text-text-secondary',
                   valueMethod === option && 'bg-state-base-hover',
                 )}

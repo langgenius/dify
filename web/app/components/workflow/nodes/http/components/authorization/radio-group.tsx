@@ -22,7 +22,7 @@ const Item: FC<ItemProps> = ({
     <div
       className={cn(
         isSelected ? 'border-[2px] border-primary-400 bg-white shadow-xs' : 'border border-gray-100 bg-gray-25',
-        'w-0 grow flex items-center justify-center h-8 cursor-pointer rounded-lg text-[13px] font-normal text-gray-900')
+        'flex h-8 w-0 grow cursor-pointer items-center justify-center rounded-lg text-[13px] font-normal text-gray-900')
       }
       onClick={onClick}
     >

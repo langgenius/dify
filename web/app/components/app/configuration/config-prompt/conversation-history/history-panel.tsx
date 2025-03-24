@@ -30,20 +30,20 @@ const HistoryPanel: FC<Props> = ({
         </div>
       }
       headerIcon={
-        <div className='p-1 rounded-md shadow-xs'>
-          <MessageClockCircle className='w-4 h-4 text-[#DD2590]' />
+        <div className='rounded-md p-1 shadow-xs'>
+          <MessageClockCircle className='h-4 w-4 text-[#DD2590]' />
         </div>}
       headerRight={
         <div className='flex items-center'>
           <div className='text-xs text-text-tertiary'>{t('appDebug.feature.conversationHistory.description')}</div>
-          <div className='ml-3 w-[1px] h-[14px] bg-divider-regular'></div>
+          <div className='ml-3 h-[14px] w-[1px] bg-divider-regular'></div>
           <OperationBtn type="edit" onClick={onShowEditModal} />
         </div>
       }
       noBodySpacing
     >
       {showWarning && (
-        <div className='flex justify-between py-2 px-3 rounded-b-xl bg-background-section-burn text-xs text-text-secondary'>
+        <div className='flex justify-between rounded-b-xl bg-background-section-burn px-3 py-2 text-xs text-text-secondary'>
           <div>{t('appDebug.feature.conversationHistory.tip')}
             <a href={`${locale === LanguagesSupported[1]
               ? 'https://docs.dify.ai/v/zh-hans/guides/application-design/prompt-engineering'

@@ -39,7 +39,7 @@ const Panel: FC<NodePanelProps<VariableAssignerNodeType>> = ({
 
   return (
     <div className='mt-2'>
-      <div className='px-4 pb-4 space-y-4'>
+      <div className='space-y-4 px-4 pb-4'>
         {!isEnableGroup
           ? (
             <VarGroupItem
@@ -99,7 +99,7 @@ const Panel: FC<NodePanelProps<VariableAssignerNodeType>> = ({
       {isEnableGroup && (
         <>
           <Split />
-          <div className='px-4 pt-4 pb-2'>
+          <div className='px-4 pb-2 pt-4'>
             <OutputVars>
               <>
                 {inputs.advanced_settings?.groups.map((item, index) => (

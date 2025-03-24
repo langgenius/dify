@@ -39,9 +39,9 @@ const MetadataFilter = ({
       collapsed={collapsed}
       onCollapse={setCollapsed}
       trigger={
-        <div className='grow flex items-center justify-between pr-4'>
+        <div className='flex grow items-center justify-between pr-4'>
           <div className='flex items-center'>
-            <div className='mr-0.5 system-sm-semibold-uppercase text-text-secondary'>
+            <div className='system-sm-semibold-uppercase mr-0.5 text-text-secondary'>
               {t('workflow.nodes.knowledgeRetrieval.metadata.title')}
             </div>
             <Tooltip
@@ -72,11 +72,12 @@ const MetadataFilter = ({
         {
           metadataFilterMode === MetadataFilteringModeEnum.automatic && (
             <>
-              <div className='px-4 body-xs-regular text-text-tertiary'>
+              <div className='body-xs-regular px-4 text-text-tertiary'>
                 {t('workflow.nodes.knowledgeRetrieval.metadata.options.automatic.desc')}
               </div>
               <div className='mt-1 px-4'>
                 <ModelParameterModal
+                  portalToFollowElemContentClassName='z-[50]'
                   popupClassName='!w-[387px]'
                   isInWorkflow
                   isAdvancedMode={true}
