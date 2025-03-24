@@ -1,18 +1,17 @@
-from unittest.mock import MagicMock, patch
 
-import pytest
 
 from core.rag.datasource.vdb.oceanbase.oceanbase_vector import (
     OceanBaseVector,
     OceanBaseVectorConfig,
 )
+from core.rag.models.document import Document
 from tests.integration_tests.vdb.__mock.tcvectordb import setup_tcvectordb_mock
 from tests.integration_tests.vdb.test_vector_store import (
     AbstractVectorTest,
     get_example_text,
     setup_mock_redis,
 )
-from core.rag.models.document import Document
+
 
 def oceanbase_vector():
     return OceanBaseVector(
