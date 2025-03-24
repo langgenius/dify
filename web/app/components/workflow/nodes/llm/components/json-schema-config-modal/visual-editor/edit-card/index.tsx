@@ -89,8 +89,8 @@ const EditCard: FC<EditCardProps> = ({
     emit('propertyNameChange', { path, parentPath, oldFields: fields, fields: currentFields })
   }, [fields, currentFields, path, parentPath, emit])
 
-  const emitPropertyTypeChange = useCallback(() => {
-    emit('propertyTypeChange', { path, parentPath, oldFields: fields, fields: currentFields })
+  const emitPropertyTypeChange = useCallback((type: Type | ArrayType) => {
+    emit('propertyTypeChange', { path, parentPath, oldFields: fields, fields: { ...currentFields, type } })
   }, [fields, currentFields, path, parentPath, emit])
 
   const emitPropertyRequiredToggle = useCallback(() => {
@@ -125,7 +125,7 @@ const EditCard: FC<EditCardProps> = ({
   const handleTypeChange = useCallback((item: TypeItem) => {
     setCurrentFields(prev => ({ ...prev, type: item.value }))
     if (isAdvancedEditing) return
-    emitPropertyTypeChange()
+    emitPropertyTypeChange(item.value)
   }, [isAdvancedEditing, emitPropertyTypeChange])
 
   const toggleRequired = useCallback(() => {
@@ -189,14 +189,14 @@ const EditCard: FC<EditCardProps> = ({
   })
 
   return (
-    <div className='flex flex-col py-0.5 rounded-lg bg-components-panel-bg shadow-sm shadow-shadow-shadow-4'>
+    <div className='flex flex-col rounded-lg bg-components-panel-bg py-0.5 shadow-sm shadow-shadow-shadow-4'>
       <div className='flex items-center pl-1 pr-0.5'>
-        <div className='flex items-center gap-x-1 grow'>
+        <div className='flex grow items-center gap-x-1'>
           <input
             value={currentFields.name}
-            className='max-w-20 h-5 rounded-[5px] px-1 py-0.5 text-text-primary system-sm-semibold placeholder:text-text-placeholder
-              placeholder:system-sm-semibold hover:bg-state-base-hover border border-transparent focus:border-components-input-border-active
-              focus:bg-components-input-bg-active focus:shadow-xs shadow-shadow-shadow-3 caret-[#295EFF] outline-none'
+            className='system-sm-semibold placeholder:system-sm-semibold h-5 max-w-20 rounded-[5px] border border-transparent px-1
+              py-0.5 text-text-primary caret-[#295EFF] shadow-shadow-shadow-3 outline-none
+              placeholder:text-text-placeholder hover:bg-state-base-hover focus:border-components-input-border-active focus:bg-components-input-bg-active focus:shadow-xs'
             placeholder={t('workflow.nodes.llm.jsonSchema.fieldNamePlaceholder')}
             onChange={handlePropertyNameChange}
             onBlur={handlePropertyNameBlur}
@@ -210,7 +210,7 @@ const EditCard: FC<EditCardProps> = ({
           />
           {
             currentFields.required && (
-              <div className='px-1 py-0.5 text-text-warning system-2xs-medium-uppercase'>
+              <div className='system-2xs-medium-uppercase px-1 py-0.5 text-text-warning'>
                 {t('workflow.nodes.llm.jsonSchema.required')}
               </div>
             )
@@ -241,7 +241,7 @@ const EditCard: FC<EditCardProps> = ({
         <div className={classNames('flex', isAdvancedEditing ? 'p-2 pt-1' : 'px-2 pb-1')}>
           <input
             value={currentFields.description}
-            className='w-full h-4 p-0 text-text-tertiary system-xs-regular placeholder:text-text-placeholder placeholder:system-xs-regular caret-[#295EFF] outline-none'
+            className='system-xs-regular placeholder:system-xs-regular h-4 w-full p-0 text-text-tertiary caret-[#295EFF] outline-none placeholder:text-text-placeholder'
             placeholder={t('workflow.nodes.llm.jsonSchema.descriptionPlaceholder')}
             onChange={handleDescriptionChange}
             onBlur={handleDescriptionBlur}
