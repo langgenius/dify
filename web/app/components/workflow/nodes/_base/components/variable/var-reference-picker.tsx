@@ -348,7 +348,7 @@ const VarReferencePicker: FC<Props> = ({
                       className='h-full grow'
                     >
                       <div ref={isSupportConstantValue ? triggerRef : null} className={cn('h-full', isSupportConstantValue && 'flex items-center rounded-lg bg-gray-100 py-1 pl-1')}>
-                        <Tooltip popupContent={tooltipPopup}>
+                        <Tooltip noDecoration={isShowAPart} popupContent={tooltipPopup}>
                           <div className={cn('h-full items-center rounded-[5px] px-1.5', hasValue ? 'inline-flex bg-white' : 'flex')}>
                             {hasValue
                               ? (
@@ -369,7 +369,7 @@ const VarReferencePicker: FC<Props> = ({
                                   )}
                                   {isShowAPart && (
                                     <div className='flex items-center'>
-                                      <RiMoreLine className='w-3 h-3 text-text-secondary' />
+                                      <RiMoreLine className='h-3 w-3 text-text-secondary' />
                                       <Line3 className='mr-0.5 text-divider-deep'></Line3>
                                     </div>
                                   )}

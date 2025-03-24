@@ -86,7 +86,7 @@ const WorkflowVariableBlockComponent = ({
   const Item = (
     <div
       className={cn(
-        'mx-0.5 relative group/wrap flex items-center h-[18px] pl-0.5 pr-[3px] rounded-[5px] border select-none hover:border-state-accent-solid hover:bg-state-accent-hover',
+        'group/wrap relative mx-0.5 flex h-[18px] select-none items-center rounded-[5px] border pl-0.5 pr-[3px] hover:border-state-accent-solid hover:bg-state-accent-hover',
         isSelected ? ' border-state-accent-solid bg-state-accent-hover' : ' border-components-panel-border-subtle bg-components-badge-white-to-dark',
         !node && !isEnv && !isChatVar && '!border-state-destructive-solid !bg-state-destructive-hover',
       )}
@@ -111,7 +111,7 @@ const WorkflowVariableBlockComponent = ({
       )}
       {isShowAPart && (
         <div className='flex items-center'>
-          <RiMoreLine className='w-3 h-3 text-text-secondary' />
+          <RiMoreLine className='h-3 w-3 text-text-secondary' />
           <Line3 className='mr-0.5 text-divider-deep'></Line3>
         </div>
       )}
@@ -158,7 +158,7 @@ const WorkflowVariableBlockComponent = ({
         />}
       disabled={!isShowAPart}
     >
-      {Item}
+      <div>{Item}</div>
     </Tooltip>
   )
 }
