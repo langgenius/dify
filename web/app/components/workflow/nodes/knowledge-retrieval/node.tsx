@@ -1,4 +1,4 @@
-import { type FC, useEffect, useRef, useState } from 'react'
+import { type FC, useEffect, useState } from 'react'
 import React from 'react'
 import type { KnowledgeRetrievalNodeType } from './types'
 import { Folder } from '@/app/components/base/icons/src/vender/solid/files'
@@ -11,21 +11,14 @@ const Node: FC<NodeProps<KnowledgeRetrievalNodeType>> = ({
 }) => {
   const [selectedDatasets, setSelectedDatasets] = useState<DataSet[]>([])
   const datasetsDetail = useDatasetsDetailStore(s => s.datasetsDetail)
-  const updateTime = useRef(0)
 
   useEffect(() => {
-    updateTime.current = updateTime.current + 1
-    const currUpdateTime = updateTime.current
-
     if (data.dataset_ids?.length > 0) {
       const dataSetsWithDetail = data.dataset_ids.reduce<DataSet[]>((acc, id) => {
         if (datasetsDetail[id])
           acc.push(datasetsDetail[id])
         return acc
       }, [])
-      //  avoid old data overwrite new data
-      if (currUpdateTime < updateTime.current)
-        return
       setSelectedDatasets(dataSetsWithDetail)
     }
     else {
