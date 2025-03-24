@@ -39,7 +39,7 @@ export type AppCardProps = {
 const AppCard = ({ app, onRefresh }: AppCardProps) => {
   const { t } = useTranslation()
   const { notify } = useContext(ToastContext)
-  const { isCurrentWorkspaceEditor } = useAppContext()
+  const { isCurrentWorkspaceEditor, isCurrentWorkspaceManager, userProfile } = useAppContext()
   const { onPlanInfoChanged } = useProviderContext()
   const { push } = useRouter()
 
@@ -251,15 +251,19 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
         <button className='mx-1 flex h-8 w-[calc(100%_-_8px)] cursor-pointer items-center gap-2 rounded-lg px-3 py-[6px] hover:bg-state-base-hover' onClick={onClickInstalledApp}>
           <span className='system-sm-regular text-text-secondary'>{t('app.openInExplore')}</span>
         </button>
-        <Divider className="!my-1" />
-        <div
-          className='group mx-1 flex h-8 w-[calc(100%_-_8px)] cursor-pointer items-center gap-2 rounded-lg px-3 py-[6px] hover:bg-state-destructive-hover'
-          onClick={onClickDelete}
-        >
-          <span className='system-sm-regular text-text-secondary group-hover:text-text-destructive'>
-            {t('common.operation.delete')}
-          </span>
-        </div>
+        {(isCurrentWorkspaceManager || app.created_by === userProfile.id) && (
+          <>
+            <Divider className="!my-1" />
+            <div
+              className='group mx-1 flex h-8 w-[calc(100%_-_8px)] cursor-pointer items-center gap-2 rounded-lg px-3 py-[6px] hover:bg-state-destructive-hover'
+              onClick={onClickDelete}
+            >
+              <span className='system-sm-regular text-text-secondary group-hover:text-text-destructive'>
+                {t('common.operation.delete')}
+              </span>
+            </div>
+          </>
+        )}
       </div>
     )
   }

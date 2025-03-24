@@ -152,8 +152,8 @@ class AppApi(Resource):
     @get_app_model
     def delete(self, app_model):
         """Delete app"""
-        # The role of the current user in the ta table must be admin, owner, or editor
-        if not current_user.is_editor:
+        # The role of the current user in the ta table must be admin, owner, or creator of the app
+        if not current_user.is_admin_or_owner and current_user.current_tenant_id != app_model.created_by:
             raise Forbidden()
 
         app_service = AppService()
