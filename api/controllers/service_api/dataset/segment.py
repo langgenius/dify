@@ -124,7 +124,6 @@ class SegmentApi(DatasetApiResource):
             keyword=args["keyword"],
         )
 
-
         if status_list:
             query = query.filter(DocumentSegment.status.in_(status_list))
 
@@ -151,7 +150,7 @@ class SegmentApi(DatasetApiResource):
         }
 
         return response, 200
-      
+
 
 class DatasetSegmentApi(DatasetApiResource):
     def delete(self, tenant_id, dataset_id, document_id, segment_id):
