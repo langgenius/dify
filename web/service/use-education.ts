@@ -4,7 +4,7 @@ import {
   useQuery,
 } from '@tanstack/react-query'
 import { useInvalid } from './use-base'
-import type { EducationAddParams } from '@/app/education-apply/components/types'
+import type { EducationAddParams } from '@/app/education-apply/types'
 
 const NAME_SPACE = 'education'
 

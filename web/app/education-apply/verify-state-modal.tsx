@@ -70,30 +70,30 @@ function Confirm({
     return null
 
   return createPortal(
-    <div className={'fixed inset-0 flex items-center justify-center z-[10000000] bg-background-overlay'}
+    <div className={'fixed inset-0 z-[10000000] flex items-center justify-center bg-background-overlay'}
       onClick={(e) => {
         e.preventDefault()
         e.stopPropagation()
       }}
     >
       <div ref={dialogRef} className={'relative w-full max-w-[481px] overflow-hidden'}>
-        <div className='flex flex-col items-start max-w-full rounded-2xl border-[0.5px] border-solid border-components-panel-border shadows-shadow-lg bg-components-panel-bg'>
-          <div className='flex pt-6 pl-6 pr-6 pb-4 flex-col items-start gap-2 self-stretch'>
+        <div className='shadows-shadow-lg flex max-w-full flex-col items-start rounded-2xl border-[0.5px] border-solid border-components-panel-border bg-components-panel-bg'>
+          <div className='flex flex-col items-start gap-2 self-stretch pb-4 pl-6 pr-6 pt-6'>
             <div className='title-2xl-semi-bold text-text-primary'>{title}</div>
-            <div className='system-md-regular text-text-tertiary w-full'>{content}</div>
+            <div className='system-md-regular w-full text-text-tertiary'>{content}</div>
           </div>
           {email && (
-            <div className='px-6 py-3 space-y-1 w-full'>
-              <div className='text-text-secondary system-sm-semibold py-1'>{t('education.emailLabel')}</div>
-              <div className='px-3 py-2 bg-components-input-bg-disabled rounded-lg text-components-input-text-filled-disabled system-sm-regular'>{email}</div>
+            <div className='w-full space-y-1 px-6 py-3'>
+              <div className='system-sm-semibold py-1 text-text-secondary'>{t('education.emailLabel')}</div>
+              <div className='system-sm-regular rounded-lg bg-components-input-bg-disabled px-3 py-2 text-components-input-text-filled-disabled'>{email}</div>
             </div>
           )}
-          <div className='flex p-6 gap-2 justify-between items-center self-stretch'>
+          <div className='flex items-center justify-between gap-2 self-stretch p-6'>
             <div className='flex items-center gap-1'>
               {showLink && (
                 <>
-                  <a href='' className='text-text-accent system-xs-regular cursor-pointer'>{t('education.learn')}</a>
-                  <RiExternalLinkLine className='w-3 h-3 text-text-accent' />
+                  <a href='' className='system-xs-regular cursor-pointer text-text-accent'>{t('education.learn')}</a>
+                  <RiExternalLinkLine className='h-3 w-3 text-text-accent' />
                 </>
               )}
             </div>

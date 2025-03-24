@@ -88,18 +88,18 @@ const SearchInput = ({
           onChange={handleValueChange}
         />
       </PortalToFollowElemTrigger>
-      <PortalToFollowElemContent className='z-10'>
+      <PortalToFollowElemContent className='z-[32]'>
         {
           !!schools.length && value && (
             <div
-              className='p-1 max-h-[330px] overflow-y-auto border-[0.5px] border-components-panel-border bg-components-panel-bg-blur rounded-xl'
+              className='max-h-[330px] overflow-y-auto rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-1'
               onScroll={handleScroll as any}
             >
               {
                 schools.map((school, index) => (
                   <div
                     key={index}
-                    className='flex items-center px-2 py-1.5 h-8 system-md-regular text-text-secondary truncate cursor-pointer hover:bg-state-base-hover rounded-lg'
+                    className='system-md-regular flex h-8 cursor-pointer items-center truncate rounded-lg px-2 py-1.5 text-text-secondary hover:bg-state-base-hover'
                     title={school}
                     onClick={() => {
                       onChange(school)

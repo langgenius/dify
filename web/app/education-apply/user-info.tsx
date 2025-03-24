@@ -25,12 +25,12 @@ const UserInfo = () => {
   }
 
   return (
-    <div className='relative flex items-center justify-between pl-6 pt-9 pr-8 pb-6 bg-gradient-to-r from-background-gradient-bg-fill-chat-bg-2 to-background-gradient-bg-fill-chat-bg-1 border-[4px] border-components-panel-on-panel-item-bg rounded-xl shadow-shadow-shadow-5'>
-      <div className='absolute top-0 left-0 flex items-center'>
-        <div className='flex items-center pl-2 pt-1 h-[22px] bg-components-panel-on-panel-item-bg system-2xs-semibold-uppercase text-text-accent-light-mode-only'>
+    <div className='relative flex items-center justify-between rounded-xl border-[4px] border-components-panel-on-panel-item-bg bg-gradient-to-r from-background-gradient-bg-fill-chat-bg-2 to-background-gradient-bg-fill-chat-bg-1 pb-6 pl-6 pr-8 pt-9 shadow-shadow-shadow-5'>
+      <div className='absolute left-0 top-0 flex items-center'>
+        <div className='system-2xs-semibold-uppercase flex h-[22px] items-center bg-components-panel-on-panel-item-bg pl-2 pt-1 text-text-accent-light-mode-only'>
           {t('education.currentSigned')}
         </div>
-        <Triangle className='w-4 h-[22px] text-components-panel-on-panel-item-bg' />
+        <Triangle className='h-[22px] w-4 text-components-panel-on-panel-item-bg' />
       </div>
       <div className='flex items-center'>
         <Avatar

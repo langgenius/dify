@@ -20,7 +20,7 @@ import {
 } from '@/service/use-education'
 import { useProviderContext } from '@/context/provider-context'
 import { useToastContext } from '@/app/components/base/toast'
-import { EDUCATION_VERIFYING_LOCALSTORAGE_ITEM } from '@/app/education-apply/components/constants'
+import { EDUCATION_VERIFYING_LOCALSTORAGE_ITEM } from '@/app/education-apply/constants'
 
 const EducationApplyAge = () => {
   const { t } = useTranslation()
@@ -71,25 +71,25 @@ const EducationApplyAge = () => {
   }
 
   return (
-    <div className='flex justify-center p-6 w-full h-full'>
-      <div className='relative max-w-[1408px] w-full border border-effects-highlight bg-background-default-subtle rounded-2xl'>
+    <div className='fixed inset-0 z-[31] flex justify-center bg-background-body p-6'>
+      <div className='relative w-full max-w-[1408px] rounded-2xl border border-effects-highlight bg-background-default-subtle'>
         <div
-          className="absolute top-0 w-full h-[349px] rounded-t-2xl overflow-hidden bg-no-repeat bg-cover bg-center"
+          className="absolute top-0 h-[349px] w-full overflow-hidden rounded-t-2xl bg-cover bg-center bg-no-repeat"
           style={{
             backgroundImage: 'url(/education/bg.png)',
           }}
         >
         </div>
-        <div className='relative flex items-center justify-between px-8 py-6 h-[88px] z-10'>
+        <div className='relative z-10 flex h-[88px] items-center justify-between px-8 py-6'>
           <img
             src='/logo/logo-site-dark.png'
             alt='dify logo'
             className='h-10'
           />
         </div>
-        <div className='relative m-auto px-8 max-w-[720px] z-10'>
-          <div className='flex flex-col justify-end mb-2 pt-3 pb-4 h-[192px] text-text-primary-on-surface'>
-            <div className='mb-2 title-5xl-bold shadow-xs'>{t('education.toVerified')}</div>
+        <div className='relative z-10 m-auto max-w-[720px] px-8'>
+          <div className='mb-2 flex h-[192px] flex-col justify-end pb-4 pt-3 text-text-primary-on-surface'>
+            <div className='title-5xl-bold mb-2 shadow-xs'>{t('education.toVerified')}</div>
             <div className='system-md-medium shadow-xs'>
               {t('education.toVerifiedTip.front')}&nbsp;
               <span className='system-md-semibold underline'>{t('education.toVerifiedTip.coupon')}</span>&nbsp;
@@ -100,7 +100,7 @@ const EducationApplyAge = () => {
             <UserInfo />
           </div>
           <div className='mb-7'>
-            <div className='flex items-center mb-1 h-6 system-md-semibold text-text-secondary'>
+            <div className='system-md-semibold mb-1 flex h-6 items-center text-text-secondary'>
               {t('education.form.schoolName.title')}
             </div>
             <SearchInput
@@ -109,7 +109,7 @@ const EducationApplyAge = () => {
             />
           </div>
           <div className='mb-7'>
-            <div className='flex items-center mb-1 h-6 system-md-semibold text-text-secondary'>
+            <div className='system-md-semibold mb-1 flex h-6 items-center text-text-secondary'>
               {t('education.form.schoolRole.title')}
             </div>
             <RoleSelector
@@ -118,20 +118,20 @@ const EducationApplyAge = () => {
             />
           </div>
           <div className='mb-7'>
-            <div className='flex items-center mb-1 h-6 system-md-semibold text-text-secondary'>
+            <div className='system-md-semibold mb-1 flex h-6 items-center text-text-secondary'>
               {t('education.form.terms.title')}
             </div>
-            <div className='mb-1 system-md-regular text-text-tertiary'>
+            <div className='system-md-regular mb-1 text-text-tertiary'>
               {t('education.form.terms.desc.front')}&nbsp;
               <a href='https://dify.ai/terms' target='_blank' className='text-text-secondary hover:underline'>{t('education.form.terms.desc.termsOfService')}</a>&nbsp;
               {t('education.form.terms.desc.and')}&nbsp;
               <a href='https://dify.ai/privacy' target='_blank' className='text-text-secondary hover:underline'>{t('education.form.terms.desc.privacyPolicy')}</a>&nbsp;
               {t('education.form.terms.desc.end')}
             </div>
-            <div className='py-2 system-md-regular text-text-primary'>
-              <div className='flex mb-2'>
+            <div className='system-md-regular py-2 text-text-primary'>
+              <div className='mb-2 flex'>
                 <Checkbox
-                  className='shrink-0 mr-2'
+                  className='mr-2 shrink-0'
                   checked={ageChecked}
                   onCheck={() => setAgeChecked(!ageChecked)}
                 />
@@ -139,7 +139,7 @@ const EducationApplyAge = () => {
               </div>
               <div className='flex'>
                 <Checkbox
-                  className='shrink-0 mr-2'
+                  className='mr-2 shrink-0'
                   checked={inSchoolChecked}
                   onCheck={() => setInSchoolChecked(!inSchoolChecked)}
                 />

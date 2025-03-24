@@ -20,9 +20,10 @@ import { useProviderContext } from '@/context/provider-context'
 import { useAppContext } from '@/context/app-context'
 import Button from '@/app/components/base/button'
 import UsageInfo from '@/app/components/billing/usage-info'
-import VerifyStateModal from '@/app/education-apply/components/verify-state-modal'
-import { EDUCATION_VERIFYING_LOCALSTORAGE_ITEM } from '@/app/education-apply/components/constants'
+import VerifyStateModal from '@/app/education-apply/verify-state-modal'
+import { EDUCATION_VERIFYING_LOCALSTORAGE_ITEM } from '@/app/education-apply/constants'
 import { useEducationVerify } from '@/service/use-education'
+import { useModalContextSelector } from '@/context/modal-context'
 
 type Props = {
   loc: string
@@ -46,10 +47,12 @@ const PlanComp: FC<Props> = ({
 
   const [showModal, setShowModal] = React.useState(false)
   const { mutateAsync } = useEducationVerify()
+  const setShowAccountSettingModal = useModalContextSelector(s => s.setShowAccountSettingModal)
   const handleVerify = () => {
     mutateAsync().then((res) => {
       localStorage.removeItem(EDUCATION_VERIFYING_LOCALSTORAGE_ITEM)
       router.push(`/education-apply?token=${res.token}`)
+      setShowAccountSettingModal(null)
     }).catch(() => {
       setShowModal(true)
     })
@@ -77,10 +80,10 @@ const PlanComp: FC<Props> = ({
             </div>
             <div className='system-xs-regular text-util-colors-gray-gray-600'>{t(`billing.plans.${type}.for`)}</div>
           </div>
-          <div className='shrink-0 flex items-center gap-1'>
+          <div className='flex shrink-0 items-center gap-1'>
             {enableEducationPlan && !isEducationAccount && (
               <Button variant='ghost' onClick={handleVerify}>
-                <RiGraduationCapLine className='w-4 h-4 mr-1'/>
+                <RiGraduationCapLine className='mr-1 h-4 w-4'/>
                 {t('education.toVerified')}
               </Button>
             )}

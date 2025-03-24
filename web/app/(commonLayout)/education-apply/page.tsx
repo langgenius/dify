@@ -8,7 +8,7 @@ import {
   useRouter,
   useSearchParams,
 } from 'next/navigation'
-import EducationApplyAge from './components/education-apply-page'
+import EducationApplyPage from '@/app/education-apply/education-apply-page'
 import { useProviderContext } from '@/context/provider-context'
 
 export default function EducationApply() {
@@ -25,5 +25,5 @@ export default function EducationApply() {
       router.replace('/')
   }, [showEducationApplyPage, router])
 
-  return <EducationApplyAge />
+  return <EducationApplyPage />
 }

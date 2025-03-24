@@ -1,28 +1,18 @@
 'use client'
-import { useEffect } from 'react'
 import { useContextSelector } from 'use-context-selector'
 import { useTranslation } from 'react-i18next'
 import { RiDiscordFill, RiGithubFill } from '@remixicon/react'
 import Link from 'next/link'
-import { useSearchParams } from 'next/navigation'
 import style from '../list.module.css'
 import Apps from './Apps'
 import AppContext from '@/context/app-context'
 import { LicenseStatus } from '@/types/feature'
-import {
-  EDUCATION_VERIFYING_LOCALSTORAGE_ITEM,
-  EDUCATION_VERIFY_URL_SEARCHPARAMS_ACTION,
-} from '@/app/education-apply/components/constants'
+import { useEducationInit } from '@/app/education-apply/hooks'
 
 const AppList = () => {
   const { t } = useTranslation()
-  const searchParams = useSearchParams()
-  const educationVerifyAction = searchParams.get('action')
+  useEducationInit()
 
-  useEffect(() => {
-    if (educationVerifyAction === EDUCATION_VERIFY_URL_SEARCHPARAMS_ACTION)
-      localStorage.setItem(EDUCATION_VERIFYING_LOCALSTORAGE_ITEM, 'yes')
-  }, [educationVerifyAction])
   const systemFeatures = useContextSelector(AppContext, v => v.systemFeatures)
 
   return (

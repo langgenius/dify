@@ -32,12 +32,12 @@ const RoleSelector = ({
         options.map(option => (
           <div
             key={option.key}
-            className='flex items-center mr-6 h-5 cursor-pointer system-md-regular text-text-primary'
+            className='system-md-regular mr-6 flex h-5 cursor-pointer items-center text-text-primary'
             onClick={() => onChange(option.key)}
           >
             <div
               className={cn(
-                'mr-2 w-4 h-4 bg-components-radio-bg rounded-full border border-components-radio-border shadow-xs',
+                'mr-2 h-4 w-4 rounded-full border border-components-radio-border bg-components-radio-bg shadow-xs',
                 option.key === value && 'border-[5px] border-components-radio-border-checked ',
               )}
             >

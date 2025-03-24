@@ -19,7 +19,7 @@ import type {
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import {
   EDUCATION_VERIFYING_LOCALSTORAGE_ITEM,
-} from '@/app/education-apply/components/constants'
+} from '@/app/education-apply/constants'
 
 import Pricing from '@/app/components/billing/pricing'
 import type { ModerationConfig, PromptVariable } from '@/models/debug'

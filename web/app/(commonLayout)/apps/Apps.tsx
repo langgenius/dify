@@ -28,8 +28,6 @@ import { useStore as useTagStore } from '@/app/components/base/tag-management/st
 import TagManagementModal from '@/app/components/base/tag-management'
 import TagFilter from '@/app/components/base/tag-management/filter'
 import CheckboxWithLabel from '@/app/components/datasets/create/website/base/checkbox-with-label'
-import { useModalContextSelector } from '@/context/modal-context'
-import { EDUCATION_VERIFYING_LOCALSTORAGE_ITEM } from '@/app/education-apply/components/constants'
 
 const getKey = (
   pageIndex: number,
@@ -135,14 +133,6 @@ const Apps = () => {
     setIsCreatedByMe(newValue)
     setQuery(prev => ({ ...prev, isCreatedByMe: newValue }))
   }, [isCreatedByMe, setQuery])
-
-  const setShowAccountSettingModal = useModalContextSelector(s => s.setShowAccountSettingModal)
-  const educationVerifying = localStorage.getItem(EDUCATION_VERIFYING_LOCALSTORAGE_ITEM)
-
-  useEffect(() => {
-    if (educationVerifying === 'yes')
-      setShowAccountSettingModal({ payload: 'billing' })
-  }, [setShowAccountSettingModal, educationVerifying])
 
   return (
     <>
