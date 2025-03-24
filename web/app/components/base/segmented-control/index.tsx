@@ -41,7 +41,7 @@ export const SegmentedControl = <T extends string | number | symbol>({
             )}
             onClick={() => onChange(option.value)}
           >
-            <span className='flex items-center justify-center w-5 h-5'>
+            <span className='flex h-5 w-5 items-center justify-center'>
               <Icon className={classNames(
                 'w-4 h-4 text-text-tertiary',
                 isSelected ? 'text-text-accent-light-mode-only' : 'group-hover:text-text-secondary',
@@ -54,8 +54,8 @@ export const SegmentedControl = <T extends string | number | symbol>({
               {option.text}
             </span>
             {!isLast && !isSelected && !isNextSelected && (
-              <div className='absolute top-0 right-[-1px] h-full flex items-center'>
-                <Divider type='vertical' className='h-3.5 mx-0' />
+              <div className='absolute right-[-1px] top-0 flex h-full items-center'>
+                <Divider type='vertical' className='mx-0 h-3.5' />
               </div>
             )}
           </button>

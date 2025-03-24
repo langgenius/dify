@@ -40,18 +40,18 @@ const Field: FC<Props> = ({
     <div>
       <Tooltip popupContent={t('app.structOutput.moreFillTip')} disabled={depth !== MAX_DEPTH + 1}>
         <div
-          className={cn('flex pr-2 items-center justify-between rounded-md', !readonly && 'hover:bg-state-base-hover', depth !== MAX_DEPTH + 1 && 'cursor-pointer')}
+          className={cn('flex items-center justify-between rounded-md pr-2', !readonly && 'hover:bg-state-base-hover', depth !== MAX_DEPTH + 1 && 'cursor-pointer')}
           onClick={() => !readonly && onSelect?.([...valueSelector, name])}
         >
-          <div className='grow flex items-stretch'>
+          <div className='flex grow items-stretch'>
             <TreeIndentLine depth={depth} />
             {depth === MAX_DEPTH + 1 ? (
-              <RiMoreFill className='w-3 h-3 text-text-tertiary' />
-            ) : (<div className={cn('h-6 leading-6 grow w-0 truncate system-sm-medium text-text-secondary', isHighlight && 'text-text-accent')}>{name}</div>)}
+              <RiMoreFill className='h-3 w-3 text-text-tertiary' />
+            ) : (<div className={cn('system-sm-medium h-6 w-0 grow truncate leading-6 text-text-secondary', isHighlight && 'text-text-accent')}>{name}</div>)}
 
           </div>
           {depth < MAX_DEPTH + 1 && (
-            <div className='ml-2 shrink-0 system-xs-regular text-text-tertiary'>{getFieldType(payload)}</div>
+            <div className='system-xs-regular ml-2 shrink-0 text-text-tertiary'>{getFieldType(payload)}</div>
           )}
         </div>
       </Tooltip>

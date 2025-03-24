@@ -55,16 +55,16 @@ const GeneratedResult: FC<GeneratedResultProps> = ({
   }, [schema, onApply])
 
   return (
-    <div className='flex flex-col w-[480px] rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-2xl shadow-shadow-shadow-9'>
-      <div className='flex items-center justify-center absolute top-2.5 right-2.5 w-8 h-8' onClick={onClose}>
-        <RiCloseLine className='w-4 h-4 text-text-tertiary' />
+    <div className='flex w-[480px] flex-col rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-2xl shadow-shadow-shadow-9'>
+      <div className='absolute right-2.5 top-2.5 flex h-8 w-8 items-center justify-center' onClick={onClose}>
+        <RiCloseLine className='h-4 w-4 text-text-tertiary' />
       </div>
       {/* Title */}
-      <div className='flex flex-col gap-y-[0.5px] px-3 pt-3.5 pb-1'>
-        <div className='flex pl-1 pr-8 text-text-primary system-xl-semibold'>
+      <div className='flex flex-col gap-y-[0.5px] px-3 pb-1 pt-3.5'>
+        <div className='system-xl-semibold flex pl-1 pr-8 text-text-primary'>
           {t('workflow.nodes.llm.jsonSchema.generatedResult')}
         </div>
-        <div className='flex px-1 text-text-tertiary system-xs-regular'>
+        <div className='system-xs-regular flex px-1 text-text-tertiary'>
           {t('workflow.nodes.llm.jsonSchema.resultTip')}
         </div>
       </div>
@@ -83,12 +83,12 @@ const GeneratedResult: FC<GeneratedResultProps> = ({
       {/* Footer */}
       <div className='flex items-center justify-between p-4 pt-2'>
         <Button variant='secondary' className='flex items-center gap-x-0.5' onClick={onBack}>
-          <RiArrowLeftLine className='w-4 h-4' />
+          <RiArrowLeftLine className='h-4 w-4' />
           <span>{t('workflow.nodes.llm.jsonSchema.back')}</span>
         </Button>
         <div className='flex items-center gap-x-2'>
           <Button variant='secondary' className='flex items-center gap-x-0.5' onClick={onRegenerate}>
-            <RiSparklingLine className='w-4 h-4' />
+            <RiSparklingLine className='h-4 w-4' />
             <span>{t('workflow.nodes.llm.jsonSchema.regenerate')}</span>
           </Button>
           <Button variant='primary' onClick={handleApply}>

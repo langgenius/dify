@@ -16,14 +16,14 @@ const AddField = () => {
   }, [setIsAddingNewField, emit])
 
   return (
-    <div className='pl-5 py-2'>
+    <div className='py-2 pl-5'>
       <Button
         size='small'
         variant='secondary-accent'
         className='flex items-center gap-x-[1px]'
         onClick={handleAddField}
       >
-        <RiAddCircleFill className='w-3.5 h-3.5'/>
+        <RiAddCircleFill className='h-3.5 w-3.5'/>
         <span className='px-[3px]'>{t('workflow.nodes.llm.jsonSchema.addField')}</span>
       </Button>
     </div>

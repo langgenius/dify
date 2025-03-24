@@ -136,7 +136,7 @@ const Item: FC<ItemProps> = ({
           className={cn(
             (isObj || isStructureOutput) ? ' pr-1' : 'pr-[18px]',
             isHovering && ((isObj || isStructureOutput) ? 'bg-primary-50' : 'bg-state-base-hover'),
-            'relative w-full flex items-center h-6 pl-3  rounded-md cursor-pointer')
+            'relative flex h-6 w-full cursor-pointer items-center  rounded-md pl-3')
           }
           onClick={handleChosen}
           onMouseDown={e => e.preventDefault()}
@@ -155,10 +155,10 @@ const Item: FC<ItemProps> = ({
               <div title={itemData.des} className='system-sm-medium ml-1 w-0 grow truncate text-text-secondary'>{itemData.variable.replace('conversation.', '')}</div>
             )}
           </div>
-          <div className='ml-1 shrink-0 text-xs font-normal text-text-tertiary capitalize'>{itemData.type}</div>
+          <div className='ml-1 shrink-0 text-xs font-normal capitalize text-text-tertiary'>{itemData.type}</div>
           {
             (isObj || isStructureOutput) && (
-              <ChevronRight className={cn('ml-0.5 w-3 h-3 text-text-quaternary', isHovering && 'text-text-tertiary')} />
+              <ChevronRight className={cn('ml-0.5 h-3 w-3 text-text-quaternary', isHovering && 'text-text-tertiary')} />
             )
           }
         </div >
@@ -338,7 +338,7 @@ const VarReferenceVars: FC<Props> = ({
               </div>))
           }
         </div>
-        : <div className='pl-3 leading-[18px] text-xs font-medium text-gray-500 uppercase'>{t('workflow.common.noVar')}</div>}
+        : <div className='pl-3 text-xs font-medium uppercase leading-[18px] text-gray-500'>{t('workflow.common.noVar')}</div>}
     </>
   )
 }

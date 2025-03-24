@@ -24,29 +24,29 @@ const Actions: FC<ActionsProps> = ({
       <Tooltip popupContent={t('workflow.nodes.llm.jsonSchema.addChildField')}>
         <button
           type='button'
-          className='flex items-center justify-center w-6 h-6 rounded-md text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary disabled:cursor-not-allowed disabled:text-text-disabled'
+          className='flex h-6 w-6 items-center justify-center rounded-md text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary disabled:cursor-not-allowed disabled:text-text-disabled'
           onClick={onAddChildField}
           disabled={disableAddBtn}
         >
-          <RiAddCircleLine className='w-4 h-4'/>
+          <RiAddCircleLine className='h-4 w-4'/>
         </button>
       </Tooltip>
       <Tooltip popupContent={t('common.operation.edit')}>
         <button
           type='button'
-          className='flex items-center justify-center w-6 h-6 rounded-md text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary'
+          className='flex h-6 w-6 items-center justify-center rounded-md text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary'
           onClick={onEdit}
         >
-          <RiEditLine className='w-4 h-4' />
+          <RiEditLine className='h-4 w-4' />
         </button>
       </Tooltip>
       <Tooltip popupContent={t('common.operation.remove')}>
         <button
           type='button'
-          className='flex items-center justify-center w-6 h-6 rounded-md text-text-tertiary hover:bg-state-destructive-hover hover:text-text-destructive'
+          className='flex h-6 w-6 items-center justify-center rounded-md text-text-tertiary hover:bg-state-destructive-hover hover:text-text-destructive'
           onClick={onDelete}
         >
-          <RiDeleteBinLine className='w-4 h-4' />
+          <RiDeleteBinLine className='h-4 w-4' />
         </button>
       </Tooltip>
     </div>

@@ -36,27 +36,27 @@ const TypeSelector: FC<TypeSelectorProps> = ({
     >
       <PortalToFollowElemTrigger onClick={() => setOpen(v => !v)}>
         <div className={cn(
-          'flex items-center p-0.5 pl-1 rounded-[5px] hover:bg-state-base-hover',
+          'flex items-center rounded-[5px] p-0.5 pl-1 hover:bg-state-base-hover',
           open && 'bg-state-base-hover',
         )}>
-          <span className='text-text-tertiary system-xs-medium'>{currentValue}</span>
-          <RiArrowDownSLine className='w-4 h-4 text-text-tertiary' />
+          <span className='system-xs-medium text-text-tertiary'>{currentValue}</span>
+          <RiArrowDownSLine className='h-4 w-4 text-text-tertiary' />
         </div>
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent className={popupClassName}>
-        <div className='w-40 p-1 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg shadow-shadow-shadow-5'>
+        <div className='w-40 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg p-1 shadow-lg shadow-shadow-shadow-5'>
           {items.map((item) => {
             const isSelected = item.value === currentValue
             return (<div
               key={item.value}
-              className={'flex items-center gap-x-1 px-2 py-1 rounded-lg hover:bg-state-base-hover'}
+              className={'flex items-center gap-x-1 rounded-lg px-2 py-1 hover:bg-state-base-hover'}
               onClick={() => {
                 onSelect(item)
                 setOpen(false)
               }}
             >
-              <span className='px-1 text-text-secondary system-sm-medium'>{item.text}</span>
-              {isSelected && <RiCheckLine className='w-4 h-4 text-text-accent' />}
+              <span className='system-sm-medium px-1 text-text-secondary'>{item.text}</span>
+              {isSelected && <RiCheckLine className='h-4 w-4 text-text-accent' />}
             </div>
             )
           })}

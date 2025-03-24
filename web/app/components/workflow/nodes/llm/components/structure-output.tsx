@@ -35,9 +35,9 @@ const StructureOutput: FC<Props> = ({
   return (
     <div className={cn(className)}>
       <div className='flex justify-between'>
-        <div className='flex leading-[18px] items-center'>
+        <div className='flex items-center leading-[18px]'>
           <div className='code-sm-semibold text-text-secondary'>structured_output</div>
-          <div className='ml-2 system-xs-regular text-text-tertiary'>object</div>
+          <div className='system-xs-regular ml-2 text-text-tertiary'>object</div>
         </div>
         <Button
           size='small'
@@ -45,7 +45,7 @@ const StructureOutput: FC<Props> = ({
           className='flex'
           onClick={showConfigModal}
         >
-          <RiEditLine className='size-3.5 mr-1' />
+          <RiEditLine className='mr-1 size-3.5' />
           <div className='system-xs-medium text-components-button-secondary-text'>{t('app.structOutput.configure')}</div>
         </Button>
       </div>
@@ -53,7 +53,7 @@ const StructureOutput: FC<Props> = ({
         <ShowPanel
           payload={value}
         />) : (
-        <div className='mt-1.5 flex items-center h-10 justify-center rounded-[10px] bg-background-section system-xs-regular text-text-tertiary'>{t('app.structOutput.notConfiguredTip')}</div>
+        <div className='system-xs-regular mt-1.5 flex h-10 items-center justify-center rounded-[10px] bg-background-section text-text-tertiary'>{t('app.structOutput.notConfiguredTip')}</div>
       )}
 
       {showConfig && (

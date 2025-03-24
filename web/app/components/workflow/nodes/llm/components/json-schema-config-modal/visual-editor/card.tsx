@@ -19,15 +19,15 @@ const Card: FC<CardProps> = ({
   return (
     <div className='flex flex-col py-0.5'>
       <div className='flex items-center gap-x-1 p-0.5 pl-1'>
-        <div className='px-1 py-0.5 text-text-primary system-sm-semibold truncate'>
+        <div className='system-sm-semibold truncate px-1 py-0.5 text-text-primary'>
           {name}
         </div>
-        <div className='px-1 py-0.5 text-text-tertiary system-xs-medium'>
+        <div className='system-xs-medium px-1 py-0.5 text-text-tertiary'>
           {type}
         </div>
         {
           required && (
-            <div className='px-1 py-0.5 text-text-warning system-2xs-medium-uppercase'>
+            <div className='system-2xs-medium-uppercase px-1 py-0.5 text-text-warning'>
               {t('workflow.nodes.llm.jsonSchema.required')}
             </div>
           )
@@ -35,7 +35,7 @@ const Card: FC<CardProps> = ({
       </div>
 
       {description && (
-        <div className='px-2 pb-1 text-text-tertiary system-xs-regular truncate'>
+        <div className='system-xs-regular truncate px-2 pb-1 text-text-tertiary'>
           {description}
         </div>
       )}

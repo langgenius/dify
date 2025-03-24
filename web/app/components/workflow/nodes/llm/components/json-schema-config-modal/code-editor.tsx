@@ -76,8 +76,8 @@ const CodeEditor: FC<CodeEditorProps> = ({
 
   return (
     <div className={classNames('flex flex-col h-full bg-components-input-bg-normal overflow-hidden', className)}>
-      <div className='flex items-center justify-between pl-2 pt-1 pr-1'>
-        <div className='py-0.5 text-text-secondary system-xs-semibold-uppercase'>
+      <div className='flex items-center justify-between pl-2 pr-1 pt-1'>
+        <div className='system-xs-semibold-uppercase py-0.5 text-text-secondary'>
           <span className='px-1 py-0.5'>JSON</span>
         </div>
         <div className='flex items-center gap-x-0.5'>
@@ -85,19 +85,19 @@ const CodeEditor: FC<CodeEditorProps> = ({
             <Tooltip popupContent={t('common.operation.format')}>
               <button
                 type='button'
-                className='flex items-center justify-center h-6 w-6'
+                className='flex h-6 w-6 items-center justify-center'
                 onClick={formatJsonContent}
               >
-                <RiIndentIncrease className='w-4 h-4 text-text-tertiary' />
+                <RiIndentIncrease className='h-4 w-4 text-text-tertiary' />
               </button>
             </Tooltip>
           )}
           <Tooltip popupContent={t('common.operation.copy')}>
             <button
               type='button'
-              className='flex items-center justify-center h-6 w-6'
+              className='flex h-6 w-6 items-center justify-center'
               onClick={() => copy(value)}>
-              <RiClipboardLine className='w-4 h-4 text-text-tertiary' />
+              <RiClipboardLine className='h-4 w-4 text-text-tertiary' />
             </button>
           </Tooltip>
         </div>

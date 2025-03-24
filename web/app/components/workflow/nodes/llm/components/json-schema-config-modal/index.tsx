@@ -20,7 +20,7 @@ const JsonSchemaConfigModal: FC<JsonSchemaConfigModalProps> = ({
     <Modal
       isShow={isShow}
       onClose={onClose}
-      className='max-w-[960px] h-[800px] p-0'
+      className='h-[800px] max-w-[960px] p-0'
     >
       <JsonSchemaConfig
         defaultSchema={defaultSchema}

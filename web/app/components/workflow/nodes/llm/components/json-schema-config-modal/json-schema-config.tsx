@@ -141,14 +141,14 @@ const JsonSchemaConfig: FC<JsonSchemaConfigProps> = ({
   }, [currentTab, jsonSchema, json, onSave, onClose])
 
   return (
-    <div className='flex flex-col h-full'>
+    <div className='flex h-full flex-col'>
       {/* Header */}
-      <div className='relative flex p-6 pr-14 pb-3'>
-        <div className='text-text-primary title-2xl-semi-bold grow truncate'>
+      <div className='relative flex p-6 pb-3 pr-14'>
+        <div className='title-2xl-semi-bold grow truncate text-text-primary'>
           {t('workflow.nodes.llm.jsonSchema.title')}
         </div>
-        <div className='absolute right-5 top-5 w-8 h-8 flex justify-center items-center p-1.5' onClick={onClose}>
-          <RiCloseLine className='w-[18px] h-[18px] text-text-tertiary' />
+        <div className='absolute right-5 top-5 flex h-8 w-8 items-center justify-center p-1.5' onClick={onClose}>
+          <RiCloseLine className='h-[18px] w-[18px] text-text-tertiary' />
         </div>
       </div>
       {/* Content */}
@@ -173,7 +173,7 @@ const JsonSchemaConfig: FC<JsonSchemaConfigProps> = ({
           />
         </div>
       </div>
-      <div className='flex flex-col gap-y-1 px-6 grow overflow-hidden'>
+      <div className='flex grow flex-col gap-y-1 overflow-hidden px-6'>
         {currentTab === SchemaView.VisualEditor && (
           <MittProvider>
             <VisualEditorContextProvider>
@@ -194,22 +194,22 @@ const JsonSchemaConfig: FC<JsonSchemaConfigProps> = ({
         {validationError && <ErrorMessage message={validationError} />}
       </div>
       {/* Footer */}
-      <div className='flex items-center p-6 pt-5 gap-x-2'>
+      <div className='flex items-center gap-x-2 p-6 pt-5'>
         <a
-          className='flex items-center gap-x-1 grow text-text-accent'
+          className='flex grow items-center gap-x-1 text-text-accent'
           href='https://json-schema.org/' // todo: replace with documentation link
           target='_blank'
           rel='noopener noreferrer'
         >
           <span className='system-xs-regular'>{t('workflow.nodes.llm.jsonSchema.doc')}</span>
-          <RiExternalLinkLine className='w-3 h-3' />
+          <RiExternalLinkLine className='h-3 w-3' />
         </a>
         <div className='flex items-center gap-x-3'>
           <div className='flex items-center gap-x-2'>
             <Button variant='secondary' onClick={handleResetDefaults}>
               {t('workflow.nodes.llm.jsonSchema.resetDefaults')}
             </Button>
-            <Divider type='vertical' className='h-4 ml-1 mr-0' />
+            <Divider type='vertical' className='ml-1 mr-0 h-4' />
           </div>
           <div className='flex items-center gap-x-2'>
             <Button variant='secondary' onClick={handleCancel}>

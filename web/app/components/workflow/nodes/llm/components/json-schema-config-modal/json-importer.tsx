@@ -78,7 +78,7 @@ const JsonImporter: FC<JsonImporterProps> = ({
         <button
           type='button'
           className={cn(
-            'flex shrink-0 px-1.5 py-1 rounded-md hover:bg-components-button-ghost-bg-hover text-text-tertiary system-xs-medium',
+            'system-xs-medium flex shrink-0 rounded-md px-1.5 py-1 text-text-tertiary hover:bg-components-button-ghost-bg-hover',
             open && 'bg-components-button-ghost-bg-hover',
           )}
         >
@@ -86,13 +86,13 @@ const JsonImporter: FC<JsonImporterProps> = ({
         </button>
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent className='z-[100]'>
-        <div className='flex flex-col w-[400px] rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-2xl shadow-shadow-shadow-9'>
+        <div className='flex w-[400px] flex-col rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-2xl shadow-shadow-shadow-9'>
           {/* Title */}
-          <div className='relative px-3 pt-3.5 pb-1'>
-            <div className='flex items-center justify-center absolute right-2.5 bottom-0 w-8 h-8' onClick={onClose}>
-              <RiCloseLine className='w-4 h-4 text-text-tertiary' />
+          <div className='relative px-3 pb-1 pt-3.5'>
+            <div className='absolute bottom-0 right-2.5 flex h-8 w-8 items-center justify-center' onClick={onClose}>
+              <RiCloseLine className='h-4 w-4 text-text-tertiary' />
             </div>
-            <div className='flex pl-1 pr-8 text-text-primary system-xl-semibold'>
+            <div className='system-xl-semibold flex pl-1 pr-8 text-text-primary'>
               {t('workflow.nodes.llm.jsonSchema.import')}
             </div>
           </div>

@@ -13,7 +13,7 @@ type AdvancedActionsProps = {
 const Key = (props: { keyName: string }) => {
   const { keyName } = props
   return (
-    <kbd className='flex items-center justify-center min-w-4 h-4 px-px rounded-[4px] bg-components-kbd-bg-white text-text-primary-on-surface system-kbd'>
+    <kbd className='system-kbd flex h-4 min-w-4 items-center justify-center rounded-[4px] bg-components-kbd-bg-white px-px text-text-primary-on-surface'>
       {keyName}
     </kbd>
   )

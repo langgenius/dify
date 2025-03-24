@@ -13,7 +13,7 @@ const VisualEditor: FC<VisualEditorProps> = (props) => {
   useSchemaNodeOperations(props)
 
   return (
-    <div className='h-full rounded-xl p-1 pl-2 bg-background-section-burn overflow-auto'>
+    <div className='h-full overflow-auto rounded-xl bg-background-section-burn p-1 pl-2'>
       <SchemaNode
         name='structured_output'
         schema={schema}

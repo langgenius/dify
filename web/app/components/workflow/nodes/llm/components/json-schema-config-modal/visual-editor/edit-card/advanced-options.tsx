@@ -36,17 +36,17 @@ const AdvancedOptions: FC<AdvancedOptionsProps> = ({
   return (
     <div className='border-t border-divider-subtle'>
       {showAdvancedOptions ? (
-        <div className='flex flex-col px-2 py-1.5 gap-y-1'>
-          <div className='flex items-center gap-x-2 w-full'>
-            <span className='text-text-tertiary system-2xs-medium-uppercase'>
+        <div className='flex flex-col gap-y-1 px-2 py-1.5'>
+          <div className='flex w-full items-center gap-x-2'>
+            <span className='system-2xs-medium-uppercase text-text-tertiary'>
               {t('workflow.nodes.llm.jsonSchema.stringValidations')}
             </span>
             <div className='grow'>
-              <Divider type='horizontal' className='h-px my-0 bg-line-divider-bg' />
+              <Divider type='horizontal' className='my-0 h-px bg-line-divider-bg' />
             </div>
           </div>
           <div className='flex flex-col'>
-            <div className='flex items-center h-6 text-text-secondary system-xs-medium'>
+            <div className='system-xs-medium flex h-6 items-center text-text-secondary'>
               Enum
             </div>
             <Textarea
@@ -62,11 +62,11 @@ const AdvancedOptions: FC<AdvancedOptionsProps> = ({
       ) : (
         <button
           type='button'
-          className='flex items-center pl-1.5 pt-2 pr-2 pb-1 gap-x-0.5'
+          className='flex items-center gap-x-0.5 pb-1 pl-1.5 pr-2 pt-2'
           onClick={handleToggleAdvancedOptions}
         >
-          <RiArrowDownDoubleLine className='w-3 h-3 text-text-tertiary' />
-          <span className='text-text-tertiary system-xs-regular'>
+          <RiArrowDownDoubleLine className='h-3 w-3 text-text-tertiary' />
+          <span className='system-xs-regular text-text-tertiary'>
             {t('workflow.nodes.llm.jsonSchema.showAdvancedOptions')}
           </span>
         </button>

@@ -97,8 +97,8 @@ const SchemaNode: FC<SchemaNodeProps> = ({
             >
               {
                 isExpanded
-                  ? <RiArrowDropDownLine className='w-4 h-4' />
-                  : <RiArrowDropRightLine className='w-4 h-4' />
+                  ? <RiArrowDropDownLine className='h-4 w-4' />
+                  : <RiArrowDropRightLine className='h-4 w-4' />
               }
             </button>
           </div>

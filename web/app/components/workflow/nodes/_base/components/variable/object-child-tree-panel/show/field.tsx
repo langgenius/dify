@@ -33,20 +33,20 @@ const Field: FC<Props> = ({
       <div className={cn('flex pr-2')}>
         <TreeIndentLine depth={depth} />
         <div className='grow'>
-          <div className='flex relative select-none'>
+          <div className='relative flex select-none'>
             {hasChildren && (
               <RiArrowDropDownLine
-                className={cn('absolute top-[50%] translate-y-[-50%] left-[-18px] bg-components-panel-bg w-4 h-4 text-text-tertiary cursor-pointer', fold && 'rotate-[270deg] text-text-accent')}
+                className={cn('absolute left-[-18px] top-[50%] h-4 w-4 translate-y-[-50%] cursor-pointer bg-components-panel-bg text-text-tertiary', fold && 'rotate-[270deg] text-text-accent')}
                 onClick={toggleFold}
               />
             )}
-            <div className='h-6 truncate system-sm-medium text-text-secondary leading-6'>{name}</div>
-            <div className='ml-3 shrink-0 system-xs-regular text-text-tertiary leading-6'>{getFieldType(payload)}</div>
-            {required && <div className='ml-3 text-text-warning system-2xs-medium-uppercase leading-6'>{t('app.structOutput.required')}</div>}
+            <div className='system-sm-medium h-6 truncate leading-6 text-text-secondary'>{name}</div>
+            <div className='system-xs-regular ml-3 shrink-0 leading-6 text-text-tertiary'>{getFieldType(payload)}</div>
+            {required && <div className='system-2xs-medium-uppercase ml-3 leading-6 text-text-warning'>{t('app.structOutput.required')}</div>}
           </div>
           {payload.description && (
             <div className='flex'>
-              <div className='w-0 grow system-xs-regular text-text-tertiary truncate'>{payload.description}</div>
+              <div className='system-xs-regular w-0 grow truncate text-text-tertiary'>{payload.description}</div>
             </div>
           )}
         </div>

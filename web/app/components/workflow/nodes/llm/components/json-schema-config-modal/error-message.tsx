@@ -16,8 +16,8 @@ const ErrorMessage: FC<ErrorMessageProps> = ({
       'flex gap-x-1 mt-1 p-2 rounded-lg border-[0.5px] border-components-panel-border bg-toast-error-bg',
       className,
     )}>
-      <RiErrorWarningFill className='shrink-0 w-4 h-4 text-text-destructive' />
-      <div className='grow text-text-primary system-xs-medium max-h-12 overflow-y-auto break-words'>
+      <RiErrorWarningFill className='h-4 w-4 shrink-0 text-text-destructive' />
+      <div className='system-xs-medium max-h-12 grow overflow-y-auto break-words text-text-primary'>
         {message}
       </div>
     </div>

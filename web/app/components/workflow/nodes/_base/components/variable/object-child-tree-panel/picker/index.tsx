@@ -42,18 +42,18 @@ export const PickerPanelMain: FC<Props> = ({
   return (
     <div className={cn(className)} ref={ref}>
       {/* Root info */}
-      <div className='px-2 py-1 flex justify-between items-center'>
+      <div className='flex items-center justify-between px-2 py-1'>
         <div className='flex'>
           {root.nodeName && (
             <>
-              <div className='max-w-[100px] truncate system-sm-medium text-text-tertiary'>{root.nodeName}</div>
+              <div className='system-sm-medium max-w-[100px] truncate text-text-tertiary'>{root.nodeName}</div>
               <div className='system-sm-medium text-text-tertiary'>.</div>
             </>
           )}
           <div className='system-sm-medium text-text-secondary'>{root.attrName}</div>
         </div>
         {/* It must be object */}
-        <div className='shrink-0 ml-2 system-xs-regular text-text-tertiary'>object</div>
+        <div className='system-xs-regular ml-2 shrink-0 text-text-tertiary'>object</div>
       </div>
       {fieldNames.map(name => (
         <Field
@@ -74,7 +74,7 @@ const PickerPanel: FC<Props> = ({
   ...props
 }) => {
   return (
-    <div className={cn('w-[296px] p-1 pb-0 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-[5px]', className)}>
+    <div className={cn('w-[296px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-1 pb-0 shadow-lg backdrop-blur-[5px]', className)}>
       <PickerPanelMain {...props} />
     </div>
   )

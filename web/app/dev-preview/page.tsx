@@ -60,7 +60,7 @@ export default function Page() {
     additionalProperties: false,
   })
 
-  return <div className='flex flex-col p-20 h-full w-full overflow-hidden'>
+  return <div className='flex h-full w-full flex-col overflow-hidden p-20'>
     <button onClick={() => setShow(true)} className='shrink-0'>Open Json Schema Config</button>
     {show && (
       <JsonSchemaConfigModal
@@ -72,7 +72,7 @@ export default function Page() {
         onClose={() => setShow(false)}
       />
     )}
-    <pre className='bg-gray-50 p-4 rounded-lg overflow-auto grow'>
+    <pre className='grow overflow-auto rounded-lg bg-gray-50 p-4'>
       {JSON.stringify(schema, null, 2)}
     </pre>
   </div>
