@@ -160,7 +160,7 @@ const Header: FC = () => {
   const { mutateAsync: publishWorkflow } = usePublishWorkflow(appID!)
 
   const onPublish = useCallback(async (params?: PublishWorkflowParams) => {
-    if (handleCheckBeforePublish()) {
+    if (await handleCheckBeforePublish()) {
       const res = await publishWorkflow({
         title: params?.title || '',
         releaseNotes: params?.releaseNotes || '',
