@@ -74,15 +74,16 @@ class MyScaleVector(BaseVector):
         columns = ["id", "text", "vector", "metadata"]
         values = []
         for i, doc in enumerate(documents):
-            doc_id = doc.metadata.get("doc_id", str(uuid.uuid4()))
-            row = (
-                doc_id,
-                self.escape_str(doc.page_content),
-                embeddings[i],
-                json.dumps(doc.metadata) if doc.metadata else {},
-            )
-            values.append(str(row))
-            ids.append(doc_id)
+            if doc.metadata is not None:
+                doc_id = doc.metadata.get("doc_id", str(uuid.uuid4()))
+                row = (
+                    doc_id,
+                    self.escape_str(doc.page_content),
+                    embeddings[i],
+                    json.dumps(doc.metadata) if doc.metadata else {},
+                )
+                values.append(str(row))
+                ids.append(doc_id)
         sql = f"""
             INSERT INTO {self._config.database}.{self._collection_name}
             ({",".join(columns)}) VALUES {",".join(values)}
@@ -99,6 +100,8 @@ class MyScaleVector(BaseVector):
         return results.row_count > 0
 
     def delete_by_ids(self, ids: list[str]) -> None:
+        if not ids:
+            return
         self._client.command(
             f"DELETE FROM {self._config.database}.{self._collection_name} WHERE id IN {str(tuple(ids))}"
         )
@@ -122,12 +125,18 @@ class MyScaleVector(BaseVector):
 
     def _search(self, dist: str, order: SortOrder, **kwargs: Any) -> list[Document]:
         top_k = kwargs.get("top_k", 4)
+        if not isinstance(top_k, int) or top_k <= 0:
+            raise ValueError("top_k must be a positive integer")
         score_threshold = float(kwargs.get("score_threshold") or 0.0)
         where_str = (
             f"WHERE dist < {1 - score_threshold}"
             if self._metric.upper() == "COSINE" and order == SortOrder.ASC and score_threshold > 0.0
             else ""
         )
+        document_ids_filter = kwargs.get("document_ids_filter")
+        if document_ids_filter:
+            document_ids = ", ".join(f"'{id}'" for id in document_ids_filter)
+            where_str = f"{where_str} AND metadata['document_id'] in ({document_ids})"
         sql = f"""
             SELECT text, vector, metadata, {dist} as dist FROM {self._config.database}.{self._collection_name}
             {where_str} ORDER BY dist {order.value} LIMIT {top_k}

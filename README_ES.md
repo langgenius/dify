@@ -21,6 +21,9 @@
     <a href="https://twitter.com/intent/follow?screen_name=dify_ai" target="_blank">
         <img src="https://img.shields.io/twitter/follow/dify_ai?logo=X&color=%20%23f5f5f5"
             alt="seguir en X(Twitter)"></a>
+    <a href="https://www.linkedin.com/company/langgenius/" target="_blank">
+        <img src="https://custom-icon-badges.demolab.com/badge/LinkedIn-0A66C2?logo=linkedin-white&logoColor=fff"
+            alt="seguir en LinkedIn"></a>
     <a href="https://hub.docker.com/u/langgenius" target="_blank">
         <img alt="Descargas de Docker" src="https://img.shields.io/docker/pulls/langgenius/dify-web?labelColor=%20%23FDB062&color=%20%23f79009"></a>
     <a href="https://github.com/langgenius/dify/graphs/commit-activity" target="_blank">
@@ -42,6 +45,7 @@
   <a href="./README_AR.md"><img alt="README بالعربية" src="https://img.shields.io/badge/العربية-d9d9d9"></a>
   <a href="./README_TR.md"><img alt="Türkçe README" src="https://img.shields.io/badge/Türkçe-d9d9d9"></a>
   <a href="./README_VI.md"><img alt="README Tiếng Việt" src="https://img.shields.io/badge/Ti%E1%BA%BFng%20Vi%E1%BB%87t-d9d9d9"></a>
+  <a href="./README_BN.md"><img alt="README in বাংলা" src="https://img.shields.io/badge/বাংলা-d9d9d9"></a>
 </p>
 
 #
@@ -73,9 +77,7 @@ Dify es una plataforma de desarrollo de aplicaciones de LLM de código abierto. 
   Amplias capacidades de RAG que cubren todo, desde la ingestión de documentos hasta la recuperación, con soporte listo para usar para la extracción de texto de PDF, PPT y otros formatos de documento comunes.
 
 **5. Capacidades de agente**: 
-  Puedes definir agent
-
-es basados en LLM Function Calling o ReAct, y agregar herramientas preconstruidas o personalizadas para el agente. Dify proporciona más de 50 herramientas integradas para agentes de IA, como Búsqueda de Google, DALL·E, Difusión Estable y WolframAlpha.
+  Puedes definir agentes basados en LLM Function Calling o ReAct, y agregar herramientas preconstruidas o personalizadas para el agente. Dify proporciona más de 50 herramientas integradas para agentes de IA, como Búsqueda de Google, DALL·E, Difusión Estable y WolframAlpha.
 
 **6. LLMOps**: 
   Supervisa y analiza registros de aplicaciones y rendimiento a lo largo del tiempo. Podrías mejorar continuamente prompts, conjuntos de datos y modelos basados en datos de producción y anotaciones.
@@ -203,7 +205,9 @@ Si desea configurar una configuración de alta disponibilidad, la comunidad prop
 
 - [Gráfico Helm por @LeoQuote](https://github.com/douban/charts/tree/master/charts/dify)
 - [Gráfico Helm por @BorisPolonsky](https://github.com/BorisPolonsky/dify-helm)
+- [Gráfico Helm por @magicsong](https://github.com/magicsong/ai-charts)
 - [Ficheros YAML por @Winson-030](https://github.com/Winson-030/dify-kubernetes)
+- [Ficheros YAML por @wyy-holding](https://github.com/wyy-holding/dify-k8s)
 
 #### Uso de Terraform para el despliegue
 
@@ -214,6 +218,13 @@ Despliega Dify en una plataforma en la nube con un solo clic utilizando [terrafo
 
 ##### Google Cloud
 - [Google Cloud Terraform por @sotazum](https://github.com/DeNA/dify-google-cloud-terraform)
+
+#### Usando AWS CDK para el Despliegue
+
+Despliegue Dify en AWS usando [CDK](https://aws.amazon.com/cdk/)
+
+##### AWS 
+- [AWS CDK por @KevinZhao](https://github.com/aws-samples/solution-for-deploying-dify-on-aws)
 
 ## Contribuir
 
@@ -241,6 +252,13 @@ Al mismo tiempo, considera apoyar a Dify compartiéndolo en redes sociales y en 
 [![Gráfico de Historial de Estrellas](https://api.star-history.com/svg?repos=langgenius/dify&type=Date)](https://star-history.com/#langgenius/dify&Date)
 
 
+## Divulgación de Seguridad
+
+Para proteger tu privacidad, evita publicar problemas de seguridad en GitHub. En su lugar, envía tus preguntas a security@dify.ai y te proporcionaremos una respuesta más detallada.
+
+## Licencia
+
+Este repositorio está disponible bajo la [Licencia de Código Abierto de Dify](LICENSE), que es esencialmente Apache 2.0 con algunas restricciones adicionales.
 ## Divulgación de Seguridad
 
 Para proteger tu privacidad, evita publicar problemas de seguridad en GitHub. En su lugar, envía tus preguntas a security@dify.ai y te proporcionaremos una respuesta más detallada.

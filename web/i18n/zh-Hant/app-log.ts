@@ -52,6 +52,7 @@ const translation = {
     },
     variables: '變數',
     uploadImages: '上傳的圖片',
+    modelParams: '模型參數',
   },
   filter: {
     period: {
@@ -79,6 +80,8 @@ const translation = {
   runDetail: {
     title: '對話日誌',
     workflowTitle: '日誌詳情',
+    fileListDetail: '細節',
+    fileListLabel: '檔詳細資訊',
   },
   promptLog: 'Prompt 日誌',
   agentLog: 'Agent 日誌',

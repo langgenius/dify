@@ -42,6 +42,18 @@ const translation = {
     zoomIn: 'Acercar',
     openInNewTab: 'Abrir en una nueva pestaña',
     copyImage: 'Copiar imagen',
+    viewMore: 'VER MÁS',
+    regenerate: 'Regenerar',
+    close: 'Cerrar',
+    saveAndRegenerate: 'Guardar y regenerar fragmentos secundarios',
+    view: 'Vista',
+    submit: 'Enviar',
+    skip: 'Navío',
+    imageCopied: 'Imagen copiada',
+    deleteApp: 'Eliminar aplicación',
+    in: 'en',
+    viewDetails: 'Ver detalles',
+    copied: 'Copiado',
   },
   errorMsg: {
     fieldRequired: '{{field}} es requerido',
@@ -118,6 +130,8 @@ const translation = {
       Custom: 'Personalizado',
     },
     addMoreModel: 'Ir a configuraciones para agregar más modelos',
+    capabilities: 'Capacidades multimodales',
+    settingsLink: 'Configuración del proveedor de modelos',
   },
   menus: {
     status: 'beta',
@@ -130,6 +144,7 @@ const translation = {
     newApp: 'Nueva App',
     newDataset: 'Crear Conocimiento',
     tools: 'Herramientas',
+    exploreMarketplace: 'Explora el mercado',
   },
   userProfile: {
     settings: 'Configuraciones',
@@ -155,6 +170,7 @@ const translation = {
     dataSource: 'Fuente de Datos',
     plugin: 'Plugins',
     apiBasedExtension: 'Extensión basada en API',
+    generalGroup: 'GENERAL',
   },
   account: {
     avatar: 'Avatar',
@@ -178,6 +194,18 @@ const translation = {
     account: 'Cuenta',
     myAccount: 'Mi Cuenta',
     studio: 'Estudio Dify',
+    deletePrivacyLinkTip: 'Para obtener más información sobre cómo manejamos sus datos, consulte nuestra',
+    deletePrivacyLink: 'Política de privacidad.',
+    deleteSuccessTip: 'Su cuenta necesita tiempo para terminar de eliminarse. Te enviaremos un correo electrónico cuando todo esté listo.',
+    deleteLabel: 'Para confirmar, escriba su correo electrónico a continuación',
+    deletePlaceholder: 'Por favor, introduzca su correo electrónico',
+    sendVerificationButton: 'Enviar código de verificación',
+    verificationLabel: 'Código de verificación',
+    verificationPlaceholder: 'Pega el código de 6 dígitos',
+    permanentlyDeleteButton: 'Eliminar cuenta de forma permanente',
+    feedbackTitle: 'Retroalimentación',
+    feedbackLabel: '¿Cuéntanos por qué eliminaste tu cuenta?',
+    feedbackPlaceholder: 'Opcional',
   },
   members: {
     team: 'Equipo',
@@ -199,6 +227,7 @@ const translation = {
     datasetOperatorTip: 'Solo puede administrar la base de conocimiento',
     inviteTeamMember: 'Agregar miembro del equipo',
     inviteTeamMemberTip: 'Pueden acceder a tus datos del equipo directamente después de iniciar sesión.',
+    emailNotSetup: 'El servidor de correo no está configurado, por lo que no se pueden enviar correos de invitación. En su lugar, notifique a los usuarios el enlace de invitación que se emitirá después de la invitación.',
     email: 'Correo electrónico',
     emailInvalid: 'Formato de correo electrónico inválido',
     emailPlaceholder: 'Por favor ingresa correos electrónicos',
@@ -269,6 +298,7 @@ const translation = {
       usedUp: 'Cuota de prueba agotada. Agrega tu propio proveedor de modelos.',
       useYourModel: 'Actualmente usando tu propio proveedor de modelos.',
       close: 'Cerrar',
+      trialQuotaTip: 'Su cuota de prueba antrópica caducará el 11/03/2025 y ya no estará disponible a partir de entonces. Por favor, aprovéchelo a tiempo.',
     },
     anthropic: {
       using: 'La capacidad de incrustación está usando',
@@ -380,6 +410,12 @@ const translation = {
     loadBalancingLeastKeyWarning: 'Para habilitar el balanceo de carga se deben habilitar al menos 2 claves.',
     loadBalancingInfo: 'Por defecto, el balanceo de carga usa la estrategia Round-robin. Si se activa el límite de velocidad, se aplicará un período de enfriamiento de 1 minuto.',
     upgradeForLoadBalancing: 'Actualiza tu plan para habilitar el Balanceo de Carga.',
+    configureTip: 'Configurar la clave de API o agregar el modelo que se va a usar',
+    discoverMore: 'Descubre más en',
+    toBeConfigured: 'A configurar',
+    emptyProviderTip: 'Instale primero un proveedor de modelos.',
+    installProvider: 'Instalación de proveedores de modelos',
+    emptyProviderTitle: 'Proveedor de modelos no configurado',
   },
   dataSource: {
     add: 'Agregar una fuente de datos',
@@ -477,6 +513,7 @@ const translation = {
     emptyTip: 'El Conocimiento no ha sido asociado, por favor ve a la aplicación o plugin para completar la asociación.',
     viewDoc: 'Ver documentación',
     relatedApp: 'aplicaciones vinculadas',
+    noRelatedApp: 'No hay aplicaciones vinculadas',
   },
   voiceInput: {
     speaking: 'Habla ahora...',
@@ -508,6 +545,8 @@ const translation = {
       hitScore: 'Puntuación de recuperación:',
     },
     inputPlaceholder: 'Hablar con el bot',
+    thinking: 'Pensamiento...',
+    thought: 'Pensamiento',
   },
   promptEditor: {
     placeholder: 'Escribe tu palabra de indicación aquí, ingresa \'{\' para insertar una variable, ingresa \'/\' para insertar un bloque de contenido de indicación',
@@ -594,6 +633,9 @@ const translation = {
   license: {
     expiring: 'Caduca en un día',
     expiring_plural: 'Caducando en {{count}} días',
+  },
+  pagination: {
+    perPage: 'Elementos por página',
   },
 }
 

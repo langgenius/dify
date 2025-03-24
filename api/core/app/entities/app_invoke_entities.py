@@ -5,7 +5,7 @@ from typing import Any, Optional
 from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, field_validator
 
 from constants import UUID_NIL
-from core.app.app_config.entities import AppConfig, EasyUIBasedAppConfig, WorkflowUIBasedAppConfig
+from core.app.app_config.entities import EasyUIBasedAppConfig, WorkflowUIBasedAppConfig
 from core.entities.provider_configuration import ProviderModelBundle
 from core.file import File, FileUploadConfig
 from core.model_runtime.entities.model_entities import AIModelEntity
@@ -63,9 +63,9 @@ class ModelConfigWithCredentialsEntity(BaseModel):
     model_schema: AIModelEntity
     mode: str
     provider_model_bundle: ProviderModelBundle
-    credentials: dict[str, Any] = {}
-    parameters: dict[str, Any] = {}
-    stop: list[str] = []
+    credentials: dict[str, Any] = Field(default_factory=dict)
+    parameters: dict[str, Any] = Field(default_factory=dict)
+    stop: list[str] = Field(default_factory=list)
 
     # pydantic configs
     model_config = ConfigDict(protected_namespaces=())
@@ -79,7 +79,7 @@ class AppGenerateEntity(BaseModel):
     task_id: str
 
     # app config
-    app_config: AppConfig
+    app_config: Any
     file_upload_config: Optional[FileUploadConfig] = None
 
     inputs: Mapping[str, Any]
@@ -94,7 +94,7 @@ class AppGenerateEntity(BaseModel):
     call_depth: int = 0
 
     # extra parameters, like: auto_generate_conversation_name
-    extras: dict[str, Any] = {}
+    extras: dict[str, Any] = Field(default_factory=dict)
 
     # tracing instance
     trace_manager: Optional[TraceQueueManager] = None
@@ -183,9 +183,19 @@ class AdvancedChatAppGenerateEntity(ConversationAppGenerateEntity):
         """
 
         node_id: str
-        inputs: dict
+        inputs: Mapping
 
     single_iteration_run: Optional[SingleIterationRunEntity] = None
+
+    class SingleLoopRunEntity(BaseModel):
+        """
+        Single Loop Run Entity.
+        """
+
+        node_id: str
+        inputs: Mapping
+
+    single_loop_run: Optional[SingleLoopRunEntity] = None
 
 
 class WorkflowAppGenerateEntity(AppGenerateEntity):
@@ -195,7 +205,7 @@ class WorkflowAppGenerateEntity(AppGenerateEntity):
 
     # app config
     app_config: WorkflowUIBasedAppConfig
-    workflow_run_id: Optional[str] = None
+    workflow_run_id: str
 
     class SingleIterationRunEntity(BaseModel):
         """
@@ -206,3 +216,13 @@ class WorkflowAppGenerateEntity(AppGenerateEntity):
         inputs: dict
 
     single_iteration_run: Optional[SingleIterationRunEntity] = None
+
+    class SingleLoopRunEntity(BaseModel):
+        """
+        Single Loop Run Entity.
+        """
+
+        node_id: str
+        inputs: dict
+
+    single_loop_run: Optional[SingleLoopRunEntity] = None

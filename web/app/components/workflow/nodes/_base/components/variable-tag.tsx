@@ -17,6 +17,7 @@ import { BubbleX, Env } from '@/app/components/base/icons/src/vender/line/others
 import { getNodeInfoById, isConversationVar, isENV, isSystemVar } from '@/app/components/workflow/nodes/_base/components/variable/utils'
 import Tooltip from '@/app/components/base/tooltip'
 import cn from '@/utils/classnames'
+import { isExceptionVariable } from '@/app/components/workflow/utils'
 
 type VariableTagProps = {
   valueSelector: ValueSelector
@@ -45,11 +46,12 @@ const VariableTag = ({
   const isValid = Boolean(node) || isEnv || isChatVar
 
   const variableName = isSystemVar(valueSelector) ? valueSelector.slice(0).join('.') : valueSelector.slice(1).join('.')
+  const isException = isExceptionVariable(variableName, node?.data.type)
 
   const { t } = useTranslation()
   return (
     <Tooltip popupContent={!isValid && t('workflow.errorMsg.invalidVariable')}>
-      <div className={cn('inline-flex items-center px-1.5 max-w-full h-6 text-xs rounded-md border-[0.5px] border-[rgba(16, 2440,0.08)] bg-white shadow-xs',
+      <div className={cn('border-[rgba(16, 2440,0.08)] inline-flex h-6 max-w-full items-center rounded-md border-[0.5px] bg-white px-1.5 text-xs shadow-xs',
         !isValid && 'border-red-400 !bg-[#FEF3F2]',
       )}>
         {(!isEnv && !isChatVar && <>
@@ -59,30 +61,30 @@ const VariableTag = ({
                 type={BlockEnum.Start}
               />
               <div
-                className='max-w-[60px] truncate text-text-secondary font-medium'
+                className='max-w-[60px] truncate font-medium text-text-secondary'
                 title={node?.data.title}
               >
                 {node?.data.title}
               </div>
             </>
           )}
-          <Line3 className='shrink-0 mx-0.5' />
-          <Variable02 className='shrink-0 mr-0.5 w-3.5 h-3.5 text-text-accent' />
+          <Line3 className='mx-0.5 shrink-0' />
+          <Variable02 className={cn('mr-0.5 h-3.5 w-3.5 shrink-0 text-text-accent', isException && 'text-text-warning')} />
         </>)}
-        {isEnv && <Env className='shrink-0 mr-0.5 w-3.5 h-3.5 text-util-colors-violet-violet-600' />}
-        {isChatVar && <BubbleX className='w-3.5 h-3.5 text-util-colors-teal-teal-700' />}
+        {isEnv && <Env className='mr-0.5 h-3.5 w-3.5 shrink-0 text-util-colors-violet-violet-600' />}
+        {isChatVar && <BubbleX className='h-3.5 w-3.5 text-util-colors-teal-teal-700' />}
         <div
-          className={cn('truncate text-text-accent font-medium', (isEnv || isChatVar) && 'text-text-secondary')}
+          className={cn('ml-0.5 truncate font-medium text-text-accent', (isEnv || isChatVar) && 'text-text-secondary', isException && 'text-text-warning')}
           title={variableName}
         >
           {variableName}
         </div>
         {
           !isShort && varType && (
-            <div className='shrink-0 ml-0.5 text-text-tertiary'>{capitalize(varType)}</div>
+            <div className='ml-0.5 shrink-0 text-text-tertiary'>{capitalize(varType)}</div>
           )
         }
-        {!isValid && <RiErrorWarningFill className='ml-0.5 w-3 h-3 text-[#D92D20]' />}
+        {!isValid && <RiErrorWarningFill className='ml-0.5 h-3 w-3 text-[#D92D20]' />}
       </div>
     </Tooltip>
   )

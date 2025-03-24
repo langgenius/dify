@@ -192,8 +192,8 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
       data: {"event": "message", "message_id": "5ad4cb98-f0c7-4085-b384-88c403be6290", "answer": "'m", "created_at": 1679586595}
       data: {"event": "message", "message_id": "5ad4cb98-f0c7-4085-b384-88c403be6290", "answer": " glad", "created_at": 1679586595}
       data: {"event": "message", "message_id": "5ad4cb98-f0c7-4085-b384-88c403be6290", "answer": " to", "created_at": 1679586595}
-      data: {"event": "message", "message_id": : "5ad4cb98-f0c7-4085-b384-88c403be6290", "answer": " meet", "created_at": 1679586595}
-      data: {"event": "message", "message_id": : "5ad4cb98-f0c7-4085-b384-88c403be6290", "answer": " you", "created_at": 1679586595}
+      data: {"event": "message", "message_id" : "5ad4cb98-f0c7-4085-b384-88c403be6290", "answer": " meet", "created_at": 1679586595}
+      data: {"event": "message", "message_id" : "5ad4cb98-f0c7-4085-b384-88c403be6290", "answer": " you", "created_at": 1679586595}
       data: {"event": "message_end", "id": "5e52ce04-874b-4d27-9045-b3bc80def685", "metadata": {"usage": {"prompt_tokens": 1033, "prompt_unit_price": "0.001", "prompt_price_unit": "0.001", "prompt_price": "0.0010330", "completion_tokens": 135, "completion_unit_price": "0.002", "completion_price_unit": "0.001", "completion_price": "0.0002700", "total_tokens": 1168, "total_price": "0.0013030", "currency": "USD", "latency": 1.381760165997548}}}
       data: {"event": "tts_message", "conversation_id": "23dd85f3-1a41-4ea0-b7a9-062734ccfaf9", "message_id": "a8bdc41c-13b2-4c18-bfd9-054b9803038c", "created_at": 1721205487, "task_id": "3bf8a0bb-e73b-4690-9e66-4e429bad8ee7", "audio": "qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq"}
       data: {"event": "tts_message_end", "conversation_id": "23dd85f3-1a41-4ea0-b7a9-062734ccfaf9", "message_id": "a8bdc41c-13b2-4c18-bfd9-054b9803038c", "created_at": 1721205487, "task_id": "3bf8a0bb-e73b-4690-9e66-4e429bad8ee7", "audio": ""}
@@ -345,6 +345,9 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
       <Property name='user' type='string' key='user'>
         開発者のルールで定義されたユーザー識別子。アプリケーション内で一意である必要があります。
       </Property>
+      <Property name='content' type='string' key='content'>
+        メッセージのフィードバックです。
+      </Property>
     </Properties>
 
     ### レスポンス
@@ -352,7 +355,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
   </Col>
   <Col sticky>
 
-    <CodeGroup title="Request" tag="POST" label="/messages/:message_id/feedbacks" targetCode={`curl -X POST '${props.appDetail.api_base_url}/messages/:message_id/feedbacks \\\n --header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{\n    "rating": "like",\n    "user": "abc-123"\n}'`}>
+    <CodeGroup title="Request" tag="POST" label="/messages/:message_id/feedbacks" targetCode={`curl -X POST '${props.appDetail.api_base_url}/messages/:message_id/feedbacks \\\n --header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{\n    "rating": "like",\n    "user": "abc-123",\n    "content": "message feedback information"\n}'`}>
 
     ```bash {{ title: 'cURL' }}
     curl -X POST '${props.appDetail.api_base_url}/messages/:message_id/feedbacks' \
@@ -360,7 +363,8 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
     --header 'Content-Type: application/json' \
     --data-raw '{
         "rating": "like",
-        "user": "abc-123"
+        "user": "abc-123",
+        "content": "message feedback information"
     }'
     ```
 
@@ -375,26 +379,108 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
     </CodeGroup>
   </Col>
 </Row>
+---
+
+<Heading
+  url='/text-to-audio'
+  method='POST'
+  title='テキストから音声'
+  name='#audio'
+/>
+<Row>
+  <Col>
+    テキストを音声に変換します。
+
+    ### リクエストボディ
+
+    <Properties>
+      <Property name='message_id' type='str' key='message_id'>
+        Difyが生成したテキストメッセージの場合、生成されたmessage-idを直接渡すだけです。バックエンドはmessage-idを使用して対応するコンテンツを検索し、音声情報を直接合成します。message_idとtextの両方が同時に提供された場合、message_idが優先されます。
+      </Property>
+      <Property name='text' type='str' key='text'>
+        音声生成コンテンツ。
+      </Property>
+      <Property name='user' type='string' key='user'>
+        開発者が定義したユーザー識別子。アプリ内で一意性を確保する必要があります。
+      </Property>
+    </Properties>
+  </Col>
+  <Col sticky>
+
+    <CodeGroup title="Request" tag="POST" label="/text-to-audio" targetCode={`curl -o text-to-audio.mp3 -X POST '${props.appDetail.api_base_url}/text-to-audio' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{\n    "message_id": "5ad4cb98-f0c7-4085-b384-88c403be6290",\n    "text": "Hello Dify",\n    "user": "abc-123"\n}'`}>
+
+    ```bash {{ title: 'cURL' }}
+    curl -o text-to-audio.mp3 -X POST '${props.appDetail.api_base_url}/text-to-audio' \
+    --header 'Authorization: Bearer {api_key}' \
+    --header 'Content-Type: application/json' \
+    --data-raw '{
+        "message_id": "5ad4cb98-f0c7-4085-b384-88c403be6290",
+        "text": "Hello Dify",
+        "user": "abc-123"
+    }'
+    ```
+    
+    </CodeGroup>
+
+    <CodeGroup title="headers">
+    ```json {{ title: 'headers' }}
+    {
+      "Content-Type": "audio/wav"
+    }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+---
+
+<Heading
+  url='/info'
+  method='GET'
+  title='アプリケーションの基本情報を取得'
+  name='#info'
+/>
+<Row>
+  <Col>
+  このアプリケーションの基本情報を取得するために使用されます
+
+  ### Response
+  - `name` (string) アプリケーションの名前
+  - `description` (string) アプリケーションの説明
+  - `tags` (array[string]) アプリケーションのタグ
+  </Col>
+  <Col>
+    <CodeGroup title="Request" tag="GET" label="/info" targetCode={`curl -X GET '${props.appDetail.api_base_url}/info' \\\n-H 'Authorization: Bearer {api_key}'`}>
+      ```bash {{ title: 'cURL' }}
+      curl -X GET '${props.appDetail.api_base_url}/info' \
+      -H 'Authorization: Bearer {api_key}'
+      ```
+    </CodeGroup>
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {
+      "name": "My App",
+      "description": "This is my app.",
+      "tags": [
+        "tag1",
+        "tag2"
+      ]
+    }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
 
 ---
 
 <Heading
   url='/parameters'
   method='GET'
-  title='アプリケーション情報の取得'
+  title='アプリケーションのパラメータ情報を取得'
   name='#parameters'
 />
 <Row>
   <Col>
     ページ開始時に、機能、入力パラメータ名、タイプ、デフォルト値などの情報を取得するために使用されます。
-
-    ### クエリ
-
-    <Properties>
-      <Property name='user' type='string' key='user'>
-          開発者のルールで定義されたユーザー識別子。アプリケーション内で一意である必要があります。
-      </Property>
-    </Properties>
 
     ### レスポンス
     - `opening_statement` (string) 開始文
@@ -439,10 +525,10 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
   </Col>
   <Col sticky>
 
-    <CodeGroup title="Request" tag="GET" label="/parameters" targetCode={` curl -X GET '${props.appDetail.api_base_url}/parameters?user=abc-123'`}>
+    <CodeGroup title="Request" tag="GET" label="/parameters" targetCode={` curl -X GET '${props.appDetail.api_base_url}/parameters'`}>
 
     ```bash {{ title: 'cURL' }}
-    curl -X GET '${props.appDetail.api_base_url}/parameters?user=abc-123' \
+    curl -X GET '${props.appDetail.api_base_url}/parameters' \
     --header 'Authorization: Bearer {api_key}'
     ```
 
@@ -491,59 +577,6 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
           "audio_file_size_limit": 50,
           "video_file_size_limit": 100
       }
-    }
-    ```
-    </CodeGroup>
-  </Col>
-</Row>
-
----
-
-<Heading
-  url='/text-to-audio'
-  method='POST'
-  title='テキストから音声'
-  name='#audio'
-/>
-<Row>
-  <Col>
-    テキストを音声に変換します。
-
-    ### リクエストボディ
-
-    <Properties>
-      <Property name='message_id' type='str' key='text'>
-        Difyが生成したテキストメッセージの場合、生成されたmessage-idを直接渡すだけです。バックエンドはmessage-idを使用して対応するコンテンツを検索し、音声情報を直接合成します。message_idとtextの両方が同時に提供された場合、message_idが優先されます。
-      </Property>
-      <Property name='text' type='str' key='text'>
-        音声生成コンテンツ。
-      </Property>
-      <Property name='user' type='string' key='user'>
-        開発者が定義したユーザー識別子。アプリ内で一意性を確保する必要があります。
-      </Property>
-    </Properties>
-  </Col>
-  <Col sticky>
-
-    <CodeGroup title="Request" tag="POST" label="/text-to-audio" targetCode={`curl -o text-to-audio.mp3 -X POST '${props.appDetail.api_base_url}/text-to-audio' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{\n    "message_id": "5ad4cb98-f0c7-4085-b384-88c403be6290",\n    "text": "Hello Dify",\n    "user": "abc-123"\n}'`}>
-
-    ```bash {{ title: 'cURL' }}
-    curl -o text-to-audio.mp3 -X POST '${props.appDetail.api_base_url}/text-to-audio' \
-    --header 'Authorization: Bearer {api_key}' \
-    --header 'Content-Type: application/json' \
-    --data-raw '{
-        "message_id": "5ad4cb98-f0c7-4085-b384-88c403be6290",
-        "text": "Hello Dify",
-        "user": "abc-123"
-    }'
-    ```
-    
-    </CodeGroup>
-
-    <CodeGroup title="headers">
-    ```json {{ title: 'headers' }}
-    {
-      "Content-Type": "audio/wav"
     }
     ```
     </CodeGroup>

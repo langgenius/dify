@@ -42,6 +42,18 @@ const translation = {
     zoomOut: 'ज़ूम आउट करें',
     openInNewTab: 'नए टैब में खोलें',
     zoomIn: 'ज़ूम इन करें',
+    view: 'देखना',
+    viewMore: 'और देखें',
+    regenerate: 'पुनर्जन्म',
+    close: 'बंद करना',
+    saveAndRegenerate: 'सहेजें और पुन: उत्पन्न करें बाल विखंडू',
+    skip: 'जहाज़',
+    submit: 'जमा करें',
+    imageCopied: 'कॉपी की गई छवि',
+    deleteApp: 'ऐप हटाएं',
+    in: 'में',
+    copied: 'कॉपी किया गया',
+    viewDetails: 'विवरण देखें',
   },
   errorMsg: {
     fieldRequired: '{{field}} आवश्यक है',
@@ -121,6 +133,8 @@ const translation = {
       Custom: 'कस्टम',
     },
     addMoreModel: 'अधिक मॉडल जोड़ने के लिए सेटिंग्स पर जाएं',
+    capabilities: 'मल्टीमोडल क्षमताएँ',
+    settingsLink: 'मॉडल प्रदाता सेटिंग्स',
   },
   menus: {
     status: 'बीटा',
@@ -135,6 +149,7 @@ const translation = {
     newApp: 'नया ऐप',
     newDataset: 'ज्ञान बनाएं',
     tools: 'उपकरण',
+    exploreMarketplace: 'मार्केटप्लेस का अन्वेषण करें',
   },
   userProfile: {
     settings: 'सेटिंग्स',
@@ -160,6 +175,7 @@ const translation = {
     dataSource: 'डेटा स्रोत',
     plugin: 'प्लगइन्स',
     apiBasedExtension: 'API विस्तार',
+    generalGroup: 'सामान्य',
   },
   account: {
     avatar: 'अवतार',
@@ -184,6 +200,18 @@ const translation = {
     account: 'खाता',
     studio: 'डिफाई स्टूडियो',
     myAccount: 'मेरा खाता',
+    deletePrivacyLink: 'गोपनीयता नीति।',
+    deletePlaceholder: 'कृपया अपना ईमेल दर्ज करें',
+    verificationLabel: 'सत्यापन कोड',
+    sendVerificationButton: 'पुष्टि कोड भेजें',
+    deleteLabel: 'पुष्टि करने के लिए, कृपया नीचे अपना ईमेल टाइप करें',
+    feedbackLabel: 'हमें बताएँ कि आपने अपना खाता क्यों हटाया?',
+    feedbackPlaceholder: 'वैकल्पिक',
+    feedbackTitle: 'प्रतिपुष्टि',
+    deletePrivacyLinkTip: 'हम आपके डेटा को कैसे संभालते हैं, इस बारे में अधिक जानकारी के लिए, कृपया हमारा डेटा देखें',
+    permanentlyDeleteButton: 'खाता स्थायी रूप से हटाएं',
+    verificationPlaceholder: '6-अंकीय कोड पेस्ट करें',
+    deleteSuccessTip: 'आपके खाते को हटाने का काम पूरा करने के लिए समय चाहिए. जब यह सब हो जाएगा तो हम आपको ईमेल करेंगे।',
   },
   members: {
     team: 'टीम',
@@ -204,6 +232,7 @@ const translation = {
     inviteTeamMember: 'टीम सदस्य जोड़ें',
     inviteTeamMemberTip:
       'वे साइन इन करने के बाद सीधे आपकी टीम डेटा तक पहुंच सकते हैं।',
+    emailNotSetup: 'ईमेल सर्वर सेट नहीं है, इसलिए आमंत्रण ईमेल नहीं भेजे जा सकते। कृपया उपयोगकर्ताओं को आमंत्रण के बाद जारी किए जाने वाले आमंत्रण लिंक के बारे में सूचित करें。',
     email: 'ईमेल',
     emailInvalid: 'अवैध ईमेल प्रारूप',
     emailPlaceholder: 'कृपया ईमेल दर्ज करें',
@@ -278,6 +307,7 @@ const translation = {
       usedUp: 'परीक्षण कोटा समाप्त हो गया। अपना मॉडल प्रदाता जोड़ें।',
       useYourModel: 'वर्तमान में अपना मॉडल प्रदाता उपयोग कर रहे हैं।',
       close: 'बंद करें',
+      trialQuotaTip: 'आपका एंथ्रोपिक परीक्षण कोटा 2025/03/11 को समाप्त हो जाएगा और उसके बाद उपलब्ध नहीं रहेगा। कृपया इसका समय पर उपयोग करें।',
     },
     anthropic: {
       using: 'एम्बेडिंग क्षमता का उपयोग कर रहा है',
@@ -396,6 +426,12 @@ const translation = {
       'डिफ़ॉल्ट रूप से, लोड बैलेंसिंग राउंड-रॉबिन रणनीति का उपयोग करता है। यदि रेट लिमिटिंग ट्रिगर हो जाती है, तो 1 मिनट का कूलडाउन पीरियड लागू होगा।',
     upgradeForLoadBalancing:
       'लोड बैलेंसिंग सक्षम करने के लिए अपनी योजना अपग्रेड करें।',
+    discoverMore: 'और अधिक खोजें',
+    installProvider: 'मॉडल प्रदाताओं को स्थापित करें',
+    configureTip: 'एपीआई-कुंजी सेट करें या उपयोग के लिए मॉडल जोड़ें',
+    toBeConfigured: 'कॉन्फ़िगर किया जाना है',
+    emptyProviderTitle: 'मॉडल प्रदाता सेट नहीं किया गया',
+    emptyProviderTip: 'कृपया पहले एक मॉडल प्रदाता स्थापित करें।',
   },
   dataSource: {
     add: 'डेटा स्रोत जोड़ें',
@@ -495,6 +531,7 @@ const translation = {
       'ज्ञान को संबद्ध नहीं किया गया है, कृपया संबद्धता पूरी करने के लिए एप्लिकेशन या प्लग-इन पर जाएं।',
     viewDoc: 'दस्तावेज़ देखें',
     relatedApp: 'संबंधित ऐप्स',
+    noRelatedApp: 'कोई लिंक नहीं किए गए ऐप्स',
   },
   voiceInput: {
     speaking: 'अब बोलें...',
@@ -526,6 +563,8 @@ const translation = {
       hitScore: 'पुनः प्राप्ति स्कोर:',
     },
     inputPlaceholder: 'बॉट से बात करें',
+    thought: 'विचार',
+    thinking: 'सोचते हुए...',
   },
   promptEditor: {
     placeholder:
@@ -616,6 +655,9 @@ const translation = {
   license: {
     expiring: 'एक दिन में समाप्त हो रहा है',
     expiring_plural: '{{गिनती}} दिनों में समाप्त हो रहा है',
+  },
+  pagination: {
+    perPage: 'प्रति पृष्ठ आइटम',
   },
 }
 

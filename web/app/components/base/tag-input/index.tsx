@@ -3,8 +3,8 @@ import type { ChangeEvent, FC, KeyboardEvent } from 'react'
 import { } from 'use-context-selector'
 import { useTranslation } from 'react-i18next'
 import AutosizeInput from 'react-18-input-autosize'
+import { RiAddLine, RiCloseLine } from '@remixicon/react'
 import cn from '@/utils/classnames'
-import { X } from '@/app/components/base/icons/src/vender/line/general'
 import { useToastContext } from '@/app/components/base/toast'
 
 type TagInputProps = {
@@ -70,19 +70,19 @@ const TagInput: FC<TagInputProps> = ({
   }
 
   return (
-    <div className={cn('flex flex-wrap', !isInWorkflow && 'min-w-[200px]', isSpecialMode ? 'bg-gray-100 rounded-lg pb-1 pl-1' : '')}>
+    <div className={cn('flex flex-wrap', !isInWorkflow && 'min-w-[200px]', isSpecialMode ? 'rounded-lg bg-gray-100 pb-1 pl-1' : '')}>
       {
         (items || []).map((item, index) => (
           <div
             key={item}
-            className={cn('flex items-center mr-1 mt-1 px-2 py-1 text-sm text-gray-700 border border-gray-200', isSpecialMode ? 'bg-white rounded-md' : 'rounded-lg')}>
+            className={cn('system-xs-regular mr-1 mt-1 flex items-center rounded-md border border-divider-deep bg-components-badge-white-to-dark py-1 pl-1.5 pr-1 text-text-secondary')}
+          >
             {item}
             {
               !disableRemove && (
-                <X
-                  className='ml-0.5 w-3 h-3 text-gray-500 cursor-pointer'
-                  onClick={() => handleRemove(index)}
-                />
+                <div className='flex h-4 w-4 cursor-pointer items-center justify-center' onClick={() => handleRemove(index)}>
+                  <RiCloseLine className='ml-0.5 h-3.5 w-3.5 text-text-tertiary' />
+                </div>
               )
             }
           </div>
@@ -90,24 +90,27 @@ const TagInput: FC<TagInputProps> = ({
       }
       {
         !disableAdd && (
-          <AutosizeInput
-            inputClassName={cn('outline-none appearance-none placeholder:text-gray-300 caret-primary-600 hover:placeholder:text-gray-400', isSpecialMode ? 'bg-transparent' : '')}
-            className={cn(
-              !isInWorkflow && 'max-w-[300px]',
-              isInWorkflow && 'max-w-[146px]',
-              `
-              mt-1 py-1 rounded-lg border border-transparent text-sm  overflow-hidden
-              ${focused && 'px-2 border !border-dashed !border-gray-200'}
-            `)}
-            onFocus={() => setFocused(true)}
-            onBlur={handleBlur}
-            value={value}
-            onChange={(e: ChangeEvent<HTMLInputElement>) => {
-              setValue(e.target.value)
-            }}
-            onKeyDown={handleKeyDown}
-            placeholder={t(placeholder || (isSpecialMode ? 'common.model.params.stop_sequencesPlaceholder' : 'datasetDocuments.segment.addKeyWord'))}
-          />
+          <div className={cn('group/tag-add mt-1 flex items-center gap-x-0.5', !isSpecialMode ? 'rounded-md border border-dashed border-divider-deep px-1.5' : '')}>
+            {!isSpecialMode && !focused && <RiAddLine className='h-3.5 w-3.5 text-text-placeholder group-hover/tag-add:text-text-secondary' />}
+            <AutosizeInput
+              inputClassName={cn('appearance-none caret-[#295EFF] outline-none placeholder:text-text-placeholder group-hover/tag-add:placeholder:text-text-secondary', isSpecialMode ? 'bg-transparent' : '')}
+              className={cn(
+                !isInWorkflow && 'max-w-[300px]',
+                isInWorkflow && 'max-w-[146px]',
+                `
+                system-xs-regular overflow-hidden rounded-md py-1
+                ${focused && isSpecialMode && 'border border-dashed border-divider-deep px-1.5'}
+              `)}
+              onFocus={() => setFocused(true)}
+              onBlur={handleBlur}
+              value={value}
+              onChange={(e: ChangeEvent<HTMLInputElement>) => {
+                setValue(e.target.value)
+              }}
+              onKeyDown={handleKeyDown}
+              placeholder={t(placeholder || (isSpecialMode ? 'common.model.params.stop_sequencesPlaceholder' : 'datasetDocuments.segment.addKeyWord'))}
+            />
+          </div>
         )
       }
     </div>

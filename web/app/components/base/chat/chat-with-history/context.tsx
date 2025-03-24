@@ -5,7 +5,7 @@ import { createContext, useContext } from 'use-context-selector'
 import type {
   Callback,
   ChatConfig,
-  ChatItem,
+  ChatItemInTree,
   Feedback,
 } from '../types'
 import type { ThemeBuilder } from '../embedded-chatbot/theme/theme-context'
@@ -25,16 +25,15 @@ export type ChatWithHistoryContextValue = {
   appChatListDataLoading?: boolean
   currentConversationId: string
   currentConversationItem?: ConversationItem
-  appPrevChatList: ChatItem[]
+  appPrevChatTree: ChatItemInTree[]
   pinnedConversationList: AppConversationData['data']
   conversationList: AppConversationData['data']
-  showConfigPanelBeforeChat: boolean
   newConversationInputs: Record<string, any>
   newConversationInputsRef: RefObject<Record<string, any>>
   handleNewConversationInputsChange: (v: Record<string, any>) => void
   inputsForms: any[]
   handleNewConversation: () => void
-  handleStartChat: () => void
+  handleStartChat: (callback?: any) => void
   handleChangeConversation: (conversationId: string) => void
   handlePinConversation: (conversationId: string) => void
   handleUnpinConversation: (conversationId: string) => void
@@ -49,14 +48,19 @@ export type ChatWithHistoryContextValue = {
   handleFeedback: (messageId: string, feedback: Feedback) => void
   currentChatInstanceRef: RefObject<{ handleStop: () => void }>
   themeBuilder?: ThemeBuilder
+  sidebarCollapseState?: boolean
+  handleSidebarCollapse: (state: boolean) => void
+  clearChatList?: boolean
+  setClearChatList: (state: boolean) => void
+  isResponding?: boolean
+  setIsResponding: (state: boolean) => void,
 }
 
 export const ChatWithHistoryContext = createContext<ChatWithHistoryContextValue>({
   currentConversationId: '',
-  appPrevChatList: [],
+  appPrevChatTree: [],
   pinnedConversationList: [],
   conversationList: [],
-  showConfigPanelBeforeChat: false,
   newConversationInputs: {},
   newConversationInputsRef: { current: {} },
   handleNewConversationInputsChange: () => {},
@@ -75,5 +79,11 @@ export const ChatWithHistoryContext = createContext<ChatWithHistoryContextValue>
   isInstalledApp: false,
   handleFeedback: () => {},
   currentChatInstanceRef: { current: { handleStop: () => {} } },
+  sidebarCollapseState: false,
+  handleSidebarCollapse: () => {},
+  clearChatList: false,
+  setClearChatList: () => {},
+  isResponding: false,
+  setIsResponding: () => {},
 })
 export const useChatWithHistoryContext = () => useContext(ChatWithHistoryContext)

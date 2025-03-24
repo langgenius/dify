@@ -42,6 +42,18 @@ const translation = {
     openInNewTab: 'Odpri v novem zavihku',
     zoomOut: 'Pomanjšanje',
     zoomIn: 'Povečava',
+    saveAndRegenerate: 'Shranite in regenerirajte otroške koščke',
+    close: 'Blizu',
+    view: 'Pogled',
+    regenerate: 'Regeneracijo',
+    viewMore: 'POGLEJ VEČ',
+    submit: 'Predložiti',
+    skip: 'Ladja',
+    imageCopied: 'Kopirana slika',
+    deleteApp: 'Izbriši aplikacijo',
+    viewDetails: 'Poglej podrobnosti',
+    copied: 'Kopirati',
+    in: 'v',
   },
   errorMsg: {
     fieldRequired: '{{field}} je obvezno',
@@ -118,6 +130,8 @@ const translation = {
       Custom: 'Po meri',
     },
     addMoreModel: 'Pojdite v nastavitve, da dodate več modelov',
+    settingsLink: 'Nastavitve ponudnika modelov',
+    capabilities: 'Multimodalne zmogljivosti',
   },
   menus: {
     status: 'beta',
@@ -130,6 +144,7 @@ const translation = {
     newApp: 'Nova aplikacija',
     newDataset: 'Ustvari znanje',
     tools: 'Orodja',
+    exploreMarketplace: 'Raziščite Marketplace',
   },
   userProfile: {
     settings: 'Nastavitve',
@@ -155,6 +170,7 @@ const translation = {
     dataSource: 'Vir podatkov',
     plugin: 'Vtičniki',
     apiBasedExtension: 'Razširitev API-ja',
+    generalGroup: 'SPLOŠNO',
   },
   account: {
     account: 'Račun',
@@ -178,6 +194,18 @@ const translation = {
     delete: 'Izbriši račun',
     deleteTip: 'Brisanje vašega računa bo trajno izbrisalo vse vaše podatke in jih ne bo mogoče obnoviti.',
     deleteConfirmTip: 'Za potrditev pošljite naslednje s svojega registriranega e-poštnega naslova na ',
+    permanentlyDeleteButton: 'Trajno izbriši račun',
+    deletePrivacyLinkTip: 'Za več informacij o tem, kako ravnamo z vašimi podatki, si oglejte naše',
+    feedbackPlaceholder: 'Neobvezno',
+    sendVerificationButton: 'Pošlji kodo za preverjanje',
+    feedbackLabel: 'Povejte nam, zakaj ste izbrisali račun?',
+    verificationLabel: 'Koda za preverjanje',
+    verificationPlaceholder: 'Prilepite 6-mestno kodo',
+    deletePrivacyLink: 'Pravilnik o zasebnosti.',
+    deletePlaceholder: 'Prosimo, vnesite svoj e-poštni naslov',
+    deleteSuccessTip: 'Vaš račun potrebuje čas, da dokonča brisanje. Ko bo vse končano, vam bomo poslali e-pošto.',
+    feedbackTitle: 'Povratne informacije',
+    deleteLabel: 'Za potrditev spodaj vnesite svoj e-poštni naslov',
   },
   members: {
     team: 'Ekipa',
@@ -199,6 +227,7 @@ const translation = {
     datasetOperatorTip: 'Lahko upravlja samo bazo znanja',
     inviteTeamMember: 'Dodaj člana ekipe',
     inviteTeamMemberTip: 'Do vaših podatkov bo lahko dostopal takoj po prijavi.',
+    emailNotSetup: 'E-poštni strežnik ni nastavljen, zato vabil po e-pošti ni mogoče poslati. Prosimo, obvestite uporabnike o povezavi za povabilo, ki bo izdana po povabilu.',
     email: 'E-pošta',
     emailInvalid: 'Neveljaven format e-pošte',
     emailPlaceholder: 'Vnesite e-poštne naslove',
@@ -269,6 +298,7 @@ const translation = {
       usedUp: 'Kvota za preizkus porabljena. Dodajte svojega ponudnika modelov.',
       useYourModel: 'Trenutno uporabljate svojega ponudnika modelov.',
       close: 'Zapri',
+      trialQuotaTip: 'Vaša kvota za preskušanje antropičnih izdelkov bo potekla 11.3.2025 in po tem datumu ne bo več na voljo. Prosimo, da jo pravočasno izkoristite.',
     },
     anthropic: {
       using: 'Zmožnost vdelave uporablja',
@@ -579,6 +609,12 @@ const translation = {
       created: 'Oznaka uspešno ustvarjena',
       failed: 'Ustvarjanje oznake ni uspelo',
     },
+    discoverMore: 'Odkrijte več v',
+    installProvider: 'Namestitev ponudnikov modelov',
+    emptyProviderTitle: 'Ponudnik modelov ni nastavljen',
+    emptyProviderTip: 'Najprej namestite ponudnika modelov.',
+    toBeConfigured: 'Za konfiguracijo',
+    configureTip: 'Nastavitev tipke API ali dodajanje modela za uporabo',
   },
   dataSource: {
     notion: {
@@ -676,6 +712,7 @@ const translation = {
     emptyTip: 'Znanje ni bilo povezano, prosimo, pojdite na aplikacijo ali vtičnik, da dokončate združenje.',
     viewDoc: 'Oglejte si dokumentacijo',
     relatedApp: 'Povezane aplikacije',
+    noRelatedApp: 'Brez povezanih aplikacij',
   },
   voiceInput: {
     notAllow: 'Mikrofon ni pooblaščen',
@@ -707,6 +744,8 @@ const translation = {
     renameConversation: 'Preimenovanje pogovora',
     conversationName: 'Ime pogovora',
     conversationNamePlaceholder: 'Prosimo, vnesite ime pogovora',
+    thinking: 'Razmišljanje...',
+    thought: 'Misel',
   },
   promptEditor: {
     context: {
@@ -793,6 +832,9 @@ const translation = {
   license: {
     expiring_plural: 'Poteče v {{count}} dneh',
     expiring: 'Poteče v enem dnevu',
+  },
+  pagination: {
+    perPage: 'Elementi na stran',
   },
 }
 

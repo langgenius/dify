@@ -1,15 +1,14 @@
 import json
 import logging
 from datetime import UTC, datetime
-from typing import cast
+from typing import Optional, cast
 
-from flask_login import current_user
+from flask_login import current_user  # type: ignore
 from flask_sqlalchemy.pagination import Pagination
 
 from configs import dify_config
 from constants.model_template import default_app_templates
 from core.agent.entities import AgentToolEntity
-from core.app.features.rate_limiting import RateLimit
 from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
 from core.model_manager import ModelManager
 from core.model_runtime.entities.model_entities import ModelPropertyKey, ModelType
@@ -26,9 +25,10 @@ from tasks.remove_app_and_related_data_task import remove_app_and_related_data_t
 
 
 class AppService:
-    def get_paginate_apps(self, tenant_id: str, args: dict) -> Pagination | None:
+    def get_paginate_apps(self, user_id: str, tenant_id: str, args: dict) -> Pagination | None:
         """
         Get app list with pagination
+        :param user_id: user id
         :param tenant_id: tenant id
         :param args: request args
         :return:
@@ -36,14 +36,20 @@ class AppService:
         filters = [App.tenant_id == tenant_id, App.is_universal == False]
 
         if args["mode"] == "workflow":
-            filters.append(App.mode.in_([AppMode.WORKFLOW.value, AppMode.COMPLETION.value]))
+            filters.append(App.mode == AppMode.WORKFLOW.value)
+        elif args["mode"] == "completion":
+            filters.append(App.mode == AppMode.COMPLETION.value)
         elif args["mode"] == "chat":
-            filters.append(App.mode.in_([AppMode.CHAT.value, AppMode.ADVANCED_CHAT.value]))
+            filters.append(App.mode == AppMode.CHAT.value)
+        elif args["mode"] == "advanced-chat":
+            filters.append(App.mode == AppMode.ADVANCED_CHAT.value)
         elif args["mode"] == "agent-chat":
             filters.append(App.mode == AppMode.AGENT_CHAT.value)
         elif args["mode"] == "channel":
             filters.append(App.mode == AppMode.CHANNEL.value)
 
+        if args.get("is_created_by_me", False):
+            filters.append(App.created_by == user_id)
         if args.get("name"):
             name = args["name"][:30]
             filters.append(App.name.ilike(f"%{name}%"))
@@ -83,7 +89,7 @@ class AppService:
             # get default model instance
             try:
                 model_instance = model_manager.get_default_model_instance(
-                    tenant_id=account.current_tenant_id, model_type=ModelType.LLM
+                    tenant_id=account.current_tenant_id or "", model_type=ModelType.LLM
                 )
             except (ProviderTokenNotInitError, LLMBadRequestError):
                 model_instance = None
@@ -100,6 +106,8 @@ class AppService:
                 else:
                     llm_model = cast(LargeLanguageModel, model_instance.model_type_instance)
                     model_schema = llm_model.get_model_schema(model_instance.model, model_instance.credentials)
+                    if model_schema is None:
+                        raise ValueError(f"model schema not found for model {model_instance.model}")
 
                     default_model_dict = {
                         "provider": model_instance.provider,
@@ -109,7 +117,7 @@ class AppService:
                     }
             else:
                 provider, model = model_manager.get_default_provider_model_name(
-                    tenant_id=account.current_tenant_id, model_type=ModelType.LLM
+                    tenant_id=account.current_tenant_id or "", model_type=ModelType.LLM
                 )
                 default_model_config["model"]["provider"] = provider
                 default_model_config["model"]["name"] = model
@@ -217,7 +225,6 @@ class AppService:
         """
         app.name = args.get("name")
         app.description = args.get("description", "")
-        app.max_active_requests = args.get("max_active_requests")
         app.icon_type = args.get("icon_type", "emoji")
         app.icon = args.get("icon")
         app.icon_background = args.get("icon_background")
@@ -226,9 +233,6 @@ class AppService:
         app.updated_at = datetime.now(UTC).replace(tzinfo=None)
         db.session.commit()
 
-        if app.max_active_requests is not None:
-            rate_limit = RateLimit(app.id, app.max_active_requests)
-            rate_limit.flush_cache(use_local_value=True)
         return app
 
     def update_app_name(self, app: App, name: str) -> App:
@@ -314,7 +318,7 @@ class AppService:
         """
         app_mode = AppMode.value_of(app_model.mode)
 
-        meta = {"tool_icons": {}}
+        meta: dict = {"tool_icons": {}}
 
         if app_mode in {AppMode.ADVANCED_CHAT, AppMode.WORKFLOW}:
             workflow = app_model.workflow
@@ -336,7 +340,7 @@ class AppService:
                         }
                     )
         else:
-            app_model_config: AppModelConfig = app_model.app_model_config
+            app_model_config: Optional[AppModelConfig] = app_model.app_model_config
 
             if not app_model_config:
                 return meta
@@ -352,16 +356,18 @@ class AppService:
             keys = list(tool.keys())
             if len(keys) >= 4:
                 # current tool standard
-                provider_type = tool.get("provider_type")
-                provider_id = tool.get("provider_id")
-                tool_name = tool.get("tool_name")
+                provider_type = tool.get("provider_type", "")
+                provider_id = tool.get("provider_id", "")
+                tool_name = tool.get("tool_name", "")
                 if provider_type == "builtin":
                     meta["tool_icons"][tool_name] = url_prefix + provider_id + "/icon"
                 elif provider_type == "api":
                     try:
-                        provider: ApiToolProvider = (
+                        provider: Optional[ApiToolProvider] = (
                             db.session.query(ApiToolProvider).filter(ApiToolProvider.id == provider_id).first()
                         )
+                        if provider is None:
+                            raise ValueError(f"provider not found for tool {tool_name}")
                         meta["tool_icons"][tool_name] = json.loads(provider.icon)
                     except:
                         meta["tool_icons"][tool_name] = {"background": "#252525", "content": "\ud83d\ude01"}

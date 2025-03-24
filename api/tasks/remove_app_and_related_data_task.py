@@ -3,7 +3,7 @@ import time
 from collections.abc import Callable
 
 import click
-from celery import shared_task
+from celery import shared_task  # type: ignore
 from sqlalchemy import delete
 from sqlalchemy.exc import SQLAlchemyError
 

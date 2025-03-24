@@ -61,13 +61,30 @@ const Doc = ({ appDetail }: IDocProps) => {
     // Run after component has rendered
     setTimeout(extractTOC, 0)
   }, [appDetail, locale])
+
+  const handleTocClick = (e: React.MouseEvent<HTMLAnchorElement>, item: { href: string; text: string }) => {
+    e.preventDefault()
+    const targetId = item.href.replace('#', '')
+    const element = document.getElementById(targetId)
+    if (element) {
+      const scrollContainer = document.querySelector('.overflow-auto')
+      if (scrollContainer) {
+        const headerOffset = 80
+        const elementTop = element.offsetTop - headerOffset
+        scrollContainer.scrollTo({
+          top: elementTop,
+          behavior: 'smooth',
+        })
+      }
+    }
+  }
   return (
     <div className="flex">
       <div className={`fixed right-8 top-32 z-10 transition-all ${isTocExpanded ? 'w-64' : 'w-10'}`}>
         {isTocExpanded
           ? (
-            <nav className="toc w-full bg-gray-50 p-4 rounded-lg shadow-md">
-              <div className="flex justify-between items-center mb-4">
+            <nav className="toc w-full rounded-lg bg-gray-50 p-4 shadow-md">
+              <div className="mb-4 flex items-center justify-between">
                 <h3 className="text-lg font-semibold">{t('appApi.develop.toc')}</h3>
                 <button
                   onClick={() => setIsTocExpanded(false)}
@@ -81,7 +98,8 @@ const Doc = ({ appDetail }: IDocProps) => {
                   <li key={index}>
                     <a
                       href={item.href}
-                      className="text-gray-600 hover:text-gray-900 hover:underline transition-colors duration-200"
+                      className="text-gray-600 transition-colors duration-200 hover:text-gray-900 hover:underline"
+                      onClick={e => handleTocClick(e, item)}
                     >
                       {item.text}
                     </a>
@@ -93,13 +111,13 @@ const Doc = ({ appDetail }: IDocProps) => {
           : (
             <button
               onClick={() => setIsTocExpanded(true)}
-              className="w-10 h-10 bg-gray-50 rounded-full shadow-md flex items-center justify-center hover:bg-gray-100 transition-colors duration-200"
+              className="flex h-10 w-10 items-center justify-center rounded-full bg-gray-50 shadow-md transition-colors duration-200 hover:bg-gray-100"
             >
-              <RiListUnordered className="w-6 h-6" />
+              <RiListUnordered className="h-6 w-6" />
             </button>
           )}
       </div>
-      <article className="prose prose-xl" >
+      <article className="prose-xl prose" >
         {(appDetail?.mode === 'chat' || appDetail?.mode === 'agent-chat') && (
           (() => {
             switch (locale) {

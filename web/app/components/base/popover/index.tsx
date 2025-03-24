@@ -1,6 +1,5 @@
-import { Popover, Transition } from '@headlessui/react'
+import { Popover, PopoverButton, PopoverPanel, Transition } from '@headlessui/react'
 import { Fragment, cloneElement, useRef } from 'react'
-import s from './style.module.css'
 import cn from '@/utils/classnames'
 
 export type HtmlContentProps = {
@@ -10,7 +9,7 @@ export type HtmlContentProps = {
 
 type IPopover = {
   className?: string
-  htmlContent: React.ReactElement<HtmlContentProps>
+  htmlContent: React.ReactNode<HtmlContentProps>
   popupClassName?: string
   trigger?: 'click' | 'hover'
   position?: 'bottom' | 'br' | 'bl'
@@ -34,15 +33,15 @@ export default function CustomPopover({
   disabled = false,
 }: IPopover) {
   const buttonRef = useRef<HTMLButtonElement>(null)
-  const timeOutRef = useRef<NodeJS.Timeout | null>(null)
+  const timeOutRef = useRef<number | null>(null)
 
   const onMouseEnter = (isOpen: boolean) => {
-    timeOutRef.current && clearTimeout(timeOutRef.current)
+    timeOutRef.current && window.clearTimeout(timeOutRef.current)
     !isOpen && buttonRef.current?.click()
   }
 
   const onMouseLeave = (isOpen: boolean) => {
-    timeOutRef.current = setTimeout(() => {
+    timeOutRef.current = window.setTimeout(() => {
       isOpen && buttonRef.current?.click()
     }, timeoutDuration)
   }
@@ -60,23 +59,23 @@ export default function CustomPopover({
                   onMouseEnter: () => onMouseEnter(open),
                 })}
             >
-              <Popover.Button
+              <PopoverButton
                 ref={buttonRef}
                 disabled={disabled}
-                className={`group ${s.popupBtn} ${open ? '' : 'bg-gray-100'} ${!btnClassName
-                  ? ''
-                  : typeof btnClassName === 'string'
-                    ? btnClassName
-                    : btnClassName?.(open)
-                }`}
+                className={cn(
+                  'group inline-flex items-center rounded-lg border border-components-button-secondary-border bg-components-button-secondary-bg px-3 py-2 text-base font-medium hover:border-components-button-secondary-border-hover hover:bg-components-button-secondary-bg-hover focus:outline-none',
+                  open && 'border-components-button-secondary-border bg-components-button-secondary-bg-hover',
+                  (btnClassName && typeof btnClassName === 'string') && btnClassName,
+                  (btnClassName && typeof btnClassName !== 'string') && btnClassName?.(open),
+                )}
               >
                 {btnElement}
-              </Popover.Button>
+              </PopoverButton>
               <Transition as={Fragment}>
-                <Popover.Panel
+                <PopoverPanel
                   className={cn(
-                    s.popupPanel,
-                    position === 'bottom' && '-translate-x-1/2 left-1/2',
+                    'absolute z-10 mt-1 w-full max-w-sm px-4 sm:px-0 lg:max-w-3xl',
+                    position === 'bottom' && 'left-1/2 -translate-x-1/2',
                     position === 'bl' && 'left-0',
                     position === 'br' && 'right-0',
                     className,
@@ -91,7 +90,7 @@ export default function CustomPopover({
                 >
                   {({ close }) => (
                     <div
-                      className={cn(s.panelContainer, popupClassName)}
+                      className={cn('w-fit min-w-[130px] overflow-hidden rounded-lg bg-components-panel-bg shadow-lg ring-1 ring-black ring-opacity-5', popupClassName)}
                       {...(trigger !== 'hover'
                         ? {}
                         : {
@@ -100,7 +99,7 @@ export default function CustomPopover({
                         })
                       }
                     >
-                      {cloneElement(htmlContent as React.ReactElement<HtmlContentProps>, {
+                      {cloneElement(htmlContent as React.ReactNode<HtmlContentProps>, {
                         onClose: () => onMouseLeave(open),
                         ...(manualClose
                           ? {
@@ -110,7 +109,7 @@ export default function CustomPopover({
                       })}
                     </div>
                   )}
-                </Popover.Panel>
+                </PopoverPanel>
               </Transition>
             </div>
           </>

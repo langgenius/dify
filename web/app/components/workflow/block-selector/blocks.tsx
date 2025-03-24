@@ -58,7 +58,7 @@ const Blocks = ({
       >
         {
           classification !== '-' && !!list.length && (
-            <div className='flex items-start px-3 h-[22px] text-xs font-medium text-gray-500'>
+            <div className='flex h-[22px] items-start px-3 text-xs font-medium text-text-tertiary'>
               {t(`workflow.tabs.${classification}`)}
             </div>
           )
@@ -68,7 +68,7 @@ const Blocks = ({
             <Tooltip
               key={block.type}
               position='right'
-              popupClassName='!p-0 !px-3 !py-2.5 !w-[200px] !leading-[18px] !text-xs !text-gray-700 !border-[0.5px] !border-black/5 !rounded-xl !shadow-lg'
+              popupClassName='w-[200px]'
               popupContent={(
                 <div>
                   <BlockIcon
@@ -76,21 +76,21 @@ const Blocks = ({
                     className='mb-2'
                     type={block.type}
                   />
-                  <div className='mb-1 text-sm leading-5 text-gray-900'>{block.title}</div>
-                  <div className='text-xs text-gray-700 leading-[18px]'>{nodesExtraData[block.type].about}</div>
+                  <div className='system-md-medium mb-1 text-text-primary'>{block.title}</div>
+                  <div className='system-xs-regular text-text-tertiary'>{nodesExtraData[block.type].about}</div>
                 </div>
               )}
             >
               <div
                 key={block.type}
-                className='flex items-center px-3 w-full h-8 rounded-lg hover:bg-gray-50 cursor-pointer'
+                className='flex h-8 w-full cursor-pointer items-center rounded-lg px-3 hover:bg-state-base-hover'
                 onClick={() => onSelect(block.type)}
               >
                 <BlockIcon
                   className='mr-2 shrink-0'
                   type={block.type}
                 />
-                <div className='text-sm text-gray-900'>{block.title}</div>
+                <div className='text-sm text-text-secondary'>{block.title}</div>
               </div>
             </Tooltip>
           ))
@@ -103,7 +103,7 @@ const Blocks = ({
     <div className='p-1'>
       {
         isEmpty && (
-          <div className='flex items-center px-3 h-[22px] text-xs font-medium text-gray-500'>{t('workflow.tabs.noResult')}</div>
+          <div className='flex h-[22px] items-center px-3 text-xs font-medium text-text-tertiary'>{t('workflow.tabs.noResult')}</div>
         )
       }
       {

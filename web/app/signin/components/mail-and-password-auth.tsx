@@ -12,12 +12,13 @@ import I18NContext from '@/context/i18n'
 
 type MailAndPasswordAuthProps = {
   isInvite: boolean
+  isEmailSetup: boolean
   allowRegistration: boolean
 }
 
 const passwordRegex = /^(?=.*[a-zA-Z])(?=.*\d).{8,}$/
 
-export default function MailAndPasswordAuth({ isInvite, allowRegistration }: MailAndPasswordAuthProps) {
+export default function MailAndPasswordAuth({ isInvite, isEmailSetup, allowRegistration }: MailAndPasswordAuthProps) {
   const { t } = useTranslation()
   const { locale } = useContext(I18NContext)
   const router = useRouter()
@@ -104,7 +105,7 @@ export default function MailAndPasswordAuth({ isInvite, allowRegistration }: Mai
 
   return <form onSubmit={() => { }}>
     <div className='mb-3'>
-      <label htmlFor="email" className="my-2 system-md-semibold text-text-secondary">
+      <label htmlFor="email" className="system-md-semibold my-2 text-text-secondary">
         {t('login.email')}
       </label>
       <div className="mt-1">
@@ -124,7 +125,12 @@ export default function MailAndPasswordAuth({ isInvite, allowRegistration }: Mai
     <div className='mb-3'>
       <label htmlFor="password" className="my-2 flex items-center justify-between">
         <span className='system-md-semibold text-text-secondary'>{t('login.password')}</span>
-        <Link href={`/reset-password?${searchParams.toString()}`} className='system-xs-regular text-components-button-secondary-accent-text'>
+        <Link
+          href={`/reset-password?${searchParams.toString()}`}
+          className={`system-xs-regular ${isEmailSetup ? 'text-components-button-secondary-accent-text' : 'pointer-events-none text-components-button-secondary-accent-text-disabled'}`}
+          tabIndex={isEmailSetup ? 0 : -1}
+          aria-disabled={!isEmailSetup}
+        >
           {t('login.forget')}
         </Link>
       </label>

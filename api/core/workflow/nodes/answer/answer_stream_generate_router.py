@@ -6,7 +6,7 @@ from core.workflow.nodes.answer.entities import (
     TextGenerateRouteChunk,
     VarGenerateRouteChunk,
 )
-from core.workflow.nodes.enums import NodeType
+from core.workflow.nodes.enums import ErrorStrategy, NodeType
 from core.workflow.utils.variable_template_parser import VariableTemplateParser
 
 
@@ -147,14 +147,22 @@ class AnswerStreamGeneratorRouter:
         reverse_edges = reverse_edge_mapping.get(current_node_id, [])
         for edge in reverse_edges:
             source_node_id = edge.source_node_id
+            if source_node_id not in node_id_config_mapping:
+                continue
             source_node_type = node_id_config_mapping[source_node_id].get("data", {}).get("type")
-            if source_node_type in {
-                NodeType.ANSWER,
-                NodeType.IF_ELSE,
-                NodeType.QUESTION_CLASSIFIER,
-                NodeType.ITERATION,
-                NodeType.CONVERSATION_VARIABLE_ASSIGNER,
-            }:
+            source_node_data = node_id_config_mapping[source_node_id].get("data", {})
+            if (
+                source_node_type
+                in {
+                    NodeType.ANSWER,
+                    NodeType.IF_ELSE,
+                    NodeType.QUESTION_CLASSIFIER,
+                    NodeType.ITERATION,
+                    NodeType.LOOP,
+                    NodeType.VARIABLE_ASSIGNER,
+                }
+                or source_node_data.get("error_strategy") == ErrorStrategy.FAIL_BRANCH
+            ):
                 answer_dependencies[answer_node_id].append(source_node_id)
             else:
                 cls._recursive_fetch_answer_dependencies(

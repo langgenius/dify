@@ -16,6 +16,7 @@ class VectorType(StrEnum):
     TENCENT = "tencent"
     ORACLE = "oracle"
     ELASTICSEARCH = "elasticsearch"
+    ELASTICSEARCH_JA = "elasticsearch-ja"
     LINDORM = "lindorm"
     COUCHBASE = "couchbase"
     BAIDU = "baidu"
@@ -23,3 +24,4 @@ class VectorType(StrEnum):
     UPSTASH = "upstash"
     TIDB_ON_QDRANT = "tidb_on_qdrant"
     OCEANBASE = "oceanbase"
+    OPENGAUSS = "opengauss"

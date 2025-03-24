@@ -1,6 +1,6 @@
 'use client'
 
-import { forwardRef, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import {
   useRouter,
   useSearchParams,
@@ -11,13 +11,22 @@ import CreateAppModal from '@/app/components/app/create-app-modal'
 import CreateFromDSLModal, { CreateFromDSLModalTab } from '@/app/components/app/create-from-dsl-modal'
 import { useProviderContext } from '@/context/provider-context'
 import { FileArrow01, FilePlus01, FilePlus02 } from '@/app/components/base/icons/src/vender/line/files'
+import cn from '@/utils/classnames'
 
 export type CreateAppCardProps = {
+  className?: string
   onSuccess?: () => void
 }
 
-// eslint-disable-next-line react/display-name
-const CreateAppCard = forwardRef<HTMLAnchorElement, CreateAppCardProps>(({ onSuccess }, ref) => {
+const CreateAppCard = (
+  {
+    ref,
+    className,
+    onSuccess,
+  }: CreateAppCardProps & {
+    ref: React.RefObject<HTMLDivElement>;
+  },
+) => {
   const { t } = useTranslation()
   const { onPlanInfoChanged } = useProviderContext()
   const searchParams = useSearchParams()
@@ -36,30 +45,28 @@ const CreateAppCard = forwardRef<HTMLAnchorElement, CreateAppCardProps>(({ onSuc
   }, [dslUrl])
 
   return (
-    <a
+    <div
       ref={ref}
-      className='relative col-span-1 flex flex-col justify-between min-h-[160px] bg-gray-200 rounded-xl border-[0.5px] border-black/5'
+      className={cn('relative col-span-1 inline-flex h-[160px] flex-col justify-between rounded-xl border-[0.5px] border-components-card-border bg-components-card-bg', className)}
     >
-      <div className='grow p-2 rounded-t-xl'>
-        <div className='px-6 pt-2 pb-1 text-xs font-medium leading-[18px] text-gray-500'>{t('app.createApp')}</div>
-        <div className='flex items-center mb-1 px-6 py-[7px] rounded-lg text-[13px] font-medium leading-[18px] text-gray-600 cursor-pointer hover:text-primary-600 hover:bg-white' onClick={() => setShowNewAppModal(true)}>
-          <FilePlus01 className='shrink-0 mr-2 w-4 h-4' />
+      <div className='grow rounded-t-xl p-2'>
+        <div className='px-6 pb-1 pt-2 text-xs font-medium leading-[18px] text-text-tertiary'>{t('app.createApp')}</div>
+        <button className='mb-1 flex w-full cursor-pointer items-center rounded-lg px-6 py-[7px] text-[13px] font-medium leading-[18px] text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary' onClick={() => setShowNewAppModal(true)}>
+          <FilePlus01 className='mr-2 h-4 w-4 shrink-0' />
           {t('app.newApp.startFromBlank')}
-        </div>
-        <div className='flex items-center px-6 py-[7px] rounded-lg text-[13px] font-medium leading-[18px] text-gray-600 cursor-pointer hover:text-primary-600 hover:bg-white' onClick={() => setShowNewAppTemplateDialog(true)}>
-          <FilePlus02 className='shrink-0 mr-2 w-4 h-4' />
+        </button>
+        <button className='flex w-full cursor-pointer items-center rounded-lg px-6 py-[7px] text-[13px] font-medium leading-[18px] text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary' onClick={() => setShowNewAppTemplateDialog(true)}>
+          <FilePlus02 className='mr-2 h-4 w-4 shrink-0' />
           {t('app.newApp.startFromTemplate')}
-        </div>
-      </div>
-      <div
-        className='p-2 border-t-[0.5px] border-black/5 rounded-b-xl'
-        onClick={() => setShowCreateFromDSLModal(true)}
-      >
-        <div className='flex items-center px-6 py-[7px] rounded-lg text-[13px] font-medium leading-[18px] text-gray-600 cursor-pointer hover:text-primary-600 hover:bg-white'>
-          <FileArrow01 className='shrink-0 mr-2 w-4 h-4' />
+        </button>
+        <button
+          onClick={() => setShowCreateFromDSLModal(true)}
+          className='flex w-full cursor-pointer items-center rounded-lg px-6 py-[7px] text-[13px] font-medium leading-[18px] text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary'>
+          <FileArrow01 className='mr-2 h-4 w-4 shrink-0' />
           {t('app.importDSL')}
-        </div>
+        </button>
       </div>
+
       <CreateAppModal
         show={showNewAppModal}
         onClose={() => setShowNewAppModal(false)}
@@ -67,6 +74,10 @@ const CreateAppCard = forwardRef<HTMLAnchorElement, CreateAppCardProps>(({ onSuc
           onPlanInfoChanged()
           if (onSuccess)
             onSuccess()
+        }}
+        onCreateFromTemplate={() => {
+          setShowNewAppTemplateDialog(true)
+          setShowNewAppModal(false)
         }}
       />
       <CreateAppTemplateDialog
@@ -76,6 +87,10 @@ const CreateAppCard = forwardRef<HTMLAnchorElement, CreateAppCardProps>(({ onSuc
           onPlanInfoChanged()
           if (onSuccess)
             onSuccess()
+        }}
+        onCreateFromBlank={() => {
+          setShowNewAppModal(true)
+          setShowNewAppTemplateDialog(false)
         }}
       />
       <CreateFromDSLModal
@@ -94,8 +109,10 @@ const CreateAppCard = forwardRef<HTMLAnchorElement, CreateAppCardProps>(({ onSuc
             onSuccess()
         }}
       />
-    </a>
+    </div>
   )
-})
+}
 
+CreateAppCard.displayName = 'CreateAppCard'
 export default CreateAppCard
+export { CreateAppCard }

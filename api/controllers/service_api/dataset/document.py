@@ -1,19 +1,23 @@
 import json
 
 from flask import request
-from flask_restful import marshal, reqparse
+from flask_restful import marshal, reqparse  # type: ignore
 from sqlalchemy import desc
 from werkzeug.exceptions import NotFound
 
 import services.dataset_service
 from controllers.common.errors import FilenameNotExistsError
 from controllers.service_api import api
-from controllers.service_api.app.error import ProviderNotInitializeError
+from controllers.service_api.app.error import (
+    FileTooLargeError,
+    NoFileUploadedError,
+    ProviderNotInitializeError,
+    TooManyFilesError,
+    UnsupportedFileTypeError,
+)
 from controllers.service_api.dataset.error import (
     ArchivedDocumentImmutableError,
     DocumentIndexingError,
-    NoFileUploadedError,
-    TooManyFilesError,
 )
 from controllers.service_api.wraps import DatasetApiResource, cloud_edition_billing_resource_check
 from core.errors.error import ProviderTokenNotInitError
@@ -22,6 +26,7 @@ from fields.document_fields import document_fields, document_status_fields
 from libs.login import current_user
 from models.dataset import Dataset, Document, DocumentSegment
 from services.dataset_service import DocumentService
+from services.entities.knowledge_entities.knowledge_entities import KnowledgeConfig
 from services.file_service import FileService
 
 
@@ -45,6 +50,7 @@ class DocumentAddByTextApi(DatasetApiResource):
             "indexing_technique", type=str, choices=Dataset.INDEXING_TECHNIQUE_LIST, nullable=False, location="json"
         )
         parser.add_argument("retrieval_model", type=dict, required=False, nullable=False, location="json")
+
         args = parser.parse_args()
         dataset_id = str(dataset_id)
         tenant_id = str(tenant_id)
@@ -67,13 +73,14 @@ class DocumentAddByTextApi(DatasetApiResource):
             "info_list": {"data_source_type": "upload_file", "file_info_list": {"file_ids": [upload_file.id]}},
         }
         args["data_source"] = data_source
+        knowledge_config = KnowledgeConfig(**args)
         # validate args
-        DocumentService.document_create_args_validate(args)
+        DocumentService.document_create_args_validate(knowledge_config)
 
         try:
             documents, batch = DocumentService.save_document_with_dataset_id(
                 dataset=dataset,
-                document_data=args,
+                knowledge_config=knowledge_config,
                 account=current_user,
                 dataset_process_rule=dataset.latest_process_rule if "process_rule" not in args else None,
                 created_from="api",
@@ -109,6 +116,9 @@ class DocumentUpdateByTextApi(DatasetApiResource):
         if not dataset:
             raise ValueError("Dataset is not exist.")
 
+        # indexing_technique is already set in dataset since this is an update
+        args["indexing_technique"] = dataset.indexing_technique
+
         if args["text"]:
             text = args.get("text")
             name = args.get("name")
@@ -122,12 +132,13 @@ class DocumentUpdateByTextApi(DatasetApiResource):
             args["data_source"] = data_source
         # validate args
         args["original_document_id"] = str(document_id)
-        DocumentService.document_create_args_validate(args)
+        knowledge_config = KnowledgeConfig(**args)
+        DocumentService.document_create_args_validate(knowledge_config)
 
         try:
             documents, batch = DocumentService.save_document_with_dataset_id(
                 dataset=dataset,
-                document_data=args,
+                knowledge_config=knowledge_config,
                 account=current_user,
                 dataset_process_rule=dataset.latest_process_rule if "process_rule" not in args else None,
                 created_from="api",
@@ -154,6 +165,7 @@ class DocumentAddByFileApi(DatasetApiResource):
             args["doc_form"] = "text_model"
         if "doc_language" not in args:
             args["doc_language"] = "English"
+
         # get dataset info
         dataset_id = str(dataset_id)
         tenant_id = str(tenant_id)
@@ -183,15 +195,19 @@ class DocumentAddByFileApi(DatasetApiResource):
             user=current_user,
             source="datasets",
         )
-        data_source = {"type": "upload_file", "info_list": {"file_info_list": {"file_ids": [upload_file.id]}}}
+        data_source = {
+            "type": "upload_file",
+            "info_list": {"data_source_type": "upload_file", "file_info_list": {"file_ids": [upload_file.id]}},
+        }
         args["data_source"] = data_source
         # validate args
-        DocumentService.document_create_args_validate(args)
+        knowledge_config = KnowledgeConfig(**args)
+        DocumentService.document_create_args_validate(knowledge_config)
 
         try:
             documents, batch = DocumentService.save_document_with_dataset_id(
                 dataset=dataset,
-                document_data=args,
+                knowledge_config=knowledge_config,
                 account=dataset.created_by_account,
                 dataset_process_rule=dataset.latest_process_rule if "process_rule" not in args else None,
                 created_from="api",
@@ -224,6 +240,10 @@ class DocumentUpdateByFileApi(DatasetApiResource):
 
         if not dataset:
             raise ValueError("Dataset is not exist.")
+
+        # indexing_technique is already set in dataset since this is an update
+        args["indexing_technique"] = dataset.indexing_technique
+
         if "file" in request.files:
             # save file info
             file = request.files["file"]
@@ -234,23 +254,33 @@ class DocumentUpdateByFileApi(DatasetApiResource):
             if not file.filename:
                 raise FilenameNotExistsError
 
-            upload_file = FileService.upload_file(
-                filename=file.filename,
-                content=file.read(),
-                mimetype=file.mimetype,
-                user=current_user,
-                source="datasets",
-            )
-            data_source = {"type": "upload_file", "info_list": {"file_info_list": {"file_ids": [upload_file.id]}}}
+            try:
+                upload_file = FileService.upload_file(
+                    filename=file.filename,
+                    content=file.read(),
+                    mimetype=file.mimetype,
+                    user=current_user,
+                    source="datasets",
+                )
+            except services.errors.file.FileTooLargeError as file_too_large_error:
+                raise FileTooLargeError(file_too_large_error.description)
+            except services.errors.file.UnsupportedFileTypeError:
+                raise UnsupportedFileTypeError()
+            data_source = {
+                "type": "upload_file",
+                "info_list": {"data_source_type": "upload_file", "file_info_list": {"file_ids": [upload_file.id]}},
+            }
             args["data_source"] = data_source
         # validate args
         args["original_document_id"] = str(document_id)
-        DocumentService.document_create_args_validate(args)
+
+        knowledge_config = KnowledgeConfig(**args)
+        DocumentService.document_create_args_validate(knowledge_config)
 
         try:
             documents, batch = DocumentService.save_document_with_dataset_id(
                 dataset=dataset,
-                document_data=args,
+                knowledge_config=knowledge_config,
                 account=dataset.created_by_account,
                 dataset_process_rule=dataset.latest_process_rule if "process_rule" not in args else None,
                 created_from="api",

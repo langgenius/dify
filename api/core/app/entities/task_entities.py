@@ -6,6 +6,7 @@ from pydantic import BaseModel, ConfigDict
 
 from core.model_runtime.entities.llm_entities import LLMResult
 from core.model_runtime.utils.encoders import jsonable_encoder
+from core.workflow.entities.node_entities import AgentNodeStrategyInit
 from models.workflow import WorkflowNodeExecutionStatus
 
 
@@ -52,13 +53,18 @@ class StreamEvent(Enum):
     WORKFLOW_FINISHED = "workflow_finished"
     NODE_STARTED = "node_started"
     NODE_FINISHED = "node_finished"
+    NODE_RETRY = "node_retry"
     PARALLEL_BRANCH_STARTED = "parallel_branch_started"
     PARALLEL_BRANCH_FINISHED = "parallel_branch_finished"
     ITERATION_STARTED = "iteration_started"
     ITERATION_NEXT = "iteration_next"
     ITERATION_COMPLETED = "iteration_completed"
+    LOOP_STARTED = "loop_started"
+    LOOP_NEXT = "loop_next"
+    LOOP_COMPLETED = "loop_completed"
     TEXT_CHUNK = "text_chunk"
     TEXT_REPLACE = "text_replace"
+    AGENT_LOG = "agent_log"
 
 
 class StreamResponse(BaseModel):
@@ -69,7 +75,7 @@ class StreamResponse(BaseModel):
     event: StreamEvent
     task_id: str
 
-    def to_dict(self) -> dict:
+    def to_dict(self):
         return jsonable_encoder(self)
 
 
@@ -213,6 +219,7 @@ class WorkflowFinishStreamResponse(StreamResponse):
         created_by: Optional[dict] = None
         created_at: int
         finished_at: int
+        exceptions_count: Optional[int] = 0
         files: Optional[Sequence[Mapping[str, Any]]] = []
 
     event: StreamEvent = StreamEvent.WORKFLOW_FINISHED
@@ -244,7 +251,9 @@ class NodeStartStreamResponse(StreamResponse):
         parent_parallel_id: Optional[str] = None
         parent_parallel_start_node_id: Optional[str] = None
         iteration_id: Optional[str] = None
+        loop_id: Optional[str] = None
         parallel_run_id: Optional[str] = None
+        agent_strategy: Optional[AgentNodeStrategyInit] = None
 
     event: StreamEvent = StreamEvent.NODE_STARTED
     workflow_run_id: str
@@ -270,6 +279,7 @@ class NodeStartStreamResponse(StreamResponse):
                 "parent_parallel_id": self.data.parent_parallel_id,
                 "parent_parallel_start_node_id": self.data.parent_parallel_start_node_id,
                 "iteration_id": self.data.iteration_id,
+                "loop_id": self.data.loop_id,
             },
         }
 
@@ -305,6 +315,7 @@ class NodeFinishStreamResponse(StreamResponse):
         parent_parallel_id: Optional[str] = None
         parent_parallel_start_node_id: Optional[str] = None
         iteration_id: Optional[str] = None
+        loop_id: Optional[str] = None
 
     event: StreamEvent = StreamEvent.NODE_FINISHED
     workflow_run_id: str
@@ -337,6 +348,78 @@ class NodeFinishStreamResponse(StreamResponse):
                 "parent_parallel_id": self.data.parent_parallel_id,
                 "parent_parallel_start_node_id": self.data.parent_parallel_start_node_id,
                 "iteration_id": self.data.iteration_id,
+                "loop_id": self.data.loop_id,
+            },
+        }
+
+
+class NodeRetryStreamResponse(StreamResponse):
+    """
+    NodeFinishStreamResponse entity
+    """
+
+    class Data(BaseModel):
+        """
+        Data entity
+        """
+
+        id: str
+        node_id: str
+        node_type: str
+        title: str
+        index: int
+        predecessor_node_id: Optional[str] = None
+        inputs: Optional[dict] = None
+        process_data: Optional[dict] = None
+        outputs: Optional[dict] = None
+        status: str
+        error: Optional[str] = None
+        elapsed_time: float
+        execution_metadata: Optional[dict] = None
+        created_at: int
+        finished_at: int
+        files: Optional[Sequence[Mapping[str, Any]]] = []
+        parallel_id: Optional[str] = None
+        parallel_start_node_id: Optional[str] = None
+        parent_parallel_id: Optional[str] = None
+        parent_parallel_start_node_id: Optional[str] = None
+        iteration_id: Optional[str] = None
+        loop_id: Optional[str] = None
+        retry_index: int = 0
+
+    event: StreamEvent = StreamEvent.NODE_RETRY
+    workflow_run_id: str
+    data: Data
+
+    def to_ignore_detail_dict(self):
+        return {
+            "event": self.event.value,
+            "task_id": self.task_id,
+            "workflow_run_id": self.workflow_run_id,
+            "data": {
+                "id": self.data.id,
+                "node_id": self.data.node_id,
+                "node_type": self.data.node_type,
+                "title": self.data.title,
+                "index": self.data.index,
+                "predecessor_node_id": self.data.predecessor_node_id,
+                "inputs": None,
+                "process_data": None,
+                "outputs": None,
+                "status": self.data.status,
+                "error": None,
+                "elapsed_time": self.data.elapsed_time,
+                "execution_metadata": None,
+                "created_at": self.data.created_at,
+                "finished_at": self.data.finished_at,
+                "files": [],
+                "parallel_id": self.data.parallel_id,
+                "parallel_start_node_id": self.data.parallel_start_node_id,
+                "parent_parallel_id": self.data.parent_parallel_id,
+                "parent_parallel_start_node_id": self.data.parent_parallel_start_node_id,
+                "iteration_id": self.data.iteration_id,
+                "loop_id": self.data.loop_id,
+                "retry_index": self.data.retry_index,
             },
         }
 
@@ -356,6 +439,7 @@ class ParallelBranchStartStreamResponse(StreamResponse):
         parent_parallel_id: Optional[str] = None
         parent_parallel_start_node_id: Optional[str] = None
         iteration_id: Optional[str] = None
+        loop_id: Optional[str] = None
         created_at: int
 
     event: StreamEvent = StreamEvent.PARALLEL_BRANCH_STARTED
@@ -378,6 +462,7 @@ class ParallelBranchFinishedStreamResponse(StreamResponse):
         parent_parallel_id: Optional[str] = None
         parent_parallel_start_node_id: Optional[str] = None
         iteration_id: Optional[str] = None
+        loop_id: Optional[str] = None
         status: str
         error: Optional[str] = None
         created_at: int
@@ -403,8 +488,8 @@ class IterationNodeStartStreamResponse(StreamResponse):
         title: str
         created_at: int
         extras: dict = {}
-        metadata: dict = {}
-        inputs: dict = {}
+        metadata: Mapping = {}
+        inputs: Mapping = {}
         parallel_id: Optional[str] = None
         parallel_start_node_id: Optional[str] = None
 
@@ -455,21 +540,108 @@ class IterationNodeCompletedStreamResponse(StreamResponse):
         node_id: str
         node_type: str
         title: str
-        outputs: Optional[dict] = None
+        outputs: Optional[Mapping] = None
         created_at: int
         extras: Optional[dict] = None
-        inputs: Optional[dict] = None
+        inputs: Optional[Mapping] = None
         status: WorkflowNodeExecutionStatus
         error: Optional[str] = None
         elapsed_time: float
         total_tokens: int
-        execution_metadata: Optional[dict] = None
+        execution_metadata: Optional[Mapping] = None
         finished_at: int
         steps: int
         parallel_id: Optional[str] = None
         parallel_start_node_id: Optional[str] = None
 
     event: StreamEvent = StreamEvent.ITERATION_COMPLETED
+    workflow_run_id: str
+    data: Data
+
+
+class LoopNodeStartStreamResponse(StreamResponse):
+    """
+    NodeStartStreamResponse entity
+    """
+
+    class Data(BaseModel):
+        """
+        Data entity
+        """
+
+        id: str
+        node_id: str
+        node_type: str
+        title: str
+        created_at: int
+        extras: dict = {}
+        metadata: Mapping = {}
+        inputs: Mapping = {}
+        parallel_id: Optional[str] = None
+        parallel_start_node_id: Optional[str] = None
+
+    event: StreamEvent = StreamEvent.LOOP_STARTED
+    workflow_run_id: str
+    data: Data
+
+
+class LoopNodeNextStreamResponse(StreamResponse):
+    """
+    NodeStartStreamResponse entity
+    """
+
+    class Data(BaseModel):
+        """
+        Data entity
+        """
+
+        id: str
+        node_id: str
+        node_type: str
+        title: str
+        index: int
+        created_at: int
+        pre_loop_output: Optional[Any] = None
+        extras: dict = {}
+        parallel_id: Optional[str] = None
+        parallel_start_node_id: Optional[str] = None
+        parallel_mode_run_id: Optional[str] = None
+        duration: Optional[float] = None
+
+    event: StreamEvent = StreamEvent.LOOP_NEXT
+    workflow_run_id: str
+    data: Data
+
+
+class LoopNodeCompletedStreamResponse(StreamResponse):
+    """
+    NodeCompletedStreamResponse entity
+    """
+
+    class Data(BaseModel):
+        """
+        Data entity
+        """
+
+        id: str
+        node_id: str
+        node_type: str
+        title: str
+        outputs: Optional[Mapping] = None
+        created_at: int
+        extras: Optional[dict] = None
+        inputs: Optional[Mapping] = None
+        status: WorkflowNodeExecutionStatus
+        error: Optional[str] = None
+        elapsed_time: float
+        total_tokens: int
+        execution_metadata: Optional[Mapping] = None
+        finished_at: int
+        steps: int
+        parallel_id: Optional[str] = None
+        parallel_start_node_id: Optional[str] = None
+
+    event: StreamEvent = StreamEvent.LOOP_COMPLETED
     workflow_run_id: str
     data: Data
 
@@ -557,7 +729,7 @@ class AppBlockingResponse(BaseModel):
 
     task_id: str
 
-    def to_dict(self) -> dict:
+    def to_dict(self):
         return jsonable_encoder(self)
 
 
@@ -624,4 +796,28 @@ class WorkflowAppBlockingResponse(AppBlockingResponse):
         finished_at: int
 
     workflow_run_id: str
+    data: Data
+
+
+class AgentLogStreamResponse(StreamResponse):
+    """
+    AgentLogStreamResponse entity
+    """
+
+    class Data(BaseModel):
+        """
+        Data entity
+        """
+
+        node_execution_id: str
+        id: str
+        label: str
+        parent_id: str | None
+        error: str | None
+        status: str
+        data: Mapping[str, Any]
+        metadata: Optional[Mapping[str, Any]] = None
+        node_id: str
+
+    event: StreamEvent = StreamEvent.AGENT_LOG
     data: Data

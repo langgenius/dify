@@ -6,6 +6,7 @@ import VarReferencePicker from '../_base/components/variable/var-reference-picke
 import Editor from '../_base/components/prompt/editor'
 import ResultPanel from '../../run/result-panel'
 import ConfigVision from '../_base/components/config-vision'
+import { findVariableWhenOnLLMVision } from '../utils'
 import useConfig from './use-config'
 import type { ParameterExtractorNodeType } from './types'
 import ExtractParameter from './components/extract-parameter/list'
@@ -20,6 +21,8 @@ import { InputVarType, type NodePanelProps } from '@/app/components/workflow/typ
 import Tooltip from '@/app/components/base/tooltip'
 import BeforeRunForm from '@/app/components/workflow/nodes/_base/components/before-run-form'
 import { VarType } from '@/app/components/workflow/types'
+import { FieldCollapse } from '@/app/components/workflow/nodes/_base/components/collapse'
+import type { Props as FormProps } from '@/app/components/workflow/nodes/_base/components/before-run-form/form'
 
 const i18nPrefix = 'workflow.nodes.parameterExtractor'
 const i18nCommonPrefix = 'workflow.common'
@@ -50,6 +53,7 @@ const Panel: FC<NodePanelProps<ParameterExtractorNodeType>> = ({
     handleReasoningModeChange,
     availableVars,
     availableNodesWithParent,
+    availableVisionVars,
     inputVarValues,
     varInputs,
     isVisionModel,
@@ -62,13 +66,53 @@ const Panel: FC<NodePanelProps<ParameterExtractorNodeType>> = ({
     handleStop,
     runResult,
     setInputVarValues,
+    visionFiles,
+    setVisionFiles,
   } = useConfig(id, data)
 
   const model = inputs.model
 
+  const singleRunForms = (() => {
+    const forms: FormProps[] = []
+
+    forms.push(
+      {
+        label: t('workflow.nodes.llm.singleRun.variable')!,
+        inputs: [{
+          label: t(`${i18nPrefix}.inputVar`)!,
+          variable: 'query',
+          type: InputVarType.paragraph,
+          required: true,
+        }, ...varInputs],
+        values: inputVarValues,
+        onChange: setInputVarValues,
+      },
+    )
+
+    if (isVisionModel && data.vision?.enabled && data.vision?.configs?.variable_selector) {
+      const currentVariable = findVariableWhenOnLLMVision(data.vision.configs.variable_selector, availableVisionVars)
+
+      forms.push(
+        {
+          label: t('workflow.nodes.llm.vision')!,
+          inputs: [{
+            label: currentVariable?.variable as any,
+            variable: '#files#',
+            type: currentVariable?.formType as any,
+            required: false,
+          }],
+          values: { '#files#': visionFiles },
+          onChange: keyValue => setVisionFiles((keyValue as any)['#files#']),
+        },
+      )
+    }
+
+    return forms
+  })()
+
   return (
-    <div className='mt-2'>
-      <div className='px-4 pb-4 space-y-4'>
+    <div className='pt-2'>
+      <div className='space-y-4 px-4'>
         <Field
           title={t(`${i18nCommonPrefix}.model`)}
         >
@@ -120,7 +164,7 @@ const Panel: FC<NodePanelProps<ParameterExtractorNodeType>> = ({
                   {!readOnly && (
                     <ImportFromTool onImport={handleImportFromTool} />
                   )}
-                  {!readOnly && (<div className='w-px h-3 bg-gray-200'></div>)}
+                  {!readOnly && (<div className='h-3 w-px bg-gray-200'></div>)}
                   <AddExtractParameter type='add' onSave={addExtractParameter} />
                 </div>
               )
@@ -157,38 +201,33 @@ const Panel: FC<NodePanelProps<ParameterExtractorNodeType>> = ({
           nodesOutputVars={availableVars}
           availableNodes={availableNodesWithParent}
         />
-        <Field
-          title={t(`${i18nPrefix}.advancedSetting`)}
-          supportFold
-        >
-          <>
-
-            {/* Memory */}
-            {isChatMode && (
-              <div className='mt-4'>
-                <MemoryConfig
-                  readonly={readOnly}
-                  config={{ data: inputs.memory }}
-                  onChange={handleMemoryChange}
-                  canSetRoleName={isCompletionModel}
-                />
-              </div>
-            )}
-            {isSupportFunctionCall && (
-              <div className='mt-2'>
-                <ReasoningModePicker
-                  type={inputs.reasoning_mode}
-                  onChange={handleReasoningModeChange}
-                />
-              </div>
-            )}
-          </>
-        </Field>
-
       </div>
+      <FieldCollapse title={t(`${i18nPrefix}.advancedSetting`)}>
+        <>
+          {/* Memory */}
+          {isChatMode && (
+            <div className='mt-4'>
+              <MemoryConfig
+                readonly={readOnly}
+                config={{ data: inputs.memory }}
+                onChange={handleMemoryChange}
+                canSetRoleName={isCompletionModel}
+              />
+            </div>
+          )}
+          {isSupportFunctionCall && (
+            <div className='mt-2'>
+              <ReasoningModePicker
+                type={inputs.reasoning_mode}
+                onChange={handleReasoningModeChange}
+              />
+            </div>
+          )}
+        </>
+      </FieldCollapse>
       {inputs.parameters?.length > 0 && (<>
         <Split />
-        <div className='px-4 pt-4 pb-2'>
+        <div>
           <OutputVars>
             <>
               {inputs.parameters.map((param, index) => (
@@ -217,18 +256,7 @@ const Panel: FC<NodePanelProps<ParameterExtractorNodeType>> = ({
         <BeforeRunForm
           nodeName={inputs.title}
           onHide={hideSingleRun}
-          forms={[
-            {
-              inputs: [{
-                label: t(`${i18nPrefix}.inputVar`)!,
-                variable: 'query',
-                type: InputVarType.paragraph,
-                required: true,
-              }, ...varInputs],
-              values: inputVarValues,
-              onChange: setInputVarValues,
-            },
-          ]}
+          forms={singleRunForms}
           runningStatus={runningStatus}
           onRun={handleRun}
           onStop={handleStop}

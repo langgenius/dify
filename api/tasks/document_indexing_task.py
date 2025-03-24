@@ -3,7 +3,7 @@ import logging
 import time
 
 import click
-from celery import shared_task
+from celery import shared_task  # type: ignore
 
 from configs import dify_config
 from core.indexing_runner import DocumentIsPausedError, IndexingRunner
@@ -19,7 +19,7 @@ def document_indexing_task(dataset_id: str, document_ids: list):
     :param dataset_id:
     :param document_ids:
 
-    Usage: document_indexing_task.delay(dataset_id, document_id)
+    Usage: document_indexing_task.delay(dataset_id, document_ids)
     """
     documents = []
     start_at = time.perf_counter()

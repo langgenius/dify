@@ -22,16 +22,16 @@ const NotionIcon = ({
           <img
             alt='workspace icon'
             src={src}
-            className={cn('block object-cover w-5 h-5', className)}
+            className={cn('block h-5 w-5 object-cover', className)}
           />
         )
       }
       return (
-        <div className={cn('flex items-center justify-center w-5 h-5', className)}>{src}</div>
+        <div className={cn('flex h-5 w-5 items-center justify-center', className)}>{src}</div>
       )
     }
     return (
-      <div className={cn('flex items-center justify-center w-5 h-5 bg-gray-200 text-xs font-medium text-gray-500 rounded', className)}>{name?.[0].toLocaleUpperCase()}</div>
+      <div className={cn('flex h-5 w-5 items-center justify-center rounded bg-gray-200 text-xs font-medium text-gray-500', className)}>{name?.[0].toLocaleUpperCase()}</div>
     )
   }
 
@@ -41,12 +41,12 @@ const NotionIcon = ({
         <img
           alt='page icon'
           src={src.url || ''}
-          className={cn('block object-cover w-5 h-5', className)}
+          className={cn('block h-5 w-5 object-cover', className)}
         />
       )
     }
     return (
-      <div className={cn('flex items-center justify-center w-5 h-5', className)}>{src?.emoji}</div>
+      <div className={cn('flex h-5 w-5 items-center justify-center', className)}>{src?.emoji}</div>
     )
   }
 

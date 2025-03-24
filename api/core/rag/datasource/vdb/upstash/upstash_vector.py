@@ -64,7 +64,7 @@ class UpstashVector(BaseVector):
         item_ids = []
         for doc_id in ids:
             ids = self.get_ids_by_metadata_field("doc_id", doc_id)
-            if id:
+            if ids:
                 item_ids += ids
         self._delete_by_ids(ids=item_ids)
 
@@ -88,16 +88,30 @@ class UpstashVector(BaseVector):
 
     def search_by_vector(self, query_vector: list[float], **kwargs: Any) -> list[Document]:
         top_k = kwargs.get("top_k", 4)
-        result = self.index.query(vector=query_vector, top_k=top_k, include_metadata=True, include_data=True)
+        document_ids_filter = kwargs.get("document_ids_filter")
+        if document_ids_filter:
+            document_ids = ", ".join(f"'{id}'" for id in document_ids_filter)
+            filter = f"document_id in ({document_ids})"
+        else:
+            filter = ""
+        result = self.index.query(
+            vector=query_vector,
+            top_k=top_k,
+            include_metadata=True,
+            include_data=True,
+            include_vectors=False,
+            filter=filter,
+        )
         docs = []
         score_threshold = float(kwargs.get("score_threshold") or 0.0)
         for record in result:
             metadata = record.metadata
             text = record.data
             score = record.score
-            metadata["score"] = score
-            if score > score_threshold:
-                docs.append(Document(page_content=text, metadata=metadata))
+            if metadata is not None and text is not None:
+                metadata["score"] = score
+                if score > score_threshold:
+                    docs.append(Document(page_content=text, metadata=metadata))
         return docs
 
     def search_by_full_text(self, query: str, **kwargs: Any) -> list[Document]:
@@ -123,7 +137,7 @@ class UpstashVectorFactory(AbstractVectorFactory):
         return UpstashVector(
             collection_name=collection_name,
             config=UpstashVectorConfig(
-                url=dify_config.UPSTASH_VECTOR_URL,
-                token=dify_config.UPSTASH_VECTOR_TOKEN,
+                url=dify_config.UPSTASH_VECTOR_URL or "",
+                token=dify_config.UPSTASH_VECTOR_TOKEN or "",
             ),
         )

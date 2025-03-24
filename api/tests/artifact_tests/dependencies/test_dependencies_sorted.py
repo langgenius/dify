@@ -1,6 +1,6 @@
 from typing import Any
 
-import toml
+import toml  # type: ignore
 
 
 def load_api_poetry_configs() -> dict[str, Any]:
@@ -38,12 +38,12 @@ def test_group_dependencies_version_operator():
             )
 
 
-def test_duplicated_dependency_crossing_groups():
+def test_duplicated_dependency_crossing_groups() -> None:
     all_dependency_names: list[str] = []
     for dependencies in load_all_dependency_groups().values():
         dependency_names = list(dependencies.keys())
         all_dependency_names.extend(dependency_names)
     expected_all_dependency_names = set(all_dependency_names)
-    assert sorted(expected_all_dependency_names) == sorted(
-        all_dependency_names
-    ), "Duplicated dependencies crossing groups are found"
+    assert sorted(expected_all_dependency_names) == sorted(all_dependency_names), (
+        "Duplicated dependencies crossing groups are found"
+    )

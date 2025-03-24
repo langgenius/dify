@@ -1,47 +1,74 @@
 'use client'
 import type { FC } from 'react'
-import React, { useState } from 'react'
-import useSWR from 'swr'
-import { ArrowLeftIcon } from '@heroicons/react/24/solid'
-import { createContext, useContext } from 'use-context-selector'
+import React, { useMemo, useState } from 'react'
+import { createContext, useContext, useContextSelector } from 'use-context-selector'
 import { useTranslation } from 'react-i18next'
 import { useRouter } from 'next/navigation'
-import { omit } from 'lodash-es'
+import { RiArrowLeftLine, RiLayoutRight2Line } from '@remixicon/react'
 import { OperationAction, StatusItem } from '../list'
-import s from '../style.module.css'
+import DocumentPicker from '../../common/document-picker'
 import Completed from './completed'
 import Embedding from './embedding'
-import Metadata from './metadata'
+import Metadata from '@/app/components/datasets/metadata/metadata-document'
 import SegmentAdd, { ProcessStatus } from './segment-add'
 import BatchModal from './batch-modal'
 import style from './style.module.css'
 import cn from '@/utils/classnames'
 import Divider from '@/app/components/base/divider'
 import Loading from '@/app/components/base/loading'
-import type { MetadataType } from '@/service/datasets'
-import { checkSegmentBatchImportProgress, fetchDocumentDetail, segmentBatchImport } from '@/service/datasets'
 import { ToastContext } from '@/app/components/base/toast'
-import type { DocForm } from '@/models/datasets'
+import type { ChunkingMode, ParentMode, ProcessMode } from '@/models/datasets'
 import { useDatasetDetailContext } from '@/context/dataset-detail'
 import FloatRightContainer from '@/app/components/base/float-right-container'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
+import { LayoutRight2LineMod } from '@/app/components/base/icons/src/public/knowledge'
+import { useCheckSegmentBatchImportProgress, useChildSegmentListKey, useSegmentBatchImport, useSegmentListKey } from '@/service/knowledge/use-segment'
+import { useDocumentDetail, useDocumentMetadata, useInvalidDocumentList } from '@/service/knowledge/use-document'
+import { useInvalid } from '@/service/use-base'
 
-export const DocumentContext = createContext<{ datasetId?: string; documentId?: string; docForm: string }>({ docForm: '' })
+type DocumentContextValue = {
+  datasetId?: string
+  documentId?: string
+  docForm: string
+  mode?: ProcessMode
+  parentMode?: ParentMode
+}
+
+export const DocumentContext = createContext<DocumentContextValue>({ docForm: '' })
+
+export const useDocumentContext = (selector: (value: DocumentContextValue) => any) => {
+  return useContextSelector(DocumentContext, selector)
+}
 
 type DocumentTitleProps = {
+  datasetId: string
   extension?: string
   name?: string
+  processMode?: ProcessMode
+  parent_mode?: ParentMode
   iconCls?: string
   textCls?: string
   wrapperCls?: string
 }
 
-export const DocumentTitle: FC<DocumentTitleProps> = ({ extension, name, iconCls, textCls, wrapperCls }) => {
-  const localExtension = extension?.toLowerCase() || name?.split('.')?.pop()?.toLowerCase()
-  return <div className={cn('flex items-center justify-start flex-1', wrapperCls)}>
-    <div className={cn(s[`${localExtension || 'txt'}Icon`], style.titleIcon, iconCls)}></div>
-    <span className={cn('font-semibold text-lg text-gray-900 ml-1', textCls)}> {name || '--'}</span>
-  </div>
+export const DocumentTitle: FC<DocumentTitleProps> = ({ datasetId, extension, name, processMode, parent_mode, wrapperCls }) => {
+  const router = useRouter()
+  return (
+    <div className={cn('flex flex-1 items-center justify-start', wrapperCls)}>
+      <DocumentPicker
+        datasetId={datasetId}
+        value={{
+          name,
+          extension,
+          processMode,
+          parentMode: parent_mode,
+        }}
+        onChange={(doc) => {
+          router.push(`/datasets/${datasetId}/documents/${doc.id}`)
+        }}
+      />
+    </div>
+  )
 }
 
 type Props = {
@@ -67,49 +94,52 @@ const DocumentDetail: FC<Props> = ({ datasetId, documentId }) => {
   const showBatchModal = () => setBatchModalVisible(true)
   const hideBatchModal = () => setBatchModalVisible(false)
   const resetProcessStatus = () => setImportStatus('')
+
+  const { mutateAsync: checkSegmentBatchImportProgress } = useCheckSegmentBatchImportProgress()
   const checkProcess = async (jobID: string) => {
-    try {
-      const res = await checkSegmentBatchImportProgress({ jobID })
-      setImportStatus(res.job_status)
-      if (res.job_status === ProcessStatus.WAITING || res.job_status === ProcessStatus.PROCESSING)
-        setTimeout(() => checkProcess(res.job_id), 2500)
-      if (res.job_status === ProcessStatus.ERROR)
-        notify({ type: 'error', message: `${t('datasetDocuments.list.batchModal.runError')}` })
-    }
-    catch (e: any) {
-      notify({ type: 'error', message: `${t('datasetDocuments.list.batchModal.runError')}${'message' in e ? `: ${e.message}` : ''}` })
-    }
+    await checkSegmentBatchImportProgress({ jobID }, {
+      onSuccess: (res) => {
+        setImportStatus(res.job_status)
+        if (res.job_status === ProcessStatus.WAITING || res.job_status === ProcessStatus.PROCESSING)
+          setTimeout(() => checkProcess(res.job_id), 2500)
+        if (res.job_status === ProcessStatus.ERROR)
+          notify({ type: 'error', message: `${t('datasetDocuments.list.batchModal.runError')}` })
+      },
+      onError: (e) => {
+        notify({ type: 'error', message: `${t('datasetDocuments.list.batchModal.runError')}${'message' in e ? `: ${e.message}` : ''}` })
+      },
+    })
   }
+
+  const { mutateAsync: segmentBatchImport } = useSegmentBatchImport()
   const runBatch = async (csv: File) => {
     const formData = new FormData()
     formData.append('file', csv)
-    try {
-      const res = await segmentBatchImport({
-        url: `/datasets/${datasetId}/documents/${documentId}/segments/batch_import`,
-        body: formData,
-      })
-      setImportStatus(res.job_status)
-      checkProcess(res.job_id)
-    }
-    catch (e: any) {
-      notify({ type: 'error', message: `${t('datasetDocuments.list.batchModal.runError')}${'message' in e ? `: ${e.message}` : ''}` })
-    }
+    await segmentBatchImport({
+      url: `/datasets/${datasetId}/documents/${documentId}/segments/batch_import`,
+      body: formData,
+    }, {
+      onSuccess: (res) => {
+        setImportStatus(res.job_status)
+        checkProcess(res.job_id)
+      },
+      onError: (e) => {
+        notify({ type: 'error', message: `${t('datasetDocuments.list.batchModal.runError')}${'message' in e ? `: ${e.message}` : ''}` })
+      },
+    })
   }
 
-  const { data: documentDetail, error, mutate: detailMutate } = useSWR({
-    action: 'fetchDocumentDetail',
+  const { data: documentDetail, error, refetch: detailMutate } = useDocumentDetail({
     datasetId,
     documentId,
-    params: { metadata: 'without' as MetadataType },
-  }, apiParams => fetchDocumentDetail(omit(apiParams, 'action')))
+    params: { metadata: 'without' },
+  })
 
-  const { data: documentMetadata, error: metadataErr, mutate: metadataMutate } = useSWR({
-    action: 'fetchDocumentDetail',
+  const { data: documentMetadata, error: metadataErr, refetch: metadataMutate } = useDocumentMetadata({
     datasetId,
     documentId,
-    params: { metadata: 'only' as MetadataType },
-  }, apiParams => fetchDocumentDetail(omit(apiParams, 'action')),
-  )
+    params: { metadata: 'only' },
+  })
 
   const backToPrev = () => {
     router.push(`/datasets/${datasetId}/documents`)
@@ -120,32 +150,86 @@ const DocumentDetail: FC<Props> = ({ datasetId, documentId }) => {
 
   const embedding = ['queuing', 'indexing', 'paused'].includes((documentDetail?.display_status || '').toLowerCase())
 
+  const invalidChunkList = useInvalid(useSegmentListKey)
+  const invalidChildChunkList = useInvalid(useChildSegmentListKey)
+  const invalidDocumentList = useInvalidDocumentList(datasetId)
+
   const handleOperate = (operateName?: string) => {
-    if (operateName === 'delete')
+    invalidDocumentList()
+    if (operateName === 'delete') {
       backToPrev()
-    else
+    }
+    else {
       detailMutate()
+      // If operation is not rename, refresh the chunk list after 5 seconds
+      if (operateName) {
+        setTimeout(() => {
+          invalidChunkList()
+          invalidChildChunkList()
+        }, 5000)
+      }
+    }
   }
 
+  const mode = useMemo(() => {
+    return documentDetail?.document_process_rule?.mode
+  }, [documentDetail?.document_process_rule])
+
+  const parentMode = useMemo(() => {
+    return documentDetail?.document_process_rule?.rules?.parent_mode
+  }, [documentDetail?.document_process_rule])
+
+  const isFullDocMode = useMemo(() => {
+    return mode === 'hierarchical' && parentMode === 'full-doc'
+  }, [mode, parentMode])
+
   return (
-    <DocumentContext.Provider value={{ datasetId, documentId, docForm: documentDetail?.doc_form || '' }}>
-      <div className='flex flex-col h-full'>
-        <div className='flex min-h-16 border-b-gray-100 border-b items-center p-4 justify-between flex-wrap gap-y-2'>
-          <div onClick={backToPrev} className={'shrink-0 rounded-full w-8 h-8 flex justify-center items-center border-gray-100 cursor-pointer border hover:border-gray-300 shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08),0px_4px_6px_-2px_rgba(16,24,40,0.03)]'}>
-            <ArrowLeftIcon className='text-primary-600 fill-current stroke-current h-4 w-4' />
+    <DocumentContext.Provider value={{
+      datasetId,
+      documentId,
+      docForm: documentDetail?.doc_form || '',
+      mode,
+      parentMode,
+    }}>
+      <div className='flex h-full flex-col bg-background-default'>
+        <div className='flex min-h-16 flex-wrap items-center justify-between border-b border-b-divider-subtle py-2.5 pl-3 pr-4'>
+          <div onClick={backToPrev} className={'flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-full hover:bg-components-button-tertiary-bg'}>
+            <RiArrowLeftLine className='h-4 w-4 text-components-button-ghost-text hover:text-text-tertiary' />
           </div>
-          <Divider className='!h-4' type='vertical' />
-          <DocumentTitle extension={documentDetail?.data_source_info?.upload_file?.extension} name={documentDetail?.name} />
-          <div className='flex items-center flex-wrap gap-y-2'>
-            <StatusItem status={documentDetail?.display_status || 'available'} scene='detail' errorMessage={documentDetail?.error || ''} />
-            {embeddingAvailable && documentDetail && !documentDetail.archived && (
-              <SegmentAdd
-                importStatus={importStatus}
-                clearProcessStatus={resetProcessStatus}
-                showNewSegmentModal={showNewSegmentModal}
-                showBatchModal={showBatchModal}
-              />
+          <DocumentTitle
+            datasetId={datasetId}
+            extension={documentDetail?.data_source_info?.upload_file?.extension}
+            name={documentDetail?.name}
+            wrapperCls='mr-2'
+            parent_mode={parentMode}
+            processMode={mode}
+          />
+          <div className='flex flex-wrap items-center'>
+            {embeddingAvailable && documentDetail && !documentDetail.archived && !isFullDocMode && (
+              <>
+                <SegmentAdd
+                  importStatus={importStatus}
+                  clearProcessStatus={resetProcessStatus}
+                  showNewSegmentModal={showNewSegmentModal}
+                  showBatchModal={showBatchModal}
+                  embedding={embedding}
+                />
+                <Divider type='vertical' className='!mx-3 !h-[14px] !bg-divider-regular' />
+              </>
             )}
+            <StatusItem
+              status={documentDetail?.display_status || 'available'}
+              scene='detail'
+              errorMessage={documentDetail?.error || ''}
+              textCls='font-semibold text-xs uppercase'
+              detail={{
+                enabled: documentDetail?.enabled || false,
+                archived: documentDetail?.archived || false,
+                id: documentId,
+              }}
+              datasetId={datasetId}
+              onUpdate={handleOperate}
+            />
             <OperationAction
               scene='detail'
               embeddingAvailable={embeddingAvailable}
@@ -159,20 +243,32 @@ const DocumentDetail: FC<Props> = ({ datasetId, documentId }) => {
               }}
               datasetId={datasetId}
               onUpdate={handleOperate}
-              className='!w-[216px]'
+              className='!w-[200px]'
             />
             <button
-              className={cn(style.layoutRightIcon, showMetadata ? style.iconShow : style.iconClose)}
+              className={style.layoutRightIcon}
               onClick={() => setShowMetadata(!showMetadata)}
-            />
+            >
+              {
+                showMetadata
+                  ? <LayoutRight2LineMod className='h-4 w-4 text-components-button-secondary-text' />
+                  : <RiLayoutRight2Line className='h-4 w-4 text-components-button-secondary-text' />
+              }
+            </button>
           </div>
         </div>
-        <div className='flex flex-row flex-1' style={{ height: 'calc(100% - 4rem)' }}>
+        <div className='flex flex-1 flex-row' style={{ height: 'calc(100% - 4rem)' }}>
           {isDetailLoading
             ? <Loading type='app' />
-            : <div className={`h-full w-full flex flex-col ${embedding ? 'px-6 py-3 sm:py-12 sm:px-16' : 'pb-[30px] pt-3 px-6'}`}>
+            : <div className={cn('flex h-full min-w-0 grow flex-col',
+              embedding ? '' : isFullDocMode ? 'relative pl-11 pr-11 pt-4' : 'relative pl-5 pr-11 pt-3',
+            )}>
               {embedding
-                ? <Embedding detail={documentDetail} detailUpdate={detailMutate} />
+                ? <Embedding
+                  detailUpdate={detailMutate}
+                  indexingType={dataset?.indexing_technique}
+                  retrievalMethod={dataset?.retrieval_model_dict?.search_method}
+                />
                 : <Completed
                   embeddingAvailable={embeddingAvailable}
                   showNewSegmentModal={newSegmentModalVisible}
@@ -185,9 +281,10 @@ const DocumentDetail: FC<Props> = ({ datasetId, documentId }) => {
           }
           <FloatRightContainer showClose isOpen={showMetadata} onClose={() => setShowMetadata(false)} isMobile={isMobile} panelClassname='!justify-start' footer={null}>
             <Metadata
+              className='mr-2 mt-3'
+              datasetId={datasetId}
+              documentId={documentId}
               docDetail={{ ...documentDetail, ...documentMetadata, doc_type: documentMetadata?.doc_type === 'others' ? '' : documentMetadata?.doc_type } as any}
-              loading={isMetadataLoading}
-              onUpdate={metadataMutate}
             />
           </FloatRightContainer>
         </div>
@@ -195,7 +292,7 @@ const DocumentDetail: FC<Props> = ({ datasetId, documentId }) => {
           isShow={batchModalVisible}
           onCancel={hideBatchModal}
           onConfirm={runBatch}
-          docForm={documentDetail?.doc_form as DocForm}
+          docForm={documentDetail?.doc_form as ChunkingMode}
         />
       </div>
     </DocumentContext.Provider>

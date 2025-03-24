@@ -1,5 +1,5 @@
 import type { FC } from 'react'
-import React from 'react'
+import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
 import useConfig from './use-config'
 import ApiInput from './components/api-input'
@@ -65,17 +65,17 @@ const Panel: FC<NodePanelProps<HttpNodeType>> = ({
     return null
 
   return (
-    <div className='mt-2'>
-      <div className='px-4 pb-4 space-y-4'>
+    <div className='pt-2'>
+      <div className='space-y-4 px-4 pb-4'>
         <Field
           title={t(`${i18nPrefix}.api`)}
           operations={
             <div className='flex'>
               <div
                 onClick={showAuthorization}
-                className={cn(!readOnly && 'cursor-pointer hover:bg-gray-50', 'flex items-center h-6 space-x-1 px-2 rounded-md ')}
+                className={cn(!readOnly && 'cursor-pointer hover:bg-gray-50', 'flex h-6 items-center space-x-1 rounded-md px-2 ')}
               >
-                {!readOnly && <Settings01 className='w-3 h-3 text-gray-500' />}
+                {!readOnly && <Settings01 className='h-3 w-3 text-gray-500' />}
                 <div className='text-xs font-medium text-gray-500'>
                   {t(`${i18nPrefix}.authorization.authorization`)}
                   <span className='ml-1 text-gray-700'>{t(`${i18nPrefix}.authorization.${inputs.authorization.type}`)}</span>
@@ -83,9 +83,9 @@ const Panel: FC<NodePanelProps<HttpNodeType>> = ({
               </div>
               <div
                 onClick={showCurlPanel}
-                className={cn(!readOnly && 'cursor-pointer hover:bg-gray-50', 'flex items-center h-6 space-x-1 px-2 rounded-md ')}
+                className={cn(!readOnly && 'cursor-pointer hover:bg-gray-50', 'flex h-6 items-center space-x-1 rounded-md px-2 ')}
               >
-                {!readOnly && <FileArrow01 className='w-3 h-3 text-gray-500' />}
+                {!readOnly && <FileArrow01 className='h-3 w-3 text-gray-500' />}
                 <div className='text-xs font-medium text-gray-500'>
                   {t(`${i18nPrefix}.curl.title`)}
                 </div>
@@ -136,14 +136,12 @@ const Panel: FC<NodePanelProps<HttpNodeType>> = ({
         </Field>
       </div>
       <Split />
-      <div className='px-4 pt-4 pb-4'>
-        <Timeout
-          nodeId={id}
-          readonly={readOnly}
-          payload={inputs.timeout}
-          onChange={setTimeout}
-        />
-      </div>
+      <Timeout
+        nodeId={id}
+        readonly={readOnly}
+        payload={inputs.timeout}
+        onChange={setTimeout}
+      />
       {(isShowAuthorization && !readOnly) && (
         <AuthorizationModal
           nodeId={id}
@@ -154,7 +152,7 @@ const Panel: FC<NodePanelProps<HttpNodeType>> = ({
         />
       )}
       <Split />
-      <div className='px-4 pt-4 pb-2'>
+      <div className=''>
         <OutputVars>
           <>
             <VarItem
@@ -183,6 +181,7 @@ const Panel: FC<NodePanelProps<HttpNodeType>> = ({
       {isShowSingleRun && (
         <BeforeRunForm
           nodeName={inputs.title}
+          nodeType={inputs.type}
           onHide={hideSingleRun}
           forms={[
             {
@@ -209,4 +208,4 @@ const Panel: FC<NodePanelProps<HttpNodeType>> = ({
   )
 }
 
-export default React.memo(Panel)
+export default memo(Panel)

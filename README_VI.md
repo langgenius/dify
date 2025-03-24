@@ -21,6 +21,9 @@
     <a href="https://twitter.com/intent/follow?screen_name=dify_ai" target="_blank">
         <img src="https://img.shields.io/twitter/follow/dify_ai?logo=X&color=%20%23f5f5f5"
             alt="theo dõi trên X(Twitter)"></a>
+    <a href="https://www.linkedin.com/company/langgenius/" target="_blank">
+        <img src="https://custom-icon-badges.demolab.com/badge/LinkedIn-0A66C2?logo=linkedin-white&logoColor=fff"
+            alt="theo dõi trên LinkedIn"></a>
     <a href="https://hub.docker.com/u/langgenius" target="_blank">
         <img alt="Docker Pulls" src="https://img.shields.io/docker/pulls/langgenius/dify-web?labelColor=%20%23FDB062&color=%20%23f79009"></a>
     <a href="https://github.com/langgenius/dify/graphs/commit-activity" target="_blank">
@@ -42,6 +45,7 @@
   <a href="./README_AR.md"><img alt="README بالعربية" src="https://img.shields.io/badge/العربية-d9d9d9"></a>
   <a href="./README_TR.md"><img alt="Türkçe README" src="https://img.shields.io/badge/Türkçe-d9d9d9"></a>
   <a href="./README_VI.md"><img alt="README Tiếng Việt" src="https://img.shields.io/badge/Ti%E1%BA%BFng%20Vi%E1%BB%87t-d9d9d9"></a>
+  <a href="./README_BN.md"><img alt="README in বাংলা" src="https://img.shields.io/badge/বাংলা-d9d9d9"></a>
 </p>
 
 
@@ -196,6 +200,7 @@ Nếu bạn muốn cấu hình một cài đặt có độ sẵn sàng cao, có 
 - [Helm Chart bởi @LeoQuote](https://github.com/douban/charts/tree/master/charts/dify)
 - [Helm Chart bởi @BorisPolonsky](https://github.com/BorisPolonsky/dify-helm)
 - [Tệp YAML bởi @Winson-030](https://github.com/Winson-030/dify-kubernetes)
+- [Tệp YAML bởi @wyy-holding](https://github.com/wyy-holding/dify-k8s)
 
 #### Sử dụng Terraform để Triển khai
 
@@ -206,6 +211,13 @@ Triển khai Dify lên nền tảng đám mây với một cú nhấp chuột b�
 
 ##### Google Cloud
 - [Google Cloud Terraform bởi @sotazum](https://github.com/DeNA/dify-google-cloud-terraform)
+
+#### Sử dụng AWS CDK để Triển khai
+
+Triển khai Dify trên AWS bằng [CDK](https://aws.amazon.com/cdk/)
+
+##### AWS 
+- [AWS CDK bởi @KevinZhao](https://github.com/aws-samples/solution-for-deploying-dify-on-aws)
 
 ## Đóng góp
 

@@ -1,13 +1,14 @@
 import json
 from copy import deepcopy
 from datetime import UTC, datetime
-from typing import Any, Optional, Union
+from typing import Any, Optional, Union, cast
 
 import httpx
 import validators
 
 from constants import HIDDEN_VALUE
 from core.helper import ssrf_proxy
+from core.rag.entities.metadata_entities import MetadataCondition
 from extensions.ext_database import db
 from models.dataset import (
     Dataset,
@@ -45,7 +46,10 @@ class ExternalDatasetService:
 
     @staticmethod
     def create_external_knowledge_api(tenant_id: str, user_id: str, args: dict) -> ExternalKnowledgeApis:
-        ExternalDatasetService.check_endpoint_and_api_key(args.get("settings"))
+        settings = args.get("settings")
+        if settings is None:
+            raise ValueError("settings is required")
+        ExternalDatasetService.check_endpoint_and_api_key(settings)
         external_knowledge_api = ExternalKnowledgeApis(
             tenant_id=tenant_id,
             created_by=user_id,
@@ -69,7 +73,10 @@ class ExternalDatasetService:
         endpoint = f"{settings['endpoint']}/retrieval"
         api_key = settings["api_key"]
         if not validators.url(endpoint, simple_host=True):
-            raise ValueError(f"invalid endpoint: {endpoint}")
+            if not endpoint.startswith("http://") and not endpoint.startswith("https://"):
+                raise ValueError(f"invalid endpoint: {endpoint} must start with http:// or https://")
+            else:
+                raise ValueError(f"invalid endpoint: {endpoint}")
         try:
             response = httpx.post(endpoint, headers={"Authorization": f"Bearer {api_key}"})
         except Exception as e:
@@ -83,11 +90,16 @@ class ExternalDatasetService:
 
     @staticmethod
     def get_external_knowledge_api(external_knowledge_api_id: str) -> ExternalKnowledgeApis:
-        return ExternalKnowledgeApis.query.filter_by(id=external_knowledge_api_id).first()
+        external_knowledge_api: Optional[ExternalKnowledgeApis] = ExternalKnowledgeApis.query.filter_by(
+            id=external_knowledge_api_id
+        ).first()
+        if external_knowledge_api is None:
+            raise ValueError("api template not found")
+        return external_knowledge_api
 
     @staticmethod
     def update_external_knowledge_api(tenant_id, user_id, external_knowledge_api_id, args) -> ExternalKnowledgeApis:
-        external_knowledge_api = ExternalKnowledgeApis.query.filter_by(
+        external_knowledge_api: Optional[ExternalKnowledgeApis] = ExternalKnowledgeApis.query.filter_by(
             id=external_knowledge_api_id, tenant_id=tenant_id
         ).first()
         if external_knowledge_api is None:
@@ -124,7 +136,7 @@ class ExternalDatasetService:
 
     @staticmethod
     def get_external_knowledge_binding_with_dataset_id(tenant_id: str, dataset_id: str) -> ExternalKnowledgeBindings:
-        external_knowledge_binding = ExternalKnowledgeBindings.query.filter_by(
+        external_knowledge_binding: Optional[ExternalKnowledgeBindings] = ExternalKnowledgeBindings.query.filter_by(
             dataset_id=dataset_id, tenant_id=tenant_id
         ).first()
         if not external_knowledge_binding:
@@ -144,7 +156,7 @@ class ExternalDatasetService:
             if custom_parameters:
                 for parameter in custom_parameters:
                     if parameter.get("required", False) and not process_parameter.get(parameter.get("name")):
-                        raise ValueError(f'{parameter.get("name")} is required')
+                        raise ValueError(f"{parameter.get('name')} is required")
 
     @staticmethod
     def process_external_api(
@@ -160,8 +172,9 @@ class ExternalDatasetService:
             "follow_redirects": True,
         }
 
-        response = getattr(ssrf_proxy, settings.request_method)(data=json.dumps(settings.params), files=files, **kwargs)
-
+        response: httpx.Response = getattr(ssrf_proxy, settings.request_method)(
+            data=json.dumps(settings.params), files=files, **kwargs
+        )
         return response
 
     @staticmethod
@@ -233,7 +246,11 @@ class ExternalDatasetService:
 
     @staticmethod
     def fetch_external_knowledge_retrieval(
-        tenant_id: str, dataset_id: str, query: str, external_retrieval_parameters: dict
+        tenant_id: str,
+        dataset_id: str,
+        query: str,
+        external_retrieval_parameters: dict,
+        metadata_condition: Optional[MetadataCondition] = None,
     ) -> list:
         external_knowledge_binding = ExternalKnowledgeBindings.query.filter_by(
             dataset_id=dataset_id, tenant_id=tenant_id
@@ -260,17 +277,18 @@ class ExternalDatasetService:
             },
             "query": query,
             "knowledge_id": external_knowledge_binding.external_knowledge_id,
+            "metadata_condition": metadata_condition.model_dump() if metadata_condition else None,
         }
 
-        external_knowledge_api_setting = {
-            "url": f"{settings.get('endpoint')}/retrieval",
-            "request_method": "post",
-            "headers": headers,
-            "params": request_params,
-        }
         response = ExternalDatasetService.process_external_api(
-            ExternalKnowledgeApiSetting(**external_knowledge_api_setting), None
+            ExternalKnowledgeApiSetting(
+                url=f"{settings.get('endpoint')}/retrieval",
+                request_method="post",
+                headers=headers,
+                params=request_params,
+            ),
+            None,
         )
         if response.status_code == 200:
-            return response.json().get("records", [])
+            return cast(list[Any], response.json().get("records", []))
         return []

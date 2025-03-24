@@ -1,5 +1,5 @@
 import { CodeGroup } from '@/app/components/develop/code.tsx'
-import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from '@/app/components/develop/md.tsx'
+import { Row, Col, Properties, Property, Heading, SubProperty, PropertyInstruction, Paragraph } from '@/app/components/develop/md.tsx'
 
 # Knowledge API
 
@@ -52,6 +52,15 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
           - <code>high_quality</code> High quality: embedding using embedding model, built as vector database index
           - <code>economy</code> Economy: Build using inverted index of keyword table index
       </Property>
+      <Property name='doc_form' type='string' key='doc_form'>
+        Format of indexed content
+          - <code>text_model</code> Text documents are directly embedded; `economy` mode defaults to using this form
+          - <code>hierarchical_model</code> Parent-child mode
+          - <code>qa_model</code> Q&A Mode: Generates Q&A pairs for segmented documents and then embeds the questions
+      </Property>
+      <Property name='doc_language' type='string' key='doc_language'>
+        In Q&A mode, specify the language of the document, for example: <code>English</code>, <code>Chinese</code>
+      </Property>
       <Property name='process_rule' type='object' key='process_rule'>
         Processing rules
           - <code>mode</code> (string) Cleaning, segmentation mode, automatic / custom
@@ -65,6 +74,32 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
             - <code>segmentation</code> (object) Segmentation rules
               - <code>separator</code> Custom segment identifier, currently only allows one delimiter to be set. Default is \n
               - <code>max_tokens</code> Maximum length (token) defaults to 1000
+            - <code>parent_mode</code> Retrieval mode of parent chunks: <code>full-doc</code> full text retrieval / <code>paragraph</code> paragraph retrieval
+            - <code>subchunk_segmentation</code> (object) Child chunk rules
+              - <code>separator</code> Segmentation identifier. Currently, only one delimiter is allowed. The default is <code>***</code>
+              - <code>max_tokens</code> The maximum length (tokens) must be validated to be shorter than the length of the parent chunk
+              - <code>chunk_overlap</code> Define the overlap between adjacent chunks (optional)
+      </Property>
+      <PropertyInstruction>When no parameters are set for the knowledge base, the first upload requires the following parameters to be provided; if not provided, the default parameters will be used.</PropertyInstruction>
+      <Property name='retrieval_model' type='object' key='retrieval_model'>
+        Retrieval model
+          - <code>search_method</code> (string) Search method
+            - <code>hybrid_search</code> Hybrid search
+            - <code>semantic_search</code> Semantic search
+            - <code>full_text_search</code> Full-text search
+          - <code>reranking_enable</code> (bool) Whether to enable reranking
+          - <code>reranking_mode</code> (object) Rerank model configuration
+            - <code>reranking_provider_name</code> (string) Rerank model provider
+            - <code>reranking_model_name</code> (string) Rerank model name
+          - <code>top_k</code> (int) Number of results to return
+          - <code>score_threshold_enabled</code> (bool) Whether to enable score threshold
+          - <code>score_threshold</code> (float) Score threshold
+      </Property>
+      <Property name='embedding_model' type='string' key='embedding_model'>
+        Embedding model name
+      </Property>
+      <Property name='embedding_model_provider' type='string' key='embedding_model_provider'>
+        Embedding model provider
       </Property>
     </Properties>
   </Col>
@@ -155,6 +190,13 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
           - <code>high_quality</code> High quality: embedding using embedding model, built as vector database index
           - <code>economy</code> Economy: Build using inverted index of keyword table index
 
+        - <code>doc_form</code> Format of indexed content
+          - <code>text_model</code> Text documents are directly embedded; `economy` mode defaults to using this form
+          - <code>hierarchical_model</code> Parent-child mode
+          - <code>qa_model</code> Q&A Mode: Generates Q&A pairs for segmented documents and then embeds the questions
+
+        - <code>doc_language</code> In Q&A mode, specify the language of the document, for example: <code>English</code>, <code>Chinese</code>
+
         - <code>process_rule</code> Processing rules
           - <code>mode</code> (string) Cleaning, segmentation mode, automatic / custom
           - <code>rules</code> (object) Custom rules (in automatic mode, this field is empty)
@@ -167,9 +209,35 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
             - <code>segmentation</code> (object) Segmentation rules
               - <code>separator</code> Custom segment identifier, currently only allows one delimiter to be set. Default is \n
               - <code>max_tokens</code> Maximum length (token) defaults to 1000
+            - <code>parent_mode</code> Retrieval mode of parent chunks: <code>full-doc</code> full text retrieval / <code>paragraph</code> paragraph retrieval
+            - <code>subchunk_segmentation</code> (object) Child chunk rules
+              - <code>separator</code> Segmentation identifier. Currently, only one delimiter is allowed. The default is <code>***</code>
+              - <code>max_tokens</code> The maximum length (tokens) must be validated to be shorter than the length of the parent chunk
+              - <code>chunk_overlap</code> Define the overlap between adjacent chunks (optional)
       </Property>
       <Property name='file' type='multipart/form-data' key='file'>
         Files that need to be uploaded.
+      </Property>
+      <PropertyInstruction>When no parameters are set for the knowledge base, the first upload requires the following parameters to be provided; if not provided, the default parameters will be used.</PropertyInstruction>
+      <Property name='retrieval_model' type='object' key='retrieval_model'>
+        Retrieval model
+          - <code>search_method</code> (string) Search method
+            - <code>hybrid_search</code> Hybrid search
+            - <code>semantic_search</code> Semantic search
+            - <code>full_text_search</code> Full-text search
+          - <code>reranking_enable</code> (bool) Whether to enable reranking
+          - <code>reranking_mode</code> (object) Rerank model configuration
+            - <code>reranking_provider_name</code> (string) Rerank model provider
+            - <code>reranking_model_name</code> (string) Rerank model name
+          - <code>top_k</code> (int) Number of results to return
+          - <code>score_threshold_enabled</code> (bool) Whether to enable score threshold
+          - <code>score_threshold</code> (float) Score threshold
+      </Property>
+      <Property name='embedding_model' type='string' key='embedding_model'>
+        Embedding model name
+      </Property>
+      <Property name='embedding_model_provider' type='string' key='embedding_model_provider'>
+        Embedding model provider
       </Property>
     </Properties>
   </Col>
@@ -449,6 +517,11 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
             - <code>segmentation</code> (object) Segmentation rules
               - <code>separator</code> Custom segment identifier, currently only allows one delimiter to be set. Default is \n
               - <code>max_tokens</code> Maximum length (token) defaults to 1000
+            - <code>parent_mode</code> Retrieval mode of parent chunks: <code>full-doc</code> full text retrieval / <code>paragraph</code> paragraph retrieval
+            - <code>subchunk_segmentation</code> (object) Child chunk rules
+              - <code>separator</code> Segmentation identifier. Currently, only one delimiter is allowed. The default is <code>***</code>
+              - <code>max_tokens</code> The maximum length (tokens) must be validated to be shorter than the length of the parent chunk
+              - <code>chunk_overlap</code> Define the overlap between adjacent chunks (optional)
       </Property>
     </Properties>
   </Col>
@@ -546,6 +619,11 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
             - <code>segmentation</code> (object) Segmentation rules
               - <code>separator</code> Custom segment identifier, currently only allows one delimiter to be set. Default is \n
               - <code>max_tokens</code> Maximum length (token) defaults to 1000
+            - <code>parent_mode</code> Retrieval mode of parent chunks: <code>full-doc</code> full text retrieval / <code>paragraph</code> paragraph retrieval
+            - <code>subchunk_segmentation</code> (object) Child chunk rules
+              - <code>separator</code> Segmentation identifier. Currently, only one delimiter is allowed. The default is <code>***</code>
+              - <code>max_tokens</code> The maximum length (tokens) must be validated to be shorter than the length of the parent chunk
+              - <code>chunk_overlap</code> Define the overlap between adjacent chunks (optional)
       </Property>
     </Properties>
   </Col>
@@ -883,6 +961,12 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
       <Property name='status' type='string' key='status'>
         Search status, completed
       </Property>
+      <Property name='page' type='string' key='page'>
+        Page number (optional)
+      </Property>
+      <Property name='limit' type='string' key='limit'>
+        Number of items returned, default 20, range 1-100 (optional)
+      </Property>
     </Properties>
   </Col>
   <Col sticky>
@@ -926,7 +1010,11 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
         "error": null,
         "stopped_at": null
       }],
-      "doc_form": "text_model"
+      "doc_form": "text_model",
+      "has_more": false,
+      "limit": 20,
+      "total": 9,
+      "page": 1
     }
     ```
     </CodeGroup>
@@ -984,7 +1072,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
 <Heading
   url='/datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}'
   method='POST'
-  title='Update a Chunk in a Document '
+  title='Update a Chunk in a Document'
   name='#update_segment'
 />
 <Row>
@@ -1009,6 +1097,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
         - <code>answer</code> (text) Answer content, passed if the knowledge is in Q&A mode (optional)
         - <code>keywords</code> (list) Keyword (optional)
         - <code>enabled</code> (bool) False / true (optional)
+        - <code>regenerate_child_chunks</code> (bool) Whether to regenerate child chunks (optional)
       </Property>
     </Properties>
   </Col>
@@ -1035,7 +1124,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
     <CodeGroup title="Response">
     ```json {{ title: 'Response' }}
     {
-      "data": [{
+      "data": {
         "id": "",
         "position": 1,
         "document_id": "",
@@ -1059,8 +1148,59 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
         "completed_at": 1695312007,
         "error": null,
         "stopped_at": null
-      }],
+      },
       "doc_form": "text_model"
+    }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
+<hr className='ml-0 mr-0' />
+
+<Heading
+  url='/datasets/{dataset_id}/documents/{document_id}/upload-file'
+  method='GET'
+  title='Get Upload File'
+  name='#get_upload_file'
+/>
+<Row>
+  <Col>
+    ### Path
+    <Properties>
+      <Property name='dataset_id' type='string' key='dataset_id'>
+        Knowledge ID
+      </Property>
+      <Property name='document_id' type='string' key='document_id'>
+        Document ID
+      </Property>
+    </Properties>
+  </Col>
+  <Col sticky>
+    <CodeGroup
+      title="Request"
+      tag="GET"
+      label="/datasets/{dataset_id}/documents/{document_id}/upload-file"
+      targetCode={`curl --location --request GET '${props.apiBaseUrl}/datasets/{dataset_id}/documents/{document_id}/upload-file' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json'`}
+    >
+    ```bash {{ title: 'cURL' }}
+    curl --location --request GET '${props.apiBaseUrl}/datasets/{dataset_id}/documents/{document_id}/upload-file' \
+    --header 'Authorization: Bearer {api_key}' \
+    --header 'Content-Type: application/json'
+    ```
+    </CodeGroup>
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {
+      "id": "file_id",
+      "name": "file_name",
+      "size": 1024,
+      "extension": "txt",
+      "url": "preview_url",
+      "download_url": "download_url",
+      "mime_type": "text/plain",
+      "created_by": "user_id",
+      "created_at": 1728734540,
     }
     ```
     </CodeGroup>
@@ -1100,10 +1240,10 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
         - <code>reranking_mode</code> (object) Rerank model configuration, required if reranking is enabled
             - <code>reranking_provider_name</code> (string) Rerank model provider
             - <code>reranking_model_name</code> (string) Rerank model name
-        - <code>weights</code> (double) Semantic search weight setting in hybrid search mode
+        - <code>weights</code> (float) Semantic search weight setting in hybrid search mode
         - <code>top_k</code> (integer) Number of results to return (optional)
         - <code>score_threshold_enabled</code> (bool) Whether to enable score threshold
-        - <code>score_threshold</code> (double) Score threshold
+        - <code>score_threshold</code> (float) Score threshold
       </Property>
       <Property name='external_retrieval_model' type='object' key='external_retrieval_model'>
           Unused field
@@ -1199,13 +1339,261 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
               "id": "a8c6c36f-9f5d-4d7a-8472-f5d7b75d71d2",
               "data_source_type": "upload_file",
               "name": "readme.txt",
-              "doc_type": null
             }
           },
           "score": 3.730463140527718e-05,
           "tsne_position": null
         }
       ]
+    }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
+<hr className='ml-0 mr-0' />
+
+<Heading
+  url='/datasets/{dataset_id}/metadata'
+  method='POST'
+  title='Create a Knowledge Metadata'
+  name='#create_metadata'
+/>
+<Row>
+  <Col>
+    ### Params
+    <Properties>
+      <Property name='dataset_id' type='string' key='dataset_id'>
+        Knowledge ID
+      </Property>
+    </Properties>
+
+    ### Request Body
+    <Properties>
+      <Property name='segment' type='object' key='segment'>
+        - <code>type</code> (string) Metadata type, required
+        - <code>name</code> (string) Metadata name, required
+      </Property>
+    </Properties>
+  </Col>
+  <Col sticky>
+    <CodeGroup
+      title="Request"
+      tag="POST"
+      label="/datasets/{dataset_id}/metadata"
+      targetCode={`curl --location --request POST '${props.apiBaseUrl}/datasets/{dataset_id}/metadata' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json'\\\n--data-raw '{"type": "string", "name": "test"}'`}
+    >
+    ```bash {{ title: 'cURL' }}
+    ```
+    </CodeGroup>
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {
+      "id": "abc",
+      "type": "string",
+      "name": "test",
+    }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
+<hr className='ml-0 mr-0' />
+
+<Heading
+  url='/datasets/{dataset_id}/metadata/{metadata_id}'
+  method='PATCH'
+  title='Update a Knowledge Metadata'
+  name='#update_metadata'
+/>
+<Row>
+  <Col>
+    ### Params
+    <Properties>
+      <Property name='dataset_id' type='string' key='dataset_id'>
+        Knowledge ID
+      </Property>
+      <Property name='metadata_id' type='string' key='metadata_id'>
+        Metadata ID
+      </Property>
+    </Properties>
+
+    ### Request Body
+    <Properties>
+      <Property name='segment' type='object' key='segment'>
+        - <code>name</code> (string) Metadata name, required
+      </Property>
+    </Properties>
+  </Col>
+  <Col sticky>
+    <CodeGroup
+      title="Request"
+      tag="POST"
+      label="/datasets/{dataset_id}/metadata/{metadata_id}"
+      targetCode={`curl --location --request POST '${props.apiBaseUrl}/datasets/{dataset_id}/metadata/{metadata_id}' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json'\\\n--data-raw '{"name": "test"}'`}
+    >
+    ```bash {{ title: 'cURL' }}
+    ```
+    </CodeGroup>
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {
+      "id": "abc",
+      "type": "string",
+      "name": "test",
+    }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
+<hr className='ml-0 mr-0' />
+
+<Heading
+  url='/datasets/{dataset_id}/metadata/{metadata_id}'
+  method='DELETE'
+  title='Delete a Knowledge Metadata'
+  name='#delete_metadata'
+/>
+<Row>
+  <Col>
+    ### Params
+    <Properties>
+      <Property name='dataset_id' type='string' key='dataset_id'>
+        Knowledge ID
+      </Property>
+      <Property name='metadata_id' type='string' key='metadata_id'>
+        Metadata ID
+      </Property>
+    </Properties>
+  </Col>
+  <Col sticky>
+    <CodeGroup
+      title="Request"
+      tag="DELETE"
+      label="/datasets/{dataset_id}/metadata/{metadata_id}"
+      targetCode={`curl --location --request DELETE '${props.apiBaseUrl}/datasets/{dataset_id}/metadata/{metadata_id}' \\\n--header 'Authorization: Bearer {api_key}'`}
+    >
+    ```bash {{ title: 'cURL' }}
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
+<hr className='ml-0 mr-0' />
+
+<Heading
+  url='/datasets/{dataset_id}/metadata/built-in/{action}'
+  method='POST'
+  title='Disable Or Enable Built-in Metadata'
+  name='#toggle_metadata'
+/>
+<Row>
+  <Col>
+    ### Params
+    <Properties>
+      <Property name='dataset_id' type='string' key='dataset_id'>
+        Knowledge ID
+      </Property>
+      <Property name='action' type='string' key='action'>
+        disable/enable
+      </Property>
+    </Properties>
+  </Col>
+  <Col sticky>
+    <CodeGroup
+      title="Request"
+      tag="POST"
+      label="/datasets/{dataset_id}/metadata/built-in/{action}"
+      targetCode={`curl --location --request POST '${props.apiBaseUrl}/datasets/{dataset_id}/metadata/built-in/{action}' \\\n--header 'Authorization: Bearer {api_key}'`}
+    >
+    ```bash {{ title: 'cURL' }}
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
+<hr className='ml-0 mr-0' />
+
+<Heading
+  url='/datasets/{dataset_id}/documents/metadata'
+  method='POST'
+  title='Update Documents Metadata'
+  name='#update_documents_metadata'
+/>
+<Row>
+  <Col>
+    ### Params
+    <Properties>
+      <Property name='dataset_id' type='string' key='dataset_id'>
+        Knowledge ID
+      </Property>
+    </Properties>
+
+    ### Request Body
+    <Properties>
+      <Property name='operation_data' type='object list' key='segments'>
+        - <code>document_id</code> (string) Document ID
+        - <code>metadata_list</code> (list) Metadata list
+          - <code>id</code> (string) Metadata ID
+          - <code>value</code> (string) Metadata value
+          - <code>name</code> (string) Metadata name
+      </Property>
+    </Properties>
+  </Col>
+  <Col sticky>
+    <CodeGroup
+      title="Request"
+      tag="POST"
+      label="/datasets/{dataset_id}/documents/metadata"
+      targetCode={`curl --location --request POST '${props.apiBaseUrl}/datasets/{dataset_id}/documents/metadata' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json'\\\n--data-raw '{"operation_data": [{"document_id": "document_id", "metadata_list": [{"id": "id", "value": "value", "name": "name"}]}]}'`}
+    >
+    ```bash {{ title: 'cURL' }}
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
+<hr className='ml-0 mr-0' />
+
+<Heading
+  url='/datasets/{dataset_id}/metadata'
+  method='GET'
+  title='Get Knowledge Metadata List'
+  name='#dataset_metadata_list'
+/>
+<Row>
+  <Col>
+    ### Params
+    <Properties>
+      <Property name='dataset_id' type='string' key='dataset_id'>
+        Knowledge ID
+      </Property>
+    </Properties>
+  </Col>
+  <Col sticky>
+    <CodeGroup
+      title="Request"
+      tag="GET"
+      label="/datasets/{dataset_id}/metadata"
+      targetCode={`curl --location --request GET '${props.apiBaseUrl}/datasets/{dataset_id}/metadata' \\\n--header 'Authorization: Bearer {api_key}'`}
+    >
+    ```bash {{ title: 'cURL' }}
+    ```
+    </CodeGroup>
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {
+      "doc_metadata": [
+        {
+          "id": "",
+          "name": "name",
+          "type": "string",
+          "use_count": 0,
+        },
+        ...
+      ],
+      "built_in_field_enabled": true
     }
     ```
     </CodeGroup>

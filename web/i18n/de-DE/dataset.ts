@@ -146,6 +146,28 @@ const translation = {
   mixtureInternalAndExternalTip: 'Das Rerank-Modell ist für die Mischung von internem und externem Wissen erforderlich.',
   externalKnowledgeId: 'ID für externes Wissen',
   editExternalAPIFormTitle: 'Bearbeiten der API für externes Wissen',
+  chunkingMode: {
+    parentChild: 'Eltern-Kind',
+    general: 'Allgemein',
+  },
+  parentMode: {
+    paragraph: 'Absatz',
+    fullDoc: 'Vollständiges Dokument',
+  },
+  batchAction: {
+    selected: 'Ausgewählt',
+    cancel: 'Abbrechen',
+    archive: 'Archiv',
+    disable: 'Abschalten',
+    delete: 'Löschen',
+    enable: 'Ermöglichen',
+  },
+  enable: 'Ermöglichen',
+  localDocs: 'Lokale Dokumente',
+  preprocessDocument: '{{num}} Vorverarbeiten von Dokumenten',
+  documentsDisabled: '{{num}} Dokumente deaktiviert - seit über 30 Tagen inaktiv',
+  allKnowledge: 'Alles Wissen',
+  allKnowledgeDescription: 'Wählen Sie diese Option aus, um das gesamte Wissen in diesem Arbeitsbereich anzuzeigen. Nur der Workspace-Besitzer kann das gesamte Wissen verwalten.',
 }
 
 export default translation

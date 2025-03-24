@@ -9,6 +9,7 @@ class StorageType(StrEnum):
     HUAWEI_OBS = "huawei-obs"
     LOCAL = "local"
     OCI_STORAGE = "oci-storage"
+    OPENDAL = "opendal"
     S3 = "s3"
     TENCENT_COS = "tencent-cos"
     VOLCENGINE_TOS = "volcengine-tos"

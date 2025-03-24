@@ -14,7 +14,10 @@ export const fetchWorkflowDraft = (url: string) => {
   return get(url, {}, { silent: true }) as Promise<FetchWorkflowDraftResponse>
 }
 
-export const syncWorkflowDraft = ({ url, params }: { url: string; params: Pick<FetchWorkflowDraftResponse, 'graph' | 'features' | 'environment_variables' | 'conversation_variables'> }) => {
+export const syncWorkflowDraft = ({ url, params }: {
+  url: string
+  params: Pick<FetchWorkflowDraftResponse, 'graph' | 'features' | 'environment_variables' | 'conversation_variables'>
+}) => {
   return post<CommonResponse & { updated_at: number; hash: string }>(url, { body: params }, { silent: true })
 }
 
@@ -38,8 +41,8 @@ export const getIterationSingleNodeRunUrl = (isChatFlow: boolean, appId: string,
   return `apps/${appId}/${isChatFlow ? 'advanced-chat/' : ''}workflows/draft/iteration/nodes/${nodeId}/run`
 }
 
-export const publishWorkflow = (url: string) => {
-  return post<CommonResponse & { created_at: number }>(url)
+export const getLoopSingleNodeRunUrl = (isChatFlow: boolean, appId: string, nodeId: string) => {
+  return `apps/${appId}/${isChatFlow ? 'advanced-chat/' : ''}workflows/draft/loop/nodes/${nodeId}/run`
 }
 
 export const fetchPublishedWorkflow: Fetcher<FetchWorkflowDraftResponse, string> = (url) => {
@@ -61,6 +64,9 @@ export const updateWorkflowDraftFromDSL = (appId: string, data: string) => {
   return post<FetchWorkflowDraftResponse>(`apps/${appId}/workflows/draft/import`, { body: { data } })
 }
 
-export const fetchCurrentValueOfConversationVariable: Fetcher<ConversationVariableResponse, { url: string; params: { conversation_id: string } }> = ({ url, params }) => {
+export const fetchCurrentValueOfConversationVariable: Fetcher<ConversationVariableResponse, {
+  url: string
+  params: { conversation_id: string }
+}> = ({ url, params }) => {
   return get<ConversationVariableResponse>(url, { params })
 }

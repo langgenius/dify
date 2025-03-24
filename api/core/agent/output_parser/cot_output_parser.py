@@ -38,7 +38,7 @@ class CotAgentOutputParser:
             except:
                 return json_str or ""
 
-        def extra_json_from_code_block(code_block) -> Generator[Union[dict, str], None, None]:
+        def extra_json_from_code_block(code_block) -> Generator[Union[str, AgentScratchpadUnit.Action], None, None]:
             code_blocks = re.findall(r"```(.*?)```", code_block, re.DOTALL)
             if not code_blocks:
                 return
@@ -67,15 +67,15 @@ class CotAgentOutputParser:
         for response in llm_response:
             if response.delta.usage:
                 usage_dict["usage"] = response.delta.usage
-            response = response.delta.message.content
-            if not isinstance(response, str):
+            response_content = response.delta.message.content
+            if not isinstance(response_content, str):
                 continue
 
             # stream
             index = 0
-            while index < len(response):
+            while index < len(response_content):
                 steps = 1
-                delta = response[index : index + steps]
+                delta = response_content[index : index + steps]
                 yield_delta = False
 
                 if delta == "`":

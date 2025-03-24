@@ -91,7 +91,7 @@ class XinferenceProvider(Provider):
       """
   ```
 
-  也可以直接抛出对应Erros，并做如下定义，这样在之后的调用中可以直接抛出`InvokeConnectionError`等异常。
+  也可以直接抛出对应 Errors，并做如下定义，这样在之后的调用中可以直接抛出`InvokeConnectionError`等异常。
   
     ```python
     @property
@@ -533,7 +533,7 @@ class ImagePromptMessageContent(PromptMessageContent):
 所有 Role 消息体的基类，仅作为参数声明用，不可初始化。
 
 ```python
-class PromptMessage(ABC, BaseModel):
+class PromptMessage(BaseModel):
     """
     Model class for prompt message.
     """

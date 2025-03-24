@@ -13,7 +13,7 @@ import Field from '@/app/components/workflow/nodes/_base/components/field'
 import Split from '@/app/components/workflow/nodes/_base/components/split'
 import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
 import TypeSelector from '@/app/components/workflow/nodes/_base/components/selector'
-import { type NodePanelProps } from '@/app/components/workflow/types'
+import type { NodePanelProps } from '@/app/components/workflow/types'
 import BeforeRunForm from '@/app/components/workflow/nodes/_base/components/before-run-form'
 import ResultPanel from '@/app/components/workflow/run/result-panel'
 const i18nPrefix = 'workflow.nodes.code'
@@ -76,7 +76,7 @@ const Panel: FC<NodePanelProps<CodeNodeType>> = ({
 
   return (
     <div className='mt-2'>
-      <div className='px-4 pb-4 space-y-4'>
+      <div className='space-y-4 px-4 pb-4'>
         <Field
           title={t(`${i18nPrefix}.inputVars`)}
           operations={
@@ -111,7 +111,7 @@ const Panel: FC<NodePanelProps<CodeNodeType>> = ({
         />
       </div>
       <Split />
-      <div className='px-4 pt-4 pb-2'>
+      <div className='px-4 pb-2 pt-4'>
         <Field
           title={t(`${i18nPrefix}.outputVars`)}
           operations={

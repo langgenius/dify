@@ -16,7 +16,7 @@
 
 .note-editor-theme_link {
   cursor: pointer;
-  color: #155eef;
+  color: var(--text-text-selected);
 }
 
 .note-editor-theme_link:hover {

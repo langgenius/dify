@@ -1,5 +1,6 @@
-from flask_login import current_user
-from flask_restful import marshal, reqparse
+from flask import request
+from flask_login import current_user  # type: ignore
+from flask_restful import marshal, reqparse  # type: ignore
 from werkzeug.exceptions import NotFound
 
 from controllers.service_api import api
@@ -16,6 +17,7 @@ from extensions.ext_database import db
 from fields.segment_fields import segment_fields
 from models.dataset import Dataset, DocumentSegment
 from services.dataset_service import DatasetService, DocumentService, SegmentService
+from services.entities.knowledge_entities.knowledge_entities import SegmentUpdateArgs
 
 
 class SegmentApi(DatasetApiResource):
@@ -52,8 +54,7 @@ class SegmentApi(DatasetApiResource):
                 )
             except LLMBadRequestError:
                 raise ProviderNotInitializeError(
-                    "No Embedding Model available. Please configure a valid provider "
-                    "in the Settings -> Model Provider."
+                    "No Embedding Model available. Please configure a valid provider in the Settings -> Model Provider."
                 )
             except ProviderTokenNotInitError as ex:
                 raise ProviderNotInitializeError(ex.description)
@@ -74,6 +75,8 @@ class SegmentApi(DatasetApiResource):
         # check dataset
         dataset_id = str(dataset_id)
         tenant_id = str(tenant_id)
+        page = request.args.get("page", default=1, type=int)
+        limit = request.args.get("limit", default=20, type=int)
         dataset = db.session.query(Dataset).filter(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id).first()
         if not dataset:
             raise NotFound("Dataset not found.")
@@ -94,8 +97,7 @@ class SegmentApi(DatasetApiResource):
                 )
             except LLMBadRequestError:
                 raise ProviderNotInitializeError(
-                    "No Embedding Model available. Please configure a valid provider "
-                    "in the Settings -> Model Provider."
+                    "No Embedding Model available. Please configure a valid provider in the Settings -> Model Provider."
                 )
             except ProviderTokenNotInitError as ex:
                 raise ProviderNotInitializeError(ex.description)
@@ -119,8 +121,25 @@ class SegmentApi(DatasetApiResource):
             query = query.where(DocumentSegment.content.ilike(f"%{keyword}%"))
 
         total = query.count()
-        segments = query.order_by(DocumentSegment.position).all()
-        return {"data": marshal(segments, segment_fields), "doc_form": document.doc_form, "total": total}, 200
+        query = query.order_by(DocumentSegment.position)
+        paginated_segments = query.paginate(
+            page=page,
+            per_page=limit,
+            max_per_page=100,
+            error_out=False,
+        )
+        segments = paginated_segments.items
+
+        response = {
+            "data": marshal(segments, segment_fields),
+            "doc_form": document.doc_form,
+            "total": total,
+            "has_more": len(segments) == limit,
+            "limit": limit,
+            "page": page,
+        }
+
+        return response, 200
 
 
 class DatasetSegmentApi(DatasetApiResource):
@@ -174,8 +193,7 @@ class DatasetSegmentApi(DatasetApiResource):
                 )
             except LLMBadRequestError:
                 raise ProviderNotInitializeError(
-                    "No Embedding Model available. Please configure a valid provider "
-                    "in the Settings -> Model Provider."
+                    "No Embedding Model available. Please configure a valid provider in the Settings -> Model Provider."
                 )
             except ProviderTokenNotInitError as ex:
                 raise ProviderNotInitializeError(ex.description)
@@ -193,7 +211,7 @@ class DatasetSegmentApi(DatasetApiResource):
         args = parser.parse_args()
 
         SegmentService.segment_create_args_validate(args["segment"], document)
-        segment = SegmentService.update_segment(args["segment"], segment, document, dataset)
+        segment = SegmentService.update_segment(SegmentUpdateArgs(**args["segment"]), segment, document, dataset)
         return {"data": marshal(segment, segment_fields), "doc_form": document.doc_form}, 200
 
 

@@ -7,13 +7,13 @@ from .models import (
 )
 
 __all__ = [
+    "FILE_MODEL_IDENTITY",
+    "ArrayFileAttribute",
+    "File",
+    "FileAttribute",
+    "FileBelongsTo",
+    "FileTransferMethod",
     "FileType",
     "FileUploadConfig",
-    "FileTransferMethod",
-    "FileBelongsTo",
-    "File",
     "ImageConfig",
-    "FileAttribute",
-    "ArrayFileAttribute",
-    "FILE_MODEL_IDENTITY",
 ]

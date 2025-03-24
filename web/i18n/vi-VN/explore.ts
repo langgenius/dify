@@ -35,6 +35,8 @@ const translation = {
     Translate: 'Dịch thuật',
     Programming: 'Lập trình',
     HR: 'Nhân sự',
+    Agent: 'Người đại lý',
+    Workflow: 'Quy trình làm việc',
   },
 }
 

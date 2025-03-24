@@ -1,14 +1,14 @@
 'use client'
 import { useTranslation } from 'react-i18next'
 import { formatFileSize, formatNumber, formatTime } from '@/utils/format'
-import type { DocType } from '@/models/datasets'
+import { type DocType, ProcessMode } from '@/models/datasets'
 import useTimestamp from '@/hooks/use-timestamp'
 
 export type inputType = 'input' | 'select' | 'textarea'
 export type metadataType = DocType | 'originInfo' | 'technicalParameters'
 
 type MetadataMap =
-    Record<
+  Record<
     metadataType,
     {
       text: string
@@ -16,16 +16,16 @@ type MetadataMap =
       icon?: React.ReactNode
       iconName?: string
       subFieldsMap: Record<
-      string,
-      {
-        label: string
-        inputType?: inputType
-        field?: string
-        render?: (value: any, total?: number) => React.ReactNode | string
-      }
+        string,
+        {
+          label: string
+          inputType?: inputType
+          field?: string
+          render?: (value: any, total?: number) => React.ReactNode | string
+        }
       >
     }
-    >
+  >
 
 const fieldPrefix = 'datasetDocuments.metadata.field'
 
@@ -65,7 +65,7 @@ export const useMetadataMap = (): MetadataMap => {
         },
         'author/publisher': { label: t(`${fieldPrefix}.webPage.authorPublisher`) },
         'publish_date': { label: t(`${fieldPrefix}.webPage.publishDate`) },
-        'topics/keywords': { label: t(`${fieldPrefix}.webPage.topicsKeywords`) },
+        'topic/keywords': { label: t(`${fieldPrefix}.webPage.topicKeywords`) },
         'description': { label: t(`${fieldPrefix}.webPage.description`) },
       },
     },
@@ -85,7 +85,7 @@ export const useMetadataMap = (): MetadataMap => {
         },
         'volume/issue/page_numbers': { label: t(`${fieldPrefix}.paper.volumeIssuePage`) },
         'doi': { label: t(`${fieldPrefix}.paper.DOI`) },
-        'topics/keywords': { label: t(`${fieldPrefix}.paper.topicsKeywords`) },
+        'topic/keywords': { label: t(`${fieldPrefix}.paper.topicKeywords`) },
         'abstract': {
           label: t(`${fieldPrefix}.paper.abstract`),
           inputType: 'textarea',
@@ -158,8 +158,8 @@ export const useMetadataMap = (): MetadataMap => {
         'start_date': { label: t(`${fieldPrefix}.IMChat.startDate`) },
         'end_date': { label: t(`${fieldPrefix}.IMChat.endDate`) },
         'participants': { label: t(`${fieldPrefix}.IMChat.participants`) },
-        'topicsKeywords': {
-          label: t(`${fieldPrefix}.IMChat.topicsKeywords`),
+        'topicKeywords': {
+          label: t(`${fieldPrefix}.IMChat.topicKeywords`),
           inputType: 'textarea',
         },
         'fileType': { label: t(`${fieldPrefix}.IMChat.fileType`) },
@@ -240,7 +240,7 @@ export const useMetadataMap = (): MetadataMap => {
         },
         'data_source_type': {
           label: t(`${fieldPrefix}.originInfo.source`),
-          render: value => t(`datasetDocuments.metadata.source.${value}`),
+          render: value => t(`datasetDocuments.metadata.source.${value === 'notion_import' ? 'notion' : value}`),
         },
       },
     },
@@ -250,7 +250,7 @@ export const useMetadataMap = (): MetadataMap => {
       subFieldsMap: {
         'dataset_process_rule.mode': {
           label: t(`${fieldPrefix}.technicalParameters.segmentSpecification`),
-          render: value => value === 'automatic' ? (t('datasetDocuments.embedding.automatic') as string) : (t('datasetDocuments.embedding.custom') as string),
+          render: value => value === ProcessMode.general ? (t('datasetDocuments.embedding.custom') as string) : (t('datasetDocuments.embedding.hierarchical') as string),
         },
         'dataset_process_rule.rules.segmentation.max_tokens': {
           label: t(`${fieldPrefix}.technicalParameters.segmentLength`),

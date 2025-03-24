@@ -17,6 +17,9 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
 
       - name: Check changed files
         id: changed-files
@@ -37,12 +40,13 @@ jobs:
       - name: Ruff check
         if: steps.changed-files.outputs.any_changed == 'true'
         run: |
-          poetry run -C api ruff check ./api
-          poetry run -C api ruff format --check ./api
+          poetry run -C api ruff --version
+          poetry run -C api ruff check ./
+          poetry run -C api ruff format --check ./
 
       - name: Dotenv check
         if: steps.changed-files.outputs.any_changed == 'true'
-        run: poetry run -C api dotenv-linter ./api/.env.example ./web/.env.example
+        run: poetry run -P api dotenv-linter ./api/.env.example ./web/.env.example
 
       - name: Lint hints
         if: failure()
@@ -58,6 +62,9 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
 
       - name: Check changed files
         id: changed-files
@@ -65,22 +72,58 @@ jobs:
         with:
           files: web/**
 
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+          run_install: false
+
       - name: Setup NodeJS
         uses: actions/setup-node@v4
         if: steps.changed-files.outputs.any_changed == 'true'
         with:
           node-version: 20
-          cache: yarn
+          cache: pnpm
           cache-dependency-path: ./web/package.json
 
       - name: Web dependencies
         if: steps.changed-files.outputs.any_changed == 'true'
-        run: yarn install --frozen-lockfile
+        run: pnpm install --frozen-lockfile
 
       - name: Web style check
         if: steps.changed-files.outputs.any_changed == 'true'
-        run: yarn run lint
+        run: pnpm run lint
 
+  docker-compose-template:
+    name: Docker Compose Template
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Check changed files
+        id: changed-files
+        uses: tj-actions/changed-files@v45
+        with:
+          files: |
+            docker/generate_docker_compose
+            docker/.env.example
+            docker/docker-compose-template.yaml
+            docker/docker-compose.yaml
+
+      - name: Generate Docker Compose
+        if: steps.changed-files.outputs.any_changed == 'true'
+        run: |
+          cd docker
+          ./generate_docker_compose
+
+      - name: Check for changes
+        if: steps.changed-files.outputs.any_changed == 'true'
+        run: git diff --exit-code
 
   superlinter:
     name: SuperLinter
@@ -89,6 +132,9 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
 
       - name: Check changed files
         id: changed-files

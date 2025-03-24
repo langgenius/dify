@@ -66,7 +66,7 @@ class OpenSearchVector(BaseVector):
         return VectorType.OPENSEARCH
 
     def create(self, texts: list[Document], embeddings: list[list[float]], **kwargs):
-        metadatas = [d.metadata for d in texts]
+        metadatas = [d.metadata if d.metadata is not None else {} for d in texts]
         self.create_collection(embeddings, metadatas)
         self.add_texts(texts, embeddings)
 
@@ -154,6 +154,9 @@ class OpenSearchVector(BaseVector):
             "size": kwargs.get("top_k", 4),
             "query": {"knn": {Field.VECTOR.value: {Field.VECTOR.value: query_vector, "k": kwargs.get("top_k", 4)}}},
         }
+        document_ids_filter = kwargs.get("document_ids_filter")
+        if document_ids_filter:
+            query["query"] = {"terms": {"metadata.document_id": document_ids_filter}}
 
         try:
             response = self._client.search(index=self._collection_name.lower(), body=query)
@@ -179,6 +182,9 @@ class OpenSearchVector(BaseVector):
 
     def search_by_full_text(self, query: str, **kwargs: Any) -> list[Document]:
         full_text_query = {"query": {"match": {Field.CONTENT_KEY.value: query}}}
+        document_ids_filter = kwargs.get("document_ids_filter")
+        if document_ids_filter:
+            full_text_query["query"]["terms"] = {"metadata.document_id": document_ids_filter}
 
         response = self._client.search(index=self._collection_name.lower(), body=full_text_query)
 
@@ -244,7 +250,7 @@ class OpenSearchVectorFactory(AbstractVectorFactory):
             dataset.index_struct = json.dumps(self.gen_index_struct_dict(VectorType.OPENSEARCH, collection_name))
 
         open_search_config = OpenSearchConfig(
-            host=dify_config.OPENSEARCH_HOST,
+            host=dify_config.OPENSEARCH_HOST or "localhost",
             port=dify_config.OPENSEARCH_PORT,
             user=dify_config.OPENSEARCH_USER,
             password=dify_config.OPENSEARCH_PASSWORD,

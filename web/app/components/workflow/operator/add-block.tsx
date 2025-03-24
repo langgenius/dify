@@ -78,11 +78,11 @@ const AddBlock = ({
         title={t('workflow.common.addBlock')}
       >
         <div className={cn(
-          'flex items-center justify-center w-8 h-8 rounded-lg hover:bg-black/5 hover:text-gray-700 cursor-pointer',
-          `${nodesReadOnly && '!cursor-not-allowed opacity-50'}`,
-          open && '!bg-black/5',
+          'flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary',
+          `${nodesReadOnly && 'cursor-not-allowed text-text-disabled hover:bg-transparent hover:text-text-disabled'}`,
+          open && 'bg-state-accent-active text-text-accent',
         )}>
-          <RiAddCircleFill className='w-4 h-4' />
+          <RiAddCircleFill className='h-4 w-4' />
         </div>
       </TipPopup>
     )

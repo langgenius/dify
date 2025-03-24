@@ -22,6 +22,7 @@ import type { Node } from '@/app/components/workflow/types'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { useGetLanguage } from '@/context/i18n'
 import { CollectionType } from '@/app/components/tools/types'
+import { canFindTool } from '@/utils'
 
 type PanelOperatorPopupProps = {
   id: string
@@ -57,7 +58,7 @@ const PanelOperatorPopup = ({
       return nodesExtraData[data.type].author
 
     if (data.provider_type === CollectionType.builtIn)
-      return buildInTools.find(toolWithProvider => toolWithProvider.id === data.provider_id)?.author
+      return buildInTools.find(toolWithProvider => canFindTool(toolWithProvider.id, data.provider_id))?.author
 
     if (data.provider_type === CollectionType.workflow)
       return workflowTools.find(toolWithProvider => toolWithProvider.id === data.provider_id)?.author
@@ -70,7 +71,7 @@ const PanelOperatorPopup = ({
       return nodesExtraData[data.type].about
 
     if (data.provider_type === CollectionType.builtIn)
-      return buildInTools.find(toolWithProvider => toolWithProvider.id === data.provider_id)?.description[language]
+      return buildInTools.find(toolWithProvider => canFindTool(toolWithProvider.id, data.provider_id))?.description[language]
 
     if (data.provider_type === CollectionType.workflow)
       return workflowTools.find(toolWithProvider => toolWithProvider.id === data.provider_id)?.description[language]
@@ -78,12 +79,12 @@ const PanelOperatorPopup = ({
     return customTools.find(toolWithProvider => toolWithProvider.id === data.provider_id)?.description[language]
   }, [data, nodesExtraData, language, buildInTools, customTools, workflowTools])
 
-  const showChangeBlock = data.type !== BlockEnum.Start && !nodesReadOnly && data.type !== BlockEnum.Iteration
+  const showChangeBlock = data.type !== BlockEnum.Start && !nodesReadOnly && data.type !== BlockEnum.Iteration && data.type !== BlockEnum.Loop
 
   const link = useNodeHelpLink(data.type)
 
   return (
-    <div className='w-[240px] border-[0.5px] border-gray-200 rounded-lg shadow-xl bg-white'>
+    <div className='w-[240px] rounded-lg border-[0.5px] border-gray-200 bg-white shadow-xl'>
       {
         (showChangeBlock || canRunBySingle(data.type)) && (
           <>
@@ -92,7 +93,7 @@ const PanelOperatorPopup = ({
                 canRunBySingle(data.type) && (
                   <div
                     className={`
-                      flex items-center px-3 h-8 text-sm text-gray-700 rounded-lg cursor-pointer
+                      flex h-8 cursor-pointer items-center rounded-lg px-3 text-sm text-gray-700
                       hover:bg-gray-50
                     `}
                     onClick={() => {
@@ -125,7 +126,7 @@ const PanelOperatorPopup = ({
           <>
             <div className='p-1'>
               <div
-                className='flex items-center justify-between px-3 h-8 text-sm text-gray-700 rounded-lg cursor-pointer hover:bg-gray-50'
+                className='flex h-8 cursor-pointer items-center justify-between rounded-lg px-3 text-sm text-gray-700 hover:bg-gray-50'
                 onClick={() => {
                   onClosePopup()
                   handleNodesCopy(id)
@@ -135,7 +136,7 @@ const PanelOperatorPopup = ({
                 <ShortcutsName keys={['ctrl', 'c']} />
               </div>
               <div
-                className='flex items-center justify-between px-3 h-8 text-sm text-gray-700 rounded-lg cursor-pointer hover:bg-gray-50'
+                className='flex h-8 cursor-pointer items-center justify-between rounded-lg px-3 text-sm text-gray-700 hover:bg-gray-50'
                 onClick={() => {
                   onClosePopup()
                   handleNodesDuplicate(id)
@@ -149,7 +150,7 @@ const PanelOperatorPopup = ({
             <div className='p-1'>
               <div
                 className={`
-                flex items-center justify-between px-3 h-8 text-sm text-gray-700 rounded-lg cursor-pointer
+                flex h-8 cursor-pointer items-center justify-between rounded-lg px-3 text-sm text-gray-700
                 hover:bg-rose-50 hover:text-red-500
                 `}
                 onClick={() => handleNodeDelete(id)}
@@ -169,7 +170,7 @@ const PanelOperatorPopup = ({
               <a
                 href={link}
                 target='_blank'
-                className='flex items-center px-3 h-8 text-sm text-gray-700 rounded-lg cursor-pointer hover:bg-gray-50'
+                className='flex h-8 cursor-pointer items-center rounded-lg px-3 text-sm text-gray-700 hover:bg-gray-50'
               >
                 {t('workflow.panel.helpLink')}
               </a>
@@ -180,10 +181,10 @@ const PanelOperatorPopup = ({
       }
       <div className='p-1'>
         <div className='px-3 py-2 text-xs text-gray-500'>
-          <div className='flex items-center mb-1 h-[22px] font-medium'>
+          <div className='mb-1 flex h-[22px] items-center font-medium'>
             {t('workflow.panel.about').toLocaleUpperCase()}
           </div>
-          <div className='mb-1 text-gray-700 leading-[18px]'>{about}</div>
+          <div className='mb-1 leading-[18px] text-gray-700'>{about}</div>
           <div className='leading-[18px]'>
             {t('workflow.panel.createdBy')} {author}
           </div>

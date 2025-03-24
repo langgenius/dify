@@ -41,6 +41,7 @@ class FeatureModel(BaseModel):
     members: LimitationModel = LimitationModel(size=0, limit=1)
     apps: LimitationModel = LimitationModel(size=0, limit=10)
     vector_space: LimitationModel = LimitationModel(size=0, limit=5)
+    knowledge_rate_limit: int = 10
     annotation_quota_limit: LimitationModel = LimitationModel(size=0, limit=10)
     documents_upload_quota: LimitationModel = LimitationModel(size=0, limit=50)
     docs_processing: str = "standard"
@@ -52,17 +53,26 @@ class FeatureModel(BaseModel):
     model_config = ConfigDict(protected_namespaces=())
 
 
+class KnowledgeRateLimitModel(BaseModel):
+    enabled: bool = False
+    limit: int = 10
+    subscription_plan: str = ""
+
+
 class SystemFeatureModel(BaseModel):
     sso_enforced_for_signin: bool = False
     sso_enforced_for_signin_protocol: str = ""
     sso_enforced_for_web: bool = False
     sso_enforced_for_web_protocol: str = ""
     enable_web_sso_switch_component: bool = False
+    enable_marketplace: bool = False
+    max_plugin_package_size: int = dify_config.PLUGIN_MAX_PACKAGE_SIZE
     enable_email_code_login: bool = False
     enable_email_password_login: bool = True
     enable_social_oauth_login: bool = False
     is_allow_register: bool = False
     is_allow_create_workspace: bool = False
+    is_email_setup: bool = False
     license: LicenseModel = LicenseModel()
 
 
@@ -73,10 +83,20 @@ class FeatureService:
 
         cls._fulfill_params_from_env(features)
 
-        if dify_config.BILLING_ENABLED:
+        if dify_config.BILLING_ENABLED and tenant_id:
             cls._fulfill_params_from_billing_api(features, tenant_id)
 
         return features
+
+    @classmethod
+    def get_knowledge_rate_limit(cls, tenant_id: str):
+        knowledge_rate_limit = KnowledgeRateLimitModel()
+        if dify_config.BILLING_ENABLED and tenant_id:
+            knowledge_rate_limit.enabled = True
+            limit_info = BillingService.get_knowledge_rate_limit(tenant_id)
+            knowledge_rate_limit.limit = limit_info.get("limit", 10)
+            knowledge_rate_limit.subscription_plan = limit_info.get("subscription_plan", "sandbox")
+        return knowledge_rate_limit
 
     @classmethod
     def get_system_features(cls) -> SystemFeatureModel:
@@ -89,6 +109,9 @@ class FeatureService:
 
             cls._fulfill_params_from_enterprise(system_features)
 
+        if dify_config.MARKETPLACE_ENABLED:
+            system_features.enable_marketplace = True
+
         return system_features
 
     @classmethod
@@ -98,6 +121,7 @@ class FeatureService:
         system_features.enable_social_oauth_login = dify_config.ENABLE_SOCIAL_OAUTH_LOGIN
         system_features.is_allow_register = dify_config.ALLOW_REGISTER
         system_features.is_allow_create_workspace = dify_config.ALLOW_CREATE_WORKSPACE
+        system_features.is_email_setup = dify_config.MAIL_TYPE is not None and dify_config.MAIL_TYPE != ""
 
     @classmethod
     def _fulfill_params_from_env(cls, features: FeatureModel):
@@ -142,6 +166,9 @@ class FeatureService:
         if "model_load_balancing_enabled" in billing_info:
             features.model_load_balancing_enabled = billing_info["model_load_balancing_enabled"]
 
+        if "knowledge_rate_limit" in billing_info:
+            features.knowledge_rate_limit = billing_info["knowledge_rate_limit"]["limit"]
+
     @classmethod
     def _fulfill_params_from_enterprise(cls, features):
         enterprise_info = EnterpriseService.get_info()
@@ -171,8 +198,10 @@ class FeatureService:
             features.is_allow_create_workspace = enterprise_info["is_allow_create_workspace"]
 
         if "license" in enterprise_info:
-            if "status" in enterprise_info["license"]:
-                features.license.status = enterprise_info["license"]["status"]
+            license_info = enterprise_info["license"]
 
-            if "expired_at" in enterprise_info["license"]:
-                features.license.expired_at = enterprise_info["license"]["expired_at"]
+            if "status" in license_info:
+                features.license.status = LicenseStatus(license_info.get("status", LicenseStatus.INACTIVE))
+
+            if "expired_at" in license_info:
+                features.license.expired_at = license_info["expired_at"]

@@ -1,8 +1,8 @@
 import uuid
 from typing import cast
 
-from flask_login import current_user
-from flask_restful import Resource, inputs, marshal, marshal_with, reqparse
+from flask_login import current_user  # type: ignore
+from flask_restful import Resource, inputs, marshal, marshal_with, reqparse  # type: ignore
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import BadRequest, Forbidden, abort
@@ -50,19 +50,28 @@ class AppListApi(Resource):
         parser.add_argument(
             "mode",
             type=str,
-            choices=["chat", "workflow", "agent-chat", "channel", "all"],
+            choices=[
+                "completion",
+                "chat",
+                "advanced-chat",
+                "workflow",
+                "agent-chat",
+                "channel",
+                "all",
+            ],
             default="all",
             location="args",
             required=False,
         )
         parser.add_argument("name", type=str, location="args", required=False)
         parser.add_argument("tag_ids", type=uuid_list, location="args", required=False)
+        parser.add_argument("is_created_by_me", type=inputs.boolean, location="args", required=False)
 
         args = parser.parse_args()
 
         # get app list
         app_service = AppService()
-        app_pagination = app_service.get_paginate_apps(current_user.current_tenant_id, args)
+        app_pagination = app_service.get_paginate_apps(current_user.id, current_user.current_tenant_id, args)
         if not app_pagination:
             return {"data": [], "total": 0, "page": 1, "limit": 20, "has_more": False}
 
@@ -129,7 +138,6 @@ class AppApi(Resource):
         parser.add_argument("icon_type", type=str, location="json")
         parser.add_argument("icon", type=str, location="json")
         parser.add_argument("icon_background", type=str, location="json")
-        parser.add_argument("max_active_requests", type=int, location="json")
         parser.add_argument("use_icon_as_answer_icon", type=bool, location="json")
         args = parser.parse_args()
 
@@ -315,7 +323,7 @@ class AppTraceApi(Resource):
     @account_initialization_required
     def post(self, app_id):
         # add app trace
-        if not current_user.is_admin_or_owner:
+        if not current_user.is_editor:
             raise Forbidden()
         parser = reqparse.RequestParser()
         parser.add_argument("enabled", type=bool, required=True, location="json")

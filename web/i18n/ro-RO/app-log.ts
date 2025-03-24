@@ -52,6 +52,7 @@ const translation = {
     },
     variables: 'Variabile',
     uploadImages: 'Imagini încărcate',
+    modelParams: 'Parametrii modelului',
   },
   filter: {
     period: {
@@ -79,6 +80,8 @@ const translation = {
   runDetail: {
     title: 'Jurnal de conversație',
     workflowTitle: 'Detalii jurnal',
+    fileListDetail: 'Amănunt',
+    fileListLabel: 'Detalii fișier',
   },
   promptLog: 'Jurnal prompt',
   agentLog: 'Jurnal agent',

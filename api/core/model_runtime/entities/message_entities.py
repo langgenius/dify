@@ -1,7 +1,6 @@
-from abc import ABC
 from collections.abc import Sequence
 from enum import Enum, StrEnum
-from typing import Literal, Optional
+from typing import Optional
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -67,7 +66,6 @@ class PromptMessageContent(BaseModel):
     """
 
     type: PromptMessageContentType
-    data: str
 
 
 class TextPromptMessageContent(PromptMessageContent):
@@ -76,21 +74,34 @@ class TextPromptMessageContent(PromptMessageContent):
     """
 
     type: PromptMessageContentType = PromptMessageContentType.TEXT
+    data: str
 
 
-class VideoPromptMessageContent(PromptMessageContent):
+class MultiModalPromptMessageContent(PromptMessageContent):
+    """
+    Model class for multi-modal prompt message content.
+    """
+
+    type: PromptMessageContentType
+    format: str = Field(default=..., description="the format of multi-modal file")
+    base64_data: str = Field(default="", description="the base64 data of multi-modal file")
+    url: str = Field(default="", description="the url of multi-modal file")
+    mime_type: str = Field(default=..., description="the mime type of multi-modal file")
+
+    @property
+    def data(self):
+        return self.url or f"data:{self.mime_type};base64,{self.base64_data}"
+
+
+class VideoPromptMessageContent(MultiModalPromptMessageContent):
     type: PromptMessageContentType = PromptMessageContentType.VIDEO
-    data: str = Field(..., description="Base64 encoded video data")
-    format: str = Field(..., description="Video format")
 
 
-class AudioPromptMessageContent(PromptMessageContent):
+class AudioPromptMessageContent(MultiModalPromptMessageContent):
     type: PromptMessageContentType = PromptMessageContentType.AUDIO
-    data: str = Field(..., description="Base64 encoded audio data")
-    format: str = Field(..., description="Audio format")
 
 
-class ImagePromptMessageContent(PromptMessageContent):
+class ImagePromptMessageContent(MultiModalPromptMessageContent):
     """
     Model class for image prompt message content.
     """
@@ -103,14 +114,11 @@ class ImagePromptMessageContent(PromptMessageContent):
     detail: DETAIL = DETAIL.LOW
 
 
-class DocumentPromptMessageContent(PromptMessageContent):
+class DocumentPromptMessageContent(MultiModalPromptMessageContent):
     type: PromptMessageContentType = PromptMessageContentType.DOCUMENT
-    encode_format: Literal["base64"]
-    mime_type: str
-    data: str
 
 
-class PromptMessage(ABC, BaseModel):
+class PromptMessage(BaseModel):
     """
     Model class for prompt message.
     """

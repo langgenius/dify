@@ -12,7 +12,7 @@ const Install = () => {
       'gap-x-20',
       'justify-center lg:justify-start',
     )}>
-      <div className="block m-auto w-96">
+      <div className="m-auto block w-96">
         <InitPasswordPopup />
       </div>
     </div>

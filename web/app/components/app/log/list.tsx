@@ -5,9 +5,8 @@ import useSWR from 'swr'
 import {
   HandThumbDownIcon,
   HandThumbUpIcon,
-  XMarkIcon,
 } from '@heroicons/react/24/outline'
-import { RiEditFill, RiQuestionLine } from '@remixicon/react'
+import { RiCloseLine, RiEditFill } from '@remixicon/react'
 import { get } from 'lodash-es'
 import InfiniteScroll from 'react-infinite-scroll-component'
 import dayjs from 'dayjs'
@@ -17,21 +16,18 @@ import { createContext, useContext } from 'use-context-selector'
 import { useShallow } from 'zustand/react/shallow'
 import { useTranslation } from 'react-i18next'
 import type { ChatItemInTree } from '../../base/chat/types'
+import Indicator from '../../header/indicator'
 import VarPanel from './var-panel'
-import cn from '@/utils/classnames'
 import type { FeedbackFunc, FeedbackType, IChatItem, SubmitAnnotationFunc } from '@/app/components/base/chat/chat/type'
 import type { Annotation, ChatConversationGeneralDetail, ChatConversationsResponse, ChatMessage, ChatMessagesRequest, CompletionConversationGeneralDetail, CompletionConversationsResponse, LogAnnotation } from '@/models/log'
 import type { App } from '@/types/app'
+import ActionButton from '@/app/components/base/action-button'
 import Loading from '@/app/components/base/loading'
 import Drawer from '@/app/components/base/drawer'
-import Popover from '@/app/components/base/popover'
 import Chat from '@/app/components/base/chat/chat'
 import { ToastContext } from '@/app/components/base/toast'
 import { fetchChatConversationDetail, fetchChatMessages, fetchCompletionConversationDetail, updateLogMessageAnnotations, updateLogMessageFeedbacks } from '@/service/log'
-import { TONE_LIST } from '@/config'
-import ModelIcon from '@/app/components/header/account-setting/model-provider-page/model-icon'
-import { useTextGenerationCurrentProviderAndModelAndModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
-import ModelName from '@/app/components/header/account-setting/model-provider-page/model-name'
+import ModelInfo from '@/app/components/app/log/model-info'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import TextGeneration from '@/app/components/app/text-generate/item'
 import { addFileInfos, sortAgentSorts } from '@/app/components/tools/utils'
@@ -44,6 +40,7 @@ import Tooltip from '@/app/components/base/tooltip'
 import { CopyIcon } from '@/app/components/base/copy-icon'
 import { buildChatItemTree, getThreadMessages } from '@/app/components/base/chat/utils'
 import { getProcessedFilesFromResponse } from '@/app/components/base/file-uploader/utils'
+import cn from '@/utils/classnames'
 
 dayjs.extend(utc)
 dayjs.extend(timezone)
@@ -61,6 +58,12 @@ type IDrawerContext = {
   appDetail?: App
 }
 
+type StatusCount = {
+  success: number
+  failed: number
+  partial_success: number
+}
+
 const DrawerContext = createContext<IDrawerContext>({} as IDrawerContext)
 
 /**
@@ -69,19 +72,40 @@ const DrawerContext = createContext<IDrawerContext>({} as IDrawerContext)
 const HandThumbIconWithCount: FC<{ count: number; iconType: 'up' | 'down' }> = ({ count, iconType }) => {
   const classname = iconType === 'up' ? 'text-primary-600 bg-primary-50' : 'text-red-600 bg-red-50'
   const Icon = iconType === 'up' ? HandThumbUpIcon : HandThumbDownIcon
-  return <div className={`inline-flex items-center w-fit rounded-md p-1 text-xs ${classname} mr-1 last:mr-0`}>
-    <Icon className={'h-3 w-3 mr-0.5 rounded-md'} />
+  return <div className={`inline-flex w-fit items-center rounded-md p-1 text-xs ${classname} mr-1 last:mr-0`}>
+    <Icon className={'mr-0.5 h-3 w-3 rounded-md'} />
     {count > 0 ? count : null}
   </div>
 }
 
-const PARAM_MAP = {
-  temperature: 'Temperature',
-  top_p: 'Top P',
-  presence_penalty: 'Presence Penalty',
-  max_tokens: 'Max Token',
-  stop: 'Stop',
-  frequency_penalty: 'Frequency Penalty',
+const statusTdRender = (statusCount: StatusCount) => {
+  if (!statusCount)
+    return null
+
+  if (statusCount.partial_success + statusCount.failed === 0) {
+    return (
+      <div className='system-xs-semibold-uppercase inline-flex items-center gap-1'>
+        <Indicator color={'green'} />
+        <span className='text-util-colors-green-green-600'>Success</span>
+      </div>
+    )
+  }
+  else if (statusCount.failed === 0) {
+    return (
+      <div className='system-xs-semibold-uppercase inline-flex items-center gap-1'>
+        <Indicator color={'green'} />
+        <span className='text-util-colors-green-green-600'>Partial Success</span>
+      </div>
+    )
+  }
+  else {
+    return (
+      <div className='system-xs-semibold-uppercase inline-flex items-center gap-1'>
+        <Indicator color={'red'} />
+        <span className='text-util-colors-red-red-600'>{statusCount.failed} {`${statusCount.failed > 1 ? 'Failures' : 'Failure'}`}</span>
+      </div>
+    )
+  }
 }
 
 const getFormattedChatList = (messages: ChatMessage[], conversationId: string, timezone: string, format: string) => {
@@ -155,9 +179,6 @@ const getFormattedChatList = (messages: ChatMessage[], conversationId: string, t
   })
   return newChatList
 }
-
-// const displayedParams = CompletionParams.slice(0, -2)
-const validatedParams = ['temperature', 'top_p', 'presence_penalty', 'frequency_penalty']
 
 type IDetailPanel = {
   detail: any
@@ -315,22 +336,6 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
   const isChatMode = appDetail?.mode !== 'completion'
   const isAdvanced = appDetail?.mode === 'advanced-chat'
 
-  const targetTone = TONE_LIST.find((item: any) => {
-    let res = true
-    validatedParams.forEach((param) => {
-      res = item.config?.[param] === detail.model_config?.configs?.completion_params?.[param]
-    })
-    return res
-  })?.name ?? 'custom'
-
-  const modelName = (detail.model_config as any).model?.name
-  const provideName = (detail.model_config as any).model?.provider as any
-  const {
-    currentModel,
-    currentProvider,
-  } = useTextGenerationCurrentProviderAndModelAndModelList(
-    { provider: provideName, model: modelName },
-  )
   const varList = (detail.model_config as any).user_input_form?.map((item: any) => {
     const itemContent = item[Object.keys(item)[0]]
     return {
@@ -341,18 +346,6 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
   const message_files = (!isChatMode && detail.message.message_files && detail.message.message_files.length > 0)
     ? detail.message.message_files.map((item: any) => item.url)
     : []
-
-  const getParamValue = (param: string) => {
-    const value = detail?.model_config.model?.completion_params?.[param] || '-'
-    if (param === 'stop') {
-      if (Array.isArray(value))
-        return value.join(',')
-      else
-        return '-'
-    }
-
-    return value
-  }
 
   const [width, setWidth] = useState(0)
   const ref = useRef<HTMLDivElement>(null)
@@ -367,162 +360,68 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
   }, [])
 
   return (
-    <div ref={ref} className='rounded-xl border-[0.5px] border-gray-200 h-full flex flex-col overflow-auto'>
+    <div ref={ref} className='flex h-full flex-col rounded-xl border-[0.5px] border-components-panel-border'>
       {/* Panel Header */}
-      <div className='border-b border-gray-100 py-4 px-6 flex items-center justify-between bg-components-panel-bg'>
-        <div>
-          <div className='text-gray-500 text-[10px] leading-[14px]'>{isChatMode ? t('appLog.detail.conversationId') : t('appLog.detail.time')}</div>
+      <div className='flex shrink-0 items-center gap-2 rounded-t-xl bg-components-panel-bg pb-2 pl-4 pr-3 pt-3'>
+        <div className='shrink-0'>
+          <div className='system-xs-semibold-uppercase mb-0.5 text-text-primary'>{isChatMode ? t('appLog.detail.conversationId') : t('appLog.detail.time')}</div>
           {isChatMode && (
-            <div className='flex items-center text-gray-700 text-[13px] leading-[18px]'>
+            <div className='system-2xs-regular-uppercase flex items-center text-text-secondary'>
               <Tooltip
                 popupContent={detail.id}
               >
-                <div className='max-w-[105px] truncate'>{detail.id}</div>
+                <div className='truncate'>{detail.id}</div>
               </Tooltip>
               <CopyIcon content={detail.id} />
             </div>
           )}
           {!isChatMode && (
-            <div className='text-gray-700 text-[13px] leading-[18px]'>{formatTime(detail.created_at, t('appLog.dateTimeFormat') as string)}</div>
+            <div className='system-2xs-regular-uppercase text-text-secondary'>{formatTime(detail.created_at, t('appLog.dateTimeFormat') as string)}</div>
           )}
         </div>
-        <div className='flex items-center flex-wrap gap-y-1 justify-end'>
-          {!isAdvanced && (
-            <>
-              <div
-                className={cn('mr-2 flex items-center border h-8 px-2 space-x-2 rounded-lg bg-indigo-25 border-[#2A87F5]')}
-              >
-                <ModelIcon
-                  className='!w-5 !h-5'
-                  provider={currentProvider}
-                  modelName={currentModel?.model}
-                />
-                <ModelName
-                  modelItem={currentModel!}
-                  showMode
-                />
-              </div>
-              <Popover
-                position='br'
-                className='!w-[280px]'
-                btnClassName='mr-4 !bg-gray-50 !py-1.5 !px-2.5 border-none font-normal'
-                btnElement={<>
-                  <span className='text-[13px]'>{targetTone}</span>
-                  <RiQuestionLine className='h-4 w-4 text-gray-800 ml-1.5' />
-                </>}
-                htmlContent={<div className='w-[280px]'>
-                  <div className='flex justify-between py-2 px-4 font-medium text-sm text-gray-700'>
-                    <span>Tone of responses</span>
-                    <div>{targetTone}</div>
-                  </div>
-                  {['temperature', 'top_p', 'presence_penalty', 'max_tokens', 'stop'].map((param: string, index: number) => {
-                    return <div className='flex justify-between py-2 px-4 bg-gray-50' key={index}>
-                      <span className='text-xs text-gray-700'>{PARAM_MAP[param as keyof typeof PARAM_MAP]}</span>
-                      <span className='text-gray-800 font-medium text-xs'>{getParamValue(param)}</span>
-                    </div>
-                  })}
-                </div>}
-              />
-            </>
-          )}
-          <div className='w-6 h-6 rounded-lg flex items-center justify-center hover:cursor-pointer hover:bg-gray-100'>
-            <XMarkIcon className='w-4 h-4 text-gray-500' onClick={onClose} />
-          </div>
+        <div className='flex grow flex-wrap items-center justify-end gap-y-1'>
+          {!isAdvanced && <ModelInfo model={detail.model_config.model} />}
         </div>
-
+        <ActionButton size='l' onClick={onClose}>
+          <RiCloseLine className='h-4 w-4 text-text-tertiary' />
+        </ActionButton>
       </div>
       {/* Panel Body */}
-      {(varList.length > 0 || (!isChatMode && message_files.length > 0)) && (
-        <div className='px-6 pt-4 pb-2'>
-          <VarPanel
-            varList={varList}
-            message_files={message_files}
-          />
+      <div className='shrink-0 px-1 pt-1'>
+        <div className='rounded-t-xl bg-background-section-burn p-3 pb-2'>
+          {(varList.length > 0 || (!isChatMode && message_files.length > 0)) && (
+            <VarPanel
+              varList={varList}
+              message_files={message_files}
+            />
+          )}
         </div>
-      )}
-
-      {!isChatMode
-        ? <div className="px-6 py-4">
-          <div className='flex h-[18px] items-center space-x-3'>
-            <div className='leading-[18px] text-xs font-semibold text-gray-500 uppercase'>{t('appLog.table.header.output')}</div>
-            <div className='grow h-[1px]' style={{
-              background: 'linear-gradient(270deg, rgba(243, 244, 246, 0) 0%, rgb(243, 244, 246) 100%)',
-            }}></div>
-          </div>
-          <TextGeneration
-            className='mt-2'
-            content={detail.message.answer}
-            messageId={detail.message.id}
-            isError={false}
-            onRetry={() => { }}
-            isInstalledApp={false}
-            supportFeedback
-            feedback={detail.message.feedbacks.find((item: any) => item.from_source === 'admin')}
-            onFeedback={feedback => onFeedback(detail.message.id, feedback)}
-            supportAnnotation
-            isShowTextToSpeech
-            appId={appDetail?.id}
-            varList={varList}
-            siteInfo={null}
-          />
-        </div>
-        : threadChatItems.length < 8
-          ? <div className="pt-4 mb-4">
-            <Chat
-              config={{
-                appId: appDetail?.id,
-                text_to_speech: {
-                  enabled: true,
-                },
-                supportAnnotation: true,
-                annotation_reply: {
-                  enabled: true,
-                },
-                supportFeedback: true,
-              } as any}
-              chatList={threadChatItems}
-              onAnnotationAdded={handleAnnotationAdded}
-              onAnnotationEdited={handleAnnotationEdited}
-              onAnnotationRemoved={handleAnnotationRemoved}
-              onFeedback={onFeedback}
-              noChatInput
-              showPromptLog
-              hideProcessDetail
-              chatContainerInnerClassName='px-6'
-              switchSibling={switchSibling}
+      </div>
+      <div className='mx-1 mb-1 grow overflow-auto rounded-b-xl bg-background-section-burn'>
+        {!isChatMode
+          ? <div className="px-6 py-4">
+            <div className='flex h-[18px] items-center space-x-3'>
+              <div className='system-xs-semibold-uppercase text-text-tertiary'>{t('appLog.table.header.output')}</div>
+              <div className='h-[1px] grow' style={{
+                background: 'linear-gradient(270deg, rgba(243, 244, 246, 0) 0%, rgb(243, 244, 246) 100%)',
+              }}></div>
+            </div>
+            <TextGeneration
+              className='mt-2'
+              content={detail.message.answer}
+              messageId={detail.message.id}
+              isError={false}
+              onRetry={() => { }}
+              isInstalledApp={false}
+              supportFeedback
+              feedback={detail.message.feedbacks.find((item: any) => item.from_source === 'admin')}
+              onFeedback={feedback => onFeedback(detail.message.id, feedback)}
+              isShowTextToSpeech
+              siteInfo={null}
             />
           </div>
-          : <div
-            className="py-4"
-            id="scrollableDiv"
-            style={{
-              height: 1000, // Specify a value
-              overflow: 'auto',
-              display: 'flex',
-              flexDirection: 'column-reverse',
-            }}>
-            {/* Put the scroll bar always on the bottom */}
-            <InfiniteScroll
-              scrollableTarget="scrollableDiv"
-              dataLength={threadChatItems.length}
-              next={fetchData}
-              hasMore={hasMore}
-              loader={<div className='text-center text-gray-400 text-xs'>{t('appLog.detail.loading')}...</div>}
-              // endMessage={<div className='text-center'>Nothing more to show</div>}
-              // below props only if you need pull down functionality
-              refreshFunction={fetchData}
-              pullDownToRefresh
-              pullDownToRefreshThreshold={50}
-              // pullDownToRefreshContent={
-              //   <div className='text-center'>Pull down to refresh</div>
-              // }
-              // releaseToRefreshContent={
-              //   <div className='text-center'>Release to refresh</div>
-              // }
-              // To put endMessage and loader to the top.
-              style={{ display: 'flex', flexDirection: 'column-reverse' }}
-              inverse={true}
-            >
+          : threadChatItems.length < 8
+            ? <div className="mb-4 pt-4">
               <Chat
                 config={{
                   appId: appDetail?.id,
@@ -543,12 +442,68 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
                 noChatInput
                 showPromptLog
                 hideProcessDetail
-                chatContainerInnerClassName='px-6'
+                chatContainerInnerClassName='px-3'
                 switchSibling={switchSibling}
               />
-            </InfiniteScroll>
-          </div>
-      }
+            </div>
+            : <div
+              className="py-4"
+              id="scrollableDiv"
+              style={{
+                height: 1000, // Specify a value
+                overflow: 'auto',
+                display: 'flex',
+                flexDirection: 'column-reverse',
+              }}>
+              {/* Put the scroll bar always on the bottom */}
+              <InfiniteScroll
+                scrollableTarget="scrollableDiv"
+                dataLength={threadChatItems.length}
+                next={fetchData}
+                hasMore={hasMore}
+                loader={<div className='system-xs-regular text-center text-text-tertiary'>{t('appLog.detail.loading')}...</div>}
+                // endMessage={<div className='text-center'>Nothing more to show</div>}
+                // below props only if you need pull down functionality
+                refreshFunction={fetchData}
+                pullDownToRefresh
+                pullDownToRefreshThreshold={50}
+                // pullDownToRefreshContent={
+                //   <div className='text-center'>Pull down to refresh</div>
+                // }
+                // releaseToRefreshContent={
+                //   <div className='text-center'>Release to refresh</div>
+                // }
+                // To put endMessage and loader to the top.
+                style={{ display: 'flex', flexDirection: 'column-reverse' }}
+                inverse={true}
+              >
+                <Chat
+                  config={{
+                    appId: appDetail?.id,
+                    text_to_speech: {
+                      enabled: true,
+                    },
+                    supportAnnotation: true,
+                    annotation_reply: {
+                      enabled: true,
+                    },
+                    supportFeedback: true,
+                  } as any}
+                  chatList={threadChatItems}
+                  onAnnotationAdded={handleAnnotationAdded}
+                  onAnnotationEdited={handleAnnotationEdited}
+                  onAnnotationRemoved={handleAnnotationRemoved}
+                  onFeedback={onFeedback}
+                  noChatInput
+                  showPromptLog
+                  hideProcessDetail
+                  chatContainerInnerClassName='px-3'
+                  switchSibling={switchSibling}
+                />
+              </InfiniteScroll>
+            </div>
+        }
+      </div>
       {showMessageLogModal && (
         <MessageLogModal
           width={width}
@@ -575,8 +530,8 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
 }
 
 /**
- * Text App Conversation Detail Component
- */
+   * Text App Conversation Detail Component
+   */
 const CompletionConversationDetailComp: FC<{ appId?: string; conversationId?: string }> = ({ appId, conversationId }) => {
   // Text Generator App Session Details Including Message List
   const detailParams = ({ url: `/apps/${appId}/completion-conversations/${conversationId}` })
@@ -621,8 +576,8 @@ const CompletionConversationDetailComp: FC<{ appId?: string; conversationId?: st
 }
 
 /**
- * Chat App Conversation Detail Component
- */
+   * Chat App Conversation Detail Component
+   */
 const ChatConversationDetailComp: FC<{ appId?: string; conversationId?: string }> = ({ appId, conversationId }) => {
   const detailParams = { url: `/apps/${appId}/chat-conversations/${conversationId}` }
   const { data: conversationDetail } = useSWR(() => (appId && conversationId) ? detailParams : null, fetchChatConversationDetail)
@@ -664,8 +619,8 @@ const ChatConversationDetailComp: FC<{ appId?: string; conversationId?: string }
 }
 
 /**
- * Conversation list component including basic information
- */
+   * Conversation list component including basic information
+   */
 const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh }) => {
   const { t } = useTranslation()
   const { formatTime } = useTimestamp()
@@ -676,9 +631,11 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
   const [showDrawer, setShowDrawer] = useState<boolean>(false) // Whether to display the chat details drawer
   const [currentConversation, setCurrentConversation] = useState<ChatConversationGeneralDetail | CompletionConversationGeneralDetail | undefined>() // Currently selected conversation
   const isChatMode = appDetail.mode !== 'completion' // Whether the app is a chat app
-  const { setShowPromptLogModal, setShowAgentLogModal } = useAppStore(useShallow(state => ({
+  const isChatflow = appDetail.mode === 'advanced-chat' // Whether the app is a chatflow app
+  const { setShowPromptLogModal, setShowAgentLogModal, setShowMessageLogModal } = useAppStore(useShallow(state => ({
     setShowPromptLogModal: state.setShowPromptLogModal,
     setShowAgentLogModal: state.setShowAgentLogModal,
+    setShowMessageLogModal: state.setShowMessageLogModal,
   })))
 
   // Annotated data needs to be highlighted
@@ -686,8 +643,8 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
     return (
       <Tooltip
         popupContent={
-          <span className='text-xs text-text-tertiary inline-flex items-center'>
-            <RiEditFill className='w-3 h-3 mr-1' />{`${t('appLog.detail.annotationTip', { user: annotation?.account?.name })} ${formatTime(annotation?.created_at || dayjs().unix(), 'MM-DD hh:mm A')}`}
+          <span className='inline-flex items-center text-xs text-text-tertiary'>
+            <RiEditFill className='mr-1 h-3 w-3' />{`${t('appLog.detail.annotationTip', { user: annotation?.account?.name })} ${formatTime(annotation?.created_at || dayjs().unix(), 'MM-DD hh:mm A')}`}
           </span>
         }
         popupClassName={(isHighlight && !isChatMode) ? '' : '!hidden'}
@@ -705,6 +662,7 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
     setCurrentConversation(undefined)
     setShowPromptLogModal(false)
     setShowAgentLogModal(false)
+    setShowMessageLogModal(false)
   }
 
   if (!logs)
@@ -715,39 +673,43 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
       <table className={cn('mt-2 w-full min-w-[440px] border-collapse border-0')}>
         <thead className='system-xs-medium-uppercase text-text-tertiary'>
           <tr>
-            <td className='pl-2 pr-1 w-5 rounded-l-lg bg-background-section-burn whitespace-nowrap'></td>
-            <td className='pl-3 py-1.5 bg-background-section-burn whitespace-nowrap'>{isChatMode ? t('appLog.table.header.summary') : t('appLog.table.header.input')}</td>
-            <td className='pl-3 py-1.5 bg-background-section-burn whitespace-nowrap'>{t('appLog.table.header.endUser')}</td>
-            <td className='pl-3 py-1.5 bg-background-section-burn whitespace-nowrap'>{isChatMode ? t('appLog.table.header.messageCount') : t('appLog.table.header.output')}</td>
-            <td className='pl-3 py-1.5 bg-background-section-burn whitespace-nowrap'>{t('appLog.table.header.userRate')}</td>
-            <td className='pl-3 py-1.5 bg-background-section-burn whitespace-nowrap'>{t('appLog.table.header.adminRate')}</td>
-            <td className='pl-3 py-1.5 bg-background-section-burn whitespace-nowrap'>{t('appLog.table.header.updatedTime')}</td>
-            <td className='pl-3 py-1.5 rounded-r-lg bg-background-section-burn whitespace-nowrap'>{t('appLog.table.header.time')}</td>
+            <td className='w-5 whitespace-nowrap rounded-l-lg bg-background-section-burn pl-2 pr-1'></td>
+            <td className='whitespace-nowrap bg-background-section-burn py-1.5 pl-3'>{isChatMode ? t('appLog.table.header.summary') : t('appLog.table.header.input')}</td>
+            <td className='whitespace-nowrap bg-background-section-burn py-1.5 pl-3'>{t('appLog.table.header.endUser')}</td>
+            {isChatflow && <td className='whitespace-nowrap bg-background-section-burn py-1.5 pl-3'>{t('appLog.table.header.status')}</td>}
+            <td className='whitespace-nowrap bg-background-section-burn py-1.5 pl-3'>{isChatMode ? t('appLog.table.header.messageCount') : t('appLog.table.header.output')}</td>
+            <td className='whitespace-nowrap bg-background-section-burn py-1.5 pl-3'>{t('appLog.table.header.userRate')}</td>
+            <td className='whitespace-nowrap bg-background-section-burn py-1.5 pl-3'>{t('appLog.table.header.adminRate')}</td>
+            <td className='whitespace-nowrap bg-background-section-burn py-1.5 pl-3'>{t('appLog.table.header.updatedTime')}</td>
+            <td className='whitespace-nowrap rounded-r-lg bg-background-section-burn py-1.5 pl-3'>{t('appLog.table.header.time')}</td>
           </tr>
         </thead>
-        <tbody className="text-text-secondary system-sm-regular">
+        <tbody className="system-sm-regular text-text-secondary">
           {logs.data.map((log: any) => {
             const endUser = log.from_end_user_session_id || log.from_account_name
             const leftValue = get(log, isChatMode ? 'name' : 'message.inputs.query') || (!isChatMode ? (get(log, 'message.query') || get(log, 'message.inputs.default_input')) : '') || ''
             const rightValue = get(log, isChatMode ? 'message_count' : 'message.answer')
             return <tr
               key={log.id}
-              className={cn('border-b border-divider-subtle hover:bg-background-default-hover cursor-pointer', currentConversation?.id !== log.id ? '' : 'bg-background-default-hover')}
+              className={cn('cursor-pointer border-b border-divider-subtle hover:bg-background-default-hover', currentConversation?.id !== log.id ? '' : 'bg-background-default-hover')}
               onClick={() => {
                 setShowDrawer(true)
                 setCurrentConversation(log)
               }}>
               <td className='h-4'>
                 {!log.read_at && (
-                  <div className='p-3 pr-0.5 flex items-center'>
-                    <span className='inline-block bg-util-colors-blue-blue-500 h-1.5 w-1.5 rounded'></span>
+                  <div className='flex items-center p-3 pr-0.5'>
+                    <span className='inline-block h-1.5 w-1.5 rounded bg-util-colors-blue-blue-500'></span>
                   </div>
                 )}
               </td>
-              <td className='p-3 pr-2 w-[160px]' style={{ maxWidth: isChatMode ? 300 : 200 }}>
+              <td className='w-[160px] p-3 pr-2' style={{ maxWidth: isChatMode ? 300 : 200 }}>
                 {renderTdValue(leftValue || t('appLog.table.empty.noChat'), !leftValue, isChatMode && log.annotated)}
               </td>
               <td className='p-3 pr-2'>{renderTdValue(endUser || defaultValue, !endUser)}</td>
+              {isChatflow && <td className='w-[160px] p-3 pr-2' style={{ maxWidth: isChatMode ? 300 : 200 }}>
+                {statusTdRender(log.status_count)}
+              </td>}
               <td className='p-3 pr-2' style={{ maxWidth: isChatMode ? 100 : 200 }}>
                 {renderTdValue(rightValue === 0 ? 0 : (rightValue || t('appLog.table.empty.noOutput')), !rightValue, !isChatMode && !!log.annotation?.content, log.annotation)}
               </td>
@@ -780,7 +742,7 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
         onClose={onCloseDrawer}
         mask={isMobile}
         footer={null}
-        panelClassname='mt-16 mx-2 sm:mr-2 mb-4 !p-0 !max-w-[640px] rounded-xl bg-background-gradient-bg-fill-chat-bg-1'
+        panelClassname='mt-16 mx-2 sm:mr-2 mb-4 !p-0 !max-w-[640px] rounded-xl bg-components-panel-bg'
       >
         <DrawerContext.Provider value={{
           onClose: onCloseDrawer,

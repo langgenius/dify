@@ -1,15 +1,19 @@
 import React, { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import {
+  RiClipboardFill,
+  RiClipboardLine,
+} from '@remixicon/react'
 import copy from 'copy-to-clipboard'
 import style from './style.module.css'
-import cn from '@/utils/classnames'
 import Modal from '@/app/components/base/modal'
-import copyStyle from '@/app/components/base/copy-btn/style.module.css'
 import Tooltip from '@/app/components/base/tooltip'
 import { useAppContext } from '@/context/app-context'
 import { IS_CE_EDITION } from '@/config'
 import type { SiteInfo } from '@/models/share'
 import { useThemeContext } from '@/app/components/base/chat/embedded-chatbot/theme/theme-context'
+import ActionButton from '@/app/components/base/action-button'
+import cn from '@/utils/classnames'
 
 type Props = {
   siteInfo?: SiteInfo
@@ -35,12 +39,12 @@ const OPTION_MAP = {
       `<script>
  window.difyChatbotConfig = {
   token: '${token}'${isTestEnv
-  ? `,
+    ? `,
   isDev: true`
-  : ''}${IS_CE_EDITION
-  ? `,
+    : ''}${IS_CE_EDITION
+    ? `,
   baseUrl: '${url}'`
-  : ''}
+    : ''}
  }
 </script>
 <script
@@ -115,11 +119,11 @@ const Embedded = ({ siteInfo, isShow, onClose, appBaseUrl, accessToken, classNam
       title={t(`${prefixEmbedded}.title`)}
       isShow={isShow}
       onClose={onClose}
-      className="!max-w-2xl w-[640px]"
+      className="w-[640px] !max-w-2xl"
       wrapperClassName={className}
       closable={true}
     >
-      <div className="mb-4 mt-8 text-gray-900 text-[14px] font-medium leading-tight">
+      <div className="system-sm-medium mb-4 mt-8 text-text-primary">
         {t(`${prefixEmbedded}.explanation`)}
       </div>
       <div className="flex flex-wrap items-center justify-between gap-y-2">
@@ -141,32 +145,39 @@ const Embedded = ({ siteInfo, isShow, onClose, appBaseUrl, accessToken, classNam
         })}
       </div>
       {option === 'chromePlugin' && (
-        <div className="w-full mt-6">
-          <div className={cn('gap-2 py-3 justify-center items-center inline-flex w-full rounded-lg',
-            'bg-primary-600 hover:bg-primary-600/75 hover:shadow-md cursor-pointer text-white hover:shadow-sm flex-shrink-0')}>
-            <div className={`w-4 h-4 relative ${style.pluginInstallIcon}`}></div>
-            <div className="text-white text-sm font-medium font-['Inter'] leading-tight" onClick={navigateToChromeUrl}>{t(`${prefixEmbedded}.chromePlugin`)}</div>
+        <div className="mt-6 w-full">
+          <div className={cn('inline-flex w-full items-center justify-center gap-2 rounded-lg py-3',
+            'shrink-0 cursor-pointer bg-primary-600 text-white hover:bg-primary-600/75 hover:shadow-sm')}>
+            <div className={`relative h-4 w-4 ${style.pluginInstallIcon}`}></div>
+            <div className="font-['Inter'] text-sm font-medium leading-tight text-white" onClick={navigateToChromeUrl}>{t(`${prefixEmbedded}.chromePlugin`)}</div>
           </div>
         </div>
       )}
-      <div className={cn('w-full bg-gray-100 rounded-lg flex-col justify-start items-start inline-flex',
+      <div className={cn('inline-flex w-full flex-col items-start justify-start rounded-lg border-[0.5px] border-components-panel-border bg-background-section',
         'mt-6')}>
-        <div className="inline-flex items-center self-stretch justify-start gap-2 py-1 pl-3 pr-1 border border-black rounded-tl-lg rounded-tr-lg bg-gray-50 border-opacity-5">
-          <div className="grow shrink basis-0 text-slate-700 text-[13px] font-medium leading-none">
+        <div className="inline-flex items-center justify-start gap-2 self-stretch rounded-t-lg bg-background-section-burn py-1  pl-3 pr-1">
+          <div className="system-sm-medium shrink-0 grow text-text-secondary">
             {t(`${prefixEmbedded}.${option}`)}
           </div>
-          <div className="flex items-center justify-center gap-1 p-2 rounded-lg">
-            <Tooltip
-              popupContent={(isCopied[option] ? t(`${prefixEmbedded}.copied`) : t(`${prefixEmbedded}.copy`)) || ''}
-            >
-              <div className="w-8 h-8 rounded-lg cursor-pointer hover:bg-gray-100">
-                <div onClick={onClickCopy} className={`w-full h-full ${copyStyle.copyIcon} ${isCopied[option] ? copyStyle.copied : ''}`}></div>
+          <Tooltip
+            popupContent={
+              (isCopied[option]
+                ? t(`${prefixEmbedded}.copied`)
+                : t(`${prefixEmbedded}.copy`)) || ''
+            }
+          >
+            <ActionButton>
+              <div
+                onClick={onClickCopy}
+              >
+                {isCopied[option] && <RiClipboardFill className='h-4 w-4' />}
+                {!isCopied[option] && <RiClipboardLine className='h-4 w-4' />}
               </div>
-            </Tooltip>
-          </div>
+            </ActionButton>
+          </Tooltip>
         </div>
-        <div className="flex items-start justify-start w-full gap-2 p-3 overflow-x-auto">
-          <div className="grow shrink basis-0 text-slate-700 text-[13px] leading-tight font-mono">
+        <div className="flex w-full items-start justify-start gap-2 overflow-x-auto p-3">
+          <div className="shrink grow basis-0 font-mono text-[13px] leading-tight text-text-secondary">
             <pre className='select-text'>{OPTION_MAP[option].getContent(appBaseUrl, accessToken, themeBuilder.theme?.primaryColor ?? '#1C64F2', isTestEnv)}</pre>
           </div>
         </div>

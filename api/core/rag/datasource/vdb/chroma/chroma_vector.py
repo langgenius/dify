@@ -71,16 +71,20 @@ class ChromaVector(BaseVector):
         metadatas = [d.metadata for d in documents]
 
         collection = self._client.get_or_create_collection(self._collection_name)
-        collection.upsert(ids=uuids, documents=texts, embeddings=embeddings, metadatas=metadatas)
+        # FIXME: chromadb using numpy array, fix the type error later
+        collection.upsert(ids=uuids, documents=texts, embeddings=embeddings, metadatas=metadatas)  # type: ignore
 
     def delete_by_metadata_field(self, key: str, value: str):
         collection = self._client.get_or_create_collection(self._collection_name)
-        collection.delete(where={key: {"$eq": value}})
+        # FIXME: fix the type error later
+        collection.delete(where={key: {"$eq": value}})  # type: ignore
 
     def delete(self):
         self._client.delete_collection(self._collection_name)
 
     def delete_by_ids(self, ids: list[str]) -> None:
+        if not ids:
+            return
         collection = self._client.get_or_create_collection(self._collection_name)
         collection.delete(ids=ids)
 
@@ -91,27 +95,40 @@ class ChromaVector(BaseVector):
 
     def search_by_vector(self, query_vector: list[float], **kwargs: Any) -> list[Document]:
         collection = self._client.get_or_create_collection(self._collection_name)
-        results: QueryResult = collection.query(query_embeddings=query_vector, n_results=kwargs.get("top_k", 4))
+        document_ids_filter = kwargs.get("document_ids_filter")
+        if document_ids_filter:
+            results: QueryResult = collection.query(
+                query_embeddings=query_vector,
+                n_results=kwargs.get("top_k", 4),
+                where={"document_id": {"$in": document_ids_filter}},  # type: ignore
+            )
+        else:
+            results: QueryResult = collection.query(query_embeddings=query_vector, n_results=kwargs.get("top_k", 4))  # type: ignore
         score_threshold = float(kwargs.get("score_threshold") or 0.0)
 
-        ids: list[str] = results["ids"][0]
-        documents: list[str] = results["documents"][0]
-        metadatas: dict[str, Any] = results["metadatas"][0]
-        distances: list[float] = results["distances"][0]
+        # Check if results contain data
+        if not results["ids"] or not results["documents"] or not results["metadatas"] or not results["distances"]:
+            return []
+
+        ids = results["ids"][0]
+        documents = results["documents"][0]
+        metadatas = results["metadatas"][0]
+        distances = results["distances"][0]
 
         docs = []
         for index in range(len(ids)):
             distance = distances[index]
-            metadata = metadatas[index]
-            if distance >= score_threshold:
-                metadata["score"] = distance
+            metadata = dict(metadatas[index])
+            score = 1 - distance
+            if score > score_threshold:
+                metadata["score"] = score
                 doc = Document(
                     page_content=documents[index],
                     metadata=metadata,
                 )
                 docs.append(doc)
         # Sort the documents by score in descending order
-        docs = sorted(docs, key=lambda x: x.metadata["score"], reverse=True)
+        docs = sorted(docs, key=lambda x: x.metadata["score"] if x.metadata is not None else 0, reverse=True)
         return docs
 
     def search_by_full_text(self, query: str, **kwargs: Any) -> list[Document]:
@@ -133,7 +150,7 @@ class ChromaVectorFactory(AbstractVectorFactory):
         return ChromaVector(
             collection_name=collection_name,
             config=ChromaConfig(
-                host=dify_config.CHROMA_HOST,
+                host=dify_config.CHROMA_HOST or "",
                 port=dify_config.CHROMA_PORT,
                 tenant=dify_config.CHROMA_TENANT or chromadb.DEFAULT_TENANT,
                 database=dify_config.CHROMA_DATABASE or chromadb.DEFAULT_DATABASE,

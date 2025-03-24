@@ -43,8 +43,20 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
       - `inputs` (object) 必須
         アプリで定義されたさまざまな変数値の入力を許可します。
         `inputs`パラメータには複数のキー/値ペアが含まれ、各キーは特定の変数に対応し、各値はその変数の特定の値です。
-        ワークフローアプリケーションは少なくとも1つのキー/値ペアの入力を必要とします。
-        変数がファイルタイプの場合、以下の`files`で説明されているキーを持つオブジェクトを指定してください。
+        ワークフローアプリケーションは少なくとも1つのキー/値ペアの入力を必要とします。値はファイルリストである場合もあります。
+        ファイルリストは、テキスト理解と質問への回答を組み合わせたファイルの入力に適しています。モデルがファイルの解析と理解機能をサポートしている場合にのみ使用できます。
+
+        変数がファイルリストの場合、リストの各要素は以下の属性を持つ必要があります。
+          - `type` (string) サポートされているタイプ: 
+            - `document` ('TXT', 'MD', 'MARKDOWN', 'PDF', 'HTML', 'XLSX', 'XLS', 'DOCX', 'CSV', 'EML', 'MSG', 'PPTX', 'PPT', 'XML', 'EPUB')
+            - `image` ('JPG', 'JPEG', 'PNG', 'GIF', 'WEBP', 'SVG')
+            - `audio` ('MP3', 'M4A', 'WAV', 'WEBM', 'AMR')
+            - `video` ('MP4', 'MOV', 'MPEG', 'MPGA')
+            - `custom` (他のファイルタイプ)
+          - `transfer_method` (string) 転送方法、画像URLの場合は`remote_url` / ファイルアップロードの場合は`local_file`
+          - `url` (string) 画像URL（転送方法が`remote_url`の場合）
+          - `upload_file_id` (string) アップロードされたファイルID、事前にファイルアップロードAPIを通じて取得する必要があります（転送方法が`local_file`の場合）
+
       - `response_mode` (string) 必須
         応答の返却モードを指定します。サポートされているモード：
         - `streaming` ストリーミングモード（推奨）、SSE（[Server-Sent Events](https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events/Using_server-sent_events)）を通じてタイプライターのような出力を実装します。
@@ -54,15 +66,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
         ユーザー識別子、エンドユーザーのアイデンティティを定義するために使用されます。
         アプリケーション内で開発者によって一意に定義される必要があります。
       - `files` (array[object]) オプション
-        ファイルリストは、テキスト理解と質問への回答を組み合わせたファイルの入力に適しています。モデルがファイルの解析と理解機能をサポートしている場合にのみ使用できます。
-          - `type` (string) サポートされているタイプ: 
-            - `document` ('TXT', 'MD', 'MARKDOWN', 'PDF', 'HTML', 'XLSX', 'XLS', 'DOCX', 'CSV', 'EML', 'MSG', 'PPTX', 'PPT', 'XML', 'EPUB')
-            - `image` ('JPG', 'JPEG', 'PNG', 'GIF', 'WEBP', 'SVG')
-            - `audio` ('MP3', 'M4A', 'WAV', 'WEBM', 'AMR')
-            - `video` ('MP4', 'MOV', 'MPEG', 'MPGA')
-          - `transfer_method` (string) 転送方法、画像URLの場合は`remote_url` / ファイルアップロードの場合は`local_file`
-          - `url` (string) 画像URL（転送方法が`remote_url`の場合）
-          - `upload_file_id` (string) アップロードされたファイルID、事前にファイルアップロードAPIを通じて取得する必要があります（転送方法が`local_file`の場合）
+        
 
     ### 応答
     `response_mode`が`blocking`の場合、CompletionResponseオブジェクトを返します。
@@ -113,7 +117,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
         - `title` (string) ノードの名前
         - `index` (int) 実行シーケンス番号、トレースノードシーケンスを表示するために使用
         - `predecessor_node_id` (string) オプションのプレフィックスノードID、キャンバス表示実行パスに使用
-        - `inputs` (array[object]) ノードで使用されるすべての前のノード変数の内容
+        - `inputs` (object) ノードで使用されるすべての前のノード変数の内容
         - `created_at` (timestamp) 開始のタイムスタンプ、例：1705395332
     - `event: node_finished` ノード実行終了、同じイベントで異なる状態で成功または失敗
       - `task_id` (string) タスクID、リクエスト追跡と以下のStop Generate APIに使用
@@ -126,7 +130,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
         - `title` (string) ノードの名前
         - `index` (int) 実行シーケンス番号、トレースノードシーケンスを表示するために使用
         - `predecessor_node_id` (string) オプションのプレフィックスノードID、キャンバス表示実行パスに使用
-        - `inputs` (array[object]) ノードで使用されるすべての前のノード変数の内容
+        - `inputs` (object) ノードで使用されるすべての前のノード変数の内容
         - `process_data` (json) オプションのノードプロセスデータ
         - `outputs` (json) オプションの出力内容
         - `status` (string) 実行のステータス、`running` / `succeeded` / `failed` / `stopped`
@@ -193,11 +197,14 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
       ```json {{ title: 'ファイル変数の例' }}
       {
         "inputs": {
-          "{variable_name}": {
+          "{variable_name}": 
+          [
+            {
             "transfer_method": "local_file",
             "upload_file_id": "{upload_file_id}",
             "type": "{document_type}"
-          }
+            }
+          ]
         }
       }
       ```
@@ -238,84 +245,81 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
     </CodeGroup>
     <CodeGroup title="ファイルアップロードのサンプルコード">
       ```json {{ title: 'ファイルアップロードのサンプルコード' }}
-      {
-        import requests
-        import json
+      import requests
+      import json
 
-        def upload_file(file_path, user):
-            upload_url = "https://api.dify.ai/v1/files/upload"
-            headers = {
-                "Authorization": "Bearer app-xxxxxxxx",
-            }
-            
-            try:
-                print("ファイルをアップロードしています...")
-                with open(file_path, 'rb') as file:
-                    files = {
-                        'file': (file_path, file, 'text/plain')  # ファイルが適切な MIME タイプでアップロードされていることを確認してください
-                    }
-                    data = {
-                        "user": user,
-                        "type": "TXT"  # ファイルタイプをTXTに設定します
-                    }
-                    
-                    response = requests.post(upload_url, headers=headers, files=files, data=data)
-                    if response.status_code == 201:  # 201 は作成が成功したことを意味します
-                        print("ファイルが正常にアップロードされました")
-                        return response.json().get("id")  # アップロードされたファイルIDを取得する
-                    else:
-                        print(f"ファイルのアップロードに失敗しました。ステータス コード: {response.status_code}")
-                        return None
-            except Exception as e:
-                print(f"エラーが発生しました: {str(e)}")
-                return None
+      def upload_file(file_path, user):
+          upload_url = "https://api.dify.ai/v1/files/upload"
+          headers = {
+              "Authorization": "Bearer app-xxxxxxxx",
+          }
+          
+          try:
+              print("ファイルをアップロードしています...")
+              with open(file_path, 'rb') as file:
+                  files = {
+                      'file': (file_path, file, 'text/plain')  # ファイルが適切な MIME タイプでアップロードされていることを確認してください
+                  }
+                  data = {
+                      "user": user,
+                      "type": "TXT"  # ファイルタイプをTXTに設定します
+                  }
+                  
+                  response = requests.post(upload_url, headers=headers, files=files, data=data)
+                  if response.status_code == 201:  # 201 は作成が成功したことを意味します
+                      print("ファイルが正常にアップロードされました")
+                      return response.json().get("id")  # アップロードされたファイルIDを取得する
+                  else:
+                      print(f"ファイルのアップロードに失敗しました。ステータス コード: {response.status_code}")
+                      return None
+          except Exception as e:
+              print(f"エラーが発生しました: {str(e)}")
+              return None
 
-        def run_workflow(file_id, user, response_mode="blocking"):
-            workflow_url = "https://api.dify.ai/v1/workflows/run"
-            headers = {
-                "Authorization": "Bearer app-xxxxxxxxx",
-                "Content-Type": "application/json"
-            }
+      def run_workflow(file_id, user, response_mode="blocking"):
+          workflow_url = "https://api.dify.ai/v1/workflows/run"
+          headers = {
+              "Authorization": "Bearer app-xxxxxxxxx",
+              "Content-Type": "application/json"
+          }
 
-            data = {
-                "inputs": {
-                    "orig_mail": {
-                        "transfer_method": "local_file",
-                        "upload_file_id": file_id,
-                        "type": "document"
-                    }
-                },
-                "response_mode": response_mode,
-                "user": user
-            }
+          data = {
+              "inputs": {
+                  "orig_mail": [{
+                      "transfer_method": "local_file",
+                      "upload_file_id": file_id,
+                      "type": "document"
+                  }]
+              },
+              "response_mode": response_mode,
+              "user": user
+          }
 
-            try:
-                print("ワークフローを実行...")
-                response = requests.post(workflow_url, headers=headers, json=data)
-                if response.status_code == 200:
-                    print("ワークフローが正常に実行されました")
-                    return response.json()
-                else:
-                    print(f"ワークフローの実行がステータス コードで失敗しました: {response.status_code}")
-                    return {"status": "error", "message": f"Failed to execute workflow, status code: {response.status_code}"}
-            except Exception as e:
-                print(f"エラーが発生しました: {str(e)}")
-                return {"status": "error", "message": str(e)}
+          try:
+              print("ワークフローを実行...")
+              response = requests.post(workflow_url, headers=headers, json=data)
+              if response.status_code == 200:
+                  print("ワークフローが正常に実行されました")
+                  return response.json()
+              else:
+                  print(f"ワークフローの実行がステータス コードで失敗しました: {response.status_code}")
+                  return {"status": "error", "message": f"Failed to execute workflow, status code: {response.status_code}"}
+          except Exception as e:
+              print(f"エラーが発生しました: {str(e)}")
+              return {"status": "error", "message": str(e)}
 
-        # 使用例
-        file_path = "{your_file_path}"
-        user = "difyuser"
+      # 使用例
+      file_path = "{your_file_path}"
+      user = "difyuser"
 
-        # ファイルをアップロードする
-        file_id = upload_file(file_path, user)
-        if file_id:
-            # ファイルは正常にアップロードされました。ワークフローの実行を続行します
-            result = run_workflow(file_id, user)
-            print(result)
-        else:
-            print("ファイルのアップロードに失敗し、ワークフローを実行できません")
-
-      }
+      # ファイルをアップロードする
+      file_id = upload_file(file_path, user)
+      if file_id:
+          # ファイルは正常にアップロードされました。ワークフローの実行を続行します
+          result = run_workflow(file_id, user)
+          print(result)
+      else:
+          print("ファイルのアップロードに失敗し、ワークフローを実行できません")
       ```
     </CodeGroup>
   </Col>
@@ -499,104 +503,6 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
 ---
 
 <Heading
-  url='/parameters'
-  method='GET'
-  title='アプリケーション情報を取得'
-  name='#parameters'
-/>
-<Row>
-  <Col>
-    ページに入る際に、機能、入力パラメータ名、タイプ、デフォルト値などの情報を取得するために使用されます。
-
-    ### クエリ
-
-    <Properties>
-      <Property name='user' type='string' key='user'>
-          ユーザー識別子、開発者のルールで定義され、アプリケーション内で一意でなければなりません。
-      </Property>
-    </Properties>
-
-    ### 応答
-    - `user_input_form` (array[object]) ユーザー入力フォームの設定
-      - `text-input` (object) テキスト入力コントロール
-        - `label` (string) 変数表示ラベル名
-        - `variable` (string) 変数ID
-        - `required` (bool) 必須かどうか
-        - `default` (string) デフォルト値
-      - `paragraph` (object) 段落テキスト入力コントロール
-        - `label` (string) 変数表示ラベル名
-        - `variable` (string) 変数ID
-        - `required` (bool) 必須かどうか
-        - `default` (string) デフォルト値
-      - `select` (object) ドロップダウンコントロール
-        - `label` (string) 変数表示ラベル名
-        - `variable` (string) 変数ID
-        - `required` (bool) 必須かどうか
-        - `default` (string) デフォルト値
-        - `options` (array[string]) オプション値
-    - `file_upload` (object) ファイルアップロード設定
-      - `image` (object) 画像設定
-        現在サポートされている画像タイプのみ：`png`, `jpg`, `jpeg`, `webp`, `gif`
-        - `enabled` (bool) 有効かどうか
-        - `number_limits` (int) 画像数の制限、デフォルトは3
-        - `transfer_methods` (array[string]) 転送方法のリスト、remote_url, local_file、いずれかを選択する必要があります
-    - `system_parameters` (object) システムパラメータ
-      - `file_size_limit` (int) ドキュメントアップロードサイズ制限（MB）
-      - `image_file_size_limit` (int) 画像ファイルアップロードサイズ制限（MB）
-      - `audio_file_size_limit` (int) オーディオファイルアップロードサイズ制限（MB）
-      - `video_file_size_limit` (int) ビデオファイルアップロードサイズ制限（MB）
-
-  </Col>
-  <Col sticky>
-
-    <CodeGroup title="リクエスト" tag="GET" label="/parameters" targetCode={` curl -X GET '${props.appDetail.api_base_url}/parameters?user=abc-123'`}>
-
-    ```bash {{ title: 'cURL' }}
-    curl -X GET '${props.appDetail.api_base_url}/parameters?user=abc-123' \
-    --header 'Authorization: Bearer {api_key}'
-    ```
-
-    </CodeGroup>
-
-    <CodeGroup title="応答">
-    ```json {{ title: '応答' }}
-    {
-      "user_input_form": [
-          {
-              "paragraph": {
-                  "label": "Query",
-                  "variable": "query",
-                  "required": true,
-                  "default": ""
-              }
-          }
-      ],
-      "file_upload": {
-          "image": {
-              "enabled": false,
-              "number_limits": 3,
-              "detail": "high",
-              "transfer_methods": [
-                  "remote_url",
-                  "local_file"
-              ]
-          }
-      },
-      "system_parameters": {
-          "file_size_limit": 15,
-          "image_file_size_limit": 10,
-          "audio_file_size_limit": 50,
-          "video_file_size_limit": 100
-      }
-    }
-    ```
-    </CodeGroup>
-  </Col>
-</Row>
-
----
-
-<Heading
   url='/workflows/logs'
   method='GET'
   title='ワークフローログを取得'
@@ -694,6 +600,134 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
                 "created_at": 1726139644
             }
         ]
+    }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+---
+
+<Heading
+  url='/info'
+  method='GET'
+  title='アプリケーションの基本情報を取得'
+  name='#info'
+/>
+<Row>
+  <Col>
+  このアプリケーションの基本情報を取得するために使用されます
+
+  ### Response
+  - `name` (string) アプリケーションの名前
+  - `description` (string) アプリケーションの説明
+  - `tags` (array[string]) アプリケーションのタグ
+  </Col>
+  <Col>
+    <CodeGroup title="Request" tag="GET" label="/info" targetCode={`curl -X GET '${props.appDetail.api_base_url}/info' \\\n-H 'Authorization: Bearer {api_key}'`}>
+      ```bash {{ title: 'cURL' }}
+      curl -X GET '${props.appDetail.api_base_url}/info' \
+      -H 'Authorization: Bearer {api_key}'
+      ```
+    </CodeGroup>
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {
+      "name": "My App",
+      "description": "This is my app.",
+      "tags": [
+        "tag1",
+        "tag2"
+      ]
+    }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
+---
+
+<Heading
+  url='/parameters'
+  method='GET'
+  title='アプリケーションのパラメータ情報を取得'
+  name='#parameters'
+/>
+<Row>
+  <Col>
+    ページに入る際に、機能、入力パラメータ名、タイプ、デフォルト値などの情報を取得するために使用されます。
+
+    ### 応答
+    - `user_input_form` (array[object]) ユーザー入力フォームの設定
+      - `text-input` (object) テキスト入力コントロール
+        - `label` (string) 変数表示ラベル名
+        - `variable` (string) 変数ID
+        - `required` (bool) 必須かどうか
+        - `default` (string) デフォルト値
+      - `paragraph` (object) 段落テキスト入力コントロール
+        - `label` (string) 変数表示ラベル名
+        - `variable` (string) 変数ID
+        - `required` (bool) 必須かどうか
+        - `default` (string) デフォルト値
+      - `select` (object) ドロップダウンコントロール
+        - `label` (string) 変数表示ラベル名
+        - `variable` (string) 変数ID
+        - `required` (bool) 必須かどうか
+        - `default` (string) デフォルト値
+        - `options` (array[string]) オプション値
+    - `file_upload` (object) ファイルアップロード設定
+      - `image` (object) 画像設定
+        現在サポートされている画像タイプのみ：`png`, `jpg`, `jpeg`, `webp`, `gif`
+        - `enabled` (bool) 有効かどうか
+        - `number_limits` (int) 画像数の制限、デフォルトは3
+        - `transfer_methods` (array[string]) 転送方法のリスト、remote_url, local_file、いずれかを選択する必要があります
+    - `system_parameters` (object) システムパラメータ
+      - `file_size_limit` (int) ドキュメントアップロードサイズ制限（MB）
+      - `image_file_size_limit` (int) 画像ファイルアップロードサイズ制限（MB）
+      - `audio_file_size_limit` (int) オーディオファイルアップロードサイズ制限（MB）
+      - `video_file_size_limit` (int) ビデオファイルアップロードサイズ制限（MB）
+
+  </Col>
+  <Col sticky>
+
+    <CodeGroup title="リクエスト" tag="GET" label="/parameters" targetCode={` curl -X GET '${props.appDetail.api_base_url}/parameters'`}>
+
+    ```bash {{ title: 'cURL' }}
+    curl -X GET '${props.appDetail.api_base_url}/parameters' \
+    --header 'Authorization: Bearer {api_key}'
+    ```
+
+    </CodeGroup>
+
+    <CodeGroup title="応答">
+    ```json {{ title: '応答' }}
+    {
+      "user_input_form": [
+          {
+              "paragraph": {
+                  "label": "Query",
+                  "variable": "query",
+                  "required": true,
+                  "default": ""
+              }
+          }
+      ],
+      "file_upload": {
+          "image": {
+              "enabled": false,
+              "number_limits": 3,
+              "detail": "high",
+              "transfer_methods": [
+                  "remote_url",
+                  "local_file"
+              ]
+          }
+      },
+      "system_parameters": {
+          "file_size_limit": 15,
+          "image_file_size_limit": 10,
+          "audio_file_size_limit": 50,
+          "video_file_size_limit": 100
+      }
     }
     ```
     </CodeGroup>

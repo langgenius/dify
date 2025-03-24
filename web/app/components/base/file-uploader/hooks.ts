@@ -211,7 +211,7 @@ export const useFile = (fileConfig: FileUpload) => {
       type: '',
       size: 0,
       progress: 0,
-      transferMethod: TransferMethod.local_file,
+      transferMethod: TransferMethod.remote_url,
       supportFileType: '',
       url,
       isRemote: true,
@@ -310,7 +310,8 @@ export const useFile = (fileConfig: FileUpload) => {
 
   const handleClipboardPasteFile = useCallback((e: ClipboardEvent<HTMLTextAreaElement>) => {
     const file = e.clipboardData?.files[0]
-    if (file) {
+    const text = e.clipboardData?.getData('text/plain')
+    if (file && !text) {
       e.preventDefault()
       handleLocalFileUpload(file)
     }

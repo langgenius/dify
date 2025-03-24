@@ -31,6 +31,8 @@ const translation = {
     manageInTools: 'Управлять в инструментах',
     emptyTitle: 'Нет доступных инструментов рабочего процесса',
     emptyTip: 'Перейдите в "Рабочий процесс -> Опубликовать как инструмент"',
+    emptyTitleCustom: 'Нет пользовательского инструмента',
+    emptyTipCustom: 'Создание пользовательского инструмента',
   },
   createTool: {
     title: 'Создать пользовательский инструмент',
@@ -131,6 +133,7 @@ const translation = {
     number: 'число',
     required: 'Обязательно',
     infoAndSetting: 'Информация и настройки',
+    file: 'файл',
   },
   noCustomTool: {
     title: 'Нет пользовательских инструментов!',
@@ -148,6 +151,8 @@ const translation = {
   howToGet: 'Как получить',
   openInStudio: 'Открыть в Studio',
   toolNameUsageTip: 'Название вызова инструмента для рассуждений агента и подсказок',
+  copyToolName: 'Копировать имя',
+  noTools: 'Инструменты не найдены',
 }
 
 export default translation

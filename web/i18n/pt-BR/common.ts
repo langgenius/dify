@@ -42,6 +42,18 @@ const translation = {
     zoomIn: 'Ampliar',
     copyImage: 'Copiar imagem',
     openInNewTab: 'Abrir em nova guia',
+    viewMore: 'VER MAIS',
+    regenerate: 'Regenerar',
+    close: 'Fechar',
+    saveAndRegenerate: 'Salvar e regenerar pedaços filhos',
+    view: 'Vista',
+    submit: 'Enviar',
+    skip: 'Navio',
+    imageCopied: 'Imagem copiada',
+    deleteApp: 'Excluir aplicativo',
+    copied: 'Copiado',
+    in: 'em',
+    viewDetails: 'Ver detalhes',
   },
   placeholder: {
     input: 'Por favor, insira',
@@ -114,6 +126,8 @@ const translation = {
       Custom: 'Personalizado',
     },
     addMoreModel: 'Vá para configurações para adicionar mais modelos',
+    settingsLink: 'Configurações do provedor de modelos',
+    capabilities: 'Recursos multimodais',
   },
   menus: {
     status: 'beta',
@@ -126,6 +140,7 @@ const translation = {
     newApp: 'Novo App',
     newDataset: 'Criar Conhecimento',
     tools: 'Ferramentas',
+    exploreMarketplace: 'Explorar Mercado',
   },
   userProfile: {
     settings: 'Configurações',
@@ -151,6 +166,7 @@ const translation = {
     dataSource: 'Fonte de dados',
     plugin: 'Plugins',
     apiBasedExtension: 'Extensão baseada em API',
+    generalGroup: 'GERAL',
   },
   account: {
     avatar: 'Avatar',
@@ -174,6 +190,18 @@ const translation = {
     myAccount: 'Minha Conta',
     account: 'Conta',
     studio: 'Estúdio Dify',
+    deletePrivacyLinkTip: 'Para obter mais informações sobre como lidamos com seus dados, consulte nosso',
+    deletePrivacyLink: 'Política de privacidade.',
+    deleteSuccessTip: 'Sua conta precisa de tempo para concluir a exclusão. Enviaremos um e-mail quando tudo estiver pronto.',
+    deleteLabel: 'Para confirmar, digite seu e-mail abaixo',
+    deletePlaceholder: 'Por favor, digite seu e-mail',
+    sendVerificationButton: 'Enviar código de verificação',
+    verificationLabel: 'Código de verificação',
+    verificationPlaceholder: 'Cole o código de 6 dígitos',
+    permanentlyDeleteButton: 'Excluir conta permanentemente',
+    feedbackTitle: 'Realimentação',
+    feedbackLabel: 'Diga-nos por que você excluiu sua conta?',
+    feedbackPlaceholder: 'Opcional',
   },
   members: {
     team: 'Equipe',
@@ -191,6 +219,7 @@ const translation = {
     editorTip: 'Pode editar aplicativos, mas não pode gerenciar configurações da equipe',
     inviteTeamMember: 'Adicionar membro da equipe',
     inviteTeamMemberTip: 'Eles podem acessar os dados da sua equipe diretamente após fazer login.',
+    emailNotSetup: 'O servidor de e-mail não está configurado, então os e-mails de convite não podem ser enviados. Por favor, notifique os usuários sobre o link de convite que será emitido após o convite.',
     email: 'E-mail',
     emailInvalid: 'Formato de e-mail inválido',
     emailPlaceholder: 'Por favor, insira e-mails',
@@ -265,6 +294,7 @@ const translation = {
       usedUp: 'Cota de teste esgotada. Adicione seu próprio Fornecedor de Modelo.',
       useYourModel: 'Atualmente usando seu próprio Fornecedor de Modelo.',
       close: 'Fechar',
+      trialQuotaTip: 'Sua cota de teste do Anthropic expirará em 11/03/2025 e não estará mais disponível depois disso. Por favor, use-o a tempo.',
     },
     anthropic: {
       using: 'A capacidade de incorporação está sendo utilizada',
@@ -376,6 +406,12 @@ const translation = {
     loadBalancingInfo: 'Por padrão, o balanceamento de carga usa a estratégia Round-robin. Se a limitação de taxa for acionada, um período de espera de 1 minuto será aplicado.',
     apiKeyRateLimit: 'O limite de taxa foi atingido, disponível após {{seconds}}s',
     loadBalancingHeadline: 'Balanceamento de carga',
+    emptyProviderTip: 'Instale um provedor de modelo primeiro.',
+    installProvider: 'Instalar provedores de modelo',
+    discoverMore: 'Descubra mais em',
+    configureTip: 'Configure a chave de API ou adicione o modelo a ser usado',
+    emptyProviderTitle: 'Provedor de modelo não configurado',
+    toBeConfigured: 'A ser configurado',
   },
   dataSource: {
     add: 'Adicionar uma fonte de dados',
@@ -473,6 +509,7 @@ const translation = {
     emptyTip: 'O Conhecimento não foi associado, por favor, vá para o aplicativo ou plug-in para completar a associação.',
     viewDoc: 'Ver documentação',
     relatedApp: 'aplicativos relacionados',
+    noRelatedApp: 'Nenhum aplicativo vinculado',
   },
   voiceInput: {
     speaking: 'Fale agora...',
@@ -504,6 +541,8 @@ const translation = {
       hitScore: 'Pontuação de recuperação:',
     },
     inputPlaceholder: 'Fale com o bot',
+    thinking: 'Pensante...',
+    thought: 'Pensamento',
   },
   promptEditor: {
     placeholder: 'Escreva sua palavra de incentivo aqui, digite \'{\' para inserir uma variável, digite \'/\' para inserir um bloco de conteúdo de incentivo',
@@ -594,6 +633,9 @@ const translation = {
   license: {
     expiring: 'Expirando em um dia',
     expiring_plural: 'Expirando em {{count}} dias',
+  },
+  pagination: {
+    perPage: 'Itens por página',
   },
 }
 

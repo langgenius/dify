@@ -42,6 +42,18 @@ const translation = {
     zoomOut: 'Uzaklaştırma',
     openInNewTab: 'Yeni sekmede aç',
     zoomIn: 'Yakınlaştırma',
+    view: 'Görünüm',
+    viewMore: 'DAHA FAZLA GÖSTER',
+    regenerate: 'Yenilemek',
+    saveAndRegenerate: 'Alt Parçaları Kaydetme ve Yeniden Oluşturma',
+    close: 'Kapatmak',
+    submit: 'Gönder',
+    skip: 'Gemi',
+    imageCopied: 'Kopyalanan görüntü',
+    deleteApp: 'Uygulamayı Sil',
+    copied: 'Kopya -lanan',
+    in: 'içinde',
+    viewDetails: 'Detayları Görüntüle',
   },
   errorMsg: {
     fieldRequired: '{{field}} gereklidir',
@@ -118,6 +130,8 @@ const translation = {
       Custom: 'Özel',
     },
     addMoreModel: 'Daha fazla model eklemek için ayarlara gidin',
+    capabilities: 'MultiModal Yetenekler',
+    settingsLink: 'Model Sağlayıcı Ayarları',
   },
   menus: {
     status: 'beta',
@@ -130,6 +144,7 @@ const translation = {
     newApp: 'Yeni Uygulama',
     newDataset: 'Bilgi Oluştur',
     tools: 'Araçlar',
+    exploreMarketplace: 'Marketplace\'i Keşfedin',
   },
   userProfile: {
     settings: 'Ayarlar',
@@ -155,6 +170,7 @@ const translation = {
     dataSource: 'Veri Kaynağı',
     plugin: 'Eklentiler',
     apiBasedExtension: 'API Uzantısı',
+    generalGroup: 'GENEL',
   },
   account: {
     avatar: 'Avatar',
@@ -178,6 +194,18 @@ const translation = {
     account: 'Hesap',
     myAccount: 'Hesabım',
     studio: 'Dify Stüdyo',
+    deleteSuccessTip: 'Hesabınızın silme işleminin tamamlanması için zamana ihtiyacı var. Her şey bittiğinde size e-posta göndereceğiz.',
+    deletePrivacyLink: 'Gizlilik Politikası.',
+    feedbackTitle: 'Geri besleme',
+    verificationPlaceholder: '6 haneli kodu yapıştırın',
+    feedbackLabel: 'Hesabınızı neden sildiğinizi bize bildirin?',
+    deleteLabel: 'Onaylamak için lütfen aşağıya e-postanızı yazın',
+    deletePlaceholder: 'Lütfen e-posta adresinizi giriniz',
+    verificationLabel: 'Doğrulama Kodu',
+    feedbackPlaceholder: 'Opsiyonel',
+    permanentlyDeleteButton: 'Hesabı Kalıcı Olarak Sil',
+    deletePrivacyLinkTip: 'Verilerinizi nasıl işlediğimiz hakkında daha fazla bilgi için lütfen',
+    sendVerificationButton: 'Doğrulama Kodu Gönder',
   },
   members: {
     team: 'Takım',
@@ -199,6 +227,7 @@ const translation = {
     datasetOperatorTip: 'Sadece bilgi tabanını yönetebilir',
     inviteTeamMember: 'Takım Üyesi Ekle',
     inviteTeamMemberTip: 'Giriş yaptıktan sonra takım verilerinize doğrudan erişebilirler.',
+    emailNotSetup: 'E-posta sunucusu kurulu değil, bu nedenle davet e-postaları gönderilemiyor. Lütfen kullanıcıları davetten sonra verilecek davet bağlantısı hakkında bilgilendirin.',
     email: 'E-posta',
     emailInvalid: 'Geçersiz E-posta Formatı',
     emailPlaceholder: 'Lütfen e-postaları girin',
@@ -269,6 +298,7 @@ const translation = {
       usedUp: 'Deneme kotası kullanıldı. Kendi Model Sağlayıcınızı ekleyin.',
       useYourModel: 'Şu anda kendi Model Sağlayıcınızı kullanıyorsunuz.',
       close: 'Kapat',
+      trialQuotaTip: 'Antropik deneme kotanız 11/03/2025 tarihinde sona erecek ve bu tarihten sonra kullanılamayacaktır. Lütfen zamanında kullanın.',
     },
     anthropic: {
       using: 'Yerleştirme yeteneği,',
@@ -380,6 +410,12 @@ const translation = {
     loadBalancingLeastKeyWarning: 'Yük dengeleme etkinleştirmek için en az 2 anahtar etkinleştirilmelidir.',
     loadBalancingInfo: 'Varsayılan olarak, yük dengeleme Yuvarlakrobin stratejisini kullanır. Hız sınırlaması tetiklenirse, 1 dakikalık bir soğuma süresi uygulanacaktır.',
     upgradeForLoadBalancing: 'Yük Dengelemeyi etkinleştirmek için planınızı yükseltin.',
+    installProvider: 'Model sağlayıcılarını yükleme',
+    toBeConfigured: 'Yapılandırılacak',
+    emptyProviderTip: 'Lütfen önce bir model sağlayıcı yükleyin.',
+    emptyProviderTitle: 'Model sağlayıcı ayarlanmadı',
+    discoverMore: 'Daha fazlasını keşfedin',
+    configureTip: 'Api-key\'i ayarlayın veya kullanmak için model ekleyin',
   },
   dataSource: {
     add: 'Bir veri kaynağı ekle',
@@ -477,6 +513,7 @@ const translation = {
     emptyTip: 'Bilgi ilişkilendirilmemiş, ilişkilendirme işlemini tamamlamak için uygulama veya eklentiye gidin.',
     viewDoc: 'Dökümantasyon görüntüle',
     relatedApp: 'bağlantılı uygulamalar',
+    noRelatedApp: 'Bağlı uygulama yok',
   },
   voiceInput: {
     speaking: 'Şimdi konuş...',
@@ -508,6 +545,8 @@ const translation = {
       hitScore: 'Geri Alım Skoru:',
     },
     inputPlaceholder: 'Bot ile konuş',
+    thought: 'Düşünce',
+    thinking: 'Düşünü...',
   },
   promptEditor: {
     placeholder: 'Prompt kelimenizi buraya yazın, değişken eklemek için \'{\' tuşuna, prompt içerik bloğu eklemek için \'/\' tuşuna basın',
@@ -594,6 +633,9 @@ const translation = {
   license: {
     expiring_plural: '{{count}} gün içinde sona eriyor',
     expiring: 'Bir günde sona eriyor',
+  },
+  pagination: {
+    perPage: 'Sayfa başına öğe sayısı',
   },
 }
 

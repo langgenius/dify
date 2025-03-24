@@ -24,7 +24,7 @@ const ConstantField: FC<Props> = ({
   const language = useLanguage()
   const placeholder = (schema as CredentialFormSchemaSelect).placeholder
   const handleStaticChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value === '' ? '' : parseFloat(e.target.value)
+    const value = e.target.value === '' ? '' : Number.parseFloat(e.target.value)
     onChange(value, VarKindType.constant)
   }, [onChange])
   const handleSelectChange = useCallback((value: string | number) => {
@@ -39,6 +39,7 @@ const ConstantField: FC<Props> = ({
           wrapperClassName='w-full !h-8'
           className='flex items-center'
           disabled={readonly}
+          defaultValue={value}
           items={(schema as CredentialFormSchemaSelect).options.map(option => ({ value: option.value, name: option.label[language] || option.label.en_US }))}
           onSelect={item => handleSelectChange(item.value)}
           placeholder={placeholder?.[language] || placeholder?.en_US}
@@ -47,7 +48,7 @@ const ConstantField: FC<Props> = ({
       {schema.type === FormTypeEnum.textNumber && (
         <input
           type='number'
-          className='w-full h-8 leading-8 p-2 rounded-lg bg-gray-100 text-[13px] font-normal text-gray-900 placeholder:text-gray-400 focus:outline-none overflow-hidden'
+          className='h-8 w-full overflow-hidden rounded-lg bg-gray-100 p-2 text-[13px] font-normal leading-8 text-gray-900 placeholder:text-gray-400 focus:outline-none'
           value={value}
           onChange={handleStaticChange}
           readOnly={readonly}

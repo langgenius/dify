@@ -4,7 +4,7 @@ import math
 from typing import Any
 
 from pydantic import BaseModel, model_validator
-from pyobvector import VECTOR, ObVecClient
+from pyobvector import VECTOR, ObVecClient  # type: ignore
 from sqlalchemy import JSON, Column, String, func
 from sqlalchemy.dialects.mysql import LONGTEXT
 
@@ -104,8 +104,7 @@ class OceanBaseVector(BaseVector):
                 val = int(row[6])
                 vals.append(val)
             if len(vals) == 0:
-                print("ob_vector_memory_limit_percentage not found in parameters.")
-                exit(1)
+                raise ValueError("ob_vector_memory_limit_percentage not found in parameters.")
             if any(val == 0 for val in vals):
                 try:
                     self._client.perform_raw_text_sql("ALTER SYSTEM SET ob_vector_memory_limit_percentage = 30")
@@ -132,9 +131,11 @@ class OceanBaseVector(BaseVector):
 
     def text_exists(self, id: str) -> bool:
         cur = self._client.get(table_name=self._collection_name, id=id)
-        return cur.rowcount != 0
+        return bool(cur.rowcount != 0)
 
     def delete_by_ids(self, ids: list[str]) -> None:
+        if not ids:
+            return
         self._client.delete(table_name=self._collection_name, ids=ids)
 
     def get_ids_by_metadata_field(self, key: str, value: str) -> list[str]:
@@ -153,6 +154,11 @@ class OceanBaseVector(BaseVector):
         return []
 
     def search_by_vector(self, query_vector: list[float], **kwargs: Any) -> list[Document]:
+        document_ids_filter = kwargs.get("document_ids_filter")
+        where_clause = None
+        if document_ids_filter:
+            document_ids = ", ".join(f"'{id}'" for id in document_ids_filter)
+            where_clause = f"metadata->>'$.document_id' in ({document_ids})"
         ef_search = kwargs.get("ef_search", self._hnsw_ef_search)
         if ef_search != self._hnsw_ef_search:
             self._client.set_ob_hnsw_ef_search(ef_search)
@@ -166,6 +172,7 @@ class OceanBaseVector(BaseVector):
             distance_func=func.l2_distance,
             output_column_names=["text", "metadata"],
             with_dist=True,
+            where_clause=where_clause,
         )
         docs = []
         for text, metadata, distance in cur:
@@ -200,10 +207,10 @@ class OceanBaseVectorFactory(AbstractVectorFactory):
         return OceanBaseVector(
             collection_name,
             OceanBaseVectorConfig(
-                host=dify_config.OCEANBASE_VECTOR_HOST,
-                port=dify_config.OCEANBASE_VECTOR_PORT,
-                user=dify_config.OCEANBASE_VECTOR_USER,
+                host=dify_config.OCEANBASE_VECTOR_HOST or "",
+                port=dify_config.OCEANBASE_VECTOR_PORT or 0,
+                user=dify_config.OCEANBASE_VECTOR_USER or "",
                 password=(dify_config.OCEANBASE_VECTOR_PASSWORD or ""),
-                database=dify_config.OCEANBASE_VECTOR_DATABASE,
+                database=dify_config.OCEANBASE_VECTOR_DATABASE or "",
             ),
         )

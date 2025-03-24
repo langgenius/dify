@@ -42,6 +42,18 @@ const translation = {
     zoomIn: 'Vergrößern',
     openInNewTab: 'In neuem Tab öffnen',
     copyImage: 'Bild kopieren',
+    close: 'Schließen',
+    viewMore: 'MEHR SEHEN',
+    regenerate: 'Erneuern',
+    saveAndRegenerate: 'Speichern und Regenerieren von untergeordneten Chunks',
+    view: 'Ansehen',
+    submit: 'Senden',
+    skip: 'Schiff',
+    imageCopied: 'Kopiertes Bild',
+    deleteApp: 'App löschen',
+    viewDetails: 'Details anzeigen',
+    in: 'in',
+    copied: 'Kopiert',
   },
   placeholder: {
     input: 'Bitte eingeben',
@@ -114,6 +126,8 @@ const translation = {
       Custom: 'Benutzerdefiniert',
     },
     addMoreModel: 'Gehen Sie zu den Einstellungen, um mehr Modelle hinzuzufügen',
+    settingsLink: 'Einstellungen für Modellanbieter',
+    capabilities: 'Multimodale Fähigkeiten',
   },
   menus: {
     status: 'Beta',
@@ -126,6 +140,7 @@ const translation = {
     newApp: 'Neue App',
     newDataset: 'Wissen erstellen',
     tools: 'Werkzeuge',
+    exploreMarketplace: 'Marketplace erkunden',
   },
   userProfile: {
     settings: 'Einstellungen',
@@ -151,6 +166,7 @@ const translation = {
     dataSource: 'Datenquelle',
     plugin: 'Plugins',
     apiBasedExtension: 'API-Erweiterung',
+    generalGroup: 'ALLGEMEIN',
   },
   account: {
     avatar: 'Avatar',
@@ -174,6 +190,18 @@ const translation = {
     myAccount: 'Mein Konto',
     studio: 'Dify Studio',
     account: 'Konto',
+    deletePrivacyLinkTip: 'Weitere Informationen darüber, wie wir mit Ihren Daten umgehen, finden Sie in unserer',
+    deletePrivacyLink: 'Datenschutzrichtlinie.',
+    deleteSuccessTip: 'Das Löschen Ihres Kontos benötigt einige Zeit, um vollständig gelöscht zu werden. Wir senden Ihnen eine E-Mail, wenn alles erledigt ist.',
+    deleteLabel: 'Zur Bestätigung geben Sie bitte unten Ihre E-Mail-Adresse ein',
+    deletePlaceholder: 'Bitte geben Sie Ihre E-Mail-Adresse ein',
+    sendVerificationButton: 'Verifizierungscode senden',
+    verificationLabel: 'Verifizierungs-Code',
+    verificationPlaceholder: 'Fügen Sie den 6-stelligen Code ein',
+    feedbackTitle: 'Feedback',
+    feedbackLabel: 'Sagen Sie uns, warum Sie Ihr Konto gelöscht haben?',
+    feedbackPlaceholder: 'Wahlfrei',
+    permanentlyDeleteButton: 'Konto dauerhaft löschen',
   },
   members: {
     team: 'Team',
@@ -191,6 +219,7 @@ const translation = {
     editorTip: 'Kann Apps erstellen & bearbeiten',
     inviteTeamMember: 'Teammitglied hinzufügen',
     inviteTeamMemberTip: 'Sie können direkt nach der Anmeldung auf Ihre Teamdaten zugreifen.',
+    emailNotSetup: 'E-Mail-Server ist nicht eingerichtet, daher können keine Einladungs-E-Mails versendet werden. Bitte informieren Sie die Benutzer über den Einladungslink, der nach der Einladung ausgestellt wird.',
     email: 'E-Mail',
     emailInvalid: 'Ungültiges E-Mail-Format',
     emailPlaceholder: 'Bitte E-Mails eingeben',
@@ -265,6 +294,7 @@ const translation = {
       usedUp: 'Testkontingent aufgebraucht. Eigenen Modellanbieter hinzufügen.',
       useYourModel: 'Derzeit wird eigener Modellanbieter verwendet.',
       close: 'Schließen',
+      trialQuotaTip: 'Ihr Anthropic-Testkontingent läuft am 11.03.2025 ab und steht danach nicht mehr zur Verfügung. Bitte machen Sie rechtzeitig davon Gebrauch.',
     },
     anthropic: {
       using: 'Die Einbettungsfähigkeit verwendet',
@@ -376,6 +406,12 @@ const translation = {
     defaultConfig: 'Standardkonfiguration',
     apiKeyRateLimit: 'Ratenlimit wurde erreicht, verfügbar nach {{seconds}}s',
     loadBalancingInfo: 'Standardmäßig wird für den Lastenausgleich die Round-Robin-Strategie verwendet. Wenn die Ratenbegrenzung ausgelöst wird, wird eine Abklingzeit von 1 Minute angewendet.',
+    emptyProviderTip: 'Bitte installieren Sie zuerst einen Modellanbieter.',
+    configureTip: 'Einrichten des API-Schlüssels oder Hinzufügen des zu verwendenden Modells',
+    discoverMore: 'Erfahren Sie mehr in',
+    installProvider: 'Installieren von Modellanbietern',
+    toBeConfigured: 'Zu konfigurieren',
+    emptyProviderTitle: 'Modellanbieter nicht eingerichtet',
   },
   dataSource: {
     add: 'Eine Datenquelle hinzufügen',
@@ -473,6 +509,7 @@ const translation = {
     emptyTip: 'Das Wissen wurde nicht zugeordnet, bitte gehen Sie zur Anwendung oder zum Plug-in, um die Zuordnung abzuschließen.',
     viewDoc: 'Dokumentation anzeigen',
     relatedApp: 'verbundene Apps',
+    noRelatedApp: 'Keine verknüpften Apps',
   },
   voiceInput: {
     speaking: 'Sprechen Sie jetzt...',
@@ -504,6 +541,8 @@ const translation = {
       hitScore: 'Abrufwertung:',
     },
     inputPlaceholder: 'Sprechen Sie mit dem Bot',
+    thought: 'Gedanke',
+    thinking: 'Denken...',
   },
   promptEditor: {
     placeholder: 'Schreiben Sie hier Ihr Aufforderungswort, geben Sie \'{\' ein, um eine Variable einzufügen, geben Sie \'/\' ein, um einen Aufforderungs-Inhaltsblock einzufügen',
@@ -594,6 +633,9 @@ const translation = {
   license: {
     expiring: 'Läuft an einem Tag ab',
     expiring_plural: 'Läuft in {{count}} Tagen ab',
+  },
+  pagination: {
+    perPage: 'Artikel pro Seite',
   },
 }
 

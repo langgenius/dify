@@ -33,19 +33,19 @@ const CSVDownload: FC = () => {
 
   return (
     <div className='mt-6'>
-      <div className='text-sm text-gray-900 font-medium'>{t('share.generation.csvStructureTitle')}</div>
+      <div className='system-sm-medium text-text-primary'>{t('share.generation.csvStructureTitle')}</div>
       <div className='mt-2 max-h-[500px] overflow-auto'>
-        <table className='table-fixed w-full border-separate border-spacing-0 border border-gray-200 rounded-lg text-xs'>
-          <thead className='text-gray-500'>
+        <table className='w-full table-fixed border-separate border-spacing-0 rounded-lg border border-divider-regular text-xs'>
+          <thead className='text-text-tertiary'>
             <tr>
-              <td className='h-9 pl-3 pr-2 border-b border-gray-200'>{t('appAnnotation.batchModal.question')}</td>
-              <td className='h-9 pl-3 pr-2 border-b border-gray-200'>{t('appAnnotation.batchModal.answer')}</td>
+              <td className='h-9 border-b border-divider-regular pl-3 pr-2'>{t('appAnnotation.batchModal.question')}</td>
+              <td className='h-9 border-b border-divider-regular pl-3 pr-2'>{t('appAnnotation.batchModal.answer')}</td>
             </tr>
           </thead>
-          <tbody className='text-gray-700'>
+          <tbody className='text-text-secondary'>
             <tr>
-              <td className='h-9 pl-3 pr-2 border-b border-gray-100 text-[13px]'>{t('appAnnotation.batchModal.question')} 1</td>
-              <td className='h-9 pl-3 pr-2 border-b border-gray-100 text-[13px]'>{t('appAnnotation.batchModal.answer')} 1</td>
+              <td className='h-9 border-b border-divider-subtle pl-3 pr-2 text-[13px]'>{t('appAnnotation.batchModal.question')} 1</td>
+              <td className='h-9 border-b border-divider-subtle pl-3 pr-2 text-[13px]'>{t('appAnnotation.batchModal.answer')} 1</td>
             </tr>
             <tr>
               <td className='h-9 pl-3 pr-2 text-[13px]'>{t('appAnnotation.batchModal.question')} 2</td>
@@ -55,14 +55,14 @@ const CSVDownload: FC = () => {
         </table>
       </div>
       <CSVDownloader
-        className="block mt-2 cursor-pointer"
+        className="mt-2 block cursor-pointer"
         type={Type.Link}
         filename={`template-${locale}`}
         bom={true}
         data={getTemplate()}
       >
-        <div className='flex items-center h-[18px] space-x-1 text-[#155EEF] text-xs font-medium'>
-          <DownloadIcon className='w-3 h-3 mr-1' />
+        <div className='system-xs-medium flex h-[18px] items-center space-x-1 text-text-accent'>
+          <DownloadIcon className='mr-1 h-3 w-3' />
           {t('appAnnotation.batchModal.template')}
         </div>
       </CSVDownloader>

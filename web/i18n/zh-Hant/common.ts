@@ -42,6 +42,18 @@ const translation = {
     openInNewTab: '在新選項卡中打開',
     zoomIn: '放大',
     zoomOut: '縮小',
+    saveAndRegenerate: '保存並重新生成子塊',
+    view: '視圖',
+    close: '關閉',
+    viewMore: '查看更多',
+    regenerate: '再生',
+    submit: '提交',
+    skip: '船',
+    imageCopied: '複製的圖片',
+    deleteApp: '刪除應用程式',
+    viewDetails: '查看詳情',
+    in: '在',
+    copied: '複製',
   },
   placeholder: {
     input: '請輸入',
@@ -114,6 +126,8 @@ const translation = {
       Custom: '自定義',
     },
     addMoreModel: '新增更多模型',
+    settingsLink: 'Model Provider 設置',
+    capabilities: '多模式功能',
   },
   menus: {
     status: 'beta',
@@ -126,6 +140,7 @@ const translation = {
     newApp: '建立應用',
     newDataset: '建立知識庫',
     tools: '工具',
+    exploreMarketplace: '探索 Marketplace',
   },
   userProfile: {
     settings: '設定',
@@ -151,6 +166,7 @@ const translation = {
     dataSource: '資料來源',
     plugin: '外掛',
     apiBasedExtension: 'API 擴充套件',
+    generalGroup: '常規',
   },
   account: {
     avatar: '頭像',
@@ -174,6 +190,18 @@ const translation = {
     account: '帳戶',
     myAccount: '我的帳戶',
     studio: 'Dify 工作室',
+    deletePrivacyLinkTip: '有關我們如何處理您的數據的更多資訊，請參閱我們的',
+    deletePrivacyLink: '隱私策略。',
+    deleteSuccessTip: '您的帳戶需要時間才能完成刪除。完成後，我們會給您發送電子郵件。',
+    deleteLabel: '要確認，請在下方輸入您的電子郵件',
+    deletePlaceholder: '請輸入您的電子郵件',
+    verificationLabel: '驗證碼',
+    verificationPlaceholder: '粘貼6位代碼',
+    permanentlyDeleteButton: '永久刪除帳戶',
+    feedbackTitle: '反饋',
+    feedbackLabel: '告訴我們您刪除帳戶的原因？',
+    feedbackPlaceholder: '自選',
+    sendVerificationButton: '發送驗證碼',
   },
   members: {
     team: '團隊',
@@ -191,6 +219,7 @@ const translation = {
     editorTip: '能夠建立並編輯應用程式，不能管理團隊設定',
     inviteTeamMember: '新增團隊成員',
     inviteTeamMemberTip: '對方在登入後可以訪問你的團隊資料。',
+    emailNotSetup: '由於郵件伺服器未設置，無法發送邀請郵件。請將邀請後生成的邀請連結通知用戶。',
     email: '郵箱',
     emailInvalid: '郵箱格式無效',
     emailPlaceholder: '輸入郵箱',
@@ -265,6 +294,7 @@ const translation = {
       usedUp: '試用額度已用完，請在下方新增自己的模型供應商',
       useYourModel: '當前正在使用你自己的模型供應商。',
       close: '關閉',
+      trialQuotaTip: '您的 Anthropic 試用配額將於 2025 年 3 月 11 日到期，此後將不再可用。請及時利用。',
     },
     anthropic: {
       using: '嵌入能力正在使用',
@@ -376,6 +406,12 @@ const translation = {
     editConfig: '編輯配置',
     loadBalancingInfo: '默認情況下，負載均衡使用 Round-robin 策略。如果觸發了速率限制，將應用 1 分鐘的冷卻時間。',
     loadBalancingLeastKeyWarning: '要啟用負載均衡，必須至少啟用 2 個金鑰。',
+    discoverMore: '發現更多',
+    installProvider: '安裝模型提供程式',
+    toBeConfigured: '待配置',
+    emptyProviderTitle: '未設置模型提供者',
+    configureTip: '設置 api-key 或添加要使用的模型',
+    emptyProviderTip: '請先安裝模型提供者。',
   },
   dataSource: {
     add: '新增資料來源',
@@ -473,6 +509,7 @@ const translation = {
     emptyTip: ' 知識庫尚未關聯，請前往應用程式或外掛完成關聯。',
     viewDoc: '檢視文件',
     relatedApp: '個關聯應用',
+    noRelatedApp: '沒有連結的應用程式',
   },
   voiceInput: {
     speaking: '現在講...',
@@ -504,6 +541,8 @@ const translation = {
       hitScore: '召回得分：',
     },
     inputPlaceholder: '與 Bot 對話',
+    thinking: '思維。。。',
+    thought: '思想',
   },
   promptEditor: {
     placeholder: '在這裡寫你的提示詞，輸入\'{\' 插入變數、輸入\'/\' 插入提示內容塊',
@@ -585,7 +624,7 @@ const translation = {
     pasteFileLink: '粘貼文件連結',
     pasteFileLinkInputPlaceholder: '輸入網址...',
     uploadFromComputerReadError: '檔案讀取失敗，請重試。',
-    uploadFromComputerUploadError: '檔上傳失敗，請重新上傳。',
+    uploadFromComputerUploadError: '檔案上傳失敗，請重新上傳。',
     pasteFileLinkInvalid: '無效的文件連結',
     uploadFromComputer: '本地上傳',
     fileExtensionNotSupport: '不支援檔擴展名',
@@ -594,6 +633,9 @@ const translation = {
   license: {
     expiring: '將在1天內過期',
     expiring_plural: '將在 {{count}} 天后過期',
+  },
+  pagination: {
+    perPage: '每頁項目數',
   },
 }
 

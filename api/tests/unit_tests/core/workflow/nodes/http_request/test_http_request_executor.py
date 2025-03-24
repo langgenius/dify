@@ -48,7 +48,7 @@ def test_executor_with_json_body_and_number_variable():
     assert executor.method == "post"
     assert executor.url == "https://api.example.com/data"
     assert executor.headers == {"Content-Type": "application/json"}
-    assert executor.params == {}
+    assert executor.params == []
     assert executor.json == {"number": 42}
     assert executor.data is None
     assert executor.files is None
@@ -101,7 +101,7 @@ def test_executor_with_json_body_and_object_variable():
     assert executor.method == "post"
     assert executor.url == "https://api.example.com/data"
     assert executor.headers == {"Content-Type": "application/json"}
-    assert executor.params == {}
+    assert executor.params == []
     assert executor.json == {"name": "John Doe", "age": 30, "email": "john@example.com"}
     assert executor.data is None
     assert executor.files is None
@@ -156,7 +156,7 @@ def test_executor_with_json_body_and_nested_object_variable():
     assert executor.method == "post"
     assert executor.url == "https://api.example.com/data"
     assert executor.headers == {"Content-Type": "application/json"}
-    assert executor.params == {}
+    assert executor.params == []
     assert executor.json == {"object": {"name": "John Doe", "age": 30, "email": "john@example.com"}}
     assert executor.data is None
     assert executor.files is None
@@ -195,7 +195,7 @@ def test_extract_selectors_from_template_with_newline():
         variable_pool=variable_pool,
     )
 
-    assert executor.params == {"test": "line1\nline2"}
+    assert executor.params == [("test", "line1\nline2")]
 
 
 def test_executor_with_form_data():
@@ -244,7 +244,7 @@ def test_executor_with_form_data():
     assert executor.url == "https://api.example.com/upload"
     assert "Content-Type" in executor.headers
     assert "multipart/form-data" in executor.headers["Content-Type"]
-    assert executor.params == {}
+    assert executor.params == []
     assert executor.json is None
     assert executor.files is None
     assert executor.content is None
@@ -265,3 +265,72 @@ def test_executor_with_form_data():
     assert "Hello, World!" in raw_request
     assert "number_field" in raw_request
     assert "42" in raw_request
+
+
+def test_init_headers():
+    def create_executor(headers: str) -> Executor:
+        node_data = HttpRequestNodeData(
+            title="test",
+            method="get",
+            url="http://example.com",
+            headers=headers,
+            params="",
+            authorization=HttpRequestNodeAuthorization(type="no-auth"),
+        )
+        timeout = HttpRequestNodeTimeout(connect=10, read=30, write=30)
+        return Executor(node_data=node_data, timeout=timeout, variable_pool=VariablePool())
+
+    executor = create_executor("aa\n cc:")
+    executor._init_headers()
+    assert executor.headers == {"aa": "", "cc": ""}
+
+    executor = create_executor("aa:bb\n cc:dd")
+    executor._init_headers()
+    assert executor.headers == {"aa": "bb", "cc": "dd"}
+
+    executor = create_executor("aa:bb\n cc:dd\n")
+    executor._init_headers()
+    assert executor.headers == {"aa": "bb", "cc": "dd"}
+
+    executor = create_executor("aa:bb\n\n cc : dd\n\n")
+    executor._init_headers()
+    assert executor.headers == {"aa": "bb", "cc": "dd"}
+
+
+def test_init_params():
+    def create_executor(params: str) -> Executor:
+        node_data = HttpRequestNodeData(
+            title="test",
+            method="get",
+            url="http://example.com",
+            headers="",
+            params=params,
+            authorization=HttpRequestNodeAuthorization(type="no-auth"),
+        )
+        timeout = HttpRequestNodeTimeout(connect=10, read=30, write=30)
+        return Executor(node_data=node_data, timeout=timeout, variable_pool=VariablePool())
+
+    # Test basic key-value pairs
+    executor = create_executor("key1:value1\nkey2:value2")
+    executor._init_params()
+    assert executor.params == [("key1", "value1"), ("key2", "value2")]
+
+    # Test empty values
+    executor = create_executor("key1:\nkey2:")
+    executor._init_params()
+    assert executor.params == [("key1", ""), ("key2", "")]
+
+    # Test duplicate keys (which is allowed for params)
+    executor = create_executor("key1:value1\nkey1:value2")
+    executor._init_params()
+    assert executor.params == [("key1", "value1"), ("key1", "value2")]
+
+    # Test whitespace handling
+    executor = create_executor(" key1 : value1 \n key2 : value2 ")
+    executor._init_params()
+    assert executor.params == [("key1", "value1"), ("key2", "value2")]
+
+    # Test empty lines and extra whitespace
+    executor = create_executor("key1:value1\n\nkey2:value2\n\n")
+    executor._init_params()
+    assert executor.params == [("key1", "value1"), ("key2", "value2")]

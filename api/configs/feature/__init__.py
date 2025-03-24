@@ -61,6 +61,10 @@ class AppExecutionConfig(BaseSettings):
         description="Maximum number of concurrent active requests per app (0 for unlimited)",
         default=0,
     )
+    APP_DAILY_RATE_LIMIT: NonNegativeInt = Field(
+        description="Maximum number of requests per app per day",
+        default=5000,
+    )
 
 
 class CodeExecutionSandboxConfig(BaseSettings):
@@ -134,6 +138,60 @@ class CodeExecutionSandboxConfig(BaseSettings):
     )
 
 
+class PluginConfig(BaseSettings):
+    """
+    Plugin configs
+    """
+
+    PLUGIN_DAEMON_URL: HttpUrl = Field(
+        description="Plugin API URL",
+        default="http://localhost:5002",
+    )
+
+    PLUGIN_DAEMON_KEY: str = Field(
+        description="Plugin API key",
+        default="plugin-api-key",
+    )
+
+    INNER_API_KEY_FOR_PLUGIN: str = Field(description="Inner api key for plugin", default="inner-api-key")
+
+    PLUGIN_REMOTE_INSTALL_HOST: str = Field(
+        description="Plugin Remote Install Host",
+        default="localhost",
+    )
+
+    PLUGIN_REMOTE_INSTALL_PORT: PositiveInt = Field(
+        description="Plugin Remote Install Port",
+        default=5003,
+    )
+
+    PLUGIN_MAX_PACKAGE_SIZE: PositiveInt = Field(
+        description="Maximum allowed size for plugin packages in bytes",
+        default=15728640,
+    )
+
+    PLUGIN_MAX_BUNDLE_SIZE: PositiveInt = Field(
+        description="Maximum allowed size for plugin bundles in bytes",
+        default=15728640 * 12,
+    )
+
+
+class MarketplaceConfig(BaseSettings):
+    """
+    Configuration for marketplace
+    """
+
+    MARKETPLACE_ENABLED: bool = Field(
+        description="Enable or disable marketplace",
+        default=True,
+    )
+
+    MARKETPLACE_API_URL: HttpUrl = Field(
+        description="Marketplace API URL",
+        default="https://marketplace.dify.ai",
+    )
+
+
 class EndpointConfig(BaseSettings):
     """
     Configuration for various application endpoints and URLs
@@ -146,7 +204,7 @@ class EndpointConfig(BaseSettings):
     )
 
     CONSOLE_WEB_URL: str = Field(
-        description="Base URL for the console web interface," "used for frontend references and CORS configuration",
+        description="Base URL for the console web interface,used for frontend references and CORS configuration",
         default="",
     )
 
@@ -158,6 +216,10 @@ class EndpointConfig(BaseSettings):
     APP_WEB_URL: str = Field(
         description="Base URL for the web application, used for frontend references",
         default="",
+    )
+
+    ENDPOINT_URL_TEMPLATE: str = Field(
+        description="Template url for endpoint plugin", default="http://localhost:5002/e/{hook_id}"
     )
 
 
@@ -239,7 +301,6 @@ class HttpConfig(BaseSettings):
     )
 
     @computed_field
-    @property
     def CONSOLE_CORS_ALLOW_ORIGINS(self) -> list[str]:
         return self.inner_CONSOLE_CORS_ALLOW_ORIGINS.split(",")
 
@@ -250,7 +311,6 @@ class HttpConfig(BaseSettings):
     )
 
     @computed_field
-    @property
     def WEB_API_CORS_ALLOW_ORIGINS(self) -> list[str]:
         return self.inner_WEB_API_CORS_ALLOW_ORIGINS.split(",")
 
@@ -274,6 +334,11 @@ class HttpConfig(BaseSettings):
     HTTP_REQUEST_NODE_MAX_TEXT_SIZE: PositiveInt = Field(
         description="Maximum allowed size in bytes for text data in HTTP requests",
         default=1 * 1024 * 1024,
+    )
+
+    HTTP_REQUEST_NODE_SSL_VERIFY: bool = Field(
+        description="Enable or disable SSL verification for HTTP requests",
+        default=True,
     )
 
     SSRF_DEFAULT_MAX_RETRIES: PositiveInt = Field(
@@ -317,8 +382,8 @@ class HttpConfig(BaseSettings):
     )
 
     RESPECT_XFORWARD_HEADERS_ENABLED: bool = Field(
-        description="Enable or disable the X-Forwarded-For Proxy Fix middleware from Werkzeug"
-        " to respect X-* headers to redirect clients",
+        description="Enable handling of X-Forwarded-For, X-Forwarded-Proto, and X-Forwarded-Port headers"
+        " when the app is behind a single trusted reverse proxy.",
         default=False,
     )
 
@@ -331,11 +396,6 @@ class InnerAPIConfig(BaseSettings):
     INNER_API: bool = Field(
         description="Enable or disable the internal API",
         default=False,
-    )
-
-    INNER_API_KEY: Optional[str] = Field(
-        description="API key for accessing the internal API",
-        default=None,
     )
 
 
@@ -433,9 +493,25 @@ class WorkflowConfig(BaseSettings):
         default=5,
     )
 
+    WORKFLOW_PARALLEL_DEPTH_LIMIT: PositiveInt = Field(
+        description="Maximum allowed depth for nested parallel executions",
+        default=3,
+    )
+
     MAX_VARIABLE_SIZE: PositiveInt = Field(
         description="Maximum size in bytes for a single variable in workflows. Default to 200 KB.",
         default=200 * 1024,
+    )
+
+
+class WorkflowNodeExecutionConfig(BaseSettings):
+    """
+    Configuration for workflow node execution
+    """
+
+    MAX_SUBMIT_COUNT: PositiveInt = Field(
+        description="Maximum number of submitted thread count in a ThreadPool for parallel node execution",
+        default=100,
     )
 
 
@@ -472,6 +548,21 @@ class AuthConfig(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: PositiveInt = Field(
         description="Expiration time for access tokens in minutes",
         default=60,
+    )
+
+    REFRESH_TOKEN_EXPIRE_DAYS: PositiveFloat = Field(
+        description="Expiration time for refresh tokens in days",
+        default=30,
+    )
+
+    LOGIN_LOCKOUT_DURATION: PositiveInt = Field(
+        description="Time (in seconds) a user must wait before retrying login after exceeding the rate limit.",
+        default=86400,
+    )
+
+    FORGOT_PASSWORD_LOCKOUT_DURATION: PositiveInt = Field(
+        description="Time (in seconds) a user must wait before retrying password reset after exceeding the rate limit.",
+        default=86400,
     )
 
 
@@ -582,7 +673,12 @@ class RagEtlConfig(BaseSettings):
 
     UNSTRUCTURED_API_KEY: Optional[str] = Field(
         description="API key for Unstructured.io service",
-        default=None,
+        default="",
+    )
+
+    SCARF_NO_ANALYTICS: Optional[str] = Field(
+        description="This is about whether to disable Scarf analytics in Unstructured library.",
+        default="false",
     )
 
 
@@ -640,18 +736,18 @@ class IndexingConfig(BaseSettings):
 
     INDEXING_MAX_SEGMENTATION_TOKENS_LENGTH: PositiveInt = Field(
         description="Maximum token length for text segmentation during indexing",
-        default=1000,
+        default=4000,
+    )
+
+    CHILD_CHUNKS_PREVIEW_NUMBER: PositiveInt = Field(
+        description="Maximum number of child chunks to preview",
+        default=50,
     )
 
 
-class VisionFormatConfig(BaseSettings):
-    MULTIMODAL_SEND_IMAGE_FORMAT: Literal["base64", "url"] = Field(
-        description="Format for sending images in multimodal contexts ('base64' or 'url'), default is base64",
-        default="base64",
-    )
-
-    MULTIMODAL_SEND_VIDEO_FORMAT: Literal["base64", "url"] = Field(
-        description="Format for sending videos in multimodal contexts ('base64' or 'url'), default is base64",
+class MultiModalTransferConfig(BaseSettings):
+    MULTIMODAL_SEND_FORMAT: Literal["base64", "url"] = Field(
+        description="Format for sending files in multimodal contexts ('base64' or 'url'), default is base64",
         default="base64",
     )
 
@@ -694,27 +790,27 @@ class PositionConfig(BaseSettings):
         default="",
     )
 
-    @computed_field
+    @property
     def POSITION_PROVIDER_PINS_LIST(self) -> list[str]:
         return [item.strip() for item in self.POSITION_PROVIDER_PINS.split(",") if item.strip() != ""]
 
-    @computed_field
+    @property
     def POSITION_PROVIDER_INCLUDES_SET(self) -> set[str]:
         return {item.strip() for item in self.POSITION_PROVIDER_INCLUDES.split(",") if item.strip() != ""}
 
-    @computed_field
+    @property
     def POSITION_PROVIDER_EXCLUDES_SET(self) -> set[str]:
         return {item.strip() for item in self.POSITION_PROVIDER_EXCLUDES.split(",") if item.strip() != ""}
 
-    @computed_field
+    @property
     def POSITION_TOOL_PINS_LIST(self) -> list[str]:
         return [item.strip() for item in self.POSITION_TOOL_PINS.split(",") if item.strip() != ""]
 
-    @computed_field
+    @property
     def POSITION_TOOL_INCLUDES_SET(self) -> set[str]:
         return {item.strip() for item in self.POSITION_TOOL_INCLUDES.split(",") if item.strip() != ""}
 
-    @computed_field
+    @property
     def POSITION_TOOL_EXCLUDES_SET(self) -> set[str]:
         return {item.strip() for item in self.POSITION_TOOL_EXCLUDES.split(",") if item.strip() != ""}
 
@@ -746,32 +842,43 @@ class LoginConfig(BaseSettings):
     )
 
 
+class AccountConfig(BaseSettings):
+    ACCOUNT_DELETION_TOKEN_EXPIRY_MINUTES: PositiveInt = Field(
+        description="Duration in minutes for which a account deletion token remains valid",
+        default=5,
+    )
+
+
 class FeatureConfig(
     # place the configs in alphabet order
     AppExecutionConfig,
     AuthConfig,  # Changed from OAuthConfig to AuthConfig
     BillingConfig,
     CodeExecutionSandboxConfig,
+    PluginConfig,
+    MarketplaceConfig,
     DataSetConfig,
     EndpointConfig,
     FileAccessConfig,
     FileUploadConfig,
     HttpConfig,
-    VisionFormatConfig,
     InnerAPIConfig,
     IndexingConfig,
     LoggingConfig,
     MailConfig,
     ModelLoadBalanceConfig,
     ModerationConfig,
+    MultiModalTransferConfig,
     PositionConfig,
     RagEtlConfig,
     SecurityConfig,
     ToolConfig,
     UpdateConfig,
     WorkflowConfig,
+    WorkflowNodeExecutionConfig,
     WorkspaceConfig,
     LoginConfig,
+    AccountConfig,
     # hosted services config
     HostedServiceConfig,
     CeleryBeatConfig,

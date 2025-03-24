@@ -18,18 +18,22 @@ import FileListInLog from '@/app/components/base/file-uploader/file-list-in-log'
 
 type Props = {
   className?: string
-  title: JSX.Element | string
-  headerRight?: JSX.Element
-  children: JSX.Element
+  title: React.JSX.Element | string
+  headerRight?: React.JSX.Element
+  children: React.JSX.Element
   minHeight?: number
   value: string
   isFocus: boolean
   isInNode?: boolean
   onGenerated?: (prompt: string) => void
   codeLanguages?: CodeLanguage
-  fileList?: FileEntity[]
+  fileList?: {
+    varName: string
+    list: FileEntity[]
+  }[]
   showFileList?: boolean
   showCodeGenerator?: boolean
+  tip?: React.JSX.Element
 }
 
 const Base: FC<Props> = ({
@@ -46,6 +50,7 @@ const Base: FC<Props> = ({
   fileList = [],
   showFileList,
   showCodeGenerator = false,
+  tip,
 }) => {
   const ref = useRef<HTMLDivElement>(null)
   const {
@@ -70,9 +75,9 @@ const Base: FC<Props> = ({
 
   return (
     <Wrap className={cn(wrapClassName)} style={wrapStyle} isInNode={isInNode} isExpand={isExpand}>
-      <div ref={ref} className={cn(className, isExpand && 'h-full', 'rounded-lg border', isFocus ? 'bg-white border-gray-200' : 'bg-gray-100 border-gray-100 overflow-hidden')}>
-        <div className='flex justify-between items-center h-7 pt-1 pl-3 pr-2'>
-          <div className='text-xs font-semibold text-gray-700'>{title}</div>
+      <div ref={ref} className={cn(className, isExpand && 'h-full', 'rounded-lg border', isFocus ? 'border-transparent bg-components-input-bg-normal' : 'overflow-hidden border-components-input-border-hover bg-components-input-bg-hover')}>
+        <div className='flex h-7 items-center justify-between pl-3 pr-2 pt-1'>
+          <div className='system-xs-semibold-uppercase text-text-secondary'>{title}</div>
           <div className='flex items-center' onClick={(e) => {
             e.nativeEvent.stopImmediatePropagation()
             e.stopPropagation()
@@ -80,15 +85,15 @@ const Base: FC<Props> = ({
             {headerRight}
             {showCodeGenerator && codeLanguages && (
               <div className='ml-1'>
-                <CodeGeneratorButton onGenerated={onGenerated} codeLanguages={codeLanguages}/>
+                <CodeGeneratorButton onGenerated={onGenerated} codeLanguages={codeLanguages} />
               </div>
             )}
             {!isCopied
               ? (
-                <Clipboard className='mx-1 w-3.5 h-3.5 text-gray-500 cursor-pointer' onClick={handleCopy} />
+                <Clipboard className='mx-1 h-3.5 w-3.5 cursor-pointer text-text-tertiary' onClick={handleCopy} />
               )
               : (
-                <ClipboardCheck className='mx-1 w-3.5 h-3.5 text-gray-500' />
+                <ClipboardCheck className='mx-1 h-3.5 w-3.5 text-text-tertiary' />
               )
             }
 
@@ -97,6 +102,7 @@ const Base: FC<Props> = ({
             </div>
           </div>
         </div>
+        {tip && <div className='px-1 py-0.5'>{tip}</div>}
         <PromptEditorHeightResizeWrap
           height={isExpand ? editorExpandHeight : editorContentHeight}
           minHeight={editorContentMinHeight}

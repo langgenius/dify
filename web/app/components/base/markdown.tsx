@@ -7,21 +7,27 @@ import RehypeKatex from 'rehype-katex'
 import RemarkGfm from 'remark-gfm'
 import RehypeRaw from 'rehype-raw'
 import SyntaxHighlighter from 'react-syntax-highlighter'
-import { atelierHeathLight } from 'react-syntax-highlighter/dist/esm/styles/hljs'
-import type { RefObject } from 'react'
-import { Component, memo, useEffect, useMemo, useRef, useState } from 'react'
-import type { CodeComponent } from 'react-markdown/lib/ast-to-react'
-import cn from '@/utils/classnames'
-import CopyBtn from '@/app/components/base/copy-btn'
+import {
+  atelierHeathDark,
+  atelierHeathLight,
+} from 'react-syntax-highlighter/dist/esm/styles/hljs'
+import { Component, memo, useMemo, useRef, useState } from 'react'
+import { flow } from 'lodash-es'
+import ActionButton from '@/app/components/base/action-button'
+import CopyIcon from '@/app/components/base/copy-icon'
 import SVGBtn from '@/app/components/base/svg'
 import Flowchart from '@/app/components/base/mermaid'
 import ImageGallery from '@/app/components/base/image-gallery'
 import { useChatContext } from '@/app/components/base/chat/chat/context'
 import VideoGallery from '@/app/components/base/video-gallery'
 import AudioGallery from '@/app/components/base/audio-gallery'
-import SVGRenderer from '@/app/components/base/svg-gallery'
 import MarkdownButton from '@/app/components/base/markdown-blocks/button'
 import MarkdownForm from '@/app/components/base/markdown-blocks/form'
+import ThinkBlock from '@/app/components/base/markdown-blocks/think-block'
+import { Theme } from '@/types/app'
+import useTheme from '@/hooks/use-theme'
+import cn from '@/utils/classnames'
+import SVGRenderer from './svg-gallery'
 
 // Available language https://github.com/react-syntax-highlighter/react-syntax-highlighter/blob/master/AVAILABLE_LANGUAGES_HLJS.MD
 const capitalizationLanguageNameMap: Record<string, string> = {
@@ -59,9 +65,20 @@ const getCorrectCapitalizationLanguageName = (language: string) => {
 const preprocessLaTeX = (content: string) => {
   if (typeof content !== 'string')
     return content
-  return content.replace(/\\\[(.*?)\\\]/g, (_, equation) => `$$${equation}$$`)
-    .replace(/\\\((.*?)\\\)/g, (_, equation) => `$$${equation}$$`)
-    .replace(/(^|[^\\])\$(.+?)\$/g, (_, prefix, equation) => `${prefix}$${equation}$`)
+
+  return flow([
+    (str: string) => str.replace(/\\\[(.*?)\\\]/g, (_, equation) => `$$${equation}$$`),
+    (str: string) => str.replace(/\\\[(.*?)\\\]/gs, (_, equation) => `$$${equation}$$`),
+    (str: string) => str.replace(/\\\((.*?)\\\)/g, (_, equation) => `$$${equation}$$`),
+    (str: string) => str.replace(/(^|[^\\])\$(.+?)\$/g, (_, prefix, equation) => `${prefix}$${equation}$`),
+  ])(content)
+}
+
+const preprocessThinkTag = (content: string) => {
+  return flow([
+    (str: string) => str.replace('<think>\n', '<details data-think=true>\n'),
+    (str: string) => str.replace('\n</think>', '\n[ENDTHINKFLAG]</details>'),
+  ])(content)
 }
 
 export function PreCode(props: { children: any }) {
@@ -77,29 +94,6 @@ export function PreCode(props: { children: any }) {
   )
 }
 
-// eslint-disable-next-line unused-imports/no-unused-vars
-const useLazyLoad = (ref: RefObject<Element>): boolean => {
-  const [isIntersecting, setIntersecting] = useState<boolean>(false)
-
-  useEffect(() => {
-    const observer = new IntersectionObserver(([entry]) => {
-      if (entry.isIntersecting) {
-        setIntersecting(true)
-        observer.disconnect()
-      }
-    })
-
-    if (ref.current)
-      observer.observe(ref.current)
-
-    return () => {
-      observer.disconnect()
-    }
-  }, [ref])
-
-  return isIntersecting
-}
-
 // **Add code block
 // Avoid error #185 (Maximum update depth exceeded.
 // This can happen when a component repeatedly calls setState inside componentWillUpdate or componentDidUpdate.
@@ -113,7 +107,8 @@ const useLazyLoad = (ref: RefObject<Element>): boolean => {
 // visit https://reactjs.org/docs/error-decoder.html?invariant=185 for the full message
 // or use the non-minified dev environment for full errors and additional helpful warnings.
 
-const CodeBlock: CodeComponent = memo(({ inline, className, children, ...props }) => {
+const CodeBlock: any = memo(({ inline, className, children, ...props }: any) => {
+  const { theme } = useTheme()
   const [isSVG, setIsSVG] = useState(true)
   const match = /language-(\w+)/.exec(className || '')
   const language = match?.[1]
@@ -123,7 +118,7 @@ const CodeBlock: CodeComponent = memo(({ inline, className, children, ...props }
       try {
         return JSON.parse(String(children).replace(/\n$/, ''))
       }
-      catch (error) {}
+      catch (error) { }
     }
     return JSON.parse('{"title":{"text":"ECharts error - Wrong JSON format."}}')
   }, [language, children])
@@ -135,9 +130,9 @@ const CodeBlock: CodeComponent = memo(({ inline, className, children, ...props }
     }
     else if (language === 'echarts') {
       return (
-        <div style={{ minHeight: '350px', minWidth: '700px' }}>
+        <div style={{ minHeight: '350px', minWidth: '100%', overflowX: 'scroll' }}>
           <ErrorBoundary>
-            <ReactEcharts option={chartData} />
+            <ReactEcharts option={chartData} style={{ minWidth: '700px' }} />
           </ErrorBoundary>
         </div>
       )
@@ -153,10 +148,12 @@ const CodeBlock: CodeComponent = memo(({ inline, className, children, ...props }
       return (
         <SyntaxHighlighter
           {...props}
-          style={atelierHeathLight}
+          style={theme === Theme.light ? atelierHeathLight : atelierHeathDark}
           customStyle={{
             paddingLeft: 12,
-            backgroundColor: '#fff',
+            borderBottomLeftRadius: '10px',
+            borderBottomRightRadius: '10px',
+            backgroundColor: 'var(--color-components-input-bg-normal)',
           }}
           language={match?.[1]}
           showLineNumbers
@@ -172,21 +169,14 @@ const CodeBlock: CodeComponent = memo(({ inline, className, children, ...props }
     return <code {...props} className={className}>{children}</code>
 
   return (
-    <div>
-      <div
-        className='flex justify-between h-8 items-center p-1 pl-3 border-b'
-        style={{
-          borderColor: 'rgba(0, 0, 0, 0.05)',
-        }}
-      >
-        <div className='text-[13px] text-gray-500 font-normal'>{languageShowName}</div>
-        <div style={{ display: 'flex' }}>
-          {(['mermaid', 'svg']).includes(language!) && <SVGBtn isSVG={isSVG} setIsSVG={setIsSVG}/>}
-          <CopyBtn
-            className='mr-1'
-            value={String(children).replace(/\n$/, '')}
-            isPlain
-          />
+    <div className='relative'>
+      <div className='flex h-8 items-center justify-between rounded-t-[10px] border-b border-divider-subtle bg-components-input-bg-normal p-1 pl-3'>
+        <div className='system-xs-semibold-uppercase text-text-secondary'>{languageShowName}</div>
+        <div className='flex items-center gap-1'>
+          {(['mermaid', 'svg']).includes(language!) && <SVGBtn isSVG={isSVG} setIsSVG={setIsSVG} />}
+          <ActionButton>
+            <CopyIcon content={String(children).replace(/\n$/, '')} />
+          </ActionButton>
         </div>
       </div>
       {renderCodeContent}
@@ -195,16 +185,16 @@ const CodeBlock: CodeComponent = memo(({ inline, className, children, ...props }
 })
 CodeBlock.displayName = 'CodeBlock'
 
-const VideoBlock: CodeComponent = memo(({ node }) => {
-  const srcs = node.children.filter(child => 'properties' in child).map(child => (child as any).properties.src)
+const VideoBlock: any = memo(({ node }: any) => {
+  const srcs = node.children.filter((child: any) => 'properties' in child).map((child: any) => (child as any).properties.src)
   if (srcs.length === 0)
     return null
   return <VideoGallery key={srcs.join()} srcs={srcs} />
 })
 VideoBlock.displayName = 'VideoBlock'
 
-const AudioBlock: CodeComponent = memo(({ node }) => {
-  const srcs = node.children.filter(child => 'properties' in child).map(child => (child as any).properties.src)
+const AudioBlock: any = memo(({ node }: any) => {
+  const srcs = node.children.filter((child: any) => 'properties' in child).map((child: any) => (child as any).properties.src)
   if (srcs.length === 0)
     return null
   return <AudioGallery key={srcs.join()} srcs={srcs} />
@@ -224,7 +214,9 @@ const Paragraph = (paragraph: any) => {
     return (
       <>
         <ImageGallery srcs={[children_node[0].properties.src]} />
-        <p>{paragraph.children.slice(1)}</p>
+        {
+          Array.isArray(paragraph.children) ? <p>{paragraph.children.slice(1)}</p> : null
+        }
       </>
     )
   }
@@ -241,19 +233,27 @@ const Link = ({ node, ...props }: any) => {
     const { onSend } = useChatContext()
     const hidden_text = decodeURIComponent(node.properties.href.toString().split('abbr:')[1])
 
-    return <abbr className="underline decoration-dashed !decoration-primary-700 cursor-pointer" onClick={() => onSend?.(hidden_text)} title={node.children[0]?.value}>{node.children[0]?.value}</abbr>
+    return <abbr className="cursor-pointer underline !decoration-primary-700 decoration-dashed" onClick={() => onSend?.(hidden_text)} title={node.children[0]?.value}>{node.children[0]?.value}</abbr>
   }
   else {
-    return <a {...props} target="_blank" className="underline decoration-dashed !decoration-primary-700 cursor-pointer">{node.children[0] ? node.children[0]?.value : 'Download'}</a>
+    return <a {...props} target="_blank" className="cursor-pointer underline !decoration-primary-700 decoration-dashed">{node.children[0] ? node.children[0]?.value : 'Download'}</a>
   }
 }
 
-export function Markdown(props: { content: string; className?: string }) {
-  const latexContent = preprocessLaTeX(props.content)
+export function Markdown(props: { content: string; className?: string; customDisallowedElements?: string[] }) {
+  const latexContent = flow([
+    preprocessThinkTag,
+    preprocessLaTeX,
+  ])(props.content)
+
   return (
-    <div className={cn(props.className, 'markdown-body')}>
+    <div className={cn('markdown-body', '!text-text-primary', props.className)}>
       <ReactMarkdown
-        remarkPlugins={[RemarkGfm, RemarkMath, RemarkBreaks]}
+        remarkPlugins={[
+          RemarkGfm,
+          [RemarkMath, { singleDollarTextMath: false }],
+          RemarkBreaks,
+        ]}
         rehypePlugins={[
           RehypeKatex,
           RehypeRaw as any,
@@ -261,8 +261,13 @@ export function Markdown(props: { content: string; className?: string }) {
           () => {
             return (tree) => {
               const iterate = (node: any) => {
-                if (node.type === 'element' && !node.properties?.src && node.properties?.ref && node.properties.ref.startsWith('{') && node.properties.ref.endsWith('}'))
+                if (node.type === 'element' && node.properties?.ref)
                   delete node.properties.ref
+
+                if (node.type === 'element' && !/^[a-z][a-z0-9]*$/i.test(node.tagName)) {
+                  node.type = 'text'
+                  node.value = `<${node.tagName}`
+                }
 
                 if (node.children)
                   node.children.forEach(iterate)
@@ -271,7 +276,7 @@ export function Markdown(props: { content: string; className?: string }) {
             }
           },
         ]}
-        disallowedElements={['iframe', 'head', 'html', 'meta', 'link', 'style', 'body']}
+        disallowedElements={['iframe', 'head', 'html', 'meta', 'link', 'style', 'body', ...(props.customDisallowedElements || [])]}
         components={{
           code: CodeBlock,
           img: Img,
@@ -281,9 +286,9 @@ export function Markdown(props: { content: string; className?: string }) {
           p: Paragraph,
           button: MarkdownButton,
           form: MarkdownForm,
-          script: ScriptBlock,
+          script: ScriptBlock as any,
+          details: ThinkBlock,
         }}
-        linkTarget='_blank'
       >
         {/* Markdown detect has problem. */}
         {latexContent}
@@ -308,11 +313,11 @@ export default class ErrorBoundary extends Component {
   }
 
   render() {
-    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+    // eslint-disable-next-line ts/ban-ts-comment
     // @ts-expect-error
     if (this.state.hasError)
       return <div>Oops! An error occurred. This could be due to an ECharts runtime error or invalid SVG content. <br />(see the browser console for more information)</div>
-    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+    // eslint-disable-next-line ts/ban-ts-comment
     // @ts-expect-error
     return this.props.children
   }

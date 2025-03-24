@@ -42,6 +42,18 @@ const translation = {
     zoomOut: 'Thu nhỏ',
     zoomIn: 'Phóng to',
     openInNewTab: 'Mở trong tab mới',
+    regenerate: 'Tái tạo',
+    close: 'Đóng',
+    saveAndRegenerate: 'Lưu và tạo lại các phần con',
+    view: 'Cảnh',
+    viewMore: 'XEM THÊM',
+    submit: 'Trình',
+    skip: 'Tàu',
+    imageCopied: 'Hình ảnh sao chép',
+    deleteApp: 'Xóa ứng dụng',
+    viewDetails: 'Xem chi tiết',
+    copied: 'Sao chép',
+    in: 'trong',
   },
   placeholder: {
     input: 'Vui lòng nhập',
@@ -114,6 +126,8 @@ const translation = {
       Custom: 'Tùy chỉnh',
     },
     addMoreModel: 'Điều chỉnh cài đặt để thêm mô hình',
+    settingsLink: 'Cài đặt nhà cung cấp mô hình',
+    capabilities: 'Khả năng đa phương thức',
   },
   menus: {
     status: 'beta',
@@ -126,6 +140,7 @@ const translation = {
     newApp: 'Ứng dụng mới',
     newDataset: 'Tạo Kiến thức',
     tools: 'Công cụ',
+    exploreMarketplace: 'Khám phá Marketplace',
   },
   userProfile: {
     settings: 'Cài đặt',
@@ -151,6 +166,7 @@ const translation = {
     dataSource: 'Nguồn dữ liệu',
     plugin: 'Plugins',
     apiBasedExtension: 'Mở rộng dựa trên API',
+    generalGroup: 'TỔNG QUÁT',
   },
   account: {
     avatar: 'Ảnh đại diện',
@@ -174,6 +190,18 @@ const translation = {
     studio: 'Dify Studio',
     myAccount: 'Tài khoản của tôi',
     account: 'Tài khoản',
+    deletePrivacyLinkTip: 'Để biết thêm thông tin về cách chúng tôi xử lý dữ liệu của bạn, vui lòng xem',
+    deletePrivacyLink: 'Chính sách bảo mật.',
+    deleteSuccessTip: 'Tài khoản của bạn cần thời gian để xóa xong. Chúng tôi sẽ gửi email cho bạn khi tất cả hoàn tất.',
+    deleteLabel: 'Để xác nhận, vui lòng nhập email của bạn bên dưới',
+    deletePlaceholder: 'Vui lòng nhập email của bạn',
+    sendVerificationButton: 'Gửi mã xác minh',
+    verificationLabel: 'Mã xác minh',
+    verificationPlaceholder: 'Dán mã gồm 6 chữ số',
+    permanentlyDeleteButton: 'Xóa vĩnh viễn tài khoản',
+    feedbackTitle: 'Phản hồi',
+    feedbackLabel: 'Hãy cho chúng tôi biết lý do tại sao bạn xóa tài khoản của mình?',
+    feedbackPlaceholder: 'Tùy chọn',
   },
   members: {
     team: 'Nhóm',
@@ -191,6 +219,7 @@ const translation = {
     editorTip: 'Có thể xây dựng ứng dụng, không thể quản lý cài đặt nhóm',
     inviteTeamMember: 'Mời thành viên nhóm',
     inviteTeamMemberTip: 'Sau khi đăng nhập, họ có thể truy cập trực tiếp vào dữ liệu nhóm của bạn.',
+    emailNotSetup: 'Máy chủ email chưa được thiết lập, vì vậy không thể gửi email mời. Vui lòng thông báo cho người dùng về liên kết mời sẽ được phát hành sau khi mời.',
     email: 'Email',
     emailInvalid: 'Định dạng Email không hợp lệ',
     emailPlaceholder: 'Vui lòng nhập email',
@@ -265,6 +294,7 @@ const translation = {
       usedUp: 'Quota dùng thử đã hết. Thêm nhà cung cấp Mô hình của riêng bạn.',
       useYourModel: 'Hiện đang sử dụng nhà cung cấp Mô hình của riêng bạn.',
       close: 'Đóng',
+      trialQuotaTip: 'Hạn ngạch dùng thử Anthropic của bạn sẽ hết hạn vào 2025/03/11 và sẽ không còn khả dụng sau đó. Vui lòng sử dụng nó kịp thời.',
     },
     anthropic: {
       using: 'Khả năng nhúng đang sử dụng',
@@ -376,6 +406,12 @@ const translation = {
     apiKeyRateLimit: 'Đã đạt đến giới hạn tốc độ, có sẵn sau {{giây}} giây',
     upgradeForLoadBalancing: 'Nâng cấp gói của bạn để bật Cân bằng tải.',
     loadBalancingLeastKeyWarning: 'Để bật cân bằng tải, ít nhất 2 phím phải được bật.',
+    toBeConfigured: 'Được cấu hình',
+    emptyProviderTitle: 'Nhà cung cấp mô hình chưa được thiết lập',
+    discoverMore: 'Khám phá thêm trong',
+    emptyProviderTip: 'Vui lòng cài đặt nhà cung cấp mô hình trước.',
+    installProvider: 'Cài đặt nhà cung cấp mô hình',
+    configureTip: 'Thiết lập api-key hoặc thêm mô hình để sử dụng',
   },
   dataSource: {
     add: 'Thêm nguồn dữ liệu',
@@ -473,6 +509,7 @@ const translation = {
     emptyTip: 'Kiến thức chưa được liên kết, vui lòng đi đến ứng dụng hoặc plug-in để hoàn thành liên kết.',
     viewDoc: 'Xem tài liệu',
     relatedApp: 'các ứng dụng liên kết',
+    noRelatedApp: 'Không có ứng dụng được liên kết',
   },
   voiceInput: {
     speaking: 'Hãy nói...',
@@ -504,6 +541,8 @@ const translation = {
       hitScore: 'Điểm truy xuất:',
     },
     inputPlaceholder: 'Nói chuyện với Bot',
+    thought: 'Tư duy',
+    thinking: 'Suy nghĩ...',
   },
   promptEditor: {
     placeholder: 'Viết từ khóa của bạn ở đây, nhập \'{\' để chèn một biến, nhập \'/\' để chèn một khối nội dung nhắc nhở',
@@ -594,6 +633,9 @@ const translation = {
   license: {
     expiring_plural: 'Hết hạn sau {{count}} ngày',
     expiring: 'Hết hạn trong một ngày',
+  },
+  pagination: {
+    perPage: 'Mục trên mỗi trang',
   },
 }
 

@@ -121,6 +121,7 @@ const translation = {
     number: 'Число',
     required: 'Обов’язково',
     infoAndSetting: 'Інформація та налаштування',
+    file: 'файл',
   },
   noCustomTool: {
     title: 'Немає користувацьких інструментів!',
@@ -144,10 +145,14 @@ const translation = {
     manageInTools: 'Керування в інструментах',
     emptyTip: 'Перейдіть до розділу "Робочий процес -> Опублікувати як інструмент"',
     emptyTitle: 'Немає доступного інструменту для роботи з робочими процесами',
+    emptyTitleCustom: 'Немає доступного спеціального інструменту',
+    emptyTipCustom: 'Створення власного інструмента',
   },
   openInStudio: 'Відкрити в Студії',
   customToolTip: 'Дізнайтеся більше про користувацькі інструменти Dify',
   toolNameUsageTip: 'Ім\'я виклику інструменту для міркувань і підказок агента',
+  copyToolName: 'Ім\'я копії',
+  noTools: 'Інструментів не знайдено',
 }
 
 export default translation

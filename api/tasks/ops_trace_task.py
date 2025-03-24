@@ -1,7 +1,7 @@
 import json
 import logging
 
-from celery import shared_task
+from celery import shared_task  # type: ignore
 from flask import current_app
 
 from core.ops.entities.config_entity import OPS_FILE_PATH, OPS_TRACE_FAILED_KEY

@@ -1,7 +1,7 @@
 from unittest.mock import patch
 
 import pytest
-from qcloud_cos import CosConfig
+from qcloud_cos import CosConfig  # type: ignore
 
 from extensions.storage.tencent_cos_storage import TencentCosStorage
 from tests.unit_tests.oss.__mock.base import (
