@@ -117,29 +117,16 @@ class SegmentApi(DatasetApiResource):
         parser.add_argument("keyword", type=str, default=None, location="args")
         args = parser.parse_args()
 
+        status_list = args["status"]
+        keyword = args["keyword"]
+        
         segments, total = SegmentService.get_segments(
             document_id=document_id,
             tenant_id=current_user.current_tenant_id,
             status_list=args["status"],
             keyword=args["keyword"],
         )
-
-        if status_list:
-            query = query.filter(DocumentSegment.status.in_(status_list))
-
-        if keyword:
-            query = query.where(DocumentSegment.content.ilike(f"%{keyword}%"))
-
-        total = query.count()
-        query = query.order_by(DocumentSegment.position)
-        paginated_segments = query.paginate(
-            page=page,
-            per_page=limit,
-            max_per_page=100,
-            error_out=False,
-        )
-        segments = paginated_segments.items
-
+    
         response = {
             "data": marshal(segments, segment_fields),
             "doc_form": document.doc_form,
