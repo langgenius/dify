@@ -30,6 +30,7 @@ import { useStrategyProviders } from '@/service/use-strategy'
 import { canFindTool } from '@/utils'
 import { useDatasetsDetailStore } from '../datasets-detail-store/store'
 import type { KnowledgeRetrievalNodeType } from '../nodes/knowledge-retrieval/types'
+import type { DataSet } from '@/models/datasets'
 
 export const useChecklist = (nodes: Node[], edges: Edge[]) => {
   const { t } = useTranslation()
@@ -41,6 +42,7 @@ export const useChecklist = (nodes: Node[], edges: Edge[]) => {
   const workflowTools = useStore(s => s.workflowTools)
   const { data: strategyProviders } = useStrategyProviders()
   const datasetsDetail = useDatasetsDetailStore(s => s.datasetsDetail)
+  console.log('🚀 ~ useChecklist ~ datasetsDetail:', datasetsDetail)
 
   const needWarningNodes = useMemo(() => {
     const list = []
@@ -81,7 +83,12 @@ export const useChecklist = (nodes: Node[], edges: Edge[]) => {
       if (node.type === CUSTOM_NODE) {
         let checkData = node.data
         if (node.data.type === BlockEnum.KnowledgeRetrieval) {
-          const _datasets = datasetsDetail.filter(dataset => (node.data as CommonNodeType<KnowledgeRetrievalNodeType>).dataset_ids.includes(dataset.id))
+          const datasetIds = (node.data as CommonNodeType<KnowledgeRetrievalNodeType>).dataset_ids
+          const _datasets = datasetIds.reduce<DataSet[]>((acc, id) => {
+            if (datasetsDetail[id])
+              acc.push(datasetsDetail[id])
+            return acc
+          }, [])
           checkData = {
             ...node.data,
             _datasets,

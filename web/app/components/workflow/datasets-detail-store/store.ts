@@ -2,19 +2,29 @@ import { useContext } from 'react'
 import { createStore, useStore } from 'zustand'
 import type { DataSet } from '@/models/datasets'
 import { DatasetsDetailContext } from './provider'
-import { fetchDatasets } from '@/service/datasets'
+import produce from 'immer'
 
 type DatasetsDetailStore = {
-  datasetsDetail: DataSet[]
-  updateDatasetsDetail: (allDatasetIds: string[]) => Promise<void>
+  datasetsDetail: Record<string, DataSet>
+  updateDatasetsDetail: (datasetsDetail: DataSet[]) => void
 }
 
 export const createDatasetsDetailStore = () => {
-  return createStore<DatasetsDetailStore>(set => ({
-    datasetsDetail: [],
-    updateDatasetsDetail: async (allDatasetIds) => {
-      const { data: dataSetsWithDetail } = await fetchDatasets({ url: '/datasets', params: { page: 1, ids: allDatasetIds } })
-      set({ datasetsDetail: dataSetsWithDetail })
+  return createStore<DatasetsDetailStore>((set, get) => ({
+    datasetsDetail: {},
+    updateDatasetsDetail: (datasets: DataSet[]) => {
+      const oldDatasetsDetail = get().datasetsDetail
+      const datasetsDetail = datasets.reduce<Record<string, DataSet>>((acc, dataset) => {
+        acc[dataset.id] = dataset
+        return acc
+      }, {})
+      // Merge new datasets detail into old one
+      const newDatasetsDetail = produce(oldDatasetsDetail, (draft) => {
+        Object.entries(datasetsDetail).forEach(([key, value]) => {
+          draft[key] = value
+        })
+      })
+      set({ datasetsDetail: newDatasetsDetail })
     },
   }))
 }

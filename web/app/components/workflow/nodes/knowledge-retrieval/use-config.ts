@@ -50,7 +50,6 @@ const useConfig = (id: string, payload: KnowledgeRetrievalNodeType) => {
   const startNode = getBeforeNodesInSameBranch(id).find(node => node.data.type === BlockEnum.Start)
   const startNodeId = startNode?.id
   const { inputs, setInputs: doSetInputs } = useNodeCrud<KnowledgeRetrievalNodeType>(id, payload)
-  const datasetsDetail = useDatasetsDetailStore(s => s.datasetsDetail)
   const updateDatasetsDetail = useDatasetsDetailStore(s => s.updateDatasetsDetail)
 
   const inputRef = useRef(inputs)
@@ -265,15 +264,7 @@ const useConfig = (id: string, payload: KnowledgeRetrievalNodeType) => {
         })
       }
     })
-    const allDatasetIds = datasetsDetail.map(d => d.id)
-    const newAllDatasetIds = produce(allDatasetIds, (draft) => {
-      const newDatasetIds = newDatasets.map(d => d.id)
-      newDatasetIds.forEach((id) => {
-        if (!draft.includes(id))
-          draft.push(id)
-      })
-    })
-    updateDatasetsDetail(newAllDatasetIds)
+    updateDatasetsDetail(newDatasets)
     setInputs(newInputs)
     setSelectedDatasets(newDatasets)
 
@@ -283,7 +274,7 @@ const useConfig = (id: string, payload: KnowledgeRetrievalNodeType) => {
       || allExternal
     )
       setRerankModelOpen(true)
-  }, [inputs, setInputs, payload.retrieval_mode, selectedDatasets, currentRerankModel, currentRerankProvider, datasetsDetail, updateDatasetsDetail])
+  }, [inputs, setInputs, payload.retrieval_mode, selectedDatasets, currentRerankModel, currentRerankProvider, updateDatasetsDetail])
 
   const filterVar = useCallback((varPayload: Var) => {
     return varPayload.type === VarType.string

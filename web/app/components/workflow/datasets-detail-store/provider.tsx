@@ -1,9 +1,10 @@
 import type { FC } from 'react'
-import { createContext, useEffect, useRef } from 'react'
+import { createContext, useCallback, useEffect, useRef } from 'react'
 import { createDatasetsDetailStore } from './store'
 import type { CommonNodeType, Node } from '../types'
 import { BlockEnum } from '../types'
 import type { KnowledgeRetrievalNodeType } from '../nodes/knowledge-retrieval/types'
+import { fetchDatasets } from '@/service/datasets'
 
 type DatasetsDetailStoreApi = ReturnType<typeof createDatasetsDetailStore>
 
@@ -25,13 +26,20 @@ const DatasetsDetailProvider: FC<DatasetsDetailProviderProps> = ({
   if (!storeRef.current)
     storeRef.current = createDatasetsDetailStore()
 
+  const updateDatasetsDetail = useCallback(async (datasetIds: string[]) => {
+    const { data: datasetsDetail } = await fetchDatasets({ url: '/datasets', params: { page: 1, ids: datasetIds } })
+    if (datasetsDetail && datasetsDetail.length > 0)
+      storeRef.current!.getState().updateDatasetsDetail(datasetsDetail)
+  }, [])
+
   useEffect(() => {
     if (!storeRef.current) return
     const knowledgeRetrievalNodes = nodes.filter(node => node.data.type === BlockEnum.KnowledgeRetrieval)
     const allDatasetIds = knowledgeRetrievalNodes.reduce<string[]>((acc, node) => {
       return Array.from(new Set([...acc, ...(node.data as CommonNodeType<KnowledgeRetrievalNodeType>).dataset_ids]))
     }, [])
-    storeRef.current.getState().updateDatasetsDetail(allDatasetIds)
+    if (allDatasetIds.length === 0) return
+    updateDatasetsDetail(allDatasetIds)
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
