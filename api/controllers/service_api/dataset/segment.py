@@ -1,3 +1,4 @@
+from flask import request
 from flask_login import current_user  # type: ignore
 from flask_restful import marshal, reqparse  # type: ignore
 from werkzeug.exceptions import NotFound
@@ -74,6 +75,8 @@ class SegmentApi(DatasetApiResource):
         # check dataset
         dataset_id = str(dataset_id)
         tenant_id = str(tenant_id)
+        page = request.args.get("page", default=1, type=int)
+        limit = request.args.get("limit", default=20, type=int)
         dataset = db.session.query(Dataset).filter(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id).first()
         if not dataset:
             raise NotFound("Dataset not found.")
@@ -118,8 +121,25 @@ class SegmentApi(DatasetApiResource):
             query = query.where(DocumentSegment.content.ilike(f"%{keyword}%"))
 
         total = query.count()
-        segments = query.order_by(DocumentSegment.position).all()
-        return {"data": marshal(segments, segment_fields), "doc_form": document.doc_form, "total": total}, 200
+        query = query.order_by(DocumentSegment.position)
+        paginated_segments = query.paginate(
+            page=page,
+            per_page=limit,
+            max_per_page=100,
+            error_out=False,
+        )
+        segments = paginated_segments.items
+
+        response = {
+            "data": marshal(segments, segment_fields),
+            "doc_form": document.doc_form,
+            "total": total,
+            "has_more": len(segments) == limit,
+            "limit": limit,
+            "page": page,
+        }
+
+        return response, 200
 
 
 class DatasetSegmentApi(DatasetApiResource):
