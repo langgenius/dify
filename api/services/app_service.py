@@ -9,7 +9,6 @@ from flask_sqlalchemy.pagination import Pagination
 from configs import dify_config
 from constants.model_template import default_app_templates
 from core.agent.entities import AgentToolEntity
-from core.app.features.rate_limiting import RateLimit
 from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
 from core.model_manager import ModelManager
 from core.model_runtime.entities.model_entities import ModelPropertyKey, ModelType
@@ -37,9 +36,13 @@ class AppService:
         filters = [App.tenant_id == tenant_id, App.is_universal == False]
 
         if args["mode"] == "workflow":
-            filters.append(App.mode.in_([AppMode.WORKFLOW.value, AppMode.COMPLETION.value]))
+            filters.append(App.mode == AppMode.WORKFLOW.value)
+        elif args["mode"] == "completion":
+            filters.append(App.mode == AppMode.COMPLETION.value)
         elif args["mode"] == "chat":
-            filters.append(App.mode.in_([AppMode.CHAT.value, AppMode.ADVANCED_CHAT.value]))
+            filters.append(App.mode == AppMode.CHAT.value)
+        elif args["mode"] == "advanced-chat":
+            filters.append(App.mode == AppMode.ADVANCED_CHAT.value)
         elif args["mode"] == "agent-chat":
             filters.append(App.mode == AppMode.AGENT_CHAT.value)
         elif args["mode"] == "channel":
@@ -222,7 +225,6 @@ class AppService:
         """
         app.name = args.get("name")
         app.description = args.get("description", "")
-        app.max_active_requests = args.get("max_active_requests")
         app.icon_type = args.get("icon_type", "emoji")
         app.icon = args.get("icon")
         app.icon_background = args.get("icon_background")
@@ -231,9 +233,6 @@ class AppService:
         app.updated_at = datetime.now(UTC).replace(tzinfo=None)
         db.session.commit()
 
-        if app.max_active_requests is not None:
-            rate_limit = RateLimit(app.id, app.max_active_requests)
-            rate_limit.flush_cache(use_local_value=True)
         return app
 
     def update_app_name(self, app: App, name: str) -> App:
