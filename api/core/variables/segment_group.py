@@ -20,7 +20,7 @@ class SegmentGroup(Segment):
 
     def to_object(self):
         return [segment.to_object() for segment in self.value]
-    
+
     def get_single_value(self):
         """
         Get the single value from the segment group.
