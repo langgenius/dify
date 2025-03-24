@@ -10,3 +10,7 @@ export type AgentNodeType = CommonNodeType & {
   plugin_unique_identifier?: string
   memory?: Memory
 }
+
+export enum AgentFeature {
+  HISTORY_MESSAGES = 'history-messages',
+}

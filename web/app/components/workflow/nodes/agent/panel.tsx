@@ -1,7 +1,7 @@
 import type { FC } from 'react'
 import { memo, useMemo } from 'react'
 import type { NodePanelProps } from '../../types'
-import type { AgentNodeType } from './types'
+import { AgentFeature, type AgentNodeType } from './types'
 import Field from '../_base/components/field'
 import { AgentStrategy } from '../_base/components/agent-strategy'
 import useConfig from './use-config'
@@ -110,8 +110,7 @@ const AgentPanel: FC<NodePanelProps<AgentNodeType>> = (props) => {
       />
     </Field>
     <div className='px-4 py-2'>
-      {/* Memory */}
-      {isChatMode && (
+      {isChatMode && currentStrategy?.features.includes(AgentFeature.HISTORY_MESSAGES) && (
         <>
           <Split />
           <MemoryConfig
