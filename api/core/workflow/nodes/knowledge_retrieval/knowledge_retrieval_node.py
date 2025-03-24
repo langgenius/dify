@@ -358,9 +358,8 @@ class KnowledgeRetrievalNode(LLMNode):
                         expected_value = condition.value
                         if expected_value is not None or condition.comparison_operator in ("empty", "not empty"):
                             if isinstance(expected_value, str):
-                                expected_value = self.graph_runtime_state.variable_pool.convert_template(
-                                    expected_value
-                                ).text
+                                tmp_result = self.graph_runtime_state.variable_pool.convert_template(expected_value)
+                                expected_value = tmp_result.get_single_value()
 
                             filters = self._process_metadata_filter_func(
                                 condition.comparison_operator, metadata_name, expected_value, filters
