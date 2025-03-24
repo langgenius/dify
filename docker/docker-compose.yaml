@@ -489,7 +489,7 @@ services:
 
   # The DifySandbox
   sandbox:
-    image: langgenius/dify-sandbox:0.2.10
+    image: langgenius/dify-sandbox:0.2.11
     restart: always
     environment:
       # The DifySandbox configurations

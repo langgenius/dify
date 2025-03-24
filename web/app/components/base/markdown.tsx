@@ -10,6 +10,7 @@ import SyntaxHighlighter from 'react-syntax-highlighter'
 import { atelierHeathLight } from 'react-syntax-highlighter/dist/esm/styles/hljs'
 import { Component, memo, useMemo, useRef, useState } from 'react'
 import type { CodeComponent } from 'react-markdown/lib/ast-to-react'
+import SVGRenderer from './svg-gallery'
 import cn from '@/utils/classnames'
 import CopyBtn from '@/app/components/base/copy-btn'
 import SVGBtn from '@/app/components/base/svg'
@@ -118,13 +119,13 @@ const CodeBlock: CodeComponent = memo(({ inline, className, children, ...props }
         </div>
       )
     }
-    // else if (language === 'svg' && isSVG) {
-    //   return (
-    //     <ErrorBoundary>
-    //       <SVGRenderer content={content} />
-    //     </ErrorBoundary>
-    //   )
-    // }
+    else if (language === 'svg' && isSVG) {
+      return (
+        <ErrorBoundary>
+          <SVGRenderer content={content} />
+        </ErrorBoundary>
+      )
+    }
     else {
       return (
         <SyntaxHighlighter
@@ -224,16 +225,8 @@ const Link = ({ node, ...props }: any) => {
   }
 }
 
-function escapeSVGTags(htmlString: string): string {
-  return htmlString.replace(/(<svg[\s\S]*?>)([\s\S]*?)(<\/svg>)/gi, (match: string, openTag: string, innerContent: string, closeTag: string): string => {
-    return openTag.replace(/</g, '&lt;').replace(/>/g, '&gt;')
-      + innerContent.replace(/</g, '&lt;').replace(/>/g, '&gt;')
-      + closeTag.replace(/</g, '&lt;').replace(/>/g, '&gt;')
-  })
-}
-
 export function Markdown(props: { content: string; className?: string }) {
-  const latexContent = preprocessLaTeX(escapeSVGTags(props.content))
+  const latexContent = preprocessLaTeX(props.content)
   return (
     <div className={cn(props.className, 'markdown-body')}>
       <ReactMarkdown
