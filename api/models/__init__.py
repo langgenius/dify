@@ -57,6 +57,7 @@ from .model import (
     TraceAppConfig,
     UploadFile,
 )
+from .organization import AppOrganizationAccess, Organization, OrganizationMember
 from .provider import (
     LoadBalancingModelConfig,
     Provider,
@@ -183,5 +184,8 @@ __all__ = [
     "WorkflowRunTriggeredFrom",
     "WorkflowToolProvider",
     "WorkflowType",
+    "Organization",
+    "OrganizationMember",
+    "AppOrganizationAccess",
     "db",
 ]

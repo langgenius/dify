@@ -140,7 +140,7 @@ class OrganizationMember(db.Model):  # type: ignore[name-defined]
     department: Mapped[str] = mapped_column(db.String(255), nullable=True)
     title: Mapped[str] = mapped_column(db.String(255), nullable=True)
     is_default: Mapped[bool] = mapped_column(db.Boolean, nullable=False, server_default=db.text("false"))
-    metadata: Mapped[str] = mapped_column(db.Text, nullable=True)  # Additional metadata as JSON
+    meta_data: Mapped[str] = mapped_column(db.Text, nullable=True)  # Additional metadata as JSON
     created_by: Mapped[str] = mapped_column(StringUUID, nullable=False)
     created_at: Mapped[datetime] = mapped_column(db.DateTime, nullable=False, server_default=func.current_timestamp())
     updated_at: Mapped[datetime] = mapped_column(db.DateTime, nullable=False, server_default=func.current_timestamp())
@@ -148,12 +148,12 @@ class OrganizationMember(db.Model):  # type: ignore[name-defined]
     @property
     def metadata_dict(self) -> dict:
         """Get member metadata as a dictionary"""
-        return json.loads(self.metadata) if self.metadata else {}
+        return json.loads(self.meta_data) if self.meta_data else {}
 
     @metadata_dict.setter
     def metadata_dict(self, value: dict):
         """Set member metadata from a dictionary"""
-        self.metadata = json.dumps(value)
+        self.meta_data = json.dumps(value)
 
 
 class AppOrganizationAccess(db.Model):  # type: ignore[name-defined]

@@ -726,3 +726,231 @@ def create_admin_with_phone(name: str, phone: str, tenant_id: Optional[str] = No
     except Exception as e:
         db.session.rollback()
         click.echo(click.style(f"Error: {str(e)}", fg="red"))
+
+
+@click.command("create-organization", help="Create a new organization for multi-school support.")
+@click.option("--tenant-id", required=True, help="ID of the tenant that owns this organization")
+@click.option("--name", required=True, help="Name of the organization")
+@click.option("--code", required=True, help="Unique code for the organization")
+@click.option(
+    "--type",
+    'org_type',
+    default="school",
+    type=click.Choice(["school", "university", "company", "organization"]),
+    help="Type of organization",
+)
+@click.option("--description", default="", help="Description of the organization")
+@click.option("--email-domains", default="", help="Comma-separated list of allowed email domains")
+@click.option("--created-by", required=True, help="Account ID of the creator")
+def create_organization_cmd(tenant_id, name, code, org_type, description, email_domains, created_by):
+    """Create a new organization under a tenant for multi-school support"""
+    try:
+        # Check if code already exists
+        from models.organization import Organization
+
+        existing = db.session.query(Organization).filter(Organization.code == code).first()
+        if existing:
+            click.echo(f"Error: Organization with code '{code}' already exists")
+            return
+
+        # Check if creator account exists
+        creator = db.session.query(Account).filter(Account.id == created_by).first()
+        if not creator:
+            click.echo(f"Error: Creator account with ID '{created_by}' not found")
+            return
+
+        # Parse email domains
+        allowed_domains = [d.strip() for d in email_domains.split(',') if d.strip()]
+
+        # Create settings
+        settings = {'allowed_email_domains': allowed_domains}
+
+        # Create organization
+        organization = Organization(
+            tenant_id=tenant_id,
+            name=name,
+            code=code,
+            type=org_type,
+            description=description,
+            settings=json.dumps(settings),
+            status="active",
+            created_by=created_by,
+        )
+
+        db.session.add(organization)
+        db.session.commit()
+
+        click.echo(f"Organization '{name}' (ID: {organization.id}) created successfully")
+
+    except Exception as e:
+        db.session.rollback()
+        click.echo(f"Error creating organization: {str(e)}")
+
+
+@click.command("update-organization", help="Update an existing organization.")
+@click.option("--id", 'org_id', required=True, help="ID of the organization to update")
+@click.option("--name", help="New name for the organization")
+@click.option("--description", help="New description")
+@click.option("--email-domains", help="Comma-separated list of allowed email domains")
+@click.option("--status", type=click.Choice(["active", "inactive"]), help="Organization status")
+def update_organization_cmd(org_id, name, description, email_domains, status):
+    """Update an existing organization's configuration"""
+    try:
+        from models.organization import Organization
+
+        organization = db.session.query(Organization).filter(Organization.id == org_id).first()
+        if not organization:
+            click.echo(f"Error: Organization with ID '{org_id}' not found")
+            return
+
+        if name:
+            organization.name = name
+
+        if description:
+            organization.description = description
+
+        if status:
+            organization.status = status
+
+        if email_domains is not None:
+            settings = organization.settings_dict
+            allowed_domains = [d.strip() for d in email_domains.split(',') if d.strip()]
+            settings['allowed_email_domains'] = allowed_domains
+            organization.settings_dict = settings
+
+        db.session.commit()
+        click.echo(f"Organization '{organization.name}' updated successfully")
+
+    except Exception as e:
+        db.session.rollback()
+        click.echo(f"Error updating organization: {str(e)}")
+
+
+@click.command("list-organizations", help="List all organizations.")
+@click.option("--tenant-id", help="Filter by tenant ID")
+def list_organizations_cmd(tenant_id):
+    """List all organizations with optional tenant filtering"""
+    try:
+        from models.organization import Organization
+
+        query = db.session.query(Organization)
+
+        if tenant_id:
+            query = query.filter(Organization.tenant_id == tenant_id)
+
+        organizations = query.all()
+
+        if not organizations:
+            click.echo("No organizations found")
+            return
+
+        click.echo(f"{'ID':<36} | {'Code':<10} | {'Name':<30} | {'Type':<12} | {'Status':<8} | {'Email Domains'}")
+        click.echo("-" * 120)
+
+        for org in organizations:
+            email_domains = ', '.join(org.allowed_email_domains)
+            click.echo(
+                f"{org.id:<36} | {org.code:<10} | {org.name:<30} | {org.type:<12} | {org.status:<8} | {email_domains}"
+            )
+
+    except Exception as e:
+        click.echo(f"Error listing organizations: {str(e)}")
+
+
+@click.command("show-organization", help="Show details of a specific organization.")
+@click.option("--id", 'org_id', required=True, help="ID of the organization to show")
+def show_organization_cmd(org_id):
+    """Show detailed information about a specific organization"""
+    try:
+        from models.organization import Organization
+
+        organization = db.session.query(Organization).filter(Organization.id == org_id).first()
+
+        if not organization:
+            click.echo(f"Error: Organization with ID '{org_id}' not found")
+            return
+
+        click.echo(f"ID: {organization.id}")
+        click.echo(f"Tenant ID: {organization.tenant_id}")
+        click.echo(f"Name: {organization.name}")
+        click.echo(f"Code: {organization.code}")
+        click.echo(f"Type: {organization.type}")
+        click.echo(f"Description: {organization.description or ''}")
+        click.echo(f"Status: {organization.status}")
+        click.echo(f"Email Domains: {', '.join(organization.allowed_email_domains)}")
+        click.echo(f"Created At: {organization.created_at}")
+        click.echo(f"Updated At: {organization.updated_at}")
+
+    except Exception as e:
+        click.echo(f"Error showing organization: {str(e)}")
+
+
+@click.command("add-account-to-organization", help="Add an account to an organization with a specific role.")
+@click.option("--org-id", required=True, help="ID of the organization")
+@click.option("--account-id", required=True, help="ID of the account to add")
+@click.option(
+    "--role",
+    required=True,
+    type=click.Choice(["admin", "teacher", "student", "staff", "manager", "employee", "guest"]),
+    help="Role in the organization",
+)
+@click.option("--department", help="Department within the organization")
+@click.option("--title", help="Job title or position")
+@click.option("--is-default", is_flag=True, help="Set as the account's default organization")
+def add_account_to_organization_cmd(org_id, account_id, role, department, title, is_default):
+    """Add an account to an organization with appropriate role and metadata"""
+    try:
+        from models.organization import Organization, OrganizationMember
+
+        # Check if organization exists
+        organization = db.session.query(Organization).filter(Organization.id == org_id).first()
+        if not organization:
+            click.echo(f"Error: Organization with ID '{org_id}' not found")
+            return
+
+        # Check if account exists
+        account = db.session.query(Account).filter(Account.id == account_id).first()
+        if not account:
+            click.echo(f"Error: Account with ID '{account_id}' not found")
+            return
+
+        # Check if membership already exists
+        existing = (
+            db.session.query(OrganizationMember)
+            .filter(OrganizationMember.organization_id == org_id, OrganizationMember.account_id == account_id)
+            .first()
+        )
+
+        if existing:
+            click.echo(f"Account is already a member of this organization. Updating role and metadata.")
+            existing.role = role
+            existing.department = department
+            existing.title = title
+            existing.is_default = is_default
+        else:
+            # Create new membership with meta_data instead of metadata (reserved word)
+            member = OrganizationMember(
+                organization_id=org_id,
+                account_id=account_id,
+                role=role,
+                department=department,
+                title=title,
+                is_default=is_default,
+                created_by=account_id,
+                # Use meta_data instead of metadata as it's a reserved word in SQLAlchemy
+                meta_data=json.dumps({}),
+            )
+            db.session.add(member)
+
+        # If set as default, update the account's current_organization_id
+        if is_default:
+            account.current_organization_id = org_id
+
+        db.session.commit()
+        click.echo(
+            f"Account successfully {'added to' if not existing else 'updated in'} organization with role '{role}'"
+        )
+
+    except Exception as e:
+        db.session.rollback()
+        click.echo(f"Error adding account to organization: {str(e)}")
