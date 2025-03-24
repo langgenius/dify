@@ -1,6 +1,7 @@
 import {
   useCallback,
   useMemo,
+  useRef,
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStoreApi } from 'reactflow'
@@ -150,6 +151,7 @@ export const useChecklistBeforePublish = () => {
   const nodesExtraData = useNodesExtraData()
   const { data: strategyProviders } = useStrategyProviders()
   const updateDatasetsDetail = useDatasetsDetailStore(s => s.updateDatasetsDetail)
+  const updateTime = useRef(0)
 
   const getCheckData = useCallback((data: CommonNodeType<{}>, datasets: DataSet[]) => {
     let checkData = data
@@ -194,8 +196,13 @@ export const useChecklistBeforePublish = () => {
     }, [])
     let datasets: DataSet[] = []
     if (allDatasetIds.length > 0) {
+      updateTime.current = updateTime.current + 1
+      const currUpdateTime = updateTime.current
       const { data: datasetsDetail } = await fetchDatasets({ url: '/datasets', params: { page: 1, ids: allDatasetIds } })
       if (datasetsDetail && datasetsDetail.length > 0) {
+        // avoid old data to overwrite the new data
+        if (currUpdateTime < updateTime.current)
+          return false
         datasets = datasetsDetail
         updateDatasetsDetail(datasetsDetail)
       }
