@@ -95,7 +95,7 @@ class WeightKeywordSetting(BaseModel):
 
 
 class WeightModel(BaseModel):
-    weight_type: str
+    weight_type: Optional[str] = None
     vector_setting: Optional[WeightVectorSetting] = None
     keyword_setting: Optional[WeightKeywordSetting] = None
 

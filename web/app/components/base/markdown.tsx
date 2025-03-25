@@ -66,12 +66,22 @@ const preprocessLaTeX = (content: string) => {
   if (typeof content !== 'string')
     return content
 
-  return flow([
+  const codeBlockRegex = /```[\s\S]*?```/g
+  const codeBlocks = content.match(codeBlockRegex) || []
+  let processedContent = content.replace(codeBlockRegex, 'CODE_BLOCK_PLACEHOLDER')
+
+  processedContent = flow([
     (str: string) => str.replace(/\\\[(.*?)\\\]/g, (_, equation) => `$$${equation}$$`),
     (str: string) => str.replace(/\\\[(.*?)\\\]/gs, (_, equation) => `$$${equation}$$`),
     (str: string) => str.replace(/\\\((.*?)\\\)/g, (_, equation) => `$$${equation}$$`),
     (str: string) => str.replace(/(^|[^\\])\$(.+?)\$/g, (_, prefix, equation) => `${prefix}$${equation}$`),
-  ])(content)
+  ])(processedContent)
+
+  codeBlocks.forEach((block) => {
+    processedContent = processedContent.replace('CODE_BLOCK_PLACEHOLDER', block)
+  })
+
+  return processedContent
 }
 
 const preprocessThinkTag = (content: string) => {

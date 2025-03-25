@@ -1,5 +1,6 @@
 import json
 import logging
+import re
 import time
 from collections import defaultdict
 from collections.abc import Mapping, Sequence
@@ -360,8 +361,13 @@ class KnowledgeRetrievalNode(LLMNode):
                             if isinstance(expected_value, str):
                                 expected_value = self.graph_runtime_state.variable_pool.convert_template(
                                     expected_value
-                                ).text
-
+                                ).value[0]
+                                if expected_value.value_type == "number":
+                                    expected_value = expected_value.value
+                                elif expected_value.value_type == "string":
+                                    expected_value = re.sub(r"[\r\n\t]+", " ", expected_value.text).strip()
+                                else:
+                                    raise ValueError("Invalid expected metadata value type")
                             filters = self._process_metadata_filter_func(
                                 condition.comparison_operator, metadata_name, expected_value, filters
                             )

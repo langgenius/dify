@@ -177,7 +177,7 @@ class PGVector(BaseVector):
         where_clause = ""
         if document_ids_filter:
             document_ids = ", ".join(f"'{id}'" for id in document_ids_filter)
-            where_clause = f" WHERE metadata->>'document_id' in ({document_ids}) "
+            where_clause = f" WHERE meta->>'document_id' in ({document_ids}) "
 
         with self._get_cursor() as cur:
             cur.execute(
@@ -205,7 +205,7 @@ class PGVector(BaseVector):
             where_clause = ""
             if document_ids_filter:
                 document_ids = ", ".join(f"'{id}'" for id in document_ids_filter)
-                where_clause = f" AND metadata->>'document_id' in ({document_ids}) "
+                where_clause = f" AND meta->>'document_id' in ({document_ids}) "
             if self.pg_bigm:
                 cur.execute("SET pg_bigm.similarity_limit TO 0.000001")
                 cur.execute(

@@ -900,7 +900,10 @@ class DatasetRetrieval:
             return str(inputs.get(key, f"{{{{{key}}}}}"))
 
         pattern = re.compile(r"\{\{(\w+)\}\}")
-        return pattern.sub(replacer, text)
+        output = pattern.sub(replacer, text)
+        if isinstance(output, str):
+            output = re.sub(r"[\r\n\t]+", " ", output).strip()
+        return output
 
     def _automatic_metadata_filter_func(
         self, dataset_ids: list, query: str, tenant_id: str, user_id: str, metadata_model_config: ModelConfig
