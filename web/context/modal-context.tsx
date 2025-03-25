@@ -20,7 +20,6 @@ import type {
 import {
   EDUCATION_VERIFYING_LOCALSTORAGE_ITEM,
 } from '@/app/education-apply/constants'
-
 import Pricing from '@/app/components/billing/pricing'
 import type { ModerationConfig, PromptVariable } from '@/models/debug'
 import type {
@@ -36,6 +35,7 @@ import type { OpeningStatement } from '@/app/components/base/features/types'
 import type { InputVar } from '@/app/components/workflow/types'
 import type { UpdatePluginPayload } from '@/app/components/plugins/types'
 import UpdatePlugin from '@/app/components/plugins/update-plugin'
+import { removeSpecificQueryParam } from '@/utils'
 
 export type ModalState<T> = {
   payload: T
@@ -128,6 +128,8 @@ export const ModalContextProvider = ({
 
     if (educationVerifying === 'yes')
       localStorage.removeItem(EDUCATION_VERIFYING_LOCALSTORAGE_ITEM)
+
+    removeSpecificQueryParam('action')
     setShowAccountSettingModal(null)
     if (showAccountSettingModal?.onCancelCallback)
       showAccountSettingModal?.onCancelCallback()

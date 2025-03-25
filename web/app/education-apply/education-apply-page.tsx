@@ -4,6 +4,7 @@ import {
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
+import { RiExternalLinkLine } from '@remixicon/react'
 import {
   useRouter,
   useSearchParams,
@@ -125,7 +126,7 @@ const EducationApplyAge = () => {
               {t('education.form.terms.desc.front')}&nbsp;
               <a href='https://dify.ai/terms' target='_blank' className='text-text-secondary hover:underline'>{t('education.form.terms.desc.termsOfService')}</a>&nbsp;
               {t('education.form.terms.desc.and')}&nbsp;
-              <a href='https://dify.ai/privacy' target='_blank' className='text-text-secondary hover:underline'>{t('education.form.terms.desc.privacyPolicy')}</a>&nbsp;
+              <a href='https://dify.ai/privacy' target='_blank' className='text-text-secondary hover:underline'>{t('education.form.terms.desc.privacyPolicy')}</a>
               {t('education.form.terms.desc.end')}
             </div>
             <div className='system-md-regular py-2 text-text-primary'>
@@ -154,6 +155,15 @@ const EducationApplyAge = () => {
           >
             {t('education.submit')}
           </Button>
+          <div className='mb-4 mt-5 h-[1px] bg-gradient-to-r from-[rgba(16,24,40,0.08)]'></div>
+          <a
+            className='system-xs-regular flex items-center text-text-accent'
+            href='https://docs.dify.ai/get-started/dify-for-education'
+            target='_blank'
+          >
+            {t('education.learn')}
+            <RiExternalLinkLine className='ml-1 h-3 w-3' />
+          </a>
         </div>
       </div>
       <Confirm
