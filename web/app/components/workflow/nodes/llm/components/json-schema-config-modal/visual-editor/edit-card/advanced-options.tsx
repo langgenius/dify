@@ -55,7 +55,7 @@ const AdvancedOptions: FC<AdvancedOptionsProps> = ({
               value={enumValue}
               onChange={handleEnumChange}
               onBlur={handleEnumBlur}
-              placeholder={'\'abcd\', 1, 1.5, \'etc\''}
+              placeholder={'abcd, 1, 1.5, etc.'}
             />
           </div>
         </div>
