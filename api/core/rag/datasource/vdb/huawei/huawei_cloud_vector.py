@@ -28,8 +28,8 @@ def create_ssl_context() -> ssl.SSLContext:
 
 class HuaweiCloudVectorConfig(BaseModel):
     hosts: str
-    username: str
-    password: str
+    username: str | None
+    password: str | None
 
     @model_validator(mode="before")
     @classmethod
@@ -43,6 +43,9 @@ class HuaweiCloudVectorConfig(BaseModel):
             "hosts": self.hosts.split(","),
             "verify_certs": False,
             "ssl_show_warn": False,
+            "request_timeout": 30000,
+            "retry_on_timeout": True,
+            "max_retries": 10,
         }
         if self.username and self.password:
             params["basic_auth"] = (self.username, self.password)
@@ -106,7 +109,7 @@ class HuaweiCloudVector(BaseVector):
             },
         }
 
-        results = self._client.search(index=self._collection_name, body=query, request_timeout=120)
+        results = self._client.search(index=self._collection_name, body=query)
 
         docs_and_scores = []
         for hit in results["hits"]["hits"]:
@@ -205,7 +208,7 @@ class HuaweiCloudVectorFactory(AbstractVectorFactory):
         return HuaweiCloudVector(
             index_name=collection_name,
             config=HuaweiCloudVectorConfig(
-                hosts=dify_config.HUAWEI_CLOUD_HOSTS,
+                hosts=dify_config.HUAWEI_CLOUD_HOSTS or "http://localhost:9200",
                 username=dify_config.HUAWEI_CLOUD_USER,
                 password=dify_config.HUAWEI_CLOUD_PASSWORD,
             ),
