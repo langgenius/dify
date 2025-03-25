@@ -72,7 +72,7 @@ class AgentStrategyIdentity(ToolIdentity):
 
 class AgentFeature(enum.StrEnum):
     """
-    Keep all the features from ModelFeature
+    Agent Feature, used to describe the features of the agent strategy.
     """
 
     HISTORY_MESSAGES = "history-messages"
