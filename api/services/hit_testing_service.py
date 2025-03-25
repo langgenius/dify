@@ -141,6 +141,14 @@ class HitTestingService:
         if not query or len(query) > 250:
             raise ValueError("Query is required and cannot exceed 250 characters")
 
+    @classmethod
+    def retrieval_args_check(cls, args):
+        query = args["query"]
+
+        if not query :
+            raise ValueError("Query is required")
+
+
     @staticmethod
     def escape_query_for_search(query: str) -> str:
         return query.replace('"', '\\"')
