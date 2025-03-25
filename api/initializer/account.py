@@ -20,7 +20,7 @@ def init_anonymous_account():
         return
     
     accountService = AccountService()
-    anonymous = accountService.create_account("anonymous@apo.com", "anonymous", "en-US", "APO2024@anonymous", True)
+    anonymous = accountService.create_account("anonymous@apo.com", "anonymous", "en-US", "APO2024@anonymous")
 
     admin = get_admin()
     tenantService = TenantService()
