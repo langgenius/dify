@@ -1,8 +1,8 @@
 import json
 import logging
-from typing import Any
+from typing import Any, Optional
 
-import tablestore
+import tablestore  # type: ignore
 from pydantic import BaseModel, model_validator
 
 from configs import dify_config
@@ -17,10 +17,10 @@ from models import Dataset
 
 
 class TableStoreConfig(BaseModel):
-    access_key_id: str
-    access_key_secret: str
-    instance_name: str
-    endpoint: str
+    access_key_id: Optional[str] = None
+    access_key_secret: Optional[str] = None
+    instance_name: Optional[str] = None
+    endpoint: Optional[str] = None
 
     @model_validator(mode="before")
     @classmethod
@@ -184,7 +184,7 @@ class TableStoreVector(BaseVector):
         logging.info("Tablestore delete index[%s] successfully.", self._index_name)
 
     def _write_row(self, primary_key: str, attributes: dict[str, Any]) -> None:
-        primary_key = [("id", primary_key)]
+        pk = [("id", primary_key)]
 
         tags = []
         for key, value in attributes[Field.METADATA_KEY.value].items():
@@ -199,7 +199,7 @@ class TableStoreVector(BaseVector):
             ),
             (self._tags_field, json.dumps(tags)),
         ]
-        row = tablestore.Row(primary_key, attribute_columns)
+        row = tablestore.Row(pk, attribute_columns)
         self._tablestore_client.put_row(self._table_name, row)
 
     def _delete_row(self, id: str) -> None:
