@@ -18,7 +18,7 @@ Need to update an existing model runtime, tool, or squash some bugs? Head over t
 
 Join the fun, contribute, and let's build something awesome together! 💡✨
 
-Don't forget to link an existing issue or open an new issue in the PR's description.
+Don't forget to link an existing issue or open a new issue in the PR's description.
 
 ### Bug reports
 
@@ -68,7 +68,7 @@ How we prioritize:
 4. Please add tests for your changes accordingly
 5. Ensure your code passes the existing tests
 6. Please link the issue in the PR description, `fixes #<issue_number>`
-7. Get merrged! 
+7. Get merged! 
 ### Setup the project
 
 #### Frontend
@@ -90,4 +90,4 @@ We recommend reviewing this document carefully before proceeding with the setup,
 Feel free to reach out if you encounter any issues during the setup process.
 ## Getting Help
 
-If you ever get stuck or got a burning question while contributing, simply shoot your queries our way via the related GitHub issue, or hop onto our [Discord](https://discord.gg/8Tpq4AcN9c) for a quick chat.
+If you ever get stuck or get a burning question while contributing, simply shoot your queries our way via the related GitHub issue, or hop onto our [Discord](https://discord.gg/8Tpq4AcN9c) for a quick chat.
