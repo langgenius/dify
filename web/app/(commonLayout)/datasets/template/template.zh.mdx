@@ -1160,6 +1160,310 @@ import { Row, Col, Properties, Property, Heading, SubProperty, PropertyInstructi
 <hr className='ml-0 mr-0' />
 
 <Heading
+  url='/datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}/child_chunks'
+  method='POST'
+  title='新增文档子分段'
+  name='#create_child_chunk'
+/>
+<Row>
+  <Col>
+    ### Path
+    <Properties>
+      <Property name='dataset_id' type='string' key='dataset_id'>
+        知识库 ID
+      </Property>
+      <Property name='document_id' type='string' key='document_id'>
+        文档 ID
+      </Property>
+      <Property name='segment_id' type='string' key='segment_id'>
+        分段 ID
+      </Property>
+    </Properties>
+
+    ### Request Body
+    <Properties>
+      <Property name='content' type='string' key='content'>
+        子分段内容
+      </Property>
+    </Properties>
+  </Col>
+  <Col sticky>
+    <CodeGroup
+      title="Request"
+      tag="POST"
+      label="/datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}/child_chunks"
+      targetCode={`curl --location --request POST '${props.apiBaseUrl}/datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}/child_chunks' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{"content": "子分段内容"}'`}
+    >
+    ```bash {{ title: 'cURL' }}
+    curl --location --request POST '${props.apiBaseUrl}/datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}/child_chunks' \
+    --header 'Authorization: Bearer {api_key}' \
+    --header 'Content-Type: application/json' \
+    --data-raw '{
+        "content": "子分段内容"
+    }'
+    ```
+    </CodeGroup>
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {
+      "data": {
+        "id": "",
+        "segment_id": "",
+        "content": "子分段内容",
+        "word_count": 25,
+        "tokens": 0,
+        "index_node_id": "",
+        "index_node_hash": "",
+        "status": "completed",
+        "created_by": "",
+        "created_at": 1695312007,
+        "indexing_at": 1695312007,
+        "completed_at": 1695312007,
+        "error": null,
+        "stopped_at": null
+      }
+    }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
+<hr className='ml-0 mr-0' />
+
+<Heading
+  url='/datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}/child_chunks'
+  method='GET'
+  title='查询文档子分段'
+  name='#get_child_chunks'
+/>
+<Row>
+  <Col>
+    ### Path
+    <Properties>
+      <Property name='dataset_id' type='string' key='dataset_id'>
+        知识库 ID
+      </Property>
+      <Property name='document_id' type='string' key='document_id'>
+        文档 ID
+      </Property>
+      <Property name='segment_id' type='string' key='segment_id'>
+        分段 ID
+      </Property>
+    </Properties>
+
+    ### Query
+    <Properties>
+      <Property name='keyword' type='string' key='keyword'>
+        搜索关键词（选填）
+      </Property>
+      <Property name='page' type='integer' key='page'>
+        页码（选填，默认1）
+      </Property>
+      <Property name='limit' type='integer' key='limit'>
+        每页数量（选填，默认20，最大100）
+      </Property>
+    </Properties>
+  </Col>
+  <Col sticky>
+    <CodeGroup
+      title="Request"
+      tag="GET"
+      label="/datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}/child_chunks"
+      targetCode={`curl --location --request GET '${props.apiBaseUrl}/datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}/child_chunks?page=1&limit=20' \\\n--header 'Authorization: Bearer {api_key}'`}
+    >
+    ```bash {{ title: 'cURL' }}
+    curl --location --request GET '${props.apiBaseUrl}/datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}/child_chunks?page=1&limit=20' \
+    --header 'Authorization: Bearer {api_key}'
+    ```
+    </CodeGroup>
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {
+      "data": [{
+        "id": "",
+        "segment_id": "",
+        "content": "子分段内容",
+        "word_count": 25,
+        "tokens": 0,
+        "index_node_id": "",
+        "index_node_hash": "",
+        "status": "completed",
+        "created_by": "",
+        "created_at": 1695312007,
+        "indexing_at": 1695312007,
+        "completed_at": 1695312007,
+        "error": null,
+        "stopped_at": null
+      }],
+      "total": 1,
+      "total_pages": 1,
+      "page": 1,
+      "limit": 20
+    }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
+<hr className='ml-0 mr-0' />
+
+<Heading
+  url='/datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}/child_chunks/{child_chunk_id}'
+  method='DELETE'
+  title='删除文档子分段'
+  name='#delete_child_chunk'
+/>
+<Row>
+  <Col>
+    ### Path
+    <Properties>
+      <Property name='dataset_id' type='string' key='dataset_id'>
+        知识库 ID
+      </Property>
+      <Property name='document_id' type='string' key='document_id'>
+        文档 ID
+      </Property>
+      <Property name='segment_id' type='string' key='segment_id'>
+        分段 ID
+      </Property>
+      <Property name='child_chunk_id' type='string' key='child_chunk_id'>
+        子分段 ID
+      </Property>
+    </Properties>
+  </Col>
+  <Col sticky>
+    <CodeGroup
+      title="Request"
+      tag="DELETE"
+      label="/datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}/child_chunks/{child_chunk_id}"
+      targetCode={`curl --location --request DELETE '${props.apiBaseUrl}/datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}/child_chunks/{child_chunk_id}' \\\n--header 'Authorization: Bearer {api_key}'`}
+    >
+    ```bash {{ title: 'cURL' }}
+    curl --location --request DELETE '${props.apiBaseUrl}/datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}/child_chunks/{child_chunk_id}' \
+    --header 'Authorization: Bearer {api_key}'
+    ```
+    </CodeGroup>
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {
+      "result": "success"
+    }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
+<hr className='ml-0 mr-0' />
+
+<Row>
+  <Col>
+    ### 错误信息
+    <Properties>
+      <Property name='code' type='string' key='code'>
+        返回的错误代码
+      </Property>
+    </Properties>
+    <Properties>
+      <Property name='status' type='number' key='status'>
+        返回的错误状态
+      </Property>
+    </Properties>
+    <Properties>
+      <Property name='message' type='string' key='message'>
+        返回的错误信息
+      </Property>
+    </Properties>
+  </Col>
+  <Col>
+    <CodeGroup title="Example">
+    ```json {{ title: 'Response' }}
+      {
+        "code": "no_file_uploaded",
+        "message": "Please upload your file.",
+        "status": 400
+      }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
+<hr className='ml-0 mr-0' />
+
+<Heading
+  url='/datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}/child_chunks/{child_chunk_id}'
+  method='PATCH'
+  title='更新文档子分段'
+  name='#update_child_chunk'
+/>
+<Row>
+  <Col>
+    ### Path
+    <Properties>
+      <Property name='dataset_id' type='string' key='dataset_id'>
+        知识库 ID
+      </Property>
+      <Property name='document_id' type='string' key='document_id'>
+        文档 ID
+      </Property>
+      <Property name='segment_id' type='string' key='segment_id'>
+        分段 ID
+      </Property>
+      <Property name='child_chunk_id' type='string' key='child_chunk_id'>
+        子分段 ID
+      </Property>
+    </Properties>
+
+    ### Request Body
+    <Properties>
+      <Property name='content' type='string' key='content'>
+        子分段内容
+      </Property>
+    </Properties>
+  </Col>
+  <Col sticky>
+    <CodeGroup
+      title="Request"
+      tag="PATCH"
+      label="/datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}/child_chunks/{child_chunk_id}"
+      targetCode={`curl --location --request PATCH '${props.apiBaseUrl}/datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}/child_chunks/{child_chunk_id}' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{"content": "更新的子分段内容"}'`}
+    >
+    ```bash {{ title: 'cURL' }}
+    curl --location --request PATCH '${props.apiBaseUrl}/datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}/child_chunks/{child_chunk_id}' \
+    --header 'Authorization: Bearer {api_key}' \
+    --header 'Content-Type: application/json' \
+    --data-raw '{
+        "content": "更新的子分段内容"
+    }'
+    ```
+    </CodeGroup>
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {
+      "data": {
+        "id": "",
+        "segment_id": "",
+        "content": "更新的子分段内容",
+        "word_count": 25,
+        "tokens": 0,
+        "index_node_id": "",
+        "index_node_hash": "",
+        "status": "completed",
+        "created_by": "",
+        "created_at": 1695312007,
+        "indexing_at": 1695312007,
+        "completed_at": 1695312007,
+        "error": null,
+        "stopped_at": null
+      }
+    }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
+<hr className='ml-0 mr-0' />
+
+<Heading
   url='/datasets/{dataset_id}/documents/{document_id}/upload-file'
   method='GET'
   title='获取上传文件'
