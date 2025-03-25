@@ -13,6 +13,9 @@ inputs:
     description: Path to the UV lockfile to restore cache from
     required: true
     default: ''
+  enable-cache:
+    required: true
+    default: true
 
 runs:
   using: composite
@@ -27,5 +30,5 @@ runs:
       with:
         version: ${{ inputs.uv-version }}
         python-version: ${{ matrix.python-version }}
-        enable-cache: true
+        enable-cache: ${{ inputs.enable-cache }}
         cache-dependency-glob: ${{ inputs.uv-lockfile }}
