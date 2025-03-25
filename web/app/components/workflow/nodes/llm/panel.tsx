@@ -68,6 +68,8 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
     setContexts,
     runningStatus,
     isModelSupportStructuredOutput,
+    structuredOutputCollapsed,
+    setStructuredOutputCollapsed,
     handleStructureOutputEnableChange,
     handleStructureOutputChange,
     handleRun,
@@ -289,6 +291,8 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
       </div>
       <Split />
       <OutputVars
+        collapsed={structuredOutputCollapsed}
+        onCollapse={setStructuredOutputCollapsed}
         operations={
           <div className='mr-4 flex items-center'>
             {!isModelSupportStructuredOutput && (

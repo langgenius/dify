@@ -9,18 +9,24 @@ type Props = {
   title?: string
   children: ReactNode
   operations?: ReactNode
+  collapsed?: boolean
+  onCollapse?: (collapsed: boolean) => void
 }
 
 const OutputVars: FC<Props> = ({
   title,
   children,
   operations,
+  collapsed,
+  onCollapse,
 }) => {
   const { t } = useTranslation()
   return (
     <FieldCollapse
       title={title || t('workflow.nodes.common.outputVars')}
       operations={operations}
+      collapsed={collapsed}
+      onCollapse={onCollapse}
     >
       {children}
     </FieldCollapse>

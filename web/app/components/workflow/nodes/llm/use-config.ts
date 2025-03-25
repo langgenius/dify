@@ -285,11 +285,14 @@ const useConfig = (id: string, payload: LLMNodeType) => {
     ?.models.find(modelItem => modelItem.model === model?.name)
     ?.features?.includes(ModelFeatureEnum.StructuredOutput)
 
+  const [structuredOutputCollapsed, setStructuredOutputCollapsed] = useState(true)
   const handleStructureOutputEnableChange = useCallback((enabled: boolean) => {
     const newInputs = produce(inputs, (draft) => {
       draft.structured_output_enabled = enabled
     })
     setInputs(newInputs)
+    if (enabled)
+      setStructuredOutputCollapsed(false)
   }, [inputs, setInputs])
 
   const handleStructureOutputChange = useCallback((newOutput: StructuredOutput) => {
@@ -432,6 +435,8 @@ const useConfig = (id: string, payload: LLMNodeType) => {
     runningStatus,
     isModelSupportStructuredOutput,
     handleStructureOutputChange,
+    structuredOutputCollapsed,
+    setStructuredOutputCollapsed,
     handleStructureOutputEnableChange,
     handleRun,
     handleStop,
