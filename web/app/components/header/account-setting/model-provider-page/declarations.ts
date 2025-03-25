@@ -59,6 +59,7 @@ export enum ModelFeatureEnum {
   video = 'video',
   document = 'document',
   audio = 'audio',
+  StructuredOutput = 'structured-output',
 }
 
 export enum ModelFeatureTextEnum {
