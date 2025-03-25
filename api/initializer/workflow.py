@@ -76,7 +76,7 @@ def init_workflow():
             if result is None:
                 _generate_api_key(db.session, imp.app_id, admin)
         db.session.commit()
-        _adjust_workflows(initial_language)
+        _adjust_workflows(initial_language, admin)
     except Exception as e:
         db.session.rollback()
         raise
@@ -104,6 +104,7 @@ def _check_workflow_to_update(session, content, account) -> Union[str, bool, Non
             .filter(
                 App.name == app_name,
                 App.tenant_id == account.current_tenant_id,
+                App.mode == "workflow",
                 App.status == "normal",
             )
             .first()
@@ -148,10 +149,10 @@ def _generate_api_key(session, app_id, account, key=None):
     session.add(api_token)
 
 
-def _adjust_workflows(language):
+def _adjust_workflows(language, account):
     to_adjust = {
         "zh-Hans": {
-            "告警有效性分析": {
+            "告警有效性确认": {
                 "app_id": "dcfeddd2-d6e7-4dc4-a284-e48ab56bf6af",
                 "api_token": "app-x0mOJKUvhr35BOISSeNmsfXj"
             },
@@ -172,14 +173,14 @@ def _adjust_workflows(language):
     try:
         config = to_adjust.get(language)
         for app_name, field_config in config.items():
-                app = db.session.query(App).filter_by(name=app_name).first()
+                app = db.session.query(App).filter_by(name=app_name, tenant_id=account.current_tenant_id).first()
                 new_app_id = field_config["app_id"]
                 if not app:
                     continue
                 
                 if app.id == new_app_id:
                     continue
-
+                
                 origin_app_id = app.id
                 update_mappings = [
                     (ApiToken, {"app_id": new_app_id}),
@@ -188,27 +189,35 @@ def _adjust_workflows(language):
                 ]
 
                 for model, update_values in update_mappings:
+                    # Delete other language's data
                     db.session.query(model)\
-                        .filter_by(app_id=origin_app_id)\
+                        .filter_by(app_id=new_app_id, tenant_id=account.current_tenant_id)\
+                        .delete(synchronize_session=False)
+                    
+                    db.session.query(model)\
+                        .filter_by(app_id=origin_app_id, tenant_id=account.current_tenant_id)\
                         .update(update_values, synchronize_session=False)
 
+                db.session.query(App)\
+                    .filter_by(id=new_app_id, tenant_id=account.current_tenant_id)\
+                    .delete(synchronize_session=False)
+                
                 app.id = new_app_id
                 db.session.merge(app)
 
                 if "api_token" in field_config:
                     new_token = field_config["api_token"]
                     db.session.query(ApiToken)\
-                        .filter_by(app_id=new_app_id)\
+                        .filter_by(app_id=new_app_id, tenant_id=account.current_tenant_id)\
                         .update({"token": new_token}, synchronize_session=False)
 
                 db.session.commit()
-                print(f"Successfully updated {app_name} (ID: {origin_app_id} → {new_app_id})")
 
     except SQLAlchemyError as e:
         db.session.rollback()
-        logging.ERROR(f"Database error occurred: {str(e)}")
+        logging.error(f"Database error occurred: {str(e)}")
         raise
     except Exception as e:
         db.session.rollback()
-        logging.ERROR(f"Unexpected error: {str(e)}")
+        logging.error(f"Unexpected error: {str(e)}")
         raise
