@@ -72,23 +72,23 @@ const EducationApplyAge = () => {
   }
 
   return (
-    <div className='fixed inset-0 z-[31] flex justify-center bg-background-body p-6'>
-      <div className='relative w-full max-w-[1408px] rounded-2xl border border-effects-highlight bg-background-default-subtle'>
+    <div className='fixed inset-0 z-[31] overflow-y-auto bg-background-body p-6'>
+      <div className='mx-auto w-full max-w-[1408px] rounded-2xl border border-effects-highlight bg-background-default-subtle'>
         <div
-          className="absolute top-0 h-[349px] w-full overflow-hidden rounded-t-2xl bg-cover bg-center bg-no-repeat"
+          className="h-[349px] w-full overflow-hidden rounded-t-2xl bg-cover bg-center bg-no-repeat"
           style={{
             backgroundImage: 'url(/education/bg.png)',
           }}
         >
         </div>
-        <div className='relative z-10 flex h-[88px] items-center justify-between px-8 py-6'>
+        <div className='mt-[-349px] flex h-[88px] items-center justify-between px-8 py-6'>
           <img
             src='/logo/logo-site-dark.png'
             alt='dify logo'
             className='h-10'
           />
         </div>
-        <div className='relative z-10 m-auto max-w-[720px] px-8'>
+        <div className='mx-auto max-w-[720px] px-8 pb-[180px]'>
           <div className='mb-2 flex h-[192px] flex-col justify-end pb-4 pt-3 text-text-primary-on-surface'>
             <div className='title-5xl-bold mb-2 shadow-xs'>{t('education.toVerified')}</div>
             <div className='system-md-medium shadow-xs'>
