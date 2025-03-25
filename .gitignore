@@ -201,3 +201,5 @@ api/.vscode
 
 # plugin migrate
 plugins.jsonl
+
+api/tools_generator/metrics_conf.json

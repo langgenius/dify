@@ -1,0 +1,75 @@
+identity:
+  name: 容器网络发送包速率(按命名空间和Pod统计)
+  author: APO
+  label:
+    en_US: Container network packet transmit rate (aggregated by namespace and Pod)
+    zh_Hans: 容器网络发送包速率(按命名空间和Pod统计)
+description:
+  human:
+    en_US: Container network packet transmit rate (aggregated by namespace and Pod)
+    zh_Hans: 容器网络发送包速率(按命名空间和Pod统计)
+  llm: Container network packet transmit rate (aggregated by namespace and Pod)
+display:
+  type: metric
+  title: 基础设施情况 - 容器网络 - 包传输速率 - 发送
+  unit: "pps"
+parameters:
+  - name: cadvisor_job_name
+    type: string
+    required: False
+    label:
+      en_US: cAdvisor job name
+      zh_Hans: cAdvisor任务名称
+    human_description:
+      en_US: cAdvisor job name
+      zh_Hans: cAdvisor任务名称
+    llm_description: cAdvisor job name
+    form: llm
+  - name: namespace
+    type: string
+    required: False
+    label:
+      en_US: Namespace
+      zh_Hans: 命名空间
+    human_description:
+      en_US: Namespace
+      zh_Hans: 命名空间
+    llm_description: Namespace
+    form: llm
+  - name: pod
+    type: string
+    required: False
+    label:
+      en_US: Pod name
+      zh_Hans: Pod名称
+    human_description:
+      en_US: Pod name
+      zh_Hans: Pod名称
+    llm_description: Pod name
+    form: llm
+  - name: startTime
+    type: number
+    required: true
+    label:
+      en_US: startTime
+      zh_Hans: startTime
+      pt_BR: startTime
+    human_description:
+      en_US: Data query start time(Microsecond)
+      zh_Hans: 开始时间 (微秒)
+      pt_BR: Data query start time
+    llm_description: Data query start time(Microsecond)
+    form: llm
+  - name: endTime
+    type: number
+    required: true
+    label:
+      en_US: endTime
+      zh_Hans: endTime
+      pt_BR: endTime
+    human_description:
+      en_US: Data query end time(Microsecond)
+      zh_Hans: 结束时间 (微秒)
+      pt_BR: Data query end time(Microsecond)
+    llm_description: Data query end time(Microsecond)
+    form: llm
