@@ -29,6 +29,7 @@ const ChatWrapper = () => {
     appPrevChatTree,
     currentConversationId,
     currentConversationItem,
+    currentConversationInputs,
     inputsForms,
     newConversationInputs,
     newConversationInputsRef,
@@ -69,7 +70,7 @@ const ChatWrapper = () => {
   } = useChat(
     appConfig,
     {
-      inputs: (currentConversationId ? currentConversationItem?.inputs : newConversationInputs) as any,
+      inputs: (currentConversationId ? currentConversationInputs : newConversationInputs) as any,
       inputsForm: inputsForms,
     },
     appPrevChatTree,
@@ -77,7 +78,7 @@ const ChatWrapper = () => {
     clearChatList,
     setClearChatList,
   )
-  const inputsFormValue = currentConversationId ? currentConversationItem?.inputs : newConversationInputsRef?.current
+  const inputsFormValue = currentConversationId ? currentConversationInputs : newConversationInputsRef?.current
   const inputDisabled = useMemo(() => {
     let hasEmptyInput = ''
     let fileIsUploading = false
@@ -124,7 +125,7 @@ const ChatWrapper = () => {
     const data: any = {
       query: message,
       files,
-      inputs: currentConversationId ? currentConversationItem?.inputs : newConversationInputs,
+      inputs: currentConversationId ? currentConversationInputs : newConversationInputs,
       conversation_id: currentConversationId,
       parent_message_id: (isRegenerate ? parentAnswer?.id : getLastAnswer(chatList)?.id) || null,
     }
@@ -144,6 +145,7 @@ const ChatWrapper = () => {
     handleSend,
     currentConversationId,
     currentConversationItem,
+    currentConversationInputs,
     newConversationInputs,
     isInstalledApp,
     appId,
@@ -243,7 +245,7 @@ const ChatWrapper = () => {
         chatFooterClassName='pb-4'
         chatFooterInnerClassName={`mx-auto w-full max-w-[768px] ${isMobile ? 'px-2' : 'px-4'}`}
         onSend={doSend}
-        inputs={currentConversationId ? currentConversationItem?.inputs as any : newConversationInputs}
+        inputs={currentConversationId ? currentConversationInputs as any : newConversationInputs}
         inputsForm={inputsForms}
         onRegenerate={doRegenerate}
         onStopResponding={handleStop}
