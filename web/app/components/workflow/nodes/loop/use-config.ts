@@ -45,7 +45,7 @@ const useConfig = (id: string, payload: LoopNodeType) => {
   const beforeNodes = getBeforeNodesInSameBranch(id)
   const loopChildrenNodes = getLoopNodeChildren(id)
   const canChooseVarNodes = [...beforeNodes, ...loopChildrenNodes]
-  const childrenNodeVars = toNodeOutputVars(loopChildrenNodes, isChatMode, undefined, [], conversationVariables)
+  const childrenNodeVars = toNodeOutputVars([{ id, data: payload }, ...loopChildrenNodes], isChatMode, undefined, [], conversationVariables)
 
   // single run
   const loopInputKey = `${id}.input_selector`
