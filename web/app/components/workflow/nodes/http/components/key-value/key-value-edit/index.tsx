@@ -9,7 +9,7 @@ import cn from '@/utils/classnames'
 
 const i18nPrefix = 'workflow.nodes.http'
 
-interface Props {
+type Props = {
   readonly: boolean
   nodeId: string
   list: KeyValue[]
@@ -56,11 +56,11 @@ const KeyValueList: FC<Props> = ({
     return null
 
   return (
-    <div className='border border-divider-regular rounded-lg overflow-hidden'>
-      <div className={cn('flex items-center h-7 leading-7 text-text-tertiary system-xs-medium-uppercase')}>
-        <div className={cn('h-full pl-3 border-r border-divider-regular', isSupportFile ? 'w-[140px]' : 'w-1/2')}>{t(`${i18nPrefix}.key`)}</div>
-        {isSupportFile && <div className='shrink-0 w-[70px] h-full pl-3 border-r border-divider-regular'>{t(`${i18nPrefix}.type`)}</div>}
-        <div className={cn('h-full pl-3 pr-1 items-center justify-between', isSupportFile ? 'grow' : 'w-1/2')}>{t(`${i18nPrefix}.value`)}</div>
+    <div className='overflow-hidden rounded-lg border border-divider-regular'>
+      <div className={cn('system-xs-medium-uppercase flex h-7 items-center leading-7 text-text-tertiary')}>
+        <div className={cn('h-full border-r border-divider-regular pl-3', isSupportFile ? 'w-[140px]' : 'w-1/2')}>{t(`${i18nPrefix}.key`)}</div>
+        {isSupportFile && <div className='h-full w-[70px] shrink-0 border-r border-divider-regular pl-3'>{t(`${i18nPrefix}.type`)}</div>}
+        <div className={cn('h-full items-center justify-between pl-3 pr-1', isSupportFile ? 'grow' : 'w-1/2')}>{t(`${i18nPrefix}.value`)}</div>
       </div>
       {
         list.map((item, index) => (

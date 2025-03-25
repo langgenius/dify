@@ -1,3 +1,4 @@
+import copy
 import datetime
 import json
 import logging
@@ -17,6 +18,7 @@ from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
 from core.model_manager import ModelManager
 from core.model_runtime.entities.model_entities import ModelType
 from core.plugin.entities.plugin import ModelProviderID
+from core.rag.index_processor.constant.built_in_field import BuiltInField
 from core.rag.index_processor.constant.index_type import IndexType
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from events.dataset_event import dataset_was_deleted
@@ -44,7 +46,6 @@ from models.source import DataSourceOauthBinding
 from services.entities.knowledge_entities.knowledge_entities import (
     ChildChunkUpdateArgs,
     KnowledgeConfig,
-    MetaDataConfig,
     RerankingModel,
     RetrievalModel,
     SegmentUpdateArgs,
@@ -644,8 +645,44 @@ class DocumentService:
         return document
 
     @staticmethod
+    def get_document_by_ids(document_ids: list[str]) -> list[Document]:
+        documents = (
+            db.session.query(Document)
+            .filter(
+                Document.id.in_(document_ids),
+                Document.enabled == True,
+                Document.indexing_status == "completed",
+                Document.archived == False,
+            )
+            .all()
+        )
+        return documents
+
+    @staticmethod
     def get_document_by_dataset_id(dataset_id: str) -> list[Document]:
-        documents = db.session.query(Document).filter(Document.dataset_id == dataset_id, Document.enabled == True).all()
+        documents = (
+            db.session.query(Document)
+            .filter(
+                Document.dataset_id == dataset_id,
+                Document.enabled == True,
+            )
+            .all()
+        )
+
+        return documents
+
+    @staticmethod
+    def get_working_documents_by_dataset_id(dataset_id: str) -> list[Document]:
+        documents = (
+            db.session.query(Document)
+            .filter(
+                Document.dataset_id == dataset_id,
+                Document.enabled == True,
+                Document.indexing_status == "completed",
+                Document.archived == False,
+            )
+            .all()
+        )
 
         return documents
 
@@ -728,8 +765,13 @@ class DocumentService:
         if document.tenant_id != current_user.current_tenant_id:
             raise ValueError("No permission.")
 
-        document.name = name
+        if dataset.built_in_field_enabled:
+            if document.doc_metadata:
+                doc_metadata = copy.deepcopy(document.doc_metadata)
+                doc_metadata[BuiltInField.document_name.value] = name
+                document.doc_metadata = doc_metadata
 
+        document.name = name
         db.session.add(document)
         db.session.commit()
 
@@ -949,16 +991,13 @@ class DocumentService:
                             ).first()
                             if document:
                                 document.dataset_process_rule_id = dataset_process_rule.id  # type: ignore
-                                document.updated_at = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
+                                document.updated_at = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
                                 document.created_from = created_from
                                 document.doc_form = knowledge_config.doc_form
                                 document.doc_language = knowledge_config.doc_language
                                 document.data_source_info = json.dumps(data_source_info)
                                 document.batch = batch
                                 document.indexing_status = "waiting"
-                                if knowledge_config.metadata:
-                                    document.doc_type = knowledge_config.metadata.doc_type
-                                    document.metadata = knowledge_config.metadata.doc_metadata
                                 db.session.add(document)
                                 documents.append(document)
                                 duplicate_document_ids.append(document.id)
@@ -975,7 +1014,6 @@ class DocumentService:
                             account,
                             file_name,
                             batch,
-                            knowledge_config.metadata,
                         )
                         db.session.add(document)
                         db.session.flush()
@@ -1033,7 +1071,6 @@ class DocumentService:
                                     account,
                                     truncated_page_name,
                                     batch,
-                                    knowledge_config.metadata,
                                 )
                                 db.session.add(document)
                                 db.session.flush()
@@ -1074,7 +1111,6 @@ class DocumentService:
                             account,
                             document_name,
                             batch,
-                            knowledge_config.metadata,
                         )
                         db.session.add(document)
                         db.session.flush()
@@ -1112,7 +1148,6 @@ class DocumentService:
         account: Account,
         name: str,
         batch: str,
-        metadata: Optional[MetaDataConfig] = None,
     ):
         document = Document(
             tenant_id=dataset.tenant_id,
@@ -1128,9 +1163,17 @@ class DocumentService:
             doc_form=document_form,
             doc_language=document_language,
         )
-        if metadata is not None:
-            document.doc_metadata = metadata.doc_metadata
-            document.doc_type = metadata.doc_type
+        doc_metadata = {}
+        if dataset.built_in_field_enabled:
+            doc_metadata = {
+                BuiltInField.document_name: name,
+                BuiltInField.uploader: account.name,
+                BuiltInField.upload_date: datetime.datetime.now(datetime.UTC).strftime("%Y-%m-%d %H:%M:%S"),
+                BuiltInField.last_update_date: datetime.datetime.now(datetime.UTC).strftime("%Y-%m-%d %H:%M:%S"),
+                BuiltInField.source: data_source_type,
+            }
+        if doc_metadata:
+            document.doc_metadata = doc_metadata
         return document
 
     @staticmethod
@@ -1243,10 +1286,6 @@ class DocumentService:
         # update document name
         if document_data.name:
             document.name = document_data.name
-        # update doc_type and doc_metadata if provided
-        if document_data.metadata is not None:
-            document.doc_metadata = document_data.metadata.doc_type
-            document.doc_type = document_data.metadata.doc_type
         # update document to be waiting
         document.indexing_status = "waiting"
         document.completed_at = None
@@ -1916,7 +1955,7 @@ class SegmentService:
                 if cache_result is not None:
                     continue
                 segment.enabled = False
-                segment.disabled_at = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
+                segment.disabled_at = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
                 segment.disabled_by = current_user.id
                 db.session.add(segment)
                 real_deal_segmment_ids.append(segment.id)
@@ -2008,7 +2047,7 @@ class SegmentService:
                         child_chunk.content = child_chunk_update_args.content
                         child_chunk.word_count = len(child_chunk.content)
                         child_chunk.updated_by = current_user.id
-                        child_chunk.updated_at = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
+                        child_chunk.updated_at = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
                         child_chunk.type = "customized"
                         update_child_chunks.append(child_chunk)
             else:
@@ -2065,7 +2104,7 @@ class SegmentService:
             child_chunk.content = content
             child_chunk.word_count = len(content)
             child_chunk.updated_by = current_user.id
-            child_chunk.updated_at = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
+            child_chunk.updated_at = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
             child_chunk.type = "customized"
             db.session.add(child_chunk)
             VectorService.update_child_chunk_vector([], [child_chunk], [], dataset)

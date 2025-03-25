@@ -36,10 +36,10 @@ const InputsFormContent = ({ showTip }: Props) => {
     <div className='space-y-4'>
       {inputsForms.map(form => (
         <div key={form.variable} className='space-y-1'>
-          <div className='h-6 flex items-center gap-1'>
-            <div className='text-text-secondary system-md-semibold'>{form.label}</div>
+          <div className='flex h-6 items-center gap-1'>
+            <div className='system-md-semibold text-text-secondary'>{form.label}</div>
             {!form.required && (
-              <div className='text-text-tertiary system-xs-regular'>{t('appDebug.variableTable.optional')}</div>
+              <div className='system-xs-regular text-text-tertiary'>{t('appDebug.variableTable.optional')}</div>
             )}
           </div>
           {form.type === InputVarType.textInput && (
@@ -109,7 +109,7 @@ const InputsFormContent = ({ showTip }: Props) => {
         </div>
       ))}
       {showTip && (
-        <div className='text-text-tertiary system-xs-regular'>{t('share.chat.chatFormTip')}</div>
+        <div className='system-xs-regular text-text-tertiary'>{t('share.chat.chatFormTip')}</div>
       )}
     </div>
   )

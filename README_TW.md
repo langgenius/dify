@@ -204,6 +204,7 @@ Dify 的所有功能都提供相應的 API，因此您可以輕鬆地將 Dify �
 - [由 @LeoQuote 提供的 Helm Chart](https://github.com/douban/charts/tree/master/charts/dify)
 - [由 @BorisPolonsky 提供的 Helm Chart](https://github.com/BorisPolonsky/dify-helm)
 - [由 @Winson-030 提供的 YAML 文件](https://github.com/Winson-030/dify-kubernetes)
+- [由 @wyy-holding 提供的 YAML 文件](https://github.com/wyy-holding/dify-k8s)
 
 ### 使用 Terraform 進行部署
 

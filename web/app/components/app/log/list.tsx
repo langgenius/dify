@@ -72,8 +72,8 @@ const DrawerContext = createContext<IDrawerContext>({} as IDrawerContext)
 const HandThumbIconWithCount: FC<{ count: number; iconType: 'up' | 'down' }> = ({ count, iconType }) => {
   const classname = iconType === 'up' ? 'text-primary-600 bg-primary-50' : 'text-red-600 bg-red-50'
   const Icon = iconType === 'up' ? HandThumbUpIcon : HandThumbDownIcon
-  return <div className={`inline-flex items-center w-fit rounded-md p-1 text-xs ${classname} mr-1 last:mr-0`}>
-    <Icon className={'h-3 w-3 mr-0.5 rounded-md'} />
+  return <div className={`inline-flex w-fit items-center rounded-md p-1 text-xs ${classname} mr-1 last:mr-0`}>
+    <Icon className={'mr-0.5 h-3 w-3 rounded-md'} />
     {count > 0 ? count : null}
   </div>
 }
@@ -84,7 +84,7 @@ const statusTdRender = (statusCount: StatusCount) => {
 
   if (statusCount.partial_success + statusCount.failed === 0) {
     return (
-      <div className='inline-flex items-center gap-1 system-xs-semibold-uppercase'>
+      <div className='system-xs-semibold-uppercase inline-flex items-center gap-1'>
         <Indicator color={'green'} />
         <span className='text-util-colors-green-green-600'>Success</span>
       </div>
@@ -92,7 +92,7 @@ const statusTdRender = (statusCount: StatusCount) => {
   }
   else if (statusCount.failed === 0) {
     return (
-      <div className='inline-flex items-center gap-1 system-xs-semibold-uppercase'>
+      <div className='system-xs-semibold-uppercase inline-flex items-center gap-1'>
         <Indicator color={'green'} />
         <span className='text-util-colors-green-green-600'>Partial Success</span>
       </div>
@@ -100,7 +100,7 @@ const statusTdRender = (statusCount: StatusCount) => {
   }
   else {
     return (
-      <div className='inline-flex items-center gap-1 system-xs-semibold-uppercase'>
+      <div className='system-xs-semibold-uppercase inline-flex items-center gap-1'>
         <Indicator color={'red'} />
         <span className='text-util-colors-red-red-600'>{statusCount.failed} {`${statusCount.failed > 1 ? 'Failures' : 'Failure'}`}</span>
       </div>
@@ -360,13 +360,13 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
   }, [])
 
   return (
-    <div ref={ref} className='rounded-xl border-[0.5px] border-components-panel-border h-full flex flex-col'>
+    <div ref={ref} className='flex h-full flex-col rounded-xl border-[0.5px] border-components-panel-border'>
       {/* Panel Header */}
-      <div className='shrink-0 pl-4 pt-3 pr-3 pb-2 flex items-center gap-2 bg-components-panel-bg rounded-t-xl'>
+      <div className='flex shrink-0 items-center gap-2 rounded-t-xl bg-components-panel-bg pb-2 pl-4 pr-3 pt-3'>
         <div className='shrink-0'>
-          <div className='mb-0.5 text-text-primary system-xs-semibold-uppercase'>{isChatMode ? t('appLog.detail.conversationId') : t('appLog.detail.time')}</div>
+          <div className='system-xs-semibold-uppercase mb-0.5 text-text-primary'>{isChatMode ? t('appLog.detail.conversationId') : t('appLog.detail.time')}</div>
           {isChatMode && (
-            <div className='flex items-center text-text-secondary system-2xs-regular-uppercase'>
+            <div className='system-2xs-regular-uppercase flex items-center text-text-secondary'>
               <Tooltip
                 popupContent={detail.id}
               >
@@ -376,19 +376,19 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
             </div>
           )}
           {!isChatMode && (
-            <div className='text-text-secondary system-2xs-regular-uppercase'>{formatTime(detail.created_at, t('appLog.dateTimeFormat') as string)}</div>
+            <div className='system-2xs-regular-uppercase text-text-secondary'>{formatTime(detail.created_at, t('appLog.dateTimeFormat') as string)}</div>
           )}
         </div>
-        <div className='grow flex items-center flex-wrap gap-y-1 justify-end'>
+        <div className='flex grow flex-wrap items-center justify-end gap-y-1'>
           {!isAdvanced && <ModelInfo model={detail.model_config.model} />}
         </div>
         <ActionButton size='l' onClick={onClose}>
-          <RiCloseLine className='w-4 h-4 text-text-tertiary' />
+          <RiCloseLine className='h-4 w-4 text-text-tertiary' />
         </ActionButton>
       </div>
       {/* Panel Body */}
-      <div className='shrink-0 pt-1 px-1'>
-        <div className='p-3 pb-2 rounded-t-xl bg-background-section-burn'>
+      <div className='shrink-0 px-1 pt-1'>
+        <div className='rounded-t-xl bg-background-section-burn p-3 pb-2'>
           {(varList.length > 0 || (!isChatMode && message_files.length > 0)) && (
             <VarPanel
               varList={varList}
@@ -397,12 +397,12 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
           )}
         </div>
       </div>
-      <div className='grow mx-1 mb-1 bg-background-section-burn rounded-b-xl overflow-auto'>
+      <div className='mx-1 mb-1 grow overflow-auto rounded-b-xl bg-background-section-burn'>
         {!isChatMode
           ? <div className="px-6 py-4">
             <div className='flex h-[18px] items-center space-x-3'>
-              <div className='text-text-tertiary system-xs-semibold-uppercase'>{t('appLog.table.header.output')}</div>
-              <div className='grow h-[1px]' style={{
+              <div className='system-xs-semibold-uppercase text-text-tertiary'>{t('appLog.table.header.output')}</div>
+              <div className='h-[1px] grow' style={{
                 background: 'linear-gradient(270deg, rgba(243, 244, 246, 0) 0%, rgb(243, 244, 246) 100%)',
               }}></div>
             </div>
@@ -421,7 +421,7 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
             />
           </div>
           : threadChatItems.length < 8
-            ? <div className="pt-4 mb-4">
+            ? <div className="mb-4 pt-4">
               <Chat
                 config={{
                   appId: appDetail?.id,
@@ -461,7 +461,7 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
                 dataLength={threadChatItems.length}
                 next={fetchData}
                 hasMore={hasMore}
-                loader={<div className='text-center text-text-tertiary system-xs-regular'>{t('appLog.detail.loading')}...</div>}
+                loader={<div className='system-xs-regular text-center text-text-tertiary'>{t('appLog.detail.loading')}...</div>}
                 // endMessage={<div className='text-center'>Nothing more to show</div>}
                 // below props only if you need pull down functionality
                 refreshFunction={fetchData}
@@ -643,8 +643,8 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
     return (
       <Tooltip
         popupContent={
-          <span className='text-xs text-text-tertiary inline-flex items-center'>
-            <RiEditFill className='w-3 h-3 mr-1' />{`${t('appLog.detail.annotationTip', { user: annotation?.account?.name })} ${formatTime(annotation?.created_at || dayjs().unix(), 'MM-DD hh:mm A')}`}
+          <span className='inline-flex items-center text-xs text-text-tertiary'>
+            <RiEditFill className='mr-1 h-3 w-3' />{`${t('appLog.detail.annotationTip', { user: annotation?.account?.name })} ${formatTime(annotation?.created_at || dayjs().unix(), 'MM-DD hh:mm A')}`}
           </span>
         }
         popupClassName={(isHighlight && !isChatMode) ? '' : '!hidden'}
@@ -673,41 +673,41 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
       <table className={cn('mt-2 w-full min-w-[440px] border-collapse border-0')}>
         <thead className='system-xs-medium-uppercase text-text-tertiary'>
           <tr>
-            <td className='pl-2 pr-1 w-5 rounded-l-lg bg-background-section-burn whitespace-nowrap'></td>
-            <td className='pl-3 py-1.5 bg-background-section-burn whitespace-nowrap'>{isChatMode ? t('appLog.table.header.summary') : t('appLog.table.header.input')}</td>
-            <td className='pl-3 py-1.5 bg-background-section-burn whitespace-nowrap'>{t('appLog.table.header.endUser')}</td>
-            {isChatflow && <td className='pl-3 py-1.5 bg-background-section-burn whitespace-nowrap'>{t('appLog.table.header.status')}</td>}
-            <td className='pl-3 py-1.5 bg-background-section-burn whitespace-nowrap'>{isChatMode ? t('appLog.table.header.messageCount') : t('appLog.table.header.output')}</td>
-            <td className='pl-3 py-1.5 bg-background-section-burn whitespace-nowrap'>{t('appLog.table.header.userRate')}</td>
-            <td className='pl-3 py-1.5 bg-background-section-burn whitespace-nowrap'>{t('appLog.table.header.adminRate')}</td>
-            <td className='pl-3 py-1.5 bg-background-section-burn whitespace-nowrap'>{t('appLog.table.header.updatedTime')}</td>
-            <td className='pl-3 py-1.5 rounded-r-lg bg-background-section-burn whitespace-nowrap'>{t('appLog.table.header.time')}</td>
+            <td className='w-5 whitespace-nowrap rounded-l-lg bg-background-section-burn pl-2 pr-1'></td>
+            <td className='whitespace-nowrap bg-background-section-burn py-1.5 pl-3'>{isChatMode ? t('appLog.table.header.summary') : t('appLog.table.header.input')}</td>
+            <td className='whitespace-nowrap bg-background-section-burn py-1.5 pl-3'>{t('appLog.table.header.endUser')}</td>
+            {isChatflow && <td className='whitespace-nowrap bg-background-section-burn py-1.5 pl-3'>{t('appLog.table.header.status')}</td>}
+            <td className='whitespace-nowrap bg-background-section-burn py-1.5 pl-3'>{isChatMode ? t('appLog.table.header.messageCount') : t('appLog.table.header.output')}</td>
+            <td className='whitespace-nowrap bg-background-section-burn py-1.5 pl-3'>{t('appLog.table.header.userRate')}</td>
+            <td className='whitespace-nowrap bg-background-section-burn py-1.5 pl-3'>{t('appLog.table.header.adminRate')}</td>
+            <td className='whitespace-nowrap bg-background-section-burn py-1.5 pl-3'>{t('appLog.table.header.updatedTime')}</td>
+            <td className='whitespace-nowrap rounded-r-lg bg-background-section-burn py-1.5 pl-3'>{t('appLog.table.header.time')}</td>
           </tr>
         </thead>
-        <tbody className="text-text-secondary system-sm-regular">
+        <tbody className="system-sm-regular text-text-secondary">
           {logs.data.map((log: any) => {
             const endUser = log.from_end_user_session_id || log.from_account_name
             const leftValue = get(log, isChatMode ? 'name' : 'message.inputs.query') || (!isChatMode ? (get(log, 'message.query') || get(log, 'message.inputs.default_input')) : '') || ''
             const rightValue = get(log, isChatMode ? 'message_count' : 'message.answer')
             return <tr
               key={log.id}
-              className={cn('border-b border-divider-subtle hover:bg-background-default-hover cursor-pointer', currentConversation?.id !== log.id ? '' : 'bg-background-default-hover')}
+              className={cn('cursor-pointer border-b border-divider-subtle hover:bg-background-default-hover', currentConversation?.id !== log.id ? '' : 'bg-background-default-hover')}
               onClick={() => {
                 setShowDrawer(true)
                 setCurrentConversation(log)
               }}>
               <td className='h-4'>
                 {!log.read_at && (
-                  <div className='p-3 pr-0.5 flex items-center'>
-                    <span className='inline-block bg-util-colors-blue-blue-500 h-1.5 w-1.5 rounded'></span>
+                  <div className='flex items-center p-3 pr-0.5'>
+                    <span className='inline-block h-1.5 w-1.5 rounded bg-util-colors-blue-blue-500'></span>
                   </div>
                 )}
               </td>
-              <td className='p-3 pr-2 w-[160px]' style={{ maxWidth: isChatMode ? 300 : 200 }}>
+              <td className='w-[160px] p-3 pr-2' style={{ maxWidth: isChatMode ? 300 : 200 }}>
                 {renderTdValue(leftValue || t('appLog.table.empty.noChat'), !leftValue, isChatMode && log.annotated)}
               </td>
               <td className='p-3 pr-2'>{renderTdValue(endUser || defaultValue, !endUser)}</td>
-              {isChatflow && <td className='p-3 pr-2 w-[160px]' style={{ maxWidth: isChatMode ? 300 : 200 }}>
+              {isChatflow && <td className='w-[160px] p-3 pr-2' style={{ maxWidth: isChatMode ? 300 : 200 }}>
                 {statusTdRender(log.status_count)}
               </td>}
               <td className='p-3 pr-2' style={{ maxWidth: isChatMode ? 100 : 200 }}>

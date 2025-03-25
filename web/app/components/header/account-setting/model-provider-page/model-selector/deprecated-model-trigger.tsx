@@ -26,23 +26,23 @@ const ModelTrigger: FC<ModelTriggerProps> = ({
 
   return (
     <div
-      className={cn('group flex flex-grow box-content items-center p-[3px] pl-1 h-8 gap-1 rounded-lg bg-components-input-bg-disabled cursor-pointer', className)}
+      className={cn('group box-content flex h-8 grow cursor-pointer items-center gap-1 rounded-lg bg-components-input-bg-disabled p-[3px] pl-1', className)}
     >
-      <div className={cn('flex items-center w-full', contentClassName)}>
-        <div className='flex items-center py-[1px] gap-1 min-w-0 flex-1'>
+      <div className={cn('flex w-full items-center', contentClassName)}>
+        <div className='flex min-w-0 flex-1 items-center gap-1 py-[1px]'>
           <ModelIcon
-            className="w-4 h-4"
+            className="h-4 w-4"
             provider={currentProvider}
             modelName={modelName}
           />
-          <div className='system-sm-regular text-components-input-text-filled truncate'>
+          <div className='system-sm-regular truncate text-components-input-text-filled'>
             {modelName}
           </div>
         </div>
-        <div className='shrink-0 flex items-center justify-center'>
+        <div className='flex shrink-0 items-center justify-center'>
           {showWarnIcon && (
             <Tooltip popupContent={t('common.modelProvider.deprecated')}>
-              <AlertTriangle className='w-4 h-4 text-text-warning-secondary' />
+              <AlertTriangle className='h-4 w-4 text-text-warning-secondary' />
             </Tooltip>
           )}
         </div>

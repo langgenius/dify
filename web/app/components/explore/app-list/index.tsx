@@ -146,7 +146,7 @@ const Apps = ({
       if (app.app_id)
         await handleCheckPluginDependencies(app.app_id)
       localStorage.setItem(NEED_REFRESH_APP_LIST_KEY, '1')
-      getRedirection(isCurrentWorkspaceEditor, { id: app.app_id, mode }, push)
+      getRedirection(isCurrentWorkspaceEditor, { id: app.app_id!, mode }, push)
     }
     catch (e) {
       Toast.notify({ type: 'error', message: t('app.newApp.appCreateFailed') })
@@ -163,16 +163,16 @@ const Apps = ({
 
   return (
     <div className={cn(
-      'flex flex-col h-full border-l-[0.5px] border-divider-regular',
+      'flex h-full flex-col border-l-[0.5px] border-divider-regular',
     )}>
 
-      <div className='shrink-0 pt-6 px-12'>
+      <div className='shrink-0 px-12 pt-6'>
         <div className={`mb-1 ${s.textGradient} text-xl font-semibold`}>{t('explore.apps.title')}</div>
-        <div className='text-text-tertiary text-sm'>{t('explore.apps.description')}</div>
+        <div className='text-sm text-text-tertiary'>{t('explore.apps.description')}</div>
       </div>
 
       <div className={cn(
-        'flex items-center justify-between mt-6 px-12',
+        'mt-6 flex items-center justify-between px-12',
       )}>
         <>
           <Category
@@ -194,12 +194,12 @@ const Apps = ({
       </div>
 
       <div className={cn(
-        'relative flex flex-1 pb-6 flex-col overflow-auto shrink-0 grow mt-4',
+        'relative mt-4 flex flex-1 shrink-0 grow flex-col overflow-auto pb-6',
       )}>
         <nav
           className={cn(
             s.appList,
-            'grid content-start shrink-0 gap-4 px-6 sm:px-12',
+            'grid shrink-0 content-start gap-4 px-6 sm:px-12',
           )}>
           {searchFilteredList.map(app => (
             <AppCard

@@ -17,14 +17,14 @@ const NoData: FC<INoDataProps> = ({
   const { t } = useTranslation()
 
   return (
-    <div className='p-6 rounded-xl bg-background-section-burn '>
-      <div className='flex items-center justify-center w-10 h-10 border-[0.5px] border-components-card-border bg-components-card-bg-alt rounded-[10px] shadow-lg backdrop-blur-sm'>
-        <RiBookmark3Line className='w-4 h-4 text-text-accent'/>
+    <div className='rounded-xl bg-background-section-burn p-6 '>
+      <div className='flex h-10 w-10 items-center justify-center rounded-[10px] border-[0.5px] border-components-card-border bg-components-card-bg-alt shadow-lg backdrop-blur-sm'>
+        <RiBookmark3Line className='h-4 w-4 text-text-accent'/>
       </div>
       <div className='mt-3'>
-        <span className='text-text-secondary system-xl-semibold'>{t('share.generation.savedNoData.title')}</span>
+        <span className='system-xl-semibold text-text-secondary'>{t('share.generation.savedNoData.title')}</span>
       </div>
-      <div className='mt-1 text-text-tertiary system-sm-regular'>
+      <div className='system-sm-regular mt-1 text-text-tertiary'>
         {t('share.generation.savedNoData.description')}
       </div>
       <Button
@@ -32,7 +32,7 @@ const NoData: FC<INoDataProps> = ({
         className='mt-3'
         onClick={onStartCreateContent}
       >
-        <RiAddLine className='mr-1 w-4 h-4' />
+        <RiAddLine className='mr-1 h-4 w-4' />
         <span>{t('share.generation.savedNoData.startCreateContent')}</span>
       </Button>
     </div>

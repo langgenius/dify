@@ -9,7 +9,7 @@ import { OperationAction, StatusItem } from '../list'
 import DocumentPicker from '../../common/document-picker'
 import Completed from './completed'
 import Embedding from './embedding'
-import Metadata from './metadata'
+import Metadata from '@/app/components/datasets/metadata/metadata-document'
 import SegmentAdd, { ProcessStatus } from './segment-add'
 import BatchModal from './batch-modal'
 import style from './style.module.css'
@@ -54,7 +54,7 @@ type DocumentTitleProps = {
 export const DocumentTitle: FC<DocumentTitleProps> = ({ datasetId, extension, name, processMode, parent_mode, wrapperCls }) => {
   const router = useRouter()
   return (
-    <div className={cn('flex items-center justify-start flex-1', wrapperCls)}>
+    <div className={cn('flex flex-1 items-center justify-start', wrapperCls)}>
       <DocumentPicker
         datasetId={datasetId}
         value={{
@@ -191,10 +191,10 @@ const DocumentDetail: FC<Props> = ({ datasetId, documentId }) => {
       mode,
       parentMode,
     }}>
-      <div className='flex flex-col h-full bg-background-default'>
-        <div className='flex items-center justify-between flex-wrap min-h-16 pl-3 pr-4 py-2.5 border-b border-b-divider-subtle'>
-          <div onClick={backToPrev} className={'shrink-0 rounded-full w-8 h-8 flex justify-center items-center cursor-pointer hover:bg-components-button-tertiary-bg'}>
-            <RiArrowLeftLine className='text-components-button-ghost-text hover:text-text-tertiary w-4 h-4' />
+      <div className='flex h-full flex-col bg-background-default'>
+        <div className='flex min-h-16 flex-wrap items-center justify-between border-b border-b-divider-subtle py-2.5 pl-3 pr-4'>
+          <div onClick={backToPrev} className={'flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-full hover:bg-components-button-tertiary-bg'}>
+            <RiArrowLeftLine className='h-4 w-4 text-components-button-ghost-text hover:text-text-tertiary' />
           </div>
           <DocumentTitle
             datasetId={datasetId}
@@ -204,7 +204,7 @@ const DocumentDetail: FC<Props> = ({ datasetId, documentId }) => {
             parent_mode={parentMode}
             processMode={mode}
           />
-          <div className='flex items-center flex-wrap'>
+          <div className='flex flex-wrap items-center'>
             {embeddingAvailable && documentDetail && !documentDetail.archived && !isFullDocMode && (
               <>
                 <SegmentAdd
@@ -214,7 +214,7 @@ const DocumentDetail: FC<Props> = ({ datasetId, documentId }) => {
                   showBatchModal={showBatchModal}
                   embedding={embedding}
                 />
-                <Divider type='vertical' className='!bg-divider-regular !h-[14px] !mx-3' />
+                <Divider type='vertical' className='!mx-3 !h-[14px] !bg-divider-regular' />
               </>
             )}
             <StatusItem
@@ -251,17 +251,17 @@ const DocumentDetail: FC<Props> = ({ datasetId, documentId }) => {
             >
               {
                 showMetadata
-                  ? <LayoutRight2LineMod className='w-4 h-4 text-components-button-secondary-text' />
-                  : <RiLayoutRight2Line className='w-4 h-4 text-components-button-secondary-text' />
+                  ? <LayoutRight2LineMod className='h-4 w-4 text-components-button-secondary-text' />
+                  : <RiLayoutRight2Line className='h-4 w-4 text-components-button-secondary-text' />
               }
             </button>
           </div>
         </div>
-        <div className='flex flex-row flex-1' style={{ height: 'calc(100% - 4rem)' }}>
+        <div className='flex flex-1 flex-row' style={{ height: 'calc(100% - 4rem)' }}>
           {isDetailLoading
             ? <Loading type='app' />
-            : <div className={cn('h-full grow min-w-0 flex flex-col',
-              embedding ? '' : isFullDocMode ? 'relative pt-4 pr-11 pl-11' : 'relative pt-3 pr-11 pl-5',
+            : <div className={cn('flex h-full min-w-0 grow flex-col',
+              embedding ? '' : isFullDocMode ? 'relative pl-11 pr-11 pt-4' : 'relative pl-5 pr-11 pt-3',
             )}>
               {embedding
                 ? <Embedding
@@ -281,9 +281,10 @@ const DocumentDetail: FC<Props> = ({ datasetId, documentId }) => {
           }
           <FloatRightContainer showClose isOpen={showMetadata} onClose={() => setShowMetadata(false)} isMobile={isMobile} panelClassname='!justify-start' footer={null}>
             <Metadata
+              className='mr-2 mt-3'
+              datasetId={datasetId}
+              documentId={documentId}
               docDetail={{ ...documentDetail, ...documentMetadata, doc_type: documentMetadata?.doc_type === 'others' ? '' : documentMetadata?.doc_type } as any}
-              loading={isMetadataLoading}
-              onUpdate={metadataMutate}
             />
           </FloatRightContainer>
         </div>

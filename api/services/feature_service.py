@@ -65,7 +65,7 @@ class SystemFeatureModel(BaseModel):
     sso_enforced_for_web: bool = False
     sso_enforced_for_web_protocol: str = ""
     enable_web_sso_switch_component: bool = False
-    enable_marketplace: bool = True
+    enable_marketplace: bool = False
     max_plugin_package_size: int = dify_config.PLUGIN_MAX_PACKAGE_SIZE
     enable_email_code_login: bool = False
     enable_email_password_login: bool = True

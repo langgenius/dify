@@ -22,7 +22,7 @@ const MarkdownButton = ({ node }: any) => {
   return <Button
     variant={variant}
     size={size}
-    className={cn('!h-8 !px-3 select-none')}
+    className={cn('!h-8 select-none !px-3')}
     onClick={() => {
       if (is_valid_url(link)) {
         window.open(link, '_blank')

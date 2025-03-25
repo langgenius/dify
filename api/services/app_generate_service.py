@@ -11,13 +11,17 @@ from core.app.apps.completion.app_generator import CompletionAppGenerator
 from core.app.apps.workflow.app_generator import WorkflowAppGenerator
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.app.features.rate_limiting import RateLimit
+from libs.helper import RateLimiter
 from models.model import Account, App, AppMode, EndUser
 from models.workflow import Workflow
+from services.billing_service import BillingService
 from services.errors.llm import InvokeRateLimitError
 from services.workflow_service import WorkflowService
 
 
 class AppGenerateService:
+    system_rate_limiter = RateLimiter("app_daily_rate_limiter", dify_config.APP_DAILY_RATE_LIMIT, 86400)
+
     @classmethod
     def generate(
         cls,
@@ -36,6 +40,19 @@ class AppGenerateService:
         :param streaming: streaming
         :return:
         """
+        # system level rate limiter
+        if dify_config.BILLING_ENABLED:
+            # check if it's free plan
+            limit_info = BillingService.get_info(app_model.tenant_id)
+            if limit_info["subscription"]["plan"] == "sandbox":
+                if cls.system_rate_limiter.is_rate_limited(app_model.tenant_id):
+                    raise InvokeRateLimitError(
+                        "Rate limit exceeded, please upgrade your plan "
+                        f"or your RPD was {dify_config.APP_DAILY_RATE_LIMIT} requests/day"
+                    )
+                cls.system_rate_limiter.increment_rate_limit(app_model.tenant_id)
+
+        # app level rate limiter
         max_active_request = AppGenerateService._get_max_active_requests(app_model)
         rate_limit = RateLimit(app_model.id, max_active_request)
         request_id = RateLimit.gen_request_key()

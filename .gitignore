@@ -202,3 +202,6 @@ api/.vscode
 
 # plugin migrate
 plugins.jsonl
+
+# mise
+mise.toml

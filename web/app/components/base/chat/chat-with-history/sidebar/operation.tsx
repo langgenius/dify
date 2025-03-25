@@ -63,33 +63,33 @@ const Operation: FC<Props> = ({
                 : ActionButtonState.Default
           }
         >
-          <RiMoreFill className='w-4 h-4' />
+          <RiMoreFill className='h-4 w-4' />
         </ActionButton>
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent className="z-50">
         <div
           ref={ref}
-          className={'min-w-[120px] p-1 bg-components-panel-bg-blur backdrop-blur-sm rounded-xl border-[0.5px] border-components-panel-border shadow-lg'}
+          className={'min-w-[120px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-1 shadow-lg backdrop-blur-sm'}
           onMouseEnter={setIsHovering}
           onMouseLeave={setNotHovering}
           onClick={(e) => {
             e.stopPropagation()
           }}
         >
-          <div className={cn('flex items-center space-x-1 px-2 py-1.5 rounded-lg text-text-secondary system-md-regular cursor-pointer hover:bg-state-base-hover')} onClick={togglePin}>
-            {isPinned && <RiUnpinLine className='shrink-0 w-4 h-4 text-text-tertiary' />}
-            {!isPinned && <RiPushpinLine className='shrink-0 w-4 h-4 text-text-tertiary' />}
+          <div className={cn('system-md-regular flex cursor-pointer items-center space-x-1 rounded-lg px-2 py-1.5 text-text-secondary hover:bg-state-base-hover')} onClick={togglePin}>
+            {isPinned && <RiUnpinLine className='h-4 w-4 shrink-0 text-text-tertiary' />}
+            {!isPinned && <RiPushpinLine className='h-4 w-4 shrink-0 text-text-tertiary' />}
             <span className='grow'>{isPinned ? t('explore.sidebar.action.unpin') : t('explore.sidebar.action.pin')}</span>
           </div>
           {isShowRenameConversation && (
-            <div className={cn('flex items-center space-x-1 px-2 py-1.5 rounded-lg text-text-secondary system-md-regular cursor-pointer hover:bg-state-base-hover')} onClick={onRenameConversation}>
-              <RiEditLine className='shrink-0 w-4 h-4 text-text-tertiary' />
+            <div className={cn('system-md-regular flex cursor-pointer items-center space-x-1 rounded-lg px-2 py-1.5 text-text-secondary hover:bg-state-base-hover')} onClick={onRenameConversation}>
+              <RiEditLine className='h-4 w-4 shrink-0 text-text-tertiary' />
               <span className='grow'>{t('explore.sidebar.action.rename')}</span>
             </div>
           )}
           {isShowDelete && (
-            <div className={cn('group flex items-center space-x-1 px-2 py-1.5 rounded-lg text-text-secondary system-md-regular cursor-pointer hover:bg-state-destructive-hover hover:text-text-destructive')} onClick={onDelete} >
-              <RiDeleteBinLine className={cn('shrink-0 w-4 h-4 text-text-tertiary group-hover:text-text-destructive')} />
+            <div className={cn('system-md-regular group flex cursor-pointer items-center space-x-1 rounded-lg px-2 py-1.5 text-text-secondary hover:bg-state-destructive-hover hover:text-text-destructive')} onClick={onDelete} >
+              <RiDeleteBinLine className={cn('h-4 w-4 shrink-0 text-text-tertiary group-hover:text-text-destructive')} />
               <span className='grow'>{t('explore.sidebar.action.delete')}</span>
             </div>
           )}

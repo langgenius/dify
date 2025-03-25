@@ -145,11 +145,16 @@ class TencentVector(BaseVector):
         self._db.collection(self._collection_name).delete(document_ids=ids)
 
     def delete_by_metadata_field(self, key: str, value: str) -> None:
-        self._db.collection(self._collection_name).delete(filter=Filter(Filter.In(key, [value])))
+        self._db.collection(self._collection_name).delete(filter=Filter(Filter.In(f"metadata.{key}", [value])))
 
     def search_by_vector(self, query_vector: list[float], **kwargs: Any) -> list[Document]:
+        document_ids_filter = kwargs.get("document_ids_filter")
+        filter = None
+        if document_ids_filter:
+            filter = Filter(Filter.In("metadata.document_id", document_ids_filter))
         res = self._db.collection(self._collection_name).search(
             vectors=[query_vector],
+            filter=filter,
             params=document.HNSWSearchParams(ef=kwargs.get("ef", 10)),
             retrieve_vector=False,
             limit=kwargs.get("top_k", 4),

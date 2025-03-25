@@ -61,6 +61,10 @@ class AppExecutionConfig(BaseSettings):
         description="Maximum number of concurrent active requests per app (0 for unlimited)",
         default=0,
     )
+    APP_DAILY_RATE_LIMIT: NonNegativeInt = Field(
+        description="Maximum number of requests per app per day",
+        default=5000,
+    )
 
 
 class CodeExecutionSandboxConfig(BaseSettings):
@@ -330,6 +334,11 @@ class HttpConfig(BaseSettings):
     HTTP_REQUEST_NODE_MAX_TEXT_SIZE: PositiveInt = Field(
         description="Maximum allowed size in bytes for text data in HTTP requests",
         default=1 * 1024 * 1024,
+    )
+
+    HTTP_REQUEST_NODE_SSL_VERIFY: bool = Field(
+        description="Enable or disable SSL verification for HTTP requests",
+        default=True,
     )
 
     SSRF_DEFAULT_MAX_RETRIES: PositiveInt = Field(

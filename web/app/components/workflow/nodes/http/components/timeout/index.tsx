@@ -6,7 +6,7 @@ import type { Timeout as TimeoutPayloadType } from '../../types'
 import Input from '@/app/components/base/input'
 import { FieldCollapse } from '@/app/components/workflow/nodes/_base/components/collapse'
 
-interface Props {
+type Props = {
   readonly: boolean
   nodeId: string
   payload: TimeoutPayloadType
@@ -27,7 +27,7 @@ const InputField: FC<{
 }> = ({ title, description, placeholder, value, onChange, readOnly, min, max }) => {
   return (
     <div className="space-y-1">
-      <div className="flex items-center h-[18px] space-x-2">
+      <div className="flex h-[18px] items-center space-x-2">
         <span className="text-[13px] font-medium text-gray-900">{title}</span>
         <span className="text-xs font-normal text-gray-500">{description}</span>
       </div>
