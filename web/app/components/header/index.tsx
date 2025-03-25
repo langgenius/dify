@@ -21,6 +21,7 @@ import { useModalContext } from '@/context/modal-context'
 import PlanBadge from './plan-badge'
 import LicenseNav from './license-env'
 import { Plan } from '../billing/type'
+import ThemeToggle from '@/app/components/theme-toggle'
 
 const navClassName = `
   flex items-center relative mr-0 sm:mr-3 px-3 h-8 rounded-xl
@@ -98,6 +99,9 @@ const Header = () => {
           <PluginsNav />
         </div>
         <AccountDropdown isMobile={isMobile} />
+        <div className="flex items-center gap-2">
+          <ThemeToggle />
+        </div>
       </div>
       {
         (isMobile && isShowNavMenu) && (
