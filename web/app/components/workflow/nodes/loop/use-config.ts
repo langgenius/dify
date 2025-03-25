@@ -43,9 +43,9 @@ const useConfig = (id: string, payload: LoopNodeType) => {
   // output
   const { getLoopNodeChildren, getBeforeNodesInSameBranch } = useWorkflow()
   const beforeNodes = getBeforeNodesInSameBranch(id)
-  const loopChildrenNodes = getLoopNodeChildren(id)
+  const loopChildrenNodes = [{ id, data: payload } as any, ...getLoopNodeChildren(id)]
   const canChooseVarNodes = [...beforeNodes, ...loopChildrenNodes]
-  const childrenNodeVars = toNodeOutputVars([{ id, data: payload }, ...loopChildrenNodes], isChatMode, undefined, [], conversationVariables)
+  const childrenNodeVars = toNodeOutputVars(loopChildrenNodes, isChatMode, undefined, [], conversationVariables)
 
   // single run
   const loopInputKey = `${id}.input_selector`

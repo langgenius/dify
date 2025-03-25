@@ -58,13 +58,13 @@ const Panel: FC<NodePanelProps<LoopNodeType>> = ({
     <div className='mt-2'>
       <div>
         <Field
-          title={<div className='pl-3'>Loop  Variables</div>}
+          title={<div className='pl-3'>{t('workflow.nodes.loop.loopVariables')}</div>}
           operations={
             <div
-              className='flex items-center justify-center mr-4 w-5 h-5 cursor-pointer'
+              className='mr-4 flex h-5 w-5 cursor-pointer items-center justify-center'
               onClick={handleAddLoopVariable}
             >
-              <RiAddLine className='w-4 h-4 text-text-tertiary' />
+              <RiAddLine className='h-4 w-4 text-text-tertiary' />
             </div>
           }
         >
@@ -99,7 +99,7 @@ const Panel: FC<NodePanelProps<LoopNodeType>> = ({
             logicalOperator={inputs.logical_operator!}
           />
         </Field>
-        <Split />
+        <Split className='mt-2' />
         <div className='mt-2'>
           <Field
             title={<div className='pl-3'>{t(`${i18nPrefix}.loopMaxCount`)}</div>}

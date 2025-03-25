@@ -44,7 +44,7 @@ const Item = ({
           <Input
             value={item.label}
             onChange={handleUpdateItemLabel}
-            autoFocus
+            autoFocus={!item.label}
             placeholder={t('workflow.nodes.loop.variableName')}
           />
           <VariableTypeSelect

@@ -124,7 +124,7 @@ const FormItem = ({
         value_type === ValueType.constant
         && (var_type === VarType.object || var_type === VarType.arrayString || var_type === VarType.arrayNumber || var_type === VarType.arrayObject)
         && (
-          <div className='w-full py-2 pl-3 pr-1 rounded-[10px] bg-components-input-bg-normal' style={{ height: editorMinHeight }}>
+          <div className='w-full rounded-[10px] bg-components-input-bg-normal py-2 pl-3 pr-1' style={{ height: editorMinHeight }}>
             <CodeEditor
               value={value}
               isExpand
