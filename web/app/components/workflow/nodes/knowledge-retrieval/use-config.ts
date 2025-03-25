@@ -41,6 +41,7 @@ import useOneStepRun from '@/app/components/workflow/nodes/_base/hooks/use-one-s
 import { useCurrentProviderAndModel, useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import useAvailableVarList from '@/app/components/workflow/nodes/_base/hooks/use-available-var-list'
+import { useDatasetsDetailStore } from '../../datasets-detail-store/store'
 
 const useConfig = (id: string, payload: KnowledgeRetrievalNodeType) => {
   const { nodesReadOnly: readOnly } = useNodesReadOnly()
@@ -49,6 +50,7 @@ const useConfig = (id: string, payload: KnowledgeRetrievalNodeType) => {
   const startNode = getBeforeNodesInSameBranch(id).find(node => node.data.type === BlockEnum.Start)
   const startNodeId = startNode?.id
   const { inputs, setInputs: doSetInputs } = useNodeCrud<KnowledgeRetrievalNodeType>(id, payload)
+  const updateDatasetsDetail = useDatasetsDetailStore(s => s.updateDatasetsDetail)
 
   const inputRef = useRef(inputs)
 
@@ -224,7 +226,6 @@ const useConfig = (id: string, payload: KnowledgeRetrievalNodeType) => {
       }
       const newInputs = produce(inputs, (draft) => {
         draft.dataset_ids = datasetIds
-        draft._datasets = selectedDatasets
       })
       setInputs(newInputs)
       setSelectedDatasetsLoaded(true)
@@ -254,7 +255,6 @@ const useConfig = (id: string, payload: KnowledgeRetrievalNodeType) => {
     } = getSelectedDatasetsMode(newDatasets)
     const newInputs = produce(inputs, (draft) => {
       draft.dataset_ids = newDatasets.map(d => d.id)
-      draft._datasets = newDatasets
 
       if (payload.retrieval_mode === RETRIEVE_TYPE.multiWay && newDatasets.length > 0) {
         const multipleRetrievalConfig = draft.multiple_retrieval_config
@@ -264,6 +264,7 @@ const useConfig = (id: string, payload: KnowledgeRetrievalNodeType) => {
         })
       }
     })
+    updateDatasetsDetail(newDatasets)
     setInputs(newInputs)
     setSelectedDatasets(newDatasets)
 
@@ -273,7 +274,7 @@ const useConfig = (id: string, payload: KnowledgeRetrievalNodeType) => {
       || allExternal
     )
       setRerankModelOpen(true)
-  }, [inputs, setInputs, payload.retrieval_mode, selectedDatasets, currentRerankModel, currentRerankProvider])
+  }, [inputs, setInputs, payload.retrieval_mode, selectedDatasets, currentRerankModel, currentRerankProvider, updateDatasetsDetail])
 
   const filterVar = useCallback((varPayload: Var) => {
     return varPayload.type === VarType.string

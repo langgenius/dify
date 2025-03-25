@@ -14,7 +14,7 @@ import { VarType } from '@/app/components/workflow/types'
 
 const i18nPrefix = 'workflow.nodes.http'
 
-interface Props {
+type Props = {
   instanceId: string
   className?: string
   nodeId: string
@@ -62,7 +62,7 @@ const KeyValueItem: FC<Props> = ({
 
   return (
     // group class name is for hover row show remove button
-    <div className={cn(className, 'group flex h-min-7 border-t border-gray-200')}>
+    <div className={cn(className, 'h-min-7 group flex border-t border-gray-200')}>
       <div className={cn('shrink-0 border-r border-divider-regular', isSupportFile ? 'w-[140px]' : 'w-1/2')}>
         {!keyNotSupportVar
           ? (
@@ -79,14 +79,14 @@ const KeyValueItem: FC<Props> = ({
           )
           : (
             <input
-              className='appearance-none outline-none rounded-none bg-white border-none system-sm-regular focus:ring-0 focus:bg-gray-100! hover:bg-gray-50'
+              className='system-sm-regular focus:bg-gray-100! appearance-none rounded-none border-none bg-white outline-none hover:bg-gray-50 focus:ring-0'
               value={payload.key}
               onChange={e => handleChange('key')(e.target.value)}
             />
           )}
       </div>
       {isSupportFile && (
-        <div className='shrink-0 w-[70px] border-r border-divider-regular'>
+        <div className='w-[70px] shrink-0 border-r border-divider-regular'>
           <PortalSelect
             value={payload.type!}
             onSelect={item => handleChange('type')(item.value as string)}

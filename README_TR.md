@@ -198,6 +198,7 @@ Yüksek kullanılabilirliğe sahip bir kurulum yapılandırmak isterseniz, Dify'
 - [@LeoQuote tarafından Helm Chart](https://github.com/douban/charts/tree/master/charts/dify)
 - [@BorisPolonsky tarafından Helm Chart](https://github.com/BorisPolonsky/dify-helm)
 - [@Winson-030 tarafından YAML dosyası](https://github.com/Winson-030/dify-kubernetes)
+- [@wyy-holding tarafından YAML dosyası](https://github.com/wyy-holding/dify-k8s)
 
 #### Dağıtım için Terraform Kullanımı
 

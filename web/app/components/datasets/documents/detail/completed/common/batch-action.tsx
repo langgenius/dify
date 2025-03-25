@@ -44,30 +44,30 @@ const BatchAction: FC<IBatchActionProps> = ({
   }
   return (
     <div className={classNames('w-full flex justify-center gap-x-2', className)}>
-      <div className='flex items-center gap-x-1 p-1 rounded-[10px] bg-components-actionbar-bg-accent border border-components-actionbar-border-accent shadow-xl shadow-shadow-shadow-5 backdrop-blur-[5px]'>
-        <div className='inline-flex items-center gap-x-2 pl-2 pr-3 py-1'>
-          <span className='w-5 h-5 flex items-center justify-center px-1 py-0.5 bg-text-accent rounded-md text-text-primary-on-surface text-xs font-medium'>
+      <div className='flex items-center gap-x-1 rounded-[10px] border border-components-actionbar-border-accent bg-components-actionbar-bg-accent p-1 shadow-xl shadow-shadow-shadow-5 backdrop-blur-[5px]'>
+        <div className='inline-flex items-center gap-x-2 py-1 pl-2 pr-3'>
+          <span className='flex h-5 w-5 items-center justify-center rounded-md bg-text-accent px-1 py-0.5 text-xs font-medium text-text-primary-on-surface'>
             {selectedIds.length}
           </span>
-          <span className='text-text-accent text-[13px] font-semibold leading-[16px]'>{t(`${i18nPrefix}.selected`)}</span>
+          <span className='text-[13px] font-semibold leading-[16px] text-text-accent'>{t(`${i18nPrefix}.selected`)}</span>
         </div>
         <Divider type='vertical' className='mx-0.5 h-3.5 bg-divider-regular' />
         <div className='flex items-center gap-x-0.5 px-3 py-2'>
-          <RiCheckboxCircleLine className='w-4 h-4 text-components-button-ghost-text' />
-          <button type='button' className='px-0.5 text-components-button-ghost-text text-[13px] font-medium leading-[16px]' onClick={onBatchEnable}>
+          <RiCheckboxCircleLine className='h-4 w-4 text-components-button-ghost-text' />
+          <button type='button' className='px-0.5 text-[13px] font-medium leading-[16px] text-components-button-ghost-text' onClick={onBatchEnable}>
             {t(`${i18nPrefix}.enable`)}
           </button>
         </div>
         <div className='flex items-center gap-x-0.5 px-3 py-2'>
-          <RiCloseCircleLine className='w-4 h-4 text-components-button-ghost-text' />
-          <button type='button' className='px-0.5 text-components-button-ghost-text text-[13px] font-medium leading-[16px]' onClick={onBatchDisable}>
+          <RiCloseCircleLine className='h-4 w-4 text-components-button-ghost-text' />
+          <button type='button' className='px-0.5 text-[13px] font-medium leading-[16px] text-components-button-ghost-text' onClick={onBatchDisable}>
             {t(`${i18nPrefix}.disable`)}
           </button>
         </div>
         {onEditMetadata && (
           <div className='flex items-center gap-x-0.5 px-3 py-2'>
-            <RiDraftLine className='w-4 h-4 text-components-button-ghost-text' />
-            <button type='button' className='px-0.5 text-components-button-ghost-text text-[13px] font-medium leading-[16px]' onClick={onEditMetadata}>
+            <RiDraftLine className='h-4 w-4 text-components-button-ghost-text' />
+            <button type='button' className='px-0.5 text-[13px] font-medium leading-[16px] text-components-button-ghost-text' onClick={onEditMetadata}>
               {t('dataset.metadata.metadata')}
             </button>
           </div>
@@ -75,21 +75,21 @@ const BatchAction: FC<IBatchActionProps> = ({
 
         {onArchive && (
           <div className='flex items-center gap-x-0.5 px-3 py-2'>
-            <RiArchive2Line className='w-4 h-4 text-components-button-ghost-text' />
-            <button type='button' className='px-0.5 text-components-button-ghost-text text-[13px] font-medium leading-[16px]' onClick={onArchive}>
+            <RiArchive2Line className='h-4 w-4 text-components-button-ghost-text' />
+            <button type='button' className='px-0.5 text-[13px] font-medium leading-[16px] text-components-button-ghost-text' onClick={onArchive}>
               {t(`${i18nPrefix}.archive`)}
             </button>
           </div>
         )}
         <div className='flex items-center gap-x-0.5 px-3 py-2'>
-          <RiDeleteBinLine className='w-4 h-4 text-components-button-destructive-ghost-text' />
-          <button type='button' className='px-0.5 text-components-button-destructive-ghost-text text-[13px] font-medium leading-[16px]' onClick={showDeleteConfirm}>
+          <RiDeleteBinLine className='h-4 w-4 text-components-button-destructive-ghost-text' />
+          <button type='button' className='px-0.5 text-[13px] font-medium leading-[16px] text-components-button-destructive-ghost-text' onClick={showDeleteConfirm}>
             {t(`${i18nPrefix}.delete`)}
           </button>
         </div>
 
         <Divider type='vertical' className='mx-0.5 h-3.5 bg-divider-regular' />
-        <button type='button' className='px-3.5 py-2 text-components-button-ghost-text text-[13px] font-medium leading-[16px]' onClick={onCancel}>
+        <button type='button' className='px-3.5 py-2 text-[13px] font-medium leading-[16px] text-components-button-ghost-text' onClick={onCancel}>
           {t(`${i18nPrefix}.cancel`)}
         </button>
       </div>

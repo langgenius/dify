@@ -99,6 +99,7 @@ import { useEventEmitterContextContext } from '@/context/event-emitter'
 import Confirm from '@/app/components/base/confirm'
 import { FILE_EXTS } from '@/app/components/base/prompt-editor/constants'
 import { fetchFileUploadConfig } from '@/service/common'
+import DatasetsDetailProvider from './datasets-detail-store/provider'
 
 const nodeTypes = {
   [CUSTOM_NODE]: CustomNode,
@@ -285,7 +286,7 @@ const Workflow: FC<WorkflowProps> = memo(({
     <div
       id='workflow-container'
       className={`
-        relative w-full min-w-[960px] h-full 
+        relative h-full w-full min-w-[960px] 
         ${workflowReadOnly && 'workflow-panel-animation'}
         ${nodeAnimation && 'workflow-node-animation'}
       `}
@@ -409,7 +410,7 @@ const WorkflowWrap = memo(() => {
 
   if (!data || isLoading) {
     return (
-      <div className='flex justify-center items-center relative w-full h-full'>
+      <div className='relative flex h-full w-full items-center justify-center'>
         <Loading />
       </div>
     )
@@ -448,11 +449,13 @@ const WorkflowWrap = memo(() => {
         nodes={nodesData}
         edges={edgesData} >
         <FeaturesProvider features={initialFeatures}>
-          <Workflow
-            nodes={nodesData}
-            edges={edgesData}
-            viewport={data?.graph.viewport}
-          />
+          <DatasetsDetailProvider nodes={nodesData}>
+            <Workflow
+              nodes={nodesData}
+              edges={edgesData}
+              viewport={data?.graph.viewport}
+            />
+          </DatasetsDetailProvider>
         </FeaturesProvider>
       </WorkflowHistoryProvider>
     </ReactFlowProvider>

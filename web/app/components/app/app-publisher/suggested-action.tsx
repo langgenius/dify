@@ -20,9 +20,9 @@ const SuggestedAction = ({ icon, link, disabled, children, className, ...props }
     )}
     {...props}
   >
-    <div className='relative w-4 h-4'>{icon}</div>
-    <div className='grow shrink basis-0 system-sm-medium'>{children}</div>
-    <RiArrowRightUpLine className='w-3.5 h-3.5' />
+    <div className='relative h-4 w-4'>{icon}</div>
+    <div className='system-sm-medium shrink grow basis-0'>{children}</div>
+    <RiArrowRightUpLine className='h-3.5 w-3.5' />
   </a>
 )
 

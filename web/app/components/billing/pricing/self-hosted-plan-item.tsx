@@ -21,17 +21,17 @@ type Props = {
 const KeyValue = ({ label, tooltip, textColor, tooltipIconColor }: { icon: ReactNode; label: string; tooltip?: string; textColor: string; tooltipIconColor: string }) => {
   return (
     <div className={cn('flex', textColor)}>
-      <div className='size-4 flex items-center justify-center'>
+      <div className='flex size-4 items-center justify-center'>
         <RiCheckLine />
       </div>
-      <div className={cn('ml-2 mr-0.5 system-sm-regular', textColor)}>{label}</div>
+      <div className={cn('system-sm-regular ml-2 mr-0.5', textColor)}>{label}</div>
       {tooltip && (
         <Tooltip
           asChild
           popupContent={tooltip}
           popupClassName='w-[200px]'
         >
-          <div className='size-4 flex items-center justify-center'>
+          <div className='flex size-4 items-center justify-center'>
             <RiQuestionLine className={cn(tooltipIconColor)} />
           </div>
         </Tooltip>
@@ -42,7 +42,7 @@ const KeyValue = ({ label, tooltip, textColor, tooltipIconColor }: { icon: React
 
 const style = {
   [SelfHostedPlan.community]: {
-    icon: <Asterisk className='text-text-primary size-7' />,
+    icon: <Asterisk className='size-7 text-text-primary' />,
     title: 'text-text-primary',
     price: 'text-text-primary',
     priceTip: 'text-text-tertiary',
@@ -53,7 +53,7 @@ const style = {
     tooltipIconColor: 'text-text-tertiary',
   },
   [SelfHostedPlan.premium]: {
-    icon: <Diamond className='text-text-warning size-7' />,
+    icon: <Diamond className='size-7 text-text-warning' />,
     title: 'text-text-primary',
     price: 'text-text-primary',
     priceTip: 'text-text-tertiary',
@@ -64,7 +64,7 @@ const style = {
     tooltipIconColor: 'text-text-tertiary',
   },
   [SelfHostedPlan.enterprise]: {
-    icon: <Buildings className='text-text-primary-on-surface size-7' />,
+    icon: <Buildings className='size-7 text-text-primary-on-surface' />,
     title: 'text-text-primary-on-surface',
     price: 'text-text-primary-on-surface',
     priceTip: 'text-text-primary-on-surface',
@@ -108,47 +108,47 @@ const SelfHostedPlanItem: FC<Props> = ({
       window.location.href = contactSalesUrl
   }
   return (
-    <div className={cn(`relative flex flex-col w-[374px] border-[0.5px] rounded-2xl
-      hover:shadow-lg hover:backdrop-blur-[5px] hover:border-effects-highlight overflow-hidden`, style[plan].bg)}>
+    <div className={cn(`relative flex w-[374px] flex-col overflow-hidden rounded-2xl
+      border-[0.5px] hover:border-effects-highlight hover:shadow-lg hover:backdrop-blur-[5px]`, style[plan].bg)}>
       <div>
-        <div className={cn(isEnterprisePlan ? 'bg-price-enterprise-background absolute left-0 top-0 right-0 bottom-0 z-1' : '')} >
+        <div className={cn(isEnterprisePlan ? 'z-1 absolute bottom-0 left-0 right-0 top-0 bg-price-enterprise-background' : '')} >
         </div>
-        {isEnterprisePlan && <div className='bg-[#09328c] opacity-15 mix-blend-plus-darker blur-[80px] size-[341px] rounded-full absolute -top-[104px] -left-[90px] z-15'></div>}
-        {isEnterprisePlan && <div className='bg-[#e2eafb] opacity-15 mix-blend-plus-darker blur-[80px] size-[341px] rounded-full absolute -right-[40px] -bottom-[72px] z-15'></div>}
+        {isEnterprisePlan && <div className='z-15 absolute -left-[90px] -top-[104px] size-[341px] rounded-full bg-[#09328c] opacity-15 mix-blend-plus-darker blur-[80px]'></div>}
+        {isEnterprisePlan && <div className='z-15 absolute -bottom-[72px] -right-[40px] size-[341px] rounded-full bg-[#e2eafb] opacity-15 mix-blend-plus-darker blur-[80px]'></div>}
       </div>
-      <div className='relative w-full p-6 z-10 min-h-[559px]'>
-        <div className=' flex flex-col gap-y-1 min-h-[108px]'>
+      <div className='relative z-10 min-h-[559px] w-full p-6'>
+        <div className=' flex min-h-[108px] flex-col gap-y-1'>
           {style[plan].icon}
           <div className='flex items-center'>
-            <div className={cn('leading-[125%] system-md-semibold uppercase', style[plan].title)}>{t(`${i18nPrefix}.name`)}</div>
+            <div className={cn('system-md-semibold uppercase leading-[125%]', style[plan].title)}>{t(`${i18nPrefix}.name`)}</div>
           </div>
           <div className={cn(style[plan].description, 'system-sm-regular')}>{t(`${i18nPrefix}.description`)}</div>
         </div>
         <div className='my-3'>
           <div className='flex items-end'>
-            <div className={cn('leading-[125%] text-[28px] font-bold shrink-0', style[plan].price)}>{t(`${i18nPrefix}.price`)}</div>
+            <div className={cn('shrink-0 text-[28px] font-bold leading-[125%]', style[plan].price)}>{t(`${i18nPrefix}.price`)}</div>
             {!isFreePlan
-              && <span className={cn('ml-2 py-1 leading-normal text-[14px] font-normal', style[plan].priceTip)}>
+              && <span className={cn('ml-2 py-1 text-[14px] font-normal leading-normal', style[plan].priceTip)}>
                 {t(`${i18nPrefix}.priceTip`)}
               </span>}
           </div>
         </div>
 
         <div
-          className={cn('flex py-3 px-5 rounded-full justify-center items-center h-[44px] system-md-semibold cursor-pointer',
+          className={cn('system-md-semibold flex h-[44px] cursor-pointer items-center justify-center rounded-full px-5 py-3',
             style[plan].btnStyle)}
           onClick={handleGetPayUrl}
         >
           {t(`${i18nPrefix}.btnText`)}
           {isPremiumPlan
             && <>
-              <div className='pt-[6px] mx-1'>
+              <div className='mx-1 pt-[6px]'>
                 <AwsMarketplace className='h-6' />
               </div>
               <RiArrowRightUpLine className='size-4' />
             </>}
         </div>
-        <div className={cn('mt-6 system-sm-semibold mb-2', style[plan].values)}>{t(`${i18nPrefix}.includesTitle`)}</div>
+        <div className={cn('system-sm-semibold mb-2 mt-6', style[plan].values)}>{t(`${i18nPrefix}.includesTitle`)}</div>
         <div className='flex flex-col gap-y-3'>
           {features.map(v =>
             <KeyValue key={`${plan}-${v}`}
@@ -160,14 +160,14 @@ const SelfHostedPlanItem: FC<Props> = ({
         </div>
         {isPremiumPlan && <div className='mt-[68px]'>
           <div className='flex items-center gap-x-1'>
-            <div className='size-8 flex items-center justify-center rounded-lg border-[0.5px] border-components-panel-border-subtle bg-background-default shadow-xs'>
+            <div className='flex size-8 items-center justify-center rounded-lg border-[0.5px] border-components-panel-border-subtle bg-background-default shadow-xs'>
               <Azure />
             </div>
-            <div className='size-8 flex items-center justify-center rounded-lg border-[0.5px] border-components-panel-border-subtle bg-background-default shadow-xs'>
+            <div className='flex size-8 items-center justify-center rounded-lg border-[0.5px] border-components-panel-border-subtle bg-background-default shadow-xs'>
               <GoogleCloud />
             </div>
           </div>
-          <span className={cn('mt-2 system-xs-regular', style[plan].tooltipIconColor)}>{t('billing.plans.premium.comingSoon')}</span>
+          <span className={cn('system-xs-regular mt-2', style[plan].tooltipIconColor)}>{t('billing.plans.premium.comingSoon')}</span>
         </div>}
       </div>
     </div>

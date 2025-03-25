@@ -28,8 +28,8 @@ const QuotaPanel: FC<QuotaPanelProps> = ({
   const openaiOrAnthropic = MODEL_PROVIDER_QUOTA_GET_PAID.includes(provider.provider)
 
   return (
-    <div className='group relative shrink-0 min-w-[112px] px-3 py-2 rounded-lg bg-white/[0.18] border-[0.5px] border-components-panel-border shadow-xs'>
-      <div className='flex items-center mb-2 h-4 system-xs-medium-uppercase text-text-tertiary'>
+    <div className='group relative min-w-[112px] shrink-0 rounded-lg border-[0.5px] border-components-panel-border bg-white/[0.18] px-3 py-2 shadow-xs'>
+      <div className='system-xs-medium-uppercase mb-2 flex h-4 items-center text-text-tertiary'>
         {t('common.modelProvider.quota')}
         <Tooltip popupContent={
           openaiOrAnthropic
@@ -40,8 +40,8 @@ const QuotaPanel: FC<QuotaPanelProps> = ({
       </div>
       {
         currentQuota && (
-          <div className='flex items-center h-4 text-xs text-text-tertiary'>
-            <span className='mr-0.5 system-md-semibold-uppercase text-text-secondary'>{formatNumber(Math.max((currentQuota?.quota_limit || 0) - (currentQuota?.quota_used || 0), 0))}</span>
+          <div className='flex h-4 items-center text-xs text-text-tertiary'>
+            <span className='system-md-semibold-uppercase mr-0.5 text-text-secondary'>{formatNumber(Math.max((currentQuota?.quota_limit || 0) - (currentQuota?.quota_used || 0), 0))}</span>
             {
               currentQuota?.quota_unit === QuotaUnitEnum.tokens && 'Tokens'
             }

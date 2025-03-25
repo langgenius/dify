@@ -208,9 +208,9 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
         </PortalToFollowElemTrigger>
         <PortalToFollowElemContent className={cn('z-50', portalToFollowElemContentClassName)}>
           <div className={cn(popupClassName, 'w-[389px] rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg')}>
-            <div className={cn('max-h-[420px] p-4 pt-3 overflow-y-auto')}>
+            <div className={cn('max-h-[420px] overflow-y-auto p-4 pt-3')}>
               <div className='relative'>
-                <div className={cn('mb-1 h-6 flex items-center text-text-secondary system-sm-semibold')}>
+                <div className={cn('system-sm-semibold mb-1 flex h-6 items-center text-text-secondary')}>
                   {t('common.modelProvider.model').toLocaleUpperCase()}
                 </div>
                 <ModelSelector

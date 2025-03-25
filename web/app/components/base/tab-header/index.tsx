@@ -26,8 +26,8 @@ const TabHeader: FC<ITabHeaderProps> = ({
     <div
       key={id}
       className={cn(
-        'relative flex items-center pt-2.5 pb-2 border-b-2 border-transparent system-md-semibold cursor-pointer',
-        id === value ? 'text-text-primary border-components-tab-active' : 'text-text-tertiary',
+        'system-md-semibold relative flex cursor-pointer items-center border-b-2 border-transparent pb-2 pt-2.5',
+        id === value ? 'border-components-tab-active text-text-primary' : 'text-text-tertiary',
       )}
       onClick={() => onChange(id)}
     >

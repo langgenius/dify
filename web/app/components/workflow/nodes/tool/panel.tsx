@@ -82,7 +82,7 @@ const Panel: FC<NodePanelProps<ToolNodeType>> = ({
         </>
       )}
       {!isShowAuthBtn && <>
-        <div className='px-4 space-y-4'>
+        <div className='space-y-4 px-4'>
           {toolInputVarSchema.length > 0 && (
             <Field
               title={t(`${i18nPrefix}.inputVars`)}

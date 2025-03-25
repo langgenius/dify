@@ -213,25 +213,25 @@ const DatePicker = ({
           handleClickTrigger,
         })) : (
           <div
-            className='w-[252px] flex items-center gap-x-0.5 rounded-lg px-2 py-1 bg-components-input-bg-normal cursor-pointer group hover:bg-state-base-hover-alt'
+            className='group flex w-[252px] cursor-pointer items-center gap-x-0.5 rounded-lg bg-components-input-bg-normal px-2 py-1 hover:bg-state-base-hover-alt'
             onClick={handleClickTrigger}
           >
             <input
-              className='flex-1 p-1 bg-transparent text-components-input-text-filled placeholder:text-components-input-text-placeholder truncate system-xs-regular
-            outline-none appearance-none cursor-pointer'
+              className='system-xs-regular flex-1 cursor-pointer appearance-none truncate bg-transparent p-1
+            text-components-input-text-filled outline-none placeholder:text-components-input-text-placeholder'
               readOnly
               value={isOpen ? '' : displayValue}
               placeholder={placeholderDate}
             />
             <RiCalendarLine className={cn(
-              'shrink-0 w-4 h-4 text-text-quaternary',
+              'h-4 w-4 shrink-0 text-text-quaternary',
               isOpen ? 'text-text-secondary' : 'group-hover:text-text-secondary',
               (displayValue || (isOpen && selectedDate)) && 'group-hover:hidden',
             )} />
             <RiCloseCircleFill
               className={cn(
-                'hidden shrink-0 w-4 h-4 text-text-quaternary',
-                (displayValue || (isOpen && selectedDate)) && 'group-hover:inline-block hover:text-text-secondary',
+                'hidden h-4 w-4 shrink-0 text-text-quaternary',
+                (displayValue || (isOpen && selectedDate)) && 'hover:text-text-secondary group-hover:inline-block',
               )}
               onClick={handleClear}
             />
@@ -239,7 +239,7 @@ const DatePicker = ({
         )}
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent className={popupZIndexClassname}>
-        <div className='w-[252px] mt-1 bg-components-panel-bg rounded-xl shadow-lg shadow-shadow-shadow-5 border-[0.5px] border-components-panel-border'>
+        <div className='mt-1 w-[252px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg shadow-shadow-shadow-5'>
           {/* Header */}
           {view === ViewType.date ? (
             <DatePickerHeader

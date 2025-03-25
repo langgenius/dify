@@ -66,10 +66,10 @@ export default function CheckCode() {
   }
 
   return <div className='flex flex-col gap-3'>
-    <div className='bg-background-default-dodge border border-components-panel-border-subtle shadow-lg inline-flex w-14 h-14 justify-center items-center rounded-2xl'>
-      <RiLockPasswordLine className='w-6 h-6 text-2xl text-text-accent-light-mode-only' />
+    <div className='inline-flex h-14 w-14 items-center justify-center rounded-2xl border border-components-panel-border-subtle bg-background-default-dodge shadow-lg'>
+      <RiLockPasswordLine className='h-6 w-6 text-2xl text-text-accent-light-mode-only' />
     </div>
-    <div className='pt-2 pb-4'>
+    <div className='pb-4 pt-2'>
       <h2 className='title-4xl-semi-bold text-text-primary'>{t('login.resetPassword')}</h2>
       <p className='body-md-regular mt-2 text-text-secondary'>
         {t('login.resetPasswordDesc')}
@@ -79,7 +79,7 @@ export default function CheckCode() {
     <form onSubmit={() => { }}>
       <input type='text' className='hidden' />
       <div className='mb-2'>
-        <label htmlFor="email" className='my-2 system-md-semibold text-text-secondary'>{t('login.email')}</label>
+        <label htmlFor="email" className='system-md-semibold my-2 text-text-secondary'>{t('login.email')}</label>
         <div className='mt-1'>
           <Input id='email' type="email" disabled={loading} value={email} placeholder={t('login.emailPlaceholder') as string} onChange={e => setEmail(e.target.value)} />
         </div>
@@ -89,13 +89,13 @@ export default function CheckCode() {
       </div>
     </form>
     <div className='py-2'>
-      <div className='bg-gradient-to-r from-background-gradient-mask-transparent via-divider-regular to-background-gradient-mask-transparent h-px'></div>
+      <div className='h-px bg-gradient-to-r from-background-gradient-mask-transparent via-divider-regular to-background-gradient-mask-transparent'></div>
     </div>
-    <Link href={`/signin?${searchParams.toString()}`} className='flex items-center justify-center h-9 text-text-tertiary'>
-      <div className='inline-block p-1 rounded-full bg-background-default-dimm'>
+    <Link href={`/signin?${searchParams.toString()}`} className='flex h-9 items-center justify-center text-text-tertiary'>
+      <div className='bg-background-default-dimm inline-block rounded-full p-1'>
         <RiArrowLeftLine size={12} />
       </div>
-      <span className='ml-2 system-xs-regular'>{t('login.backToLogin')}</span>
+      <span className='system-xs-regular ml-2'>{t('login.backToLogin')}</span>
     </Link>
   </div>
 }

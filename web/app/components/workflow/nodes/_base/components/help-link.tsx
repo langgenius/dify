@@ -21,9 +21,9 @@ const HelpLink = ({
       <a
         href={link}
         target='_blank'
-        className='flex items-center justify-center mr-1 w-6 h-6'
+        className='mr-1 flex h-6 w-6 items-center justify-center'
       >
-        <RiBookOpenLine className='w-4 h-4 text-gray-500' />
+        <RiBookOpenLine className='h-4 w-4 text-gray-500' />
       </a>
     </TooltipPlus>
 
