@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import CodeEditor from '../code-editor'
 import ErrorMessage from '../error-message'
-// import { getValidationErrorMessage, validateSchemaAgainstDraft7 } from '../../../utils'
+import { getValidationErrorMessage, validateSchemaAgainstDraft7 } from '../../../utils'
 
 type GeneratedResultProps = {
   schema: SchemaRoot
@@ -44,14 +44,14 @@ const GeneratedResult: FC<GeneratedResultProps> = ({
   const jsonSchema = useMemo(() => formatJSON(schema), [schema])
 
   const handleApply = useCallback(() => {
-    // const ajvError = validateSchemaAgainstDraft7(schema)
-    // if (ajvError.length > 0) {
-    //   setValidationError(getValidationErrorMessage(ajvError))
-    // }
-    // else {
-    onApply()
-    setValidationError('')
-    // }
+    const ajvError = validateSchemaAgainstDraft7(schema)
+    if (ajvError.length > 0) {
+      setValidationError(getValidationErrorMessage(ajvError))
+    }
+    else {
+      onApply()
+      setValidationError('')
+    }
   }, [schema, onApply])
 
   return (
