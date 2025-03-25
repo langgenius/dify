@@ -715,6 +715,13 @@ const translation = {
         continueOnError: '忽略错误并继续',
         removeAbnormalOutput: '移除错误输出',
       },
+      loopVariables: '循环变量',
+      initialLoopVariables: '初始循环变量',
+      finalLoopVariables: '最终循环变量',
+      setLoopVariables: '在循环范围内设置变量',
+      variableName: '变量名',
+      inputMode: '输入模式',
+      exitConditionTip: '循环节点至少需要一个退出条件',
     },
     note: {
       addNote: '添加注释',

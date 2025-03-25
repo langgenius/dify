@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next'
 import PureSelect from '@/app/components/base/select/pure'
 
 type InputModeSelectProps = {
@@ -8,6 +9,7 @@ const InputModeSelect = ({
   value,
   onChange,
 }: InputModeSelectProps) => {
+  const { t } = useTranslation()
   const options = [
     {
       label: 'Variable',
@@ -25,7 +27,7 @@ const InputModeSelect = ({
       value={value}
       onChange={onChange}
       popupProps={{
-        title: 'Input Mode',
+        title: t('workflow.nodes.loop.inputMode'),
         className: 'w-[132px]',
       }}
     />

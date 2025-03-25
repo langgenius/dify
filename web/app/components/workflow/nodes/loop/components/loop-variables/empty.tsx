@@ -1,7 +1,11 @@
+import { useTranslation } from 'react-i18next'
+
 const Empty = () => {
+  const { t } = useTranslation()
+
   return (
-    <div className='flex items-center justify-center h-10 bg-background-section rounded-[10px] system-xs-regular text-text-tertiary'>
-      Set variables within the loop scope
+    <div className='system-xs-regular flex h-10 items-center justify-center rounded-[10px] bg-background-section text-text-tertiary'>
+      {t('workflow.nodes.loop.setLoopVariables')}
     </div>
   )
 }

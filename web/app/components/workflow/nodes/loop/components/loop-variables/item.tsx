@@ -1,5 +1,6 @@
 import { useCallback } from 'react'
 import { RiDeleteBinLine } from '@remixicon/react'
+import { useTranslation } from 'react-i18next'
 import InputModeSelect from './input-mode-selec'
 import VariableTypeSelect from './variable-type-select'
 import FormItem from './form-item'
@@ -19,6 +20,7 @@ const Item = ({
   handleRemoveLoopVariable,
   handleUpdateLoopVariable,
 }: ItemProps) => {
+  const { t } = useTranslation()
   const handleUpdateItemLabel = useCallback((e: any) => {
     handleUpdateLoopVariable(item.id, { label: e.target.value })
   }, [item.id, handleUpdateLoopVariable])
@@ -36,13 +38,14 @@ const Item = ({
   }, [item.id, handleUpdateLoopVariable])
 
   return (
-    <div className='flex mb-4 last-of-type:mb-0'>
-      <div className='grow w-0'>
-        <div className='grid grid-cols-3 gap-1 mb-1'>
+    <div className='mb-4 flex last-of-type:mb-0'>
+      <div className='w-0 grow'>
+        <div className='mb-1 grid grid-cols-3 gap-1'>
           <Input
             value={item.label}
             onChange={handleUpdateItemLabel}
             autoFocus
+            placeholder={t('workflow.nodes.loop.variableName')}
           />
           <VariableTypeSelect
             value={item.var_type}
@@ -66,7 +69,7 @@ const Item = ({
         size='l'
         onClick={() => handleRemoveLoopVariable(item.id)}
       >
-        <RiDeleteBinLine className='w-4 h-4 text-text-tertiary' />
+        <RiDeleteBinLine className='h-4 w-4 text-text-tertiary' />
       </ActionButton>
     </div>
   )

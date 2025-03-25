@@ -714,6 +714,13 @@ const translation = {
         continueOnError: 'Continue on Error',
         removeAbnormalOutput: 'Remove Abnormal Output',
       },
+      loopVariables: 'Loop Variables',
+      initialLoopVariables: 'Initial Loop Variables',
+      finalLoopVariables: 'Final Loop Variables',
+      setLoopVariables: 'Set variables within the loop scope',
+      variableName: 'Variable Name',
+      inputMode: 'Input Mode',
+      exitConditionTip: 'A loop node needs at least one exit condition',
     },
     note: {
       addNote: 'Add Note',

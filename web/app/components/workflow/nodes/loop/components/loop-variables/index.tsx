@@ -8,7 +8,8 @@ import type {
 type LoopVariableProps = {
   variables?: LoopVariable[]
 } & LoopVariablesComponentShape
-const LoopVariable = ({
+
+const LoopVariableComponent = ({
   variables = [],
   ...restProps
 }: LoopVariableProps) => {
@@ -24,4 +25,4 @@ const LoopVariable = ({
   ))
 }
 
-export default LoopVariable
+export default LoopVariableComponent
