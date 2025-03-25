@@ -9,7 +9,7 @@ import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import VisualEditor from './visual-editor'
 import SchemaEditor from './schema-editor'
-import { jsonToSchema } from '../../utils'
+import { getValidationErrorMessage, jsonToSchema, validateSchemaAgainstDraft7 } from '../../utils'
 import { MittProvider, VisualEditorContextProvider } from './visual-editor/context'
 import ErrorMessage from './error-message'
 
@@ -59,15 +59,15 @@ const JsonSchemaConfig: FC<JsonSchemaConfigProps> = ({
       try {
         const schema = JSON.parse(json)
         setParseError(null)
-        // const ajvError = validateSchemaAgainstDraft7(schema)
-        // if (ajvError.length > 0) {
-        //   setValidationError(getValidationErrorMessage(ajvError))
-        //   return
-        // }
-        // else {
-        setJsonSchema(schema)
-        setValidationError('')
-        // }
+        const ajvError = validateSchemaAgainstDraft7(schema)
+        if (ajvError.length > 0) {
+          setValidationError(getValidationErrorMessage(ajvError))
+          return
+        }
+        else {
+          setJsonSchema(schema)
+          setValidationError('')
+        }
       }
       catch (error) {
         setValidationError('')
@@ -117,15 +117,15 @@ const JsonSchemaConfig: FC<JsonSchemaConfigProps> = ({
       try {
         schema = JSON.parse(json)
         setParseError(null)
-        // const ajvError = validateSchemaAgainstDraft7(schema)
-        // if (ajvError.length > 0) {
-        //   setValidationError(getValidationErrorMessage(ajvError))
-        //   return
-        // }
-        // else {
-        setJsonSchema(schema)
-        setValidationError('')
-        // }
+        const ajvError = validateSchemaAgainstDraft7(schema)
+        if (ajvError.length > 0) {
+          setValidationError(getValidationErrorMessage(ajvError))
+          return
+        }
+        else {
+          setJsonSchema(schema)
+          setValidationError('')
+        }
       }
       catch (error) {
         setValidationError('')
