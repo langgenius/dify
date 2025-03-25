@@ -610,7 +610,11 @@ class DatasetRetrieval:
                 if dataset.indexing_technique == "economy":
                     # use keyword table query
                     documents = RetrievalService.retrieve(
-                        retrieval_method="keyword_search", dataset_id=dataset.id, query=query, top_k=top_k
+                        retrieval_method="keyword_search",
+                        dataset_id=dataset.id,
+                        query=query,
+                        top_k=top_k,
+                        document_ids_filter=document_ids_filter,
                     )
                     if documents:
                         all_documents.extend(documents)
@@ -896,7 +900,10 @@ class DatasetRetrieval:
             return str(inputs.get(key, f"{{{{{key}}}}}"))
 
         pattern = re.compile(r"\{\{(\w+)\}\}")
-        return pattern.sub(replacer, text)
+        output = pattern.sub(replacer, text)
+        if isinstance(output, str):
+            output = re.sub(r"[\r\n\t]+", " ", output).strip()
+        return output
 
     def _automatic_metadata_filter_func(
         self, dataset_ids: list, query: str, tenant_id: str, user_id: str, metadata_model_config: ModelConfig
