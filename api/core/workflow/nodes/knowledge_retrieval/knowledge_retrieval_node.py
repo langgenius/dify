@@ -332,8 +332,9 @@ class KnowledgeRetrievalNode(LLMNode):
             automatic_metadata_filters = self._automatic_metadata_filter_func(dataset_ids, query, node_data)
             if automatic_metadata_filters:
                 conditions = []
-                for filter in automatic_metadata_filters:
+                for sequence, filter in enumerate(automatic_metadata_filters):
                     self._process_metadata_filter_func(
+                        sequence,
                         filter.get("condition", ""),
                         filter.get("metadata_name", ""),
                         filter.get("value"),
@@ -354,7 +355,7 @@ class KnowledgeRetrievalNode(LLMNode):
             if node_data.metadata_filtering_conditions:
                 metadata_condition = MetadataCondition(**node_data.metadata_filtering_conditions.model_dump())
                 if node_data.metadata_filtering_conditions:
-                    for condition in node_data.metadata_filtering_conditions.conditions:  # type: ignore
+                    for sequence, condition in enumerate(node_data.metadata_filtering_conditions.conditions):  # type: ignore
                         metadata_name = condition.name
                         expected_value = condition.value
                         if expected_value is not None or condition.comparison_operator in ("empty", "not empty"):
@@ -369,7 +370,11 @@ class KnowledgeRetrievalNode(LLMNode):
                                 else:
                                     raise ValueError("Invalid expected metadata value type")
                             filters = self._process_metadata_filter_func(
-                                condition.comparison_operator, metadata_name, expected_value, filters
+                                sequence,
+                                condition.comparison_operator,
+                                metadata_name,
+                                expected_value,
+                                filters,
                             )
         else:
             raise ValueError("Invalid metadata filtering mode")
@@ -448,25 +453,47 @@ class KnowledgeRetrievalNode(LLMNode):
             return []
         return automatic_metadata_filters
 
-    def _process_metadata_filter_func(self, condition: str, metadata_name: str, value: Optional[str], filters: list):
+    def _process_metadata_filter_func(
+        self, sequence: int, condition: str, metadata_name: str, value: Optional[Any], filters: list
+    ):
+        key = f"{metadata_name}_{sequence}"
+        key_value = f"{metadata_name}_{sequence}_value"
         match condition:
             case "contains":
                 filters.append(
-                    (text("documents.doc_metadata ->> :key LIKE :value")).params(key=metadata_name, value=f"%{value}%")
+                    (text(f"documents.doc_metadata ->> :{key} LIKE :{key_value}")).params(
+                        **{
+                            key: metadata_name,
+                            key_value: f"%{value}%"
+                        }
+                    )
                 )
             case "not contains":
                 filters.append(
-                    (text("documents.doc_metadata ->> :key NOT LIKE :value")).params(
-                        key=metadata_name, value=f"%{value}%"
+                    (text(f"documents.doc_metadata ->> :{key} NOT LIKE :{key_value}")).params(
+                        **{
+                            key: metadata_name,
+                            key_value: f"%{value}%"
+                        }
                     )
                 )
             case "start with":
                 filters.append(
-                    (text("documents.doc_metadata ->> :key LIKE :value")).params(key=metadata_name, value=f"{value}%")
+                    (text(f"documents.doc_metadata ->> :{key} LIKE :{key_value}")).params(
+                        **{
+                            key: metadata_name,
+                            key_value: f"{value}%"
+                        }
+                    )
                 )
             case "end with":
                 filters.append(
-                    (text("documents.doc_metadata ->> :key LIKE :value")).params(key=metadata_name, value=f"%{value}")
+                    (text(f"documents.doc_metadata ->> :{key} LIKE :{key_value}")).params(
+                        **{
+                            key: metadata_name,
+                            key_value: f"%{value}"
+                        }
+                    )
                 )
             case "=" | "is":
                 if isinstance(value, str):

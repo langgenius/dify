@@ -850,8 +850,9 @@ class DatasetRetrieval:
             )
             if automatic_metadata_filters:
                 conditions = []
-                for filter in automatic_metadata_filters:
+                for sequence, filter in enumerate(automatic_metadata_filters):
                     self._process_metadata_filter_func(
+                        sequence,
                         filter.get("condition"),  # type: ignore
                         filter.get("metadata_name"),  # type: ignore
                         filter.get("value"),
@@ -871,14 +872,18 @@ class DatasetRetrieval:
         elif metadata_filtering_mode == "manual":
             if metadata_filtering_conditions:
                 metadata_condition = MetadataCondition(**metadata_filtering_conditions.model_dump())
-                for condition in metadata_filtering_conditions.conditions:  # type: ignore
+                for sequence, condition in enumerate(metadata_filtering_conditions.conditions):  # type: ignore
                     metadata_name = condition.name
                     expected_value = condition.value
                     if expected_value is not None or condition.comparison_operator in ("empty", "not empty"):
                         if isinstance(expected_value, str):
                             expected_value = self._replace_metadata_filter_value(expected_value, inputs)
                         filters = self._process_metadata_filter_func(
-                            condition.comparison_operator, metadata_name, expected_value, filters
+                            sequence,
+                            condition.comparison_operator,
+                            metadata_name,
+                            expected_value,
+                            filters,
                         )
         else:
             raise ValueError("Invalid metadata filtering mode")
@@ -960,26 +965,36 @@ class DatasetRetrieval:
             return None
         return automatic_metadata_filters
 
-    def _process_metadata_filter_func(self, condition: str, metadata_name: str, value: Optional[Any], filters: list):
+    def _process_metadata_filter_func(
+        self, sequence: int, condition: str, metadata_name: str, value: Optional[Any], filters: list
+    ):
+        key = f"{metadata_name}_{sequence}"
+        key_value = f"{metadata_name}_{sequence}_value"
         match condition:
             case "contains":
                 filters.append(
-                    (text("documents.doc_metadata ->> :key LIKE :value")).params(key=metadata_name, value=f"%{value}%")
+                    (text(f"documents.doc_metadata ->> :{key} LIKE :{key_value}")).params(
+                        **{key: metadata_name, key_value: f"%{value}%"}
+                    )
                 )
             case "not contains":
                 filters.append(
-                    (text("documents.doc_metadata ->> :key NOT LIKE :value")).params(
-                        key=metadata_name, value=f"%{value}%"
+                    (text(f"documents.doc_metadata ->> :{key} NOT LIKE :{key_value}")).params(
+                        **{key: metadata_name, key_value: f"%{value}%"}
                     )
                 )
             case "start with":
                 filters.append(
-                    (text("documents.doc_metadata ->> :key LIKE :value")).params(key=metadata_name, value=f"{value}%")
+                    (text(f"documents.doc_metadata ->> :{key} LIKE :{key_value}")).params(
+                        **{key: metadata_name, key_value: f"{value}%"}
+                    )
                 )
 
             case "end with":
                 filters.append(
-                    (text("documents.doc_metadata ->> :key LIKE :value")).params(key=metadata_name, value=f"%{value}")
+                    (text(f"documents.doc_metadata ->> :{key} LIKE :{key_value}")).params(
+                        **{key: metadata_name, key_value: f"%{value}"}
+                    )
                 )
             case "is" | "=":
                 if isinstance(value, str):
