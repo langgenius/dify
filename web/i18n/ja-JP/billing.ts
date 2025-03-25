@@ -101,18 +101,22 @@ const translation = {
   plans: {
     sandbox: {
       name: 'Sandbox',
+      for: '核心能力的免费试用',
       description: 'コア機能を無料で試す',
     },
     professional: {
       name: 'Professional',
+      for: '核心能力的免费试用',
       description: '独立した開発者/小規模チーム向け',
     },
     team: {
       name: 'Team',
+      for: '核心能力的免费试用',
       description: '中規模チーム向け',
     },
     community: {
       name: 'Community',
+      for: '核心能力的免费试用',
       description: '個人ユーザー、小規模チーム、または非営利プロジェクト向け',
       price: '無料',
       btnText: 'コミュニティを始めましょう',
@@ -125,6 +129,7 @@ const translation = {
     },
     premium: {
       name: 'Premium',
+      for: '核心能力的免费试用',
       description: '中規模の組織やチーム向け',
       price: 'スケーラブル',
       priceTip: 'クラウドマーケットプレイスに基づく',
@@ -140,6 +145,7 @@ const translation = {
     },
     enterprise: {
       name: 'Enterprise',
+      for: '核心能力的免费试用',
       description: 'エンタープライズグレードのセキュリティ、コンプライアンス、拡張性、制御、およびより高度な機能を必要とする企業向け',
       price: 'カスタム',
       priceTip: '年間契約のみ',

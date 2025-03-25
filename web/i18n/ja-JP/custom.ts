@@ -1,6 +1,8 @@
 const translation = {
   custom: 'カスタマイズ',
   upgradeTip: {
+    title: '升级您的计划',
+    des: '升级您的计划来定制您的品牌。',
     prefix: 'プランをアップグレードして',
     suffix: 'ブランドをカスタマイズしましょう。',
   },
