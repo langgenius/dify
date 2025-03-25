@@ -462,37 +462,25 @@ class KnowledgeRetrievalNode(LLMNode):
             case "contains":
                 filters.append(
                     (text(f"documents.doc_metadata ->> :{key} LIKE :{key_value}")).params(
-                        **{
-                            key: metadata_name,
-                            key_value: f"%{value}%"
-                        }
+                        **{key: metadata_name, key_value: f"%{value}%"}
                     )
                 )
             case "not contains":
                 filters.append(
                     (text(f"documents.doc_metadata ->> :{key} NOT LIKE :{key_value}")).params(
-                        **{
-                            key: metadata_name,
-                            key_value: f"%{value}%"
-                        }
+                        **{key: metadata_name, key_value: f"%{value}%"}
                     )
                 )
             case "start with":
                 filters.append(
                     (text(f"documents.doc_metadata ->> :{key} LIKE :{key_value}")).params(
-                        **{
-                            key: metadata_name,
-                            key_value: f"{value}%"
-                        }
+                        **{key: metadata_name, key_value: f"{value}%"}
                     )
                 )
             case "end with":
                 filters.append(
                     (text(f"documents.doc_metadata ->> :{key} LIKE :{key_value}")).params(
-                        **{
-                            key: metadata_name,
-                            key_value: f"%{value}"
-                        }
+                        **{key: metadata_name, key_value: f"%{value}"}
                     )
                 )
             case "=" | "is":
