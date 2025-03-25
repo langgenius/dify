@@ -373,7 +373,8 @@ services:
 
   # OceanBase vector database
   oceanbase:
-    image: quay.io/oceanbase/oceanbase-ce:4.3.3.0-100000142024101215
+    image: oceanbase/oceanbase-ce:4.3.5.1-101000042025031818
+    container_name: oceanbase
     profiles:
       - oceanbase
     restart: always
@@ -386,7 +387,9 @@ services:
       OB_SYS_PASSWORD: ${OCEANBASE_VECTOR_PASSWORD:-difyai123456}
       OB_TENANT_PASSWORD: ${OCEANBASE_VECTOR_PASSWORD:-difyai123456}
       OB_CLUSTER_NAME: ${OCEANBASE_CLUSTER_NAME:-difyai}
-      OB_SERVER_IP: '127.0.0.1'
+      MODE: MINI
+    ports:
+      - "${OCEANBASE_VECTOR_PORT:-2881}:2881"
 
   # Oracle vector database
   oracle:

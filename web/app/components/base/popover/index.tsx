@@ -9,7 +9,7 @@ export type HtmlContentProps = {
 
 type IPopover = {
   className?: string
-  htmlContent: React.ReactNode<HtmlContentProps>
+  htmlContent: React.ReactNode
   popupClassName?: string
   trigger?: 'click' | 'hover'
   position?: 'bottom' | 'br' | 'bl'
@@ -90,7 +90,7 @@ export default function CustomPopover({
                 >
                   {({ close }) => (
                     <div
-                      className={cn('w-fit min-w-[130px] overflow-hidden rounded-lg bg-components-panel-bg shadow-lg ring-1 ring-black ring-opacity-5', popupClassName)}
+                      className={cn('w-fit min-w-[130px] overflow-hidden rounded-lg bg-components-panel-bg shadow-lg ring-1 ring-black/5', popupClassName)}
                       {...(trigger !== 'hover'
                         ? {}
                         : {
@@ -99,7 +99,7 @@ export default function CustomPopover({
                         })
                       }
                     >
-                      {cloneElement(htmlContent as React.ReactNode<HtmlContentProps>, {
+                      {cloneElement(htmlContent as React.ReactElement, {
                         onClose: () => onMouseLeave(open),
                         ...(manualClose
                           ? {
