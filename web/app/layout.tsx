@@ -34,6 +34,22 @@ const LocaleLayout = async ({
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              (function() {
+                function getTheme() {
+                  const savedTheme = localStorage.getItem('theme');
+                  if (savedTheme) return savedTheme;
+                  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+                }
+                
+                const theme = getTheme();
+                document.documentElement.classList.toggle('dark', theme === 'dark');
+              })();
+            `,
+          }}
+        />
       </head>
       <body
         className="color-scheme h-full select-auto"
@@ -58,8 +74,7 @@ const LocaleLayout = async ({
             <TanstackQueryIniter>
               <ThemeProvider
                 attribute='data-theme'
-                forcedTheme='light'
-                defaultTheme='light' // TODO: change to 'system' when dark mode ready
+                defaultTheme='system' // Change from 'light' to 'system'
                 enableSystem
                 disableTransitionOnChange
               >

@@ -6,6 +6,7 @@ const config = {
     './components/**/*.{js,ts,jsx,tsx}',
     './context/**/*.{js,ts,jsx,tsx}',
   ],
+  darkMode: 'class',
   ...commonConfig,
 }
 
