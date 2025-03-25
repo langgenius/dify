@@ -130,7 +130,7 @@ def deal_dataset_vector_index_task(dataset_id: str, action: str):
                                     },
                                 )
                                 if dataset_document.doc_form == IndexType.PARENT_CHILD_INDEX:
-                                    child_chunks = segment.child_chunks
+                                    child_chunks = segment.get_child_chunks()
                                     if child_chunks:
                                         child_documents = []
                                         for child_chunk in child_chunks:
