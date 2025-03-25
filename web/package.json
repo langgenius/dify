@@ -55,7 +55,6 @@
     "@tanstack/react-query": "^5.60.5",
     "@tanstack/react-query-devtools": "^5.60.5",
     "ahooks": "^3.8.4",
-    "ajv": "^8.17.1",
     "class-variance-authority": "^0.7.0",
     "classnames": "^2.5.1",
     "copy-to-clipboard": "^3.3.3",
