@@ -1,8 +1,8 @@
 import { ArrayType, Type } from './types'
 import type { ArrayItems, Field, LLMNodeType } from './types'
-import Ajv, { type ErrorObject } from 'ajv'
-import draft7MetaSchema from 'ajv/dist/refs/json-schema-draft-07.json'
-import produce from 'immer'
+// import Ajv, { type ErrorObject } from 'ajv'
+// import draft7MetaSchema from 'ajv/dist/refs/json-schema-draft-07.json'
+// import produce from 'immer'
 
 export const checkNodeValid = (payload: LLMNodeType) => {
   return true
@@ -83,29 +83,29 @@ export const findPropertyWithPath = (target: any, path: string[]) => {
   return current
 }
 
-const ajv = new Ajv({
-  allErrors: true,
-  verbose: true,
-  validateSchema: true,
-  meta: false,
-})
-ajv.addMetaSchema(draft7MetaSchema)
+// const ajv = new Ajv({
+//   allErrors: true,
+//   verbose: true,
+//   validateSchema: true,
+//   meta: false,
+// })
+// ajv.addMetaSchema(draft7MetaSchema)
 
-export const validateSchemaAgainstDraft7 = (schemaToValidate: any) => {
-  const schema = produce(schemaToValidate, (draft: any) => {
-  // Make sure the schema has the $schema property for draft-07
-    if (!draft.$schema)
-      draft.$schema = 'http://json-schema.org/draft-07/schema#'
-  })
+// export const validateSchemaAgainstDraft7 = (schemaToValidate: any) => {
+//   const schema = produce(schemaToValidate, (draft: any) => {
+//   // Make sure the schema has the $schema property for draft-07
+//     if (!draft.$schema)
+//       draft.$schema = 'http://json-schema.org/draft-07/schema#'
+//   })
 
-  const valid = ajv.validateSchema(schema)
+//   const valid = ajv.validateSchema(schema)
 
-  return valid ? [] : ajv.errors || []
-}
+//   return valid ? [] : ajv.errors || []
+// }
 
-export const getValidationErrorMessage = (errors: ErrorObject[]) => {
-  const message = errors.map((error) => {
-    return `Error: ${error.instancePath} ${error.message} Details: ${JSON.stringify(error.params)}`
-  }).join('; ')
-  return message
-}
+// export const getValidationErrorMessage = (errors: ErrorObject[]) => {
+//   const message = errors.map((error) => {
+//     return `Error: ${error.instancePath} ${error.message} Details: ${JSON.stringify(error.params)}`
+//   }).join('; ')
+//   return message
+// }
