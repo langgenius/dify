@@ -26,10 +26,9 @@ const translation = {
   appDeleteFailed: 'アプリの削除に失敗しました',
   join: 'コミュニティに参加する',
   communityIntro:
-    'さまざまなチャンネルでチームメンバーや貢献者、開発者と議論します。',
+  'さまざまなチャンネルでチームメンバーや貢献者、開発者と議論します。',
   roadmap: 'ロードマップを見る',
   newApp: {
-    // this comment is to recreate PR
     startFromBlank: '最初から作成',
     startFromTemplate: 'テンプレートから作成',
     captionAppType: 'どのタイプのアプリを作成しますか？',
