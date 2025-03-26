@@ -61,6 +61,7 @@ RUN \
         # install libmagic to support the use of python-magic guess MIMETYPE
         libmagic1 \
     && apt-get autoremove -y \
+    && apt-get install -y binutils \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy Python environment and packages
