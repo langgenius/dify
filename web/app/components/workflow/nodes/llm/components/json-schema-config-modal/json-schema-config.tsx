@@ -100,13 +100,19 @@ const JsonSchemaConfig: FC<JsonSchemaConfigProps> = ({
   }, [currentTab, jsonSchema, json, advancedEditing, isAddingNewField, t])
 
   const handleApplySchema = useCallback((schema: SchemaRoot) => {
-    setJsonSchema(schema)
-  }, [])
+    if (currentTab === SchemaView.VisualEditor)
+      setJsonSchema(schema)
+    else if (currentTab === SchemaView.JsonSchema)
+      setJson(JSON.stringify(schema, null, 2))
+  }, [currentTab])
 
   const handleSubmit = useCallback((schema: string) => {
     const jsonSchema = jsonToSchema(schema) as SchemaRoot
-    setJsonSchema(jsonSchema)
-  }, [])
+    if (currentTab === SchemaView.VisualEditor)
+      setJsonSchema(jsonSchema)
+    else if (currentTab === SchemaView.JsonSchema)
+      setJson(JSON.stringify(jsonSchema, null, 2))
+  }, [currentTab])
 
   const handleVisualEditorUpdate = useCallback((schema: SchemaRoot) => {
     setJsonSchema(schema)
