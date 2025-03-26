@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next'
 import { RiListUnordered } from '@remixicon/react'
 import TemplateEn from './template/template.en.mdx'
 import TemplateZh from './template/template.zh.mdx'
+import TemplateJa from './template/template.ja.mdx'
 import I18n from '@/context/i18n'
 import { LanguagesSupported } from '@/i18n/language'
 
@@ -106,10 +107,16 @@ const Doc = ({ apiBaseUrl }: DocProps) => {
           )}
       </div>
       <article className='prose-xl prose mx-1 rounded-t-xl bg-white px-4 pt-16 sm:mx-12'>
-        {locale !== LanguagesSupported[1]
-          ? <TemplateEn apiBaseUrl={apiBaseUrl} />
-          : <TemplateZh apiBaseUrl={apiBaseUrl} />
-        }
+        {(() => {
+          switch (locale) {
+            case LanguagesSupported[1]:
+              return <TemplateZh apiBaseUrl={apiBaseUrl} />
+            case LanguagesSupported[7]:
+              return <TemplateJa apiBaseUrl={apiBaseUrl} />
+            default:
+              return <TemplateEn apiBaseUrl={apiBaseUrl} />
+          }
+        })()}
       </article>
     </div>
   )
