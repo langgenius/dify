@@ -158,7 +158,7 @@ const EducationApplyAge = () => {
           <div className='mb-4 mt-5 h-[1px] bg-gradient-to-r from-[rgba(16,24,40,0.08)]'></div>
           <a
             className='system-xs-regular flex items-center text-text-accent'
-            href='https://docs.dify.ai/get-started/dify-for-education'
+            href='https://docs.dify.ai/getting-started/dify-for-education'
             target='_blank'
           >
             {t('education.learn')}
