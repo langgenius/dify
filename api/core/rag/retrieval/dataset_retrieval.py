@@ -1003,7 +1003,7 @@ class DatasetRetrieval:
                 filters.append(sqlalchemy_cast(DatasetDocument.doc_metadata[metadata_name].astext, Integer) < value)
             case "after" | ">":
                 filters.append(sqlalchemy_cast(DatasetDocument.doc_metadata[metadata_name].astext, Integer) > value)
-            case "≤" | ">=":
+            case "≤" | "<=":
                 filters.append(sqlalchemy_cast(DatasetDocument.doc_metadata[metadata_name].astext, Integer) <= value)
             case "≥" | ">=":
                 filters.append(sqlalchemy_cast(DatasetDocument.doc_metadata[metadata_name].astext, Integer) >= value)
