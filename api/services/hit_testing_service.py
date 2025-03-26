@@ -145,7 +145,7 @@ class HitTestingService:
     def retrieval_args_check(cls, args):
         query = args["query"]
 
-        if not query :
+        if not query:
             raise ValueError("Query is required")
 
 
