@@ -220,7 +220,11 @@ export const AgentStrategy = memo((props: AgentStrategyProps) => {
           title={t('workflow.nodes.agent.strategy.configureTip')}
           description={<div className='text-xs text-text-tertiary'>
             {t('workflow.nodes.agent.strategy.configureTipDesc')} <br />
-            <Link href={`https://docs.dify.ai/${locale === LanguagesSupported[1] ? 'zh-hans/' : ''}guides/workflow/node/agent`} className='text-text-accent-secondary' target='_blank'>
+            <Link href={
+              locale === LanguagesSupported[1]
+                ? 'https://docs.dify.ai/zh-hans/guides/workflow/node/agent#xuan-ze-agent-ce-le'
+                : 'https://docs.dify.ai/guides/workflow/node/agent#select-an-agent-strategy'
+            } className='text-text-accent-secondary' target='_blank'>
               {t('workflow.nodes.agent.learnMore')}
             </Link>
           </div>}
