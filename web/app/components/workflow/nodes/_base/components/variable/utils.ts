@@ -845,6 +845,9 @@ export const toNodeAvailableVars = ({
         },
       ],
     }
+    const iterationIndex = beforeNodesOutputVars.findIndex(v => v.nodeId === iterationNode?.id)
+    if (iterationIndex > -1)
+      beforeNodesOutputVars.splice(iterationIndex, 1)
     beforeNodesOutputVars.unshift(iterationVar)
   }
   return beforeNodesOutputVars
