@@ -6,9 +6,7 @@ import { usePathname } from 'next/navigation'
 
 export default function RoutePrefixHandle() {
   const pathname = usePathname()
-  console.log('basePath:', basePath)
   const handleRouteChange = () => {
-    console.log('已切换到:', pathname)
     const addPrefixToImg = (e) => {
       const url = new URL(e.src)
       const prefix = url.pathname.substr(0, basePath.length)
