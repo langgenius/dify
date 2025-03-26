@@ -592,7 +592,6 @@ export const getVarType = ({
 
   const targetVarNodeId = isSystem ? startNode?.id : valueSelector[0]
   const targetVar = beforeNodesOutputVars.find(v => v.nodeId === targetVarNodeId)
-
   if (!targetVar)
     return VarType.string
 

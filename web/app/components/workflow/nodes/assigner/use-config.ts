@@ -31,7 +31,7 @@ const useConfig = (id: string, rawPayload: AssignerNodeType) => {
   }
 
   const store = useStoreApi()
-  const { getBeforeNodesInSameBranch } = useWorkflow()
+  const { getBeforeNodesInSameBranchIncludeParent } = useWorkflow()
 
   const {
     getNodes,
@@ -40,8 +40,8 @@ const useConfig = (id: string, rawPayload: AssignerNodeType) => {
   const isInIteration = payload.isInIteration
   const iterationNode = isInIteration ? getNodes().find(n => n.id === currentNode!.parentId) : null
   const availableNodes = useMemo(() => {
-    return getBeforeNodesInSameBranch(id)
-  }, [getBeforeNodesInSameBranch, id])
+    return getBeforeNodesInSameBranchIncludeParent(id)
+  }, [getBeforeNodesInSameBranchIncludeParent, id])
   const { inputs, setInputs } = useNodeCrud<AssignerNodeType>(id, payload)
   const newSetInputs = useCallback((newInputs: AssignerNodeType) => {
     const finalInputs = produce(newInputs, (draft) => {
