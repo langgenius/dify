@@ -6,7 +6,7 @@ import {
 
 export const useTextAreaHeight = () => {
   const wrapperRef = useRef<HTMLDivElement>(null)
-  const textareaRef = useRef<any>(HTMLTextAreaElement)
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
   const textValueRef = useRef<HTMLDivElement>(null)
   const holdSpaceRef = useRef<HTMLDivElement>(null)
   const [isMultipleLine, setIsMultipleLine] = useState(false)
