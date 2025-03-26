@@ -73,11 +73,11 @@ class HitTestingService:
 
     @classmethod
     def external_retrieve(
-        cls,
-        dataset: Dataset,
-        query: str,
-        account: Account,
-        external_retrieval_model: dict,
+            cls,
+            dataset: Dataset,
+            query: str,
+            account: Account,
+            external_retrieval_model: dict,
     ) -> dict:
         if dataset.provider != "external":
             return {
