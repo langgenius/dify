@@ -431,6 +431,8 @@ x-shared-env: &shared-api-worker-env
   PLUGIN_PYTHON_ENV_INIT_TIMEOUT: ${PLUGIN_PYTHON_ENV_INIT_TIMEOUT:-120}
   PLUGIN_MAX_EXECUTION_TIMEOUT: ${PLUGIN_MAX_EXECUTION_TIMEOUT:-600}
   PIP_MIRROR_URL: ${PIP_MIRROR_URL:-}
+  
+name: dify
 
 services:
   # API service
