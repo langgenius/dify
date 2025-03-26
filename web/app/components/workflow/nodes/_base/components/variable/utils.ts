@@ -532,61 +532,10 @@ const getIterationItemType = ({
   }
 }
 
-const getLoopItemType = ({
-  valueSelector,
-  beforeNodesOutputVars,
-}: {
-  valueSelector: ValueSelector
-  beforeNodesOutputVars: NodeOutPutVar[]
-}): VarType => {
-  const outputVarNodeId = valueSelector[0]
-  const isSystem = isSystemVar(valueSelector)
-
-  const targetVar = isSystem ? beforeNodesOutputVars.find(v => v.isStartNode) : beforeNodesOutputVars.find(v => v.nodeId === outputVarNodeId)
-  if (!targetVar)
-    return VarType.string
-
-  let arrayType: VarType = VarType.string
-
-  let curr: any = targetVar.vars
-  if (isSystem) {
-    arrayType = curr.find((v: any) => v.variable === (valueSelector).join('.'))?.type
-  }
-  else {
-    (valueSelector).slice(1).forEach((key, i) => {
-      const isLast = i === valueSelector.length - 2
-      curr = curr?.find((v: any) => v.variable === key)
-      if (isLast) {
-        arrayType = curr?.type
-      }
-      else {
-        if (curr?.type === VarType.object || curr?.type === VarType.file)
-          curr = curr.children
-      }
-    })
-  }
-
-  switch (arrayType as VarType) {
-    case VarType.arrayString:
-      return VarType.string
-    case VarType.arrayNumber:
-      return VarType.number
-    case VarType.arrayObject:
-      return VarType.object
-    case VarType.array:
-      return VarType.any
-    case VarType.arrayFile:
-      return VarType.file
-    default:
-      return VarType.string
-  }
-}
-
 export const getVarType = ({
   parentNode,
   valueSelector,
   isIterationItem,
-  isLoopItem,
   availableNodes,
   isChatMode,
   isConstant,
@@ -625,25 +574,6 @@ export const getVarType = ({
   if (isIterationInnerVar) {
     if (valueSelector[1] === 'item') {
       const itemType = getIterationItemType({
-        valueSelector: (parentNode?.data as any).iterator_selector || [],
-        beforeNodesOutputVars,
-      })
-      return itemType
-    }
-    if (valueSelector[1] === 'index')
-      return VarType.number
-  }
-
-  const isLoopInnerVar = parentNode?.data.type === BlockEnum.Loop
-  if (isLoopItem) {
-    return getLoopItemType({
-      valueSelector,
-      beforeNodesOutputVars,
-    })
-  }
-  if (isLoopInnerVar) {
-    if (valueSelector[1] === 'item') {
-      const itemType = getLoopItemType({
         valueSelector: (parentNode?.data as any).iterator_selector || [],
         beforeNodesOutputVars,
       })

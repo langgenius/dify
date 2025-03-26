@@ -721,6 +721,7 @@ const translation = {
       variableName: 'Variable Name',
       inputMode: 'Input Mode',
       exitConditionTip: 'A loop node needs at least one exit condition',
+      loopNode: 'Loop Node',
     },
     note: {
       addNote: 'Add Note',

@@ -95,8 +95,8 @@ const Blocks = ({
                 {
                   block.type === BlockEnum.LoopEnd && (
                     <Badge
-                      text='LOOP NODE'
-                      className='shrink-0 ml-2'
+                      text={t('workflow.nodes.loop.loopNode')}
+                      className='ml-2 shrink-0'
                     />
                   )
                 }

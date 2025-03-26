@@ -249,7 +249,7 @@ const translation = {
     'agent': 'Agent',
     'loop-start': '循环开始',
     'loop': '循环',
-    'loop-end': '循环结束',
+    'loop-end': '退出循环',
   },
   blocksAbout: {
     'start': '定义一个 workflow 流程启动的初始参数',
@@ -722,6 +722,7 @@ const translation = {
       variableName: '变量名',
       inputMode: '输入模式',
       exitConditionTip: '循环节点至少需要一个退出条件',
+      loopNode: '循环节点',
     },
     note: {
       addNote: '添加注释',
