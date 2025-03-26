@@ -70,7 +70,7 @@ const CodeEditor: FC<CodeEditorProps> = ({
   }, [])
 
   const handleEditorChange = useCallback((value: string | undefined) => {
-    if (value)
+    if (value !== undefined)
       onUpdate?.(value)
   }, [onUpdate])
 

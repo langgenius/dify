@@ -128,9 +128,9 @@ const JsonSchemaConfig: FC<JsonSchemaConfigProps> = ({
       advancedEditing && setAdvancedEditing(false)
       isAddingNewField && setIsAddingNewField(false)
     }
-    setJsonSchema(defaultSchema || DEFAULT_SCHEMA)
-    setJson(JSON.stringify(defaultSchema || DEFAULT_SCHEMA, null, 2))
-  }, [currentTab, defaultSchema, advancedEditing, isAddingNewField, setAdvancedEditing, setIsAddingNewField, setHoveringProperty])
+    setJsonSchema(DEFAULT_SCHEMA)
+    setJson(JSON.stringify(DEFAULT_SCHEMA, null, 2))
+  }, [currentTab, advancedEditing, isAddingNewField, setAdvancedEditing, setIsAddingNewField, setHoveringProperty])
 
   const handleCancel = useCallback(() => {
     onClose()
