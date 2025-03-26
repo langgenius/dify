@@ -53,7 +53,7 @@ const StructureOutput: FC<Props> = ({
         <ShowPanel
           payload={value}
         />) : (
-        <div className='system-xs-regular mt-1.5 flex h-10 items-center justify-center rounded-[10px] bg-background-section text-text-tertiary'>{t('app.structOutput.notConfiguredTip')}</div>
+        <div className='system-xs-regular mt-1.5 flex h-10 cursor-pointer items-center justify-center rounded-[10px] bg-background-section text-text-tertiary' onClick={showConfigModal}>{t('app.structOutput.notConfiguredTip')}</div>
       )}
 
       {showConfig && (
