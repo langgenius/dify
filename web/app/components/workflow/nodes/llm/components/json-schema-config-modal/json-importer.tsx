@@ -8,6 +8,8 @@ import { checkDepth } from '../../utils'
 import { JSON_SCHEMA_MAX_DEPTH } from '@/config'
 import CodeEditor from './code-editor'
 import ErrorMessage from './error-message'
+import { useVisualEditorStore } from './visual-editor/store'
+import Toast from '@/app/components/base/toast'
 
 type JsonImporterProps = {
   onSubmit: (schema: string) => void
@@ -23,6 +25,8 @@ const JsonImporter: FC<JsonImporterProps> = ({
   const [json, setJson] = useState('')
   const [parseError, setParseError] = useState<any>(null)
   const importBtnRef = useRef<HTMLButtonElement>(null)
+  const advancedEditing = useVisualEditorStore(state => state.advancedEditing)
+  const isAddingNewField = useVisualEditorStore(state => state.isAddingNewField)
 
   useEffect(() => {
     if (importBtnRef.current) {
@@ -34,8 +38,15 @@ const JsonImporter: FC<JsonImporterProps> = ({
 
   const handleTrigger = useCallback((e: React.MouseEvent<HTMLElement, MouseEvent>) => {
     e.stopPropagation()
+    if (advancedEditing || isAddingNewField) {
+      Toast.notify({
+        type: 'warning',
+        message: t('workflow.nodes.llm.jsonSchema.warningTips.jsonImport'),
+      })
+      return
+    }
     setOpen(!open)
-  }, [open])
+  }, [open, advancedEditing, isAddingNewField, t])
 
   const onClose = useCallback(() => {
     setOpen(false)

@@ -18,6 +18,8 @@ import { useGenerateStructuredOutputRules } from '@/service/use-common'
 import Toast from '@/app/components/base/toast'
 import { type FormValue, ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
+import { useVisualEditorStore } from '../visual-editor/store'
+import { useTranslation } from 'react-i18next'
 
 type JsonSchemaGeneratorProps = {
   onApply: (schema: SchemaRoot) => void
@@ -33,8 +35,8 @@ export const JsonSchemaGenerator: FC<JsonSchemaGeneratorProps> = ({
   onApply,
   crossAxisOffset,
 }) => {
+  const { t } = useTranslation()
   const [open, setOpen] = useState(false)
-  const { theme } = useTheme()
   const [view, setView] = useState(GeneratorView.promptEditor)
   const [model, setModel] = useState<Model>({
     name: '',
@@ -44,10 +46,13 @@ export const JsonSchemaGenerator: FC<JsonSchemaGeneratorProps> = ({
   })
   const [instruction, setInstruction] = useState('')
   const [schema, setSchema] = useState<SchemaRoot | null>(null)
-  const SchemaGenerator = theme === Theme.light ? SchemaGeneratorLight : SchemaGeneratorDark
+  const { theme } = useTheme()
   const {
     defaultModel,
   } = useModelListAndDefaultModelAndCurrentProviderAndModel(ModelTypeEnum.textGeneration)
+  const advancedEditing = useVisualEditorStore(state => state.advancedEditing)
+  const isAddingNewField = useVisualEditorStore(state => state.isAddingNewField)
+  const SchemaGenerator = theme === Theme.light ? SchemaGeneratorLight : SchemaGeneratorDark
 
   useEffect(() => {
     if (defaultModel) {
@@ -61,8 +66,15 @@ export const JsonSchemaGenerator: FC<JsonSchemaGeneratorProps> = ({
 
   const handleTrigger = useCallback((e: React.MouseEvent<HTMLElement, MouseEvent>) => {
     e.stopPropagation()
+    if (advancedEditing || isAddingNewField) {
+      Toast.notify({
+        type: 'warning',
+        message: t('workflow.nodes.llm.jsonSchema.warningTips.jsonGeneration'),
+      })
+      return
+    }
     setOpen(!open)
-  }, [open])
+  }, [open, advancedEditing, isAddingNewField, t])
 
   const onClose = useCallback(() => {
     setOpen(false)

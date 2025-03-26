@@ -12,6 +12,8 @@ import SchemaEditor from './schema-editor'
 import { getValidationErrorMessage, jsonToSchema, validateSchemaAgainstDraft7 } from '../../utils'
 import { MittProvider, VisualEditorContextProvider } from './visual-editor/context'
 import ErrorMessage from './error-message'
+import { useVisualEditorStore } from './visual-editor/store'
+import Toast from '@/app/components/base/toast'
 
 type JsonSchemaConfigProps = {
   defaultSchema?: SchemaRoot
@@ -48,6 +50,11 @@ const JsonSchemaConfig: FC<JsonSchemaConfigProps> = ({
   const [btnWidth, setBtnWidth] = useState(0)
   const [parseError, setParseError] = useState<Error | null>(null)
   const [validationError, setValidationError] = useState<string>('')
+  const advancedEditing = useVisualEditorStore(state => state.advancedEditing)
+  const setAdvancedEditing = useVisualEditorStore(state => state.setAdvancedEditing)
+  const isAddingNewField = useVisualEditorStore(state => state.isAddingNewField)
+  const setIsAddingNewField = useVisualEditorStore(state => state.setIsAddingNewField)
+  const setHoveringProperty = useVisualEditorStore(state => state.setHoveringProperty)
 
   const updateBtnWidth = useCallback((width: number) => {
     setBtnWidth(width + 32)
@@ -79,11 +86,18 @@ const JsonSchemaConfig: FC<JsonSchemaConfigProps> = ({
       }
     }
     else if (currentTab === SchemaView.VisualEditor) {
+      if (advancedEditing || isAddingNewField) {
+        Toast.notify({
+          type: 'warning',
+          message: t('workflow.nodes.llm.jsonSchema.warningTips.switchToJsonSchema'),
+        })
+        return
+      }
       setJson(JSON.stringify(jsonSchema, null, 2))
     }
 
     setCurrentTab(value)
-  }, [currentTab, jsonSchema, json])
+  }, [currentTab, jsonSchema, json, advancedEditing, isAddingNewField, t])
 
   const handleApplySchema = useCallback((schema: SchemaRoot) => {
     setJsonSchema(schema)
@@ -103,9 +117,14 @@ const JsonSchemaConfig: FC<JsonSchemaConfigProps> = ({
   }, [])
 
   const handleResetDefaults = useCallback(() => {
+    if (currentTab === SchemaView.VisualEditor) {
+      setHoveringProperty('')
+      advancedEditing && setAdvancedEditing(false)
+      isAddingNewField && setIsAddingNewField(false)
+    }
     setJsonSchema(defaultSchema || DEFAULT_SCHEMA)
     setJson(JSON.stringify(defaultSchema || DEFAULT_SCHEMA, null, 2))
-  }, [defaultSchema])
+  }, [currentTab, defaultSchema, advancedEditing, isAddingNewField, setAdvancedEditing, setIsAddingNewField, setHoveringProperty])
 
   const handleCancel = useCallback(() => {
     onClose()
@@ -136,9 +155,18 @@ const JsonSchemaConfig: FC<JsonSchemaConfigProps> = ({
         return
       }
     }
+    else if (currentTab === SchemaView.VisualEditor) {
+      if (advancedEditing || isAddingNewField) {
+        Toast.notify({
+          type: 'warning',
+          message: t('workflow.nodes.llm.jsonSchema.warningTips.saveSchema'),
+        })
+        return
+      }
+    }
     onSave(schema)
     onClose()
-  }, [currentTab, jsonSchema, json, onSave, onClose])
+  }, [currentTab, jsonSchema, json, onSave, onClose, advancedEditing, isAddingNewField, t])
 
   return (
     <div className='flex h-full flex-col'>
@@ -175,14 +203,10 @@ const JsonSchemaConfig: FC<JsonSchemaConfigProps> = ({
       </div>
       <div className='flex grow flex-col gap-y-1 overflow-hidden px-6'>
         {currentTab === SchemaView.VisualEditor && (
-          <MittProvider>
-            <VisualEditorContextProvider>
-              <VisualEditor
-                schema={jsonSchema}
-                onChange={handleVisualEditorUpdate}
-              />
-            </VisualEditorContextProvider>
-          </MittProvider>
+          <VisualEditor
+            schema={jsonSchema}
+            onChange={handleVisualEditorUpdate}
+          />
         )}
         {currentTab === SchemaView.JsonSchema && (
           <SchemaEditor
@@ -225,4 +249,14 @@ const JsonSchemaConfig: FC<JsonSchemaConfigProps> = ({
   )
 }
 
-export default JsonSchemaConfig
+const JsonSchemaConfigWrapper: FC<JsonSchemaConfigProps> = (props) => {
+  return (
+    <MittProvider>
+      <VisualEditorContextProvider>
+        <JsonSchemaConfig {...props} />
+      </VisualEditorContextProvider>
+    </MittProvider>
+  )
+}
+
+export default JsonSchemaConfigWrapper
