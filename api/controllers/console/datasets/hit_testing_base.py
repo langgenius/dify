@@ -46,7 +46,6 @@ class DatasetsHitTestingBase:
     def retrieval_args_check(args):
         HitTestingService.retrieval_args_check(args)
 
-
     @staticmethod
     def parse_args():
         parser = reqparse.RequestParser()
