@@ -29,14 +29,14 @@ import { isConversationVar, isENV, isSystemVar } from '@/app/components/workflow
 import Tooltip from '@/app/components/base/tooltip'
 import { isExceptionVariable } from '@/app/components/workflow/utils'
 import VarFullPathPanel from '@/app/components/workflow/nodes/_base/components/variable/var-full-path-panel'
-import type { Type } from '@/app/components/workflow/nodes/llm/types'
+import { Type } from '@/app/components/workflow/nodes/llm/types'
 import type { ValueSelector } from '@/app/components/workflow/types'
 
 type WorkflowVariableBlockComponentProps = {
   nodeKey: string
   variables: string[]
   workflowNodesMap: WorkflowNodesMap
-  getVarType: (payload: {
+  getVarType?: (payload: {
     nodeId: string,
     valueSelector: ValueSelector,
   }) => Type
@@ -143,6 +143,9 @@ const WorkflowVariableBlockComponent = ({
     )
   }
 
+  if (!node)
+    return null
+
   return (
     <Tooltip
       noDecoration
@@ -150,10 +153,10 @@ const WorkflowVariableBlockComponent = ({
         <VarFullPathPanel
           nodeName={node.title}
           path={variables.slice(1)}
-          varType={getVarType({
+          varType={getVarType ? getVarType({
             nodeId: variables[0],
             valueSelector: variables,
-          })}
+          }) : Type.string}
           nodeType={node?.type}
         />}
       disabled={!isShowAPart}

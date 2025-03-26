@@ -9,7 +9,7 @@ import {
 } from 'lexical'
 import { mergeRegister } from '@lexical/utils'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
-import type { WorkflowVariableBlockType } from '../../types'
+import type { GetVarType, WorkflowVariableBlockType } from '../../types'
 import {
   $createWorkflowVariableBlockNode,
   WorkflowVariableBlockNode,
@@ -25,7 +25,7 @@ export type WorkflowVariableBlockProps = {
   getWorkflowNode: (nodeId: string) => Node
   onInsert?: () => void
   onDelete?: () => void
-  getVarType: any
+  getVarType: GetVarType
 }
 const WorkflowVariableBlock = memo(({
   workflowNodesMap,
