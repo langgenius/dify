@@ -639,7 +639,7 @@ export const useNodesInteractions = () => {
         }
 
         if (node.id === currentNode.parentId)
-          node.data._children = node.data._children?.filter(child => child !== nodeId)
+          node.data._children = node.data._children?.filter(child => child.nodeId !== nodeId)
       })
       draft.splice(currentNodeIndex, 1)
     })
@@ -777,10 +777,10 @@ export const useNodesInteractions = () => {
           }
 
           if (node.data.type === BlockEnum.Iteration && prevNode.parentId === node.id)
-            node.data._children?.push(newNode.id)
+            node.data._children?.push({ nodeId: newNode.id, nodeType: newNode.data.type })
 
           if (node.data.type === BlockEnum.Loop && prevNode.parentId === node.id)
-            node.data._children?.push(newNode.id)
+            node.data._children?.push({ nodeId: newNode.id, nodeType: newNode.data.type })
         })
         draft.push(newNode)
 
@@ -903,7 +903,7 @@ export const useNodesInteractions = () => {
           }
 
           if (node.data.type === BlockEnum.Iteration && nextNode.parentId === node.id)
-            node.data._children?.push(newNode.id)
+            node.data._children?.push({ nodeId: newNode.id, nodeType: newNode.data.type })
 
           if (node.data.type === BlockEnum.Iteration && node.data.start_node_id === nextNodeId) {
             node.data.start_node_id = newNode.id
@@ -911,7 +911,7 @@ export const useNodesInteractions = () => {
           }
 
           if (node.data.type === BlockEnum.Loop && nextNode.parentId === node.id)
-            node.data._children?.push(newNode.id)
+            node.data._children?.push({ nodeId: newNode.id, nodeType: newNode.data.type })
 
           if (node.data.type === BlockEnum.Loop && node.data.start_node_id === nextNodeId) {
             node.data.start_node_id = newNode.id
@@ -1051,9 +1051,9 @@ export const useNodesInteractions = () => {
             node.position.x += NODE_WIDTH_X_OFFSET
 
           if (node.data.type === BlockEnum.Iteration && prevNode.parentId === node.id)
-            node.data._children?.push(newNode.id)
+            node.data._children?.push({ nodeId: newNode.id, nodeType: newNode.data.type })
           if (node.data.type === BlockEnum.Loop && prevNode.parentId === node.id)
-            node.data._children?.push(newNode.id)
+            node.data._children?.push({ nodeId: newNode.id, nodeType: newNode.data.type })
         })
         draft.push(newNode)
         if (newIterationStartNode)
@@ -1331,7 +1331,7 @@ export const useNodesInteractions = () => {
           newChildren = copyChildren
           idMapping = newIdMapping
           newChildren.forEach((child) => {
-            newNode.data._children?.push(child.id)
+            newNode.data._children?.push({ nodeId: child.id, nodeType: child.data.type })
           })
           newChildren.push(newIterationStartNode!)
         }
@@ -1342,7 +1342,7 @@ export const useNodesInteractions = () => {
 
           newChildren = handleNodeLoopChildrenCopy(nodeToPaste.id, newNode.id)
           newChildren.forEach((child) => {
-            newNode.data._children?.push(child.id)
+            newNode.data._children?.push({ nodeId: child.id, nodeType: child.data.type })
           })
           newChildren.push(newLoopStartNode!)
         }
@@ -1427,7 +1427,7 @@ export const useNodesInteractions = () => {
 
     const nodes = getNodes()
     const currentNode = nodes.find(n => n.id === nodeId)!
-    const childrenNodes = nodes.filter(n => currentNode.data._children?.includes(n.id))
+    const childrenNodes = nodes.filter(n => currentNode.data._children?.find((c: any) => c.nodeId === n.id))
     let rightNode: Node
     let bottomNode: Node
 

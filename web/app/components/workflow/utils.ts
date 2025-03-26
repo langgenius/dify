@@ -163,7 +163,7 @@ export function generateNewNode({ data, position, id, zIndex, type, ...rest }: O
   if (data.type === BlockEnum.Iteration) {
     const newIterationStartNode = getIterationStartNode(newNode.id);
     (newNode.data as IterationNodeType).start_node_id = newIterationStartNode.id;
-    (newNode.data as IterationNodeType)._children = [newIterationStartNode.id]
+    (newNode.data as IterationNodeType)._children = [{ nodeId: newIterationStartNode.id, nodeType: BlockEnum.IterationStart }]
     return {
       newNode,
       newIterationStartNode,
@@ -173,7 +173,7 @@ export function generateNewNode({ data, position, id, zIndex, type, ...rest }: O
   if (data.type === BlockEnum.Loop) {
     const newLoopStartNode = getLoopStartNode(newNode.id);
     (newNode.data as LoopNodeType).start_node_id = newLoopStartNode.id;
-    (newNode.data as LoopNodeType)._children = [newLoopStartNode.id]
+    (newNode.data as LoopNodeType)._children = [{ nodeId: newLoopStartNode.id, nodeType: BlockEnum.LoopStart }]
     return {
       newNode,
       newLoopStartNode,
@@ -315,12 +315,12 @@ export const initialNodes = (originNodes: Node[], originEdges: Edge[]) => {
   const iterationOrLoopNodeMap = nodes.reduce((acc, node) => {
     if (node.parentId) {
       if (acc[node.parentId])
-        acc[node.parentId].push(node.id)
+        acc[node.parentId].push({ nodeId: node.id, nodeType: node.data.type })
       else
-        acc[node.parentId] = [node.id]
+        acc[node.parentId] = [{ nodeId: node.id, nodeType: node.data.type }]
     }
     return acc
-  }, {} as Record<string, string[]>)
+  }, {} as Record<string, { nodeId: string; nodeType: BlockEnum }[]>)
 
   return nodes.map((node) => {
     if (!node.type)
