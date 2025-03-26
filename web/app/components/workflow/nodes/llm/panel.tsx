@@ -289,6 +289,14 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
             type='string'
             description={t(`${i18nPrefix}.outputVars.output`)}
           />
+          {['json_object', 'JSON'].includes(model?.completion_params?.response_format)
+          && (
+            <VarItem
+              name="json"
+              type="object"
+              description={t(`${i18nPrefix}.outputVars.json`)}
+            />
+          )}
         </>
       </OutputVars>
       {isShowSingleRun && (

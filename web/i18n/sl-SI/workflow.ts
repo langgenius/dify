@@ -348,6 +348,7 @@ const translation = {
         outputVars: {
           output: 'Generirana vsebina',
           usage: 'Podatki o uporabi modela',
+          json: 'Generirana vsebina JSON',
         },
         singleRun: {
           variable: 'Spremenljivka',

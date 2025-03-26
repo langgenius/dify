@@ -399,6 +399,7 @@ const translation = {
       outputVars: {
         output: 'Generar contenido',
         usage: 'Información de uso del modelo',
+        json: 'Generar contenido JSON',
       },
       singleRun: {
         variable: 'Variable',
