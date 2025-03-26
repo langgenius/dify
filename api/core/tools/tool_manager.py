@@ -62,6 +62,12 @@ class ToolManager:
     _builtin_tools_labels: dict[str, Union[I18nObject, None]] = {}
 
     @classmethod
+    def is_hardcoded_provider(cls, provider_name: str) -> bool:
+        if provider_name in cls._hardcoded_providers:
+            return True
+        return False
+
+    @classmethod
     def get_hardcoded_provider(cls, provider: str) -> BuiltinToolProviderController:
         """
         get the hardcoded provider
