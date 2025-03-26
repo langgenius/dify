@@ -363,10 +363,10 @@ class KnowledgeRetrievalNode(LLMNode):
                                 expected_value = self.graph_runtime_state.variable_pool.convert_template(
                                     expected_value
                                 ).value[0]
-                                if expected_value.value_type == "number":
+                                if expected_value.value_type == "number":  # type: ignore
                                     expected_value = expected_value.value
-                                elif expected_value.value_type == "string":
-                                    expected_value = re.sub(r"[\r\n\t]+", " ", expected_value.text).strip()
+                                elif expected_value.value_type == "string":  # type: ignore
+                                    expected_value = re.sub(r"[\r\n\t]+", " ", expected_value.text).strip()  # type: ignore
                                 else:
                                     raise ValueError("Invalid expected metadata value type")
                             filters = self._process_metadata_filter_func(
