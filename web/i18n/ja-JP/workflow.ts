@@ -312,37 +312,37 @@ const translation = {
         windowSize: 'メモリウィンドウサイズ',
         conversationRoleName: '会話ロール名',
         user: 'ユーザー接頭辞',
-        assistant: 'アシスタント接頭辞'
+        assistant: 'アシスタント接頭辞',
       },
       memories: {
         title: 'メモリ',
         tip: 'チャットの記憶管理',
-        builtIn: '組み込み'
+        builtIn: '組み込み',
       },
       errorHandle: {
         title: '例外処理',
         tip: 'ノード例外発生時の処理ポリシーを設定',
         none: {
           title: '処理なし',
-          desc: '例外発生時に処理を停止'
+          desc: '例外発生時に処理を停止',
         },
         defaultValue: {
           title: 'デフォルト値',
           desc: '例外発生時のデフォルト出力',
           tip: '例外発生時に返される値:',
           inLog: 'ノード例外 - デフォルト値を出力',
-          output: 'デフォルト値出力'
+          output: 'デフォルト値出力',
         },
         failBranch: {
           title: '例外分岐',
           desc: '例外発生時に分岐を実行',
           customize: '失敗分岐ロジックをカスタマイズ',
           customizeTip: '例外発生時、失敗分岐でエラー処理を柔軟に設定可能（エラーログ表示/修復処理/操作スキップ等）',
-          inLog: 'ノード例外 - 失敗分岐を実行。エラー情報を下流に伝播'
+          inLog: 'ノード例外 - 失敗分岐を実行。エラー情報を下流に伝播',
         },
         partialSucceeded: {
-          tip: '{{num}}個のノードで異常発生。ログはトレース画面で確認可能'
-        }
+          tip: '{{num}}個のノードで異常発生。ログはトレース画面で確認可能',
+        },
       },
       retry: {
         retry: '再試行',
@@ -356,8 +356,8 @@ const translation = {
         retryFailedTimes: '{{times}}回再試行失敗',
         times: '回',
         ms: 'ミリ秒',
-        retries: '再試行回数: {{num}}'
-      }
+        retries: '再試行回数: {{num}}',
+      },
     },
     start: {
       required: '必須',
@@ -368,27 +368,27 @@ const translation = {
         memories: {
           des: '会話履歴',
           type: 'メッセージ種別',
-          content: 'メッセージ内容'
+          content: 'メッセージ内容',
         },
-        files: 'ファイル一覧'
+        files: 'ファイル一覧',
       },
-      noVarTip: '入力設定はワークフロー内で利用可能'
+      noVarTip: '入力設定はワークフロー内で利用可能',
     },
     end: {
       outputs: '出力設定',
       output: {
         type: '出力形式',
-        variable: '出力変数'
+        variable: '出力変数',
       },
       type: {
         'none': 'なし',
         'plain-text': 'プレーンテキスト',
-        'structured': '構造化'
-      }
+        'structured': '構造化',
+      },
     },
     answer: {
       answer: '応答',
-      outputVars: '出力変数'
+      outputVars: '出力変数',
     },
     llm: {
       model: 'AIモデル',
@@ -401,23 +401,23 @@ const translation = {
       roleDescription: {
         system: '対話の基本動作を定義',
         user: '指示/質問を入力',
-        assistant: 'ユーザー入力への応答'
+        assistant: 'ユーザー入力への応答',
       },
       vision: 'ビジョン',
       files: 'ファイル',
       resolution: {
         name: '解像度',
         high: '高',
-        low: '低'
+        low: '低',
       },
       outputVars: {
         output: '生成内容',
-        usage: 'モデル使用量'
+        usage: 'モデル使用量',
       },
       singleRun: {
-        variable: '変数'
+        variable: '変数',
       },
-      sysQueryInUser: 'ユーザーメッセージにsys.queryを含めてください'
+      sysQueryInUser: 'ユーザーメッセージにsys.queryを含めてください',
     },
     knowledgeRetrieval: {
       queryVariable: '検索変数',
@@ -428,7 +428,7 @@ const translation = {
         title: 'セグメントタイトル',
         icon: 'セグメントアイコン',
         url: 'セグメントURL',
-        metadata: 'メタデータ'
+        metadata: 'メタデータ',
       },
       metadata: {
         title: 'メタデータフィルタ',
@@ -436,17 +436,17 @@ const translation = {
         options: {
           disabled: {
             title: '無効',
-            subTitle: 'フィルタリング不使用'
+            subTitle: 'フィルタリング不使用',
           },
           automatic: {
             title: '自動生成',
             subTitle: '検索履歴からフィルタ条件を自動生成',
-            desc: 'Query Variable（検索変数）に基づきフィルタ条件を自動生成'
+            desc: 'Query Variable（検索変数）に基づきフィルタ条件を自動生成',
           },
           manual: {
             title: '手動設定',
-            subTitle: 'メタデータの条件を手動で追加'
-          }
+            subTitle: 'メタデータの条件を手動で追加',
+          },
         },
         panel: {
           title: 'メタデータのフィルタ条件',
@@ -455,9 +455,9 @@ const translation = {
           search: 'メタデータ検索',
           placeholder: '値を入力',
           datePlaceholder: '日付選択...',
-          select: '変数選択...'
-        }
-      }
+          select: '変数選択...',
+        },
+      },
     },
     http: {
       inputVars: '入力変数',
@@ -478,7 +478,7 @@ const translation = {
         body: 'レスポンスコンテンツ',
         statusCode: 'レスポンスステータスコード',
         headers: 'レスポンスヘッダ（JSON）',
-        files: 'ファイル一覧'
+        files: 'ファイル一覧',
       },
       authorization: {
         'authorization': '認証',
@@ -500,7 +500,7 @@ const translation = {
         readLabel: '読み取りタイムアウト',
         readPlaceholder: '読み取りタイムアウト（秒）',
         writeLabel: '書き込みタイムアウト',
-        writePlaceholder: '書き込みタイムアウト（秒）'
+        writePlaceholder: '書き込みタイムアウト（秒）',
       },
       curl: {
         title: 'cURLからインポート',

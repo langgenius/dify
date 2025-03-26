@@ -181,7 +181,7 @@ const translation = {
     },
     viewMore: 'もっと見る',
     verifiedTip: 'このプラグインはDifyによって認証されています',
-    partnerTip: 'このプラグインはDifyのパートナーによって認証されています'
+    partnerTip: 'このプラグインはDifyのパートナーによって認証されています',
   },
   task: {
     installError: '{{errorLength}} プラグインのインストールに失敗しました。表示するにはクリックしてください。',
