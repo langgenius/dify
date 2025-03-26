@@ -39,10 +39,10 @@ class FileService:
         source_url: str = "",
     ) -> UploadFile:
         # get file extension
-        extension = os.path.splitext(filename)[1].lstrip('.').lower()
+        extension = os.path.splitext(filename)[1].lstrip(".").lower()
 
         # check if filename contains invalid characters
-        if any(c in filename for c in ['/', '\\', ':', '*', '?', '"', '<', '>', '|']):
+        if any(c in filename for c in ["/", "\\", ":", "*", "?", '"', "<", ">", "|"]):
             raise ValueError("Filename contains invalid characters")
 
         if len(filename) > 200:
