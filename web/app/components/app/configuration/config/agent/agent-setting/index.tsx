@@ -10,7 +10,7 @@ import { CuteRobot } from '@/app/components/base/icons/src/vender/solid/communic
 import { Unblur } from '@/app/components/base/icons/src/vender/solid/education'
 import Slider from '@/app/components/base/slider'
 import type { AgentConfig } from '@/models/debug'
-import { DEFAULT_AGENT_PROMPT } from '@/config'
+import { DEFAULT_AGENT_PROMPT, MAX_ITERATIONS_NUM } from '@/config'
 
 type Props = {
   isChatModel: boolean
@@ -21,7 +21,6 @@ type Props = {
 }
 
 const maxIterationsMin = 1
-const maxIterationsMax = 5
 
 const AgentSetting: FC<Props> = ({
   isChatModel,
@@ -99,7 +98,7 @@ const AgentSetting: FC<Props> = ({
               <Slider
                 className='mr-3 w-[156px]'
                 min={maxIterationsMin}
-                max={maxIterationsMax}
+                max={MAX_ITERATIONS_NUM}
                 value={tempPayload.max_iteration}
                 onChange={(value) => {
                   setTempPayload({
@@ -112,7 +111,7 @@ const AgentSetting: FC<Props> = ({
               <input
                 type="number"
                 min={maxIterationsMin}
-                max={maxIterationsMax} step={1}
+                max={MAX_ITERATIONS_NUM} step={1}
                 className="block h-7 w-11 rounded-lg border-0 bg-components-input-bg-normal px-1.5 pl-1 leading-7 text-text-primary placeholder:text-text-tertiary focus:ring-1 focus:ring-inset focus:ring-primary-600"
                 value={tempPayload.max_iteration}
                 onChange={(e) => {
@@ -120,8 +119,8 @@ const AgentSetting: FC<Props> = ({
                   if (value < maxIterationsMin)
                     value = maxIterationsMin
 
-                  if (value > maxIterationsMax)
-                    value = maxIterationsMax
+                  if (value > MAX_ITERATIONS_NUM)
+                    value = MAX_ITERATIONS_NUM
                   setTempPayload({
                     ...tempPayload,
                     max_iteration: value,
