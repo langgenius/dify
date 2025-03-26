@@ -14,6 +14,7 @@ import type {
   ErrorHandleTypeEnum,
 } from '@/app/components/workflow/nodes/_base/components/error-handle/types'
 import type { WorkflowRetryConfig } from '@/app/components/workflow/nodes/_base/components/retry/types'
+import type { StructuredOutput } from '@/app/components/workflow/nodes/llm/types'
 
 export enum BlockEnum {
   Start = 'start',
@@ -265,13 +266,14 @@ export enum ValueType {
 export type Var = {
   variable: string
   type: VarType
-  children?: Var[] // if type is obj, has the children struct
+  children?: Var[] | StructuredOutput // if type is obj, has the children struct
   isParagraph?: boolean
   isSelect?: boolean
   options?: string[]
   required?: boolean
   des?: string
   isException?: boolean
+  isLoopVariable?: boolean
 }
 
 export type NodeOutPutVar = {

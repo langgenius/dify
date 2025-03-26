@@ -89,6 +89,8 @@ const useConfig = (id: string, rawPayload: AssignerNodeType) => {
   }, [])
 
   const filterAssignedVar = useCallback((varPayload: Var, selector: ValueSelector) => {
+    if (varPayload.isLoopVariable)
+      return true
     return selector.join('.').startsWith('conversation')
   }, [])
 

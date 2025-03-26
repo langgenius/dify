@@ -3,7 +3,7 @@ import { isArray, uniq } from 'lodash-es'
 import type { CodeNodeType } from '../../../code/types'
 import type { EndNodeType } from '../../../end/types'
 import type { AnswerNodeType } from '../../../answer/types'
-import type { LLMNodeType } from '../../../llm/types'
+import { type LLMNodeType, type StructuredOutput, Type } from '../../../llm/types'
 import type { KnowledgeRetrievalNodeType } from '../../../knowledge-retrieval/types'
 import type { IfElseNodeType } from '../../../if-else/types'
 import type { TemplateTransformNodeType } from '../../../template-transform/types'
@@ -21,6 +21,8 @@ import { BlockEnum, InputVarType, VarType } from '@/app/components/workflow/type
 import type { StartNodeType } from '@/app/components/workflow/nodes/start/types'
 import type { ConversationVariable, EnvironmentVariable, Node, NodeOutPutVar, ValueSelector, Var } from '@/app/components/workflow/types'
 import type { VariableAssignerNodeType } from '@/app/components/workflow/nodes/variable-assigner/types'
+import type { Field as StructField } from '@/app/components/workflow/nodes/llm/types'
+
 import {
   HTTP_REQUEST_OUTPUT_STRUCT,
   KNOWLEDGE_RETRIEVAL_OUTPUT_STRUCT,
@@ -55,19 +57,81 @@ const inputVarTypeToVarType = (type: InputVarType): VarType => {
   } as any)[type] || VarType.string
 }
 
+const structTypeToVarType = (type: Type): VarType => {
+  return ({
+    [Type.string]: VarType.string,
+    [Type.number]: VarType.number,
+    [Type.boolean]: VarType.boolean,
+    [Type.object]: VarType.object,
+    [Type.array]: VarType.array,
+  } as any)[type] || VarType.string
+}
+
+export const varTypeToStructType = (type: VarType): Type => {
+  return ({
+    [VarType.string]: Type.string,
+    [VarType.number]: Type.number,
+    [VarType.boolean]: Type.boolean,
+    [VarType.object]: Type.object,
+    [VarType.array]: Type.array,
+  } as any)[type] || Type.string
+}
+
+const findExceptVarInStructuredProperties = (properties: Record<string, StructField>, filterVar: (payload: Var, selector: ValueSelector) => boolean): Record<string, StructField> => {
+  const res = produce(properties, (draft) => {
+    Object.keys(properties).forEach((key) => {
+      const item = properties[key]
+      const isObj = item.type === Type.object
+      if (!isObj && !filterVar({
+        variable: key,
+        type: structTypeToVarType(item.type),
+      }, [key])) {
+        delete properties[key]
+        return
+      }
+      if (item.type === Type.object && item.properties)
+        item.properties = findExceptVarInStructuredProperties(item.properties, filterVar)
+    })
+    return draft
+  })
+  return res
+}
+
+const findExceptVarInStructuredOutput = (structuredOutput: StructuredOutput, filterVar: (payload: Var, selector: ValueSelector) => boolean): StructuredOutput => {
+  const res = produce(structuredOutput, (draft) => {
+    const properties = draft.schema.properties
+    Object.keys(properties).forEach((key) => {
+      const item = properties[key]
+      const isObj = item.type === Type.object
+      if (!isObj && !filterVar({
+        variable: key,
+        type: structTypeToVarType(item.type),
+      }, [key])) {
+        delete properties[key]
+        return
+      }
+      if (item.type === Type.object && item.properties)
+        item.properties = findExceptVarInStructuredProperties(item.properties, filterVar)
+    })
+    return draft
+  })
+  return res
+}
+
 const findExceptVarInObject = (obj: any, filterVar: (payload: Var, selector: ValueSelector) => boolean, value_selector: ValueSelector, isFile?: boolean): Var => {
   const { children } = obj
+  const isStructuredOutput = !!(children as StructuredOutput)?.schema?.properties
+
   const res: Var = {
     variable: obj.variable,
     type: isFile ? VarType.file : VarType.object,
-    children: children.filter((item: Var) => {
+    children: isStructuredOutput ? findExceptVarInStructuredOutput(children, filterVar) : children.filter((item: Var) => {
       const { children } = item
       const currSelector = [...value_selector, item.variable]
       if (!children)
         return filterVar(item, currSelector)
-
       const obj = findExceptVarInObject(item, filterVar, currSelector, false) // File doesn't contains file children
-      return obj.children && obj.children?.length > 0
+      return obj.children && (obj.children as Var[])?.length > 0
     }),
   }
   return res
@@ -139,10 +203,17 @@ const formatItem = (
     }
 
     case BlockEnum.LLM: {
-      res.vars = LLM_OUTPUT_STRUCT
+      res.vars = [...LLM_OUTPUT_STRUCT]
+      if (data.structured_output_enabled && data.structured_output?.schema?.properties && Object.keys(data.structured_output.schema.properties).length > 0) {
+        res.vars.push({
+          variable: 'structured_output',
+          type: VarType.object,
+          children: data.structured_output,
+        })
+      }
+
       break
     }
-
     case BlockEnum.KnowledgeRetrieval: {
       res.vars = KNOWLEDGE_RETRIEVAL_OUTPUT_STRUCT
       break
@@ -293,6 +364,7 @@ const formatItem = (
         return {
           variable: v.label,
           type: v.var_type,
+          isLoopVariable: true,
         }
       }) || []
 
@@ -418,7 +490,7 @@ const formatItem = (
       return false
 
     const obj = findExceptVarInObject(isFile ? { ...v, children } : v, filterVar, selector, isFile)
-    return obj?.children && obj?.children.length > 0
+    return obj?.children && ((obj?.children as Var[]).length > 0 || Object.keys((obj?.children as StructuredOutput)?.schema?.properties || {}).length > 0)
   }).map((v) => {
     const isFile = v.type === VarType.file
 
@@ -470,7 +542,7 @@ export const toNodeOutputVars = (
     },
   }
   const res = [
-    ...nodes.filter(node => SUPPORT_OUTPUT_VARS_NODE.includes(node.data.type)),
+    ...nodes.filter(node => SUPPORT_OUTPUT_VARS_NODE.includes(node?.data?.type)),
     ...(environmentVariables.length > 0 ? [ENV_NODE] : []),
     ...((isChatMode && conversationVariables.length > 0) ? [CHAT_VAR_NODE] : []),
   ].map((node) => {
@@ -532,17 +604,67 @@ const getIterationItemType = ({
   }
 }
 
+const getLoopItemType = ({
+  valueSelector,
+  beforeNodesOutputVars,
+}: {
+  valueSelector: ValueSelector
+  beforeNodesOutputVars: NodeOutPutVar[]
+}): VarType => {
+  const outputVarNodeId = valueSelector[0]
+  const isSystem = isSystemVar(valueSelector)
+
+  const targetVar = isSystem ? beforeNodesOutputVars.find(v => v.isStartNode) : beforeNodesOutputVars.find(v => v.nodeId === outputVarNodeId)
+  if (!targetVar)
+    return VarType.string
+
+  let arrayType: VarType = VarType.string
+
+  let curr: any = targetVar.vars
+  if (isSystem) {
+    arrayType = curr.find((v: any) => v.variable === (valueSelector).join('.'))?.type
+  }
+  else {
+    (valueSelector).slice(1).forEach((key, i) => {
+      const isLast = i === valueSelector.length - 2
+      curr = curr?.find((v: any) => v.variable === key)
+      if (isLast) {
+        arrayType = curr?.type
+      }
+      else {
+        if (curr?.type === VarType.object || curr?.type === VarType.file)
+          curr = curr.children
+      }
+    })
+  }
+
+  switch (arrayType as VarType) {
+    case VarType.arrayString:
+      return VarType.string
+    case VarType.arrayNumber:
+      return VarType.number
+    case VarType.arrayObject:
+      return VarType.object
+    case VarType.array:
+      return VarType.any
+    case VarType.arrayFile:
+      return VarType.file
+    default:
+      return VarType.string
+  }
+}
+
 export const getVarType = ({
   parentNode,
   valueSelector,
   isIterationItem,
+  isLoopItem,
   availableNodes,
   isChatMode,
   isConstant,
   environmentVariables = [],
   conversationVariables = [],
-}:
-{
+}: {
   valueSelector: ValueSelector
   parentNode?: Node | null
   isIterationItem?: boolean
@@ -583,24 +705,64 @@ export const getVarType = ({
       return VarType.number
   }
 
+  const isLoopInnerVar = parentNode?.data.type === BlockEnum.Loop
+  if (isLoopItem) {
+    return getLoopItemType({
+      valueSelector,
+      beforeNodesOutputVars,
+    })
+  }
+  if (isLoopInnerVar) {
+    if (valueSelector[1] === 'item') {
+      const itemType = getLoopItemType({
+        valueSelector: (parentNode?.data as any).iterator_selector || [],
+        beforeNodesOutputVars,
+      })
+      return itemType
+    }
+    if (valueSelector[1] === 'index')
+      return VarType.number
+  }
+
   const isSystem = isSystemVar(valueSelector)
   const isEnv = isENV(valueSelector)
   const isChatVar = isConversationVar(valueSelector)
   const startNode = availableNodes.find((node: any) => {
-    return node.data.type === BlockEnum.Start
+    return node?.data.type === BlockEnum.Start
   })
 
   const targetVarNodeId = isSystem ? startNode?.id : valueSelector[0]
   const targetVar = beforeNodesOutputVars.find(v => v.nodeId === targetVarNodeId)
+
   if (!targetVar)
     return VarType.string
 
   let type: VarType = VarType.string
   let curr: any = targetVar.vars
+
   if (isSystem || isEnv || isChatVar) {
     return curr.find((v: any) => v.variable === (valueSelector as ValueSelector).join('.'))?.type
   }
   else {
+    const targetVar = curr.find((v: any) => v.variable === valueSelector[1])
+    if (!targetVar)
+      return VarType.string
+
+    const isStructuredOutputVar = !!targetVar.children?.schema?.properties
+    if (isStructuredOutputVar) {
+      let currProperties = targetVar.children.schema;
+      (valueSelector as ValueSelector).slice(2).forEach((key, i) => {
+        const isLast = i === valueSelector.length - 3
+        if (!currProperties)
+          return
+
+        currProperties = currProperties.properties[key]
+        if (isLast)
+          type = structTypeToVarType(currProperties?.type)
+      })
+      return type
+    }
+
     (valueSelector as ValueSelector).slice(1).forEach((key, i) => {
       const isLast = i === valueSelector.length - 2
       if (Array.isArray(curr))
@@ -684,26 +846,6 @@ export const toNodeAvailableVars = ({
       ],
     }
     beforeNodesOutputVars.unshift(iterationVar)
-  }
-  const isInLoop = parentNode?.data.type === BlockEnum.Loop
-  if (isInLoop) {
-    const loopNodeData = parentNode?.data as LoopNodeType
-    const loopVariables = loopNodeData.loop_variables || []
-
-    if (loopVariables.length) {
-      const loopVar = {
-        nodeId: parentNode?.id,
-        title: parentNode.data.title,
-        vars: loopNodeData.loop_variables?.map((v) => {
-          return {
-            variable: v.label,
-            type: v.var_type,
-          }
-        }) || [],
-        isLoop: true,
-      }
-      beforeNodesOutputVars.unshift(loopVar)
-    }
   }
   return beforeNodesOutputVars
 }
@@ -1143,15 +1285,25 @@ export const updateNodeVars = (oldNode: Node, oldVarSelector: ValueSelector, new
   })
   return newNode
 }
+
 const varToValueSelectorList = (v: Var, parentValueSelector: ValueSelector, res: ValueSelector[]) => {
   if (!v.variable)
     return
 
   res.push([...parentValueSelector, v.variable])
+  const isStructuredOutput = !!(v.children as StructuredOutput)?.schema?.properties
 
-  if (v.children && v.children.length > 0) {
-    v.children.forEach((child) => {
+  if ((v.children as Var[])?.length > 0) {
+    (v.children as Var[]).forEach((child) => {
       varToValueSelectorList(child, [...parentValueSelector, v.variable], res)
+    })
+  }
+  if (isStructuredOutput) {
+    Object.keys((v.children as StructuredOutput)?.schema?.properties || {}).forEach((key) => {
+      varToValueSelectorList({
+        variable: key,
+        type: structTypeToVarType((v.children as StructuredOutput)?.schema?.properties[key].type),
+      }, [...parentValueSelector, v.variable], res)
     })
   }
 }
@@ -1187,7 +1339,16 @@ export const getNodeOutputVars = (node: Node, isChatMode: boolean): ValueSelecto
     }
 
     case BlockEnum.LLM: {
-      varsToValueSelectorList(LLM_OUTPUT_STRUCT, [id], res)
+      const vars = [...LLM_OUTPUT_STRUCT]
+      const llmNodeData = data as LLMNodeType
+      if (llmNodeData.structured_output_enabled && llmNodeData.structured_output?.schema?.properties && Object.keys(llmNodeData.structured_output.schema.properties).length > 0) {
+        vars.push({
+          variable: 'structured_output',
+          type: VarType.object,
+          children: llmNodeData.structured_output,
+        })
+      }
+      varsToValueSelectorList(vars, [id], res)
       break
     }
 
