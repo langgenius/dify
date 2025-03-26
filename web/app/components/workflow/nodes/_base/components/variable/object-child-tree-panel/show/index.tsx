@@ -21,12 +21,15 @@ const ShowPanel: FC<Props> = ({
     },
   }
   return (
-    <div>
-      <Field
-        name={'response'}
-        payload={schema.schema}
-        required
-      />
+    <div className='relative left-[-7px]'>
+      {Object.keys(schema.schema.properties!).map(name => (
+        <Field
+          key={name}
+          name={name}
+          payload={schema.schema.properties![name]}
+          required={!!schema.schema.required?.includes(name)}
+        />
+      ))}
     </div>
   )
 }
