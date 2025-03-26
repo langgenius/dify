@@ -12,7 +12,7 @@ export const useEducationVerify = () => {
   return useMutation({
     mutationKey: [NAME_SPACE, 'education-verify'],
     mutationFn: () => {
-      return get<{ token: string }>('/account/education/verify')
+      return get<{ token: string }>('/account/education/verify', {}, { silent: true })
     },
   })
 }
