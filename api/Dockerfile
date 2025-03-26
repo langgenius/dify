@@ -61,7 +61,6 @@ RUN \
         # install libmagic to support the use of python-magic guess MIMETYPE
         libmagic1 \
     && apt-get autoremove -y \
-    && apt-get install -y binutils \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy Python environment and packages
@@ -71,8 +70,6 @@ ENV PATH="${VIRTUAL_ENV}/bin:${PATH}"
 
 # Download nltk data
 RUN python -c "import nltk; nltk.download('punkt'); nltk.download('averaged_perceptron_tagger')"
-
-RUN python -c "import pypandoc; pypandoc.download_pandoc()"
 
 ENV TIKTOKEN_CACHE_DIR=/app/api/.tiktoken_cache
 
