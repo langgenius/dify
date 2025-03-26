@@ -19,7 +19,6 @@ export const useTextAreaHeight = () => {
       const { height: textareaHeight } = textareaElement.getBoundingClientRect()
       const { width: textValueWidth } = textValueRef.current.getBoundingClientRect()
       const { width: holdSpaceWidth } = holdSpaceRef.current.getBoundingClientRect()
-      console.log(textareaHeight, textValueWidth, holdSpaceWidth, wrapperWidth)
       if (textareaHeight > 32) {
         setIsMultipleLine(true)
       }
