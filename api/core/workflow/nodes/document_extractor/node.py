@@ -9,6 +9,7 @@ from typing import Any, cast
 
 import docx
 import pandas as pd
+import pypandoc  # type: ignore
 import pypdfium2  # type: ignore
 import yaml  # type: ignore
 from docx.document import Document
@@ -369,7 +370,7 @@ def _extract_text_from_ppt(file_content: bytes) -> str:
     from unstructured.partition.ppt import partition_ppt
 
     try:
-        if dify_config.UNSTRUCTURED_API_URL and dify_config.UNSTRUCTURED_API_KEY:
+        if dify_config.UNSTRUCTURED_API_URL:
             with tempfile.NamedTemporaryFile(suffix=".ppt", delete=False) as temp_file:
                 temp_file.write(file_content)
                 temp_file.flush()
@@ -378,7 +379,7 @@ def _extract_text_from_ppt(file_content: bytes) -> str:
                         file=file,
                         metadata_filename=temp_file.name,
                         api_url=dify_config.UNSTRUCTURED_API_URL,
-                        api_key=dify_config.UNSTRUCTURED_API_KEY,
+                        api_key=dify_config.UNSTRUCTURED_API_KEY,  # type: ignore
                     )
                 os.unlink(temp_file.name)
         else:
@@ -395,7 +396,7 @@ def _extract_text_from_pptx(file_content: bytes) -> str:
     from unstructured.partition.pptx import partition_pptx
 
     try:
-        if dify_config.UNSTRUCTURED_API_URL and dify_config.UNSTRUCTURED_API_KEY:
+        if dify_config.UNSTRUCTURED_API_URL:
             with tempfile.NamedTemporaryFile(suffix=".pptx", delete=False) as temp_file:
                 temp_file.write(file_content)
                 temp_file.flush()
@@ -404,7 +405,7 @@ def _extract_text_from_pptx(file_content: bytes) -> str:
                         file=file,
                         metadata_filename=temp_file.name,
                         api_url=dify_config.UNSTRUCTURED_API_URL,
-                        api_key=dify_config.UNSTRUCTURED_API_KEY,
+                        api_key=dify_config.UNSTRUCTURED_API_KEY,  # type: ignore
                     )
                 os.unlink(temp_file.name)
         else:
@@ -416,11 +417,26 @@ def _extract_text_from_pptx(file_content: bytes) -> str:
 
 
 def _extract_text_from_epub(file_content: bytes) -> str:
+    from unstructured.partition.api import partition_via_api
     from unstructured.partition.epub import partition_epub
 
     try:
-        with io.BytesIO(file_content) as file:
-            elements = partition_epub(file=file)
+        if dify_config.UNSTRUCTURED_API_URL:
+            with tempfile.NamedTemporaryFile(suffix=".epub", delete=False) as temp_file:
+                temp_file.write(file_content)
+                temp_file.flush()
+                with open(temp_file.name, "rb") as file:
+                    elements = partition_via_api(
+                        file=file,
+                        metadata_filename=temp_file.name,
+                        api_url=dify_config.UNSTRUCTURED_API_URL,
+                        api_key=dify_config.UNSTRUCTURED_API_KEY,  # type: ignore
+                    )
+                os.unlink(temp_file.name)
+        else:
+            pypandoc.download_pandoc()
+            with io.BytesIO(file_content) as file:
+                elements = partition_epub(file=file)
         return "\n".join([str(element) for element in elements])
     except Exception as e:
         raise TextExtractionError(f"Failed to extract text from EPUB: {str(e)}") from e
