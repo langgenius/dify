@@ -78,6 +78,7 @@ const format = (list: NodeTracing[], t: any, isPrint?: boolean): NodeTracing[] =
   // list to tree by parent_parallel_start_node_id and branch by parallel_start_node_id. Each parallel may has more than one branch.
   result.forEach((node) => {
     const parallel_id = node.parallel_id ?? node.execution_metadata?.parallel_id ?? null
+    const parallel_start_node_id = node.parallel_start_node_id ?? node.execution_metadata?.parallel_start_node_id ?? null
     const parent_parallel_id = node.parent_parallel_id ?? node.execution_metadata?.parent_parallel_id ?? null
     const branchStartNodeId = node.parallel_start_node_id ?? node.execution_metadata?.parallel_start_node_id ?? null
     const parentParallelBranchStartNodeId = node.parent_parallel_start_node_id ?? node.execution_metadata?.parent_parallel_start_node_id ?? null
@@ -85,7 +86,7 @@ const format = (list: NodeTracing[], t: any, isPrint?: boolean): NodeTracing[] =
     if (isNotInParallel)
       return
 
-    const isParallelStartNode = !parallelFirstNodeMap[parallel_id]
+    const isParallelStartNode = parallel_start_node_id === node.node_id // in the same parallel has more than one start node
     if (isParallelStartNode) {
       const selfNode = { ...node, parallelDetail: undefined }
       node.parallelDetail = {
