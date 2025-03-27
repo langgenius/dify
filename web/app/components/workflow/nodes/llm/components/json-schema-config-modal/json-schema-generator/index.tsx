@@ -97,7 +97,7 @@ export const JsonSchemaGenerator: FC<JsonSchemaGeneratorProps> = ({
     )
   }, [])
 
-  const { mutateAsync: generateStructuredOutputRules } = useGenerateStructuredOutputRules()
+  const { mutateAsync: generateStructuredOutputRules, isPending: isGenerating } = useGenerateStructuredOutputRules()
 
   const generateSchema = useCallback(async () => {
     const { output, error } = await generateStructuredOutputRules({ instruction, model_config: model! })
@@ -159,6 +159,7 @@ export const JsonSchemaGenerator: FC<JsonSchemaGeneratorProps> = ({
           <PromptEditor
             instruction={instruction}
             model={model}
+            isGenerating={isGenerating}
             onInstructionChange={setInstruction}
             onCompletionParamsChange={handleCompletionParamsChange}
             onGenerate={handleGenerate}
@@ -169,6 +170,7 @@ export const JsonSchemaGenerator: FC<JsonSchemaGeneratorProps> = ({
         {view === GeneratorView.result && (
           <GeneratedResult
             schema={schema!}
+            isGenerating={isGenerating}
             onBack={goBackToPromptEditor}
             onRegenerate={handleRegenerate}
             onApply={handleApply}

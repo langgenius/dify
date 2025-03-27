@@ -9,6 +9,7 @@ import { getValidationErrorMessage, validateSchemaAgainstDraft7 } from '../../..
 
 type GeneratedResultProps = {
   schema: SchemaRoot
+  isGenerating: boolean
   onBack: () => void
   onRegenerate: () => void
   onClose: () => void
@@ -17,6 +18,7 @@ type GeneratedResultProps = {
 
 const GeneratedResult: FC<GeneratedResultProps> = ({
   schema,
+  isGenerating,
   onBack,
   onRegenerate,
   onClose,
@@ -87,7 +89,13 @@ const GeneratedResult: FC<GeneratedResultProps> = ({
           <span>{t('workflow.nodes.llm.jsonSchema.back')}</span>
         </Button>
         <div className='flex items-center gap-x-2'>
-          <Button variant='secondary' className='flex items-center gap-x-0.5' onClick={onRegenerate}>
+          <Button
+            variant='secondary'
+            className='flex items-center gap-x-0.5'
+            onClick={onRegenerate}
+            disabled={isGenerating}
+            loading={isGenerating}
+          >
             <RiSparklingLine className='h-4 w-4' />
             <span>{t('workflow.nodes.llm.jsonSchema.regenerate')}</span>
           </Button>
