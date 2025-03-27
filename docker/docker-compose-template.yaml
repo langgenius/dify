@@ -1,4 +1,7 @@
 x-shared-env: &shared-api-worker-env
+
+name: dify
+
 services:
   # API service
   api:
