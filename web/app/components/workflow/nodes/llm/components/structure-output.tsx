@@ -49,7 +49,7 @@ const StructureOutput: FC<Props> = ({
           <div className='system-xs-medium text-components-button-secondary-text'>{t('app.structOutput.configure')}</div>
         </Button>
       </div>
-      {value?.schema ? (
+      {(value?.schema && value.schema.properties && Object.keys(value.schema.properties).length > 0) ? (
         <ShowPanel
           payload={value}
         />) : (

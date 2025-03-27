@@ -432,7 +432,7 @@ const translation = {
         regenerate: 'Regenerate',
         apply: 'Apply',
         doc: 'Learn more about structured output',
-        resetDefaults: 'Reset Defaults',
+        resetDefaults: 'Reset',
         required: 'required',
         addField: 'Add Field',
         addChildField: 'Add Child Field',
