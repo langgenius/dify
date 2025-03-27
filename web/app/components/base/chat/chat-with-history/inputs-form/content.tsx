@@ -17,20 +17,24 @@ const InputsFormContent = ({ showTip }: Props) => {
     appParams,
     inputsForms,
     currentConversationId,
-    currentConversationItem,
+    currentConversationInputs,
+    setCurrentConversationInputs,
     newConversationInputs,
     newConversationInputsRef,
     handleNewConversationInputsChange,
   } = useChatWithHistoryContext()
-  const inputsFormValue = currentConversationId ? currentConversationItem?.inputs : newConversationInputs
-  const readonly = !!currentConversationId
+  const inputsFormValue = currentConversationId ? currentConversationInputs : newConversationInputs
 
   const handleFormChange = useCallback((variable: string, value: any) => {
+    setCurrentConversationInputs({
+      ...currentConversationInputs,
+      [variable]: value,
+    })
     handleNewConversationInputsChange({
       ...newConversationInputsRef.current,
       [variable]: value,
     })
-  }, [newConversationInputsRef, handleNewConversationInputsChange])
+  }, [newConversationInputsRef, handleNewConversationInputsChange, currentConversationInputs, setCurrentConversationInputs])
 
   return (
     <div className='space-y-4'>
@@ -47,8 +51,6 @@ const InputsFormContent = ({ showTip }: Props) => {
               value={inputsFormValue?.[form.variable] || ''}
               onChange={e => handleFormChange(form.variable, e.target.value)}
               placeholder={form.label}
-              readOnly={readonly}
-              disabled={readonly}
             />
           )}
           {form.type === InputVarType.number && (
@@ -57,8 +59,6 @@ const InputsFormContent = ({ showTip }: Props) => {
               value={inputsFormValue?.[form.variable] || ''}
               onChange={e => handleFormChange(form.variable, e.target.value)}
               placeholder={form.label}
-              readOnly={readonly}
-              disabled={readonly}
             />
           )}
           {form.type === InputVarType.paragraph && (
@@ -66,8 +66,6 @@ const InputsFormContent = ({ showTip }: Props) => {
               value={inputsFormValue?.[form.variable] || ''}
               onChange={e => handleFormChange(form.variable, e.target.value)}
               placeholder={form.label}
-              readOnly={readonly}
-              disabled={readonly}
             />
           )}
           {form.type === InputVarType.select && (
@@ -77,7 +75,6 @@ const InputsFormContent = ({ showTip }: Props) => {
               items={form.options.map((option: string) => ({ value: option, name: option }))}
               onSelect={item => handleFormChange(form.variable, item.value as string)}
               placeholder={form.label}
-              readonly={readonly}
             />
           )}
           {form.type === InputVarType.singleFile && (
