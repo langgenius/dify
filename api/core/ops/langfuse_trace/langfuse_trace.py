@@ -29,7 +29,7 @@ from core.ops.langfuse_trace.entities.langfuse_trace_entity import (
 )
 from core.ops.utils import filter_none_values
 from extensions.ext_database import db
-from models.model import EndUser
+from models.model import EndUser, Message
 from models.workflow import WorkflowNodeExecution
 
 logger = logging.getLogger(__name__)
@@ -213,9 +213,28 @@ class LangFuseDataTrace(BaseTraceInstance):
 
             if process_data and process_data.get("model_mode") == "chat":
                 total_token = metadata.get("total_tokens", 0)
+                
+                # through workflow_run_id get message data
+                message_data = db.session.query(
+                    Message.answer_tokens, # input
+                    Message.message_tokens # output
+                    ).filter(Message.workflow_run_id == trace_info.workflow_run_id).first()
+                
+                if message_data:
+                    # chatflow data
+                    input_tokens = message_data.message_tokens
+                    output_tokens = message_data.answer_tokens
+                else:
+                    # workflow data
+                    input_tokens = json.loads(node_execution.outputs).get("usage", {}).get("prompt_tokens", 0)
+                    output_tokens = json.loads(node_execution.outputs).get("usage", {}).get("completion_tokens", 0)
+
                 # add generation
                 generation_usage = GenerationUsage(
                     total=total_token,
+                    input=input_tokens,
+                    output=output_tokens,
+                    unit=UnitEnum.TOKENS,
                 )
 
                 node_generation_data = LangfuseGeneration(
