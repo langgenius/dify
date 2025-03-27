@@ -1,6 +1,7 @@
 import { ArrayType, Type } from './types'
 import type { ArrayItems, Field, LLMNodeType } from './types'
-import Ajv, { type ErrorObject } from 'ajv'
+import type { ErrorObject } from 'ajv'
+import { validateDraft07 } from '@/public/validate-esm.mjs'
 import produce from 'immer'
 
 export const checkNodeValid = (payload: LLMNodeType) => {
@@ -82,11 +83,6 @@ export const findPropertyWithPath = (target: any, path: string[]) => {
   return current
 }
 
-const ajv = new Ajv({
-  allErrors: true,
-  verbose: true,
-})
-
 export const validateSchemaAgainstDraft7 = (schemaToValidate: any) => {
   const schema = produce(schemaToValidate, (draft: any) => {
   // Make sure the schema has the $schema property for draft-07
@@ -94,9 +90,12 @@ export const validateSchemaAgainstDraft7 = (schemaToValidate: any) => {
       draft.$schema = 'http://json-schema.org/draft-07/schema#'
   })
 
-  const valid = ajv.validateSchema(schema)
+  const valid = validateDraft07(schema)
 
-  return valid ? [] : ajv.errors || []
+  // Access errors from the validation result
+  const errors = valid ? [] : (validateDraft07 as any).errors || []
+
+  return errors
 }
 
 export const getValidationErrorMessage = (errors: ErrorObject[]) => {
