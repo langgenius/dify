@@ -32,7 +32,7 @@ const Field: FC<Props> = ({
     <div>
       <div className={cn('flex pr-2')}>
         <TreeIndentLine depth={depth} />
-        <div className='grow'>
+        <div className='w-0 grow'>
           <div className='relative flex select-none'>
             {hasChildren && (
               <RiArrowDropDownLine

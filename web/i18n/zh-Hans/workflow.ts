@@ -433,7 +433,7 @@ const translation = {
         regenerate: '重新生成',
         apply: '应用',
         doc: '了解有关结构化输出的更多信息',
-        resetDefaults: '恢复默认值',
+        resetDefaults: '清空配置',
         required: '必填',
         addField: '添加字段',
         addChildField: '添加子字段',
