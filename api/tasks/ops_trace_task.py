@@ -52,6 +52,6 @@ def process_trace_tasks(file_info):
         )
         failed_key = f"{OPS_TRACE_FAILED_KEY}_{app_id}"
         redis_client.incr(failed_key)
-        logging.exception(f"Processing trace tasks failed, app_id: {app_id}")
+        logging.info(f"Processing trace tasks failed, app_id: {app_id}")
     finally:
         storage.delete(file_path)
