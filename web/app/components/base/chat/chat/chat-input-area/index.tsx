@@ -80,6 +80,7 @@ const ChatInputArea = ({
   const { checkInputsForm } = useCheckInputsForms()
   const historyRef = useRef([''])
   const [currentIndex, setCurrentIndex] = useState(-1)
+  const isComposingRef = useRef(false)
   const handleSend = () => {
     if (isResponding) {
       notify({ type: 'info', message: t('appDebug.errorMessage.waitForResponse') })
@@ -103,8 +104,21 @@ const ChatInputArea = ({
       }
     }
   }
+  const handleCompositionStart = () => {
+    // e: React.CompositionEvent<HTMLTextAreaElement>
+    isComposingRef.current = true
+  }
+  const handleCompositionEnd = () => {
+    // safari or some browsers will trigger compositionend before keydown.
+    // delay 50ms for safari.
+    setTimeout(() => {
+      isComposingRef.current = false
+    }, 50)
+  }
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
+      // if isComposing, exit
+      if (isComposingRef.current) return
       e.preventDefault()
       setQuery(query.replace(/\n$/, ''))
       historyRef.current.push(query)
@@ -188,6 +202,8 @@ const ChatInputArea = ({
                   setTimeout(handleTextareaResize, 0)
                 }}
                 onKeyDown={handleKeyDown}
+                onCompositionStart={handleCompositionStart}
+                onCompositionEnd={handleCompositionEnd}
                 onPaste={handleClipboardPasteFile}
                 onDragEnter={handleDragFileEnter}
                 onDragLeave={handleDragFileLeave}
