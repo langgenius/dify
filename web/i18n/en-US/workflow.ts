@@ -426,6 +426,7 @@ const translation = {
         import: 'Import from JSON',
         generateJsonSchema: 'Generate JSON Schema',
         generationTip: 'You can use natural language to quickly create a JSON Schema.',
+        generating: 'Generating JSON Schema...',
         generatedResult: 'Generated Result',
         resultTip: 'Here is the generated result. If you\'re not satisfied, you can go back and modify your prompt.',
         back: 'Back',

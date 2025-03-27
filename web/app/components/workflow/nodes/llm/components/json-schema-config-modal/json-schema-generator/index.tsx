@@ -112,10 +112,10 @@ export const JsonSchemaGenerator: FC<JsonSchemaGeneratorProps> = ({
   }, [instruction, model, generateStructuredOutputRules])
 
   const handleGenerate = useCallback(async () => {
+    setView(GeneratorView.result)
     const output = await generateSchema()
     if (output === undefined) return
     setSchema(JSON.parse(output))
-    setView(GeneratorView.result)
   }, [generateSchema])
 
   const goBackToPromptEditor = () => {
@@ -159,7 +159,6 @@ export const JsonSchemaGenerator: FC<JsonSchemaGeneratorProps> = ({
           <PromptEditor
             instruction={instruction}
             model={model}
-            isGenerating={isGenerating}
             onInstructionChange={setInstruction}
             onCompletionParamsChange={handleCompletionParamsChange}
             onGenerate={handleGenerate}

@@ -6,6 +6,7 @@ import Button from '@/app/components/base/button'
 import CodeEditor from '../code-editor'
 import ErrorMessage from '../error-message'
 import { getValidationErrorMessage, validateSchemaAgainstDraft7 } from '../../../utils'
+import Loading from '@/app/components/base/loading'
 
 type GeneratedResultProps = {
   schema: SchemaRoot
@@ -58,52 +59,62 @@ const GeneratedResult: FC<GeneratedResultProps> = ({
 
   return (
     <div className='flex w-[480px] flex-col rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-2xl shadow-shadow-shadow-9'>
-      <div className='absolute right-2.5 top-2.5 flex h-8 w-8 items-center justify-center' onClick={onClose}>
-        <RiCloseLine className='h-4 w-4 text-text-tertiary' />
-      </div>
-      {/* Title */}
-      <div className='flex flex-col gap-y-[0.5px] px-3 pb-1 pt-3.5'>
-        <div className='system-xl-semibold flex pl-1 pr-8 text-text-primary'>
-          {t('workflow.nodes.llm.jsonSchema.generatedResult')}
-        </div>
-        <div className='system-xs-regular flex px-1 text-text-tertiary'>
-          {t('workflow.nodes.llm.jsonSchema.resultTip')}
-        </div>
-      </div>
-      {/* Content */}
-      <div className='px-4 py-2'>
-        <CodeEditor
-          className='rounded-lg'
-          editorWrapperClassName='h-[424px]'
-          value={jsonSchema}
-          readOnly
-          showFormatButton={false}
-        />
-        {parseError && <ErrorMessage message={parseError.message} />}
-        {validationError && <ErrorMessage message={validationError} />}
-      </div>
-      {/* Footer */}
-      <div className='flex items-center justify-between p-4 pt-2'>
-        <Button variant='secondary' className='flex items-center gap-x-0.5' onClick={onBack}>
-          <RiArrowLeftLine className='h-4 w-4' />
-          <span>{t('workflow.nodes.llm.jsonSchema.back')}</span>
-        </Button>
-        <div className='flex items-center gap-x-2'>
-          <Button
-            variant='secondary'
-            className='flex items-center gap-x-0.5'
-            onClick={onRegenerate}
-            disabled={isGenerating}
-            loading={isGenerating}
-          >
-            <RiSparklingLine className='h-4 w-4' />
-            <span>{t('workflow.nodes.llm.jsonSchema.regenerate')}</span>
-          </Button>
-          <Button variant='primary' onClick={handleApply}>
-            {t('workflow.nodes.llm.jsonSchema.apply')}
-          </Button>
-        </div>
-      </div>
+      {
+        isGenerating ? (
+          <div className='flex h-[600px] flex-col items-center justify-center gap-y-3'>
+            <Loading type='area' />
+            <div className='system-xs-regular text-text-tertiary'>{t('workflow.nodes.llm.jsonSchema.generating')}</div>
+          </div>
+        ) : (
+          <>
+            <div className='absolute right-2.5 top-2.5 flex h-8 w-8 items-center justify-center' onClick={onClose}>
+              <RiCloseLine className='h-4 w-4 text-text-tertiary' />
+            </div>
+            {/* Title */}
+            <div className='flex flex-col gap-y-[0.5px] px-3 pb-1 pt-3.5'>
+              <div className='system-xl-semibold flex pl-1 pr-8 text-text-primary'>
+                {t('workflow.nodes.llm.jsonSchema.generatedResult')}
+              </div>
+              <div className='system-xs-regular flex px-1 text-text-tertiary'>
+                {t('workflow.nodes.llm.jsonSchema.resultTip')}
+              </div>
+            </div>
+            {/* Content */}
+            <div className='px-4 py-2'>
+              <CodeEditor
+                className='rounded-lg'
+                editorWrapperClassName='h-[424px]'
+                value={jsonSchema}
+                readOnly
+                showFormatButton={false}
+              />
+              {parseError && <ErrorMessage message={parseError.message} />}
+              {validationError && <ErrorMessage message={validationError} />}
+            </div>
+            {/* Footer */}
+            <div className='flex items-center justify-between p-4 pt-2'>
+              <Button variant='secondary' className='flex items-center gap-x-0.5' onClick={onBack}>
+                <RiArrowLeftLine className='h-4 w-4' />
+                <span>{t('workflow.nodes.llm.jsonSchema.back')}</span>
+              </Button>
+              <div className='flex items-center gap-x-2'>
+                <Button
+                  variant='secondary'
+                  className='flex items-center gap-x-0.5'
+                  onClick={onRegenerate}
+                >
+                  <RiSparklingLine className='h-4 w-4' />
+                  <span>{t('workflow.nodes.llm.jsonSchema.regenerate')}</span>
+                </Button>
+                <Button variant='primary' onClick={handleApply}>
+                  {t('workflow.nodes.llm.jsonSchema.apply')}
+                </Button>
+              </div>
+            </div>
+
+          </>
+        )
+      }
     </div>
   )
 }

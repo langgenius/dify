@@ -19,7 +19,6 @@ export type ModelInfo = {
 type PromptEditorProps = {
   instruction: string
   model: Model
-  isGenerating: boolean
   onInstructionChange: (instruction: string) => void
   onCompletionParamsChange: (newParams: FormValue) => void
   onModelChange: (model: ModelInfo) => void
@@ -30,7 +29,6 @@ type PromptEditorProps = {
 const PromptEditor: FC<PromptEditorProps> = ({
   instruction,
   model,
-  isGenerating,
   onInstructionChange,
   onCompletionParamsChange,
   onClose,
@@ -98,8 +96,6 @@ const PromptEditor: FC<PromptEditorProps> = ({
           variant='primary'
           className='flex items-center gap-x-0.5'
           onClick={onGenerate}
-          disabled={isGenerating}
-          loading={isGenerating}
         >
           <RiSparklingFill className='h-4 w-4' />
           <span>{t('workflow.nodes.llm.jsonSchema.generate')}</span>

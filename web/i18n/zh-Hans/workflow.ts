@@ -427,6 +427,7 @@ const translation = {
         import: '从 JSON 导入',
         generateJsonSchema: '生成 JSON Schema',
         generationTip: '可以使用自然语言快速创建 JSON Schema。',
+        generating: '正在为您生成 JSON Schema...',
         generatedResult: '生成结果',
         resultTip: '以下是生成的结果。如果你对这个结果不满意，可以返回并修改你的提示词。',
         back: '返回',
