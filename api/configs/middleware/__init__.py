@@ -30,7 +30,6 @@ from .vdb.opengauss_config import OpenGaussConfig
 from .vdb.opensearch_config import OpenSearchConfig
 from .vdb.oracle_config import OracleConfig
 from .vdb.pgvector_config import PGVectorConfig
-from .vdb.vastbase_vector_config import VastbaseVectorConfig
 from .vdb.pgvectors_config import PGVectoRSConfig
 from .vdb.qdrant_config import QdrantConfig
 from .vdb.relyt_config import RelytConfig
@@ -38,6 +37,7 @@ from .vdb.tencent_vector_config import TencentVectorDBConfig
 from .vdb.tidb_on_qdrant_config import TidbOnQdrantConfig
 from .vdb.tidb_vector_config import TiDBVectorConfig
 from .vdb.upstash_config import UpstashConfig
+from .vdb.vastbase_vector_config import VastbaseVectorConfig
 from .vdb.vikingdb_config import VikingDBConfig
 from .vdb.weaviate_config import WeaviateConfig
 
