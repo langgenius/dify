@@ -105,3 +105,23 @@ export const getValidationErrorMessage = (errors: ErrorObject[]) => {
   }).join('; ')
   return message
 }
+
+export const convertBooleanToString = (schema: any) => {
+  if (schema.type === Type.boolean)
+    schema.type = Type.string
+  if (schema.type === Type.array && schema.items && schema.items.type === Type.boolean)
+    schema.items.type = Type.string
+  if (schema.type === Type.object) {
+    schema.properties = Object.entries(schema.properties).reduce((acc, [key, value]) => {
+      acc[key] = convertBooleanToString(value)
+      return acc
+    }, {} as any)
+  }
+  if (schema.type === Type.array && schema.items && schema.items.type === Type.object) {
+    schema.items.properties = Object.entries(schema.items.properties).reduce((acc, [key, value]) => {
+      acc[key] = convertBooleanToString(value)
+      return acc
+    }, {} as any)
+  }
+  return schema
+}

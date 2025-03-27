@@ -9,7 +9,7 @@ import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import VisualEditor from './visual-editor'
 import SchemaEditor from './schema-editor'
-import { getValidationErrorMessage, jsonToSchema, validateSchemaAgainstDraft7 } from '../../utils'
+import { convertBooleanToString, getValidationErrorMessage, jsonToSchema, validateSchemaAgainstDraft7 } from '../../utils'
 import { MittProvider, VisualEditorContextProvider } from './visual-editor/context'
 import ErrorMessage from './error-message'
 import { useVisualEditorStore } from './visual-editor/store'
@@ -74,7 +74,8 @@ const JsonSchemaConfig: FC<JsonSchemaConfigProps> = ({
     if (currentTab === value) return
     if (currentTab === SchemaView.JsonSchema) {
       try {
-        const schema = JSON.parse(json)
+        const parsedJson = JSON.parse(json)
+        const schema = convertBooleanToString(parsedJson)
         setParseError(null)
         const ajvError = validateSchemaAgainstDraft7(schema)
         if (ajvError.length > 0) {
@@ -116,7 +117,7 @@ const JsonSchemaConfig: FC<JsonSchemaConfigProps> = ({
       setJson(JSON.stringify(schema, null, 2))
   }, [currentTab])
 
-  const handleSubmit = useCallback((schema: string) => {
+  const handleSubmit = useCallback((schema: any) => {
     const jsonSchema = jsonToSchema(schema) as SchemaRoot
     if (currentTab === SchemaView.VisualEditor)
       setJsonSchema(jsonSchema)

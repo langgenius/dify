@@ -12,7 +12,7 @@ import { useVisualEditorStore } from './visual-editor/store'
 import Toast from '@/app/components/base/toast'
 
 type JsonImporterProps = {
-  onSubmit: (schema: string) => void
+  onSubmit: (schema: any) => void
   updateBtnWidth: (width: number) => void
 }
 
@@ -55,6 +55,10 @@ const JsonImporter: FC<JsonImporterProps> = ({
   const handleSubmit = useCallback(() => {
     try {
       const parsedJSON = JSON.parse(json)
+      if (typeof parsedJSON !== 'object' || Array.isArray(parsedJSON)) {
+        setParseError(new Error('Root must be an object, not an array or primitive value.'))
+        return
+      }
       const maxDepth = checkDepth(parsedJSON)
       if (maxDepth > JSON_SCHEMA_MAX_DEPTH) {
         setParseError({
