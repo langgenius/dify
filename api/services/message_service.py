@@ -15,7 +15,6 @@ from libs.infinite_scroll_pagination import InfiniteScrollPagination
 from models.account import Account
 from models.model import App, AppMode, AppModelConfig, EndUser, Message, MessageFeedback
 from services.conversation_service import ConversationService
-from services.errors.conversation import ConversationCompletedError, ConversationNotExistsError
 from services.errors.message import (
     FirstMessageNotExistsError,
     LastMessageNotExistsError,
@@ -209,12 +208,6 @@ class MessageService:
         conversation = ConversationService.get_conversation(
             app_model=app_model, conversation_id=message.conversation_id, user=user
         )
-
-        if not conversation:
-            raise ConversationNotExistsError()
-
-        if conversation.status != "normal":
-            raise ConversationCompletedError()
 
         model_manager = ModelManager()
 

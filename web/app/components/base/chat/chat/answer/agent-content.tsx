@@ -8,13 +8,15 @@ import Thought from '@/app/components/base/chat/chat/thought'
 import { FileList } from '@/app/components/base/file-uploader'
 import { getProcessedFilesFromResponse } from '@/app/components/base/file-uploader/utils'
 
-interface AgentContentProps {
+type AgentContentProps = {
   item: ChatItem
   responding?: boolean
+  content?: string
 }
 const AgentContent: FC<AgentContentProps> = ({
   item,
   responding,
+  content,
 }) => {
   const {
     annotation,
@@ -26,7 +28,7 @@ const AgentContent: FC<AgentContentProps> = ({
 
   return (
     <div>
-      {agent_thoughts?.map((thought, index) => (
+      {content ? <Markdown content={content} /> : agent_thoughts?.map((thought, index) => (
         <div key={index} className='px-2 py-1'>
           {thought.thought && (
             <Markdown content={thought.thought} />

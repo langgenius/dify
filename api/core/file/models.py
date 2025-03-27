@@ -63,7 +63,9 @@ class File(BaseModel):
         extension: Optional[str] = None,
         mime_type: Optional[str] = None,
         size: int = -1,
-        storage_key: str,
+        storage_key: Optional[str] = None,
+        dify_model_identity: Optional[str] = FILE_MODEL_IDENTITY,
+        url: Optional[str] = None,
     ):
         super().__init__(
             id=id,
@@ -76,8 +78,10 @@ class File(BaseModel):
             extension=extension,
             mime_type=mime_type,
             size=size,
+            dify_model_identity=dify_model_identity,
+            url=url,
         )
-        self._storage_key = storage_key
+        self._storage_key = str(storage_key)
 
     def to_dict(self) -> Mapping[str, str | int | None]:
         data = self.model_dump(mode="json")
@@ -97,32 +101,18 @@ class File(BaseModel):
         return text
 
     def generate_url(self) -> Optional[str]:
-        if self.type == FileType.IMAGE:
-            if self.transfer_method == FileTransferMethod.REMOTE_URL:
-                return self.remote_url
-            elif self.transfer_method == FileTransferMethod.LOCAL_FILE:
-                if self.related_id is None:
-                    raise ValueError("Missing file related_id")
-                return helpers.get_signed_file_url(upload_file_id=self.related_id)
-            elif self.transfer_method == FileTransferMethod.TOOL_FILE:
-                assert self.related_id is not None
-                assert self.extension is not None
-                return ToolFileParser.get_tool_file_manager().sign_file(
-                    tool_file_id=self.related_id, extension=self.extension
-                )
-        else:
-            if self.transfer_method == FileTransferMethod.REMOTE_URL:
-                return self.remote_url
-            elif self.transfer_method == FileTransferMethod.LOCAL_FILE:
-                if self.related_id is None:
-                    raise ValueError("Missing file related_id")
-                return helpers.get_signed_file_url(upload_file_id=self.related_id)
-            elif self.transfer_method == FileTransferMethod.TOOL_FILE:
-                assert self.related_id is not None
-                assert self.extension is not None
-                return ToolFileParser.get_tool_file_manager().sign_file(
-                    tool_file_id=self.related_id, extension=self.extension
-                )
+        if self.transfer_method == FileTransferMethod.REMOTE_URL:
+            return self.remote_url
+        elif self.transfer_method == FileTransferMethod.LOCAL_FILE:
+            if self.related_id is None:
+                raise ValueError("Missing file related_id")
+            return helpers.get_signed_file_url(upload_file_id=self.related_id)
+        elif self.transfer_method == FileTransferMethod.TOOL_FILE:
+            assert self.related_id is not None
+            assert self.extension is not None
+            return ToolFileParser.get_tool_file_manager().sign_file(
+                tool_file_id=self.related_id, extension=self.extension
+            )
 
     def to_plugin_parameter(self) -> dict[str, Any]:
         return {

@@ -4,12 +4,16 @@
 import * as React from 'react'
 import data from './OpenaiTransparent.json'
 import IconBase from '@/app/components/base/icons/IconBase'
-import type { IconBaseProps, IconData } from '@/app/components/base/icons/IconBase'
+import type { IconData } from '@/app/components/base/icons/IconBase'
 
-const Icon = React.forwardRef<React.MutableRefObject<SVGElement>, Omit<IconBaseProps, 'data'>>((
-  props,
-  ref,
-) => <IconBase {...props} ref={ref} data={data as IconData} />)
+const Icon = (
+  {
+    ref,
+    ...props
+  }: React.SVGProps<SVGSVGElement> & {
+    ref?: React.RefObject<React.MutableRefObject<HTMLOrSVGElement>>;
+  },
+) => <IconBase {...props} ref={ref} data={data as IconData} />
 
 Icon.displayName = 'OpenaiTransparent'
 

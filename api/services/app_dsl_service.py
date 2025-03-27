@@ -55,6 +55,7 @@ class Import(BaseModel):
     id: str
     status: ImportStatus
     app_id: Optional[str] = None
+    app_mode: Optional[str] = None
     current_dsl_version: str = CURRENT_DSL_VERSION
     imported_dsl_version: str = ""
     error: str = ""
@@ -220,7 +221,7 @@ class AppDslService:
                         error="App not found",
                     )
 
-                if app.mode not in [AppMode.WORKFLOW.value, AppMode.ADVANCED_CHAT.value]:
+                if app.mode not in [AppMode.WORKFLOW, AppMode.ADVANCED_CHAT]:
                     return Import(
                         id=import_id,
                         status=ImportStatus.FAILED,
@@ -285,6 +286,7 @@ class AppDslService:
                 id=import_id,
                 status=status,
                 app_id=app.id,
+                app_mode=app.mode,
                 imported_dsl_version=imported_version,
             )
 
@@ -351,6 +353,7 @@ class AppDslService:
                 id=import_id,
                 status=ImportStatus.COMPLETED,
                 app_id=app.id,
+                app_mode=app.mode,
                 current_dsl_version=CURRENT_DSL_VERSION,
                 imported_dsl_version=data.get("version", "0.1.0"),
             )

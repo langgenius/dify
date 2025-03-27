@@ -9,10 +9,10 @@ const IterationStartNode = ({ id, data }: NodeProps) => {
   const { t } = useTranslation()
 
   return (
-    <div className='group flex nodrag items-center justify-center w-11 h-11 mt-1 rounded-2xl border border-workflow-block-border bg-workflow-block-bg shadow-xs'>
+    <div className='nodrag group mt-1 flex h-11 w-11 items-center justify-center rounded-2xl border border-workflow-block-border bg-workflow-block-bg shadow-xs'>
       <Tooltip popupContent={t('workflow.blocks.iteration-start')} asChild={false}>
-        <div className='flex items-center justify-center w-6 h-6 rounded-full border-[0.5px] border-components-panel-border-subtle bg-util-colors-blue-brand-blue-brand-500'>
-          <RiHome5Fill className='w-3 h-3 text-text-primary-on-surface' />
+        <div className='flex h-6 w-6 items-center justify-center rounded-full border-[0.5px] border-components-panel-border-subtle bg-util-colors-blue-brand-blue-brand-500'>
+          <RiHome5Fill className='h-3 w-3 text-text-primary-on-surface' />
         </div>
       </Tooltip>
       <NodeSourceHandle
@@ -29,10 +29,10 @@ export const IterationStartNodeDumb = () => {
   const { t } = useTranslation()
 
   return (
-    <div className='relative left-[17px] top-[21px] flex nodrag items-center justify-center w-11 h-11 rounded-2xl border border-workflow-block-border bg-white z-[11]'>
+    <div className='nodrag relative left-[17px] top-[21px] z-[11] flex h-11 w-11 items-center justify-center rounded-2xl border border-workflow-block-border bg-white'>
       <Tooltip popupContent={t('workflow.blocks.iteration-start')} asChild={false}>
-        <div className='flex items-center justify-center w-6 h-6 rounded-full border-[0.5px] border-components-panel-border-subtle bg-util-colors-blue-brand-blue-brand-500'>
-          <RiHome5Fill className='w-3 h-3 text-text-primary-on-surface' />
+        <div className='flex h-6 w-6 items-center justify-center rounded-full border-[0.5px] border-components-panel-border-subtle bg-util-colors-blue-brand-blue-brand-500'>
+          <RiHome5Fill className='h-3 w-3 text-text-primary-on-surface' />
         </div>
       </Tooltip>
     </div>

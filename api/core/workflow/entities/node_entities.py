@@ -20,12 +20,15 @@ class NodeRunMetadataKey(StrEnum):
     AGENT_LOG = "agent_log"
     ITERATION_ID = "iteration_id"
     ITERATION_INDEX = "iteration_index"
+    LOOP_ID = "loop_id"
+    LOOP_INDEX = "loop_index"
     PARALLEL_ID = "parallel_id"
     PARALLEL_START_NODE_ID = "parallel_start_node_id"
     PARENT_PARALLEL_ID = "parent_parallel_id"
     PARENT_PARALLEL_START_NODE_ID = "parent_parallel_start_node_id"
     PARALLEL_MODE_RUN_ID = "parallel_mode_run_id"
     ITERATION_DURATION_MAP = "iteration_duration_map"  # single iteration duration if iteration node runs
+    LOOP_DURATION_MAP = "loop_duration_map"  # single loop duration if loop node runs
     ERROR_STRATEGY = "error_strategy"  # node in continue on error mode return the field
 
 

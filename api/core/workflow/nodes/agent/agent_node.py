@@ -1,4 +1,4 @@
-from ast import literal_eval
+import json
 from collections.abc import Generator, Mapping, Sequence
 from typing import Any, cast
 
@@ -143,15 +143,23 @@ class AgentNode(ToolNode):
                     raise ValueError(f"Variable {agent_input.value} does not exist")
                 parameter_value = variable.value
             elif agent_input.type in {"mixed", "constant"}:
-                segment_group = variable_pool.convert_template(str(agent_input.value))
+                # variable_pool.convert_template expects a string template,
+                # but if passing a dict, convert to JSON string first before rendering
+                try:
+                    parameter_value = json.dumps(agent_input.value, ensure_ascii=False)
+                except TypeError:
+                    parameter_value = str(agent_input.value)
+                segment_group = variable_pool.convert_template(parameter_value)
                 parameter_value = segment_group.log if for_log else segment_group.text
+                # variable_pool.convert_template returns a string,
+                # so we need to convert it back to a dictionary
+                try:
+                    parameter_value = json.loads(parameter_value)
+                except json.JSONDecodeError:
+                    parameter_value = parameter_value
             else:
                 raise ValueError(f"Unknown agent input type '{agent_input.type}'")
-            value = parameter_value.strip()
-            if (parameter_value.startswith("{") and parameter_value.endswith("}")) or (
-                parameter_value.startswith("[") and parameter_value.endswith("]")
-            ):
-                value = literal_eval(parameter_value)  # transform string to python object
+            value = parameter_value
             if parameter.type == "array[tools]":
                 value = cast(list[dict[str, Any]], value)
                 value = [tool for tool in value if tool.get("enabled", False)]

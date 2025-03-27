@@ -111,12 +111,12 @@ const RetrievalConfig: FC<Props> = ({
           disabled={readonly}
           className={cn(open && 'bg-components-button-ghost-bg-hover')}
         >
-          <RiEqualizer2Line className='mr-1 w-3.5 h-3.5' />
+          <RiEqualizer2Line className='mr-1 h-3.5 w-3.5' />
           {t('dataset.retrievalSettings')}
         </Button>
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent style={{ zIndex: 1001 }}>
-        <div className='w-[404px] pt-3 pb-4 px-4 shadow-xl  rounded-2xl border border-gray-200  bg-white'>
+        <div className='w-[404px] rounded-2xl border border-gray-200 bg-white  px-4 pb-4 pt-3  shadow-xl'>
           <ConfigRetrievalContent
             datasetConfigs={
               {

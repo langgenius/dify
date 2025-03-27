@@ -194,7 +194,7 @@ class ToolManager:
                     db.session.query(BuiltinToolProvider)
                     .filter(
                         BuiltinToolProvider.tenant_id == tenant_id,
-                        (BuiltinToolProvider.provider == provider_id)
+                        (BuiltinToolProvider.provider == str(provider_id_entity))
                         | (BuiltinToolProvider.provider == provider_id_entity.provider_name),
                     )
                     .first()
@@ -771,17 +771,22 @@ class ToolManager:
 
     @classmethod
     def generate_builtin_tool_icon_url(cls, provider_id: str) -> str:
-        return (
-            dify_config.CONSOLE_API_URL
-            + "/console/api/workspaces/current/tool-provider/builtin/"
-            + provider_id
-            + "/icon"
+        return str(
+            URL(dify_config.CONSOLE_API_URL or "/")
+            / "console"
+            / "api"
+            / "workspaces"
+            / "current"
+            / "tool-provider"
+            / "builtin"
+            / provider_id
+            / "icon"
         )
 
     @classmethod
     def generate_plugin_tool_icon_url(cls, tenant_id: str, filename: str) -> str:
         return str(
-            URL(dify_config.CONSOLE_API_URL)
+            URL(dify_config.CONSOLE_API_URL or "/")
             / "console"
             / "api"
             / "workspaces"

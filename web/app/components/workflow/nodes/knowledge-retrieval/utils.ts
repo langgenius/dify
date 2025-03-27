@@ -154,7 +154,8 @@ export const getMultipleRetrievalConfig = (
     result.reranking_mode = RerankingModeEnum.RerankingModel
     if (!result.reranking_model?.provider || !result.reranking_model?.model) {
       if (rerankModelIsValid) {
-        result.reranking_enable = true
+        result.reranking_enable = reranking_enable !== false
+
         result.reranking_model = {
           provider: validRerankModel?.provider || '',
           model: validRerankModel?.model || '',
@@ -168,7 +169,7 @@ export const getMultipleRetrievalConfig = (
       }
     }
     else {
-      result.reranking_enable = true
+      result.reranking_enable = reranking_enable !== false
     }
   }
 
@@ -176,7 +177,8 @@ export const getMultipleRetrievalConfig = (
     if (!reranking_mode) {
       if (validRerankModel?.provider && validRerankModel?.model) {
         result.reranking_mode = RerankingModeEnum.RerankingModel
-        result.reranking_enable = true
+        result.reranking_enable = reranking_enable !== false
+
         result.reranking_model = {
           provider: validRerankModel.provider,
           model: validRerankModel.model,
@@ -194,7 +196,8 @@ export const getMultipleRetrievalConfig = (
     if (reranking_mode === RerankingModeEnum.WeightedScore && weights && shouldSetWeightDefaultValue) {
       if (rerankModelIsValid) {
         result.reranking_mode = RerankingModeEnum.RerankingModel
-        result.reranking_enable = true
+        result.reranking_enable = reranking_enable !== false
+
         result.reranking_model = {
           provider: validRerankModel.provider || '',
           model: validRerankModel.model || '',
