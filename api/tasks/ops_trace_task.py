@@ -46,9 +46,9 @@ def process_trace_tasks(file_info):
                     trace_info = trace_type(**trace_info)
                 trace_instance.trace(trace_info)
         logging.info(f"Processing trace tasks success, app_id: {app_id}")
-    except Exception as e:
+    except Exception:
         failed_key = f"{OPS_TRACE_FAILED_KEY}_{app_id}"
         redis_client.incr(failed_key)
-        logging.info(f"Processing trace tasks failed, app_id: {app_id}, error: {e}")
+        logging.exception(f"Processing trace tasks failed, app_id: {app_id}")
     finally:
         storage.delete(file_path)
