@@ -230,8 +230,8 @@ class ApiTool(Tool):
                 body = urlencode(body)
             else:
                 body = body
-                
-        # if there is a file upload, remove the Content-Type header 
+
+        # if there is a file upload, remove the Content-Type header
         # so that httpx can automatically generate the boundary header required for multipart/form-data.
         # issue: https://github.com/langgenius/dify/issues/13684
         # reference: https://stackoverflow.com/questions/39280438/fetch-missing-boundary-in-multipart-form-data-post
