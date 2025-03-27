@@ -1,0 +1,5 @@
+onlyBuiltDependencies:
+  - canvas
+  - core-js-pure
+  - esbuild
+  - sharp
