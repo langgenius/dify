@@ -1,9 +1,21 @@
 from typing import Any, Literal, Optional
 
-from pydantic import Field
+from pydantic import BaseModel, Field
 
+from core.workflow.entities.variable_entities import VariableSelector
 from core.workflow.nodes.base import BaseLoopNodeData, BaseLoopState, BaseNodeData
 from core.workflow.utils.condition.entities import Condition
+
+
+class LoopVariableData(BaseModel):
+    """
+    Loop Variable Data.
+    """
+
+    label: str
+    var_type: Literal["string", "number", "object", "array[string]", "array[number]", "array[object]"]
+    value_type: Literal["variable", "constant"]
+    value: Any | list[str]
 
 
 class LoopNodeData(BaseLoopNodeData):
@@ -14,11 +26,21 @@ class LoopNodeData(BaseLoopNodeData):
     loop_count: int  # Maximum number of loops
     break_conditions: list[Condition]  # Conditions to break the loop
     logical_operator: Literal["and", "or"]
+    loop_variables: Optional[list[LoopVariableData]] = None
+    outputs: Optional[list[VariableSelector]] = None
 
 
 class LoopStartNodeData(BaseNodeData):
     """
     Loop Start Node Data.
+    """
+
+    pass
+
+
+class LoopEndNodeData(BaseNodeData):
+    """
+    Loop End Node Data.
     """
 
     pass

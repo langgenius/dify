@@ -1,10 +1,19 @@
+import json
 import logging
 from collections.abc import Generator, Mapping, Sequence
 from datetime import UTC, datetime
 from typing import Any, cast
 
 from configs import dify_config
-from core.variables import IntegerSegment
+from core.variables import (
+    ArrayNumberSegment,
+    ArrayObjectSegment,
+    ArrayStringSegment,
+    IntegerSegment,
+    ObjectSegment,
+    Segment,
+    StringSegment,
+)
 from core.workflow.entities.node_entities import NodeRunMetadataKey, NodeRunResult
 from core.workflow.graph_engine.entities.event import (
     BaseGraphEvent,
@@ -60,6 +69,27 @@ class LoopNode(BaseNode[LoopNodeData]):
         # Initialize variable pool
         variable_pool = self.graph_runtime_state.variable_pool
         variable_pool.add([self.node_id, "index"], 0)
+
+        # Initialize loop variables
+        loop_variable_selectors = {}
+
+        for loop_variable in self.node_data.loop_variables:
+            value_processor = {
+                "constant": lambda var=loop_variable: self._get_segment_for_constant(var.var_type, var.value),
+                "variable": lambda var=loop_variable: variable_pool.get(var.value),
+            }
+
+            if loop_variable.value_type not in value_processor:
+                raise ValueError(
+                    f"Invalid value type '{loop_variable.value_type}' for loop variable {loop_variable.label}"
+                )
+
+            processed_segment = value_processor[loop_variable.value_type]()
+
+            variable_selector = [self.node_id, loop_variable.label]
+            variable_pool.add(variable_selector, processed_segment)
+            loop_variable_selectors[loop_variable.label] = variable_selector
+            inputs[loop_variable.label] = processed_segment.value
 
         from core.workflow.graph_engine.graph_engine import GraphEngine
 
@@ -126,6 +156,13 @@ class LoopNode(BaseNode[LoopNodeData]):
                         and not isinstance(event, NodeRunStreamChunkEvent)
                     ):
                         continue
+
+                    if (
+                        isinstance(event, BaseNodeEvent)
+                        and event.node_type == NodeType.LOOP_END
+                        and not isinstance(event, NodeRunStreamChunkEvent)
+                    ):
+                        break
 
                     if isinstance(event, NodeRunSucceededEvent):
                         yield self._handle_event_metadata(event=event, iter_run_index=current_index)
@@ -208,6 +245,11 @@ class LoopNode(BaseNode[LoopNodeData]):
                 for node_id in loop_graph.node_ids:
                     variable_pool.remove([node_id])
 
+                _outputs = {}
+                for loop_variable_key, loop_variable_selector in loop_variable_selectors.items():
+                    _outputs[loop_variable_key] = variable_pool.get(loop_variable_selector).value
+                self.node_data.outputs = _outputs
+
                 if check_break_result:
                     break
 
@@ -221,7 +263,7 @@ class LoopNode(BaseNode[LoopNodeData]):
                     loop_node_type=self.node_type,
                     loop_node_data=self.node_data,
                     index=next_index,
-                    pre_loop_output=None,
+                    pre_loop_output=self.node_data.outputs,
                 )
 
             # Loop completed successfully
@@ -232,6 +274,7 @@ class LoopNode(BaseNode[LoopNodeData]):
                 loop_node_data=self.node_data,
                 start_at=start_at,
                 inputs=inputs,
+                outputs=self.node_data.outputs,
                 steps=loop_count,
                 metadata={
                     NodeRunMetadataKey.TOTAL_TOKENS: graph_engine.graph_runtime_state.total_tokens,
@@ -243,6 +286,8 @@ class LoopNode(BaseNode[LoopNodeData]):
                 run_result=NodeRunResult(
                     status=WorkflowNodeExecutionStatus.SUCCEEDED,
                     metadata={NodeRunMetadataKey.TOTAL_TOKENS: graph_engine.graph_runtime_state.total_tokens},
+                    outputs=self.node_data.outputs,
+                    inputs=inputs,
                 )
             )
 
@@ -360,3 +405,19 @@ class LoopNode(BaseNode[LoopNodeData]):
         }
 
         return variable_mapping
+
+    @staticmethod
+    def _get_segment_for_constant(var_type: str, value: Any) -> Segment | None:
+        """Get the appropriate segment type for a constant value."""
+        segment_mapping = {
+            "string": StringSegment,
+            "number": IntegerSegment,
+            "object": ObjectSegment,
+            "array[string]": ArrayStringSegment,
+            "array[number]": ArrayNumberSegment,
+            "array[object]": ArrayObjectSegment,
+        }
+        if var_type in ["array[string]", "array[number]", "array[object]"]:
+            value = json.loads(value)
+        segment_class = segment_mapping.get(var_type)
+        return segment_class(value=value) if segment_class else None
