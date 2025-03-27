@@ -237,7 +237,7 @@ const Chart: React.FC<IChartProps> = ({
       <div className='mb-4 flex-1'>
         <Basic
           isExtraInLine={CHART_TYPE_CONFIG[chartType].showTokens}
-          name={chartType !== 'costs' ? (sumData.toLocaleString() + unit) : `${sumData < 1000 ? sumData : (`${formatNumber(Math.round(sumData / 1000))}k`)}`}
+          name={chartType !== 'costs' ? (`${sumData.toLocaleString()} ${unit}`) : `${sumData < 1000 ? sumData : (`${formatNumber(Math.round(sumData / 1000))}k`)}`}
           type={!CHART_TYPE_CONFIG[chartType].showTokens
             ? ''
             : <span>{t('appOverview.analysis.tokenUsage.consumed')} Tokens<span className='text-sm'>
@@ -350,6 +350,7 @@ export const TokenPerSecond: FC<IBizChartProps> = ({ id, period }) => {
     isAvg
     unit={t('appOverview.analysis.tokenPS') as string}
     {...(noDataFlag && { yMax: 100 })}
+    className="min-w-0"
   />
 }
 

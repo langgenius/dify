@@ -7,7 +7,7 @@ import { FormTypeEnum } from '@/app/components/header/account-setting/model-prov
 const Node: FC<NodeProps<ToolNodeType>> = ({
   data,
 }) => {
-  const { tool_configurations } = data
+  const { tool_configurations, paramSchemas } = data
   const toolConfigs = Object.keys(tool_configurations || {})
 
   if (!toolConfigs.length)
@@ -23,6 +23,11 @@ const Node: FC<NodeProps<ToolNodeType>> = ({
             </div>
             {typeof tool_configurations[key] === 'string' && (
               <div title={tool_configurations[key]} className='w-0 shrink-0 grow truncate text-right text-xs font-normal text-gray-700'>
+                {paramSchemas?.find(i => i.name === key)?.type === FormTypeEnum.secretInput ? '********' : tool_configurations[key]}
+              </div>
+            )}
+            {typeof tool_configurations[key] === 'number' && (
+              <div title={tool_configurations[key].toString()} className='w-0 shrink-0 grow truncate text-right text-xs font-normal text-gray-700'>
                 {tool_configurations[key]}
               </div>
             )}
