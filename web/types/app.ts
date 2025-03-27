@@ -315,8 +315,8 @@ export type App = {
   name: string
   /** Description */
   description: string
-  /** UserName */
-  create_user_name: string;
+  /** Author Name */
+  author_name: string;
 
   /**
    * Icon Type
