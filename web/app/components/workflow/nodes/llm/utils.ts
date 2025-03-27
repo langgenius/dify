@@ -28,7 +28,8 @@ export const getHasChildren = (schema: Field) => {
 
 export const inferType = (value: any): Type => {
   if (Array.isArray(value)) return Type.array
-  if (typeof value === 'boolean') return Type.boolean
+  // type boolean will be treated as string
+  if (typeof value === 'boolean') return Type.string
   if (typeof value === 'number') return Type.number
   if (typeof value === 'string') return Type.string
   if (typeof value === 'object') return Type.object

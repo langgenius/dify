@@ -130,12 +130,12 @@ export const useSchemaNodeOperations = (props: VisualEditorProps) => {
             type: Type.number,
           }
           break
-        case ArrayType.boolean:
-          schema.type = Type.array
-          schema.items = {
-            type: Type.boolean,
-          }
-          break
+        // case ArrayType.boolean:
+        //   schema.type = Type.array
+        //   schema.items = {
+        //     type: Type.boolean,
+        //   }
+        //   break
         case ArrayType.object:
           schema.type = Type.array
           schema.items = {
@@ -304,12 +304,12 @@ export const useSchemaNodeOperations = (props: VisualEditorProps) => {
                 type: Type.number,
               }
               break
-            case ArrayType.boolean:
-              schema.type = Type.array
-              schema.items = {
-                type: Type.boolean,
-              }
-              break
+            // case ArrayType.boolean:
+            //   schema.type = Type.array
+            //   schema.items = {
+            //     type: Type.boolean,
+            //   }
+            //   break
             case ArrayType.object:
               schema.type = Type.array
               schema.items = {
@@ -393,12 +393,12 @@ export const useSchemaNodeOperations = (props: VisualEditorProps) => {
                 type: Type.number,
               }
               break
-            case ArrayType.boolean:
-              schema.type = Type.array
-              schema.items = {
-                type: Type.boolean,
-              }
-              break
+            // case ArrayType.boolean:
+            //   schema.type = Type.array
+            //   schema.items = {
+            //     type: Type.boolean,
+            //   }
+            //   break
             case ArrayType.object:
               schema.type = Type.array
               schema.items = {

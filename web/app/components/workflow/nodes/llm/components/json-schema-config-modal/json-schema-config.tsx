@@ -14,6 +14,7 @@ import { MittProvider, VisualEditorContextProvider } from './visual-editor/conte
 import ErrorMessage from './error-message'
 import { useVisualEditorStore } from './visual-editor/store'
 import Toast from '@/app/components/base/toast'
+import { useGetLanguage } from '@/context/i18n'
 
 type JsonSchemaConfigProps = {
   defaultSchema?: SchemaRoot
@@ -38,12 +39,21 @@ const DEFAULT_SCHEMA: SchemaRoot = {
   additionalProperties: false,
 }
 
+const HELP_DOC_URL = {
+  zh_Hans: 'https://docs.dify.ai/zh-hans/guides/workflow/structured-outputs',
+  en_US: 'https://docs.dify.ai/guides/workflow/structured-outputs',
+  ja_JP: 'https://docs.dify.ai/ja-jp/guides/workflow/structured-outputs',
+}
+
+type LocaleKey = keyof typeof HELP_DOC_URL
+
 const JsonSchemaConfig: FC<JsonSchemaConfigProps> = ({
   defaultSchema,
   onSave,
   onClose,
 }) => {
   const { t } = useTranslation()
+  const locale = useGetLanguage() as LocaleKey
   const [currentTab, setCurrentTab] = useState(SchemaView.VisualEditor)
   const [jsonSchema, setJsonSchema] = useState(defaultSchema || DEFAULT_SCHEMA)
   const [json, setJson] = useState(JSON.stringify(jsonSchema, null, 2))
@@ -227,7 +237,7 @@ const JsonSchemaConfig: FC<JsonSchemaConfigProps> = ({
       <div className='flex items-center gap-x-2 p-6 pt-5'>
         <a
           className='flex grow items-center gap-x-1 text-text-accent'
-          href='https://json-schema.org/' // todo: replace with documentation link
+          href={HELP_DOC_URL[locale]}
           target='_blank'
           rel='noopener noreferrer'
         >
