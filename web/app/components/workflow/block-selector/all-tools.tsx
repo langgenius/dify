@@ -98,13 +98,13 @@ const AllTools = ({
 
   return (
     <div className={cn(className)}>
-      <div className='flex items-center justify-between px-3 bg-background-default-hover border-b-[0.5px] border-divider-subtle shadow-xs'>
-        <div className='flex items-center h-8 space-x-1'>
+      <div className='flex items-center justify-between border-b-[0.5px] border-divider-subtle bg-background-default-hover px-3 shadow-xs'>
+        <div className='flex h-8 items-center space-x-1'>
           {
             tabs.map(tab => (
               <div
                 className={cn(
-                  'flex items-center px-2 h-6 rounded-md hover:bg-state-base-hover cursor-pointer',
+                  'flex h-6 cursor-pointer items-center rounded-md px-2 hover:bg-state-base-hover',
                   'text-xs font-medium text-text-secondary',
                   activeTab === tab.key && 'bg-state-base-hover-alt',
                 )}
@@ -119,12 +119,12 @@ const AllTools = ({
         <ViewTypeSelect viewType={activeView} onChange={setActiveView} />
         {supportAddCustomTool && (
           <div className='flex items-center'>
-            <div className='mr-1.5 w-px h-3.5  bg-divider-regular'></div>
+            <div className='mr-1.5 h-3.5 w-px  bg-divider-regular'></div>
             <ActionButton
-              className='bg-components-button-primary-bg hover:bg-components-button-primary-bg text-components-button-primary-text hover:text-components-button-primary-text'
+              className='bg-components-button-primary-bg text-components-button-primary-text hover:bg-components-button-primary-bg hover:text-components-button-primary-text'
               onClick={onShowAddCustomCollectionModal}
             >
-              <RiAddLine className='w-4 h-4' />
+              <RiAddLine className='h-4 w-4' />
             </ActionButton>
           </div>
         )}

@@ -2,13 +2,16 @@ import type { FC } from 'react'
 import {
   memo,
   useCallback,
+  useMemo,
 } from 'react'
+import { intersectionBy } from 'lodash-es'
 import { useTranslation } from 'react-i18next'
 import VarReferencePicker from '../_base/components/variable/var-reference-picker'
 import useConfig from './use-config'
 import RetrievalConfig from './components/retrieval-config'
 import AddKnowledge from './components/add-dataset'
 import DatasetList from './components/dataset-list'
+import MetadataFilter from './components/metadata/metadata-filter'
 import type { KnowledgeRetrievalNodeType } from './types'
 import Field from '@/app/components/workflow/nodes/_base/components/field'
 import Split from '@/app/components/workflow/nodes/_base/components/split'
@@ -35,6 +38,7 @@ const Panel: FC<NodePanelProps<KnowledgeRetrievalNodeType>> = ({
     handleRetrievalModeChange,
     handleMultipleRetrievalConfigChange,
     selectedDatasets,
+    selectedDatasetsLoaded,
     handleOnDatasetsChange,
     isShowSingleRun,
     hideSingleRun,
@@ -46,15 +50,34 @@ const Panel: FC<NodePanelProps<KnowledgeRetrievalNodeType>> = ({
     runResult,
     rerankModelOpen,
     setRerankModelOpen,
+    handleAddCondition,
+    handleMetadataFilterModeChange,
+    handleRemoveCondition,
+    handleToggleConditionLogicalOperator,
+    handleUpdateCondition,
+    handleMetadataModelChange,
+    handleMetadataCompletionParamsChange,
+    availableStringVars,
+    availableStringNodesWithParent,
+    availableNumberVars,
+    availableNumberNodesWithParent,
   } = useConfig(id, data)
 
   const handleOpenFromPropsChange = useCallback((openFromProps: boolean) => {
     setRerankModelOpen(openFromProps)
   }, [setRerankModelOpen])
 
+  const metadataList = useMemo(() => {
+    return intersectionBy(...selectedDatasets.filter((dataset) => {
+      return !!dataset.doc_metadata
+    }).map((dataset) => {
+      return dataset.doc_metadata!
+    }), 'name')
+  }, [selectedDatasets])
+
   return (
     <div className='pt-2'>
-      <div className='px-4 pb-4 space-y-4'>
+      <div className='space-y-4 px-4 pb-2'>
         {/* {JSON.stringify(inputs, null, 2)} */}
         <Field
           title={t(`${i18nPrefix}.queryVariable`)}
@@ -89,7 +112,7 @@ const Panel: FC<NodePanelProps<KnowledgeRetrievalNodeType>> = ({
                 onOpenFromPropsChange={handleOpenFromPropsChange}
                 selectedDatasets={selectedDatasets}
               />
-              {!readOnly && (<div className='w-px h-3 bg-gray-200'></div>)}
+              {!readOnly && (<div className='h-3 w-px bg-gray-200'></div>)}
               {!readOnly && (
                 <AddKnowledge
                   selectedIds={inputs.dataset_ids}
@@ -106,7 +129,26 @@ const Panel: FC<NodePanelProps<KnowledgeRetrievalNodeType>> = ({
           />
         </Field>
       </div>
-
+      <div className='mb-2 py-2'>
+        <MetadataFilter
+          metadataList={metadataList}
+          selectedDatasetsLoaded={selectedDatasetsLoaded}
+          metadataFilterMode={inputs.metadata_filtering_mode}
+          metadataFilteringConditions={inputs.metadata_filtering_conditions}
+          handleAddCondition={handleAddCondition}
+          handleMetadataFilterModeChange={handleMetadataFilterModeChange}
+          handleRemoveCondition={handleRemoveCondition}
+          handleToggleConditionLogicalOperator={handleToggleConditionLogicalOperator}
+          handleUpdateCondition={handleUpdateCondition}
+          metadataModelConfig={inputs.metadata_model_config}
+          handleMetadataModelChange={handleMetadataModelChange}
+          handleMetadataCompletionParamsChange={handleMetadataCompletionParamsChange}
+          availableStringVars={availableStringVars}
+          availableStringNodesWithParent={availableStringNodesWithParent}
+          availableNumberVars={availableNumberVars}
+          availableNumberNodesWithParent={availableNumberNodesWithParent}
+        />
+      </div>
       <Split />
       <div>
         <OutputVars>

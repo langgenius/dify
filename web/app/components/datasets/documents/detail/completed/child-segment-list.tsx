@@ -94,7 +94,7 @@ const ChildSegmentList: FC<IChildSegmentCardProps> = ({
       isParagraphMode ? 'pt-1 pb-2' : 'px-3 grow',
       (isFullDocMode && isLoading) && 'overflow-y-hidden',
     )}>
-      {isFullDocMode ? <Divider type='horizontal' className='h-[1px] bg-divider-subtle my-1' /> : null}
+      {isFullDocMode ? <Divider type='horizontal' className='my-1 h-[1px] bg-divider-subtle' /> : null}
       <div className={classNames('flex items-center justify-between', isFullDocMode ? 'pt-2 pb-3 sticky -top-2 left-0 bg-background-default' : '')}>
         <div className={classNames(
           'h-7 flex items-center pl-1 pr-3 rounded-lg',
@@ -111,12 +111,12 @@ const ChildSegmentList: FC<IChildSegmentCardProps> = ({
             isParagraphMode
               ? collapsed
                 ? (
-                  <RiArrowRightSLine className='w-4 h-4 text-text-secondary opacity-50 mr-0.5' />
+                  <RiArrowRightSLine className='mr-0.5 h-4 w-4 text-text-secondary opacity-50' />
                 )
-                : (<RiArrowDownSLine className='w-4 h-4 text-text-secondary mr-0.5' />)
+                : (<RiArrowDownSLine className='mr-0.5 h-4 w-4 text-text-secondary' />)
               : null
           }
-          <span className='text-text-secondary system-sm-semibold-uppercase'>{totalText}</span>
+          <span className='system-sm-semibold-uppercase text-text-secondary'>{totalText}</span>
           <span className={classNames('text-text-quaternary text-xs font-medium pl-1.5', isParagraphMode ? 'hidden group-hover/card:inline-block' : '')}>·</span>
           <button
             type='button'
@@ -150,7 +150,7 @@ const ChildSegmentList: FC<IChildSegmentCardProps> = ({
         ? <div className={classNames('flex gap-x-0.5', isFullDocMode ? 'grow mb-6' : 'items-center')}>
           {isParagraphMode && (
             <div className='self-stretch'>
-              <Divider type='vertical' className='w-[2px] mx-[7px] bg-text-accent-secondary' />
+              <Divider type='vertical' className='mx-[7px] w-[2px] bg-text-accent-secondary' />
             </div>
           )}
           {childChunks.length > 0
@@ -165,7 +165,7 @@ const ChildSegmentList: FC<IChildSegmentCardProps> = ({
                   onDelete={() => onDelete?.(childChunk.segment_id, childChunk.id)}
                   labelClassName={focused ? 'bg-state-accent-solid text-text-primary-on-surface' : ''}
                   labelInnerClassName={'text-[10px] font-semibold align-bottom leading-6'}
-                  contentClassName={classNames('!leading-6', focused ? 'bg-state-accent-hover-alt text-text-primary' : '')}
+                  contentClassName={classNames('!leading-6', focused ? 'bg-state-accent-hover-alt text-text-primary' : 'text-text-secondary')}
                   showDivider={false}
                   onClick={(e) => {
                     e.stopPropagation()

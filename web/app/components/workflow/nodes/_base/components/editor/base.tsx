@@ -16,11 +16,11 @@ import useToggleExpend from '@/app/components/workflow/nodes/_base/hooks/use-tog
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import FileListInLog from '@/app/components/base/file-uploader/file-list-in-log'
 
-interface Props {
+type Props = {
   className?: string
-  title: JSX.Element | string
-  headerRight?: JSX.Element
-  children: JSX.Element
+  title: React.JSX.Element | string
+  headerRight?: React.JSX.Element
+  children: React.JSX.Element
   minHeight?: number
   value: string
   isFocus: boolean
@@ -33,7 +33,7 @@ interface Props {
   }[]
   showFileList?: boolean
   showCodeGenerator?: boolean
-  tip?: JSX.Element
+  tip?: React.JSX.Element
 }
 
 const Base: FC<Props> = ({
@@ -75,8 +75,8 @@ const Base: FC<Props> = ({
 
   return (
     <Wrap className={cn(wrapClassName)} style={wrapStyle} isInNode={isInNode} isExpand={isExpand}>
-      <div ref={ref} className={cn(className, isExpand && 'h-full', 'rounded-lg border', isFocus ? 'bg-components-input-bg-normal border-transparent' : 'bg-components-input-bg-hover border-components-input-border-hover overflow-hidden')}>
-        <div className='flex justify-between items-center h-7 pt-1 pl-3 pr-2'>
+      <div ref={ref} className={cn(className, isExpand && 'h-full', 'rounded-lg border', isFocus ? 'border-transparent bg-components-input-bg-normal' : 'overflow-hidden border-components-input-border-hover bg-components-input-bg-hover')}>
+        <div className='flex h-7 items-center justify-between pl-3 pr-2 pt-1'>
           <div className='system-xs-semibold-uppercase text-text-secondary'>{title}</div>
           <div className='flex items-center' onClick={(e) => {
             e.nativeEvent.stopImmediatePropagation()
@@ -85,15 +85,15 @@ const Base: FC<Props> = ({
             {headerRight}
             {showCodeGenerator && codeLanguages && (
               <div className='ml-1'>
-                <CodeGeneratorButton onGenerated={onGenerated} codeLanguages={codeLanguages}/>
+                <CodeGeneratorButton onGenerated={onGenerated} codeLanguages={codeLanguages} />
               </div>
             )}
             {!isCopied
               ? (
-                <Clipboard className='mx-1 w-3.5 h-3.5 text-text-tertiary cursor-pointer' onClick={handleCopy} />
+                <Clipboard className='mx-1 h-3.5 w-3.5 cursor-pointer text-text-tertiary' onClick={handleCopy} />
               )
               : (
-                <ClipboardCheck className='mx-1 w-3.5 h-3.5 text-text-tertiary' />
+                <ClipboardCheck className='mx-1 h-3.5 w-3.5 text-text-tertiary' />
               )
             }
 

@@ -590,8 +590,6 @@ class Graph(BaseModel):
                             start_node_id=node_id,
                             routes_node_ids=routes_node_ids,
                         )
-                        # Exclude conditional branch nodes
-                        and all(edge.run_condition is None for edge in reverse_edge_mapping.get(node_id, []))
                     ):
                         if node_id not in merge_branch_node_ids:
                             merge_branch_node_ids[node_id] = []

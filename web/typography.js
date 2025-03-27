@@ -38,15 +38,15 @@ module.exports = ({ theme }) => ({
       '--tw-prose-invert-td-borders': theme('colors.zinc.700'),
 
       // Base
-      color: 'var(--tw-prose-body)',
-      fontSize: theme('fontSize.sm')[0],
-      lineHeight: theme('lineHeight.7'),
+      'color': 'var(--tw-prose-body)',
+      'fontSize': theme('fontSize.sm')[0],
+      'lineHeight': theme('lineHeight.7'),
 
       // Layout
       '> *': {
-        maxWidth: theme('maxWidth.2xl'),
-        marginLeft: 'auto',
-        marginRight: 'auto',
+        'maxWidth': theme('maxWidth.2xl'),
+        'marginLeft': 'auto',
+        'marginRight': 'auto',
         '@screen lg': {
           maxWidth: theme('maxWidth.3xl'),
           marginLeft: `calc(50% - min(50%, ${theme('maxWidth.lg')}))`,
@@ -55,7 +55,7 @@ module.exports = ({ theme }) => ({
       },
 
       // Text
-      p: {
+      'p': {
         marginTop: theme('spacing.6'),
         marginBottom: theme('spacing.6'),
       },
@@ -65,7 +65,7 @@ module.exports = ({ theme }) => ({
       },
 
       // Lists
-      ol: {
+      'ol': {
         listStyleType: 'decimal',
         marginTop: theme('spacing.5'),
         marginBottom: theme('spacing.5'),
@@ -98,13 +98,13 @@ module.exports = ({ theme }) => ({
       'ol[type="1"]': {
         listStyleType: 'decimal',
       },
-      ul: {
+      'ul': {
         listStyleType: 'disc',
         marginTop: theme('spacing.5'),
         marginBottom: theme('spacing.5'),
         paddingLeft: '1.625rem',
       },
-      li: {
+      'li': {
         marginTop: theme('spacing.2'),
         marginBottom: theme('spacing.2'),
       },
@@ -140,14 +140,14 @@ module.exports = ({ theme }) => ({
       },
 
       // Horizontal rules
-      hr: {
-        borderColor: 'var(--tw-prose-hr)',
-        borderTopWidth: 1,
-        marginTop: theme('spacing.16'),
-        marginBottom: theme('spacing.16'),
-        maxWidth: 'none',
-        marginLeft: `calc(-1 * ${theme('spacing.4')})`,
-        marginRight: `calc(-1 * ${theme('spacing.4')})`,
+      'hr': {
+        'borderColor': 'var(--tw-prose-hr)',
+        'borderTopWidth': 1,
+        'marginTop': theme('spacing.16'),
+        'marginBottom': theme('spacing.16'),
+        'maxWidth': 'none',
+        'marginLeft': `calc(-1 * ${theme('spacing.4')})`,
+        'marginRight': `calc(-1 * ${theme('spacing.4')})`,
         '@screen sm': {
           marginLeft: `calc(-1 * ${theme('spacing.6')})`,
           marginRight: `calc(-1 * ${theme('spacing.6')})`,
@@ -159,7 +159,7 @@ module.exports = ({ theme }) => ({
       },
 
       // Quotes
-      blockquote: {
+      'blockquote': {
         fontWeight: '500',
         fontStyle: 'italic',
         color: 'var(--tw-prose-quotes)',
@@ -178,14 +178,14 @@ module.exports = ({ theme }) => ({
       },
 
       // Headings
-      h1: {
+      'h1': {
         color: 'var(--tw-prose-headings)',
         fontWeight: '700',
         fontSize: theme('fontSize.2xl')[0],
         ...theme('fontSize.2xl')[1],
         marginBottom: theme('spacing.2'),
       },
-      h2: {
+      'h2': {
         color: 'var(--tw-prose-headings)',
         fontWeight: '600',
         fontSize: theme('fontSize.lg')[0],
@@ -193,7 +193,7 @@ module.exports = ({ theme }) => ({
         marginTop: theme('spacing.16'),
         marginBottom: theme('spacing.2'),
       },
-      h3: {
+      'h3': {
         color: 'var(--tw-prose-headings)',
         fontSize: theme('fontSize.base')[0],
         ...theme('fontSize.base')[1],
@@ -211,7 +211,7 @@ module.exports = ({ theme }) => ({
         marginTop: '0',
         marginBottom: '0',
       },
-      figcaption: {
+      'figcaption': {
         color: 'var(--tw-prose-captions)',
         fontSize: theme('fontSize.xs')[0],
         ...theme('fontSize.xs')[1],
@@ -219,7 +219,7 @@ module.exports = ({ theme }) => ({
       },
 
       // Tables
-      table: {
+      'table': {
         width: '100%',
         tableLayout: 'auto',
         textAlign: 'left',
@@ -227,7 +227,7 @@ module.exports = ({ theme }) => ({
         marginBottom: theme('spacing.8'),
         lineHeight: theme('lineHeight.6'),
       },
-      thead: {
+      'thead': {
         borderBottomWidth: '1px',
         borderBottomColor: 'var(--tw-prose-th-borders)',
       },
@@ -255,7 +255,7 @@ module.exports = ({ theme }) => ({
       'tbody td': {
         verticalAlign: 'baseline',
       },
-      tfoot: {
+      'tfoot': {
         borderTopWidth: '1px',
         borderTopColor: 'var(--tw-prose-th-borders)',
       },
@@ -276,13 +276,13 @@ module.exports = ({ theme }) => ({
       },
 
       // Inline elements
-      a: {
-        color: 'var(--tw-prose-links)',
-        textDecoration: 'underline transparent',
-        fontWeight: '500',
-        transitionProperty: 'color, text-decoration-color',
-        transitionDuration: theme('transitionDuration.DEFAULT'),
-        transitionTimingFunction: theme('transitionTimingFunction.DEFAULT'),
+      'a': {
+        'color': 'var(--tw-prose-links)',
+        'textDecoration': 'underline transparent',
+        'fontWeight': '500',
+        'transitionProperty': 'color, text-decoration-color',
+        'transitionDuration': theme('transitionDuration.DEFAULT'),
+        'transitionTimingFunction': theme('transitionTimingFunction.DEFAULT'),
         '&:hover': {
           color: 'var(--tw-prose-links-hover)',
           textDecorationColor: 'var(--tw-prose-links-underline)',
@@ -291,14 +291,14 @@ module.exports = ({ theme }) => ({
       ':is(h1, h2, h3) a': {
         fontWeight: 'inherit',
       },
-      strong: {
+      'strong': {
         color: 'var(--tw-prose-bold)',
         fontWeight: '600',
       },
       ':is(a, blockquote, thead th) strong': {
         color: 'inherit',
       },
-      code: {
+      'code': {
         color: 'var(--tw-prose-code)',
         borderRadius: theme('borderRadius.lg'),
         paddingTop: theme('padding.1'),

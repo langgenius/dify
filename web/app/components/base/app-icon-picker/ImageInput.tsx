@@ -101,8 +101,8 @@ const ImageInput: FC<UploaderProps> = ({
         {
           !inputImage
             ? <>
-              <ImagePlus className="w-[30px] h-[30px] mb-3 pointer-events-none" />
-              <div className="text-sm font-medium mb-[2px]">
+              <ImagePlus className="pointer-events-none mb-3 h-[30px] w-[30px]" />
+              <div className="mb-[2px] text-sm font-medium">
                 <span className="pointer-events-none">Drop your image here, or&nbsp;</span>
                 <button className="text-components-button-primary-bg" onClick={() => inputRef.current?.click()}>browse</button>
                 <input
@@ -112,7 +112,7 @@ const ImageInput: FC<UploaderProps> = ({
                   onChange={handleLocalFileInput}
                 />
               </div>
-              <div className="text-xs pointer-events-none">Supports PNG, JPG, JPEG, WEBP and GIF</div>
+              <div className="pointer-events-none text-xs">Supports PNG, JPG, JPEG, WEBP and GIF</div>
             </>
             : handleShowImage()
         }

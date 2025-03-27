@@ -16,7 +16,7 @@ const LicenseNav = () => {
     const expiredAt = systemFeatures.license?.expired_at
     const count = dayjs(expiredAt).diff(dayjs(), 'days')
     return <PremiumBadge color='orange' className='select-none'>
-      <RiHourglass2Fill className='flex items-center pl-0.5 size-3 text-components-premium-badge-indigo-text-stop-0' />
+      <RiHourglass2Fill className='flex size-3 items-center pl-0.5 text-components-premium-badge-indigo-text-stop-0' />
       {count <= 1 && <span className='system-xs-medium px-0.5'>{t('common.license.expiring', { count })}</span>}
       {count > 1 && <span className='system-xs-medium px-0.5'>{t('common.license.expiring_plural', { count })}</span>}
     </PremiumBadge>
