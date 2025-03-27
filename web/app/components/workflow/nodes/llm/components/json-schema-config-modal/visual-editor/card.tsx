@@ -18,8 +18,8 @@ const Card: FC<CardProps> = ({
 
   return (
     <div className='flex flex-col py-0.5'>
-      <div className='flex items-center gap-x-1 p-0.5 pl-1'>
-        <div className='system-sm-semibold truncate px-1 py-0.5 text-text-primary'>
+      <div className='flex h-6 items-center gap-x-1 pl-1 pr-0.5'>
+        <div className='system-sm-semibold truncate border border-transparent px-1 py-px text-text-primary'>
           {name}
         </div>
         <div className='system-xs-medium px-1 py-0.5 text-text-tertiary'>

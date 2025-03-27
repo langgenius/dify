@@ -48,9 +48,6 @@ export default function Page() {
           ],
         },
       },
-      completed: {
-        type: Type.boolean,
-      },
     },
     required: [
       'userId',

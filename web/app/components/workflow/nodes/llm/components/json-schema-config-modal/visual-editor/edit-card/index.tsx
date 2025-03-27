@@ -14,6 +14,7 @@ import { useVisualEditorStore } from '../store'
 import { useMittContext } from '../context'
 import { useUnmount } from 'ahooks'
 import { JSON_SCHEMA_MAX_DEPTH } from '@/config'
+import AutoWidthInput from './auto-width-input'
 
 export type EditData = {
   name: string
@@ -192,17 +193,15 @@ const EditCard: FC<EditCardProps> = ({
 
   return (
     <div className='flex flex-col rounded-lg bg-components-panel-bg py-0.5 shadow-sm shadow-shadow-shadow-4'>
-      <div className='flex items-center pl-1 pr-0.5'>
+      <div className='flex h-6 items-center pl-1 pr-0.5'>
         <div className='flex grow items-center gap-x-1'>
-          <input
+          <AutoWidthInput
             value={currentFields.name}
-            className='system-sm-semibold placeholder:system-sm-semibold h-5 max-w-20 rounded-[5px] border border-transparent px-1
-              py-0.5 text-text-primary caret-[#295EFF] shadow-shadow-shadow-3 outline-none
-              placeholder:text-text-placeholder hover:bg-state-base-hover focus:border-components-input-border-active focus:bg-components-input-bg-active focus:shadow-xs'
             placeholder={t('workflow.nodes.llm.jsonSchema.fieldNamePlaceholder')}
+            minWidth={80}
+            maxWidth={300}
             onChange={handlePropertyNameChange}
             onBlur={handlePropertyNameBlur}
-            onKeyUp={e => e.key === 'Enter' && e.currentTarget.blur()}
           />
           <TypeSelector
             currentValue={currentFields.type}
