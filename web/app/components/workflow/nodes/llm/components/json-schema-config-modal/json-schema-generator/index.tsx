@@ -106,6 +106,8 @@ export const JsonSchemaGenerator: FC<JsonSchemaGeneratorProps> = ({
         type: 'error',
         message: error,
       })
+      setSchema(null)
+      setView(GeneratorView.promptEditor)
       return
     }
     return output
