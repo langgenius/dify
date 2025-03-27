@@ -213,13 +213,17 @@ class LangFuseDataTrace(BaseTraceInstance):
 
             if process_data and process_data.get("model_mode") == "chat":
                 total_token = metadata.get("total_tokens", 0)
-                
+
                 # through workflow_run_id get message data
-                message_data = db.session.query(
-                    Message.answer_tokens, # input
-                    Message.message_tokens # output
-                    ).filter(Message.workflow_run_id == trace_info.workflow_run_id).first()
-                
+                message_data = (
+                    db.session.query(
+                        Message.answer_tokens,  # input
+                        Message.message_tokens,  # output
+                    )
+                    .filter(Message.workflow_run_id == trace_info.workflow_run_id)
+                    .first()
+                )
+
                 if message_data:
                     # chatflow data
                     input_tokens = message_data.message_tokens
