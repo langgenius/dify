@@ -13,6 +13,9 @@ const moduleCode = standaloneCode(ajv, {
   validateDraft07: 'http://json-schema.org/draft-07/schema#',
 })
 
+/**
+ * @see {@link https://github.com/ajv-validator/ajv/issues/2209}
+ */
 const preamble = [
   '"use strict";',
 ].join('')
