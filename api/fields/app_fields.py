@@ -98,6 +98,7 @@ app_partial_fields = {
     "updated_by": fields.String,
     "updated_at": TimestampField,
     "tags": fields.List(fields.Nested(tag_fields)),
+    "create_user_name": fields.String,
 }
 
 
