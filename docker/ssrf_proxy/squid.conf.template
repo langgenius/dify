@@ -51,3 +51,6 @@ http_port ${REVERSE_PROXY_PORT} accel vhost
 cache_peer ${SANDBOX_HOST} parent ${SANDBOX_PORT} 0 no-query originserver
 acl src_all src all
 http_access allow src_all
+
+# Unless the option's size is increased, an error will occur when uploading more than two files.
+client_request_buffer_max_size 100 MB

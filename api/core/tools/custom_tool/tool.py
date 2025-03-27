@@ -195,7 +195,12 @@ class ApiTool(Tool):
                     properties = body_schema.get("properties", {})
                     for name, property in properties.items():
                         if name in parameters:
-                            if property.get("format") == "binary":
+                            # multiple file upload: if the type is array and the items have format as binary
+                            if property.get("type") == "array" and property.get("items", {}).get("format") == "binary":
+                                # parameters[name] should be a list of file objects.
+                                for f in parameters[name]:
+                                    files.append((name, (f.filename, download(f), f.mime_type)))
+                            elif property.get("format") == "binary":
                                 f = parameters[name]
                                 files.append((name, (f.filename, download(f), f.mime_type)))
                             elif "$ref" in property:
@@ -225,6 +230,13 @@ class ApiTool(Tool):
                 body = urlencode(body)
             else:
                 body = body
+
+        # if there is a file upload, remove the Content-Type header
+        # so that httpx can automatically generate the boundary header required for multipart/form-data.
+        # issue: https://github.com/langgenius/dify/issues/13684
+        # reference: https://stackoverflow.com/questions/39280438/fetch-missing-boundary-in-multipart-form-data-post
+        if files:
+            headers.pop("Content-Type", None)
 
         if method in {
             "get",
