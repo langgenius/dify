@@ -28,13 +28,6 @@ const nodeDefault: NodeDefault<LoopNodeType> = {
   checkValid(payload: LoopNodeType, t: any) {
     let errorMessages = ''
 
-    if (!payload.break_conditions?.length && !payload._children?.some(c => c.nodeType === BlockEnum.LoopEnd)) {
-      return {
-        isValid: false,
-        errorMessage: t('workflow.nodes.loop.exitConditionTip'),
-      }
-    }
-
     payload.loop_variables?.forEach((variable) => {
       if (!variable.label)
         errorMessages = t(`${i18nPrefix}.fieldRequired`, { field: t(`${i18nPrefix}.fields.variable`) })
