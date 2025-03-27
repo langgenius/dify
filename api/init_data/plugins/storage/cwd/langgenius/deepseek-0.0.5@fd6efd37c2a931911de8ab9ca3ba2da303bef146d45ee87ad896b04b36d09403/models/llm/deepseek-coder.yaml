@@ -1,0 +1,29 @@
+model: deepseek-coder
+label:
+  zh_Hans: deepseek-coder
+  en_US: deepseek-coder
+model_type: llm
+features:
+  - agent-thought
+  - tool-call
+  - multi-tool-call
+  - stream-tool-call
+model_properties:
+  mode: chat
+  context_size: 128000
+parameter_rules:
+  - name: temperature
+    use_template: temperature
+    min: 0
+    max: 1
+    default: 0.5
+  - name: top_p
+    use_template: top_p
+    min: 0
+    max: 1
+    default: 1
+  - name: max_tokens
+    use_template: max_tokens
+    min: 1
+    max: 4096
+    default: 1024

@@ -1,0 +1,4 @@
+model: netease-youdao/bce-reranker-base_v1
+model_type: rerank
+model_properties:
+  context_size: 512

@@ -1,0 +1,2 @@
+dify_plugin==0.0.1b73
+openai~=1.66.3

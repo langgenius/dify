@@ -1,0 +1,18 @@
+identity:
+  author: langgenius
+  name: agent
+  label:
+    en_US: Agent
+    zh_Hans: Agent
+    pt_BR: Agent
+  description:
+    en_US: Agent
+    zh_Hans: Agent
+    pt_BR: Agent
+  icon: icon.svg
+strategies:
+  - strategies/function_calling.yaml
+  - strategies/ReAct.yaml
+extra:
+  python:
+    source: provider/agent.py

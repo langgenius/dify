@@ -1,0 +1,31 @@
+version: 0.0.11
+type: plugin
+author: "langgenius"
+name: "openai_api_compatible"
+description:
+  en_US: Model providers compatible with OpenAI's API standard, such as LM Studio.
+  zh_Hans: 兼容 OpenAI API 的模型供应商，例如 LM Studio 。
+label:
+  en_US: "OpenAI-API-compatible"
+created_at: "2024-07-12T08:03:44.658609186Z"
+icon: icon.svg
+resource:
+  memory: 1048576
+  permission:
+    tool:
+      enabled: true
+    model:
+      enabled: true
+      llm: true
+plugins:
+  models:
+    - "provider/openai_api_compatible.yaml"
+meta:
+  version: 0.0.1
+  arch:
+    - "amd64"
+    - "arm64"
+  runner:
+    language: "python"
+    version: "3.12"
+    entrypoint: "main"

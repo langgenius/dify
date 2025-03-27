@@ -1,7 +1,8 @@
 from flask import Flask
 from . import (
     account,
-    workflow
+    workflow,
+    plugin
 )
 from .decorator import _initializers
 

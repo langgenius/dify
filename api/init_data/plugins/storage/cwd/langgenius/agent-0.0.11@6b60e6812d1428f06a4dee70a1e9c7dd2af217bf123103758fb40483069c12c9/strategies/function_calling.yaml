@@ -1,0 +1,58 @@
+identity:
+  name: function_calling
+  author: Dify
+  label:
+    en_US: FunctionCalling
+    zh_Hans: FunctionCalling
+    pt_BR: FunctionCalling
+description:
+  en_US: Function Calling is a basic strategy for agent, model will use the tools provided to perform the task.
+  zh_Hans: Function Calling 是一个基本的 Agent 策略，模型将使用提供的工具来执行任务。
+  pt_BR: Function Calling is a basic strategy for agent, model will use the tools provided to perform the task.
+parameters:
+  - name: model
+    type: model-selector
+    scope: tool-call&llm
+    required: true
+    label:
+      en_US: Model
+      zh_Hans: 模型
+      pt_BR: Model
+  - name: tools
+    type: array[tools]
+    required: true
+    label:
+      en_US: Tool list
+      zh_Hans: 工具列表
+      pt_BR: Tool list
+  - name: instruction
+    type: string
+    required: true
+    label:
+      en_US: Instruction
+      zh_Hans: 指令
+      pt_BR: Instruction
+    auto_generate:
+      type: prompt_instruction
+    template:
+      enabled: true
+  - name: query
+    type: string
+    required: true
+    label:
+      en_US: Query
+      zh_Hans: 查询
+      pt_BR: Query
+  - name: maximum_iterations
+    type: number
+    required: true
+    label:
+      en_US: Maximum Iterations
+      zh_Hans: 最大迭代次数
+      pt_BR: Maximum Iterations
+    default: 3
+    max: 30
+    min: 1
+extra:
+  python:
+    source: strategies/function_calling.py

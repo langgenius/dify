@@ -1,0 +1,37 @@
+author: langgenius
+created_at: '2024-09-20T00:13:50.29298939-04:00'
+description:
+  en_US: Models provided by deepseek, such as deepseek-chat、deepseek-coder.
+  zh_Hans: 深度求索提供的模型，例如 deepseek-chat、deepseek-coder 。
+icon: icon_s_en.svg
+label:
+  en_US: DeepSeek
+  zh_Hans: 深度求索
+meta:
+  arch:
+  - amd64
+  - arm64
+  runner:
+    entrypoint: main
+    language: python
+    version: '3.12'
+  version: 0.0.1
+name: deepseek
+plugins:
+  models:
+  - provider/deepseek.yaml
+resource:
+  memory: 268435456
+  permission:
+    model:
+      enabled: true
+      llm: true
+      moderation: false
+      rerank: true
+      speech2text: false
+      text_embedding: true
+      tts: false
+    tool:
+      enabled: true
+type: plugin
+version: 0.0.5

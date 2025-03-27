@@ -21,5 +21,9 @@ class APOConfig(BaseSettings):
     )
     WORKFLOW_DIR: str = Field(
         description="Directory of workflows yaml file.",
-        default="./workflows"
+        default="./init_data/workflows"
+    )
+    OFFLINE_MODE: bool = Field(
+        description="Offline mode",
+        default=False
     )

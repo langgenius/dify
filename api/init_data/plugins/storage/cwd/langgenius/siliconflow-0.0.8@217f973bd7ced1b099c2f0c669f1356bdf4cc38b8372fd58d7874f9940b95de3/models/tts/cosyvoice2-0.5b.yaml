@@ -1,0 +1,38 @@
+model: FunAudioLLM/CosyVoice2-0.5B
+model_type: tts
+model_properties:
+  default_voice: 'FunAudioLLM/CosyVoice2-0.5B:alex'
+  voices:
+    - mode: "FunAudioLLM/CosyVoice2-0.5B:alex"
+      name: "Alex（男声）"
+      language: [ "zh-Hans", "en-US" ]
+    - mode: "FunAudioLLM/CosyVoice2-0.5B:benjamin"
+      name: "Benjamin（男声）"
+      language: [ "zh-Hans", "en-US" ]
+    - mode: "FunAudioLLM/CosyVoice2-0.5B:charles"
+      name: "Charles（男声）"
+      language: [ "zh-Hans", "en-US" ]
+    - mode: "FunAudioLLM/CosyVoice2-0.5B:david"
+      name: "David（男声）"
+      language: [ "zh-Hans", "en-US" ]
+    - mode: "FunAudioLLM/CosyVoice2-0.5B:anna"
+      name: "Anna（女声）"
+      language: [ "zh-Hans", "en-US" ]
+    - mode: "FunAudioLLM/CosyVoice2-0.5B:bella"
+      name: "Bella（女声）"
+      language: [ "zh-Hans", "en-US" ]
+    - mode: "FunAudioLLM/CosyVoice2-0.5B:claire"
+      name: "Claire（女声）"
+      language: [ "zh-Hans", "en-US" ]
+    - mode: "FunAudioLLM/CosyVoice2-0.5B:diana"
+      name: "Diana（女声）"
+      language: [ "zh-Hans", "en-US" ]
+  audio_type: 'mp3'
+  max_workers: 5
+  # stream: false
+pricing:
+  input: '50'
+  output: '0'
+  unit: '0.000001'
+  currency: RMB
+
