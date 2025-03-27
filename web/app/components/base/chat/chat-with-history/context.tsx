@@ -54,6 +54,8 @@ export type ChatWithHistoryContextValue = {
   setClearChatList: (state: boolean) => void
   isResponding?: boolean
   setIsResponding: (state: boolean) => void,
+  currentConversationInputs: Record<string, any> | null,
+  setCurrentConversationInputs: (v: Record<string, any>) => void,
 }
 
 export const ChatWithHistoryContext = createContext<ChatWithHistoryContextValue>({
@@ -85,5 +87,7 @@ export const ChatWithHistoryContext = createContext<ChatWithHistoryContextValue>
   setClearChatList: () => {},
   isResponding: false,
   setIsResponding: () => {},
+  currentConversationInputs: {},
+  setCurrentConversationInputs: () => {},
 })
 export const useChatWithHistoryContext = () => useContext(ChatWithHistoryContext)
