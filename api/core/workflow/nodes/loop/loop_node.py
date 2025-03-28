@@ -250,6 +250,7 @@ class LoopNode(BaseNode[LoopNodeData]):
                 _outputs = {}
                 for loop_variable_key, loop_variable_selector in loop_variable_selectors.items():
                     _outputs[loop_variable_key] = variable_pool.get(loop_variable_selector).value
+                    _outputs['loop_round'] = current_index + 1
                 self.node_data.outputs = _outputs
 
                 if check_break_result:
