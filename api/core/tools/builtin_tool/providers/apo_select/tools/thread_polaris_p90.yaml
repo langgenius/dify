@@ -1,0 +1,60 @@
+identity:
+  name: 线程北极星P90数据
+  author: APO
+  label:
+    en_US: Thread Polaris Metrics P90
+    zh_Hans: 线程北极星P90数据
+description:
+  human:
+    en_US: 
+    zh_Hans: 线程北极星P90数据
+  llm: Thread Polaris Metrics P90
+parameters:
+  - name: pod
+    type: string
+    required: False
+    label:
+      en_US: Pod name
+      zh_Hans: Pod名称
+    human_description:
+      en_US: Pod name
+      zh_Hans: Pod名称
+    llm_description: Pod name
+    form: llm
+  - name: type
+    type: string
+    required: False
+    label:
+      en_US: Type (cpu,net,file,epoll,runq)
+      zh_Hans: 线程执行类型(cpu,net,file,epoll,runq)
+    human_description:
+      en_US: Type (cpu,net,file,epoll,runq)
+      zh_Hans: 线程执行类型(cpu,net,file,epoll,runq)
+    llm_description: Type (cpu,net,file,epoll,runq)
+    form: llm
+  - name: startTime
+    type: number
+    required: true
+    label:
+      en_US: startTime
+      zh_Hans: startTime
+      pt_BR: startTime
+    human_description:
+      en_US: Data query start time(Microsecond)
+      zh_Hans: 开始时间 (微秒)
+      pt_BR: Data query start time
+    llm_description: Data query start time(Microsecond)
+    form: llm
+  - name: endTime
+    type: number
+    required: true
+    label:
+      en_US: endTime
+      zh_Hans: endTime
+      pt_BR: endTime
+    human_description:
+      en_US: Data query end time(Microsecond)
+      zh_Hans: 结束时间 (微秒)
+      pt_BR: Data query end time(Microsecond)
+    llm_description: Data query end time(Microsecond)
+    form: llm
