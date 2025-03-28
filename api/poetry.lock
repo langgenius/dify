@@ -614,7 +614,7 @@ name = "bce-python-sdk"
 version = "0.9.29"
 description = "BCE SDK for python"
 optional = false
-python-versions = "!=3.0.*,!=3.1.*,!=3.2.*,<4,>=2.7"
+python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, <4"
 groups = ["storage"]
 files = [
     {file = "bce_python_sdk-0.9.29-py3-none-any.whl", hash = "sha256:6518dc0ada422acd1841eeabcb7f89cfc07e3bb1a4be3c75945cab953907b555"},
@@ -739,7 +739,7 @@ name = "boto3"
 version = "1.35.99"
 description = "The AWS SDK for Python"
 optional = false
-python-versions = ">=3.8"
+python-versions = ">= 3.8"
 groups = ["main"]
 files = [
     {file = "boto3-1.35.99-py3-none-any.whl", hash = "sha256:83e560faaec38a956dfb3d62e05e1703ee50432b45b788c09e25107c5058bd71"},
@@ -759,7 +759,7 @@ name = "botocore"
 version = "1.35.99"
 description = "Low-level, data-driven core of boto 3."
 optional = false
-python-versions = ">=3.8"
+python-versions = ">= 3.8"
 groups = ["main"]
 files = [
     {file = "botocore-1.35.99-py3-none-any.whl", hash = "sha256:b22d27b6b617fc2d7342090d6129000af2efd20174215948c0d7ae2da0fab445"},
@@ -1961,7 +1961,7 @@ name = "dataclasses-json"
 version = "0.6.7"
 description = "Easily serialize dataclasses to and from JSON."
 optional = false
-python-versions = "<4.0,>=3.7"
+python-versions = ">=3.7,<4.0"
 groups = ["main"]
 files = [
     {file = "dataclasses_json-0.6.7-py3-none-any.whl", hash = "sha256:0dbf33f26c8d5305befd61b39d2b3414e8a407bedc2834dea9b8d642666fb40a"},
@@ -2001,7 +2001,7 @@ name = "deprecated"
 version = "1.2.18"
 description = "Python @deprecated decorator to deprecate old python classes, functions or methods."
 optional = false
-python-versions = "!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*,>=2.7"
+python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*"
 groups = ["storage", "vdb"]
 files = [
     {file = "Deprecated-1.2.18-py2.py3-none-any.whl", hash = "sha256:bd5011788200372a32418f888e326a09ff80d0214bd961147cfed01b5c018eec"},
@@ -2970,7 +2970,7 @@ name = "google-resumable-media"
 version = "2.7.2"
 description = "Utilities for Google Media Downloads and Resumable Uploads"
 optional = false
-python-versions = ">=3.7"
+python-versions = ">= 3.7"
 groups = ["main", "storage"]
 files = [
     {file = "google_resumable_media-2.7.2-py2.py3-none-any.whl", hash = "sha256:3ce7551e9fe6d99e9a126101d2536612bb73486721951e9562fee0f90c6ababa"},
@@ -3008,7 +3008,7 @@ name = "gotrue"
 version = "2.11.4"
 description = "Python Client Library for Supabase Auth"
 optional = false
-python-versions = "<4.0,>=3.9"
+python-versions = ">=3.9,<4.0"
 groups = ["storage"]
 files = [
     {file = "gotrue-2.11.4-py3-none-any.whl", hash = "sha256:712e5018acc00d93cfc6d7bfddc3114eb3c420ab03b945757a8ba38c5fc3caa8"},
@@ -4036,7 +4036,7 @@ name = "langfuse"
 version = "2.51.5"
 description = "A client library for accessing langfuse"
 optional = false
-python-versions = "<4.0,>=3.8.1"
+python-versions = ">=3.8.1,<4.0"
 groups = ["main"]
 files = [
     {file = "langfuse-2.51.5-py3-none-any.whl", hash = "sha256:b95401ca710ef94b521afa6541933b6f93d7cfd4a97523c8fc75bca4d6d219fb"},
@@ -4062,7 +4062,7 @@ name = "langsmith"
 version = "0.1.147"
 description = "Client library to connect to the LangSmith LLM Tracing and Evaluation Platform."
 optional = false
-python-versions = "<4.0,>=3.8.1"
+python-versions = ">=3.8.1,<4.0"
 groups = ["main"]
 files = [
     {file = "langsmith-0.1.147-py3-none-any.whl", hash = "sha256:7166fc23b965ccf839d64945a78e9f1157757add228b086141eb03a60d699a15"},
@@ -4194,7 +4194,7 @@ name = "litellm"
 version = "1.63.7"
 description = "Library to easily interface with LLM API providers"
 optional = false
-python-versions = "!=2.7.*,!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*,!=3.4.*,!=3.5.*,!=3.6.*,!=3.7.*,>=3.8"
+python-versions = ">=3.8, !=2.7.*, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, !=3.4.*, !=3.5.*, !=3.6.*, !=3.7.*"
 groups = ["main"]
 files = [
     {file = "litellm-1.63.7-py3-none-any.whl", hash = "sha256:fbdee39a894506c68f158c6b4e0079f9e9c023441fff7215e7b8e42162dba0a7"},
@@ -5043,6 +5043,18 @@ machine-learning = ["numpy", "python-crfsuite", "scikit-learn", "scipy"]
 plot = ["matplotlib"]
 tgrep = ["pyparsing"]
 twitter = ["twython"]
+
+[[package]]
+name = "nodeenv"
+version = "1.9.1"
+description = "Node.js virtual environment builder"
+optional = false
+python-versions = ">=2.7,!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*,!=3.4.*,!=3.5.*,!=3.6.*"
+groups = ["dev"]
+files = [
+    {file = "nodeenv-1.9.1-py2.py3-none-any.whl", hash = "sha256:ba11c9782d29c27c70ffbdda2d7415098754709be8a7056d79a737cd901155c9"},
+    {file = "nodeenv-1.9.1.tar.gz", hash = "sha256:6ec12890a2dab7946721edbfbcd91f3319c6ccc9aec47be7c7e6b7011ee6645f"},
+]
 
 [[package]]
 name = "numba"
@@ -6077,7 +6089,7 @@ name = "postgrest"
 version = "0.17.2"
 description = "PostgREST client for Python. This library provides an ORM interface to PostgREST."
 optional = false
-python-versions = "<4.0,>=3.9"
+python-versions = ">=3.9,<4.0"
 groups = ["storage"]
 files = [
     {file = "postgrest-0.17.2-py3-none-any.whl", hash = "sha256:f7c4f448e5a5e2d4c1dcf192edae9d1007c4261e9a6fb5116783a0046846ece2"},
@@ -6298,7 +6310,7 @@ files = [
 ]
 
 [package.extras]
-dev = ["abi3audit", "black (==24.10.0)", "check-manifest", "coverage", "packaging", "pylint", "pyperf", "pypinfo", "pytest", "pytest-cov", "pytest-xdist", "requests", "rstcheck", "ruff", "setuptools", "sphinx", "sphinx_rtd_theme", "toml-sort", "twine", "virtualenv", "vulture", "wheel"]
+dev = ["abi3audit", "black (==24.10.0)", "check-manifest", "coverage", "packaging", "pylint", "pyperf", "pypinfo", "pytest", "pytest-cov", "pytest-xdist", "requests", "rstcheck", "ruff", "setuptools", "sphinx", "sphinx-rtd-theme", "toml-sort", "twine", "virtualenv", "vulture", "wheel"]
 test = ["pytest", "pytest-xdist", "setuptools"]
 
 [[package]]
@@ -6763,7 +6775,7 @@ name = "pyobvector"
 version = "0.1.18"
 description = "A python SDK for OceanBase Vector Store, based on SQLAlchemy, compatible with Milvus API."
 optional = false
-python-versions = "<4.0,>=3.9"
+python-versions = ">=3.9,<4.0"
 groups = ["vdb"]
 files = [
     {file = "pyobvector-0.1.18-py3-none-any.whl", hash = "sha256:9ca4098fd58f87e9c6ff1cd4a5631c666d51d0607933dd3656b7274eacc36428"},
@@ -6847,7 +6859,7 @@ name = "pypdfium2"
 version = "4.30.1"
 description = "Python bindings to PDFium"
 optional = false
-python-versions = ">=3.6"
+python-versions = ">= 3.6"
 groups = ["main"]
 files = [
     {file = "pypdfium2-4.30.1-py3-none-macosx_10_13_x86_64.whl", hash = "sha256:e07c47633732cc18d890bb7e965ad28a9c5a932e548acb928596f86be2e5ae37"},
@@ -6903,6 +6915,27 @@ files = [
 
 [package.extras]
 dev = ["build", "flake8", "mypy", "pytest", "twine"]
+
+[[package]]
+name = "pyright"
+version = "1.1.398"
+description = "Command line wrapper for pyright"
+optional = false
+python-versions = ">=3.7"
+groups = ["dev"]
+files = [
+    {file = "pyright-1.1.398-py3-none-any.whl", hash = "sha256:0a70bfd007d9ea7de1cf9740e1ad1a40a122592cfe22a3f6791b06162ad08753"},
+    {file = "pyright-1.1.398.tar.gz", hash = "sha256:357a13edd9be8082dc73be51190913e475fa41a6efb6ec0d4b7aab3bc11638d8"},
+]
+
+[package.dependencies]
+nodeenv = ">=1.6.0"
+typing-extensions = ">=4.1"
+
+[package.extras]
+all = ["nodejs-wheel-binaries", "twine (>=3.4.1)"]
+dev = ["twine (>=3.4.1)"]
+nodejs = ["nodejs-wheel-binaries"]
 
 [[package]]
 name = "pytest"
@@ -7497,7 +7530,7 @@ name = "realtime"
 version = "2.4.1"
 description = ""
 optional = false
-python-versions = "<4.0,>=3.9"
+python-versions = ">=3.9,<4.0"
 groups = ["storage"]
 files = [
     {file = "realtime-2.4.1-py3-none-any.whl", hash = "sha256:6aacfec1ca3519fbb87219ce250dee3b6797156f5a091eb48d0e19945bc6d103"},
@@ -7918,7 +7951,7 @@ name = "s3transfer"
 version = "0.10.4"
 description = "An Amazon S3 Transfer Manager"
 optional = false
-python-versions = ">=3.8"
+python-versions = ">= 3.8"
 groups = ["main"]
 files = [
     {file = "s3transfer-0.10.4-py3-none-any.whl", hash = "sha256:244a76a24355363a68164241438de1b72f8781664920260c48465896b712a41e"},
@@ -8212,7 +8245,7 @@ name = "six"
 version = "1.17.0"
 description = "Python 2 and 3 compatibility utilities"
 optional = false
-python-versions = "!=3.0.*,!=3.1.*,!=3.2.*,>=2.7"
+python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*"
 groups = ["main", "dev", "storage", "vdb"]
 files = [
     {file = "six-1.17.0-py2.py3-none-any.whl", hash = "sha256:4721f391ed90541fddacab5acf947aa0d3dc7d27b2e1e8eda2be8970586c3274"},
@@ -8321,7 +8354,7 @@ typing-extensions = ">=4.6.0"
 [package.extras]
 aiomysql = ["aiomysql (>=0.2.0)", "greenlet (!=0.4.17)"]
 aioodbc = ["aioodbc", "greenlet (!=0.4.17)"]
-aiosqlite = ["aiosqlite", "greenlet (!=0.4.17)", "typing_extensions (!=3.10.0.1)"]
+aiosqlite = ["aiosqlite", "greenlet (!=0.4.17)", "typing-extensions (!=3.10.0.1)"]
 asyncio = ["greenlet (!=0.4.17)"]
 asyncmy = ["asyncmy (>=0.2.3,!=0.2.4,!=0.2.6)", "greenlet (!=0.4.17)"]
 mariadb-connector = ["mariadb (>=1.0.1,!=1.1.2,!=1.1.5)"]
@@ -8331,7 +8364,7 @@ mssql-pyodbc = ["pyodbc"]
 mypy = ["mypy (>=0.910)"]
 mysql = ["mysqlclient (>=1.4.0)"]
 mysql-connector = ["mysql-connector-python"]
-oracle = ["cx_oracle (>=8)"]
+oracle = ["cx-oracle (>=8)"]
 oracle-oracledb = ["oracledb (>=1.0.1)"]
 postgresql = ["psycopg2 (>=2.7)"]
 postgresql-asyncpg = ["asyncpg", "greenlet (!=0.4.17)"]
@@ -8341,7 +8374,7 @@ postgresql-psycopg2binary = ["psycopg2-binary"]
 postgresql-psycopg2cffi = ["psycopg2cffi"]
 postgresql-psycopgbinary = ["psycopg[binary] (>=3.0.7)"]
 pymysql = ["pymysql"]
-sqlcipher = ["sqlcipher3_binary"]
+sqlcipher = ["sqlcipher3-binary"]
 
 [[package]]
 name = "starlette"
@@ -8366,7 +8399,7 @@ name = "storage3"
 version = "0.8.2"
 description = "Supabase Storage client for Python."
 optional = false
-python-versions = "<4.0,>=3.9"
+python-versions = ">=3.9,<4.0"
 groups = ["storage"]
 files = [
     {file = "storage3-0.8.2-py3-none-any.whl", hash = "sha256:f2e995b18c77a2a9265d1a33047d43e4d6abb11eb3ca5067959f68281c305de3"},
@@ -8383,7 +8416,7 @@ name = "supabase"
 version = "2.8.1"
 description = "Supabase client for Python."
 optional = false
-python-versions = "<4.0,>=3.9"
+python-versions = ">=3.9,<4.0"
 groups = ["storage"]
 files = [
     {file = "supabase-2.8.1-py3-none-any.whl", hash = "sha256:dfa8bef89b54129093521d5bba2136ff765baf67cd76d8ad0aa4984d61a7815c"},
@@ -8404,7 +8437,7 @@ name = "supafunc"
 version = "0.6.2"
 description = "Library for Supabase Functions"
 optional = false
-python-versions = "<4.0,>=3.9"
+python-versions = ">=3.9,<4.0"
 groups = ["storage"]
 files = [
     {file = "supafunc-0.6.2-py3-none-any.whl", hash = "sha256:101b30616b0a1ce8cf938eca1df362fa4cf1deacb0271f53ebbd674190fb0da5"},
@@ -8531,7 +8564,7 @@ name = "tidb-vector"
 version = "0.0.9"
 description = "A Python client for TiDB Vector"
 optional = false
-python-versions = "<4.0,>=3.8.1"
+python-versions = ">=3.8.1,<4.0"
 groups = ["vdb"]
 files = [
     {file = "tidb_vector-0.0.9-py3-none-any.whl", hash = "sha256:db060ee1c981326d3882d0810e0b8b57811f278668f9381168997b360c4296c2"},
@@ -9247,7 +9280,7 @@ name = "unstructured-client"
 version = "0.28.1"
 description = "Python Client SDK for Unstructured API"
 optional = false
-python-versions = "<4.0,>=3.8"
+python-versions = ">=3.8,<4.0"
 groups = ["main"]
 files = [
     {file = "unstructured_client-0.28.1-py3-none-any.whl", hash = "sha256:0112688908f544681a67abf314e0d2023dfa120c8e5d9fa6d31390b914a06d72"},
@@ -9272,7 +9305,7 @@ name = "upstash-vector"
 version = "0.6.0"
 description = "Serverless Vector SDK from Upstash"
 optional = false
-python-versions = "<4.0,>=3.8"
+python-versions = ">=3.8,<4.0"
 groups = ["vdb"]
 files = [
     {file = "upstash_vector-0.6.0-py3-none-any.whl", hash = "sha256:d0bdad7765b8a7f5c205b7a9c81ca4b9a4cee3ee4952afc7d5ea5fb76c3f3c3c"},
@@ -10148,4 +10181,4 @@ cffi = ["cffi (>=1.11)"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.11,<3.13"
-content-hash = "a094082d2fd4d8ea480ac800e54029bdb604de70a7b4348778bdcddb39b06c7e"
+content-hash = "d451d50241326dd033d2dd66bc48f5eb59af245d78a35293389730563f39653e"

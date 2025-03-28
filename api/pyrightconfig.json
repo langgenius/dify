@@ -1,0 +1,8 @@
+{
+  "reportUnusedVariable": "error",
+  "reportUnusedFunction": "error",
+  "reportUnusedClass": "error",
+  "typeCheckingMode": "off",
+  "reportMissingImports": "none",
+  "reportMissingModuleSource": "none"
+}
