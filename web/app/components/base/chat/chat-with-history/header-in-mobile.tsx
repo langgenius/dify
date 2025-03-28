@@ -120,7 +120,7 @@ const HeaderInMobile = () => {
               <div className='system-xl-semibold grow text-text-secondary'>{t('share.chat.chatSettingsTitle')}</div>
             </div>
             <div className='p-4'>
-              <InputsFormContent showTip />
+              <InputsFormContent />
             </div>
           </div>
         </div>

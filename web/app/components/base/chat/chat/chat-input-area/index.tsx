@@ -3,7 +3,7 @@ import {
   useRef,
   useState,
 } from 'react'
-import Textarea from 'rc-textarea'
+import Textarea from 'react-textarea-autosize'
 import { useTranslation } from 'react-i18next'
 import Recorder from 'js-audio-recorder'
 import type {
@@ -174,18 +174,18 @@ const ChatInputArea = ({
                 {query}
               </div>
               <Textarea
-                ref={textareaRef}
+                ref={ref => textareaRef.current = ref as any}
                 className={cn(
-                  'body-lg-regular w-full bg-transparent p-1 leading-6 text-text-tertiary outline-none',
+                  'body-lg-regular w-full resize-none bg-transparent p-1 leading-6 text-text-tertiary outline-none',
                 )}
                 placeholder={t('common.chat.inputPlaceholder') || ''}
                 autoFocus
-                autoSize={{ minRows: 1 }}
+                minRows={1}
                 onResize={handleTextareaResize}
                 value={query}
                 onChange={(e) => {
                   setQuery(e.target.value)
-                  handleTextareaResize()
+                  setTimeout(handleTextareaResize, 0)
                 }}
                 onKeyDown={handleKeyDown}
                 onPaste={handleClipboardPasteFile}

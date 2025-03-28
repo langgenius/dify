@@ -36,7 +36,7 @@ const ViewFormDropdown = () => {
             <div className='system-xl-semibold grow text-text-secondary'>{t('share.chat.chatSettingsTitle')}</div>
           </div>
           <div className='p-6'>
-            <InputsFormContent showTip />
+            <InputsFormContent />
           </div>
         </div>
       </PortalToFollowElemContent>
