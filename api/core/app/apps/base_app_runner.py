@@ -350,7 +350,7 @@ class AppRunner:
         inputs: Mapping[str, Any],
         query: str | None = None,
         message_id: str,
-    ) -> tuple[bool, Mapping[str, Any], str]:
+    ) -> tuple[bool, dict[str, Any], str]:
         """
         Process sensitive_word_avoidance.
         :param app_id: app id
@@ -406,7 +406,7 @@ class AppRunner:
         tenant_id: str,
         app_id: str,
         external_data_tools: list[ExternalDataVariableEntity],
-        inputs: Mapping[str, Any],
+        inputs: dict[str, Any],
         query: str,
     ) -> Mapping[str, Any]:
         """
