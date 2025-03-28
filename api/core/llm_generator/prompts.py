@@ -1,6 +1,6 @@
 # Written by YORKI MINAKO🤡, Edited by Xiaoyi
 CONVERSATION_TITLE_PROMPT = """You need to decompose the user's input into "subject" and "intention" in order to accurately figure out what the user's input language actually is. 
-Notice: the language type user use could be diverse, which can be English, Chinese, Español, Arabic, Japanese, French, and etc.
+Notice: the language type user use could be diverse, which can be English, Chinese, Italian, Español, Arabic, Japanese, French, and etc.
 MAKE SURE your output is the SAME language as the user's input!
 Your output is restricted only to: (Input language) Intention + Subject(short as possible)
 Your output MUST be a valid JSON.

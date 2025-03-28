@@ -651,7 +651,13 @@ const Configuration: FC = () => {
 
         syncToPublishedConfig(config)
         setPublishedConfig(config)
-        const retrievalConfig = getMultipleRetrievalConfig(modelConfig.dataset_configs, datasets, datasets, {
+        const retrievalConfig = getMultipleRetrievalConfig({
+          ...modelConfig.dataset_configs,
+          reranking_model: modelConfig.dataset_configs.reranking_model && {
+            provider: modelConfig.dataset_configs.reranking_model.reranking_provider_name,
+            model: modelConfig.dataset_configs.reranking_model.reranking_model_name,
+          },
+        }, datasets, datasets, {
           provider: currentRerankProvider?.provider,
           model: currentRerankModel?.model,
         })
@@ -661,8 +667,8 @@ const Configuration: FC = () => {
           ...retrievalConfig,
           ...(retrievalConfig.reranking_model ? {
             reranking_model: {
-              ...retrievalConfig.reranking_model,
-              reranking_provider_name: correctModelProvider(modelConfig.dataset_configs.reranking_model.reranking_provider_name),
+              reranking_model_name: retrievalConfig.reranking_model.model,
+              reranking_provider_name: correctModelProvider(retrievalConfig.reranking_model.provider),
             },
           } : {}),
         })
