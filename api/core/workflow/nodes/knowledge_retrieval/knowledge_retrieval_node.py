@@ -449,7 +449,7 @@ class KnowledgeRetrievalNode(LLMNode):
                                 "condition": item.get("comparison_operator"),
                             }
                         )
-        except Exception as e:
+        except Exception:
             return []
         return automatic_metadata_filters
 

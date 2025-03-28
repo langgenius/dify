@@ -181,7 +181,7 @@ class QAIndexProcessor(BaseIndexProcessor):
                         qa_document.metadata["doc_hash"] = hash
                     qa_documents.append(qa_document)
                 format_documents.extend(qa_documents)
-            except Exception as e:
+            except Exception:
                 logging.exception("Failed to format qa document")
 
             all_qa_documents.extend(format_documents)

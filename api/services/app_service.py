@@ -93,7 +93,7 @@ class AppService:
                 )
             except (ProviderTokenNotInitError, LLMBadRequestError):
                 model_instance = None
-            except Exception as e:
+            except Exception:
                 logging.exception(f"Get default model instance failed, tenant_id: {tenant_id}")
                 model_instance = None
 
@@ -194,7 +194,7 @@ class AppService:
 
                     # override tool parameters
                     tool["tool_parameters"] = masked_parameter
-                except Exception as e:
+                except Exception:
                     pass
 
             # override agent mode

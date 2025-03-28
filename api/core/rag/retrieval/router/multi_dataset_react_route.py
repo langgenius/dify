@@ -77,7 +77,7 @@ class ReactMultiDatasetRouter:
                 user_id=user_id,
                 tenant_id=tenant_id,
             )
-        except Exception as e:
+        except Exception:
             return None
 
     def _react_invoke(

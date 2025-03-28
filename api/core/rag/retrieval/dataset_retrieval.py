@@ -961,7 +961,7 @@ class DatasetRetrieval:
                                 "condition": item.get("comparison_operator"),
                             }
                         )
-        except Exception as e:
+        except Exception:
             return None
         return automatic_metadata_filters
 
