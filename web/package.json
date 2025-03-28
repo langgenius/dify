@@ -211,8 +211,5 @@
     "@types/react": "19.0.11",
     "@types/react-dom": "19.0.4",
     "@storybook/test": "8.5.0"
-  },
-  "optionalDependencies": {
-    "canvas": "^3.1.0"
   }
 }
