@@ -571,10 +571,6 @@ class AccountService:
         return False
 
 
-def _get_login_cache_key(*, account_id: str, token: str):
-    return f"account_login:{account_id}:{token}"
-
-
 class TenantService:
     @staticmethod
     def create_tenant(name: str, is_setup: Optional[bool] = False, is_from_dashboard: Optional[bool] = False) -> Tenant:
