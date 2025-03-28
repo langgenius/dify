@@ -158,10 +158,12 @@ class LoopNode(BaseNode[LoopNodeData]):
                         continue
 
                     if (
-                        isinstance(event, BaseNodeEvent)
+                        isinstance(event, NodeRunSucceededEvent)
                         and event.node_type == NodeType.LOOP_END
                         and not isinstance(event, NodeRunStreamChunkEvent)
                     ):
+                        check_break_result = True
+                        yield self._handle_event_metadata(event=event, iter_run_index=current_index)
                         break
 
                     if isinstance(event, NodeRunSucceededEvent):
