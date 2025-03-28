@@ -318,7 +318,7 @@ Workflow 应用无会话支持，适合用于翻译/文章写作/总结 AI 等�
 ---
 
 <Heading
-  url='/workflows/run/:workflow_id'
+  url='/workflows/run/:workflow_run_id'
   method='GET'
   title='获取workflow执行情况'
   name='#get-workflow-run-detail'
@@ -327,7 +327,7 @@ Workflow 应用无会话支持，适合用于翻译/文章写作/总结 AI 等�
   <Col>
     根据 workflow 执行 ID 获取 workflow 任务当前执行结果
     ### Path
-    - `workflow_id` (string) workflow 执行 ID，可在流式返回 Chunk 中获取
+    - `workflow_run_id` (string) workflow_run_id，可在流式返回 Chunk 中获取
     ### Response
     - `id` (string) workflow 执行 ID
     - `workflow_id` (string) 关联的 Workflow ID
@@ -343,9 +343,9 @@ Workflow 应用无会话支持，适合用于翻译/文章写作/总结 AI 等�
   </Col>
   <Col sticky>
     ### Request Example
-    <CodeGroup title="Request" tag="GET" label="/workflows/run/:workflow_id" targetCode={`curl -X GET '${props.appDetail.api_base_url}/workflows/run/:workflow_id' \\\n-H 'Authorization: Bearer {api_key}' \\\n-H 'Content-Type: application/json'`}>
+    <CodeGroup title="Request" tag="GET" label="/workflows/run/:workflow_run_id" targetCode={`curl -X GET '${props.appDetail.api_base_url}/workflows/run/:workflow_run_id' \\\n-H 'Authorization: Bearer {api_key}' \\\n-H 'Content-Type: application/json'`}>
       ```bash {{ title: 'cURL' }}
-      curl -X GET '${props.appDetail.api_base_url}/workflows/run/:workflow_id' \
+      curl -X GET '${props.appDetail.api_base_url}/workflows/run/:workflow_run_id' \
       -H 'Authorization: Bearer {api_key}' \
       -H 'Content-Type: application/json'
       ```
