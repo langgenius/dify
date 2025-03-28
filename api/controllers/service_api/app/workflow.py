@@ -27,6 +27,7 @@ from core.model_runtime.errors.invoke import InvokeError
 from extensions.ext_database import db
 from fields.workflow_app_log_fields import workflow_app_log_pagination_fields
 from libs import helper
+from libs.helper import TimestampField
 from models.model import App, AppMode, EndUser
 from models.workflow import WorkflowRun, WorkflowRunStatus
 from services.app_generate_service import AppGenerateService
@@ -44,8 +45,8 @@ workflow_run_fields = {
     "error": fields.String,
     "total_steps": fields.Integer,
     "total_tokens": fields.Integer,
-    "created_at": fields.DateTime,
-    "finished_at": fields.DateTime,
+    "created_at": TimestampField,
+    "finished_at": TimestampField,
     "elapsed_time": fields.Float,
 }
 

@@ -3,7 +3,7 @@ import {
   useRef,
   useState,
 } from 'react'
-import Textarea from 'rc-textarea'
+import Textarea from 'react-textarea-autosize'
 import { useTranslation } from 'react-i18next'
 import Recorder from 'js-audio-recorder'
 import type {
@@ -80,6 +80,7 @@ const ChatInputArea = ({
   const { checkInputsForm } = useCheckInputsForms()
   const historyRef = useRef([''])
   const [currentIndex, setCurrentIndex] = useState(-1)
+  const isComposingRef = useRef(false)
   const handleSend = () => {
     if (isResponding) {
       notify({ type: 'info', message: t('appDebug.errorMessage.waitForResponse') })
@@ -103,8 +104,21 @@ const ChatInputArea = ({
       }
     }
   }
+  const handleCompositionStart = () => {
+    // e: React.CompositionEvent<HTMLTextAreaElement>
+    isComposingRef.current = true
+  }
+  const handleCompositionEnd = () => {
+    // safari or some browsers will trigger compositionend before keydown.
+    // delay 50ms for safari.
+    setTimeout(() => {
+      isComposingRef.current = false
+    }, 50)
+  }
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
+      // if isComposing, exit
+      if (isComposingRef.current) return
       e.preventDefault()
       setQuery(query.replace(/\n$/, ''))
       historyRef.current.push(query)
@@ -174,20 +188,22 @@ const ChatInputArea = ({
                 {query}
               </div>
               <Textarea
-                ref={textareaRef}
+                ref={ref => textareaRef.current = ref as any}
                 className={cn(
-                  'body-lg-regular w-full bg-transparent p-1 leading-6 text-text-tertiary outline-none',
+                  'body-lg-regular w-full resize-none bg-transparent p-1 leading-6 text-text-tertiary outline-none',
                 )}
                 placeholder={t('common.chat.inputPlaceholder') || ''}
                 autoFocus
-                autoSize={{ minRows: 1 }}
+                minRows={1}
                 onResize={handleTextareaResize}
                 value={query}
                 onChange={(e) => {
                   setQuery(e.target.value)
-                  handleTextareaResize()
+                  setTimeout(handleTextareaResize, 0)
                 }}
                 onKeyDown={handleKeyDown}
+                onCompositionStart={handleCompositionStart}
+                onCompositionEnd={handleCompositionEnd}
                 onPaste={handleClipboardPasteFile}
                 onDragEnter={handleDragFileEnter}
                 onDragLeave={handleDragFileLeave}

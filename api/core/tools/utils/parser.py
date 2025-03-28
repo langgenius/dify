@@ -186,6 +186,9 @@ class ApiBasedToolSchemaParser:
             return ToolParameter.ToolParameterType.BOOLEAN
         elif typ == "string":
             return ToolParameter.ToolParameterType.STRING
+        elif typ == "array":
+            items = parameter.get("items") or parameter.get("schema", {}).get("items")
+            return ToolParameter.ToolParameterType.FILES if items and items.get("format") == "binary" else None
         else:
             return None
 
