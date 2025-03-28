@@ -167,7 +167,7 @@ workflow:
     - data:
         desc: ''
         selected: false
-        title: 开始
+        title: start
         type: start
         variables:
         - label: Node name
@@ -221,7 +221,7 @@ workflow:
           - text
           variable: text
         selected: false
-        title: 结束
+        title: end
         type: end
       height: 89
       id: '1740015067036'
@@ -398,7 +398,7 @@ workflow:
         provider_name: apo_select
         provider_type: builtin
         selected: false
-        title: 查询宿主机CPU压力
+        title: Query Host CPU Usage
         tool_configurations: {}
         tool_label: 查询宿主机CPU压力
         tool_name: 查询宿主机CPU压力
@@ -448,7 +448,7 @@ workflow:
           logical_operator: and
         desc: ''
         selected: false
-        title: 条件分支
+        title: if-else
         type: if-else
       height: 125
       id: '1742549684668'
@@ -598,7 +598,7 @@ workflow:
         provider_name: apo_select
         provider_type: builtin
         selected: false
-        title: 容器CPU使用率(使用Containerd容器运行时,按容器和Pod统计)
+        title: Container CPU usage
         tool_configurations: {}
         tool_label: 容器CPU使用率(使用Containerd容器运行时,按容器和Pod统计)
         tool_name: 容器CPU使用率(使用Containerd容器运行时,按容器和Pod统计)
@@ -768,7 +768,7 @@ workflow:
         provider_name: apo_select
         provider_type: builtin
         selected: false
-        title: 容器CPU使用率(使用Docker容器运行时,按Pod统计)
+        title: Container CPU usage
         tool_configurations: {}
         tool_label: 容器CPU使用率(使用Docker容器运行时,按Pod统计)
         tool_name: 容器CPU使用率(使用Docker容器运行时,按Pod统计)
@@ -801,7 +801,7 @@ workflow:
         desc: ''
         output_type: string
         selected: false
-        title: 变量聚合器
+        title: summary
         type: variable-aggregator
         variables:
         - - '1742549705555'

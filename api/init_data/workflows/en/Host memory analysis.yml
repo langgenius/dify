@@ -119,7 +119,7 @@ workflow:
     - data:
         desc: ''
         selected: false
-        title: 开始
+        title: start
         type: start
         variables:
         - label: Query start time(Microsecond)
@@ -275,7 +275,7 @@ workflow:
         provider_name: apo_select
         provider_type: builtin
         selected: false
-        title: 查询宿主机RAM使用率
+        title: Query Host RAM Usage
         tool_configurations: {}
         tool_label: 查询宿主机RAM使用率
         tool_name: 查询宿主机RAM使用率
@@ -420,7 +420,7 @@ workflow:
         provider_name: apo_select
         provider_type: builtin
         selected: false
-        title: 查询宿主机RAM总大小
+        title: Query Host RAM Total Size
         tool_configurations: {}
         tool_label: 查询宿主机RAM总大小
         tool_name: 查询宿主机RAM总大小
@@ -513,7 +513,7 @@ workflow:
           - text
           variable: text
         selected: false
-        title: 结束
+        title: end
         type: end
       height: 89
       id: '1742546671231'

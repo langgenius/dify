@@ -97,7 +97,7 @@ workflow:
     - data:
         desc: ''
         selected: false
-        title: 开始
+        title: start
         type: start
         variables:
         - label: Service Name
@@ -118,7 +118,7 @@ workflow:
           required: true
           type: number
           variable: endTime
-      height: 141
+      height: 142
       id: '1740548057126'
       position:
         x: 80
@@ -130,7 +130,7 @@ workflow:
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 243
+      width: 244
     - data:
         desc: ''
         outputs:
@@ -139,9 +139,9 @@ workflow:
           - text
           variable: text
         selected: false
-        title: 结束
+        title: end
         type: end
-      height: 89
+      height: 90
       id: '1740550714241'
       position:
         x: 988
@@ -153,7 +153,7 @@ workflow:
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 243
+      width: 244
     - data:
         context:
           enabled: false
@@ -174,13 +174,13 @@ workflow:
           role: user
           text: Here are the logs from the specified time period {{#1741576642510.text#}}.
             Please help summarize the exception occurrences in the logs.
-        selected: true
+        selected: false
         title: LLM
         type: llm
         variables: []
         vision:
           enabled: false
-      height: 89
+      height: 90
       id: '1740647123944'
       position:
         x: 687.0472902605677
@@ -188,11 +188,11 @@ workflow:
       positionAbsolute:
         x: 687.0472902605677
         y: 282
-      selected: true
+      selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 243
+      width: 244
     - data:
         desc: ''
         is_team_authorization: true
@@ -277,8 +277,8 @@ workflow:
         provider_id: apo_select
         provider_name: apo_select
         provider_type: builtin
-        selected: false
-        title: 查询服务日志数据
+        selected: true
+        title: query service log
         tool_configurations: {}
         tool_label: 查询服务日志数据
         tool_name: 查询服务日志数据
@@ -297,7 +297,7 @@ workflow:
             - '1740548057126'
             - startTime
         type: tool
-      height: 53
+      height: 54
       id: '1741576642510'
       position:
         x: 384
@@ -305,12 +305,12 @@ workflow:
       positionAbsolute:
         x: 384
         y: 282
-      selected: false
+      selected: true
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 243
+      width: 244
     viewport:
-      x: -336.5210134696184
-      y: -51.41093641424487
-      zoom: 0.9137626364719462
+      x: 175.96621796218471
+      y: 168.67603979204648
+      zoom: 0.5074056864830986

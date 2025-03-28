@@ -142,7 +142,7 @@ workflow:
     - data:
         desc: ''
         selected: false
-        title: 开始
+        title: start
         type: start
         variables:
         - label: pod
@@ -259,7 +259,7 @@ workflow:
           - text
           variable: text
         selected: true
-        title: 结束
+        title: end
         type: end
       height: 89
       id: '1741075309105'
@@ -409,7 +409,7 @@ workflow:
         provider_name: apo_select
         provider_type: builtin
         selected: false
-        title: 容器内存使用字节数(使用Containerd容器运行时,按容器和Pod统计)
+        title: Container memory usage
         tool_configurations: {}
         tool_label: 容器内存使用字节数(使用Containerd容器运行时,按容器和Pod统计)
         tool_name: 容器内存使用字节数(使用Containerd容器运行时,按容器和Pod统计)
@@ -582,7 +582,7 @@ workflow:
         provider_name: apo_select
         provider_type: builtin
         selected: false
-        title: 容器内存使用字节数(使用Docker容器运行时,按Pod统计)
+        title: Container memory usage
         tool_configurations: {}
         tool_label: 容器内存使用字节数(使用Docker容器运行时,按Pod统计)
         tool_name: 容器内存使用字节数(使用Docker容器运行时,按Pod统计)
@@ -635,7 +635,7 @@ workflow:
           logical_operator: and
         desc: ''
         selected: false
-        title: 条件分支
+        title: if-else
         type: if-else
       height: 125
       id: '1742545677987'
@@ -654,7 +654,7 @@ workflow:
         desc: ''
         output_type: string
         selected: false
-        title: 变量聚合器
+        title: summary
         type: variable-aggregator
         variables:
         - - '1742545659582'

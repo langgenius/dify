@@ -30,6 +30,7 @@ def init_plugin():
 
         try:
             with open(file_entry.path, 'rb') as file:
+
                 file_size = os.fstat(file.fileno()).st_size
                 if file_size > dify_config.PLUGIN_MAX_PACKAGE_SIZE:
                     logging.error(f"File size exceeds the limit: {file_entry.path}")

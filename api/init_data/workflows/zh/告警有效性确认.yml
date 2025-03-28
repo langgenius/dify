@@ -62,42 +62,10 @@ workflow:
     edges:
     - data:
         isInIteration: false
-        sourceType: code
-        targetType: question-classifier
-      id: 1741161440242-source-1741158559444-target
-      source: '1741161440242'
-      sourceHandle: source
-      target: '1741158559444'
-      targetHandle: target
-      type: custom
-      zIndex: 0
-    - data:
-        isInIteration: false
-        sourceType: variable-aggregator
-        targetType: tool
-      id: 1741162531836-source-1741166377433-target
-      source: '1741162531836'
-      sourceHandle: source
-      target: '1741166377433'
-      targetHandle: target
-      type: custom
-      zIndex: 0
-    - data:
-        isInIteration: false
-        sourceType: start
-        targetType: code
-      id: 1741157526222-source-1741161440242-target
-      source: '1741157526222'
-      sourceHandle: source
-      target: '1741161440242'
-      targetHandle: target
-      type: custom
-      zIndex: 0
-    - data:
-        isInIteration: false
         sourceType: agent
         targetType: question-classifier
       id: 1741159085487-source-1741311244655-target
+      selected: false
       source: '1741159085487'
       sourceHandle: source
       target: '1741311244655'
@@ -109,6 +77,7 @@ workflow:
         sourceType: question-classifier
         targetType: code
       id: 1741311244655-1-1741311294320-target
+      selected: false
       source: '1741311244655'
       sourceHandle: '1'
       target: '1741311294320'
@@ -120,6 +89,7 @@ workflow:
         sourceType: code
         targetType: variable-aggregator
       id: 1741311294320-source-1741311394752-target
+      selected: false
       source: '1741311294320'
       sourceHandle: source
       target: '1741311394752'
@@ -131,6 +101,7 @@ workflow:
         sourceType: variable-aggregator
         targetType: end
       id: 1741311394752-source-1741157560922-target
+      selected: false
       source: '1741311394752'
       sourceHandle: source
       target: '1741157560922'
@@ -139,20 +110,10 @@ workflow:
       zIndex: 0
     - data:
         isInIteration: false
-        sourceType: tool
-        targetType: variable-aggregator
-      id: 1741166377433-source-1741311394752-target
-      source: '1741166377433'
-      sourceHandle: source
-      target: '1741311394752'
-      targetHandle: target
-      type: custom
-      zIndex: 0
-    - data:
-        isInIteration: false
         sourceType: question-classifier
         targetType: agent
       id: 1741158559444-1741319394268-1741159085487-target
+      selected: false
       source: '1741158559444'
       sourceHandle: '1741319394268'
       target: '1741159085487'
@@ -164,6 +125,7 @@ workflow:
         sourceType: question-classifier
         targetType: tool
       id: 1741158559444-1-1741328045214-target
+      selected: false
       source: '1741158559444'
       sourceHandle: '1'
       target: '1741328045214'
@@ -174,18 +136,8 @@ workflow:
         isInIteration: false
         sourceType: question-classifier
         targetType: tool
-      id: 1741158559444-1741158765960-1741328058981-target
-      source: '1741158559444'
-      sourceHandle: '1741158765960'
-      target: '1741328058981'
-      targetHandle: target
-      type: custom
-      zIndex: 0
-    - data:
-        isInIteration: false
-        sourceType: question-classifier
-        targetType: tool
       id: 1741158559444-1741318878864-1741328076453-target
+      selected: false
       source: '1741158559444'
       sourceHandle: '1741318878864'
       target: '1741328076453'
@@ -196,18 +148,8 @@ workflow:
         isInIteration: false
         sourceType: question-classifier
         targetType: tool
-      id: 1741158559444-1741318899444-1741328169934-target
-      source: '1741158559444'
-      sourceHandle: '1741318899444'
-      target: '1741328169934'
-      targetHandle: target
-      type: custom
-      zIndex: 0
-    - data:
-        isInIteration: false
-        sourceType: question-classifier
-        targetType: tool
       id: 1741158559444-1741319019432-1741328197695-target
+      selected: false
       source: '1741158559444'
       sourceHandle: '1741319019432'
       target: '1741328197695'
@@ -219,6 +161,7 @@ workflow:
         sourceType: question-classifier
         targetType: tool
       id: 1741158559444-1741319060092-1741328213545-target
+      selected: false
       source: '1741158559444'
       sourceHandle: '1741319060092'
       target: '1741328213545'
@@ -230,6 +173,7 @@ workflow:
         sourceType: question-classifier
         targetType: tool
       id: 1741158559444-1741319099071-1741328346220-target
+      selected: false
       source: '1741158559444'
       sourceHandle: '1741319099071'
       target: '1741328346220'
@@ -241,6 +185,7 @@ workflow:
         sourceType: question-classifier
         targetType: tool
       id: 1741158559444-1741319132527-1741328423453-target
+      selected: false
       source: '1741158559444'
       sourceHandle: '1741319132527'
       target: '1741328423453'
@@ -252,6 +197,7 @@ workflow:
         sourceType: question-classifier
         targetType: tool
       id: 1741158559444-1741319160027-1741328466394-target
+      selected: false
       source: '1741158559444'
       sourceHandle: '1741319160027'
       target: '1741328466394'
@@ -262,18 +208,8 @@ workflow:
         isInIteration: false
         sourceType: question-classifier
         targetType: tool
-      id: 1741158559444-1741319171199-1741328692906-target
-      source: '1741158559444'
-      sourceHandle: '1741319171199'
-      target: '1741328692906'
-      targetHandle: target
-      type: custom
-      zIndex: 0
-    - data:
-        isInIteration: false
-        sourceType: question-classifier
-        targetType: tool
       id: 1741158559444-1741319213624-1741328742817-target
+      selected: false
       source: '1741158559444'
       sourceHandle: '1741319213624'
       target: '1741328742817'
@@ -285,6 +221,7 @@ workflow:
         sourceType: question-classifier
         targetType: tool
       id: 1741158559444-1741319251403-1741328773213-target
+      selected: false
       source: '1741158559444'
       sourceHandle: '1741319251403'
       target: '1741328773213'
@@ -296,6 +233,7 @@ workflow:
         sourceType: question-classifier
         targetType: tool
       id: 1741158559444-1741319284158-1741328799030-target
+      selected: false
       source: '1741158559444'
       sourceHandle: '1741319284158'
       target: '1741328799030'
@@ -307,6 +245,7 @@ workflow:
         sourceType: question-classifier
         targetType: tool
       id: 1741158559444-1741318983134-1741329632798-target
+      selected: false
       source: '1741158559444'
       sourceHandle: '1741318983134'
       target: '1741329632798'
@@ -315,12 +254,59 @@ workflow:
       zIndex: 0
     - data:
         isInIteration: false
-        sourceType: tool
+        sourceType: llm
+        targetType: question-classifier
+      id: 1742366141890-source-1742366303110-target
+      selected: false
+      source: '1742366141890'
+      sourceHandle: source
+      target: '1742366303110'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: question-classifier
         targetType: variable-aggregator
-      id: 1741328045214-source-1741162531836-target
+      id: 1742366303110-1-1741311394752-target
+      selected: false
+      source: '1742366303110'
+      sourceHandle: '1'
+      target: '1741311394752'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: question-classifier
+        targetType: variable-aggregator
+      id: 1742366303110-2-1741311394752-target
+      selected: false
+      source: '1742366303110'
+      sourceHandle: '2'
+      target: '1741311394752'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: code
+        targetType: question-classifier
+      id: 1742433446760-source-1741158559444-target
+      source: '1742433446760'
+      sourceHandle: source
+      target: '1741158559444'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: tool
+        targetType: tool
+      id: 1741328045214-source-17424339242280-target
       source: '1741328045214'
       sourceHandle: source
-      target: '1741162531836'
+      target: '17424339242280'
       targetHandle: target
       type: custom
       zIndex: 0
@@ -328,8 +314,41 @@ workflow:
         isInIteration: false
         sourceType: tool
         targetType: variable-aggregator
-      id: 1741328058981-source-1741162531836-target
-      source: '1741328058981'
+      id: 17424339242280-source-1741162531836-target
+      source: '17424339242280'
+      sourceHandle: source
+      target: '1741162531836'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: variable-aggregator
+        targetType: variable-aggregator
+      id: 1741162531836-source-1742434016239-target
+      source: '1741162531836'
+      sourceHandle: source
+      target: '1742434016239'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: variable-aggregator
+        targetType: llm
+      id: 1742434016239-source-1742366141890-target
+      source: '1742434016239'
+      sourceHandle: source
+      target: '1742366141890'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: tool
+        targetType: variable-aggregator
+      id: 17424342365860-source-1741162531836-target
+      source: '17424342365860'
       sourceHandle: source
       target: '1741162531836'
       targetHandle: target
@@ -338,33 +357,22 @@ workflow:
     - data:
         isInIteration: false
         sourceType: tool
-        targetType: variable-aggregator
-      id: 1741328076453-source-1741162531836-target
+        targetType: tool
+      id: 1741328076453-source-17424342365860-target
       source: '1741328076453'
       sourceHandle: source
-      target: '1741162531836'
+      target: '17424342365860'
       targetHandle: target
       type: custom
       zIndex: 0
     - data:
         isInIteration: false
         sourceType: tool
-        targetType: variable-aggregator
-      id: 1741328169934-source-1741162531836-target
-      source: '1741328169934'
-      sourceHandle: source
-      target: '1741162531836'
-      targetHandle: target
-      type: custom
-      zIndex: 0
-    - data:
-        isInIteration: false
-        sourceType: tool
-        targetType: variable-aggregator
-      id: 1741329632798-source-1741162531836-target
+        targetType: tool
+      id: 1741329632798-source-17424344697090-target
       source: '1741329632798'
       sourceHandle: source
-      target: '1741162531836'
+      target: '17424344697090'
       targetHandle: target
       type: custom
       zIndex: 0
@@ -372,10 +380,21 @@ workflow:
         isInIteration: false
         sourceType: tool
         targetType: variable-aggregator
-      id: 1741328197695-source-1741162531836-target
+      id: 17424344697090-source-1741162531836-target
+      source: '17424344697090'
+      sourceHandle: source
+      target: '1741162531836'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: tool
+        targetType: tool
+      id: 1741328197695-source-17424345080000-target
       source: '1741328197695'
       sourceHandle: source
-      target: '1741162531836'
+      target: '17424345080000'
       targetHandle: target
       type: custom
       zIndex: 0
@@ -383,10 +402,21 @@ workflow:
         isInIteration: false
         sourceType: tool
         targetType: variable-aggregator
-      id: 1741328213545-source-1741162531836-target
+      id: 17424345080000-source-1741162531836-target
+      source: '17424345080000'
+      sourceHandle: source
+      target: '1741162531836'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: tool
+        targetType: tool
+      id: 1741328213545-source-17424345315500-target
       source: '1741328213545'
       sourceHandle: source
-      target: '1741162531836'
+      target: '17424345315500'
       targetHandle: target
       type: custom
       zIndex: 0
@@ -394,10 +424,21 @@ workflow:
         isInIteration: false
         sourceType: tool
         targetType: variable-aggregator
-      id: 1741328346220-source-1741162531836-target
+      id: 17424345315500-source-1741162531836-target
+      source: '17424345315500'
+      sourceHandle: source
+      target: '1741162531836'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: tool
+        targetType: tool
+      id: 1741328346220-source-17424345826170-target
       source: '1741328346220'
       sourceHandle: source
-      target: '1741162531836'
+      target: '17424345826170'
       targetHandle: target
       type: custom
       zIndex: 0
@@ -405,10 +446,21 @@ workflow:
         isInIteration: false
         sourceType: tool
         targetType: variable-aggregator
-      id: 1741328423453-source-1741162531836-target
+      id: 17424345826170-source-1741162531836-target
+      source: '17424345826170'
+      sourceHandle: source
+      target: '1741162531836'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: tool
+        targetType: tool
+      id: 1741328423453-source-17424346884650-target
       source: '1741328423453'
       sourceHandle: source
-      target: '1741162531836'
+      target: '17424346884650'
       targetHandle: target
       type: custom
       zIndex: 0
@@ -416,10 +468,21 @@ workflow:
         isInIteration: false
         sourceType: tool
         targetType: variable-aggregator
-      id: 1741328466394-source-1741162531836-target
+      id: 17424346884650-source-1741162531836-target
+      source: '17424346884650'
+      sourceHandle: source
+      target: '1741162531836'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: tool
+        targetType: tool
+      id: 1741328466394-source-17424347242840-target
       source: '1741328466394'
       sourceHandle: source
-      target: '1741162531836'
+      target: '17424347242840'
       targetHandle: target
       type: custom
       zIndex: 0
@@ -427,9 +490,8 @@ workflow:
         isInIteration: false
         sourceType: tool
         targetType: variable-aggregator
-      id: 1741328692906-source-1741162531836-target
-      selected: false
-      source: '1741328692906'
+      id: 17424347242840-source-1741162531836-target
+      source: '17424347242840'
       sourceHandle: source
       target: '1741162531836'
       targetHandle: target
@@ -438,11 +500,11 @@ workflow:
     - data:
         isInIteration: false
         sourceType: tool
-        targetType: variable-aggregator
-      id: 1741328742817-source-1741162531836-target
+        targetType: tool
+      id: 1741328742817-source-17424348206030-target
       source: '1741328742817'
       sourceHandle: source
-      target: '1741162531836'
+      target: '17424348206030'
       targetHandle: target
       type: custom
       zIndex: 0
@@ -450,8 +512,8 @@ workflow:
         isInIteration: false
         sourceType: tool
         targetType: variable-aggregator
-      id: 1741328773213-source-1741162531836-target
-      source: '1741328773213'
+      id: 17424348206030-source-1741162531836-target
+      source: '17424348206030'
       sourceHandle: source
       target: '1741162531836'
       targetHandle: target
@@ -460,9 +522,119 @@ workflow:
     - data:
         isInIteration: false
         sourceType: tool
+        targetType: tool
+      id: 1741328773213-source-17424348526540-target
+      source: '1741328773213'
+      sourceHandle: source
+      target: '17424348526540'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: tool
         targetType: variable-aggregator
-      id: 1741328799030-source-1741162531836-target
+      id: 17424348526540-source-1741162531836-target
+      source: '17424348526540'
+      sourceHandle: source
+      target: '1741162531836'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: tool
+        targetType: tool
+      id: 1741328799030-source-17424348570980-target
       source: '1741328799030'
+      sourceHandle: source
+      target: '17424348570980'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: tool
+        targetType: variable-aggregator
+      id: 17424348570980-source-1741162531836-target
+      source: '17424348570980'
+      sourceHandle: source
+      target: '1741162531836'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: start
+        targetType: code
+      id: 1741157526222-source-1742806924635-target
+      source: '1741157526222'
+      sourceHandle: source
+      target: '1742806924635'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: code
+        targetType: code
+      id: 1742806924635-source-1742433446760-target
+      source: '1742806924635'
+      sourceHandle: source
+      target: '1742433446760'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: question-classifier
+        targetType: tool
+      id: 1741158559444-1741158765960-1742979394268-target
+      source: '1741158559444'
+      sourceHandle: '1741158765960'
+      target: '1742979394268'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: question-classifier
+        targetType: tool
+      id: 1741158559444-1741318899444-1742979595004-target
+      source: '1741158559444'
+      sourceHandle: '1741318899444'
+      target: '1742979595004'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: question-classifier
+        targetType: tool
+      id: 1741158559444-1741591414269-17429797453350-target
+      source: '1741158559444'
+      sourceHandle: '1741591414269'
+      target: '17429797453350'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: tool
+        targetType: tool
+      id: 17429797453350-source-17429797664440-target
+      source: '17429797453350'
+      sourceHandle: source
+      target: '17429797664440'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: tool
+        targetType: variable-aggregator
+      id: 17429797664440-source-1741162531836-target
+      source: '17429797664440'
       sourceHandle: source
       target: '1741162531836'
       targetHandle: target
@@ -472,10 +644,21 @@ workflow:
         isInIteration: false
         sourceType: question-classifier
         targetType: tool
-      id: 1741158559444-1741591414269-1741591590829-target
+      id: 1741158559444-1741319171199-1742979828391-target
       source: '1741158559444'
-      sourceHandle: '1741591414269'
-      target: '1741591590829'
+      sourceHandle: '1741319171199'
+      target: '1742979828391'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: tool
+        targetType: tool
+      id: 1742979828391-source-17429798797920-target
+      source: '1742979828391'
+      sourceHandle: source
+      target: '17429798797920'
       targetHandle: target
       type: custom
       zIndex: 0
@@ -483,8 +666,52 @@ workflow:
         isInIteration: false
         sourceType: tool
         targetType: variable-aggregator
-      id: 1741591590829-source-1741162531836-target
-      source: '1741591590829'
+      id: 17429798797920-source-1741162531836-target
+      source: '17429798797920'
+      sourceHandle: source
+      target: '1741162531836'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: tool
+        targetType: tool
+      id: 1742979394268-source-17429835599060-target
+      source: '1742979394268'
+      sourceHandle: source
+      target: '17429835599060'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: tool
+        targetType: variable-aggregator
+      id: 17429835599060-source-1741162531836-target
+      source: '17429835599060'
+      sourceHandle: source
+      target: '1741162531836'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: tool
+        targetType: tool
+      id: 1742979595004-source-17429835940550-target
+      source: '1742979595004'
+      sourceHandle: source
+      target: '17429835940550'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: tool
+        targetType: variable-aggregator
+      id: 17429835940550-source-1741162531836-target
+      source: '17429835940550'
       sourceHandle: source
       target: '1741162531836'
       targetHandle: target
@@ -493,7 +720,7 @@ workflow:
     nodes:
     - data:
         desc: ''
-        selected: true
+        selected: false
         title: 开始
         type: start
         variables:
@@ -515,13 +742,13 @@ workflow:
           required: true
           type: paragraph
           variable: params
-        - label: startTime（微秒）
+        - label: startTime
           max_length: 48
           options: []
           required: true
           type: number
           variable: startTime
-        - label: endTime（微秒）
+        - label: endTime
           max_length: 48
           options: []
           required: true
@@ -540,19 +767,19 @@ workflow:
           required: false
           type: file
           variable: input
-      height: 193
+      height: 194
       id: '1741157526222'
       position:
-        x: -474.8546859399444
-        y: 113.39535872618072
+        x: -108.57929564245899
+        y: 544.6023004841712
       positionAbsolute:
-        x: -474.8546859399444
-        y: 113.39535872618072
-      selected: true
+        x: -108.57929564245899
+        y: 544.6023004841712
+      selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 243
+      width: 244
     - data:
         desc: ''
         outputs:
@@ -563,19 +790,19 @@ workflow:
         selected: false
         title: 结束
         type: end
-      height: 89
+      height: 90
       id: '1741157560922'
       position:
-        x: 3744.206346600103
-        y: 363.73374031791394
+        x: 3374
+        y: 560
       positionAbsolute:
-        x: 3744.206346600103
-        y: 363.73374031791394
+        x: 3374
+        y: 560
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 243
+      width: 244
     - data:
         classes:
         - id: '1'
@@ -598,11 +825,15 @@ workflow:
         - id: '1741318983134'
           name: '应用指标
 
-            错误率上升'
+            错误率相关
+
+            如Request error rate exceeds 0%，日志错误数相关'
         - id: '1741319019432'
           name: '网络相关
 
-            网络RTT延时超过50ms'
+            如网络RTT延时超过50ms
+
+            network rtt'
         - id: '1741319060092'
           name: '主机相关
 
@@ -642,7 +873,9 @@ workflow:
 
             容器被kill'
         desc: ''
-        instruction: 请你从告警事件描述来区分告警事件的类型
+        instruction: '请你从告警事件描述
+
+          来对分告警事件进行分类'
         instructions: ''
         model:
           completion_params:
@@ -654,24 +887,24 @@ workflow:
         - '1741157526222'
         - alert
         selected: false
-        title: 问题分类器
+        title: 告警事件分类
         topics: []
         type: question-classifier
         vision:
           enabled: false
-      height: 687
+      height: 720
       id: '1741158559444'
       position:
-        x: 458.26517283507326
-        y: 139.09402013442167
+        x: 197.77785673494304
+        y: 703.2841482722955
       positionAbsolute:
-        x: 458.26517283507326
-        y: 139.09402013442167
-      selected: false
+        x: 197.77785673494304
+        y: 703.2841482722955
+      selected: true
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 243
+      width: 244
     - data:
         agent_parameters:
           instruction:
@@ -708,124 +941,6 @@ workflow:
           tools:
             type: constant
             value:
-            - enabled: true
-              extra:
-                description: ''
-              parameters:
-                endTime:
-                  auto: 1
-                  value: null
-                namespace:
-                  auto: 1
-                  value: null
-                pod:
-                  auto: 1
-                  value: null
-                startTime:
-                  auto: 1
-                  value: null
-              provider_name: apo_select
-              schemas:
-              - auto_generate: null
-                default: null
-                form: llm
-                human_description:
-                  en_US: Specified pod name
-                  ja_JP: Specified pod name
-                  pt_BR: Specified pod name
-                  zh_Hans: 指定的容器POD名称
-                label:
-                  en_US: pod
-                  ja_JP: pod
-                  pt_BR: pod
-                  zh_Hans: pod
-                llm_description: Specified pod name
-                max: null
-                min: null
-                name: pod
-                options: []
-                placeholder: null
-                precision: null
-                required: true
-                scope: null
-                template: null
-                type: string
-              - auto_generate: null
-                default: null
-                form: llm
-                human_description:
-                  en_US: Specified namespace
-                  ja_JP: Specified namespace
-                  pt_BR: Specified namespace
-                  zh_Hans: 指定的容器所在Namespace
-                label:
-                  en_US: namespace
-                  ja_JP: namespace
-                  pt_BR: namespace
-                  zh_Hans: namespace
-                llm_description: Specified namespace
-                max: null
-                min: null
-                name: namespace
-                options: []
-                placeholder: null
-                precision: null
-                required: true
-                scope: null
-                template: null
-                type: string
-              - auto_generate: null
-                default: null
-                form: llm
-                human_description:
-                  en_US: Data query start time
-                  ja_JP: Data query start time
-                  pt_BR: Data query start time
-                  zh_Hans: 开始时间 (微秒)
-                label:
-                  en_US: startTime
-                  ja_JP: startTime
-                  pt_BR: startTime
-                  zh_Hans: startTime
-                llm_description: Data query start time
-                max: null
-                min: null
-                name: startTime
-                options: []
-                placeholder: null
-                precision: null
-                required: true
-                scope: null
-                template: null
-                type: number
-              - auto_generate: null
-                default: null
-                form: llm
-                human_description:
-                  en_US: Data query end time
-                  ja_JP: Data query end time
-                  pt_BR: Data query end time
-                  zh_Hans: 结束时间 (微秒)
-                label:
-                  en_US: endTime
-                  ja_JP: endTime
-                  pt_BR: endTime
-                  zh_Hans: endTime
-                llm_description: Data query start time
-                max: null
-                min: null
-                name: endTime
-                options: []
-                placeholder: null
-                precision: null
-                required: true
-                scope: null
-                template: null
-                type: number
-              settings: {}
-              tool_label: 容器CPU使用率(使用Containerd容器运行时,按容器和Pod统计)
-              tool_name: 查询容器CPU利用率
-              type: builtin
             - enabled: true
               extra:
                 description: ''
@@ -1568,97 +1683,6 @@ workflow:
                 template: null
                 type: number
               settings: {}
-              tool_label: 宿主机CPU繁忙率(百分比)
-              tool_name: 查询主机CPU利用率
-              type: builtin
-            - enabled: true
-              extra:
-                description: ''
-              parameters:
-                endTime:
-                  auto: 1
-                  value: null
-                node:
-                  auto: 1
-                  value: null
-                startTime:
-                  auto: 1
-                  value: null
-              provider_name: apo_select
-              schemas:
-              - auto_generate: null
-                default: null
-                form: llm
-                human_description:
-                  en_US: Specified host name
-                  ja_JP: Specified host name
-                  pt_BR: Specified host name
-                  zh_Hans: 指定的主机名
-                label:
-                  en_US: node
-                  ja_JP: node
-                  pt_BR: node
-                  zh_Hans: node
-                llm_description: Specified host name
-                max: null
-                min: null
-                name: node
-                options: []
-                placeholder: null
-                precision: null
-                required: true
-                scope: null
-                template: null
-                type: string
-              - auto_generate: null
-                default: null
-                form: llm
-                human_description:
-                  en_US: Data query start time
-                  ja_JP: Data query start time
-                  pt_BR: Data query start time
-                  zh_Hans: 开始时间 (微秒)
-                label:
-                  en_US: startTime
-                  ja_JP: startTime
-                  pt_BR: startTime
-                  zh_Hans: startTime
-                llm_description: Data query start time
-                max: null
-                min: null
-                name: startTime
-                options: []
-                placeholder: null
-                precision: null
-                required: true
-                scope: null
-                template: null
-                type: number
-              - auto_generate: null
-                default: null
-                form: llm
-                human_description:
-                  en_US: Data query end time
-                  ja_JP: Data query end time
-                  pt_BR: Data query end time
-                  zh_Hans: 结束时间 (微秒)
-                label:
-                  en_US: endTime
-                  ja_JP: endTime
-                  pt_BR: endTime
-                  zh_Hans: endTime
-                llm_description: Data query start time
-                max: null
-                min: null
-                name: endTime
-                options: []
-                placeholder: null
-                precision: null
-                required: true
-                scope: null
-                template: null
-                type: number
-              settings: {}
               tool_label: 宿主机磁盘IO耗时速率
               tool_name: 宿主机磁盘IO耗时速率
               type: builtin
@@ -1789,81 +1813,33 @@ workflow:
         selected: false
         title: Agent
         type: agent
-      height: 197
+      height: 198
       id: '1741159085487'
       position:
-        x: 1307.6754497452887
-        y: 1290.1574754514506
+        x: 2158
+        y: 560
       positionAbsolute:
-        x: 1307.6754497452887
-        y: 1290.1574754514506
+        x: 2158
+        y: 560
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 243
-    - data:
-        code: "\ndef get_value(data, keys):\n    for key in keys:\n        value =\
-          \ data.get(key)\n        if value is not None:\n            return value\n\
-          \    return \"\"\n\nimport json\ndef main(arg: str) -> dict:\n    data =\
-          \ json.loads(arg)\n    return {\n        \"node\": data.get('node', ''),\n\
-          \        \"service\": get_value(data, [\"svc_name\", \"service\"]),\n  \
-          \      \"endpoint\": get_value(data,[\"endpoint\", \"content_key\"]),\n\
-          \        \"pod\": data.get('pod', ''),\n        \"namespace\": data.get('namespace',\
-          \ ''),\n    }\n"
-        code_language: python3
-        desc: ''
-        outputs:
-          endpoint:
-            children: null
-            type: string
-          namespace:
-            children: null
-            type: string
-          node:
-            children: null
-            type: string
-          pod:
-            children: null
-            type: string
-          service:
-            children: null
-            type: string
-        selected: false
-        title: 代码执行
-        type: code
-        variables:
-        - value_selector:
-          - '1741157526222'
-          - params
-          variable: arg
-      height: 53
-      id: '1741161440242'
-      position:
-        x: -69.08988532973478
-        y: 292.1938971823079
-      positionAbsolute:
-        x: -69.08988532973478
-        y: 292.1938971823079
-      selected: false
-      sourcePosition: right
-      targetPosition: left
-      type: custom
-      width: 243
+      width: 244
     - data:
         desc: ''
         output_type: string
         selected: false
-        title: 变量聚合器 2
+        title: 变量聚合提供给大模型分析
         type: variable-aggregator
         variables:
         - - '1741328045214'
           - text
-        - - '1741328058981'
+        - - '1742979394268'
           - text
         - - '1741328076453'
           - text
-        - - '1741328169934'
+        - - '1742979595004'
           - text
         - - '1741329632798'
           - text
@@ -1873,7 +1849,7 @@ workflow:
           - text
         - - '1741328466394'
           - text
-        - - '1741328692906'
+        - - '1742979828391'
           - text
         - - '1741328742817'
           - text
@@ -1881,103 +1857,25 @@ workflow:
           - text
         - - '1741328799030'
           - text
-        - - '1741591590829'
+        - - '17429797453350'
           - text
-      height: 370
+        - - '1741328346220'
+          - text
+        - - '1741328213545'
+          - text
+      height: 416
       id: '1741162531836'
       position:
-        x: 1791.1271628500772
-        y: 78.61010888432415
+        x: 1854
+        y: 1275
       positionAbsolute:
-        x: 1791.1271628500772
-        y: 78.61010888432415
+        x: 1854
+        y: 1275
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 243
-    - data:
-        desc: ''
-        is_team_authorization: true
-        output_schema: null
-        paramSchemas:
-        - auto_generate: null
-          default: null
-          form: llm
-          human_description:
-            en_US: time series metric data
-            ja_JP: time series metric data
-            pt_BR: time series metric data
-            zh_Hans: 时序指标数据
-          label:
-            en_US: metricData
-            ja_JP: metricData
-            pt_BR: metricData
-            zh_Hans: metricData
-          llm_description: Time series indicator data
-          max: null
-          min: null
-          name: metricData
-          options: []
-          placeholder: null
-          precision: null
-          required: true
-          scope: null
-          template: null
-          type: string
-        - auto_generate: null
-          default: null
-          form: llm
-          human_description:
-            en_US: threshold
-            ja_JP: threshold
-            pt_BR: threshold
-            zh_Hans: 趋势分析阈值
-          label:
-            en_US: threshold
-            ja_JP: threshold
-            pt_BR: threshold
-            zh_Hans: threshold
-          llm_description: threshold
-          max: null
-          min: null
-          name: threshold
-          options: []
-          placeholder: null
-          precision: null
-          required: false
-          scope: null
-          template: null
-          type: string
-        params:
-          metricData: ''
-          threshold: ''
-        provider_id: apo_analysis
-        provider_name: apo_analysis
-        provider_type: builtin
-        selected: false
-        title: 趋势分析
-        tool_configurations: {}
-        tool_label: 趋势分析
-        tool_name: trend
-        tool_parameters:
-          metricData:
-            type: mixed
-            value: '{{#1741162531836.output#}}'
-        type: tool
-      height: 53
-      id: '1741166377433'
-      position:
-        x: 2391.9587465022714
-        y: 113.39535872618072
-      positionAbsolute:
-        x: 2391.9587465022714
-        y: 113.39535872618072
-      selected: false
-      sourcePosition: right
-      targetPosition: left
-      type: custom
-      width: 243
+      width: 244
     - data:
         classes:
         - id: '1'
@@ -2002,19 +1900,19 @@ workflow:
         type: question-classifier
         vision:
           enabled: false
-      height: 167
+      height: 168
       id: '1741311244655'
       position:
-        x: 1978.2523323677738
-        y: 1024.2103589724884
+        x: 2462
+        y: 560
       positionAbsolute:
-        x: 1978.2523323677738
-        y: 1024.2103589724884
+        x: 2462
+        y: 560
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 243
+      width: 244
     - data:
         code: "\ndef main(arg1: str) -> dict:\n    res = \"true\"\n    if arg1 ==\
           \ \"持续\":\n        res = \"false\"\n    return {\n        \"result\": res,\n\
@@ -2033,19 +1931,19 @@ workflow:
           - '1741311244655'
           - class_name
           variable: arg1
-      height: 53
+      height: 54
       id: '1741311294320'
       position:
-        x: 2339.896564438594
-        y: 908.8373922229209
+        x: 2766
+        y: 560
       positionAbsolute:
-        x: 2339.896564438594
-        y: 908.8373922229209
+        x: 2766
+        y: 560
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 243
+      width: 244
     - data:
         desc: ''
         output_type: string
@@ -2055,21 +1953,21 @@ workflow:
         variables:
         - - '1741311294320'
           - result
-        - - '1741166377433'
-          - text
-      height: 128
+        - - '1742366303110'
+          - class_name
+      height: 130
       id: '1741311394752'
       position:
-        x: 3165.5195077270564
-        y: 457.05597714025964
+        x: 3070
+        y: 560
       positionAbsolute:
-        x: 3165.5195077270564
-        y: 457.05597714025964
+        x: 3070
+        y: 560
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 243
+      width: 244
     - data:
         desc: ''
         is_team_authorization: true
@@ -2187,7 +2085,7 @@ workflow:
         tool_parameters:
           content_key:
             type: mixed
-            value: '{{#1741161440242.endpoint#}}'
+            value: '{{#1742806924635.endpoint#}}'
           endTime:
             type: variable
             value:
@@ -2195,171 +2093,26 @@ workflow:
             - endTime
           service_name:
             type: mixed
-            value: '{{#1741161440242.service#}}'
+            value: '{{#1742806924635.service#}}'
           startTime:
             type: variable
             value:
             - '1741157526222'
             - startTime
         type: tool
-      height: 53
+      height: 54
       id: '1741328045214'
       position:
-        x: 855.3123364340672
-        y: 87.84552204580373
+        x: 1246
+        y: 617
       positionAbsolute:
-        x: 855.3123364340672
-        y: 87.84552204580373
+        x: 1246
+        y: 617
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 243
-    - data:
-        desc: ''
-        is_team_authorization: true
-        output_schema: null
-        paramSchemas:
-        - auto_generate: null
-          default: null
-          form: llm
-          human_description:
-            en_US: Specified pod name
-            ja_JP: Specified pod name
-            pt_BR: Specified pod name
-            zh_Hans: 指定的容器POD名称
-          label:
-            en_US: pod
-            ja_JP: pod
-            pt_BR: pod
-            zh_Hans: pod
-          llm_description: Specified pod name
-          max: null
-          min: null
-          name: pod
-          options: []
-          placeholder: null
-          precision: null
-          required: true
-          scope: null
-          template: null
-          type: string
-        - auto_generate: null
-          default: null
-          form: llm
-          human_description:
-            en_US: Specified namespace
-            ja_JP: Specified namespace
-            pt_BR: Specified namespace
-            zh_Hans: 指定的容器所在Namespace
-          label:
-            en_US: namespace
-            ja_JP: namespace
-            pt_BR: namespace
-            zh_Hans: namespace
-          llm_description: Specified namespace
-          max: null
-          min: null
-          name: namespace
-          options: []
-          placeholder: null
-          precision: null
-          required: true
-          scope: null
-          template: null
-          type: string
-        - auto_generate: null
-          default: null
-          form: llm
-          human_description:
-            en_US: Data query start time
-            ja_JP: Data query start time
-            pt_BR: Data query start time
-            zh_Hans: 开始时间 (微秒)
-          label:
-            en_US: startTime
-            ja_JP: startTime
-            pt_BR: startTime
-            zh_Hans: startTime
-          llm_description: Data query start time
-          max: null
-          min: null
-          name: startTime
-          options: []
-          placeholder: null
-          precision: null
-          required: true
-          scope: null
-          template: null
-          type: number
-        - auto_generate: null
-          default: null
-          form: llm
-          human_description:
-            en_US: Data query end time
-            ja_JP: Data query end time
-            pt_BR: Data query end time
-            zh_Hans: 结束时间 (微秒)
-          label:
-            en_US: endTime
-            ja_JP: endTime
-            pt_BR: endTime
-            zh_Hans: endTime
-          llm_description: Data query start time
-          max: null
-          min: null
-          name: endTime
-          options: []
-          placeholder: null
-          precision: null
-          required: true
-          scope: null
-          template: null
-          type: number
-        params:
-          endTime: ''
-          namespace: ''
-          pod: ''
-          startTime: ''
-        provider_id: apo_select
-        provider_name: apo_select
-        provider_type: builtin
-        selected: false
-        title: 容器CPU使用率(使用Containerd容器运行时,按容器和Pod统计)
-        tool_configurations: {}
-        tool_label: 容器CPU使用率(使用Containerd容器运行时,按容器和Pod统计)
-        tool_name: 查询容器CPU利用率
-        tool_parameters:
-          endTime:
-            type: variable
-            value:
-            - '1741157526222'
-            - endTime
-          namespace:
-            type: mixed
-            value: '{{#1741161440242.namespace#}}'
-          pod:
-            type: mixed
-            value: '{{#1741161440242.pod#}}'
-          startTime:
-            type: variable
-            value:
-            - '1741157526222'
-            - startTime
-        type: tool
-      height: 53
-      id: '1741328058981'
-      position:
-        x: 866.9205146355775
-        y: 182.43066738622156
-      positionAbsolute:
-        x: 866.9205146355775
-        y: 182.43066738622156
-      selected: false
-      sourcePosition: right
-      targetPosition: left
-      type: custom
-      width: 243
+      width: 244
     - data:
         desc: ''
         is_team_authorization: true
@@ -2482,174 +2235,29 @@ workflow:
             - endTime
           namespace:
             type: mixed
-            value: '{{#1741161440242.namespace#}}'
+            value: '{{#1742806924635.namespace#}}'
           pod:
             type: mixed
-            value: '{{#1741161440242.pod#}}'
+            value: '{{#1742806924635.pod#}}'
           startTime:
             type: variable
             value:
             - '1741157526222'
             - startTime
         type: tool
-      height: 53
+      height: 54
       id: '1741328076453'
       position:
-        x: 879.4543026140257
-        y: 267.35126206280336
+        x: 1246
+        y: 711
       positionAbsolute:
-        x: 879.4543026140257
-        y: 267.35126206280336
+        x: 1246
+        y: 711
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 243
-    - data:
-        desc: ''
-        is_team_authorization: true
-        output_schema: null
-        paramSchemas:
-        - auto_generate: null
-          default: null
-          form: llm
-          human_description:
-            en_US: Specified pod name
-            ja_JP: Specified pod name
-            pt_BR: Specified pod name
-            zh_Hans: 指定的容器POD名称
-          label:
-            en_US: pod
-            ja_JP: pod
-            pt_BR: pod
-            zh_Hans: pod
-          llm_description: Specified pod name
-          max: null
-          min: null
-          name: pod
-          options: []
-          placeholder: null
-          precision: null
-          required: true
-          scope: null
-          template: null
-          type: string
-        - auto_generate: null
-          default: null
-          form: llm
-          human_description:
-            en_US: Specified namespace
-            ja_JP: Specified namespace
-            pt_BR: Specified namespace
-            zh_Hans: 指定的容器所在Namespace
-          label:
-            en_US: namespace
-            ja_JP: namespace
-            pt_BR: namespace
-            zh_Hans: namespace
-          llm_description: Specified namespace
-          max: null
-          min: null
-          name: namespace
-          options: []
-          placeholder: null
-          precision: null
-          required: true
-          scope: null
-          template: null
-          type: string
-        - auto_generate: null
-          default: null
-          form: llm
-          human_description:
-            en_US: Data query start time
-            ja_JP: Data query start time
-            pt_BR: Data query start time
-            zh_Hans: 开始时间 (微秒)
-          label:
-            en_US: startTime
-            ja_JP: startTime
-            pt_BR: startTime
-            zh_Hans: startTime
-          llm_description: Data query start time
-          max: null
-          min: null
-          name: startTime
-          options: []
-          placeholder: null
-          precision: null
-          required: true
-          scope: null
-          template: null
-          type: number
-        - auto_generate: null
-          default: null
-          form: llm
-          human_description:
-            en_US: Data query end time
-            ja_JP: Data query end time
-            pt_BR: Data query end time
-            zh_Hans: 结束时间 (微秒)
-          label:
-            en_US: endTime
-            ja_JP: endTime
-            pt_BR: endTime
-            zh_Hans: endTime
-          llm_description: Data query start time
-          max: null
-          min: null
-          name: endTime
-          options: []
-          placeholder: null
-          precision: null
-          required: true
-          scope: null
-          template: null
-          type: number
-        params:
-          endTime: ''
-          namespace: ''
-          pod: ''
-          startTime: ''
-        provider_id: apo_select
-        provider_name: apo_select
-        provider_type: builtin
-        selected: false
-        title: 容器内存使用字节数(使用Containerd容器运行时,按容器和Pod统计)
-        tool_configurations: {}
-        tool_label: 容器内存使用字节数(使用Containerd容器运行时,按容器和Pod统计)
-        tool_name: 查询容器内存使用量
-        tool_parameters:
-          endTime:
-            type: variable
-            value:
-            - '1741157526222'
-            - endTime
-          namespace:
-            type: mixed
-            value: '{{#1741161440242.namespace#}}'
-          pod:
-            type: mixed
-            value: '{{#1741161440242.pod#}}'
-          startTime:
-            type: variable
-            value:
-            - '1741157526222'
-            - startTime
-        type: tool
-      height: 53
-      id: '1741328169934'
-      position:
-        x: 879.4543026140257
-        y: 347.02153779457154
-      positionAbsolute:
-        x: 879.4543026140257
-        y: 347.02153779457154
-      selected: false
-      sourcePosition: right
-      targetPosition: left
-      type: custom
-      width: 243
+      width: 244
     - data:
         desc: ''
         is_team_authorization: true
@@ -2772,29 +2380,29 @@ workflow:
             - endTime
           namespace:
             type: mixed
-            value: '{{#1741161440242.namespace#}}'
+            value: '{{#1742806924635.namespace#}}'
           pod:
             type: mixed
-            value: '{{#1741161440242.pod#}}'
+            value: '{{#1742806924635.pod#}}'
           startTime:
             type: variable
             value:
             - '1741157526222'
             - startTime
         type: tool
-      height: 53
+      height: 54
       id: '1741328197695'
       position:
-        x: 879.4543026140257
-        y: 516.6534783332379
+        x: 1246
+        y: 899
       positionAbsolute:
-        x: 879.4543026140257
-        y: 516.6534783332379
+        x: 1246
+        y: 899
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 243
+      width: 244
     - data:
         desc: ''
         is_team_authorization: true
@@ -2892,26 +2500,26 @@ workflow:
             - endTime
           node:
             type: mixed
-            value: '{{#1741161440242.node#}}'
+            value: '{{#1742806924635.node#}}'
           startTime:
             type: variable
             value:
             - '1741157526222'
             - startTime
         type: tool
-      height: 53
+      height: 54
       id: '1741328213545'
       position:
-        x: 897.1352138415443
-        y: 617.4421900673747
+        x: 1246
+        y: 993
       positionAbsolute:
-        x: 897.1352138415443
-        y: 617.4421900673747
+        x: 1246
+        y: 993
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 243
+      width: 244
     - data:
         desc: ''
         is_team_authorization: true
@@ -3009,26 +2617,26 @@ workflow:
             - endTime
           node:
             type: mixed
-            value: '{{#1741161440242.node#}}'
+            value: '{{#1742806924635.node#}}'
           startTime:
             type: variable
             value:
             - '1741157526222'
             - startTime
         type: tool
-      height: 53
+      height: 54
       id: '1741328346220'
       position:
-        x: 897.1352138415443
-        y: 706.3425334205976
+        x: 1246
+        y: 1087
       positionAbsolute:
-        x: 897.1352138415443
-        y: 706.3425334205976
+        x: 1246
+        y: 1087
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 243
+      width: 244
     - data:
         desc: ''
         is_team_authorization: true
@@ -3126,26 +2734,26 @@ workflow:
             - endTime
           node:
             type: mixed
-            value: '{{#1741161440242.node#}}'
+            value: '{{#1742806924635.node#}}'
           startTime:
             type: variable
             value:
             - '1741157526222'
             - startTime
         type: tool
-      height: 53
+      height: 54
       id: '1741328423453'
       position:
-        x: 909.6690018199924
-        y: 807.5848583297699
+        x: 1246
+        y: 1181
       positionAbsolute:
-        x: 909.6690018199924
-        y: 807.5848583297699
+        x: 1246
+        y: 1181
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 243
+      width: 244
     - data:
         desc: ''
         is_team_authorization: true
@@ -3243,143 +2851,26 @@ workflow:
             - endTime
           node:
             type: mixed
-            value: '{{#1741161440242.node#}}'
+            value: '{{#1742806924635.node#}}'
           startTime:
             type: variable
             value:
             - '1741157526222'
             - startTime
         type: tool
-      height: 53
+      height: 54
       id: '1741328466394'
       position:
-        x: 922.0951827508213
-        y: 890.0354967992098
+        x: 1246
+        y: 1275
       positionAbsolute:
-        x: 922.0951827508213
-        y: 890.0354967992098
+        x: 1246
+        y: 1275
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 243
-    - data:
-        desc: ''
-        is_team_authorization: true
-        output_schema: null
-        paramSchemas:
-        - auto_generate: null
-          default: null
-          form: llm
-          human_description:
-            en_US: Specified host name
-            ja_JP: Specified host name
-            pt_BR: Specified host name
-            zh_Hans: 指定的主机名
-          label:
-            en_US: node
-            ja_JP: node
-            pt_BR: node
-            zh_Hans: node
-          llm_description: Specified host name
-          max: null
-          min: null
-          name: node
-          options: []
-          placeholder: null
-          precision: null
-          required: true
-          scope: null
-          template: null
-          type: string
-        - auto_generate: null
-          default: null
-          form: llm
-          human_description:
-            en_US: Data query start time
-            ja_JP: Data query start time
-            pt_BR: Data query start time
-            zh_Hans: 开始时间 (微秒)
-          label:
-            en_US: startTime
-            ja_JP: startTime
-            pt_BR: startTime
-            zh_Hans: startTime
-          llm_description: Data query start time
-          max: null
-          min: null
-          name: startTime
-          options: []
-          placeholder: null
-          precision: null
-          required: true
-          scope: null
-          template: null
-          type: number
-        - auto_generate: null
-          default: null
-          form: llm
-          human_description:
-            en_US: Data query end time
-            ja_JP: Data query end time
-            pt_BR: Data query end time
-            zh_Hans: 结束时间 (微秒)
-          label:
-            en_US: endTime
-            ja_JP: endTime
-            pt_BR: endTime
-            zh_Hans: endTime
-          llm_description: Data query start time
-          max: null
-          min: null
-          name: endTime
-          options: []
-          placeholder: null
-          precision: null
-          required: true
-          scope: null
-          template: null
-          type: number
-        params:
-          endTime: ''
-          node: ''
-          startTime: ''
-        provider_id: apo_select
-        provider_name: apo_select
-        provider_type: builtin
-        selected: false
-        title: 宿主机CPU繁忙率(百分比)
-        tool_configurations: {}
-        tool_label: 宿主机CPU繁忙率(百分比)
-        tool_name: 查询主机CPU利用率
-        tool_parameters:
-          endTime:
-            type: variable
-            value:
-            - '1741157526222'
-            - endTime
-          node:
-            type: mixed
-            value: '{{#1741161440242.node#}}'
-          startTime:
-            type: variable
-            value:
-            - '1741157526222'
-            - startTime
-        type: tool
-      height: 53
-      id: '1741328692906'
-      position:
-        x: 1288.1326361010936
-        y: 765.9218546549957
-      positionAbsolute:
-        x: 1288.1326361010936
-        y: 765.9218546549957
-      selected: false
-      sourcePosition: right
-      targetPosition: left
-      type: custom
-      width: 243
+      width: 244
     - data:
         desc: ''
         is_team_authorization: true
@@ -3477,26 +2968,26 @@ workflow:
             - endTime
           node:
             type: mixed
-            value: '{{#1741161440242.node#}}'
+            value: '{{#1742806924635.node#}}'
           startTime:
             type: variable
             value:
             - '1741157526222'
             - startTime
         type: tool
-      height: 53
+      height: 54
       id: '1741328742817'
       position:
-        x: 1320.3050732843196
-        y: 838.8279382371494
+        x: 1246
+        y: 1369
       positionAbsolute:
-        x: 1320.3050732843196
-        y: 838.8279382371494
+        x: 1246
+        y: 1369
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 243
+      width: 244
     - data:
         desc: ''
         is_team_authorization: true
@@ -3594,26 +3085,26 @@ workflow:
             - endTime
           node:
             type: mixed
-            value: '{{#1741161440242.node#}}'
+            value: '{{#1742806924635.node#}}'
           startTime:
             type: variable
             value:
             - '1741157526222'
             - startTime
         type: tool
-      height: 53
+      height: 54
       id: '1741328773213'
       position:
-        x: 1295.1943032554088
-        y: 918.3967184410467
+        x: 1246
+        y: 1463
       positionAbsolute:
-        x: 1295.1943032554088
-        y: 918.3967184410467
+        x: 1246
+        y: 1463
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 243
+      width: 244
     - data:
         desc: ''
         is_team_authorization: true
@@ -3711,26 +3202,26 @@ workflow:
             - endTime
           node:
             type: mixed
-            value: '{{#1741161440242.node#}}'
+            value: '{{#1742806924635.node#}}'
           startTime:
             type: variable
             value:
             - '1741157526222'
             - startTime
         type: tool
-      height: 53
+      height: 54
       id: '1741328799030'
       position:
-        x: 1300.5588170319227
-        y: 999.2631864254831
+        x: 1246
+        y: 1557
       positionAbsolute:
-        x: 1300.5588170319227
-        y: 999.2631864254831
+        x: 1246
+        y: 1557
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 243
+      width: 244
     - data:
         desc: ''
         is_team_authorization: true
@@ -3848,7 +3339,7 @@ workflow:
         tool_parameters:
           content_key:
             type: mixed
-            value: '{{#1741161440242.endpoint#}}'
+            value: '{{#1742806924635.endpoint#}}'
           endTime:
             type: variable
             value:
@@ -3856,26 +3347,384 @@ workflow:
             - endTime
           service_name:
             type: mixed
-            value: '{{#1741161440242.service#}}'
+            value: '{{#1742806924635.service#}}'
           startTime:
             type: variable
             value:
             - '1741157526222'
             - startTime
         type: tool
-      height: 53
+      height: 54
       id: '1741329632798'
       position:
-        x: 879.4543026140257
-        y: 428.59818368333947
+        x: 1246
+        y: 805
       positionAbsolute:
-        x: 879.4543026140257
-        y: 428.59818368333947
+        x: 1246
+        y: 805
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 243
+      width: 244
+    - data:
+        context:
+          enabled: false
+          variable_selector: []
+        desc: ''
+        model:
+          completion_params:
+            temperature: 0.7
+          mode: chat
+          name: deepseek-chat
+          provider: langgenius/deepseek/deepseek
+        prompt_template:
+        - id: c981a70d-9ebb-4f03-949a-8d78826f9bda
+          role: system
+          text: 你是一个智能助手,帮助用户解决可观测性领域的问题
+        - id: c62c7537-195d-41e7-9127-116cf3debc7c
+          role: user
+          text: '##目的
+
+            请分析系统/应用在过去15分钟内的指标变化趋势，并结合当前的告警事件进行分析。
+
+            ##步骤
+
+            1. 列出过去15分钟内MetricsData的变化趋势，描述这些Metrics的变化是否正常，是否有异常的波动或趋势。
+
+            2. 告警有效性确认：结合告警事件，判断当前告警是否有效。
+
+            如果MetricsData持续上升或处于高位，则认为告警有效。
+
+            如果处于波动状态，即偶尔上升，但随后下降，则认为告警无效。
+
+            如果最终MetricsData回到正常范围或低位值，则认为告警无效。
+
+            如果有历史数据，则需要对比分析历史数据，如果相比历史数据升高，告警也为有效
+
+            ##输出
+
+            描述MetricsData趋势，并得出告警是否有效的结论。
+
+            注意：告警有效性分析的结论只能是有效或无效
+
+            ##Data
+
+            MetricsData
+
+            {{#1741162531836.output#}}
+
+            metricsdata的历史数据
+
+            {{#1742434016239.output#}}
+
+            警报事件描述
+
+            {{#1741157526222.alert#}}'
+        selected: false
+        title: 大模型分析指标数据
+        type: llm
+        variables: []
+        vision:
+          enabled: false
+      height: 90
+      id: '1742366141890'
+      position:
+        x: 2462
+        y: 1314
+      positionAbsolute:
+        x: 2462
+        y: 1314
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        classes:
+        - id: '1'
+          name: 'true'
+        - id: '2'
+          name: 'false'
+        desc: ''
+        instruction: '# 目的
+
+          根据输入的结论进行分类
+
+          如果结论中认为告警有效，分类到false
+
+          如果结论中认为告警无效，分类到true
+
+          # 注意
+
+          请仔细检查文本，并寻找关于告警有效性的结论，不要错误分类'
+        instructions: ''
+        model:
+          completion_params:
+            temperature: 0.7
+          mode: chat
+          name: deepseek-chat
+          provider: langgenius/deepseek/deepseek
+        query_variable_selector:
+        - '1742366141890'
+        - text
+        selected: false
+        title: 结果分类
+        topics: []
+        type: question-classifier
+        vision:
+          enabled: false
+      height: 168
+      id: '1742366303110'
+      position:
+        x: 2766
+        y: 1218
+      positionAbsolute:
+        x: 2766
+        y: 1218
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        code: "SECOND = 1000000  # microseconds\nMINUTE = 60 * SECOND\nHOUR = 60 *\
+          \ MINUTE\n\ndef main(arg1: int, arg2: int) -> dict:\n    \n    return {\n\
+          \        \"history_st\": arg1 - (24*HOUR),\n        \"history_et\": arg2,\n\
+          \    }\n"
+        code_language: python3
+        desc: ''
+        outputs:
+          history_et:
+            children: null
+            type: number
+          history_st:
+            children: null
+            type: number
+        retry_config:
+          max_retries: 3
+          retry_enabled: true
+          retry_interval: 1000
+        selected: false
+        title: 选择历史数据查询区间
+        type: code
+        variables:
+        - value_selector:
+          - '1741157526222'
+          - startTime
+          variable: arg1
+        - value_selector:
+          - '1741157526222'
+          - endTime
+          variable: arg2
+      height: 80
+      id: '1742433446760'
+      position:
+        x: 638
+        y: 560
+      positionAbsolute:
+        x: 638
+        y: 560
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        desc: ''
+        is_team_authorization: true
+        output_schema: null
+        paramSchemas:
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: Specified service name
+            ja_JP: Specified service name
+            pt_BR: Specified service name
+            zh_Hans: 指定的服务名
+          label:
+            en_US: service_name
+            ja_JP: service_name
+            pt_BR: service_name
+            zh_Hans: service_name
+          llm_description: 指定的服务名
+          max: null
+          min: null
+          name: service_name
+          options: []
+          placeholder: null
+          precision: null
+          required: true
+          scope: null
+          template: null
+          type: string
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: Specified endpoint name
+            ja_JP: Specified endpoint name
+            pt_BR: Specified endpoint name
+            zh_Hans: 指定的服务端点名
+          label:
+            en_US: content_key
+            ja_JP: content_key
+            pt_BR: content_key
+            zh_Hans: content_key
+          llm_description: 指定的服务端点名
+          max: null
+          min: null
+          name: content_key
+          options: []
+          placeholder: null
+          precision: null
+          required: true
+          scope: null
+          template: null
+          type: string
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: Data query start time
+            ja_JP: Data query start time
+            pt_BR: Data query start time
+            zh_Hans: 开始时间 (微秒)
+          label:
+            en_US: startTime
+            ja_JP: startTime
+            pt_BR: startTime
+            zh_Hans: startTime
+          llm_description: Data query start time
+          max: null
+          min: null
+          name: startTime
+          options: []
+          placeholder: null
+          precision: null
+          required: true
+          scope: null
+          template: null
+          type: number
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: Data query end time
+            ja_JP: Data query end time
+            pt_BR: Data query end time
+            zh_Hans: 结束时间 (微秒)
+          label:
+            en_US: endTime
+            ja_JP: endTime
+            pt_BR: endTime
+            zh_Hans: endTime
+          llm_description: Data query start time
+          max: null
+          min: null
+          name: endTime
+          options: []
+          placeholder: null
+          precision: null
+          required: true
+          scope: null
+          template: null
+          type: number
+        params:
+          content_key: ''
+          endTime: ''
+          service_name: ''
+          startTime: ''
+        provider_id: apo_select
+        provider_name: apo_select
+        provider_type: builtin
+        selected: false
+        title: 历史数据 服务平均响应时间(毫秒,按服务名和内容键统计,指定时间段内)
+        tool_configurations: {}
+        tool_label: 服务平均响应时间(毫秒,按服务名和内容键统计,指定时间段内)
+        tool_name: Originx 北极星指标 (服务层级) - RED指标 - 平均响应时间
+        tool_parameters:
+          content_key:
+            type: mixed
+            value: '{{#1742806924635.endpoint#}}'
+          endTime:
+            type: variable
+            value:
+            - '1742433446760'
+            - history_et
+          service_name:
+            type: mixed
+            value: '{{#1742806924635.service#}}'
+          startTime:
+            type: variable
+            value:
+            - '1742433446760'
+            - history_st
+        type: tool
+      height: 54
+      id: '17424339242280'
+      position:
+        x: 1550
+        y: 617
+      positionAbsolute:
+        x: 1550
+        y: 617
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        desc: ''
+        output_type: string
+        selected: false
+        title: 聚合历史指标数据
+        type: variable-aggregator
+        variables:
+        - - '17424339242280'
+          - text
+        - - '17429797664440'
+          - text
+        - - '17424348570980'
+          - text
+        - - '17424348526540'
+          - text
+        - - '17424348206030'
+          - text
+        - - '17424347242840'
+          - text
+        - - '17424346884650'
+          - text
+        - - '17424342365860'
+          - text
+        - - '17424344697090'
+          - text
+        - - '17424345080000'
+          - text
+        - - '17424345826170'
+          - text
+        - - '17424345315500'
+          - text
+        - - '17429798797920'
+          - text
+        - - '17429835599060'
+          - text
+        - - '17429835940550'
+          - text
+      height: 416
+      id: '1742434016239'
+      position:
+        x: 2145.168583736809
+        y: 1031.2701292364982
+      positionAbsolute:
+        x: 2145.168583736809
+        y: 1031.2701292364982
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
     - data:
         desc: ''
         is_team_authorization: true
@@ -3986,10 +3835,1338 @@ workflow:
         provider_name: apo_select
         provider_type: builtin
         selected: false
-        title: 容器内存使用字节数(使用Containerd容器运行时,按容器和Pod统计)
+        title: 历史数据 容器CPU节流时长(使用Containerd容器运行时,按容器和Pod统计)
         tool_configurations: {}
-        tool_label: 容器内存使用字节数(使用Containerd容器运行时,按容器和Pod统计)
-        tool_name: 查询容器内存使用量
+        tool_label: 容器CPU节流时长(使用Containerd容器运行时,按容器和Pod统计)
+        tool_name: 容器CPU节流时长(使用Containerd容器运行时,按容器和Pod统计)
+        tool_parameters:
+          endTime:
+            type: variable
+            value:
+            - '1742433446760'
+            - history_et
+          namespace:
+            type: mixed
+            value: '{{#1742806924635.namespace#}}'
+          pod:
+            type: mixed
+            value: '{{#1742806924635.pod#}}'
+          startTime:
+            type: variable
+            value:
+            - '1742433446760'
+            - history_st
+        type: tool
+      height: 54
+      id: '17424342365860'
+      position:
+        x: 1550
+        y: 711
+      positionAbsolute:
+        x: 1550
+        y: 711
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        desc: ''
+        is_team_authorization: true
+        output_schema: null
+        paramSchemas:
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: Specified service name
+            ja_JP: Specified service name
+            pt_BR: Specified service name
+            zh_Hans: 指定的服务名
+          label:
+            en_US: service_name
+            ja_JP: service_name
+            pt_BR: service_name
+            zh_Hans: service_name
+          llm_description: 指定的服务名
+          max: null
+          min: null
+          name: service_name
+          options: []
+          placeholder: null
+          precision: null
+          required: true
+          scope: null
+          template: null
+          type: string
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: Specified endpoint name
+            ja_JP: Specified endpoint name
+            pt_BR: Specified endpoint name
+            zh_Hans: 指定的服务端点名
+          label:
+            en_US: content_key
+            ja_JP: content_key
+            pt_BR: content_key
+            zh_Hans: content_key
+          llm_description: 指定的服务端点名
+          max: null
+          min: null
+          name: content_key
+          options: []
+          placeholder: null
+          precision: null
+          required: true
+          scope: null
+          template: null
+          type: string
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: Data query start time
+            ja_JP: Data query start time
+            pt_BR: Data query start time
+            zh_Hans: 开始时间 (微秒)
+          label:
+            en_US: startTime
+            ja_JP: startTime
+            pt_BR: startTime
+            zh_Hans: startTime
+          llm_description: Data query start time
+          max: null
+          min: null
+          name: startTime
+          options: []
+          placeholder: null
+          precision: null
+          required: true
+          scope: null
+          template: null
+          type: number
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: Data query end time
+            ja_JP: Data query end time
+            pt_BR: Data query end time
+            zh_Hans: 结束时间 (微秒)
+          label:
+            en_US: endTime
+            ja_JP: endTime
+            pt_BR: endTime
+            zh_Hans: endTime
+          llm_description: Data query start time
+          max: null
+          min: null
+          name: endTime
+          options: []
+          placeholder: null
+          precision: null
+          required: true
+          scope: null
+          template: null
+          type: number
+        params:
+          content_key: ''
+          endTime: ''
+          service_name: ''
+          startTime: ''
+        provider_id: apo_select
+        provider_name: apo_select
+        provider_type: builtin
+        selected: false
+        title: '历史数据 服务请求成功率(按服务名和内容键统计,指定时间段内) '
+        tool_configurations: {}
+        tool_label: 服务请求成功率(按服务名和内容键统计,指定时间段内)
+        tool_name: Originx 北极星指标 (服务层级) - RED指标 - 请求成功率
+        tool_parameters:
+          content_key:
+            type: mixed
+            value: '{{#1742806924635.endpoint#}}'
+          endTime:
+            type: variable
+            value:
+            - '1742433446760'
+            - history_et
+          service_name:
+            type: mixed
+            value: '{{#1742806924635.service#}}'
+          startTime:
+            type: variable
+            value:
+            - '1742433446760'
+            - history_st
+        type: tool
+      height: 54
+      id: '17424344697090'
+      position:
+        x: 1550
+        y: 805
+      positionAbsolute:
+        x: 1550
+        y: 805
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        desc: ''
+        is_team_authorization: true
+        output_schema: null
+        paramSchemas:
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: Specified pod name
+            ja_JP: Specified pod name
+            pt_BR: Specified pod name
+            zh_Hans: 指定的容器POD名称
+          label:
+            en_US: pod
+            ja_JP: pod
+            pt_BR: pod
+            zh_Hans: pod
+          llm_description: Specified pod name
+          max: null
+          min: null
+          name: pod
+          options: []
+          placeholder: null
+          precision: null
+          required: true
+          scope: null
+          template: null
+          type: string
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: Specified namespace
+            ja_JP: Specified namespace
+            pt_BR: Specified namespace
+            zh_Hans: 指定的容器所在Namespace
+          label:
+            en_US: namespace
+            ja_JP: namespace
+            pt_BR: namespace
+            zh_Hans: namespace
+          llm_description: Specified namespace
+          max: null
+          min: null
+          name: namespace
+          options: []
+          placeholder: null
+          precision: null
+          required: true
+          scope: null
+          template: null
+          type: string
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: Data query start time
+            ja_JP: Data query start time
+            pt_BR: Data query start time
+            zh_Hans: 开始时间 (微秒)
+          label:
+            en_US: startTime
+            ja_JP: startTime
+            pt_BR: startTime
+            zh_Hans: startTime
+          llm_description: Data query start time
+          max: null
+          min: null
+          name: startTime
+          options: []
+          placeholder: null
+          precision: null
+          required: true
+          scope: null
+          template: null
+          type: number
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: Data query end time
+            ja_JP: Data query end time
+            pt_BR: Data query end time
+            zh_Hans: 结束时间 (微秒)
+          label:
+            en_US: endTime
+            ja_JP: endTime
+            pt_BR: endTime
+            zh_Hans: endTime
+          llm_description: Data query start time
+          max: null
+          min: null
+          name: endTime
+          options: []
+          placeholder: null
+          precision: null
+          required: true
+          scope: null
+          template: null
+          type: number
+        params:
+          endTime: ''
+          namespace: ''
+          pod: ''
+          startTime: ''
+        provider_id: apo_select
+        provider_name: apo_select
+        provider_type: builtin
+        selected: false
+        title: '历史数据 容器与下游服务的网络往返时间(RTT,按命名空间和Pod统计) '
+        tool_configurations: {}
+        tool_label: 容器与下游服务的网络往返时间(RTT,按命名空间和Pod统计)
+        tool_name: 查询容器网络与下游RTT
+        tool_parameters:
+          endTime:
+            type: variable
+            value:
+            - '1742433446760'
+            - history_et
+          namespace:
+            type: mixed
+            value: '{{#1742806924635.namespace#}}'
+          pod:
+            type: mixed
+            value: '{{#1742806924635.pod#}}'
+          startTime:
+            type: variable
+            value:
+            - '1742433446760'
+            - history_st
+        type: tool
+      height: 54
+      id: '17424345080000'
+      position:
+        x: 1550
+        y: 899
+      positionAbsolute:
+        x: 1550
+        y: 899
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        desc: ''
+        is_team_authorization: true
+        output_schema: null
+        paramSchemas:
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: Specified host name
+            ja_JP: Specified host name
+            pt_BR: Specified host name
+            zh_Hans: 指定的主机名
+          label:
+            en_US: node
+            ja_JP: node
+            pt_BR: node
+            zh_Hans: node
+          llm_description: Specified host name
+          max: null
+          min: null
+          name: node
+          options: []
+          placeholder: null
+          precision: null
+          required: true
+          scope: null
+          template: null
+          type: string
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: Data query start time
+            ja_JP: Data query start time
+            pt_BR: Data query start time
+            zh_Hans: 开始时间 (微秒)
+          label:
+            en_US: startTime
+            ja_JP: startTime
+            pt_BR: startTime
+            zh_Hans: startTime
+          llm_description: Data query start time
+          max: null
+          min: null
+          name: startTime
+          options: []
+          placeholder: null
+          precision: null
+          required: true
+          scope: null
+          template: null
+          type: number
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: Data query end time
+            ja_JP: Data query end time
+            pt_BR: Data query end time
+            zh_Hans: 结束时间 (微秒)
+          label:
+            en_US: endTime
+            ja_JP: endTime
+            pt_BR: endTime
+            zh_Hans: endTime
+          llm_description: Data query start time
+          max: null
+          min: null
+          name: endTime
+          options: []
+          placeholder: null
+          precision: null
+          required: true
+          scope: null
+          template: null
+          type: number
+        params:
+          endTime: ''
+          node: ''
+          startTime: ''
+        provider_id: apo_select
+        provider_name: apo_select
+        provider_type: builtin
+        selected: false
+        title: 历史数据 宿主机磁盘使用率(百分比,不含rootfs)
+        tool_configurations: {}
+        tool_label: 宿主机磁盘使用率(百分比,不含rootfs)
+        tool_name: 宿主机磁盘使用率(百分比,不含rootfs)
+        tool_parameters:
+          endTime:
+            type: variable
+            value:
+            - '1742433446760'
+            - history_et
+          node:
+            type: mixed
+            value: '{{#1742806924635.node#}}'
+          startTime:
+            type: variable
+            value:
+            - '1742433446760'
+            - history_st
+        type: tool
+      height: 54
+      id: '17424345315500'
+      position:
+        x: 1550
+        y: 993
+      positionAbsolute:
+        x: 1550
+        y: 993
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        desc: ''
+        is_team_authorization: true
+        output_schema: null
+        paramSchemas:
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: Specified host name
+            ja_JP: Specified host name
+            pt_BR: Specified host name
+            zh_Hans: 指定的主机名
+          label:
+            en_US: node
+            ja_JP: node
+            pt_BR: node
+            zh_Hans: node
+          llm_description: Specified host name
+          max: null
+          min: null
+          name: node
+          options: []
+          placeholder: null
+          precision: null
+          required: true
+          scope: null
+          template: null
+          type: string
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: Data query start time
+            ja_JP: Data query start time
+            pt_BR: Data query start time
+            zh_Hans: 开始时间 (微秒)
+          label:
+            en_US: startTime
+            ja_JP: startTime
+            pt_BR: startTime
+            zh_Hans: startTime
+          llm_description: Data query start time
+          max: null
+          min: null
+          name: startTime
+          options: []
+          placeholder: null
+          precision: null
+          required: true
+          scope: null
+          template: null
+          type: number
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: Data query end time
+            ja_JP: Data query end time
+            pt_BR: Data query end time
+            zh_Hans: 结束时间 (微秒)
+          label:
+            en_US: endTime
+            ja_JP: endTime
+            pt_BR: endTime
+            zh_Hans: endTime
+          llm_description: Data query start time
+          max: null
+          min: null
+          name: endTime
+          options: []
+          placeholder: null
+          precision: null
+          required: true
+          scope: null
+          template: null
+          type: number
+        params:
+          endTime: ''
+          node: ''
+          startTime: ''
+        provider_id: apo_select
+        provider_name: apo_select
+        provider_type: builtin
+        selected: false
+        title: 历史数据 宿主机网络接收速率(比特/秒)
+        tool_configurations: {}
+        tool_label: 宿主机网络接收速率(比特/秒)
+        tool_name: 宿主机网络接收速率(比特/秒)
+        tool_parameters:
+          endTime:
+            type: variable
+            value:
+            - '1742433446760'
+            - history_et
+          node:
+            type: mixed
+            value: '{{#1742806924635.node#}}'
+          startTime:
+            type: variable
+            value:
+            - '1742433446760'
+            - history_st
+        type: tool
+      height: 54
+      id: '17424345826170'
+      position:
+        x: 1550
+        y: 1087
+      positionAbsolute:
+        x: 1550
+        y: 1087
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        desc: ''
+        is_team_authorization: true
+        output_schema: null
+        paramSchemas:
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: Specified host name
+            ja_JP: Specified host name
+            pt_BR: Specified host name
+            zh_Hans: 指定的主机名
+          label:
+            en_US: node
+            ja_JP: node
+            pt_BR: node
+            zh_Hans: node
+          llm_description: Specified host name
+          max: null
+          min: null
+          name: node
+          options: []
+          placeholder: null
+          precision: null
+          required: true
+          scope: null
+          template: null
+          type: string
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: Data query start time
+            ja_JP: Data query start time
+            pt_BR: Data query start time
+            zh_Hans: 开始时间 (微秒)
+          label:
+            en_US: startTime
+            ja_JP: startTime
+            pt_BR: startTime
+            zh_Hans: startTime
+          llm_description: Data query start time
+          max: null
+          min: null
+          name: startTime
+          options: []
+          placeholder: null
+          precision: null
+          required: true
+          scope: null
+          template: null
+          type: number
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: Data query end time
+            ja_JP: Data query end time
+            pt_BR: Data query end time
+            zh_Hans: 结束时间 (微秒)
+          label:
+            en_US: endTime
+            ja_JP: endTime
+            pt_BR: endTime
+            zh_Hans: endTime
+          llm_description: Data query start time
+          max: null
+          min: null
+          name: endTime
+          options: []
+          placeholder: null
+          precision: null
+          required: true
+          scope: null
+          template: null
+          type: number
+        params:
+          endTime: ''
+          node: ''
+          startTime: ''
+        provider_id: apo_select
+        provider_name: apo_select
+        provider_type: builtin
+        selected: false
+        title: 历史数据 宿主机磁盘读取数据速率(字节/秒)
+        tool_configurations: {}
+        tool_label: 宿主机磁盘读取数据速率(字节/秒)
+        tool_name: 宿主机磁盘读取数据速率(字节/秒)
+        tool_parameters:
+          endTime:
+            type: variable
+            value:
+            - '1742433446760'
+            - history_et
+          node:
+            type: mixed
+            value: '{{#1742806924635.node#}}'
+          startTime:
+            type: variable
+            value:
+            - '1742433446760'
+            - history_st
+        type: tool
+      height: 54
+      id: '17424346884650'
+      position:
+        x: 1550
+        y: 1181
+      positionAbsolute:
+        x: 1550
+        y: 1181
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        desc: ''
+        is_team_authorization: true
+        output_schema: null
+        paramSchemas:
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: Specified host name
+            ja_JP: Specified host name
+            pt_BR: Specified host name
+            zh_Hans: 指定的主机名
+          label:
+            en_US: node
+            ja_JP: node
+            pt_BR: node
+            zh_Hans: node
+          llm_description: Specified host name
+          max: null
+          min: null
+          name: node
+          options: []
+          placeholder: null
+          precision: null
+          required: true
+          scope: null
+          template: null
+          type: string
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: Data query start time
+            ja_JP: Data query start time
+            pt_BR: Data query start time
+            zh_Hans: 开始时间 (微秒)
+          label:
+            en_US: startTime
+            ja_JP: startTime
+            pt_BR: startTime
+            zh_Hans: startTime
+          llm_description: Data query start time
+          max: null
+          min: null
+          name: startTime
+          options: []
+          placeholder: null
+          precision: null
+          required: true
+          scope: null
+          template: null
+          type: number
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: Data query end time
+            ja_JP: Data query end time
+            pt_BR: Data query end time
+            zh_Hans: 结束时间 (微秒)
+          label:
+            en_US: endTime
+            ja_JP: endTime
+            pt_BR: endTime
+            zh_Hans: endTime
+          llm_description: Data query start time
+          max: null
+          min: null
+          name: endTime
+          options: []
+          placeholder: null
+          precision: null
+          required: true
+          scope: null
+          template: null
+          type: number
+        params:
+          endTime: ''
+          node: ''
+          startTime: ''
+        provider_id: apo_select
+        provider_name: apo_select
+        provider_type: builtin
+        selected: false
+        title: '历史数据 宿主机磁盘写入数据速率(字节/秒) '
+        tool_configurations: {}
+        tool_label: 宿主机磁盘写入数据速率(字节/秒)
+        tool_name: 宿主机磁盘写入数据速率(字节/秒)
+        tool_parameters:
+          endTime:
+            type: variable
+            value:
+            - '1742433446760'
+            - history_et
+          node:
+            type: mixed
+            value: '{{#1742806924635.node#}}'
+          startTime:
+            type: variable
+            value:
+            - '1742433446760'
+            - history_st
+        type: tool
+      height: 54
+      id: '17424347242840'
+      position:
+        x: 1550
+        y: 1275
+      positionAbsolute:
+        x: 1550
+        y: 1275
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        desc: ''
+        is_team_authorization: true
+        output_schema: null
+        paramSchemas:
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: Specified host name
+            ja_JP: Specified host name
+            pt_BR: Specified host name
+            zh_Hans: 指定的主机名
+          label:
+            en_US: node
+            ja_JP: node
+            pt_BR: node
+            zh_Hans: node
+          llm_description: Specified host name
+          max: null
+          min: null
+          name: node
+          options: []
+          placeholder: null
+          precision: null
+          required: true
+          scope: null
+          template: null
+          type: string
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: Data query start time
+            ja_JP: Data query start time
+            pt_BR: Data query start time
+            zh_Hans: 开始时间 (微秒)
+          label:
+            en_US: startTime
+            ja_JP: startTime
+            pt_BR: startTime
+            zh_Hans: startTime
+          llm_description: Data query start time
+          max: null
+          min: null
+          name: startTime
+          options: []
+          placeholder: null
+          precision: null
+          required: true
+          scope: null
+          template: null
+          type: number
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: Data query end time
+            ja_JP: Data query end time
+            pt_BR: Data query end time
+            zh_Hans: 结束时间 (微秒)
+          label:
+            en_US: endTime
+            ja_JP: endTime
+            pt_BR: endTime
+            zh_Hans: endTime
+          llm_description: Data query start time
+          max: null
+          min: null
+          name: endTime
+          options: []
+          placeholder: null
+          precision: null
+          required: true
+          scope: null
+          template: null
+          type: number
+        params:
+          endTime: ''
+          node: ''
+          startTime: ''
+        provider_id: apo_select
+        provider_name: apo_select
+        provider_type: builtin
+        selected: false
+        title: 历史数据 宿主机磁盘IO耗时速率
+        tool_configurations: {}
+        tool_label: 宿主机磁盘IO耗时速率
+        tool_name: 宿主机磁盘IO耗时速率
+        tool_parameters:
+          endTime:
+            type: variable
+            value:
+            - '1742433446760'
+            - history_et
+          node:
+            type: mixed
+            value: '{{#1742806924635.node#}}'
+          startTime:
+            type: variable
+            value:
+            - '1742433446760'
+            - history_st
+        type: tool
+      height: 54
+      id: '17424348206030'
+      position:
+        x: 1550
+        y: 1369
+      positionAbsolute:
+        x: 1550
+        y: 1369
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        desc: ''
+        is_team_authorization: true
+        output_schema: null
+        paramSchemas:
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: Specified host name
+            ja_JP: Specified host name
+            pt_BR: Specified host name
+            zh_Hans: 指定的主机名
+          label:
+            en_US: node
+            ja_JP: node
+            pt_BR: node
+            zh_Hans: node
+          llm_description: Specified host name
+          max: null
+          min: null
+          name: node
+          options: []
+          placeholder: null
+          precision: null
+          required: true
+          scope: null
+          template: null
+          type: string
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: Data query start time
+            ja_JP: Data query start time
+            pt_BR: Data query start time
+            zh_Hans: 开始时间 (微秒)
+          label:
+            en_US: startTime
+            ja_JP: startTime
+            pt_BR: startTime
+            zh_Hans: startTime
+          llm_description: Data query start time
+          max: null
+          min: null
+          name: startTime
+          options: []
+          placeholder: null
+          precision: null
+          required: true
+          scope: null
+          template: null
+          type: number
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: Data query end time
+            ja_JP: Data query end time
+            pt_BR: Data query end time
+            zh_Hans: 结束时间 (微秒)
+          label:
+            en_US: endTime
+            ja_JP: endTime
+            pt_BR: endTime
+            zh_Hans: endTime
+          llm_description: Data query start time
+          max: null
+          min: null
+          name: endTime
+          options: []
+          placeholder: null
+          precision: null
+          required: true
+          scope: null
+          template: null
+          type: number
+        params:
+          endTime: ''
+          node: ''
+          startTime: ''
+        provider_id: apo_select
+        provider_name: apo_select
+        provider_type: builtin
+        selected: false
+        title: 历史数据 宿主机IO等待CPU繁忙率
+        tool_configurations: {}
+        tool_label: 宿主机IO等待CPU繁忙率
+        tool_name: host_cpu_iowait
+        tool_parameters:
+          endTime:
+            type: variable
+            value:
+            - '1742433446760'
+            - history_et
+          node:
+            type: mixed
+            value: '{{#1742806924635.node#}}'
+          startTime:
+            type: variable
+            value:
+            - '1742433446760'
+            - history_st
+        type: tool
+      height: 54
+      id: '17424348526540'
+      position:
+        x: 1550
+        y: 1463
+      positionAbsolute:
+        x: 1550
+        y: 1463
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        desc: ''
+        is_team_authorization: true
+        output_schema: null
+        paramSchemas:
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: Specified host name
+            ja_JP: Specified host name
+            pt_BR: Specified host name
+            zh_Hans: 指定的主机名
+          label:
+            en_US: node
+            ja_JP: node
+            pt_BR: node
+            zh_Hans: node
+          llm_description: Specified host name
+          max: null
+          min: null
+          name: node
+          options: []
+          placeholder: null
+          precision: null
+          required: true
+          scope: null
+          template: null
+          type: string
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: Data query start time
+            ja_JP: Data query start time
+            pt_BR: Data query start time
+            zh_Hans: 开始时间 (微秒)
+          label:
+            en_US: startTime
+            ja_JP: startTime
+            pt_BR: startTime
+            zh_Hans: startTime
+          llm_description: Data query start time
+          max: null
+          min: null
+          name: startTime
+          options: []
+          placeholder: null
+          precision: null
+          required: true
+          scope: null
+          template: null
+          type: number
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: Data query end time
+            ja_JP: Data query end time
+            pt_BR: Data query end time
+            zh_Hans: 结束时间 (微秒)
+          label:
+            en_US: endTime
+            ja_JP: endTime
+            pt_BR: endTime
+            zh_Hans: endTime
+          llm_description: Data query start time
+          max: null
+          min: null
+          name: endTime
+          options: []
+          placeholder: null
+          precision: null
+          required: true
+          scope: null
+          template: null
+          type: number
+        params:
+          endTime: ''
+          node: ''
+          startTime: ''
+        provider_id: apo_select
+        provider_name: apo_select
+        provider_type: builtin
+        selected: false
+        title: 历史数据 宿主机当前打开文件描述符数
+        tool_configurations: {}
+        tool_label: 宿主机当前打开文件描述符数
+        tool_name: host_cpu_fd_open
+        tool_parameters:
+          endTime:
+            type: variable
+            value:
+            - '1742433446760'
+            - history_et
+          node:
+            type: mixed
+            value: '{{#1742806924635.node#}}'
+          startTime:
+            type: variable
+            value:
+            - '1742433446760'
+            - history_st
+        type: tool
+      height: 54
+      id: '17424348570980'
+      position:
+        x: 1550
+        y: 1557
+      positionAbsolute:
+        x: 1550
+        y: 1557
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        code: "  \ndef get_value(data, keys): \n  for key in keys: \n    value = data.get(key)\
+          \ \n    if value is not None: \n      return value \n  return \"\" \n\n\
+          import json \n\ndef main(arg: str) -> dict:\n  data = json.loads(arg) \n\
+          \  return { \n  \"node\": get_value(data, [\"svc_node\", \"node\", \"nodename\"\
+          ]),      \n  \"service\": get_value(data, [\"svc_name\", \"service\"]),\
+          \ \n  \"endpoint\": get_value(data,[\"endpoint\", \"content_key\"]), \n\
+          \  \"pod\": get_value(data,[\"pod\", \"src_pod\", \"pod_name\"]), \n  \"\
+          namespace\": get_value(data,[\"namespace\", \"src_namespace\"]), \n}"
+        code_language: python3
+        desc: ''
+        outputs:
+          endpoint:
+            children: null
+            type: string
+          namespace:
+            children: null
+            type: string
+          node:
+            children: null
+            type: string
+          pod:
+            children: null
+            type: string
+          service:
+            children: null
+            type: string
+        selected: false
+        title: 告警事件标签提取
+        type: code
+        variables:
+        - value_selector:
+          - '1741157526222'
+          - params
+          variable: arg
+      height: 54
+      id: '1742806924635'
+      position:
+        x: 334
+        y: 560
+      positionAbsolute:
+        x: 334
+        y: 560
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        desc: ''
+        is_team_authorization: true
+        output_schema: null
+        paramSchemas:
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: cAdvisor job name
+            ja_JP: cAdvisor job name
+            pt_BR: cAdvisor job name
+            zh_Hans: cAdvisor任务名称
+          label:
+            en_US: cAdvisor job name
+            ja_JP: cAdvisor job name
+            pt_BR: cAdvisor job name
+            zh_Hans: cAdvisor任务名称
+          llm_description: cAdvisor job name
+          max: null
+          min: null
+          name: cadvisor_job_name
+          options: []
+          placeholder: null
+          precision: null
+          required: false
+          scope: null
+          template: null
+          type: string
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: Namespace
+            ja_JP: Namespace
+            pt_BR: Namespace
+            zh_Hans: 命名空间
+          label:
+            en_US: Namespace
+            ja_JP: Namespace
+            pt_BR: Namespace
+            zh_Hans: 命名空间
+          llm_description: Namespace
+          max: null
+          min: null
+          name: namespace
+          options: []
+          placeholder: null
+          precision: null
+          required: false
+          scope: null
+          template: null
+          type: string
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: Pod name
+            ja_JP: Pod name
+            pt_BR: Pod name
+            zh_Hans: Pod名称
+          label:
+            en_US: Pod name
+            ja_JP: Pod name
+            pt_BR: Pod name
+            zh_Hans: Pod名称
+          llm_description: Pod name
+          max: null
+          min: null
+          name: pod
+          options: []
+          placeholder: null
+          precision: null
+          required: false
+          scope: null
+          template: null
+          type: string
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: Data query start time(Microsecond)
+            ja_JP: Data query start time(Microsecond)
+            pt_BR: Data query start time(Microsecond)
+            zh_Hans: 开始时间 (微秒)
+          label:
+            en_US: startTime
+            ja_JP: startTime
+            pt_BR: startTime
+            zh_Hans: startTime
+          llm_description: Data query start time(Microsecond)
+          max: null
+          min: null
+          name: startTime
+          options: []
+          placeholder: null
+          precision: null
+          required: true
+          scope: null
+          template: null
+          type: number
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: Data query end time(Microsecond)
+            ja_JP: Data query end time(Microsecond)
+            pt_BR: Data query end time(Microsecond)
+            zh_Hans: 结束时间 (微秒)
+          label:
+            en_US: endTime
+            ja_JP: endTime
+            pt_BR: endTime
+            zh_Hans: endTime
+          llm_description: Data query end time(Microsecond)
+          max: null
+          min: null
+          name: endTime
+          options: []
+          placeholder: null
+          precision: null
+          required: true
+          scope: null
+          template: null
+          type: number
+        params:
+          cadvisor_job_name: ''
+          endTime: ''
+          namespace: ''
+          pod: ''
+          startTime: ''
+        provider_id: apo_select
+        provider_name: apo_select
+        provider_type: builtin
+        selected: false
+        title: 容器CPU 使用率
+        tool_configurations: {}
+        tool_label: Container CPU usage rate (Containerd runtime, aggregated by container
+          and Pod)
+        tool_name: 容器CPU使用率(使用Containerd容器运行时,按容器和Pod统计)
         tool_parameters:
           endTime:
             type: variable
@@ -3998,30 +5175,1169 @@ workflow:
             - endTime
           namespace:
             type: mixed
-            value: '{{#1741161440242.namespace#}}'
+            value: '{{#1742806924635.namespace#}}'
           pod:
             type: mixed
-            value: '{{#1741161440242.pod#}}'
+            value: '{{#1742806924635.pod#}}'
           startTime:
             type: variable
             value:
             - '1741157526222'
             - startTime
         type: tool
-      height: 53
-      id: '1741591590829'
+      height: 54
+      id: '1742979394268'
       position:
-        x: 1106.622658811791
-        y: 1100.534952103478
+        x: 1246
+        y: 1839
       positionAbsolute:
-        x: 1106.622658811791
-        y: 1100.534952103478
+        x: 1246
+        y: 1839
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 243
+      width: 244
+    - data:
+        desc: ''
+        is_team_authorization: true
+        output_schema: null
+        paramSchemas:
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: cAdvisor job name
+            ja_JP: cAdvisor job name
+            pt_BR: cAdvisor job name
+            zh_Hans: cAdvisor任务名称
+          label:
+            en_US: cAdvisor job name
+            ja_JP: cAdvisor job name
+            pt_BR: cAdvisor job name
+            zh_Hans: cAdvisor任务名称
+          llm_description: cAdvisor job name
+          max: null
+          min: null
+          name: cadvisor_job_name
+          options: []
+          placeholder: null
+          precision: null
+          required: false
+          scope: null
+          template: null
+          type: string
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: Namespace
+            ja_JP: Namespace
+            pt_BR: Namespace
+            zh_Hans: 命名空间
+          label:
+            en_US: Namespace
+            ja_JP: Namespace
+            pt_BR: Namespace
+            zh_Hans: 命名空间
+          llm_description: Namespace
+          max: null
+          min: null
+          name: namespace
+          options: []
+          placeholder: null
+          precision: null
+          required: false
+          scope: null
+          template: null
+          type: string
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: Pod name
+            ja_JP: Pod name
+            pt_BR: Pod name
+            zh_Hans: Pod名称
+          label:
+            en_US: Pod name
+            ja_JP: Pod name
+            pt_BR: Pod name
+            zh_Hans: Pod名称
+          llm_description: Pod name
+          max: null
+          min: null
+          name: pod
+          options: []
+          placeholder: null
+          precision: null
+          required: false
+          scope: null
+          template: null
+          type: string
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: Data query start time(Microsecond)
+            ja_JP: Data query start time(Microsecond)
+            pt_BR: Data query start time(Microsecond)
+            zh_Hans: 开始时间 (微秒)
+          label:
+            en_US: startTime
+            ja_JP: startTime
+            pt_BR: startTime
+            zh_Hans: startTime
+          llm_description: Data query start time(Microsecond)
+          max: null
+          min: null
+          name: startTime
+          options: []
+          placeholder: null
+          precision: null
+          required: true
+          scope: null
+          template: null
+          type: number
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: Data query end time(Microsecond)
+            ja_JP: Data query end time(Microsecond)
+            pt_BR: Data query end time(Microsecond)
+            zh_Hans: 结束时间 (微秒)
+          label:
+            en_US: endTime
+            ja_JP: endTime
+            pt_BR: endTime
+            zh_Hans: endTime
+          llm_description: Data query end time(Microsecond)
+          max: null
+          min: null
+          name: endTime
+          options: []
+          placeholder: null
+          precision: null
+          required: true
+          scope: null
+          template: null
+          type: number
+        params:
+          cadvisor_job_name: ''
+          endTime: ''
+          namespace: ''
+          pod: ''
+          startTime: ''
+        provider_id: apo_select
+        provider_name: apo_select
+        provider_type: builtin
+        selected: false
+        title: 容器内存占用
+        tool_configurations: {}
+        tool_label: Container memory usage in bytes (Containerd runtime, aggregated
+          by container and Pod)
+        tool_name: 容器内存使用字节数(使用Containerd容器运行时,按容器和Pod统计)
+        tool_parameters:
+          endTime:
+            type: variable
+            value:
+            - '1741157526222'
+            - endTime
+          namespace:
+            type: mixed
+            value: '{{#1742806924635.namespace#}}'
+          pod:
+            type: mixed
+            value: '{{#1742806924635.pod#}}'
+          startTime:
+            type: variable
+            value:
+            - '1741157526222'
+            - startTime
+        type: tool
+      height: 54
+      id: '1742979595004'
+      position:
+        x: 1246
+        y: 1933
+      positionAbsolute:
+        x: 1246
+        y: 1933
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        desc: ''
+        is_team_authorization: true
+        output_schema: null
+        paramSchemas:
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: cAdvisor job name
+            ja_JP: cAdvisor job name
+            pt_BR: cAdvisor job name
+            zh_Hans: cAdvisor任务名称
+          label:
+            en_US: cAdvisor job name
+            ja_JP: cAdvisor job name
+            pt_BR: cAdvisor job name
+            zh_Hans: cAdvisor任务名称
+          llm_description: cAdvisor job name
+          max: null
+          min: null
+          name: cadvisor_job_name
+          options: []
+          placeholder: null
+          precision: null
+          required: false
+          scope: null
+          template: null
+          type: string
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: Namespace
+            ja_JP: Namespace
+            pt_BR: Namespace
+            zh_Hans: 命名空间
+          label:
+            en_US: Namespace
+            ja_JP: Namespace
+            pt_BR: Namespace
+            zh_Hans: 命名空间
+          llm_description: Namespace
+          max: null
+          min: null
+          name: namespace
+          options: []
+          placeholder: null
+          precision: null
+          required: false
+          scope: null
+          template: null
+          type: string
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: Pod name
+            ja_JP: Pod name
+            pt_BR: Pod name
+            zh_Hans: Pod名称
+          label:
+            en_US: Pod name
+            ja_JP: Pod name
+            pt_BR: Pod name
+            zh_Hans: Pod名称
+          llm_description: Pod name
+          max: null
+          min: null
+          name: pod
+          options: []
+          placeholder: null
+          precision: null
+          required: false
+          scope: null
+          template: null
+          type: string
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: Data query start time(Microsecond)
+            ja_JP: Data query start time(Microsecond)
+            pt_BR: Data query start time(Microsecond)
+            zh_Hans: 开始时间 (微秒)
+          label:
+            en_US: startTime
+            ja_JP: startTime
+            pt_BR: startTime
+            zh_Hans: startTime
+          llm_description: Data query start time(Microsecond)
+          max: null
+          min: null
+          name: startTime
+          options: []
+          placeholder: null
+          precision: null
+          required: true
+          scope: null
+          template: null
+          type: number
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: Data query end time(Microsecond)
+            ja_JP: Data query end time(Microsecond)
+            pt_BR: Data query end time(Microsecond)
+            zh_Hans: 结束时间 (微秒)
+          label:
+            en_US: endTime
+            ja_JP: endTime
+            pt_BR: endTime
+            zh_Hans: endTime
+          llm_description: Data query end time(Microsecond)
+          max: null
+          min: null
+          name: endTime
+          options: []
+          placeholder: null
+          precision: null
+          required: true
+          scope: null
+          template: null
+          type: number
+        params:
+          cadvisor_job_name: ''
+          endTime: ''
+          namespace: ''
+          pod: ''
+          startTime: ''
+        provider_id: apo_select
+        provider_name: apo_select
+        provider_type: builtin
+        selected: false
+        title: 容器内存占用
+        tool_configurations: {}
+        tool_label: Container memory usage in bytes (Containerd runtime, aggregated
+          by container and Pod)
+        tool_name: 容器内存使用字节数(使用Containerd容器运行时,按容器和Pod统计)
+        tool_parameters:
+          endTime:
+            type: variable
+            value:
+            - '1741157526222'
+            - endTime
+          namespace:
+            type: mixed
+            value: '{{#1742806924635.namespace#}}'
+          pod:
+            type: mixed
+            value: '{{#1742806924635.pod#}}'
+          startTime:
+            type: variable
+            value:
+            - '1741157526222'
+            - startTime
+        type: tool
+      height: 54
+      id: '17429797453350'
+      position:
+        x: 1246
+        y: 1651
+      positionAbsolute:
+        x: 1246
+        y: 1651
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        desc: ''
+        is_team_authorization: true
+        output_schema: null
+        paramSchemas:
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: cAdvisor job name
+            ja_JP: cAdvisor job name
+            pt_BR: cAdvisor job name
+            zh_Hans: cAdvisor任务名称
+          label:
+            en_US: cAdvisor job name
+            ja_JP: cAdvisor job name
+            pt_BR: cAdvisor job name
+            zh_Hans: cAdvisor任务名称
+          llm_description: cAdvisor job name
+          max: null
+          min: null
+          name: cadvisor_job_name
+          options: []
+          placeholder: null
+          precision: null
+          required: false
+          scope: null
+          template: null
+          type: string
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: Namespace
+            ja_JP: Namespace
+            pt_BR: Namespace
+            zh_Hans: 命名空间
+          label:
+            en_US: Namespace
+            ja_JP: Namespace
+            pt_BR: Namespace
+            zh_Hans: 命名空间
+          llm_description: Namespace
+          max: null
+          min: null
+          name: namespace
+          options: []
+          placeholder: null
+          precision: null
+          required: false
+          scope: null
+          template: null
+          type: string
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: Pod name
+            ja_JP: Pod name
+            pt_BR: Pod name
+            zh_Hans: Pod名称
+          label:
+            en_US: Pod name
+            ja_JP: Pod name
+            pt_BR: Pod name
+            zh_Hans: Pod名称
+          llm_description: Pod name
+          max: null
+          min: null
+          name: pod
+          options: []
+          placeholder: null
+          precision: null
+          required: false
+          scope: null
+          template: null
+          type: string
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: Data query start time(Microsecond)
+            ja_JP: Data query start time(Microsecond)
+            pt_BR: Data query start time(Microsecond)
+            zh_Hans: 开始时间 (微秒)
+          label:
+            en_US: startTime
+            ja_JP: startTime
+            pt_BR: startTime
+            zh_Hans: startTime
+          llm_description: Data query start time(Microsecond)
+          max: null
+          min: null
+          name: startTime
+          options: []
+          placeholder: null
+          precision: null
+          required: true
+          scope: null
+          template: null
+          type: number
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: Data query end time(Microsecond)
+            ja_JP: Data query end time(Microsecond)
+            pt_BR: Data query end time(Microsecond)
+            zh_Hans: 结束时间 (微秒)
+          label:
+            en_US: endTime
+            ja_JP: endTime
+            pt_BR: endTime
+            zh_Hans: endTime
+          llm_description: Data query end time(Microsecond)
+          max: null
+          min: null
+          name: endTime
+          options: []
+          placeholder: null
+          precision: null
+          required: true
+          scope: null
+          template: null
+          type: number
+        params:
+          cadvisor_job_name: ''
+          endTime: ''
+          namespace: ''
+          pod: ''
+          startTime: ''
+        provider_id: apo_select
+        provider_name: apo_select
+        provider_type: builtin
+        selected: false
+        title: 历史数据 容器内存占用
+        tool_configurations: {}
+        tool_label: Container memory usage in bytes (Containerd runtime, aggregated
+          by container and Pod)
+        tool_name: 容器内存使用字节数(使用Containerd容器运行时,按容器和Pod统计)
+        tool_parameters:
+          endTime:
+            type: variable
+            value:
+            - '1742433446760'
+            - history_et
+          namespace:
+            type: mixed
+            value: '{{#1742806924635.namespace#}}'
+          pod:
+            type: mixed
+            value: '{{#1742806924635.pod#}}'
+          startTime:
+            type: variable
+            value:
+            - '1742433446760'
+            - history_st
+        type: tool
+      height: 54
+      id: '17429797664440'
+      position:
+        x: 1550
+        y: 1651
+      positionAbsolute:
+        x: 1550
+        y: 1651
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        desc: ''
+        is_team_authorization: true
+        output_schema: null
+        paramSchemas:
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: Prometheus job name for host metrics
+            ja_JP: Prometheus job name for host metrics
+            pt_BR: Prometheus job name for host metrics
+            zh_Hans: Prometheus任务名称（宿主机指标）
+          label:
+            en_US: Prometheus Job
+            ja_JP: Prometheus Job
+            pt_BR: Tarefa Prometheus
+            zh_Hans: Prometheus任务
+          llm_description: Unique identifier for metrics scrape job
+          max: null
+          min: null
+          name: job
+          options: []
+          placeholder: null
+          precision: null
+          required: false
+          scope: null
+          template: null
+          type: string
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: Host node identifier
+            ja_JP: Host node identifier
+            pt_BR: Host node identifier
+            zh_Hans: 宿主机节点标识
+          label:
+            en_US: Host Node
+            ja_JP: Host Node
+            pt_BR: Host Node
+            zh_Hans: 宿主机节点
+          llm_description: Unique identifier for host node
+          max: null
+          min: null
+          name: node
+          options: []
+          placeholder: null
+          precision: null
+          required: false
+          scope: null
+          template: null
+          type: string
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: Data query start time(Microsecond)
+            ja_JP: Data query start time(Microsecond)
+            pt_BR: Data query start time(Microsecond)
+            zh_Hans: 开始时间 (微秒)
+          label:
+            en_US: startTime
+            ja_JP: startTime
+            pt_BR: startTime
+            zh_Hans: startTime
+          llm_description: Data query start time(Microsecond)
+          max: null
+          min: null
+          name: startTime
+          options: []
+          placeholder: null
+          precision: null
+          required: true
+          scope: null
+          template: null
+          type: number
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: Data query end time(Microsecond)
+            ja_JP: Data query end time(Microsecond)
+            pt_BR: Data query end time(Microsecond)
+            zh_Hans: 结束时间 (微秒)
+          label:
+            en_US: endTime
+            ja_JP: endTime
+            pt_BR: endTime
+            zh_Hans: endTime
+          llm_description: Data query end time(Microsecond)
+          max: null
+          min: null
+          name: endTime
+          options: []
+          placeholder: null
+          precision: null
+          required: true
+          scope: null
+          template: null
+          type: number
+        params:
+          endTime: ''
+          job: ''
+          node: ''
+          startTime: ''
+        provider_id: apo_select
+        provider_name: apo_select
+        provider_type: builtin
+        selected: false
+        title: 宿主机cpu
+        tool_configurations: {}
+        tool_label: Query host's CPU pressure
+        tool_name: 查询宿主机CPU压力
+        tool_parameters:
+          endTime:
+            type: variable
+            value:
+            - '1741157526222'
+            - endTime
+          node:
+            type: mixed
+            value: '{{#1742806924635.node#}}'
+          startTime:
+            type: variable
+            value:
+            - '1741157526222'
+            - startTime
+        type: tool
+      height: 54
+      id: '1742979828391'
+      position:
+        x: 1246
+        y: 1745
+      positionAbsolute:
+        x: 1246
+        y: 1745
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        desc: ''
+        is_team_authorization: true
+        output_schema: null
+        paramSchemas:
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: Prometheus job name for host metrics
+            ja_JP: Prometheus job name for host metrics
+            pt_BR: Prometheus job name for host metrics
+            zh_Hans: Prometheus任务名称（宿主机指标）
+          label:
+            en_US: Prometheus Job
+            ja_JP: Prometheus Job
+            pt_BR: Tarefa Prometheus
+            zh_Hans: Prometheus任务
+          llm_description: Unique identifier for metrics scrape job
+          max: null
+          min: null
+          name: job
+          options: []
+          placeholder: null
+          precision: null
+          required: false
+          scope: null
+          template: null
+          type: string
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: Host node identifier
+            ja_JP: Host node identifier
+            pt_BR: Host node identifier
+            zh_Hans: 宿主机节点标识
+          label:
+            en_US: Host Node
+            ja_JP: Host Node
+            pt_BR: Host Node
+            zh_Hans: 宿主机节点
+          llm_description: Unique identifier for host node
+          max: null
+          min: null
+          name: node
+          options: []
+          placeholder: null
+          precision: null
+          required: false
+          scope: null
+          template: null
+          type: string
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: Data query start time(Microsecond)
+            ja_JP: Data query start time(Microsecond)
+            pt_BR: Data query start time(Microsecond)
+            zh_Hans: 开始时间 (微秒)
+          label:
+            en_US: startTime
+            ja_JP: startTime
+            pt_BR: startTime
+            zh_Hans: startTime
+          llm_description: Data query start time(Microsecond)
+          max: null
+          min: null
+          name: startTime
+          options: []
+          placeholder: null
+          precision: null
+          required: true
+          scope: null
+          template: null
+          type: number
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: Data query end time(Microsecond)
+            ja_JP: Data query end time(Microsecond)
+            pt_BR: Data query end time(Microsecond)
+            zh_Hans: 结束时间 (微秒)
+          label:
+            en_US: endTime
+            ja_JP: endTime
+            pt_BR: endTime
+            zh_Hans: endTime
+          llm_description: Data query end time(Microsecond)
+          max: null
+          min: null
+          name: endTime
+          options: []
+          placeholder: null
+          precision: null
+          required: true
+          scope: null
+          template: null
+          type: number
+        params:
+          endTime: ''
+          job: ''
+          node: ''
+          startTime: ''
+        provider_id: apo_select
+        provider_name: apo_select
+        provider_type: builtin
+        selected: false
+        title: 历史数据 宿主机cpu
+        tool_configurations: {}
+        tool_label: Query host's CPU pressure
+        tool_name: 查询宿主机CPU压力
+        tool_parameters:
+          endTime:
+            type: variable
+            value:
+            - '1742433446760'
+            - history_et
+          node:
+            type: mixed
+            value: '{{#1742806924635.node#}}'
+          startTime:
+            type: variable
+            value:
+            - '1742433446760'
+            - history_st
+        type: tool
+      height: 54
+      id: '17429798797920'
+      position:
+        x: 1550
+        y: 1745
+      positionAbsolute:
+        x: 1550
+        y: 1745
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        desc: ''
+        is_team_authorization: true
+        output_schema: null
+        paramSchemas:
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: cAdvisor job name
+            ja_JP: cAdvisor job name
+            pt_BR: cAdvisor job name
+            zh_Hans: cAdvisor任务名称
+          label:
+            en_US: cAdvisor job name
+            ja_JP: cAdvisor job name
+            pt_BR: cAdvisor job name
+            zh_Hans: cAdvisor任务名称
+          llm_description: cAdvisor job name
+          max: null
+          min: null
+          name: cadvisor_job_name
+          options: []
+          placeholder: null
+          precision: null
+          required: false
+          scope: null
+          template: null
+          type: string
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: Namespace
+            ja_JP: Namespace
+            pt_BR: Namespace
+            zh_Hans: 命名空间
+          label:
+            en_US: Namespace
+            ja_JP: Namespace
+            pt_BR: Namespace
+            zh_Hans: 命名空间
+          llm_description: Namespace
+          max: null
+          min: null
+          name: namespace
+          options: []
+          placeholder: null
+          precision: null
+          required: false
+          scope: null
+          template: null
+          type: string
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: Pod name
+            ja_JP: Pod name
+            pt_BR: Pod name
+            zh_Hans: Pod名称
+          label:
+            en_US: Pod name
+            ja_JP: Pod name
+            pt_BR: Pod name
+            zh_Hans: Pod名称
+          llm_description: Pod name
+          max: null
+          min: null
+          name: pod
+          options: []
+          placeholder: null
+          precision: null
+          required: false
+          scope: null
+          template: null
+          type: string
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: Data query start time(Microsecond)
+            ja_JP: Data query start time(Microsecond)
+            pt_BR: Data query start time(Microsecond)
+            zh_Hans: 开始时间 (微秒)
+          label:
+            en_US: startTime
+            ja_JP: startTime
+            pt_BR: startTime
+            zh_Hans: startTime
+          llm_description: Data query start time(Microsecond)
+          max: null
+          min: null
+          name: startTime
+          options: []
+          placeholder: null
+          precision: null
+          required: true
+          scope: null
+          template: null
+          type: number
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: Data query end time(Microsecond)
+            ja_JP: Data query end time(Microsecond)
+            pt_BR: Data query end time(Microsecond)
+            zh_Hans: 结束时间 (微秒)
+          label:
+            en_US: endTime
+            ja_JP: endTime
+            pt_BR: endTime
+            zh_Hans: endTime
+          llm_description: Data query end time(Microsecond)
+          max: null
+          min: null
+          name: endTime
+          options: []
+          placeholder: null
+          precision: null
+          required: true
+          scope: null
+          template: null
+          type: number
+        params:
+          cadvisor_job_name: ''
+          endTime: ''
+          namespace: ''
+          pod: ''
+          startTime: ''
+        provider_id: apo_select
+        provider_name: apo_select
+        provider_type: builtin
+        selected: false
+        title: '历史数据 容器CPU 使用率 '
+        tool_configurations: {}
+        tool_label: Container CPU usage rate (Containerd runtime, aggregated by container
+          and Pod)
+        tool_name: 容器CPU使用率(使用Containerd容器运行时,按容器和Pod统计)
+        tool_parameters:
+          endTime:
+            type: variable
+            value:
+            - '1741157526222'
+            - endTime
+          namespace:
+            type: mixed
+            value: '{{#1742806924635.namespace#}}'
+          pod:
+            type: mixed
+            value: '{{#1742806924635.pod#}}'
+          startTime:
+            type: variable
+            value:
+            - '1741157526222'
+            - startTime
+        type: tool
+      height: 54
+      id: '17429835599060'
+      position:
+        x: 1550
+        y: 1839
+      positionAbsolute:
+        x: 1550
+        y: 1839
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        desc: ''
+        is_team_authorization: true
+        output_schema: null
+        paramSchemas:
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: cAdvisor job name
+            ja_JP: cAdvisor job name
+            pt_BR: cAdvisor job name
+            zh_Hans: cAdvisor任务名称
+          label:
+            en_US: cAdvisor job name
+            ja_JP: cAdvisor job name
+            pt_BR: cAdvisor job name
+            zh_Hans: cAdvisor任务名称
+          llm_description: cAdvisor job name
+          max: null
+          min: null
+          name: cadvisor_job_name
+          options: []
+          placeholder: null
+          precision: null
+          required: false
+          scope: null
+          template: null
+          type: string
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: Namespace
+            ja_JP: Namespace
+            pt_BR: Namespace
+            zh_Hans: 命名空间
+          label:
+            en_US: Namespace
+            ja_JP: Namespace
+            pt_BR: Namespace
+            zh_Hans: 命名空间
+          llm_description: Namespace
+          max: null
+          min: null
+          name: namespace
+          options: []
+          placeholder: null
+          precision: null
+          required: false
+          scope: null
+          template: null
+          type: string
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: Pod name
+            ja_JP: Pod name
+            pt_BR: Pod name
+            zh_Hans: Pod名称
+          label:
+            en_US: Pod name
+            ja_JP: Pod name
+            pt_BR: Pod name
+            zh_Hans: Pod名称
+          llm_description: Pod name
+          max: null
+          min: null
+          name: pod
+          options: []
+          placeholder: null
+          precision: null
+          required: false
+          scope: null
+          template: null
+          type: string
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: Data query start time(Microsecond)
+            ja_JP: Data query start time(Microsecond)
+            pt_BR: Data query start time(Microsecond)
+            zh_Hans: 开始时间 (微秒)
+          label:
+            en_US: startTime
+            ja_JP: startTime
+            pt_BR: startTime
+            zh_Hans: startTime
+          llm_description: Data query start time(Microsecond)
+          max: null
+          min: null
+          name: startTime
+          options: []
+          placeholder: null
+          precision: null
+          required: true
+          scope: null
+          template: null
+          type: number
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: Data query end time(Microsecond)
+            ja_JP: Data query end time(Microsecond)
+            pt_BR: Data query end time(Microsecond)
+            zh_Hans: 结束时间 (微秒)
+          label:
+            en_US: endTime
+            ja_JP: endTime
+            pt_BR: endTime
+            zh_Hans: endTime
+          llm_description: Data query end time(Microsecond)
+          max: null
+          min: null
+          name: endTime
+          options: []
+          placeholder: null
+          precision: null
+          required: true
+          scope: null
+          template: null
+          type: number
+        params:
+          cadvisor_job_name: ''
+          endTime: ''
+          namespace: ''
+          pod: ''
+          startTime: ''
+        provider_id: apo_select
+        provider_name: apo_select
+        provider_type: builtin
+        selected: false
+        title: 历史数据 容器内存占用
+        tool_configurations: {}
+        tool_label: Container memory usage in bytes (Containerd runtime, aggregated
+          by container and Pod)
+        tool_name: 容器内存使用字节数(使用Containerd容器运行时,按容器和Pod统计)
+        tool_parameters:
+          endTime:
+            type: variable
+            value:
+            - '1741157526222'
+            - endTime
+          namespace:
+            type: mixed
+            value: '{{#1742806924635.namespace#}}'
+          pod:
+            type: mixed
+            value: '{{#1742806924635.pod#}}'
+          startTime:
+            type: variable
+            value:
+            - '1741157526222'
+            - startTime
+        type: tool
+      height: 54
+      id: '17429835940550'
+      position:
+        x: 1550
+        y: 1933
+      positionAbsolute:
+        x: 1550
+        y: 1933
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
     viewport:
-      x: 171.57866536216355
-      y: 331.8252495324367
-      zoom: 0.2578933989536625
+      x: 289.1589008663707
+      y: -174.9404993893893
+      zoom: 0.5537771915449453

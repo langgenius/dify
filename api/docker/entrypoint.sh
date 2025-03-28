@@ -2,12 +2,6 @@
 
 set -e
 
-if [[ "${MODE}" == "copy" ]]; then
-    mkdir -p /app/storage
-    cp -rf /app/api/init_data/plugins/storage/* /app/storage/
-    exit 0
-fi
-
 if [[ "${MIGRATION_ENABLED}" == "true" ]]; then
   echo "Running migrations"
   flask upgrade-db

@@ -98,7 +98,7 @@ workflow:
     - data:
         desc: ''
         selected: true
-        title: 开始
+        title: start
         type: start
         variables:
         - label: Pod
@@ -204,7 +204,7 @@ workflow:
           - text
           variable: text
         selected: false
-        title: 结束
+        title: end
         type: end
       height: 89
       id: '1741075309105'
@@ -329,7 +329,7 @@ workflow:
         provider_name: apo_select
         provider_type: builtin
         selected: false
-        title: 容器与下游服务的网络往返时间(RTT,按命名空间和Pod统计)
+        title: Container Network RTT
         tool_configurations: {}
         tool_label: 容器与下游服务的网络往返时间(RTT,按命名空间和Pod统计)
         tool_name: 查询容器网络与下游RTT

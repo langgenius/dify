@@ -1,4 +1,0 @@
-dify_plugin==0.0.1b73
-numpy~=2.2.3
-dashscope~=1.22.2
-openai~=1.65.4

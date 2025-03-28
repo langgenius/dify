@@ -97,7 +97,7 @@ workflow:
     - data:
         desc: ''
         selected: false
-        title: 开始
+        title: start
         type: start
         variables:
         - label: Query start time(Microsecond)
@@ -216,7 +216,7 @@ workflow:
         provider_name: apo_select
         provider_type: builtin
         selected: false
-        title: 宿主机IO等待CPU繁忙率
+        title: Query Host IO Wait
         tool_configurations: {}
         tool_label: 宿主机IO等待CPU繁忙率
         tool_name: host_cpu_iowait
@@ -307,7 +307,7 @@ workflow:
           - text
           variable: text
         selected: false
-        title: 结束
+        title: end
         type: end
       height: 89
       id: '1742548523246'

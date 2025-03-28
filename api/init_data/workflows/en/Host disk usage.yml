@@ -97,7 +97,7 @@ workflow:
     - data:
         desc: ''
         selected: false
-        title: 开始
+        title: start
         type: start
         variables:
         - label: Node name
@@ -216,7 +216,7 @@ workflow:
         provider_name: apo_select
         provider_type: builtin
         selected: false
-        title: 宿主机磁盘使用率(百分比,不含rootfs)
+        title: Host disk usage
         tool_configurations: {}
         tool_label: 宿主机磁盘使用率(百分比,不含rootfs)
         tool_name: 宿主机磁盘使用率(百分比,不含rootfs)
@@ -306,7 +306,7 @@ workflow:
           - text
           variable: text
         selected: false
-        title: 结束
+        title: end
         type: end
       height: 89
       id: '1742549028365'
