@@ -52,7 +52,7 @@ export const jsonToSchema = (json: any): Field => {
       schema.required!.push(key)
     })
   }
-  else if (schema.type === Type.array && json.length > 0) {
+  else if (schema.type === Type.array) {
     schema.items = jsonToSchema(json[0]) as ArrayItems
   }
 
@@ -65,8 +65,9 @@ export const checkJsonDepth = (json: any) => {
 
   let maxDepth = 0
 
-  if (Array.isArray(json) && json[0] && typeof json[0] === 'object') {
-    maxDepth = checkJsonDepth(json[0]) + 1
+  if (Array.isArray(json)) {
+    if (json[0] && typeof json[0] === 'object')
+      maxDepth = checkJsonDepth(json[0])
   }
   else if (typeof json === 'object') {
     const propertyDepths = Object.values(json).map(value => checkJsonDepth(value))
