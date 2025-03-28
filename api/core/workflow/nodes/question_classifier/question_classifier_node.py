@@ -2,12 +2,9 @@ import json
 from collections.abc import Mapping, Sequence
 from typing import Any, Optional, cast
 
-from core.app.entities.app_invoke_entities import ModelConfigWithCredentialsEntity
 from core.memory.token_buffer_memory import TokenBufferMemory
-from core.model_manager import ModelInstance
-from core.model_runtime.entities import LLMUsage, ModelPropertyKey, PromptMessageRole
+from core.model_runtime.entities import LLMUsage, PromptMessageRole
 from core.model_runtime.utils.encoders import jsonable_encoder
-from core.prompt.advanced_prompt_transform import AdvancedPromptTransform
 from core.prompt.simple_prompt_transform import ModelMode
 from core.prompt.utils.prompt_message_util import PromptMessageUtil
 from core.workflow.entities.node_entities import NodeRunMetadataKey, NodeRunResult
@@ -67,17 +64,10 @@ class QuestionClassifierNode(LLMNode):
         )
 
         # fetch prompt messages
-        rest_token = self._calculate_rest_token(
-            node_data=node_data,
-            query=query or "",
-            model_config=model_config,
-            context="",
-        )
         prompt_template = self._get_prompt_template(
             node_data=node_data,
             query=query or "",
             memory=memory,
-            max_token_limit=rest_token,
         )
         prompt_messages, stop = self._fetch_prompt_messages(
             prompt_template=prompt_template,
@@ -196,56 +186,11 @@ class QuestionClassifierNode(LLMNode):
         """
         return {"type": "question-classifier", "config": {"instructions": ""}}
 
-    def _calculate_rest_token(
-        self,
-        node_data: QuestionClassifierNodeData,
-        query: str,
-        model_config: ModelConfigWithCredentialsEntity,
-        context: Optional[str],
-    ) -> int:
-        prompt_transform = AdvancedPromptTransform(with_variable_tmpl=True)
-        prompt_template = self._get_prompt_template(node_data, query, None, 2000)
-        prompt_messages = prompt_transform.get_prompt(
-            prompt_template=prompt_template,
-            inputs={},
-            query="",
-            files=[],
-            context=context,
-            memory_config=node_data.memory,
-            memory=None,
-            model_config=model_config,
-        )
-        rest_tokens = 2000
-
-        model_context_tokens = model_config.model_schema.model_properties.get(ModelPropertyKey.CONTEXT_SIZE)
-        if model_context_tokens:
-            model_instance = ModelInstance(
-                provider_model_bundle=model_config.provider_model_bundle, model=model_config.model
-            )
-
-            curr_message_tokens = model_instance.get_llm_num_tokens(prompt_messages)
-
-            max_tokens = 0
-            for parameter_rule in model_config.model_schema.parameter_rules:
-                if parameter_rule.name == "max_tokens" or (
-                    parameter_rule.use_template and parameter_rule.use_template == "max_tokens"
-                ):
-                    max_tokens = (
-                        model_config.parameters.get(parameter_rule.name)
-                        or model_config.parameters.get(parameter_rule.use_template or "")
-                    ) or 0
-
-            rest_tokens = model_context_tokens - max_tokens - curr_message_tokens
-            rest_tokens = max(rest_tokens, 0)
-
-        return rest_tokens
-
     def _get_prompt_template(
         self,
         node_data: QuestionClassifierNodeData,
         query: str,
         memory: Optional[TokenBufferMemory],
-        max_token_limit: int = 2000,
     ):
         model_mode = ModelMode.value_of(node_data.model.mode)
         classes = node_data.classes
@@ -258,7 +203,6 @@ class QuestionClassifierNode(LLMNode):
         memory_str = ""
         if memory:
             memory_str = memory.get_history_prompt_text(
-                max_token_limit=max_token_limit,
                 message_limit=node_data.memory.window.size if node_data.memory and node_data.memory.window else None,
             )
         prompt_messages: list[LLMNodeChatModelMessage] = []
