@@ -5,7 +5,7 @@ import uuid
 
 import click
 from celery import shared_task  # type: ignore
-from sqlalchemy import func, select
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from core.model_manager import ModelManager

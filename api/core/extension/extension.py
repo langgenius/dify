@@ -42,7 +42,7 @@ class Extension:
         return t
 
     def validate_form_schema(self, module: ExtensionModule, extension_name: str, config: dict) -> None:
+        pass
         # module_extension = self.module_extension(module, extension_name)
         # form_schema = module_extension.form_schema
         # TODO validate form_schema
-        pass
