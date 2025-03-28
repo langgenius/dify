@@ -19,7 +19,7 @@ def create_flask_app_with_configs() -> DifyApp:
 
     # add before request hook
     @dify_app.before_request
-    def before_request():
+    def before_request(): # pyright: ignore[reportUnusedFunction]
         # add an unique identifier to each request
         RecyclableContextVar.increment_thread_recycles()
 

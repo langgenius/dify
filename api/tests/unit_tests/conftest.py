@@ -18,6 +18,6 @@ def app() -> Flask:
 
 
 @pytest.fixture(autouse=True)
-def _provide_app_context(app: Flask):
+def _provide_app_context(app: Flask): # pyright: ignore[reportUnusedFunction]
     with app.app_context():
         yield
