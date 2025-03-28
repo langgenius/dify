@@ -5,12 +5,6 @@ import { BlockClassificationEnum } from './types'
 export const BLOCKS: Block[] = [
   {
     classification: BlockClassificationEnum.Default,
-    type: BlockEnum.LoopEnd,
-    title: 'Exit Loop',
-    description: '',
-  },
-  {
-    classification: BlockClassificationEnum.Default,
     type: BlockEnum.Start,
     title: 'Start',
     description: '',
@@ -44,6 +38,12 @@ export const BLOCKS: Block[] = [
     classification: BlockClassificationEnum.Logic,
     type: BlockEnum.IfElse,
     title: 'IF/ELSE',
+  },
+  {
+    classification: BlockClassificationEnum.Logic,
+    type: BlockEnum.LoopEnd,
+    title: 'Exit Loop',
+    description: '',
   },
   {
     classification: BlockClassificationEnum.Logic,

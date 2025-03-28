@@ -266,7 +266,7 @@ const translation = {
     'variable-aggregator': 'Aggregate multi-branch variables into a single variable for unified configuration of downstream nodes.',
     'iteration': 'Perform multiple steps on a list object until all results are outputted.',
     'loop': 'Execute a loop of logic until the termination condition is met or the maximum loop count is reached.',
-    'loop-end': 'loop end',
+    'loop-end': 'Equivalent to "break". This node has no configuration items. When the loop body reaches this node, the loop terminates.',
     'parameter-extractor': 'Use LLM to extract structured parameters from natural language for tool invocations or HTTP requests.',
     'document-extractor': 'Used to parse uploaded documents into text content that is easily understandable by LLM.',
     'list-operator': 'Used to filter or sort array content.',
