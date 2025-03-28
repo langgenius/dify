@@ -377,6 +377,8 @@ def _process_sub_conditions(
         values = [file_manager.get_attr(file=file, attr=key) for file in files]
         expected_value = condition.value
         if key == FileAttribute.EXTENSION:
+            if not isinstance(expected_value, str):
+                raise TypeError("Expected value must be a string when key is FileAttribute.EXTENSION")
             if expected_value and not expected_value.startswith("."):
                 expected_value = "." + expected_value
 
