@@ -6,7 +6,7 @@ identity:
     zh_Hans: 线程北极星P90数据
 description:
   human:
-    en_US: 
+    en_US: Thread Polaris Metrics P90
     zh_Hans: 线程北极星P90数据
   llm: Thread Polaris Metrics P90
 parameters:
