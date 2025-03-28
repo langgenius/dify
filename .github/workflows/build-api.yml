@@ -4,6 +4,10 @@ on:
   push:
     tags:
       - v*
+    branches:
+      - apo-1.0.0
+    paths:
+      - 'api/**'
   workflow_dispatch:
 
 env:
@@ -61,6 +65,7 @@ jobs:
   deploy-dev:
     runs-on: [self-hosted, dev]
     needs: [build-image]
+    if: github.ref == 'refs/heads/apo-1.0.0'
     steps:
     - name: Deploy to dev
       env: 
