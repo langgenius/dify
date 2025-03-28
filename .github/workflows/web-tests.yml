@@ -4,6 +4,7 @@ on:
   pull_request:
     branches:
       - main
+      - fix/canvas-run
     paths:
       - web/**
       - .github/workflows/web-tests.yml
