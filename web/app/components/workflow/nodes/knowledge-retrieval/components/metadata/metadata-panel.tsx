@@ -17,16 +17,16 @@ const MetadataPanel = ({
   const { t } = useTranslation()
 
   return (
-    <div className='w-[420px] bg-components-panel-bg border-[0.5px] border-components-panel-border rounded-2xl shadow-2xl'>
+    <div className='w-[420px] rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-2xl'>
       <div className='relative px-3 pt-3.5'>
         <div className='system-xl-semibold text-text-primary'>
           {t('workflow.nodes.knowledgeRetrieval.metadata.panel.title')}
         </div>
         <div
-          className='absolute right-2.5 bottom-0 flex items-center justify-center w-8 h-8 cursor-pointer'
+          className='absolute bottom-0 right-2.5 flex h-8 w-8 cursor-pointer items-center justify-center'
           onClick={onCancel}
         >
-          <RiCloseLine className='w-4 h-4 text-text-tertiary' />
+          <RiCloseLine className='h-4 w-4 text-text-tertiary' />
         </div>
       </div>
       <div className='px-1 py-2'>

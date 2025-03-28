@@ -30,27 +30,27 @@ const ViewTypeSelect: FC<Props> = ({
     <div className='flex items-center rounded-lg bg-components-segmented-control-bg-normal p-px'>
       <div
         className={
-          cn('p-[3px] rounded-lg',
+          cn('rounded-lg p-[3px]',
             viewType === ViewType.flat
-              ? 'bg-components-segmented-control-item-active-bg shadow-xs text-text-accent-light-mode-only'
-              : 'text-text-tertiary cursor-pointer',
+              ? 'bg-components-segmented-control-item-active-bg text-text-accent-light-mode-only shadow-xs'
+              : 'cursor-pointer text-text-tertiary',
           )
         }
         onClick={handleChange(ViewType.flat)}
       >
-        <RiSortAlphabetAsc className='w-4 h-4' />
+        <RiSortAlphabetAsc className='h-4 w-4' />
       </div>
       <div
         className={
-          cn('p-[3px] rounded-lg',
+          cn('rounded-lg p-[3px]',
             viewType === ViewType.tree
-              ? 'bg-components-segmented-control-item-active-bg shadow-xs text-text-accent-light-mode-only'
-              : 'text-text-tertiary cursor-pointer',
+              ? 'bg-components-segmented-control-item-active-bg text-text-accent-light-mode-only shadow-xs'
+              : 'cursor-pointer text-text-tertiary',
           )
         }
         onClick={handleChange(ViewType.tree)}
       >
-        <RiNodeTree className='w-4 h-4 ' />
+        <RiNodeTree className='h-4 w-4 ' />
       </div>
     </div>
   )

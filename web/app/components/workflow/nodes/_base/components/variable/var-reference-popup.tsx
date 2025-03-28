@@ -27,7 +27,7 @@ const VarReferencePopup: FC<Props> = ({
   const { locale } = useContext(I18n)
   // max-h-[300px] overflow-y-auto todo: use portal to handle long list
   return (
-    <div className='p-1 bg-white rounded-lg border border-gray-200 shadow-lg space-y-1' style={{
+    <div className='space-y-1 rounded-lg border border-gray-200 bg-white p-1 shadow-lg' style={{
       width: itemWidth || 228,
     }}>
       {((!vars || vars.length === 0) && popupFor)
@@ -35,7 +35,7 @@ const VarReferencePopup: FC<Props> = ({
           ? (
             <ListEmpty
               title={t('workflow.variableReference.noAvailableVars') || ''}
-              description={<div className='text-text-tertiary system-xs-regular'>
+              description={<div className='system-xs-regular text-text-tertiary'>
                 {t('workflow.variableReference.noVarsForOperation')}
               </div>}
             />
@@ -43,7 +43,7 @@ const VarReferencePopup: FC<Props> = ({
           : (
             <ListEmpty
               title={t('workflow.variableReference.noAssignedVars') || ''}
-              description={<div className='text-text-tertiary system-xs-regular'>
+              description={<div className='system-xs-regular text-text-tertiary'>
                 {t('workflow.variableReference.assignedVarsDescription')}
                 <a target='_blank' rel='noopener noreferrer'
                   className='text-text-accent-secondary'

@@ -4,7 +4,7 @@ import Workflow from '@/app/components/workflow'
 
 const Page = () => {
   return (
-    <div className='w-full h-full overflow-x-auto'>
+    <div className='h-full w-full overflow-x-auto'>
       <Workflow />
     </div>
   )

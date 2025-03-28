@@ -720,6 +720,23 @@ class DocumentSegment(db.Model):  # type: ignore[name-defined]
         else:
             return []
 
+    def get_child_chunks(self):
+        process_rule = self.document.dataset_process_rule
+        if process_rule.mode == "hierarchical":
+            rules = Rule(**process_rule.rules_dict)
+            if rules.parent_mode:
+                child_chunks = (
+                    db.session.query(ChildChunk)
+                    .filter(ChildChunk.segment_id == self.id)
+                    .order_by(ChildChunk.position.asc())
+                    .all()
+                )
+                return child_chunks or []
+            else:
+                return []
+        else:
+            return []
+
     @property
     def sign_content(self):
         return self.get_sign_content()
@@ -912,7 +929,7 @@ class Embedding(db.Model):  # type: ignore[name-defined]
         self.embedding = pickle.dumps(embedding_data, protocol=pickle.HIGHEST_PROTOCOL)
 
     def get_embedding(self) -> list[float]:
-        return cast(list[float], pickle.loads(self.embedding))
+        return cast(list[float], pickle.loads(self.embedding))  # noqa: S301
 
 
 class DatasetCollectionBinding(db.Model):  # type: ignore[name-defined]

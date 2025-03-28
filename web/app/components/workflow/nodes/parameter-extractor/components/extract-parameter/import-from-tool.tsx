@@ -68,7 +68,7 @@ const ImportFromTool: FC<Props> = ({
     return (
       <div>
         <div className={cn(
-          'flex items-center h-6 px-2 cursor-pointer rounded-md hover:bg-gray-100 text-xs font-medium text-gray-500',
+          'flex h-6 cursor-pointer items-center rounded-md px-2 text-xs font-medium text-gray-500 hover:bg-gray-100',
           open && 'bg-gray-100',
         )}>
           {t(`${i18nPrefix}.importFromTool`)}

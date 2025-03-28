@@ -556,6 +556,10 @@ export const FILE_STRUCT: Var[] = [
     variable: 'url',
     type: VarType.string,
   },
+  {
+    variable: 'related_id',
+    type: VarType.string,
+  },
 ]
 
 export const DEFAULT_FILE_UPLOAD_SETTING = {

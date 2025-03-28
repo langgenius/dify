@@ -178,7 +178,7 @@ const FireCrawl: FC<Props> = ({
   return (
     <div>
       <Header onSetting={handleSetting} />
-      <div className='mt-2 p-4 pb-0 rounded-xl border border-components-panel-border bg-background-default-subtle'>
+      <div className='mt-2 rounded-xl border border-components-panel-border bg-background-default-subtle p-4 pb-0'>
         <UrlInput onRun={handleRun} isRunning={isRunning} />
         <OptionsWrap
           className='mt-4'
@@ -188,7 +188,7 @@ const FireCrawl: FC<Props> = ({
         </OptionsWrap>
 
         {!isInit && (
-          <div className='mt-3 relative left-[-16px] w-[calc(100%_+_32px)] rounded-b-xl'>
+          <div className='relative left-[-16px] mt-3 w-[calc(100%_+_32px)] rounded-b-xl'>
             {isRunning
               && <Crawling
                 className='mt-2'

@@ -40,11 +40,11 @@ export const VarItem: FC<VarItemProps> = ({
 }) => {
   return (
     <div className='py-1'>
-      <div className='flex leading-[18px] items-center'>
+      <div className='flex items-center leading-[18px]'>
         <div className='code-sm-semibold text-text-secondary'>{name}</div>
-        <div className='ml-2 system-xs-regular text-text-tertiary capitalize'>{type}</div>
+        <div className='system-xs-regular ml-2 capitalize text-text-tertiary'>{type}</div>
       </div>
-      <div className='mt-0.5 system-xs-regular text-text-tertiary'>
+      <div className='system-xs-regular mt-0.5 text-text-tertiary'>
         {description}
         {subItems && (
           <div className='ml-2 border-l border-gray-200 pl-2'>

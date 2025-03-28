@@ -124,7 +124,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
       - `created_at` (int) 作成タイムスタンプ、例：1705395332
     - `event: agent_thought` エージェントの思考、LLMの思考、ツール呼び出しの入力と出力を含みます（エージェントモードでのみサポート）
       - `id` (string) エージェント思考ID、各反復には一意のエージェント思考IDがあります
-      - `task_id` (string) (string) タスクID、リクエスト追跡と以下のStop Generate APIに使用
+      - `task_id` (string)  タスクID、リクエスト追跡と以下のStop Generate APIに使用
       - `message_id` (string) 一意のメッセージID
       - `position` (int) 現在のエージェント思考の位置、各メッセージには順番に複数の思考が含まれる場合があります。
       - `thought` (string) LLMが考えていること

@@ -49,8 +49,8 @@ const RunBatch: FC<IRunBatchProps> = ({
           onClick={handleSend}
           disabled={!isParsed || !isAllFinished}
         >
-          <Icon className={cn(!isAllFinished && 'animate-spin', 'shrink-0 w-4 h-4 mr-1')} aria-hidden="true" />
-          <span className='uppercase text-[13px]'>{t('share.generation.run')}</span>
+          <Icon className={cn(!isAllFinished && 'animate-spin', 'mr-1 h-4 w-4 shrink-0')} aria-hidden="true" />
+          <span className='text-[13px] uppercase'>{t('share.generation.run')}</span>
         </Button>
       </div>
     </div>

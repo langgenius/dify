@@ -28,12 +28,12 @@ const CrawledResultItem: FC<Props> = ({
     onCheckChange(!isChecked)
   }, [isChecked, onCheckChange])
   return (
-    <div className={cn(isPreview ? 'bg-state-base-active' : 'group hover:bg-state-base-hover', 'rounded-lg p-2 cursor-pointer')}>
+    <div className={cn(isPreview ? 'bg-state-base-active' : 'group hover:bg-state-base-hover', 'cursor-pointer rounded-lg p-2')}>
       <div className='relative flex'>
-        <div className='h-5 flex items-center'>
+        <div className='flex h-5 items-center'>
           <Checkbox className='mr-2 shrink-0' checked={isChecked} onCheck={handleCheckChange} />
         </div>
-        <div className='flex flex-col grow min-w-0'>
+        <div className='flex min-w-0 grow flex-col'>
           <div
             className='truncate text-sm font-medium text-text-secondary'
             title={payload.title}
@@ -49,7 +49,7 @@ const CrawledResultItem: FC<Props> = ({
         </div>
         <Button
           onClick={onPreview}
-          className='hidden group-hover:block group-hover:absolute top-0 right-0 h-6 px-1.5 text-xs font-medium uppercase'
+          className='right-0 top-0 hidden h-6 px-1.5 text-xs font-medium uppercase group-hover:absolute group-hover:block'
         >
           {t('datasetCreation.stepOne.website.preview')}
         </Button>

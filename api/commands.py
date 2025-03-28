@@ -12,6 +12,7 @@ from configs import dify_config
 from constants.languages import languages
 from core.rag.datasource.vdb.vector_factory import Vector
 from core.rag.datasource.vdb.vector_type import VectorType
+from core.rag.index_processor.constant.built_in_field import BuiltInField
 from core.rag.models.document import Document
 from events.app_event import app_was_created
 from extensions.ext_database import db
@@ -25,6 +26,7 @@ from models.dataset import Document as DatasetDocument
 from models.model import Account, App, AppAnnotationSetting, AppMode, Conversation, MessageAnnotation
 from models.provider import Provider, ProviderModel
 from services.account_service import RegisterService, TenantService
+from services.clear_free_plan_tenant_expired_logs import ClearFreePlanTenantExpiredLogs
 from services.plugin.data_migration import PluginDataMigration
 from services.plugin.plugin_migration import PluginMigration
 
@@ -274,6 +276,7 @@ def migrate_knowledge_vector_database():
         VectorType.ORACLE,
         VectorType.ELASTICSEARCH,
         VectorType.OPENGAUSS,
+        VectorType.TABLESTORE,
     }
     lower_collection_vector_types = {
         VectorType.ANALYTICDB,
@@ -559,36 +562,25 @@ def old_metadata_migration():
             if document.doc_metadata:
                 doc_metadata = document.doc_metadata
                 for key, value in doc_metadata.items():
-                    dataset_metadata = (
-                        db.session.query(DatasetMetadata)
-                        .filter(DatasetMetadata.dataset_id == document.dataset_id, DatasetMetadata.name == key)
-                        .first()
-                    )
-                    if not dataset_metadata:
-                        dataset_metadata = DatasetMetadata(
-                            tenant_id=document.tenant_id,
-                            dataset_id=document.dataset_id,
-                            name=key,
-                            type="string",
-                            created_by=document.created_by,
-                        )
-                        db.session.add(dataset_metadata)
-                        db.session.flush()
-                        dataset_metadata_binding = DatasetMetadataBinding(
-                            tenant_id=document.tenant_id,
-                            dataset_id=document.dataset_id,
-                            metadata_id=dataset_metadata.id,
-                            document_id=document.id,
-                            created_by=document.created_by,
-                        )
-                        db.session.add(dataset_metadata_binding)
+                    for field in BuiltInField:
+                        if field.value == key:
+                            break
                     else:
-                        dataset_metadata_binding = DatasetMetadataBinding.query.filter(
-                            DatasetMetadataBinding.dataset_id == document.dataset_id,
-                            DatasetMetadataBinding.document_id == document.id,
-                            DatasetMetadataBinding.metadata_id == dataset_metadata.id,
-                        ).first()
-                        if not dataset_metadata_binding:
+                        dataset_metadata = (
+                            db.session.query(DatasetMetadata)
+                            .filter(DatasetMetadata.dataset_id == document.dataset_id, DatasetMetadata.name == key)
+                            .first()
+                        )
+                        if not dataset_metadata:
+                            dataset_metadata = DatasetMetadata(
+                                tenant_id=document.tenant_id,
+                                dataset_id=document.dataset_id,
+                                name=key,
+                                type="string",
+                                created_by=document.created_by,
+                            )
+                            db.session.add(dataset_metadata)
+                            db.session.flush()
                             dataset_metadata_binding = DatasetMetadataBinding(
                                 tenant_id=document.tenant_id,
                                 dataset_id=document.dataset_id,
@@ -597,7 +589,22 @@ def old_metadata_migration():
                                 created_by=document.created_by,
                             )
                             db.session.add(dataset_metadata_binding)
-                db.session.commit()
+                        else:
+                            dataset_metadata_binding = DatasetMetadataBinding.query.filter(
+                                DatasetMetadataBinding.dataset_id == document.dataset_id,
+                                DatasetMetadataBinding.document_id == document.id,
+                                DatasetMetadataBinding.metadata_id == dataset_metadata.id,
+                            ).first()
+                            if not dataset_metadata_binding:
+                                dataset_metadata_binding = DatasetMetadataBinding(
+                                    tenant_id=document.tenant_id,
+                                    dataset_id=document.dataset_id,
+                                    metadata_id=dataset_metadata.id,
+                                    document_id=document.id,
+                                    created_by=document.created_by,
+                                )
+                                db.session.add(dataset_metadata_binding)
+                        db.session.commit()
         page += 1
     click.echo(click.style("Old metadata migration completed.", fg="green"))
 
@@ -787,3 +794,23 @@ def install_plugins(input_file: str, output_file: str, workers: int):
     PluginMigration.install_plugins(input_file, output_file, workers)
 
     click.echo(click.style("Install plugins completed.", fg="green"))
+
+
+@click.command("clear-free-plan-tenant-expired-logs", help="Clear free plan tenant expired logs.")
+@click.option("--days", prompt=True, help="The days to clear free plan tenant expired logs.", default=30)
+@click.option("--batch", prompt=True, help="The batch size to clear free plan tenant expired logs.", default=100)
+@click.option(
+    "--tenant_ids",
+    prompt=True,
+    multiple=True,
+    help="The tenant ids to clear free plan tenant expired logs.",
+)
+def clear_free_plan_tenant_expired_logs(days: int, batch: int, tenant_ids: list[str]):
+    """
+    Clear free plan tenant expired logs.
+    """
+    click.echo(click.style("Starting clear free plan tenant expired logs.", fg="white"))
+
+    ClearFreePlanTenantExpiredLogs.process(days, batch, tenant_ids)
+
+    click.echo(click.style("Clear free plan tenant expired logs completed.", fg="green"))

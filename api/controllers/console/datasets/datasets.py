@@ -646,7 +646,6 @@ class DatasetRetrievalSettingApi(Resource):
                 | VectorType.BAIDU
                 | VectorType.VIKINGDB
                 | VectorType.UPSTASH
-                | VectorType.OCEANBASE
             ):
                 return {"retrieval_method": [RetrievalMethod.SEMANTIC_SEARCH.value]}
             case (
@@ -664,6 +663,8 @@ class DatasetRetrievalSettingApi(Resource):
                 | VectorType.COUCHBASE
                 | VectorType.MILVUS
                 | VectorType.OPENGAUSS
+                | VectorType.OCEANBASE
+                | VectorType.TABLESTORE
             ):
                 return {
                     "retrieval_method": [
@@ -692,7 +693,6 @@ class DatasetRetrievalSettingMockApi(Resource):
                 | VectorType.BAIDU
                 | VectorType.VIKINGDB
                 | VectorType.UPSTASH
-                | VectorType.OCEANBASE
             ):
                 return {"retrieval_method": [RetrievalMethod.SEMANTIC_SEARCH.value]}
             case (
@@ -708,6 +708,8 @@ class DatasetRetrievalSettingMockApi(Resource):
                 | VectorType.PGVECTOR
                 | VectorType.LINDORM
                 | VectorType.OPENGAUSS
+                | VectorType.OCEANBASE
+                | VectorType.TABLESTORE
             ):
                 return {
                     "retrieval_method": [

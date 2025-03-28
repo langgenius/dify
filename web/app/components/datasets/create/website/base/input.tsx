@@ -50,12 +50,12 @@ const Input: FC<Props> = ({
       {...otherOption}
       value={value}
       onChange={handleChange}
-      className='flex h-8 w-full p-2 rounded-lg system-xs-regular text-components-input-text-filled bg-components-input-bg-normal
-      caret-[#295eff] border border-transparent
-        hover:bg-components-input-bg-hover hover:border hover:border-components-input-border-hover
-        focus-visible:outline-none focus:bg-components-inout-border-active focus:border focus:border-components-input-border-active
+      className='system-xs-regular focus:bg-components-inout-border-active flex h-8 w-full rounded-lg border border-transparent
+      bg-components-input-bg-normal p-2 text-components-input-text-filled
+        caret-[#295eff] placeholder:text-components-input-text-placeholder hover:border
+        hover:border-components-input-border-hover hover:bg-components-input-bg-hover focus:border focus:border-components-input-border-active
         focus:shadow-xs focus:shadow-shadow-shadow-3
-        placeholder:text-components-input-text-placeholder'
+        focus-visible:outline-none'
       placeholder={placeholder}
     />
   )

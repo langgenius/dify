@@ -81,13 +81,13 @@ const Operation: FC<OperationProps> = ({
   const operationWidth = useMemo(() => {
     let width = 0
     if (!isOpeningStatement)
-      width += 28
+      width += 26
     if (!isOpeningStatement && showPromptLog)
-      width += 102 + 8
+      width += 28 + 8
     if (!isOpeningStatement && config?.text_to_speech?.enabled)
-      width += 33
+      width += 26
     if (!isOpeningStatement && config?.supportAnnotation && config?.annotation_reply?.enabled)
-      width += 56 + 8
+      width += 26
     if (config?.supportFeedback && !localFeedback?.rating && onFeedback && !isOpeningStatement)
       width += 60 + 8
     if (config?.supportFeedback && localFeedback?.rating && onFeedback && !isOpeningStatement)
@@ -108,13 +108,13 @@ const Operation: FC<OperationProps> = ({
         )}
         style={(!hasWorkflowProcess && positionRight) ? { left: contentWidth + 8 } : {}}
       >
-        {showPromptLog && (
+        {showPromptLog && !isOpeningStatement && (
           <div className='hidden group-hover:block'>
             <Log logItem={item} />
           </div>
         )}
         {!isOpeningStatement && (
-          <div className='hidden group-hover:flex ml-1 items-center gap-0.5 p-0.5 rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg shadow-md backdrop-blur-sm'>
+          <div className='ml-1 hidden items-center gap-0.5 rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-md backdrop-blur-sm group-hover:flex'>
             {(config?.text_to_speech?.enabled) && (
               <NewAudioButton
                 id={id}
@@ -126,40 +126,44 @@ const Operation: FC<OperationProps> = ({
               copy(content)
               Toast.notify({ type: 'success', message: t('common.actionMsg.copySuccessfully') })
             }}>
-              <RiClipboardLine className='w-4 h-4' />
+              <RiClipboardLine className='h-4 w-4' />
             </ActionButton>
             {!noChatInput && (
               <ActionButton onClick={() => onRegenerate?.(item)}>
-                <RiResetLeftLine className='w-4 h-4' />
+                <RiResetLeftLine className='h-4 w-4' />
               </ActionButton>
             )}
             {(config?.supportAnnotation && config.annotation_reply?.enabled) && (
               <ActionButton onClick={() => setIsShowReplyModal(true)}>
-                <RiEditLine className='w-4 h-4' />
+                <RiEditLine className='h-4 w-4' />
               </ActionButton>
             )}
           </div>
         )}
-        {!isOpeningStatement && config?.supportFeedback && onFeedback && (
-          <div className='hidden group-hover:flex ml-1 items-center gap-0.5 p-0.5 rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg shadow-md backdrop-blur-sm'>
+        {!isOpeningStatement && config?.supportFeedback && !localFeedback?.rating && onFeedback && (
+          <div className='ml-1 hidden items-center gap-0.5 rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-md backdrop-blur-sm group-hover:flex'>
             {!localFeedback?.rating && (
               <>
                 <ActionButton onClick={() => handleFeedback('like')}>
-                  <RiThumbUpLine className='w-4 h-4' />
+                  <RiThumbUpLine className='h-4 w-4' />
                 </ActionButton>
                 <ActionButton onClick={() => handleFeedback('dislike')}>
-                  <RiThumbDownLine className='w-4 h-4' />
+                  <RiThumbDownLine className='h-4 w-4' />
                 </ActionButton>
               </>
             )}
+          </div>
+        )}
+        {!isOpeningStatement && config?.supportFeedback && localFeedback?.rating && onFeedback && (
+          <div className='ml-1 flex items-center gap-0.5 rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-md backdrop-blur-sm'>
             {localFeedback?.rating === 'like' && (
               <ActionButton state={ActionButtonState.Active} onClick={() => handleFeedback(null)}>
-                <RiThumbUpLine className='w-4 h-4' />
+                <RiThumbUpLine className='h-4 w-4' />
               </ActionButton>
             )}
             {localFeedback?.rating === 'dislike' && (
               <ActionButton state={ActionButtonState.Destructive} onClick={() => handleFeedback(null)}>
-                <RiThumbDownLine className='w-4 h-4' />
+                <RiThumbDownLine className='h-4 w-4' />
               </ActionButton>
             )}
           </div>

@@ -29,6 +29,7 @@ const ChatWrapper = () => {
     appPrevChatTree,
     currentConversationId,
     currentConversationItem,
+    currentConversationInputs,
     inputsForms,
     newConversationInputs,
     newConversationInputsRef,
@@ -69,7 +70,7 @@ const ChatWrapper = () => {
   } = useChat(
     appConfig,
     {
-      inputs: (currentConversationId ? currentConversationItem?.inputs : newConversationInputs) as any,
+      inputs: (currentConversationId ? currentConversationInputs : newConversationInputs) as any,
       inputsForm: inputsForms,
     },
     appPrevChatTree,
@@ -77,7 +78,7 @@ const ChatWrapper = () => {
     clearChatList,
     setClearChatList,
   )
-  const inputsFormValue = currentConversationId ? currentConversationItem?.inputs : newConversationInputsRef?.current
+  const inputsFormValue = currentConversationId ? currentConversationInputs : newConversationInputsRef?.current
   const inputDisabled = useMemo(() => {
     let hasEmptyInput = ''
     let fileIsUploading = false
@@ -124,7 +125,7 @@ const ChatWrapper = () => {
     const data: any = {
       query: message,
       files,
-      inputs: currentConversationId ? currentConversationItem?.inputs : newConversationInputs,
+      inputs: currentConversationId ? currentConversationInputs : newConversationInputs,
       conversation_id: currentConversationId,
       parent_message_id: (isRegenerate ? parentAnswer?.id : getLastAnswer(chatList)?.id) || null,
     }
@@ -144,6 +145,7 @@ const ChatWrapper = () => {
     handleSend,
     currentConversationId,
     currentConversationItem,
+    currentConversationInputs,
     newConversationInputs,
     isInstalledApp,
     appId,
@@ -188,8 +190,8 @@ const ChatWrapper = () => {
       return null
     if (welcomeMessage.suggestedQuestions && welcomeMessage.suggestedQuestions?.length > 0) {
       return (
-        <div className='h-[50vh] py-12 px-4 flex items-center justify-center'>
-          <div className='grow max-w-[720px] flex gap-4'>
+        <div className='flex min-h-[50vh] items-center justify-center px-4 py-12'>
+          <div className='flex max-w-[720px] grow gap-4'>
             <AppIcon
               size='xl'
               iconType={appData?.site.icon_type}
@@ -197,16 +199,18 @@ const ChatWrapper = () => {
               background={appData?.site.icon_background}
               imageUrl={appData?.site.icon_url}
             />
-            <div className='grow px-4 py-3 bg-chat-bubble-bg text-text-primary rounded-2xl body-lg-regular'>
-              <Markdown content={welcomeMessage.content} />
-              <SuggestedQuestions item={welcomeMessage} />
+            <div className='w-0 grow'>
+              <div className='body-lg-regular grow rounded-2xl bg-chat-bubble-bg px-4 py-3 text-text-primary'>
+                <Markdown content={welcomeMessage.content} />
+                <SuggestedQuestions item={welcomeMessage} />
+              </div>
             </div>
           </div>
         </div>
       )
     }
     return (
-      <div className={cn('h-[50vh] py-12 flex flex-col items-center justify-center gap-3')}>
+      <div className={cn('flex h-[50vh] flex-col items-center justify-center gap-3 py-12')}>
         <AppIcon
           size='xl'
           iconType={appData?.site.icon_type}
@@ -214,8 +218,8 @@ const ChatWrapper = () => {
           background={appData?.site.icon_background}
           imageUrl={appData?.site.icon_url}
         />
-        <div className='px-4 max-w-[768px]'>
-          <Markdown className='!text-text-tertiary !body-2xl-regular' content={welcomeMessage.content} />
+        <div className='max-w-[768px] px-4'>
+          <Markdown className='!body-2xl-regular !text-text-tertiary' content={welcomeMessage.content} />
         </div>
       </div>
     )
@@ -232,7 +236,7 @@ const ChatWrapper = () => {
 
   return (
     <div
-      className='h-full bg-chatbot-bg overflow-hidden'
+      className='h-full overflow-hidden bg-chatbot-bg'
     >
       <Chat
         appData={appData}
@@ -243,7 +247,7 @@ const ChatWrapper = () => {
         chatFooterClassName='pb-4'
         chatFooterInnerClassName={`mx-auto w-full max-w-[768px] ${isMobile ? 'px-2' : 'px-4'}`}
         onSend={doSend}
-        inputs={currentConversationId ? currentConversationItem?.inputs as any : newConversationInputs}
+        inputs={currentConversationId ? currentConversationInputs as any : newConversationInputs}
         inputsForm={inputsForms}
         onRegenerate={doRegenerate}
         onStopResponding={handleStop}

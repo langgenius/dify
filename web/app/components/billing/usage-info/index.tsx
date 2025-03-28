@@ -42,8 +42,8 @@ const UsageInfo: FC<Props> = ({
     return 'bg-components-progress-error-progress'
   })()
   return (
-    <div className={cn('p-4 flex flex-col gap-2 rounded-xl bg-components-panel-bg', className)}>
-      <Icon className='w-4 h-4 text-text-tertiary' />
+    <div className={cn('flex flex-col gap-2 rounded-xl bg-components-panel-bg p-4', className)}>
+      <Icon className='h-4 w-4 text-text-tertiary' />
       <div className='flex items-center gap-1'>
         <div className='system-xs-medium text-text-tertiary'>{name}</div>
         {tooltip && (
@@ -56,7 +56,7 @@ const UsageInfo: FC<Props> = ({
           />
         )}
       </div>
-      <div className='flex items-center gap-1 system-md-semibold  text-text-primary'>
+      <div className='system-md-semibold flex items-center gap-1  text-text-primary'>
         {usage}
         <div className='system-md-regular text-text-quaternary'>/</div>
         <div>{total === NUM_INFINITE ? t('billing.plansCommon.unlimited') : `${total}${unit}`}</div>

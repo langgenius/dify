@@ -109,17 +109,17 @@ const ModelProviderPage = ({ searchText }: Props) => {
   }, [])
 
   return (
-    <div className='relative pt-1 -mt-2'>
-      <div className={cn('flex items-center mb-2')}>
-        <div className='grow text-text-primary system-md-semibold'>{t('common.modelProvider.models')}</div>
+    <div className='relative -mt-2 pt-1'>
+      <div className={cn('mb-2 flex items-center')}>
+        <div className='system-md-semibold grow text-text-primary'>{t('common.modelProvider.models')}</div>
         <div className={cn(
-          'shrink-0 relative flex items-center justify-end gap-2 p-px rounded-lg border border-transparent',
-          defaultModelNotConfigured && 'pl-2 bg-components-panel-bg-blur border-components-panel-border shadow-xs',
+          'relative flex shrink-0 items-center justify-end gap-2 rounded-lg border border-transparent p-px',
+          defaultModelNotConfigured && 'border-components-panel-border bg-components-panel-bg-blur pl-2 shadow-xs',
         )}>
-          {defaultModelNotConfigured && <div className='absolute top-0 bottom-0 right-0 left-0 opacity-40' style={{ background: 'linear-gradient(92deg, rgba(247, 144, 9, 0.25) 0%, rgba(255, 255, 255, 0.00) 100%)' }} />}
+          {defaultModelNotConfigured && <div className='absolute bottom-0 left-0 right-0 top-0 opacity-40' style={{ background: 'linear-gradient(92deg, rgba(247, 144, 9, 0.25) 0%, rgba(255, 255, 255, 0.00) 100%)' }} />}
           {defaultModelNotConfigured && (
-            <div className='flex items-center gap-1 text-text-primary system-xs-medium'>
-              <RiAlertFill className='w-4 h-4 text-text-warning-secondary' />
+            <div className='system-xs-medium flex items-center gap-1 text-text-primary'>
+              <RiAlertFill className='h-4 w-4 text-text-warning-secondary' />
               {t('common.modelProvider.notConfigured')}
             </div>
           )}
@@ -134,12 +134,12 @@ const ModelProviderPage = ({ searchText }: Props) => {
         </div>
       </div>
       {!filteredConfiguredProviders?.length && (
-        <div className='mb-2 p-4 rounded-[10px] bg-workflow-process-bg'>
-          <div className='w-10 h-10 flex items-center justify-center rounded-[10px] border-[0.5px] border-components-card-border bg-components-card-bg shadow-lg backdrop-blur'>
-            <RiBrainLine className='w-5 h-5 text-text-primary' />
+        <div className='mb-2 rounded-[10px] bg-workflow-process-bg p-4'>
+          <div className='flex h-10 w-10 items-center justify-center rounded-[10px] border-[0.5px] border-components-card-border bg-components-card-bg shadow-lg backdrop-blur'>
+            <RiBrainLine className='h-5 w-5 text-text-primary' />
           </div>
-          <div className='mt-2 text-text-secondary system-sm-medium'>{t('common.modelProvider.emptyProviderTitle')}</div>
-          <div className='mt-1 text-text-tertiary system-xs-regular'>{t('common.modelProvider.emptyProviderTip')}</div>
+          <div className='system-sm-medium mt-2 text-text-secondary'>{t('common.modelProvider.emptyProviderTitle')}</div>
+          <div className='system-xs-regular mt-1 text-text-tertiary'>{t('common.modelProvider.emptyProviderTip')}</div>
         </div>
       )}
       {!!filteredConfiguredProviders?.length && (
@@ -155,7 +155,7 @@ const ModelProviderPage = ({ searchText }: Props) => {
       )}
       {!!filteredNotConfiguredProviders?.length && (
         <>
-          <div className='flex items-center mb-2 pt-2 text-text-primary system-md-semibold'>{t('common.modelProvider.toBeConfigured')}</div>
+          <div className='system-md-semibold mb-2 flex items-center pt-2 text-text-primary'>{t('common.modelProvider.toBeConfigured')}</div>
           <div className='relative'>
             {filteredNotConfiguredProviders?.map(provider => (
               <ProviderAddedCard
@@ -171,15 +171,15 @@ const ModelProviderPage = ({ searchText }: Props) => {
       <div className='mb-2'>
         <Divider className='!mt-4 h-px' />
         <div className='flex items-center justify-between'>
-          <div className='flex items-center gap-1 text-text-primary system-md-semibold cursor-pointer' onClick={() => setCollapse(!collapse)}>
-            <RiArrowDownSLine className={cn('w-4 h-4', collapse && '-rotate-90')} />
+          <div className='system-md-semibold flex cursor-pointer items-center gap-1 text-text-primary' onClick={() => setCollapse(!collapse)}>
+            <RiArrowDownSLine className={cn('h-4 w-4', collapse && '-rotate-90')} />
             {t('common.modelProvider.installProvider')}
           </div>
-          <div className='flex items-center mb-2 pt-2'>
-            <span className='pr-1 text-text-tertiary system-sm-regular'>{t('common.modelProvider.discoverMore')}</span>
-            <Link target="_blank" href={`${MARKETPLACE_URL_PREFIX}`} className='inline-flex items-center system-sm-medium text-text-accent'>
+          <div className='mb-2 flex items-center pt-2'>
+            <span className='system-sm-regular pr-1 text-text-tertiary'>{t('common.modelProvider.discoverMore')}</span>
+            <Link target="_blank" href={`${MARKETPLACE_URL_PREFIX}`} className='system-sm-medium inline-flex items-center text-text-accent'>
               {t('plugin.marketplace.difyMarketplace')}
-              <RiArrowRightUpLine className='w-4 h-4' />
+              <RiArrowRightUpLine className='h-4 w-4' />
             </Link>
           </div>
         </div>
