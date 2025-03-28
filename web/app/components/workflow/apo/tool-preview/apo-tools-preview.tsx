@@ -11,6 +11,7 @@ import cn from '@/utils/classnames'
 import { debounce } from 'lodash-es'
 import { useGetLanguage } from '@/context/i18n'
 import Button from '@/app/components/base/button'
+import { RiPushpinLine } from '@remixicon/react'
 
 type ApoToolsPreviewProps = {
   onSelect: (type: BlockEnum, tool?: ToolDefaultValue) => void;
@@ -74,6 +75,7 @@ const ApoToolsPreview = ({ onSelect, apoToolType, hidePopover }: ApoToolsPreview
   const [provider, setProvider] = useState()
   const [searchText, setSearchText] = useState<string>()
   const [openKey, setOpenKey] = useState<string | null>(null)
+  const [selectedKey, setSelectedKey] = useState<string | null>(null)
 
   const getAllTools = async () => {
     const tools = await fetchApoTools(apoToolType, searchText, language)
@@ -107,12 +109,27 @@ const ApoToolsPreview = ({ onSelect, apoToolType, hidePopover }: ApoToolsPreview
       <div
         key={item.name + index}
         className={cn(
-          'flex items-center justify-between pl-3 pr-1 w-full rounded-lg hover:bg-state-base-hover cursor-pointer select-none',
+          'relative flex items-center justify-between pr-1 w-full rounded-lg hover:bg-state-base-hover cursor-pointer select-none',
           (item.name + index) === openKey && 'bg-state-base-active text-red-500',
         )}
-        onMouseEnter={() => setOpenKey(item.name + index)}
+        // onMouseEnter={() => setOpenKey(item.name + index)}
+        onMouseEnter={() => {
+          if (!selectedKey) setOpenKey(item.name + index)
+        }}
+        onClick={() => {
+          const key = item.name + index
+          if (selectedKey === key) {
+            setSelectedKey(null)
+            setOpenKey(null)
+          }
+          else {
+            setSelectedKey(key)
+            setOpenKey(key)
+          }
+        }}
       >
-        <div className="flex grow items-center h-8">
+        {selectedKey === item.name + index && <RiPushpinLine className='absolute left-0' color="#feb137"/>}
+        <div className="flex grow items-center h-8 pl-4">
           {/* <BlockIcon
           className='shrink-0'
           type={BlockEnum.Tool}
@@ -124,7 +141,7 @@ const ApoToolsPreview = ({ onSelect, apoToolType, hidePopover }: ApoToolsPreview
         </div>
       </div>
     ))
-  }, [tools, toolDetail, openKey])
+  }, [tools, toolDetail, openKey, selectedKey])
 
   useEffect(() => {
     const fetchTools = debounce(() => {
@@ -151,13 +168,22 @@ const ApoToolsPreview = ({ onSelect, apoToolType, hidePopover }: ApoToolsPreview
           {tools?.length > 0 && convertMetricsListToMenuItems()}
         </div>
       </div>
-      {openKey && tools?.length > 0 && <div className="relative flex-1 min-w-[500px] overflow-auto max-w-[800px]">
-        {
-          tools?.map((item, index) => (
-            <div key={item + index} className={(item.name + index) === openKey ? 'block' : 'hidden'}><ToolDetail toolDetail={item} handleSelect={handleSelect} apoToolType={apoToolType} /></div>
-          ))
-        }
-      </div>}
+      {(selectedKey || openKey) && tools?.length > 0 && (
+        <div className="relative flex-1 min-w-[500px] overflow-auto max-w-[800px]">
+          {
+            tools?.map((item, index) => {
+              const key = item.name + index
+              const isVisible = key === (selectedKey ?? openKey)
+              return (
+                <div key={key} className={isVisible ? 'block' : 'hidden'}>
+                  <ToolDetail toolDetail={item} handleSelect={handleSelect} apoToolType={apoToolType} />
+                </div>
+              )
+            })
+          }
+        </div>
+      )}
+
     </div>
   )
 }
