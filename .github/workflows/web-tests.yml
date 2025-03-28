@@ -4,10 +4,9 @@ on:
   pull_request:
     branches:
       - main
+  push:
+    branches:
       - fix/canvas-run
-    paths:
-      - web/**
-      - .github/workflows/web-tests.yml
 
 concurrency:
   group: web-tests-${{ github.head_ref || github.run_id }}
