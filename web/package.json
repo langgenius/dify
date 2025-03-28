@@ -172,7 +172,6 @@
     "@types/uuid": "^10.0.0",
     "autoprefixer": "^10.4.20",
     "bing-translate-api": "^4.0.2",
-    "canvas": "^3.1.0",
     "code-inspector-plugin": "^0.18.1",
     "cross-env": "^7.0.3",
     "eslint": "^9.20.1",
@@ -212,5 +211,8 @@
     "@types/react": "19.0.11",
     "@types/react-dom": "19.0.4",
     "@storybook/test": "8.5.0"
+  },
+  "optionalDependencies": {
+    "canvas": "^3.1.0"
   }
 }
