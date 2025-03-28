@@ -336,7 +336,7 @@ services:
       timeout: 3s
       retries: 30
 
-  # 获取vastbase镜像请联系海量数据 https://www.vastdata.com.cn/
+  # get image from https://www.vastdata.com.cn/
   vastbase:
     image: vastdata/vastbase-vector
     profiles:
