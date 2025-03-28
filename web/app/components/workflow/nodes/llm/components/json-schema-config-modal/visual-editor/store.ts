@@ -4,8 +4,8 @@ import type { SchemaRoot } from '../../../types'
 import { VisualEditorContext } from './context'
 
 type VisualEditorStore = {
-  hoveringProperty: string | ''
-  setHoveringProperty: (propertyPath: string) => void
+  hoveringProperty: string | null
+  setHoveringProperty: (propertyPath: string | null) => void
   isAddingNewField: boolean
   setIsAddingNewField: (isAdding: boolean) => void
   advancedEditing: boolean
@@ -15,8 +15,8 @@ type VisualEditorStore = {
 }
 
 export const createVisualEditorStore = () => createStore<VisualEditorStore>(set => ({
-  hoveringProperty: '',
-  setHoveringProperty: (propertyPath: string) => set({ hoveringProperty: propertyPath }),
+  hoveringProperty: null,
+  setHoveringProperty: (propertyPath: string | null) => set({ hoveringProperty: propertyPath }),
   isAddingNewField: false,
   setIsAddingNewField: (isAdding: boolean) => set({ isAddingNewField: isAdding }),
   advancedEditing: false,

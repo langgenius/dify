@@ -9,12 +9,20 @@ import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import VisualEditor from './visual-editor'
 import SchemaEditor from './schema-editor'
-import { convertBooleanToString, getValidationErrorMessage, jsonToSchema, validateSchemaAgainstDraft7 } from '../../utils'
+import {
+  checkJsonSchemaDepth,
+  convertBooleanToString,
+  getValidationErrorMessage,
+  jsonToSchema,
+  preValidateSchema,
+  validateSchemaAgainstDraft7,
+} from '../../utils'
 import { MittProvider, VisualEditorContextProvider } from './visual-editor/context'
 import ErrorMessage from './error-message'
 import { useVisualEditorStore } from './visual-editor/store'
 import Toast from '@/app/components/base/toast'
 import { useGetLanguage } from '@/context/i18n'
+import { JSON_SCHEMA_MAX_DEPTH } from '@/config'
 
 type JsonSchemaConfigProps = {
   defaultSchema?: SchemaRoot
@@ -74,18 +82,26 @@ const JsonSchemaConfig: FC<JsonSchemaConfigProps> = ({
     if (currentTab === value) return
     if (currentTab === SchemaView.JsonSchema) {
       try {
-        const parsedJson = JSON.parse(json)
-        const schema = convertBooleanToString(parsedJson)
+        const schema = JSON.parse(json)
         setParseError(null)
-        const ajvError = validateSchemaAgainstDraft7(schema)
-        if (ajvError.length > 0) {
-          setValidationError(getValidationErrorMessage(ajvError))
+        const result = preValidateSchema(schema)
+        if (!result.success) {
+          setValidationError(result.error.message)
           return
         }
-        else {
-          setJsonSchema(schema)
-          setValidationError('')
+        const schemaDepth = checkJsonSchemaDepth(schema)
+        if (schemaDepth > JSON_SCHEMA_MAX_DEPTH) {
+          setValidationError(`Schema exceeds maximum depth of ${JSON_SCHEMA_MAX_DEPTH}.`)
+          return
         }
+        convertBooleanToString(schema)
+        const validationErrors = validateSchemaAgainstDraft7(schema)
+        if (validationErrors.length > 0) {
+          setValidationError(getValidationErrorMessage(validationErrors))
+          return
+        }
+        setJsonSchema(schema)
+        setValidationError('')
       }
       catch (error) {
         setValidationError('')
@@ -135,7 +151,7 @@ const JsonSchemaConfig: FC<JsonSchemaConfigProps> = ({
 
   const handleResetDefaults = useCallback(() => {
     if (currentTab === SchemaView.VisualEditor) {
-      setHoveringProperty('')
+      setHoveringProperty(null)
       advancedEditing && setAdvancedEditing(false)
       isAddingNewField && setIsAddingNewField(false)
     }
@@ -153,15 +169,24 @@ const JsonSchemaConfig: FC<JsonSchemaConfigProps> = ({
       try {
         schema = JSON.parse(json)
         setParseError(null)
-        const ajvError = validateSchemaAgainstDraft7(schema)
-        if (ajvError.length > 0) {
-          setValidationError(getValidationErrorMessage(ajvError))
+        const result = preValidateSchema(schema)
+        if (!result.success) {
+          setValidationError(result.error.message)
           return
         }
-        else {
-          setJsonSchema(schema)
-          setValidationError('')
+        const schemaDepth = checkJsonSchemaDepth(schema)
+        if (schemaDepth > JSON_SCHEMA_MAX_DEPTH) {
+          setValidationError(`Schema exceeds maximum depth of ${JSON_SCHEMA_MAX_DEPTH}.`)
+          return
         }
+        convertBooleanToString(schema)
+        const validationErrors = validateSchemaAgainstDraft7(schema)
+        if (validationErrors.length > 0) {
+          setValidationError(getValidationErrorMessage(validationErrors))
+          return
+        }
+        setJsonSchema(schema)
+        setValidationError('')
       }
       catch (error) {
         setValidationError('')

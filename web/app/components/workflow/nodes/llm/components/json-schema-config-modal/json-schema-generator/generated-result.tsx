@@ -47,14 +47,13 @@ const GeneratedResult: FC<GeneratedResultProps> = ({
   const jsonSchema = useMemo(() => formatJSON(schema), [schema])
 
   const handleApply = useCallback(() => {
-    const ajvError = validateSchemaAgainstDraft7(schema)
-    if (ajvError.length > 0) {
-      setValidationError(getValidationErrorMessage(ajvError))
+    const validationErrors = validateSchemaAgainstDraft7(schema)
+    if (validationErrors.length > 0) {
+      setValidationError(getValidationErrorMessage(validationErrors))
+      return
     }
-    else {
-      onApply()
-      setValidationError('')
-    }
+    onApply()
+    setValidationError('')
   }, [schema, onApply])
 
   return (

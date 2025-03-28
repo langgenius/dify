@@ -4,7 +4,7 @@ import cn from '@/utils/classnames'
 import { useTranslation } from 'react-i18next'
 import { RiCloseLine } from '@remixicon/react'
 import Button from '@/app/components/base/button'
-import { checkDepth } from '../../utils'
+import { checkJsonDepth } from '../../utils'
 import { JSON_SCHEMA_MAX_DEPTH } from '@/config'
 import CodeEditor from './code-editor'
 import ErrorMessage from './error-message'
@@ -59,7 +59,7 @@ const JsonImporter: FC<JsonImporterProps> = ({
         setParseError(new Error('Root must be an object, not an array or primitive value.'))
         return
       }
-      const maxDepth = checkDepth(parsedJSON)
+      const maxDepth = checkJsonDepth(parsedJSON)
       if (maxDepth > JSON_SCHEMA_MAX_DEPTH) {
         setParseError({
           type: 'error',
@@ -72,10 +72,10 @@ const JsonImporter: FC<JsonImporterProps> = ({
       setOpen(false)
     }
     catch (e: any) {
-      if (e instanceof SyntaxError)
+      if (e instanceof Error)
         setParseError(e)
       else
-        setParseError(new Error('Unknown error'))
+        setParseError(new Error('Invalid JSON'))
     }
   }, [onSubmit, json])
 

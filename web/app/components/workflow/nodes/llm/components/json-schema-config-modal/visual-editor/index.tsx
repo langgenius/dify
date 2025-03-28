@@ -19,7 +19,7 @@ const VisualEditor: FC<VisualEditorProps> = (props) => {
         schema={schema}
         required={false}
         path={[]}
-        depth={1}
+        depth={0}
       />
     </div>
   )

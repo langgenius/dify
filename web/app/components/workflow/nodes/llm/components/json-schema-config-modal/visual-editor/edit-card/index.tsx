@@ -47,6 +47,15 @@ const TYPE_OPTIONS = [
   { value: ArrayType.object, text: 'array[object]' },
 ]
 
+const MAXIMUM_DEPTH_TYPE_OPTIONS = [
+  { value: Type.string, text: 'string' },
+  { value: Type.number, text: 'number' },
+  // { value: Type.boolean, text: 'boolean' },
+  { value: ArrayType.string, text: 'array[string]' },
+  { value: ArrayType.number, text: 'array[number]' },
+  // { value: ArrayType.boolean, text: 'array[boolean]' },
+]
+
 const EditCard: FC<EditCardProps> = ({
   fields,
   depth,
@@ -63,7 +72,8 @@ const EditCard: FC<EditCardProps> = ({
   const { emit, useSubscribe } = useMittContext()
   const blurWithActions = useRef(false)
 
-  const disableAddBtn = depth >= JSON_SCHEMA_MAX_DEPTH || (currentFields.type !== Type.object && currentFields.type !== ArrayType.object)
+  const maximumDepthReached = depth === JSON_SCHEMA_MAX_DEPTH
+  const disableAddBtn = maximumDepthReached || (currentFields.type !== Type.object && currentFields.type !== ArrayType.object)
   const hasAdvancedOptions = currentFields.type === Type.string || currentFields.type === Type.number
   const isAdvancedEditing = advancedEditing || isAddingNewField
 
@@ -205,7 +215,7 @@ const EditCard: FC<EditCardProps> = ({
           />
           <TypeSelector
             currentValue={currentFields.type}
-            items={TYPE_OPTIONS}
+            items={maximumDepthReached ? MAXIMUM_DEPTH_TYPE_OPTIONS : TYPE_OPTIONS}
             onSelect={handleTypeChange}
             popupClassName={'z-[1000]'}
           />

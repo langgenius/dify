@@ -1,8 +1,9 @@
 import { ArrayType, Type } from './types'
 import type { ArrayItems, Field, LLMNodeType } from './types'
-import type { ErrorObject } from 'ajv'
-import { validateDraft07 } from '@/public/validate-esm.mjs'
+import type { Schema, ValidationError } from 'jsonschema'
+import { Validator } from 'jsonschema'
 import produce from 'immer'
+import { z } from 'zod'
 
 export const checkNodeValid = (payload: LLMNodeType) => {
   return true
@@ -58,22 +59,37 @@ export const jsonToSchema = (json: any): Field => {
   return schema
 }
 
-export const checkDepth = (json: any, currentDepth = 1) => {
-  const type = inferType(json)
-  if (type !== Type.object && type !== Type.array)
-    return currentDepth
+export const checkJsonDepth = (json: any) => {
+  if (!json || typeof json !== 'object')
+    return 0
 
-  let maxDepth = currentDepth
-  if (type === Type.object) {
-    Object.keys(json).forEach((key) => {
-      const depth = checkDepth(json[key], currentDepth + 1)
-      maxDepth = Math.max(maxDepth, depth)
-    })
+  let maxDepth = 0
+
+  if (Array.isArray(json) && json[0] && typeof json[0] === 'object') {
+    maxDepth = checkJsonDepth(json[0]) + 1
   }
-  else if (type === Type.array && json.length > 0) {
-    const depth = checkDepth(json[0], currentDepth + 1)
-    maxDepth = Math.max(maxDepth, depth)
+  else if (typeof json === 'object') {
+    const propertyDepths = Object.values(json).map(value => checkJsonDepth(value))
+    maxDepth = propertyDepths.length ? Math.max(...propertyDepths) + 1 : 1
   }
+
+  return maxDepth
+}
+
+export const checkJsonSchemaDepth = (schema: Field) => {
+  if (!schema || typeof schema !== 'object')
+    return 0
+
+  let maxDepth = 0
+
+  if (schema.type === Type.object && schema.properties) {
+    const propertyDepths = Object.values(schema.properties).map(value => checkJsonSchemaDepth(value))
+    maxDepth = propertyDepths.length ? Math.max(...propertyDepths) + 1 : 1
+  }
+  else if (schema.type === Type.array && schema.items && schema.items.type === Type.object) {
+    maxDepth = checkJsonSchemaDepth(schema.items) + 1
+  }
+
   return maxDepth
 }
 
@@ -84,6 +100,169 @@ export const findPropertyWithPath = (target: any, path: string[]) => {
   return current
 }
 
+const draft07MetaSchema = {
+  $schema: 'http://json-schema.org/draft-07/schema#',
+  $id: 'http://json-schema.org/draft-07/schema#',
+  title: 'Core schema meta-schema',
+  definitions: {
+    schemaArray: {
+      type: 'array',
+      minItems: 1,
+      items: { $ref: '#' },
+    },
+    nonNegativeInteger: {
+      type: 'integer',
+      minimum: 0,
+    },
+    nonNegativeIntegerDefault0: {
+      allOf: [
+        { $ref: '#/definitions/nonNegativeInteger' },
+        { default: 0 },
+      ],
+    },
+    simpleTypes: {
+      enum: [
+        'array',
+        'boolean',
+        'integer',
+        'null',
+        'number',
+        'object',
+        'string',
+      ],
+    },
+    stringArray: {
+      type: 'array',
+      items: { type: 'string' },
+      uniqueItems: true,
+      default: [],
+    },
+  },
+  type: ['object', 'boolean'],
+  properties: {
+    $id: {
+      type: 'string',
+      format: 'uri-reference',
+    },
+    $schema: {
+      type: 'string',
+      format: 'uri',
+    },
+    $ref: {
+      type: 'string',
+      format: 'uri-reference',
+    },
+    title: {
+      type: 'string',
+    },
+    description: {
+      type: 'string',
+    },
+    default: true,
+    readOnly: {
+      type: 'boolean',
+      default: false,
+    },
+    examples: {
+      type: 'array',
+      items: true,
+    },
+    multipleOf: {
+      type: 'number',
+      exclusiveMinimum: 0,
+    },
+    maximum: {
+      type: 'number',
+    },
+    exclusiveMaximum: {
+      type: 'number',
+    },
+    minimum: {
+      type: 'number',
+    },
+    exclusiveMinimum: {
+      type: 'number',
+    },
+    maxLength: { $ref: '#/definitions/nonNegativeInteger' },
+    minLength: { $ref: '#/definitions/nonNegativeIntegerDefault0' },
+    pattern: {
+      type: 'string',
+      format: 'regex',
+    },
+    additionalItems: { $ref: '#' },
+    items: {
+      anyOf: [
+        { $ref: '#' },
+        { $ref: '#/definitions/schemaArray' },
+      ],
+      default: true,
+    },
+    maxItems: { $ref: '#/definitions/nonNegativeInteger' },
+    minItems: { $ref: '#/definitions/nonNegativeIntegerDefault0' },
+    uniqueItems: {
+      type: 'boolean',
+      default: false,
+    },
+    contains: { $ref: '#' },
+    maxProperties: { $ref: '#/definitions/nonNegativeInteger' },
+    minProperties: { $ref: '#/definitions/nonNegativeIntegerDefault0' },
+    required: { $ref: '#/definitions/stringArray' },
+    additionalProperties: { $ref: '#' },
+    definitions: {
+      type: 'object',
+      additionalProperties: { $ref: '#' },
+      default: {},
+    },
+    properties: {
+      type: 'object',
+      additionalProperties: { $ref: '#' },
+      default: {},
+    },
+    patternProperties: {
+      type: 'object',
+      additionalProperties: { $ref: '#' },
+      propertyNames: { format: 'regex' },
+      default: {},
+    },
+    dependencies: {
+      type: 'object',
+      additionalProperties: {
+        anyOf: [
+          { $ref: '#' },
+          { $ref: '#/definitions/stringArray' },
+        ],
+      },
+    },
+    propertyNames: { $ref: '#' },
+    const: true,
+    enum: {
+      type: 'array',
+      items: true,
+      minItems: 1,
+      uniqueItems: true,
+    },
+    type: {
+      anyOf: [
+        { $ref: '#/definitions/simpleTypes' },
+        {
+          type: 'array',
+          items: { $ref: '#/definitions/simpleTypes' },
+          minItems: 1,
+          uniqueItems: true,
+        },
+      ],
+    },
+    format: { type: 'string' },
+    allOf: { $ref: '#/definitions/schemaArray' },
+    anyOf: { $ref: '#/definitions/schemaArray' },
+    oneOf: { $ref: '#/definitions/schemaArray' },
+    not: { $ref: '#' },
+  },
+  default: true,
+} as unknown as Schema
+
+const validator = new Validator()
+
 export const validateSchemaAgainstDraft7 = (schemaToValidate: any) => {
   const schema = produce(schemaToValidate, (draft: any) => {
   // Make sure the schema has the $schema property for draft-07
@@ -91,17 +270,20 @@ export const validateSchemaAgainstDraft7 = (schemaToValidate: any) => {
       draft.$schema = 'http://json-schema.org/draft-07/schema#'
   })
 
-  const valid = validateDraft07(schema)
+  const result = validator.validate(schema, draft07MetaSchema, {
+    nestedErrors: true,
+    throwError: false,
+  })
 
   // Access errors from the validation result
-  const errors = valid ? [] : (validateDraft07 as any).errors || []
+  const errors = result.valid ? [] : result.errors || []
 
   return errors
 }
 
-export const getValidationErrorMessage = (errors: ErrorObject[]) => {
+export const getValidationErrorMessage = (errors: ValidationError[]) => {
   const message = errors.map((error) => {
-    return `Error: ${error.instancePath} ${error.message} Details: ${JSON.stringify(error.params)}`
+    return `Error: ${error.path.join('.')} ${error.message} Details: ${JSON.stringify(error.stack)}`
   }).join('; ')
   return message
 }
@@ -124,4 +306,16 @@ export const convertBooleanToString = (schema: any) => {
     }, {} as any)
   }
   return schema
+}
+
+const schemaRootObject = z.object({
+  type: z.literal('object'),
+  properties: z.record(z.string(), z.any()),
+  required: z.array(z.string()),
+  additionalProperties: z.boolean().optional(),
+})
+
+export const preValidateSchema = (schema: any) => {
+  const result = schemaRootObject.safeParse(schema)
+  return result
 }
