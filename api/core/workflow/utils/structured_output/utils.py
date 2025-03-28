@@ -78,4 +78,16 @@ def parse_partial_json(s: str, *, strict: bool = False) -> Any:
     # If we got here, we ran out of characters to remove
     # and still couldn't parse the string as JSON, so return the parse error
     # for the original string.
-    return json.loads(s, strict=strict)
+    try:
+        return json.loads(s, strict=strict)
+    except json.JSONDecodeError:
+        return extract_json(s)
+
+
+def extract_json(response: str):
+    try:
+        json_start = response.index("{")
+        json_end = response.rfind("}")
+        return json.loads(response[json_start : json_end + 1])
+    except (json.JSONDecodeError, ValueError):
+        raise ValueError("output is not a valid json str")

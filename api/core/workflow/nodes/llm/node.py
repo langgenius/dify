@@ -198,14 +198,17 @@ class LLMNode(BaseNode[LLMNodeData]):
                 structured_output = {}
                 try:
                     structured_output = parse_partial_json(result_text)
-                except json.JSONDecodeError:
+                except (json.JSONDecodeError, ValueError):
                     # Try to find JSON string within triple backticks
                     _json_markdown_re = re.compile(r"```(json)?(.*)", re.DOTALL)
                     match = _json_markdown_re.search(result_text)
                     # If no match found, assume the entire string is a JSON string
                     # Else, use the content within the backticks
                     json_str = result_text if match is None else match.group(2)
-                    structured_output = parse_partial_json(json_str)
+                    try:
+                        structured_output = parse_partial_json(json_str)
+                    except (json.JSONDecodeError, ValueError) as e:
+                        raise LLMNodeError(f"Failed to parse structured output: {e}")
                 outputs["structured_output"] = structured_output
             yield RunCompletedEvent(
                 run_result=NodeRunResult(

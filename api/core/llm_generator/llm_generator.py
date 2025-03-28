@@ -362,7 +362,7 @@ class LLMGenerator:
         )
 
         prompt_messages = [UserPromptMessage(content=prompt)]
-        model_parameters = {"max_tokens": max_tokens, "temperature": 0.01}
+        model_parameters = model_config.get("model_parameters", {})
 
         try:
             response = cast(
