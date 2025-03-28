@@ -1,4 +1,4 @@
-import type { CommonNodeType } from '@/app/components/workflow/types'
+import type { CommonNodeType, Memory } from '@/app/components/workflow/types'
 import type { ToolVarInputs } from '../tool/types'
 
 export type AgentNodeType = CommonNodeType & {
@@ -8,4 +8,9 @@ export type AgentNodeType = CommonNodeType & {
   agent_parameters?: ToolVarInputs
   output_schema: Record<string, any>
   plugin_unique_identifier?: string
+  memory?: Memory
+}
+
+export enum AgentFeature {
+  HISTORY_MESSAGES = 'history-messages',
 }

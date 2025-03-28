@@ -1,7 +1,7 @@
 import type { FC } from 'react'
 import { memo, useMemo } from 'react'
 import type { NodePanelProps } from '../../types'
-import type { AgentNodeType } from './types'
+import { AgentFeature, type AgentNodeType } from './types'
 import Field from '../_base/components/field'
 import { AgentStrategy } from '../_base/components/agent-strategy'
 import useConfig from './use-config'
@@ -16,6 +16,8 @@ import { useLogs } from '@/app/components/workflow/run/hooks'
 import type { Props as FormProps } from '@/app/components/workflow/nodes/_base/components/before-run-form/form'
 import { toType } from '@/app/components/tools/utils/to-form-schema'
 import { useStore } from '../../store'
+import Split from '../_base/components/split'
+import MemoryConfig from '../_base/components/memory-config'
 
 const i18nPrefix = 'workflow.nodes.agent'
 
@@ -35,10 +37,10 @@ const AgentPanel: FC<NodePanelProps<AgentNodeType>> = (props) => {
     currentStrategy,
     formData,
     onFormChange,
-
+    isChatMode,
     availableNodesWithParent,
     availableVars,
-
+    readOnly,
     isShowSingleRun,
     hideSingleRun,
     runningStatus,
@@ -49,6 +51,7 @@ const AgentPanel: FC<NodePanelProps<AgentNodeType>> = (props) => {
     setRunInputData,
     varInputs,
     outputSchema,
+    handleMemoryChange,
   } = useConfig(props.id, props.data)
   const { t } = useTranslation()
   const nodeInfo = useMemo(() => {
@@ -106,6 +109,20 @@ const AgentPanel: FC<NodePanelProps<AgentNodeType>> = (props) => {
         nodeId={props.id}
       />
     </Field>
+    <div className='px-4 py-2'>
+      {isChatMode && currentStrategy?.features.includes(AgentFeature.HISTORY_MESSAGES) && (
+        <>
+          <Split />
+          <MemoryConfig
+            className='mt-4'
+            readonly={readOnly}
+            config={{ data: inputs.memory }}
+            onChange={handleMemoryChange}
+            canSetRoleName={false}
+          />
+        </>
+      )}
+    </div>
     <div>
       <OutputVars>
         <VarItem

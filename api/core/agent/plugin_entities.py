@@ -70,11 +70,20 @@ class AgentStrategyIdentity(ToolIdentity):
     pass
 
 
+class AgentFeature(enum.StrEnum):
+    """
+    Agent Feature, used to describe the features of the agent strategy.
+    """
+
+    HISTORY_MESSAGES = "history-messages"
+
+
 class AgentStrategyEntity(BaseModel):
     identity: AgentStrategyIdentity
     parameters: list[AgentStrategyParameter] = Field(default_factory=list)
     description: I18nObject = Field(..., description="The description of the agent strategy")
     output_schema: Optional[dict] = None
+    features: Optional[list[AgentFeature]] = None
 
     # pydantic configs
     model_config = ConfigDict(protected_namespaces=())
