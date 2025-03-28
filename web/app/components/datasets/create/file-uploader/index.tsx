@@ -47,6 +47,10 @@ const FileUploader = ({
   const dropRef = useRef<HTMLDivElement>(null)
   const dragRef = useRef<HTMLDivElement>(null)
   const fileUploader = useRef<HTMLInputElement>(null)
+
+  // For upload folder
+  const dirUploader = useRef<HTMLInputElement>(null)
+
   const hideUpload = notSupportBatchUpload && fileList.length > 0
 
   const { data: fileUploadConfigResponse } = useSWR({ url: '/files/upload' }, fetchFileUploadConfig)
@@ -214,6 +218,12 @@ const FileUploader = ({
       fileUploader.current.click()
   }
 
+  // click on button, use folder upload
+  const selectFolderHandle = () => {
+    if (dirUploader.current)
+      dirUploader.current.click()
+  }
+
   const removeFile = (fileID: string) => {
     if (fileUploader.current)
       fileUploader.current.value = ''
@@ -223,7 +233,15 @@ const FileUploader = ({
   }
   const fileChangeHandle = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const files = [...(e.target.files ?? [])] as File[]
-    initialUpload(files.filter(isValid))
+    const validFiles = files.filter(isValid)
+    initialUpload(validFiles)
+  }, [isValid, initialUpload])
+
+  // Callback for folder upload
+  const folderChangeHandle = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = [...(e.target.files ?? [])] as File[]
+    const validFiles = files.filter(isValid)
+    initialUpload(validFiles)
   }, [isValid, initialUpload])
 
   const { theme } = useTheme()
@@ -245,15 +263,36 @@ const FileUploader = ({
   return (
     <div className="mb-5 w-[640px]">
       {!hideUpload && (
-        <input
-          ref={fileUploader}
-          id="fileUploader"
-          className="hidden"
-          type="file"
-          multiple={!notSupportBatchUpload}
-          accept={ACCEPTS.join(',')}
-          onChange={fileChangeHandle}
-        />
+        <>
+          <input
+            ref={fileUploader}
+            id="fileUploader"
+            className="hidden"
+            type="file"
+            multiple={!notSupportBatchUpload}
+            accept={ACCEPTS.join(',')}
+            onChange={fileChangeHandle}
+          />
+          {/* folder uploader */}
+          <input
+            ref={dirUploader}
+            className="hidden"
+            type="file"
+            webkitdirectory="true"
+            directory=""
+            onChange={folderChangeHandle}
+          />
+        </>
+      )}
+
+      {/* give user a “Upload Folder” button */}
+      {!hideUpload && (
+        <button
+          onClick={selectFolderHandle}
+          className="mb-2 rounded bg-secondary px-4 py-2 text-black"
+        >
+          Upload Folder
+        </button>
       )}
 
       <div className={cn('mb-1 text-sm font-semibold leading-6 text-text-secondary', titleClassName)}>{t('datasetCreation.stepOne.uploader.title')}</div>
