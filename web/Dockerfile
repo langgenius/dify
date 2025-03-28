@@ -10,7 +10,6 @@ RUN npm install -g pnpm@9.12.2
 ENV PNPM_HOME="/pnpm"
 ENV PATH="$PNPM_HOME:$PATH"
 
-
 # install packages
 FROM base AS packages
 
