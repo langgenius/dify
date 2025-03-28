@@ -1,11 +1,8 @@
-import { useCallback, useMemo, useState } from 'react'
+import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import Link from 'next/link'
 import { useDebounce } from 'ahooks'
 import {
   RiAlertFill,
-  RiArrowDownSLine,
-  RiArrowRightUpLine,
   RiBrainLine,
 } from '@remixicon/react'
 import SystemModelSelector from './system-model-selector'
@@ -13,7 +10,6 @@ import ProviderAddedCard from './provider-added-card'
 import type {
   ConfigurationMethodEnum,
   CustomConfigurationModelFixedFields,
-
   ModelProvider,
 } from './declarations'
 import {
@@ -22,18 +18,12 @@ import {
 } from './declarations'
 import {
   useDefaultModel,
-  useMarketplaceAllPlugins,
   useModelModalHandler,
 } from './hooks'
-import Divider from '@/app/components/base/divider'
-import Loading from '@/app/components/base/loading'
-import ProviderCard from '@/app/components/plugins/provider-card'
-import List from '@/app/components/plugins/marketplace/list'
+import InstallFromMarketplace from './install-from-marketplace'
 import { useProviderContext } from '@/context/provider-context'
-import type { Plugin } from '@/app/components/plugins/types'
-import { MARKETPLACE_URL_PREFIX } from '@/config'
 import cn from '@/utils/classnames'
-import { getLocaleOnClient } from '@/i18n'
+import { useSelector as useAppContextSelector } from '@/context/app-context'
 
 type Props = {
   searchText: string
@@ -50,6 +40,7 @@ const ModelProviderPage = ({ searchText }: Props) => {
   const { data: speech2textDefaultModel } = useDefaultModel(ModelTypeEnum.speech2text)
   const { data: ttsDefaultModel } = useDefaultModel(ModelTypeEnum.tts)
   const { modelProviders: providers } = useProviderContext()
+  const { enable_marketplace } = useAppContextSelector(s => s.systemFeatures)
   const defaultModelNotConfigured = !textGenerationDefaultModel && !embeddingsDefaultModel && !speech2textDefaultModel && !rerankDefaultModel && !ttsDefaultModel
   const [configuredProviders, notConfiguredProviders] = useMemo(() => {
     const configuredProviders: ModelProvider[] = []
@@ -94,19 +85,6 @@ const ModelProviderPage = ({ searchText }: Props) => {
   }, [configuredProviders, debouncedSearchText, notConfiguredProviders])
 
   const handleOpenModal = useModelModalHandler()
-  const [collapse, setCollapse] = useState(false)
-  const locale = getLocaleOnClient()
-  const {
-    plugins: allPlugins,
-    isLoading: isAllPluginsLoading,
-  } = useMarketplaceAllPlugins(providers, searchText)
-
-  const cardRender = useCallback((plugin: Plugin) => {
-    if (plugin.type === 'bundle')
-      return null
-
-    return <ProviderCard key={plugin.plugin_id} payload={plugin} />
-  }, [])
 
   return (
     <div className='relative -mt-2 pt-1'>
@@ -168,37 +146,14 @@ const ModelProviderPage = ({ searchText }: Props) => {
           </div>
         </>
       )}
-      <div className='mb-2'>
-        <Divider className='!mt-4 h-px' />
-        <div className='flex items-center justify-between'>
-          <div className='system-md-semibold flex cursor-pointer items-center gap-1 text-text-primary' onClick={() => setCollapse(!collapse)}>
-            <RiArrowDownSLine className={cn('h-4 w-4', collapse && '-rotate-90')} />
-            {t('common.modelProvider.installProvider')}
-          </div>
-          <div className='mb-2 flex items-center pt-2'>
-            <span className='system-sm-regular pr-1 text-text-tertiary'>{t('common.modelProvider.discoverMore')}</span>
-            <Link target="_blank" href={`${MARKETPLACE_URL_PREFIX}`} className='system-sm-medium inline-flex items-center text-text-accent'>
-              {t('plugin.marketplace.difyMarketplace')}
-              <RiArrowRightUpLine className='h-4 w-4' />
-            </Link>
-          </div>
-        </div>
-        {!collapse && isAllPluginsLoading && <Loading type='area' />}
-        {
-          !isAllPluginsLoading && !collapse && (
-            <List
-              marketplaceCollections={[]}
-              marketplaceCollectionPluginsMap={{}}
-              plugins={allPlugins}
-              showInstallButton
-              locale={locale}
-              cardContainerClassName='grid grid-cols-2 gap-2'
-              cardRender={cardRender}
-              emptyClassName='h-auto'
-            />
-          )
-        }
-      </div>
+      {
+        enable_marketplace && (
+          <InstallFromMarketplace
+            providers={providers}
+            searchText={searchText}
+          />
+        )
+      }
     </div>
   )
 }
