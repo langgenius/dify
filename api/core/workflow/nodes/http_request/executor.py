@@ -366,7 +366,7 @@ class Executor:
 
         body_string = ""
         if self.files:
-            for key, (filename, content, mime_type) in self.files:
+            for key, (_, content, _) in self.files:
                 body_string += f"--{boundary}\r\n"
                 body_string += f'Content-Disposition: form-data; name="{key}"\r\n\r\n'
                 # decode content

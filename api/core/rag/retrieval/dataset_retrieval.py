@@ -515,7 +515,7 @@ class DatasetRetrieval:
                             ChildChunk.document_id == dataset_document.id,
                         ).first()
                         if child_chunk:
-                            segment = DocumentSegment.query.filter(DocumentSegment.id == child_chunk.segment_id).update(
+                            _ = DocumentSegment.query.filter(DocumentSegment.id == child_chunk.segment_id).update(
                                 {DocumentSegment.hit_count: DocumentSegment.hit_count + 1}, synchronize_session=False
                             )
                             db.session.commit()
@@ -946,7 +946,7 @@ class DatasetRetrieval:
             )
 
             # handle invoke result
-            result_text, usage = self._handle_invoke_result(invoke_result=invoke_result)
+            result_text, _ = self._handle_invoke_result(invoke_result=invoke_result)
 
             result_text_json = parse_and_check_json_markdown(result_text, [])
             automatic_metadata_filters = []

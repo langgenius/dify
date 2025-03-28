@@ -778,7 +778,7 @@ def test_parallels_graph6():
 
     parent_parallel = None
     child_parallel = None
-    for p_id, parallel in graph.parallel_mapping.items():
+    for _, parallel in graph.parallel_mapping.items():
         if parallel.parent_parallel_id is None:
             parent_parallel = parallel
         else:

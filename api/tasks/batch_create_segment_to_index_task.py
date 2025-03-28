@@ -69,10 +69,6 @@ def batch_create_segment_to_index_task(
                     model=dataset.embedding_model,
                 )
             word_count_change = 0
-            segments_to_insert: list[str] = []
-            max_position_stmt = select(func.max(DocumentSegment.position)).where(
-                DocumentSegment.document_id == dataset_document.id
-            )
         word_count_change = 0
         if embedding_model:
             tokens_list = embedding_model.get_text_embedding_num_tokens(

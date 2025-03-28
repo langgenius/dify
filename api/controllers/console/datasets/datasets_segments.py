@@ -370,7 +370,7 @@ class DatasetDocumentSegmentBatchImportApi(Resource):
             # Skip the first row
             df = pd.read_csv(file)
             result = []
-            for index, row in df.iterrows():
+            for _, row in df.iterrows():
                 if document.doc_form == "qa_model":
                     data = {"content": row.iloc[0], "answer": row.iloc[1]}
                 else:

@@ -120,7 +120,7 @@ class ReactMultiDatasetRouter:
             memory=None,
             model_config=model_config,
         )
-        result_text, usage = self._invoke_llm(
+        result_text, _ = self._invoke_llm(
             completion_param=model_config.parameters,
             model_instance=model_instance,
             prompt_messages=prompt_messages,

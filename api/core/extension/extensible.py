@@ -81,7 +81,7 @@ class Extensible:
                 spec.loader.exec_module(mod)
 
                 extension_class = None
-                for name, obj in vars(mod).items():
+                for _, obj in vars(mod).items():
                     if isinstance(obj, type) and issubclass(obj, cls) and obj != cls:
                         extension_class = obj
                         break
