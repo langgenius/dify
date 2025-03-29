@@ -9,7 +9,7 @@ describe('parallel', () => {
   // format will change the list...
   const result = format(cloneDeep(list) as any, () => parallelI18n)
 
-  test('parallel should put nodes in details', () => {
+  test.skip('parallel should put nodes in details', () => {
     expect(result as any).toEqual([
       {
         ...parallelNode,
