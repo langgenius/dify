@@ -48,3 +48,8 @@ class TencentVectorDBConfig(BaseSettings):
         description="Name of the specific Tencent Vector Database to connect to",
         default=None,
     )
+
+    TENCENT_VECTOR_DB_ENABLE_HYBRID_SEARCH: bool = Field(
+        description="Enable hybrid search features",
+        default=False,
+    )
