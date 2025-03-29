@@ -207,7 +207,7 @@ const Chat: FC<ChatProps> = ({
   useEffect(() => {
     if (!sidebarCollapseState)
       setTimeout(() => handleWindowResize(), 200)
-  }, [sidebarCollapseState])
+  }, [handleWindowResize, sidebarCollapseState])
 
   const hasTryToAsk = config?.suggested_questions_after_answer?.enabled && !!suggestedQuestions?.length && onSend
 
@@ -264,6 +264,7 @@ const Chat: FC<ChatProps> = ({
                     item={item}
                     questionIcon={questionIcon}
                     theme={themeBuilder?.theme}
+                    switchSibling={switchSibling}
                   />
                 )
               })
