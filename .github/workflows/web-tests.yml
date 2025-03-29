@@ -31,25 +31,24 @@ jobs:
         uses: tj-actions/changed-files@v45
         with:
           files: web/**
-      # to run pnpm, should install package canvas, but it always install failed on amd64 under ubuntu-latest
-      # - name: Install pnpm
-      #   uses: pnpm/action-setup@v4
-      #   with:
-      #     version: 10
-      #     run_install: false
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+          run_install: false
 
-      # - name: Setup Node.js
-      #   uses: actions/setup-node@v4
-      #   if: steps.changed-files.outputs.any_changed == 'true'
-      #   with:
-      #     node-version: 20
-      #     cache: pnpm
-      #     cache-dependency-path: ./web/package.json
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        if: steps.changed-files.outputs.any_changed == 'true'
+        with:
+          node-version: 20
+          cache: pnpm
+          cache-dependency-path: ./web/package.json
 
-      # - name: Install dependencies
-      #   if: steps.changed-files.outputs.any_changed == 'true'
-      #   run: pnpm install --frozen-lockfile
+      - name: Install dependencies
+        if: steps.changed-files.outputs.any_changed == 'true'
+        run: pnpm install --frozen-lockfile
 
-      # - name: Run tests
-      #   if: steps.changed-files.outputs.any_changed == 'true'
-      #   run: pnpm test
+      - name: Run tests
+        if: steps.changed-files.outputs.any_changed == 'true'
+        run: pnpm test
