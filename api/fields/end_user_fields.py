@@ -26,3 +26,17 @@ end_users_infinite_scroll_pagination_fields = {
     "total": fields.Integer,
     "data": fields.List(fields.Nested(detailed_end_user_fields)),
 }
+
+# Image generation fields definition
+image_fields = {
+    "id": fields.String,
+    "image_url": fields.String,
+    "content_type": fields.String,
+    "text_content": fields.String,
+    "created_at": TimestampField,
+}
+
+image_list_fields = {
+    "data": fields.List(fields.Nested(image_fields)),
+    "has_more": fields.Boolean,
+}

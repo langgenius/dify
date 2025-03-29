@@ -1843,3 +1843,30 @@ class TraceAppConfig(db.Model):  # type: ignore[name-defined]
             "created_at": str(self.created_at) if self.created_at else None,
             "updated_at": str(self.updated_at) if self.updated_at else None,
         }
+
+
+# User generated image model
+class UserGeneratedImage(db.Model):  # type: ignore[name-defined]
+    __tablename__ = "user_generated_images"
+    __table_args__ = (
+        db.PrimaryKeyConstraint("id", name="user_generated_image_pkey"),
+        db.Index("user_generated_image_user_idx", "end_user_id"),
+        db.Index("user_generated_image_app_idx", "app_id"),
+    )
+
+    id = db.Column(StringUUID, server_default=db.text("uuid_generate_v4()"))
+    app_id = db.Column(StringUUID, nullable=False)
+    end_user_id = db.Column(StringUUID, nullable=False)
+    conversation_id = db.Column(StringUUID, nullable=False)
+    image_url = db.Column(db.Text, nullable=False)
+    content_type = db.Column(db.String(255), nullable=False)  # 'self_message' or 'summary_advice'
+    text_content = db.Column(db.Text, nullable=False)
+    created_at = db.Column(db.DateTime, nullable=False, server_default=db.func.current_timestamp())
+
+    @property
+    def end_user(self):
+        return db.session.query(EndUser).filter(EndUser.id == self.end_user_id).first()
+
+    @property
+    def conversation(self):
+        return db.session.query(Conversation).filter(Conversation.id == self.conversation_id).first()
