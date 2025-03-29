@@ -1,23 +1,14 @@
 from collections.abc import Callable
-from datetime import UTC, datetime, timedelta
-from enum import Enum
 from functools import wraps
 from typing import Optional
 
 from configs import dify_config
 from extensions.ext_database import db
-from flask import current_app, request
-from flask_login import user_logged_in  # type: ignore
-from flask_restful import Resource  # type: ignore
-from libs.login import _get_user
+from flask import request
 from libs.passport import PassportService
-from models.account import Account, AccountStatus, Tenant, TenantAccountJoinRole, TenantStatus
-from models.model import ApiToken, App, EndUser
-from pydantic import BaseModel  # type: ignore
+from models.account import AccountStatus, Tenant, TenantAccountJoinRole, TenantStatus
+from models.model import App
 from services.account_service import AccountService
-from services.feature_service import FeatureService
-from sqlalchemy import select, update  # type: ignore
-from sqlalchemy.orm import Session  # type: ignore
 from werkzeug.exceptions import Forbidden, Unauthorized
 
 
@@ -75,7 +66,9 @@ def validate_admin_token_and_extract_info(view: Optional[Callable] = None):
             if tenant.status == TenantStatus.ARCHIVE:
                 raise Forbidden("The workspace's status is archived.")
 
+            # Pass account and app_model to the view
             kwargs["app_model"] = app_model
+            kwargs["account"] = account
 
             return view_func(*args, **kwargs)
 

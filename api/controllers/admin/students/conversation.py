@@ -8,7 +8,7 @@ from fields.conversation_fields import conversation_infinite_scroll_pagination_f
 from flask_restful import Resource, marshal_with, reqparse  # type: ignore
 from flask_restful.inputs import int_range  # type: ignore
 from libs.helper import uuid_value
-from models.model import App, AppMode
+from models.model import Account, App, AppMode
 from services.conversation_service import ConversationService
 from services.end_user_service import EndUserService
 from sqlalchemy.orm import Session  # type: ignore
@@ -18,7 +18,7 @@ from werkzeug.exceptions import NotFound
 class StudentConversation(Resource):
     @validate_admin_token_and_extract_info
     @marshal_with(conversation_infinite_scroll_pagination_fields)
-    def get(self, app_model: App, student_id: str):
+    def get(self, app_model: App, account: Account, student_id: str):
         """Get student's conversation history.
         ---
         tags:
@@ -82,6 +82,10 @@ class StudentConversation(Resource):
         end_user = EndUserService.load_end_user_by_id(student_id)
         if not end_user:
             raise NotFound("Student not found")
+
+        # Ensure student belongs to admin's organization
+        if account.current_organization_id and end_user.organization_id != account.current_organization_id:
+            raise NotFound("Student not found in your organization")
 
         app_mode = AppMode.value_of(app_model.mode)
         if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:

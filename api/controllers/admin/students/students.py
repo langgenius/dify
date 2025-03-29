@@ -3,14 +3,14 @@ from controllers.admin.wraps import validate_admin_token_and_extract_info
 from fields.end_user_fields import end_users_infinite_scroll_pagination_fields
 from flask import Blueprint
 from flask_restful import Api, Resource, marshal_with  # type: ignore
-from models.model import App
+from models.model import Account, App
 from services.end_user_service import EndUserService
 
 
 class StudentList(Resource):
     @validate_admin_token_and_extract_info
     @marshal_with(end_users_infinite_scroll_pagination_fields)
-    def get(self, app_model: App):
+    def get(self, app_model: App, account: Account):
         """Get all end_user list related with the app_model with filters with pagination.
         ---
         tags:
@@ -88,6 +88,8 @@ class StudentList(Resource):
                         type: string
                       major:
                         type: string
+                      organization_id:
+                        type: string
           401:
             description: Invalid or missing API key
           400:
@@ -133,12 +135,18 @@ class StudentList(Resource):
         # Get students with pagination
         offset = (page - 1) * limit
 
-        return EndUserService.pagination_by_filters(app_model=app_model, filters=filters, offset=offset, limit=limit)
+        # Get the organization ID from the account
+        organization_id = account.current_organization_id
+
+        # Use the organization ID for filtering students by organization
+        return EndUserService.pagination_by_filters(
+            app_model=app_model, filters=filters, offset=offset, limit=limit, organization_id=organization_id
+        )
 
 
 class StudentAnalysis(Resource):
     @validate_admin_token_and_extract_info
-    def get(self, app_model: App):
+    def get(self, app_model: App, account: Account):
         """Get AI analysis and intervention suggestions.
         ---
         tags:
@@ -181,7 +189,7 @@ class StudentAnalysis(Resource):
 
 class StudentStatus(Resource):
     @validate_admin_token_and_extract_info
-    def put(self, app_model: App):
+    def put(self, app_model: App, account: Account):
         """Update student follow-up status.
         ---
         tags:
@@ -234,7 +242,7 @@ class StudentStatus(Resource):
         pass
 
     @validate_admin_token_and_extract_info
-    def get(self, app_model: App):
+    def get(self, app_model: App, account: Account):
         """Get student follow-up status history.
         ---
         tags:
@@ -282,7 +290,7 @@ class StudentStatus(Resource):
 
 class StudentNote(Resource):
     @validate_admin_token_and_extract_info
-    def put(self, app_model: App):
+    def put(self, app_model: App, account: Account):
         """Update student follow-up note.
         ---
         tags:
@@ -331,7 +339,7 @@ class StudentNote(Resource):
         pass
 
     @validate_admin_token_and_extract_info
-    def get(self, app_model: App):
+    def get(self, app_model: App, account: Account):
         """Get student follow-up note history.
         ---
         tags:

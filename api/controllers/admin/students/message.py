@@ -7,9 +7,8 @@ from fields.raws import FilesContainedField
 from flask_restful import Resource, fields, marshal_with, reqparse  # type: ignore
 from flask_restful.inputs import int_range  # type: ignore
 from libs.helper import TimestampField, uuid_value
-from models.model import App, AppMode, EndUser
+from models.model import Account, App, AppMode
 from services.end_user_service import EndUserService
-from services.errors.message import SuggestedQuestionsAfterAnswerDisabledError
 from services.message_service import MessageService
 from werkzeug.exceptions import NotFound
 
@@ -73,7 +72,7 @@ class MessageListApi(Resource):
 
     @validate_admin_token_and_extract_info
     @marshal_with(message_infinite_scroll_pagination_fields)
-    def get(self, app_model: App, student_id: str):
+    def get(self, app_model: App, account: Account, student_id: str):
         """Get messages list.
         ---
         tags:
@@ -135,6 +134,10 @@ class MessageListApi(Resource):
         end_user = EndUserService.load_end_user_by_id(student_id)
         if not end_user:
             raise NotFound("Student not found")
+
+        # Ensure student belongs to admin's organization
+        if account.current_organization_id and end_user.organization_id != account.current_organization_id:
+            raise NotFound("Student not found in your organization")
 
         parser = reqparse.RequestParser()
         parser.add_argument("conversation_id", required=True, type=uuid_value, location="args")

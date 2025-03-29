@@ -10,14 +10,18 @@ from sqlalchemy import and_, desc, func
 
 class EndUserService:
     @staticmethod
-    def pagination_by_filters(app_model: App, filters: Dict[str, Any], offset: int, limit: int) -> MultiPagePagination:
+    def pagination_by_filters(
+        app_model: App, filters: Dict[str, Any], offset: int, limit: int, organization_id: Optional[str] = None
+    ) -> MultiPagePagination:
         """
         Get a list of end users with filtering and pagination
 
         Args:
+            app_model: The app model
             filters: Dictionary containing filter criteria
             offset: Number of records to skip
             limit: Maximum number of records to return
+            organization_id: Optional organization ID to filter users by
 
         Returns:
             Dictionary containing total count and list of end users
@@ -62,6 +66,10 @@ class EndUserService:
             .filter(EndUser.app_id == app_model.id)
             .filter(EndUser.external_user_id != None)
         )
+
+        # Filter by organization if specified
+        if organization_id:
+            query = query.filter(EndUser.organization_id == organization_id)
 
         # Apply filters
         filter_conditions = []
@@ -110,6 +118,7 @@ class EndUserService:
                 'topics': end_user.topics,
                 'summary': end_user.summary,
                 'major': end_user.major,
+                'organization_id': end_user.organization_id,
             }
 
             users.append(end_user_dict)
