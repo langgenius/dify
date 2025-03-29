@@ -160,7 +160,7 @@ limit 1000"""
 
                     click.echo(
                         click.style(
-                            f"""[{processed_count}] Migrating [{table_name}] {record_id} ({provider_name})""",
+                            f"[{processed_count}] Migrating [{table_name}] {record_id} ({provider_name})",
                             fg="white",
                         )
                     )
@@ -172,14 +172,12 @@ limit 1000"""
                         failed_ids.append(record_id)
                         click.echo(
                             click.style(
-                                f"""[{processed_count}] Failed to prepare migration 
-                                for [{table_name}] {record_id} ({provider_name})""",
+                                f"[{processed_count}] Failed to migration [{table_name}] {record_id} ({provider_name})",
                                 fg="red",
                             )
                         )
                         logger.exception(
-                            f"""[{processed_count}] Failed to prepare migration 
-                            for [{table_name}] {record_id} ({provider_name})"""
+                            f"[{processed_count}] Failed to migration [{table_name}] {record_id} ({provider_name})"
                         )
                         continue
 
@@ -201,9 +199,5 @@ limit 1000"""
                 break
 
         click.echo(
-            click.style(
-                f"""Migrate [{table_name}] data for plugin completed, total: {processed_count}, 
-                failed: {len(failed_ids)}""",
-                fg="green",
-            )
+            click.style(f"Migrate [{table_name}] data for plugin completed, total: {processed_count}", fg="green")
         )
