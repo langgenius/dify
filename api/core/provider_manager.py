@@ -151,9 +151,12 @@ class ProviderManager:
             provider_model_records = provider_name_to_provider_model_records_dict.get(provider_entity.provider, [])
             provider_id_entity = ModelProviderID(provider_name)
             if provider_id_entity.is_langgenius():
-                provider_model_records.extend(
+                # Compatible with older versions
+                provider_name_model_records = set(
                     provider_name_to_provider_model_records_dict.get(provider_id_entity.provider_name, [])
                 )
+                provider_name_model_records.update(set(provider_model_records))
+                provider_model_records = list(provider_name_model_records)
 
             # Convert to custom configuration
             custom_configuration = self._to_custom_configuration(
