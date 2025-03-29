@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useBoolean } from 'ahooks'
-import { uniqueId } from 'lodash'
+import { uniqueId } from 'lodash-es'
 import type { KeyValue } from '../types'
 
 const UNIQUE_ID_PREFIX = 'key-value-'

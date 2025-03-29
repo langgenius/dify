@@ -1,4 +1,4 @@
-import { get } from 'lodash'
+import { get } from 'lodash-es'
 import { buildChatItemTree, getThreadMessages } from '../utils'
 import type { ChatItemInTree } from '../types'
 import branchedTestMessages from './branchedTestMessages.json'
