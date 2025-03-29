@@ -479,13 +479,13 @@ class AccountService:
         email = account.email if account else email
         if email is None:
             raise ValueError("Email must be provided.")
-        if cls.email_code_login_rate_limiter.is_rate_limited(email) and not DeploymentConfig().DEBUG:
+
+        if dify_config.DEBUG_CODE_FOR_LOGIN:
+            code = dify_config.DEBUG_CODE_FOR_LOGIN
+        elif cls.email_code_login_rate_limiter.is_rate_limited(email):
             from controllers.console.auth.error import EmailCodeLoginRateLimitExceededError
 
             raise EmailCodeLoginRateLimitExceededError()
-
-        if dify_config.DEBUG_CODE_FOR_LOGIN and dify_config.DEBUG_CODE_FOR_LOGIN != "":
-            code = dify_config.DEBUG_CODE_FOR_LOGIN
         else:
             code = "".join([str(random.randint(0, 9)) for _ in range(6)])
 
@@ -674,11 +674,11 @@ class AccountService:
         Send verification code to phone number for admin login.
         Returns a token that can be used to verify the code.
         """
-        if cls.phone_code_login_rate_limiter.is_rate_limited(phone) and not DeploymentConfig().DEBUG:
-            raise Exception("Phone verification code rate limit exceeded")
 
         if dify_config.DEBUG_CODE_FOR_LOGIN:
             code = dify_config.DEBUG_CODE_FOR_LOGIN
+        elif cls.phone_code_login_rate_limiter.is_rate_limited(phone):
+            raise Exception("Phone verification code rate limit exceeded")
         else:
             code = "".join([str(random.randint(0, 9)) for _ in range(6)])
 
