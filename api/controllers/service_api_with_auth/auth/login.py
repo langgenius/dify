@@ -70,6 +70,7 @@ class EmailCodeLoginSendEmailApi(Resource):
                 email:
                   type: string
                   description: The user's email
+                  example: "test@test.edu"
                 language:
                   type: string
                   description: Preferred language for the email
@@ -139,9 +140,11 @@ class EmailCodeLoginApi(Resource):
                 email:
                   type: string
                   description: The user's email
+                  example: "test@test.edu"
                 code:
                   type: string
                   description: The verification code sent to the email
+                  example: "111111"
                 token:
                   type: string
                   description: The token associated with the email code login
@@ -208,20 +211,13 @@ class EmailCodeLoginApi(Resource):
                 interface_language=languages[0],
             )
 
-            # Assign organization if found
-            if organization:
-                OrganizationService.assign_account_to_organization(account, organization.id)
+            OrganizationService.assign_account_to_organization(account, organization.id)
 
         else:
 
-            if account.organization_id is not None and account.organization_id != organization.id:
+            if account.current_organization_id is not None and account.current_organization_id != organization.id:
                 raise OrganizationMismatchError()
 
-            # Update organization if needed
-            if organization:
-                OrganizationService.assign_account_to_organization(account, organization.id)
-
-            # Ensure account is member of tenant
             connected_tenant = TenantService.get_join_tenants(account)
             if connected_tenant is None or tenant not in connected_tenant:
                 TenantService.create_tenant_member(tenant, account, role="end_user")
