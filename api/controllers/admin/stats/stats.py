@@ -20,19 +20,6 @@ class RiskStats(Resource):
         description: Get counts of users at different risk levels and their changes
         security:
           - ApiKeyAuth: []
-        parameters:
-          - name: start_date
-            in: query
-            type: string
-            format: date
-            required: true
-            description: Start date of the statistics period (YYYY-MM-DD)
-          - name: end_date
-            in: query
-            type: string
-            format: date
-            required: true
-            description: End date of the statistics period (YYYY-MM-DD)
         responses:
           200:
             description: Risk statistics retrieved successfully
@@ -59,23 +46,8 @@ class RiskStats(Resource):
             description: Invalid date parameters
         """
         try:
-            # Parse date parameters
-            start_date_str = request.args.get('start_date')
-            end_date_str = request.args.get('end_date')
-
-            if not start_date_str or not end_date_str:
-                raise BadRequest("start_date and end_date are required")
-
-            try:
-                end_date = datetime.strptime(end_date_str, '%Y-%m-%d')
-                start_date = datetime.strptime(start_date_str, '%Y-%m-%d')
-            except ValueError:
-                raise BadRequest("Invalid date format. Use YYYY-MM-DD")
-
             # Get risk statistics from service
             risk_stats = StatsService.get_risk_stats(
-                start_date=start_date,
-                end_date=end_date,
                 app_id=app_model.id,
                 organization_id=account.current_organization_id,
             )

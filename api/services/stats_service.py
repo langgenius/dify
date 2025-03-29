@@ -8,9 +8,7 @@ from sqlalchemy import and_, distinct, func
 
 class StatsService:
     @staticmethod
-    def get_risk_stats(
-        start_date: datetime, end_date: datetime, app_id: Optional[str] = None, organization_id: Optional[str] = None
-    ) -> Dict[str, Any]:
+    def get_risk_stats(app_id: Optional[str] = None, organization_id: Optional[str] = None) -> Dict[str, Any]:
         """
         Get statistics about high risk users
 
@@ -24,10 +22,8 @@ class StatsService:
             Dictionary containing high risk user count and changes
         """
         # Build query with filters
-        high_risk_query = db.session.query(EndUser).filter(
-            EndUser.health_status == 'critical', EndUser.updated_at >= start_date, EndUser.updated_at <= end_date
-        )
-        total_query = db.session.query(EndUser).filter(EndUser.updated_at >= start_date, EndUser.updated_at <= end_date)
+        high_risk_query = db.session.query(EndUser).filter(EndUser.health_status == 'critical')
+        total_query = db.session.query(EndUser)
 
         # Apply app_id filter if provided
         if app_id:
@@ -43,7 +39,7 @@ class StatsService:
         total_count = total_query.count()
 
         # Get yesterday's count
-        yesterday = end_date - timedelta(days=1)
+        yesterday = datetime.now() - timedelta(days=1)
         yesterday_query = db.session.query(EndUser).filter(
             EndUser.health_status == 'critical', EndUser.updated_at <= yesterday
         )
@@ -59,7 +55,7 @@ class StatsService:
         yesterday_high_risk_count = yesterday_query.count()
 
         # Get last week's count
-        last_week = end_date - timedelta(days=7)
+        last_week = datetime.now() - timedelta(days=7)
         last_week_query = db.session.query(EndUser).filter(
             EndUser.health_status == 'critical', EndUser.updated_at <= last_week
         )
