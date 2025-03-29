@@ -34,6 +34,7 @@ import type { Plugin } from '@/app/components/plugins/types'
 import { MARKETPLACE_URL_PREFIX } from '@/config'
 import cn from '@/utils/classnames'
 import { getLocaleOnClient } from '@/i18n'
+import { useSelector as useAppContextSelector } from '@/context/app-context'
 
 type Props = {
   searchText: string
@@ -100,6 +101,7 @@ const ModelProviderPage = ({ searchText }: Props) => {
     plugins: allPlugins,
     isLoading: isAllPluginsLoading,
   } = useMarketplaceAllPlugins(providers, searchText)
+  const { enable_marketplace } = useAppContextSelector(s => s.systemFeatures)
 
   const cardRender = useCallback((plugin: Plugin) => {
     if (plugin.type === 'bundle')
@@ -175,13 +177,16 @@ const ModelProviderPage = ({ searchText }: Props) => {
             <RiArrowDownSLine className={cn('h-4 w-4', collapse && '-rotate-90')} />
             {t('common.modelProvider.installProvider')}
           </div>
-          <div className='mb-2 flex items-center pt-2'>
-            <span className='system-sm-regular pr-1 text-text-tertiary'>{t('common.modelProvider.discoverMore')}</span>
-            <Link target="_blank" href={`${MARKETPLACE_URL_PREFIX}`} className='system-sm-medium inline-flex items-center text-text-accent'>
-              {t('plugin.marketplace.difyMarketplace')}
-              <RiArrowRightUpLine className='h-4 w-4' />
-            </Link>
-          </div>
+          {
+            enable_marketplace && (
+              <div className='mb-2 flex items-center pt-2'>
+                <span className='system-sm-regular pr-1 text-text-tertiary'>{t('common.modelProvider.discoverMore')}</span>
+                <Link target="_blank" href={`${MARKETPLACE_URL_PREFIX}`} className='system-sm-medium inline-flex items-center text-text-accent'>
+                  {t('plugin.marketplace.difyMarketplace')}
+                  <RiArrowRightUpLine className='h-4 w-4' />
+                </Link>
+              </div>
+            )}
         </div>
         {!collapse && isAllPluginsLoading && <Loading type='area' />}
         {
