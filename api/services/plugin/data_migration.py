@@ -120,7 +120,6 @@ limit 1000"""
         click.echo(
             click.style(f"Migrate [{table_name}] data for plugin completed, total: {processed_count}", fg="green")
         )
-        
 
     @classmethod
     def migrate_db_records(cls, table_name: str, provider_column_name: str) -> None:
@@ -128,7 +127,7 @@ limit 1000"""
 
         processed_count = 0
         failed_ids = []
-        last_id = '00000000-0000-0000-0000-000000000000'
+        last_id = "00000000-0000-0000-0000-000000000000"
 
         while True:
             sql = f"""
@@ -161,7 +160,7 @@ limit 1000"""
 
                     click.echo(
                         click.style(
-                            f"[{processed_count}] Migrating [{table_name}] {record_id} ({provider_name})",
+                            f"""[{processed_count}] Migrating [{table_name}] {record_id} ({provider_name})""",
                             fg="white",
                         )
                     )
@@ -173,12 +172,14 @@ limit 1000"""
                         failed_ids.append(record_id)
                         click.echo(
                             click.style(
-                                f"[{processed_count}] Failed to prepare migration for [{table_name}] {record_id} ({provider_name})",
+                                f"""[{processed_count}] Failed to prepare migration 
+                                for [{table_name}] {record_id} ({provider_name})""",
                                 fg="red",
                             )
                         )
                         logger.exception(
-                            f"[{processed_count}] Failed to prepare migration for [{table_name}] {record_id} ({provider_name})"
+                            f"""[{processed_count}] Failed to prepare migration 
+                            for [{table_name}] {record_id} ({provider_name})"""
                         )
                         continue
 
@@ -188,24 +189,21 @@ limit 1000"""
                         SET {provider_column_name} = :updated_value 
                         WHERE id = :record_id
                     """
-                    conn.execute(
-                        db.text(update_sql),
-                        [{"updated_value": u, "record_id": r} for u, r in batch_updates]
-                    )
+                    conn.execute(db.text(update_sql), [{"updated_value": u, "record_id": r} for u, r in batch_updates])
                     click.echo(
                         click.style(
                             f"[{processed_count}] Batch migrated [{len(batch_updates)}] records from [{table_name}]",
                             fg="green",
                         )
                     )
-                
+
             if not current_iter_count:
                 break
-                
 
         click.echo(
             click.style(
-                f"Migrate [{table_name}] data for plugin completed, total: {processed_count}, failed: {len(failed_ids)}",
+                f"""Migrate [{table_name}] data for plugin completed, total: {processed_count}, 
+                failed: {len(failed_ids)}""",
                 fg="green",
             )
         )
