@@ -10,6 +10,9 @@ build-backend = "poetry.core.masonry.api"
 [tool.poetry]
 package-mode = false
 
+[tool.mypy]
+plugins = ['pydantic.mypy']
+
 ############################################################
 # [ Main ] Dependency group
 ############################################################
@@ -56,9 +59,9 @@ pandoc = "~2.4"
 psycogreen = "~1.0.2"
 psycopg2-binary = "~2.9.6"
 pycryptodome = "3.19.1"
-pydantic = "~2.9.2"
-pydantic-settings = "~2.6.0"
-pydantic_extra_types = "~2.9.0"
+pydantic = "~2.11.0"
+pydantic-settings = "~2.8.1"
+pydantic_extra_types = "~2.10.3"
 pyjwt = "~2.8.0"
 pypdfium2 = "~4.30.0"
 python = ">=3.11,<3.13"
