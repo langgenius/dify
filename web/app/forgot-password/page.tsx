@@ -13,6 +13,7 @@ const ForgotPassword = () => {
 
   return (
     <div className={classNames(
+      'bg-background-body',
       style.background,
       'flex w-full min-h-screen',
       'p-4 lg:p-8',
@@ -21,13 +22,13 @@ const ForgotPassword = () => {
     )}>
       <div className={
         classNames(
-          'flex w-full flex-col bg-white shadow rounded-2xl shrink-0',
+          'flex w-full flex-col bg-background-section-burn shadow rounded-2xl shrink-0',
           'md:w-[608px] space-between',
         )
       }>
         <Header />
         {token ? <ChangePasswordForm /> : <ForgotPasswordForm />}
-        <div className='px-8 py-6 text-sm font-normal text-gray-500'>
+        <div className='px-8 py-6 text-sm font-normal text-text-tertiary'>
           © {new Date().getFullYear()} LangGenius, Inc. All rights reserved.
         </div>
       </div>

@@ -82,20 +82,20 @@ const ForgotPasswordForm = () => {
       ? <Loading />
       : <>
         <div className="sm:mx-auto sm:w-full sm:max-w-md">
-          <h2 className="text-[32px] font-bold text-gray-900">
+          <h2 className="text-[32px] font-bold text-text-primary">
             {isEmailSent ? t('login.resetLinkSent') : t('login.forgotPassword')}
           </h2>
-          <p className='mt-1 text-sm text-gray-600'>
+          <p className='mt-1 text-sm text-text-secondary'>
             {isEmailSent ? t('login.checkEmailForResetLink') : t('login.forgotPasswordDesc')}
           </p>
         </div>
         <div className="mt-8 grow sm:mx-auto sm:w-full sm:max-w-md">
-          <div className="bg-white ">
+          <div className="relative">
             <form>
               {!isEmailSent && (
                 <div className='mb-5'>
                   <label htmlFor="email"
-                    className="my-2 flex items-center justify-between text-sm font-medium text-gray-900">
+                    className="my-2 flex items-center justify-between text-sm font-medium text-text-primary">
                     {t('login.email')}
                   </label>
                   <div className="mt-1">
