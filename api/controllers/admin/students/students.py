@@ -144,49 +144,6 @@ class StudentList(Resource):
         )
 
 
-class StudentAnalysis(Resource):
-    @validate_admin_token_and_extract_info
-    def get(self, app_model: App, account: Account):
-        """Get AI analysis and intervention suggestions.
-        ---
-        tags:
-          - admin/api/students
-        summary: Get AI analysis for student
-        description: Get AI generated analysis, summary and intervention suggestions based on conversation history
-        security:
-          - ApiKeyAuth: []
-        parameters:
-          - name: student_id
-            in: path
-            type: string
-            required: true
-            description: ID of the student
-        responses:
-          200:
-            description: Analysis retrieved successfully
-            schema:
-              type: object
-              properties:
-                summary:
-                  type: string
-                  description: Summary of conversation content and key points
-                analysis:
-                  type: string
-                  description: Psychological analysis from professional perspective
-                suggestions:
-                  type: string
-                  description: Intervention suggestions for counselors
-                last_updated:
-                  type: string
-                  format: date-time
-          401:
-            description: Invalid or missing API key
-          404:
-            description: Student not found or no analysis available
-        """
-        pass
-
-
 class StudentStatus(Resource):
     @validate_admin_token_and_extract_info
     def put(self, app_model: App, account: Account):
@@ -384,6 +341,5 @@ class StudentNote(Resource):
 
 
 api.add_resource(StudentList, '/students')
-# api.add_resource(StudentAnalysis, '/students/<string:student_id>/analysis')
 # api.add_resource(StudentStatus, '/students/<string:student_id>/status')
 # api.add_resource(StudentNote, '/students/<string:student_id>/note')
