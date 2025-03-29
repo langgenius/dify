@@ -650,17 +650,33 @@ where sites.id is null limit 1000"""
     click.echo(click.style("Fix for missing app-related sites completed successfully!", fg="green"))
 
 
-@click.command("create-admin-with-phone", help="Create or update an admin account with a phone number.")
+@click.command(
+    "create-admin-with-phone", help="Create or update an admin account for an organization with a phone number."
+)
 @click.option("--name", prompt=True, help="Admin account name")
 @click.option("--phone", prompt=True, help="Admin account phone number")
-@click.option("--tenant-id", prompt=False, help="Tenant ID (optional, uses first tenant if not provided)")
-def create_admin_with_phone(name: str, phone: str, tenant_id: Optional[str] = None):
+@click.option("--organization-id", required=True, help="Organization ID")
+def create_admin_with_phone(name: str, phone: str, organization_id: str):
     """
-    Create or update an admin account with a phone number.
+    Create or update an admin account with a phone number for a specific organization.
     This command will create a new account if the phone doesn't exist,
     or update an existing account with the specified admin role.
     """
     try:
+        # Check if organization exists
+        from models.organization import Organization, OrganizationMember, OrganizationRole
+
+        organization = db.session.query(Organization).filter(Organization.id == organization_id).first()
+        if not organization:
+            click.echo(click.style(f"Organization with ID {organization_id} not found.", fg="red"))
+            return
+
+        # Get tenant from organization
+        tenant = db.session.query(Tenant).filter(Tenant.id == organization.tenant_id).first()
+        if not tenant:
+            click.echo(click.style(f"Tenant for organization {organization_id} not found.", fg="red"))
+            return
+
         # Check if account exists with this phone number
         account = db.session.query(Account).filter(Account.phone == phone).first()
 
@@ -669,6 +685,7 @@ def create_admin_with_phone(name: str, phone: str, tenant_id: Optional[str] = No
 
             # Update account
             account.name = name
+            account.current_organization_id = organization_id
             db.session.commit()
         else:
             click.echo(f"Creating new account with phone {phone}...")
@@ -676,22 +693,15 @@ def create_admin_with_phone(name: str, phone: str, tenant_id: Optional[str] = No
             # Create new account with phone
             account = Account(
                 name=name,
-                email=f"{phone}@qingsu.chat",
+                email=f"{phone}@qingsu.chat",  # Use organization code in email
                 phone=phone,
                 interface_language=languages[0],
-                interface_theme="light",
                 status="active",
+                current_organization_id=organization_id,  # Set current organization
             )
 
             db.session.add(account)
             db.session.commit()
-
-        # Get or create tenant
-        tenant_id = tenant_id or dify_config.DEFAULT_TENANT_ID
-        tenant = db.session.query(Tenant).filter(Tenant.id == tenant_id).first()
-        if not tenant:
-            click.echo(click.style(f"Tenant with ID {tenant_id} not found.", fg="red"))
-            return
 
         # Check if account is already a member of the tenant
         ta_join = (
@@ -700,17 +710,36 @@ def create_admin_with_phone(name: str, phone: str, tenant_id: Optional[str] = No
             .first()
         )
 
-        if ta_join:
-            # Update role to end_admin
-            ta_join.role = TenantAccountJoinRole.END_ADMIN.value
-            click.echo(f"Updated account role to {TenantAccountJoinRole.END_ADMIN.value} in tenant {tenant.name}")
-        else:
-            # Add account to tenant with end_admin role
+        if not ta_join:
+            # Add account to tenant with end_user role (organization role will control admin access)
             ta_join = TenantAccountJoin(
-                tenant_id=tenant.id, account_id=account.id, role=TenantAccountJoinRole.END_ADMIN.value
+                tenant_id=tenant.id, account_id=account.id, role=TenantAccountJoinRole.END_USER.value
             )
             db.session.add(ta_join)
-            click.echo(f"Added account to tenant {tenant.name} with role {TenantAccountJoinRole.END_ADMIN.value}")
+            click.echo(f"Added account to tenant {tenant.name}")
+
+        # Check if account is already a member of the organization
+        org_member = (
+            db.session.query(OrganizationMember)
+            .filter(OrganizationMember.organization_id == organization_id, OrganizationMember.account_id == account.id)
+            .first()
+        )
+
+        if org_member:
+            # Update role to admin
+            org_member.role = OrganizationRole.ADMIN
+            click.echo(f"Updated account role to {OrganizationRole.ADMIN} in organization {organization.name}")
+        else:
+            # Add account to organization with admin role
+            org_member = OrganizationMember(
+                organization_id=organization_id,
+                account_id=account.id,
+                role=OrganizationRole.ADMIN,
+                is_default=True,
+                created_by=account.id,
+            )
+            db.session.add(org_member)
+            click.echo(f"Added account to organization {organization.name} with role {OrganizationRole.ADMIN}")
 
         db.session.commit()
 
@@ -721,7 +750,7 @@ def create_admin_with_phone(name: str, phone: str, tenant_id: Optional[str] = No
         )
         click.echo(f"Name: {name}")
         click.echo(f"Phone: {phone}")
-        click.echo(f"Tenant: {tenant.name} (ID: {tenant.id})")
+        click.echo(f"Organization: {organization.name} (ID: {organization.id})")
 
     except Exception as e:
         db.session.rollback()
