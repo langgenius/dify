@@ -172,12 +172,12 @@ limit 1000"""
                         failed_ids.append(record_id)
                         click.echo(
                             click.style(
-                                f"[{processed_count}] Failed to migration [{table_name}] {record_id} ({provider_name})",
+                                f"[{processed_count}] Failed to migrate [{table_name}] {record_id} ({provider_name})",
                                 fg="red",
                             )
                         )
                         logger.exception(
-                            f"[{processed_count}] Failed to migration [{table_name}] {record_id} ({provider_name})"
+                            f"[{processed_count}] Failed to migrate [{table_name}] {record_id} ({provider_name})"
                         )
                         continue
 
