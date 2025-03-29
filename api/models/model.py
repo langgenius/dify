@@ -791,7 +791,7 @@ class Conversation(db.Model):  # type: ignore[name-defined]
             WorkflowRunStatus.SUCCEEDED: 0,
             WorkflowRunStatus.FAILED: 0,
             WorkflowRunStatus.STOPPED: 0,
-            WorkflowRunStatus.PARTIAL_SUCCESSED: 0,
+            WorkflowRunStatus.PARTIAL_SUCCEEDED: 0,
         }
 
         for message in messages:
@@ -802,7 +802,7 @@ class Conversation(db.Model):  # type: ignore[name-defined]
             {
                 "success": status_counts[WorkflowRunStatus.SUCCEEDED],
                 "failed": status_counts[WorkflowRunStatus.FAILED],
-                "partial_success": status_counts[WorkflowRunStatus.PARTIAL_SUCCESSED],
+                "partial_success": status_counts[WorkflowRunStatus.PARTIAL_SUCCEEDED],
             }
             if messages
             else None
