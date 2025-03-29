@@ -54,7 +54,7 @@ workflow_run_fields = {
 class WorkflowRunDetailApi(Resource):
     @validate_app_token
     @marshal_with(workflow_run_fields)
-    def get(self, app_model: App, workflow_id: str):
+    def get(self, app_model: App, workflow_run_id: str):
         """
         Get a workflow task running detail
         """
@@ -62,7 +62,7 @@ class WorkflowRunDetailApi(Resource):
         if app_mode != AppMode.WORKFLOW:
             raise NotWorkflowAppError()
 
-        workflow_run = db.session.query(WorkflowRun).filter(WorkflowRun.id == workflow_id).first()
+        workflow_run = db.session.query(WorkflowRun).filter(WorkflowRun.id == workflow_run_id).first()
         return workflow_run
 
 
@@ -163,6 +163,6 @@ class WorkflowAppLogApi(Resource):
 
 
 api.add_resource(WorkflowRunApi, "/workflows/run")
-api.add_resource(WorkflowRunDetailApi, "/workflows/run/<string:workflow_id>")
+api.add_resource(WorkflowRunDetailApi, "/workflows/run/<string:workflow_run_id>")
 api.add_resource(WorkflowTaskStopApi, "/workflows/tasks/<string:task_id>/stop")
 api.add_resource(WorkflowAppLogApi, "/workflows/logs")
