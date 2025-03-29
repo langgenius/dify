@@ -206,7 +206,7 @@ class IndexingRunner:
 
             # build index
             # get the process rule
-            processing_rule = (
+            _ = (
                 db.session.query(DatasetProcessRule)
                 .filter(DatasetProcessRule.id == dataset_document.dataset_process_rule_id)
                 .first()

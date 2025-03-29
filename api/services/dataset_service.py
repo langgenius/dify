@@ -1973,16 +1973,6 @@ class SegmentService:
         with redis_client.lock(lock_name, timeout=20):
             index_node_id = str(uuid.uuid4())
             index_node_hash = helper.generate_text_hash(content)
-            child_chunk_count = (
-                db.session.query(ChildChunk)
-                .filter(
-                    ChildChunk.tenant_id == current_user.current_tenant_id,
-                    ChildChunk.dataset_id == dataset.id,
-                    ChildChunk.document_id == document.id,
-                    ChildChunk.segment_id == segment.id,
-                )
-                .count()
-            )
             max_position = (
                 db.session.query(func.max(ChildChunk.position))
                 .filter(

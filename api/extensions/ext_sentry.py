@@ -15,7 +15,7 @@ def init_app(app: DifyApp):
 
         def before_send(event, hint):
             if "exc_info" in hint:
-                exc_type, exc_value, tb = hint["exc_info"]
+                _, exc_value, _ = hint["exc_info"]
                 if parse_error.defaultErrorResponse in str(exc_value):
                     return None
 

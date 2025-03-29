@@ -65,8 +65,6 @@ class RelytVector(BaseVector):
         return VectorType.RELYT
 
     def create(self, texts: list[Document], embeddings: list[list[float]], **kwargs) -> None:
-        index_params: dict[str, Any] = {}
-        metadatas = [d.metadata for d in texts]
         self.create_collection(len(embeddings[0]))
         self.embedding_dimension = len(embeddings[0])
         self.add_texts(texts, embeddings)

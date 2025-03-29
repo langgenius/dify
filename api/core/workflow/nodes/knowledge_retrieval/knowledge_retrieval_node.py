@@ -449,7 +449,7 @@ class KnowledgeRetrievalNode(LLMNode):
                                 "condition": item.get("comparison_operator"),
                             }
                         )
-        except Exception as e:
+        except Exception:
             return []
         return automatic_metadata_filters
 
@@ -596,7 +596,6 @@ class KnowledgeRetrievalNode(LLMNode):
     def _get_prompt_template(self, node_data: KnowledgeRetrievalNodeData, metadata_fields: list, query: str):
         model_mode = ModelMode.value_of(node_data.metadata_model_config.mode)  # type: ignore
         input_text = query
-        memory_str = ""
 
         prompt_messages: list[LLMNodeChatModelMessage] = []
         if model_mode == ModelMode.CHAT:

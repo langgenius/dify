@@ -122,7 +122,7 @@ class ResetPasswordSendEmailApi(Resource):
             language = "en-US"
         try:
             account = AccountService.get_user_through_email(args["email"])
-        except AccountRegisterError as are:
+        except AccountRegisterError:
             raise AccountInFreezeError()
         if account is None:
             if FeatureService.get_system_features().is_allow_register:
@@ -153,7 +153,7 @@ class EmailCodeLoginSendEmailApi(Resource):
             language = "en-US"
         try:
             account = AccountService.get_user_through_email(args["email"])
-        except AccountRegisterError as are:
+        except AccountRegisterError:
             raise AccountInFreezeError()
 
         if account is None:
@@ -191,7 +191,7 @@ class EmailCodeLoginApi(Resource):
         AccountService.revoke_email_code_login_token(args["token"])
         try:
             account = AccountService.get_user_through_email(user_email)
-        except AccountRegisterError as are:
+        except AccountRegisterError:
             raise AccountInFreezeError()
         if account:
             tenant = TenantService.get_join_tenants(account)
@@ -211,7 +211,7 @@ class EmailCodeLoginApi(Resource):
                 )
             except WorkSpaceNotAllowedCreateError:
                 return NotAllowedCreateWorkspace()
-            except AccountRegisterError as are:
+            except AccountRegisterError:
                 raise AccountInFreezeError()
         token_pair = AccountService.login(account, ip_address=extract_remote_ip(request))
         AccountService.reset_login_error_rate_limit(args["email"])
