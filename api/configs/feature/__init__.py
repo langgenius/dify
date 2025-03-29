@@ -848,6 +848,11 @@ class AccountConfig(BaseSettings):
         default=5,
     )
 
+    EDUCATION_ENABLED: bool = Field(
+        description="whether to enable education identity",
+        default=False,
+    )
+
 
 class FeatureConfig(
     # place the configs in alphabet order
