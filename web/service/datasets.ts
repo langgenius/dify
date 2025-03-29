@@ -253,6 +253,25 @@ export const checkJinaReaderTaskStatus: Fetcher<CommonResponse, string> = (jobId
   })
 }
 
+export const createWatercrawlTask: Fetcher<CommonResponse, Record<string, any>> = (body) => {
+  return post<CommonResponse>('website/crawl', {
+    body: {
+      ...body,
+      provider: DataSourceProvider.waterCrawl,
+    },
+  })
+}
+
+export const checkWatercrawlTaskStatus: Fetcher<CommonResponse, string> = (jobId: string) => {
+  return get<CommonResponse>(`website/crawl/status/${jobId}`, {
+    params: {
+      provider: DataSourceProvider.waterCrawl,
+    },
+  }, {
+    silent: true,
+  })
+}
+
 type FileTypesRes = {
   allowed_extensions: string[]
 }
