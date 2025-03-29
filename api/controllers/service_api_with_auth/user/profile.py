@@ -14,7 +14,7 @@ class UserProfile(Resource):
         """Get user profile.
         ---
         tags:
-          - user/profile
+          - service/profile
         summary: Get profile
         description: Get current user's profile information
         security:
@@ -47,7 +47,7 @@ class UserProfile(Resource):
         """Update user profile.
         ---
         tags:
-          - user/profile
+          - service/profile
         summary: Update profile
         description: Update user profile information
         security:

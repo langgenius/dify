@@ -27,7 +27,7 @@ class LogoutApi(Resource):
         """Logout user.
         ---
         tags:
-          - user/auth
+          - service/auth
         summary: Logout User
         description: Logs out the authenticated user and invalidates the session
         responses:
@@ -55,7 +55,7 @@ class EmailCodeLoginSendEmailApi(Resource):
         """Send email code for login.
         ---
         tags:
-          - user/auth
+          - service/auth
         summary: Email Code Login Email Sending
         description: Sends an email with a verification code for login
         parameters:
@@ -123,7 +123,7 @@ class EmailCodeLoginApi(Resource):
         """Login using email code.
         ---
         tags:
-          - user/auth
+          - service/auth
         summary: Email Code Login
         description: Allows the user to login using a verification code and token sent via email
         parameters:
@@ -237,7 +237,7 @@ class RefreshTokenApi(Resource):
         """Refresh authentication token.
         ---
         tags:
-          - user/auth
+          - service/auth
         summary: Refresh Token
         description: Refreshes an access token using a valid refresh token
         parameters:
