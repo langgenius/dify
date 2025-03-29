@@ -63,9 +63,7 @@ class ToolManager:
 
     @classmethod
     def is_hardcoded_provider(cls, provider_name: str) -> bool:
-        if provider_name in cls._hardcoded_providers:
-            return True
-        return False
+        return provider_name in cls._hardcoded_providers
 
     @classmethod
     def get_hardcoded_provider(cls, provider: str) -> BuiltinToolProviderController:
