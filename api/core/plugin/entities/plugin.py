@@ -151,6 +151,11 @@ class GenericProviderID:
         return str(self)
 
     def __str__(self) -> str:
+        from core.tools.tool_manager import ToolManager
+
+        if self.organization == "langgenius" and ToolManager.is_hardcoded_provider(self.provider_name):
+            return self.provider_name
+
         return f"{self.organization}/{self.plugin_name}/{self.provider_name}"
 
     def __init__(self, value: str, is_hardcoded: bool = False) -> None:
