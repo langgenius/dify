@@ -54,6 +54,13 @@ class MemberInviteEmailApi(Resource):
         inviter = current_user
         invitation_results = []
         console_web_url = dify_config.CONSOLE_WEB_URL
+        if (FeatureService.get_system_features().license.product_id == "DIFY_ENTERPRISE_STANDARD" and
+                len(invitee_emails) > FeatureService.get_system_features().available_team_members):
+            return {
+                "code": "limit-exceeded",
+                "message": "Limit exceeded",
+            }, 400
+
         for invitee_email in invitee_emails:
             try:
                 token = RegisterService.invite_new_member(

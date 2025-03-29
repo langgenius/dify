@@ -34,6 +34,9 @@ class LicenseStatus(StrEnum):
 class LicenseModel(BaseModel):
     status: LicenseStatus = LicenseStatus.NONE
     expired_at: str = ""
+    product_id: str = ""
+    available_team_members: int = 0
+    available_workspaces: int = 0
 
 
 class BrandingModel(BaseModel):
@@ -202,3 +205,12 @@ class FeatureService:
 
             if "expiredAt" in license_info:
                 features.license.expired_at = license_info["expiredAt"]
+
+            if "productId" in license_info:
+                features.license.product_id = license_info["productId"]
+
+            if "availableTeamMembers" in license_info:
+                features.license.available_team_members = license_info["availableTeamMembers"]
+
+            if "availableWorkspaces" in license_info:
+                features.license.available_workspaces = license_info["availableWorkspaces"]
