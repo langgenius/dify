@@ -100,9 +100,9 @@ class UserStats(Resource):
                       active_users:
                         type: integer
                         description: Number of active users on this date
-                      new_users:
+                      new_active_users:
                         type: integer
-                        description: Number of new users on this date
+                        description: Number of new active users on this date
           400:
             description: Invalid date parameters
         """

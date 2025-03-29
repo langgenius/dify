@@ -110,36 +110,55 @@ class StatsService:
             next_date = date + timedelta(days=1)
 
             # Count active users (users who had a conversation on this date)
-            active_users_query = db.session.query(distinct(Conversation.from_end_user_id)).filter(
-                Conversation.created_at >= date, Conversation.created_at < next_date
+            active_users_query = db.session.query(distinct(Message.from_end_user_id)).filter(
+                Message.created_at >= date, Message.created_at < next_date
             )
 
             # Apply app_id filter if provided
             if app_id:
-                active_users_query = active_users_query.filter(Conversation.app_id == app_id)
+                active_users_query = active_users_query.filter(Message.app_id == app_id)
 
             # Apply organization filters for conversations
             if organization_id:
-                active_users_query = active_users_query.filter(Conversation.organization_id == organization_id)
+                active_users_query = active_users_query.filter(Message.organization_id == organization_id)
 
             active_users = active_users_query.count()
 
-            # Count new users (users who were created on this date)
-            new_users_query = db.session.query(EndUser).filter(
+            # Count active new users (users who were created on this date AND had activity)
+            # First get IDs of users created on this date
+            new_user_ids_query = db.session.query(EndUser.id).filter(
                 EndUser.created_at >= date, EndUser.created_at < next_date
             )
 
             # Apply app_id filter if provided
             if app_id:
-                new_users_query = new_users_query.filter(EndUser.app_id == app_id)
+                new_user_ids_query = new_user_ids_query.filter(EndUser.app_id == app_id)
 
             # Apply organization_id filter if provided
             if organization_id:
-                new_users_query = new_users_query.filter(EndUser.organization_id == organization_id)
+                new_user_ids_query = new_user_ids_query.filter(EndUser.organization_id == organization_id)
 
-            new_users = new_users_query.count()
+            # Get IDs of users who had activity on this date
+            active_user_ids_query = db.session.query(distinct(Message.from_end_user_id)).filter(
+                Message.created_at >= date, Message.created_at < next_date
+            )
 
-            daily_stats.append({"date": date_str, "active_users": active_users, "new_users": new_users})
+            # Apply app_id filter if provided
+            if app_id:
+                active_user_ids_query = active_user_ids_query.filter(Message.app_id == app_id)
+
+            # Apply organization_id filter if provided
+            if organization_id:
+                active_user_ids_query = active_user_ids_query.filter(Message.organization_id == organization_id)
+
+            # Get the intersection to find active new users
+            new_user_ids = [user_id for user_id, in new_user_ids_query.all()]
+            active_user_ids = [user_id for user_id, in active_user_ids_query.all()]
+
+            # Count users who appear in both lists (created today AND active today)
+            active_new_users = len(set(new_user_ids).intersection(set(active_user_ids)))
+
+            daily_stats.append({"date": date_str, "active_users": active_users, "new_active_users": active_new_users})
 
         return {"daily_stats": daily_stats}
 
@@ -173,32 +192,30 @@ class StatsService:
             next_date = date + timedelta(days=1)
 
             # Count total conversations for this date
-            conv_query = db.session.query(Conversation).filter(
-                Conversation.created_at >= date, Conversation.created_at < next_date
-            )
+            conv_query = db.session.query(Message).filter(Message.created_at >= date, Message.created_at < next_date)
 
             # Apply app_id filter if provided
             if app_id:
-                conv_query = conv_query.filter(Conversation.app_id == app_id)
+                conv_query = conv_query.filter(Message.app_id == app_id)
 
             # Apply organization_id filter if provided
             if organization_id:
-                conv_query = conv_query.filter(Conversation.organization_id == organization_id)
+                conv_query = conv_query.filter(Message.organization_id == organization_id)
 
             total_conversations = conv_query.count()
 
             # Count unique users who had conversations on this date
-            unique_users_query = db.session.query(distinct(Conversation.from_end_user_id)).filter(
-                Conversation.created_at >= date, Conversation.created_at < next_date
+            unique_users_query = db.session.query(distinct(Message.from_end_user_id)).filter(
+                Message.created_at >= date, Message.created_at < next_date
             )
 
             # Apply app_id filter if provided
             if app_id:
-                unique_users_query = unique_users_query.filter(Conversation.app_id == app_id)
+                unique_users_query = unique_users_query.filter(Message.app_id == app_id)
 
             # Apply organization_id filter if provided
             if organization_id:
-                unique_users_query = unique_users_query.filter(Conversation.organization_id == organization_id)
+                unique_users_query = unique_users_query.filter(Message.organization_id == organization_id)
 
             unique_users = unique_users_query.count()
 
