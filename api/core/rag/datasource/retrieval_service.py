@@ -180,7 +180,7 @@ class RetrievalService:
                 if not dataset:
                     raise ValueError("dataset not found")
 
-                start=time.time()
+                start = time.time()
                 vector = Vector(dataset=dataset)
                 documents = vector.search_by_vector(
                     query,
@@ -312,20 +312,20 @@ class RetrievalService:
                     index_node_ids.append(doc.metadata.get("doc_id"))
 
             # Batch query ChildChunk
-            child_chunks = db.session.query(ChildChunk).filter(
-                ChildChunk.index_node_id.in_(child_index_node_ids)).all()
+            child_chunks = db.session.query(ChildChunk).filter(ChildChunk.index_node_id.in_(child_index_node_ids)).all()
             child_chunk_map = {chunk.index_node_id: chunk for chunk in child_chunks}
 
             # Batch query DocumentSegment with unified conditions
             segment_map = {
                 segment.id: segment
-                for segment in db.session.query(DocumentSegment).filter(
+                for segment in db.session.query(DocumentSegment)
+                .filter(
                     (
                         DocumentSegment.index_node_id.in_(index_node_ids)
                         | DocumentSegment.id.in_([chunk.segment_id for chunk in child_chunks])
                     ),
                     DocumentSegment.enabled == True,
-                    DocumentSegment.status == "completed"
+                    DocumentSegment.status == "completed",
                 )
                 .options(
                     load_only(
@@ -360,10 +360,7 @@ class RetrievalService:
 
                     if segment.id not in include_segment_ids:
                         include_segment_ids.add(segment.id)
-                        map_detail = {
-                            "max_score": document.metadata.get("score", 0.0),
-                            "child_chunks": []
-                        }
+                        map_detail = {"max_score": document.metadata.get("score", 0.0), "child_chunks": []}
                         segment_child_map[segment.id] = map_detail
                         records.append({"segment": segment})
 
@@ -376,8 +373,7 @@ class RetrievalService:
                     }
                     segment_child_map[segment.id]["child_chunks"].append(child_chunk_detail)
                     segment_child_map[segment.id]["max_score"] = max(
-                        segment_child_map[segment.id]["max_score"],
-                        document.metadata.get("score", 0.0)
+                        segment_child_map[segment.id]["max_score"], document.metadata.get("score", 0.0)
                     )
 
                 else:
@@ -386,21 +382,26 @@ class RetrievalService:
                     if not index_node_id:
                         continue
 
-                    segment = next((
-                        s for s in segment_map.values()
-                        if s.index_node_id == index_node_id
-                        and s.dataset_id == dataset_document.dataset_id
-                    ), None)
+                    segment = next(
+                        (
+                            s
+                            for s in segment_map.values()
+                            if s.index_node_id == index_node_id and s.dataset_id == dataset_document.dataset_id
+                        ),
+                        None,
+                    )
 
                     if not segment:
                         continue
 
                     if segment.id not in include_segment_ids:
                         include_segment_ids.add(segment.id)
-                        records.append({
-                            "segment": segment,
-                            "score": document.metadata.get("score", 0.0),
-                        })
+                        records.append(
+                            {
+                                "segment": segment,
+                                "score": document.metadata.get("score", 0.0),
+                            }
+                        )
 
             # Merge child chunks information
             for record in records:
