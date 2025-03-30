@@ -1,4 +1,3 @@
-from collections.abc import Sequence
 from enum import Enum, StrEnum
 from typing import Any, Annotated, Literal, Optional, Union, Union
 
