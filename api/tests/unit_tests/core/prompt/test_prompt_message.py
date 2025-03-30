@@ -1,4 +1,8 @@
-from core.model_runtime.entities.message_entities import ImagePromptMessageContent, TextPromptMessageContent, UserPromptMessage
+from core.model_runtime.entities.message_entities import (
+    ImagePromptMessageContent,
+    TextPromptMessageContent,
+    UserPromptMessage,
+)
 
 
 def test_build_prompt_message_with_prompt_message_contents():
