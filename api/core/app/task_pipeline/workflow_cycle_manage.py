@@ -154,7 +154,7 @@ class WorkflowCycleManage:
     ) -> WorkflowRun:
         """
         Workflow run success
-        :param workflow_run: workflow run
+        :param workflow_run_id: workflow run id
         :param start_at: start time
         :param total_tokens: total tokens
         :param total_steps: total steps
@@ -237,7 +237,7 @@ class WorkflowCycleManage:
     ) -> WorkflowRun:
         """
         Workflow run failed
-        :param workflow_run: workflow run
+        :param workflow_run_id: workflow run id
         :param start_at: start time
         :param total_tokens: total tokens
         :param total_steps: total steps
