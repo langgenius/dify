@@ -14,7 +14,7 @@ const Options: FC<TimeOptionsProps> = ({
   return (
     <div className='grid grid-cols-3 gap-x-1 p-2'>
       {/* Hour */}
-      <ul className='flex flex-col gap-y-0.5 h-[208px] overflow-y-auto no-scrollbar pb-[184px]'>
+      <ul className='no-scrollbar flex h-[208px] flex-col gap-y-0.5 overflow-y-auto pb-[184px]'>
         {
           hourOptions.map((hour) => {
             const isSelected = selectedTime?.format('hh') === hour
@@ -31,7 +31,7 @@ const Options: FC<TimeOptionsProps> = ({
         }
       </ul>
       {/* Minute */}
-      <ul className='flex flex-col gap-y-0.5 h-[208px] overflow-y-auto no-scrollbar pb-[184px]'>
+      <ul className='no-scrollbar flex h-[208px] flex-col gap-y-0.5 overflow-y-auto pb-[184px]'>
         {
           minuteOptions.map((minute) => {
             const isSelected = selectedTime?.format('mm') === minute
@@ -48,7 +48,7 @@ const Options: FC<TimeOptionsProps> = ({
         }
       </ul>
       {/* Period */}
-      <ul className='flex flex-col gap-y-0.5 h-[208px] overflow-y-auto no-scrollbar pb-[184px]'>
+      <ul className='no-scrollbar flex h-[208px] flex-col gap-y-0.5 overflow-y-auto pb-[184px]'>
         {
           periodOptions.map((period) => {
             const isSelected = selectedTime?.format('A') === period

@@ -14,7 +14,7 @@ import { useProviderContext } from '@/context/provider-context'
 import AppsFull from '@/app/components/billing/apps-full-in-dialog'
 import type { AppIconType } from '@/types/app'
 
-export interface CreateAppModalProps {
+export type CreateAppModalProps = {
   show: boolean
   isEditModal?: boolean
   appName: string
@@ -88,19 +88,19 @@ const CreateAppModal = ({
         onClose={() => {}}
         className='relative !max-w-[480px] px-8'
       >
-        <div className='absolute right-4 top-4 p-2 cursor-pointer' onClick={onHide}>
-          <RiCloseLine className='w-4 h-4 text-gray-500' />
+        <div className='absolute right-4 top-4 cursor-pointer p-2' onClick={onHide}>
+          <RiCloseLine className='h-4 w-4 text-text-tertiary' />
         </div>
         {isEditModal && (
-          <div className='mb-9 font-semibold text-xl leading-[30px] text-gray-900'>{t('app.editAppTitle')}</div>
+          <div className='mb-9 text-xl font-semibold leading-[30px] text-text-primary'>{t('app.editAppTitle')}</div>
         )}
         {!isEditModal && (
-          <div className='mb-9 font-semibold text-xl leading-[30px] text-gray-900'>{t('explore.appCustomize.title', { name: appName })}</div>
+          <div className='mb-9 text-xl font-semibold leading-[30px] text-text-primary'>{t('explore.appCustomize.title', { name: appName })}</div>
         )}
         <div className='mb-9'>
           {/* icon & name */}
           <div className='pt-2'>
-            <div className='py-2 text-sm font-medium leading-[20px] text-gray-900'>{t('app.newApp.captionName')}</div>
+            <div className='py-2 text-sm font-medium leading-[20px] text-text-primary'>{t('app.newApp.captionName')}</div>
             <div className='flex items-center justify-between space-x-2'>
               <AppIcon
                 size='large'
@@ -115,13 +115,13 @@ const CreateAppModal = ({
                 value={name}
                 onChange={e => setName(e.target.value)}
                 placeholder={t('app.newApp.appNamePlaceholder') || ''}
-                className='grow h-10'
+                className='h-10 grow'
               />
             </div>
           </div>
           {/* description */}
           <div className='pt-2'>
-            <div className='py-2 text-sm font-medium leading-[20px] text-gray-900'>{t('app.newApp.captionDescription')}</div>
+            <div className='py-2 text-sm font-medium leading-[20px] text-text-primary'>{t('app.newApp.captionDescription')}</div>
             <Textarea
               className='resize-none'
               placeholder={t('app.newApp.appDescriptionPlaceholder') || ''}
@@ -132,20 +132,20 @@ const CreateAppModal = ({
           {/* answer icon */}
           {isEditModal && (appMode === 'chat' || appMode === 'advanced-chat' || appMode === 'agent-chat') && (
             <div className='pt-2'>
-              <div className='flex justify-between items-center'>
-                <div className='py-2 text-sm font-medium leading-[20px] text-gray-900'>{t('app.answerIcon.title')}</div>
+              <div className='flex items-center justify-between'>
+                <div className='py-2 text-sm font-medium leading-[20px] text-text-primary'>{t('app.answerIcon.title')}</div>
                 <Switch
                   defaultValue={useIconAsAnswerIcon}
                   onChange={v => setUseIconAsAnswerIcon(v)}
                 />
               </div>
-              <p className='body-xs-regular text-gray-500'>{t('app.answerIcon.descriptionInExplore')}</p>
+              <p className='body-xs-regular text-text-tertiary'>{t('app.answerIcon.descriptionInExplore')}</p>
             </div>
           )}
           {!isEditModal && isAppsFull && <AppsFull loc='app-explore-create' />}
         </div>
         <div className='flex flex-row-reverse'>
-          <Button disabled={!isEditModal && isAppsFull} className='w-24 ml-2' variant='primary' onClick={submit}>{!isEditModal ? t('common.operation.create') : t('common.operation.save')}</Button>
+          <Button disabled={!isEditModal && isAppsFull} className='ml-2 w-24' variant='primary' onClick={submit}>{!isEditModal ? t('common.operation.create') : t('common.operation.save')}</Button>
           <Button className='w-24' onClick={onHide}>{t('common.operation.cancel')}</Button>
         </div>
       </Modal>

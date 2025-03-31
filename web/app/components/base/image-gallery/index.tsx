@@ -38,7 +38,7 @@ const ImageGallery: FC<Props> = ({
     <div className={cn(s[`img-${imgNum}`], 'flex flex-wrap')}>
       {/* TODO: support preview */}
       {srcs.map((src, index) => (
-        // eslint-disable-next-line @next/next/no-img-element
+
         <img
           key={index}
           className={s.item}
@@ -75,7 +75,7 @@ export const ImageGalleryTest = () => {
   return (
     <div className='space-y-2'>
       {imgGallerySrcs.map((_, index) => (
-        <div key={index} className='p-4 pb-2 rounded-lg bg-[#D1E9FF80]'>
+        <div key={index} className='rounded-lg bg-[#D1E9FF80] p-4 pb-2'>
           <ImageGallery srcs={imgGallerySrcs.slice(0, index + 1)} />
         </div>
       ))}

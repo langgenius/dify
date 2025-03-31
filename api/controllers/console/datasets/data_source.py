@@ -122,7 +122,7 @@ class DataSourceNotionListApi(Resource):
                 if dataset.data_source_type != "notion_import":
                     raise ValueError("Dataset is not notion type.")
 
-                documents = session.execute(
+                documents = session.scalars(
                     select(Document).filter_by(
                         dataset_id=dataset_id,
                         tenant_id=current_user.current_tenant_id,

@@ -27,7 +27,6 @@ import SearchBox from '@/app/components/plugins/marketplace/search-box'
 import {
   Plus02,
 } from '@/app/components/base/icons/src/vender/line/general'
-import classNames from '@/utils/classnames'
 
 type NodeSelectorProps = {
   open?: boolean
@@ -117,13 +116,13 @@ const NodeSelector: FC<NodeSelectorProps> = ({
             : (
               <div
                 className={`
-                  flex items-center justify-center 
-                  w-4 h-4 rounded-full bg-components-button-primary-bg text-text-primary-on-surface hover:bg-components-button-primary-bg-hover cursor-pointer z-10
+                  z-10 flex h-4 
+                  w-4 cursor-pointer items-center justify-center rounded-full bg-components-button-primary-bg text-text-primary-on-surface hover:bg-components-button-primary-bg-hover
                   ${triggerClassName?.(open)}
                 `}
                 style={triggerStyle}
               >
-                <Plus02 className='w-2.5 h-2.5' />
+                <Plus02 className='h-2.5 w-2.5' />
               </div>
             )
         }

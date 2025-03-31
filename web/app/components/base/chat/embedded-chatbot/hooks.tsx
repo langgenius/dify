@@ -88,7 +88,6 @@ export const useEmbeddedChatbot = () => {
       })
     }
   }, [appId, conversationIdInfo, setConversationIdInfo])
-  const [showConfigPanelBeforeChat, setShowConfigPanelBeforeChat] = useState(true)
 
   const [newConversationId, setNewConversationId] = useState('')
   const chatShouldReloadKey = useMemo(() => {
@@ -104,6 +103,8 @@ export const useEmbeddedChatbot = () => {
   const { data: appConversationData, isLoading: appConversationDataLoading, mutate: mutateAppConversationData } = useSWR(['appConversationData', isInstalledApp, appId, false], () => fetchConversations(isInstalledApp, appId, undefined, false, 100))
   const { data: appChatListData, isLoading: appChatListDataLoading } = useSWR(chatShouldReloadKey ? ['appChatList', chatShouldReloadKey, isInstalledApp, appId] : null, () => fetchChatList(chatShouldReloadKey, isInstalledApp, appId))
 
+  const [clearChatList, setClearChatList] = useState(false)
+  const [isResponding, setIsResponding] = useState(false)
   const appPrevChatList = useMemo(
     () => (currentConversationId && appChatListData?.data.length)
       ? buildChatItemTree(getFormattedChatList(appChatListData.data))
@@ -182,7 +183,10 @@ export const useEmbeddedChatbot = () => {
 
   useEffect(() => {
     // init inputs from url params
-    setInitInputs(getProcessedInputsFromUrlParams())
+    (async () => {
+      const inputs = await getProcessedInputsFromUrlParams()
+      setInitInputs(inputs)
+    })()
   }, [])
   useEffect(() => {
     const conversationInputs: Record<string, any> = {}
@@ -273,37 +277,27 @@ export const useEmbeddedChatbot = () => {
 
     return true
   }, [inputsForms, notify, t])
-  const handleStartChat = useCallback(() => {
+  const handleStartChat = useCallback((callback?: any) => {
     if (checkInputsRequired()) {
-      setShowConfigPanelBeforeChat(false)
       setShowNewConversationItemInList(true)
+      callback?.()
     }
-  }, [setShowConfigPanelBeforeChat, setShowNewConversationItemInList, checkInputsRequired])
+  }, [setShowNewConversationItemInList, checkInputsRequired])
   const currentChatInstanceRef = useRef<{ handleStop: () => void }>({ handleStop: () => { } })
   const handleChangeConversation = useCallback((conversationId: string) => {
     currentChatInstanceRef.current.handleStop()
     setNewConversationId('')
     handleConversationIdInfoChange(conversationId)
-
-    if (conversationId === '' && !checkInputsRequired(true))
-      setShowConfigPanelBeforeChat(true)
-    else
-      setShowConfigPanelBeforeChat(false)
-  }, [handleConversationIdInfoChange, setShowConfigPanelBeforeChat, checkInputsRequired])
-  const handleNewConversation = useCallback(() => {
+    if (conversationId)
+      setClearChatList(false)
+  }, [handleConversationIdInfoChange, setClearChatList])
+  const handleNewConversation = useCallback(async () => {
     currentChatInstanceRef.current.handleStop()
-    setNewConversationId('')
-
-    if (showNewConversationItemInList) {
-      handleChangeConversation('')
-    }
-    else if (currentConversationId) {
-      handleConversationIdInfoChange('')
-      setShowConfigPanelBeforeChat(true)
-      setShowNewConversationItemInList(true)
-      handleNewConversationInputsChange({})
-    }
-  }, [handleChangeConversation, currentConversationId, handleConversationIdInfoChange, setShowConfigPanelBeforeChat, setShowNewConversationItemInList, showNewConversationItemInList, handleNewConversationInputsChange])
+    setShowNewConversationItemInList(true)
+    handleChangeConversation('')
+    handleNewConversationInputsChange(await getProcessedInputsFromUrlParams())
+    setClearChatList(true)
+  }, [handleChangeConversation, setShowNewConversationItemInList, handleNewConversationInputsChange, setClearChatList])
 
   const handleNewConversationCompleted = useCallback((newConversationId: string) => {
     setNewConversationId(newConversationId)
@@ -336,8 +330,6 @@ export const useEmbeddedChatbot = () => {
     appPrevChatList,
     pinnedConversationList,
     conversationList,
-    showConfigPanelBeforeChat,
-    setShowConfigPanelBeforeChat,
     setShowNewConversationItemInList,
     newConversationInputs,
     newConversationInputsRef,
@@ -351,5 +343,9 @@ export const useEmbeddedChatbot = () => {
     chatShouldReloadKey,
     handleFeedback,
     currentChatInstanceRef,
+    clearChatList,
+    setClearChatList,
+    isResponding,
+    setIsResponding,
   }
 }

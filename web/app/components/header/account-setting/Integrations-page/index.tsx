@@ -34,16 +34,16 @@ export default function IntegrationsPage() {
         <div className={titleClassName}>{t('common.integrations.connected')}</div>
         {
           integrates.map(integrate => (
-            <div key={integrate.provider} className='mb-2 flex items-center px-3 py-2 bg-gray-50 border-[0.5px] border-gray-200 rounded-lg'>
+            <div key={integrate.provider} className='mb-2 flex items-center rounded-lg border-[0.5px] border-gray-200 bg-gray-50 px-3 py-2'>
               <div className={classNames('w-8 h-8 mr-3 bg-white rounded-lg border border-gray-100', s[`${integrate.provider}-icon`])} />
               <div className='grow'>
-                <div className='leading-[21px] text-sm font-medium text-gray-800'>{integrateMap[integrate.provider].name}</div>
-                <div className='leading-[18px] text-xs font-normal text-gray-500'>{integrateMap[integrate.provider].description}</div>
+                <div className='text-sm font-medium leading-[21px] text-gray-800'>{integrateMap[integrate.provider].name}</div>
+                <div className='text-xs font-normal leading-[18px] text-gray-500'>{integrateMap[integrate.provider].description}</div>
               </div>
               {
                 !integrate.is_bound && (
                   <Link
-                    className='flex items-center h-8 px-[7px] bg-white rounded-lg border border-gray-200 text-xs font-medium text-gray-700 cursor-pointer'
+                    className='flex h-8 cursor-pointer items-center rounded-lg border border-gray-200 bg-white px-[7px] text-xs font-medium text-gray-700'
                     href={integrate.link}
                     target='_blank' rel='noopener noreferrer'>
                     {t('common.integrations.connect')}

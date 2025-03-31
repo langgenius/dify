@@ -17,7 +17,11 @@ from core.external_data_tool.external_data_fetch import ExternalDataFetch
 from core.memory.token_buffer_memory import TokenBufferMemory
 from core.model_manager import ModelInstance
 from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta, LLMUsage
-from core.model_runtime.entities.message_entities import AssistantPromptMessage, PromptMessage
+from core.model_runtime.entities.message_entities import (
+    AssistantPromptMessage,
+    ImagePromptMessageContent,
+    PromptMessage,
+)
 from core.model_runtime.entities.model_entities import ModelPropertyKey
 from core.model_runtime.errors.invoke import InvokeBadRequestError
 from core.moderation.input_moderation import InputModeration
@@ -141,6 +145,7 @@ class AppRunner:
         query: Optional[str] = None,
         context: Optional[str] = None,
         memory: Optional[TokenBufferMemory] = None,
+        image_detail_config: Optional[ImagePromptMessageContent.DETAIL] = None,
     ) -> tuple[list[PromptMessage], Optional[list[str]]]:
         """
         Organize prompt messages
@@ -167,6 +172,7 @@ class AppRunner:
                 context=context,
                 memory=memory,
                 model_config=model_config,
+                image_detail_config=image_detail_config,
             )
         else:
             memory_config = MemoryConfig(window=MemoryConfig.WindowConfig(enabled=False))
@@ -201,6 +207,7 @@ class AppRunner:
                 memory_config=memory_config,
                 memory=memory,
                 model_config=model_config,
+                image_detail_config=image_detail_config,
             )
             stop = model_config.stop
 

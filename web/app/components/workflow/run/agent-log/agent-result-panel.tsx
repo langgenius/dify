@@ -19,13 +19,13 @@ const AgentResultPanel = ({
   const list = agentOrToolLogListMap[top.id]
 
   return (
-    <div className='bg-background-section overflow-y-auto'>
+    <div className='overflow-y-auto bg-background-section'>
       <AgentLogNav
         agentOrToolLogItemStack={agentOrToolLogItemStack}
         onShowAgentOrToolLog={onShowAgentOrToolLog}
       />
       {
-        <div className='p-2 space-y-1'>
+        <div className='space-y-1 p-2'>
           {
             list.map(item => (
               <AgentLogItem
@@ -39,14 +39,14 @@ const AgentResultPanel = ({
       }
       {
         top.hasCircle && (
-          <div className='flex items-center mt-1 rounded-xl px-3 pr-2 border border-components-panel-border bg-components-panel-bg-blur shadow-md'>
+          <div className='mt-1 flex items-center rounded-xl border border-components-panel-border bg-components-panel-bg-blur px-3 pr-2 shadow-md'>
             <div
-              className='absolute inset-0 opacity-[0.4] rounded-xl'
+              className='absolute inset-0 rounded-xl opacity-[0.4]'
               style={{
                 background: 'linear-gradient(92deg, rgba(247, 144, 9, 0.25) 0%, rgba(255, 255, 255, 0.00) 100%)',
               }}
             ></div>
-            <RiAlertFill className='mr-1.5 w-4 h-4 text-text-warning-secondary' />
+            <RiAlertFill className='mr-1.5 h-4 w-4 text-text-warning-secondary' />
             <div className='system-xs-medium text-text-primary'>
               {t('runLog.circularInvocationTip')}
             </div>
