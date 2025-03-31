@@ -495,18 +495,10 @@ def test_variable_pool_error_type_variable():
 def test_no_node_in_fail_branch_continue_on_error():
     """Test HTTP node with fail-branch error strategy"""
     graph_config = {
-        "edges": FAIL_BRANCH_EDGES
-        + [{"id": "fail-source-answer-target", "source": "node", "target": "answer", "sourceHandle": "source"}],
+        "edges": FAIL_BRANCH_EDGES[:-1],
         "nodes": [
             {"data": {"title": "Start", "type": "start", "variables": []}, "id": "start"},
-            {
-                "data": {"title": "success", "type": "answer", "answer": "LLM request successful"},
-                "id": "success",
-            },
-            {
-                "data": {"title": "success", "type": "answer", "answer": "{{#node.query#}}"},
-                "id": "success",
-            },
+            {"data": {"title": "success", "type": "answer", "answer": "HTTP request successful"}, "id": "success"},
             ContinueOnErrorTestHelper.get_http_node(),
         ],
     }
