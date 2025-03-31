@@ -15,7 +15,7 @@ class LoopVariableData(BaseModel):
     label: str
     var_type: Literal["string", "number", "object", "array[string]", "array[number]", "array[object]"]
     value_type: Literal["variable", "constant"]
-    value: Any | list[str]
+    value: Optional[Any | list[str]] = None
 
 
 class LoopNodeData(BaseLoopNodeData):

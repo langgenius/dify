@@ -132,11 +132,10 @@ class LoopNode(BaseNode[LoopNodeData]):
             index=0,
             pre_loop_output=None,
         )
-
+        loop_duration_map = {}
+        single_loop_variable_map = {}  # single loop variable output
         try:
             check_break_result = False
-            loop_duration_map = {}
-            single_loop_variable_map = {}  # single loop variable output
             for i in range(loop_count):
                 loop_start_time = datetime.now(UTC).replace(tzinfo=None)
                 # run single loop
@@ -180,6 +179,7 @@ class LoopNode(BaseNode[LoopNodeData]):
                     NodeRunMetadataKey.TOTAL_TOKENS: graph_engine.graph_runtime_state.total_tokens,
                     "completed_reason": "loop_break" if check_break_result else "loop_completed",
                     NodeRunMetadataKey.LOOP_DURATION_MAP: loop_duration_map,
+                    NodeRunMetadataKey.LOOP_VARIABLE_MAP: single_loop_variable_map,
                 },
             )
 
@@ -210,6 +210,8 @@ class LoopNode(BaseNode[LoopNodeData]):
                 metadata={
                     "total_tokens": graph_engine.graph_runtime_state.total_tokens,
                     "completed_reason": "error",
+                    NodeRunMetadataKey.LOOP_DURATION_MAP: loop_duration_map,
+                    NodeRunMetadataKey.LOOP_VARIABLE_MAP: single_loop_variable_map,
                 },
                 error=str(e),
             )
@@ -218,7 +220,11 @@ class LoopNode(BaseNode[LoopNodeData]):
                 run_result=NodeRunResult(
                     status=WorkflowNodeExecutionStatus.FAILED,
                     error=str(e),
-                    metadata={NodeRunMetadataKey.TOTAL_TOKENS: graph_engine.graph_runtime_state.total_tokens},
+                    metadata={
+                        NodeRunMetadataKey.TOTAL_TOKENS: graph_engine.graph_runtime_state.total_tokens,
+                        NodeRunMetadataKey.LOOP_DURATION_MAP: loop_duration_map,
+                        NodeRunMetadataKey.LOOP_VARIABLE_MAP: single_loop_variable_map,
+                    },
                 )
             )
 
@@ -471,6 +477,9 @@ class LoopNode(BaseNode[LoopNodeData]):
             "array[object]": ArrayObjectSegment,
         }
         if var_type in ["array[string]", "array[number]", "array[object]"]:
-            value = json.loads(value)
+            if value:
+                value = json.loads(value)
+            else:
+                value = []
         segment_class = segment_mapping.get(var_type)
         return segment_class(value=value) if segment_class else None
