@@ -134,8 +134,9 @@ def _build_from_local_file(
     if row is None:
         raise ValueError("Invalid upload file")
 
-    file_type = FileType(mapping.get("type", "custom"))
-    file_type = _standardize_file_type(file_type, extension="." + row.extension, mime_type=row.mime_type)
+    file_type = _standardize_file_type(extension="." + row.extension, mime_type=row.mime_type)
+    if file_type.value != mapping.get("type", "custom"):
+        raise ValueError("Detected file type does not match the specified type. Please verify the file.")
 
     return File(
         id=mapping.get("id"),
@@ -173,10 +174,9 @@ def _build_from_remote_url(
         if upload_file is None:
             raise ValueError("Invalid upload file")
 
-        file_type = FileType(mapping.get("type", "custom"))
-        file_type = _standardize_file_type(
-            file_type, extension="." + upload_file.extension, mime_type=upload_file.mime_type
-        )
+        file_type = _standardize_file_type(extension="." + upload_file.extension, mime_type=upload_file.mime_type)
+        if file_type.value != mapping.get("type", "custom"):
+            raise ValueError("Detected file type does not match the specified type. Please verify the file.")
 
         return File(
             id=mapping.get("id"),
@@ -198,8 +198,9 @@ def _build_from_remote_url(
     mime_type, filename, file_size = _get_remote_file_info(url)
     extension = mimetypes.guess_extension(mime_type) or ("." + filename.split(".")[-1] if "." in filename else ".bin")
 
-    file_type = FileType(mapping.get("type", "custom"))
-    file_type = _standardize_file_type(file_type, extension=extension, mime_type=mime_type)
+    file_type = _standardize_file_type(extension=extension, mime_type=mime_type)
+    if file_type.value != mapping.get("type", "custom"):
+        raise ValueError("Detected file type does not match the specified type. Please verify the file.")
 
     return File(
         id=mapping.get("id"),
@@ -250,8 +251,10 @@ def _build_from_tool_file(
         raise ValueError(f"ToolFile {mapping.get('tool_file_id')} not found")
 
     extension = "." + tool_file.file_key.split(".")[-1] if "." in tool_file.file_key else ".bin"
-    file_type = FileType(mapping.get("type", "custom"))
-    file_type = _standardize_file_type(file_type, extension=extension, mime_type=tool_file.mimetype)
+
+    file_type = _standardize_file_type(extension=extension, mime_type=tool_file.mimetype)
+    if file_type.value != mapping.get("type", "custom"):
+        raise ValueError("Detected file type does not match the specified type. Please verify the file.")
 
     return File(
         id=mapping.get("id"),
@@ -302,12 +305,10 @@ def _is_file_valid_with_config(
     return True
 
 
-def _standardize_file_type(file_type: FileType, /, *, extension: str = "", mime_type: str = "") -> FileType:
+def _standardize_file_type(*, extension: str = "", mime_type: str = "") -> FileType:
     """
-    If custom type, try to guess the file type by extension and mime_type.
+    Infer the possible actual type of the file based on the extension and mime_type
     """
-    if file_type != FileType.CUSTOM:
-        return FileType(file_type)
     guessed_type = None
     if extension:
         guessed_type = _get_file_type_by_extension(extension)
