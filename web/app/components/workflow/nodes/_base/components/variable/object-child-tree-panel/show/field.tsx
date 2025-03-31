@@ -15,6 +15,7 @@ type Props = {
   payload: FieldType,
   required: boolean,
   depth?: number,
+  rootClassName?: string
 }
 
 const Field: FC<Props> = ({
@@ -22,8 +23,10 @@ const Field: FC<Props> = ({
   payload,
   depth = 1,
   required,
+  rootClassName,
 }) => {
   const { t } = useTranslation()
+  const isRoot = depth === 1
   const hasChildren = payload.type === Type.object && payload.properties
   const [fold, {
     toggle: toggleFold,
@@ -40,7 +43,7 @@ const Field: FC<Props> = ({
                 onClick={toggleFold}
               />
             )}
-            <div className='system-sm-medium h-6 truncate leading-6 text-text-secondary'>{name}</div>
+            <div className={cn('system-sm-medium h-6 truncate leading-6 text-text-secondary', isRoot && rootClassName)}>{name}</div>
             <div className='system-xs-regular ml-3 shrink-0 leading-6 text-text-tertiary'>{getFieldType(payload)}</div>
             {required && <div className='system-2xs-medium-uppercase ml-3 leading-6 text-text-warning'>{t('app.structOutput.required')}</div>}
           </div>

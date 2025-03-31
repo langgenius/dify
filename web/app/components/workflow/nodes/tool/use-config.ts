@@ -262,15 +262,31 @@ const useConfig = (id: string, payload: ToolNodeType) => {
       return []
     Object.keys(output_schema.properties).forEach((outputKey) => {
       const output = output_schema.properties[outputKey]
-      res.push({
-        name: outputKey,
-        type: output.type === 'array'
-          ? `Array[${output.items?.type.slice(0, 1).toLocaleUpperCase()}${output.items?.type.slice(1)}]`
-          : `${output.type.slice(0, 1).toLocaleUpperCase()}${output.type.slice(1)}`,
-        description: output.description,
-      })
+      const type = output.type
+      if (type === 'object') {
+        res.push({
+          name: outputKey,
+          value: output,
+        })
+      }
+      else {
+        res.push({
+          name: outputKey,
+          type: output.type === 'array'
+            ? `Array[${output.items?.type.slice(0, 1).toLocaleUpperCase()}${output.items?.type.slice(1)}]`
+            : `${output.type.slice(0, 1).toLocaleUpperCase()}${output.type.slice(1)}`,
+          description: output.description,
+        })
+      }
     })
     return res
+  }, [output_schema])
+
+  const hasObjectOutput = useMemo(() => {
+    if (!output_schema)
+      return false
+    const properties = output_schema.properties
+    return Object.keys(properties).some(key => properties[key].type === 'object')
   }, [output_schema])
 
   return {
@@ -302,6 +318,7 @@ const useConfig = (id: string, payload: ToolNodeType) => {
     handleStop,
     runResult,
     outputSchema,
+    hasObjectOutput,
   }
 }
 

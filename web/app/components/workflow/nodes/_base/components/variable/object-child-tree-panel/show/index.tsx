@@ -7,10 +7,12 @@ import { useTranslation } from 'react-i18next'
 
 type Props = {
   payload: StructuredOutput
+  rootClassName?: string
 }
 
 const ShowPanel: FC<Props> = ({
   payload,
+  rootClassName,
 }) => {
   const { t } = useTranslation()
   const schema = {
@@ -28,6 +30,7 @@ const ShowPanel: FC<Props> = ({
           name={name}
           payload={schema.schema.properties![name]}
           required={!!schema.schema.required?.includes(name)}
+          rootClassName={rootClassName}
         />
       ))}
     </div>

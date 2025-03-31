@@ -4,15 +4,17 @@ import React from 'react'
 import cn from '@/utils/classnames'
 
 type Props = {
-  depth?: number
+  depth?: number,
+  className?: string,
 }
 
 const TreeIndentLine: FC<Props> = ({
   depth = 1,
+  className,
 }) => {
   const depthArray = Array.from({ length: depth }, (_, index) => index)
   return (
-    <div className='ml-2.5 mr-2.5 flex space-x-[12px]'>
+    <div className={cn('ml-2.5 mr-2.5 flex space-x-[12px]', className)}>
       {depthArray.map(d => (
         <div key={d} className={cn('w-px bg-divider-regular')}></div>
       ))}
