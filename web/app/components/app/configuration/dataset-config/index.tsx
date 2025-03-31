@@ -182,7 +182,6 @@ const DatasetConfig: FC = () => {
   }, [setDatasetConfigs, datasetConfigsRef])
 
   const handleUpdateCondition = useCallback<HandleUpdateCondition>((id, newCondition) => {
-    console.log(newCondition, 'newCondition')
     const conditions = datasetConfigsRef.current!.metadata_filtering_conditions?.conditions || []
     const index = conditions.findIndex(c => c.id === id)
     const newInputs = produce(datasetConfigsRef.current!, (draft) => {
