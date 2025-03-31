@@ -3,9 +3,6 @@ import logging
 from collections.abc import Callable, Generator, Iterable, Sequence
 from typing import IO, Any, Literal, Optional, Union, cast, overload
 
-from packaging import version
-from packaging.version import Version
-
 from configs import dify_config
 from core.entities.embedding_type import EmbeddingInputType
 from core.entities.provider_configuration import ProviderConfiguration, ProviderModelBundle
@@ -14,7 +11,7 @@ from core.errors.error import ProviderTokenNotInitError
 from core.model_runtime.callbacks.base_callback import Callback
 from core.model_runtime.entities.llm_entities import LLMResult
 from core.model_runtime.entities.message_entities import PromptMessage, PromptMessageTool, UserPromptMessage
-from core.model_runtime.entities.model_entities import AIModelEntity, ModelType, ParameterRule
+from core.model_runtime.entities.model_entities import AIModelEntity, ModelType
 from core.model_runtime.entities.rerank_entities import RerankResult
 from core.model_runtime.entities.text_embedding_entities import TextEmbeddingResult
 from core.model_runtime.errors.invoke import InvokeAuthorizationError, InvokeConnectionError, InvokeRateLimitError
@@ -444,8 +441,7 @@ class ModelInstance:
         if not model_schema:
             raise ValueError("Unable to fetch model schema")
         rules = model_schema.parameter_rules
-        schema_key = self._retrieve_structured_output_key(rules)
-        if schema_key == "json_schema":
+        if "json_schema" in [rule.name for rule in rules]:
             name = {"name": "llm_response"}
             if "gemini" in self.model:
 
@@ -459,14 +455,15 @@ class ModelInstance:
 
                 remove_additional_properties(schema)
                 schema_json = schema
+            elif "ollama" in self.provider:
+                schema_json = schema
             else:
                 schema_json = {"schema": schema, **name}
 
             model_parameters["json_schema"] = json.dumps(schema_json, ensure_ascii=False)
-
-        elif schema_key == "format" and self.fetch_model_version() > version.parse("0.0.3"):
-            model_parameters["format"] = json.dumps(schema, ensure_ascii=False)
-
+            for rule in rules:
+                if rule.name == "response_format" and "json_schema" in rule.options:
+                    model_parameters["response_format"] = "json_schema"
         else:
             content = prompt[-1].content if isinstance(prompt[-1].content, str) else ""
             structured_output_prompt = STRUCTURED_OUTPUT_PROMPT.replace("{{schema}}", structured_output_schema).replace(
@@ -474,10 +471,14 @@ class ModelInstance:
             )
             structured_output_prompt_message = UserPromptMessage(content=structured_output_prompt)
             prompt = list(prompt[:-1]) + [structured_output_prompt_message]
+            for rule in rules:
+                if rule.name == "response_format":
+                    if "JSON" in rule.options:
+                        model_parameters["response_format"] = "JSON"
+                    elif "json_object" in rule.options:
+                        model_parameters["response_format"] = "json_object"
             return {"prompt": prompt, "parameters": model_parameters}
-        for rule in rules:
-            if rule.name == "response_format":
-                model_parameters["response_format"] = "JSON" if "JSON" in rule.options else "json_schema"
+
         return {"prompt": prompt, "parameters": model_parameters}
 
     def _fetch_model_schema(self, provider: str, model_type: ModelType, model: str) -> AIModelEntity | None:
@@ -488,26 +489,6 @@ class ModelInstance:
         return model_provider.get_model_schema(
             provider=provider, model_type=model_type, model=model, credentials=self.credentials
         )
-
-    def fetch_model_version(self) -> Version:
-        """
-        Check if the model is a plugin model
-        """
-        try:
-            unique_id = self.model_type_instance.plugin_model_provider.plugin_unique_identifier
-            if not unique_id or ":" not in unique_id or "@" not in unique_id:
-                return version.parse("0.0.0")
-            return version.parse(unique_id.split(":")[1].split("@")[0])
-        except (AttributeError, IndexError) as e:
-            return version.parse("0.0.0")
-
-    def _retrieve_structured_output_key(self, parameter_rules: list[ParameterRule]) -> str | None:
-        """
-        Check if the model is supported structured output
-        """
-        supported_schema_keys = ["json_schema", "format"]
-        schema_key = next((rule.name for rule in parameter_rules if rule.name in supported_schema_keys), None)
-        return schema_key
 
 
 class ModelManager:
