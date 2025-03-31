@@ -274,6 +274,7 @@ export type Var = {
   des?: string
   isException?: boolean
   isLoopVariable?: boolean
+  nodeId?: string
 }
 
 export type NodeOutPutVar = {

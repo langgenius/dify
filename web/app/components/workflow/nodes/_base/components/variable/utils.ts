@@ -365,6 +365,7 @@ const formatItem = (
           variable: v.label,
           type: v.var_type,
           isLoopVariable: true,
+          nodeId: res.nodeId,
         }
       }) || []
 
