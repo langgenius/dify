@@ -153,7 +153,7 @@ class BuiltinToolProviderController(ToolProviderController):
         """
         validate the credentials of the provider
 
-        :param tool_name: the name of the tool, defined in `get_tools`
+        :param user_id: use id
         :param credentials: the credentials of the tool
         """
         # validate credentials format
@@ -167,7 +167,7 @@ class BuiltinToolProviderController(ToolProviderController):
         """
         validate the credentials of the provider
 
-        :param tool_name: the name of the tool, defined in `get_tools`
+        :param user_id: use id
         :param credentials: the credentials of the tool
         """
         pass

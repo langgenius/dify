@@ -14,15 +14,6 @@ class UnstructuredMarkdownExtractor(BaseExtractor):
     Args:
         file_path: Path to the file to load.
 
-        remove_hyperlinks: Whether to remove hyperlinks from the text.
-
-        remove_images: Whether to remove images from the text.
-
-        encoding: File encoding to use. If `None`, the file will be loaded
-        with the default system encoding.
-
-        autodetect_encoding: Whether to try to autodetect the file encoding
-            if the specified encoding fails.
     """
 
     def __init__(self, file_path: str, api_url: Optional[str] = None, api_key: str = ""):

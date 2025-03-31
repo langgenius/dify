@@ -313,7 +313,6 @@ class ToolEngine:
         """
         Create message file
 
-        :param messages: messages
         :return: message file ids
         """
         result = []
