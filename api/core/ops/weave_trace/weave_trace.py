@@ -279,8 +279,8 @@ class WeaveDataTrace(BaseTraceInstance):
         attributes = trace_info.metadata
         attributes["tags"] = ["moderation"]
         attributes["message_id"] = trace_info.message_id
-        attributes["start_time"] = (trace_info.start_time or trace_info.message_data.created_at,)
-        attributes["end_time"] = (trace_info.end_time or trace_info.message_data.updated_at,)
+        attributes["start_time"] = trace_info.start_time or trace_info.message_data.created_at
+        attributes["end_time"] = trace_info.end_time or trace_info.message_data.updated_at
 
         moderation_run = WeaveTraceModel(
             id=str(uuid.uuid4()),

@@ -65,7 +65,8 @@ class WeaveTraceModel(WeaveTokenUsage, WeaveMultiModel):
                 v = replace_text_with_content(data=v)
                 if field_name == "inputs":
                     data = {
-                        "messages": v,
+                        "messages": [dict(msg, **{"usage_metadata": usage_metadata, "file_list": file_list}) for msg in
+                                     v] if isinstance(v, list) else v,
                     }
                 elif field_name == "outputs":
                     data = {
