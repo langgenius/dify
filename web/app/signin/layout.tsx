@@ -6,6 +6,7 @@ import cn from '@/utils/classnames'
 export default async function SignInLayout({ children }: any) {
   return <>
     <div className={cn(
+      'bg-background-body',
       style.background,
       'flex min-h-screen w-full',
       'sm:p-4 lg:p-8',
@@ -14,7 +15,7 @@ export default async function SignInLayout({ children }: any) {
     )}>
       <div className={
         cn(
-          'flex w-full shrink-0 flex-col rounded-2xl bg-white shadow',
+          'flex w-full shrink-0 flex-col rounded-2xl bg-background-section-burn shadow',
           'space-between',
         )
       }>
