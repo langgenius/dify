@@ -40,8 +40,9 @@ class OpenDALStorage(BaseStorage):
         self.op = self.op.layer(retry_layer)
         logger.debug("added retry layer to opendal operator")
 
-    def save(self, filename: str, data: bytes) -> None:
-        self.op.write(path=filename, bs=data)
+    def save(self, filename: str, data: bytes, content_type=None) -> None:
+        content_type = content_type or "application/octet-stream"
+        self.op.write(path=filename, bs=data, content_type=content_type)
         logger.debug(f"file {filename} saved")
 
     def load_once(self, filename: str) -> bytes:
