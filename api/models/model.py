@@ -1866,11 +1866,15 @@ class UserGeneratedImage(db.Model):  # type: ignore[name-defined]
     id = db.Column(StringUUID, server_default=db.text("uuid_generate_v4()"))
     app_id = db.Column(StringUUID, nullable=False)
     end_user_id = db.Column(StringUUID, nullable=False)
-    workflow_run_id = db.Column(StringUUID, nullable=False)  # related generation id
+    workflow_run_id = db.Column(StringUUID, nullable=True)  # related generation id (nullable for pending status)
     content_type = db.Column(db.String(255), nullable=False)  # 'self_message' or 'summary_advice'
     image_url = db.Column(db.Text, nullable=True)
     text_content = db.Column(db.Text, nullable=True)
     raw_content = db.Column(db.JSON, nullable=True)  # save raw llm outputs
+    status = db.Column(
+        db.String(20), nullable=False, server_default="pending"
+    )  # pending, processing, completed, failed
+    error_message = db.Column(db.Text, nullable=True)
     created_at = db.Column(db.DateTime, nullable=False, server_default=db.func.current_timestamp())
     updated_at = db.Column(
         db.DateTime, nullable=False, server_default=db.func.current_timestamp(), onupdate=db.func.current_timestamp()
@@ -1879,23 +1883,3 @@ class UserGeneratedImage(db.Model):  # type: ignore[name-defined]
     @property
     def end_user(self):
         return db.session.query(EndUser).filter(EndUser.id == self.end_user_id).first()
-
-    @property
-    def status(self):
-        workflow_run = db.session.query(WorkflowRun).filter(WorkflowRun.id == self.workflow_run_id).first()
-
-        if workflow_run is None:
-            return WorkflowRunStatus.FAILED.value
-
-        return workflow_run.status
-
-    def refresh_status(self):
-        workflow_run = db.session.query(WorkflowRun).filter(WorkflowRun.id == self.workflow_run_id).first()
-
-        if workflow_run is None:
-            return
-
-        if workflow_run.status == WorkflowRunStatus.SUCCEEDED and self.image_url is None:
-            self.image_url = workflow_run.outputs.get("image_url")
-            self.text_content = workflow_run.outputs.get("text_content")
-            db.session.commit()

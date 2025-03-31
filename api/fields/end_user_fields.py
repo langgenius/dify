@@ -34,6 +34,7 @@ end_user_image_fields = {
     "image_url": fields.String,
     "content_type": fields.String,
     "text_content": fields.String,
+    "error_message": fields.String,
     "created_at": TimestampField,
 }
 

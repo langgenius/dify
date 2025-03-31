@@ -8,6 +8,7 @@ from libs.helper import RateLimiter
 from libs.infinite_scroll_pagination import MultiPagePagination
 from models.model import App, EndUser, Message, UserGeneratedImage
 from services.app_generate_service import AppGenerateService
+from tasks.image_generation_task import generate_image_task
 
 
 # define string enum for content_type
@@ -24,83 +25,39 @@ class ImageGenerationService:
 
     @staticmethod
     def generate_image(end_user: EndUser, content_type: ContentType) -> str:
+        """
+        Initiates asynchronous image generation process and creates a pending image record
 
+        Args:
+            end_user: End user object
+            content_type: Type of content to generate
+
+        Returns:
+            The ID of the created UserGeneratedImage entity that will be updated by the task
+        """
+        # Check if rate limited before submitting task
         if ImageGenerationService.generate_image_rate_limiter.is_rate_limited(end_user.id):
             raise Exception("Image generation rate limit exceeded")
 
-        if dify_config.IMAGE_GENERATION_APP_ID is None:
-            raise Exception("Image generation app id is not set")
-
-        image_generation_app_model = App.query.filter(App.id == dify_config.IMAGE_GENERATION_APP_ID).first()
-        if image_generation_app_model is None:
-            raise Exception("Image generation app model is not found")
-
-        user_profile = end_user.extra_profile
-        recent_messages = (
-            db.session.query(Message)
-            .filter(Message.app_id == end_user.app_id, Message.from_end_user_id == end_user.id)
-            .order_by(Message.created_at.desc())
-            .limit(10)
-            .all()
+        # Create a pending UserGeneratedImage entity
+        user_generated_image = UserGeneratedImage(
+            app_id=end_user.app_id,
+            end_user_id=end_user.id,
+            content_type=content_type,
+            status="pending",  # Set initial status to pending
         )
 
-        recent_messages = [f"user: {message.query}\n\nassistant: {message.answer}" for message in recent_messages]
+        db.session.add(user_generated_image)
+        db.session.commit()
 
-        args = {
-            "inputs": {
-                "user_profile": json.dumps(user_profile),
-                "recent_messages": "\n\n".join(recent_messages),
-                "image_type": content_type,
-            }
-        }
+        # Get the generated ID for tracking
+        image_id = str(user_generated_image.id)
 
-        try:
-            response = AppGenerateService.generate(
-                app_model=image_generation_app_model,
-                user=end_user,
-                args=args,
-                invoke_from=InvokeFrom.SCHEDULER,
-                streaming=False,
-            )
+        # Submit the task asynchronously with the image_id
+        generate_image_task.delay(end_user_id=str(end_user.id), content_type=content_type, image_id=image_id)
 
-            if not isinstance(response, dict):
-                raise Exception("Failed to generate image")
-
-            # load workflow id and save it to db for futher fetch image status
-            workflow_run_id = response.get("workflow_run_id")
-
-            raw_content = response.get("data", {}).get("outputs", {})
-
-            # parse url from response.data.outputs
-            image_objs = raw_content.get("files")
-            url = None
-            for image_obj in image_objs:
-                if image_obj.get("type") == "image":
-                    url = image_obj.get("url")
-                    break
-
-            if url is None:
-                raise Exception("Failed to generate image")
-
-            text_content = raw_content.get("text")
-
-            user_generated_image = UserGeneratedImage(
-                app_id=end_user.app_id,
-                end_user_id=end_user.id,
-                workflow_run_id=workflow_run_id,
-                content_type=content_type,
-                image_url=url,
-                text_content=text_content,
-                raw_content=raw_content,
-            )
-
-            db.session.add(user_generated_image)
-            db.session.commit()
-
-            return user_generated_image.id
-
-        except Exception as e:
-            raise Exception(f"Failed to generate image: {e}")
+        # Return the image ID as a reference for status checking
+        return image_id
 
     @staticmethod
     def pagination_image_list(end_user: EndUser, limit: int, offset: int) -> MultiPagePagination:

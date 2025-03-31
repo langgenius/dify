@@ -1,5 +1,3 @@
-from datetime import datetime, timedelta
-
 from configs import dify_config
 from controllers.service_api_with_auth import api
 from controllers.service_api_with_auth.app.error import NotChatAppError, NotEnoughMessageCountError
@@ -48,7 +46,7 @@ class ImageGenerateApi(Resource):
                   example: success
                 image_id:
                   type: string
-                  description: ID of the generated image, futher to fetch the image details and status
+                  description: ID of the generated image (initially in pending state)
                   example: 123e4567-e89b-12d3-a456-426614174000
                 message:
                   type: string
@@ -75,15 +73,20 @@ class ImageGenerateApi(Resource):
             raise NotEnoughMessageCountError()
 
         try:
-            # Use the service to generate the image
+            # Create a pending image entity and start the generation task
             image_id = ImageGenerationService.generate_image(
                 end_user=end_user,
                 content_type=content_type,
             )
 
-            return {"result": "success", "message": "Image generated successfully.", "image_id": image_id}
-        except Exception:
-            raise InternalServerError("Failed to generate image")
+            # Return the image ID for status checking
+            return {
+                "result": "success",
+                "message": "Image generation started. Check status with the image ID.",
+                "image_id": image_id,
+            }
+        except Exception as e:
+            raise InternalServerError(f"Failed to generate image: {e}")
 
 
 class ImageListApi(Resource):
