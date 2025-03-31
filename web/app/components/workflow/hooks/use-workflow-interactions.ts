@@ -8,12 +8,15 @@ import produce from 'immer'
 import { useStore, useWorkflowStore } from '../store'
 import {
   CUSTOM_NODE, DSL_EXPORT_CHECK,
+  NODE_LAYOUT_HORIZONTAL_PADDING,
+  NODE_LAYOUT_VERTICAL_PADDING,
   WORKFLOW_DATA_UPDATE,
 } from '../constants'
 import type { Node, WorkflowDataUpdater } from '../types'
-import { ControlMode } from '../types'
+import { BlockEnum, ControlMode } from '../types'
 import {
   getLayoutByDagre,
+  getLayoutForChildNodes,
   initialEdges,
   initialNodes,
 } from '../utils'
@@ -98,10 +101,81 @@ export const useWorkflowOrganize = () => {
     } = store.getState()
     const { setViewport } = reactflow
     const nodes = getNodes()
-    const layout = getLayoutByDagre(nodes, edges)
-    const rankMap = {} as Record<string, Node>
 
-    nodes.forEach((node) => {
+    const loopAndIterationNodes = nodes.filter(
+      node => (node.data.type === BlockEnum.Loop || node.data.type === BlockEnum.Iteration)
+              && !node.parentId
+              && node.type === CUSTOM_NODE,
+    )
+
+    const childLayoutsMap: Record<string, any> = {}
+    loopAndIterationNodes.forEach((node) => {
+      childLayoutsMap[node.id] = getLayoutForChildNodes(node.id, nodes, edges)
+    })
+
+    const containerSizeChanges: Record<string, { width: number, height: number }> = {}
+
+    loopAndIterationNodes.forEach((parentNode) => {
+      const childLayout = childLayoutsMap[parentNode.id]
+      if (!childLayout) return
+
+      let minX = Infinity
+      let minY = Infinity
+      let maxX = -Infinity
+      let maxY = -Infinity
+      let hasChildren = false
+
+      const childNodes = nodes.filter(node => node.parentId === parentNode.id)
+
+      childNodes.forEach((node) => {
+        if (childLayout.node(node.id)) {
+          hasChildren = true
+          const childNodeWithPosition = childLayout.node(node.id)
+
+          const nodeX = childNodeWithPosition.x - node.width! / 2
+          const nodeY = childNodeWithPosition.y - node.height! / 2
+
+          minX = Math.min(minX, nodeX)
+          minY = Math.min(minY, nodeY)
+          maxX = Math.max(maxX, nodeX + node.width!)
+          maxY = Math.max(maxY, nodeY + node.height!)
+        }
+      })
+
+      if (hasChildren) {
+        const requiredWidth = maxX - minX + NODE_LAYOUT_HORIZONTAL_PADDING * 2
+        const requiredHeight = maxY - minY + NODE_LAYOUT_VERTICAL_PADDING * 2
+
+        containerSizeChanges[parentNode.id] = {
+          width: Math.max(parentNode.width || 0, requiredWidth),
+          height: Math.max(parentNode.height || 0, requiredHeight),
+        }
+      }
+    })
+
+    const nodesWithUpdatedSizes = produce(nodes, (draft) => {
+      draft.forEach((node) => {
+        if ((node.data.type === BlockEnum.Loop || node.data.type === BlockEnum.Iteration)
+            && containerSizeChanges[node.id]) {
+          node.width = containerSizeChanges[node.id].width
+          node.height = containerSizeChanges[node.id].height
+
+          if (node.data.type === BlockEnum.Loop) {
+            node.data.width = containerSizeChanges[node.id].width
+            node.data.height = containerSizeChanges[node.id].height
+          }
+          else if (node.data.type === BlockEnum.Iteration) {
+            node.data.width = containerSizeChanges[node.id].width
+            node.data.height = containerSizeChanges[node.id].height
+          }
+        }
+      })
+    })
+
+    const layout = getLayoutByDagre(nodesWithUpdatedSizes, edges)
+
+    const rankMap = {} as Record<string, Node>
+    nodesWithUpdatedSizes.forEach((node) => {
       if (!node.parentId && node.type === CUSTOM_NODE) {
         const rank = layout.node(node.id).rank!
 
@@ -115,7 +189,7 @@ export const useWorkflowOrganize = () => {
       }
     })
 
-    const newNodes = produce(nodes, (draft) => {
+    const newNodes = produce(nodesWithUpdatedSizes, (draft) => {
       draft.forEach((node) => {
         if (!node.parentId && node.type === CUSTOM_NODE) {
           const nodeWithPosition = layout.node(node.id)
@@ -126,7 +200,40 @@ export const useWorkflowOrganize = () => {
           }
         }
       })
+
+      loopAndIterationNodes.forEach((parentNode) => {
+        const childLayout = childLayoutsMap[parentNode.id]
+        if (!childLayout) return
+
+        const childNodes = draft.filter(node => node.parentId === parentNode.id)
+
+        let minX = Infinity
+        let minY = Infinity
+
+        childNodes.forEach((node) => {
+          if (childLayout.node(node.id)) {
+            const childNodeWithPosition = childLayout.node(node.id)
+            const nodeX = childNodeWithPosition.x - node.width! / 2
+            const nodeY = childNodeWithPosition.y - node.height! / 2
+
+            minX = Math.min(minX, nodeX)
+            minY = Math.min(minY, nodeY)
+          }
+        })
+
+        childNodes.forEach((node) => {
+          if (childLayout.node(node.id)) {
+            const childNodeWithPosition = childLayout.node(node.id)
+
+            node.position = {
+              x: NODE_LAYOUT_HORIZONTAL_PADDING + (childNodeWithPosition.x - node.width! / 2 - minX),
+              y: NODE_LAYOUT_VERTICAL_PADDING + (childNodeWithPosition.y - node.height! / 2 - minY),
+            }
+          }
+        })
+      })
     })
+
     setNodes(newNodes)
     const zoom = 0.7
     setViewport({
@@ -139,6 +246,7 @@ export const useWorkflowOrganize = () => {
       handleSyncWorkflowDraft()
     })
   }, [getNodesReadOnly, store, reactflow, workflowStore, handleSyncWorkflowDraft, saveStateToHistory])
+
   return {
     handleLayout,
   }

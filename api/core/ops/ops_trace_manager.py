@@ -19,7 +19,6 @@ from core.ops.entities.config_entity import (
     LangfuseConfig,
     LangSmithConfig,
     OpikConfig,
-    WeaveConfig,
     TracingProviderEnum,
     WeaveConfig,
 )
@@ -36,7 +35,6 @@ from core.ops.entities.trace_entity import (
 )
 from core.ops.langfuse_trace.langfuse_trace import LangFuseDataTrace
 from core.ops.langsmith_trace.langsmith_trace import LangSmithDataTrace
-from core.ops.weave_trace.weave_trace import WeaveDataTrace
 from core.ops.opik_trace.opik_trace import OpikDataTrace
 from core.ops.utils import get_message_data
 from core.ops.weave_trace.weave_trace import WeaveDataTrace
@@ -48,8 +46,6 @@ from tasks.ops_trace_task import process_trace_tasks
 
 
 def build_opik_trace_instance(config: OpikConfig):
-    from core.ops.opik_trace.opik_trace import OpikDataTrace
-
     return OpikDataTrace(config)
 
 

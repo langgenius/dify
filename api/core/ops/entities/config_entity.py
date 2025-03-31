@@ -88,26 +88,6 @@ class OpikConfig(BaseTracingConfig):
 
         return v
 
-class WeaveConfig(BaseTracingConfig):
-    """
-    Model class for Weave tracing config.
-    """
-
-    api_key: str
-    entity: str | None = None
-    project: str
-    endpoint: str = "https://trace.wandb.ai"
-
-    @field_validator("endpoint")
-    @classmethod
-    def set_value(cls, v, info: ValidationInfo):
-        if v is None or v == "":
-            v = "https://trace.wandb.ai"
-        if not v.startswith("https://"):
-            raise ValueError("endpoint must start with https://")
-
-        return v
-
 
 class WeaveConfig(BaseTracingConfig):
     """
