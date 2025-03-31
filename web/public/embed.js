@@ -57,6 +57,13 @@
 
     // pre-check the length of the URL
     const iframeUrl = `${baseUrl}/chatbot/${config.token}?${params}`;
+    // 1) CREATE the iframe immediately, so it can load in the background:
+    const preloadedIframe = createIframe();
+    // 2) HIDE it by default:
+    preloadedIframe.style.display = "none";
+    // 3) APPEND it to the document body right away:
+    document.body.appendChild(preloadedIframe);
+    // ─── End Fix Snippet
     if(iframeUrl.length > 2048) {
       console.error("The URL is too long, please reduce the number of inputs to prevent the bot from failing to load");
     }
