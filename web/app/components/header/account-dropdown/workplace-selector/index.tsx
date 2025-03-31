@@ -58,11 +58,11 @@ const WorkplaceSelector = () => {
               <MenuItems
                 className={cn(
                   `
-                    shadows-shadow-lg absolute left-[-15px] mt-1 flex w-[280px] flex-col items-start rounded-xl
+                    shadows-shadow-lg absolute left-[-15px] mt-1 flex w-[280px] flex-col items-start rounded-xl bg-components-panel-bg-blur backdrop-blur-[5px]
                   `,
                 )}
               >
-                <div className="flex w-full flex-col items-start self-stretch rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-1 pb-2 shadow-lg ">
+                <div className="flex w-full flex-col items-start self-stretch rounded-xl border-[0.5px] border-components-panel-border p-1 pb-2 shadow-lg ">
                   <div className='flex items-start self-stretch px-3 pb-0.5 pt-1'>
                     <span className='system-xs-medium-uppercase flex-1 text-text-tertiary'>{t('common.userProfile.workspace')}</span>
                   </div>

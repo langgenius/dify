@@ -15,7 +15,6 @@ import I18n from '@/context/i18n'
 import { useAppContext } from '@/context/app-context'
 import Avatar from '@/app/components/base/avatar'
 import type { InvitationResult } from '@/models/common'
-import LogoEmbeddedChatHeader from '@/app/components/base/logo/logo-embedded-chat-header'
 import { useProviderContext } from '@/context/provider-context'
 import { Plan } from '@/app/components/billing/type'
 import Button from '@/app/components/base/button'
@@ -56,7 +55,7 @@ const MembersPage = () => {
     <>
       <div className='flex flex-col'>
         <div className='mb-4 flex items-center gap-3 rounded-xl border-l-[0.5px] border-t-[0.5px] border-divider-subtle bg-gradient-to-r from-background-gradient-bg-fill-chat-bg-2 to-background-gradient-bg-fill-chat-bg-1 p-3 pr-5'>
-          <LogoEmbeddedChatHeader className='!h-12 !w-12' />
+          <div className='app-icon-shadow flex h-12 w-12 items-center justify-center rounded-xl bg-[#EFF4FF] text-[20px] font-semibold uppercase text-primary-600'>{currentWorkspace?.name[0]?.toLocaleUpperCase()}</div>
           <div className='grow'>
             <div className='system-md-semibold text-text-secondary'>{currentWorkspace?.name}</div>
             {enableBilling && (
