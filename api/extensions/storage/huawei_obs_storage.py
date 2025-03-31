@@ -19,8 +19,9 @@ class HuaweiObsStorage(BaseStorage):
             server=dify_config.HUAWEI_OBS_SERVER,
         )
 
-    def save(self, filename, data):
-        self.client.putObject(bucketName=self.bucket_name, objectKey=filename, content=data)
+    def save(self, filename, data, content_type=None):
+        headers = {"contentType": content_type} if content_type else None
+        self.client.putObject(bucketName=self.bucket_name, objectKey=filename, content=data, headers=headers)
 
     def load_once(self, filename: str) -> bytes:
         data: bytes = self.client.getObject(bucketName=self.bucket_name, objectKey=filename)["body"].response.read()

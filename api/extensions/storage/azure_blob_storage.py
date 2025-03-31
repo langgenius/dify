@@ -26,10 +26,11 @@ class AzureBlobStorage(BaseStorage):
         else:
             self.credential = None
 
-    def save(self, filename, data):
+    def save(self, filename, data, content_type=None):
+        metadata = {"Content-Type": content_type} if content_type else None
         client = self._sync_client()
         blob_container = client.get_container_client(container=self.bucket_name)
-        blob_container.upload_blob(filename, data)
+        blob_container.upload_blob(filename, data, metadata=metadata)
 
     def load_once(self, filename: str) -> bytes:
         client = self._sync_client()

@@ -26,12 +26,17 @@ class BaiduObsStorage(BaseStorage):
 
         self.client = BosClient(config=client_config)
 
-    def save(self, filename, data):
+    def save(self, filename, data, content_type=None):
         md5 = hashlib.md5()
         md5.update(data)
         content_md5 = base64.standard_b64encode(md5.digest())
         self.client.put_object(
-            bucket_name=self.bucket_name, key=filename, data=data, content_length=len(data), content_md5=content_md5
+            bucket_name=self.bucket_name,
+            key=filename,
+            data=data,
+            content_length=len(data),
+            content_md5=content_md5,
+            content_type=content_type,
         )
 
     def load_once(self, filename: str) -> bytes:

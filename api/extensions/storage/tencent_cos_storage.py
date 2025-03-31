@@ -21,8 +21,9 @@ class TencentCosStorage(BaseStorage):
         )
         self.client = CosS3Client(config)
 
-    def save(self, filename, data):
-        self.client.put_object(Bucket=self.bucket_name, Body=data, Key=filename)
+    def save(self, filename, data, content_type=None):
+        metadata = {"ContentType": content_type or "application/octet-stream"}
+        self.client.put_object(Bucket=self.bucket_name, Body=data, Key=filename, Metadata=metadata)
 
     def load_once(self, filename: str) -> bytes:
         data: bytes = self.client.get_object(Bucket=self.bucket_name, Key=filename)["Body"].get_raw_stream().read()

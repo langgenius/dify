@@ -48,8 +48,9 @@ class AwsS3Storage(BaseStorage):
                 # other error, raise exception
                 raise
 
-    def save(self, filename, data):
-        self.client.put_object(Bucket=self.bucket_name, Key=filename, Body=data)
+    def save(self, filename, data, content_type=None):
+        content_type = content_type or "application/octet-stream"
+        self.client.put_object(Bucket=self.bucket_name, Key=filename, Body=data, ContentType=content_type)
 
     def load_once(self, filename: str) -> bytes:
         try:
