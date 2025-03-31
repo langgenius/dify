@@ -42,7 +42,7 @@ class MockVolcengineTosClass:
             }
         )
 
-    def put_object(self, bucket: str, key: str, content=None) -> PutObjectOutput:
+    def put_object(self, bucket: str, key: str, content=None, content_type=None) -> PutObjectOutput:
         assert bucket == self.bucket_name
         assert key == self.key
         assert content == self.content
