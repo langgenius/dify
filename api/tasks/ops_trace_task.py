@@ -17,8 +17,6 @@ from models.workflow import WorkflowRun
 def process_trace_tasks(file_info):
     """
     Async process trace tasks
-    :param tasks_data: List of dictionaries containing task data
-
     Usage: process_trace_tasks.delay(tasks_data)
     """
     from core.ops.ops_trace_manager import OpsTraceManager

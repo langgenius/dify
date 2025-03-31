@@ -197,7 +197,6 @@ class OracleVector(BaseVector):
         Search the nearest neighbors to a vector.
 
         :param query_vector: The input vector to search for similar items.
-        :param top_k: The number of nearest neighbors to return, default is 5.
         :return: List of Documents that are nearest to the query vector.
         """
         top_k = kwargs.get("top_k", 4)
