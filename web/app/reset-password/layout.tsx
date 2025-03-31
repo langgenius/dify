@@ -1,23 +1,11 @@
 import Header from '../signin/_header'
-import style from '../signin/page.module.css'
 
 import cn from '@/utils/classnames'
 
 export default async function SignInLayout({ children }: any) {
   return <>
-    <div className={cn(
-      style.background,
-      'flex min-h-screen w-full',
-      'sm:p-4 lg:p-8',
-      'gap-x-20',
-      'justify-center lg:justify-start',
-    )}>
-      <div className={
-        cn(
-          'flex w-full shrink-0 flex-col rounded-2xl bg-white shadow',
-          'space-between',
-        )
-      }>
+    <div className={cn('flex min-h-screen w-full justify-center bg-background-default-burn p-6')}>
+      <div className={cn('flex w-full shrink-0 flex-col rounded-2xl border border-effects-highlight bg-background-default-subtle')}>
         <Header />
         <div className={
           cn(

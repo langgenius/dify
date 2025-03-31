@@ -25,3 +25,4 @@ class VectorType(StrEnum):
     TIDB_ON_QDRANT = "tidb_on_qdrant"
     OCEANBASE = "oceanbase"
     OPENGAUSS = "opengauss"
+    TABLESTORE = "tablestore"

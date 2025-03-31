@@ -226,7 +226,6 @@ class WeaviateVector(BaseVector):
 
         Args:
             query: Text to look up documents similar to.
-            k: Number of Documents to return. Defaults to 4.
 
         Returns:
             List of Documents most similar to the query.

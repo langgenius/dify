@@ -513,6 +513,7 @@ class AppDslService:
         """
         Export app
         :param app_model: App instance
+        :param include_secret: Whether include secret variable
         :return:
         """
         app_mode = AppMode.value_of(app_model.mode)
