@@ -24,6 +24,8 @@
 
   // Main function to embed the chatbot
   async function embedChatbot() {
+    let isDragging = false
+    
     if (!config || !config.token) {
       console.error(`${configKey} is empty or token is not provided`);
       return;
@@ -172,7 +174,7 @@
       const displayDiv = document.createElement("div");
       displayDiv.style.cssText =
         "position: relative; display: flex; align-items: center; justify-content: center; width: 100%; height: 100%; z-index: 2147483647;";
-      displayDiv.innerHTML = svgIcons.open;
+      displayDiv.innerHTML = svgIcons;
       containerDiv.appendChild(displayDiv);
       document.body.appendChild(containerDiv);
 
