@@ -1,3 +1,5 @@
+from typing import Optional
+
 from pydantic import Field
 from pydantic_settings import BaseSettings
 
@@ -30,4 +32,19 @@ class SchoolConfig(BaseSettings):
     USER_HEALTH_SUMMARY_GENERATION_APP_ID: str = Field(
         description="App id for health summary generation.",
         default="",
+    )
+
+    IMAGE_GENERATION_DAILY_LIMIT: int = Field(
+        description="Daily limit for image generation.",
+        default=5,
+    )
+
+    IMAGE_GENERATION_MIN_CONVERSATION_ROUNDS: int = Field(
+        description="Minimum conversation rounds for image generation.",
+        default=10,
+    )
+
+    IMAGE_GENERATION_APP_ID: Optional[str] = Field(
+        description="App id for image generation.",
+        default=None,
     )

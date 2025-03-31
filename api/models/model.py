@@ -15,7 +15,7 @@ from flask import request
 from flask_login import UserMixin  # type: ignore
 from libs.helper import generate_string
 from models.enums import CreatedByRole
-from models.workflow import WorkflowRunStatus
+from models.workflow import WorkflowRun, WorkflowRunStatus
 from sqlalchemy import Float, func, text
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -1455,6 +1455,15 @@ class EndUser(UserMixin, db.Model):  # type: ignore[name-defined]
             "memory": self.memory,
         }
 
+    @property
+    def total_messages_count(self):
+        return (
+            db.session.query(Message)
+            .filter(Message.from_end_user_id == self.id)
+            .filter(Message.organization_id == self.organization_id)
+            .count()
+        )
+
 
 class Site(db.Model):  # type: ignore[name-defined]
     __tablename__ = "sites"
@@ -1857,16 +1866,36 @@ class UserGeneratedImage(db.Model):  # type: ignore[name-defined]
     id = db.Column(StringUUID, server_default=db.text("uuid_generate_v4()"))
     app_id = db.Column(StringUUID, nullable=False)
     end_user_id = db.Column(StringUUID, nullable=False)
-    conversation_id = db.Column(StringUUID, nullable=False)
-    image_url = db.Column(db.Text, nullable=False)
+    workflow_run_id = db.Column(StringUUID, nullable=False)  # related generation id
     content_type = db.Column(db.String(255), nullable=False)  # 'self_message' or 'summary_advice'
-    text_content = db.Column(db.Text, nullable=False)
+    image_url = db.Column(db.Text, nullable=True)
+    text_content = db.Column(db.Text, nullable=True)
+    raw_content = db.Column(db.JSON, nullable=True)  # save raw llm outputs
     created_at = db.Column(db.DateTime, nullable=False, server_default=db.func.current_timestamp())
+    updated_at = db.Column(
+        db.DateTime, nullable=False, server_default=db.func.current_timestamp(), onupdate=db.func.current_timestamp()
+    )
 
     @property
     def end_user(self):
         return db.session.query(EndUser).filter(EndUser.id == self.end_user_id).first()
 
     @property
-    def conversation(self):
-        return db.session.query(Conversation).filter(Conversation.id == self.conversation_id).first()
+    def status(self):
+        workflow_run = db.session.query(WorkflowRun).filter(WorkflowRun.id == self.workflow_run_id).first()
+
+        if workflow_run is None:
+            return WorkflowRunStatus.FAILED.value
+
+        return workflow_run.status
+
+    def refresh_status(self):
+        workflow_run = db.session.query(WorkflowRun).filter(WorkflowRun.id == self.workflow_run_id).first()
+
+        if workflow_run is None:
+            return
+
+        if workflow_run.status == WorkflowRunStatus.SUCCEEDED and self.image_url is None:
+            self.image_url = workflow_run.outputs.get("image_url")
+            self.text_content = workflow_run.outputs.get("text_content")
+            db.session.commit()

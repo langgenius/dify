@@ -1,169 +1,126 @@
 import json
-import logging
-import os
-import random
-from datetime import datetime
-from typing import Any, Dict, List, Optional, Tuple, Union
+from enum import Enum
 
-# Import the UserGeneratedImage model from our controller module
-# This is a bit of a circular import, but it's the simplest solution for now
-from controllers.service_api_with_auth.app.image_generate import UserGeneratedImage
+from configs import dify_config
+from core.app.entities.app_invoke_entities import InvokeFrom
 from extensions.ext_database import db
-from models.enums import CreatedByRole
-from models.model import App, Conversation, EndUser, Message, UploadFile
-from sqlalchemy.orm import Session
+from libs.helper import RateLimiter
+from libs.infinite_scroll_pagination import MultiPagePagination
+from models.model import App, EndUser, Message, UserGeneratedImage
+from services.app_generate_service import AppGenerateService
 
-# Configure logging
-logger = logging.getLogger(__name__)
+
+# define string enum for content_type
+class ContentType(str, Enum):
+    SELF_MESSAGE = "self_message"
+    SUMMARY_ADVICE = "summary_advice"
 
 
 class ImageGenerationService:
-    @staticmethod
-    def generate_motivational_text(conversation_id: str, content_type: str) -> str:
-        """
-        Generate motivational text based on conversation history.
 
-        Args:
-            conversation_id: The ID of the conversation
-            content_type: Type of content to generate ('self_message' or 'summary_advice')
-
-        Returns:
-            str: Generated text content
-        """
-        # In a real implementation, this would call a large language model
-        # Here we'll just use placeholders based on the content type
-
-        with Session(db.engine) as session:
-            # Get the last few messages from the conversation to understand context
-            messages = (
-                session.query(Message)
-                .filter(Message.conversation_id == conversation_id)
-                .order_by(Message.created_at.desc())
-                .limit(20)
-                .all()
-            )
-
-            # Reverse to get chronological order
-            messages.reverse()
-
-            # Extract conversation context
-            context = "\n".join([f"User: {msg.query}\nAI: {msg.answer}" for msg in messages])
-
-            # In production, you would pass this context to a language model
-            # For demonstration, we'll return placeholder text
-
-            if content_type == "self_message":
-                sample_messages = [
-                    "You've got this! Take one small step today.",
-                    "Remember your strength - you've overcome challenges before.",
-                    "Be kind to yourself today, you deserve it.",
-                    "Your feelings are valid, and you have the power to work through them.",
-                    "Small progress is still progress. Celebrate your wins today.",
-                ]
-                return random.choice(sample_messages)
-            else:  # summary_advice
-                sample_advice = [
-                    "Based on our conversation, I notice you tend to be hard on yourself. Try practicing self-compassion by speaking to yourself as you would to a friend.",
-                    "I've observed that you often describe feeling overwhelmed. Breaking tasks into smaller steps might help manage these feelings better.",
-                    "In our discussions, I noticed patterns of negative self-talk. Consider challenging these thoughts by asking 'Is this really true?' when they arise.",
-                    "From our conversations, it seems you might benefit from more self-care routines. Even 5 minutes of mindfulness daily could make a difference.",
-                    "You've mentioned feeling anxious in social situations. Progressive exposure to small social interactions might help build confidence over time.",
-                ]
-                return random.choice(sample_advice)
+    generate_image_rate_limiter = RateLimiter(
+        prefix="generate_image_rate_limit", max_attempts=dify_config.IMAGE_GENERATION_DAILY_LIMIT, time_window=86400 * 1
+    )
 
     @staticmethod
-    def generate_background_image() -> str:
-        """
-        Generate or select a background image.
+    def generate_image(end_user: EndUser, content_type: ContentType) -> str:
 
-        In a real implementation, this might call an image generation API
-        or select from pre-generated images.
+        if ImageGenerationService.generate_image_rate_limiter.is_rate_limited(end_user.id):
+            raise Exception("Image generation rate limit exceeded")
 
-        Returns:
-            str: URL of the generated/selected image
-        """
-        # In a real implementation, this would integrate with an image generation API
-        # or select from a pool of pre-generated images
+        if dify_config.IMAGE_GENERATION_APP_ID is None:
+            raise Exception("Image generation app id is not set")
 
-        # For this example, we'll return a placeholder
-        placeholder_images = [
-            "https://example.com/background1.jpg",
-            "https://example.com/background2.jpg",
-            "https://example.com/background3.jpg",
-            "https://example.com/background4.jpg",
-            "https://example.com/background5.jpg",
-        ]
+        image_generation_app_model = App.query.filter(App.id == dify_config.IMAGE_GENERATION_APP_ID).first()
+        if image_generation_app_model is None:
+            raise Exception("Image generation app model is not found")
 
-        return random.choice(placeholder_images)
+        user_profile = end_user.extra_profile
+        recent_messages = (
+            db.session.query(Message)
+            .filter(Message.app_id == end_user.app_id, Message.from_end_user_id == end_user.id)
+            .order_by(Message.created_at.desc())
+            .limit(10)
+            .all()
+        )
 
-    @staticmethod
-    def overlay_text_on_image(image_url: str, text: str) -> str:
-        """
-        Overlay text on the image.
+        recent_messages = [f"user: {message.query}\n\nassistant: {message.answer}" for message in recent_messages]
 
-        In a real implementation, this would use image processing libraries.
+        args = {
+            "inputs": {
+                "user_profile": json.dumps(user_profile),
+                "recent_messages": "\n\n".join(recent_messages),
+                "image_type": content_type,
+            }
+        }
 
-        Args:
-            image_url: URL of the background image
-            text: Text to overlay on the image
-
-        Returns:
-            str: URL of the final image with text
-        """
-        # In a real implementation, this would use image processing libraries
-        # like Pillow to overlay text on the image
-
-        # For this example, we'll just return the same URL
-        # In production, you would process the image and save it to storage
-        return image_url
-
-    @staticmethod
-    def process_image_generation_request(
-        app_id: str, conversation_id: str, end_user_id: str, content_type: str
-    ) -> Optional[str]:
-        """
-        Process an image generation request.
-
-        Args:
-            app_id: The ID of the app
-            conversation_id: The ID of the conversation
-            end_user_id: The ID of the end user
-            content_type: Type of content to generate ('self_message' or 'summary_advice')
-
-        Returns:
-            Optional[str]: ID of the generated image if successful, None otherwise
-        """
         try:
-            # 1. Generate motivational text based on conversation history
-            text_content = ImageGenerationService.generate_motivational_text(
-                conversation_id=conversation_id, content_type=content_type
+            response = AppGenerateService.generate(
+                app_model=image_generation_app_model,
+                user=end_user,
+                args=args,
+                invoke_from=InvokeFrom.SCHEDULER,
+                streaming=False,
             )
 
-            # 2. Generate or select a background image
-            image_url = ImageGenerationService.generate_background_image()
+            if not isinstance(response, dict):
+                raise Exception("Failed to generate image")
 
-            # 3. Overlay text on the image
-            final_image_url = ImageGenerationService.overlay_text_on_image(image_url=image_url, text=text_content)
+            # load workflow id and save it to db for futher fetch image status
+            workflow_run_id = response.get("workflow_run_id")
 
-            # 4. Create and save the user generated image record
-            with Session(db.engine) as session:
-                new_image = UserGeneratedImage(
-                    app_id=app_id,
-                    end_user_id=end_user_id,
-                    conversation_id=conversation_id,
-                    image_url=final_image_url,
-                    content_type=content_type,
-                    text_content=text_content,
-                )
+            raw_content = response.get("data", {}).get("outputs", {})
 
-                session.add(new_image)
-                session.commit()
+            # parse url from response.data.outputs
+            image_objs = raw_content.get("files")
+            url = None
+            for image_obj in image_objs:
+                if image_obj.get("type") == "image":
+                    url = image_obj.get("url")
+                    break
 
-                image_id = str(new_image.id)
-                logger.info(f"Generated image {image_id} for user {end_user_id}")
+            if url is None:
+                raise Exception("Failed to generate image")
 
-                return image_id
+            text_content = raw_content.get("text")
+
+            user_generated_image = UserGeneratedImage(
+                app_id=end_user.app_id,
+                end_user_id=end_user.id,
+                workflow_run_id=workflow_run_id,
+                content_type=content_type,
+                image_url=url,
+                text_content=text_content,
+                raw_content=raw_content,
+            )
+
+            db.session.add(user_generated_image)
+            db.session.commit()
+
+            return user_generated_image.id
 
         except Exception as e:
-            logger.error(f"Error generating image: {str(e)}")
-            return None
+            raise Exception(f"Failed to generate image: {e}")
+
+    @staticmethod
+    def pagination_image_list(end_user: EndUser, limit: int, offset: int) -> MultiPagePagination:
+
+        query = (
+            db.session.query(UserGeneratedImage)
+            .filter(UserGeneratedImage.app_id == end_user.app_id, UserGeneratedImage.end_user_id == end_user.id)
+            .order_by(UserGeneratedImage.created_at.desc())
+        )
+
+        total_count = query.count()
+        images = query.limit(limit).offset(offset).all()
+
+        return MultiPagePagination(data=images, total=total_count)
+
+    @staticmethod
+    def get_image_by_id(image_id: str) -> UserGeneratedImage:
+        image = db.session.query(UserGeneratedImage).filter(UserGeneratedImage.id == image_id).first()
+
+        if image is None:
+            raise Exception("Image not found")
+
+        return image

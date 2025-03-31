@@ -107,3 +107,9 @@ class UnsupportedFileTypeError(BaseHTTPException):
     error_code = "unsupported_file_type"
     description = "File type not allowed."
     code = 415
+
+
+class NotEnoughMessageCountError(BaseHTTPException):
+    error_code = "not_enough_message_count"
+    description = "I need to know more about you before creating an image. Please continue our conversation."
+    code = 400
