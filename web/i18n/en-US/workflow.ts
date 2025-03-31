@@ -722,6 +722,8 @@ const translation = {
       inputMode: 'Input Mode',
       exitConditionTip: 'A loop node needs at least one exit condition',
       loopNode: 'Loop Node',
+      currentLoopCount: 'Current loop count: {{count}}',
+      totalLoopCount: 'Total loop count: {{count}}',
     },
     note: {
       addNote: 'Add Note',

@@ -3,7 +3,6 @@ import { useStoreApi } from 'reactflow'
 import produce from 'immer'
 import type { LoopFinishedResponse } from '@/types/workflow'
 import { useWorkflowStore } from '@/app/components/workflow/store'
-import { DEFAULT_LOOP_TIMES } from '@/app/components/workflow/constants'
 
 export const useWorkflowNodeLoopFinished = () => {
   const store = useStoreApi()
@@ -14,7 +13,6 @@ export const useWorkflowNodeLoopFinished = () => {
     const {
       workflowRunningData,
       setWorkflowRunningData,
-      setLoopTimes,
     } = workflowStore.getState()
     const {
       getNodes,
@@ -31,7 +29,6 @@ export const useWorkflowNodeLoopFinished = () => {
         }
       }
     }))
-    setLoopTimes(DEFAULT_LOOP_TIMES)
     const newNodes = produce(nodes, (draft) => {
       const currentNode = draft.find(node => node.id === data.node_id)!
 

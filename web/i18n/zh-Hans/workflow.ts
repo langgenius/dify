@@ -723,6 +723,8 @@ const translation = {
       inputMode: '输入模式',
       exitConditionTip: '循环节点至少需要一个退出条件',
       loopNode: '循环节点',
+      currentLoopCount: '当前循环次数：{{count}}',
+      totalLoopCount: '总循环次数：{{count}}',
     },
     note: {
       addNote: '添加注释',
