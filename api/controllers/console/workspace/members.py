@@ -17,6 +17,7 @@ from libs.login import login_required
 from models.account import Account, TenantAccountRole
 from services.account_service import RegisterService, TenantService
 from services.errors.account import AccountAlreadyInTenantError
+from services.feature_service import FeatureService
 
 
 class MemberListApi(Resource):
@@ -55,7 +56,7 @@ class MemberInviteEmailApi(Resource):
         invitation_results = []
         console_web_url = dify_config.CONSOLE_WEB_URL
         if (FeatureService.get_system_features().license.product_id == "DIFY_ENTERPRISE_STANDARD" and
-                len(invitee_emails) > FeatureService.get_system_features().available_team_members):
+                len(invitee_emails) > FeatureService.get_features(tenant_id=inviter.current_tenant.id).available_team_members):
             return {
                 "code": "limit-exceeded",
                 "message": "Limit exceeded",
@@ -80,6 +81,7 @@ class MemberInviteEmailApi(Resource):
                 )
                 break
             except Exception as e:
+                print(str(e))
                 invitation_results.append({"status": "failed", "email": invitee_email, "message": str(e)})
 
         return {
