@@ -17,6 +17,7 @@ import ResultPanel from '@/app/components/workflow/run/result-panel'
 import { useToolIcon } from '@/app/components/workflow/hooks'
 import { useLogs } from '@/app/components/workflow/run/hooks'
 import formatToTracingNodeList from '@/app/components/workflow/run/utils/format-log'
+import StructureOutputItem from '@/app/components/workflow/nodes/_base/components/variable/object-child-tree-panel/show'
 
 const i18nPrefix = 'workflow.nodes.tool'
 
@@ -148,12 +149,13 @@ const Panel: FC<NodePanelProps<ToolNodeType>> = ({
               description={t(`${i18nPrefix}.outputVars.json`)}
             />
             {outputSchema.map(outputItem => (
-              <VarItem
-                key={outputItem.name}
-                name={outputItem.name}
-                type={outputItem.type}
-                description={outputItem.description}
-              />
+              // <VarItem
+              //   key={outputItem.name}
+              //   name={outputItem.name}
+              //   type={outputItem.type}
+              //   description={outputItem.description}
+              // />
+              <StructureOutputItem payload={outputItem} />
             ))}
           </>
         </OutputVars>
