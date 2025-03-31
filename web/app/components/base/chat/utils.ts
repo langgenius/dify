@@ -16,10 +16,24 @@ async function getProcessedInputsFromUrlParams(): Promise<Record<string, any>> {
   const entriesArray = Array.from(urlParams.entries())
   await Promise.all(
     entriesArray.map(async ([key, value]) => {
-      inputs[key] = await decodeBase64AndDecompress(decodeURIComponent(value))
+      if (!key.startsWith('sys.'))
+        inputs[key] = await decodeBase64AndDecompress(decodeURIComponent(value))
     }),
   )
   return inputs
+}
+
+async function getProcessedSystemVariablesFromUrlParams(): Promise<Record<string, any>> {
+  const urlParams = new URLSearchParams(window.location.search)
+  const systemVariables: Record<string, any> = {}
+  const entriesArray = Array.from(urlParams.entries())
+  await Promise.all(
+    entriesArray.map(async ([key, value]) => {
+      if (key.startsWith('sys.'))
+        systemVariables[key.slice(4)] = await decodeBase64AndDecompress(decodeURIComponent(value))
+    }),
+  )
+  return systemVariables
 }
 
 function isValidGeneratedAnswer(item?: ChatItem | ChatItemInTree): boolean {
@@ -166,6 +180,7 @@ function getThreadMessages(tree: ChatItemInTree[], targetMessageId?: string): Ch
 
 export {
   getProcessedInputsFromUrlParams,
+  getProcessedSystemVariablesFromUrlParams,
   isValidGeneratedAnswer,
   getLastAnswer,
   buildChatItemTree,
