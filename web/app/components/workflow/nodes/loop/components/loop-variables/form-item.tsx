@@ -106,7 +106,7 @@ const FormItem = ({
           <Textarea
             value={value}
             onChange={handleInputChange}
-            className='w-full'
+            className='min-h-12 w-full'
           />
         )
       }

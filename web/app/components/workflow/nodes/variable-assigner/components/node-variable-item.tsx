@@ -10,7 +10,6 @@ import { Variable02 } from '@/app/components/base/icons/src/vender/solid/develop
 import { BubbleX, Env } from '@/app/components/base/icons/src/vender/line/others'
 import Badge from '@/app/components/base/badge'
 import type { Node } from '@/app/components/workflow/types'
-import { BlockEnum } from '@/app/components/workflow/types'
 
 type NodeVariableItemProps = {
   isEnv: boolean
@@ -46,7 +45,7 @@ const NodeVariableItem = ({
 
     if (isChatVar) {
       return (
-        <BubbleX className='h-3.5 w-3.5 text-util-colors-teal-teal-700' />
+        <BubbleX className='h-3.5 w-3.5 shrink-0 text-util-colors-teal-teal-700' />
       )
     }
 
@@ -64,7 +63,7 @@ const NodeVariableItem = ({
     return (
       <div
         className={cn(
-          'shrink-2 system-xs-medium ml-0.5 truncate text-text-accent',
+          'system-xs-medium ml-0.5 shrink truncate text-text-accent',
           isEnv && 'text-gray-900',
           isException && 'text-text-warning',
           isChatVar && 'text-util-colors-teal-teal-700',
@@ -81,20 +80,26 @@ const NodeVariableItem = ({
       showBorder && '!bg-black/[0.02]',
       className,
     )}>
-      <div className='flex grow items-center'>
-        <div className='shrink-0 p-[1px]'>
-          <VarBlockIcon
-            className='!text-gray-900'
-            type={node?.data.type || BlockEnum.Start}
-          />
-        </div>
-        <div
-          className='shrink-3 mx-0.5  truncate text-xs font-medium text-gray-700'
-          title={node?.data.title}
-        >
-          {node?.data.title}
-        </div>
-        <Line3 className='mr-0.5 shrink-0'></Line3>
+      <div className='flex w-0 grow items-center'>
+        {
+          node && (
+            <>
+              <div className='shrink-0 p-[1px]'>
+                <VarBlockIcon
+                  className='!text-gray-900'
+                  type={node.data.type}
+                />
+              </div>
+              <div
+                className='mx-0.5 shrink-[1000] truncate text-xs font-medium text-gray-700'
+                title={node?.data.title}
+              >
+                {node?.data.title}
+              </div>
+              <Line3 className='mr-0.5 shrink-0'></Line3>
+            </>
+          )
+        }
         {VariableIcon}
         {VariableName}
       </div>
