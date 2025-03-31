@@ -136,12 +136,8 @@ class LoopNode(BaseNode[LoopNodeData]):
         try:
             check_break_result = False
             loop_duration_map = {}
-            loop_variable_changes = {}  # single loop variable changes
+            single_loop_variable_map = {}  # single loop variable output
             for i in range(loop_count):
-                pre_loop_variables = {
-                    key: variable_pool.get(selector).value for key, selector in loop_variable_selectors.items()
-                }
-
                 loop_start_time = datetime.now(UTC).replace(tzinfo=None)
                 # run single loop
                 loop_result = yield from self._run_single_loop(
@@ -158,12 +154,12 @@ class LoopNode(BaseNode[LoopNodeData]):
                 )
                 loop_end_time = datetime.now(UTC).replace(tzinfo=None)
 
-                post_loop_variables = {
+                single_loop_variable = {
                     key: variable_pool.get(selector).value for key, selector in loop_variable_selectors.items()
                 }
 
                 loop_duration_map[str(i)] = (loop_end_time - loop_start_time).total_seconds()
-                loop_variable_changes[str(i)] = {"input": pre_loop_variables, "output": post_loop_variables}
+                single_loop_variable_map[str(i)] = single_loop_variable
 
                 check_break_result = loop_result.get("check_break_result", False)
 
@@ -193,7 +189,7 @@ class LoopNode(BaseNode[LoopNodeData]):
                     metadata={
                         NodeRunMetadataKey.TOTAL_TOKENS: graph_engine.graph_runtime_state.total_tokens,
                         NodeRunMetadataKey.LOOP_DURATION_MAP: loop_duration_map,
-                        NodeRunMetadataKey.LOOP_VARIABLE_CHANGE_MAP: loop_variable_changes,
+                        NodeRunMetadataKey.LOOP_VARIABLE_MAP: single_loop_variable_map,
                     },
                     outputs=self.node_data.outputs,
                     inputs=inputs,
