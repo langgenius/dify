@@ -72,7 +72,6 @@ class LoopNode(BaseNode[LoopNodeData]):
 
         # Initialize loop variables
         loop_variable_selectors = {}
-
         for loop_variable in self.node_data.loop_variables:
             value_processor = {
                 "constant": lambda var=loop_variable: self._get_segment_for_constant(var.var_type, var.value),
@@ -136,138 +135,40 @@ class LoopNode(BaseNode[LoopNodeData]):
 
         try:
             check_break_result = False
+            loop_duration_map = {}
+            loop_variable_changes = {}  # single loop variable changes
             for i in range(loop_count):
-                # Run workflow
-                rst = graph_engine.run()
-                current_index_variable = variable_pool.get([self.node_id, "index"])
-                if not isinstance(current_index_variable, IntegerSegment):
-                    raise ValueError(f"loop {self.node_id} current index not found")
-                current_index = current_index_variable.value
+                pre_loop_variables = {
+                    key: variable_pool.get(selector).value for key, selector in loop_variable_selectors.items()
+                }
 
-                check_break_result = False
+                loop_start_time = datetime.now(UTC).replace(tzinfo=None)
+                # run single loop
+                loop_result = yield from self._run_single_loop(
+                    graph_engine=graph_engine,
+                    loop_graph=loop_graph,
+                    variable_pool=variable_pool,
+                    loop_variable_selectors=loop_variable_selectors,
+                    break_conditions=break_conditions,
+                    logical_operator=logical_operator,
+                    condition_processor=condition_processor,
+                    current_index=i,
+                    start_at=start_at,
+                    inputs=inputs,
+                )
+                loop_end_time = datetime.now(UTC).replace(tzinfo=None)
 
-                for event in rst:
-                    if isinstance(event, (BaseNodeEvent | BaseParallelBranchEvent)) and not event.in_loop_id:
-                        event.in_loop_id = self.node_id
+                post_loop_variables = {
+                    key: variable_pool.get(selector).value for key, selector in loop_variable_selectors.items()
+                }
 
-                    if (
-                        isinstance(event, BaseNodeEvent)
-                        and event.node_type == NodeType.LOOP_START
-                        and not isinstance(event, NodeRunStreamChunkEvent)
-                    ):
-                        continue
+                loop_duration_map[str(i)] = (loop_end_time - loop_start_time).total_seconds()
+                loop_variable_changes[str(i)] = {"input": pre_loop_variables, "output": post_loop_variables}
 
-                    if (
-                        isinstance(event, NodeRunSucceededEvent)
-                        and event.node_type == NodeType.LOOP_END
-                        and not isinstance(event, NodeRunStreamChunkEvent)
-                    ):
-                        check_break_result = True
-                        yield self._handle_event_metadata(event=event, iter_run_index=current_index)
-                        break
-
-                    if isinstance(event, NodeRunSucceededEvent):
-                        yield self._handle_event_metadata(event=event, iter_run_index=current_index)
-
-                        # Check if all variables in break conditions exist
-                        exists_variable = False
-                        for condition in break_conditions:
-                            if not self.graph_runtime_state.variable_pool.get(condition.variable_selector):
-                                exists_variable = False
-                                break
-                            else:
-                                exists_variable = True
-                        if exists_variable:
-                            input_conditions, group_result, check_break_result = condition_processor.process_conditions(
-                                variable_pool=self.graph_runtime_state.variable_pool,
-                                conditions=break_conditions,
-                                operator=logical_operator,
-                            )
-                            if check_break_result:
-                                break
-
-                    elif isinstance(event, BaseGraphEvent):
-                        if isinstance(event, GraphRunFailedEvent):
-                            # Loop run failed
-                            yield LoopRunFailedEvent(
-                                loop_id=self.id,
-                                loop_node_id=self.node_id,
-                                loop_node_type=self.node_type,
-                                loop_node_data=self.node_data,
-                                start_at=start_at,
-                                inputs=inputs,
-                                steps=i,
-                                metadata={
-                                    NodeRunMetadataKey.TOTAL_TOKENS: graph_engine.graph_runtime_state.total_tokens,
-                                    "completed_reason": "error",
-                                },
-                                error=event.error,
-                            )
-                            yield RunCompletedEvent(
-                                run_result=NodeRunResult(
-                                    status=WorkflowNodeExecutionStatus.FAILED,
-                                    error=event.error,
-                                    metadata={
-                                        NodeRunMetadataKey.TOTAL_TOKENS: graph_engine.graph_runtime_state.total_tokens
-                                    },
-                                )
-                            )
-                            return
-                    elif isinstance(event, NodeRunFailedEvent):
-                        # Loop run failed
-                        yield event
-                        yield LoopRunFailedEvent(
-                            loop_id=self.id,
-                            loop_node_id=self.node_id,
-                            loop_node_type=self.node_type,
-                            loop_node_data=self.node_data,
-                            start_at=start_at,
-                            inputs=inputs,
-                            steps=i,
-                            metadata={
-                                NodeRunMetadataKey.TOTAL_TOKENS: graph_engine.graph_runtime_state.total_tokens,
-                                "completed_reason": "error",
-                            },
-                            error=event.error,
-                        )
-                        yield RunCompletedEvent(
-                            run_result=NodeRunResult(
-                                status=WorkflowNodeExecutionStatus.FAILED,
-                                error=event.error,
-                                metadata={
-                                    NodeRunMetadataKey.TOTAL_TOKENS: graph_engine.graph_runtime_state.total_tokens
-                                },
-                            )
-                        )
-                        return
-                    else:
-                        yield self._handle_event_metadata(event=cast(InNodeEvent, event), iter_run_index=current_index)
-
-                # Remove all nodes outputs from variable pool
-                for node_id in loop_graph.node_ids:
-                    variable_pool.remove([node_id])
-
-                _outputs = {}
-                for loop_variable_key, loop_variable_selector in loop_variable_selectors.items():
-                    _outputs[loop_variable_key] = variable_pool.get(loop_variable_selector).value
-                    _outputs['loop_round'] = current_index + 1
-                self.node_data.outputs = _outputs
+                check_break_result = loop_result.get("check_break_result", False)
 
                 if check_break_result:
                     break
-
-                # Move to next loop
-                next_index = current_index + 1
-                variable_pool.add([self.node_id, "index"], next_index)
-
-                yield LoopRunNextEvent(
-                    loop_id=self.id,
-                    loop_node_id=self.node_id,
-                    loop_node_type=self.node_type,
-                    loop_node_data=self.node_data,
-                    index=next_index,
-                    pre_loop_output=self.node_data.outputs,
-                )
 
             # Loop completed successfully
             yield LoopRunSucceededEvent(
@@ -282,13 +183,18 @@ class LoopNode(BaseNode[LoopNodeData]):
                 metadata={
                     NodeRunMetadataKey.TOTAL_TOKENS: graph_engine.graph_runtime_state.total_tokens,
                     "completed_reason": "loop_break" if check_break_result else "loop_completed",
+                    NodeRunMetadataKey.LOOP_DURATION_MAP: loop_duration_map,
                 },
             )
 
             yield RunCompletedEvent(
                 run_result=NodeRunResult(
                     status=WorkflowNodeExecutionStatus.SUCCEEDED,
-                    metadata={NodeRunMetadataKey.TOTAL_TOKENS: graph_engine.graph_runtime_state.total_tokens},
+                    metadata={
+                        NodeRunMetadataKey.TOTAL_TOKENS: graph_engine.graph_runtime_state.total_tokens,
+                        NodeRunMetadataKey.LOOP_DURATION_MAP: loop_duration_map,
+                        NodeRunMetadataKey.LOOP_VARIABLE_CHANGE_MAP: loop_variable_changes,
+                    },
                     outputs=self.node_data.outputs,
                     inputs=inputs,
                 )
@@ -323,6 +229,154 @@ class LoopNode(BaseNode[LoopNodeData]):
         finally:
             # Clean up
             variable_pool.remove([self.node_id, "index"])
+
+    def _run_single_loop(
+        self,
+        *,
+        graph_engine: "GraphEngine",
+        loop_graph: Graph,
+        variable_pool: "VariablePool",
+        loop_variable_selectors: dict,
+        break_conditions: list,
+        logical_operator: str,
+        condition_processor: ConditionProcessor,
+        current_index: int,
+        start_at: datetime,
+        inputs: dict,
+    ) -> Generator[NodeEvent | InNodeEvent, None, dict]:
+        """Run a single loop iteration.
+        Returns:
+            dict:  {'check_break_result': bool}
+        """
+        # Run workflow
+        rst = graph_engine.run()
+        current_index_variable = variable_pool.get([self.node_id, "index"])
+        if not isinstance(current_index_variable, IntegerSegment):
+            raise ValueError(f"loop {self.node_id} current index not found")
+        current_index = current_index_variable.value
+
+        check_break_result = False
+
+        for event in rst:
+            if isinstance(event, (BaseNodeEvent | BaseParallelBranchEvent)) and not event.in_loop_id:
+                event.in_loop_id = self.node_id
+
+            if (
+                isinstance(event, BaseNodeEvent)
+                and event.node_type == NodeType.LOOP_START
+                and not isinstance(event, NodeRunStreamChunkEvent)
+            ):
+                continue
+
+            if (
+                isinstance(event, NodeRunSucceededEvent)
+                and event.node_type == NodeType.LOOP_END
+                and not isinstance(event, NodeRunStreamChunkEvent)
+            ):
+                check_break_result = True
+                yield self._handle_event_metadata(event=event, iter_run_index=current_index)
+                break
+
+            if isinstance(event, NodeRunSucceededEvent):
+                yield self._handle_event_metadata(event=event, iter_run_index=current_index)
+
+                # Check if all variables in break conditions exist
+                exists_variable = False
+                for condition in break_conditions:
+                    if not self.graph_runtime_state.variable_pool.get(condition.variable_selector):
+                        exists_variable = False
+                        break
+                    else:
+                        exists_variable = True
+                if exists_variable:
+                    input_conditions, group_result, check_break_result = condition_processor.process_conditions(
+                        variable_pool=self.graph_runtime_state.variable_pool,
+                        conditions=break_conditions,
+                        operator=logical_operator,
+                    )
+                    if check_break_result:
+                        break
+
+            elif isinstance(event, BaseGraphEvent):
+                if isinstance(event, GraphRunFailedEvent):
+                    # Loop run failed
+                    yield LoopRunFailedEvent(
+                        loop_id=self.id,
+                        loop_node_id=self.node_id,
+                        loop_node_type=self.node_type,
+                        loop_node_data=self.node_data,
+                        start_at=start_at,
+                        inputs=inputs,
+                        steps=current_index,
+                        metadata={
+                            NodeRunMetadataKey.TOTAL_TOKENS: graph_engine.graph_runtime_state.total_tokens,
+                            "completed_reason": "error",
+                        },
+                        error=event.error,
+                    )
+                    yield RunCompletedEvent(
+                        run_result=NodeRunResult(
+                            status=WorkflowNodeExecutionStatus.FAILED,
+                            error=event.error,
+                            metadata={NodeRunMetadataKey.TOTAL_TOKENS: graph_engine.graph_runtime_state.total_tokens},
+                        )
+                    )
+                    return
+            elif isinstance(event, NodeRunFailedEvent):
+                # Loop run failed
+                yield event
+                yield LoopRunFailedEvent(
+                    loop_id=self.id,
+                    loop_node_id=self.node_id,
+                    loop_node_type=self.node_type,
+                    loop_node_data=self.node_data,
+                    start_at=start_at,
+                    inputs=inputs,
+                    steps=current_index,
+                    metadata={
+                        NodeRunMetadataKey.TOTAL_TOKENS: graph_engine.graph_runtime_state.total_tokens,
+                        "completed_reason": "error",
+                    },
+                    error=event.error,
+                )
+                yield RunCompletedEvent(
+                    run_result=NodeRunResult(
+                        status=WorkflowNodeExecutionStatus.FAILED,
+                        error=event.error,
+                        metadata={NodeRunMetadataKey.TOTAL_TOKENS: graph_engine.graph_runtime_state.total_tokens},
+                    )
+                )
+                return
+            else:
+                yield self._handle_event_metadata(event=cast(InNodeEvent, event), iter_run_index=current_index)
+
+        # Remove all nodes outputs from variable pool
+        for node_id in loop_graph.node_ids:
+            variable_pool.remove([node_id])
+
+        _outputs = {}
+        for loop_variable_key, loop_variable_selector in loop_variable_selectors.items():
+            _outputs[loop_variable_key] = variable_pool.get(loop_variable_selector).value
+            _outputs["loop_round"] = current_index + 1
+        self.node_data.outputs = _outputs
+
+        if check_break_result:
+            return {"check_break_result": True}
+
+        # Move to next loop
+        next_index = current_index + 1
+        variable_pool.add([self.node_id, "index"], next_index)
+
+        yield LoopRunNextEvent(
+            loop_id=self.id,
+            loop_node_id=self.node_id,
+            loop_node_type=self.node_type,
+            loop_node_data=self.node_data,
+            index=next_index,
+            pre_loop_output=self.node_data.outputs,
+        )
+
+        return {"check_break_result": False}
 
     def _handle_event_metadata(
         self,
