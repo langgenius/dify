@@ -96,7 +96,7 @@ const DuplicateAppModal = ({
               className='h-10'
             />
           </div>
-          {isAppsFull && <AppsFull loc='app-duplicate-create' />}
+          {isAppsFull && <AppsFull className='mt-4' loc='app-duplicate-create' />}
         </div>
         <div className='flex flex-row-reverse'>
           <Button disabled={isAppsFull} className='ml-2 w-24' variant='primary' onClick={submit}>{t('app.duplicate')}</Button>

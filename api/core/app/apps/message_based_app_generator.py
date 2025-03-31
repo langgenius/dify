@@ -148,6 +148,13 @@ class MessageBasedAppGenerator(BaseAppGenerator):
         # get conversation introduction
         introduction = self._get_conversation_introduction(application_generate_entity)
 
+        # get conversation name
+        if isinstance(application_generate_entity, AdvancedChatAppGenerateEntity):
+            query = application_generate_entity.query or "New conversation"
+        else:
+            query = next(iter(application_generate_entity.inputs.values()), "New conversation")
+        conversation_name = (query[:20] + "…") if len(query) > 20 else query
+
         if not conversation:
             conversation = Conversation(
                 app_id=app_config.app_id,
@@ -156,7 +163,7 @@ class MessageBasedAppGenerator(BaseAppGenerator):
                 model_id=model_id,
                 override_model_configs=json.dumps(override_model_configs) if override_model_configs else None,
                 mode=app_config.app_mode.value,
-                name="New conversation",
+                name=conversation_name,
                 inputs=application_generate_entity.inputs,
                 introduction=introduction,
                 system_instruction="",

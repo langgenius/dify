@@ -214,6 +214,7 @@ function CreateApp({ onClose, onSuccess, onCreateFromTemplate }: CreateAppProps)
               />
             </div>
           </div>
+          {isAppsFull && <AppsFull className='mt-4' loc='app-create' />}
           <div className='flex items-center justify-between pb-10 pt-5'>
             <div className='system-xs-regular flex cursor-pointer items-center gap-1 text-text-tertiary' onClick={onCreateFromTemplate}>
               <span>{t('app.newApp.noIdeaTip')}</span>
@@ -251,13 +252,6 @@ function CreateApp({ onClose, onSuccess, onCreateFromTemplate }: CreateAppProps)
         </div>
       </div>
     </div>
-    {
-      isAppsFull && (
-        <div className='px-8 py-2'>
-          <AppsFull loc='app-create' />
-        </div>
-      )
-    }
   </>
 }
 type CreateAppDialogProps = CreateAppProps & {
