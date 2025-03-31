@@ -1,0 +1,27 @@
+identity:
+  name: 查询trace信息
+  author: APO
+  label:
+    en_US: Query trace information.
+    zh_Hans: 查询trace信息
+description:
+  human:
+    en_US: Query trace information.
+    zh_Hans: 查询trace信息
+  llm: Query trace information.
+display:
+  type: trace
+  title: trace
+  unit: trace
+parameters:
+  - name: traceId
+    type: string
+    required: true
+    label:
+      en_US: Trace ID
+      zh_Hans: 链路ID
+    human_description:
+      en_US: Trace ID
+      zh_Hans: 链路ID
+    llm_description: Trace ID
+    form: llm

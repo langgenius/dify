@@ -1,0 +1,148 @@
+identity:
+  name: 查询链路数据
+  author: APO
+  label:
+    en_US: Query trance data
+    zh_Hans: 查询链路数据
+description:
+  human:
+    en_US: Query trace data
+    zh_Hans: 查询链路数据
+  llm: Query trace data
+display:
+  type: trace
+  title: trace
+  unit: trace
+parameters:
+  - name: service
+    type: string
+    required: false
+    label:
+      en_US: service
+      zh_Hans: service
+    human_description:
+      en_US: service name
+      zh_Hans: 服务名
+    llm_description: service name
+    form: llm
+  - name: namespace
+    type: string
+    required: false
+    label:
+      en_US: namespace
+      zh_Hans: namespace
+    human_description:
+      en_US: namespace
+      zh_Hans: 命名空间
+    llm_description: namespace
+    form: llm
+  - name: endpoint
+    type: string
+    required: false
+    label:
+      en_US: endpoint
+      zh_Hans: endpoint
+    human_description:
+      en_US: endpoint name
+      zh_Hans: 服务端点
+    llm_description: endpoint name
+    form: llm
+  - name: instance
+    type: string
+    required: false
+    label:
+      en_US: instance
+      zh_Hans: instance
+    human_description:
+      en_US: instance name
+      zh_Hans: 实例名
+    llm_description: instance name
+    form: llm
+  - name: nodeName
+    type: string
+    required: false
+    label:
+      en_US: nodeName
+      zh_Hans: 主机名
+    human_description:
+      en_US: node name
+      zh_Hans: 服务端点
+    llm_description: node name
+    form: llm
+  - name: containerId
+    type: string
+    required: false
+    label:
+      en_US: containerId
+      zh_Hans: 容器id
+    human_description:
+      en_US: containerId
+      zh_Hans: 服务端点
+    llm_description: node name
+    form: llm
+  - name: pid
+    type: string
+    required: false
+    label:
+      en_US: pid
+      zh_Hans: 进程id
+    human_description:
+      en_US: process id
+      zh_Hans: 进程id
+    llm_description: process id
+    form: llm
+  - name: traceId
+    type: string
+    required: false
+    label:
+      en_US: traceId
+      zh_Hans: traceId
+    human_description:
+      en_US: trace id
+      zh_Hans: trace id
+    llm_description: trace id
+    form: llm
+  - name: pageNum
+    type: number
+    required: false
+    label:
+      en_US: pageNum
+      zh_Hans: 页码
+    human_description:
+      en_US: page number
+      zh_Hans: 页码
+    llm_description: page number
+    form: llm
+  - name: pageSize
+    type: number
+    required: false
+    label:
+      en_US: pageSize
+      zh_Hans: 每页条数
+    human_description:
+      en_US: page size
+      zh_Hans: 每页条数
+    llm_description: page size
+    form: llm
+  - name: startTime
+    type: number
+    required: true
+    label:
+      en_US: startTime
+      zh_Hans: startTime
+    human_description:
+      en_US: Data query start time(Microsecond)
+      zh_Hans: 开始时间 (微秒)
+    llm_description: Data query start time(Microsecond)
+    form: llm
+  - name: endTime
+    type: number
+    required: true
+    label:
+      en_US: endTime
+      zh_Hans: endTime
+    human_description:
+      en_US: Data query end time(Microsecond)
+      zh_Hans: 结束时间 (微秒)
+    llm_description: Data query end time(Microsecond)
+    form: llm
