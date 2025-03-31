@@ -77,6 +77,7 @@ import {
   correctToolProvider,
 } from '@/utils'
 import PluginDependency from '@/app/components/workflow/plugin-dependency'
+import { supportFunctionCall } from '@/utils/tool-call'
 
 type PublishConfig = {
   modelConfig: ModelConfig
@@ -347,12 +348,7 @@ const Configuration: FC = () => {
     },
   )
 
-  const isFunctionCall = (() => {
-    const features = currModel?.features
-    if (!features)
-      return false
-    return features.includes(ModelFeatureEnum.toolCall) || features.includes(ModelFeatureEnum.multiToolCall)
-  })()
+  const isFunctionCall = supportFunctionCall(currModel?.features)
 
   // Fill old app data missing model mode.
   useEffect(() => {
@@ -651,7 +647,13 @@ const Configuration: FC = () => {
 
         syncToPublishedConfig(config)
         setPublishedConfig(config)
-        const retrievalConfig = getMultipleRetrievalConfig(modelConfig.dataset_configs, datasets, datasets, {
+        const retrievalConfig = getMultipleRetrievalConfig({
+          ...modelConfig.dataset_configs,
+          reranking_model: modelConfig.dataset_configs.reranking_model && {
+            provider: modelConfig.dataset_configs.reranking_model.reranking_provider_name,
+            model: modelConfig.dataset_configs.reranking_model.reranking_model_name,
+          },
+        }, datasets, datasets, {
           provider: currentRerankProvider?.provider,
           model: currentRerankModel?.model,
         })
@@ -661,8 +663,8 @@ const Configuration: FC = () => {
           ...retrievalConfig,
           ...(retrievalConfig.reranking_model ? {
             reranking_model: {
-              ...retrievalConfig.reranking_model,
-              reranking_provider_name: correctModelProvider(modelConfig.dataset_configs.reranking_model.reranking_provider_name),
+              reranking_model_name: retrievalConfig.reranking_model.model,
+              reranking_provider_name: correctModelProvider(retrievalConfig.reranking_model.provider),
             },
           } : {}),
         })

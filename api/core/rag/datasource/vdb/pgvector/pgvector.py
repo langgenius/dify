@@ -167,7 +167,6 @@ class PGVector(BaseVector):
         Search the nearest neighbors to a vector.
 
         :param query_vector: The input vector to search for similar items.
-        :param top_k: The number of nearest neighbors to return, default is 5.
         :return: List of Documents that are nearest to the query vector.
         """
         top_k = kwargs.get("top_k", 4)
@@ -177,7 +176,7 @@ class PGVector(BaseVector):
         where_clause = ""
         if document_ids_filter:
             document_ids = ", ".join(f"'{id}'" for id in document_ids_filter)
-            where_clause = f" WHERE metadata->>'document_id' in ({document_ids}) "
+            where_clause = f" WHERE meta->>'document_id' in ({document_ids}) "
 
         with self._get_cursor() as cur:
             cur.execute(
@@ -205,7 +204,7 @@ class PGVector(BaseVector):
             where_clause = ""
             if document_ids_filter:
                 document_ids = ", ".join(f"'{id}'" for id in document_ids_filter)
-                where_clause = f" AND metadata->>'document_id' in ({document_ids}) "
+                where_clause = f" AND meta->>'document_id' in ({document_ids}) "
             if self.pg_bigm:
                 cur.execute("SET pg_bigm.similarity_limit TO 0.000001")
                 cur.execute(

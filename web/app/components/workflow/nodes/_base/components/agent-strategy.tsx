@@ -19,6 +19,9 @@ import { useWorkflowStore } from '../../../store'
 import { useRenderI18nObject } from '@/hooks/use-i18n'
 import type { NodeOutPutVar } from '../../../types'
 import type { Node } from 'reactflow'
+import { useContext } from 'use-context-selector'
+import I18n from '@/context/i18n'
+import { LanguagesSupported } from '@/i18n/language'
 
 export type Strategy = {
   agent_strategy_provider_name: string
@@ -49,6 +52,7 @@ type CustomField = ToolSelectorSchema | MultipleToolSelectorSchema
 export const AgentStrategy = memo((props: AgentStrategyProps) => {
   const { strategy, onStrategyChange, formSchema, formValue, onFormValueChange, nodeOutputVars, availableNodes, nodeId } = props
   const { t } = useTranslation()
+  const { locale } = useContext(I18n)
   const defaultModel = useDefaultModel(ModelTypeEnum.textGeneration)
   const renderI18nObject = useRenderI18nObject()
   const workflowStore = useWorkflowStore()
@@ -216,7 +220,11 @@ export const AgentStrategy = memo((props: AgentStrategyProps) => {
           title={t('workflow.nodes.agent.strategy.configureTip')}
           description={<div className='text-xs text-text-tertiary'>
             {t('workflow.nodes.agent.strategy.configureTipDesc')} <br />
-            <Link href={'/'} className='text-text-accent-secondary'>
+            <Link href={
+              locale === LanguagesSupported[1]
+                ? 'https://docs.dify.ai/zh-hans/guides/workflow/node/agent#xuan-ze-agent-ce-le'
+                : 'https://docs.dify.ai/guides/workflow/node/agent#select-an-agent-strategy'
+            } className='text-text-accent-secondary' target='_blank'>
               {t('workflow.nodes.agent.learnMore')}
             </Link>
           </div>}

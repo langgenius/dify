@@ -186,6 +186,9 @@ class ApiBasedToolSchemaParser:
             return ToolParameter.ToolParameterType.BOOLEAN
         elif typ == "string":
             return ToolParameter.ToolParameterType.STRING
+        elif typ == "array":
+            items = parameter.get("items") or parameter.get("schema", {}).get("items")
+            return ToolParameter.ToolParameterType.FILES if items and items.get("format") == "binary" else None
         else:
             return None
 
@@ -197,6 +200,8 @@ class ApiBasedToolSchemaParser:
         parse openapi yaml to tool bundle
 
         :param yaml: the yaml string
+        :param extra_info: the extra info
+        :param warning: the warning message
         :return: the tool bundle
         """
         warning = warning if warning is not None else {}
@@ -278,6 +283,8 @@ class ApiBasedToolSchemaParser:
         parse openapi plugin yaml to tool bundle
 
         :param json: the json string
+        :param extra_info: the extra info
+        :param warning: the warning message
         :return: the tool bundle
         """
         warning = warning if warning is not None else {}
@@ -312,6 +319,8 @@ class ApiBasedToolSchemaParser:
         auto parse to tool bundle
 
         :param content: the content
+        :param extra_info: the extra info
+        :param warning: the warning message
         :return: tools bundle, schema_type
         """
         warning = warning if warning is not None else {}

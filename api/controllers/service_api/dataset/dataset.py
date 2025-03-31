@@ -142,6 +142,7 @@ class DatasetApi(DatasetApiResource):
         Deletes a dataset given its ID.
 
         Args:
+            _: ignore
             dataset_id (UUID): The ID of the dataset to be deleted.
 
         Returns:

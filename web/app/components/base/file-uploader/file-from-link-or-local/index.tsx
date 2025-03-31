@@ -74,7 +74,7 @@ const FileFromLinkOrLocal = ({
                     value={url}
                     onChange={(e) => {
                       setShowError(false)
-                      setUrl(e.target.value)
+                      setUrl(e.target.value.trim())
                     }}
                     disabled={disabled}
                   />

@@ -5,6 +5,7 @@ from typing import Optional
 
 from werkzeug.datastructures import FileStorage
 
+from constants import AUDIO_EXTENSIONS
 from core.model_manager import ModelManager
 from core.model_runtime.entities.model_entities import ModelType
 from models.model import App, AppMode, AppModelConfig, Message
@@ -18,7 +19,6 @@ from services.errors.audio import (
 
 FILE_SIZE = 30
 FILE_SIZE_LIMIT = FILE_SIZE * 1024 * 1024
-ALLOWED_EXTENSIONS = ["mp3", "mp4", "mpeg", "mpga", "m4a", "wav", "webm", "amr"]
 
 logger = logging.getLogger(__name__)
 
@@ -44,7 +44,7 @@ class AudioService:
             raise NoAudioUploadedServiceError()
 
         extension = file.mimetype
-        if extension not in [f"audio/{ext}" for ext in ALLOWED_EXTENSIONS]:
+        if extension not in [f"audio/{ext}" for ext in AUDIO_EXTENSIONS]:
             raise UnsupportedAudioTypeServiceError()
 
         file_content = file.read()

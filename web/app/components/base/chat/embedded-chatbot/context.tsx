@@ -46,6 +46,8 @@ export type EmbeddedChatbotContextValue = {
   setClearChatList: (state: boolean) => void
   isResponding?: boolean
   setIsResponding: (state: boolean) => void,
+  currentConversationInputs: Record<string, any> | null,
+  setCurrentConversationInputs: (v: Record<string, any>) => void,
 }
 
 export const EmbeddedChatbotContext = createContext<EmbeddedChatbotContextValue>({
@@ -70,5 +72,7 @@ export const EmbeddedChatbotContext = createContext<EmbeddedChatbotContextValue>
   setClearChatList: () => {},
   isResponding: false,
   setIsResponding: () => {},
+  currentConversationInputs: {},
+  setCurrentConversationInputs: () => {},
 })
 export const useEmbeddedChatbotContext = () => useContext(EmbeddedChatbotContext)
