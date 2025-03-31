@@ -1,12 +1,12 @@
 import copy
 import json
 import logging
-from tenacity import retry, stop_after_attempt, wait_exponential
 import time
 from typing import Any, Optional
 
 from opensearchpy import OpenSearch
 from pydantic import BaseModel, model_validator
+from tenacity import retry, stop_after_attempt, wait_exponential
 
 from configs import dify_config
 from core.rag.datasource.vdb.field import Field
@@ -79,10 +79,14 @@ class LindormVectorStore(BaseVector):
     def refresh(self):
         self._client.indices.refresh(index=self._collection_name)
 
-    def add_texts(self, documents: list[Document], embeddings: list[list[float]],
-                  batch_size: int = 64,
-                  timeout: int = 60,
-                  **kwargs):
+    def add_texts(
+        self,
+        documents: list[Document],
+        embeddings: list[list[float]],
+        batch_size: int = 64,
+        timeout: int = 60,
+        **kwargs,
+    ):
         logger.info(f"Total documents to add: {len(documents)}")
         uuids = self._get_uuids(documents)
 
@@ -99,11 +103,11 @@ class LindormVectorStore(BaseVector):
                 if response["errors"]:
                     error_items = [item for item in response["items"] if "error" in item["index"]]
                     error_msg = f"Bulk indexing had {len(error_items)} errors"
-                    logger.error(error_msg)
+                    logger.exception(error_msg)
                     raise Exception(error_msg)
                 return response
-            except Exception as e:
-                logger.error(f"Bulk indexing error: {str(e)}")
+            except Exception:
+                logger.exception("Bulk indexing error")
                 raise
 
         for batch_num in range(num_batches):
@@ -140,8 +144,8 @@ class LindormVectorStore(BaseVector):
                 if batch_num < num_batches - 1:
                     time.sleep(1)
 
-            except Exception as e:
-                logger.error(f"Failed to process batch {batch_num + 1}: {str(e)}")
+            except Exception:
+                logger.exception(f"Failed to process batch {batch_num + 1}")
                 raise
 
     def get_ids_by_metadata_field(self, key: str, value: str):
