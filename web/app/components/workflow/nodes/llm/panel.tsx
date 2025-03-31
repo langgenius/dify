@@ -294,7 +294,7 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
         collapsed={structuredOutputCollapsed}
         onCollapse={setStructuredOutputCollapsed}
         operations={
-          <div className='mr-4 flex items-center'>
+          <div className='mr-4 flex shrink-0 items-center'>
             {!isModelSupportStructuredOutput && (
               <Tooltip noDecoration popupContent={
                 <div className='w-[232px] rounded-xl border-[0.5px] border-components-panel-border bg-components-tooltip-bg px-4 py-3.5 shadow-lg backdrop-blur-[5px]'>
