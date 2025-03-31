@@ -13,8 +13,10 @@ class EnterpriseRequest:
     }
 
     @classmethod
-    def send_request(cls, method, endpoint, json=None, params=None):
+    def send_request(cls, method, endpoint, json=None, params=None, tenant_id=None):
         headers = {"Content-Type": "application/json", "Enterprise-Api-Secret-Key": cls.secret_key}
+        if tenant_id:
+            headers["X-Tenant-ID"] = tenant_id
         url = f"{cls.base_url}{endpoint}"
         response = requests.request(method, url, json=json, params=params, headers=headers, proxies=cls.proxies)
         return response.json()
