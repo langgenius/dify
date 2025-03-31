@@ -40,7 +40,9 @@ const WorkplaceSelector = () => {
                 gap-1.5 p-0.5 hover:bg-state-base-hover ${open && 'bg-state-base-hover'} rounded-[10px]
               `,
             )}>
-              <div className='flex h-7 w-7 items-center justify-center rounded-lg bg-[#EFF4FF] text-xs font-medium text-primary-600'>{currentWorkspace?.name[0].toLocaleUpperCase()}</div>
+              <div className='flex h-6 w-6 items-center justify-center rounded-md bg-components-icon-bg-blue-solid text-[13px]'>
+                <span className='bg-gradient-to-r from-components-avatar-shape-fill-stop-0 to-components-avatar-shape-fill-stop-100 bg-clip-text font-semibold uppercase text-shadow-shadow-1 opacity-90'>{currentWorkspace?.name[0]?.toLocaleUpperCase()}</span>
+              </div>
               <div className='flex flex-row'>
                 <div className={'system-sm-medium max-w-[80px] truncate text-text-secondary'}>{currentWorkspace?.name}</div>
                 <RiArrowDownSLine className='h-4 w-4 text-text-secondary' />
@@ -69,7 +71,9 @@ const WorkplaceSelector = () => {
                   {
                     workspaces.map(workspace => (
                       <div className='flex items-center gap-2 self-stretch rounded-lg py-1 pl-3 pr-2 hover:bg-state-base-hover' key={workspace.id} onClick={() => handleSwitchWorkspace(workspace.id)}>
-                        <div className='flex h-6 w-6 items-center justify-center rounded-md bg-[#EFF4FF] text-xs font-medium text-primary-600'>{workspace.name[0].toLocaleUpperCase()}</div>
+                        <div className='flex h-6 w-6 items-center justify-center rounded-md bg-components-icon-bg-blue-solid text-[13px]'>
+                          <span className='bg-gradient-to-r from-components-avatar-shape-fill-stop-0 to-components-avatar-shape-fill-stop-100 bg-clip-text font-semibold uppercase text-shadow-shadow-1 opacity-90'>{workspace?.name[0]?.toLocaleUpperCase()}</span>
+                        </div>
                         <div className='system-md-regular line-clamp-1 grow cursor-pointer overflow-hidden text-ellipsis text-text-secondary'>{workspace.name}</div>
                         <PlanBadge plan={workspace.plan as Plan} />
                       </div>
