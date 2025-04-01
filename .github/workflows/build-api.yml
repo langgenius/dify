@@ -74,5 +74,5 @@ jobs:
         IMAGE_FULL_NAME="${{ env.REGISTRY_HOST }}/${{ secrets.DOCKERHUB_USERNAME }}/${{ env.DEPLOYMENT_NAME }}:$IMAGE_TAG_NAME"
         echo "IMAGE_FULL_NAME=$IMAGE_FULL_NAME"
         export KUBECONFIG="/root/.kube/config"
-        kubectl set image statefulset ${{ env.DEPLOYMENT_NAME }} ${{ env.CONTAINER_NAME }}=$IMAGE_FULL_NAME -n ${{ env.NAMESPACE }}
-        kubectl set image statefulset apo-dify-worker dify-worker=$IMAGE_FULL_NAME -n ${{ env.NAMESPACE }}
+        kubectl set image statefulset apo-dify-backend ${{ env.CONTAINER_NAME }}=$IMAGE_FULL_NAME -n ${{ env.NAMESPACE }}
+        kubectl set image statefulset apo-dify-backend dify-worker=$IMAGE_FULL_NAME -n ${{ env.NAMESPACE }}
