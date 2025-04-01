@@ -6,7 +6,6 @@ on:
       - "main"
       - "deploy/dev"
       - "deploy/enterprise"
-      - "feat/education-api"
     tags:
       - "*"
 
