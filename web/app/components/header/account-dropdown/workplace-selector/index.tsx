@@ -44,7 +44,7 @@ const WorkplaceSelector = () => {
                 <span className='bg-gradient-to-r from-components-avatar-shape-fill-stop-0 to-components-avatar-shape-fill-stop-100 bg-clip-text font-semibold uppercase text-shadow-shadow-1 opacity-90'>{currentWorkspace?.name[0]?.toLocaleUpperCase()}</span>
               </div>
               <div className='flex flex-row'>
-                <div className={'system-sm-medium max-w-[80px] truncate text-text-secondary'}>{currentWorkspace?.name}</div>
+                <div className={'system-sm-medium max-w-[160px] truncate text-text-secondary'}>{currentWorkspace?.name}</div>
                 <RiArrowDownSLine className='h-4 w-4 text-text-secondary' />
               </div>
             </MenuButton>
