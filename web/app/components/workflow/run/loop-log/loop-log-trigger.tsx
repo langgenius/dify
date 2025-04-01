@@ -3,13 +3,14 @@ import { RiArrowRightSLine } from '@remixicon/react'
 import Button from '@/app/components/base/button'
 import type {
   LoopDurationMap,
+  LoopVariableMap,
   NodeTracing,
 } from '@/types/workflow'
 import { Loop } from '@/app/components/base/icons/src/vender/workflow'
 
 type LoopLogTriggerProps = {
   nodeInfo: NodeTracing
-  onShowLoopResultList: (loopResultList: NodeTracing[][], loopResultDurationMap: LoopDurationMap) => void
+  onShowLoopResultList: (loopResultList: NodeTracing[][], loopResultDurationMap: LoopDurationMap, loopVariableMap: LoopVariableMap) => void
 }
 const LoopLogTrigger = ({
   nodeInfo,
@@ -35,7 +36,11 @@ const LoopLogTrigger = ({
   const handleOnShowLoopDetail = (e: React.MouseEvent<HTMLButtonElement>) => {
     e.stopPropagation()
     e.nativeEvent.stopImmediatePropagation()
-    onShowLoopResultList(nodeInfo.details || [], nodeInfo?.loopDurationMap || nodeInfo.execution_metadata?.loop_duration_map || {})
+    onShowLoopResultList(
+      nodeInfo.details || [],
+      nodeInfo?.loopDurationMap || nodeInfo.execution_metadata?.loop_duration_map || {},
+      nodeInfo.execution_metadata?.loop_variable_map || {},
+    )
   }
   return (
     <Button

@@ -42,8 +42,8 @@ const PlanBadge: FC<PlanBadgeProps> = ({ plan, allowHover, sandboxAsUpgrade = fa
   if (plan === Plan.professional) {
     return <PremiumBadge className='select-none' size='s' color='blue' allowHover={allowHover} onClick={onClick}>
       <div className='system-2xs-medium-uppercase'>
-        <span className='p-1 inline-flex items-center gap-1'>
-          {isEducationWorkspace && <RiGraduationCapFill className='w-3 h-3' />}
+        <span className='inline-flex items-center gap-1 p-1'>
+          {isEducationWorkspace && <RiGraduationCapFill className='h-3 w-3' />}
           pro
         </span>
       </div>

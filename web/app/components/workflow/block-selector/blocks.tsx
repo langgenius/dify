@@ -15,6 +15,7 @@ import { BLOCK_CLASSIFICATIONS } from './constants'
 import { useBlocks } from './hooks'
 import type { ToolDefaultValue } from './types'
 import Tooltip from '@/app/components/base/tooltip'
+import Badge from '@/app/components/base/badge'
 
 type BlocksProps = {
   searchText: string
@@ -90,7 +91,15 @@ const Blocks = ({
                   className='mr-2 shrink-0'
                   type={block.type}
                 />
-                <div className='text-sm text-text-secondary'>{block.title}</div>
+                <div className='grow text-sm text-text-secondary'>{block.title}</div>
+                {
+                  block.type === BlockEnum.LoopEnd && (
+                    <Badge
+                      text={t('workflow.nodes.loop.loopNode')}
+                      className='ml-2 shrink-0'
+                    />
+                  )
+                }
               </div>
             </Tooltip>
           ))
