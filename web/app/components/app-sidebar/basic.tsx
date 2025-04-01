@@ -54,7 +54,7 @@ const ICON_MAP = {
   notion: <AppIcon innerIcon={NotionSvg} className='!border-[0.5px] !border-indigo-100 !bg-white' />,
 }
 
-export default function AppBasic({ icon, icon_background, name, isExternal, type, hoverTip, textStyle, mode = 'expand', iconType = 'app' }: IAppBasicProps) {
+export default function AppBasic({ icon, icon_background, name, isExternal, type, hoverTip, textStyle, isExtraInLine, mode = 'expand', iconType = 'app' }: IAppBasicProps) {
   const { t } = useTranslation()
 
   return (
@@ -70,9 +70,9 @@ export default function AppBasic({ icon, icon_background, name, isExternal, type
         </div>
 
       }
-      {mode === 'expand' && <div className="group">
+      {mode === 'expand' && <div className="group w-full">
         <div className={`system-md-semibold flex flex-row items-center text-text-secondary group-hover:text-text-primary ${textStyle?.main ?? ''}`}>
-          <div className="max-w-[180px] truncate">
+          <div className="min-w-0 overflow-hidden text-ellipsis break-normal">
             {name}
           </div>
           {hoverTip
@@ -88,7 +88,11 @@ export default function AppBasic({ icon, icon_background, name, isExternal, type
             />
           }
         </div>
-        <div className='system-2xs-medium-uppercase text-text-tertiary'>{isExternal ? t('dataset.externalTag') : ''}</div>
+        {isExtraInLine ? (
+          <div className="system-2xs-medium-uppercase flex text-text-tertiary">{type}</div>
+        ) : (
+          <div className='system-2xs-medium-uppercase text-text-tertiary'>{isExternal ? t('dataset.externalTag') : type}</div>
+        )}
       </div>}
     </div>
   )

@@ -432,6 +432,10 @@ export const LOOP_PADDING = {
   left: 16,
 }
 
+export const NODE_LAYOUT_HORIZONTAL_PADDING = 60
+export const NODE_LAYOUT_VERTICAL_PADDING = 60
+export const NODE_LAYOUT_MIN_DISTANCE = 100
+
 let maxParallelLimit = 10
 
 if (process.env.NEXT_PUBLIC_MAX_PARALLEL_LIMIT && process.env.NEXT_PUBLIC_MAX_PARALLEL_LIMIT !== '')

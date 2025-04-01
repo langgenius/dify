@@ -1663,6 +1663,7 @@ class SegmentService:
                     content=content,
                     word_count=len(content),
                     tokens=tokens,
+                    keywords=segment_item.get("keywords", []),
                     status="completed",
                     indexing_at=datetime.datetime.now(datetime.UTC).replace(tzinfo=None),
                     completed_at=datetime.datetime.now(datetime.UTC).replace(tzinfo=None),

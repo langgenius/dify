@@ -10,11 +10,7 @@ from extensions.ext_mail import mail
 
 @shared_task(queue="mail")
 def send_deletion_success_task(to):
-    """Send email to user regarding account deletion.
-
-    Args:
-        log (AccountDeletionLog): Account deletion log object
-    """
+    """Send email to user regarding account deletion."""
     if not mail.is_inited():
         return
 

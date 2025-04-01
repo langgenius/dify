@@ -152,6 +152,10 @@ class Vector:
                 from core.rag.datasource.vdb.opengauss.opengauss import OpenGaussFactory
 
                 return OpenGaussFactory
+            case VectorType.TABLESTORE:
+                from core.rag.datasource.vdb.tablestore.tablestore_vector import TableStoreVectorFactory
+
+                return TableStoreVectorFactory
             case _:
                 raise ValueError(f"Vector store {vector_type} is not supported.")
 
