@@ -98,6 +98,32 @@ describe('Zod Features', () => {
     expect(userSchema.safeParse(userWithOptionalField).success).toEqual(true)
   })
 
+  it('should support object intersection', () => {
+    const Person = z.object({
+      name: z.string(),
+    })
+
+    const Employee = z.object({
+      role: z.string(),
+    })
+
+    const EmployedPerson = z.intersection(Person, Employee)
+    const validEmployedPerson = {
+      name: 'John',
+      role: 'Developer',
+    }
+    expect(EmployedPerson.parse(validEmployedPerson)).toEqual(validEmployedPerson)
+  })
+
+  it('should support record', () => {
+    const recordSchema = z.record(z.string(), z.number())
+    const validRecord = {
+      a: 1,
+      b: 2,
+    }
+    expect(recordSchema.parse(validRecord)).toEqual(validRecord)
+  })
+
   it('should support array', () => {
     const numbersSchema = z.array(z.number())
     const stringArraySchema = z.string().array()
@@ -128,20 +154,16 @@ describe('Zod Features', () => {
     expect(functionSchema.safeParse(validFunction).success).toEqual(true)
   })
 
-  // it('should support undefined, null, any, and void', () => {
-  //   const undefinedSchema = z.undefined()
-  //   const nullSchema = z.null()
-  //   const anySchema = z.any()
-  //   const voidSchema = z.void()
+  it('should support undefined, null, any, and void', () => {
+    const undefinedSchema = z.undefined()
+    const nullSchema = z.null()
+    const anySchema = z.any()
 
-  //   expect(anySchema.parse('anything')).toBe('anything')
-  //   expect(voidSchema.parse(undefined)).toBeUndefined()
-  //   expect(voidSchema.parse(null)).toBeUndefined()
-  //   expect(voidSchema.parse(123)).toBeUndefined()
-  //   expect(voidSchema.parse('string')).toBeUndefined()
-  //   expect(undefinedSchema.parse(undefined)).toBeUndefined()
-  //   expect(nullSchema.parse(null)).toBeNull()
-  // })
+    expect(undefinedSchema.parse(undefined)).toBeUndefined()
+    expect(nullSchema.parse(null)).toBeNull()
+    expect(anySchema.parse('anything')).toBe('anything')
+    expect(anySchema.parse(3)).toBe(3)
+  })
 
   it('should safeParse would not throw', () => {
     expect(z.string().safeParse('abc').success).toBe(true)

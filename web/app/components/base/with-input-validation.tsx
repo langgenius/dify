@@ -14,6 +14,7 @@ function withValidation<T extends Record<string, unknown>, K extends keyof T>(
     const checkRes = schema.safeParse(partialProps)
     if (!checkRes.success) {
       console.error(checkRes.error)
+      // Maybe there is a better way to handle this, like error logic placeholder
       return null
     }
     return <WrappedComponent {...props} />
