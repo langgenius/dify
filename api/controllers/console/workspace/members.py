@@ -55,8 +55,11 @@ class MemberInviteEmailApi(Resource):
         inviter = current_user
         invitation_results = []
         console_web_url = dify_config.CONSOLE_WEB_URL
-        if (FeatureService.get_system_features().license.product_id == "DIFY_ENTERPRISE_STANDARD" and
-                len(invitee_emails) > FeatureService.get_features(tenant_id=inviter.current_tenant.id).available_team_members):
+        if (
+            FeatureService.get_system_features().license.product_id == "DIFY_ENTERPRISE_STANDARD"
+            and len(invitee_emails)
+            > FeatureService.get_features(tenant_id=inviter.current_tenant.id).available_team_members
+        ):
             return {
                 "code": "limit-exceeded",
                 "message": "Limit exceeded",
