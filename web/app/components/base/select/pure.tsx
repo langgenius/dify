@@ -89,7 +89,7 @@ const PureSelect = ({
       >
         <div
           className={cn(
-            'group flex items-center px-2 h-8 bg-components-input-bg-normal hover:bg-state-base-hover-alt rounded-lg system-sm-regular text-components-input-text-filled cursor-pointer',
+            'system-sm-regular group flex h-8 cursor-pointer items-center rounded-lg bg-components-input-bg-normal px-2 text-components-input-text-filled hover:bg-state-base-hover-alt',
             mergedOpen && 'bg-state-base-hover-alt',
             triggerClassName,
           )}
@@ -102,7 +102,7 @@ const PureSelect = ({
           </div>
           <RiArrowDownSLine
             className={cn(
-              'shrink-0 group-hover:text-text-secondary w-4 h-4 text-text-quaternary',
+              'h-4 w-4 shrink-0 text-text-quaternary group-hover:text-text-secondary',
               mergedOpen && 'text-text-secondary',
             )}
           />
@@ -114,13 +114,13 @@ const PureSelect = ({
       )}>
         <div
           className={cn(
-            'p-1 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg',
+            'rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-1 shadow-lg',
             popupClassName,
           )}
         >
           {
             popupTitle && (
-              <div className='flex items-center px-3 h-[22px] system-xs-medium-uppercase text-text-tertiary'>
+              <div className='system-xs-medium-uppercase flex h-[22px] items-center px-3 text-text-tertiary'>
                 {popupTitle}
               </div>
             )
@@ -130,7 +130,7 @@ const PureSelect = ({
               <div
                 key={option.value}
                 className={cn(
-                  'flex items-center px-2 h-8 hover:bg-state-base-hover rounded-lg cursor-pointer system-sm-medium text-text-secondary',
+                  'system-sm-medium flex h-8 cursor-pointer items-center rounded-lg px-2 text-text-secondary hover:bg-state-base-hover',
                   popupItemClassName,
                 )}
                 title={option.label}
@@ -139,11 +139,11 @@ const PureSelect = ({
                   handleOpenChange(false)
                 }}
               >
-                <div className='grow mr-1 px-1 truncate'>
+                <div className='mr-1 grow truncate px-1'>
                   {option.label}
                 </div>
                 {
-                  value === option.value && <RiCheckLine className='shrink-0 w-4 h-4 text-text-accent' />
+                  value === option.value && <RiCheckLine className='h-4 w-4 shrink-0 text-text-accent' />
                 }
               </div>
             ))
