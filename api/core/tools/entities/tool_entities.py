@@ -264,7 +264,7 @@ class ToolParameter(PluginParameter):
 
         :param name: the name of the parameter
         :param llm_description: the description presented to the LLM
-        :param type: the type of the parameter
+        :param typ: the type of the parameter
         :param required: if the parameter is required
         :param options: the options of the parameter
         """
