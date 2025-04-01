@@ -35,6 +35,8 @@ def document_indexing_task(dataset_id: str, document_ids: list):
             vector_space = features.vector_space
             count = len(document_ids)
             batch_upload_limit = int(dify_config.BATCH_UPLOAD_LIMIT)
+            if features.billing.subscription.plan == "sandbox" and count > 1:
+                raise ValueError("Your current plan does not support batch upload, please upgrade your plan.")
             if count > batch_upload_limit:
                 raise ValueError(f"You have reached the batch upload limit of {batch_upload_limit}.")
             if 0 < vector_space.limit <= vector_space.size:
