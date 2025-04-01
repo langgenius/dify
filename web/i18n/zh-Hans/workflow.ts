@@ -725,6 +725,7 @@ const translation = {
       loopNode: '循环节点',
       currentLoopCount: '当前循环次数：{{count}}',
       totalLoopCount: '总循环次数：{{count}}',
+      variables: '变量',
     },
     note: {
       addNote: '添加注释',
