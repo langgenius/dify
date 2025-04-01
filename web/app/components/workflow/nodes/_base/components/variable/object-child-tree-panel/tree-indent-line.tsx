@@ -14,9 +14,9 @@ const TreeIndentLine: FC<Props> = ({
 }) => {
   const depthArray = Array.from({ length: depth }, (_, index) => index)
   return (
-    <div className={cn('ml-2.5 mr-2.5 flex space-x-[12px]', className)}>
+    <div className={cn('flex', className)}>
       {depthArray.map(d => (
-        <div key={d} className={cn('w-px bg-divider-regular')}></div>
+        <div key={d} className={cn('ml-2.5 mr-2.5 w-px bg-divider-regular')}></div>
       ))}
     </div>
   )
