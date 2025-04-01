@@ -86,7 +86,7 @@ class LoopNode(BaseNode[LoopNodeData]):
             processed_segment = value_processor[loop_variable.value_type]()
 
             variable_selector = [self.node_id, loop_variable.label]
-            variable_pool.add(variable_selector, processed_segment)
+            variable_pool.add(variable_selector, processed_segment.value)
             loop_variable_selectors[loop_variable.label] = variable_selector
             inputs[loop_variable.label] = processed_segment.value
 
@@ -124,14 +124,14 @@ class LoopNode(BaseNode[LoopNodeData]):
             predecessor_node_id=self.previous_node_id,
         )
 
-        yield LoopRunNextEvent(
-            loop_id=self.id,
-            loop_node_id=self.node_id,
-            loop_node_type=self.node_type,
-            loop_node_data=self.node_data,
-            index=0,
-            pre_loop_output=None,
-        )
+        # yield LoopRunNextEvent(
+        #     loop_id=self.id,
+        #     loop_node_id=self.node_id,
+        #     loop_node_type=self.node_type,
+        #     loop_node_data=self.node_data,
+        #     index=0,
+        #     pre_loop_output=None,
+        # )
         loop_duration_map = {}
         single_loop_variable_map = {}  # single loop variable output
         try:
