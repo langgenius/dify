@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import { useState } from 'react'
-import { RiArrowDropRightLine } from '@remixicon/react'
+import { ArrowDownRoundFill } from '@/app/components/base/icons/src/vender/solid/general'
 import cn from '@/utils/classnames'
 
 export { default as FieldCollapse } from './field-collapse'
@@ -27,7 +27,7 @@ const Collapse = ({
 
   return (
     <>
-      <div className='flex items-center'>
+      <div className='group/collapse flex items-center'>
         <div
           className='ml-4 flex grow items-center'
           onClick={() => {
@@ -38,13 +38,13 @@ const Collapse = ({
           }}
         >
           {trigger}
-          <div className='ml-1 h-4 w-4 shrink-0'>
+          <div className='h-4 w-4 shrink-0'>
             {
               !disabled && (
-                <RiArrowDropRightLine
+                <ArrowDownRoundFill
                   className={cn(
-                    'h-4 w-4 cursor-pointer text-text-tertiary',
-                    !collapsedMerged && 'rotate-90',
+                    'h-4 w-4 cursor-pointer text-text-quaternary group-hover/collapse:text-text-secondary',
+                    collapsedMerged && 'rotate-[270deg]',
                   )}
                 />
               )
