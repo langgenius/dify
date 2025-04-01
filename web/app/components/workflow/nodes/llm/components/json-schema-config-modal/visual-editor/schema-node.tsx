@@ -136,8 +136,8 @@ const SchemaNode: FC<SchemaNodeProps> = ({
       </div>
 
       <div className={classNames(
-        'flex justify-center w-5 absolute top-7 z-0',
-        schema.description ? 'h-[calc(100%-3rem)]' : 'h-[calc(100%-1.75rem)]',
+        'flex justify-center w-5 absolute z-0',
+        schema.description ? 'h-[calc(100%-3rem)] top-12' : 'h-[calc(100%-1.75rem)] top-7',
         indentLeft[depth],
       )}>
         <Divider

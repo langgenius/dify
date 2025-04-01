@@ -197,7 +197,7 @@ const EditCard: FC<EditCardProps> = ({
   }, [isAddingNewField, emit, setIsAddingNewField, setAdvancedEditing, backupFields])
 
   useUnmount(() => {
-    if (isAdvancedEditing || isAddingNewField || blurWithActions.current) return
+    if (isAdvancedEditing || blurWithActions.current) return
     emitFieldChange()
   })
 
@@ -248,7 +248,7 @@ const EditCard: FC<EditCardProps> = ({
         )}
       </div>
 
-      {(currentFields.description || isAdvancedEditing) && (
+      {(fields.description || isAdvancedEditing) && (
         <div className={classNames('flex', isAdvancedEditing ? 'p-2 pt-1' : 'px-2 pb-1')}>
           <input
             value={currentFields.description}
