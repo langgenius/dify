@@ -29,7 +29,7 @@ const Collapse = ({
     <>
       <div className='flex items-center'>
         <div
-          className='flex grow items-center'
+          className='ml-4 flex grow items-center'
           onClick={() => {
             if (!disabled) {
               setCollapsedLocal(!collapsedMerged)
@@ -37,19 +37,19 @@ const Collapse = ({
             }
           }}
         >
-          <div className='h-4 w-4 shrink-0'>
+          {trigger}
+          <div className='ml-1 h-4 w-4 shrink-0'>
             {
               !disabled && (
                 <RiArrowDropRightLine
                   className={cn(
-                    'h-4 w-4 text-text-tertiary',
+                    'h-4 w-4 cursor-pointer text-text-tertiary',
                     !collapsedMerged && 'rotate-90',
                   )}
                 />
               )
             }
           </div>
-          {trigger}
         </div>
         {operations}
       </div>
