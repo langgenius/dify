@@ -2,7 +2,7 @@ import json
 import logging
 from collections.abc import Generator, Mapping, Sequence
 from datetime import UTC, datetime
-from typing import TYPE_CHECKING, Any, Dict, Literal, Type, cast
+from typing import TYPE_CHECKING, Any, Literal, cast
 
 from configs import dify_config
 from core.variables import (
@@ -12,7 +12,8 @@ from core.variables import (
     IntegerSegment,
     ObjectSegment,
     Segment,
-    StringSegment, SegmentType,
+    SegmentType,
+    StringSegment,
 )
 from core.workflow.entities.node_entities import NodeRunMetadataKey, NodeRunResult
 from core.workflow.graph_engine.entities.event import (
