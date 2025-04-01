@@ -43,12 +43,12 @@ const Field: FC<Props> = ({
                 onClick={toggleFold}
               />
             )}
-            <div className={cn('system-sm-medium h-6 truncate leading-6 text-text-secondary', isRoot && rootClassName)}>{name}</div>
+            <div className={cn('system-sm-medium ml-[7px] h-6 truncate leading-6 text-text-secondary', isRoot && rootClassName)}>{name}</div>
             <div className='system-xs-regular ml-3 shrink-0 leading-6 text-text-tertiary'>{getFieldType(payload)}</div>
             {required && <div className='system-2xs-medium-uppercase ml-3 leading-6 text-text-warning'>{t('app.structOutput.required')}</div>}
           </div>
           {payload.description && (
-            <div className='flex'>
+            <div className='ml-[7px] flex'>
               <div className='system-xs-regular w-0 grow truncate text-text-tertiary'>{payload.description}</div>
             </div>
           )}
