@@ -1,7 +1,7 @@
 import { render, screen } from '@testing-library/react'
 import '@testing-library/jest-dom'
 import { z } from 'zod'
-import withValidation from './with-input-validation'
+import withValidation from '.'
 
 describe('withValidation HOC', () => {
   // schema for validation
