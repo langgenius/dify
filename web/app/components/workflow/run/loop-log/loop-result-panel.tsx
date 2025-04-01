@@ -123,7 +123,7 @@ const LoopResultPanel: FC<Props> = ({
                   <div className='p-2 pb-0'>
                     <CodeEditor
                       readOnly
-                      title={<div>{t('workflow.nodes.loop.variables').toLocaleUpperCase()}</div>}
+                      title={<div>{t('workflow.nodes.loop.loopVariables').toLocaleUpperCase()}</div>}
                       language={CodeLanguage.json}
                       height={112}
                       value={loopVariableMap[index]}

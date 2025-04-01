@@ -724,7 +724,6 @@ const translation = {
       loopNode: 'Loop Node',
       currentLoopCount: 'Current loop count: {{count}}',
       totalLoopCount: 'Total loop count: {{count}}',
-      variables: 'Variables',
     },
     note: {
       addNote: 'Add Note',
