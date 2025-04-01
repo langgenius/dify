@@ -2,7 +2,7 @@ import json
 import logging
 from collections.abc import Generator, Mapping, Sequence
 from datetime import UTC, datetime
-from typing import Any, cast
+from typing import TYPE_CHECKING, Any, Dict, Literal, Type, cast
 
 from configs import dify_config
 from core.variables import (
@@ -12,7 +12,7 @@ from core.variables import (
     IntegerSegment,
     ObjectSegment,
     Segment,
-    StringSegment,
+    StringSegment, SegmentType,
 )
 from core.workflow.entities.node_entities import NodeRunMetadataKey, NodeRunResult
 from core.workflow.graph_engine.entities.event import (
@@ -37,6 +37,10 @@ from core.workflow.nodes.event import NodeEvent, RunCompletedEvent
 from core.workflow.nodes.loop.entities import LoopNodeData
 from core.workflow.utils.condition.processor import ConditionProcessor
 from models.workflow import WorkflowNodeExecutionStatus
+
+if TYPE_CHECKING:
+    from core.workflow.entities.variable_pool import VariablePool
+    from core.workflow.graph_engine.graph_engine import GraphEngine
 
 logger = logging.getLogger(__name__)
 
@@ -72,23 +76,25 @@ class LoopNode(BaseNode[LoopNodeData]):
 
         # Initialize loop variables
         loop_variable_selectors = {}
-        for loop_variable in self.node_data.loop_variables:
-            value_processor = {
-                "constant": lambda var=loop_variable: self._get_segment_for_constant(var.var_type, var.value),
-                "variable": lambda var=loop_variable: variable_pool.get(var.value),
-            }
+        if self.node_data.loop_variables:
+            for loop_variable in self.node_data.loop_variables:
+                value_processor = {
+                    "constant": lambda var=loop_variable: self._get_segment_for_constant(var.var_type, var.value),
+                    "variable": lambda var=loop_variable: variable_pool.get(var.value),
+                }
 
-            if loop_variable.value_type not in value_processor:
-                raise ValueError(
-                    f"Invalid value type '{loop_variable.value_type}' for loop variable {loop_variable.label}"
-                )
+                if loop_variable.value_type not in value_processor:
+                    raise ValueError(
+                        f"Invalid value type '{loop_variable.value_type}' for loop variable {loop_variable.label}"
+                    )
 
-            processed_segment = value_processor[loop_variable.value_type]()
-
-            variable_selector = [self.node_id, loop_variable.label]
-            variable_pool.add(variable_selector, processed_segment.value)
-            loop_variable_selectors[loop_variable.label] = variable_selector
-            inputs[loop_variable.label] = processed_segment.value
+                processed_segment = value_processor[loop_variable.value_type]()
+                if not processed_segment:
+                    raise ValueError(f"Invalid value for loop variable {loop_variable.label}")
+                variable_selector = [self.node_id, loop_variable.label]
+                variable_pool.add(variable_selector, processed_segment.value)
+                loop_variable_selectors[loop_variable.label] = variable_selector
+                inputs[loop_variable.label] = processed_segment.value
 
         from core.workflow.graph_engine.graph_engine import GraphEngine
 
@@ -153,9 +159,13 @@ class LoopNode(BaseNode[LoopNodeData]):
                 )
                 loop_end_time = datetime.now(UTC).replace(tzinfo=None)
 
-                single_loop_variable = {
-                    key: variable_pool.get(selector).value for key, selector in loop_variable_selectors.items()
-                }
+                single_loop_variable = {}
+                for key, selector in loop_variable_selectors.items():
+                    item = variable_pool.get(selector)
+                    if item:
+                        single_loop_variable[key] = item.value
+                    else:
+                        single_loop_variable[key] = None
 
                 loop_duration_map[str(i)] = (loop_end_time - loop_start_time).total_seconds()
                 single_loop_variable_map[str(i)] = single_loop_variable
@@ -240,7 +250,7 @@ class LoopNode(BaseNode[LoopNodeData]):
         variable_pool: "VariablePool",
         loop_variable_selectors: dict,
         break_conditions: list,
-        logical_operator: str,
+        logical_operator: Literal["and", "or"],
         condition_processor: ConditionProcessor,
         current_index: int,
         start_at: datetime,
@@ -323,7 +333,7 @@ class LoopNode(BaseNode[LoopNodeData]):
                             metadata={NodeRunMetadataKey.TOTAL_TOKENS: graph_engine.graph_runtime_state.total_tokens},
                         )
                     )
-                    return
+                    return {"check_break_result": True}
             elif isinstance(event, NodeRunFailedEvent):
                 # Loop run failed
                 yield event
@@ -348,7 +358,7 @@ class LoopNode(BaseNode[LoopNodeData]):
                         metadata={NodeRunMetadataKey.TOTAL_TOKENS: graph_engine.graph_runtime_state.total_tokens},
                     )
                 )
-                return
+                return {"check_break_result": True}
             else:
                 yield self._handle_event_metadata(event=cast(InNodeEvent, event), iter_run_index=current_index)
 
@@ -358,8 +368,13 @@ class LoopNode(BaseNode[LoopNodeData]):
 
         _outputs = {}
         for loop_variable_key, loop_variable_selector in loop_variable_selectors.items():
-            _outputs[loop_variable_key] = variable_pool.get(loop_variable_selector).value
-            _outputs["loop_round"] = current_index + 1
+            _loop_variable_segment = variable_pool.get(loop_variable_selector)
+            if _loop_variable_segment:
+                _outputs[loop_variable_key] = _loop_variable_segment.value
+            else:
+                _outputs[loop_variable_key] = None
+
+        _outputs["loop_round"] = current_index + 1
         self.node_data.outputs = _outputs
 
         if check_break_result:
@@ -466,20 +481,23 @@ class LoopNode(BaseNode[LoopNodeData]):
         return variable_mapping
 
     @staticmethod
-    def _get_segment_for_constant(var_type: str, value: Any) -> Segment | None:
+    def _get_segment_for_constant(var_type: str, value: Any) -> Segment:
         """Get the appropriate segment type for a constant value."""
-        segment_mapping = {
-            "string": StringSegment,
-            "number": IntegerSegment,
-            "object": ObjectSegment,
-            "array[string]": ArrayStringSegment,
-            "array[number]": ArrayNumberSegment,
-            "array[object]": ArrayObjectSegment,
+        segment_mapping: dict[str, tuple[type[Segment], SegmentType]] = {
+            "string": (StringSegment, SegmentType.STRING),
+            "number": (IntegerSegment, SegmentType.NUMBER),
+            "object": (ObjectSegment, SegmentType.OBJECT),
+            "array[string]": (ArrayStringSegment, SegmentType.ARRAY_STRING),
+            "array[number]": (ArrayNumberSegment, SegmentType.ARRAY_NUMBER),
+            "array[object]": (ArrayObjectSegment, SegmentType.ARRAY_OBJECT),
         }
         if var_type in ["array[string]", "array[number]", "array[object]"]:
             if value:
                 value = json.loads(value)
             else:
                 value = []
-        segment_class = segment_mapping.get(var_type)
-        return segment_class(value=value) if segment_class else None
+        segment_info = segment_mapping.get(var_type)
+        if not segment_info:
+            raise ValueError(f"Invalid variable type: {var_type}")
+        segment_class, value_type = segment_info
+        return segment_class(value=value, value_type=value_type)
