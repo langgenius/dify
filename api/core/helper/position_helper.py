@@ -53,7 +53,7 @@ def pin_position_map(original_position_map: dict[str, int], pin_list: list[str])
     """
     Pin the items in the pin list to the beginning of the position map.
     Overall logic: exclude > include > pin
-    :param position_map: the position map to be sorted and filtered
+    :param original_position_map: the position map to be sorted and filtered
     :param pin_list: the list of pins to be put at the beginning
     :return: the sorted position map
     """
