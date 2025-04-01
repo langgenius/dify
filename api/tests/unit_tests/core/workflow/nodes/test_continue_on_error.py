@@ -349,7 +349,7 @@ def test_http_node_fail_branch_continue_on_error():
 
 #     assert any(isinstance(e, NodeRunExceptionEvent) for e in events)
 #     assert any(
-#         isinstance(e, GraphRunPartialSucceededEvent) and e.outputs == {"answer": "default tool result"} for e in events  # noqa: E501
+#         isinstance(e, GraphRunPartialSucceededEvent) and e.outputs == {"answer": "default tool result"} for e in events
 #     )
 #     assert sum(1 for e in events if isinstance(e, NodeRunStreamChunkEvent)) == 1
 
@@ -377,7 +377,7 @@ def test_http_node_fail_branch_continue_on_error():
 
 #     assert any(isinstance(e, NodeRunExceptionEvent) for e in events)
 #     assert any(
-#         isinstance(e, GraphRunPartialSucceededEvent) and e.outputs == {"answer": "tool execute failed"} for e in events  # noqa: E501
+#         isinstance(e, GraphRunPartialSucceededEvent) and e.outputs == {"answer": "tool execute failed"} for e in events
 #     )
 #     assert sum(1 for e in events if isinstance(e, NodeRunStreamChunkEvent)) == 1
 

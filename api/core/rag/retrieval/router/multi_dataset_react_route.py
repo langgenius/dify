@@ -14,7 +14,7 @@ from core.workflow.nodes.llm import LLMNode
 PREFIX = """Respond to the human as helpfully and accurately as possible. You have access to the following tools:"""
 
 SUFFIX = """Begin! Reminder to ALWAYS respond with a valid json blob of a single action. Use tools if necessary. Respond directly if appropriate. Format is Action:```$JSON_BLOB```then Observation:.
-Thought:"""  # noqa: E501
+Thought:"""
 
 FORMAT_INSTRUCTIONS = """Use a json blob to specify a tool by providing an action key (tool name) and an action_input key (tool input).
 The nouns in the format of "Thought", "Action", "Action Input", "Final Answer" must be expressed in English.
@@ -46,7 +46,7 @@ Action:
   "action": "Final Answer",
   "action_input": "Final response to human"
 }}
-```"""  # noqa: E501
+```"""
 
 
 class ReactMultiDatasetRouter:
@@ -242,7 +242,7 @@ class ReactMultiDatasetRouter:
         suffix = """Begin! Reminder to ALWAYS respond with a valid json blob of a single action. Use tools if necessary. Respond directly if appropriate. Format is Action:```$JSON_BLOB```then Observation:.
 Question: {input}
 Thought: {agent_scratchpad}
-"""  # noqa: E501
+"""
 
         tool_strings = "\n".join([f"{tool.name}: {tool.description}" for tool in tools])
         tool_names = ", ".join([tool.name for tool in tools])

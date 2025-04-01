@@ -59,7 +59,7 @@ User Input: yo, 你今天咋样？
 }
 
 User Input: 
-"""  # noqa: E501
+"""
 
 PYTHON_CODE_GENERATOR_PROMPT_TEMPLATE = (
     "You are an expert programmer. Generate code based on the following instructions:\n\n"
@@ -163,7 +163,7 @@ Based on task description, please create a well-structured prompt template that 
 - Use the same language as task description. 
 - Output in ``` xml ``` and start with <instruction>
 Please generate the full prompt template with at least 300 words and output only the prompt template.
-"""  # noqa: E501
+"""
 
 RULE_CONFIG_PROMPT_GENERATE_TEMPLATE = """
 Here is a task description for which I would like you to create a high-quality prompt template for:
@@ -178,7 +178,7 @@ Based on task description, please create a well-structured prompt template that 
 - Use the same language as task description. 
 - Output in ``` xml ``` and start with <instruction>
 Please generate the full prompt template and output only the prompt template.
-"""  # noqa: E501
+"""
 
 RULE_CONFIG_PARAMETER_GENERATE_TEMPLATE = """
 I need to extract the following information from the input text. The <information to be extracted> tag specifies the 'type', 'description' and 'required' of the information to be extracted. 
@@ -203,7 +203,7 @@ Inside <text></text> XML tags, there is a text that I should extract parameters 
 
 ### Answer
 I should always output a valid list. Output nothing other than the list of variable_name. Output an empty list if there is no variable name in input text.
-"""  # noqa: E501
+"""
 
 RULE_CONFIG_STATEMENT_GENERATE_TEMPLATE = """
 <instruction>
@@ -219,4 +219,4 @@ Welcome! I'm here to assist you with any questions or issues you might have with
 Here is the task description: {{INPUT_TEXT}}
 
 You just need to generate the output
-"""  # noqa: E501
+"""
