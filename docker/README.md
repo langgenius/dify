@@ -36,7 +36,7 @@ Welcome to the new `docker` directory for deploying Dify using Docker Compose. T
     - Navigate to the `docker` directory.
     - Ensure the `middleware.env` file is created by running `cp middleware.env.example middleware.env` (refer to the `middleware.env.example` file).
 2. **Running Middleware Services**:
-    - Execute `docker-compose -f docker-compose.middleware.yaml up --env-file middleware.env -d` to start the middleware services.
+    - Execute `docker compose -f docker-compose.middleware.yaml --profile weaviate -p dify up -d` to start the middleware services. (Change the profile to other vector database if you are not using weaviate)
 
 ### Migration for Existing Users
 
@@ -88,7 +88,10 @@ The `.env.example` file provided in the Docker setup is extensive and covers a w
 8. **CORS Configuration**:
     - `WEB_API_CORS_ALLOW_ORIGINS`, `CONSOLE_CORS_ALLOW_ORIGINS`: Settings for cross-origin resource sharing.
 
-9. **Other Service-Specific Environment Variables**:
+9. **OpenTelemetry Configuration**:
+    - `EXPOSE_OTLP_HTTP_PORT`, `EXPOSE_OTLP_GRPC_PORT`: Settings for OTLP exporter connection.
+  
+10. **Other Service-Specific Environment Variables**:
     - Each service like `nginx`, `redis`, `db`, and vector databases have specific environment variables that are directly referenced in the `docker-compose.yaml`.
 
 ### Additional Information

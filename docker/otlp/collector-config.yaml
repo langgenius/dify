@@ -2,9 +2,9 @@ receivers:
   otlp:
     protocols:
       grpc:
-        endpoint: ${env:OTLP_GRPC_ENDPOINT:-0.0.0.0:4317}
+        endpoint: ${env:OTLP_GRPC_ENDPOINT:-0.0.0.0}:4317
       http:
-        endpoint: ${env:OTLP_HTTP_ENDPOINT:-0.0.0.0:4318}
+        endpoint: ${env:OTLP_HTTP_ENDPOINT:-0.0.0.0}:4318
 processors:
   batch:
 exporters:
