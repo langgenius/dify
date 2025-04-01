@@ -1,51 +1,51 @@
-"use client";
+'use client'
 
-import { SWRConfig } from "swr";
-import { useCallback, useEffect, useState } from "react";
-import type { ReactNode } from "react";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { fetchSetupStatus } from "@/service/common";
+import { useCallback, useEffect, useState } from 'react'
+import type { ReactNode } from 'react'
+import { usePathname, useRouter, useSearchParams } from 'next/navigation'
+import { fetchSetupStatus } from '@/service/common'
 
-interface SwrInitorProps {
+type SwrInitorProps = {
   children: ReactNode;
 }
 const SwrInitor = ({ children }: SwrInitorProps) => {
-  const router = useRouter();
-  const searchParams = useSearchParams();
+  const router = useRouter()
+  const searchParams = useSearchParams()
   const consoleToken = decodeURIComponent(
-    searchParams.get("access_token") || ""
-  );
+    searchParams.get('access_token') || '',
+  )
   const refreshToken = decodeURIComponent(
-    searchParams.get("refresh_token") || ""
-  );
-  const consoleTokenFromLocalStorage = localStorage?.getItem("console_token");
-  const refreshTokenFromLocalStorage = localStorage?.getItem("refresh_token");
-  const pathname = usePathname();
-  const [init, setInit] = useState(false);
+    searchParams.get('refresh_token') || '',
+  )
+  const consoleTokenFromLocalStorage = localStorage?.getItem('console_token')
+  const refreshTokenFromLocalStorage = localStorage?.getItem('refresh_token')
+  const pathname = usePathname()
+  const [init, setInit] = useState(false)
 
   const isSetupFinished = useCallback(async () => {
     try {
-      if (localStorage.getItem("setup_status") === "finished") return true;
-      const setUpStatus = await fetchSetupStatus();
-      if (setUpStatus.step !== "finished") {
-        localStorage.removeItem("setup_status");
-        return false;
+      if (localStorage.getItem('setup_status') === 'finished') return true
+      const setUpStatus = await fetchSetupStatus()
+      if (setUpStatus.step !== 'finished') {
+        localStorage.removeItem('setup_status')
+        return false
       }
-      localStorage.setItem("setup_status", "finished");
-      return true;
-    } catch (error) {
-      console.error(error);
-      return false;
+      localStorage.setItem('setup_status', 'finished')
+      return true
     }
-  }, []);
+    catch (error) {
+      console.error(error)
+      return false
+    }
+  }, [])
 
   useEffect(() => {
     (async () => {
       try {
-        const isFinished = await isSetupFinished();
+        const isFinished = await isSetupFinished()
         if (!isFinished) {
-          router.replace("/install");
-          return;
+          router.replace('/install')
+          return
         }
         // if (!((consoleToken && refreshToken) || (consoleTokenFromLocalStorage && refreshTokenFromLocalStorage))) {
         //   router.replace('/signin')
@@ -57,12 +57,13 @@ const SwrInitor = ({ children }: SwrInitorProps) => {
         //   router.replace(pathname)
         // }
 
-        setInit(true);
-      } catch (error) {
-        console.error(error);
+        setInit(true)
+      }
+      catch (error) {
+        console.error(error)
         // router.replace("/signin");
       }
-    })();
+    })()
   }, [
     isSetupFinished,
     router,
@@ -72,11 +73,11 @@ const SwrInitor = ({ children }: SwrInitorProps) => {
     // refreshToken,
     // consoleTokenFromLocalStorage,
     // refreshTokenFromLocalStorage,
-  ]);
+  ])
 
-  if (!init) return null;
+  if (!init) return null
 
-  return children;
+  return children
 
   // return init ? (
   //   <SWRConfig
@@ -88,6 +89,6 @@ const SwrInitor = ({ children }: SwrInitorProps) => {
   //     {children}
   //   </SWRConfig>
   // ) : null;
-};
+}
 
-export default SwrInitor;
+export default SwrInitor

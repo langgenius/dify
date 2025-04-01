@@ -1,7 +1,7 @@
 import { memo } from 'react'
 
 type PromptMenuItemMenuItemProps = {
-  icon: JSX.Element
+  icon: React.JSX.Element
   title: string
   disabled?: boolean
   isSelected: boolean
@@ -21,9 +21,9 @@ export const PromptMenuItem = memo(({
   return (
     <div
       className={`
-        flex items-center px-3 h-6 cursor-pointer hover:bg-state-base-hover rounded-md
+        flex h-6 cursor-pointer items-center rounded-md px-3 hover:bg-state-base-hover
         ${isSelected && !disabled && '!bg-state-base-hover'}
-        ${disabled ? 'cursor-not-allowed opacity-30' : 'hover:bg-state-base-hover cursor-pointer'}
+        ${disabled ? 'cursor-not-allowed opacity-30' : 'cursor-pointer hover:bg-state-base-hover'}
       `}
       tabIndex={-1}
       ref={setRefElement}

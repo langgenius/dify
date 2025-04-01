@@ -36,6 +36,8 @@ export enum BlockEnum {
   IterationStart = 'iteration-start',
   Assigner = 'assigner', // is now named as VariableAssigner
   Agent = 'agent',
+  Loop = 'loop',
+  LoopStart = 'loop-start',
 }
 
 export enum ControlMode {
@@ -79,6 +81,10 @@ export type CommonNodeType<T = {}> = {
   type: BlockEnum
   width?: number
   height?: number
+  _loopLength?: number
+  _loopIndex?: number
+  isInLoop?: boolean
+  loop_id?: string
   error_strategy?: ErrorHandleTypeEnum
   retry_config?: WorkflowRetryConfig
   default_value?: DefaultValueForm[]
@@ -94,6 +100,8 @@ export type CommonEdgeType = {
   _waitingRun?: boolean
   isInIteration?: boolean
   iteration_id?: string
+  isInLoop?: boolean
+  loop_id?: string
   sourceType: BlockEnum
   targetType: BlockEnum
 }
@@ -168,6 +176,7 @@ export enum InputVarType {
   iterator = 'iterator', // iteration input
   singleFile = 'file',
   multiFiles = 'file-list',
+  loop = 'loop', // loop input
 }
 
 export type InputVar = {
@@ -330,6 +339,7 @@ export type RunFile = {
   transfer_method: TransferMethod[]
   url?: string
   upload_file_id?: string
+  related_id?: string
 }
 
 export type WorkflowRunningData = {
@@ -401,4 +411,15 @@ export type UploadFileSetting = {
 export type VisionSetting = {
   variable_selector: ValueSelector
   detail: Resolution
+}
+
+export enum WorkflowVersionFilterOptions {
+  all = 'all',
+  onlyYours = 'onlyYours',
+}
+
+export enum VersionHistoryContextMenuOptions {
+  restore = 'restore',
+  edit = 'edit',
+  delete = 'delete',
 }

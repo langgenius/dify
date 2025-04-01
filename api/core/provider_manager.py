@@ -111,6 +111,12 @@ class ProviderManager:
 
         # Get all provider model records of the workspace
         provider_name_to_provider_model_records_dict = self._get_all_provider_models(tenant_id)
+        for provider_name in list(provider_name_to_provider_model_records_dict.keys()):
+            provider_id = ModelProviderID(provider_name)
+            if str(provider_id) not in provider_name_to_provider_model_records_dict:
+                provider_name_to_provider_model_records_dict[str(provider_id)] = (
+                    provider_name_to_provider_model_records_dict[provider_name]
+                )
 
         # Get all provider entities
         model_provider_factory = ModelProviderFactory(tenant_id)
@@ -143,6 +149,11 @@ class ProviderManager:
             provider_name = provider_entity.provider
             provider_records = provider_name_to_provider_records_dict.get(provider_entity.provider, [])
             provider_model_records = provider_name_to_provider_model_records_dict.get(provider_entity.provider, [])
+            provider_id_entity = ModelProviderID(provider_name)
+            if provider_id_entity.is_langgenius():
+                provider_model_records.extend(
+                    provider_name_to_provider_model_records_dict.get(provider_id_entity.provider_name, [])
+                )
 
             # Convert to custom configuration
             custom_configuration = self._to_custom_configuration(
@@ -184,6 +195,20 @@ class ProviderManager:
                 provider_name
             )
 
+            provider_id_entity = ModelProviderID(provider_name)
+
+            if provider_id_entity.is_langgenius():
+                if provider_model_settings is not None:
+                    provider_model_settings.extend(
+                        provider_name_to_provider_model_settings_dict.get(provider_id_entity.provider_name, [])
+                    )
+                if provider_load_balancing_configs is not None:
+                    provider_load_balancing_configs.extend(
+                        provider_name_to_provider_load_balancing_model_configs_dict.get(
+                            provider_id_entity.provider_name, []
+                        )
+                    )
+
             # Convert to model settings
             model_settings = self._to_model_settings(
                 provider_entity=provider_entity,
@@ -201,7 +226,7 @@ class ProviderManager:
                 model_settings=model_settings,
             )
 
-            provider_configurations[str(ModelProviderID(provider_name))] = provider_configuration
+            provider_configurations[str(provider_id_entity)] = provider_configuration
 
         # Return the encapsulated object
         return provider_configurations
@@ -369,7 +394,8 @@ class ProviderManager:
 
         provider_name_to_provider_records_dict = defaultdict(list)
         for provider in providers:
-            provider_name_to_provider_records_dict[provider.provider_name].append(provider)
+            # TODO: Use provider name with prefix after the data migration
+            provider_name_to_provider_records_dict[str(ModelProviderID(provider.provider_name))].append(provider)
 
         return provider_name_to_provider_records_dict
 
@@ -508,7 +534,8 @@ class ProviderManager:
                             # FIXME ignore the type errork, onyl TrialHostingQuota has limit need to change the logic
                             provider_record = Provider(
                                 tenant_id=tenant_id,
-                                provider_name=provider_name,
+                                # TODO: Use provider name with prefix after the data migration.
+                                provider_name=ModelProviderID(provider_name).provider_name,
                                 provider_type=ProviderType.SYSTEM.value,
                                 quota_type=ProviderQuotaType.TRIAL.value,
                                 quota_limit=quota.quota_limit,  # type: ignore
@@ -523,13 +550,12 @@ class ProviderManager:
                                 db.session.query(Provider)
                                 .filter(
                                     Provider.tenant_id == tenant_id,
-                                    Provider.provider_name == provider_name,
+                                    Provider.provider_name == ModelProviderID(provider_name).provider_name,
                                     Provider.provider_type == ProviderType.SYSTEM.value,
                                     Provider.quota_type == ProviderQuotaType.TRIAL.value,
                                 )
                                 .first()
                             )
-
                             if provider_record and not provider_record.is_valid:
                                 provider_record.is_valid = True
                                 db.session.commit()

@@ -35,7 +35,7 @@ def batch_create_segment_to_index_task(
     :param tenant_id:
     :param user_id:
 
-    Usage: batch_create_segment_to_index_task.delay(segment_id)
+    Usage: batch_create_segment_to_index_task.delay(job_id, content, dataset_id, document_id, tenant_id, user_id)
     """
     logging.info(click.style("Start batch create segment jobId: {}".format(job_id), fg="green"))
     start_at = time.perf_counter()

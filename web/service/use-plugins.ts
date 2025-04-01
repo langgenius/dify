@@ -187,7 +187,8 @@ export const useInstallOrUpdate = ({
           if (item.type === 'github') {
             const data = item as GitHubItemAndMarketPlaceDependency
             // From local bundle don't have data.value.github_plugin_unique_identifier
-            if (!data.value.github_plugin_unique_identifier) {
+            uniqueIdentifier = data.value.github_plugin_unique_identifier!
+            if (!uniqueIdentifier) {
               const { unique_identifier } = await post<uploadGitHubResponse>('/workspaces/current/plugin/upload/github', {
                 body: {
                   repo: data.value.repo!,
@@ -216,7 +217,7 @@ export const useInstallOrUpdate = ({
           }
           if (item.type === 'marketplace') {
             const data = item as GitHubItemAndMarketPlaceDependency
-            uniqueIdentifier = data.value.plugin_unique_identifier! || plugin[i]?.plugin_id
+            uniqueIdentifier = data.value.marketplace_plugin_unique_identifier! || plugin[i]?.plugin_id
             if (uniqueIdentifier === installedPayload?.uniqueIdentifier) {
               return {
                 success: true,

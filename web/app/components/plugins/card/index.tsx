@@ -1,6 +1,5 @@
 'use client'
 import React from 'react'
-import { RiVerifiedBadgeLine } from '@remixicon/react'
 import type { Plugin } from '../types'
 import Icon from '../card/base/card-icon'
 import CornerMark from './base/corner-mark'
@@ -14,6 +13,8 @@ import { getLanguage } from '@/i18n/language'
 import { useSingleCategories } from '../hooks'
 import { renderI18nObject } from '@/hooks/use-i18n'
 import { useMixedTranslation } from '@/app/components/plugins/marketplace/hooks'
+import Partner from '../base/badges/partner'
+import Verified from '../base/badges/verified'
 
 export type Props = {
   className?: string
@@ -46,13 +47,14 @@ const Card = ({
   const locale = localeFromProps ? getLanguage(localeFromProps) : defaultLocale
   const { t } = useMixedTranslation(localeFromProps)
   const { categoriesMap } = useSingleCategories(t)
-  const { category, type, name, org, label, brief, icon, verified } = payload
+  const { category, type, name, org, label, brief, icon, verified, badges = [] } = payload
   const isBundle = !['plugin', 'model', 'tool', 'extension', 'agent-strategy'].includes(type)
   const cornerMark = isBundle ? categoriesMap.bundle?.label : categoriesMap[category]?.label
   const getLocalizedText = (obj: Record<string, string> | undefined) =>
     obj ? renderI18nObject(obj, locale) : ''
+  const isPartner = badges.includes('partner')
 
-  const wrapClassName = cn('relative p-4 pb-3 border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg hover-bg-components-panel-on-panel-item-bg rounded-xl shadow-xs', className)
+  const wrapClassName = cn('hover-bg-components-panel-on-panel-item-bg relative rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg p-4 pb-3 shadow-xs', className)
   if (isLoading) {
     return (
       <Placeholder
@@ -69,9 +71,10 @@ const Card = ({
       <div className="flex">
         <Icon src={icon} installed={installed} installFailed={installFailed} />
         <div className="ml-3 w-0 grow">
-          <div className="flex items-center h-5">
+          <div className="flex h-5 items-center">
             <Title title={getLocalizedText(label)} />
-            {verified && <RiVerifiedBadgeLine className="shrink-0 ml-0.5 w-4 h-4 text-text-accent" />}
+            {isPartner && <Partner className='ml-0.5 h-4 w-4' text={t('plugin.marketplace.partnerTip')} />}
+            {verified && <Verified className='ml-0.5 h-4 w-4' text={t('plugin.marketplace.verifiedTip')} />}
             {titleLeft} {/* This can be version badge */}
           </div>
           <OrgInfo

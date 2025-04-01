@@ -3,20 +3,42 @@ import type { IChatItem } from './chat/type'
 import type { ChatItem, ChatItemInTree } from './types'
 
 async function decodeBase64AndDecompress(base64String: string) {
-  const binaryString = atob(base64String)
-  const compressedUint8Array = Uint8Array.from(binaryString, char => char.charCodeAt(0))
-  const decompressedStream = new Response(compressedUint8Array).body?.pipeThrough(new DecompressionStream('gzip'))
-  const decompressedArrayBuffer = await new Response(decompressedStream).arrayBuffer()
-  return new TextDecoder().decode(decompressedArrayBuffer)
+  try {
+    const binaryString = atob(base64String)
+    const compressedUint8Array = Uint8Array.from(binaryString, char => char.charCodeAt(0))
+    const decompressedStream = new Response(compressedUint8Array).body?.pipeThrough(new DecompressionStream('gzip'))
+    const decompressedArrayBuffer = await new Response(decompressedStream).arrayBuffer()
+    return new TextDecoder().decode(decompressedArrayBuffer)
+  }
+  catch {
+    return undefined
+  }
 }
 
-function getProcessedInputsFromUrlParams(): Record<string, any> {
+async function getProcessedInputsFromUrlParams(): Promise<Record<string, any>> {
   const urlParams = new URLSearchParams(window.location.search)
   const inputs: Record<string, any> = {}
-  urlParams.forEach(async (value, key) => {
-    inputs[key] = await decodeBase64AndDecompress(decodeURIComponent(value))
-  })
+  const entriesArray = Array.from(urlParams.entries())
+  await Promise.all(
+    entriesArray.map(async ([key, value]) => {
+      if (!key.startsWith('sys.'))
+        inputs[key] = await decodeBase64AndDecompress(decodeURIComponent(value))
+    }),
+  )
   return inputs
+}
+
+async function getProcessedSystemVariablesFromUrlParams(): Promise<Record<string, any>> {
+  const urlParams = new URLSearchParams(window.location.search)
+  const systemVariables: Record<string, any> = {}
+  const entriesArray = Array.from(urlParams.entries())
+  await Promise.all(
+    entriesArray.map(async ([key, value]) => {
+      if (key.startsWith('sys.'))
+        systemVariables[key.slice(4)] = await decodeBase64AndDecompress(decodeURIComponent(value))
+    }),
+  )
+  return systemVariables
 }
 
 function isValidGeneratedAnswer(item?: ChatItem | ChatItemInTree): boolean {
@@ -100,7 +122,7 @@ function getThreadMessages(tree: ChatItemInTree[], targetMessageId?: string): Ch
   let targetNode: ChatItemInTree | undefined
 
   // find path to the target message
-  const stack = tree.toReversed().map(rootNode => ({
+  const stack = tree.slice().reverse().map(rootNode => ({
     node: rootNode,
     path: [rootNode],
   }))
@@ -163,6 +185,7 @@ function getThreadMessages(tree: ChatItemInTree[], targetMessageId?: string): Ch
 
 export {
   getProcessedInputsFromUrlParams,
+  getProcessedSystemVariablesFromUrlParams,
   isValidGeneratedAnswer,
   getLastAnswer,
   buildChatItemTree,

@@ -124,7 +124,7 @@ Chat applications support session persistence, allowing previous chat history to
       - `created_at` (int) Creation timestamp, e.g.: 1705395332
     - `event: agent_thought` thought of Agent, contains the thought of LLM, input and output of tool calls (Only supported in Agent mode)
       - `id` (string) Agent thought ID, every iteration has a unique agent thought ID
-      - `task_id` (string) (string) Task ID, used for request tracking and the below Stop Generate API
+      - `task_id` (string)  Task ID, used for request tracking and the below Stop Generate API
       - `message_id` (string) Unique message ID
       - `position` (int) Position of current agent thought, each message may have multiple thoughts in order.
       - `thought` (string) What LLM is thinking about
@@ -641,7 +641,7 @@ Chat applications support session persistence, allowing previous chat history to
                         "tool_input": "{\"dalle2\": {\"prompt\": \"cat\"}}",
                         "created_at": 1705988186,
                         "observation": "image has been created and sent to user already, you should tell user to check it now.",
-                        "message_files": [
+                        "files": [
                             "976990d2-5294-47e6-8f14-7356ba9d2d76"
                         ]
                     },
@@ -655,7 +655,7 @@ Chat applications support session persistence, allowing previous chat history to
                         "tool_input": "",
                         "created_at": 1705988199,
                         "observation": "",
-                        "message_files": []
+                        "files": []
                     }
                 ]
             }

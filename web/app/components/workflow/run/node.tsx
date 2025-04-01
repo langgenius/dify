@@ -13,6 +13,7 @@ import BlockIcon from '../block-icon'
 import { BlockEnum } from '../types'
 import { RetryLogTrigger } from './retry-log'
 import { IterationLogTrigger } from './iteration-log'
+import { LoopLogTrigger } from './loop-log'
 import { AgentLogTrigger } from './agent-log'
 import cn from '@/utils/classnames'
 import StatusContainer from '@/app/components/workflow/run/status-container'
@@ -21,6 +22,7 @@ import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
 import type {
   AgentLogItemWithChildren,
   IterationDurationMap,
+  LoopDurationMap,
   NodeTracing,
 } from '@/types/workflow'
 import ErrorHandleTip from '@/app/components/workflow/nodes/_base/components/error-handle/error-handle-tip'
@@ -33,9 +35,11 @@ type Props = {
   hideInfo?: boolean
   hideProcessDetail?: boolean
   onShowIterationDetail?: (detail: NodeTracing[][], iterDurationMap: IterationDurationMap) => void
+  onShowLoopDetail?: (detail: NodeTracing[][], loopDurationMap: LoopDurationMap) => void
   onShowRetryDetail?: (detail: NodeTracing[]) => void
   onShowAgentOrToolLog?: (detail?: AgentLogItemWithChildren) => void
   notShowIterationNav?: boolean
+  notShowLoopNav?: boolean
 }
 
 const NodePanel: FC<Props> = ({
@@ -45,9 +49,11 @@ const NodePanel: FC<Props> = ({
   hideInfo = false,
   hideProcessDetail,
   onShowIterationDetail,
+  onShowLoopDetail,
   onShowRetryDetail,
   onShowAgentOrToolLog,
   notShowIterationNav,
+  notShowLoopNav,
 }) => {
   const [collapseState, doSetCollapseState] = useState<boolean>(true)
   const setCollapseState = useCallback((state: boolean) => {
@@ -79,17 +85,18 @@ const NodePanel: FC<Props> = ({
   }, [nodeInfo.expand, setCollapseState])
 
   const isIterationNode = nodeInfo.node_type === BlockEnum.Iteration && !!nodeInfo.details?.length
+  const isLoopNode = nodeInfo.node_type === BlockEnum.Loop && !!nodeInfo.details?.length
   const isRetryNode = hasRetryNode(nodeInfo.node_type) && !!nodeInfo.retryDetail?.length
   const isAgentNode = nodeInfo.node_type === BlockEnum.Agent && !!nodeInfo.agentLog?.length
   const isToolNode = nodeInfo.node_type === BlockEnum.Tool && !!nodeInfo.agentLog?.length
 
   return (
     <div className={cn('px-2 py-1', className)}>
-      <div className='group transition-all bg-background-default border border-components-panel-border rounded-[10px] shadow-xs hover:shadow-md'>
+      <div className='group rounded-[10px] border border-components-panel-border bg-background-default shadow-xs transition-all hover:shadow-md'>
         <div
           className={cn(
-            'flex items-center pl-1 pr-3 cursor-pointer',
-            hideInfo ? 'py-2' : 'py-1.5',
+            'flex cursor-pointer items-center pl-1 pr-3',
+            hideInfo ? 'py-2 pl-2' : 'py-1.5',
             !collapseState && (hideInfo ? '!pb-1' : '!pb-1.5'),
           )}
           onClick={() => setCollapseState(!collapseState)}
@@ -97,35 +104,35 @@ const NodePanel: FC<Props> = ({
           {!hideProcessDetail && (
             <RiArrowRightSLine
               className={cn(
-                'shrink-0 w-4 h-4 mr-1 text-text-quaternary transition-all group-hover:text-text-tertiary',
+                'mr-1 h-4 w-4 shrink-0 text-text-quaternary transition-all group-hover:text-text-tertiary',
                 !collapseState && 'rotate-90',
               )}
             />
           )}
-          <BlockIcon size={inMessage ? 'xs' : 'sm'} className={cn('shrink-0 mr-2', inMessage && '!mr-1')} type={nodeInfo.node_type} toolIcon={nodeInfo.extras?.icon || nodeInfo.extras} />
+          <BlockIcon size={inMessage ? 'xs' : 'sm'} className={cn('mr-2 shrink-0', inMessage && '!mr-1')} type={nodeInfo.node_type} toolIcon={nodeInfo.extras?.icon || nodeInfo.extras} />
           <div className={cn(
-            'grow text-text-secondary system-xs-semibold-uppercase truncate',
+            'system-xs-semibold-uppercase grow truncate text-text-secondary',
             hideInfo && '!text-xs',
           )} title={nodeInfo.title}>{nodeInfo.title}</div>
           {nodeInfo.status !== 'running' && !hideInfo && (
-            <div className='shrink-0 text-text-tertiary system-xs-regular'>{nodeInfo.execution_metadata?.total_tokens ? `${getTokenCount(nodeInfo.execution_metadata?.total_tokens || 0)} tokens · ` : ''}{`${getTime(nodeInfo.elapsed_time || 0)}`}</div>
+            <div className='system-xs-regular shrink-0 text-text-tertiary'>{nodeInfo.execution_metadata?.total_tokens ? `${getTokenCount(nodeInfo.execution_metadata?.total_tokens || 0)} tokens · ` : ''}{`${getTime(nodeInfo.elapsed_time || 0)}`}</div>
           )}
           {nodeInfo.status === 'succeeded' && (
-            <RiCheckboxCircleFill className='shrink-0 ml-2 w-3.5 h-3.5 text-text-success' />
+            <RiCheckboxCircleFill className='ml-2 h-3.5 w-3.5 shrink-0 text-text-success' />
           )}
           {nodeInfo.status === 'failed' && (
-            <RiErrorWarningLine className='shrink-0 ml-2 w-3.5 h-3.5 text-text-warning' />
+            <RiErrorWarningLine className='ml-2 h-3.5 w-3.5 shrink-0 text-text-warning' />
           )}
           {nodeInfo.status === 'stopped' && (
-            <RiAlertFill className={cn('shrink-0 ml-2 w-4 h-4 text-text-warning-secondary', inMessage && 'w-3.5 h-3.5')} />
+            <RiAlertFill className={cn('ml-2 h-4 w-4 shrink-0 text-text-warning-secondary', inMessage && 'h-3.5 w-3.5')} />
           )}
           {nodeInfo.status === 'exception' && (
-            <RiAlertFill className={cn('shrink-0 ml-2 w-4 h-4 text-text-warning-secondary', inMessage && 'w-3.5 h-3.5')} />
+            <RiAlertFill className={cn('ml-2 h-4 w-4 shrink-0 text-text-warning-secondary', inMessage && 'h-3.5 w-3.5')} />
           )}
           {nodeInfo.status === 'running' && (
-            <div className='shrink-0 flex items-center text-text-accent text-[13px] leading-[16px] font-medium'>
+            <div className='flex shrink-0 items-center text-[13px] font-medium leading-[16px] text-text-accent'>
               <span className='mr-2 text-xs font-normal'>Running</span>
-              <RiLoader2Line className='w-3.5 h-3.5 animate-spin' />
+              <RiLoader2Line className='h-3.5 w-3.5 animate-spin' />
             </div>
           )}
         </div>
@@ -136,6 +143,13 @@ const NodePanel: FC<Props> = ({
               <IterationLogTrigger
                 nodeInfo={nodeInfo}
                 onShowIterationResultList={onShowIterationDetail}
+              />
+            )}
+            {/* The nav to the Loop detail */}
+            {isLoopNode && !notShowLoopNav && onShowLoopDetail && (
+              <LoopLogTrigger
+                nodeInfo={nodeInfo}
+                onShowLoopResultList={onShowLoopDetail}
               />
             )}
             {isRetryNode && onShowRetryDetail && (

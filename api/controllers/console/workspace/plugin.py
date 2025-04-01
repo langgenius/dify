@@ -279,10 +279,10 @@ class PluginFetchInstallTasksApi(Resource):
                 {"tasks": PluginService.fetch_install_tasks(tenant_id, args["page"], args["page_size"])}
             )
         except PluginDaemonClientSideError as e:
-            logging.error(f"error: {e}")
+            logging.exception(f"error: {e}")
             raise ValueError(e)
         except Exception as e2:
-            logging.error(f"error: {e2}")
+            logging.exception(f"error: {e2}")
             print(traceback.format_exc())
             raise ValueError(e2)
 

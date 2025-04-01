@@ -76,7 +76,7 @@ const Panel: FC<NodePanelProps<CodeNodeType>> = ({
 
   return (
     <div className='mt-2'>
-      <div className='px-4 pb-4 space-y-4'>
+      <div className='space-y-4 px-4 pb-4'>
         <Field
           title={t(`${i18nPrefix}.inputVars`)}
           operations={
@@ -111,7 +111,7 @@ const Panel: FC<NodePanelProps<CodeNodeType>> = ({
         />
       </div>
       <Split />
-      <div className='px-4 pt-4 pb-2'>
+      <div className='px-4 pb-2 pt-4'>
         <Field
           title={t(`${i18nPrefix}.outputVars`)}
           operations={

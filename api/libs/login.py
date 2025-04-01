@@ -1,5 +1,4 @@
 from functools import wraps
-import logging
 from typing import Any
 
 from flask import current_app, g, has_request_context, request
@@ -79,7 +78,7 @@ def login_required(func):
                             )
                             if tenant_account_join:
                                 tenant, ta = tenant_account_join
-                                account = Account.query.filter_by(id=ta.account_id).first()
+                                account = db.session.query(Account).filter_by(id=ta.account_id).first()
                                 # Login admin
                                 if account:
                                     account.current_tenant = tenant

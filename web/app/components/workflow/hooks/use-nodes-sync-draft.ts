@@ -105,7 +105,14 @@ export const useNodesSyncDraft = () => {
     }
   }, [getPostParams, params.appId, getNodesReadOnly])
 
-  const doSyncWorkflowDraft = useCallback(async (notRefreshWhenSyncError?: boolean) => {
+  const doSyncWorkflowDraft = useCallback(async (
+    notRefreshWhenSyncError?: boolean,
+    callback?: {
+      onSuccess?: () => void
+      onError?: () => void
+      onSettled?: () => void
+    },
+  ) => {
     if (getNodesReadOnly())
       return
     const postParams = getPostParams()
@@ -119,6 +126,7 @@ export const useNodesSyncDraft = () => {
         const res = await syncWorkflowDraft(postParams)
         setSyncWorkflowDraftHash(res.hash)
         setDraftUpdatedAt(res.updated_at)
+        callback?.onSuccess && callback.onSuccess()
       }
       catch (error: any) {
         if (error && error.json && !error.bodyUsed) {
@@ -127,16 +135,28 @@ export const useNodesSyncDraft = () => {
               handleRefreshWorkflowDraft()
           })
         }
+        callback?.onError && callback.onError()
+      }
+      finally {
+        callback?.onSettled && callback.onSettled()
       }
     }
   }, [workflowStore, getPostParams, getNodesReadOnly, handleRefreshWorkflowDraft])
 
-  const handleSyncWorkflowDraft = useCallback((sync?: boolean, notRefreshWhenSyncError?: boolean) => {
+  const handleSyncWorkflowDraft = useCallback((
+    sync?: boolean,
+    notRefreshWhenSyncError?: boolean,
+    callback?: {
+      onSuccess?: () => void
+      onError?: () => void
+      onSettled?: () => void
+    },
+  ) => {
     if (getNodesReadOnly())
       return
 
     if (sync)
-      doSyncWorkflowDraft(notRefreshWhenSyncError)
+      doSyncWorkflowDraft(notRefreshWhenSyncError, callback)
     else
       debouncedSyncWorkflowDraft(doSyncWorkflowDraft)
   }, [debouncedSyncWorkflowDraft, doSyncWorkflowDraft, getNodesReadOnly])

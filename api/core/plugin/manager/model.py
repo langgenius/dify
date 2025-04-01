@@ -1,6 +1,5 @@
 import binascii
 from collections.abc import Generator, Sequence
-import logging
 from typing import IO, Optional
 
 from core.model_runtime.entities.llm_entities import LLMResultChunk

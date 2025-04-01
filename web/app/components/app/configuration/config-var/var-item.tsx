@@ -33,40 +33,38 @@ const VarItem: FC<ItemProps> = ({
   const [isDeleting, setIsDeleting] = useState(false)
 
   return (
-    <div className={cn('group relative flex items-center mb-1 last-of-type:mb-0  pl-2.5 py-2 pr-3 w-full rounded-lg bg-components-panel-on-panel-item-bg border-components-panel-border-subtle border-[0.5px] shadow-xs hover:shadow-sm hover:bg-components-panel-on-panel-item-bg-hover', isDeleting && 'hover:bg-state-destructive-hover border-state-destructive-border', readonly && 'cursor-not-allowed opacity-30')}>
-      <VarIcon className='shrink-0 mr-1 w-4 h-4 text-text-accent' />
-      <div className='grow'>
-        <div className='flex items-center h-[18px]'>
-          <div className='grow truncate' title={name}>
-            <span className='system-sm-medium text-text-secondary'>{name}</span>
-            <span className='px-1 system-xs-regular text-text-quaternary'>·</span>
-            <span className='system-xs-medium text-text-tertiary'>{label}</span>
-          </div>
-          <div className='group-hover:hidden flex items-center'>
-            {required && <Badge text='required' />}
-            <span className='pl-2 pr-1 system-xs-regular text-text-tertiary'>{type}</span>
-            <IconTypeIcon type={type as IInputTypeIconProps['type']} className='text-text-tertiary' />
-          </div>
+    <div className={cn('group relative mb-1 flex h-[34px] w-full items-center  rounded-lg border-[0.5px] border-components-panel-border-subtle bg-components-panel-on-panel-item-bg pl-2.5 pr-3 shadow-xs last-of-type:mb-0 hover:bg-components-panel-on-panel-item-bg-hover hover:shadow-sm', isDeleting && 'border-state-destructive-border hover:bg-state-destructive-hover', readonly && 'cursor-not-allowed opacity-30')}>
+      <VarIcon className='mr-1 h-4 w-4 shrink-0 text-text-accent' />
+      <div className='flex w-0 grow items-center'>
+        <div className='truncate' title={`${name} · ${label}`}>
+          <span className='system-sm-medium text-text-secondary'>{name}</span>
+          <span className='system-xs-regular px-1 text-text-quaternary'>·</span>
+          <span className='system-xs-medium text-text-tertiary'>{label}</span>
         </div>
       </div>
-      {!readonly && (
-        <div className='hidden rounded-lg group-hover:flex items-center justify-end absolute right-0 top-0 bottom-0 pr-2 w-[124px]'>
+      <div className='shrink-0'>
+        <div className={cn('flex items-center', !readonly && 'group-hover:hidden')}>
+          {required && <Badge text='required' />}
+          <span className='system-xs-regular pl-2 pr-1 text-text-tertiary'>{type}</span>
+          <IconTypeIcon type={type as IInputTypeIconProps['type']} className='text-text-tertiary' />
+        </div>
+        <div className={cn('hidden items-center justify-end rounded-lg', !readonly && 'group-hover:flex')}>
           <div
-            className='flex items-center justify-center mr-1 w-6 h-6 hover:bg-black/5 rounded-md cursor-pointer'
+            className='mr-1 flex h-6 w-6 cursor-pointer items-center justify-center rounded-md hover:bg-black/5'
             onClick={onEdit}
           >
-            <RiEditLine className='w-4 h-4 text-text-tertiary' />
+            <RiEditLine className='h-4 w-4 text-text-tertiary' />
           </div>
           <div
-            className='flex items-center justify-center w-6 h-6  text-text-tertiary cursor-pointer hover:text-text-destructive'
+            className='flex h-6 w-6 cursor-pointer items-center  justify-center text-text-tertiary hover:text-text-destructive'
             onClick={onRemove}
             onMouseOver={() => setIsDeleting(true)}
             onMouseLeave={() => setIsDeleting(false)}
           >
-            <RiDeleteBinLine className='w-4 h-4' />
+            <RiDeleteBinLine className='h-4 w-4' />
           </div>
         </div>
-      )}
+      </div>
     </div>
   )
 }

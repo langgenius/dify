@@ -1,5 +1,5 @@
-from functools import wraps
 import logging
+from functools import wraps
 
 from flask_login import current_user  # type: ignore
 from sqlalchemy.orm import Session

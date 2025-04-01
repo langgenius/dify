@@ -61,7 +61,7 @@ const AppDetailNav = ({
   return (
     <div
       className={`
-        shrink-0 flex flex-col bg-background-default-subtle border-r border-divider-burn transition-all
+        flex shrink-0 flex-col border-r border-divider-burn bg-background-default-subtle transition-all
         ${expand ? 'w-[340px]' : 'w-14'}
       `}
     >
@@ -96,7 +96,7 @@ const AppDetailNav = ({
       <div className="px-4">
         <div
           className={cn(
-            'mt-1 mx-auto h-[1px] bg-divider-subtle',
+            'mx-auto mt-1 h-[1px] bg-divider-subtle',
             !expand && 'w-6',
           )}
         />
@@ -127,13 +127,13 @@ const AppDetailNav = ({
             `}
         >
           <div
-            className="flex items-center justify-center w-6 h-6 text-gray-500 cursor-pointer"
+            className="flex h-6 w-6 cursor-pointer items-center justify-center text-gray-500"
             onClick={() => handleToggle(appSidebarExpand)}
           >
             {expand ? (
-              <RiLayoutRight2Line className="w-5 h-5 text-components-menu-item-text" />
+              <RiLayoutRight2Line className="h-5 w-5 text-components-menu-item-text" />
             ) : (
-              <LayoutRight2LineMod className="w-5 h-5 text-components-menu-item-text" />
+              <LayoutRight2LineMod className="h-5 w-5 text-components-menu-item-text" />
             )}
           </div>
         </div>
