@@ -38,7 +38,8 @@ const MetadataFilter = ({
       disabled={metadataFilterMode === MetadataFilteringModeEnum.disabled || metadataFilterMode === MetadataFilteringModeEnum.manual}
       collapsed={collapsed}
       onCollapse={setCollapsed}
-      trigger={
+      hideCollapseIcon
+      trigger={collapseIcon => (
         <div className='flex grow items-center justify-between pr-4'>
           <div className='flex items-center'>
             <div className='system-sm-semibold-uppercase mr-0.5 text-text-secondary'>
@@ -51,6 +52,7 @@ const MetadataFilter = ({
                 </div>
               )}
             />
+            {collapseIcon}
           </div>
           <div className='flex items-center'>
             <MetadataFilterSelector
@@ -66,7 +68,7 @@ const MetadataFilter = ({
             }
           </div>
         </div>
-      }
+      )}
     >
       <>
         {
@@ -85,8 +87,8 @@ const MetadataFilter = ({
                   provider={metadataModelConfig?.provider || ''}
                   completionParams={metadataModelConfig?.completion_params || { temperature: 0.7 }}
                   modelId={metadataModelConfig?.name || ''}
-                  setModel={handleMetadataModelChange || (() => {})}
-                  onCompletionParamsChange={handleMetadataCompletionParamsChange || (() => {})}
+                  setModel={handleMetadataModelChange || (() => { })}
+                  onCompletionParamsChange={handleMetadataCompletionParamsChange || (() => { })}
                   hideDebugWithMultipleModel
                   debugWithMultipleModel={false}
                 />

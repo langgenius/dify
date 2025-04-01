@@ -2,7 +2,6 @@ import React from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   RiAddLine,
-  RiArrowDropDownLine,
   RiQuestionLine,
 } from '@remixicon/react'
 import ToolSelector from '@/app/components/plugins/plugin-detail-panel/tool-selector'
@@ -13,6 +12,7 @@ import type { ToolValue } from '@/app/components/workflow/block-selector/types'
 import type { Node } from 'reactflow'
 import type { NodeOutPutVar } from '@/app/components/workflow/types'
 import cn from '@/utils/classnames'
+import { ArrowDownRoundFill } from '@/app/components/base/icons/src/vender/solid/general'
 
 type Props = {
   disabled?: boolean
@@ -98,14 +98,12 @@ const MultipleToolSelector = ({
             </Tooltip>
           )}
           {supportCollapse && (
-            <div className='absolute -left-4 top-1'>
-              <RiArrowDropDownLine
-                className={cn(
-                  'h-4 w-4 text-text-tertiary',
-                  collapse && '-rotate-90',
-                )}
-              />
-            </div>
+            <ArrowDownRoundFill
+              className={cn(
+                'h-4 w-4 cursor-pointer text-text-quaternary group-hover/collapse:text-text-secondary',
+                collapse && 'rotate-[270deg]',
+              )}
+            />
           )}
         </div>
         {value.length > 0 && (
