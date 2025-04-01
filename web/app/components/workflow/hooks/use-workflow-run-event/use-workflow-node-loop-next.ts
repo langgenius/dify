@@ -17,7 +17,7 @@ export const useWorkflowNodeLoopNext = () => {
     const nodes = getNodes()
     const newNodes = produce(nodes, (draft) => {
       const currentNode = draft.find(node => node.id === data.node_id)!
-      currentNode.data._loopIndex = data.index + 1
+      currentNode.data._loopIndex = data.index
 
       draft.forEach((node) => {
         if (node.parentId === data.node_id) {
