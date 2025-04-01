@@ -2002,7 +2002,7 @@ version = "1.2.18"
 description = "Python @deprecated decorator to deprecate old python classes, functions or methods."
 optional = false
 python-versions = "!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*,>=2.7"
-groups = ["storage", "vdb"]
+groups = ["main", "storage", "vdb"]
 files = [
     {file = "Deprecated-1.2.18-py2.py3-none-any.whl", hash = "sha256:bd5011788200372a32418f888e326a09ff80d0214bd961147cfed01b5c018eec"},
     {file = "deprecated-1.2.18.tar.gz", hash = "sha256:422b6f6d859da6f2ef57857761bfb392480502a64c3028ca9bbe86085d72115d"},
@@ -2947,6 +2947,7 @@ files = [
     {file = "google_crc32c-1.7.0-cp313-cp313-macosx_12_0_x86_64.whl", hash = "sha256:6a40522958040051c755a173eb98c05ad4d64a6dd898888c3e5ccca2d1cbdcdc"},
     {file = "google_crc32c-1.7.0-cp313-cp313-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:f714fe5cdf5007d7064c57cf7471a99e0cbafda24ddfa829117fc3baafa424f7"},
     {file = "google_crc32c-1.7.0-cp313-cp313-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:f04e58dbe1bf0c9398e603a9be5aaa09e0ba7eb022a3293195d8749459a01069"},
+    {file = "google_crc32c-1.7.0-cp313-cp313-win_amd64.whl", hash = "sha256:e545b51ddf97f604d30114f7c23eecaf4c06cd6c023ff1ae0b80dcd99af32833"},
     {file = "google_crc32c-1.7.0-cp313-cp313t-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:364067b063664dd8d1fec75a3fe85edf05c46f688365269beccaf42ef5dfe889"},
     {file = "google_crc32c-1.7.0-cp313-cp313t-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:e1b0d6044799f6ac51d1cc2decb997280a83c448b3bef517a54b57a3b71921c0"},
     {file = "google_crc32c-1.7.0-cp39-cp39-macosx_12_0_arm64.whl", hash = "sha256:02bc3295d26cd7666521fd6d5b7b93923ae1eb4417ddd3bc57185a5881ad7b96"},
@@ -3675,23 +3676,23 @@ all = ["flake8 (>=7.1.1)", "mypy (>=1.11.2)", "pytest (>=8.3.2)", "ruff (>=0.6.2
 
 [[package]]
 name = "importlib-metadata"
-version = "8.4.0"
+version = "7.1.0"
 description = "Read metadata from Python packages"
 optional = false
 python-versions = ">=3.8"
 groups = ["main", "vdb"]
 files = [
-    {file = "importlib_metadata-8.4.0-py3-none-any.whl", hash = "sha256:66f342cc6ac9818fc6ff340576acd24d65ba0b3efabb2b4ac08b598965a4a2f1"},
-    {file = "importlib_metadata-8.4.0.tar.gz", hash = "sha256:9a547d3bc3608b025f93d403fdd1aae741c24fbb8314df4b155675742ce303c5"},
+    {file = "importlib_metadata-7.1.0-py3-none-any.whl", hash = "sha256:30962b96c0c223483ed6cc7280e7f0199feb01a0e40cfae4d4450fc6fab1f570"},
+    {file = "importlib_metadata-7.1.0.tar.gz", hash = "sha256:b78938b926ee8d5f020fc4772d487045805a55ddbad2ecf21c6d60938dc7fcd2"},
 ]
 
 [package.dependencies]
 zipp = ">=0.5"
 
 [package.extras]
-doc = ["furo", "jaraco.packaging (>=9.3)", "jaraco.tidelift (>=1.4)", "rst.linker (>=1.9)", "sphinx (>=3.5)", "sphinx-lint"]
+docs = ["furo", "jaraco.packaging (>=9.3)", "jaraco.tidelift (>=1.4)", "rst.linker (>=1.9)", "sphinx (>=3.5)", "sphinx-lint"]
 perf = ["ipython"]
-test = ["flufl.flake8", "importlib-resources (>=1.3) ; python_version < \"3.9\"", "jaraco.test (>=5.4)", "packaging", "pyfakefs", "pytest (>=6,!=8.1.*)", "pytest-checkdocs (>=2.4)", "pytest-cov", "pytest-enabler (>=2.2)", "pytest-mypy", "pytest-perf (>=0.9.2)", "pytest-ruff (>=0.2.1) ; sys_platform != \"cygwin\""]
+testing = ["flufl.flake8", "importlib-resources (>=1.3) ; python_version < \"3.9\"", "jaraco.test (>=5.4)", "packaging", "pyfakefs", "pytest (>=6)", "pytest-checkdocs (>=2.4)", "pytest-cov", "pytest-enabler (>=2.2)", "pytest-mypy ; platform_python_implementation != \"PyPy\"", "pytest-perf (>=0.9.2)", "pytest-ruff (>=0.2.1)"]
 
 [[package]]
 name = "importlib-resources"
@@ -5375,45 +5376,81 @@ kerberos = ["requests-kerberos"]
 
 [[package]]
 name = "opentelemetry-api"
-version = "1.27.0"
+version = "1.25.0"
 description = "OpenTelemetry Python API"
 optional = false
 python-versions = ">=3.8"
-groups = ["vdb"]
+groups = ["main", "vdb"]
 files = [
-    {file = "opentelemetry_api-1.27.0-py3-none-any.whl", hash = "sha256:953d5871815e7c30c81b56d910c707588000fff7a3ca1c73e6531911d53065e7"},
-    {file = "opentelemetry_api-1.27.0.tar.gz", hash = "sha256:ed673583eaa5f81b5ce5e86ef7cdaf622f88ef65f0b9aab40b843dcae5bef342"},
+    {file = "opentelemetry_api-1.25.0-py3-none-any.whl", hash = "sha256:757fa1aa020a0f8fa139f8959e53dec2051cc26b832e76fa839a6d76ecefd737"},
+    {file = "opentelemetry_api-1.25.0.tar.gz", hash = "sha256:77c4985f62f2614e42ce77ee4c9da5fa5f0bc1e1821085e9a47533a9323ae869"},
 ]
 
 [package.dependencies]
 deprecated = ">=1.2.6"
-importlib-metadata = ">=6.0,<=8.4.0"
+importlib-metadata = ">=6.0,<=7.1"
 
 [[package]]
-name = "opentelemetry-exporter-otlp-proto-common"
-version = "1.27.0"
-description = "OpenTelemetry Protobuf encoding"
+name = "opentelemetry-distro"
+version = "0.46b0"
+description = "OpenTelemetry Python Distro"
 optional = false
 python-versions = ">=3.8"
-groups = ["vdb"]
+groups = ["main"]
 files = [
-    {file = "opentelemetry_exporter_otlp_proto_common-1.27.0-py3-none-any.whl", hash = "sha256:675db7fffcb60946f3a5c43e17d1168a3307a94a930ecf8d2ea1f286f3d4f79a"},
-    {file = "opentelemetry_exporter_otlp_proto_common-1.27.0.tar.gz", hash = "sha256:159d27cf49f359e3798c4c3eb8da6ef4020e292571bd8c5604a2a573231dd5c8"},
+    {file = "opentelemetry_distro-0.46b0-py3-none-any.whl", hash = "sha256:ac0681ea97a313319212130826813bdc521bb6d07cdb5c4ad4bcede6eba80d3e"},
+    {file = "opentelemetry_distro-0.46b0.tar.gz", hash = "sha256:9bfc8a13f1bff2f1e88c3c75bdda8a6241db9c75d4adddb8709cf82b0390f363"},
 ]
 
 [package.dependencies]
-opentelemetry-proto = "1.27.0"
+opentelemetry-api = ">=1.12,<2.0"
+opentelemetry-instrumentation = "0.46b0"
+opentelemetry-sdk = ">=1.13,<2.0"
+
+[package.extras]
+otlp = ["opentelemetry-exporter-otlp (==1.25.0)"]
+
+[[package]]
+name = "opentelemetry-exporter-otlp"
+version = "1.25.0"
+description = "OpenTelemetry Collector Exporters"
+optional = false
+python-versions = ">=3.8"
+groups = ["main"]
+files = [
+    {file = "opentelemetry_exporter_otlp-1.25.0-py3-none-any.whl", hash = "sha256:d67a831757014a3bc3174e4cd629ae1493b7ba8d189e8a007003cacb9f1a6b60"},
+    {file = "opentelemetry_exporter_otlp-1.25.0.tar.gz", hash = "sha256:ce03199c1680a845f82e12c0a6a8f61036048c07ec7a0bd943142aca8fa6ced0"},
+]
+
+[package.dependencies]
+opentelemetry-exporter-otlp-proto-grpc = "1.25.0"
+opentelemetry-exporter-otlp-proto-http = "1.25.0"
+
+[[package]]
+name = "opentelemetry-exporter-otlp-proto-common"
+version = "1.25.0"
+description = "OpenTelemetry Protobuf encoding"
+optional = false
+python-versions = ">=3.8"
+groups = ["main", "vdb"]
+files = [
+    {file = "opentelemetry_exporter_otlp_proto_common-1.25.0-py3-none-any.whl", hash = "sha256:15637b7d580c2675f70246563363775b4e6de947871e01d0f4e3881d1848d693"},
+    {file = "opentelemetry_exporter_otlp_proto_common-1.25.0.tar.gz", hash = "sha256:c93f4e30da4eee02bacd1e004eb82ce4da143a2f8e15b987a9f603e0a85407d3"},
+]
+
+[package.dependencies]
+opentelemetry-proto = "1.25.0"
 
 [[package]]
 name = "opentelemetry-exporter-otlp-proto-grpc"
-version = "1.27.0"
+version = "1.25.0"
 description = "OpenTelemetry Collector Protobuf over gRPC Exporter"
 optional = false
 python-versions = ">=3.8"
-groups = ["vdb"]
+groups = ["main", "vdb"]
 files = [
-    {file = "opentelemetry_exporter_otlp_proto_grpc-1.27.0-py3-none-any.whl", hash = "sha256:56b5bbd5d61aab05e300d9d62a6b3c134827bbd28d0b12f2649c2da368006c9e"},
-    {file = "opentelemetry_exporter_otlp_proto_grpc-1.27.0.tar.gz", hash = "sha256:af6f72f76bcf425dfb5ad11c1a6d6eca2863b91e63575f89bb7b4b55099d968f"},
+    {file = "opentelemetry_exporter_otlp_proto_grpc-1.25.0-py3-none-any.whl", hash = "sha256:3131028f0c0a155a64c430ca600fd658e8e37043cb13209f0109db5c1a3e4eb4"},
+    {file = "opentelemetry_exporter_otlp_proto_grpc-1.25.0.tar.gz", hash = "sha256:c0b1661415acec5af87625587efa1ccab68b873745ca0ee96b69bb1042087eac"},
 ]
 
 [package.dependencies]
@@ -5421,20 +5458,41 @@ deprecated = ">=1.2.6"
 googleapis-common-protos = ">=1.52,<2.0"
 grpcio = ">=1.0.0,<2.0.0"
 opentelemetry-api = ">=1.15,<2.0"
-opentelemetry-exporter-otlp-proto-common = "1.27.0"
-opentelemetry-proto = "1.27.0"
-opentelemetry-sdk = ">=1.27.0,<1.28.0"
+opentelemetry-exporter-otlp-proto-common = "1.25.0"
+opentelemetry-proto = "1.25.0"
+opentelemetry-sdk = ">=1.25.0,<1.26.0"
+
+[[package]]
+name = "opentelemetry-exporter-otlp-proto-http"
+version = "1.25.0"
+description = "OpenTelemetry Collector Protobuf over HTTP Exporter"
+optional = false
+python-versions = ">=3.8"
+groups = ["main"]
+files = [
+    {file = "opentelemetry_exporter_otlp_proto_http-1.25.0-py3-none-any.whl", hash = "sha256:2eca686ee11b27acd28198b3ea5e5863a53d1266b91cda47c839d95d5e0541a6"},
+    {file = "opentelemetry_exporter_otlp_proto_http-1.25.0.tar.gz", hash = "sha256:9f8723859e37c75183ea7afa73a3542f01d0fd274a5b97487ea24cb683d7d684"},
+]
+
+[package.dependencies]
+deprecated = ">=1.2.6"
+googleapis-common-protos = ">=1.52,<2.0"
+opentelemetry-api = ">=1.15,<2.0"
+opentelemetry-exporter-otlp-proto-common = "1.25.0"
+opentelemetry-proto = "1.25.0"
+opentelemetry-sdk = ">=1.25.0,<1.26.0"
+requests = ">=2.7,<3.0"
 
 [[package]]
 name = "opentelemetry-instrumentation"
-version = "0.48b0"
+version = "0.46b0"
 description = "Instrumentation Tools & Auto Instrumentation for OpenTelemetry Python"
 optional = false
 python-versions = ">=3.8"
-groups = ["vdb"]
+groups = ["main", "vdb"]
 files = [
-    {file = "opentelemetry_instrumentation-0.48b0-py3-none-any.whl", hash = "sha256:a69750dc4ba6a5c3eb67986a337185a25b739966d80479befe37b546fc870b44"},
-    {file = "opentelemetry_instrumentation-0.48b0.tar.gz", hash = "sha256:94929685d906380743a71c3970f76b5f07476eea1834abd5dd9d17abfe23cc35"},
+    {file = "opentelemetry_instrumentation-0.46b0-py3-none-any.whl", hash = "sha256:89cd721b9c18c014ca848ccd11181e6b3fd3f6c7669e35d59c48dc527408c18b"},
+    {file = "opentelemetry_instrumentation-0.46b0.tar.gz", hash = "sha256:974e0888fb2a1e01c38fbacc9483d024bb1132aad92d6d24e2e5543887a7adda"},
 ]
 
 [package.dependencies]
@@ -5444,58 +5502,151 @@ wrapt = ">=1.0.0,<2.0.0"
 
 [[package]]
 name = "opentelemetry-instrumentation-asgi"
-version = "0.48b0"
+version = "0.46b0"
 description = "ASGI instrumentation for OpenTelemetry"
 optional = false
 python-versions = ">=3.8"
 groups = ["vdb"]
 files = [
-    {file = "opentelemetry_instrumentation_asgi-0.48b0-py3-none-any.whl", hash = "sha256:ddb1b5fc800ae66e85a4e2eca4d9ecd66367a8c7b556169d9e7b57e10676e44d"},
-    {file = "opentelemetry_instrumentation_asgi-0.48b0.tar.gz", hash = "sha256:04c32174b23c7fa72ddfe192dad874954968a6a924608079af9952964ecdf785"},
+    {file = "opentelemetry_instrumentation_asgi-0.46b0-py3-none-any.whl", hash = "sha256:f13c55c852689573057837a9500aeeffc010c4ba59933c322e8f866573374759"},
+    {file = "opentelemetry_instrumentation_asgi-0.46b0.tar.gz", hash = "sha256:02559f30cf4b7e2a737ab17eb52aa0779bcf4cc06573064f3e2cb4dcc7d3040a"},
 ]
 
 [package.dependencies]
 asgiref = ">=3.0,<4.0"
 opentelemetry-api = ">=1.12,<2.0"
-opentelemetry-instrumentation = "0.48b0"
-opentelemetry-semantic-conventions = "0.48b0"
-opentelemetry-util-http = "0.48b0"
+opentelemetry-instrumentation = "0.46b0"
+opentelemetry-semantic-conventions = "0.46b0"
+opentelemetry-util-http = "0.46b0"
 
 [package.extras]
 instruments = ["asgiref (>=3.0,<4.0)"]
 
 [[package]]
+name = "opentelemetry-instrumentation-dbapi"
+version = "0.46b0"
+description = "OpenTelemetry Database API instrumentation"
+optional = false
+python-versions = ">=3.8"
+groups = ["main"]
+files = [
+    {file = "opentelemetry_instrumentation_dbapi-0.46b0-py3-none-any.whl", hash = "sha256:01c8a3057ccb5dcdb68d730c92839d7d30e31bf60b0a4d42d37a0c01a2a37783"},
+    {file = "opentelemetry_instrumentation_dbapi-0.46b0.tar.gz", hash = "sha256:f419cfaceaed22964622093970c70a58c1214fc2669f2b4afab76252b6834d92"},
+]
+
+[package.dependencies]
+opentelemetry-api = ">=1.12,<2.0"
+opentelemetry-instrumentation = "0.46b0"
+opentelemetry-semantic-conventions = "0.46b0"
+wrapt = ">=1.0.0,<2.0.0"
+
+[[package]]
 name = "opentelemetry-instrumentation-fastapi"
-version = "0.48b0"
+version = "0.46b0"
 description = "OpenTelemetry FastAPI Instrumentation"
 optional = false
 python-versions = ">=3.8"
 groups = ["vdb"]
 files = [
-    {file = "opentelemetry_instrumentation_fastapi-0.48b0-py3-none-any.whl", hash = "sha256:afeb820a59e139d3e5d96619600f11ce0187658b8ae9e3480857dd790bc024f2"},
-    {file = "opentelemetry_instrumentation_fastapi-0.48b0.tar.gz", hash = "sha256:21a72563ea412c0b535815aeed75fc580240f1f02ebc72381cfab672648637a2"},
+    {file = "opentelemetry_instrumentation_fastapi-0.46b0-py3-none-any.whl", hash = "sha256:e0f5d150c6c36833dd011f0e6ef5ede6d7406c1aed0c7c98b2d3b38a018d1b33"},
+    {file = "opentelemetry_instrumentation_fastapi-0.46b0.tar.gz", hash = "sha256:928a883a36fc89f9702f15edce43d1a7104da93d740281e32d50ffd03dbb4365"},
 ]
 
 [package.dependencies]
 opentelemetry-api = ">=1.12,<2.0"
-opentelemetry-instrumentation = "0.48b0"
-opentelemetry-instrumentation-asgi = "0.48b0"
-opentelemetry-semantic-conventions = "0.48b0"
-opentelemetry-util-http = "0.48b0"
+opentelemetry-instrumentation = "0.46b0"
+opentelemetry-instrumentation-asgi = "0.46b0"
+opentelemetry-semantic-conventions = "0.46b0"
+opentelemetry-util-http = "0.46b0"
 
 [package.extras]
 instruments = ["fastapi (>=0.58,<1.0)"]
 
 [[package]]
+name = "opentelemetry-instrumentation-flask"
+version = "0.46b0"
+description = "Flask instrumentation for OpenTelemetry"
+optional = false
+python-versions = ">=3.8"
+groups = ["main"]
+files = [
+    {file = "opentelemetry_instrumentation_flask-0.46b0-py3-none-any.whl", hash = "sha256:cd8af6c06476442f54c175bafda7df57a553835c365964c50c92136732b33c1a"},
+    {file = "opentelemetry_instrumentation_flask-0.46b0.tar.gz", hash = "sha256:638ffaf94136fb953c98fc27448bd795ef289a1eeedb75a47ca5835a797517be"},
+]
+
+[package.dependencies]
+importlib-metadata = ">=4.0"
+opentelemetry-api = ">=1.12,<2.0"
+opentelemetry-instrumentation = "0.46b0"
+opentelemetry-instrumentation-wsgi = "0.46b0"
+opentelemetry-semantic-conventions = "0.46b0"
+opentelemetry-util-http = "0.46b0"
+packaging = ">=21.0"
+
+[package.extras]
+instruments = ["flask (>=1.0)"]
+
+[[package]]
+name = "opentelemetry-instrumentation-logging"
+version = "0.46b0"
+description = "OpenTelemetry Logging instrumentation"
+optional = false
+python-versions = ">=3.8"
+groups = ["main"]
+files = [
+    {file = "opentelemetry_instrumentation_logging-0.46b0-py3-none-any.whl", hash = "sha256:704e8ab4fe99202ad2178c6b1bac57a8954195ea6e5c08a24740623929ea8707"},
+    {file = "opentelemetry_instrumentation_logging-0.46b0.tar.gz", hash = "sha256:dd8fd8a96255aa651c9b2c6dc91e3572383035015e4018a3b4d396ec9b08f0e0"},
+]
+
+[package.dependencies]
+opentelemetry-api = ">=1.12,<2.0"
+opentelemetry-instrumentation = "0.46b0"
+
+[[package]]
+name = "opentelemetry-instrumentation-threading"
+version = "0.46b0"
+description = "Thread context propagation support for OpenTelemetry"
+optional = false
+python-versions = ">=3.8"
+groups = ["main"]
+files = [
+    {file = "opentelemetry_instrumentation_threading-0.46b0-py3-none-any.whl", hash = "sha256:60fe4e86a8e399c187eeafccfeeefa07d5b9d4382bc9c4f52ab5436d6bb244bf"},
+    {file = "opentelemetry_instrumentation_threading-0.46b0.tar.gz", hash = "sha256:938dacb52b2ac1114678d146d2ef2d0044f3e32ec8b2045db36d709de6c95548"},
+]
+
+[package.dependencies]
+opentelemetry-api = ">=1.12,<2.0"
+opentelemetry-instrumentation = "0.46b0"
+wrapt = ">=1.0.0,<2.0.0"
+
+[[package]]
+name = "opentelemetry-instrumentation-wsgi"
+version = "0.46b0"
+description = "WSGI Middleware for OpenTelemetry"
+optional = false
+python-versions = ">=3.8"
+groups = ["main"]
+files = [
+    {file = "opentelemetry_instrumentation_wsgi-0.46b0-py3-none-any.whl", hash = "sha256:2386014b026f5307c802417eeab74265785ae3dd6eee8c5581a830e3b2d3435b"},
+    {file = "opentelemetry_instrumentation_wsgi-0.46b0.tar.gz", hash = "sha256:f4e1001e8477eb546cac7c13cff0b0cf127812b1188a37bcaa3e43eb741451e2"},
+]
+
+[package.dependencies]
+opentelemetry-api = ">=1.12,<2.0"
+opentelemetry-instrumentation = "0.46b0"
+opentelemetry-semantic-conventions = "0.46b0"
+opentelemetry-util-http = "0.46b0"
+
+[[package]]
 name = "opentelemetry-proto"
-version = "1.27.0"
+version = "1.25.0"
 description = "OpenTelemetry Python Proto"
 optional = false
 python-versions = ">=3.8"
-groups = ["vdb"]
+groups = ["main", "vdb"]
 files = [
-    {file = "opentelemetry_proto-1.27.0-py3-none-any.whl", hash = "sha256:b133873de5581a50063e1e4b29cdcf0c5e253a8c2d8dc1229add20a4c3830ace"},
-    {file = "opentelemetry_proto-1.27.0.tar.gz", hash = "sha256:33c9345d91dafd8a74fc3d7576c5a38f18b7fdf8d02983ac67485386132aedd6"},
+    {file = "opentelemetry_proto-1.25.0-py3-none-any.whl", hash = "sha256:f07e3341c78d835d9b86665903b199893befa5e98866f63d22b00d0b7ca4972f"},
+    {file = "opentelemetry_proto-1.25.0.tar.gz", hash = "sha256:35b6ef9dc4a9f7853ecc5006738ad40443701e52c26099e197895cbda8b815a3"},
 ]
 
 [package.dependencies]
@@ -5503,47 +5654,46 @@ protobuf = ">=3.19,<5.0"
 
 [[package]]
 name = "opentelemetry-sdk"
-version = "1.27.0"
+version = "1.25.0"
 description = "OpenTelemetry Python SDK"
 optional = false
 python-versions = ">=3.8"
-groups = ["vdb"]
+groups = ["main", "vdb"]
 files = [
-    {file = "opentelemetry_sdk-1.27.0-py3-none-any.whl", hash = "sha256:365f5e32f920faf0fd9e14fdfd92c086e317eaa5f860edba9cdc17a380d9197d"},
-    {file = "opentelemetry_sdk-1.27.0.tar.gz", hash = "sha256:d525017dea0ccce9ba4e0245100ec46ecdc043f2d7b8315d56b19aff0904fa6f"},
+    {file = "opentelemetry_sdk-1.25.0-py3-none-any.whl", hash = "sha256:d97ff7ec4b351692e9d5a15af570c693b8715ad78b8aafbec5c7100fe966b4c9"},
+    {file = "opentelemetry_sdk-1.25.0.tar.gz", hash = "sha256:ce7fc319c57707ef5bf8b74fb9f8ebdb8bfafbe11898410e0d2a761d08a98ec7"},
 ]
 
 [package.dependencies]
-opentelemetry-api = "1.27.0"
-opentelemetry-semantic-conventions = "0.48b0"
+opentelemetry-api = "1.25.0"
+opentelemetry-semantic-conventions = "0.46b0"
 typing-extensions = ">=3.7.4"
 
 [[package]]
 name = "opentelemetry-semantic-conventions"
-version = "0.48b0"
+version = "0.46b0"
 description = "OpenTelemetry Semantic Conventions"
 optional = false
 python-versions = ">=3.8"
-groups = ["vdb"]
+groups = ["main", "vdb"]
 files = [
-    {file = "opentelemetry_semantic_conventions-0.48b0-py3-none-any.whl", hash = "sha256:a0de9f45c413a8669788a38569c7e0a11ce6ce97861a628cca785deecdc32a1f"},
-    {file = "opentelemetry_semantic_conventions-0.48b0.tar.gz", hash = "sha256:12d74983783b6878162208be57c9effcb89dc88691c64992d70bb89dc00daa1a"},
+    {file = "opentelemetry_semantic_conventions-0.46b0-py3-none-any.whl", hash = "sha256:6daef4ef9fa51d51855d9f8e0ccd3a1bd59e0e545abe99ac6203804e36ab3e07"},
+    {file = "opentelemetry_semantic_conventions-0.46b0.tar.gz", hash = "sha256:fbc982ecbb6a6e90869b15c1673be90bd18c8a56ff1cffc0864e38e2edffaefa"},
 ]
 
 [package.dependencies]
-deprecated = ">=1.2.6"
-opentelemetry-api = "1.27.0"
+opentelemetry-api = "1.25.0"
 
 [[package]]
 name = "opentelemetry-util-http"
-version = "0.48b0"
+version = "0.46b0"
 description = "Web util for OpenTelemetry"
 optional = false
 python-versions = ">=3.8"
-groups = ["vdb"]
+groups = ["main", "vdb"]
 files = [
-    {file = "opentelemetry_util_http-0.48b0-py3-none-any.whl", hash = "sha256:76f598af93aab50328d2a69c786beaedc8b6a7770f7a818cc307eb353debfffb"},
-    {file = "opentelemetry_util_http-0.48b0.tar.gz", hash = "sha256:60312015153580cc20f322e5cdc3d3ecad80a71743235bdb77716e742814623c"},
+    {file = "opentelemetry_util_http-0.46b0-py3-none-any.whl", hash = "sha256:8dc1949ce63caef08db84ae977fdc1848fe6dc38e6bbaad0ae3e6ecd0d451629"},
+    {file = "opentelemetry_util_http-0.46b0.tar.gz", hash = "sha256:03b6e222642f9c7eae58d9132343e045b50aca9761fcb53709bd2b663571fdf6"},
 ]
 
 [[package]]
@@ -10148,4 +10298,4 @@ cffi = ["cffi (>=1.11)"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.11,<3.13"
-content-hash = "a094082d2fd4d8ea480ac800e54029bdb604de70a7b4348778bdcddb39b06c7e"
+content-hash = "22a17237a5f209950acbba233e19c2502215018755765fa096fdb11620701fb5"
