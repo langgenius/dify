@@ -4,10 +4,10 @@ import { useTranslation } from 'react-i18next'
 import { Menu, MenuButton, MenuItems, Transition } from '@headlessui/react'
 import { RiArrowDownSLine } from '@remixicon/react'
 import cn from '@/utils/classnames'
+import PlanBadge from '@/app/components/header/plan-badge'
 import { switchWorkspace } from '@/service/common'
 import { useWorkspacesContext } from '@/context/workspace-context'
 import { ToastContext } from '@/app/components/base/toast'
-import PlanBadge from '../../plan-badge'
 import type { Plan } from '@/app/components/billing/type'
 
 const WorkplaceSelector = () => {

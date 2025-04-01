@@ -6,6 +6,7 @@ on:
       - "main"
       - "deploy/dev"
       - "deploy/enterprise"
+      - release/1.1.3-fix1
     tags:
       - "*"
 
