@@ -136,7 +136,7 @@ export const ProviderContextProvider = ({
     }
     catch (error) {
       console.error('Failed to fetch plan info:', error)
-      // 设置默认值
+      // set default value to avoid undefined error
       setEnableBilling(false)
       setEnableEducationPlan(false)
       setIsEducationWorkspace(false)
