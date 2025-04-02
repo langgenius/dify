@@ -49,6 +49,28 @@ def enable_annotation_reply_task(
             db.session.query(AppAnnotationSetting).filter(AppAnnotationSetting.app_id == app_id).first()
         )
         if annotation_setting:
+            # delete old annotation index table if it embedding model is changed
+            if annotation_setting.collection_binding_id != dataset_collection_binding.id:
+                previous_annotation_setting = (
+                    DatasetCollectionBindingService.get_dataset_collection_binding_by_id_and_type(
+                        annotation_setting.collection_binding_id, "annotation"
+                    )
+                )
+                previous_embdedding_model_provider = previous_annotation_setting.provider_name
+                previous_embdedding_model_name = previous_annotation_setting.model_name
+                dataset = Dataset(
+                    id=app_id,
+                    tenant_id=tenant_id,
+                    indexing_technique="high_quality",
+                    embedding_model_provider=previous_embdedding_model_provider,
+                    embedding_model=previous_embdedding_model_name,
+                    collection_binding_id=annotation_setting.collection_binding_id,
+                )
+                vector = Vector(dataset, attributes=["doc_id", "annotation_id", "app_id"])
+                try:
+                    vector.delete()
+                except Exception as e:
+                    logging.info(click.style("Delete annotation index error: {}".format(str(e)), fg="red"))
             annotation_setting.score_threshold = score_threshold
             annotation_setting.collection_binding_id = dataset_collection_binding.id
             annotation_setting.updated_user_id = user_id
