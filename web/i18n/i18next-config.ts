@@ -36,7 +36,7 @@ const loadLangResources = (lang: string) => ({
 
 type Resource = Record<string, ReturnType<typeof loadLangResources>>
 // Automatically generate the resources object
-export const resources = LanguagesSupported.reduce<Resource>((acc: any, lang: string) => {
+export const resources = LanguagesSupported.reduce<Resource>((acc, lang) => {
   acc[lang] = loadLangResources(lang)
   return acc
 }, {})
