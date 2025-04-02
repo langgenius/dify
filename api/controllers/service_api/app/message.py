@@ -31,7 +31,10 @@ class MessageListApi(Resource):
         "feedback": fields.Nested(feedback_fields, attribute="user_feedback", allow_null=True),
         "retriever_resources": fields.List(
             fields.Nested(retriever_resource_fields),
-            attribute=lambda x: json.loads(x.message_metadata).get('retriever_resources',[]) if x.message_metadata else []
+            attribute=lambda x: (
+                json.loads(x.message_metadata).get('retriever_resources', [])
+                if x.message_metadata else []
+            ) if self._is_valid_json(x.message_metadata) else []
         ),
         "created_at": TimestampField,
         "agent_thoughts": fields.List(fields.Nested(agent_thought_fields)),
