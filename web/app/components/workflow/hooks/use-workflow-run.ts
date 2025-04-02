@@ -342,7 +342,6 @@ export const useWorkflowRun = () => {
     }
 
     featuresStore?.setState({ features: mappedFeatures })
-    workflowStore.getState().setPublishedAt(publishedWorkflow.created_at)
     workflowStore.getState().setEnvironmentVariables(publishedWorkflow.environment_variables || [])
   }, [featuresStore, handleUpdateWorkflowCanvas, workflowStore])
 
