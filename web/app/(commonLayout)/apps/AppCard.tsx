@@ -4,7 +4,7 @@ import { useContext, useContextSelector } from 'use-context-selector'
 import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { RiMoreFill } from '@remixicon/react'
+import { RiGlobalLine, RiMoreFill } from '@remixicon/react'
 import s from './style.module.css'
 import cn from '@/utils/classnames'
 import type { App } from '@/types/app'
@@ -31,6 +31,8 @@ import DSLExportConfirmModal from '@/app/components/workflow/dsl-export-confirm-
 import { fetchWorkflowDraft } from '@/service/workflow'
 import { fetchInstalledAppList } from '@/service/explore'
 import { AppTypeIcon } from '@/app/components/app/type-selector'
+import Tooltip from '@/app/components/base/tooltip'
+import AccessControl from '@/app/components/app/app-access-control'
 
 export type AppCardProps = {
   app: App
@@ -53,6 +55,7 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
   const [showDuplicateModal, setShowDuplicateModal] = useState(false)
   const [showSwitchModal, setShowSwitchModal] = useState<boolean>(false)
   const [showConfirmDelete, setShowConfirmDelete] = useState(false)
+  const [showAccessControl, setShowAccessControl] = useState(true)
   const [secretEnvList, setSecretEnvList] = useState<EnvironmentVariable[]>([])
 
   const onConfirmDelete = useCallback(async () => {
@@ -209,6 +212,12 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
       e.preventDefault()
       setShowConfirmDelete(true)
     }
+    const onClickAccessControl = async (e: React.MouseEvent<HTMLButtonElement>) => {
+      e.stopPropagation()
+      props.onClick?.()
+      e.preventDefault()
+      setShowAccessControl(true)
+    }
     const onClickInstalledApp = async (e: React.MouseEvent<HTMLButtonElement>) => {
       e.stopPropagation()
       props.onClick?.()
@@ -252,6 +261,10 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
           <span className={s.actionName}>{t('app.openInExplore')}</span>
         </button>
         <Divider className="!my-1" />
+        <button className={s.actionItem} onClick={onClickAccessControl}>
+          <span className={s.actionName}>{t('app.accessControl')}</span>
+        </button>
+        <Divider />
         <div
           className={cn(s.actionItem, s.deleteActionItem, 'group')}
           onClick={onClickDelete}
@@ -278,7 +291,7 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
         }}
         className='relative h-[160px] group col-span-1 bg-components-card-bg border-[1px] border-solid border-components-card-border rounded-xl shadow-sm inline-flex flex-col transition-all duration-200 ease-in-out cursor-pointer hover:shadow-lg'
       >
-        <div className='flex pt-[14px] px-[14px] pb-3 h-[66px] items-center gap-3 grow-0 shrink-0'>
+        <div className='flex p-4 pb-3 h-[68px] items-start gap-3 grow-0 shrink-0'>
           <div className='relative shrink-0'>
             <AppIcon
               size="large"
@@ -300,6 +313,11 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
               {app.mode === 'workflow' && <div className='truncate'>{t('app.types.workflow').toUpperCase()}</div>}
               {app.mode === 'completion' && <div className='truncate'>{t('app.types.completion').toUpperCase()}</div>}
             </div>
+          </div>
+          <div className='shrink-0 w-5 h-5 flex items-center justify-center'>
+            <Tooltip asChild={false} popupContent={t('app.accessControlDialog.accessItems.anyone')}>
+              <RiGlobalLine className='text-text-accent w-4 h-4' />
+            </Tooltip>
           </div>
         </div>
         <div className='title-wrapper h-[90px] px-[14px] text-xs leading-normal text-text-tertiary'>
@@ -357,7 +375,7 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
                   popupClassName={
                     (app.mode === 'completion' || app.mode === 'chat')
                       ? '!w-[256px] translate-x-[-224px]'
-                      : '!w-[160px] translate-x-[-128px]'
+                      : '!w-[216px] translate-x-[-128px]'
                   }
                   className={'h-fit !z-20'}
                 />
@@ -417,6 +435,9 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
           onConfirm={onExport}
           onClose={() => setSecretEnvList([])}
         />
+      )}
+      {showAccessControl && (
+        <AccessControl onClose={() => setShowAccessControl(false)} />
       )}
     </>
   )

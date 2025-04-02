@@ -5,6 +5,7 @@ import { RiArrowDownSLine } from '@remixicon/react'
 import React, { useCallback, useState } from 'react'
 import AppIcon from '../base/app-icon'
 import SwitchAppModal from '../app/switch-app-modal'
+import AccessControl from '../app/app-access-control'
 import s from './style.module.css'
 import cn from '@/utils/classnames'
 import {
@@ -50,6 +51,7 @@ const AppInfo = ({ expand }: IAppInfoProps) => {
   const [showSwitchTip, setShowSwitchTip] = useState<string>('')
   const [showSwitchModal, setShowSwitchModal] = useState<boolean>(false)
   const [showImportDSLModal, setShowImportDSLModal] = useState<boolean>(false)
+  const [showAccessControl, setShowAccessControl] = useState<boolean>(false)
   const [secretEnvList, setSecretEnvList] = useState<EnvironmentVariable[]>([])
 
   const mutateApps = useContextSelector(
@@ -176,6 +178,13 @@ const AppInfo = ({ expand }: IAppInfoProps) => {
     }
     setShowConfirmDelete(false)
   }, [appDetail, mutateApps, notify, onPlanInfoChanged, replace, t])
+
+  const handleClickAccessControl = useCallback(() => {
+    if (!appDetail)
+      return
+    setShowAccessControl(true)
+    setOpen(false)
+  }, [appDetail])
 
   const { isCurrentWorkspaceEditor } = useAppContext()
 
@@ -374,6 +383,10 @@ const AppInfo = ({ expand }: IAppInfoProps) => {
                   </div>
                 )
               }
+              <Divider />
+              <div className='h-9 py-2 px-3 mx-1 flex items-center hover:bg-gray-50 rounded-lg cursor-pointer' onClick={handleClickAccessControl}>
+                <span className='text-gray-700 text-sm leading-5'>{t('app.accessControl')}</span>
+              </div>
               <Divider className="!my-1" />
               <div className='group h-9 py-2 px-3 mx-1 flex items-center hover:bg-red-50 rounded-lg cursor-pointer' onClick={() => {
                 setOpen(false)
@@ -466,6 +479,9 @@ const AppInfo = ({ expand }: IAppInfoProps) => {
             onClose={() => setSecretEnvList([])}
           />
         )}
+        {
+          showAccessControl && <AccessControl />
+        }
       </div>
     </PortalToFollowElem>
   )
