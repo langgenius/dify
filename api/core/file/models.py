@@ -40,7 +40,13 @@ class File(BaseModel):
     tenant_id: str
     type: FileType
     transfer_method: FileTransferMethod
+    # If `transfer_method` is `FileTransferMethod.remote_url`, the
+    # `remote_url` attribute must not be `None`.
     remote_url: Optional[str] = None  # remote url
+    # If `transfer_method` is `FileTransferMethod.local_file` or
+    # `FileTransferMethod.tool_file`, the `related_id` attribute must not be `None`.
+    #
+    # It should be set to `ToolFile.id` when `transfer_method` is `tool_file`.
     related_id: Optional[str] = None
     filename: Optional[str] = None
     extension: Optional[str] = Field(default=None, description="File extension, should contains dot")
