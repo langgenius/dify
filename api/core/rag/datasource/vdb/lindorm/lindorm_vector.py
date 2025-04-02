@@ -290,7 +290,7 @@ class LindormVectorStore(BaseVector):
         filters = kwargs.get("filter", [])
         document_ids_filter = kwargs.get("document_ids_filter")
         if document_ids_filter:
-            filters.append({"terms": {"metadata.document_id": document_ids_filter}})
+            filters.append({"terms": {"metadata.document_id.keyword": document_ids_filter}})
         routing = self._routing
         full_text_query = default_text_search_query(
             query_text=query,
@@ -304,6 +304,7 @@ class LindormVectorStore(BaseVector):
             routing=routing,
             routing_field=self._routing_field,
         )
+
         response = self._client.search(index=self._collection_name, body=full_text_query)
         docs = []
         for hit in response["hits"]["hits"]:
