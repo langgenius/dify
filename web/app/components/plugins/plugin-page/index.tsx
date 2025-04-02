@@ -56,6 +56,8 @@ const PluginPage = ({
   const searchParams = useSearchParams()
   const { replace } = useRouter()
 
+  document.title = `${t('plugin.metadata.title')} - Dify`
+
   // just support install one package now
   const packageId = useMemo(() => {
     const idStrings = searchParams.get(PACKAGE_IDS_KEY)
