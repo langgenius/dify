@@ -302,7 +302,7 @@ class LoopNode(BaseNode[LoopNodeData]):
                     else:
                         exists_variable = True
                 if exists_variable:
-                    input_conditions, group_result, check_break_result = condition_processor.process_conditions(
+                    _, _, check_break_result = condition_processor.process_conditions(
                         variable_pool=self.graph_runtime_state.variable_pool,
                         conditions=break_conditions,
                         operator=logical_operator,
