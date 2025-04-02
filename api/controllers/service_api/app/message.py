@@ -1,4 +1,5 @@
 import logging
+import json
 
 from flask_restful import Resource, fields, marshal_with, reqparse  # type: ignore
 from flask_restful.inputs import int_range  # type: ignore
@@ -28,7 +29,10 @@ class MessageListApi(Resource):
         "answer": fields.String(attribute="re_sign_file_url_answer"),
         "message_files": fields.List(fields.Nested(message_file_fields)),
         "feedback": fields.Nested(feedback_fields, attribute="user_feedback", allow_null=True),
-        "retriever_resources": fields.List(fields.Nested(retriever_resource_fields)),
+        "retriever_resources": fields.List(
+            fields.Nested(retriever_resource_fields),
+            attribute=lambda x: json.loads(x.message_metadata).get('retriever_resources',[]) if x.message_metadata else []
+        ),
         "created_at": TimestampField,
         "agent_thoughts": fields.List(fields.Nested(agent_thought_fields)),
         "status": fields.String,
