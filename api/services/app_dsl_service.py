@@ -761,7 +761,7 @@ class AppDslService:
         return base64.b64encode(ct_bytes).decode()
 
     @classmethod
-    def decrypt_dataset_id(cls, encrypted_data: str, tenant_id: str) -> str:
+    def decrypt_dataset_id(cls, encrypted_data: str, tenant_id: str) -> str | None:
         """AES decryption"""
         try:
             key = cls._generate_aes_key(tenant_id)
