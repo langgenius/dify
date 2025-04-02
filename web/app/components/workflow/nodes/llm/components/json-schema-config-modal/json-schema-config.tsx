@@ -116,6 +116,7 @@ const JsonSchemaConfig: FC<JsonSchemaConfigProps> = ({
     else if (currentTab === SchemaView.VisualEditor) {
       if (advancedEditing || isAddingNewField)
         emit('quitEditing', { callback: (backup: SchemaRoot) => setJson(JSON.stringify(backup || jsonSchema, null, 2)) })
+      setJson(JSON.stringify(jsonSchema, null, 2))
     }
 
     setCurrentTab(value)

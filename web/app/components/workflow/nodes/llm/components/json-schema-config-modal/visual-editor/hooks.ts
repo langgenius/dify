@@ -39,7 +39,10 @@ export const useSchemaNodeOperations = (props: VisualEditorProps) => {
   useSubscribe('quitEditing', (params) => {
     const { callback } = params as any
     callback?.(backupSchema)
-    emit('restoreSchema')
+    if (backupSchema) {
+      onChange(backupSchema)
+      setBackupSchema(null)
+    }
     isAddingNewField && setIsAddingNewField(false)
     advancedEditing && setAdvancedEditing(false)
     setHoveringProperty(null)

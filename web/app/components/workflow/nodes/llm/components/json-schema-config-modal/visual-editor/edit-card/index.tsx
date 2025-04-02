@@ -152,9 +152,15 @@ const EditCard: FC<EditCardProps> = ({
   }, [isAdvancedEditing, emitPropertyOptionsChange, currentFields])
 
   const handleAdvancedOptionsChange = useCallback((options: AdvancedOptionsType) => {
-    let enumValue: SchemaEnumType = options.enum.replace(/\s/g, '').split(',')
-    if (currentFields.type === Type.number)
-      enumValue = enumValue.map(value => Number(value)).filter(num => !Number.isNaN(num))
+    let enumValue: any = options.enum
+    if (enumValue === '') {
+      enumValue = undefined
+    }
+    else {
+      enumValue = options.enum.replace(/\s/g, '').split(',')
+      if (currentFields.type === Type.number)
+        enumValue = (enumValue as SchemaEnumType).map(value => Number(value)).filter(num => !Number.isNaN(num))
+    }
     setCurrentFields(prev => ({ ...prev, enum: enumValue }))
     if (isAdvancedEditing) return
     emitPropertyOptionsChange({ description: currentFields.description, enum: enumValue })

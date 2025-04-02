@@ -27,13 +27,27 @@ export const getHasChildren = (schema: Field) => {
     return schema.items && schema.items.type === Type.object && schema.items.properties && Object.keys(schema.items.properties).length > 0
 }
 
+export const getTypeOf = (target: any) => {
+  if (target === null) return 'null'
+  if (typeof target !== 'object') {
+    return typeof target
+  }
+  else {
+    return Object.prototype.toString
+      .call(target)
+      .slice(8, -1)
+      .toLocaleLowerCase()
+  }
+}
+
 export const inferType = (value: any): Type => {
-  if (Array.isArray(value)) return Type.array
+  const type = getTypeOf(value)
+  if (type === 'array') return Type.array
   // type boolean will be treated as string
-  if (typeof value === 'boolean') return Type.string
-  if (typeof value === 'number') return Type.number
-  if (typeof value === 'string') return Type.string
-  if (typeof value === 'object') return Type.object
+  if (type === 'boolean') return Type.string
+  if (type === 'number') return Type.number
+  if (type === 'string') return Type.string
+  if (type === 'object') return Type.object
   return Type.string
 }
 
@@ -60,16 +74,16 @@ export const jsonToSchema = (json: any): Field => {
 }
 
 export const checkJsonDepth = (json: any) => {
-  if (!json || typeof json !== 'object')
+  if (!json || getTypeOf(json) !== 'object')
     return 0
 
   let maxDepth = 0
 
-  if (Array.isArray(json)) {
-    if (json[0] && typeof json[0] === 'object')
+  if (getTypeOf(json) === 'array') {
+    if (json[0] && getTypeOf(json[0]) === 'object')
       maxDepth = checkJsonDepth(json[0])
   }
-  else if (typeof json === 'object') {
+  else if (getTypeOf(json) === 'object') {
     const propertyDepths = Object.values(json).map(value => checkJsonDepth(value))
     maxDepth = propertyDepths.length ? Math.max(...propertyDepths) + 1 : 1
   }
@@ -78,7 +92,7 @@ export const checkJsonDepth = (json: any) => {
 }
 
 export const checkJsonSchemaDepth = (schema: Field) => {
-  if (!schema || typeof schema !== 'object')
+  if (!schema || getTypeOf(schema) !== 'object')
     return 0
 
   let maxDepth = 0
