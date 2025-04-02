@@ -219,6 +219,9 @@ class LangSmithDataTrace(BaseTraceInstance):
                 if outputs.get("usage"):
                     prompt_tokens = outputs.get("usage", {}).get("prompt_tokens", 0)
                     completion_tokens = outputs.get("usage", {}).get("completion_tokens", 0)
+                else:
+                    prompt_tokens = process_data.get("usage", {}).get("prompt_tokens", 0)
+                    completion_tokens = process_data.get("usage", {}).get("completion_tokens", 0)
             except Exception:
                 logger.error("Failed to extract usage", exc_info=True)
 
