@@ -90,3 +90,12 @@ export const canFindTool = (providerId: string, oldToolId?: string) => {
     || providerId === `langgenius/${oldToolId}/${oldToolId}`
     || providerId === `langgenius/${oldToolId}_tool/${oldToolId}`
 }
+
+export const removeSpecificQueryParam = (key: string | string[]) => {
+  const url = new URL(window.location.href)
+  if (Array.isArray(key))
+    key.forEach(k => url.searchParams.delete(k))
+  else
+    url.searchParams.delete(key)
+  window.history.replaceState(null, '', url.toString())
+}

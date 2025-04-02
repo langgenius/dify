@@ -1,7 +1,7 @@
-from enum import Enum
+from enum import Enum, StrEnum
 
 
-class BuiltInField(str, Enum):
+class BuiltInField(StrEnum):
     document_name = "document_name"
     uploader = "uploader"
     upload_date = "upload_date"

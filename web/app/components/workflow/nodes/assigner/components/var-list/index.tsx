@@ -95,9 +95,12 @@ const VarList: FC<Props> = ({
   }, [onOpen])
 
   const handleFilterToAssignedVar = useCallback((index: number) => {
-    return (payload: Var, valueSelector: ValueSelector) => {
+    return (payload: Var) => {
       const item = list[index]
       const assignedVarType = item.variable_selector ? getAssignedVarType?.(item.variable_selector) : undefined
+
+      if (item.variable_selector.join('.') === `${payload.nodeId}.${payload.variable}`)
+        return false
 
       if (!filterToAssignedVar || !item.variable_selector || !assignedVarType || !item.operation)
         return true

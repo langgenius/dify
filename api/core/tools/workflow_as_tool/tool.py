@@ -127,9 +127,8 @@ class WorkflowTool(Tool):
 
     def fork_tool_runtime(self, runtime: ToolRuntime) -> "WorkflowTool":
         """
-        fork a new tool with meta data
+        fork a new tool with metadata
 
-        :param meta: the meta data of a tool call processing, tenant_id is required
         :return: the new tool
         """
         return self.__class__(
@@ -212,7 +211,6 @@ class WorkflowTool(Tool):
         """
         extract files from the result
 
-        :param result: the result
         :return: the result, files
         """
         files: list[File] = []

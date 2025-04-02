@@ -44,9 +44,6 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
     def run(self) -> None:
         """
         Run application
-        :param application_generate_entity: application generate entity
-        :param queue_manager: application queue manager
-        :return:
         """
         app_config = self.application_generate_entity.app_config
         app_config = cast(WorkflowAppConfig, app_config)
