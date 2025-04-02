@@ -213,8 +213,17 @@ class LangFuseDataTrace(BaseTraceInstance):
 
             if process_data and process_data.get("model_mode") == "chat":
                 total_token = metadata.get("total_tokens", 0)
+                try:
+                    if outputs.get("usage"):
+                        prompt_tokens = outputs.get("usage", {}).get("prompt_tokens", 0)
+                        completion_tokens = outputs.get("usage", {}).get("completion_tokens", 0)
+                except Exception:
+                    logger.error("Failed to extract usage", exc_info=True)
+
                 # add generation
                 generation_usage = GenerationUsage(
+                    promptTokens=prompt_tokens,
+                    completionTokens=completion_tokens,
                     total=total_token,
                 )
 
