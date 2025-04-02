@@ -1,5 +1,8 @@
+import base64
+import uuid
 from collections.abc import Sequence
 from typing import Optional
+from unittest import mock
 
 import pytest
 
@@ -30,7 +33,9 @@ from core.workflow.nodes.llm.entities import (
     VisionConfig,
     VisionConfigOptions,
 )
-from core.workflow.nodes.llm.node import LLMNode
+from core.workflow.nodes.llm.file_downloader import FileDownloader, Response
+from core.workflow.nodes.llm.file_saver import MultiModalFile, MultiModalFileSaver
+from core.workflow.nodes.llm.node import LLMNode, _extract_content_type_and_extension
 from models.enums import UserFrom
 from models.provider import ProviderType
 from models.workflow import WorkflowType
@@ -49,8 +54,8 @@ class MockTokenBufferMemory:
 
 
 @pytest.fixture
-def llm_node():
-    data = LLMNodeData(
+def llm_node_data() -> LLMNodeData:
+    return LLMNodeData(
         title="Test LLM",
         model=ModelConfig(provider="openai", name="gpt-3.5-turbo", mode="chat", completion_params={}),
         prompt_template=[],
@@ -64,42 +69,65 @@ def llm_node():
             ),
         ),
     )
+
+
+@pytest.fixture
+def graph_init_params() -> GraphInitParams:
+    return GraphInitParams(
+        tenant_id="1",
+        app_id="1",
+        workflow_type=WorkflowType.WORKFLOW,
+        workflow_id="1",
+        graph_config={},
+        user_id="1",
+        user_from=UserFrom.ACCOUNT,
+        invoke_from=InvokeFrom.SERVICE_API,
+        call_depth=0,
+    )
+
+
+@pytest.fixture
+def graph() -> Graph:
+    return Graph(
+        root_node_id="1",
+        answer_stream_generate_routes=AnswerStreamGenerateRoute(
+            answer_dependencies={},
+            answer_generate_route={},
+        ),
+        end_stream_param=EndStreamParam(
+            end_dependencies={},
+            end_stream_variable_selector_mapping={},
+        ),
+    )
+
+
+@pytest.fixture
+def graph_runtime_state() -> GraphRuntimeState:
     variable_pool = VariablePool(
         system_variables={},
         user_inputs={},
     )
+    return GraphRuntimeState(
+        variable_pool=variable_pool,
+        start_at=0,
+    )
+
+
+@pytest.fixture
+def llm_node(
+        llm_node_data: LLMNodeData,
+        graph_init_params: GraphInitParams,
+        graph: Graph,
+        graph_runtime_state: GraphRuntimeState) -> LLMNode:
     node = LLMNode(
         id="1",
         config={
             "id": "1",
-            "data": data.model_dump(),
+            "data": llm_node_data.model_dump(),
         },
-        graph_init_params=GraphInitParams(
-            tenant_id="1",
-            app_id="1",
-            workflow_type=WorkflowType.WORKFLOW,
-            workflow_id="1",
-            graph_config={},
-            user_id="1",
-            user_from=UserFrom.ACCOUNT,
-            invoke_from=InvokeFrom.SERVICE_API,
-            call_depth=0,
-        ),
-        graph=Graph(
-            root_node_id="1",
-            answer_stream_generate_routes=AnswerStreamGenerateRoute(
-                answer_dependencies={},
-                answer_generate_route={},
-            ),
-            end_stream_param=EndStreamParam(
-                end_dependencies={},
-                end_stream_variable_selector_mapping={},
-            ),
-        ),
-        graph_runtime_state=GraphRuntimeState(
-            variable_pool=variable_pool,
-            start_at=0,
-        ),
+        graph_init_params=graph_init_params,
+        graph=graph,
+        graph_runtime_state=graph_runtime_state,
     )
     return node
 
@@ -465,3 +493,129 @@ def test_handle_list_messages_basic(llm_node):
     assert len(result) == 1
     assert isinstance(result[0], UserPromptMessage)
     assert result[0].content == [TextPromptMessageContent(data="Hello, world")]
+
+
+@pytest.fixture
+def llm_node_for_multimodal(
+        llm_node_data, graph_init_params, graph, graph_runtime_state
+    ) -> tuple[LLMNode, FileDownloader, MultiModalFileSaver]:
+    mock_file_downloader: FileDownloader = mock.MagicMock(spec=FileDownloader)
+    mock_file_saver: MultiModalFileSaver = mock.MagicMock(spec=MultiModalFileSaver)
+    node = LLMNode(
+        id="1",
+        config={
+            "id": "1",
+            "data": llm_node_data.model_dump(),
+        },
+        graph_init_params=graph_init_params,
+        graph=graph,
+        graph_runtime_state=graph_runtime_state,
+        file_downloader=mock_file_downloader,
+        multi_modal_file_saver=mock_file_saver
+    )
+    return node, mock_file_downloader, mock_file_saver
+
+
+class TestLLMNodeSaveMultiModalImageOutput:
+    def test_llm_node_download_file(self, llm_node_for_multimodal):
+        llm_node, mock_file_downloader, _ = llm_node_for_multimodal
+        mock_response = Response(body=b"test-data", content_type="image/png")
+        mock_file_downloader.get.return_value = mock_response
+        file = llm_node._download_file("https://example.com/image.png", FileType.IMAGE)
+        assert file.user_id == "1"
+        assert file.tenant_id == "1"
+        assert file.file_type == FileType.IMAGE
+        assert file.mime_type == mock_response.content_type
+        assert file.data == mock_response.body
+        assert file.get_extension() == ".png"
+
+    def test_llm_node_save_inline_output(
+            self,
+            llm_node_for_multimodal: tuple[LLMNode, FileDownloader, MultiModalFileSaver]):
+        llm_node, _, mock_file_saver = llm_node_for_multimodal
+        content = ImagePromptMessageContent(
+            format="png",
+            base64_data=base64.b64encode(b'test-data').decode(),
+            mime_type="image/png",
+        )
+        mock_file = File(
+            id=str(uuid.uuid4()),
+            tenant_id='1',
+            type=FileType.IMAGE,
+            transfer_method=FileTransferMethod.TOOL_FILE,
+            related_id=str(uuid.uuid4()),
+            filename='test-file.png',
+            extension='.png',
+            mime_type='image/png',
+            size=9,
+        )
+        mock_file_saver.save_file.return_value = mock_file
+        file = llm_node._save_multimodal_image_output(content=content)
+        assert llm_node._file_outputs == [mock_file]
+        assert file == mock_file
+        expected_saved_multimodal_file = MultiModalFile(
+            user_id='1', tenant_id='1', file_type=FileType.IMAGE,
+            data=b'test-data', mime_type='image/png', extension_override=None)
+        mock_file_saver.save_file.assert_called_once_with(expected_saved_multimodal_file)
+
+    def test_llm_node_save_url_output(
+            self,
+            llm_node_for_multimodal: tuple[LLMNode, FileDownloader, MultiModalFileSaver]):
+        llm_node, mock_file_downloader, mock_file_saver = llm_node_for_multimodal
+        content = ImagePromptMessageContent(
+            format="png",
+            url="https://example.com/image.png",
+            mime_type="image/jpg",
+        )
+        mock_file = File(
+            id=str(uuid.uuid4()),
+            tenant_id='1',
+            type=FileType.IMAGE,
+            transfer_method=FileTransferMethod.TOOL_FILE,
+            related_id=str(uuid.uuid4()),
+            filename='test-file.png',
+            extension='.png',
+            mime_type='image/png',
+            size=9,
+        )
+        mock_file_downloader.get.return_value = Response(body=b"test-data", content_type="image/png")
+        mock_file_saver.save_file.return_value = mock_file
+        file = llm_node._save_multimodal_image_output(content=content)
+        assert llm_node._file_outputs == [mock_file]
+        assert file == mock_file
+        expected_saved_multimodal_file = MultiModalFile(
+            user_id='1', tenant_id='1', file_type=FileType.IMAGE,
+            data=b'test-data', mime_type='image/png', extension_override='.png')
+        mock_file_downloader.get.assert_called_once_with(content.url)
+        mock_file_saver.save_file.assert_called_once_with(expected_saved_multimodal_file)
+
+
+def test_llm_node_image_file_to_markdown(llm_node: LLMNode):
+    mock_file = mock.MagicMock(spec=File)
+    mock_file.generate_url.return_value = "https://example.com/image.png"
+    markdown = llm_node._image_file_to_markdown(mock_file)
+    assert markdown == "![](https://example.com/image.png)"
+
+
+class TestExtractContentTypeAndExtension:
+    def test_with_both_content_type_and_extension(self):
+        content_type, extension = _extract_content_type_and_extension('https://example.com/image.jpg',  "image/png")
+        assert content_type == "image/png"
+        assert extension == ".png"
+
+    def test_url_with_file_extension(self):
+        for content_type in [None, ""]:
+            content_type, extension = _extract_content_type_and_extension('https://example.com/image.png', content_type)
+            assert content_type == "image/png"
+            assert extension == ".png"
+
+    def test_response_with_content_type(self):
+        content_type, extension = _extract_content_type_and_extension('https://example.com/image', "image/png")
+        assert content_type == "image/png"
+        assert extension == ".png"
+
+    def test_no_content_type_and_no_extension(self):
+        for content_type in [None, ""]:
+            content_type, extension = _extract_content_type_and_extension('https://example.com/image', content_type)
+            assert content_type == 'application/octet-stream'
+            assert extension == '.bin'
