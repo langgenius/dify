@@ -235,6 +235,7 @@ class ReactMultiDatasetRouter:
             tools: List of tools the agent will have access to, used to format the
                 prompt.
             prefix: String to put before the list of tools.
+            format_instructions: The format instruction prompt.
         Returns:
             A PromptTemplate with the template assembled from the pieces here.
         """

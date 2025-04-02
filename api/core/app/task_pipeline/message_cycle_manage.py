@@ -48,7 +48,7 @@ class MessageCycleManage:
     def _generate_conversation_name(self, *, conversation_id: str, query: str) -> Optional[Thread]:
         """
         Generate conversation name.
-        :param conversation: conversation
+        :param conversation_id: conversation id
         :param query: query
         :return: thread
         """

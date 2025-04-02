@@ -145,10 +145,11 @@ const Panel: FC<NodePanelProps<QuestionClassifierNodeType>> = ({
           title={t(`${i18nPrefix}.class`)}
         >
           <ClassList
-            id={id}
+            nodeId={id}
             list={inputs.classes}
             onChange={handleTopicsChange}
             readonly={readOnly}
+            filterVar={filterVar}
           />
         </Field>
         <Split />

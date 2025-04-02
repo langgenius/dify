@@ -145,7 +145,6 @@ class ApiToolProviderController(ToolProviderController):
         """
         fetch tools from database
 
-        :param user_id: the user id
         :param tenant_id: the tenant id
         :return: the tools
         """

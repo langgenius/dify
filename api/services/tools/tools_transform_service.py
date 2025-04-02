@@ -60,6 +60,7 @@ class ToolTransformService:
         """
         repack provider
 
+        :param tenant_id: the tenant id
         :param provider: the provider dict
         """
         if isinstance(provider, dict) and "icon" in provider:

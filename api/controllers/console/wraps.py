@@ -54,6 +54,17 @@ def only_edition_self_hosted(view):
     return decorated
 
 
+def cloud_edition_billing_enabled(view):
+    @wraps(view)
+    def decorated(*args, **kwargs):
+        features = FeatureService.get_features(current_user.current_tenant_id)
+        if not features.billing.enabled:
+            abort(403, "Billing feature is not enabled.")
+        return view(*args, **kwargs)
+
+    return decorated
+
+
 def cloud_edition_billing_resource_check(resource: str):
     def interceptor(view):
         @wraps(view)

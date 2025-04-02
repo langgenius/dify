@@ -157,6 +157,7 @@ class AppRunner:
         :param files: files
         :param query: query
         :param memory: memory
+        :param image_detail_config: the image quality config
         :return:
         """
         # get prompt without memory and context
