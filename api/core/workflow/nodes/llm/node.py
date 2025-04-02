@@ -1,10 +1,13 @@
+import base64
 import json
 import logging
+import mimetypes
 from collections.abc import Generator, Mapping, Sequence
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any, Optional, cast
 
 from configs import dify_config
+from constants.mimetypes import DEFAULT_EXTENSION, DEFAULT_MIME_TYPE
 from core.app.entities.app_invoke_entities import ModelConfigWithCredentialsEntity
 from core.entities.model_entities import ModelStatus
 from core.entities.provider_entities import QuotaUnit
@@ -81,6 +84,8 @@ from .exc import (
     UnsupportedPromptContentTypeError,
     VariableNotFoundError,
 )
+from .file_downloader import FileDownloader, SSRFProxyFileDownloader
+from .file_saver import MultiModalFile, MultiModalFileSaver, StorageFileSaver
 
 if TYPE_CHECKING:
     from core.file.models import File
@@ -91,6 +96,45 @@ logger = logging.getLogger(__name__)
 class LLMNode(BaseNode[LLMNodeData]):
     _node_data_cls = LLMNodeData
     _node_type = NodeType.LLM
+
+    # Instance attributes specific to LLMNode.
+    # Output variable for file
+    _file_outputs: list['File']
+    _file_downloader: FileDownloader
+    _multi_modal_file_saver: MultiModalFileSaver
+
+
+    def __init__(
+            self,
+            id: str,
+            config: Mapping[str, Any],
+            graph_init_params: "GraphInitParams",
+            graph: "Graph",
+            graph_runtime_state: "GraphRuntimeState",
+            previous_node_id: Optional[str] = None,
+            thread_pool_id: Optional[str] = None,
+            *,
+            file_downloader: FileDownloader | None = None,
+            multi_modal_file_saver: MultiModalFileSaver | None = None,
+
+    ) -> None:
+        super().__init__(
+            id=id,
+            config=config,
+            graph_init_params=graph_init_params,
+            graph=graph,
+            graph_runtime_state=graph_runtime_state,
+            previous_node_id=previous_node_id,
+            thread_pool_id=thread_pool_id,
+        )
+        # LLM file outputs, used for MultiModal outputs.
+        self._file_outputs: list[File] = []
+        if file_downloader is None:
+            file_downloader = SSRFProxyFileDownloader()
+        self._file_downloader = file_downloader
+        if multi_modal_file_saver is None:
+            multi_modal_file_saver = StorageFileSaver()
+        self._multi_modal_file_saver = multi_modal_file_saver
 
     def _run(self) -> Generator[NodeEvent | InNodeEvent, None, None]:
         node_inputs: Optional[dict[str, Any]] = None
@@ -192,7 +236,11 @@ class LLMNode(BaseNode[LLMNodeData]):
                     # deduct quota
                     self.deduct_llm_quota(tenant_id=self.tenant_id, model_instance=model_instance, usage=usage)
                     break
-            outputs = {"text": result_text, "usage": jsonable_encoder(usage), "finish_reason": finish_reason}
+            outputs = {
+                "text": result_text, "usage": jsonable_encoder(usage), "finish_reason": finish_reason
+            }
+            if self._file_outputs is not None:
+                outputs['files'] = self._file_outputs
 
             yield RunCompletedEvent(
                 run_result=NodeRunResult(
@@ -219,6 +267,7 @@ class LLMNode(BaseNode[LLMNodeData]):
                 )
             )
         except Exception as e:
+            logger.exception("error while executing llm node")
             yield RunCompletedEvent(
                 run_result=NodeRunResult(
                     status=WorkflowNodeExecutionStatus.FAILED,
@@ -275,7 +324,8 @@ class LLMNode(BaseNode[LLMNodeData]):
                     if isinstance(content, TextPromptMessageContent):
                         text_chunk = content.data
                     elif isinstance(content, ImagePromptMessageContent):
-                        text_chunk = self._image_to_markdown(content)
+                        file = self._save_multimodal_image_output(content)
+                        text_chunk = self._image_file_to_markdown(file)
                     else:
                         raise UnsupportedPromptContentTypeError(type_name=str(type(content)))
                     yield RunStreamChunkEvent(chunk_content=text_chunk, from_variable_selector=[self.node_id])
@@ -293,14 +343,10 @@ class LLMNode(BaseNode[LLMNodeData]):
 
         yield ModelInvokeCompletedEvent(text=full_text, usage=usage, finish_reason=finish_reason)
 
-    def _image_to_markdown(self, content: ImagePromptMessageContent, /):
-        if content.url:
-            text_chunk = f"![]({content.url})"
-        elif content.base64_data:
-            # insert b64 image into markdown text
-            text_chunk = f"![]({content.data})"
-        else:
-            raise ValueError("Image content must have either a URL or base64 data")
+    def _image_file_to_markdown(self, file: 'File', /):
+        # TODO(QuantumGhost): Here we have a problem. We must somehow save the file as
+        # a metadata for the workflow, or we cannot regenerate the link.
+        text_chunk = f"![]({file.generate_url()})"
         return text_chunk
 
     def _transform_chat_messages(
@@ -946,7 +992,9 @@ class LLMNode(BaseNode[LLMNodeData]):
                 if isinstance(item, TextPromptMessageContent):
                     message_text += item.data
                 elif isinstance(item, ImagePromptMessageContent):
-                    message_text += self._image_to_markdown(item)
+                    file = self._save_multimodal_image_output(item)
+                    self._file_outputs.append(file)
+                    message_text += self._image_file_to_markdown(file)
                 else:
                     message_text += str(item)
         else:
@@ -957,6 +1005,63 @@ class LLMNode(BaseNode[LLMNodeData]):
             usage=invoke_result.usage,
             finish_reason=None,
         )
+
+    def _save_multimodal_image_output(self, content: ImagePromptMessageContent) -> 'File':
+        """_save_multimodal_output saves multi-modal contents generated by LLM plugins.
+
+        There are two kinds of multimodal outputs:
+
+          - Inlined data encoded in base64, which would be saved to storage directly.
+          - Remote files referenced by an url, which would be downloaded and then saved to storage.
+
+        Currently, only image files are supported.
+        """
+        # Inject the saver somehow...
+        _saver = self._multi_modal_file_saver
+
+        # If this
+        if content.url != "":
+            mmf = self._download_file(content.url, FileType.IMAGE)
+            saved_file = _saver.save_file(mmf)
+            self._file_outputs.append(saved_file)
+            return saved_file
+        else:
+            mmf = MultiModalFile(
+                user_id=self.user_id,
+                tenant_id=self.tenant_id,
+                data=base64.b64decode(content.base64_data),
+                mime_type=content.mime_type,
+                file_type=FileType.IMAGE,
+                extension_override=None)
+            saved_file = _saver.save_file(mmf)
+            self._file_outputs.append(saved_file)
+            return saved_file
+
+    def _download_file(self, url: str, file_type: FileType) -> MultiModalFile:
+        downloader = self._file_downloader
+        # try to download image
+        response = downloader.get(url)
+        content_type, extension = _extract_content_type_and_extension(url, response.content_type)
+        return MultiModalFile(
+            user_id=self.user_id,
+            tenant_id=self.tenant_id,
+            file_type=file_type,
+            data=response.body,
+            mime_type=content_type,
+            extension_override=extension
+        )
+
+
+def _extract_content_type_and_extension(url: str, content_type_header: str | None) -> tuple[str, str]:
+    """_extract_content_type_and_extension tries to
+    guess content type of file from url and `Content-Type` header in response.
+    """
+    if content_type_header:
+        extension = mimetypes.guess_extension(content_type_header)
+        return content_type_header, extension
+    content_type = mimetypes.guess_type(url)[0] or DEFAULT_MIME_TYPE
+    extension = mimetypes.guess_extension(content_type) or DEFAULT_EXTENSION
+    return content_type, extension
 
 
 def _combine_message_content_with_role(*, contents: Sequence[PromptMessageContent], role: PromptMessageRole):
