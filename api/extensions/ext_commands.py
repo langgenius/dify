@@ -17,6 +17,8 @@ def init_app(app: DifyApp):
         show_organization_cmd,
         update_organization_cmd,
         upgrade_db,
+        upload_local_files_to_cloud_storage,
+        upload_private_key_file_cloud_storage,
         vdb_migrate,
     )
 
@@ -36,6 +38,8 @@ def init_app(app: DifyApp):
         list_organizations_cmd,
         show_organization_cmd,
         update_organization_cmd,
+        upload_private_key_file_cloud_storage,
+        upload_local_files_to_cloud_storage,
     ]
     for cmd in cmds_to_register:
         app.cli.add_command(cmd)
