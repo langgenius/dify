@@ -1,5 +1,5 @@
-import logging
 import json
+import logging
 
 from flask_restful import Resource, fields, marshal_with, reqparse  # type: ignore
 from flask_restful.inputs import int_range  # type: ignore
@@ -11,7 +11,7 @@ from controllers.service_api.app.error import NotChatAppError
 from controllers.service_api.wraps import FetchUserArg, WhereisUserArg, validate_app_token
 from core.app.entities.app_invoke_entities import InvokeFrom
 from fields.conversation_fields import message_file_fields
-from fields.message_fields import agent_thought_fields, feedback_fields, retriever_resource_fields
+from fields.message_fields import agent_thought_fields, feedback_fields
 from fields.raws import FilesContainedField
 from libs.helper import TimestampField, uuid_value
 from models.model import App, AppMode, EndUser
@@ -20,6 +20,14 @@ from services.message_service import MessageService
 
 
 class MessageListApi(Resource):
+    def get_retriever_resources(self):
+        try:
+            if self.message_metadata:
+                return json.loads(self.message_metadata).get("retriever_resources", [])
+            return []
+        except (json.JSONDecodeError, TypeError):
+            return []
+
     message_fields = {
         "id": fields.String,
         "conversation_id": fields.String,
@@ -29,13 +37,7 @@ class MessageListApi(Resource):
         "answer": fields.String(attribute="re_sign_file_url_answer"),
         "message_files": fields.List(fields.Nested(message_file_fields)),
         "feedback": fields.Nested(feedback_fields, attribute="user_feedback", allow_null=True),
-        "retriever_resources": fields.List(
-            fields.Nested(retriever_resource_fields),
-            attribute=lambda x: (
-                json.loads(x.message_metadata).get('retriever_resources', [])
-                if x.message_metadata else []
-            ) if self._is_valid_json(x.message_metadata) else []
-        ),
+        "retriever_resources": get_retriever_resources,
         "created_at": TimestampField,
         "agent_thoughts": fields.List(fields.Nested(agent_thought_fields)),
         "status": fields.String,
