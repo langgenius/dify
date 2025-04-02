@@ -5,15 +5,19 @@ import { useTranslation } from 'react-i18next'
 import { useInvalidatePermissions, useMutationPermissions, usePermissions } from '@/service/use-plugins'
 
 const hasPermission = (permission: PermissionType | undefined, isAdmin: boolean) => {
+  if (isAdmin)
+    return true // Administrators always have permissions
+
   if (!permission)
     return false
+
   if (permission === PermissionType.noOne)
     return false
 
   if (permission === PermissionType.everyone)
     return true
 
-  return isAdmin
+  return false
 }
 
 const usePermission = () => {
