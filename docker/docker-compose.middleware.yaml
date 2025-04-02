@@ -150,15 +150,18 @@ services:
       - "${EXPOSE_WEAVIATE_PORT:-8080}:8080"
 
   otlp-exporter:
-    image: otel/opentelemetry-collector:0.122.1
+    image: otel/opentelemetry-collector-contrib:0.123.0
     restart: always
     env_file:
       - ./middleware.env
     volumes:
-      - ./otlp/collector-config.yaml:/etc/otelcol/config.yaml
+      - ./otlp/collector-config.yaml:/etc/otelcol-contrib/config.yaml
     ports:
       - "${EXPOSE_OTLP_HTTP_PORT:-4318}:4318"
       - "${EXPOSE_OTLP_GRPC_PORT:-4317}:4317"
+      - "${EXPOSE_OTLP_PPROF_PORT:-1888}:1888"
+      - "${EXPOSE_OTLP_HEALTH_CHECK_PORT:-13133}:13133"
+      - "${EXPOSE_OTLP_ZPAGES_PORT:-55679}:55679"
       
 
 networks:

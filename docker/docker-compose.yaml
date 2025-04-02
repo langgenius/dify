@@ -90,7 +90,7 @@ x-shared-env: &shared-api-worker-env
   AZURE_BLOB_ACCOUNT_NAME: ${AZURE_BLOB_ACCOUNT_NAME:-difyai}
   AZURE_BLOB_ACCOUNT_KEY: ${AZURE_BLOB_ACCOUNT_KEY:-difyai}
   AZURE_BLOB_CONTAINER_NAME: ${AZURE_BLOB_CONTAINER_NAME:-difyai-container}
-  AZURE_BLOB_ACCOUNT_URL: ${AZURE_BLOB_ACCOUNT_URL:-https://<your_account_name>.blob.core.windows.net}
+  AZURE_BLOB_ACCOUNT_URL: ${AZURE_BLOB_ACCOUNT_URL:-https:// <your_account_name >.blob.core.windows.net}
   GOOGLE_STORAGE_BUCKET_NAME: ${GOOGLE_STORAGE_BUCKET_NAME:-your-bucket-name}
   GOOGLE_STORAGE_SERVICE_ACCOUNT_JSON_BASE64: ${GOOGLE_STORAGE_SERVICE_ACCOUNT_JSON_BASE64:-}
   ALIYUN_OSS_BUCKET_NAME: ${ALIYUN_OSS_BUCKET_NAME:-your-bucket-name}
@@ -435,6 +435,11 @@ x-shared-env: &shared-api-worker-env
   PLUGIN_PYTHON_ENV_INIT_TIMEOUT: ${PLUGIN_PYTHON_ENV_INIT_TIMEOUT:-120}
   PLUGIN_MAX_EXECUTION_TIMEOUT: ${PLUGIN_MAX_EXECUTION_TIMEOUT:-600}
   PIP_MIRROR_URL: ${PIP_MIRROR_URL:-}
+  EXPOSE_OTLP_HTTP_PORT: ${EXPOSE_OTLP_HTTP_PORT:-4318}
+  EXPOSE_OTLP_GRPC_PORT: ${EXPOSE_OTLP_GRPC_PORT:-4317}
+  EXPOSE_OTLP_PPROF_PORT: ${EXPOSE_OTLP_PPROF_PORT:-1888}
+  EXPOSE_OTLP_HEALTH_CHECK_PORT: ${EXPOSE_OTLP_HEALTH_CHECK_PORT:-13133}
+  EXPOSE_OTLP_ZPAGES_PORT: ${EXPOSE_OTLP_ZPAGES_PORT:-55679}
 
 services:
   # API service
@@ -1060,13 +1065,16 @@ services:
       - ./volumes/unstructured:/app/data
 
   otlp-exporter:
-    image: otel/opentelemetry-collector:0.122.1
+    image: otel/opentelemetry-collector-contrib:0.123.0
     restart: always
     volumes:
-      - ./otlp/collector-config.yaml:/etc/otelcol/config.yaml
+      - ./otlp/collector-config.yaml:/etc/otelcol-contrib/config.yaml
     ports:
       - "${EXPOSE_OTLP_HTTP_PORT:-4318}:4318"
       - "${EXPOSE_OTLP_GRPC_PORT:-4317}:4317"
+      - "${EXPOSE_OTLP_PPROF_PORT:-1888}:1888"
+      - "${EXPOSE_OTLP_HEALTH_CHECK_PORT:-13133}:13133"
+      - "${EXPOSE_OTLP_ZPAGES_PORT:-55679}:55679"
 
 networks:
   # create a network between sandbox, api and ssrf_proxy, and can not access outside.

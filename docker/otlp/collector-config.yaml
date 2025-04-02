@@ -2,9 +2,9 @@ receivers:
   otlp:
     protocols:
       grpc:
-        endpoint: ${env:OTLP_GRPC_ENDPOINT:-0.0.0.0}:4317
+        endpoint: 0.0.0.0:4317
       http:
-        endpoint: ${env:OTLP_HTTP_ENDPOINT:-0.0.0.0}:4318
+        endpoint: 0.0.0.0:4318
 processors:
   batch:
 exporters:
@@ -13,8 +13,11 @@ exporters:
 
 extensions:
   health_check:
+    endpoint: 0.0.0.0:13133
   pprof:
+    endpoint: 0.0.0.0:1888
   zpages:
+    endpoint: 0.0.0.0:55679
 
 service:
   extensions: [health_check, pprof, zpages]
