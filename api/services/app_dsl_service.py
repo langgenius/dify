@@ -487,8 +487,9 @@ class AppDslService:
                 if node.get("data", {}).get("type", "") == NodeType.KNOWLEDGE_RETRIEVAL.value:
                     dataset_ids = node["data"].get("dataset_ids", [])
                     node["data"]["dataset_ids"] = [
-                        self.decrypt_dataset_id(encrypted_data=dataset_id, tenant_id=app.tenant_id)
+                        decrypted_id
                         for dataset_id in dataset_ids
+                        if (decrypted_id := self.decrypt_dataset_id(encrypted_data=dataset_id, tenant_id=app.tenant_id))
                     ]
             workflow_service.sync_draft_workflow(
                 app_model=app,
@@ -769,4 +770,4 @@ class AppDslService:
             pt = unpad(cipher.decrypt(base64.b64decode(encrypted_data)), AES.block_size)
             return pt.decode()
         except Exception:
-            return ""
+            return None
