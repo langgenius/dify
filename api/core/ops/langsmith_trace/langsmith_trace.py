@@ -213,6 +213,8 @@ class LangSmithDataTrace(BaseTraceInstance):
             else:
                 run_type = LangSmithRunType.tool
 
+            prompt_tokens = 0
+            completion_tokens = 0
             try:
                 if outputs.get("usage"):
                     prompt_tokens = outputs.get("usage", {}).get("prompt_tokens", 0)
