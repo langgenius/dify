@@ -9,7 +9,6 @@ from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import (
     account_initialization_required,
     cloud_edition_billing_resource_check,
-    enterprise_license_required,
     setup_required,
 )
 from extensions.ext_database import db
