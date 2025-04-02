@@ -443,9 +443,6 @@ const translation = {
         fieldNamePlaceholder: '字段名',
         descriptionPlaceholder: '添加描述',
         warningTips: {
-          jsonGeneration: '请先完成当前字段的编辑',
-          jsonImport: '请先完成当前字段的编辑',
-          switchToJsonSchema: '请先完成当前字段的编辑',
           saveSchema: '请先完成当前字段的编辑',
         },
       },

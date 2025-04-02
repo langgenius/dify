@@ -22,7 +22,10 @@ export const useSchemaNodeOperations = (props: VisualEditorProps) => {
   const { schema: jsonSchema, onChange } = props
   const backupSchema = useVisualEditorStore(state => state.backupSchema)
   const setBackupSchema = useVisualEditorStore(state => state.setBackupSchema)
+  const isAddingNewField = useVisualEditorStore(state => state.isAddingNewField)
   const setIsAddingNewField = useVisualEditorStore(state => state.setIsAddingNewField)
+  const advancedEditing = useVisualEditorStore(state => state.advancedEditing)
+  const setAdvancedEditing = useVisualEditorStore(state => state.setAdvancedEditing)
   const setHoveringProperty = useVisualEditorStore(state => state.setHoveringProperty)
   const { emit, useSubscribe } = useMittContext()
 
@@ -31,6 +34,15 @@ export const useSchemaNodeOperations = (props: VisualEditorProps) => {
       onChange(backupSchema)
       setBackupSchema(null)
     }
+  })
+
+  useSubscribe('quitEditing', (params) => {
+    const { callback } = params as any
+    callback?.(backupSchema)
+    emit('restoreSchema')
+    isAddingNewField && setIsAddingNewField(false)
+    advancedEditing && setAdvancedEditing(false)
+    setHoveringProperty(null)
   })
 
   useSubscribe('propertyNameChange', (params) => {
@@ -204,6 +216,7 @@ export const useSchemaNodeOperations = (props: VisualEditorProps) => {
   })
 
   useSubscribe('addField', (params) => {
+    advancedEditing && setAdvancedEditing(false)
     setBackupSchema(jsonSchema)
     const { path } = params as AddEventParams
     setIsAddingNewField(true)

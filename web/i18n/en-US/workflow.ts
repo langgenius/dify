@@ -442,9 +442,6 @@ const translation = {
         fieldNamePlaceholder: 'Field Name',
         descriptionPlaceholder: 'Add description',
         warningTips: {
-          jsonGeneration: 'Please finish editing the current field before generating a schema',
-          jsonImport: 'Please finish editing the current field before importing a schema',
-          switchToJsonSchema: 'Please finish editing the current field before switching to JSON Schema',
           saveSchema: 'Please finish editing the current field before saving the schema',
         },
       },

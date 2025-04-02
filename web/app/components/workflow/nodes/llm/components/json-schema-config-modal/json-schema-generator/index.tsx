@@ -20,6 +20,7 @@ import { type FormValue, ModelTypeEnum } from '@/app/components/header/account-s
 import { useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { useVisualEditorStore } from '../visual-editor/store'
 import { useTranslation } from 'react-i18next'
+import { useMittContext } from '../visual-editor/context'
 
 type JsonSchemaGeneratorProps = {
   onApply: (schema: SchemaRoot) => void
@@ -52,6 +53,7 @@ export const JsonSchemaGenerator: FC<JsonSchemaGeneratorProps> = ({
   } = useModelListAndDefaultModelAndCurrentProviderAndModel(ModelTypeEnum.textGeneration)
   const advancedEditing = useVisualEditorStore(state => state.advancedEditing)
   const isAddingNewField = useVisualEditorStore(state => state.isAddingNewField)
+  const { emit } = useMittContext()
   const SchemaGenerator = theme === Theme.light ? SchemaGeneratorLight : SchemaGeneratorDark
 
   useEffect(() => {
@@ -66,15 +68,10 @@ export const JsonSchemaGenerator: FC<JsonSchemaGeneratorProps> = ({
 
   const handleTrigger = useCallback((e: React.MouseEvent<HTMLElement, MouseEvent>) => {
     e.stopPropagation()
-    if (advancedEditing || isAddingNewField) {
-      Toast.notify({
-        type: 'warning',
-        message: t('workflow.nodes.llm.jsonSchema.warningTips.jsonGeneration'),
-      })
-      return
-    }
+    if (advancedEditing || isAddingNewField)
+      emit('quitEditing', {})
     setOpen(!open)
-  }, [open, advancedEditing, isAddingNewField, t])
+  }, [open, advancedEditing, isAddingNewField, emit])
 
   const onClose = useCallback(() => {
     setOpen(false)

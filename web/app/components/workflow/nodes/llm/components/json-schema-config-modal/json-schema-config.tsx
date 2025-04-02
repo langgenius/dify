@@ -17,7 +17,7 @@ import {
   preValidateSchema,
   validateSchemaAgainstDraft7,
 } from '../../utils'
-import { MittProvider, VisualEditorContextProvider } from './visual-editor/context'
+import { MittProvider, VisualEditorContextProvider, useMittContext } from './visual-editor/context'
 import ErrorMessage from './error-message'
 import { useVisualEditorStore } from './visual-editor/store'
 import Toast from '@/app/components/base/toast'
@@ -73,6 +73,7 @@ const JsonSchemaConfig: FC<JsonSchemaConfigProps> = ({
   const isAddingNewField = useVisualEditorStore(state => state.isAddingNewField)
   const setIsAddingNewField = useVisualEditorStore(state => state.setIsAddingNewField)
   const setHoveringProperty = useVisualEditorStore(state => state.setHoveringProperty)
+  const { emit } = useMittContext()
 
   const updateBtnWidth = useCallback((width: number) => {
     setBtnWidth(width + 32)
@@ -113,18 +114,12 @@ const JsonSchemaConfig: FC<JsonSchemaConfigProps> = ({
       }
     }
     else if (currentTab === SchemaView.VisualEditor) {
-      if (advancedEditing || isAddingNewField) {
-        Toast.notify({
-          type: 'warning',
-          message: t('workflow.nodes.llm.jsonSchema.warningTips.switchToJsonSchema'),
-        })
-        return
-      }
-      setJson(JSON.stringify(jsonSchema, null, 2))
+      if (advancedEditing || isAddingNewField)
+        emit('quitEditing', { callback: (backup: SchemaRoot) => setJson(JSON.stringify(backup || jsonSchema, null, 2)) })
     }
 
     setCurrentTab(value)
-  }, [currentTab, jsonSchema, json, advancedEditing, isAddingNewField, t])
+  }, [currentTab, jsonSchema, json, advancedEditing, isAddingNewField, emit])
 
   const handleApplySchema = useCallback((schema: SchemaRoot) => {
     if (currentTab === SchemaView.VisualEditor)
