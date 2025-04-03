@@ -121,28 +121,28 @@ class ForgotPasswordResetApi(Resource):
 
         with Session(db.engine) as session:
             account = session.execute(select(Account).filter_by(email=reset_data.get("email"))).scalar_one_or_none()
-        if account:
-            account.password = base64_password_hashed
-            account.password_salt = base64_salt
-            db.session.commit()
-            tenant = TenantService.get_join_tenants(account)
-            if not tenant and not FeatureService.get_system_features().is_allow_create_workspace:
-                tenant = TenantService.create_tenant(f"{account.name}'s Workspace")
-                TenantService.create_tenant_member(tenant, account, role="owner")
-                account.current_tenant = tenant
-                tenant_was_created.send(tenant)
-        else:
-            try:
-                account = AccountService.create_account_and_tenant(
-                    email=reset_data.get("email", ""),
-                    name=reset_data.get("email", ""),
-                    password=password_confirm,
-                    interface_language=languages[0],
-                )
-            except WorkSpaceNotAllowedCreateError:
-                pass
-            except AccountRegisterError:
-                raise AccountInFreezeError()
+            if account:
+                account.password = base64_password_hashed
+                account.password_salt = base64_salt
+                session.commit()
+                tenant = TenantService.get_join_tenants(account)
+                if not tenant and not FeatureService.get_system_features().is_allow_create_workspace:
+                    tenant = TenantService.create_tenant(f"{account.name}'s Workspace")
+                    TenantService.create_tenant_member(tenant, account, role="owner")
+                    account.current_tenant = tenant
+                    tenant_was_created.send(tenant)
+            else:
+                try:
+                    account = AccountService.create_account_and_tenant(
+                        email=reset_data.get("email", ""),
+                        name=reset_data.get("email", ""),
+                        password=password_confirm,
+                        interface_language=languages[0],
+                    )
+                except WorkSpaceNotAllowedCreateError:
+                    pass
+                except AccountRegisterError:
+                    raise AccountInFreezeError()
 
         return {"result": "success"}
 
