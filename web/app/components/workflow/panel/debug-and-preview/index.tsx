@@ -1,5 +1,7 @@
 import {
   memo,
+  useCallback,
+  useEffect,
   useRef,
   useState,
 } from 'react'
@@ -51,12 +53,46 @@ const DebugAndPreview = () => {
     exactMatch: true,
   })
 
+  const [panelWidth, setPanelWidth] = useState(420)
+  const [isResizing, setIsResizing] = useState(false)
+
+  const startResizing = useCallback((e: React.MouseEvent) => {
+    e.preventDefault()
+    setIsResizing(true)
+  }, [])
+
+  const stopResizing = useCallback(() => {
+    setIsResizing(false)
+  }, [])
+
+  const resize = useCallback((e: MouseEvent) => {
+    if (isResizing) {
+      const newWidth = window.innerWidth - e.clientX
+      if (newWidth > 420 && newWidth < 1024)
+        setPanelWidth(newWidth)
+    }
+  }, [isResizing])
+
+  useEffect(() => {
+    window.addEventListener('mousemove', resize)
+    window.addEventListener('mouseup', stopResizing)
+    return () => {
+      window.removeEventListener('mousemove', resize)
+      window.removeEventListener('mouseup', stopResizing)
+    }
+  }, [resize, stopResizing])
+
   return (
     <div
       className={cn(
-        'flex h-full w-[420px] flex-col rounded-l-2xl border border-r-0 border-components-panel-border bg-chatbot-bg shadow-xl',
+        'relative flex h-full flex-col rounded-l-2xl border border-r-0 border-components-panel-border bg-chatbot-bg shadow-xl',
       )}
+      style={{ width: `${panelWidth}px` }}
     >
+      <div
+        className="absolute bottom-0 left-[3px] top-1/2 z-50 h-6 w-[3px] cursor-col-resize rounded bg-gray-300"
+        onMouseDown={startResizing}
+      />
       <div className='system-xl-semibold flex shrink-0 items-center justify-between px-4 pb-2 pt-3 text-text-primary'>
         <div className='h-8'>{t('workflow.common.debugAndPreview').toLocaleUpperCase()}</div>
         <div className='flex items-center gap-1'>
@@ -85,7 +121,7 @@ const DebugAndPreview = () => {
                   <RiEqualizer2Line className='h-4 w-4' />
                 </ActionButton>
               </Tooltip>
-              {expanded && <div className='absolute bottom-[-17px] right-[5px] z-10 h-3 w-3 rotate-45 border-l-[0.5px] border-t-[0.5px] border-components-panel-border-subtle bg-components-panel-on-panel-item-bg'/>}
+              {expanded && <div className='absolute bottom-[-17px] right-[5px] z-10 h-3 w-3 rotate-45 border-l-[0.5px] border-t-[0.5px] border-components-panel-border-subtle bg-components-panel-on-panel-item-bg' />}
             </div>
           )}
           <div className='mx-3 h-3.5 w-[1px] bg-gray-200'></div>
