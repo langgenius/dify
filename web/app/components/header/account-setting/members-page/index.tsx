@@ -22,6 +22,8 @@ import UpgradeBtn from '@/app/components/billing/upgrade-btn'
 import { NUM_INFINITE } from '@/app/components/billing/config'
 import { LanguagesSupported } from '@/i18n/language'
 import cn from '@/utils/classnames'
+import Tooltip from '@/app/components/base/tooltip'
+import { RiPencilLine } from '@remixicon/react'
 dayjs.extend(relativeTime)
 
 const MembersPage = () => {
@@ -50,6 +52,7 @@ const MembersPage = () => {
   const { plan, enableBilling } = useProviderContext()
   const isNotUnlimitedMemberPlan = enableBilling && plan.type !== Plan.team && plan.type !== Plan.enterprise
   const isMemberFull = enableBilling && isNotUnlimitedMemberPlan && accounts.length >= plan.total.teamMembers
+  const [editWorkspaceModalVisible, setEditWorkspaceModalVisible] = useState(false)
 
   return (
     <>
@@ -59,26 +62,41 @@ const MembersPage = () => {
             <span className='bg-gradient-to-r from-components-avatar-shape-fill-stop-0 to-components-avatar-shape-fill-stop-100 bg-clip-text font-semibold uppercase text-shadow-shadow-1 opacity-90'>{currentWorkspace?.name[0]?.toLocaleUpperCase()}</span>
           </div>
           <div className='grow'>
-            <div className='system-md-semibold text-text-secondary'>{currentWorkspace?.name}</div>
-            {enableBilling && (
-              <div className='system-xs-medium mt-1 text-text-tertiary'>
-                {isNotUnlimitedMemberPlan
-                  ? (
-                    <div className='flex space-x-1'>
-                      <div>{t('billing.plansCommon.member')}{locale !== LanguagesSupported[1] && accounts.length > 1 && 's'}</div>
-                      <div className=''>{accounts.length}</div>
-                      <div>/</div>
-                      <div>{plan.total.teamMembers === NUM_INFINITE ? t('billing.plansCommon.unlimited') : plan.total.teamMembers}</div>
-                    </div>
-                  )
-                  : (
-                    <div className='flex space-x-1'>
-                      <div>{accounts.length}</div>
-                      <div>{t('billing.plansCommon.memberAfter')}{locale !== LanguagesSupported[1] && accounts.length > 1 && 's'}</div>
-                    </div>
-                  )}
-              </div>
-            )}
+            <div className='system-md-semibold flex items-center gap-1 text-text-secondary'>
+              <span>{currentWorkspace?.name}</span>
+              <span>
+                <Tooltip
+                  popupContent={t('common.account.editWorkspaceName')}
+                  needsDelay
+                >
+                  <div
+                    className='cursor-pointer rounded-md p-1 hover:bg-black/5'
+                    onClick={() => {
+                      setEditWorkspaceModalVisible(true)
+                    }}
+                  >
+                    <RiPencilLine className='h-4 w-4 text-text-tertiary' />
+                  </div>
+                </Tooltip>
+              </span>
+            </div>
+            <div className='system-xs-medium mt-1 text-text-tertiary'>
+              {enableBilling && isNotUnlimitedMemberPlan
+                ? (
+                  <div className='flex space-x-1'>
+                    <div>{t('billing.plansCommon.member')}{locale !== LanguagesSupported[1] && accounts.length > 1 && 's'}</div>
+                    <div className=''>{accounts.length}</div>
+                    <div>/</div>
+                    <div>{plan.total.teamMembers === NUM_INFINITE ? t('billing.plansCommon.unlimited') : plan.total.teamMembers}</div>
+                  </div>
+                )
+                : (
+                  <div className='flex space-x-1'>
+                    <div>{accounts.length}</div>
+                    <div>{t('billing.plansCommon.memberAfter')}{locale !== LanguagesSupported[1] && accounts.length > 1 && 's'}</div>
+                  </div>
+                )}
+            </div>
 
           </div>
           {isMemberFull && (
@@ -143,6 +161,11 @@ const MembersPage = () => {
             invitationResults={invitationResults}
             onCancel={() => setInvitedModalVisible(false)}
           />
+        )
+      }
+      {
+        editWorkspaceModalVisible && (
+          <></>
         )
       }
     </>

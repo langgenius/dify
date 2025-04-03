@@ -218,6 +218,7 @@ const translation = {
     feedbackTitle: '反馈',
     feedbackLabel: '请告诉我们您为什么删除账户？',
     feedbackPlaceholder: '选填',
+    editWorkspaceName: '编辑工作空间名称',
   },
   members: {
     team: '团队',
