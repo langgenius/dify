@@ -215,6 +215,7 @@ class WebappLogoWorkspaceApi(Resource):
 
         return {"id": upload_file.id}, 201
 
+
 class WorkspaceInfoApi(Resource):
     @setup_required
     @login_required
@@ -230,6 +231,7 @@ class WorkspaceInfoApi(Resource):
         db.session.commit()
 
         return {"result": "success", "tenant": marshal(WorkspaceService.get_tenant_info(tenant), tenant_fields)}
+
 
 api.add_resource(TenantListApi, "/workspaces")  # GET for getting all tenants
 api.add_resource(WorkspaceListApi, "/all-workspaces")  # GET for getting all tenants
