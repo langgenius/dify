@@ -51,7 +51,7 @@ class CodeNode(BaseNode[CodeNodeData]):
             variable_name = variable_selector.variable
             variable = self.graph_runtime_state.variable_pool.get(variable_selector.value_selector)
             if isinstance(variable, ArrayFileSegment):
-                variables[variable_name] = [v.to_dict() for v in variable.value]
+                variables[variable_name] = [v.to_dict() for v in variable.value] if variable.value else None
             else:
                 variables[variable_name] = variable.to_object() if variable else None
         # Run code
