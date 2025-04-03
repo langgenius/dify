@@ -4,21 +4,39 @@ import Modal from '@/app/components/base/modal'
 import Input from '@/app/components/base/input'
 import { useTranslation } from 'react-i18next'
 import { useState } from 'react'
+import { useContext } from 'use-context-selector'
 import s from './index.module.css'
 import Button from '@/app/components/base/button'
 import { RiCloseLine } from '@remixicon/react'
 import { useAppContext } from '@/context/app-context'
+import { updateWorkspaceInfo } from '@/service/common'
+import { ToastContext } from '@/app/components/base/toast'
 type IEditWorkspaceModalProps = {
   onCancel: () => void
-  onConfirm: () => void
 }
 const EditWorkspaceModal = ({
   onCancel,
-  // onConfirm,
 }: IEditWorkspaceModalProps) => {
   const { t } = useTranslation()
-  const { currentWorkspace } = useAppContext()
+  const { notify } = useContext(ToastContext)
+  const { currentWorkspace, isCurrentWorkspaceOwner } = useAppContext()
   const [name, setName] = useState<string>(currentWorkspace.name)
+
+  const changeWorkspaceInfo = async (name: string) => {
+    try {
+      await updateWorkspaceInfo({
+        url: '/workspaces/info',
+        body: {
+          name,
+        },
+      })
+      notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
+    }
+    catch (e) {
+      notify({ type: 'error', message: t('common.actionMsg.modifiedUnsuccessfully') })
+    }
+  }
+
   return (
     <div className={cn(s.wrap)}>
       <Modal overflowVisible isShow onClose={() => {}} className={cn(s.modal)}>
@@ -50,10 +68,11 @@ const EditWorkspaceModal = ({
             <Button
               size='large'
               variant='primary'
-              onClick={() => {}}
-              disabled={
-                false
-              }
+              onClick={() => {
+                changeWorkspaceInfo(name)
+                onCancel()
+              }}
+              disabled={!isCurrentWorkspaceOwner}
             >
               {t('common.operation.confirm')}
             </Button>

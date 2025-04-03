@@ -168,9 +168,6 @@ const MembersPage = () => {
         editWorkspaceModalVisible && (
           <EditWorkspaceModal
             onCancel={() => setEditWorkspaceModalVisible(false)}
-            onConfirm={async () => {
-
-            }}
           />
         )
       }
