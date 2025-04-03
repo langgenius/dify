@@ -19,7 +19,7 @@ const EditWorkspaceModal = ({
 }: IEditWorkspaceModalProps) => {
   const { t } = useTranslation()
   const { notify } = useContext(ToastContext)
-  const { currentWorkspace, isCurrentWorkspaceOwner } = useAppContext()
+  const { currentWorkspace, isCurrentWorkspaceOwner, mutateCurrentWorkspace } = useAppContext()
   const [name, setName] = useState<string>(currentWorkspace.name)
 
   const changeWorkspaceInfo = async (name: string) => {
@@ -31,6 +31,7 @@ const EditWorkspaceModal = ({
         },
       })
       notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
+      location.assign(`${location.origin}`)
     }
     catch (e) {
       notify({ type: 'error', message: t('common.actionMsg.modifiedUnsuccessfully') })
