@@ -184,6 +184,10 @@ const translation = {
       specific: 'Specific groups or members',
       organization: 'Only members within the organization',
     },
+    groups_one: '{{count}} GROUP',
+    groups_other: '{{count}} GROUPS',
+    members_one: '{{count}} MEMBER',
+    members_other: '{{count}} MEMBERS',
   },
 }
 

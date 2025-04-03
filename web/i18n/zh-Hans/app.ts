@@ -185,6 +185,10 @@ const translation = {
       specific: '特定组或用户',
       organization: '组织内的任何人',
     },
+    groups_one: '{{count}} 个组',
+    groups_other: '{{count}} 个组',
+    members_one: '{{count}} 个人',
+    members_other: '{{count}} 个人',
   },
 }
 
