@@ -43,7 +43,7 @@ const Input = ({
   styleCss,
   value,
   placeholder,
-  onChange,
+  onChange = () => { },
   unit,
   ...props
 }: InputProps) => {
