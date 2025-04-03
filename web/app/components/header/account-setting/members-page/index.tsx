@@ -9,6 +9,7 @@ import { RiUserAddLine } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
 import InviteModal from './invite-modal'
 import InvitedModal from './invited-modal'
+import EditWorkspaceModal from './edit-workspace-modal'
 import Operation from './operation'
 import { fetchMembers } from '@/service/common'
 import I18n from '@/context/i18n'
@@ -64,9 +65,9 @@ const MembersPage = () => {
           <div className='grow'>
             <div className='system-md-semibold flex items-center gap-1 text-text-secondary'>
               <span>{currentWorkspace?.name}</span>
-              <span>
+              {isCurrentWorkspaceOwner && <span>
                 <Tooltip
-                  popupContent={t('common.account.editWorkspaceName')}
+                  popupContent={t('common.account.editWorkspaceInfo')}
                   needsDelay
                 >
                   <div
@@ -78,7 +79,7 @@ const MembersPage = () => {
                     <RiPencilLine className='h-4 w-4 text-text-tertiary' />
                   </div>
                 </Tooltip>
-              </span>
+              </span>}
             </div>
             <div className='system-xs-medium mt-1 text-text-tertiary'>
               {enableBilling && isNotUnlimitedMemberPlan
@@ -165,7 +166,12 @@ const MembersPage = () => {
       }
       {
         editWorkspaceModalVisible && (
-          <></>
+          <EditWorkspaceModal
+            onCancel={() => setEditWorkspaceModalVisible(false)}
+            onConfirm={async () => {
+
+            }}
+          />
         )
       }
     </>

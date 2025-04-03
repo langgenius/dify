@@ -218,7 +218,9 @@ const translation = {
     feedbackTitle: 'Feedback',
     feedbackLabel: 'Tell us why you deleted your account?',
     feedbackPlaceholder: 'Optional',
-    editWorkspaceName: 'Edit Workspace Name',
+    editWorkspaceInfo: 'Edit Workspace Info',
+    workspaceName: 'Workspace Name',
+    workspaceIcon: 'Workspace Icon',
   },
   members: {
     team: 'Team',

@@ -1,0 +1,67 @@
+'use client'
+import cn from '@/utils/classnames'
+import Modal from '@/app/components/base/modal'
+import Input from '@/app/components/base/input'
+import { useTranslation } from 'react-i18next'
+import { useState } from 'react'
+import s from './index.module.css'
+import Button from '@/app/components/base/button'
+import { RiCloseLine } from '@remixicon/react'
+import { useAppContext } from '@/context/app-context'
+type IEditWorkspaceModalProps = {
+  onCancel: () => void
+  onConfirm: () => void
+}
+const EditWorkspaceModal = ({
+  onCancel,
+  // onConfirm,
+}: IEditWorkspaceModalProps) => {
+  const { t } = useTranslation()
+  const { currentWorkspace } = useAppContext()
+  const [name, setName] = useState<string>(currentWorkspace.name)
+  return (
+    <div className={cn(s.wrap)}>
+      <Modal overflowVisible isShow onClose={() => {}} className={cn(s.modal)}>
+        <div className='mb-2 flex justify-between'>
+          <div className='text-xl font-semibold text-text-primary'>{t('common.account.editWorkspaceInfo')}</div>
+          <RiCloseLine className='h-4 w-4 cursor-pointer text-text-tertiary' onClick={onCancel} />
+        </div>
+        <div>
+          <div className='mb-2 text-sm font-medium text-text-primary'>{t('common.account.workspaceName')}</div>
+          <Input
+            className='mb-2'
+            value={name}
+            placeholder={t('common.account.workspaceNamePlaceholder')}
+            onChange={(e) => {
+              setName(e.target.value)
+            }}
+            onClear={() => {
+              setName(currentWorkspace.name)
+            }}
+          />
+
+          <div className='sticky bottom-0 -mx-2 mt-2 flex flex-wrap items-center justify-end gap-x-2 bg-components-panel-bg px-2 pt-4'>
+            <Button
+              size='large'
+              onClick={onCancel}
+            >
+              {t('common.operation.cancel')}
+            </Button>
+            <Button
+              size='large'
+              variant='primary'
+              onClick={() => {}}
+              disabled={
+                false
+              }
+            >
+              {t('common.operation.confirm')}
+            </Button>
+          </div>
+
+        </div>
+      </Modal>
+    </div>
+  )
+}
+export default EditWorkspaceModal
