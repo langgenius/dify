@@ -1,4 +1,6 @@
 'use client'
+import { useCallback } from 'react'
+import { useKeyPress } from 'ahooks'
 import AppList from './app-list'
 import FullScreenModal from '@/app/components/base/fullscreen-modal'
 
@@ -10,6 +12,13 @@ type CreateAppDialogProps = {
 }
 
 const CreateAppTemplateDialog = ({ show, onSuccess, onClose, onCreateFromBlank }: CreateAppDialogProps) => {
+  const handleEscKeyPress = useCallback(() => {
+    if (show)
+      onClose()
+  }, [show, onClose])
+
+  useKeyPress('esc', handleEscKeyPress)
+
   return (
     <FullScreenModal
       open={show}
