@@ -30,7 +30,7 @@ class CleanProcessor:
                     # Remove URL but keep Markdown image URLs
                     # First, temporarily replace Markdown image URLs with a placeholder
                     markdown_image_pattern = r"!\[.*?\]\((https?://[^\s)]+)\)"
-                    placeholders = []
+                    placeholders: list[str] = []
 
                     def replace_with_placeholder(match, placeholders=placeholders):
                         url = match.group(1)
