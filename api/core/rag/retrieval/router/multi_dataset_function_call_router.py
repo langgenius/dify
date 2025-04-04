@@ -41,5 +41,5 @@ class FunctionCallMultiDatasetRouter:
                 # get retrieval model config
                 return result.message.tool_calls[0].function.name
             return None
-        except Exception as e:
+        except Exception:
             return None

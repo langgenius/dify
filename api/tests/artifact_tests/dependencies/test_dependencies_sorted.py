@@ -29,7 +29,7 @@ def test_group_dependencies_sorted():
 
 
 def test_group_dependencies_version_operator():
-    for group_name, dependencies in load_all_dependency_groups().items():
+    for _, dependencies in load_all_dependency_groups().items():
         for dependency_name, specification in dependencies.items():
             version_spec = specification if isinstance(specification, str) else specification["version"]
             assert not version_spec.startswith("^"), (

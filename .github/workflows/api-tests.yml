@@ -53,6 +53,10 @@ jobs:
       - name: Run dify config tests
         run: poetry run -P api python dev/pytest/pytest_config_tests.py
 
+      - name: Run pyright
+        run: |
+          poetry run -C api python -m pyright
+
       - name: Run mypy
         run: |
           poetry run -C api python -m mypy --install-types --non-interactive .

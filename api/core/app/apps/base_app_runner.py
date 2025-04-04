@@ -78,7 +78,7 @@ class AppRunner:
             max_tokens = 0
 
         # get prompt messages without memory and context
-        prompt_messages, stop = self.organize_prompt_messages(
+        prompt_messages, _ = self.organize_prompt_messages(
             app_record=app_record,
             model_config=model_config,
             prompt_template_entity=prompt_template_entity,

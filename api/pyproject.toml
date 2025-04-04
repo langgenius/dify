@@ -148,6 +148,7 @@ optional = true
 coverage = "~7.2.4"
 faker = "~32.1.0"
 mypy = "~1.13.0"
+pyright = "~1.1.398"
 pytest = "~8.3.2"
 pytest-benchmark = "~4.0.0"
 pytest-env = "~1.1.3"
