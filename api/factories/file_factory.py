@@ -253,8 +253,6 @@ def _build_from_tool_file(
     extension = "." + tool_file.file_key.split(".")[-1] if "." in tool_file.file_key else ".bin"
 
     file_type = _standardize_file_type(extension=extension, mime_type=tool_file.mimetype)
-    if file_type.value != mapping.get("type", "custom"):
-        raise ValueError("Detected file type does not match the specified type. Please verify the file.")
 
     return File(
         id=mapping.get("id"),
