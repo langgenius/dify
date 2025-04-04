@@ -25,6 +25,7 @@ import Toast from '@/app/components/base/toast'
 import {
   useEducationStatus,
 } from '@/service/use-education'
+import { noop } from 'lodash-es'
 
 type ProviderContextState = {
   modelProviders: ModelProvider[]
@@ -49,7 +50,7 @@ type ProviderContextState = {
 }
 const ProviderContext = createContext<ProviderContextState>({
   modelProviders: [],
-  refreshModelProviders: () => { },
+  refreshModelProviders: noop,
   textGenerationModelList: [],
   supportRetrievalMethods: [],
   isAPIKeySet: true,
@@ -72,7 +73,7 @@ const ProviderContext = createContext<ProviderContextState>({
   },
   isFetchedPlan: false,
   enableBilling: false,
-  onPlanInfoChanged: () => { },
+  onPlanInfoChanged: noop,
   enableReplaceWebAppLogo: false,
   modelLoadBalancingEnabled: false,
   datasetOperatorEnabled: false,
