@@ -1,5 +1,6 @@
 import logging
 import os
+import threading
 from collections.abc import Callable
 from typing import Any
 
@@ -29,13 +30,19 @@ logger = logging.getLogger(__name__)
 class DifyAttributesSpanProcessor(SpanProcessor):
     def __init__(self, attributes_provider: Callable[[], dict[str, Any]]):
         self.attributes_provider = attributes_provider
+        self._processing = threading.local() # Avoid recursion
 
     def on_start(self, span: "Span", parent_context = None) -> None:
         try:
-            attributes = self.attributes_provider()
-            for key, value in attributes.items():
-                if value is not None:  # Only set attributes that have a value
+            if getattr(self._processing, 'is_processing', False):
+                return
+            self._processing.is_processing = True
+            try:
+                attributes = self.attributes_provider()
+                for key, value in attributes.items():
                     span.set_attribute(key, value)
+            finally:
+                self._processing.is_processing = False
         except Exception:
             logger.exception("Error setting span attributes")
 
@@ -53,13 +60,13 @@ def get_user_context_attributes() -> dict[str, Any]:
     Dynamically get user context attributes for tracing.
     Returns basic attributes even if user context is not available.
     """
-    try:
+    try: 
         return {
             "service.tenant.id": getattr(current_user, 'current_tenant_id', ''),
             "service.user.id": getattr(current_user, 'id', ''),
         }
     except Exception:
-        logger.exception("Could not get user context for tracing")
+        # logger.exception("Could not get user context for tracing")
         return {}
 
 def init_app(app: DifyApp):
