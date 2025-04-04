@@ -701,7 +701,7 @@ class AdvancedChatAppGenerateTaskPipeline:
                 if output_moderation_answer:
                     self._task_state.answer = output_moderation_answer
                     yield self._message_cycle_manager._message_replace_to_stream_response(
-                        answer=output_moderation_answer
+                        answer=output_moderation_answer, reason="output_moderation"
                     )
 
                 # Save message
