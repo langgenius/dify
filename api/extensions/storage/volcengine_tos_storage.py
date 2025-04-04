@@ -19,8 +19,8 @@ class VolcengineTosStorage(BaseStorage):
             region=dify_config.VOLCENGINE_TOS_REGION,
         )
 
-    def save(self, filename, data):
-        self.client.put_object(bucket=self.bucket_name, key=filename, content=data)
+    def save(self, filename, data, content_type=None):
+        self.client.put_object(bucket=self.bucket_name, key=filename, content=data, content_type=content_type)
 
     def load_once(self, filename: str) -> bytes:
         data = self.client.get_object(bucket=self.bucket_name, key=filename).read()
