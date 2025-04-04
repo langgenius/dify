@@ -1,18 +1,22 @@
 import logging
 import os
+from collections.abc import Callable
+from typing import Any
 
 from flask_login import current_user
 from opentelemetry.exporter.otlp.proto.http.metric_exporter import OTLPMetricExporter
 from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
 from opentelemetry.instrumentation.flask import FlaskInstrumentor
+from opentelemetry.instrumentation.sqlalchemy import SQLAlchemyInstrumentor
 from opentelemetry.metrics import set_meter_provider
 from opentelemetry.sdk.metrics import MeterProvider
 from opentelemetry.sdk.metrics.export import ConsoleMetricExporter, PeriodicExportingMetricReader
 from opentelemetry.sdk.resources import Resource
-from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.sdk.trace import ReadableSpan, TracerProvider
 from opentelemetry.sdk.trace.export import (
     BatchSpanProcessor,
     ConsoleSpanExporter,
+    SpanProcessor,
 )
 from opentelemetry.semconv.resource import ResourceAttributes
 from opentelemetry.trace import Span, get_tracer_provider, set_tracer_provider
@@ -21,6 +25,42 @@ from configs import dify_config
 from dify_app import DifyApp
 
 logger = logging.getLogger(__name__)
+
+class DifyAttributesSpanProcessor(SpanProcessor):
+    def __init__(self, attributes_provider: Callable[[], dict[str, Any]]):
+        self.attributes_provider = attributes_provider
+
+    def on_start(self, span: "Span", parent_context = None) -> None:
+        try:
+            attributes = self.attributes_provider()
+            for key, value in attributes.items():
+                if value is not None:  # Only set attributes that have a value
+                    span.set_attribute(key, value)
+        except Exception:
+            logger.exception("Error setting span attributes")
+
+    def on_end(self, span: "ReadableSpan") -> None:
+        pass
+
+    def force_flush(self, timeout_millis: float | None = None) -> bool:
+        return True
+
+    def shutdown(self) -> None:
+        pass
+
+def get_user_context_attributes() -> dict[str, Any]:
+    """
+    Dynamically get user context attributes for tracing.
+    Returns basic attributes even if user context is not available.
+    """
+    try:
+        return {
+            "service.tenant.id": getattr(current_user, 'current_tenant_id', ''),
+            "service.user.id": getattr(current_user, 'id', ''),
+        }
+    except Exception:
+        logger.exception("Could not get user context for tracing")
+        return {}
 
 def init_app(app: DifyApp):
     if dify_config.ENABLE_OTEL:
@@ -45,24 +85,15 @@ def init_app(app: DifyApp):
                 endpoint=dify_config.OTLP_BASE_ENDPOINT + "/v1/metrics",
                 headers={"Authorization": f"Bearer {dify_config.OTLP_API_KEY}"},
             )
+        get_tracer_provider().add_span_processor(DifyAttributesSpanProcessor(get_user_context_attributes))
         get_tracer_provider().add_span_processor(
             BatchSpanProcessor(exporter)
         )
         reader = PeriodicExportingMetricReader(metric_exporter)
         set_meter_provider(MeterProvider(resource=resource, metric_readers=[reader]))
-        def request_hook(span: Span, environ: dict):
-            try: 
-                user_id = current_user.id
-                tenant_id = current_user.current_tenant_id
-            except:
-                tenant_id = ""
-                user_id = ""
-            if span and span.is_recording():
-                span.set_attribute("service.tenant.id", tenant_id)
-                span.set_attribute("service.user.id", user_id)
-        
-        def response_hook(span: Span, status: str, response_headers: list):
-            pass
 
         instrumentor = FlaskInstrumentor()
-        instrumentor.instrument_app(app, request_hook=request_hook, response_hook=response_hook)
+        instrumentor.instrument_app(app)
+        with app.app_context():
+            engines = list(app.extensions['sqlalchemy'].engines.values())
+            SQLAlchemyInstrumentor().instrument(enable_commenter=True, engines=engines)
