@@ -270,7 +270,7 @@ const DatasetConfig: FC = () => {
           handleMetadataModelChange={handleMetadataModelChange}
           handleMetadataCompletionParamsChange={handleMetadataCompletionParamsChange}
           isCommonVariable
-          availableCommonStringVars={promptVariablesToSelect.filter(item => item.type === MetadataFilteringVariableType.string)}
+          availableCommonStringVars={promptVariablesToSelect.filter(item => item.type === MetadataFilteringVariableType.string || item.type === MetadataFilteringVariableType.select)}
           availableCommonNumberVars={promptVariablesToSelect.filter(item => item.type === MetadataFilteringVariableType.number)}
         />
       </div>
