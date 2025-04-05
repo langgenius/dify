@@ -77,7 +77,9 @@ const ConditionItem = ({
 
   const valueAndValueMethod = useMemo(() => {
     if (
-      (currentMetadata?.type === MetadataFilteringVariableType.string || currentMetadata?.type === MetadataFilteringVariableType.number)
+      (currentMetadata?.type === MetadataFilteringVariableType.string
+       || currentMetadata?.type === MetadataFilteringVariableType.number
+       || currentMetadata?.type === MetadataFilteringVariableType.select)
       && typeof condition.value === 'string'
     ) {
       const regex = isCommonVariable ? COMMON_VARIABLE_REGEX : VARIABLE_REGEX
@@ -140,7 +142,9 @@ const ConditionItem = ({
         </div>
         <div className='border-t border-t-divider-subtle'>
           {
-            !comparisonOperatorNotRequireValue(condition.comparison_operator) && currentMetadata?.type === MetadataFilteringVariableType.string && (
+            !comparisonOperatorNotRequireValue(condition.comparison_operator)
+            && (currentMetadata?.type === MetadataFilteringVariableType.string
+             || currentMetadata?.type === MetadataFilteringVariableType.select) && (
               <ConditionString
                 valueMethod={localValueMethod}
                 onValueMethodChange={handleValueMethodChange}

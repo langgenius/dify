@@ -80,6 +80,7 @@ export enum MetadataFilteringVariableType {
   string = 'string',
   number = 'number',
   time = 'time',
+  select = 'select',
 }
 
 export type MetadataFilteringCondition = {
