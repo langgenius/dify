@@ -52,7 +52,6 @@ from core.rag.retrieval.template_prompts import (
     METADATA_FILTER_USER_PROMPT_2,
     METADATA_FILTER_USER_PROMPT_3,
 )
-from core.tools.entities.common_entities import I18nObject
 from core.tools.utils.dataset_retriever.dataset_retriever_base_tool import DatasetRetrieverBaseTool
 from extensions.ext_database import db
 from libs.json_in_md_parser import parse_and_check_json_markdown

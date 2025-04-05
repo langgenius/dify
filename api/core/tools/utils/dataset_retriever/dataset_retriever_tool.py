@@ -6,7 +6,6 @@ from core.rag.datasource.retrieval_service import RetrievalService
 from core.rag.entities.context_entities import DocumentContext
 from core.rag.models.document import Document as RetrievalDocument
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
-from core.tools.entities.common_entities import I18nObject
 from core.tools.utils.dataset_retriever.dataset_retriever_base_tool import DatasetRetrieverBaseTool
 from extensions.ext_database import db
 from models.dataset import Dataset
