@@ -15,6 +15,7 @@ import type { Tag } from '@/app/components/base/tag-management/constant'
 import Checkbox from '@/app/components/base/checkbox'
 import { bindTag, createTag, fetchTagList, unBindTag } from '@/service/tag'
 import { ToastContext } from '@/app/components/base/toast'
+import { noop } from 'lodash-es'
 
 type TagSelectorProps = {
   targetID: string
@@ -161,7 +162,7 @@ const Panel = (props: PanelProps) => {
               <Checkbox
                 className='shrink-0'
                 checked={selectedTagIDs.includes(tag.id)}
-                onCheck={() => { }}
+                onCheck={noop}
               />
               <div title={tag.name} className='grow truncate text-sm leading-5 text-text-secondary'>{tag.name}</div>
             </div>
@@ -175,7 +176,7 @@ const Panel = (props: PanelProps) => {
               <Checkbox
                 className='shrink-0'
                 checked={selectedTagIDs.includes(tag.id)}
-                onCheck={() => { }}
+                onCheck={noop}
               />
               <div title={tag.name} className='grow truncate text-sm leading-5 text-text-secondary'>{tag.name}</div>
             </div>

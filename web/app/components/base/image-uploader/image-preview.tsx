@@ -6,6 +6,7 @@ import { RiAddBoxLine, RiCloseLine, RiDownloadCloud2Line, RiFileCopyLine, RiZoom
 import { useHotkeys } from 'react-hotkeys-hook'
 import Tooltip from '@/app/components/base/tooltip'
 import Toast from '@/app/components/base/toast'
+import { noop } from 'lodash-es'
 
 type ImagePreviewProps = {
   url: string
@@ -198,8 +199,8 @@ const ImagePreview: FC<ImagePreviewProps> = ({
   useHotkeys('esc', onCancel)
   useHotkeys('up', zoomIn)
   useHotkeys('down', zoomOut)
-  useHotkeys('left', onPrev || (() => { }))
-  useHotkeys('right', onNext || (() => { }))
+  useHotkeys('left', onPrev || noop)
+  useHotkeys('right', onNext || noop)
 
   return createPortal(
     <div className='image-preview-container fixed inset-0 z-[1000] flex items-center justify-center bg-black/80 p-8'

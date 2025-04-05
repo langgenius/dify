@@ -37,6 +37,7 @@ import AddButton from '@/app/components/base/button/add-button'
 import Badge from '@/app/components/base/badge'
 import Tooltip from '@/app/components/base/tooltip'
 import { isExceptionVariable } from '@/app/components/workflow/utils'
+import { noop } from 'lodash-es'
 
 const TRIGGER_DEFAULT_WIDTH = 227
 
@@ -73,7 +74,7 @@ const VarReferencePicker: FC<Props> = ({
   className,
   isShowNodeName = true,
   value = [],
-  onOpen = () => { },
+  onOpen = noop,
   onChange,
   isSupportConstantValue,
   defaultVarKindType = VarKindType.constant,
@@ -283,7 +284,7 @@ const VarReferencePicker: FC<Props> = ({
             {isAddBtnTrigger
               ? (
                 <div>
-                  <AddButton onClick={() => { }}></AddButton>
+                  <AddButton onClick={noop}></AddButton>
                 </div>
               )
               : (<div ref={!isSupportConstantValue ? triggerRef : null} className={cn((open || isFocus) ? 'border-gray-300' : 'border-gray-100', 'group/wrap relative flex h-8 w-full items-center', !isSupportConstantValue && 'rounded-lg bg-components-input-bg-normal p-1', isInTable && 'border-none bg-transparent', readonly && 'bg-components-input-bg-disabled')}>

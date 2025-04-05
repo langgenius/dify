@@ -14,6 +14,7 @@ import {
   $createHistoryBlockNode,
   HistoryBlockNode,
 } from './node'
+import { noop } from 'lodash-es'
 
 export const INSERT_HISTORY_BLOCK_COMMAND = createCommand('INSERT_HISTORY_BLOCK_COMMAND')
 export const DELETE_HISTORY_BLOCK_COMMAND = createCommand('DELETE_HISTORY_BLOCK_COMMAND')
@@ -32,7 +33,7 @@ export type HistoryBlockProps = {
 
 const HistoryBlock = memo(({
   history = { user: '', assistant: '' },
-  onEditRole = () => {},
+  onEditRole = noop,
   onInsert,
   onDelete,
 }: HistoryBlockType) => {

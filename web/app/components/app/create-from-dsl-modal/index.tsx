@@ -26,6 +26,7 @@ import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
 import { getRedirection } from '@/utils/app-redirection'
 import cn from '@/utils/classnames'
 import { usePluginDependencies } from '@/app/components/workflow/plugin-dependency/hooks'
+import { noop } from 'lodash-es'
 
 type CreateFromDSLModalProps = {
   show: boolean
@@ -203,7 +204,7 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
       <Modal
         className='w-[520px] rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg p-0 shadow-xl'
         isShow={show}
-        onClose={() => { }}
+        onClose={noop}
       >
         <div className='title-2xl-semi-bold flex items-center justify-between pb-3 pl-6 pr-5 pt-6 text-text-primary'>
           {t('app.importFromDSL')}

@@ -26,6 +26,7 @@ import { ModelModeType, RETRIEVE_TYPE, Resolution, TransferMethod } from '@/type
 import { ANNOTATION_DEFAULT, DEFAULT_AGENT_SETTING, DEFAULT_CHAT_PROMPT_CONFIG, DEFAULT_COMPLETION_PROMPT_CONFIG } from '@/config'
 import type { FormValue } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { Collection } from '@/app/components/tools/types'
+import { noop } from 'lodash-es'
 
 type IDebugConfiguration = {
   appId: string
@@ -112,64 +113,64 @@ const DebugConfigurationContext = createContext<IDebugConfiguration>({
   mode: '',
   modelModeType: ModelModeType.chat,
   promptMode: PromptMode.simple,
-  setPromptMode: () => { },
+  setPromptMode: noop,
   isAdvancedMode: false,
   isAgent: false,
   isFunctionCall: false,
   isOpenAI: false,
   collectionList: [],
   canReturnToSimpleMode: false,
-  setCanReturnToSimpleMode: () => { },
+  setCanReturnToSimpleMode: noop,
   chatPromptConfig: DEFAULT_CHAT_PROMPT_CONFIG,
   completionPromptConfig: DEFAULT_COMPLETION_PROMPT_CONFIG,
   currentAdvancedPrompt: [],
-  showHistoryModal: () => { },
+  showHistoryModal: noop,
   conversationHistoriesRole: {
     user_prefix: 'user',
     assistant_prefix: 'assistant',
   },
-  setConversationHistoriesRole: () => { },
-  setCurrentAdvancedPrompt: () => { },
+  setConversationHistoriesRole: noop,
+  setCurrentAdvancedPrompt: noop,
   hasSetBlockStatus: {
     context: false,
     history: false,
     query: false,
   },
   conversationId: '',
-  setConversationId: () => { },
+  setConversationId: noop,
   introduction: '',
-  setIntroduction: () => { },
+  setIntroduction: noop,
   suggestedQuestions: [],
-  setSuggestedQuestions: () => { },
+  setSuggestedQuestions: noop,
   controlClearChatMessage: 0,
-  setControlClearChatMessage: () => { },
+  setControlClearChatMessage: noop,
   prevPromptConfig: {
     prompt_template: '',
     prompt_variables: [],
   },
-  setPrevPromptConfig: () => { },
+  setPrevPromptConfig: noop,
   moreLikeThisConfig: {
     enabled: false,
   },
-  setMoreLikeThisConfig: () => { },
+  setMoreLikeThisConfig: noop,
   suggestedQuestionsAfterAnswerConfig: {
     enabled: false,
   },
-  setSuggestedQuestionsAfterAnswerConfig: () => { },
+  setSuggestedQuestionsAfterAnswerConfig: noop,
   speechToTextConfig: {
     enabled: false,
   },
-  setSpeechToTextConfig: () => { },
+  setSpeechToTextConfig: noop,
   textToSpeechConfig: {
     enabled: false,
     voice: '',
     language: '',
   },
-  setTextToSpeechConfig: () => { },
+  setTextToSpeechConfig: noop,
   citationConfig: {
     enabled: false,
   },
-  setCitationConfig: () => { },
+  setCitationConfig: noop,
   moderationConfig: {
     enabled: false,
   },
@@ -182,16 +183,16 @@ const DebugConfigurationContext = createContext<IDebugConfiguration>({
       embedding_provider_name: '',
     },
   },
-  setAnnotationConfig: () => { },
-  setModerationConfig: () => { },
+  setAnnotationConfig: noop,
+  setModerationConfig: noop,
   externalDataToolsConfig: [],
-  setExternalDataToolsConfig: () => { },
+  setExternalDataToolsConfig: noop,
   formattingChanged: false,
-  setFormattingChanged: () => { },
+  setFormattingChanged: noop,
   inputs: {},
-  setInputs: () => { },
+  setInputs: noop,
   query: '',
-  setQuery: () => { },
+  setQuery: noop,
   completionParams: {
     max_tokens: 16,
     temperature: 1, // 0-2
@@ -199,7 +200,7 @@ const DebugConfigurationContext = createContext<IDebugConfiguration>({
     presence_penalty: 1, // -2-2
     frequency_penalty: 1, // -2-2
   },
-  setCompletionParams: () => { },
+  setCompletionParams: noop,
   modelConfig: {
     provider: 'OPENAI', // 'OPENAI'
     model_id: 'gpt-3.5-turbo', // 'gpt-3.5-turbo'
@@ -221,10 +222,10 @@ const DebugConfigurationContext = createContext<IDebugConfiguration>({
     dataSets: [],
     agentConfig: DEFAULT_AGENT_SETTING,
   },
-  setModelConfig: () => { },
+  setModelConfig: noop,
   dataSets: [],
-  showSelectDataSet: () => { },
-  setDataSets: () => { },
+  showSelectDataSet: noop,
+  setDataSets: noop,
   datasetConfigs: {
     retrieval_model: RETRIEVE_TYPE.multiWay,
     reranking_model: {
@@ -241,7 +242,7 @@ const DebugConfigurationContext = createContext<IDebugConfiguration>({
   datasetConfigsRef: {
     current: null,
   },
-  setDatasetConfigs: () => { },
+  setDatasetConfigs: noop,
   hasSetContextVar: false,
   isShowVisionConfig: false,
   visionConfig: {
@@ -250,11 +251,11 @@ const DebugConfigurationContext = createContext<IDebugConfiguration>({
     detail: Resolution.low,
     transfer_methods: [TransferMethod.remote_url],
   },
-  setVisionConfig: () => { },
+  setVisionConfig: noop,
   isAllowVideoUpload: false,
   isShowDocumentConfig: false,
   rerankSettingModalOpen: false,
-  setRerankSettingModalOpen: () => { },
+  setRerankSettingModalOpen: noop,
 })
 
 export const useDebugConfigurationContext = () => useContext(DebugConfigurationContext)

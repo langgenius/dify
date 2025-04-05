@@ -8,6 +8,7 @@ import type { DataSourceNotion as TDataSourceNotion } from '@/models/common'
 import { useAppContext } from '@/context/app-context'
 import { fetchNotionConnection } from '@/service/common'
 import NotionIcon from '@/app/components/base/notion-icon'
+import { noop } from 'lodash-es'
 
 const Icon: FC<{
   src: string
@@ -74,7 +75,7 @@ const DataSourceNotion: FC<Props> = ({
           total: workspace.source_info.total || 0,
         },
       }))}
-      onRemove={() => { }} // handled in operation/index.tsx
+      onRemove={noop} // handled in operation/index.tsx
       notionActions={{
         onChangeAuthorizedPage: handleAuthAgain,
       }}

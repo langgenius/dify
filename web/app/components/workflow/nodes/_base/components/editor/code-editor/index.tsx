@@ -8,8 +8,8 @@ import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
 import {
   getFilesInLogs,
 } from '@/app/components/base/file-uploader/utils'
-
 import './style.css'
+import { noop } from 'lodash-es'
 
 // load file from local instead of cdn https://github.com/suren-atoyan/monaco-react/issues/482
 loader.config({ paths: { vs: '/vs' } })
@@ -55,7 +55,7 @@ const DEFAULT_THEME = {
 const CodeEditor: FC<Props> = ({
   value = '',
   placeholder = '',
-  onChange = () => { },
+  onChange = noop,
   title = '',
   headerRight,
   language,

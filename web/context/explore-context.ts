@@ -1,5 +1,6 @@
 import { createContext } from 'use-context-selector'
 import type { InstalledApp } from '@/models/explore'
+import { noop } from 'lodash-es'
 
 type IExplore = {
   controlUpdateInstalledApps: number
@@ -11,10 +12,10 @@ type IExplore = {
 
 const ExploreContext = createContext<IExplore>({
   controlUpdateInstalledApps: 0,
-  setControlUpdateInstalledApps: () => { },
+  setControlUpdateInstalledApps: noop,
   hasEditPermission: false,
   installedApps: [],
-  setInstalledApps: () => { },
+  setInstalledApps: noop,
 })
 
 export default ExploreContext

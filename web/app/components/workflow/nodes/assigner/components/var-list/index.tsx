@@ -15,6 +15,7 @@ import ActionButton from '@/app/components/base/action-button'
 import Input from '@/app/components/base/input'
 import Textarea from '@/app/components/base/textarea'
 import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
+import { noop } from 'lodash-es'
 
 type Props = {
   readonly: boolean
@@ -36,7 +37,7 @@ const VarList: FC<Props> = ({
   nodeId,
   list,
   onChange,
-  onOpen = () => { },
+  onOpen = noop,
   filterVar,
   filterToAssignedVar,
   getAssignedVarType,

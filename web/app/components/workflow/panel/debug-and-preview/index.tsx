@@ -23,13 +23,14 @@ import { BubbleX } from '@/app/components/base/icons/src/vender/line/others'
 import Tooltip from '@/app/components/base/tooltip'
 import ActionButton, { ActionButtonState } from '@/app/components/base/action-button'
 import { useStore } from '@/app/components/workflow/store'
+import { noop } from 'lodash-es'
 
 export type ChatWrapperRefType = {
   handleRestart: () => void
 }
 const DebugAndPreview = () => {
   const { t } = useTranslation()
-  const chatRef = useRef({ handleRestart: () => { } })
+  const chatRef = useRef({ handleRestart: noop })
   const { handleCancelDebugAndPreviewPanel } = useWorkflowInteractions()
   const { handleNodeCancelRunningStatus } = useNodesInteractions()
   const { handleEdgeCancelRunningStatus } = useEdgesInteractions()

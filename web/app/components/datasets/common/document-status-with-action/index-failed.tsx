@@ -6,6 +6,7 @@ import useSWR from 'swr'
 import StatusWithAction from './status-with-action'
 import { getErrorDocs, retryErrorDocs } from '@/service/datasets'
 import type { IndexingStatusResponse } from '@/models/datasets'
+import { noop } from 'lodash-es'
 
 type Props = {
   datasetId: string
@@ -62,7 +63,7 @@ const RetryButton: FC<Props> = ({ datasetId }) => {
       description={`${errorDocs?.total} ${t('dataset.docsFailedNotice')}`}
       actionText={t('dataset.retry')}
       disabled={indexState.value === 'retry'}
-      onAction={indexState.value === 'error' ? onRetryErrorDocs : () => { }}
+      onAction={indexState.value === 'error' ? onRetryErrorDocs : noop}
     />
   )
 }

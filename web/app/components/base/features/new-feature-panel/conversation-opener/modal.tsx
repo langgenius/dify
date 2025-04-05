@@ -14,6 +14,7 @@ import type { PromptVariable } from '@/models/debug'
 import type { InputVar } from '@/app/components/workflow/types'
 import { getNewVar } from '@/utils/var'
 import cn from '@/utils/classnames'
+import { noop } from 'lodash-es'
 
 type OpeningSettingModalProps = {
   data: OpeningStatement
@@ -171,7 +172,7 @@ const OpeningSettingModal = ({
   return (
     <Modal
       isShow
-      onClose={() => { }}
+      onClose={noop}
       className='!mt-14 !w-[640px] !max-w-none !bg-components-panel-bg-blur !p-6'
     >
       <div className='mb-6 flex items-center justify-between'>

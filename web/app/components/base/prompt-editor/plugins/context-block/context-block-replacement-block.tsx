@@ -14,12 +14,13 @@ import {
   ContextBlockNode,
 } from '../context-block/node'
 import { CustomTextNode } from '../custom-text/node'
+import { noop } from 'lodash-es'
 
 const REGEX = new RegExp(CONTEXT_PLACEHOLDER_TEXT)
 
 const ContextBlockReplacementBlock = ({
   datasets = [],
-  onAddContext = () => {},
+  onAddContext = noop,
   onInsert,
   canNotAddContext,
 }: ContextBlockType) => {

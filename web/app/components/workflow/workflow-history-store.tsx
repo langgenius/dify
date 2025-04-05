@@ -4,8 +4,9 @@ import { type TemporalState, temporal } from 'zundo'
 import isDeepEqual from 'fast-deep-equal'
 import type { Edge, Node } from './types'
 import type { WorkflowHistoryEvent } from './hooks'
+import { noop } from 'lodash-es'
 
-export const WorkflowHistoryStoreContext = createContext<WorkflowHistoryStoreContextType>({ store: null, shortcutsEnabled: true, setShortcutsEnabled: () => {} })
+export const WorkflowHistoryStoreContext = createContext<WorkflowHistoryStoreContextType>({ store: null, shortcutsEnabled: true, setShortcutsEnabled: noop })
 export const Provider = WorkflowHistoryStoreContext.Provider
 
 export function WorkflowHistoryProvider({

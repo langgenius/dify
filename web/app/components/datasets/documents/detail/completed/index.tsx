@@ -46,6 +46,7 @@ import {
   useUpdateSegment,
 } from '@/service/knowledge/use-segment'
 import { useInvalid } from '@/service/use-base'
+import { noop } from 'lodash-es'
 
 const DEFAULT_LIMIT = 10
 
@@ -71,7 +72,7 @@ type SegmentListContextValue = {
 const SegmentListContext = createContext<SegmentListContextValue>({
   isCollapsed: true,
   fullScreen: false,
-  toggleFullScreen: () => {},
+  toggleFullScreen: noop,
   currSegment: { showModal: false },
   currChildChunk: { showModal: false },
 })

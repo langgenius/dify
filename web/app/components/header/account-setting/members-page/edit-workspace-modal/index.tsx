@@ -11,6 +11,8 @@ import { RiCloseLine } from '@remixicon/react'
 import { useAppContext } from '@/context/app-context'
 import { updateWorkspaceInfo } from '@/service/common'
 import { ToastContext } from '@/app/components/base/toast'
+import { noop } from 'lodash-es'
+
 type IEditWorkspaceModalProps = {
   onCancel: () => void
 }
@@ -40,7 +42,7 @@ const EditWorkspaceModal = ({
 
   return (
     <div className={cn(s.wrap)}>
-      <Modal overflowVisible isShow onClose={() => {}} className={cn(s.modal)}>
+      <Modal overflowVisible isShow onClose={noop} className={cn(s.modal)}>
         <div className='mb-2 flex justify-between'>
           <div className='text-xl font-semibold text-text-primary'>{t('common.account.editWorkspaceInfo')}</div>
           <RiCloseLine className='h-4 w-4 cursor-pointer text-text-tertiary' onClick={onCancel} />

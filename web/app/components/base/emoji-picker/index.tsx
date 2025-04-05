@@ -7,6 +7,7 @@ import cn from '@/utils/classnames'
 import Divider from '@/app/components/base/divider'
 import Button from '@/app/components/base/button'
 import Modal from '@/app/components/base/modal'
+import { noop } from 'lodash-es'
 
 type IEmojiPickerProps = {
   isModal?: boolean
@@ -32,7 +33,7 @@ const EmojiPicker: FC<IEmojiPickerProps> = ({
 
   return isModal
     ? <Modal
-      onClose={() => { }}
+      onClose={noop}
       isShow
       closable={false}
       wrapperClassName={className}

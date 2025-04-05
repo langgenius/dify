@@ -6,6 +6,7 @@ import s from './index.module.css'
 import type { NotionPage } from '@/models/common'
 import cn from '@/utils/classnames'
 import Modal from '@/app/components/base/modal'
+import { noop } from 'lodash-es'
 
 type NotionPageSelectorModalProps = {
   isShow: boolean
@@ -36,7 +37,7 @@ const NotionPageSelectorModal = ({
     <Modal
       className={s.modal}
       isShow={isShow}
-      onClose={() => { }}
+      onClose={noop}
     >
       <div className='mb-6 flex h-8 items-center justify-between'>
         <div className='text-xl font-semibold text-gray-900'>{t('common.dataSource.notion.selector.addPages')}</div>

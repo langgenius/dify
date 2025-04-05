@@ -14,6 +14,7 @@ import { useSelector as useAppContextSelector } from '@/context/app-context'
 import type { FilterState } from './filter-management'
 import { useTranslation } from 'react-i18next'
 import { useTabSearchParams } from '@/hooks/use-tab-searchparams'
+import { noop } from 'lodash-es'
 
 export type PluginPageContextValue = {
   containerRef: React.RefObject<HTMLDivElement>
@@ -29,15 +30,15 @@ export type PluginPageContextValue = {
 export const PluginPageContext = createContext<PluginPageContextValue>({
   containerRef: { current: null },
   currentPluginID: undefined,
-  setCurrentPluginID: () => { },
+  setCurrentPluginID: noop,
   filters: {
     categories: [],
     tags: [],
     searchQuery: '',
   },
-  setFilters: () => { },
+  setFilters: noop,
   activeTab: '',
-  setActiveTab: () => { },
+  setActiveTab: noop,
   options: [],
 })
 

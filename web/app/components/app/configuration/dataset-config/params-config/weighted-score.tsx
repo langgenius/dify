@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import './weighted-score.css'
 import Slider from '@/app/components/base/slider'
 import cn from '@/utils/classnames'
+import { noop } from 'lodash-es'
 
 const formatNumber = (value: number) => {
   if (value > 0 && value < 1)
@@ -23,7 +24,7 @@ type WeightedScoreProps = {
 }
 const WeightedScore = ({
   value,
-  onChange = () => {},
+  onChange = noop,
 }: WeightedScoreProps) => {
   const { t } = useTranslation()
 

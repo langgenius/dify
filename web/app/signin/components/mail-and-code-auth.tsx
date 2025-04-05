@@ -9,6 +9,7 @@ import Toast from '@/app/components/base/toast'
 import { sendEMailLoginCode } from '@/service/common'
 import { COUNT_DOWN_KEY, COUNT_DOWN_TIME_MS } from '@/app/components/signin/countdown'
 import I18NContext from '@/context/i18n'
+import { noop } from 'lodash-es'
 
 type MailAndCodeAuthProps = {
   isInvite: boolean
@@ -55,7 +56,7 @@ export default function MailAndCodeAuth({ isInvite }: MailAndCodeAuthProps) {
     }
   }
 
-  return (<form onSubmit={() => { }}>
+  return (<form onSubmit={noop}>
     <input type='text' className='hidden' />
     <div className='mb-2'>
       <label htmlFor="email" className='system-md-semibold my-2 text-text-secondary'>{t('login.email')}</label>
