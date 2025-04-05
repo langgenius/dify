@@ -52,6 +52,7 @@ from core.rag.retrieval.template_prompts import (
     METADATA_FILTER_USER_PROMPT_2,
     METADATA_FILTER_USER_PROMPT_3,
 )
+from core.tools.entities.common_entities import I18nObject
 from core.tools.utils.dataset_retriever.dataset_retriever_base_tool import DatasetRetrieverBaseTool
 from extensions.ext_database import db
 from libs.json_in_md_parser import parse_and_check_json_markdown
@@ -100,6 +101,7 @@ class DatasetRetrieval:
         :param hit_callback: hit callback
         :param message_id: message id
         :param memory: memory
+        :param inputs: inputs
         :return:
         """
         dataset_ids = config.dataset_ids
@@ -293,7 +295,10 @@ class DatasetRetrieval:
         for dataset in available_datasets:
             description = dataset.description
             if not description:
-                description = "useful for when you want to answer queries about the " + dataset.name
+                description = I18nObject(
+                    en_US="useful for when you want to answer queries about the " + dataset.name,
+                    zh_Hans="用于回答关于 " + dataset.name + " 的查询",
+                )
 
             description = description.replace("\n", "").replace("\r", "")
             message_tool = PromptMessageTool(
@@ -610,7 +615,11 @@ class DatasetRetrieval:
                 if dataset.indexing_technique == "economy":
                     # use keyword table query
                     documents = RetrievalService.retrieve(
-                        retrieval_method="keyword_search", dataset_id=dataset.id, query=query, top_k=top_k
+                        retrieval_method="keyword_search",
+                        dataset_id=dataset.id,
+                        query=query,
+                        top_k=top_k,
+                        document_ids_filter=document_ids_filter,
                     )
                     if documents:
                         all_documents.extend(documents)
@@ -730,6 +739,7 @@ class DatasetRetrieval:
         Calculate keywords scores
         :param query: search query
         :param documents: documents for reranking
+        :param top_k: top k
 
         :return:
         """
@@ -846,8 +856,9 @@ class DatasetRetrieval:
             )
             if automatic_metadata_filters:
                 conditions = []
-                for filter in automatic_metadata_filters:
+                for sequence, filter in enumerate(automatic_metadata_filters):
                     self._process_metadata_filter_func(
+                        sequence,
                         filter.get("condition"),  # type: ignore
                         filter.get("metadata_name"),  # type: ignore
                         filter.get("value"),
@@ -867,14 +878,18 @@ class DatasetRetrieval:
         elif metadata_filtering_mode == "manual":
             if metadata_filtering_conditions:
                 metadata_condition = MetadataCondition(**metadata_filtering_conditions.model_dump())
-                for condition in metadata_filtering_conditions.conditions:  # type: ignore
+                for sequence, condition in enumerate(metadata_filtering_conditions.conditions):  # type: ignore
                     metadata_name = condition.name
                     expected_value = condition.value
                     if expected_value is not None or condition.comparison_operator in ("empty", "not empty"):
                         if isinstance(expected_value, str):
                             expected_value = self._replace_metadata_filter_value(expected_value, inputs)
                         filters = self._process_metadata_filter_func(
-                            condition.comparison_operator, metadata_name, expected_value, filters
+                            sequence,
+                            condition.comparison_operator,
+                            metadata_name,
+                            expected_value,
+                            filters,
                         )
         else:
             raise ValueError("Invalid metadata filtering mode")
@@ -896,7 +911,10 @@ class DatasetRetrieval:
             return str(inputs.get(key, f"{{{{{key}}}}}"))
 
         pattern = re.compile(r"\{\{(\w+)\}\}")
-        return pattern.sub(replacer, text)
+        output = pattern.sub(replacer, text)
+        if isinstance(output, str):
+            output = re.sub(r"[\r\n\t]+", " ", output).strip()
+        return output
 
     def _automatic_metadata_filter_func(
         self, dataset_ids: list, query: str, tenant_id: str, user_id: str, metadata_model_config: ModelConfig
@@ -953,26 +971,36 @@ class DatasetRetrieval:
             return None
         return automatic_metadata_filters
 
-    def _process_metadata_filter_func(self, condition: str, metadata_name: str, value: Optional[Any], filters: list):
+    def _process_metadata_filter_func(
+        self, sequence: int, condition: str, metadata_name: str, value: Optional[Any], filters: list
+    ):
+        key = f"{metadata_name}_{sequence}"
+        key_value = f"{metadata_name}_{sequence}_value"
         match condition:
             case "contains":
                 filters.append(
-                    (text("documents.doc_metadata ->> :key LIKE :value")).params(key=metadata_name, value=f"%{value}%")
+                    (text(f"documents.doc_metadata ->> :{key} LIKE :{key_value}")).params(
+                        **{key: metadata_name, key_value: f"%{value}%"}
+                    )
                 )
             case "not contains":
                 filters.append(
-                    (text("documents.doc_metadata ->> :key NOT LIKE :value")).params(
-                        key=metadata_name, value=f"%{value}%"
+                    (text(f"documents.doc_metadata ->> :{key} NOT LIKE :{key_value}")).params(
+                        **{key: metadata_name, key_value: f"%{value}%"}
                     )
                 )
             case "start with":
                 filters.append(
-                    (text("documents.doc_metadata ->> :key LIKE :value")).params(key=metadata_name, value=f"{value}%")
+                    (text(f"documents.doc_metadata ->> :{key} LIKE :{key_value}")).params(
+                        **{key: metadata_name, key_value: f"{value}%"}
+                    )
                 )
 
             case "end with":
                 filters.append(
-                    (text("documents.doc_metadata ->> :key LIKE :value")).params(key=metadata_name, value=f"%{value}")
+                    (text(f"documents.doc_metadata ->> :{key} LIKE :{key_value}")).params(
+                        **{key: metadata_name, key_value: f"%{value}"}
+                    )
                 )
             case "is" | "=":
                 if isinstance(value, str):
@@ -996,7 +1024,7 @@ class DatasetRetrieval:
                 filters.append(sqlalchemy_cast(DatasetDocument.doc_metadata[metadata_name].astext, Integer) < value)
             case "after" | ">":
                 filters.append(sqlalchemy_cast(DatasetDocument.doc_metadata[metadata_name].astext, Integer) > value)
-            case "≤" | ">=":
+            case "≤" | "<=":
                 filters.append(sqlalchemy_cast(DatasetDocument.doc_metadata[metadata_name].astext, Integer) <= value)
             case "≥" | ">=":
                 filters.append(sqlalchemy_cast(DatasetDocument.doc_metadata[metadata_name].astext, Integer) >= value)
@@ -1009,8 +1037,6 @@ class DatasetRetrieval:
     ) -> tuple[ModelInstance, ModelConfigWithCredentialsEntity]:
         """
         Fetch model config
-        :param node_data: node data
-        :return:
         """
         if model is None:
             raise ValueError("single_retrieval_config is required")

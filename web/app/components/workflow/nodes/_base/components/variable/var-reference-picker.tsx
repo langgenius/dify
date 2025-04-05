@@ -101,7 +101,7 @@ const VarReferencePicker: FC<Props> = ({
   const isChatMode = useIsChatMode()
 
   const { getCurrentVariableType } = useWorkflowVariables()
-  const { availableNodes, availableVars } = useAvailableVarList(nodeId, {
+  const { availableVars, availableNodesWithParent: availableNodes } = useAvailableVarList(nodeId, {
     onlyLeafNodeVar,
     passedInAvailableNodes,
     filterVar,

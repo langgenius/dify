@@ -171,10 +171,11 @@ const Answer: FC<AnswerProps> = ({
               )
             }
             {
-              hasAgentThoughts && (
+              (hasAgentThoughts) && (
                 <AgentContent
                   item={item}
                   responding={responding}
+                  content={content}
                 />
               )
             }

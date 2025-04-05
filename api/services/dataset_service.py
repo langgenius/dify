@@ -21,6 +21,7 @@ from core.plugin.entities.plugin import ModelProviderID
 from core.rag.index_processor.constant.built_in_field import BuiltInField
 from core.rag.index_processor.constant.index_type import IndexType
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
+from core.tools.entities.common_entities import I18nObject
 from events.dataset_event import dataset_was_deleted
 from events.document_event import document_was_deleted
 from extensions.ext_database import db
@@ -880,6 +881,9 @@ class DocumentService:
                         website_info = knowledge_config.data_source.info_list.website_info_list
                         count = len(website_info.urls)  # type: ignore
                     batch_upload_limit = int(dify_config.BATCH_UPLOAD_LIMIT)
+
+                    if features.billing.subscription.plan == "sandbox" and count > 1:
+                        raise ValueError("Your current plan does not support batch upload, please upgrade your plan.")
                     if count > batch_upload_limit:
                         raise ValueError(f"You have reached the batch upload limit of {batch_upload_limit}.")
 
@@ -1328,6 +1332,8 @@ class DocumentService:
                 website_info = knowledge_config.data_source.info_list.website_info_list  # type: ignore
                 if website_info:
                     count = len(website_info.urls)
+            if features.billing.subscription.plan == "sandbox" and count > 1:
+                raise ValueError("Your current plan does not support batch upload, please upgrade your plan.")
             batch_upload_limit = int(dify_config.BATCH_UPLOAD_LIMIT)
             if count > batch_upload_limit:
                 raise ValueError(f"You have reached the batch upload limit of {batch_upload_limit}.")
@@ -1373,7 +1379,10 @@ class DocumentService:
         cut_length = 18
         cut_name = documents[0].name[:cut_length]
         dataset.name = cut_name + "..."
-        dataset.description = "useful for when you want to answer queries about the " + documents[0].name
+        dataset.description = I18nObject(
+            en_US="useful for when you want to answer queries about the " + documents[0].name,
+            zh_Hans="用于回答关于 " + documents[0].name + " 的查询",
+        )
         db.session.commit()
 
         return dataset, documents, batch
@@ -1663,6 +1672,7 @@ class SegmentService:
                     content=content,
                     word_count=len(content),
                     tokens=tokens,
+                    keywords=segment_item.get("keywords", []),
                     status="completed",
                     indexing_at=datetime.datetime.now(datetime.UTC).replace(tzinfo=None),
                     completed_at=datetime.datetime.now(datetime.UTC).replace(tzinfo=None),
@@ -2139,6 +2149,88 @@ class SegmentService:
         if keyword:
             query = query.where(ChildChunk.content.ilike(f"%{keyword}%"))
         return query.paginate(page=page, per_page=limit, max_per_page=100, error_out=False)
+
+    @classmethod
+    def get_child_chunk_by_id(cls, child_chunk_id: str, tenant_id: str) -> Optional[ChildChunk]:
+        """Get a child chunk by its ID."""
+        result = ChildChunk.query.filter(ChildChunk.id == child_chunk_id, ChildChunk.tenant_id == tenant_id).first()
+        return result if isinstance(result, ChildChunk) else None
+
+    @classmethod
+    def get_segments(
+        cls, document_id: str, tenant_id: str, status_list: list[str] | None = None, keyword: str | None = None
+    ):
+        """Get segments for a document with optional filtering."""
+        query = DocumentSegment.query.filter(
+            DocumentSegment.document_id == document_id, DocumentSegment.tenant_id == tenant_id
+        )
+
+        if status_list:
+            query = query.filter(DocumentSegment.status.in_(status_list))
+
+        if keyword:
+            query = query.filter(DocumentSegment.content.ilike(f"%{keyword}%"))
+
+        segments = query.order_by(DocumentSegment.position.asc()).all()
+        total = len(segments)
+
+        return segments, total
+
+    @classmethod
+    def update_segment_by_id(
+        cls, tenant_id: str, dataset_id: str, document_id: str, segment_id: str, segment_data: dict, user_id: str
+    ) -> tuple[DocumentSegment, Document]:
+        """Update a segment by its ID with validation and checks."""
+        # check dataset
+        dataset = db.session.query(Dataset).filter(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id).first()
+        if not dataset:
+            raise NotFound("Dataset not found.")
+
+        # check user's model setting
+        DatasetService.check_dataset_model_setting(dataset)
+
+        # check document
+        document = DocumentService.get_document(dataset_id, document_id)
+        if not document:
+            raise NotFound("Document not found.")
+
+        # check embedding model setting if high quality
+        if dataset.indexing_technique == "high_quality":
+            try:
+                model_manager = ModelManager()
+                model_manager.get_model_instance(
+                    tenant_id=user_id,
+                    provider=dataset.embedding_model_provider,
+                    model_type=ModelType.TEXT_EMBEDDING,
+                    model=dataset.embedding_model,
+                )
+            except LLMBadRequestError:
+                raise ValueError(
+                    "No Embedding Model available. Please configure a valid provider in the Settings -> Model Provider."
+                )
+            except ProviderTokenNotInitError as ex:
+                raise ValueError(ex.description)
+
+        # check segment
+        segment = DocumentSegment.query.filter(
+            DocumentSegment.id == segment_id, DocumentSegment.tenant_id == user_id
+        ).first()
+        if not segment:
+            raise NotFound("Segment not found.")
+
+        # validate and update segment
+        cls.segment_create_args_validate(segment_data, document)
+        updated_segment = cls.update_segment(SegmentUpdateArgs(**segment_data), segment, document, dataset)
+
+        return updated_segment, document
+
+    @classmethod
+    def get_segment_by_id(cls, segment_id: str, tenant_id: str) -> Optional[DocumentSegment]:
+        """Get a segment by its ID."""
+        result = DocumentSegment.query.filter(
+            DocumentSegment.id == segment_id, DocumentSegment.tenant_id == tenant_id
+        ).first()
+        return result if isinstance(result, DocumentSegment) else None
 
 
 class DatasetCollectionBindingService:

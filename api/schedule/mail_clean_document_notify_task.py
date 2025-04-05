@@ -15,11 +15,11 @@ from services.feature_service import FeatureService
 
 
 @app.celery.task(queue="dataset")
-def send_document_clean_notify_task():
+def mail_clean_document_notify_task():
     """
     Async Send document clean notify mail
 
-    Usage: send_document_clean_notify_task.delay()
+    Usage: mail_clean_document_notify_task.delay()
     """
     if not mail.is_inited():
         return

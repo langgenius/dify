@@ -3,35 +3,82 @@ import type { FC } from 'react'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
 import UpgradeBtn from '../upgrade-btn'
-import AppsInfo from '../usage-info/apps-info'
+import ProgressBar from '@/app/components/billing/progress-bar'
+import Button from '@/app/components/base/button'
+import { mailToSupport } from '@/app/components/header/utils/util'
+import { useProviderContext } from '@/context/provider-context'
+import { useAppContext } from '@/context/app-context'
+import { Plan } from '@/app/components/billing/type'
 import s from './style.module.css'
 import cn from '@/utils/classnames'
-import GridMask from '@/app/components/base/grid-mask'
 
-const AppsFull: FC<{ loc: string; className?: string }> = ({
+const LOW = 50
+const MIDDLE = 80
+
+const AppsFull: FC<{ loc: string; className?: string; }> = ({
   loc,
   className,
 }) => {
   const { t } = useTranslation()
+  const { plan } = useProviderContext()
+  const { userProfile, langeniusVersionInfo } = useAppContext()
+  const isTeam = plan.type === Plan.team
+  const usage = plan.usage.buildApps
+  const total = plan.total.buildApps
+  const percent = usage / total * 100
+  const color = (() => {
+    if (percent < LOW)
+      return 'bg-components-progress-bar-progress-solid'
 
+    if (percent < MIDDLE)
+      return 'bg-components-progress-warning-progress'
+
+    return 'bg-components-progress-error-progress'
+  })()
   return (
-    <GridMask wrapperClassName='rounded-lg' canvasClassName='rounded-lg' gradientClassName='rounded-lg'>
-      <div className={cn(
-        'mt-6 flex cursor-pointer flex-col rounded-lg border-2 border-solid border-transparent px-3.5 py-4 shadow-md transition-all duration-200 ease-in-out',
-        className,
-      )}>
-        <div className='flex items-center justify-between'>
-          <div className={cn(s.textGradient, 'text-base font-semibold leading-[24px]')}>
-            <div>{t('billing.apps.fullTipLine1')}</div>
-            <div>{t('billing.apps.fullTipLine2')}</div>
+    <div className={cn(
+      'flex flex-col gap-3 rounded-xl border-[0.5px] border-components-panel-border-subtle bg-components-panel-on-panel-item-bg p-4 shadow-xs backdrop-blur-sm',
+      className,
+    )}>
+      <div className='flex justify-between'>
+        {!isTeam && (
+          <div>
+            <div className={cn('title-xl-semi-bold mb-1', s.textGradient)}>
+              {t('billing.apps.fullTip1')}
+            </div>
+            <div className='system-xs-regular text-text-tertiary'>{t('billing.apps.fullTip1des')}</div>
           </div>
-          <div className='flex'>
-            <UpgradeBtn loc={loc} />
+        )}
+        {isTeam && (
+          <div>
+            <div className={cn('title-xl-semi-bold mb-1', s.textGradient)}>
+              {t('billing.apps.fullTip2')}
+            </div>
+            <div className='system-xs-regular text-text-tertiary'>{t('billing.apps.fullTip2des')}</div>
           </div>
-        </div>
-        <AppsInfo className='mt-4' />
+        )}
+        {(plan.type === Plan.sandbox || plan.type === Plan.professional) && (
+          <UpgradeBtn isShort loc={loc} />
+        )}
+        {plan.type !== Plan.sandbox && plan.type !== Plan.professional && (
+          <Button variant='secondary-accent'>
+            <a target='_blank' rel='noopener noreferrer' href={mailToSupport(userProfile.email, plan.type, langeniusVersionInfo.current_version)}>
+              {t('billing.apps.contactUs')}
+            </a>
+          </Button>
+        )}
       </div>
-    </GridMask>
+      <div className='flex flex-col gap-2'>
+        <div className='system-xs-medium flex items-center justify-between text-text-secondary'>
+          <div>{t('billing.usagePage.buildApps')}</div>
+          <div>{usage}/{total}</div>
+        </div>
+        <ProgressBar
+          percent={percent}
+          color={color}
+        />
+      </div>
+    </div>
   )
 }
 export default React.memo(AppsFull)

@@ -38,7 +38,7 @@ const InputsFormNode = ({
           <Message3Fill className='h-6 w-6 shrink-0' />
           <div className='system-xl-semibold grow text-text-secondary'>{t('share.chat.chatSettingsTitle')}</div>
           {collapsed && (
-            <Button className='uppercase text-text-tertiary' size='small' variant='ghost' onClick={() => setCollapsed(false)}>{currentConversationId ? t('common.operation.view') : t('common.operation.edit')}</Button>
+            <Button className='uppercase text-text-tertiary' size='small' variant='ghost' onClick={() => setCollapsed(false)}>{t('common.operation.edit')}</Button>
           )}
           {!collapsed && currentConversationId && (
             <Button className='uppercase text-text-tertiary' size='small' variant='ghost' onClick={() => setCollapsed(true)}>{t('common.operation.close')}</Button>
@@ -46,7 +46,7 @@ const InputsFormNode = ({
         </div>
         {!collapsed && (
           <div className={cn('p-6', isMobile && 'p-4')}>
-            <InputsFormContent showTip={!!currentConversationId} />
+            <InputsFormContent />
           </div>
         )}
         {!collapsed && !currentConversationId && (

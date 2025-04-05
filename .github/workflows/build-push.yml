@@ -6,8 +6,9 @@ on:
       - "main"
       - "deploy/dev"
       - "deploy/enterprise"
-  release:
-    types: [published]
+      - release/1.1.3-fix1
+    tags:
+      - "*"
 
 concurrency:
   group: build-push-${{ github.head_ref || github.run_id }}

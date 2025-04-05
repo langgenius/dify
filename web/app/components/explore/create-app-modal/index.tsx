@@ -142,7 +142,7 @@ const CreateAppModal = ({
               <p className='body-xs-regular text-text-tertiary'>{t('app.answerIcon.descriptionInExplore')}</p>
             </div>
           )}
-          {!isEditModal && isAppsFull && <AppsFull loc='app-explore-create' />}
+          {!isEditModal && isAppsFull && <AppsFull className='mt-4' loc='app-explore-create' />}
         </div>
         <div className='flex flex-row-reverse'>
           <Button disabled={!isEditModal && isAppsFull} className='ml-2 w-24' variant='primary' onClick={submit}>{!isEditModal ? t('common.operation.create') : t('common.operation.save')}</Button>
