@@ -295,10 +295,7 @@ class DatasetRetrieval:
         for dataset in available_datasets:
             description = dataset.description
             if not description:
-                description = I18nObject(
-                    en_US="useful for when you want to answer queries about the " + dataset.name,
-                    zh_Hans="用于回答关于 " + dataset.name + " 的查询",
-                )
+                description = "useful for when you want to answer queries about the " + dataset.name
 
             description = description.replace("\n", "").replace("\r", "")
             message_tool = PromptMessageTool(

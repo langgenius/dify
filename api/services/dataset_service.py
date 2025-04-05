@@ -1379,10 +1379,7 @@ class DocumentService:
         cut_length = 18
         cut_name = documents[0].name[:cut_length]
         dataset.name = cut_name + "..."
-        dataset.description = I18nObject(
-            en_US="useful for when you want to answer queries about the " + documents[0].name,
-            zh_Hans="用于回答关于 " + documents[0].name + " 的查询",
-        )
+        dataset.description = "useful for when you want to answer queries about the " + documents[0].name
         db.session.commit()
 
         return dataset, documents, batch
