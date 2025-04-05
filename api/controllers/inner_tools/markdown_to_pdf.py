@@ -10,13 +10,8 @@ from core.tools.tool_file_manager import ToolFileManager
 from flask import Response, jsonify, request
 from flask_restful import Resource  # type: ignore
 from models.account import Tenant
-from reportlab.lib.enums import TA_LEFT
 from reportlab.lib.pagesizes import letter
-from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
-from reportlab.pdfbase import pdfmetrics
-from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.pdfgen import canvas
-from reportlab.platypus import Paragraph, SimpleDocTemplate
 
 
 class MarkdownToPDFApi(Resource):
@@ -63,68 +58,52 @@ class MarkdownToPDFApi(Resource):
 
     def _generate_pdf_binary(self, markdown_text: str, title: str) -> Tuple[bytes, str]:
         """Generate PDF from markdown text and return the binary data and filename"""
+        # Convert markdown to HTML (for potential future enhancement)
+        html_content = markdown.markdown(markdown_text, extensions=['extra'])
 
+        # Create PDF using reportlab
         buffer = io.BytesIO()
-
-        # Create a PDF document with platypus for better CJK text handling
-        doc = SimpleDocTemplate(buffer, pagesize=letter, rightMargin=72, leftMargin=72, topMargin=72, bottomMargin=72)
-
-        # Register Noto Sans CJK font which should be available in the Docker container
-        # (as specified in the Dockerfile: apt-get install -y fonts-noto-cjk)
-        try:
-            pdfmetrics.registerFont(TTFont('NotoSansCJK', '/usr/share/fonts/truetype/noto/NotoSansCJK-Regular.ttc'))
-            cjk_font_name = 'NotoSansCJK'
-        except:
-            # Fallback to DejaVuSans which has decent Unicode support
-            try:
-                pdfmetrics.registerFont(TTFont('DejaVuSans', '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf'))
-                cjk_font_name = 'DejaVuSans'
-            except:
-                # If neither font is available, fall back to the default
-                cjk_font_name = 'Helvetica'
-
-        # Create styles for our document
-        styles = getSampleStyleSheet()
-
-        # Create a custom style for title with CJK font support
-        title_style = ParagraphStyle(
-            'Title', parent=styles['Title'], fontName=cjk_font_name, fontSize=16, alignment=TA_LEFT
-        )
-
-        # Create a custom style for headings with CJK font support
-        h1_style = ParagraphStyle('Heading1', parent=styles['Heading1'], fontName=cjk_font_name, fontSize=14)
-
-        h2_style = ParagraphStyle('Heading2', parent=styles['Heading2'], fontName=cjk_font_name, fontSize=13)
-
-        h3_style = ParagraphStyle('Heading3', parent=styles['Heading3'], fontName=cjk_font_name, fontSize=12)
-
-        # Create a custom style for normal text with CJK font support
-        normal_style = ParagraphStyle(
-            'Normal', parent=styles['Normal'], fontName=cjk_font_name, fontSize=12, leading=14  # Line spacing
-        )
-
-        # Create a list of flowables for our document
-        flowables = []
+        pdf = canvas.Canvas(buffer, pagesize=letter)
 
         # Add title
-        flowables.append(Paragraph(title, title_style))
-        flowables.append(Paragraph("<br/>", normal_style))  # Add some space
+        pdf.setFont("Helvetica-Bold", 16)
+        pdf.drawString(72, 760, title)
 
-        # Process each line of markdown and add appropriate paragraphs
+        # Add markdown content
+        pdf.setFont("Helvetica", 12)
+        y_position = 730
+
+        # Simple text rendering - each line as a separate line in the PDF
         for line in markdown_text.split('\n'):
             if line.startswith('# '):  # H1 heading
-                flowables.append(Paragraph(line[2:], h1_style))
+                pdf.setFont("Helvetica-Bold", 14)
+                pdf.drawString(72, y_position, line[2:])
+                y_position -= 20
+                pdf.setFont("Helvetica", 12)
             elif line.startswith('## '):  # H2 heading
-                flowables.append(Paragraph(line[3:], h2_style))
+                pdf.setFont("Helvetica-Bold", 13)
+                pdf.drawString(72, y_position, line[3:])
+                y_position -= 18
+                pdf.setFont("Helvetica", 12)
             elif line.startswith('### '):  # H3 heading
-                flowables.append(Paragraph(line[4:], h3_style))
+                pdf.setFont("Helvetica-Bold", 12)
+                pdf.drawString(72, y_position, line[4:])
+                y_position -= 16
+                pdf.setFont("Helvetica", 12)
             elif line.strip() == '':  # Empty line
-                flowables.append(Paragraph("<br/>", normal_style))
+                y_position -= 12
             else:  # Regular text
-                flowables.append(Paragraph(line, normal_style))
+                pdf.drawString(72, y_position, line)
+                y_position -= 14
 
-        # Build the PDF
-        doc.build(flowables)
+            # Check if we need a new page
+            if y_position < 72:
+                pdf.showPage()
+                y_position = 760
+                pdf.setFont("Helvetica", 12)
+
+        # Save the PDF
+        pdf.save()
         buffer.seek(0)
 
         # Generate a filename based on the title
