@@ -652,11 +652,6 @@ const translation = {
   pagination: {
     perPage: '每页显示',
   },
-  imageInput: {
-    dropImageHere: '将图片拖放到此处，或',
-    browse: '浏览',
-    supportedFormats: '支持PNG、JPG、JPEG、WEBP和GIF格式',
-  },
 }
 
 export default translation

@@ -1,7 +1,4 @@
 const translation = {
-  metadata: {
-    title: 'Plugins',
-  },
   category: {
     all: 'All',
     models: 'Models',

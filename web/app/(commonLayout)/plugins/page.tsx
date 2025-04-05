@@ -13,4 +13,8 @@ const PluginList = async () => {
   )
 }
 
+export const metadata = {
+  title: 'Plugins - Dify',
+}
+
 export default PluginList

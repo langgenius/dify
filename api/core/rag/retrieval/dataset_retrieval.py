@@ -52,7 +52,6 @@ from core.rag.retrieval.template_prompts import (
     METADATA_FILTER_USER_PROMPT_2,
     METADATA_FILTER_USER_PROMPT_3,
 )
-from core.tools.entities.common_entities import I18nObject
 from core.tools.utils.dataset_retriever.dataset_retriever_base_tool import DatasetRetrieverBaseTool
 from extensions.ext_database import db
 from libs.json_in_md_parser import parse_and_check_json_markdown
@@ -295,10 +294,7 @@ class DatasetRetrieval:
         for dataset in available_datasets:
             description = dataset.description
             if not description:
-                description = I18nObject(
-                    en_US="useful for when you want to answer queries about the " + dataset.name,
-                    zh_Hans="用于回答关于 " + dataset.name + " 的查询",
-                )
+                description = "useful for when you want to answer queries about the " + dataset.name
 
             description = description.replace("\n", "").replace("\r", "")
             message_tool = PromptMessageTool(
