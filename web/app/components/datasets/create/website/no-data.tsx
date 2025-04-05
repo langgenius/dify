@@ -31,6 +31,11 @@ const NoData: FC<Props> = ({
       title: t(`${I18N_PREFIX}.fireCrawlNotConfigured`),
       description: t(`${I18N_PREFIX}.fireCrawlNotConfiguredDescription`),
     },
+    [DataSourceProvider.waterCrawl]: {
+      emoji: <span className={s.watercrawlLogo} />,
+      title: t(`${I18N_PREFIX}.waterCrawlNotConfigured`),
+      description: t(`${I18N_PREFIX}.waterCrawlNotConfiguredDescription`),
+    },
   }
 
   const currentProvider = providerConfig[provider]

@@ -5,19 +5,15 @@ import { useTranslation } from 'react-i18next'
 import Panel from '../panel'
 import { DataSourceType } from '../panel/types'
 import ConfigFirecrawlModal from './config-firecrawl-modal'
+import ConfigWatercrawlModal from './config-watercrawl-modal'
 import ConfigJinaReaderModal from './config-jina-reader-modal'
 import cn from '@/utils/classnames'
 import s from '@/app/components/datasets/create/website/index.module.css'
 import { fetchDataSources, removeDataSourceApiKeyBinding } from '@/service/datasets'
 
-import type {
-  DataSourceItem,
-} from '@/models/common'
+import type { DataSourceItem } from '@/models/common'
+import { DataSourceProvider } from '@/models/common'
 import { useAppContext } from '@/context/app-context'
-
-import {
-  DataSourceProvider,
-} from '@/models/common'
 import Toast from '@/app/components/base/toast'
 
 type Props = {
@@ -58,6 +54,16 @@ const DataSourceWebsite: FC<Props> = ({ provider }) => {
     return source?.id
   }
 
+  const getProviderName = (provider: DataSourceProvider): string => {
+    if (provider === DataSourceProvider.fireCrawl)
+      return 'Firecrawl'
+
+    if (provider === DataSourceProvider.waterCrawl)
+      return 'WaterCrawl'
+
+    return 'Jina Reader'
+  }
+
   const handleRemove = useCallback((provider: DataSourceProvider) => {
     return async () => {
       const dataSourceId = getIdByProvider(provider)
@@ -82,27 +88,42 @@ const DataSourceWebsite: FC<Props> = ({ provider }) => {
         readOnly={!isCurrentWorkspaceManager}
         configuredList={sources.filter(item => item.provider === provider).map(item => ({
           id: item.id,
-          logo: ({ className }: { className: string }) => (
-            item.provider === DataSourceProvider.fireCrawl
-              ? (
-                <div className={cn(className, 'ml-3 flex h-5 w-5 items-center justify-center rounded border border-divider-subtle !bg-background-default text-xs font-medium text-text-tertiary')}>🔥</div>
+          logo: ({ className }: { className: string }) => {
+            if (item.provider === DataSourceProvider.fireCrawl) {
+              return (
+                <div
+                  className={cn(className, 'ml-3 flex h-5 w-5 items-center justify-center rounded border border-divider-subtle !bg-background-default text-xs font-medium text-text-tertiary')}>🔥</div>
               )
-              : (
-                <div className={cn(className, 'ml-3 flex h-5 w-5 items-center justify-center rounded border border-divider-subtle !bg-background-default text-xs font-medium text-text-tertiary')}>
-                  <span className={s.jinaLogo} />
+            }
+
+            if (item.provider === DataSourceProvider.waterCrawl) {
+              return (
+                <div
+                  className={cn(className, 'ml-3 flex h-5 w-5 items-center justify-center rounded border border-divider-subtle !bg-background-default text-xs font-medium text-text-tertiary')}>
+                  <span className={s.watercrawlLogo}/>
                 </div>
               )
-          ),
-          name: item.provider === DataSourceProvider.fireCrawl ? 'Firecrawl' : 'Jina Reader',
+            }
+            return (
+              <div
+                className={cn(className, 'ml-3 flex h-5 w-5 items-center justify-center rounded border border-divider-subtle !bg-background-default text-xs font-medium text-text-tertiary')}>
+                <span className={s.jinaLogo}/>
+              </div>
+            )
+          },
+          name: getProviderName(item.provider),
           isActive: true,
         }))}
         onRemove={handleRemove(provider)}
       />
       {configTarget === DataSourceProvider.fireCrawl && (
-        <ConfigFirecrawlModal onSaved={handleAdded} onCancel={hideConfig} />
+        <ConfigFirecrawlModal onSaved={handleAdded} onCancel={hideConfig}/>
+      )}
+      {configTarget === DataSourceProvider.waterCrawl && (
+        <ConfigWatercrawlModal onSaved={handleAdded} onCancel={hideConfig}/>
       )}
       {configTarget === DataSourceProvider.jinaReader && (
-        <ConfigJinaReaderModal onSaved={handleAdded} onCancel={hideConfig} />
+        <ConfigJinaReaderModal onSaved={handleAdded} onCancel={hideConfig}/>
       )}
     </>
 
