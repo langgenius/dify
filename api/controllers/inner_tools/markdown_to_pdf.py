@@ -11,6 +11,8 @@ from flask import Response, jsonify, request
 from flask_restful import Resource  # type: ignore
 from models.account import Tenant
 from reportlab.lib.pagesizes import letter
+from reportlab.pdfbase import pdfmetrics
+from reportlab.pdfbase.cidfonts import UnicodeCIDFont
 from reportlab.pdfgen import canvas
 
 
@@ -65,31 +67,34 @@ class MarkdownToPDFApi(Resource):
         buffer = io.BytesIO()
         pdf = canvas.Canvas(buffer, pagesize=letter)
 
+        # Register a Chinese font
+        pdfmetrics.registerFont(UnicodeCIDFont('STSong-Light'))
+
         # Add title
-        pdf.setFont("Helvetica-Bold", 16)
+        pdf.setFont("STSong-Light", 16)
         pdf.drawString(72, 760, title)
 
         # Add markdown content
-        pdf.setFont("Helvetica", 12)
+        pdf.setFont("STSong-Light", 12)
         y_position = 730
 
         # Simple text rendering - each line as a separate line in the PDF
         for line in markdown_text.split('\n'):
             if line.startswith('# '):  # H1 heading
-                pdf.setFont("Helvetica-Bold", 14)
+                pdf.setFont("STSong-Light", 14)
                 pdf.drawString(72, y_position, line[2:])
                 y_position -= 20
-                pdf.setFont("Helvetica", 12)
+                pdf.setFont("STSong-Light", 12)
             elif line.startswith('## '):  # H2 heading
-                pdf.setFont("Helvetica-Bold", 13)
+                pdf.setFont("STSong-Light", 13)
                 pdf.drawString(72, y_position, line[3:])
                 y_position -= 18
-                pdf.setFont("Helvetica", 12)
+                pdf.setFont("STSong-Light", 12)
             elif line.startswith('### '):  # H3 heading
-                pdf.setFont("Helvetica-Bold", 12)
+                pdf.setFont("STSong-Light", 12)
                 pdf.drawString(72, y_position, line[4:])
                 y_position -= 16
-                pdf.setFont("Helvetica", 12)
+                pdf.setFont("STSong-Light", 12)
             elif line.strip() == '':  # Empty line
                 y_position -= 12
             else:  # Regular text
@@ -100,7 +105,7 @@ class MarkdownToPDFApi(Resource):
             if y_position < 72:
                 pdf.showPage()
                 y_position = 760
-                pdf.setFont("Helvetica", 12)
+                pdf.setFont("STSong-Light", 12)
 
         # Save the PDF
         pdf.save()
