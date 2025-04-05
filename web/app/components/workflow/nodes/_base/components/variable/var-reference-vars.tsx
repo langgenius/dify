@@ -17,6 +17,7 @@ import { BubbleX, Env } from '@/app/components/base/icons/src/vender/line/others
 import { checkKeys } from '@/utils/var'
 import { FILE_STRUCT } from '@/app/components/workflow/constants'
 import { Loop } from '@/app/components/base/icons/src/vender/workflow'
+import { noop } from 'lodash-es'
 
 type ObjectChildrenProps = {
   nodeId: string
@@ -42,6 +43,8 @@ type ItemProps = {
   isLoopVar?: boolean
 }
 
+const objVarTypes = [VarType.object, VarType.file]
+
 const Item: FC<ItemProps> = ({
   nodeId,
   title,
@@ -55,11 +58,11 @@ const Item: FC<ItemProps> = ({
   isLoopVar,
 }) => {
   const isFile = itemData.type === VarType.file
-  const isObj = ([VarType.object, VarType.file].includes(itemData.type) && itemData.children && itemData.children.length > 0)
+  const isObj = (objVarTypes.includes(itemData.type) && itemData.children && itemData.children.length > 0)
   const isSys = itemData.variable.startsWith('sys.')
   const isEnv = itemData.variable.startsWith('env.')
   const isChatVar = itemData.variable.startsWith('conversation.')
-  const itemRef = useRef(null)
+  const itemRef = useRef<HTMLDivElement>(null)
   const [isItemHovering, setIsItemHovering] = useState(false)
   const _ = useHover(itemRef, {
     onChange: (hovering) => {
@@ -100,7 +103,7 @@ const Item: FC<ItemProps> = ({
   return (
     <PortalToFollowElem
       open={open}
-      onOpenChange={() => { }}
+      onOpenChange={noop}
       placement='left-start'
     >
       <PortalToFollowElemTrigger className='w-full'>
@@ -180,7 +183,7 @@ const ObjectChildren: FC<ObjectChildrenProps> = ({
   isSupportFileVar,
 }) => {
   const currObjPath = objPath
-  const itemRef = useRef(null)
+  const itemRef = useRef<HTMLDivElement>(null)
   const [isItemHovering, setIsItemHovering] = useState(false)
   const _ = useHover(itemRef, {
     onChange: (hovering) => {
