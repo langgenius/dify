@@ -21,7 +21,6 @@ from core.plugin.entities.plugin import ModelProviderID
 from core.rag.index_processor.constant.built_in_field import BuiltInField
 from core.rag.index_processor.constant.index_type import IndexType
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
-from core.tools.entities.common_entities import I18nObject
 from events.dataset_event import dataset_was_deleted
 from events.document_event import document_was_deleted
 from extensions.ext_database import db
@@ -1379,10 +1378,7 @@ class DocumentService:
         cut_length = 18
         cut_name = documents[0].name[:cut_length]
         dataset.name = cut_name + "..."
-        dataset.description = I18nObject(
-            en_US="useful for when you want to answer queries about the " + documents[0].name,
-            zh_Hans="用于回答关于 " + documents[0].name + " 的查询",
-        )
+        dataset.description = "useful for when you want to answer queries about the " + documents[0].name
         db.session.commit()
 
         return dataset, documents, batch
