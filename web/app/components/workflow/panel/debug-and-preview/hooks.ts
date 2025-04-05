@@ -84,7 +84,7 @@ export const useChat = (
         ret[index] = {
           ...ret[index],
           content: getIntroduction(config.opening_statement),
-          suggestedQuestions: config.suggested_questions,
+          suggestedQuestions: config.suggested_questions?.map((item: string) => getIntroduction(item)),
         }
       }
       else {
@@ -93,7 +93,7 @@ export const useChat = (
           content: getIntroduction(config.opening_statement),
           isAnswer: true,
           isOpeningStatement: true,
-          suggestedQuestions: config.suggested_questions,
+          suggestedQuestions: config.suggested_questions?.map((item: string) => getIntroduction(item)),
         })
       }
     }

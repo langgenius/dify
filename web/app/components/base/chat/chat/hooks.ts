@@ -82,12 +82,11 @@ export const useChat = (
     const ret = [...threadMessages]
     if (config?.opening_statement) {
       const index = threadMessages.findIndex(item => item.isOpeningStatement)
-
       if (index > -1) {
         ret[index] = {
           ...ret[index],
           content: getIntroduction(config.opening_statement),
-          suggestedQuestions: config.suggested_questions,
+          suggestedQuestions: config.suggested_questions?.map(item => getIntroduction(item)),
         }
       }
       else {
@@ -96,7 +95,7 @@ export const useChat = (
           content: getIntroduction(config.opening_statement),
           isAnswer: true,
           isOpeningStatement: true,
-          suggestedQuestions: config.suggested_questions,
+          suggestedQuestions: config.suggested_questions?.map(item => getIntroduction(item)),
         })
       }
     }

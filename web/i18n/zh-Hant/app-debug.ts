@@ -312,6 +312,7 @@ const translation = {
     writeOpener: '編寫開場白',
     placeholder: '在這裡寫下你的開場白，你可以使用變數，嘗試輸入 {{variable}}。',
     openingQuestion: '開場問題',
+    openingQuestionPlaceholder: '可以使用變量，嘗試輸入 {{variable}}。',
     noDataPlaceHolder:
       '在對話型應用中，讓 AI 主動說第一段話可以拉近與使用者間的距離。',
     varTip: '你可以使用變數， 試試輸入 {{variable}}',
