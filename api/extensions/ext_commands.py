@@ -11,6 +11,8 @@ def init_app(app: DifyApp):
         reset_encrypt_key_pair,
         reset_password,
         upgrade_db,
+        upload_local_files_to_cloud_storage,
+        upload_private_key_file_cloud_storage,
         vdb_migrate,
     )
 
@@ -24,6 +26,8 @@ def init_app(app: DifyApp):
         create_tenant,
         upgrade_db,
         fix_app_site_missing,
+        upload_private_key_file_cloud_storage,
+        upload_local_files_to_cloud_storage,
     ]
     for cmd in cmds_to_register:
         app.cli.add_command(cmd)
