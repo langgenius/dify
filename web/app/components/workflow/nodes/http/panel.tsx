@@ -18,7 +18,6 @@ import { FileArrow01 } from '@/app/components/base/icons/src/vender/line/files'
 import type { NodePanelProps } from '@/app/components/workflow/types'
 import BeforeRunForm from '@/app/components/workflow/nodes/_base/components/before-run-form'
 import ResultPanel from '@/app/components/workflow/run/result-panel'
-import { useRetryDetailShowInSingleRun } from '@/app/components/workflow/nodes/_base/components/retry/hooks'
 
 const i18nPrefix = 'workflow.nodes.http'
 
@@ -61,26 +60,22 @@ const Panel: FC<NodePanelProps<HttpNodeType>> = ({
     hideCurlPanel,
     handleCurlImport,
   } = useConfig(id, data)
-  const {
-    retryDetails,
-    handleRetryDetailsChange,
-  } = useRetryDetailShowInSingleRun()
   // To prevent prompt editor in body not update data.
   if (!isDataReady)
     return null
 
   return (
     <div className='pt-2'>
-      <div className='px-4 pb-4 space-y-4'>
+      <div className='space-y-4 px-4 pb-4'>
         <Field
           title={t(`${i18nPrefix}.api`)}
           operations={
             <div className='flex'>
               <div
                 onClick={showAuthorization}
-                className={cn(!readOnly && 'cursor-pointer hover:bg-gray-50', 'flex items-center h-6 space-x-1 px-2 rounded-md ')}
+                className={cn(!readOnly && 'cursor-pointer hover:bg-gray-50', 'flex h-6 items-center space-x-1 rounded-md px-2 ')}
               >
-                {!readOnly && <Settings01 className='w-3 h-3 text-gray-500' />}
+                {!readOnly && <Settings01 className='h-3 w-3 text-gray-500' />}
                 <div className='text-xs font-medium text-gray-500'>
                   {t(`${i18nPrefix}.authorization.authorization`)}
                   <span className='ml-1 text-gray-700'>{t(`${i18nPrefix}.authorization.${inputs.authorization.type}`)}</span>
@@ -88,9 +83,9 @@ const Panel: FC<NodePanelProps<HttpNodeType>> = ({
               </div>
               <div
                 onClick={showCurlPanel}
-                className={cn(!readOnly && 'cursor-pointer hover:bg-gray-50', 'flex items-center h-6 space-x-1 px-2 rounded-md ')}
+                className={cn(!readOnly && 'cursor-pointer hover:bg-gray-50', 'flex h-6 items-center space-x-1 rounded-md px-2 ')}
               >
-                {!readOnly && <FileArrow01 className='w-3 h-3 text-gray-500' />}
+                {!readOnly && <FileArrow01 className='h-3 w-3 text-gray-500' />}
                 <div className='text-xs font-medium text-gray-500'>
                   {t(`${i18nPrefix}.curl.title`)}
                 </div>
@@ -198,9 +193,7 @@ const Panel: FC<NodePanelProps<HttpNodeType>> = ({
           runningStatus={runningStatus}
           onRun={handleRun}
           onStop={handleStop}
-          retryDetails={retryDetails}
-          onRetryDetailBack={handleRetryDetailsChange}
-          result={<ResultPanel {...runResult} showSteps={false} onShowRetryDetail={handleRetryDetailsChange} />}
+          result={<ResultPanel {...runResult} showSteps={false} />}
         />
       )}
       {(isShowCurlPanel && !readOnly) && (

@@ -136,7 +136,7 @@ class ArrayStringSegment(ArraySegment):
 
     @property
     def text(self) -> str:
-        return json.dumps(self.value)
+        return json.dumps(self.value, ensure_ascii=False)
 
 
 class ArrayNumberSegment(ArraySegment):

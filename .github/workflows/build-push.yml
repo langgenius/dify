@@ -5,8 +5,10 @@ on:
     branches:
       - "main"
       - "deploy/dev"
-  release:
-    types: [published]
+      - "deploy/enterprise"
+      - release/1.1.3-fix1
+    tags:
+      - "*"
 
 concurrency:
   group: build-push-${{ github.head_ref || github.run_id }}

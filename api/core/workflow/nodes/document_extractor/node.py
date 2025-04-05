@@ -2,7 +2,6 @@ import csv
 import io
 import json
 import logging
-import operator
 import os
 import tempfile
 from collections.abc import Mapping, Sequence
@@ -10,8 +9,12 @@ from typing import Any, cast
 
 import docx
 import pandas as pd
+import pypandoc  # type: ignore
 import pypdfium2  # type: ignore
 import yaml  # type: ignore
+from docx.document import Document
+from docx.oxml.table import CT_Tbl
+from docx.oxml.text.paragraph import CT_P
 from docx.table import Table
 from docx.text.paragraph import Paragraph
 
@@ -107,8 +110,10 @@ def _extract_text_by_mime_type(*, file_content: bytes, mime_type: str) -> str:
             return _extract_text_from_plain_text(file_content)
         case "application/pdf":
             return _extract_text_from_pdf(file_content)
-        case "application/vnd.openxmlformats-officedocument.wordprocessingml.document" | "application/msword":
+        case "application/msword":
             return _extract_text_from_doc(file_content)
+        case "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
+            return _extract_text_from_docx(file_content)
         case "text/csv":
             return _extract_text_from_csv(file_content)
         case "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" | "application/vnd.ms-excel":
@@ -142,8 +147,10 @@ def _extract_text_by_file_extension(*, file_content: bytes, file_extension: str)
             return _extract_text_from_yaml(file_content)
         case ".pdf":
             return _extract_text_from_pdf(file_content)
-        case ".doc" | ".docx":
+        case ".doc":
             return _extract_text_from_doc(file_content)
+        case ".docx":
+            return _extract_text_from_docx(file_content)
         case ".csv":
             return _extract_text_from_csv(file_content)
         case ".xls" | ".xlsx":
@@ -203,7 +210,40 @@ def _extract_text_from_pdf(file_content: bytes) -> str:
 
 def _extract_text_from_doc(file_content: bytes) -> str:
     """
-    Extract text from a DOC/DOCX file.
+    Extract text from a DOC file.
+    """
+    from unstructured.partition.api import partition_via_api
+
+    if not (dify_config.UNSTRUCTURED_API_URL and dify_config.UNSTRUCTURED_API_KEY):
+        raise TextExtractionError("UNSTRUCTURED_API_URL and UNSTRUCTURED_API_KEY must be set")
+
+    try:
+        with tempfile.NamedTemporaryFile(suffix=".doc", delete=False) as temp_file:
+            temp_file.write(file_content)
+            temp_file.flush()
+            with open(temp_file.name, "rb") as file:
+                elements = partition_via_api(
+                    file=file,
+                    metadata_filename=temp_file.name,
+                    api_url=dify_config.UNSTRUCTURED_API_URL,
+                    api_key=dify_config.UNSTRUCTURED_API_KEY,
+                )
+            os.unlink(temp_file.name)
+        return "\n".join([getattr(element, "text", "") for element in elements])
+    except Exception as e:
+        raise TextExtractionError(f"Failed to extract text from DOC: {str(e)}") from e
+
+
+def paser_docx_part(block, doc: Document, content_items, i):
+    if isinstance(block, CT_P):
+        content_items.append((i, "paragraph", Paragraph(block, doc)))
+    elif isinstance(block, CT_Tbl):
+        content_items.append((i, "table", Table(block, doc)))
+
+
+def _extract_text_from_docx(file_content: bytes) -> str:
+    """
+    Extract text from a DOCX file.
     For now support only paragraph and table add more if needed
     """
     try:
@@ -214,16 +254,13 @@ def _extract_text_from_doc(file_content: bytes) -> str:
         # Keep track of paragraph and table positions
         content_items: list[tuple[int, str, Table | Paragraph]] = []
 
-        # Process paragraphs and tables
-        for i, paragraph in enumerate(doc.paragraphs):
-            if paragraph.text.strip():
-                content_items.append((i, "paragraph", paragraph))
-
-        for i, table in enumerate(doc.tables):
-            content_items.append((i, "table", table))
-
-        # Sort content items based on their original position
-        content_items.sort(key=operator.itemgetter(0))
+        it = iter(doc.element.body)
+        part = next(it, None)
+        i = 0
+        while part is not None:
+            paser_docx_part(part, doc, content_items, i)
+            i = i + 1
+            part = next(it, None)
 
         # Process sorted content
         for _, item_type, item in content_items:
@@ -255,13 +292,13 @@ def _extract_text_from_doc(file_content: bytes) -> str:
 
                         text.append(markdown_table)
                 except Exception as e:
-                    logger.warning(f"Failed to extract table from DOC/DOCX: {e}")
+                    logger.warning(f"Failed to extract table from DOC: {e}")
                     continue
 
         return "\n".join(text)
 
     except Exception as e:
-        raise TextExtractionError(f"Failed to extract text from DOC/DOCX: {str(e)}") from e
+        raise TextExtractionError(f"Failed to extract text from DOCX: {str(e)}") from e
 
 
 def _download_file_content(file: File) -> bytes:
@@ -329,14 +366,29 @@ def _extract_text_from_excel(file_content: bytes) -> str:
 
 
 def _extract_text_from_ppt(file_content: bytes) -> str:
+    from unstructured.partition.api import partition_via_api
     from unstructured.partition.ppt import partition_ppt
 
     try:
-        with io.BytesIO(file_content) as file:
-            elements = partition_ppt(file=file)
+        if dify_config.UNSTRUCTURED_API_URL:
+            with tempfile.NamedTemporaryFile(suffix=".ppt", delete=False) as temp_file:
+                temp_file.write(file_content)
+                temp_file.flush()
+                with open(temp_file.name, "rb") as file:
+                    elements = partition_via_api(
+                        file=file,
+                        metadata_filename=temp_file.name,
+                        api_url=dify_config.UNSTRUCTURED_API_URL,
+                        api_key=dify_config.UNSTRUCTURED_API_KEY,  # type: ignore
+                    )
+                os.unlink(temp_file.name)
+        else:
+            with io.BytesIO(file_content) as file:
+                elements = partition_ppt(file=file)
         return "\n".join([getattr(element, "text", "") for element in elements])
+
     except Exception as e:
-        raise TextExtractionError(f"Failed to extract text from PPT: {str(e)}") from e
+        raise TextExtractionError(f"Failed to extract text from PPTX: {str(e)}") from e
 
 
 def _extract_text_from_pptx(file_content: bytes) -> str:
@@ -344,7 +396,7 @@ def _extract_text_from_pptx(file_content: bytes) -> str:
     from unstructured.partition.pptx import partition_pptx
 
     try:
-        if dify_config.UNSTRUCTURED_API_URL and dify_config.UNSTRUCTURED_API_KEY:
+        if dify_config.UNSTRUCTURED_API_URL:
             with tempfile.NamedTemporaryFile(suffix=".pptx", delete=False) as temp_file:
                 temp_file.write(file_content)
                 temp_file.flush()
@@ -353,7 +405,7 @@ def _extract_text_from_pptx(file_content: bytes) -> str:
                         file=file,
                         metadata_filename=temp_file.name,
                         api_url=dify_config.UNSTRUCTURED_API_URL,
-                        api_key=dify_config.UNSTRUCTURED_API_KEY,
+                        api_key=dify_config.UNSTRUCTURED_API_KEY,  # type: ignore
                     )
                 os.unlink(temp_file.name)
         else:
@@ -365,11 +417,26 @@ def _extract_text_from_pptx(file_content: bytes) -> str:
 
 
 def _extract_text_from_epub(file_content: bytes) -> str:
+    from unstructured.partition.api import partition_via_api
     from unstructured.partition.epub import partition_epub
 
     try:
-        with io.BytesIO(file_content) as file:
-            elements = partition_epub(file=file)
+        if dify_config.UNSTRUCTURED_API_URL:
+            with tempfile.NamedTemporaryFile(suffix=".epub", delete=False) as temp_file:
+                temp_file.write(file_content)
+                temp_file.flush()
+                with open(temp_file.name, "rb") as file:
+                    elements = partition_via_api(
+                        file=file,
+                        metadata_filename=temp_file.name,
+                        api_url=dify_config.UNSTRUCTURED_API_URL,
+                        api_key=dify_config.UNSTRUCTURED_API_KEY,  # type: ignore
+                    )
+                os.unlink(temp_file.name)
+        else:
+            pypandoc.download_pandoc()
+            with io.BytesIO(file_content) as file:
+                elements = partition_epub(file=file)
         return "\n".join([str(element) for element in elements])
     except Exception as e:
         raise TextExtractionError(f"Failed to extract text from EPUB: {str(e)}") from e

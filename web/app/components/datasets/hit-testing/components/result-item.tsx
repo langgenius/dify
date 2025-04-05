@@ -13,6 +13,7 @@ import cn from '@/utils/classnames'
 import type { FileAppearanceTypeEnum } from '@/app/components/base/file-uploader/types'
 import Tag from '@/app/components/datasets/documents/detail/completed/common/tag'
 import { extensionToFileType } from '@/app/components/datasets/hit-testing/utils/extension-to-file-type'
+import { Markdown } from '@/app/components/base/markdown'
 
 const i18nPrefix = 'datasetHitTesting'
 type Props = {
@@ -25,7 +26,7 @@ const ResultItem: FC<Props> = ({
   const { t } = useTranslation()
   const { segment, score, child_chunks } = payload
   const data = segment
-  const { position, word_count, content, keywords, document } = data
+  const { position, word_count, content, sign_content, keywords, document } = data
   const isParentChildRetrieval = !!(child_chunks && child_chunks.length > 0)
   const extension = document.name.split('.').slice(-1)[0] as FileAppearanceTypeEnum
   const fileType = extensionToFileType(extension)
@@ -40,23 +41,33 @@ const ResultItem: FC<Props> = ({
   }] = useBoolean(false)
 
   return (
-    <div className={cn('pt-3 bg-chat-bubble-bg rounded-xl hover:shadow-lg cursor-pointer')} onClick={showDetailModal}>
+    <div className={cn('cursor-pointer rounded-xl bg-chat-bubble-bg pt-3 hover:shadow-lg')} onClick={showDetailModal}>
       {/* Meta info */}
       <ResultItemMeta className='px-3' labelPrefix={`${isParentChildRetrieval ? 'Parent-' : ''}Chunk`} positionId={position} wordCount={word_count} score={score} />
 
       {/* Main */}
       <div className='mt-1 px-3'>
-        <div className='line-clamp-2 body-md-regular break-all'>{content}</div>
+        <Markdown
+          className='line-clamp-2'
+          content={sign_content || content}
+          customDisallowedElements={['input']}
+        />
         {isParentChildRetrieval && (
           <div className='mt-1'>
-            <div className={cn('inline-flex items-center h-6 space-x-0.5 text-text-secondary select-none rounded-lg cursor-pointer', isFold && 'pl-1 bg-[linear-gradient(90deg,_rgba(200,_206,_218,_0.20)_0%,_rgba(200,_206,_218,_0.04)_100%)]')} onClick={toggleFold}>
-              <Icon className={cn('w-4 h-4', isFold && 'opacity-50')} />
+            <div
+              className={cn('inline-flex h-6 cursor-pointer select-none items-center space-x-0.5 rounded-lg text-text-secondary', isFold && 'bg-workflow-process-bg pl-1')}
+              onClick={(e) => {
+                e.stopPropagation()
+                toggleFold()
+              }}
+            >
+              <Icon className={cn('h-4 w-4', isFold && 'opacity-50')} />
               <div className='text-xs font-semibold uppercase'>{t(`${i18nPrefix}.hitChunks`, { num: child_chunks.length })}</div>
             </div>
             {!isFold && (
               <div className='space-y-2'>
                 {child_chunks.map(item => (
-                  <div key={item.id} className='ml-[7px] pl-[7px] border-l-[2px] border-text-accent-secondary'>
+                  <div key={item.id} className='ml-[7px] border-l-[2px] border-text-accent-secondary pl-[7px]'>
                     <ChildChunkItem payload={item} isShowAll={false} />
                   </div>
                 ))}

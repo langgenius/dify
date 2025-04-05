@@ -7,7 +7,7 @@ import httpx
 from sqlalchemy import select
 
 from constants import AUDIO_EXTENSIONS, DOCUMENT_EXTENSIONS, IMAGE_EXTENSIONS, VIDEO_EXTENSIONS
-from core.file import File, FileBelongsTo, FileTransferMethod, FileType, FileUploadConfig
+from core.file import File, FileBelongsTo, FileTransferMethod, FileType, FileUploadConfig, helpers
 from core.helper import ssrf_proxy
 from extensions.ext_database import db
 from models import MessageFile, ToolFile, UploadFile
@@ -134,8 +134,9 @@ def _build_from_local_file(
     if row is None:
         raise ValueError("Invalid upload file")
 
-    file_type = FileType(mapping.get("type", "custom"))
-    file_type = _standardize_file_type(file_type, extension="." + row.extension, mime_type=row.mime_type)
+    file_type = _standardize_file_type(extension="." + row.extension, mime_type=row.mime_type)
+    if file_type.value != mapping.get("type", "custom"):
+        raise ValueError("Detected file type does not match the specified type. Please verify the file.")
 
     return File(
         id=mapping.get("id"),
@@ -158,15 +159,48 @@ def _build_from_remote_url(
     tenant_id: str,
     transfer_method: FileTransferMethod,
 ) -> File:
+    upload_file_id = mapping.get("upload_file_id")
+    if upload_file_id:
+        try:
+            uuid.UUID(upload_file_id)
+        except ValueError:
+            raise ValueError("Invalid upload file id format")
+        stmt = select(UploadFile).where(
+            UploadFile.id == upload_file_id,
+            UploadFile.tenant_id == tenant_id,
+        )
+
+        upload_file = db.session.scalar(stmt)
+        if upload_file is None:
+            raise ValueError("Invalid upload file")
+
+        file_type = _standardize_file_type(extension="." + upload_file.extension, mime_type=upload_file.mime_type)
+        if file_type.value != mapping.get("type", "custom"):
+            raise ValueError("Detected file type does not match the specified type. Please verify the file.")
+
+        return File(
+            id=mapping.get("id"),
+            filename=upload_file.name,
+            extension="." + upload_file.extension,
+            mime_type=upload_file.mime_type,
+            tenant_id=tenant_id,
+            type=file_type,
+            transfer_method=transfer_method,
+            remote_url=helpers.get_signed_file_url(upload_file_id=str(upload_file_id)),
+            related_id=mapping.get("upload_file_id"),
+            size=upload_file.size,
+            storage_key=upload_file.key,
+        )
     url = mapping.get("url") or mapping.get("remote_url")
     if not url:
         raise ValueError("Invalid file url")
 
     mime_type, filename, file_size = _get_remote_file_info(url)
-    extension = mimetypes.guess_extension(mime_type) or "." + filename.split(".")[-1] if "." in filename else ".bin"
+    extension = mimetypes.guess_extension(mime_type) or ("." + filename.split(".")[-1] if "." in filename else ".bin")
 
-    file_type = FileType(mapping.get("type", "custom"))
-    file_type = _standardize_file_type(file_type, extension=extension, mime_type=mime_type)
+    file_type = _standardize_file_type(extension=extension, mime_type=mime_type)
+    if file_type.value != mapping.get("type", "custom"):
+        raise ValueError("Detected file type does not match the specified type. Please verify the file.")
 
     return File(
         id=mapping.get("id"),
@@ -217,8 +251,8 @@ def _build_from_tool_file(
         raise ValueError(f"ToolFile {mapping.get('tool_file_id')} not found")
 
     extension = "." + tool_file.file_key.split(".")[-1] if "." in tool_file.file_key else ".bin"
-    file_type = FileType(mapping.get("type", "custom"))
-    file_type = _standardize_file_type(file_type, extension=extension, mime_type=tool_file.mimetype)
+
+    file_type = _standardize_file_type(extension=extension, mime_type=tool_file.mimetype)
 
     return File(
         id=mapping.get("id"),
@@ -256,19 +290,23 @@ def _is_file_valid_with_config(
     ):
         return False
 
-    if input_file_type == FileType.IMAGE and config.image_config:
-        if config.image_config.transfer_methods and file_transfer_method not in config.image_config.transfer_methods:
+    if input_file_type == FileType.IMAGE:
+        if (
+            config.image_config
+            and config.image_config.transfer_methods
+            and file_transfer_method not in config.image_config.transfer_methods
+        ):
             return False
+    elif config.allowed_file_upload_methods and file_transfer_method not in config.allowed_file_upload_methods:
+        return False
 
     return True
 
 
-def _standardize_file_type(file_type: FileType, /, *, extension: str = "", mime_type: str = "") -> FileType:
+def _standardize_file_type(*, extension: str = "", mime_type: str = "") -> FileType:
     """
-    If custom type, try to guess the file type by extension and mime_type.
+    Infer the possible actual type of the file based on the extension and mime_type
     """
-    if file_type != FileType.CUSTOM:
-        return FileType(file_type)
     guessed_type = None
     if extension:
         guessed_type = _get_file_type_by_extension(extension)
@@ -302,3 +340,7 @@ def _get_file_type_by_mimetype(mime_type: str) -> FileType | None:
     else:
         file_type = FileType.CUSTOM
     return file_type
+
+
+def get_file_type_by_mime_type(mime_type: str) -> FileType:
+    return _get_file_type_by_mimetype(mime_type) or FileType.CUSTOM

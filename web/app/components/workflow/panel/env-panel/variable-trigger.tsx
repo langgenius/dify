@@ -46,7 +46,7 @@ const VariableTrigger = ({
         open && onClose()
       }}>
         <Button variant='primary'>
-          <RiAddLine className='mr-1 w-4 h-4' />
+          <RiAddLine className='mr-1 h-4 w-4' />
           <span className='system-sm-medium'>{t('workflow.env.envPanelButton')}</span>
         </Button>
       </PortalToFollowElemTrigger>

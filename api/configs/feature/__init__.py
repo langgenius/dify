@@ -61,6 +61,10 @@ class AppExecutionConfig(BaseSettings):
         description="Maximum number of concurrent active requests per app (0 for unlimited)",
         default=0,
     )
+    APP_DAILY_RATE_LIMIT: NonNegativeInt = Field(
+        description="Maximum number of requests per app per day",
+        default=5000,
+    )
 
 
 class CodeExecutionSandboxConfig(BaseSettings):
@@ -134,6 +138,60 @@ class CodeExecutionSandboxConfig(BaseSettings):
     )
 
 
+class PluginConfig(BaseSettings):
+    """
+    Plugin configs
+    """
+
+    PLUGIN_DAEMON_URL: HttpUrl = Field(
+        description="Plugin API URL",
+        default="http://localhost:5002",
+    )
+
+    PLUGIN_DAEMON_KEY: str = Field(
+        description="Plugin API key",
+        default="plugin-api-key",
+    )
+
+    INNER_API_KEY_FOR_PLUGIN: str = Field(description="Inner api key for plugin", default="inner-api-key")
+
+    PLUGIN_REMOTE_INSTALL_HOST: str = Field(
+        description="Plugin Remote Install Host",
+        default="localhost",
+    )
+
+    PLUGIN_REMOTE_INSTALL_PORT: PositiveInt = Field(
+        description="Plugin Remote Install Port",
+        default=5003,
+    )
+
+    PLUGIN_MAX_PACKAGE_SIZE: PositiveInt = Field(
+        description="Maximum allowed size for plugin packages in bytes",
+        default=15728640,
+    )
+
+    PLUGIN_MAX_BUNDLE_SIZE: PositiveInt = Field(
+        description="Maximum allowed size for plugin bundles in bytes",
+        default=15728640 * 12,
+    )
+
+
+class MarketplaceConfig(BaseSettings):
+    """
+    Configuration for marketplace
+    """
+
+    MARKETPLACE_ENABLED: bool = Field(
+        description="Enable or disable marketplace",
+        default=True,
+    )
+
+    MARKETPLACE_API_URL: HttpUrl = Field(
+        description="Marketplace API URL",
+        default="https://marketplace.dify.ai",
+    )
+
+
 class EndpointConfig(BaseSettings):
     """
     Configuration for various application endpoints and URLs
@@ -158,6 +216,10 @@ class EndpointConfig(BaseSettings):
     APP_WEB_URL: str = Field(
         description="Base URL for the web application, used for frontend references",
         default="",
+    )
+
+    ENDPOINT_URL_TEMPLATE: str = Field(
+        description="Template url for endpoint plugin", default="http://localhost:5002/e/{hook_id}"
     )
 
 
@@ -274,6 +336,11 @@ class HttpConfig(BaseSettings):
         default=1 * 1024 * 1024,
     )
 
+    HTTP_REQUEST_NODE_SSL_VERIFY: bool = Field(
+        description="Enable or disable SSL verification for HTTP requests",
+        default=True,
+    )
+
     SSRF_DEFAULT_MAX_RETRIES: PositiveInt = Field(
         description="Maximum number of retries for network requests (SSRF)",
         default=3,
@@ -329,11 +396,6 @@ class InnerAPIConfig(BaseSettings):
     INNER_API: bool = Field(
         description="Enable or disable the internal API",
         default=False,
-    )
-
-    INNER_API_KEY: Optional[str] = Field(
-        description="API key for accessing the internal API",
-        default=None,
     )
 
 
@@ -786,6 +848,11 @@ class AccountConfig(BaseSettings):
         default=5,
     )
 
+    EDUCATION_ENABLED: bool = Field(
+        description="whether to enable education identity",
+        default=False,
+    )
+
 
 class FeatureConfig(
     # place the configs in alphabet order
@@ -793,6 +860,8 @@ class FeatureConfig(
     AuthConfig,  # Changed from OAuthConfig to AuthConfig
     BillingConfig,
     CodeExecutionSandboxConfig,
+    PluginConfig,
+    MarketplaceConfig,
     DataSetConfig,
     EndpointConfig,
     FileAccessConfig,

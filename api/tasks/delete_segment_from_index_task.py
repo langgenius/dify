@@ -17,7 +17,7 @@ def delete_segment_from_index_task(index_node_ids: list, dataset_id: str, docume
     :param dataset_id:
     :param document_id:
 
-    Usage: delete_segment_from_index_task.delay(segment_ids)
+    Usage: delete_segment_from_index_task.delay(index_node_ids, dataset_id, document_id)
     """
     logging.info(click.style("Start delete segment from index", fg="green"))
     start_at = time.perf_counter()

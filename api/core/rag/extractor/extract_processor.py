@@ -18,6 +18,7 @@ from core.rag.extractor.markdown_extractor import MarkdownExtractor
 from core.rag.extractor.notion_extractor import NotionExtractor
 from core.rag.extractor.pdf_extractor import PdfExtractor
 from core.rag.extractor.text_extractor import TextExtractor
+from core.rag.extractor.unstructured.unstructured_doc_extractor import UnstructuredWordExtractor
 from core.rag.extractor.unstructured.unstructured_eml_extractor import UnstructuredEmailExtractor
 from core.rag.extractor.unstructured.unstructured_epub_extractor import UnstructuredEpubExtractor
 from core.rag.extractor.unstructured.unstructured_markdown_extractor import UnstructuredMarkdownExtractor
@@ -104,7 +105,7 @@ class ExtractProcessor:
                 etl_type = dify_config.ETL_TYPE
                 extractor: Optional[BaseExtractor] = None
                 if etl_type == "Unstructured":
-                    unstructured_api_url = dify_config.UNSTRUCTURED_API_URL
+                    unstructured_api_url = dify_config.UNSTRUCTURED_API_URL or ""
                     unstructured_api_key = dify_config.UNSTRUCTURED_API_KEY or ""
 
                     if file_extension in {".xlsx", ".xls"}:
@@ -121,6 +122,8 @@ class ExtractProcessor:
                         extractor = HtmlExtractor(file_path)
                     elif file_extension == ".docx":
                         extractor = WordExtractor(file_path, upload_file.tenant_id, upload_file.created_by)
+                    elif file_extension == ".doc":
+                        extractor = UnstructuredWordExtractor(file_path, unstructured_api_url, unstructured_api_key)
                     elif file_extension == ".csv":
                         extractor = CSVExtractor(file_path, autodetect_encoding=True)
                     elif file_extension == ".msg":

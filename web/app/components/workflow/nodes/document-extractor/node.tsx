@@ -3,7 +3,7 @@ import React from 'react'
 import { useNodes } from 'reactflow'
 import { useTranslation } from 'react-i18next'
 import NodeVariableItem from '../variable-assigner/components/node-variable-item'
-import { type DocExtractorNodeType } from './types'
+import type { DocExtractorNodeType } from './types'
 import { isConversationVar, isENV, isSystemVar } from '@/app/components/workflow/nodes/_base/components/variable/utils'
 import { BlockEnum, type Node, type NodeProps } from '@/app/components/workflow/types'
 
@@ -27,7 +27,7 @@ const NodeComponent: FC<NodeProps<DocExtractorNodeType>> = ({
   const varName = isSystem ? `sys.${variable[variable.length - 1]}` : variable.slice(1).join('.')
   return (
     <div className='relative px-3'>
-      <div className='mb-1 system-2xs-medium-uppercase text-text-tertiary'>{t(`${i18nPrefix}.inputVar`)}</div>
+      <div className='system-2xs-medium-uppercase mb-1 text-text-tertiary'>{t(`${i18nPrefix}.inputVar`)}</div>
       <NodeVariableItem
         node={node as Node}
         isEnv={isEnv}

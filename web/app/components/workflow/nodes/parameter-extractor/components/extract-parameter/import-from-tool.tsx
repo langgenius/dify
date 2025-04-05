@@ -14,6 +14,7 @@ import type { ToolParameter } from '@/app/components/tools/types'
 import { CollectionType } from '@/app/components/tools/types'
 import type { BlockEnum } from '@/app/components/workflow/types'
 import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
+import { canFindTool } from '@/utils'
 
 const i18nPrefix = 'workflow.nodes.parameterExtractor'
 
@@ -56,7 +57,7 @@ const ImportFromTool: FC<Props> = ({
           return []
       }
     })()
-    const currCollection = currentTools.find(item => item.id === provider_id)
+    const currCollection = currentTools.find(item => canFindTool(item.id, provider_id))
     const currTool = currCollection?.tools.find(tool => tool.name === tool_name)
     const toExactParams = (currTool?.parameters || []).filter((item: any) => item.form === 'llm')
     const formattedParams = toParmExactParams(toExactParams, language)
@@ -67,7 +68,7 @@ const ImportFromTool: FC<Props> = ({
     return (
       <div>
         <div className={cn(
-          'flex items-center h-6 px-2 cursor-pointer rounded-md hover:bg-gray-100 text-xs font-medium text-gray-500',
+          'flex h-6 cursor-pointer items-center rounded-md px-2 text-xs font-medium text-gray-500 hover:bg-gray-100',
           open && 'bg-gray-100',
         )}>
           {t(`${i18nPrefix}.importFromTool`)}

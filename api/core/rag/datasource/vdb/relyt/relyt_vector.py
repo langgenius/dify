@@ -223,8 +223,12 @@ class RelytVector(BaseVector):
         return len(result) > 0
 
     def search_by_vector(self, query_vector: list[float], **kwargs: Any) -> list[Document]:
+        document_ids_filter = kwargs.get("document_ids_filter")
+        filter = kwargs.get("filter", {})
+        if document_ids_filter:
+            filter["document_id"] = document_ids_filter
         results = self.similarity_search_with_score_by_vector(
-            k=int(kwargs.get("top_k", 4)), embedding=query_vector, filter=kwargs.get("filter")
+            k=int(kwargs.get("top_k", 4)), embedding=query_vector, filter=filter
         )
 
         # Organize results.
@@ -246,9 +250,9 @@ class RelytVector(BaseVector):
         filter_condition = ""
         if filter is not None:
             conditions = [
-                f"metadata->>{key!r} in ({', '.join(map(repr, value))})"
+                f"metadata->>'{key!r}' in ({', '.join(map(repr, value))})"
                 if len(value) > 1
-                else f"metadata->>{key!r} = {value[0]!r}"
+                else f"metadata->>'{key!r}' = {value[0]!r}"
                 for key, value in filter.items()
             ]
             filter_condition = f"WHERE {' AND '.join(conditions)}"

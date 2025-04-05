@@ -2,10 +2,10 @@ from collections.abc import Sequence
 from enum import Enum
 from typing import Optional
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from core.model_runtime.entities.common_entities import I18nObject
-from core.model_runtime.entities.model_entities import ModelType, ProviderModel
+from core.model_runtime.entities.model_entities import AIModelEntity, ModelType
 
 
 class ConfigurateMethod(Enum):
@@ -101,7 +101,7 @@ class SimpleProviderEntity(BaseModel):
     icon_small: Optional[I18nObject] = None
     icon_large: Optional[I18nObject] = None
     supported_model_types: Sequence[ModelType]
-    models: list[ProviderModel] = []
+    models: list[AIModelEntity] = []
 
 
 class ProviderHelpEntity(BaseModel):
@@ -127,12 +127,20 @@ class ProviderEntity(BaseModel):
     help: Optional[ProviderHelpEntity] = None
     supported_model_types: Sequence[ModelType]
     configurate_methods: list[ConfigurateMethod]
-    models: list[ProviderModel] = []
+    models: list[AIModelEntity] = Field(default_factory=list)
     provider_credential_schema: Optional[ProviderCredentialSchema] = None
     model_credential_schema: Optional[ModelCredentialSchema] = None
 
     # pydantic configs
     model_config = ConfigDict(protected_namespaces=())
+
+    @field_validator("models", mode="before")
+    @classmethod
+    def validate_models(cls, v):
+        # returns EmptyList if v is empty
+        if not v:
+            return []
+        return v
 
     def to_simple_provider(self) -> SimpleProviderEntity:
         """

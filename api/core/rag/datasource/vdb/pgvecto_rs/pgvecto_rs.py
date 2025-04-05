@@ -189,6 +189,9 @@ class PGVectoRS(BaseVector):
                 .limit(kwargs.get("top_k", 4))
                 .order_by("distance")
             )
+            document_ids_filter = kwargs.get("document_ids_filter")
+            if document_ids_filter:
+                stmt = stmt.where(self._table.meta["document_id"].in_(document_ids_filter))
             res = session.execute(stmt)
             results = [(row[0], row[1]) for row in res]
 

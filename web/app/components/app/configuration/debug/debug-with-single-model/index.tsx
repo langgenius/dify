@@ -1,10 +1,4 @@
-import {
-  forwardRef,
-  memo,
-  useCallback,
-  useImperativeHandle,
-  useMemo,
-} from 'react'
+import { memo, useCallback, useImperativeHandle, useMemo } from 'react'
 import {
   useConfigFromDebugContext,
   useFormattingChangedSubscription,
@@ -26,6 +20,7 @@ import { useStore as useAppStore } from '@/app/components/app/store'
 import { useFeatures } from '@/app/components/base/features/hooks'
 import { getLastAnswer, isValidGeneratedAnswer } from '@/app/components/base/chat/utils'
 import type { InputForm } from '@/app/components/base/chat/chat/type'
+import { canFindTool } from '@/utils'
 
 type DebugWithSingleModelProps = {
   checkCanSend?: () => boolean
@@ -33,9 +28,14 @@ type DebugWithSingleModelProps = {
 export type DebugWithSingleModelRefType = {
   handleRestart: () => void
 }
-const DebugWithSingleModel = forwardRef<DebugWithSingleModelRefType, DebugWithSingleModelProps>(({
-  checkCanSend,
-}, ref) => {
+const DebugWithSingleModel = (
+  {
+    ref,
+    checkCanSend,
+  }: DebugWithSingleModelProps & {
+    ref: React.RefObject<DebugWithSingleModelRefType>;
+  },
+) => {
   const { userProfile } = useAppContext()
   const {
     modelConfig,
@@ -134,7 +134,7 @@ const DebugWithSingleModel = forwardRef<DebugWithSingleModelRefType, DebugWithSi
   const allToolIcons = useMemo(() => {
     const icons: Record<string, any> = {}
     modelConfig.agentConfig.tools?.forEach((item: any) => {
-      icons[item.tool_name] = collectionList.find((collection: any) => collection.id === item.provider_id)?.icon
+      icons[item.tool_name] = collectionList.find((collection: any) => canFindTool(collection.id, item.provider_id))?.icon
     })
     return icons
   }, [collectionList, modelConfig.agentConfig.tools])
@@ -173,7 +173,7 @@ const DebugWithSingleModel = forwardRef<DebugWithSingleModelRefType, DebugWithSi
       noSpacing
     />
   )
-})
+}
 
 DebugWithSingleModel.displayName = 'DebugWithSingleModel'
 

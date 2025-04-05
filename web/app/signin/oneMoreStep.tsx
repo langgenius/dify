@@ -1,5 +1,5 @@
 'use client'
-import React, { useEffect, useReducer } from 'react'
+import React, { type Reducer, useEffect, useReducer } from 'react'
 import { useTranslation } from 'react-i18next'
 import Link from 'next/link'
 import useSWR from 'swr'
@@ -20,7 +20,14 @@ type IState = {
   timezone: string
 }
 
-const reducer = (state: IState, action: any) => {
+type IAction =
+  | { type: 'failed', payload: null }
+  | { type: 'invitation_code', value: string }
+  | { type: 'interface_language', value: string }
+  | { type: 'timezone', value: string }
+  | { type: 'formState', value: 'processing' }
+
+const reducer: Reducer<IState, IAction> = (state: IState, action: IAction) => {
   switch (action.type) {
     case 'invitation_code':
       return { ...state, invitation_code: action.value }
@@ -75,21 +82,21 @@ const OneMoreStep = () => {
 
   return (
     <>
-      <div className="w-full mx-auto">
+      <div className="mx-auto w-full">
         <h2 className="title-4xl-semi-bold text-text-secondary">{t('login.oneMoreStep')}</h2>
-        <p className='mt-1 body-md-regular text-text-tertiary'>{t('login.createSample')}</p>
+        <p className='body-md-regular mt-1 text-text-tertiary'>{t('login.createSample')}</p>
       </div>
 
-      <div className="w-full mx-auto mt-6">
-        <div className="bg-white">
+      <div className="mx-auto mt-6 w-full">
+        <div className="relative">
           <div className="mb-5">
-            <label className="my-2 flex items-center justify-between system-md-semibold text-text-secondary">
+            <label className="system-md-semibold my-2 flex items-center justify-between text-text-secondary">
               {t('login.invitationCode')}
               <Tooltip
                 popupContent={
                   <div className='w-[256px] text-xs font-medium'>
                     <div className='font-medium'>{t('login.sendUsMail')}</div>
-                    <div className='text-xs font-medium cursor-pointer text-text-accent-secondary'>
+                    <div className='cursor-pointer text-xs font-medium text-text-accent-secondary'>
                       <a href="mailto:request-invitation@langgenius.ai">request-invitation@langgenius.ai</a>
                     </div>
                   </div>
@@ -112,7 +119,7 @@ const OneMoreStep = () => {
             </div>
           </div>
           <div className='mb-5'>
-            <label htmlFor="name" className="my-2 system-md-semibold text-text-secondary">
+            <label htmlFor="name" className="system-md-semibold my-2 text-text-secondary">
               {t('login.interfaceLanguage')}
             </label>
             <div className="mt-1">
@@ -120,7 +127,7 @@ const OneMoreStep = () => {
                 defaultValue={LanguagesSupported[0]}
                 items={languages.filter(item => item.supported)}
                 onSelect={(item) => {
-                  dispatch({ type: 'interface_language', value: item.value })
+                  dispatch({ type: 'interface_language', value: item.value as typeof LanguagesSupported[number] })
                 }}
               />
             </div>
@@ -134,7 +141,7 @@ const OneMoreStep = () => {
                 defaultValue={state.timezone}
                 items={timezones}
                 onSelect={(item) => {
-                  dispatch({ type: 'timezone', value: item.value })
+                  dispatch({ type: 'timezone', value: item.value as typeof state.timezone })
                 }}
               />
             </div>
@@ -151,7 +158,7 @@ const OneMoreStep = () => {
               {t('login.go')}
             </Button>
           </div>
-          <div className="block w-full mt-2 system-xs-regular text-text-tertiary">
+          <div className="system-xs-regular mt-2 block w-full text-text-tertiary">
             {t('login.license.tip')}
             &nbsp;
             <Link

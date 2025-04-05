@@ -16,7 +16,6 @@ import { useContext } from 'use-context-selector'
 import { useRouter } from 'next/navigation'
 import { useTranslation } from 'react-i18next'
 import dayjs from 'dayjs'
-import { Edit03 } from '../../base/icons/src/vender/solid/general'
 import { Globe01 } from '../../base/icons/src/vender/line/mapsAndTravel'
 import ChunkingModeLabel from '../common/chunking-mode-label'
 import FileTypeIcon from '../../base/file-uploader/file-type-icon'
@@ -45,6 +44,8 @@ import Pagination from '@/app/components/base/pagination'
 import Checkbox from '@/app/components/base/checkbox'
 import { useDocumentArchive, useDocumentDelete, useDocumentDisable, useDocumentEnable, useDocumentUnArchive, useSyncDocument, useSyncWebsite } from '@/service/knowledge/use-document'
 import { extensionToFileType } from '@/app/components/datasets/hit-testing/utils/extension-to-file-type'
+import useBatchEditDocumentMetadata from '../metadata/hooks/use-batch-edit-document-metadata'
+import EditMetadataBatchModal from '@/app/components/datasets/metadata/edit-metadata-batch/modal'
 
 export const useIndexStatus = () => {
   const { t } = useTranslation()
@@ -107,7 +108,8 @@ export const StatusItem: FC<{
     const [e] = await asyncRunSafe<CommonResponse>(opApi({ datasetId, documentId: id }) as Promise<CommonResponse>)
     if (!e) {
       notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
-      onUpdate?.(operationName)
+      onUpdate?.()
+      // onUpdate?.(operationName)
     }
     else { notify({ type: 'error', message: t('common.actionMsg.modifiedUnsuccessfully') }) }
   }
@@ -145,7 +147,7 @@ export const StatusItem: FC<{
     }
     {
       scene === 'detail' && (
-        <div className='flex justify-between items-center ml-1.5'>
+        <div className='ml-1.5 flex items-center justify-between'>
           <Tooltip
             popupContent={t('datasetDocuments.list.action.enableWarning')}
             popupClassName='text-text-secondary system-xs-medium'
@@ -289,12 +291,12 @@ export const OperationAction: FC<{
           popupClassName='text-text-secondary system-xs-medium'
         >
           <button
-            className={cn('rounded-lg mr-2 cursor-pointer',
+            className={cn('mr-2 cursor-pointer rounded-lg',
               !isListScene
-                ? 'p-2 bg-components-button-secondary-bg hover:bg-components-button-secondary-bg-hover border-[0.5px] border-components-button-secondary-border hover:border-components-button-secondary-border-hover shadow-xs shadow-shadow-shadow-3 backdrop-blur-[5px]'
+                ? 'border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg p-2 shadow-xs shadow-shadow-shadow-3 backdrop-blur-[5px] hover:border-components-button-secondary-border-hover hover:bg-components-button-secondary-bg-hover'
                 : 'p-0.5 hover:bg-state-base-hover')}
             onClick={() => router.push(`/datasets/${datasetId}/documents/${detail.id}/settings`)}>
-            <RiEqualizer2Line className='w-4 h-4 text-components-button-secondary-text' />
+            <RiEqualizer2Line className='h-4 w-4 text-components-button-secondary-text' />
           </button>
         </Tooltip>
         <Popover
@@ -308,12 +310,12 @@ export const OperationAction: FC<{
                       name: detail.name,
                     })
                   }}>
-                    <RiEditLine className='w-4 h-4 text-text-tertiary' />
+                    <RiEditLine className='h-4 w-4 text-text-tertiary' />
                     <span className={s.actionName}>{t('datasetDocuments.list.table.rename')}</span>
                   </div>
                   {['notion_import', DataSourceType.WEB].includes(data_source_type) && (
                     <div className={s.actionItem} onClick={() => onOperate('sync')}>
-                      <RiLoopLeftLine className='w-4 h-4 text-text-tertiary' />
+                      <RiLoopLeftLine className='h-4 w-4 text-text-tertiary' />
                       <span className={s.actionName}>{t('datasetDocuments.list.action.sync')}</span>
                     </div>
                   )}
@@ -321,17 +323,17 @@ export const OperationAction: FC<{
                 </>
               )}
               {!archived && <div className={s.actionItem} onClick={() => onOperate('archive')}>
-                <RiArchive2Line className='w-4 h-4 text-text-tertiary' />
+                <RiArchive2Line className='h-4 w-4 text-text-tertiary' />
                 <span className={s.actionName}>{t('datasetDocuments.list.action.archive')}</span>
               </div>}
               {archived && (
                 <div className={s.actionItem} onClick={() => onOperate('un_archive')}>
-                  <RiArchive2Line className='w-4 h-4 text-text-tertiary' />
+                  <RiArchive2Line className='h-4 w-4 text-text-tertiary' />
                   <span className={s.actionName}>{t('datasetDocuments.list.action.unarchive')}</span>
                 </div>
               )}
               <div className={cn(s.actionItem, s.deleteActionItem, 'group')} onClick={() => setShowModal(true)}>
-                <RiDeleteBinLine className={'w-4 h-4 text-text-tertiary group-hover:text-text-destructive'} />
+                <RiDeleteBinLine className={'h-4 w-4 text-text-tertiary group-hover:text-text-destructive'} />
                 <span className={cn(s.actionName, 'group-hover:text-text-destructive')}>{t('datasetDocuments.list.action.delete')}</span>
               </div>
             </div>
@@ -340,12 +342,12 @@ export const OperationAction: FC<{
           position='br'
           btnElement={
             <div className={cn(s.commonIcon)}>
-              <RiMoreFill className='w-4 h-4 text-text-components-button-secondary-text' />
+              <RiMoreFill className='h-4 w-4 text-components-button-secondary-text' />
             </div>
           }
           btnClassName={open => cn(isListScene ? s.actionIconWrapperList : s.actionIconWrapperDetail, open ? '!hover:bg-state-base-hover !shadow-none' : '!bg-transparent')}
           popupClassName='!w-full'
-          className={`flex justify-end !w-[200px] h-fit !z-20 ${className}`}
+          className={`!z-20 flex h-fit !w-[200px] justify-end ${className}`}
         />
       </>
     )}
@@ -401,6 +403,7 @@ type IDocumentListProps = {
   datasetId: string
   pagination: PaginationProps
   onUpdate: () => void
+  onManageMetadata: () => void
 }
 
 /**
@@ -414,6 +417,7 @@ const DocumentList: FC<IDocumentListProps> = ({
   datasetId,
   pagination,
   onUpdate,
+  onManageMetadata,
 }) => {
   const { t } = useTranslation()
   const { formatTime } = useTimestamp()
@@ -424,6 +428,17 @@ const DocumentList: FC<IDocumentListProps> = ({
   const isQAMode = chunkingMode === ChunkingMode.qa
   const [localDocs, setLocalDocs] = useState<LocalDoc[]>(documents)
   const [enableSort, setEnableSort] = useState(true)
+  const {
+    isShowEditModal,
+    showEditModal,
+    hideEditModal,
+    originalList,
+    handleSave,
+  } = useBatchEditDocumentMetadata({
+    datasetId,
+    docList: documents.filter(item => selectedIds.includes(item.id)),
+    onUpdate,
+  })
 
   useEffect(() => {
     setLocalDocs(documents)
@@ -500,139 +515,144 @@ const DocumentList: FC<IDocumentListProps> = ({
   }
 
   return (
-    <div className='relative w-full h-full overflow-x-auto'>
-      <table className={`min-w-[700px] max-w-full w-full border-collapse border-0 text-sm mt-3 ${s.documentTable}`}>
-        <thead className="h-8 leading-8 border-b border-divider-subtle text-text-tertiary font-medium text-xs uppercase">
-          <tr>
-            <td className='w-12'>
-              <div className='flex items-center' onClick={e => e.stopPropagation()}>
-                <Checkbox
-                  className='shrink-0 mr-2'
-                  checked={isAllSelected}
-                  mixed={!isAllSelected && isSomeSelected}
-                  onCheck={onSelectedAll}
-                />
-                #
-              </div>
-            </td>
-            <td>
-              <div className='flex'>
-                {t('datasetDocuments.list.table.header.fileName')}
-              </div>
-            </td>
-            <td className='w-[130px]'>{t('datasetDocuments.list.table.header.chunkingMode')}</td>
-            <td className='w-24'>{t('datasetDocuments.list.table.header.words')}</td>
-            <td className='w-44'>{t('datasetDocuments.list.table.header.hitCount')}</td>
-            <td className='w-44'>
-              <div className='flex items-center' onClick={onClickSort}>
-                {t('datasetDocuments.list.table.header.uploadTime')}
-                <ArrowDownIcon className={cn('ml-0.5 h-3 w-3 stroke-current stroke-2 cursor-pointer', enableSort ? 'text-text-tertiary' : 'text-text-disabled')} />
-              </div>
-            </td>
-            <td className='w-40'>{t('datasetDocuments.list.table.header.status')}</td>
-            <td className='w-20'>{t('datasetDocuments.list.table.header.action')}</td>
-          </tr>
-        </thead>
-        <tbody className="text-text-secondary">
-          {localDocs.map((doc, index) => {
-            const isFile = doc.data_source_type === DataSourceType.FILE
-            const fileType = isFile ? doc.data_source_detail_dict?.upload_file?.extension : ''
-            return <tr
-              key={doc.id}
-              className={'border-b border-divider-subtle h-8 hover:bg-background-default-hover cursor-pointer'}
-              onClick={() => {
-                router.push(`/datasets/${datasetId}/documents/${doc.id}`)
-              }}>
-              <td className='text-left align-middle text-text-tertiary text-xs'>
+    <div className='relative flex h-full w-full flex-col'>
+      <div className='relative grow overflow-x-auto'>
+        <table className={`mt-3 w-full min-w-[700px] max-w-full border-collapse border-0 text-sm ${s.documentTable}`}>
+          <thead className="h-8 border-b border-divider-subtle text-xs font-medium uppercase leading-8 text-text-tertiary">
+            <tr>
+              <td className='w-12'>
                 <div className='flex items-center' onClick={e => e.stopPropagation()}>
-                  <Checkbox
-                    className='shrink-0 mr-2'
-                    checked={selectedIds.includes(doc.id)}
-                    onCheck={() => {
-                      onSelectedIdChange(
-                        selectedIds.includes(doc.id)
-                          ? selectedIds.filter(id => id !== doc.id)
-                          : [...selectedIds, doc.id],
-                      )
-                    }}
-                  />
-                  {/* {doc.position} */}
-                  {index + 1}
+                  {embeddingAvailable && (
+                    <Checkbox
+                      className='mr-2 shrink-0'
+                      checked={isAllSelected}
+                      mixed={!isAllSelected && isSomeSelected}
+                      onCheck={onSelectedAll}
+                    />
+                  )}
+                  #
                 </div>
               </td>
               <td>
-                <div className={'group flex items-center mr-6 hover:mr-0 max-w-[460px]'}>
-                  <div className='shrink-0'>
-                    {doc?.data_source_type === DataSourceType.NOTION && <NotionIcon className='inline-flex -mt-[3px] mr-1.5 align-middle' type='page' src={doc.data_source_info.notion_page_icon} />}
-                    {doc?.data_source_type === DataSourceType.FILE && <FileTypeIcon type={extensionToFileType(doc?.data_source_info?.upload_file?.extension ?? fileType)} className='mr-1.5' />}
-                    {doc?.data_source_type === DataSourceType.WEB && <Globe01 className='inline-flex -mt-[3px] mr-1.5 align-middle' />}
-                  </div>
-                  <span className='text-sm truncate grow-1'>{doc.name}</span>
-                  <div className='group-hover:flex group-hover:ml-auto hidden shrink-0'>
-                    <Tooltip
-                      popupContent={t('datasetDocuments.list.table.rename')}
-                    >
-                      <div
-                        className='p-1 rounded-md cursor-pointer hover:bg-state-base-hover'
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          handleShowRenameModal(doc)
-                        }}
-                      >
-                        <Edit03 className='w-4 h-4 text-text-tertiary' />
-                      </div>
-                    </Tooltip>
-                  </div>
+                <div className='flex'>
+                  {t('datasetDocuments.list.table.header.fileName')}
                 </div>
               </td>
-              <td>
-                <ChunkingModeLabel
-                  isGeneralMode={isGeneralMode}
-                  isQAMode={isQAMode}
-                />
+              <td className='w-[130px]'>{t('datasetDocuments.list.table.header.chunkingMode')}</td>
+              <td className='w-24'>{t('datasetDocuments.list.table.header.words')}</td>
+              <td className='w-44'>{t('datasetDocuments.list.table.header.hitCount')}</td>
+              <td className='w-44'>
+                <div className='flex items-center' onClick={onClickSort}>
+                  {t('datasetDocuments.list.table.header.uploadTime')}
+                  <ArrowDownIcon className={cn('ml-0.5 h-3 w-3 cursor-pointer stroke-current stroke-2', enableSort ? 'text-text-tertiary' : 'text-text-disabled')} />
+                </div>
               </td>
-              <td>{renderCount(doc.word_count)}</td>
-              <td>{renderCount(doc.hit_count)}</td>
-              <td className='text-text-secondary text-[13px]'>
-                {formatTime(doc.created_at, t('datasetHitTesting.dateTimeFormat') as string)}
-              </td>
-              <td>
-                {
-                  (['indexing', 'splitting', 'parsing', 'cleaning'].includes(doc.indexing_status) && doc?.data_source_type === DataSourceType.NOTION)
-                    ? <ProgressBar percent={doc.percent || 0} />
-                    : <StatusItem status={doc.display_status} />
-                }
-              </td>
-              <td>
-                <OperationAction
-                  embeddingAvailable={embeddingAvailable}
-                  datasetId={datasetId}
-                  detail={pick(doc, ['name', 'enabled', 'archived', 'id', 'data_source_type', 'doc_form'])}
-                  onUpdate={onUpdate}
-                />
-              </td>
+              <td className='w-40'>{t('datasetDocuments.list.table.header.status')}</td>
+              <td className='w-20'>{t('datasetDocuments.list.table.header.action')}</td>
             </tr>
-          })}
-        </tbody>
-      </table>
+          </thead>
+          <tbody className="text-text-secondary">
+            {localDocs.map((doc, index) => {
+              const isFile = doc.data_source_type === DataSourceType.FILE
+              const fileType = isFile ? doc.data_source_detail_dict?.upload_file?.extension : ''
+              return <tr
+                key={doc.id}
+                className={'h-8 cursor-pointer border-b border-divider-subtle hover:bg-background-default-hover'}
+                onClick={() => {
+                  router.push(`/datasets/${datasetId}/documents/${doc.id}`)
+                }}>
+                <td className='text-left align-middle text-xs text-text-tertiary'>
+                  <div className='flex items-center' onClick={e => e.stopPropagation()}>
+                    <Checkbox
+                      className='mr-2 shrink-0'
+                      checked={selectedIds.includes(doc.id)}
+                      onCheck={() => {
+                        onSelectedIdChange(
+                          selectedIds.includes(doc.id)
+                            ? selectedIds.filter(id => id !== doc.id)
+                            : [...selectedIds, doc.id],
+                        )
+                      }}
+                    />
+                    {/* {doc.position} */}
+                    {index + 1}
+                  </div>
+                </td>
+                <td>
+                  <div className={'group mr-6 flex max-w-[460px] items-center hover:mr-0'}>
+                    <div className='shrink-0'>
+                      {doc?.data_source_type === DataSourceType.NOTION && <NotionIcon className='mr-1.5 mt-[-3px] inline-flex align-middle' type='page' src={doc.data_source_info.notion_page_icon} />}
+                      {doc?.data_source_type === DataSourceType.FILE && <FileTypeIcon type={extensionToFileType(doc?.data_source_info?.upload_file?.extension ?? fileType)} className='mr-1.5' />}
+                      {doc?.data_source_type === DataSourceType.WEB && <Globe01 className='mr-1.5 mt-[-3px] inline-flex align-middle' />}
+                    </div>
+                    <span className='grow-1 truncate text-sm'>{doc.name}</span>
+                    <div className='hidden shrink-0 group-hover:ml-auto group-hover:flex'>
+                      <Tooltip
+                        popupContent={t('datasetDocuments.list.table.rename')}
+                      >
+                        <div
+                          className='cursor-pointer rounded-md p-1 hover:bg-state-base-hover'
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            handleShowRenameModal(doc)
+                          }}
+                        >
+                          <RiEditLine className='h-4 w-4 text-text-tertiary' />
+                        </div>
+                      </Tooltip>
+                    </div>
+                  </div>
+                </td>
+                <td>
+                  <ChunkingModeLabel
+                    isGeneralMode={isGeneralMode}
+                    isQAMode={isQAMode}
+                  />
+                </td>
+                <td>{renderCount(doc.word_count)}</td>
+                <td>{renderCount(doc.hit_count)}</td>
+                <td className='text-[13px] text-text-secondary'>
+                  {formatTime(doc.created_at, t('datasetHitTesting.dateTimeFormat') as string)}
+                </td>
+                <td>
+                  {
+                    (['indexing', 'splitting', 'parsing', 'cleaning'].includes(doc.indexing_status) && doc?.data_source_type === DataSourceType.NOTION)
+                      ? <ProgressBar percent={doc.percent || 0} />
+                      : <StatusItem status={doc.display_status} />
+                  }
+                </td>
+                <td>
+                  <OperationAction
+                    embeddingAvailable={embeddingAvailable}
+                    datasetId={datasetId}
+                    detail={pick(doc, ['name', 'enabled', 'archived', 'id', 'data_source_type', 'doc_form'])}
+                    onUpdate={onUpdate}
+                  />
+                </td>
+              </tr>
+            })}
+          </tbody>
+        </table>
+      </div>
       {(selectedIds.length > 0) && (
         <BatchAction
-          className='absolute left-0 bottom-16 z-20'
+          className='absolute bottom-16 left-0 z-20'
           selectedIds={selectedIds}
           onArchive={handleAction(DocumentActionType.archive)}
           onBatchEnable={handleAction(DocumentActionType.enable)}
           onBatchDisable={handleAction(DocumentActionType.disable)}
           onBatchDelete={handleAction(DocumentActionType.delete)}
+          onEditMetadata={showEditModal}
           onCancel={() => {
             onSelectedIdChange([])
           }}
         />
       )}
       {/* Show Pagination only if the total is more than the limit */}
-      {pagination.total && pagination.total > (pagination.limit || 10) && (
+      {pagination.total && (
         <Pagination
           {...pagination}
-          className='absolute bottom-0 left-0 w-full px-0 pb-0'
+          className='w-full shrink-0 px-0 pb-0'
         />
       )}
 
@@ -643,6 +663,20 @@ const DocumentList: FC<IDocumentListProps> = ({
           name={currDocument.name}
           onClose={setShowRenameModalFalse}
           onSaved={handleRenamed}
+        />
+      )}
+
+      {isShowEditModal && (
+        <EditMetadataBatchModal
+          datasetId={datasetId}
+          documentNum={selectedIds.length}
+          list={originalList}
+          onSave={handleSave}
+          onHide={hideEditModal}
+          onShowManage={() => {
+            hideEditModal()
+            onManageMetadata()
+          }}
         />
       )}
     </div>

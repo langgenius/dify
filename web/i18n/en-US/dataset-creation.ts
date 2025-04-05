@@ -1,8 +1,7 @@
 const translation = {
   steps: {
     header: {
-      creation: 'Create Knowledge',
-      update: 'Add data',
+      fallbackRoute: 'Knowledge',
     },
     one: 'Data Source',
     two: 'Document Processing',
@@ -68,6 +67,8 @@ const translation = {
       jinaReaderNotConfigured: 'Jina Reader is not configured',
       jinaReaderNotConfiguredDescription: 'Set up Jina Reader by entering your free API key for access.',
       configure: 'Configure',
+      configureFirecrawl: 'Configure Firecrawl',
+      configureJinaReader: 'Configure Jina Reader',
       run: 'Run',
       firecrawlTitle: 'Extract web content with 🔥Firecrawl',
       firecrawlDoc: 'Firecrawl docs',

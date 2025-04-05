@@ -29,6 +29,7 @@ from factories import file_factory
 from models.account import Account
 from models.model import App, Conversation, EndUser, Message
 from models.workflow import Workflow
+from services.conversation_service import ConversationService
 from services.errors.message import MessageNotExistsError
 
 logger = logging.getLogger(__name__)
@@ -36,17 +37,6 @@ logger = logging.getLogger(__name__)
 
 class AdvancedChatAppGenerator(MessageBasedAppGenerator):
     _dialogue_count: int
-
-    @overload
-    def generate(
-        self,
-        app_model: App,
-        workflow: Workflow,
-        user: Union[Account, EndUser],
-        args: Mapping[str, Any],
-        invoke_from: InvokeFrom,
-        streaming: Literal[True],
-    ) -> Generator[str, None, None]: ...
 
     @overload
     def generate(
@@ -65,20 +55,31 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         app_model: App,
         workflow: Workflow,
         user: Union[Account, EndUser],
-        args: Mapping[str, Any],
+        args: Mapping,
         invoke_from: InvokeFrom,
-        streaming: bool = True,
-    ) -> Union[Mapping[str, Any], Generator[str, None, None]]: ...
+        streaming: Literal[True],
+    ) -> Generator[Mapping | str, None, None]: ...
+
+    @overload
+    def generate(
+        self,
+        app_model: App,
+        workflow: Workflow,
+        user: Union[Account, EndUser],
+        args: Mapping,
+        invoke_from: InvokeFrom,
+        streaming: bool,
+    ) -> Mapping[str, Any] | Generator[str | Mapping, None, None]: ...
 
     def generate(
         self,
         app_model: App,
         workflow: Workflow,
         user: Union[Account, EndUser],
-        args: Mapping[str, Any],
+        args: Mapping,
         invoke_from: InvokeFrom,
         streaming: bool = True,
-    ):
+    ) -> Mapping[str, Any] | Generator[str | Mapping, None, None]:
         """
         Generate App response.
 
@@ -87,7 +88,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         :param user: account or end user
         :param args: request args
         :param invoke_from: invoke from source
-        :param stream: is stream
+        :param streaming: is stream
         """
         if not args.get("query"):
             raise ValueError("query is required")
@@ -105,7 +106,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         conversation = None
         conversation_id = args.get("conversation_id")
         if conversation_id:
-            conversation = self._get_conversation_by_user(
+            conversation = ConversationService.get_conversation(
                 app_model=app_model, conversation_id=conversation_id, user=user
             )
 
@@ -140,9 +141,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
             app_config=app_config,
             file_upload_config=file_extra_config,
             conversation_id=conversation.id if conversation else None,
-            inputs=conversation.inputs
-            if conversation
-            else self._prepare_user_inputs(
+            inputs=self._prepare_user_inputs(
                 user_inputs=inputs, variables=app_config.variables, tenant_id=app_model.tenant_id
             ),
             query=query,
@@ -156,6 +155,8 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
             workflow_run_id=workflow_run_id,
         )
         contexts.tenant_id.set(application_generate_entity.app_config.tenant_id)
+        contexts.plugin_tool_providers.set({})
+        contexts.plugin_tool_providers_lock.set(threading.Lock())
 
         return self._generate(
             workflow=workflow,
@@ -167,17 +168,23 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         )
 
     def single_iteration_generate(
-        self, app_model: App, workflow: Workflow, node_id: str, user: Account, args: dict, streaming: bool = True
-    ) -> Mapping[str, Any] | Generator[str, None, None]:
+        self,
+        app_model: App,
+        workflow: Workflow,
+        node_id: str,
+        user: Account | EndUser,
+        args: Mapping,
+        streaming: bool = True,
+    ) -> Mapping[str, Any] | Generator[str | Mapping[str, Any], Any, None]:
         """
         Generate App response.
 
         :param app_model: App
         :param workflow: Workflow
+        :param node_id: the node id
         :param user: account or end user
         :param args: request args
-        :param invoke_from: invoke from source
-        :param stream: is stream
+        :param streaming: is streamed
         """
         if not node_id:
             raise ValueError("node_id is required")
@@ -205,6 +212,63 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
             ),
         )
         contexts.tenant_id.set(application_generate_entity.app_config.tenant_id)
+        contexts.plugin_tool_providers.set({})
+        contexts.plugin_tool_providers_lock.set(threading.Lock())
+
+        return self._generate(
+            workflow=workflow,
+            user=user,
+            invoke_from=InvokeFrom.DEBUGGER,
+            application_generate_entity=application_generate_entity,
+            conversation=None,
+            stream=streaming,
+        )
+
+    def single_loop_generate(
+        self,
+        app_model: App,
+        workflow: Workflow,
+        node_id: str,
+        user: Account | EndUser,
+        args: Mapping,
+        streaming: bool = True,
+    ) -> Mapping[str, Any] | Generator[str | Mapping[str, Any], Any, None]:
+        """
+        Generate App response.
+
+        :param app_model: App
+        :param workflow: Workflow
+        :param node_id: the node id
+        :param user: account or end user
+        :param args: request args
+        :param streaming: is stream
+        """
+        if not node_id:
+            raise ValueError("node_id is required")
+
+        if args.get("inputs") is None:
+            raise ValueError("inputs is required")
+
+        # convert to app config
+        app_config = AdvancedChatAppConfigManager.get_app_config(app_model=app_model, workflow=workflow)
+
+        # init application generate entity
+        application_generate_entity = AdvancedChatAppGenerateEntity(
+            task_id=str(uuid.uuid4()),
+            app_config=app_config,
+            conversation_id=None,
+            inputs={},
+            query="",
+            files=[],
+            user_id=user.id,
+            stream=streaming,
+            invoke_from=InvokeFrom.DEBUGGER,
+            extras={"auto_generate_conversation_name": False},
+            single_loop_run=AdvancedChatAppGenerateEntity.SingleLoopRunEntity(node_id=node_id, inputs=args["inputs"]),
+        )
+        contexts.tenant_id.set(application_generate_entity.app_config.tenant_id)
+        contexts.plugin_tool_providers.set({})
+        contexts.plugin_tool_providers_lock.set(threading.Lock())
 
         return self._generate(
             workflow=workflow,
@@ -224,7 +288,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         application_generate_entity: AdvancedChatAppGenerateEntity,
         conversation: Optional[Conversation] = None,
         stream: bool = True,
-    ) -> Mapping[str, Any] | Generator[str, None, None]:
+    ) -> Mapping[str, Any] | Generator[str | Mapping[str, Any], Any, None]:
         """
         Generate App response.
 

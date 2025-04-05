@@ -1,3 +1,4 @@
+import os
 from typing import Any, Literal, Optional
 from urllib.parse import quote_plus
 
@@ -25,12 +26,14 @@ from .vdb.lindorm_config import LindormConfig
 from .vdb.milvus_config import MilvusConfig
 from .vdb.myscale_config import MyScaleConfig
 from .vdb.oceanbase_config import OceanBaseVectorConfig
+from .vdb.opengauss_config import OpenGaussConfig
 from .vdb.opensearch_config import OpenSearchConfig
 from .vdb.oracle_config import OracleConfig
 from .vdb.pgvector_config import PGVectorConfig
 from .vdb.pgvectors_config import PGVectoRSConfig
 from .vdb.qdrant_config import QdrantConfig
 from .vdb.relyt_config import RelytConfig
+from .vdb.tablestore_config import TableStoreConfig
 from .vdb.tencent_vector_config import TencentVectorDBConfig
 from .vdb.tidb_on_qdrant_config import TidbOnQdrantConfig
 from .vdb.tidb_vector_config import TiDBVectorConfig
@@ -166,6 +169,11 @@ class DatabaseConfig(BaseSettings):
         default=False,
     )
 
+    RETRIEVAL_SERVICE_EXECUTORS: NonNegativeInt = Field(
+        description="Number of processes for the retrieval service, default to CPU cores.",
+        default=os.cpu_count(),
+    )
+
     @computed_field
     def SQLALCHEMY_ENGINE_OPTIONS(self) -> dict[str, Any]:
         return {
@@ -275,5 +283,7 @@ class MiddlewareConfig(
     LindormConfig,
     OceanBaseVectorConfig,
     BaiduVectorDBConfig,
+    OpenGaussConfig,
+    TableStoreConfig,
 ):
     pass

@@ -24,6 +24,7 @@ import cn from '@/utils/classnames'
 import { useSelectedDatasetsMode } from '@/app/components/workflow/nodes/knowledge-retrieval/hooks'
 import Switch from '@/app/components/base/switch'
 import Toast from '@/app/components/base/toast'
+import Divider from '@/app/components/base/divider'
 
 type Props = {
   datasetConfigs: DatasetConfigs
@@ -184,30 +185,30 @@ const ConfigContent: FC<Props> = ({
       </div>
       {type === RETRIEVE_TYPE.multiWay && (
         <>
-          <div className='flex items-center my-2 py-1 h-6'>
-            <div className='shrink-0 mr-2 system-xs-semibold-uppercase text-text-secondary'>
+          <div className='my-2 flex h-6 items-center py-1'>
+            <div className='system-xs-semibold-uppercase mr-2 shrink-0 text-text-secondary'>
               {t('dataset.rerankSettings')}
             </div>
-            <div className='grow h-[1px] bg-gradient-to-l from-white to-[rgba(16,24,40,0.08)]'></div>
+            <Divider bgStyle='gradient' className='mx-0 !h-px' />
           </div>
           {
             selectedDatasetsMode.inconsistentEmbeddingModel
             && (
-              <div className='mt-4 system-xs-medium text-text-warning'>
+              <div className='system-xs-medium mt-4 text-text-warning'>
                 {t('dataset.inconsistentEmbeddingModelTip')}
               </div>
             )
           }
           {
             selectedDatasetsMode.mixtureInternalAndExternal && (
-              <div className='mt-4 system-xs-medium text-text-warning'>
+              <div className='system-xs-medium mt-4 text-text-warning'>
                 {t('dataset.mixtureInternalAndExternalTip')}
               </div>
             )
           }
           {
             selectedDatasetsMode.allExternal && (
-              <div className='mt-4 system-xs-medium text-text-warning'>
+              <div className='system-xs-medium mt-4 text-text-warning'>
                 {t('dataset.allExternalTip')}
               </div>
             )
@@ -215,7 +216,7 @@ const ConfigContent: FC<Props> = ({
           {
             selectedDatasetsMode.mixtureHighQualityAndEconomic
             && (
-              <div className='mt-4 system-xs-medium text-text-warning'>
+              <div className='system-xs-medium mt-4 text-text-warning'>
                 {t('dataset.mixtureHighQualityAndEconomicTip')}
               </div>
             )
@@ -228,7 +229,7 @@ const ConfigContent: FC<Props> = ({
                     <div
                       key={option.value}
                       className={cn(
-                        'flex items-center justify-center w-[calc((100%-8px)/2)] h-8 rounded-lg border border-components-option-card-option-border bg-components-option-card-option-bg cursor-pointer system-sm-medium text-text-secondary',
+                        'system-sm-medium flex h-8 w-[calc((100%-8px)/2)] cursor-pointer items-center justify-center rounded-lg border border-components-option-card-option-border bg-components-option-card-option-bg text-text-secondary',
                         selectedRerankMode === option.value && 'border-[1.5px] border-components-option-card-option-selected-border bg-components-option-card-option-selected-bg text-text-primary',
                       )}
                       onClick={() => handleRerankModeChange(option.value)}
@@ -263,7 +264,7 @@ const ConfigContent: FC<Props> = ({
                       />
                     )
                   }
-                  <div className='leading-[32px] ml-1 text-text-secondary system-sm-semibold'>{t('common.modelProvider.rerankModel.key')}</div>
+                  <div className='system-sm-semibold ml-1 leading-[32px] text-text-secondary'>{t('common.modelProvider.rerankModel.key')}</div>
                   <Tooltip
                     popupContent={
                       <div className="w-[200px]">
@@ -352,7 +353,7 @@ const ConfigContent: FC<Props> = ({
       {isInWorkflow && type === RETRIEVE_TYPE.oneWay && (
         <div className='mt-4'>
           <div className='flex items-center space-x-0.5'>
-            <div className='leading-[32px] text-[13px] font-medium text-gray-900'>{t('common.modelProvider.systemReasoningModel.key')}</div>
+            <div className='text-[13px] font-medium leading-[32px] text-text-primary'>{t('common.modelProvider.systemReasoningModel.key')}</div>
             <Tooltip
               popupContent={t('common.modelProvider.systemReasoningModel.tip')}
             />
