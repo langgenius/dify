@@ -9,7 +9,6 @@ from typing import Optional, Union
 from uuid import uuid4
 
 import httpx
-
 from configs import dify_config
 from core.helper import ssrf_proxy
 from extensions.ext_database import db
@@ -58,7 +57,7 @@ class ToolFileManager:
     @staticmethod
     def create_file_by_raw(
         *,
-        user_id: str,
+        user_id: Optional[str],
         tenant_id: str,
         conversation_id: Optional[str],
         file_binary: bytes,

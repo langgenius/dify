@@ -2,12 +2,12 @@ import json
 from typing import Any, Optional
 
 import sqlalchemy as sa
-from sqlalchemy import ForeignKey, func
-from sqlalchemy.orm import Mapped, mapped_column
-
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_bundle import ApiToolBundle
-from core.tools.entities.tool_entities import ApiProviderSchemaType, WorkflowToolParameterConfiguration
+from core.tools.entities.tool_entities import (
+    ApiProviderSchemaType, WorkflowToolParameterConfiguration)
+from sqlalchemy import ForeignKey, func
+from sqlalchemy.orm import Mapped, mapped_column
 
 from .engine import db
 from .model import Account, App, Tenant
@@ -294,7 +294,7 @@ class ToolFile(db.Model):  # type: ignore[name-defined]
     )
 
     id = db.Column(StringUUID, server_default=db.text("uuid_generate_v4()"))
-    user_id: Mapped[str] = db.Column(StringUUID, nullable=False)
+    user_id: Mapped[Optional[str]] = db.Column(StringUUID, nullable=True)
     tenant_id: Mapped[str] = db.Column(StringUUID, nullable=False)
     conversation_id: Mapped[Optional[str]] = db.Column(StringUUID, nullable=True)
     file_key: Mapped[str] = db.Column(db.String(255), nullable=False)
@@ -306,7 +306,7 @@ class ToolFile(db.Model):  # type: ignore[name-defined]
     def __init__(
         self,
         *,
-        user_id: str,
+        user_id: Optional[str],
         tenant_id: str,
         conversation_id: Optional[str] = None,
         file_key: str,
