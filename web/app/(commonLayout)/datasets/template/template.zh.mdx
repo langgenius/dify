@@ -49,7 +49,8 @@ import { Row, Col, Properties, Property, Heading, SubProperty, PropertyInstructi
       </Property>
       <Property name='indexing_technique' type='string' key='indexing_technique'>
         索引方式
-          - <code>high_quality</code> 高质量：使用  embedding 模型进行嵌入，构建为向量数据库索引
+          - <code>high_quality</code> 高质量：使用  
+        ding 模型进行嵌入，构建为向量数据库索引
           - <code>economy</code> 经济：使用 keyword table index 的倒排索引进行构建
       </Property>
       <Property name='doc_form' type='string' key='doc_form'>
@@ -431,6 +432,195 @@ import { Row, Col, Properties, Property, Heading, SubProperty, PropertyInstructi
       "limit": 20,
       "total": 50,
       "page": 1
+    }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
+<hr className='ml-0 mr-0' />
+
+<Heading
+  url='/datasets/{dataset_id}'
+  method='GET'
+  title='查看知识库详情'
+  name='#view_dataset'
+/>
+<Row>
+  <Col>
+    ### Query
+    <Properties>
+      <Property name='dataset_id' type='string' key='dataset_id'>
+        知识库 ID
+      </Property>
+    </Properties>
+  </Col>
+  <Col sticky>
+    <CodeGroup
+      title="Request"
+      tag="GET"
+      label="/datasets/{dataset_id}"
+      targetCode={`curl --location --request GET '${props.apiBaseUrl}/datasets/{dataset_id}' \\\n--header 'Authorization: Bearer {api_key}'`}
+    >
+    ```bash {{ title: 'cURL' }}
+    curl --location --request GET '${props.apiBaseUrl}/datasets/{dataset_id}' \
+    --header 'Authorization: Bearer {api_key}'
+    ```
+    </CodeGroup>
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {
+      "id": "eaedb485-95ac-4ffd-ab1e-18da6d676a2f",
+      "name": "Test Knowledge Base",
+      "description": "",
+      "provider": "vendor",
+      "permission": "only_me",
+      "data_source_type": null,
+      "indexing_technique": null,
+      "app_count": 0,
+      "document_count": 0,
+      "word_count": 0,
+      "created_by": "e99a1635-f725-4951-a99a-1daaaa76cfc6",
+      "created_at": 1735620612,
+      "updated_by": "e99a1635-f725-4951-a99a-1daaaa76cfc6",
+      "updated_at": 1735620612,
+      "embedding_model": null,
+      "embedding_model_provider": null,
+      "embedding_available": true,
+      "retrieval_model_dict": {
+        "search_method": "semantic_search",
+        "reranking_enable": false,
+        "reranking_mode": null,
+        "reranking_model": {
+          "reranking_provider_name": "",
+          "reranking_model_name": ""
+        },
+        "weights": null,
+        "top_k": 2,
+        "score_threshold_enabled": false,
+        "score_threshold": null
+      },
+      "tags": [],
+      "doc_form": null,
+      "external_knowledge_info": {
+        "external_knowledge_id": null,
+        "external_knowledge_api_id": null,
+        "external_knowledge_api_name": null,
+        "external_knowledge_api_endpoint": null
+      },
+      "external_retrieval_model": {
+        "top_k": 2,
+        "score_threshold": 0.0,
+        "score_threshold_enabled": null
+      }
+    }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
+<hr className='ml-0 mr-0' />
+
+<Heading
+  url='/datasets/{dataset_id}'
+  method='POST'
+  title='修改知识库详情'
+  name='#update_dataset'
+/>
+<Row>
+  <Col>
+    ### Query
+    <Properties>
+      <Property name='dataset_id' type='string' key='dataset_id'>
+        知识库 ID
+      </Property>
+      <Property name='indexing_technique' type='string' key='indexing_technique'>
+        索引模式（选填，建议填写）
+          - <code>high_quality</code> 高质量
+          - <code>economy</code> 经济
+      </Property>
+      <Property name='permission' type='string' key='permission'>
+        权限（选填，默认 only_me）
+          - <code>only_me</code> 仅自己
+          - <code>all_team_members</code> 所有团队成员
+          - <code>partial_members</code> 部分团队成员
+      </Property>
+      <Property name='embedding_model_provider' type='string' key='embedding_model_provider'>
+        嵌入模型提供商（选填）, 必须先在系统内设定好接入的模型，对应的是provider字段
+      </Property>
+      <Property name='embedding_model' type='string' key='embedding_model'>
+        嵌入模型（选填）
+      </Property>
+      <Property name='retrieval_model' type='string' key='retrieval_model'>
+        检索模型（选填）
+      </Property>
+      <Property name='partial_member_list' type='array' key='partial_member_list'>
+        部分团队成员 ID 列表（选填）
+      </Property>
+    </Properties>
+  </Col>
+  <Col sticky>
+    <CodeGroup
+      title="Request"
+      tag="POST"
+      label="/datasets/{dataset_id}"
+      targetCode={`curl --location --request POST '${props.apiBaseUrl}/datasets/{dataset_id}' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{"name": "Test Knowledge Base", "indexing_technique": "high_quality", "permission": "only_me", "embedding_model_provider": "zhipuai", "embedding_model": "embedding-3", "retrieval_model": "", "partial_member_list": []}' `}
+    >
+    ```bash {{ title: 'cURL' }}
+    curl --location --request POST '${props.apiBaseUrl}/datasets/{dataset_id}' \
+    --header 'Authorization: Bearer {api_key}' \
+    --header 'Content-Type: application/json' \
+    --data-raw '{"name": "Test Knowledge Base", "indexing_technique": "high_quality", "permission": "only_me",\
+      "embedding_model_provider": "zhipuai", "embedding_model": "embedding-3", "retrieval_model": "", "partial_member_list": []}'
+    ```
+    </CodeGroup>
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {
+      "id": "eaedb485-95ac-4ffd-ab1e-18da6d676a2f",
+      "name": "Test Knowledge Base",
+      "description": "",
+      "provider": "vendor",
+      "permission": "only_me",
+      "data_source_type": null,
+      "indexing_technique": "high_quality",
+      "app_count": 0,
+      "document_count": 0,
+      "word_count": 0,
+      "created_by": "e99a1635-f725-4951-a99a-1daaaa76cfc6",
+      "created_at": 1735620612,
+      "updated_by": "e99a1635-f725-4951-a99a-1daaaa76cfc6",
+      "updated_at": 1735622679,
+      "embedding_model": "embedding-3",
+      "embedding_model_provider": "zhipuai",
+      "embedding_available": null,
+      "retrieval_model_dict": {
+          "search_method": "semantic_search",
+          "reranking_enable": false,
+          "reranking_mode": null,
+          "reranking_model": {
+              "reranking_provider_name": "",
+              "reranking_model_name": ""
+          },
+          "weights": null,
+          "top_k": 2,
+          "score_threshold_enabled": false,
+          "score_threshold": null
+      },
+      "tags": [],
+      "doc_form": null,
+      "external_knowledge_info": {
+          "external_knowledge_id": null,
+          "external_knowledge_api_id": null,
+          "external_knowledge_api_name": null,
+          "external_knowledge_api_endpoint": null
+      },
+      "external_retrieval_model": {
+          "top_k": 2,
+          "score_threshold": 0.0,
+          "score_threshold_enabled": null
+      },
+      "partial_member_list": []
     }
     ```
     </CodeGroup>
@@ -1903,6 +2093,110 @@ import { Row, Col, Properties, Property, Heading, SubProperty, PropertyInstructi
     ```
     </CodeGroup>
   </Col>
+</Row>
+
+<hr className='ml-0 mr-0' />
+ 
+<Heading
+ url='/workspaces/current/models/model-types/text-embedding'
+ method='GET'
+ title='获取嵌入模型列表'
+ name='#model_type_list'
+/>
+<Row>
+   <Col>
+     ### Query
+     <Properties>
+     </Properties>
+   </Col>
+   <Col sticky>
+     <CodeGroup
+       title="Request"
+       tag="GET"
+       label="/datasets/{dataset_id}"
+       targetCode={`curl --location --location --request GET '${props.apiBaseUrl}/workspaces/current/models/model-types/text-embedding' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' `}
+     >
+     ```bash {{ title: 'cURL' }}
+     curl --location --request GET '${props.apiBaseUrl}/workspaces/current/models/model-types/text-embedding' \
+     --header 'Authorization: Bearer {api_key}' \
+     --header 'Content-Type: application/json' \
+     ```
+     </CodeGroup>
+     <CodeGroup title="Response">
+     ```json {{ title: 'Response' }}
+     {
+       "data": [
+           {
+               "provider": "zhipuai",
+               "label": {
+                   "zh_Hans": "智谱 AI",
+                   "en_US": "ZHIPU AI"
+               },
+               "icon_small": {
+                   "zh_Hans": "http://127.0.0.1:5001/console/api/workspaces/current/model-providers/zhipuai/icon_small/zh_Hans",
+                   "en_US": "http://127.0.0.1:5001/console/api/workspaces/current/model-providers/zhipuai/icon_small/en_US"
+               },
+               "icon_large": {
+                   "zh_Hans": "http://127.0.0.1:5001/console/api/workspaces/current/model-providers/zhipuai/icon_large/zh_Hans",
+                   "en_US": "http://127.0.0.1:5001/console/api/workspaces/current/model-providers/zhipuai/icon_large/en_US"
+               },
+               "status": "active",
+               "models": [
+                   {
+                       "model": "embedding-3",
+                       "label": {
+                           "zh_Hans": "embedding-3",
+                           "en_US": "embedding-3"
+                       },
+                       "model_type": "text-embedding",
+                       "features": null,
+                       "fetch_from": "predefined-model",
+                       "model_properties": {
+                           "context_size": 8192
+                       },
+                       "deprecated": false,
+                       "status": "active",
+                       "load_balancing_enabled": false
+                   },
+                   {
+                       "model": "embedding-2",
+                       "label": {
+                           "zh_Hans": "embedding-2",
+                           "en_US": "embedding-2"
+                       },
+                       "model_type": "text-embedding",
+                       "features": null,
+                       "fetch_from": "predefined-model",
+                       "model_properties": {
+                           "context_size": 8192
+                       },
+                       "deprecated": false,
+                       "status": "active",
+                       "load_balancing_enabled": false
+                   },
+                   {
+                       "model": "text_embedding",
+                       "label": {
+                           "zh_Hans": "text_embedding",
+                           "en_US": "text_embedding"
+                       },
+                       "model_type": "text-embedding",
+                       "features": null,
+                       "fetch_from": "predefined-model",
+                       "model_properties": {
+                           "context_size": 512
+                       },
+                       "deprecated": false,
+                       "status": "active",
+                       "load_balancing_enabled": false
+                   }
+               ]
+           }
+       ]
+     }
+     ```
+     </CodeGroup>
+   </Col>
 </Row>
 
 <hr className='ml-0 mr-0' />

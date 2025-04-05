@@ -59,6 +59,27 @@ def validate_app_token(view: Optional[Callable] = None, *, fetch_user_arg: Optio
             if tenant.status == TenantStatus.ARCHIVE:
                 raise Forbidden("The workspace's status is archived.")
 
+            tenant_account_join = (
+                db.session.query(Tenant, TenantAccountJoin)
+                .filter(Tenant.id == api_token.tenant_id)
+                .filter(TenantAccountJoin.tenant_id == Tenant.id)
+                .filter(TenantAccountJoin.role.in_(["owner"]))
+                .filter(Tenant.status == TenantStatus.NORMAL)
+                .one_or_none()
+            )  # TODO: only owner information is required, so only one is returned.
+            if tenant_account_join:
+                tenant, ta = tenant_account_join
+                account = Account.query.filter_by(id=ta.account_id).first()
+                # Login admin
+                if account:
+                    account.current_tenant = tenant
+                    current_app.login_manager._update_request_context_with_user(account)  # type: ignore
+                    user_logged_in.send(current_app._get_current_object(), user=_get_user())  # type: ignore
+                else:
+                    raise Unauthorized("Tenant owner account does not exist.")
+            else:
+                raise Unauthorized("Tenant does not exist.")
+
             kwargs["app_model"] = app_model
 
             if fetch_user_arg:
