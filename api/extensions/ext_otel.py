@@ -4,7 +4,7 @@ import threading
 from collections.abc import Callable
 from typing import Any
 
-from flask_login import current_user
+from flask import g
 from opentelemetry.exporter.otlp.proto.http.metric_exporter import OTLPMetricExporter
 from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
 from opentelemetry.instrumentation.flask import FlaskInstrumentor
@@ -20,31 +20,54 @@ from opentelemetry.sdk.trace.export import (
     SpanProcessor,
 )
 from opentelemetry.semconv.resource import ResourceAttributes
-from opentelemetry.trace import Span, get_tracer_provider, set_tracer_provider
+from opentelemetry.trace import Span, get_current_span, get_tracer_provider, set_tracer_provider
 
 from configs import dify_config
 from dify_app import DifyApp
 
 logger = logging.getLogger(__name__)
+from flask import has_request_context, request
+from flask_login import user_loaded_from_request, user_logged_in
+
 
 class DifyAttributesSpanProcessor(SpanProcessor):
-    def __init__(self, attributes_provider: Callable[[], dict[str, Any]]):
+    def __init__(self, attributes_provider: Callable[[], dict[str, Any]] | None = None):
         self.attributes_provider = attributes_provider
         self._processing = threading.local() # Avoid recursion
 
     def on_start(self, span: "Span", parent_context = None) -> None:
         try:
+            # FIXME: on_start is called too early before login callbacks
+            # so any user info in context like ContextVar, g, etc. is not available
+            # We can query user info from database in this function
+            # But it's not a good idea to do it here, because it will cause a database query
+            # And it will cause a performance issue
+            # Besides, query will trigger another on_start call
+            # So we need to find a better way to do it
             if getattr(self._processing, 'is_processing', False):
                 return
-            self._processing.is_processing = True
-            try:
-                attributes = self.attributes_provider()
-                for key, value in attributes.items():
-                    span.set_attribute(key, value)
-            finally:
-                self._processing.is_processing = False
+
+            is_sql_span = span.name.startswith(('SELECT', 'INSERT', 'UPDATE', 'DELETE', 'connect'))
+            if is_sql_span:
+                logging.info(f"parent_context: {parent_context}, parent span: {span.get_span_context()}")
+            else: 
+                if has_request_context():
+                    logger.info(f"otel Current request path: {request.path}, method: \
+                                {request.method}, headers: {request.headers}")
+                    logger.info(f"otel g objects: {vars(g)}")
+                logging.info(f"otel current span attributes: {span.attributes}")
+
+                self._processing.is_processing = True
+                try:
+                    if self.attributes_provider:
+                        attributes = self.attributes_provider()
+                        for key, value in attributes.items():
+                            span.set_attribute(key, value)
+                finally:
+                    self._processing.is_processing = False
         except Exception:
             logger.exception("Error setting span attributes")
+
 
     def on_end(self, span: "ReadableSpan") -> None:
         pass
@@ -55,19 +78,16 @@ class DifyAttributesSpanProcessor(SpanProcessor):
     def shutdown(self) -> None:
         pass
 
-def get_user_context_attributes() -> dict[str, Any]:
-    """
-    Dynamically get user context attributes for tracing.
-    Returns basic attributes even if user context is not available.
-    """
-    try: 
-        return {
-            "service.tenant.id": getattr(current_user, 'current_tenant_id', ''),
-            "service.user.id": getattr(current_user, 'id', ''),
-        }
-    except Exception:
-        # logger.exception("Could not get user context for tracing")
-        return {}
+
+# Set it when user logs in
+@user_logged_in.connect
+@user_loaded_from_request.connect
+def on_user_loaded(_sender, user):
+    if user:
+        current_span = get_current_span()
+        if current_span:
+            current_span.set_attribute("service.tenant.id", user.current_tenant_id)
+            current_span.set_attribute("service.user.id", user.id)
 
 def init_app(app: DifyApp):
     if dify_config.ENABLE_OTEL:
@@ -92,7 +112,7 @@ def init_app(app: DifyApp):
                 endpoint=dify_config.OTLP_BASE_ENDPOINT + "/v1/metrics",
                 headers={"Authorization": f"Bearer {dify_config.OTLP_API_KEY}"},
             )
-        get_tracer_provider().add_span_processor(DifyAttributesSpanProcessor(get_user_context_attributes))
+        get_tracer_provider().add_span_processor(DifyAttributesSpanProcessor())
         get_tracer_provider().add_span_processor(
             BatchSpanProcessor(exporter)
         )
