@@ -41,6 +41,7 @@ import { CopyIcon } from '@/app/components/base/copy-icon'
 import { buildChatItemTree, getThreadMessages } from '@/app/components/base/chat/utils'
 import { getProcessedFilesFromResponse } from '@/app/components/base/file-uploader/utils'
 import cn from '@/utils/classnames'
+import { noop } from 'lodash-es'
 
 dayjs.extend(utc)
 dayjs.extend(timezone)
@@ -411,7 +412,7 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
               content={detail.message.answer}
               messageId={detail.message.id}
               isError={false}
-              onRetry={() => { }}
+              onRetry={noop}
               isInstalledApp={false}
               supportFeedback
               feedback={detail.message.feedbacks.find((item: any) => item.from_source === 'admin')}
