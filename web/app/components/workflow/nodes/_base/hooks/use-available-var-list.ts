@@ -13,6 +13,7 @@ type Params = {
   passedInAvailableNodes?: Node[]
 }
 
+// TODO: loop type?
 const useAvailableVarList = (nodeId: string, {
   onlyLeafNodeVar,
   filterVar,
@@ -23,11 +24,11 @@ const useAvailableVarList = (nodeId: string, {
   onlyLeafNodeVar: false,
   filterVar: () => true,
 }) => {
-  const { getTreeLeafNodes, getBeforeNodesInSameBranch } = useWorkflow()
+  const { getTreeLeafNodes, getBeforeNodesInSameBranchIncludeParent } = useWorkflow()
   const { getNodeAvailableVars } = useWorkflowVariables()
   const isChatMode = useIsChatMode()
 
-  const availableNodes = passedInAvailableNodes || (onlyLeafNodeVar ? getTreeLeafNodes(nodeId) : getBeforeNodesInSameBranch(nodeId))
+  const availableNodes = passedInAvailableNodes || (onlyLeafNodeVar ? getTreeLeafNodes(nodeId) : getBeforeNodesInSameBranchIncludeParent(nodeId))
 
   const {
     parentNode: iterationNode,
@@ -45,7 +46,7 @@ const useAvailableVarList = (nodeId: string, {
   return {
     availableVars,
     availableNodes,
-    availableNodesWithParent: iterationNode ? [...availableNodes, iterationNode] : availableNodes,
+    availableNodesWithParent: availableNodes,
   }
 }
 

@@ -332,7 +332,7 @@ class BaseAgentRunner(AppRunner):
         agent_thought = updated_agent_thought
 
         if thought:
-            agent_thought.thought = thought
+            agent_thought.thought += thought
 
         if tool_name:
             agent_thought.tool = tool_name

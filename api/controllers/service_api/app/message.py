@@ -1,3 +1,4 @@
+import json
 import logging
 
 from flask_restful import Resource, fields, marshal_with, reqparse  # type: ignore
@@ -10,7 +11,7 @@ from controllers.service_api.app.error import NotChatAppError
 from controllers.service_api.wraps import FetchUserArg, WhereisUserArg, validate_app_token
 from core.app.entities.app_invoke_entities import InvokeFrom
 from fields.conversation_fields import message_file_fields
-from fields.message_fields import feedback_fields, retriever_resource_fields
+from fields.message_fields import agent_thought_fields, feedback_fields
 from fields.raws import FilesContainedField
 from libs.helper import TimestampField, uuid_value
 from models.model import App, AppMode, EndUser
@@ -19,19 +20,13 @@ from services.message_service import MessageService
 
 
 class MessageListApi(Resource):
-    agent_thought_fields = {
-        "id": fields.String,
-        "chain_id": fields.String,
-        "message_id": fields.String,
-        "position": fields.Integer,
-        "thought": fields.String,
-        "tool": fields.String,
-        "tool_labels": fields.Raw,
-        "tool_input": fields.String,
-        "created_at": TimestampField,
-        "observation": fields.String,
-        "message_files": fields.List(fields.Nested(message_file_fields)),
-    }
+    def get_retriever_resources(self):
+        try:
+            if self.message_metadata:
+                return json.loads(self.message_metadata).get("retriever_resources", [])
+            return []
+        except (json.JSONDecodeError, TypeError):
+            return []
 
     message_fields = {
         "id": fields.String,
@@ -42,7 +37,7 @@ class MessageListApi(Resource):
         "answer": fields.String(attribute="re_sign_file_url_answer"),
         "message_files": fields.List(fields.Nested(message_file_fields)),
         "feedback": fields.Nested(feedback_fields, attribute="user_feedback", allow_null=True),
-        "retriever_resources": fields.List(fields.Nested(retriever_resource_fields)),
+        "retriever_resources": get_retriever_resources,
         "created_at": TimestampField,
         "agent_thoughts": fields.List(fields.Nested(agent_thought_fields)),
         "status": fields.String,
@@ -70,7 +65,7 @@ class MessageListApi(Resource):
 
         try:
             return MessageService.pagination_by_first_id(
-                app_model, end_user, args["conversation_id"], args["first_id"], args["limit"], "desc"
+                app_model, end_user, args["conversation_id"], args["first_id"], args["limit"]
             )
         except services.errors.conversation.ConversationNotExistsError:
             raise NotFound("Conversation Not Exists.")

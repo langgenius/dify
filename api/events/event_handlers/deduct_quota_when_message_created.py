@@ -1,6 +1,9 @@
+from datetime import UTC, datetime
+
 from configs import dify_config
 from core.app.entities.app_invoke_entities import AgentChatAppGenerateEntity, ChatAppGenerateEntity
 from core.entities.provider_entities import QuotaUnit
+from core.plugin.entities.plugin import ModelProviderID
 from events.message_event import message_was_created
 from extensions.ext_database import db
 from models.provider import Provider, ProviderType
@@ -48,9 +51,15 @@ def handle(sender, **kwargs):
     if used_quota is not None and system_configuration.current_quota_type is not None:
         db.session.query(Provider).filter(
             Provider.tenant_id == application_generate_entity.app_config.tenant_id,
-            Provider.provider_name == model_config.provider,
+            # TODO: Use provider name with prefix after the data migration.
+            Provider.provider_name == ModelProviderID(model_config.provider).provider_name,
             Provider.provider_type == ProviderType.SYSTEM.value,
             Provider.quota_type == system_configuration.current_quota_type.value,
             Provider.quota_limit > Provider.quota_used,
-        ).update({"quota_used": Provider.quota_used + used_quota})
+        ).update(
+            {
+                "quota_used": Provider.quota_used + used_quota,
+                "last_used": datetime.now(tz=UTC).replace(tzinfo=None),
+            }
+        )
         db.session.commit()

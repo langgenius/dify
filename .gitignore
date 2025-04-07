@@ -103,6 +103,7 @@ celerybeat.pid
 
 # Environments
 .env
+.env-local
 .venv
 env/
 venv/
@@ -184,6 +185,7 @@ docker/nginx/conf.d/.htpasswd
 docker/nginx/ssl/*
 !docker/nginx/ssl/.gitkeep
 docker/middleware.env
+docker/docker-compose.override.yaml
 
 sdks/python-client/build
 sdks/python-client/dist
@@ -202,3 +204,6 @@ api/.vscode
 
 # plugin migrate
 plugins.jsonl
+
+# mise
+mise.toml

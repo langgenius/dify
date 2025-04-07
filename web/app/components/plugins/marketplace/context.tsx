@@ -37,6 +37,7 @@ import {
   getMarketplaceListFilterType,
 } from './utils'
 import { useInstalledPluginList } from '@/service/use-plugins'
+import { noop } from 'lodash-es'
 
 export type MarketplaceContextValue = {
   intersected: boolean
@@ -66,26 +67,26 @@ export type MarketplaceContextValue = {
 
 export const MarketplaceContext = createContext<MarketplaceContextValue>({
   intersected: true,
-  setIntersected: () => {},
+  setIntersected: noop,
   searchPluginText: '',
-  handleSearchPluginTextChange: () => {},
+  handleSearchPluginTextChange: noop,
   filterPluginTags: [],
-  handleFilterPluginTagsChange: () => {},
+  handleFilterPluginTagsChange: noop,
   activePluginType: 'all',
-  handleActivePluginTypeChange: () => {},
+  handleActivePluginTypeChange: noop,
   page: 1,
-  handlePageChange: () => {},
+  handlePageChange: noop,
   plugins: undefined,
   pluginsTotal: 0,
-  resetPlugins: () => {},
+  resetPlugins: noop,
   sort: DEFAULT_SORT,
-  handleSortChange: () => {},
-  handleQueryPlugins: () => {},
-  handleMoreClick: () => {},
+  handleSortChange: noop,
+  handleQueryPlugins: noop,
+  handleMoreClick: noop,
   marketplaceCollectionsFromClient: [],
-  setMarketplaceCollectionsFromClient: () => {},
+  setMarketplaceCollectionsFromClient: noop,
   marketplaceCollectionPluginsMapFromClient: {},
-  setMarketplaceCollectionPluginsMapFromClient: () => {},
+  setMarketplaceCollectionPluginsMapFromClient: noop,
   isLoading: false,
   isSuccessCollections: false,
 })
@@ -143,6 +144,7 @@ export const MarketplaceContextProvider = ({
     resetPlugins,
     queryPlugins,
     queryPluginsWithDebounced,
+    cancelQueryPluginsWithDebounced,
     isLoading: isPluginsLoading,
   } = useMarketplacePlugins()
 
@@ -209,12 +211,13 @@ export const MarketplaceContextProvider = ({
 
   const handleQuery = useCallback((debounced?: boolean) => {
     if (!searchPluginTextRef.current && !filterPluginTagsRef.current.length) {
+      cancelQueryPluginsWithDebounced()
       handleQueryMarketplaceCollectionsAndPlugins()
       return
     }
 
     handleQueryPlugins(debounced)
-  }, [handleQueryMarketplaceCollectionsAndPlugins, handleQueryPlugins])
+  }, [handleQueryMarketplaceCollectionsAndPlugins, handleQueryPlugins, cancelQueryPluginsWithDebounced])
 
   const handleSearchPluginTextChange = useCallback((text: string) => {
     setSearchPluginText(text)

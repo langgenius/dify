@@ -13,6 +13,7 @@ import Loading from '@/app/components/base/loading'
 import Form from '@/app/components/header/account-setting/model-provider-page/model-modal/Form'
 import { LinkExternal02 } from '@/app/components/base/icons/src/vender/line/general'
 import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
+import { noop } from 'lodash-es'
 
 type Props = {
   collection: Collection
@@ -28,7 +29,7 @@ const ConfigCredential: FC<Props> = ({
   onCancel,
   onSaved,
   isHideRemoveBtn,
-  onRemove = () => { },
+  onRemove = noop,
   isSaving,
 }) => {
   const { t } = useTranslation()
@@ -78,7 +79,7 @@ const ConfigCredential: FC<Props> = ({
       headerClassName='!border-b-divider-subtle'
       body={
 
-        <div className='px-6 py-3 h-full'>
+        <div className='h-full px-6 py-3'>
           {!credentialSchema
             ? <Loading type='app' />
             : (
@@ -100,7 +101,7 @@ const ConfigCredential: FC<Props> = ({
                       className='inline-flex items-center text-xs text-text-accent'
                     >
                       {t('tools.howToGet')}
-                      <LinkExternal02 className='ml-1 w-3 h-3' />
+                      <LinkExternal02 className='ml-1 h-3 w-3' />
                     </a>)
                     : null}
                 />

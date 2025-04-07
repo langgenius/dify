@@ -44,6 +44,7 @@ export const useWorkflowVariables = () => {
     parentNode,
     valueSelector,
     isIterationItem,
+    isLoopItem,
     availableNodes,
     isChatMode,
     isConstant,
@@ -51,6 +52,7 @@ export const useWorkflowVariables = () => {
     valueSelector: ValueSelector
     parentNode?: Node | null
     isIterationItem?: boolean
+    isLoopItem?: boolean
     availableNodes: any[]
     isChatMode: boolean
     isConstant?: boolean
@@ -59,6 +61,7 @@ export const useWorkflowVariables = () => {
       parentNode,
       valueSelector,
       isIterationItem,
+      isLoopItem,
       availableNodes,
       isChatMode,
       isConstant,

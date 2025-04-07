@@ -1,7 +1,7 @@
 import type { CredentialFormSchemaBase } from '../header/account-setting/model-provider-page/declarations'
 import type { ToolCredential } from '@/app/components/tools/types'
 import type { Locale } from '@/i18n'
-
+import type { AgentFeature } from '@/app/components/workflow/nodes/agent/types'
 export enum PluginType {
   tool = 'tool',
   model = 'model',
@@ -87,6 +87,7 @@ export type PluginManifestInMarket = {
   introduction: string
   verified: boolean
   install_count: number
+  badges: string[]
 }
 
 export type PluginDetail = {
@@ -137,6 +138,7 @@ export type Plugin = {
     settings: CredentialFormSchemaBase[]
   }
   tags: { name: string }[]
+  badges: string[]
 }
 
 export enum PermissionType {
@@ -416,6 +418,7 @@ export type StrategyDetail = {
   parameters: StrategyParamItem[]
   description: Record<Locale, string>
   output_schema: Record<string, any>
+  features: AgentFeature[]
 }
 
 export type StrategyDeclaration = {

@@ -1,5 +1,5 @@
 import type { LangFuseConfig, LangSmithConfig, OpikConfig, TracingProvider } from '@/app/(commonLayout)/app/(appDetailLayout)/[appId]/overview/tracing/type'
-import type { App, AppSSO, AppTemplate, SiteConfig } from '@/types/app'
+import type { App, AppMode, AppSSO, AppTemplate, SiteConfig } from '@/types/app'
 import type { Dependency } from '@/app/components/plugins/types'
 
 /* export type App = {
@@ -84,6 +84,7 @@ export type AppDetailResponse = App
 export type DSLImportResponse = {
   id: string
   status: DSLImportStatus
+  app_mode: AppMode
   app_id?: string
   current_dsl_version?: string
   imported_dsl_version?: string

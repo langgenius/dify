@@ -26,10 +26,9 @@ const translation = {
   appDeleteFailed: 'アプリの削除に失敗しました',
   join: 'コミュニティに参加する',
   communityIntro:
-    'さまざまなチャンネルでチームメンバーや貢献者、開発者と議論します。',
+  'さまざまなチャンネルでチームメンバーや貢献者、開発者と議論します。',
   roadmap: 'ロードマップを見る',
   newApp: {
-    // this comment is to recreate PR
     startFromBlank: '最初から作成',
     startFromTemplate: 'テンプレートから作成',
     captionAppType: 'どのタイプのアプリを作成しますか？',
@@ -189,6 +188,12 @@ const translation = {
     searchAllTemplate: 'すべてのテンプレートを検索...',
   },
   showMyCreatedAppsOnly: '自分が作成したアプリ',
+  appSelector: {
+    label: 'アプリ',
+    params: 'アプリパラメータ',
+    noParams: 'パラメータは必要ありません',
+    placeholder: 'アプリを選択...',
+  },
 }
 
 export default translation

@@ -69,9 +69,9 @@ const LinkEditorComponent = ({
           <FloatingPortal root={containerElement}>
             <div
               className={cn(
-                'nodrag nopan inline-flex items-center w-max rounded-md border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg z-10',
+                'nodrag nopan z-10 inline-flex w-max items-center rounded-md border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg',
                 !linkOperatorShow && 'p-1 shadow-md',
-                linkOperatorShow && 'p-0.5 shadow-sm system-xs-medium text-text-tertiary',
+                linkOperatorShow && 'system-xs-medium p-0.5 text-text-tertiary shadow-sm',
               )}
               style={floatingStyles}
               ref={refs.setFloating}
@@ -80,7 +80,7 @@ const LinkEditorComponent = ({
                 !linkOperatorShow && (
                   <>
                     <input
-                      className='mr-0.5 p-1 w-[196px] h-6 rounded-sm text-[13px] appearance-none outline-none bg-transparent text-components-input-text-filled'
+                      className='mr-0.5 h-6 w-[196px] appearance-none rounded-sm bg-transparent p-1 text-[13px] text-components-input-text-filled outline-none'
                       value={url}
                       onChange={e => setUrl(e.target.value)}
                       placeholder={t('workflow.nodes.note.editor.enterUrl') || ''}
@@ -101,38 +101,38 @@ const LinkEditorComponent = ({
                 linkOperatorShow && (
                   <>
                     <a
-                      className='flex items-center px-2 h-6 rounded-md hover:bg-state-base-hover'
+                      className='flex h-6 items-center rounded-md px-2 hover:bg-state-base-hover'
                       href={escape(url)}
                       target='_blank'
                       rel='noreferrer'
                     >
-                      <RiExternalLinkLine className='mr-1 w-3 h-3' />
+                      <RiExternalLinkLine className='mr-1 h-3 w-3' />
                       <div className='mr-1'>
                         {t('workflow.nodes.note.editor.openLink')}
                       </div>
                       <div
                         title={escape(url)}
-                        className='text-text-accent max-w-[140px] truncate'
+                        className='max-w-[140px] truncate text-text-accent'
                       >
                         {escape(url)}
                       </div>
                     </a>
-                    <div className='mx-1 w-[1px] h-3.5 bg-divider-regular'></div>
+                    <div className='mx-1 h-3.5 w-[1px] bg-divider-regular'></div>
                     <div
-                      className='flex items-center mr-0.5 px-2 h-6 rounded-md cursor-pointer hover:bg-state-base-hover'
+                      className='mr-0.5 flex h-6 cursor-pointer items-center rounded-md px-2 hover:bg-state-base-hover'
                       onClick={(e) => {
                         e.stopPropagation()
                         setLinkOperatorShow(false)
                       }}
                     >
-                      <RiEditLine className='mr-1 w-3 h-3' />
+                      <RiEditLine className='mr-1 h-3 w-3' />
                       {t('common.operation.edit')}
                     </div>
                     <div
-                      className='flex items-center px-2 h-6 rounded-md cursor-pointer hover:bg-state-base-hover'
+                      className='flex h-6 cursor-pointer items-center rounded-md px-2 hover:bg-state-base-hover'
                       onClick={handleUnlink}
                     >
-                      <RiLinkUnlinkM className='mr-1 w-3 h-3' />
+                      <RiLinkUnlinkM className='mr-1 h-3 w-3' />
                       {t('workflow.nodes.note.editor.unlink')}
                     </div>
                   </>

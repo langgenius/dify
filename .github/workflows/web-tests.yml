@@ -31,7 +31,6 @@ jobs:
         uses: tj-actions/changed-files@v45
         with:
           files: web/**
-
       - name: Install pnpm
         uses: pnpm/action-setup@v4
         with:

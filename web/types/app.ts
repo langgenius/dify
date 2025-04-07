@@ -11,6 +11,7 @@ import type { UploadFileSetting } from '@/app/components/workflow/types'
 export enum Theme {
   light = 'light',
   dark = 'dark',
+  system = 'system',
 }
 
 export enum ProviderType {

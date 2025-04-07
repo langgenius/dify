@@ -1,3 +1,4 @@
+import hashlib
 import logging
 import os
 from collections.abc import Sequence
@@ -7,7 +8,6 @@ from typing import Optional
 from pydantic import BaseModel
 
 import contexts
-from core.entities import DEFAULT_PLUGIN_ID
 from core.helper.position_helper import get_provider_position_map, sort_to_dict_by_position_map
 from core.model_runtime.entities.model_entities import AIModelEntity, ModelType
 from core.model_runtime.entities.provider_entities import ProviderConfig, ProviderEntity, SimpleProviderEntity
@@ -34,9 +34,11 @@ class ModelProviderExtension(BaseModel):
 
 
 class ModelProviderFactory:
-    provider_position_map: dict[str, int] = {}
+    provider_position_map: dict[str, int]
 
     def __init__(self, tenant_id: str) -> None:
+        self.provider_position_map = {}
+
         self.tenant_id = tenant_id
         self.plugin_model_manager = PluginModelManager()
 
@@ -205,17 +207,35 @@ class ModelProviderFactory:
         Get model schema
         """
         plugin_id, provider_name = self.get_plugin_id_and_provider_name_from_provider(provider)
-        model_schema = self.plugin_model_manager.get_model_schema(
-            tenant_id=self.tenant_id,
-            user_id="unknown",
-            plugin_id=plugin_id,
-            provider=provider_name,
-            model_type=model_type.value,
-            model=model,
-            credentials=credentials,
-        )
+        cache_key = f"{self.tenant_id}:{plugin_id}:{provider_name}:{model_type.value}:{model}"
+        # sort credentials
+        sorted_credentials = sorted(credentials.items()) if credentials else []
+        cache_key += ":".join([hashlib.md5(f"{k}:{v}".encode()).hexdigest() for k, v in sorted_credentials])
 
-        return model_schema
+        try:
+            contexts.plugin_model_schemas.get()
+        except LookupError:
+            contexts.plugin_model_schemas.set({})
+            contexts.plugin_model_schema_lock.set(Lock())
+
+        with contexts.plugin_model_schema_lock.get():
+            if cache_key in contexts.plugin_model_schemas.get():
+                return contexts.plugin_model_schemas.get()[cache_key]
+
+            schema = self.plugin_model_manager.get_model_schema(
+                tenant_id=self.tenant_id,
+                user_id="unknown",
+                plugin_id=plugin_id,
+                provider=provider_name,
+                model_type=model_type.value,
+                model=model,
+                credentials=credentials or {},
+            )
+
+            if schema:
+                contexts.plugin_model_schemas.get()[cache_key] = schema
+
+            return schema
 
     def get_models(
         self,
@@ -360,11 +380,5 @@ class ModelProviderFactory:
         :param provider: provider name
         :return: plugin id and provider name
         """
-        plugin_id = DEFAULT_PLUGIN_ID
-        provider_name = provider
-        if "/" in provider:
-            # get the plugin_id before provider
-            plugin_id = "/".join(provider.split("/")[:-1])
-            provider_name = provider.split("/")[-1]
-
-        return str(plugin_id), provider_name
+        provider_id = ModelProviderID(provider)
+        return provider_id.plugin_id, provider_id.provider_name

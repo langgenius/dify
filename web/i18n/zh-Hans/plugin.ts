@@ -1,4 +1,7 @@
 const translation = {
+  metadata: {
+    title: '插件',
+  },
   category: {
     all: '全部',
     models: '模型',
@@ -194,6 +197,8 @@ const translation = {
       firstReleased: '首次发布',
     },
     viewMore: '查看更多',
+    verifiedTip: '此插件由 Dify 认证',
+    partnerTip: '此插件由 Dify 合作伙伴认证',
   },
   task: {
     installing: '{{installingLength}} 个插件安装中，0 已完成',
