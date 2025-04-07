@@ -5,14 +5,18 @@ from typing import Any, Optional, cast
 from werkzeug.exceptions import NotFound, Unauthorized
 
 from configs import dify_config
+from controllers.web.error import (WebAppAuthFailedError,
+                                   WebAppAuthRequiredError)
 from extensions.ext_database import db
 from libs.helper import TokenManager
 from libs.passport import PassportService
 from libs.password import compare_password
 from models.account import Account, AccountStatus
-from models.model import Site
+from models.model import App, EndUser, Site
+from services.enterprise.enterprise_service import EnterpriseService
 from services.errors.account import (AccountLoginError, AccountNotFoundError,
                                      AccountPasswordError)
+from services.feature_service import FeatureService
 from tasks.mail_email_code_login import send_email_code_login_mail_task
 
 
@@ -35,13 +39,13 @@ class WebAppAuthService:
 
         return cast(Account, account)
 
-    @staticmethod
-    def login(account: Account, app_code: str) -> str:
+    @classmethod
+    def login(cls, account: Account, app_code: str, end_user_id: str) -> str:
         site = db.session.query(Site).filter(Site.code == app_code).first()
         if not site:
             raise NotFound("Site not found.")
 
-        access_token = WebAppAuthService._get_account_jwt_token(account=account, site=site)
+        access_token = cls._get_account_jwt_token(account=account, site=site, end_user_id=end_user_id)
 
         return access_token
 
@@ -84,8 +88,39 @@ class WebAppAuthService:
     def revoke_email_code_login_token(cls, token: str):
         TokenManager.revoke_token(token, "webapp_email_code_login")
 
-    @staticmethod
-    def _get_account_jwt_token(account: Account, site: Site) -> str:
+    @classmethod
+    def create_end_user(cls, app_code, email) -> EndUser:
+        site = db.session.query(Site).filter(Site.code == app_code).first()
+        app_model = db.session.query(App).filter(App.id == site.app_id).first()
+        end_user = EndUser(
+            tenant_id=app_model.tenant_id,
+            app_id=app_model.id,
+            type="browser",
+            is_anonymous=False,
+            session_id=email,
+            name="enterpriseuser",
+            external_user_id="enterpriseuser"
+        )
+        db.session.add(end_user)
+        db.session.commit()
+
+        return end_user
+
+    @classmethod
+    def _validate_user_accessibility(cls, account: Account, app_code: str):
+        """Check if the user is allowed to access the app."""
+        system_features = FeatureService.get_system_features()
+        if system_features.webapp_auth.enabled:
+            app_settings = EnterpriseService.get_web_app_settings(app_code=app_code)
+            if not app_settings or not app_settings.access_mode == "public":
+                raise WebAppAuthRequiredError()
+            if app_settings.access_mode == "private" and not EnterpriseService.is_user_allowed_to_access_webapp(
+                account.id, app_code=app_code
+            ):
+                raise WebAppAuthFailedError()
+
+    @classmethod
+    def _get_account_jwt_token(cls, account: Account, site: Site, end_user_id: str) -> str:
         exp_dt = datetime.now(UTC) + timedelta(hours=dify_config.WebAppSessionTimeoutInHours * 24)
         exp = int(exp_dt.timestamp())
 
@@ -95,6 +130,7 @@ class WebAppAuthService:
             "app_id": site.app_id,
             "app_code": site.code,
             "user_id": account.id,
+            "end_user_id": end_user_id,
             "token_source": "webapp",
             "exp": exp,
         }
