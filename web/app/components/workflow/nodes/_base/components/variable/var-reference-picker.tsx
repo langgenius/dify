@@ -68,12 +68,14 @@ type Props = {
   zIndex?: number
 }
 
+const DEFAULT_VALUE_SELECTOR: Props['value'] = []
+
 const VarReferencePicker: FC<Props> = ({
   nodeId,
   readonly,
   className,
   isShowNodeName = true,
-  value = [],
+  value = DEFAULT_VALUE_SELECTOR,
   onOpen = noop,
   onChange,
   isSupportConstantValue,
