@@ -1,4 +1,5 @@
 import json
+import logging
 import os
 import time
 from functools import wraps
@@ -176,7 +177,7 @@ def cloud_utm_record(view):
                     utm_info_dict: dict = json.loads(utm_info)
                     OperationService.record_utm(current_user.current_tenant_id, utm_info_dict)
         except Exception:
-            pass
+            logging.warning(f"Failed to record UTM info for tenant_id {current_user.current_tenant_id}")
         return view(*args, **kwargs)
 
     return decorated
