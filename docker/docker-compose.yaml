@@ -533,6 +533,11 @@ services:
       timeout: 3s
       retries: 30
 
+
+    ports:
+      - '${EXPOSE_DB_PORT:-5433}:5432'
+
+
   # The redis cache.
   redis:
     image: redis:6-alpine
