@@ -37,7 +37,7 @@ class AnnotationReplyActionStatusApi(Resource):
         app_annotation_job_key = "{}_app_annotation_job_{}".format(action, str(job_id))
         cache_result = redis_client.get(app_annotation_job_key)
         if cache_result is None:
-            raise ValueError("The job is not exist.")
+            raise ValueError("The job does not exist.")
 
         job_status = cache_result.decode()
         error_msg = ""
