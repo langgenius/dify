@@ -5,7 +5,7 @@ from flask_restful import Resource  # type: ignore
 from werkzeug.exceptions import NotFound, Unauthorized
 
 from controllers.web import api
-from controllers.web.error import WebSSOAuthRequiredError
+from controllers.web.error import WebAppAuthRequiredError
 from extensions.ext_database import db
 from libs.passport import PassportService
 from models.model import App, EndUser, Site
@@ -22,10 +22,10 @@ class PassportResource(Resource):
         if app_code is None:
             raise Unauthorized("X-App-Code header is missing.")
 
-        if system_features.sso_enforced_for_web:
-            app_web_sso_enabled = EnterpriseService.get_app_web_sso_enabled(app_code).get("enabled", False)
-            if app_web_sso_enabled:
-                raise WebSSOAuthRequiredError()
+        if system_features.webapp_auth.enabled:
+            app_settings = EnterpriseService.get_web_app_settings(app_code=app_code)
+            if not app_settings or not app_settings.access_mode == "public":
+                raise WebAppAuthRequiredError()
 
         # get site from db and check if it is normal
         site = db.session.query(Site).filter(Site.code == app_code, Site.status == "normal").first()
