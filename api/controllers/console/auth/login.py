@@ -122,8 +122,8 @@ class ResetPasswordSendEmailApi(Resource):
             language = "en-US"
         try:
             account = AccountService.get_user_through_email(args["email"])
-        except AccountRegisterError:
-            raise AccountInFreezeError()
+        except AccountRegisterError as are:
+            raise AccountInFreezeError() from are
         if account is None:
             if FeatureService.get_system_features().is_allow_register:
                 token = AccountService.send_reset_password_email(email=args["email"], language=language)
@@ -153,8 +153,8 @@ class EmailCodeLoginSendEmailApi(Resource):
             language = "en-US"
         try:
             account = AccountService.get_user_through_email(args["email"])
-        except AccountRegisterError:
-            raise AccountInFreezeError()
+        except AccountRegisterError as are:
+            raise AccountInFreezeError() from are
 
         if account is None:
             if FeatureService.get_system_features().is_allow_register:
@@ -191,8 +191,8 @@ class EmailCodeLoginApi(Resource):
         AccountService.revoke_email_code_login_token(args["token"])
         try:
             account = AccountService.get_user_through_email(user_email)
-        except AccountRegisterError:
-            raise AccountInFreezeError()
+        except AccountRegisterError as are:
+            raise AccountInFreezeError() from are
         if account:
             tenant = TenantService.get_join_tenants(account)
             if not tenant:
@@ -211,8 +211,8 @@ class EmailCodeLoginApi(Resource):
                 )
             except WorkSpaceNotAllowedCreateError:
                 return NotAllowedCreateWorkspace()
-            except AccountRegisterError:
-                raise AccountInFreezeError()
+            except AccountRegisterError as are:
+                raise AccountInFreezeError() from are
         token_pair = AccountService.login(account, ip_address=extract_remote_ip(request))
         AccountService.reset_login_error_rate_limit(args["email"])
         return {"result": "success", "data": token_pair.model_dump()}

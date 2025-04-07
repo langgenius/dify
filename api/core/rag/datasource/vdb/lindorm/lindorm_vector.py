@@ -221,9 +221,9 @@ class LindormVectorStore(BaseVector):
             if self._using_ugc:
                 params["routing"] = self._routing
             response = self._client.search(index=self._collection_name, body=query, params=params)
-        except Exception:
+        except Exception as e:
             logger.exception(f"Error executing vector search, query: {query}")
-            raise
+            raise e
 
         docs_and_scores = []
         for hit in response["hits"]["hits"]:
