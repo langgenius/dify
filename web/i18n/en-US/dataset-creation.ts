@@ -73,6 +73,8 @@ const translation = {
       watercrawlNotConfiguredDescription: 'Configure Watercrawl with API key to use it.',
       jinaReaderNotConfigured: 'Jina Reader is not configured',
       jinaReaderNotConfiguredDescription: 'Set up Jina Reader by entering your free API key for access.',
+      waterCrawlNotConfigured: 'Watercrawl is not configured',
+      waterCrawlNotConfiguredDescription: 'Configure Watercrawl with API key to use it.',
       configure: 'Configure',
       configureFirecrawl: 'Configure Firecrawl',
       configureWatercrawl: 'Configure Watercrawl',
