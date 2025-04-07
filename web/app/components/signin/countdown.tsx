@@ -35,7 +35,7 @@ export default function Countdown({ onResend }: CountdownProps) {
     <span>{t('login.checkCode.didNotReceiveCode')}</span>
     {time > 0 && <span>{Math.round(time / 1000)}s</span>}
     {
-      time <= 0 && <span className='system-xs-medium text-text-accent-secondary cursor-pointer' onClick={resend}>{t('login.checkCode.resend')}</span>
+      time <= 0 && <span className='system-xs-medium cursor-pointer text-text-accent-secondary' onClick={resend}>{t('login.checkCode.resend')}</span>
     }
   </p>
 }

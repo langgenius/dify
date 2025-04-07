@@ -61,6 +61,10 @@ class AppExecutionConfig(BaseSettings):
         description="Maximum number of concurrent active requests per app (0 for unlimited)",
         default=0,
     )
+    APP_DAILY_RATE_LIMIT: NonNegativeInt = Field(
+        description="Maximum number of requests per app per day",
+        default=5000,
+    )
 
 
 class CodeExecutionSandboxConfig(BaseSettings):
@@ -842,6 +846,11 @@ class AccountConfig(BaseSettings):
     ACCOUNT_DELETION_TOKEN_EXPIRY_MINUTES: PositiveInt = Field(
         description="Duration in minutes for which a account deletion token remains valid",
         default=5,
+    )
+
+    EDUCATION_ENABLED: bool = Field(
+        description="whether to enable education identity",
+        default=False,
     )
 
 

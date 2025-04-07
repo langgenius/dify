@@ -33,6 +33,7 @@ from .vdb.pgvector_config import PGVectorConfig
 from .vdb.pgvectors_config import PGVectoRSConfig
 from .vdb.qdrant_config import QdrantConfig
 from .vdb.relyt_config import RelytConfig
+from .vdb.tablestore_config import TableStoreConfig
 from .vdb.tencent_vector_config import TencentVectorDBConfig
 from .vdb.tidb_on_qdrant_config import TidbOnQdrantConfig
 from .vdb.tidb_vector_config import TiDBVectorConfig
@@ -283,5 +284,6 @@ class MiddlewareConfig(
     OceanBaseVectorConfig,
     BaiduVectorDBConfig,
     OpenGaussConfig,
+    TableStoreConfig,
 ):
     pass

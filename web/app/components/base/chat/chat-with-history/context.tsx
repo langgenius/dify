@@ -15,6 +15,7 @@ import type {
   AppMeta,
   ConversationItem,
 } from '@/models/share'
+import { noop } from 'lodash-es'
 
 export type ChatWithHistoryContextValue = {
   appInfoError?: any
@@ -54,6 +55,8 @@ export type ChatWithHistoryContextValue = {
   setClearChatList: (state: boolean) => void
   isResponding?: boolean
   setIsResponding: (state: boolean) => void,
+  currentConversationInputs: Record<string, any> | null,
+  setCurrentConversationInputs: (v: Record<string, any>) => void,
 }
 
 export const ChatWithHistoryContext = createContext<ChatWithHistoryContextValue>({
@@ -63,27 +66,29 @@ export const ChatWithHistoryContext = createContext<ChatWithHistoryContextValue>
   conversationList: [],
   newConversationInputs: {},
   newConversationInputsRef: { current: {} },
-  handleNewConversationInputsChange: () => {},
+  handleNewConversationInputsChange: noop,
   inputsForms: [],
-  handleNewConversation: () => {},
-  handleStartChat: () => {},
-  handleChangeConversation: () => {},
-  handlePinConversation: () => {},
-  handleUnpinConversation: () => {},
-  handleDeleteConversation: () => {},
+  handleNewConversation: noop,
+  handleStartChat: noop,
+  handleChangeConversation: noop,
+  handlePinConversation: noop,
+  handleUnpinConversation: noop,
+  handleDeleteConversation: noop,
   conversationRenaming: false,
-  handleRenameConversation: () => {},
-  handleNewConversationCompleted: () => {},
+  handleRenameConversation: noop,
+  handleNewConversationCompleted: noop,
   chatShouldReloadKey: '',
   isMobile: false,
   isInstalledApp: false,
-  handleFeedback: () => {},
-  currentChatInstanceRef: { current: { handleStop: () => {} } },
+  handleFeedback: noop,
+  currentChatInstanceRef: { current: { handleStop: noop } },
   sidebarCollapseState: false,
-  handleSidebarCollapse: () => {},
+  handleSidebarCollapse: noop,
   clearChatList: false,
-  setClearChatList: () => {},
+  setClearChatList: noop,
   isResponding: false,
-  setIsResponding: () => {},
+  setIsResponding: noop,
+  currentConversationInputs: {},
+  setCurrentConversationInputs: noop,
 })
 export const useChatWithHistoryContext = () => useContext(ChatWithHistoryContext)

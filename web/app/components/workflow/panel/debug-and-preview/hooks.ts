@@ -413,9 +413,6 @@ export const useChat = (
           }
         },
         onNodeStarted: ({ data }) => {
-          if (data.iteration_id || data.loop_id)
-            return
-
           responseItem.workflowProcess!.tracing!.push({
             ...data,
             status: NodeRunningStatus.Running,
@@ -428,9 +425,6 @@ export const useChat = (
           })
         },
         onNodeRetry: ({ data }) => {
-          if (data.iteration_id || data.loop_id)
-            return
-
           responseItem.workflowProcess!.tracing!.push(data)
 
           updateCurrentQAOnTree({
@@ -441,9 +435,6 @@ export const useChat = (
           })
         },
         onNodeFinished: ({ data }) => {
-          if (data.iteration_id || data.loop_id)
-            return
-
           const currentTracingIndex = responseItem.workflowProcess!.tracing!.findIndex(item => item.id === data.id)
           if (currentTracingIndex > -1) {
             responseItem.workflowProcess!.tracing[currentTracingIndex] = {

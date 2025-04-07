@@ -25,16 +25,23 @@ const svgToBase64 = (svgGraph: string) => {
   })
 }
 
-const Flowchart = React.forwardRef((props: {
-  PrimitiveCode: string
-}, ref) => {
+const Flowchart = (
+  {
+    ref,
+    ...props
+  }: {
+    PrimitiveCode: string
+  } & {
+    ref: React.RefObject<unknown>;
+  },
+) => {
   const { t } = useTranslation()
   const [svgCode, setSvgCode] = useState(null)
   const [look, setLook] = useState<'classic' | 'handDrawn'>('classic')
 
   const prevPrimitiveCode = usePrevious(props.PrimitiveCode)
   const [isLoading, setIsLoading] = useState(true)
-  const timeRef = useRef<number>()
+  const timeRef = useRef<number>(0)
   const [errMsg, setErrMsg] = useState('')
   const [imagePreviewUrl, setImagePreviewUrl] = useState('')
 
@@ -86,12 +93,12 @@ const Flowchart = React.forwardRef((props: {
   return (
     // eslint-disable-next-line ts/ban-ts-comment
     // @ts-expect-error
-    <div ref={ref}>
+    (<div ref={ref}>
       <div className="msh-segmented msh-segmented-sm css-23bs09 css-var-r1">
         <div className="msh-segmented-group">
-          <label className="msh-segmented-item flex items-center space-x-1 m-2 w-[200px]">
+          <label className="msh-segmented-item m-2 flex w-[200px] items-center space-x-1">
             <div key='classic'
-              className={cn('flex items-center justify-center mb-4 w-[calc((100%-8px)/2)] h-8 rounded-lg border border-components-option-card-option-border bg-components-option-card-option-bg cursor-pointer system-sm-medium text-text-secondary',
+              className={cn('system-sm-medium mb-4 flex h-8 w-[calc((100%-8px)/2)] cursor-pointer items-center justify-center rounded-lg border border-components-option-card-option-border bg-components-option-card-option-bg text-text-secondary',
                 look === 'classic' && 'border-[1.5px] border-components-option-card-option-selected-border bg-components-option-card-option-selected-bg text-text-primary',
               )}
 
@@ -101,7 +108,7 @@ const Flowchart = React.forwardRef((props: {
             </div>
             <div key='handDrawn'
               className={cn(
-                'flex items-center justify-center mb-4 w-[calc((100%-8px)/2)] h-8 rounded-lg border border-components-option-card-option-border bg-components-option-card-option-bg cursor-pointer system-sm-medium text-text-secondary',
+                'system-sm-medium mb-4 flex h-8 w-[calc((100%-8px)/2)] cursor-pointer items-center justify-center rounded-lg border border-components-option-card-option-border bg-components-option-card-option-bg text-text-secondary',
                 look === 'handDrawn' && 'border-[1.5px] border-components-option-card-option-selected-border bg-components-option-card-option-selected-bg text-text-primary',
               )}
               onClick={() => setLook('handDrawn')}
@@ -113,29 +120,29 @@ const Flowchart = React.forwardRef((props: {
       </div>
       {
         svgCode
-            && <div className="mermaid cursor-pointer h-auto w-full object-fit: cover" onClick={() => setImagePreviewUrl(svgCode)}>
-              {svgCode && <img src={svgCode} alt="mermaid_chart" />}
-            </div>
+        && <div className="mermaid object-fit: cover h-auto w-full cursor-pointer" onClick={() => setImagePreviewUrl(svgCode)}>
+          {svgCode && <img src={svgCode} alt="mermaid_chart" />}
+        </div>
       }
       {isLoading
-            && <div className='py-4 px-[26px]'>
-              <LoadingAnim type='text'/>
-            </div>
+        && <div className='px-[26px] py-4'>
+          <LoadingAnim type='text' />
+        </div>
       }
       {
         errMsg
-            && <div className='py-4 px-[26px]'>
-              <ExclamationTriangleIcon className='w-6 h-6 text-red-500'/>
-              &nbsp;
-              {errMsg}
-            </div>
+        && <div className='px-[26px] py-4'>
+          <ExclamationTriangleIcon className='h-6 w-6 text-red-500' />
+          &nbsp;
+          {errMsg}
+        </div>
       }
       {
         imagePreviewUrl && (<ImagePreview title='mermaid_chart' url={imagePreviewUrl} onCancel={() => setImagePreviewUrl('')} />)
       }
-    </div>
+    </div>)
   )
-})
+}
 
 Flowchart.displayName = 'Flowchart'
 

@@ -52,24 +52,24 @@ const InitPasswordPopup = () => {
       ? <Loading />
       : <div>
         {!validated && (
-          <div className="block mx-12 min-w-28">
+          <div className="mx-12 block min-w-28">
             <div className="mb-4">
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700">
+              <label htmlFor="password" className="block text-sm font-medium text-text-secondary">
                 {t('login.adminInitPassword')}
 
               </label>
-              <div className="mt-1 relative rounded-md shadow-sm">
+              <div className="relative mt-1 rounded-md shadow-sm">
                 <input
                   id="password"
                   type="password"
                   value={password}
                   onChange={e => setPassword(e.target.value)}
-                  className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                  className="block w-full appearance-none rounded-md border border-divider-regular px-3 py-2 shadow-sm placeholder:text-text-quaternary focus:border-indigo-500 focus:outline-none focus:ring-indigo-500 sm:text-sm"
                 />
               </div>
             </div>
             <div className="flex flex-row flex-wrap justify-stretch p-0">
-              <Button variant="primary" onClick={handleValidation} className="basis-full min-w-28">
+              <Button variant="primary" onClick={handleValidation} className="min-w-28 basis-full">
                 {t('login.validate')}
               </Button>
             </div>

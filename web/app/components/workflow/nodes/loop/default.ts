@@ -28,6 +28,11 @@ const nodeDefault: NodeDefault<LoopNodeType> = {
   checkValid(payload: LoopNodeType, t: any) {
     let errorMessages = ''
 
+    payload.loop_variables?.forEach((variable) => {
+      if (!variable.label)
+        errorMessages = t(`${i18nPrefix}.fieldRequired`, { field: t(`${i18nPrefix}.fields.variable`) })
+    })
+
     payload.break_conditions!.forEach((condition) => {
       if (!errorMessages && (!condition.variable_selector || condition.variable_selector.length === 0))
         errorMessages = t(`${i18nPrefix}.fieldRequired`, { field: t(`${i18nPrefix}.fields.variable`) })
@@ -83,7 +88,7 @@ export const TRANSFER_METHOD = [
   { value: TransferMethod.remote_url, i18nKey: 'url' },
 ]
 
-export const SUB_VARIABLES = ['type', 'size', 'name', 'url', 'extension', 'mime_type', 'transfer_method']
+export const SUB_VARIABLES = ['type', 'size', 'name', 'url', 'extension', 'mime_type', 'transfer_method', 'related_id']
 export const OUTPUT_FILE_SUB_VARIABLES = SUB_VARIABLES.filter(key => key !== 'transfer_method')
 
 export default nodeDefault

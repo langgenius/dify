@@ -2,6 +2,7 @@ import json
 from collections.abc import Sequence
 from typing import Any, cast
 
+from core.app.entities.app_invoke_entities import InvokeFrom
 from core.variables import SegmentType, Variable
 from core.workflow.constants import CONVERSATION_VARIABLE_NODE_ID
 from core.workflow.entities.node_entities import NodeRunResult
@@ -123,13 +124,14 @@ class VariableAssignerNode(BaseNode[VariableAssignerNodeData]):
             if variable.selector[0] == CONVERSATION_VARIABLE_NODE_ID:
                 conversation_id = self.graph_runtime_state.variable_pool.get(["sys", "conversation_id"])
                 if not conversation_id:
-                    raise ConversationIDNotFoundError
+                    if self.invoke_from != InvokeFrom.DEBUGGER:
+                        raise ConversationIDNotFoundError
                 else:
                     conversation_id = conversation_id.value
-                common_helpers.update_conversation_variable(
-                    conversation_id=cast(str, conversation_id),
-                    variable=variable,
-                )
+                    common_helpers.update_conversation_variable(
+                        conversation_id=cast(str, conversation_id),
+                        variable=variable,
+                    )
 
         return NodeRunResult(
             status=WorkflowNodeExecutionStatus.SUCCEEDED,

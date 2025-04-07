@@ -24,17 +24,17 @@ type Props = {
 const KeyValue = ({ icon, label, tooltip }: { icon: ReactNode; label: string; tooltip?: ReactNode }) => {
   return (
     <div className='flex text-text-tertiary'>
-      <div className='size-4 flex items-center justify-center'>
+      <div className='flex size-4 items-center justify-center'>
         {icon}
       </div>
-      <div className='ml-2 mr-0.5 text-text-primary system-sm-regular'>{label}</div>
+      <div className='system-sm-regular ml-2 mr-0.5 text-text-primary'>{label}</div>
       {tooltip && (
         <Tooltip
           asChild
           popupContent={tooltip}
           popupClassName='w-[200px]'
         >
-          <div className='size-4 flex items-center justify-center'>
+          <div className='flex size-4 items-center justify-center'>
             <RiQuestionLine className='text-text-quaternary' />
           </div>
         </Tooltip>
@@ -46,19 +46,19 @@ const KeyValue = ({ icon, label, tooltip }: { icon: ReactNode; label: string; to
 const priceClassName = 'leading-[125%] text-[28px] font-bold text-text-primary'
 const style = {
   [Plan.sandbox]: {
-    icon: <ArCube1 className='text-text-primary size-7' />,
+    icon: <ArCube1 className='size-7 text-text-primary' />,
     description: 'text-util-colors-gray-gray-600',
     btnStyle: 'bg-components-button-secondary-bg hover:bg-components-button-secondary-bg-hover border-[0.5px] border-components-button-secondary-border text-text-primary',
     btnDisabledStyle: 'bg-components-button-secondary-bg-disabled hover:bg-components-button-secondary-bg-disabled border-components-button-secondary-border-disabled text-components-button-secondary-text-disabled',
   },
   [Plan.professional]: {
-    icon: <Keyframe className='text-util-colors-blue-brand-blue-brand-600 size-7' />,
+    icon: <Keyframe className='size-7 text-util-colors-blue-brand-blue-brand-600' />,
     description: 'text-util-colors-blue-brand-blue-brand-600',
     btnStyle: 'bg-components-button-primary-bg hover:bg-components-button-primary-bg-hover border border-components-button-primary-border text-components-button-primary-text',
     btnDisabledStyle: 'bg-components-button-primary-bg-disabled hover:bg-components-button-primary-bg-disabled border-components-button-primary-border-disabled text-components-button-primary-text-disabled',
   },
   [Plan.team]: {
-    icon: <Group2 className='text-util-colors-indigo-indigo-600 size-7' />,
+    icon: <Group2 className='size-7 text-util-colors-indigo-indigo-600' />,
     description: 'text-util-colors-indigo-indigo-600',
     btnStyle: 'bg-components-button-indigo-bg hover:bg-components-button-indigo-bg-hover border border-components-button-primary-border text-components-button-primary-text',
     btnDisabledStyle: 'bg-components-button-indigo-bg-disabled hover:bg-components-button-indigo-bg-disabled border-components-button-indigo-border-disabled text-components-button-primary-text-disabled',
@@ -121,18 +121,18 @@ const PlanItem: FC<Props> = ({
     }
   }
   return (
-    <div className={cn('flex flex-col w-[373px] p-6 border-[0.5px] border-effects-highlight-lightmode-off bg-background-section-burn rounded-2xl',
-      isMostPopularPlan ? 'shadow-lg backdrop-blur-[5px] border-effects-highlight' : 'hover:shadow-lg hover:backdrop-blur-[5px] hover:border-effects-highlight',
+    <div className={cn('flex w-[373px] flex-col rounded-2xl border-[0.5px] border-effects-highlight-lightmode-off bg-background-section-burn p-6',
+      isMostPopularPlan ? 'border-effects-highlight shadow-lg backdrop-blur-[5px]' : 'hover:border-effects-highlight hover:shadow-lg hover:backdrop-blur-[5px]',
     )}>
       <div className='flex flex-col gap-y-1'>
         {style[plan].icon}
         <div className='flex items-center'>
-          <div className='leading-[125%] text-lg font-semibold uppercase text-text-primary'>{t(`${i18nPrefix}.name`)}</div>
-          {isMostPopularPlan && <div className='ml-1 px-1 py-[3px] flex items-center justify-center rounded-full border-[0.5px] shadow-xs bg-price-premium-badge-background text-components-premium-badge-grey-text-stop-0'>
+          <div className='text-lg font-semibold uppercase leading-[125%] text-text-primary'>{t(`${i18nPrefix}.name`)}</div>
+          {isMostPopularPlan && <div className='ml-1 flex items-center justify-center rounded-full border-[0.5px] bg-price-premium-badge-background px-1 py-[3px] text-components-premium-badge-grey-text-stop-0 shadow-xs'>
             <div className='pl-0.5'>
               <SparklesSoft className='size-3' />
             </div>
-            <span className='px-0.5 system-2xs-semibold-uppercase bg-clip-text bg-price-premium-text-background text-transparent'>{t('billing.plansCommon.mostPopular')}</span>
+            <span className='system-2xs-semibold-uppercase bg-price-premium-text-background bg-clip-text px-0.5 text-transparent'>{t('billing.plansCommon.mostPopular')}</span>
           </div>}
         </div>
         <div className={cn(style[plan].description, 'system-sm-regular')}>{t(`${i18nPrefix}.description`)}</div>
@@ -146,8 +146,8 @@ const PlanItem: FC<Props> = ({
           <div className='flex items-end'>
             <div className={priceClassName}>${isYear ? planInfo.price * 10 : planInfo.price}</div>
             <div className='ml-1 flex flex-col'>
-              {isYear && <div className='leading-[14px] text-[14px] font-normal italic text-text-warning'>{t('billing.plansCommon.save')}${planInfo.price * 2}</div>}
-              <div className='leading-normal text-[14px] font-normal text-text-tertiary'>
+              {isYear && <div className='text-[14px] font-normal italic leading-[14px] text-text-warning'>{t('billing.plansCommon.save')}${planInfo.price * 2}</div>}
+              <div className='text-[14px] font-normal leading-normal text-text-tertiary'>
                 {t('billing.plansCommon.priceTip')}
                 {t(`billing.plansCommon.${!isYear ? 'month' : 'year'}`)}</div>
             </div>
@@ -156,7 +156,7 @@ const PlanItem: FC<Props> = ({
       </div>
 
       <div
-        className={cn('flex py-3 px-5 rounded-full justify-center items-center h-[42px]',
+        className={cn('flex h-[42px] items-center justify-center rounded-full px-5 py-3',
           style[plan].btnStyle,
           isPlanDisabled && style[plan].btnDisabledStyle,
           isPlanDisabled ? 'cursor-not-allowed' : 'cursor-pointer')}
@@ -164,7 +164,7 @@ const PlanItem: FC<Props> = ({
       >
         {btnText}
       </div>
-      <div className='flex flex-col gap-y-3 mt-6'>
+      <div className='mt-6 flex flex-col gap-y-3'>
         <KeyValue
           icon={<RiChatAiLine />}
           label={isFreePlan

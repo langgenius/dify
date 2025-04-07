@@ -1,6 +1,9 @@
 import { useProviderContext } from '@/context/provider-context'
 import type { FC } from 'react'
 import { useTranslation } from 'react-i18next'
+import {
+  RiGraduationCapFill,
+} from '@remixicon/react'
 import { SparklesSoft } from '../../base/icons/src/public/common'
 import PremiumBadge from '../../base/premium-badge'
 import { Plan } from '../../billing/type'
@@ -13,15 +16,15 @@ type PlanBadgeProps = {
 }
 
 const PlanBadge: FC<PlanBadgeProps> = ({ plan, allowHover, sandboxAsUpgrade = false, onClick }) => {
-  const { isFetchedPlan } = useProviderContext()
+  const { isFetchedPlan, isEducationWorkspace } = useProviderContext()
   const { t } = useTranslation()
 
   if (!isFetchedPlan) return null
   if (plan === Plan.sandbox && sandboxAsUpgrade) {
     return <PremiumBadge className='select-none' color='blue' allowHover={allowHover} onClick={onClick}>
-      <SparklesSoft className='flex items-center py-[1px] pl-[3px] w-3.5 h-3.5 text-components-premium-badge-indigo-text-stop-0' />
+      <SparklesSoft className='flex h-3.5 w-3.5 items-center py-[1px] pl-[3px] text-components-premium-badge-indigo-text-stop-0' />
       <div className='system-xs-medium'>
-        <span className='p-1'>
+        <span className='whitespace-nowrap p-1'>
           {t('billing.upgradeBtn.encourageShort')}
         </span>
       </div>
@@ -39,7 +42,8 @@ const PlanBadge: FC<PlanBadgeProps> = ({ plan, allowHover, sandboxAsUpgrade = fa
   if (plan === Plan.professional) {
     return <PremiumBadge className='select-none' size='s' color='blue' allowHover={allowHover} onClick={onClick}>
       <div className='system-2xs-medium-uppercase'>
-        <span className='p-1'>
+        <span className='inline-flex items-center gap-1 p-1'>
+          {isEducationWorkspace && <RiGraduationCapFill className='h-3 w-3' />}
           pro
         </span>
       </div>

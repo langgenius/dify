@@ -25,7 +25,7 @@ const ResultItemMeta: FC<Props> = ({
   const { t } = useTranslation()
 
   return (
-    <div className={cn('flex justify-between items-center', className)}>
+    <div className={cn('flex items-center justify-between', className)}>
       <div className="flex items-center space-x-2">
         <SegmentIndexTag
           labelPrefix={labelPrefix}

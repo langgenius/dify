@@ -161,8 +161,11 @@ class ToolManager:
         get the tool runtime
 
         :param provider_type: the type of the provider
-        :param provider_name: the name of the provider
+        :param provider_id: the id of the provider
         :param tool_name: the name of the tool
+        :param tenant_id: the tenant id
+        :param invoke_from: invoke from
+        :param tool_invoke_from: the tool invoke from
 
         :return: the tool
         """
@@ -427,8 +430,6 @@ class ToolManager:
         get the absolute path of the icon of the hardcoded provider
 
         :param provider: the name of the provider
-        :param tenant_id: the id of the tenant
-
         :return: the absolute path of the icon, the mime type of the icon
         """
         # get provider
@@ -672,7 +673,8 @@ class ToolManager:
         """
         get the api provider
 
-        :param provider_name: the name of the provider
+        :param tenant_id: the id of the tenant
+        :param provider_id: the id of the provider
 
         :return: the provider controller, the credentials
         """

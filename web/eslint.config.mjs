@@ -2,22 +2,12 @@ import {
   GLOB_TESTS, combine, javascript, node,
   stylistic, typescript, unicorn,
 } from '@antfu/eslint-config'
-import path from 'node:path'
-import { fileURLToPath } from 'node:url'
-import js from '@eslint/js'
-import { FlatCompat } from '@eslint/eslintrc'
 import globals from 'globals'
 import storybook from 'eslint-plugin-storybook'
-import { fixupConfigRules } from '@eslint/compat'
+// import { fixupConfigRules } from '@eslint/compat'
 import tailwind from 'eslint-plugin-tailwindcss'
-
-const __filename = fileURLToPath(import.meta.url)
-const __dirname = path.dirname(__filename)
-const compat = new FlatCompat({
-  baseDirectory: __dirname,
-  recommendedConfig: js.configs.recommended,
-  allConfig: js.configs.all,
-})
+import reactHooks from 'eslint-plugin-react-hooks'
+// import reactRefresh from 'eslint-plugin-react-refresh'
 
 export default combine(
   stylistic({
@@ -73,10 +63,10 @@ export default combine(
   node(),
   // use nextjs config will break @eslint/config-inspector
   // use `ESLINT_CONFIG_INSPECTOR=true pnpx @eslint/config-inspector` to check the config
-  ...process.env.ESLINT_CONFIG_INSPECTOR
-    ? []
-    // TODO: remove this when upgrade to nextjs 15
-    : fixupConfigRules(compat.extends('next')),
+  // ...process.env.ESLINT_CONFIG_INSPECTOR
+  //   ? []
+  // TODO: remove this when upgrade to nextjs 15
+  // : fixupConfigRules(compat.extends('next')),
   {
     rules: {
       // performance issue, and not used.
@@ -86,7 +76,6 @@ export default combine(
   {
     ignores: [
       '**/node_modules/*',
-      '**/node_modules/',
       '**/dist/',
       '**/build/',
       '**/out/',
@@ -141,6 +130,13 @@ export default combine(
     },
   },
   storybook.configs['flat/recommended'],
+  // reactRefresh.configs.recommended,
+  {
+    rules: reactHooks.configs.recommended.rules,
+    plugins: {
+      'react-hooks': reactHooks,
+    },
+  },
   // need futher research
   {
     rules: {
@@ -169,15 +165,40 @@ export default combine(
   },
   tailwind.configs['flat/recommended'],
   {
+    settings: {
+      tailwindcss: {
+        // These are the default values but feel free to customize
+        callees: ['classnames', 'clsx', 'ctl', 'cn'],
+        config: 'tailwind.config.js', // returned from `loadConfig()` utility if not provided
+        cssFiles: [
+          '**/*.css',
+          '!**/node_modules',
+          '!**/.*',
+          '!**/dist',
+          '!**/build',
+          '!**/.storybook',
+          '!**/.next',
+          '!**/.public',
+        ],
+        cssFilesRefreshRate: 5_000,
+        removeDuplicates: true,
+        skipClassAttribute: false,
+        whitelist: [],
+        tags: [], // can be set to e.g. ['tw'] for use in tw`bg-blue`
+        classRegex: '^class(Name)?$', // can be modified to support custom attributes. E.g. "^tw$" for `twin.macro`
+      },
+    },
     rules: {
       // due to 1k lines of tailwind config, these rule have performance issue
       'tailwindcss/no-contradicting-classname': 'off',
-      'tailwindcss/no-unnecessary-arbitrary-value': 'off',
       'tailwindcss/enforces-shorthand': 'off',
       'tailwindcss/no-custom-classname': 'off',
+      'tailwindcss/no-unnecessary-arbitrary-value': 'off',
 
-      // in the future
-      'tailwindcss/classnames-order': 'off',
+      'tailwindcss/no-arbitrary-value': 'off',
+      'tailwindcss/classnames-order': 'warn',
+      'tailwindcss/enforces-negative-arbitrary-values': 'warn',
+      'tailwindcss/migration-from-tailwind-2': 'warn',
     },
   },
 )

@@ -100,7 +100,7 @@ const Panel: FC<NodePanelProps<QuestionClassifierNodeType>> = ({
 
   return (
     <div className='pt-2'>
-      <div className='px-4 space-y-4'>
+      <div className='space-y-4 px-4'>
         <Field
           title={t(`${i18nPrefix}.model`)}
         >
@@ -145,10 +145,11 @@ const Panel: FC<NodePanelProps<QuestionClassifierNodeType>> = ({
           title={t(`${i18nPrefix}.class`)}
         >
           <ClassList
-            id={id}
+            nodeId={id}
             list={inputs.classes}
             onChange={handleTopicsChange}
             readonly={readOnly}
+            filterVar={filterVar}
           />
         </Field>
         <Split />

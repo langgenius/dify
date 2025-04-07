@@ -5,8 +5,12 @@ import { useCallback, useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { fetchSetupStatus } from '@/service/common'
+import {
+  EDUCATION_VERIFYING_LOCALSTORAGE_ITEM,
+  EDUCATION_VERIFY_URL_SEARCHPARAMS_ACTION,
+} from '@/app/education-apply/constants'
 
-interface SwrInitorProps {
+type SwrInitorProps = {
   children: ReactNode
 }
 const SwrInitor = ({
@@ -41,6 +45,11 @@ const SwrInitor = ({
 
   useEffect(() => {
     (async () => {
+      const action = searchParams.get('action')
+
+      if (action === EDUCATION_VERIFY_URL_SEARCHPARAMS_ACTION)
+        localStorage.setItem(EDUCATION_VERIFYING_LOCALSTORAGE_ITEM, 'yes')
+
       try {
         const isFinished = await isSetupFinished()
         if (!isFinished) {

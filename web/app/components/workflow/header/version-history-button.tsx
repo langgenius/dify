@@ -16,14 +16,14 @@ const PopupContent = React.memo(() => {
   const { t } = useTranslation()
   return (
     <div className='flex items-center gap-x-1'>
-      <div className='text-text-secondary system-xs-medium px-0.5'>
+      <div className='system-xs-medium px-0.5 text-text-secondary'>
         {t('workflow.common.versionHistory')}
       </div>
       <div className='flex items-center gap-x-0.5'>
         {VERSION_HISTORY_SHORTCUT.map(key => (
           <span
             key={key}
-            className='rounded-[4px] bg-components-kbd-bg-white text-text-tertiary system-kbd px-[1px]'
+            className='system-kbd rounded-[4px] bg-components-kbd-bg-white px-[1px] text-text-tertiary'
           >
             {key}
           </span>
@@ -45,8 +45,8 @@ const VersionHistoryButton: FC<VersionHistoryButtonProps> = ({
   useKeyPress(`${getKeyboardKeyCodeBySystem('ctrl')}.shift.h`, (e) => {
     e.preventDefault()
     handleViewVersionHistory()
-  }
-  , { exactMatch: true, useCapture: true })
+  },
+  { exactMatch: true, useCapture: true })
 
   return <Tooltip
     popupContent={<PopupContent />}
@@ -58,7 +58,7 @@ const VersionHistoryButton: FC<VersionHistoryButtonProps> = ({
       className={'p-2'}
       onClick={handleViewVersionHistory}
     >
-      <RiHistoryLine className='w-4 h-4 text-components-button-secondary-text' />
+      <RiHistoryLine className='h-4 w-4 text-components-button-secondary-text' />
     </Button>
   </Tooltip>
 }

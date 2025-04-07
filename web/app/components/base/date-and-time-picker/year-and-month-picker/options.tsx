@@ -15,7 +15,7 @@ const Options: FC<YearAndMonthPickerOptionsProps> = ({
   return (
     <div className='grid grid-cols-2 gap-x-1 p-2'>
       {/* Month Picker */}
-      <ul className='flex flex-col gap-y-0.5 h-[208px] overflow-y-auto no-scrollbar pb-[184px]'>
+      <ul className='no-scrollbar flex h-[208px] flex-col gap-y-0.5 overflow-y-auto pb-[184px]'>
         {
           months.map((month, index) => {
             const isSelected = selectedMonth === index
@@ -32,7 +32,7 @@ const Options: FC<YearAndMonthPickerOptionsProps> = ({
         }
       </ul>
       {/* Year Picker */}
-      <ul className='flex flex-col gap-y-0.5 h-[208px] overflow-y-auto no-scrollbar pb-[184px]'>
+      <ul className='no-scrollbar flex h-[208px] flex-col gap-y-0.5 overflow-y-auto pb-[184px]'>
         {
           yearOptions.map((year) => {
             const isSelected = selectedYear === year

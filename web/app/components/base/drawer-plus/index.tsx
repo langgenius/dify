@@ -14,10 +14,10 @@ type Props = {
   contentClassName?: string
   headerClassName?: string
   height?: number | string
-  title: string | JSX.Element
-  titleDescription?: string | JSX.Element
-  body: JSX.Element
-  foot?: JSX.Element
+  title: string | React.JSX.Element
+  titleDescription?: string | React.JSX.Element
+  body: React.JSX.Element
+  foot?: React.JSX.Element
   isShowMask?: boolean
   clickOutsideNotOpen?: boolean
   positionCenter?: boolean
@@ -55,31 +55,31 @@ const DrawerPlus: FC<Props> = ({
       footer={null}
       mask={isMobile || isShowMask}
       positionCenter={positionCenter}
-      panelClassname={cn('mt-16 mx-2 sm:mr-2 mb-3 !p-0 rounded-xl', panelClassName, maxWidthClassName)}
+      panelClassname={cn('mx-2 mb-3 mt-16 rounded-xl !p-0 sm:mr-2', panelClassName, maxWidthClassName)}
     >
       <div
-        className={cn(contentClassName, 'w-full flex flex-col bg-components-panel-bg border-[0.5px] border-divider-subtle rounded-xl shadow-xl')}
+        className={cn(contentClassName, 'flex w-full flex-col rounded-xl border-[0.5px] border-divider-subtle bg-components-panel-bg shadow-xl')}
         style={{
           height,
         }}
         ref={ref}
       >
         <div className={cn(headerClassName, 'shrink-0 border-b border-divider-subtle py-4')}>
-          <div className='flex justify-between items-center pl-6 pr-5 h-6'>
+          <div className='flex h-6 items-center justify-between pl-6 pr-5'>
             <div className='system-xl-semibold text-text-primary'>
               {title}
             </div>
             <div className='flex items-center'>
               <div
                 onClick={onHide}
-                className='flex justify-center items-center w-6 h-6 cursor-pointer'
+                className='flex h-6 w-6 cursor-pointer items-center justify-center'
               >
-                <RiCloseLine className='w-4 h-4 text-text-tertiary' />
+                <RiCloseLine className='h-4 w-4 text-text-tertiary' />
               </div>
             </div>
           </div>
           {titleDescription && (
-            <div className='pl-6 pr-10 system-xs-regular text-text-tertiary'>
+            <div className='system-xs-regular pl-6 pr-10 text-text-tertiary'>
               {titleDescription}
             </div>
           )}

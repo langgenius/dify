@@ -67,28 +67,28 @@ const Item: FC<ItemProps> = ({
     <div
       key={payload.name}
       className={cn(
-        !readonly && !disabled && 'group/item hover:shadow-xs cursor-pointer',
-        'border border-components-panel-border-subtle rounded-md bg-components-panel-on-panel-item-bg',
+        !readonly && !disabled && 'group/item cursor-pointer hover:shadow-xs',
+        'rounded-md border border-components-panel-border-subtle bg-components-panel-on-panel-item-bg',
         isDeleteHovering && 'border border-state-destructive-border bg-state-destructive-hover',
       )}
     >
       <div
         className={cn(
-          'flex items-center h-8 px-2  justify-between',
+          'flex h-8 items-center justify-between  px-2',
           disabled && 'opacity-30', // not include border and bg
         )}
       >
-        <div className='flex items-center h-full text-text-tertiary space-x-1'>
-          <Icon className='shrink-0 size-4' />
-          <div className='max-w-[250px] truncate system-sm-medium text-text-primary'>{payload.name}</div>
-          <div className='shrink-0 system-xs-regular'>{payload.type}</div>
+        <div className='flex h-full items-center space-x-1 text-text-tertiary'>
+          <Icon className='size-4 shrink-0' />
+          <div className='system-sm-medium max-w-[250px] truncate text-text-primary'>{payload.name}</div>
+          <div className='system-xs-regular shrink-0'>{payload.type}</div>
         </div>
         {(!readonly || disabled) && (
-          <div className='group-hover/item:hidden ml-2 shrink-0 system-xs-regular text-text-tertiary'>
+          <div className='system-xs-regular ml-2 shrink-0 text-text-tertiary group-hover/item:hidden'>
             {disabled ? t(`${i18nPrefix}.disabled`) : t(`${i18nPrefix}.values`, { num: payload.count || 0 })}
           </div>
         )}
-        <div className='group-hover/item:flex hidden ml-2 items-center text-text-tertiary space-x-1'>
+        <div className='ml-2 hidden items-center space-x-1 text-text-tertiary group-hover/item:flex'>
           <RiEditLine className='size-4 cursor-pointer' onClick={handleRename} />
           <div ref={deleteBtnRef} className='hover:text-text-destructive'>
             <RiDeleteBinLine className='size-4 cursor-pointer' onClick={showDeleteConfirm} />
@@ -202,7 +202,7 @@ const DatasetMetadataDrawer: FC<Props> = ({
             defaultValue={isBuiltInEnabled}
             onChange={onIsBuiltInEnabledChange}
           />
-          <div className='ml-2 mr-0.5 system-sm-semibold text-text-secondary'>{t(`${i18nPrefix}.builtIn`)}</div>
+          <div className='system-sm-semibold ml-2 mr-0.5 text-text-secondary'>{t(`${i18nPrefix}.builtIn`)}</div>
           <Tooltip popupContent={<div className='max-w-[100px]'>{t(`${i18nPrefix}.builtInDescription`)}</div>} />
         </div>
 

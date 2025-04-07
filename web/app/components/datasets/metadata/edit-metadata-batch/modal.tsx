@@ -118,7 +118,7 @@ const EditMetadataBatchModal: FC<Props> = ({
       onClose={onHide}
       className='!max-w-[640px]'
     >
-      <div className='mt-1 system-xs-medium text-text-accent'>{t(`${i18nPrefix}.editDocumentsNum`, { num: documentNum })}</div>
+      <div className='system-xs-medium mt-1 text-text-accent'>{t(`${i18nPrefix}.editDocumentsNum`, { num: documentNum })}</div>
       <div className='ml-[-16px] max-h-[305px] overflow-y-auto'>
         <div className='mt-4 space-y-2'>
           {templeList.map(item => (
@@ -133,7 +133,7 @@ const EditMetadataBatchModal: FC<Props> = ({
         </div>
         <div className='mt-4 pl-[18px]'>
           <div className='flex items-center'>
-            <div className='mr-2 shrink-0 system-xs-medium-uppercase text-text-tertiary'>{t('dataset.metadata.createMetadata.title')}</div>
+            <div className='system-xs-medium-uppercase mr-2 shrink-0 text-text-tertiary'>{t('dataset.metadata.createMetadata.title')}</div>
             <Divider bgStyle='gradient' />
           </div>
           <div className='mt-2 space-y-2'>
@@ -163,13 +163,13 @@ const EditMetadataBatchModal: FC<Props> = ({
       </div>
 
       <div className='mt-4 flex items-center justify-between'>
-        <div className='flex items-center select-none'>
+        <div className='flex select-none items-center'>
           <Checkbox checked={isApplyToAllSelectDocument} onCheck={() => setIsApplyToAllSelectDocument(!isApplyToAllSelectDocument)} />
-          <div className='ml-2 mr-1 system-xs-medium text-text-secondary'>{t(`${i18nPrefix}.applyToAllSelectDocument`)}</div>
+          <div className='system-xs-medium ml-2 mr-1 text-text-secondary'>{t(`${i18nPrefix}.applyToAllSelectDocument`)}</div>
           <Tooltip popupContent={
             <div className='max-w-[240px]'>{t(`${i18nPrefix}.applyToAllSelectDocumentTip`)}</div>
           } >
-            <div className='p-px cursor-pointer'>
+            <div className='cursor-pointer p-px'>
               <RiQuestionLine className='size-3.5 text-text-tertiary' />
             </div>
           </Tooltip>

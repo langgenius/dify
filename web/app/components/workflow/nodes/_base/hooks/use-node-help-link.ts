@@ -6,7 +6,7 @@ export const useNodeHelpLink = (nodeType: BlockEnum) => {
   const language = useGetLanguage()
   const prefixLink = useMemo(() => {
     if (language === 'zh_Hans')
-      return 'https://docs.dify.ai/v/zh-hans/guides/workflow/node/'
+      return 'https://docs.dify.ai/zh-hans/guides/workflow/node/'
 
     return 'https://docs.dify.ai/guides/workflow/node/'
   }, [language])
@@ -26,14 +26,13 @@ export const useNodeHelpLink = (nodeType: BlockEnum) => {
         [BlockEnum.VariableAggregator]: 'variable-aggregator',
         [BlockEnum.Assigner]: 'variable-assigner',
         [BlockEnum.Iteration]: 'iteration',
-        [BlockEnum.IterationStart]: 'iteration',
         [BlockEnum.Loop]: 'loop',
-        [BlockEnum.LoopStart]: 'loop',
         [BlockEnum.ParameterExtractor]: 'parameter-extractor',
         [BlockEnum.HttpRequest]: 'http-request',
         [BlockEnum.Tool]: 'tools',
         [BlockEnum.DocExtractor]: 'doc-extractor',
         [BlockEnum.ListFilter]: 'list-operator',
+        [BlockEnum.Agent]: 'agent',
       }
     }
 
@@ -51,9 +50,7 @@ export const useNodeHelpLink = (nodeType: BlockEnum) => {
       [BlockEnum.VariableAggregator]: 'variable-aggregator',
       [BlockEnum.Assigner]: 'variable-assigner',
       [BlockEnum.Iteration]: 'iteration',
-      [BlockEnum.IterationStart]: 'iteration',
       [BlockEnum.Loop]: 'loop',
-      [BlockEnum.LoopStart]: 'loop',
       [BlockEnum.ParameterExtractor]: 'parameter-extractor',
       [BlockEnum.HttpRequest]: 'http-request',
       [BlockEnum.Tool]: 'tools',
@@ -61,7 +58,12 @@ export const useNodeHelpLink = (nodeType: BlockEnum) => {
       [BlockEnum.ListFilter]: 'list-operator',
       [BlockEnum.Agent]: 'agent',
     }
-  }, [language])
+  }, [language]) as Record<string, string>
 
-  return `${prefixLink}${linkMap[nodeType]}`
+  const link = linkMap[nodeType]
+
+  if (!link)
+    return ''
+
+  return `${prefixLink}${link}`
 }

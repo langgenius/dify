@@ -4,11 +4,9 @@ import time
 from typing import Optional
 
 from configs import dify_config
+from constants import IMAGE_EXTENSIONS
 from core.helper.url_signer import UrlSigner
 from extensions.ext_storage import storage
-
-IMAGE_EXTENSIONS = ["jpg", "jpeg", "png", "webp", "gif", "svg"]
-IMAGE_EXTENSIONS.extend([ext.upper() for ext in IMAGE_EXTENSIONS])
 
 
 class UploadFileParser:
@@ -38,7 +36,7 @@ class UploadFileParser:
         """
         get signed url from upload file
 
-        :param upload_file: UploadFile object
+        :param upload_file_id: the id of UploadFile object
         :return:
         """
         base_url = dify_config.FILES_URL

@@ -43,25 +43,25 @@ const Operation: FC<Props> = ({
       <PortalToFollowElemTrigger
         onClick={() => setOpen(v => !v)}
       >
-        <div className={cn('flex items-center p-1.5 pl-2 rounded-lg text-text-secondary cursor-pointer hover:bg-state-base-hover', open && 'bg-state-base-hover')}>
+        <div className={cn('flex cursor-pointer items-center rounded-lg p-1.5 pl-2 text-text-secondary hover:bg-state-base-hover', open && 'bg-state-base-hover')}>
           <div className='system-md-semibold'>{title}</div>
-          <RiArrowDownSLine className='w-4 h-4 ' />
+          <RiArrowDownSLine className='h-4 w-4 ' />
         </div>
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent className="z-50">
         <div
-          className={'min-w-[120px] p-1 bg-components-panel-bg-blur backdrop-blur-sm rounded-xl border-[0.5px] border-components-panel-border shadow-lg'}
+          className={'min-w-[120px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-1 shadow-lg backdrop-blur-sm'}
         >
-          <div className={cn('flex items-center space-x-1 px-3 py-1.5 rounded-lg text-text-secondary system-md-regular cursor-pointer hover:bg-state-base-hover')} onClick={togglePin}>
+          <div className={cn('system-md-regular flex cursor-pointer items-center space-x-1 rounded-lg px-3 py-1.5 text-text-secondary hover:bg-state-base-hover')} onClick={togglePin}>
             <span className='grow'>{isPinned ? t('explore.sidebar.action.unpin') : t('explore.sidebar.action.pin')}</span>
           </div>
           {isShowRenameConversation && (
-            <div className={cn('flex items-center space-x-1 px-3 py-1.5 rounded-lg text-text-secondary system-md-regular cursor-pointer hover:bg-state-base-hover')} onClick={onRenameConversation}>
+            <div className={cn('system-md-regular flex cursor-pointer items-center space-x-1 rounded-lg px-3 py-1.5 text-text-secondary hover:bg-state-base-hover')} onClick={onRenameConversation}>
               <span className='grow'>{t('explore.sidebar.action.rename')}</span>
             </div>
           )}
           {isShowDelete && (
-            <div className={cn('group flex items-center space-x-1 px-3 py-1.5 rounded-lg text-text-secondary system-md-regular cursor-pointer hover:bg-state-destructive-hover hover:text-text-destructive')} onClick={onDelete} >
+            <div className={cn('system-md-regular group flex cursor-pointer items-center space-x-1 rounded-lg px-3 py-1.5 text-text-secondary hover:bg-state-destructive-hover hover:text-text-destructive')} onClick={onDelete} >
               <span className='grow'>{t('explore.sidebar.action.delete')}</span>
             </div>
           )}

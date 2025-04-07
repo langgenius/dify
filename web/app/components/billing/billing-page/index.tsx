@@ -27,9 +27,9 @@ const Billing: FC = () => {
       {enableBilling && isCurrentWorkspaceManager && billingUrl && (
         <>
           <Divider className='my-4' />
-          <a className='flex items-center text-text-accent-light-mode-only system-xs-medium cursor-pointer' href={billingUrl} target='_blank' rel='noopener noreferrer'>
+          <a className='system-xs-medium flex cursor-pointer items-center text-text-accent-light-mode-only' href={billingUrl} target='_blank' rel='noopener noreferrer'>
             <span className='pr-0.5'>{t('billing.viewBilling')}</span>
-            <RiArrowRightUpLine className='w-4 h-4' />
+            <RiArrowRightUpLine className='h-4 w-4' />
           </a>
         </>
       )}

@@ -170,8 +170,11 @@ const translation = {
     fullSolution: 'Upgrade your plan to get more space.',
   },
   apps: {
-    fullTipLine1: 'Upgrade your plan to',
-    fullTipLine2: 'build more apps.',
+    fullTip1: 'Upgrade to create more apps',
+    fullTip1des: 'You\'ve reached the limit of build apps on this plan',
+    fullTip2: 'Plan limit reached',
+    fullTip2des: 'It is recommended to clean up inactive applications to free up usage, or contact us.',
+    contactUs: 'Contact us',
   },
   annotatedResponse: {
     fullTipLine1: 'Upgrade your plan to',

@@ -101,7 +101,7 @@ const useConfig = (id: string, payload: CodeNodeType) => {
   })
 
   const filterVar = useCallback((varPayload: Var) => {
-    return [VarType.string, VarType.number, VarType.secret, VarType.object, VarType.array, VarType.arrayNumber, VarType.arrayString, VarType.arrayObject].includes(varPayload.type)
+    return [VarType.string, VarType.number, VarType.secret, VarType.object, VarType.array, VarType.arrayNumber, VarType.arrayString, VarType.arrayObject, VarType.file, VarType.arrayFile].includes(varPayload.type)
   }, [])
 
   // single run

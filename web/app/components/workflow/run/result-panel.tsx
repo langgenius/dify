@@ -111,7 +111,7 @@ const ResultPanel: FC<ResultPanelProps> = ({
           )
         }
       </div>
-      <div className='px-4 py-2 flex flex-col gap-2'>
+      <div className='flex flex-col gap-2 px-4 py-2'>
         <CodeEditor
           readOnly
           title={<div>{t('workflow.common.input').toLocaleUpperCase()}</div>}
@@ -140,7 +140,7 @@ const ResultPanel: FC<ResultPanelProps> = ({
         )}
       </div>
       <div className='px-4 py-2'>
-        <div className='h-[0.5px] divider-subtle' />
+        <div className='divider-subtle h-[0.5px]' />
       </div>
       <div className='px-4 py-2'>
         <MetaData

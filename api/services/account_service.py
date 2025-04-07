@@ -785,8 +785,10 @@ class TenantService:
     @staticmethod
     def remove_member_from_tenant(tenant: Tenant, account: Account, operator: Account) -> None:
         """Remove member from tenant"""
-        if operator.id == account.id and TenantService.check_member_permission(tenant, operator, account, "remove"):
+        if operator.id == account.id:
             raise CannotOperateSelfError("Cannot operate self.")
+
+        TenantService.check_member_permission(tenant, operator, account, "remove")
 
         ta = TenantAccountJoin.query.filter_by(tenant_id=tenant.id, account_id=account.id).first()
         if not ta:
@@ -911,6 +913,8 @@ class RegisterService:
             db.session.commit()
         except WorkSpaceNotAllowedCreateError:
             db.session.rollback()
+            logging.exception("Register failed")
+            raise AccountRegisterError("Workspace is not allowed to create.")
         except AccountRegisterError as are:
             db.session.rollback()
             logging.exception("Register failed")
