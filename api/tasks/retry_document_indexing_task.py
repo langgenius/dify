@@ -27,7 +27,9 @@ def retry_document_indexing_task(dataset_id: str, document_ids: list[str]):
 
     dataset = db.session.query(Dataset).filter(Dataset.id == dataset_id).first()
     if not dataset:
-        raise ValueError("Dataset not found")
+        logging.info(click.style("Dataset not found: {}".format(dataset_id), fg="red"))
+        db.session.close()
+        return
 
     for document_id in document_ids:
         retry_indexing_cache_key = "document_{}_is_retried".format(document_id)
@@ -52,6 +54,7 @@ def retry_document_indexing_task(dataset_id: str, document_ids: list[str]):
                 db.session.add(document)
                 db.session.commit()
             redis_client.delete(retry_indexing_cache_key)
+            db.session.close()
             return
 
         logging.info(click.style("Start retry document: {}".format(document_id), fg="green"))
@@ -60,6 +63,7 @@ def retry_document_indexing_task(dataset_id: str, document_ids: list[str]):
         )
         if not document:
             logging.info(click.style("Document not found: {}".format(document_id), fg="yellow"))
+            db.session.close()
             return
         try:
             # clean old data
@@ -92,5 +96,7 @@ def retry_document_indexing_task(dataset_id: str, document_ids: list[str]):
             logging.info(click.style(str(ex), fg="yellow"))
             redis_client.delete(retry_indexing_cache_key)
             pass
+        finally:
+            db.session.close()
     end_at = time.perf_counter()
     logging.info(click.style("Retry dataset: {} latency: {}".format(dataset_id, end_at - start_at), fg="green"))

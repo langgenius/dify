@@ -127,3 +127,5 @@ def batch_create_segment_to_index_task(
     except Exception:
         logging.exception("Segments batch created index failed")
         redis_client.setex(indexing_cache_key, 600, "error")
+    finally:
+        db.session.close()

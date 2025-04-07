@@ -117,3 +117,5 @@ def clean_dataset_task(
         )
     except Exception:
         logging.exception("Cleaned dataset when dataset deleted failed")
+    finally:
+        db.session.close()

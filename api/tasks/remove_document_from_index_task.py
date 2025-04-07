@@ -4,7 +4,6 @@ import time
 
 import click
 from celery import shared_task  # type: ignore
-from werkzeug.exceptions import NotFound
 
 from core.rag.index_processor.index_processor_factory import IndexProcessorFactory
 from extensions.ext_database import db
@@ -25,9 +24,13 @@ def remove_document_from_index_task(document_id: str):
 
     document = db.session.query(Document).filter(Document.id == document_id).first()
     if not document:
-        raise NotFound("Document not found")
+        logging.info(click.style("Document not found: {}".format(document_id), fg="red"))
+        db.session.close()
+        return
 
     if document.indexing_status != "completed":
+        logging.info(click.style("Document is not completed, remove is not allowed: {}".format(document_id), fg="red"))
+        db.session.close()
         return
 
     indexing_cache_key = "document_{}_indexing".format(document.id)
@@ -71,3 +74,4 @@ def remove_document_from_index_task(document_id: str):
             db.session.commit()
     finally:
         redis_client.delete(indexing_cache_key)
+        db.session.close()
