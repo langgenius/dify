@@ -2,6 +2,7 @@ import React from 'react'
 import { act, render, screen, waitFor } from '@testing-library/react'
 import Toast, { ToastProvider, useToastContext } from '.'
 import '@testing-library/jest-dom'
+import { noop } from 'lodash-es'
 
 // Mock timers for testing timeouts
 jest.useFakeTimers()
@@ -76,11 +77,11 @@ describe('Toast', () => {
 
     test('does not render close button when close is undefined', () => {
       // Create a modified context where close is undefined
-      const CustomToastContext = React.createContext({ notify: () => { }, close: undefined })
+      const CustomToastContext = React.createContext({ notify: noop, close: undefined })
 
       // Create a wrapper component using the custom context
       const Wrapper = ({ children }: any) => (
-        <CustomToastContext.Provider value={{ notify: () => { }, close: undefined }}>
+        <CustomToastContext.Provider value={{ notify: noop, close: undefined }}>
           {children}
         </CustomToastContext.Provider>
       )

@@ -5,10 +5,11 @@ import pytest
 from _pytest.monkeypatch import MonkeyPatch
 from requests.adapters import HTTPAdapter
 from tcvectordb import RPCVectorDBClient  # type: ignore
+from tcvectordb.model import enum
 from tcvectordb.model.collection import FilterIndexConfig
-from tcvectordb.model.document import Document, Filter  # type: ignore
+from tcvectordb.model.document import AnnSearch, Document, Filter, KeywordSearch, Rerank  # type: ignore
 from tcvectordb.model.enum import ReadConsistency  # type: ignore
-from tcvectordb.model.index import Index, IndexField  # type: ignore
+from tcvectordb.model.index import FilterIndex, HNSWParams, Index, IndexField, VectorIndex  # type: ignore
 from tcvectordb.rpc.model.collection import RPCCollection
 from tcvectordb.rpc.model.database import RPCDatabase
 from xinference_client.types import Embedding  # type: ignore
@@ -39,6 +40,30 @@ class MockTcvectordbClass:
 
     def exists_collection(self, database_name: str, collection_name: str) -> bool:
         return True
+
+    def describe_collection(
+        self, database_name: str, collection_name: str, timeout: Optional[float] = None
+    ) -> RPCCollection:
+        index = Index(
+            FilterIndex("id", enum.FieldType.String, enum.IndexType.PRIMARY_KEY),
+            VectorIndex(
+                "vector",
+                128,
+                enum.IndexType.HNSW,
+                enum.MetricType.IP,
+                HNSWParams(m=16, efconstruction=200),
+            ),
+            FilterIndex("text", enum.FieldType.String, enum.IndexType.FILTER),
+            FilterIndex("metadata", enum.FieldType.String, enum.IndexType.FILTER),
+        )
+        return RPCCollection(
+            RPCDatabase(
+                name=database_name,
+                read_consistency=self._read_consistency,
+            ),
+            collection_name,
+            index=index,
+        )
 
     def create_collection(
         self,
@@ -97,6 +122,23 @@ class MockTcvectordbClass:
     ) -> list[list[dict]]:
         return [[{"metadata": {"doc_id": "foo1"}, "text": "text", "doc_id": "foo1", "score": 0.1}]]
 
+    def collection_hybrid_search(
+        self,
+        database_name: str,
+        collection_name: str,
+        ann: Optional[Union[list[AnnSearch], AnnSearch]] = None,
+        match: Optional[Union[list[KeywordSearch], KeywordSearch]] = None,
+        filter: Union[Filter, str] = None,
+        rerank: Optional[Rerank] = None,
+        retrieve_vector: Optional[bool] = None,
+        output_fields: Optional[list[str]] = None,
+        limit: Optional[int] = None,
+        timeout: Optional[float] = None,
+        return_pd_object=False,
+        **kwargs,
+    ) -> list[list[dict]]:
+        return [[{"metadata": {"doc_id": "foo1"}, "text": "text", "doc_id": "foo1", "score": 0.1}]]
+
     def collection_query(
         self,
         database_name: str,
@@ -137,8 +179,10 @@ def setup_tcvectordb_mock(request, monkeypatch: MonkeyPatch):
         )
         monkeypatch.setattr(RPCVectorDBClient, "exists_collection", MockTcvectordbClass.exists_collection)
         monkeypatch.setattr(RPCVectorDBClient, "create_collection", MockTcvectordbClass.create_collection)
+        monkeypatch.setattr(RPCVectorDBClient, "describe_collection", MockTcvectordbClass.describe_collection)
         monkeypatch.setattr(RPCVectorDBClient, "upsert", MockTcvectordbClass.collection_upsert)
         monkeypatch.setattr(RPCVectorDBClient, "search", MockTcvectordbClass.collection_search)
+        monkeypatch.setattr(RPCVectorDBClient, "hybrid_search", MockTcvectordbClass.collection_hybrid_search)
         monkeypatch.setattr(RPCVectorDBClient, "query", MockTcvectordbClass.collection_query)
         monkeypatch.setattr(RPCVectorDBClient, "delete", MockTcvectordbClass.collection_delete)
         monkeypatch.setattr(RPCVectorDBClient, "drop_collection", MockTcvectordbClass.drop_collection)

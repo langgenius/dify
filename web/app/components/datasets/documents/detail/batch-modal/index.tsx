@@ -8,6 +8,7 @@ import CSVDownloader from './csv-downloader'
 import Button from '@/app/components/base/button'
 import Modal from '@/app/components/base/modal'
 import type { ChunkingMode } from '@/models/datasets'
+import { noop } from 'lodash-es'
 
 export type IBatchModalProps = {
   isShow: boolean
@@ -39,7 +40,7 @@ const BatchModal: FC<IBatchModalProps> = ({
   }, [isShow])
 
   return (
-    <Modal isShow={isShow} onClose={() => { }} className='!max-w-[520px] !rounded-xl px-8 py-6'>
+    <Modal isShow={isShow} onClose={noop} className='!max-w-[520px] !rounded-xl px-8 py-6'>
       <div className='relative pb-1 text-xl font-medium leading-[30px] text-gray-900'>{t('datasetDocuments.list.batchModal.title')}</div>
       <div className='absolute right-4 top-4 cursor-pointer p-2' onClick={onCancel}>
         <RiCloseLine className='h-4 w-4 text-gray-500' />
