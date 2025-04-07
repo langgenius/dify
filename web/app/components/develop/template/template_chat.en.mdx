@@ -1173,3 +1173,304 @@ Chat applications support session persistence, allowing previous chat history to
     </CodeGroup>
   </Col>
 </Row>
+---
+
+<Heading
+  url='/apps/annotations'
+  method='GET'
+  title='Get Annotation List'
+  name='#annotation_list'
+/>
+<Row>
+  <Col>
+    ### Query
+    <Properties>
+      <Property name='page' type='string' key='page'>
+        Page number
+      </Property>
+      <Property name='limit' type='string' key='limit'>
+        Number of items returned, default 20, range 1-100
+      </Property>
+    </Properties>
+  </Col>
+  <Col sticky>
+    <CodeGroup
+      title="Request"
+      tag="GET"
+      label="/apps/annotations"
+      targetCode={`curl --location --request GET '${props.apiBaseUrl}/apps/annotations?page=1&limit=20' \\\n--header 'Authorization: Bearer {api_key}'`}
+    >
+    ```bash {{ title: 'cURL' }}
+    curl --location --request GET '${props.apiBaseUrl}/apps/annotations?page=1&limit=20' \
+    --header 'Authorization: Bearer {api_key}'
+    ```
+    </CodeGroup>
+
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {
+      "data": [
+        {
+          "id": "69d48372-ad81-4c75-9c46-2ce197b4d402",
+          "question": "What is your name?",
+          "answer": "I am Dify.",
+          "hit_count": 0,
+          "created_at": 1735625869
+        }
+      ],
+      "has_more": false,
+      "limit": 20,
+      "total": 1,
+      "page": 1
+    }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+---
+
+<Heading
+  url='/apps/annotations'
+  method='POST'
+  title='Create Annotation'
+  name='#create_annotation'
+/>
+<Row>
+  <Col>
+    ### Query
+    <Properties>
+      <Property name='question' type='string' key='question'>
+        Question
+      </Property>
+      <Property name='answer' type='string' key='answer'>
+        Answer
+      </Property>
+    </Properties>
+  </Col>
+  <Col sticky>
+    <CodeGroup
+      title="Request"
+      tag="POST"
+      label="/apps/annotations"
+      targetCode={`curl --location --request POST '${props.apiBaseUrl}/apps/annotations' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{"question": "What is your name?","answer": "I am Dify."}'`}
+    >
+    ```bash {{ title: 'cURL' }}
+    curl --location --request POST '${props.apiBaseUrl}/apps/annotations' \
+    --header 'Authorization: Bearer {api_key}' \
+    --header 'Content-Type: application/json' \
+    --data-raw '{
+        "question": "What is your name?",
+        "answer": "I am Dify."
+    }'
+    ```
+    </CodeGroup>
+
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {
+      {
+        "id": "69d48372-ad81-4c75-9c46-2ce197b4d402",
+        "question": "What is your name?",
+        "answer": "I am Dify.",
+        "hit_count": 0,
+        "created_at": 1735625869
+      }
+    }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+---
+
+<Heading
+  url='/apps/annotations/{annotation_id}'
+  method='PUT'
+  title='Update Annotation'
+  name='#update_annotation'
+/>
+<Row>
+  <Col>
+    ### Query
+    <Properties>
+      <Property name='annotation_id' type='string' key='annotation_id'>
+        Annotation ID
+      </Property>
+      <Property name='question' type='string' key='question'>
+        Question
+      </Property>
+      <Property name='answer' type='string' key='answer'>
+        Answer
+      </Property>
+    </Properties>
+  </Col>
+  <Col sticky>
+    <CodeGroup
+      title="Request"
+      tag="PUT"
+      label="/apps/annotations/{annotation_id}"
+      targetCode={`curl --location --request POST '${props.apiBaseUrl}/apps/annotations/{annotation_id}' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{"question": "What is your name?","answer": "I am Dify."}'`}
+    >
+    ```bash {{ title: 'cURL' }}
+    curl --location --request POST '${props.apiBaseUrl}/apps/annotations/{annotation_id}' \
+    --header 'Authorization: Bearer {api_key}' \
+    --header 'Content-Type: application/json' \
+    --data-raw '{
+        "question": "What is your name?",
+        "answer": "I am Dify."
+    }'
+    ```
+    </CodeGroup>
+
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {
+      {
+        "id": "69d48372-ad81-4c75-9c46-2ce197b4d402",
+        "question": "What is your name?",
+        "answer": "I am Dify.",
+        "hit_count": 0,
+        "created_at": 1735625869
+      }
+    }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+---
+
+<Heading
+  url='/apps/annotations/{annotation_id}'
+  method='DELETE'
+  title='Delete Annotation'
+  name='#delete_annotation'
+/>
+<Row>
+  <Col>
+    ### Query
+    <Properties>
+      <Property name='annotation_id' type='string' key='annotation_id'>
+        Annotation ID
+      </Property>
+    </Properties>
+  </Col>
+  <Col sticky>
+    <CodeGroup
+      title="Request"
+      tag="PUT"
+      label="/apps/annotations/{annotation_id}"
+      targetCode={`curl --location --request DELETE '${props.apiBaseUrl}/apps/annotations/{annotation_id}' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json'`}
+    >
+    ```bash {{ title: 'cURL' }}
+    curl --location --request DELETE '${props.apiBaseUrl}/apps/annotations/{annotation_id}' \
+    --header 'Authorization: Bearer {api_key}'
+    ```
+    </CodeGroup>
+
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {"result": "success"}
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+---
+
+<Heading
+  url='/apps/annotation-reply/{action}'
+  method='POST'
+  title='Initial Annotation Reply Settings'
+  name='#initial_annotation_reply_settings'
+/>
+<Row>
+  <Col>
+    ### Query
+    <Properties>
+      <Property name='action' type='string' key='action'>
+        Action, can only be 'enable' or 'disable'
+      </Property>
+      <Property name='embedding_model_provider' type='string' key='embedding_model_provider'>
+        Specified embedding model provider, must be set up in the system first, corresponding to the provider field(Optional)
+      </Property>
+      <Property name='embedding_model' type='string' key='embedding_model'>
+        Specified embedding model, corresponding to the model field(Optional)
+      </Property>
+      <Property name='score_threshold' type='number' key='score_threshold'>
+        The similarity threshold for matching annotated replies. Only annotations with scores above this threshold will be recalled.
+      </Property>
+    </Properties>
+  </Col>
+  <Col sticky>
+    The provider and model name of the embedding model can be obtained through the following interface: v1/workspaces/current/models/model-types/text-embedding. For specific instructions, see: Maintain Knowledge Base via API. The Authorization used is the Dataset API Token.
+    <CodeGroup
+      title="Request"
+      tag="POST"
+      label="/apps/annotation-reply/{action}"
+      targetCode={`curl --location --request POST '${props.apiBaseUrl}/apps/annotation-reply/{action}' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{"score_threshold": 0.9, "embedding_provider_name": "zhipu", "embedding_model_name": "embedding_3"}'`}
+    >
+    ```bash {{ title: 'cURL' }}
+    curl --location --request POST 'https://api.dify.ai/v1/apps/annotation-reply/{action}' \
+    --header 'Authorization: Bearer {api_key}' \
+    --header 'Content-Type: application/json' \
+    --data-raw '{
+        "score_threshold": 0.9,
+        "embedding_provider_name": "zhipu",
+        "embedding_model_name": "embedding_3"
+    }'
+    ```
+    </CodeGroup>
+
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {
+      "job_id": "b15c8f68-1cf4-4877-bf21-ed7cf2011802",
+      "job_status": "waiting"
+    }
+    ```
+    This interface is executed asynchronously, so it will return a job_id. You can get the final execution result by querying the job status interface.
+    </CodeGroup>
+  </Col>
+</Row>
+---
+
+<Heading
+  url='/apps/annotation-reply/{action}/status/{job_id}'
+  method='GET'
+  title='Query Initial Annotation Reply Settings Task Status'
+  name='#initial_annotation_reply_settings_task_status'
+/>
+<Row>
+  <Col>
+    ### Query
+    <Properties>
+    <Property name='action' type='string' key='action'>
+        Action, can only be 'enable' or 'disable', must be the same as the action in the initial annotation reply settings interface
+      </Property>
+      <Property name='job_id' type='string' key='job_id'>
+        Job ID, 
+      </Property>
+    </Properties>
+  </Col>
+  <Col sticky>
+    <CodeGroup
+      title="Request"
+      tag="GET"
+      label="/apps/annotations"
+      targetCode={`curl --location --request GET '${props.apiBaseUrl}/apps/annotation-reply/{action}/status/{job_id}' \\\n--header 'Authorization: Bearer {api_key}'`}
+    >
+    ```bash {{ title: 'cURL' }}
+    curl --location --request GET '${props.apiBaseUrl}/apps/annotation-reply/{action}/status/{job_id}' \
+    --header 'Authorization: Bearer {api_key}'
+    ```
+    </CodeGroup>
+
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {
+      "job_id": "b15c8f68-1cf4-4877-bf21-ed7cf2011802",
+      "job_status": "waiting",
+      "error_msg": ""
+    }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
