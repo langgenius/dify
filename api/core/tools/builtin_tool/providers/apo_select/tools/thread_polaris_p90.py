@@ -47,7 +47,7 @@ class ThreadPolarisP90(BuiltinTool):
         return json.dumps(stats)
 
     def get_metrics(self, type: str, pod: str, start: int, end: int) -> dict:
-        query = 'increase(originx_thread_polaris_nanoseconds_sum{pod="' + pod + '", type="cpu"}[1m])'
+        query = 'increase(originx_thread_polaris_nanoseconds_sum{pod="' + pod + '", type="' + type + '"}[1m])'
         step = '10m'
         hour = 3600 * 1000
 
