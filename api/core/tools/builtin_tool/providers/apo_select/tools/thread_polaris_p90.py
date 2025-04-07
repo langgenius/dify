@@ -41,15 +41,13 @@ class ThreadPolarisP90(BuiltinTool):
             values = [float(value[1]) for value in entry["values"]]
     
             stats[tid] = {
-                "max": max(values),
-                "min": min(values)
+                "avg": sum(values) / len(values),
             }
 
         return json.dumps(stats)
 
     def get_metrics(self, type: str, pod: str, start: int, end: int) -> dict:
-        pre_query = '''histogram_quantile(0.9, sum(rate(originx_thread_polaris_nanoseconds_bucket{pod="'''
-        query = pre_query + pod + '''", type="''' + type + '''"}[1m]))  by (tid, vmrange))'''
+        query = 'increase(originx_thread_polaris_nanoseconds_sum{pod="' + pod + '", type="cpu"}[1m])'
         step = '10m'
         hour = 3600 * 1000
 
