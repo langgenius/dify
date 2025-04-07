@@ -19,7 +19,7 @@ class EndStreamProcessor(StreamProcessor):
         super().__init__(graph, variable_pool)
         self.end_stream_param = graph.end_stream_param
         self.route_position = {}
-        for end_node_id, _ in self.end_stream_param.end_stream_variable_selector_mapping.items():
+        for end_node_id in self.end_stream_param.end_stream_variable_selector_mapping:
             self.route_position[end_node_id] = 0
         self.current_stream_chunk_generating_node_ids: dict[str, list[str]] = {}
         self.has_output = False
@@ -78,7 +78,7 @@ class EndStreamProcessor(StreamProcessor):
 
     def reset(self) -> None:
         self.route_position = {}
-        for end_node_id, _ in self.end_stream_param.end_stream_variable_selector_mapping.items():
+        for end_node_id in self.end_stream_param.end_stream_variable_selector_mapping:
             self.route_position[end_node_id] = 0
         self.rest_node_ids = self.graph.node_ids.copy()
         self.current_stream_chunk_generating_node_ids = {}

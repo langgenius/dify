@@ -69,7 +69,7 @@ class AnswerStreamProcessor(StreamProcessor):
 
     def reset(self) -> None:
         self.route_position = {}
-        for answer_node_id, _ in self.generate_routes.answer_generate_route.items():
+        for answer_node_id in self.generate_routes.answer_generate_route:
             self.route_position[answer_node_id] = 0
         self.rest_node_ids = self.graph.node_ids.copy()
         self.current_stream_chunk_generating_node_ids = {}

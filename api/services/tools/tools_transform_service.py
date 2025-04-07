@@ -110,7 +110,7 @@ class ToolTransformService:
         # get credentials schema
         schema = {x.to_basic_provider_config().name: x for x in provider_controller.get_credentials_schema()}
 
-        for name, _ in schema.items():
+        for name in schema:
             if result.masked_credentials:
                 result.masked_credentials[name] = ""
 
