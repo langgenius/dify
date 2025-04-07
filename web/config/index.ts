@@ -302,3 +302,12 @@ else if (globalThis.document?.body?.getAttribute('data-public-max-iterations-num
   maxIterationsNum = Number.parseInt(globalThis.document.body.getAttribute('data-public-max-iterations-num') as string)
 
 export const MAX_ITERATIONS_NUM = maxIterationsNum
+
+let maxParallelLimit = 10
+
+if (process.env.NEXT_PUBLIC_MAX_PARALLEL_LIMIT && process.env.NEXT_PUBLIC_MAX_PARALLEL_LIMIT !== '')
+  maxParallelLimit = Number.parseInt(process.env.NEXT_PUBLIC_MAX_PARALLEL_LIMIT)
+else if (globalThis.document?.body?.getAttribute('data-public-max-parallel-limit') && globalThis.document.body.getAttribute('data-public-max-parallel-limit') !== '')
+  maxParallelLimit = Number.parseInt(globalThis.document.body.getAttribute('data-public-max-parallel-limit') as string)
+
+export const PARALLEL_LIMIT = maxParallelLimit

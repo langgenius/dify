@@ -34,7 +34,6 @@ import {
 } from '../utils'
 import {
   PARALLEL_DEPTH_LIMIT,
-  PARALLEL_LIMIT,
   SUPPORT_OUTPUT_VARS_NODE,
 } from '../constants'
 import { CUSTOM_NOTE_NODE } from '../note-node/constants'
@@ -60,6 +59,7 @@ import { CUSTOM_ITERATION_START_NODE } from '@/app/components/workflow/nodes/ite
 import { CUSTOM_LOOP_START_NODE } from '@/app/components/workflow/nodes/loop-start/constants'
 import { useWorkflowConfig } from '@/service/use-workflow'
 import { canFindTool } from '@/utils'
+import { PARALLEL_LIMIT } from '@/config'
 
 export const useIsChatMode = () => {
   const appDetail = useAppStore(s => s.appDetail)
