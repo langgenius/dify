@@ -7,8 +7,8 @@ This is a [Next.js](https://nextjs.org/) project bootstrapped with [`create-next
 ### Run by source code
 
 Before starting the web frontend service, please make sure the following environment is ready.
-- [Node.js v18.x (LTS)](https://nodejs.org)
-- [pnpm v10.x](https://pnpm.io)
+- [Node.js](https://nodejs.org) >= v18.x
+- [pnpm](https://pnpm.io) v10.x
 
 First, install the dependencies:
 
