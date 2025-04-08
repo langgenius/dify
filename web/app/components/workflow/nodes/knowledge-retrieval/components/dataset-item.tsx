@@ -89,7 +89,7 @@ const DatasetItem: FC<Props> = ({
           }
           <ActionButton
             onClick={handleRemove}
-            state={ActionButtonState.Destructive}
+            state={isDeleteHovered ? ActionButtonState.Destructive : ActionButtonState.Default}
             onMouseEnter={() => setIsDeleteHovered(true)}
             onMouseLeave={() => setIsDeleteHovered(false)}
           >
