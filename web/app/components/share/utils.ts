@@ -1,5 +1,6 @@
 import { CONVERSATION_ID_INFO } from '../base/chat/constants'
 import { fetchAccessToken } from '@/service/share'
+import { getProcessedSystemVariablesFromUrlParams } from '../base/chat/utils'
 
 export const checkOrSetAccessToken = async () => {
   const sharedToken = globalThis.location.pathname.split('/').slice(-1)[0]
@@ -12,7 +13,8 @@ export const checkOrSetAccessToken = async () => {
 
   }
   if (!accessTokenJson[sharedToken]) {
-    const res = await fetchAccessToken(sharedToken)
+    const sysUserId = (await getProcessedSystemVariablesFromUrlParams()).user_id
+    const res = await fetchAccessToken(sharedToken, sysUserId)
     accessTokenJson[sharedToken] = res.access_token
     localStorage.setItem('token', JSON.stringify(accessTokenJson))
   }

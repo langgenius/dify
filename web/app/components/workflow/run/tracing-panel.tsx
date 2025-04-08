@@ -86,6 +86,7 @@ const TracingPanel: FC<TracingPanelProps> = ({
     setShowLoopingDetailFalse,
     loopResultList,
     loopResultDurationMap,
+    loopResultVariableMap,
     handleShowLoopResultList,
 
     agentOrToolLogItemStack,
@@ -172,6 +173,7 @@ const TracingPanel: FC<TracingPanelProps> = ({
         setShowLoopingDetailFalse={setShowLoopingDetailFalse}
         loopResultList={loopResultList}
         loopResultDurationMap={loopResultDurationMap}
+        loopResultVariableMap={loopResultVariableMap}
 
         agentOrToolLogItemStack={agentOrToolLogItemStack}
         agentOrToolLogListMap={agentOrToolLogListMap}

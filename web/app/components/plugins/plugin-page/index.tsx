@@ -39,6 +39,7 @@ import { marketplaceApiPrefix } from '@/config'
 import { SUPPORT_INSTALL_LOCAL_FILE_EXTENSIONS } from '@/config'
 import { LanguagesSupported } from '@/i18n/language'
 import I18n from '@/context/i18n'
+import { noop } from 'lodash-es'
 
 const PACKAGE_IDS_KEY = 'package-ids'
 const BUNDLE_INFO_KEY = 'bundle-info'
@@ -55,6 +56,8 @@ const PluginPage = ({
   const { locale } = useContext(I18n)
   const searchParams = useSearchParams()
   const { replace } = useRouter()
+
+  document.title = `${t('plugin.metadata.title')} - Dify`
 
   // just support install one package now
   const packageId = useMemo(() => {
@@ -228,8 +231,8 @@ const PluginPage = ({
           {currentFile && (
             <InstallFromLocalPackage
               file={currentFile}
-              onClose={removeFile ?? (() => { })}
-              onSuccess={() => { }}
+              onClose={removeFile ?? noop}
+              onSuccess={noop}
             />
           )}
           <input
@@ -238,7 +241,7 @@ const PluginPage = ({
             type="file"
             id="fileUploader"
             accept={SUPPORT_INSTALL_LOCAL_FILE_EXTENSIONS}
-            onChange={fileChangeHandle ?? (() => { })}
+            onChange={fileChangeHandle ?? noop}
           />
         </>
       )}

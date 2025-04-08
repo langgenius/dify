@@ -21,6 +21,8 @@ import PickerStructurePanel from '@/app/components/workflow/nodes/_base/componen
 import { varTypeToStructType } from './utils'
 import type { Field } from '@/app/components/workflow/nodes/llm/types'
 import { FILE_STRUCT } from '@/app/components/workflow/constants'
+import { Loop } from '@/app/components/base/icons/src/vender/workflow'
+import { noop } from 'lodash-es'
 
 type ObjectChildrenProps = {
   nodeId: string
@@ -43,7 +45,10 @@ type ItemProps = {
   itemWidth?: number
   isSupportFileVar?: boolean
   isException?: boolean
+  isLoopVar?: boolean
 }
+
+const objVarTypes = [VarType.object, VarType.file]
 
 const Item: FC<ItemProps> = ({
   nodeId,
@@ -54,6 +59,7 @@ const Item: FC<ItemProps> = ({
   onHovering,
   isSupportFileVar,
   isException,
+  isLoopVar,
 }) => {
   const isStructureOutput = itemData.type === VarType.object && (itemData.children as StructuredOutput)?.schema?.properties
   const isFile = itemData.type === VarType.file && !isStructureOutput
@@ -86,7 +92,7 @@ const Item: FC<ItemProps> = ({
     return objStructuredOutput
   })()
 
-  const itemRef = useRef(null)
+  const itemRef = useRef<HTMLDivElement>(null)
   const [isItemHovering, setIsItemHovering] = useState(false)
   const _ = useHover(itemRef, {
     onChange: (hovering) => {
@@ -127,7 +133,7 @@ const Item: FC<ItemProps> = ({
   return (
     <PortalToFollowElem
       open={open}
-      onOpenChange={() => { }}
+      onOpenChange={noop}
       placement='left-start'
     >
       <PortalToFollowElemTrigger className='w-full'>
@@ -142,9 +148,10 @@ const Item: FC<ItemProps> = ({
           onMouseDown={e => e.preventDefault()}
         >
           <div className='flex w-0 grow items-center'>
-            {!isEnv && !isChatVar && <Variable02 className={cn('h-3.5 w-3.5 shrink-0 text-text-accent', isException && 'text-text-warning')} />}
+            {!isEnv && !isChatVar && !isLoopVar && <Variable02 className={cn('h-3.5 w-3.5 shrink-0 text-text-accent', isException && 'text-text-warning')} />}
             {isEnv && <Env className='h-3.5 w-3.5 shrink-0 text-util-colors-violet-violet-600' />}
-            {isChatVar && <BubbleX className='h-3.5 w-3.5 text-util-colors-teal-teal-700' />}
+            {isChatVar && <BubbleX className='h-3.5 w-3.5 shrink-0 text-util-colors-teal-teal-700' />}
+            {isLoopVar && <Loop className='h-3.5 w-3.5 shrink-0 text-util-colors-cyan-cyan-500' />}
             {!isEnv && !isChatVar && (
               <div title={itemData.variable} className='system-sm-medium ml-1 w-0 grow truncate text-text-secondary'>{itemData.variable}</div>
             )}
@@ -192,7 +199,7 @@ const ObjectChildren: FC<ObjectChildrenProps> = ({
   isSupportFileVar,
 }) => {
   const currObjPath = objPath
-  const itemRef = useRef(null)
+  const itemRef = useRef<HTMLDivElement>(null)
   const [isItemHovering, setIsItemHovering] = useState(false)
   const _ = useHover(itemRef, {
     onChange: (hovering) => {
@@ -333,6 +340,7 @@ const VarReferenceVars: FC<Props> = ({
                     itemWidth={itemWidth}
                     isSupportFileVar={isSupportFileVar}
                     isException={v.isException}
+                    isLoopVar={item.isLoop}
                   />
                 ))}
               </div>))

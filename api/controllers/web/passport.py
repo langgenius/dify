@@ -19,6 +19,8 @@ class PassportResource(Resource):
     def get(self):
         system_features = FeatureService.get_system_features()
         app_code = request.headers.get("X-App-Code")
+        user_id = request.args.get("user_id")
+
         if app_code is None:
             raise Unauthorized("X-App-Code header is missing.")
 
@@ -36,16 +38,33 @@ class PassportResource(Resource):
         if not app_model or app_model.status != "normal" or not app_model.enable_site:
             raise NotFound()
 
-        end_user = EndUser(
-            tenant_id=app_model.tenant_id,
-            app_id=app_model.id,
-            type="browser",
-            is_anonymous=True,
-            session_id=generate_session_id(),
-        )
+        if user_id:
+            end_user = (
+                db.session.query(EndUser).filter(EndUser.app_id == app_model.id, EndUser.session_id == user_id).first()
+            )
 
-        db.session.add(end_user)
-        db.session.commit()
+            if end_user:
+                pass
+            else:
+                end_user = EndUser(
+                    tenant_id=app_model.tenant_id,
+                    app_id=app_model.id,
+                    type="browser",
+                    is_anonymous=True,
+                    session_id=user_id,
+                )
+                db.session.add(end_user)
+                db.session.commit()
+        else:
+            end_user = EndUser(
+                tenant_id=app_model.tenant_id,
+                app_id=app_model.id,
+                type="browser",
+                is_anonymous=True,
+                session_id=generate_session_id(),
+            )
+            db.session.add(end_user)
+            db.session.commit()
 
         payload = {
             "iss": site.app_id,

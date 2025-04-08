@@ -12,6 +12,7 @@ import type { ICurrentWorkspace, LangGeniusVersionResponse, UserProfileResponse 
 import MaintenanceNotice from '@/app/components/header/maintenance-notice'
 import type { SystemFeatures } from '@/types/feature'
 import { defaultSystemFeatures } from '@/types/feature'
+import { noop } from 'lodash-es'
 
 export type AppContextValue = {
   apps: App[]
@@ -54,7 +55,7 @@ const initialWorkspaceInfo: ICurrentWorkspace = {
 const AppContext = createContext<AppContextValue>({
   systemFeatures: defaultSystemFeatures,
   apps: [],
-  mutateApps: () => { },
+  mutateApps: noop,
   userProfile: {
     id: '',
     name: '',
@@ -68,8 +69,8 @@ const AppContext = createContext<AppContextValue>({
   isCurrentWorkspaceOwner: false,
   isCurrentWorkspaceEditor: false,
   isCurrentWorkspaceDatasetOperator: false,
-  mutateUserProfile: () => { },
-  mutateCurrentWorkspace: () => { },
+  mutateUserProfile: noop,
+  mutateCurrentWorkspace: noop,
   pageContainerRef: createRef(),
   langeniusVersionInfo: initialLangeniusVersionInfo,
   useSelector,

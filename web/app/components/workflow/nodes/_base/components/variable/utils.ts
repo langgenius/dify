@@ -364,6 +364,21 @@ const formatItem = (
       break
     }
 
+    case BlockEnum.Loop: {
+      const { loop_variables } = data as LoopNodeType
+      res.isLoop = true
+      res.vars = loop_variables?.map((v) => {
+        return {
+          variable: v.label,
+          type: v.var_type,
+          isLoopVariable: true,
+          nodeId: res.nodeId,
+        }
+      }) || []
+
+      break
+    }
+
     case BlockEnum.DocExtractor: {
       res.vars = [
         {
@@ -838,6 +853,9 @@ export const toNodeAvailableVars = ({
         },
       ],
     }
+    const iterationIndex = beforeNodesOutputVars.findIndex(v => v.nodeId === iterationNode?.id)
+    if (iterationIndex > -1)
+      beforeNodesOutputVars.splice(iterationIndex, 1)
     beforeNodesOutputVars.unshift(iterationVar)
   }
   return beforeNodesOutputVars

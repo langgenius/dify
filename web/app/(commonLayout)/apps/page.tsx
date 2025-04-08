@@ -7,9 +7,12 @@ import style from '../list.module.css'
 import Apps from './Apps'
 import AppContext from '@/context/app-context'
 import { LicenseStatus } from '@/types/feature'
+import { useEducationInit } from '@/app/education-apply/hooks'
 
 const AppList = () => {
   const { t } = useTranslation()
+  useEducationInit()
+
   const systemFeatures = useContextSelector(AppContext, v => v.systemFeatures)
 
   return (

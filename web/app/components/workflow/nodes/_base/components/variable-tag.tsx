@@ -58,7 +58,8 @@ const VariableTag = ({
           {node && (
             <>
               <VarBlockIcon
-                type={BlockEnum.Start}
+                type={node.data.type || BlockEnum.Start}
+                className='mr-0.5'
               />
               <div
                 className='max-w-[60px] truncate font-medium text-text-secondary'
