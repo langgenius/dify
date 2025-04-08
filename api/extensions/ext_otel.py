@@ -31,7 +31,6 @@ from configs import dify_config
 from dify_app import DifyApp
 
 
-# Set it when user logs in
 @user_logged_in.connect
 @user_loaded_from_request.connect
 def on_user_loaded(_sender, user):
