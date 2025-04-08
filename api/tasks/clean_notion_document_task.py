@@ -53,3 +53,5 @@ def clean_notion_document_task(document_ids: list[str], dataset_id: str):
         )
     except Exception:
         logging.exception("Cleaned document when import form notion document deleted  failed")
+    finally:
+        db.session.close()

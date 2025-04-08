@@ -11,7 +11,7 @@ import { type ListFilterNodeType, OrderBy } from './types'
 import LimitConfig from './components/limit-config'
 import FilterCondition from './components/filter-condition'
 import Field from '@/app/components/workflow/nodes/_base/components/field'
-import { type NodePanelProps } from '@/app/components/workflow/types'
+import type { NodePanelProps } from '@/app/components/workflow/types'
 import Switch from '@/app/components/base/switch'
 import ExtractInput from '@/app/components/workflow/nodes/list-operator/components/extract-input'
 
@@ -43,7 +43,7 @@ const Panel: FC<NodePanelProps<ListFilterNodeType>> = ({
 
   return (
     <div className='pt-2'>
-      <div className='px-4 space-y-4'>
+      <div className='space-y-4 px-4'>
         <Field
           title={t(`${i18nPrefix}.inputVar`)}
         >
@@ -97,7 +97,7 @@ const Panel: FC<NodePanelProps<ListFilterNodeType>> = ({
             ? (
               <div className='flex items-center justify-between'>
                 {hasSubVariable && (
-                  <div className='grow mr-2'>
+                  <div className='mr-2 grow'>
                     <ExtractInput
                       value={inputs.extract_by.serial as string}
                       onChange={handleExtractsChange}
@@ -132,14 +132,14 @@ const Panel: FC<NodePanelProps<ListFilterNodeType>> = ({
             ? (
               <div className='flex items-center justify-between'>
                 {hasSubVariable && (
-                  <div className='grow mr-2'>
+                  <div className='mr-2 grow'>
                     <SubVariablePicker
                       value={inputs.order_by.key as string}
                       onChange={handleOrderByKeyChange}
                     />
                   </div>
                 )}
-                <div className={!hasSubVariable ? 'w-full grid grid-cols-2 gap-1' : 'shrink-0 flex space-x-1'}>
+                <div className={!hasSubVariable ? 'grid w-full grid-cols-2 gap-1' : 'flex shrink-0 space-x-1'}>
                   <OptionCard
                     title={t(`${i18nPrefix}.asc`)}
                     onSelect={handleOrderByTypeChange(OrderBy.ASC)}

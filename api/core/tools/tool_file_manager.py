@@ -63,11 +63,18 @@ class ToolFileManager:
         conversation_id: Optional[str],
         file_binary: bytes,
         mimetype: str,
+        filename: Optional[str] = None,
     ) -> ToolFile:
         extension = guess_extension(mimetype) or ".bin"
         unique_name = uuid4().hex
-        filename = f"{unique_name}{extension}"
-        filepath = f"tools/{tenant_id}/{filename}"
+        unique_filename = f"{unique_name}{extension}"
+        # default just as before
+        present_filename = unique_filename
+        if filename is not None:
+            has_extension = len(filename.split(".")) > 1
+            # Add extension flexibly
+            present_filename = filename if has_extension else f"{filename}{extension}"
+        filepath = f"tools/{tenant_id}/{unique_filename}"
         storage.save(filepath, file_binary)
 
         tool_file = ToolFile(
@@ -76,7 +83,7 @@ class ToolFileManager:
             conversation_id=conversation_id,
             file_key=filepath,
             mimetype=mimetype,
-            name=filename,
+            name=present_filename,
             size=len(file_binary),
         )
 
@@ -90,18 +97,18 @@ class ToolFileManager:
     def create_file_by_url(
         user_id: str,
         tenant_id: str,
-        conversation_id: str | None,
         file_url: str,
+        conversation_id: Optional[str] = None,
     ) -> ToolFile:
         # try to download image
         try:
             response = ssrf_proxy.get(file_url)
             response.raise_for_status()
             blob = response.content
-        except httpx.TimeoutException as e:
+        except httpx.TimeoutException:
             raise ValueError(f"timeout when downloading file from {file_url}")
 
-        mimetype = guess_type(file_url)[0] or "octet/stream"
+        mimetype = guess_type(file_url)[0] or "application/octet-stream"
         extension = guess_extension(mimetype) or ".bin"
         unique_name = uuid4().hex
         filename = f"{unique_name}{extension}"
@@ -133,7 +140,7 @@ class ToolFileManager:
 
         :return: the binary of the file, mime type
         """
-        tool_file = (
+        tool_file: ToolFile | None = (
             db.session.query(ToolFile)
             .filter(
                 ToolFile.id == id,
@@ -157,7 +164,7 @@ class ToolFileManager:
 
         :return: the binary of the file, mime type
         """
-        message_file = (
+        message_file: MessageFile | None = (
             db.session.query(MessageFile)
             .filter(
                 MessageFile.id == id,
@@ -177,7 +184,7 @@ class ToolFileManager:
         else:
             tool_file_id = None
 
-        tool_file = (
+        tool_file: ToolFile | None = (
             db.session.query(ToolFile)
             .filter(
                 ToolFile.id == tool_file_id,
@@ -201,7 +208,7 @@ class ToolFileManager:
 
         :return: the binary of the file, mime type
         """
-        tool_file = (
+        tool_file: ToolFile | None = (
             db.session.query(ToolFile)
             .filter(
                 ToolFile.id == tool_file_id,

@@ -21,13 +21,13 @@ export type UserInputFormTextInput = {
 }
 
 export type UserInputFormSelect = {
-  'select': UserInputForm & {
+  select: UserInputForm & {
     options: string[]
   }
 }
 
 export type UserInputFormParagraph = {
-  'paragraph': UserInputForm
+  paragraph: UserInputForm
 }
 
 export type VisionConfig = VisionSettings

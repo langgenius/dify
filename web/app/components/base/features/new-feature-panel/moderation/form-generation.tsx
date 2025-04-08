@@ -30,14 +30,14 @@ const FormGeneration: FC<FormGenerationProps> = ({
             key={index}
             className='py-2'
           >
-            <div className='flex items-center h-9 text-sm font-medium text-gray-900'>
+            <div className='flex h-9 items-center text-sm font-medium text-text-primary'>
               {locale === 'zh-Hans' ? form.label['zh-Hans'] : form.label['en-US']}
             </div>
             {
               form.type === 'text-input' && (
                 <input
                   value={value?.[form.variable] || ''}
-                  className='block px-3 w-full h-9 bg-gray-100 rounded-lg text-sm text-gray-900 outline-none appearance-none'
+                  className='block h-9 w-full appearance-none rounded-lg bg-components-input-bg-normal px-3 text-sm text-text-primary outline-none'
                   placeholder={form.placeholder}
                   onChange={e => handleFormChange(form.variable, e.target.value)}
                 />

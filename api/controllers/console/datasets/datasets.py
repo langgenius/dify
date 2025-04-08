@@ -19,6 +19,7 @@ from controllers.console.wraps import (
 from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
 from core.indexing_runner import IndexingRunner
 from core.model_runtime.entities.model_entities import ModelType
+from core.plugin.entities.plugin import ModelProviderID
 from core.provider_manager import ProviderManager
 from core.rag.datasource.vdb.vector_type import VectorType
 from core.rag.extractor.entity.extract_setting import ExtractSetting
@@ -77,7 +78,9 @@ class DatasetListApi(Resource):
 
         data = marshal(datasets, dataset_detail_fields)
         for item in data:
-            if item["indexing_technique"] == "high_quality":
+            # convert embedding_model_provider to plugin standard format
+            if item["indexing_technique"] == "high_quality" and item["embedding_model_provider"]:
+                item["embedding_model_provider"] = str(ModelProviderID(item["embedding_model_provider"]))
                 item_model = f"{item['embedding_model']}:{item['embedding_model_provider']}"
                 if item_model in model_names:
                     item["embedding_available"] = True
@@ -181,6 +184,10 @@ class DatasetApi(Resource):
         except services.errors.account.NoPermissionError as e:
             raise Forbidden(str(e))
         data = marshal(dataset, dataset_detail_fields)
+        if dataset.indexing_technique == "high_quality":
+            if dataset.embedding_model_provider:
+                provider_id = ModelProviderID(dataset.embedding_model_provider)
+                data["embedding_model_provider"] = str(provider_id)
         if data.get("permission") == "partial_members":
             part_users_list = DatasetPermissionService.get_dataset_partial_member_list(dataset_id_str)
             data.update({"partial_member_list": part_users_list})
@@ -280,7 +287,11 @@ class DatasetApi(Resource):
         data = request.get_json()
 
         # check embedding model setting
-        if data.get("indexing_technique") == "high_quality":
+        if (
+            data.get("indexing_technique") == "high_quality"
+            and data.get("embedding_model_provider") is not None
+            and data.get("embedding_model") is not None
+        ):
             DatasetService.check_embedding_model_setting(
                 dataset.tenant_id, data.get("embedding_model_provider"), data.get("embedding_model")
             )
@@ -465,7 +476,7 @@ class DatasetIndexingEstimateApi(Resource):
             )
         except LLMBadRequestError:
             raise ProviderNotInitializeError(
-                "No Embedding Model available. Please configure a valid provider " "in the Settings -> Model Provider."
+                "No Embedding Model available. Please configure a valid provider in the Settings -> Model Provider."
             )
         except ProviderTokenNotInitError as ex:
             raise ProviderNotInitializeError(ex.description)
@@ -627,17 +638,13 @@ class DatasetRetrievalSettingApi(Resource):
         vector_type = dify_config.VECTOR_STORE
         match vector_type:
             case (
-                VectorType.MILVUS
-                | VectorType.RELYT
-                | VectorType.PGVECTOR
+                VectorType.RELYT
                 | VectorType.TIDB_VECTOR
                 | VectorType.CHROMA
-                | VectorType.TENCENT
                 | VectorType.PGVECTO_RS
                 | VectorType.BAIDU
                 | VectorType.VIKINGDB
                 | VectorType.UPSTASH
-                | VectorType.OCEANBASE
             ):
                 return {"retrieval_method": [RetrievalMethod.SEMANTIC_SEARCH.value]}
             case (
@@ -653,6 +660,11 @@ class DatasetRetrievalSettingApi(Resource):
                 | VectorType.TIDB_ON_QDRANT
                 | VectorType.LINDORM
                 | VectorType.COUCHBASE
+                | VectorType.MILVUS
+                | VectorType.OPENGAUSS
+                | VectorType.OCEANBASE
+                | VectorType.TABLESTORE
+                | VectorType.TENCENT
             ):
                 return {
                     "retrieval_method": [
@@ -676,12 +688,10 @@ class DatasetRetrievalSettingMockApi(Resource):
                 | VectorType.RELYT
                 | VectorType.TIDB_VECTOR
                 | VectorType.CHROMA
-                | VectorType.TENCENT
                 | VectorType.PGVECTO_RS
                 | VectorType.BAIDU
                 | VectorType.VIKINGDB
                 | VectorType.UPSTASH
-                | VectorType.OCEANBASE
             ):
                 return {"retrieval_method": [RetrievalMethod.SEMANTIC_SEARCH.value]}
             case (
@@ -696,6 +706,10 @@ class DatasetRetrievalSettingMockApi(Resource):
                 | VectorType.COUCHBASE
                 | VectorType.PGVECTOR
                 | VectorType.LINDORM
+                | VectorType.OPENGAUSS
+                | VectorType.OCEANBASE
+                | VectorType.TABLESTORE
+                | VectorType.TENCENT
             ):
                 return {
                     "retrieval_method": [

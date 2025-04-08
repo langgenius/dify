@@ -171,7 +171,7 @@ const AddExtractParameter: FC<Props> = ({
               </Field>
               <Field title={t(`${i18nPrefix}.addExtractParameterContent.required`)}>
                 <>
-                  <div className='mb-1.5 leading-[18px] text-xs font-normal text-gray-500'>{t(`${i18nPrefix}.addExtractParameterContent.requiredContent`)}</div>
+                  <div className='mb-1.5 text-xs font-normal leading-[18px] text-gray-500'>{t(`${i18nPrefix}.addExtractParameterContent.requiredContent`)}</div>
                   <Switch size='l' defaultValue={param.required} onChange={handleParamChange('required')} />
                 </>
               </Field>

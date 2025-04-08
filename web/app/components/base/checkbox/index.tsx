@@ -15,9 +15,9 @@ const Checkbox = ({ checked, onCheck, className, disabled, mixed }: CheckboxProp
     return (
       <div
         className={cn(
-          'w-4 h-4 rounded-[4px] bg-components-checkbox-bg-unchecked border border-components-checkbox-border hover:bg-components-checkbox-bg-unchecked-hover hover:border-components-checkbox-border-hover shadow-xs cursor-pointer',
-          disabled && 'border-components-checkbox-border-disabled bg-components-checkbox-bg-disabled hover:border-components-checkbox-border-disabled hover:bg-components-checkbox-bg-disabled cursor-not-allowed',
-          mixed && s.mixed,
+          'h-4 w-4 cursor-pointer rounded-[4px] border border-components-checkbox-border bg-components-checkbox-bg-unchecked shadow-xs hover:border-components-checkbox-border-hover',
+          mixed ? s.mixed : 'hover:bg-components-checkbox-bg-unchecked-hover',
+          disabled && 'cursor-not-allowed border-components-checkbox-border-disabled bg-components-checkbox-bg-disabled hover:border-components-checkbox-border-disabled hover:bg-components-checkbox-bg-disabled',
           className,
         )}
         onClick={() => {
@@ -31,8 +31,8 @@ const Checkbox = ({ checked, onCheck, className, disabled, mixed }: CheckboxProp
   return (
     <div
       className={cn(
-        'w-4 h-4 flex items-center justify-center rounded-[4px] bg-components-checkbox-bg hover:bg-components-checkbox-bg-hover text-components-checkbox-icon shadow-xs cursor-pointer',
-        disabled && 'bg-components-checkbox-bg-disabled-checked hover:bg-components-checkbox-bg-disabled-checked text-components-checkbox-icon-disabled cursor-not-allowed',
+        'flex h-4 w-4 cursor-pointer items-center justify-center rounded-[4px] bg-components-checkbox-bg text-components-checkbox-icon shadow-xs hover:bg-components-checkbox-bg-hover',
+        disabled && 'cursor-not-allowed bg-components-checkbox-bg-disabled-checked text-components-checkbox-icon-disabled hover:bg-components-checkbox-bg-disabled-checked',
         className,
       )}
       onClick={() => {
@@ -42,7 +42,7 @@ const Checkbox = ({ checked, onCheck, className, disabled, mixed }: CheckboxProp
         onCheck?.()
       }}
     >
-      <RiCheckLine className={cn('w-3 h-3')} />
+      <RiCheckLine className={cn('h-3 w-3')} />
     </div>
   )
 }

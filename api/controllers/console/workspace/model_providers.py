@@ -79,7 +79,7 @@ class ModelProviderValidateApi(Resource):
         response = {"result": "success" if result else "error"}
 
         if not result:
-            response["error"] = error
+            response["error"] = error or "Unknown error"
 
         return response
 
@@ -125,9 +125,10 @@ class ModelProviderIconApi(Resource):
     Get model provider icon
     """
 
-    def get(self, provider: str, icon_type: str, lang: str):
+    def get(self, tenant_id: str, provider: str, icon_type: str, lang: str):
         model_provider_service = ModelProviderService()
         icon, mimetype = model_provider_service.get_model_provider_icon(
+            tenant_id=tenant_id,
             provider=provider,
             icon_type=icon_type,
             lang=lang,
@@ -183,53 +184,17 @@ class ModelProviderPaymentCheckoutUrlApi(Resource):
         return data
 
 
-class ModelProviderFreeQuotaSubmitApi(Resource):
-    @setup_required
-    @login_required
-    @account_initialization_required
-    def post(self, provider: str):
-        model_provider_service = ModelProviderService()
-        result = model_provider_service.free_quota_submit(tenant_id=current_user.current_tenant_id, provider=provider)
-
-        return result
-
-
-class ModelProviderFreeQuotaQualificationVerifyApi(Resource):
-    @setup_required
-    @login_required
-    @account_initialization_required
-    def get(self, provider: str):
-        parser = reqparse.RequestParser()
-        parser.add_argument("token", type=str, required=False, nullable=True, location="args")
-        args = parser.parse_args()
-
-        model_provider_service = ModelProviderService()
-        result = model_provider_service.free_quota_qualification_verify(
-            tenant_id=current_user.current_tenant_id, provider=provider, token=args["token"]
-        )
-
-        return result
-
-
 api.add_resource(ModelProviderListApi, "/workspaces/current/model-providers")
 
-api.add_resource(ModelProviderCredentialApi, "/workspaces/current/model-providers/<string:provider>/credentials")
-api.add_resource(ModelProviderValidateApi, "/workspaces/current/model-providers/<string:provider>/credentials/validate")
-api.add_resource(ModelProviderApi, "/workspaces/current/model-providers/<string:provider>")
-api.add_resource(
-    ModelProviderIconApi, "/workspaces/current/model-providers/<string:provider>/<string:icon_type>/<string:lang>"
-)
+api.add_resource(ModelProviderCredentialApi, "/workspaces/current/model-providers/<path:provider>/credentials")
+api.add_resource(ModelProviderValidateApi, "/workspaces/current/model-providers/<path:provider>/credentials/validate")
+api.add_resource(ModelProviderApi, "/workspaces/current/model-providers/<path:provider>")
 
 api.add_resource(
-    PreferredProviderTypeUpdateApi, "/workspaces/current/model-providers/<string:provider>/preferred-provider-type"
+    PreferredProviderTypeUpdateApi, "/workspaces/current/model-providers/<path:provider>/preferred-provider-type"
 )
+api.add_resource(ModelProviderPaymentCheckoutUrlApi, "/workspaces/current/model-providers/<path:provider>/checkout-url")
 api.add_resource(
-    ModelProviderPaymentCheckoutUrlApi, "/workspaces/current/model-providers/<string:provider>/checkout-url"
-)
-api.add_resource(
-    ModelProviderFreeQuotaSubmitApi, "/workspaces/current/model-providers/<string:provider>/free-quota-submit"
-)
-api.add_resource(
-    ModelProviderFreeQuotaQualificationVerifyApi,
-    "/workspaces/current/model-providers/<string:provider>/free-quota-qualification-verify",
+    ModelProviderIconApi,
+    "/workspaces/<string:tenant_id>/model-providers/<path:provider>/<string:icon_type>/<string:lang>",
 )

@@ -17,10 +17,10 @@ import ResultPanel from '@/app/components/workflow/run/result-panel'
 import Toast from '@/app/components/base/toast'
 import { TransferMethod } from '@/types/app'
 import { getProcessedFiles } from '@/app/components/base/file-uploader/utils'
-import type { NodeTracing } from '@/types/workflow'
-import RetryResultPanel from '@/app/components/workflow/run/retry-result-panel'
 import type { BlockEnum } from '@/app/components/workflow/types'
 import type { Emoji } from '@/app/components/tools/types'
+import type { SpecialResultPanelProps } from '@/app/components/workflow/run/special-result-panel'
+import SpecialResultPanel from '@/app/components/workflow/run/special-result-panel'
 
 const i18nPrefix = 'workflow.singleRun'
 
@@ -32,15 +32,14 @@ type BeforeRunFormProps = {
   onRun: (submitData: Record<string, any>) => void
   onStop: () => void
   runningStatus: NodeRunningStatus
-  result?: JSX.Element
+  result?: React.JSX.Element
   forms: FormProps[]
-  retryDetails?: NodeTracing[]
-  onRetryDetailBack?: any
-}
+  showSpecialResultPanel?: boolean
+} & Partial<SpecialResultPanelProps>
 
 function formatValue(value: string | any, type: InputVarType) {
   if (type === InputVarType.number)
-    return parseFloat(value)
+    return Number.parseFloat(value)
   if (type === InputVarType.json)
     return JSON.parse(value)
   if (type === InputVarType.contexts) {
@@ -51,8 +50,11 @@ function formatValue(value: string | any, type: InputVarType) {
   if (type === InputVarType.multiFiles)
     return getProcessedFiles(value)
 
-  if (type === InputVarType.singleFile)
+  if (type === InputVarType.singleFile) {
+    if (Array.isArray(value))
+      return getProcessedFiles(value)
     return getProcessedFiles([value])[0]
+  }
 
   return value
 }
@@ -66,8 +68,8 @@ const BeforeRunForm: FC<BeforeRunFormProps> = ({
   runningStatus,
   result,
   forms,
-  retryDetails,
-  onRetryDetailBack = () => { },
+  showSpecialResultPanel,
+  ...restResultPanelParams
 }) => {
   const { t } = useTranslation()
 
@@ -89,9 +91,20 @@ const BeforeRunForm: FC<BeforeRunFormProps> = ({
     let errMsg = ''
     forms.forEach((form) => {
       form.inputs.forEach((input) => {
-        const value = form.values[input.variable]
+        const value = form.values[input.variable] as any
         if (!errMsg && input.required && (value === '' || value === undefined || value === null || (input.type === InputVarType.files && value.length === 0)))
           errMsg = t('workflow.errorMsg.fieldRequired', { field: typeof input.label === 'object' ? input.label.variable : input.label })
+
+        if (!errMsg && (input.type === InputVarType.singleFile || input.type === InputVarType.multiFiles) && value) {
+          let fileIsUploading = false
+          if (Array.isArray(value))
+            fileIsUploading = value.find(item => item.transferMethod === TransferMethod.local_file && !item.uploadedId)
+          else
+            fileIsUploading = value.transferMethod === TransferMethod.local_file && !value.uploadedId
+
+          if (fileIsUploading)
+            errMsg = t('appDebug.errorMessage.waitForFileUpload')
+        }
       })
     })
     if (errMsg) {
@@ -129,38 +142,28 @@ const BeforeRunForm: FC<BeforeRunFormProps> = ({
     <div className='absolute inset-0 z-10 rounded-2xl pt-10' style={{
       backgroundColor: 'rgba(16, 24, 40, 0.20)',
     }}>
-      <div className='h-full rounded-2xl bg-white flex flex-col'>
-        <div className='shrink-0 flex justify-between items-center h-8 pl-4 pr-3 pt-3'>
-          <div className='text-base font-semibold text-gray-900 truncate'>
+      <div className='flex h-full flex-col rounded-2xl bg-white'>
+        <div className='flex h-8 shrink-0 items-center justify-between pl-4 pr-3 pt-3'>
+          <div className='truncate text-base font-semibold text-gray-900'>
             {t(`${i18nPrefix}.testRun`)} {nodeName}
           </div>
-          <div className='ml-2 shrink-0 p-1 cursor-pointer' onClick={() => {
+          <div className='ml-2 shrink-0 cursor-pointer p-1' onClick={() => {
             onHide()
           }}>
-            <RiCloseLine className='w-4 h-4 text-gray-500 ' />
+            <RiCloseLine className='h-4 w-4 text-gray-500 ' />
           </div>
         </div>
         {
-          retryDetails?.length && (
+          showSpecialResultPanel && (
             <div className='h-0 grow overflow-y-auto pb-4'>
-              <RetryResultPanel
-                list={retryDetails.map((item, index) => ({
-                  ...item,
-                  title: `${t('workflow.nodes.common.retry.retry')} ${index + 1}`,
-                  node_type: nodeType!,
-                  extras: {
-                    icon: toolIcon!,
-                  },
-                }))}
-                onBack={onRetryDetailBack}
-              />
+              <SpecialResultPanel {...restResultPanelParams} />
             </div>
           )
         }
         {
-          !retryDetails?.length && (
+          !showSpecialResultPanel && (
             <div className='h-0 grow overflow-y-auto pb-4'>
-              <div className='mt-3 px-4 space-y-4'>
+              <div className='mt-3 space-y-4 px-4'>
                 {forms.map((form, index) => (
                   <div key={index}>
                     <Form
@@ -175,14 +178,14 @@ const BeforeRunForm: FC<BeforeRunFormProps> = ({
               <div className='mt-4 flex justify-between space-x-2 px-4' >
                 {isRunning && (
                   <div
-                    className='p-2 rounded-lg border border-gray-200 bg-white shadow-xs cursor-pointer'
+                    className='cursor-pointer rounded-lg border border-gray-200 bg-white p-2 shadow-xs'
                     onClick={onStop}
                   >
-                    <StopCircle className='w-4 h-4 text-gray-500' />
+                    <StopCircle className='h-4 w-4 text-gray-500' />
                   </div>
                 )}
                 <Button disabled={!isFileLoaded || isRunning} variant='primary' className='w-0 grow space-x-2' onClick={handleRun}>
-                  {isRunning && <RiLoader2Line className='animate-spin w-4 h-4 text-white' />}
+                  {isRunning && <RiLoader2Line className='h-4 w-4 animate-spin text-white' />}
                   <div>{t(`${i18nPrefix}.${isRunning ? 'running' : 'startRun'}`)}</div>
                 </Button>
               </div>

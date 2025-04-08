@@ -18,6 +18,7 @@ segment_fields = {
     "position": fields.Integer,
     "document_id": fields.String,
     "content": fields.String,
+    "sign_content": fields.String,
     "answer": fields.String,
     "word_count": fields.Integer,
     "tokens": fields.Integer,
@@ -38,10 +39,4 @@ segment_fields = {
     "error": fields.String,
     "stopped_at": TimestampField,
     "child_chunks": fields.List(fields.Nested(child_chunk_fields)),
-}
-
-segment_list_response = {
-    "data": fields.List(fields.Nested(segment_fields)),
-    "has_more": fields.Boolean,
-    "limit": fields.Integer,
 }

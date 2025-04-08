@@ -50,13 +50,34 @@
       return compressedInputs;
     }
 
-    const params = new URLSearchParams(await getCompressedInputsFromConfig());
+    async function getCompressedSystemVariablesFromConfig() {
+      const systemVariables = config?.systemVariables || {};
+      const compressedSystemVariables = {};
+      await Promise.all(
+        Object.entries(systemVariables).map(async ([key, value]) => {
+          compressedSystemVariables[`sys.${key}`] = await compressAndEncodeBase64(value);
+        })
+      );
+      return compressedSystemVariables;
+    }
+
+    const params = new URLSearchParams({
+      ...await getCompressedInputsFromConfig(),
+      ...await getCompressedSystemVariablesFromConfig()
+    });
 
     const baseUrl =
       config.baseUrl || `https://${config.isDev ? "dev." : ""}udify.app`;
 
     // pre-check the length of the URL
     const iframeUrl = `${baseUrl}/chatbot/${config.token}?${params}`;
+    // 1) CREATE the iframe immediately, so it can load in the background:
+    const preloadedIframe = createIframe();
+    // 2) HIDE it by default:
+    preloadedIframe.style.display = "none";
+    // 3) APPEND it to the document body right away:
+    document.body.appendChild(preloadedIframe);
+    // ─── End Fix Snippet
     if(iframeUrl.length > 2048) {
       console.error("The URL is too long, please reduce the number of inputs to prevent the bot from failing to load");
     }
@@ -69,11 +90,21 @@
       iframe.id = iframeId;
       iframe.src = iframeUrl;
       iframe.style.cssText = `
-        border: none; position: absolute; flex-direction: column; justify-content: space-between;
-        box-shadow: rgba(150, 150, 150, 0.2) 0px 10px 30px 0px, rgba(150, 150, 150, 0.2) 0px 0px 0px 1px;
-        bottom: 55px; right: 0; width: 24rem; max-width: calc(100vw - 2rem); height: 40rem;
-        max-height: calc(100vh - 6rem); border-radius: 0.75rem; display: flex; z-index: 2147483647;
-        overflow: hidden; left: unset; background-color: #F3F4F6;user-select: none;
+        position: absolute;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        left: unset;
+        right: 0;
+        bottom: 0;
+        width: 24rem;
+        max-width: calc(100vw - 2rem);
+        height: 43.75rem;
+        max-height: calc(100vh - 6rem);
+        border: none;
+        z-index: 2147483640;
+        overflow: hidden;
+        user-select: none;
       `;
 
       return iframe;
@@ -92,12 +123,12 @@
         const buttonInBottom = buttonRect.top - 5 > targetIframe.clientHeight
 
         if (buttonInBottom) {
-          targetIframe.style.bottom = `${buttonRect.height + 5}px`;
+          targetIframe.style.bottom = '0px';
           targetIframe.style.top = 'unset';
         }
         else {
           targetIframe.style.bottom = 'unset';
-          targetIframe.style.top = `${buttonRect.height + 5}px`;
+          targetIframe.style.top = '0px';
         }
 
         const buttonInRight = buttonRect.right > targetIframe.clientWidth;
@@ -148,8 +179,8 @@
           right: var(--${containerDiv.id}-right, 1rem);
           left: var(--${containerDiv.id}-left, unset);
           top: var(--${containerDiv.id}-top, unset);
-          width: var(--${containerDiv.id}-width, 50px);
-          height: var(--${containerDiv.id}-height, 50px);
+          width: var(--${containerDiv.id}-width, 48px);
+          height: var(--${containerDiv.id}-height, 48px);
           border-radius: var(--${containerDiv.id}-border-radius, 25px);
           background-color: var(--${containerDiv.id}-bg-color, #155EEF);
           box-shadow: var(--${containerDiv.id}-box-shadow, rgba(0, 0, 0, 0.2) 0px 4px 8px 0px);
@@ -161,7 +192,7 @@
       // Create display div for the button icon
       const displayDiv = document.createElement("div");
       displayDiv.style.cssText =
-        "display: flex; align-items: center; justify-content: center; width: 100%; height: 100%; z-index: 2147483647;";
+        "position: relative; display: flex; align-items: center; justify-content: center; width: 100%; height: 100%; z-index: 2147483647;";
       displayDiv.innerHTML = svgIcons.open;
       containerDiv.appendChild(displayDiv);
       document.body.appendChild(containerDiv);
@@ -170,7 +201,7 @@
       containerDiv.addEventListener("click", function () {
         const targetIframe = document.getElementById(iframeId);
         if (!targetIframe) {
-          containerDiv.appendChild(createIframe());
+          containerDiv.prepend(createIframe());
           resetIframePosition();
           this.title = "Exit (ESC)";
           displayDiv.innerHTML = svgIcons.close;

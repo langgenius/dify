@@ -18,9 +18,11 @@ from models.dataset import Document as DatasetDocument
 def enable_segments_to_index_task(segment_ids: list, dataset_id: str, document_id: str):
     """
     Async enable segments to index
-    :param segment_ids:
+    :param segment_ids: list of segment ids
+    :param dataset_id: dataset id
+    :param document_id: document id
 
-    Usage: enable_segments_to_index_task.delay(segment_ids)
+    Usage: enable_segments_to_index_task.delay(segment_ids, dataset_id, document_id)
     """
     start_at = time.perf_counter()
     dataset = db.session.query(Dataset).filter(Dataset.id == dataset_id).first()
@@ -32,9 +34,11 @@ def enable_segments_to_index_task(segment_ids: list, dataset_id: str, document_i
 
     if not dataset_document:
         logging.info(click.style("Document {} not found, pass.".format(document_id), fg="cyan"))
+        db.session.close()
         return
     if not dataset_document.enabled or dataset_document.archived or dataset_document.indexing_status != "completed":
         logging.info(click.style("Document {} status is invalid, pass.".format(document_id), fg="cyan"))
+        db.session.close()
         return
     # sync index processor
     index_processor = IndexProcessorFactory(dataset_document.doc_form).init_index_processor()
@@ -49,6 +53,8 @@ def enable_segments_to_index_task(segment_ids: list, dataset_id: str, document_i
         .all()
     )
     if not segments:
+        logging.info(click.style("Segments not found: {}".format(segment_ids), fg="cyan"))
+        db.session.close()
         return
 
     try:
@@ -65,7 +71,7 @@ def enable_segments_to_index_task(segment_ids: list, dataset_id: str, document_i
             )
 
             if dataset_document.doc_form == IndexType.PARENT_CHILD_INDEX:
-                child_chunks = segment.child_chunks
+                child_chunks = segment.get_child_chunks()
                 if child_chunks:
                     child_documents = []
                     for child_chunk in child_chunks:
@@ -97,7 +103,7 @@ def enable_segments_to_index_task(segment_ids: list, dataset_id: str, document_i
             {
                 "error": str(e),
                 "status": "error",
-                "disabled_at": datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None),
+                "disabled_at": datetime.datetime.now(datetime.UTC).replace(tzinfo=None),
                 "enabled": False,
             }
         )
@@ -106,3 +112,4 @@ def enable_segments_to_index_task(segment_ids: list, dataset_id: str, document_i
         for segment in segments:
             indexing_cache_key = "segment_{}_indexing".format(segment.id)
             redis_client.delete(indexing_cache_key)
+        db.session.close()

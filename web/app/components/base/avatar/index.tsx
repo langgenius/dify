@@ -2,9 +2,9 @@
 import { useState } from 'react'
 import cn from '@/utils/classnames'
 
-type AvatarProps = {
+export type AvatarProps = {
   name: string
-  avatar?: string
+  avatar: string | null
   size?: number
   className?: string
   textClassName?: string
@@ -42,7 +42,7 @@ const Avatar = ({
       style={style}
     >
       <div
-        className={cn(textClassName, 'text-center text-white scale-[0.4]')}
+        className={cn(textClassName, 'scale-[0.4] text-center text-white')}
         style={style}
       >
         {name[0].toLocaleUpperCase()}

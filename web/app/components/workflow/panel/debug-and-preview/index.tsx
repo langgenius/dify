@@ -1,5 +1,7 @@
 import {
   memo,
+  useCallback,
+  useEffect,
   useRef,
   useState,
 } from 'react'
@@ -21,13 +23,14 @@ import { BubbleX } from '@/app/components/base/icons/src/vender/line/others'
 import Tooltip from '@/app/components/base/tooltip'
 import ActionButton, { ActionButtonState } from '@/app/components/base/action-button'
 import { useStore } from '@/app/components/workflow/store'
+import { noop } from 'lodash-es'
 
 export type ChatWrapperRefType = {
   handleRestart: () => void
 }
 const DebugAndPreview = () => {
   const { t } = useTranslation()
-  const chatRef = useRef({ handleRestart: () => { } })
+  const chatRef = useRef({ handleRestart: noop })
   const { handleCancelDebugAndPreviewPanel } = useWorkflowInteractions()
   const { handleNodeCancelRunningStatus } = useNodesInteractions()
   const { handleEdgeCancelRunningStatus } = useEdgesInteractions()
@@ -51,20 +54,54 @@ const DebugAndPreview = () => {
     exactMatch: true,
   })
 
+  const [panelWidth, setPanelWidth] = useState(420)
+  const [isResizing, setIsResizing] = useState(false)
+
+  const startResizing = useCallback((e: React.MouseEvent) => {
+    e.preventDefault()
+    setIsResizing(true)
+  }, [])
+
+  const stopResizing = useCallback(() => {
+    setIsResizing(false)
+  }, [])
+
+  const resize = useCallback((e: MouseEvent) => {
+    if (isResizing) {
+      const newWidth = window.innerWidth - e.clientX
+      if (newWidth > 420 && newWidth < 1024)
+        setPanelWidth(newWidth)
+    }
+  }, [isResizing])
+
+  useEffect(() => {
+    window.addEventListener('mousemove', resize)
+    window.addEventListener('mouseup', stopResizing)
+    return () => {
+      window.removeEventListener('mousemove', resize)
+      window.removeEventListener('mouseup', stopResizing)
+    }
+  }, [resize, stopResizing])
+
   return (
     <div
       className={cn(
-        'flex flex-col w-[420px] bg-chatbot-bg rounded-l-2xl h-full border border-components-panel-border border-r-0 shadow-xl',
+        'relative flex h-full flex-col rounded-l-2xl border border-r-0 border-components-panel-border bg-chatbot-bg shadow-xl',
       )}
+      style={{ width: `${panelWidth}px` }}
     >
-      <div className='shrink-0 flex items-center justify-between px-4 pt-3 pb-2 text-text-primary system-xl-semibold'>
+      <div
+        className="absolute bottom-0 left-[3px] top-1/2 z-50 h-6 w-[3px] cursor-col-resize rounded bg-gray-300"
+        onMouseDown={startResizing}
+      />
+      <div className='system-xl-semibold flex shrink-0 items-center justify-between px-4 pb-2 pt-3 text-text-primary'>
         <div className='h-8'>{t('workflow.common.debugAndPreview').toLocaleUpperCase()}</div>
         <div className='flex items-center gap-1'>
           <Tooltip
             popupContent={t('common.operation.refresh')}
           >
             <ActionButton onClick={() => handleRestartChat()}>
-              <RefreshCcw01 className='w-4 h-4' />
+              <RefreshCcw01 className='h-4 w-4' />
             </ActionButton>
           </Tooltip>
           {varList.length > 0 && (
@@ -72,7 +109,7 @@ const DebugAndPreview = () => {
               popupContent={t('workflow.chatVariable.panelTitle')}
             >
               <ActionButton onClick={() => setShowConversationVariableModal(true)}>
-                <BubbleX className='w-4 h-4' />
+                <BubbleX className='h-4 w-4' />
               </ActionButton>
             </Tooltip>
           )}
@@ -82,22 +119,22 @@ const DebugAndPreview = () => {
                 popupContent={t('workflow.panel.userInputField')}
               >
                 <ActionButton state={expanded ? ActionButtonState.Active : undefined} onClick={() => setExpanded(!expanded)}>
-                  <RiEqualizer2Line className='w-4 h-4' />
+                  <RiEqualizer2Line className='h-4 w-4' />
                 </ActionButton>
               </Tooltip>
-              {expanded && <div className='absolute z-10 bottom-[-17px] right-[5px] w-3 h-3 bg-components-panel-on-panel-item-bg border-l-[0.5px] border-t-[0.5px] border-components-panel-border-subtle rotate-45'/>}
+              {expanded && <div className='absolute bottom-[-17px] right-[5px] z-10 h-3 w-3 rotate-45 border-l-[0.5px] border-t-[0.5px] border-components-panel-border-subtle bg-components-panel-on-panel-item-bg'/>}
             </div>
           )}
-          <div className='mx-3 w-[1px] h-3.5 bg-gray-200'></div>
+          <div className='mx-3 h-3.5 w-[1px] bg-gray-200'></div>
           <div
-            className='flex items-center justify-center w-6 h-6 cursor-pointer'
+            className='flex h-6 w-6 cursor-pointer items-center justify-center'
             onClick={handleCancelDebugAndPreviewPanel}
           >
-            <RiCloseLine className='w-4 h-4 text-gray-500' />
+            <RiCloseLine className='h-4 w-4 text-gray-500' />
           </div>
         </div>
       </div>
-      <div className='grow rounded-b-2xl overflow-y-auto'>
+      <div className='grow overflow-y-auto rounded-b-2xl'>
         <ChatWrapper
           ref={chatRef}
           showConversationVariableModal={showConversationVariableModal}

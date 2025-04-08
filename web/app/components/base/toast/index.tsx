@@ -12,6 +12,7 @@ import {
 import { createContext, useContext } from 'use-context-selector'
 import ActionButton from '@/app/components/base/action-button'
 import classNames from '@/utils/classnames'
+import { noop } from 'lodash-es'
 
 export type IToastProps = {
   type?: 'success' | 'error' | 'warning' | 'info'
@@ -51,32 +52,35 @@ const Toast = ({
     'top-0',
     'right-0',
   )}>
-    <div className={`absolute inset-0 opacity-40 -z-10 ${(type === 'success' && 'bg-[linear-gradient(92deg,rgba(23,178,106,0.25)_0%,rgba(255,255,255,0.00)_100%)]')
-      || (type === 'warning' && 'bg-[linear-gradient(92deg,rgba(247,144,9,0.25)_0%,rgba(255,255,255,0.00)_100%)]')
-      || (type === 'error' && 'bg-[linear-gradient(92deg,rgba(240,68,56,0.25)_0%,rgba(255,255,255,0.00)_100%)]')
-      || (type === 'info' && 'bg-[linear-gradient(92deg,rgba(11,165,236,0.25)_0%,rgba(255,255,255,0.00)_100%)]')
+    <div className={`absolute inset-0 -z-10 opacity-40 ${
+      (type === 'success' && 'bg-toast-success-bg')
+      || (type === 'warning' && 'bg-toast-warning-bg')
+      || (type === 'error' && 'bg-toast-error-bg')
+      || (type === 'info' && 'bg-toast-info-bg')
     }`}
     />
     <div className={`flex ${size === 'md' ? 'gap-1' : 'gap-0.5'}`}>
-      <div className={`flex justify-center items-center ${size === 'md' ? 'p-0.5' : 'p-1'}`}>
-        {type === 'success' && <RiCheckboxCircleFill className={`${size === 'md' ? 'w-5 h-5' : 'w-4 h-4'} text-text-success`} aria-hidden="true" />}
-        {type === 'error' && <RiErrorWarningFill className={`${size === 'md' ? 'w-5 h-5' : 'w-4 h-4'} text-text-destructive`} aria-hidden="true" />}
-        {type === 'warning' && <RiAlertFill className={`${size === 'md' ? 'w-5 h-5' : 'w-4 h-4'} text-text-warning-secondary`} aria-hidden="true" />}
-        {type === 'info' && <RiInformation2Fill className={`${size === 'md' ? 'w-5 h-5' : 'w-4 h-4'} text-text-accent`} aria-hidden="true" />}
+      <div className={`flex items-center justify-center ${size === 'md' ? 'p-0.5' : 'p-1'}`}>
+        {type === 'success' && <RiCheckboxCircleFill className={`${size === 'md' ? 'h-5 w-5' : 'h-4 w-4'} text-text-success`} aria-hidden="true" />}
+        {type === 'error' && <RiErrorWarningFill className={`${size === 'md' ? 'h-5 w-5' : 'h-4 w-4'} text-text-destructive`} aria-hidden="true" />}
+        {type === 'warning' && <RiAlertFill className={`${size === 'md' ? 'h-5 w-5' : 'h-4 w-4'} text-text-warning-secondary`} aria-hidden="true" />}
+        {type === 'info' && <RiInformation2Fill className={`${size === 'md' ? 'h-5 w-5' : 'h-4 w-4'} text-text-accent`} aria-hidden="true" />}
       </div>
-      <div className={`flex py-1 ${size === 'md' ? 'px-1' : 'px-0.5'} flex-col items-start gap-1 flex-grow z-10`}>
+      <div className={`flex py-1 ${size === 'md' ? 'px-1' : 'px-0.5'} grow flex-col items-start gap-1`}>
         <div className='flex items-center gap-1'>
-          <div className='text-text-primary system-sm-semibold'>{message}</div>
+          <div className='system-sm-semibold text-text-primary'>{message}</div>
           {customComponent}
         </div>
-        {children && <div className='text-text-secondary system-xs-regular'>
+        {children && <div className='system-xs-regular text-text-secondary'>
           {children}
         </div>
         }
       </div>
-      <ActionButton onClick={close}>
-        <RiCloseLine className='w-4 h-4 flex-shrink-0 text-text-tertiary' />
-      </ActionButton>
+      {close
+        && (<ActionButton className='z-[1000]' onClick={close}>
+          <RiCloseLine className='h-4 w-4 shrink-0 text-text-tertiary' />
+        </ActionButton>)
+      }
     </div>
   </div>
 }
@@ -122,7 +126,8 @@ Toast.notify = ({
   duration,
   className,
   customComponent,
-}: Pick<IToastProps, 'type' | 'size' | 'message' | 'duration' | 'className' | 'customComponent'>) => {
+  onClose,
+}: Pick<IToastProps, 'type' | 'size' | 'message' | 'duration' | 'className' | 'customComponent' | 'onClose'>) => {
   const defaultDuring = (type === 'success' || type === 'info') ? 3000 : 6000
   if (typeof window === 'object') {
     const holder = document.createElement('div')
@@ -130,12 +135,13 @@ Toast.notify = ({
 
     root.render(
       <ToastContext.Provider value={{
-        notify: () => {},
+        notify: noop,
         close: () => {
           if (holder) {
             root.unmount()
             holder.remove()
           }
+          onClose?.()
         },
       }}>
         <Toast type={type} size={size} message={message} duration={duration} className={className} customComponent={customComponent} />
@@ -147,6 +153,7 @@ Toast.notify = ({
         root.unmount()
         holder.remove()
       }
+      onClose?.()
     }, duration || defaultDuring)
   }
 }

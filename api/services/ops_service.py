@@ -24,10 +24,10 @@ class OpsService:
             return None
 
         # decrypt_token and obfuscated_token
-        tenant = db.session.query(App).filter(App.id == app_id).first()
-        if not tenant:
+        app = db.session.query(App).filter(App.id == app_id).first()
+        if not app:
             return None
-        tenant_id = tenant.tenant_id
+        tenant_id = app.tenant_id
         decrypt_tracing_config = OpsTraceManager.decrypt_tracing_config(
             tenant_id, tracing_provider, trace_config_data.tracing_config
         )
@@ -58,6 +58,15 @@ class OpsService:
                 new_decrypt_tracing_config.update({"project_url": project_url})
             except Exception:
                 new_decrypt_tracing_config.update({"project_url": "https://smith.langchain.com/"})
+
+        if tracing_provider == "opik" and (
+            "project_url" not in decrypt_tracing_config or not decrypt_tracing_config.get("project_url")
+        ):
+            try:
+                project_url = OpsTraceManager.get_trace_config_project_url(decrypt_tracing_config, tracing_provider)
+                new_decrypt_tracing_config.update({"project_url": project_url})
+            except Exception:
+                new_decrypt_tracing_config.update({"project_url": "https://www.comet.com/opik/"})
 
         trace_config_data.tracing_config = new_decrypt_tracing_config
         return trace_config_data.to_dict()
@@ -92,7 +101,7 @@ class OpsService:
         if tracing_provider == "langfuse":
             project_key = OpsTraceManager.get_trace_config_project_key(tracing_config, tracing_provider)
             project_url = "{host}/project/{key}".format(host=tracing_config.get("host"), key=project_key)
-        elif tracing_provider == "langsmith":
+        elif tracing_provider in ("langsmith", "opik"):
             project_url = OpsTraceManager.get_trace_config_project_url(tracing_config, tracing_provider)
         else:
             project_url = None
@@ -108,10 +117,10 @@ class OpsService:
             return None
 
         # get tenant id
-        tenant = db.session.query(App).filter(App.id == app_id).first()
-        if not tenant:
+        app = db.session.query(App).filter(App.id == app_id).first()
+        if not app:
             return None
-        tenant_id = tenant.tenant_id
+        tenant_id = app.tenant_id
         tracing_config = OpsTraceManager.encrypt_tracing_config(tenant_id, tracing_provider, tracing_config)
         if project_url:
             tracing_config["project_url"] = project_url
@@ -148,10 +157,10 @@ class OpsService:
             return None
 
         # get tenant id
-        tenant = db.session.query(App).filter(App.id == app_id).first()
-        if not tenant:
+        app = db.session.query(App).filter(App.id == app_id).first()
+        if not app:
             return None
-        tenant_id = tenant.tenant_id
+        tenant_id = app.tenant_id
         tracing_config = OpsTraceManager.encrypt_tracing_config(
             tenant_id, tracing_provider, tracing_config, current_trace_config.tracing_config
         )

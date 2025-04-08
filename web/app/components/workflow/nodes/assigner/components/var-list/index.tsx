@@ -15,6 +15,7 @@ import ActionButton from '@/app/components/base/action-button'
 import Input from '@/app/components/base/input'
 import Textarea from '@/app/components/base/textarea'
 import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
+import { noop } from 'lodash-es'
 
 type Props = {
   readonly: boolean
@@ -36,7 +37,7 @@ const VarList: FC<Props> = ({
   nodeId,
   list,
   onChange,
-  onOpen = () => { },
+  onOpen = noop,
   filterVar,
   filterToAssignedVar,
   getAssignedVarType,
@@ -95,9 +96,12 @@ const VarList: FC<Props> = ({
   }, [onOpen])
 
   const handleFilterToAssignedVar = useCallback((index: number) => {
-    return (payload: Var, valueSelector: ValueSelector) => {
+    return (payload: Var) => {
       const item = list[index]
       const assignedVarType = item.variable_selector ? getAssignedVarType?.(item.variable_selector) : undefined
+
+      if (item.variable_selector.join('.') === `${payload.nodeId}.${payload.variable}`)
+        return false
 
       if (!filterToAssignedVar || !item.variable_selector || !assignedVarType || !item.operation)
         return true
@@ -128,7 +132,7 @@ const VarList: FC<Props> = ({
 
         return (
           <div className='flex items-start gap-1 self-stretch' key={index}>
-            <div className='flex flex-col items-start gap-1 flex-grow'>
+            <div className='flex grow flex-col items-start gap-1'>
               <div className='flex items-center gap-1 self-stretch'>
                 <VarReferencePicker
                   readonly={readonly}
@@ -212,10 +216,10 @@ const VarList: FC<Props> = ({
             </div>
             <ActionButton
               size='l'
-              className='flex-shrink-0 group hover:!bg-state-destructive-hover'
+              className='group shrink-0 hover:!bg-state-destructive-hover'
               onClick={handleVarRemove(index)}
             >
-              <RiDeleteBinLine className='text-text-tertiary w-4 h-4 group-hover:text-text-destructive' />
+              <RiDeleteBinLine className='h-4 w-4 text-text-tertiary group-hover:text-text-destructive' />
             </ActionButton>
           </div>
         )

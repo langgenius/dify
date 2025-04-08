@@ -8,7 +8,9 @@ from flask_login import current_user  # type: ignore
 
 from configs import dify_config
 from controllers.console.workspace.error import AccountNotInitializedError
+from extensions.ext_database import db
 from extensions.ext_redis import redis_client
+from models.dataset import RateLimitLog
 from models.model import DifySetup
 from services.feature_service import FeatureService, LicenseStatus
 from services.operation_service import OperationService
@@ -47,6 +49,17 @@ def only_edition_self_hosted(view):
         if dify_config.EDITION != "SELF_HOSTED":
             abort(404)
 
+        return view(*args, **kwargs)
+
+    return decorated
+
+
+def cloud_edition_billing_enabled(view):
+    @wraps(view)
+    def decorated(*args, **kwargs):
+        features = FeatureService.get_features(current_user.current_tenant_id)
+        if not features.billing.enabled:
+            abort(403, "Billing feature is not enabled.")
         return view(*args, **kwargs)
 
     return decorated
@@ -132,6 +145,14 @@ def cloud_edition_billing_rate_limit_check(resource: str):
                     request_count = redis_client.zcard(key)
 
                     if request_count > knowledge_rate_limit.limit:
+                        # add ratelimit record
+                        rate_limit_log = RateLimitLog(
+                            tenant_id=current_user.current_tenant_id,
+                            subscription_plan=knowledge_rate_limit.subscription_plan,
+                            operation="knowledge",
+                        )
+                        db.session.add(rate_limit_log)
+                        db.session.commit()
                         abort(
                             403, "Sorry, you have reached the knowledge base request rate limit of your subscription."
                         )
@@ -165,9 +186,13 @@ def setup_required(view):
     @wraps(view)
     def decorated(*args, **kwargs):
         # check setup
-        if dify_config.EDITION == "SELF_HOSTED" and os.environ.get("INIT_PASSWORD") and not DifySetup.query.first():
+        if (
+            dify_config.EDITION == "SELF_HOSTED"
+            and os.environ.get("INIT_PASSWORD")
+            and not db.session.query(DifySetup).first()
+        ):
             raise NotInitValidateError()
-        elif dify_config.EDITION == "SELF_HOSTED" and not DifySetup.query.first():
+        elif dify_config.EDITION == "SELF_HOSTED" and not db.session.query(DifySetup).first():
             raise NotSetupError()
 
         return view(*args, **kwargs)

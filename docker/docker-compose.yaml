@@ -105,7 +105,7 @@ x-shared-env: &shared-api-worker-env
   TENCENT_COS_SECRET_ID: ${TENCENT_COS_SECRET_ID:-your-secret-id}
   TENCENT_COS_REGION: ${TENCENT_COS_REGION:-your-region}
   TENCENT_COS_SCHEME: ${TENCENT_COS_SCHEME:-your-scheme}
-  OCI_ENDPOINT: ${OCI_ENDPOINT:-https://objectstorage.us-ashburn-1.oraclecloud.com}
+  OCI_ENDPOINT: ${OCI_ENDPOINT:-https://your-object-storage-namespace.compat.objectstorage.us-ashburn-1.oraclecloud.com}
   OCI_BUCKET_NAME: ${OCI_BUCKET_NAME:-your-bucket-name}
   OCI_ACCESS_KEY: ${OCI_ACCESS_KEY:-your-access-key}
   OCI_SECRET_KEY: ${OCI_SECRET_KEY:-your-secret-key}
@@ -134,10 +134,10 @@ x-shared-env: &shared-api-worker-env
   QDRANT_CLIENT_TIMEOUT: ${QDRANT_CLIENT_TIMEOUT:-20}
   QDRANT_GRPC_ENABLED: ${QDRANT_GRPC_ENABLED:-false}
   QDRANT_GRPC_PORT: ${QDRANT_GRPC_PORT:-6334}
-  MILVUS_URI: ${MILVUS_URI:-http://127.0.0.1:19530}
+  MILVUS_URI: ${MILVUS_URI:-http://host.docker.internal:19530}
   MILVUS_TOKEN: ${MILVUS_TOKEN:-}
-  MILVUS_USER: ${MILVUS_USER:-root}
-  MILVUS_PASSWORD: ${MILVUS_PASSWORD:-Milvus}
+  MILVUS_USER: ${MILVUS_USER:-}
+  MILVUS_PASSWORD: ${MILVUS_PASSWORD:-}
   MILVUS_ENABLE_HYBRID_SEARCH: ${MILVUS_ENABLE_HYBRID_SEARCH:-False}
   MYSCALE_HOST: ${MYSCALE_HOST:-myscale}
   MYSCALE_PORT: ${MYSCALE_PORT:-8123}
@@ -157,6 +157,8 @@ x-shared-env: &shared-api-worker-env
   PGVECTOR_DATABASE: ${PGVECTOR_DATABASE:-dify}
   PGVECTOR_MIN_CONNECTION: ${PGVECTOR_MIN_CONNECTION:-1}
   PGVECTOR_MAX_CONNECTION: ${PGVECTOR_MAX_CONNECTION:-5}
+  PGVECTOR_PG_BIGM: ${PGVECTOR_PG_BIGM:-false}
+  PGVECTOR_PG_BIGM_VERSION: ${PGVECTOR_PG_BIGM_VERSION:-1.2-20240606}
   PGVECTO_RS_HOST: ${PGVECTO_RS_HOST:-pgvecto-rs}
   PGVECTO_RS_PORT: ${PGVECTO_RS_PORT:-5432}
   PGVECTO_RS_USER: ${PGVECTO_RS_USER:-postgres}
@@ -197,11 +199,13 @@ x-shared-env: &shared-api-worker-env
   CHROMA_DATABASE: ${CHROMA_DATABASE:-default_database}
   CHROMA_AUTH_PROVIDER: ${CHROMA_AUTH_PROVIDER:-chromadb.auth.token_authn.TokenAuthClientProvider}
   CHROMA_AUTH_CREDENTIALS: ${CHROMA_AUTH_CREDENTIALS:-}
-  ORACLE_HOST: ${ORACLE_HOST:-oracle}
-  ORACLE_PORT: ${ORACLE_PORT:-1521}
   ORACLE_USER: ${ORACLE_USER:-dify}
   ORACLE_PASSWORD: ${ORACLE_PASSWORD:-dify}
-  ORACLE_DATABASE: ${ORACLE_DATABASE:-FREEPDB1}
+  ORACLE_DSN: ${ORACLE_DSN:-oracle:1521/FREEPDB1}
+  ORACLE_CONFIG_DIR: ${ORACLE_CONFIG_DIR:-/app/api/storage/wallet}
+  ORACLE_WALLET_LOCATION: ${ORACLE_WALLET_LOCATION:-/app/api/storage/wallet}
+  ORACLE_WALLET_PASSWORD: ${ORACLE_WALLET_PASSWORD:-dify}
+  ORACLE_IS_AUTONOMOUS: ${ORACLE_IS_AUTONOMOUS:-false}
   RELYT_HOST: ${RELYT_HOST:-db}
   RELYT_PORT: ${RELYT_PORT:-5432}
   RELYT_USER: ${RELYT_USER:-postgres}
@@ -219,6 +223,7 @@ x-shared-env: &shared-api-worker-env
   TENCENT_VECTOR_DB_DATABASE: ${TENCENT_VECTOR_DB_DATABASE:-dify}
   TENCENT_VECTOR_DB_SHARD: ${TENCENT_VECTOR_DB_SHARD:-1}
   TENCENT_VECTOR_DB_REPLICAS: ${TENCENT_VECTOR_DB_REPLICAS:-2}
+  TENCENT_VECTOR_DB_ENABLE_HYBRID_SEARCH: ${TENCENT_VECTOR_DB_ENABLE_HYBRID_SEARCH:-false}
   ELASTICSEARCH_HOST: ${ELASTICSEARCH_HOST:-0.0.0.0}
   ELASTICSEARCH_PORT: ${ELASTICSEARCH_PORT:-9200}
   ELASTICSEARCH_USERNAME: ${ELASTICSEARCH_USERNAME:-elastic}
@@ -248,8 +253,21 @@ x-shared-env: &shared-api-worker-env
   OCEANBASE_VECTOR_DATABASE: ${OCEANBASE_VECTOR_DATABASE:-test}
   OCEANBASE_CLUSTER_NAME: ${OCEANBASE_CLUSTER_NAME:-difyai}
   OCEANBASE_MEMORY_LIMIT: ${OCEANBASE_MEMORY_LIMIT:-6G}
+  OCEANBASE_ENABLE_HYBRID_SEARCH: ${OCEANBASE_ENABLE_HYBRID_SEARCH:-false}
+  OPENGAUSS_HOST: ${OPENGAUSS_HOST:-opengauss}
+  OPENGAUSS_PORT: ${OPENGAUSS_PORT:-6600}
+  OPENGAUSS_USER: ${OPENGAUSS_USER:-postgres}
+  OPENGAUSS_PASSWORD: ${OPENGAUSS_PASSWORD:-Dify@123}
+  OPENGAUSS_DATABASE: ${OPENGAUSS_DATABASE:-dify}
+  OPENGAUSS_MIN_CONNECTION: ${OPENGAUSS_MIN_CONNECTION:-1}
+  OPENGAUSS_MAX_CONNECTION: ${OPENGAUSS_MAX_CONNECTION:-5}
+  OPENGAUSS_ENABLE_PQ: ${OPENGAUSS_ENABLE_PQ:-false}
   UPSTASH_VECTOR_URL: ${UPSTASH_VECTOR_URL:-https://xxx-vector.upstash.io}
   UPSTASH_VECTOR_TOKEN: ${UPSTASH_VECTOR_TOKEN:-dify}
+  TABLESTORE_ENDPOINT: ${TABLESTORE_ENDPOINT:-https://instance-name.cn-hangzhou.ots.aliyuncs.com}
+  TABLESTORE_INSTANCE_NAME: ${TABLESTORE_INSTANCE_NAME:-instance-name}
+  TABLESTORE_ACCESS_KEY_ID: ${TABLESTORE_ACCESS_KEY_ID:-xxx}
+  TABLESTORE_ACCESS_KEY_SECRET: ${TABLESTORE_ACCESS_KEY_SECRET:-xxx}
   UPLOAD_FILE_SIZE_LIMIT: ${UPLOAD_FILE_SIZE_LIMIT:-15}
   UPLOAD_FILE_BATCH_LIMIT: ${UPLOAD_FILE_BATCH_LIMIT:-5}
   ETL_TYPE: ${ETL_TYPE:-dify}
@@ -306,8 +324,13 @@ x-shared-env: &shared-api-worker-env
   WORKFLOW_FILE_UPLOAD_LIMIT: ${WORKFLOW_FILE_UPLOAD_LIMIT:-10}
   HTTP_REQUEST_NODE_MAX_BINARY_SIZE: ${HTTP_REQUEST_NODE_MAX_BINARY_SIZE:-10485760}
   HTTP_REQUEST_NODE_MAX_TEXT_SIZE: ${HTTP_REQUEST_NODE_MAX_TEXT_SIZE:-1048576}
+  HTTP_REQUEST_NODE_SSL_VERIFY: ${HTTP_REQUEST_NODE_SSL_VERIFY:-True}
   SSRF_PROXY_HTTP_URL: ${SSRF_PROXY_HTTP_URL:-http://ssrf_proxy:3128}
   SSRF_PROXY_HTTPS_URL: ${SSRF_PROXY_HTTPS_URL:-http://ssrf_proxy:3128}
+  LOOP_NODE_MAX_COUNT: ${LOOP_NODE_MAX_COUNT:-100}
+  MAX_TOOLS_NUM: ${MAX_TOOLS_NUM:-10}
+  MAX_PARALLEL_LIMIT: ${MAX_PARALLEL_LIMIT:-10}
+  MAX_ITERATIONS_NUM: ${MAX_ITERATIONS_NUM:-5}
   TEXT_GENERATION_TIMEOUT_MS: ${TEXT_GENERATION_TIMEOUT_MS:-60000}
   PGUSER: ${PGUSER:-${DB_USERNAME}}
   POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-${DB_PASSWORD}}
@@ -377,6 +400,10 @@ x-shared-env: &shared-api-worker-env
   SSRF_COREDUMP_DIR: ${SSRF_COREDUMP_DIR:-/var/spool/squid}
   SSRF_REVERSE_PROXY_PORT: ${SSRF_REVERSE_PROXY_PORT:-8194}
   SSRF_SANDBOX_HOST: ${SSRF_SANDBOX_HOST:-sandbox}
+  SSRF_DEFAULT_TIME_OUT: ${SSRF_DEFAULT_TIME_OUT:-5}
+  SSRF_DEFAULT_CONNECT_TIME_OUT: ${SSRF_DEFAULT_CONNECT_TIME_OUT:-5}
+  SSRF_DEFAULT_READ_TIME_OUT: ${SSRF_DEFAULT_READ_TIME_OUT:-5}
+  SSRF_DEFAULT_WRITE_TIME_OUT: ${SSRF_DEFAULT_WRITE_TIME_OUT:-5}
   EXPOSE_NGINX_PORT: ${EXPOSE_NGINX_PORT:-80}
   EXPOSE_NGINX_SSL_PORT: ${EXPOSE_NGINX_SSL_PORT:-443}
   POSITION_TOOL_PINS: ${POSITION_TOOL_PINS:-}
@@ -389,11 +416,31 @@ x-shared-env: &shared-api-worker-env
   CREATE_TIDB_SERVICE_JOB_ENABLED: ${CREATE_TIDB_SERVICE_JOB_ENABLED:-false}
   MAX_SUBMIT_COUNT: ${MAX_SUBMIT_COUNT:-100}
   TOP_K_MAX_VALUE: ${TOP_K_MAX_VALUE:-10}
+  DB_PLUGIN_DATABASE: ${DB_PLUGIN_DATABASE:-dify_plugin}
+  EXPOSE_PLUGIN_DAEMON_PORT: ${EXPOSE_PLUGIN_DAEMON_PORT:-5002}
+  PLUGIN_DAEMON_PORT: ${PLUGIN_DAEMON_PORT:-5002}
+  PLUGIN_DAEMON_KEY: ${PLUGIN_DAEMON_KEY:-lYkiYYT6owG+71oLerGzA7GXCgOT++6ovaezWAjpCjf+Sjc3ZtU+qUEi}
+  PLUGIN_DAEMON_URL: ${PLUGIN_DAEMON_URL:-http://plugin_daemon:5002}
+  PLUGIN_MAX_PACKAGE_SIZE: ${PLUGIN_MAX_PACKAGE_SIZE:-52428800}
+  PLUGIN_PPROF_ENABLED: ${PLUGIN_PPROF_ENABLED:-false}
+  PLUGIN_DEBUGGING_HOST: ${PLUGIN_DEBUGGING_HOST:-0.0.0.0}
+  PLUGIN_DEBUGGING_PORT: ${PLUGIN_DEBUGGING_PORT:-5003}
+  EXPOSE_PLUGIN_DEBUGGING_HOST: ${EXPOSE_PLUGIN_DEBUGGING_HOST:-localhost}
+  EXPOSE_PLUGIN_DEBUGGING_PORT: ${EXPOSE_PLUGIN_DEBUGGING_PORT:-5003}
+  PLUGIN_DIFY_INNER_API_KEY: ${PLUGIN_DIFY_INNER_API_KEY:-QaHbTe77CtuXmsfyhR7+vRjI/+XbV1AaFy691iy+kGDv2Jvy0/eAh8Y1}
+  PLUGIN_DIFY_INNER_API_URL: ${PLUGIN_DIFY_INNER_API_URL:-http://api:5001}
+  ENDPOINT_URL_TEMPLATE: ${ENDPOINT_URL_TEMPLATE:-http://localhost/e/{hook_id}}
+  MARKETPLACE_ENABLED: ${MARKETPLACE_ENABLED:-true}
+  MARKETPLACE_API_URL: ${MARKETPLACE_API_URL:-https://marketplace.dify.ai}
+  FORCE_VERIFYING_SIGNATURE: ${FORCE_VERIFYING_SIGNATURE:-true}
+  PLUGIN_PYTHON_ENV_INIT_TIMEOUT: ${PLUGIN_PYTHON_ENV_INIT_TIMEOUT:-120}
+  PLUGIN_MAX_EXECUTION_TIMEOUT: ${PLUGIN_MAX_EXECUTION_TIMEOUT:-600}
+  PIP_MIRROR_URL: ${PIP_MIRROR_URL:-}
 
 services:
   # API service
   api:
-    image: langgenius/dify-api:0.15.0
+    image: langgenius/dify-api:1.1.3
     restart: always
     environment:
       # Use the shared environment variables.
@@ -403,6 +450,10 @@ services:
       SENTRY_DSN: ${API_SENTRY_DSN:-}
       SENTRY_TRACES_SAMPLE_RATE: ${API_SENTRY_TRACES_SAMPLE_RATE:-1.0}
       SENTRY_PROFILES_SAMPLE_RATE: ${API_SENTRY_PROFILES_SAMPLE_RATE:-1.0}
+      PLUGIN_REMOTE_INSTALL_HOST: ${EXPOSE_PLUGIN_DEBUGGING_HOST:-localhost}
+      PLUGIN_REMOTE_INSTALL_PORT: ${EXPOSE_PLUGIN_DEBUGGING_PORT:-5003}
+      PLUGIN_MAX_PACKAGE_SIZE: ${PLUGIN_MAX_PACKAGE_SIZE:-52428800}
+      INNER_API_KEY_FOR_PLUGIN: ${PLUGIN_DIFY_INNER_API_KEY:-QaHbTe77CtuXmsfyhR7+vRjI/+XbV1AaFy691iy+kGDv2Jvy0/eAh8Y1}
     depends_on:
       - db
       - redis
@@ -416,7 +467,7 @@ services:
   # worker service
   # The Celery worker for processing the queue.
   worker:
-    image: langgenius/dify-api:0.15.0
+    image: langgenius/dify-api:1.1.3
     restart: always
     environment:
       # Use the shared environment variables.
@@ -426,6 +477,8 @@ services:
       SENTRY_DSN: ${API_SENTRY_DSN:-}
       SENTRY_TRACES_SAMPLE_RATE: ${API_SENTRY_TRACES_SAMPLE_RATE:-1.0}
       SENTRY_PROFILES_SAMPLE_RATE: ${API_SENTRY_PROFILES_SAMPLE_RATE:-1.0}
+      PLUGIN_MAX_PACKAGE_SIZE: ${PLUGIN_MAX_PACKAGE_SIZE:-52428800}
+      INNER_API_KEY_FOR_PLUGIN: ${PLUGIN_DIFY_INNER_API_KEY:-QaHbTe77CtuXmsfyhR7+vRjI/+XbV1AaFy691iy+kGDv2Jvy0/eAh8Y1}
     depends_on:
       - db
       - redis
@@ -438,7 +491,7 @@ services:
 
   # Frontend web application.
   web:
-    image: langgenius/dify-web:0.15.0
+    image: langgenius/dify-web:1.1.3
     restart: always
     environment:
       CONSOLE_API_URL: ${CONSOLE_API_URL:-}
@@ -447,7 +500,15 @@ services:
       NEXT_TELEMETRY_DISABLED: ${NEXT_TELEMETRY_DISABLED:-0}
       TEXT_GENERATION_TIMEOUT_MS: ${TEXT_GENERATION_TIMEOUT_MS:-60000}
       CSP_WHITELIST: ${CSP_WHITELIST:-}
+      MARKETPLACE_API_URL: ${MARKETPLACE_API_URL:-https://marketplace.dify.ai}
+      MARKETPLACE_URL: ${MARKETPLACE_URL:-https://marketplace.dify.ai}
       TOP_K_MAX_VALUE: ${TOP_K_MAX_VALUE:-}
+      INDEXING_MAX_SEGMENTATION_TOKENS_LENGTH: ${INDEXING_MAX_SEGMENTATION_TOKENS_LENGTH:-}
+      PM2_INSTANCES: ${PM2_INSTANCES:-2}
+      LOOP_NODE_MAX_COUNT: ${LOOP_NODE_MAX_COUNT:-100}
+      MAX_TOOLS_NUM: ${MAX_TOOLS_NUM:-10}
+      MAX_PARALLEL_LIMIT: ${MAX_PARALLEL_LIMIT:-10}
+      MAX_ITERATIONS_NUM: ${MAX_ITERATIONS_NUM:-5}
 
   # The postgres database.
   db:
@@ -488,7 +549,7 @@ services:
 
   # The DifySandbox
   sandbox:
-    image: langgenius/dify-sandbox:0.2.10
+    image: langgenius/dify-sandbox:0.2.11
     restart: always
     environment:
       # The DifySandbox configurations
@@ -503,10 +564,39 @@ services:
       SANDBOX_PORT: ${SANDBOX_PORT:-8194}
     volumes:
       - ./volumes/sandbox/dependencies:/dependencies
+      - ./volumes/sandbox/conf:/conf
     healthcheck:
       test: [ 'CMD', 'curl', '-f', 'http://localhost:8194/health' ]
     networks:
       - ssrf_proxy_network
+
+  # plugin daemon
+  plugin_daemon:
+    image: langgenius/dify-plugin-daemon:0.0.6-local
+    restart: always
+    environment:
+      # Use the shared environment variables.
+      <<: *shared-api-worker-env
+      DB_DATABASE: ${DB_PLUGIN_DATABASE:-dify_plugin}
+      SERVER_PORT: ${PLUGIN_DAEMON_PORT:-5002}
+      SERVER_KEY: ${PLUGIN_DAEMON_KEY:-lYkiYYT6owG+71oLerGzA7GXCgOT++6ovaezWAjpCjf+Sjc3ZtU+qUEi}
+      MAX_PLUGIN_PACKAGE_SIZE: ${PLUGIN_MAX_PACKAGE_SIZE:-52428800}
+      PPROF_ENABLED: ${PLUGIN_PPROF_ENABLED:-false}
+      DIFY_INNER_API_URL: ${PLUGIN_DIFY_INNER_API_URL:-http://api:5001}
+      DIFY_INNER_API_KEY: ${PLUGIN_DIFY_INNER_API_KEY:-QaHbTe77CtuXmsfyhR7+vRjI/+XbV1AaFy691iy+kGDv2Jvy0/eAh8Y1}
+      PLUGIN_REMOTE_INSTALLING_HOST: ${PLUGIN_DEBUGGING_HOST:-0.0.0.0}
+      PLUGIN_REMOTE_INSTALLING_PORT: ${PLUGIN_DEBUGGING_PORT:-5003}
+      PLUGIN_WORKING_PATH: ${PLUGIN_WORKING_PATH:-/app/storage/cwd}
+      FORCE_VERIFYING_SIGNATURE: ${FORCE_VERIFYING_SIGNATURE:-true}
+      PYTHON_ENV_INIT_TIMEOUT: ${PLUGIN_PYTHON_ENV_INIT_TIMEOUT:-120}
+      PLUGIN_MAX_EXECUTION_TIMEOUT: ${PLUGIN_MAX_EXECUTION_TIMEOUT:-600}
+      PIP_MIRROR_URL: ${PIP_MIRROR_URL:-}
+    ports:
+      - "${EXPOSE_PLUGIN_DEBUGGING_PORT:-5003}:${PLUGIN_DEBUGGING_PORT:-5003}"
+    volumes:
+      - ./volumes/plugin_daemon:/app/storage
+    depends_on:
+      - db
 
   # ssrf_proxy server
   # for more information, please refer to
@@ -588,16 +678,6 @@ services:
     ports:
       - '${EXPOSE_NGINX_PORT:-80}:${NGINX_PORT:-80}'
       - '${EXPOSE_NGINX_SSL_PORT:-443}:${NGINX_SSL_PORT:-443}'
-
-  # The TiDB vector store.
-  # For production use, please refer to https://github.com/pingcap/tidb-docker-compose
-  tidb:
-    image: pingcap/tidb:v8.4.0
-    profiles:
-      - tidb
-    command:
-      - --store=unistore
-    restart: always
 
   # The Weaviate vector store.
   weaviate:
@@ -682,8 +762,13 @@ services:
       POSTGRES_DB: ${PGVECTOR_POSTGRES_DB:-dify}
       # postgres data directory
       PGDATA: ${PGVECTOR_PGDATA:-/var/lib/postgresql/data/pgdata}
+      # pg_bigm module for full text search
+      PG_BIGM: ${PGVECTOR_PG_BIGM:-false}
+      PG_BIGM_VERSION: ${PGVECTOR_PG_BIGM_VERSION:-1.2-20240606}
     volumes:
       - ./volumes/pgvector/data:/var/lib/postgresql/data
+      - ./pgvector/docker-entrypoint.sh:/docker-entrypoint.sh
+    entrypoint: [ '/docker-entrypoint.sh' ]
     healthcheck:
       test: [ 'CMD', 'pg_isready' ]
       interval: 1s
@@ -727,7 +812,8 @@ services:
 
   # OceanBase vector database
   oceanbase:
-    image: quay.io/oceanbase/oceanbase-ce:4.3.3.0-100000142024101215
+    image: oceanbase/oceanbase-ce:4.3.5.1-101000042025031818
+    container_name: oceanbase
     profiles:
       - oceanbase
     restart: always
@@ -740,7 +826,9 @@ services:
       OB_SYS_PASSWORD: ${OCEANBASE_VECTOR_PASSWORD:-difyai123456}
       OB_TENANT_PASSWORD: ${OCEANBASE_VECTOR_PASSWORD:-difyai123456}
       OB_CLUSTER_NAME: ${OCEANBASE_CLUSTER_NAME:-difyai}
-      OB_SERVER_IP: '127.0.0.1'
+      MODE: MINI
+    ports:
+      - "${OCEANBASE_VECTOR_PORT:-2881}:2881"
 
   # Oracle vector database
   oracle:
@@ -861,6 +949,28 @@ services:
       - opensearch-net
     depends_on:
       - opensearch
+
+  # opengauss vector database.
+  opengauss:
+    image: opengauss/opengauss:7.0.0-RC1
+    profiles:
+      - opengauss
+    privileged: true
+    restart: always
+    environment:
+      GS_USERNAME: ${OPENGAUSS_USER:-postgres}
+      GS_PASSWORD: ${OPENGAUSS_PASSWORD:-Dify@123}
+      GS_PORT: ${OPENGAUSS_PORT:-6600}
+      GS_DB: ${OPENGAUSS_DATABASE:-dify}
+    volumes:
+      - ./volumes/opengauss/data:/var/lib/opengauss/data
+    healthcheck:
+      test: ["CMD-SHELL", "netstat -lntp | grep tcp6 > /dev/null 2>&1"]
+      interval: 10s
+      timeout: 10s
+      retries: 10
+    ports:
+      - ${OPENGAUSS_PORT:-6600}:${OPENGAUSS_PORT:-6600}
 
   # MyScale vector database
   myscale:

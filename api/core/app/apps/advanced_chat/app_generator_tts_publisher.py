@@ -56,7 +56,7 @@ def _process_future(
 
 
 class AppGeneratorTTSPublisher:
-    def __init__(self, tenant_id: str, voice: str):
+    def __init__(self, tenant_id: str, voice: str, language: Optional[str] = None):
         self.logger = logging.getLogger(__name__)
         self.tenant_id = tenant_id
         self.msg_text = ""
@@ -67,7 +67,7 @@ class AppGeneratorTTSPublisher:
         self.model_instance = self.model_manager.get_default_model_instance(
             tenant_id=self.tenant_id, model_type=ModelType.TTS
         )
-        self.voices = self.model_instance.get_tts_voices()
+        self.voices = self.model_instance.get_tts_voices(language=language)
         values = [voice.get("value") for voice in self.voices]
         self.voice = voice
         if not voice or voice not in values:

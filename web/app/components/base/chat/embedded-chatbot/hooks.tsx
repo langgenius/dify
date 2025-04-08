@@ -11,10 +11,12 @@ import { useLocalStorageState } from 'ahooks'
 import produce from 'immer'
 import type {
   ChatConfig,
+  ChatItem,
   Feedback,
 } from '../types'
 import { CONVERSATION_ID_INFO } from '../constants'
-import { getPrevChatList, getProcessedInputsFromUrlParams } from '../utils'
+import { buildChatItemTree, getProcessedInputsFromUrlParams } from '../utils'
+import { getProcessedFilesFromResponse } from '../../file-uploader/utils'
 import {
   fetchAppInfo,
   fetchAppMeta,
@@ -32,6 +34,34 @@ import { useToastContext } from '@/app/components/base/toast'
 import { changeLanguage } from '@/i18n/i18next-config'
 import { InputVarType } from '@/app/components/workflow/types'
 import { TransferMethod } from '@/types/app'
+import { addFileInfos, sortAgentSorts } from '@/app/components/tools/utils'
+import { noop } from 'lodash-es'
+
+function getFormattedChatList(messages: any[]) {
+  const newChatList: ChatItem[] = []
+  messages.forEach((item) => {
+    const questionFiles = item.message_files?.filter((file: any) => file.belongs_to === 'user') || []
+    newChatList.push({
+      id: `question-${item.id}`,
+      content: item.query,
+      isAnswer: false,
+      message_files: getProcessedFilesFromResponse(questionFiles.map((item: any) => ({ ...item, related_id: item.id }))),
+      parentMessageId: item.parent_message_id || undefined,
+    })
+    const answerFiles = item.message_files?.filter((file: any) => file.belongs_to === 'assistant') || []
+    newChatList.push({
+      id: item.id,
+      content: item.answer,
+      agent_thoughts: addFileInfos(item.agent_thoughts ? sortAgentSorts(item.agent_thoughts) : item.agent_thoughts, item.message_files),
+      feedback: item.feedback,
+      isAnswer: true,
+      citation: item.retriever_resources,
+      message_files: getProcessedFilesFromResponse(answerFiles.map((item: any) => ({ ...item, related_id: item.id }))),
+      parentMessageId: `question-${item.id}`,
+    })
+  })
+  return newChatList
+}
 
 export const useEmbeddedChatbot = () => {
   const isInstalledApp = false
@@ -59,7 +89,6 @@ export const useEmbeddedChatbot = () => {
       })
     }
   }, [appId, conversationIdInfo, setConversationIdInfo])
-  const [showConfigPanelBeforeChat, setShowConfigPanelBeforeChat] = useState(true)
 
   const [newConversationId, setNewConversationId] = useState('')
   const chatShouldReloadKey = useMemo(() => {
@@ -75,9 +104,11 @@ export const useEmbeddedChatbot = () => {
   const { data: appConversationData, isLoading: appConversationDataLoading, mutate: mutateAppConversationData } = useSWR(['appConversationData', isInstalledApp, appId, false], () => fetchConversations(isInstalledApp, appId, undefined, false, 100))
   const { data: appChatListData, isLoading: appChatListDataLoading } = useSWR(chatShouldReloadKey ? ['appChatList', chatShouldReloadKey, isInstalledApp, appId] : null, () => fetchChatList(chatShouldReloadKey, isInstalledApp, appId))
 
+  const [clearChatList, setClearChatList] = useState(false)
+  const [isResponding, setIsResponding] = useState(false)
   const appPrevChatList = useMemo(
     () => (currentConversationId && appChatListData?.data.length)
-      ? getPrevChatList(appChatListData.data)
+      ? buildChatItemTree(getFormattedChatList(appChatListData.data))
       : [],
     [appChatListData, currentConversationId],
   )
@@ -153,7 +184,10 @@ export const useEmbeddedChatbot = () => {
 
   useEffect(() => {
     // init inputs from url params
-    setInitInputs(getProcessedInputsFromUrlParams())
+    (async () => {
+      const inputs = await getProcessedInputsFromUrlParams()
+      setInitInputs(inputs)
+    })()
   }, [])
   useEffect(() => {
     const conversationInputs: Record<string, any> = {}
@@ -206,6 +240,17 @@ export const useEmbeddedChatbot = () => {
     return conversationItem
   }, [conversationList, currentConversationId, pinnedConversationList])
 
+  const currentConversationLatestInputs = useMemo(() => {
+    if (!currentConversationId || !appChatListData?.data.length)
+      return {}
+    return appChatListData.data.slice().pop().inputs || {}
+  }, [appChatListData, currentConversationId])
+  const [currentConversationInputs, setCurrentConversationInputs] = useState<Record<string, any>>(currentConversationLatestInputs || {})
+  useEffect(() => {
+    if (currentConversationItem)
+      setCurrentConversationInputs(currentConversationLatestInputs || {})
+  }, [currentConversationItem, currentConversationLatestInputs])
+
   const { notify } = useToastContext()
   const checkInputsRequired = useCallback((silent?: boolean) => {
     let hasEmptyInput = ''
@@ -244,37 +289,27 @@ export const useEmbeddedChatbot = () => {
 
     return true
   }, [inputsForms, notify, t])
-  const handleStartChat = useCallback(() => {
+  const handleStartChat = useCallback((callback?: any) => {
     if (checkInputsRequired()) {
-      setShowConfigPanelBeforeChat(false)
       setShowNewConversationItemInList(true)
+      callback?.()
     }
-  }, [setShowConfigPanelBeforeChat, setShowNewConversationItemInList, checkInputsRequired])
-  const currentChatInstanceRef = useRef<{ handleStop: () => void }>({ handleStop: () => { } })
+  }, [setShowNewConversationItemInList, checkInputsRequired])
+  const currentChatInstanceRef = useRef<{ handleStop: () => void }>({ handleStop: noop })
   const handleChangeConversation = useCallback((conversationId: string) => {
     currentChatInstanceRef.current.handleStop()
     setNewConversationId('')
     handleConversationIdInfoChange(conversationId)
-
-    if (conversationId === '' && !checkInputsRequired(true))
-      setShowConfigPanelBeforeChat(true)
-    else
-      setShowConfigPanelBeforeChat(false)
-  }, [handleConversationIdInfoChange, setShowConfigPanelBeforeChat, checkInputsRequired])
-  const handleNewConversation = useCallback(() => {
+    if (conversationId)
+      setClearChatList(false)
+  }, [handleConversationIdInfoChange, setClearChatList])
+  const handleNewConversation = useCallback(async () => {
     currentChatInstanceRef.current.handleStop()
-    setNewConversationId('')
-
-    if (showNewConversationItemInList) {
-      handleChangeConversation('')
-    }
-    else if (currentConversationId) {
-      handleConversationIdInfoChange('')
-      setShowConfigPanelBeforeChat(true)
-      setShowNewConversationItemInList(true)
-      handleNewConversationInputsChange({})
-    }
-  }, [handleChangeConversation, currentConversationId, handleConversationIdInfoChange, setShowConfigPanelBeforeChat, setShowNewConversationItemInList, showNewConversationItemInList, handleNewConversationInputsChange])
+    setShowNewConversationItemInList(true)
+    handleChangeConversation('')
+    handleNewConversationInputsChange(await getProcessedInputsFromUrlParams())
+    setClearChatList(true)
+  }, [handleChangeConversation, setShowNewConversationItemInList, handleNewConversationInputsChange, setClearChatList])
 
   const handleNewConversationCompleted = useCallback((newConversationId: string) => {
     setNewConversationId(newConversationId)
@@ -307,8 +342,6 @@ export const useEmbeddedChatbot = () => {
     appPrevChatList,
     pinnedConversationList,
     conversationList,
-    showConfigPanelBeforeChat,
-    setShowConfigPanelBeforeChat,
     setShowNewConversationItemInList,
     newConversationInputs,
     newConversationInputsRef,
@@ -322,5 +355,11 @@ export const useEmbeddedChatbot = () => {
     chatShouldReloadKey,
     handleFeedback,
     currentChatInstanceRef,
+    clearChatList,
+    setClearChatList,
+    isResponding,
+    setIsResponding,
+    currentConversationInputs,
+    setCurrentConversationInputs,
   }
 }

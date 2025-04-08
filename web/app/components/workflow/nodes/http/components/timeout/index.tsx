@@ -27,7 +27,7 @@ const InputField: FC<{
 }> = ({ title, description, placeholder, value, onChange, readOnly, min, max }) => {
   return (
     <div className="space-y-1">
-      <div className="flex items-center h-[18px] space-x-2">
+      <div className="flex h-[18px] items-center space-x-2">
         <span className="text-[13px] font-medium text-gray-900">{title}</span>
         <span className="text-xs font-normal text-gray-500">{description}</span>
       </div>
@@ -35,7 +35,7 @@ const InputField: FC<{
         type='number'
         value={value}
         onChange={(e) => {
-          const value = Math.max(min, Math.min(max, parseInt(e.target.value, 10)))
+          const value = Math.max(min, Math.min(max, Number.parseInt(e.target.value, 10)))
           onChange(value)
         }}
         placeholder={placeholder}

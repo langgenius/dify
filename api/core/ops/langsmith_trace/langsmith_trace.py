@@ -199,6 +199,7 @@ class LangSmithDataTrace(BaseTraceInstance):
             )
 
             process_data = json.loads(node_execution.process_data) if node_execution.process_data else {}
+
             if process_data and process_data.get("model_mode") == "chat":
                 run_type = LangSmithRunType.llm
                 metadata.update(
@@ -212,9 +213,23 @@ class LangSmithDataTrace(BaseTraceInstance):
             else:
                 run_type = LangSmithRunType.tool
 
+            prompt_tokens = 0
+            completion_tokens = 0
+            try:
+                if outputs.get("usage"):
+                    prompt_tokens = outputs.get("usage", {}).get("prompt_tokens", 0)
+                    completion_tokens = outputs.get("usage", {}).get("completion_tokens", 0)
+                else:
+                    prompt_tokens = process_data.get("usage", {}).get("prompt_tokens", 0)
+                    completion_tokens = process_data.get("usage", {}).get("completion_tokens", 0)
+            except Exception:
+                logger.error("Failed to extract usage", exc_info=True)
+
             node_dotted_order = generate_dotted_order(node_execution_id, created_at, workflow_dotted_order)
             langsmith_run = LangSmithRunModel(
                 total_tokens=node_total_tokens,
+                input_tokens=prompt_tokens,
+                output_tokens=completion_tokens,
                 name=node_type,
                 inputs=inputs,
                 run_type=run_type,
