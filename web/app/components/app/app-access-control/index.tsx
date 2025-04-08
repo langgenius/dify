@@ -5,7 +5,9 @@ import { useTranslation } from 'react-i18next'
 import Button from '../../base/button'
 import AccessControlDialog from './access-control-dialog'
 import AccessControlItem from './access-control-item'
-import SpecificGroupsOrMembers from './specific-groups-or-members'
+import SpecificGroupsOrMembers, { WebAppSSONotEnabledTip } from './specific-groups-or-members'
+import { AccessControlType } from './access-control-store'
+import { useGlobalPublicStore } from '@/context/global-public-context'
 
 type AccessControlProps = {
   onClose: () => void
@@ -13,6 +15,9 @@ type AccessControlProps = {
 
 export default function AccessControl(props: AccessControlProps) {
   const { t } = useTranslation()
+  const systemFeatures = useGlobalPublicStore(s => s.systemFeatures)
+  const hideTip = systemFeatures.enable_web_sso_switch_component && systemFeatures.sso_enforced_for_web
+
   return <AccessControlDialog show onClose={props.onClose}>
     <div className='flex flex-col gap-y-3'>
       <div className='pt-6 pr-14 pb-3 pl-6'>
@@ -23,17 +28,20 @@ export default function AccessControl(props: AccessControlProps) {
         <div className='leading-6'>
           <p className='system-sm-medium'>{t('app.accessControlDialog.accessLabel')}</p>
         </div>
-        <AccessControlItem active={false}>
-          <div className='h-[40px] p-3 flex items-center gap-x-2'>
-            <RiBuildingLine className='w-4 h-4 text-text-primary' />
-            <p className='system-sm-medium text-text-primary'>{t('app.accessControlDialog.accessItems.organization')}</p>
+        <AccessControlItem type={AccessControlType.ORGANIZATION}>
+          <div className='flex items-center p-3'>
+            <div className='grow flex items-center gap-x-2'>
+              <RiBuildingLine className='w-4 h-4 text-text-primary' />
+              <p className='system-sm-medium text-text-primary'>{t('app.accessControlDialog.accessItems.organization')}</p>
+            </div>
+            {!hideTip && <WebAppSSONotEnabledTip />}
           </div>
         </AccessControlItem>
-        <AccessControlItem active={true}>
-          <SpecificGroupsOrMembers active={true} />
+        <AccessControlItem type={AccessControlType.SPECIFIC_GROUPS_MEMBERS}>
+          <SpecificGroupsOrMembers />
         </AccessControlItem>
-        <AccessControlItem active={false}>
-          <div className='h-[40px] p-3 flex items-center gap-x-2'>
+        <AccessControlItem type={AccessControlType.PUBLIC}>
+          <div className='flex items-center p-3 gap-x-2'>
             <RiGlobalLine className='w-4 h-4 text-text-primary' />
             <p className='system-sm-medium text-text-primary'>{t('app.accessControlDialog.accessItems.anyone')}</p>
           </div>

@@ -188,6 +188,13 @@ const translation = {
     groups_other: '{{count}} GROUPS',
     members_one: '{{count}} MEMBER',
     members_other: '{{count}} MEMBERS',
+    noGroupsOrMembers: 'No access members have been added yet',
+    webAppSSONotEnabledTip: 'Please contact the administrator to enable the WebApp identity authentication method.',
+    operateGroupAndMember: {
+      searchPlaceholder: 'Search groups and members',
+      allMembers: 'All members',
+      expand: 'Expand',
+    },
   },
 }
 

@@ -23,21 +23,33 @@ export default function AddMemberOrGroupDialog() {
     <PortalToFollowElemContent className='z-[25]'>
       <div className='w-[400px] max-h-[400px] overflow-y-auto flex flex-col border-[0.5px] border-components-panel-border rounded-xl bg-components-panel-bg-blur backdrop-blur-[5px] shadow-lg'>
         <div className='p-2 pb-0.5'>
-          <Input placeholder='search...' />
+          <Input placeholder={t('app.accessControlDialog.operateGroupAndMember.searchPlaceholder') as string} />
         </div>
         <div className='flex items-center h-7 px-2 py-0.5'>
-          <span className='system-xs-regular text-text-tertiary'>All Members</span>
+          <span className='system-xs-regular text-text-tertiary'>{t('app.accessControlDialog.operateGroupAndMember.allMembers')}</span>
         </div>
-        <div className='p-1'>
-          <GroupItem />
-          <MemberItem />
-        </div>
+        <RenderGroupOrMember data={[]} />
       </div>
     </PortalToFollowElemContent>
   </PortalToFollowElem>
 }
 
+type RenderGroupOrMemberProps = {
+  data: any[]
+}
+
+function RenderGroupOrMember({ data }: RenderGroupOrMemberProps) {
+  return <div className='p-1'>
+    {data.map((item, index) => {
+      if (item.type === 'group')
+        return <GroupItem key={index} />
+      return <MemberItem key={index} />
+    })}
+  </div>
+}
+
 function GroupItem() {
+  const { t } = useTranslation()
   return <BaseItem>
     <Checkbox className='w-4 h-4 shrink-0' />
     <div className='flex item-center grow'>
@@ -49,8 +61,8 @@ function GroupItem() {
       <p className='system-sm-medium text-text-secondary mr-1'>Name</p>
       <p className='system-xs-regular text-text-tertiary'>5</p>
     </div>
-    <Button size="small" variant='ghost-accent' className='w-[76px] py-1 px-1.5 shrink-0 flex items-center justify-between'>
-      <span>Expand</span>
+    <Button size="small" variant='ghost-accent' className='py-1 px-1.5 shrink-0 flex items-center justify-between'>
+      <span className='px-[3px]'>{t('app.accessControlDialog.operateGroupAndMember.expand')}</span>
       <RiArrowRightSLine className='w-4 h-4' />
     </Button>
   </BaseItem>

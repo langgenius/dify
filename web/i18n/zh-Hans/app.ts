@@ -189,6 +189,13 @@ const translation = {
     groups_other: '{{count}} 个组',
     members_one: '{{count}} 个人',
     members_other: '{{count}} 个人',
+    noGroupsOrMembers: '没有添加组或成员',
+    webAppSSONotEnabledTip: '请联系管理员启用 WebApp SSO 身份验证方式。',
+    operateGroupAndMember: {
+      searchPlaceholder: '搜索组或成员',
+      allMembers: '所有成员',
+      expand: '展开',
+    },
   },
 }
 
