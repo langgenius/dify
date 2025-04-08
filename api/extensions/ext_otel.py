@@ -40,25 +40,28 @@ def on_user_loaded(_sender, user):
             current_span.set_attribute("service.tenant.id", user.current_tenant_id)
             current_span.set_attribute("service.user.id", user.id)
 
+
 def init_app(app: DifyApp):
     if dify_config.ENABLE_OTEL:
         setup_context_propagation()
         # Initialize OpenTelemetry
         # Follow Semantic Convertions 1.32.0 to define resource attributes
-        resource = Resource(attributes={
-            ResourceAttributes.SERVICE_NAME: dify_config.APPLICATION_NAME,
-            ResourceAttributes.SERVICE_VERSION: f"dify-{dify_config.CURRENT_VERSION}-{dify_config.COMMIT_SHA}",
-            ResourceAttributes.PROCESS_PID: os.getpid(),
-            ResourceAttributes.DEPLOYMENT_ENVIRONMENT: f"{dify_config.DEPLOY_ENV}-{dify_config.EDITION}",
-            ResourceAttributes.HOST_NAME: socket.gethostname(),
-            ResourceAttributes.HOST_ARCH: platform.machine(),
-            "custom.deployment.git_commit": dify_config.COMMIT_SHA,
-            ResourceAttributes.HOST_ID: platform.node(),
-            ResourceAttributes.OS_TYPE: platform.system().lower(),
-            ResourceAttributes.OS_DESCRIPTION: platform.platform(),
-            ResourceAttributes.OS_VERSION: platform.version(),
-        })
-        sampler = ParentBasedTraceIdRatio(dify_config.OTEL_SAMPLING_RATE) 
+        resource = Resource(
+            attributes={
+                ResourceAttributes.SERVICE_NAME: dify_config.APPLICATION_NAME,
+                ResourceAttributes.SERVICE_VERSION: f"dify-{dify_config.CURRENT_VERSION}-{dify_config.COMMIT_SHA}",
+                ResourceAttributes.PROCESS_PID: os.getpid(),
+                ResourceAttributes.DEPLOYMENT_ENVIRONMENT: f"{dify_config.DEPLOY_ENV}-{dify_config.EDITION}",
+                ResourceAttributes.HOST_NAME: socket.gethostname(),
+                ResourceAttributes.HOST_ARCH: platform.machine(),
+                "custom.deployment.git_commit": dify_config.COMMIT_SHA,
+                ResourceAttributes.HOST_ID: platform.node(),
+                ResourceAttributes.OS_TYPE: platform.system().lower(),
+                ResourceAttributes.OS_DESCRIPTION: platform.platform(),
+                ResourceAttributes.OS_VERSION: platform.version(),
+            }
+        )
+        sampler = ParentBasedTraceIdRatio(dify_config.OTEL_SAMPLING_RATE)
         provider = TracerProvider(resource=resource, sampler=sampler)
         set_tracer_provider(provider)
         if dify_config.OTEL_EXPORTER_TYPE == "otlp":
@@ -74,39 +77,49 @@ def init_app(app: DifyApp):
             # Fallback to console exporter
             exporter = ConsoleSpanExporter()
             metric_exporter = ConsoleMetricExporter()
-            
+
         provider.add_span_processor(
-            BatchSpanProcessor(exporter,
-                               max_queue_size=dify_config.OTEL_MAX_QUEUE_SIZE,
-                               schedule_delay_millis=dify_config.OTEL_BATCH_EXPORT_SCHEDULE_DELAY,
-                               max_export_batch_size=dify_config.OTEL_MAX_EXPORT_BATCH_SIZE,
-                               export_timeout_millis=dify_config.OTEL_BATCH_EXPORT_TIMEOUT)
+            BatchSpanProcessor(
+                exporter,
+                max_queue_size=dify_config.OTEL_MAX_QUEUE_SIZE,
+                schedule_delay_millis=dify_config.OTEL_BATCH_EXPORT_SCHEDULE_DELAY,
+                max_export_batch_size=dify_config.OTEL_MAX_EXPORT_BATCH_SIZE,
+                export_timeout_millis=dify_config.OTEL_BATCH_EXPORT_TIMEOUT,
+            )
         )
-        reader = PeriodicExportingMetricReader(metric_exporter,
-                                               export_interval_millis=dify_config.OTEL_METRIC_EXPORT_INTERVAL,
-                                               export_timeout_millis=dify_config.OTEL_METRIC_EXPORT_TIMEOUT)
+        reader = PeriodicExportingMetricReader(
+            metric_exporter,
+            export_interval_millis=dify_config.OTEL_METRIC_EXPORT_INTERVAL,
+            export_timeout_millis=dify_config.OTEL_METRIC_EXPORT_TIMEOUT,
+        )
         set_meter_provider(MeterProvider(resource=resource, metric_readers=[reader]))
+
         def response_hook(span: Span, status: str, response_headers: list):
             if span and span.is_recording():
                 if status.startswith("2"):
                     span.set_status(StatusCode.OK)
                 else:
                     span.set_status(StatusCode.ERROR, status)
+
         instrumentor = FlaskInstrumentor()
         instrumentor.instrument_app(app, response_hook=response_hook)
         with app.app_context():
-            engines = list(app.extensions['sqlalchemy'].engines.values())
+            engines = list(app.extensions["sqlalchemy"].engines.values())
             SQLAlchemyInstrumentor().instrument(enable_commenter=True, engines=engines)
         atexit.register(shutdown_tracer)
+
 
 def setup_context_propagation():
     # Configure propagators
     set_global_textmap(
-        CompositePropagator([
-            TraceContextTextMapPropagator(),  # W3C trace context
-            B3Format(),                       # B3 propagation (used by many systems)
-        ])
+        CompositePropagator(
+            [
+                TraceContextTextMapPropagator(),  # W3C trace context
+                B3Format(),  # B3 propagation (used by many systems)
+            ]
+        )
     )
+
 
 def shutdown_tracer():
     trace.get_tracer_provider().shutdown()
