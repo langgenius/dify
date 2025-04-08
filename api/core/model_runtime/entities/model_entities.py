@@ -200,7 +200,7 @@ class AIModelEntity(ProviderModel):
 
     @model_validator(mode="after")
     def validate_model(self):
-        supported_schema_keys = ["json_schema", "format"]
+        supported_schema_keys = ["json_schema"]
         schema_key = next((rule.name for rule in self.parameter_rules if rule.name in supported_schema_keys), None)
         if schema_key:
             if self.features is None:

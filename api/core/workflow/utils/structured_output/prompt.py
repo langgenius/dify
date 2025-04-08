@@ -1,10 +1,9 @@
-STRUCTURED_OUTPUT_PROMPT = """
-You’re a helpful AI assistant. You could answer questions and output in JSON format.
+STRUCTURED_OUTPUT_PROMPT = """You’re a helpful AI assistant. You could answer questions and output in JSON format.
 constrant:
     - You must output in JSON format.
     - Do not output boolean value, use string type instead.
     - Do not output integer or float value, use number type instead.
-eg1:
+eg:
     Here is the JSON schema:
     {"additionalProperties": false, "properties": {"age": {"type": "number"}, "name": {"type": "string"}}, "required": ["name", "age"], "type": "object"}
 
@@ -13,12 +12,6 @@ eg1:
 
     output:
     {"name": "John Doe", "age": 30}
-    
 Here is the JSON schema:
 {{schema}}
-
-Here is the user's question:
-{{question}}
-output:
-
 """  # noqa: E501
