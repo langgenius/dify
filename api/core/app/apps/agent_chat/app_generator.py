@@ -82,9 +82,6 @@ class AgentChatAppGenerator(MessageBasedAppGenerator):
         :param invoke_from: invoke from source
         :param streaming: is stream
         """
-        if not streaming:
-            raise ValueError("Agent Chat App does not support blocking mode")
-
         if not args.get("query"):
             raise ValueError("query is required")
 
