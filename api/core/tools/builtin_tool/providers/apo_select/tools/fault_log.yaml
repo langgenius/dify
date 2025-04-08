@@ -29,6 +29,19 @@ parameters:
       pt_BR: service name
     llm_description: service name
     form: llm
+  - name: pod
+    type: string
+    required: false
+    label:
+      en_US: pod
+      zh_Hans: pod
+      pt_BR: pod
+    human_description:
+      en_US: pod name
+      zh_Hans: 查询的日志pod名
+      pt_BR: pod name
+    llm_description: pod name
+    form: llm
   - name: startTime
     type: number
     required: true

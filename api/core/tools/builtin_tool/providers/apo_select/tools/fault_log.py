@@ -21,12 +21,14 @@ class FaultLogTool(BuiltinTool):
         service = tool_parameters.get("service")
         start_time = tool_parameters.get("startTime")
         end_time = tool_parameters.get("endTime")
+        pod = tool_parameters.get("pod")
         params = {
           'service': [service],
           'startTime': start_time,
           'endTime': end_time,
           'pageNum': 1,
-          'pageSize': 10
+          'pageSize': 10,
+          'pod': pod,
           }
         url = dify_config.APO_BACKEND_URL + "/api/log/fault/pagelist" 
         resp = requests.post(url, json=params)
