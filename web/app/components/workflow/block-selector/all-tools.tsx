@@ -20,6 +20,7 @@ import ActionButton from '../../base/action-button'
 import { RiAddLine } from '@remixicon/react'
 import { PluginType } from '../../plugins/types'
 import { useMarketplacePlugins } from '../../plugins/marketplace/hooks'
+import { useSelector as useAppContextSelector } from '@/context/app-context'
 
 type AllToolsProps = {
   className?: string
@@ -82,7 +83,10 @@ const AllTools = ({
     plugins: notInstalledPlugins = [],
   } = useMarketplacePlugins()
 
+  const { enable_marketplace } = useAppContextSelector(s => s.systemFeatures)
+
   useEffect(() => {
+    if (enable_marketplace) return
     if (searchText || tags.length > 0) {
       fetchPlugins({
         query: searchText,
@@ -91,7 +95,7 @@ const AllTools = ({
       })
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchText, tags])
+  }, [searchText, tags, enable_marketplace])
 
   const pluginRef = useRef(null)
   const wrapElemRef = useRef<HTMLDivElement>(null)
@@ -144,13 +148,13 @@ const AllTools = ({
           selectedTools={selectedTools}
         />
         {/* Plugins from marketplace */}
-        <PluginList
+        {enable_marketplace && <PluginList
           wrapElemRef={wrapElemRef}
           list={notInstalledPlugins as any} ref={pluginRef}
           searchText={searchText}
           toolContentClassName={toolContentClassName}
           tags={tags}
-        />
+        />}
       </div>
     </div>
   )

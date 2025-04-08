@@ -19,6 +19,8 @@ export const useWorkflowNodeIterationFinished = () => {
     const {
       getNodes,
       setNodes,
+      edges,
+      setEdges,
     } = store.getState()
     const nodes = getNodes()
     setWorkflowRunningData(produce(workflowRunningData!, (draft) => {
@@ -38,6 +40,18 @@ export const useWorkflowNodeIterationFinished = () => {
       currentNode.data._runningStatus = data.status
     })
     setNodes(newNodes)
+    const newEdges = produce(edges, (draft) => {
+      const incomeEdges = draft.filter((edge) => {
+        return edge.target === data.node_id
+      })
+      incomeEdges.forEach((edge) => {
+        edge.data = {
+          ...edge.data,
+          _targetRunningStatus: data.status as any,
+        }
+      })
+    })
+    setEdges(newEdges)
   }, [workflowStore, store])
 
   return {

@@ -19,6 +19,7 @@ import type {
 } from '@/models/common'
 import { useToastContext } from '@/app/components/base/toast'
 import AppIcon from '@/app/components/base/app-icon'
+import { noop } from 'lodash-es'
 
 const systemTypes = ['api']
 type ExternalDataToolModalProps = {
@@ -185,7 +186,7 @@ const ExternalDataToolModal: FC<ExternalDataToolModalProps> = ({
   return (
     <Modal
       isShow
-      onClose={() => { }}
+      onClose={noop}
       className='!w-[640px] !max-w-none !p-8 !pb-6'
     >
       <div className='mb-2 text-xl font-semibold text-gray-900'>

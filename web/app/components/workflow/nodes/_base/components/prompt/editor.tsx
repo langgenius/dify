@@ -73,6 +73,7 @@ type Props = {
   titleTooltip?: ReactNode
   inputClassName?: string
   editorContainerClassName?: string
+  placeholder?: string
   placeholderClassName?: string
   titleClassName?: string
   required?: boolean
@@ -108,6 +109,7 @@ const Editor: FC<Props> = ({
   gradientBorder = true,
   titleTooltip,
   inputClassName,
+  placeholder,
   placeholderClassName,
   titleClassName,
   editorContainerClassName,
@@ -223,6 +225,7 @@ const Editor: FC<Props> = ({
                 <div className={cn(isExpand ? 'grow' : 'max-h-[536px]', 'relative min-h-[56px] overflow-y-auto  px-3', editorContainerClassName)}>
                   <PromptEditor
                     key={controlPromptEditorRerenderKey}
+                    placeholder={placeholder}
                     placeholderClassName={placeholderClassName}
                     instanceId={instanceId}
                     compact

@@ -30,6 +30,7 @@ class NodeRunMetadataKey(StrEnum):
     ITERATION_DURATION_MAP = "iteration_duration_map"  # single iteration duration if iteration node runs
     LOOP_DURATION_MAP = "loop_duration_map"  # single loop duration if loop node runs
     ERROR_STRATEGY = "error_strategy"  # node in continue on error mode return the field
+    LOOP_VARIABLE_MAP = "loop_variable_map"  # single loop variable output
 
 
 class NodeRunResult(BaseModel):

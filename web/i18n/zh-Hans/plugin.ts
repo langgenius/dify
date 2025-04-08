@@ -1,4 +1,7 @@
 const translation = {
+  metadata: {
+    title: '插件',
+  },
   category: {
     all: '全部',
     models: '模型',
