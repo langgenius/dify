@@ -2,8 +2,9 @@ import atexit
 import os
 import platform
 import socket
+from typing import Union
 
-from flask_login import user_loaded_from_request, user_logged_in
+from flask_login import user_loaded_from_request, user_logged_in  # type: ignore
 from opentelemetry import trace
 from opentelemetry.exporter.otlp.proto.http.metric_exporter import OTLPMetricExporter
 from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
@@ -64,6 +65,8 @@ def init_app(app: DifyApp):
         sampler = ParentBasedTraceIdRatio(dify_config.OTEL_SAMPLING_RATE)
         provider = TracerProvider(resource=resource, sampler=sampler)
         set_tracer_provider(provider)
+        exporter: Union[OTLPSpanExporter, ConsoleSpanExporter]
+        metric_exporter: Union[OTLPMetricExporter, ConsoleMetricExporter]
         if dify_config.OTEL_EXPORTER_TYPE == "otlp":
             exporter = OTLPSpanExporter(
                 endpoint=dify_config.OTLP_BASE_ENDPOINT + "/v1/traces",
@@ -122,4 +125,6 @@ def setup_context_propagation():
 
 
 def shutdown_tracer():
-    trace.get_tracer_provider().shutdown()
+    provider = trace.get_tracer_provider()
+    if hasattr(provider, "force_flush"):
+        provider.force_flush()
