@@ -169,8 +169,11 @@ const translation = {
     fullSolution: '升级您的套餐以获得更多空间。',
   },
   apps: {
-    fullTipLine1: '升级您的套餐以',
-    fullTipLine2: '构建更多的程序。',
+    fullTip1: '升级以创建更多应用',
+    fullTip1des: '您已达到此计划上构建应用的限制',
+    fullTip2: '计划限制已达到',
+    fullTip2des: '推荐您清理不活跃的应用或者联系我们',
+    contactUs: '联系我们',
   },
   annotatedResponse: {
     fullTipLine1: '升级您的套餐以',

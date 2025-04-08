@@ -641,7 +641,6 @@ class DatasetRetrievalSettingApi(Resource):
                 VectorType.RELYT
                 | VectorType.TIDB_VECTOR
                 | VectorType.CHROMA
-                | VectorType.TENCENT
                 | VectorType.PGVECTO_RS
                 | VectorType.BAIDU
                 | VectorType.VIKINGDB
@@ -664,6 +663,8 @@ class DatasetRetrievalSettingApi(Resource):
                 | VectorType.MILVUS
                 | VectorType.OPENGAUSS
                 | VectorType.OCEANBASE
+                | VectorType.TABLESTORE
+                | VectorType.TENCENT
             ):
                 return {
                     "retrieval_method": [
@@ -687,7 +688,6 @@ class DatasetRetrievalSettingMockApi(Resource):
                 | VectorType.RELYT
                 | VectorType.TIDB_VECTOR
                 | VectorType.CHROMA
-                | VectorType.TENCENT
                 | VectorType.PGVECTO_RS
                 | VectorType.BAIDU
                 | VectorType.VIKINGDB
@@ -708,6 +708,8 @@ class DatasetRetrievalSettingMockApi(Resource):
                 | VectorType.LINDORM
                 | VectorType.OPENGAUSS
                 | VectorType.OCEANBASE
+                | VectorType.TABLESTORE
+                | VectorType.TENCENT
             ):
                 return {
                     "retrieval_method": [

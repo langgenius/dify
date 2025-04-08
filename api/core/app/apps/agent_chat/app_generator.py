@@ -80,7 +80,7 @@ class AgentChatAppGenerator(MessageBasedAppGenerator):
         :param user: account or end user
         :param args: request args
         :param invoke_from: invoke from source
-        :param stream: is stream
+        :param streaming: is stream
         """
         if not streaming:
             raise ValueError("Agent Chat App does not support blocking mode")

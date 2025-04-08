@@ -22,6 +22,7 @@ export const isComparisonOperatorNeedTranslate = (operator?: ComparisonOperator)
 export const getOperators = (type?: MetadataFilteringVariableType) => {
   switch (type) {
     case MetadataFilteringVariableType.string:
+    case MetadataFilteringVariableType.select:
       return [
         ComparisonOperator.is,
         ComparisonOperator.isNot,

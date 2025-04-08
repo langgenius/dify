@@ -26,7 +26,7 @@ class AdvancedSettings(BaseModel):
 
 class VariableAssignerNodeData(BaseNodeData):
     """
-    Knowledge retrieval Node Data.
+    Variable Assigner Node Data.
     """
 
     type: str = "variable-assigner"

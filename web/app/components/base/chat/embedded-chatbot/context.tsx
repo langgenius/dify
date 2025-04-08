@@ -14,6 +14,7 @@ import type {
   AppMeta,
   ConversationItem,
 } from '@/models/share'
+import { noop } from 'lodash-es'
 
 export type EmbeddedChatbotContextValue = {
   appInfoError?: any
@@ -46,6 +47,8 @@ export type EmbeddedChatbotContextValue = {
   setClearChatList: (state: boolean) => void
   isResponding?: boolean
   setIsResponding: (state: boolean) => void,
+  currentConversationInputs: Record<string, any> | null,
+  setCurrentConversationInputs: (v: Record<string, any>) => void,
 }
 
 export const EmbeddedChatbotContext = createContext<EmbeddedChatbotContextValue>({
@@ -55,20 +58,22 @@ export const EmbeddedChatbotContext = createContext<EmbeddedChatbotContextValue>
   conversationList: [],
   newConversationInputs: {},
   newConversationInputsRef: { current: {} },
-  handleNewConversationInputsChange: () => {},
+  handleNewConversationInputsChange: noop,
   inputsForms: [],
-  handleNewConversation: () => {},
-  handleStartChat: () => {},
-  handleChangeConversation: () => {},
-  handleNewConversationCompleted: () => {},
+  handleNewConversation: noop,
+  handleStartChat: noop,
+  handleChangeConversation: noop,
+  handleNewConversationCompleted: noop,
   chatShouldReloadKey: '',
   isMobile: false,
   isInstalledApp: false,
-  handleFeedback: () => {},
-  currentChatInstanceRef: { current: { handleStop: () => {} } },
+  handleFeedback: noop,
+  currentChatInstanceRef: { current: { handleStop: noop } },
   clearChatList: false,
-  setClearChatList: () => {},
+  setClearChatList: noop,
   isResponding: false,
-  setIsResponding: () => {},
+  setIsResponding: noop,
+  currentConversationInputs: {},
+  setCurrentConversationInputs: noop,
 })
 export const useEmbeddedChatbotContext = () => useContext(EmbeddedChatbotContext)

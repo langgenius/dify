@@ -157,6 +157,8 @@ const ChatWithHistoryWrap: FC<ChatWithHistoryWrapProps> = ({
     setClearChatList,
     isResponding,
     setIsResponding,
+    currentConversationInputs,
+    setCurrentConversationInputs,
   } = useChatWithHistory(installedAppInfo)
 
   return (
@@ -198,6 +200,8 @@ const ChatWithHistoryWrap: FC<ChatWithHistoryWrapProps> = ({
       setClearChatList,
       isResponding,
       setIsResponding,
+      currentConversationInputs,
+      setCurrentConversationInputs,
     }}>
       <ChatWithHistory className={className} />
     </ChatWithHistoryContext.Provider>

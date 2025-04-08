@@ -204,10 +204,13 @@ const FileUploader = ({
     if (!e.dataTransfer)
       return
 
-    const files = [...e.dataTransfer.files] as File[]
+    let files = [...e.dataTransfer.files] as File[]
+    if (notSupportBatchUpload)
+      files = files.slice(0, 1)
+
     const validFiles = files.filter(isValid)
     initialUpload(validFiles)
-  }, [initialUpload, isValid])
+  }, [initialUpload, isValid, notSupportBatchUpload])
 
   const selectHandle = () => {
     if (fileUploader.current)

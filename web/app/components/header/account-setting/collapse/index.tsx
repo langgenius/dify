@@ -25,7 +25,7 @@ const Collapse = ({
   const toggle = () => setOpen(!open)
 
   return (
-    <div className={classNames('bg-background-section-burn rounded-xl', wrapperClassName)}>
+    <div className={classNames('bg-background-section-burn rounded-xl overflow-hidden', wrapperClassName)}>
       <div className='flex cursor-pointer items-center justify-between px-3 py-2 text-xs font-medium leading-[18px] text-text-secondary' onClick={toggle}>
         {title}
         {

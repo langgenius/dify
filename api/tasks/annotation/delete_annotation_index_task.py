@@ -5,6 +5,7 @@ import click
 from celery import shared_task  # type: ignore
 
 from core.rag.datasource.vdb.vector_factory import Vector
+from extensions.ext_database import db
 from models.dataset import Dataset
 from services.dataset_service import DatasetCollectionBindingService
 
@@ -39,3 +40,5 @@ def delete_annotation_index_task(annotation_id: str, app_id: str, tenant_id: str
         )
     except Exception as e:
         logging.exception("Annotation deleted index failed")
+    finally:
+        db.session.close()

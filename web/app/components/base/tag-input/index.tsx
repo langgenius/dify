@@ -99,7 +99,8 @@ const TagInput: FC<TagInputProps> = ({
                 isInWorkflow && 'max-w-[146px]',
                 `
                 system-xs-regular overflow-hidden rounded-md py-1
-                ${focused && isSpecialMode && 'border border-dashed border-divider-deep px-1.5'}
+                ${isSpecialMode && 'border border-transparent px-1.5'}
+                ${focused && isSpecialMode && 'border-dashed border-divider-deep'}
               `)}
               onFocus={() => setFocused(true)}
               onBlur={handleBlur}
