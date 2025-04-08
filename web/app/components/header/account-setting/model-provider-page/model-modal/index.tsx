@@ -271,7 +271,6 @@ const ModelModal: FC<ModelModalProps> = ({
 
   const renderTitlePrefix = () => {
     const prefix = isEditMode ? t('common.operation.setup') : t('common.operation.add')
-    
     return `${prefix} ${provider.label[language] || provider.label.en_US}`
   }
 
