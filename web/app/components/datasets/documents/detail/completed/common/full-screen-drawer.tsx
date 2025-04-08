@@ -1,6 +1,7 @@
 import React, { type FC } from 'react'
 import Drawer from '@/app/components/base/drawer'
 import classNames from '@/utils/classnames'
+import { noop } from 'lodash-es'
 
 type IFullScreenDrawerProps = {
   isOpen: boolean
@@ -11,7 +12,7 @@ type IFullScreenDrawerProps = {
 
 const FullScreenDrawer: FC<IFullScreenDrawerProps> = ({
   isOpen,
-  onClose = () => {},
+  onClose = noop,
   fullScreen,
   children,
 }) => {

@@ -218,7 +218,7 @@ const GenerationItem: FC<IGenerationItemProps> = ({
               {workflowProcessData && (
                 <>
                   <div className={cn(
-                    'p-3 pb-0',
+                    'p-3',
                     showResultTabs && 'border-b border-divider-subtle',
                   )}>
                     {taskId && (

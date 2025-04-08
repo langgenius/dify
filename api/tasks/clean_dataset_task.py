@@ -11,6 +11,8 @@ from extensions.ext_storage import storage
 from models.dataset import (
     AppDatasetJoin,
     Dataset,
+    DatasetMetadata,
+    DatasetMetadataBinding,
     DatasetProcessRule,
     DatasetQuery,
     Document,
@@ -86,7 +88,9 @@ def clean_dataset_task(
         db.session.query(DatasetProcessRule).filter(DatasetProcessRule.dataset_id == dataset_id).delete()
         db.session.query(DatasetQuery).filter(DatasetQuery.dataset_id == dataset_id).delete()
         db.session.query(AppDatasetJoin).filter(AppDatasetJoin.dataset_id == dataset_id).delete()
-
+        # delete dataset metadata
+        db.session.query(DatasetMetadata).filter(DatasetMetadata.dataset_id == dataset_id).delete()
+        db.session.query(DatasetMetadataBinding).filter(DatasetMetadataBinding.dataset_id == dataset_id).delete()
         # delete files
         if documents:
             for document in documents:
@@ -117,3 +121,5 @@ def clean_dataset_task(
         )
     except Exception:
         logging.exception("Cleaned dataset when dataset deleted failed")
+    finally:
+        db.session.close()

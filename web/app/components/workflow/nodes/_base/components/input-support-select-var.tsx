@@ -12,6 +12,7 @@ import { BlockEnum } from '@/app/components/workflow/types'
 import PromptEditor from '@/app/components/base/prompt-editor'
 import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'
 import Tooltip from '@/app/components/base/tooltip'
+import { noop } from 'lodash-es'
 
 type Props = {
   instanceId?: string
@@ -68,7 +69,7 @@ const Editor: FC<Props> = ({
             show: false,
             selectable: false,
             datasets: [],
-            onAddContext: () => { },
+            onAddContext: noop,
           }}
           historyBlock={{
             show: false,
@@ -77,7 +78,7 @@ const Editor: FC<Props> = ({
               user: 'Human',
               assistant: 'Assistant',
             },
-            onEditRole: () => { },
+            onEditRole: noop,
           }}
           queryBlock={{
             show: false,
