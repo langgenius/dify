@@ -24,7 +24,8 @@ export const useTabSearchParams = ({
   searchParamName = 'category',
   disableSearchParams = false,
 }: UseTabSearchParamsOptions) => {
-  const pathName = usePathname()
+  const pathnameFromHook = usePathname()
+  const pathName = window?.location?.pathname || pathnameFromHook
   const searchParams = useSearchParams()
   const [activeTab, setTab] = useState<string>(
     !disableSearchParams

@@ -2,6 +2,7 @@
 import type { FC } from 'react'
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import useSWR from 'swr'
+import { basePath } from '@/utils/var'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import { usePathname } from 'next/navigation'
@@ -506,6 +507,12 @@ const Configuration: FC = () => {
   useEffect(() => {
     (async () => {
       const collectionList = await fetchCollectionList()
+      if (basePath) {
+        collectionList.forEach((item) => {
+          if (typeof item.icon == 'string' && !item.icon.includes(basePath))
+            item.icon = `${basePath}${item.icon}`
+        })
+      }
       setCollectionList(collectionList)
       fetchAppDetail({ url: '/apps', id: appId }).then(async (res: any) => {
         setMode(res.mode)
