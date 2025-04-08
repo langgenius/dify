@@ -1,11 +1,18 @@
-import logging
+import atexit
 import os
+import platform
+import socket
 
+from flask_login import user_loaded_from_request, user_logged_in
+from opentelemetry import trace
 from opentelemetry.exporter.otlp.proto.http.metric_exporter import OTLPMetricExporter
 from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
 from opentelemetry.instrumentation.flask import FlaskInstrumentor
 from opentelemetry.instrumentation.sqlalchemy import SQLAlchemyInstrumentor
 from opentelemetry.metrics import set_meter_provider
+from opentelemetry.propagate import set_global_textmap
+from opentelemetry.propagators.b3 import B3Format
+from opentelemetry.propagators.composite import CompositePropagator
 from opentelemetry.sdk.metrics import MeterProvider
 from opentelemetry.sdk.metrics.export import ConsoleMetricExporter, PeriodicExportingMetricReader
 from opentelemetry.sdk.resources import Resource
@@ -14,14 +21,13 @@ from opentelemetry.sdk.trace.export import (
     BatchSpanProcessor,
     ConsoleSpanExporter,
 )
+from opentelemetry.sdk.trace.sampling import ParentBasedTraceIdRatio
 from opentelemetry.semconv.resource import ResourceAttributes
-from opentelemetry.trace import get_current_span, get_tracer_provider, set_tracer_provider
+from opentelemetry.trace import get_current_span, set_tracer_provider
+from opentelemetry.trace.propagation.tracecontext import TraceContextTextMapPropagator
 
 from configs import dify_config
 from dify_app import DifyApp
-
-logger = logging.getLogger(__name__)
-from flask_login import user_loaded_from_request, user_logged_in
 
 
 # Set it when user logs in
@@ -36,6 +42,7 @@ def on_user_loaded(_sender, user):
 
 def init_app(app: DifyApp):
     if dify_config.ENABLE_OTEL:
+        setup_context_propagation()
         # Initialize OpenTelemetry
         # Follow Semantic Convertions 1.32.0 to define resource attributes
         resource = Resource(attributes={
@@ -43,8 +50,17 @@ def init_app(app: DifyApp):
             ResourceAttributes.SERVICE_VERSION: f"dify-{dify_config.CURRENT_VERSION}-{dify_config.COMMIT_SHA}",
             ResourceAttributes.PROCESS_PID: os.getpid(),
             ResourceAttributes.DEPLOYMENT_ENVIRONMENT: f"{dify_config.DEPLOY_ENV}-{dify_config.EDITION}",
+            ResourceAttributes.HOST_NAME: socket.gethostname(),
+            ResourceAttributes.HOST_ARCH: platform.machine(),
+            "custom.deployment.git_commit": dify_config.COMMIT_SHA,
+            ResourceAttributes.HOST_ID: platform.node(),
+            ResourceAttributes.OS_TYPE: platform.system().lower(),
+            ResourceAttributes.OS_DESCRIPTION: platform.platform(),
+            ResourceAttributes.OS_VERSION: platform.version(),
         })
-        set_tracer_provider(TracerProvider(resource=resource))
+        sampler = ParentBasedTraceIdRatio(dify_config.OTEL_SAMPLING_RATE) 
+        provider = TracerProvider(resource=resource, sampler=sampler)
+        set_tracer_provider(provider)
         if dify_config.OTEL_EXPORTER_TYPE == "console":
             exporter = ConsoleSpanExporter()
             metric_exporter = ConsoleMetricExporter()
@@ -57,14 +73,33 @@ def init_app(app: DifyApp):
                 endpoint=dify_config.OTLP_BASE_ENDPOINT + "/v1/metrics",
                 headers={"Authorization": f"Bearer {dify_config.OTLP_API_KEY}"},
             )
-        get_tracer_provider().add_span_processor(
-            BatchSpanProcessor(exporter)
+        provider.add_span_processor(
+            BatchSpanProcessor(exporter,
+                               max_queue_size=dify_config.OTEL_MAX_QUEUE_SIZE,
+                               schedule_delay_millis=dify_config.OTEL_BATCH_EXPORT_SCHEDULE_DELAY,
+                               max_export_batch_size=dify_config.OTEL_MAX_EXPORT_BATCH_SIZE,
+                               export_timeout_millis=dify_config.OTEL_BATCH_EXPORT_TIMEOUT)
         )
-        reader = PeriodicExportingMetricReader(metric_exporter)
+        reader = PeriodicExportingMetricReader(metric_exporter,
+                                               export_interval_millis=dify_config.OTEL_METRIC_EXPORT_INTERVAL,
+                                               export_timeout_millis=dify_config.OTEL_METRIC_EXPORT_TIMEOUT)
         set_meter_provider(MeterProvider(resource=resource, metric_readers=[reader]))
-
+        
         instrumentor = FlaskInstrumentor()
         instrumentor.instrument_app(app)
         with app.app_context():
             engines = list(app.extensions['sqlalchemy'].engines.values())
             SQLAlchemyInstrumentor().instrument(enable_commenter=True, engines=engines)
+        atexit.register(shutdown_tracer)
+
+def setup_context_propagation():
+    # Configure propagators
+    set_global_textmap(
+        CompositePropagator([
+            TraceContextTextMapPropagator(),  # W3C trace context
+            B3Format(),                       # B3 propagation (used by many systems)
+        ])
+    )
+
+def shutdown_tracer():
+    trace.get_tracer_provider().shutdown()

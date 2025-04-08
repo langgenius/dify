@@ -63,6 +63,7 @@ opentelemetry-proto = "1.27.0" # 1.28.0 depends on protobuf (>=5.0,<6.0), confli
 opentelemetry-sdk = "1.27.0"
 opentelemetry-semantic-conventions = "0.48b0"
 opentelemetry-util-http = "0.48b0"
+opentelemetry-propagator-b3 = "1.27.0"
 pandas = { version = "~2.2.2", extras = ["performance", "excel", "output-formatting"] }
 pandas-stubs = "~2.2.3.241009"
 pandoc = "~2.4"

@@ -5609,6 +5609,22 @@ opentelemetry-semantic-conventions = "0.48b0"
 opentelemetry-util-http = "0.48b0"
 
 [[package]]
+name = "opentelemetry-propagator-b3"
+version = "1.27.0"
+description = "OpenTelemetry B3 Propagator"
+optional = false
+python-versions = ">=3.8"
+groups = ["main"]
+files = [
+    {file = "opentelemetry_propagator_b3-1.27.0-py3-none-any.whl", hash = "sha256:1dd75e9801ba02e870df3830097d35771a64c123127c984d9b05c352a35aa9cc"},
+    {file = "opentelemetry_propagator_b3-1.27.0.tar.gz", hash = "sha256:39377b6aa619234e08fbc6db79bf880aff36d7e2761efa9afa28b78d5937308f"},
+]
+
+[package.dependencies]
+deprecated = ">=1.2.6"
+opentelemetry-api = ">=1.3,<2.0"
+
+[[package]]
 name = "opentelemetry-proto"
 version = "1.27.0"
 description = "OpenTelemetry Python Proto"
@@ -10270,4 +10286,4 @@ cffi = ["cffi (>=1.11)"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.11,<3.13"
-content-hash = "53a3de3f08a03628f4d687462c6945bafae9b45bd3ec4d31a6029114360fcebe"
+content-hash = "ff6fc51d75af0d1d1ab2104f73f58cd8aba9a3f35c7dcb8cd7dcbfa02dd4d2fe"
