@@ -1,8 +1,8 @@
 'use client'
-import { RiAddCircleFill, RiCloseCircleFill, RiLockLine, RiOrganizationChart } from '@remixicon/react'
+import { RiCloseCircleFill, RiLockLine, RiOrganizationChart } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
 import Avatar from '../../base/avatar'
-import Button from '../../base/button'
+import AddMemberOrGroupDialog from './add-member-or-group-dialog'
 
 type SpecificGroupsOrMembersProps = {
   active: boolean
@@ -24,10 +24,7 @@ export default function SpecificGroupsOrMembers(props: SpecificGroupsOrMembersPr
         <RiLockLine className='w-4 h-4 text-text-primary' />
         <p className='system-sm-medium text-text-primary'>{t('app.accessControlDialog.accessItems.specific')}</p>
       </div>
-      <Button variant='ghost-accent' size='small' className='shrink-0 flex items-center gap-x-0.5'>
-        <RiAddCircleFill className='w-4 h-4' />
-        <span>{t('common.operation.add')}</span>
-      </Button>
+      <AddMemberOrGroupDialog />
     </div>
     <div className='px-1 pb-1'>
       <div className='bg-background-section rounded-lg p-2 flex flex-col gap-y-2'>

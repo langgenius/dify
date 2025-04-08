@@ -20,7 +20,7 @@ const AccessControlDialog = ({
   const close = useCallback(() => onClose?.(), [onClose])
   return (
     <Transition appear show={show} as={Fragment}>
-      <Dialog as="div" open={true} className="relative z-40" onClose={close}>
+      <Dialog as="div" open={true} className="relative z-20" onClose={close}>
         <Transition.Child
           as={Fragment}
           enter="ease-out duration-300"
