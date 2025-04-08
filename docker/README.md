@@ -29,7 +29,7 @@ Welcome to the new `docker` directory for deploying Dify using Docker Compose. T
 4. **SSL Certificate Setup**:
     - Refer `docker/certbot/README.md` to set up SSL certificates using Certbot.
 5. **OpenTelemetry Collector Setup**:
-   - Change `ENABLE_OTEL` to `true` in `api/.env`.
+   - Change `ENABLE_OTEL` to `true` in `.env`.
    - Add `--profile otlp` in your `docker compose up` command.
 
 ### How to Deploy Middleware for Developing Dify
@@ -41,7 +41,7 @@ Welcome to the new `docker` directory for deploying Dify using Docker Compose. T
 2. **Running Middleware Services**:
     - Navigate to the `docker` directory.
     - Execute `docker compose -f docker-compose.middleware.yaml --profile weaviate -p dify up -d` to start the middleware services. (Change the profile to other vector database if you are not using weaviate)
-    - If you want to enable OTLP exporter for OpenTelemetry collector, please change `ENABLE_OTEL` to `true` in `api/.env` and add `--profile otlp` in the `docker compose` command.
+    - If you want to enable OTLP exporter for OpenTelemetry collector, please run `docker compose -f docker-compose.middleware.yaml --profile weaviate --profile otlp -p dify up -d` to start the OTLP exporter.
 
 ### Migration for Existing Users
 
@@ -94,7 +94,8 @@ The `.env.example` file provided in the Docker setup is extensive and covers a w
     - `WEB_API_CORS_ALLOW_ORIGINS`, `CONSOLE_CORS_ALLOW_ORIGINS`: Settings for cross-origin resource sharing.
 
 9. **OpenTelemetry Configuration**:
-    - `EXPOSE_OTLP_HTTP_PORT`, `EXPOSE_OTLP_GRPC_PORT`: Settings for OTLP exporter connection.
+    - `ENABLE_OTEL`: Enable OpenTelemetry collector in api.
+    - `OTLP_BASE_ENDPOINT`: Endpoint for your OTLP exporter.
   
 10. **Other Service-Specific Environment Variables**:
     - Each service like `nginx`, `redis`, `db`, and vector databases have specific environment variables that are directly referenced in the `docker-compose.yaml`.
