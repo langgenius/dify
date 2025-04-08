@@ -717,6 +717,50 @@ workflow:
       targetHandle: target
       type: custom
       zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: question-classifier
+        targetType: tool
+      id: 1741158559444-1744093223338-1744093337863-target
+      source: '1741158559444'
+      sourceHandle: '1744093223338'
+      target: '1744093337863'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: tool
+        targetType: llm
+      id: 1744093337863-source-1744093428286-target
+      source: '1744093337863'
+      sourceHandle: source
+      target: '1744093428286'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: llm
+        targetType: template-transform
+      id: 1744093428286-source-1744093531084-target
+      source: '1744093428286'
+      sourceHandle: source
+      target: '1744093531084'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: template-transform
+        targetType: end
+      id: 1744093531084-source-1744093385250-target
+      source: '1744093531084'
+      sourceHandle: source
+      target: '1744093385250'
+      targetHandle: target
+      type: custom
+      zIndex: 0
     nodes:
     - data:
         desc: ''
@@ -770,11 +814,11 @@ workflow:
       height: 194
       id: '1741157526222'
       position:
-        x: -108.57929564245899
-        y: 544.6023004841712
+        x: 30
+        y: 578
       positionAbsolute:
-        x: -108.57929564245899
-        y: 544.6023004841712
+        x: 30
+        y: 578
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -794,10 +838,10 @@ workflow:
       id: '1741157560922'
       position:
         x: 3374
-        y: 560
+        y: 578
       positionAbsolute:
         x: 3374
-        y: 560
+        y: 578
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -827,7 +871,7 @@ workflow:
 
             错误率相关
 
-            如Request error rate exceeds 0%，日志错误数相关'
+            如Request error rate exceeds 0%'
         - id: '1741319019432'
           name: '网络相关
 
@@ -872,6 +916,10 @@ workflow:
           name: '容器类型
 
             容器被kill'
+        - id: '1744093223338'
+          name: '应用程指标
+
+            日志错误数相关'
         desc: ''
         instruction: '请你从告警事件描述
 
@@ -892,15 +940,15 @@ workflow:
         type: question-classifier
         vision:
           enabled: false
-      height: 720
+      height: 756
       id: '1741158559444'
       position:
-        x: 197.77785673494304
-        y: 703.2841482722955
+        x: 942
+        y: 578
       positionAbsolute:
-        x: 197.77785673494304
-        y: 703.2841482722955
-      selected: true
+        x: 942
+        y: 578
+      selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
@@ -1817,10 +1865,10 @@ workflow:
       id: '1741159085487'
       position:
         x: 2158
-        y: 560
+        y: 578
       positionAbsolute:
         x: 2158
-        y: 560
+        y: 578
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -1867,10 +1915,10 @@ workflow:
       id: '1741162531836'
       position:
         x: 1854
-        y: 1275
+        y: 1293
       positionAbsolute:
         x: 1854
-        y: 1275
+        y: 1293
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -1904,10 +1952,10 @@ workflow:
       id: '1741311244655'
       position:
         x: 2462
-        y: 560
+        y: 578
       positionAbsolute:
         x: 2462
-        y: 560
+        y: 578
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -1935,10 +1983,10 @@ workflow:
       id: '1741311294320'
       position:
         x: 2766
-        y: 560
+        y: 578
       positionAbsolute:
         x: 2766
-        y: 560
+        y: 578
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -1959,10 +2007,10 @@ workflow:
       id: '1741311394752'
       position:
         x: 3070
-        y: 560
+        y: 578
       positionAbsolute:
         x: 3070
-        y: 560
+        y: 578
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -2104,10 +2152,10 @@ workflow:
       id: '1741328045214'
       position:
         x: 1246
-        y: 617
+        y: 635
       positionAbsolute:
         x: 1246
-        y: 617
+        y: 635
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -2249,10 +2297,10 @@ workflow:
       id: '1741328076453'
       position:
         x: 1246
-        y: 711
+        y: 729
       positionAbsolute:
         x: 1246
-        y: 711
+        y: 729
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -2394,10 +2442,10 @@ workflow:
       id: '1741328197695'
       position:
         x: 1246
-        y: 899
+        y: 917
       positionAbsolute:
         x: 1246
-        y: 899
+        y: 917
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -2511,10 +2559,10 @@ workflow:
       id: '1741328213545'
       position:
         x: 1246
-        y: 993
+        y: 1011
       positionAbsolute:
         x: 1246
-        y: 993
+        y: 1011
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -2628,10 +2676,10 @@ workflow:
       id: '1741328346220'
       position:
         x: 1246
-        y: 1087
+        y: 1105
       positionAbsolute:
         x: 1246
-        y: 1087
+        y: 1105
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -2745,10 +2793,10 @@ workflow:
       id: '1741328423453'
       position:
         x: 1246
-        y: 1181
+        y: 1199
       positionAbsolute:
         x: 1246
-        y: 1181
+        y: 1199
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -2862,10 +2910,10 @@ workflow:
       id: '1741328466394'
       position:
         x: 1246
-        y: 1275
+        y: 1293
       positionAbsolute:
         x: 1246
-        y: 1275
+        y: 1293
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -2979,10 +3027,10 @@ workflow:
       id: '1741328742817'
       position:
         x: 1246
-        y: 1369
+        y: 1387
       positionAbsolute:
         x: 1246
-        y: 1369
+        y: 1387
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -3096,10 +3144,10 @@ workflow:
       id: '1741328773213'
       position:
         x: 1246
-        y: 1463
+        y: 1481
       positionAbsolute:
         x: 1246
-        y: 1463
+        y: 1481
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -3213,10 +3261,10 @@ workflow:
       id: '1741328799030'
       position:
         x: 1246
-        y: 1557
+        y: 1575
       positionAbsolute:
         x: 1246
-        y: 1557
+        y: 1575
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -3358,10 +3406,10 @@ workflow:
       id: '1741329632798'
       position:
         x: 1246
-        y: 805
+        y: 823
       positionAbsolute:
         x: 1246
-        y: 805
+        y: 823
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -3431,10 +3479,10 @@ workflow:
       id: '1742366141890'
       position:
         x: 2462
-        y: 1314
+        y: 1332
       positionAbsolute:
         x: 2462
-        y: 1314
+        y: 1332
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -3478,10 +3526,10 @@ workflow:
       id: '1742366303110'
       position:
         x: 2766
-        y: 1218
+        y: 1236
       positionAbsolute:
         x: 2766
-        y: 1218
+        y: 1236
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -3521,10 +3569,10 @@ workflow:
       id: '1742433446760'
       position:
         x: 638
-        y: 560
+        y: 578
       positionAbsolute:
         x: 638
-        y: 560
+        y: 578
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -3666,10 +3714,10 @@ workflow:
       id: '17424339242280'
       position:
         x: 1550
-        y: 617
+        y: 635
       positionAbsolute:
         x: 1550
-        y: 617
+        y: 635
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -3715,11 +3763,11 @@ workflow:
       height: 416
       id: '1742434016239'
       position:
-        x: 2145.168583736809
-        y: 1031.2701292364982
+        x: 2158
+        y: 1184
       positionAbsolute:
-        x: 2145.168583736809
-        y: 1031.2701292364982
+        x: 2158
+        y: 1184
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -3861,10 +3909,10 @@ workflow:
       id: '17424342365860'
       position:
         x: 1550
-        y: 711
+        y: 729
       positionAbsolute:
         x: 1550
-        y: 711
+        y: 729
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -4006,10 +4054,10 @@ workflow:
       id: '17424344697090'
       position:
         x: 1550
-        y: 805
+        y: 823
       positionAbsolute:
         x: 1550
-        y: 805
+        y: 823
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -4151,10 +4199,10 @@ workflow:
       id: '17424345080000'
       position:
         x: 1550
-        y: 899
+        y: 917
       positionAbsolute:
         x: 1550
-        y: 899
+        y: 917
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -4268,10 +4316,10 @@ workflow:
       id: '17424345315500'
       position:
         x: 1550
-        y: 993
+        y: 1011
       positionAbsolute:
         x: 1550
-        y: 993
+        y: 1011
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -4385,10 +4433,10 @@ workflow:
       id: '17424345826170'
       position:
         x: 1550
-        y: 1087
+        y: 1105
       positionAbsolute:
         x: 1550
-        y: 1087
+        y: 1105
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -4502,10 +4550,10 @@ workflow:
       id: '17424346884650'
       position:
         x: 1550
-        y: 1181
+        y: 1199
       positionAbsolute:
         x: 1550
-        y: 1181
+        y: 1199
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -4619,10 +4667,10 @@ workflow:
       id: '17424347242840'
       position:
         x: 1550
-        y: 1275
+        y: 1293
       positionAbsolute:
         x: 1550
-        y: 1275
+        y: 1293
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -4736,10 +4784,10 @@ workflow:
       id: '17424348206030'
       position:
         x: 1550
-        y: 1369
+        y: 1387
       positionAbsolute:
         x: 1550
-        y: 1369
+        y: 1387
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -4853,10 +4901,10 @@ workflow:
       id: '17424348526540'
       position:
         x: 1550
-        y: 1463
+        y: 1481
       positionAbsolute:
         x: 1550
-        y: 1463
+        y: 1481
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -4970,10 +5018,10 @@ workflow:
       id: '17424348570980'
       position:
         x: 1550
-        y: 1557
+        y: 1575
       positionAbsolute:
         x: 1550
-        y: 1557
+        y: 1575
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -5018,10 +5066,10 @@ workflow:
       id: '1742806924635'
       position:
         x: 334
-        y: 560
+        y: 578
       positionAbsolute:
         x: 334
-        y: 560
+        y: 578
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -5189,10 +5237,10 @@ workflow:
       id: '1742979394268'
       position:
         x: 1246
-        y: 1839
+        y: 1857
       positionAbsolute:
         x: 1246
-        y: 1839
+        y: 1857
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -5360,10 +5408,10 @@ workflow:
       id: '1742979595004'
       position:
         x: 1246
-        y: 1933
+        y: 1951
       positionAbsolute:
         x: 1246
-        y: 1933
+        y: 1951
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -5531,10 +5579,10 @@ workflow:
       id: '17429797453350'
       position:
         x: 1246
-        y: 1651
+        y: 1669
       positionAbsolute:
         x: 1246
-        y: 1651
+        y: 1669
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -5702,10 +5750,10 @@ workflow:
       id: '17429797664440'
       position:
         x: 1550
-        y: 1651
+        y: 1669
       positionAbsolute:
         x: 1550
-        y: 1651
+        y: 1669
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -5844,10 +5892,10 @@ workflow:
       id: '1742979828391'
       position:
         x: 1246
-        y: 1745
+        y: 1763
       positionAbsolute:
         x: 1246
-        y: 1745
+        y: 1763
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -5986,10 +6034,10 @@ workflow:
       id: '17429798797920'
       position:
         x: 1550
-        y: 1745
+        y: 1763
       positionAbsolute:
         x: 1550
-        y: 1745
+        y: 1763
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -6157,10 +6205,10 @@ workflow:
       id: '17429835599060'
       position:
         x: 1550
-        y: 1839
+        y: 1857
       positionAbsolute:
         x: 1550
-        y: 1839
+        y: 1857
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -6328,16 +6376,278 @@ workflow:
       id: '17429835940550'
       position:
         x: 1550
-        y: 1933
+        y: 1951
       positionAbsolute:
         x: 1550
-        y: 1933
+        y: 1951
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        desc: ''
+        is_team_authorization: true
+        output_schema: null
+        paramSchemas:
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: Pod name
+            ja_JP: Pod name
+            pt_BR: Pod name
+            zh_Hans: Pod名称
+          label:
+            en_US: Pod name
+            ja_JP: Pod name
+            pt_BR: Pod name
+            zh_Hans: Pod名称
+          llm_description: Pod name
+          max: null
+          min: null
+          name: pod_name
+          options: []
+          placeholder: null
+          precision: null
+          required: false
+          scope: null
+          template: null
+          type: string
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: Namespace
+            ja_JP: Namespace
+            pt_BR: Namespace
+            zh_Hans: 命名空间
+          label:
+            en_US: Namespace
+            ja_JP: Namespace
+            pt_BR: Namespace
+            zh_Hans: 命名空间
+          llm_description: Namespace
+          max: null
+          min: null
+          name: namespace
+          options: []
+          placeholder: null
+          precision: null
+          required: false
+          scope: null
+          template: null
+          type: string
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: Process ID
+            ja_JP: Process ID
+            pt_BR: Process ID
+            zh_Hans: 进程ID
+          label:
+            en_US: Process ID
+            ja_JP: Process ID
+            pt_BR: Process ID
+            zh_Hans: 进程ID
+          llm_description: Process ID
+          max: null
+          min: null
+          name: pid
+          options: []
+          placeholder: null
+          precision: null
+          required: false
+          scope: null
+          template: null
+          type: string
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: Data query start time(Microsecond)
+            ja_JP: Data query start time(Microsecond)
+            pt_BR: Data query start time
+            zh_Hans: 开始时间 (微秒)
+          label:
+            en_US: startTime
+            ja_JP: startTime
+            pt_BR: startTime
+            zh_Hans: startTime
+          llm_description: Data query start time(Microsecond)
+          max: null
+          min: null
+          name: startTime
+          options: []
+          placeholder: null
+          precision: null
+          required: true
+          scope: null
+          template: null
+          type: number
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: Data query end time(Microsecond)
+            ja_JP: Data query end time(Microsecond)
+            pt_BR: Data query end time(Microsecond)
+            zh_Hans: 结束时间 (微秒)
+          label:
+            en_US: endTime
+            ja_JP: endTime
+            pt_BR: endTime
+            zh_Hans: endTime
+          llm_description: Data query end time(Microsecond)
+          max: null
+          min: null
+          name: endTime
+          options: []
+          placeholder: null
+          precision: null
+          required: true
+          scope: null
+          template: null
+          type: number
+        params:
+          endTime: ''
+          namespace: ''
+          pid: ''
+          pod_name: ''
+          startTime: ''
+        provider_id: apo_select
+        provider_name: apo_select
+        provider_type: builtin
+        selected: false
+        title: 日志按错误级别统计的总次数
+        tool_configurations: {}
+        tool_label: 记录了日志解析系统中按错误级别统计的总次数
+        tool_name: 记录了日志解析系统中按错误级别统计的总次数
+        tool_parameters:
+          endTime:
+            type: variable
+            value:
+            - '1741157526222'
+            - endTime
+          namespace:
+            type: mixed
+            value: '{{#1742806924635.namespace#}}'
+          pod_name:
+            type: mixed
+            value: '{{#1742806924635.pod#}}'
+          startTime:
+            type: variable
+            value:
+            - '1741157526222'
+            - startTime
+        type: tool
+      height: 54
+      id: '1744093337863'
+      position:
+        x: 1246
+        y: 2063
+      positionAbsolute:
+        x: 1246
+        y: 2063
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        desc: ''
+        outputs:
+        - value_selector:
+          - '1744093531084'
+          - output
+          variable: text
+        selected: true
+        title: 结束
+        type: end
+      height: 90
+      id: '1744093385250'
+      position:
+        x: 2158
+        y: 2117
+      positionAbsolute:
+        x: 2158
+        y: 2117
+      selected: true
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        context:
+          enabled: false
+          variable_selector: []
+        desc: ''
+        model:
+          completion_params:
+            temperature: 0.7
+          mode: chat
+          name: deepseek-chat
+          provider: langgenius/deepseek/deepseek
+        prompt_template:
+        - role: system
+          text: 你是一个智能助手,帮助用户解决可观测性领域的问题
+        - role: user
+          text: '# 目的
+
+            当前应用一直产生日志错误级别日志，
+
+            # 告警事件标签
+
+            {{#1741157526222.params#}}
+
+            # 输出
+
+            当前应用日志错误升高，该告警无法忽略
+
+            # 日志错误数指标数据
+
+            {{#1744093337863.text#}}'
+        selected: false
+        title: LLM 2
+        type: llm
+        variables: []
+        vision:
+          enabled: false
+      height: 90
+      id: '1744093428286'
+      position:
+        x: 1550
+        y: 2045
+      positionAbsolute:
+        x: 1550
+        y: 2045
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        desc: ''
+        selected: false
+        template: 'false'
+        title: 模板转换
+        type: template-transform
+        variables: []
+      height: 54
+      id: '1744093531084'
+      position:
+        x: 1854
+        y: 2244
+      positionAbsolute:
+        x: 1854
+        y: 2244
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
       width: 244
     viewport:
-      x: 289.1589008663707
-      y: -174.9404993893893
-      zoom: 0.5537771915449453
+      x: 0
+      y: 0
+      zoom: 0.7
