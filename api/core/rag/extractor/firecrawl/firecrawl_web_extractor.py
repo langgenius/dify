@@ -7,11 +7,10 @@ class FirecrawlWebExtractor(BaseExtractor):
     """
     Crawl and scrape websites and return content in clean llm-ready markdown.
 
-
     Args:
         url: The URL to scrape.
-        api_key: The API key for Firecrawl.
-        base_url: The base URL for the Firecrawl API. Defaults to 'https://api.firecrawl.dev'.
+        job_id: The crawl job id.
+        tenant_id: The tenant id.
         mode: The mode of operation. Defaults to 'scrape'. Options are 'crawl', 'scrape' and 'crawl_return_urls'.
         only_main_content: Only return the main content of the page excluding headers, navs, footers, etc.
     """

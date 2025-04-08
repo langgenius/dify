@@ -2,6 +2,7 @@
 
 import { createContext, useContext } from 'use-context-selector'
 import type { ModelAndParameter } from '../types'
+import { noop } from 'lodash-es'
 
 export type DebugWithMultipleModelContextType = {
   multipleModelConfigs: ModelAndParameter[]
@@ -11,8 +12,8 @@ export type DebugWithMultipleModelContextType = {
 }
 const DebugWithMultipleModelContext = createContext<DebugWithMultipleModelContextType>({
   multipleModelConfigs: [],
-  onMultipleModelConfigsChange: () => {},
-  onDebugWithMultipleModelChange: () => {},
+  onMultipleModelConfigsChange: noop,
+  onDebugWithMultipleModelChange: noop,
 })
 
 export const useDebugWithMultipleModelContext = () => useContext(DebugWithMultipleModelContext)

@@ -1,4 +1,5 @@
 import type { FC, FormEvent } from 'react'
+import { useEffect } from 'react'
 import React, { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
@@ -58,6 +59,17 @@ const RunOnce: FC<IRunOnceProps> = ({
     onInputsChange(newInputs)
     inputsRef.current = newInputs
   }, [onInputsChange, inputsRef])
+
+  useEffect(() => {
+    const newInputs: Record<string, any> = {}
+    promptConfig.prompt_variables.forEach((item) => {
+      newInputs[item.key] = ''
+    })
+    onInputsChange(newInputs)
+  }, [promptConfig.prompt_variables])
+
+  if (inputs === null || inputs === undefined || Object.keys(inputs).length === 0)
+    return null
 
   return (
     <div className="">

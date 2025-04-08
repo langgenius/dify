@@ -4,14 +4,16 @@ import useVarList from '../_base/hooks/use-var-list'
 import useOneStepRun from '../_base/hooks/use-one-step-run'
 import type { AgentNodeType } from './types'
 import {
+  useIsChatMode,
   useNodesReadOnly,
 } from '@/app/components/workflow/hooks'
 import { useCallback, useMemo } from 'react'
 import { type ToolVarInputs, VarType } from '../tool/types'
 import { useCheckInstalled, useFetchPluginsInMarketPlaceByIds } from '@/service/use-plugins'
-import type { Var } from '../../types'
+import type { Memory, Var } from '../../types'
 import { VarType as VarKindType } from '../../types'
 import useAvailableVarList from '../_base/hooks/use-available-var-list'
+import produce from 'immer'
 
 export type StrategyStatus = {
   plugin: {
@@ -175,6 +177,13 @@ const useConfig = (id: string, payload: AgentNodeType) => {
     return res
   }, [inputs.output_schema])
 
+  const handleMemoryChange = useCallback((newMemory?: Memory) => {
+    const newInputs = produce(inputs, (draft) => {
+      draft.memory = newMemory
+    })
+    setInputs(newInputs)
+  }, [inputs, setInputs])
+  const isChatMode = useIsChatMode()
   return {
     readOnly,
     inputs,
@@ -202,6 +211,8 @@ const useConfig = (id: string, payload: AgentNodeType) => {
     runResult,
     varInputs,
     outputSchema,
+    handleMemoryChange,
+    isChatMode,
   }
 }
 

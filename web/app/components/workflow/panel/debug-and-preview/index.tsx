@@ -1,5 +1,7 @@
 import {
   memo,
+  useCallback,
+  useEffect,
   useRef,
   useState,
 } from 'react'
@@ -21,13 +23,14 @@ import { BubbleX } from '@/app/components/base/icons/src/vender/line/others'
 import Tooltip from '@/app/components/base/tooltip'
 import ActionButton, { ActionButtonState } from '@/app/components/base/action-button'
 import { useStore } from '@/app/components/workflow/store'
+import { noop } from 'lodash-es'
 
 export type ChatWrapperRefType = {
   handleRestart: () => void
 }
 const DebugAndPreview = () => {
   const { t } = useTranslation()
-  const chatRef = useRef({ handleRestart: () => { } })
+  const chatRef = useRef({ handleRestart: noop })
   const { handleCancelDebugAndPreviewPanel } = useWorkflowInteractions()
   const { handleNodeCancelRunningStatus } = useNodesInteractions()
   const { handleEdgeCancelRunningStatus } = useEdgesInteractions()
@@ -51,12 +54,46 @@ const DebugAndPreview = () => {
     exactMatch: true,
   })
 
+  const [panelWidth, setPanelWidth] = useState(420)
+  const [isResizing, setIsResizing] = useState(false)
+
+  const startResizing = useCallback((e: React.MouseEvent) => {
+    e.preventDefault()
+    setIsResizing(true)
+  }, [])
+
+  const stopResizing = useCallback(() => {
+    setIsResizing(false)
+  }, [])
+
+  const resize = useCallback((e: MouseEvent) => {
+    if (isResizing) {
+      const newWidth = window.innerWidth - e.clientX
+      if (newWidth > 420 && newWidth < 1024)
+        setPanelWidth(newWidth)
+    }
+  }, [isResizing])
+
+  useEffect(() => {
+    window.addEventListener('mousemove', resize)
+    window.addEventListener('mouseup', stopResizing)
+    return () => {
+      window.removeEventListener('mousemove', resize)
+      window.removeEventListener('mouseup', stopResizing)
+    }
+  }, [resize, stopResizing])
+
   return (
     <div
       className={cn(
-        'flex h-full w-[420px] flex-col rounded-l-2xl border border-r-0 border-components-panel-border bg-chatbot-bg shadow-xl',
+        'relative flex h-full flex-col rounded-l-2xl border border-r-0 border-components-panel-border bg-chatbot-bg shadow-xl',
       )}
+      style={{ width: `${panelWidth}px` }}
     >
+      <div
+        className="absolute bottom-0 left-[3px] top-1/2 z-50 h-6 w-[3px] cursor-col-resize rounded bg-gray-300"
+        onMouseDown={startResizing}
+      />
       <div className='system-xl-semibold flex shrink-0 items-center justify-between px-4 pb-2 pt-3 text-text-primary'>
         <div className='h-8'>{t('workflow.common.debugAndPreview').toLocaleUpperCase()}</div>
         <div className='flex items-center gap-1'>
