@@ -28,6 +28,9 @@ Welcome to the new `docker` directory for deploying Dify using Docker Compose. T
     - To specify a vector database, set the `VECTOR_STORE` variable in your `.env` file to your desired vector database service, such as `milvus`, `weaviate`, or `opensearch`.
 4. **SSL Certificate Setup**:
     - Refer `docker/certbot/README.md` to set up SSL certificates using Certbot.
+5. **OpenTelemetry Collector Setup**:
+   - Change `ENABLE_OTEL` to `true` in `api/.env`.
+   - Add `--profile otlp` in your `docker compose up` command.
 
 ### How to Deploy Middleware for Developing Dify
 
@@ -37,6 +40,7 @@ Welcome to the new `docker` directory for deploying Dify using Docker Compose. T
     - Ensure the `middleware.env` file is created by running `cp middleware.env.example middleware.env` (refer to the `middleware.env.example` file).
 2. **Running Middleware Services**:
     - Execute `docker compose -f docker-compose.middleware.yaml --profile weaviate -p dify up -d` to start the middleware services. (Change the profile to other vector database if you are not using weaviate)
+    - If you want to enable OTLP exporter for OpenTelemetry collector, please change `ENABLE_OTEL` to `true` in `api/.env` and add `--profile otlp` in your `docker compose` command.
 
 ### Migration for Existing Users
 

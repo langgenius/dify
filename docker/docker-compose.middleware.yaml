@@ -150,6 +150,8 @@ services:
       - "${EXPOSE_WEAVIATE_PORT:-8080}:8080"
 
   otlp-exporter:
+    profiles:
+      - otlp
     image: otel/opentelemetry-collector-contrib:0.123.0
     restart: always
     env_file:

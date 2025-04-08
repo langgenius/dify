@@ -625,6 +625,8 @@ services:
   otlp-exporter:
     image: otel/opentelemetry-collector-contrib:0.123.0
     restart: always
+    profiles:
+      - otlp
     volumes:
       - ./otlp/collector-config.yaml:/etc/otelcol-contrib/config.yaml
     ports:

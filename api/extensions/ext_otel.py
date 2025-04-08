@@ -23,8 +23,9 @@ from opentelemetry.sdk.trace.export import (
 )
 from opentelemetry.sdk.trace.sampling import ParentBasedTraceIdRatio
 from opentelemetry.semconv.resource import ResourceAttributes
-from opentelemetry.trace import get_current_span, set_tracer_provider
+from opentelemetry.trace import Span, get_current_span, set_tracer_provider
 from opentelemetry.trace.propagation.tracecontext import TraceContextTextMapPropagator
+from opentelemetry.trace.status import StatusCode
 
 from configs import dify_config
 from dify_app import DifyApp
@@ -61,10 +62,7 @@ def init_app(app: DifyApp):
         sampler = ParentBasedTraceIdRatio(dify_config.OTEL_SAMPLING_RATE) 
         provider = TracerProvider(resource=resource, sampler=sampler)
         set_tracer_provider(provider)
-        if dify_config.OTEL_EXPORTER_TYPE == "console":
-            exporter = ConsoleSpanExporter()
-            metric_exporter = ConsoleMetricExporter()
-        else:
+        if dify_config.OTEL_EXPORTER_TYPE == "otlp":
             exporter = OTLPSpanExporter(
                 endpoint=dify_config.OTLP_BASE_ENDPOINT + "/v1/traces",
                 headers={"Authorization": f"Bearer {dify_config.OTLP_API_KEY}"},
@@ -73,6 +71,11 @@ def init_app(app: DifyApp):
                 endpoint=dify_config.OTLP_BASE_ENDPOINT + "/v1/metrics",
                 headers={"Authorization": f"Bearer {dify_config.OTLP_API_KEY}"},
             )
+        else:
+            # Fallback to console exporter
+            exporter = ConsoleSpanExporter()
+            metric_exporter = ConsoleMetricExporter()
+            
         provider.add_span_processor(
             BatchSpanProcessor(exporter,
                                max_queue_size=dify_config.OTEL_MAX_QUEUE_SIZE,
@@ -84,9 +87,14 @@ def init_app(app: DifyApp):
                                                export_interval_millis=dify_config.OTEL_METRIC_EXPORT_INTERVAL,
                                                export_timeout_millis=dify_config.OTEL_METRIC_EXPORT_TIMEOUT)
         set_meter_provider(MeterProvider(resource=resource, metric_readers=[reader]))
-        
+        def response_hook(span: Span, status: str, response_headers: list):
+            if span and span.is_recording():
+                if status.startswith("2"):
+                    span.set_status(StatusCode.OK)
+                else:
+                    span.set_status(StatusCode.ERROR, status)
         instrumentor = FlaskInstrumentor()
-        instrumentor.instrument_app(app)
+        instrumentor.instrument_app(app, response_hook=response_hook)
         with app.app_context():
             engines = list(app.extensions['sqlalchemy'].engines.values())
             SQLAlchemyInstrumentor().instrument(enable_commenter=True, engines=engines)

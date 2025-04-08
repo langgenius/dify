@@ -26,7 +26,7 @@ class OTelConfig(BaseSettings):
     
     OTEL_EXPORTER_TYPE: str = Field(
         description="OTEL exporter type",
-        default="console",
+        default="otlp",
     )
 
     OTEL_SAMPLING_RATE: float = Field(
