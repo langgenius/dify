@@ -1062,11 +1062,11 @@ workflow:
       height: 1408
       id: '1741497176064'
       position:
-        x: 4507.32604512157
-        y: 801.7180845339217
+        x: 4286
+        y: 904
       positionAbsolute:
-        x: 4507.32604512157
-        y: 801.7180845339217
+        x: 4286
+        y: 904
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -1087,8 +1087,8 @@ workflow:
         x: 24
         y: 68
       positionAbsolute:
-        x: 4531.32604512157
-        y: 869.7180845339217
+        x: 4310
+        y: 972
       selectable: false
       selected: false
       sourcePosition: right
@@ -1126,8 +1126,8 @@ workflow:
         x: 247.70722025930104
         y: 65
       positionAbsolute:
-        x: 4755.033265380871
-        y: 866.7180845339217
+        x: 4533.707220259301
+        y: 969
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -1276,8 +1276,8 @@ workflow:
         x: 844.0068118865438
         y: 800.2561082923241
       positionAbsolute:
-        x: 5351.332857008114
-        y: 1601.9741928262458
+        x: 5130.006811886544
+        y: 1704.2561082923241
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -1299,11 +1299,11 @@ workflow:
       height: 90
       id: '1741502839759'
       position:
-        x: 8438
-        y: 880
+        x: 8254
+        y: 904
       positionAbsolute:
-        x: 8438
-        y: 880
+        x: 8254
+        y: 904
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -1329,22 +1329,23 @@ workflow:
         - id: 2b2ad468-efcd-4bcc-aeb9-d53d2f2770ad
           role: user
           text: "# 目的\n根据各方向上的北极星指标数据\n分析应用 {{#1741497181784.pod#}} \n是否受到告警事件 {{#1742807803325.alertName#}}的影响，并初步判断告警的根因方向。\n\
-            # 注意\n输入数据中，各方向的数据包含该方向线程耗时数据和该方向的相关数据。如：网络耗时会带上应用程序的网络RTT指标。\n# 分析规则\n\
-            1.先看哪一个类型数据变化最大（显著升高要比其他类型大, 且值变化最大），如果有直接，按下面指定方向给出建议。\n同时结合线程历史P90分析变化，确认数据是否在合理区间\n\
-            注： P90反应最大最小范围内波动。虽然波动幅度可能较大，但从长期来看，这种波动是正常的。分析数据时，需要找出真正的‘突变’，即短时间内发生的异常剧烈变化。‘突变’的定义是：相比前后的数据点，波动值在极短时间内（比如\
-            \ 1-2 个时间步）出现显著的跳跃，且这种跳跃明显超出正常波动模式（例如，变化幅度远超平均变化率，或与趋势不符）。请忽略那些属于正常范围（P90范围内）内的常规波动，只关注异常突变。\n\
-            如果发现有两种类型变化趋势近似，则优先级从高到低分析\n2.应用程序CPU耗时升高，建议检查代码是否有过多嵌套，检查出问题后可进行回滚修复\n\
-            3.应用程序抢占CPU高，建议登录机器检查其他应用程序是否在抢占\n4.如果net,epoll升高，同时要分析应用rtt是否正常\n如果rtt异常，建议用户检查网络是否存在问题；如果rtt正常，建议用户排查下游问题\n\
-            5.file类型升高，建议查看应用程序是否打开过多文件\n\n# 输出格式 \n## 应用 {{#1741497181784.pod#}}\
-            \ \n北极星指标变化趋势的总结\n - 列出北极星指标 的变化情况，用简洁语言描述\n- 如果无显著变化，明确说明：“未观察到明显变化”。\n\
-            ## 告警事件初步根因结论 \n- 总结告警 是否影响应用，\n结合服务的北极星指标和相关指标数据，分析可能的根因\n同时只能给一个方向的建议。\n\
+            # 输入数据说明\n\n各方向数据包含线程耗时及相关指标，例如：网络耗时会附带应用程序的网络 RTT 指标。\n# 分析规则\n识别主要变化方向\n\
+            找出变化最大的数据类型（显著升高且幅度远超其他类型）。\n如果 CPU 或 runQ 耗时显著升高（且 net、epoll 无明显变化），则定位为\
+            \ CPU 方向问题，避免误判为网络问题。\n结合线程历史 P90 数据，判断变化是否超出合理区间。\nP90 定义：反映最大最小范围内的正常波动。需关注短时间内（1-2\
+            \ 个时间步）的异常突变（显著跳跃，超出平均变化率或趋势），忽略 P90 范围内的常规波动。\n若多种类型变化趋势接近，按以下优先级分析（从高到低）。\n\
+            根因方向及建议\nCPU 耗时升高：建议检查代码是否存在过多嵌套，确认问题后可回滚修复。\nCPU 抢占高：建议登录机器，检查是否有其他应用程序抢占资源。\n\
+            Net 或 epoll 耗时显著升高：\n检查网络 RTT（单位：秒，< 0.05 为正常）。\nRTT 异常：建议排查网络问题；RTT 正常：建议检查下游服务。\n\
+            File 耗时升高：建议检查应用程序是否打开过多文件。\n# 输出格式 \n## 应用 {{#1741497181784.pod#}} \n\
+            北极星指标变化趋势的总结\n - 列出北极星指标 的变化情况，用简洁语言描述\n- 如果无显著变化，明确说明：“未观察到明显变化”。\n##\
+            \ 告警事件初步根因结论 \n- 总结告警 是否影响应用，\n结合服务的北极星指标和相关指标数据，分析可能的根因\n同时只能给一个方向的建议。\n\
             注：认为网络方向有问题时，如果RTT正常，则描述修改为是下游方向网络问题\n# 输入数据 \n- cpu方向数据\n{{#1742980933811.text#}}\n\
             历史CPU耗时P90\n{{#1743149606391.text#}}\n- net 方向数据\n{{#1742981275937.text#}}\n\
             历史Net耗时P90\n{{#1743150910103.text#}}\n- file 方向数据\n{{#1742981271838.text#}}\n\
             历史file 耗时 P90\n{{#1743152043813.text#}}\n- epoll方向数据\n{{#1742981278010.text#}}\n\
             历史epoll耗时P90\n{{#1743152103020.text#}}\n- runq方向数据\n{{#1742981280434.text#}}\n\
-            历史runq耗时P90\n{{#1743152169252.text#}}\n\n# 注意事项 \n- 使用简洁、清晰的语言，避免技术术语过度堆砌，确保输出易于理解。"
-        selected: false
+            历史runq耗时P90\n{{#1743152169252.text#}}\n\n# 注意事项\nP90 数据中，JSON 键包括线程 ID，max\
+            \ 和 min 表示过去 1 小时的最大最小 P90 值。\n输出语言需简洁清晰，避免过多技术术语，确保易读。"
+        selected: true
         title: llm analysis root cause
         type: llm
         variables: []
@@ -1357,9 +1358,9 @@ workflow:
         x: 2472.850022241196
         y: 495.6222275962382
       positionAbsolute:
-        x: 6980.176067362766
-        y: 1297.3403121301599
-      selected: false
+        x: 6758.850022241196
+        y: 1399.6222275962382
+      selected: true
       sourcePosition: right
       targetPosition: left
       type: custom
@@ -1439,12 +1440,12 @@ workflow:
       height: 90
       id: '1741512806512'
       position:
-        x: 8070
-        y: 916
+        x: 7950
+        y: 904
       positionAbsolute:
-        x: 8070
-        y: 916
-      selected: true
+        x: 7950
+        y: 904
+      selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
@@ -1452,8 +1453,7 @@ workflow:
     - data:
         desc: ''
         selected: false
-        template: The service and node information are both empty. The root cause
-          cannot be analyzed at present.
+        template: 无关联的pod信息，且服务和节点信息均为空，信息不足暂时无法分析根因。
         title: unsupport alert
         type: template-transform
         variables: []
@@ -1770,8 +1770,8 @@ workflow:
         x: 76.97060259216505
         y: 363.9210031388636
       positionAbsolute:
-        x: 4584.296647713735
-        y: 1165.6390876727853
+        x: 4362.970602592165
+        y: 1267.9210031388636
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -1832,8 +1832,8 @@ workflow:
         x: 1013.1944929957504
         y: 157.34078070824808
       positionAbsolute:
-        x: 5520.52053811732
-        y: 959.0588652421698
+        x: 5299.19449299575
+        y: 1061.340780708248
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -1875,8 +1875,8 @@ workflow:
         x: 592.7847463655689
         y: 258.56082085093817
       positionAbsolute:
-        x: 5100.110791487139
-        y: 1060.2789053848599
+        x: 4878.784746365569
+        y: 1162.5608208509382
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -1905,8 +1905,8 @@ workflow:
         x: 2944.360125927147
         y: 216.75503228886544
       positionAbsolute:
-        x: 7451.686171048717
-        y: 1018.4731168227871
+        x: 7230.360125927147
+        y: 1120.7550322888656
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -2054,8 +2054,8 @@ workflow:
         x: 837.913049217997
         y: 567.6173152328563
       positionAbsolute:
-        x: 5345.239094339568
-        y: 1369.335399766778
+        x: 5123.9130492179975
+        y: 1471.6173152328563
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -2345,8 +2345,8 @@ workflow:
         x: 838.2707565556775
         y: 677.0915533804653
       positionAbsolute:
-        x: 5345.596801677248
-        y: 1478.809637914387
+        x: 5124.2707565556775
+        y: 1581.0915533804653
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -2569,8 +2569,8 @@ workflow:
         x: 817.3433448742644
         y: 386.77445077825655
       positionAbsolute:
-        x: 5324.6693899958345
-        y: 1188.4925353121782
+        x: 5103.343344874264
+        y: 1290.7744507782566
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -2745,8 +2745,8 @@ workflow:
         x: 829.6661633624499
         y: 478.0639330308825
       positionAbsolute:
-        x: 5336.99220848402
-        y: 1279.7820175648042
+        x: 5115.66616336245
+        y: 1382.0639330308825
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -2866,8 +2866,8 @@ workflow:
         x: 501.0045489698464
         y: 384.9951556082583
       positionAbsolute:
-        x: 5008.330594091416
-        y: 1186.71324014218
+        x: 4787.004548969846
+        y: 1288.9951556082583
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -2987,8 +2987,8 @@ workflow:
         x: 502.3624003022592
         y: 478.98654261939305
       positionAbsolute:
-        x: 5009.68844542383
-        y: 1280.7046271533147
+        x: 4788.36240030226
+        y: 1382.986542619393
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -3108,8 +3108,8 @@ workflow:
         x: 507.1563167397626
         y: 565.5281468443313
       positionAbsolute:
-        x: 5014.482361861333
-        y: 1367.246231378253
+        x: 4793.156316739763
+        y: 1469.5281468443313
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -3229,8 +3229,8 @@ workflow:
         x: 513.7505744250511
         y: 675.3340235425774
       positionAbsolute:
-        x: 5021.076619546621
-        y: 1477.052108076499
+        x: 4799.750574425051
+        y: 1579.3340235425774
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -3350,8 +3350,8 @@ workflow:
         x: 517.7154434927047
         y: 802.0976129954249
       positionAbsolute:
-        x: 5025.041488614275
-        y: 1603.8156975293466
+        x: 4803.715443492705
+        y: 1706.097612995425
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -3417,8 +3417,8 @@ workflow:
         x: 1523.5849163475727
         y: 369.82226364108806
       positionAbsolute:
-        x: 6030.910961469142
-        y: 1171.5403481750097
+        x: 5809.584916347572
+        y: 1273.822263641088
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -3485,8 +3485,8 @@ workflow:
         x: 1558.557136936397
         y: 472.1294984224769
       positionAbsolute:
-        x: 6065.883182057967
-        y: 1273.8475829563986
+        x: 5844.557136936397
+        y: 1376.129498422477
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -3555,8 +3555,8 @@ workflow:
         x: 1563.9713697080979
         y: 586.9524528027102
       positionAbsolute:
-        x: 6071.297414829668
-        y: 1388.670537336632
+        x: 5849.971369708098
+        y: 1490.9524528027102
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -3625,8 +3625,8 @@ workflow:
         x: 1536.393337231676
         y: 714.101728498571
       positionAbsolute:
-        x: 6043.719382353246
-        y: 1515.8198130324927
+        x: 5822.393337231676
+        y: 1618.101728498571
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -3693,8 +3693,8 @@ workflow:
         x: 1522.4926197483228
         y: 809.6780420321629
       positionAbsolute:
-        x: 6029.818664869893
-        y: 1611.3961265660846
+        x: 5808.492619748323
+        y: 1713.678042032163
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -3743,9 +3743,7 @@ workflow:
         - id: '1742462167200'
           name: 内存相关
         - id: '1742463856746'
-          name: '事件类型
-
-            容器被killed,重启'
+          name: 容器重启事件
         - id: '1742464231696'
           name: 未知类型
         desc: ''
@@ -3948,8 +3946,8 @@ workflow:
         x: 544.0386199547656
         y: 125.67116500938346
       positionAbsolute:
-        x: 5051.364665076336
-        y: 927.3892495433051
+        x: 4830.038619954766
+        y: 1029.6711650093835
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -4640,24 +4638,23 @@ workflow:
           text: 你是一个可观性领域的智能助手，帮助用户分析问题
         - id: 2b2ad468-efcd-4bcc-aeb9-d53d2f2770ad
           role: user
-          text: "# 目的\n根据各方向上的北极星指标数据\n分析应用 {{#17430589567120.pod#}}\n是否受到告警事件 {{#1742807803325.alertName#}}的影响，并初步判断告警的根因方向。\n\
-            # 注意\n输入数据中，各方向的数据包含该方向线程耗时数据和该方向的相关数据。如：网络耗时会带上应用程序的网络RTT指标。\n# 分析规则\n\
-            1.先看哪一个类型数据变化最大（显著升高要比其他类型大, 且值变化最大），如果有直接，按下面指定方向给出建议。\n同时结合线程历史P90分析变化，确认数据是否在合理区间\n\
-            注： P90反应最大最小范围内波动。虽然波动幅度可能较大，但从长期来看，这种波动是正常的。分析数据时，需要找出真正的‘突变’，即短时间内发生的异常剧烈变化。‘突变’的定义是：相比前后的数据点，波动值在极短时间内（比如\
-            \ 1-2 个时间步）出现显著的跳跃，且这种跳跃明显超出正常波动模式（例如，变化幅度远超平均变化率，或与趋势不符）。请忽略那些属于正常范围（P90范围内）内的常规波动，只关注异常突变。\n\
-            如果发现有两种类型变化趋势近似，则优先级从高到低分析\n2.应用程序CPU耗时升高，建议用户检查代码是否有过多嵌套，检查出问题后可进行回滚修复\n\
-            3.应用程序抢占CPU高，建议用户登录机器检查其他应用程序是否在抢占\n4.如果net,epoll升高，同时要分析应用rtt是否正常\n注：网络\
-            \ RTT 指标（单位：秒，若值 < 0.05 则网络正常）\n如果rtt异常升高，建议用户检查网络是否存在问题；如果rtt正常，建议用户排查下游服务问题！\n\
-            5.file类型升高，建议用户查看应用程序是否打开过多文件\n\n# 输出格式 \n## 应用 {{#17430589567120.pod#}}\n\
-            北极星指标变化趋势的总结\n - 列出北极星指标 的变化情况，用简洁语言描述\n- 如果无显著变化，明确说明：“未观察到明显变化”。\n##\
-            \ 告警事件初步根因结论 \n- 总结告警 是否影响应用，\n结合服务的北极星指标和相关指标数据，分析可能的根因\n同时只能给一个方向的建议。建议参考分析规则\n\
-            注：认为网络方向有问题时，如果RTT正常，则描述修改为是下游方向网络问题\n# 输入数据 \n- cpu方向数据\n{{#17430595248160.text#}}\n\
+          text: "# 目的\n根据各方向的北极星指标数据，分析应用 {{#17430589567120.pod#}} 是否受到告警事件 {{#1742807803325.alertName#}}\
+            \ 的影响，并初步判断告警的根因方向。\n# 输入数据说明\n\n各方向数据包含线程耗时及相关指标，例如：网络耗时会附带应用程序的网络 RTT\
+            \ 指标。\n# 分析规则\n识别主要变化方向\n找出变化最大的数据类型（显著升高且幅度远超其他类型）。\n如果 CPU 或 runQ 耗时显著升高（且\
+            \ net、epoll 无明显变化），则定位为 CPU 方向问题，避免误判为网络问题。\n结合线程历史 P90 数据，判断变化是否超出合理区间。\n\
+            P90 定义：反映最大最小范围内的正常波动。需关注短时间内（1-2 个时间步）的异常突变（显著跳跃，超出平均变化率或趋势），忽略 P90 范围内的常规波动。\n\
+            若多种类型变化趋势接近，按以下优先级分析（从高到低）。\n根因方向及建议\nCPU 耗时升高：建议检查代码是否存在过多嵌套，确认问题后可回滚修复。\n\
+            CPU 抢占高：建议登录机器，检查是否有其他应用程序抢占资源。\nNet 或 epoll 耗时显著升高：\n检查网络 RTT（单位：秒，<\
+            \ 0.05 为正常）。\nRTT 异常：建议排查网络问题；RTT 正常：建议检查下游服务。\nFile 耗时升高：建议检查应用程序是否打开过多文件。\n\
+            # 输出格式\n应用 {{#17430589567120.pod#}}\n北极星指标变化趋势总结\n简述各北极星指标变化情况。\n若无显著变化，明确说明：“未观察到明显变化”。\n\
+            告警事件初步根因结论\n说明告警是否影响应用。\n结合北极星指标及相关数据，分析可能的根因，并给出单一方向建议（参考分析规则）。\n注：若怀疑网络或\
+            \ epoll 问题，且 RTT 正常，则定位为下游服务网络问题。\n# 输入数据 \n- cpu方向数据\n{{#17430595248160.text#}}\n\
             cpu耗时历史P90数据\n{{#1743149089034.text#}}\n- net 方向数据\n{{#17430598979590.text#}}\n\
             net耗时历史P90数据\n{{#17431493623970.text#}}\n- file 方向数据\n{{#17430598299820.text#}}\n\
             file耗时历史P90数据\n{{#17431493591600.text#}}\n- epoll方向数据\n{{#17430610680150.text#}}\n\
             epoll耗时历史P90数据\n{{#17431493655610.text#}}\n- runq方向数据\n{{#17430610794990.text#}}\n\
-            runq耗时历史P90数据\n{{#17431493682530.text#}}\n\n# 注意事项 \n- P90相关数据中，json key为线程id,max，min对应过去1小时最大最小P90值\n\
-            - 使用简洁、清晰的语言，避免技术术语过度堆砌，确保输出易于理解。"
+            runq耗时历史P90数据\n{{#17431493682530.text#}}\n\n# 注意事项\nP90 数据中，JSON 键包括线程\
+            \ ID，max 和 min 表示过去 1 小时的最大最小 P90 值。\n输出语言需简洁清晰，避免过多技术术语，确保易读。"
         selected: false
         title: llm analysis root cause
         type: llm
@@ -4668,10 +4665,10 @@ workflow:
       id: '17430596469370'
       position:
         x: 3678
-        y: 1236.7761644468628
+        y: 1239
       positionAbsolute:
         x: 3678
-        y: 1236.7761644468628
+        y: 1239
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -6916,8 +6913,8 @@ workflow:
         x: 1184.215435237168
         y: 391.23328277163773
       positionAbsolute:
-        x: 5691.541480358738
-        y: 1192.9513673055594
+        x: 5470.215435237168
+        y: 1295.2332827716377
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -7065,8 +7062,8 @@ workflow:
         x: 1183.3553424127522
         y: 574.6824876720586
       positionAbsolute:
-        x: 5690.681387534322
-        y: 1376.4005722059803
+        x: 5469.355342412752
+        y: 1478.6824876720586
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -7214,8 +7211,8 @@ workflow:
         x: 1156.6165679157248
         y: 475.1754672301147
       positionAbsolute:
-        x: 5663.942613037295
-        y: 1276.8935517640364
+        x: 5442.616567915725
+        y: 1379.1754672301147
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -7363,8 +7360,8 @@ workflow:
         x: 1180.802273988861
         y: 721.6803898302928
       positionAbsolute:
-        x: 5688.128319110431
-        y: 1523.3984743642145
+        x: 5466.802273988861
+        y: 1625.6803898302928
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -7512,8 +7509,8 @@ workflow:
         x: 1185.1766094380573
         y: 848.576845109292
       positionAbsolute:
-        x: 5692.502654559627
-        y: 1650.2949296432137
+        x: 5471.176609438057
+        y: 1752.576845109292
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -7521,6 +7518,6 @@ workflow:
       width: 244
       zIndex: 1002
     viewport:
-      x: -569.8149689320526
-      y: -16.852750271002947
-      zoom: 0.25
+      x: -1894.4612133909195
+      y: -99.63042772647532
+      zoom: 0.3103568397951731
