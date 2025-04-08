@@ -57,12 +57,10 @@ def make_request(method, url, max_retries=SSRF_DEFAULT_MAX_RETRIES, **kwargs):
             elif dify_config.SSRF_PROXY_HTTP_URL and dify_config.SSRF_PROXY_HTTPS_URL:
                 proxy_mounts = {
                     "http://": httpx.HTTPTransport(
-                        proxy=dify_config.SSRF_PROXY_HTTP_URL,
-                        verify=HTTP_REQUEST_NODE_SSL_VERIFY
+                        proxy=dify_config.SSRF_PROXY_HTTP_URL, verify=HTTP_REQUEST_NODE_SSL_VERIFY
                     ),
                     "https://": httpx.HTTPTransport(
-                        proxy=dify_config.SSRF_PROXY_HTTPS_URL,
-                        verify=HTTP_REQUEST_NODE_SSL_VERIFY
+                        proxy=dify_config.SSRF_PROXY_HTTPS_URL, verify=HTTP_REQUEST_NODE_SSL_VERIFY
                     ),
                 }
                 with httpx.Client(mounts=proxy_mounts, verify=HTTP_REQUEST_NODE_SSL_VERIFY) as client:
