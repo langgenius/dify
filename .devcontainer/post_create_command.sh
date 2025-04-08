@@ -1,6 +1,6 @@
 #!/bin/bash
 
-npm add -g pnpm@9.12.2
+npm add -g pnpm@10.8.0
 cd web && pnpm install
 pipx install poetry
 
