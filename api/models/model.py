@@ -1868,7 +1868,7 @@ class UserGeneratedImage(db.Model):  # type: ignore[name-defined]
     end_user_id = db.Column(StringUUID, nullable=False)
     workflow_run_id = db.Column(StringUUID, nullable=True)  # related generation id (nullable for pending status)
     content_type = db.Column(db.String(255), nullable=False)  # 'self_message' or 'summary_advice'
-    image_url = db.Column(db.Text, nullable=True)
+    file_id = db.Column(StringUUID, nullable=True)
     text_content = db.Column(db.Text, nullable=True)
     raw_content = db.Column(db.JSON, nullable=True)  # save raw llm outputs
     status = db.Column(

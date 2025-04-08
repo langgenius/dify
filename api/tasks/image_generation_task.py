@@ -117,11 +117,14 @@ def generate_image_task(
             db.session.commit()
             raise Exception("Failed to generate image")
 
+        # parse file id from url: f"{base_url}/files/tools/{tool_file_id}{extension}"
+        file_id = url.split("/files/tools/")[1].split(".")[0]
+
         text_content = raw_content.get("text")
 
         # Update the existing UserGeneratedImage with the generated content
         user_generated_image.workflow_run_id = workflow_run_id
-        user_generated_image.image_url = url
+        user_generated_image.file_id = file_id
         user_generated_image.text_content = text_content
         user_generated_image.raw_content = raw_content
         user_generated_image.status = "completed"

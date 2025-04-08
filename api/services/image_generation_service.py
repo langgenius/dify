@@ -1,13 +1,11 @@
-import json
 from enum import Enum
 
 from configs import dify_config
-from core.app.entities.app_invoke_entities import InvokeFrom
+from core.tools.tool_file_manager import ToolFileManager
 from extensions.ext_database import db
 from libs.helper import RateLimiter
 from libs.infinite_scroll_pagination import MultiPagePagination
-from models.model import App, EndUser, Message, UserGeneratedImage
-from services.app_generate_service import AppGenerateService
+from models.model import EndUser, UserGeneratedImage
 from tasks.image_generation_task import generate_image_task
 
 
@@ -15,6 +13,9 @@ from tasks.image_generation_task import generate_image_task
 class ContentType(str, Enum):
     SELF_MESSAGE = "self_message"
     SUMMARY_ADVICE = "summary_advice"
+
+
+DEFAULT_IMAGE_EXTENSION = ".png"
 
 
 class ImageGenerationService:
@@ -71,6 +72,11 @@ class ImageGenerationService:
         total_count = query.count()
         images = query.limit(limit).offset(offset).all()
 
+        # sign file with file_id to get a temporary url
+        for image in images:
+            if image.file_id:
+                image.image_url = ToolFileManager.sign_file(image.file_id, DEFAULT_IMAGE_EXTENSION)
+
         return MultiPagePagination(data=images, total=total_count)
 
     @staticmethod
@@ -79,5 +85,9 @@ class ImageGenerationService:
 
         if image is None:
             raise Exception("Image not found")
+
+        # sign file with file_id to get a temporary url
+        if image.file_id:
+            image.image_url = ToolFileManager.sign_file(image.file_id, DEFAULT_IMAGE_EXTENSION)
 
         return image
