@@ -4,6 +4,7 @@ import { PluginType } from '@/app/components/plugins/types'
 import type {
   CollectionsAndPluginsSearchParams,
   MarketplaceCollection,
+  PluginsSearchParams,
 } from '@/app/components/plugins/marketplace/types'
 import {
   MARKETPLACE_API_PREFIX,
@@ -124,4 +125,24 @@ export const getMarketplaceListFilterType = (category: string) => {
     return 'bundle'
 
   return 'plugin'
+}
+
+export const updateSearchParams = (pluginsSearchParams: PluginsSearchParams) => {
+  const { query, category, tags } = pluginsSearchParams
+  const url = new URL(window.location.href)
+  if (query)
+    url.searchParams.set('q', query)
+  else
+    url.searchParams.delete('q')
+  if (category && category !== PLUGIN_TYPE_SEARCH_MAP.all)
+    url.searchParams.set('category', category)
+  else if (!category)
+    url.searchParams.delete('category')
+  else
+    url.searchParams.set('category', 'discover')
+  if (tags && tags.length)
+    url.searchParams.set('tags', tags.join(','))
+  else
+    url.searchParams.delete('tags')
+  history.replaceState({}, '', url)
 }

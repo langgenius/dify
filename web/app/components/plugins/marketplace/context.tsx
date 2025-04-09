@@ -35,9 +35,10 @@ import {
 import {
   getMarketplaceListCondition,
   getMarketplaceListFilterType,
+  updateSearchParams,
 } from './utils'
 import { useInstalledPluginList } from '@/service/use-plugins'
-import { noop } from 'lodash-es'
+import { debounce, noop } from 'lodash-es'
 
 export type MarketplaceContextValue = {
   intersected: boolean
@@ -159,7 +160,15 @@ export const MarketplaceContextProvider = ({
         type: getMarketplaceListFilterType(activePluginTypeRef.current),
         page: pageRef.current,
       })
-      history.pushState({}, '', `/${searchParams?.language ? `?language=${searchParams?.language}` : ''}`)
+      const url = new URL(window.location.href)
+      if (searchParams?.language)
+        url.searchParams.set('language', searchParams?.language)
+      history.replaceState({}, '', url)
+      updateSearchParams({
+        query: searchPluginTextRef.current,
+        category: activePluginTypeRef.current,
+        tags: filterPluginTagsRef.current,
+      })
     }
     else {
       if (shouldExclude && isSuccess) {
@@ -182,7 +191,27 @@ export const MarketplaceContextProvider = ({
     resetPlugins()
   }, [exclude, queryMarketplaceCollectionsAndPlugins, resetPlugins])
 
+  const handleSearchParamsChange = (debounced?: boolean) => {
+    if (debounced) {
+      debounce(() => {
+        updateSearchParams({
+          query: searchPluginTextRef.current,
+          category: activePluginTypeRef.current,
+          tags: filterPluginTagsRef.current,
+        })
+      }, 500)()
+    }
+    else {
+      updateSearchParams({
+        query: searchPluginTextRef.current,
+        category: activePluginTypeRef.current,
+        tags: filterPluginTagsRef.current,
+      })
+    }
+  }
+
   const handleQueryPlugins = useCallback((debounced?: boolean) => {
+    handleSearchParamsChange(debounced)
     if (debounced) {
       queryPluginsWithDebounced({
         query: searchPluginTextRef.current,
@@ -211,6 +240,7 @@ export const MarketplaceContextProvider = ({
 
   const handleQuery = useCallback((debounced?: boolean) => {
     if (!searchPluginTextRef.current && !filterPluginTagsRef.current.length) {
+      handleSearchParamsChange(debounced)
       cancelQueryPluginsWithDebounced()
       handleQueryMarketplaceCollectionsAndPlugins()
       return
