@@ -29,6 +29,8 @@ services:
   redis:
     image: redis:6-alpine
     restart: always
+    env_file:
+      - ./middleware.env
     environment:
       REDISCLI_AUTH: ${REDIS_PASSWORD:-difyai123456}
     volumes:
@@ -45,6 +47,8 @@ services:
   sandbox:
     image: langgenius/dify-sandbox:0.2.11
     restart: always
+    env_file:
+      - ./middleware.env
     environment:
       # The DifySandbox configurations
       # Make sure you are changing this key for your deployment with a strong key.
@@ -68,6 +72,8 @@ services:
   plugin_daemon:
     image: langgenius/dify-plugin-daemon:0.0.6-local
     restart: always
+    env_file:
+      - ./middleware.env
     environment:
       # Use the shared environment variables.
       DB_HOST: ${DB_HOST:-db}
@@ -107,6 +113,8 @@ services:
       - ./ssrf_proxy/squid.conf.template:/etc/squid/squid.conf.template
       - ./ssrf_proxy/docker-entrypoint.sh:/docker-entrypoint-mount.sh
     entrypoint: [ "sh", "-c", "cp /docker-entrypoint-mount.sh /docker-entrypoint.sh && sed -i 's/\r$$//' /docker-entrypoint.sh && chmod +x /docker-entrypoint.sh && /docker-entrypoint.sh" ]
+    env_file:
+      - ./middleware.env
     environment:
       # pls clearly modify the squid env vars to fit your network environment.
       HTTP_PORT: ${SSRF_HTTP_PORT:-3128}
