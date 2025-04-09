@@ -272,11 +272,9 @@ export const MarketplaceContextProvider = ({
     activePluginTypeRef.current = type
     setPage(1)
     pageRef.current = 1
-  }, [])
 
-  useEffect(() => {
     handleQuery()
-  }, [activePluginType, handleQuery])
+  }, [handleQuery])
 
   const handleSortChange = useCallback((sort: PluginsSort) => {
     setSort(sort)
