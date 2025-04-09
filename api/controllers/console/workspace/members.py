@@ -6,6 +6,7 @@ from flask_restful import Resource, abort, marshal_with, reqparse  # type: ignor
 import services
 from configs import dify_config
 from controllers.console import api
+from controllers.console.error import WorkspaceMembersLimitExceeded
 from controllers.console.wraps import (
     account_initialization_required,
     cloud_edition_billing_resource_check,
@@ -59,12 +60,10 @@ class MemberInviteEmailApi(Resource):
         workspace_members = FeatureService.get_features(tenant_id=inviter.current_tenant.id).workspace_members
         if (
             FeatureService.get_system_features().license.product_id == "DIFY_ENTERPRISE_STANDARD"
+            and workspace_members.limit != 0 # if limit == 0, it means unlimited
             and len(invitee_emails) > workspace_members.limit - workspace_members.size
         ):
-            return {
-                "code": "limit-exceeded",
-                "message": "Limit exceeded",
-            }, 400
+            raise WorkspaceMembersLimitExceeded()
 
         for invitee_email in invitee_emails:
             try:

@@ -21,6 +21,7 @@ from controllers.console.error import (
     AccountNotFound,
     EmailSendIpLimitError,
     NotAllowedCreateWorkspace,
+    WorkspacesLimitExceeded,
 )
 from controllers.console.wraps import setup_required
 from events.tenant_event import tenant_was_created
@@ -30,7 +31,7 @@ from models.account import Account
 from services.account_service import AccountService, RegisterService, TenantService
 from services.billing_service import BillingService
 from services.errors.account import AccountRegisterError
-from services.errors.workspace import WorkSpaceNotAllowedCreateError
+from services.errors.workspace import WorkSpaceNotAllowedCreateError, WorkspacesLimitExceededError
 from services.feature_service import FeatureService
 
 
@@ -196,6 +197,13 @@ class EmailCodeLoginApi(Resource):
         if account:
             tenant = TenantService.get_join_tenants(account)
             if not tenant:
+                workspaces = FeatureService.get_system_features().license.workspaces
+                if (
+                    FeatureService.get_system_features().license.product_id == "DIFY_ENTERPRISE_STANDARD"
+                    and workspaces.limit != 0  # if limit == 0 means unlimited
+                    and workspaces.limit - workspaces.size <= 0
+                ):
+                    raise WorkspacesLimitExceeded()
                 if not FeatureService.get_system_features().is_allow_create_workspace:
                     raise NotAllowedCreateWorkspace()
                 else:
@@ -213,6 +221,8 @@ class EmailCodeLoginApi(Resource):
                 return NotAllowedCreateWorkspace()
             except AccountRegisterError as are:
                 raise AccountInFreezeError()
+            except WorkspacesLimitExceededError:
+                raise WorkspacesLimitExceeded()
         token_pair = AccountService.login(account, ip_address=extract_remote_ip(request))
         AccountService.reset_login_error_rate_limit(args["email"])
         return {"result": "success", "data": token_pair.model_dump()}
