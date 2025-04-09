@@ -649,6 +649,7 @@ class ParameterExtractorNode(LLMNode):
                     except Exception:
                         pass
         logger.info(f"extra error: {result}")
+        raise ValueError(f"parse JSON failed from tool_call {result}")
 
     def _generate_default_result(self, data: ParameterExtractorNodeData) -> dict:
         """
