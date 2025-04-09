@@ -14,7 +14,7 @@ class EnterpriseMail(Resource):
     @inner_api_only
     def post(self):
         parser = reqparse.RequestParser()
-        parser.add_argument("to", type=str, action='append', required=True)
+        parser.add_argument("to", type=str, action="append", required=True)
         parser.add_argument("subject", type=str, required=True)
         parser.add_argument("body", type=str, required=True)
         parser.add_argument("substitutions", type=dict, required=False)

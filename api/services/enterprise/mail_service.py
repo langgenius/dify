@@ -1,4 +1,3 @@
-
 from typing import Dict, List
 
 from pydantic import BaseModel
@@ -14,13 +13,8 @@ class DifyMail(BaseModel):
 
 
 class EnterpriseMailService:
-
     @classmethod
     def send_mail(cls, mail: DifyMail):
-
         send_enterprise_email_task.delay(
-            to=mail.to,
-            subject=mail.subject,
-            body=mail.body,
-            substitutions=mail.substitutions
+            to=mail.to, subject=mail.subject, body=mail.body, substitutions=mail.substitutions
         )

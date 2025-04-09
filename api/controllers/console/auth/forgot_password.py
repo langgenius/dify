@@ -7,7 +7,12 @@ from flask_restful import Resource, reqparse  # type: ignore
 from constants.languages import languages
 from controllers.console import api
 from controllers.console.auth.error import EmailCodeError, InvalidEmailError, InvalidTokenError, PasswordMismatchError
-from controllers.console.error import AccountInFreezeError, AccountNotFound, EmailSendIpLimitError
+from controllers.console.error import (
+    AccountInFreezeError,
+    AccountNotFound,
+    EmailSendIpLimitError,
+    WorkspacesLimitExceeded,
+)
 from controllers.console.wraps import setup_required
 from events.tenant_event import tenant_was_created
 from extensions.ext_database import db
@@ -18,7 +23,6 @@ from services.account_service import AccountService, TenantService
 from services.errors.account import AccountRegisterError
 from services.errors.workspace import WorkSpaceNotAllowedCreateError, WorkspacesLimitExceededError
 from services.feature_service import FeatureService
-from controllers.console.error import WorkspacesLimitExceeded
 
 
 class ForgotPasswordSendEmailApi(Resource):

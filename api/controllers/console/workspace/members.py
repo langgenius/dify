@@ -60,7 +60,7 @@ class MemberInviteEmailApi(Resource):
         workspace_members = FeatureService.get_features(tenant_id=inviter.current_tenant.id).workspace_members
         if (
             FeatureService.get_system_features().license.product_id == "DIFY_ENTERPRISE_STANDARD"
-            and workspace_members.limit != 0 # if limit == 0, it means unlimited
+            and workspace_members.limit != 0  # if limit == 0, it means unlimited
             and len(invitee_emails) > workspace_members.limit - workspace_members.size
         ):
             raise WorkspaceMembersLimitExceeded()
