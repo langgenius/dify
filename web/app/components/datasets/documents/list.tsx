@@ -46,6 +46,7 @@ import { useDocumentArchive, useDocumentDelete, useDocumentDisable, useDocumentE
 import { extensionToFileType } from '@/app/components/datasets/hit-testing/utils/extension-to-file-type'
 import useBatchEditDocumentMetadata from '../metadata/hooks/use-batch-edit-document-metadata'
 import EditMetadataBatchModal from '@/app/components/datasets/metadata/edit-metadata-batch/modal'
+import { noop } from 'lodash-es'
 
 export const useIndexStatus = () => {
   const { t } = useTranslation()
@@ -265,7 +266,7 @@ export const OperationAction: FC<{
 
   return <div className='flex items-center' onClick={e => e.stopPropagation()}>
     {isListScene && !embeddingAvailable && (
-      <Switch defaultValue={false} onChange={() => { }} disabled={true} size='md' />
+      <Switch defaultValue={false} onChange={noop} disabled={true} size='md' />
     )}
     {isListScene && embeddingAvailable && (
       <>
@@ -276,7 +277,7 @@ export const OperationAction: FC<{
             needsDelay
           >
             <div>
-              <Switch defaultValue={false} onChange={() => { }} disabled={true} size='md' />
+              <Switch defaultValue={false} onChange={noop} disabled={true} size='md' />
             </div>
           </Tooltip>
           : <Switch defaultValue={enabled} onChange={v => handleSwitch(v ? 'enable' : 'disable')} size='md' />
