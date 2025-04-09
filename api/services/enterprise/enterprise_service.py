@@ -1,7 +1,4 @@
-from contexts import tenant_id
 from services.enterprise.base import EnterpriseRequest
-from flask import request
-from libs.passport import PassportService
 
 
 class EnterpriseService:
