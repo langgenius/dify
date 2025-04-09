@@ -4,8 +4,7 @@ from flask import request
 from flask_restful import Resource  # type: ignore
 from werkzeug.exceptions import BadRequest, NotFound, Unauthorized
 
-from controllers.web.error import (WebAppAuthFailedError,
-                                   WebAppAuthRequiredError)
+from controllers.web.error import WebAppAuthFailedError, WebAppAuthRequiredError
 from extensions.ext_database import db
 from libs.passport import PassportService
 from models.model import App, EndUser, Site
@@ -61,7 +60,9 @@ def decode_jwt_token():
         # for enterprise webapp auth
         app_web_auth_enabled = False
         if system_features.webapp_auth.enabled:
-            app_web_auth_enabled = EnterpriseService.get_web_app_settings(app_code=app_code).get("access_mode", "private") == "private"
+            app_web_auth_enabled = (
+                EnterpriseService.get_app_access_mode_by_code(app_code=app_code).access_mode != "public"
+            )
 
         _validate_webapp_token(decoded, app_web_auth_enabled, system_features.webapp_auth.enabled)
         _validate_user_accessibility(decoded, app_code, app_web_auth_enabled, system_features.webapp_auth.enabled)
@@ -69,7 +70,9 @@ def decode_jwt_token():
         return app_model, end_user
     except Unauthorized as e:
         if system_features.webapp_auth.enabled:
-            app_web_auth_enabled = EnterpriseService.get_web_app_settings(app_code=app_code).get("access_mode", "private") == "private"
+            app_web_auth_enabled = (
+                EnterpriseService.get_app_access_mode_by_code(app_code=app_code).access_mode != "public"
+            )
             if app_web_auth_enabled:
                 raise WebAppAuthRequiredError()
 
@@ -77,7 +80,8 @@ def decode_jwt_token():
 
 
 def _validate_webapp_token(decoded, app_web_auth_enabled: bool, system_webapp_auth_enabled: bool):
-    # Check if authentication is enforced for web app, and if the token source is not webapp, raise an error and redirect to login
+    # Check if authentication is enforced for web app, and if the token source is not webapp,
+    # raise an error and redirect to login
     if system_webapp_auth_enabled and app_web_auth_enabled:
         source = decoded.get("token_source")
         if not source or source != "webapp":

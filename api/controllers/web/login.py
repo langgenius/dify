@@ -1,6 +1,3 @@
-from typing import cast
-
-import flask_login
 from flask import request
 from flask_restful import Resource, reqparse
 from jwt import InvalidTokenError  # type: ignore
@@ -8,14 +5,11 @@ from web import api
 from werkzeug.exceptions import BadRequest
 
 import services
-from controllers.console.auth.error import (EmailCodeError,
-                                            EmailOrPasswordMismatchError,
-                                            InvalidEmailError)
+from controllers.console.auth.error import EmailCodeError, EmailOrPasswordMismatchError, InvalidEmailError
 from controllers.console.error import AccountBannedError, AccountNotFound
 from controllers.console.wraps import setup_required
 from libs.helper import email
 from libs.password import valid_password
-from models.account import Account
 from services.account_service import AccountService
 from services.webapp_auth_service import WebAppAuthService
 
@@ -51,14 +45,14 @@ class LoginApi(Resource):
         return {"result": "success", "token": token}
 
 
-class LogoutApi(Resource):
-    @setup_required
-    def get(self):
-        account = cast(Account, flask_login.current_user)
-        if isinstance(account, flask_login.AnonymousUserMixin):
-            return {"result": "success"}
-        flask_login.logout_user()
-        return {"result": "success"}
+# class LogoutApi(Resource):
+#     @setup_required
+#     def get(self):
+#         account = cast(Account, flask_login.current_user)
+#         if isinstance(account, flask_login.AnonymousUserMixin):
+#             return {"result": "success"}
+#         flask_login.logout_user()
+#         return {"result": "success"}
 
 
 class EmailCodeLoginSendEmailApi(Resource):
@@ -122,6 +116,6 @@ class EmailCodeLoginApi(Resource):
 
 
 api.add_resource(LoginApi, "/login")
-api.add_resource(LogoutApi, "/logout")
+# api.add_resource(LogoutApi, "/logout")
 api.add_resource(EmailCodeLoginSendEmailApi, "/email-code-login")
 api.add_resource(EmailCodeLoginApi, "/email-code-login/validity")

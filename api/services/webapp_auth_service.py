@@ -5,8 +5,7 @@ from typing import Any, Optional, cast
 from werkzeug.exceptions import NotFound, Unauthorized
 
 from configs import dify_config
-from controllers.web.error import (WebAppAuthFailedError,
-                                   WebAppAuthRequiredError)
+from controllers.web.error import WebAppAuthFailedError
 from extensions.ext_database import db
 from libs.helper import TokenManager
 from libs.passport import PassportService
@@ -14,8 +13,7 @@ from libs.password import compare_password
 from models.account import Account, AccountStatus
 from models.model import App, EndUser, Site
 from services.enterprise.enterprise_service import EnterpriseService
-from services.errors.account import (AccountLoginError, AccountNotFoundError,
-                                     AccountPasswordError)
+from services.errors.account import AccountLoginError, AccountNotFoundError, AccountPasswordError
 from services.feature_service import FeatureService
 from tasks.mail_email_code_login import send_email_code_login_mail_task
 
@@ -99,7 +97,7 @@ class WebAppAuthService:
             is_anonymous=False,
             session_id=email,
             name="enterpriseuser",
-            external_user_id="enterpriseuser"
+            external_user_id="enterpriseuser",
         )
         db.session.add(end_user)
         db.session.commit()
@@ -112,9 +110,8 @@ class WebAppAuthService:
         system_features = FeatureService.get_system_features()
         if system_features.webapp_auth.enabled:
             app_settings = EnterpriseService.get_web_app_settings(app_code=app_code)
-            if not app_settings or not app_settings.access_mode == "public":
-                raise WebAppAuthRequiredError()
-            if app_settings.access_mode == "private" and not EnterpriseService.is_user_allowed_to_access_webapp(
+
+            if app_settings.access_mode != "public" and not EnterpriseService.is_user_allowed_to_access_webapp(
                 account.id, app_code=app_code
             ):
                 raise WebAppAuthFailedError()

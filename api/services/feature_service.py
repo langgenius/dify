@@ -205,8 +205,12 @@ class FeatureService:
 
         if "WebAppAuth" in enterprise_info:
             features.webapp_auth.allow_sso = enterprise_info["WebAppAuth"].get("allowSSO", False)
-            features.webapp_auth.allow_email_code_login = enterprise_info["WebAppAuth"].get("allowEmailCodeLogin", False)
-            features.webapp_auth.allow_email_password_login = enterprise_info["WebAppAuth"].get("allowEmailPasswordLogin", False)
+            features.webapp_auth.allow_email_code_login = enterprise_info["WebAppAuth"].get(
+                "allowEmailCodeLogin", False
+            )
+            features.webapp_auth.allow_email_password_login = enterprise_info["WebAppAuth"].get(
+                "allowEmailPasswordLogin", False
+            )
 
         if "License" in enterprise_info:
             license_info = enterprise_info["License"]

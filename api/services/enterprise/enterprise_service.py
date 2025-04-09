@@ -7,7 +7,7 @@ class WebAppSettings(BaseModel):
     access_mode: str = Field(
         description="Access mode for the web app. Can be 'public' or 'private'",
         default="private",
-        alias="access_mode",
+        alias="accessMode",
     )
 
 
@@ -17,19 +17,28 @@ class EnterpriseService:
         return EnterpriseRequest.send_request("GET", "/info")
 
     @classmethod
-    def is_user_allowed_to_access_webapp(cls, user_id: str, app_id=None, app_code=None) -> bool:
-        if not app_id and not app_code:
-            raise ValueError("Either app_id or app_code must be provided.")
+    def is_user_allowed_to_access_webapp(cls, user_id: str, app_code: str) -> bool:
+        params = {"userId": user_id, "appCode": app_code}
+        data = EnterpriseRequest.send_request("GET", "/webapp/permission", params=params)
 
-        return EnterpriseRequest.send_request(
-            "GET", f"/web-app/allowed?appId={app_id}&appCode={app_code}&userId={user_id}"
-        )
+        return data.get("result", False)
 
     @classmethod
-    def get_web_app_settings(cls, app_code: str = None, app_id: str = None):
-        if not app_code and not app_id:
-            raise ValueError("Either app_code or app_id must be provided.")
-        data = EnterpriseRequest.send_request("GET", f"/web-app/settings?appCode={app_code}&appId={app_id}")
+    def get_app_access_mode_by_id(cls, app_id: str) -> WebAppSettings:
+        if not app_id:
+            raise ValueError("app_id must be provided.")
+        params = {"appId": app_id}
+        data = EnterpriseRequest.send_request("GET", "/webapp/access-mode/id", params=params)
+        if not data:
+            raise ValueError("No data found.")
+        return WebAppSettings(**data)
+
+    @classmethod
+    def get_app_access_mode_by_code(cls, app_code: str) -> WebAppSettings:
+        if not app_code:
+            raise ValueError("app_code must be provided.")
+        params = {"appCode": app_code}
+        data = EnterpriseRequest.send_request("GET", "/webapp/access-mode/code", params=params)
         if not data:
             raise ValueError("No data found.")
         return WebAppSettings(**data)
