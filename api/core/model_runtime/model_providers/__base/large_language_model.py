@@ -538,3 +538,16 @@ class LargeLanguageModel(AIModel):
                         raise e
                     else:
                         logger.warning(f"Callback {callback.__class__.__name__} on_invoke_error failed with error {e}")
+
+    def _get_num_tokens_by_gpt2(self, text: str) -> int:
+        """
+        Override the _get_num_tokens_by_gpt2 method from AIModel class.
+        If GPT2_TOKEN_COUNTING_ENABLED is True, calculate tokens using the parent method.
+        If GPT2_TOKEN_COUNTING_ENABLED is False, return 0 directly.
+
+        :param text: plain text of prompt
+        :return: number of tokens or 0 if disabled
+        """
+        if dify_config.GPT2_TOKEN_COUNTING_ENABLED:
+            return super()._get_num_tokens_by_gpt2(text)
+        return 0
