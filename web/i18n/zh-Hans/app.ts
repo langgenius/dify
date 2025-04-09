@@ -195,6 +195,7 @@ const translation = {
       searchPlaceholder: '搜索组或成员',
       allMembers: '所有成员',
       expand: '展开',
+      noResult: '没有结果',
     },
   },
 }

@@ -194,6 +194,7 @@ const translation = {
       searchPlaceholder: 'Search groups and members',
       allMembers: 'All members',
       expand: 'Expand',
+      noResult: 'No result',
     },
   },
 }
