@@ -120,8 +120,6 @@ class PluginEntity(PluginInstallation):
     name: str
     installation_id: str
     version: str
-    latest_version: Optional[str] = None
-    latest_unique_identifier: Optional[str] = None
 
     @model_validator(mode="after")
     def set_plugin_id(self):
