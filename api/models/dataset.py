@@ -643,7 +643,7 @@ class DocumentSegment(db.Model):  # type: ignore[name-defined]
         db.Index("document_segment_document_id_idx", "document_id"),
         db.Index("document_segment_tenant_dataset_idx", "dataset_id", "tenant_id"),
         db.Index("document_segment_tenant_document_idx", "document_id", "tenant_id"),
-        db.Index("document_segment_dataset_node_idx", "dataset_id", "index_node_id"),
+        db.Index("document_segment_node_dataset_idx", "index_node_id", "dataset_id"),
         db.Index("document_segment_tenant_idx", "tenant_id"),
     )
 
@@ -791,6 +791,8 @@ class ChildChunk(db.Model):  # type: ignore[name-defined]
     __table_args__ = (
         db.PrimaryKeyConstraint("id", name="child_chunk_pkey"),
         db.Index("child_chunk_dataset_id_idx", "tenant_id", "dataset_id", "document_id", "segment_id", "index_node_id"),
+        db.Index("child_chunks_node_idx", "index_node_id", "dataset_id"),
+        db.Index("child_chunks_segment_idx", "segment_id"),
     )
 
     # initial fields

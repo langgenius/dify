@@ -341,7 +341,7 @@ class DocumentListApi(DatasetApiResource):
             search = f"%{search}%"
             query = query.filter(Document.name.like(search))
 
-        query = query.order_by(desc(Document.created_at))
+        query = query.order_by(desc(Document.created_at), desc(Document.position))
 
         paginated_documents = query.paginate(page=page, per_page=limit, max_per_page=100, error_out=False)
         documents = paginated_documents.items

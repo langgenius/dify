@@ -17,12 +17,12 @@ export const StepperStep: FC<StepperStepProps> = (props) => {
   const label = isActive ? `STEP ${index + 1}` : `${index + 1}`
   return <div className='flex items-center gap-2'>
     <div className={classNames(
-      'h-5 px-2 py-1 rounded-3xl flex-col justify-center items-center gap-2 inline-flex',
+      'h-5 py-1 rounded-3xl flex-col justify-center items-center gap-2 inline-flex',
       isActive
-        ? 'bg-state-accent-solid'
+        ? 'px-2 bg-state-accent-solid'
         : !isDisabled
-          ? 'border border-text-quaternary'
-          : 'border border-divider-deep',
+          ? 'w-5 border border-text-quaternary'
+          : 'w-5 border border-divider-deep',
     )}>
       <div className={classNames(
         'text-center system-2xs-semibold-uppercase',

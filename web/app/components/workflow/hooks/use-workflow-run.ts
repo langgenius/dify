@@ -18,6 +18,7 @@ import { stopWorkflowRun } from '@/service/workflow'
 import { useFeaturesStore } from '@/app/components/base/features/hooks'
 import { AudioPlayerManager } from '@/app/components/base/audio-btn/audio.player.manager'
 import type { VersionHistory } from '@/types/workflow'
+import { noop } from 'lodash-es'
 
 export const useWorkflowRun = () => {
   const store = useStoreApi()
@@ -168,7 +169,7 @@ export const useWorkflowRun = () => {
       else
         ttsUrl = `/apps/${params.appId}/text-to-audio`
     }
-    const player = AudioPlayerManager.getInstance().getAudioPlayer(ttsUrl, ttsIsPublic, uuidV4(), 'none', 'none', (_: any): any => { })
+    const player = AudioPlayerManager.getInstance().getAudioPlayer(ttsUrl, ttsIsPublic, uuidV4(), 'none', 'none', noop)
 
     ssePost(
       url,
@@ -342,7 +343,6 @@ export const useWorkflowRun = () => {
     }
 
     featuresStore?.setState({ features: mappedFeatures })
-    workflowStore.getState().setPublishedAt(publishedWorkflow.created_at)
     workflowStore.getState().setEnvironmentVariables(publishedWorkflow.environment_variables || [])
   }, [featuresStore, handleUpdateWorkflowCanvas, workflowStore])
 

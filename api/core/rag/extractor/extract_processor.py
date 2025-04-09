@@ -18,6 +18,7 @@ from core.rag.extractor.markdown_extractor import MarkdownExtractor
 from core.rag.extractor.notion_extractor import NotionExtractor
 from core.rag.extractor.pdf_extractor import PdfExtractor
 from core.rag.extractor.text_extractor import TextExtractor
+from core.rag.extractor.unstructured.unstructured_doc_extractor import UnstructuredWordExtractor
 from core.rag.extractor.unstructured.unstructured_eml_extractor import UnstructuredEmailExtractor
 from core.rag.extractor.unstructured.unstructured_epub_extractor import UnstructuredEpubExtractor
 from core.rag.extractor.unstructured.unstructured_markdown_extractor import UnstructuredMarkdownExtractor
@@ -25,6 +26,7 @@ from core.rag.extractor.unstructured.unstructured_msg_extractor import Unstructu
 from core.rag.extractor.unstructured.unstructured_ppt_extractor import UnstructuredPPTExtractor
 from core.rag.extractor.unstructured.unstructured_pptx_extractor import UnstructuredPPTXExtractor
 from core.rag.extractor.unstructured.unstructured_xml_extractor import UnstructuredXmlExtractor
+from core.rag.extractor.watercrawl.extractor import WaterCrawlWebExtractor
 from core.rag.extractor.word_extractor import WordExtractor
 from core.rag.models.document import Document
 from extensions.ext_storage import storage
@@ -104,7 +106,7 @@ class ExtractProcessor:
                 etl_type = dify_config.ETL_TYPE
                 extractor: Optional[BaseExtractor] = None
                 if etl_type == "Unstructured":
-                    unstructured_api_url = dify_config.UNSTRUCTURED_API_URL
+                    unstructured_api_url = dify_config.UNSTRUCTURED_API_URL or ""
                     unstructured_api_key = dify_config.UNSTRUCTURED_API_KEY or ""
 
                     if file_extension in {".xlsx", ".xls"}:
@@ -121,6 +123,8 @@ class ExtractProcessor:
                         extractor = HtmlExtractor(file_path)
                     elif file_extension == ".docx":
                         extractor = WordExtractor(file_path, upload_file.tenant_id, upload_file.created_by)
+                    elif file_extension == ".doc":
+                        extractor = UnstructuredWordExtractor(file_path, unstructured_api_url, unstructured_api_key)
                     elif file_extension == ".csv":
                         extractor = CSVExtractor(file_path, autodetect_encoding=True)
                     elif file_extension == ".msg":
@@ -173,6 +177,15 @@ class ExtractProcessor:
             assert extract_setting.website_info is not None, "website_info is required"
             if extract_setting.website_info.provider == "firecrawl":
                 extractor = FirecrawlWebExtractor(
+                    url=extract_setting.website_info.url,
+                    job_id=extract_setting.website_info.job_id,
+                    tenant_id=extract_setting.website_info.tenant_id,
+                    mode=extract_setting.website_info.mode,
+                    only_main_content=extract_setting.website_info.only_main_content,
+                )
+                return extractor.extract()
+            elif extract_setting.website_info.provider == "watercrawl":
+                extractor = WaterCrawlWebExtractor(
                     url=extract_setting.website_info.url,
                     job_id=extract_setting.website_info.job_id,
                     tenant_id=extract_setting.website_info.tenant_id,

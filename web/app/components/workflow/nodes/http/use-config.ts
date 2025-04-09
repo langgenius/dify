@@ -36,8 +36,12 @@ const useConfig = (id: string, payload: HttpNodeType) => {
         ...inputs,
       }
       const bodyData = newInputs.body.data
-      if (typeof bodyData === 'string')
-        newInputs.body.data = transformToBodyPayload(bodyData, [BodyType.formData, BodyType.xWwwFormUrlencoded].includes(newInputs.body.type))
+      if (typeof bodyData === 'string') {
+        newInputs.body = {
+          ...newInputs.body,
+          data: transformToBodyPayload(bodyData, [BodyType.formData, BodyType.xWwwFormUrlencoded].includes(newInputs.body.type)),
+        }
+      }
 
       setInputs(newInputs)
       setIsDataReady(true)

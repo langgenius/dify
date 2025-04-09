@@ -295,18 +295,20 @@ class LargeLanguageModel(AIModel):
         :param tools: tools for tool calling
         :return:
         """
-        plugin_model_manager = PluginModelManager()
-        return plugin_model_manager.get_llm_num_tokens(
-            tenant_id=self.tenant_id,
-            user_id="unknown",
-            plugin_id=self.plugin_id,
-            provider=self.provider_name,
-            model_type=self.model_type.value,
-            model=model,
-            credentials=credentials,
-            prompt_messages=prompt_messages,
-            tools=tools,
-        )
+        if dify_config.PLUGIN_BASED_TOKEN_COUNTING_ENABLED:
+            plugin_model_manager = PluginModelManager()
+            return plugin_model_manager.get_llm_num_tokens(
+                tenant_id=self.tenant_id,
+                user_id="unknown",
+                plugin_id=self.plugin_id,
+                provider=self.provider_name,
+                model_type=self.model_type.value,
+                model=model,
+                credentials=credentials,
+                prompt_messages=prompt_messages,
+                tools=tools,
+            )
+        return 0
 
     def _calc_response_usage(
         self, model: str, credentials: dict, prompt_tokens: int, completion_tokens: int

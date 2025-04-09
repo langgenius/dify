@@ -1786,12 +1786,8 @@ class SegmentService:
                     )
                 elif document.doc_form in (IndexType.PARAGRAPH_INDEX, IndexType.QA_INDEX):
                     if args.enabled or keyword_changed:
-                        VectorService.create_segments_vector(
-                            [args.keywords] if args.keywords else None,
-                            [segment],
-                            dataset,
-                            document.doc_form,
-                        )
+                        # update segment vector index
+                        VectorService.update_segment_vector(args.keywords, segment, dataset)
             else:
                 segment_hash = helper.generate_text_hash(content)
                 tokens = 0

@@ -4,6 +4,7 @@ import type { ChangeEvent, FC } from 'react'
 import { createRef, useEffect, useState } from 'react'
 import Cropper, { type Area, type CropperProps } from 'react-easy-crop'
 import classNames from 'classnames'
+import { useTranslation } from 'react-i18next'
 
 import { ImagePlus } from '../icons/src/vender/line/images'
 import { useDraggableUploader } from './hooks'
@@ -26,6 +27,7 @@ const ImageInput: FC<UploaderProps> = ({
   cropShape,
   onImageInput,
 }) => {
+  const { t } = useTranslation()
   const [inputImage, setInputImage] = useState<{ file: File; url: string }>()
   const [isAnimatedImage, setIsAnimatedImage] = useState<boolean>(false)
   useEffect(() => {
@@ -103,8 +105,8 @@ const ImageInput: FC<UploaderProps> = ({
             ? <>
               <ImagePlus className="pointer-events-none mb-3 h-[30px] w-[30px]" />
               <div className="mb-[2px] text-sm font-medium">
-                <span className="pointer-events-none">Drop your image here, or&nbsp;</span>
-                <button className="text-components-button-primary-bg" onClick={() => inputRef.current?.click()}>browse</button>
+                <span className="pointer-events-none">{t('common.imageInput.dropImageHere')}&nbsp;</span>
+                <button className="text-components-button-primary-bg" onClick={() => inputRef.current?.click()}>{t('common.imageInput.browse')}</button>
                 <input
                   ref={inputRef} type="file" className="hidden"
                   onClick={e => ((e.target as HTMLInputElement).value = '')}
@@ -112,7 +114,7 @@ const ImageInput: FC<UploaderProps> = ({
                   onChange={handleLocalFileInput}
                 />
               </div>
-              <div className="pointer-events-none text-xs">Supports PNG, JPG, JPEG, WEBP and GIF</div>
+              <div className="pointer-events-none">{t('common.imageInput.supportedFormats')}</div>
             </>
             : handleShowImage()
         }

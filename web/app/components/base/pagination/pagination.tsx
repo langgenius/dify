@@ -7,10 +7,11 @@ import type {
   IPaginationProps,
   PageButtonProps,
 } from './type'
+import { noop } from 'lodash-es'
 
 const defaultState: IPagination = {
   currentPage: 0,
-  setCurrentPage: () => {},
+  setCurrentPage: noop,
   truncableText: '...',
   truncableClassName: '',
   pages: [],
