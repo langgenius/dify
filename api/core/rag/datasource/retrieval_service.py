@@ -3,7 +3,7 @@ import logging
 import time
 from concurrent.futures import ThreadPoolExecutor
 from typing import Optional
-
+from sqlalchemy import or_, and_
 from flask import Flask, current_app
 from sqlalchemy.orm import load_only
 
@@ -20,6 +20,7 @@ from extensions.ext_database import db
 from models.dataset import ChildChunk, Dataset, DocumentSegment
 from models.dataset import Document as DatasetDocument
 from services.external_knowledge_service import ExternalDatasetService
+from sqlalchemy.sql.expression import false
 
 default_retrieval_model = {
     "search_method": RetrievalMethod.SEMANTIC_SEARCH.value,
@@ -315,17 +316,29 @@ class RetrievalService:
             child_chunks = db.session.query(ChildChunk).filter(ChildChunk.index_node_id.in_(child_index_node_ids)).all()
             child_chunk_map = {chunk.index_node_id: chunk for chunk in child_chunks}
 
-            # Batch query DocumentSegment with unified conditions
+            segment_ids_from_child = [chunk.segment_id for chunk in child_chunks]
+            segment_conditions = []
+
+            if index_node_ids:
+                segment_conditions.append(DocumentSegment.index_node_id.in_(index_node_ids))
+
+            if segment_ids_from_child:
+                segment_conditions.append(DocumentSegment.id.in_(segment_ids_from_child))
+
+            if segment_conditions:
+                filter_expr = or_(*segment_conditions)
+            else:
+                filter_expr = false()
+
             segment_map = {
                 segment.id: segment
                 for segment in db.session.query(DocumentSegment)
                 .filter(
-                    (
-                        DocumentSegment.index_node_id.in_(index_node_ids)
-                        | DocumentSegment.id.in_([chunk.segment_id for chunk in child_chunks])
-                    ),
-                    DocumentSegment.enabled == True,
-                    DocumentSegment.status == "completed",
+                    and_(
+                        filter_expr,
+                        DocumentSegment.enabled == True,
+                        DocumentSegment.status == "completed",
+                    )
                 )
                 .options(
                     load_only(
