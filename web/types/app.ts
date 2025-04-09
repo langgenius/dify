@@ -7,6 +7,7 @@ import type {
   WeightedScoreEnum,
 } from '@/models/datasets'
 import type { UploadFileSetting } from '@/app/components/workflow/types'
+import type { AccessMode } from '@/models/access-control'
 
 export enum Theme {
   light = 'light',
@@ -351,6 +352,8 @@ export type App = {
   /** api site url */
   api_base_url: string
   tags: Tag[]
+  /** access control */
+  accessMode: AccessMode
 }
 
 export type AppSSO = {

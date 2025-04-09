@@ -4,7 +4,7 @@ import { useContext, useContextSelector } from 'use-context-selector'
 import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { RiGlobalLine, RiMoreFill } from '@remixicon/react'
+import { RiBuildingLine, RiGlobalLine, RiLockLine, RiMoreFill } from '@remixicon/react'
 import s from './style.module.css'
 import cn from '@/utils/classnames'
 import type { App } from '@/types/app'
@@ -33,6 +33,7 @@ import { fetchInstalledAppList } from '@/service/explore'
 import { AppTypeIcon } from '@/app/components/app/type-selector'
 import Tooltip from '@/app/components/base/tooltip'
 import AccessControl from '@/app/components/app/app-access-control'
+import { AccessMode } from '@/models/access-control'
 
 export type AppCardProps = {
   app: App
@@ -74,7 +75,7 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
       })
     }
     setShowConfirmDelete(false)
-  }, [app.id])
+  }, [app.id, mutateApps, notify, onPlanInfoChanged, onRefresh, t])
 
   const onEdit: CreateAppModalProps['onConfirm'] = useCallback(async ({
     name,
@@ -315,9 +316,15 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
             </div>
           </div>
           <div className='shrink-0 w-5 h-5 flex items-center justify-center'>
-            <Tooltip asChild={false} popupContent={t('app.accessControlDialog.accessItems.anyone')}>
+            {app.accessMode === AccessMode.PUBLIC && <Tooltip asChild={false} popupContent={t('app.accessControlDialog.accessItems.anyone')}>
               <RiGlobalLine className='text-text-accent w-4 h-4' />
-            </Tooltip>
+            </Tooltip>}
+            {app.accessMode === AccessMode.SPECIFIC_GROUPS_MEMBERS && <Tooltip asChild={false} popupContent={t('app.accessControlDialog.accessItems.specific')}>
+              <RiLockLine className='text-text-quaternary w-4 h-4' />
+            </Tooltip>}
+            {app.accessMode === AccessMode.ORGANIZATION && <Tooltip asChild={false} popupContent={t('app.accessControlDialog.accessItems.organization')}>
+              <RiBuildingLine className='text-text-quaternary w-4 h-4' />
+            </Tooltip>}
           </div>
         </div>
         <div className='title-wrapper h-[90px] px-[14px] text-xs leading-normal text-text-tertiary'>
