@@ -3,9 +3,11 @@ import logging
 import time
 from concurrent.futures import ThreadPoolExecutor
 from typing import Optional
-from sqlalchemy import or_, and_
+
 from flask import Flask, current_app
+from sqlalchemy import and_, or_
 from sqlalchemy.orm import load_only
+from sqlalchemy.sql.expression import false
 
 from configs import dify_config
 from core.rag.data_post_processor.data_post_processor import DataPostProcessor
@@ -20,7 +22,6 @@ from extensions.ext_database import db
 from models.dataset import ChildChunk, Dataset, DocumentSegment
 from models.dataset import Document as DatasetDocument
 from services.external_knowledge_service import ExternalDatasetService
-from sqlalchemy.sql.expression import false
 
 default_retrieval_model = {
     "search_method": RetrievalMethod.SEMANTIC_SEARCH.value,
