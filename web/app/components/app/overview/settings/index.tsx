@@ -21,14 +21,12 @@ import type { AppIconType, AppSSO, Language } from '@/types/app'
 import { useToastContext } from '@/app/components/base/toast'
 import { LanguagesSupported, languages } from '@/i18n/language'
 import Tooltip from '@/app/components/base/tooltip'
-import { useAppContext } from '@/context/app-context'
 import { useProviderContext } from '@/context/provider-context'
 import { useModalContext } from '@/context/modal-context'
 import type { AppIconSelection } from '@/app/components/base/app-icon-picker'
 import AppIconPicker from '@/app/components/base/app-icon-picker'
 import I18n from '@/context/i18n'
 import cn from '@/utils/classnames'
-import { useGlobalPublicStore } from '@/context/global-public-context'
 
 export type ISettingsModalProps = {
   isChat: boolean
@@ -66,8 +64,6 @@ const SettingsModal: FC<ISettingsModalProps> = ({
   onClose,
   onSave,
 }) => {
-  const { systemFeatures } = useGlobalPublicStore()
-  const { isCurrentWorkspaceEditor } = useAppContext()
   const { notify } = useToastContext()
   const [isShowMore, setIsShowMore] = useState(false)
   const {
@@ -139,7 +135,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
     setAppIcon(icon_type === 'image'
       ? { type: 'image', url: icon_url!, fileId: icon }
       : { type: 'emoji', icon, background: icon_background! })
-  }, [appInfo])
+  }, [appInfo, chat_color_theme, chat_color_theme_inverted, copyright, custom_disclaimer, default_language, description, icon, icon_background, icon_type, icon_url, privacy_policy, show_workflow_steps, title, use_icon_as_answer_icon])
 
   const onHide = () => {
     onClose()
@@ -325,28 +321,6 @@ const SettingsModal: FC<ISettingsModalProps> = ({
             </div>
             <p className='pb-0.5 text-text-tertiary body-xs-regular'>{t(`${prefixSettings}.workflow.showDesc`)}</p>
           </div>
-          {/* SSO */}
-          {systemFeatures.enable_web_sso_switch_component && (
-            <>
-              <Divider className="h-px my-0" />
-              <div className='w-full'>
-                <p className='mb-1 system-xs-medium-uppercase text-text-tertiary'>{t(`${prefixSettings}.sso.label`)}</p>
-                <div className='flex justify-between items-center'>
-                  <div className={cn('py-1 text-text-secondary system-sm-semibold')}>{t(`${prefixSettings}.sso.title`)}</div>
-                  <Tooltip
-                    disabled={systemFeatures.sso_enforced_for_web}
-                    popupContent={
-                      <div className='w-[180px]'>{t(`${prefixSettings}.sso.tooltip`)}</div>
-                    }
-                    asChild={false}
-                  >
-                    <Switch disabled={!systemFeatures.sso_enforced_for_web || !isCurrentWorkspaceEditor} defaultValue={systemFeatures.sso_enforced_for_web && inputInfo.enable_sso} onChange={v => setInputInfo({ ...inputInfo, enable_sso: v })}></Switch>
-                  </Tooltip>
-                </div>
-                <p className='pb-0.5 body-xs-regular text-text-tertiary'>{t(`${prefixSettings}.sso.description`)}</p>
-              </div>
-            </>
-          )}
           {/* more settings switch */}
           <Divider className="h-px my-0" />
           {!isShowMore && (

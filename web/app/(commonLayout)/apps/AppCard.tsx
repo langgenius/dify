@@ -437,7 +437,7 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
         />
       )}
       {showAccessControl && (
-        <AccessControl onClose={() => setShowAccessControl(false)} />
+        <AccessControl app={app} onClose={() => setShowAccessControl(false)} />
       )}
     </>
   )

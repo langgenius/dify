@@ -1,20 +1,34 @@
 'use client'
 import { RiAlertFill, RiCloseCircleFill, RiLockLine, RiOrganizationChart } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
+import { useEffect } from 'react'
 import Avatar from '../../base/avatar'
 import Divider from '../../base/divider'
 import Tooltip from '../../base/tooltip'
+import Loading from '../../base/loading'
 import AddMemberOrGroupDialog from './add-member-or-group-pop'
-import useAccessControlStore, { AccessControlType } from './access-control-store'
+import useAccessControlStore from './access-control-store'
 import { useGlobalPublicStore } from '@/context/global-public-context'
+import type { AccessControlAccount, AccessControlGroup } from '@/models/access-control'
+import { AccessMode } from '@/models/access-control'
+import { useAppWhiteListSubjects } from '@/service/access-control'
 
 export default function SpecificGroupsOrMembers() {
   const currentMenu = useAccessControlStore(s => s.currentMenu)
+  const appId = useAccessControlStore(s => s.appId)
+  const setSpecificGroups = useAccessControlStore(s => s.setSpecificGroups)
+  const setSpecificMembers = useAccessControlStore(s => s.setSpecificMembers)
   const { t } = useTranslation()
   const systemFeatures = useGlobalPublicStore(s => s.systemFeatures)
   const hideTip = systemFeatures.enable_web_sso_switch_component && systemFeatures.sso_enforced_for_web
 
-  if (currentMenu !== AccessControlType.SPECIFIC_GROUPS_MEMBERS) {
+  const { isPending, data } = useAppWhiteListSubjects(appId, Boolean(appId) && currentMenu === AccessMode.SPECIFIC_GROUPS_MEMBERS)
+  useEffect(() => {
+    setSpecificGroups(data?.groups ?? [])
+    setSpecificMembers(data?.members ?? [])
+  }, [data, setSpecificGroups, setSpecificMembers])
+
+  if (currentMenu !== AccessMode.SPECIFIC_GROUPS_MEMBERS) {
     return <div className='flex items-center p-3'>
       <div className='grow flex items-center gap-x-2'>
         <RiLockLine className='w-4 h-4 text-text-primary' />
@@ -40,7 +54,7 @@ export default function SpecificGroupsOrMembers() {
     </div>
     <div className='px-1 pb-1'>
       <div className='bg-background-section rounded-lg p-2 flex flex-col gap-y-2'>
-        <RenderGroupsAndMembers />
+        {isPending ? <Loading /> : <RenderGroupsAndMembers />}
       </div>
     </div>
   </div >
@@ -65,21 +79,21 @@ function RenderGroupsAndMembers() {
 }
 
 type GroupItemProps = {
-  group: string
+  group: AccessControlGroup
 }
 function GroupItem({ group }: GroupItemProps) {
   return <BaseItem icon={<RiOrganizationChart className='w-[14px] h-[14px] text-components-avatar-shape-fill-stop-0' />}>
-    <p className='system-xs-regular text-text-primary'>Group Name</p>
-    <p className='system-xs-regular text-text-tertiary'>7</p>
+    <p className='system-xs-regular text-text-primary'>{group.name}</p>
+    <p className='system-xs-regular text-text-tertiary'>{group.groupSize}</p>
   </BaseItem>
 }
 
 type MemberItemProps = {
-  member: string
+  member: AccessControlAccount
 }
 function MemberItem({ member }: MemberItemProps) {
-  return <BaseItem icon={<Avatar className='w-[14px] h-[14px]' textClassName='text-[12px]' avatar={null} name='M' />}>
-    <p className='system-xs-regular text-text-primary'>Member Name</p>
+  return <BaseItem icon={<Avatar className='w-[14px] h-[14px]' textClassName='text-[12px]' avatar={null} name={member.name} />}>
+    <p className='system-xs-regular text-text-primary'>{member.name}</p>
   </BaseItem>
 }
 

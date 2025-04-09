@@ -480,7 +480,7 @@ const AppInfo = ({ expand }: IAppInfoProps) => {
           />
         )}
         {
-          showAccessControl && <AccessControl />
+          showAccessControl && <AccessControl app={appDetail} onClose={() => { setShowAccessControl(false) }} />
         }
       </div>
     </PortalToFollowElem>

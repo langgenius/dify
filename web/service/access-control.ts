@@ -1,13 +1,15 @@
-import { useQuery } from '@tanstack/react-query'
-import { get } from './base'
+import { useMutation, useQuery } from '@tanstack/react-query'
+import { get, post } from './base'
 import type { AccessControlAccount, AccessControlGroup, Subject } from '@/models/access-control'
+import type { App } from '@/types/app'
 
 const NAME_SPACE = 'access-control'
 
-export const useAppWhiteListSubjects = (appId: string) => {
+export const useAppWhiteListSubjects = (appId: string, enabled: boolean) => {
   return useQuery({
     queryKey: [NAME_SPACE, 'app-whitelist-subjects', appId],
     queryFn: () => get<{ groups: AccessControlGroup[]; members: AccessControlAccount[] }>(`/enterprise/webapp/app/subjects?appId=${appId}`),
+    enabled,
   })
 }
 
@@ -31,5 +33,19 @@ export const useSearchForWhiteListCandidates = (query: { appId?: string; keyword
       return get<SearchResults>(`/enterprise/webapp/app/subject/search?${new URLSearchParams(params).toString()}`)
     },
     enabled,
+  })
+}
+
+type UpdateAccessModeParams = {
+  appId: App['id']
+  subjects: Subject['subjectId'][]
+}
+
+export const useUpdateAccessMode = () => {
+  return useMutation({
+    mutationKey: [NAME_SPACE, 'update-access-mode'],
+    mutationFn: (params: UpdateAccessModeParams) => {
+      return post('/enterprise/webapp/app/access-mode', { body: params })
+    },
   })
 }

@@ -3,9 +3,9 @@ export enum SubjectType {
   Account = 'account',
 }
 
-export enum AccessModel {
+export enum AccessMode {
   PUBLIC = 'PUBLIC',
-  PRIVATE = 'PRIVATE',
+  SPECIFIC_GROUPS_MEMBERS = 'SPECIFIC_GROUPS_MEMBERS',
   ORGANIZATION = 'ORGANIZATION',
 }
 

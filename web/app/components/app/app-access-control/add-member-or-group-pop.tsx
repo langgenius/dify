@@ -13,6 +13,7 @@ import classNames from '@/utils/classnames'
 import { useSearchForWhiteListCandidates } from '@/service/access-control'
 import type { AccessControlAccount, AccessControlGroup, Subject, SubjectAccount, SubjectGroup } from '@/models/access-control'
 import { SubjectType } from '@/models/access-control'
+import { useSelector } from '@/context/app-context'
 
 export default function AddMemberOrGroupDialog() {
   const { t } = useTranslation()
@@ -116,6 +117,8 @@ type MemberItemProps = {
   member: AccessControlAccount
 }
 function MemberItem({ member }: MemberItemProps) {
+  const currentUser = useSelector(s => s.userProfile)
+  const { t } = useTranslation()
   return <BaseItem className='pr-3'>
     <Checkbox className='w-4 h-4 shrink-0' />
     <div className='flex items-center grow'>
@@ -125,7 +128,7 @@ function MemberItem({ member }: MemberItemProps) {
         </div>
       </div>
       <p className='system-sm-medium text-text-secondary mr-1'>{member.name}</p>
-      <p className='system-xs-regular text-text-tertiary'>You</p>
+      {currentUser.email === member.email && <p className='system-xs-regular text-text-tertiary'>({t('common.you')})</p>}
     </div>
     <p className='system-xs-regular text-text-quaternary'>{member.email}</p>
   </BaseItem>

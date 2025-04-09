@@ -196,6 +196,7 @@ const translation = {
       expand: 'Expand',
       noResult: 'No result',
     },
+    updateSuccess: 'Update successfully',
   },
 }
 

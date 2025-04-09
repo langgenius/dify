@@ -1,10 +1,10 @@
 'use client'
 import type { FC, PropsWithChildren } from 'react'
-import type { AccessControlType } from './access-control-store'
 import useAccessControlStore from './access-control-store'
+import type { AccessMode } from '@/models/access-control'
 
 type AccessControlItemProps = PropsWithChildren<{
-  type: AccessControlType
+  type: AccessMode
 }>
 
 const AccessControlItem: FC<AccessControlItemProps> = ({ type, children }) => {

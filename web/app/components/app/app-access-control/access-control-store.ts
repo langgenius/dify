@@ -1,26 +1,28 @@
 import { create } from 'zustand'
-export enum AccessControlType {
-  PUBLIC = 'PUBLIC',
-  SPECIFIC_GROUPS_MEMBERS = 'SPECIFIC_GROUPS_MEMBERS',
-  ORGANIZATION = 'ORGANIZATION',
-}
+import type { AccessControlAccount, AccessControlGroup } from '@/models/access-control'
+import { AccessMode } from '@/models/access-control'
+import type { App } from '@/types/app'
 
 type AccessControlStore = {
-  specificGroups: []
-  setSpecificGroups: (specificGroups: []) => void
-  specificMembers: []
-  setSpecificMembers: (specificMembers: []) => void
-  currentMenu: AccessControlType
-  setCurrentMenu: (currentMenu: AccessControlType) => void
+  appId: App['id']
+  setAppId: (appId: App['id']) => void
+  specificGroups: AccessControlGroup[]
+  setSpecificGroups: (specificGroups: AccessControlGroup[]) => void
+  specificMembers: AccessControlAccount[]
+  setSpecificMembers: (specificMembers: AccessControlAccount[]) => void
+  currentMenu: AccessMode
+  setCurrentMenu: (currentMenu: AccessMode) => void
 }
 
 const useAccessControlStore = create<AccessControlStore>((set) => {
   return {
+    appId: '',
+    setAppId: appId => set({ appId }),
     specificGroups: [],
     setSpecificGroups: specificGroups => set({ specificGroups }),
     specificMembers: [],
     setSpecificMembers: specificMembers => set({ specificMembers }),
-    currentMenu: AccessControlType.SPECIFIC_GROUPS_MEMBERS,
+    currentMenu: AccessMode.SPECIFIC_GROUPS_MEMBERS,
     setCurrentMenu: currentMenu => set({ currentMenu }),
   }
 })

@@ -197,6 +197,7 @@ const translation = {
       expand: '展开',
       noResult: '没有结果',
     },
+    updateSuccess: '更新成功',
   },
 }
 
