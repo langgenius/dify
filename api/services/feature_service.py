@@ -89,11 +89,9 @@ class FeatureService:
 
         if dify_config.ENTERPRISE_ENABLED:
             system_features.enable_web_sso_switch_component = True
+            system_features.enable_marketplace = False
 
             cls._fulfill_params_from_enterprise(system_features)
-
-        if dify_config.MARKETPLACE_ENABLED:
-            system_features.enable_marketplace = True
 
         return system_features
 
@@ -105,6 +103,7 @@ class FeatureService:
         system_features.is_allow_register = dify_config.ALLOW_REGISTER
         system_features.is_allow_create_workspace = dify_config.ALLOW_CREATE_WORKSPACE
         system_features.is_email_setup = dify_config.MAIL_TYPE is not None and dify_config.MAIL_TYPE != ""
+        system_features.enable_marketplace = dify_config.MARKETPLACE_ENABLED
 
     @classmethod
     def _fulfill_params_from_env(cls, features: FeatureModel):

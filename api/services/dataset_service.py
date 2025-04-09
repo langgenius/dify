@@ -905,7 +905,7 @@ class DocumentService:
                             ).first()
                             if document:
                                 document.dataset_process_rule_id = dataset_process_rule.id  # type: ignore
-                                document.updated_at = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
+                                document.updated_at = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
                                 document.created_from = created_from
                                 document.doc_form = knowledge_config.doc_form
                                 document.doc_language = knowledge_config.doc_language
@@ -1872,7 +1872,7 @@ class SegmentService:
                 if cache_result is not None:
                     continue
                 segment.enabled = False
-                segment.disabled_at = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
+                segment.disabled_at = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
                 segment.disabled_by = current_user.id
                 db.session.add(segment)
                 real_deal_segmment_ids.append(segment.id)
@@ -1964,7 +1964,7 @@ class SegmentService:
                         child_chunk.content = child_chunk_update_args.content
                         child_chunk.word_count = len(child_chunk.content)
                         child_chunk.updated_by = current_user.id
-                        child_chunk.updated_at = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
+                        child_chunk.updated_at = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
                         child_chunk.type = "customized"
                         update_child_chunks.append(child_chunk)
             else:
@@ -2021,7 +2021,7 @@ class SegmentService:
             child_chunk.content = content
             child_chunk.word_count = len(content)
             child_chunk.updated_by = current_user.id
-            child_chunk.updated_at = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
+            child_chunk.updated_at = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
             child_chunk.type = "customized"
             db.session.add(child_chunk)
             VectorService.update_child_chunk_vector([], [child_chunk], [], dataset)
