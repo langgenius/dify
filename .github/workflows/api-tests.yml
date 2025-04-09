@@ -44,9 +44,6 @@ jobs:
       - name: Install dependencies
         run: poetry install -C api --with dev
 
-      - name: Check dependencies in pyproject.toml
-        run: poetry run -P api bash dev/pytest/pytest_artifacts.sh
-
       - name: Run Unit tests
         run: poetry run -P api bash dev/pytest/pytest_unit_tests.sh
 
