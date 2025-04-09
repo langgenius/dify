@@ -14,7 +14,7 @@ export class HistoryBlockNode extends DecoratorNode<React.JSX.Element> {
   }
 
   static clone(node: HistoryBlockNode): HistoryBlockNode {
-    return new HistoryBlockNode(node.__roleName, node.__onEditRole)
+    return new HistoryBlockNode(node.__roleName, node.__onEditRole, node.__key)
   }
 
   constructor(roleName: RoleName, onEditRole: () => void, key?: NodeKey) {
