@@ -13,6 +13,7 @@ import AppIcon from '@/app/components/base/app-icon'
 import { useProviderContext } from '@/context/provider-context'
 import AppsFull from '@/app/components/billing/apps-full-in-dialog'
 import type { AppIconType } from '@/types/app'
+import { noop } from 'lodash-es'
 
 export type CreateAppModalProps = {
   show: boolean
@@ -85,7 +86,7 @@ const CreateAppModal = ({
     <>
       <Modal
         isShow={show}
-        onClose={() => {}}
+        onClose={noop}
         className='relative !max-w-[480px] px-8'
       >
         <div className='absolute right-4 top-4 cursor-pointer p-2' onClick={onHide}>

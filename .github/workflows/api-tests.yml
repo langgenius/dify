@@ -53,9 +53,14 @@ jobs:
       - name: Run dify config tests
         run: poetry run -P api python dev/pytest/pytest_config_tests.py
 
+      - name: Cache MyPy
+        uses: actions/cache@v4
+        with:
+          path: api/.mypy_cache
+          key: mypy-${{ matrix.python-version }}-${{ runner.os }}-${{ hashFiles('api/poetry.lock') }}
+
       - name: Run mypy
-        run: |
-          poetry run -C api python -m mypy --install-types --non-interactive .
+        run: dev/run-mypy
 
       - name: Set up dotenvs
         run: |
