@@ -62,6 +62,7 @@ import Tooltip from '@/app/components/base/tooltip'
 import CustomDialog from '@/app/components/base/dialog'
 import { PortalToFollowElem, PortalToFollowElemContent, PortalToFollowElemTrigger } from '@/app/components/base/portal-to-follow-elem'
 import { AlertTriangle } from '@/app/components/base/icons/src/vender/solid/alertsAndFeedback'
+import { noop } from 'lodash-es'
 
 const TextLabel: FC<PropsWithChildren> = (props) => {
   return <label className='system-sm-semibold text-text-secondary'>{props.children}</label>
@@ -1010,7 +1011,7 @@ const StepTwo = ({
             </div>
           )}
       </div>
-      <FloatRightContainer isMobile={isMobile} isOpen={true} onClose={() => { }} footer={null}>
+      <FloatRightContainer isMobile={isMobile} isOpen={true} onClose={noop} footer={null}>
         <PreviewContainer
           header={<PreviewHeader
             title={t('datasetCreation.stepTwo.preview')}

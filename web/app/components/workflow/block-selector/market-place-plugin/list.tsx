@@ -9,6 +9,7 @@ import Link from 'next/link'
 import { marketplaceUrlPrefix } from '@/config'
 import { RiArrowRightUpLine, RiSearchLine } from '@remixicon/react'
 // import { RiArrowRightUpLine } from '@remixicon/react'
+import { noop } from 'lodash-es'
 
 type Props = {
   wrapElemRef: React.RefObject<HTMLElement>
@@ -107,7 +108,7 @@ const List = (
           <Item
             key={index}
             payload={item}
-            onAction={() => { }}
+            onAction={noop}
           />
         ))}
         <div className='mb-3 mt-2 flex items-center justify-center space-x-2'>
