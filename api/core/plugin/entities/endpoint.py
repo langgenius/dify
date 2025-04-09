@@ -23,8 +23,8 @@ class EndpointProviderDeclaration(BaseModel):
     declaration of an endpoint group
     """
 
-    settings: list[ProviderConfig] = Field(default_factory=list)
-    endpoints: Optional[list[EndpointDeclaration]] = Field(default_factory=list)
+    settings: list[ProviderConfig] = Field(default=[])
+    endpoints: Optional[list[EndpointDeclaration]] = Field(default=[])
 
 
 class EndpointEntity(BasePluginEntity):
