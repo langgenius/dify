@@ -35,9 +35,7 @@ class ApiTool(Tool):
 
     def fork_tool_runtime(self, runtime: ToolRuntime):
         """
-        fork a new tool with meta data
-
-        :param meta: the meta data of a tool call processing, tenant_id is required
+        fork a new tool with metadata
         :return: the new tool
         """
         if self.api_bundle is None:

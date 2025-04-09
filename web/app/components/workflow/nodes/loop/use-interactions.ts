@@ -6,7 +6,10 @@ import type {
   BlockEnum,
   Node,
 } from '../../types'
-import { generateNewNode } from '../../utils'
+import {
+  generateNewNode,
+  getNodeCustomTypeByNodeDataType,
+} from '../../utils'
 import {
   LOOP_PADDING,
   NODES_INITIAL_DATA,
@@ -114,7 +117,7 @@ export const useNodeLoopInteractions = () => {
       const childNodeType = child.data.type as BlockEnum
       const nodesWithSameType = nodes.filter(node => node.data.type === childNodeType)
       const { newNode } = generateNewNode({
-
+        type: getNodeCustomTypeByNodeDataType(childNodeType),
         data: {
           ...NODES_INITIAL_DATA[childNodeType],
           ...child.data,

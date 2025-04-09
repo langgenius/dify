@@ -12,6 +12,7 @@ import { Variable02 } from '@/app/components/base/icons/src/vender/solid/develop
 import { Edit03 } from '@/app/components/base/icons/src/vender/solid/general'
 import Badge from '@/app/components/base/badge'
 import ConfigVarModal from '@/app/components/app/configuration/config-var/config-modal'
+import { noop } from 'lodash-es'
 
 type Props = {
   readonly: boolean
@@ -26,8 +27,8 @@ type Props = {
 const VarItem: FC<Props> = ({
   readonly,
   payload,
-  onChange = () => { },
-  onRemove = () => { },
+  onChange = noop,
+  onRemove = noop,
   rightContent,
   varKeys = [],
   showLegacyBadge = false,

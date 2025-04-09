@@ -1,7 +1,9 @@
 'use client'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-
+import {
+  RiGraduationCapFill,
+} from '@remixicon/react'
 import { useContext } from 'use-context-selector'
 import DeleteAccount from '../delete-account'
 import s from './index.module.css'
@@ -12,10 +14,12 @@ import Modal from '@/app/components/base/modal'
 import Button from '@/app/components/base/button'
 import { updateUserProfile } from '@/service/common'
 import { useAppContext } from '@/context/app-context'
+import { useProviderContext } from '@/context/provider-context'
 import { ToastContext } from '@/app/components/base/toast'
 import AppIcon from '@/app/components/base/app-icon'
 import { IS_CE_EDITION } from '@/config'
 import Input from '@/app/components/base/input'
+import PremiumBadge from '@/app/components/base/premium-badge'
 
 const titleClassName = `
   system-sm-semibold text-text-secondary
@@ -30,6 +34,7 @@ export default function AccountPage() {
   const { t } = useTranslation()
   const { systemFeatures } = useAppContext()
   const { mutateUserProfile, userProfile, apps } = useAppContext()
+  const { isEducationAccount } = useProviderContext()
   const { notify } = useContext(ToastContext)
   const [editNameModalVisible, setEditNameModalVisible] = useState(false)
   const [editName, setEditName] = useState('')
@@ -135,7 +140,15 @@ export default function AccountPage() {
       <div className='mb-8 flex items-center rounded-xl bg-gradient-to-r from-background-gradient-bg-fill-chat-bg-2 to-background-gradient-bg-fill-chat-bg-1 p-6'>
         <AvatarWithEdit avatar={userProfile.avatar_url} name={userProfile.name} onSave={ mutateUserProfile } size={64} />
         <div className='ml-4'>
-          <p className='system-xl-semibold text-text-primary'>{userProfile.name}</p>
+          <p className='system-xl-semibold text-text-primary'>
+            {userProfile.name}
+            {isEducationAccount && (
+              <PremiumBadge size='s' color='blue' className='ml-1 !px-2'>
+                <RiGraduationCapFill className='mr-1 h-3 w-3' />
+                <span className='system-2xs-medium'>EDU</span>
+              </PremiumBadge>
+            )}
+          </p>
           <p className='system-xs-regular text-text-tertiary'>{userProfile.email}</p>
         </div>
       </div>

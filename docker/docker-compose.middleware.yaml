@@ -29,6 +29,8 @@ services:
   redis:
     image: redis:6-alpine
     restart: always
+    env_file:
+      - ./middleware.env
     environment:
       REDISCLI_AUTH: ${REDIS_PASSWORD:-difyai123456}
     volumes:
@@ -45,6 +47,8 @@ services:
   sandbox:
     image: langgenius/dify-sandbox:0.2.11
     restart: always
+    env_file:
+      - ./middleware.env
     environment:
       # The DifySandbox configurations
       # Make sure you are changing this key for your deployment with a strong key.
@@ -68,6 +72,8 @@ services:
   plugin_daemon:
     image: langgenius/dify-plugin-daemon:0.0.6-local
     restart: always
+    env_file:
+      - ./middleware.env
     environment:
       # Use the shared environment variables.
       DB_HOST: ${DB_HOST:-db}
@@ -91,6 +97,23 @@ services:
       PYTHON_ENV_INIT_TIMEOUT: ${PLUGIN_PYTHON_ENV_INIT_TIMEOUT:-120}
       PLUGIN_MAX_EXECUTION_TIMEOUT: ${PLUGIN_MAX_EXECUTION_TIMEOUT:-600}
       PIP_MIRROR_URL: ${PIP_MIRROR_URL:-}
+      PLUGIN_STORAGE_TYPE: ${PLUGIN_STORAGE_TYPE:-local}
+      PLUGIN_STORAGE_LOCAL_ROOT: ${PLUGIN_STORAGE_LOCAL_ROOT:-/app/storage}
+      PLUGIN_INSTALLED_PATH: ${PLUGIN_INSTALLED_PATH:-plugin}
+      PLUGIN_PACKAGE_CACHE_PATH: ${PLUGIN_PACKAGE_CACHE_PATH:-plugin_packages}
+      PLUGIN_MEDIA_CACHE_PATH: ${PLUGIN_MEDIA_CACHE_PATH:-assets}
+      PLUGIN_STORAGE_OSS_BUCKET: ${PLUGIN_STORAGE_OSS_BUCKET:-}
+      S3_USE_AWS_MANAGED_IAM: ${PLUGIN_S3_USE_AWS_MANAGED_IAM:-}
+      S3_ENDPOINT: ${PLUGIN_S3_ENDPOINT:-}
+      S3_USE_PATH_STYLE: ${PLUGIN_S3_USE_PATH_STYLE:-}
+      AWS_ACCESS_KEY: ${PLUGIN_AWS_ACCESS_KEY:-}
+      PAWS_SECRET_KEY: ${PLUGIN_AWS_SECRET_KEY:-}
+      AWS_REGION: ${PLUGIN_AWS_REGION:-}
+      AZURE_BLOB_STORAGE_CONNECTION_STRING: ${PLUGIN_AZURE_BLOB_STORAGE_CONNECTION_STRING:-}
+      AZURE_BLOB_STORAGE_CONTAINER_NAME: ${PLUGIN_AZURE_BLOB_STORAGE_CONTAINER_NAME:-}
+      TENCENT_COS_SECRET_KEY: ${PLUGIN_TENCENT_COS_SECRET_KEY:-}
+      TENCENT_COS_SECRET_ID: ${PLUGIN_TENCENT_COS_SECRET_ID:-}
+      TENCENT_COS_REGION: ${PLUGIN_TENCENT_COS_REGION:-}
     ports:
       - "${EXPOSE_PLUGIN_DAEMON_PORT:-5002}:${PLUGIN_DAEMON_PORT:-5002}"
       - "${EXPOSE_PLUGIN_DEBUGGING_PORT:-5003}:${PLUGIN_DEBUGGING_PORT:-5003}"
@@ -107,6 +130,8 @@ services:
       - ./ssrf_proxy/squid.conf.template:/etc/squid/squid.conf.template
       - ./ssrf_proxy/docker-entrypoint.sh:/docker-entrypoint-mount.sh
     entrypoint: [ "sh", "-c", "cp /docker-entrypoint-mount.sh /docker-entrypoint.sh && sed -i 's/\r$$//' /docker-entrypoint.sh && chmod +x /docker-entrypoint.sh && /docker-entrypoint.sh" ]
+    env_file:
+      - ./middleware.env
     environment:
       # pls clearly modify the squid env vars to fit your network environment.
       HTTP_PORT: ${SSRF_HTTP_PORT:-3128}

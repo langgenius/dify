@@ -77,6 +77,7 @@ import {
   correctToolProvider,
 } from '@/utils'
 import PluginDependency from '@/app/components/workflow/plugin-dependency'
+import { supportFunctionCall } from '@/utils/tool-call'
 
 type PublishConfig = {
   modelConfig: ModelConfig
@@ -196,9 +197,6 @@ const Configuration: FC = () => {
   const isOpenAI = modelConfig.provider === 'langgenius/openai/openai'
 
   const [collectionList, setCollectionList] = useState<Collection[]>([])
-  useEffect(() => {
-
-  }, [])
   const [datasetConfigs, doSetDatasetConfigs] = useState<DatasetConfigs>({
     retrieval_model: RETRIEVE_TYPE.multiWay,
     reranking_model: {
@@ -347,12 +345,7 @@ const Configuration: FC = () => {
     },
   )
 
-  const isFunctionCall = (() => {
-    const features = currModel?.features
-    if (!features)
-      return false
-    return features.includes(ModelFeatureEnum.toolCall) || features.includes(ModelFeatureEnum.multiToolCall)
-  })()
+  const isFunctionCall = supportFunctionCall(currModel?.features)
 
   // Fill old app data missing model mode.
   useEffect(() => {

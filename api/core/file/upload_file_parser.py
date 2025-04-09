@@ -36,7 +36,7 @@ class UploadFileParser:
         """
         get signed url from upload file
 
-        :param upload_file: UploadFile object
+        :param upload_file_id: the id of UploadFile object
         :return:
         """
         base_url = dify_config.FILES_URL
