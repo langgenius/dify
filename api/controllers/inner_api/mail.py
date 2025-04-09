@@ -1,5 +1,7 @@
-from flask_restful import Resource  # type: ignore
-from flask_restful import reqparse
+from flask_restful import (
+    Resource,  # type: ignore
+    reqparse,
+)
 
 from controllers.console.wraps import setup_required
 from controllers.inner_api import api

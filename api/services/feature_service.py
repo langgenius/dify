@@ -38,7 +38,6 @@ class LicenseModel(BaseModel):
     workspaces: LimitationModel = LimitationModel(size=0, limit=0)
 
 
-
 class BrandingModel(BaseModel):
     enabled: bool = False
     application_title: str = ""

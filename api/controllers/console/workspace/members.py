@@ -2,7 +2,6 @@ from urllib import parse
 
 from flask_login import current_user  # type: ignore
 from flask_restful import Resource, abort, marshal_with, reqparse  # type: ignore
-from shapely.speedups import available
 
 import services
 from configs import dify_config
