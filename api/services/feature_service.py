@@ -204,7 +204,7 @@ class FeatureService:
             features.branding.favicon = enterprise_info["Branding"].get("favicon", "")
 
         if "WebAppAuth" in enterprise_info:
-            features.webapp_auth.allow_sso = enterprise_info["WebAppAuth"].get("allowSSO", False)
+            features.webapp_auth.allow_sso = enterprise_info["WebAppAuth"].get("allowSso", False)
             features.webapp_auth.allow_email_code_login = enterprise_info["WebAppAuth"].get(
                 "allowEmailCodeLogin", False
             )
