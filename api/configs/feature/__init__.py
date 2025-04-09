@@ -450,8 +450,8 @@ class ModelLoadBalanceConfig(BaseSettings):
         default=False,
     )
 
-    GPT2_TOKEN_COUNTING_ENABLED: bool = Field(
-        description="Enable or disable GPT-2 token counting. If disabled, token counting will return 0.",
+    PLUGIN_BASED_TOKEN_COUNTING_ENABLED: bool = Field(
+        description="Enable or disable plugin based token counting. If disabled, token counting will return 0.",
         default=False,
     )
 

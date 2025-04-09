@@ -295,18 +295,20 @@ class LargeLanguageModel(AIModel):
         :param tools: tools for tool calling
         :return:
         """
-        plugin_model_manager = PluginModelManager()
-        return plugin_model_manager.get_llm_num_tokens(
-            tenant_id=self.tenant_id,
-            user_id="unknown",
-            plugin_id=self.plugin_id,
-            provider=self.provider_name,
-            model_type=self.model_type.value,
-            model=model,
-            credentials=credentials,
-            prompt_messages=prompt_messages,
-            tools=tools,
-        )
+        if dify_config.PLUGIN_BASED_TOKEN_COUNTING_ENABLED:
+            plugin_model_manager = PluginModelManager()
+            return plugin_model_manager.get_llm_num_tokens(
+                tenant_id=self.tenant_id,
+                user_id="unknown",
+                plugin_id=self.plugin_id,
+                provider=self.provider_name,
+                model_type=self.model_type.value,
+                model=model,
+                credentials=credentials,
+                prompt_messages=prompt_messages,
+                tools=tools,
+            )
+        return 0
 
     def _calc_response_usage(
         self, model: str, credentials: dict, prompt_tokens: int, completion_tokens: int
@@ -538,16 +540,3 @@ class LargeLanguageModel(AIModel):
                         raise e
                     else:
                         logger.warning(f"Callback {callback.__class__.__name__} on_invoke_error failed with error {e}")
-
-    def _get_num_tokens_by_gpt2(self, text: str) -> int:
-        """
-        Override the _get_num_tokens_by_gpt2 method from AIModel class.
-        If GPT2_TOKEN_COUNTING_ENABLED is True, calculate tokens using the parent method.
-        If GPT2_TOKEN_COUNTING_ENABLED is False, return 0 directly.
-
-        :param text: plain text of prompt
-        :return: number of tokens or 0 if disabled
-        """
-        if dify_config.GPT2_TOKEN_COUNTING_ENABLED:
-            return super()._get_num_tokens_by_gpt2(text)
-        return 0
