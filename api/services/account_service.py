@@ -585,11 +585,12 @@ class TenantService:
         if not FeatureService.get_system_features().is_allow_create_workspace and not is_setup:
             raise WorkSpaceNotAllowedCreateError()
 
+        workspaces = FeatureService.get_system_features().license.workspaces
         if (
             FeatureService.get_system_features().license.product_id == "DIFY_ENTERPRISE_STANDARD"
-            and FeatureService.get_system_features().available_workspaces <= 0
+            and workspaces.limit - workspaces.size <= 0
         ):
-            raise WorkSpaceNotAllowedCreateError()
+            raise WorkSpaceNotAllowedCreateError("workspace creation limit exceeded")
 
         if name:
             tenant = TenantService.create_tenant(name=name, is_setup=is_setup)

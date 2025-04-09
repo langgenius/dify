@@ -2,6 +2,7 @@ from urllib import parse
 
 from flask_login import current_user  # type: ignore
 from flask_restful import Resource, abort, marshal_with, reqparse  # type: ignore
+from shapely.speedups import available
 
 import services
 from configs import dify_config
@@ -55,10 +56,11 @@ class MemberInviteEmailApi(Resource):
         inviter = current_user
         invitation_results = []
         console_web_url = dify_config.CONSOLE_WEB_URL
+
+        workspace_members = FeatureService.get_features(tenant_id=inviter.current_tenant.id).workspace_members
         if (
             FeatureService.get_system_features().license.product_id == "DIFY_ENTERPRISE_STANDARD"
-            and len(invitee_emails)
-            > FeatureService.get_features(tenant_id=inviter.current_tenant.id).available_team_members
+            and len(invitee_emails) > workspace_members.limit - workspace_members.size
         ):
             return {
                 "code": "limit-exceeded",
