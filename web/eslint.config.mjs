@@ -117,6 +117,9 @@ export default combine(
       // antfu migrate to eslint-plugin-unused-imports
       'unused-imports/no-unused-vars': 'warn',
       'unused-imports/no-unused-imports': 'warn',
+
+      // We use `import { noop } from 'lodash-es'` across `web` project
+      'no-empty-function': 'error',
     },
 
     languageOptions: {
