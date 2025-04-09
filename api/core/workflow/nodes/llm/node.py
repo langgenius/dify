@@ -208,8 +208,8 @@ class LLMNode(BaseNode[LLMNodeData]):
                 except json.JSONDecodeError as e:
                     # if the result_text is not a valid json, try to repair it
                     structured_output = json_repair.loads(result_text)
-                    if not isinstance(structured_output, dict):
-                        raise LLMNodeError(f"Failed to parse structured output: {e}")
+                    if not isinstance(structured_output, dict | list):
+                        raise LLMNodeError(f"Failed to parse structured output: {result_text}")
                 outputs["structured_output"] = structured_output
             yield RunCompletedEvent(
                 run_result=NodeRunResult(
