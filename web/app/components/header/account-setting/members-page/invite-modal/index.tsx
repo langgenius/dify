@@ -1,5 +1,5 @@
 'use client'
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useContext } from 'use-context-selector'
 import { XMarkIcon } from '@heroicons/react/24/outline'
 import { useTranslation } from 'react-i18next'
@@ -17,6 +17,7 @@ import type { InvitationResult } from '@/models/common'
 import I18n from '@/context/i18n'
 
 import 'react-multi-email/dist/style.css'
+import { useProviderContextSelector } from '@/context/provider-context'
 type IInviteModalProps = {
   isEmailSetup: boolean
   onCancel: () => void
@@ -29,13 +30,23 @@ const InviteModal = ({
   onSend,
 }: IInviteModalProps) => {
   const { t } = useTranslation()
+  const licenseLimit = useProviderContextSelector(s => s.licenseLimit)
   const [emails, setEmails] = useState<string[]>([])
   const { notify } = useContext(ToastContext)
+  const [isLimited, setIsLimited] = useState(false)
+  const [isLimitExceeded, setIsLimitExceeded] = useState(false)
+  useEffect(() => {
+    const limited = licenseLimit.workspace_members.limit > 0
+    setIsLimited(limited)
+    setIsLimitExceeded(limited && emails.length > licenseLimit.workspace_members.limit)
+  }, [licenseLimit, emails])
 
   const { locale } = useContext(I18n)
   const [role, setRole] = useState<string>('normal')
 
   const handleSend = useCallback(async () => {
+    if (isLimitExceeded)
+      return
     if (emails.map((email: string) => emailRegex.test(email)).every(Boolean)) {
       try {
         const { result, invitation_results } = await inviteMember({
@@ -53,7 +64,7 @@ const InviteModal = ({
     else {
       notify({ type: 'error', message: t('common.members.emailInvalid') })
     }
-  }, [role, emails, notify, onCancel, onSend, t])
+  }, [isLimitExceeded, emails, role, locale, onCancel, onSend, notify, t])
 
   return (
     <div className={cn(s.wrap)}>
@@ -81,7 +92,7 @@ const InviteModal = ({
 
         <div>
           <div className='mb-2 text-sm font-medium text-gray-900'>{t('common.members.email')}</div>
-          <div className='mb-8 h-36 flex items-stretch'>
+          <div className='mb-8 h-36 flex flex-col items-stretch'>
             <ReactMultiEmail
               className={cn('w-full pt-2 px-3 outline-none border-none',
                 'appearance-none text-sm text-gray-900 rounded-lg overflow-y-auto',
@@ -101,6 +112,14 @@ const InviteModal = ({
               }
               placeholder={t('common.members.emailPlaceholder') || ''}
             />
+            <div className={
+              cn('flex items-center justify-end system-xs-regular text-text-tertiary',
+                (isLimited && emails.length > licenseLimit.workspace_members.limit) ? 'text-text-destructive' : '')}
+            >
+              <span>{emails.length ?? 0}</span>
+              <span>/</span>
+              <span>{isLimited ? licenseLimit.workspace_members.limit : t('common.license.unlimited')}</span>
+            </div>
           </div>
           <div className='mb-6'>
             <RoleSelector value={role} onChange={setRole} />
@@ -109,7 +128,7 @@ const InviteModal = ({
             tabIndex={0}
             className='w-full'
             onClick={handleSend}
-            disabled={!emails.length}
+            disabled={!emails.length || isLimitExceeded}
             variant='primary'
           >
             {t('common.members.sendInvite')}

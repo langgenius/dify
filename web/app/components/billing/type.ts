@@ -68,6 +68,10 @@ export type CurrentPlanInfoBackend = {
   model_load_balancing_enabled: boolean
   dataset_operator_enabled: boolean
   webapp_copyright_enabled: boolean
+  workspace_members: {
+    size: number
+    limit: number
+  }
 }
 
 export type SubscriptionItem = {
