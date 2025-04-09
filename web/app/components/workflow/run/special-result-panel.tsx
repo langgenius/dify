@@ -6,6 +6,7 @@ import type {
   AgentLogItemWithChildren,
   IterationDurationMap,
   LoopDurationMap,
+  LoopVariableMap,
   NodeTracing,
 } from '@/types/workflow'
 
@@ -23,6 +24,7 @@ export type SpecialResultPanelProps = {
   setShowLoopingDetailFalse?: () => void
   loopResultList?: NodeTracing[][]
   loopResultDurationMap?: LoopDurationMap
+  loopResultVariableMap?: LoopVariableMap
 
   agentOrToolLogItemStack?: AgentLogItemWithChildren[]
   agentOrToolLogListMap?: Record<string, AgentLogItemWithChildren[]>
@@ -42,6 +44,7 @@ const SpecialResultPanel = ({
   setShowLoopingDetailFalse,
   loopResultList,
   loopResultDurationMap,
+  loopResultVariableMap,
 
   agentOrToolLogItemStack,
   agentOrToolLogListMap,
@@ -75,6 +78,7 @@ const SpecialResultPanel = ({
             list={loopResultList}
             onBack={setShowLoopingDetailFalse}
             loopDurationMap={loopResultDurationMap}
+            loopVariableMap={loopResultVariableMap}
           />
         )
       }

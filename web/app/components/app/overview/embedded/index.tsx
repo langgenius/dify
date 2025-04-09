@@ -44,7 +44,10 @@ const OPTION_MAP = {
     : ''}${IS_CE_EDITION
     ? `,
   baseUrl: '${url}'`
-    : ''}
+    : ''},
+  systemVariables: {
+    // user_id: 'YOU CAN DEFINE USER ID HERE',
+  },
  }
 </script>
 <script

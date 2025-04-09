@@ -164,7 +164,7 @@ const PanelOperatorPopup = ({
         )
       }
       {
-        showHelpLink && (
+        showHelpLink && link && (
           <>
             <div className='p-1'>
               <a

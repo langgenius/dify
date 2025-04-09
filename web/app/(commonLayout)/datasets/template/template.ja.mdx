@@ -1698,9 +1698,9 @@ import { Row, Col, Properties, Property, Heading, SubProperty, PropertyInstructi
   <Col sticky>
     <CodeGroup
       title="リクエスト"
-      tag="POST"
+      tag="PATCH"
       label="/datasets/{dataset_id}/metadata/{metadata_id}"
-      targetCode={`curl --location --request POST '${props.apiBaseUrl}/datasets/{dataset_id}/metadata/{metadata_id}' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json'\\\n--data-raw '{"name": "test"}'`}
+      targetCode={`curl --location --request PATCH '${props.apiBaseUrl}/datasets/{dataset_id}/metadata/{metadata_id}' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json'\\\n--data-raw '{"name": "test"}'`}
     >
     ```bash {{ title: 'cURL' }}
     ```

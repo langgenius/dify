@@ -16,6 +16,8 @@ import Input from '@/app/components/base/input'
 import { BubbleX, Env } from '@/app/components/base/icons/src/vender/line/others'
 import { checkKeys } from '@/utils/var'
 import { FILE_STRUCT } from '@/app/components/workflow/constants'
+import { Loop } from '@/app/components/base/icons/src/vender/workflow'
+import { noop } from 'lodash-es'
 
 type ObjectChildrenProps = {
   nodeId: string
@@ -38,7 +40,10 @@ type ItemProps = {
   itemWidth?: number
   isSupportFileVar?: boolean
   isException?: boolean
+  isLoopVar?: boolean
 }
+
+const objVarTypes = [VarType.object, VarType.file]
 
 const Item: FC<ItemProps> = ({
   nodeId,
@@ -50,13 +55,14 @@ const Item: FC<ItemProps> = ({
   itemWidth,
   isSupportFileVar,
   isException,
+  isLoopVar,
 }) => {
   const isFile = itemData.type === VarType.file
-  const isObj = ([VarType.object, VarType.file].includes(itemData.type) && itemData.children && itemData.children.length > 0)
+  const isObj = (objVarTypes.includes(itemData.type) && itemData.children && itemData.children.length > 0)
   const isSys = itemData.variable.startsWith('sys.')
   const isEnv = itemData.variable.startsWith('env.')
   const isChatVar = itemData.variable.startsWith('conversation.')
-  const itemRef = useRef(null)
+  const itemRef = useRef<HTMLDivElement>(null)
   const [isItemHovering, setIsItemHovering] = useState(false)
   const _ = useHover(itemRef, {
     onChange: (hovering) => {
@@ -97,7 +103,7 @@ const Item: FC<ItemProps> = ({
   return (
     <PortalToFollowElem
       open={open}
-      onOpenChange={() => { }}
+      onOpenChange={noop}
       placement='left-start'
     >
       <PortalToFollowElemTrigger className='w-full'>
@@ -112,9 +118,10 @@ const Item: FC<ItemProps> = ({
           onMouseDown={e => e.preventDefault()}
         >
           <div className='flex w-0 grow items-center'>
-            {!isEnv && !isChatVar && <Variable02 className={cn('h-3.5 w-3.5 shrink-0 text-text-accent', isException && 'text-text-warning')} />}
+            {!isEnv && !isChatVar && !isLoopVar && <Variable02 className={cn('h-3.5 w-3.5 shrink-0 text-text-accent', isException && 'text-text-warning')} />}
             {isEnv && <Env className='h-3.5 w-3.5 shrink-0 text-util-colors-violet-violet-600' />}
-            {isChatVar && <BubbleX className='h-3.5 w-3.5 text-util-colors-teal-teal-700' />}
+            {isChatVar && <BubbleX className='h-3.5 w-3.5 shrink-0 text-util-colors-teal-teal-700' />}
+            {isLoopVar && <Loop className='h-3.5 w-3.5 shrink-0 text-util-colors-cyan-cyan-500' />}
             {!isEnv && !isChatVar && (
               <div title={itemData.variable} className='system-sm-medium ml-1 w-0 grow truncate text-text-secondary'>{itemData.variable}</div>
             )}
@@ -176,7 +183,7 @@ const ObjectChildren: FC<ObjectChildrenProps> = ({
   isSupportFileVar,
 }) => {
   const currObjPath = objPath
-  const itemRef = useRef(null)
+  const itemRef = useRef<HTMLDivElement>(null)
   const [isItemHovering, setIsItemHovering] = useState(false)
   const _ = useHover(itemRef, {
     onChange: (hovering) => {
@@ -317,6 +324,7 @@ const VarReferenceVars: FC<Props> = ({
                     itemWidth={itemWidth}
                     isSupportFileVar={isSupportFileVar}
                     isException={v.isException}
+                    isLoopVar={item.isLoop}
                   />
                 ))}
               </div>))

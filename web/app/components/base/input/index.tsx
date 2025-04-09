@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { RiCloseCircleFill, RiErrorWarningLine, RiSearchLine } from '@remixicon/react'
 import { type VariantProps, cva } from 'class-variance-authority'
 import cn from '@/utils/classnames'
+import { noop } from 'lodash-es'
 
 export const inputVariants = cva(
   '',
@@ -43,7 +44,7 @@ const Input = ({
   styleCss,
   value,
   placeholder,
-  onChange,
+  onChange = noop,
   unit,
   ...props
 }: InputProps) => {

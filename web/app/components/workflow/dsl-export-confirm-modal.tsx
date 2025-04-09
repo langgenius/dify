@@ -8,6 +8,7 @@ import Modal from '@/app/components/base/modal'
 import Checkbox from '@/app/components/base/checkbox'
 import Button from '@/app/components/base/button'
 import type { EnvironmentVariable } from '@/app/components/workflow/types'
+import { noop } from 'lodash-es'
 
 export type DSLExportConfirmModalProps = {
   envList: EnvironmentVariable[]
@@ -32,7 +33,7 @@ const DSLExportConfirmModal = ({
   return (
     <Modal
       isShow={true}
-      onClose={() => { }}
+      onClose={noop}
       className={cn('w-[480px] max-w-[480px]')}
     >
       <div className='title-2xl-semi-bold relative pb-6 text-text-primary'>{t('workflow.env.export.title')}</div>
