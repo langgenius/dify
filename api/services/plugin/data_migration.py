@@ -168,7 +168,7 @@ limit 1000"""
                     try:
                         updated_value = f"{DEFAULT_PLUGIN_ID}/{provider_name}/{provider_name}"
                         batch_updates.append((updated_value, record_id))
-                    except Exception as e:
+                    except Exception:
                         failed_ids.append(record_id)
                         click.echo(
                             click.style(
