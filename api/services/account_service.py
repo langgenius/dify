@@ -408,12 +408,11 @@ class AccountService:
         token = TokenManager.generate_token(
             account=account, email=email, token_type="reset_password", additional_data={"code": code}
         )
-        # send_reset_password_mail_task.delay(
-        #     language=language,
-        #     to=account_email,
-        #     code=code,
-        # )
-        print("code: ", code)
+        send_reset_password_mail_task.delay(
+            language=language,
+            to=account_email,
+            code=code,
+        )
         cls.reset_password_rate_limiter.increment_rate_limit(account_email)
         return token
 
@@ -441,12 +440,11 @@ class AccountService:
         token = TokenManager.generate_token(
             account=account, email=email, token_type="email_code_login", additional_data={"code": code}
         )
-        # send_email_code_login_mail_task.delay(
-        #     language=language,
-        #     to=account.email if account else email,
-        #     code=code,
-        # )
-        print("code: ", code)
+        send_email_code_login_mail_task.delay(
+            language=language,
+            to=account.email if account else email,
+            code=code,
+        )
         cls.email_code_login_rate_limiter.increment_rate_limit(email)
         return token
 
