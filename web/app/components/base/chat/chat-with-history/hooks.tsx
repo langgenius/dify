@@ -266,7 +266,7 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
 
   const currentConversationLatestInputs = useMemo(() => {
     if (!currentConversationId || !appChatListData?.data.length)
-      return {}
+      return newConversationInputsRef.current || {}
     return appChatListData.data.slice().pop().inputs || {}
   }, [appChatListData, currentConversationId])
   const [currentConversationInputs, setCurrentConversationInputs] = useState<Record<string, any>>(currentConversationLatestInputs || {})
