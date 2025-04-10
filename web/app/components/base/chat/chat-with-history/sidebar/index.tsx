@@ -11,6 +11,7 @@ import { Edit05 } from '@/app/components/base/icons/src/vender/line/general'
 import type { ConversationItem } from '@/models/share'
 import Confirm from '@/app/components/base/confirm'
 import RenameModal from '@/app/components/base/chat/chat-with-history/sidebar/rename-modal'
+import MenuDropdown from '@/app/components/share/text-generation/menu-dropdown'
 
 const Sidebar = () => {
   const { t } = useTranslation()
@@ -115,11 +116,14 @@ const Sidebar = () => {
           )
         }
       </div>
-      {appData?.site.copyright && (
-        <div className='px-4 pb-4 text-xs text-gray-400'>
-          © {(new Date()).getFullYear()} {appData?.site.copyright}
-        </div>
-      )}
+      <div className='flex items-center justify-between px-4 pb-4 '>
+        <MenuDropdown placement='top-start' data={appData?.site} />
+        {appData?.site.copyright && (
+          <div className='text-xs text-gray-400 truncate'>
+            © {(new Date()).getFullYear()} {appData?.site.copyright}
+          </div>
+        )}
+      </div>
       {!!showConfirm && (
         <Confirm
           title={t('share.chat.deleteConversation.title')}

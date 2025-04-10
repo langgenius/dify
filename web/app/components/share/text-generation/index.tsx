@@ -14,6 +14,7 @@ import { checkOrSetAccessToken } from '../utils'
 import s from './style.module.css'
 import RunBatch from './run-batch'
 import ResDownload from './run-batch/res-download'
+import MenuDropdown from './menu-dropdown'
 import cn from '@/utils/classnames'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import RunOnce from '@/app/components/share/text-generation/run-once'
@@ -558,16 +559,19 @@ const TextGeneration: FC<IMainProps> = ({
           'shrink-0 relative flex flex-col pb-10 h-full border-r border-gray-100 bg-white',
         )}>
           <div className='mb-6'>
-            <div className='flex items-center justify-between'>
-              <div className='flex items-center space-x-3'>
-                <AppIcon
-                  size="small"
-                  iconType={siteInfo.icon_type}
-                  icon={siteInfo.icon}
-                  background={siteInfo.icon_background || appDefaultIconBackground}
-                  imageUrl={siteInfo.icon_url}
-                />
-                <div className='text-lg font-semibold text-gray-800'>{siteInfo.title}</div>
+            <div className='flex items-center'>
+              <div className='flex grow'>
+                <div className='flex items-center space-x-3 grow'>
+                  <AppIcon
+                    size="small"
+                    iconType={siteInfo.icon_type}
+                    icon={siteInfo.icon}
+                    background={siteInfo.icon_background || appDefaultIconBackground}
+                    imageUrl={siteInfo.icon_url}
+                  />
+                  <div className='text-lg font-semibold text-gray-800'>{siteInfo.title}</div>
+                </div>
+                <MenuDropdown />
               </div>
               {!isPC && (
                 <Button

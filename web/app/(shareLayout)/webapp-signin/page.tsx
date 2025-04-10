@@ -2,13 +2,17 @@
 import { useRouter, useSearchParams } from 'next/navigation'
 import type { FC } from 'react'
 import React, { useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import cn from '@/utils/classnames'
 import Toast from '@/app/components/base/toast'
-import { fetchSystemFeatures, fetchWebOAuth2SSOUrl, fetchWebOIDCSSOUrl, fetchWebSAMLSSOUrl } from '@/service/share'
+import { fetchWebOAuth2SSOUrl, fetchWebOIDCSSOUrl, fetchWebSAMLSSOUrl } from '@/service/share'
 import { setAccessToken } from '@/app/components/share/utils'
-import Loading from '@/app/components/base/loading'
+import Button from '@/app/components/base/button'
+import { useGlobalPublicStore } from '@/context/global-public-context'
 
 const WebSSOForm: FC = () => {
+  const { t } = useTranslation()
+  const systemFeatures = useGlobalPublicStore(s => s.systemFeatures)
   const searchParams = useSearchParams()
   const router = useRouter()
 
@@ -42,14 +46,14 @@ const WebSSOForm: FC = () => {
     router.push(redirectUrl)
   }
 
-  const handleSSOLogin = async (protocol: string) => {
+  const handleSSOLogin = async () => {
     const appCode = getAppCodeFromRedirectUrl()
     if (!appCode || !redirectUrl) {
       showErrorToast('redirect url or app code is invalid.')
       return
     }
 
-    switch (protocol) {
+    switch (systemFeatures.sso_enforced_for_web_protocol) {
       case 'saml': {
         const samlRes = await fetchWebSAMLSSOUrl(appCode, redirectUrl)
         router.push(samlRes.url)
@@ -72,18 +76,13 @@ const WebSSOForm: FC = () => {
 
   useEffect(() => {
     const init = async () => {
-      const res = await fetchSystemFeatures()
-      const protocol = res.sso_enforced_for_web_protocol
-
       if (message) {
         showErrorToast(message)
         return
       }
 
-      if (!tokenFromUrl) {
-        await handleSSOLogin(protocol)
+      if (!tokenFromUrl)
         return
-      }
 
       await processTokenAndRedirect()
     }
@@ -94,7 +93,7 @@ const WebSSOForm: FC = () => {
   return (
     <div className="flex items-center justify-center h-full">
       <div className={cn('flex flex-col items-center w-full grow justify-center', 'px-6', 'md:px-[108px]')}>
-        <Loading type='area' />
+        <Button variant='primary' onClick={() => { handleSSOLogin() }}>{t('login.withSSO')}</Button>
       </div>
     </div>
   )
