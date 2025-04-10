@@ -66,6 +66,7 @@ const Apps = () => {
   const [isCreatedByMe, setIsCreatedByMe] = useState(queryIsCreatedByMe)
   const [tagFilterValue, setTagFilterValue] = useState<string[]>(tagIDs)
   const [searchKeywords, setSearchKeywords] = useState(keywords)
+  const newAppCardRef = useRef<HTMLDivElement>(null)
   const setKeywords = useCallback((keywords: string) => {
     setQuery(prev => ({ ...prev, keywords }))
   }, [setQuery])
@@ -166,14 +167,14 @@ const Apps = () => {
       {(data && data[0].total > 0)
         ? <div className='relative grid grow grid-cols-1 content-start gap-4 px-12 pt-2 sm:grid-cols-1 md:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-5 2k:grid-cols-6'>
           {isCurrentWorkspaceEditor
-            && <NewAppCard onSuccess={mutate} />}
+            && <NewAppCard ref={newAppCardRef} onSuccess={mutate} />}
           {data.map(({ data: apps }) => apps.map(app => (
             <AppCard key={app.id} app={app} onRefresh={mutate} />
           )))}
         </div>
         : <div className='relative grid grow grid-cols-1 content-start gap-4 overflow-hidden px-12 pt-2 sm:grid-cols-1 md:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-5 2k:grid-cols-6'>
           {isCurrentWorkspaceEditor
-            && <NewAppCard className='z-10' onSuccess={mutate} />}
+            && <NewAppCard ref={newAppCardRef} className='z-10' onSuccess={mutate} />}
           <NoAppsFound />
         </div>}
       <CheckModal />
