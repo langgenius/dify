@@ -88,10 +88,19 @@ class LoginApi(Resource):
         # SELF_HOSTED only have one workspace
         tenants = TenantService.get_join_tenants(account)
         if len(tenants) == 0:
-            return {
-                "result": "fail",
-                "data": "workspace not found, please contact system admin to invite you to join in a workspace",
-            }
+            system_features = FeatureService.get_system_features()
+
+            if (
+                system_features.is_allow_create_workspace
+                and system_features.license.workspaces.limit != 0
+                and system_features.license.workspaces.limit - system_features.license.workspaces.size <= 0
+            ):
+                raise WorkspacesLimitExceeded()
+            else:
+                return {
+                    "result": "fail",
+                    "data": "workspace not found, please contact system admin to invite you to join in a workspace",
+                }
 
         token_pair = AccountService.login(account=account, ip_address=extract_remote_ip(request))
         AccountService.reset_login_error_rate_limit(args["email"])

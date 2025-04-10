@@ -11,7 +11,6 @@ from controllers.console.error import (
     AccountInFreezeError,
     AccountNotFound,
     EmailSendIpLimitError,
-    WorkspacesLimitExceeded,
 )
 from controllers.console.wraps import setup_required
 from events.tenant_event import tenant_was_created
@@ -133,7 +132,7 @@ class ForgotPasswordResetApi(Resource):
             except AccountRegisterError as are:
                 raise AccountInFreezeError()
             except WorkspacesLimitExceededError:
-                raise WorkspacesLimitExceeded()
+                pass
 
         return {"result": "success"}
 
