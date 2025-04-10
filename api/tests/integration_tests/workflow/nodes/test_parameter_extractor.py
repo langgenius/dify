@@ -311,6 +311,7 @@ def test_extract_json_response():
     assert result is not None
     assert result["location"] == "kawaii"
 
+
 def test_extract_json_from_tool_call():
     """
     Test extract json response.
@@ -342,9 +343,8 @@ def test_extract_json_from_tool_call():
             id="llm",
             type="parameter-extractor",
             function=AssistantPromptMessage.ToolCall.ToolCallFunction(
-                name="foo",
-                arguments="""{"location":"kawaii"}{"location": 1}"""
-            )
+                name="foo", arguments="""{"location":"kawaii"}{"location": 1}"""
+            ),
         )
     )
 
