@@ -279,7 +279,10 @@ class TencentVector(BaseVector):
         return docs
 
     def delete(self) -> None:
-        self._client.drop_collection(database_name=self._client_config.database, collection_name=self.collection_name)
+        if self._has_collection():
+            self._client.drop_collection(
+                database_name=self._client_config.database, collection_name=self.collection_name
+            )
 
 
 class TencentVectorFactory(AbstractVectorFactory):
