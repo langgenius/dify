@@ -1,7 +1,8 @@
 'use client'
-import React, { useState } from 'react'
+import React, { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { RiCloseLine } from '@remixicon/react'
+import { RiCloseLine, RiCommandLine, RiCornerDownLeftLine } from '@remixicon/react'
+import { useDebounceFn, useKeyPress } from 'ahooks'
 import AppIconPicker from '../../base/app-icon-picker'
 import Modal from '@/app/components/base/modal'
 import Button from '@/app/components/base/button'
@@ -66,7 +67,7 @@ const CreateAppModal = ({
   const { plan, enableBilling } = useProviderContext()
   const isAppsFull = (enableBilling && plan.usage.buildApps >= plan.total.buildApps)
 
-  const submit = () => {
+  const submit = useCallback(() => {
     if (!name.trim()) {
       Toast.notify({ type: 'error', message: t('explore.appCustomize.nameRequired') })
       return
@@ -80,7 +81,19 @@ const CreateAppModal = ({
       use_icon_as_answer_icon: useIconAsAnswerIcon,
     })
     onHide()
-  }
+  }, [name, appIcon, description, useIconAsAnswerIcon, onConfirm, onHide, t])
+
+  const { run: handleSubmit } = useDebounceFn(submit, { wait: 300 })
+
+  useKeyPress(['meta.enter', 'ctrl.enter'], () => {
+    if (show && !(!isEditModal && isAppsFull) && name.trim())
+      handleSubmit()
+  })
+
+  useKeyPress('esc', () => {
+    if (show)
+      onHide()
+  })
 
   return (
     <>
@@ -146,7 +159,18 @@ const CreateAppModal = ({
           {!isEditModal && isAppsFull && <AppsFull className='mt-4' loc='app-explore-create' />}
         </div>
         <div className='flex flex-row-reverse'>
-          <Button disabled={!isEditModal && isAppsFull} className='ml-2 w-24' variant='primary' onClick={submit}>{!isEditModal ? t('common.operation.create') : t('common.operation.save')}</Button>
+          <Button
+            disabled={(!isEditModal && isAppsFull) || !name.trim()}
+            className='ml-2 w-24 gap-1'
+            variant='primary'
+            onClick={handleSubmit}
+          >
+            <span>{!isEditModal ? t('common.operation.create') : t('common.operation.save')}</span>
+            <div className='flex gap-0.5'>
+              <RiCommandLine size={14} className='system-kbd rounded-sm bg-components-kbd-bg-white p-0.5' />
+              <RiCornerDownLeftLine size={14} className='system-kbd rounded-sm bg-components-kbd-bg-white p-0.5' />
+            </div>
+          </Button>
           <Button className='w-24' onClick={onHide}>{t('common.operation.cancel')}</Button>
         </div>
       </Modal>
