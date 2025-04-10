@@ -55,7 +55,7 @@ from tasks.delete_account_task import delete_account_task
 from tasks.mail_account_deletion_task import send_account_deletion_verification_code
 from tasks.mail_invite_member_task import send_invite_member_mail_task
 from tasks.mail_reset_password_task import send_reset_password_mail_task
-
+from tasks.mail_email_code_login import send_email_code_login_mail_task
 
 class TokenPair(BaseModel):
     access_token: str
