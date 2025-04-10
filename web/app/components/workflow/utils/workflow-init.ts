@@ -91,14 +91,7 @@ export const preprocessNodesAndEdges = (nodes: Node[], edges: Edge[]) => {
   const hasIterationNode = nodes.some(node => node.data.type === BlockEnum.Iteration)
   const hasLoopNode = nodes.some(node => node.data.type === BlockEnum.Loop)
 
-  if (!hasIterationNode) {
-    return {
-      nodes,
-      edges,
-    }
-  }
-
-  if (!hasLoopNode) {
+  if (!hasIterationNode && !hasLoopNode) {
     return {
       nodes,
       edges,
