@@ -250,11 +250,19 @@ const Link = ({ node, ...props }: any) => {
   }
 }
 
+function escapeSVGTags(htmlString: string): string {
+  return htmlString.replace(/(<svg[\s\S]*?>)([\s\S]*?)(<\/svg>)/gi, (match: string, openTag: string, innerContent: string, closeTag: string): string => {
+    return openTag.replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      + innerContent.replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      + closeTag.replace(/</g, '&lt;').replace(/>/g, '&gt;')
+  })
+}
+
 export function Markdown(props: { content: string; className?: string; customDisallowedElements?: string[] }) {
   const latexContent = flow([
     preprocessThinkTag,
     preprocessLaTeX,
-  ])(props.content)
+  ])(escapeSVGTags(props.content))
 
   return (
     <div className={cn('markdown-body', '!text-text-primary', props.className)}>
