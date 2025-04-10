@@ -42,3 +42,19 @@ class EnterpriseService:
         if not data:
             raise ValueError("No data found.")
         return WebAppSettings(**data)
+
+    @classmethod
+    def update_app_access_mode(cls, app_id: str, access_mode: str) -> bool:
+        if not app_id:
+            raise ValueError("app_id must be provided.")
+        if access_mode not in ["public", "private", "private_all"]:
+            raise ValueError("access_mode must be either 'public', 'private', or 'private_all'")
+
+        data = {
+            "appId": app_id,
+            "accessMode": access_mode
+        }
+
+        response = EnterpriseRequest.send_request("POST", "/webapp/access-mode", json=data)
+
+        return response.get("result", False)
