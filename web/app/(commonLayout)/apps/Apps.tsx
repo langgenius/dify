@@ -74,10 +74,15 @@ const Apps = () => {
     setQuery(prev => ({ ...prev, tagIDs }))
   }, [setQuery])
 
-  const { data, isLoading, setSize, mutate } = useSWRInfinite(
+  const { data, isLoading, error, setSize, mutate } = useSWRInfinite(
     (pageIndex: number, previousPageData: AppListResponse) => getKey(pageIndex, previousPageData, activeTab, isCreatedByMe, tagIDs, searchKeywords),
     fetchAppList,
-    { revalidateFirstPage: true },
+    {
+      revalidateFirstPage: true,
+      shouldRetryOnError: false,
+      dedupingInterval: 500,
+      errorRetryCount: 3,
+    },
   )
 
   const anchorRef = useRef<HTMLDivElement>(null)
@@ -106,15 +111,22 @@ const Apps = () => {
   useEffect(() => {
     const hasMore = data?.at(-1)?.has_more ?? true
     let observer: IntersectionObserver | undefined
+
+    if (error) {
+      if (observer)
+        observer.disconnect()
+      return
+    }
+
     if (anchorRef.current) {
       observer = new IntersectionObserver((entries) => {
-        if (entries[0].isIntersecting && !isLoading && hasMore)
+        if (entries[0].isIntersecting && !isLoading && !error && hasMore)
           setSize((size: number) => size + 1)
       }, { rootMargin: '100px' })
       observer.observe(anchorRef.current)
     }
     return () => observer?.disconnect()
-  }, [isLoading, setSize, anchorRef, mutate, data])
+  }, [isLoading, setSize, anchorRef, mutate, data, error])
 
   const { run: handleSearch } = useDebounceFn(() => {
     setSearchKeywords(keywords)
