@@ -30,7 +30,7 @@ Welcome to the new `docker` directory for deploying Dify using Docker Compose. T
     - Refer `docker/certbot/README.md` to set up SSL certificates using Certbot.
 5. **OpenTelemetry Collector Setup**:
    - Change `ENABLE_OTEL` to `true` in `.env`.
-   - Add `--profile otlp` in your `docker compose up` command.
+   - Configure `OTLP_BASE_ENDPOINT` properly.
 
 ### How to Deploy Middleware for Developing Dify
 
