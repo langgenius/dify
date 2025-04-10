@@ -51,6 +51,7 @@ class TencentVector(BaseVector):
         self._client = RPCVectorDBClient(**self._client_config.to_tencent_params())
         self._enable_hybrid_search = False
         self._dimension = 1024
+        self._init_database()
         self._load_collection()
         self._bm25 = BM25Encoder.default("zh")
 
