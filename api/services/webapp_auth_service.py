@@ -13,7 +13,8 @@ from libs.password import compare_password
 from models.account import Account, AccountStatus
 from models.model import App, EndUser, Site
 from services.enterprise.enterprise_service import EnterpriseService
-from services.errors.account import AccountLoginError, AccountNotFoundError, AccountPasswordError
+from services.errors.account import (AccountLoginError, AccountNotFoundError,
+                                     AccountPasswordError)
 from services.feature_service import FeatureService
 from tasks.mail_email_code_login import send_email_code_login_mail_task
 
@@ -109,7 +110,7 @@ class WebAppAuthService:
         """Check if the user is allowed to access the app."""
         system_features = FeatureService.get_system_features()
         if system_features.webapp_auth.enabled:
-            app_settings = EnterpriseService.get_web_app_settings(app_code=app_code)
+            app_settings = EnterpriseService.get_app_access_mode_by_code(app_code=app_code)
 
             if app_settings.access_mode != "public" and not EnterpriseService.is_user_allowed_to_access_webapp(
                 account.id, app_code=app_code
