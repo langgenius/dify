@@ -97,6 +97,7 @@ type MarketplaceContextProviderProps = {
   searchParams?: SearchParams
   shouldExclude?: boolean
   scrollContainerId?: string
+  showSearchParams?: boolean
 }
 
 export function useMarketplaceContext(selector: (value: MarketplaceContextValue) => any) {
@@ -108,6 +109,7 @@ export const MarketplaceContextProvider = ({
   searchParams,
   shouldExclude,
   scrollContainerId,
+  showSearchParams,
 }: MarketplaceContextProviderProps) => {
   const { data, isSuccess } = useInstalledPluginList(!shouldExclude)
   const exclude = useMemo(() => {
@@ -164,11 +166,6 @@ export const MarketplaceContextProvider = ({
       if (searchParams?.language)
         url.searchParams.set('language', searchParams?.language)
       history.replaceState({}, '', url)
-      updateSearchParams({
-        query: searchPluginTextRef.current,
-        category: activePluginTypeRef.current,
-        tags: filterPluginTagsRef.current,
-      })
     }
     else {
       if (shouldExclude && isSuccess) {
@@ -191,7 +188,9 @@ export const MarketplaceContextProvider = ({
     resetPlugins()
   }, [exclude, queryMarketplaceCollectionsAndPlugins, resetPlugins])
 
-  const handleSearchParamsChange = (debounced?: boolean) => {
+  const handleUpdateSearchParams = useCallback((debounced?: boolean) => {
+    if (!showSearchParams)
+      return
     if (debounced) {
       debounce(() => {
         updateSearchParams({
@@ -208,10 +207,10 @@ export const MarketplaceContextProvider = ({
         tags: filterPluginTagsRef.current,
       })
     }
-  }
+  }, [showSearchParams])
 
   const handleQueryPlugins = useCallback((debounced?: boolean) => {
-    handleSearchParamsChange(debounced)
+    handleUpdateSearchParams(debounced)
     if (debounced) {
       queryPluginsWithDebounced({
         query: searchPluginTextRef.current,
@@ -236,18 +235,18 @@ export const MarketplaceContextProvider = ({
         page: pageRef.current,
       })
     }
-  }, [exclude, queryPluginsWithDebounced, queryPlugins])
+  }, [exclude, queryPluginsWithDebounced, queryPlugins, handleUpdateSearchParams])
 
   const handleQuery = useCallback((debounced?: boolean) => {
     if (!searchPluginTextRef.current && !filterPluginTagsRef.current.length) {
-      handleSearchParamsChange(debounced)
+      handleUpdateSearchParams(debounced)
       cancelQueryPluginsWithDebounced()
       handleQueryMarketplaceCollectionsAndPlugins()
       return
     }
 
     handleQueryPlugins(debounced)
-  }, [handleQueryMarketplaceCollectionsAndPlugins, handleQueryPlugins, cancelQueryPluginsWithDebounced])
+  }, [handleQueryMarketplaceCollectionsAndPlugins, handleQueryPlugins, cancelQueryPluginsWithDebounced, handleUpdateSearchParams])
 
   const handleSearchPluginTextChange = useCallback((text: string) => {
     setSearchPluginText(text)
