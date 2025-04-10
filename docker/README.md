@@ -41,7 +41,6 @@ Welcome to the new `docker` directory for deploying Dify using Docker Compose. T
 2. **Running Middleware Services**:
     - Navigate to the `docker` directory.
     - Execute `docker compose -f docker-compose.middleware.yaml --profile weaviate -p dify up -d` to start the middleware services. (Change the profile to other vector database if you are not using weaviate)
-    - If you want to enable OTLP exporter for OpenTelemetry collector, please run `docker compose -f docker-compose.middleware.yaml --profile weaviate --profile otlp -p dify up -d` to start the OTLP exporter.
 
 ### Migration for Existing Users
 

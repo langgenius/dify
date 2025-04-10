@@ -622,20 +622,6 @@ services:
     volumes:
       - ./volumes/unstructured:/app/data
 
-  otlp-exporter:
-    image: otel/opentelemetry-collector-contrib:0.123.0
-    restart: always
-    profiles:
-      - otlp
-    volumes:
-      - ./otlp/collector-config.yaml:/etc/otelcol-contrib/config.yaml
-    ports:
-      - "4318:4318"
-      - "4317:4317"
-      - "1888:1888"
-      - "13133:13133"
-      - "55679:55679"
-
 networks:
   # create a network between sandbox, api and ssrf_proxy, and can not access outside.
   ssrf_proxy_network:
