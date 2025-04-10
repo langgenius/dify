@@ -1138,3 +1138,42 @@ class DatasetMetadataBinding(db.Model):  # type: ignore[name-defined]
     document_id = db.Column(StringUUID, nullable=False)
     created_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
     created_by = db.Column(StringUUID, nullable=False)
+
+class PipelineBuiltInTemplate(db.Model):  # type: ignore[name-defined]
+    __tablename__ = "pipeline_built_in_templates"
+    __table_args__ = (
+        db.PrimaryKeyConstraint("id", name="pipeline_built_in_template_pkey"),
+    )
+
+    id = db.Column(StringUUID, server_default=db.text("uuid_generate_v4()"))
+    app_id = db.Column(StringUUID, nullable=False)
+    name = db.Column(db.String(255), nullable=False)
+    description = db.Column(db.Text, nullable=False)
+    icon = db.Column(db.JSON, nullable=False)
+    copyright = db.Column(db.String(255), nullable=False)
+    privacy_policy = db.Column(db.String(255), nullable=False)
+    position = db.Column(db.Integer, nullable=False)
+    install_count = db.Column(db.Integer, nullable=False, default=0)
+    language = db.Column(db.String(255), nullable=False)
+    created_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
+    updated_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
+
+
+class PipelineCustomizedTemplate(db.Model):  # type: ignore[name-defined]
+    __tablename__ = "pipeline_customized_templates"
+    __table_args__ = (
+        db.PrimaryKeyConstraint("id", name="pipeline_customized_template_pkey"),
+        db.Index("pipeline_customized_template_tenant_idx", "tenant_id"),
+    )
+
+    id = db.Column(StringUUID, server_default=db.text("uuid_generate_v4()"))
+    tenant_id = db.Column(StringUUID, nullable=False)
+    app_id = db.Column(StringUUID, nullable=False)
+    name = db.Column(db.String(255), nullable=False)
+    description = db.Column(db.Text, nullable=False)
+    icon = db.Column(db.JSON, nullable=False)
+    position = db.Column(db.Integer, nullable=False)
+    install_count = db.Column(db.Integer, nullable=False, default=0)
+    language = db.Column(db.String(255), nullable=False)
+    created_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
+    updated_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
