@@ -110,18 +110,24 @@ class LargeLanguageModel(AIModel):
                 tools_calls: list[AssistantPromptMessage.ToolCall] = []
 
                 def increase_tool_call(new_tool_calls: list[AssistantPromptMessage.ToolCall]):
-                    def get_tool_call(tool_name: str):
-                        if not tool_name:
+                    def get_tool_call(tool_call_id: str):
+                        """
+                        Get or create a tool call by ID
+
+                        :param tool_call_id: tool call ID
+                        :return: existing or new tool call
+                        """
+                        if not tool_call_id:
                             return tools_calls[-1]
 
                         tool_call = next(
-                            (tool_call for tool_call in tools_calls if tool_call.function.name == tool_name), None
+                            (tool_call for tool_call in tools_calls if tool_call.id == tool_call_id), None
                         )
                         if tool_call is None:
                             tool_call = AssistantPromptMessage.ToolCall(
-                                id="",
-                                type="",
-                                function=AssistantPromptMessage.ToolCall.ToolCallFunction(name=tool_name, arguments=""),
+                                id=tool_call_id,
+                                type="function",
+                                function=AssistantPromptMessage.ToolCall.ToolCallFunction(name="", arguments=""),
                             )
                             tools_calls.append(tool_call)
 
@@ -129,7 +135,7 @@ class LargeLanguageModel(AIModel):
 
                     for new_tool_call in new_tool_calls:
                         # get tool call
-                        tool_call = get_tool_call(new_tool_call.function.name)
+                        tool_call = get_tool_call(new_tool_call.id)
                         # update tool call
                         if new_tool_call.id:
                             tool_call.id = new_tool_call.id
