@@ -179,6 +179,13 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
     setShowSwitchModal(false)
   }
 
+  const onUpdateAccessControl = useCallback(() => {
+    if (onRefresh)
+      onRefresh()
+    mutateApps()
+    setShowAccessControl(false)
+  }, [onRefresh, mutateApps, setShowAccessControl])
+
   const Operations = (props: HtmlContentProps) => {
     const onMouseLeave = async () => {
       props.onClose?.()
@@ -316,13 +323,13 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
             </div>
           </div>
           <div className='shrink-0 w-5 h-5 flex items-center justify-center'>
-            {app.accessMode === AccessMode.PUBLIC && <Tooltip asChild={false} popupContent={t('app.accessControlDialog.accessItems.anyone')}>
+            {app.access_mode === AccessMode.PUBLIC && <Tooltip asChild={false} popupContent={t('app.accessControlDialog.accessItems.anyone')}>
               <RiGlobalLine className='text-text-accent w-4 h-4' />
             </Tooltip>}
-            {app.accessMode === AccessMode.SPECIFIC_GROUPS_MEMBERS && <Tooltip asChild={false} popupContent={t('app.accessControlDialog.accessItems.specific')}>
+            {app.access_mode === AccessMode.SPECIFIC_GROUPS_MEMBERS && <Tooltip asChild={false} popupContent={t('app.accessControlDialog.accessItems.specific')}>
               <RiLockLine className='text-text-quaternary w-4 h-4' />
             </Tooltip>}
-            {app.accessMode === AccessMode.ORGANIZATION && <Tooltip asChild={false} popupContent={t('app.accessControlDialog.accessItems.organization')}>
+            {app.access_mode === AccessMode.ORGANIZATION && <Tooltip asChild={false} popupContent={t('app.accessControlDialog.accessItems.organization')}>
               <RiBuildingLine className='text-text-quaternary w-4 h-4' />
             </Tooltip>}
           </div>
@@ -444,7 +451,7 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
         />
       )}
       {showAccessControl && (
-        <AccessControl app={app} onClose={() => setShowAccessControl(false)} />
+        <AccessControl app={app} onConfirm={onUpdateAccessControl} onClose={() => setShowAccessControl(false)} />
       )}
     </>
   )

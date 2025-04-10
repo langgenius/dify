@@ -1,6 +1,6 @@
 import { useInfiniteQuery, useMutation, useQuery } from '@tanstack/react-query'
 import { get, post } from './base'
-import type { AccessControlAccount, AccessControlGroup, Subject } from '@/models/access-control'
+import type { AccessControlAccount, AccessControlGroup, AccessMode, Subject } from '@/models/access-control'
 import type { App } from '@/types/app'
 
 const NAME_SPACE = 'access-control'
@@ -45,7 +45,8 @@ export const useSearchForWhiteListCandidates = (query: { keyword?: string; resul
 
 type UpdateAccessModeParams = {
   appId: App['id']
-  subjects: Subject['subjectId'][]
+  subjects?: Pick<Subject, 'subjectId' | 'subjectType'>[]
+  accessMode: AccessMode
 }
 
 export const useUpdateAccessMode = () => {

@@ -1,12 +1,12 @@
 export enum SubjectType {
-  Group = 'group',
-  Account = 'account',
+  GROUP = 'group',
+  ACCOUNT = 'account',
 }
 
 export enum AccessMode {
-  PUBLIC = 'PUBLIC',
-  SPECIFIC_GROUPS_MEMBERS = 'SPECIFIC_GROUPS_MEMBERS',
-  ORGANIZATION = 'ORGANIZATION',
+  PUBLIC = 'public',
+  SPECIFIC_GROUPS_MEMBERS = 'private',
+  ORGANIZATION = 'private_all',
 }
 
 export type AccessControlGroup = {

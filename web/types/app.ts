@@ -353,7 +353,7 @@ export type App = {
   api_base_url: string
   tags: Tag[]
   /** access control */
-  accessMode: AccessMode
+  access_mode: AccessMode
 }
 
 export type AppSSO = {

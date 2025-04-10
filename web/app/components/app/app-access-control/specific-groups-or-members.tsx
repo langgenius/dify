@@ -53,7 +53,7 @@ export default function SpecificGroupsOrMembers() {
       </div>
     </div>
     <div className='px-1 pb-1'>
-      <div className='bg-background-section rounded-lg p-2 flex flex-col gap-y-2'>
+      <div className='bg-background-section rounded-lg p-2 flex flex-col gap-y-2 max-h-[400px] overflow-y-auto'>
         {isPending ? <Loading /> : <RenderGroupsAndMembers />}
       </div>
     </div>
@@ -67,11 +67,11 @@ function RenderGroupsAndMembers() {
   if (specificGroups.length <= 0 && specificMembers.length <= 0)
     return <div className='px-2 pt-5 pb-1.5'><p className='system-xs-regular text-text-tertiary text-center'>{t('app.accessControlDialog.noGroupsOrMembers')}</p></div>
   return <>
-    <p className='system-2xs-medium-uppercase text-text-tertiary'>{t('app.accessControlDialog.groups', { count: specificGroups.length ?? 0 })}</p>
+    <p className='system-2xs-medium-uppercase text-text-tertiary sticky top-0'>{t('app.accessControlDialog.groups', { count: specificGroups.length ?? 0 })}</p>
     <div className='flex flex-row flex-wrap gap-1'>
       {specificGroups.map((group, index) => <GroupItem key={index} group={group} />)}
     </div>
-    <p className='system-2xs-medium-uppercase text-text-tertiary'>{t('app.accessControlDialog.members', { count: specificMembers.length ?? 0 })}</p>
+    <p className='system-2xs-medium-uppercase text-text-tertiary sticky top-0'>{t('app.accessControlDialog.members', { count: specificMembers.length ?? 0 })}</p>
     <div className='flex flex-row flex-wrap gap-1'>
       {specificMembers.map((member, index) => <MemberItem key={index} member={member} />)}
     </div>

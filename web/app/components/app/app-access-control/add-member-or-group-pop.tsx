@@ -1,7 +1,7 @@
 'use client'
 import { RiAddCircleFill, RiArrowRightSLine, RiOrganizationChart } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useDebounce } from 'ahooks'
 import Avatar from '../../base/avatar'
 import Button from '../../base/button'
@@ -9,6 +9,7 @@ import Checkbox from '../../base/checkbox'
 import Input from '../../base/input'
 import { PortalToFollowElem, PortalToFollowElemContent, PortalToFollowElemTrigger } from '../../base/portal-to-follow-elem'
 import Loading from '../../base/loading'
+import useAccessControlStore from './access-control-store'
 import classNames from '@/utils/classnames'
 import { useSearchForWhiteListCandidates } from '@/service/access-control'
 import type { AccessControlAccount, AccessControlGroup, Subject, SubjectAccount, SubjectGroup } from '@/models/access-control'
@@ -78,7 +79,7 @@ function renderGroupOrMember(data: GroupOrMemberData) {
   return data?.map((page) => {
     return <div key={`search_group_member_page_${page.currPage}`} className='p-1'>
       {page.subjects?.map((item, index) => {
-        if (item.subjectType === SubjectType.Group)
+        if (item.subjectType === SubjectType.GROUP)
           return <GroupItem key={index} group={(item as SubjectGroup).groupData} />
         return <MemberItem key={index} member={(item as SubjectAccount).accountData} />
       })}
@@ -91,8 +92,21 @@ type GroupItemProps = {
 }
 function GroupItem({ group }: GroupItemProps) {
   const { t } = useTranslation()
+  const specificGroups = useAccessControlStore(s => s.specificGroups)
+  const setSpecificGroups = useAccessControlStore(s => s.setSpecificGroups)
+  const isChecked = specificGroups.some(g => g.id === group.id)
+  const handleCheckChange = useCallback(() => {
+    if (!isChecked) {
+      const newGroups = [...specificGroups, group]
+      setSpecificGroups(newGroups)
+    }
+    else {
+      const newGroups = specificGroups.filter(g => g.id !== group.id)
+      setSpecificGroups(newGroups)
+    }
+  }, [specificGroups, setSpecificGroups, group, isChecked])
   return <BaseItem>
-    <Checkbox className='w-4 h-4 shrink-0' />
+    <Checkbox checked={isChecked} className='w-4 h-4 shrink-0' onCheck={handleCheckChange} />
     <div className='flex item-center grow'>
       <div className='w-5 h-5 rounded-full bg-components-icon-bg-blue-solid overflow-hidden mr-2'>
         <div className='w-full h-full flex items-center justify-center bg-access-app-icon-mask-bg'>
@@ -115,8 +129,21 @@ type MemberItemProps = {
 function MemberItem({ member }: MemberItemProps) {
   const currentUser = useSelector(s => s.userProfile)
   const { t } = useTranslation()
+  const specificMembers = useAccessControlStore(s => s.specificMembers)
+  const setSpecificMembers = useAccessControlStore(s => s.setSpecificMembers)
+  const isChecked = specificMembers.some(m => m.id === member.id)
+  const handleCheckChange = useCallback(() => {
+    if (!isChecked) {
+      const newMembers = [...specificMembers, member]
+      setSpecificMembers(newMembers)
+    }
+    else {
+      const newMembers = specificMembers.filter(m => m.id !== member.id)
+      setSpecificMembers(newMembers)
+    }
+  }, [specificMembers, setSpecificMembers, member, isChecked])
   return <BaseItem className='pr-3'>
-    <Checkbox className='w-4 h-4 shrink-0' />
+    <Checkbox checked={isChecked} className='w-4 h-4 shrink-0' onCheck={handleCheckChange} />
     <div className='flex items-center grow'>
       <div className='w-5 h-5 rounded-full bg-components-icon-bg-blue-solid overflow-hidden mr-2'>
         <div className='w-full h-full flex items-center justify-center bg-access-app-icon-mask-bg'>
