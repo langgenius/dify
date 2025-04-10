@@ -70,7 +70,7 @@ services:
 
   # plugin daemon
   plugin_daemon:
-    image: langgenius/dify-plugin-daemon:0.0.6-local
+    image: langgenius/dify-plugin-daemon:0.0.7-local
     restart: always
     env_file:
       - ./middleware.env
@@ -103,9 +103,9 @@ services:
       PLUGIN_PACKAGE_CACHE_PATH: ${PLUGIN_PACKAGE_CACHE_PATH:-plugin_packages}
       PLUGIN_MEDIA_CACHE_PATH: ${PLUGIN_MEDIA_CACHE_PATH:-assets}
       PLUGIN_STORAGE_OSS_BUCKET: ${PLUGIN_STORAGE_OSS_BUCKET:-}
-      S3_USE_AWS_MANAGED_IAM: ${PLUGIN_S3_USE_AWS_MANAGED_IAM:-}
+      S3_USE_AWS_MANAGED_IAM: ${PLUGIN_S3_USE_AWS_MANAGED_IAM:-false}
       S3_ENDPOINT: ${PLUGIN_S3_ENDPOINT:-}
-      S3_USE_PATH_STYLE: ${PLUGIN_S3_USE_PATH_STYLE:-}
+      S3_USE_PATH_STYLE: ${PLUGIN_S3_USE_PATH_STYLE:-false}
       AWS_ACCESS_KEY: ${PLUGIN_AWS_ACCESS_KEY:-}
       PAWS_SECRET_KEY: ${PLUGIN_AWS_SECRET_KEY:-}
       AWS_REGION: ${PLUGIN_AWS_REGION:-}

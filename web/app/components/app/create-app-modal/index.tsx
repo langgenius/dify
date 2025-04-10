@@ -1,9 +1,9 @@
 'use client'
 
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { useContext, useContextSelector } from 'use-context-selector'
 import { RiArrowRightLine, RiCommandLine, RiCornerDownLeftLine, RiExchange2Fill } from '@remixicon/react'
 import Link from 'next/link'
@@ -18,6 +18,7 @@ import AppsContext, { useAppContext } from '@/context/app-context'
 import { useProviderContext } from '@/context/provider-context'
 import { ToastContext } from '@/app/components/base/toast'
 import type { AppMode } from '@/types/app'
+import { AppModes } from '@/types/app'
 import { createApp } from '@/service/apps'
 import Input from '@/app/components/base/input'
 import Textarea from '@/app/components/base/textarea'
@@ -52,6 +53,14 @@ function CreateApp({ onClose, onSuccess, onCreateFromTemplate }: CreateAppProps)
   const { isCurrentWorkspaceEditor } = useAppContext()
 
   const isCreatingRef = useRef(false)
+
+  const searchParams = useSearchParams()
+
+  useEffect(() => {
+    const category = searchParams.get('category')
+    if (category && AppModes.includes(category as AppMode))
+      setAppMode(category as AppMode)
+  }, [searchParams])
 
   const onCreate = useCallback(async () => {
     if (!appMode) {

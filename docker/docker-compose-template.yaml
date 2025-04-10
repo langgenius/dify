@@ -2,7 +2,7 @@ x-shared-env: &shared-api-worker-env
 services:
   # API service
   api:
-    image: langgenius/dify-api:1.1.3
+    image: langgenius/dify-api:1.2.0
     restart: always
     environment:
       # Use the shared environment variables.
@@ -29,7 +29,7 @@ services:
   # worker service
   # The Celery worker for processing the queue.
   worker:
-    image: langgenius/dify-api:1.1.3
+    image: langgenius/dify-api:1.2.0
     restart: always
     environment:
       # Use the shared environment variables.
@@ -53,7 +53,7 @@ services:
 
   # Frontend web application.
   web:
-    image: langgenius/dify-web:1.1.3
+    image: langgenius/dify-web:1.2.0
     restart: always
     environment:
       CONSOLE_API_URL: ${CONSOLE_API_URL:-}
@@ -134,7 +134,7 @@ services:
 
   # plugin daemon
   plugin_daemon:
-    image: langgenius/dify-plugin-daemon:0.0.6-local
+    image: langgenius/dify-plugin-daemon:0.0.7-local
     restart: always
     environment:
       # Use the shared environment variables.
@@ -159,9 +159,9 @@ services:
       PLUGIN_PACKAGE_CACHE_PATH: ${PLUGIN_PACKAGE_CACHE_PATH:-plugin_packages}
       PLUGIN_MEDIA_CACHE_PATH: ${PLUGIN_MEDIA_CACHE_PATH:-assets}
       PLUGIN_STORAGE_OSS_BUCKET: ${PLUGIN_STORAGE_OSS_BUCKET:-}
-      S3_USE_AWS_MANAGED_IAM: ${PLUGIN_S3_USE_AWS_MANAGED_IAM:-}
+      S3_USE_AWS_MANAGED_IAM: ${PLUGIN_S3_USE_AWS_MANAGED_IAM:-false}
       S3_ENDPOINT: ${PLUGIN_S3_ENDPOINT:-}
-      S3_USE_PATH_STYLE: ${PLUGIN_S3_USE_PATH_STYLE:-}
+      S3_USE_PATH_STYLE: ${PLUGIN_S3_USE_PATH_STYLE:-false}
       AWS_ACCESS_KEY: ${PLUGIN_AWS_ACCESS_KEY:-}
       PAWS_SECRET_KEY: ${PLUGIN_AWS_SECRET_KEY:-}
       AWS_REGION: ${PLUGIN_AWS_REGION:-}
