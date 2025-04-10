@@ -62,6 +62,7 @@ import Tooltip from '@/app/components/base/tooltip'
 import CustomDialog from '@/app/components/base/dialog'
 import { PortalToFollowElem, PortalToFollowElemContent, PortalToFollowElemTrigger } from '@/app/components/base/portal-to-follow-elem'
 import { AlertTriangle } from '@/app/components/base/icons/src/vender/solid/alertsAndFeedback'
+import { noop } from 'lodash-es'
 
 const TextLabel: FC<PropsWithChildren> = (props) => {
   return <label className='system-sm-semibold text-text-secondary'>{props.children}</label>
@@ -169,12 +170,11 @@ const StepTwo = ({
   const [rules, setRules] = useState<PreProcessingRule[]>([])
   const [defaultConfig, setDefaultConfig] = useState<Rules>()
   const hasSetIndexType = !!indexingType
-  const [indexType, setIndexType] = useState<IndexingType>(
-    (indexingType
-      || isAPIKeySet)
-      ? IndexingType.QUALIFIED
-      : IndexingType.ECONOMICAL,
-  )
+  const [indexType, setIndexType] = useState<IndexingType>(() => {
+    if (hasSetIndexType)
+      return indexingType
+    return isAPIKeySet ? IndexingType.QUALIFIED : IndexingType.ECONOMICAL
+  })
 
   const [previewFile, setPreviewFile] = useState<DocumentItem>(
     (datasetId && documentDetail)
@@ -421,6 +421,13 @@ const StepTwo = ({
     }
     else { // create
       const indexMethod = getIndexing_technique()
+      if (indexMethod === IndexingType.QUALIFIED && (!embeddingModel.model || !embeddingModel.provider)) {
+        Toast.notify({
+          type: 'error',
+          message: t('appDebug.datasetConfig.embeddingModelRequired'),
+        })
+        return
+      }
       if (
         !isReRankModelSelected({
           rerankModelList,
@@ -568,7 +575,6 @@ const StepTwo = ({
     // get indexing type by props
     if (indexingType)
       setIndexType(indexingType as IndexingType)
-
     else
       setIndexType(isAPIKeySet ? IndexingType.QUALIFIED : IndexingType.ECONOMICAL)
   }, [isAPIKeySet, indexingType, datasetId])
@@ -848,10 +854,9 @@ const StepTwo = ({
               description={t('datasetCreation.stepTwo.qualifiedTip')}
               icon={<Image src={indexMethodIcon.high_quality} alt='' />}
               isActive={!hasSetIndexType && indexType === IndexingType.QUALIFIED}
-              disabled={!isAPIKeySet || hasSetIndexType}
+              disabled={hasSetIndexType}
               onSwitched={() => {
-                if (isAPIKeySet)
-                  setIndexType(IndexingType.QUALIFIED)
+                setIndexType(IndexingType.QUALIFIED)
               }}
             />
           )}
@@ -894,11 +899,10 @@ const StepTwo = ({
                     description={t('datasetCreation.stepTwo.economicalTip')}
                     icon={<Image src={indexMethodIcon.economical} alt='' />}
                     isActive={!hasSetIndexType && indexType === IndexingType.ECONOMICAL}
-                    disabled={!isAPIKeySet || hasSetIndexType || docForm !== ChunkingMode.text}
+                    disabled={hasSetIndexType || docForm !== ChunkingMode.text}
                     ref={economyDomRef}
                     onSwitched={() => {
-                      if (isAPIKeySet && docForm === ChunkingMode.text)
-                        setIndexType(IndexingType.ECONOMICAL)
+                      setIndexType(IndexingType.ECONOMICAL)
                     }}
                   />
                 </PortalToFollowElemTrigger>
@@ -1007,7 +1011,7 @@ const StepTwo = ({
             </div>
           )}
       </div>
-      <FloatRightContainer isMobile={isMobile} isOpen={true} onClose={() => { }} footer={null}>
+      <FloatRightContainer isMobile={isMobile} isOpen={true} onClose={noop} footer={null}>
         <PreviewContainer
           header={<PreviewHeader
             title={t('datasetCreation.stepTwo.preview')}

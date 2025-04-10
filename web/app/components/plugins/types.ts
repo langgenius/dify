@@ -318,6 +318,15 @@ export type InstalledPluginListResponse = {
   plugins: PluginDetail[]
 }
 
+export type InstalledLatestVersionResponse = {
+  versions: {
+    [plugin_id: string]: {
+      unique_identifier: string
+      version: string
+    } | null
+  }
+}
+
 export type UninstallPluginResponse = {
   success: boolean
 }

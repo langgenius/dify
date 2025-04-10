@@ -216,21 +216,21 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
         {/* Memory put place examples. */}
         {isChatMode && isChatModel && !!inputs.memory && (
           <div className='mt-4'>
-            <div className='flex h-8 items-center justify-between rounded-lg bg-gray-100 pl-3 pr-2'>
+            <div className='flex h-8 items-center justify-between rounded-lg bg-components-input-bg-normal pl-3 pr-2'>
               <div className='flex items-center space-x-1'>
-                <div className='text-xs font-semibold uppercase text-gray-700'>{t('workflow.nodes.common.memories.title')}</div>
+                <div className='text-xs font-semibold uppercase text-text-secondary'>{t('workflow.nodes.common.memories.title')}</div>
                 <Tooltip
                   popupContent={t('workflow.nodes.common.memories.tip')}
                   triggerClassName='w-4 h-4'
                 />
               </div>
-              <div className='flex h-[18px] items-center rounded-[5px] border border-black/8 px-1 text-xs font-semibold uppercase text-gray-500'>{t('workflow.nodes.common.memories.builtIn')}</div>
+              <div className='flex h-[18px] items-center rounded-[5px] border border-divider-deep bg-components-badge-bg-dimm px-1 text-xs font-semibold uppercase text-text-tertiary'>{t('workflow.nodes.common.memories.builtIn')}</div>
             </div>
             {/* Readonly User Query */}
             <div className='mt-4'>
               <Editor
                 title={<div className='flex items-center space-x-1'>
-                  <div className='text-xs font-semibold uppercase text-gray-700'>user</div>
+                  <div className='text-xs font-semibold uppercase text-text-secondary'>user</div>
                   <Tooltip
                     popupContent={
                       <div className='max-w-[180px]'>{t('workflow.nodes.llm.roleDescription.user')}</div>

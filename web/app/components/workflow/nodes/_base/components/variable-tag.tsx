@@ -51,7 +51,7 @@ const VariableTag = ({
   const { t } = useTranslation()
   return (
     <Tooltip popupContent={!isValid && t('workflow.errorMsg.invalidVariable')}>
-      <div className={cn('border-[rgba(16, 2440,0.08)] inline-flex h-6 max-w-full items-center rounded-md border-[0.5px] bg-white px-1.5 text-xs shadow-xs',
+      <div className={cn('border-[rgba(16, 2440,0.08)] inline-flex h-6 max-w-full items-center rounded-md border-[0.5px] border-divider-subtle bg-components-badge-white-to-dark px-1.5 text-xs shadow-xs',
         !isValid && 'border-red-400 !bg-[#FEF3F2]',
       )}>
         {(!isEnv && !isChatVar && <>
@@ -59,7 +59,7 @@ const VariableTag = ({
             <>
               <VarBlockIcon
                 type={node.data.type || BlockEnum.Start}
-                className='mr-0.5'
+                className='mr-0.5 !text-text-primary'
               />
               <div
                 className='max-w-[60px] truncate font-medium text-text-secondary'

@@ -52,13 +52,13 @@ const Node: FC<NodeProps<EndNodeType>> = ({
           isChatMode,
         })
         return (
-          <div key={index} className='flex h-6 items-center justify-between space-x-1 rounded-md  bg-gray-100 px-1 text-xs font-normal text-gray-700'>
-            <div className='flex items-center text-xs font-medium text-gray-500'>
+          <div key={index} className='flex h-6 items-center justify-between space-x-1 rounded-md  bg-components-badge-white-to-dark px-1 text-xs font-normal text-text-secondary'>
+            <div className='flex items-center text-xs font-medium text-text-tertiary'>
               {!isEnv && !isChatVar && (
                 <>
                   <div className='p-[1px]'>
                     <VarBlockIcon
-                      className='!text-gray-900'
+                      className='!text-text-primary'
                       type={node?.data.type || BlockEnum.Start}
                     />
                   </div>
@@ -66,16 +66,16 @@ const Node: FC<NodeProps<EndNodeType>> = ({
                   <Line3 className='mr-0.5'></Line3>
                 </>
               )}
-              <div className='flex items-center text-primary-600'>
-                {!isEnv && !isChatVar && <Variable02 className='h-3.5 w-3.5 shrink-0 text-primary-500' />}
+              <div className='flex items-center text-text-accent'>
+                {!isEnv && !isChatVar && <Variable02 className='h-3.5 w-3.5 shrink-0 text-text-accent' />}
                 {isEnv && <Env className='h-3.5 w-3.5 shrink-0 text-util-colors-violet-violet-600' />}
                 {isChatVar && <BubbleX className='h-3.5 w-3.5 text-util-colors-teal-teal-700' />}
 
-                <div className={cn('ml-0.5 max-w-[50px] truncate text-xs font-medium', (isEnv || isChatVar) && '!max-w-[70px] text-gray-900')}>{varName}</div>
+                <div className={cn('ml-0.5 max-w-[50px] truncate text-xs font-medium', (isEnv || isChatVar) && '!max-w-[70px] text-text-primary')}>{varName}</div>
               </div>
             </div>
-            <div className='text-xs font-normal text-gray-700'>
-              <div className='ml-0.5 max-w-[42px] truncate text-xs font-normal capitalize text-gray-500' title={varType}>{varType}</div>
+            <div className='text-xs font-normal text-text-secondary'>
+              <div className='ml-0.5 max-w-[42px] truncate text-xs font-normal capitalize text-text-tertiary' title={varType}>{varType}</div>
             </div>
           </div>
         )

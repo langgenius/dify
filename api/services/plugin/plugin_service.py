@@ -95,28 +95,19 @@ class PluginService:
         return manager.get_debugging_key(tenant_id)
 
     @staticmethod
+    def list_latest_versions(plugin_ids: Sequence[str]) -> Mapping[str, Optional[LatestPluginCache]]:
+        """
+        List the latest versions of the plugins
+        """
+        return PluginService.fetch_latest_plugin_version(plugin_ids)
+
+    @staticmethod
     def list(tenant_id: str) -> list[PluginEntity]:
         """
         list all plugins of the tenant
         """
         manager = PluginInstallationManager()
         plugins = manager.list_plugins(tenant_id)
-        plugin_ids = [plugin.plugin_id for plugin in plugins if plugin.source == PluginInstallationSource.Marketplace]
-        try:
-            manifests = PluginService.fetch_latest_plugin_version(plugin_ids)
-        except Exception:
-            manifests = {}
-            logger.exception("failed to fetch plugin manifests")
-
-        for plugin in plugins:
-            if plugin.source == PluginInstallationSource.Marketplace:
-                if plugin.plugin_id in manifests:
-                    latest_plugin_cache = manifests[plugin.plugin_id]
-                    if latest_plugin_cache:
-                        # set latest_version
-                        plugin.latest_version = latest_plugin_cache.version
-                        plugin.latest_unique_identifier = latest_plugin_cache.unique_identifier
-
         return plugins
 
     @staticmethod
