@@ -188,17 +188,19 @@ export const MarketplaceContextProvider = ({
     resetPlugins()
   }, [exclude, queryMarketplaceCollectionsAndPlugins, resetPlugins])
 
+  const debouncedUpdateSearchParams = useMemo(() => debounce(() => {
+    updateSearchParams({
+      query: searchPluginTextRef.current,
+      category: activePluginTypeRef.current,
+      tags: filterPluginTagsRef.current,
+    })
+  }, 500), [])
+
   const handleUpdateSearchParams = useCallback((debounced?: boolean) => {
     if (!showSearchParams)
       return
     if (debounced) {
-      debounce(() => {
-        updateSearchParams({
-          query: searchPluginTextRef.current,
-          category: activePluginTypeRef.current,
-          tags: filterPluginTagsRef.current,
-        })
-      }, 500)()
+      debouncedUpdateSearchParams()
     }
     else {
       updateSearchParams({
@@ -207,7 +209,7 @@ export const MarketplaceContextProvider = ({
         tags: filterPluginTagsRef.current,
       })
     }
-  }, [showSearchParams])
+  }, [debouncedUpdateSearchParams, showSearchParams])
 
   const handleQueryPlugins = useCallback((debounced?: boolean) => {
     handleUpdateSearchParams(debounced)
