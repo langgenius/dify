@@ -34,6 +34,8 @@ class LicenseStatus(StrEnum):
 class LicenseModel(BaseModel):
     status: LicenseStatus = LicenseStatus.NONE
     expired_at: str = ""
+    product_id: str = ""
+    workspaces: LimitationModel = LimitationModel(size=0, limit=0)
 
 
 class BrandingModel(BaseModel):
@@ -56,6 +58,7 @@ class FeatureModel(BaseModel):
     model_load_balancing_enabled: bool = False
     dataset_operator_enabled: bool = False
     webapp_copyright_enabled: bool = False
+    workspace_members: LimitationModel = LimitationModel(size=0, limit=0)
 
     # pydantic configs
     model_config = ConfigDict(protected_namespaces=())
@@ -89,6 +92,7 @@ class FeatureService:
 
         if dify_config.ENTERPRISE_ENABLED:
             features.webapp_copyright_enabled = True
+            cls._fulfill_parms_from_license_info(features, tenant_id)
 
         return features
 
@@ -119,6 +123,12 @@ class FeatureService:
         features.can_replace_logo = dify_config.CAN_REPLACE_LOGO
         features.model_load_balancing_enabled = dify_config.MODEL_LB_ENABLED
         features.dataset_operator_enabled = dify_config.DATASET_OPERATOR_ENABLED
+
+    @classmethod
+    def _fulfill_parms_from_license_info(cls, features: FeatureModel, tenant_id: str):
+        license_info = EnterpriseService.get_info(tenant_id)["License"]
+        features.workspace_members.limit = license_info["workspaceMembers"]["limit"]
+        features.workspace_members.size = license_info["workspaceMembers"]["used"]
 
     @classmethod
     def _fulfill_params_from_billing_api(cls, features: FeatureModel, tenant_id: str):
@@ -202,3 +212,10 @@ class FeatureService:
 
             if "expiredAt" in license_info:
                 features.license.expired_at = license_info["expiredAt"]
+
+            if "productId" in license_info:
+                features.license.product_id = license_info["productId"]
+
+            if "workspaces" in license_info:
+                features.license.workspaces.limit = license_info["workspaces"]["limit"]
+                features.license.workspaces.size = license_info["workspaces"]["used"]

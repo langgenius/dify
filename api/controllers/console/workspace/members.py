@@ -6,6 +6,7 @@ from flask_restful import Resource, abort, marshal_with, reqparse  # type: ignor
 import services
 from configs import dify_config
 from controllers.console import api
+from controllers.console.error import WorkspaceMembersLimitExceeded
 from controllers.console.wraps import (
     account_initialization_required,
     cloud_edition_billing_resource_check,
@@ -17,6 +18,7 @@ from libs.login import login_required
 from models.account import Account, TenantAccountRole
 from services.account_service import RegisterService, TenantService
 from services.errors.account import AccountAlreadyInTenantError
+from services.feature_service import FeatureService
 
 
 class MemberListApi(Resource):
@@ -54,6 +56,15 @@ class MemberInviteEmailApi(Resource):
         inviter = current_user
         invitation_results = []
         console_web_url = dify_config.CONSOLE_WEB_URL
+
+        workspace_members = FeatureService.get_features(tenant_id=inviter.current_tenant.id).workspace_members
+        if (
+            FeatureService.get_system_features().license.product_id == "DIFY_ENTERPRISE_STANDARD"
+            and workspace_members.limit != 0  # if limit == 0, it means unlimited
+            and len(invitee_emails) > workspace_members.limit - workspace_members.size
+        ):
+            raise WorkspaceMembersLimitExceeded()
+
         for invitee_email in invitee_emails:
             try:
                 token = RegisterService.invite_new_member(
@@ -73,6 +84,7 @@ class MemberInviteEmailApi(Resource):
                 )
                 break
             except Exception as e:
+                print(str(e))
                 invitation_results.append({"status": "failed", "email": invitee_email, "message": str(e)})
 
         return {

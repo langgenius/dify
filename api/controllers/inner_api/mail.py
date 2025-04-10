@@ -1,5 +1,7 @@
-from flask_restful import Resource  # type: ignore
-from flask_restful import reqparse
+from flask_restful import (
+    Resource,  # type: ignore
+    reqparse,
+)
 
 from controllers.console.wraps import setup_required
 from controllers.inner_api import api
@@ -12,7 +14,7 @@ class EnterpriseMail(Resource):
     @inner_api_only
     def post(self):
         parser = reqparse.RequestParser()
-        parser.add_argument("to", type=str, action='append', required=True)
+        parser.add_argument("to", type=str, action="append", required=True)
         parser.add_argument("subject", type=str, required=True)
         parser.add_argument("body", type=str, required=True)
         parser.add_argument("substitutions", type=dict, required=False)
