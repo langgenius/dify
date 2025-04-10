@@ -35,10 +35,13 @@ const InviteModal = ({
   const { notify } = useContext(ToastContext)
   const [isLimited, setIsLimited] = useState(false)
   const [isLimitExceeded, setIsLimitExceeded] = useState(false)
+  const [usedSize, setUsedSize] = useState(licenseLimit.workspace_members.size ?? 0)
   useEffect(() => {
     const limited = licenseLimit.workspace_members.limit > 0
+    const used = emails.length + licenseLimit.workspace_members.size
     setIsLimited(limited)
-    setIsLimitExceeded(limited && emails.length > licenseLimit.workspace_members.limit)
+    setUsedSize(used)
+    setIsLimitExceeded(limited && (used > licenseLimit.workspace_members.limit))
   }, [licenseLimit, emails])
 
   const { locale } = useContext(I18n)
@@ -114,9 +117,9 @@ const InviteModal = ({
             />
             <div className={
               cn('flex items-center justify-end system-xs-regular text-text-tertiary',
-                (isLimited && emails.length > licenseLimit.workspace_members.limit) ? 'text-text-destructive' : '')}
+                (isLimited && usedSize > licenseLimit.workspace_members.limit) ? 'text-text-destructive' : '')}
             >
-              <span>{emails.length ?? 0}</span>
+              <span>{usedSize}</span>
               <span>/</span>
               <span>{isLimited ? licenseLimit.workspace_members.limit : t('common.license.unlimited')}</span>
             </div>
