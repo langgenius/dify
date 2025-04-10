@@ -99,7 +99,7 @@ const Panel: FC<NodePanelProps<VariableAssignerNodeType>> = ({
       {isEnableGroup && (
         <>
           <Split />
-          <div className='px-4 pb-2 pt-4'>
+          <div>
             <OutputVars>
               <>
                 {inputs.advanced_settings?.groups.map((item, index) => (
