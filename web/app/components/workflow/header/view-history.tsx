@@ -199,7 +199,7 @@ const ViewHistory = ({
                               item.id === historyWorkflowData?.id && 'text-primary-600',
                             )}
                           >
-                            {`Test ${isChatMode ? 'Chat' : 'Run'}#${item.sequence_number}`}
+                            {`Test ${isChatMode ? 'Chat' : 'Run'} #${item.sequence_number}`}
                           </div>
                           <div className='flex items-center text-xs leading-[18px] text-gray-500'>
                             {item.created_by_account?.name} · {formatTimeFromNow((item.finished_at || item.created_at) * 1000)}
