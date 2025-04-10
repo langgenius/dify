@@ -19,27 +19,26 @@ export default function AddMemberOrGroupDialog() {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const [keyword, setKeyword] = useState('')
-  const [pageNumber, setPageNumber] = useState(1)
   const debouncedKeyword = useDebounce(keyword, { wait: 500 })
 
-  const { isPending, data } = useSearchForWhiteListCandidates({ keyword: debouncedKeyword, pageNumber, resultsPerPage: 10 }, open)
+  const { isPending, isFetchingNextPage, fetchNextPage, data } = useSearchForWhiteListCandidates({ keyword: debouncedKeyword, resultsPerPage: 10 }, open)
   const handleKeywordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setKeyword(e.target.value)
   }
 
   const anchorRef = useRef<HTMLDivElement>(null)
   useEffect(() => {
-    const hasMore = data?.has_more ?? true
+    const hasMore = data?.pages?.[0].hasMore ?? false
     let observer: IntersectionObserver | undefined
     if (anchorRef.current) {
       observer = new IntersectionObserver((entries) => {
         if (entries[0].isIntersecting && !isPending && hasMore)
-          setPageNumber((size: number) => size + 1)
+          fetchNextPage()
       }, { rootMargin: '20px' })
       observer.observe(anchorRef.current)
     }
     return () => observer?.disconnect()
-  }, [isPending, setPageNumber, anchorRef, data])
+  }, [isPending, fetchNextPage, anchorRef, data])
 
   return <PortalToFollowElem open={open} onOpenChange={setOpen} offset={{ crossAxis: 300 }} placement='bottom-end'>
     <PortalToFollowElemTrigger asChild>
@@ -54,40 +53,37 @@ export default function AddMemberOrGroupDialog() {
           <Input value={keyword} onChange={handleKeywordChange} showLeftIcon placeholder={t('app.accessControlDialog.operateGroupAndMember.searchPlaceholder') as string} />
         </div>
         {
-          (data?.subjects?.length ?? 0) > 0
-            ? <>
-              <div className='flex items-center h-7 px-2 py-0.5'>
-                <span className='system-xs-regular text-text-tertiary'>{t('app.accessControlDialog.operateGroupAndMember.allMembers')}</span>
-              </div>
-              <RenderGroupOrMember data={data?.subjects ?? []} />
-              <div ref={anchorRef} className='h-0'> </div>
-            </>
-            : isPending
-              ? null
+          isPending
+            ? <div className='p-1'><Loading /></div>
+            : (data?.pages?.length ?? 0) > 0
+              ? <>
+                <div className='flex items-center h-7 px-2 py-0.5'>
+                  <span className='system-xs-regular text-text-tertiary'>{t('app.accessControlDialog.operateGroupAndMember.allMembers')}</span>
+                </div>
+                {renderGroupOrMember(data?.pages ?? [])}
+                {isFetchingNextPage && <div className='p-1'><Loading /></div>}
+                <div ref={anchorRef} className='h-0'> </div>
+              </>
               : <div className='flex items-center justify-center h-7 px-2 py-0.5'>
                 <span className='system-xs-regular text-text-tertiary'>{t('app.accessControlDialog.operateGroupAndMember.noResult')}</span>
               </div>
-        }
-        {
-          isPending && <div className='p-1'><Loading /></div>
         }
       </div>
     </PortalToFollowElemContent>
   </PortalToFollowElem>
 }
 
-type RenderGroupOrMemberProps = {
-  data: Subject[]
-}
-
-function RenderGroupOrMember({ data }: RenderGroupOrMemberProps) {
-  return <div className='p-1'>
-    {data.map((item, index) => {
-      if (item.subjectType === SubjectType.Group)
-        return <GroupItem key={index} group={(item as SubjectGroup).groupData} />
-      return <MemberItem key={index} member={(item as SubjectAccount).accountData} />
-    })}
-  </div>
+type GroupOrMemberData = { subjects: Subject[]; currPage: number }[]
+function renderGroupOrMember(data: GroupOrMemberData) {
+  return data?.map((page) => {
+    return <div key={`search_group_member_page_${page.currPage}`} className='p-1'>
+      {page.subjects?.map((item, index) => {
+        if (item.subjectType === SubjectType.Group)
+          return <GroupItem key={index} group={(item as SubjectGroup).groupData} />
+        return <MemberItem key={index} member={(item as SubjectAccount).accountData} />
+      })}
+    </div>
+  }) ?? null
 }
 
 type GroupItemProps = {

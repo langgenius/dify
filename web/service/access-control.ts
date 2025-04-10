@@ -1,4 +1,4 @@
-import { useMutation, useQuery } from '@tanstack/react-query'
+import { useInfiniteQuery, useMutation, useQuery } from '@tanstack/react-query'
 import { get, post } from './base'
 import type { AccessControlAccount, AccessControlGroup, Subject } from '@/models/access-control'
 import type { App } from '@/types/app'
@@ -17,20 +17,27 @@ type SearchResults = {
   currPage: number
   totalPages: number
   subjects: Subject[]
-  has_more: boolean
+  hasMore: boolean
 }
 
-export const useSearchForWhiteListCandidates = (query: { appId?: string; keyword?: string; pageNumber?: number; resultsPerPage?: number }, enabled: boolean) => {
-  return useQuery({
+export const useSearchForWhiteListCandidates = (query: { keyword?: string; resultsPerPage?: number }, enabled: boolean) => {
+  return useInfiniteQuery({
     queryKey: [NAME_SPACE, 'app-whitelist-candidates', query],
-    queryFn: () => {
+    queryFn: ({ pageParam }) => {
       const params = new URLSearchParams()
       Object.keys(query).forEach((key) => {
         const typedKey = key as keyof typeof query
         if (query[typedKey])
           params.append(key, `${query[typedKey]}`)
       })
+      params.append('pageNumber', `${pageParam}`)
       return get<SearchResults>(`/enterprise/webapp/app/subject/search?${new URLSearchParams(params).toString()}`)
+    },
+    initialPageParam: 1,
+    getNextPageParam: (lastPage) => {
+      if (lastPage.hasMore)
+        return lastPage.currPage + 1
+      return undefined
     },
     enabled,
   })
