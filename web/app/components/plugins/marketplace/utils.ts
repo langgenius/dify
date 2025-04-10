@@ -135,12 +135,10 @@ export const updateSearchParams = (pluginsSearchParams: PluginsSearchParams) => 
     url.searchParams.set('q', query)
   else
     url.searchParams.delete('q')
-  if (category && category !== PLUGIN_TYPE_SEARCH_MAP.all)
+  if (category)
     url.searchParams.set('category', category)
-  else if (!category)
-    url.searchParams.delete('category')
   else
-    url.searchParams.set('category', 'discover')
+    url.searchParams.delete('category')
   if (tags && tags.length)
     url.searchParams.set('tags', tags.join(','))
   else

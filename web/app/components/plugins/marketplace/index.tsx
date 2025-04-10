@@ -56,6 +56,7 @@ const Marketplace = async ({
           locale={locale}
           className={pluginTypeSwitchClassName}
           searchBoxAutoAnimate={searchBoxAutoAnimate}
+          showSearchParams={showSearchParams}
         />
         <ListWrapper
           locale={locale}
