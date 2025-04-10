@@ -18,6 +18,7 @@ import AppsContext, { useAppContext } from '@/context/app-context'
 import { useProviderContext } from '@/context/provider-context'
 import { ToastContext } from '@/app/components/base/toast'
 import type { AppMode } from '@/types/app'
+import { AppModes } from '@/types/app'
 import { createApp } from '@/service/apps'
 import Input from '@/app/components/base/input'
 import Textarea from '@/app/components/base/textarea'
@@ -57,8 +58,8 @@ function CreateApp({ onClose, onSuccess, onCreateFromTemplate }: CreateAppProps)
 
   useEffect(() => {
     const category = searchParams.get('category')
-    if (category)
-      setAppMode(category as AppMode || 'chat')
+    if (category && AppModes.includes(category as AppMode))
+      setAppMode(category as AppMode)
   }, [searchParams])
 
   const onCreate = useCallback(async () => {
