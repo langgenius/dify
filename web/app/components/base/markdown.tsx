@@ -222,19 +222,21 @@ const Paragraph = (paragraph: any) => {
   const children_node = node.children
   if (children_node && children_node[0] && 'tagName' in children_node[0] && children_node[0].tagName === 'img') {
     return (
-      <>
+      <div className="markdown-img-wrapper">
         <ImageGallery srcs={[children_node[0].properties.src]} />
         {
-          Array.isArray(paragraph.children) ? <p>{paragraph.children.slice(1)}</p> : null
+          Array.isArray(paragraph.children) && paragraph.children.length > 1 && (
+            <div className="mt-2">{paragraph.children.slice(1)}</div>
+          )
         }
-      </>
+      </div>
     )
   }
   return <p>{paragraph.children}</p>
 }
 
 const Img = ({ src }: any) => {
-  return (<ImageGallery srcs={[src]} />)
+  return <div className="markdown-img-wrapper"><ImageGallery srcs={[src]} /></div>
 }
 
 const Link = ({ node, ...props }: any) => {
