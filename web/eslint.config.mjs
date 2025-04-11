@@ -7,6 +7,8 @@ import storybook from 'eslint-plugin-storybook'
 // import { fixupConfigRules } from '@eslint/compat'
 import tailwind from 'eslint-plugin-tailwindcss'
 import reactHooks from 'eslint-plugin-react-hooks'
+import sonar from 'eslint-plugin-sonarjs'
+
 // import reactRefresh from 'eslint-plugin-react-refresh'
 
 export default combine(
@@ -136,6 +138,15 @@ export default combine(
     rules: reactHooks.configs.recommended.rules,
     plugins: {
       'react-hooks': reactHooks,
+    },
+  },
+  // sornar
+  {
+    rules: {
+      ...sonar.configs.recommended.rules,
+    },
+    plugins: {
+      sonar,
     },
   },
   // need futher research

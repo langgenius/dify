@@ -180,6 +180,7 @@
     "eslint-config-next": "^15.0.0",
     "eslint-plugin-react-hooks": "^5.1.0",
     "eslint-plugin-react-refresh": "^0.4.19",
+    "eslint-plugin-sonarjs": "^3.0.2",
     "eslint-plugin-storybook": "^0.11.2",
     "eslint-plugin-tailwindcss": "^3.18.0",
     "husky": "^9.1.6",
