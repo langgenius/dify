@@ -68,9 +68,6 @@ const RunOnce: FC<IRunOnceProps> = ({
     onInputsChange(newInputs)
   }, [promptConfig.prompt_variables])
 
-  if (inputs === null || inputs === undefined || Object.keys(inputs).length === 0)
-    return null
-
   return (
     <div className="">
       <section>
