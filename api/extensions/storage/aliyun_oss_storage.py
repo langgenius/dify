@@ -28,8 +28,9 @@ class AliyunOssStorage(BaseStorage):
             region=region,
         )
 
-    def save(self, filename, data):
-        self.client.put_object(self.__wrapper_folder_filename(filename), data)
+    def save(self, filename, data, content_type=None):
+        headers = {"Content-Type": content_type} if content_type else None
+        self.client.put_object(self.__wrapper_folder_filename(filename), data, headers=headers)
 
     def load_once(self, filename: str) -> bytes:
         obj = self.client.get_object(self.__wrapper_folder_filename(filename))

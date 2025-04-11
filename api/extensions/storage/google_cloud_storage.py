@@ -26,11 +26,11 @@ class GoogleCloudStorage(BaseStorage):
         else:
             self.client = google_cloud_storage.Client()
 
-    def save(self, filename, data):
+    def save(self, filename, data, content_type=None):
         bucket = self.client.get_bucket(self.bucket_name)
         blob = bucket.blob(filename)
         with io.BytesIO(data) as stream:
-            blob.upload_from_file(stream)
+            blob.upload_from_file(stream, content_type=content_type)
 
     def load_once(self, filename: str) -> bytes:
         bucket = self.client.get_bucket(self.bucket_name)

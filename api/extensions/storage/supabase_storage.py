@@ -28,8 +28,9 @@ class SupabaseStorage(BaseStorage):
         if not self.bucket_exists():
             self.client.storage.create_bucket(id=id, name=bucket_name)
 
-    def save(self, filename, data):
-        self.client.storage.from_(self.bucket_name).upload(filename, data)
+    def save(self, filename, data, content_type=None):
+        file_options = {"content-type": content_type} if content_type else None
+        self.client.storage.from_(self.bucket_name).upload(filename, data, file_options)
 
     def load_once(self, filename: str) -> bytes:
         content: bytes = self.client.storage.from_(self.bucket_name).download(filename)

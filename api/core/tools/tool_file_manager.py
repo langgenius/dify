@@ -75,7 +75,7 @@ class ToolFileManager:
             # Add extension flexibly
             present_filename = filename if has_extension else f"{filename}{extension}"
         filepath = f"tools/{tenant_id}/{unique_filename}"
-        storage.save(filepath, file_binary)
+        storage.save(filepath, file_binary, mimetype)
 
         tool_file = ToolFile(
             user_id=user_id,
@@ -117,7 +117,7 @@ class ToolFileManager:
         unique_name = uuid4().hex
         filename = f"{unique_name}{extension}"
         filepath = f"tools/{tenant_id}/{filename}"
-        storage.save(filepath, blob)
+        storage.save(filepath, blob, mimetype)
 
         tool_file = ToolFile(
             user_id=user_id,

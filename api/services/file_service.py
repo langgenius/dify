@@ -70,7 +70,7 @@ class FileService:
         file_key = "upload_files/" + (current_tenant_id or "") + "/" + file_uuid + "." + extension
 
         # save file to storage
-        storage.save(file_key, content)
+        storage.save(file_key, content, mimetype)
 
         # save file to db
         upload_file = UploadFile(
@@ -121,7 +121,7 @@ class FileService:
         file_key = "upload_files/" + current_user.current_tenant_id + "/" + file_uuid + ".txt"
 
         # save file to storage
-        storage.save(file_key, text.encode("utf-8"))
+        storage.save(file_key, text.encode("utf-8"), "text/plain")
 
         # save file to db
         upload_file = UploadFile(
