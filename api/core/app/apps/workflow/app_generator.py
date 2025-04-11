@@ -92,6 +92,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
             mappings=files,
             tenant_id=app_model.tenant_id,
             config=file_extra_config,
+            strict_type_validation=True if invoke_from == InvokeFrom.SERVICE_API else False,
         )
 
         # convert to app config
@@ -114,7 +115,10 @@ class WorkflowAppGenerator(BaseAppGenerator):
             app_config=app_config,
             file_upload_config=file_extra_config,
             inputs=self._prepare_user_inputs(
-                user_inputs=inputs, variables=app_config.variables, tenant_id=app_model.tenant_id
+                user_inputs=inputs,
+                variables=app_config.variables,
+                tenant_id=app_model.tenant_id,
+                strict_type_validation=True if invoke_from == InvokeFrom.SERVICE_API else False,
             ),
             files=list(system_files),
             user_id=user.id,

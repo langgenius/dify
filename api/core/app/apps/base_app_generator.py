@@ -17,6 +17,7 @@ class BaseAppGenerator:
         user_inputs: Optional[Mapping[str, Any]],
         variables: Sequence["VariableEntity"],
         tenant_id: str,
+        strict_type_validation: bool = False,
     ) -> Mapping[str, Any]:
         user_inputs = user_inputs or {}
         # Filter input variables from form configuration, handle required fields, default values, and option values
@@ -37,6 +38,7 @@ class BaseAppGenerator:
                     allowed_file_extensions=entity_dictionary[k].allowed_file_extensions,
                     allowed_file_upload_methods=entity_dictionary[k].allowed_file_upload_methods,
                 ),
+                strict_type_validation=strict_type_validation,
             )
             for k, v in user_inputs.items()
             if isinstance(v, dict) and entity_dictionary[k].type == VariableEntityType.FILE
