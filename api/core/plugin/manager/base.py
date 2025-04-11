@@ -169,7 +169,7 @@ class BasePluginManager:
         """
         for line in self._stream_request(method, path, params, headers, data, files):
             try:
-                rep = PluginDaemonBasicResponse[type].model_validate_json(line)
+                rep = PluginDaemonBasicResponse[type].model_validate_json(line)  # type: ignore
             except Exception:
                 # TODO modify this when line_data has code and message
                 try:
