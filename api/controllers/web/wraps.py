@@ -4,7 +4,8 @@ from flask import request
 from flask_restful import Resource  # type: ignore
 from werkzeug.exceptions import BadRequest, NotFound, Unauthorized
 
-from controllers.web.error import WebAppAuthFailedError, WebAppAuthRequiredError
+from controllers.web.error import (WebAppAuthAccessDeniedError,
+                                   WebAppAuthRequiredError)
 from extensions.ext_database import db
 from libs.passport import PassportService
 from models.model import App, EndUser, Site
@@ -103,7 +104,7 @@ def _validate_user_accessibility(decoded, app_code, app_web_auth_enabled: bool, 
             raise WebAppAuthRequiredError()
 
         if not EnterpriseService.is_user_allowed_to_access_webapp(user_id, app_code=app_code):
-            raise WebAppAuthFailedError()
+            raise WebAppAuthAccessDeniedError()
 
 
 class WebApiResource(Resource):

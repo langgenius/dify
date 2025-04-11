@@ -127,8 +127,8 @@ class WebAppAuthRequiredError(BaseHTTPException):
     code = 401
 
 
-class WebAppAuthFailedError(BaseHTTPException):
-    error_code = "web_app_auth_failed"
+class WebAppAuthAccessDeniedError(BaseHTTPException):
+    error_code = "web_app_access_denied"
     description = "You do not have permission to access this web app."
     code = 401
 
