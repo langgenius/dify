@@ -205,13 +205,13 @@ class LLMNode(BaseNode[LLMNodeData]):
                 structured_output: dict[str, Any] | list[Any] = {}
                 try:
                     parsed = json.loads(result_text)
-                    if not isinstance(parsed, (dict, list)):
+                    if not isinstance(parsed, (dict | list)):
                         raise LLMNodeError(f"Failed to parse structured output: {result_text}")
                     structured_output = parsed
                 except json.JSONDecodeError as e:
                     # if the result_text is not a valid json, try to repair it
                     parsed = json_repair.loads(result_text)
-                    if not isinstance(parsed, (dict, list)):
+                    if not isinstance(parsed, (dict | list)):
                         raise LLMNodeError(f"Failed to parse structured output: {result_text}")
                     structured_output = parsed
                 outputs["structured_output"] = structured_output
