@@ -259,6 +259,7 @@ class KnowledgeRetrievalNode(LLMNode):
                     "_source": "knowledge",
                     "dataset_id": item.metadata.get("dataset_id"),
                     "dataset_name": item.metadata.get("dataset_name"),
+                    "document_id": item.metadata.get("document_id") or item.metadata.get("title"),
                     "document_name": item.metadata.get("title"),
                     "data_source_type": "external",
                     "retriever_from": "workflow",
