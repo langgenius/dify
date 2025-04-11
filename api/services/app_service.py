@@ -12,10 +12,8 @@ from core.agent.entities import AgentToolEntity
 from core.app.features.rate_limiting import RateLimit
 from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
 from core.model_manager import ModelManager
-from core.model_runtime.entities.model_entities import (ModelPropertyKey,
-                                                        ModelType)
-from core.model_runtime.model_providers.__base.large_language_model import \
-    LargeLanguageModel
+from core.model_runtime.entities.model_entities import ModelPropertyKey, ModelType
+from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
 from core.tools.tool_manager import ToolManager
 from core.tools.utils.configuration import ToolParameterConfigurationManager
 from events.app_event import app_was_created
@@ -26,8 +24,7 @@ from models.tools import ApiToolProvider
 from services.enterprise.enterprise_service import EnterpriseService
 from services.feature_service import FeatureService
 from services.tag_service import TagService
-from tasks.remove_app_and_related_data_task import \
-    remove_app_and_related_data_task
+from tasks.remove_app_and_related_data_task import remove_app_and_related_data_task
 
 
 class AppService:
@@ -159,7 +156,7 @@ class AppService:
 
         if FeatureService.get_system_features().webapp_auth.enabled:
             # update web app setting as private
-            EnterpriseService.update_app_access_mode(app.id, "private")
+            EnterpriseService.WebAppAuth.update_app_access_mode(app.id, "private")
 
         return app
 
@@ -319,7 +316,7 @@ class AppService:
 
         # clean up web app settings
         if FeatureService.get_system_features().webapp_auth.enabled:
-            EnterpriseService.cleanup_webapp(app.id)
+            EnterpriseService.WebAppAuth.cleanup_webapp(app.id)
 
         # Trigger asynchronous deletion of app and related data
         remove_app_and_related_data_task.delay(tenant_id=app.tenant_id, app_id=app.id)

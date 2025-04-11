@@ -4,8 +4,7 @@ from flask import request
 from flask_restful import Resource  # type: ignore
 from werkzeug.exceptions import BadRequest, NotFound, Unauthorized
 
-from controllers.web.error import (WebAppAuthAccessDeniedError,
-                                   WebAppAuthRequiredError)
+from controllers.web.error import WebAppAuthAccessDeniedError, WebAppAuthRequiredError
 from extensions.ext_database import db
 from libs.passport import PassportService
 from models.model import App, EndUser, Site
@@ -62,7 +61,7 @@ def decode_jwt_token():
         app_web_auth_enabled = False
         if system_features.webapp_auth.enabled:
             app_web_auth_enabled = (
-                EnterpriseService.get_app_access_mode_by_code(app_code=app_code).access_mode != "public"
+                EnterpriseService.WebAppAuth.get_app_access_mode_by_code(app_code=app_code).access_mode != "public"
             )
 
         _validate_webapp_token(decoded, app_web_auth_enabled, system_features.webapp_auth.enabled)
@@ -72,7 +71,7 @@ def decode_jwt_token():
     except Unauthorized as e:
         if system_features.webapp_auth.enabled:
             app_web_auth_enabled = (
-                EnterpriseService.get_app_access_mode_by_code(app_code=app_code).access_mode != "public"
+                EnterpriseService.WebAppAuth.get_app_access_mode_by_code(app_code=app_code).access_mode != "public"
             )
             if app_web_auth_enabled:
                 raise WebAppAuthRequiredError()
@@ -103,7 +102,7 @@ def _validate_user_accessibility(decoded, app_code, app_web_auth_enabled: bool, 
         if not user_id:
             raise WebAppAuthRequiredError()
 
-        if not EnterpriseService.is_user_allowed_to_access_webapp(user_id, app_code=app_code):
+        if not EnterpriseService.WebAppAuth.is_user_allowed_to_access_webapp(user_id, app_code=app_code):
             raise WebAppAuthAccessDeniedError()
 
 

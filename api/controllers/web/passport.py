@@ -23,7 +23,7 @@ class PassportResource(Resource):
             raise Unauthorized("X-App-Code header is missing.")
 
         if system_features.webapp_auth.enabled:
-            app_settings = EnterpriseService.get_app_access_mode_by_code(app_code=app_code)
+            app_settings = EnterpriseService.WebAppAuth.get_app_access_mode_by_code(app_code=app_code)
             if not app_settings or not app_settings.access_mode == "public":
                 raise WebAppAuthRequiredError()
 

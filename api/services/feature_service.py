@@ -203,9 +203,7 @@ class FeatureService:
             features.webapp_auth.allow_email_password_login = enterprise_info["WebAppAuth"].get(
                 "allowEmailPasswordLogin", False
             )
-            features.webapp_auth.sso_config.protocol = enterprise_info.get(
-                "SSOEnforcedForSigninProtocol", ""
-            )
+            features.webapp_auth.sso_config.protocol = enterprise_info.get("SSOEnforcedForSigninProtocol", "")
 
         if "License" in enterprise_info:
             license_info = enterprise_info["License"]
