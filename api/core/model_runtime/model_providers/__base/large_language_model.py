@@ -12,7 +12,9 @@ from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, 
 from core.model_runtime.entities.message_entities import (
     AssistantPromptMessage,
     PromptMessage,
+    PromptMessageContent,
     PromptMessageTool,
+    TextPromptMessageContent,
 )
 from core.model_runtime.entities.model_entities import (
     ModelType,
@@ -215,7 +217,7 @@ class LargeLanguageModel(AIModel):
     def _invoke_result_generator(
         self,
         model: str,
-        result: Generator,
+        result: Generator[LLMResultChunk, None, None],
         credentials: dict,
         prompt_messages: Sequence[PromptMessage],
         model_parameters: dict,
@@ -232,7 +234,7 @@ class LargeLanguageModel(AIModel):
         :return: result generator
         """
         callbacks = callbacks or []
-        assistant_message = AssistantPromptMessage(content="")
+        message_content: list[PromptMessageContent] = []
         usage = None
         system_fingerprint = None
         real_model = model
@@ -258,7 +260,10 @@ class LargeLanguageModel(AIModel):
                     callbacks=callbacks,
                 )
 
-                assistant_message.content += chunk.delta.message.content
+                if isinstance(chunk.delta.message.content, list):
+                    message_content.extend(chunk.delta.message.content)
+                elif isinstance(chunk.delta.message.content, str):
+                    message_content.append(TextPromptMessageContent(data=chunk.delta.message.content))
                 real_model = chunk.model
                 if chunk.delta.usage:
                     usage = chunk.delta.usage
@@ -268,6 +273,7 @@ class LargeLanguageModel(AIModel):
         except Exception as e:
             raise self._transform_invoke_error(e)
 
+        assistant_message = AssistantPromptMessage(content=message_content)
         self._trigger_after_invoke_callbacks(
             model=model,
             result=LLMResult(

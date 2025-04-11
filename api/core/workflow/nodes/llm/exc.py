@@ -38,3 +38,8 @@ class MemoryRolePrefixRequiredError(LLMNodeError):
 class FileTypeNotSupportError(LLMNodeError):
     def __init__(self, *, type_name: str):
         super().__init__(f"{type_name} type is not supported by this model")
+
+
+class UnsupportedPromptContentTypeError(LLMNodeError):
+    def __init__(self, *, type_name: str) -> None:
+        super().__init__(f"Prompt content type {type_name} is not supported.")

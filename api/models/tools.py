@@ -263,8 +263,8 @@ class ToolConversationVariables(Base):
 
 
 class ToolFile(Base):
-    """
-    store the file created by agent
+    """This table stores file metadata generated in workflows,
+    not only files created by agent.
     """
 
     __tablename__ = "tool_files"
