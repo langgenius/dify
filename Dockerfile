@@ -1,8 +1,7 @@
 FROM ghcr.io/langgenius/dify:latest
 
-# PORTはRailway側で設定される（環境変数で渡ってくる）
+# Railway用ポート設定
 ENV PORT=3000
-CMD ["bash", "/app/start.sh"]
 
-# Railwayで自動起動するようCMDを明示
-CMD ["printenv"]
+# サービス起動
+CMD ["bash", "/app/start.sh"]
