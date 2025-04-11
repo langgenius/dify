@@ -5,6 +5,7 @@ from werkzeug.exceptions import Forbidden, NotFound
 from controllers.files import api
 from controllers.files.error import UnsupportedFileTypeError
 from core.tools.tool_file_manager import ToolFileManager
+from models import db as global_db
 
 
 class ToolFilePreviewApi(Resource):
@@ -29,7 +30,8 @@ class ToolFilePreviewApi(Resource):
             raise Forbidden("Invalid request.")
 
         try:
-            stream, tool_file = ToolFileManager.get_file_generator_by_tool_file_id(
+            tool_file_manager = ToolFileManager(engine=global_db.engine)
+            stream, tool_file = tool_file_manager.get_file_generator_by_tool_file_id(
                 file_id,
             )
 

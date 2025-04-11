@@ -1,12 +1,17 @@
-from typing import TYPE_CHECKING, Any, cast
+from typing import TYPE_CHECKING, Callable
 
 if TYPE_CHECKING:
     from core.tools.tool_file_manager import ToolFileManager
 
-tool_file_manager: dict[str, Any] = {"manager": None}
+_tool_file_manager_factory: Callable[[], "ToolFileManager"] | None = None
 
 
 class ToolFileParser:
     @staticmethod
     def get_tool_file_manager() -> "ToolFileManager":
-        return cast("ToolFileManager", tool_file_manager["manager"])
+        return _tool_file_manager_factory()
+
+
+def set_tool_file_manager_factory(factory: Callable[[], "ToolFileManager"]) -> None:
+    global _tool_file_manager_factory
+    _tool_file_manager_factory = factory
