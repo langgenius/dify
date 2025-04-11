@@ -122,7 +122,7 @@ class UnsupportedFileTypeError(BaseHTTPException):
 
 
 class WebAppAuthRequiredError(BaseHTTPException):
-    error_code = "web_auth_required"
+    error_code = "web_sso_auth_required"
     description = "Web app authentication required."
     code = 401
 
