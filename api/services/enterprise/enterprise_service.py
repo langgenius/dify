@@ -40,22 +40,22 @@ class EnterpriseService:
         def batch_get_app_access_mode_by_id(cls, app_ids: list[str]) -> dict[str, WebAppSettings]:
             if not app_ids:
                 raise ValueError("app_ids must be provided.")
-            params = {"appIds": ",".join(app_ids)}
-            data: dict[str, str] = EnterpriseRequest.send_request("GET", "/webapp/access-mode/batch/id", params=params)
+            body = {"appIds": app_ids}
+            data: dict[str, str] = EnterpriseRequest.send_request("POST", "/webapp/access-mode/batch/id", json=body)
             if not data:
                 raise ValueError("No data found.")
 
-            logging.info(f"Batch get app access mode by id returns data: {data}")
-
             if not isinstance(data, dict):
+                logging.info(f"Batch get app access mode by id returns data: {data}")
                 raise ValueError("Invalid data format.")
 
+            ret = {}
             for key, value in data.items():
                 curr = WebAppSettings()
                 curr.access_mode = value
-                data[key] = curr
+                ret[key] = curr
 
-            return data
+            return ret
 
         @classmethod
         def get_app_access_mode_by_code(cls, app_code: str) -> WebAppSettings:
