@@ -544,6 +544,9 @@ describe('file-uploader utils', () => {
 
   describe('downloadFile', () => {
     let mockAnchor: HTMLAnchorElement
+    let createElementMock: jest.SpyInstance
+    let appendChildMock: jest.SpyInstance
+    let removeChildMock: jest.SpyInstance
 
     beforeEach(() => {
       // Mock createElement and appendChild
@@ -555,6 +558,14 @@ describe('file-uploader utils', () => {
         title: '',
         click: jest.fn(),
       } as unknown as HTMLAnchorElement
+
+      createElementMock = jest.spyOn(document, 'createElement').mockReturnValue(mockAnchor as any)
+      appendChildMock = jest.spyOn(document.body, 'appendChild').mockImplementation((node: Node) => {
+        return node
+      })
+      removeChildMock = jest.spyOn(document.body, 'removeChild').mockImplementation((node: Node) => {
+        return node
+      })
     })
 
     afterEach(() => {
@@ -562,13 +573,6 @@ describe('file-uploader utils', () => {
     })
 
     it('should create and trigger download with correct attributes', () => {
-      const createElementMock = jest.spyOn(document, 'createElement').mockReturnValue(mockAnchor as any)
-      const appendChildMock = jest.spyOn(document.body, 'appendChild').mockImplementation((node: Node) => {
-        return node
-      })
-      const removeChildMock = jest.spyOn(document.body, 'removeChild').mockImplementation((node: Node) => {
-        return node
-      })
       const url = 'https://example.com/test.pdf'
       const filename = 'test.pdf'
 
