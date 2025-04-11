@@ -386,11 +386,20 @@ import { Row, Col, Properties, Property, Heading, SubProperty, PropertyInstructi
   <Col>
     ### クエリ
     <Properties>
+      <Property name='keyword' type='string' key='keyword'>
+        検索キーワード、オプション
+      </Property>
+      <Property name='tag_ids' type='array[string]' key='tag_ids'>
+        タグIDリスト、オプション
+      </Property>
       <Property name='page' type='string' key='page'>
-        ページ番号
+        ページ番号、オプション、デフォルト1
       </Property>
       <Property name='limit' type='string' key='limit'>
-        返されるアイテム数、デフォルトは 20、範囲は 1-100
+        返されるアイテム数、オプション、デフォルト20、範囲1-100
+      </Property>
+      <Property name='include_all' type='boolean' key='include_all'>
+        すべてのデータセットを含めるかどうか（所有者のみ有効）、オプション、デフォルトはfalse
       </Property>
     </Properties>
   </Col>

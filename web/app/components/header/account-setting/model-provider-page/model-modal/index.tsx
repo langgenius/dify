@@ -270,8 +270,7 @@ const ModelModal: FC<ModelModalProps> = ({
   }
 
   const renderTitlePrefix = () => {
-    const prefix = configurateMethod === ConfigurationMethodEnum.customizableModel ? t('common.operation.add') : t('common.operation.setup')
-
+    const prefix = isEditMode ? t('common.operation.setup') : t('common.operation.add')
     return `${prefix} ${provider.label[language] || provider.label.en_US}`
   }
 

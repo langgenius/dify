@@ -179,7 +179,7 @@ provider_credential_schema:
     """
   ```
 
-  有时候，也许你不需要直接返回0，所以你可以使用`self._get_num_tokens_by_gpt2(text: str)`来获取预计算的tokens，这个方法位于`AIModel`基类中，它会使用GPT2的Tokenizer进行计算，但是只能作为替代方法，并不完全准确。
+  有时候，也许你不需要直接返回0，所以你可以使用`self._get_num_tokens_by_gpt2(text: str)`来获取预计算的tokens，并确保环境变量`PLUGIN_BASED_TOKEN_COUNTING_ENABLED`设置为`true`，这个方法位于`AIModel`基类中，它会使用GPT2的Tokenizer进行计算，但是只能作为替代方法，并不完全准确。
 
 - 模型凭据校验
 

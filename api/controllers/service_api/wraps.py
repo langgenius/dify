@@ -69,7 +69,7 @@ def validate_app_token(view: Optional[Callable] = None, *, fetch_user_arg: Optio
             )  # TODO: only owner information is required, so only one is returned.
             if tenant_account_join:
                 tenant, ta = tenant_account_join
-                account = Account.query.filter_by(id=ta.account_id).first()
+                account = db.session.query(Account).filter(Account.id == ta.account_id).first()
                 # Login admin
                 if account:
                     account.current_tenant = tenant

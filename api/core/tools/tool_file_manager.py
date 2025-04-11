@@ -108,7 +108,11 @@ class ToolFileManager:
         except httpx.TimeoutException:
             raise ValueError(f"timeout when downloading file from {file_url}")
 
-        mimetype = guess_type(file_url)[0] or "application/octet-stream"
+        mimetype = (
+            guess_type(file_url)[0]
+            or response.headers.get("Content-Type", "").split(";")[0].strip()
+            or "application/octet-stream"
+        )
         extension = guess_extension(mimetype) or ".bin"
         unique_name = uuid4().hex
         filename = f"{unique_name}{extension}"

@@ -82,17 +82,17 @@ const NodeGroupItem = ({
     <div
       className={cn(
         'relative rounded-lg border-[1.5px] border-transparent px-1.5 pb-1.5 pt-1',
-        showSelectionBorder && '!border-dashed !border-gray-300 bg-black/[0.02]',
-        showSelectedBorder && '!border-primary-600 !bg-primary-50',
+        showSelectionBorder && '!border-dashed !border-divider-subtle bg-state-base-hover',
+        showSelectedBorder && '!border-text-accent !bg-util-colors-blue-blue-50',
       )}
       onMouseEnter={() => groupEnabled && handleGroupItemMouseEnter(item.targetHandleId)}
       onMouseLeave={handleGroupItemMouseLeave}
     >
-      <div className='flex h-4 items-center justify-between text-[10px] font-medium text-gray-500'>
+      <div className='flex h-4 items-center justify-between text-[10px] font-medium text-text-tertiary'>
         <span
           className={cn(
             'grow truncate uppercase',
-            showSelectedBorder && 'text-primary-600',
+            showSelectedBorder && 'text-text-accent',
           )}
           title={item.title}
         >
@@ -100,7 +100,7 @@ const NodeGroupItem = ({
         </span>
         <div className='flex items-center'>
           <span className='ml-2 shrink-0'>{item.type}</span>
-          <div className='ml-2 mr-1 h-2.5 w-[1px] bg-gray-200'></div>
+          <div className='ml-2 mr-1 h-2.5 w-[1px] bg-divider-regular'></div>
           <AddVariable
             availableVars={availableVars}
             variableAssignerNodeId={item.variableAssignerNodeId}
@@ -113,7 +113,7 @@ const NodeGroupItem = ({
         !item.variables.length && (
           <div
             className={cn(
-              'relative flex h-[22px] items-center justify-between space-x-1 rounded-md bg-gray-100 px-1 text-[10px] font-normal uppercase text-gray-400',
+              'relative flex h-[22px] items-center justify-between space-x-1 rounded-md bg-workflow-block-parma-bg px-1 text-[10px] font-normal uppercase text-text-tertiary',
               (showSelectedBorder || showSelectionBorder) && '!bg-black/[0.02]',
             )}
           >

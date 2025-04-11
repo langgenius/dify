@@ -164,7 +164,7 @@ const Panel: FC<NodePanelProps<ParameterExtractorNodeType>> = ({
                   {!readOnly && (
                     <ImportFromTool onImport={handleImportFromTool} />
                   )}
-                  {!readOnly && (<div className='h-3 w-px bg-gray-200'></div>)}
+                  {!readOnly && (<div className='h-3 w-px bg-divider-regular'></div>)}
                   <AddExtractParameter type='add' onSave={addExtractParameter} />
                 </div>
               )
