@@ -1,6 +1,10 @@
 import uuid
 from unittest import mock
 
+import pydantic
+import pytest
+from sqlalchemy import Engine
+
 from core.file import FileTransferMethod, FileType
 from core.tools.tool_file_manager import ToolFileManager
 from core.workflow.nodes.llm.file_saver import MultiModalFile, StorageFileSaver
@@ -54,6 +58,7 @@ def test_storage_file_saver(monkeypatch):
         size=len(mmf.data),
     )
     mocked_tool_file_manager = mock.MagicMock(spec=ToolFileManager)
+    mocked_engine = mock.MagicMock(spec=Engine)
 
     mocked_tool_file_manager.create_file_by_raw.return_value = mock_tool_file
     monkeypatch.setattr(StorageFileSaver, "_get_tool_file_manager", lambda _: mocked_tool_file_manager)
@@ -62,7 +67,7 @@ def test_storage_file_saver(monkeypatch):
     monkeypatch.setattr(ToolFileManager, "sign_file", mocked_sign_file)
     mocked_sign_file.return_value = mock_signed_url
 
-    storage_file_manager = StorageFileSaver()
+    storage_file_manager = StorageFileSaver(engine=mocked_engine)
 
     file = storage_file_manager.save_file(mmf)
     assert file.tenant_id == mmf.tenant_id
@@ -83,3 +88,49 @@ def test_storage_file_saver(monkeypatch):
         mimetype=mmf.mime_type,
     )
     mocked_sign_file.assert_called_once_with(mock_tool_file.id, mmf.get_extension())
+
+
+def test_multi_modal_file_extension_override():
+    # Test should pass if `extension_override` is not set.
+    MultiModalFile(
+        user_id='',
+        tenant_id='',
+        file_type=FileType.IMAGE,
+        data=b'',
+        mime_type='image/png'
+    )
+
+    # Test should pass if `extension_override` is explicitly set to `None`.
+    MultiModalFile(
+        user_id='',
+        tenant_id='',
+        file_type=FileType.IMAGE,
+        data=b'',
+        mime_type='image/png',
+        extension_override=None
+    )
+
+    # Test should pass if `extension_override` is a string prefixed with `.`.
+    for extension_override in ['.png', '.tar.gz']:
+        MultiModalFile(
+            user_id='',
+            tenant_id='',
+            file_type=FileType.IMAGE,
+            data=b'',
+            mime_type='image/png',
+            extension_override=extension_override,
+        )
+
+    for invalid_ext_override in ['png', 'tar.gz']:
+        with pytest.raises(pydantic.ValidationError) as exc:
+            MultiModalFile(
+                user_id='',
+                tenant_id='',
+                file_type=FileType.IMAGE,
+                data=b'',
+                mime_type='image/png',
+                extension_override=invalid_ext_override)
+
+        error_details = exc.value.errors()
+        assert exc.value.error_count() == 1
+        assert error_details[0]['loc'] == ('extension_override',)
