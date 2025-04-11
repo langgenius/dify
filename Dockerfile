@@ -1,4 +1,7 @@
-# ベースイメージはDify公式のものを使用
 FROM ghcr.io/langgenius/dify:latest
 
-# 環境変数などの設定は Railway 側で行うので、基本これだけでOK
+# PORTはRailway側で設定される（環境変数で渡ってくる）
+ENV PORT=3000
+
+# Railwayで自動起動するようCMDを明示
+CMD ["bash", "/app/start.sh"]
