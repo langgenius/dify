@@ -170,7 +170,7 @@ const DatasetCard = ({
           {dataset.description}
         </div>
         <div className={cn(
-          'mt-[17px] h-[42px] shrink-0 items-center pb-[6px] pl-[14px] pr-[6px] pt-1',
+          'mt-4 h-[42px] shrink-0 items-center pb-[6px] pl-[14px] pr-[6px] pt-1',
           tags.length ? 'flex' : '!hidden group-hover:!flex',
         )}>
           <div className={cn('flex w-0 grow items-center gap-1', !dataset.embedding_available && 'opacity-50 hover:opacity-100')} onClick={(e) => {
