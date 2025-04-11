@@ -30,7 +30,7 @@ export default function AccessControl(props: AccessControlProps) {
   const specificMembers = useAccessControlStore(s => s.specificMembers)
   const currentMenu = useAccessControlStore(s => s.currentMenu)
   const setCurrentMenu = useAccessControlStore(s => s.setCurrentMenu)
-  const hideTip = systemFeatures.enable_web_sso_switch_component && systemFeatures.sso_enforced_for_web
+  const hideTip = systemFeatures
 
   useEffect(() => {
     setAppId(app.id)

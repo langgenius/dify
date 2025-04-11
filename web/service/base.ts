@@ -512,7 +512,7 @@ export const ssePost = (
           }).catch(() => {
             res.json().then((data: any) => {
               if (isPublicAPI) {
-                if (data.code === 'web_sso_auth_required')
+                if (data.code === 'web_sso_auth_required' || data.code === 'web_app_access_denied')
                   requiredWebSSOLogin()
 
                 if (data.code === 'unauthorized') {
@@ -566,7 +566,7 @@ export const request = async<T>(url: string, options = {}, otherOptions?: IOther
       // special code
       const { code, message } = errRespData
       // webapp sso
-      if (code === 'web_sso_auth_required') {
+      if (code === 'web_sso_auth_required' || code === 'web_app_access_denied') {
         requiredWebSSOLogin()
         return Promise.reject(err)
       }

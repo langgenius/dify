@@ -20,7 +20,7 @@ export default function SpecificGroupsOrMembers() {
   const setSpecificMembers = useAccessControlStore(s => s.setSpecificMembers)
   const { t } = useTranslation()
   const systemFeatures = useGlobalPublicStore(s => s.systemFeatures)
-  const hideTip = systemFeatures.enable_web_sso_switch_component && systemFeatures.sso_enforced_for_web
+  const hideTip = systemFeatures.webapp_auth.enable
 
   const { isPending, data } = useAppWhiteListSubjects(appId, Boolean(appId) && currentMenu === AccessMode.SPECIFIC_GROUPS_MEMBERS)
   useEffect(() => {

@@ -20,7 +20,7 @@ import cn from '@/utils/classnames'
 import { useStore } from '@/app/components/app/store'
 import AppSideBar from '@/app/components/app-sidebar'
 import type { NavIcon } from '@/app/components/app-sidebar/navLink'
-import { fetchAppDetail, fetchAppSSO } from '@/service/apps'
+import { fetchAppDetail } from '@/service/apps'
 import { useAppContext } from '@/context/app-context'
 import Loading from '@/app/components/base/loading'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
@@ -30,6 +30,13 @@ import { useGlobalPublicStore } from '@/context/global-public-context'
 export type IAppDetailLayoutProps = {
   children: React.ReactNode
   params: { appId: string }
+}
+
+type NavigationType = {
+  name: string
+  href: string
+  icon: NavIcon
+  selectedIcon: NavIcon
 }
 
 const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
@@ -50,12 +57,7 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
   })))
   const [isLoadingAppDetail, setIsLoadingAppDetail] = useState(false)
   const [appDetailRes, setAppDetailRes] = useState<App | null>(null)
-  const [navigation, setNavigation] = useState<Array<{
-    name: string
-    href: string
-    icon: NavIcon
-    selectedIcon: NavIcon
-  }>>([])
+  const [navigation, setNavigation] = useState<Array<NavigationType>>([])
   const { systemFeatures } = useGlobalPublicStore()
 
   const getNavigations = useCallback((appId: string, isCurrentWorkspaceEditor: boolean, mode: string) => {
@@ -142,15 +144,10 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
       router.replace(`/app/${appId}/configuration`)
     }
     else {
-      setAppDetail({ ...res, enable_sso: false })
-      setNavigation(getNavigations(appId, isCurrentWorkspaceEditor, res.mode))
-      if (systemFeatures.enable_web_sso_switch_component && canIEditApp) {
-        fetchAppSSO({ appId }).then((ssoRes) => {
-          setAppDetail({ ...res, enable_sso: ssoRes.enabled })
-        })
-      }
+      setAppDetail({ ...res })
+      setNavigation(getNavigations(appId, isCurrentWorkspaceEditor, res.mode) as Array<NavigationType>)
     }
-  }, [appDetailRes, appId, getNavigations, isCurrentWorkspaceEditor, isLoadingAppDetail, isLoadingCurrentWorkspace, pathname, router, setAppDetail, systemFeatures.enable_web_sso_switch_component])
+  }, [appDetailRes, appId, getNavigations, isCurrentWorkspaceEditor, isLoadingAppDetail, isLoadingCurrentWorkspace, pathname, router, setAppDetail])
 
   useUnmount(() => {
     setAppDetail()

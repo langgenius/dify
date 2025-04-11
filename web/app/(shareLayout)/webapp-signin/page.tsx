@@ -1,7 +1,7 @@
 'use client'
 import { useRouter, useSearchParams } from 'next/navigation'
 import type { FC } from 'react'
-import React, { useEffect } from 'react'
+import React, { useCallback, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import cn from '@/utils/classnames'
 import Toast from '@/app/components/base/toast'
@@ -9,6 +9,7 @@ import { fetchWebOAuth2SSOUrl, fetchWebOIDCSSOUrl, fetchWebSAMLSSOUrl } from '@/
 import { setAccessToken } from '@/app/components/share/utils'
 import Button from '@/app/components/base/button'
 import { useGlobalPublicStore } from '@/context/global-public-context'
+import { SSOProtocol } from '@/types/feature'
 
 const WebSSOForm: FC = () => {
   const { t } = useTranslation()
@@ -27,15 +28,15 @@ const WebSSOForm: FC = () => {
     })
   }
 
-  const getAppCodeFromRedirectUrl = () => {
+  const getAppCodeFromRedirectUrl = useCallback(() => {
     const appCode = redirectUrl?.split('/').pop()
     if (!appCode)
       return null
 
     return appCode
-  }
+  }, [redirectUrl])
 
-  const processTokenAndRedirect = async () => {
+  const processTokenAndRedirect = useCallback(async () => {
     const appCode = getAppCodeFromRedirectUrl()
     if (!appCode || !tokenFromUrl || !redirectUrl) {
       showErrorToast('redirect url or app code or token is invalid.')
@@ -44,7 +45,7 @@ const WebSSOForm: FC = () => {
 
     await setAccessToken(appCode, tokenFromUrl)
     router.push(redirectUrl)
-  }
+  }, [getAppCodeFromRedirectUrl, redirectUrl, router, tokenFromUrl])
 
   const handleSSOLogin = async () => {
     const appCode = getAppCodeFromRedirectUrl()
@@ -53,18 +54,18 @@ const WebSSOForm: FC = () => {
       return
     }
 
-    switch (systemFeatures.sso_enforced_for_web_protocol) {
-      case 'saml': {
+    switch (systemFeatures.webapp_auth.sso_config.protocol) {
+      case SSOProtocol.SAML: {
         const samlRes = await fetchWebSAMLSSOUrl(appCode, redirectUrl)
         router.push(samlRes.url)
         break
       }
-      case 'oidc': {
+      case SSOProtocol.OIDC: {
         const oidcRes = await fetchWebOIDCSSOUrl(appCode, redirectUrl)
         router.push(oidcRes.url)
         break
       }
-      case 'oauth2': {
+      case SSOProtocol.OAuth2: {
         const oauth2Res = await fetchWebOAuth2SSOUrl(appCode, redirectUrl)
         router.push(oauth2Res.url)
         break
@@ -72,6 +73,14 @@ const WebSSOForm: FC = () => {
       default:
         showErrorToast('SSO protocol is not supported.')
     }
+  }
+
+  const goWebApp = () => {
+    if (!redirectUrl) {
+      showErrorToast('redirect url is invalid.')
+      return
+    }
+    router.push(redirectUrl)
   }
 
   useEffect(() => {
@@ -88,15 +97,21 @@ const WebSSOForm: FC = () => {
     }
 
     init()
-  }, [message, tokenFromUrl]) // Added dependencies to useEffect
-
-  return (
-    <div className="flex items-center justify-center h-full">
-      <div className={cn('flex flex-col items-center w-full grow justify-center', 'px-6', 'md:px-[108px]')}>
-        <Button variant='primary' onClick={() => { handleSSOLogin() }}>{t('login.withSSO')}</Button>
+  }, [message, processTokenAndRedirect, tokenFromUrl])
+  if (systemFeatures.webapp_auth.enable) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <div className={cn('flex flex-col items-center w-full grow justify-center', 'px-6', 'md:px-[108px]')}>
+          <Button variant='primary' onClick={() => { handleSSOLogin() }}>{t('login.withSSO')}</Button>
+        </div>
       </div>
+    )
+  }
+  else {
+    return <div className="flex items-center justify-center h-full">
+      <p>Current App is not required for login, you can <span className='text-text-accent cursor-pointer' onClick={goWebApp}>click here</span> continue.</p>
     </div>
-  )
+  }
 }
 
 export default React.memo(WebSSOForm)
