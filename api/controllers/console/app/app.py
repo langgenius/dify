@@ -1,23 +1,24 @@
+import logging
 import uuid
 from typing import cast
 
 from flask_login import current_user  # type: ignore
-from flask_restful import Resource, inputs, marshal, marshal_with, reqparse  # type: ignore
+from flask_restful import (Resource, inputs, marshal,  # type: ignore
+                           marshal_with, reqparse)
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import BadRequest, Forbidden, abort
 
 from controllers.console import api
 from controllers.console.app.wraps import get_app_model
-from controllers.console.wraps import (
-    account_initialization_required,
-    cloud_edition_billing_resource_check,
-    enterprise_license_required,
-    setup_required,
-)
+from controllers.console.wraps import (account_initialization_required,
+                                       cloud_edition_billing_resource_check,
+                                       enterprise_license_required,
+                                       setup_required)
 from core.ops.ops_trace_manager import OpsTraceManager
 from extensions.ext_database import db
-from fields.app_fields import app_detail_fields, app_detail_fields_with_site, app_pagination_fields
+from fields.app_fields import (app_detail_fields, app_detail_fields_with_site,
+                               app_pagination_fields)
 from libs.login import login_required
 from models import Account, App
 from services.app_dsl_service import AppDslService, ImportMode
@@ -67,6 +68,7 @@ class AppListApi(Resource):
 
         if FeatureService.get_system_features().webapp_auth.enabled:
             app_ids = [str(app.id) for app in app_pagination.items]
+            logging.info(f"app_ids: {app_ids}")
             res = EnterpriseService.WebAppAuth.batch_get_app_access_mode_by_id(app_ids=app_ids)
             if len(res) != len(app_ids):
                 raise BadRequest("Invalid app id in webapp auth")

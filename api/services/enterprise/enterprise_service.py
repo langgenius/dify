@@ -55,6 +55,7 @@ class EnterpriseService:
                 curr.access_mode = value
                 ret[key] = curr
 
+            logging.info(f"Batch get app access mode by id returns data: {ret}")
             return ret
 
         @classmethod
