@@ -45,7 +45,7 @@ class LargeLanguageModel(AIModel):
         stream: bool = True,
         user: Optional[str] = None,
         callbacks: Optional[list[Callback]] = None,
-    ) -> Union[LLMResult, Generator]:
+    ) -> Union[LLMResult, Generator[LLMResultChunk, None, None]]:
         """
         Invoke large language model
 
@@ -213,14 +213,14 @@ class LargeLanguageModel(AIModel):
         model: str,
         result: Generator,
         credentials: dict,
-        prompt_messages: list[PromptMessage],
+        prompt_messages: Sequence[PromptMessage],
         model_parameters: dict,
         tools: Optional[list[PromptMessageTool]] = None,
         stop: Optional[Sequence[str]] = None,
         stream: bool = True,
         user: Optional[str] = None,
         callbacks: Optional[list[Callback]] = None,
-    ) -> Generator:
+    ) -> Generator[LLMResultChunk, None, None]:
         """
         Invoke result generator
 
@@ -403,7 +403,7 @@ class LargeLanguageModel(AIModel):
         chunk: LLMResultChunk,
         model: str,
         credentials: dict,
-        prompt_messages: list[PromptMessage],
+        prompt_messages: Sequence[PromptMessage],
         model_parameters: dict,
         tools: Optional[list[PromptMessageTool]] = None,
         stop: Optional[Sequence[str]] = None,
@@ -450,7 +450,7 @@ class LargeLanguageModel(AIModel):
         model: str,
         result: LLMResult,
         credentials: dict,
-        prompt_messages: list[PromptMessage],
+        prompt_messages: Sequence[PromptMessage],
         model_parameters: dict,
         tools: Optional[list[PromptMessageTool]] = None,
         stop: Optional[Sequence[str]] = None,
