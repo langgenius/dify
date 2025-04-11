@@ -120,9 +120,7 @@ class LargeLanguageModel(AIModel):
                         if not tool_call_id:
                             return tools_calls[-1]
 
-                        tool_call = next(
-                            (tool_call for tool_call in tools_calls if tool_call.id == tool_call_id), None
-                        )
+                        tool_call = next((tool_call for tool_call in tools_calls if tool_call.id == tool_call_id), None)
                         if tool_call is None:
                             tool_call = AssistantPromptMessage.ToolCall(
                                 id=tool_call_id,
