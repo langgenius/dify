@@ -36,7 +36,7 @@ export type SystemFeatures = {
     application_title: string
   }
   webapp_auth: {
-    enable: boolean
+    enabled: boolean
     allow_sso: boolean
     sso_config: {
       protocol: SSOProtocol
@@ -65,7 +65,7 @@ export const defaultSystemFeatures: SystemFeatures = {
     application_title: 'test title',
   },
   webapp_auth: {
-    enable: false,
+    enabled: false,
     allow_sso: false,
     sso_config: {
       protocol: SSOProtocol.SAML,

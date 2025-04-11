@@ -35,7 +35,7 @@ export default function AccessControl(props: AccessControlProps) {
   useEffect(() => {
     setAppId(app.id)
     setCurrentMenu(app.access_mode ?? AccessMode.SPECIFIC_GROUPS_MEMBERS)
-  }, [app, setAppId])
+  }, [app, setAppId, setCurrentMenu])
 
   const { isPending, mutateAsync: updateAccessMode } = useUpdateAccessMode()
   const handleConfirm = useCallback(async () => {
