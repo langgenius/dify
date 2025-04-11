@@ -181,6 +181,7 @@ docker/volumes/plugin_daemon/*
 !docker/volumes/oceanbase/init.d
 
 docker/nginx/conf.d/default.conf
+docker/nginx/conf.d/.htpasswd
 docker/nginx/ssl/*
 !docker/nginx/ssl/.gitkeep
 docker/middleware.env
