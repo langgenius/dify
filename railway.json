@@ -1,0 +1,10 @@
+{
+  "services": [
+    {
+      "name": "dify",
+      "source": {
+        "type": "dockerfile"
+      }
+    }
+  ]
+}
