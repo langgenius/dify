@@ -140,16 +140,16 @@ export default combine(
       'react-hooks': reactHooks,
     },
   },
-  // sornar
+  // sonar
   {
     rules: {
       ...sonar.configs.recommended.rules,
     },
     plugins: {
-      sonar,
+      sonarjs: sonar,
     },
   },
-  // need futher research
+  // need further research
   {
     rules: {
       // not exist in old version
