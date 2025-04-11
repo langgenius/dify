@@ -1,5 +1,4 @@
-# Difyの公式Dockerfileをベースに構築
+# ベースイメージはDify公式のものを使用
 FROM ghcr.io/langgenius/dify:latest
 
-# 環境変数や依存関係の設定があれば追加
-# 必要に応じて pip install などを追加
+# 環境変数などの設定は Railway 側で行うので、基本これだけでOK
