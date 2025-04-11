@@ -171,6 +171,7 @@ class GraphEngine:
                             error=item.route_node_state.failed_reason or "Unknown error.",
                             exceptions_count=len(handle_exceptions),
                         )
+                        self._release_thread()
                         return
                     elif isinstance(item, NodeRunSucceededEvent):
                         if item.node_type == NodeType.END:
@@ -197,6 +198,7 @@ class GraphEngine:
                 except Exception as e:
                     logger.exception("Graph run failed")
                     yield GraphRunFailedEvent(error=str(e), exceptions_count=len(handle_exceptions))
+                    self._release_thread()
                     return
             # count exceptions to determine partial success
             if len(handle_exceptions) > 0:
