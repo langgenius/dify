@@ -41,8 +41,8 @@ jobs:
         if: steps.changed-files.outputs.any_changed == 'true'
         run: |
           poetry run -C api ruff --version
-          poetry run -C api ruff check ./
-          poetry run -C api ruff format --check ./
+          poetry run -C api ruff check ./ --diff
+          poetry run -C api ruff format --check ./ --diff
 
       - name: Dotenv check
         if: steps.changed-files.outputs.any_changed == 'true'
