@@ -20,14 +20,6 @@ from services.message_service import MessageService
 
 
 class MessageListApi(Resource):
-    def get_retriever_resources(self):
-        try:
-            if self.message_metadata:
-                return json.loads(self.message_metadata).get("retriever_resources", [])
-            return []
-        except (json.JSONDecodeError, TypeError):
-            return []
-
     message_fields = {
         "id": fields.String,
         "conversation_id": fields.String,
@@ -37,7 +29,11 @@ class MessageListApi(Resource):
         "answer": fields.String(attribute="re_sign_file_url_answer"),
         "message_files": fields.List(fields.Nested(message_file_fields)),
         "feedback": fields.Nested(feedback_fields, attribute="user_feedback", allow_null=True),
-        "retriever_resources": get_retriever_resources,
+        "retriever_resources": fields.Raw(
+            attribute=lambda obj: json.loads(obj.message_metadata).get("retriever_resources", [])
+            if obj.message_metadata
+            else []
+        ),
         "created_at": TimestampField,
         "agent_thoughts": fields.List(fields.Nested(agent_thought_fields)),
         "status": fields.String,

@@ -387,11 +387,20 @@ import { Row, Col, Properties, Property, Heading, SubProperty, PropertyInstructi
   <Col>
     ### Query
     <Properties>
-      <Property name='page' type='string' key='page'>
-        页码
+      <Property name='keyword' type='string' key='keyword'>
+        搜索关键词，可选
+      </Property>
+      <Property name='tag_ids' type='array[string]' key='tag_ids'>
+        标签 ID 列表，可选
+      </Property>
+      <Property name='page' type='integer' key='page'>
+        页码，可选，默认为 1
       </Property>
       <Property name='limit' type='string' key='limit'>
-        返回条数，默认 20，范围 1-100
+        返回条数，可选，默认 20，范围 1-100
+      </Property>
+      <Property name='include_all' type='boolean' key='include_all'>
+        是否包含所有数据集（仅对所有者生效），可选，默认为 false
       </Property>
     </Properties>
   </Col>

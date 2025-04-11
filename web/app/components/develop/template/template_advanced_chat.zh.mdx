@@ -88,6 +88,9 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
     ### ChatCompletionResponse
 
     返回完整的 App 结果，`Content-Type` 为 `application/json`。
+    - `event` (string) 事件类型，固定为 `message`
+    - `task_id` (string) 任务 ID，用于请求跟踪和下方的停止响应接口
+    - `id` (string) 唯一ID
     - `message_id` (string) 消息唯一 ID
     - `conversation_id` (string) 会话 ID
     - `mode` (string) App 模式，固定为 chat
@@ -253,6 +256,8 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
     ```json {{ title: 'Response' }}
     {
         "event": "message",
+        "task_id": "c3800678-a077-43df-a102-53f23ed20b88", 
+        "id": "9da23599-e713-473b-982c-4328d4f5c78a",
         "message_id": "9da23599-e713-473b-982c-4328d4f5c78a",
         "conversation_id": "45701982-8118-4bc5-8e9b-64562b4555f2",
         "mode": "chat",
@@ -1414,8 +1419,8 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
       "job_status": "waiting"
     }
     ```
-    该接口是异步执行，所以会返回一个job_id，通过查询job状态接口可以获取到最终的执行结果。
     </CodeGroup>
+    该接口是异步执行，所以会返回一个job_id，通过查询job状态接口可以获取到最终的执行结果。
   </Col>
 </Row>
 ---

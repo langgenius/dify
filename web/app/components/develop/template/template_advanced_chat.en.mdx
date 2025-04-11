@@ -88,6 +88,9 @@ Chat applications support session persistence, allowing previous chat history to
 
     ### ChatCompletionResponse
     Returns the complete App result, `Content-Type` is `application/json`.
+    - `event` (string) Event type, fixed to `message`
+    - `task_id` (string) Task ID, used for request tracking and the below Stop Generate API
+    - `id` (string) unique ID
     - `message_id` (string) Unique message ID
     - `conversation_id` (string) Conversation ID
     - `mode` (string) App mode, fixed as `chat`
@@ -243,6 +246,8 @@ Chat applications support session persistence, allowing previous chat history to
     ```json {{ title: 'Response' }}
     {
         "event": "message",
+        "task_id": "c3800678-a077-43df-a102-53f23ed20b88", 
+        "id": "9da23599-e713-473b-982c-4328d4f5c78a",
         "message_id": "9da23599-e713-473b-982c-4328d4f5c78a",
         "conversation_id": "45701982-8118-4bc5-8e9b-64562b4555f2",
         "mode": "chat",
@@ -1390,8 +1395,8 @@ Chat applications support session persistence, allowing previous chat history to
       "job_status": "waiting"
     }
     ```
-    This interface is executed asynchronously, so it will return a job_id. You can get the final execution result by querying the job status interface.
     </CodeGroup>
+    This interface is executed asynchronously, so it will return a job_id. You can get the final execution result by querying the job status interface.
   </Col>
 </Row>
 ---

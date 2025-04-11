@@ -8,13 +8,13 @@
   
 - `customizable-model` 自定义模型
 
-  用户需要新增每个模型的凭据配置，如Xinference，它同时支持 LLM 和 Text Embedding，但是每个模型都有唯一的**model_uid**，如果想要将两者同时接入，就需要为每个模型配置一个**model_uid**。
+  用户需要新增每个模型的凭据配置，如 Xinference，它同时支持 LLM 和 Text Embedding，但是每个模型都有唯一的**model_uid**，如果想要将两者同时接入，就需要为每个模型配置一个**model_uid**。
 
 - `fetch-from-remote` 从远程获取
 
   与 `predefined-model` 配置方式一致，只需要配置统一的供应商凭据即可，模型通过凭据信息从供应商获取。
 
-  如OpenAI，我们可以基于gpt-turbo-3.5来Fine Tune多个模型，而他们都位于同一个**api_key**下，当配置为 `fetch-from-remote` 时，开发者只需要配置统一的**api_key**即可让DifyRuntime获取到开发者所有的微调模型并接入Dify。
+  如 OpenAI，我们可以基于 gpt-turbo-3.5 来 Fine Tune 多个模型，而他们都位于同一个**api_key**下，当配置为 `fetch-from-remote` 时，开发者只需要配置统一的**api_key**即可让 DifyRuntime 获取到开发者所有的微调模型并接入 Dify。
 
 这三种配置方式**支持共存**，即存在供应商支持 `predefined-model` + `customizable-model` 或 `predefined-model` + `fetch-from-remote` 等，也就是配置了供应商统一凭据可以使用预定义模型和从远程获取的模型，若新增了模型，则可以在此基础上额外使用自定义的模型。
 
@@ -23,16 +23,16 @@
 ### 介绍
 
 #### 名词解释
- - `module`: 一个`module`即为一个Python Package，或者通俗一点，称为一个文件夹，里面包含了一个`__init__.py`文件，以及其他的`.py`文件。
+ - `module`: 一个`module`即为一个 Python Package，或者通俗一点，称为一个文件夹，里面包含了一个`__init__.py`文件，以及其他的`.py`文件。
 
 #### 步骤
 新增一个供应商主要分为几步，这里简单列出，帮助大家有一个大概的认识，具体的步骤会在下面详细介绍。
 
-- 创建供应商yaml文件，根据[ProviderSchema](./schema.md#provider)编写
+- 创建供应商 yaml 文件，根据[ProviderSchema](./schema.md#provider)编写
 - 创建供应商代码，实现一个`class`。
 - 根据模型类型，在供应商`module`下创建对应的模型类型 `module`，如`llm`或`text_embedding`。
 - 根据模型类型，在对应的模型`module`下创建同名的代码文件，如`llm.py`，并实现一个`class`。
-- 如果有预定义模型，根据模型名称创建同名的yaml文件在模型`module`下，如`claude-2.1.yaml`，根据[AIModelEntity](./schema.md#aimodelentity)编写。
+- 如果有预定义模型，根据模型名称创建同名的 yaml 文件在模型`module`下，如`claude-2.1.yaml`，根据[AIModelEntity](./schema.md#aimodelentity)编写。
 - 编写测试代码，确保功能可用。
 
 ### 开始吧
@@ -121,11 +121,11 @@ model_credential_schema:
 
 #### 实现供应商代码
 
-我们需要在`model_providers`下创建一个同名的python文件，如`anthropic.py`，并实现一个`class`，继承`__base.provider.Provider`基类，如`AnthropicProvider`。
+我们需要在`model_providers`下创建一个同名的 python 文件，如`anthropic.py`，并实现一个`class`，继承`__base.provider.Provider`基类，如`AnthropicProvider`。
 
 ##### 自定义模型供应商
 
-当供应商为Xinference等自定义模型供应商时，可跳过该步骤，仅创建一个空的`XinferenceProvider`类即可，并实现一个空的`validate_provider_credentials`方法，该方法并不会被实际使用，仅用作避免抽象类无法实例化。
+当供应商为 Xinference 等自定义模型供应商时，可跳过该步骤，仅创建一个空的`XinferenceProvider`类即可，并实现一个空的`validate_provider_credentials`方法，该方法并不会被实际使用，仅用作避免抽象类无法实例化。
 
 ```python
 class XinferenceProvider(Provider):
@@ -155,7 +155,7 @@ def validate_provider_credentials(self, credentials: dict) -> None:
 #### 增加模型
 
 #### [增加预定义模型 👈🏻](./predefined_model_scale_out.md)
-对于预定义模型，我们可以通过简单定义一个yaml，并通过实现调用代码来接入。
+对于预定义模型，我们可以通过简单定义一个 yaml，并通过实现调用代码来接入。
 
 #### [增加自定义模型 👈🏻](./customizable_model_scale_out.md)
 对于自定义模型，我们只需要实现调用代码即可接入，但是它需要处理的参数可能会更加复杂。

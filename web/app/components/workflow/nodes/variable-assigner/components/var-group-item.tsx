@@ -132,7 +132,7 @@ const VarGroupItem: FC<Props> = ({
           </div>
           {canRemove && (
             <div
-              className='ml-0.5 hidden cursor-pointer rounded-md p-1 text-gray-500 hover:bg-[#FEE4E2] hover:text-[#D92D20] group-hover:block'
+              className='ml-0.5 hidden cursor-pointer rounded-md p-1 text-text-tertiary hover:bg-state-destructive-hover hover:text-text-destructive group-hover:block'
               onClick={onRemove}
             >
               <RiDeleteBinLine

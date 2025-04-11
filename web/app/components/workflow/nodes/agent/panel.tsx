@@ -110,7 +110,7 @@ const AgentPanel: FC<NodePanelProps<AgentNodeType>> = (props) => {
       />
     </Field>
     <div className='px-4 py-2'>
-      {isChatMode && currentStrategy?.features.includes(AgentFeature.HISTORY_MESSAGES) && (
+      {isChatMode && currentStrategy?.features?.includes(AgentFeature.HISTORY_MESSAGES) && (
         <>
           <Split />
           <MemoryConfig

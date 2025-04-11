@@ -65,8 +65,6 @@ export default combine(
   // use `ESLINT_CONFIG_INSPECTOR=true pnpx @eslint/config-inspector` to check the config
   // ...process.env.ESLINT_CONFIG_INSPECTOR
   //   ? []
-  // TODO: remove this when upgrade to nextjs 15
-  // : fixupConfigRules(compat.extends('next')),
   {
     rules: {
       // performance issue, and not used.
@@ -117,6 +115,9 @@ export default combine(
       // antfu migrate to eslint-plugin-unused-imports
       'unused-imports/no-unused-vars': 'warn',
       'unused-imports/no-unused-imports': 'warn',
+
+      // We use `import { noop } from 'lodash-es'` across `web` project
+      'no-empty-function': 'error',
     },
 
     languageOptions: {
