@@ -46,27 +46,25 @@ const Flowchart = (
   const [imagePreviewUrl, setImagePreviewUrl] = useState('')
 
   function processMermaidCode(code: string) {
-    if (!code.trim().startsWith('journey')) {
+    if (!code.trim().startsWith('journey'))
       return code
-    }
-    
+
     const lines = code.split('\n')
-    const processedLines = lines.map(line => {
+    const processedLines = lines.map((line) => {
       if (line.trim().startsWith('section')) {
-        if (line.includes('：')) {
+        if (line.includes('：'))
           return line
-        }
-        
+
         const sectionPart = line.match(/^(\s*section\s+)([^:]*)(:.*)$/)
-        if (sectionPart) {
+        if (sectionPart)
           return `${sectionPart[1]}${sectionPart[2]}：${sectionPart[3].substring(1)}`
-        }
+
         return line
       }
-      
+
       return line
     })
-    
+
     return processedLines.join('\n')
   }
 
