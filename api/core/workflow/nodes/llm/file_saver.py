@@ -4,19 +4,11 @@ import typing as tp
 
 from flask_sqlalchemy import SQLAlchemy
 from pydantic import AfterValidator, BaseModel
+from pydantic import BaseModel, field_validator
 
 from core.file import File, FileTransferMethod, FileType
 from core.tools.tool_file_manager import ToolFileManager
 from models import db as global_db
-
-
-def _validate_extension_override(extension_override: str | None) -> str | None:
-    # `extension_override` is allow to be `None or `""`.
-    if not extension_override:
-        return None
-    if not extension_override.startswith('.'):
-        raise ValueError("extension_override should start with '.'if not None or empty.", extension_override)
-    return extension_override
 
 
 class MultiModalFile(BaseModel):
@@ -49,7 +41,7 @@ class MultiModalFile(BaseModel):
     #
     # Users of MultiModalFile should always use `get_extension` to access
     # the files extension, instead reading this property directly.
-    extension_override: tp.Annotated[str | None, AfterValidator(_validate_extension_override)] = None
+    extension_override: str | None = None
 
     def get_extension(self) -> str:
         """get_extension return the extension of file.
@@ -60,6 +52,16 @@ class MultiModalFile(BaseModel):
         if (extension := self.extension_override) is not None:
             return extension
         return mimetypes.guess_extension(self.mime_type)
+
+    @field_validator('extension_override')
+    @classmethod
+    def _validate_extension_override(cls, extension_override: str | None) -> str | None:
+        # `extension_override` is allow to be `None or `""`.
+        if not extension_override:
+            return None
+        if not extension_override.startswith('.'):
+            raise ValueError("extension_override should start with '.'if not None or empty.", extension_override)
+        return extension_override
 
 
 class MultiModalFileSaver(tp.Protocol):
