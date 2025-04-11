@@ -168,15 +168,14 @@ class BasePluginManager:
         Make a stream request to the plugin daemon inner API and yield the response as a model.
         """
         for line in self._stream_request(method, path, params, headers, data, files):
-            line_data = None
             try:
-                line_data = json.loads(line)
-                rep = PluginDaemonBasicResponse[type](**line_data)  # type: ignore
+                rep = PluginDaemonBasicResponse[type].model_validate_json(line)
             except Exception:
                 # TODO modify this when line_data has code and message
-                if line_data and "error" in line_data:
+                try:
+                    line_data = json.loads(line)
                     raise ValueError(line_data["error"])
-                else:
+                except Exception:
                     raise ValueError(line)
 
             if rep.code != 0:
