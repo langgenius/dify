@@ -59,7 +59,7 @@ class MultiModalFile(BaseModel):
         if not extension_override:
             return None
         if not extension_override.startswith('.'):
-            raise ValueError("extension_override should start with '.'if not None or empty.", extension_override)
+            raise ValueError("extension_override should start with '.' if not None or empty.", extension_override)
         return extension_override
 
 
