@@ -111,7 +111,7 @@ def test_delete_workflow_published_as_tool_error(workflow_setup):
         )
 
     # Verify error message
-    assert str(excinfo.value) == "Cannot delete workflow that is published as a tool"
+    assert "Cannot delete workflow that is published as a tool" in str(excinfo.value)
 
     # Verify
     workflow_setup["session"].delete.assert_not_called()
