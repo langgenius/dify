@@ -41,6 +41,7 @@ googleapis-common-protos = "1.63.0"
 gunicorn = "~23.0.0"
 httpx = { version = "~0.27.0", extras = ["socks"] }
 jieba = "0.42.1"
+json-repair = "~0.40.0"
 langfuse = "~2.51.3"
 langsmith = "~0.1.77"
 mailchimp-transactional = "~1.0.50"
@@ -94,7 +95,6 @@ yarl = "~1.18.3"
 # Related transparent dependencies with pinned version
 # required by main implementations
 ############################################################
-json-repair = "~0.40.0"
 [tool.poetry.group.indirect.dependencies]
 kaleido = "0.2.1"
 rank-bm25 = "~0.2.2"
