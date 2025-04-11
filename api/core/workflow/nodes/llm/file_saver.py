@@ -2,8 +2,7 @@ import abc
 import mimetypes
 import typing as tp
 
-from flask_sqlalchemy import SQLAlchemy
-from pydantic import AfterValidator, BaseModel
+from sqlalchemy import Engine
 from pydantic import BaseModel, field_validator
 
 from core.file import File, FileTransferMethod, FileType
@@ -71,15 +70,15 @@ class MultiModalFileSaver(tp.Protocol):
 
 
 class StorageFileSaver(MultiModalFileSaver):
-    _db: SQLAlchemy
-    def __init__(self, db: SQLAlchemy | None = None):
-        if db is None:
-            db = global_db
-        self._db = db
+    _engine: Engine
+    def __init__(self, engine: Engine | None = None):
+        if engine is None:
+            engine = global_db.engine
+        self._engine = engine
 
     def _get_tool_file_manager(self):
         # TODO(QuantumGhost): inject db into ToolFileManager after refactoring.
-        return ToolFileManager()
+        return ToolFileManager(engine=self._engine)
 
     def save_file(self, mmf: MultiModalFile) -> File:
         tool_file_manager =  self._get_tool_file_manager()

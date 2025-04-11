@@ -34,6 +34,8 @@ class FileUploadConfig(BaseModel):
 
 
 class File(BaseModel):
+    # NOTE: dify_model_identity is a special identifier used to distinguish between
+    # new and old data formats during serialization and deserialization.
     dify_model_identity: str = FILE_MODEL_IDENTITY
 
     id: Optional[str] = None  # message file id
