@@ -133,6 +133,9 @@ const NodePanel: FC<Props> = ({
         {
           nodeInfo.node_type === BlockEnum.LLM && nodeInfo.outputs?.text && <LLMOutputs text={nodeInfo.outputs?.text} />
         }
+        {nodeInfo.node_type === BlockEnum.End && nodeInfo.outputs?.output && (
+          <LLMOutputs text={nodeInfo.outputs.output} />
+        )}
         {nodeInfo.node_type === BlockEnum.Tool && (nodeInfo.outputs?.text)
                      && <div className='px-4 py-2'><DataDisplay data={nodeInfo.outputs.text} /></div>}
         {!collapseState && !hideProcessDetail && (
