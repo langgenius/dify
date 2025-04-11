@@ -386,11 +386,20 @@ import { Row, Col, Properties, Property, Heading, SubProperty, PropertyInstructi
   <Col>
     ### Query
     <Properties>
+      <Property name='keyword' type='string' key='keyword'>
+        Search keyword, optional
+      </Property>
+      <Property name='tag_ids' type='array[string]' key='tag_ids'>
+        Tag ID list, optional
+      </Property>
       <Property name='page' type='string' key='page'>
-        Page number
+        Page number, optional, default 1
       </Property>
       <Property name='limit' type='string' key='limit'>
-        Number of items returned, default 20, range 1-100
+        Number of items returned, optional, default 20, range 1-100
+      </Property>
+      <Property name='include_all' type='boolean' key='include_all'>
+        Whether to include all datasets (only effective for owners), optional, defaults to false
       </Property>
     </Properties>
   </Col>

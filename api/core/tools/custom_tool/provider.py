@@ -59,7 +59,7 @@ class ApiToolProviderController(ToolProviderController):
                     name="api_key_value",
                     required=True,
                     type=ProviderConfig.Type.SECRET_INPUT,
-                    help=I18nObject(en_US="The api key", zh_Hans="api key的值"),
+                    help=I18nObject(en_US="The api key", zh_Hans="api key 的值"),
                 ),
                 ProviderConfig(
                     name="api_key_header_prefix",
