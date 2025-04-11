@@ -2,6 +2,7 @@
   "services": [
     {
       "name": "dify",
+      "rootDir": "./",
       "source": {
         "type": "dockerfile"
       }
