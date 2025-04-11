@@ -69,8 +69,6 @@ const translation = {
       chooseProvider: 'Select a provider',
       fireCrawlNotConfigured: 'Firecrawl is not configured',
       fireCrawlNotConfiguredDescription: 'Configure Firecrawl with API key to use it.',
-      watercrawlNotConfigured: 'Watercrawl is not configured',
-      watercrawlNotConfiguredDescription: 'Configure Watercrawl with API key to use it.',
       jinaReaderNotConfigured: 'Jina Reader is not configured',
       jinaReaderNotConfiguredDescription: 'Set up Jina Reader by entering your free API key for access.',
       waterCrawlNotConfigured: 'Watercrawl is not configured',
