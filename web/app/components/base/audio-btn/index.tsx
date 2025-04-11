@@ -97,7 +97,7 @@ const AudioBtn = ({
               </div>
             )
             : (
-              <div className={`flex h-full w-full items-center justify-center rounded-md ${!isAudition ? 'hover:bg-gray-50' : 'hover:bg-gray-50'}`}>
+              <div className={'hover:bg-gray-50} flex h-full w-full items-center justify-center rounded-md'}>
                 <div className={`h-4 w-4 ${(audioState === 'playing') ? s.pauseIcon : s.playIcon}`}></div>
               </div>
             )}

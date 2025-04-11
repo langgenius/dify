@@ -144,6 +144,36 @@ export default combine(
   {
     rules: {
       ...sonar.configs.recommended.rules,
+      // code complexity
+      'sonarjs/cognitive-complexity': 'warn',
+      'sonarjs/no-nested-functions': 'warn',
+      'sonarjs/no-nested-conditional': 'warn',
+      'sonarjs/no-small-switch': 'off',
+      'sonarjs/no-nested-template-literals': 'warn',
+      'sonarjs/redundant-type-aliases': 'off',
+      'sonarjs/regex-complexity': 'warn',
+      // maintainability
+      'sonarjs/no-ignored-exceptions': 'off',
+      'sonarjs/no-commented-code': 'warn',
+      'sonarjs/no-unused-vars': 'warn',
+      'sonarjs/prefer-single-boolean-return': 'warn',
+      'sonarjs/duplicates-in-character-class': 'off',
+      'sonarjs/single-char-in-character-classes': 'off',
+      'sonarjs/anchor-precedence': 'warn',
+      'sonarjs/updated-loop-counter': 'off',
+      'sonarjs/no-dead-store': 'warn',
+      'sonarjs/no-duplicated-branches': 'warn',
+      // security
+      // eslint-disable-next-line sonarjs/no-hardcoded-passwords
+      'sonarjs/no-hardcoded-passwords': 'off',
+      'sonarjs/no-hardcoded-secrets': 'off',
+      'sonarjs/pseudo-random': 'off',
+      'sonarjs/code-eval': 'warn',
+      // performance
+      'sonarjs/slow-regex': 'warn',
+      // others
+      'sonarjs/todo-tag': 'warn',
+      'sonarjs/table-header': 'off',
     },
     plugins: {
       sonarjs: sonar,
@@ -161,6 +191,7 @@ export default combine(
       // useful, but big change
       'unicorn/prefer-number-properties': 'warn',
       'unicorn/no-new-array': 'warn',
+      'style/indent': 'off',
     },
   },
   // suppress error for `no-undef` rule

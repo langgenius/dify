@@ -95,7 +95,7 @@ const VariableModal = ({
               type === 'number' && 'border-[1.5px] border-components-option-card-option-selected-border bg-components-option-card-option-selected-bg font-medium text-text-primary shadow-xs hover:border-components-option-card-option-selected-border',
             )} onClick={() => {
               setType('number')
-              if (!(/^[0-9]$/).test(value))
+              if (!(/^\d$/).test(value))
                 setValue('')
             }}>Number</div>
             <div className={cn(

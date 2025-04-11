@@ -34,7 +34,7 @@ export type ResponseError = {
 const afterResponseErrorCode = (otherOptions: IOtherOptions): AfterResponseHook => {
   return async (_request, _options, response) => {
     const clonedResponse = response.clone()
-    if (!/^(2|3)\d{2}$/.test(String(clonedResponse.status))) {
+    if (!/^([23])\d{2}$/.test(String(clonedResponse.status))) {
       const bodyJson = clonedResponse.json() as Promise<ResponseError>
       switch (clonedResponse.status) {
         case 403:
