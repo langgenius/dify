@@ -1,4 +1,5 @@
 import type { Viewport } from 'next'
+import RoutePrefixHandle from './routePrefixHandle'
 import I18nServer from './components/i18n-server'
 import BrowserInitor from './components/browser-initor'
 import SentryInitor from './components/sentry-initor'
@@ -71,6 +72,7 @@ const LocaleLayout = async ({
             </TanstackQueryIniter>
           </SentryInitor>
         </BrowserInitor>
+        <RoutePrefixHandle />
       </body>
     </html>
   )
