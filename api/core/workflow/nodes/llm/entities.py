@@ -65,6 +65,8 @@ class LLMNodeData(BaseNodeData):
     memory: Optional[MemoryConfig] = None
     context: ContextConfig
     vision: VisionConfig = Field(default_factory=VisionConfig)
+    structured_output: dict | None = None
+    structured_output_enabled: bool = False
 
     @field_validator("prompt_config", mode="before")
     @classmethod

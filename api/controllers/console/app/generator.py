@@ -85,5 +85,37 @@ class RuleCodeGenerateApi(Resource):
         return code_result
 
 
+class RuleStructuredOutputGenerateApi(Resource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    def post(self):
+        parser = reqparse.RequestParser()
+        parser.add_argument("instruction", type=str, required=True, nullable=False, location="json")
+        parser.add_argument("model_config", type=dict, required=True, nullable=False, location="json")
+        args = parser.parse_args()
+
+        account = current_user
+        structured_output_max_tokens = int(os.getenv("STRUCTURED_OUTPUT_MAX_TOKENS", "1024"))
+        try:
+            structured_output = LLMGenerator.generate_structured_output(
+                tenant_id=account.current_tenant_id,
+                instruction=args["instruction"],
+                model_config=args["model_config"],
+                max_tokens=structured_output_max_tokens,
+            )
+        except ProviderTokenNotInitError as ex:
+            raise ProviderNotInitializeError(ex.description)
+        except QuotaExceededError:
+            raise ProviderQuotaExceededError()
+        except ModelCurrentlyNotSupportError:
+            raise ProviderModelCurrentlyNotSupportError()
+        except InvokeError as e:
+            raise CompletionRequestError(e.description)
+
+        return structured_output
+
+
 api.add_resource(RuleGenerateApi, "/rule-generate")
 api.add_resource(RuleCodeGenerateApi, "/rule-code-generate")
+api.add_resource(RuleStructuredOutputGenerateApi, "/rule-structured-output-generate")

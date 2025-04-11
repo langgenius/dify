@@ -41,6 +41,7 @@ googleapis-common-protos = "1.63.0"
 gunicorn = "~23.0.0"
 httpx = { version = "~0.27.0", extras = ["socks"] }
 jieba = "0.42.1"
+json-repair = "~0.40.0"
 langfuse = "~2.51.3"
 langsmith = "~0.1.77"
 mailchimp-transactional = "~1.0.50"
@@ -50,7 +51,11 @@ oci = "~2.135.1"
 openai = "~1.61.0"
 openpyxl = "~3.1.5"
 opik = "~1.3.4"
-pandas = { version = "~2.2.2", extras = ["performance", "excel", "output-formatting"] }
+pandas = { version = "~2.2.2", extras = [
+    "performance",
+    "excel",
+    "output-formatting",
+] }
 pandas-stubs = "~2.2.3.241009"
 pandoc = "~2.4"
 psycogreen = "~1.0.2"
@@ -74,7 +79,13 @@ starlette = "0.41.0"
 tiktoken = "~0.8.0"
 tokenizers = "~0.15.0"
 transformers = "~4.35.0"
-unstructured = { version = "~0.16.1", extras = ["docx", "epub", "md", "ppt", "pptx"] }
+unstructured = { version = "~0.16.1", extras = [
+    "docx",
+    "epub",
+    "md",
+    "ppt",
+    "pptx",
+] }
 validators = "0.21.0"
 yarl = "~1.18.3"
 # Before adding new dependency, consider place it in alphabet order (a-z) and suitable group.
