@@ -47,38 +47,36 @@ const Flowchart = (
 
   function processMermaidCode(code: string) {
     if (!code.trim().startsWith('journey')) {
-      return code;
+      return code
     }
     
-    const lines = code.split('\n');
+    const lines = code.split('\n')
     const processedLines = lines.map(line => {
       if (line.trim().startsWith('section')) {
         if (line.includes('：')) {
-          return line;
+          return line
         }
         
-        const sectionPart = line.match(/^(\s*section\s+)([^:]*)(:.*)$/);
+        const sectionPart = line.match(/^(\s*section\s+)([^:]*)(:.*)$/)
         if (sectionPart) {
-          return `${sectionPart[1]}${sectionPart[2]}：${sectionPart[3].substring(1)}`;
-        } else {
-          return line;
+          return `${sectionPart[1]}${sectionPart[2]}：${sectionPart[3].substring(1)}`
         }
+        return line
       }
       
-      return line;
-    });
+      return line
+    })
     
-    return processedLines.join('\n');
+    return processedLines.join('\n')
   }
 
   const renderFlowchart = useCallback(async (PrimitiveCode: string) => {
-    PrimitiveCode = processMermaidCode(PrimitiveCode)
     setSvgCode(null)
     setIsLoading(true)
 
     try {
       if (typeof window !== 'undefined' && mermaidAPI) {
-        const svgGraph = await mermaidAPI.render('flowchart', PrimitiveCode)
+        const svgGraph = await mermaidAPI.render('flowchart', processMermaidCode(PrimitiveCode))
         const base64Svg: any = await svgToBase64(cleanUpSvgCode(svgGraph.svg))
         setSvgCode(base64Svg)
         setIsLoading(false)
