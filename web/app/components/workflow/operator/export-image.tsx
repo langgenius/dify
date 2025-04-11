@@ -74,7 +74,11 @@ const ExportImage: FC = () => {
     <PortalToFollowElem
       open={open}
       onOpenChange={setOpen}
-      placement="bottom-start"
+      placement="top-start"
+      offset={{
+        mainAxis: 4,
+        crossAxis: -8,
+      }}
     >
       <PortalToFollowElemTrigger>
         <TipPopup title={t('workflow.common.exportImage')}>
