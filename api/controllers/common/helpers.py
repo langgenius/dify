@@ -10,6 +10,8 @@ from uuid import uuid4
 
 import httpx
 
+from constants import DEFAULT_FILE_NUMBER_LIMITS
+
 try:
     import magic
 except ImportError:
@@ -108,7 +110,7 @@ def get_parameters_from_feature_dict(*, features_dict: Mapping[str, Any], user_i
             {
                 "image": {
                     "enabled": False,
-                    "number_limits": 3,
+                    "number_limits": DEFAULT_FILE_NUMBER_LIMITS,
                     "detail": "high",
                     "transfer_methods": ["remote_url", "local_file"],
                 }
