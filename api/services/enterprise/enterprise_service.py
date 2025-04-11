@@ -45,12 +45,12 @@ class EnterpriseService:
             if not data:
                 raise ValueError("No data found.")
 
-            if not isinstance(data, dict):
+            if not isinstance(data['accessModes'], dict):
                 logging.info(f"Batch get app access mode by id returns data: {data}")
                 raise ValueError("Invalid data format.")
 
             ret = {}
-            for key, value in data.items():
+            for key, value in data['accessModes'].items():
                 curr = WebAppSettings()
                 curr.access_mode = value
                 ret[key] = curr
