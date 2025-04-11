@@ -367,7 +367,7 @@ Inherit the `__base.text2speech_model.Text2SpeechModel` base class and implement
 
   - Returns：
 
-    Text converted speech stream。
+    Text converted speech stream.
 
 ### Moderation
 
