@@ -170,13 +170,16 @@ class BasePluginManager:
         for line in self._stream_request(method, path, params, headers, data, files):
             try:
                 rep = PluginDaemonBasicResponse[type].model_validate_json(line)  # type: ignore
-            except Exception:
+            except (ValueError, TypeError):
                 # TODO modify this when line_data has code and message
                 try:
                     line_data = json.loads(line)
-                    raise ValueError(line_data["error"])
-                except Exception:
+                except (ValueError, TypeError):
                     raise ValueError(line)
+                # If the dictionary contains the `error` key, use its value as the argument
+                # for `ValueError`.
+                # Otherwise, use the `line` to provide better contextual information about the error.
+                raise ValueError(line_data.get("error", line))
 
             if rep.code != 0:
                 if rep.code == -500:
