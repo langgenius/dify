@@ -205,8 +205,12 @@ class LargeLanguageModel(AIModel):
                 user=user,
                 callbacks=callbacks,
             )
-
-        return result
+            # Following https://github.com/langgenius/dify/issues/17799,
+            # we removed the prompt_messages from the chunk on the plugin daemon side.
+            # To ensure compatibility, we add the prompt_messages back here.
+            result.prompt_messages = prompt_messages
+            return result
+        raise NotImplementedError("unsupported invoke result type", type(result))
 
     def _invoke_result_generator(
         self,
@@ -235,6 +239,10 @@ class LargeLanguageModel(AIModel):
 
         try:
             for chunk in result:
+                # Following https://github.com/langgenius/dify/issues/17799,
+                # we removed the prompt_messages from the chunk on the plugin daemon side.
+                # To ensure compatibility, we add the prompt_messages back here.
+                chunk.prompt_messages = prompt_messages
                 yield chunk
 
                 self._trigger_new_chunk_callbacks(
