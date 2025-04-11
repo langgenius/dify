@@ -145,7 +145,7 @@ export default combine(
     rules: {
       ...sonar.configs.recommended.rules,
       // code complexity
-      'sonarjs/cognitive-complexity': 'warn',
+      'sonarjs/cognitive-complexity': 'off',
       'sonarjs/no-nested-functions': 'warn',
       'sonarjs/no-nested-conditional': 'warn',
       'sonarjs/no-small-switch': 'off',
@@ -168,7 +168,6 @@ export default combine(
       'sonarjs/no-hardcoded-passwords': 'off',
       'sonarjs/no-hardcoded-secrets': 'off',
       'sonarjs/pseudo-random': 'off',
-      'sonarjs/code-eval': 'warn',
       // performance
       'sonarjs/slow-regex': 'warn',
       // others
