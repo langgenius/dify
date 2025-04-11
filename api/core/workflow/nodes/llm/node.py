@@ -202,14 +202,18 @@ class LLMNode(BaseNode[LLMNodeData]):
                     break
             outputs = {"text": result_text, "usage": jsonable_encoder(usage), "finish_reason": finish_reason}
             if self.node_data.structured_output_enabled and self.node_data.structured_output:
-                structured_output = {}
+                structured_output: dict[str, Any] | list[Any] = {}
                 try:
-                    structured_output = json.loads(result_text)
+                    parsed = json.loads(result_text)
+                    if not isinstance(parsed, (dict, list)):
+                        raise LLMNodeError(f"Failed to parse structured output: {result_text}")
+                    structured_output = parsed
                 except json.JSONDecodeError as e:
                     # if the result_text is not a valid json, try to repair it
-                    structured_output = json_repair.loads(result_text)
-                    if not isinstance(structured_output, dict | list):
+                    parsed = json_repair.loads(result_text)
+                    if not isinstance(parsed, (dict, list)):
                         raise LLMNodeError(f"Failed to parse structured output: {result_text}")
+                    structured_output = parsed
                 outputs["structured_output"] = structured_output
             yield RunCompletedEvent(
                 run_result=NodeRunResult(
@@ -1066,17 +1070,13 @@ class LLMNode(BaseNode[LLMNodeData]):
         model_schema = model_type_instance.get_model_schema(model_name, model_credentials)
         return model_schema
 
-    def _fetch_structured_output_schema(self) -> dict:
+    def _fetch_structured_output_schema(self) -> dict[str, Any]:
         """
-        Fetch the structured output schema for language models.
+        Fetch the structured output schema from the node data.
 
-        This method retrieves and validates the JSON schema defined in the node data
-        for structured output formatting. It ensures the schema is properly formatted
-        and can be used for structured response generation.
-
-        :return: The validated JSON schema as a dictionary
+        Returns:
+            dict[str, Any]: The structured output schema
         """
-        # Extract and validate schema
         if not self.node_data.structured_output:
             raise LLMNodeError("Please provide a valid structured output schema")
         structured_output_schema = json.dumps(self.node_data.structured_output.get("schema", {}), ensure_ascii=False)
@@ -1085,9 +1085,11 @@ class LLMNode(BaseNode[LLMNodeData]):
 
         try:
             schema = json.loads(structured_output_schema)
+            if not isinstance(schema, dict):
+                raise LLMNodeError("structured_output_schema must be a JSON object")
+            return schema
         except json.JSONDecodeError:
             raise LLMNodeError("structured_output_schema is not valid JSON format")
-        return schema
 
     def _check_model_structured_output_support(self) -> Optional[bool]:
         """
