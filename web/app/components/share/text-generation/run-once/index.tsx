@@ -1,4 +1,4 @@
-import type { FC, FormEvent } from 'react'
+import type { ChangeEvent, FC, FormEvent } from 'react'
 import { useEffect } from 'react'
 import React, { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -66,75 +66,73 @@ const RunOnce: FC<IRunOnceProps> = ({
       newInputs[item.key] = ''
     })
     onInputsChange(newInputs)
-  }, [promptConfig.prompt_variables])
-
-  if (inputs === null || inputs === undefined || Object.keys(inputs).length === 0)
-    return null
+  }, [promptConfig.prompt_variables, onInputsChange])
 
   return (
     <div className="">
       <section>
         {/* input form */}
         <form onSubmit={onSubmit}>
-          {promptConfig.prompt_variables.map(item => (
-            <div className='mt-4 w-full' key={item.key}>
-              <label className='system-md-semibold flex h-6 items-center text-text-secondary'>{item.name}</label>
-              <div className='mt-1'>
-                {item.type === 'select' && (
-                  <Select
-                    className='w-full'
-                    defaultValue={inputs[item.key]}
-                    onSelect={(i) => { handleInputsChange({ ...inputsRef.current, [item.key]: i.value }) }}
-                    items={(item.options || []).map(i => ({ name: i, value: i }))}
-                    allowSearch={false}
-                  />
-                )}
-                {item.type === 'string' && (
-                  <Input
-                    type="text"
-                    placeholder={`${item.name}${!item.required ? `(${t('appDebug.variableTable.optional')})` : ''}`}
-                    value={inputs[item.key]}
-                    onChange={(e) => { handleInputsChange({ ...inputsRef.current, [item.key]: e.target.value }) }}
-                    maxLength={item.max_length || DEFAULT_VALUE_MAX_LEN}
-                  />
-                )}
-                {item.type === 'paragraph' && (
-                  <Textarea
-                    className='h-[104px] sm:text-xs'
-                    placeholder={`${item.name}${!item.required ? `(${t('appDebug.variableTable.optional')})` : ''}`}
-                    value={inputs[item.key]}
-                    onChange={(e) => { handleInputsChange({ ...inputsRef.current, [item.key]: e.target.value }) }}
-                  />
-                )}
-                {item.type === 'number' && (
-                  <Input
-                    type="number"
-                    placeholder={`${item.name}${!item.required ? `(${t('appDebug.variableTable.optional')})` : ''}`}
-                    value={inputs[item.key]}
-                    onChange={(e) => { handleInputsChange({ ...inputsRef.current, [item.key]: e.target.value }) }}
-                  />
-                )}
-                {item.type === 'file' && (
-                  <FileUploaderInAttachmentWrapper
-                    onChange={(files) => { handleInputsChange({ ...inputsRef.current, [item.key]: getProcessedFiles(files)[0] }) }}
-                    fileConfig={{
-                      ...item.config,
-                      fileUploadConfig: (visionConfig as any).fileUploadConfig,
-                    }}
-                  />
-                )}
-                {item.type === 'file-list' && (
-                  <FileUploaderInAttachmentWrapper
-                    onChange={(files) => { handleInputsChange({ ...inputsRef.current, [item.key]: getProcessedFiles(files) }) }}
-                    fileConfig={{
-                      ...item.config,
-                      fileUploadConfig: (visionConfig as any).fileUploadConfig,
-                    }}
-                  />
-                )}
+          {(inputs === null || inputs === undefined || Object.keys(inputs).length === 0) ? null
+            : promptConfig.prompt_variables.map(item => (
+              <div className='mt-4 w-full' key={item.key}>
+                <label className='system-md-semibold flex h-6 items-center text-text-secondary'>{item.name}</label>
+                <div className='mt-1'>
+                  {item.type === 'select' && (
+                    <Select
+                      className='w-full'
+                      defaultValue={inputs[item.key]}
+                      onSelect={(i) => { handleInputsChange({ ...inputsRef.current, [item.key]: i.value }) }}
+                      items={(item.options || []).map(i => ({ name: i, value: i }))}
+                      allowSearch={false}
+                    />
+                  )}
+                  {item.type === 'string' && (
+                    <Input
+                      type="text"
+                      placeholder={`${item.name}${!item.required ? `(${t('appDebug.variableTable.optional')})` : ''}`}
+                      value={inputs[item.key]}
+                      onChange={(e: ChangeEvent<HTMLInputElement>) => { handleInputsChange({ ...inputsRef.current, [item.key]: e.target.value }) }}
+                      maxLength={item.max_length || DEFAULT_VALUE_MAX_LEN}
+                    />
+                  )}
+                  {item.type === 'paragraph' && (
+                    <Textarea
+                      className='h-[104px] sm:text-xs'
+                      placeholder={`${item.name}${!item.required ? `(${t('appDebug.variableTable.optional')})` : ''}`}
+                      value={inputs[item.key]}
+                      onChange={(e: ChangeEvent<HTMLInputElement>) => { handleInputsChange({ ...inputsRef.current, [item.key]: e.target.value }) }}
+                    />
+                  )}
+                  {item.type === 'number' && (
+                    <Input
+                      type="number"
+                      placeholder={`${item.name}${!item.required ? `(${t('appDebug.variableTable.optional')})` : ''}`}
+                      value={inputs[item.key]}
+                      onChange={(e: ChangeEvent<HTMLInputElement>) => { handleInputsChange({ ...inputsRef.current, [item.key]: e.target.value }) }}
+                    />
+                  )}
+                  {item.type === 'file' && (
+                    <FileUploaderInAttachmentWrapper
+                      onChange={(files) => { handleInputsChange({ ...inputsRef.current, [item.key]: getProcessedFiles(files)[0] }) }}
+                      fileConfig={{
+                        ...item.config,
+                        fileUploadConfig: (visionConfig as any).fileUploadConfig,
+                      }}
+                    />
+                  )}
+                  {item.type === 'file-list' && (
+                    <FileUploaderInAttachmentWrapper
+                      onChange={(files) => { handleInputsChange({ ...inputsRef.current, [item.key]: getProcessedFiles(files) }) }}
+                      fileConfig={{
+                        ...item.config,
+                        fileUploadConfig: (visionConfig as any).fileUploadConfig,
+                      }}
+                    />
+                  )}
+                </div>
               </div>
-            </div>
-          ))}
+            ))}
           {
             visionConfig?.enabled && (
               <div className="mt-4 w-full">
