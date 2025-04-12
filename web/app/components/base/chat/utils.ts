@@ -3,42 +3,22 @@ import type { IChatItem } from './chat/type'
 import type { ChatItem, ChatItemInTree } from './types'
 
 async function decodeBase64AndDecompress(base64String: string) {
-  try {
-    const binaryString = atob(base64String)
-    const compressedUint8Array = Uint8Array.from(binaryString, char => char.charCodeAt(0))
-    const decompressedStream = new Response(compressedUint8Array).body?.pipeThrough(new DecompressionStream('gzip'))
-    const decompressedArrayBuffer = await new Response(decompressedStream).arrayBuffer()
-    return new TextDecoder().decode(decompressedArrayBuffer)
-  }
-  catch {
-    return undefined
-  }
+  const binaryString = atob(base64String)
+  const compressedUint8Array = Uint8Array.from(binaryString, char => char.charCodeAt(0))
+  const decompressedStream = new Response(compressedUint8Array).body?.pipeThrough(new DecompressionStream('gzip'))
+  const decompressedArrayBuffer = await new Response(decompressedStream).arrayBuffer()
+  return new TextDecoder().decode(decompressedArrayBuffer)
 }
 
 async function getProcessedInputsFromUrlParams(): Promise<Record<string, any>> {
   const urlParams = new URLSearchParams(window.location.search)
   const inputs: Record<string, any> = {}
-  const entriesArray = Array.from(urlParams.entries())
   await Promise.all(
-    entriesArray.map(async ([key, value]) => {
-      if (!key.startsWith('sys.'))
-        inputs[key] = await decodeBase64AndDecompress(decodeURIComponent(value))
+    urlParams.entries().map(async ([key, value]) => {
+      inputs[key] = await decodeBase64AndDecompress(decodeURIComponent(value))
     }),
   )
   return inputs
-}
-
-async function getProcessedSystemVariablesFromUrlParams(): Promise<Record<string, any>> {
-  const urlParams = new URLSearchParams(window.location.search)
-  const systemVariables: Record<string, any> = {}
-  const entriesArray = Array.from(urlParams.entries())
-  await Promise.all(
-    entriesArray.map(async ([key, value]) => {
-      if (key.startsWith('sys.'))
-        systemVariables[key.slice(4)] = await decodeBase64AndDecompress(decodeURIComponent(value))
-    }),
-  )
-  return systemVariables
 }
 
 function isValidGeneratedAnswer(item?: ChatItem | ChatItemInTree): boolean {
@@ -48,8 +28,7 @@ function isValidGeneratedAnswer(item?: ChatItem | ChatItemInTree): boolean {
 function getLastAnswer<T extends ChatItem | ChatItemInTree>(chatList: T[]): T | null {
   for (let i = chatList.length - 1; i >= 0; i--) {
     const item = chatList[i]
-    if (isValidGeneratedAnswer(item))
-      return item
+    if (isValidGeneratedAnswer(item)) return item
   }
   return null
 }
@@ -81,9 +60,7 @@ function buildChatItemTree(allMessages: IChatItem[]): ChatItemInTree[] {
     const answer = allMessages[i + 1]!
 
     const isLegacy = question.parentMessageId === UUID_NIL
-    const parentMessageId = isLegacy
-      ? (lastAppendedLegacyAnswer?.id || '')
-      : (question.parentMessageId || '')
+    const parentMessageId = isLegacy ? lastAppendedLegacyAnswer?.id || '' : question.parentMessageId || ''
 
     // Process question
     const questionNode: ChatItemInTree = {
@@ -116,7 +93,7 @@ function buildChatItemTree(allMessages: IChatItem[]): ChatItemInTree[] {
       else {
         if (isSameQuestionNode(questionNode, leftSibling)) {
           questionNode.siblingIndex = leftSibling.siblingIndex!
-          answerNode.siblingIndex = leftSibling.children?.at(-1)?.siblingIndex || 0 + 1
+          answerNode.siblingIndex = (leftSibling.children?.at(-1)?.siblingIndex || 0) + 1
         }
         else {
           questionNode.siblingIndex = leftSibling.siblingIndex! + 1
@@ -127,21 +104,18 @@ function buildChatItemTree(allMessages: IChatItem[]): ChatItemInTree[] {
 
     // Append to parent or add to root
     if (isLegacy) {
-      if (!lastAppendedLegacyAnswer)
-        rootNodes.push(questionNode)
-      else
-        lastAppendedLegacyAnswer.children!.push(questionNode)
+      if (!lastAppendedLegacyAnswer) rootNodes.push(questionNode)
+      else lastAppendedLegacyAnswer.children!.push(questionNode)
 
       lastAppendedLegacyAnswer = answerNode
     }
     else {
       if (
         !parentMessageId
-        || !allMessages.some(item => item.id === parentMessageId) // parent message might not be fetched yet, in this case we will append the question to the root nodes
+                || !allMessages.some(item => item.id === parentMessageId) // parent message might not be fetched yet, in this case we will append the question to the root nodes
       )
         rootNodes.push(questionNode)
-      else
-        map[parentMessageId]?.children!.push(questionNode)
+      else map[parentMessageId]?.children!.push(questionNode)
     }
   }
   return rootNodes
@@ -156,21 +130,33 @@ function getPrevOrNextDistinctSiblingQuestion(
   const siblingCount = siblings.length
   const sourceIndex = siblings.findIndex(item => item.id === sourceId)
 
-  for(
-    let i = dir === 'prev' ? sourceIndex - 1 : sourceIndex + 1;
-    dir === 'prev' ? i >= 0 : i < siblingCount;
-    dir === 'prev' ? i-- : i++
-  ) {
-    const sibling = siblings[i]
-    if (sibling.siblingIndex === sourceSiblingIndex)
-      continue
-    return sibling
+  if (dir === 'prev') {
+    for (let i = sourceIndex - 1; i >= 0; i--) {
+      const sibling = siblings[i]
+      if (sibling.siblingIndex === sourceSiblingIndex) continue
+      return sibling
+    }
+  }
+  else {
+    // find the next batch of distinct siblings whose siblingIndex is the same, and return its last one
+    let nextDistinctSibling: ChatItemInTree | undefined
+    for (let i = sourceIndex + 1; i < siblingCount; i++) {
+      const sibling = siblings[i]
+      if (sibling.siblingIndex === sourceSiblingIndex) {
+        continue
+      }
+      else if (!nextDistinctSibling || sibling.siblingIndex === nextDistinctSibling.siblingIndex) {
+        nextDistinctSibling = sibling
+        continue
+      }
+      break
+    }
+    return nextDistinctSibling
   }
 }
 
 // todo
-function attachSiblingInfoToItem(tree: ChatItemInTree[], path: ChatItemInTree[], item: ChatItemInTree) {
-}
+function attachSiblingInfoToItem(tree: ChatItemInTree[], path: ChatItemInTree[], item: ChatItemInTree) {}
 
 // function bfs<T extends { id: string }>(tree: T[], targetId: string): T | undefined {
 //   const queue: T[] = [...tree]
@@ -186,15 +172,18 @@ function getThreadMessages(tree: ChatItemInTree[], targetMessageId?: string): Ch
   let targetNode: ChatItemInTree | undefined
 
   // find path to the target message
-  const stack = tree.slice().reverse().map(rootNode => ({
-    node: rootNode,
-    path: [rootNode],
-  }))
+  const stack = tree
+    .slice()
+    .reverse()
+    .map(rootNode => ({
+      node: rootNode,
+      path: [rootNode],
+    }))
   while (stack.length > 0) {
     const { node, path } = stack.pop()!
     if (
       node.id === targetMessageId
-      || (!targetMessageId && !node.children?.length && !stack.length) // if targetMessageId is not provided, we use the last message in the tree as the target
+            || (!targetMessageId && !node.children?.length && !stack.length) // if targetMessageId is not provided, we use the last message in the tree as the target
     ) {
       targetNode = node
       ret = path.map((item, index) => {
@@ -202,8 +191,18 @@ function getThreadMessages(tree: ChatItemInTree[], targetMessageId?: string): Ch
           const parentAnswer = path[index - 1]
           const siblings = !parentAnswer ? tree : parentAnswer.children
           const siblingCount = (siblings?.at(-1)?.siblingIndex || 0) + 1
-          const prevSibling = getPrevOrNextDistinctSiblingQuestion('prev', siblings || [], item.id, item.siblingIndex!)?.id
-          const nextSibling = getPrevOrNextDistinctSiblingQuestion('next', siblings || [], item.id, item.siblingIndex!)?.id
+          const prevSibling = getPrevOrNextDistinctSiblingQuestion(
+            'prev',
+            siblings || [],
+            item.id,
+            item.siblingIndex!,
+          )?.id
+          const nextSibling = getPrevOrNextDistinctSiblingQuestion(
+            'next',
+            siblings || [],
+            item.id,
+            item.siblingIndex!,
+          )?.id
 
           return { ...item, siblingCount, prevSibling, nextSibling }
         }
@@ -267,8 +266,7 @@ function getThreadMessages(tree: ChatItemInTree[], targetMessageId?: string): Ch
     const stack = [targetNode]
     while (stack.length > 0) {
       const node = stack.pop()!
-      if (node !== targetNode)
-        ret.push(node)
+      if (node !== targetNode) ret.push(node)
       if (node.children?.length) {
         // if (targetMessageId) debugger
 
@@ -278,7 +276,12 @@ function getThreadMessages(tree: ChatItemInTree[], targetMessageId?: string): Ch
           stack.push({
             ...lastChild,
             siblingCount: lastChild.siblingIndex! + 1,
-            prevSibling: getPrevOrNextDistinctSiblingQuestion('prev', node.children!, lastChild.id, lastChild.siblingIndex!)?.id,
+            prevSibling: getPrevOrNextDistinctSiblingQuestion(
+              'prev',
+              node.children!,
+              lastChild.id,
+              lastChild.siblingIndex!,
+            )?.id,
           })
         }
         else {
@@ -310,11 +313,4 @@ function getThreadMessages(tree: ChatItemInTree[], targetMessageId?: string): Ch
   return ret
 }
 
-export {
-  getProcessedInputsFromUrlParams,
-  getProcessedSystemVariablesFromUrlParams,
-  isValidGeneratedAnswer,
-  getLastAnswer,
-  buildChatItemTree,
-  getThreadMessages,
-}
+export { getProcessedInputsFromUrlParams, isValidGeneratedAnswer, getLastAnswer, buildChatItemTree, getThreadMessages }

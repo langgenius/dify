@@ -20,7 +20,7 @@ import Toast from '../../toast'
 import copy from 'copy-to-clipboard'
 import { useTranslation } from 'react-i18next'
 import cn from '@/utils/classnames'
-import Textarea from 'rc-textarea'
+import Textarea from 'react-textarea-autosize'
 import Button from '../../button'
 import { useChatContext } from './context'
 
@@ -118,7 +118,7 @@ const Question: FC<QuestionProps> = ({
                     'body-lg-regular w-full p-1 leading-6 text-text-tertiary outline-none',
                   )}
                   autoFocus
-                  autoSize={{ minRows: 1 }}
+                  minRows={1}
                   value={editedContent}
                   onChange={e => setEditedContent(e.target.value)}
                 />

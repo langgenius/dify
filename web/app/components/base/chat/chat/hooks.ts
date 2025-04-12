@@ -41,7 +41,7 @@ type HandleSendOptions = {
   onGetSuggestedQuestions?: (responseItemId: string, getAbortController: GetAbortController) => Promise<any>
   onConversationComplete?: (conversationId: string) => void
   isPublicAPI?: boolean
-  editedQuestionSiblingIndex?: number
+  isQuestionEdited?: boolean
 }
 
 export const useChat = (
@@ -222,7 +222,7 @@ export const useChat = (
       onGetSuggestedQuestions,
       onConversationComplete,
       isPublicAPI,
-      editedQuestionSiblingIndex,
+      isQuestionEdited,
     }: HandleSendOptions,
   ) => {
     setSuggestQuestions([])
@@ -231,8 +231,6 @@ export const useChat = (
       notify({ type: 'info', message: t('appDebug.errorMessage.waitForResponse') })
       return false
     }
-
-    const isQuestionEdited = editedQuestionSiblingIndex !== undefined
 
     const parentAnswer = threadMessages.find(item => item.id === data.parent_message_id)
     const siblingQuestions = parentAnswer ? parentAnswer.children : chatTree
@@ -244,18 +242,9 @@ export const useChat = (
       isAnswer: false,
       message_files: data.files,
       parentMessageId: data.parent_message_id,
-      siblingIndex: (function () {
-        if (editedQuestionSiblingIndex === 0) return 1
-        console.log({
-          isQuestionEdited,
-          siblingQuestions,
-          editedQuestionSiblingIndex,
-        })
-
-        return isQuestionEdited
-          ? (((siblingQuestions?.[editedQuestionSiblingIndex])?.siblingIndex || 0) + 1)
-          : siblingQuestions?.at(-1)?.siblingIndex || 0
-      })(),
+      siblingIndex: isQuestionEdited
+        ? siblingQuestions?.length ?? 0
+        : siblingQuestions?.at(-1)?.siblingIndex ?? 0,
     }
 
     function answerSiblingIndex() {
@@ -263,7 +252,7 @@ export const useChat = (
       if (!siblingQuestions) throw new Error('Unexpected error: siblingQuestions is undefined')
       const siblingAnswers = siblingQuestions.map(item => item.children?.[0])
       const lastSiblingAnswer = siblingAnswers.at(-1)
-      return lastSiblingAnswer ? (lastSiblingAnswer.siblingIndex || 0) + 1 : 0
+      return lastSiblingAnswer ? (lastSiblingAnswer.siblingIndex ?? 0) + 1 : 0
     }
 
     const placeholderAnswerId = `answer-placeholder-${Date.now()}`
