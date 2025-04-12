@@ -23,13 +23,14 @@ import { BubbleX } from '@/app/components/base/icons/src/vender/line/others'
 import Tooltip from '@/app/components/base/tooltip'
 import ActionButton, { ActionButtonState } from '@/app/components/base/action-button'
 import { useStore } from '@/app/components/workflow/store'
+import { noop } from 'lodash-es'
 
 export type ChatWrapperRefType = {
   handleRestart: () => void
 }
 const DebugAndPreview = () => {
   const { t } = useTranslation()
-  const chatRef = useRef({ handleRestart: () => { } })
+  const chatRef = useRef({ handleRestart: noop })
   const { handleCancelDebugAndPreviewPanel } = useWorkflowInteractions()
   const { handleNodeCancelRunningStatus } = useNodesInteractions()
   const { handleEdgeCancelRunningStatus } = useEdgesInteractions()
@@ -124,12 +125,12 @@ const DebugAndPreview = () => {
               {expanded && <div className='absolute bottom-[-17px] right-[5px] z-10 h-3 w-3 rotate-45 border-l-[0.5px] border-t-[0.5px] border-components-panel-border-subtle bg-components-panel-on-panel-item-bg'/>}
             </div>
           )}
-          <div className='mx-3 h-3.5 w-[1px] bg-gray-200'></div>
+          <div className='mx-3 h-3.5 w-[1px] bg-divider-regular'></div>
           <div
             className='flex h-6 w-6 cursor-pointer items-center justify-center'
             onClick={handleCancelDebugAndPreviewPanel}
           >
-            <RiCloseLine className='h-4 w-4 text-gray-500' />
+            <RiCloseLine className='h-4 w-4 text-text-tertiary' />
           </div>
         </div>
       </div>

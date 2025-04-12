@@ -3,7 +3,6 @@ import time
 
 import click
 from celery import shared_task  # type: ignore
-from werkzeug.exceptions import NotFound
 
 from core.rag.index_processor.index_processor_factory import IndexProcessorFactory
 from extensions.ext_database import db
@@ -24,10 +23,14 @@ def disable_segment_from_index_task(segment_id: str):
 
     segment = db.session.query(DocumentSegment).filter(DocumentSegment.id == segment_id).first()
     if not segment:
-        raise NotFound("Segment not found")
+        logging.info(click.style("Segment not found: {}".format(segment_id), fg="red"))
+        db.session.close()
+        return
 
     if segment.status != "completed":
-        raise NotFound("Segment is not completed , disable action is not allowed.")
+        logging.info(click.style("Segment is not completed, disable is not allowed: {}".format(segment_id), fg="red"))
+        db.session.close()
+        return
 
     indexing_cache_key = "segment_{}_indexing".format(segment.id)
 
@@ -62,3 +65,4 @@ def disable_segment_from_index_task(segment_id: str):
         db.session.commit()
     finally:
         redis_client.delete(indexing_cache_key)
+        db.session.close()

@@ -36,6 +36,7 @@ import type { InputVar } from '@/app/components/workflow/types'
 import type { UpdatePluginPayload } from '@/app/components/plugins/types'
 import UpdatePlugin from '@/app/components/plugins/update-plugin'
 import { removeSpecificQueryParam } from '@/utils'
+import { noop } from 'lodash-es'
 
 export type ModalState<T> = {
   payload: T
@@ -77,18 +78,18 @@ export type ModalContextState = {
   setShowUpdatePluginModal: Dispatch<SetStateAction<ModalState<UpdatePluginPayload> | null>>
 }
 const ModalContext = createContext<ModalContextState>({
-  setShowAccountSettingModal: () => { },
-  setShowApiBasedExtensionModal: () => { },
-  setShowModerationSettingModal: () => { },
-  setShowExternalDataToolModal: () => { },
-  setShowPricingModal: () => { },
-  setShowAnnotationFullModal: () => { },
-  setShowModelModal: () => { },
-  setShowExternalKnowledgeAPIModal: () => { },
-  setShowModelLoadBalancingModal: () => { },
-  setShowModelLoadBalancingEntryModal: () => { },
-  setShowOpeningModal: () => { },
-  setShowUpdatePluginModal: () => { },
+  setShowAccountSettingModal: noop,
+  setShowApiBasedExtensionModal: noop,
+  setShowModerationSettingModal: noop,
+  setShowExternalDataToolModal: noop,
+  setShowPricingModal: noop,
+  setShowAnnotationFullModal: noop,
+  setShowModelModal: noop,
+  setShowExternalKnowledgeAPIModal: noop,
+  setShowModelLoadBalancingModal: noop,
+  setShowModelLoadBalancingEntryModal: noop,
+  setShowOpeningModal: noop,
+  setShowUpdatePluginModal: noop,
 })
 
 export const useModalContext = () => useContext(ModalContext)

@@ -9,7 +9,7 @@ from core.rag.index_processor.index_processor_factory import IndexProcessorFacto
 from core.tools.utils.rag_web_reader import get_image_upload_file_ids
 from extensions.ext_database import db
 from extensions.ext_storage import storage
-from models.dataset import Dataset, DocumentSegment
+from models.dataset import Dataset, DatasetMetadataBinding, DocumentSegment
 from models.model import UploadFile
 
 
@@ -67,6 +67,12 @@ def clean_document_task(document_id: str, dataset_id: str, doc_form: str, file_i
                 db.session.delete(file)
                 db.session.commit()
 
+        # delete dataset metadata binding
+        db.session.query(DatasetMetadataBinding).filter(
+            DatasetMetadataBinding.dataset_id == dataset_id,
+            DatasetMetadataBinding.document_id == document_id,
+        ).delete()
+
         end_at = time.perf_counter()
         logging.info(
             click.style(
@@ -76,3 +82,5 @@ def clean_document_task(document_id: str, dataset_id: str, doc_form: str, file_i
         )
     except Exception:
         logging.exception("Cleaned document when document deleted failed")
+    finally:
+        db.session.close()

@@ -16,3 +16,6 @@ poetry run -C api ruff format ./
 
 # run dotenv-linter linter
 poetry run -P api dotenv-linter ./api/.env.example ./web/.env.example
+
+# run mypy check
+dev/run-mypy

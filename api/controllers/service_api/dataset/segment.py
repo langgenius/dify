@@ -117,9 +117,6 @@ class SegmentApi(DatasetApiResource):
         parser.add_argument("keyword", type=str, default=None, location="args")
         args = parser.parse_args()
 
-        status_list = args["status"]
-        keyword = args["keyword"]
-
         segments, total = SegmentService.get_segments(
             document_id=document_id,
             tenant_id=current_user.current_tenant_id,

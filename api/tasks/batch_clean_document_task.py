@@ -74,3 +74,5 @@ def batch_clean_document_task(document_ids: list[str], dataset_id: str, doc_form
         )
     except Exception:
         logging.exception("Cleaned documents when documents deleted failed")
+    finally:
+        db.session.close()

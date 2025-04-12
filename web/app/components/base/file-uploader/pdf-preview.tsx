@@ -9,6 +9,7 @@ import { useHotkeys } from 'react-hotkeys-hook'
 import Loading from '@/app/components/base/loading'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import Tooltip from '@/app/components/base/tooltip'
+import { noop } from 'lodash-es'
 
 type PdfPreviewProps = {
   url: string
@@ -65,8 +66,8 @@ const PdfPreview: FC<PdfPreviewProps> = ({
               <PdfHighlighter
                 pdfDocument={pdfDocument}
                 enableAreaSelection={event => event.altKey}
-                scrollRef={() => { }}
-                onScrollChange={() => { }}
+                scrollRef={noop}
+                onScrollChange={noop}
                 onSelectionFinished={() => null}
                 highlightTransform={() => { return <div/> }}
                 highlights={[]}

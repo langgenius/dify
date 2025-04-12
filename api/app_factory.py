@@ -51,6 +51,7 @@ def initialize_extensions(app: DifyApp):
         ext_login,
         ext_mail,
         ext_migrate,
+        ext_otel,
         ext_proxy_fix,
         ext_redis,
         ext_sentry,
@@ -81,6 +82,7 @@ def initialize_extensions(app: DifyApp):
         ext_proxy_fix,
         ext_blueprints,
         ext_commands,
+        ext_otel,
     ]
     for ext in extensions:
         short_name = ext.__name__.split(".")[-1]

@@ -8,6 +8,7 @@ import OptionCard from '../../../workflow/nodes/_base/components/option-card'
 import Input from '@/app/components/base/input'
 import { RiArrowLeftLine } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
+import { noop } from 'lodash-es'
 
 const i18nPrefix = 'dataset.metadata.createMetadata'
 
@@ -19,7 +20,7 @@ export type Props = {
 }
 
 const CreateContent: FC<Props> = ({
-  onClose = () => { },
+  onClose = noop,
   hasBack,
   onBack,
   onSave,

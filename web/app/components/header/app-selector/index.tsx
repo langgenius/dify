@@ -9,6 +9,7 @@ import type { AppDetailResponse } from '@/models/app'
 import CreateAppDialog from '@/app/components/app/create-app-dialog'
 import AppIcon from '@/app/components/base/app-icon'
 import { useAppContext } from '@/context/app-context'
+import { noop } from 'lodash-es'
 
 type IAppSelectorProps = {
   appItems: AppDetailResponse[]
@@ -104,7 +105,7 @@ export default function AppSelector({ appItems, curApp }: IAppSelectorProps) {
       <CreateAppDialog
         show={showNewAppDialog}
         onClose={() => setShowNewAppDialog(false)}
-        onSuccess={() => { }}
+        onSuccess={noop}
       />
     </div>
   )
