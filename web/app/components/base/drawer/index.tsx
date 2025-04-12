@@ -44,17 +44,17 @@ export default function Drawer({
       unmount={unmount}
       open={isOpen}
       onClose={() => !clickOutsideNotOpen && onClose()}
-      className="fixed inset-0 z-30 overflow-y-auto"
+      className="fixed inset-0 z-[80] overflow-y-auto"
     >
       <div className={cn('flex h-screen w-screen justify-end', positionCenter && '!justify-center')}>
         {/* mask */}
         <DialogBackdrop
-          className={cn('fixed inset-0 z-40', mask && 'bg-black bg-opacity-30')}
+          className={cn('fixed inset-0 z-[90]', mask && 'bg-black bg-opacity-30')}
           onClick={() => {
             !clickOutsideNotOpen && onClose()
           }}
         />
-        <div className={cn('relative z-50 flex w-full max-w-sm flex-col justify-between overflow-hidden bg-components-panel-bg p-6 text-left align-middle shadow-xl', panelClassname)}>
+        <div className={cn('relative z-[100] flex w-full max-w-sm flex-col justify-between overflow-hidden bg-components-panel-bg p-6 text-left align-middle shadow-xl', panelClassname)}>
           <>
             <div className='flex justify-between'>
               {title && <DialogTitle
