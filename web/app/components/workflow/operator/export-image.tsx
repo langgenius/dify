@@ -36,19 +36,26 @@ const ExportImage: FC = () => {
     if (!flowElement) return
 
     try {
+      const filter = (node: HTMLElement) => {
+        if (node instanceof HTMLImageElement)
+          return node.complete && node.naturalHeight !== 0
+
+        return true
+      }
+
       let dataUrl
       switch (type) {
         case 'png':
-          dataUrl = await toPng(flowElement)
+          dataUrl = await toPng(flowElement, { filter })
           break
         case 'jpeg':
-          dataUrl = await toJpeg(flowElement)
+          dataUrl = await toJpeg(flowElement, { filter })
           break
         case 'svg':
-          dataUrl = await toSvg(flowElement)
+          dataUrl = await toSvg(flowElement, { filter })
           break
         default:
-          dataUrl = await toPng(flowElement)
+          dataUrl = await toPng(flowElement, { filter })
       }
 
       const link = document.createElement('a')
