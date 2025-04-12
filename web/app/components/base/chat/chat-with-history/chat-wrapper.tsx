@@ -121,13 +121,13 @@ const ChatWrapper = () => {
     setIsResponding(respondingState)
   }, [respondingState, setIsResponding])
 
-  const doSend: OnSend = useCallback((message, files, isRegenerate = false, parentAnswer: ChatItem | null = null, isQuestionEdited: boolean | undefined = undefined) => {
+  const doSend: OnSend = useCallback((message, files, parentAnswer: ChatItem | null = null, regenerate?: { type: 'question' | 'answer', baseId: string }) => {
     const data: any = {
       query: message,
       files,
       inputs: currentConversationId ? currentConversationInputs : newConversationInputs,
       conversation_id: currentConversationId,
-      parent_message_id: (isRegenerate ? parentAnswer?.id : getLastAnswer(chatList)?.id) || null,
+      parent_message_id: (regenerate ? parentAnswer?.id : getLastAnswer(chatList)?.id) || null,
     }
 
     handleSend(
@@ -137,7 +137,7 @@ const ChatWrapper = () => {
         onGetSuggestedQuestions: responseItemId => fetchSuggestedQuestions(responseItemId, isInstalledApp, appId),
         onConversationComplete: currentConversationId ? undefined : handleNewConversationCompleted,
         isPublicAPI: !isInstalledApp,
-        isQuestionEdited,
+        regenerate,
       },
     )
   }, [chatList, handleNewConversationCompleted, handleSend, currentConversationId, currentConversationInputs, newConversationInputs, isInstalledApp, appId])
@@ -148,9 +148,8 @@ const ChatWrapper = () => {
     doSend(
       editedQuestion ? editedQuestion.message : question.content,
       editedQuestion ? editedQuestion.files : question.message_files,
-      true,
       isValidGeneratedAnswer(parentAnswer) ? parentAnswer : null,
-      editedQuestion ? true : undefined,
+      { type: editedQuestion ? 'question' : 'answer', baseId: chatItem.id },
     )
   }, [chatList, doSend])
 

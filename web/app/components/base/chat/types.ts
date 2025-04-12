@@ -71,7 +71,7 @@ export type ChatItemInTree = {
 
 export type OnSend = {
   (message: string, files?: FileEntity[]): void
-  (message: string, files: FileEntity[] | undefined, isRegenerate: boolean, parentAnswer?: ChatItem | null, isQuestionEdited?: boolean): void
+  (message: string, files: FileEntity[] | undefined, parentAnswer?: ChatItem | null, regenerate?: { type: 'question' | 'answer', baseId: string }): void
 }
 
 export type OnRegenerate = (chatItem: ChatItem, editedQuestion?: { message: string, files?: FileEntity[] }) => void

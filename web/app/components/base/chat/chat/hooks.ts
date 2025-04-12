@@ -42,7 +42,10 @@ type HandleSendOptions = {
   onGetSuggestedQuestions?: (responseItemId: string, getAbortController: GetAbortController) => Promise<any>
   onConversationComplete?: (conversationId: string) => void
   isPublicAPI?: boolean
-  isQuestionEdited?: boolean
+  regenerate?: {
+    type: 'question' | 'answer'
+    baseId: string
+  }
 }
 
 export const useChat = (
@@ -223,7 +226,7 @@ export const useChat = (
       onGetSuggestedQuestions,
       onConversationComplete,
       isPublicAPI,
-      isQuestionEdited,
+      regenerate,
     }: HandleSendOptions,
   ) => {
     setSuggestQuestions([])
@@ -243,16 +246,17 @@ export const useChat = (
       isAnswer: false,
       message_files: data.files,
       parentMessageId: data.parent_message_id,
-      siblingIndex: isQuestionEdited
-        ? siblingQuestions?.length ?? 0
-        : siblingQuestions?.at(-1)?.siblingIndex ?? 0,
+      siblingIndex: regenerate
+        ? regenerate.type === 'question'
+          ? siblingQuestions?.length ?? 0
+          : siblingQuestions?.find(item => item.id === regenerate.baseId)?.siblingIndex ?? 0
+        : siblingQuestions?.length ?? 0,
     }
 
     function answerSiblingIndex() {
-      if (isQuestionEdited) return 0
-      if (!siblingQuestions) throw new Error('Unexpected error: siblingQuestions is undefined')
-      const siblingAnswers = siblingQuestions.map(item => item.children?.[0])
-      const lastSiblingAnswer = siblingAnswers.at(-1)
+      if (regenerate?.type === 'question') return 0
+      const siblingAnswers = siblingQuestions?.map(item => item.children?.[0])
+      const lastSiblingAnswer = siblingAnswers?.at(-1)
       return lastSiblingAnswer ? (lastSiblingAnswer.siblingIndex ?? 0) + 1 : 0
     }
 
