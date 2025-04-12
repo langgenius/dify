@@ -42,12 +42,15 @@ class AppGenerateService:
         # extract user_memory from user if it is an EndUser
         if isinstance(user, EndUser):
             user_memory = user.memory
+            recent_messages = user.recent_messages
         else:
             user_memory = None
+            recent_messages = None
 
         # add user_memory to args
         new_args = dict(args)
         new_args["inputs"]["user_memory"] = user_memory
+        new_args["inputs"]["recent_messages"] = recent_messages
 
         try:
             request_id = rate_limit.enter(request_id)

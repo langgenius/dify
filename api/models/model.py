@@ -1393,6 +1393,21 @@ class EndUser(UserMixin, db.Model):  # type: ignore[name-defined]
     updated_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
 
     @property
+    def recent_messages(self):
+        try:
+            messages = (
+                db.session.query(Message)
+                .filter(Message.from_end_user_id == self.id)
+                .filter(Message.organization_id == self.organization_id)
+                .order_by(Message.created_at.desc())
+                .limit(20)
+                .all()
+            )
+            return "".join([f"user: {message.query}\n\nassistant: {message.answer}\n\n" for message in messages[::-1]])
+        except Exception as e:
+            return ""
+
+    @property
     def memory(self):
         if self.extra_profile is None:
             return None

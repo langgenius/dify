@@ -5,9 +5,6 @@ import uuid
 from collections.abc import Generator, Mapping
 from typing import Any, Literal, Optional, Union, overload
 
-from flask import Flask, current_app
-from pydantic import ValidationError
-
 import contexts
 from configs import dify_config
 from constants import UUID_NIL
@@ -26,9 +23,11 @@ from core.ops.ops_trace_manager import TraceQueueManager
 from core.prompt.utils.get_thread_messages_length import get_thread_messages_length
 from extensions.ext_database import db
 from factories import file_factory
+from flask import Flask, current_app
 from models.account import Account
 from models.model import App, Conversation, EndUser, Message
 from models.workflow import Workflow
+from pydantic import ValidationError
 from services.errors.message import MessageNotExistsError
 
 logger = logging.getLogger(__name__)
@@ -134,17 +133,19 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
             app_config.additional_features.show_retrieve_source = True
 
         workflow_run_id = str(uuid.uuid4())
+
+        # FIXME: ytqh this is force use the latest inputs instead of the inputs in the conversation(original implementation). may change the behavior of the app
+        inputs = self._prepare_user_inputs(
+            user_inputs=inputs, variables=app_config.variables, tenant_id=app_model.tenant_id
+        )
+
         # init application generate entity
         application_generate_entity = AdvancedChatAppGenerateEntity(
             task_id=str(uuid.uuid4()),
             app_config=app_config,
             file_upload_config=file_extra_config,
             conversation_id=conversation.id if conversation else None,
-            inputs=conversation.inputs
-            if conversation
-            else self._prepare_user_inputs(
-                user_inputs=inputs, variables=app_config.variables, tenant_id=app_model.tenant_id
-            ),
+            inputs=inputs,
             query=query,
             files=list(file_objs),
             parent_message_id=args.get("parent_message_id") if invoke_from != InvokeFrom.SERVICE_API else UUID_NIL,
