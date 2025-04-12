@@ -1343,6 +1343,28 @@ class OperationLog(db.Model):  # type: ignore[name-defined]
     updated_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
 
 
+class HealthStatus(StrEnum):
+    NORMAL = "normal"  # 一般
+    POTENTIAL = "potential"  # 有轻微问题
+    CRITICAL = "critical"  # 有严重问题
+    GOOD = "good"  # 良好
+    LACKDATA = "lackdata"  # 数据不足
+
+    @staticmethod
+    def value_of(value: str) -> "HealthStatus":
+        """
+        Get value of given mode.
+
+        :param value: mode value
+        :return: mode
+        """
+        for mode in HealthStatus:
+            if mode.value == value:
+                return mode
+
+        raise ValueError(f"invalid health status value: {value}")
+
+
 class EndUser(UserMixin, db.Model):  # type: ignore[name-defined]
     __tablename__ = "end_users"
     __table_args__ = (
@@ -1363,7 +1385,7 @@ class EndUser(UserMixin, db.Model):  # type: ignore[name-defined]
     session_id: Mapped[str] = mapped_column()
     gender = db.Column(db.Integer, nullable=False, server_default=db.text("0"))  # 0: unknown, 1: male, 2: female
     profile_updated_at = db.Column(db.DateTime, nullable=True)  # To record when profile was last updated
-    health_status = db.Column(db.String(255), nullable=True)  # Only accept for "normal", "potential", "critical"
+    health_status = db.Column(db.String(255), nullable=True)
     extra_profile = db.Column(
         db.JSON, nullable=True
     )  # JSON format, e.g. { "major":"engineer", "topics":["math", "physics"], "summary": "This is a summary of the user's profile", "memory": "This is the user's memory"}

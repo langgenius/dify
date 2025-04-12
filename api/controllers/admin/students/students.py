@@ -122,8 +122,6 @@ class StudentList(Resource):
         # Build query filters
         filters = {}
         if health_status:
-            if health_status not in ['normal', 'potential', 'critical']:
-                return {"error": "Invalid health_status"}, 400
             filters['health_status'] = health_status
 
         if begin_date:

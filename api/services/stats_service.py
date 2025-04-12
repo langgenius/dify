@@ -3,6 +3,7 @@ from typing import Any, Dict, List, Optional
 
 from extensions.ext_database import db
 from models import Conversation, EndUser, Message
+from models.model import HealthStatus
 from sqlalchemy import and_, distinct, func
 
 
@@ -22,7 +23,7 @@ class StatsService:
             Dictionary containing high risk user count and changes
         """
         # Build query with filters
-        high_risk_query = db.session.query(EndUser).filter(EndUser.health_status == 'critical')
+        high_risk_query = db.session.query(EndUser).filter(EndUser.health_status == HealthStatus.CRITICAL.value)
         total_query = db.session.query(EndUser)
 
         # Apply app_id filter if provided
@@ -41,7 +42,7 @@ class StatsService:
         # Get yesterday's count
         yesterday = datetime.now() - timedelta(days=1)
         yesterday_query = db.session.query(EndUser).filter(
-            EndUser.health_status == 'critical', EndUser.updated_at <= yesterday
+            EndUser.health_status == HealthStatus.CRITICAL.value, EndUser.updated_at <= yesterday
         )
 
         # Apply app_id filter if provided
@@ -57,7 +58,7 @@ class StatsService:
         # Get last week's count
         last_week = datetime.now() - timedelta(days=7)
         last_week_query = db.session.query(EndUser).filter(
-            EndUser.health_status == 'critical', EndUser.updated_at <= last_week
+            EndUser.health_status == HealthStatus.CRITICAL.value, EndUser.updated_at <= last_week
         )
 
         # Apply app_id filter if provided
