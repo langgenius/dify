@@ -330,6 +330,26 @@ import { Row, Col, Properties, Property, Heading, SubProperty, PropertyInstructi
       <Property name='external_knowledge_id' type='str' key='external_knowledge_id'>
         外部知识库 ID（选填）
       </Property>
+      <Property name='embedding_model' type='str' key='embedding_model'>
+        Embedding 模型名称
+      </Property>
+      <Property name='embedding_provider_name' type='str' key='embedding_provider_name'>
+        Embedding 模型供应商
+      </Property>
+      <Property name='retrieval_model' type='object' key='retrieval_model'>
+        检索模式
+          - <code>search_method</code> (string) 检索方法
+            - <code>hybrid_search</code> 混合检索
+            - <code>semantic_search</code> 语义检索
+            - <code>full_text_search</code> 全文检索
+          - <code>reranking_enable</code> (bool) 是否开启rerank
+          - <code>reranking_model</code> (object) Rerank 模型配置
+            - <code>reranking_provider_name</code> (string) Rerank 模型的提供商
+            - <code>reranking_model_name</code> (string) Rerank 模型的名称
+          - <code>top_k</code> (int) 召回条数
+          - <code>score_threshold_enabled</code> (bool)是否开启召回分数限制
+          - <code>score_threshold</code> (float) 召回分数限制
+      </Property>
     </Properties>
   </Col>
   <Col sticky>
