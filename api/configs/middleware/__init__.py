@@ -69,6 +69,35 @@ class StorageConfig(BaseSettings):
         deprecated=True,
     )
 
+    UPLOAD_FILES_STORAGE_TYPE: Literal[
+        "s3",
+        "aliyun-oss",
+        "azure-blob",
+        "baidu-obs",
+        "google-storage",
+        "huawei-obs",
+        "oci-storage",
+        "tencent-cos",
+        "volcengine-tos",
+        "supabase",
+    ] = Field(
+        description="Type of storage to use for upload files.",
+        default="s3",
+    )
+
+    PRIVATE_FILES_STORAGE_TYPE: Literal[
+        "local",
+        "opendal",
+    ] = Field(
+        description="Type of storage to use for private files.",
+        default="local",
+    )
+
+    PRIVATE_FILES_STORAGE_PATH: str = Field(
+        description="Path for private files storage.",
+        default="/app/api/storage/privkeys",
+    )
+
 
 class VectorStoreConfig(BaseSettings):
     VECTOR_STORE: Optional[str] = Field(

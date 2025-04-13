@@ -37,6 +37,7 @@ class FileService:
         user: Union[Account, EndUser, Any],
         source: Literal["datasets"] | None = None,
         source_url: str = "",
+        is_private: bool = False,
     ) -> UploadFile:
         # get file extension
         extension = os.path.splitext(filename)[1].lstrip(".").lower()
@@ -67,7 +68,11 @@ class FileService:
             # end_user
             current_tenant_id = user.tenant_id
 
-        file_key = "upload_files/" + (current_tenant_id or "") + "/" + file_uuid + "." + extension
+        # Set file key based on whether it's a private file or not
+        if is_private:
+            file_key = "privkeys/" + (current_tenant_id or "") + "/" + file_uuid + "." + extension
+        else:
+            file_key = "upload_files/" + (current_tenant_id or "") + "/" + file_uuid + "." + extension
 
         # save file to storage
         storage.save(file_key, content)
