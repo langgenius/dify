@@ -213,6 +213,9 @@ def _delete_app_workflow_node_executions(tenant_id: str, app_id: str):
         for execution in executions:
             workflow_node_execution_repository.delete(execution.id)
 
+        # Commit the transaction after all deletions
+        db.session.commit()
+
         logging.info(click.style(f"Deleted batch of workflow node executions for app {app_id}", fg="green"))
 
 

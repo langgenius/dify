@@ -143,6 +143,8 @@ class ClearFreePlanTenantExpiredLogs:
                     # Use repository to delete workflow node executions
                     for execution in workflow_node_executions:
                         workflow_node_execution_repository.delete(execution.id)
+                    # Commit the transaction after all deletions
+                    session.commit()
 
                     click.echo(
                         click.style(

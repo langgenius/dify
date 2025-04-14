@@ -292,6 +292,7 @@ class WorkflowService:
             ),
         )
         workflow_node_execution_repository.save(workflow_node_execution)
+        db.session.commit()
 
         return workflow_node_execution
 

@@ -19,6 +19,9 @@ class SQLAlchemyWorkflowNodeExecutionRepository:
     SQLAlchemy implementation of the WorkflowNodeExecutionRepository interface.
 
     This implementation supports multi-tenancy by filtering operations based on tenant_id.
+    Each method that modifies data (save, update, delete) flushes changes to the database,
+    but does not commit the transaction. Callers are responsible for committing
+    or rolling back the transaction as needed.
     """
 
     def __init__(self, session: Session, tenant_id: str, app_id: Optional[str] = None):
@@ -36,7 +39,8 @@ class SQLAlchemyWorkflowNodeExecutionRepository:
 
     def save(self, execution: WorkflowNodeExecution) -> None:
         """
-        Save a WorkflowNodeExecution instance.
+        Save a WorkflowNodeExecution instance and flush changes to the database.
+        The caller is responsible for committing the transaction.
 
         Args:
             execution: The WorkflowNodeExecution instance to save
@@ -133,7 +137,8 @@ class SQLAlchemyWorkflowNodeExecutionRepository:
 
     def update(self, execution: WorkflowNodeExecution) -> None:
         """
-        Update an existing WorkflowNodeExecution instance.
+        Update an existing WorkflowNodeExecution instance and flush changes to the database.
+        The caller is responsible for committing the transaction.
 
         Args:
             execution: The WorkflowNodeExecution instance to update
@@ -151,7 +156,8 @@ class SQLAlchemyWorkflowNodeExecutionRepository:
 
     def delete(self, execution_id: str) -> None:
         """
-        Delete a WorkflowNodeExecution by its ID.
+        Delete a WorkflowNodeExecution by its ID and flush changes to the database.
+        The caller is responsible for committing the transaction.
 
         Args:
             execution_id: The execution ID
