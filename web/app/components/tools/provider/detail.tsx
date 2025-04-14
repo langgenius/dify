@@ -213,7 +213,7 @@ const ProviderDetail = ({
         setToolList(list)
       }
     }
-    catch (e) { }
+    catch { }
     setIsDetailLoading(false)
   }, [collection.name, collection.type])
 

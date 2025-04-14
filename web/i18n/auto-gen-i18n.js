@@ -42,7 +42,7 @@ async function translateMissingKeyDeeply(sourceObj, targetObject, toLanguage) {
           const { translation } = await translate(sourceObj[key], null, languageKeyMap[toLanguage])
           targetObject[key] = translation
         }
-        catch (e) {
+        catch {
           console.error(`Error translating ${sourceObj[key]}(${key}) to ${toLanguage}`)
         }
       }
