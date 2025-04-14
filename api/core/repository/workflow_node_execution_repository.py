@@ -37,17 +37,7 @@ class WorkflowNodeExecutionRepository(Protocol):
         """
         ...
 
-    def get_by_id(self, execution_id: str) -> Optional[WorkflowNodeExecution]:
-        """
-        Retrieve a WorkflowNodeExecution by its ID.
-
-        Args:
-            execution_id: The execution ID
-
-        Returns:
-            The WorkflowNodeExecution instance if found, None otherwise
-        """
-        ...
+    # Method get_by_id was removed as it's not used anywhere in the codebase
 
     def get_by_node_execution_id(self, node_execution_id: str) -> Optional[WorkflowNodeExecution]:
         """
@@ -110,17 +100,7 @@ class WorkflowNodeExecutionRepository(Protocol):
         """
         ...
 
-    def delete_by_criteria(self, criteria: WorkflowNodeExecutionCriteria) -> int:
-        """
-        Delete WorkflowNodeExecution instances matching the given criteria.
-
-        Args:
-            criteria: Dictionary of criteria to match (e.g., {'workflow_run_id': '123', 'created_at_before': datetime})
-
-        Returns:
-            Number of instances deleted
-        """
-        ...
+    # Method delete_by_criteria was removed as it's not used anywhere in the codebase
 
     def find_by_criteria(
         self,
