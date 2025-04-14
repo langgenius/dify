@@ -37,14 +37,11 @@ def register_repositories() -> None:
         # Register SQLAlchemy implementation for RDBMS storage
         logger.info(f"Registering {WORKFLOW_NODE_EXECUTION_REPOSITORY} with RDBMS storage")
         RepositoryFactory.register_factory(
-            WORKFLOW_NODE_EXECUTION_REPOSITORY,
-            create_workflow_node_execution_repository
+            WORKFLOW_NODE_EXECUTION_REPOSITORY, create_workflow_node_execution_repository
         )
     elif workflow_node_execution_storage == STORAGE_TYPE_HYBRID:
         # Hybrid storage is not yet implemented
-        raise NotImplementedError(
-            f"Hybrid storage for {WORKFLOW_NODE_EXECUTION_REPOSITORY} is not yet implemented"
-        )
+        raise NotImplementedError(f"Hybrid storage for {WORKFLOW_NODE_EXECUTION_REPOSITORY} is not yet implemented")
     else:
         # Unknown storage type
         raise ValueError(
