@@ -14,6 +14,7 @@ import type {
   PackageDependency,
   Permissions,
   Plugin,
+  PluginDeclaration,
   PluginDetail,
   PluginInfoFromMarketPlace,
   PluginTask,
@@ -115,6 +116,14 @@ export const useUpdatePackageFromMarketPlace = (options?: MutateOptions<InstallP
         body,
       })
     },
+  })
+}
+
+export const usePluginDeclarationFromMarketPlace = (pluginUniqueIdentifier: string) => {
+  return useQuery({
+    queryKey: [NAME_SPACE, 'pluginDeclaration', pluginUniqueIdentifier],
+    queryFn: () => get<{ manifest: PluginDeclaration }>('/workspaces/current/plugin/marketplace/pkg', { params: { plugin_unique_identifier: pluginUniqueIdentifier } }),
+    enabled: !!pluginUniqueIdentifier,
   })
 }
 
