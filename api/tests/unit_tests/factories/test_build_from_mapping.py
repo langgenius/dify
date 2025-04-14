@@ -180,17 +180,6 @@ def test_build_without_type_specification(mock_upload_file):
     assert file.type == FileType.IMAGE
 
 
-def test_file_validation_fail_with_config(mock_upload_file):
-    """Test file and configuration verification failed"""
-    mapping = {
-        "transfer_method": "local_file",
-        "upload_file_id": TEST_UPLOAD_FILE_ID,
-        "type": "video",  # Not in the allowed types
-    }
-    with pytest.raises(ValueError, match="File validation failed"):
-        build_from_mapping(mapping=mapping, tenant_id=TEST_TENANT_ID, config=TEST_CONFIG)
-
-
 @pytest.mark.parametrize(
     ("file_type", "should_pass", "expected_error"),
     [
@@ -199,7 +188,7 @@ def test_file_validation_fail_with_config(mock_upload_file):
     ],
 )
 def test_file_validation_with_config(mock_upload_file, file_type, should_pass, expected_error):
-    """Strict type validation for tool_file."""
+    """Test the validation of files and configurations"""
     mapping = local_file_mapping(file_type=file_type)
     if should_pass:
         file = build_from_mapping(mapping=mapping, tenant_id=TEST_TENANT_ID, config=TEST_CONFIG)
