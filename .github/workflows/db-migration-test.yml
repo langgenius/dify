@@ -8,10 +8,9 @@ on:
     paths:
       - api/migrations/**
       - .github/workflows/db-migration-test.yml
-      - .github/workflows/db-migration-test-on-uv.yml
 
 concurrency:
-  group: db-migration-test-on-uv-${{ github.ref }}
+  group: db-migration-test-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
