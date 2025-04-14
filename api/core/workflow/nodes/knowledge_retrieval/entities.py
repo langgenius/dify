@@ -117,6 +117,18 @@ class MetadataFilteringCondition(BaseModel):
     conditions: Optional[list[Condition]] = Field(default=None, deprecated=True)
 
 
+class MetadataFilteringComplexSubCondition(BaseModel):
+    logical_operator: Optional[Literal["and", "or"]] = "and"
+    conditions: Optional[list[Condition]] = Field(default=None, deprecated=True)
+    sub_conditions: Optional[list["MetadataFilteringComplexSubCondition"]] = None
+
+class MetadataFilteringComplexCondition(BaseModel):
+    """
+    Complex Metadata Filtering Condition.
+    """
+    logical_operator: Optional[Literal["and", "or"]] = "and"
+    conditions: Optional[list[MetadataFilteringComplexSubCondition]] = Field(default=None, deprecated=True)
+
 class KnowledgeRetrievalNodeData(BaseNodeData):
     """
     Knowledge retrieval Node Data.
@@ -128,7 +140,8 @@ class KnowledgeRetrievalNodeData(BaseNodeData):
     retrieval_mode: Literal["single", "multiple"]
     multiple_retrieval_config: Optional[MultipleRetrievalConfig] = None
     single_retrieval_config: Optional[SingleRetrievalConfig] = None
-    metadata_filtering_mode: Optional[Literal["disabled", "automatic", "manual"]] = "disabled"
+    metadata_filtering_mode: Optional[Literal["disabled", "automatic", "manual", "complex_conditions"]] = "disabled"
     metadata_model_config: Optional[ModelConfig] = None
     metadata_filtering_conditions: Optional[MetadataFilteringCondition] = None
+    metadata_filtering_complex_conditions: Optional[MetadataFilteringComplexCondition] = None
     vision: VisionConfig = Field(default_factory=VisionConfig)
