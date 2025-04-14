@@ -30,48 +30,6 @@ jobs:
             api/**
             .github/workflows/style.yml
 
-      - name: Setup Poetry and Python
-        if: steps.changed-files.outputs.any_changed == 'true'
-        uses: ./.github/actions/setup-poetry
-
-      - name: Install dependencies
-        if: steps.changed-files.outputs.any_changed == 'true'
-        run: poetry install -C api --only lint
-
-      - name: Ruff check
-        if: steps.changed-files.outputs.any_changed == 'true'
-        run: |
-          poetry run -C api ruff --version
-          poetry run -C api ruff check ./
-          poetry run -C api ruff format --check ./
-
-      - name: Dotenv check
-        if: steps.changed-files.outputs.any_changed == 'true'
-        run: poetry run -P api dotenv-linter ./api/.env.example ./web/.env.example
-
-      - name: Lint hints
-        if: failure()
-        run: echo "Please run 'dev/reformat' to fix the fixable linting errors."
-
-  python-style-on-uv:
-    name: Python Style on UV
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-          persist-credentials: false
-
-      - name: Check changed files
-        id: changed-files
-        uses: tj-actions/changed-files@v45
-        with:
-          files: |
-            api/**
-            .github/workflows/style.yml
-
       - name: Setup UV and Python
         if: steps.changed-files.outputs.any_changed == 'true'
         uses: ./.github/actions/setup-uv
@@ -86,9 +44,9 @@ jobs:
       - name: Ruff check
         if: steps.changed-files.outputs.any_changed == 'true'
         run: |
-          uv run --project api ruff --version
-          uv run --project api ruff check ./api
-          uv run --project api ruff format --check ./api
+          uv run --directory api ruff --version
+          uv run --directory api ruff check ./
+          uv run --directory api ruff format --check ./
 
       - name: Dotenv check
         if: steps.changed-files.outputs.any_changed == 'true'
