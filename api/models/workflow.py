@@ -532,7 +532,7 @@ class WorkflowNodeExecutionTriggeredFrom(Enum):
         raise ValueError(f"invalid workflow node execution triggered from value {value}")
 
 
-class WorkflowNodeExecutionStatus(Enum):
+class WorkflowNodeExecutionStatus(StrEnum):
     """
     Workflow Node Execution Status Enum
     """
@@ -542,19 +542,6 @@ class WorkflowNodeExecutionStatus(Enum):
     FAILED = "failed"
     EXCEPTION = "exception"
     RETRY = "retry"
-
-    @classmethod
-    def value_of(cls, value: str) -> "WorkflowNodeExecutionStatus":
-        """
-        Get value of given mode.
-
-        :param value: mode value
-        :return: mode
-        """
-        for mode in cls:
-            if mode.value == value:
-                return mode
-        raise ValueError(f"invalid workflow node execution status value {value}")
 
 
 class WorkflowNodeExecution(Base):
