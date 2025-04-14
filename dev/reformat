@@ -12,4 +12,4 @@ uv run --directory api --group lint ruff format ./
 uv run --project api --group lint dotenv-linter ./api/.env.example ./web/.env.example
 
 # run mypy check
-dev/run-mypy
+dev/mypy-check
