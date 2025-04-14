@@ -35,6 +35,7 @@ class PipelineTemplateListApi(Resource):
     @enterprise_license_required
     def get(self):
         type = request.args.get("type", default="built-in", type=str, choices=["built-in", "customized"])
+        language = request.args.get("language", default="en-US", type=str)
         # get pipeline templates
         return response, 200
 

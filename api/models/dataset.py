@@ -1146,7 +1146,7 @@ class PipelineBuiltInTemplate(db.Model):  # type: ignore[name-defined]
     )
 
     id = db.Column(StringUUID, server_default=db.text("uuid_generate_v4()"))
-    app_id = db.Column(StringUUID, nullable=False)
+    pipeline_id = db.Column(StringUUID, nullable=False)
     name = db.Column(db.String(255), nullable=False)
     description = db.Column(db.Text, nullable=False)
     icon = db.Column(db.JSON, nullable=False)
@@ -1168,7 +1168,7 @@ class PipelineCustomizedTemplate(db.Model):  # type: ignore[name-defined]
 
     id = db.Column(StringUUID, server_default=db.text("uuid_generate_v4()"))
     tenant_id = db.Column(StringUUID, nullable=False)
-    app_id = db.Column(StringUUID, nullable=False)
+    pipeline_id = db.Column(StringUUID, nullable=False)
     name = db.Column(db.String(255), nullable=False)
     description = db.Column(db.Text, nullable=False)
     icon = db.Column(db.JSON, nullable=False)
@@ -1176,4 +1176,24 @@ class PipelineCustomizedTemplate(db.Model):  # type: ignore[name-defined]
     install_count = db.Column(db.Integer, nullable=False, default=0)
     language = db.Column(db.String(255), nullable=False)
     created_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
+    updated_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
+
+
+class Pipeline(db.Model):  # type: ignore[name-defined]
+    __tablename__ = "pipelines"
+    __table_args__ = (
+        db.PrimaryKeyConstraint("id", name="pipeline_pkey"),
+    )
+
+    id = db.Column(StringUUID, server_default=db.text("uuid_generate_v4()"))
+    tenant_id: Mapped[str] = db.Column(StringUUID, nullable=False)
+    name = db.Column(db.String(255), nullable=False)
+    description = db.Column(db.Text, nullable=False, server_default=db.text("''::character varying"))
+    mode = db.Column(db.String(255), nullable=False)
+    workflow_id = db.Column(StringUUID, nullable=True)
+    is_public = db.Column(db.Boolean, nullable=False, server_default=db.text("false"))
+    is_published = db.Column(db.Boolean, nullable=False, server_default=db.text("false"))
+    created_by = db.Column(StringUUID, nullable=True)
+    created_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
+    updated_by = db.Column(StringUUID, nullable=True)
     updated_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
