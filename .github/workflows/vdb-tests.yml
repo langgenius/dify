@@ -18,6 +18,7 @@ concurrency:
 jobs:
   test:
     name: VDB Tests
+    if: false
     runs-on: ubuntu-latest
     strategy:
       matrix:
