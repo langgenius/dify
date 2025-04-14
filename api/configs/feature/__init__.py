@@ -12,7 +12,8 @@ from pydantic import (
 )
 from pydantic_settings import BaseSettings
 
-from configs.feature.hosted_service import HostedServiceConfig
+from .hosted_service import HostedServiceConfig
+from .storage_config import WorkflowNodeExecutionStorageConfig
 
 
 class SecurityConfig(BaseSettings):
@@ -519,6 +520,11 @@ class WorkflowNodeExecutionConfig(BaseSettings):
         default=100,
     )
 
+    WORKFLOW_NODE_EXECUTION_STORAGE: Literal["rdbms", "s3", "hybrid"] = Field(
+        description="Storage backend for WorkflowNodeExecution. Options: 'rdbms', 's3', 'hybrid'",
+        default="rdbms",
+    )
+
 
 class AuthConfig(BaseSettings):
     """
@@ -886,6 +892,7 @@ class FeatureConfig(
     UpdateConfig,
     WorkflowConfig,
     WorkflowNodeExecutionConfig,
+    WorkflowNodeExecutionStorageConfig,
     WorkspaceConfig,
     LoginConfig,
     AccountConfig,
