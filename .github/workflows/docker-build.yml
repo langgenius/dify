@@ -6,7 +6,6 @@ on:
       - "main"
     paths:
       - api/Dockerfile
-      - api/Dockerfile_uv
       - web/Dockerfile
 
 concurrency:
