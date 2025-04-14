@@ -491,7 +491,7 @@ export const useModelInList = (currentProvider?: ModelProvider, modelId?: string
         const modelsData = await fetchModelProviderModelList(`/workspaces/current/model-providers/${currentProvider?.provider}/models`)
         return !!modelId && !!modelsData.data.find(item => item.model === modelId)
       }
-      catch (error) {
+      catch {
         return false
       }
     },
@@ -511,7 +511,7 @@ export const usePluginInfo = (providerName?: string) => {
         const response = await fetchPluginInfoFromMarketPlace({ org, name })
         return response.data.plugin.category === PluginTypeEnum.model ? response.data.plugin : null
       }
-      catch (error) {
+      catch {
         return null
       }
     },

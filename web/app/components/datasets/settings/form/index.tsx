@@ -160,7 +160,7 @@ const Form = () => {
         mutate(unstable_serialize(getKey))
       }
     }
-    catch (e) {
+    catch {
       notify({ type: 'error', message: t('common.actionMsg.modifiedUnsuccessfully') })
     }
     finally {

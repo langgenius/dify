@@ -178,7 +178,7 @@ const ChatVariableModal = ({
             })
             setObjectValue(newObjectValue)
           }
-          catch (e) {
+          catch {
             // ignore JSON.parse errors
           }
         }
@@ -209,7 +209,7 @@ const ChatVariableModal = ({
         const newValue = JSON.parse(content)
         setValue(newValue)
       }
-      catch (e) {
+      catch {
         // ignore JSON.parse errors
       }
     }

@@ -82,7 +82,7 @@ const SwitchAppModal = ({ show, appDetail, inAppDetail = false, onSuccess, onClo
         removeOriginal ? replace : push,
       )
     }
-    catch (e) {
+    catch {
       notify({ type: 'error', message: t('app.newApp.appCreateFailed') })
     }
   }

@@ -51,7 +51,7 @@ export const SVGRenderer = ({ content }: { content: string }) => {
           setImagePreview(svgToDataURL(svgElement as Element))
         })
       }
-      catch (error) {
+      catch {
         if (svgRef.current)
           svgRef.current.innerHTML = '<span style="padding: 1rem;">Error rendering SVG. Wait for the image content to complete.</span>'
       }

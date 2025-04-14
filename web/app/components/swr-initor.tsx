@@ -68,7 +68,7 @@ const SwrInitor = ({
 
         setInit(true)
       }
-      catch (error) {
+      catch {
         router.replace('/signin')
       }
     })()
