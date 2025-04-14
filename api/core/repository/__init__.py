@@ -14,6 +14,6 @@ from core.repository.workflow_node_execution_repository import (
 
 __all__ = [
     "RepositoryFactory",
-    "WorkflowNodeExecutionRepository",
     "WorkflowNodeExecutionCriteria",
+    "WorkflowNodeExecutionRepository",
 ]

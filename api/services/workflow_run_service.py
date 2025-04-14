@@ -127,6 +127,24 @@ class WorkflowRunService:
         if not workflow_run:
             return []
 
+        # TODO: Replace with repository pattern
+        # This should use the repository to get workflow node executions for a workflow run
+        # Example:
+        # workflow_node_execution_repository = RepositoryFactory.create_repository(
+        #     "workflow_node_execution",
+        #     params={
+        #         "tenant_id": app_model.tenant_id,
+        #         "app_id": app_model.id,
+        #         "session": db.session
+        #     }
+        # )
+        # node_executions = workflow_node_execution_repository.get_by_workflow_run(
+        #     workflow_run_id=run_id,
+        #     order_by="index",
+        #     order_direction="desc"
+        # )
+
+        # For now, keep using direct database access
         node_executions = (
             db.session.query(WorkflowNodeExecution)
             .filter(

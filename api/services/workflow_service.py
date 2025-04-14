@@ -282,6 +282,20 @@ class WorkflowService:
         workflow_node_execution.created_by = account.id
         workflow_node_execution.workflow_id = draft_workflow.id
 
+        # TODO: Replace with repository pattern
+        # This should use the repository to save the workflow node execution
+        # Example:
+        # workflow_node_execution_repository = RepositoryFactory.create_repository(
+        #     "workflow_node_execution",
+        #     params={
+        #         "tenant_id": app_model.tenant_id,
+        #         "app_id": app_model.id,
+        #         "session": db.session
+        #     }
+        # )
+        # workflow_node_execution_repository.save(workflow_node_execution)
+
+        # For now, keep using direct database access
         db.session.add(workflow_node_execution)
         db.session.commit()
 

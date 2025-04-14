@@ -107,6 +107,25 @@ class ClearFreePlanTenantExpiredLogs:
 
             while True:
                 with Session(db.engine).no_autoflush as session:
+                    # TODO: Replace with repository pattern
+                    # This should use the repository to query and delete workflow node executions
+                    # Example:
+                    # workflow_node_execution_repository = RepositoryFactory.create_repository(
+                    #     "workflow_node_execution",
+                    #     params={
+                    #         "tenant_id": tenant_id,
+                    #         "session": session
+                    #     }
+                    # )
+                    # criteria = WorkflowNodeExecutionCriteria(
+                    #     created_at_before=datetime.datetime.now() - datetime.timedelta(days=days)
+                    # )
+                    # workflow_node_executions = workflow_node_execution_repository.find_by_criteria(
+                    #     criteria=criteria,
+                    #     limit=batch
+                    # )
+
+                    # For now, keep using direct database access
                     workflow_node_executions = (
                         session.query(WorkflowNodeExecution)
                         .filter(
@@ -134,7 +153,12 @@ class ClearFreePlanTenantExpiredLogs:
                         workflow_node_execution.id for workflow_node_execution in workflow_node_executions
                     ]
 
-                    # delete workflow node executions
+                    # TODO: Use repository to delete workflow node executions
+                    # Example:
+                    # for execution in workflow_node_executions:
+                    #     workflow_node_execution_repository.delete(execution.id)
+
+                    # For now, keep using direct database access
                     session.query(WorkflowNodeExecution).filter(
                         WorkflowNodeExecution.id.in_(workflow_node_execution_ids),
                     ).delete(synchronize_session=False)

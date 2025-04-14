@@ -187,6 +187,22 @@ def _delete_app_workflow_runs(tenant_id: str, app_id: str):
 
 
 def _delete_app_workflow_node_executions(tenant_id: str, app_id: str):
+    # TODO: Replace with repository pattern
+    # This should use the repository to delete workflow node executions for an app
+    # Example:
+    # workflow_node_execution_repository = RepositoryFactory.create_repository(
+    #     "workflow_node_execution",
+    #     params={
+    #         "tenant_id": tenant_id,
+    #         "app_id": app_id,
+    #         "session": db.session
+    #     }
+    # )
+    # criteria = WorkflowNodeExecutionCriteria()
+    # deleted_count = workflow_node_execution_repository.delete_by_criteria(criteria)
+    # logging.info(click.style(f"Deleted {deleted_count} workflow node executions for app {app_id}", fg="green"))
+
+    # For now, keep using direct database access
     def del_workflow_node_execution(workflow_node_execution_id: str):
         db.session.query(WorkflowNodeExecution).filter(WorkflowNodeExecution.id == workflow_node_execution_id).delete(
             synchronize_session=False
