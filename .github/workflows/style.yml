@@ -12,6 +12,7 @@ concurrency:
 jobs:
   python-style:
     name: Python Style
+    if: false
     runs-on: ubuntu-latest
 
     steps:

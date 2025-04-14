@@ -19,12 +19,12 @@ jobs:
     strategy:
       matrix:
         include:
-          - service_name: "api-amd64"
-            platform: linux/amd64
-            context: "api"
-          - service_name: "api-arm64"
-            platform: linux/arm64
-            context: "api"
+          #          - service_name: "api-amd64"
+          #            platform: linux/amd64
+          #            context: "api"
+          #          - service_name: "api-arm64"
+          #            platform: linux/arm64
+          #            context: "api"
           - service_name: "api-amd64-uv"
             platform: linux/amd64
             context: "api"
@@ -51,6 +51,7 @@ jobs:
         with:
           push: false
           context: "{{defaultContext}}:${{ matrix.context }}"
+          file: "${{ matrix.file }}"
           platforms: ${{ matrix.platform }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
