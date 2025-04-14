@@ -1,5 +1,6 @@
 import logging
 import time
+import uuid
 from collections.abc import Generator, Sequence
 from typing import Optional, Union
 
@@ -131,7 +132,13 @@ class LargeLanguageModel(AIModel):
 
                         return tool_call
 
+                    def gen_tool_call_id() -> str:
+                        return f"chatcmpl-tool-{str(uuid.uuid4().hex)}"
+
                     for new_tool_call in new_tool_calls:
+                        # generate ID for tool calls with function name but no ID to track them
+                        if new_tool_call.function.name and not new_tool_call.id:
+                            new_tool_call.id = gen_tool_call_id()
                         # get tool call
                         tool_call = get_tool_call(new_tool_call.id)
                         # update tool call
