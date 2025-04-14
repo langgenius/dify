@@ -45,7 +45,10 @@ const RunOnce: FC<IRunOnceProps> = ({
   const onClear = () => {
     const newInputs: Record<string, any> = {}
     promptConfig.prompt_variables.forEach((item) => {
-      newInputs[item.key] = ''
+      if (item.type === 'text-input' || item.type === 'paragraph')
+        newInputs[item.key] = ''
+      else
+        newInputs[item.key] = undefined
     })
     onInputsChange(newInputs)
   }
@@ -63,7 +66,10 @@ const RunOnce: FC<IRunOnceProps> = ({
   useEffect(() => {
     const newInputs: Record<string, any> = {}
     promptConfig.prompt_variables.forEach((item) => {
-      newInputs[item.key] = ''
+      if (item.type === 'text-input' || item.type === 'paragraph')
+        newInputs[item.key] = ''
+      else
+        newInputs[item.key] = undefined
     })
     onInputsChange(newInputs)
   }, [promptConfig.prompt_variables, onInputsChange])

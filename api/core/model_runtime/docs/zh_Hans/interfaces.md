@@ -687,7 +687,7 @@ class LLMUsage(ModelUsage):
     total_tokens: int  # 总使用 token 数
     total_price: Decimal  # 总费用
     currency: str  # 货币单位
-    latency: float  # 请求耗时(s)
+    latency: float  # 请求耗时 (s)
 ```
 
 ---
@@ -717,7 +717,7 @@ class EmbeddingUsage(ModelUsage):
     price_unit: Decimal  # 价格单位，即单价基于多少 tokens
     total_price: Decimal  # 总费用
     currency: str  # 货币单位
-    latency: float  # 请求耗时(s)
+    latency: float  # 请求耗时 (s)
 ```
 
 ---
