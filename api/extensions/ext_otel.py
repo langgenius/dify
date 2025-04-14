@@ -6,7 +6,7 @@ import socket
 import sys
 from typing import Union
 
-from celery.signals import worker_init
+from celery.signals import worker_init  # type: ignore
 from flask_login import user_loaded_from_request, user_logged_in  # type: ignore
 from opentelemetry import trace
 from opentelemetry.exporter.otlp.proto.http.metric_exporter import OTLPMetricExporter
@@ -108,7 +108,8 @@ def init_app(app: DifyApp):
 
 
 def is_celery_worker():
-    return 'celery' in sys.argv[0].lower()
+    return "celery" in sys.argv[0].lower()
+
 
 def init_flask_instrumentor(app: DifyApp):
     def response_hook(span: Span, status: str, response_headers: list):
@@ -129,6 +130,7 @@ def init_sqlalchemy_instrumentor(app: DifyApp):
         engines = list(app.extensions["sqlalchemy"].engines.values())
         SQLAlchemyInstrumentor().instrument(enable_commenter=True, engines=engines)
 
+
 def setup_context_propagation():
     # Configure propagators
     set_global_textmap(
@@ -140,6 +142,7 @@ def setup_context_propagation():
         )
     )
 
+
 @worker_init.connect(weak=False)
 def init_celery_worker(*args, **kwargs):
     tracer_provider = get_tracer_provider()
@@ -147,6 +150,7 @@ def init_celery_worker(*args, **kwargs):
     if dify_config.DEBUG:
         logging.info("Initializing OpenTelemetry for Celery worker")
     CeleryInstrumentor(tracer_provider=tracer_provider, meter_provider=metric_provider).instrument()
+
 
 def shutdown_tracer():
     provider = trace.get_tracer_provider()
