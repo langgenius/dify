@@ -475,7 +475,7 @@ importers:
         version: 0.4.19(eslint@9.24.0(jiti@1.21.7))
       eslint-plugin-sonarjs:
         specifier: ^3.0.2
-        version: 3.0.2(eslint@9.22.0(jiti@1.21.6))
+        version: 3.0.2(eslint@9.24.0(jiti@1.21.7))
       eslint-plugin-storybook:
         specifier: ^0.11.2
         version: 0.11.6(eslint@9.24.0(jiti@1.21.7))(typescript@4.9.5)
@@ -3738,7 +3738,7 @@ packages:
 
   buffer@6.0.3:
     resolution: {integrity: sha512-FTiCpNxtwiZZHEZbcbTIcZjERVICn9yq/pDFkTl95/AxzD1naBctN7YO68riM/gLSDY7sdrMby8hofADYuuqOA==}
-  
+
   builtin-modules@3.3.0:
     resolution: {integrity: sha512-zhaCDicdLuWN5UbN5IMnFqNMhNfo919sH85y2/ea+5Yg9TsTkeZxpL+JLbp6cgYFS4sRLp3YV4S6yDuqVWHYOw==}
     engines: {node: '>=6'}
@@ -12499,7 +12499,7 @@ snapshots:
       ieee754: 1.2.1
 
   builtin-modules@3.3.0: {}
-  
+
   builtin-modules@5.0.0: {}
 
   builtin-status-codes@3.0.0: {}
@@ -13932,12 +13932,12 @@ snapshots:
       regexp-ast-analysis: 0.7.1
       scslre: 0.3.0
 
-  eslint-plugin-sonarjs@3.0.2(eslint@9.22.0(jiti@1.21.6)):
+  eslint-plugin-sonarjs@3.0.2(eslint@9.24.0(jiti@1.21.7)):
     dependencies:
       '@eslint-community/regexpp': 4.12.1
       builtin-modules: 3.3.0
       bytes: 3.1.2
-      eslint: 9.22.0(jiti@1.21.6)
+      eslint: 9.24.0(jiti@1.21.7)
       functional-red-black-tree: 1.0.1
       jsx-ast-utils: 3.3.5
       minimatch: 9.0.5
