@@ -16,7 +16,6 @@ concurrency:
 jobs:
   test:
     name: API Tests
-    if: false
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -31,31 +30,22 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
 
-      - name: Setup Poetry and Python ${{ matrix.python-version }}
-        uses: ./.github/actions/setup-poetry
+      - name: Setup UV and Python
+        uses: ./.github/actions/setup-uv
         with:
-          python-version: ${{ matrix.python-version }}
-          poetry-lockfile: api/poetry.lock
+          uv-lockfile: api/uv.lock
 
-      - name: Check Poetry lockfile
-        run: |
-          poetry check -C api --lock
-          poetry show -C api
+      - name: Check UV lockfile
+        run: uv lock --project api --check
 
       - name: Install dependencies
-        run: poetry install -C api --with dev
+        run: uv sync --project api --group dev
 
       - name: Run Unit tests
-        run: poetry run -P api bash dev/pytest/pytest_unit_tests.sh
+        run: uv run --project api bash dev/pytest/pytest_unit_tests.sh
 
       - name: Run dify config tests
-        run: poetry run -P api python dev/pytest/pytest_config_tests.py
-
-      - name: Cache MyPy
-        uses: actions/cache@v4
-        with:
-          path: api/.mypy_cache
-          key: mypy-${{ matrix.python-version }}-${{ runner.os }}-${{ hashFiles('api/poetry.lock') }}
+        run: uv run --project api dev/pytest/pytest_config_tests.py
 
       - name: Run mypy
         run: dev/run-mypy
@@ -78,4 +68,4 @@ jobs:
             ssrf_proxy
 
       - name: Run Workflow
-        run: poetry run -P api bash dev/pytest/pytest_workflow.sh
+        run: uv run --project api bash dev/pytest/pytest_workflow.sh
