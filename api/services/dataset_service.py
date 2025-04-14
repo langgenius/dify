@@ -528,7 +528,7 @@ class DocumentService:
                 {"id": "remove_extra_spaces", "enabled": True},
                 {"id": "remove_urls_emails", "enabled": False},
             ],
-            "segmentation": {"delimiter": "\n", "max_tokens": 500, "chunk_overlap": 50},
+            "segmentation": {"delimiter": "\n", "max_tokens": 1024, "chunk_overlap": 50},
         },
         "limits": {
             "indexing_max_segmentation_tokens_length": dify_config.INDEXING_MAX_SEGMENTATION_TOKENS_LENGTH,
