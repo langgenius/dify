@@ -90,7 +90,7 @@ const Panel: FC<NodePanelProps<QuestionClassifierNodeType>> = ({
             required: false,
           }],
           values: { '#files#': visionFiles },
-          onChange: keyValue => setVisionFiles((keyValue as any)['#files#']),
+          onChange: keyValue => setVisionFiles(keyValue['#files#']),
         },
       )
     }

@@ -202,7 +202,7 @@ const Panel: FC<NodePanelProps<KnowledgeRetrievalNodeType>> = ({
                   required: true,
                 }],
                 values: { query },
-                onChange: keyValue => setQuery((keyValue as any).query),
+                onChange: keyValue => setQuery(keyValue.query),
               },
             ]}
             runningStatus={runningStatus}

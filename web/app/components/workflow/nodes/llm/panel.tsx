@@ -98,7 +98,7 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
             required: false,
           }],
           values: { '#context#': contexts },
-          onChange: keyValue => setContexts((keyValue as any)['#context#']),
+          onChange: keyValue => setContexts(keyValue['#context#']),
         },
       )
     }

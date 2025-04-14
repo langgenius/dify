@@ -1,3 +1,4 @@
+import type { ChangeEvent } from 'react'
 import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
@@ -58,7 +59,7 @@ const TextAreaWithButton = ({
     setIsSettingsOpen(false)
   }
 
-  function handleTextChange(event: any) {
+  function handleTextChange(event: ChangeEvent<HTMLTextAreaElement>) {
     setText(event.target.value)
   }
 
