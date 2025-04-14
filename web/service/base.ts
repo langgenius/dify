@@ -385,11 +385,11 @@ export const ssePost = (
     options.body = JSON.stringify(body)
 
   const accessToken = getAccessToken(isPublicAPI)
-  ;(options.headers as Headers).set('Authorization', `Bearer ${accessToken}`)
+    ; (options.headers as Headers).set('Authorization', `Bearer ${accessToken}`)
 
   globalThis.fetch(urlWithPrefix, options as RequestInit)
     .then((res) => {
-      if (!/^(2|3)\d{2}$/.test(String(res.status))) {
+      if (!/^[23]\d{2}$/.test(String(res.status))) {
         if (res.status === 401) {
           refreshAccessTokenOrRelogin(TIME_OUT).then(() => {
             ssePost(url, fetchOptions, otherOptions)

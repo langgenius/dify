@@ -109,10 +109,7 @@ export const userInputsFormToPromptVariables = (useInputs: UserInputFormItem[] |
 export const promptVariablesToUserInputsForm = (promptVariables: PromptVariable[]) => {
   const userInputs: UserInputFormItem[] = []
   promptVariables.filter(({ key, name }) => {
-    if (key && key.trim() && name && name.trim())
-      return true
-
-    return false
+    return key && key.trim() && name && name.trim()
   }).forEach((item: any) => {
     if (item.type === 'string' || item.type === 'paragraph') {
       userInputs.push({
