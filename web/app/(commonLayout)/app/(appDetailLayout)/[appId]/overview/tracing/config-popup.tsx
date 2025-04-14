@@ -124,7 +124,7 @@ const ConfigPopup: FC<PopupProps> = ({
   )
 
   const configuredProviderPanel = () => {
-    const configuredPanels: any[] = []
+    const configuredPanels: JSX.Element[] = []
 
     if (langSmithConfig)
       configuredPanels.push(langSmithPanel)
@@ -139,7 +139,7 @@ const ConfigPopup: FC<PopupProps> = ({
   }
 
   const moreProviderPanel = () => {
-    const notConfiguredPanels: any[] = []
+    const notConfiguredPanels: JSX.Element[] = []
 
     if (!langSmithConfig)
       notConfiguredPanels.push(langSmithPanel)

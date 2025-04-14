@@ -69,7 +69,7 @@ const CardWrapper = ({
         {
           isShowInstallFromMarketplace && (
             <InstallFromMarketplace
-              manifest={plugin as any}
+              manifest={plugin}
               uniqueIdentifier={plugin.latest_package_identifier}
               onClose={hideInstallFromMarketplace}
               onSuccess={hideInstallFromMarketplace}

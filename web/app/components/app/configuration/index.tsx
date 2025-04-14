@@ -227,7 +227,7 @@ const Configuration: FC = () => {
   }, [modelModeType])
 
   const [dataSets, setDataSets] = useState<DataSet[]>([])
-  const contextVar = modelConfig.configs.prompt_variables.find((item: any) => item.is_context_var)?.key
+  const contextVar = modelConfig.configs.prompt_variables.find(item => item.is_context_var)?.key
   const hasSetContextVar = !!contextVar
   const [isShowSelectDataSet, { setTrue: showSelectDataSet, setFalse: hideSelectDataSet }] = useBoolean(false)
   const selectedIds = dataSets.map(item => item.id)
@@ -245,7 +245,7 @@ const Configuration: FC = () => {
     formattingChangedDispatcher()
     let newDatasets = data
     if (data.find(item => !item.name)) { // has not loaded selected dataset
-      const newSelected = produce(data, (draft: any) => {
+      const newSelected = produce(data, (draft) => {
         data.forEach((item, index) => {
           if (!item.name) { // not fetched database
             const newItem = dataSets.find(i => i.id === item.id)
@@ -513,7 +513,7 @@ const Configuration: FC = () => {
           if (modelConfig.chat_prompt_config && modelConfig.chat_prompt_config.prompt.length > 0)
             setChatPromptConfig(modelConfig.chat_prompt_config)
           else
-            setChatPromptConfig(clone(DEFAULT_CHAT_PROMPT_CONFIG) as any)
+            setChatPromptConfig(clone(DEFAULT_CHAT_PROMPT_CONFIG))
           setCompletionPromptConfig(modelConfig.completion_prompt_config || clone(DEFAULT_COMPLETION_PROMPT_CONFIG) as any)
           setCanReturnToSimpleMode(false)
         }

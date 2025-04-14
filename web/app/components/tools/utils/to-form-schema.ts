@@ -78,7 +78,7 @@ export const generateFormValue = (value: Record<string, any>, formSchemas: { var
 }
 
 export const getPlainValue = (value: Record<string, any>) => {
-  const plainValue = { ...value } as any
+  const plainValue = { ...value }
   Object.keys(plainValue).forEach((key) => {
     plainValue[key] = value[key].value
   })
