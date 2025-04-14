@@ -286,9 +286,9 @@ const handleStream = (
 
 const baseFetch = base
 
-export const upload = (options: any, isPublicAPI?: boolean, url?: string, searchParams?: string): Promise<any> => {
+export const upload = async (options: any, isPublicAPI?: boolean, url?: string, searchParams?: string): Promise<any> => {
   const urlPrefix = isPublicAPI ? PUBLIC_API_PREFIX : API_PREFIX
-  const token = getAccessToken(isPublicAPI)
+  const token = await getAccessToken(isPublicAPI)
   const defaultOptions = {
     method: 'POST',
     url: (url ? `${urlPrefix}${url}` : `${urlPrefix}/files/upload`) + (searchParams || ''),
@@ -323,7 +323,7 @@ export const upload = (options: any, isPublicAPI?: boolean, url?: string, search
   })
 }
 
-export const ssePost = (
+export const ssePost = async (
   url: string,
   fetchOptions: FetchOptionType,
   otherOptions: IOtherOptions,
@@ -384,7 +384,7 @@ export const ssePost = (
   if (body)
     options.body = JSON.stringify(body)
 
-  const accessToken = getAccessToken(isPublicAPI)
+  const accessToken = await getAccessToken(isPublicAPI)
     ; (options.headers as Headers).set('Authorization', `Bearer ${accessToken}`)
 
   globalThis.fetch(urlWithPrefix, options as RequestInit)

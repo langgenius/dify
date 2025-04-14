@@ -15,7 +15,7 @@ import type {
   Feedback,
 } from '../types'
 import { CONVERSATION_ID_INFO } from '../constants'
-import { buildChatItemTree, getProcessedInputsFromUrlParams } from '../utils'
+import { buildChatItemTree, getProcessedInputsFromUrlParams, getProcessedSystemVariablesFromUrlParams } from '../utils'
 import { getProcessedFilesFromResponse } from '../../file-uploader/utils'
 import {
   fetchAppInfo,
@@ -72,23 +72,36 @@ export const useEmbeddedChatbot = () => {
   }, [appInfo])
   const appId = useMemo(() => appData?.app_id, [appData])
 
+  const [userId, setUserId] = useState<string>()
+  useEffect(() => {
+    getProcessedSystemVariablesFromUrlParams().then(({ user_id }) => {
+      setUserId(user_id)
+    })
+  }, [])
+
   useEffect(() => {
     if (appInfo?.site.default_language)
       changeLanguage(appInfo.site.default_language)
   }, [appInfo])
 
-  const [conversationIdInfo, setConversationIdInfo] = useLocalStorageState<Record<string, string>>(CONVERSATION_ID_INFO, {
+  const [conversationIdInfo, setConversationIdInfo] = useLocalStorageState<Record<string, Record<string, string>>>(CONVERSATION_ID_INFO, {
     defaultValue: {},
   })
-  const currentConversationId = useMemo(() => conversationIdInfo?.[appId || ''] || '', [appId, conversationIdInfo])
+  const currentConversationId = useMemo(() => conversationIdInfo?.[appId || '']?.[userId || 'DEFAULT'] || '', [appId, conversationIdInfo, userId])
   const handleConversationIdInfoChange = useCallback((changeConversationId: string) => {
     if (appId) {
+      let prevValue = conversationIdInfo?.[appId || '']
+      if (typeof prevValue === 'string')
+        prevValue = {}
       setConversationIdInfo({
         ...conversationIdInfo,
-        [appId || '']: changeConversationId,
+        [appId || '']: {
+          ...prevValue,
+          [userId || 'DEFAULT']: changeConversationId,
+        },
       })
     }
-  }, [appId, conversationIdInfo, setConversationIdInfo])
+  }, [appId, conversationIdInfo, setConversationIdInfo, userId])
 
   const [newConversationId, setNewConversationId] = useState('')
   const chatShouldReloadKey = useMemo(() => {

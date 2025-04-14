@@ -3,6 +3,8 @@ import ky from 'ky'
 import type { IOtherOptions } from './base'
 import Toast from '@/app/components/base/toast'
 import { API_PREFIX, MARKETPLACE_API_PREFIX, PUBLIC_API_PREFIX } from '@/config'
+import { getInitialTokenV2, isTokenV1 } from '@/app/components/share/utils'
+import { getProcessedSystemVariablesFromUrlParams } from '@/app/components/base/chat/utils'
 
 const TIME_OUT = 100000
 
@@ -67,44 +69,34 @@ const beforeErrorToast = (otherOptions: IOtherOptions): BeforeErrorHook => {
   }
 }
 
-export const getPublicToken = () => {
-  let token = ''
-  const sharedToken = globalThis.location.pathname.split('/').slice(-1)[0]
-  const accessToken = localStorage.getItem('token') || JSON.stringify({ [sharedToken]: '' })
-  let accessTokenJson = { [sharedToken]: '' }
-  try {
-    accessTokenJson = JSON.parse(accessToken)
-  }
-  catch { }
-  token = accessTokenJson[sharedToken]
-  return token || ''
-}
-
-export function getAccessToken(isPublicAPI?: boolean) {
+export async function getAccessToken(isPublicAPI?: boolean) {
   if (isPublicAPI) {
     const sharedToken = globalThis.location.pathname.split('/').slice(-1)[0]
-    const accessToken = localStorage.getItem('token') || JSON.stringify({ [sharedToken]: '' })
-    let accessTokenJson = { [sharedToken]: '' }
+    const userId = (await getProcessedSystemVariablesFromUrlParams()).user_id
+    const accessToken = localStorage.getItem('token') || JSON.stringify({ version: 2 })
+    let accessTokenJson: Record<string, any> = { version: 2 }
     try {
       accessTokenJson = JSON.parse(accessToken)
+      if (isTokenV1(accessTokenJson))
+        accessTokenJson = getInitialTokenV2()
     }
     catch {
 
     }
-    return accessTokenJson[sharedToken]
+    return accessTokenJson[sharedToken]?.[userId || 'DEFAULT']
   }
   else {
     return localStorage.getItem('console_token') || ''
   }
 }
 
-const beforeRequestPublicAuthorization: BeforeRequestHook = (request) => {
-  const token = getAccessToken(true)
+const beforeRequestPublicAuthorization: BeforeRequestHook = async (request) => {
+  const token = await getAccessToken(true)
   request.headers.set('Authorization', `Bearer ${token}`)
 }
 
-const beforeRequestAuthorization: BeforeRequestHook = (request) => {
-  const accessToken = getAccessToken()
+const beforeRequestAuthorization: BeforeRequestHook = async (request) => {
+  const accessToken = await getAccessToken()
   request.headers.set('Authorization', `Bearer ${accessToken}`)
 }
 
