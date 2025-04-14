@@ -7,6 +7,7 @@ from models.workflow import WorkflowNodeExecution
 
 class WorkflowNodeExecutionCriteria(TypedDict, total=False):
     """Criteria for filtering WorkflowNodeExecution instances."""
+
     workflow_run_id: str
     node_execution_id: str
     created_at_before: datetime
@@ -64,7 +65,7 @@ class WorkflowNodeExecutionRepository(Protocol):
         self,
         workflow_run_id: str,
         order_by: Optional[str] = None,
-        order_direction: Optional[Literal["asc", "desc"]] = None
+        order_direction: Optional[Literal["asc", "desc"]] = None,
     ) -> Sequence[WorkflowNodeExecution]:
         """
         Retrieve all WorkflowNodeExecution instances for a specific workflow run.
@@ -79,10 +80,7 @@ class WorkflowNodeExecutionRepository(Protocol):
         """
         ...
 
-    def get_running_executions(
-        self,
-        workflow_run_id: str
-    ) -> Sequence[WorkflowNodeExecution]:
+    def get_running_executions(self, workflow_run_id: str) -> Sequence[WorkflowNodeExecution]:
         """
         Retrieve all running WorkflowNodeExecution instances for a specific workflow run.
 
@@ -130,7 +128,7 @@ class WorkflowNodeExecutionRepository(Protocol):
         order_by: Optional[str] = None,
         order_direction: Optional[Literal["asc", "desc"]] = None,
         limit: Optional[int] = None,
-        offset: Optional[int] = None
+        offset: Optional[int] = None,
     ) -> Sequence[WorkflowNodeExecution]:
         """
         Find WorkflowNodeExecution instances matching the given criteria.

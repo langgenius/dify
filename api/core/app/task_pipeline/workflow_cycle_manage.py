@@ -49,6 +49,7 @@ from core.file import FILE_MODEL_IDENTITY, File
 from core.model_runtime.utils.encoders import jsonable_encoder
 from core.ops.entities.trace_entity import TraceTaskName
 from core.ops.ops_trace_manager import TraceQueueManager, TraceTask
+from core.repository import RepositoryFactory, WorkflowNodeExecutionRepository
 from core.tools.tool_manager import ToolManager
 from core.workflow.entities.node_entities import NodeRunMetadataKey
 from core.workflow.enums import SystemVariableKey
@@ -80,9 +81,8 @@ class WorkflowCycleManage:
         self._application_generate_entity = application_generate_entity
         self._workflow_system_variables = workflow_system_variables
 
-        # TODO: Inject repository factory or create repository with appropriate context
-        # For now, we'll keep using the cache and session approach, but this should be replaced
-        # with proper repository usage in the future
+        # We'll still keep the cache for backward compatibility and performance
+        # but use the repository for database operations
 
     def _handle_workflow_run_start(
         self,
@@ -258,37 +258,24 @@ class WorkflowCycleManage:
         workflow_run.finished_at = datetime.now(UTC).replace(tzinfo=None)
         workflow_run.exceptions_count = exceptions_count
 
-        # TODO: Replace with repository pattern
-        # This should use the repository to find running executions for a workflow run
-        # Example:
-        # workflow_node_execution_repository = RepositoryFactory.create_repository(
-        #     "workflow_node_execution",
-        #     params={
-        #         "tenant_id": workflow_run.tenant_id,
-        #         "app_id": workflow_run.app_id,
-        #         "session": session
-        #     }
-        # )
-        # criteria = WorkflowNodeExecutionCriteria(
-        #     workflow_run_id=workflow_run.id,
-        #     status=WorkflowNodeExecutionStatus.RUNNING.value
-        # )
-        # running_workflow_node_executions = workflow_node_execution_repository.find_by_criteria(criteria)
-
-        # For now, keep using direct database access
-        stmt = select(WorkflowNodeExecution.node_execution_id).where(
-            WorkflowNodeExecution.tenant_id == workflow_run.tenant_id,
-            WorkflowNodeExecution.app_id == workflow_run.app_id,
-            WorkflowNodeExecution.workflow_id == workflow_run.workflow_id,
-            WorkflowNodeExecution.triggered_from == WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN.value,
-            WorkflowNodeExecution.workflow_run_id == workflow_run.id,
-            WorkflowNodeExecution.status == WorkflowNodeExecutionStatus.RUNNING.value,
+        # Use repository to find running executions for a workflow run
+        workflow_node_execution_repository = cast(
+            WorkflowNodeExecutionRepository,
+            RepositoryFactory.create_repository(
+                "workflow_node_execution",
+                params={"tenant_id": workflow_run.tenant_id, "app_id": workflow_run.app_id, "session": session},
+            ),
         )
-        ids = session.scalars(stmt).all()
-        # Use self._get_workflow_node_execution here to make sure the cache is updated
-        running_workflow_node_executions = [
-            self._get_workflow_node_execution(session=session, node_execution_id=id) for id in ids if id
-        ]
+
+        # Get running executions for this workflow run
+        running_workflow_node_executions = workflow_node_execution_repository.get_running_executions(
+            workflow_run_id=workflow_run.id
+        )
+
+        # Update the cache with the retrieved executions
+        for execution in running_workflow_node_executions:
+            if execution.node_execution_id:
+                self._workflow_node_executions[execution.node_execution_id] = execution
 
         for workflow_node_execution in running_workflow_node_executions:
             now = datetime.now(UTC).replace(tzinfo=None)
@@ -337,21 +324,15 @@ class WorkflowCycleManage:
         )
         workflow_node_execution.created_at = datetime.now(UTC).replace(tzinfo=None)
 
-        # TODO: Replace with repository pattern
-        # This should use the repository to save the workflow node execution
-        # Example:
-        # workflow_node_execution_repository = RepositoryFactory.create_repository(
-        #     "workflow_node_execution",
-        #     params={
-        #         "tenant_id": workflow_run.tenant_id,
-        #         "app_id": workflow_run.app_id,
-        #         "session": session
-        #     }
-        # )
-        # workflow_node_execution_repository.save(workflow_node_execution)
-
-        # For now, keep using direct database access
-        session.add(workflow_node_execution)
+        # Use repository to save the workflow node execution
+        workflow_node_execution_repository = cast(
+            WorkflowNodeExecutionRepository,
+            RepositoryFactory.create_repository(
+                "workflow_node_execution",
+                params={"tenant_id": workflow_run.tenant_id, "app_id": workflow_run.app_id, "session": session},
+            ),
+        )
+        workflow_node_execution_repository.save(workflow_node_execution)
 
         self._workflow_node_executions[event.node_execution_id] = workflow_node_execution
         return workflow_node_execution
@@ -380,21 +361,19 @@ class WorkflowCycleManage:
         workflow_node_execution.finished_at = finished_at
         workflow_node_execution.elapsed_time = elapsed_time
 
-        # TODO: Replace with repository pattern
-        # This should use the repository to update the workflow node execution
-        # Example:
-        # workflow_node_execution_repository = RepositoryFactory.create_repository(
-        #     "workflow_node_execution",
-        #     params={
-        #         "tenant_id": workflow_node_execution.tenant_id,
-        #         "app_id": workflow_node_execution.app_id,
-        #         "session": session
-        #     }
-        # )
-        # workflow_node_execution_repository.update(workflow_node_execution)
-
-        # For now, keep using direct database access
-        workflow_node_execution = session.merge(workflow_node_execution)
+        # Use repository to update the workflow node execution
+        workflow_node_execution_repository = cast(
+            WorkflowNodeExecutionRepository,
+            RepositoryFactory.create_repository(
+                "workflow_node_execution",
+                params={
+                    "tenant_id": workflow_node_execution.tenant_id,
+                    "app_id": workflow_node_execution.app_id,
+                    "session": session,
+                },
+            ),
+        )
+        workflow_node_execution_repository.update(workflow_node_execution)
         return workflow_node_execution
 
     def _handle_workflow_node_execution_failed(
@@ -985,25 +964,25 @@ class WorkflowCycleManage:
         return workflow_run
 
     def _get_workflow_node_execution(self, session: Session, node_execution_id: str) -> WorkflowNodeExecution:
-        # TODO: Replace with repository pattern
-        # This should use the repository to get a workflow node execution by node_execution_id
-        # Example:
-        # workflow_node_execution_repository = RepositoryFactory.create_repository(
-        #     "workflow_node_execution",
-        #     params={
-        #         "session": session
-        #     }
-        # )
-        # execution = workflow_node_execution_repository.get_by_node_execution_id(node_execution_id)
-        # if not execution:
-        #     raise ValueError(f"Workflow node execution not found: {node_execution_id}")
-        # return execution
+        # First check the cache for performance
+        if node_execution_id in self._workflow_node_executions:
+            cached_execution = self._workflow_node_executions[node_execution_id]
+            # Merge with session to ensure it's attached to the current session
+            return session.merge(cached_execution)
 
-        # For now, keep using the cache and direct database access
-        if node_execution_id not in self._workflow_node_executions:
+        # If not in cache, use repository to get by node_execution_id
+        workflow_node_execution_repository = cast(
+            WorkflowNodeExecutionRepository,
+            RepositoryFactory.create_repository("workflow_node_execution", params={"session": session}),
+        )
+        execution = workflow_node_execution_repository.get_by_node_execution_id(node_execution_id)
+
+        if not execution:
             raise ValueError(f"Workflow node execution not found: {node_execution_id}")
-        cached_workflow_node_execution = self._workflow_node_executions[node_execution_id]
-        return session.merge(cached_workflow_node_execution)
+
+        # Update cache
+        self._workflow_node_executions[node_execution_id] = execution
+        return execution
 
     def _handle_agent_log(self, task_id: str, event: QueueAgentLogEvent) -> AgentLogStreamResponse:
         """

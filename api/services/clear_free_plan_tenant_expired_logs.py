@@ -3,6 +3,7 @@ import json
 import logging
 import time
 from concurrent.futures import ThreadPoolExecutor
+from typing import cast
 
 import click
 from flask import Flask, current_app
@@ -10,11 +11,12 @@ from sqlalchemy.orm import Session
 
 from configs import dify_config
 from core.model_runtime.utils.encoders import jsonable_encoder
+from core.repository import RepositoryFactory, WorkflowNodeExecutionCriteria, WorkflowNodeExecutionRepository
 from extensions.ext_database import db
 from extensions.ext_storage import storage
 from models.account import Tenant
 from models.model import App, Conversation, Message
-from models.workflow import WorkflowNodeExecution, WorkflowRun
+from models.workflow import WorkflowRun
 from services.billing_service import BillingService
 
 logger = logging.getLogger(__name__)
@@ -107,33 +109,18 @@ class ClearFreePlanTenantExpiredLogs:
 
             while True:
                 with Session(db.engine).no_autoflush as session:
-                    # TODO: Replace with repository pattern
-                    # This should use the repository to query and delete workflow node executions
-                    # Example:
-                    # workflow_node_execution_repository = RepositoryFactory.create_repository(
-                    #     "workflow_node_execution",
-                    #     params={
-                    #         "tenant_id": tenant_id,
-                    #         "session": session
-                    #     }
-                    # )
-                    # criteria = WorkflowNodeExecutionCriteria(
-                    #     created_at_before=datetime.datetime.now() - datetime.timedelta(days=days)
-                    # )
-                    # workflow_node_executions = workflow_node_execution_repository.find_by_criteria(
-                    #     criteria=criteria,
-                    #     limit=batch
-                    # )
-
-                    # For now, keep using direct database access
-                    workflow_node_executions = (
-                        session.query(WorkflowNodeExecution)
-                        .filter(
-                            WorkflowNodeExecution.tenant_id == tenant_id,
-                            WorkflowNodeExecution.created_at < datetime.datetime.now() - datetime.timedelta(days=days),
-                        )
-                        .limit(batch)
-                        .all()
+                    # Use repository to query workflow node executions
+                    workflow_node_execution_repository = cast(
+                        WorkflowNodeExecutionRepository,
+                        RepositoryFactory.create_repository(
+                            "workflow_node_execution", params={"tenant_id": tenant_id, "session": session}
+                        ),
+                    )
+                    criteria = WorkflowNodeExecutionCriteria(
+                        created_at_before=datetime.datetime.now() - datetime.timedelta(days=days)
+                    )
+                    workflow_node_executions = workflow_node_execution_repository.find_by_criteria(
+                        criteria=criteria, limit=batch
                     )
 
                     if len(workflow_node_executions) == 0:
@@ -153,16 +140,9 @@ class ClearFreePlanTenantExpiredLogs:
                         workflow_node_execution.id for workflow_node_execution in workflow_node_executions
                     ]
 
-                    # TODO: Use repository to delete workflow node executions
-                    # Example:
-                    # for execution in workflow_node_executions:
-                    #     workflow_node_execution_repository.delete(execution.id)
-
-                    # For now, keep using direct database access
-                    session.query(WorkflowNodeExecution).filter(
-                        WorkflowNodeExecution.id.in_(workflow_node_execution_ids),
-                    ).delete(synchronize_session=False)
-                    session.commit()
+                    # Use repository to delete workflow node executions
+                    for execution in workflow_node_executions:
+                        workflow_node_execution_repository.delete(execution.id)
 
                     click.echo(
                         click.style(

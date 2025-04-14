@@ -1,14 +1,14 @@
 import threading
-from typing import Optional
+from typing import Optional, cast
 
 import contexts
+from core.repository import RepositoryFactory, WorkflowNodeExecutionRepository
 from extensions.ext_database import db
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
 from models.enums import WorkflowRunTriggeredFrom
 from models.model import App
 from models.workflow import (
     WorkflowNodeExecution,
-    WorkflowNodeExecutionTriggeredFrom,
     WorkflowRun,
 )
 
@@ -127,35 +127,17 @@ class WorkflowRunService:
         if not workflow_run:
             return []
 
-        # TODO: Replace with repository pattern
-        # This should use the repository to get workflow node executions for a workflow run
-        # Example:
-        # workflow_node_execution_repository = RepositoryFactory.create_repository(
-        #     "workflow_node_execution",
-        #     params={
-        #         "tenant_id": app_model.tenant_id,
-        #         "app_id": app_model.id,
-        #         "session": db.session
-        #     }
-        # )
-        # node_executions = workflow_node_execution_repository.get_by_workflow_run(
-        #     workflow_run_id=run_id,
-        #     order_by="index",
-        #     order_direction="desc"
-        # )
-
-        # For now, keep using direct database access
-        node_executions = (
-            db.session.query(WorkflowNodeExecution)
-            .filter(
-                WorkflowNodeExecution.tenant_id == app_model.tenant_id,
-                WorkflowNodeExecution.app_id == app_model.id,
-                WorkflowNodeExecution.workflow_id == workflow_run.workflow_id,
-                WorkflowNodeExecution.triggered_from == WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN.value,
-                WorkflowNodeExecution.workflow_run_id == run_id,
-            )
-            .order_by(WorkflowNodeExecution.index.desc())
-            .all()
+        # Use repository to get workflow node executions for a workflow run
+        workflow_node_execution_repository = cast(
+            WorkflowNodeExecutionRepository,
+            RepositoryFactory.create_repository(
+                "workflow_node_execution",
+                params={"tenant_id": app_model.tenant_id, "app_id": app_model.id, "session": db.session},
+            ),
+        )
+        node_executions = workflow_node_execution_repository.get_by_workflow_run(
+            workflow_run_id=run_id, order_by="index", order_direction="desc"
         )
 
-        return node_executions
+        # Convert Sequence to list for type compatibility
+        return list(node_executions)

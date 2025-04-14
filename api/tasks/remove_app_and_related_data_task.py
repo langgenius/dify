@@ -1,12 +1,14 @@
 import logging
 import time
 from collections.abc import Callable
+from typing import cast
 
 import click
 from celery import shared_task  # type: ignore
 from sqlalchemy import delete
 from sqlalchemy.exc import SQLAlchemyError
 
+from core.repository import RepositoryFactory, WorkflowNodeExecutionCriteria, WorkflowNodeExecutionRepository
 from extensions.ext_database import db
 from models.dataset import AppDatasetJoin
 from models.model import (
@@ -30,7 +32,7 @@ from models.model import (
 )
 from models.tools import WorkflowToolProvider
 from models.web import PinnedConversation, SavedMessage
-from models.workflow import ConversationVariable, Workflow, WorkflowAppLog, WorkflowNodeExecution, WorkflowRun
+from models.workflow import ConversationVariable, Workflow, WorkflowAppLog, WorkflowRun
 
 
 @shared_task(queue="app_deletion", bind=True, max_retries=3)
@@ -187,33 +189,31 @@ def _delete_app_workflow_runs(tenant_id: str, app_id: str):
 
 
 def _delete_app_workflow_node_executions(tenant_id: str, app_id: str):
-    # TODO: Replace with repository pattern
-    # This should use the repository to delete workflow node executions for an app
-    # Example:
-    # workflow_node_execution_repository = RepositoryFactory.create_repository(
-    #     "workflow_node_execution",
-    #     params={
-    #         "tenant_id": tenant_id,
-    #         "app_id": app_id,
-    #         "session": db.session
-    #     }
-    # )
-    # criteria = WorkflowNodeExecutionCriteria()
-    # deleted_count = workflow_node_execution_repository.delete_by_criteria(criteria)
-    # logging.info(click.style(f"Deleted {deleted_count} workflow node executions for app {app_id}", fg="green"))
+    # Use repository to delete workflow node executions for an app
 
-    # For now, keep using direct database access
-    def del_workflow_node_execution(workflow_node_execution_id: str):
-        db.session.query(WorkflowNodeExecution).filter(WorkflowNodeExecution.id == workflow_node_execution_id).delete(
-            synchronize_session=False
-        )
-
-    _delete_records(
-        """select id from workflow_node_executions where tenant_id=:tenant_id and app_id=:app_id limit 1000""",
-        {"tenant_id": tenant_id, "app_id": app_id},
-        del_workflow_node_execution,
-        "workflow node execution",
+    workflow_node_execution_repository = cast(
+        WorkflowNodeExecutionRepository,
+        RepositoryFactory.create_repository(
+            "workflow_node_execution", params={"tenant_id": tenant_id, "app_id": app_id, "session": db.session}
+        ),
     )
+
+    # Create empty criteria - the repository implementation will filter by tenant_id and app_id
+    # since they were provided in the params
+    criteria = WorkflowNodeExecutionCriteria()
+
+    # Delete in batches to avoid memory issues
+    while True:
+        # Find a batch of executions
+        executions = workflow_node_execution_repository.find_by_criteria(criteria, limit=1000)
+        if not executions:
+            break
+
+        # Delete each execution
+        for execution in executions:
+            workflow_node_execution_repository.delete(execution.id)
+
+        logging.info(click.style(f"Deleted batch of workflow node executions for app {app_id}", fg="green"))
 
 
 def _delete_app_workflow_app_logs(tenant_id: str, app_id: str):
