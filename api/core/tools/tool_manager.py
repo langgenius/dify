@@ -1,10 +1,10 @@
 import json
 import logging
 import mimetypes
-from collections.abc import Generator
+from collections.abc import Generator, Mapping
 from os import listdir, path
 from threading import Lock
-from typing import TYPE_CHECKING, Any, Union, cast
+from typing import TYPE_CHECKING, Any, Optional, Union, cast
 
 from yarl import URL
 
@@ -301,6 +301,7 @@ class ToolManager:
         tenant_id: str,
         app_id: str,
         agent_tool: AgentToolEntity,
+        variables_inputs: Optional[Mapping[str, Any]] = None,
         invoke_from: InvokeFrom = InvokeFrom.DEBUGGER,
     ) -> Tool:
         """
@@ -330,6 +331,11 @@ class ToolManager:
                 raise ValueError(f"file type parameter {parameter.name} not supported in agent")
 
             if parameter.form == ToolParameter.ToolParameterForm.FORM:
+                if variables_inputs:
+                    for key, value in variables_inputs.items():
+                        agent_tool.tool_parameters[parameter.name] = agent_tool.tool_parameters[parameter.name].replace(
+                            f"{{{{{key}}}}}", str(value)
+                        )
                 # save tool parameter to tool entity memory
                 value = parameter.init_frontend_parameter(agent_tool.tool_parameters.get(parameter.name))
                 runtime_parameters[parameter.name] = value
