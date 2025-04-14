@@ -123,7 +123,7 @@ const BeforeRunForm: FC<BeforeRunFormProps> = ({
           const value = formatValue(form.values[input.variable], input.type)
           submitData[input.variable] = value
         }
-        catch (e) {
+        catch {
           parseErrorJsonField = input.variable
         }
       })

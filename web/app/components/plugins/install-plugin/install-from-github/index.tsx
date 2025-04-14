@@ -102,7 +102,7 @@ const InstallFromGitHub: React.FC<InstallFromGitHubProps> = ({ updatePayload, on
         })
       }
     }
-    catch (error) {
+    catch {
       Toast.notify({
         type: 'error',
         message: t('plugin.error.fetchReleasesError'),
