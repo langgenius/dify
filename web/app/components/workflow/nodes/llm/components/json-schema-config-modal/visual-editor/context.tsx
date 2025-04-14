@@ -5,6 +5,7 @@ import {
 } from 'react'
 import { createVisualEditorStore } from './store'
 import { useMitt } from '@/hooks/use-mitt'
+import { noop } from 'lodash-es'
 
 type VisualEditorStore = ReturnType<typeof createVisualEditorStore>
 
@@ -30,8 +31,8 @@ export const VisualEditorContextProvider = ({ children }: VisualEditorProviderPr
 }
 
 export const MittContext = createContext<ReturnType<typeof useMitt>>({
-  emit: () => {},
-  useSubscribe: () => {},
+  emit: noop,
+  useSubscribe: noop,
 })
 
 export const MittProvider = ({ children }: { children: React.ReactNode }) => {
