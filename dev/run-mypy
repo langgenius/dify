@@ -2,10 +2,6 @@
 
 set -x
 
-if ! command -v mypy &> /dev/null; then
-    poetry install -C api --with dev
-fi
-
 # run mypy checks
-poetry run -C api \
+uv run --directory api --group dev \
   python -m mypy --install-types --non-interactive .
