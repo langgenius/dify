@@ -16,6 +16,7 @@ import useAvailableVarList from '@/app/components/workflow/nodes/_base/hooks/use
 import { VarType } from '@/app/components/workflow/types'
 import AppSelector from '@/app/components/plugins/plugin-detail-panel/app-selector'
 import ModelParameterModal from '@/app/components/plugins/plugin-detail-panel/model-selector'
+import { noop } from 'lodash-es'
 
 type Props = {
   readOnly: boolean
@@ -34,7 +35,7 @@ const InputVarList: FC<Props> = ({
   schema,
   value,
   onChange,
-  onOpen = () => { },
+  onOpen = noop,
   isSupportConstantValue,
   filterVar,
 }) => {
@@ -171,14 +172,14 @@ const InputVarList: FC<Props> = ({
 
           return (
             <div key={variable} className='space-y-1'>
-              <div className='flex items-center h-[18px] space-x-2'>
-                <span className='text-text-secondary code-sm-semibold'>{label[language] || label.en_US}</span>
-                <span className='text-text-tertiary system-xs-regular'>{paramType(type)}</span>
-                {required && <span className='text-util-colors-orange-dark-orange-dark-600 system-xs-regular'>Required</span>}
+              <div className='flex h-[18px] items-center space-x-2'>
+                <span className='code-sm-semibold text-text-secondary'>{label[language] || label.en_US}</span>
+                <span className='system-xs-regular text-text-tertiary'>{paramType(type)}</span>
+                {required && <span className='system-xs-regular text-util-colors-orange-dark-orange-dark-600'>Required</span>}
               </div>
               {isString && (
                 <Input
-                  className={cn(inputsIsFocus[variable] ? 'shadow-xs bg-gray-50 border-gray-300' : 'bg-gray-100 border-gray-100', 'rounded-lg px-3 py-[6px] border')}
+                  className={cn(inputsIsFocus[variable] ? 'border-gray-300 bg-gray-50 shadow-xs' : 'border-gray-100 bg-gray-100', 'rounded-lg border px-3 py-[6px]')}
                   value={varInput?.value as string || ''}
                   onChange={handleMixedTypeChange(variable)}
                   readOnly={readOnly}
@@ -235,7 +236,7 @@ const InputVarList: FC<Props> = ({
                   scope={scope}
                 />
               )}
-              {tooltip && <div className='text-text-tertiary body-xs-regular'>{tooltip[language] || tooltip.en_US}</div>}
+              {tooltip && <div className='body-xs-regular text-text-tertiary'>{tooltip[language] || tooltip.en_US}</div>}
             </div>
           )
         })

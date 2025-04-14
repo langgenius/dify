@@ -1,4 +1,4 @@
-import { Menu, Transition } from '@headlessui/react'
+import { Menu, MenuButton, MenuItem, MenuItems, Transition } from '@headlessui/react'
 import { RiArrowDownCircleLine, RiArrowRightSLine, RiVerifiedBadgeLine } from '@remixicon/react'
 import type { FC, MouseEvent } from 'react'
 import { Fragment, useCallback } from 'react'
@@ -19,10 +19,10 @@ import { useModalContext } from '@/context/modal-context'
 import { getDocDownloadUrl } from '@/service/common'
 
 enum DocName {
-  'SOC2_Type_I' = 'SOC2_Type_I',
-  'SOC2_Type_II' = 'SOC2_Type_II',
-  'ISO_27001' = 'ISO_27001',
-  'GDPR' = 'GDPR',
+  SOC2_Type_I = 'SOC2_Type_I',
+  SOC2_Type_II = 'SOC2_Type_II',
+  ISO_27001 = 'ISO_27001',
+  GDPR = 'GDPR',
 }
 
 type UpgradeOrDownloadProps = {
@@ -76,9 +76,9 @@ const UpgradeOrDownload: FC<UpgradeOrDownloadProps> = ({ doc_name }) => {
     downloadCompliance()
   }, [downloadCompliance])
   if (isCurrentPlanCanDownload) {
-    return <Button loading={isPending} disabled={isPending} size='small' variant='secondary' className='flex gap-[1px] items-center' onClick={handleDownloadClick}>
+    return <Button loading={isPending} disabled={isPending} size='small' variant='secondary' className='flex items-center gap-[1px]' onClick={handleDownloadClick}>
       <RiArrowDownCircleLine className='size-[14px] text-components-button-secondary-text-disabled' />
-      <span className='px-[3px] system-xs-medium text-components-button-secondary-text'>{t('common.operation.download')}</span>
+      <span className='system-xs-medium px-[3px] text-components-button-secondary-text'>{t('common.operation.download')}</span>
     </Button>
   }
   const upgradeTooltip: Record<Plan, string> = {
@@ -89,7 +89,7 @@ const UpgradeOrDownload: FC<UpgradeOrDownloadProps> = ({ doc_name }) => {
   }
   return <Tooltip asChild={false} popupContent={upgradeTooltip[plan.type]}>
     <PremiumBadge color='blue' allowHover={true} onClick={handlePlanClick}>
-      <SparklesSoft className='flex items-center py-[1px] pl-[3px] w-3.5 h-3.5 text-components-premium-badge-indigo-text-stop-0' />
+      <SparklesSoft className='flex h-3.5 w-3.5 items-center py-[1px] pl-[3px] text-components-premium-badge-indigo-text-stop-0' />
       <div className='system-xs-medium'>
         <span className='p-1'>
           {t('billing.upgradeBtn.encourageShort')}
@@ -106,18 +106,18 @@ export default function Compliance() {
 `
   const { t } = useTranslation()
 
-  return <Menu as="div" className="relative w-full h-full">
+  return <Menu as="div" className="relative h-full w-full">
     {
       ({ open }) => (
         <>
-          <Menu.Button className={
-            cn('flex items-center pl-3 pr-2 py-2 h-9 w-full group hover:bg-state-base-hover rounded-lg gap-1',
+          <MenuButton className={
+            cn('group flex h-9 w-full items-center gap-1 rounded-lg py-2 pl-3 pr-2 hover:bg-state-base-hover',
               open && 'bg-state-base-hover',
             )}>
-            <RiVerifiedBadgeLine className='flex-shrink-0 size-4 text-text-tertiary' />
-            <div className='flex-grow text-left system-md-regular text-text-secondary px-1'>{t('common.userProfile.compliance')}</div>
-            <RiArrowRightSLine className='shrink-0 size-[14px] text-text-tertiary' />
-          </Menu.Button>
+            <RiVerifiedBadgeLine className='size-4 shrink-0 text-text-tertiary' />
+            <div className='system-md-regular grow px-1 text-left text-text-secondary'>{t('common.userProfile.compliance')}</div>
+            <RiArrowRightSLine className='size-[14px] shrink-0 text-text-tertiary' />
+          </MenuButton>
           <Transition
             as={Fragment}
             enter="transition ease-out duration-100"
@@ -127,56 +127,56 @@ export default function Compliance() {
             leaveFrom="transform opacity-100 scale-100"
             leaveTo="transform opacity-0 scale-95"
           >
-            <Menu.Items
+            <MenuItems
               className={cn(
-                `absolute top-[1px] w-[337px] max-h-[70vh] overflow-y-scroll z-10 bg-components-panel-bg-blur backdrop-blur-[5px] border-[0.5px] border-components-panel-border
-                divide-y divide-divider-subtle origin-top-right rounded-xl focus:outline-none shadow-lg -translate-x-full
+                `absolute top-[1px] z-10 max-h-[70vh] w-[337px] origin-top-right -translate-x-full divide-y divide-divider-subtle overflow-y-scroll
+                rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-[5px] focus:outline-none
               `,
               )}
             >
               <div className="px-1 py-1">
-                <Menu.Item>
-                  {({ active }) => <div
+                <MenuItem>
+                  <div
                     className={cn(itemClassName, 'group justify-between',
-                      active && 'bg-state-base-hover',
+                      'data-[active]:bg-state-base-hover',
                     )}>
-                    <Soc2 className='flex-shrink-0 size-7' />
-                    <div className='system-md-regular flex-grow text-text-secondary px-1 truncate'>{t('common.compliance.soc2Type1')}</div>
+                    <Soc2 className='size-7 shrink-0' />
+                    <div className='system-md-regular grow truncate px-1 text-text-secondary'>{t('common.compliance.soc2Type1')}</div>
                     <UpgradeOrDownload doc_name={DocName.SOC2_Type_I} />
-                  </div>}
-                </Menu.Item>
-                <Menu.Item>
-                  {({ active }) => <div
+                  </div>
+                </MenuItem>
+                <MenuItem>
+                  <div
                     className={cn(itemClassName, 'group justify-between',
-                      active && 'bg-state-base-hover',
+                      'data-[active]:bg-state-base-hover',
                     )}>
-                    <Soc2 className='flex-shrink-0 size-7' />
-                    <div className='system-md-regular flex-grow text-text-secondary px-1 truncate'>{t('common.compliance.soc2Type2')}</div>
+                    <Soc2 className='size-7 shrink-0' />
+                    <div className='system-md-regular grow truncate px-1 text-text-secondary'>{t('common.compliance.soc2Type2')}</div>
                     <UpgradeOrDownload doc_name={DocName.SOC2_Type_II} />
-                  </div>}
-                </Menu.Item>
-                <Menu.Item>
-                  {({ active }) => <div
+                  </div>
+                </MenuItem>
+                <MenuItem>
+                  <div
                     className={cn(itemClassName, 'group justify-between',
-                      active && 'bg-state-base-hover',
+                      'data-[active]:bg-state-base-hover',
                     )}>
-                    <Iso className='flex-shrink-0 size-7' />
-                    <div className='system-md-regular flex-grow text-text-secondary px-1 truncate'>{t('common.compliance.iso27001')}</div>
+                    <Iso className='size-7 shrink-0' />
+                    <div className='system-md-regular grow truncate px-1 text-text-secondary'>{t('common.compliance.iso27001')}</div>
                     <UpgradeOrDownload doc_name={DocName.ISO_27001} />
-                  </div>}
-                </Menu.Item>
-                <Menu.Item>
-                  {({ active }) => <div
+                  </div>
+                </MenuItem>
+                <MenuItem>
+                  <div
                     className={cn(itemClassName, 'group justify-between',
-                      active && 'bg-state-base-hover',
+                      'data-[active]:bg-state-base-hover',
                     )}>
-                    <Gdpr className='flex-shrink-0 size-7' />
-                    <div className='system-md-regular flex-grow text-text-secondary px-1 truncate'>{t('common.compliance.gdpr')}</div>
+                    <Gdpr className='size-7 shrink-0' />
+                    <div className='system-md-regular grow truncate px-1 text-text-secondary'>{t('common.compliance.gdpr')}</div>
                     <UpgradeOrDownload doc_name={DocName.GDPR} />
-                  </div>}
-                </Menu.Item>
+                  </div>
+                </MenuItem>
               </div>
-            </Menu.Items>
+            </MenuItems>
           </Transition>
         </>
       )

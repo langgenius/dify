@@ -21,6 +21,8 @@ import {
 import AppIcon from '@/app/components/base/app-icon'
 import LogoAvatar from '@/app/components/base/logo/logo-embedded-chat-avatar'
 import AnswerIcon from '@/app/components/base/answer-icon'
+import SuggestedQuestions from '@/app/components/base/chat/chat/answer/suggested-questions'
+import { Markdown } from '@/app/components/base/markdown'
 import cn from '@/utils/classnames'
 
 const ChatWrapper = () => {
@@ -30,6 +32,7 @@ const ChatWrapper = () => {
     appPrevChatList,
     currentConversationId,
     currentConversationItem,
+    currentConversationInputs,
     inputsForms,
     newConversationInputs,
     newConversationInputsRef,
@@ -41,6 +44,9 @@ const ChatWrapper = () => {
     handleFeedback,
     currentChatInstanceRef,
     themeBuilder,
+    clearChatList,
+    setClearChatList,
+    setIsResponding,
   } = useEmbeddedChatbotContext()
   const appConfig = useMemo(() => {
     const config = appParams || {}
@@ -60,18 +66,20 @@ const ChatWrapper = () => {
     setTargetMessageId,
     handleSend,
     handleStop,
-    isResponding,
+    isResponding: respondingState,
     suggestedQuestions,
   } = useChat(
     appConfig,
     {
-      inputs: (currentConversationId ? currentConversationItem?.inputs : newConversationInputs) as any,
+      inputs: (currentConversationId ? currentConversationInputs : newConversationInputs) as any,
       inputsForm: inputsForms,
     },
     appPrevChatList,
     taskId => stopChatMessageResponding('', taskId, isInstalledApp, appId),
+    clearChatList,
+    setClearChatList,
   )
-  const inputsFormValue = currentConversationId ? currentConversationItem?.inputs : newConversationInputsRef?.current
+  const inputsFormValue = currentConversationId ? currentConversationInputs : newConversationInputsRef?.current
   const inputDisabled = useMemo(() => {
     let hasEmptyInput = ''
     let fileIsUploading = false
@@ -108,12 +116,15 @@ const ChatWrapper = () => {
     if (currentChatInstanceRef.current)
       currentChatInstanceRef.current.handleStop = handleStop
   }, [currentChatInstanceRef, handleStop])
+  useEffect(() => {
+    setIsResponding(respondingState)
+  }, [respondingState, setIsResponding])
 
   const doSend: OnSend = useCallback((message, files, isRegenerate = false, parentAnswer: ChatItem | null = null) => {
     const data: any = {
       query: message,
       files,
-      inputs: currentConversationId ? currentConversationItem?.inputs : newConversationInputs,
+      inputs: currentConversationId ? currentConversationInputs : newConversationInputs,
       conversation_id: currentConversationId,
       parent_message_id: (isRegenerate ? parentAnswer?.id : getLastAnswer(chatList)?.id) || null,
     }
@@ -127,16 +138,7 @@ const ChatWrapper = () => {
         isPublicAPI: !isInstalledApp,
       },
     )
-  }, [
-    chatList,
-    handleNewConversationCompleted,
-    handleSend,
-    currentConversationId,
-    currentConversationItem,
-    newConversationInputs,
-    isInstalledApp,
-    appId,
-  ])
+  }, [currentConversationId, currentConversationInputs, newConversationInputs, chatList, handleSend, isInstalledApp, appId, handleNewConversationCompleted])
 
   const doRegenerate = useCallback((chatItem: ChatItemInTree) => {
     const question = chatList.find(item => item.id === chatItem.parentMessageId)!
@@ -167,14 +169,35 @@ const ChatWrapper = () => {
 
   const welcome = useMemo(() => {
     const welcomeMessage = chatList.find(item => item.isOpeningStatement)
+    if (respondingState)
+      return null
     if (currentConversationId)
       return null
     if (!welcomeMessage)
       return null
     if (!collapsed && inputsForms.length > 0)
       return null
+    if (welcomeMessage.suggestedQuestions && welcomeMessage.suggestedQuestions?.length > 0) {
+      return (
+        <div className='flex h-[50vh] items-center justify-center px-4 py-12'>
+          <div className='flex max-w-[720px] grow gap-4'>
+            <AppIcon
+              size='xl'
+              iconType={appData?.site.icon_type}
+              icon={appData?.site.icon}
+              background={appData?.site.icon_background}
+              imageUrl={appData?.site.icon_url}
+            />
+            <div className='body-lg-regular grow rounded-2xl bg-chat-bubble-bg px-4 py-3 text-text-primary'>
+              <Markdown content={welcomeMessage.content} />
+              <SuggestedQuestions item={welcomeMessage} />
+            </div>
+          </div>
+        </div>
+      )
+    }
     return (
-      <div className={cn('h-[50vh] py-12 flex flex-col items-center justify-center gap-3')}>
+      <div className={cn('flex h-[50vh] flex-col items-center justify-center gap-3 py-12')}>
         <AppIcon
           size='xl'
           iconType={appData?.site.icon_type}
@@ -182,10 +205,12 @@ const ChatWrapper = () => {
           background={appData?.site.icon_background}
           imageUrl={appData?.site.icon_url}
         />
-        <div className='text-text-tertiary body-2xl-regular'>{welcomeMessage.content}</div>
+        <div className='max-w-[768px] px-4'>
+          <Markdown className='!body-2xl-regular !text-text-tertiary' content={welcomeMessage.content} />
+        </div>
       </div>
     )
-  }, [appData?.site.icon, appData?.site.icon_background, appData?.site.icon_type, appData?.site.icon_url, chatList, collapsed, currentConversationId, inputsForms.length])
+  }, [appData?.site.icon, appData?.site.icon_background, appData?.site.icon_type, appData?.site.icon_url, chatList, collapsed, currentConversationId, inputsForms.length, respondingState])
 
   const answerIcon = isDify()
     ? <LogoAvatar className='relative shrink-0' />
@@ -203,12 +228,12 @@ const ChatWrapper = () => {
       appData={appData}
       config={appConfig}
       chatList={messageList}
-      isResponding={isResponding}
-      chatContainerInnerClassName={cn('mx-auto w-full max-w-full tablet:px-4', isMobile && 'px-4')}
+      isResponding={respondingState}
+      chatContainerInnerClassName={cn('mx-auto w-full max-w-full pt-4 tablet:px-4', isMobile && 'px-4')}
       chatFooterClassName={cn('pb-4', !isMobile && 'rounded-b-2xl')}
-      chatFooterInnerClassName={cn('mx-auto w-full max-w-full tablet:px-4', isMobile && 'px-2')}
+      chatFooterInnerClassName={cn('mx-auto w-full max-w-full px-4', isMobile && 'px-2')}
       onSend={doSend}
-      inputs={currentConversationId ? currentConversationItem?.inputs as any : newConversationInputs}
+      inputs={currentConversationId ? currentConversationInputs as any : newConversationInputs}
       inputsForm={inputsForms}
       onRegenerate={doRegenerate}
       onStopResponding={handleStop}

@@ -10,8 +10,6 @@ a. Multi-tenant service: Unless explicitly authorized by Dify in writing, you ma
 b. LOGO and copyright information: In the process of using Dify's frontend, you may not remove or modify the LOGO or copyright information in the Dify console or applications. This restriction is inapplicable to uses of Dify that do not involve its frontend.
     - Frontend Definition: For the purposes of this license, the "frontend" of Dify includes all components located in the `web/` directory when running Dify from the raw source code, or the "web" image when running Dify with Docker.
 
-Please contact business@dify.ai by email to inquire about licensing matters.
-
 2. As a contributor, you should agree that:
 
 a. The producer can adjust the open-source agreement to be more strict or relaxed as deemed necessary.

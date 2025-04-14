@@ -15,7 +15,9 @@ from models.dataset import Document as DatasetDocument
 def disable_segments_from_index_task(segment_ids: list, dataset_id: str, document_id: str):
     """
     Async disable segments from index
-    :param segment_ids:
+    :param segment_ids: list of segment ids
+    :param dataset_id: dataset id
+    :param document_id: document id
 
     Usage: disable_segments_from_index_task.delay(segment_ids, dataset_id, document_id)
     """
@@ -24,15 +26,18 @@ def disable_segments_from_index_task(segment_ids: list, dataset_id: str, documen
     dataset = db.session.query(Dataset).filter(Dataset.id == dataset_id).first()
     if not dataset:
         logging.info(click.style("Dataset {} not found, pass.".format(dataset_id), fg="cyan"))
+        db.session.close()
         return
 
     dataset_document = db.session.query(DatasetDocument).filter(DatasetDocument.id == document_id).first()
 
     if not dataset_document:
         logging.info(click.style("Document {} not found, pass.".format(document_id), fg="cyan"))
+        db.session.close()
         return
     if not dataset_document.enabled or dataset_document.archived or dataset_document.indexing_status != "completed":
         logging.info(click.style("Document {} status is invalid, pass.".format(document_id), fg="cyan"))
+        db.session.close()
         return
     # sync index processor
     index_processor = IndexProcessorFactory(dataset_document.doc_form).init_index_processor()
@@ -48,6 +53,7 @@ def disable_segments_from_index_task(segment_ids: list, dataset_id: str, documen
     )
 
     if not segments:
+        db.session.close()
         return
 
     try:
@@ -74,3 +80,4 @@ def disable_segments_from_index_task(segment_ids: list, dataset_id: str, documen
         for segment in segments:
             indexing_cache_key = "segment_{}_indexing".format(segment.id)
             redis_client.delete(indexing_cache_key)
+        db.session.close()

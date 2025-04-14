@@ -1,7 +1,7 @@
-@import '../../themes/light';
-@import '../../themes/dark';
-@import '../../themes/markdown-light';
-@import '../../themes/markdown-dark';
+@use '../../themes/light';
+@use '../../themes/dark';
+@use '../../themes/markdown-light';
+@use '../../themes/markdown-dark';
 
 .markdown-body {
   -ms-text-size-adjust: 100%;
@@ -213,7 +213,7 @@
   display: block;
   width: max-content;
   max-width: 100%;
-  overflow: hidden;
+  overflow: auto;
   border: 1px solid var(--color-divider-regular);
   border-radius: 8px;
 }

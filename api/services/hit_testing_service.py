@@ -29,15 +29,6 @@ class HitTestingService:
         external_retrieval_model: dict,
         limit: int = 10,
     ) -> dict:
-        if dataset.available_document_count == 0 or dataset.available_segment_count == 0:
-            return {
-                "query": {
-                    "content": query,
-                    "tsne_position": {"x": 0, "y": 0},
-                },
-                "records": [],
-            }
-
         start = time.perf_counter()
 
         # get retrieval model , if the model is not setting , using default

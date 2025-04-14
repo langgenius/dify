@@ -3,13 +3,14 @@ import { RiArrowRightSLine } from '@remixicon/react'
 import Button from '@/app/components/base/button'
 import type {
   LoopDurationMap,
+  LoopVariableMap,
   NodeTracing,
 } from '@/types/workflow'
 import { Loop } from '@/app/components/base/icons/src/vender/workflow'
 
 type LoopLogTriggerProps = {
   nodeInfo: NodeTracing
-  onShowLoopResultList: (loopResultList: NodeTracing[][], loopResultDurationMap: LoopDurationMap) => void
+  onShowLoopResultList: (loopResultList: NodeTracing[][], loopResultDurationMap: LoopDurationMap, loopVariableMap: LoopVariableMap) => void
 }
 const LoopLogTrigger = ({
   nodeInfo,
@@ -35,21 +36,25 @@ const LoopLogTrigger = ({
   const handleOnShowLoopDetail = (e: React.MouseEvent<HTMLButtonElement>) => {
     e.stopPropagation()
     e.nativeEvent.stopImmediatePropagation()
-    onShowLoopResultList(nodeInfo.details || [], nodeInfo?.loopDurationMap || nodeInfo.execution_metadata?.loop_duration_map || {})
+    onShowLoopResultList(
+      nodeInfo.details || [],
+      nodeInfo?.loopDurationMap || nodeInfo.execution_metadata?.loop_duration_map || {},
+      nodeInfo.execution_metadata?.loop_variable_map || {},
+    )
   }
   return (
     <Button
-      className='flex items-center w-full self-stretch gap-2 px-3 py-2 bg-components-button-tertiary-bg-hover hover:bg-components-button-tertiary-bg-hover rounded-lg cursor-pointer border-none'
+      className='flex w-full cursor-pointer items-center gap-2 self-stretch rounded-lg border-none bg-components-button-tertiary-bg-hover px-3 py-2 hover:bg-components-button-tertiary-bg-hover'
       onClick={handleOnShowLoopDetail}
     >
-      <Loop className='w-4 h-4 text-components-button-tertiary-text shrink-0' />
-      <div className='flex-1 text-left system-sm-medium text-components-button-tertiary-text'>{t('workflow.nodes.loop.loop', { count: getCount(nodeInfo.details?.length, nodeInfo.metadata?.loop_length) })}{getErrorCount(nodeInfo.details) > 0 && (
+      <Loop className='h-4 w-4 shrink-0 text-components-button-tertiary-text' />
+      <div className='system-sm-medium flex-1 text-left text-components-button-tertiary-text'>{t('workflow.nodes.loop.loop', { count: getCount(nodeInfo.details?.length, nodeInfo.metadata?.loop_length) })}{getErrorCount(nodeInfo.details) > 0 && (
         <>
           {t('workflow.nodes.loop.comma')}
           {t('workflow.nodes.loop.error', { count: getErrorCount(nodeInfo.details) })}
         </>
       )}</div>
-      <RiArrowRightSLine className='w-4 h-4 text-components-button-tertiary-text shrink-0' />
+      <RiArrowRightSLine className='h-4 w-4 shrink-0 text-components-button-tertiary-text' />
     </Button>
   )
 }

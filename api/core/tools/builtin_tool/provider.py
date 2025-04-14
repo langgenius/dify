@@ -35,7 +35,7 @@ class BuiltinToolProviderController(ToolProviderController):
                 provider_yaml["credentials_for_provider"][credential_name]["name"] = credential_name
 
         credentials_schema = []
-        for credential in provider_yaml.get("credentials_for_provider", {}):
+        for credential in provider_yaml.get("credentials_for_provider", {}).values():
             credentials_schema.append(credential)
 
         super().__init__(
@@ -153,7 +153,7 @@ class BuiltinToolProviderController(ToolProviderController):
         """
         validate the credentials of the provider
 
-        :param tool_name: the name of the tool, defined in `get_tools`
+        :param user_id: use id
         :param credentials: the credentials of the tool
         """
         # validate credentials format
@@ -167,7 +167,7 @@ class BuiltinToolProviderController(ToolProviderController):
         """
         validate the credentials of the provider
 
-        :param tool_name: the name of the tool, defined in `get_tools`
+        :param user_id: use id
         :param credentials: the credentials of the tool
         """
         pass

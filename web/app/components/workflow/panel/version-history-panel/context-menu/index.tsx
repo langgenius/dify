@@ -43,11 +43,11 @@ const ContextMenu: FC<ContextMenuProps> = (props: ContextMenuProps) => {
     >
       <PortalToFollowElemTrigger>
         <Button size='small' className='px-1' onClick={handleClickTrigger}>
-          <RiMoreFill className='w-4 h-4' />
+          <RiMoreFill className='h-4 w-4' />
         </Button>
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent className='z-10'>
-        <div className='flex flex-col w-[184px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg shadow-shadow-shadow-5 backdrop-blur-[5px]'>
+        <div className='flex w-[184px] flex-col rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg shadow-shadow-shadow-5 backdrop-blur-[5px]'>
           <div className='flex flex-col p-1'>
             {
               options.map((option) => {
@@ -64,7 +64,7 @@ const ContextMenu: FC<ContextMenuProps> = (props: ContextMenuProps) => {
           {
             isShowDelete && (
               <>
-                <Divider type='horizontal' className='h-[1px] bg-divider-subtle my-0' />
+                <Divider type='horizontal' className='my-0 h-[1px] bg-divider-subtle' />
                 <div className='p-1'>
                   <MenuItem
                     item={deleteOperation}

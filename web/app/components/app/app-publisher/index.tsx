@@ -33,7 +33,6 @@ import WorkflowToolConfigureButton from '@/app/components/tools/workflow-tool/co
 import type { InputVar } from '@/app/components/workflow/types'
 import { appDefaultIconBackground } from '@/config'
 import type { PublishWorkflowParams } from '@/types/workflow'
-import VersionInfoModal from './version-info-modal'
 
 export type AppPublisherProps = {
   disabled?: boolean
@@ -45,6 +44,7 @@ export type AppPublisherProps = {
   multipleModelConfigs?: ModelAndParameter[]
   /** modelAndParameter is passed when debugWithMultipleModel is true */
   onPublish?: (params?: any) => Promise<any> | any
+  onRestore?: () => Promise<any> | any
   onToggle?: (state: boolean) => void
   crossAxisOffset?: number
   toolPublished?: boolean
@@ -62,6 +62,7 @@ const AppPublisher = ({
   debugWithMultipleModel = false,
   multipleModelConfigs = [],
   onPublish,
+  onRestore,
   onToggle,
   crossAxisOffset = 0,
   toolPublished,
@@ -71,18 +72,18 @@ const AppPublisher = ({
   const { t } = useTranslation()
   const [published, setPublished] = useState(false)
   const [open, setOpen] = useState(false)
-  const [publishModalOpen, setPublishModalOpen] = useState(false)
   const appDetail = useAppStore(state => state.appDetail)
   const { app_base_url: appBaseURL = '', access_token: accessToken = '' } = appDetail?.site ?? {}
   const appMode = (appDetail?.mode !== 'completion' && appDetail?.mode !== 'workflow') ? 'chat' : appDetail.mode
   const appURL = `${appBaseURL}/${appMode}/${accessToken}`
+  const isChatApp = ['chat', 'agent-chat', 'completion'].includes(appDetail?.mode || '')
 
   const language = useGetLanguage()
   const formatTimeFromNow = useCallback((time: number) => {
     return dayjs(time).locale(language === 'zh_Hans' ? 'zh-cn' : language.replace('_', '-')).fromNow()
   }, [language])
 
-  const handlePublish = async (params?: ModelAndParameter | PublishWorkflowParams) => {
+  const handlePublish = useCallback(async (params?: ModelAndParameter | PublishWorkflowParams) => {
     try {
       await onPublish?.(params)
       setPublished(true)
@@ -90,7 +91,15 @@ const AppPublisher = ({
     catch {
       setPublished(false)
     }
-  }
+  }, [onPublish])
+
+  const handleRestore = useCallback(async () => {
+    try {
+      await onRestore?.()
+      setOpen(false)
+    }
+    catch {}
+  }, [onRestore])
 
   const handleTrigger = useCallback(() => {
     const state = !open
@@ -122,22 +131,13 @@ const AppPublisher = ({
 
   const [embeddingModalOpen, setEmbeddingModalOpen] = useState(false)
 
-  const openPublishModal = () => {
-    setOpen(false)
-    setPublishModalOpen(true)
-  }
-
-  const closePublishModal = () => {
-    setPublishModalOpen(false)
-  }
-
   useKeyPress(`${getKeyboardKeyCodeBySystem('ctrl')}.shift.p`, (e) => {
     e.preventDefault()
     if (publishDisabled || published)
       return
-    openPublishModal()
-  }
-  , { exactMatch: true, useCapture: true })
+    handlePublish()
+  },
+  { exactMatch: true, useCapture: true })
 
   return (
     <>
@@ -157,23 +157,33 @@ const AppPublisher = ({
             disabled={disabled}
           >
             {t('workflow.common.publish')}
-            <RiArrowDownSLine className='w-4 h-4 text-components-button-primary-text' />
+            <RiArrowDownSLine className='h-4 w-4 text-components-button-primary-text' />
           </Button>
         </PortalToFollowElemTrigger>
         <PortalToFollowElemContent className='z-[11]'>
-          <div className='w-[320px] bg-components-panel-bg rounded-2xl border-[0.5px] border-components-panel-border shadow-xl shadow-shadow-shadow-5'>
+          <div className='w-[320px] rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-xl shadow-shadow-shadow-5'>
             <div className='p-4 pt-3'>
-              <div className='flex items-center h-6 system-xs-medium-uppercase text-text-tertiary'>
+              <div className='system-xs-medium-uppercase flex h-6 items-center text-text-tertiary'>
                 {publishedAt ? t('workflow.common.latestPublished') : t('workflow.common.currentDraftUnpublished')}
               </div>
               {publishedAt
                 ? (
-                  <div className='flex items-center system-sm-medium text-text-secondary'>
-                    {t('workflow.common.publishedAt')} {formatTimeFromNow(publishedAt)}
+                  <div className='flex items-center justify-between'>
+                    <div className='system-sm-medium flex items-center text-text-secondary'>
+                      {t('workflow.common.publishedAt')} {formatTimeFromNow(publishedAt)}
+                    </div>
+                    {isChatApp && <Button
+                      variant='secondary-accent'
+                      size='small'
+                      onClick={handleRestore}
+                      disabled={published}
+                    >
+                      {t('workflow.common.restore')}
+                    </Button>}
                   </div>
                 )
                 : (
-                  <div className='flex items-center system-sm-medium text-text-secondary'>
+                  <div className='system-sm-medium flex items-center text-text-secondary'>
                     {t('workflow.common.autoSaved')} · {Boolean(draftUpdatedAt) && formatTimeFromNow(draftUpdatedAt!)}
                   </div>
                 )}
@@ -188,8 +198,8 @@ const AppPublisher = ({
                 : (
                   <Button
                     variant='primary'
-                    className='w-full mt-3'
-                    onClick={openPublishModal}
+                    className='mt-3 w-full'
+                    onClick={() => handlePublish()}
                     disabled={publishDisabled || published}
                   >
                     {
@@ -200,7 +210,7 @@ const AppPublisher = ({
                             <span>{t('workflow.common.publishUpdate')}</span>
                             <div className='flex gap-0.5'>
                               {PUBLISH_SHORTCUT.map(key => (
-                                <span key={key} className='w-4 h-4 text-text-primary-on-surface system-kbd rounded-[4px] bg-components-kbd-bg-white'>
+                                <span key={key} className='system-kbd h-4 w-4 rounded-[4px] bg-components-kbd-bg-white text-text-primary-on-surface'>
                                   {key}
                                 </span>
                               ))}
@@ -212,11 +222,11 @@ const AppPublisher = ({
                 )
               }
             </div>
-            <div className='p-4 pt-3 border-t-[0.5px] border-t-divider-regular'>
+            <div className='border-t-[0.5px] border-t-divider-regular p-4 pt-3'>
               <SuggestedAction
                 disabled={!publishedAt}
                 link={appURL}
-                icon={<RiPlayCircleLine className='w-4 h-4' />}
+                icon={<RiPlayCircleLine className='h-4 w-4' />}
               >
                 {t('workflow.common.runApp')}
               </SuggestedAction>
@@ -225,7 +235,7 @@ const AppPublisher = ({
                   <SuggestedAction
                     disabled={!publishedAt}
                     link={`${appURL}${appURL.includes('?') ? '&' : '?'}mode=batch`}
-                    icon={<RiPlayList2Line className='w-4 h-4' />}
+                    icon={<RiPlayList2Line className='h-4 w-4' />}
                   >
                     {t('workflow.common.batchRunApp')}
                   </SuggestedAction>
@@ -237,7 +247,7 @@ const AppPublisher = ({
                       handleTrigger()
                     }}
                     disabled={!publishedAt}
-                    icon={<CodeBrowser className='w-4 h-4' />}
+                    icon={<CodeBrowser className='h-4 w-4' />}
                   >
                     {t('workflow.common.embedIntoSite')}
                   </SuggestedAction>
@@ -247,14 +257,14 @@ const AppPublisher = ({
                   publishedAt && handleOpenInExplore()
                 }}
                 disabled={!publishedAt}
-                icon={<RiPlanetLine className='w-4 h-4' />}
+                icon={<RiPlanetLine className='h-4 w-4' />}
               >
                 {t('workflow.common.openInExplore')}
               </SuggestedAction>
               <SuggestedAction
                 disabled={!publishedAt}
                 link='./develop'
-                icon={<RiTerminalBoxLine className='w-4 h-4' />}
+                icon={<RiTerminalBoxLine className='h-4 w-4' />}
               >
                 {t('workflow.common.accessAPIReference')}
               </SuggestedAction>
@@ -286,13 +296,6 @@ const AppPublisher = ({
           accessToken={accessToken}
         />
       </PortalToFollowElem >
-      {publishModalOpen && (
-        <VersionInfoModal
-          isOpen={publishModalOpen}
-          onClose={closePublishModal}
-          onPublish={handlePublish}
-        />
-      )}
     </>
   )
 }

@@ -4,7 +4,7 @@ import React from 'react'
 import type { ThoughtItem, ToolInfoInThought } from '../type'
 import ToolDetail from '@/app/components/base/chat/chat/answer/tool-detail'
 
-export interface IThoughtProps {
+export type IThoughtProps = {
   thought: ThoughtItem
   isFinished: boolean
 }
@@ -14,7 +14,7 @@ function getValue(value: string, isValueArray: boolean, index: number) {
     try {
       return JSON.parse(value)[index]
     }
-    catch (e) {
+    catch {
     }
   }
   return value
@@ -29,7 +29,7 @@ const Thought: FC<IThoughtProps> = ({
       if (Array.isArray(JSON.parse(thought.tool)))
         return [JSON.parse(thought.tool), true]
     }
-    catch (e) {
+    catch {
     }
     return [[thought.tool], false]
   })()

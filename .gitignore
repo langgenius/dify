@@ -103,6 +103,7 @@ celerybeat.pid
 
 # Environments
 .env
+.env-local
 .venv
 env/
 venv/
@@ -202,3 +203,6 @@ api/.vscode
 
 # plugin migrate
 plugins.jsonl
+
+# mise
+mise.toml

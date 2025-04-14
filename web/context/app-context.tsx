@@ -12,6 +12,7 @@ import type { ICurrentWorkspace, LangGeniusVersionResponse, UserProfileResponse 
 import MaintenanceNotice from '@/app/components/header/maintenance-notice'
 import type { SystemFeatures } from '@/types/feature'
 import { defaultSystemFeatures } from '@/types/feature'
+import { noop } from 'lodash-es'
 
 export type AppContextValue = {
   apps: App[]
@@ -49,13 +50,12 @@ const initialWorkspaceInfo: ICurrentWorkspace = {
   created_at: 0,
   role: 'normal',
   providers: [],
-  in_trail: true,
 }
 
 const AppContext = createContext<AppContextValue>({
   systemFeatures: defaultSystemFeatures,
   apps: [],
-  mutateApps: () => { },
+  mutateApps: noop,
   userProfile: {
     id: '',
     name: '',
@@ -69,8 +69,8 @@ const AppContext = createContext<AppContextValue>({
   isCurrentWorkspaceOwner: false,
   isCurrentWorkspaceEditor: false,
   isCurrentWorkspaceDatasetOperator: false,
-  mutateUserProfile: () => { },
-  mutateCurrentWorkspace: () => { },
+  mutateUserProfile: noop,
+  mutateCurrentWorkspace: noop,
   pageContainerRef: createRef(),
   langeniusVersionInfo: initialLangeniusVersionInfo,
   useSelector,
@@ -144,9 +144,9 @@ export const AppContextProvider: FC<AppContextProviderProps> = ({ children }) =>
       mutateCurrentWorkspace,
       isLoadingCurrentWorkspace,
     }}>
-      <div className='flex flex-col h-full overflow-y-auto'>
+      <div className='flex h-full flex-col overflow-y-auto'>
         {globalThis.document?.body?.getAttribute('data-public-maintenance-notice') && <MaintenanceNotice />}
-        <div ref={pageContainerRef} className='grow relative flex flex-col overflow-y-auto overflow-x-hidden bg-background-body'>
+        <div ref={pageContainerRef} className='relative flex grow flex-col overflow-y-auto overflow-x-hidden bg-background-body'>
           {children}
         </div>
       </div>

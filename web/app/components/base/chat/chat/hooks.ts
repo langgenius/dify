@@ -34,6 +34,7 @@ import {
   getProcessedFiles,
   getProcessedFilesFromResponse,
 } from '@/app/components/base/file-uploader/utils'
+import { noop } from 'lodash-es'
 
 type GetAbortController = (abortController: AbortController) => void
 type SendCallback = {
@@ -51,6 +52,8 @@ export const useChat = (
   },
   prevChatTree?: ChatItemInTree[],
   stopChat?: (taskId: string) => void,
+  clearChatList?: boolean,
+  clearChatListCallback?: (state: boolean) => void,
 ) => {
   const { t } = useTranslation()
   const { formatTime } = useTimestamp()
@@ -90,7 +93,7 @@ export const useChat = (
       }
       else {
         ret.unshift({
-          id: `${Date.now()}`,
+          id: 'opening-statement',
           content: getIntroduction(config.opening_statement),
           isAnswer: true,
           isOpeningStatement: true,
@@ -163,12 +166,13 @@ export const useChat = (
       suggestedQuestionsAbortControllerRef.current.abort()
   }, [stopChat, handleResponding])
 
-  const handleRestart = useCallback(() => {
+  const handleRestart = useCallback((cb?: any) => {
     conversationId.current = ''
     taskIdRef.current = ''
     handleStop()
     setChatTree([])
     setSuggestQuestions([])
+    cb?.()
   }, [handleStop])
 
   const updateCurrentQAOnTree = useCallback(({
@@ -305,7 +309,7 @@ export const useChat = (
       else
         ttsUrl = `/apps/${params.appId}/text-to-audio`
     }
-    const player = AudioPlayerManager.getInstance().getAudioPlayer(ttsUrl, ttsIsPublic, uuidV4(), 'none', 'none', (_: any): any => { })
+    const player = AudioPlayerManager.getInstance().getAudioPlayer(ttsUrl, ttsIsPublic, uuidV4(), 'none', 'none', noop)
     ssePost(
       url,
       {
@@ -681,6 +685,11 @@ export const useChat = (
       } as Annotation,
     })
   }, [chatList, updateChatTreeNode])
+
+  useEffect(() => {
+    if (clearChatList)
+      handleRestart(() => clearChatListCallback?.(false))
+  }, [clearChatList, clearChatListCallback, handleRestart])
 
   return {
     chatList,

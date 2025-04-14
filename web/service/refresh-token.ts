@@ -5,7 +5,7 @@ const LOCAL_STORAGE_KEY = 'is_other_tab_refreshing'
 
 let isRefreshing = false
 function waitUntilTokenRefreshed() {
-  return new Promise<void>((resolve, reject) => {
+  return new Promise<void>((resolve) => {
     function _check() {
       const isRefreshingSign = globalThis.localStorage.getItem(LOCAL_STORAGE_KEY)
       if ((isRefreshingSign && isRefreshingSign === '1') || isRefreshing) {
@@ -24,7 +24,7 @@ function waitUntilTokenRefreshed() {
 const isRefreshingSignAvailable = function (delta: number) {
   const nowTime = new Date().getTime()
   const lastTime = globalThis.localStorage.getItem('last_refresh_time') || '0'
-  return nowTime - parseInt(lastTime) <= delta
+  return nowTime - Number.parseInt(lastTime) <= delta
 }
 
 // only one request can send

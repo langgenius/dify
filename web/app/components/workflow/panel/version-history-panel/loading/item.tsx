@@ -15,19 +15,19 @@ const Item: FC<ItemProps> = ({
   isLast,
 }) => {
   return (
-    <div className='flex gap-x-1 relative p-2' >
-      {!isLast && <div className='absolute w-0.5 h-[calc(100%-0.75rem)] left-4 top-6 bg-divider-subtle' />}
-      <div className=' flex items-center justify-center shrink-0 w-[18px] h-5'>
-        <div className='w-2 h-2 border-[2px] rounded-lg border-text-quaternary' />
+    <div className='relative flex gap-x-1 p-2' >
+      {!isLast && <div className='absolute left-4 top-6 h-[calc(100%-0.75rem)] w-0.5 bg-divider-subtle' />}
+      <div className=' flex h-5 w-[18px] shrink-0 items-center justify-center'>
+        <div className='h-2 w-2 rounded-lg border-[2px] border-text-quaternary' />
       </div>
-      <div className='flex flex-col grow gap-y-0.5'>
-        <div className='flex items-center h-3.5'>
-          <div className={cn('h-2 w-full bg-text-quaternary rounded-sm opacity-20', titleWidth)} />
+      <div className='flex grow flex-col gap-y-0.5'>
+        <div className='flex h-3.5 items-center'>
+          <div className={cn('h-2 w-full rounded-sm bg-text-quaternary opacity-20', titleWidth)} />
         </div>
         {
           !isFirst && (
-            <div className='flex items-center h-3'>
-              <div className={cn('h-1.5 w-full bg-text-quaternary rounded-sm opacity-20', releaseNotesWidth)} />
+            <div className='flex h-3 items-center'>
+              <div className={cn('h-1.5 w-full rounded-sm bg-text-quaternary opacity-20', releaseNotesWidth)} />
             </div>
           )
         }

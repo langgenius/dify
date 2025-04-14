@@ -27,6 +27,7 @@ import { INSERT_VARIABLE_VALUE_BLOCK_COMMAND } from '@/app/components/base/promp
 import { PROMPT_EDITOR_UPDATE_VALUE_BY_EVENT_EMITTER } from '@/app/components/base/prompt-editor/plugins/update-block'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import { useFeaturesStore } from '@/app/components/base/features/hooks'
+import { noop } from 'lodash-es'
 
 export type ISimplePromptInput = {
   mode: AppType
@@ -159,10 +160,10 @@ const Prompt: FC<ISimplePromptInput> = ({
   const [editorHeight, setEditorHeight] = useState(minHeight)
 
   return (
-    <div className={cn('relative bg-gradient-to-r from-components-input-border-active-prompt-1 to-components-input-border-active-prompt-2 rounded-xl p-0.5 shadow-xs')}>
+    <div className={cn('relative rounded-xl bg-gradient-to-r from-components-input-border-active-prompt-1 to-components-input-border-active-prompt-2 p-0.5 shadow-xs')}>
       <div className='rounded-xl bg-background-section-burn'>
         {!noTitle && (
-          <div className="flex justify-between items-center h-11 pl-3 pr-2.5">
+          <div className="flex h-11 items-center justify-between pl-3 pr-2.5">
             <div className="flex items-center space-x-1">
               <div className='h2 system-sm-semibold-uppercase text-text-secondary'>{mode !== AppType.completion ? t('appDebug.chatSubTitle') : t('appDebug.completionSubTitle')}</div>
               {!readonly && (
@@ -184,14 +185,14 @@ const Prompt: FC<ISimplePromptInput> = ({
         )}
 
         <PromptEditorHeightResizeWrap
-          className='px-4 pt-2 min-h-[228px] bg-background-default rounded-t-xl text-sm text-text-secondary'
+          className='min-h-[228px] rounded-t-xl bg-background-default px-4 pt-2 text-sm text-text-secondary'
           height={editorHeight}
           minHeight={minHeight}
           onHeightChange={setEditorHeight}
           hideResize={noResize}
           footer={(
-            <div className='pl-4 pb-2 flex bg-background-default rounded-b-xl'>
-              <div className="h-[18px] leading-[18px] px-1 rounded-md bg-components-badge-bg-gray-soft text-xs text-text-tertiary">{promptTemplate.length}</div>
+            <div className='flex rounded-b-xl bg-background-default pb-2 pl-4'>
+              <div className="h-[18px] rounded-md bg-components-badge-bg-gray-soft px-1 text-xs leading-[18px] text-text-tertiary">{promptTemplate.length}</div>
             </div>
           )}
         >
@@ -233,7 +234,7 @@ const Prompt: FC<ISimplePromptInput> = ({
                 user: '',
                 assistant: '',
               },
-              onEditRole: () => { },
+              onEditRole: noop,
             }}
             queryBlock={{
               show: false,

@@ -15,6 +15,7 @@ from controllers.service_api.app.error import (
     ProviderQuotaExceededError,
 )
 from controllers.service_api.wraps import FetchUserArg, WhereisUserArg, validate_app_token
+from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
 from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.errors.error import (
@@ -26,9 +27,11 @@ from core.model_runtime.errors.invoke import InvokeError
 from extensions.ext_database import db
 from fields.workflow_app_log_fields import workflow_app_log_pagination_fields
 from libs import helper
+from libs.helper import TimestampField
 from models.model import App, AppMode, EndUser
 from models.workflow import WorkflowRun, WorkflowRunStatus
 from services.app_generate_service import AppGenerateService
+from services.errors.llm import InvokeRateLimitError
 from services.workflow_app_service import WorkflowAppService
 
 logger = logging.getLogger(__name__)
@@ -42,8 +45,8 @@ workflow_run_fields = {
     "error": fields.String,
     "total_steps": fields.Integer,
     "total_tokens": fields.Integer,
-    "created_at": fields.DateTime,
-    "finished_at": fields.DateTime,
+    "created_at": TimestampField,
+    "finished_at": TimestampField,
     "elapsed_time": fields.Float,
 }
 
@@ -51,7 +54,7 @@ workflow_run_fields = {
 class WorkflowRunDetailApi(Resource):
     @validate_app_token
     @marshal_with(workflow_run_fields)
-    def get(self, app_model: App, workflow_id: str):
+    def get(self, app_model: App, workflow_run_id: str):
         """
         Get a workflow task running detail
         """
@@ -59,7 +62,7 @@ class WorkflowRunDetailApi(Resource):
         if app_mode != AppMode.WORKFLOW:
             raise NotWorkflowAppError()
 
-        workflow_run = db.session.query(WorkflowRun).filter(WorkflowRun.id == workflow_id).first()
+        workflow_run = db.session.query(WorkflowRun).filter(WorkflowRun.id == workflow_run_id).first()
         return workflow_run
 
 
@@ -93,11 +96,13 @@ class WorkflowRunApi(Resource):
             raise ProviderQuotaExceededError()
         except ModelCurrentlyNotSupportError:
             raise ProviderModelCurrentlyNotSupportError()
+        except InvokeRateLimitError as ex:
+            raise InvokeRateLimitHttpError(ex.description)
         except InvokeError as e:
             raise CompletionRequestError(e.description)
         except ValueError as e:
             raise e
-        except Exception as e:
+        except Exception:
             logging.exception("internal server error.")
             raise InternalServerError()
 
@@ -158,6 +163,6 @@ class WorkflowAppLogApi(Resource):
 
 
 api.add_resource(WorkflowRunApi, "/workflows/run")
-api.add_resource(WorkflowRunDetailApi, "/workflows/run/<string:workflow_id>")
+api.add_resource(WorkflowRunDetailApi, "/workflows/run/<string:workflow_run_id>")
 api.add_resource(WorkflowTaskStopApi, "/workflows/tasks/<string:task_id>/stop")
 api.add_resource(WorkflowAppLogApi, "/workflows/logs")

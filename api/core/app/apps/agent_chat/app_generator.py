@@ -24,6 +24,7 @@ from core.ops.ops_trace_manager import TraceQueueManager
 from extensions.ext_database import db
 from factories import file_factory
 from models import Account, App, EndUser
+from services.conversation_service import ConversationService
 from services.errors.message import MessageNotExistsError
 
 logger = logging.getLogger(__name__)
@@ -79,7 +80,7 @@ class AgentChatAppGenerator(MessageBasedAppGenerator):
         :param user: account or end user
         :param args: request args
         :param invoke_from: invoke from source
-        :param stream: is stream
+        :param streaming: is stream
         """
         if not streaming:
             raise ValueError("Agent Chat App does not support blocking mode")
@@ -98,9 +99,11 @@ class AgentChatAppGenerator(MessageBasedAppGenerator):
 
         # get conversation
         conversation = None
-        if args.get("conversation_id"):
-            conversation = self._get_conversation_by_user(app_model, args.get("conversation_id", ""), user)
-
+        conversation_id = args.get("conversation_id")
+        if conversation_id:
+            conversation = ConversationService.get_conversation(
+                app_model=app_model, conversation_id=conversation_id, user=user
+            )
         # get app model config
         app_model_config = self._get_app_model_config(app_model=app_model, conversation=conversation)
 

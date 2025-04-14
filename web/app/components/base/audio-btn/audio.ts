@@ -21,9 +21,9 @@ export default class AudioPlayer {
   isLoadData = false
   url: string
   isPublic: boolean
-  callback: ((event: string) => {}) | null
+  callback: ((event: string) => void) | null
 
-  constructor(streamUrl: string, isPublic: boolean, msgId: string | undefined, msgContent: string | null | undefined, voice: string | undefined, callback: ((event: string) => {}) | null) {
+  constructor(streamUrl: string, isPublic: boolean, msgId: string | undefined, msgContent: string | null | undefined, voice: string | undefined, callback: ((event: string) => void) | null) {
     this.audioContext = new AudioContext()
     this.msgId = msgId
     this.msgContent = msgContent
@@ -68,7 +68,7 @@ export default class AudioPlayer {
     })
   }
 
-  public setCallback(callback: ((event: string) => {}) | null) {
+  public setCallback(callback: ((event: string) => void) | null) {
     this.callback = callback
     if (callback) {
       this.audio.addEventListener('ended', () => {
@@ -125,7 +125,7 @@ export default class AudioPlayer {
         this.receiveAudioData(value)
       }
     }
-    catch (error) {
+    catch {
       this.isLoadData = false
       this.callback && this.callback('error')
     }
@@ -209,10 +209,6 @@ export default class AudioPlayer {
     this.callback && this.callback('paused')
     this.audio.pause()
     this.audioContext.suspend()
-  }
-
-  private cancer() {
-
   }
 
   private receiveAudioData(unit8Array: Uint8Array) {

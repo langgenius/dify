@@ -197,14 +197,18 @@ class OracleVector(BaseVector):
         Search the nearest neighbors to a vector.
 
         :param query_vector: The input vector to search for similar items.
-        :param top_k: The number of nearest neighbors to return, default is 5.
         :return: List of Documents that are nearest to the query vector.
         """
         top_k = kwargs.get("top_k", 4)
+        document_ids_filter = kwargs.get("document_ids_filter")
+        where_clause = ""
+        if document_ids_filter:
+            document_ids = ", ".join(f"'{id}'" for id in document_ids_filter)
+            where_clause = f"WHERE metadata->>'document_id' in ({document_ids})"
         with self._get_cursor() as cur:
             cur.execute(
                 f"SELECT meta, text, vector_distance(embedding,:1) AS distance FROM {self.table_name}"
-                f" ORDER BY distance fetch first {top_k} rows only",
+                f" {where_clause} ORDER BY distance fetch first {top_k} rows only",
                 [numpy.array(query_vector)],
             )
             docs = []
@@ -224,7 +228,7 @@ class OracleVector(BaseVector):
 
         top_k = kwargs.get("top_k", 5)
         # just not implement fetch by score_threshold now, may be later
-        score_threshold = float(kwargs.get("score_threshold") or 0.0)
+        # score_threshold = float(kwargs.get("score_threshold") or 0.0)
         if len(query) > 0:
             # Check which language the query is in
             zh_pattern = re.compile("[\u4e00-\u9fa5]+")
@@ -235,7 +239,7 @@ class OracleVector(BaseVector):
                 words = pseg.cut(query)
                 current_entity = ""
                 for word, pos in words:
-                    if pos in {"nr", "Ng", "eng", "nz", "n", "ORG", "v"}:  # nr: 人名, ns: 地名, nt: 机构名
+                    if pos in {"nr", "Ng", "eng", "nz", "n", "ORG", "v"}:  # nr: 人名，ns: 地名，nt: 机构名
                         current_entity += word
                     else:
                         if current_entity:
@@ -257,9 +261,15 @@ class OracleVector(BaseVector):
                     if token not in stop_words:
                         entities.append(token)
             with self._get_cursor() as cur:
+                document_ids_filter = kwargs.get("document_ids_filter")
+                where_clause = ""
+                if document_ids_filter:
+                    document_ids = ", ".join(f"'{id}'" for id in document_ids_filter)
+                    where_clause = f" AND metadata->>'document_id' in ({document_ids}) "
                 cur.execute(
                     f"select meta, text, embedding FROM {self.table_name}"
-                    f" WHERE CONTAINS(text, :1, 1) > 0 order by score(1) desc fetch first {top_k} rows only",
+                    f"WHERE CONTAINS(text, :1, 1) > 0 {where_clause} "
+                    f"order by score(1) desc fetch first {top_k} rows only",
                     [" ACCUM ".join(entities)],
                 )
                 docs = []

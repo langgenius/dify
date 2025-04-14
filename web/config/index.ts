@@ -162,7 +162,14 @@ export const ANNOTATION_DEFAULT = {
   score_threshold: 0.9,
 }
 
-export const MAX_TOOLS_NUM = 10
+export let maxToolsNum = 10
+
+if (process.env.NEXT_PUBLIC_MAX_TOOLS_NUM && process.env.NEXT_PUBLIC_MAX_TOOLS_NUM !== '')
+  maxToolsNum = Number.parseInt(process.env.NEXT_PUBLIC_MAX_TOOLS_NUM)
+else if (globalThis.document?.body?.getAttribute('data-public-max-tools-num') && globalThis.document.body.getAttribute('data-public-max-tools-num') !== '')
+  maxToolsNum = Number.parseInt(globalThis.document.body.getAttribute('data-public-max-tools-num') as string)
+
+export const MAX_TOOLS_NUM = maxToolsNum
 
 export const DEFAULT_AGENT_SETTING = {
   enabled: false,
@@ -286,3 +293,12 @@ else if (globalThis.document?.body?.getAttribute('data-public-loop-node-max-coun
   loopNodeMaxCount = Number.parseInt(globalThis.document.body.getAttribute('data-public-loop-node-max-count') as string)
 
 export const LOOP_NODE_MAX_COUNT = loopNodeMaxCount
+
+let maxIterationsNum = 5
+
+if (process.env.NEXT_PUBLIC_MAX_ITERATIONS_NUM && process.env.NEXT_PUBLIC_MAX_ITERATIONS_NUM !== '')
+  maxIterationsNum = Number.parseInt(process.env.NEXT_PUBLIC_MAX_ITERATIONS_NUM)
+else if (globalThis.document?.body?.getAttribute('data-public-max-iterations-num') && globalThis.document.body.getAttribute('data-public-max-iterations-num') !== '')
+  maxIterationsNum = Number.parseInt(globalThis.document.body.getAttribute('data-public-max-iterations-num') as string)
+
+export const MAX_ITERATIONS_NUM = maxIterationsNum

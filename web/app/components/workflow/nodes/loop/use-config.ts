@@ -1,14 +1,17 @@
-import { useCallback } from 'react'
+import {
+  useCallback,
+  useRef,
+} from 'react'
 import produce from 'immer'
 import { useBoolean } from 'ahooks'
-import { uuid4 } from '@sentry/utils'
+import { v4 as uuid4 } from 'uuid'
 import {
   useIsChatMode,
   useIsNodeInLoop,
   useNodesReadOnly,
   useWorkflow,
 } from '../../hooks'
-import { VarType } from '../../types'
+import { ValueType, VarType } from '../../types'
 import type { ErrorHandleMode, ValueSelector, Var } from '../../types'
 import useNodeCrud from '../_base/hooks/use-node-crud'
 import { getNodeInfoById, getNodeUsedVarPassToServerKey, getNodeUsedVars, isSystemVar, toNodeOutputVars } from '../_base/components/variable/utils'
@@ -17,14 +20,21 @@ import { getOperators } from './utils'
 import { LogicalOperator } from './types'
 import type { HandleAddCondition, HandleAddSubVariableCondition, HandleRemoveCondition, HandleToggleConditionLogicalOperator, HandleToggleSubVariableConditionLogicalOperator, HandleUpdateCondition, HandleUpdateSubVariableCondition, LoopNodeType } from './types'
 import useIsVarFileAttribute from './use-is-var-file-attribute'
+import { useStore } from '@/app/components/workflow/store'
 
 const DELIMITER = '@@@@@'
 const useConfig = (id: string, payload: LoopNodeType) => {
   const { nodesReadOnly: readOnly } = useNodesReadOnly()
   const { isNodeInLoop } = useIsNodeInLoop(id)
   const isChatMode = useIsChatMode()
+  const conversationVariables = useStore(s => s.conversationVariables)
 
   const { inputs, setInputs } = useNodeCrud<LoopNodeType>(id, payload)
+  const inputsRef = useRef(inputs)
+  const handleInputsChange = useCallback((newInputs: LoopNodeType) => {
+    inputsRef.current = newInputs
+    setInputs(newInputs)
+  }, [setInputs])
 
   const filterInputVar = useCallback((varPayload: Var) => {
     return [VarType.array, VarType.arrayString, VarType.arrayNumber, VarType.arrayObject, VarType.arrayFile].includes(varPayload.type)
@@ -33,9 +43,9 @@ const useConfig = (id: string, payload: LoopNodeType) => {
   // output
   const { getLoopNodeChildren, getBeforeNodesInSameBranch } = useWorkflow()
   const beforeNodes = getBeforeNodesInSameBranch(id)
-  const loopChildrenNodes = getLoopNodeChildren(id)
+  const loopChildrenNodes = [{ id, data: payload } as any, ...getLoopNodeChildren(id)]
   const canChooseVarNodes = [...beforeNodes, ...loopChildrenNodes]
-  const childrenNodeVars = toNodeOutputVars(loopChildrenNodes, isChatMode)
+  const childrenNodeVars = toNodeOutputVars(loopChildrenNodes, isChatMode, undefined, [], conversationVariables)
 
   // single run
   const loopInputKey = `${id}.input_selector`
@@ -289,6 +299,43 @@ const useConfig = (id: string, payload: LoopNodeType) => {
     setInputs(newInputs)
   }, [inputs, setInputs])
 
+  const handleAddLoopVariable = useCallback(() => {
+    const newInputs = produce(inputsRef.current, (draft) => {
+      if (!draft.loop_variables)
+        draft.loop_variables = []
+
+      draft.loop_variables.push({
+        id: uuid4(),
+        label: '',
+        var_type: VarType.string,
+        value_type: ValueType.constant,
+        value: '',
+      })
+    })
+    handleInputsChange(newInputs)
+  }, [handleInputsChange])
+
+  const handleRemoveLoopVariable = useCallback((id: string) => {
+    const newInputs = produce(inputsRef.current, (draft) => {
+      draft.loop_variables = draft.loop_variables?.filter(item => item.id !== id)
+    })
+    handleInputsChange(newInputs)
+  }, [handleInputsChange])
+
+  const handleUpdateLoopVariable = useCallback((id: string, updateData: any) => {
+    const loopVariables = inputsRef.current.loop_variables || []
+    const index = loopVariables.findIndex(item => item.id === id)
+    const newInputs = produce(inputsRef.current, (draft) => {
+      if (index > -1) {
+        draft.loop_variables![index] = {
+          ...draft.loop_variables![index],
+          ...updateData,
+        }
+      }
+    })
+    handleInputsChange(newInputs)
+  }, [handleInputsChange])
+
   return {
     readOnly,
     inputs,
@@ -323,6 +370,9 @@ const useConfig = (id: string, payload: LoopNodeType) => {
     handleToggleSubVariableConditionLogicalOperator,
     handleUpdateLoopCount,
     changeErrorResponseMode,
+    handleAddLoopVariable,
+    handleRemoveLoopVariable,
+    handleUpdateLoopVariable,
   }
 }
 

@@ -1,4 +1,5 @@
-import type { FC, FormEvent } from 'react'
+import type { ChangeEvent, FC, FormEvent } from 'react'
+import { useEffect } from 'react'
 import React, { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
@@ -44,7 +45,10 @@ const RunOnce: FC<IRunOnceProps> = ({
   const onClear = () => {
     const newInputs: Record<string, any> = {}
     promptConfig.prompt_variables.forEach((item) => {
-      newInputs[item.key] = ''
+      if (item.type === 'text-input' || item.type === 'paragraph')
+        newInputs[item.key] = ''
+      else
+        newInputs[item.key] = undefined
     })
     onInputsChange(newInputs)
   }
@@ -59,74 +63,86 @@ const RunOnce: FC<IRunOnceProps> = ({
     inputsRef.current = newInputs
   }, [onInputsChange, inputsRef])
 
+  useEffect(() => {
+    const newInputs: Record<string, any> = {}
+    promptConfig.prompt_variables.forEach((item) => {
+      if (item.type === 'text-input' || item.type === 'paragraph')
+        newInputs[item.key] = ''
+      else
+        newInputs[item.key] = undefined
+    })
+    onInputsChange(newInputs)
+  }, [promptConfig.prompt_variables, onInputsChange])
+
   return (
     <div className="">
       <section>
         {/* input form */}
         <form onSubmit={onSubmit}>
-          {promptConfig.prompt_variables.map(item => (
-            <div className='w-full mt-4' key={item.key}>
-              <label className='h-6 flex items-center text-text-secondary system-md-semibold'>{item.name}</label>
-              <div className='mt-1'>
-                {item.type === 'select' && (
-                  <Select
-                    className='w-full'
-                    defaultValue={inputs[item.key]}
-                    onSelect={(i) => { handleInputsChange({ ...inputsRef.current, [item.key]: i.value }) }}
-                    items={(item.options || []).map(i => ({ name: i, value: i }))}
-                    allowSearch={false}
-                  />
-                )}
-                {item.type === 'string' && (
-                  <Input
-                    type="text"
-                    placeholder={`${item.name}${!item.required ? `(${t('appDebug.variableTable.optional')})` : ''}`}
-                    value={inputs[item.key]}
-                    onChange={(e) => { handleInputsChange({ ...inputsRef.current, [item.key]: e.target.value }) }}
-                    maxLength={item.max_length || DEFAULT_VALUE_MAX_LEN}
-                  />
-                )}
-                {item.type === 'paragraph' && (
-                  <Textarea
-                    className='h-[104px] sm:text-xs'
-                    placeholder={`${item.name}${!item.required ? `(${t('appDebug.variableTable.optional')})` : ''}`}
-                    value={inputs[item.key]}
-                    onChange={(e) => { handleInputsChange({ ...inputsRef.current, [item.key]: e.target.value }) }}
-                  />
-                )}
-                {item.type === 'number' && (
-                  <Input
-                    type="number"
-                    placeholder={`${item.name}${!item.required ? `(${t('appDebug.variableTable.optional')})` : ''}`}
-                    value={inputs[item.key]}
-                    onChange={(e) => { handleInputsChange({ ...inputsRef.current, [item.key]: e.target.value }) }}
-                  />
-                )}
-                {item.type === 'file' && (
-                  <FileUploaderInAttachmentWrapper
-                    onChange={(files) => { handleInputsChange({ ...inputsRef.current, [item.key]: getProcessedFiles(files)[0] }) }}
-                    fileConfig={{
-                      ...item.config,
-                      fileUploadConfig: (visionConfig as any).fileUploadConfig,
-                    }}
-                  />
-                )}
-                {item.type === 'file-list' && (
-                  <FileUploaderInAttachmentWrapper
-                    onChange={(files) => { handleInputsChange({ ...inputsRef.current, [item.key]: getProcessedFiles(files) }) }}
-                    fileConfig={{
-                      ...item.config,
-                      fileUploadConfig: (visionConfig as any).fileUploadConfig,
-                    }}
-                  />
-                )}
+          {(inputs === null || inputs === undefined || Object.keys(inputs).length === 0) ? null
+            : promptConfig.prompt_variables.map(item => (
+              <div className='mt-4 w-full' key={item.key}>
+                <label className='system-md-semibold flex h-6 items-center text-text-secondary'>{item.name}</label>
+                <div className='mt-1'>
+                  {item.type === 'select' && (
+                    <Select
+                      className='w-full'
+                      defaultValue={inputs[item.key]}
+                      onSelect={(i) => { handleInputsChange({ ...inputsRef.current, [item.key]: i.value }) }}
+                      items={(item.options || []).map(i => ({ name: i, value: i }))}
+                      allowSearch={false}
+                    />
+                  )}
+                  {item.type === 'string' && (
+                    <Input
+                      type="text"
+                      placeholder={`${item.name}${!item.required ? `(${t('appDebug.variableTable.optional')})` : ''}`}
+                      value={inputs[item.key]}
+                      onChange={(e: ChangeEvent<HTMLInputElement>) => { handleInputsChange({ ...inputsRef.current, [item.key]: e.target.value }) }}
+                      maxLength={item.max_length || DEFAULT_VALUE_MAX_LEN}
+                    />
+                  )}
+                  {item.type === 'paragraph' && (
+                    <Textarea
+                      className='h-[104px] sm:text-xs'
+                      placeholder={`${item.name}${!item.required ? `(${t('appDebug.variableTable.optional')})` : ''}`}
+                      value={inputs[item.key]}
+                      onChange={(e: ChangeEvent<HTMLInputElement>) => { handleInputsChange({ ...inputsRef.current, [item.key]: e.target.value }) }}
+                    />
+                  )}
+                  {item.type === 'number' && (
+                    <Input
+                      type="number"
+                      placeholder={`${item.name}${!item.required ? `(${t('appDebug.variableTable.optional')})` : ''}`}
+                      value={inputs[item.key]}
+                      onChange={(e: ChangeEvent<HTMLInputElement>) => { handleInputsChange({ ...inputsRef.current, [item.key]: e.target.value }) }}
+                    />
+                  )}
+                  {item.type === 'file' && (
+                    <FileUploaderInAttachmentWrapper
+                      onChange={(files) => { handleInputsChange({ ...inputsRef.current, [item.key]: getProcessedFiles(files)[0] }) }}
+                      fileConfig={{
+                        ...item.config,
+                        fileUploadConfig: (visionConfig as any).fileUploadConfig,
+                      }}
+                    />
+                  )}
+                  {item.type === 'file-list' && (
+                    <FileUploaderInAttachmentWrapper
+                      onChange={(files) => { handleInputsChange({ ...inputsRef.current, [item.key]: getProcessedFiles(files) }) }}
+                      fileConfig={{
+                        ...item.config,
+                        fileUploadConfig: (visionConfig as any).fileUploadConfig,
+                      }}
+                    />
+                  )}
+                </div>
               </div>
-            </div>
-          ))}
+            ))}
           {
             visionConfig?.enabled && (
-              <div className="w-full mt-4">
-                <div className="h-6 flex items-center text-text-secondary system-md-semibold">{t('common.imageUploader.imageUpload')}</div>
+              <div className="mt-4 w-full">
+                <div className="system-md-semibold flex h-6 items-center text-text-secondary">{t('common.imageUploader.imageUpload')}</div>
                 <div className='mt-1'>
                   <TextGenerationImageUploader
                     settings={visionConfig}
@@ -141,7 +157,7 @@ const RunOnce: FC<IRunOnceProps> = ({
               </div>
             )
           }
-          <div className='w-full mt-6 mb-3'>
+          <div className='mb-3 mt-6 w-full'>
             <div className="flex items-center justify-between gap-2">
               <Button
                 onClick={onClear}
@@ -155,7 +171,7 @@ const RunOnce: FC<IRunOnceProps> = ({
                 variant="primary"
                 disabled={false}
               >
-                <RiPlayLargeLine className="shrink-0 w-4 h-4 mr-1" aria-hidden="true" />
+                <RiPlayLargeLine className="mr-1 h-4 w-4 shrink-0" aria-hidden="true" />
                 <span className='text-[13px]'>{t('share.generation.run')}</span>
               </Button>
             </div>
