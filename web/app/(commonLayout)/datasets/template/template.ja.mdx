@@ -334,6 +334,26 @@ import { Row, Col, Properties, Property, Heading, SubProperty, PropertyInstructi
       <Property name='external_knowledge_id' type='str' key='external_knowledge_id'>
         外部ナレッジ ID (オプション)
       </Property>
+      <Property name='embedding_model' type='str' key='embedding_model'>
+        埋め込みモデル名（任意）
+      </Property>
+      <Property name='embedding_provider_name' type='str' key='embedding_provider_name'>
+        埋め込みモデルのプロバイダ名（任意）
+      </Property>
+      <Property name='retrieval_model' type='object' key='retrieval_model'>
+        検索モデル（任意）
+          - <code>search_method</code> (文字列) 検索方法
+            - <code>hybrid_search</code> ハイブリッド検索
+            - <code>semantic_search</code> セマンティック検索
+            - <code>full_text_search</code> 全文検索
+          - <code>reranking_enable</code> (ブール値) リランキングを有効にするかどうか
+          - <code>reranking_model</code> (オブジェクト) リランクモデルの設定
+              - <code>reranking_provider_name</code> (文字列) リランクモデルのプロバイダ
+              - <code>reranking_model_name</code> (文字列) リランクモデル名
+          - <code>top_k</code> (整数) 返される結果の数
+          - <code>score_threshold_enabled</code> (ブール値) スコア閾値を有効にするかどうか
+          - <code>score_threshold</code> (浮動小数点数) スコア閾値
+      </Property>
     </Properties>
   </Col>
   <Col sticky>
