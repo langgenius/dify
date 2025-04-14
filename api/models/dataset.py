@@ -1139,11 +1139,10 @@ class DatasetMetadataBinding(db.Model):  # type: ignore[name-defined]
     created_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
     created_by = db.Column(StringUUID, nullable=False)
 
+
 class PipelineBuiltInTemplate(db.Model):  # type: ignore[name-defined]
     __tablename__ = "pipeline_built_in_templates"
-    __table_args__ = (
-        db.PrimaryKeyConstraint("id", name="pipeline_built_in_template_pkey"),
-    )
+    __table_args__ = (db.PrimaryKeyConstraint("id", name="pipeline_built_in_template_pkey"),)
 
     id = db.Column(StringUUID, server_default=db.text("uuid_generate_v4()"))
     pipeline_id = db.Column(StringUUID, nullable=False)
@@ -1181,9 +1180,7 @@ class PipelineCustomizedTemplate(db.Model):  # type: ignore[name-defined]
 
 class Pipeline(db.Model):  # type: ignore[name-defined]
     __tablename__ = "pipelines"
-    __table_args__ = (
-        db.PrimaryKeyConstraint("id", name="pipeline_pkey"),
-    )
+    __table_args__ = (db.PrimaryKeyConstraint("id", name="pipeline_pkey"),)
 
     id = db.Column(StringUUID, server_default=db.text("uuid_generate_v4()"))
     tenant_id: Mapped[str] = db.Column(StringUUID, nullable=False)

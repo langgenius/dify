@@ -38,7 +38,8 @@ class WorkflowType(Enum):
 
     WORKFLOW = "workflow"
     CHAT = "chat"
-
+    RAG_PIPELINE = "rag_pipeline"
+    
     @classmethod
     def value_of(cls, value: str) -> "WorkflowType":
         """

@@ -1,8 +1,9 @@
 from typing import Optional
 
-from constants.languages import languages
+from flask_login import current_user
+
 from extensions.ext_database import db
-from models.model import App, RecommendedApp
+from models.dataset import Pipeline, PipelineCustomizedTemplate
 from services.app_dsl_service import AppDslService
 from services.rag_pipeline.pipeline_template.pipeline_template_base import PipelineTemplateRetrievalBase
 from services.rag_pipeline.pipeline_template.pipeline_template_type import PipelineTemplateType
@@ -14,92 +15,57 @@ class CustomizedPipelineTemplateRetrieval(PipelineTemplateRetrievalBase):
     """
 
     def get_pipeline_templates(self, language: str) -> dict:
-        result = self.fetch_pipeline_templates_from_db(language)
+        result = self.fetch_pipeline_templates_from_customized(
+            tenant_id=current_user.current_tenant_id, language=language
+        )
         return result
 
-    def get_pipeline_template_detail(self, pipeline_id: str):
-        result = self.fetch_pipeline_template_detail_from_db(pipeline_id)
+    def get_pipeline_template_detail(self, template_id: str):
+        result = self.fetch_pipeline_template_detail_from_db(template_id)
         return result
 
     def get_type(self) -> str:
         return PipelineTemplateType.CUSTOMIZED
 
     @classmethod
-    def fetch_recommended_apps_from_db(cls, language: str) -> dict:
+    def fetch_pipeline_templates_from_customized(cls, tenant_id: str, language: str) -> dict:
         """
-        Fetch recommended apps from db.
+        Fetch pipeline templates from db.
+        :param tenant_id: tenant id
         :param language: language
         :return:
         """
-        recommended_apps = (
-            db.session.query(RecommendedApp)
-            .filter(RecommendedApp.is_listed == True, RecommendedApp.language == language)
+        pipeline_templates = (
+            db.session.query(PipelineCustomizedTemplate)
+            .filter(PipelineCustomizedTemplate.tenant_id == tenant_id, PipelineCustomizedTemplate.language == language)
             .all()
         )
 
-        if len(recommended_apps) == 0:
-            recommended_apps = (
-                db.session.query(RecommendedApp)
-                .filter(RecommendedApp.is_listed == True, RecommendedApp.language == languages[0])
-                .all()
-            )
-
-        categories = set()
-        recommended_apps_result = []
-        for recommended_app in recommended_apps:
-            app = recommended_app.app
-            if not app or not app.is_public:
-                continue
-
-            site = app.site
-            if not site:
-                continue
-
-            recommended_app_result = {
-                "id": recommended_app.id,
-                "app": recommended_app.app,
-                "app_id": recommended_app.app_id,
-                "description": site.description,
-                "copyright": site.copyright,
-                "privacy_policy": site.privacy_policy,
-                "custom_disclaimer": site.custom_disclaimer,
-                "category": recommended_app.category,
-                "position": recommended_app.position,
-                "is_listed": recommended_app.is_listed,
-            }
-            recommended_apps_result.append(recommended_app_result)
-
-            categories.add(recommended_app.category)
-
-        return {"recommended_apps": recommended_apps_result, "categories": sorted(categories)}
+        return {"pipeline_templates": pipeline_templates}
 
     @classmethod
-    def fetch_recommended_app_detail_from_db(cls, app_id: str) -> Optional[dict]:
+    def fetch_pipeline_template_detail_from_db(cls, template_id: str) -> Optional[dict]:
         """
-        Fetch recommended app detail from db.
-        :param app_id: App ID
+        Fetch pipeline template detail from db.
+        :param template_id: Template ID
         :return:
         """
-        # is in public recommended list
-        recommended_app = (
-            db.session.query(RecommendedApp)
-            .filter(RecommendedApp.is_listed == True, RecommendedApp.app_id == app_id)
-            .first()
+        pipeline_template = (
+            db.session.query(PipelineCustomizedTemplate).filter(PipelineCustomizedTemplate.id == template_id).first()
         )
 
-        if not recommended_app:
+        if not pipeline_template:
             return None
 
-        # get app detail
-        app_model = db.session.query(App).filter(App.id == app_id).first()
-        if not app_model or not app_model.is_public:
+        # get pipeline detail
+        pipeline = db.session.query(Pipeline).filter(Pipeline.id == pipeline_template.pipeline_id).first()
+        if not pipeline or not pipeline.is_public:
             return None
 
         return {
-            "id": app_model.id,
-            "name": app_model.name,
-            "icon": app_model.icon,
-            "icon_background": app_model.icon_background,
-            "mode": app_model.mode,
-            "export_data": AppDslService.export_dsl(app_model=app_model),
+            "id": pipeline.id,
+            "name": pipeline.name,
+            "icon": pipeline.icon,
+            "mode": pipeline.mode,
+            "export_data": AppDslService.export_dsl(app_model=pipeline),
         }

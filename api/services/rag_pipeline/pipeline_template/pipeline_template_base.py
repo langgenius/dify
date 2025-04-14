@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from typing import Optional
 
 
 class PipelineTemplateRetrievalBase(ABC):
@@ -9,7 +10,7 @@ class PipelineTemplateRetrievalBase(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def get_pipeline_template_detail(self, pipeline_id: str):
+    def get_pipeline_template_detail(self, template_id: str) -> Optional[dict]:
         raise NotImplementedError
 
     @abstractmethod
