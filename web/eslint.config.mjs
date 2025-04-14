@@ -148,6 +148,7 @@ export default combine(
       'sonarjs/cognitive-complexity': 'off',
       'sonarjs/no-nested-functions': 'warn',
       'sonarjs/no-nested-conditional': 'warn',
+      'sonarjs/nested-control-flow': 'warn', // 3 levels of nesting
       'sonarjs/no-small-switch': 'off',
       'sonarjs/no-nested-template-literals': 'warn',
       'sonarjs/redundant-type-aliases': 'off',
@@ -163,9 +164,11 @@ export default combine(
       'sonarjs/updated-loop-counter': 'off',
       'sonarjs/no-dead-store': 'warn',
       'sonarjs/no-duplicated-branches': 'warn',
+      'sonarjs/max-lines': 'warn', // max 1000 lines
+      'sonarjs/no-variable-usage-before-declaration': 'error',
       // security
       // eslint-disable-next-line sonarjs/no-hardcoded-passwords
-      'sonarjs/no-hardcoded-passwords': 'off',
+      'sonarjs/no-hardcoded-passwords': 'off', // detect the wrong code that is not password.
       'sonarjs/no-hardcoded-secrets': 'off',
       'sonarjs/pseudo-random': 'off',
       // performance
