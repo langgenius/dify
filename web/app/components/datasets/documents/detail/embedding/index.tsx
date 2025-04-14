@@ -193,7 +193,7 @@ const EmbeddingDetail: FC<IEmbeddingDetailProps> = ({
       await sleep(2500)
       await startQueryStatus()
     }
-    catch (e) {
+    catch {
       await sleep(2500)
       await startQueryStatus()
     }
