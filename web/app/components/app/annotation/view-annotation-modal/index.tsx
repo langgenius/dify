@@ -55,7 +55,7 @@ const ViewAnnotationModal: FC<Props> = ({
       setHitHistoryList(data as HitHistoryItem[])
       setTotal(total)
     }
-    catch (e) {
+    catch {
     }
   }
 

@@ -27,7 +27,7 @@ const VarReferencePopup: FC<Props> = ({
   const { locale } = useContext(I18n)
   // max-h-[300px] overflow-y-auto todo: use portal to handle long list
   return (
-    <div className='space-y-1 rounded-lg border border-gray-200 bg-white p-1 shadow-lg' style={{
+    <div className='space-y-1 rounded-lg border border-components-panel-border bg-components-panel-bg p-1 shadow-lg' style={{
       width: itemWidth || 228,
     }}>
       {((!vars || vars.length === 0) && popupFor)

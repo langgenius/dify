@@ -95,7 +95,7 @@ const VariableModal = ({
               type === 'number' && 'border-[1.5px] border-components-option-card-option-selected-border bg-components-option-card-option-selected-bg font-medium text-text-primary shadow-xs hover:border-components-option-card-option-selected-border',
             )} onClick={() => {
               setType('number')
-              if (!(/^[0-9]$/).test(value))
+              if (!(/^\d$/).test(value))
                 setValue('')
             }}>Number</div>
             <div className={cn(
@@ -131,12 +131,20 @@ const VariableModal = ({
         <div className=''>
           <div className='system-sm-semibold mb-1 flex h-6 items-center text-text-secondary'>{t('workflow.env.modal.value')}</div>
           <div className='flex'>
-            <Input
-              placeholder={t('workflow.env.modal.valuePlaceholder') || ''}
-              value={value}
-              onChange={e => setValue(e.target.value)}
-              type={type !== 'number' ? 'text' : 'number'}
-            />
+            {
+              type !== 'number' ? <textarea
+                className='system-sm-regular placeholder:system-sm-regular block h-20 w-full resize-none appearance-none rounded-lg border border-transparent bg-components-input-bg-normal p-2 caret-primary-600 outline-none placeholder:text-components-input-text-placeholder hover:border-components-input-border-hover hover:bg-components-input-bg-hover focus:border-components-input-border-active focus:bg-components-input-bg-active focus:shadow-xs'
+                value={value}
+                placeholder={t('workflow.env.modal.valuePlaceholder') || ''}
+                onChange={e => setValue(e.target.value)}
+              />
+                : <Input
+                  placeholder={t('workflow.env.modal.valuePlaceholder') || ''}
+                  value={value}
+                  onChange={e => setValue(e.target.value)}
+                  type="number"
+                />
+            }
           </div>
         </div>
       </div>

@@ -56,7 +56,7 @@ const AddAnnotationModal: FC<Props> = ({
     try {
       await onAdd(payload)
     }
-    catch (e) {
+    catch {
     }
     setIsSaving(false)
 

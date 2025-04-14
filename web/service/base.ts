@@ -169,7 +169,7 @@ const handleStream = (
             try {
               bufferObj = JSON.parse(message.substring(6)) as Record<string, any>// remove data: and parse as json
             }
-            catch (e) {
+            catch {
               // mute handle message cut off
               onData('', isFirstMessage, {
                 conversationId: bufferObj?.conversation_id,
@@ -385,11 +385,11 @@ export const ssePost = (
     options.body = JSON.stringify(body)
 
   const accessToken = getAccessToken(isPublicAPI)
-  ;(options.headers as Headers).set('Authorization', `Bearer ${accessToken}`)
+    ; (options.headers as Headers).set('Authorization', `Bearer ${accessToken}`)
 
   globalThis.fetch(urlWithPrefix, options as RequestInit)
     .then((res) => {
-      if (!/^(2|3)\d{2}$/.test(String(res.status))) {
+      if (!/^[23]\d{2}$/.test(String(res.status))) {
         if (res.status === 401) {
           refreshAccessTokenOrRelogin(TIME_OUT).then(() => {
             ssePost(url, fetchOptions, otherOptions)

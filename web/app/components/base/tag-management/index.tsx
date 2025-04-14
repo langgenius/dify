@@ -48,7 +48,7 @@ const TagManagementModal = ({ show, type }: TagManagementModalProps) => {
       setName('')
       setPending(false)
     }
-    catch (e: any) {
+    catch {
       notify({ type: 'error', message: t('common.tag.failed') })
       setPending(false)
     }

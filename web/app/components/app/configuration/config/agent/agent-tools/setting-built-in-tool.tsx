@@ -88,7 +88,7 @@ const SettingBuiltInTool: FC<Props> = ({
           setTempSetting(addDefaultValue(setting, formSchemas))
         }
       }
-      catch (e) { }
+      catch { }
       setIsLoading(false)
     })()
   }, [collection?.name, collection?.id, collection?.type])

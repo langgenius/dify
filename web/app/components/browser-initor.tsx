@@ -30,7 +30,7 @@ try {
   localStorage = globalThis.localStorage
   sessionStorage = globalThis.sessionStorage
 }
-catch (e) {
+catch {
   localStorage = new StorageMock()
   sessionStorage = new StorageMock()
 }

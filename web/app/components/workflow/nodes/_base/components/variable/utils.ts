@@ -278,6 +278,7 @@ const formatItem = (
       break
     }
 
+    // eslint-disable-next-line sonarjs/no-duplicated-branches
     case BlockEnum.VariableAggregator: {
       const {
         output_type,
@@ -473,7 +474,7 @@ const formatItem = (
   res.vars = res.vars.filter((v) => {
     const isCurrentMatched = filterVar(v, (() => {
       const variableArr = v.variable.split('.')
-      const [first, ..._other] = variableArr
+      const [first] = variableArr
       if (first === 'sys' || first === 'env' || first === 'conversation')
         return variableArr
 
@@ -618,6 +619,7 @@ const getLoopItemType = ({
 }: {
   valueSelector: ValueSelector
   beforeNodesOutputVars: NodeOutPutVar[]
+  // eslint-disable-next-line sonarjs/no-identical-functions
 }): VarType => {
   const outputVarNodeId = valueSelector[0]
   const isSystem = isSystemVar(valueSelector)
@@ -1250,6 +1252,7 @@ export const updateNodeVars = (oldNode: Node, oldVarSelector: ValueSelector, new
         }
         break
       }
+      // eslint-disable-next-line sonarjs/no-duplicated-branches
       case BlockEnum.VariableAggregator: {
         const payload = data as VariableAssignerNodeType
         if (payload.variables) {

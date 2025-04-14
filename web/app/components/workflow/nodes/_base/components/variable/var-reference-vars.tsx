@@ -94,7 +94,7 @@ const Item: FC<ItemProps> = ({
 
   const itemRef = useRef<HTMLDivElement>(null)
   const [isItemHovering, setIsItemHovering] = useState(false)
-  const _ = useHover(itemRef, {
+  useHover(itemRef, {
     onChange: (hovering) => {
       if (hovering) {
         setIsItemHovering(true)
@@ -201,7 +201,7 @@ const ObjectChildren: FC<ObjectChildrenProps> = ({
   const currObjPath = objPath
   const itemRef = useRef<HTMLDivElement>(null)
   const [isItemHovering, setIsItemHovering] = useState(false)
-  const _ = useHover(itemRef, {
+  useHover(itemRef, {
     onChange: (hovering) => {
       if (hovering) {
         setIsItemHovering(true)
