@@ -269,10 +269,14 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
           <span className={s.actionName}>{t('app.openInExplore')}</span>
         </button>
         <Divider className="!my-1" />
-        <button className={s.actionItem} onClick={onClickAccessControl}>
-          <span className={s.actionName}>{t('app.accessControl')}</span>
-        </button>
-        <Divider />
+        {
+          isCurrentWorkspaceEditor && <>
+            <button className={s.actionItem} onClick={onClickAccessControl}>
+              <span className={s.actionName}>{t('app.accessControl')}</span>
+            </button>
+            <Divider />
+          </>
+        }
         <div
           className={cn(s.actionItem, s.deleteActionItem, 'group')}
           onClick={onClickDelete}
