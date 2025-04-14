@@ -7,9 +7,13 @@ storage mechanism.
 """
 
 from core.repository.repository_factory import RepositoryFactory
-from core.repository.workflow_node_execution_repository import WorkflowNodeExecutionRepository
+from core.repository.workflow_node_execution_repository import (
+    WorkflowNodeExecutionCriteria,
+    WorkflowNodeExecutionRepository,
+)
 
 __all__ = [
     "RepositoryFactory",
     "WorkflowNodeExecutionRepository",
+    "WorkflowNodeExecutionCriteria",
 ]
