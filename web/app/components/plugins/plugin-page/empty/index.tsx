@@ -11,6 +11,7 @@ import Line from '../../marketplace/empty/line'
 import { useInstalledPluginList } from '@/service/use-plugins'
 import { useTranslation } from 'react-i18next'
 import { SUPPORT_INSTALL_LOCAL_FILE_EXTENSIONS } from '@/config'
+import { noop } from 'lodash-es'
 
 const Empty = () => {
   const { t } = useTranslation()
@@ -71,7 +72,7 @@ const Empty = () => {
             <div className='flex w-full flex-col gap-y-1'>
               {[
                 ...(
-                  (enable_marketplace && true)
+                  (enable_marketplace)
                     ? [{ icon: MagicBox, text: t('plugin.list.source.marketplace'), action: 'marketplace' }]
                     : []
                 ),
@@ -99,14 +100,14 @@ const Empty = () => {
           </div>
         </div>
         {selectedAction === 'github' && <InstallFromGitHub
-          onSuccess={() => { }}
+          onSuccess={noop}
           onClose={() => setSelectedAction(null)}
         />}
         {selectedAction === 'local' && selectedFile
           && (<InstallFromLocalPackage
             file={selectedFile}
             onClose={() => setSelectedAction(null)}
-            onSuccess={() => { }}
+            onSuccess={noop}
           />
           )
         }

@@ -25,7 +25,7 @@ const WorkplaceSelector = () => {
       notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
       location.assign(`${location.origin}${basePath}`)
     }
-    catch (e) {
+    catch {
       notify({ type: 'error', message: t('common.provider.saveFailed') })
     }
   }

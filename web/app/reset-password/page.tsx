@@ -12,6 +12,7 @@ import Input from '@/app/components/base/input'
 import Toast from '@/app/components/base/toast'
 import { sendResetPasswordCode } from '@/service/common'
 import I18NContext from '@/context/i18n'
+import { noop } from 'lodash-es'
 
 export default function CheckCode() {
   const { t } = useTranslation()
@@ -76,7 +77,7 @@ export default function CheckCode() {
       </p>
     </div>
 
-    <form onSubmit={() => { }}>
+    <form onSubmit={noop}>
       <input type='text' className='hidden' />
       <div className='mb-2'>
         <label htmlFor="email" className='system-md-semibold my-2 text-text-secondary'>{t('login.email')}</label>

@@ -123,7 +123,7 @@ const BeforeRunForm: FC<BeforeRunFormProps> = ({
           const value = formatValue(form.values[input.variable], input.type)
           submitData[input.variable] = value
         }
-        catch (e) {
+        catch {
           parseErrorJsonField = input.variable
         }
       })
@@ -139,18 +139,16 @@ const BeforeRunForm: FC<BeforeRunFormProps> = ({
     onRun(submitData)
   }, [forms, onRun, t])
   return (
-    <div className='absolute inset-0 z-10 rounded-2xl pt-10' style={{
-      backgroundColor: 'rgba(16, 24, 40, 0.20)',
-    }}>
-      <div className='flex h-full flex-col rounded-2xl bg-white'>
+    <div className='absolute inset-0 z-10 rounded-2xl bg-background-overlay-alt pt-10'>
+      <div className='flex h-full flex-col rounded-2xl bg-components-panel-bg'>
         <div className='flex h-8 shrink-0 items-center justify-between pl-4 pr-3 pt-3'>
-          <div className='truncate text-base font-semibold text-gray-900'>
+          <div className='truncate text-base font-semibold text-text-primary'>
             {t(`${i18nPrefix}.testRun`)} {nodeName}
           </div>
           <div className='ml-2 shrink-0 cursor-pointer p-1' onClick={() => {
             onHide()
           }}>
-            <RiCloseLine className='h-4 w-4 text-gray-500 ' />
+            <RiCloseLine className='h-4 w-4 text-text-tertiary ' />
           </div>
         </div>
         {
@@ -178,14 +176,14 @@ const BeforeRunForm: FC<BeforeRunFormProps> = ({
               <div className='mt-4 flex justify-between space-x-2 px-4' >
                 {isRunning && (
                   <div
-                    className='cursor-pointer rounded-lg border border-gray-200 bg-white p-2 shadow-xs'
+                    className='cursor-pointer rounded-lg border border-divider-regular bg-components-button-secondary-bg p-2 shadow-xs'
                     onClick={onStop}
                   >
-                    <StopCircle className='h-4 w-4 text-gray-500' />
+                    <StopCircle className='h-4 w-4 text-text-tertiary' />
                   </div>
                 )}
                 <Button disabled={!isFileLoaded || isRunning} variant='primary' className='w-0 grow space-x-2' onClick={handleRun}>
-                  {isRunning && <RiLoader2Line className='h-4 w-4 animate-spin text-white' />}
+                  {isRunning && <RiLoader2Line className='h-4 w-4 animate-spin' />}
                   <div>{t(`${i18nPrefix}.${isRunning ? 'running' : 'startRun'}`)}</div>
                 </Button>
               </div>

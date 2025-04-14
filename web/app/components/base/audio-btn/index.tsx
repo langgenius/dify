@@ -29,7 +29,7 @@ const AudioBtn = ({
 
   const params = useParams()
   const pathname = usePathname()
-  const audio_finished_call = (event: string): any => {
+  const audio_finished_call = (event: string): void => {
     switch (event) {
       case 'ended':
         setAudioState('ended')
@@ -97,7 +97,7 @@ const AudioBtn = ({
               </div>
             )
             : (
-              <div className={`flex h-full w-full items-center justify-center rounded-md ${!isAudition ? 'hover:bg-gray-50' : 'hover:bg-gray-50'}`}>
+              <div className={'flex h-full w-full items-center justify-center rounded-md hover:bg-gray-50'}>
                 <div className={`h-4 w-4 ${(audioState === 'playing') ? s.pauseIcon : s.playIcon}`}></div>
               </div>
             )}

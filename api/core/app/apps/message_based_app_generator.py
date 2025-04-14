@@ -153,6 +153,7 @@ class MessageBasedAppGenerator(BaseAppGenerator):
             query = application_generate_entity.query or "New conversation"
         else:
             query = next(iter(application_generate_entity.inputs.values()), "New conversation")
+        query = query or "New conversation"
         conversation_name = (query[:20] + "…") if len(query) > 20 else query
 
         if not conversation:

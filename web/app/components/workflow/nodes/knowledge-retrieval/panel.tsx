@@ -112,7 +112,7 @@ const Panel: FC<NodePanelProps<KnowledgeRetrievalNodeType>> = ({
                 onOpenFromPropsChange={handleOpenFromPropsChange}
                 selectedDatasets={selectedDatasets}
               />
-              {!readOnly && (<div className='h-3 w-px bg-gray-200'></div>)}
+              {!readOnly && (<div className='h-3 w-px bg-divider-regular'></div>)}
               {!readOnly && (
                 <AddKnowledge
                   selectedIds={inputs.dataset_ids}
@@ -202,7 +202,7 @@ const Panel: FC<NodePanelProps<KnowledgeRetrievalNodeType>> = ({
                   required: true,
                 }],
                 values: { query },
-                onChange: keyValue => setQuery((keyValue as any).query),
+                onChange: keyValue => setQuery(keyValue.query),
               },
             ]}
             runningStatus={runningStatus}

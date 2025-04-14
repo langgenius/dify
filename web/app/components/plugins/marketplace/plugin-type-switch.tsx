@@ -13,6 +13,7 @@ import {
   useSearchBoxAutoAnimate,
 } from './hooks'
 import cn from '@/utils/classnames'
+import { useCallback, useEffect } from 'react'
 
 export const PLUGIN_TYPE_SEARCH_MAP = {
   all: 'all',
@@ -26,11 +27,13 @@ type PluginTypeSwitchProps = {
   locale?: string
   className?: string
   searchBoxAutoAnimate?: boolean
+  showSearchParams?: boolean
 }
 const PluginTypeSwitch = ({
   locale,
   className,
   searchBoxAutoAnimate,
+  showSearchParams,
 }: PluginTypeSwitchProps) => {
   const { t } = useMixedTranslation(locale)
   const activePluginType = useMarketplaceContext(s => s.activePluginType)
@@ -69,6 +72,23 @@ const PluginTypeSwitch = ({
       icon: <RiArchive2Line className='mr-1.5 h-4 w-4' />,
     },
   ]
+
+  const handlePopState = useCallback(() => {
+    if (!showSearchParams)
+      return
+    const url = new URL(window.location.href)
+    const category = url.searchParams.get('category') || PLUGIN_TYPE_SEARCH_MAP.all
+    handleActivePluginTypeChange(category)
+  }, [showSearchParams, handleActivePluginTypeChange])
+
+  useEffect(() => {
+    window.addEventListener('popstate', () => {
+      handlePopState()
+    })
+    return () => {
+      window.removeEventListener('popstate', handlePopState)
+    }
+  }, [handlePopState])
 
   return (
     <div className={cn(

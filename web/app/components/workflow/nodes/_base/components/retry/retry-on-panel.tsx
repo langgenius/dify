@@ -66,7 +66,7 @@ const RetryOnPanel = ({
           retry_config?.retry_enabled && (
             <div className='px-4 pb-2'>
               <div className='mb-1 flex w-full items-center'>
-                <div className='system-xs-medium-uppercase mr-2 grow'>{t('workflow.nodes.common.retry.maxRetries')}</div>
+                <div className='system-xs-medium-uppercase mr-2 grow text-text-secondary'>{t('workflow.nodes.common.retry.maxRetries')}</div>
                 <Slider
                   className='mr-3 w-[108px]'
                   value={retry_config?.max_retries || 3}
@@ -86,7 +86,7 @@ const RetryOnPanel = ({
                 />
               </div>
               <div className='flex items-center'>
-                <div className='system-xs-medium-uppercase mr-2 grow'>{t('workflow.nodes.common.retry.retryInterval')}</div>
+                <div className='system-xs-medium-uppercase mr-2 grow text-text-secondary'>{t('workflow.nodes.common.retry.retryInterval')}</div>
                 <Slider
                   className='mr-3 w-[108px]'
                   value={retry_config?.retry_interval || 1000}

@@ -17,6 +17,7 @@ import {
 import { useSelector as useAppContextSelector } from '@/context/app-context'
 import { useTranslation } from 'react-i18next'
 import { SUPPORT_INSTALL_LOCAL_FILE_EXTENSIONS } from '@/config'
+import { noop } from 'lodash-es'
 
 type Props = {
   onSwitchToMarketplaceTab: () => void
@@ -85,7 +86,7 @@ const InstallPluginDropdown = ({
             <div className='w-full'>
               {[
                 ...(
-                  (enable_marketplace && true)
+                  (enable_marketplace)
                     ? [{ icon: MagicBox, text: t('plugin.source.marketplace'), action: 'marketplace' }]
                     : []
                 ),
@@ -118,14 +119,14 @@ const InstallPluginDropdown = ({
         </PortalToFollowElemContent>
       </div>
       {selectedAction === 'github' && <InstallFromGitHub
-        onSuccess={() => { }}
+        onSuccess={noop}
         onClose={() => setSelectedAction(null)}
       />}
       {selectedAction === 'local' && selectedFile
         && (<InstallFromLocalPackage
           file={selectedFile}
           onClose={() => setSelectedAction(null)}
-          onSuccess={() => { }}
+          onSuccess={noop}
         />
         )
       }

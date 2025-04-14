@@ -18,9 +18,12 @@ import { CollectionType } from '@/app/components/tools/types'
 import useGetIcon from '@/app/components/plugins/install-plugin/base/use-get-icon'
 import { useStrategyInfo } from '../../agent/use-config'
 import { SwitchPluginVersion } from './switch-plugin-version'
-import PluginList from '@/app/components/workflow/block-selector/market-place-plugin/list'
+import type { ListRef } from '@/app/components/workflow/block-selector/market-place-plugin/list'
+import PluginList, { type ListProps } from '@/app/components/workflow/block-selector/market-place-plugin/list'
 import { useMarketplacePlugins } from '@/app/components/plugins/marketplace/hooks'
 import { ToolTipContent } from '@/app/components/base/tooltip/content'
+
+const DEFAULT_TAGS: ListProps['tags'] = []
 
 const NotFoundWarn = (props: {
   title: ReactNode,
@@ -138,7 +141,7 @@ export const AgentStrategySelector = memo((props: AgentStrategySelectorProps) =>
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [query])
 
-  const pluginRef = useRef(null)
+  const pluginRef = useRef<ListRef>(null)
 
   return <PortalToFollowElem open={open} onOpenChange={setOpen} placement='bottom'>
     <PortalToFollowElemTrigger className='w-full'>
@@ -213,10 +216,11 @@ export const AgentStrategySelector = memo((props: AgentStrategySelectorProps) =>
             className='h-full max-h-full max-w-none overflow-y-auto'
             indexBarClassName='top-0 xl:top-36' showWorkflowEmpty={false} hasSearchText={false} />
           <PluginList
+            ref={pluginRef}
             wrapElemRef={wrapElemRef}
-            list={notInstalledPlugins as any} ref={pluginRef}
+            list={notInstalledPlugins}
             searchText={query}
-            tags={[]}
+            tags={DEFAULT_TAGS}
             disableMaxWidth
           />
         </main>

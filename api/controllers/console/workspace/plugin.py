@@ -49,6 +49,23 @@ class PluginListApi(Resource):
         return jsonable_encoder({"plugins": plugins})
 
 
+class PluginListLatestVersionsApi(Resource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    def post(self):
+        req = reqparse.RequestParser()
+        req.add_argument("plugin_ids", type=list, required=True, location="json")
+        args = req.parse_args()
+
+        try:
+            versions = PluginService.list_latest_versions(args["plugin_ids"])
+        except PluginDaemonClientSideError as e:
+            raise ValueError(e)
+
+        return jsonable_encoder({"versions": versions})
+
+
 class PluginListInstallationsFromIdsApi(Resource):
     @setup_required
     @login_required
@@ -236,7 +253,7 @@ class PluginFetchManifestApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @plugin_permission_required(debug_required=True)
+    @plugin_permission_required(install_required=True)
     def get(self):
         tenant_id = current_user.current_tenant_id
 
@@ -260,7 +277,7 @@ class PluginFetchInstallTasksApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @plugin_permission_required(debug_required=True)
+    @plugin_permission_required(install_required=True)
     def get(self):
         tenant_id = current_user.current_tenant_id
 
@@ -281,7 +298,7 @@ class PluginFetchInstallTaskApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @plugin_permission_required(debug_required=True)
+    @plugin_permission_required(install_required=True)
     def get(self, task_id: str):
         tenant_id = current_user.current_tenant_id
 
@@ -295,7 +312,7 @@ class PluginDeleteInstallTaskApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @plugin_permission_required(debug_required=True)
+    @plugin_permission_required(install_required=True)
     def post(self, task_id: str):
         tenant_id = current_user.current_tenant_id
 
@@ -309,7 +326,7 @@ class PluginDeleteAllInstallTaskItemsApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @plugin_permission_required(debug_required=True)
+    @plugin_permission_required(install_required=True)
     def post(self):
         tenant_id = current_user.current_tenant_id
 
@@ -323,7 +340,7 @@ class PluginDeleteInstallTaskItemApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @plugin_permission_required(debug_required=True)
+    @plugin_permission_required(install_required=True)
     def post(self, task_id: str, identifier: str):
         tenant_id = current_user.current_tenant_id
 
@@ -337,7 +354,7 @@ class PluginUpgradeFromMarketplaceApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @plugin_permission_required(debug_required=True)
+    @plugin_permission_required(install_required=True)
     def post(self):
         tenant_id = current_user.current_tenant_id
 
@@ -360,7 +377,7 @@ class PluginUpgradeFromGithubApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @plugin_permission_required(debug_required=True)
+    @plugin_permission_required(install_required=True)
     def post(self):
         tenant_id = current_user.current_tenant_id
 
@@ -391,7 +408,7 @@ class PluginUninstallApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @plugin_permission_required(debug_required=True)
+    @plugin_permission_required(install_required=True)
     def post(self):
         req = reqparse.RequestParser()
         req.add_argument("plugin_installation_id", type=str, required=True, location="json")
@@ -453,6 +470,7 @@ class PluginFetchPermissionApi(Resource):
 
 api.add_resource(PluginDebuggingKeyApi, "/workspaces/current/plugin/debugging-key")
 api.add_resource(PluginListApi, "/workspaces/current/plugin/list")
+api.add_resource(PluginListLatestVersionsApi, "/workspaces/current/plugin/list/latest-versions")
 api.add_resource(PluginListInstallationsFromIdsApi, "/workspaces/current/plugin/list/installations/ids")
 api.add_resource(PluginIconApi, "/workspaces/current/plugin/icon")
 api.add_resource(PluginUploadFromPkgApi, "/workspaces/current/plugin/upload/pkg")

@@ -1,3 +1,4 @@
+import type { ChangeEventHandler } from 'react'
 import {
   useCallback,
   useRef,
@@ -49,7 +50,7 @@ const SearchInput = ({
     })
   }, [querySchoolsWithDebounced, handleUpdateSchools])
 
-  const handleValueChange = useCallback((e: any) => {
+  const handleValueChange: ChangeEventHandler<HTMLInputElement> = useCallback((e) => {
     setOpen(true)
     setSchools([])
     pageRef.current = 0

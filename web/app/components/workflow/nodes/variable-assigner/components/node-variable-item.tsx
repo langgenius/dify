@@ -64,7 +64,7 @@ const NodeVariableItem = ({
       <div
         className={cn(
           'system-xs-medium ml-0.5 shrink truncate text-text-accent',
-          isEnv && 'text-gray-900',
+          isEnv && 'text-text-primary',
           isException && 'text-text-warning',
           isChatVar && 'text-util-colors-teal-teal-700',
         )}
@@ -77,7 +77,7 @@ const NodeVariableItem = ({
   return (
     <div className={cn(
       'relative flex items-center gap-1 self-stretch rounded-md bg-workflow-block-parma-bg p-[3px] pl-[5px]',
-      showBorder && '!bg-black/[0.02]',
+      showBorder && '!bg-state-base-hover',
       className,
     )}>
       <div className='flex w-0 grow items-center'>
@@ -86,12 +86,12 @@ const NodeVariableItem = ({
             <>
               <div className='shrink-0 p-[1px]'>
                 <VarBlockIcon
-                  className='!text-gray-900'
+                  className='!text-text-primary'
                   type={node.data.type}
                 />
               </div>
               <div
-                className='mx-0.5 shrink-[1000] truncate text-xs font-medium text-gray-700'
+                className='mx-0.5 shrink-[1000] truncate text-xs font-medium text-text-secondary'
                 title={node?.data.title}
               >
                 {node?.data.title}

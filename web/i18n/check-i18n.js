@@ -26,6 +26,7 @@ async function getKeysFromLanuage(language) {
         ) // Convert to camel case
         // console.log(camelCaseFileName)
         const content = fs.readFileSync(filePath, 'utf8')
+        // eslint-disable-next-line sonarjs/code-eval
         const translation = eval(transpile(content))
         // console.log(translation)
         const keys = Object.keys(translation)

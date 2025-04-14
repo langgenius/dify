@@ -8,6 +8,7 @@ import ListNoDataPlaceholder from '../../../_base/components/list-no-data-placeh
 import VarReferencePicker from '@/app/components/workflow/nodes/_base/components/variable/var-reference-picker'
 import type { ValueSelector, Var } from '@/app/components/workflow/types'
 import { VarType as VarKindType } from '@/app/components/workflow/nodes/tool/types'
+import { noop } from 'lodash-es'
 
 type Props = {
   readonly: boolean
@@ -23,7 +24,7 @@ const VarList: FC<Props> = ({
   nodeId,
   list,
   onChange,
-  onOpen = () => { },
+  onOpen = noop,
   filterVar,
 }) => {
   const { t } = useTranslation()
@@ -74,7 +75,6 @@ const VarList: FC<Props> = ({
           />
           {!readonly && (
             <RemoveButton
-              className='!bg-gray-100 !p-2 hover:!bg-gray-200'
               onClick={handleVarRemove(index)}
             />
           )}

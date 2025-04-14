@@ -7,6 +7,8 @@ import storybook from 'eslint-plugin-storybook'
 // import { fixupConfigRules } from '@eslint/compat'
 import tailwind from 'eslint-plugin-tailwindcss'
 import reactHooks from 'eslint-plugin-react-hooks'
+import sonar from 'eslint-plugin-sonarjs'
+
 // import reactRefresh from 'eslint-plugin-react-refresh'
 
 export default combine(
@@ -65,8 +67,6 @@ export default combine(
   // use `ESLINT_CONFIG_INSPECTOR=true pnpx @eslint/config-inspector` to check the config
   // ...process.env.ESLINT_CONFIG_INSPECTOR
   //   ? []
-  // TODO: remove this when upgrade to nextjs 15
-  // : fixupConfigRules(compat.extends('next')),
   {
     rules: {
       // performance issue, and not used.
@@ -117,6 +117,9 @@ export default combine(
       // antfu migrate to eslint-plugin-unused-imports
       'unused-imports/no-unused-vars': 'warn',
       'unused-imports/no-unused-imports': 'warn',
+
+      // We use `import { noop } from 'lodash-es'` across `web` project
+      'no-empty-function': 'error',
     },
 
     languageOptions: {
@@ -137,7 +140,48 @@ export default combine(
       'react-hooks': reactHooks,
     },
   },
-  // need futher research
+  // sonar
+  {
+    rules: {
+      ...sonar.configs.recommended.rules,
+      // code complexity
+      'sonarjs/cognitive-complexity': 'off',
+      'sonarjs/no-nested-functions': 'warn',
+      'sonarjs/no-nested-conditional': 'warn',
+      'sonarjs/nested-control-flow': 'warn', // 3 levels of nesting
+      'sonarjs/no-small-switch': 'off',
+      'sonarjs/no-nested-template-literals': 'warn',
+      'sonarjs/redundant-type-aliases': 'off',
+      'sonarjs/regex-complexity': 'warn',
+      // maintainability
+      'sonarjs/no-ignored-exceptions': 'off',
+      'sonarjs/no-commented-code': 'warn',
+      'sonarjs/no-unused-vars': 'warn',
+      'sonarjs/prefer-single-boolean-return': 'warn',
+      'sonarjs/duplicates-in-character-class': 'off',
+      'sonarjs/single-char-in-character-classes': 'off',
+      'sonarjs/anchor-precedence': 'warn',
+      'sonarjs/updated-loop-counter': 'off',
+      'sonarjs/no-dead-store': 'warn',
+      'sonarjs/no-duplicated-branches': 'warn',
+      'sonarjs/max-lines': 'warn', // max 1000 lines
+      'sonarjs/no-variable-usage-before-declaration': 'error',
+      // security
+      // eslint-disable-next-line sonarjs/no-hardcoded-passwords
+      'sonarjs/no-hardcoded-passwords': 'off', // detect the wrong code that is not password.
+      'sonarjs/no-hardcoded-secrets': 'off',
+      'sonarjs/pseudo-random': 'off',
+      // performance
+      'sonarjs/slow-regex': 'warn',
+      // others
+      'sonarjs/todo-tag': 'warn',
+      'sonarjs/table-header': 'off',
+    },
+    plugins: {
+      sonarjs: sonar,
+    },
+  },
+  // need further research
   {
     rules: {
       // not exist in old version
@@ -149,6 +193,7 @@ export default combine(
       // useful, but big change
       'unicorn/prefer-number-properties': 'warn',
       'unicorn/no-new-array': 'warn',
+      'style/indent': 'off',
     },
   },
   // suppress error for `no-undef` rule

@@ -14,6 +14,7 @@ import { Tag03 } from '@/app/components/base/icons/src/vender/line/financeAndECo
 import Checkbox from '@/app/components/base/checkbox'
 import type { Label } from '@/app/components/tools/labels/constant'
 import { useTags } from '@/app/components/plugins/hooks'
+import { noop } from 'lodash-es'
 
 type LabelSelectorProps = {
   value: string[]
@@ -99,7 +100,7 @@ const LabelSelector: FC<LabelSelectorProps> = ({
                   <Checkbox
                     className='shrink-0'
                     checked={value.includes(label.name)}
-                    onCheck={() => { }}
+                    onCheck={noop}
                   />
                   <div title={label.label} className='grow truncate text-sm leading-5 text-text-secondary'>{label.label}</div>
                 </div>

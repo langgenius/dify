@@ -3,7 +3,6 @@ import {
 } from 'react'
 
 import { RiCloseLine } from '@remixicon/react'
-import { useTranslation } from 'react-i18next'
 import type { GlobalVariable } from '../../types'
 import Item from './item'
 import { useStore } from '@/app/components/workflow/store'
@@ -11,7 +10,6 @@ import { useStore } from '@/app/components/workflow/store'
 import cn from '@/utils/classnames'
 
 const Panel = () => {
-  const { t } = useTranslation()
   const setShowPanel = useStore(s => s.setShowGlobalVariablePanel)
 
   const globalVariableList: GlobalVariable[] = [

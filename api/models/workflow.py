@@ -15,7 +15,7 @@ from sqlalchemy import Index, PrimaryKeyConstraint, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 import contexts
-from constants import HIDDEN_VALUE
+from constants import DEFAULT_FILE_NUMBER_LIMITS, HIDDEN_VALUE
 from core.helper import encrypter
 from core.variables import SecretVariable, Variable
 from factories import variable_factory
@@ -186,7 +186,7 @@ class Workflow(Base):
         features = json.loads(self._features)
         if features.get("file_upload", {}).get("image", {}).get("enabled", False):
             image_enabled = True
-            image_number_limits = int(features["file_upload"]["image"].get("number_limits", 1))
+            image_number_limits = int(features["file_upload"]["image"].get("number_limits", DEFAULT_FILE_NUMBER_LIMITS))
             image_transfer_methods = features["file_upload"]["image"].get(
                 "transfer_methods", ["remote_url", "local_file"]
             )
