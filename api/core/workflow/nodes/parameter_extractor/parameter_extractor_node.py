@@ -186,6 +186,8 @@ class ParameterExtractorNode(LLMNode):
             "usage": None,
             "function": {} if not prompt_message_tools else jsonable_encoder(prompt_message_tools[0]),
             "tool_call": None,
+            "model_provider": model_config.provider,
+            "model_name": model_config.model,
         }
 
         try:
