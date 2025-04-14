@@ -59,7 +59,7 @@ const TagItemEditor: FC<TagItemEditorProps> = ({
       notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
       setName(name)
     }
-    catch (e: any) {
+    catch {
       notify({ type: 'error', message: t('common.actionMsg.modifiedUnsuccessfully') })
       setName(tag.name)
       const recoverList = tagList.map((tag) => {
@@ -92,7 +92,7 @@ const TagItemEditor: FC<TagItemEditorProps> = ({
       ])
       setPending(false)
     }
-    catch (e: any) {
+    catch {
       notify({ type: 'error', message: t('common.actionMsg.modifiedUnsuccessfully') })
       setPending(false)
     }

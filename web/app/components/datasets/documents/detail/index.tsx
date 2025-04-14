@@ -135,7 +135,7 @@ const DocumentDetail: FC<Props> = ({ datasetId, documentId }) => {
     params: { metadata: 'without' },
   })
 
-  const { data: documentMetadata, error: metadataErr, refetch: metadataMutate } = useDocumentMetadata({
+  const { data: documentMetadata } = useDocumentMetadata({
     datasetId,
     documentId,
     params: { metadata: 'only' },
@@ -146,7 +146,6 @@ const DocumentDetail: FC<Props> = ({ datasetId, documentId }) => {
   }
 
   const isDetailLoading = !documentDetail && !error
-  const isMetadataLoading = !documentMetadata && !metadataErr
 
   const embedding = ['queuing', 'indexing', 'paused'].includes((documentDetail?.display_status || '').toLowerCase())
 

@@ -141,7 +141,7 @@ const ConditionItem = ({
       value: isArrayValue ? [value] : value,
     }
     doUpdateCondition(newCondition)
-  }, [condition, doUpdateCondition, fileAttr])
+  }, [condition, doUpdateCondition, isArrayValue])
 
   const isSelect = condition.comparison_operator && [ComparisonOperator.in, ComparisonOperator.notIn].includes(condition.comparison_operator)
   const selectOptions = useMemo(() => {

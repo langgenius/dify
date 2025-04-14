@@ -49,7 +49,7 @@ const InviteModal = ({
           onSend(invitation_results)
         }
       }
-      catch (e) { }
+      catch { }
     }
     else {
       notify({ type: 'error', message: t('common.members.emailInvalid') })

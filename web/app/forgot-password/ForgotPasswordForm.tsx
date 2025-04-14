@@ -16,7 +16,7 @@ import {
   fetchSetupStatus,
   sendForgotPasswordEmail,
 } from '@/service/common'
-import type { InitValidateStatusResponse, SetupStatusResponse } from '@/models/common'
+import type { InitValidateStatusResponse } from '@/models/common'
 
 const accountFormSchema = z.object({
   email: z
@@ -67,7 +67,7 @@ const ForgotPasswordForm = () => {
   }
 
   useEffect(() => {
-    fetchSetupStatus().then((res: SetupStatusResponse) => {
+    fetchSetupStatus().then(() => {
       fetchInitValidateStatus().then((res: InitValidateStatusResponse) => {
         if (res.status === 'not_started')
           window.location.href = '/init'

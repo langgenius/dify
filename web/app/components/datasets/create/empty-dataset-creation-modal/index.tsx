@@ -40,7 +40,7 @@ const EmptyDatasetCreationModal = ({
       onHide()
       router.push(`/datasets/${dataset.id}/documents`)
     }
-    catch (err) {
+    catch {
       notify({ type: 'error', message: t('datasetCreation.stepOne.modal.failed') })
     }
   }

@@ -515,5 +515,10 @@ class WorkflowService:
             # Cannot delete a workflow that's currently in use by an app
             raise WorkflowInUseError(f"Cannot delete workflow that is currently in use by app '{app.name}'")
 
+        # Check if this workflow is published as a tool
+        if workflow.tool_published:
+            # Cannot delete a workflow that's published as a tool
+            raise WorkflowInUseError("Cannot delete workflow that is published as a tool")
+
         session.delete(workflow)
         return True

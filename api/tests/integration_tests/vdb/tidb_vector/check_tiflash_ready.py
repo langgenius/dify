@@ -45,7 +45,7 @@ def main():
         if is_tiflash_ready:
             break
         else:
-            print(f"Attempt {attempt + 1} failed，retry in {retry_interval_seconds} seconds...")
+            print(f"Attempt {attempt + 1} failed, retry in {retry_interval_seconds} seconds...")
             time.sleep(retry_interval_seconds)
 
     if is_tiflash_ready:

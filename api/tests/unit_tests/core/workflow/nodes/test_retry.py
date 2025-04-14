@@ -46,13 +46,6 @@ def test_retry_default_value_partial_success():
 
 def test_retry_failed():
     """retry failed with success status"""
-    error_code = """
-    def main() -> dict:
-        return {
-            "result": 1 / 0,
-        }
-    """
-
     graph_config = {
         "edges": DEFAULT_VALUE_EDGE,
         "nodes": [

@@ -88,7 +88,7 @@ export function getAccessToken(isPublicAPI?: boolean) {
     try {
       accessTokenJson = JSON.parse(accessToken)
     }
-    catch (e) {
+    catch {
 
     }
     return accessTokenJson[sharedToken]
