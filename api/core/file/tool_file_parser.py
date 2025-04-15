@@ -1,4 +1,5 @@
-from typing import TYPE_CHECKING, Callable
+from collections.abc import Callable
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from core.tools.tool_file_manager import ToolFileManager
