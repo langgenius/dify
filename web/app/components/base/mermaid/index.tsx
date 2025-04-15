@@ -704,7 +704,6 @@ const Flowchart = React.forwardRef((props: {
             </button>
           </div>
 
-          {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={svgCode}
             alt="mermaid_chart"
