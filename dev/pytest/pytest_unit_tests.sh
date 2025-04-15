@@ -2,4 +2,4 @@
 set -x
 
 # libs
-pytest api/tests/unit_tests
+pytest --cov=./api --cov-report=json api/tests/unit_tests
