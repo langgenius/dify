@@ -48,7 +48,7 @@ class MessageCycleManage:
     def _generate_conversation_name(self, *, conversation_id: str, query: str) -> Optional[Thread]:
         """
         Generate conversation name.
-        :param conversation: conversation
+        :param conversation_id: conversation id
         :param query: query
         :return: thread
         """
@@ -145,7 +145,7 @@ class MessageCycleManage:
 
             # get extension
             if "." in message_file.url:
-                extension = f'.{message_file.url.split(".")[-1]}'
+                extension = f".{message_file.url.split('.')[-1]}"
                 if len(extension) > 10:
                     extension = ".bin"
             else:

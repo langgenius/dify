@@ -103,7 +103,7 @@ const translation = {
       edit: '编辑标注',
     },
     dataSet: {
-      title: '上下文',
+      title: '知识库',
       noData: '您可以导入知识库作为上下文',
       words: '词',
       textBlocks: '文本块',
@@ -475,6 +475,7 @@ const translation = {
       title: '多路召回',
       description: '根据用户意图同时匹配所有知识库，从多路知识库查询相关文本片段，经过重排序步骤，从多路查询结果中选择匹配用户问题的最佳结果。',
     },
+    embeddingModelRequired: '未配置 Embedding 模型',
     rerankModelRequired: '未配置 Rerank 模型',
     params: '参数设置',
     top_k: 'Top K',

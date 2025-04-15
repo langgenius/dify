@@ -425,8 +425,8 @@ def test_multi_colons_parse(setup_http_mock):
     result = node._run()
     assert result.process_data is not None
     assert result.outputs is not None
-    resp = result.outputs
 
     assert urlencode({"Redirect": "http://example2.com"}) in result.process_data.get("request", "")
     assert 'form-data; name="Redirect"\r\n\r\nhttp://example6.com' in result.process_data.get("request", "")
+    # resp = result.outputs
     # assert "http://example3.com" == resp.get("headers", {}).get("referer")

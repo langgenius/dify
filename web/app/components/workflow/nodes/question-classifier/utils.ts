@@ -1,5 +1,3 @@
-import type { QuestionClassifierNodeType } from './types'
-
-export const checkNodeValid = (payload: QuestionClassifierNodeType) => {
+export const checkNodeValid = () => {
   return true
 }

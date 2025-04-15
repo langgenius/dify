@@ -105,20 +105,20 @@ const ExternalKnowledgeAPICard: React.FC<ExternalKnowledgeAPICardProps> = ({ api
 
   return (
     <>
-      <div className={`flex p-2 pl-3 items-start self-stretch rounded-lg border-[0.5px] 
-        border-components-panel-border-subtle bg-components-panel-on-panel-item-bg 
-        shadows-shadow-xs ${isHovered ? 'bg-state-destructive-hover border-state-destructive-border' : ''}`}
+      <div className={`shadows-shadow-xs flex items-start self-stretch rounded-lg border-[0.5px] border-components-panel-border-subtle 
+        bg-components-panel-on-panel-item-bg p-2 
+        pl-3 ${isHovered ? 'border-state-destructive-border bg-state-destructive-hover' : ''}`}
       >
-        <div className='flex py-1 flex-col justify-center items-start gap-1.5 flex-grow'>
+        <div className='flex grow flex-col items-start justify-center gap-1.5 py-1'>
           <div className='flex items-center gap-1 self-stretch text-text-secondary'>
-            <ApiConnectionMod className='w-4 h-4' />
+            <ApiConnectionMod className='h-4 w-4' />
             <div className='system-sm-medium'>{api.name}</div>
           </div>
-          <div className='self-stretch text-text-tertiary system-xs-regular'>{api.settings.endpoint}</div>
+          <div className='system-xs-regular self-stretch text-text-tertiary'>{api.settings.endpoint}</div>
         </div>
         <div className='flex items-start gap-1'>
           <ActionButton onClick={handleEditClick}>
-            <RiEditLine className='w-4 h-4 text-text-tertiary hover:text-text-secondary' />
+            <RiEditLine className='h-4 w-4 text-text-tertiary hover:text-text-secondary' />
           </ActionButton>
           <ActionButton
             className='hover:bg-state-destructive-hover'
@@ -126,7 +126,7 @@ const ExternalKnowledgeAPICard: React.FC<ExternalKnowledgeAPICardProps> = ({ api
             onMouseEnter={() => setIsHovered(true)}
             onMouseLeave={() => setIsHovered(false)}
           >
-            <RiDeleteBinLine className='w-4 h-4 text-text-tertiary hover:text-text-destructive' />
+            <RiDeleteBinLine className='h-4 w-4 text-text-tertiary hover:text-text-destructive' />
           </ActionButton>
         </div>
       </div>

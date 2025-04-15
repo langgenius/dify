@@ -24,5 +24,21 @@ export type ToolDefaultValue = {
   provider_name: string
   tool_name: string
   tool_label: string
+  tool_description: string
   title: string
+  is_team_authorization: boolean
+  params: Record<string, any>
+  paramSchemas: Record<string, any>[]
+  output_schema: Record<string, any>
+}
+
+export type ToolValue = {
+  provider_name: string
+  tool_name: string
+  tool_label: string
+  tool_description: string
+  settings?: Record<string, any>
+  parameters?: Record<string, any>
+  enabled?: boolean
+  extra?: Record<string, any>
 }

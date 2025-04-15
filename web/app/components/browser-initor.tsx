@@ -30,7 +30,7 @@ try {
   localStorage = globalThis.localStorage
   sessionStorage = globalThis.sessionStorage
 }
-catch (e) {
+catch {
   localStorage = new StorageMock()
   sessionStorage = new StorageMock()
 }
@@ -45,7 +45,7 @@ Object.defineProperty(globalThis, 'sessionStorage', {
 
 const BrowserInitor = ({
   children,
-}: { children: React.ReactElement }) => {
+}: { children: React.ReactNode }) => {
   return children
 }
 

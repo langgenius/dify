@@ -44,9 +44,6 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
     def run(self) -> None:
         """
         Run application
-        :param application_generate_entity: application generate entity
-        :param queue_manager: application queue manager
-        :return:
         """
         app_config = self.application_generate_entity.app_config
         app_config = cast(WorkflowAppConfig, app_config)
@@ -80,6 +77,13 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
                 workflow=workflow,
                 node_id=self.application_generate_entity.single_iteration_run.node_id,
                 user_inputs=self.application_generate_entity.single_iteration_run.inputs,
+            )
+        elif self.application_generate_entity.single_loop_run:
+            # if only single loop run is requested
+            graph, variable_pool = self._get_graph_and_variable_pool_of_single_loop(
+                workflow=workflow,
+                node_id=self.application_generate_entity.single_loop_run.node_id,
+                user_inputs=self.application_generate_entity.single_loop_run.inputs,
             )
         else:
             inputs = self.application_generate_entity.inputs

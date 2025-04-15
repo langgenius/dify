@@ -1,12 +1,34 @@
 import mimetypes
 import os
+import platform
 import re
 import urllib.parse
+import warnings
 from collections.abc import Mapping
 from typing import Any
 from uuid import uuid4
 
 import httpx
+
+from constants import DEFAULT_FILE_NUMBER_LIMITS
+
+try:
+    import magic
+except ImportError:
+    if platform.system() == "Windows":
+        warnings.warn(
+            "To use python-magic guess MIMETYPE, you need to run `pip install python-magic-bin`", stacklevel=2
+        )
+    elif platform.system() == "Darwin":
+        warnings.warn("To use python-magic guess MIMETYPE, you need to run `brew install libmagic`", stacklevel=2)
+    elif platform.system() == "Linux":
+        warnings.warn(
+            "To use python-magic guess MIMETYPE, you need to run `sudo apt-get install libmagic1`", stacklevel=2
+        )
+    else:
+        warnings.warn("To use python-magic guess MIMETYPE, you need to install `libmagic`", stacklevel=2)
+    magic = None  # type: ignore
+
 from pydantic import BaseModel
 
 from configs import dify_config
@@ -47,6 +69,13 @@ def guess_file_info_from_response(response: httpx.Response):
         # If guessing fails, use Content-Type from response headers
         mimetype = response.headers.get("Content-Type", "application/octet-stream")
 
+    # Use python-magic to guess MIME type if still unknown or generic
+    if mimetype == "application/octet-stream" and magic is not None:
+        try:
+            mimetype = magic.from_buffer(response.content[:1024], mime=True)
+        except magic.MagicException:
+            pass
+
     extension = os.path.splitext(filename)[1]
 
     # Ensure filename has an extension
@@ -81,7 +110,7 @@ def get_parameters_from_feature_dict(*, features_dict: Mapping[str, Any], user_i
             {
                 "image": {
                     "enabled": False,
-                    "number_limits": 3,
+                    "number_limits": DEFAULT_FILE_NUMBER_LIMITS,
                     "detail": "high",
                     "transfer_methods": ["remote_url", "local_file"],
                 }

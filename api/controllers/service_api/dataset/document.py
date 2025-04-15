@@ -49,14 +49,17 @@ class DocumentAddByTextApi(DatasetApiResource):
         parser.add_argument(
             "indexing_technique", type=str, choices=Dataset.INDEXING_TECHNIQUE_LIST, nullable=False, location="json"
         )
-        parser.add_argument("retrieval_model", type=dict, required=False, nullable=False, location="json")
+        parser.add_argument("retrieval_model", type=dict, required=False, nullable=True, location="json")
+        parser.add_argument("embedding_model", type=str, required=False, nullable=True, location="json")
+        parser.add_argument("embedding_model_provider", type=str, required=False, nullable=True, location="json")
+
         args = parser.parse_args()
         dataset_id = str(dataset_id)
         tenant_id = str(tenant_id)
         dataset = db.session.query(Dataset).filter(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id).first()
 
         if not dataset:
-            raise ValueError("Dataset is not exist.")
+            raise ValueError("Dataset does not exist.")
 
         if not dataset.indexing_technique and not args["indexing_technique"]:
             raise ValueError("indexing_technique is required.")
@@ -113,7 +116,10 @@ class DocumentUpdateByTextApi(DatasetApiResource):
         dataset = db.session.query(Dataset).filter(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id).first()
 
         if not dataset:
-            raise ValueError("Dataset is not exist.")
+            raise ValueError("Dataset does not exist.")
+
+        # indexing_technique is already set in dataset since this is an update
+        args["indexing_technique"] = dataset.indexing_technique
 
         if args["text"]:
             text = args.get("text")
@@ -161,13 +167,14 @@ class DocumentAddByFileApi(DatasetApiResource):
             args["doc_form"] = "text_model"
         if "doc_language" not in args:
             args["doc_language"] = "English"
+
         # get dataset info
         dataset_id = str(dataset_id)
         tenant_id = str(tenant_id)
         dataset = db.session.query(Dataset).filter(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id).first()
 
         if not dataset:
-            raise ValueError("Dataset is not exist.")
+            raise ValueError("Dataset does not exist.")
         if not dataset.indexing_technique and not args.get("indexing_technique"):
             raise ValueError("indexing_technique is required.")
 
@@ -234,7 +241,11 @@ class DocumentUpdateByFileApi(DatasetApiResource):
         dataset = db.session.query(Dataset).filter(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id).first()
 
         if not dataset:
-            raise ValueError("Dataset is not exist.")
+            raise ValueError("Dataset does not exist.")
+
+        # indexing_technique is already set in dataset since this is an update
+        args["indexing_technique"] = dataset.indexing_technique
+
         if "file" in request.files:
             # save file info
             file = request.files["file"]
@@ -294,7 +305,7 @@ class DocumentDeleteApi(DatasetApiResource):
         dataset = db.session.query(Dataset).filter(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id).first()
 
         if not dataset:
-            raise ValueError("Dataset is not exist.")
+            raise ValueError("Dataset does not exist.")
 
         document = DocumentService.get_document(dataset.id, document_id)
 
@@ -332,7 +343,7 @@ class DocumentListApi(DatasetApiResource):
             search = f"%{search}%"
             query = query.filter(Document.name.like(search))
 
-        query = query.order_by(desc(Document.created_at))
+        query = query.order_by(desc(Document.created_at), desc(Document.position))
 
         paginated_documents = query.paginate(page=page, per_page=limit, max_per_page=100, error_out=False)
         documents = paginated_documents.items

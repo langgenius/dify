@@ -2,8 +2,8 @@
 import type { FC } from 'react'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
-import { Settings01 } from '@/app/components/base/icons/src/vender/line/general'
-import { BookOpen01 } from '@/app/components/base/icons/src/vender/line/education'
+import { RiBookOpenLine, RiEqualizer2Line } from '@remixicon/react'
+import Button from '@/app/components/base/button'
 
 const I18N_PREFIX = 'datasetCreation.stepOne.website'
 
@@ -19,22 +19,23 @@ const Header: FC<Props> = ({
   return (
     <div className='flex h-6 items-center justify-between'>
       <div className='flex items-center'>
-        <div className='text-base font-medium text-gray-700'>{t(`${I18N_PREFIX}.jinaReaderTitle`)}</div>
-        <div className='ml-2 mr-1 w-px h-3.5 bg-gray-200'></div>
-        <div
-          className='p-1 rounded-md hover:bg-black/5 cursor-pointer'
-          onClick={onSetting}
-        >
-          <Settings01 className='w-3.5 h-3.5 text-gray-500' />
-        </div>
+        <div className='text-sm font-semibold text-text-secondary'>{t(`${I18N_PREFIX}.jinaReaderTitle`)}</div>
+        <div className='ml-2 mr-2 h-3.5 w-px bg-divider-regular' />
+        <Button className='flex h-6 items-center gap-x-[1px] px-1.5' onClick={onSetting}>
+          <RiEqualizer2Line className='h-3.5 w-3.5 text-components-button-secondary-text' />
+          <span className='px-[3px] text-xs font-medium text-components-button-secondary-text'>
+            {t(`${I18N_PREFIX}.configureJinaReader`)}
+          </span>
+        </Button>
       </div>
       <a
         href='https://jina.ai/reader'
-        target='_blank' rel='noopener noreferrer'
-        className='flex items-center text-xs text-primary-600'
+        target='_blank'
+        rel='noopener noreferrer'
+        className='inline-flex items-center gap-x-1 text-xs font-medium text-text-accent'
       >
-        <BookOpen01 className='mr-1 w-3.5 h-3.5 text-primary-600' />
-        {t(`${I18N_PREFIX}.jinaReaderDoc`)}
+        <RiBookOpenLine className='h-3.5 w-3.5 text-text-accent' />
+        <span>{t(`${I18N_PREFIX}.jinaReaderDoc`)}</span>
       </a>
     </div>
   )

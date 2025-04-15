@@ -1,3 +1,8 @@
+{/**
+  * @typedef Props
+  * @property {string} apiBaseUrl
+  */}
+
 import { CodeGroup } from '@/app/components/develop/code.tsx'
 import { Row, Col, Properties, Property, Heading, SubProperty, PropertyInstruction, Paragraph } from '@/app/components/develop/md.tsx'
 
@@ -49,7 +54,8 @@ import { Row, Col, Properties, Property, Heading, SubProperty, PropertyInstructi
       </Property>
       <Property name='indexing_technique' type='string' key='indexing_technique'>
         索引方式
-          - <code>high_quality</code> 高质量：使用  embedding 模型进行嵌入，构建为向量数据库索引
+          - <code>high_quality</code> 高质量：使用  
+        ding 模型进行嵌入，构建为向量数据库索引
           - <code>economy</code> 经济：使用 keyword table index 的倒排索引进行构建
       </Property>
       <Property name='doc_form' type='string' key='doc_form'>
@@ -329,6 +335,26 @@ import { Row, Col, Properties, Property, Heading, SubProperty, PropertyInstructi
       <Property name='external_knowledge_id' type='str' key='external_knowledge_id'>
         外部知识库 ID（选填）
       </Property>
+      <Property name='embedding_model' type='str' key='embedding_model'>
+        Embedding 模型名称
+      </Property>
+      <Property name='embedding_provider_name' type='str' key='embedding_provider_name'>
+        Embedding 模型供应商
+      </Property>
+      <Property name='retrieval_model' type='object' key='retrieval_model'>
+        检索模式
+          - <code>search_method</code> (string) 检索方法
+            - <code>hybrid_search</code> 混合检索
+            - <code>semantic_search</code> 语义检索
+            - <code>full_text_search</code> 全文检索
+          - <code>reranking_enable</code> (bool) 是否开启rerank
+          - <code>reranking_model</code> (object) Rerank 模型配置
+            - <code>reranking_provider_name</code> (string) Rerank 模型的提供商
+            - <code>reranking_model_name</code> (string) Rerank 模型的名称
+          - <code>top_k</code> (int) 召回条数
+          - <code>score_threshold_enabled</code> (bool)是否开启召回分数限制
+          - <code>score_threshold</code> (float) 召回分数限制
+      </Property>
     </Properties>
   </Col>
   <Col sticky>
@@ -386,11 +412,20 @@ import { Row, Col, Properties, Property, Heading, SubProperty, PropertyInstructi
   <Col>
     ### Query
     <Properties>
-      <Property name='page' type='string' key='page'>
-        页码
+      <Property name='keyword' type='string' key='keyword'>
+        搜索关键词，可选
+      </Property>
+      <Property name='tag_ids' type='array[string]' key='tag_ids'>
+        标签 ID 列表，可选
+      </Property>
+      <Property name='page' type='integer' key='page'>
+        页码，可选，默认为 1
       </Property>
       <Property name='limit' type='string' key='limit'>
-        返回条数，默认 20，范围 1-100
+        返回条数，可选，默认 20，范围 1-100
+      </Property>
+      <Property name='include_all' type='boolean' key='include_all'>
+        是否包含所有数据集（仅对所有者生效），可选，默认为 false
       </Property>
     </Properties>
   </Col>
@@ -431,6 +466,199 @@ import { Row, Col, Properties, Property, Heading, SubProperty, PropertyInstructi
       "limit": 20,
       "total": 50,
       "page": 1
+    }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
+<hr className='ml-0 mr-0' />
+
+<Heading
+  url='/datasets/{dataset_id}'
+  method='GET'
+  title='查看知识库详情'
+  name='#view_dataset'
+/>
+<Row>
+  <Col>
+    ### Path
+    <Properties>
+      <Property name='dataset_id' type='string' key='dataset_id'>
+        知识库 ID
+      </Property>
+    </Properties>
+  </Col>
+  <Col sticky>
+    <CodeGroup
+      title="Request"
+      tag="GET"
+      label="/datasets/{dataset_id}"
+      targetCode={`curl --location --request GET '${props.apiBaseUrl}/datasets/{dataset_id}' \\\n--header 'Authorization: Bearer {api_key}'`}
+    >
+    ```bash {{ title: 'cURL' }}
+    curl --location --request GET '${props.apiBaseUrl}/datasets/{dataset_id}' \
+    --header 'Authorization: Bearer {api_key}'
+    ```
+    </CodeGroup>
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {
+      "id": "eaedb485-95ac-4ffd-ab1e-18da6d676a2f",
+      "name": "Test Knowledge Base",
+      "description": "",
+      "provider": "vendor",
+      "permission": "only_me",
+      "data_source_type": null,
+      "indexing_technique": null,
+      "app_count": 0,
+      "document_count": 0,
+      "word_count": 0,
+      "created_by": "e99a1635-f725-4951-a99a-1daaaa76cfc6",
+      "created_at": 1735620612,
+      "updated_by": "e99a1635-f725-4951-a99a-1daaaa76cfc6",
+      "updated_at": 1735620612,
+      "embedding_model": null,
+      "embedding_model_provider": null,
+      "embedding_available": true,
+      "retrieval_model_dict": {
+        "search_method": "semantic_search",
+        "reranking_enable": false,
+        "reranking_mode": null,
+        "reranking_model": {
+          "reranking_provider_name": "",
+          "reranking_model_name": ""
+        },
+        "weights": null,
+        "top_k": 2,
+        "score_threshold_enabled": false,
+        "score_threshold": null
+      },
+      "tags": [],
+      "doc_form": null,
+      "external_knowledge_info": {
+        "external_knowledge_id": null,
+        "external_knowledge_api_id": null,
+        "external_knowledge_api_name": null,
+        "external_knowledge_api_endpoint": null
+      },
+      "external_retrieval_model": {
+        "top_k": 2,
+        "score_threshold": 0.0,
+        "score_threshold_enabled": null
+      }
+    }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
+<hr className='ml-0 mr-0' />
+
+<Heading
+  url='/datasets/{dataset_id}'
+  method='POST'
+  title='修改知识库详情'
+  name='#update_dataset'
+/>
+<Row>
+  <Col>
+    ### Path
+    <Properties>
+      <Property name='dataset_id' type='string' key='dataset_id'>
+        知识库 ID
+      </Property>
+    </Properties>
+
+    ### Request Body
+    <Properties>
+      <Property name='indexing_technique' type='string' key='indexing_technique'>
+        索引模式（选填，建议填写）
+          - <code>high_quality</code> 高质量
+          - <code>economy</code> 经济
+      </Property>
+      <Property name='permission' type='string' key='permission'>
+        权限（选填，默认 only_me）
+          - <code>only_me</code> 仅自己
+          - <code>all_team_members</code> 所有团队成员
+          - <code>partial_members</code> 部分团队成员
+      </Property>
+      <Property name='embedding_model_provider' type='string' key='embedding_model_provider'>
+        嵌入模型提供商（选填）, 必须先在系统内设定好接入的模型，对应的是provider字段
+      </Property>
+      <Property name='embedding_model' type='string' key='embedding_model'>
+        嵌入模型（选填）
+      </Property>
+      <Property name='retrieval_model' type='string' key='retrieval_model'>
+        检索模型（选填）
+      </Property>
+      <Property name='partial_member_list' type='array' key='partial_member_list'>
+        部分团队成员 ID 列表（选填）
+      </Property>
+    </Properties>
+  </Col>
+  <Col sticky>
+    <CodeGroup
+      title="Request"
+      tag="POST"
+      label="/datasets/{dataset_id}"
+      targetCode={`curl --location --request POST '${props.apiBaseUrl}/datasets/{dataset_id}' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{"name": "Test Knowledge Base", "indexing_technique": "high_quality", "permission": "only_me", "embedding_model_provider": "zhipuai", "embedding_model": "embedding-3", "retrieval_model": "", "partial_member_list": []}' `}
+    >
+    ```bash {{ title: 'cURL' }}
+    curl --location --request POST '${props.apiBaseUrl}/datasets/{dataset_id}' \
+    --header 'Authorization: Bearer {api_key}' \
+    --header 'Content-Type: application/json' \
+    --data-raw '{"name": "Test Knowledge Base", "indexing_technique": "high_quality", "permission": "only_me",\
+      "embedding_model_provider": "zhipuai", "embedding_model": "embedding-3", "retrieval_model": "", "partial_member_list": []}'
+    ```
+    </CodeGroup>
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {
+      "id": "eaedb485-95ac-4ffd-ab1e-18da6d676a2f",
+      "name": "Test Knowledge Base",
+      "description": "",
+      "provider": "vendor",
+      "permission": "only_me",
+      "data_source_type": null,
+      "indexing_technique": "high_quality",
+      "app_count": 0,
+      "document_count": 0,
+      "word_count": 0,
+      "created_by": "e99a1635-f725-4951-a99a-1daaaa76cfc6",
+      "created_at": 1735620612,
+      "updated_by": "e99a1635-f725-4951-a99a-1daaaa76cfc6",
+      "updated_at": 1735622679,
+      "embedding_model": "embedding-3",
+      "embedding_model_provider": "zhipuai",
+      "embedding_available": null,
+      "retrieval_model_dict": {
+          "search_method": "semantic_search",
+          "reranking_enable": false,
+          "reranking_mode": null,
+          "reranking_model": {
+              "reranking_provider_name": "",
+              "reranking_model_name": ""
+          },
+          "weights": null,
+          "top_k": 2,
+          "score_threshold_enabled": false,
+          "score_threshold": null
+      },
+      "tags": [],
+      "doc_form": null,
+      "external_knowledge_info": {
+          "external_knowledge_id": null,
+          "external_knowledge_api_id": null,
+          "external_knowledge_api_name": null,
+          "external_knowledge_api_endpoint": null
+      },
+      "external_retrieval_model": {
+          "top_k": 2,
+          "score_threshold": 0.0,
+          "score_threshold_enabled": null
+      },
+      "partial_member_list": []
     }
     ```
     </CodeGroup>
@@ -961,6 +1189,12 @@ import { Row, Col, Properties, Property, Heading, SubProperty, PropertyInstructi
       <Property name='status' type='string' key='status'>
         搜索状态，completed
       </Property>
+      <Property name='page' type='string' key='page'>
+        页码，可选
+      </Property>
+      <Property name='limit' type='string' key='limit'>
+        返回条数，可选，默认 20，范围 1-100
+      </Property>
     </Properties>
   </Col>
   <Col sticky>
@@ -1004,7 +1238,11 @@ import { Row, Col, Properties, Property, Heading, SubProperty, PropertyInstructi
         "error": null,
         "stopped_at": null
       }],
-      "doc_form": "text_model"
+      "doc_form": "text_model",
+      "has_more": false,
+      "limit": 20,
+      "total": 9,
+      "page": 1
     }
     ```
     </CodeGroup>
@@ -1115,7 +1353,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, PropertyInstructi
     <CodeGroup title="Response">
     ```json {{ title: 'Response' }}
     {
-      "data": [{
+      "data": {
         "id": "",
         "position": 1,
         "document_id": "",
@@ -1139,8 +1377,312 @@ import { Row, Col, Properties, Property, Heading, SubProperty, PropertyInstructi
         "completed_at": 1695312007,
         "error": null,
         "stopped_at": null
-      }],
+      },
       "doc_form": "text_model"
+    }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
+<hr className='ml-0 mr-0' />
+
+<Heading
+  url='/datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}/child_chunks'
+  method='POST'
+  title='新增文档子分段'
+  name='#create_child_chunk'
+/>
+<Row>
+  <Col>
+    ### Path
+    <Properties>
+      <Property name='dataset_id' type='string' key='dataset_id'>
+        知识库 ID
+      </Property>
+      <Property name='document_id' type='string' key='document_id'>
+        文档 ID
+      </Property>
+      <Property name='segment_id' type='string' key='segment_id'>
+        分段 ID
+      </Property>
+    </Properties>
+
+    ### Request Body
+    <Properties>
+      <Property name='content' type='string' key='content'>
+        子分段内容
+      </Property>
+    </Properties>
+  </Col>
+  <Col sticky>
+    <CodeGroup
+      title="Request"
+      tag="POST"
+      label="/datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}/child_chunks"
+      targetCode={`curl --location --request POST '${props.apiBaseUrl}/datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}/child_chunks' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{"content": "子分段内容"}'`}
+    >
+    ```bash {{ title: 'cURL' }}
+    curl --location --request POST '${props.apiBaseUrl}/datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}/child_chunks' \
+    --header 'Authorization: Bearer {api_key}' \
+    --header 'Content-Type: application/json' \
+    --data-raw '{
+        "content": "子分段内容"
+    }'
+    ```
+    </CodeGroup>
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {
+      "data": {
+        "id": "",
+        "segment_id": "",
+        "content": "子分段内容",
+        "word_count": 25,
+        "tokens": 0,
+        "index_node_id": "",
+        "index_node_hash": "",
+        "status": "completed",
+        "created_by": "",
+        "created_at": 1695312007,
+        "indexing_at": 1695312007,
+        "completed_at": 1695312007,
+        "error": null,
+        "stopped_at": null
+      }
+    }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
+<hr className='ml-0 mr-0' />
+
+<Heading
+  url='/datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}/child_chunks'
+  method='GET'
+  title='查询文档子分段'
+  name='#get_child_chunks'
+/>
+<Row>
+  <Col>
+    ### Path
+    <Properties>
+      <Property name='dataset_id' type='string' key='dataset_id'>
+        知识库 ID
+      </Property>
+      <Property name='document_id' type='string' key='document_id'>
+        文档 ID
+      </Property>
+      <Property name='segment_id' type='string' key='segment_id'>
+        分段 ID
+      </Property>
+    </Properties>
+
+    ### Query
+    <Properties>
+      <Property name='keyword' type='string' key='keyword'>
+        搜索关键词（选填）
+      </Property>
+      <Property name='page' type='integer' key='page'>
+        页码（选填，默认1）
+      </Property>
+      <Property name='limit' type='integer' key='limit'>
+        每页数量（选填，默认20，最大100）
+      </Property>
+    </Properties>
+  </Col>
+  <Col sticky>
+    <CodeGroup
+      title="Request"
+      tag="GET"
+      label="/datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}/child_chunks"
+      targetCode={`curl --location --request GET '${props.apiBaseUrl}/datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}/child_chunks?page=1&limit=20' \\\n--header 'Authorization: Bearer {api_key}'`}
+    >
+    ```bash {{ title: 'cURL' }}
+    curl --location --request GET '${props.apiBaseUrl}/datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}/child_chunks?page=1&limit=20' \
+    --header 'Authorization: Bearer {api_key}'
+    ```
+    </CodeGroup>
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {
+      "data": [{
+        "id": "",
+        "segment_id": "",
+        "content": "子分段内容",
+        "word_count": 25,
+        "tokens": 0,
+        "index_node_id": "",
+        "index_node_hash": "",
+        "status": "completed",
+        "created_by": "",
+        "created_at": 1695312007,
+        "indexing_at": 1695312007,
+        "completed_at": 1695312007,
+        "error": null,
+        "stopped_at": null
+      }],
+      "total": 1,
+      "total_pages": 1,
+      "page": 1,
+      "limit": 20
+    }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
+<hr className='ml-0 mr-0' />
+
+<Heading
+  url='/datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}/child_chunks/{child_chunk_id}'
+  method='DELETE'
+  title='删除文档子分段'
+  name='#delete_child_chunk'
+/>
+<Row>
+  <Col>
+    ### Path
+    <Properties>
+      <Property name='dataset_id' type='string' key='dataset_id'>
+        知识库 ID
+      </Property>
+      <Property name='document_id' type='string' key='document_id'>
+        文档 ID
+      </Property>
+      <Property name='segment_id' type='string' key='segment_id'>
+        分段 ID
+      </Property>
+      <Property name='child_chunk_id' type='string' key='child_chunk_id'>
+        子分段 ID
+      </Property>
+    </Properties>
+  </Col>
+  <Col sticky>
+    <CodeGroup
+      title="Request"
+      tag="DELETE"
+      label="/datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}/child_chunks/{child_chunk_id}"
+      targetCode={`curl --location --request DELETE '${props.apiBaseUrl}/datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}/child_chunks/{child_chunk_id}' \\\n--header 'Authorization: Bearer {api_key}'`}
+    >
+    ```bash {{ title: 'cURL' }}
+    curl --location --request DELETE '${props.apiBaseUrl}/datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}/child_chunks/{child_chunk_id}' \
+    --header 'Authorization: Bearer {api_key}'
+    ```
+    </CodeGroup>
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {
+      "result": "success"
+    }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
+<hr className='ml-0 mr-0' />
+
+<Row>
+  <Col>
+    ### 错误信息
+    <Properties>
+      <Property name='code' type='string' key='code'>
+        返回的错误代码
+      </Property>
+    </Properties>
+    <Properties>
+      <Property name='status' type='number' key='status'>
+        返回的错误状态
+      </Property>
+    </Properties>
+    <Properties>
+      <Property name='message' type='string' key='message'>
+        返回的错误信息
+      </Property>
+    </Properties>
+  </Col>
+  <Col>
+    <CodeGroup title="Example">
+    ```json {{ title: 'Response' }}
+      {
+        "code": "no_file_uploaded",
+        "message": "Please upload your file.",
+        "status": 400
+      }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
+<hr className='ml-0 mr-0' />
+
+<Heading
+  url='/datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}/child_chunks/{child_chunk_id}'
+  method='PATCH'
+  title='更新文档子分段'
+  name='#update_child_chunk'
+/>
+<Row>
+  <Col>
+    ### Path
+    <Properties>
+      <Property name='dataset_id' type='string' key='dataset_id'>
+        知识库 ID
+      </Property>
+      <Property name='document_id' type='string' key='document_id'>
+        文档 ID
+      </Property>
+      <Property name='segment_id' type='string' key='segment_id'>
+        分段 ID
+      </Property>
+      <Property name='child_chunk_id' type='string' key='child_chunk_id'>
+        子分段 ID
+      </Property>
+    </Properties>
+
+    ### Request Body
+    <Properties>
+      <Property name='content' type='string' key='content'>
+        子分段内容
+      </Property>
+    </Properties>
+  </Col>
+  <Col sticky>
+    <CodeGroup
+      title="Request"
+      tag="PATCH"
+      label="/datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}/child_chunks/{child_chunk_id}"
+      targetCode={`curl --location --request PATCH '${props.apiBaseUrl}/datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}/child_chunks/{child_chunk_id}' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{"content": "更新的子分段内容"}'`}
+    >
+    ```bash {{ title: 'cURL' }}
+    curl --location --request PATCH '${props.apiBaseUrl}/datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}/child_chunks/{child_chunk_id}' \
+    --header 'Authorization: Bearer {api_key}' \
+    --header 'Content-Type: application/json' \
+    --data-raw '{
+        "content": "更新的子分段内容"
+    }'
+    ```
+    </CodeGroup>
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {
+      "data": {
+        "id": "",
+        "segment_id": "",
+        "content": "更新的子分段内容",
+        "word_count": 25,
+        "tokens": 0,
+        "index_node_id": "",
+        "index_node_hash": "",
+        "status": "completed",
+        "created_by": "",
+        "created_at": 1695312007,
+        "indexing_at": 1695312007,
+        "completed_at": 1695312007,
+        "error": null,
+        "stopped_at": null
+      }
     }
     ```
     </CodeGroup>
@@ -1330,7 +1872,6 @@ import { Row, Col, Properties, Property, Heading, SubProperty, PropertyInstructi
               "id": "a8c6c36f-9f5d-4d7a-8472-f5d7b75d71d2",
               "data_source_type": "upload_file",
               "name": "readme.txt",
-              "doc_type": null
             }
           },
           "score": 3.730463140527718e-05,
@@ -1343,6 +1884,358 @@ import { Row, Col, Properties, Property, Heading, SubProperty, PropertyInstructi
   </Col>
 </Row>
 
+<hr className='ml-0 mr-0' />
+
+<Heading
+  url='/datasets/{dataset_id}/metadata'
+  method='POST'
+  title='新增元数据'
+  name='#create_metadata'
+/>
+<Row>
+  <Col>
+    ### Params
+    <Properties>
+      <Property name='dataset_id' type='string' key='dataset_id'>
+        知识库 ID
+      </Property>
+    </Properties>
+
+    ### Request Body
+    <Properties>
+      <Property name='segment' type='object' key='segment'>
+        - <code>type</code> (string) 元数据类型，必填
+        - <code>name</code> (string) 元数据名称，必填
+      </Property>
+    </Properties>
+  </Col>
+  <Col sticky>
+    <CodeGroup
+      title="Request"
+      tag="POST"
+      label="/datasets/{dataset_id}/metadata"
+      targetCode={`curl --location --request POST '${props.apiBaseUrl}/datasets/{dataset_id}/metadata' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json'\\\n--data-raw '{"type": "string", "name": "test"}'`}
+    >
+    ```bash {{ title: 'cURL' }}
+    ```
+    </CodeGroup>
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {
+      "id": "abc",
+      "type": "string",
+      "name": "test",
+    }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
+<hr className='ml-0 mr-0' />
+
+<Heading
+  url='/datasets/{dataset_id}/metadata/{metadata_id}'
+  method='PATCH'
+  title='更新元数据'
+  name='#update_metadata'
+/>
+<Row>
+  <Col>
+    ### Path
+    <Properties>
+      <Property name='dataset_id' type='string' key='dataset_id'>
+        知识库 ID
+      </Property>
+      <Property name='metadata_id' type='string' key='metadata_id'>
+        元数据 ID
+      </Property>
+    </Properties>
+
+    ### Request Body
+    <Properties>
+      <Property name='segment' type='object' key='segment'>
+        - <code>name</code> (string) 元数据名称，必填
+      </Property>
+    </Properties>
+  </Col>
+  <Col sticky>
+    <CodeGroup
+      title="Request"
+      tag="PATCH"
+      label="/datasets/{dataset_id}/metadata/{metadata_id}"
+      targetCode={`curl --location --request PATCH '${props.apiBaseUrl}/datasets/{dataset_id}/metadata/{metadata_id}' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json'\\\n--data-raw '{"name": "test"}'`}
+    >
+    ```bash {{ title: 'cURL' }}
+    ```
+    </CodeGroup>
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {
+      "id": "abc",
+      "type": "string",
+      "name": "test",
+    }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
+<hr className='ml-0 mr-0' />
+
+<Heading
+  url='/datasets/{dataset_id}/metadata/{metadata_id}'
+  method='DELETE'
+  title='删除元数据'
+  name='#delete_metadata'
+/>
+<Row>
+  <Col>
+    ### Path
+    <Properties>
+      <Property name='dataset_id' type='string' key='dataset_id'>
+        知识库 ID
+      </Property>
+      <Property name='metadata_id' type='string' key='metadata_id'>
+        元数据 ID
+      </Property>
+    </Properties>
+  </Col>
+  <Col sticky>
+    <CodeGroup
+      title="Request"
+      tag="DELETE"
+      label="/datasets/{dataset_id}/metadata/{metadata_id}"
+      targetCode={`curl --location --request DELETE '${props.apiBaseUrl}/datasets/{dataset_id}/metadata/{metadata_id}' \\\n--header 'Authorization: Bearer {api_key}'`}
+    >
+    ```bash {{ title: 'cURL' }}
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
+<hr className='ml-0 mr-0' />
+
+<Heading
+  url='/datasets/{dataset_id}/metadata/built-in/{action}'
+  method='POST'
+  title='启用/禁用内置元数据'
+  name='#toggle_metadata'
+/>
+<Row>
+  <Col>
+    ### Path
+    <Properties>
+      <Property name='dataset_id' type='string' key='dataset_id'>
+        知识库 ID
+      </Property>
+      <Property name='action' type='string' key='action'>
+        disable/enable
+      </Property>
+    </Properties>
+  </Col>
+  <Col sticky>
+    <CodeGroup
+      title="Request"
+      tag="POST"
+      label="/datasets/{dataset_id}/metadata/built-in/{action}"
+      targetCode={`curl --location --request POST '${props.apiBaseUrl}/datasets/{dataset_id}/metadata/built-in/{action}' \\\n--header 'Authorization: Bearer {api_key}'`}
+    >
+    ```bash {{ title: 'cURL' }}
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
+<hr className='ml-0 mr-0' />
+
+<Heading
+  url='/datasets/{dataset_id}/documents/metadata'
+  method='POST'
+  title='更新文档元数据'
+  name='#update_documents_metadata'
+/>
+<Row>
+  <Col>
+    ### Path
+    <Properties>
+      <Property name='dataset_id' type='string' key='dataset_id'>
+        知识库 ID
+      </Property>
+    </Properties>
+
+    ### Request Body
+    <Properties>
+      <Property name='operation_data' type='object list' key='segments'>
+        - <code>document_id</code> (string) 文档 ID
+        - <code>metadata_list</code> (list) 元数据列表
+          - <code>id</code> (string) 元数据 ID
+          - <code>type</code> (string) 元数据类型
+          - <code>name</code> (string) 元数据名称
+      </Property>
+    </Properties>
+  </Col>
+  <Col sticky>
+    <CodeGroup
+      title="Request"
+      tag="POST"
+      label="/datasets/{dataset_id}/documents/metadata"
+      targetCode={`curl --location --request POST '${props.apiBaseUrl}/datasets/{dataset_id}/documents/metadata' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json'\\\n--data-raw '{"operation_data": [{"document_id": "document_id", "metadata_list": [{"id": "id", "value": "value", "name": "name"}]}]}'`}
+    >
+    ```bash {{ title: 'cURL' }}
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
+<hr className='ml-0 mr-0' />
+
+<Heading
+  url='/datasets/{dataset_id}/metadata'
+  method='GET'
+  title='查询知识库元数据列表'
+  name='#dataset_metadata_list'
+/>
+<Row>
+  <Col>
+    ### Path
+    <Properties>
+      <Property name='dataset_id' type='string' key='dataset_id'>
+        知识库 ID
+      </Property>
+    </Properties>
+  </Col>
+  <Col sticky>
+    <CodeGroup
+      title="Request"
+      tag="GET"
+      label="/datasets/{dataset_id}/metadata"
+      targetCode={`curl --location --request GET '${props.apiBaseUrl}/datasets/{dataset_id}/metadata' \\\n--header 'Authorization: Bearer {api_key}'`}
+    >
+    ```bash {{ title: 'cURL' }}
+    ```
+    </CodeGroup>
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {
+      "doc_metadata": [
+        {
+          "id": "",
+          "name": "name",
+          "type": "string",
+          "use_count": 0,
+        },
+        ...
+      ],
+      "built_in_field_enabled": true
+    }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
+<hr className='ml-0 mr-0' />
+ 
+<Heading
+ url='/workspaces/current/models/model-types/text-embedding'
+ method='GET'
+ title='获取嵌入模型列表'
+ name='#model_type_list'
+/>
+<Row>
+   <Col>
+     ### Query
+     <Properties>
+     </Properties>
+   </Col>
+   <Col sticky>
+     <CodeGroup
+       title="Request"
+       tag="GET"
+       label="/datasets/{dataset_id}"
+       targetCode={`curl --location --location --request GET '${props.apiBaseUrl}/workspaces/current/models/model-types/text-embedding' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' `}
+     >
+     ```bash {{ title: 'cURL' }}
+     curl --location --request GET '${props.apiBaseUrl}/workspaces/current/models/model-types/text-embedding' \
+     --header 'Authorization: Bearer {api_key}' \
+     --header 'Content-Type: application/json' \
+     ```
+     </CodeGroup>
+     <CodeGroup title="Response">
+     ```json {{ title: 'Response' }}
+     {
+       "data": [
+           {
+               "provider": "zhipuai",
+               "label": {
+                   "zh_Hans": "智谱 AI",
+                   "en_US": "ZHIPU AI"
+               },
+               "icon_small": {
+                   "zh_Hans": "http://127.0.0.1:5001/console/api/workspaces/current/model-providers/zhipuai/icon_small/zh_Hans",
+                   "en_US": "http://127.0.0.1:5001/console/api/workspaces/current/model-providers/zhipuai/icon_small/en_US"
+               },
+               "icon_large": {
+                   "zh_Hans": "http://127.0.0.1:5001/console/api/workspaces/current/model-providers/zhipuai/icon_large/zh_Hans",
+                   "en_US": "http://127.0.0.1:5001/console/api/workspaces/current/model-providers/zhipuai/icon_large/en_US"
+               },
+               "status": "active",
+               "models": [
+                   {
+                       "model": "embedding-3",
+                       "label": {
+                           "zh_Hans": "embedding-3",
+                           "en_US": "embedding-3"
+                       },
+                       "model_type": "text-embedding",
+                       "features": null,
+                       "fetch_from": "predefined-model",
+                       "model_properties": {
+                           "context_size": 8192
+                       },
+                       "deprecated": false,
+                       "status": "active",
+                       "load_balancing_enabled": false
+                   },
+                   {
+                       "model": "embedding-2",
+                       "label": {
+                           "zh_Hans": "embedding-2",
+                           "en_US": "embedding-2"
+                       },
+                       "model_type": "text-embedding",
+                       "features": null,
+                       "fetch_from": "predefined-model",
+                       "model_properties": {
+                           "context_size": 8192
+                       },
+                       "deprecated": false,
+                       "status": "active",
+                       "load_balancing_enabled": false
+                   },
+                   {
+                       "model": "text_embedding",
+                       "label": {
+                           "zh_Hans": "text_embedding",
+                           "en_US": "text_embedding"
+                       },
+                       "model_type": "text-embedding",
+                       "features": null,
+                       "fetch_from": "predefined-model",
+                       "model_properties": {
+                           "context_size": 512
+                       },
+                       "deprecated": false,
+                       "status": "active",
+                       "load_balancing_enabled": false
+                   }
+               ]
+           }
+       ]
+     }
+     ```
+     </CodeGroup>
+   </Col>
+</Row>
 
 <hr className='ml-0 mr-0' />
 

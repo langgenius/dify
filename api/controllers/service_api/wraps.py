@@ -1,3 +1,4 @@
+import time
 from collections.abc import Callable
 from datetime import UTC, datetime, timedelta
 from enum import Enum
@@ -13,8 +14,10 @@ from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden, Unauthorized
 
 from extensions.ext_database import db
+from extensions.ext_redis import redis_client
 from libs.login import _get_user
 from models.account import Account, Tenant, TenantAccountJoin, TenantStatus
+from models.dataset import RateLimitLog
 from models.model import ApiToken, App, EndUser
 from services.feature_service import FeatureService
 
@@ -55,6 +58,27 @@ def validate_app_token(view: Optional[Callable] = None, *, fetch_user_arg: Optio
                 raise ValueError("Tenant does not exist.")
             if tenant.status == TenantStatus.ARCHIVE:
                 raise Forbidden("The workspace's status is archived.")
+
+            tenant_account_join = (
+                db.session.query(Tenant, TenantAccountJoin)
+                .filter(Tenant.id == api_token.tenant_id)
+                .filter(TenantAccountJoin.tenant_id == Tenant.id)
+                .filter(TenantAccountJoin.role.in_(["owner"]))
+                .filter(Tenant.status == TenantStatus.NORMAL)
+                .one_or_none()
+            )  # TODO: only owner information is required, so only one is returned.
+            if tenant_account_join:
+                tenant, ta = tenant_account_join
+                account = db.session.query(Account).filter(Account.id == ta.account_id).first()
+                # Login admin
+                if account:
+                    account.current_tenant = tenant
+                    current_app.login_manager._update_request_context_with_user(account)  # type: ignore
+                    user_logged_in.send(current_app._get_current_object(), user=_get_user())  # type: ignore
+                else:
+                    raise Unauthorized("Tenant owner account does not exist.")
+            else:
+                raise Unauthorized("Tenant does not exist.")
 
             kwargs["app_model"] = app_model
 
@@ -139,6 +163,43 @@ def cloud_edition_billing_knowledge_limit_check(resource: str, api_token_type: s
     return interceptor
 
 
+def cloud_edition_billing_rate_limit_check(resource: str, api_token_type: str):
+    def interceptor(view):
+        @wraps(view)
+        def decorated(*args, **kwargs):
+            api_token = validate_and_get_api_token(api_token_type)
+
+            if resource == "knowledge":
+                knowledge_rate_limit = FeatureService.get_knowledge_rate_limit(api_token.tenant_id)
+                if knowledge_rate_limit.enabled:
+                    current_time = int(time.time() * 1000)
+                    key = f"rate_limit_{api_token.tenant_id}"
+
+                    redis_client.zadd(key, {current_time: current_time})
+
+                    redis_client.zremrangebyscore(key, 0, current_time - 60000)
+
+                    request_count = redis_client.zcard(key)
+
+                    if request_count > knowledge_rate_limit.limit:
+                        # add ratelimit record
+                        rate_limit_log = RateLimitLog(
+                            tenant_id=api_token.tenant_id,
+                            subscription_plan=knowledge_rate_limit.subscription_plan,
+                            operation="knowledge",
+                        )
+                        db.session.add(rate_limit_log)
+                        db.session.commit()
+                        raise Forbidden(
+                            "Sorry, you have reached the knowledge base request rate limit of your subscription."
+                        )
+            return view(*args, **kwargs)
+
+        return decorated
+
+    return interceptor
+
+
 def validate_dataset_token(view=None):
     def decorator(view):
         @wraps(view)
@@ -154,7 +215,7 @@ def validate_dataset_token(view=None):
             )  # TODO: only owner information is required, so only one is returned.
             if tenant_account_join:
                 tenant, ta = tenant_account_join
-                account = Account.query.filter_by(id=ta.account_id).first()
+                account = db.session.query(Account).filter(Account.id == ta.account_id).first()
                 # Login admin
                 if account:
                     account.current_tenant = tenant
@@ -195,7 +256,11 @@ def validate_and_get_api_token(scope: str | None = None):
     with Session(db.engine, expire_on_commit=False) as session:
         update_stmt = (
             update(ApiToken)
-            .where(ApiToken.token == auth_token, ApiToken.last_used_at < cutoff_time, ApiToken.type == scope)
+            .where(
+                ApiToken.token == auth_token,
+                (ApiToken.last_used_at.is_(None) | (ApiToken.last_used_at < cutoff_time)),
+                ApiToken.type == scope,
+            )
             .values(last_used_at=current_time)
             .returning(ApiToken)
         )

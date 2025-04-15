@@ -7,6 +7,7 @@ from flask_login import current_user  # type: ignore
 
 from core.helper import encrypter
 from core.rag.extractor.firecrawl.firecrawl_app import FirecrawlApp
+from core.rag.extractor.watercrawl.provider import WaterCrawlProvider
 from extensions.ext_redis import redis_client
 from extensions.ext_storage import storage
 from services.auth.api_key_auth_service import ApiKeyAuthService
@@ -38,35 +39,34 @@ class WebsiteService:
             only_main_content = options.get("only_main_content", False)
             if not crawl_sub_pages:
                 params = {
-                    "crawlerOptions": {
-                        "includes": [],
-                        "excludes": [],
-                        "generateImgAltText": True,
-                        "limit": 1,
-                        "returnOnlyUrls": False,
-                        "pageOptions": {"onlyMainContent": only_main_content, "includeHtml": False},
-                    }
+                    "includePaths": [],
+                    "excludePaths": [],
+                    "limit": 1,
+                    "scrapeOptions": {"onlyMainContent": only_main_content},
                 }
             else:
                 includes = options.get("includes").split(",") if options.get("includes") else []
                 excludes = options.get("excludes").split(",") if options.get("excludes") else []
                 params = {
-                    "crawlerOptions": {
-                        "includes": includes,
-                        "excludes": excludes,
-                        "generateImgAltText": True,
-                        "limit": options.get("limit", 1),
-                        "returnOnlyUrls": False,
-                        "pageOptions": {"onlyMainContent": only_main_content, "includeHtml": False},
-                    }
+                    "includePaths": includes,
+                    "excludePaths": excludes,
+                    "limit": options.get("limit", 1),
+                    "scrapeOptions": {"onlyMainContent": only_main_content},
                 }
                 if options.get("max_depth"):
-                    params["crawlerOptions"]["maxDepth"] = options.get("max_depth")
+                    params["maxDepth"] = options.get("max_depth")
             job_id = firecrawl_app.crawl_url(url, params)
             website_crawl_time_cache_key = f"website_crawl_{job_id}"
             time = str(datetime.datetime.now().timestamp())
             redis_client.setex(website_crawl_time_cache_key, 3600, time)
             return {"status": "active", "job_id": job_id}
+        elif provider == "watercrawl":
+            # decrypt api_key
+            api_key = encrypter.decrypt_token(
+                tenant_id=current_user.current_tenant_id, token=credentials.get("config").get("api_key")
+            )
+            return WaterCrawlProvider(api_key, credentials.get("config").get("base_url", None)).crawl_url(url, options)
+
         elif provider == "jinareader":
             api_key = encrypter.decrypt_token(
                 tenant_id=current_user.current_tenant_id, token=credentials.get("config").get("api_key")
@@ -124,6 +124,14 @@ class WebsiteService:
                     time_consuming = abs(end_time - float(start_time))
                     crawl_status_data["time_consuming"] = f"{time_consuming:.2f}"
                     redis_client.delete(website_crawl_time_cache_key)
+        elif provider == "watercrawl":
+            # decrypt api_key
+            api_key = encrypter.decrypt_token(
+                tenant_id=current_user.current_tenant_id, token=credentials.get("config").get("api_key")
+            )
+            crawl_status_data = WaterCrawlProvider(
+                api_key, credentials.get("config").get("base_url", None)
+            ).get_crawl_status(job_id)
         elif provider == "jinareader":
             api_key = encrypter.decrypt_token(
                 tenant_id=current_user.current_tenant_id, token=credentials.get("config").get("api_key")
@@ -188,6 +196,11 @@ class WebsiteService:
                     if item.get("source_url") == url:
                         return dict(item)
             return None
+        elif provider == "watercrawl":
+            api_key = encrypter.decrypt_token(tenant_id=tenant_id, token=credentials.get("config").get("api_key"))
+            return WaterCrawlProvider(api_key, credentials.get("config").get("base_url", None)).get_crawl_url_data(
+                job_id, url
+            )
         elif provider == "jinareader":
             if not job_id:
                 response = requests.get(
@@ -228,8 +241,11 @@ class WebsiteService:
             # decrypt api_key
             api_key = encrypter.decrypt_token(tenant_id=tenant_id, token=credentials.get("config").get("api_key"))
             firecrawl_app = FirecrawlApp(api_key=api_key, base_url=credentials.get("config").get("base_url", None))
-            params = {"pageOptions": {"onlyMainContent": only_main_content, "includeHtml": False}}
+            params = {"onlyMainContent": only_main_content}
             result = firecrawl_app.scrape_url(url, params)
             return result
+        elif provider == "watercrawl":
+            api_key = encrypter.decrypt_token(tenant_id=tenant_id, token=credentials.get("config").get("api_key"))
+            return WaterCrawlProvider(api_key, credentials.get("config").get("base_url", None)).scrape_url(url)
         else:
             raise ValueError("Invalid provider")

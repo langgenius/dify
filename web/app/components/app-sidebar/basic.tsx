@@ -48,31 +48,33 @@ const NotionSvg = <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xm
 
 const ICON_MAP = {
   app: <AppIcon className='border !border-[rgba(0,0,0,0.05)]' />,
-  api: <AppIcon innerIcon={ApiSvg} className='border !bg-purple-50 !border-purple-200' />,
+  api: <AppIcon innerIcon={ApiSvg} className='border !border-purple-200 !bg-purple-50' />,
   dataset: <AppIcon innerIcon={DatasetSvg} className='!border-[0.5px] !border-indigo-100 !bg-indigo-25' />,
-  webapp: <AppIcon innerIcon={WebappSvg} className='border !bg-primary-100 !border-primary-200' />,
+  webapp: <AppIcon innerIcon={WebappSvg} className='border !border-primary-200 !bg-primary-100' />,
   notion: <AppIcon innerIcon={NotionSvg} className='!border-[0.5px] !border-indigo-100 !bg-white' />,
 }
 
-export default function AppBasic({ icon, icon_background, name, isExternal, type, hoverTip, textStyle, mode = 'expand', iconType = 'app' }: IAppBasicProps) {
+export default function AppBasic({ icon, icon_background, name, isExternal, type, hoverTip, textStyle, isExtraInLine, mode = 'expand', iconType = 'app' }: IAppBasicProps) {
   const { t } = useTranslation()
 
   return (
-    <div className="flex items-start p-1">
+    <div className="flex grow items-center">
       {icon && icon_background && iconType === 'app' && (
-        <div className='flex-shrink-0 mr-3'>
+        <div className='mr-3 shrink-0'>
           <AppIcon icon={icon} background={icon_background} />
         </div>
       )}
       {iconType !== 'app'
-        && <div className='flex-shrink-0 mr-3'>
+        && <div className='mr-3 shrink-0'>
           {ICON_MAP[iconType]}
         </div>
 
       }
-      {mode === 'expand' && <div className="group">
-        <div className={`flex flex-row items-center text-sm font-semibold text-gray-700 group-hover:text-gray-900 break-all ${textStyle?.main ?? ''}`}>
-          {name}
+      {mode === 'expand' && <div className="group w-full">
+        <div className={`system-md-semibold flex flex-row items-center text-text-secondary group-hover:text-text-primary ${textStyle?.main ?? ''}`}>
+          <div className="min-w-0 overflow-hidden text-ellipsis break-normal">
+            {name}
+          </div>
           {hoverTip
             && <Tooltip
               popupContent={
@@ -86,8 +88,11 @@ export default function AppBasic({ icon, icon_background, name, isExternal, type
             />
           }
         </div>
-        <div className={`text-xs font-normal text-gray-500 group-hover:text-gray-700 break-all ${textStyle?.extra ?? ''}`}>{type}</div>
-        <div className='text-text-tertiary system-2xs-medium-uppercase'>{isExternal ? t('dataset.externalTag') : ''}</div>
+        {isExtraInLine ? (
+          <div className="system-2xs-medium-uppercase flex text-text-tertiary">{type}</div>
+        ) : (
+          <div className='system-2xs-medium-uppercase text-text-tertiary'>{isExternal ? t('dataset.externalTag') : type}</div>
+        )}
       </div>}
     </div>
   )

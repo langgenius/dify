@@ -121,7 +121,7 @@ const ParamsConfig = ({
         }}
         disabled={disabled}
       >
-        <RiEqualizer2Line className='mr-1 w-3.5 h-3.5' />
+        <RiEqualizer2Line className='mr-1 h-3.5 w-3.5' />
         {t('dataset.retrievalSettings')}
       </Button>
       {
@@ -140,11 +140,11 @@ const ParamsConfig = ({
             />
 
             <div className='mt-6 flex justify-end'>
-              <Button className='mr-2 flex-shrink-0' onClick={() => {
+              <Button className='mr-2 shrink-0' onClick={() => {
                 setTempDataSetConfigs(datasetConfigs)
                 setRerankSettingModalOpen(false)
               }}>{t('common.operation.cancel')}</Button>
-              <Button variant='primary' className='flex-shrink-0' onClick={handleSave} >{t('common.operation.save')}</Button>
+              <Button variant='primary' className='shrink-0' onClick={handleSave} >{t('common.operation.save')}</Button>
             </div>
           </Modal>
         )

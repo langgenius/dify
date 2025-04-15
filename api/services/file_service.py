@@ -1,5 +1,6 @@
 import datetime
 import hashlib
+import os
 import uuid
 from typing import Any, Literal, Union
 
@@ -38,7 +39,12 @@ class FileService:
         source_url: str = "",
     ) -> UploadFile:
         # get file extension
-        extension = filename.split(".")[-1].lower()
+        extension = os.path.splitext(filename)[1].lstrip(".").lower()
+
+        # check if filename contains invalid characters
+        if any(c in filename for c in ["/", "\\", ":", "*", "?", '"', "<", ">", "|"]):
+            raise ValueError("Filename contains invalid characters")
+
         if len(filename) > 200:
             filename = filename.split(".")[0][:200] + "." + extension
 
@@ -85,6 +91,11 @@ class FileService:
 
         db.session.add(upload_file)
         db.session.commit()
+
+        if not upload_file.source_url:
+            upload_file.source_url = file_helpers.get_signed_file_url(upload_file_id=upload_file.id)
+            db.session.add(upload_file)
+            db.session.commit()
 
         return upload_file
 

@@ -1,19 +1,24 @@
+import copy
 import datetime
 import json
 import logging
 import random
 import time
 import uuid
+from collections import Counter
 from typing import Any, Optional
 
 from flask_login import current_user  # type: ignore
 from sqlalchemy import func
+from sqlalchemy.orm import Session
 from werkzeug.exceptions import NotFound
 
 from configs import dify_config
 from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
 from core.model_manager import ModelManager
 from core.model_runtime.entities.model_entities import ModelType
+from core.plugin.entities.plugin import ModelProviderID
+from core.rag.index_processor.constant.built_in_field import BuiltInField
 from core.rag.index_processor.constant.index_type import IndexType
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from events.dataset_event import dataset_was_deleted
@@ -164,6 +169,9 @@ class DatasetService:
         provider: str = "vendor",
         external_knowledge_api_id: Optional[str] = None,
         external_knowledge_id: Optional[str] = None,
+        embedding_model_provider: Optional[str] = None,
+        embedding_model_name: Optional[str] = None,
+        retrieval_model: Optional[RetrievalModel] = None,
     ):
         # check if dataset name already exists
         if Dataset.query.filter_by(name=name, tenant_id=tenant_id).first():
@@ -171,9 +179,30 @@ class DatasetService:
         embedding_model = None
         if indexing_technique == "high_quality":
             model_manager = ModelManager()
-            embedding_model = model_manager.get_default_model_instance(
-                tenant_id=tenant_id, model_type=ModelType.TEXT_EMBEDDING
-            )
+            if embedding_model_provider and embedding_model_name:
+                # check if embedding model setting is valid
+                DatasetService.check_embedding_model_setting(tenant_id, embedding_model_provider, embedding_model_name)
+                embedding_model = model_manager.get_model_instance(
+                    tenant_id=tenant_id,
+                    provider=embedding_model_provider,
+                    model_type=ModelType.TEXT_EMBEDDING,
+                    model=embedding_model_name,
+                )
+            else:
+                embedding_model = model_manager.get_default_model_instance(
+                    tenant_id=tenant_id, model_type=ModelType.TEXT_EMBEDDING
+                )
+            if retrieval_model and retrieval_model.reranking_model:
+                if (
+                    retrieval_model.reranking_model.reranking_provider_name
+                    and retrieval_model.reranking_model.reranking_model_name
+                ):
+                    # check if reranking model setting is valid
+                    DatasetService.check_embedding_model_setting(
+                        tenant_id,
+                        retrieval_model.reranking_model.reranking_provider_name,
+                        retrieval_model.reranking_model.reranking_model_name,
+                    )
         dataset = Dataset(name=name, indexing_technique=indexing_technique)
         # dataset = Dataset(name=name, provider=provider, config=config)
         dataset.description = description
@@ -182,6 +211,7 @@ class DatasetService:
         dataset.tenant_id = tenant_id
         dataset.embedding_model_provider = embedding_model.provider if embedding_model else None
         dataset.embedding_model = embedding_model.model if embedding_model else None
+        dataset.retrieval_model = retrieval_model.model_dump() if retrieval_model else None
         dataset.permission = permission or DatasetPermissionEnum.ONLY_ME
         dataset.provider = provider
         db.session.add(dataset)
@@ -221,8 +251,7 @@ class DatasetService:
                 )
             except LLMBadRequestError:
                 raise ValueError(
-                    "No Embedding Model available. Please configure a valid provider "
-                    "in the Settings -> Model Provider."
+                    "No Embedding Model available. Please configure a valid provider in the Settings -> Model Provider."
                 )
             except ProviderTokenNotInitError as ex:
                 raise ValueError(f"The dataset in unavailable, due to: {ex.description}")
@@ -242,7 +271,7 @@ class DatasetService:
                 "No Embedding Model available. Please configure a valid provider in the Settings -> Model Provider."
             )
         except ProviderTokenNotInitError as ex:
-            raise ValueError(f"The dataset in unavailable, due to: {ex.description}")
+            raise ValueError(ex.description)
 
     @staticmethod
     def update_dataset(dataset_id, data, user):
@@ -267,7 +296,15 @@ class DatasetService:
             external_knowledge_api_id = data.get("external_knowledge_api_id", None)
             if not external_knowledge_api_id:
                 raise ValueError("External knowledge api id is required.")
-            external_knowledge_binding = ExternalKnowledgeBindings.query.filter_by(dataset_id=dataset_id).first()
+
+            with Session(db.engine) as session:
+                external_knowledge_binding = (
+                    session.query(ExternalKnowledgeBindings).filter_by(dataset_id=dataset_id).first()
+                )
+
+                if not external_knowledge_binding:
+                    raise ValueError("External knowledge binding not found.")
+
             if (
                 external_knowledge_binding.external_knowledge_id != external_knowledge_id
                 or external_knowledge_binding.external_knowledge_api_id != external_knowledge_api_id
@@ -315,25 +352,76 @@ class DatasetService:
                     except ProviderTokenNotInitError as ex:
                         raise ValueError(ex.description)
             else:
+                # add default plugin id to both setting sets, to make sure the plugin model provider is consistent
+                # Skip embedding model checks if not provided in the update request
                 if (
-                    data["embedding_model_provider"] != dataset.embedding_model_provider
-                    or data["embedding_model"] != dataset.embedding_model
+                    "embedding_model_provider" not in data
+                    or "embedding_model" not in data
+                    or not data.get("embedding_model_provider")
+                    or not data.get("embedding_model")
                 ):
-                    action = "update"
+                    # If the dataset already has embedding model settings, use those
+                    if dataset.embedding_model_provider and dataset.embedding_model:
+                        # Keep existing values
+                        filtered_data["embedding_model_provider"] = dataset.embedding_model_provider
+                        filtered_data["embedding_model"] = dataset.embedding_model
+                        # If collection_binding_id exists, keep it too
+                        if dataset.collection_binding_id:
+                            filtered_data["collection_binding_id"] = dataset.collection_binding_id
+                    # Otherwise, don't try to update embedding model settings at all
+                    # Remove these fields from filtered_data if they exist but are None/empty
+                    if "embedding_model_provider" in filtered_data and not filtered_data["embedding_model_provider"]:
+                        del filtered_data["embedding_model_provider"]
+                    if "embedding_model" in filtered_data and not filtered_data["embedding_model"]:
+                        del filtered_data["embedding_model"]
+                else:
+                    skip_embedding_update = False
                     try:
-                        model_manager = ModelManager()
-                        embedding_model = model_manager.get_model_instance(
-                            tenant_id=current_user.current_tenant_id,
-                            provider=data["embedding_model_provider"],
-                            model_type=ModelType.TEXT_EMBEDDING,
-                            model=data["embedding_model"],
-                        )
-                        filtered_data["embedding_model"] = embedding_model.model
-                        filtered_data["embedding_model_provider"] = embedding_model.provider
-                        dataset_collection_binding = DatasetCollectionBindingService.get_dataset_collection_binding(
-                            embedding_model.provider, embedding_model.model
-                        )
-                        filtered_data["collection_binding_id"] = dataset_collection_binding.id
+                        # Handle existing model provider
+                        plugin_model_provider = dataset.embedding_model_provider
+                        plugin_model_provider_str = None
+                        if plugin_model_provider:
+                            plugin_model_provider_str = str(ModelProviderID(plugin_model_provider))
+
+                        # Handle new model provider from request
+                        new_plugin_model_provider = data["embedding_model_provider"]
+                        new_plugin_model_provider_str = None
+                        if new_plugin_model_provider:
+                            new_plugin_model_provider_str = str(ModelProviderID(new_plugin_model_provider))
+
+                        # Only update embedding model if both values are provided and different from current
+                        if (
+                            plugin_model_provider_str != new_plugin_model_provider_str
+                            or data["embedding_model"] != dataset.embedding_model
+                        ):
+                            action = "update"
+                            model_manager = ModelManager()
+                            try:
+                                embedding_model = model_manager.get_model_instance(
+                                    tenant_id=current_user.current_tenant_id,
+                                    provider=data["embedding_model_provider"],
+                                    model_type=ModelType.TEXT_EMBEDDING,
+                                    model=data["embedding_model"],
+                                )
+                            except ProviderTokenNotInitError:
+                                # If we can't get the embedding model, skip updating it
+                                # and keep the existing settings if available
+                                if dataset.embedding_model_provider and dataset.embedding_model:
+                                    filtered_data["embedding_model_provider"] = dataset.embedding_model_provider
+                                    filtered_data["embedding_model"] = dataset.embedding_model
+                                    if dataset.collection_binding_id:
+                                        filtered_data["collection_binding_id"] = dataset.collection_binding_id
+                                # Skip the rest of the embedding model update
+                                skip_embedding_update = True
+                            if not skip_embedding_update:
+                                filtered_data["embedding_model"] = embedding_model.model
+                                filtered_data["embedding_model_provider"] = embedding_model.provider
+                                dataset_collection_binding = (
+                                    DatasetCollectionBindingService.get_dataset_collection_binding(
+                                        embedding_model.provider, embedding_model.model
+                                    )
+                                )
+                                filtered_data["collection_binding_id"] = dataset_collection_binding.id
                     except LLMBadRequestError:
                         raise ValueError(
                             "No Embedding Model available. Please configure a valid provider "
@@ -582,8 +670,44 @@ class DocumentService:
         return document
 
     @staticmethod
+    def get_document_by_ids(document_ids: list[str]) -> list[Document]:
+        documents = (
+            db.session.query(Document)
+            .filter(
+                Document.id.in_(document_ids),
+                Document.enabled == True,
+                Document.indexing_status == "completed",
+                Document.archived == False,
+            )
+            .all()
+        )
+        return documents
+
+    @staticmethod
     def get_document_by_dataset_id(dataset_id: str) -> list[Document]:
-        documents = db.session.query(Document).filter(Document.dataset_id == dataset_id, Document.enabled == True).all()
+        documents = (
+            db.session.query(Document)
+            .filter(
+                Document.dataset_id == dataset_id,
+                Document.enabled == True,
+            )
+            .all()
+        )
+
+        return documents
+
+    @staticmethod
+    def get_working_documents_by_dataset_id(dataset_id: str) -> list[Document]:
+        documents = (
+            db.session.query(Document)
+            .filter(
+                Document.dataset_id == dataset_id,
+                Document.enabled == True,
+                Document.indexing_status == "completed",
+                Document.archived == False,
+            )
+            .all()
+        )
 
         return documents
 
@@ -666,8 +790,13 @@ class DocumentService:
         if document.tenant_id != current_user.current_tenant_id:
             raise ValueError("No permission.")
 
-        document.name = name
+        if dataset.built_in_field_enabled:
+            if document.doc_metadata:
+                doc_metadata = copy.deepcopy(document.doc_metadata)
+                doc_metadata[BuiltInField.document_name.value] = name
+                document.doc_metadata = doc_metadata
 
+        document.name = name
         db.session.add(document)
         db.session.commit()
 
@@ -776,6 +905,9 @@ class DocumentService:
                         website_info = knowledge_config.data_source.info_list.website_info_list
                         count = len(website_info.urls)  # type: ignore
                     batch_upload_limit = int(dify_config.BATCH_UPLOAD_LIMIT)
+
+                    if features.billing.subscription.plan == "sandbox" and count > 1:
+                        raise ValueError("Your current plan does not support batch upload, please upgrade your plan.")
                     if count > batch_upload_limit:
                         raise ValueError(f"You have reached the batch upload limit of {batch_upload_limit}.")
 
@@ -816,11 +948,11 @@ class DocumentService:
                         "score_threshold_enabled": False,
                     }
 
-                    dataset.retrieval_model = (
-                        knowledge_config.retrieval_model.model_dump()
-                        if knowledge_config.retrieval_model
-                        else default_retrieval_model
-                    )  # type: ignore
+                dataset.retrieval_model = (
+                    knowledge_config.retrieval_model.model_dump()
+                    if knowledge_config.retrieval_model
+                    else default_retrieval_model
+                )  # type: ignore
 
         documents = []
         if knowledge_config.original_document_id:
@@ -859,7 +991,7 @@ class DocumentService:
                 position = DocumentService.get_documents_position(dataset.id)
                 document_ids = []
                 duplicate_document_ids = []
-                if knowledge_config.data_source.info_list.data_source_type == "upload_file":
+                if knowledge_config.data_source.info_list.data_source_type == "upload_file":  # type: ignore
                     upload_file_list = knowledge_config.data_source.info_list.file_info_list.file_ids  # type: ignore
                     for file_id in upload_file_list:
                         file = (
@@ -887,7 +1019,7 @@ class DocumentService:
                             ).first()
                             if document:
                                 document.dataset_process_rule_id = dataset_process_rule.id  # type: ignore
-                                document.updated_at = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
+                                document.updated_at = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
                                 document.created_from = created_from
                                 document.doc_form = knowledge_config.doc_form
                                 document.doc_language = knowledge_config.doc_language
@@ -901,7 +1033,7 @@ class DocumentService:
                         document = DocumentService.build_document(
                             dataset,
                             dataset_process_rule.id,  # type: ignore
-                            knowledge_config.data_source.info_list.data_source_type,
+                            knowledge_config.data_source.info_list.data_source_type,  # type: ignore
                             knowledge_config.doc_form,
                             knowledge_config.doc_language,
                             data_source_info,
@@ -916,8 +1048,8 @@ class DocumentService:
                         document_ids.append(document.id)
                         documents.append(document)
                         position += 1
-                elif knowledge_config.data_source.info_list.data_source_type == "notion_import":
-                    notion_info_list = knowledge_config.data_source.info_list.notion_info_list
+                elif knowledge_config.data_source.info_list.data_source_type == "notion_import":  # type: ignore
+                    notion_info_list = knowledge_config.data_source.info_list.notion_info_list  # type: ignore
                     if not notion_info_list:
                         raise ValueError("No notion info list found.")
                     exist_page_ids = []
@@ -953,17 +1085,19 @@ class DocumentService:
                                     "notion_page_icon": page.page_icon.model_dump() if page.page_icon else None,
                                     "type": page.type,
                                 }
+                                # Truncate page name to 255 characters to prevent DB field length errors
+                                truncated_page_name = page.page_name[:255] if page.page_name else "nopagename"
                                 document = DocumentService.build_document(
                                     dataset,
                                     dataset_process_rule.id,  # type: ignore
-                                    knowledge_config.data_source.info_list.data_source_type,
+                                    knowledge_config.data_source.info_list.data_source_type,  # type: ignore
                                     knowledge_config.doc_form,
                                     knowledge_config.doc_language,
                                     data_source_info,
                                     created_from,
                                     position,
                                     account,
-                                    page.page_name,
+                                    truncated_page_name,
                                     batch,
                                 )
                                 db.session.add(document)
@@ -976,8 +1110,8 @@ class DocumentService:
                     # delete not selected documents
                     if len(exist_document) > 0:
                         clean_notion_document_task.delay(list(exist_document.values()), dataset.id)
-                elif knowledge_config.data_source.info_list.data_source_type == "website_crawl":
-                    website_info = knowledge_config.data_source.info_list.website_info_list
+                elif knowledge_config.data_source.info_list.data_source_type == "website_crawl":  # type: ignore
+                    website_info = knowledge_config.data_source.info_list.website_info_list  # type: ignore
                     if not website_info:
                         raise ValueError("No website info list found.")
                     urls = website_info.urls
@@ -996,7 +1130,7 @@ class DocumentService:
                         document = DocumentService.build_document(
                             dataset,
                             dataset_process_rule.id,  # type: ignore
-                            knowledge_config.data_source.info_list.data_source_type,
+                            knowledge_config.data_source.info_list.data_source_type,  # type: ignore
                             knowledge_config.doc_form,
                             knowledge_config.doc_language,
                             data_source_info,
@@ -1057,6 +1191,17 @@ class DocumentService:
             doc_form=document_form,
             doc_language=document_language,
         )
+        doc_metadata = {}
+        if dataset.built_in_field_enabled:
+            doc_metadata = {
+                BuiltInField.document_name: name,
+                BuiltInField.uploader: account.name,
+                BuiltInField.upload_date: datetime.datetime.now(datetime.UTC).strftime("%Y-%m-%d %H:%M:%S"),
+                BuiltInField.last_update_date: datetime.datetime.now(datetime.UTC).strftime("%Y-%m-%d %H:%M:%S"),
+                BuiltInField.source: data_source_type,
+            }
+        if doc_metadata:
+            document.doc_metadata = doc_metadata
         return document
 
     @staticmethod
@@ -1195,22 +1340,24 @@ class DocumentService:
 
         if features.billing.enabled:
             count = 0
-            if knowledge_config.data_source.info_list.data_source_type == "upload_file":
+            if knowledge_config.data_source.info_list.data_source_type == "upload_file":  # type: ignore
                 upload_file_list = (
-                    knowledge_config.data_source.info_list.file_info_list.file_ids
-                    if knowledge_config.data_source.info_list.file_info_list
+                    knowledge_config.data_source.info_list.file_info_list.file_ids  # type: ignore
+                    if knowledge_config.data_source.info_list.file_info_list  # type: ignore
                     else []
                 )
                 count = len(upload_file_list)
-            elif knowledge_config.data_source.info_list.data_source_type == "notion_import":
-                notion_info_list = knowledge_config.data_source.info_list.notion_info_list
+            elif knowledge_config.data_source.info_list.data_source_type == "notion_import":  # type: ignore
+                notion_info_list = knowledge_config.data_source.info_list.notion_info_list  # type: ignore
                 if notion_info_list:
                     for notion_info in notion_info_list:
                         count = count + len(notion_info.pages)
-            elif knowledge_config.data_source.info_list.data_source_type == "website_crawl":
-                website_info = knowledge_config.data_source.info_list.website_info_list
+            elif knowledge_config.data_source.info_list.data_source_type == "website_crawl":  # type: ignore
+                website_info = knowledge_config.data_source.info_list.website_info_list  # type: ignore
                 if website_info:
                     count = len(website_info.urls)
+            if features.billing.subscription.plan == "sandbox" and count > 1:
+                raise ValueError("Your current plan does not support batch upload, please upgrade your plan.")
             batch_upload_limit = int(dify_config.BATCH_UPLOAD_LIMIT)
             if count > batch_upload_limit:
                 raise ValueError(f"You have reached the batch upload limit of {batch_upload_limit}.")
@@ -1239,7 +1386,7 @@ class DocumentService:
         dataset = Dataset(
             tenant_id=tenant_id,
             name="",
-            data_source_type=knowledge_config.data_source.info_list.data_source_type,
+            data_source_type=knowledge_config.data_source.info_list.data_source_type,  # type: ignore
             indexing_technique=knowledge_config.indexing_technique,
             created_by=account.id,
             embedding_model=knowledge_config.embedding_model,
@@ -1453,7 +1600,7 @@ class SegmentService:
                 model=dataset.embedding_model,
             )
             # calc embedding use tokens
-            tokens = embedding_model.get_text_embedding_num_tokens(texts=[content])
+            tokens = embedding_model.get_text_embedding_num_tokens(texts=[content])[0]
         lock_name = "add_segment_lock_document_id_{}".format(document.id)
         with redis_client.lock(lock_name, timeout=600):
             max_position = (
@@ -1530,9 +1677,12 @@ class SegmentService:
                 if dataset.indexing_technique == "high_quality" and embedding_model:
                     # calc embedding use tokens
                     if document.doc_form == "qa_model":
-                        tokens = embedding_model.get_text_embedding_num_tokens(texts=[content + segment_item["answer"]])
+                        tokens = embedding_model.get_text_embedding_num_tokens(
+                            texts=[content + segment_item["answer"]]
+                        )[0]
                     else:
-                        tokens = embedding_model.get_text_embedding_num_tokens(texts=[content])
+                        tokens = embedding_model.get_text_embedding_num_tokens(texts=[content])[0]
+
                 segment_document = DocumentSegment(
                     tenant_id=current_user.current_tenant_id,
                     dataset_id=document.dataset_id,
@@ -1543,6 +1693,7 @@ class SegmentService:
                     content=content,
                     word_count=len(content),
                     tokens=tokens,
+                    keywords=segment_item.get("keywords", []),
                     status="completed",
                     indexing_at=datetime.datetime.now(datetime.UTC).replace(tzinfo=None),
                     completed_at=datetime.datetime.now(datetime.UTC).replace(tzinfo=None),
@@ -1611,8 +1762,11 @@ class SegmentService:
                     segment.answer = args.answer
                     segment.word_count += len(args.answer) if args.answer else 0
                 word_count_change = segment.word_count - word_count_change
+                keyword_changed = False
                 if args.keywords:
-                    segment.keywords = args.keywords
+                    if Counter(segment.keywords) != Counter(args.keywords):
+                        segment.keywords = args.keywords
+                        keyword_changed = True
                 segment.enabled = True
                 segment.disabled_at = None
                 segment.disabled_by = None
@@ -1623,13 +1777,6 @@ class SegmentService:
                     document.word_count = max(0, document.word_count + word_count_change)
                     db.session.add(document)
                 # update segment index task
-                if args.enabled:
-                    VectorService.create_segments_vector(
-                        [args.keywords] if args.keywords else None,
-                        [segment],
-                        dataset,
-                        document.doc_form,
-                    )
                 if document.doc_form == IndexType.PARENT_CHILD_INDEX and args.regenerate_child_chunks:
                     # regenerate child chunks
                     # get embedding model instance
@@ -1662,6 +1809,10 @@ class SegmentService:
                     VectorService.generate_child_chunks(
                         segment, document, dataset, embedding_model_instance, processing_rule, True
                     )
+                elif document.doc_form in (IndexType.PARAGRAPH_INDEX, IndexType.QA_INDEX):
+                    if args.enabled or keyword_changed:
+                        # update segment vector index
+                        VectorService.update_segment_vector(args.keywords, segment, dataset)
             else:
                 segment_hash = helper.generate_text_hash(content)
                 tokens = 0
@@ -1676,9 +1827,9 @@ class SegmentService:
 
                     # calc embedding use tokens
                     if document.doc_form == "qa_model":
-                        tokens = embedding_model.get_text_embedding_num_tokens(texts=[content + segment.answer])
+                        tokens = embedding_model.get_text_embedding_num_tokens(texts=[content + segment.answer])[0]
                     else:
-                        tokens = embedding_model.get_text_embedding_num_tokens(texts=[content])
+                        tokens = embedding_model.get_text_embedding_num_tokens(texts=[content])[0]
                 segment.content = content
                 segment.index_node_hash = segment_hash
                 segment.word_count = len(content)
@@ -1831,7 +1982,7 @@ class SegmentService:
                 if cache_result is not None:
                     continue
                 segment.enabled = False
-                segment.disabled_at = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
+                segment.disabled_at = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
                 segment.disabled_by = current_user.id
                 db.session.add(segment)
                 real_deal_segmment_ids.append(segment.id)
@@ -1923,7 +2074,7 @@ class SegmentService:
                         child_chunk.content = child_chunk_update_args.content
                         child_chunk.word_count = len(child_chunk.content)
                         child_chunk.updated_by = current_user.id
-                        child_chunk.updated_at = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
+                        child_chunk.updated_at = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
                         child_chunk.type = "customized"
                         update_child_chunks.append(child_chunk)
             else:
@@ -1980,7 +2131,7 @@ class SegmentService:
             child_chunk.content = content
             child_chunk.word_count = len(content)
             child_chunk.updated_by = current_user.id
-            child_chunk.updated_at = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
+            child_chunk.updated_at = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
             child_chunk.type = "customized"
             db.session.add(child_chunk)
             VectorService.update_child_chunk_vector([], [child_chunk], [], dataset)
@@ -2015,6 +2166,88 @@ class SegmentService:
         if keyword:
             query = query.where(ChildChunk.content.ilike(f"%{keyword}%"))
         return query.paginate(page=page, per_page=limit, max_per_page=100, error_out=False)
+
+    @classmethod
+    def get_child_chunk_by_id(cls, child_chunk_id: str, tenant_id: str) -> Optional[ChildChunk]:
+        """Get a child chunk by its ID."""
+        result = ChildChunk.query.filter(ChildChunk.id == child_chunk_id, ChildChunk.tenant_id == tenant_id).first()
+        return result if isinstance(result, ChildChunk) else None
+
+    @classmethod
+    def get_segments(
+        cls, document_id: str, tenant_id: str, status_list: list[str] | None = None, keyword: str | None = None
+    ):
+        """Get segments for a document with optional filtering."""
+        query = DocumentSegment.query.filter(
+            DocumentSegment.document_id == document_id, DocumentSegment.tenant_id == tenant_id
+        )
+
+        if status_list:
+            query = query.filter(DocumentSegment.status.in_(status_list))
+
+        if keyword:
+            query = query.filter(DocumentSegment.content.ilike(f"%{keyword}%"))
+
+        segments = query.order_by(DocumentSegment.position.asc()).all()
+        total = len(segments)
+
+        return segments, total
+
+    @classmethod
+    def update_segment_by_id(
+        cls, tenant_id: str, dataset_id: str, document_id: str, segment_id: str, segment_data: dict, user_id: str
+    ) -> tuple[DocumentSegment, Document]:
+        """Update a segment by its ID with validation and checks."""
+        # check dataset
+        dataset = db.session.query(Dataset).filter(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id).first()
+        if not dataset:
+            raise NotFound("Dataset not found.")
+
+        # check user's model setting
+        DatasetService.check_dataset_model_setting(dataset)
+
+        # check document
+        document = DocumentService.get_document(dataset_id, document_id)
+        if not document:
+            raise NotFound("Document not found.")
+
+        # check embedding model setting if high quality
+        if dataset.indexing_technique == "high_quality":
+            try:
+                model_manager = ModelManager()
+                model_manager.get_model_instance(
+                    tenant_id=user_id,
+                    provider=dataset.embedding_model_provider,
+                    model_type=ModelType.TEXT_EMBEDDING,
+                    model=dataset.embedding_model,
+                )
+            except LLMBadRequestError:
+                raise ValueError(
+                    "No Embedding Model available. Please configure a valid provider in the Settings -> Model Provider."
+                )
+            except ProviderTokenNotInitError as ex:
+                raise ValueError(ex.description)
+
+        # check segment
+        segment = DocumentSegment.query.filter(
+            DocumentSegment.id == segment_id, DocumentSegment.tenant_id == user_id
+        ).first()
+        if not segment:
+            raise NotFound("Segment not found.")
+
+        # validate and update segment
+        cls.segment_create_args_validate(segment_data, document)
+        updated_segment = cls.update_segment(SegmentUpdateArgs(**segment_data), segment, document, dataset)
+
+        return updated_segment, document
+
+    @classmethod
+    def get_segment_by_id(cls, segment_id: str, tenant_id: str) -> Optional[DocumentSegment]:
+        """Get a segment by its ID."""
+        result = DocumentSegment.query.filter(
+            DocumentSegment.id == segment_id, DocumentSegment.tenant_id == tenant_id
+        ).first()
+        return result if isinstance(result, DocumentSegment) else None
 
 
 class DatasetCollectionBindingService:
