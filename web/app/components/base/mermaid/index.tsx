@@ -3,7 +3,14 @@ import mermaid from 'mermaid'
 import { useTranslation } from 'react-i18next'
 import { ExclamationTriangleIcon } from '@heroicons/react/24/outline'
 import { MoonIcon, SunIcon } from '@heroicons/react/24/solid'
-import { cleanUpSvgCode } from './utils'
+import {
+  cleanUpSvgCode,
+  isMermaidCodeComplete,
+  prepareMermaidCode,
+  processSvgForTheme,
+  svgToBase64,
+  waitForDOMElement,
+} from './utils'
 import LoadingAnim from '@/app/components/base/chat/chat/loading-anim'
 import cn from '@/utils/classnames'
 import ImagePreview from '@/app/components/base/image-uploader/image-preview'
@@ -85,100 +92,6 @@ const initMermaid = () => {
   return isMermaidInitialized
 }
 
-/**
- * Converts SVG to base64 string for image rendering
- */
-const svgToBase64 = (svgGraph: string) => {
-  if (!svgGraph)
-    return Promise.resolve('')
-
-  try {
-    // Ensure SVG has correct XML declaration
-    if (!svgGraph.includes('<?xml'))
-      svgGraph = `<?xml version="1.0" encoding="UTF-8"?>${svgGraph}`
-
-    const blob = new Blob([new TextEncoder().encode(svgGraph)], { type: 'image/svg+xml;charset=utf-8' })
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader()
-      reader.onloadend = () => resolve(reader.result)
-      reader.onerror = reject
-      reader.readAsDataURL(blob)
-    })
-  }
-  catch (error) {
-    console.error('Error converting SVG to base64:', error)
-    return Promise.resolve('')
-  }
-}
-
-/**
- * Helper to wait for DOM element with retry mechanism
- */
-const waitForDOMElement = (callback: () => Promise<any>, maxAttempts = 3, delay = 100): Promise<any> => {
-  return new Promise((resolve, reject) => {
-    let attempts = 0
-    const tryRender = async () => {
-      try {
-        resolve(await callback())
-      }
-      catch (error) {
-        attempts++
-        if (attempts < maxAttempts)
-          setTimeout(tryRender, delay)
-        else
-          reject(error)
-      }
-    }
-    tryRender()
-  })
-}
-
-/**
- * Checks if mermaid code is complete and valid
- */
-const isMermaidCodeComplete = (code: string): boolean => {
-  if (!code || code.trim().length === 0)
-    return false
-
-  try {
-    const trimmedCode = code.trim()
-
-    // Check for basic syntax structure
-    const hasValidStart = /^(graph|flowchart|sequenceDiagram|classDiagram|classDef|class|stateDiagram|gantt|pie|er|journey|requirementDiagram)/.test(trimmedCode)
-
-    // Check for balanced brackets and parentheses
-    const isBalanced = (() => {
-      const stack = []
-      const pairs = { '{': '}', '[': ']', '(': ')' }
-
-      for (const char of trimmedCode) {
-        if (char in pairs) {
-          stack.push(char)
-        }
-        else if (Object.values(pairs).includes(char)) {
-          const last = stack.pop()
-          if (pairs[last as keyof typeof pairs] !== char)
-            return false
-        }
-      }
-
-      return stack.length === 0
-    })()
-
-    // Check for common syntax errors
-    const hasNoSyntaxErrors = !trimmedCode.includes('undefined')
-                           && !trimmedCode.includes('[object Object]')
-                           && trimmedCode.split('\n').every(line =>
-                             !(line.includes('-->') && !line.match(/\S+\s*-->\s*\S+/)))
-
-    return hasValidStart && isBalanced && hasNoSyntaxErrors
-  }
-  catch (error) {
-    console.debug('Mermaid code validation error:', error)
-    return false
-  }
-}
-
 const Flowchart = React.forwardRef((props: {
   PrimitiveCode: string
   theme?: 'light' | 'dark'
@@ -202,156 +115,14 @@ const Flowchart = React.forwardRef((props: {
     return `${props.PrimitiveCode}-${look}-${currentTheme}`
   }, [props.PrimitiveCode, look, currentTheme])
 
-  // Initialize mermaid
-  useEffect(() => {
-    const api = initMermaid()
-    if (api)
-      setIsInitialized(true)
-  }, [])
-
-  // Update theme when prop changes
-  useEffect(() => {
-    if (props.theme)
-      setCurrentTheme(props.theme)
-  }, [props.theme])
-
-  // Validate mermaid code and check for completeness
-  useEffect(() => {
-    if (codeCompletionCheckRef.current)
-      clearTimeout(codeCompletionCheckRef.current)
-
-    // Reset code complete status when code changes
-    setIsCodeComplete(false)
-
-    // If no code or code is extremely short, don't proceed
-    if (!props.PrimitiveCode || props.PrimitiveCode.length < 10)
-      return
-
-    // Check if code already in cache - if so we know it's valid
-    if (diagramCache.has(cacheKey)) {
-      setIsCodeComplete(true)
-      return
-    }
-
-    // Initial check
-    const isComplete = isMermaidCodeComplete(props.PrimitiveCode)
-    if (isComplete) {
-      setIsCodeComplete(true)
-      return
-    }
-
-    // Set a delay to check again in case code is still being generated
-    codeCompletionCheckRef.current = setTimeout(() => {
-      setIsCodeComplete(isMermaidCodeComplete(props.PrimitiveCode))
-    }, 300)
-
-    return () => {
-      if (codeCompletionCheckRef.current)
-        clearTimeout(codeCompletionCheckRef.current)
-    }
-  }, [props.PrimitiveCode, cacheKey])
-
   /**
-   * Processes SVG for theme styling
-   */
-  const processSvgForTheme = (svg: string, isDark: boolean, isHandDrawn: boolean): string => {
-    let processedSvg = svg
-
-    if (isDark) {
-      processedSvg = processedSvg
-        .replace(/style="fill: ?#000000"/g, 'style="fill: #e2e8f0"')
-        .replace(/style="stroke: ?#000000"/g, 'style="stroke: #94a3b8"')
-        .replace(/<rect [^>]*fill="#ffffff"/g, '<rect $& fill="#1e293b"')
-
-      if (isHandDrawn) {
-        processedSvg = processedSvg
-          .replace(/fill="#[a-fA-F0-9]{6}"/g, `fill="${THEMES.dark.nodeColors[0].bg}"`)
-          .replace(/stroke="#[a-fA-F0-9]{6}"/g, `stroke="${THEMES.dark.connectionColor}"`)
-          .replace(/stroke-width="1"/g, 'stroke-width="1.5"')
-      }
-      else {
-        THEMES.dark.nodeColors.forEach(() => {
-          const regex = /fill="#[a-fA-F0-9]{6}"[^>]*class="node-[^"]*"/g
-          let i = 0
-          processedSvg = processedSvg.replace(regex, (match: string) => {
-            const colorIndex = i % THEMES.dark.nodeColors.length
-            i++
-            return match.replace(/fill="#[a-fA-F0-9]{6}"/, `fill="${THEMES.dark.nodeColors[colorIndex].bg}"`)
-          })
-        })
-
-        processedSvg = processedSvg
-          .replace(/<path [^>]*stroke="#[a-fA-F0-9]{6}"/g,
-            `<path stroke="${THEMES.dark.connectionColor}" stroke-width="1.5"`)
-          .replace(/<(line|polyline) [^>]*stroke="#[a-fA-F0-9]{6}"/g,
-            `<$1 stroke="${THEMES.dark.connectionColor}" stroke-width="1.5"`)
-      }
-    }
-    else {
-      if (isHandDrawn) {
-        processedSvg = processedSvg
-          .replace(/fill="#[a-fA-F0-9]{6}"/g, `fill="${THEMES.light.nodeColors[0].bg}"`)
-          .replace(/stroke="#[a-fA-F0-9]{6}"/g, `stroke="${THEMES.light.connectionColor}"`)
-          .replace(/stroke-width="1"/g, 'stroke-width="1.5"')
-      }
-      else {
-        THEMES.light.nodeColors.forEach(() => {
-          const regex = /fill="#[a-fA-F0-9]{6}"[^>]*class="node-[^"]*"/g
-          let i = 0
-          processedSvg = processedSvg.replace(regex, (match: string) => {
-            const colorIndex = i % THEMES.light.nodeColors.length
-            i++
-            return match.replace(/fill="#[a-fA-F0-9]{6}"/, `fill="${THEMES.light.nodeColors[colorIndex].bg}"`)
-          })
-        })
-
-        processedSvg = processedSvg
-          .replace(/<path [^>]*stroke="#[a-fA-F0-9]{6}"/g,
-            `<path stroke="${THEMES.light.connectionColor}"`)
-          .replace(/<(line|polyline) [^>]*stroke="#[a-fA-F0-9]{6}"/g,
-            `<$1 stroke="${THEMES.light.connectionColor}"`)
-      }
-    }
-
-    return processedSvg
-  }
-
-  /**
-   * Clean and prepare Mermaid code
-   */
-  const cleanupMermaidCode = (code: string, style: 'classic' | 'handDrawn'): string => {
-    let finalCode = code
-      .replace(/fifopacket/g, 'rect')
-      .replace(/^graph\s+([TB|BT|RL|LR]*)/, (match, direction) => {
-        return direction ? match : 'graph TD'
-      })
-      .trim()
-
-    if (style === 'handDrawn') {
-      finalCode = finalCode
-        .replace(/style\s+[^\n]+/g, '')
-        .replace(/linkStyle\s+[^\n]+/g, '')
-        .replace(/^flowchart/, 'graph')
-        // Remove any styles that might interfere with hand-drawn style
-        .replace(/class="[^"]*"/g, '')
-        .replace(/fill="[^"]*"/g, '')
-        .replace(/stroke="[^"]*"/g, '')
-
-      // Ensure hand-drawn style charts always start with graph
-      if (!finalCode.startsWith('graph') && !finalCode.startsWith('flowchart'))
-        finalCode = `graph TD\n${finalCode}`
-    }
-
-    return finalCode
-  }
-
-  /**
-   * Render Mermaid chart
+   * Renders Mermaid chart
    */
   const renderMermaidChart = async (code: string, style: 'classic' | 'handDrawn') => {
     if (style === 'handDrawn') {
       // Special handling for hand-drawn style
-      containerRef.current!.innerHTML = `<div id="${chartId}"></div>`
+      if (containerRef.current)
+        containerRef.current.innerHTML = `<div id="${chartId}"></div>`
       await new Promise(resolve => setTimeout(resolve, 30))
 
       if (typeof window !== 'undefined' && mermaidAPI) {
@@ -365,9 +136,10 @@ const Flowchart = React.forwardRef((props: {
       }
     }
     else {
-      // Standard rendering for classic style
+      // Standard rendering for classic style - using the extracted waitForDOMElement function
       const renderWithRetry = async () => {
-        containerRef.current!.innerHTML = `<div id="${chartId}"></div>`
+        if (containerRef.current)
+          containerRef.current.innerHTML = `<div id="${chartId}"></div>`
         await new Promise(resolve => setTimeout(resolve, 30))
         const { svg } = await mermaid.render(chartId, code)
         return { svg }
@@ -409,7 +181,7 @@ const Flowchart = React.forwardRef((props: {
 
         // Try rendering with standard mode
         setLook('classic')
-        setErrMsg(t('app.mermaid.handdrawn_error', 'Hand-drawn mode is not supported for this diagram. Switched to classic mode.') || '')
+        setErrMsg('Hand-drawn mode is not supported for this diagram. Switched to classic mode.')
 
         // Delay error clearing
         setTimeout(() => {
@@ -427,6 +199,55 @@ const Flowchart = React.forwardRef((props: {
 
     setIsLoading(false)
   }
+
+  // Initialize mermaid
+  useEffect(() => {
+    const api = initMermaid()
+    if (api)
+      setIsInitialized(true)
+  }, [])
+
+  // Update theme when prop changes
+  useEffect(() => {
+    if (props.theme)
+      setCurrentTheme(props.theme)
+  }, [props.theme])
+
+  // Validate mermaid code and check for completeness
+  useEffect(() => {
+    if (codeCompletionCheckRef.current)
+      clearTimeout(codeCompletionCheckRef.current)
+
+    // Reset code complete status when code changes
+    setIsCodeComplete(false)
+
+    // If no code or code is extremely short, don't proceed
+    if (!props.PrimitiveCode || props.PrimitiveCode.length < 10)
+      return
+
+    // Check if code already in cache - if so we know it's valid
+    if (diagramCache.has(cacheKey)) {
+      setIsCodeComplete(true)
+      return
+    }
+
+    // Initial check using the extracted isMermaidCodeComplete function
+    const isComplete = isMermaidCodeComplete(props.PrimitiveCode)
+    if (isComplete) {
+      setIsCodeComplete(true)
+      return
+    }
+
+    // Set a delay to check again in case code is still being generated
+    codeCompletionCheckRef.current = setTimeout(() => {
+      setIsCodeComplete(isMermaidCodeComplete(props.PrimitiveCode))
+    }, 300)
+
+    return () => {
+      if (codeCompletionCheckRef.current)
+        clearTimeout(codeCompletionCheckRef.current)
+    }
+  }, [props.PrimitiveCode, cacheKey])
 
   /**
    * Renders flowchart based on provided code
@@ -455,20 +276,21 @@ const Flowchart = React.forwardRef((props: {
     setErrMsg('')
 
     try {
-      // Step 1: Clean and prepare Mermaid code
-      const finalCode = cleanupMermaidCode(primitiveCode, look)
+      // Step 1: Clean and prepare Mermaid code using the extracted prepareMermaidCode function
+      const finalCode = prepareMermaidCode(primitiveCode, look)
 
       // Step 2: Render chart
       const svgGraph = await renderMermaidChart(finalCode, look)
 
-      // Step 3: Apply theme to SVG
+      // Step 3: Apply theme to SVG using the extracted processSvgForTheme function
       const processedSvg = processSvgForTheme(
         svgGraph.svg,
         currentTheme === Theme.dark,
         look === 'handDrawn',
+        THEMES,
       )
 
-      // Step 4: Clean SVG code and convert to base64
+      // Step 4: Clean SVG code and convert to base64 using the extracted functions
       const cleanedSvg = cleanUpSvgCode(processedSvg)
       const base64Svg = await svgToBase64(cleanedSvg)
 
@@ -715,7 +537,10 @@ const Flowchart = React.forwardRef((props: {
 
       {errMsg && (
         <div className={themeClasses.errorMessage}>
-          <ExclamationTriangleIcon className={themeClasses.errorIcon}/>&nbsp;{errMsg}
+          <div className="flex items-center">
+            <ExclamationTriangleIcon className={themeClasses.errorIcon}/>
+            <span className="ml-2">{errMsg}</span>
+          </div>
         </div>
       )}
 
