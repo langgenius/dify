@@ -155,7 +155,7 @@ const Panel: FC<NodePanelProps<IterationNodeType>> = ({
                 required: false,
               }],
               values: { [iteratorInputKey]: iterator },
-              onChange: keyValue => setIterator((keyValue as any)[iteratorInputKey]),
+              onChange: keyValue => setIterator(keyValue[iteratorInputKey]),
             },
           ]}
           runningStatus={runningStatus}

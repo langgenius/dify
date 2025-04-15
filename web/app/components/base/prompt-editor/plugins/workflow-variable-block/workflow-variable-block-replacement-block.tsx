@@ -47,7 +47,7 @@ const WorkflowVariableBlockReplacementBlock = ({
     }
   }, [])
 
-  const transformListener = useCallback((textNode: any) => {
+  const transformListener = useCallback((textNode: CustomTextNode) => {
     resetReg()
     return decoratorTransform(textNode, getMatch, createWorkflowVariableBlockNode)
   }, [createWorkflowVariableBlockNode, getMatch])

@@ -50,10 +50,7 @@ jest.mock('@/app/components/plugins/marketplace/utils', () => ({
   getMarketplacePluginsByCollectionId: jest.fn(),
 }))
 
-jest.mock('./provider-added-card', () => {
-  // eslint-disable-next-line no-labels, ts/no-unused-expressions
-  UPDATE_MODEL_PROVIDER_CUSTOM_MODEL_LIST: []
-})
+jest.mock('./provider-added-card', () => jest.fn())
 
 after(() => {
   jest.resetModules()

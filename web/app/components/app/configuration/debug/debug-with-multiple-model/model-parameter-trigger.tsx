@@ -8,6 +8,7 @@ import ModelParameterModal from '@/app/components/header/account-setting/model-p
 import ModelIcon from '@/app/components/header/account-setting/model-provider-page/model-icon'
 import ModelName from '@/app/components/header/account-setting/model-provider-page/model-name'
 import {
+  type FormValue,
   MODEL_STATUS_TEXT,
   ModelStatusEnum,
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
@@ -45,7 +46,7 @@ const ModelParameterTrigger: FC<ModelParameterTriggerProps> = ({
     }
     onMultipleModelConfigsChange(true, newModelConfigs)
   }
-  const handleParamsChange = (params: any) => {
+  const handleParamsChange = (params: FormValue) => {
     const newModelConfigs = [...multipleModelConfigs]
     newModelConfigs[index] = {
       ...newModelConfigs[index],

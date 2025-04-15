@@ -117,7 +117,7 @@ const WorkflowPreview = () => {
               <ResultText
                 isRunning={workflowRunningData?.result?.status === WorkflowRunningStatus.Running || !workflowRunningData?.result}
                 outputs={workflowRunningData?.resultText}
-                allFiles={workflowRunningData?.result?.files as any}
+                allFiles={workflowRunningData?.result?.files}
                 error={workflowRunningData?.result?.error}
                 onClick={() => switchTab('DETAIL')}
               />

@@ -131,7 +131,7 @@ def cast_parameter_value(typ: enum.StrEnum, value: Any, /):
                     raise ValueError("The selector must be a dictionary.")
                 return value
             case PluginParameterType.TOOLS_SELECTOR:
-                if not isinstance(value, list):
+                if value and not isinstance(value, list):
                     raise ValueError("The tools selector must be a list.")
                 return value
             case _:
@@ -147,7 +147,7 @@ def init_frontend_parameter(rule: PluginParameter, type: enum.StrEnum, value: An
     init frontend parameter by rule
     """
     parameter_value = value
-    if not parameter_value and parameter_value != 0 and type != PluginParameterType.TOOLS_SELECTOR:
+    if not parameter_value and parameter_value != 0:
         # get default value
         parameter_value = rule.default
         if not parameter_value and rule.required:

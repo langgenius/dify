@@ -83,7 +83,7 @@ const ProviderCard: FC<Props> = ({
       {
         isShowInstallFromMarketplace && (
           <InstallFromMarketplace
-            manifest={payload as any}
+            manifest={payload}
             uniqueIdentifier={payload.latest_package_identifier}
             onClose={hideInstallFromMarketplace}
             onSuccess={() => hideInstallFromMarketplace()}

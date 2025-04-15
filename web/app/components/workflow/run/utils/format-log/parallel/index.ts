@@ -148,6 +148,7 @@ const format = (list: NodeTracing[], t: any, isPrint?: boolean): NodeTracing[] =
       return false
 
     const isParallelStartNode = node.parallelDetail?.isParallelStartNode
+    // eslint-disable-next-line sonarjs/prefer-single-boolean-return
     if (!isParallelStartNode)
       return false
 
