@@ -3,20 +3,11 @@ FROM python:3.12-slim-bookworm AS base
 
 WORKDIR /app/api
 
-# Install Poetry
-ENV POETRY_VERSION=2.0.1
+# Install uv
+ENV UV_VERSION=0.6.14
 
-# if you located in China, you can use aliyun mirror to speed up
-# RUN pip install --no-cache-dir poetry==${POETRY_VERSION} -i https://mirrors.aliyun.com/pypi/simple/
+RUN pip install --no-cache-dir uv==${UV_VERSION}
 
-RUN pip install --no-cache-dir poetry==${POETRY_VERSION}
-
-# Configure Poetry
-ENV POETRY_CACHE_DIR=/tmp/poetry_cache
-ENV POETRY_NO_INTERACTION=1
-ENV POETRY_VIRTUALENVS_IN_PROJECT=true
-ENV POETRY_VIRTUALENVS_CREATE=true
-ENV POETRY_REQUESTS_TIMEOUT=15
 
 FROM base AS packages
 
@@ -27,8 +18,8 @@ RUN apt-get update \
     && apt-get install -y --no-install-recommends gcc g++ libc-dev libffi-dev libgmp-dev libmpfr-dev libmpc-dev
 
 # Install Python dependencies
-COPY pyproject.toml poetry.lock ./
-RUN poetry install --sync --no-cache --no-root
+COPY pyproject.toml uv.lock ./
+RUN uv sync --locked
 
 # production stage
 FROM base AS production
