@@ -43,9 +43,9 @@ jobs:
       - name: Ruff check
         if: steps.changed-files.outputs.any_changed == 'true'
         run: |
-          uv run --project api ruff --version
-          uv run --project api ruff check ./api
-          uv run --project api ruff format --check ./api
+          uv run --directory api ruff --version
+          uv run --directory api ruff check ./
+          uv run --directory api ruff format --check ./
 
       - name: Dotenv check
         if: steps.changed-files.outputs.any_changed == 'true'

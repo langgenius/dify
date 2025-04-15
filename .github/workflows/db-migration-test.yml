@@ -1,4 +1,4 @@
-name: DB Migration Test on UV
+name: DB Migration Test
 
 on:
   pull_request:
@@ -54,6 +54,4 @@ jobs:
       - name: Run DB Migration
         env:
           DEBUG: true
-        run: |
-          cd api
-          uv run flask upgrade-db
+        run: uv run --directory api flask upgrade-db

@@ -36,7 +36,7 @@ jobs:
       - name: Setup UV and Python
         uses: ./.github/actions/setup-uv
         with:
-          python-vesion: ${{ matrix.python-version }}
+          python-version: ${{ matrix.python-version }}
           uv-lockfile: api/uv.lock
 
       - name: Check UV lockfile
@@ -51,9 +51,14 @@ jobs:
       - name: Run dify config tests
         run: uv run --project api dev/pytest/pytest_config_tests.py
 
-      - name: Run mypy
-        run: |
-          uv run --with pip --directory api python -m mypy --install-types --non-interactive .
+      - name: MyPy Cache
+        uses: actions/cache@v4
+        with:
+          path: api/.mypy_cache
+          key: mypy-${{ matrix.python-version }}-${{ runner.os }}-${{ hashFiles('api/uv.lock') }}
+
+      - name: Run MyPy Checks
+        run: dev/mypy-check
 
       - name: Set up dotenvs
         run: |

@@ -35,6 +35,7 @@ jobs:
       - name: Setup UV and Python
         uses: ./.github/actions/setup-uv
         with:
+          python-version: ${{ matrix.python-version }}
           uv-lockfile: api/uv.lock
 
       - name: Check UV lockfile
