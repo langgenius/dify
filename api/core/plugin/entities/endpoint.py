@@ -24,7 +24,7 @@ class EndpointProviderDeclaration(BaseModel):
     """
 
     settings: list[ProviderConfig] = Field(default_factory=list)
-    endpoints: Optional[list[EndpointDeclaration]] = Field(default_factory=list)
+    endpoints: Optional[list[EndpointDeclaration]] = Field(default_factory=list[EndpointDeclaration])
 
 
 class EndpointEntity(BasePluginEntity):
