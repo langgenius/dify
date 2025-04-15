@@ -55,7 +55,7 @@ const EndpointList = ({ detail }: Props) => {
     },
   })
 
-  const handleCreate = (state: any) => createEndpoint({
+  const handleCreate = (state: Record<string, any>) => createEndpoint({
     pluginUniqueID,
     state,
   })

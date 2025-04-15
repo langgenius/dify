@@ -391,7 +391,7 @@ export const useDSL = () => {
       a.download = `${appDetail.name}.yml`
       a.click()
     }
-    catch (e) {
+    catch {
       notify({ type: 'error', message: t('app.exportFailed') })
     }
     finally {
@@ -416,7 +416,7 @@ export const useDSL = () => {
         },
       } as any)
     }
-    catch (e) {
+    catch {
       notify({ type: 'error', message: t('app.exportFailed') })
     }
   }, [appDetail, eventEmitter, handleExportDSL, notify, t])

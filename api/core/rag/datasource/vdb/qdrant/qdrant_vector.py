@@ -444,7 +444,7 @@ class QdrantVectorFactory(AbstractVectorFactory):
             if dataset_collection_binding:
                 collection_name = dataset_collection_binding.collection_name
             else:
-                raise ValueError("Dataset Collection Bindings is not exist!")
+                raise ValueError("Dataset Collection Bindings does not exist!")
         else:
             if dataset.index_struct_dict:
                 class_prefix: str = dataset.index_struct_dict["vector_store"]["class_prefix"]

@@ -43,7 +43,7 @@ describe('asyncRunSafe', () => {
 })
 
 describe('getTextWidthWithCanvas', () => {
-  let originalCreateElement: any
+  let originalCreateElement: typeof document.createElement
 
   beforeEach(() => {
     // Store original implementation
@@ -231,8 +231,8 @@ describe('canFindTool', () => {
 })
 
 describe('removeSpecificQueryParam', () => {
-  let originalLocation: any
-  let originalReplaceState: any
+  let originalLocation: Location
+  let originalReplaceState: typeof window.history.replaceState
 
   beforeEach(() => {
     originalLocation = window.location

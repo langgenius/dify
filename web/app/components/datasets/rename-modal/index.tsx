@@ -55,7 +55,7 @@ const RenameDatasetModal = ({ show, dataset, onSuccess, onClose }: RenameDataset
         onSuccess()
       onClose()
     }
-    catch (e) {
+    catch {
       notify({ type: 'error', message: t('common.actionMsg.modifiedUnsuccessfully') })
     }
     finally {

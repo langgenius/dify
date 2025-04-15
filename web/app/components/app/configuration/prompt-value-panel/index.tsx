@@ -79,7 +79,7 @@ const PromptValuePanel: FC<IPromptValuePanelProps> = ({
   }
 
   const onClear = () => {
-    const newInputs: Record<string, any> = {}
+    const newInputs: Inputs = {}
     promptVariables.forEach((item) => {
       newInputs[item.key] = ''
     })

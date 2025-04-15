@@ -71,7 +71,7 @@ const ConditionValue = ({
         : ''
     }
     return ''
-  }, [])
+  }, [t])
 
   return (
     <div className='rounded-md bg-workflow-block-parma-bg'>

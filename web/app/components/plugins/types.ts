@@ -53,6 +53,11 @@ export type EndpointListItem = {
   hook_id: string
 }
 
+export type PluginDeclarationMeta = {
+  version: string
+  minimum_dify_version?: string
+}
+
 // Plugin manifest
 export type PluginDeclaration = {
   plugin_unique_identifier: string
@@ -72,6 +77,7 @@ export type PluginDeclaration = {
   model: any
   tags: string[]
   agent_strategy: any
+  meta: PluginDeclarationMeta
 }
 
 export type PluginManifestInMarket = {

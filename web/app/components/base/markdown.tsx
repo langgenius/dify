@@ -128,7 +128,7 @@ const CodeBlock: any = memo(({ inline, className, children, ...props }: any) => 
       try {
         return JSON.parse(String(children).replace(/\n$/, ''))
       }
-      catch (error) { }
+      catch { }
     }
     return JSON.parse('{"title":{"text":"ECharts error - Wrong JSON format."}}')
   }, [language, children])

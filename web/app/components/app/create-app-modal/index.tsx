@@ -90,7 +90,7 @@ function CreateApp({ onClose, onSuccess, onCreateFromTemplate }: CreateAppProps)
       localStorage.setItem(NEED_REFRESH_APP_LIST_KEY, '1')
       getRedirection(isCurrentWorkspaceEditor, app, push)
     }
-    catch (e) {
+    catch {
       notify({ type: 'error', message: t('app.newApp.appCreateFailed') })
     }
     isCreatingRef.current = false
@@ -287,7 +287,6 @@ type AppTypeCardProps = {
   onClick: () => void
 }
 function AppTypeCard({ icon, title, description, active, onClick }: AppTypeCardProps) {
-  const { t } = useTranslation()
   return <div
     className={
       cn(`relative box-content h-[84px] w-[191px] cursor-pointer rounded-xl

@@ -36,6 +36,8 @@ def init_app(app: DifyApp):
         handlers=log_handlers,
         force=True,
     )
+    # Disable propagation for noisy loggers to avoid duplicate logs
+    logging.getLogger("sqlalchemy.engine").propagate = False
     log_tz = dify_config.LOG_TZ
     if log_tz:
         from datetime import datetime
