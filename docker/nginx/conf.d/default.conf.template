@@ -4,6 +4,12 @@ server {
     listen ${NGINX_PORT};
     server_name ${NGINX_SERVER_NAME};
 
+    # For WeChat verification
+    location = /6daQ3Q8FZl.txt {
+        default_type text/plain;
+        return 200 '8906c392d82bad461896285855d73cd8';
+    }
+
     location /console/api {
       proxy_pass http://api:5001;
       include proxy.conf;
