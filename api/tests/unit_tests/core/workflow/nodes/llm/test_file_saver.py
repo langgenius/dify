@@ -69,7 +69,7 @@ def test_storage_file_saver(monkeypatch):
     monkeypatch.setattr(models, "sign_tool_file", mocked_sign_file)
     mocked_sign_file.return_value = mock_signed_url
 
-    storage_file_manager = StorageFileSaver(engine=mocked_engine)
+    storage_file_manager = StorageFileSaver(engine_factory=lambda: mocked_engine)
 
     file = storage_file_manager.save_file(mmf)
     assert file.tenant_id == mmf.tenant_id

@@ -69,17 +69,19 @@ class MultiModalFileSaver(tp.Protocol):
     def save_file(self, mmf: MultiModalFile) -> File:
         pass
 
+EngineFactory: tp.TypeVar = tp.Callable[[], Engine]
+
 
 class StorageFileSaver(MultiModalFileSaver):
-    _engine: Engine
-    def __init__(self, engine: Engine | None = None):
-        if engine is None:
-            engine = global_db.engine
-        self._engine = engine
+    _engine_factory: EngineFactory
+
+    def __init__(self, engine_factory: EngineFactory | None = None):
+        if engine_factory is None:
+            engine = lambda: global_db.engine
+        self._engine_factory = engine_factory
 
     def _get_tool_file_manager(self):
-        # TODO(QuantumGhost): inject db into ToolFileManager after refactoring.
-        return ToolFileManager(engine=self._engine)
+        return ToolFileManager(engine=self._engine_factory())
 
     def save_file(self, mmf: MultiModalFile) -> File:
         tool_file_manager =  self._get_tool_file_manager()
