@@ -14,7 +14,7 @@ const ChildChunks: FC<Props> = ({
   payload,
   isShowAll,
 }) => {
-  const { id, score, content, position } = payload
+  const { score, content, position } = payload
   return (
     <div
       className={!isShowAll ? 'line-clamp-2 break-all' : ''}

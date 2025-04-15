@@ -36,7 +36,6 @@ export const getSelectedDatasetsMode = (datasets: DataSet[] = []) => {
     allHighQualityFullTextSearch = false
     allEconomic = false
     mixtureHighQualityAndEconomic = false
-    inconsistentEmbeddingModel = false
     allExternal = false
     allInternal = false
     mixtureInternalAndExternal = false

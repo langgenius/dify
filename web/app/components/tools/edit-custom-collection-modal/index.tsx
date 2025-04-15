@@ -98,7 +98,7 @@ const EditCustomCollectionModal: FC<Props> = ({
         setCustomCollection(newCollection)
         setParamsSchemas(parameters_schema)
       }
-      catch (e) {
+      catch {
         const customCollection = getCustomCollection()
         const newCollection = produce(customCollection, (draft) => {
           draft.schema_type = ''
@@ -174,7 +174,7 @@ const EditCustomCollectionModal: FC<Props> = ({
       const path = decodeURI(new URL(url).pathname)
       return path || ''
     }
-    catch (e) {
+    catch {
       return url
     }
   }

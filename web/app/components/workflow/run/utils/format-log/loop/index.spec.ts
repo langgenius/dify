@@ -7,10 +7,10 @@ describe('loop', () => {
   const [startNode, loopNode, ...loops] = list
   const result = format(list as any, noop)
   test('result should have no nodes in loop node', () => {
-    expect((result as any).find((item: any) => !!item.execution_metadata?.loop_id)).toBeUndefined()
+    expect(result.find(item => !!item.execution_metadata?.loop_id)).toBeUndefined()
   })
   test('loop should put nodes in details', () => {
-    expect(result as any).toEqual([
+    expect(result).toEqual([
       startNode,
       {
         ...loopNode,

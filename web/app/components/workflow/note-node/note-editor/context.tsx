@@ -34,7 +34,7 @@ export const NoteEditorContextProvider = memo(({
   try {
     initialValue = JSON.parse(value)
   }
-  catch (e) {
+  catch {
 
   }
 

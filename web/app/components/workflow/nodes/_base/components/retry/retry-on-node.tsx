@@ -38,7 +38,7 @@ const RetryOnNode = ({
     return null
 
   return (
-    <div className='px-3'>
+    <div className='mb-1 px-3'>
       <div className={cn(
         'system-xs-medium-uppercase flex items-center justify-between rounded-md border-[0.5px] border-transparent bg-workflow-block-parma-bg px-[5px] py-1 text-text-tertiary',
         isRunning && 'border-state-accent-active bg-state-accent-hover text-text-accent',

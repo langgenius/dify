@@ -1,6 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import React, { useEffect } from 'react'
+import React, { useEffect, useMemo } from 'react'
 // import { RiInformation2Line } from '@remixicon/react'
 import { type Plugin, type PluginManifestInMarket, TaskStatus } from '../../../types'
 import Card from '../../../card'
@@ -8,11 +8,13 @@ import { pluginManifestInMarketToPluginProps } from '../../utils'
 import Button from '@/app/components/base/button'
 import { useTranslation } from 'react-i18next'
 import { RiLoader2Line } from '@remixicon/react'
-import { useInstallPackageFromMarketPlace, useUpdatePackageFromMarketPlace } from '@/service/use-plugins'
+import { useInstallPackageFromMarketPlace, usePluginDeclarationFromMarketPlace, useUpdatePackageFromMarketPlace } from '@/service/use-plugins'
 import checkTaskStatus from '../../base/check-task-status'
 import useCheckInstalled from '@/app/components/plugins/install-plugin/hooks/use-check-installed'
 import Version from '../../base/version'
 import { usePluginTaskList } from '@/service/use-plugins'
+import { gte } from 'semver'
+import { useAppContext } from '@/context/app-context'
 
 const i18nPrefix = 'plugin.installModal'
 
@@ -117,11 +119,23 @@ const Installed: FC<Props> = ({
     }
   }
 
+  const { langeniusVersionInfo } = useAppContext()
+  const { data: pluginDeclaration } = usePluginDeclarationFromMarketPlace(uniqueIdentifier)
+  const isDifyVersionCompatible = useMemo(() => {
+    if (!pluginDeclaration || !langeniusVersionInfo.current_version) return true
+    return gte(langeniusVersionInfo.current_version, pluginDeclaration?.manifest.meta.minimum_dify_version ?? '0.0.0')
+  }, [langeniusVersionInfo.current_version, pluginDeclaration?.manifest.meta.minimum_dify_version])
+
   return (
     <>
       <div className='flex flex-col items-start justify-center gap-4 self-stretch px-6 py-3'>
         <div className='system-md-regular text-text-secondary'>
           <p>{t(`${i18nPrefix}.readyToInstall`)}</p>
+          {!isDifyVersionCompatible && (
+            <p className='system-md-regular text-text-secondary text-text-warning'>
+              {t('plugin.difyVersionNotCompatible', { minimalDifyVersion: pluginDeclaration?.manifest.meta.minimum_dify_version })}
+            </p>
+          )}
         </div>
         <div className='flex flex-wrap content-start items-start gap-1 self-stretch rounded-2xl bg-background-section-burn p-2'>
           <Card

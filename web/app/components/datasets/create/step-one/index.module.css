@@ -60,13 +60,6 @@
   width: 120px;
 }
 
-.dividerLine {
-  margin: 32px 0;
-  max-width: 640px;
-  height: 1px;
-  background-color: #eaecf0;
-}
-
 .notionIcon {
   background: var(--color-components-card-bg) center no-repeat url(../assets/notion.svg);
   background-size: 24px;

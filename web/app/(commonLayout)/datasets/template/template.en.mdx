@@ -37,7 +37,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, PropertyInstructi
   <Col>
     This API is based on an existing knowledge and creates a new document through text based on this knowledge.
 
-    ### Params
+    ### Path
     <Properties>
       <Property name='dataset_id' type='string' key='dataset_id'>
         Knowledge ID
@@ -175,7 +175,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, PropertyInstructi
   <Col>
     This API is based on an existing knowledge and creates a new document through a file based on this knowledge.
 
-    ### Params
+    ### Path
     <Properties>
       <Property name='dataset_id' type='string' key='dataset_id'>
         Knowledge ID
@@ -314,6 +314,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, PropertyInstructi
       </Property>
       <Property name='indexing_technique' type='string' key='indexing_technique'>
         Index technique (optional)
+        If this is not set, embedding_model, embedding_provider_name and retrieval_model will be set to null
           - <code>high_quality</code> High quality
           - <code>economy</code> Economy
       </Property>
@@ -333,6 +334,26 @@ import { Row, Col, Properties, Property, Heading, SubProperty, PropertyInstructi
       </Property>
       <Property name='external_knowledge_id' type='str' key='external_knowledge_id'>
         External knowledge ID (optional)
+      </Property>
+      <Property name='embedding_model' type='str' key='embedding_model'>
+        Embedding model name (optional)
+      </Property>
+      <Property name='embedding_provider_name' type='str' key='embedding_provider_name'>
+        Embedding model provider name (optional)
+      </Property>
+      <Property name='retrieval_model' type='object' key='retrieval_model'>
+        Retrieval model (optional)
+          - <code>search_method</code> (string) Search method
+            - <code>hybrid_search</code> Hybrid search
+            - <code>semantic_search</code> Semantic search
+            - <code>full_text_search</code> Full-text search
+          - <code>reranking_enable</code> (bool) Whether to enable reranking
+          - <code>reranking_model</code> (object) Rerank model configuration
+              - <code>reranking_provider_name</code> (string) Rerank model provider
+              - <code>reranking_model_name</code> (string) Rerank model name
+          - <code>top_k</code> (int) Number of results to return
+          - <code>score_threshold_enabled</code> (bool) Whether to enable score threshold
+          - <code>score_threshold</code> (float) Score threshold
       </Property>
     </Properties>
   </Col>
@@ -461,7 +482,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, PropertyInstructi
 />
 <Row>
   <Col>
-    ### Query
+    ### Path
     <Properties>
       <Property name='dataset_id' type='string' key='dataset_id'>
         Knowledge Base ID
@@ -542,7 +563,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, PropertyInstructi
 />
 <Row>
   <Col>
-    ### Query
+    ### Path
     <Properties>
       <Property name='dataset_id' type='string' key='dataset_id'>
         Knowledge Base ID
@@ -650,7 +671,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, PropertyInstructi
 />
 <Row>
   <Col>
-    ### Params
+    ### Path
     <Properties>
       <Property name='dataset_id' type='string' key='dataset_id'>
         Knowledge ID
@@ -689,7 +710,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, PropertyInstructi
   <Col>
     This API is based on an existing knowledge and updates the document through text based on this knowledge.
 
-    ### Params
+    ### Path
     <Properties>
       <Property name='dataset_id' type='string' key='dataset_id'>
         Knowledge ID
@@ -791,7 +812,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, PropertyInstructi
   <Col>
     This API is based on an existing knowledge, and updates documents through files based on this knowledge
 
-    ### Params
+    ### Path
     <Properties>
       <Property name='dataset_id' type='string' key='dataset_id'>
         Knowledge ID
@@ -888,7 +909,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, PropertyInstructi
 />
 <Row>
   <Col>
-    ### Params
+    ### Path
     <Properties>
       <Property name='dataset_id' type='string' key='dataset_id'>
         Knowledge ID
@@ -943,7 +964,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, PropertyInstructi
 />
 <Row>
   <Col>
-    ### Params
+    ### Path
     <Properties>
       <Property name='dataset_id' type='string' key='dataset_id'>
         Knowledge ID
@@ -985,7 +1006,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, PropertyInstructi
 />
 <Row>
   <Col>
-    ### Params
+    ### Path
     <Properties>
       <Property name='dataset_id' type='string' key='dataset_id'>
         Knowledge ID
@@ -1060,7 +1081,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, PropertyInstructi
 />
 <Row>
   <Col>
-    ### Params
+    ### Path
     <Properties>
       <Property name='dataset_id' type='string' key='dataset_id'>
         Knowledge ID
@@ -1252,10 +1273,10 @@ import { Row, Col, Properties, Property, Heading, SubProperty, PropertyInstructi
       title="Request"
       tag="DELETE"
       label="/datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}"
-      targetCode={`curl --location --request DELETE '${props.apiBaseUrl}/datasets/{dataset_id}/segments/{segment_id}' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json'`}
+      targetCode={`curl --location --request DELETE '${props.apiBaseUrl}/datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json'`}
     >
     ```bash {{ title: 'cURL' }}
-    curl --location --request DELETE '${props.apiBaseUrl}/datasets/{dataset_id}/segments/{segment_id}' \
+    curl --location --request DELETE '${props.apiBaseUrl}/datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}' \
     --header 'Authorization: Bearer {api_key}' \
     --header 'Content-Type: application/json'
     ```
@@ -1369,7 +1390,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, PropertyInstructi
 />
 <Row>
   <Col>
-    ### Params
+    ### Path
     <Properties>
       <Property name='dataset_id' type='string' key='dataset_id'>
         Knowledge ID
@@ -1440,7 +1461,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, PropertyInstructi
 />
 <Row>
   <Col>
-    ### Params
+    ### Path
     <Properties>
       <Property name='dataset_id' type='string' key='dataset_id'>
         Knowledge ID
@@ -1517,7 +1538,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, PropertyInstructi
 />
 <Row>
   <Col>
-    ### Params
+    ### Path
     <Properties>
       <Property name='dataset_id' type='string' key='dataset_id'>
         Knowledge ID
@@ -1565,7 +1586,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, PropertyInstructi
 />
 <Row>
   <Col>
-    ### Params
+    ### Path
     <Properties>
       <Property name='dataset_id' type='string' key='dataset_id'>
         Knowledge ID
@@ -1834,7 +1855,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, PropertyInstructi
 />
 <Row>
   <Col>
-    ### Params
+    ### Path
     <Properties>
       <Property name='dataset_id' type='string' key='dataset_id'>
         Knowledge ID
@@ -1881,7 +1902,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, PropertyInstructi
 />
 <Row>
   <Col>
-    ### Params
+    ### Path
     <Properties>
       <Property name='dataset_id' type='string' key='dataset_id'>
         Knowledge ID
@@ -1930,7 +1951,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, PropertyInstructi
 />
 <Row>
   <Col>
-    ### Params
+    ### Path
     <Properties>
       <Property name='dataset_id' type='string' key='dataset_id'>
         Knowledge ID
@@ -1963,7 +1984,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, PropertyInstructi
 />
 <Row>
   <Col>
-    ### Params
+    ### Path
     <Properties>
       <Property name='dataset_id' type='string' key='dataset_id'>
         Knowledge ID
@@ -1996,7 +2017,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, PropertyInstructi
 />
 <Row>
   <Col>
-    ### Params
+    ### Path
     <Properties>
       <Property name='dataset_id' type='string' key='dataset_id'>
         Knowledge ID

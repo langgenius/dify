@@ -67,7 +67,7 @@ const PluginPage = ({
     try {
       return idStrings ? JSON.parse(idStrings)[0] : ''
     }
-    catch (e) {
+    catch {
       return ''
     }
   }, [searchParams])
@@ -78,7 +78,7 @@ const PluginPage = ({
     try {
       return info ? JSON.parse(info) : undefined
     }
-    catch (e) {
+    catch {
       return undefined
     }
   }, [searchParams])

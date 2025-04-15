@@ -209,6 +209,7 @@ const translation = {
     clearAll: '清除所有',
   },
   submitPlugin: '上传插件',
+  difyVersionNotCompatible: '当前 Dify 版本不兼容该插件，其最低版本要求为 {{minimalDifyVersion}}',
 }
 
 export default translation

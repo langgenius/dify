@@ -1,8 +1,6 @@
 import React from 'react'
 
-type Props = {}
-
-const page = (props: Props) => {
+const page = () => {
   return (
     <div>dataset detail api</div>
   )

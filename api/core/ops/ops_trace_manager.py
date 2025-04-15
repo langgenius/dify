@@ -453,7 +453,7 @@ class TraceTask:
                 "version": workflow_run_version,
                 "total_tokens": total_tokens,
                 "file_list": file_list,
-                "triggered_form": workflow_run.triggered_from,
+                "triggered_from": workflow_run.triggered_from,
                 "user_id": user_id,
             }
 

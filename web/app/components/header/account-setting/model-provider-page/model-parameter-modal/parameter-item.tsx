@@ -37,7 +37,7 @@ const ParameterItem: FC<ParameterItemProps> = ({
     if (parameterRule.type === 'int' || parameterRule.type === 'float')
       defaultValue = isNullOrUndefined(parameterRule.default) ? (parameterRule.min || 0) : parameterRule.default
     else if (parameterRule.type === 'string' || parameterRule.type === 'text')
-      defaultValue = parameterRule.options?.length ? (parameterRule.default || '') : (parameterRule.default || '')
+      defaultValue = parameterRule.default || ''
     else if (parameterRule.type === 'boolean')
       defaultValue = !isNullOrUndefined(parameterRule.default) ? parameterRule.default : false
     else if (parameterRule.type === 'tag')
@@ -132,8 +132,6 @@ const ParameterItem: FC<ParameterItemProps> = ({
           step = 1
         else if (parameterRule.max < 1000)
           step = 10
-        else if (parameterRule.max < 10000)
-          step = 100
       }
 
       return (

@@ -7,7 +7,7 @@ describe('retry', () => {
   const [startNode, retryNode, ...retryDetail] = steps
   const result = format(steps as any)
   test('should have no retry status nodes', () => {
-    expect(result.find(item => (item as any).status === 'retry')).toBeUndefined()
+    expect(result.find(item => item.status === 'retry')).toBeUndefined()
   })
   test('should put retry nodes in retryDetail', () => {
     expect(result).toEqual([

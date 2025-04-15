@@ -14,6 +14,7 @@ import type {
   PackageDependency,
   Permissions,
   Plugin,
+  PluginDeclaration,
   PluginDetail,
   PluginInfoFromMarketPlace,
   PluginTask,
@@ -115,6 +116,14 @@ export const useUpdatePackageFromMarketPlace = (options?: MutateOptions<InstallP
         body,
       })
     },
+  })
+}
+
+export const usePluginDeclarationFromMarketPlace = (pluginUniqueIdentifier: string) => {
+  return useQuery({
+    queryKey: [NAME_SPACE, 'pluginDeclaration', pluginUniqueIdentifier],
+    queryFn: () => get<{ manifest: PluginDeclaration }>('/workspaces/current/plugin/marketplace/pkg', { params: { plugin_unique_identifier: pluginUniqueIdentifier } }),
+    enabled: !!pluginUniqueIdentifier,
   })
 }
 
@@ -491,7 +500,7 @@ export const useModelInList = (currentProvider?: ModelProvider, modelId?: string
         const modelsData = await fetchModelProviderModelList(`/workspaces/current/model-providers/${currentProvider?.provider}/models`)
         return !!modelId && !!modelsData.data.find(item => item.model === modelId)
       }
-      catch (error) {
+      catch {
         return false
       }
     },
@@ -511,7 +520,7 @@ export const usePluginInfo = (providerName?: string) => {
         const response = await fetchPluginInfoFromMarketPlace({ org, name })
         return response.data.plugin.category === PluginTypeEnum.model ? response.data.plugin : null
       }
-      catch (error) {
+      catch {
         return null
       }
     },
