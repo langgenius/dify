@@ -26,7 +26,7 @@ class LoopNodeData(BaseLoopNodeData):
     loop_count: int  # Maximum number of loops
     break_conditions: list[Condition]  # Conditions to break the loop
     logical_operator: Literal["and", "or"]
-    loop_variables: Optional[list[LoopVariableData]] = Field(default_factory=list)
+    loop_variables: Optional[list[LoopVariableData]] = Field(default=[])
     outputs: Optional[Mapping[str, Any]] = None
 
 

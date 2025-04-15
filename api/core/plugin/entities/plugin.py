@@ -52,7 +52,7 @@ class PluginResourceRequirements(BaseModel):
         model: Optional[Model] = Field(default=None)
         node: Optional[Node] = Field(default=None)
         endpoint: Optional[Endpoint] = Field(default=None)
-        storage: Storage = Field(default=None)
+        storage: Optional[Storage] = Field(default=None)
 
     permission: Optional[Permission] = Field(default=None)
 
@@ -66,9 +66,9 @@ class PluginCategory(enum.StrEnum):
 
 class PluginDeclaration(BaseModel):
     class Plugins(BaseModel):
-        tools: Optional[list[str]] = Field(default_factory=list)
-        models: Optional[list[str]] = Field(default_factory=list)
-        endpoints: Optional[list[str]] = Field(default_factory=list)
+        tools: Optional[list[str]] = Field(default=[])
+        models: Optional[list[str]] = Field(default=[])
+        endpoints: Optional[list[str]] = Field(default=[])
 
     class Meta(BaseModel):
         minimum_dify_version: Optional[str] = Field(default=None, pattern=r"^\d{1,4}(\.\d{1,4}){1,3}(-\w{1,16})?$")

@@ -30,12 +30,12 @@ class Variable(Segment):
     """
 
     id: str = Field(
-        default=lambda _: str(uuid4()),
+        default_factory=lambda _: str(uuid4()),
         description="Unique identity for variable.",
     )
     name: str
     description: str = Field(default="", description="Description of the variable.")
-    selector: Sequence[str] = Field(default_factory=list)
+    selector: Sequence[str] = Field(default=[])
 
 
 class StringVariable(StringSegment, Variable):
