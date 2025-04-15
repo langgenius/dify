@@ -6,7 +6,7 @@ from core.agent.entities import AgentToolEntity
 from core.agent.plugin_entities import AgentStrategyParameter
 from core.memory.token_buffer_memory import TokenBufferMemory
 from core.model_manager import ModelInstance, ModelManager
-from core.model_runtime.entities.model_entities import AIModelEntity, ModelType
+from core.model_runtime.entities.model_entities import AIModelEntity, ModelFeature, ModelType
 from core.plugin.manager.exc import PluginDaemonClientSideError
 from core.plugin.manager.plugin import PluginInstallationManager
 from core.provider_manager import ProviderManager
@@ -251,7 +251,13 @@ class AgentNode(ToolNode):
                                 prompt_message.model_dump(mode="json") for prompt_message in prompt_messages
                             ]
                     value["history_prompt_messages"] = history_prompt_messages
-                    value["entity"] = model_schema.model_dump(mode="json") if model_schema else None
+                    if model_schema:
+                        # remove structured output feature to support old version agent plugin
+                        if model_schema.features and ModelFeature.STRUCTURED_OUTPUT in model_schema.features:
+                            model_schema.features.remove(ModelFeature.STRUCTURED_OUTPUT)
+                        value["entity"] = model_schema.model_dump(mode="json")
+                    else:
+                        value["entity"] = None
             result[parameter_name] = value
 
         return result
