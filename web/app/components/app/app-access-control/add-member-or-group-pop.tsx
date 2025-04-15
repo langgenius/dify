@@ -52,7 +52,7 @@ export default function AddMemberOrGroupDialog() {
     </PortalToFollowElemTrigger>
     <PortalToFollowElemContent className='z-[25]'>
       <div className='w-[400px] max-h-[400px] relative overflow-y-auto flex flex-col border-[0.5px] border-components-panel-border rounded-xl bg-components-panel-bg-blur backdrop-blur-[5px] shadow-lg'>
-        <div className='p-2 pb-0.5 sticky top-0'>
+        <div className='p-2 pb-0.5 sticky top-0 bg-components-panel-bg-blur backdrop-blur-[5px] z-1'>
           <Input value={keyword} onChange={handleKeywordChange} showLeftIcon placeholder={t('app.accessControlDialog.operateGroupAndMember.searchPlaceholder') as string} />
         </div>
         {
@@ -63,8 +63,10 @@ export default function AddMemberOrGroupDialog() {
                 <div className='flex items-center h-7 px-2 py-0.5'>
                   <SelectedGroupsBreadCrumb />
                 </div>
-                {renderGroupOrMember(data?.pages ?? [])}
-                {isFetchingNextPage && <div className='p-1'><Loading /></div>}
+                <div className='p-1'>
+                  {renderGroupOrMember(data?.pages ?? [])}
+                  {isFetchingNextPage && <Loading />}
+                </div>
                 <div ref={anchorRef} className='h-0'> </div>
               </>
               : <div className='flex items-center justify-center h-7 px-2 py-0.5'>
@@ -79,7 +81,7 @@ export default function AddMemberOrGroupDialog() {
 type GroupOrMemberData = { subjects: Subject[]; currPage: number }[]
 function renderGroupOrMember(data: GroupOrMemberData) {
   return data?.map((page) => {
-    return <div key={`search_group_member_page_${page.currPage}`} className='p-1'>
+    return <div key={`search_group_member_page_${page.currPage}`}>
       {page.subjects?.map((item, index) => {
         if (item.subjectType === SubjectType.GROUP)
           return <GroupItem key={index} group={(item as SubjectGroup).groupData} />
