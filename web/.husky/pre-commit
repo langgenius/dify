@@ -28,10 +28,10 @@ if $api_modified; then
     echo "Running Ruff linter on api module"
 
     # run Ruff linter auto-fixing
-    uv run --project api --group dev ruff check --fix ./api
+    uv run --project api --dev ruff check --fix ./api
 
     # run Ruff linter checks
-    uv run --project api --group dev ruff check  ./api || status=$?
+    uv run --project api --dev ruff check  ./api || status=$?
 
     status=${status:-0}
 
