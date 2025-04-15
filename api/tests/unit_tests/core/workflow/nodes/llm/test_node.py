@@ -119,6 +119,8 @@ def llm_node(
         graph_init_params: GraphInitParams,
         graph: Graph,
         graph_runtime_state: GraphRuntimeState) -> LLMNode:
+    mock_file_saver = mock.MagicMock(spec=MultiModalFileSaver)
+    mock_file_downloader = mock.MagicMock(spec=FileDownloader)
     node = LLMNode(
         id="1",
         config={
@@ -128,6 +130,8 @@ def llm_node(
         graph_init_params=graph_init_params,
         graph=graph,
         graph_runtime_state=graph_runtime_state,
+        file_downloader=mock_file_downloader,
+        multi_modal_file_saver=mock_file_saver,
     )
     return node
 
