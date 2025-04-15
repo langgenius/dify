@@ -3,9 +3,10 @@
 ## Usage
 
 > [!IMPORTANT]
-> In the v1.3.0 release, we deprecated `poetry` as the package management tool
-> for Dify API Backend service and replaced it with
-> [`uv`](https://docs.astral.sh/uv/).
+> 
+> In the v1.3.0 release, `poetry` has been replaced with
+> [`uv`](https://docs.astral.sh/uv/) as the package manager
+> for Dify API backend service.
 
 1. Start the docker-compose stack
 
@@ -44,14 +45,14 @@
 
    ```bash
    pip install uv
-   # if you are a macOS user
+   # Or on macOS
    brew install uv
    ```
 
 5. Install dependencies
 
    ```bash
-   uv sync --group lint --group dev  
+   uv sync --group lint --group dev
    ```
 
 6. Run migrate
@@ -69,7 +70,7 @@
    ```
 
 8. Start Dify [web](../web) service.
-9. Setup your application by visiting `http://localhost:3000`...
+9. Setup your application by visiting `http://localhost:3000`.
 10. If you need to handle and debug the async tasks (e.g. dataset importing and documents indexing), please start the worker service.
 
    ```bash
@@ -81,7 +82,7 @@
 1. Install dependencies for both the backend and the test environment
 
    ```bash
-   uv sync --group lint --group dev  
+   uv sync --group lint --group dev
    ```
 
 2. Run the tests locally with mocked system environment variables in `tool.pytest_env` section in `pyproject.toml`
