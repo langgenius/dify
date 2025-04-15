@@ -54,7 +54,7 @@ jobs:
           echo "### Test Coverage Summary :test_tube:" >> $GITHUB_STEP_SUMMARY
           echo "Total Coverage: ${TOTAL_COVERAGE}%" >> $GITHUB_STEP_SUMMARY
           echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
-          uv run coverage report >> $GITHUB_STEP_SUMMARY
+          uv run --project api coverage report >> $GITHUB_STEP_SUMMARY
           echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
 
       - name: Run dify config tests
