@@ -77,7 +77,10 @@ class StorageFileSaver(MultiModalFileSaver):
 
     def __init__(self, engine_factory: EngineFactory | None = None):
         if engine_factory is None:
-            engine = lambda: global_db.engine
+            def _factory():
+                return global_db.engine
+
+            engine_factory = _factory
         self._engine_factory = engine_factory
 
     def _get_tool_file_manager(self):
