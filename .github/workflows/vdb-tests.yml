@@ -8,6 +8,7 @@ on:
       - api/core/rag/datasource/**
       - docker/**
       - .github/workflows/vdb-tests.yml
+      - api/uv.lock
       - api/pyproject.toml
 
 concurrency:
