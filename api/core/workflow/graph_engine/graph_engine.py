@@ -641,6 +641,8 @@ class GraphEngine:
             try:
                 # run node
                 retry_start_at = datetime.now(UTC).replace(tzinfo=None)
+                # yield control to other threads
+                time.sleep(0.001)
                 generator = node_instance.run()
                 for item in generator:
                     if isinstance(item, GraphEngineEvent):

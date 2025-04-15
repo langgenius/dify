@@ -7,7 +7,7 @@ import { useLanguage } from '../hooks'
 import { Group } from '@/app/components/base/icons/src/vender/other'
 import { OpenaiBlue, OpenaiViolet } from '@/app/components/base/icons/src/public/llm'
 import cn from '@/utils/classnames'
-import { renderI18nObject } from '@/hooks/use-i18n'
+import { renderI18nObject } from '@/i18n'
 
 type ModelIconProps = {
   provider?: Model | ModelProvider

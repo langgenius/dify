@@ -85,7 +85,7 @@ class WordExtractor(BaseExtractor):
             if "image" in rel.target_ref:
                 image_count += 1
                 if rel.is_external:
-                    url = rel.reltype
+                    url = rel.target_ref
                     response = ssrf_proxy.get(url)
                     if response.status_code == 200:
                         image_ext = mimetypes.guess_extension(response.headers["Content-Type"])

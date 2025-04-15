@@ -102,6 +102,7 @@ const AgentNode: FC<NodeProps<AgentNodeType>> = (props) => {
       {t('workflow.nodes.agent.toolbox')}
     </GroupLabel>}>
       <div className='grid grid-cols-10 gap-0.5'>
+        {/* eslint-disable-next-line sonarjs/no-uniq-key */}
         {tools.map(tool => <ToolIcon {...tool} key={Math.random()} />)}
       </div>
     </Group>}

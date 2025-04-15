@@ -206,6 +206,7 @@ const translation = {
   installPlugin: 'プラグインをインストールする',
   searchInMarketplace: 'マーケットプレイスで検索',
   submitPlugin: 'プラグインを提出する',
+  difyVersionNotCompatible: '現在のDifyバージョンはこのプラグインと互換性がありません。最小バージョンは{{minimalDifyVersion}}です。',
 }
 
 export default translation

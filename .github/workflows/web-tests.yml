@@ -31,7 +31,9 @@ jobs:
         uses: tj-actions/changed-files@v45
         with:
           files: web/**
+
       - name: Install pnpm
+        if: steps.changed-files.outputs.any_changed == 'true'
         uses: pnpm/action-setup@v4
         with:
           version: 10
@@ -41,7 +43,7 @@ jobs:
         uses: actions/setup-node@v4
         if: steps.changed-files.outputs.any_changed == 'true'
         with:
-          node-version: 20
+          node-version: 22
           cache: pnpm
           cache-dependency-path: ./web/package.json
 

@@ -21,6 +21,7 @@ import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
 import useTimestamp from '@/hooks/use-timestamp'
 import { fetchCurrentValueOfConversationVariable } from '@/service/workflow'
 import cn from '@/utils/classnames'
+import { noop } from 'lodash-es'
 
 export type Props = {
   conversationID: string
@@ -76,7 +77,7 @@ const ConversationVariableModal = ({
   return (
     <Modal
       isShow
-      onClose={() => { }}
+      onClose={noop}
       className={cn('h-[640px] w-[920px] max-w-[920px] p-0')}
     >
       <div className='absolute right-4 top-4 cursor-pointer p-2' onClick={onHide}>

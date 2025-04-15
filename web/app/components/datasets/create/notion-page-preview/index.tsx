@@ -2,6 +2,7 @@
 import React, { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { XMarkIcon } from '@heroicons/react/20/solid'
+import Loading from '@/app/components/base/loading'
 import s from './index.module.css'
 import cn from '@/utils/classnames'
 import type { NotionPage } from '@/models/common'
@@ -62,7 +63,7 @@ const NotionPagePreview = ({
         </div>
       </div>
       <div className={cn(s.previewContent, 'body-md-regular')}>
-        {loading && <div className={cn(s.loading)} />}
+        {loading && <Loading type='area' />}
         {!loading && (
           <div className={cn(s.fileContent, 'body-md-regular')}>{previewContent}</div>
         )}

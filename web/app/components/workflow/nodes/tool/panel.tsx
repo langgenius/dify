@@ -107,14 +107,14 @@ const Panel: FC<NodePanelProps<ToolNodeType>> = ({
           <Form
             className='space-y-4'
             itemClassName='!py-0'
-            fieldLabelClassName='!text-[13px] !font-semibold !text-gray-700 uppercase'
+            fieldLabelClassName='!text-[13px] !font-semibold !text-text-secondary uppercase'
             value={toolSettingValue}
             onChange={setToolSettingValue}
             formSchemas={toolSettingSchema as any}
             isEditMode={false}
             showOnVariableMap={{}}
             validating={false}
-            inputClassName='!bg-gray-50'
+            // inputClassName='!bg-gray-50'
             readonly={readOnly}
           />
         </div>

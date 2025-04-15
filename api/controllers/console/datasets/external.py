@@ -21,12 +21,6 @@ def _validate_name(name):
     return name
 
 
-def _validate_description_length(description):
-    if description and len(description) > 400:
-        raise ValueError("Description cannot exceed 400 characters.")
-    return description
-
-
 class ExternalApiTemplateListApi(Resource):
     @setup_required
     @login_required

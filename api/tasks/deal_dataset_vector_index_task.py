@@ -167,3 +167,5 @@ def deal_dataset_vector_index_task(dataset_id: str, action: str):
         )
     except Exception:
         logging.exception("Deal dataset vector index failed")
+    finally:
+        db.session.close()

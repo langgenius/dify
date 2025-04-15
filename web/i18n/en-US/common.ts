@@ -218,6 +218,9 @@ const translation = {
     feedbackTitle: 'Feedback',
     feedbackLabel: 'Tell us why you deleted your account?',
     feedbackPlaceholder: 'Optional',
+    editWorkspaceInfo: 'Edit Workspace Info',
+    workspaceName: 'Workspace Name',
+    workspaceIcon: 'Workspace Icon',
   },
   members: {
     team: 'Team',
@@ -559,6 +562,7 @@ const translation = {
     inputPlaceholder: 'Talk to Bot',
     thinking: 'Thinking...',
     thought: 'Thought',
+    resend: 'Resend',
   },
   promptEditor: {
     placeholder: 'Write your prompt word here, enter \'{\' to insert a variable, enter \'/\' to insert a prompt content block',
@@ -648,6 +652,11 @@ const translation = {
   },
   pagination: {
     perPage: 'Items per page',
+  },
+  imageInput: {
+    dropImageHere: 'Drop your image here, or',
+    browse: 'browse',
+    supportedFormats: 'Supports PNG, JPG, JPEG, WEBP and GIF',
   },
 }
 

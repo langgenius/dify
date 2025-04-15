@@ -41,3 +41,5 @@ def delete_segment_from_index_task(index_node_ids: list, dataset_id: str, docume
         logging.info(click.style("Segment deleted from index latency: {}".format(end_at - start_at), fg="green"))
     except Exception:
         logging.exception("delete segment from index failed")
+    finally:
+        db.session.close()

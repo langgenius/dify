@@ -13,6 +13,7 @@ import Modal from '@/app/components/base/modal'
 import { ToastContext } from '@/app/components/base/toast'
 import type { DataSet } from '@/models/datasets'
 import { updateDatasetSetting } from '@/service/datasets'
+import { noop } from 'lodash-es'
 
 type RenameDatasetModalProps = {
   show: boolean
@@ -54,7 +55,7 @@ const RenameDatasetModal = ({ show, dataset, onSuccess, onClose }: RenameDataset
         onSuccess()
       onClose()
     }
-    catch (e) {
+    catch {
       notify({ type: 'error', message: t('common.actionMsg.modifiedUnsuccessfully') })
     }
     finally {
@@ -66,7 +67,7 @@ const RenameDatasetModal = ({ show, dataset, onSuccess, onClose }: RenameDataset
     <Modal
       className='w-[520px] max-w-[520px] rounded-xl px-8 py-6'
       isShow={show}
-      onClose={() => { }}
+      onClose={noop}
     >
       <div className='relative pb-2 text-xl font-medium leading-[30px] text-text-primary'>{t('datasetSettings.title')}</div>
       <div className='absolute right-4 top-4 cursor-pointer p-2' onClick={onClose}>

@@ -1,3 +1,4 @@
+import base64
 import json
 from collections.abc import Mapping
 from copy import deepcopy
@@ -259,7 +260,9 @@ class Executor:
             if self.auth.config.type == "bearer":
                 headers[authorization.config.header] = f"Bearer {authorization.config.api_key}"
             elif self.auth.config.type == "basic":
-                headers[authorization.config.header] = f"Basic {authorization.config.api_key}"
+                credentials = authorization.config.api_key
+                encoded_credentials = base64.b64encode(credentials.encode("utf-8")).decode("utf-8")
+                headers[authorization.config.header] = f"Basic {encoded_credentials}"
             elif self.auth.config.type == "custom":
                 headers[authorization.config.header] = authorization.config.api_key or ""
 

@@ -8,13 +8,9 @@ const PluginList = async () => {
   return (
     <PluginPage
       plugins={<PluginsPanel />}
-      marketplace={<Marketplace locale={locale} pluginTypeSwitchClassName='top-[60px]' searchBoxAutoAnimate={false} />}
+      marketplace={<Marketplace locale={locale} pluginTypeSwitchClassName='top-[60px]' searchBoxAutoAnimate={false} showSearchParams={false} />}
     />
   )
-}
-
-export const metadata = {
-  title: 'Plugins - Dify',
 }
 
 export default PluginList

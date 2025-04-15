@@ -36,7 +36,7 @@ const AgentLogDetail: FC<AgentLogDetailProps> = ({
   const [list, setList] = useState<AgentIteration[]>([])
 
   const tools = useMemo(() => {
-    const res = uniq(flatten(runDetail?.iterations.map((iteration: any) => {
+    const res = uniq(flatten(runDetail?.iterations.map((iteration) => {
       return iteration.tool_calls.map((tool: any) => tool.tool_name).filter(Boolean)
     })).filter(Boolean))
     return res

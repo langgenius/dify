@@ -15,6 +15,7 @@ import getCroppedImg from './utils'
 import type { AppIconType, ImageFile } from '@/types/app'
 import cn from '@/utils/classnames'
 import { DISABLE_UPLOAD_IMAGE_AS_ICON } from '@/config'
+import { noop } from 'lodash-es'
 
 export type AppIconEmojiSelection = {
   type: 'emoji'
@@ -107,7 +108,7 @@ const AppIconPicker: FC<AppIconPickerProps> = ({
   }
 
   return <Modal
-    onClose={() => { }}
+    onClose={noop}
     isShow
     closable={false}
     wrapperClassName={className}

@@ -301,7 +301,7 @@ const StepOne = ({
               )}
               {!datasetId && (
                 <>
-                  <div className={s.dividerLine} />
+                  <div className='my-8 h-px max-w-[640px] bg-divider-regular' />
                   <span className="inline-flex cursor-pointer items-center text-[13px] leading-4 text-text-accent" onClick={modalShowHandle}>
                     <RiFolder6Line className="mr-1 size-4" />
                     {t('datasetCreation.stepOne.emptyDatasetCreation')}

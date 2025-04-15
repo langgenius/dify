@@ -2,6 +2,7 @@ import { Fragment, useCallback, useEffect } from 'react'
 import type { ReactNode } from 'react'
 import { Dialog, DialogPanel, Transition, TransitionChild } from '@headlessui/react'
 import cn from '@/utils/classnames'
+import { noop } from 'lodash-es'
 
 type DialogProps = {
   className?: string
@@ -34,7 +35,7 @@ const MenuDialog = ({
 
   return (
     <Transition appear show={show} as={Fragment}>
-      <Dialog as="div" className="relative z-[60]" onClose={() => { }}>
+      <Dialog as="div" className="relative z-[60]" onClose={noop}>
         <div className="fixed inset-0">
           <div className="flex min-h-full flex-col items-center justify-center">
             <TransitionChild>

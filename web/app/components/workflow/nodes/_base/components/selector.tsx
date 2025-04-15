@@ -65,14 +65,14 @@ const TypeSelector: FC<Props> = ({
         : (
           <div
             onClick={toggleShow}
-            className={cn(showOption && 'bg-black/5', 'flex h-5 cursor-pointer items-center rounded-md pl-1 pr-0.5 text-xs font-semibold text-gray-700 hover:bg-black/5')}>
-            <div className={cn('text-sm font-semibold', uppercase && 'uppercase', noValue && 'text-gray-400', triggerClassName)}>{!noValue ? item?.label : placeholder}</div>
+            className={cn(showOption && 'bg-state-base-hover', 'flex h-5 cursor-pointer items-center rounded-md pl-1 pr-0.5 text-xs font-semibold text-text-secondary hover:bg-state-base-hover')}>
+            <div className={cn('text-sm font-semibold', uppercase && 'uppercase', noValue && 'text-text-tertiary', triggerClassName)}>{!noValue ? item?.label : placeholder}</div>
             {!readonly && <DropDownIcon className='h-3 w-3 ' />}
           </div>
         )}
 
       {(showOption && !readonly) && (
-        <div className={cn('absolute top-[24px] z-10 w-[120px]  select-none rounded-lg border border-gray-200 bg-white p-1 shadow-lg', popupClassName)}>
+        <div className={cn('absolute top-[24px] z-10 w-[120px]  select-none rounded-lg border border-components-panel-border bg-components-panel-bg p-1 shadow-lg', popupClassName)}>
           {list.map(item => (
             <div
               key={item.value}
@@ -80,10 +80,10 @@ const TypeSelector: FC<Props> = ({
                 setHide()
                 onChange(item.value)
               }}
-              className={cn(itemClassName, uppercase && 'uppercase', 'flex h-[30px] min-w-[44px] cursor-pointer items-center justify-between rounded-lg px-3 text-[13px] font-medium text-gray-700 hover:bg-gray-50')}
+              className={cn(itemClassName, uppercase && 'uppercase', 'flex h-[30px] min-w-[44px] cursor-pointer items-center justify-between rounded-lg px-3 text-[13px] font-medium text-text-secondary hover:bg-state-base-hover')}
             >
               <div>{item.label}</div>
-              {showChecked && item.value === value && <Check className='h-4 w-4 text-primary-600' />}
+              {showChecked && item.value === value && <Check className='h-4 w-4 text-text-primary' />}
             </div>
           ))
           }

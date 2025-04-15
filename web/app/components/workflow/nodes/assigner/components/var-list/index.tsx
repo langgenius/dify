@@ -15,6 +15,7 @@ import ActionButton from '@/app/components/base/action-button'
 import Input from '@/app/components/base/input'
 import Textarea from '@/app/components/base/textarea'
 import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
+import { noop } from 'lodash-es'
 
 type Props = {
   readonly: boolean
@@ -36,7 +37,7 @@ const VarList: FC<Props> = ({
   nodeId,
   list,
   onChange,
-  onOpen = () => { },
+  onOpen = noop,
   filterVar,
   filterToAssignedVar,
   getAssignedVarType,
@@ -96,20 +97,13 @@ const VarList: FC<Props> = ({
 
   const handleFilterToAssignedVar = useCallback((index: number) => {
     return (payload: Var) => {
-      const item = list[index]
-      const assignedVarType = item.variable_selector ? getAssignedVarType?.(item.variable_selector) : undefined
+      const { variable_selector, operation } = list[index]
+      if (!variable_selector || !operation || !filterToAssignedVar) return true
 
-      if (item.variable_selector.join('.') === `${payload.nodeId}.${payload.variable}`)
-        return false
+      const assignedVarType = getAssignedVarType?.(variable_selector)
+      const isSameVariable = Array.isArray(variable_selector) && variable_selector.join('.') === `${payload.nodeId}.${payload.variable}`
 
-      if (!filterToAssignedVar || !item.variable_selector || !assignedVarType || !item.operation)
-        return true
-
-      return filterToAssignedVar(
-        payload,
-        assignedVarType,
-        item.operation,
-      )
+      return !isSameVariable && (!assignedVarType || filterToAssignedVar(payload, assignedVarType, operation))
     }
   }, [list, filterToAssignedVar, getAssignedVarType])
 
