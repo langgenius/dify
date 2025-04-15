@@ -6,6 +6,7 @@ from pydantic import BaseModel, field_validator
 from sqlalchemy import Engine
 
 from core.file import File, FileTransferMethod, FileType
+from core.tools.signature import sign_tool_file
 from core.tools.tool_file_manager import ToolFileManager
 from models import db as global_db
 
@@ -90,7 +91,7 @@ class StorageFileSaver(MultiModalFileSaver):
             file_binary=mmf.data,
             mimetype=mmf.mime_type,
         )
-        url = tool_file_manager.sign_file(tool_file.id, mmf.get_extension())
+        url = sign_tool_file(tool_file.id, mmf.get_extension())
 
         return File(
             tenant_id=mmf.tenant_id,

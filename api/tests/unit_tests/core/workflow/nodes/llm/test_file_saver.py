@@ -5,7 +5,8 @@ import pydantic
 import pytest
 from sqlalchemy import Engine
 
-from core.file import FileTransferMethod, FileType
+from core.file import FileTransferMethod, FileType, models
+from core.tools import signature
 from core.tools.tool_file_manager import ToolFileManager
 from core.workflow.nodes.llm.file_saver import MultiModalFile, StorageFileSaver
 from models import ToolFile
@@ -63,8 +64,9 @@ def test_storage_file_saver(monkeypatch):
     mocked_tool_file_manager.create_file_by_raw.return_value = mock_tool_file
     monkeypatch.setattr(StorageFileSaver, "_get_tool_file_manager", lambda _: mocked_tool_file_manager)
     # Since `File.generate_url` used `ToolFileManager.sign_file` directly, we also need to patch it here.
-    mocked_sign_file = mock.MagicMock(spec=ToolFileManager.sign_file)
-    monkeypatch.setattr(ToolFileManager, "sign_file", mocked_sign_file)
+    mocked_sign_file = mock.MagicMock(spec=signature.sign_tool_file)
+    # Since `File.generate_url` used `signature.sign_tool_file` directly, we also need to patch it here.
+    monkeypatch.setattr(models, "sign_tool_file", mocked_sign_file)
     mocked_sign_file.return_value = mock_signed_url
 
     storage_file_manager = StorageFileSaver(engine=mocked_engine)

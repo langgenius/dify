@@ -4,11 +4,11 @@ from typing import Any, Optional
 from pydantic import BaseModel, Field, model_validator
 
 from core.model_runtime.entities.message_entities import ImagePromptMessageContent
+from core.tools.signature import sign_tool_file
 
 from . import helpers
 from .constants import FILE_MODEL_IDENTITY
 from .enums import FileTransferMethod, FileType
-from .tool_file_parser import ToolFileParser
 
 
 class ImageConfig(BaseModel):
@@ -118,9 +118,7 @@ class File(BaseModel):
         elif self.transfer_method == FileTransferMethod.TOOL_FILE:
             assert self.related_id is not None
             assert self.extension is not None
-            return ToolFileParser.get_tool_file_manager().sign_file(
-                tool_file_id=self.related_id, extension=self.extension
-            )
+            return sign_tool_file(tool_file_id=self.related_id, extension=self.extension)
 
     def to_plugin_parameter(self) -> dict[str, Any]:
         return {

@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING, Optional
 
 from core.plugin.entities.plugin import GenericProviderID
 from core.tools.entities.tool_entities import ToolProviderType
+from core.tools.signature import sign_tool_file
 from services.plugin.plugin_service import PluginService
 
 if TYPE_CHECKING:
@@ -26,7 +27,6 @@ from configs import dify_config
 from constants import DEFAULT_FILE_NUMBER_LIMITS
 from core.file import FILE_MODEL_IDENTITY, File, FileTransferMethod, FileType
 from core.file import helpers as file_helpers
-from core.file.tool_file_parser import ToolFileParser
 from libs.helper import generate_string
 from models.base import Base
 from models.enums import CreatedByRole
@@ -989,7 +989,7 @@ class Message(db.Model):  # type: ignore[name-defined]
                 if not tool_file_id:
                     continue
 
-                sign_url = ToolFileParser.get_tool_file_manager().sign_file(
+                sign_url = sign_tool_file(
                     tool_file_id=tool_file_id, extension=extension
                 )
             elif "file-preview" in url:
