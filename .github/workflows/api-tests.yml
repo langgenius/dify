@@ -48,7 +48,7 @@ jobs:
         run: |
           uv run --project api bash dev/pytest/pytest_unit_tests.sh
           # Extract coverage percentage and create a summary
-          echo "TOTAL_COVERAGE=$(python -c 'import json; print(json.load(open("coverage.json"))["totals"]["percent_covered_display"])')" >> $GITHUB_ENV
+          TOTAL_COVERAGE=$(python -c 'import json; print(json.load(open("coverage.json"))["totals"]["percent_covered_display"])')
 
           # Create a detailed coverage summary
           echo "### Test Coverage Summary :test_tube:" >> $GITHUB_STEP_SUMMARY
