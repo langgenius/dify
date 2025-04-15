@@ -191,7 +191,7 @@ class CotAgentRunner(BaseAgentRunner, ABC):
                     # action is final answer, return final answer directly
                     try:
                         if isinstance(scratchpad.action.action_input, dict):
-                            final_answer = json.dumps(scratchpad.action.action_input)
+                            final_answer = json.dumps(scratchpad.action.action_input, ensure_ascii=False)
                         elif isinstance(scratchpad.action.action_input, str):
                             final_answer = scratchpad.action.action_input
                         else:
