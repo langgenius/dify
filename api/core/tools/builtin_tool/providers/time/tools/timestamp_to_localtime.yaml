@@ -29,5 +29,5 @@ parameters:
       zh_Hans: 时区
     human_description:
       en_US: Timezone, such as Asia/Shanghai
-      zh_Hans: 时区, 比如Asia/Shanghai
+      zh_Hans: 时区，比如 Asia/Shanghai
     default: Asia/Shanghai

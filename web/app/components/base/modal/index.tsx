@@ -2,6 +2,7 @@ import { Dialog, DialogPanel, DialogTitle, Transition, TransitionChild } from '@
 import { Fragment } from 'react'
 import { RiCloseLine } from '@remixicon/react'
 import classNames from '@/utils/classnames'
+import { noop } from 'lodash-es'
 // https://headlessui.com/react/dialog
 
 type IModal = {
@@ -20,7 +21,7 @@ export default function Modal({
   className,
   wrapperClassName,
   isShow,
-  onClose = () => { },
+  onClose = noop,
   title,
   description,
   children,

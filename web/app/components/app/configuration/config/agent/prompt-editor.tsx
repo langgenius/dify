@@ -14,8 +14,9 @@ import type { ExternalDataTool } from '@/models/common'
 import ConfigContext from '@/context/debug-configuration'
 import { useModalContext } from '@/context/modal-context'
 import { useToastContext } from '@/app/components/base/toast'
-
 import s from '@/app/components/app/configuration/config-prompt/style.module.css'
+import { noop } from 'lodash-es'
+
 type Props = {
   className?: string
   type: 'first-prompt' | 'next-iteration'
@@ -128,14 +129,14 @@ const Editor: FC<Props> = ({
                 user: '',
                 assistant: '',
               },
-              onEditRole: () => { },
+              onEditRole: noop,
             }}
             queryBlock={{
               show: false,
               selectable: false,
             }}
             onChange={onChange}
-            onBlur={() => { }}
+            onBlur={noop}
           />
         </div>
         <div className='flex pb-2 pl-4'>

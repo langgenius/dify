@@ -73,7 +73,7 @@ const ChangePasswordForm = () => {
     catch {
       await revalidateToken()
     }
-  }, [password, revalidateToken, token, valid])
+  }, [confirmPassword, password, revalidateToken, searchParams, valid])
 
   return (
     <div className={

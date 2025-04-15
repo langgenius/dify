@@ -6,6 +6,7 @@ import cn from '@/utils/classnames'
 import Button from '@/app/components/base/button'
 import Modal from '@/app/components/base/modal'
 import { AlertTriangle } from '@/app/components/base/icons/src/vender/solid/alertsAndFeedback'
+import { noop } from 'lodash-es'
 
 type ConfirmModalProps = {
   show: boolean
@@ -20,7 +21,7 @@ const ConfirmModal = ({ show, onConfirm, onClose }: ConfirmModalProps) => {
     <Modal
       className={cn('w-[600px] max-w-[600px] p-8')}
       isShow={show}
-      onClose={() => { }}
+      onClose={noop}
     >
       <div className='absolute right-4 top-4 cursor-pointer p-2' onClick={onClose}>
         <RiCloseLine className='h-4 w-4 text-text-tertiary' />

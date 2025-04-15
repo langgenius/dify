@@ -8,15 +8,13 @@ import Button from '@/app/components/base/button'
 import type { LangGeniusVersionResponse } from '@/models/common'
 import { IS_CE_EDITION } from '@/config'
 import LogoSite from '@/app/components/base/logo/logo-site'
+import { noop } from 'lodash-es'
 
 type IAccountSettingProps = {
   langeniusVersionInfo: LangGeniusVersionResponse
   onCancel: () => void
 }
-const buttonClassName = `
-shrink-0 flex items-center h-8 px-3 rounded-lg border border-gray-200
-text-xs text-gray-800 font-medium
-`
+
 export default function AccountAbout({
   langeniusVersionInfo,
   onCancel,
@@ -27,7 +25,7 @@ export default function AccountAbout({
   return (
     <Modal
       isShow
-      onClose={() => { }}
+      onClose={noop}
       className='!w-[480px] !max-w-[480px] !px-6 !py-4'
     >
       <div className='relative pt-4'>

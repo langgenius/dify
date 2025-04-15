@@ -8,7 +8,7 @@ from core.workflow.utils.condition.entities import Condition
 
 class IfElseNodeData(BaseNodeData):
     """
-    Answer Node Data.
+    If Else Node Data.
     """
 
     class Case(BaseModel):

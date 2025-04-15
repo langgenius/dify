@@ -9,7 +9,7 @@ export const checkOrSetAccessToken = async () => {
   try {
     accessTokenJson = JSON.parse(accessToken)
   }
-  catch (e) {
+  catch {
 
   }
   if (!accessTokenJson[sharedToken]) {
@@ -26,7 +26,7 @@ export const setAccessToken = async (sharedToken: string, token: string) => {
   try {
     accessTokenJson = JSON.parse(accessToken)
   }
-  catch (e) {
+  catch {
 
   }
 
@@ -44,7 +44,7 @@ export const removeAccessToken = () => {
   try {
     accessTokenJson = JSON.parse(accessToken)
   }
-  catch (e) {
+  catch {
 
   }
 

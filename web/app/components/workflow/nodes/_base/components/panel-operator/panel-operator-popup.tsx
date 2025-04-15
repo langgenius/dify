@@ -84,7 +84,7 @@ const PanelOperatorPopup = ({
   const link = useNodeHelpLink(data.type)
 
   return (
-    <div className='w-[240px] rounded-lg border-[0.5px] border-gray-200 bg-white shadow-xl'>
+    <div className='w-[240px] rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-xl'>
       {
         (showChangeBlock || canRunBySingle(data.type)) && (
           <>
@@ -93,8 +93,8 @@ const PanelOperatorPopup = ({
                 canRunBySingle(data.type) && (
                   <div
                     className={`
-                      flex h-8 cursor-pointer items-center rounded-lg px-3 text-sm text-gray-700
-                      hover:bg-gray-50
+                      flex h-8 cursor-pointer items-center rounded-lg px-3 text-sm text-text-secondary
+                      hover:bg-state-base-hover
                     `}
                     onClick={() => {
                       handleNodeSelect(id)
@@ -117,7 +117,7 @@ const PanelOperatorPopup = ({
                 )
               }
             </div>
-            <div className='h-[1px] bg-gray-100'></div>
+            <div className='h-[1px] bg-divider-regular'></div>
           </>
         )
       }
@@ -126,7 +126,7 @@ const PanelOperatorPopup = ({
           <>
             <div className='p-1'>
               <div
-                className='flex h-8 cursor-pointer items-center justify-between rounded-lg px-3 text-sm text-gray-700 hover:bg-gray-50'
+                className='flex h-8 cursor-pointer items-center justify-between rounded-lg px-3 text-sm text-text-secondary hover:bg-state-base-hover'
                 onClick={() => {
                   onClosePopup()
                   handleNodesCopy(id)
@@ -136,7 +136,7 @@ const PanelOperatorPopup = ({
                 <ShortcutsName keys={['ctrl', 'c']} />
               </div>
               <div
-                className='flex h-8 cursor-pointer items-center justify-between rounded-lg px-3 text-sm text-gray-700 hover:bg-gray-50'
+                className='flex h-8 cursor-pointer items-center justify-between rounded-lg px-3 text-sm text-text-secondary hover:bg-state-base-hover'
                 onClick={() => {
                   onClosePopup()
                   handleNodesDuplicate(id)
@@ -146,12 +146,12 @@ const PanelOperatorPopup = ({
                 <ShortcutsName keys={['ctrl', 'd']} />
               </div>
             </div>
-            <div className='h-[1px] bg-gray-100'></div>
+            <div className='h-[1px] bg-divider-regular'></div>
             <div className='p-1'>
               <div
                 className={`
-                flex h-8 cursor-pointer items-center justify-between rounded-lg px-3 text-sm text-gray-700
-                hover:bg-rose-50 hover:text-red-500
+                flex h-8 cursor-pointer items-center justify-between rounded-lg px-3 text-sm text-text-secondary
+                hover:bg-state-destructive-hover hover:text-red-500
                 `}
                 onClick={() => handleNodeDelete(id)}
               >
@@ -159,7 +159,7 @@ const PanelOperatorPopup = ({
                 <ShortcutsName keys={['del']} />
               </div>
             </div>
-            <div className='h-[1px] bg-gray-100'></div>
+            <div className='h-[1px] bg-divider-regular'></div>
           </>
         )
       }
@@ -170,21 +170,21 @@ const PanelOperatorPopup = ({
               <a
                 href={link}
                 target='_blank'
-                className='flex h-8 cursor-pointer items-center rounded-lg px-3 text-sm text-gray-700 hover:bg-gray-50'
+                className='flex h-8 cursor-pointer items-center rounded-lg px-3 text-sm text-text-secondary hover:bg-state-base-hover'
               >
                 {t('workflow.panel.helpLink')}
               </a>
             </div>
-            <div className='h-[1px] bg-gray-100'></div>
+            <div className='h-[1px] bg-divider-regular'></div>
           </>
         )
       }
       <div className='p-1'>
-        <div className='px-3 py-2 text-xs text-gray-500'>
+        <div className='px-3 py-2 text-xs text-text-tertiary'>
           <div className='mb-1 flex h-[22px] items-center font-medium'>
             {t('workflow.panel.about').toLocaleUpperCase()}
           </div>
-          <div className='mb-1 leading-[18px] text-gray-700'>{about}</div>
+          <div className='mb-1 leading-[18px] text-text-secondary'>{about}</div>
           <div className='leading-[18px]'>
             {t('workflow.panel.createdBy')} {author}
           </div>

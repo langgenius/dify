@@ -37,6 +37,7 @@ import AddButton from '@/app/components/base/button/add-button'
 import Badge from '@/app/components/base/badge'
 import Tooltip from '@/app/components/base/tooltip'
 import { isExceptionVariable } from '@/app/components/workflow/utils'
+import { noop } from 'lodash-es'
 
 const TRIGGER_DEFAULT_WIDTH = 227
 
@@ -67,13 +68,15 @@ type Props = {
   zIndex?: number
 }
 
+const DEFAULT_VALUE_SELECTOR: Props['value'] = []
+
 const VarReferencePicker: FC<Props> = ({
   nodeId,
   readonly,
   className,
   isShowNodeName = true,
-  value = [],
-  onOpen = () => { },
+  value = DEFAULT_VALUE_SELECTOR,
+  onOpen = noop,
   onChange,
   isSupportConstantValue,
   defaultVarKindType = VarKindType.constant,
@@ -283,7 +286,7 @@ const VarReferencePicker: FC<Props> = ({
             {isAddBtnTrigger
               ? (
                 <div>
-                  <AddButton onClick={() => { }}></AddButton>
+                  <AddButton onClick={noop}></AddButton>
                 </div>
               )
               : (<div ref={!isSupportConstantValue ? triggerRef : null} className={cn((open || isFocus) ? 'border-gray-300' : 'border-gray-100', 'group/wrap relative flex h-8 w-full items-center', !isSupportConstantValue && 'rounded-lg bg-components-input-bg-normal p-1', isInTable && 'border-none bg-transparent', readonly && 'bg-components-input-bg-disabled')}>
@@ -330,9 +333,9 @@ const VarReferencePicker: FC<Props> = ({
                       }}
                       className='h-full grow'
                     >
-                      <div ref={isSupportConstantValue ? triggerRef : null} className={cn('h-full', isSupportConstantValue && 'flex items-center rounded-lg bg-gray-100 py-1 pl-1')}>
+                      <div ref={isSupportConstantValue ? triggerRef : null} className={cn('h-full', isSupportConstantValue && 'flex items-center rounded-lg bg-components-panel-bg py-1 pl-1')}>
                         <Tooltip popupContent={!isValidVar && hasValue && t('workflow.errorMsg.invalidVariable')}>
-                          <div className={cn('h-full items-center rounded-[5px] px-1.5', hasValue ? 'inline-flex bg-white' : 'flex')}>
+                          <div className={cn('h-full items-center rounded-[5px] px-1.5', hasValue ? 'inline-flex bg-components-badge-white-to-dark' : 'flex')}>
                             {hasValue
                               ? (
                                 <>
@@ -340,17 +343,17 @@ const VarReferencePicker: FC<Props> = ({
                                     <div className='flex items-center'>
                                       <div className='h-3 px-[1px]'>
                                         {outputVarNode?.type && <VarBlockIcon
-                                          className='!text-gray-900'
+                                          className='!text-text-primary'
                                           type={outputVarNode.type}
                                         />}
                                       </div>
-                                      <div className='mx-0.5 truncate text-xs font-medium text-gray-700' title={outputVarNode?.title} style={{
+                                      <div className='mx-0.5 truncate text-xs font-medium text-text-secondary' title={outputVarNode?.title} style={{
                                         maxWidth: maxNodeNameWidth,
                                       }}>{outputVarNode?.title}</div>
                                       <Line3 className='mr-0.5'></Line3>
                                     </div>
                                   )}
-                                  <div className='flex items-center text-primary-600'>
+                                  <div className='flex items-center text-text-accent'>
                                     {!hasValue && <Variable02 className='h-3.5 w-3.5' />}
                                     {isEnv && <Env className='h-3.5 w-3.5 text-util-colors-violet-violet-600' />}
                                     {isChatVar && <BubbleX className='h-3.5 w-3.5 text-util-colors-teal-teal-700' />}
@@ -361,7 +364,7 @@ const VarReferencePicker: FC<Props> = ({
                                   <div className='system-xs-regular ml-0.5 truncate text-center capitalize text-text-tertiary' title={type} style={{
                                     maxWidth: maxTypeWidth,
                                   }}>{type}</div>
-                                  {!isValidVar && <RiErrorWarningFill className='ml-0.5 h-3 w-3 text-[#D92D20]' />}
+                                  {!isValidVar && <RiErrorWarningFill className='ml-0.5 h-3 w-3 text-text-destructive' />}
                                 </>
                               )
                               : <div className={`overflow-hidden ${readonly ? 'text-components-input-text-disabled' : 'text-components-input-text-placeholder'} system-sm-regular text-ellipsis`}>{placeholder ?? t('workflow.common.setVarValuePlaceholder')}</div>}
@@ -372,10 +375,10 @@ const VarReferencePicker: FC<Props> = ({
                     </VarPickerWrap>
                   )}
                 {(hasValue && !readonly && !isInTable) && (<div
-                  className='group invisible absolute right-1 top-[50%] h-5 translate-y-[-50%] cursor-pointer rounded-md p-1 hover:bg-black/5 group-hover/wrap:visible'
+                  className='group invisible absolute right-1 top-[50%] h-5 translate-y-[-50%] cursor-pointer rounded-md p-1 hover:bg-state-base-hover group-hover/wrap:visible'
                   onClick={handleClearVar}
                 >
-                  <RiCloseLine className='h-3.5 w-3.5 text-gray-500 group-hover:text-gray-800' />
+                  <RiCloseLine className='h-3.5 w-3.5 text-text-tertiary group-hover:text-text-secondary' />
                 </div>)}
                 {!hasValue && valueTypePlaceHolder && (
                   <Badge

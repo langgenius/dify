@@ -138,16 +138,7 @@ const ChatWrapper = () => {
         isPublicAPI: !isInstalledApp,
       },
     )
-  }, [
-    chatList,
-    handleNewConversationCompleted,
-    handleSend,
-    currentConversationId,
-    currentConversationItem,
-    newConversationInputs,
-    isInstalledApp,
-    appId,
-  ])
+  }, [currentConversationId, currentConversationInputs, newConversationInputs, chatList, handleSend, isInstalledApp, appId, handleNewConversationCompleted])
 
   const doRegenerate = useCallback((chatItem: ChatItemInTree) => {
     const question = chatList.find(item => item.id === chatItem.parentMessageId)!

@@ -10,6 +10,7 @@ import Operate from '../data-source-notion/operate'
 import { DataSourceType } from './types'
 import s from './style.module.css'
 import cn from '@/utils/classnames'
+import { noop } from 'lodash-es'
 
 export type ConfigItemType = {
   id: string
@@ -41,7 +42,7 @@ const ConfigItem: FC<Props> = ({
   const { t } = useTranslation()
   const isNotion = type === DataSourceType.notion
   const isWebsite = type === DataSourceType.website
-  const onChangeAuthorizedPage = notionActions?.onChangeAuthorizedPage || function () { }
+  const onChangeAuthorizedPage = notionActions?.onChangeAuthorizedPage || noop
 
   return (
     <div className={cn(s['workspace-item'], 'mb-1 flex items-center rounded-lg bg-components-panel-on-panel-item-bg py-1 pr-1')} key={payload.id}>

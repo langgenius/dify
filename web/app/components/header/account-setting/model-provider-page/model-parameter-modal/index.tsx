@@ -85,7 +85,6 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
   renderTrigger,
   readonly,
   isInWorkflow,
-  scope = 'text-generation',
 }) => {
   const { t } = useTranslation()
   const { isAPIKeySet } = useProviderContext()

@@ -1,9 +1,9 @@
 'use client'
 
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { useContext, useContextSelector } from 'use-context-selector'
 import { RiArrowRightLine, RiCommandLine, RiCornerDownLeftLine, RiExchange2Fill } from '@remixicon/react'
 import Link from 'next/link'
@@ -19,6 +19,7 @@ import AppsContext, { useAppContext } from '@/context/app-context'
 import { useProviderContext } from '@/context/provider-context'
 import { ToastContext } from '@/app/components/base/toast'
 import type { AppMode } from '@/types/app'
+import { AppModes } from '@/types/app'
 import { createApp } from '@/service/apps'
 import Input from '@/app/components/base/input'
 import Textarea from '@/app/components/base/textarea'
@@ -54,6 +55,14 @@ function CreateApp({ onClose, onSuccess, onCreateFromTemplate }: CreateAppProps)
 
   const isCreatingRef = useRef(false)
 
+  const searchParams = useSearchParams()
+
+  useEffect(() => {
+    const category = searchParams.get('category')
+    if (category && AppModes.includes(category as AppMode))
+      setAppMode(category as AppMode)
+  }, [searchParams])
+
   const onCreate = useCallback(async () => {
     if (!appMode) {
       notify({ type: 'error', message: t('app.newApp.appTypeRequired') })
@@ -82,7 +91,7 @@ function CreateApp({ onClose, onSuccess, onCreateFromTemplate }: CreateAppProps)
       localStorage.setItem(NEED_REFRESH_APP_LIST_KEY, '1')
       getRedirection(isCurrentWorkspaceEditor, app, push)
     }
-    catch (e) {
+    catch {
       notify({ type: 'error', message: t('app.newApp.appCreateFailed') })
     }
     isCreatingRef.current = false
@@ -149,7 +158,6 @@ function CreateApp({ onClose, onSuccess, onCreateFromTemplate }: CreateAppProps)
               </div>
               <div className='flex flex-row gap-2'>
                 <AppTypeCard
-                  beta
                   active={appMode === 'advanced-chat'}
                   title={t('app.types.advanced')}
                   description={t('app.newApp.advancedShortDescription')}
@@ -160,7 +168,6 @@ function CreateApp({ onClose, onSuccess, onCreateFromTemplate }: CreateAppProps)
                     setAppMode('advanced-chat')
                   }} />
                 <AppTypeCard
-                  beta
                   active={appMode === 'workflow'}
                   title={t('app.types.workflow')}
                   description={t('app.newApp.workflowShortDescription')}
@@ -275,14 +282,12 @@ export default CreateAppModal
 
 type AppTypeCardProps = {
   icon: React.JSX.Element
-  beta?: boolean
   title: string
   description: string
   active: boolean
   onClick: () => void
 }
-function AppTypeCard({ icon, title, beta = false, description, active, onClick }: AppTypeCardProps) {
-  const { t } = useTranslation()
+function AppTypeCard({ icon, title, description, active, onClick }: AppTypeCardProps) {
   return <div
     className={
       cn(`relative box-content h-[84px] w-[191px] cursor-pointer rounded-xl
@@ -293,9 +298,6 @@ function AppTypeCard({ icon, title, beta = false, description, active, onClick }
     }
     onClick={onClick}
   >
-    {beta && <div className='system-2xs-medium-uppercase absolute
-      right-3 top-3 min-w-[18px] rounded-[5px] border
-      border-divider-deep px-[5px] py-[3px] text-text-tertiary'>{t('common.menus.status')}</div>}
     {icon}
     <div className='system-sm-semibold mb-0.5 mt-2 text-text-secondary'>{title}</div>
     <div className='system-xs-regular text-text-tertiary'>{description}</div>

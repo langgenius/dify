@@ -1,0 +1,11 @@
+#!/bin/bash
+
+set -x
+
+if ! command -v mypy &> /dev/null; then
+    poetry install -C api --with dev
+fi
+
+# run mypy checks
+poetry run -C api \
+  python -m mypy --install-types --non-interactive .

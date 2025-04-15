@@ -218,6 +218,9 @@ const translation = {
     feedbackTitle: 'Feedback',
     feedbackLabel: 'Tell us why you deleted your account?',
     feedbackPlaceholder: 'Optional',
+    editWorkspaceInfo: 'Edit Workspace Info',
+    workspaceName: 'Workspace Name',
+    workspaceIcon: 'Workspace Icon',
   },
   members: {
     team: 'Team',
@@ -648,6 +651,11 @@ const translation = {
   },
   pagination: {
     perPage: 'Items per page',
+  },
+  imageInput: {
+    dropImageHere: 'Drop your image here, or',
+    browse: 'browse',
+    supportedFormats: 'Supports PNG, JPG, JPEG, WEBP and GIF',
   },
 }
 

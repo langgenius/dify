@@ -218,6 +218,9 @@ const translation = {
     feedbackLabel: 'アカウントを削除した理由を教えてください。',
     feedbackPlaceholder: '随意',
     sendVerificationButton: '確認コードの送信',
+    editWorkspaceInfo: 'ワークスペース情報を編集',
+    workspaceName: 'ワークスペース名',
+    workspaceIcon: 'ワークスペースアイコン',
   },
   members: {
     team: 'チーム',

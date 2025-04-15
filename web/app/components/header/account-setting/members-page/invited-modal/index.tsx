@@ -10,6 +10,7 @@ import Button from '@/app/components/base/button'
 import { IS_CE_EDITION } from '@/config'
 import type { InvitationResult } from '@/models/common'
 import Tooltip from '@/app/components/base/tooltip'
+import { noop } from 'lodash-es'
 
 export type SuccessInvitationResult = Extract<InvitationResult, { status: 'success' }>
 export type FailedInvitationResult = Extract<InvitationResult, { status: 'failed' }>
@@ -29,7 +30,7 @@ const InvitedModal = ({
 
   return (
     <div className={s.wrap}>
-      <Modal isShow onClose={() => {}} className={s.modal}>
+      <Modal isShow onClose={noop} className={s.modal}>
         <div className='mb-3 flex justify-between'>
           <div className='
             flex h-12 w-12 items-center justify-center rounded-xl

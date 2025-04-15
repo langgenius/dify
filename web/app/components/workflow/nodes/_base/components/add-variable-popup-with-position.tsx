@@ -29,7 +29,7 @@ const AddVariablePopupWithPosition = ({
   nodeId,
   nodeData,
 }: AddVariablePopupWithPositionProps) => {
-  const ref = useRef(null)
+  const ref = useRef<HTMLDivElement>(null)
   const showAssignVariablePopup = useStore(s => s.showAssignVariablePopup)
   const setShowAssignVariablePopup = useStore(s => s.setShowAssignVariablePopup)
   const { handleNodeDataUpdate } = useNodeDataUpdate()

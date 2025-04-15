@@ -8,6 +8,7 @@ import { FILE_EXTS } from '@/app/components/base/prompt-editor/constants'
 import TagInput from '@/app/components/base/tag-input'
 import Checkbox from '@/app/components/base/checkbox'
 import { FileTypeIcon } from '@/app/components/base/file-uploader'
+import { noop } from 'lodash-es'
 
 type Props = {
   type: SupportUploadFileTypes.image | SupportUploadFileTypes.document | SupportUploadFileTypes.audio | SupportUploadFileTypes.video | SupportUploadFileTypes.custom
@@ -22,7 +23,7 @@ const FileTypeItem: FC<Props> = ({
   selected,
   onToggle,
   customFileTypes = [],
-  onCustomFileTypesChange = () => { },
+  onCustomFileTypesChange = noop,
 }) => {
   const { t } = useTranslation()
 

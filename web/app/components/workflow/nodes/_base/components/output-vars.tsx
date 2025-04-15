@@ -47,7 +47,7 @@ export const VarItem: FC<VarItemProps> = ({
       <div className='system-xs-regular mt-0.5 text-text-tertiary'>
         {description}
         {subItems && (
-          <div className='ml-2 border-l border-gray-200 pl-2'>
+          <div className='ml-2 border-l border-divider-regular pl-2'>
             {subItems.map((item, index) => (
               <VarItem
                 key={index}
