@@ -59,13 +59,13 @@
    Before the first launch, migrate the database to the latest version.
 
    ```bash
-   uv run python -m flask db upgrade
+   uv run flask db upgrade
    ```
 
 7. Start backend
 
    ```bash
-   uv run python -m flask run --host 0.0.0.0 --port=5001 --debug
+   uv run flask run --host 0.0.0.0 --port=5001 --debug
    ```
 
 8. Start Dify [web](../web) service.
@@ -73,7 +73,7 @@
 10. If you need to handle and debug the async tasks (e.g. dataset importing and documents indexing), please start the worker service.
 
    ```bash
-   uv run python -m celery -A app.celery worker -P gevent -c 1 --loglevel INFO -Q dataset,generation,mail,ops_trace,app_deletion
+   uv run celery -A app.celery worker -P gevent -c 1 --loglevel INFO -Q dataset,generation,mail,ops_trace,app_deletion
    ```
 
 ## Testing
