@@ -9,7 +9,7 @@ import Checkbox from '../../base/checkbox'
 import Input from '../../base/input'
 import { PortalToFollowElem, PortalToFollowElemContent, PortalToFollowElemTrigger } from '../../base/portal-to-follow-elem'
 import Loading from '../../base/loading'
-import useAccessControlStore from './access-control-store'
+import useAccessControlStore from '../../../../context/access-control-store'
 import classNames from '@/utils/classnames'
 import { useSearchForWhiteListCandidates } from '@/service/access-control'
 import type { AccessControlAccount, AccessControlGroup, Subject, SubjectAccount, SubjectGroup } from '@/models/access-control'
@@ -20,9 +20,11 @@ export default function AddMemberOrGroupDialog() {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const [keyword, setKeyword] = useState('')
+  const selectedGroupsForBreadcrumb = useAccessControlStore(s => s.selectedGroupsForBreadcrumb)
   const debouncedKeyword = useDebounce(keyword, { wait: 500 })
 
-  const { isPending, isFetchingNextPage, fetchNextPage, data } = useSearchForWhiteListCandidates({ keyword: debouncedKeyword, resultsPerPage: 10 }, open)
+  const lastAvailableGroup = selectedGroupsForBreadcrumb[selectedGroupsForBreadcrumb.length - 1]
+  const { isPending, isFetchingNextPage, fetchNextPage, data } = useSearchForWhiteListCandidates({ keyword: debouncedKeyword, groupId: lastAvailableGroup?.id, resultsPerPage: 10 }, open)
   const handleKeywordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setKeyword(e.target.value)
   }
@@ -59,7 +61,7 @@ export default function AddMemberOrGroupDialog() {
             : (data?.pages?.length ?? 0) > 0
               ? <>
                 <div className='flex items-center h-7 px-2 py-0.5'>
-                  <span className='system-xs-regular text-text-tertiary'>{t('app.accessControlDialog.operateGroupAndMember.allMembers')}</span>
+                  <SelectedGroupsBreadCrumb />
                 </div>
                 {renderGroupOrMember(data?.pages ?? [])}
                 {isFetchingNextPage && <div className='p-1'><Loading /></div>}
@@ -87,6 +89,29 @@ function renderGroupOrMember(data: GroupOrMemberData) {
   }) ?? null
 }
 
+function SelectedGroupsBreadCrumb() {
+  const selectedGroupsForBreadcrumb = useAccessControlStore(s => s.selectedGroupsForBreadcrumb)
+  const setSelectedGroupsForBreadcrumb = useAccessControlStore(s => s.setSelectedGroupsForBreadcrumb)
+  const { t } = useTranslation()
+
+  const handleBreadCrumbClick = useCallback((index: number) => {
+    const newGroups = selectedGroupsForBreadcrumb.slice(0, index + 1)
+    setSelectedGroupsForBreadcrumb(newGroups)
+  }, [setSelectedGroupsForBreadcrumb, selectedGroupsForBreadcrumb])
+  const handleReset = useCallback(() => {
+    setSelectedGroupsForBreadcrumb([])
+  }, [setSelectedGroupsForBreadcrumb])
+  return <div className='flex items-center h-7 px-2 py-0.5 gap-x-0.5'>
+    <span className={classNames('system-xs-regular text-text-tertiary', selectedGroupsForBreadcrumb.length > 0 && 'text-text-accent cursor-pointer')} onClick={handleReset}>{t('app.accessControlDialog.operateGroupAndMember.allMembers')}</span>
+    {selectedGroupsForBreadcrumb.map((group, index) => {
+      return <div key={index} className='flex items-center gap-x-0.5 text-text-tertiary system-xs-regular'>
+        <span>/</span>
+        <span className={index === selectedGroupsForBreadcrumb.length - 1 ? '' : 'text-text-accent cursor-pointer'} onClick={() => handleBreadCrumbClick(index)}>{group.name}</span>
+      </div>
+    })}
+  </div>
+}
+
 type GroupItemProps = {
   group: AccessControlGroup
 }
@@ -94,6 +119,8 @@ function GroupItem({ group }: GroupItemProps) {
   const { t } = useTranslation()
   const specificGroups = useAccessControlStore(s => s.specificGroups)
   const setSpecificGroups = useAccessControlStore(s => s.setSpecificGroups)
+  const selectedGroupsForBreadcrumb = useAccessControlStore(s => s.selectedGroupsForBreadcrumb)
+  const setSelectedGroupsForBreadcrumb = useAccessControlStore(s => s.setSelectedGroupsForBreadcrumb)
   const isChecked = specificGroups.some(g => g.id === group.id)
   const handleCheckChange = useCallback(() => {
     if (!isChecked) {
@@ -105,6 +132,10 @@ function GroupItem({ group }: GroupItemProps) {
       setSpecificGroups(newGroups)
     }
   }, [specificGroups, setSpecificGroups, group, isChecked])
+
+  const handleExpandClick = useCallback(() => {
+    setSelectedGroupsForBreadcrumb([...selectedGroupsForBreadcrumb, group])
+  }, [selectedGroupsForBreadcrumb, setSelectedGroupsForBreadcrumb, group])
   return <BaseItem>
     <Checkbox checked={isChecked} className='w-4 h-4 shrink-0' onCheck={handleCheckChange} />
     <div className='flex item-center grow'>
@@ -116,7 +147,8 @@ function GroupItem({ group }: GroupItemProps) {
       <p className='system-sm-medium text-text-secondary mr-1'>{group.name}</p>
       <p className='system-xs-regular text-text-tertiary'>{group.groupSize}</p>
     </div>
-    <Button size="small" variant='ghost-accent' className='py-1 px-1.5 shrink-0 flex items-center justify-between'>
+    <Button size="small" disabled={isChecked} variant='ghost-accent'
+      className='py-1 px-1.5 shrink-0 flex items-center justify-between' onClick={handleExpandClick}>
       <span className='px-[3px]'>{t('app.accessControlDialog.operateGroupAndMember.expand')}</span>
       <RiArrowRightSLine className='w-4 h-4' />
     </Button>

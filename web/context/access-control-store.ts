@@ -12,6 +12,8 @@ type AccessControlStore = {
   setSpecificMembers: (specificMembers: AccessControlAccount[]) => void
   currentMenu: AccessMode
   setCurrentMenu: (currentMenu: AccessMode) => void
+  selectedGroupsForBreadcrumb: AccessControlGroup[]
+  setSelectedGroupsForBreadcrumb: (selectedGroupsForBreadcrumb: AccessControlGroup[]) => void
 }
 
 const useAccessControlStore = create<AccessControlStore>((set) => {
@@ -24,6 +26,8 @@ const useAccessControlStore = create<AccessControlStore>((set) => {
     setSpecificMembers: specificMembers => set({ specificMembers }),
     currentMenu: AccessMode.SPECIFIC_GROUPS_MEMBERS,
     setCurrentMenu: currentMenu => set({ currentMenu }),
+    selectedGroupsForBreadcrumb: [],
+    setSelectedGroupsForBreadcrumb: selectedGroupsForBreadcrumb => set({ selectedGroupsForBreadcrumb }),
   }
 })
 

@@ -76,14 +76,6 @@ const WebSSOForm: FC = () => {
     }
   }
 
-  const goWebApp = () => {
-    if (!redirectUrl) {
-      showErrorToast('redirect url is invalid.')
-      return
-    }
-    router.push(redirectUrl)
-  }
-
   useEffect(() => {
     const init = async () => {
       if (message) {

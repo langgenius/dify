@@ -1,4 +1,4 @@
-import { useInfiniteQuery, useMutation, useQuery } from '@tanstack/react-query'
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { get, post } from './base'
 import type { AccessControlAccount, AccessControlGroup, AccessMode, Subject } from '@/models/access-control'
 import type { App } from '@/types/app'
@@ -20,7 +20,7 @@ type SearchResults = {
   hasMore: boolean
 }
 
-export const useSearchForWhiteListCandidates = (query: { keyword?: string; resultsPerPage?: number }, enabled: boolean) => {
+export const useSearchForWhiteListCandidates = (query: { keyword?: string; groupId?: AccessControlGroup['id']; resultsPerPage?: number }, enabled: boolean) => {
   return useInfiniteQuery({
     queryKey: [NAME_SPACE, 'app-whitelist-candidates', query],
     queryFn: ({ pageParam }) => {
@@ -50,10 +50,16 @@ type UpdateAccessModeParams = {
 }
 
 export const useUpdateAccessMode = () => {
+  const queryClient = useQueryClient()
   return useMutation({
     mutationKey: [NAME_SPACE, 'update-access-mode'],
     mutationFn: (params: UpdateAccessModeParams) => {
       return post('/enterprise/webapp/app/access-mode', { body: params })
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: [NAME_SPACE, 'app-whitelist-subjects'],
+      })
     },
   })
 }
