@@ -38,7 +38,7 @@ jobs:
 
       - name: Install dependencies
         if: steps.changed-files.outputs.any_changed == 'true'
-        run: uv sync --project api --only-group lint
+        run: uv sync --project api --group dev
 
       - name: Ruff check
         if: steps.changed-files.outputs.any_changed == 'true'
