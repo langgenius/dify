@@ -15,30 +15,30 @@ export default function RoutePrefixHandle() {
         e.src = url.toString()
       }
     }
-    // 创建一个观察者实例
+    // create an observer instance
     const observer = new MutationObserver((mutationsList) => {
       for (const mutation of mutationsList) {
         if (mutation.type === 'childList') {
-          // 监听新增的 img 标签
+          // listen for newly added img tags
           mutation.addedNodes.forEach((node) => {
             if (((node as HTMLElement).tagName) === 'IMG')
               addPrefixToImg(node as HTMLImageElement)
           })
         }
         else if (mutation.type === 'attributes' && (mutation.target as HTMLElement).tagName === 'IMG') {
-          // 如果已有 img 标签的 src 发生变化，更新前缀
+          // if the src of an existing img tag changes, update the prefix
           if (mutation.attributeName === 'src')
             addPrefixToImg(mutation.target as HTMLImageElement)
         }
       }
     })
 
-    // 配置观察选项
+    // configure observation options
     const config = {
-      childList: true, // 监听子节点变化
-      attributes: true, // 监听属性变化
-      subtree: true, // 监听整个子树
-      attributeFilter: ['src'], // 只监听 src 属性
+      childList: true,
+      attributes: true,
+      subtree: true,
+      attributeFilter: ['src'],
     }
 
     observer.observe(document.body, config)
