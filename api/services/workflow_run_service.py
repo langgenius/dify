@@ -1,17 +1,16 @@
 import threading
 from typing import Optional
 
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy import select
 
 import contexts
-from core.repository import RepositoryFactory
-from core.repository.workflow_node_execution_repository import OrderConfig
 from extensions.ext_database import db
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
 from models.enums import WorkflowRunTriggeredFrom
 from models.model import App
 from models.workflow import (
     WorkflowNodeExecution,
+    WorkflowNodeExecutionTriggeredFrom,
     WorkflowRun,
 )
 
@@ -130,15 +129,21 @@ class WorkflowRunService:
         if not workflow_run:
             return []
 
-        # Use repository to get workflow node executions for a workflow run
-        session_factory = sessionmaker(bind=db.engine)
-        workflow_node_execution_repository = RepositoryFactory.create_workflow_node_execution_repository(
-            params={"tenant_id": app_model.tenant_id, "app_id": app_model.id, "session_factory": session_factory},
+        # Build the query
+        stmt = select(WorkflowNodeExecution).where(
+            WorkflowNodeExecution.workflow_run_id == run_id,
+            WorkflowNodeExecution.tenant_id == app_model.tenant_id,
+            WorkflowNodeExecution.triggered_from == WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
         )
-        order_config = OrderConfig(order_by=["index"], order_direction="desc")
-        node_executions = workflow_node_execution_repository.get_by_workflow_run(
-            workflow_run_id=run_id, order_config=order_config
-        )
+
+        if app_model.id:
+            stmt = stmt.where(WorkflowNodeExecution.app_id == app_model.id)
+
+        # Apply ordering
+        stmt = stmt.order_by(WorkflowNodeExecution.index.desc)
+
+        # Execute the query
+        node_executions = db.session.scalars(stmt).all()
 
         # Convert Sequence to list for type compatibility
         return list(node_executions)
