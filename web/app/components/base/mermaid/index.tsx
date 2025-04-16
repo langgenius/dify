@@ -287,7 +287,7 @@ const Flowchart = React.forwardRef((props: {
     setErrMsg('')
 
     try {
-      let finalCode = primitiveCode
+      let finalCode: string
 
       // Check if it's a gantt chart
       const isGanttChart = primitiveCode.trim().startsWith('gantt')
@@ -296,7 +296,8 @@ const Flowchart = React.forwardRef((props: {
         // For gantt charts, ensure each task is on its own line
         // and preserve exact whitespace/format
         finalCode = primitiveCode.trim()
-      } else {
+      }
+      else {
         // Step 1: Clean and prepare Mermaid code using the extracted prepareMermaidCode function
         finalCode = prepareMermaidCode(primitiveCode, look)
       }
