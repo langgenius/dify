@@ -24,6 +24,7 @@ type LastRunActions = {
   setInfos: (vars: NodeInfo[]) => void
   getInfos: () => NodeInfo[]
   getNodeInfo: (nodeId: string) => NodeInfo | undefined
+  getVar: (nodeId: string, key: string) => any
 }
 
 type LastRunStore = LastRunState & LastRunActions
@@ -54,6 +55,17 @@ export const createLastRunStore = () => {
     getNodeInfo: (nodeId) => {
       const nodes = get().nodes
       return nodes.find(node => node.id === nodeId)
+    },
+    getVar: (nodeId, key) => {
+      const node = get().getNodeInfo(nodeId)
+      if (!node)
+        return undefined
+
+      const varItem = node.vars.find(v => v.key === key)
+      if (!varItem)
+        return undefined
+
+      return varItem.value
     },
   }))
 }

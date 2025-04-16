@@ -25,6 +25,9 @@ type CurrentVarsActions = {
   setNodeVars: (nodeId: string, payload: NodeVars) => void
   clearNodeVars: (nodeId: string) => void
   getNodeVars: (nodeId: string) => NodeVars | undefined
+  hasNodeVars: (nodeId: string) => boolean
+  setVar: (nodeId: string, key: string, value: any) => void
+  getVar: (nodeId: string, key: string) => any
 }
 
 type CurrentVarsStore = CurrentVarsState & CurrentVarsActions
@@ -78,6 +81,36 @@ export const createCurrentVarsStore = () => {
     getNodeVars: (nodeId) => {
       const nodes = get().nodes
       return nodes.find(node => node.id === nodeId)
+    },
+    hasNodeVars: (nodeId) => {
+      return !!get().getNodeVars(nodeId)
+    },
+    setVar: (nodeId, key, value) => {
+      set(produce((state: CurrentVarsStore) => {
+        // eslint-disable-next-line sonarjs/no-nested-functions
+        const nodes = state.nodes.map((node) => {
+          if (node.id === nodeId) {
+            return produce(node, (draft) => {
+              const index = draft.vars.findIndex(v => v.key === key)
+              if (index !== -1)
+                draft.vars[index].value = value
+            })
+          }
+          return node
+        })
+        state.nodes = nodes
+      }))
+    },
+    getVar(nodeId, key) {
+      const node = get().getNodeVars(nodeId)
+      if (!node)
+        return undefined
+
+      const variable = node.vars.find(v => v.key === key)
+      if (!variable)
+        return undefined
+
+      return variable.value
     },
   }))
 }
