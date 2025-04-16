@@ -39,6 +39,7 @@ class RemoteSettingsSourceFactory(PydanticBaseSettingsSource):
             case _:
                 logger.warning(f"Unsupported remote source: {remote_source_name}")
                 return {}
+
         d: dict[str, Any] = {}
 
         for field_name, field in self.settings_cls.model_fields.items():
@@ -47,8 +48,6 @@ class RemoteSettingsSourceFactory(PydanticBaseSettingsSource):
             if field_value is not None:
                 d[field_key] = field_value
 
-        print("DB_PASSWORD:",d["DB_PASSWORD"])
-        print("OPENDAL_SCHEME:",d["OPENDAL_SCHEME"])
         return d
 
 

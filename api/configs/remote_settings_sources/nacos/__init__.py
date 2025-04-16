@@ -1,40 +1,41 @@
-import asyncio
 import logging
-
+import os
 from collections.abc import Mapping
 from typing import Any
 
 from pydantic.fields import FieldInfo
-from .http_request import http_request
+
+from .http_request import NacosHttpClient
+
 logger = logging.getLogger(__name__)
 
 from configs.remote_settings_sources.base import RemoteSettingsSource
 
 from .utils import _parse_config
 
-        #         .access_key(os.getenv('DIFY_ENV_NACOS_ACCESS_KEY'))
-        #         .secret_key(os.getenv('DIFY_ENV_NACOS_SECRET_KEY'))
-         #        .server_address(os.getenv('DIFY_ENV_NACOS_NACOS_SERVER_ADDR', 'localhost:8848'))
 
 class NacosSettingsSource(RemoteSettingsSource):
     def __init__(self, configs: Mapping[str, Any]):
         self.configs = configs
         self.remote_configs=None
-        loop = asyncio.get_event_loop()
-        loop.run_until_complete(self.async_init())
+        self.async_init()
 
-    async def async_init(self):
-        data_id = "com.alibaba.nacos.test.config"
-        group = "DEFAULT_GROUP"
-        server_ip="127.0.0.1:8848"
-        url = "http://{}/nacos/v1/cs/configs?dataId={}&group={}&tenant={}".format(
-            server_ip, data_id, group, "")
+    def async_init(self):
+        data_id = os.getenv('DIFY_ENV_NACOS_DATA_ID','dify-api-env.properties')
+        group =os.getenv('DIFY_ENV_NACOS_GROUP','nacos-dify')
+        tenant =os.getenv('DIFY_ENV_NACOS_NAMESPACE','')
 
+        params = {
+            "dataId": data_id,
+            "group": group,
+            "tenant": tenant
+        }
         try:
-            content = http_request(url)
+            content = NacosHttpClient().http_request("/nacos/v1/cs/configs", method='GET',headers={},params=params)
             self.remote_configs = self._parse_config(content)
         except Exception as e:
-            raise RuntimeError(f"Failed to get config from Nacos: {e}")
+            logger.exception("[get-access-token] exception occur")
+            raise
     def _parse_config(self, content: str) -> dict:
         if not content:
             return {}
