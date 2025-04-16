@@ -21,8 +21,8 @@ from controllers.console.datasets.error import (
     DocumentAlreadyFinishedError,
     DocumentIndexingError,
     IndexingEstimateError,
-    InvalidMetadataError,
     InvalidActionError,
+    InvalidMetadataError,
 )
 from controllers.console.wraps import (
     account_initialization_required,
