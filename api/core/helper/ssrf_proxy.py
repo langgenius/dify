@@ -48,10 +48,10 @@ def make_request(method, url, max_retries=SSRF_DEFAULT_MAX_RETRIES, **kwargs):
             write=dify_config.SSRF_DEFAULT_WRITE_TIME_OUT,
         )
 
-    if 'ssl_verify' not in kwargs:
-        kwargs['ssl_verify'] = HTTP_REQUEST_NODE_SSL_VERIFY
+    if "ssl_verify" not in kwargs:
+        kwargs["ssl_verify"] = HTTP_REQUEST_NODE_SSL_VERIFY
 
-    ssl_verify = kwargs.pop('ssl_verify')
+    ssl_verify = kwargs.pop("ssl_verify")
 
     retries = 0
     while retries <= max_retries:
@@ -61,12 +61,8 @@ def make_request(method, url, max_retries=SSRF_DEFAULT_MAX_RETRIES, **kwargs):
                     response = client.request(method=method, url=url, **kwargs)
             elif dify_config.SSRF_PROXY_HTTP_URL and dify_config.SSRF_PROXY_HTTPS_URL:
                 proxy_mounts = {
-                    "http://": httpx.HTTPTransport(
-                        proxy=dify_config.SSRF_PROXY_HTTP_URL, verify=ssl_verify
-                    ),
-                    "https://": httpx.HTTPTransport(
-                        proxy=dify_config.SSRF_PROXY_HTTPS_URL, verify=ssl_verify
-                    ),
+                    "http://": httpx.HTTPTransport(proxy=dify_config.SSRF_PROXY_HTTP_URL, verify=ssl_verify),
+                    "https://": httpx.HTTPTransport(proxy=dify_config.SSRF_PROXY_HTTPS_URL, verify=ssl_verify),
                 }
                 with httpx.Client(mounts=proxy_mounts, verify=ssl_verify) as client:
                     response = client.request(method=method, url=url, **kwargs)
