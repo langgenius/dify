@@ -101,3 +101,9 @@ class ChildChunkDeleteIndexError(BaseHTTPException):
     error_code = "child_chunk_delete_index_error"
     description = "Delete child chunk index failed: {message}"
     code = 500
+
+
+class DatasetInvalidActionError(BaseHTTPException):
+    error_code = "dataset_invalid_action"
+    description = "Invalid action performed on the dataset or its documents."
+    code = 400
