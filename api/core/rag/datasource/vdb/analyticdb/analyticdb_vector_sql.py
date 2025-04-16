@@ -139,13 +139,17 @@ class AnalyticdbVectorBySql:
                 )
                 if embedding_dimension is not None:
                     index_name = f"{self._collection_name}_embedding_idx"
-                    cur.execute(f"ALTER TABLE {self.table_name} ALTER COLUMN vector SET STORAGE PLAIN")
-                    cur.execute(
-                        f"CREATE INDEX {index_name} ON {self.table_name} USING ann(vector) "
-                        f"WITH(dim='{embedding_dimension}', distancemeasure='{self.config.metrics}', "
-                        f"pq_enable=0, external_storage=0)"
-                    )
-                    cur.execute(f"CREATE INDEX ON {self.table_name} USING gin(to_tsvector)")
+                    try:
+                        cur.execute(f"ALTER TABLE {self.table_name} ALTER COLUMN vector SET STORAGE PLAIN")
+                        cur.execute(
+                            f"CREATE INDEX {index_name} ON {self.table_name} USING ann(vector) "
+                            f"WITH(dim='{embedding_dimension}', distancemeasure='{self.config.metrics}', "
+                            f"pq_enable=0, external_storage=0)"
+                        )
+                        cur.execute(f"CREATE INDEX ON {self.table_name} USING gin(to_tsvector)")
+                    except Exception as e:
+                        if "already exists" not in str(e):
+                            raise e
             redis_client.set(collection_exist_cache_key, 1, ex=3600)
 
     def add_texts(self, documents: list[Document], embeddings: list[list[float]], **kwargs):
@@ -177,9 +181,11 @@ class AnalyticdbVectorBySql:
             return cur.fetchone() is not None
 
     def delete_by_ids(self, ids: list[str]) -> None:
+        if not ids:
+            return
         with self._get_cursor() as cur:
             try:
-                cur.execute(f"DELETE FROM {self.table_name} WHERE ref_doc_id IN %s", (tuple(ids),))
+                cur.execute(f"DELETE FROM {self.table_name} WHERE ref_doc_id = ANY(%s)", (ids,))
             except Exception as e:
                 if "does not exist" not in str(e):
                     raise e
@@ -240,7 +246,7 @@ class AnalyticdbVectorBySql:
                 ts_rank(to_tsvector, to_tsquery_from_text(%s, 'zh_cn'), 32) AS score
                 FROM {self.table_name}
                 WHERE to_tsvector@@to_tsquery_from_text(%s, 'zh_cn') {where_clause}
-                ORDER BY score DESC
+                ORDER BY (score,id) DESC
                 LIMIT {top_k}""",
                 (f"'{query}'", f"'{query}'"),
             )

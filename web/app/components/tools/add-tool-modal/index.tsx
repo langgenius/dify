@@ -14,6 +14,7 @@ import Type from './type'
 import Category from './category'
 import Tools from './tools'
 import cn from '@/utils/classnames'
+import { basePath } from '@/utils/var'
 import I18n from '@/context/i18n'
 import Drawer from '@/app/components/base/drawer'
 import Button from '@/app/components/base/button'
@@ -57,6 +58,12 @@ const AddToolModal: FC<Props> = ({
   const getAllTools = async () => {
     setListLoading(true)
     const buildInTools = await fetchAllBuiltInTools()
+    if (basePath) {
+      buildInTools.forEach((item) => {
+        if (typeof item.icon == 'string' && !item.icon.includes(basePath))
+          item.icon = `${basePath}${item.icon}`
+      })
+    }
     const customTools = await fetchAllCustomTools()
     const workflowTools = await fetchAllWorkflowTools()
     const mergedToolList = [
