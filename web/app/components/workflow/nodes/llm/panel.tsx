@@ -21,6 +21,7 @@ import ResultPanel from '@/app/components/workflow/run/result-panel'
 import Tooltip from '@/app/components/base/tooltip'
 import Editor from '@/app/components/workflow/nodes/_base/components/prompt/editor'
 import { useCurrentVarsStore } from '../../current-vars-store/store'
+import { useLastRunStore } from '../../last-run-store/store'
 
 const i18nPrefix = 'workflow.nodes.llm'
 
@@ -30,7 +31,8 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
 }) => {
   const { t } = useTranslation()
   const currentVars = useCurrentVarsStore(state => state.getVars())
-  console.log(currentVars)
+  const lastRunInfo = useLastRunStore(state => state.getInfos())
+  console.log(currentVars, lastRunInfo)
   const {
     readOnly,
     inputs,

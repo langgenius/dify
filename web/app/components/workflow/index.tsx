@@ -102,6 +102,7 @@ import Confirm from '@/app/components/base/confirm'
 import { FILE_EXTS } from '@/app/components/base/prompt-editor/constants'
 import { fetchFileUploadConfig } from '@/service/common'
 import DatasetsDetailProvider from './datasets-detail-store/provider'
+import LastRunProvider from './last-run-store/provider'
 import CurrentVarsProvider from './current-vars-store/provider'
 
 const nodeTypes = {
@@ -454,13 +455,15 @@ const WorkflowWrap = memo(() => {
         edges={edgesData} >
         <FeaturesProvider features={initialFeatures}>
           <DatasetsDetailProvider nodes={nodesData}>
-            <CurrentVarsProvider>
-              <Workflow
-                nodes={nodesData}
-                edges={edgesData}
-                viewport={data?.graph.viewport}
-              />
-            </CurrentVarsProvider>
+            <LastRunProvider>
+              <CurrentVarsProvider>
+                <Workflow
+                  nodes={nodesData}
+                  edges={edgesData}
+                  viewport={data?.graph.viewport}
+                />
+              </CurrentVarsProvider>
+            </LastRunProvider>
           </DatasetsDetailProvider>
         </FeaturesProvider>
       </WorkflowHistoryProvider>
