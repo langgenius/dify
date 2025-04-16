@@ -195,34 +195,6 @@ supabase = "~2.8.1"
 tos = "~2.7.1"
 
 ############################################################
-# [ VDB ] dependency group
-# Required by vector store clients
-############################################################
-[tool.poetry.group.vdb.dependencies]
-alibabacloud_gpdb20160503 = "~3.8.0"
-alibabacloud_tea_openapi = "~0.3.9"
-chromadb = "0.5.20"
-clickhouse-connect = "~0.7.16"
-couchbase = "~4.3.0"
-elasticsearch = "8.14.0"
-opensearch-py = "2.4.0"
-oracledb = "~2.2.1"
-pgvecto-rs = { version = "~0.2.1", extras = ['sqlalchemy'] }
-pgvector = "0.2.5"
-pymilvus = "~2.5.0"
-pymochow = "1.3.1"
-pyobvector = "~0.1.6"
-qdrant-client = "1.7.3"
-tablestore = "6.1.0"
-tcvectordb = "~1.6.4"
-tidb-vector = "0.0.9"
-upstash-vector = "0.6.0"
-volcengine-compat = "~1.0.156"
-weaviate-client = "~3.21.0"
-xinference-client = "~1.2.2"
->>>>>>> v1.2.0
-
-############################################################
 # [ Dev ] dependency group
 # Required for development and running tests
 ############################################################
@@ -326,11 +298,3 @@ vdb = [
     "weaviate-client~=3.21.0",
     "xinference-client~=1.2.2",
 ]
-=======
-[tool.poetry.group.lint]
-optional = true
-[tool.poetry.group.lint.dependencies]
-dotenv-linter = "~0.5.0"
-ruff = "~0.11.0"
-
->>>>>>> v1.2.0
