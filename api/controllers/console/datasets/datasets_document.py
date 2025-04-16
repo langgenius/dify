@@ -18,11 +18,11 @@ from controllers.console.app.error import (
 )
 from controllers.console.datasets.error import (
     ArchivedDocumentImmutableError,
-    DatasetInvalidActionError,
     DocumentAlreadyFinishedError,
     DocumentIndexingError,
     IndexingEstimateError,
     InvalidMetadataError,
+    InvalidActionError,
 )
 from controllers.console.wraps import (
     account_initialization_required,
@@ -823,7 +823,7 @@ class DocumentStatusApi(DocumentResource):
         try:
             DocumentService.batch_update_document_status(dataset, document_ids, action, current_user)
         except services.errors.account.InvalidActionError as e:
-            raise DatasetInvalidActionError(str(e))
+            raise InvalidActionError(str(e))
 
         return {"result": "success"}, 200
 
