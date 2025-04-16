@@ -1,3 +1,5 @@
+from datetime import UTC, datetime
+
 from flask import request
 from flask_restful import marshal, reqparse  # type: ignore
 from werkzeug.exceptions import Forbidden, NotFound
@@ -9,14 +11,13 @@ from controllers.service_api.wraps import DatasetApiResource
 from core.model_runtime.entities.model_entities import ModelType
 from core.plugin.entities.plugin import ModelProviderID
 from core.provider_manager import ProviderManager
+from extensions.ext_database import db
+from extensions.ext_redis import redis_client
 from fields.dataset_fields import dataset_detail_fields
 from libs.login import current_user
 from models.dataset import Dataset, DatasetPermissionEnum
 from services.dataset_service import DatasetPermissionService, DatasetService, DocumentService
 from services.entities.knowledge_entities.knowledge_entities import RetrievalModel
-from datetime import UTC, datetime
-from extensions.ext_redis import redis_client
-from extensions.ext_database import db
 from tasks.add_document_to_index_task import add_document_to_index_task
 from tasks.remove_document_from_index_task import remove_document_from_index_task
 
