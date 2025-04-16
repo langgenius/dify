@@ -18,11 +18,11 @@ from controllers.console.app.error import (
 )
 from controllers.console.datasets.error import (
     ArchivedDocumentImmutableError,
+    DatasetInvalidActionError,
     DocumentAlreadyFinishedError,
     DocumentIndexingError,
     IndexingEstimateError,
     InvalidMetadataError,
-    DatasetInvalidActionError,
 )
 from controllers.console.wraps import (
     account_initialization_required,
