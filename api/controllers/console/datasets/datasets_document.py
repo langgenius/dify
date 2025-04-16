@@ -819,7 +819,7 @@ class DocumentStatusApi(DocumentResource):
         DatasetService.check_dataset_permission(dataset, current_user)
 
         document_ids = request.args.getlist("document_id")
-        
+
         try:
             DocumentService.batch_update_document_status(dataset, document_ids, action, current_user)
         except services.errors.dataset.InvalidActionError as e:
