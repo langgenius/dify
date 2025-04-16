@@ -1,6 +1,6 @@
 import json
 import logging
-from typing import Any, Optional
+from typing import Any, Optional, Dict
 
 from packaging import version
 from pydantic import BaseModel, model_validator
@@ -302,7 +302,7 @@ class MilvusVector(BaseVector):
 
                 # Create the text field, enable_analyzer will be set True to support milvus automatically
                 # transfer text to sparse_vector, reference: https://milvus.io/docs/full-text-search.md
-                content_field_kwargs = {
+                content_field_kwargs: Dict[str, Any] = {
                     "max_length": 65_535,
                     "enable_analyzer": self._hybrid_search_enabled,
                 }
