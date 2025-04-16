@@ -303,13 +303,16 @@ class MilvusVector(BaseVector):
                 # Create the text field, enable_analyzer will be set True to support milvus automatically
                 # transfer text to sparse_vector, reference: https://milvus.io/docs/full-text-search.md
                 content_field_kwargs = {
-                    'max_length': 65_535,
-                    'enable_analyzer': self._hybrid_search_enabled,
+                    "max_length": 65_535,
+                    "enable_analyzer": self._hybrid_search_enabled,
                 }
-                if self._hybrid_search_enabled and self._client_config.analyzer_params is not None and self._client_config.analyzer_params.strip():
-                    content_field_kwargs['analyzer_params'] = self._client_config.analyzer_params
-                print("content_field_kwargs:", content_field_kwargs)
-                
+                if (
+                    self._hybrid_search_enabled
+                    and self._client_config.analyzer_params is not None
+                    and self._client_config.analyzer_params.strip()
+                ):
+                    content_field_kwargs["analyzer_params"] = self._client_config.analyzer_params
+
                 fields.append(FieldSchema(Field.CONTENT_KEY.value, DataType.VARCHAR, **content_field_kwargs))
 
                 # Create the primary key field
