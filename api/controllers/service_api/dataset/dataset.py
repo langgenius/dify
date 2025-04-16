@@ -372,4 +372,4 @@ class DocumentStatusApi(DatasetApiResource):
 
 api.add_resource(DatasetListApi, "/datasets")
 api.add_resource(DatasetApi, "/datasets/<uuid:dataset_id>")
-api.add_resource(DocumentStatusApi, "/datasets/<uuid:dataset_id>/documents/<string:action>")
+api.add_resource(DocumentStatusApi, "/datasets/<uuid:dataset_id>/documents/status/<string:action>")
