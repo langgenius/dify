@@ -822,7 +822,7 @@ class DocumentStatusApi(DocumentResource):
 
         try:
             DocumentService.batch_update_document_status(dataset, document_ids, action, current_user)
-        except services.errors.account.InvalidActionError as e:
+        except services.errors.document.DocumentIndexingError as e:
             raise InvalidActionError(str(e))
 
         return {"result": "success"}, 200
