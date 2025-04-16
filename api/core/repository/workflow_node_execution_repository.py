@@ -46,8 +46,6 @@ class WorkflowNodeExecutionRepository(Protocol):
         """
         ...
 
-    # Method get_by_id was removed as it's not used anywhere in the codebase
-
     def get_by_node_execution_id(self, node_execution_id: str) -> Optional[WorkflowNodeExecution]:
         """
         Retrieve a WorkflowNodeExecution by its node_execution_id.
@@ -108,8 +106,6 @@ class WorkflowNodeExecutionRepository(Protocol):
             execution_id: The execution ID
         """
         ...
-
-    # Method delete_by_criteria was removed as it's not used anywhere in the codebase
 
     def find_by_criteria(
         self,
