@@ -155,9 +155,28 @@ class AnswerStreamProcessor(StreamProcessor):
         for answer_node_id, route_position in self.route_position.items():
             if answer_node_id not in self.rest_node_ids:
                 continue
-            # exclude current node id
+            # Remove current node id from answer dependencies to support stream output if it is a success branch
             answer_dependencies = self.generate_routes.answer_dependencies
-            if event.node_id in answer_dependencies[answer_node_id]:
+            edge_mapping = self.graph.edge_mapping.get(event.node_id)
+            success_edge = (
+                next(
+                    (
+                        edge
+                        for edge in edge_mapping
+                        if edge.run_condition
+                        and edge.run_condition.type == "branch_identify"
+                        and edge.run_condition.branch_identify == "success-branch"
+                    ),
+                    None,
+                )
+                if edge_mapping
+                else None
+            )
+            if (
+                event.node_id in answer_dependencies[answer_node_id]
+                and success_edge
+                and success_edge.target_node_id == answer_node_id
+            ):
                 answer_dependencies[answer_node_id].remove(event.node_id)
             answer_dependencies_ids = answer_dependencies.get(answer_node_id, [])
             # all depends on answer node id not in rest node ids
