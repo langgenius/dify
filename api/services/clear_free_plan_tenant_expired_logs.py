@@ -3,7 +3,6 @@ import json
 import logging
 import time
 from concurrent.futures import ThreadPoolExecutor
-from typing import cast
 
 import click
 from flask import Flask, current_app
@@ -11,7 +10,7 @@ from sqlalchemy.orm import Session
 
 from configs import dify_config
 from core.model_runtime.utils.encoders import jsonable_encoder
-from core.repository import RepositoryFactory, WorkflowNodeExecutionCriteria, WorkflowNodeExecutionRepository
+from core.repository import RepositoryFactory, WorkflowNodeExecutionCriteria
 from extensions.ext_database import db
 from extensions.ext_storage import storage
 from models.account import Tenant
@@ -110,12 +109,10 @@ class ClearFreePlanTenantExpiredLogs:
             while True:
                 with Session(db.engine).no_autoflush as session:
                     # Use repository to query workflow node executions
-                    workflow_node_execution_repository = cast(
-                        WorkflowNodeExecutionRepository,
-                        RepositoryFactory.create_repository(
-                            "workflow_node_execution", params={"tenant_id": tenant_id, "session": session}
-                        ),
+                    workflow_node_execution_repository = RepositoryFactory.create_workflow_node_execution_repository(
+                        params={"tenant_id": tenant_id, "session": session}
                     )
+
                     criteria = WorkflowNodeExecutionCriteria(
                         created_at_before=datetime.datetime.now() - datetime.timedelta(days=days)
                     )

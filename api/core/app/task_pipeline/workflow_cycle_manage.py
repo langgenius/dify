@@ -49,7 +49,7 @@ from core.file import FILE_MODEL_IDENTITY, File
 from core.model_runtime.utils.encoders import jsonable_encoder
 from core.ops.entities.trace_entity import TraceTaskName
 from core.ops.ops_trace_manager import TraceQueueManager, TraceTask
-from core.repository import RepositoryFactory, WorkflowNodeExecutionRepository
+from core.repository import RepositoryFactory
 from core.tools.tool_manager import ToolManager
 from core.workflow.entities.node_entities import NodeRunMetadataKey
 from core.workflow.enums import SystemVariableKey
@@ -259,12 +259,8 @@ class WorkflowCycleManage:
         workflow_run.exceptions_count = exceptions_count
 
         # Use repository to find running executions for a workflow run
-        workflow_node_execution_repository = cast(
-            WorkflowNodeExecutionRepository,
-            RepositoryFactory.create_repository(
-                "workflow_node_execution",
-                params={"tenant_id": workflow_run.tenant_id, "app_id": workflow_run.app_id, "session": session},
-            ),
+        workflow_node_execution_repository = RepositoryFactory.create_workflow_node_execution_repository(
+            params={"tenant_id": workflow_run.tenant_id, "app_id": workflow_run.app_id, "session": session},
         )
 
         # Get running executions for this workflow run
@@ -325,12 +321,8 @@ class WorkflowCycleManage:
         workflow_node_execution.created_at = datetime.now(UTC).replace(tzinfo=None)
 
         # Use repository to save the workflow node execution
-        workflow_node_execution_repository = cast(
-            WorkflowNodeExecutionRepository,
-            RepositoryFactory.create_repository(
-                "workflow_node_execution",
-                params={"tenant_id": workflow_run.tenant_id, "app_id": workflow_run.app_id, "session": session},
-            ),
+        workflow_node_execution_repository = RepositoryFactory.create_workflow_node_execution_repository(
+            params={"tenant_id": workflow_run.tenant_id, "app_id": workflow_run.app_id, "session": session},
         )
         workflow_node_execution_repository.save(workflow_node_execution)
 
@@ -362,16 +354,12 @@ class WorkflowCycleManage:
         workflow_node_execution.elapsed_time = elapsed_time
 
         # Use repository to update the workflow node execution
-        workflow_node_execution_repository = cast(
-            WorkflowNodeExecutionRepository,
-            RepositoryFactory.create_repository(
-                "workflow_node_execution",
-                params={
-                    "tenant_id": workflow_node_execution.tenant_id,
-                    "app_id": workflow_node_execution.app_id,
-                    "session": session,
-                },
-            ),
+        workflow_node_execution_repository = RepositoryFactory.create_workflow_node_execution_repository(
+            params={
+                "tenant_id": workflow_node_execution.tenant_id,
+                "app_id": workflow_node_execution.app_id,
+                "session": session,
+            },
         )
         workflow_node_execution_repository.update(workflow_node_execution)
         return workflow_node_execution
@@ -971,9 +959,8 @@ class WorkflowCycleManage:
             return session.merge(cached_execution)
 
         # If not in cache, use repository to get by node_execution_id
-        workflow_node_execution_repository = cast(
-            WorkflowNodeExecutionRepository,
-            RepositoryFactory.create_repository("workflow_node_execution", params={"session": session}),
+        workflow_node_execution_repository = RepositoryFactory.create_workflow_node_execution_repository(
+            params={"session": session}
         )
         execution = workflow_node_execution_repository.get_by_node_execution_id(node_execution_id)
 

@@ -5,7 +5,7 @@ SQLAlchemy implementation of the WorkflowNodeExecutionRepository.
 from collections.abc import Sequence
 from typing import Optional
 
-from sqlalchemy import asc, desc, select
+from sqlalchemy import UnaryExpression, asc, desc, select
 from sqlalchemy.orm import Session
 
 from core.repository.workflow_node_execution_repository import (
@@ -105,7 +105,7 @@ class SQLAlchemyWorkflowNodeExecutionRepository:
 
         # Apply ordering if provided
         if order_config and order_config.order_by:
-            order_columns = []
+            order_columns: list[UnaryExpression] = []
             for field in order_config.order_by:
                 column = getattr(WorkflowNodeExecution, field, None)
                 if column:
@@ -220,7 +220,7 @@ class SQLAlchemyWorkflowNodeExecutionRepository:
 
         # Apply ordering if provided
         if order_config and order_config.order_by:
-            order_columns = []
+            order_columns: list[UnaryExpression] = []
             for field in order_config.order_by:
                 column = getattr(WorkflowNodeExecution, field, None)
                 if column:

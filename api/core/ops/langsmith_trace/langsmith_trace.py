@@ -28,7 +28,6 @@ from core.ops.langsmith_trace.entities.langsmith_trace_entity import (
 )
 from core.ops.utils import filter_none_values, generate_dotted_order
 from core.repository.repository_factory import RepositoryFactory
-from core.repository.workflow_node_execution_repository import WorkflowNodeExecutionRepository
 from extensions.ext_database import db
 from models.model import EndUser, MessageFile
 
@@ -136,16 +135,12 @@ class LangSmithDataTrace(BaseTraceInstance):
         self.add_run(langsmith_run)
 
         # through workflow_run_id get all_nodes_execution using repository
-        workflow_node_execution_repository = cast(
-            WorkflowNodeExecutionRepository,
-            RepositoryFactory.create_repository(
-                "workflow_node_execution",
-                params={
-                    "tenant_id": trace_info.metadata.get("tenant_id"),
-                    "app_id": trace_info.metadata.get("app_id"),
-                    "session": db.session,
-                },
-            ),
+        workflow_node_execution_repository = RepositoryFactory.create_workflow_node_execution_repository(
+            params={
+                "tenant_id": trace_info.metadata.get("tenant_id"),
+                "app_id": trace_info.metadata.get("app_id"),
+                "session": db.session,
+            },
         )
 
         # Get all executions for this workflow run

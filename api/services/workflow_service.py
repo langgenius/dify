@@ -2,7 +2,7 @@ import json
 import time
 from collections.abc import Callable, Generator, Sequence
 from datetime import UTC, datetime
-from typing import Any, Optional, cast
+from typing import Any, Optional
 from uuid import uuid4
 
 from sqlalchemy import select
@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session
 from core.app.apps.advanced_chat.app_config_manager import AdvancedChatAppConfigManager
 from core.app.apps.workflow.app_config_manager import WorkflowAppConfigManager
 from core.model_runtime.utils.encoders import jsonable_encoder
-from core.repository import RepositoryFactory, WorkflowNodeExecutionRepository
+from core.repository import RepositoryFactory
 from core.variables import Variable
 from core.workflow.entities.node_entities import NodeRunResult
 from core.workflow.errors import WorkflowNodeRunFailedError
@@ -284,12 +284,8 @@ class WorkflowService:
         workflow_node_execution.workflow_id = draft_workflow.id
 
         # Use repository to save the workflow node execution
-        workflow_node_execution_repository = cast(
-            WorkflowNodeExecutionRepository,
-            RepositoryFactory.create_repository(
-                "workflow_node_execution",
-                params={"tenant_id": app_model.tenant_id, "app_id": app_model.id, "session": db.session},
-            ),
+        workflow_node_execution_repository = RepositoryFactory.create_workflow_node_execution_repository(
+            params={"tenant_id": app_model.tenant_id, "app_id": app_model.id, "session": db.session},
         )
         workflow_node_execution_repository.save(workflow_node_execution)
         db.session.commit()

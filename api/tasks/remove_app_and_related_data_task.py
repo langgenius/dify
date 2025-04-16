@@ -1,14 +1,13 @@
 import logging
 import time
 from collections.abc import Callable
-from typing import cast
 
 import click
 from celery import shared_task  # type: ignore
 from sqlalchemy import delete
 from sqlalchemy.exc import SQLAlchemyError
 
-from core.repository import RepositoryFactory, WorkflowNodeExecutionCriteria, WorkflowNodeExecutionRepository
+from core.repository import RepositoryFactory, WorkflowNodeExecutionCriteria
 from extensions.ext_database import db
 from models.dataset import AppDatasetJoin
 from models.model import (
@@ -191,11 +190,8 @@ def _delete_app_workflow_runs(tenant_id: str, app_id: str):
 def _delete_app_workflow_node_executions(tenant_id: str, app_id: str):
     # Use repository to delete workflow node executions for an app
 
-    workflow_node_execution_repository = cast(
-        WorkflowNodeExecutionRepository,
-        RepositoryFactory.create_repository(
-            "workflow_node_execution", params={"tenant_id": tenant_id, "app_id": app_id, "session": db.session}
-        ),
+    workflow_node_execution_repository = RepositoryFactory.create_workflow_node_execution_repository(
+        params={"tenant_id": tenant_id, "app_id": app_id, "session": db.session}
     )
 
     # Create empty criteria - the repository implementation will filter by tenant_id and app_id

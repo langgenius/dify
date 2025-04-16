@@ -1,8 +1,8 @@
 import threading
-from typing import Optional, cast
+from typing import Optional
 
 import contexts
-from core.repository import RepositoryFactory, WorkflowNodeExecutionRepository
+from core.repository import RepositoryFactory
 from core.repository.workflow_node_execution_repository import OrderConfig
 from extensions.ext_database import db
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
@@ -129,12 +129,8 @@ class WorkflowRunService:
             return []
 
         # Use repository to get workflow node executions for a workflow run
-        workflow_node_execution_repository = cast(
-            WorkflowNodeExecutionRepository,
-            RepositoryFactory.create_repository(
-                "workflow_node_execution",
-                params={"tenant_id": app_model.tenant_id, "app_id": app_model.id, "session": db.session},
-            ),
+        workflow_node_execution_repository = RepositoryFactory.create_workflow_node_execution_repository(
+            params={"tenant_id": app_model.tenant_id, "app_id": app_model.id, "session": db.session},
         )
         order_config = OrderConfig(order_by=["index"], order_direction="desc")
         node_executions = workflow_node_execution_repository.get_by_workflow_run(
