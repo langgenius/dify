@@ -59,6 +59,7 @@ import { CollectionType } from '@/app/components/tools/types'
 import { CUSTOM_ITERATION_START_NODE } from '@/app/components/workflow/nodes/iteration-start/constants'
 import { CUSTOM_LOOP_START_NODE } from '@/app/components/workflow/nodes/loop-start/constants'
 import { useWorkflowConfig } from '@/service/use-workflow'
+import { basePath } from '@/utils/var'
 import { canFindTool } from '@/utils'
 
 export const useIsChatMode = () => {
@@ -446,6 +447,12 @@ export const useFetchToolsData = () => {
     if (type === 'builtin') {
       const buildInTools = await fetchAllBuiltInTools()
 
+      if (basePath) {
+        buildInTools.forEach((item) => {
+          if (typeof item.icon == 'string' && !item.icon.includes(basePath))
+            item.icon = `${basePath}${item.icon}`
+        })
+      }
       workflowStore.setState({
         buildInTools: buildInTools || [],
       })
