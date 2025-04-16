@@ -18,7 +18,7 @@ class NacosHttpClient:
         self.sk=os.getenv('DIFY_ENV_NACOS_SECRET_KEY')
         self.server=os.getenv('DIFY_ENV_NACOS_SERVER_ADDR','localhost:8848')
         self.token = None
-        self.token_ttl = None
+        self.token_ttl = 18000
         self.token_expire_time = 0
 
     def http_request(self,url, method='GET', headers=None, params=None):
