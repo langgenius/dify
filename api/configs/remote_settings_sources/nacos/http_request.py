@@ -28,8 +28,7 @@ class NacosHttpClient:
             response.raise_for_status()
             return response.text
         except requests.exceptions.RequestException as e:
-            print(e)
-            return f"request fail to nacos：: {e}"
+            return f"Request to Nacos failed: {e}"
 
     def _inject_auth_info(self, headers, params, module="config"):
 

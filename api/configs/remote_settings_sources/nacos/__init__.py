@@ -34,7 +34,7 @@ class NacosSettingsSource(RemoteSettingsSource):
             content = NacosHttpClient().http_request("/nacos/v1/cs/configs", method='GET',headers={},params=params)
             self.remote_configs = self._parse_config(content)
         except Exception as e:
-            logger.exception("[get-access-token] exception occur")
+            logger.exception("[get-access-token] exception occurred")
             raise
     def _parse_config(self, content: str) -> dict:
         if not content:
