@@ -2025,7 +2025,7 @@ class SegmentService:
                 dataset_id=dataset.id,
                 document_id=document.id,
                 segment_id=segment.id,
-                position=max_position + 1,
+                position=max_position + 1 if max_position else 1,
                 index_node_id=index_node_id,
                 index_node_hash=index_node_hash,
                 content=content,
