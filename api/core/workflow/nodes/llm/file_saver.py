@@ -5,6 +5,7 @@ import typing as tp
 from pydantic import BaseModel, field_validator
 from sqlalchemy import Engine
 
+from constants.mimetypes import DEFAULT_EXTENSION
 from core.file import File, FileTransferMethod, FileType
 from core.tools.signature import sign_tool_file
 from core.tools.tool_file_manager import ToolFileManager
@@ -51,7 +52,7 @@ class MultiModalFile(BaseModel):
         """
         if (extension := self.extension_override) is not None:
             return extension
-        return mimetypes.guess_extension(self.mime_type)
+        return mimetypes.guess_extension(self.mime_type) or DEFAULT_EXTENSION
 
     @field_validator('extension_override')
     @classmethod
@@ -69,7 +70,7 @@ class MultiModalFileSaver(tp.Protocol):
     def save_file(self, mmf: MultiModalFile) -> File:
         pass
 
-EngineFactory: tp.TypeVar = tp.Callable[[], Engine]
+EngineFactory: tp.TypeAlias = tp.Callable[[], Engine]
 
 
 class StorageFileSaver(MultiModalFileSaver):

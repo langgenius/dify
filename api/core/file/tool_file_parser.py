@@ -10,6 +10,7 @@ _tool_file_manager_factory: Callable[[], "ToolFileManager"] | None = None
 class ToolFileParser:
     @staticmethod
     def get_tool_file_manager() -> "ToolFileManager":
+        assert _tool_file_manager_factory is not None
         return _tool_file_manager_factory()
 
 

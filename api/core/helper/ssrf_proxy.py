@@ -4,10 +4,8 @@ Proxy requests to avoid SSRF
 
 import logging
 import time
-import typing as tp
 
 import httpx
-from httpx import _types as httpx_types
 
 from configs import dify_config
 
@@ -36,23 +34,7 @@ class MaxRetriesExceededError(ValueError):
     pass
 
 
-class _HTTPRequestParams(tp.TypedDict, total=False):
-    # keyword arguments annotations for `httpx.Client.request`.
-    allow_redirects: bool
-    content: httpx_types.RequestContent | None
-    data: httpx_types.RequestData | None
-    files: httpx_types.RequestFiles | None
-    json: tp.Any | None
-    params: httpx_types.QueryParamTypes | None
-    headers: httpx_types.HeaderTypes | None
-    cookies: httpx_types.CookieTypes | None
-    auth: httpx_types.AuthTypes | None
-    follow_redirects: bool
-    timeout: httpx_types.TimeoutTypes
-    extensions: httpx_types.RequestExtensions | None
-
-
-def make_request(method, url, max_retries=SSRF_DEFAULT_MAX_RETRIES, **kwargs: _HTTPRequestParams):
+def make_request(method, url, max_retries=SSRF_DEFAULT_MAX_RETRIES, **kwargs):
     if "allow_redirects" in kwargs:
         allow_redirects = kwargs.pop("allow_redirects")
         if "follow_redirects" not in kwargs:
@@ -103,25 +85,25 @@ def make_request(method, url, max_retries=SSRF_DEFAULT_MAX_RETRIES, **kwargs: _H
     raise MaxRetriesExceededError(f"Reached maximum retries ({max_retries}) for URL {url}")
 
 
-def get(url, max_retries=SSRF_DEFAULT_MAX_RETRIES, **kwargs: _HTTPRequestParams):
+def get(url, max_retries=SSRF_DEFAULT_MAX_RETRIES, **kwargs):
     return make_request("GET", url, max_retries=max_retries, **kwargs)
 
 
-def post(url, max_retries=SSRF_DEFAULT_MAX_RETRIES, **kwargs: _HTTPRequestParams):
+def post(url, max_retries=SSRF_DEFAULT_MAX_RETRIES, **kwargs):
     return make_request("POST", url, max_retries=max_retries, **kwargs)
 
 
-def put(url, max_retries=SSRF_DEFAULT_MAX_RETRIES, **kwargs: _HTTPRequestParams):
+def put(url, max_retries=SSRF_DEFAULT_MAX_RETRIES, **kwargs):
     return make_request("PUT", url, max_retries=max_retries, **kwargs)
 
 
-def patch(url, max_retries=SSRF_DEFAULT_MAX_RETRIES, **kwargs: _HTTPRequestParams):
+def patch(url, max_retries=SSRF_DEFAULT_MAX_RETRIES, **kwargs):
     return make_request("PATCH", url, max_retries=max_retries, **kwargs)
 
 
-def delete(url, max_retries=SSRF_DEFAULT_MAX_RETRIES, **kwargs: _HTTPRequestParams):
+def delete(url, max_retries=SSRF_DEFAULT_MAX_RETRIES, **kwargs):
     return make_request("DELETE", url, max_retries=max_retries, **kwargs)
 
 
-def head(url, max_retries=SSRF_DEFAULT_MAX_RETRIES, **kwargs: _HTTPRequestParams):
+def head(url, max_retries=SSRF_DEFAULT_MAX_RETRIES, **kwargs):
     return make_request("HEAD", url, max_retries=max_retries, **kwargs)

@@ -89,6 +89,9 @@ from .file_saver import MultiModalFile, MultiModalFileSaver, StorageFileSaver
 
 if TYPE_CHECKING:
     from core.file.models import File
+    from core.workflow.graph_engine.entities.graph import Graph
+    from core.workflow.graph_engine.entities.graph_init_params import GraphInitParams
+    from core.workflow.graph_engine.entities.graph_runtime_state import GraphRuntimeState
 
 logger = logging.getLogger(__name__)
 
@@ -335,7 +338,7 @@ class LLMNode(BaseNode[LLMNodeData]):
             if not model and result.model:
                 model = result.model
             if len(prompt_messages) == 0:
-                prompt_messages = result.prompt_messages
+                prompt_messages = list(result.prompt_messages)
             if usage.prompt_tokens == 0 and result.delta.usage:
                 usage = result.delta.usage
             if finish_reason is None and result.delta.finish_reason:
@@ -1057,7 +1060,7 @@ def _extract_content_type_and_extension(url: str, content_type_header: str | Non
     guess content type of file from url and `Content-Type` header in response.
     """
     if content_type_header:
-        extension = mimetypes.guess_extension(content_type_header)
+        extension = mimetypes.guess_extension(content_type_header) or DEFAULT_EXTENSION
         return content_type_header, extension
     content_type = mimetypes.guess_type(url)[0] or DEFAULT_MIME_TYPE
     extension = mimetypes.guess_extension(content_type) or DEFAULT_EXTENSION
