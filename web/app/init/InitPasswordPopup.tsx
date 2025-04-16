@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import Toast from '../components/base/toast'
 import Loading from '../components/base/loading'
 import Button from '@/app/components/base/button'
+import { basePath } from '@/utils/var'
 import { fetchInitValidateStatus, initValidate } from '@/service/common'
 import type { InitValidateStatusResponse } from '@/models/common'
 
@@ -41,7 +42,7 @@ const InitPasswordPopup = () => {
   useEffect(() => {
     fetchInitValidateStatus().then((res: InitValidateStatusResponse) => {
       if (res.status === 'finished')
-        window.location.href = '/install'
+        window.location.href = `${basePath}/install`
       else
         setLoading(false)
     })

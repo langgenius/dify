@@ -30,7 +30,6 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0
           persist-credentials: false
 
       - name: Setup UV and Python
@@ -43,10 +42,20 @@ jobs:
         run: uv lock --project api --check
 
       - name: Install dependencies
-        run: uv sync --project api --group dev
+        run: uv sync --project api --dev
 
       - name: Run Unit tests
-        run: uv run --project api bash dev/pytest/pytest_unit_tests.sh
+        run: |
+          uv run --project api bash dev/pytest/pytest_unit_tests.sh
+          # Extract coverage percentage and create a summary
+          TOTAL_COVERAGE=$(python -c 'import json; print(json.load(open("coverage.json"))["totals"]["percent_covered_display"])')
+
+          # Create a detailed coverage summary
+          echo "### Test Coverage Summary :test_tube:" >> $GITHUB_STEP_SUMMARY
+          echo "Total Coverage: ${TOTAL_COVERAGE}%" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          uv run --project api coverage report >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
 
       - name: Run dify config tests
         run: uv run --project api dev/pytest/pytest_config_tests.py
