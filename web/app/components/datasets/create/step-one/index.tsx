@@ -191,7 +191,8 @@ const StepOne = ({
                         {t('datasetCreation.stepOne.dataSourceType.notion')}
                       </span>
                     </div>
-                    <div
+                    {(ENABLE_WEBSITE_FIRECRAWL || ENABLE_WEBSITE_JINAREADER || ENABLE_WEBSITE_WATERCRAWL) && (
+                      <div
                       className={cn(
                         s.dataSourceItem,
                         'system-sm-medium',
@@ -199,7 +200,7 @@ const StepOne = ({
                         dataSourceTypeDisable && dataSourceType !== DataSourceType.WEB && s.disabled,
                       )}
                       onClick={() => changeType(DataSourceType.WEB)}
-                    >
+                      >
                       <span className={cn(s.datasetIcon, s.web)} />
                       <span
                         title={t('datasetCreation.stepOne.dataSourceType.web')}
@@ -207,7 +208,8 @@ const StepOne = ({
                       >
                         {t('datasetCreation.stepOne.dataSourceType.web')}
                       </span>
-                    </div>
+                      </div>
+                    )}
                   </div>
                 )
               }
@@ -268,7 +270,7 @@ const StepOne = ({
                   )}
                 </>
               )}
-              {(ENABLE_WEBSITE_FIRECRAWL || ENABLE_WEBSITE_JINAREADER || ENABLE_WEBSITE_WATERCRAWL) && dataSourceType === DataSourceType.WEB && (
+              {dataSourceType === DataSourceType.WEB && (
                 <>
                   <div className={cn('mb-8 w-[640px]', !shouldShowDataSourceTypeList && 'mt-12')}>
                     <Website
