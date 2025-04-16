@@ -7,6 +7,7 @@ from typing import Optional, cast
 
 from opik import Opik, Trace
 from opik.id_helpers import uuid4_to_uuid7
+from sqlalchemy.orm import sessionmaker
 
 from core.ops.base_trace_instance import BaseTraceInstance
 from core.ops.entities.config_entity import OpikConfig
@@ -148,11 +149,12 @@ class OpikDataTrace(BaseTraceInstance):
             self.add_trace(trace_data)
 
         # through workflow_run_id get all_nodes_execution using repository
+        session_factory = sessionmaker(bind=db.engine)
         workflow_node_execution_repository = RepositoryFactory.create_workflow_node_execution_repository(
             params={
-                "tenant_id": trace_info.metadata.get("tenant_id"),
+                "tenant_id": trace_info.tenant_id,
                 "app_id": trace_info.metadata.get("app_id"),
-                "session": db.session,
+                "session_factory": session_factory,
             },
         )
 

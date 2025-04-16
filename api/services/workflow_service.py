@@ -6,7 +6,7 @@ from typing import Any, Optional
 from uuid import uuid4
 
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.apps.advanced_chat.app_config_manager import AdvancedChatAppConfigManager
 from core.app.apps.workflow.app_config_manager import WorkflowAppConfigManager
@@ -284,8 +284,9 @@ class WorkflowService:
         workflow_node_execution.workflow_id = draft_workflow.id
 
         # Use repository to save the workflow node execution
+        session_factory = sessionmaker(bind=db.engine)
         workflow_node_execution_repository = RepositoryFactory.create_workflow_node_execution_repository(
-            params={"tenant_id": app_model.tenant_id, "app_id": app_model.id, "session": db.session},
+            params={"tenant_id": app_model.tenant_id, "app_id": app_model.id, "session_factory": session_factory},
         )
         workflow_node_execution_repository.save(workflow_node_execution)
         db.session.commit()

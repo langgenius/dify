@@ -2,14 +2,18 @@
 SQLAlchemy implementation of the WorkflowNodeExecutionRepository.
 """
 
+import logging
 from collections.abc import Sequence
 from typing import Optional
 
 from sqlalchemy import UnaryExpression, asc, desc, select
-from sqlalchemy.orm import Session
+from sqlalchemy.engine import Engine
+from sqlalchemy.orm import sessionmaker
 
 from core.repository.workflow_node_execution_repository import OrderConfig
 from models.workflow import WorkflowNodeExecution, WorkflowNodeExecutionStatus, WorkflowNodeExecutionTriggeredFrom
+
+logger = logging.getLogger(__name__)
 
 
 class SQLAlchemyWorkflowNodeExecutionRepository:
@@ -17,42 +21,46 @@ class SQLAlchemyWorkflowNodeExecutionRepository:
     SQLAlchemy implementation of the WorkflowNodeExecutionRepository interface.
 
     This implementation supports multi-tenancy by filtering operations based on tenant_id.
-    Each method that modifies data (save, update, delete) flushes changes to the database,
-    but does not commit the transaction. Callers are responsible for committing
-    or rolling back the transaction as needed.
+    Each method creates its own session, handles the transaction, and commits changes
+    to the database. This prevents long-running connections in the workflow core.
     """
 
-    def __init__(self, session: Session, tenant_id: str, app_id: Optional[str] = None):
+    def __init__(self, session_factory: sessionmaker | Engine, tenant_id: str, app_id: Optional[str] = None):
         """
-        Initialize the repository with a SQLAlchemy session and tenant context.
+        Initialize the repository with a SQLAlchemy sessionmaker or engine and tenant context.
 
         Args:
-            session: SQLAlchemy session
+            session_factory: SQLAlchemy sessionmaker or engine for creating sessions
             tenant_id: Tenant ID for multi-tenancy
             app_id: Optional app ID for filtering by application
         """
-        self.session = session
-        self.tenant_id = tenant_id
-        self.app_id = app_id
+        # If an engine is provided, create a sessionmaker from it
+        if isinstance(session_factory, Engine):
+            self._session_factory = sessionmaker(bind=session_factory)
+        else:
+            self._session_factory = session_factory
+
+        self._tenant_id = tenant_id
+        self._app_id = app_id
 
     def save(self, execution: WorkflowNodeExecution) -> None:
         """
-        Save a WorkflowNodeExecution instance and flush changes to the database.
-        The caller is responsible for committing the transaction.
+        Save a WorkflowNodeExecution instance and commit changes to the database.
 
         Args:
             execution: The WorkflowNodeExecution instance to save
         """
-        # Ensure tenant_id is set
-        if not execution.tenant_id:
-            execution.tenant_id = self.tenant_id
+        with self._session_factory() as session:
+            # Ensure tenant_id is set
+            if not execution.tenant_id:
+                execution.tenant_id = self._tenant_id
 
-        # Set app_id if provided and not already set
-        if self.app_id and not execution.app_id:
-            execution.app_id = self.app_id
+            # Set app_id if provided and not already set
+            if self._app_id and not execution.app_id:
+                execution.app_id = self._app_id
 
-        self.session.add(execution)
-        self.session.flush()
+            session.add(execution)
+            session.commit()
 
     def get_by_node_execution_id(self, node_execution_id: str) -> Optional[WorkflowNodeExecution]:
         """
@@ -64,15 +72,16 @@ class SQLAlchemyWorkflowNodeExecutionRepository:
         Returns:
             The WorkflowNodeExecution instance if found, None otherwise
         """
-        stmt = select(WorkflowNodeExecution).where(
-            WorkflowNodeExecution.node_execution_id == node_execution_id,
-            WorkflowNodeExecution.tenant_id == self.tenant_id,
-        )
+        with self._session_factory() as session:
+            stmt = select(WorkflowNodeExecution).where(
+                WorkflowNodeExecution.node_execution_id == node_execution_id,
+                WorkflowNodeExecution.tenant_id == self._tenant_id,
+            )
 
-        if self.app_id:
-            stmt = stmt.where(WorkflowNodeExecution.app_id == self.app_id)
+            if self._app_id:
+                stmt = stmt.where(WorkflowNodeExecution.app_id == self._app_id)
 
-        return self.session.scalar(stmt)
+            return session.scalar(stmt)
 
     def get_by_workflow_run(
         self,
@@ -91,30 +100,32 @@ class SQLAlchemyWorkflowNodeExecutionRepository:
         Returns:
             A list of WorkflowNodeExecution instances
         """
-        stmt = select(WorkflowNodeExecution).where(
-            WorkflowNodeExecution.workflow_run_id == workflow_run_id,
-            WorkflowNodeExecution.tenant_id == self.tenant_id,
-            WorkflowNodeExecution.triggered_from == WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN.value,
-        )
+        with self._session_factory() as session:
+            stmt = select(WorkflowNodeExecution).where(
+                WorkflowNodeExecution.workflow_run_id == workflow_run_id,
+                WorkflowNodeExecution.tenant_id == self._tenant_id,
+                WorkflowNodeExecution.triggered_from == WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
+            )
 
-        if self.app_id:
-            stmt = stmt.where(WorkflowNodeExecution.app_id == self.app_id)
+            if self._app_id:
+                stmt = stmt.where(WorkflowNodeExecution.app_id == self._app_id)
 
-        # Apply ordering if provided
-        if order_config and order_config.order_by:
-            order_columns: list[UnaryExpression] = []
-            for field in order_config.order_by:
-                column = getattr(WorkflowNodeExecution, field, None)
-                if column:
+            # Apply ordering if provided
+            if order_config and order_config.order_by:
+                order_columns: list[UnaryExpression] = []
+                for field in order_config.order_by:
+                    column = getattr(WorkflowNodeExecution, field, None)
+                    if not column:
+                        continue
                     if order_config.order_direction == "desc":
                         order_columns.append(desc(column))
                     else:
                         order_columns.append(asc(column))
 
-            if order_columns:
-                stmt = stmt.order_by(*order_columns)
+                if order_columns:
+                    stmt = stmt.order_by(*order_columns)
 
-        return self.session.scalars(stmt).all()
+            return session.scalars(stmt).all()
 
     def get_running_executions(self, workflow_run_id: str) -> Sequence[WorkflowNodeExecution]:
         """
@@ -126,53 +137,34 @@ class SQLAlchemyWorkflowNodeExecutionRepository:
         Returns:
             A list of running WorkflowNodeExecution instances
         """
-        stmt = select(WorkflowNodeExecution).where(
-            WorkflowNodeExecution.workflow_run_id == workflow_run_id,
-            WorkflowNodeExecution.tenant_id == self.tenant_id,
-            WorkflowNodeExecution.status == WorkflowNodeExecutionStatus.RUNNING.value,
-            WorkflowNodeExecution.triggered_from == WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN.value,
-        )
+        with self._session_factory() as session:
+            stmt = select(WorkflowNodeExecution).where(
+                WorkflowNodeExecution.workflow_run_id == workflow_run_id,
+                WorkflowNodeExecution.tenant_id == self._tenant_id,
+                WorkflowNodeExecution.status == WorkflowNodeExecutionStatus.RUNNING,
+                WorkflowNodeExecution.triggered_from == WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
+            )
 
-        if self.app_id:
-            stmt = stmt.where(WorkflowNodeExecution.app_id == self.app_id)
+            if self._app_id:
+                stmt = stmt.where(WorkflowNodeExecution.app_id == self._app_id)
 
-        return self.session.scalars(stmt).all()
+            return session.scalars(stmt).all()
 
     def update(self, execution: WorkflowNodeExecution) -> None:
         """
-        Update an existing WorkflowNodeExecution instance and flush changes to the database.
-        The caller is responsible for committing the transaction.
+        Update an existing WorkflowNodeExecution instance and commit changes to the database.
 
         Args:
             execution: The WorkflowNodeExecution instance to update
         """
-        # Ensure tenant_id is set
-        if not execution.tenant_id:
-            execution.tenant_id = self.tenant_id
+        with self._session_factory() as session:
+            # Ensure tenant_id is set
+            if not execution.tenant_id:
+                execution.tenant_id = self._tenant_id
 
-        # Set app_id if provided and not already set
-        if self.app_id and not execution.app_id:
-            execution.app_id = self.app_id
+            # Set app_id if provided and not already set
+            if self._app_id and not execution.app_id:
+                execution.app_id = self._app_id
 
-        self.session.merge(execution)
-        self.session.flush()
-
-    def delete(self, execution_id: str) -> None:
-        """
-        Delete a WorkflowNodeExecution by its ID and flush changes to the database.
-        The caller is responsible for committing the transaction.
-
-        Args:
-            execution_id: The execution ID
-        """
-        stmt = select(WorkflowNodeExecution).where(
-            WorkflowNodeExecution.id == execution_id, WorkflowNodeExecution.tenant_id == self.tenant_id
-        )
-
-        if self.app_id:
-            stmt = stmt.where(WorkflowNodeExecution.app_id == self.app_id)
-
-        execution = self.session.scalar(stmt)
-        if execution:
-            self.session.delete(execution)
-            self.session.flush()
+            session.merge(execution)
+            session.commit()

@@ -86,12 +86,3 @@ class WorkflowNodeExecutionRepository(Protocol):
             execution: The WorkflowNodeExecution instance to update
         """
         ...
-
-    def delete(self, execution_id: str) -> None:
-        """
-        Delete a WorkflowNodeExecution by its ID.
-
-        Args:
-            execution_id: The execution ID
-        """
-        ...

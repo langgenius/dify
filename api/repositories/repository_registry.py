@@ -8,8 +8,11 @@ import logging
 from collections.abc import Mapping
 from typing import Any
 
+from sqlalchemy.orm import sessionmaker
+
 from configs import dify_config
 from core.repository.repository_factory import RepositoryFactory
+from extensions.ext_database import db
 from repositories.workflow_node_execution import SQLAlchemyWorkflowNodeExecutionRepository
 
 logger = logging.getLogger(__name__)
@@ -52,7 +55,11 @@ def create_workflow_node_execution_repository(params: Mapping[str, Any]) -> SQLA
     This factory function creates a repository for the RDBMS storage type.
 
     Args:
-        params: Parameters for creating the repository
+        params: Parameters for creating the repository, including:
+            - tenant_id: Required. The tenant ID for multi-tenancy.
+            - app_id: Optional. The application ID for filtering.
+            - session_factory: Optional. A SQLAlchemy sessionmaker instance. If not provided,
+              a new sessionmaker will be created using the global database engine.
 
     Returns:
         A WorkflowNodeExecutionRepository instance
@@ -61,10 +68,6 @@ def create_workflow_node_execution_repository(params: Mapping[str, Any]) -> SQLA
         ValueError: If required parameters are missing
     """
     # Extract required parameters
-    session = params.get("session")
-    if session is None:
-        raise ValueError("Session is required for WorkflowNodeExecution repository with RDBMS storage")
-
     tenant_id = params.get("tenant_id")
     if tenant_id is None:
         raise ValueError("tenant_id is required for WorkflowNodeExecution repository with RDBMS storage")
@@ -72,5 +75,13 @@ def create_workflow_node_execution_repository(params: Mapping[str, Any]) -> SQLA
     # Extract optional parameters
     app_id = params.get("app_id")
 
+    # Use the session_factory from params if provided, otherwise create one using the global db engine
+    session_factory = params.get("session_factory")
+    if session_factory is None:
+        # Create a sessionmaker using the same engine as the global db session
+        session_factory = sessionmaker(bind=db.engine)
+
     # Create and return the repository
-    return SQLAlchemyWorkflowNodeExecutionRepository(session=session, tenant_id=tenant_id, app_id=app_id)
+    return SQLAlchemyWorkflowNodeExecutionRepository(
+        session_factory=session_factory, tenant_id=tenant_id, app_id=app_id
+    )

@@ -6,7 +6,7 @@ from typing import Any, Optional, Union, cast
 from uuid import uuid4
 
 from sqlalchemy import func, select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, InvokeFrom, WorkflowAppGenerateEntity
 from core.app.entities.queue_entities import (
@@ -56,6 +56,7 @@ from core.workflow.enums import SystemVariableKey
 from core.workflow.nodes import NodeType
 from core.workflow.nodes.tool.entities import ToolNodeData
 from core.workflow.workflow_entry import WorkflowEntry
+from extensions.ext_database import db
 from models.account import Account
 from models.enums import CreatedByRole, WorkflowRunTriggeredFrom
 from models.model import EndUser
@@ -80,6 +81,18 @@ class WorkflowCycleManage:
         self._workflow_node_executions: dict[str, WorkflowNodeExecution] = {}
         self._application_generate_entity = application_generate_entity
         self._workflow_system_variables = workflow_system_variables
+
+        # Initialize the session factory and repository
+        # We use the global db engine instead of the session passed to methods
+        # Disable expire_on_commit to avoid the need for merging objects
+        self._session_factory = sessionmaker(bind=db.engine, expire_on_commit=False)
+        self._workflow_node_execution_repository = RepositoryFactory.create_workflow_node_execution_repository(
+            params={
+                "tenant_id": self._application_generate_entity.app_config.tenant_id,
+                "app_id": self._application_generate_entity.app_config.app_id,
+                "session_factory": self._session_factory,
+            }
+        )
 
         # We'll still keep the cache for backward compatibility and performance
         # but use the repository for database operations
@@ -258,13 +271,8 @@ class WorkflowCycleManage:
         workflow_run.finished_at = datetime.now(UTC).replace(tzinfo=None)
         workflow_run.exceptions_count = exceptions_count
 
-        # Use repository to find running executions for a workflow run
-        workflow_node_execution_repository = RepositoryFactory.create_workflow_node_execution_repository(
-            params={"tenant_id": workflow_run.tenant_id, "app_id": workflow_run.app_id, "session": session},
-        )
-
-        # Get running executions for this workflow run
-        running_workflow_node_executions = workflow_node_execution_repository.get_running_executions(
+        # Use the instance repository to find running executions for a workflow run
+        running_workflow_node_executions = self._workflow_node_execution_repository.get_running_executions(
             workflow_run_id=workflow_run.id
         )
 
@@ -293,7 +301,7 @@ class WorkflowCycleManage:
         return workflow_run
 
     def _handle_node_execution_start(
-        self, *, session: Session, workflow_run: WorkflowRun, event: QueueNodeStartedEvent
+        self, *, workflow_run: WorkflowRun, event: QueueNodeStartedEvent
     ) -> WorkflowNodeExecution:
         workflow_node_execution = WorkflowNodeExecution()
         workflow_node_execution.id = str(uuid4())
@@ -320,21 +328,14 @@ class WorkflowCycleManage:
         )
         workflow_node_execution.created_at = datetime.now(UTC).replace(tzinfo=None)
 
-        # Use repository to save the workflow node execution
-        workflow_node_execution_repository = RepositoryFactory.create_workflow_node_execution_repository(
-            params={"tenant_id": workflow_run.tenant_id, "app_id": workflow_run.app_id, "session": session},
-        )
-        workflow_node_execution_repository.save(workflow_node_execution)
+        # Use the instance repository to save the workflow node execution
+        self._workflow_node_execution_repository.save(workflow_node_execution)
 
         self._workflow_node_executions[event.node_execution_id] = workflow_node_execution
         return workflow_node_execution
 
-    def _handle_workflow_node_execution_success(
-        self, *, session: Session, event: QueueNodeSucceededEvent
-    ) -> WorkflowNodeExecution:
-        workflow_node_execution = self._get_workflow_node_execution(
-            session=session, node_execution_id=event.node_execution_id
-        )
+    def _handle_workflow_node_execution_success(self, *, event: QueueNodeSucceededEvent) -> WorkflowNodeExecution:
+        workflow_node_execution = self._get_workflow_node_execution(node_execution_id=event.node_execution_id)
         inputs = WorkflowEntry.handle_special_values(event.inputs)
         process_data = WorkflowEntry.handle_special_values(event.process_data)
         outputs = WorkflowEntry.handle_special_values(event.outputs)
@@ -353,21 +354,13 @@ class WorkflowCycleManage:
         workflow_node_execution.finished_at = finished_at
         workflow_node_execution.elapsed_time = elapsed_time
 
-        # Use repository to update the workflow node execution
-        workflow_node_execution_repository = RepositoryFactory.create_workflow_node_execution_repository(
-            params={
-                "tenant_id": workflow_node_execution.tenant_id,
-                "app_id": workflow_node_execution.app_id,
-                "session": session,
-            },
-        )
-        workflow_node_execution_repository.update(workflow_node_execution)
+        # Use the instance repository to update the workflow node execution
+        self._workflow_node_execution_repository.update(workflow_node_execution)
         return workflow_node_execution
 
     def _handle_workflow_node_execution_failed(
         self,
         *,
-        session: Session,
         event: QueueNodeFailedEvent
         | QueueNodeInIterationFailedEvent
         | QueueNodeInLoopFailedEvent
@@ -378,9 +371,7 @@ class WorkflowCycleManage:
         :param event: queue node failed event
         :return:
         """
-        workflow_node_execution = self._get_workflow_node_execution(
-            session=session, node_execution_id=event.node_execution_id
-        )
+        workflow_node_execution = self._get_workflow_node_execution(node_execution_id=event.node_execution_id)
 
         inputs = WorkflowEntry.handle_special_values(event.inputs)
         process_data = WorkflowEntry.handle_special_values(event.process_data)
@@ -404,14 +395,14 @@ class WorkflowCycleManage:
         workflow_node_execution.elapsed_time = elapsed_time
         workflow_node_execution.execution_metadata = execution_metadata
 
-        workflow_node_execution = session.merge(workflow_node_execution)
         return workflow_node_execution
 
     def _handle_workflow_node_execution_retried(
-        self, *, session: Session, workflow_run: WorkflowRun, event: QueueNodeRetryEvent
+        self, *, workflow_run: WorkflowRun, event: QueueNodeRetryEvent
     ) -> WorkflowNodeExecution:
         """
         Workflow node execution failed
+        :param workflow_run: workflow run
         :param event: queue node failed event
         :return:
         """
@@ -456,14 +447,11 @@ class WorkflowCycleManage:
         workflow_node_execution.execution_metadata = execution_metadata
         workflow_node_execution.index = event.node_run_index
 
-        session.add(workflow_node_execution)
+        # Use the instance repository to save the workflow node execution
+        self._workflow_node_execution_repository.save(workflow_node_execution)
 
         self._workflow_node_executions[event.node_execution_id] = workflow_node_execution
         return workflow_node_execution
-
-    #################################################
-    #             to stream responses               #
-    #################################################
 
     def _workflow_start_to_stream_response(
         self,
@@ -472,7 +460,6 @@ class WorkflowCycleManage:
         task_id: str,
         workflow_run: WorkflowRun,
     ) -> WorkflowStartStreamResponse:
-        # receive session to make sure the workflow_run won't be expired, need a more elegant way to handle this
         _ = session
         return WorkflowStartStreamResponse(
             task_id=task_id,
@@ -538,14 +525,10 @@ class WorkflowCycleManage:
     def _workflow_node_start_to_stream_response(
         self,
         *,
-        session: Session,
         event: QueueNodeStartedEvent,
         task_id: str,
         workflow_node_execution: WorkflowNodeExecution,
     ) -> Optional[NodeStartStreamResponse]:
-        # receive session to make sure the workflow_run won't be expired, need a more elegant way to handle this
-        _ = session
-
         if workflow_node_execution.node_type in {NodeType.ITERATION.value, NodeType.LOOP.value}:
             return None
         if not workflow_node_execution.workflow_run_id:
@@ -588,7 +571,6 @@ class WorkflowCycleManage:
     def _workflow_node_finish_to_stream_response(
         self,
         *,
-        session: Session,
         event: QueueNodeSucceededEvent
         | QueueNodeFailedEvent
         | QueueNodeInIterationFailedEvent
@@ -597,8 +579,6 @@ class WorkflowCycleManage:
         task_id: str,
         workflow_node_execution: WorkflowNodeExecution,
     ) -> Optional[NodeFinishStreamResponse]:
-        # receive session to make sure the workflow_run won't be expired, need a more elegant way to handle this
-        _ = session
         if workflow_node_execution.node_type in {NodeType.ITERATION.value, NodeType.LOOP.value}:
             return None
         if not workflow_node_execution.workflow_run_id:
@@ -638,13 +618,10 @@ class WorkflowCycleManage:
     def _workflow_node_retry_to_stream_response(
         self,
         *,
-        session: Session,
         event: QueueNodeRetryEvent,
         task_id: str,
         workflow_node_execution: WorkflowNodeExecution,
     ) -> Optional[Union[NodeRetryStreamResponse, NodeFinishStreamResponse]]:
-        # receive session to make sure the workflow_run won't be expired, need a more elegant way to handle this
-        _ = session
         if workflow_node_execution.node_type in {NodeType.ITERATION.value, NodeType.LOOP.value}:
             return None
         if not workflow_node_execution.workflow_run_id:
@@ -685,7 +662,6 @@ class WorkflowCycleManage:
     def _workflow_parallel_branch_start_to_stream_response(
         self, *, session: Session, task_id: str, workflow_run: WorkflowRun, event: QueueParallelBranchRunStartedEvent
     ) -> ParallelBranchStartStreamResponse:
-        # receive session to make sure the workflow_run won't be expired, need a more elegant way to handle this
         _ = session
         return ParallelBranchStartStreamResponse(
             task_id=task_id,
@@ -709,7 +685,6 @@ class WorkflowCycleManage:
         workflow_run: WorkflowRun,
         event: QueueParallelBranchRunSucceededEvent | QueueParallelBranchRunFailedEvent,
     ) -> ParallelBranchFinishedStreamResponse:
-        # receive session to make sure the workflow_run won't be expired, need a more elegant way to handle this
         _ = session
         return ParallelBranchFinishedStreamResponse(
             task_id=task_id,
@@ -730,7 +705,6 @@ class WorkflowCycleManage:
     def _workflow_iteration_start_to_stream_response(
         self, *, session: Session, task_id: str, workflow_run: WorkflowRun, event: QueueIterationStartEvent
     ) -> IterationNodeStartStreamResponse:
-        # receive session to make sure the workflow_run won't be expired, need a more elegant way to handle this
         _ = session
         return IterationNodeStartStreamResponse(
             task_id=task_id,
@@ -752,7 +726,6 @@ class WorkflowCycleManage:
     def _workflow_iteration_next_to_stream_response(
         self, *, session: Session, task_id: str, workflow_run: WorkflowRun, event: QueueIterationNextEvent
     ) -> IterationNodeNextStreamResponse:
-        # receive session to make sure the workflow_run won't be expired, need a more elegant way to handle this
         _ = session
         return IterationNodeNextStreamResponse(
             task_id=task_id,
@@ -776,7 +749,6 @@ class WorkflowCycleManage:
     def _workflow_iteration_completed_to_stream_response(
         self, *, session: Session, task_id: str, workflow_run: WorkflowRun, event: QueueIterationCompletedEvent
     ) -> IterationNodeCompletedStreamResponse:
-        # receive session to make sure the workflow_run won't be expired, need a more elegant way to handle this
         _ = session
         return IterationNodeCompletedStreamResponse(
             task_id=task_id,
@@ -807,7 +779,6 @@ class WorkflowCycleManage:
     def _workflow_loop_start_to_stream_response(
         self, *, session: Session, task_id: str, workflow_run: WorkflowRun, event: QueueLoopStartEvent
     ) -> LoopNodeStartStreamResponse:
-        # receive session to make sure the workflow_run won't be expired, need a more elegant way to handle this
         _ = session
         return LoopNodeStartStreamResponse(
             task_id=task_id,
@@ -829,7 +800,6 @@ class WorkflowCycleManage:
     def _workflow_loop_next_to_stream_response(
         self, *, session: Session, task_id: str, workflow_run: WorkflowRun, event: QueueLoopNextEvent
     ) -> LoopNodeNextStreamResponse:
-        # receive session to make sure the workflow_run won't be expired, need a more elegant way to handle this
         _ = session
         return LoopNodeNextStreamResponse(
             task_id=task_id,
@@ -853,7 +823,6 @@ class WorkflowCycleManage:
     def _workflow_loop_completed_to_stream_response(
         self, *, session: Session, task_id: str, workflow_run: WorkflowRun, event: QueueLoopCompletedEvent
     ) -> LoopNodeCompletedStreamResponse:
-        # receive session to make sure the workflow_run won't be expired, need a more elegant way to handle this
         _ = session
         return LoopNodeCompletedStreamResponse(
             task_id=task_id,
@@ -951,18 +920,15 @@ class WorkflowCycleManage:
 
         return workflow_run
 
-    def _get_workflow_node_execution(self, session: Session, node_execution_id: str) -> WorkflowNodeExecution:
+    def _get_workflow_node_execution(self, node_execution_id: str) -> WorkflowNodeExecution:
         # First check the cache for performance
         if node_execution_id in self._workflow_node_executions:
             cached_execution = self._workflow_node_executions[node_execution_id]
-            # Merge with session to ensure it's attached to the current session
-            return session.merge(cached_execution)
+            # No need to merge with session since expire_on_commit=False
+            return cached_execution
 
-        # If not in cache, use repository to get by node_execution_id
-        workflow_node_execution_repository = RepositoryFactory.create_workflow_node_execution_repository(
-            params={"session": session}
-        )
-        execution = workflow_node_execution_repository.get_by_node_execution_id(node_execution_id)
+        # If not in cache, use the instance repository to get by node_execution_id
+        execution = self._workflow_node_execution_repository.get_by_node_execution_id(node_execution_id)
 
         if not execution:
             raise ValueError(f"Workflow node execution not found: {node_execution_id}")

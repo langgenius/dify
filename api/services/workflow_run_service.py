@@ -1,6 +1,8 @@
 import threading
 from typing import Optional
 
+from sqlalchemy.orm import sessionmaker
+
 import contexts
 from core.repository import RepositoryFactory
 from core.repository.workflow_node_execution_repository import OrderConfig
@@ -129,8 +131,9 @@ class WorkflowRunService:
             return []
 
         # Use repository to get workflow node executions for a workflow run
+        session_factory = sessionmaker(bind=db.engine)
         workflow_node_execution_repository = RepositoryFactory.create_workflow_node_execution_repository(
-            params={"tenant_id": app_model.tenant_id, "app_id": app_model.id, "session": db.session},
+            params={"tenant_id": app_model.tenant_id, "app_id": app_model.id, "session_factory": session_factory},
         )
         order_config = OrderConfig(order_by=["index"], order_direction="desc")
         node_executions = workflow_node_execution_repository.get_by_workflow_run(

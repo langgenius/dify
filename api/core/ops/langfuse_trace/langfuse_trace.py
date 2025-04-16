@@ -5,6 +5,7 @@ from datetime import datetime, timedelta
 from typing import Optional
 
 from langfuse import Langfuse  # type: ignore
+from sqlalchemy.orm import sessionmaker
 
 from core.ops.base_trace_instance import BaseTraceInstance
 from core.ops.entities.config_entity import LangfuseConfig
@@ -111,8 +112,9 @@ class LangFuseDataTrace(BaseTraceInstance):
             self.add_trace(langfuse_trace_data=trace_data)
 
         # through workflow_run_id get all_nodes_execution using repository
+        session_factory = sessionmaker(bind=db.engine)
         workflow_node_execution_repository = RepositoryFactory.create_workflow_node_execution_repository(
-            params={"tenant_id": trace_info.metadata.get("tenant_id"), "session": db.session},
+            params={"tenant_id": trace_info.tenant_id, "session_factory": session_factory},
         )
 
         # Get all executions for this workflow run
