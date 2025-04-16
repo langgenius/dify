@@ -29,7 +29,6 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0
           persist-credentials: false
 
       - name: Setup UV and Python
@@ -42,7 +41,7 @@ jobs:
         run: uv lock --project api --check
 
       - name: Install dependencies
-        run: uv sync --project api --group dev
+        run: uv sync --project api --dev
 
       - name: Set up dotenvs
         run: |

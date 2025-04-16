@@ -1,7 +1,0 @@
-#!/bin/bash
-
-set -x
-
-# run mypy checks
-uv run --directory api --group dev \
-  python -m mypy --install-types --non-interactive .
