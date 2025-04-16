@@ -45,7 +45,7 @@ class Graph(BaseModel):
         default_factory=dict, description="reverse graph edge mapping (target node id: edges)"
     )
     parallel_mapping: dict[str, GraphParallel] = Field(
-        default={}, description="graph parallel mapping (parallel id: parallel)"
+        default_factory=dict, description="graph parallel mapping (parallel id: parallel)"
     )
     node_parallel_mapping: dict[str, str] = Field(
         default_factory=dict, description="graph node parallel mapping (node id: parallel id)"
