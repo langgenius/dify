@@ -17,7 +17,7 @@ from .utils import _parse_config
 class NacosSettingsSource(RemoteSettingsSource):
     def __init__(self, configs: Mapping[str, Any]):
         self.configs = configs
-        self.remote_configs={}
+        self.remote_configs: dict[str, Any] = {}
         self.async_init()
 
     def async_init(self):
