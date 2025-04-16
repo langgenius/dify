@@ -245,7 +245,7 @@ const ReasoningConfigForm: React.FC<Props> = ({
                 popupClassName='!w-[387px]'
                 isAdvancedMode
                 isInWorkflow
-                value={varInput as any}
+                value={varInput}
                 setModel={handleModelChange(variable)}
                 scope={scope}
               />

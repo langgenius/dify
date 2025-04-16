@@ -3,7 +3,10 @@
 ## Usage
 
 > [!IMPORTANT]
-> In the v0.6.12 release, we deprecated `pip` as the package management tool for Dify API Backend service and replaced it with `poetry`.
+> 
+> In the v1.3.0 release, `poetry` has been replaced with
+> [`uv`](https://docs.astral.sh/uv/) as the package manager
+> for Dify API backend service.
 
 1. Start the docker-compose stack
 
@@ -37,19 +40,19 @@
 
 4. Create environment.
 
-   Dify API service uses [Poetry](https://python-poetry.org/docs/) to manage dependencies. First, you need to add the poetry shell plugin, if you don't have it already, in order to run in a virtual environment. [Note: Poetry shell is no longer a native command so you need to install the poetry plugin beforehand]
+   Dify API service uses [UV](https://docs.astral.sh/uv/) to manage dependencies.
+   First, you need to add the uv package manager, if you don't have it already.
 
    ```bash
-   poetry self add poetry-plugin-shell
+   pip install uv
+   # Or on macOS
+   brew install uv
    ```
-   
-   Then, You can execute `poetry shell` to activate the environment.
 
 5. Install dependencies
 
    ```bash
-   poetry env use 3.12
-   poetry install
+   uv sync --dev
    ```
 
 6. Run migrate
@@ -57,21 +60,21 @@
    Before the first launch, migrate the database to the latest version.
 
    ```bash
-   poetry run python -m flask db upgrade
+   uv run flask db upgrade
    ```
 
 7. Start backend
 
    ```bash
-   poetry run python -m flask run --host 0.0.0.0 --port=5001 --debug
+   uv run flask run --host 0.0.0.0 --port=5001 --debug
    ```
 
 8. Start Dify [web](../web) service.
-9. Setup your application by visiting `http://localhost:3000`...
+9. Setup your application by visiting `http://localhost:3000`.
 10. If you need to handle and debug the async tasks (e.g. dataset importing and documents indexing), please start the worker service.
 
    ```bash
-   poetry run python -m celery -A app.celery worker -P gevent -c 1 --loglevel INFO -Q dataset,generation,mail,ops_trace,app_deletion
+   uv run celery -A app.celery worker -P gevent -c 1 --loglevel INFO -Q dataset,generation,mail,ops_trace,app_deletion
    ```
 
 ## Testing
@@ -79,11 +82,11 @@
 1. Install dependencies for both the backend and the test environment
 
    ```bash
-   poetry install -C api --with dev
+   uv sync --dev
    ```
 
 2. Run the tests locally with mocked system environment variables in `tool.pytest_env` section in `pyproject.toml`
 
    ```bash
-   poetry run -P api bash dev/pytest/pytest_all_tests.sh
+   uv run -P api bash dev/pytest/pytest_all_tests.sh
    ```
