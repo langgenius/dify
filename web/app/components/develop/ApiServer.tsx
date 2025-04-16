@@ -7,9 +7,11 @@ import SecretKeyButton from '@/app/components/develop/secret-key/secret-key-butt
 
 type ApiServerProps = {
   apiBaseUrl: string
+  appId?: string
 }
 const ApiServer: FC<ApiServerProps> = ({
   apiBaseUrl,
+  appId,
 }) => {
   const { t } = useTranslation()
 
@@ -25,7 +27,7 @@ const ApiServer: FC<ApiServerProps> = ({
         {t('appApi.ok')}
       </div>
       <SecretKeyButton
-        className='!h-8 shrink-0'
+        className='!h-8 shrink-0' appId={appId}
       />
     </div>
   )
