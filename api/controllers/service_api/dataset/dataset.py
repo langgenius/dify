@@ -1,4 +1,3 @@
-from datetime import UTC, datetime
 
 from flask import request
 from flask_restful import marshal, reqparse  # type: ignore
@@ -11,15 +10,11 @@ from controllers.service_api.wraps import DatasetApiResource
 from core.model_runtime.entities.model_entities import ModelType
 from core.plugin.entities.plugin import ModelProviderID
 from core.provider_manager import ProviderManager
-from extensions.ext_database import db
-from extensions.ext_redis import redis_client
 from fields.dataset_fields import dataset_detail_fields
 from libs.login import current_user
 from models.dataset import Dataset, DatasetPermissionEnum
 from services.dataset_service import DatasetPermissionService, DatasetService, DocumentService
 from services.entities.knowledge_entities.knowledge_entities import RetrievalModel
-from tasks.add_document_to_index_task import add_document_to_index_task
-from tasks.remove_document_from_index_task import remove_document_from_index_task
 
 
 def _validate_name(name):
@@ -366,83 +361,12 @@ class DocumentStatusApi(DatasetApiResource):
         data = request.get_json()
         document_ids = data.get("document_ids", [])
 
-        if not document_ids:
-            return {"result": "success"}, 200
-
-        for document_id in document_ids:
-            document = DocumentService.get_document(dataset_id_str, document_id)
-
-            if not document:
-                continue
-
-            indexing_cache_key = f"document_{document.id}_indexing"
-            cache_result = redis_client.get(indexing_cache_key)
-            if cache_result is not None:
-                raise InvalidActionError(f"Document:{document.name} is being indexed, please try again later")
-
-            if action == "enable":
-                if document.enabled:
-                    continue
-                document.enabled = True
-                document.disabled_at = None
-                document.disabled_by = None
-                document.updated_at = datetime.now(UTC).replace(tzinfo=None)
-                db.session.commit()
-
-                # Set cache to prevent indexing the same document multiple times
-                redis_client.setex(indexing_cache_key, 600, 1)
-
-                add_document_to_index_task.delay(document_id)
-
-            elif action == "disable":
-                if not document.completed_at or document.indexing_status != "completed":
-                    raise InvalidActionError(f"Document: {document.name} is not completed.")
-                if not document.enabled:
-                    continue
-
-                document.enabled = False
-                document.disabled_at = datetime.now(UTC).replace(tzinfo=None)
-                document.disabled_by = current_user.id
-                document.updated_at = datetime.now(UTC).replace(tzinfo=None)
-                db.session.commit()
-
-                # Set cache to prevent indexing the same document multiple times
-                redis_client.setex(indexing_cache_key, 600, 1)
-
-                remove_document_from_index_task.delay(document_id)
-
-            elif action == "archive":
-                if document.archived:
-                    continue
-
-                document.archived = True
-                document.archived_at = datetime.now(UTC).replace(tzinfo=None)
-                document.archived_by = current_user.id
-                document.updated_at = datetime.now(UTC).replace(tzinfo=None)
-                db.session.commit()
-
-                if document.enabled:
-                    # Set cache to prevent indexing the same document multiple times
-                    redis_client.setex(indexing_cache_key, 600, 1)
-
-                    remove_document_from_index_task.delay(document_id)
-
-            elif action == "un_archive":
-                if not document.archived:
-                    continue
-                document.archived = False
-                document.archived_at = None
-                document.archived_by = None
-                document.updated_at = datetime.now(UTC).replace(tzinfo=None)
-                db.session.commit()
-
-                # Set cache to prevent indexing the same document multiple times
-                redis_client.setex(indexing_cache_key, 600, 1)
-
-                add_document_to_index_task.delay(document_id)
-
-            else:
-                raise InvalidActionError()
+        try:
+            DocumentService.batch_update_document_status(dataset, document_ids, action, current_user)
+        except services.errors.document.DocumentIndexingError as e:
+            raise InvalidActionError(str(e))
+        except ValueError as e:
+            raise InvalidActionError(str(e))
 
         return {"result": "success"}, 200
 

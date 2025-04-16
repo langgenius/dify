@@ -72,6 +72,8 @@ from tasks.enable_segments_to_index_task import enable_segments_to_index_task
 from tasks.recover_document_indexing_task import recover_document_indexing_task
 from tasks.retry_document_indexing_task import retry_document_indexing_task
 from tasks.sync_website_document_indexing_task import sync_website_document_indexing_task
+from tasks.add_document_to_index_task import add_document_to_index_task
+from tasks.remove_document_from_index_task import remove_document_from_index_task
 
 
 class DatasetService:
@@ -1572,6 +1574,98 @@ class DocumentService:
 
             if not isinstance(args["process_rule"]["rules"]["segmentation"]["max_tokens"], int):
                 raise ValueError("Process rule segmentation max_tokens is invalid")
+
+    @staticmethod
+    def batch_update_document_status(dataset: Dataset, document_ids: list[str], action: str, user):
+        """
+        Batch update document status.
+
+        Args:
+            dataset (Dataset): The dataset object
+            document_ids (list[str]): List of document IDs to update
+            action (str): Action to perform (enable, disable, archive, un_archive)
+            user: Current user performing the action
+
+        Raises:
+            DocumentIndexingError: If document is being indexed or not in correct state
+        """
+        if not document_ids:
+            return
+
+        for document_id in document_ids:
+            document = DocumentService.get_document(dataset.id, document_id)
+
+            if not document:
+                continue
+
+            indexing_cache_key = f"document_{document.id}_indexing"
+            cache_result = redis_client.get(indexing_cache_key)
+            if cache_result is not None:
+                raise DocumentIndexingError(f"Document:{document.name} is being indexed, please try again later")
+
+            if action == "enable":
+                if document.enabled:
+                    continue
+                document.enabled = True
+                document.disabled_at = None
+                document.disabled_by = None
+                document.updated_at = datetime.datetime.now()
+                db.session.commit()
+
+                # Set cache to prevent indexing the same document multiple times
+                redis_client.setex(indexing_cache_key, 600, 1)
+
+                add_document_to_index_task.delay(document_id)
+
+            elif action == "disable":
+                if not document.completed_at or document.indexing_status != "completed":
+                    raise DocumentIndexingError(f"Document: {document.name} is not completed.")
+                if not document.enabled:
+                    continue
+
+                document.enabled = False
+                document.disabled_at = datetime.datetime.now()
+                document.disabled_by = user.id
+                document.updated_at = datetime.datetime.now()
+                db.session.commit()
+
+                # Set cache to prevent indexing the same document multiple times
+                redis_client.setex(indexing_cache_key, 600, 1)
+
+                remove_document_from_index_task.delay(document_id)
+
+            elif action == "archive":
+                if document.archived:
+                    continue
+
+                document.archived = True
+                document.archived_at = datetime.datetime.now()
+                document.archived_by = user.id
+                document.updated_at = datetime.datetime.now()
+                db.session.commit()
+
+                if document.enabled:
+                    # Set cache to prevent indexing the same document multiple times
+                    redis_client.setex(indexing_cache_key, 600, 1)
+
+                    remove_document_from_index_task.delay(document_id)
+
+            elif action == "un_archive":
+                if not document.archived:
+                    continue
+                document.archived = False
+                document.archived_at = None
+                document.archived_by = None
+                document.updated_at = datetime.datetime.now()
+                db.session.commit()
+
+                # Set cache to prevent indexing the same document multiple times
+                redis_client.setex(indexing_cache_key, 600, 1)
+
+                add_document_to_index_task.delay(document_id)
+
+            else:
+                raise ValueError(f"Invalid action: {action}")
 
 
 class SegmentService:
