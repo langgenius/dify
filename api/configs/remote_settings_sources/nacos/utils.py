@@ -1,6 +1,6 @@
 
-def _parse_config(self, content: str) -> dict:
-    config = {}
+def _parse_config(self, content: str) -> dict[str, str]:
+    config = [str,str]
     if not content:
         return config
 

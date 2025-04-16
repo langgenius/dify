@@ -19,7 +19,7 @@ class NacosHttpClient:
         self.server=os.getenv('DIFY_ENV_NACOS_SERVER_ADDR','localhost:8848')
         self.token = None
         self.token_ttl = None
-        self.token_expire_time = None
+        self.token_expire_time = 0
 
     def http_request(self,url, method='GET', headers=None, params=None):
         try:
