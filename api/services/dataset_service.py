@@ -2175,7 +2175,13 @@ class SegmentService:
 
     @classmethod
     def get_segments(
-        cls, document_id: str, tenant_id: str, status_list: list[str] | None = None, keyword: str | None = None
+        cls,
+        document_id: str,
+        tenant_id: str,
+        status_list: list[str] | None = None,
+        keyword: str | None = None,
+        page: int = 1,
+        limit: int = 20,
     ):
         """Get segments for a document with optional filtering."""
         query = DocumentSegment.query.filter(
@@ -2188,10 +2194,11 @@ class SegmentService:
         if keyword:
             query = query.filter(DocumentSegment.content.ilike(f"%{keyword}%"))
 
-        segments = query.order_by(DocumentSegment.position.asc()).all()
-        total = len(segments)
+        paginated_segments = query.order_by(DocumentSegment.position.asc()).paginate(
+            page=page, per_page=limit, max_per_page=100, error_out=False
+        )
 
-        return segments, total
+        return paginated_segments.items, paginated_segments.total
 
     @classmethod
     def update_segment_by_id(
