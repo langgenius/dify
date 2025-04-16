@@ -57,7 +57,6 @@ def make_request(method, url, max_retries=SSRF_DEFAULT_MAX_RETRIES, **kwargs):
     while retries <= max_retries:
         try:
             if dify_config.SSRF_PROXY_ALL_URL:
-                logging.warning('ssl_verify: %s', kwargs)
                 with httpx.Client(proxy=dify_config.SSRF_PROXY_ALL_URL, verify=ssl_verify) as client:
                     response = client.request(method=method, url=url, **kwargs)
             elif dify_config.SSRF_PROXY_HTTP_URL and dify_config.SSRF_PROXY_HTTPS_URL:
