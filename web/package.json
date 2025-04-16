@@ -54,6 +54,7 @@
     "@sentry/utils": "^8.54.0",
     "@svgdotjs/svg.js": "^3.2.4",
     "@tailwindcss/typography": "^0.5.15",
+    "@tanstack/react-form": "^1.3.3",
     "@tanstack/react-query": "^5.60.5",
     "@tanstack/react-query-devtools": "^5.60.5",
     "ahooks": "^3.8.4",
