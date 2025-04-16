@@ -6,7 +6,6 @@ from concurrent.futures import ThreadPoolExecutor
 
 import click
 from flask import Flask, current_app
-from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from configs import dify_config
@@ -108,17 +107,15 @@ class ClearFreePlanTenantExpiredLogs:
 
             while True:
                 with Session(db.engine).no_autoflush as session:
-                    # Create a query to find workflow node executions created before the cutoff date
-                    stmt = (
-                        select(WorkflowNodeExecution)
-                        .where(
+                    workflow_node_executions = (
+                        session.query(WorkflowNodeExecution)
+                        .filter(
                             WorkflowNodeExecution.tenant_id == tenant_id,
                             WorkflowNodeExecution.created_at < datetime.datetime.now() - datetime.timedelta(days=days),
                         )
                         .limit(batch)
+                        .all()
                     )
-
-                    workflow_node_executions = session.scalars(stmt).all()
 
                     if len(workflow_node_executions) == 0:
                         break
@@ -137,10 +134,10 @@ class ClearFreePlanTenantExpiredLogs:
                         workflow_node_execution.id for workflow_node_execution in workflow_node_executions
                     ]
 
-                    # Delete workflow node executions directly
-                    for execution in workflow_node_executions:
-                        session.delete(execution)
-                    # Commit the transaction after all deletions
+                    # delete workflow node executions
+                    session.query(WorkflowNodeExecution).filter(
+                        WorkflowNodeExecution.id.in_(workflow_node_execution_ids),
+                    ).delete(synchronize_session=False)
                     session.commit()
 
                     click.echo(

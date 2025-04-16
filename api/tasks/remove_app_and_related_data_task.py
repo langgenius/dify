@@ -4,7 +4,7 @@ from collections.abc import Callable
 
 import click
 from celery import shared_task  # type: ignore
-from sqlalchemy import delete, select
+from sqlalchemy import delete
 from sqlalchemy.exc import SQLAlchemyError
 
 from extensions.ext_database import db
@@ -187,27 +187,17 @@ def _delete_app_workflow_runs(tenant_id: str, app_id: str):
 
 
 def _delete_app_workflow_node_executions(tenant_id: str, app_id: str):
-    # Delete in batches to avoid memory issues
-    while True:
-        # Find a batch of executions
-        stmt = (
-            select(WorkflowNodeExecution)
-            .where(WorkflowNodeExecution.tenant_id == tenant_id, WorkflowNodeExecution.app_id == app_id)
-            .limit(1000)
+    def del_workflow_node_execution(workflow_node_execution_id: str):
+        db.session.query(WorkflowNodeExecution).filter(WorkflowNodeExecution.id == workflow_node_execution_id).delete(
+            synchronize_session=False
         )
 
-        executions = db.session.scalars(stmt).all()
-        if not executions:
-            break
-
-        # Delete each execution
-        for execution in executions:
-            db.session.delete(execution)
-
-        # Commit the transaction after all deletions
-        db.session.commit()
-
-        logging.info(click.style(f"Deleted batch of workflow node executions for app {app_id}", fg="green"))
+    _delete_records(
+        """select id from workflow_node_executions where tenant_id=:tenant_id and app_id=:app_id limit 1000""",
+        {"tenant_id": tenant_id, "app_id": app_id},
+        del_workflow_node_execution,
+        "workflow node execution",
+    )
 
 
 def _delete_app_workflow_app_logs(tenant_id: str, app_id: str):

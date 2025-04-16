@@ -282,7 +282,6 @@ class WorkflowService:
         workflow_node_execution.created_by = account.id
         workflow_node_execution.workflow_id = draft_workflow.id
 
-        # Save the workflow node execution directly using SQLAlchemy
         db.session.add(workflow_node_execution)
         db.session.commit()
 

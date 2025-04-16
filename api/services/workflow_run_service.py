@@ -1,8 +1,6 @@
 import threading
 from typing import Optional
 
-from sqlalchemy import select
-
 import contexts
 from extensions.ext_database import db
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
@@ -129,21 +127,17 @@ class WorkflowRunService:
         if not workflow_run:
             return []
 
-        # Build the query
-        stmt = select(WorkflowNodeExecution).where(
-            WorkflowNodeExecution.workflow_run_id == run_id,
-            WorkflowNodeExecution.tenant_id == app_model.tenant_id,
-            WorkflowNodeExecution.triggered_from == WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
+        node_executions = (
+            db.session.query(WorkflowNodeExecution)
+            .filter(
+                WorkflowNodeExecution.tenant_id == app_model.tenant_id,
+                WorkflowNodeExecution.app_id == app_model.id,
+                WorkflowNodeExecution.workflow_id == workflow_run.workflow_id,
+                WorkflowNodeExecution.triggered_from == WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN.value,
+                WorkflowNodeExecution.workflow_run_id == run_id,
+            )
+            .order_by(WorkflowNodeExecution.index.desc())
+            .all()
         )
 
-        if app_model.id:
-            stmt = stmt.where(WorkflowNodeExecution.app_id == app_model.id)
-
-        # Apply ordering
-        stmt = stmt.order_by(WorkflowNodeExecution.index.desc)
-
-        # Execute the query
-        node_executions = db.session.scalars(stmt).all()
-
-        # Convert Sequence to list for type compatibility
-        return list(node_executions)
+        return node_executions
