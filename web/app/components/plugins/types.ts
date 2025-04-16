@@ -406,8 +406,7 @@ export type VersionProps = {
 export type StrategyParamItem = {
   name: string
   label: Record<Locale, string>
-  human_description: Record<Locale, string>
-  llm_description: string
+  help: Record<Locale, string>
   placeholder: Record<Locale, string>
   type: string
   scope: string
