@@ -824,6 +824,10 @@ class DocumentStatusApi(DocumentResource):
             DocumentService.batch_update_document_status(dataset, document_ids, action, current_user)
         except services.errors.document.DocumentIndexingError as e:
             raise InvalidActionError(str(e))
+        except ValueError as e:
+            raise InvalidActionError(str(e))
+        except NotFound as e:
+            raise NotFound(str(e))
 
         return {"result": "success"}, 200
 

@@ -433,7 +433,7 @@ class DatasetService:
                         raise ValueError(ex.description)
 
             filtered_data["updated_by"] = user.id
-            filtered_data["updated_at"] = datetime.datetime.now()
+            filtered_data["updated_at"] = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
 
             # update Retrieval model
             filtered_data["retrieval_model"] = data["retrieval_model"]
@@ -1609,7 +1609,7 @@ class DocumentService:
                 document.enabled = True
                 document.disabled_at = None
                 document.disabled_by = None
-                document.updated_at = datetime.datetime.now()
+                document.updated_at = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
                 db.session.commit()
 
                 # Set cache to prevent indexing the same document multiple times
@@ -1624,9 +1624,9 @@ class DocumentService:
                     continue
 
                 document.enabled = False
-                document.disabled_at = datetime.datetime.now()
+                document.disabled_at = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
                 document.disabled_by = user.id
-                document.updated_at = datetime.datetime.now()
+                document.updated_at = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
                 db.session.commit()
 
                 # Set cache to prevent indexing the same document multiple times
@@ -1639,9 +1639,9 @@ class DocumentService:
                     continue
 
                 document.archived = True
-                document.archived_at = datetime.datetime.now()
+                document.archived_at = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
                 document.archived_by = user.id
-                document.updated_at = datetime.datetime.now()
+                document.updated_at = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
                 db.session.commit()
 
                 if document.enabled:
@@ -1656,13 +1656,14 @@ class DocumentService:
                 document.archived = False
                 document.archived_at = None
                 document.archived_by = None
-                document.updated_at = datetime.datetime.now()
+                document.updated_at = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
                 db.session.commit()
 
-                # Set cache to prevent indexing the same document multiple times
-                redis_client.setex(indexing_cache_key, 600, 1)
-
-                add_document_to_index_task.delay(document_id)
+                # Only re-index if the document is currently enabled
+                if document.enabled:
+                    # Set cache to prevent indexing the same document multiple times
+                    redis_client.setex(indexing_cache_key, 600, 1)
+                    add_document_to_index_task.delay(document_id)
 
             else:
                 raise ValueError(f"Invalid action: {action}")
