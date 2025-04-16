@@ -510,26 +510,13 @@ class WorkflowRun(Base):
         )
 
 
-class WorkflowNodeExecutionTriggeredFrom(Enum):
+class WorkflowNodeExecutionTriggeredFrom(StrEnum):
     """
     Workflow Node Execution Triggered From Enum
     """
 
     SINGLE_STEP = "single-step"
     WORKFLOW_RUN = "workflow-run"
-
-    @classmethod
-    def value_of(cls, value: str) -> "WorkflowNodeExecutionTriggeredFrom":
-        """
-        Get value of given mode.
-
-        :param value: mode value
-        :return: mode
-        """
-        for mode in cls:
-            if mode.value == value:
-                return mode
-        raise ValueError(f"invalid workflow node execution triggered from value {value}")
 
 
 class WorkflowNodeExecutionStatus(StrEnum):
