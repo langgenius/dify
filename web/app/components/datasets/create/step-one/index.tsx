@@ -20,7 +20,7 @@ import { useProviderContext } from '@/context/provider-context'
 import VectorSpaceFull from '@/app/components/billing/vector-space-full'
 import classNames from '@/utils/classnames'
 import { Icon3Dots } from '@/app/components/base/icons/src/vender/line/others'
-
+import { ENABLE_WEBSITE_FIRECRAWL, ENABLE_WEBSITE_JINAREADER, ENABLE_WEBSITE_WATERCRAWL } from '@/config'
 type IStepOneProps = {
   datasetId?: string
   dataSourceType?: DataSourceType
@@ -126,9 +126,7 @@ const StepOne = ({
       return true
     if (files.some(file => !file.file.id))
       return true
-    if (isShowVectorSpaceFull)
-      return true
-    return false
+    return isShowVectorSpaceFull
   }, [files, isShowVectorSpaceFull])
 
   return (
@@ -270,7 +268,7 @@ const StepOne = ({
                   )}
                 </>
               )}
-              {dataSourceType === DataSourceType.WEB && (
+              {(ENABLE_WEBSITE_FIRECRAWL || ENABLE_WEBSITE_JINAREADER || ENABLE_WEBSITE_WATERCRAWL) && dataSourceType === DataSourceType.WEB && (
                 <>
                   <div className={cn('mb-8 w-[640px]', !shouldShowDataSourceTypeList && 'mt-12')}>
                     <Website
