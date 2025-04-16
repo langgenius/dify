@@ -41,7 +41,7 @@ class PluginAppBackwardsInvocation(BaseBackwardsInvocation):
             user_input_form = features_dict.get("user_input_form", [])
 
         return {
-            "info": get_parameters_from_feature_dict(features_dict=features_dict, user_input_form=user_input_form),
+            "data": get_parameters_from_feature_dict(features_dict=features_dict, user_input_form=user_input_form),
         }
 
     @classmethod
