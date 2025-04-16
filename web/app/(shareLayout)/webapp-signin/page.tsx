@@ -11,6 +11,7 @@ import { setAccessToken } from '@/app/components/share/utils'
 import Button from '@/app/components/base/button'
 import { useGlobalPublicStore } from '@/context/global-public-context'
 import { SSOProtocol } from '@/types/feature'
+import Loading from '@/app/components/base/loading'
 
 const WebSSOForm: FC = () => {
   const { t } = useTranslation()
@@ -91,6 +92,9 @@ const WebSSOForm: FC = () => {
 
     init()
   }, [message, processTokenAndRedirect, tokenFromUrl])
+  if (tokenFromUrl)
+    return <div className='flex items-center justify-center h-full'><Loading /></div>
+
   if (systemFeatures.webapp_auth.enabled) {
     if (systemFeatures.webapp_auth.allow_sso) {
       return (

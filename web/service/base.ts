@@ -512,7 +512,16 @@ export const ssePost = (
           }).catch(() => {
             res.json().then((data: any) => {
               if (isPublicAPI) {
-                if (data.code === 'web_sso_auth_required' || data.code === 'web_app_access_denied')
+                if (data.code === 'web_app_access_denied') {
+                  Toast.notify({
+                    type: 'error',
+                    message: data.message,
+                  })
+                  setTimeout(() => {
+                    requiredWebSSOLogin()
+                  }, 1500)
+                }
+                if (data.code === 'web_sso_auth_required')
                   requiredWebSSOLogin()
 
                 if (data.code === 'unauthorized') {
@@ -566,7 +575,17 @@ export const request = async<T>(url: string, options = {}, otherOptions?: IOther
       // special code
       const { code, message } = errRespData
       // webapp sso
-      if (code === 'web_sso_auth_required' || code === 'web_app_access_denied') {
+      if (code === 'web_app_access_denied') {
+        Toast.notify({
+          type: 'error',
+          message,
+        })
+        setTimeout(() => {
+          requiredWebSSOLogin()
+        }, 1500)
+        return Promise.reject(err)
+      }
+      if (code === 'web_sso_auth_required') {
         requiredWebSSOLogin()
         return Promise.reject(err)
       }

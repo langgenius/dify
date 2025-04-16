@@ -177,7 +177,7 @@ const AppInfo = ({ expand }: IAppInfoProps) => {
       })
     }
     setShowConfirmDelete(false)
-  }, [appDetail, mutateApps, notify, onPlanInfoChanged, replace, t])
+  }, [appDetail, mutateApps, notify, onPlanInfoChanged, replace, setAppDetail, t])
 
   const handleClickAccessControl = useCallback(() => {
     if (!appDetail)
@@ -480,7 +480,9 @@ const AppInfo = ({ expand }: IAppInfoProps) => {
           />
         )}
         {
-          showAccessControl && <AccessControl app={appDetail} onClose={() => { setShowAccessControl(false) }} />
+          showAccessControl && <AccessControl app={appDetail}
+            onConfirm={() => { setShowAccessControl(false) }}
+            onClose={() => { setShowAccessControl(false) }} />
         }
       </div>
     </PortalToFollowElem>

@@ -1,7 +1,7 @@
 'use client'
 import { RiAlertFill, RiCloseCircleFill, RiLockLine, RiOrganizationChart } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
-import { useEffect } from 'react'
+import { useCallback, useEffect } from 'react'
 import Avatar from '../../base/avatar'
 import Divider from '../../base/divider'
 import Tooltip from '../../base/tooltip'
@@ -85,7 +85,13 @@ type GroupItemProps = {
   group: AccessControlGroup
 }
 function GroupItem({ group }: GroupItemProps) {
-  return <BaseItem icon={<RiOrganizationChart className='w-[14px] h-[14px] text-components-avatar-shape-fill-stop-0' />}>
+  const specificGroups = useAccessControlStore(s => s.specificGroups)
+  const setSpecificGroups = useAccessControlStore(s => s.setSpecificGroups)
+  const handleRemoveGroup = useCallback(() => {
+    setSpecificGroups(specificGroups.filter(g => g.id !== group.id))
+  }, [group, setSpecificGroups, specificGroups])
+  return <BaseItem icon={<RiOrganizationChart className='w-[14px] h-[14px] text-components-avatar-shape-fill-stop-0' />}
+    onRemove={handleRemoveGroup}>
     <p className='system-xs-regular text-text-primary'>{group.name}</p>
     <p className='system-xs-regular text-text-tertiary'>{group.groupSize}</p>
   </BaseItem>
@@ -95,7 +101,13 @@ type MemberItemProps = {
   member: AccessControlAccount
 }
 function MemberItem({ member }: MemberItemProps) {
-  return <BaseItem icon={<Avatar className='w-[14px] h-[14px]' textClassName='text-[12px]' avatar={null} name={member.name} />}>
+  const specificMembers = useAccessControlStore(s => s.specificMembers)
+  const setSpecificMembers = useAccessControlStore(s => s.setSpecificMembers)
+  const handleRemoveMember = useCallback(() => {
+    setSpecificMembers(specificMembers.filter(m => m.id !== member.id))
+  }, [member, setSpecificMembers, specificMembers])
+  return <BaseItem icon={<Avatar className='w-[14px] h-[14px]' textClassName='text-[12px]' avatar={null} name={member.name} />}
+    onRemove={handleRemoveMember}>
     <p className='system-xs-regular text-text-primary'>{member.name}</p>
   </BaseItem>
 }
@@ -103,8 +115,9 @@ function MemberItem({ member }: MemberItemProps) {
 type BaseItemProps = {
   icon: React.ReactNode
   children: React.ReactNode
+  onRemove?: () => void
 }
-function BaseItem({ icon, children }: BaseItemProps) {
+function BaseItem({ icon, onRemove, children }: BaseItemProps) {
   return <div className='rounded-full border-[0.5px] bg-components-badge-white-to-dark shadow-xs p-1 pr-1.5 group flex items-center flex-row gap-x-1'>
     <div className='w-5 h-5 rounded-full bg-components-icon-bg-blue-solid overflow-hidden'>
       <div className='w-full h-full flex items-center justify-center bg-access-app-icon-mask-bg'>
@@ -112,7 +125,7 @@ function BaseItem({ icon, children }: BaseItemProps) {
       </div>
     </div>
     {children}
-    <div className='flex items-center justify-center w-4 h-4 cursor-pointer'>
+    <div className='flex items-center justify-center w-4 h-4 cursor-pointer' onClick={onRemove}>
       <RiCloseCircleFill className='w-[14px] h-[14px] text-text-quaternary' />
     </div>
   </div>
