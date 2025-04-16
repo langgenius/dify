@@ -469,6 +469,18 @@ x-shared-env: &shared-api-worker-env
   OTEL_METRIC_EXPORT_INTERVAL: ${OTEL_METRIC_EXPORT_INTERVAL:-60000}
   OTEL_BATCH_EXPORT_TIMEOUT: ${OTEL_BATCH_EXPORT_TIMEOUT:-10000}
   OTEL_METRIC_EXPORT_TIMEOUT: ${OTEL_METRIC_EXPORT_TIMEOUT:-30000}
+  LDAP_ENABLED: ${LDAP_ENABLED:-false}
+  AUTH_LDAP_SERVER_URI: ${AUTH_LDAP_SERVER_URI:-ldap://127.0.0.1:389}
+  AUTH_LDAP_BIND_DN: ${AUTH_LDAP_BIND_DN:-CN=ArcherMaster,CN=Users,DC=dify,DC=com}
+  AUTH_LDAP_BIND_PASSWORD: ${AUTH_LDAP_BIND_PASSWORD:-dify@123456}
+  AUTH_LDAP_SEARCH_BASE_DN: ${AUTH_LDAP_SEARCH_BASE_DN:-OU=dify技术有限公司,DC=dify,DC=com}
+  AUTH_LDAP_USER_FILTER: ${AUTH_LDAP_USER_FILTER:-(mail=%(user)s)}
+  AUTH_LDAP_USER_ATTR_MAP: "${AUTH_LDAP_USER_ATTR_MAP:-{\"first_name\": \"uid\", \"last_name\": \"cn\", \"email\": \"mail\"}}"
+  CACHE_LDAP_USER_KEY: ${CACHE_LDAP_USER_KEY:-LDAP_USER_INFO_DATA}
+  CACHE_LDAP_USER_EX: ${CACHE_LDAP_USER_EX:-86400}
+  LDAP_DEFAULT_ROLE: ${LDAP_DEFAULT_ROLE:-normal}
+  LDAP_CONN_TIMEOUT: ${LDAP_CONN_TIMEOUT:-10}
+  LDAP_POOL_SIZE: ${LDAP_POOL_SIZE:-10}
 
 services:
   # API service
@@ -499,8 +511,8 @@ services:
       - ssrf_proxy_network
       - default
 
-  # worker service
-  # The Celery worker for processing the queue.
+#   worker service
+#   The Celery worker for processing the queue.
   worker:
     image: langgenius/dify-api:1.2.0
     restart: always
@@ -526,7 +538,7 @@ services:
       - ssrf_proxy_network
       - default
 
-  # Frontend web application.
+#   Frontend web application.
   web:
     image: langgenius/dify-web:1.2.0
     restart: always
@@ -759,6 +771,8 @@ services:
       AUTHENTICATION_APIKEY_USERS: ${WEAVIATE_AUTHENTICATION_APIKEY_USERS:-hello@dify.ai}
       AUTHORIZATION_ADMINLIST_ENABLED: ${WEAVIATE_AUTHORIZATION_ADMINLIST_ENABLED:-true}
       AUTHORIZATION_ADMINLIST_USERS: ${WEAVIATE_AUTHORIZATION_ADMINLIST_USERS:-hello@dify.ai}
+    ports:
+      - '${EXPOSE_WEAVIATE_PORT:-8080}:${WEAVIATE_PORT:-8080}'
 
   # Qdrant vector store.
   # (if used, you need to set VECTOR_STORE to qdrant in the api & worker service.)

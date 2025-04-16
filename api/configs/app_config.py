@@ -8,6 +8,7 @@ from .deploy import DeploymentConfig
 from .enterprise import EnterpriseFeatureConfig
 from .extra import ExtraServiceConfig
 from .feature import FeatureConfig
+from .ldap import AuthenticationConfig
 from .middleware import MiddlewareConfig
 from .observability import ObservabilityConfig
 from .packaging import PackagingInfo
@@ -50,6 +51,8 @@ class RemoteSettingsSourceFactory(PydanticBaseSettingsSource):
 
 
 class DifyConfig(
+    # Authentication configs
+    AuthenticationConfig,
     # Packaging info
     PackagingInfo,
     # Deployment configs

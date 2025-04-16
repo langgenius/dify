@@ -12,6 +12,10 @@ from services.account_service import AccountService
 
 login_manager = flask_login.LoginManager()
 
+@login_manager.user_loader
+def load_user(user_id):
+    """Support loading LDAP users from session"""
+    return AccountService.load_user(user_id)
 
 # Flask-Login configuration
 @login_manager.request_loader

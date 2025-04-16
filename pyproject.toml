@@ -1,0 +1,22 @@
+[project]
+name = "dify"
+version = "1.1.3"
+description = ""
+authors = [
+    {name = "skip"}
+]
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "ldap (>=2.0.0.404,<3.0.0.0)",
+    "skip (>=0.1.0,<0.2.0)"
+]
+
+[tool.poetry]
+
+[tool.poetry.group.dev.dependencies]
+skip = "^0.1.0"
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
