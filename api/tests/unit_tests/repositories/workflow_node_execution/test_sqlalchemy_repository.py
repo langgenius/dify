@@ -9,7 +9,7 @@ import pytest
 from pytest_mock import MockerFixture
 from sqlalchemy.orm import Session
 
-from core.repository.workflow_node_execution_repository import WorkflowNodeExecutionCriteria
+from core.repository.workflow_node_execution_repository import OrderConfig, WorkflowNodeExecutionCriteria
 from models.workflow import WorkflowNodeExecution, WorkflowNodeExecutionStatus
 from repositories.workflow_node_execution.sqlalchemy_repository import SQLAlchemyWorkflowNodeExecutionRepository
 
@@ -95,9 +95,8 @@ def test_get_by_workflow_run(repository, session, mocker: MockerFixture):
     session.scalars.return_value.all.return_value = [mocker.MagicMock(spec=WorkflowNodeExecution)]
 
     # Call method
-    result = repository.get_by_workflow_run(
-        workflow_run_id="test-workflow-run-id", order_by="index", order_direction="desc"
-    )
+    order_config = OrderConfig(order_by=["index"], order_direction="desc")
+    result = repository.get_by_workflow_run(workflow_run_id="test-workflow-run-id", order_config=order_config)
 
     # Assert select was called with correct parameters
     mock_select.assert_called_once()
@@ -184,9 +183,8 @@ def test_find_by_criteria(repository, session, mocker: MockerFixture):
     )
 
     # Call method
-    result = repository.find_by_criteria(
-        criteria=criteria, order_by="created_at", order_direction="desc", limit=10, offset=0
-    )
+    order_config = OrderConfig(order_by=["created_at"], order_direction="desc")
+    result = repository.find_by_criteria(criteria=criteria, order_config=order_config, limit=10, offset=0)
 
     # Assert select was called with correct parameters
     mock_select.assert_called_once()

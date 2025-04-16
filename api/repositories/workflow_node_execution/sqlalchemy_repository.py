@@ -3,12 +3,13 @@ SQLAlchemy implementation of the WorkflowNodeExecutionRepository.
 """
 
 from collections.abc import Sequence
-from typing import Literal, Optional
+from typing import Optional
 
 from sqlalchemy import asc, desc, select
 from sqlalchemy.orm import Session
 
 from core.repository.workflow_node_execution_repository import (
+    OrderConfig,
     WorkflowNodeExecutionCriteria,
 )
 from models.workflow import WorkflowNodeExecution, WorkflowNodeExecutionStatus, WorkflowNodeExecutionTriggeredFrom
@@ -79,16 +80,16 @@ class SQLAlchemyWorkflowNodeExecutionRepository:
     def get_by_workflow_run(
         self,
         workflow_run_id: str,
-        order_by: Optional[str] = None,
-        order_direction: Optional[Literal["asc", "desc"]] = None,
+        order_config: Optional[OrderConfig] = None,
     ) -> Sequence[WorkflowNodeExecution]:
         """
         Retrieve all WorkflowNodeExecution instances for a specific workflow run.
 
         Args:
             workflow_run_id: The workflow run ID
-            order_by: Optional field to order by (e.g., "index", "created_at")
-            order_direction: Optional direction to order ("asc" or "desc")
+            order_config: Optional configuration for ordering results
+                order_config.order_by: List of fields to order by (e.g., ["index", "created_at"])
+                order_config.order_direction: Direction to order ("asc" or "desc")
 
         Returns:
             A list of WorkflowNodeExecution instances
@@ -103,13 +104,18 @@ class SQLAlchemyWorkflowNodeExecutionRepository:
             stmt = stmt.where(WorkflowNodeExecution.app_id == self.app_id)
 
         # Apply ordering if provided
-        if order_by:
-            column = getattr(WorkflowNodeExecution, order_by, None)
-            if column:
-                if order_direction == "desc":
-                    stmt = stmt.order_by(desc(column))
-                else:
-                    stmt = stmt.order_by(asc(column))
+        if order_config and order_config.order_by:
+            order_columns = []
+            for field in order_config.order_by:
+                column = getattr(WorkflowNodeExecution, field, None)
+                if column:
+                    if order_config.order_direction == "desc":
+                        order_columns.append(desc(column))
+                    else:
+                        order_columns.append(asc(column))
+
+            if order_columns:
+                stmt = stmt.order_by(*order_columns)
 
         return self.session.scalars(stmt).all()
 
@@ -177,8 +183,7 @@ class SQLAlchemyWorkflowNodeExecutionRepository:
     def find_by_criteria(
         self,
         criteria: WorkflowNodeExecutionCriteria,
-        order_by: Optional[str] = None,
-        order_direction: Optional[Literal["asc", "desc"]] = None,
+        order_config: Optional[OrderConfig] = None,
         limit: Optional[int] = None,
         offset: Optional[int] = None,
     ) -> Sequence[WorkflowNodeExecution]:
@@ -187,8 +192,9 @@ class SQLAlchemyWorkflowNodeExecutionRepository:
 
         Args:
             criteria: Dictionary of criteria to match
-            order_by: Optional field to order by
-            order_direction: Optional direction to order ("asc" or "desc")
+            order_config: Optional configuration for ordering results
+                order_config.order_by: List of fields to order by
+                order_config.order_direction: Direction to order ("asc" or "desc")
             limit: Optional limit on the number of results
             offset: Optional offset for pagination
 
@@ -213,13 +219,18 @@ class SQLAlchemyWorkflowNodeExecutionRepository:
             stmt = stmt.where(WorkflowNodeExecution.status == criteria["status"])
 
         # Apply ordering if provided
-        if order_by:
-            column = getattr(WorkflowNodeExecution, order_by, None)
-            if column:
-                if order_direction == "desc":
-                    stmt = stmt.order_by(desc(column))
-                else:
-                    stmt = stmt.order_by(asc(column))
+        if order_config and order_config.order_by:
+            order_columns = []
+            for field in order_config.order_by:
+                column = getattr(WorkflowNodeExecution, field, None)
+                if column:
+                    if order_config.order_direction == "desc":
+                        order_columns.append(desc(column))
+                    else:
+                        order_columns.append(asc(column))
+
+            if order_columns:
+                stmt = stmt.order_by(*order_columns)
 
         # Apply pagination if provided
         if limit is not None:

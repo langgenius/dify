@@ -3,6 +3,7 @@ from typing import Optional, cast
 
 import contexts
 from core.repository import RepositoryFactory, WorkflowNodeExecutionRepository
+from core.repository.workflow_node_execution_repository import OrderConfig
 from extensions.ext_database import db
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
 from models.enums import WorkflowRunTriggeredFrom
@@ -135,8 +136,9 @@ class WorkflowRunService:
                 params={"tenant_id": app_model.tenant_id, "app_id": app_model.id, "session": db.session},
             ),
         )
+        order_config = OrderConfig(order_by=["index"], order_direction="desc")
         node_executions = workflow_node_execution_repository.get_by_workflow_run(
-            workflow_run_id=run_id, order_by="index", order_direction="desc"
+            workflow_run_id=run_id, order_config=order_config
         )
 
         # Convert Sequence to list for type compatibility
