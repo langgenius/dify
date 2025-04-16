@@ -4,7 +4,7 @@ from werkzeug.exceptions import Forbidden, NotFound
 
 import services.dataset_service
 from controllers.service_api import api
-from controllers.service_api.dataset.error import DatasetInUseError, DatasetNameDuplicateError
+from controllers.service_api.dataset.error import DatasetInUseError, DatasetNameDuplicateError, InvalidActionError
 from controllers.service_api.wraps import DatasetApiResource
 from core.model_runtime.entities.model_entities import ModelType
 from core.plugin.entities.plugin import ModelProviderID
@@ -12,8 +12,13 @@ from core.provider_manager import ProviderManager
 from fields.dataset_fields import dataset_detail_fields
 from libs.login import current_user
 from models.dataset import Dataset, DatasetPermissionEnum
-from services.dataset_service import DatasetPermissionService, DatasetService
+from services.dataset_service import DatasetPermissionService, DatasetService, DocumentService
 from services.entities.knowledge_entities.knowledge_entities import RetrievalModel
+from datetime import UTC, datetime
+from extensions.ext_redis import redis_client
+from extensions.ext_database import db
+from tasks.add_document_to_index_task import add_document_to_index_task
+from tasks.remove_document_from_index_task import remove_document_from_index_task
 
 
 def _validate_name(name):
@@ -318,5 +323,127 @@ class DatasetApi(DatasetApiResource):
             raise DatasetInUseError()
 
 
+class DocumentStatusApi(DatasetApiResource):
+    """Resource for batch document status operations."""
+
+    def patch(self, tenant_id, dataset_id, action):
+        """
+        Batch update document status.
+        
+        Args:
+            tenant_id: tenant id
+            dataset_id: dataset id
+            action: action to perform (enable, disable, archive, un_archive)
+            
+        Returns:
+            dict: A dictionary with a key 'result' and a value 'success'
+            int: HTTP status code 200 indicating that the operation was successful.
+            
+        Raises:
+            NotFound: If the dataset with the given ID does not exist.
+            Forbidden: If the user does not have permission.
+            InvalidActionError: If the action is invalid or cannot be performed.
+        """
+        dataset_id_str = str(dataset_id)
+        dataset = DatasetService.get_dataset(dataset_id_str)
+        
+        if dataset is None:
+            raise NotFound("Dataset not found.")
+
+        # Check user's permission
+        try:
+            DatasetService.check_dataset_permission(dataset, current_user)
+        except services.errors.account.NoPermissionError as e:
+            raise Forbidden(str(e))
+            
+        # Check dataset model setting
+        DatasetService.check_dataset_model_setting(dataset)
+        
+        # Get document IDs from request body
+        data = request.get_json()
+        document_ids = data.get('document_ids', [])
+        
+        if not document_ids:
+            return {"result": "success"}, 200
+            
+        for document_id in document_ids:
+            document = DocumentService.get_document(dataset_id_str, document_id)
+            
+            if not document:
+                continue
+                
+            indexing_cache_key = f"document_{document.id}_indexing"
+            cache_result = redis_client.get(indexing_cache_key)
+            if cache_result is not None:
+                raise InvalidActionError(f"Document:{document.name} is being indexed, please try again later")
+                
+            if action == "enable":
+                if document.enabled:
+                    continue
+                document.enabled = True
+                document.disabled_at = None
+                document.disabled_by = None
+                document.updated_at = datetime.now(UTC).replace(tzinfo=None)
+                db.session.commit()
+                
+                # Set cache to prevent indexing the same document multiple times
+                redis_client.setex(indexing_cache_key, 600, 1)
+                
+                add_document_to_index_task.delay(document_id)
+                
+            elif action == "disable":
+                if not document.completed_at or document.indexing_status != "completed":
+                    raise InvalidActionError(f"Document: {document.name} is not completed.")
+                if not document.enabled:
+                    continue
+                    
+                document.enabled = False
+                document.disabled_at = datetime.now(UTC).replace(tzinfo=None)
+                document.disabled_by = current_user.id
+                document.updated_at = datetime.now(UTC).replace(tzinfo=None)
+                db.session.commit()
+                
+                # Set cache to prevent indexing the same document multiple times
+                redis_client.setex(indexing_cache_key, 600, 1)
+                
+                remove_document_from_index_task.delay(document_id)
+                
+            elif action == "archive":
+                if document.archived:
+                    continue
+                    
+                document.archived = True
+                document.archived_at = datetime.now(UTC).replace(tzinfo=None)
+                document.archived_by = current_user.id
+                document.updated_at = datetime.now(UTC).replace(tzinfo=None)
+                db.session.commit()
+                
+                if document.enabled:
+                    # Set cache to prevent indexing the same document multiple times
+                    redis_client.setex(indexing_cache_key, 600, 1)
+                    
+                    remove_document_from_index_task.delay(document_id)
+                    
+            elif action == "un_archive":
+                if not document.archived:
+                    continue
+                document.archived = False
+                document.archived_at = None
+                document.archived_by = None
+                document.updated_at = datetime.now(UTC).replace(tzinfo=None)
+                db.session.commit()
+                
+                # Set cache to prevent indexing the same document multiple times
+                redis_client.setex(indexing_cache_key, 600, 1)
+                
+                add_document_to_index_task.delay(document_id)
+                
+            else:
+                raise InvalidActionError()
+                
+        return {"result": "success"}, 200
+
+
 api.add_resource(DatasetListApi, "/datasets")
 api.add_resource(DatasetApi, "/datasets/<uuid:dataset_id>")
+api.add_resource(DocumentStatusApi, "/datasets/<uuid:dataset_id>/documents/status/<string:action>")
