@@ -12,6 +12,7 @@ import { useModalContext } from '@/context/modal-context'
 import type { CrawlOptions, CrawlResultItem } from '@/models/datasets'
 import { fetchDataSources } from '@/service/datasets'
 import { type DataSourceItem, DataSourceProvider } from '@/models/common'
+import { ENABLE_WEBSITE_FIRECRAWL, ENABLE_WEBSITE_JINAREADER, ENABLE_WEBSITE_WATERCRAWL } from '@/config'
 
 type Props = {
   onPreview: (payload: CrawlResultItem) => void
@@ -84,7 +85,7 @@ const Website: FC<Props> = ({
           {t('datasetCreation.stepOne.website.chooseProvider')}
         </div>
         <div className="flex space-x-2">
-          <button
+          {ENABLE_WEBSITE_JINAREADER && <button
             className={cn('flex items-center justify-center rounded-lg px-4 py-2',
               selectedProvider === DataSourceProvider.jinaReader
                 ? 'system-sm-medium border-[1.5px] border-components-option-card-option-selected-border bg-components-option-card-option-selected-bg text-text-primary'
@@ -95,8 +96,8 @@ const Website: FC<Props> = ({
           >
             <span className={cn(s.jinaLogo, 'mr-2')}/>
             <span>Jina Reader</span>
-          </button>
-          <button
+          </button>}
+         {ENABLE_WEBSITE_FIRECRAWL && <button
             className={cn('rounded-lg px-4 py-2',
               selectedProvider === DataSourceProvider.fireCrawl
                 ? 'system-sm-medium border-[1.5px] border-components-option-card-option-selected-border bg-components-option-card-option-selected-bg text-text-primary'
@@ -106,8 +107,8 @@ const Website: FC<Props> = ({
             onClick={() => setSelectedProvider(DataSourceProvider.fireCrawl)}
           >
             🔥 Firecrawl
-          </button>
-          <button
+          </button>}
+          {ENABLE_WEBSITE_WATERCRAWL && <button
             className={cn('flex items-center justify-center rounded-lg px-4 py-2',
               selectedProvider === DataSourceProvider.waterCrawl
                 ? 'system-sm-medium border-[1.5px] border-components-option-card-option-selected-border bg-components-option-card-option-selected-bg text-text-primary'
@@ -118,7 +119,7 @@ const Website: FC<Props> = ({
           >
             <span className={cn(s.watercrawlLogo, 'mr-2')}/>
             <span>WaterCrawl</span>
-          </button>
+          </button>}
         </div>
       </div>
       {source && selectedProvider === DataSourceProvider.fireCrawl && (
