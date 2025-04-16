@@ -4,10 +4,9 @@ from collections.abc import Callable
 
 import click
 from celery import shared_task  # type: ignore
-from sqlalchemy import delete
+from sqlalchemy import delete, select
 from sqlalchemy.exc import SQLAlchemyError
 
-from core.repository import RepositoryFactory, WorkflowNodeExecutionCriteria
 from extensions.ext_database import db
 from models.dataset import AppDatasetJoin
 from models.model import (
@@ -31,7 +30,7 @@ from models.model import (
 )
 from models.tools import WorkflowToolProvider
 from models.web import PinnedConversation, SavedMessage
-from models.workflow import ConversationVariable, Workflow, WorkflowAppLog, WorkflowRun
+from models.workflow import ConversationVariable, Workflow, WorkflowAppLog, WorkflowNodeExecution, WorkflowRun
 
 
 @shared_task(queue="app_deletion", bind=True, max_retries=3)
@@ -188,26 +187,22 @@ def _delete_app_workflow_runs(tenant_id: str, app_id: str):
 
 
 def _delete_app_workflow_node_executions(tenant_id: str, app_id: str):
-    # Use repository to delete workflow node executions for an app
-
-    workflow_node_execution_repository = RepositoryFactory.create_workflow_node_execution_repository(
-        params={"tenant_id": tenant_id, "app_id": app_id, "session": db.session}
-    )
-
-    # Create empty criteria - the repository implementation will filter by tenant_id and app_id
-    # since they were provided in the params
-    criteria = WorkflowNodeExecutionCriteria()
-
     # Delete in batches to avoid memory issues
     while True:
         # Find a batch of executions
-        executions = workflow_node_execution_repository.find_by_criteria(criteria, limit=1000)
+        stmt = (
+            select(WorkflowNodeExecution)
+            .where(WorkflowNodeExecution.tenant_id == tenant_id, WorkflowNodeExecution.app_id == app_id)
+            .limit(1000)
+        )
+
+        executions = db.session.scalars(stmt).all()
         if not executions:
             break
 
         # Delete each execution
         for execution in executions:
-            workflow_node_execution_repository.delete(execution.id)
+            db.session.delete(execution)
 
         # Commit the transaction after all deletions
         db.session.commit()

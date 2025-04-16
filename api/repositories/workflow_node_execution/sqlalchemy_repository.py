@@ -8,10 +8,7 @@ from typing import Optional
 from sqlalchemy import UnaryExpression, asc, desc, select
 from sqlalchemy.orm import Session
 
-from core.repository.workflow_node_execution_repository import (
-    OrderConfig,
-    WorkflowNodeExecutionCriteria,
-)
+from core.repository.workflow_node_execution_repository import OrderConfig
 from models.workflow import WorkflowNodeExecution, WorkflowNodeExecutionStatus, WorkflowNodeExecutionTriggeredFrom
 
 
@@ -179,63 +176,3 @@ class SQLAlchemyWorkflowNodeExecutionRepository:
         if execution:
             self.session.delete(execution)
             self.session.flush()
-
-    def find_by_criteria(
-        self,
-        criteria: WorkflowNodeExecutionCriteria,
-        order_config: Optional[OrderConfig] = None,
-        limit: Optional[int] = None,
-        offset: Optional[int] = None,
-    ) -> Sequence[WorkflowNodeExecution]:
-        """
-        Find WorkflowNodeExecution instances matching the given criteria.
-
-        Args:
-            criteria: Dictionary of criteria to match
-            order_config: Optional configuration for ordering results
-                order_config.order_by: List of fields to order by
-                order_config.order_direction: Direction to order ("asc" or "desc")
-            limit: Optional limit on the number of results
-            offset: Optional offset for pagination
-
-        Returns:
-            A list of matching WorkflowNodeExecution instances
-        """
-        stmt = select(WorkflowNodeExecution).where(WorkflowNodeExecution.tenant_id == self.tenant_id)
-
-        if self.app_id:
-            stmt = stmt.where(WorkflowNodeExecution.app_id == self.app_id)
-
-        # Apply criteria filters
-        if "workflow_run_id" in criteria:
-            stmt = stmt.where(WorkflowNodeExecution.workflow_run_id == criteria["workflow_run_id"])
-        if "node_execution_id" in criteria:
-            stmt = stmt.where(WorkflowNodeExecution.node_execution_id == criteria["node_execution_id"])
-        if "created_at_before" in criteria:
-            stmt = stmt.where(WorkflowNodeExecution.created_at < criteria["created_at_before"])
-        if "created_at_after" in criteria:
-            stmt = stmt.where(WorkflowNodeExecution.created_at > criteria["created_at_after"])
-        if "status" in criteria:
-            stmt = stmt.where(WorkflowNodeExecution.status == criteria["status"])
-
-        # Apply ordering if provided
-        if order_config and order_config.order_by:
-            order_columns: list[UnaryExpression] = []
-            for field in order_config.order_by:
-                column = getattr(WorkflowNodeExecution, field, None)
-                if column:
-                    if order_config.order_direction == "desc":
-                        order_columns.append(desc(column))
-                    else:
-                        order_columns.append(asc(column))
-
-            if order_columns:
-                stmt = stmt.order_by(*order_columns)
-
-        # Apply pagination if provided
-        if limit is not None:
-            stmt = stmt.limit(limit)
-        if offset is not None:
-            stmt = stmt.offset(offset)
-
-        return self.session.scalars(stmt).all()

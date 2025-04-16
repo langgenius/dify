@@ -6,16 +6,16 @@ from concurrent.futures import ThreadPoolExecutor
 
 import click
 from flask import Flask, current_app
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from configs import dify_config
 from core.model_runtime.utils.encoders import jsonable_encoder
-from core.repository import RepositoryFactory, WorkflowNodeExecutionCriteria
 from extensions.ext_database import db
 from extensions.ext_storage import storage
 from models.account import Tenant
 from models.model import App, Conversation, Message
-from models.workflow import WorkflowRun
+from models.workflow import WorkflowNodeExecution, WorkflowRun
 from services.billing_service import BillingService
 
 logger = logging.getLogger(__name__)
@@ -108,17 +108,17 @@ class ClearFreePlanTenantExpiredLogs:
 
             while True:
                 with Session(db.engine).no_autoflush as session:
-                    # Use repository to query workflow node executions
-                    workflow_node_execution_repository = RepositoryFactory.create_workflow_node_execution_repository(
-                        params={"tenant_id": tenant_id, "session": session}
+                    # Create a query to find workflow node executions created before the cutoff date
+                    stmt = (
+                        select(WorkflowNodeExecution)
+                        .where(
+                            WorkflowNodeExecution.tenant_id == tenant_id,
+                            WorkflowNodeExecution.created_at < datetime.datetime.now() - datetime.timedelta(days=days),
+                        )
+                        .limit(batch)
                     )
 
-                    criteria = WorkflowNodeExecutionCriteria(
-                        created_at_before=datetime.datetime.now() - datetime.timedelta(days=days)
-                    )
-                    workflow_node_executions = workflow_node_execution_repository.find_by_criteria(
-                        criteria=criteria, limit=batch
-                    )
+                    workflow_node_executions = session.scalars(stmt).all()
 
                     if len(workflow_node_executions) == 0:
                         break
@@ -137,9 +137,9 @@ class ClearFreePlanTenantExpiredLogs:
                         workflow_node_execution.id for workflow_node_execution in workflow_node_executions
                     ]
 
-                    # Use repository to delete workflow node executions
+                    # Delete workflow node executions directly
                     for execution in workflow_node_executions:
-                        workflow_node_execution_repository.delete(execution.id)
+                        session.delete(execution)
                     # Commit the transaction after all deletions
                     session.commit()
 

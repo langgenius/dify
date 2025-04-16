@@ -1,7 +1,6 @@
 from collections.abc import Sequence
 from dataclasses import dataclass
-from datetime import datetime
-from typing import Literal, Optional, Protocol, TypedDict
+from typing import Literal, Optional, Protocol
 
 from models.workflow import WorkflowNodeExecution
 
@@ -12,16 +11,6 @@ class OrderConfig:
 
     order_by: list[str]
     order_direction: Optional[Literal["asc", "desc"]] = None
-
-
-class WorkflowNodeExecutionCriteria(TypedDict, total=False):
-    """Criteria for filtering WorkflowNodeExecution instances."""
-
-    workflow_run_id: str
-    node_execution_id: str
-    created_at_before: datetime
-    created_at_after: datetime
-    status: str
 
 
 class WorkflowNodeExecutionRepository(Protocol):
@@ -104,28 +93,5 @@ class WorkflowNodeExecutionRepository(Protocol):
 
         Args:
             execution_id: The execution ID
-        """
-        ...
-
-    def find_by_criteria(
-        self,
-        criteria: WorkflowNodeExecutionCriteria,
-        order_config: Optional[OrderConfig] = None,
-        limit: Optional[int] = None,
-        offset: Optional[int] = None,
-    ) -> Sequence[WorkflowNodeExecution]:
-        """
-        Find WorkflowNodeExecution instances matching the given criteria.
-
-        Args:
-            criteria: Dictionary of criteria to match
-            order_config: Optional configuration for ordering results
-                order_config.order_by: List of fields to order by
-                order_config.order_direction: Direction to order ("asc" or "desc")
-            limit: Optional limit on the number of results
-            offset: Optional offset for pagination
-
-        Returns:
-            A list of matching WorkflowNodeExecution instances
         """
         ...

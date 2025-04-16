@@ -2,15 +2,14 @@
 Unit tests for the SQLAlchemy implementation of WorkflowNodeExecutionRepository.
 """
 
-from datetime import datetime, timedelta
 from unittest.mock import MagicMock
 
 import pytest
 from pytest_mock import MockerFixture
 from sqlalchemy.orm import Session
 
-from core.repository.workflow_node_execution_repository import OrderConfig, WorkflowNodeExecutionCriteria
-from models.workflow import WorkflowNodeExecution, WorkflowNodeExecutionStatus
+from core.repository.workflow_node_execution_repository import OrderConfig
+from models.workflow import WorkflowNodeExecution
 from repositories.workflow_node_execution.sqlalchemy_repository import SQLAlchemyWorkflowNodeExecutionRepository
 
 
@@ -159,34 +158,3 @@ def test_delete(repository, session, mocker: MockerFixture):
     session.scalar.assert_called_once_with(mock_stmt)
     session.delete.assert_called_once_with(mock_execution)
     session.flush.assert_called_once()
-
-
-def test_find_by_criteria(repository, session, mocker: MockerFixture):
-    """Test find_by_criteria method."""
-    # Set up mock
-    mock_select = mocker.patch("repositories.workflow_node_execution.sqlalchemy_repository.select")
-    mock_stmt = mocker.MagicMock()
-    mock_select.return_value = mock_stmt
-    mock_stmt.where.return_value = mock_stmt
-    mock_stmt.order_by.return_value = mock_stmt
-    mock_stmt.limit.return_value = mock_stmt
-    mock_stmt.offset.return_value = mock_stmt
-    session.scalars.return_value.all.return_value = [mocker.MagicMock(spec=WorkflowNodeExecution)]
-
-    # Create criteria
-    criteria = WorkflowNodeExecutionCriteria(
-        workflow_run_id="test-workflow-run-id",
-        node_execution_id="test-node-execution-id",
-        created_at_before=datetime.now(),
-        created_at_after=datetime.now() - timedelta(days=1),
-        status=WorkflowNodeExecutionStatus.RUNNING.value,
-    )
-
-    # Call method
-    order_config = OrderConfig(order_by=["created_at"], order_direction="desc")
-    result = repository.find_by_criteria(criteria=criteria, order_config=order_config, limit=10, offset=0)
-
-    # Assert select was called with correct parameters
-    mock_select.assert_called_once()
-    session.scalars.assert_called_once_with(mock_stmt)
-    assert len(result) == 1
