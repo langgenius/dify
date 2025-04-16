@@ -90,6 +90,7 @@ class HttpRequestNodeData(BaseNodeData):
     params: str
     body: Optional[HttpRequestNodeBody] = None
     timeout: Optional[HttpRequestNodeTimeout] = None
+    ssl_verify: Optional[bool] = dify_config.HTTP_REQUEST_NODE_SSL_VERIFY
 
 
 class Response:
