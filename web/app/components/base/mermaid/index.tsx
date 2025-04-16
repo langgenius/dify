@@ -80,6 +80,17 @@ const initMermaid = () => {
           nodeSpacing: 50,
           rankSpacing: 70,
         },
+        gantt: {
+          titleTopMargin: 25,
+          barHeight: 20,
+          barGap: 4,
+          topPadding: 50,
+          leftPadding: 75,
+          gridLineStartPadding: 35,
+          fontSize: 11,
+          numberSectionStyles: 4,
+          axisFormat: '%Y-%m-%d',
+        },
         maxTextSize: 50000,
       })
       isMermaidInitialized = true
@@ -276,8 +287,19 @@ const Flowchart = React.forwardRef((props: {
     setErrMsg('')
 
     try {
-      // Step 1: Clean and prepare Mermaid code using the extracted prepareMermaidCode function
-      const finalCode = prepareMermaidCode(primitiveCode, look)
+      let finalCode = primitiveCode
+
+      // Check if it's a gantt chart
+      const isGanttChart = primitiveCode.trim().startsWith('gantt')
+
+      if (isGanttChart) {
+        // For gantt charts, ensure each task is on its own line
+        // and preserve exact whitespace/format
+        finalCode = primitiveCode.trim()
+      } else {
+        // Step 1: Clean and prepare Mermaid code using the extracted prepareMermaidCode function
+        finalCode = prepareMermaidCode(primitiveCode, look)
+      }
 
       // Step 2: Render chart
       const svgGraph = await renderMermaidChart(finalCode, look)
@@ -318,6 +340,17 @@ const Flowchart = React.forwardRef((props: {
         securityLevel: 'loose',
         fontFamily: 'sans-serif',
         maxTextSize: 50000,
+        gantt: {
+          titleTopMargin: 25,
+          barHeight: 20,
+          barGap: 4,
+          topPadding: 50,
+          leftPadding: 75,
+          gridLineStartPadding: 35,
+          fontSize: 11,
+          numberSectionStyles: 4,
+          axisFormat: '%Y-%m-%d',
+        },
       }
 
       if (look === 'classic') {

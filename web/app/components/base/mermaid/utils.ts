@@ -9,6 +9,14 @@ export function preprocessMermaidCode(code: string): string {
   if (!code || typeof code !== 'string')
     return ''
 
+  // First check if this is a gantt chart
+  if (code.trim().startsWith('gantt')) {
+    // For gantt charts, we need to ensure each task is on its own line
+    // Split the code into lines and process each line separately
+    const lines = code.split('\n').map(line => line.trim())
+    return lines.join('\n')
+  }
+
   return code
     // Replace English colons with Chinese colons in section nodes to avoid parsing issues
     .replace(/section\s+([^:]+):/g, (match, sectionName) => `section ${sectionName}：`)
@@ -27,6 +35,12 @@ export function preprocessMermaidCode(code: string): string {
  */
 export function prepareMermaidCode(code: string, style: 'classic' | 'handDrawn'): string {
   let finalCode = preprocessMermaidCode(code)
+
+  // Special handling for gantt charts
+  if (finalCode.trim().startsWith('gantt')) {
+    // For gantt charts, preserve the structure exactly as is
+    return finalCode
+  }
 
   if (style === 'handDrawn') {
     finalCode = finalCode
@@ -155,6 +169,13 @@ export function isMermaidCodeComplete(code: string): boolean {
 
   try {
     const trimmedCode = code.trim()
+
+    // Special handling for gantt charts
+    if (trimmedCode.startsWith('gantt')) {
+      // For gantt charts, check if it has at least a title and one task
+      const lines = trimmedCode.split('\n').filter(line => line.trim().length > 0)
+      return lines.length >= 3
+    }
 
     // Check for basic syntax structure
     const hasValidStart = /^(graph|flowchart|sequenceDiagram|classDiagram|classDef|class|stateDiagram|gantt|pie|er|journey|requirementDiagram)/.test(trimmedCode)
