@@ -127,7 +127,7 @@ class WordExtractor(BaseExtractor):
                 db.session.add(upload_file)
                 db.session.commit()
                 image_map[rel.target_part] = (
-                    f"![image]({dify_config.CONSOLE_API_URL}/files/{upload_file.id}/file-preview)"
+                    f"![image]({dify_config.FILES_URL}/files/{upload_file.id}/file-preview)"
                 )
 
         return image_map
