@@ -40,6 +40,13 @@ conversation_variable_fields = {
     "description": fields.String,
 }
 
+pipeline_variable_fields = {
+    "id": fields.String,
+    "name": fields.String,
+    "value_type": fields.String(attribute="value_type.value"),
+    "value": fields.Raw,
+}
+
 workflow_fields = {
     "id": fields.String,
     "graph": fields.Raw(attribute="graph_dict"),
@@ -55,6 +62,10 @@ workflow_fields = {
     "tool_published": fields.Boolean,
     "environment_variables": fields.List(EnvironmentVariableField()),
     "conversation_variables": fields.List(fields.Nested(conversation_variable_fields)),
+    "pipeline_variables": fields.Dict(
+        keys=fields.String,
+        values=fields.List(fields.Nested(pipeline_variable_fields)),
+    ),
 }
 
 workflow_partial_fields = {

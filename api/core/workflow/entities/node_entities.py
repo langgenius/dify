@@ -17,6 +17,7 @@ class NodeRunMetadataKey(StrEnum):
     TOTAL_PRICE = "total_price"
     CURRENCY = "currency"
     TOOL_INFO = "tool_info"
+    DATASOURCE_INFO = "datasource_info"
     AGENT_LOG = "agent_log"
     ITERATION_ID = "iteration_id"
     ITERATION_INDEX = "iteration_index"

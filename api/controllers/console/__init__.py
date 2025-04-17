@@ -1,5 +1,6 @@
 from flask import Blueprint
 
+from .datasets.rag_pipeline import data_source
 from libs.external_api import ExternalApi
 
 from .app.app_import import AppImportApi, AppImportCheckDependenciesApi, AppImportConfirmApi
@@ -75,7 +76,6 @@ from .billing import billing, compliance
 
 # Import datasets controllers
 from .datasets import (
-    data_source,
     datasets,
     datasets_document,
     datasets_segments,

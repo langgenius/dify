@@ -16,12 +16,13 @@ from core.workflow.nodes.enums import NodeType
 from core.workflow.nodes.event.types import NodeEvent
 from core.workflow.nodes.node_mapping import LATEST_VERSION, NODE_TYPE_CLASSES_MAPPING
 from core.workflow.workflow_entry import WorkflowEntry
-from extensions.db import db
+from extensions.ext_database import db
 from models.account import Account
 from models.dataset import Pipeline, PipelineBuiltInTemplate, PipelineCustomizedTemplate  # type: ignore
 from models.workflow import Workflow, WorkflowNodeExecution, WorkflowType
 from services.entities.knowledge_entities.rag_pipeline_entities import PipelineTemplateInfoEntity
 from services.errors.app import WorkflowHashNotEqualError
+from services.errors.workflow_service import DraftWorkflowDeletionError
 from services.rag_pipeline.pipeline_template.pipeline_template_factory import PipelineTemplateRetrievalFactory
 
 
@@ -186,6 +187,7 @@ class RagPipelineService:
         account: Account,
         environment_variables: Sequence[Variable],
         conversation_variables: Sequence[Variable],
+        pipeline_variables: dict[str, Sequence[Variable]],
     ) -> Workflow:
         """
         Sync draft workflow
@@ -212,6 +214,7 @@ class RagPipelineService:
                 created_by=account.id,
                 environment_variables=environment_variables,
                 conversation_variables=conversation_variables,
+                pipeline_variables=pipeline_variables,
             )
             db.session.add(workflow)
         # update draft workflow if found
@@ -222,7 +225,7 @@ class RagPipelineService:
             workflow.updated_at = datetime.now(UTC).replace(tzinfo=None)
             workflow.environment_variables = environment_variables
             workflow.conversation_variables = conversation_variables
-
+            workflow.pipeline_variables = pipeline_variables
         # commit db session changes
         db.session.commit()
 
@@ -337,6 +340,41 @@ class RagPipelineService:
         workflow_node_execution.app_id = pipeline.id
         workflow_node_execution.created_by = account.id
         workflow_node_execution.workflow_id = draft_workflow.id
+
+        db.session.add(workflow_node_execution)
+        db.session.commit()
+
+        return workflow_node_execution
+    
+    def run_datasource_workflow_node(
+        self, pipeline: Pipeline, node_id: str, user_inputs: dict, account: Account
+    ) -> WorkflowNodeExecution:
+        """
+        Run published workflow datasource
+        """
+        # fetch published workflow by app_model
+        published_workflow = self.get_published_workflow(pipeline=pipeline)
+        if not published_workflow:
+            raise ValueError("Workflow not initialized")
+
+        # run draft workflow node
+        start_at = time.perf_counter()
+
+        workflow_node_execution = self._handle_node_run_result(
+            getter=lambda: WorkflowEntry.single_step_run(
+                workflow=published_workflow,
+                node_id=node_id,
+                user_inputs=user_inputs,
+                user_id=account.id,
+            ),
+            start_at=start_at,
+            tenant_id=pipeline.tenant_id,
+            node_id=node_id,
+        )
+
+        workflow_node_execution.app_id = pipeline.id
+        workflow_node_execution.created_by = account.id
+        workflow_node_execution.workflow_id = published_workflow.id
 
         db.session.add(workflow_node_execution)
         db.session.commit()
@@ -573,3 +611,21 @@ class RagPipelineService:
 
         session.delete(workflow)
         return True
+
+    def get_second_step_parameters(self, pipeline: Pipeline, datasource_provider: str) -> dict:
+        """
+        Get second step parameters of rag pipeline
+        """
+        
+        workflow = self.get_published_workflow(pipeline=pipeline)
+        if not workflow:
+            raise ValueError("Workflow not initialized")
+        
+        # get second step node
+        pipeline_variables = workflow.pipeline_variables
+        if not pipeline_variables:
+            return {}
+        # get datasource provider
+        datasource_provider_variables = pipeline_variables.get(datasource_provider, [])
+        shared_variables = pipeline_variables.get("shared", [])
+        return datasource_provider_variables + shared_variables

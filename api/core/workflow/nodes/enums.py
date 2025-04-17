@@ -13,6 +13,7 @@ class NodeType(StrEnum):
     QUESTION_CLASSIFIER = "question-classifier"
     HTTP_REQUEST = "http-request"
     TOOL = "tool"
+    DATASOURCE = "datasource"
     VARIABLE_AGGREGATOR = "variable-aggregator"
     LEGACY_VARIABLE_AGGREGATOR = "variable-assigner"  # TODO: Merge this into VARIABLE_AGGREGATOR in the database.
     LOOP = "loop"

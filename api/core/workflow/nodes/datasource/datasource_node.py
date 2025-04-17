@@ -28,7 +28,7 @@ from models import ToolFile
 from models.workflow import WorkflowNodeExecutionStatus
 from services.tools.builtin_tools_manage_service import BuiltinToolManageService
 
-from .entities import ToolNodeData
+from .entities import DatasourceNodeData
 from .exc import (
     ToolFileError,
     ToolNodeError,
@@ -36,29 +36,29 @@ from .exc import (
 )
 
 
-class ToolNode(BaseNode[ToolNodeData]):
+class DatasourceNode(BaseNode[DatasourceNodeData]):
     """
-    Tool Node
+    Datasource Node
     """
 
-    _node_data_cls = ToolNodeData
-    _node_type = NodeType.TOOL
+    _node_data_cls = DatasourceNodeData
+    _node_type = NodeType.DATASOURCE
 
     def _run(self) -> Generator:
         """
-        Run the tool node
+        Run the datasource node
         """
 
-        node_data = cast(ToolNodeData, self.node_data)
+        node_data = cast(DatasourceNodeData, self.node_data)
 
-        # fetch tool icon
-        tool_info = {
+        # fetch datasource icon
+        datasource_info = {
             "provider_type": node_data.provider_type.value,
             "provider_id": node_data.provider_id,
             "plugin_unique_identifier": node_data.plugin_unique_identifier,
         }
 
-        # get tool runtime
+        # get datasource runtime
         try:
             from core.tools.tool_manager import ToolManager
 
@@ -70,10 +70,10 @@ class ToolNode(BaseNode[ToolNodeData]):
                 run_result=NodeRunResult(
                     status=WorkflowNodeExecutionStatus.FAILED,
                     inputs={},
-                    metadata={NodeRunMetadataKey.TOOL_INFO: tool_info},
-                    error=f"Failed to get tool runtime: {str(e)}",
+                    metadata={NodeRunMetadataKey.DATASOURCE_INFO: datasource_info},
+                    error=f"Failed to get datasource runtime: {str(e)}",
                     error_type=type(e).__name__,
-                ) 
+                )
             )
             return
 

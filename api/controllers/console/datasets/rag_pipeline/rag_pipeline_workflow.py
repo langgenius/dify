@@ -15,11 +15,9 @@ from controllers.console.app.error import (
     DraftWorkflowNotExist,
     DraftWorkflowNotSync,
 )
-from controllers.console.app.wraps import get_app_model
 from controllers.console.datasets.wraps import get_rag_pipeline
 from controllers.console.wraps import (
     account_initialization_required,
-    enterprise_license_required,
     setup_required,
 )
 from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
@@ -32,94 +30,15 @@ from fields.workflow_run_fields import workflow_run_node_execution_fields
 from libs import helper
 from libs.helper import TimestampField
 from libs.login import current_user, login_required
-from models import App
 from models.account import Account
 from models.dataset import Pipeline
-from models.model import AppMode
 from services.app_generate_service import AppGenerateService
-from services.entities.knowledge_entities.rag_pipeline_entities import PipelineTemplateInfoEntity
 from services.errors.app import WorkflowHashNotEqualError
 from services.errors.llm import InvokeRateLimitError
 from services.rag_pipeline.rag_pipeline import RagPipelineService
-from services.workflow_service import DraftWorkflowDeletionError, WorkflowInUseError, WorkflowService
+from services.workflow_service import DraftWorkflowDeletionError, WorkflowInUseError
 
 logger = logging.getLogger(__name__)
-
-
-def _validate_name(name):
-    if not name or len(name) < 1 or len(name) > 40:
-        raise ValueError("Name must be between 1 to 40 characters.")
-    return name
-
-
-def _validate_description_length(description):
-    if len(description) > 400:
-        raise ValueError("Description cannot exceed 400 characters.")
-    return description
-
-
-class PipelineTemplateListApi(Resource):
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @enterprise_license_required
-    def get(self):
-        type = request.args.get("type", default="built-in", type=str, choices=["built-in", "customized"])
-        language = request.args.get("language", default="en-US", type=str)
-        # get pipeline templates
-        pipeline_templates = RagPipelineService.get_pipeline_templates(type, language)
-        return pipeline_templates, 200
-
-
-class PipelineTemplateDetailApi(Resource):
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @enterprise_license_required
-    def get(self, pipeline_id: str):
-        pipeline_template = RagPipelineService.get_pipeline_template_detail(pipeline_id)
-        return pipeline_template, 200
-
-
-class CustomizedPipelineTemplateApi(Resource):
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @enterprise_license_required
-    def patch(self, template_id: str):
-        parser = reqparse.RequestParser()
-        parser.add_argument(
-            "name",
-            nullable=False,
-            required=True,
-            help="Name must be between 1 to 40 characters.",
-            type=_validate_name,
-        )
-        parser.add_argument(
-            "description",
-            type=str,
-            nullable=True,
-            required=False,
-            default="",
-        )
-        parser.add_argument(
-            "icon_info",
-            type=dict,
-            location="json",
-            nullable=True,
-        )
-        args = parser.parse_args()
-        pipeline_template_info = PipelineTemplateInfoEntity(**args)
-        pipeline_template = RagPipelineService.update_customized_pipeline_template(template_id, pipeline_template_info)
-        return pipeline_template, 200
-
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @enterprise_license_required
-    def delete(self, template_id: str):
-        RagPipelineService.delete_customized_pipeline_template(template_id)
-        return 200
 
 
 class DraftRagPipelineApi(Resource):
@@ -130,7 +49,7 @@ class DraftRagPipelineApi(Resource):
     @marshal_with(workflow_fields)
     def get(self, pipeline: Pipeline):
         """
-        Get draft workflow
+        Get draft rag pipeline's workflow
         """
         # The role of the current user in the ta table must be admin, owner, or editor
         if not current_user.is_editor:
@@ -167,6 +86,7 @@ class DraftRagPipelineApi(Resource):
             parser.add_argument("hash", type=str, required=False, location="json")
             parser.add_argument("environment_variables", type=list, required=False, location="json")
             parser.add_argument("conversation_variables", type=list, required=False, location="json")
+            parser.add_argument("pipeline_variables", type=dict, required=False, location="json")
             args = parser.parse_args()
         elif "text/plain" in content_type:
             try:
@@ -183,6 +103,7 @@ class DraftRagPipelineApi(Resource):
                     "hash": data.get("hash"),
                     "environment_variables": data.get("environment_variables"),
                     "conversation_variables": data.get("conversation_variables"),
+                    "pipeline_variables": data.get("pipeline_variables"),
                 }
             except json.JSONDecodeError:
                 return {"message": "Invalid JSON data"}, 400
@@ -191,8 +112,6 @@ class DraftRagPipelineApi(Resource):
 
         if not isinstance(current_user, Account):
             raise Forbidden()
-
-        workflow_service = WorkflowService()
 
         try:
             environment_variables_list = args.get("environment_variables") or []
@@ -203,6 +122,11 @@ class DraftRagPipelineApi(Resource):
             conversation_variables = [
                 variable_factory.build_conversation_variable_from_mapping(obj) for obj in conversation_variables_list
             ]
+            pipeline_variables_list = args.get("pipeline_variables") or {}
+            pipeline_variables = {
+                k: [variable_factory.build_pipeline_variable_from_mapping(obj) for obj in v]
+                for k, v in pipeline_variables_list.items()
+            }
             rag_pipeline_service = RagPipelineService()
             workflow = rag_pipeline_service.sync_draft_workflow(
                 pipeline=pipeline,
@@ -212,6 +136,7 @@ class DraftRagPipelineApi(Resource):
                 account=current_user,
                 environment_variables=environment_variables,
                 conversation_variables=conversation_variables,
+                pipeline_variables=pipeline_variables,
             )
         except WorkflowHashNotEqualError:
             raise DraftWorkflowNotSync()
@@ -263,8 +188,8 @@ class RagPipelineDraftRunLoopNodeApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @get_app_model(mode=[AppMode.WORKFLOW])
-    def post(self, app_model: App, node_id: str):
+    @get_rag_pipeline
+    def post(self, pipeline: Pipeline, node_id: str):
         """
         Run draft workflow loop node
         """
@@ -281,7 +206,7 @@ class RagPipelineDraftRunLoopNodeApi(Resource):
 
         try:
             response = AppGenerateService.generate_single_loop(
-                app_model=app_model, user=current_user, node_id=node_id, args=args, streaming=True
+                pipeline=pipeline, user=current_user, node_id=node_id, args=args, streaming=True
             )
 
             return helper.compact_generate_response(response)
@@ -300,8 +225,8 @@ class DraftRagPipelineRunApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @get_app_model(mode=[AppMode.WORKFLOW])
-    def post(self, app_model: App):
+    @get_rag_pipeline
+    def post(self, pipeline: Pipeline):
         """
         Run draft workflow
         """
@@ -319,7 +244,7 @@ class DraftRagPipelineRunApi(Resource):
 
         try:
             response = AppGenerateService.generate(
-                app_model=app_model,
+                pipeline=pipeline,
                 user=current_user,
                 args=args,
                 invoke_from=InvokeFrom.DEBUGGER,
@@ -330,32 +255,45 @@ class DraftRagPipelineRunApi(Resource):
         except InvokeRateLimitError as ex:
             raise InvokeRateLimitHttpError(ex.description)
 
-
-class RagPipelineTaskStopApi(Resource):
+class RagPipelineDatasourceNodeRunApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
-    def post(self, app_model: App, task_id: str):
+    @get_rag_pipeline
+    def post(self, pipeline: Pipeline, node_id: str):
         """
-        Stop workflow task
+        Run rag pipeline datasource
         """
         # The role of the current user in the ta table must be admin, owner, or editor
         if not current_user.is_editor:
             raise Forbidden()
 
-        AppQueueManager.set_stop_flag(task_id, InvokeFrom.DEBUGGER, current_user.id)
+        if not isinstance(current_user, Account):
+            raise Forbidden()
 
-        return {"result": "success"}
+        parser = reqparse.RequestParser()
+        parser.add_argument("inputs", type=dict, required=True, nullable=False, location="json")
+        args = parser.parse_args()
+
+        inputs = args.get("inputs")
+        if inputs == None:
+            raise ValueError("missing inputs")
+
+        rag_pipeline_service = RagPipelineService()
+        workflow_node_execution = rag_pipeline_service.run_datasource_workflow_node(
+            pipeline=pipeline, node_id=node_id, user_inputs=inputs, account=current_user
+        )
+
+        return workflow_node_execution
 
 
-class RagPipelineNodeRunApi(Resource):
+class RagPipelineDraftNodeRunApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
+    @get_rag_pipeline
     @marshal_with(workflow_run_node_execution_fields)
-    def post(self, app_model: App, node_id: str):
+    def post(self, pipeline: Pipeline, node_id: str):
         """
         Run draft workflow node
         """
@@ -374,13 +312,29 @@ class RagPipelineNodeRunApi(Resource):
         if inputs == None:
             raise ValueError("missing inputs")
 
-        workflow_service = WorkflowService()
-        workflow_node_execution = workflow_service.run_draft_workflow_node(
-            app_model=app_model, node_id=node_id, user_inputs=inputs, account=current_user
+        rag_pipeline_service = RagPipelineService()
+        workflow_node_execution = rag_pipeline_service.run_draft_workflow_node(
+            pipeline=pipeline, node_id=node_id, user_inputs=inputs, account=current_user
         )
 
         return workflow_node_execution
 
+class RagPipelineTaskStopApi(Resource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @get_rag_pipeline
+    def post(self, pipeline: Pipeline, task_id: str):
+        """
+        Stop workflow task
+        """
+        # The role of the current user in the ta table must be admin, owner, or editor
+        if not current_user.is_editor:
+            raise Forbidden()
+
+        AppQueueManager.set_stop_flag(task_id, InvokeFrom.DEBUGGER, current_user.id)
+
+        return {"result": "success"}
 
 class PublishedRagPipelineApi(Resource):
     @setup_required
@@ -695,6 +649,25 @@ class RagPipelineByIdApi(Resource):
 
         return None, 204
 
+class RagPipelineSecondStepApi(Resource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @get_rag_pipeline
+    def get(self, pipeline: Pipeline):
+        """
+        Get second step parameters of rag pipeline
+        """
+        # The role of the current user in the ta table must be admin, owner, or editor
+        if not current_user.is_editor:
+            raise Forbidden()
+        datasource_provider = request.args.get("datasource_provider", required=True, type=str)
+        
+        rag_pipeline_service = RagPipelineService()
+        return rag_pipeline_service.get_second_step_parameters(pipeline=pipeline, 
+                                                               datasource_provider=datasource_provider
+                                                               )
+
 
 api.add_resource(
     DraftRagPipelineApi,
@@ -713,8 +686,12 @@ api.add_resource(
     "/rag/pipelines/<uuid:pipeline_id>/workflow-runs/tasks/<string:task_id>/stop",
 )
 api.add_resource(
-    RagPipelineNodeRunApi,
+    RagPipelineDraftNodeRunApi,
     "/rag/pipelines/<uuid:pipeline_id>/workflows/draft/nodes/<string:node_id>/run",
+)
+api.add_resource(
+    RagPipelinePublishedNodeRunApi,
+    "/rag/pipelines/<uuid:pipeline_id>/workflows/published/nodes/<string:node_id>/run",
 )
 
 api.add_resource(
@@ -751,15 +728,3 @@ api.add_resource(
     "/rag/pipelines/<uuid:pipeline_id>/workflows/<string:workflow_id>",
 )
 
-api.add_resource(
-    PipelineTemplateListApi,
-    "/rag/pipeline/templates",
-)
-api.add_resource(
-    PipelineTemplateDetailApi,
-    "/rag/pipeline/templates/<string:pipeline_id>",
-)
-api.add_resource(
-    CustomizedPipelineTemplateApi,
-    "/rag/pipeline/templates/<string:template_id>",
-)
