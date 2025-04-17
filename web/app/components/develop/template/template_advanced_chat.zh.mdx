@@ -523,7 +523,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
     <CodeGroup title="Request" tag="GET" label="/messages/{message_id}/suggested" targetCode={`curl --location --request GET '${props.appDetail.api_base_url}/messages/{message_id}/suggested?user=abc-123 \\\n--header 'Authorization: Bearer ENTER-YOUR-SECRET-KEY' \\\n--header 'Content-Type: application/json'`}>
 
     ```bash {{ title: 'cURL' }}
-    curl --location --request GET '${props.appDetail.api_base_url}/messages/{message_id}/suggested'?user=abc-123 \
+    curl --location --request GET '${props.appDetail.api_base_url}/messages/{message_id}/suggested?user=abc-123' \
     --header 'Authorization: Bearer ENTER-YOUR-SECRET-KEY' \
     --header 'Content-Type: application/json' \
     ```
@@ -967,7 +967,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
         "user": "abc-123"
     }'
     ```
-    
+
     </CodeGroup>
 
     <CodeGroup title="headers">
@@ -1191,10 +1191,10 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
       title="Request"
       tag="GET"
       label="/apps/annotations"
-      targetCode={`curl --location --request GET '${props.apiBaseUrl}/apps/annotations?page=1&limit=20' \\\n--header 'Authorization: Bearer {api_key}'`}
+      targetCode={`curl --location --request GET '${props.appDetail.api_base_url}/apps/annotations?page=1&limit=20' \\\n--header 'Authorization: Bearer {api_key}'`}
     >
     ```bash {{ title: 'cURL' }}
-    curl --location --request GET '${props.apiBaseUrl}/apps/annotations?page=1&limit=20' \
+    curl --location --request GET '${props.appDetail.api_base_url}/apps/annotations?page=1&limit=20' \
     --header 'Authorization: Bearer {api_key}'
     ```
     </CodeGroup>
@@ -1245,10 +1245,10 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
       title="Request"
       tag="POST"
       label="/apps/annotations"
-      targetCode={`curl --location --request POST '${props.apiBaseUrl}/apps/annotations' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{"question": "What is your name?","answer": "I am Dify."}'`}
+      targetCode={`curl --location --request POST '${props.appDetail.api_base_url}/apps/annotations' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{"question": "What is your name?","answer": "I am Dify."}'`}
     >
     ```bash {{ title: 'cURL' }}
-    curl --location --request POST '${props.apiBaseUrl}/apps/annotations' \
+    curl --location --request POST '${props.appDetail.api_base_url}/apps/annotations' \
     --header 'Authorization: Bearer {api_key}' \
     --header 'Content-Type: application/json' \
     --data-raw '{
@@ -1301,10 +1301,10 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
       title="Request"
       tag="PUT"
       label="/apps/annotations/{annotation_id}"
-      targetCode={`curl --location --request POST '${props.apiBaseUrl}/apps/annotations/{annotation_id}' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{"question": "What is your name?","answer": "I am Dify."}'`}
+      targetCode={`curl --location --request POST '${props.appDetail.api_base_url}/apps/annotations/{annotation_id}' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{"question": "What is your name?","answer": "I am Dify."}'`}
     >
     ```bash {{ title: 'cURL' }}
-    curl --location --request POST '${props.apiBaseUrl}/apps/annotations/{annotation_id}' \
+    curl --location --request POST '${props.appDetail.api_base_url}/apps/annotations/{annotation_id}' \
     --header 'Authorization: Bearer {api_key}' \
     --header 'Content-Type: application/json' \
     --data-raw '{
@@ -1351,10 +1351,10 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
       title="Request"
       tag="PUT"
       label="/apps/annotations/{annotation_id}"
-      targetCode={`curl --location --request DELETE '${props.apiBaseUrl}/apps/annotations/{annotation_id}' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json'`}
+      targetCode={`curl --location --request DELETE '${props.appDetail.api_base_url}/apps/annotations/{annotation_id}' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json'`}
     >
     ```bash {{ title: 'cURL' }}
-    curl --location --request DELETE '${props.apiBaseUrl}/apps/annotations/{annotation_id}' \
+    curl --location --request DELETE '${props.appDetail.api_base_url}/apps/annotations/{annotation_id}' \
     --header 'Authorization: Bearer {api_key}'
     ```
     </CodeGroup>
@@ -1398,7 +1398,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
       title="Request"
       tag="POST"
       label="/apps/annotation-reply/{action}"
-      targetCode={`curl --location --request POST '${props.apiBaseUrl}/apps/annotation-reply/{action}' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{"score_threshold": 0.9, "embedding_provider_name": "zhipu", "embedding_model_name": "embedding_3"}'`}
+      targetCode={`curl --location --request POST '${props.appDetail.api_base_url}/apps/annotation-reply/{action}' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{"score_threshold": 0.9, "embedding_provider_name": "zhipu", "embedding_model_name": "embedding_3"}'`}
     >
     ```bash {{ title: 'cURL' }}
     curl --location --request POST 'https://api.dify.ai/v1/apps/annotation-reply/{action}' \
@@ -1448,10 +1448,10 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
       title="Request"
       tag="GET"
       label="/apps/annotations"
-      targetCode={`curl --location --request GET '${props.apiBaseUrl}/apps/annotation-reply/{action}/status/{job_id}' \\\n--header 'Authorization: Bearer {api_key}'`}
+      targetCode={`curl --location --request GET '${props.appDetail.api_base_url}/apps/annotation-reply/{action}/status/{job_id}' \\\n--header 'Authorization: Bearer {api_key}'`}
     >
     ```bash {{ title: 'cURL' }}
-    curl --location --request GET '${props.apiBaseUrl}/apps/annotation-reply/{action}/status/{job_id}' \
+    curl --location --request GET '${props.appDetail.api_base_url}/apps/annotation-reply/{action}/status/{job_id}' \
     --header 'Authorization: Bearer {api_key}'
     ```
     </CodeGroup>
