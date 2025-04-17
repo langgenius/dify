@@ -11,9 +11,9 @@ import {
   RiErrorWarningLine,
 } from '@remixicon/react'
 import {
+  useFormatTimeFromNow,
   useIsChatMode,
   useNodesInteractions,
-  useWorkflow,
   useWorkflowInteractions,
   useWorkflowRun,
 } from '../hooks'
@@ -50,7 +50,7 @@ const ViewHistory = ({
   const { t } = useTranslation()
   const isChatMode = useIsChatMode()
   const [open, setOpen] = useState(false)
-  const { formatTimeFromNow } = useWorkflow()
+  const { formatTimeFromNow } = useFormatTimeFromNow()
   const {
     handleNodesCancelSelected,
   } = useNodesInteractions()

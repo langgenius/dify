@@ -1,10 +1,10 @@
-import { generateNewNode } from '../utils'
+import { generateNewNode } from '@/app/components/workflow/utils'
 import {
   NODE_WIDTH_X_OFFSET,
   START_INITIAL_POSITION,
-} from '../constants'
-import { useIsChatMode } from './use-workflow'
-import { useNodesInitialData } from './use-nodes-data'
+} from '@/app/components/workflow/constants'
+import { useNodesInitialData } from '@/app/components/workflow/hooks'
+import { useIsChatMode } from './use-is-chat-mode'
 
 export const useWorkflowTemplate = () => {
   const isChatMode = useIsChatMode()
