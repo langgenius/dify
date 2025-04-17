@@ -221,7 +221,7 @@ Here is the task description: {{INPUT_TEXT}}
 You just need to generate the output
 """  # noqa: E501
 
-STRUCTURED_OUTPUT_GENERATE_TEMPLATE = """
+SYSTEM_STRUCTURED_OUTPUT_GENERATE = """
 Your task is to convert simple user descriptions into properly formatted JSON Schema definitions. When a user describes data fields they need, generate a complete, valid JSON Schema that accurately represents those fields with appropriate types and requirements.
 
 ## Instructions:
