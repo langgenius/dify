@@ -322,7 +322,7 @@ const formatItem = (
           const dataType = output.type
           outputSchema.push({
             variable: outputKey,
-            type: dataType
+            type: dataType === 'array'
               ? `array[${output.items?.type.slice(0, 1).toLocaleLowerCase()}${output.items?.type.slice(1)}]`
               : `${output.type.slice(0, 1).toLocaleLowerCase()}${output.type.slice(1)}`,
             description: output.description,
