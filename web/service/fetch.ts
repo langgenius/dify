@@ -180,6 +180,12 @@ async function base<T>(url: string, options: FetchOptionType = {}, otherOptions:
     },
     ...(bodyStringify ? { json: body } : { body: body as BodyInit }),
     searchParams: params,
+    fetch: function (resource: RequestInfo | URL, options?: RequestInit) {
+      if (resource instanceof Request && options) {
+        options.headers = resource.headers
+      }
+      return globalThis.fetch(resource, options)
+    },
   })
 
   if (needAllResponseContent)
