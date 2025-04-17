@@ -6,7 +6,6 @@ from core.rag.models.document import Document
 from extensions.ext_database import db
 from models.dataset import ChildChunk, DatasetQuery, DocumentSegment
 from models.dataset import Document as DatasetDocument
-from models.model import DatasetRetrieverResource
 
 
 class DatasetIndexToolCallbackHandler:
