@@ -35,7 +35,7 @@ class Variable(Segment):
     )
     name: str
     description: str = Field(default="", description="Description of the variable.")
-    selector: Sequence[str] = Field(default=[])
+    selector: Sequence[str] = Field(default_factory=list[str])
 
 
 class StringVariable(StringSegment, Variable):

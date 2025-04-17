@@ -66,9 +66,9 @@ class PluginCategory(enum.StrEnum):
 
 class PluginDeclaration(BaseModel):
     class Plugins(BaseModel):
-        tools: Optional[list[str]] = Field(default=[])
-        models: Optional[list[str]] = Field(default=[])
-        endpoints: Optional[list[str]] = Field(default=[])
+        tools: Optional[list[str]] = Field(default_factory=list[str])
+        models: Optional[list[str]] = Field(default_factory=list[str])
+        endpoints: Optional[list[str]] = Field(default_factory=list[str])
 
     class Meta(BaseModel):
         minimum_dify_version: Optional[str] = Field(default=None, pattern=r"^\d{1,4}(\.\d{1,4}){1,3}(-\w{1,16})?$")
