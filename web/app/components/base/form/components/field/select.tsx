@@ -1,7 +1,7 @@
 import cn from '@/utils/classnames'
-import { useFieldContext } from '..'
-import PureSelect from '../../select/pure'
-import Label from './label'
+import { useFieldContext } from '../..'
+import PureSelect from '../../../select/pure'
+import Label from '../label'
 
 type SelectOption = {
   value: string

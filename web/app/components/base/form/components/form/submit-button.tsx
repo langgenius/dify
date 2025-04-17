@@ -1,6 +1,6 @@
 import { useStore } from '@tanstack/react-form'
-import { useFormContext } from '..'
-import Button, { type ButtonProps } from '../../button'
+import { useFormContext } from '../..'
+import Button, { type ButtonProps } from '../../../button'
 
 type SubmitButtonProps = Omit<ButtonProps, 'disabled' | 'loading' | 'onClick'>
 

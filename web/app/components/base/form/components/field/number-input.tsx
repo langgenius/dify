@@ -1,8 +1,8 @@
 import React from 'react'
-import { useFieldContext } from '..'
-import Input from '../../input'
-import Label from './label'
+import { useFieldContext } from '../..'
+import Label from '../label'
 import cn from '@/utils/classnames'
+import { InputNumber } from '../../../input-number'
 
 type TextFieldProps = {
   label: string
@@ -10,12 +10,12 @@ type TextFieldProps = {
   labelClassName?: string
 }
 
-const TextField = ({
+const NumberInputField = ({
   label,
   className,
   labelClassName,
 }: TextFieldProps) => {
-  const field = useFieldContext<string>()
+  const field = useFieldContext<number | undefined>()
 
   return (
     <div className={cn('flex flex-col gap-y-0.5', className)}>
@@ -24,14 +24,14 @@ const TextField = ({
         label={label}
         labelClassName={labelClassName}
       />
-      <Input
+      <InputNumber
         id={field.name}
         value={field.state.value}
-        onChange={e => field.handleChange(e.target.value)}
+        onChange={value => field.handleChange(value)}
         onBlur={field.handleBlur}
       />
     </div>
   )
 }
 
-export default TextField
+export default NumberInputField

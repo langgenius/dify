@@ -1,6 +1,6 @@
 import cn from '@/utils/classnames'
-import { useFieldContext } from '..'
-import Checkbox from '../../checkbox'
+import { useFieldContext } from '../..'
+import Checkbox from '../../../checkbox'
 
 type CheckboxFieldProps = {
   label: string;
