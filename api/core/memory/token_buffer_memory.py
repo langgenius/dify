@@ -44,6 +44,7 @@ class TokenBufferMemory:
                 Message.created_at,
                 Message.workflow_run_id,
                 Message.parent_message_id,
+                Message.answer_tokens,
             )
             .filter(
                 Message.conversation_id == self.conversation.id,
@@ -63,7 +64,7 @@ class TokenBufferMemory:
         thread_messages = extract_thread_messages(messages)
 
         # for newly created message, its answer is temporarily empty, we don't need to add it to memory
-        if thread_messages and not thread_messages[0].answer:
+        if thread_messages and not thread_messages[0].answer and thread_messages[0].answer_tokens == 0:
             thread_messages.pop(0)
 
         messages = list(reversed(thread_messages))
