@@ -20,8 +20,7 @@ import type { Props as FormProps } from '@/app/components/workflow/nodes/_base/c
 import ResultPanel from '@/app/components/workflow/run/result-panel'
 import Tooltip from '@/app/components/base/tooltip'
 import Editor from '@/app/components/workflow/nodes/_base/components/prompt/editor'
-import { useCurrentVarsStore } from '../../current-vars-store/store'
-import { useLastRunStore } from '../../last-run-store/store'
+import useCurrentVars from '../../hooks/use-current-vars'
 
 const i18nPrefix = 'workflow.nodes.llm'
 
@@ -30,9 +29,11 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
   data,
 }) => {
   const { t } = useTranslation()
-  const currentVars = useCurrentVarsStore(state => state.getVars())
-  const lastRunInfo = useLastRunStore(state => state.getInfos())
-  console.log(currentVars, lastRunInfo)
+  const {
+    currentVars,
+    getLastRunInfos,
+  } = useCurrentVars()
+  console.log(currentVars, getLastRunInfos())
   const {
     readOnly,
     inputs,
