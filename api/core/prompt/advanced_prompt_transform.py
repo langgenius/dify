@@ -9,13 +9,12 @@ from core.memory.token_buffer_memory import TokenBufferMemory
 from core.model_runtime.entities import (
     AssistantPromptMessage,
     PromptMessage,
-    PromptMessageContent,
     PromptMessageRole,
     SystemPromptMessage,
     TextPromptMessageContent,
     UserPromptMessage,
 )
-from core.model_runtime.entities.message_entities import ImagePromptMessageContent
+from core.model_runtime.entities.message_entities import ImagePromptMessageContent, PromptMessageContentUnionTypes
 from core.prompt.entities.advanced_prompt_entities import ChatModelMessage, CompletionModelPromptTemplate, MemoryConfig
 from core.prompt.prompt_transform import PromptTransform
 from core.prompt.utils.prompt_template_parser import PromptTemplateParser
@@ -125,7 +124,7 @@ class AdvancedPromptTransform(PromptTransform):
             prompt = Jinja2Formatter.format(prompt, prompt_inputs)
 
         if files:
-            prompt_message_contents: list[PromptMessageContent] = []
+            prompt_message_contents: list[PromptMessageContentUnionTypes] = []
             prompt_message_contents.append(TextPromptMessageContent(data=prompt))
             for file in files:
                 prompt_message_contents.append(
@@ -201,7 +200,7 @@ class AdvancedPromptTransform(PromptTransform):
             prompt_messages = self._append_chat_histories(memory, memory_config, prompt_messages, model_config)
 
             if files and query is not None:
-                prompt_message_contents: list[PromptMessageContent] = []
+                prompt_message_contents: list[PromptMessageContentUnionTypes] = []
                 prompt_message_contents.append(TextPromptMessageContent(data=query))
                 for file in files:
                     prompt_message_contents.append(

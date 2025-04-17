@@ -7,9 +7,9 @@ from core.model_runtime.entities import (
     AudioPromptMessageContent,
     DocumentPromptMessageContent,
     ImagePromptMessageContent,
-    MultiModalPromptMessageContent,
     VideoPromptMessageContent,
 )
+from core.model_runtime.entities.message_entities import PromptMessageContentUnionTypes
 from extensions.ext_storage import storage
 
 from . import helpers
@@ -43,7 +43,7 @@ def to_prompt_message_content(
     /,
     *,
     image_detail_config: ImagePromptMessageContent.DETAIL | None = None,
-) -> MultiModalPromptMessageContent:
+) -> PromptMessageContentUnionTypes:
     if f.extension is None:
         raise ValueError("Missing file extension")
     if f.mime_type is None:
@@ -58,7 +58,7 @@ def to_prompt_message_content(
     if f.type == FileType.IMAGE:
         params["detail"] = image_detail_config or ImagePromptMessageContent.DETAIL.LOW
 
-    prompt_class_map: Mapping[FileType, type[MultiModalPromptMessageContent]] = {
+    prompt_class_map: Mapping[FileType, type[PromptMessageContentUnionTypes]] = {
         FileType.IMAGE: ImagePromptMessageContent,
         FileType.AUDIO: AudioPromptMessageContent,
         FileType.VIDEO: VideoPromptMessageContent,
