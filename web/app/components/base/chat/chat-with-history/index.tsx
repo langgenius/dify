@@ -27,6 +27,7 @@ const ChatWithHistory: FC<ChatWithHistoryProps> = ({
   className,
 }) => {
   const {
+    userCanAccess,
     appInfoError,
     appData,
     appInfoLoading,
@@ -57,6 +58,8 @@ const ChatWithHistory: FC<ChatWithHistoryProps> = ({
       <Loading type='app' />
     )
   }
+  if (!userCanAccess)
+    return <AppUnavailable code={403} unknownReason='no permission.' />
 
   if (appInfoError) {
     return (
@@ -102,10 +105,12 @@ const ChatWithHistory: FC<ChatWithHistoryProps> = ({
 export type ChatWithHistoryWrapProps = {
   installedAppInfo?: InstalledApp
   className?: string
+  isFromExplore?: boolean
 }
 const ChatWithHistoryWrap: FC<ChatWithHistoryWrapProps> = ({
   installedAppInfo,
   className,
+  isFromExplore,
 }) => {
   const media = useBreakpoints()
   const isMobile = media === MediaType.mobile
@@ -114,6 +119,8 @@ const ChatWithHistoryWrap: FC<ChatWithHistoryWrapProps> = ({
   const {
     appInfoError,
     appInfoLoading,
+    accessMode,
+    userCanAccess,
     appData,
     appParams,
     appMeta,
@@ -146,9 +153,12 @@ const ChatWithHistoryWrap: FC<ChatWithHistoryWrapProps> = ({
 
   return (
     <ChatWithHistoryContext.Provider value={{
+      isFromExplore: !!isFromExplore,
       appInfoError,
       appInfoLoading,
       appData,
+      accessMode,
+      userCanAccess,
       appParams,
       appMeta,
       appChatListDataLoading,
@@ -187,6 +197,7 @@ const ChatWithHistoryWrap: FC<ChatWithHistoryWrapProps> = ({
 const ChatWithHistoryWrapWithCheckToken: FC<ChatWithHistoryWrapProps> = ({
   installedAppInfo,
   className,
+  isFromExplore = false,
 }) => {
   const [initialized, setInitialized] = useState(false)
   const [appUnavailable, setAppUnavailable] = useState<boolean>(false)
@@ -222,6 +233,7 @@ const ChatWithHistoryWrapWithCheckToken: FC<ChatWithHistoryWrapProps> = ({
     <ChatWithHistoryWrap
       installedAppInfo={installedAppInfo}
       className={className}
+      isFromExplore={isFromExplore}
     />
   )
 }

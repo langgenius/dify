@@ -15,12 +15,16 @@ import type {
   AppMeta,
   ConversationItem,
 } from '@/models/share'
+import { AccessMode } from '@/models/access-control'
 
 export type ChatWithHistoryContextValue = {
+  isFromExplore: boolean
   appInfoError?: any
   appInfoLoading?: boolean
   appMeta?: AppMeta
   appData?: AppData
+  accessMode?: AccessMode
+  userCanAccess?: boolean
   appParams?: ChatConfig
   appChatListDataLoading?: boolean
   currentConversationId: string
@@ -52,6 +56,9 @@ export type ChatWithHistoryContextValue = {
 }
 
 export const ChatWithHistoryContext = createContext<ChatWithHistoryContextValue>({
+  isFromExplore: false,
+  accessMode: AccessMode.SPECIFIC_GROUPS_MEMBERS,
+  userCanAccess: false,
   currentConversationId: '',
   appPrevChatTree: [],
   pinnedConversationList: [],
@@ -59,21 +66,21 @@ export const ChatWithHistoryContext = createContext<ChatWithHistoryContextValue>
   showConfigPanelBeforeChat: false,
   newConversationInputs: {},
   newConversationInputsRef: { current: {} },
-  handleNewConversationInputsChange: () => {},
+  handleNewConversationInputsChange: () => { },
   inputsForms: [],
-  handleNewConversation: () => {},
-  handleStartChat: () => {},
-  handleChangeConversation: () => {},
-  handlePinConversation: () => {},
-  handleUnpinConversation: () => {},
-  handleDeleteConversation: () => {},
+  handleNewConversation: () => { },
+  handleStartChat: () => { },
+  handleChangeConversation: () => { },
+  handlePinConversation: () => { },
+  handleUnpinConversation: () => { },
+  handleDeleteConversation: () => { },
   conversationRenaming: false,
-  handleRenameConversation: () => {},
-  handleNewConversationCompleted: () => {},
+  handleRenameConversation: () => { },
+  handleNewConversationCompleted: () => { },
   chatShouldReloadKey: '',
   isMobile: false,
   isInstalledApp: false,
-  handleFeedback: () => {},
-  currentChatInstanceRef: { current: { handleStop: () => {} } },
+  handleFeedback: () => { },
+  currentChatInstanceRef: { current: { handleStop: () => { } } },
 })
 export const useChatWithHistoryContext = () => useContext(ChatWithHistoryContext)

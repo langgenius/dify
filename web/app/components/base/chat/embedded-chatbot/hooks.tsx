@@ -35,6 +35,7 @@ import { changeLanguage } from '@/i18n/i18next-config'
 import { InputVarType } from '@/app/components/workflow/types'
 import { TransferMethod } from '@/types/app'
 import { addFileInfos, sortAgentSorts } from '@/app/components/tools/utils'
+import { useGetAppAccessMode, useGetUserCanAccessApp } from '@/service/access-control'
 
 function getFormattedChatList(messages: any[]) {
   const newChatList: ChatItem[] = []
@@ -65,6 +66,8 @@ function getFormattedChatList(messages: any[]) {
 export const useEmbeddedChatbot = () => {
   const isInstalledApp = false
   const { data: appInfo, isLoading: appInfoLoading, error: appInfoError } = useSWR('appInfo', fetchAppInfo)
+  const { isPending: isGettingAccessMode, data: appAccessMode } = useGetAppAccessMode(appInfo?.app_id)
+  const { isPending: isCheckingPermission, data: userCanAccessResult } = useGetUserCanAccessApp(appInfo?.app_id)
 
   const appData = useMemo(() => {
     return appInfo
@@ -319,7 +322,9 @@ export const useEmbeddedChatbot = () => {
 
   return {
     appInfoError,
-    appInfoLoading,
+    appInfoLoading: appInfoLoading || isGettingAccessMode || isCheckingPermission,
+    accessMode: appAccessMode?.accessMode,
+    userCanAccess: userCanAccessResult?.result,
     isInstalledApp,
     appId,
     currentConversationId,

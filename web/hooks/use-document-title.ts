@@ -9,7 +9,8 @@ export default function useDocumentTitle(title: string) {
     if (systemFeatures.branding.enabled) {
       document.title = `${prefix}${systemFeatures.branding.application_title}`
       const faviconEle = document.querySelector('link[rel*=\'icon\']') as HTMLLinkElement
-      faviconEle.href = systemFeatures.branding.favicon
+      if (faviconEle)
+        faviconEle.href = systemFeatures.branding.favicon
     }
     else {
       document.title = `${prefix}Dify`

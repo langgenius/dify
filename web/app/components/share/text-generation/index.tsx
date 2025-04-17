@@ -11,6 +11,7 @@ import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import TabHeader from '../../base/tab-header'
 import Button from '../../base/button'
 import { checkOrSetAccessToken } from '../utils'
+import AppUnavailable from '../../base/app-unavailable'
 import s from './style.module.css'
 import RunBatch from './run-batch'
 import ResDownload from './run-batch/res-download'
@@ -38,6 +39,8 @@ import Toast from '@/app/components/base/toast'
 import type { VisionFile, VisionSettings } from '@/types/app'
 import { Resolution, TransferMethod } from '@/types/app'
 import { useAppFavicon } from '@/hooks/use-app-favicon'
+import { useGetAppAccessMode, useGetUserCanAccessApp } from '@/service/access-control'
+import { AccessMode } from '@/models/access-control'
 
 const GROUP_SIZE = 5 // to avoid RPM(Request per minute) limit. The group task finished then the next group.
 enum TaskStatus {
@@ -61,12 +64,14 @@ export type IMainProps = {
   isInstalledApp?: boolean
   installedAppInfo?: InstalledApp
   isWorkflow?: boolean
+  isFromExplore?: boolean
 }
 
 const TextGeneration: FC<IMainProps> = ({
   isInstalledApp = false,
   installedAppInfo,
   isWorkflow = false,
+  isFromExplore = false,
 }) => {
   const { notify } = Toast
 
@@ -106,6 +111,9 @@ const TextGeneration: FC<IMainProps> = ({
   const [promptConfig, setPromptConfig] = useState<PromptConfig | null>(null)
   const [moreLikeThisConfig, setMoreLikeThisConfig] = useState<MoreLikeThisConfig | null>(null)
   const [textToSpeechConfig, setTextToSpeechConfig] = useState<TextToSpeechConfig | null>(null)
+
+  const { isPending: isGettingAccessMode, data: appAccessMode } = useGetAppAccessMode(appId)
+  const { isPending: isCheckingPermission, data: userCanAccessResult } = useGetUserCanAccessApp(appId)
 
   // save message
   const [savedMessages, setSavedMessages] = useState<SavedMessage[]>([])
@@ -538,12 +546,14 @@ const TextGeneration: FC<IMainProps> = ({
     </div>
   )
 
-  if (!appId || !siteInfo || !promptConfig) {
+  if (!appId || !siteInfo || !promptConfig || isGettingAccessMode || isCheckingPermission) {
     return (
       <div className='flex items-center h-screen'>
         <Loading type='app' />
       </div>)
   }
+  if (!userCanAccessResult?.result)
+    return <AppUnavailable code={403} unknownReason='no permission.' />
 
   return (
     <>
@@ -571,7 +581,7 @@ const TextGeneration: FC<IMainProps> = ({
                   />
                   <div className='text-lg font-semibold text-gray-800'>{siteInfo.title}</div>
                 </div>
-                <MenuDropdown />
+                <MenuDropdown hideLogout={isFromExplore || appAccessMode?.accessMode === AccessMode.PUBLIC} />
               </div>
               {!isPC && (
                 <Button

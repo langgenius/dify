@@ -63,3 +63,19 @@ export const useUpdateAccessMode = () => {
     },
   })
 }
+
+export const useGetAppAccessMode = (appId?: string) => {
+  return useQuery({
+    queryKey: [NAME_SPACE, 'app-access-mode', appId],
+    queryFn: () => get<{ accessMode: AccessMode }>(`/enterprise/webapp/app/access-mode?appId=${appId}`),
+    enabled: !!appId,
+  })
+}
+
+export const useGetUserCanAccessApp = (appId?: string) => {
+  return useQuery({
+    queryKey: [NAME_SPACE, 'user-can-access-app', appId],
+    queryFn: () => get<{ result: boolean }>(`/enterprise/webapp/permission?appId=${appId}`),
+    enabled: !!appId,
+  })
+}
