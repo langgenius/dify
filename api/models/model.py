@@ -1090,12 +1090,7 @@ class Message(db.Model):  # type: ignore[name-defined]
 
     @property
     def retriever_resources(self):
-        return (
-            db.session.query(DatasetRetrieverResource)
-            .filter(DatasetRetrieverResource.message_id == self.id)
-            .order_by(DatasetRetrieverResource.position.asc())
-            .all()
-        )
+        return self.message_metadata_dict.get("retriever_resources") if self.message_metadata else []
 
     @property
     def message_files(self):
