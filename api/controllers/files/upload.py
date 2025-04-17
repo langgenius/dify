@@ -62,7 +62,7 @@ class PluginUploadFileApi(Resource):
                 conversation_id=None,
             )
 
-            extension = guess_extension(tool_file.mimetype) or '.bin'
+            extension = guess_extension(tool_file.mimetype) or ".bin"
             preview_url = ToolFileManager.sign_file(tool_file_id=tool_file.id, extension=extension)
             tool_file.mime_type = mimetype
             tool_file.extension = extension
