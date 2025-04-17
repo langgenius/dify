@@ -112,7 +112,7 @@ class DependenciesAnalysisService:
         Generate the latest version of dependencies
         """
         dependencies = list(set(dependencies))
-        if not dify_config.MARKETPLACE_ENABLED :
+        if not dify_config.MARKETPLACE_ENABLED:
             return []
         deps = marketplace.batch_fetch_plugin_manifests(dependencies)
         return [
