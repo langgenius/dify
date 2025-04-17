@@ -133,7 +133,7 @@ export const AgentStrategy = memo((props: AgentStrategyProps) => {
                 // TODO: maybe empty, handle this
                 onChange={onChange as any}
                 defaultValue={defaultValue}
-                size='sm'
+                size='regular'
                 min={def.min}
                 max={def.max}
                 className='w-12'
