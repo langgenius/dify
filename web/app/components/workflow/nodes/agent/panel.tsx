@@ -27,6 +27,7 @@ export function strategyParamToCredientialForm(param: StrategyParamItem): Creden
     variable: param.name,
     show_on: [],
     type: toType(param.type),
+    tooltip: param.help,
   }
 }
 
@@ -53,6 +54,7 @@ const AgentPanel: FC<NodePanelProps<AgentNodeType>> = (props) => {
     outputSchema,
     handleMemoryChange,
   } = useConfig(props.id, props.data)
+  console.log('currentStrategy', currentStrategy)
   const { t } = useTranslation()
   const nodeInfo = useMemo(() => {
     if (!runResult)
