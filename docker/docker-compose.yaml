@@ -476,6 +476,7 @@ services:
   # API service
   api:
     image: langgenius/dify-api:1.2.0
+    container_name: dify_api
     restart: always
     environment:
       # Use the shared environment variables.
@@ -505,6 +506,7 @@ services:
   # The Celery worker for processing the queue.
   worker:
     image: langgenius/dify-api:1.2.0
+    container_name: dify_worker
     restart: always
     environment:
       # Use the shared environment variables.
@@ -531,6 +533,7 @@ services:
   # Frontend web application.
   web:
     image: langgenius/dify-web:1.2.0
+    container_name: dify_web
     restart: always
     environment:
       CONSOLE_API_URL: ${CONSOLE_API_URL:-}
@@ -554,6 +557,7 @@ services:
   # The postgres database.
   db:
     image: postgres:15-alpine
+    container_name: dify_db
     restart: always
     environment:
       PGUSER: ${PGUSER:-postgres}
@@ -577,6 +581,7 @@ services:
   # The redis cache.
   redis:
     image: redis:6-alpine
+    container_name: dify_redis
     restart: always
     environment:
       REDISCLI_AUTH: ${REDIS_PASSWORD:-difyai123456}
@@ -591,6 +596,7 @@ services:
   # The DifySandbox
   sandbox:
     image: langgenius/dify-sandbox:0.2.11
+    container_name: dify_sandbox
     restart: always
     environment:
       # The DifySandbox configurations
@@ -614,6 +620,7 @@ services:
   # plugin daemon
   plugin_daemon:
     image: langgenius/dify-plugin-daemon:0.0.7-local
+    container_name: dify_plugin_daemon
     restart: always
     environment:
       # Use the shared environment variables.
@@ -662,6 +669,7 @@ services:
   # https://docs.dify.ai/learn-more/faq/install-faq#id-18.-why-is-ssrf_proxy-needed
   ssrf_proxy:
     image: ubuntu/squid:latest
+    container_name: dify_ssrf_proxy
     restart: always
     volumes:
       - ./ssrf_proxy/squid.conf.template:/etc/squid/squid.conf.template
@@ -682,6 +690,7 @@ services:
   # use `docker-compose --profile certbot up` to start the certbot service.
   certbot:
     image: certbot/certbot
+    container_name: dify_certbot
     profiles:
       - certbot
     volumes:
@@ -702,6 +711,7 @@ services:
   # used for reverse proxying the API service and Web service.
   nginx:
     image: nginx:latest
+    container_name: dify_nginx
     restart: always
     volumes:
       - ./nginx/nginx.conf.template:/etc/nginx/nginx.conf.template
@@ -741,6 +751,7 @@ services:
   # The Weaviate vector store.
   weaviate:
     image: semitechnologies/weaviate:1.19.0
+    container_name: dify_weaviate
     profiles:
       - ''
       - weaviate
@@ -766,6 +777,7 @@ services:
   # (if used, you need to set VECTOR_STORE to qdrant in the api & worker service.)
   qdrant:
     image: langgenius/qdrant:v1.7.3
+    container_name: dify_qdrant
     profiles:
       - qdrant
     restart: always
@@ -777,6 +789,7 @@ services:
   # The Couchbase vector store.
   couchbase-server:
     build: ./couchbase-server
+    container_name: dify_couchbase-server
     profiles:
       - couchbase
     restart: always
@@ -791,7 +804,6 @@ services:
       - COUCHBASE_INDEX_RAM_SIZE=512
       - COUCHBASE_FTS_RAM_SIZE=1024
     hostname: couchbase-server
-    container_name: couchbase-server
     working_dir: /opt/couchbase
     stdin_open: true
     tty: true
@@ -810,6 +822,7 @@ services:
   # The pgvector vector database.
   pgvector:
     image: pgvector/pgvector:pg16
+    container_name: dify_pgvector
     profiles:
       - pgvector
     restart: always
@@ -837,6 +850,7 @@ services:
   # pgvecto-rs vector store
   pgvecto-rs:
     image: tensorchord/pgvecto-rs:pg16-v0.3.0
+    container_name: dify_pgvecto-rs
     profiles:
       - pgvecto-rs
     restart: always
@@ -859,6 +873,7 @@ services:
   # Chroma vector database
   chroma:
     image: ghcr.io/chroma-core/chroma:0.5.20
+    container_name: dify_chroma
     profiles:
       - chroma
     restart: always
@@ -872,7 +887,7 @@ services:
   # OceanBase vector database
   oceanbase:
     image: oceanbase/oceanbase-ce:4.3.5.1-101000042025031818
-    container_name: oceanbase
+    container_name: dify_oceanbase
     profiles:
       - oceanbase
     restart: always
@@ -906,7 +921,7 @@ services:
 
   # Milvus vector database services
   etcd:
-    container_name: milvus-etcd
+    container_name: dify_milvus-etcd
     image: quay.io/coreos/etcd:v3.5.5
     profiles:
       - milvus
@@ -927,7 +942,7 @@ services:
       - milvus
 
   minio:
-    container_name: milvus-minio
+    container_name: dify_milvus-minio
     image: minio/minio:RELEASE.2023-03-20T20-16-18Z
     profiles:
       - milvus
@@ -946,7 +961,7 @@ services:
       - milvus
 
   milvus-standalone:
-    container_name: milvus-standalone
+    container_name: dify_milvus-standalone
     image: milvusdb/milvus:v2.5.0-beta
     profiles:
       - milvus
@@ -974,7 +989,7 @@ services:
 
   # Opensearch vector database
   opensearch:
-    container_name: opensearch
+    container_name: dify_opensearch
     image: opensearchproject/opensearch:latest
     profiles:
       - opensearch
@@ -996,7 +1011,7 @@ services:
       - opensearch-net
 
   opensearch-dashboards:
-    container_name: opensearch-dashboards
+    container_name: dify_opensearch-dashboards
     image: opensearchproject/opensearch-dashboards:latest
     profiles:
       - opensearch
@@ -1012,6 +1027,7 @@ services:
   # opengauss vector database.
   opengauss:
     image: opengauss/opengauss:7.0.0-RC1
+    container_name: dify_opengauss
     profiles:
       - opengauss
     privileged: true
@@ -1033,7 +1049,7 @@ services:
 
   # MyScale vector database
   myscale:
-    container_name: myscale
+    container_name: dify_myscale
     image: myscale/myscaledb:1.6.4
     profiles:
       - myscale
@@ -1050,7 +1066,7 @@ services:
   # https://www.elastic.co/guide/en/elasticsearch/reference/current/docker.html#docker-prod-prerequisites
   elasticsearch:
     image: docker.elastic.co/elasticsearch/elasticsearch:8.14.3
-    container_name: elasticsearch
+    container_name: dify_elasticsearch
     profiles:
       - elasticsearch
       - elasticsearch-ja
