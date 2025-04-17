@@ -556,7 +556,7 @@ class ProviderManager:
                             provider_name_to_provider_records_dict[provider_name].append(new_provider_record)
                         except IntegrityError:
                             db.session.rollback()
-                            provider_record = (
+                            existed_provider_record = (
                                 db.session.query(Provider)
                                 .filter(
                                     Provider.tenant_id == tenant_id,
@@ -566,11 +566,14 @@ class ProviderManager:
                                 )
                                 .first()
                             )
-                            if provider_record and not provider_record.is_valid:
-                                provider_record.is_valid = True
+                            if not existed_provider_record:
+                                continue
+
+                            if not existed_provider_record.is_valid:
+                                existed_provider_record.is_valid = True
                                 db.session.commit()
 
-                            provider_name_to_provider_records_dict[provider_name].append(provider_record)
+                            provider_name_to_provider_records_dict[provider_name].append(existed_provider_record)
 
         return provider_name_to_provider_records_dict
 
