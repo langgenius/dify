@@ -102,6 +102,12 @@ class LLMNode(BaseNode[LLMNodeData]):
     _node_type = NodeType.LLM
 
     def _run(self) -> Generator[NodeEvent | InNodeEvent, None, None]:
+        def process_structured_output(text: str) -> Optional[dict[str, Any] | list[Any]]:
+            """Process structured output if enabled"""
+            if not self.node_data.structured_output_enabled or not self.node_data.structured_output:
+                return None
+            return self._parse_structured_output(text)
+
         node_inputs: Optional[dict[str, Any]] = None
         process_data = None
         result_text = ""
@@ -201,19 +207,8 @@ class LLMNode(BaseNode[LLMNodeData]):
                     self.deduct_llm_quota(tenant_id=self.tenant_id, model_instance=model_instance, usage=usage)
                     break
             outputs = {"text": result_text, "usage": jsonable_encoder(usage), "finish_reason": finish_reason}
-            if self.node_data.structured_output_enabled and self.node_data.structured_output:
-                structured_output: dict[str, Any] | list[Any] = {}
-                try:
-                    parsed = json.loads(result_text)
-                    if not isinstance(parsed, (dict | list)):
-                        raise LLMNodeError(f"Failed to parse structured output: {result_text}")
-                    structured_output = parsed
-                except json.JSONDecodeError as e:
-                    # if the result_text is not a valid json, try to repair it
-                    parsed = json_repair.loads(result_text)
-                    if not isinstance(parsed, (dict | list)):
-                        raise LLMNodeError(f"Failed to parse structured output: {result_text}")
-                    structured_output = parsed
+            structured_output = process_structured_output(result_text)
+            if structured_output:
                 outputs["structured_output"] = structured_output
             yield RunCompletedEvent(
                 run_result=NodeRunResult(
@@ -758,6 +753,21 @@ class LLMNode(BaseNode[LLMNodeData]):
             )
         stop = model_config.stop
         return filtered_prompt_messages, stop
+
+    def _parse_structured_output(self, result_text: str) -> dict[str, Any] | list[Any]:
+        structured_output: dict[str, Any] | list[Any] = {}
+        try:
+            parsed = json.loads(result_text)
+            if not isinstance(parsed, (dict | list)):
+                raise LLMNodeError(f"Failed to parse structured output: {result_text}")
+            structured_output = parsed
+        except json.JSONDecodeError as e:
+            # if the result_text is not a valid json, try to repair it
+            parsed = json_repair.loads(result_text)
+            if not isinstance(parsed, (dict | list)):
+                raise LLMNodeError(f"Failed to parse structured output: {result_text}")
+            structured_output = parsed
+        return structured_output
 
     @classmethod
     def deduct_llm_quota(cls, tenant_id: str, model_instance: ModelInstance, usage: LLMUsage) -> None:

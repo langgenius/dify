@@ -325,7 +325,5 @@ Your task is to convert simple user descriptions into properly formatted JSON Sc
     ]
 }
 
-Now, generate a JSON Schema based on my description:
-**User Input:** {{INSTRUCTION}}
-**JSON Schema Output:**
+Now, generate a JSON Schema based on my description
 """  # noqa: E501

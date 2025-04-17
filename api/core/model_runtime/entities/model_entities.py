@@ -202,12 +202,13 @@ class AIModelEntity(ProviderModel):
     def validate_model(self):
         supported_schema_keys = ["json_schema"]
         schema_key = next((rule.name for rule in self.parameter_rules if rule.name in supported_schema_keys), None)
-        if schema_key:
-            if self.features is None:
-                self.features = [ModelFeature.STRUCTURED_OUTPUT]
-            else:
-                if ModelFeature.STRUCTURED_OUTPUT not in self.features:
-                    self.features = [*self.features, ModelFeature.STRUCTURED_OUTPUT]
+        if not schema_key:
+            return self
+        if self.features is None:
+            self.features = [ModelFeature.STRUCTURED_OUTPUT]
+        else:
+            if ModelFeature.STRUCTURED_OUTPUT not in self.features:
+                self.features.append(ModelFeature.STRUCTURED_OUTPUT)
         return self
 
 

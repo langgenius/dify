@@ -10,7 +10,7 @@ from core.llm_generator.prompts import (
     GENERATOR_QA_PROMPT,
     JAVASCRIPT_CODE_GENERATOR_PROMPT_TEMPLATE,
     PYTHON_CODE_GENERATOR_PROMPT_TEMPLATE,
-    STRUCTURED_OUTPUT_GENERATE_TEMPLATE,
+    SYSTEM_STRUCTURED_OUTPUT_GENERATE,
     WORKFLOW_RULE_CONFIG_PROMPT_GENERATE_TEMPLATE,
 )
 from core.model_manager import ModelManager
@@ -343,16 +343,7 @@ class LLMGenerator:
         return answer.strip()
 
     @classmethod
-    def generate_structured_output(cls, tenant_id: str, instruction: str, model_config: dict, max_tokens: int):
-        prompt_template = PromptTemplateParser(STRUCTURED_OUTPUT_GENERATE_TEMPLATE)
-
-        prompt = prompt_template.format(
-            inputs={
-                "INSTRUCTION": instruction,
-            },
-            remove_template_variables=False,
-        )
-
+    def generate_structured_output(cls, tenant_id: str, instruction: str, model_config: dict):
         model_manager = ModelManager()
         model_instance = model_manager.get_model_instance(
             tenant_id=tenant_id,
@@ -361,7 +352,10 @@ class LLMGenerator:
             model=model_config.get("name", ""),
         )
 
-        prompt_messages = [UserPromptMessage(content=prompt)]
+        prompt_messages = [
+            SystemPromptMessage(content=SYSTEM_STRUCTURED_OUTPUT_GENERATE),
+            UserPromptMessage(content=instruction),
+        ]
         model_parameters = model_config.get("model_parameters", {})
 
         try:
