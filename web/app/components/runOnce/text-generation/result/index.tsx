@@ -411,11 +411,11 @@ const Result: FC<IResultProps> = ({
     <div className=''
       ref={renderRef}
     >
-      <div className='text-right text-sm flex justify-end w-full'>
-        <div className='bg-background-section-burn py-2 my-2 rounded-lg p-2 max-w-[80%] flex-1'>
+      <div className=' text-sm flex justify-end w-full'>
+        <div className='bg-background-section-burn py-2 my- rounded-lg p-2 max-w-[80%] flex-1'>
           {t('run.startAnalysis')}
           {inputs && (
-            <div className={cn('mb-1')}>
+            <div className={cn('my-1')}>
               <CodeEditor
                 readOnly
                 title={<div>{t('workflow.common.input').toLocaleUpperCase()}</div>}
@@ -426,10 +426,10 @@ const Result: FC<IResultProps> = ({
             </div>
           )}
         </div>
-        <div className="shrink-0 w-5 h-5 m-2 bg-cover bg-no-repeat bg-[url('~@/app/components/runOnce/text-generation/result/human.svg')]" />
+        <div className="shrink-0 w-5 h-5 m-2 mt-3 bg-cover bg-no-repeat bg-[url('~@/app/components/runOnce/text-generation/result/human.svg')]" />
       </div>
       <div className=' text-sm flex w-full justify-start'>
-        <div className="shrink-0 w-6 h-6 m-2 bg-cover bg-no-repeat bg-[url('~@/app/components/runOnce/text-generation/result/ai.svg')]" />
+        <div className="shrink-0 w-6 h-6 m-2 mt-3 bg-cover bg-no-repeat bg-[url('~@/app/components/runOnce/text-generation/result/ai.svg')]" />
         <div className='bg-background-section-burn py-2 my-2 rounded-lg p-2 max-w-[80%] ' >
           {t('run.aiAnalysis')}
         </div>
