@@ -1,6 +1,6 @@
 const translation = {
-  startAnalysis: '以下是我的参数，请帮我分析',
-  aiAnalysis: '开始执行工作流分析',
+  aiAnalysis: '好的，现在开始为您分析。',
+  startAnalysis: '以下是告警的详细内容，请帮我分析原因。',
 }
 
 export default translation

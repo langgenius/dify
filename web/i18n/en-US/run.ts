@@ -1,6 +1,6 @@
 const translation = {
-  startAnalysis: 'The following are my parameters. Please help me analyze.',
-  aiAnalysis: 'Start Analyze',
+  startAnalysis: 'The following is the detailed content of the alert. Please help me analyze the cause.',
+  aiAnalysis: 'Understood. Beginning the analysis now.',
 }
 
 export default translation
