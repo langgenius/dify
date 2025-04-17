@@ -1,0 +1,51 @@
+identity:
+  name: 查询全量日志
+  author: APO
+  label:
+    en_US: Query all logs.
+    zh_Hans: 查询全量日志
+description:
+  human:
+    en_US: Query all logs.
+    zh_Hans: 查询全量日志
+  llm: Query all logs.
+display:
+  type: log
+  title: log
+  unit: log
+parameters:
+  - name: query
+    type: string
+    required: false
+    label:
+      en_US: Query condition(clickhouse where clause).
+      zh_Hans: 查询条件（clickhouse where子句）
+    human_description:
+      en_US: Query condition(clickhouse where clause).
+      zh_Hans: 查询条件（clickhouse where子句）
+    llm_description: Query condition(clickhouse where clause).
+    form: llm
+
+  - name: startTime
+    type: number
+    required: true
+    label:
+      en_US: Start Time
+      zh_Hans: 开始时间
+    human_description:
+      en_US: Start timestamp in microseconds
+      zh_Hans: 查询开始时间（微秒）
+    llm_description: Microsecond timestamp for start time
+    form: llm
+
+  - name: endTime
+    type: number
+    required: true
+    label:
+      en_US: End Time
+      zh_Hans: 结束时间
+    human_description:
+      en_US: End timestamp in microseconds
+      zh_Hans: 查询结束时间（微秒）
+    llm_description: Microsecond timestamp for end time
+    form: llm

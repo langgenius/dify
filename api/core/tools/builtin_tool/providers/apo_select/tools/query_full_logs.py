@@ -9,7 +9,7 @@ from core.tools.builtin_tool.tool import BuiltinTool
 from core.tools.entities.tool_entities import ToolInvokeMessage
 
 
-class FaultLogTool(BuiltinTool):
+class QueryFullLogsTool(BuiltinTool):
     def _invoke(
         self,
         user_id: str,
@@ -18,32 +18,30 @@ class FaultLogTool(BuiltinTool):
         app_id: Optional[str] = None,
         message_id: Optional[str] = None,
     ) -> Generator[ToolInvokeMessage, None, None]:
-        service = tool_parameters.get("service")
         start_time = tool_parameters.get("startTime")
         end_time = tool_parameters.get("endTime")
-        pod = tool_parameters.get("pod")
+        query = tool_parameters.get("query")
+
         params = {
-          'service': [service],
-          'startTime': start_time,
-          'endTime': end_time,
-          'pageNum': 1,
-          'pageSize': 10,
-          'pod': pod,
-          }
-        url = dify_config.APO_BACKEND_URL + "/api/log/fault/pagelist"
-        resp = requests.post(url, json=params)
-        log_list = resp.json().get('list', [])
-        list = []
-        if not log_list:
-            yield self.create_text_message('')
-        else:
-            list = log_list[0]
-        
-        content_url = dify_config.APO_BACKEND_URL + "/api/log/fault/content"
-        content = requests.post(content_url, json=list).json()
+            "dataBase": "apo",
+            "endTime": end_time,
+            "isExternal": False,
+            "pageNum" : 1,
+            "pageSize" : 100,
+            "query" : query,
+            "startTime" : start_time,
+            "tableName" : "raw_logs",
+        }
+
+        url = dify_config.APO_BACKEND_URL + "/api/log/query"
+        resp = requests.post(
+            url=url,
+            json=params,
+        )  
+
         list = json.dumps({
             'type': 'log',
             'display': True,
-            'data': content,
+            'data': resp.json(),
         })
         yield self.create_text_message(list)
