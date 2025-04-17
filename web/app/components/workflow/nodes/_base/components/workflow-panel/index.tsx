@@ -48,6 +48,7 @@ import type { Node } from '@/app/components/workflow/types'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { useStore } from '@/app/components/workflow/store'
 import Tab, { TabType } from './tab'
+import LastRun from './last-run'
 
 type BasePanelProps = {
   children: ReactNode
@@ -105,6 +106,7 @@ const BasePanel: FC<BasePanelProps> = ({
   }, [handleNodeDataUpdateWithSyncDraft, id, saveStateToHistory])
 
   const [tabType, setTabType] = useState<TabType>(TabType.settings)
+
   return (
     <div className={cn(
       'relative mr-2 h-full',
@@ -218,7 +220,7 @@ const BasePanel: FC<BasePanelProps> = ({
         )}
 
         {tabType === TabType.lastRun && (
-          <div>last run content</div>
+          <LastRun appId={id} />
         )}
       </div>
     </div>
