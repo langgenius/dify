@@ -190,6 +190,7 @@ const translation = {
     noParams: 'ไม่จําเป็นต้องใช้พารามิเตอร์',
     label: 'แอพ',
   },
+  notPublish: 'เวิร์กโฟลว์นี้ยังไม่ได้เผยแพร่หรือยังไม่ได้สร้างคีย์ API',
 }
 
 export default translation

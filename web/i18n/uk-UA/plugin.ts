@@ -180,6 +180,8 @@ const translation = {
     difyMarketplace: 'Dify Marketplace',
     viewMore: 'Дивитись більше',
     noPluginFound: 'Плагін не знайдено',
+    verifiedTip: 'Перевірено Dify',
+    partnerTip: 'Перевірено партнером Dify',
   },
   task: {
     installingWithError: 'Не вдалося встановити плагіни {{installingLength}}, успіх {{successLength}}, {{errorLength}}',

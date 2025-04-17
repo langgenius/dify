@@ -180,6 +180,8 @@ const translation = {
     discover: 'Descubrir',
     and: 'y',
     difyMarketplace: 'Mercado de Dify',
+    partnerTip: 'Verificado por un socio de Dify',
+    verifiedTip: 'Verificado por Dify',
   },
   task: {
     installing: 'Instalando plugins {{installingLength}}, 0 hecho.',

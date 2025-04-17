@@ -194,6 +194,7 @@ const translation = {
     label: 'برنامه',
     placeholder: 'برنامه ای را انتخاب کنید...',
   },
+  notPublish: 'این گردش کار منتشر نشده است یا API-Key ایجاد نشده است',
 }
 
 export default translation

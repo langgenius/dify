@@ -180,6 +180,8 @@ const translation = {
     moreFrom: 'Mais do Marketplace',
     noPluginFound: 'Nenhum plugin encontrado',
     discover: 'Descobrir',
+    partnerTip: 'Verificado por um parceiro da Dify',
+    verifiedTip: 'Verificado por Dify',
   },
   task: {
     installedError: 'Falha na instalação dos plug-ins {{errorLength}}',

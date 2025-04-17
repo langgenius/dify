@@ -32,6 +32,7 @@ const loadLangResources = (lang: string) => ({
     pluginTags: require(`./${lang}/plugin-tags`).default,
     time: require(`./${lang}/time`).default,
     apo: require(`./${lang}/apo`).default,
+    run: require(`./${lang}/run`).default,
   },
 })
 

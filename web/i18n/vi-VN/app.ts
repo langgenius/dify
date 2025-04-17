@@ -194,6 +194,7 @@ const translation = {
     noParams: 'Không cần thông số',
     label: 'Ứng dụng',
   },
+  notPublish: 'Quy trình làm việc này chưa được xuất bản hoặc Khóa API chưa được tạo',
 }
 
 export default translation

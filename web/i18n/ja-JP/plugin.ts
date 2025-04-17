@@ -180,6 +180,8 @@ const translation = {
     viewMore: 'もっと見る',
     discover: '発見する',
     empower: 'AI開発を強化する',
+    verifiedTip: 'Difyによって確認された',
+    partnerTip: 'Difyのパートナーによって確認済み',
   },
   task: {
     installError: '{{errorLength}} プラグインのインストールに失敗しました。表示するにはクリックしてください。',

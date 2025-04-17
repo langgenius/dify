@@ -193,6 +193,7 @@ const translation = {
     params: '應用程式參數',
     label: '應用程式',
   },
+  notPublish: '此工作流尚未發佈或尚未創建 API 金鑰',
 }
 
 export default translation

@@ -180,6 +180,8 @@ const translation = {
     pluginsResult: '{{num}} Ergebnisse',
     empower: 'Unterstützen Sie Ihre KI-Entwicklung',
     and: 'und',
+    verifiedTip: 'Verifiziert von Dify',
+    partnerTip: 'Verifiziert von einem Dify-Partner',
   },
   task: {
     clearAll: 'Alle löschen',

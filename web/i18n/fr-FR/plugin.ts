@@ -180,6 +180,8 @@ const translation = {
     difyMarketplace: 'Marché Dify',
     empower: 'Renforcez le développement de votre IA',
     sortBy: 'Ville noire',
+    partnerTip: 'Vérifié par un partenaire Dify',
+    verifiedTip: 'Vérifié par Dify',
   },
   task: {
     installError: '{{errorLength}} les plugins n’ont pas pu être installés, cliquez pour voir',

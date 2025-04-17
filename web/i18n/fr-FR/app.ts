@@ -194,6 +194,7 @@ const translation = {
     label: 'APPLI',
     placeholder: 'Sélectionnez une application...',
   },
+  notPublish: 'Ce workflow n’a pas été publié ou la clé API n’a pas été créée',
 }
 
 export default translation

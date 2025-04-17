@@ -24,7 +24,6 @@ const translation = {
     input: '输入',
     unit: '单位',
   },
-
 }
 
 export default translation

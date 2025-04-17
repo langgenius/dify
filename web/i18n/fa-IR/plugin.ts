@@ -180,6 +180,8 @@ const translation = {
     difyMarketplace: 'بازار دیفی',
     empower: 'توسعه هوش مصنوعی خود را توانمند کنید',
     discover: 'کشف',
+    verifiedTip: 'تایید شده توسط Dify',
+    partnerTip: 'تأیید شده توسط یک شریک Dify',
   },
   task: {
     installing: 'نصب پلاگین های {{installingLength}}، 0 انجام شد.',

@@ -194,6 +194,7 @@ const translation = {
     label: 'APL',
     placeholder: 'Izberite aplikacijo ...',
   },
+  notPublish: 'Ta potek dela ni bil objavljen ali ključ API-ja ni bil ustvarjen',
 }
 
 export default translation

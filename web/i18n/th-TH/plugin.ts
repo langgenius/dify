@@ -180,6 +180,8 @@ const translation = {
     noPluginFound: 'ไม่พบปลั๊กอิน',
     empower: 'เพิ่มศักยภาพในการพัฒนา AI ของคุณ',
     difyMarketplace: 'ตลาด Dify',
+    partnerTip: 'ตรวจสอบโดยพันธมิตร Dify',
+    verifiedTip: 'ตรวจสอบโดย Dify',
   },
   task: {
     installing: 'การติดตั้งปลั๊กอิน {{installingLength}} 0 เสร็จแล้ว',

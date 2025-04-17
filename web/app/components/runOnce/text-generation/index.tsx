@@ -1,0 +1,506 @@
+'use client'
+import type { FC } from 'react'
+import React, { useCallback, useEffect, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import {
+  RiErrorWarningFill,
+} from '@remixicon/react'
+import { useBoolean, useClickAway } from 'ahooks'
+import { XMarkIcon } from '@heroicons/react/24/outline'
+import { usePathname, useRouter, useSearchParams } from 'next/navigation'
+import Button from '../../base/button'
+import { checkOrSetAccessToken } from '../utils'
+import s from './style.module.css'
+import ResDownload from './run-batch/res-download'
+import cn from '@/utils/classnames'
+import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
+import { fetchSavedMessage as doFetchSavedMessage, fetchAppInfo, fetchAppParams, removeMessage, saveMessage } from '@/service/share'
+import type { SiteInfo } from '@/models/share'
+import type {
+  MoreLikeThisConfig,
+  PromptConfig,
+  SavedMessage,
+  TextToSpeechConfig,
+} from '@/models/debug'
+import { changeLanguage } from '@/i18n/i18next-config'
+import Loading from '@/app/components/base/loading'
+import { userInputsFormToPromptVariables } from '@/utils/model-config'
+import Res from '@/app/components/runOnce/text-generation/result'
+import type { InstalledApp } from '@/models/explore'
+import Toast from '@/app/components/base/toast'
+import type { VisionFile, VisionSettings } from '@/types/app'
+import { Resolution, TransferMethod } from '@/types/app'
+import { useAppFavicon } from '@/hooks/use-app-favicon'
+
+const GROUP_SIZE = 5 // to avoid RPM(Request per minute) limit. The group task finished then the next group.
+enum TaskStatus {
+  pending = 'pending',
+  running = 'running',
+  completed = 'completed',
+  failed = 'failed',
+}
+
+type TaskParam = {
+  inputs: Record<string, any>
+}
+
+type Task = {
+  id: number
+  status: TaskStatus
+  params: TaskParam
+}
+
+export type IMainProps = {
+  isInstalledApp?: boolean
+  installedAppInfo?: InstalledApp
+  isWorkflow?: boolean
+  apiKey: string
+}
+
+const TextGeneration: FC<IMainProps> = ({
+  isInstalledApp = false,
+  installedAppInfo,
+  isWorkflow = false,
+  apiKey,
+}) => {
+  const { notify } = Toast
+
+  const { t } = useTranslation()
+  const media = useBreakpoints()
+  const isPC = media === MediaType.pc
+  const isTablet = media === MediaType.tablet
+  const isMobile = media === MediaType.mobile
+
+  const searchParams = useSearchParams()
+  const mode = searchParams.get('mode') || 'create'
+  const [currentTab, setCurrentTab] = useState<string>(
+    ['create', 'batch'].includes(mode) ? mode : 'create',
+  )
+
+  const router = useRouter()
+  const pathname = usePathname()
+
+  const [queryInputs, setQueryInputs] = useState<any>(null)
+
+  // Notice this situation isCallBatchAPI but not in batch tab
+  const [isCallBatchAPI, setIsCallBatchAPI] = useState(false)
+  const isInBatchTab = currentTab === 'batch'
+  const [inputs, doSetInputs] = useState<Record<string, any>>({})
+  const inputsRef = useRef(inputs)
+  const setInputs = useCallback((newInputs: Record<string, any>) => {
+    doSetInputs(newInputs)
+    inputsRef.current = newInputs
+  }, [])
+  const [appId, setAppId] = useState<string>('')
+  const [siteInfo, setSiteInfo] = useState<SiteInfo | null>(null)
+  const [canReplaceLogo, setCanReplaceLogo] = useState<boolean>(false)
+  const [promptConfig, setPromptConfig] = useState<PromptConfig | null>(null)
+  const [moreLikeThisConfig, setMoreLikeThisConfig]
+    = useState<MoreLikeThisConfig | null>(null)
+  const [textToSpeechConfig, setTextToSpeechConfig]
+    = useState<TextToSpeechConfig | null>(null)
+
+  // save message
+  const [savedMessages, setSavedMessages] = useState<SavedMessage[]>([])
+  const fetchSavedMessage = async () => {
+    const res: any = await doFetchSavedMessage(
+      isInstalledApp,
+      installedAppInfo?.id,
+    )
+    setSavedMessages(res.data)
+  }
+  const handleSaveMessage = async (messageId: string) => {
+    await saveMessage(messageId, isInstalledApp, installedAppInfo?.id)
+    notify({ type: 'success', message: t('common.api.saved') })
+    fetchSavedMessage()
+  }
+  const handleRemoveSavedMessage = async (messageId: string) => {
+    await removeMessage(messageId, isInstalledApp, installedAppInfo?.id)
+    notify({ type: 'success', message: t('common.api.remove') })
+    fetchSavedMessage()
+  }
+
+  // send message task
+  const [controlSend, setControlSend] = useState(0)
+  const [controlStopResponding, setControlStopResponding] = useState(0)
+  const [visionConfig, setVisionConfig] = useState<VisionSettings>({
+    enabled: false,
+    number_limits: 2,
+    detail: Resolution.low,
+    transfer_methods: [TransferMethod.local_file],
+  })
+  const [completionFiles, setCompletionFiles] = useState<VisionFile[]>([])
+
+  const handleSend = () => {
+    setIsCallBatchAPI(false)
+    setControlSend(Date.now())
+
+    // eslint-disable-next-line ts/no-use-before-define
+    setAllTaskList([]) // clear batch task running status
+
+    // eslint-disable-next-line ts/no-use-before-define
+    showResSidebar()
+  }
+  useEffect(() => {
+    const params = new URLSearchParams(searchParams)
+    if (params.has('mode')) {
+      params.delete('mode')
+      router.replace(`${pathname}?${params.toString()}`)
+    }
+    const queryInputs = Object.fromEntries(searchParams.entries())
+    if (queryInputs) {
+      setQueryInputs(queryInputs)
+      setInputs(queryInputs)
+      // router.replace(pathname)
+    }
+
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+  useEffect(() => {
+    if (
+      queryInputs
+      && typeof queryInputs === 'object'
+      && Object.keys(queryInputs).length > 0
+    )
+      handleSend()
+  }, [queryInputs])
+  const [controlRetry, setControlRetry] = useState(0)
+  const handleRetryAllFailedTask = () => {
+    setControlRetry(Date.now())
+  }
+  const [allTaskList, doSetAllTaskList] = useState<Task[]>([])
+  const allTaskListRef = useRef<Task[]>([])
+  const getLatestTaskList = () => allTaskListRef.current
+  const setAllTaskList = (taskList: Task[]) => {
+    doSetAllTaskList(taskList)
+    allTaskListRef.current = taskList
+  }
+  const pendingTaskList = allTaskList.filter(
+    task => task.status === TaskStatus.pending,
+  )
+  const noPendingTask = pendingTaskList.length === 0
+  const showTaskList = allTaskList.filter(
+    task => task.status !== TaskStatus.pending,
+  )
+  const [currGroupNum, doSetCurrGroupNum] = useState(0)
+  const currGroupNumRef = useRef(0)
+  const setCurrGroupNum = (num: number) => {
+    doSetCurrGroupNum(num)
+    currGroupNumRef.current = num
+  }
+  const getCurrGroupNum = () => {
+    return currGroupNumRef.current
+  }
+  const allSuccessTaskList = allTaskList.filter(
+    task => task.status === TaskStatus.completed,
+  )
+  const allFailedTaskList = allTaskList.filter(
+    task => task.status === TaskStatus.failed,
+  )
+  const allTasksFinished = allTaskList.every(
+    task => task.status === TaskStatus.completed,
+  )
+  const allTasksRun = allTaskList.every(task =>
+    [TaskStatus.completed, TaskStatus.failed].includes(task.status),
+  )
+  const [batchCompletionRes, doSetBatchCompletionRes] = useState<
+    Record<string, string>
+  >({})
+  const batchCompletionResRef = useRef<Record<string, string>>({})
+  const setBatchCompletionRes = (res: Record<string, string>) => {
+    doSetBatchCompletionRes(res)
+    batchCompletionResRef.current = res
+  }
+  const getBatchCompletionRes = () => batchCompletionResRef.current
+  const exportRes = allTaskList.map((task) => {
+    const batchCompletionResLatest = getBatchCompletionRes()
+    const res: Record<string, string> = {}
+    const { inputs } = task.params
+    promptConfig?.prompt_variables.forEach((v) => {
+      res[v.name] = inputs[v.key]
+    })
+    let result = batchCompletionResLatest[task.id]
+    // task might return multiple fields, should marshal object to string
+    if (typeof batchCompletionResLatest[task.id] === 'object')
+      result = JSON.stringify(result)
+
+    res[t('share.generation.completionResult')] = result
+    return res
+  })
+
+  const handleCompleted = (
+    completionRes: string,
+    taskId?: number,
+    isSuccess?: boolean,
+  ) => {
+    const allTaskListLatest = getLatestTaskList()
+    const batchCompletionResLatest = getBatchCompletionRes()
+    const pendingTaskList = allTaskListLatest.filter(
+      task => task.status === TaskStatus.pending,
+    )
+    const runTasksCount
+      = 1
+      + allTaskListLatest.filter(task =>
+        [TaskStatus.completed, TaskStatus.failed].includes(task.status),
+      ).length
+    const needToAddNextGroupTask
+      = getCurrGroupNum() !== runTasksCount
+      && pendingTaskList.length > 0
+      && (runTasksCount % GROUP_SIZE === 0
+        || allTaskListLatest.length - runTasksCount < GROUP_SIZE)
+    // avoid add many task at the same time
+    if (needToAddNextGroupTask) setCurrGroupNum(runTasksCount)
+
+    const nextPendingTaskIds = needToAddNextGroupTask
+      ? pendingTaskList.slice(0, GROUP_SIZE).map(item => item.id)
+      : []
+    const newAllTaskList = allTaskListLatest.map((item) => {
+      if (item.id === taskId) {
+        return {
+          ...item,
+          status: isSuccess ? TaskStatus.completed : TaskStatus.failed,
+        }
+      }
+      if (needToAddNextGroupTask && nextPendingTaskIds.includes(item.id)) {
+        return {
+          ...item,
+          status: TaskStatus.running,
+        }
+      }
+      return item
+    })
+    setAllTaskList(newAllTaskList)
+    if (taskId) {
+      setBatchCompletionRes({
+        ...batchCompletionResLatest,
+        [`${taskId}`]: completionRes,
+      })
+    }
+  }
+
+  const fetchInitData = async () => {
+    if (!isInstalledApp) await checkOrSetAccessToken()
+
+    return Promise.all([
+      isInstalledApp
+        ? {
+          app_id: installedAppInfo?.id,
+          site: {
+            title: installedAppInfo?.app.name,
+            prompt_public: false,
+            copyright: '',
+            icon: installedAppInfo?.app.icon,
+            icon_background: installedAppInfo?.app.icon_background,
+          },
+          plan: 'basic',
+        }
+        : fetchAppInfo(),
+      fetchAppParams(isInstalledApp, installedAppInfo?.id),
+      !isWorkflow ? fetchSavedMessage() : {},
+    ])
+  }
+  useEffect(() => {
+    (async () => {
+      const [appData, appParams]: any = await fetchInitData()
+      const { app_id: appId, site: siteInfo, can_replace_logo } = appData
+      setAppId(appId)
+      setSiteInfo(siteInfo as SiteInfo)
+      setCanReplaceLogo(can_replace_logo)
+      changeLanguage(siteInfo.default_language)
+
+      const {
+        user_input_form,
+        more_like_this,
+        file_upload,
+        text_to_speech,
+      }: any = appParams
+      setVisionConfig({
+        // legacy of image upload compatible
+        ...file_upload,
+        transfer_methods:
+          file_upload.allowed_file_upload_methods
+          || file_upload.allowed_upload_methods,
+        // legacy of image upload compatible
+        image_file_size_limit:
+          appParams?.system_parameters?.image_file_size_limit,
+        fileUploadConfig: appParams?.system_parameters,
+      })
+      const prompt_variables = userInputsFormToPromptVariables(user_input_form)
+      setPromptConfig({
+        prompt_template: '', // placeholder for future
+        prompt_variables,
+      } as PromptConfig)
+      setMoreLikeThisConfig(more_like_this)
+      setTextToSpeechConfig(text_to_speech)
+    })()
+  }, [])
+
+  // Can Use metadata(https://beta.nextjs.org/docs/api-reference/metadata) to set title. But it only works in server side client.
+  useEffect(() => {
+    if (siteInfo?.title) {
+      if (canReplaceLogo) document.title = `${siteInfo.title}`
+      else document.title = `${siteInfo.title} - Powered by Dify`
+    }
+  }, [siteInfo?.title, canReplaceLogo])
+
+  useAppFavicon({
+    enable: !isInstalledApp,
+    icon_type: siteInfo?.icon_type,
+    icon: siteInfo?.icon,
+    icon_background: siteInfo?.icon_background,
+    icon_url: siteInfo?.icon_url,
+  })
+
+  const [
+    isShowResSidebar,
+    { setTrue: doShowResSidebar, setFalse: hideResSidebar },
+  ] = useBoolean(false)
+  const showResSidebar = () => {
+    // fix: useClickAway hideResSidebar will close sidebar
+    setTimeout(() => {
+      doShowResSidebar()
+    }, 0)
+  }
+  const resRef = useRef<HTMLDivElement>(null)
+  useClickAway(() => {
+    hideResSidebar()
+  }, resRef)
+
+  const renderRes = (task?: Task) => (
+    <Res
+      key={task?.id}
+      isWorkflow={isWorkflow}
+      isCallBatchAPI={isCallBatchAPI}
+      isPC={isPC}
+      isMobile={isMobile}
+      isInstalledApp={isInstalledApp}
+      installedAppInfo={installedAppInfo}
+      isError={task?.status === TaskStatus.failed}
+      promptConfig={promptConfig}
+      moreLikeThisEnabled={!!moreLikeThisConfig?.enabled}
+      inputs={isCallBatchAPI ? (task as Task).params.inputs : inputs}
+      controlSend={controlSend}
+      controlRetry={task?.status === TaskStatus.failed ? controlRetry : 0}
+      controlStopResponding={controlStopResponding}
+      onShowRes={showResSidebar}
+      handleSaveMessage={handleSaveMessage}
+      taskId={task?.id}
+      onCompleted={handleCompleted}
+      visionConfig={visionConfig}
+      completionFiles={completionFiles}
+      isShowTextToSpeech={!!textToSpeechConfig?.enabled}
+      siteInfo={siteInfo}
+      apiKey={apiKey}
+    />
+  )
+
+  const renderBatchRes = () => {
+    return showTaskList.map(task => renderRes(task))
+  }
+
+  const resWrapClassNames = (() => {
+    if (isPC) return 'grow h-full'
+
+    if (!isShowResSidebar) return 'none'
+
+    return cn('fixed z-50 inset-0', isTablet ? 'pl-[128px]' : 'pl-6')
+  })()
+
+  const renderResWrap = (
+    <div
+      ref={resRef}
+      className={cn(
+        'flex flex-col h-full shrink-0',
+        isPC ? 'px-5 py-4' : 'bg-gray-50',
+        isTablet && 'p-6',
+        isMobile && 'p-4',
+      )}
+    >
+      <>
+        <div className="flex items-center justify-between shrink-0">
+          <div className="flex items-center space-x-3">
+            <div className={s.starIcon}></div>
+            <div className="text-lg font-semibold text-gray-800">
+              {t('share.generation.title')}
+            </div>
+          </div>
+          <div className="flex items-center space-x-2">
+            {allFailedTaskList.length > 0 && (
+              <div className="flex items-center">
+                <RiErrorWarningFill className="w-4 h-4 text-[#D92D20]" />
+                <div className="ml-1 text-[#D92D20]">
+                  {t('share.generation.batchFailed.info', {
+                    num: allFailedTaskList.length,
+                  })}
+                </div>
+                <Button
+                  variant="primary"
+                  className="ml-2"
+                  onClick={handleRetryAllFailedTask}
+                >
+                  {t('share.generation.batchFailed.retry')}
+                </Button>
+                <div className="mx-3 w-[1px] h-3.5 bg-gray-200"></div>
+              </div>
+            )}
+            {allSuccessTaskList.length > 0 && (
+              <ResDownload isMobile={isMobile} values={exportRes} />
+            )}
+            {!isPC && (
+              <div
+                className="flex items-center justify-center cursor-pointer"
+                onClick={hideResSidebar}
+              >
+                <XMarkIcon className="w-4 h-4 text-gray-800" />
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="overflow-hidden grow">
+          {!isCallBatchAPI ? renderRes() : renderBatchRes()}
+          {!noPendingTask && (
+            <div className="mt-4">
+              <Loading type="area" />
+            </div>
+          )}
+        </div>
+      </>
+    </div>
+  )
+
+  if (!appId || !siteInfo || !promptConfig) {
+    return (
+      <div className="flex items-center h-screen">
+        <Loading type="app" />
+      </div>
+    )
+  }
+
+  return (
+    <>
+      <div
+        className={cn(
+          isPC && 'flex',
+          isInstalledApp ? s.installedApp : 'h-screen',
+          // 'bg-gray-50',
+        )}
+      >
+        {/* Left */}
+
+        {/* Result */}
+        <div
+          className={resWrapClassNames}
+          style={{
+            background:
+              !isPC && isShowResSidebar ? 'rgba(35, 56, 118, 0.2)' : 'none',
+          }}
+        >
+          {renderResWrap}
+        </div>
+      </div>
+    </>
+  )
+}
+
+export default TextGeneration

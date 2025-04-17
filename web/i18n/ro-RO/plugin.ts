@@ -180,6 +180,8 @@ const translation = {
     moreFrom: 'Mai multe din Marketplace',
     and: 'și',
     viewMore: 'Vezi mai mult',
+    verifiedTip: 'Verificat de Dify',
+    partnerTip: 'Verificat de un partener Dify',
   },
   task: {
     installError: '{{errorLength}} plugin-urile nu s-au instalat, faceți clic pentru a vizualiza',

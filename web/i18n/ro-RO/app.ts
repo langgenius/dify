@@ -194,6 +194,7 @@ const translation = {
     noParams: 'Nu sunt necesari parametri',
     placeholder: 'Selectați o aplicație...',
   },
+  notPublish: 'Acest flux de lucru nu a fost publicat sau cheia API nu a fost creată',
 }
 
 export default translation

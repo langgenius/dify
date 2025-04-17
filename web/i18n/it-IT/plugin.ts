@@ -180,6 +180,8 @@ const translation = {
     sortBy: 'Città nera',
     and: 'e',
     viewMore: 'Vedi di più',
+    partnerTip: 'Verificato da un partner Dify',
+    verifiedTip: 'Verificato da Dify',
   },
   task: {
     clearAll: 'Cancella tutto',

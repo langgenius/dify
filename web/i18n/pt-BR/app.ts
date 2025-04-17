@@ -194,6 +194,7 @@ const translation = {
     placeholder: 'Selecione um aplicativo...',
     params: 'PARÂMETROS DO APLICATIVO',
   },
+  notPublish: 'Este fluxo de trabalho não foi publicado ou a chave de API não foi criada',
 }
 
 export default translation

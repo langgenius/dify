@@ -180,6 +180,8 @@ const translation = {
     moreFrom: 'Marketplace에서 더 보기',
     sortBy: '블랙 시티',
     and: '그리고',
+    verifiedTip: 'Dify에 의해 확인',
+    partnerTip: 'Dify 파트너에 의한 검증',
   },
   task: {
     installingWithSuccess: '{{installingLength}} 플러그인 설치, {{successLength}} 성공.',

@@ -26,6 +26,7 @@ const translation = {
     now: '此刻',
     ok: '确定',
     cancel: '取消',
+    pickDate: '选取日期',
   },
   title: {
     pickTime: '选择时间',

@@ -206,6 +206,7 @@ const translation = {
     placeholder: 'Seleziona un\'app...',
     label: 'APP',
   },
+  notPublish: 'Questo flusso di lavoro non è stato pubblicato o la chiave API non è stata creata',
 }
 
 export default translation

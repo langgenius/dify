@@ -190,6 +190,7 @@ const translation = {
     label: '앱',
     placeholder: '앱 선택...',
   },
+  notPublish: '이 워크플로가 게시되지 않았거나 API 키가 만들어지지 않았습니다.',
 }
 
 export default translation

@@ -194,6 +194,7 @@ const translation = {
     placeholder: 'Выберите приложение...',
     params: 'ПАРАМЕТРЫ ПРИЛОЖЕНИЯ',
   },
+  notPublish: 'Этот рабочий процесс не был опубликован или ключ API не был создан',
 }
 
 export default translation

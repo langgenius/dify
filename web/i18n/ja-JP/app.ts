@@ -195,6 +195,7 @@ const translation = {
     noParams: 'パラメータは必要ありません',
     placeholder: 'アプリを選択...',
   },
+  notPublish: 'このワークフローは公開されていないか、APIキーが作成されていません。',
 }
 
 export default translation

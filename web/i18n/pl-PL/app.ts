@@ -201,6 +201,7 @@ const translation = {
     placeholder: 'Wybierz aplikację...',
     label: 'Aplikacja',
   },
+  notPublish: 'Ten przepływ pracy nie został opublikowany lub klucz interfejsu API nie został utworzony',
 }
 
 export default translation

@@ -201,6 +201,7 @@ const translation = {
     label: 'APP',
     noParams: 'Keine Parameter erforderlich',
   },
+  notPublish: 'Dieser Workflow wurde nicht veröffentlicht oder der API-Key wurde nicht erstellt',
 }
 
 export default translation

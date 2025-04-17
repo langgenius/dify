@@ -180,6 +180,8 @@ const translation = {
     sortBy: 'Thành phố đen',
     noPluginFound: 'Không tìm thấy plugin nào',
     and: 'và',
+    partnerTip: 'Được xác minh bởi đối tác Dify',
+    verifiedTip: 'Xác minh bởi Dify',
   },
   task: {
     installingWithError: 'Cài đặt {{installingLength}} plugins, {{successLength}} thành công, {{errorLength}} không thành công',

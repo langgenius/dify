@@ -194,6 +194,7 @@ const translation = {
     noParams: 'No se necesitan parámetros',
     params: 'PARÁMETROS DE LA APLICACIÓN',
   },
+  notPublish: 'Este flujo de trabajo no se ha publicado o no se ha creado la clave de API',
 }
 
 export default translation

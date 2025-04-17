@@ -180,6 +180,8 @@ const translation = {
     viewMore: 'Подробнее',
     and: 'и',
     discover: 'Обнаруживать',
+    verifiedTip: 'Проверено Dify',
+    partnerTip: 'Проверено партнером Dify',
   },
   task: {
     installing: 'Установка плагинов {{installingLength}}, 0 готово.',

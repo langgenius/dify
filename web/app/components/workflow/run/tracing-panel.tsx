@@ -183,7 +183,7 @@ const TracingPanel: FC<TracingPanelProps> = ({
 
   return (
     <div
-      className={cn(className || 'bg-components-panel-bg', 'py-2')}
+      className={cn(className || 'bg-components-panel-bg', 'py-2', 'rounded-lg')}
       onClick={(e) => {
         e.stopPropagation()
         e.nativeEvent.stopImmediatePropagation()

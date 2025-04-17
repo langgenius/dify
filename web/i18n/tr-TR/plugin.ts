@@ -180,6 +180,8 @@ const translation = {
     noPluginFound: 'Eklenti bulunamadı',
     viewMore: 'Daha fazla göster',
     discover: 'Keşfetmek',
+    partnerTip: 'Bir Dify ortağı tarafından doğrulandı',
+    verifiedTip: 'Dify tarafından doğrulandı',
   },
   task: {
     installedError: '{{errorLength}} eklentileri yüklenemedi',

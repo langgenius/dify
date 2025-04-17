@@ -194,6 +194,7 @@ const translation = {
     placeholder: 'एक ऐप चुनें...',
     label: 'ऐप',
   },
+  notPublish: 'यह कार्यप्रवाह प्रकाशित नहीं किया गया है या API-K चाबी नहीं बनाई गई है',
 }
 
 export default translation

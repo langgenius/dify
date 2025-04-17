@@ -180,6 +180,8 @@ const translation = {
     difyMarketplace: 'Rynek Dify',
     noPluginFound: 'Nie znaleziono wtyczki',
     pluginsResult: '{{num}} wyniki',
+    verifiedTip: 'Zweryfikowane przez Dify',
+    partnerTip: 'Zweryfikowane przez partnera Dify',
   },
   task: {
     installError: 'Nie udało się zainstalować wtyczek {{errorLength}}, kliknij, aby wyświetlić',

@@ -180,6 +180,8 @@ const translation = {
     difyMarketplace: 'डिफाई मार्केटप्लेस',
     sortBy: 'काला शहर',
     discover: 'खोजें',
+    partnerTip: 'Dify भागीदार द्वारा सत्यापित',
+    verifiedTip: 'डीफाई द्वारा सत्यापित',
   },
   task: {
     clearAll: 'सभी साफ करें',

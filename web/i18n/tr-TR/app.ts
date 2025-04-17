@@ -190,6 +190,7 @@ const translation = {
     placeholder: 'Bir uygulama seçin...',
     params: 'UYGULAMA PARAMETRELERI',
   },
+  notPublish: 'Bu iş akışı yayımlanmadı veya API Anahtarı oluşturulmadı',
 }
 
 export default translation

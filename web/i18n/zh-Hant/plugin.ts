@@ -180,6 +180,8 @@ const translation = {
     viewMore: '查看更多',
     difyMarketplace: 'Dify 市場',
     pluginsResult: '{{num}} 個結果',
+    partnerTip: '由 Dify 合作夥伴驗證',
+    verifiedTip: '由 Dify 驗證',
   },
   task: {
     installingWithError: '安裝 {{installingLength}} 個插件，{{successLength}} 成功，{{errorLength}} 失敗',
