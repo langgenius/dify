@@ -106,7 +106,7 @@ const Panel: FC<NodePanelProps<DocExtractorNodeType>> = ({
                   required: true,
                 }],
                 values: { files },
-                onChange: keyValue => setFiles((keyValue as any).files),
+                onChange: keyValue => setFiles(keyValue.files),
               },
             ]}
             runningStatus={runningStatus}

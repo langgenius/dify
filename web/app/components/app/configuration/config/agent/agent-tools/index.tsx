@@ -73,7 +73,7 @@ const AgentTools: FC = () => {
     formattingChangedDispatcher()
   }
 
-  const handleToolAuthSetting = (value: any) => {
+  const handleToolAuthSetting = (value: AgentToolWithMoreInfo) => {
     const newModelConfig = produce(modelConfig, (draft) => {
       const tool = (draft.agentConfig.tools).find((item: any) => item.provider_id === value?.collection?.id && item.tool_name === value?.tool_name)
       if (tool)
@@ -121,7 +121,7 @@ const AgentTools: FC = () => {
         }
         headerRight={
           <div className='flex items-center'>
-            <div className='text-xs font-normal leading-[18px] text-text-tertiary'>{tools.filter((item: any) => !!item.enabled).length}/{tools.length}&nbsp;{t('appDebug.agent.tools.enabled')}</div>
+            <div className='text-xs font-normal leading-[18px] text-text-tertiary'>{tools.filter(item => !!item.enabled).length}/{tools.length}&nbsp;{t('appDebug.agent.tools.enabled')}</div>
             {tools.length < MAX_TOOLS_NUM && (
               <>
                 <div className='ml-3 mr-1 h-3.5 w-px bg-divider-regular'></div>
@@ -273,7 +273,7 @@ const AgentTools: FC = () => {
       {isShowSettingTool && (
         <SettingBuiltInTool
           toolName={currentTool?.tool_name as string}
-          setting={currentTool?.tool_parameters as any}
+          setting={currentTool?.tool_parameters}
           collection={currentTool?.collection as Collection}
           isBuiltIn={currentTool?.collection?.type === CollectionType.builtIn}
           isModel={currentTool?.collection?.type === CollectionType.model}
@@ -291,7 +291,7 @@ const AgentTools: FC = () => {
               type: 'success',
               message: t('common.api.actionSuccess'),
             })
-            handleToolAuthSetting(currentTool as any)
+            handleToolAuthSetting(currentTool)
             setShowSettingAuth(false)
           }}
         />

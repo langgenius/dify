@@ -27,17 +27,11 @@ done
 if $api_modified; then
     echo "Running Ruff linter on api module"
 
-    # python style checks rely on `ruff` in path
-    if ! command -v ruff > /dev/null 2>&1; then
-        echo "Installing linting tools (Ruff, dotenv-linter ...) ..."
-        poetry install -C api --only lint
-    fi
-
     # run Ruff linter auto-fixing
-    ruff check --fix ./api
+    uv run --project api --dev ruff check --fix ./api
 
     # run Ruff linter checks
-    ruff check  ./api || status=$?
+    uv run --project api --dev ruff check  ./api || status=$?
 
     status=${status:-0}
 

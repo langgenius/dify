@@ -27,6 +27,7 @@ export function strategyParamToCredientialForm(param: StrategyParamItem): Creden
     variable: param.name,
     show_on: [],
     type: toType(param.type),
+    tooltip: param.help,
   }
 }
 

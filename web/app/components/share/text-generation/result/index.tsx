@@ -218,7 +218,7 @@ const Result: FC<IResultProps> = ({
                 ...data,
                 status: NodeRunningStatus.Running,
                 expand: true,
-              } as any)
+              })
             }))
           },
           onIterationNext: () => {
@@ -237,7 +237,7 @@ const Result: FC<IResultProps> = ({
               draft.tracing[iterationsIndex] = {
                 ...data,
                 expand: !!data.error,
-              } as any
+              }
             }))
           },
           onLoopStart: ({ data }) => {
@@ -247,7 +247,7 @@ const Result: FC<IResultProps> = ({
                 ...data,
                 status: NodeRunningStatus.Running,
                 expand: true,
-              } as any)
+              })
             }))
           },
           onLoopNext: () => {
@@ -266,7 +266,7 @@ const Result: FC<IResultProps> = ({
               draft.tracing[loopsIndex] = {
                 ...data,
                 expand: !!data.error,
-              } as any
+              }
             }))
           },
           onNodeStarted: ({ data }) => {
@@ -282,7 +282,7 @@ const Result: FC<IResultProps> = ({
                 ...data,
                 status: NodeRunningStatus.Running,
                 expand: true,
-              } as any)
+              })
             }))
           },
           onNodeFinished: ({ data }) => {
@@ -302,7 +302,7 @@ const Result: FC<IResultProps> = ({
                     : {}),
                   ...data,
                   expand: !!data.error,
-                } as any
+                }
               }
             }))
           },

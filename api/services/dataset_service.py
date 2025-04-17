@@ -553,7 +553,7 @@ class DocumentService:
                 {"id": "remove_extra_spaces", "enabled": True},
                 {"id": "remove_urls_emails", "enabled": False},
             ],
-            "segmentation": {"delimiter": "\n", "max_tokens": 500, "chunk_overlap": 50},
+            "segmentation": {"delimiter": "\n", "max_tokens": 1024, "chunk_overlap": 50},
         },
         "limits": {
             "indexing_max_segmentation_tokens_length": dify_config.INDEXING_MAX_SEGMENTATION_TOKENS_LENGTH,
@@ -2025,7 +2025,7 @@ class SegmentService:
                 dataset_id=dataset.id,
                 document_id=document.id,
                 segment_id=segment.id,
-                position=max_position + 1,
+                position=max_position + 1 if max_position else 1,
                 index_node_id=index_node_id,
                 index_node_hash=index_node_hash,
                 content=content,
@@ -2175,7 +2175,13 @@ class SegmentService:
 
     @classmethod
     def get_segments(
-        cls, document_id: str, tenant_id: str, status_list: list[str] | None = None, keyword: str | None = None
+        cls,
+        document_id: str,
+        tenant_id: str,
+        status_list: list[str] | None = None,
+        keyword: str | None = None,
+        page: int = 1,
+        limit: int = 20,
     ):
         """Get segments for a document with optional filtering."""
         query = DocumentSegment.query.filter(
@@ -2188,10 +2194,11 @@ class SegmentService:
         if keyword:
             query = query.filter(DocumentSegment.content.ilike(f"%{keyword}%"))
 
-        segments = query.order_by(DocumentSegment.position.asc()).all()
-        total = len(segments)
+        paginated_segments = query.order_by(DocumentSegment.position.asc()).paginate(
+            page=page, per_page=limit, max_per_page=100, error_out=False
+        )
 
-        return segments, total
+        return paginated_segments.items, paginated_segments.total
 
     @classmethod
     def update_segment_by_id(

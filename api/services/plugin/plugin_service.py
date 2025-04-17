@@ -310,6 +310,22 @@ class PluginService:
         )
 
     @staticmethod
+    def fetch_marketplace_pkg(
+        tenant_id: str, plugin_unique_identifier: str, verify_signature: bool = False
+    ) -> PluginDeclaration:
+        """
+        Fetch marketplace package
+        """
+        manager = PluginInstallationManager()
+        try:
+            declaration = manager.fetch_plugin_manifest(tenant_id, plugin_unique_identifier)
+        except Exception:
+            pkg = download_plugin_pkg(plugin_unique_identifier)
+            declaration = manager.upload_pkg(tenant_id, pkg, verify_signature).manifest
+
+        return declaration
+
+    @staticmethod
     def install_from_marketplace_pkg(
         tenant_id: str, plugin_unique_identifiers: Sequence[str], verify_signature: bool = False
     ):

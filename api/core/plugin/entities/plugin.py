@@ -70,6 +70,9 @@ class PluginDeclaration(BaseModel):
         models: Optional[list[str]] = Field(default_factory=list)
         endpoints: Optional[list[str]] = Field(default_factory=list)
 
+    class Meta(BaseModel):
+        minimum_dify_version: Optional[str] = Field(default=None, pattern=r"^\d{1,4}(\.\d{1,4}){1,3}(-\w{1,16})?$")
+
     version: str = Field(..., pattern=r"^\d{1,4}(\.\d{1,4}){1,3}(-\w{1,16})?$")
     author: Optional[str] = Field(..., pattern=r"^[a-zA-Z0-9_-]{1,64}$")
     name: str = Field(..., pattern=r"^[a-z0-9_-]{1,128}$")
@@ -86,6 +89,7 @@ class PluginDeclaration(BaseModel):
     model: Optional[ProviderEntity] = None
     endpoint: Optional[EndpointProviderDeclaration] = None
     agent_strategy: Optional[AgentStrategyProviderEntity] = None
+    meta: Meta
 
     @model_validator(mode="before")
     @classmethod
