@@ -123,6 +123,7 @@ PromptMessageContentUnionTypes = Annotated[
     Field(discriminator="type"),
 ]
 
+
 class PromptMessage(BaseModel):
     """
     Model class for prompt message.
