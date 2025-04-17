@@ -243,8 +243,8 @@ const Doc = ({ appDetail }: IDocProps) => {
                       className={cn(
                         'block rounded px-2 py-1 text-sm transition-colors duration-200',
                         item.index === activeIndex
-                          ? 'bg-primary-50 font-semibold text-primary-600 dark:bg-primary-900/[.15] dark:text-primary-400'
-                          : 'text-text-secondary hover:bg-gray-100 hover:text-text-primary dark:hover:bg-gray-800',
+                          ? 'bg-primary-50 font-semibold text-primary-600'
+                          : 'text-text-secondary hover:bg-gray-100 hover:text-text-primary',
                       )}
                       onClick={e => handleTocClick(e, item)}
                     >
