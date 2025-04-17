@@ -182,7 +182,11 @@ async function base<T>(url: string, options: FetchOptionType = {}, otherOptions:
     searchParams: params,
     fetch: function (resource: RequestInfo | URL, options?: RequestInit) {
       if (resource instanceof Request && options) {
-        options.headers = resource.headers
+        const mergedHeaders = new Headers(options.headers || {});
+        resource.headers.forEach((value, key) => {
+          mergedHeaders.append(key, value);
+        });
+        options.headers = mergedHeaders;
       }
       return globalThis.fetch(resource, options)
     },
