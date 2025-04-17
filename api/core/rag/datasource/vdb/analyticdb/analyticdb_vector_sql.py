@@ -246,7 +246,7 @@ class AnalyticdbVectorBySql:
                 ts_rank(to_tsvector, to_tsquery_from_text(%s, 'zh_cn'), 32) AS score
                 FROM {self.table_name}
                 WHERE to_tsvector@@to_tsquery_from_text(%s, 'zh_cn') {where_clause}
-                ORDER BY (score,id) DESC
+                ORDER BY score DESC, id DESC
                 LIMIT {top_k}""",
                 (f"'{query}'", f"'{query}'"),
             )
