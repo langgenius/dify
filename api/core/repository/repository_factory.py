@@ -17,7 +17,7 @@ RepositoryFactoryFunc = Callable[[Mapping[str, Any]], Any]
 WorkflowNodeExecutionFactoryFunc = Callable[[Mapping[str, Any]], WorkflowNodeExecutionRepository]
 
 # Repository type literals
-RepositoryType = Literal["workflow_node_execution"]
+_RepositoryType = Literal["workflow_node_execution"]
 
 
 class RepositoryFactory:
@@ -32,7 +32,7 @@ class RepositoryFactory:
     _factory_functions: dict[str, RepositoryFactoryFunc] = {}
 
     @classmethod
-    def _register_factory(cls, repository_type: RepositoryType, factory_func: RepositoryFactoryFunc) -> None:
+    def _register_factory(cls, repository_type: _RepositoryType, factory_func: RepositoryFactoryFunc) -> None:
         """
         Register a factory function for a specific repository type.
         This is a private method and should not be called directly.
@@ -44,7 +44,7 @@ class RepositoryFactory:
         cls._factory_functions[repository_type] = factory_func
 
     @classmethod
-    def _create_repository(cls, repository_type: RepositoryType, params: Optional[Mapping[str, Any]] = None) -> Any:
+    def _create_repository(cls, repository_type: _RepositoryType, params: Optional[Mapping[str, Any]] = None) -> Any:
         """
         Create a new repository instance with the provided parameters.
         This is a private method and should not be called directly.
