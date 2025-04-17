@@ -106,7 +106,7 @@ const BasePanel: FC<BasePanelProps> = ({
   }, [handleNodeDataUpdateWithSyncDraft, id, saveStateToHistory])
 
   const [tabType, setTabType] = useState<TabType>(TabType.settings)
-
+  const hasLastRunData = true // TODO: add disabled logic
   return (
     <div className={cn(
       'relative mr-2 h-full',
@@ -176,6 +176,7 @@ const BasePanel: FC<BasePanelProps> = ({
             <Tab
               value={tabType}
               onChange={setTabType}
+              canSwitchToLastRun={hasLastRunData}
             />
           </div>
           <Split />

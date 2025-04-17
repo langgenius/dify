@@ -1,4 +1,5 @@
 'use client'
+import ResultPanel from '@/app/components/workflow/run/result-panel'
 import type { FC } from 'react'
 import React from 'react'
 
@@ -12,6 +13,9 @@ const LastRun: FC<Props> = ({
   return (
     <div>
       last run: {appId}
+      <ResultPanel
+        status='success'
+      />
     </div>
   )
 }
