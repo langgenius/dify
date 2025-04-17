@@ -12,57 +12,134 @@ import { LanguagesSupported } from '@/i18n/language'
 import useTheme from '@/hooks/use-theme'
 import { Theme } from '@/types/app'
 import cn from '@/utils/classnames'
+import { throttle } from 'lodash-es'
+
+type TocItem = {
+  href: string;
+  text: string;
+  index: number;
+}
 
 type DocProps = {
   apiBaseUrl: string
 }
 
-const Doc = ({ apiBaseUrl }: DocProps) => {
-  const { locale } = useContext(I18n)
-  const { t } = useTranslation()
-  const [toc, setToc] = useState<Array<{ href: string; text: string }>>([])
-  const [isTocExpanded, setIsTocExpanded] = useState(false)
-  const { theme } = useTheme()
+const useToc = (apiBaseUrl: string, locale: string) => {
+  const [toc, setToc] = useState<TocItem[]>([])
+  const [headingElements, setHeadingElements] = useState<HTMLElement[]>([])
 
-  // Set initial TOC expanded state based on screen width
-  useEffect(() => {
-    const mediaQuery = window.matchMedia('(min-width: 1280px)')
-    setIsTocExpanded(mediaQuery.matches)
-  }, [])
-
-  // Extract TOC from article content
   useEffect(() => {
     const extractTOC = () => {
       const article = document.querySelector('article')
       if (article) {
         const headings = article.querySelectorAll('h2')
-        const tocItems = Array.from(headings).map((heading) => {
-          const anchor = heading.querySelector('a')
-          if (anchor) {
-            return {
-              href: anchor.getAttribute('href') || '',
-              text: anchor.textContent || '',
-            }
-          }
-          return null
-        }).filter((item): item is { href: string; text: string } => item !== null)
+        const headingElementsArray = Array.from(headings) as HTMLElement[]
+        setHeadingElements(headingElementsArray)
+
+        const tocItems: TocItem[] = headingElementsArray.map((heading, index) => ({
+          href: `#section-${index}`,
+          text: (heading.textContent || `章节 ${index + 1}`).trim(),
+          index,
+        }))
+
         setToc(tocItems)
       }
     }
 
-    setTimeout(extractTOC, 0)
-  }, [locale])
+    const timeoutId = setTimeout(extractTOC, 500)
+    return () => clearTimeout(timeoutId)
+  }, [locale, apiBaseUrl])
+
+  return { toc, headingElements }
+}
+
+const useScrollPosition = (headingElements: HTMLElement[]) => {
+  const [activeIndex, setActiveIndex] = useState<number | null>(null)
+
+  useEffect(() => {
+    const scrollContainer = document.querySelector('.scroll-container')
+    if (!scrollContainer || headingElements.length === 0) return
+
+    const handleScroll = () => {
+      const scrollContainerTop = scrollContainer.scrollTop
+      const scrollContainerHeight = scrollContainer.clientHeight
+      const scrollContainerBottom = scrollContainerTop + scrollContainerHeight
+      const totalScrollHeight = scrollContainer.scrollHeight
+      const offset = 110
+
+      let currentActiveIndex: number | null = null
+
+      for (let i = headingElements.length - 1; i >= 0; i--) {
+        const heading = headingElements[i]
+        if (heading.offsetTop <= scrollContainerTop + offset) {
+          currentActiveIndex = i
+          break
+        }
+      }
+
+      if (scrollContainerBottom >= totalScrollHeight - 20) {
+        currentActiveIndex = headingElements.length - 1
+      }
+      else if (currentActiveIndex === null && headingElements.length > 0) {
+        const firstHeadingTop = headingElements[0].offsetTop
+        if (firstHeadingTop >= scrollContainerTop && firstHeadingTop < scrollContainerBottom)
+          currentActiveIndex = 0
+      }
+
+      if (currentActiveIndex !== activeIndex)
+        setActiveIndex(currentActiveIndex)
+    }
+
+    const throttledScrollHandler = throttle(handleScroll, 100)
+    scrollContainer.addEventListener('scroll', throttledScrollHandler)
+    handleScroll()
+
+    return () => {
+      scrollContainer.removeEventListener('scroll', throttledScrollHandler)
+      throttledScrollHandler.cancel()
+    }
+  }, [headingElements, activeIndex])
+
+  return activeIndex
+}
+
+const useResponsiveToc = () => {
+  const [isTocExpanded, setIsTocExpanded] = useState(false)
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia('(min-width: 1280px)')
+    setIsTocExpanded(mediaQuery.matches)
+
+    const handleChange = (e: MediaQueryListEvent) => {
+      setIsTocExpanded(e.matches)
+    }
+
+    mediaQuery.addEventListener('change', handleChange)
+    return () => mediaQuery.removeEventListener('change', handleChange)
+  }, [])
+
+  return { isTocExpanded, setIsTocExpanded }
+}
+
+const Doc = ({ apiBaseUrl }: DocProps) => {
+  const { locale } = useContext(I18n)
+  const { t } = useTranslation()
+  const { toc, headingElements } = useToc(apiBaseUrl, locale)
+  const { isTocExpanded, setIsTocExpanded } = useResponsiveToc()
+  const activeIndex = useScrollPosition(headingElements)
+  const { theme } = useTheme()
 
   // Handle TOC item click
-  const handleTocClick = (e: React.MouseEvent<HTMLAnchorElement>, item: { href: string; text: string }) => {
+  const handleTocClick = (e: React.MouseEvent<HTMLAnchorElement>, item: TocItem) => {
     e.preventDefault()
-    const targetId = item.href.replace('#', '')
-    const element = document.getElementById(targetId)
-    if (element) {
+
+    const targetElement = headingElements[item.index]
+
+    if (targetElement) {
       const scrollContainer = document.querySelector('.scroll-container')
       if (scrollContainer) {
-        const headerOffset = -40
-        const elementTop = element.offsetTop - headerOffset
+        const headerOffset = 110
+        const elementTop = targetElement.offsetTop - headerOffset
         scrollContainer.scrollTo({
           top: elementTop,
           behavior: 'smooth',
@@ -98,11 +175,16 @@ const Doc = ({ apiBaseUrl }: DocProps) => {
                 </button>
               </div>
               <ul className="space-y-2">
-                {toc.map((item, index) => (
-                  <li key={index}>
+                {toc.map(item => (
+                  <li key={item.index}>
                     <a
                       href={item.href}
-                      className="text-text-secondary transition-colors duration-200 hover:text-text-primary hover:underline"
+                      className={cn(
+                        'block rounded px-2 py-1 text-sm transition-colors duration-200',
+                        item.index === activeIndex
+                          ? 'bg-primary-50 font-semibold text-primary-600 dark:bg-primary-900/[.15] dark:text-primary-400'
+                          : 'text-text-secondary hover:bg-gray-100 hover:text-text-primary dark:hover:bg-gray-800',
+                      )}
                       onClick={e => handleTocClick(e, item)}
                     >
                       {item.text}
