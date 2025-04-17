@@ -1,5 +1,5 @@
 'use client'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useContext } from 'use-context-selector'
 import { useTranslation } from 'react-i18next'
 import { RiListUnordered } from '@remixicon/react'
@@ -54,7 +54,7 @@ const useToc = (appDetail: any, locale: string) => {
       }
     }
 
-    const timeoutId = setTimeout(extractTOC, 500)
+    const timeoutId = setTimeout(extractTOC, 0)
     return () => clearTimeout(timeoutId)
   }, [appDetail, locale])
 
@@ -63,6 +63,7 @@ const useToc = (appDetail: any, locale: string) => {
 
 const useScrollPosition = (headingElements: HTMLElement[]) => {
   const [activeIndex, setActiveIndex] = useState<number | null>(null)
+  const activeIndexRef = useRef<number | null>(null)
 
   useEffect(() => {
     const scrollContainer = document.querySelector('.overflow-auto')
@@ -97,8 +98,10 @@ const useScrollPosition = (headingElements: HTMLElement[]) => {
           currentActiveIndex = 0
       }
 
-      if (currentActiveIndex !== activeIndex)
+      if (currentActiveIndex !== activeIndexRef.current) {
+        activeIndexRef.current = currentActiveIndex
         setActiveIndex(currentActiveIndex)
+      }
     }
 
     const throttledScrollHandler = throttle(handleScroll, 100)
@@ -109,27 +112,36 @@ const useScrollPosition = (headingElements: HTMLElement[]) => {
       scrollContainer.removeEventListener('scroll', throttledScrollHandler)
       throttledScrollHandler.cancel()
     }
-  }, [headingElements, activeIndex])
+  }, [headingElements])
 
   return activeIndex
 }
 
 const useResponsiveToc = () => {
   const [isTocExpanded, setIsTocExpanded] = useState(false)
+  const userToggled = useRef(false)
 
   useEffect(() => {
     const mediaQuery = window.matchMedia('(min-width: 1280px)')
-    setIsTocExpanded(mediaQuery.matches)
+
+    if (!userToggled.current)
+      setIsTocExpanded(mediaQuery.matches)
 
     const handleChange = (e: MediaQueryListEvent) => {
-      setIsTocExpanded(e.matches)
+      if (!userToggled.current)
+        setIsTocExpanded(e.matches)
     }
 
     mediaQuery.addEventListener('change', handleChange)
     return () => mediaQuery.removeEventListener('change', handleChange)
   }, [])
 
-  return { isTocExpanded, setIsTocExpanded }
+  const setTocExpandedWithTracking = (expanded: boolean) => {
+    userToggled.current = true
+    setIsTocExpanded(expanded)
+  }
+
+  return { isTocExpanded, setIsTocExpanded: setTocExpandedWithTracking }
 }
 
 const Doc = ({ appDetail }: IDocProps) => {

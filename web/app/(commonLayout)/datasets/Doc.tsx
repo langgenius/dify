@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useContext } from 'use-context-selector'
 import { useTranslation } from 'react-i18next'
 import { RiListUnordered } from '@remixicon/react'
@@ -46,7 +46,7 @@ const useToc = (apiBaseUrl: string, locale: string) => {
       }
     }
 
-    const timeoutId = setTimeout(extractTOC, 500)
+    const timeoutId = setTimeout(extractTOC, 0)
     return () => clearTimeout(timeoutId)
   }, [locale, apiBaseUrl])
 
@@ -55,6 +55,7 @@ const useToc = (apiBaseUrl: string, locale: string) => {
 
 const useScrollPosition = (headingElements: HTMLElement[]) => {
   const [activeIndex, setActiveIndex] = useState<number | null>(null)
+  const activeIndexRef = useRef<number | null>(null)
 
   useEffect(() => {
     const scrollContainer = document.querySelector('.scroll-container')
@@ -86,8 +87,10 @@ const useScrollPosition = (headingElements: HTMLElement[]) => {
           currentActiveIndex = 0
       }
 
-      if (currentActiveIndex !== activeIndex)
+      if (currentActiveIndex !== activeIndexRef.current) {
+        activeIndexRef.current = currentActiveIndex
         setActiveIndex(currentActiveIndex)
+      }
     }
 
     const throttledScrollHandler = throttle(handleScroll, 100)
@@ -98,27 +101,36 @@ const useScrollPosition = (headingElements: HTMLElement[]) => {
       scrollContainer.removeEventListener('scroll', throttledScrollHandler)
       throttledScrollHandler.cancel()
     }
-  }, [headingElements, activeIndex])
+  }, [headingElements])
 
   return activeIndex
 }
 
 const useResponsiveToc = () => {
   const [isTocExpanded, setIsTocExpanded] = useState(false)
+  const userToggled = useRef(false)
 
   useEffect(() => {
     const mediaQuery = window.matchMedia('(min-width: 1280px)')
-    setIsTocExpanded(mediaQuery.matches)
+
+    if (!userToggled.current)
+      setIsTocExpanded(mediaQuery.matches)
 
     const handleChange = (e: MediaQueryListEvent) => {
-      setIsTocExpanded(e.matches)
+      if (!userToggled.current)
+        setIsTocExpanded(e.matches)
     }
 
     mediaQuery.addEventListener('change', handleChange)
     return () => mediaQuery.removeEventListener('change', handleChange)
   }, [])
 
-  return { isTocExpanded, setIsTocExpanded }
+  const setTocExpandedWithTracking = (expanded: boolean) => {
+    userToggled.current = true
+    setIsTocExpanded(expanded)
+  }
+
+  return { isTocExpanded, setIsTocExpanded: setTocExpandedWithTracking }
 }
 
 const Doc = ({ apiBaseUrl }: DocProps) => {
@@ -129,7 +141,6 @@ const Doc = ({ apiBaseUrl }: DocProps) => {
   const activeIndex = useScrollPosition(headingElements)
   const { theme } = useTheme()
 
-  // Handle TOC item click
   const handleTocClick = (e: React.MouseEvent<HTMLAnchorElement>, item: TocItem) => {
     e.preventDefault()
 
@@ -203,7 +214,9 @@ const Doc = ({ apiBaseUrl }: DocProps) => {
             </button>
           )}
       </div>
-      <article className={cn('prose-xl prose mx-1 rounded-t-xl bg-background-default px-4 pt-16 sm:mx-12', theme === Theme.dark && 'dark:prose-invert')}>
+      <article
+        className={cn('prose-xl prose mx-1 rounded-t-xl bg-background-default px-4 pt-16 sm:mx-12', theme === Theme.dark && 'dark:prose-invert')}
+      >
         {Template}
       </article>
     </div>
