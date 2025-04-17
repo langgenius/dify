@@ -14,12 +14,14 @@ type Item = {
 export type ITabHeaderProps = {
   items: Item[]
   value: string
+  itemClassName?: string
   onChange: (value: string) => void
 }
 
 const TabHeader: FC<ITabHeaderProps> = ({
   items,
   value,
+  itemClassName,
   onChange,
 }) => {
   const renderItem = ({ id, name, icon, extra }: Item) => (
@@ -32,7 +34,7 @@ const TabHeader: FC<ITabHeaderProps> = ({
       onClick={() => onChange(id)}
     >
       {icon || ''}
-      <div className='ml-2'>{name}</div>
+      <div className={cn('ml-2', itemClassName)}>{name}</div>
       {extra || ''}
     </div>
   )

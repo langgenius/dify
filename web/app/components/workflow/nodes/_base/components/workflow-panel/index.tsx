@@ -6,6 +6,7 @@ import {
   cloneElement,
   memo,
   useCallback,
+  useState,
 } from 'react'
 import {
   RiCloseLine,
@@ -13,16 +14,16 @@ import {
 } from '@remixicon/react'
 import { useShallow } from 'zustand/react/shallow'
 import { useTranslation } from 'react-i18next'
-import NextStep from './components/next-step'
-import PanelOperator from './components/panel-operator'
-import HelpLink from './components/help-link'
+import NextStep from '../next-step'
+import PanelOperator from '../panel-operator'
+import HelpLink from '../help-link'
 import {
   DescriptionInput,
   TitleInput,
-} from './components/title-description-input'
-import ErrorHandleOnPanel from './components/error-handle/error-handle-on-panel'
-import RetryOnPanel from './components/retry/retry-on-panel'
-import { useResizePanel } from './hooks/use-resize-panel'
+} from '../title-description-input'
+import ErrorHandleOnPanel from '../error-handle/error-handle-on-panel'
+import RetryOnPanel from '../retry/retry-on-panel'
+import { useResizePanel } from '../../hooks/use-resize-panel'
 import cn from '@/utils/classnames'
 import BlockIcon from '@/app/components/workflow/block-icon'
 import Split from '@/app/components/workflow/nodes/_base/components/split'
@@ -46,6 +47,7 @@ import Tooltip from '@/app/components/base/tooltip'
 import type { Node } from '@/app/components/workflow/types'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { useStore } from '@/app/components/workflow/store'
+import Tab, { TabType } from './tab'
 
 type BasePanelProps = {
   children: ReactNode
@@ -102,6 +104,7 @@ const BasePanel: FC<BasePanelProps> = ({
     saveStateToHistory(WorkflowHistoryEvent.NodeDescriptionChange)
   }, [handleNodeDataUpdateWithSyncDraft, id, saveStateToHistory])
 
+  const [tabType, setTabType] = useState<TabType>(TabType.settings)
   return (
     <div className={cn(
       'relative mr-2 h-full',
@@ -167,40 +170,56 @@ const BasePanel: FC<BasePanelProps> = ({
               onChange={handleDescriptionChange}
             />
           </div>
-        </div>
-        <div>
-          {cloneElement(children as any, { id, data })}
-        </div>
-        <Split />
-        {
-          hasRetryNode(data.type) && (
-            <RetryOnPanel
-              id={id}
-              data={data}
+          <div className='pl-4'>
+            <Tab
+              value={tabType}
+              onChange={setTabType}
             />
-          )
-        }
-        {
-          hasErrorHandleNode(data.type) && (
-            <ErrorHandleOnPanel
-              id={id}
-              data={data}
-            />
-          )
-        }
-        {
-          !!availableNextBlocks.length && (
-            <div className='border-t-[0.5px] border-divider-regular p-4'>
-              <div className='system-sm-semibold-uppercase mb-1 flex items-center text-text-secondary'>
-                {t('workflow.panel.nextStep').toLocaleUpperCase()}
-              </div>
-              <div className='system-xs-regular mb-2 text-text-tertiary'>
-                {t('workflow.panel.addNextStep')}
-              </div>
-              <NextStep selectedNode={{ id, data } as Node} />
+          </div>
+          <Split />
+        </div>
+
+        {tabType === TabType.settings && (
+          <>
+            <div>
+              {cloneElement(children as any, { id, data })}
             </div>
-          )
-        }
+            <Split />
+            {
+              hasRetryNode(data.type) && (
+                <RetryOnPanel
+                  id={id}
+                  data={data}
+                />
+              )
+            }
+            {
+              hasErrorHandleNode(data.type) && (
+                <ErrorHandleOnPanel
+                  id={id}
+                  data={data}
+                />
+              )
+            }
+            {
+              !!availableNextBlocks.length && (
+                <div className='border-t-[0.5px] border-divider-regular p-4'>
+                  <div className='system-sm-semibold-uppercase mb-1 flex items-center text-text-secondary'>
+                    {t('workflow.panel.nextStep').toLocaleUpperCase()}
+                  </div>
+                  <div className='system-xs-regular mb-2 text-text-tertiary'>
+                    {t('workflow.panel.addNextStep')}
+                  </div>
+                  <NextStep selectedNode={{ id, data } as Node} />
+                </div>
+              )
+            }
+          </>
+        )}
+
+        {tabType === TabType.lastRun && (
+          <div>last run content</div>
+        )}
       </div>
     </div>
   )

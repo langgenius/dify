@@ -879,6 +879,10 @@ const translation = {
       updateFailure: 'Failed to update version',
     },
   },
+  debug: {
+    settingsTab: 'Settings',
+    lastRunTab: 'Last Run',
+  },
 }
 
 export default translation

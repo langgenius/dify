@@ -880,6 +880,10 @@ const translation = {
       updateFailure: '更新失败',
     },
   },
+  debug: {
+    settingsTab: '设置',
+    lastRunTab: '上次运行',
+  },
 }
 
 export default translation
