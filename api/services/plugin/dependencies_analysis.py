@@ -1,6 +1,7 @@
 from core.helper import marketplace
 from core.plugin.entities.plugin import ModelProviderID, PluginDependency, PluginInstallationSource, ToolProviderID
 from core.plugin.manager.plugin import PluginInstallationManager
+from configs import dify_config
 
 
 class DependenciesAnalysisService:
@@ -111,6 +112,8 @@ class DependenciesAnalysisService:
         Generate the latest version of dependencies
         """
         dependencies = list(set(dependencies))
+        if not dify_config.MARKETPLACE_ENABLED :
+            return []
         deps = marketplace.batch_fetch_plugin_manifests(dependencies)
         return [
             PluginDependency(
