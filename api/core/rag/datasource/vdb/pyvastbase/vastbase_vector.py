@@ -156,6 +156,8 @@ class VastbaseVector(BaseVector):
         """
         top_k = kwargs.get("top_k", 4)
 
+        if not isinstance(top_k, int) or top_k <= 0:
+            raise ValueError("top_k must be a positive integer")
         with self._get_cursor() as cur:
             cur.execute(
                 f"SELECT meta, text, embedding <=> %s AS distance FROM {self.table_name}"
@@ -175,6 +177,8 @@ class VastbaseVector(BaseVector):
     def search_by_full_text(self, query: str, **kwargs: Any) -> list[Document]:
         top_k = kwargs.get("top_k", 5)
 
+        if not isinstance(top_k, int) or top_k <= 0:
+            raise ValueError("top_k must be a positive integer")
         with self._get_cursor() as cur:
             cur.execute(
                 f"""SELECT meta, text, ts_rank(to_tsvector(coalesce(text, '')), plainto_tsquery(%s)) AS score
