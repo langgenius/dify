@@ -361,17 +361,15 @@ const Result: FC<IResultProps> = ({
 
     const handleScroll = throttle(() => {
       const distanceToBottom = el.scrollHeight - el.scrollTop - el.clientHeight
-      console.log('1', el.scrollHeight, el.scrollTop, el.clientHeight)
-      console.log('renderRef', renderRef.current?.scrollHeight, renderRef.current?.scrollTop, renderRef.current?.clientHeight)
 
-      const atBottom = distanceToBottom <= 200 // 缓冲 20px 容错
+      const atBottom = distanceToBottom <= 200
       setIsAtBottom(atBottom)
-    }, 1000)
+    }, 200)
 
     const delay = setTimeout(() => {
       isInitialMount.current = false
       el.addEventListener('scroll', handleScroll)
-    }, 300) // 避免内容撑开误判
+    }, 300)
 
     return () => {
       clearTimeout(delay)
@@ -383,9 +381,9 @@ const Result: FC<IResultProps> = ({
     if (!el || !isAtBottom) return
 
     let attempts = 0
-    const maxAttempts = 30 // 最多尝试 30 次，避免死循环
-    const delayMs = 16 // 每帧尝试（≈ 60fps）
-    const threshold = 10 // 容忍范围内算到底了
+    const maxAttempts = 30
+    const delayMs = 16
+    const threshold = 10
 
     const tryScroll = () => {
       if (!el) return
@@ -399,7 +397,6 @@ const Result: FC<IResultProps> = ({
         requestAnimationFrame(tryScroll)
       }
       else {
-      // 最后再确保锚点视图内
         bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
       }
     }
@@ -428,13 +425,17 @@ const Result: FC<IResultProps> = ({
               />
             </div>
           )}
-        </div></div>
+        </div>
+        <div className="shrink-0 w-5 h-5 m-2 bg-cover bg-no-repeat bg-[url('~@/app/components/runOnce/text-generation/result/human.svg')]" />
+      </div>
       <div className=' text-sm flex w-full justify-start'>
+        <div className="shrink-0 w-6 h-6 m-2 bg-cover bg-no-repeat bg-[url('~@/app/components/runOnce/text-generation/result/ai.svg')]" />
         <div className='bg-background-section-burn py-2 my-2 rounded-lg p-2 max-w-[80%] ' >
           {t('run.aiAnalysis')}
-        </div></div>
+        </div>
+      </div>
       <TracingPanel
-        className='bg-background-section-burn'
+        className='bg-background-section-burn mx-10'
         list={workflowProcessData?.tracing || []}
         isForRun={true}
       />
