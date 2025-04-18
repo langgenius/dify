@@ -65,7 +65,7 @@ export const AgentStrategy = memo((props: AgentStrategyProps) => {
       switch (schema.type) {
         case FormTypeEnum.textInput: {
           const def = schema as CredentialFormSchemaTextInput
-          const value = props.value[schema.variable]
+          const value = props.value[schema.variable] || schema.default
           const onChange = (value: string) => {
             props.onChange({ ...props.value, [schema.variable]: value })
           }
@@ -133,7 +133,7 @@ export const AgentStrategy = memo((props: AgentStrategyProps) => {
                 // TODO: maybe empty, handle this
                 onChange={onChange as any}
                 defaultValue={defaultValue}
-                size='sm'
+                size='regular'
                 min={def.min}
                 max={def.max}
                 className='w-12'

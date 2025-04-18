@@ -150,7 +150,7 @@ const SettingsModal: FC<SettingsModalProps> = ({
         retrieval_model_dict: retrievalConfig,
       })
     }
-    catch (e) {
+    catch {
       notify({ type: 'error', message: t('common.actionMsg.modifiedUnsuccessfully') })
     }
     finally {

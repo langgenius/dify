@@ -3,6 +3,7 @@ from typing import Any, Literal, Union
 
 from pydantic import BaseModel
 
+from core.prompt.entities.advanced_prompt_entities import MemoryConfig
 from core.tools.entities.tool_entities import ToolSelector
 from core.workflow.nodes.base.entities import BaseNodeData
 
@@ -11,6 +12,7 @@ class AgentNodeData(BaseNodeData):
     agent_strategy_provider_name: str  # redundancy
     agent_strategy_name: str
     agent_strategy_label: str  # redundancy
+    memory: MemoryConfig | None = None
 
     class AgentInput(BaseModel):
         value: Union[list[str], list[ToolSelector], Any]

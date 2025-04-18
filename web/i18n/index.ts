@@ -20,3 +20,10 @@ export const setLocaleOnClient = (locale: Locale, reloadPage = true) => {
 export const getLocaleOnClient = (): Locale => {
   return Cookies.get(LOCALE_COOKIE_NAME) as Locale || i18n.defaultLocale
 }
+
+export const renderI18nObject = (obj: Record<string, string>, language: string) => {
+  if (!obj) return ''
+  if (obj?.[language]) return obj[language]
+  if (obj?.en_US) return obj.en_US
+  return Object.values(obj)[0]
+}

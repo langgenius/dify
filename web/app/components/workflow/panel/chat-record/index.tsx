@@ -68,7 +68,7 @@ const ChatRecord = () => {
         setChatItemTree(tree)
         setThreadChatItems(getThreadMessages(tree, newAllChatItems.at(-1)?.id))
       }
-      catch (e) {
+      catch {
       }
       finally {
         setFetched(true)
@@ -86,12 +86,10 @@ const ChatRecord = () => {
 
   return (
     <div
-      className={`
-        flex h-full w-[420px] flex-col rounded-l-2xl border border-black/2 shadow-xl
-      `}
-      style={{
-        background: 'linear-gradient(156deg, rgba(242, 244, 247, 0.80) 0%, rgba(242, 244, 247, 0.00) 99.43%), var(--white, #FFF)',
-      }}
+      className='flex h-full w-[420px] flex-col rounded-l-2xl border border-components-panel-border bg-chatbot-bg shadow-xl'
+      // style={{
+      //   background: 'linear-gradient(156deg, rgba(242, 244, 247, 0.80) 0%, rgba(242, 244, 247, 0.00) 99.43%), var(--white, #FFF)',
+      // }}
     >
       {!fetched && (
         <div className='flex h-full items-center justify-center'>
@@ -100,7 +98,7 @@ const ChatRecord = () => {
       )}
       {fetched && (
         <>
-          <div className='flex shrink-0 items-center justify-between p-4 pb-1 text-base font-semibold text-gray-900'>
+          <div className='flex shrink-0 items-center justify-between p-4 pb-1 text-base font-semibold text-text-primary'>
             {`TEST CHAT#${historyWorkflowData?.sequence_number}`}
             <div
               className='flex h-6 w-6 cursor-pointer items-center justify-center'
@@ -109,7 +107,7 @@ const ChatRecord = () => {
                 workflowStore.setState({ historyWorkflowData: undefined })
               }}
             >
-              <RiCloseLine className='h-4 w-4 text-gray-500' />
+              <RiCloseLine className='h-4 w-4 text-text-tertiary' />
             </div>
           </div>
           <div className='h-0 grow'>

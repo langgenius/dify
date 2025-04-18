@@ -15,17 +15,19 @@ import { useToolTabs } from './hooks'
 import ViewTypeSelect, { ViewType } from './view-type-select'
 import cn from '@/utils/classnames'
 import { useGetLanguage } from '@/context/i18n'
-import PluginList from '@/app/components/workflow/block-selector/market-place-plugin/list'
+import type { ListRef } from '@/app/components/workflow/block-selector/market-place-plugin/list'
+import PluginList, { type ListProps } from '@/app/components/workflow/block-selector/market-place-plugin/list'
 import ActionButton from '../../base/action-button'
 import { RiAddLine } from '@remixicon/react'
 import { PluginType } from '../../plugins/types'
 import { useMarketplacePlugins } from '../../plugins/marketplace/hooks'
+import { useSelector as useAppContextSelector } from '@/context/app-context'
 
 type AllToolsProps = {
   className?: string
   toolContentClassName?: string
   searchText: string
-  tags: string[]
+  tags: ListProps['tags']
   buildInTools: ToolWithProvider[]
   customTools: ToolWithProvider[]
   workflowTools: ToolWithProvider[]
@@ -35,11 +37,14 @@ type AllToolsProps = {
   onShowAddCustomCollectionModal?: () => void
   selectedTools?: ToolValue[]
 }
+
+const DEFAULT_TAGS: AllToolsProps['tags'] = []
+
 const AllTools = ({
   className,
   toolContentClassName,
   searchText,
-  tags = [],
+  tags = DEFAULT_TAGS,
   onSelect,
   buildInTools,
   workflowTools,
@@ -82,7 +87,10 @@ const AllTools = ({
     plugins: notInstalledPlugins = [],
   } = useMarketplacePlugins()
 
+  const { enable_marketplace } = useAppContextSelector(s => s.systemFeatures)
+
   useEffect(() => {
+    if (enable_marketplace) return
     if (searchText || tags.length > 0) {
       fetchPlugins({
         query: searchText,
@@ -91,9 +99,9 @@ const AllTools = ({
       })
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchText, tags])
+  }, [searchText, tags, enable_marketplace])
 
-  const pluginRef = useRef(null)
+  const pluginRef = useRef<ListRef>(null)
   const wrapElemRef = useRef<HTMLDivElement>(null)
 
   return (
@@ -132,7 +140,7 @@ const AllTools = ({
       <div
         ref={wrapElemRef}
         className='max-h-[464px] overflow-y-auto'
-        onScroll={(pluginRef.current as any)?.handleScroll}
+        onScroll={pluginRef.current?.handleScroll}
       >
         <Tools
           className={toolContentClassName}
@@ -144,13 +152,14 @@ const AllTools = ({
           selectedTools={selectedTools}
         />
         {/* Plugins from marketplace */}
-        <PluginList
+        {enable_marketplace && <PluginList
+          ref={pluginRef}
           wrapElemRef={wrapElemRef}
-          list={notInstalledPlugins as any} ref={pluginRef}
+          list={notInstalledPlugins}
           searchText={searchText}
           toolContentClassName={toolContentClassName}
           tags={tags}
-        />
+        />}
       </div>
     </div>
   )

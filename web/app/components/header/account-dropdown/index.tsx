@@ -3,7 +3,18 @@ import { useTranslation } from 'react-i18next'
 import { Fragment, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useContext, useContextSelector } from 'use-context-selector'
-import { RiAccountCircleLine, RiArrowDownSLine, RiArrowRightUpLine, RiBookOpenLine, RiGithubLine, RiInformation2Line, RiLogoutBoxRLine, RiMap2Line, RiSettings3Line, RiStarLine } from '@remixicon/react'
+import {
+  RiAccountCircleLine,
+  RiArrowRightUpLine,
+  RiBookOpenLine,
+  RiGithubLine,
+  RiGraduationCapFill,
+  RiInformation2Line,
+  RiLogoutBoxRLine,
+  RiMap2Line,
+  RiSettings3Line,
+  RiStarLine,
+} from '@remixicon/react'
 import Link from 'next/link'
 import { Menu, MenuButton, MenuItem, MenuItems, Transition } from '@headlessui/react'
 import Indicator from '../indicator'
@@ -11,21 +22,19 @@ import AccountAbout from '../account-about'
 import GithubStar from '../github-star'
 import Support from './support'
 import Compliance from './compliance'
-import classNames from '@/utils/classnames'
+import PremiumBadge from '@/app/components/base/premium-badge'
 import I18n from '@/context/i18n'
 import Avatar from '@/app/components/base/avatar'
 import { logout } from '@/service/common'
 import AppContext, { useAppContext } from '@/context/app-context'
+import { useProviderContext } from '@/context/provider-context'
 import { useModalContext } from '@/context/modal-context'
 import { LanguagesSupported } from '@/i18n/language'
 import { LicenseStatus } from '@/types/feature'
 import { IS_CLOUD_EDITION } from '@/config'
+import cn from '@/utils/classnames'
 
-export type IAppSelector = {
-  isMobile: boolean
-}
-
-export default function AppSelector({ isMobile }: IAppSelector) {
+export default function AppSelector() {
   const itemClassName = `
     flex items-center w-full h-9 pl-3 pr-2 text-text-secondary system-md-regular
     rounded-lg hover:bg-state-base-hover cursor-pointer gap-1
@@ -37,6 +46,7 @@ export default function AppSelector({ isMobile }: IAppSelector) {
   const { locale } = useContext(I18n)
   const { t } = useTranslation()
   const { userProfile, langeniusVersionInfo, isCurrentWorkspaceOwner } = useAppContext()
+  const { isEducationAccount } = useProviderContext()
   const { setShowAccountSettingModal } = useModalContext()
 
   const handleLogout = async () => {
@@ -58,20 +68,8 @@ export default function AppSelector({ isMobile }: IAppSelector) {
         {
           ({ open }) => (
             <>
-              <MenuButton
-                className={`
-                    inline-flex items-center
-                    rounded-[20px] py-1 pl-1 pr-2.5 text-sm
-                  text-text-secondary hover:bg-state-base-hover
-                    mobile:px-1
-                    ${open && 'bg-state-base-hover'}
-                  `}
-              >
-                <Avatar avatar={userProfile.avatar_url} name={userProfile.name} className='mr-0 sm:mr-2' size={32} />
-                {!isMobile && <>
-                  {userProfile.name}
-                  <RiArrowDownSLine className="ml-1 h-3 w-3 text-text-tertiary" />
-                </>}
+              <MenuButton className={cn('inline-flex items-center rounded-[20px] p-0.5 hover:bg-background-default-dodge', open && 'bg-background-default-dodge')}>
+                <Avatar avatar={userProfile.avatar_url} name={userProfile.name} size={36} />
               </MenuButton>
               <Transition
                 as={Fragment}
@@ -92,7 +90,15 @@ export default function AppSelector({ isMobile }: IAppSelector) {
                   <MenuItem disabled>
                     <div className='flex flex-nowrap items-center py-[13px] pl-3 pr-2'>
                       <div className='grow'>
-                        <div className='system-md-medium break-all text-text-primary'>{userProfile.name}</div>
+                        <div className='system-md-medium break-all text-text-primary'>
+                          {userProfile.name}
+                          {isEducationAccount && (
+                            <PremiumBadge size='s' color='blue' className='ml-1 !px-2'>
+                              <RiGraduationCapFill className='mr-1 h-3 w-3' />
+                              <span className='system-2xs-medium'>EDU</span>
+                            </PremiumBadge>
+                          )}
+                        </div>
                         <div className='system-xs-regular break-all text-text-tertiary'>{userProfile.email}</div>
                       </div>
                       <Avatar avatar={userProfile.avatar_url} name={userProfile.name} size={36} className='mr-3' />
@@ -101,7 +107,7 @@ export default function AppSelector({ isMobile }: IAppSelector) {
                   <div className="px-1 py-1">
                     <MenuItem>
                       <Link
-                        className={classNames(itemClassName, 'group',
+                        className={cn(itemClassName, 'group',
                           'data-[active]:bg-state-base-hover',
                         )}
                         href='/account'
@@ -112,7 +118,7 @@ export default function AppSelector({ isMobile }: IAppSelector) {
                       </Link>
                     </MenuItem>
                     <MenuItem>
-                      <div className={classNames(itemClassName,
+                      <div className={cn(itemClassName,
                         'data-[active]:bg-state-base-hover',
                       )} onClick={() => setShowAccountSettingModal({ payload: 'members' })}>
                         <RiSettings3Line className='size-4 shrink-0 text-text-tertiary' />
@@ -123,7 +129,7 @@ export default function AppSelector({ isMobile }: IAppSelector) {
                   <div className='p-1'>
                     <MenuItem>
                       <Link
-                        className={classNames(itemClassName, 'group justify-between',
+                        className={cn(itemClassName, 'group justify-between',
                           'data-[active]:bg-state-base-hover',
                         )}
                         href={
@@ -141,7 +147,7 @@ export default function AppSelector({ isMobile }: IAppSelector) {
                   <div className='p-1'>
                     <MenuItem>
                       <Link
-                        className={classNames(itemClassName, 'group justify-between',
+                        className={cn(itemClassName, 'group justify-between',
                           'data-[active]:bg-state-base-hover',
                         )}
                         href='https://roadmap.dify.ai'
@@ -153,7 +159,7 @@ export default function AppSelector({ isMobile }: IAppSelector) {
                     </MenuItem>
                     {systemFeatures.license.status === LicenseStatus.NONE && <MenuItem>
                       <Link
-                        className={classNames(itemClassName, 'group justify-between',
+                        className={cn(itemClassName, 'group justify-between',
                           'data-[active]:bg-state-base-hover',
                         )}
                         href='https://github.com/langgenius/dify'
@@ -169,7 +175,7 @@ export default function AppSelector({ isMobile }: IAppSelector) {
                     {
                       document?.body?.getAttribute('data-public-site-about') !== 'hide' && (
                         <MenuItem>
-                          <div className={classNames(itemClassName, 'justify-between',
+                          <div className={cn(itemClassName, 'justify-between',
                             'data-[active]:bg-state-base-hover',
                           )} onClick={() => setAboutVisible(true)}>
                             <RiInformation2Line className='size-4 shrink-0 text-text-tertiary' />
@@ -186,7 +192,7 @@ export default function AppSelector({ isMobile }: IAppSelector) {
                   <MenuItem>
                     <div className='p-1' onClick={() => handleLogout()}>
                       <div
-                        className={classNames(itemClassName, 'group justify-between',
+                        className={cn(itemClassName, 'group justify-between',
                           'data-[active]:bg-state-base-hover',
                         )}
                       >

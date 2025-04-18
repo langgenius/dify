@@ -13,7 +13,6 @@ const NodeComponent: FC<NodeProps<AssignerNodeType>> = ({
   data,
 }) => {
   const { t } = useTranslation()
-
   const nodes: Node[] = useNodes()
   if (data.version === '2') {
     const { items: operationItems } = data

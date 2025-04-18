@@ -7,6 +7,7 @@ import Button from '@/app/components/base/button'
 import Modal from '@/app/components/base/modal'
 import { AlertTriangle } from '@/app/components/base/icons/src/vender/solid/alertsAndFeedback'
 import type { Tag } from '@/app/components/base/tag-management/constant'
+import { noop } from 'lodash-es'
 
 type TagRemoveModalProps = {
   show: boolean
@@ -22,7 +23,7 @@ const TagRemoveModal = ({ show, tag, onConfirm, onClose }: TagRemoveModalProps) 
     <Modal
       className={cn('w-[480px] max-w-[480px] p-8')}
       isShow={show}
-      onClose={() => { }}
+      onClose={noop}
     >
       <div className='absolute right-4 top-4 cursor-pointer p-2' onClick={onClose}>
         <RiCloseLine className='h-4 w-4 text-text-tertiary' />

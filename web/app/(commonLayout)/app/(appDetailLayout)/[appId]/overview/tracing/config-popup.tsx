@@ -138,7 +138,7 @@ const ConfigPopup: FC<PopupProps> = ({
     />
   )
   const configuredProviderPanel = () => {
-    const configuredPanels: any[] = []
+    const configuredPanels: JSX.Element[] = []
 
     if (weaveConfig)
       configuredPanels.push(weavePanel)
@@ -152,14 +152,11 @@ const ConfigPopup: FC<PopupProps> = ({
     if (opikConfig)
       configuredPanels.push(opikPanel)
 
-    if (weaveConfig)
-      configuredPanels.push(weavePanel)
-
     return configuredPanels
   }
 
   const moreProviderPanel = () => {
-    const notConfiguredPanels: any[] = []
+    const notConfiguredPanels: JSX.Element[] = []
     if (!weaveConfig)
       notConfiguredPanels.push(weavePanel)
 
@@ -172,8 +169,6 @@ const ConfigPopup: FC<PopupProps> = ({
     if (!opikConfig)
       notConfiguredPanels.push(opikPanel)
 
-    if (!weaveConfig)
-      notConfiguredPanels.push(weavePanel)
     return notConfiguredPanels
   }
 
@@ -229,7 +224,6 @@ const ConfigPopup: FC<PopupProps> = ({
                 {langSmithPanel}
                 {langfusePanel}
                 {opikPanel}
-                {weavePanel}
               </div>
             </>
           )

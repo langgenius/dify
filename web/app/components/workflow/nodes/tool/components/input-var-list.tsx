@@ -16,6 +16,7 @@ import useAvailableVarList from '@/app/components/workflow/nodes/_base/hooks/use
 import { VarType } from '@/app/components/workflow/types'
 import AppSelector from '@/app/components/plugins/plugin-detail-panel/app-selector'
 import ModelParameterModal from '@/app/components/plugins/plugin-detail-panel/model-selector'
+import { noop } from 'lodash-es'
 
 type Props = {
   readOnly: boolean
@@ -34,7 +35,7 @@ const InputVarList: FC<Props> = ({
   schema,
   value,
   onChange,
-  onOpen = () => { },
+  onOpen = noop,
   isSupportConstantValue,
   filterVar,
 }) => {

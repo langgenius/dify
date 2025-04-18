@@ -26,8 +26,11 @@ def init_app(app: DifyApp):
 
     # Always add StreamHandler to log to console
     sh = logging.StreamHandler(sys.stdout)
-    sh.addFilter(RequestIdFilter())
     log_handlers.append(sh)
+
+    # Apply RequestIdFilter to all handlers
+    for handler in log_handlers:
+        handler.addFilter(RequestIdFilter())
 
     logging.basicConfig(
         level=dify_config.LOG_LEVEL,
@@ -36,6 +39,8 @@ def init_app(app: DifyApp):
         handlers=log_handlers,
         force=True,
     )
+    # Disable propagation for noisy loggers to avoid duplicate logs
+    logging.getLogger("sqlalchemy.engine").propagate = False
     log_tz = dify_config.LOG_TZ
     if log_tz:
         from datetime import datetime

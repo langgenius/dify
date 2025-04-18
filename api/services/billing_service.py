@@ -6,7 +6,7 @@ from tenacity import retry, retry_if_exception_type, stop_before_delay, wait_fix
 
 from extensions.ext_database import db
 from libs.helper import RateLimiter
-from models.account import TenantAccountJoin, TenantAccountRole
+from models.account import Account, TenantAccountJoin, TenantAccountRole
 
 
 class BillingService:
@@ -105,6 +105,48 @@ class BillingService:
         """Update account deletion feedback."""
         json = {"email": email, "feedback": feedback}
         return cls._send_request("POST", "/account/delete-feedback", json=json)
+
+    class EducationIdentity:
+        verification_rate_limit = RateLimiter(prefix="edu_verification_rate_limit", max_attempts=10, time_window=60)
+        activation_rate_limit = RateLimiter(prefix="edu_activation_rate_limit", max_attempts=10, time_window=60)
+
+        @classmethod
+        def verify(cls, account_id: str, account_email: str):
+            if cls.verification_rate_limit.is_rate_limited(account_email):
+                from controllers.console.error import EducationVerifyLimitError
+
+                raise EducationVerifyLimitError()
+
+            cls.verification_rate_limit.increment_rate_limit(account_email)
+
+            params = {"account_id": account_id}
+            return BillingService._send_request("GET", "/education/verify", params=params)
+
+        @classmethod
+        def is_active(cls, account_id: str):
+            params = {"account_id": account_id}
+            return BillingService._send_request("GET", "/education/status", params=params)
+
+        @classmethod
+        def activate(cls, account: Account, token: str, institution: str, role: str):
+            if cls.activation_rate_limit.is_rate_limited(account.email):
+                from controllers.console.error import EducationActivateLimitError
+
+                raise EducationActivateLimitError()
+
+            cls.activation_rate_limit.increment_rate_limit(account.email)
+            params = {"account_id": account.id, "curr_tenant_id": account.current_tenant_id}
+            json = {
+                "institution": institution,
+                "token": token,
+                "role": role,
+            }
+            return BillingService._send_request("POST", "/education/", json=json, params=params)
+
+        @classmethod
+        def autocomplete(cls, keywords: str, page: int = 0, limit: int = 20):
+            params = {"keywords": keywords, "page": page, "limit": limit}
+            return BillingService._send_request("GET", "/education/autocomplete", params=params)
 
     @classmethod
     def get_compliance_download_link(

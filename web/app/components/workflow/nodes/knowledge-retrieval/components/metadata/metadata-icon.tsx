@@ -18,7 +18,7 @@ const MetadataIcon = ({
   return (
     <>
       {
-        type === MetadataFilteringVariableType.string && (
+        (type === MetadataFilteringVariableType.string || type === MetadataFilteringVariableType.select) && (
           <RiTextSnippet className={cn('h-3.5 w-3.5', className)} />
         )
       }

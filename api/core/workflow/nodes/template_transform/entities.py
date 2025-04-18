@@ -4,7 +4,7 @@ from core.workflow.nodes.base import BaseNodeData
 
 class TemplateTransformNodeData(BaseNodeData):
     """
-    Code Node Data.
+    Template Transform Node Data.
     """
 
     variables: list[VariableSelector]

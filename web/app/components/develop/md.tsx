@@ -12,7 +12,7 @@ type IChildrenProps = {
 
 type IHeaderingProps = {
   url: string
-  method: 'PUT' | 'DELETE' | 'GET' | 'POST'
+  method: 'PUT' | 'DELETE' | 'GET' | 'POST' | 'PATCH'
   title: string
   name: string
 }
@@ -33,6 +33,9 @@ export const Heading = function H2({
       break
     case 'POST':
       style = 'ring-sky-300 bg-sky-400/10 text-sky-500 dark:ring-sky-400/30 dark:bg-sky-400/10 dark:text-sky-400'
+      break
+    case 'PATCH':
+      style = 'ring-violet-300 bg-violet-400/10 text-violet-500 dark:ring-violet-400/30 dark:bg-violet-400/10 dark:text-violet-400'
       break
     default:
       style = 'ring-emerald-300 dark:ring-emerald-400/30 bg-emerald-400/10 text-emerald-500 dark:text-emerald-400'

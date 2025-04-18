@@ -32,12 +32,12 @@ const RoleItem: FC<RoleItemProps> = ({
   }, [onChange])
   return (
     <div className='flex items-center justify-between'>
-      <div className='text-[13px] font-normal text-gray-700'>{title}</div>
-      <input
+      <div className='text-[13px] font-normal text-text-secondary'>{title}</div>
+      <Input
         readOnly={readonly}
         value={value}
         onChange={handleChange}
-        className='h-8 w-[200px] rounded-lg border-0 bg-gray-100 px-2.5 text-[13px]  leading-8 text-gray-900  placeholder:text-gray-400 focus:outline-none focus:ring-1 focus:ring-inset focus:ring-gray-200'
+        className='h-8 w-[200px]'
         type='text' />
     </div>
   )
@@ -180,7 +180,7 @@ const MemoryConfig: FC<Props> = ({
             </div>
             {canSetRoleName && (
               <div className='mt-4'>
-                <div className='text-xs font-medium uppercase leading-6 text-gray-500'>{t(`${i18nPrefix}.conversationRoleName`)}</div>
+                <div className='text-xs font-medium uppercase leading-6 text-text-tertiary'>{t(`${i18nPrefix}.conversationRoleName`)}</div>
                 <div className='mt-1 space-y-2'>
                   <RoleItem
                     readonly={readonly}

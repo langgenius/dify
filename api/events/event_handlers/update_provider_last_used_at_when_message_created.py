@@ -8,7 +8,6 @@ from models.provider import Provider
 
 @message_was_created.connect
 def handle(sender, **kwargs):
-    message = sender
     application_generate_entity = kwargs.get("application_generate_entity")
 
     if not isinstance(application_generate_entity, ChatAppGenerateEntity | AgentChatAppGenerateEntity):

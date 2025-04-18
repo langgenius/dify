@@ -13,6 +13,7 @@ import Loading from '@/app/components/base/loading'
 import Form from '@/app/components/header/account-setting/model-provider-page/model-modal/Form'
 import { LinkExternal02 } from '@/app/components/base/icons/src/vender/line/general'
 import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
+import { noop } from 'lodash-es'
 
 type Props = {
   collection: Collection
@@ -28,7 +29,7 @@ const ConfigCredential: FC<Props> = ({
   onCancel,
   onSaved,
   isHideRemoveBtn,
-  onRemove = () => { },
+  onRemove = noop,
   isSaving,
 }) => {
   const { t } = useTranslation()

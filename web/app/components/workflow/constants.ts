@@ -21,6 +21,7 @@ import ListFilterDefault from './nodes/list-operator/default'
 import IterationStartDefault from './nodes/iteration-start/default'
 import AgentDefault from './nodes/agent/default'
 import LoopStartDefault from './nodes/loop-start/default'
+import LoopEndDefault from './nodes/loop-end/default'
 
 type NodesExtraData = {
   author: string
@@ -121,6 +122,15 @@ export const NODES_EXTRA_DATA: Record<BlockEnum, NodesExtraData> = {
     getAvailablePrevNodes: LoopStartDefault.getAvailablePrevNodes,
     getAvailableNextNodes: LoopStartDefault.getAvailableNextNodes,
     checkValid: LoopStartDefault.checkValid,
+  },
+  [BlockEnum.LoopEnd]: {
+    author: 'Dify',
+    about: '',
+    availablePrevNodes: [],
+    availableNextNodes: [],
+    getAvailablePrevNodes: LoopEndDefault.getAvailablePrevNodes,
+    getAvailableNextNodes: LoopEndDefault.getAvailableNextNodes,
+    checkValid: LoopEndDefault.checkValid,
   },
   [BlockEnum.Code]: {
     author: 'Dify',
@@ -296,6 +306,12 @@ export const NODES_INITIAL_DATA = {
     title: '',
     desc: '',
     ...LoopStartDefault.defaultValue,
+  },
+  [BlockEnum.LoopEnd]: {
+    type: BlockEnum.LoopEnd,
+    title: '',
+    desc: '',
+    ...LoopEndDefault.defaultValue,
   },
   [BlockEnum.Code]: {
     type: BlockEnum.Code,

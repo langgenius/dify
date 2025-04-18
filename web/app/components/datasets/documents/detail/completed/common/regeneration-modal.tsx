@@ -5,6 +5,7 @@ import { useCountDown } from 'ahooks'
 import Modal from '@/app/components/base/modal'
 import Button from '@/app/components/base/button'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
+import { noop } from 'lodash-es'
 
 type IDefaultContentProps = {
   onCancel: () => void
@@ -120,7 +121,7 @@ const RegenerationModal: FC<IRegenerationModalProps> = ({
   })
 
   return (
-    <Modal isShow={isShow} onClose={() => {}} className='!max-w-[480px] !rounded-2xl'>
+    <Modal isShow={isShow} onClose={noop} className='!max-w-[480px] !rounded-2xl'>
       {!loading && !updateSucceeded && <DefaultContent onCancel={onCancel} onConfirm={onConfirm} />}
       {loading && !updateSucceeded && <RegeneratingContent />}
       {!loading && updateSucceeded && <RegenerationCompletedContent onClose={onClose} />}

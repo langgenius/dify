@@ -14,6 +14,7 @@ import type {
   ErrorHandleTypeEnum,
 } from '@/app/components/workflow/nodes/_base/components/error-handle/types'
 import type { WorkflowRetryConfig } from '@/app/components/workflow/nodes/_base/components/retry/types'
+import type { StructuredOutput } from '@/app/components/workflow/nodes/llm/types'
 
 export enum BlockEnum {
   Start = 'start',
@@ -38,6 +39,7 @@ export enum BlockEnum {
   Agent = 'agent',
   Loop = 'loop',
   LoopStart = 'loop-start',
+  LoopEnd = 'loop-end',
 }
 
 export enum ControlMode {
@@ -64,7 +66,7 @@ export type CommonNodeType<T = {}> = {
   _singleRunningStatus?: NodeRunningStatus
   _isCandidate?: boolean
   _isBundled?: boolean
-  _children?: string[]
+  _children?: { nodeId: string; nodeType: BlockEnum }[]
   _isEntering?: boolean
   _showAddVariablePopup?: boolean
   _holdAddVariablePopup?: boolean
@@ -256,16 +258,23 @@ export enum VarType {
   any = 'any',
 }
 
+export enum ValueType {
+  variable = 'variable',
+  constant = 'constant',
+}
+
 export type Var = {
   variable: string
   type: VarType
-  children?: Var[] // if type is obj, has the children struct
+  children?: Var[] | StructuredOutput // if type is obj, has the children struct
   isParagraph?: boolean
   isSelect?: boolean
   options?: string[]
   required?: boolean
   des?: string
   isException?: boolean
+  isLoopVariable?: boolean
+  nodeId?: string
 }
 
 export type NodeOutPutVar = {
@@ -273,6 +282,7 @@ export type NodeOutPutVar = {
   title: string
   vars: Var[]
   isStartNode?: boolean
+  isLoop?: boolean
 }
 
 export type Block = {

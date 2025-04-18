@@ -184,7 +184,7 @@ const EmbeddingProcess: FC<Props> = ({ datasetId, batchId, documents = [], index
       await sleep(2500)
       await startQueryStatus()
     }
-    catch (e) {
+    catch {
       await sleep(2500)
       await startQueryStatus()
     }

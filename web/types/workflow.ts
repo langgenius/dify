@@ -61,6 +61,7 @@ export type NodeTracing = {
       agent_strategy?: string
       icon?: string
     }
+    loop_variable_map?: Record<string, any>
   }
   metadata: {
     iterator_length: number
@@ -196,6 +197,7 @@ export type FileResponse = {
   transfer_method: TransferMethod
   type: string
   url: string
+  upload_file_id: string
 }
 
 export type NodeFinishedResponse = {
@@ -334,6 +336,7 @@ export type ConversationVariableResponse = {
 
 export type IterationDurationMap = Record<string, number>
 export type LoopDurationMap = Record<string, number>
+export type LoopVariableMap = Record<string, any>
 
 export type WorkflowConfigResponse = {
   parallel_depth_limit: number

@@ -42,6 +42,7 @@ export const useAvailableBlocks = (nodeType?: BlockEnum, isInIteration?: boolean
   const availableNextBlocks = useMemo(() => {
     if (!nodeType)
       return []
+
     return nodesExtraData[nodeType].availableNextNodes || []
   }, [nodeType, nodesExtraData])
 
@@ -54,6 +55,9 @@ export const useAvailableBlocks = (nodeType?: BlockEnum, isInIteration?: boolean
         if (isInLoop && (nType === BlockEnum.Iteration || nType === BlockEnum.Loop || nType === BlockEnum.End))
           return false
 
+        if (!isInLoop && nType === BlockEnum.LoopEnd)
+          return false
+
         return true
       }),
       availableNextBlocks: availableNextBlocks.filter((nType) => {
@@ -61,6 +65,9 @@ export const useAvailableBlocks = (nodeType?: BlockEnum, isInIteration?: boolean
           return false
 
         if (isInLoop && (nType === BlockEnum.Iteration || nType === BlockEnum.Loop || nType === BlockEnum.End))
+          return false
+
+        if (!isInLoop && nType === BlockEnum.LoopEnd)
           return false
 
         return true

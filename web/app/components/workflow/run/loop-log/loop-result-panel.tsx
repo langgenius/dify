@@ -12,19 +12,23 @@ import { NodeRunningStatus } from '@/app/components/workflow/types'
 import TracingPanel from '@/app/components/workflow/run/tracing-panel'
 import { Loop } from '@/app/components/base/icons/src/vender/workflow'
 import cn from '@/utils/classnames'
-import type { LoopDurationMap, NodeTracing } from '@/types/workflow'
+import type { LoopDurationMap, LoopVariableMap, NodeTracing } from '@/types/workflow'
+import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
+import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
 const i18nPrefix = 'workflow.singleRun'
 
 type Props = {
   list: NodeTracing[][]
   onBack: () => void
   loopDurationMap?: LoopDurationMap
+  loopVariableMap?: LoopVariableMap
 }
 
 const LoopResultPanel: FC<Props> = ({
   list,
   onBack,
   loopDurationMap,
+  loopVariableMap,
 }) => {
   const { t } = useTranslation()
   const [expandedLoops, setExpandedLoops] = useState<Record<number, boolean>>({})
@@ -114,6 +118,20 @@ const LoopResultPanel: FC<Props> = ({
               'overflow-hidden transition-all duration-200',
               expandedLoops[index] ? 'max-h-[1000px] opacity-100' : 'max-h-0 opacity-0',
             )}>
+              {
+                loopVariableMap?.[index] && (
+                  <div className='p-2 pb-0'>
+                    <CodeEditor
+                      readOnly
+                      title={<div>{t('workflow.nodes.loop.loopVariables').toLocaleUpperCase()}</div>}
+                      language={CodeLanguage.json}
+                      height={112}
+                      value={loopVariableMap[index]}
+                      isJSONStringifyBeauty
+                    />
+                  </div>
+                )
+              }
               <TracingPanel
                 list={loop}
                 className='bg-background-section-burn'

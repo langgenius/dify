@@ -108,7 +108,7 @@ const EndpointCard = ({
       Toast.notify({ type: 'error', message: t('common.actionMsg.modifiedUnsuccessfully') })
     },
   })
-  const handleUpdate = (state: any) => updateEndpoint({
+  const handleUpdate = (state: Record<string, any>) => updateEndpoint({
     endpointID,
     state,
   })

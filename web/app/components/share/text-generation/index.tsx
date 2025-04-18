@@ -636,7 +636,7 @@ const TextGeneration: FC<IMainProps> = ({
       {/* Result */}
       <div className={cn(
         isPC
-          ? 'h-full grow'
+          ? 'h-full w-0 grow'
           : isShowResultPanel
             ? 'fixed inset-0 z-50 bg-background-overlay backdrop-blur-sm'
             : resultExisted

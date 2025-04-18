@@ -23,6 +23,7 @@ import type { App } from '@/types/app'
 import { AlertTriangle } from '@/app/components/base/icons/src/vender/solid/alertsAndFeedback'
 import AppIcon from '@/app/components/base/app-icon'
 import { useStore as useAppStore } from '@/app/components/app/store'
+import { noop } from 'lodash-es'
 
 type SwitchAppModalProps = {
   show: boolean
@@ -81,7 +82,7 @@ const SwitchAppModal = ({ show, appDetail, inAppDetail = false, onSuccess, onClo
         removeOriginal ? replace : push,
       )
     }
-    catch (e) {
+    catch {
       notify({ type: 'error', message: t('app.newApp.appCreateFailed') })
     }
   }
@@ -96,7 +97,7 @@ const SwitchAppModal = ({ show, appDetail, inAppDetail = false, onSuccess, onClo
       <Modal
         className={cn('w-[600px] max-w-[600px] p-8')}
         isShow={show}
-        onClose={() => { }}
+        onClose={noop}
       >
         <div className='absolute right-4 top-4 cursor-pointer p-2' onClick={onClose}>
           <RiCloseLine className='h-4 w-4 text-text-tertiary' />

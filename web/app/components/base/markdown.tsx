@@ -85,9 +85,11 @@ const preprocessLaTeX = (content: string) => {
 }
 
 const preprocessThinkTag = (content: string) => {
+  const thinkOpenTagRegex = /<think>\n/g
+  const thinkCloseTagRegex = /\n<\/think>/g
   return flow([
-    (str: string) => str.replace('<think>\n', '<details data-think=true>\n'),
-    (str: string) => str.replace('\n</think>', '\n[ENDTHINKFLAG]</details>'),
+    (str: string) => str.replace(thinkOpenTagRegex, '<details data-think=true>\n'),
+    (str: string) => str.replace(thinkCloseTagRegex, '\n[ENDTHINKFLAG]</details>'),
   ])(content)
 }
 
@@ -128,7 +130,7 @@ const CodeBlock: any = memo(({ inline, className, children, ...props }: any) => 
       try {
         return JSON.parse(String(children).replace(/\n$/, ''))
       }
-      catch (error) { }
+      catch { }
     }
     return JSON.parse('{"title":{"text":"ECharts error - Wrong JSON format."}}')
   }, [language, children])
@@ -222,19 +224,21 @@ const Paragraph = (paragraph: any) => {
   const children_node = node.children
   if (children_node && children_node[0] && 'tagName' in children_node[0] && children_node[0].tagName === 'img') {
     return (
-      <>
+      <div className="markdown-img-wrapper">
         <ImageGallery srcs={[children_node[0].properties.src]} />
         {
-          Array.isArray(paragraph.children) ? <p>{paragraph.children.slice(1)}</p> : null
+          Array.isArray(paragraph.children) && paragraph.children.length > 1 && (
+            <div className="mt-2">{paragraph.children.slice(1)}</div>
+          )
         }
-      </>
+      </div>
     )
   }
   return <p>{paragraph.children}</p>
 }
 
 const Img = ({ src }: any) => {
-  return (<ImageGallery srcs={[src]} />)
+  return <div className="markdown-img-wrapper"><ImageGallery srcs={[src]} /></div>
 }
 
 const Link = ({ node, ...props }: any) => {

@@ -90,7 +90,7 @@ const Panel: FC<NodePanelProps<QuestionClassifierNodeType>> = ({
             required: false,
           }],
           values: { '#files#': visionFiles },
-          onChange: keyValue => setVisionFiles((keyValue as any)['#files#']),
+          onChange: keyValue => setVisionFiles(keyValue['#files#']),
         },
       )
     }
@@ -145,10 +145,11 @@ const Panel: FC<NodePanelProps<QuestionClassifierNodeType>> = ({
           title={t(`${i18nPrefix}.class`)}
         >
           <ClassList
-            id={id}
+            nodeId={id}
             list={inputs.classes}
             onChange={handleTopicsChange}
             readonly={readOnly}
+            filterVar={filterVar}
           />
         </Field>
         <Split />

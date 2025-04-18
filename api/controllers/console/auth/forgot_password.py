@@ -99,52 +99,63 @@ class ForgotPasswordResetApi(Resource):
         parser.add_argument("password_confirm", type=valid_password, required=True, nullable=False, location="json")
         args = parser.parse_args()
 
-        new_password = args["new_password"]
-        password_confirm = args["password_confirm"]
-
-        if str(new_password).strip() != str(password_confirm).strip():
+        # Validate passwords match
+        if args["new_password"] != args["password_confirm"]:
             raise PasswordMismatchError()
 
-        token = args["token"]
-        reset_data = AccountService.get_reset_password_data(token)
-
-        if reset_data is None:
+        # Validate token and get reset data
+        reset_data = AccountService.get_reset_password_data(args["token"])
+        if not reset_data:
             raise InvalidTokenError()
 
-        AccountService.revoke_reset_password_token(token)
+        # Revoke token to prevent reuse
+        AccountService.revoke_reset_password_token(args["token"])
 
+        # Generate secure salt and hash password
         salt = secrets.token_bytes(16)
-        base64_salt = base64.b64encode(salt).decode()
+        password_hashed = hash_password(args["new_password"], salt)
 
-        password_hashed = hash_password(new_password, salt)
-        base64_password_hashed = base64.b64encode(password_hashed).decode()
+        email = reset_data.get("email", "")
 
         with Session(db.engine) as session:
-            account = session.execute(select(Account).filter_by(email=reset_data.get("email"))).scalar_one_or_none()
-        if account:
-            account.password = base64_password_hashed
-            account.password_salt = base64_salt
-            db.session.commit()
-            tenant = TenantService.get_join_tenants(account)
-            if not tenant and not FeatureService.get_system_features().is_allow_create_workspace:
-                tenant = TenantService.create_tenant(f"{account.name}'s Workspace")
-                TenantService.create_tenant_member(tenant, account, role="owner")
-                account.current_tenant = tenant
-                tenant_was_created.send(tenant)
-        else:
-            try:
-                account = AccountService.create_account_and_tenant(
-                    email=reset_data.get("email", ""),
-                    name=reset_data.get("email", ""),
-                    password=password_confirm,
-                    interface_language=languages[0],
-                )
-            except WorkSpaceNotAllowedCreateError:
-                pass
-            except AccountRegisterError:
-                raise AccountInFreezeError()
+            account = session.execute(select(Account).filter_by(email=email)).scalar_one_or_none()
+
+            if account:
+                self._update_existing_account(account, password_hashed, salt, session)
+            else:
+                self._create_new_account(email, args["password_confirm"])
 
         return {"result": "success"}
+
+    def _update_existing_account(self, account, password_hashed, salt, session):
+        # Update existing account credentials
+        account.password = base64.b64encode(password_hashed).decode()
+        account.password_salt = base64.b64encode(salt).decode()
+        session.commit()
+
+        # Create workspace if needed
+        if (
+            not TenantService.get_join_tenants(account)
+            and FeatureService.get_system_features().is_allow_create_workspace
+        ):
+            tenant = TenantService.create_tenant(f"{account.name}'s Workspace")
+            TenantService.create_tenant_member(tenant, account, role="owner")
+            account.current_tenant = tenant
+            tenant_was_created.send(tenant)
+
+    def _create_new_account(self, email, password):
+        # Create new account if allowed
+        try:
+            AccountService.create_account_and_tenant(
+                email=email,
+                name=email,
+                password=password,
+                interface_language=languages[0],
+            )
+        except WorkSpaceNotAllowedCreateError:
+            pass
+        except AccountRegisterError:
+            raise AccountInFreezeError()
 
 
 api.add_resource(ForgotPasswordSendEmailApi, "/forgot-password")

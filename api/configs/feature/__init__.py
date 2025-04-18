@@ -12,7 +12,7 @@ from pydantic import (
 )
 from pydantic_settings import BaseSettings
 
-from configs.feature.hosted_service import HostedServiceConfig
+from .hosted_service import HostedServiceConfig
 
 
 class SecurityConfig(BaseSettings):
@@ -442,11 +442,16 @@ class LoggingConfig(BaseSettings):
 
 class ModelLoadBalanceConfig(BaseSettings):
     """
-    Configuration for model load balancing
+    Configuration for model load balancing and token counting
     """
 
     MODEL_LB_ENABLED: bool = Field(
         description="Enable or disable load balancing for models",
+        default=False,
+    )
+
+    PLUGIN_BASED_TOKEN_COUNTING_ENABLED: bool = Field(
+        description="Enable or disable plugin based token counting. If disabled, token counting will return 0.",
         default=False,
     )
 
@@ -512,6 +517,11 @@ class WorkflowNodeExecutionConfig(BaseSettings):
     MAX_SUBMIT_COUNT: PositiveInt = Field(
         description="Maximum number of submitted thread count in a ThreadPool for parallel node execution",
         default=100,
+    )
+
+    WORKFLOW_NODE_EXECUTION_STORAGE: str = Field(
+        default="rdbms",
+        description="Storage backend for WorkflowNodeExecution. Options: 'rdbms', 'hybrid'",
     )
 
 
@@ -846,6 +856,11 @@ class AccountConfig(BaseSettings):
     ACCOUNT_DELETION_TOKEN_EXPIRY_MINUTES: PositiveInt = Field(
         description="Duration in minutes for which a account deletion token remains valid",
         default=5,
+    )
+
+    EDUCATION_ENABLED: bool = Field(
+        description="whether to enable education identity",
+        default=False,
     )
 
 
