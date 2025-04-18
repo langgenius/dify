@@ -19,7 +19,7 @@ class AccountStatus(enum.StrEnum):
     CLOSED = "closed"
 
 
-class Account(UserMixin, Base):
+class Account(UserMixin, Base, db.Model):  # type: ignore[name-defined]
     __tablename__ = "accounts"
     __table_args__ = (db.PrimaryKeyConstraint("id", name="account_pkey"), db.Index("account_email_idx", "email"))
 
