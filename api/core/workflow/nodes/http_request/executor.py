@@ -88,6 +88,7 @@ class Executor:
         self.method = node_data.method
         self.auth = node_data.authorization
         self.timeout = timeout
+        self.ssl_verify = node_data.ssl_verify
         self.params = []
         self.headers = {}
         self.content = None
@@ -316,6 +317,7 @@ class Executor:
             "headers": headers,
             "params": self.params,
             "timeout": (self.timeout.connect, self.timeout.read, self.timeout.write),
+            "ssl_verify": self.ssl_verify,
             "follow_redirects": True,
             "max_retries": self.max_retries,
         }

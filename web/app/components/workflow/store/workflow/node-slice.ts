@@ -12,8 +12,6 @@ import type {
 export type NodeSliceShape = {
   showSingleRunPanel: boolean
   setShowSingleRunPanel: (showSingleRunPanel: boolean) => void
-  nodesDefaultConfigs: Record<string, any>
-  setNodesDefaultConfigs: (nodesDefaultConfigs: Record<string, any>) => void
   nodeAnimation: boolean
   setNodeAnimation: (nodeAnimation: boolean) => void
   candidateNode?: Node
@@ -55,8 +53,6 @@ export type NodeSliceShape = {
 export const createNodeSlice: StateCreator<NodeSliceShape> = set => ({
   showSingleRunPanel: false,
   setShowSingleRunPanel: showSingleRunPanel => set(() => ({ showSingleRunPanel })),
-  nodesDefaultConfigs: {},
-  setNodesDefaultConfigs: nodesDefaultConfigs => set(() => ({ nodesDefaultConfigs })),
   nodeAnimation: false,
   setNodeAnimation: nodeAnimation => set(() => ({ nodeAnimation })),
   candidateNode: undefined,

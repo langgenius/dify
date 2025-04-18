@@ -94,6 +94,9 @@ import { Row, Col, Properties, Property, Heading, SubProperty, PropertyInstructi
             - <code>semantic_search</code> 语义检索
             - <code>full_text_search</code> 全文检索
           - <code>reranking_enable</code> (bool) 是否开启rerank
+          - <code>reranking_mode</code> (String) 混合检索
+            - <code>weighted_score</code> 权重设置
+            - <code>reranking_model</code> Rerank 模型
           - <code>reranking_model</code> (object) Rerank 模型配置
             - <code>reranking_provider_name</code> (string) Rerank 模型的提供商
             - <code>reranking_model_name</code> (string) Rerank 模型的名称
@@ -557,7 +560,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, PropertyInstructi
 
 <Heading
   url='/datasets/{dataset_id}'
-  method='POST'
+  method='PATCH'
   title='修改知识库详情'
   name='#update_dataset'
 />
@@ -589,8 +592,21 @@ import { Row, Col, Properties, Property, Heading, SubProperty, PropertyInstructi
       <Property name='embedding_model' type='string' key='embedding_model'>
         嵌入模型（选填）
       </Property>
-      <Property name='retrieval_model' type='string' key='retrieval_model'>
-        检索模型（选填）
+      <Property name='retrieval_model' type='object' key='retrieval_model'>
+        检索参数（选填，如不填，按照默认方式召回）
+        - <code>search_method</code> (text) 检索方法：以下四个关键字之一，必填
+          - <code>keyword_search</code> 关键字检索
+          - <code>semantic_search</code> 语义检索
+          - <code>full_text_search</code> 全文检索
+          - <code>hybrid_search</code> 混合检索
+        - <code>reranking_enable</code> (bool) 是否启用 Reranking，非必填，如果检索模式为 semantic_search 模式或者 hybrid_search 则传值
+        - <code>reranking_mode</code> (object) Rerank 模型配置，非必填，如果启用了 reranking 则传值
+            - <code>reranking_provider_name</code> (string) Rerank 模型提供商
+            - <code>reranking_model_name</code> (string) Rerank 模型名称
+        - <code>weights</code> (float) 混合检索模式下语意检索的权重设置
+        - <code>top_k</code> (integer) 返回结果数量，非必填
+        - <code>score_threshold_enabled</code> (bool) 是否开启 score 阈值
+        - <code>score_threshold</code> (float) Score 阈值
       </Property>
       <Property name='partial_member_list' type='array' key='partial_member_list'>
         部分团队成员 ID 列表（选填）
@@ -600,16 +616,56 @@ import { Row, Col, Properties, Property, Heading, SubProperty, PropertyInstructi
   <Col sticky>
     <CodeGroup
       title="Request"
-      tag="POST"
+      tag="PATCH"
       label="/datasets/{dataset_id}"
-      targetCode={`curl --location --request POST '${props.apiBaseUrl}/datasets/{dataset_id}' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{"name": "Test Knowledge Base", "indexing_technique": "high_quality", "permission": "only_me", "embedding_model_provider": "zhipuai", "embedding_model": "embedding-3", "retrieval_model": "", "partial_member_list": []}' `}
+      targetCode={`curl --location --request PATCH '${props.apiBaseUrl}/datasets/{dataset_id}' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{
+        "name": "Test Knowledge Base", 
+        "indexing_technique": "high_quality", 
+        "permission": "only_me", 
+        "embedding_model_provider": "zhipuai", 
+        "embedding_model": "embedding-3", 
+        "retrieval_model": {
+          "search_method": "keyword_search",
+          "reranking_enable": false,
+          "reranking_mode": null,
+          "reranking_model": {
+              "reranking_provider_name": "",
+              "reranking_model_name": ""
+          },
+          "weights": null,
+          "top_k": 1,
+          "score_threshold_enabled": false,
+          "score_threshold": null
+        }, 
+        "partial_member_list": []
+      }'
+    `}
     >
     ```bash {{ title: 'cURL' }}
-    curl --location --request POST '${props.apiBaseUrl}/datasets/{dataset_id}' \
+    curl --location --request PATCH '${props.apiBaseUrl}/datasets/{dataset_id}' \
     --header 'Authorization: Bearer {api_key}' \
     --header 'Content-Type: application/json' \
-    --data-raw '{"name": "Test Knowledge Base", "indexing_technique": "high_quality", "permission": "only_me",\
-      "embedding_model_provider": "zhipuai", "embedding_model": "embedding-3", "retrieval_model": "", "partial_member_list": []}'
+    --data-raw '{
+      "name": "Test Knowledge Base", 
+      "indexing_technique": "high_quality", 
+      "permission": "only_me", 
+      "embedding_model_provider": "zhipuai", 
+      "embedding_model": "embedding-3", 
+      "retrieval_model": {
+        "search_method": "keyword_search",
+        "reranking_enable": false,
+        "reranking_mode": null,
+        "reranking_model": {
+            "reranking_provider_name": "",
+            "reranking_model_name": ""
+        },
+        "weights": null,
+        "top_k": 1,
+        "score_threshold_enabled": false,
+        "score_threshold": null
+      }, 
+      "partial_member_list": []
+    }'
     ```
     </CodeGroup>
     <CodeGroup title="Response">
@@ -1764,7 +1820,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, PropertyInstructi
       </Property>
       <Property name='retrieval_model' type='object' key='retrieval_model'>
         检索参数（选填，如不填，按照默认方式召回）
-        - <code>search_method</code> (text) 检索方法：以下三个关键字之一，必填
+        - <code>search_method</code> (text) 检索方法：以下四个关键字之一，必填
           - <code>keyword_search</code> 关键字检索
           - <code>semantic_search</code> 语义检索
           - <code>full_text_search</code> 全文检索

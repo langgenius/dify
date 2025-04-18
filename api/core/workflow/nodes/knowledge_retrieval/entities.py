@@ -116,20 +116,10 @@ class MetadataFilteringCondition(BaseModel):
     logical_operator: Optional[Literal["and", "or"]] = "and"
     conditions: Optional[list[Condition]] = Field(default=None, deprecated=True)
 
-
-class MetadataFilteringComplexSubCondition(BaseModel):
+class MetadataFilteringComplexCondition(BaseModel):
     logical_operator: Optional[Literal["and", "or"]] = "and"
     conditions: Optional[list[Condition]] = Field(default=None, deprecated=True)
-    sub_conditions: Optional[list["MetadataFilteringComplexSubCondition"]] = None
-
-
-class MetadataFilteringComplexCondition(BaseModel):
-    """
-    Complex Metadata Filtering Condition.
-    """
-
-    logical_operator: Optional[Literal["and", "or"]] = "and"
-    conditions: Optional[list[MetadataFilteringComplexSubCondition]] = Field(default=None, deprecated=True)
+    sub_conditions: Optional[list["MetadataFilteringComplexCondition"]] = None
 
 
 class KnowledgeRetrievalNodeData(BaseNodeData):
