@@ -53,6 +53,7 @@ import LastRun from './last-run'
 import useOneStepRun from '../../hooks/use-one-step-run'
 import type { PanelExposedType } from '@/types/workflow'
 import BeforeRunForm from '../before-run-form'
+import { sleep } from '@/utils'
 
 type BasePanelProps = {
   children: ReactNode
@@ -110,6 +111,8 @@ const BasePanel: FC<BasePanelProps> = ({
   }, [handleNodeDataUpdateWithSyncDraft, id, saveStateToHistory])
 
   const isSupportSingleRun = canRunBySingle(data.type)
+  const childPanelRef = useRef<PanelExposedType>(null)
+
   const {
     isShowSingleRun,
     showSingleRun,
@@ -119,7 +122,7 @@ const BasePanel: FC<BasePanelProps> = ({
     handleRun,
     handleStop,
     runInputData,
-    setRunInputData,
+    setRunInputData: doSetRunInputData,
     runResult,
     getInputVars,
   } = useOneStepRun<typeof data>({
@@ -127,8 +130,14 @@ const BasePanel: FC<BasePanelProps> = ({
     data,
     defaultRunInputData: {},
   })
-  const childPanelRef = useRef<PanelExposedType>(null)
   const [singleRunParams, setSingleRunParams] = useState<PanelExposedType['singleRunParams'] | undefined>(undefined)
+
+  const setRunInputData = useCallback(async (data: Record<string, any>) => {
+    doSetRunInputData(data)
+    // console.log(childPanelRef.current?.singleRunParams)
+    await sleep(0) // wait for childPanelRef.current?.singleRunParams refresh
+    setSingleRunParams(childPanelRef.current?.singleRunParams)
+  }, [doSetRunInputData])
 
   const [tabType, setTabType] = useState<TabType>(TabType.settings)
   const hasLastRunData = true // TODO: add disabled logic
@@ -217,7 +226,17 @@ const BasePanel: FC<BasePanelProps> = ({
         {tabType === TabType.settings && (
           <>
             <div>
-              {cloneElement(children as any, { id, data, ref: childPanelRef })}
+              {cloneElement(children as any, {
+                id,
+                data,
+                panelProps: {
+                  getInputVars,
+                  runInputData,
+                  setRunInputData,
+                  runResult,
+                },
+                ref: childPanelRef,
+              })}
             </div>
             <Split />
             {

@@ -1,5 +1,5 @@
 import type { Viewport } from 'reactflow'
-import type { BlockEnum, ConversationVariable, Edge, EnvironmentVariable, Node } from '@/app/components/workflow/types'
+import type { BlockEnum, ConversationVariable, Edge, EnvironmentVariable, InputVar, Node } from '@/app/components/workflow/types'
 import type { TransferMethod } from '@/types/app'
 import type { ErrorHandleTypeEnum } from '@/app/components/workflow/nodes/_base/components/error-handle/types'
 import type { BeforeRunFormProps } from '@/app/components/workflow/nodes/_base/components/before-run-form'
@@ -356,4 +356,11 @@ export type UpdateWorkflowParams = {
 
 export type PanelExposedType = {
   singleRunParams: Pick<BeforeRunFormProps, 'forms'> & Partial<SpecialResultPanelProps>
+}
+
+export type PanelProps = {
+  getInputVars: (textList: string[]) => InputVar[]
+  runInputData: Record<string, any>
+  setRunInputData: (data: Record<string, any>) => void
+  runResult: any
 }

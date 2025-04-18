@@ -1,4 +1,4 @@
-import { forwardRef, memo, useImperativeHandle, useMemo } from 'react'
+import { forwardRef, memo, useImperativeHandle } from 'react'
 import type { NodePanelProps } from '../../types'
 import { AgentFeature, type AgentNodeType } from './types'
 import Field from '../_base/components/field'
@@ -8,7 +8,6 @@ import { useTranslation } from 'react-i18next'
 import OutputVars, { VarItem } from '../_base/components/output-vars'
 import type { StrategyParamItem } from '@/app/components/plugins/types'
 import type { CredentialFormSchema } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import formatTracing from '@/app/components/workflow/run/utils/format-log'
 import { useLogs } from '@/app/components/workflow/run/hooks'
 import type { Props as FormProps } from '@/app/components/workflow/nodes/_base/components/before-run-form/form'
 import { toType } from '@/app/components/tools/utils/to-form-schema'
@@ -29,6 +28,10 @@ export function strategyParamToCredientialForm(param: StrategyParamItem): Creden
 
 const AgentPanel = forwardRef<PanelExposedType, NodePanelProps<AgentNodeType>>((props, ref) => {
   const {
+    runInputData,
+    setRunInputData,
+  } = props.panelProps
+  const {
     inputs,
     setInputs,
     currentStrategy,
@@ -38,28 +41,21 @@ const AgentPanel = forwardRef<PanelExposedType, NodePanelProps<AgentNodeType>>((
     availableNodesWithParent,
     availableVars,
     readOnly,
-    runResult,
-    runInputData,
-    setRunInputData,
     varInputs,
     outputSchema,
     handleMemoryChange,
-  } = useConfig(props.id, props.data)
+  } = useConfig(props.id, props.data, props.panelProps)
   const { t } = useTranslation()
-  const nodeInfo = useMemo(() => {
-    if (!runResult)
-      return
-    return formatTracing([runResult], t)[0]
-  }, [runResult, t])
+
   const logsParams = useLogs()
   const singleRunForms = (() => {
     const forms: FormProps[] = []
 
-    if (varInputs.length > 0) {
+    if (varInputs!.length > 0) {
       forms.push(
         {
           label: t(`${i18nPrefix}.singleRun.variable`)!,
-          inputs: varInputs,
+          inputs: varInputs!,
           values: runInputData,
           onChange: setRunInputData,
         },
