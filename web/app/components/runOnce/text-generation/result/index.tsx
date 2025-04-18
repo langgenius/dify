@@ -468,7 +468,7 @@ const Result: FC<IResultProps> = ({
   return (
     <div className={cn(
       isNoData && !isCallBatchAPI && 'h-full',
-      'overflow-y-auto',
+      'overflow-y-auto h-full',
     )}
     ref={containerRef}
 
