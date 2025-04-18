@@ -2,7 +2,8 @@ import { memo, useEffect, useMemo, useRef } from 'react'
 import { MiniMap } from 'reactflow'
 import UndoRedo from '../header/undo-redo'
 import ZoomInOut from './zoom-in-out'
-import Trigger from '../variable-inspect/trigger'
+import VariableTrigger from '../variable-inspect/trigger'
+import VariableInspectPanel from '../variable-inspect'
 import { useStore } from '../store'
 
 export type OperatorProps = {
@@ -50,7 +51,7 @@ const Operator = ({ handleUndo, handleRedo }: OperatorProps) => {
     >
       <div className='flex justify-between px-1 pb-2'>
         <UndoRedo handleUndo={handleUndo} handleRedo={handleRedo} />
-        <Trigger />
+        <VariableTrigger />
         <div className='relative'>
           <MiniMap
             pannable
@@ -66,6 +67,7 @@ const Operator = ({ handleUndo, handleRedo }: OperatorProps) => {
           <ZoomInOut />
         </div>
       </div>
+      <VariableInspectPanel />
     </div>
   )
 }
