@@ -114,9 +114,9 @@ export function processSvgForTheme(
         .replace(/stroke-width="1"/g, 'stroke-width="1.5"')
     }
     else {
+      let i = 0
       themes.dark.nodeColors.forEach(() => {
         const regex = /fill="#[a-fA-F0-9]{6}"[^>]*class="node-[^"]*"/g
-        let i = 0
         processedSvg = processedSvg.replace(regex, (match: string) => {
           const colorIndex = i % themes.dark.nodeColors.length
           i++
