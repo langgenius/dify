@@ -8,6 +8,8 @@ import {
   useCallback,
   useRef,
   useState,
+  useEffect,
+  useMemo,
 } from 'react'
 import {
   RiCloseLine,
@@ -36,7 +38,6 @@ import {
   useNodesReadOnly,
   useNodesSyncDraft,
   useToolIcon,
-  useWorkflow,
   useWorkflowHistory,
 } from '@/app/components/workflow/hooks'
 import {
@@ -54,6 +55,7 @@ import useOneStepRun from '../../hooks/use-one-step-run'
 import type { PanelExposedType } from '@/types/workflow'
 import BeforeRunForm from '../before-run-form'
 import { sleep } from '@/utils'
+import { debounce } from 'lodash-es'
 
 type BasePanelProps = {
   children: ReactNode
@@ -69,19 +71,30 @@ const BasePanel: FC<BasePanelProps> = ({
     showMessageLogModal: state.showMessageLogModal,
   })))
   const showSingleRunPanel = useStore(s => s.showSingleRunPanel)
-  const panelWidth = localStorage.getItem('workflow-node-panel-width') ? Number.parseFloat(localStorage.getItem('workflow-node-panel-width')!) : 420
-  const {
-    setPanelWidth,
-  } = useWorkflow()
-  const { handleNodeSelect } = useNodesInteractions()
-  const { handleSyncWorkflowDraft } = useNodesSyncDraft()
-  const { nodesReadOnly } = useNodesReadOnly()
-  const { availableNextBlocks } = useAvailableBlocks(data.type, data.isInIteration, data.isInLoop)
-  const toolIcon = useToolIcon(data)
+  const workflowCanvasWidth = useStore(s => s.workflowCanvasWidth)
+  const nodePanelWidth = useStore(s => s.nodePanelWidth)
+  const otherPanelWidth = useStore(s => s.otherPanelWidth)
+  const setNodePanelWidth = useStore(s => s.setNodePanelWidth)
+
+  const maxNodePanelWidth = useMemo(() => {
+    if (!workflowCanvasWidth)
+      return 720
+    if (!otherPanelWidth)
+      return workflowCanvasWidth - 400
+
+    return workflowCanvasWidth - otherPanelWidth - 400
+  }, [workflowCanvasWidth, otherPanelWidth])
+
+  const updateNodePanelWidth = useCallback((width: number) => {
+    // Ensure the width is within the min and max range
+    const newValue = Math.min(Math.max(width, 400), maxNodePanelWidth)
+    localStorage.setItem('workflow-node-panel-width', `${newValue}`)
+    setNodePanelWidth(newValue)
+  }, [maxNodePanelWidth, setNodePanelWidth])
 
   const handleResize = useCallback((width: number) => {
-    setPanelWidth(width)
-  }, [setPanelWidth])
+    updateNodePanelWidth(width)
+  }, [updateNodePanelWidth])
 
   const {
     triggerRef,
@@ -89,15 +102,28 @@ const BasePanel: FC<BasePanelProps> = ({
   } = useResizePanel({
     direction: 'horizontal',
     triggerDirection: 'left',
-    minWidth: 420,
-    maxWidth: 720,
-    onResize: handleResize,
+    minWidth: 400,
+    maxWidth: maxNodePanelWidth,
+    onResize: debounce(handleResize),
   })
+
+  const debounceUpdate = debounce(updateNodePanelWidth)
+  useEffect(() => {
+    if (!workflowCanvasWidth)
+      return
+    if (workflowCanvasWidth - 400 <= nodePanelWidth + otherPanelWidth)
+      debounceUpdate(workflowCanvasWidth - 400 - otherPanelWidth)
+  }, [nodePanelWidth, otherPanelWidth, workflowCanvasWidth, updateNodePanelWidth])
+
+  const { handleNodeSelect } = useNodesInteractions()
+  const { handleSyncWorkflowDraft } = useNodesSyncDraft()
+  const { nodesReadOnly } = useNodesReadOnly()
+  const { availableNextBlocks } = useAvailableBlocks(data.type, data.isInIteration, data.isInLoop)
+  const toolIcon = useToolIcon(data)
 
   const { saveStateToHistory } = useWorkflowHistory()
 
   const {
-    handleNodeDataUpdate,
     handleNodeDataUpdateWithSyncDraft,
   } = useNodeDataUpdate()
 
@@ -117,7 +143,6 @@ const BasePanel: FC<BasePanelProps> = ({
     isShowSingleRun,
     showSingleRun,
     hideSingleRun,
-    toVarInputs,
     runningStatus,
     handleRun,
     handleStop,
@@ -144,19 +169,19 @@ const BasePanel: FC<BasePanelProps> = ({
 
   return (
     <div className={cn(
-      'relative mr-2 h-full',
+      'relative mr-1 h-full',
       showMessageLogModal && '!absolute -top-[5px] right-[416px] z-0 !mr-0 w-[384px] overflow-hidden rounded-2xl border-[0.5px] border-components-panel-border shadow-lg transition-all',
     )}>
       <div
         ref={triggerRef}
-        className='absolute -left-2 top-1/2 h-6 w-3 -translate-y-1/2 cursor-col-resize resize-x'>
-        <div className='h-6 w-1 rounded-sm bg-divider-regular'></div>
+        className='absolute -left-1 top-0 flex h-full w-1 cursor-col-resize resize-x items-center justify-center'>
+        <div className='h-10 w-0.5 rounded-sm bg-state-base-handle hover:h-full hover:bg-state-accent-solid active:h-full active:bg-state-accent-solid'></div>
       </div>
       <div
         ref={containerRef}
         className={cn('h-full rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg', showSingleRunPanel ? 'overflow-hidden' : 'overflow-y-auto')}
         style={{
-          width: `${panelWidth}px`,
+          width: `${nodePanelWidth}px`,
         }}
       >
         <div className='sticky top-0 z-10 border-b-[0.5px] border-divider-regular bg-components-panel-bg'>

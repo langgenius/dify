@@ -31,6 +31,8 @@ import type { CurrentVarsSliceShape } from './current-vars-slice'
 import { createCurrentVarsSlice } from './current-vars-slice'
 
 import { WorkflowContext } from '@/app/components/workflow/context'
+import type { LayoutSliceShape } from './layout-slice'
+import { createLayoutSlice } from './layout-slice'
 
 export type Shape =
   ChatVariableSliceShape &
@@ -45,7 +47,8 @@ export type Shape =
   WorkflowDraftSliceShape &
   WorkflowSliceShape &
   LastRunSliceShape &
-  CurrentVarsSliceShape
+  CurrentVarsSliceShape &
+  LayoutSliceShape
 
 export const createWorkflowStore = () => {
   return createStore<Shape>((...args) => ({
@@ -62,6 +65,7 @@ export const createWorkflowStore = () => {
     ...createWorkflowSlice(...args),
     ...createLastRunSlice(...args),
     ...createCurrentVarsSlice(...args),
+    ...createLayoutSlice(...args),
   }))
 }
 

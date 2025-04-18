@@ -49,7 +49,7 @@ const WorkflowPreview = () => {
 
   return (
     <div className={`
-      flex h-full w-[420px] flex-col rounded-l-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-xl
+      flex h-full w-[400px] flex-col rounded-l-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-xl
     `}>
       <div className='flex items-center justify-between p-4 pb-1 text-base font-semibold text-text-primary'>
         {`Test Run${!workflowRunningData?.result.sequence_number ? '' : `#${workflowRunningData?.result.sequence_number}`}`}

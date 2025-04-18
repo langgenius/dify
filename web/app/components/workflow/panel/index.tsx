@@ -1,5 +1,5 @@
 import type { FC } from 'react'
-import { memo } from 'react'
+import { memo, useEffect, useRef } from 'react'
 import { useNodes } from 'reactflow'
 import { useShallow } from 'zustand/react/shallow'
 import type { CommonNodeType } from '../types'
@@ -39,8 +39,46 @@ const Panel: FC = () => {
     currentLogModalActiveTab: state.currentLogModalActiveTab,
   })))
 
+  const rightPanelRef = useRef<HTMLDivElement>(null)
+  const setRightPanelWidth = useStore(s => s.setRightPanelWidth)
+
+  // get right panel width
+  useEffect(() => {
+    if (rightPanelRef.current) {
+      const resizeRightPanelObserver = new ResizeObserver((entries) => {
+        for (const entry of entries) {
+          const { inlineSize } = entry.borderBoxSize[0]
+          setRightPanelWidth(inlineSize)
+        }
+      })
+      resizeRightPanelObserver.observe(rightPanelRef.current)
+      return () => {
+        resizeRightPanelObserver.disconnect()
+      }
+    }
+  }, [setRightPanelWidth])
+
+  const otherPanelRef = useRef<HTMLDivElement>(null)
+  const setOtherPanelWidth = useStore(s => s.setOtherPanelWidth)
+
+  // get other panel width
+  useEffect(() => {
+    if (otherPanelRef.current) {
+      const resizeOtherPanelObserver = new ResizeObserver((entries) => {
+        for (const entry of entries) {
+          const { inlineSize } = entry.borderBoxSize[0]
+          setOtherPanelWidth(inlineSize)
+        }
+      })
+      resizeOtherPanelObserver.observe(otherPanelRef.current)
+      return () => {
+        resizeOtherPanelObserver.disconnect()
+      }
+    }
+  }, [setOtherPanelWidth])
   return (
     <div
+      ref={rightPanelRef}
       tabIndex={-1}
       className={cn('absolute bottom-2 right-0 top-14 z-10 flex outline-none')}
       key={`${isRestoring}`}
@@ -64,46 +102,49 @@ const Panel: FC = () => {
           <NodePanel {...selectedNode!} />
         )
       }
-      {
-        historyWorkflowData && !isChatMode && (
-          <Record />
-        )
-      }
-      {
-        historyWorkflowData && isChatMode && (
-          <ChatRecord />
-        )
-      }
-      {
-        showDebugAndPreviewPanel && isChatMode && (
+      <div
+        className='relative'
+        ref={otherPanelRef}
+      >
+        {showDebugAndPreviewPanel && isChatMode && (
           <DebugAndPreview />
-        )
-      }
-      {
-        showDebugAndPreviewPanel && !isChatMode && (
-          <WorkflowPreview />
-        )
-      }
-      {
-        showEnvPanel && (
-          <EnvPanel />
-        )
-      }
-      {
-        showChatVariablePanel && (
-          <ChatVariablePanel />
-        )
-      }
-      {
-        showGlobalVariablePanel && (
-          <GlobalVariablePanel />
-        )
-      }
-      {
-        showWorkflowVersionHistoryPanel && (
-          <VersionHistoryPanel/>
-        )
-      }
+        )}
+        {
+          historyWorkflowData && !isChatMode && (
+            <Record />
+          )
+        }
+        {
+          historyWorkflowData && isChatMode && (
+            <ChatRecord />
+          )
+        }
+        {
+          showDebugAndPreviewPanel && !isChatMode && (
+            <WorkflowPreview />
+          )
+        }
+        {
+          showEnvPanel && (
+            <EnvPanel />
+          )
+        }
+        {
+          showChatVariablePanel && (
+            <ChatVariablePanel />
+          )
+        }
+        {
+          showGlobalVariablePanel && (
+            <GlobalVariablePanel />
+          )
+        }
+        {
+          showWorkflowVersionHistoryPanel && (
+            <VersionHistoryPanel/>
+          )
+        }
+      </div>
     </div>
   )
 }

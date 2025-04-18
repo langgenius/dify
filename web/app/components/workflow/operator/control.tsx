@@ -45,7 +45,7 @@ const Control = () => {
   }
 
   return (
-    <div className='flex items-center rounded-lg border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 text-text-tertiary shadow-lg'>
+    <div className='flex flex-col items-center rounded-lg border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 text-text-tertiary shadow-lg'>
       <AddBlock />
       <TipPopup title={t('workflow.nodes.note.addNote')}>
         <div
@@ -58,7 +58,7 @@ const Control = () => {
           <RiStickyNoteAddLine className='h-4 w-4' />
         </div>
       </TipPopup>
-      <Divider type='vertical' className='mx-0.5 h-3.5' />
+      <Divider className='my-1 w-3.5' />
       <TipPopup title={t('workflow.common.pointerMode')} shortcuts={['v']}>
         <div
           className={cn(
@@ -83,7 +83,7 @@ const Control = () => {
           <RiHand className='h-4 w-4' />
         </div>
       </TipPopup>
-      <Divider type='vertical' className='mx-0.5 h-3.5' />
+      <Divider className='my-1 w-3.5' />
       <ExportImage />
       <TipPopup title={t('workflow.panel.organizeBlocks')} shortcuts={['ctrl', 'o']}>
         <div
