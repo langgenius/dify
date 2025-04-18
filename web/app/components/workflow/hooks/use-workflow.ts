@@ -45,6 +45,7 @@ import {
 import { CollectionType } from '@/app/components/tools/types'
 import { CUSTOM_ITERATION_START_NODE } from '@/app/components/workflow/nodes/iteration-start/constants'
 import { CUSTOM_LOOP_START_NODE } from '@/app/components/workflow/nodes/loop-start/constants'
+import { basePath } from '@/utils/var'
 import { canFindTool } from '@/utils'
 
 export const useIsChatMode = () => {
@@ -102,7 +103,7 @@ export const useWorkflow = () => {
 
     list.push(...incomers)
 
-    return uniqBy(list, 'id').filter((item) => {
+    return uniqBy(list, 'id').filter((item: Node) => {
       return SUPPORT_OUTPUT_VARS_NODE.includes(item.data.type)
     })
   }, [store])
@@ -149,7 +150,7 @@ export const useWorkflow = () => {
 
     const length = list.length
     if (length) {
-      return uniqBy(list, 'id').reverse().filter((item) => {
+      return uniqBy(list, 'id').reverse().filter((item: Node) => {
         return SUPPORT_OUTPUT_VARS_NODE.includes(item.data.type)
       })
     }
@@ -425,6 +426,12 @@ export const useFetchToolsData = () => {
     if (type === 'builtin') {
       const buildInTools = await fetchAllBuiltInTools()
 
+      if (basePath) {
+        buildInTools.forEach((item) => {
+          if (typeof item.icon == 'string' && !item.icon.includes(basePath))
+            item.icon = `${basePath}${item.icon}`
+        })
+      }
       workflowStore.setState({
         buildInTools: buildInTools || [],
       })

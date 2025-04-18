@@ -28,6 +28,9 @@ Welcome to the new `docker` directory for deploying Dify using Docker Compose. T
     - To specify a vector database, set the `VECTOR_STORE` variable in your `.env` file to your desired vector database service, such as `milvus`, `weaviate`, or `opensearch`.
 4. **SSL Certificate Setup**:
     - Refer `docker/certbot/README.md` to set up SSL certificates using Certbot.
+5. **OpenTelemetry Collector Setup**:
+   - Change `ENABLE_OTEL` to `true` in `.env`.
+   - Configure `OTLP_BASE_ENDPOINT` properly.
 
 ### How to Deploy Middleware for Developing Dify
 
@@ -89,7 +92,11 @@ The `.env.example` file provided in the Docker setup is extensive and covers a w
 8. **CORS Configuration**:
     - `WEB_API_CORS_ALLOW_ORIGINS`, `CONSOLE_CORS_ALLOW_ORIGINS`: Settings for cross-origin resource sharing.
 
-9. **Other Service-Specific Environment Variables**:
+9. **OpenTelemetry Configuration**:
+    - `ENABLE_OTEL`: Enable OpenTelemetry collector in api.
+    - `OTLP_BASE_ENDPOINT`: Endpoint for your OTLP exporter.
+  
+10. **Other Service-Specific Environment Variables**:
     - Each service like `nginx`, `redis`, `db`, and vector databases have specific environment variables that are directly referenced in the `docker-compose.yaml`.
 
 ### Additional Information

@@ -102,12 +102,12 @@ provider_credential_schema:
 ```yaml
   - variable: server_url
     label:
-      zh_Hans: 服务器URL
+      zh_Hans: 服务器 URL
       en_US: Server url
     type: text-input
     required: true
     placeholder:
-      zh_Hans: 在此输入Xinference的服务器地址，如 https://example.com/xxx
+      zh_Hans: 在此输入 Xinference 的服务器地址，如 https://example.com/xxx
       en_US: Enter the url of your Xinference, for example https://example.com/xxx
 ```
 
@@ -116,12 +116,12 @@ provider_credential_schema:
 ```yaml
   - variable: model_uid
     label:
-      zh_Hans: 模型UID
+      zh_Hans: 模型 UID
       en_US: Model uid
     type: text-input
     required: true
     placeholder:
-      zh_Hans: 在此输入您的Model UID
+      zh_Hans: 在此输入您的 Model UID
       en_US: Enter the model uid
 ```
 

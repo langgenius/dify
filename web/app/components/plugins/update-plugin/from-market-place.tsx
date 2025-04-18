@@ -1,7 +1,6 @@
 'use client'
 import type { FC } from 'react'
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
-import { RiInformation2Line } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
 import Card from '@/app/components/plugins/card'
 import Modal from '@/app/components/base/modal'
@@ -103,15 +102,7 @@ const UpdatePluginModal: FC<Props> = ({
     if (uploadStep === UploadStep.installed)
       onSave()
   }, [onSave, uploadStep, check, originalPackageInfo.id, handleRefetch, targetPackageInfo.id])
-  const usedInAppInfo = useMemo(() => {
-    return (
-      <div className='flex items-center justify-center gap-0.5 px-0.5'>
-        <div className='system-xs-medium text-text-warning'>{t(`${i18nPrefix}.usedInApps`, { num: 3 })}</div>
-        {/* show the used apps */}
-        <RiInformation2Line className='h-4 w-4 text-text-tertiary' />
-      </div>
-    )
-  }, [t])
+
   return (
     <Modal
       isShow={true}
@@ -136,7 +127,6 @@ const UpdatePluginModal: FC<Props> = ({
               <Badge className='mx-1' size="s" state={BadgeState.Warning}>
                 {`${originalPackageInfo.payload.version} -> ${targetPackageInfo.version}`}
               </Badge>
-              {false && usedInAppInfo}
             </>
           }
         />

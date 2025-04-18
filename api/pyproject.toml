@@ -1,200 +1,197 @@
 [project]
 name = "dify-api"
+version = "1.2.0"
 requires-python = ">=3.11,<3.13"
-dynamic = ["dependencies"]
 
-[build-system]
-requires = ["poetry-core>=2.0.0"]
-build-backend = "poetry.core.masonry.api"
+dependencies = [
+    "authlib==1.3.1",
+    "azure-identity==1.16.1",
+    "beautifulsoup4==4.12.2",
+    "boto3==1.35.99",
+    "bs4~=0.0.1",
+    "cachetools~=5.3.0",
+    "celery~=5.4.0",
+    "chardet~=5.1.0",
+    "flask~=3.1.0",
+    "flask-compress~=1.17",
+    "flask-cors~=4.0.0",
+    "flask-login~=0.6.3",
+    "flask-migrate~=4.0.7",
+    "flask-restful~=0.3.10",
+    "flask-sqlalchemy~=3.1.1",
+    "gevent~=24.11.1",
+    "gmpy2~=2.2.1",
+    "google-api-core==2.18.0",
+    "google-api-python-client==2.90.0",
+    "google-auth==2.29.0",
+    "google-auth-httplib2==0.2.0",
+    "google-cloud-aiplatform==1.49.0",
+    "googleapis-common-protos==1.63.0",
+    "gunicorn~=23.0.0",
+    "httpx[socks]~=0.27.0",
+    "jieba==0.42.1",
+    "langfuse~=2.51.3",
+    "langsmith~=0.1.77",
+    "mailchimp-transactional~=1.0.50",
+    "markdown~=3.5.1",
+    "numpy~=1.26.4",
+    "oci~=2.135.1",
+    "openai~=1.61.0",
+    "openpyxl~=3.1.5",
+    "opik~=1.3.4",
+    "opentelemetry-api==1.27.0",
+    "opentelemetry-distro==0.48b0",
+    "opentelemetry-exporter-otlp==1.27.0",
+    "opentelemetry-exporter-otlp-proto-common==1.27.0",
+    "opentelemetry-exporter-otlp-proto-grpc==1.27.0",
+    "opentelemetry-exporter-otlp-proto-http==1.27.0",
+    "opentelemetry-instrumentation==0.48b0",
+    "opentelemetry-instrumentation-celery==0.48b0",
+    "opentelemetry-instrumentation-flask==0.48b0",
+    "opentelemetry-instrumentation-sqlalchemy==0.48b0",
+    "opentelemetry-propagator-b3==1.27.0",
+    # opentelemetry-proto1.28.0 depends on protobuf (>=5.0,<6.0),
+    # which is conflict with googleapis-common-protos (1.63.0)
+    "opentelemetry-proto==1.27.0",
+    "opentelemetry-sdk==1.27.0",
+    "opentelemetry-semantic-conventions==0.48b0",
+    "opentelemetry-util-http==0.48b0",
+    "pandas-stubs~=2.2.3.241009",
+    "pandas[excel,output-formatting,performance]~=2.2.2",
+    "pandoc~=2.4",
+    "psycogreen~=1.0.2",
+    "psycopg2-binary~=2.9.6",
+    "pycryptodome==3.19.1",
+    "pydantic~=2.9.2",
+    "pydantic-extra-types~=2.9.0",
+    "pydantic-settings~=2.6.0",
+    "pyjwt~=2.8.0",
+    "pypdfium2~=4.30.0",
+    "python-docx~=1.1.0",
+    "python-dotenv==1.0.1",
+    "pyyaml~=6.0.1",
+    "readabilipy==0.2.0",
+    "redis[hiredis]~=5.0.3",
+    "resend~=0.7.0",
+    "sentry-sdk[flask]~=1.44.1",
+    "sqlalchemy~=2.0.29",
+    "starlette==0.41.0",
+    "tiktoken~=0.8.0",
+    "tokenizers~=0.15.0",
+    "transformers~=4.35.0",
+    "unstructured[docx,epub,md,ppt,pptx]~=0.16.1",
+    "validators==0.21.0",
+    "yarl~=1.18.3",
+]
+# Before adding new dependency, consider place it in
+# alphabet order (a-z) and suitable group.
 
-[tool.poetry]
-package-mode = false
+[tool.uv]
+default-groups = ["storage", "tools", "vdb"]
 
-############################################################
-# [ Main ] Dependency group
-############################################################
-
-[tool.poetry.dependencies]
-authlib = "1.3.1"
-azure-identity = "1.16.1"
-beautifulsoup4 = "4.12.2"
-boto3 = "1.35.99"
-bs4 = "~0.0.1"
-cachetools = "~5.3.0"
-celery = "~5.4.0"
-chardet = "~5.1.0"
-flask = "~3.1.0"
-flask-compress = "~1.17"
-flask-cors = "~4.0.0"
-flask-login = "~0.6.3"
-flask-migrate = "~4.0.7"
-flask-restful = "~0.3.10"
-flask-sqlalchemy = "~3.1.1"
-gevent = "~24.11.1"
-gmpy2 = "~2.2.1"
-google-api-core = "2.18.0"
-google-api-python-client = "2.90.0"
-google-auth = "2.29.0"
-google-auth-httplib2 = "0.2.0"
-google-cloud-aiplatform = "1.49.0"
-googleapis-common-protos = "1.63.0"
-gunicorn = "~23.0.0"
-httpx = { version = "~0.27.0", extras = ["socks"] }
-jieba = "0.42.1"
-langfuse = "~2.51.3"
-langsmith = "~0.1.77"
-mailchimp-transactional = "~1.0.50"
-markdown = "~3.5.1"
-numpy = "~1.26.4"
-oci = "~2.135.1"
-openai = "~1.61.0"
-openpyxl = "~3.1.5"
-opik = "~1.3.4"
-pandas = { version = "~2.2.2", extras = ["performance", "excel", "output-formatting"] }
-pandas-stubs = "~2.2.3.241009"
-pandoc = "~2.4"
-psycogreen = "~1.0.2"
-psycopg2-binary = "~2.9.6"
-pycryptodome = "3.19.1"
-pydantic = "~2.9.2"
-pydantic-settings = "~2.6.0"
-pydantic_extra_types = "~2.9.0"
-pyjwt = "~2.8.0"
-pypdfium2 = "~4.30.0"
-python = ">=3.11,<3.13"
-python-docx = "~1.1.0"
-python-dotenv = "1.0.1"
-pyyaml = "~6.0.1"
-readabilipy = "0.2.0"
-redis = { version = "~5.0.3", extras = ["hiredis"] }
-resend = "~0.7.0"
-sentry-sdk = { version = "~1.44.1", extras = ["flask"] }
-sqlalchemy = "~2.0.29"
-starlette = "0.41.0"
-tiktoken = "~0.8.0"
-tokenizers = "~0.15.0"
-transformers = "~4.35.0"
-unstructured = { version = "~0.16.1", extras = ["docx", "epub", "md", "ppt", "pptx"] }
-validators = "0.21.0"
-yarl = "~1.18.3"
-# Before adding new dependency, consider place it in alphabet order (a-z) and suitable group.
-
-############################################################
-# [ Indirect ] dependency group
-# Related transparent dependencies with pinned version
-# required by main implementations
-############################################################
-[tool.poetry.group.indirect.dependencies]
-kaleido = "0.2.1"
-rank-bm25 = "~0.2.2"
-safetensors = "~0.4.3"
-
-############################################################
-# [ Tools ] dependency group
-############################################################
-[tool.poetry.group.tools.dependencies]
-cloudscraper = "1.2.71"
-nltk = "3.9.1"
-
-############################################################
-# [ Storage ] dependency group
-# Required for storage clients
-############################################################
-[tool.poetry.group.storage.dependencies]
-azure-storage-blob = "12.13.0"
-bce-python-sdk = "~0.9.23"
-cos-python-sdk-v5 = "1.9.30"
-esdk-obs-python = "3.24.6.1"
-google-cloud-storage = "2.16.0"
-opendal = "~0.45.16"
-oss2 = "2.18.5"
-supabase = "~2.8.1"
-tos = "~2.7.1"
-
-############################################################
-# [ VDB ] dependency group
-# Required by vector store clients
-############################################################
-[tool.poetry.group.vdb.dependencies]
-alibabacloud_gpdb20160503 = "~3.8.0"
-alibabacloud_tea_openapi = "~0.3.9"
-chromadb = "0.5.20"
-clickhouse-connect = "~0.7.16"
-couchbase = "~4.3.0"
-elasticsearch = "8.14.0"
-opensearch-py = "2.4.0"
-oracledb = "~2.2.1"
-pgvecto-rs = { version = "~0.2.1", extras = ['sqlalchemy'] }
-pgvector = "0.2.5"
-pymilvus = "~2.5.0"
-pymochow = "1.3.1"
-pyobvector = "~0.1.6"
-qdrant-client = "1.7.3"
-tablestore = "6.1.0"
-tcvectordb = "~1.6.4"
-tidb-vector = "0.0.9"
-upstash-vector = "0.6.0"
-volcengine-compat = "~1.0.156"
-weaviate-client = "~3.21.0"
-xinference-client = "~1.2.2"
+[dependency-groups]
 
 ############################################################
 # [ Dev ] dependency group
 # Required for development and running tests
 ############################################################
-[tool.poetry.group.dev]
-optional = true
-[tool.poetry.group.dev.dependencies]
-coverage = "~7.2.4"
-faker = "~32.1.0"
-lxml-stubs = "~0.5.1"
-mypy = "~1.15.0"
-pytest = "~8.3.2"
-pytest-benchmark = "~4.0.0"
-pytest-env = "~1.1.3"
-pytest-mock = "~3.14.0"
-types-aiofiles = "~24.1.0"
-types-beautifulsoup4 = "~4.12.0"
-types-cachetools = "~5.5.0"
-types-colorama = "~0.4.15"
-types-defusedxml = "~0.7.0"
-types-deprecated = "~1.2.15"
-types-docutils = "~0.21.0"
-types-flask-cors = "~5.0.0"
-types-flask-migrate = "~4.1.0"
-types-gevent = "~24.11.0"
-types-greenlet = "~3.1.0"
-types-html5lib = "~1.1.11"
-types-markdown = "~3.7.0"
-types-oauthlib = "~3.2.0"
-types-objgraph = "~3.6.0"
-types-olefile = "~0.47.0"
-types-openpyxl = "~3.1.5"
-types-pexpect = "~4.9.0"
-types-protobuf = "~5.29.1"
-types-psutil = "~7.0.0"
-types-psycopg2 = "~2.9.21"
-types-pygments = "~2.19.0"
-types-pymysql = "~1.1.0"
-types-python-dateutil = "~2.9.0"
-types-pywin32 = "~310.0.0"
-types-pyyaml = "~6.0.12"
-types-regex = "~2024.11.6"
-types-requests = "~2.32.0"
-types-requests-oauthlib = "~2.0.0"
-types-shapely = "~2.0.0"
-types-simplejson = "~3.20.0"
-types-six = "~1.17.0"
-types-tensorflow = "~2.18.0"
-types-tqdm = "~4.67.0"
-types-ujson = "~5.10.0"
+dev = [
+    "coverage~=7.2.4",
+    "dotenv-linter~=0.5.0",
+    "faker~=32.1.0",
+    "lxml-stubs~=0.5.1",
+    "mypy~=1.15.0",
+    "ruff~=0.11.5",
+    "pytest~=8.3.2",
+    "pytest-benchmark~=4.0.0",
+    "pytest-cov~=4.1.0",
+    "pytest-env~=1.1.3",
+    "pytest-mock~=3.14.0",
+    "types-aiofiles~=24.1.0",
+    "types-beautifulsoup4~=4.12.0",
+    "types-cachetools~=5.5.0",
+    "types-colorama~=0.4.15",
+    "types-defusedxml~=0.7.0",
+    "types-deprecated~=1.2.15",
+    "types-docutils~=0.21.0",
+    "types-flask-cors~=5.0.0",
+    "types-flask-migrate~=4.1.0",
+    "types-gevent~=24.11.0",
+    "types-greenlet~=3.1.0",
+    "types-html5lib~=1.1.11",
+    "types-markdown~=3.7.0",
+    "types-oauthlib~=3.2.0",
+    "types-objgraph~=3.6.0",
+    "types-olefile~=0.47.0",
+    "types-openpyxl~=3.1.5",
+    "types-pexpect~=4.9.0",
+    "types-protobuf~=5.29.1",
+    "types-psutil~=7.0.0",
+    "types-psycopg2~=2.9.21",
+    "types-pygments~=2.19.0",
+    "types-pymysql~=1.1.0",
+    "types-python-dateutil~=2.9.0",
+    "types-pywin32~=310.0.0",
+    "types-pyyaml~=6.0.12",
+    "types-regex~=2024.11.6",
+    "types-requests~=2.32.0",
+    "types-requests-oauthlib~=2.0.0",
+    "types-shapely~=2.0.0",
+    "types-simplejson~=3.20.0",
+    "types-six~=1.17.0",
+    "types-tensorflow~=2.18.0",
+    "types-tqdm~=4.67.0",
+    "types-ujson~=5.10.0",
+]
 
 ############################################################
-# [ Lint ] dependency group
-# Required for code style linting
+# [ Storage ] dependency group
+# Required for storage clients
 ############################################################
-[tool.poetry.group.lint]
-optional = true
-[tool.poetry.group.lint.dependencies]
-dotenv-linter = "~0.5.0"
-ruff = "~0.11.0"
+storage = [
+    "azure-storage-blob==12.13.0",
+    "bce-python-sdk~=0.9.23",
+    "cos-python-sdk-v5==1.9.30",
+    "esdk-obs-python==3.24.6.1",
+    "google-cloud-storage==2.16.0",
+    "opendal~=0.45.16",
+    "oss2==2.18.5",
+    "supabase~=2.8.1",
+    "tos~=2.7.1",
+]
+
+############################################################
+# [ Tools ] dependency group
+############################################################
+tools = [
+    "cloudscraper~=1.2.71",
+    "nltk~=3.9.1",
+]
+
+############################################################
+# [ VDB ] dependency group
+# Required by vector store clients
+############################################################
+vdb = [
+    "alibabacloud_gpdb20160503~=3.8.0",
+    "alibabacloud_tea_openapi~=0.3.9",
+    "chromadb==0.5.20",
+    "clickhouse-connect~=0.7.16",
+    "couchbase~=4.3.0",
+    "elasticsearch==8.14.0",
+    "opensearch-py==2.4.0",
+    "oracledb~=2.2.1",
+    "pgvecto-rs[sqlalchemy]~=0.2.1",
+    "pgvector==0.2.5",
+    "pymilvus~=2.5.0",
+    "pymochow==1.3.1",
+    "pyobvector~=0.1.6",
+    "qdrant-client==1.7.3",
+    "tablestore==6.1.0",
+    "tcvectordb~=1.6.4",
+    "tidb-vector==0.0.9",
+    "upstash-vector==0.6.0",
+    "volcengine-compat~=1.0.156",
+    "weaviate-client~=3.21.0",
+    "xinference-client~=1.2.2",
+]

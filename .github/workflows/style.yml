@@ -18,7 +18,6 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0
           persist-credentials: false
 
       - name: Check changed files
@@ -29,24 +28,27 @@ jobs:
             api/**
             .github/workflows/style.yml
 
-      - name: Setup Poetry and Python
+      - name: Setup UV and Python
         if: steps.changed-files.outputs.any_changed == 'true'
-        uses: ./.github/actions/setup-poetry
+        uses: ./.github/actions/setup-uv
+        with:
+          uv-lockfile: api/uv.lock
+          enable-cache: false
 
       - name: Install dependencies
         if: steps.changed-files.outputs.any_changed == 'true'
-        run: poetry install -C api --only lint
+        run: uv sync --project api --dev
 
       - name: Ruff check
         if: steps.changed-files.outputs.any_changed == 'true'
         run: |
-          poetry run -C api ruff --version
-          poetry run -C api ruff check ./
-          poetry run -C api ruff format --check ./
+          uv run --directory api ruff --version
+          uv run --directory api ruff check ./
+          uv run --directory api ruff format --check ./
 
       - name: Dotenv check
         if: steps.changed-files.outputs.any_changed == 'true'
-        run: poetry run -P api dotenv-linter ./api/.env.example ./web/.env.example
+        run: uv run --project api dotenv-linter ./api/.env.example ./web/.env.example
 
       - name: Lint hints
         if: failure()
@@ -63,7 +65,6 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0
           persist-credentials: false
 
       - name: Check changed files
@@ -102,7 +103,6 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0
           persist-credentials: false
 
       - name: Check changed files
@@ -133,7 +133,6 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0
           persist-credentials: false
 
       - name: Check changed files

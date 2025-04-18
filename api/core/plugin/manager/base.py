@@ -82,7 +82,7 @@ class BasePluginManager:
         Make a stream request to the plugin daemon inner API
         """
         response = self._request(method, path, headers, data, params, files, stream=True)
-        for line in response.iter_lines():
+        for line in response.iter_lines(chunk_size=1024 * 8):
             line = line.decode("utf-8").strip()
             if line.startswith("data:"):
                 line = line[5:].strip()
@@ -168,16 +168,18 @@ class BasePluginManager:
         Make a stream request to the plugin daemon inner API and yield the response as a model.
         """
         for line in self._stream_request(method, path, params, headers, data, files):
-            line_data = None
             try:
-                line_data = json.loads(line)
-                rep = PluginDaemonBasicResponse[type](**line_data)  # type: ignore
-            except Exception:
+                rep = PluginDaemonBasicResponse[type].model_validate_json(line)  # type: ignore
+            except (ValueError, TypeError):
                 # TODO modify this when line_data has code and message
-                if line_data and "error" in line_data:
-                    raise ValueError(line_data["error"])
-                else:
+                try:
+                    line_data = json.loads(line)
+                except (ValueError, TypeError):
                     raise ValueError(line)
+                # If the dictionary contains the `error` key, use its value as the argument
+                # for `ValueError`.
+                # Otherwise, use the `line` to provide better contextual information about the error.
+                raise ValueError(line_data.get("error", line))
 
             if rep.code != 0:
                 if rep.code == -500:

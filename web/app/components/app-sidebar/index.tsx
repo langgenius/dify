@@ -1,7 +1,6 @@
 import React, { useEffect } from 'react'
 import { useShallow } from 'zustand/react/shallow'
-import { RiLayoutRight2Line } from '@remixicon/react'
-import { LayoutRight2LineMod } from '../base/icons/src/public/knowledge'
+import { RiLayoutLeft2Line, RiLayoutRight2Line } from '@remixicon/react'
 import NavLink from './navLink'
 import type { NavIcon } from './navLink'
 import AppBasic from './basic'
@@ -108,13 +107,13 @@ const AppDetailNav = ({ title, desc, isExternal, icon, icon_background, navigati
             `}
           >
             <div
-              className='flex h-6 w-6 cursor-pointer items-center justify-center text-gray-500'
+              className='flex h-6 w-6 cursor-pointer items-center justify-center'
               onClick={() => handleToggle(appSidebarExpand)}
             >
               {
                 expand
                   ? <RiLayoutRight2Line className='h-5 w-5 text-components-menu-item-text' />
-                  : <LayoutRight2LineMod className='h-5 w-5 text-components-menu-item-text' />
+                  : <RiLayoutLeft2Line className='h-5 w-5 text-components-menu-item-text' />
               }
             </div>
           </div>

@@ -15,7 +15,7 @@ from sqlalchemy import Index, PrimaryKeyConstraint, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 import contexts
-from constants import HIDDEN_VALUE
+from constants import DEFAULT_FILE_NUMBER_LIMITS, HIDDEN_VALUE
 from core.helper import encrypter
 from core.variables import SecretVariable, Variable
 from factories import variable_factory
@@ -186,7 +186,7 @@ class Workflow(Base):
         features = json.loads(self._features)
         if features.get("file_upload", {}).get("image", {}).get("enabled", False):
             image_enabled = True
-            image_number_limits = int(features["file_upload"]["image"].get("number_limits", 1))
+            image_number_limits = int(features["file_upload"]["image"].get("number_limits", DEFAULT_FILE_NUMBER_LIMITS))
             image_transfer_methods = features["file_upload"]["image"].get(
                 "transfer_methods", ["remote_url", "local_file"]
             )
@@ -510,7 +510,7 @@ class WorkflowRun(Base):
         )
 
 
-class WorkflowNodeExecutionTriggeredFrom(Enum):
+class WorkflowNodeExecutionTriggeredFrom(StrEnum):
     """
     Workflow Node Execution Triggered From Enum
     """
@@ -518,21 +518,8 @@ class WorkflowNodeExecutionTriggeredFrom(Enum):
     SINGLE_STEP = "single-step"
     WORKFLOW_RUN = "workflow-run"
 
-    @classmethod
-    def value_of(cls, value: str) -> "WorkflowNodeExecutionTriggeredFrom":
-        """
-        Get value of given mode.
 
-        :param value: mode value
-        :return: mode
-        """
-        for mode in cls:
-            if mode.value == value:
-                return mode
-        raise ValueError(f"invalid workflow node execution triggered from value {value}")
-
-
-class WorkflowNodeExecutionStatus(Enum):
+class WorkflowNodeExecutionStatus(StrEnum):
     """
     Workflow Node Execution Status Enum
     """
@@ -542,19 +529,6 @@ class WorkflowNodeExecutionStatus(Enum):
     FAILED = "failed"
     EXCEPTION = "exception"
     RETRY = "retry"
-
-    @classmethod
-    def value_of(cls, value: str) -> "WorkflowNodeExecutionStatus":
-        """
-        Get value of given mode.
-
-        :param value: mode value
-        :return: mode
-        """
-        for mode in cls:
-            if mode.value == value:
-                return mode
-        raise ValueError(f"invalid workflow node execution status value {value}")
 
 
 class WorkflowNodeExecution(Base):

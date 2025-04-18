@@ -23,6 +23,7 @@ from sqlalchemy import Float, Index, PrimaryKeyConstraint, func, text
 from sqlalchemy.orm import Mapped, Session, mapped_column
 
 from configs import dify_config
+from constants import DEFAULT_FILE_NUMBER_LIMITS
 from core.file import FILE_MODEL_IDENTITY, File, FileTransferMethod, FileType
 from core.file import helpers as file_helpers
 from core.file.tool_file_parser import ToolFileParser
@@ -442,7 +443,7 @@ class AppModelConfig(Base):
             else {
                 "image": {
                     "enabled": False,
-                    "number_limits": 3,
+                    "number_limits": DEFAULT_FILE_NUMBER_LIMITS,
                     "detail": "high",
                     "transfer_methods": ["remote_url", "local_file"],
                 }
@@ -1090,12 +1091,7 @@ class Message(db.Model):  # type: ignore[name-defined]
 
     @property
     def retriever_resources(self):
-        return (
-            db.session.query(DatasetRetrieverResource)
-            .filter(DatasetRetrieverResource.message_id == self.id)
-            .order_by(DatasetRetrieverResource.position.asc())
-            .all()
-        )
+        return self.message_metadata_dict.get("retriever_resources") if self.message_metadata else []
 
     @property
     def message_files(self):
@@ -1154,7 +1150,7 @@ class Message(db.Model):  # type: ignore[name-defined]
             files.append(file)
 
         result = [
-            {"belongs_to": message_file.belongs_to, **file.to_dict()}
+            {"belongs_to": message_file.belongs_to, "upload_file_id": message_file.upload_file_id, **file.to_dict()}
             for (file, message_file) in zip(files, message_files)
         ]
 

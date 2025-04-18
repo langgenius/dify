@@ -43,6 +43,9 @@ x-shared-env: &shared-api-worker-env
   CELERY_MIN_WORKERS: ${CELERY_MIN_WORKERS:-}
   API_TOOL_DEFAULT_CONNECT_TIMEOUT: ${API_TOOL_DEFAULT_CONNECT_TIMEOUT:-10}
   API_TOOL_DEFAULT_READ_TIMEOUT: ${API_TOOL_DEFAULT_READ_TIMEOUT:-60}
+  ENABLE_WEBSITE_JINAREADER: ${ENABLE_WEBSITE_JINAREADER:-true}
+  ENABLE_WEBSITE_FIRECRAWL: ${ENABLE_WEBSITE_FIRECRAWL:-true}
+  ENABLE_WEBSITE_WATERCRAWL: ${ENABLE_WEBSITE_WATERCRAWL:-true}
   DB_USERNAME: ${DB_USERNAME:-postgres}
   DB_PASSWORD: ${DB_PASSWORD:-difyai123456}
   DB_HOST: ${DB_HOST:-db}
@@ -139,6 +142,7 @@ x-shared-env: &shared-api-worker-env
   MILVUS_USER: ${MILVUS_USER:-}
   MILVUS_PASSWORD: ${MILVUS_PASSWORD:-}
   MILVUS_ENABLE_HYBRID_SEARCH: ${MILVUS_ENABLE_HYBRID_SEARCH:-False}
+  MILVUS_ANALYZER_PARAMS: ${MILVUS_ANALYZER_PARAMS:-}
   MYSCALE_HOST: ${MYSCALE_HOST:-myscale}
   MYSCALE_PORT: ${MYSCALE_PORT:-8123}
   MYSCALE_USER: ${MYSCALE_USER:-default}
@@ -323,6 +327,7 @@ x-shared-env: &shared-api-worker-env
   MAX_VARIABLE_SIZE: ${MAX_VARIABLE_SIZE:-204800}
   WORKFLOW_PARALLEL_DEPTH_LIMIT: ${WORKFLOW_PARALLEL_DEPTH_LIMIT:-3}
   WORKFLOW_FILE_UPLOAD_LIMIT: ${WORKFLOW_FILE_UPLOAD_LIMIT:-10}
+  WORKFLOW_NODE_EXECUTION_STORAGE: ${WORKFLOW_NODE_EXECUTION_STORAGE:-rdbms}
   HTTP_REQUEST_NODE_MAX_BINARY_SIZE: ${HTTP_REQUEST_NODE_MAX_BINARY_SIZE:-10485760}
   HTTP_REQUEST_NODE_MAX_TEXT_SIZE: ${HTTP_REQUEST_NODE_MAX_TEXT_SIZE:-1048576}
   HTTP_REQUEST_NODE_SSL_VERIFY: ${HTTP_REQUEST_NODE_SSL_VERIFY:-True}
@@ -455,6 +460,17 @@ x-shared-env: &shared-api-worker-env
   PLUGIN_TENCENT_COS_SECRET_KEY: ${PLUGIN_TENCENT_COS_SECRET_KEY:-}
   PLUGIN_TENCENT_COS_SECRET_ID: ${PLUGIN_TENCENT_COS_SECRET_ID:-}
   PLUGIN_TENCENT_COS_REGION: ${PLUGIN_TENCENT_COS_REGION:-}
+  ENABLE_OTEL: ${ENABLE_OTEL:-false}
+  OTLP_BASE_ENDPOINT: ${OTLP_BASE_ENDPOINT:-http://localhost:4318}
+  OTLP_API_KEY: ${OTLP_API_KEY:-}
+  OTEL_EXPORTER_TYPE: ${OTEL_EXPORTER_TYPE:-otlp}
+  OTEL_SAMPLING_RATE: ${OTEL_SAMPLING_RATE:-0.1}
+  OTEL_BATCH_EXPORT_SCHEDULE_DELAY: ${OTEL_BATCH_EXPORT_SCHEDULE_DELAY:-5000}
+  OTEL_MAX_QUEUE_SIZE: ${OTEL_MAX_QUEUE_SIZE:-2048}
+  OTEL_MAX_EXPORT_BATCH_SIZE: ${OTEL_MAX_EXPORT_BATCH_SIZE:-512}
+  OTEL_METRIC_EXPORT_INTERVAL: ${OTEL_METRIC_EXPORT_INTERVAL:-60000}
+  OTEL_BATCH_EXPORT_TIMEOUT: ${OTEL_BATCH_EXPORT_TIMEOUT:-10000}
+  OTEL_METRIC_EXPORT_TIMEOUT: ${OTEL_METRIC_EXPORT_TIMEOUT:-30000}
 
 services:
   # API service
@@ -474,8 +490,10 @@ services:
       PLUGIN_MAX_PACKAGE_SIZE: ${PLUGIN_MAX_PACKAGE_SIZE:-52428800}
       INNER_API_KEY_FOR_PLUGIN: ${PLUGIN_DIFY_INNER_API_KEY:-QaHbTe77CtuXmsfyhR7+vRjI/+XbV1AaFy691iy+kGDv2Jvy0/eAh8Y1}
     depends_on:
-      - db
-      - redis
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
     volumes:
       # Mount the storage directory to the container, for storing user files.
       - ./volumes/app/storage:/app/api/storage
@@ -499,8 +517,10 @@ services:
       PLUGIN_MAX_PACKAGE_SIZE: ${PLUGIN_MAX_PACKAGE_SIZE:-52428800}
       INNER_API_KEY_FOR_PLUGIN: ${PLUGIN_DIFY_INNER_API_KEY:-QaHbTe77CtuXmsfyhR7+vRjI/+XbV1AaFy691iy+kGDv2Jvy0/eAh8Y1}
     depends_on:
-      - db
-      - redis
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
     volumes:
       # Mount the storage directory to the container, for storing user files.
       - ./volumes/app/storage:/app/api/storage
@@ -528,7 +548,9 @@ services:
       MAX_TOOLS_NUM: ${MAX_TOOLS_NUM:-10}
       MAX_PARALLEL_LIMIT: ${MAX_PARALLEL_LIMIT:-10}
       MAX_ITERATIONS_NUM: ${MAX_ITERATIONS_NUM:-5}
-
+      ENABLE_WEBSITE_JINAREADER: ${ENABLE_WEBSITE_JINAREADER:-true}
+      ENABLE_WEBSITE_FIRECRAWL: ${ENABLE_WEBSITE_FIRECRAWL:-true}
+      ENABLE_WEBSITE_WATERCRAWL: ${ENABLE_WEBSITE_WATERCRAWL:-true}
   # The postgres database.
   db:
     image: postgres:15-alpine
@@ -547,10 +569,10 @@ services:
     volumes:
       - ./volumes/db/data:/var/lib/postgresql/data
     healthcheck:
-      test: [ 'CMD', 'pg_isready' ]
+      test: [ 'CMD', 'pg_isready', '-h', 'db', '-U', '${PGUSER:-postgres}', '-d', '${POSTGRES_DB:-dify}' ]
       interval: 1s
       timeout: 3s
-      retries: 30
+      retries: 60
 
   # The redis cache.
   redis:
@@ -620,7 +642,7 @@ services:
       S3_ENDPOINT: ${PLUGIN_S3_ENDPOINT:-}
       S3_USE_PATH_STYLE: ${PLUGIN_S3_USE_PATH_STYLE:-false}
       AWS_ACCESS_KEY: ${PLUGIN_AWS_ACCESS_KEY:-}
-      PAWS_SECRET_KEY: ${PLUGIN_AWS_SECRET_KEY:-}
+      AWS_SECRET_KEY: ${PLUGIN_AWS_SECRET_KEY:-}
       AWS_REGION: ${PLUGIN_AWS_REGION:-}
       AZURE_BLOB_STORAGE_CONNECTION_STRING: ${PLUGIN_AZURE_BLOB_STORAGE_CONNECTION_STRING:-}
       AZURE_BLOB_STORAGE_CONTAINER_NAME: ${PLUGIN_AZURE_BLOB_STORAGE_CONTAINER_NAME:-}
@@ -632,7 +654,8 @@ services:
     volumes:
       - ./volumes/plugin_daemon:/app/storage
     depends_on:
-      - db
+      db:
+        condition: service_healthy
 
   # ssrf_proxy server
   # for more information, please refer to

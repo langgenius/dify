@@ -85,9 +85,11 @@ const preprocessLaTeX = (content: string) => {
 }
 
 const preprocessThinkTag = (content: string) => {
+  const thinkOpenTagRegex = /<think>\n/g
+  const thinkCloseTagRegex = /\n<\/think>/g
   return flow([
-    (str: string) => str.replace('<think>\n', '<details data-think=true>\n'),
-    (str: string) => str.replace('\n</think>', '\n[ENDTHINKFLAG]</details>'),
+    (str: string) => str.replace(thinkOpenTagRegex, '<details data-think=true>\n'),
+    (str: string) => str.replace(thinkCloseTagRegex, '\n[ENDTHINKFLAG]</details>'),
   ])(content)
 }
 
@@ -128,7 +130,7 @@ const CodeBlock: any = memo(({ inline, className, children, ...props }: any) => 
       try {
         return JSON.parse(String(children).replace(/\n$/, ''))
       }
-      catch (error) { }
+      catch { }
     }
     return JSON.parse('{"title":{"text":"ECharts error - Wrong JSON format."}}')
   }, [language, children])

@@ -109,7 +109,7 @@ const Base: FC<Props> = ({
           onHeightChange={setEditorContentHeight}
           hideResize={isExpand}
         >
-          <div className='h-full pb-2'>
+          <div className='h-full pb-2 pl-2'>
             {children}
           </div>
         </PromptEditorHeightResizeWrap>
