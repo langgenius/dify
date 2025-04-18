@@ -191,8 +191,9 @@ class HttpRequestNode(BaseNode[HttpRequestNodeData]):
         mime_type = (
             content_disposition_type or content_type or mimetypes.guess_type(filename)[0] or "application/octet-stream"
         )
+        tool_file_manager = ToolFileManager()
 
-        tool_file = ToolFileManager.create_file_by_raw(
+        tool_file = tool_file_manager.create_file_by_raw(
             user_id=self.user_id,
             tenant_id=self.tenant_id,
             conversation_id=None,
