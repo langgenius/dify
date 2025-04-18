@@ -22,11 +22,9 @@ export const InputNumber: FC<InputNumberProps> = (props) => {
   const { unit, className, onChange, amount = 1, value, size = 'regular', max, min, defaultValue, wrapClassName, controlWrapClassName, controlClassName, disabled, ...rest } = props
 
   const isValidValue = (v: number) => {
-    if (max && v > max)
+    if (typeof max === 'number' && v > max)
       return false
-    if (min && v < min)
-      return false
-    return true
+    return !(typeof min === 'number' && v < min)
   }
 
   const inc = () => {
@@ -87,6 +85,7 @@ export const InputNumber: FC<InputNumberProps> = (props) => {
         type='button'
         onClick={inc}
         disabled={disabled}
+        aria-label='increment'
         className={classNames(
           size === 'regular' ? 'pt-1' : 'pt-1.5',
           'px-1.5 hover:bg-components-input-bg-hover',
@@ -100,6 +99,7 @@ export const InputNumber: FC<InputNumberProps> = (props) => {
         type='button'
         onClick={dec}
         disabled={disabled}
+        aria-label='decrement'
         className={classNames(
           size === 'regular' ? 'pb-1' : 'pb-1.5',
           'px-1.5 hover:bg-components-input-bg-hover',

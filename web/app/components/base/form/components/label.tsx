@@ -24,12 +24,13 @@ const Label = ({
   return (
     <div className='flex h-6 items-center'>
       <label
+        data-testid='label'
         htmlFor={htmlFor}
         className={cn('system-sm-medium text-text-secondary', className)}
       >
         {label}
       </label>
-      {showOptional && <div className='system-xs-regular ml-1 text-text-tertiary'>{t('common.label.optional')}</div>}
+      {!isRequired && showOptional && <div className='system-xs-regular ml-1 text-text-tertiary'>{t('common.label.optional')}</div>}
       {isRequired && <div className='system-xs-regular ml-1 text-text-destructive-secondary'>*</div>}
       {tooltip && (
         <Tooltip
@@ -37,6 +38,7 @@ const Label = ({
             <div className='w-[200px]'>{tooltip}</div>
           }
           triggerClassName='ml-0.5 w-4 h-4'
+          triggerTestId={`${htmlFor}-tooltip`}
         />
       )}
     </div>

@@ -40,9 +40,10 @@ const Checkbox = ({
           return
         onCheck?.()
       }}
+      data-testid={`checkbox-${id}`}
     >
       {!checked && indeterminate && <IndeterminateIcon />}
-      {checked && <RiCheckLine className='h-3 w-3' />}
+      {checked && <RiCheckLine className='h-3 w-3' data-testid={`check-icon-${id}`} />}
     </div>
   )
 }
