@@ -106,13 +106,11 @@ const SegmentCard: FC<ISegmentCardProps> = ({
   const wordCountText = useMemo(() => {
     const total = formatNumber(word_count)
     return `${total} ${t('datasetDocuments.segment.characters', { count: word_count })}`
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [word_count])
+  }, [word_count, t])
 
   const labelPrefix = useMemo(() => {
     return isParentChildMode ? t('datasetDocuments.segment.parentChunk') : t('datasetDocuments.segment.chunk')
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isParentChildMode])
+  }, [isParentChildMode, t])
 
   if (loading)
     return <ParentChunkCardSkeleton />

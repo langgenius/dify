@@ -6,7 +6,7 @@ import logging
 from collections.abc import Sequence
 from typing import Optional
 
-from sqlalchemy import UnaryExpression, asc, desc, select
+from sqlalchemy import UnaryExpression, asc, delete, desc, select
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import sessionmaker
 
@@ -168,3 +168,25 @@ class SQLAlchemyWorkflowNodeExecutionRepository:
 
             session.merge(execution)
             session.commit()
+
+    def clear(self) -> None:
+        """
+        Clear all WorkflowNodeExecution records for the current tenant_id and app_id.
+
+        This method deletes all WorkflowNodeExecution records that match the tenant_id
+        and app_id (if provided) associated with this repository instance.
+        """
+        with self._session_factory() as session:
+            stmt = delete(WorkflowNodeExecution).where(WorkflowNodeExecution.tenant_id == self._tenant_id)
+
+            if self._app_id:
+                stmt = stmt.where(WorkflowNodeExecution.app_id == self._app_id)
+
+            result = session.execute(stmt)
+            session.commit()
+
+            deleted_count = result.rowcount
+            logger.info(
+                f"Cleared {deleted_count} workflow node execution records for tenant {self._tenant_id}"
+                + (f" and app {self._app_id}" if self._app_id else "")
+            )

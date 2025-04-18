@@ -11,6 +11,7 @@ import { mergeRegister } from '@lexical/utils'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import {
   RiErrorWarningFill,
+  RiMoreLine,
 } from '@remixicon/react'
 import { useSelectOrDelete } from '../../hooks'
 import type { WorkflowNodesMap } from './node'
@@ -27,26 +28,35 @@ import { Line3 } from '@/app/components/base/icons/src/public/common'
 import { isConversationVar, isENV, isSystemVar } from '@/app/components/workflow/nodes/_base/components/variable/utils'
 import Tooltip from '@/app/components/base/tooltip'
 import { isExceptionVariable } from '@/app/components/workflow/utils'
+import VarFullPathPanel from '@/app/components/workflow/nodes/_base/components/variable/var-full-path-panel'
+import { Type } from '@/app/components/workflow/nodes/llm/types'
+import type { ValueSelector } from '@/app/components/workflow/types'
 
 type WorkflowVariableBlockComponentProps = {
   nodeKey: string
   variables: string[]
   workflowNodesMap: WorkflowNodesMap
+  getVarType?: (payload: {
+    nodeId: string,
+    valueSelector: ValueSelector,
+  }) => Type
 }
 
 const WorkflowVariableBlockComponent = ({
   nodeKey,
   variables,
   workflowNodesMap = {},
+  getVarType,
 }: WorkflowVariableBlockComponentProps) => {
   const { t } = useTranslation()
   const [editor] = useLexicalComposerContext()
   const [ref, isSelected] = useSelectOrDelete(nodeKey, DELETE_WORKFLOW_VARIABLE_BLOCK_COMMAND)
   const variablesLength = variables.length
+  const isShowAPart = variablesLength > 2
   const varName = (
     () => {
       const isSystem = isSystemVar(variables)
-      const varName = variablesLength >= 3 ? (variables).slice(-2).join('.') : variables[variablesLength - 1]
+      const varName = variables[variablesLength - 1]
       return `${isSystem ? 'sys.' : ''}${varName}`
     }
   )()
@@ -76,7 +86,7 @@ const WorkflowVariableBlockComponent = ({
   const Item = (
     <div
       className={cn(
-        'group/wrap relative mx-0.5 flex h-[18px] select-none items-center rounded-[5px] border pl-0.5 pr-[3px]',
+        'group/wrap relative mx-0.5 flex h-[18px] select-none items-center rounded-[5px] border pl-0.5 pr-[3px] hover:border-state-accent-solid hover:bg-state-accent-hover',
         isSelected ? ' border-state-accent-solid bg-state-accent-hover' : ' border-components-panel-border-subtle bg-components-badge-white-to-dark',
         !node && !isEnv && !isChatVar && '!border-state-destructive-solid !bg-state-destructive-hover',
       )}
@@ -99,6 +109,13 @@ const WorkflowVariableBlockComponent = ({
           <Line3 className='mr-0.5 text-divider-deep'></Line3>
         </div>
       )}
+      {isShowAPart && (
+        <div className='flex items-center'>
+          <RiMoreLine className='h-3 w-3 text-text-secondary' />
+          <Line3 className='mr-0.5 text-divider-deep'></Line3>
+        </div>
+      )}
+
       <div className='flex items-center text-text-accent'>
         {!isEnv && !isChatVar && <Variable02 className={cn('h-3.5 w-3.5 shrink-0', isException && 'text-text-warning')} />}
         {isEnv && <Env className='h-3.5 w-3.5 shrink-0 text-util-colors-violet-violet-600' />}
@@ -126,7 +143,27 @@ const WorkflowVariableBlockComponent = ({
     )
   }
 
-  return Item
+  if (!node)
+    return null
+
+  return (
+    <Tooltip
+      noDecoration
+      popupContent={
+        <VarFullPathPanel
+          nodeName={node.title}
+          path={variables.slice(1)}
+          varType={getVarType ? getVarType({
+            nodeId: variables[0],
+            valueSelector: variables,
+          }) : Type.string}
+          nodeType={node?.type}
+        />}
+      disabled={!isShowAPart}
+    >
+      <div>{Item}</div>
+    </Tooltip>
+  )
 }
 
 export default memo(WorkflowVariableBlockComponent)
