@@ -24,7 +24,6 @@ const InputsFormContent = ({ showTip }: Props) => {
     handleNewConversationInputsChange,
   } = useEmbeddedChatbotContext()
   const inputsFormValue = currentConversationId ? currentConversationInputs : newConversationInputs
-  const readonly = !!currentConversationId
 
   const handleFormChange = useCallback((variable: string, value: any) => {
     setCurrentConversationInputs({

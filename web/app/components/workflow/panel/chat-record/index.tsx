@@ -68,7 +68,7 @@ const ChatRecord = () => {
         setChatItemTree(tree)
         setThreadChatItems(getThreadMessages(tree, newAllChatItems.at(-1)?.id))
       }
-      catch (e) {
+      catch {
       }
       finally {
         setFetched(true)

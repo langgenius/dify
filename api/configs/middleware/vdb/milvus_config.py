@@ -39,3 +39,8 @@ class MilvusConfig(BaseSettings):
         "older versions",
         default=True,
     )
+
+    MILVUS_ANALYZER_PARAMS: Optional[str] = Field(
+        description='Milvus text analyzer parameters, e.g., {"type": "chinese"} for Chinese segmentation support.',
+        default=None,
+    )

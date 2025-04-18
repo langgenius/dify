@@ -53,7 +53,7 @@ const Operation = ({
       onOperate()
       notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
     }
-    catch (e) {
+    catch {
 
     }
   }
@@ -66,7 +66,7 @@ const Operation = ({
       onOperate()
       notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
     }
-    catch (e) {
+    catch {
 
     }
   }

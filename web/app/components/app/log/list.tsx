@@ -547,7 +547,7 @@ const CompletionConversationDetailComp: FC<{ appId?: string; conversationId?: st
       notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
       return true
     }
-    catch (err) {
+    catch {
       notify({ type: 'error', message: t('common.actionMsg.modifiedUnsuccessfully') })
       return false
     }
@@ -560,7 +560,7 @@ const CompletionConversationDetailComp: FC<{ appId?: string; conversationId?: st
       notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
       return true
     }
-    catch (err) {
+    catch {
       notify({ type: 'error', message: t('common.actionMsg.modifiedUnsuccessfully') })
       return false
     }
@@ -591,7 +591,7 @@ const ChatConversationDetailComp: FC<{ appId?: string; conversationId?: string }
       notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
       return true
     }
-    catch (err) {
+    catch {
       notify({ type: 'error', message: t('common.actionMsg.modifiedUnsuccessfully') })
       return false
     }
@@ -603,7 +603,7 @@ const ChatConversationDetailComp: FC<{ appId?: string; conversationId?: string }
       notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
       return true
     }
-    catch (err) {
+    catch {
       notify({ type: 'error', message: t('common.actionMsg.modifiedUnsuccessfully') })
       return false
     }

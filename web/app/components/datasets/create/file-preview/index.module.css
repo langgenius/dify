@@ -29,7 +29,7 @@
   .previewContent .loading {
     width: 100%;
     height: 180px;
-    background: #f9fafb center no-repeat url(../assets/Loading.svg);
+    background: transparent center no-repeat url(../assets/Loading.svg);
     background-size: contain;
   }
   

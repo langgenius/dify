@@ -241,7 +241,8 @@ const Prompt: FC<ISimplePromptInput> = ({
               selectable: !hasSetBlockStatus.query,
             }}
             onChange={(value) => {
-              handleChange?.(value, [])
+              if (handleChange)
+                handleChange(value, [])
             }}
             onBlur={() => {
               handleChange(promptTemplate, getVars(promptTemplate))

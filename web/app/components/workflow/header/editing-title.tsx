@@ -1,13 +1,13 @@
 import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useWorkflow } from '../hooks'
+import { useFormatTimeFromNow } from '../hooks'
 import { useStore } from '@/app/components/workflow/store'
 import useTimestamp from '@/hooks/use-timestamp'
 
 const EditingTitle = () => {
   const { t } = useTranslation()
   const { formatTime } = useTimestamp()
-  const { formatTimeFromNow } = useWorkflow()
+  const { formatTimeFromNow } = useFormatTimeFromNow()
   const draftUpdatedAt = useStore(state => state.draftUpdatedAt)
   const publishedAt = useStore(state => state.publishedAt)
   const isSyncingWorkflowDraft = useStore(s => s.isSyncingWorkflowDraft)

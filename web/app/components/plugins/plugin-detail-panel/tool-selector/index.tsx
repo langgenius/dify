@@ -125,11 +125,12 @@ const ToolSelector: FC<Props> = ({
       type: tool.provider_type,
       tool_name: tool.tool_name,
       tool_label: tool.tool_label,
+      tool_description: tool.tool_description,
       settings: settingValues,
       parameters: paramValues,
       enabled: tool.is_team_authorization,
       extra: {
-        description: '',
+        description: tool.tool_description,
       },
       schemas: tool.paramSchemas,
     }
