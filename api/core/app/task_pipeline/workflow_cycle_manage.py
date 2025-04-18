@@ -326,8 +326,6 @@ class WorkflowCycleManage:
         finished_at = datetime.now(UTC).replace(tzinfo=None)
         elapsed_time = (finished_at - event.start_at).total_seconds()
 
-        process_data = WorkflowEntry.handle_special_values(event.process_data)
-
         workflow_node_execution.status = WorkflowNodeExecutionStatus.SUCCEEDED.value
         workflow_node_execution.inputs = json.dumps(inputs) if inputs else None
         workflow_node_execution.process_data = json.dumps(process_data) if process_data else None
@@ -841,5 +839,10 @@ class WorkflowCycleManage:
     def _get_workflow_node_execution(self, session: Session, node_execution_id: str) -> WorkflowNodeExecution:
         if node_execution_id not in self._workflow_node_executions:
             raise ValueError(f"Workflow node execution not found: {node_execution_id}")
-        cached_workflow_node_execution = self._workflow_node_executions[node_execution_id]
-        return cached_workflow_node_execution
+        cached = self._workflow_node_executions[node_execution_id]
+        attached_obj = session.get(WorkflowNodeExecution, cached.id)
+        if attached_obj is None:
+            session.add(cached)
+            session.flush()
+            return cached
+        return attached_obj
