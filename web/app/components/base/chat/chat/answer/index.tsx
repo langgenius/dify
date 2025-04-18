@@ -236,7 +236,7 @@ const Answer: FC<AnswerProps> = ({
 
 export default memo(Answer, (prevProps, nextProps) => {
   if (prevProps.responding === false && nextProps.responding === false) {
-    return true;
+    return true
   }
-  return false;
+  return false
 });
