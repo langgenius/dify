@@ -356,19 +356,19 @@ class KnowledgeRetrievalNode(LLMNode):
                         expected_value,
                         temp_filters,
                     )
-        
+
         sub_filters_result: ColumnElement
         temp_filters_result: ColumnElement
         if temp_filters and sub_filters:
-            temp_all_filters = sub_filters +temp_filters
+            temp_all_filters = sub_filters + temp_filters
             if logical_operator == "and":  # type: ignore
                 sub_filters_result = and_(*temp_all_filters)
             else:
                 sub_filters_result = or_(*temp_all_filters)
             filters.append(sub_filters_result)
             return filters
-                    
-        if temp_filters: # text
+
+        if temp_filters:  # text
             if logical_operator == "and":  # type: ignore
                 temp_filters_result = and_(*temp_filters)
             else:
@@ -376,7 +376,7 @@ class KnowledgeRetrievalNode(LLMNode):
             filters.append(temp_filters_result)
             return filters
 
-        if sub_filters: # Boolean
+        if sub_filters:  # Boolean
             if logical_operator == "and":  # type: ignore
                 sub_filters_result = and_(*sub_filters)
             else:
@@ -384,7 +384,6 @@ class KnowledgeRetrievalNode(LLMNode):
             filters.append(sub_filters_result)
 
         return filters
-
 
     def _get_metadata_filter_condition(
         self, dataset_ids: list, query: str, node_data: KnowledgeRetrievalNodeData

@@ -116,6 +116,7 @@ class MetadataFilteringCondition(BaseModel):
     logical_operator: Optional[Literal["and", "or"]] = "and"
     conditions: Optional[list[Condition]] = Field(default=None, deprecated=True)
 
+
 class MetadataFilteringComplexCondition(BaseModel):
     logical_operator: Optional[Literal["and", "or"]] = "and"
     conditions: Optional[list[Condition]] = Field(default=None, deprecated=True)
