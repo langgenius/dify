@@ -15,3 +15,4 @@ pytest api/tests/integration_tests/vdb/chroma \
   api/tests/integration_tests/vdb/couchbase \
   api/tests/integration_tests/vdb/oceanbase \
   api/tests/integration_tests/vdb/tidb_vector \
+  api/tests/integration_tests/vdb/huawei \
