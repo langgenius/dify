@@ -327,6 +327,7 @@ const translation = {
     writeOpener: 'Viết câu mở đầu',
     placeholder: 'Viết thông điệp mở đầu của bạn ở đây, bạn có thể sử dụng biến, hãy thử nhập {{biến}}.',
     openingQuestion: 'Câu hỏi mở đầu',
+    openingQuestionPlaceholder: 'Bạn có thể sử dụng biến, hãy thử nhập {{variable}}.',
     noDataPlaceHolder: 'Bắt đầu cuộc trò chuyện với người dùng có thể giúp AI thiết lập mối quan hệ gần gũi hơn với họ trong các ứng dụng trò chuyện.',
     varTip: 'Bạn có thể sử dụng biến, hãy thử nhập {{biến}}',
     tooShort: 'Cần ít nhất 20 từ trong lời nhắc ban đầu để tạo ra các câu mở đầu cho cuộc trò chuyện.',
