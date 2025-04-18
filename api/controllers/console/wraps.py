@@ -11,7 +11,8 @@ from models.model import DifySetup
 from services.feature_service import FeatureService, LicenseStatus
 from services.operation_service import OperationService
 
-from .error import NotInitValidateError, NotSetupError, UnauthorizedAndForceLogout
+from .error import (NotInitValidateError, NotSetupError,
+                    UnauthorizedAndForceLogout)
 
 
 def account_initialization_required(view):
@@ -163,7 +164,7 @@ def email_password_login_enabled(view):
         if features.enable_email_password_login:
             return view(*args, **kwargs)
 
-        # otherwise, return 404
-        abort(404)
+        # otherwise, return 403
+        abort(403)
 
     return decorated
