@@ -1177,22 +1177,6 @@ export const useNodesInteractions = () => {
     saveStateToHistory(WorkflowHistoryEvent.NodeChange)
   }, [getNodesReadOnly, store, t, handleSyncWorkflowDraft, saveStateToHistory])
 
-  const handleNodeCancelRunningStatus = useCallback(() => {
-    const {
-      getNodes,
-      setNodes,
-    } = store.getState()
-
-    const nodes = getNodes()
-    const newNodes = produce(nodes, (draft) => {
-      draft.forEach((node) => {
-        node.data._runningStatus = undefined
-        node.data._waitingRun = false
-      })
-    })
-    setNodes(newNodes)
-  }, [store])
-
   const handleNodesCancelSelected = useCallback(() => {
     const {
       getNodes,
@@ -1554,7 +1538,6 @@ export const useNodesInteractions = () => {
     handleNodeDelete,
     handleNodeChange,
     handleNodeAdd,
-    handleNodeCancelRunningStatus,
     handleNodesCancelSelected,
     handleNodeContextMenu,
     handleNodesCopy,

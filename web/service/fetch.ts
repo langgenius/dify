@@ -132,12 +132,13 @@ async function base<T>(url: string, options: FetchOptionType = {}, otherOptions:
     getAbortController,
   } = otherOptions
 
-  const base
-    = isMarketplaceAPI
-      ? MARKETPLACE_API_PREFIX
-      : isPublicAPI
-        ? PUBLIC_API_PREFIX
-        : API_PREFIX
+  let base: string
+  if (isMarketplaceAPI)
+    base = MARKETPLACE_API_PREFIX
+   else if (isPublicAPI)
+    base = PUBLIC_API_PREFIX
+   else
+    base = API_PREFIX
 
   if (getAbortController) {
     const abortController = new AbortController()
@@ -145,7 +146,7 @@ async function base<T>(url: string, options: FetchOptionType = {}, otherOptions:
     options.signal = abortController.signal
   }
 
-  const fetchPathname = `${base}${url.startsWith('/') ? url : `/${url}`}`
+  const fetchPathname = base + (url.startsWith('/') ? url : `/${url}`)
 
   if (deleteContentType)
     (headers as any).delete('Content-Type')
@@ -180,6 +181,16 @@ async function base<T>(url: string, options: FetchOptionType = {}, otherOptions:
     },
     ...(bodyStringify ? { json: body } : { body: body as BodyInit }),
     searchParams: params,
+    fetch(resource: RequestInfo | URL, options?: RequestInit) {
+      if (resource instanceof Request && options) {
+        const mergedHeaders = new Headers(options.headers || {})
+        resource.headers.forEach((value, key) => {
+          mergedHeaders.append(key, value)
+        })
+        options.headers = mergedHeaders
+      }
+      return globalThis.fetch(resource, options)
+    },
   })
 
   if (needAllResponseContent)
