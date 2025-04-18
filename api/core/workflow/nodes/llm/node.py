@@ -65,7 +65,11 @@ from core.workflow.nodes.event import (
     RunRetrieverResourceEvent,
     RunStreamChunkEvent,
 )
-from core.workflow.utils.structured_output.entities import ResponseFormat, SpecialModelType
+from core.workflow.utils.structured_output.entities import (
+    ResponseFormat,
+    SpecialModelType,
+    SupportStructuredOutputStatus,
+)
 from core.workflow.utils.structured_output.prompt import STRUCTURED_OUTPUT_PROMPT
 from core.workflow.utils.variable_template_parser import VariableTemplateParser
 from extensions.ext_database import db
@@ -531,9 +535,9 @@ class LLMNode(BaseNode[LLMNodeData]):
         if not model_schema:
             raise ModelNotExistError(f"Model {model_name} not exist.")
         support_structured_output = self._check_model_structured_output_support()
-        if support_structured_output:
+        if support_structured_output == SupportStructuredOutputStatus.SUPPORTED:
             completion_params = self._handle_native_json_schema(completion_params, model_schema.parameter_rules)
-        elif support_structured_output is False:
+        elif support_structured_output == SupportStructuredOutputStatus.UNSUPPORTED:
             # Set appropriate response format based on model capabilities
             self._set_response_format(completion_params, model_schema.parameter_rules)
         return model_instance, ModelConfigWithCredentialsEntity(
@@ -747,7 +751,7 @@ class LLMNode(BaseNode[LLMNodeData]):
                 "Please ensure a prompt is properly configured before proceeding."
             )
         support_structured_output = self._check_model_structured_output_support()
-        if support_structured_output is False:
+        if support_structured_output == SupportStructuredOutputStatus.SUPPORTED:
             filtered_prompt_messages = self._handle_prompt_based_schema(
                 prompt_messages=filtered_prompt_messages,
             )
@@ -1101,15 +1105,12 @@ class LLMNode(BaseNode[LLMNodeData]):
         except json.JSONDecodeError:
             raise LLMNodeError("structured_output_schema is not valid JSON format")
 
-    def _check_model_structured_output_support(self) -> Optional[bool]:
+    def _check_model_structured_output_support(self) -> SupportStructuredOutputStatus:
         """
         Check if the current model supports structured output.
 
         Returns:
-            Optional[bool]:
-                - True if model supports structured output
-                - False if model exists but doesn't support structured output
-                - None if structured output is disabled or model doesn't exist
+            SupportStructuredOutput: The support status of structured output
         """
         # Early return if structured output is disabled
         if (
@@ -1117,14 +1118,18 @@ class LLMNode(BaseNode[LLMNodeData]):
             or not self.node_data.structured_output_enabled
             or not self.node_data.structured_output
         ):
-            return None
+            return SupportStructuredOutputStatus.DISABLED
         # Get model schema and check if it exists
         model_schema = self._fetch_model_schema(self.node_data.model.provider)
         if not model_schema:
-            return None
+            return SupportStructuredOutputStatus.DISABLED
 
         # Check if model supports structured output feature
-        return bool(model_schema.features and ModelFeature.STRUCTURED_OUTPUT in model_schema.features)
+        return (
+            SupportStructuredOutputStatus.SUPPORTED
+            if bool(model_schema.features and ModelFeature.STRUCTURED_OUTPUT in model_schema.features)
+            else SupportStructuredOutputStatus.UNSUPPORTED
+        )
 
 
 def _combine_message_content_with_role(*, contents: Sequence[PromptMessageContent], role: PromptMessageRole):

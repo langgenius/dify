@@ -253,10 +253,7 @@ class AgentNode(ToolNode):
                     value["history_prompt_messages"] = history_prompt_messages
                     if model_schema:
                         # remove structured output feature to support old version agent plugin
-                        if model_schema.features:
-                            for feature in model_schema.features:
-                                if feature.value not in AgentOldVersionModelFeatures:
-                                    model_schema.features.remove(feature)
+                        model_schema = self._remove_unsupported_model_features_for_old_version(model_schema)
                         value["entity"] = model_schema.model_dump(mode="json")
                     else:
                         value["entity"] = None
@@ -356,3 +353,10 @@ class AgentNode(ToolNode):
         )
         model_schema = model_type_instance.get_model_schema(model_name, model_credentials)
         return model_instance, model_schema
+
+    def _remove_unsupported_model_features_for_old_version(self, model_schema: AIModelEntity) -> AIModelEntity:
+        if model_schema.features:
+            for feature in model_schema.features:
+                if feature.value not in AgentOldVersionModelFeatures:
+                    model_schema.features.remove(feature)
+        return model_schema
