@@ -104,7 +104,10 @@ const PluginItem: FC<Props> = ({
               {!isDifyVersionCompatible && <Tooltip popupContent={
                 t('plugin.difyVersionNotCompatible', { minimalDifyVersion: declarationMeta.minimum_dify_version })
               }><RiErrorWarningLine color='red' className="ml-0.5 h-4 w-4 shrink-0 text-text-accent" /></Tooltip>}
-              <Badge className='ml-1 shrink-0' text={source === PluginSource.github ? plugin.meta!.version : plugin.version} />
+              <Badge className='ml-1 shrink-0'
+                text={source === PluginSource.github ? plugin.meta!.version : plugin.version}
+                hasRedCornerMark={(source === PluginSource.marketplace) && !!plugin.latest_unique_identifier && plugin.latest_unique_identifier !== plugin_unique_identifier}
+              />
             </div>
             <div className='flex items-center justify-between'>
               <Description text={descriptionText} descriptionLineRows={1}></Description>

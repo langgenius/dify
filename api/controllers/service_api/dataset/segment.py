@@ -122,6 +122,8 @@ class SegmentApi(DatasetApiResource):
             tenant_id=current_user.current_tenant_id,
             status_list=args["status"],
             keyword=args["keyword"],
+            page=page,
+            limit=limit,
         )
 
         response = {

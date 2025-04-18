@@ -52,6 +52,7 @@ class AgentStrategyParameter(PluginParameter):
             return cast_parameter_value(self, value)
 
     type: AgentStrategyParameterType = Field(..., description="The type of the parameter")
+    help: Optional[I18nObject] = None
 
     def init_frontend_parameter(self, value: Any):
         return init_frontend_parameter(self, self.type, value)
