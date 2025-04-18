@@ -39,11 +39,6 @@ const Panel: FC<PanelProps> = ({
         components?.right
       }
       {
-        isRestoring && (
-          <div className='flex-1' />
-        )
-      }
-      {
         showEnvPanel && (
           <EnvPanel />
         )
