@@ -38,7 +38,7 @@ const useToc = (apiBaseUrl: string, locale: string) => {
 
         const tocItems: TocItem[] = headingElementsArray.map((heading, index) => ({
           href: `#section-${index}`,
-          text: (heading.textContent || `章节 ${index + 1}`).trim(),
+          text: (heading.textContent || '').trim(),
           index,
         }))
 
