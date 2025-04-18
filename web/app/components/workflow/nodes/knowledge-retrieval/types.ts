@@ -74,6 +74,7 @@ export enum MetadataFilteringModeEnum {
   disabled = 'disabled',
   automatic = 'automatic',
   manual = 'manual',
+  complexConditions = 'complex_conditions',
 }
 
 export enum MetadataFilteringVariableType {

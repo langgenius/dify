@@ -480,6 +480,10 @@ const translation = {
             title: 'Manual',
             subTitle: 'Manually add metadata filtering conditions',
           },
+          complexConditions: {
+            title: 'complexConditions',
+            subTitle: 'Manually add metadata filtering complex conditions',
+          },
         },
         panel: {
           title: 'Metadata Filter Conditions',

@@ -38,6 +38,11 @@ const MetadataFilterSelector = ({
       value: t('workflow.nodes.knowledgeRetrieval.metadata.options.manual.title'),
       desc: t('workflow.nodes.knowledgeRetrieval.metadata.options.manual.subTitle'),
     },
+    {
+      key: MetadataFilteringModeEnum.complexConditions,
+      value: t('workflow.nodes.knowledgeRetrieval.metadata.options.complexConditions.title'),
+      desc: t('workflow.nodes.knowledgeRetrieval.metadata.options.complexConditions.subTitle'),
+    },
   ]
 
   const selectedOption = options.find(option => option.key === value)!
