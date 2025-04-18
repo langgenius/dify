@@ -11,7 +11,8 @@ from models.model import DifySetup
 from services.feature_service import FeatureService, LicenseStatus
 from services.operation_service import OperationService
 
-from .error import NotInitValidateError, NotSetupError, UnauthorizedAndForceLogout
+from .error import (NotInitValidateError, NotSetupError,
+                    UnauthorizedAndForceLogout)
 
 
 def account_initialization_required(view):
@@ -152,5 +153,18 @@ def enterprise_license_required(view):
             raise UnauthorizedAndForceLogout("Your license is invalid. Please contact your administrator.")
 
         return view(*args, **kwargs)
+
+    return decorated
+
+
+def email_password_login_enabled(view):
+    @wraps(view)
+    def decorated(*args, **kwargs):
+        features = FeatureService.get_system_features()
+        if features.enable_email_password_login:
+            return view(*args, **kwargs)
+
+        # otherwise, return 403
+        abort(403)
 
     return decorated
