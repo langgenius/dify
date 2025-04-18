@@ -86,8 +86,7 @@ const SegmentDetail: FC<ISegmentDetailProps> = ({
 
   const titleText = useMemo(() => {
     return isEditMode ? t('datasetDocuments.segment.editChunk') : t('datasetDocuments.segment.chunkDetail')
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isEditMode])
+  }, [isEditMode, t])
 
   const isQAModel = useMemo(() => {
     return docForm === ChunkingMode.qa
@@ -98,13 +97,11 @@ const SegmentDetail: FC<ISegmentDetailProps> = ({
     const total = formatNumber(isEditMode ? contentLength : segInfo!.word_count as number)
     const count = isEditMode ? contentLength : segInfo!.word_count as number
     return `${total} ${t('datasetDocuments.segment.characters', { count })}`
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isEditMode, question.length, answer.length, segInfo?.word_count, isQAModel])
+  }, [isEditMode, question.length, answer.length, isQAModel, segInfo, t])
 
   const labelPrefix = useMemo(() => {
     return isParentChildMode ? t('datasetDocuments.segment.parentChunk') : t('datasetDocuments.segment.chunk')
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isParentChildMode])
+  }, [isParentChildMode, t])
 
   return (
     <div className={'flex h-full flex-col'}>
