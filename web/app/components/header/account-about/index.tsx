@@ -39,7 +39,7 @@ export default function AccountAbout({
           <LogoSite className='mx-auto mb-2' />
           <div className='mb-3 text-center text-xs font-normal text-text-tertiary'>Version {langeniusVersionInfo?.current_version}</div>
           <div className='mb-4 text-center text-xs font-normal text-text-secondary'>
-            <div>© {dayjs().year()} LangGenius, Inc., Contributors.</div>
+            <div>© {dayjs().year()} LangGenius, Inc. Raft, Contributors.</div>
             <div className='text-text-accent'>
               {
                 IS_CE_EDITION

@@ -46,7 +46,7 @@ const Chatbot = () => {
       if (customConfig)
         document.title = `${site.title}`
       else
-        document.title = `${site.title} - Powered by Dify`
+        document.title = `${site.title} - Powered by Raft no-code platform`
     }
   }, [site, customConfig, themeBuilder])
 

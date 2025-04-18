@@ -34,7 +34,7 @@ const Layout = ({ children }: { children: ReactNode }) => {
 }
 
 export const metadata = {
-  title: 'Dify',
+  title: 'Raft no-code platform',
 }
 
 export default Layout

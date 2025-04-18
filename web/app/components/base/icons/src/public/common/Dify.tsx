@@ -15,6 +15,6 @@ const Icon = (
   },
 ) => <IconBase {...props} ref={ref} data={data as IconData} />
 
-Icon.displayName = 'Dify'
+Icon.displayName = 'Raft no-code platform'
 
 export default Icon
