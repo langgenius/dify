@@ -86,3 +86,12 @@ class WorkflowNodeExecutionRepository(Protocol):
             execution: The WorkflowNodeExecution instance to update
         """
         ...
+
+    def clear(self) -> None:
+        """
+        Clear all WorkflowNodeExecution records based on implementation-specific criteria.
+
+        This method is intended to be used for bulk deletion operations, such as removing
+        all records associated with a specific app_id and tenant_id in multi-tenant implementations.
+        """
+        ...
