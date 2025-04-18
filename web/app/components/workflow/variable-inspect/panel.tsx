@@ -5,6 +5,7 @@ import {
 } from '@remixicon/react'
 import { useStore } from '../store'
 import Empty from './empty'
+import Right from './right'
 import ActionButton from '@/app/components/base/action-button'
 import cn from '@/utils/classnames'
 
@@ -33,13 +34,13 @@ const Panel: FC = () => {
   return (
     <div className={cn('relative flex h-full')}>
       {/* left */}
-      {showLeftPanel && <div className='absolute left-0 top-0 h-full w-full' onClick={() => setShowLeftPanel(false)}></div>}
+      {bottomPanelWidth < 488 && showLeftPanel && <div className='absolute left-0 top-0 h-full w-full' onClick={() => setShowLeftPanel(false)}></div>}
       <div
         className={cn(
           'w-60 shrink-0 border-r border-divider-burn',
           bottomPanelWidth < 488
             ? showLeftPanel
-              ? 'absolute left-0 top-0 h-full w-[217px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg backdrop-blur-sm'
+              ? 'absolute left-0 top-0 z-10 h-full w-[217px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg backdrop-blur-sm'
               : 'hidden'
             : 'block',
         )}
@@ -47,8 +48,8 @@ const Panel: FC = () => {
         left
       </div>
       {/* right */}
-      <div className='grow'>
-        right
+      <div className='w-0 grow'>
+        <Right handleOpenMenu={() => setShowLeftPanel(true)} />
       </div>
     </div>
   )
