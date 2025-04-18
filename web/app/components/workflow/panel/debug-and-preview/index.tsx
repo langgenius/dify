@@ -5,7 +5,7 @@ import {
   useRef,
   useState,
 } from 'react'
-import { useKeyPress } from 'ahooks'
+
 import { RiCloseLine, RiEqualizer2Line } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
 import { useNodes } from 'reactflow'
@@ -47,12 +47,6 @@ const DebugAndPreview = () => {
     handleEdgeCancelRunningStatus()
     chatRef.current.handleRestart()
   }
-
-  useKeyPress('shift.r', () => {
-    handleRestartChat()
-  }, {
-    exactMatch: true,
-  })
 
   const [panelWidth, setPanelWidth] = useState(420)
   const [isResizing, setIsResizing] = useState(false)
