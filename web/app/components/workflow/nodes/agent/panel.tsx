@@ -1,5 +1,4 @@
-import type { FC } from 'react'
-import { memo, useMemo } from 'react'
+import { forwardRef, memo, useImperativeHandle, useMemo } from 'react'
 import type { NodePanelProps } from '../../types'
 import { AgentFeature, type AgentNodeType } from './types'
 import Field from '../_base/components/field'
@@ -9,8 +8,6 @@ import { useTranslation } from 'react-i18next'
 import OutputVars, { VarItem } from '../_base/components/output-vars'
 import type { StrategyParamItem } from '@/app/components/plugins/types'
 import type { CredentialFormSchema } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import BeforeRunForm from '@/app/components/workflow/nodes/_base/components/before-run-form'
-import ResultPanel from '@/app/components/workflow/run/result-panel'
 import formatTracing from '@/app/components/workflow/run/utils/format-log'
 import { useLogs } from '@/app/components/workflow/run/hooks'
 import type { Props as FormProps } from '@/app/components/workflow/nodes/_base/components/before-run-form/form'
@@ -18,7 +15,7 @@ import { toType } from '@/app/components/tools/utils/to-form-schema'
 import { useStore } from '../../store'
 import Split from '../_base/components/split'
 import MemoryConfig from '../_base/components/memory-config'
-
+import type { PanelExposedType } from '@/types/workflow'
 const i18nPrefix = 'workflow.nodes.agent'
 
 export function strategyParamToCredientialForm(param: StrategyParamItem): CredentialFormSchema {
@@ -30,7 +27,7 @@ export function strategyParamToCredientialForm(param: StrategyParamItem): Creden
   }
 }
 
-const AgentPanel: FC<NodePanelProps<AgentNodeType>> = (props) => {
+const AgentPanel = forwardRef<PanelExposedType, NodePanelProps<AgentNodeType>>((props, ref) => {
   const {
     inputs,
     setInputs,
@@ -41,11 +38,6 @@ const AgentPanel: FC<NodePanelProps<AgentNodeType>> = (props) => {
     availableNodesWithParent,
     availableVars,
     readOnly,
-    isShowSingleRun,
-    hideSingleRun,
-    runningStatus,
-    handleRun,
-    handleStop,
     runResult,
     runInputData,
     setRunInputData,
@@ -78,6 +70,13 @@ const AgentPanel: FC<NodePanelProps<AgentNodeType>> = (props) => {
   })()
 
   const resetEditor = useStore(s => s.setControlPromptEditorRerenderKey)
+
+  useImperativeHandle(ref, () => ({
+    singleRunParams: {
+      forms: singleRunForms,
+      logsParams,
+    },
+  }))
 
   return <div className='my-2'>
     <Field title={t('workflow.nodes.agent.strategy.label')} className='px-4 py-2' tooltip={t('workflow.nodes.agent.strategy.tooltip')} >
@@ -150,23 +149,8 @@ const AgentPanel: FC<NodePanelProps<AgentNodeType>> = (props) => {
         ))}
       </OutputVars>
     </div>
-    {
-      isShowSingleRun && (
-        <BeforeRunForm
-          nodeName={inputs.title}
-          nodeType={inputs.type}
-          onHide={hideSingleRun}
-          forms={singleRunForms}
-          runningStatus={runningStatus}
-          onRun={handleRun}
-          onStop={handleStop}
-          {...logsParams}
-          result={<ResultPanel {...runResult} nodeInfo={nodeInfo} showSteps={false} {...logsParams} />}
-        />
-      )
-    }
   </div>
-}
+})
 
 AgentPanel.displayName = 'AgentPanel'
 

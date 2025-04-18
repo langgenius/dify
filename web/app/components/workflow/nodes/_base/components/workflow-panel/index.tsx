@@ -6,6 +6,7 @@ import {
   cloneElement,
   memo,
   useCallback,
+  useRef,
   useState,
 } from 'react'
 import {
@@ -49,6 +50,9 @@ import { useStore as useAppStore } from '@/app/components/app/store'
 import { useStore } from '@/app/components/workflow/store'
 import Tab, { TabType } from './tab'
 import LastRun from './last-run'
+import useOneStepRun from '../../hooks/use-one-step-run'
+import type { PanelExposedType } from '@/types/workflow'
+import BeforeRunForm from '../before-run-form'
 
 type BasePanelProps = {
   children: ReactNode
@@ -105,8 +109,30 @@ const BasePanel: FC<BasePanelProps> = ({
     saveStateToHistory(WorkflowHistoryEvent.NodeDescriptionChange)
   }, [handleNodeDataUpdateWithSyncDraft, id, saveStateToHistory])
 
+  const isSupportSingleRun = canRunBySingle(data.type)
+  const {
+    isShowSingleRun,
+    showSingleRun,
+    hideSingleRun,
+    toVarInputs,
+    runningStatus,
+    handleRun,
+    handleStop,
+    runInputData,
+    setRunInputData,
+    runResult,
+    getInputVars,
+  } = useOneStepRun<typeof data>({
+    id,
+    data,
+    defaultRunInputData: {},
+  })
+  const childPanelRef = useRef<PanelExposedType>(null)
+  const [singleRunParams, setSingleRunParams] = useState<PanelExposedType['singleRunParams'] | undefined>(undefined)
+
   const [tabType, setTabType] = useState<TabType>(TabType.settings)
   const hasLastRunData = true // TODO: add disabled logic
+
   return (
     <div className={cn(
       'relative mr-2 h-full',
@@ -138,7 +164,7 @@ const BasePanel: FC<BasePanelProps> = ({
             />
             <div className='flex shrink-0 items-center text-text-tertiary'>
               {
-                canRunBySingle(data.type) && !nodesReadOnly && (
+                isSupportSingleRun && !nodesReadOnly && (
                   <Tooltip
                     popupContent={t('workflow.panel.runThisStep')}
                     popupClassName='mr-1'
@@ -146,7 +172,13 @@ const BasePanel: FC<BasePanelProps> = ({
                     <div
                       className='mr-1 flex h-6 w-6 cursor-pointer items-center justify-center rounded-md hover:bg-state-base-hover'
                       onClick={() => {
-                        handleNodeDataUpdate({ id, data: { _isSingleRun: true } })
+                        if (!childPanelRef.current?.singleRunParams) {
+                          // handleNodeDataUpdate({ id, data: { _isSingleRun: true } })
+                          console.error('childPanelRef is not set')
+                          return
+                        }
+                        setSingleRunParams(childPanelRef.current?.singleRunParams)
+                        showSingleRun()
                         handleSyncWorkflowDraft(true)
                       }}
                     >
@@ -185,7 +217,7 @@ const BasePanel: FC<BasePanelProps> = ({
         {tabType === TabType.settings && (
           <>
             <div>
-              {cloneElement(children as any, { id, data })}
+              {cloneElement(children as any, { id, data, ref: childPanelRef })}
             </div>
             <Split />
             {
@@ -223,6 +255,21 @@ const BasePanel: FC<BasePanelProps> = ({
         {tabType === TabType.lastRun && (
           <LastRun appId={id} />
         )}
+
+        {
+          isShowSingleRun && (
+            <BeforeRunForm
+              nodeName={data.title}
+              nodeType={data.type}
+              onHide={hideSingleRun}
+              runningStatus={runningStatus}
+              onRun={handleRun}
+              onStop={handleStop}
+              {...singleRunParams!}
+              result={<div>xxx</div>}
+            />
+          )
+        }
       </div>
     </div>
   )
