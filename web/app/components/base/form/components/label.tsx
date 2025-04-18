@@ -1,14 +1,14 @@
 import cn from '@/utils/classnames'
 import Tooltip from '../../tooltip'
+import { useTranslation } from 'react-i18next'
 
-type LabelProps = {
+export type LabelProps = {
   htmlFor: string
   label: string
   isRequired?: boolean
   showOptional?: boolean
   tooltip?: string
   className?: string
-  labelClassName?: string
 }
 
 const Label = ({
@@ -17,17 +17,19 @@ const Label = ({
   isRequired,
   showOptional,
   tooltip,
-  labelClassName,
+  className,
 }: LabelProps) => {
+  const { t } = useTranslation()
+
   return (
     <div className='flex h-6 items-center'>
       <label
         htmlFor={htmlFor}
-        className={cn('system-sm-medium text-text-secondary', labelClassName)}
+        className={cn('system-sm-medium text-text-secondary', className)}
       >
         {label}
       </label>
-      {showOptional && <div className='system-xs-regular ml-1 text-text-tertiary'>(Optional)</div>}
+      {showOptional && <div className='system-xs-regular ml-1 text-text-tertiary'>{t('common.label.optional')}</div>}
       {isRequired && <div className='system-xs-regular ml-1 text-text-destructive-secondary'>*</div>}
       {tooltip && (
         <Tooltip

@@ -11,6 +11,9 @@ type SelectOption = {
 type SelectFieldProps = {
   label: string
   options: SelectOption[]
+  isRequired?: boolean
+  showOptional?: boolean
+  tooltip?: string
   className?: string
   labelClassName?: string
 }
@@ -18,6 +21,9 @@ type SelectFieldProps = {
 const SelectField = ({
   label,
   options,
+  isRequired,
+  showOptional,
+  tooltip,
   className,
   labelClassName,
 }: SelectFieldProps) => {
@@ -27,8 +33,11 @@ const SelectField = ({
     <div className={cn('flex flex-col gap-y-0.5', className)}>
       <Label
         htmlFor={field.name}
-        className={labelClassName}
         label={label}
+        isRequired={isRequired}
+        showOptional={showOptional}
+        tooltip={tooltip}
+        className={labelClassName}
       />
       <PureSelect
         value={field.state.value}
