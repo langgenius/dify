@@ -42,7 +42,7 @@ export default function CheckCode() {
       if (ret.is_valid) {
         const params = new URLSearchParams(searchParams)
         params.set('token', encodeURIComponent(ret.token))
-        router.push(`/reset-password/set-password?${searchParams.toString()}`)
+        router.push(`/reset-password/set-password?${params.toString()}`)
       }
     }
     catch (error) { console.error(error) }
