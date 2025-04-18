@@ -2,6 +2,7 @@ export enum TracingProvider {
   langSmith = 'langsmith',
   langfuse = 'langfuse',
   opik = 'opik',
+  weave = 'weave',
 }
 
 export type LangSmithConfig = {
@@ -21,4 +22,11 @@ export type OpikConfig = {
   project: string
   workspace: string
   url: string
+}
+
+export type WeaveConfig = {
+  api_key: string
+  entity: string
+  project: string
+  endpoint: string
 }
