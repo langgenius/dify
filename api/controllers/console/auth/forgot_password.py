@@ -86,7 +86,6 @@ class ForgotPasswordCheckApi(Resource):
             user_email, code=args["code"], additional_data={"phase": "reset"}
         )
 
-        AccountService.reset_forgot_password_error_rate_limit(args["email"])
         return {"is_valid": True, "email": token_data.get("email"), "token": new_token}
 
 
