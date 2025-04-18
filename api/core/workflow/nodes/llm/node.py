@@ -751,7 +751,7 @@ class LLMNode(BaseNode[LLMNodeData]):
                 "Please ensure a prompt is properly configured before proceeding."
             )
         support_structured_output = self._check_model_structured_output_support()
-        if support_structured_output == SupportStructuredOutputStatus.SUPPORTED:
+        if support_structured_output == SupportStructuredOutputStatus.UNSUPPORTED:
             filtered_prompt_messages = self._handle_prompt_based_schema(
                 prompt_messages=filtered_prompt_messages,
             )
