@@ -21,13 +21,15 @@ class QueryFullLogsTool(BuiltinTool):
         start_time = tool_parameters.get("startTime")
         end_time = tool_parameters.get("endTime")
         query = tool_parameters.get("query")
+        page_num = tool_parameters.get('pageNum', 1)
+        page_size = tool_parameters.get('pageSize', 100)
 
         params = {
             "dataBase": "apo",
             "endTime": end_time,
             "isExternal": False,
-            "pageNum" : 1,
-            "pageSize" : 100,
+            "pageNum" : page_num,
+            "pageSize" : page_size,
             "query" : query,
             "startTime" : start_time,
             "tableName" : "raw_logs",

@@ -26,6 +26,30 @@ parameters:
     llm_description: Query condition(clickhouse where clause).
     form: llm
 
+  - name: pageNum
+    type: number
+    required: true
+    label: 
+      en_US: Current page
+      zh_Hans: 当前页
+    human_description:
+      en_US: Current page
+      zh_Hans: 当前页
+    llm_description: Current page
+    form: llm
+
+  - name: pageSize
+    type: number
+    required: true
+    label: 
+      en_US: Page size
+      zh_Hans: 页大小
+    human_description:
+      en_US: Page size
+      zh_Hans: 页大小
+    llm_description: Page size
+    form: llm
+
   - name: startTime
     type: number
     required: true
