@@ -270,21 +270,26 @@ class Executor:
         return headers
 
     def _validate_and_parse_response(self, response: httpx.Response) -> Response:
-        executor_response = Response(response)
+        try:
+            executor_response = Response(response)
 
-        threshold_size = (
-            dify_config.HTTP_REQUEST_NODE_MAX_BINARY_SIZE
-            if executor_response.is_file
-            else dify_config.HTTP_REQUEST_NODE_MAX_TEXT_SIZE
-        )
-        if executor_response.size > threshold_size:
-            raise ResponseSizeError(
-                f"{'File' if executor_response.is_file else 'Text'} size is too large,"
-                f" max size is {threshold_size / 1024 / 1024:.2f} MB,"
-                f" but current size is {executor_response.readable_size}."
+            threshold_size = (
+                dify_config.HTTP_REQUEST_NODE_MAX_BINARY_SIZE
+                if executor_response.is_file
+                else dify_config.HTTP_REQUEST_NODE_MAX_TEXT_SIZE
             )
+            if executor_response.size > threshold_size:
+                raise ResponseSizeError(
+                    f"{'File' if executor_response.is_file else 'Text'} size is too large,"
+                    f" max size is {threshold_size / 1024 / 1024:.2f} MB,"
+                    f" but current size is {executor_response.readable_size}."
+                )
 
-        return executor_response
+            return executor_response
+        except Exception as e:
+            # Ensure response is closed when an exception occurs
+            response.close()
+            raise e
 
     def _do_http_request(self, headers: dict[str, Any]) -> httpx.Response:
         """
@@ -321,21 +326,29 @@ class Executor:
             "follow_redirects": True,
             "max_retries": self.max_retries,
         }
-        # request_args = {k: v for k, v in request_args.items() if v is not None}
-        try:
-            response = getattr(ssrf_proxy, self.method.lower())(**request_args)
-        except (ssrf_proxy.MaxRetriesExceededError, httpx.RequestError) as e:
-            raise HttpRequestNodeError(str(e))
-        # FIXME: fix type ignore, this maybe httpx type issue
-        return response  # type: ignore
+
+        # Use with statement to ensure proper resource cleanup
+        with httpx.Client() as client:
+            try:
+                response = getattr(client, self.method.lower())(**request_args)
+                # Create a new Response object and copy required data
+                # This allows safe closure of the original response
+                copied_response = response.copy()
+                response.close()
+                return copied_response
+            except (ssrf_proxy.MaxRetriesExceededError, httpx.RequestError) as e:
+                raise HttpRequestNodeError(str(e))
 
     def invoke(self) -> Response:
-        # assemble headers
-        headers = self._assembling_headers()
-        # do http request
-        response = self._do_http_request(headers)
-        # validate response
-        return self._validate_and_parse_response(response)
+        response = None
+        try:
+            headers = self._assembling_headers()
+            response = self._do_http_request(headers)
+            return self._validate_and_parse_response(response)
+        except Exception as e:
+            if response is not None:
+                response.close()
+            raise e
 
     def to_log(self):
         url_parts = urlparse(self.url)
