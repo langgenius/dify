@@ -360,11 +360,14 @@ class KnowledgeRetrievalNode(LLMNode):
         sub_filters_result: ColumnElement
         temp_filters_result: ColumnElement
         if temp_filters and sub_filters:
-            temp_all_filters = sub_filters + temp_filters
             if logical_operator == "and":  # type: ignore
-                sub_filters_result = and_(*temp_all_filters)
+                all_sub_filters = and_(*sub_filters)
+                all_temp_filters = and_(*temp_filters)
+                sub_filters_result = and_(all_temp_filters, all_sub_filters)
             else:
-                sub_filters_result = or_(*temp_all_filters)
+                all_sub_filters = or_(*sub_filters)
+                all_temp_filters = or_(*temp_filters)
+                sub_filters_result = or_(all_sub_filters, all_temp_filters)
             filters.append(sub_filters_result)
             return filters
 
