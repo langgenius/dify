@@ -219,7 +219,7 @@ def email_password_login_enabled(view):
         if features.enable_email_password_login:
             return view(*args, **kwargs)
 
-        # otherwise, return 404
-        abort(404)
+        # otherwise, return 403
+        abort(403)
 
     return decorated
