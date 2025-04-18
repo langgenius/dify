@@ -30,6 +30,7 @@ dependencies = [
     "gunicorn~=23.0.0",
     "httpx[socks]~=0.27.0",
     "jieba==0.42.1",
+    "json-repair>=0.41.1",
     "langfuse~=2.51.3",
     "langsmith~=0.1.77",
     "mailchimp-transactional~=1.0.50",
@@ -163,10 +164,7 @@ storage = [
 ############################################################
 # [ Tools ] dependency group
 ############################################################
-tools = [
-    "cloudscraper~=1.2.71",
-    "nltk~=3.9.1",
-]
+tools = ["cloudscraper~=1.2.71", "nltk~=3.9.1"]
 
 ############################################################
 # [ VDB ] dependency group
