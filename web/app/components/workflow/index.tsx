@@ -129,7 +129,6 @@ export const Workflow: FC<WorkflowProps> = memo(({
   const { eventEmitter } = useEventEmitterContextContext()
 
   eventEmitter?.useSubscription((v: any) => {
-    console.log(v, 'eventEmitter')
     if (v.type === WORKFLOW_DATA_UPDATE) {
       setNodes(v.payload.nodes)
       setEdges(v.payload.edges)
