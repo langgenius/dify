@@ -25,8 +25,8 @@ import {
   useSelectionInteractions,
   useWorkflowReadOnly,
 } from '../hooks'
-import { useEdgesInteractions } from './use-edges-interactions'
-import { useNodesInteractions } from './use-nodes-interactions'
+import { useEdgesInteractionsWithoutSync } from './use-edges-interactions-without-sync'
+import { useNodesInteractionsWithoutSync } from './use-nodes-interactions-without-sync'
 import { useNodesSyncDraft } from './use-nodes-sync-draft'
 import { WorkflowHistoryEvent, useWorkflowHistory } from './use-workflow-history'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
@@ -37,8 +37,8 @@ import { useStore as useAppStore } from '@/app/components/app/store'
 
 export const useWorkflowInteractions = () => {
   const workflowStore = useWorkflowStore()
-  const { handleNodeCancelRunningStatus } = useNodesInteractions()
-  const { handleEdgeCancelRunningStatus } = useEdgesInteractions()
+  const { handleNodeCancelRunningStatus } = useNodesInteractionsWithoutSync()
+  const { handleEdgeCancelRunningStatus } = useEdgesInteractionsWithoutSync()
 
   const handleCancelDebugAndPreviewPanel = useCallback(() => {
     workflowStore.setState({

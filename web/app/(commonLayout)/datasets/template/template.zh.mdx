@@ -94,6 +94,9 @@ import { Row, Col, Properties, Property, Heading, SubProperty, PropertyInstructi
             - <code>semantic_search</code> 语义检索
             - <code>full_text_search</code> 全文检索
           - <code>reranking_enable</code> (bool) 是否开启rerank
+          - <code>reranking_mode</code> (String) 混合检索
+            - <code>weighted_score</code> 权重设置
+            - <code>reranking_model</code> Rerank 模型
           - <code>reranking_model</code> (object) Rerank 模型配置
             - <code>reranking_provider_name</code> (string) Rerank 模型的提供商
             - <code>reranking_model_name</code> (string) Rerank 模型的名称
@@ -591,7 +594,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, PropertyInstructi
       </Property>
       <Property name='retrieval_model' type='object' key='retrieval_model'>
         检索参数（选填，如不填，按照默认方式召回）
-        - <code>search_method</code> (text) 检索方法：以下三个关键字之一，必填
+        - <code>search_method</code> (text) 检索方法：以下四个关键字之一，必填
           - <code>keyword_search</code> 关键字检索
           - <code>semantic_search</code> 语义检索
           - <code>full_text_search</code> 全文检索
@@ -1817,7 +1820,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, PropertyInstructi
       </Property>
       <Property name='retrieval_model' type='object' key='retrieval_model'>
         检索参数（选填，如不填，按照默认方式召回）
-        - <code>search_method</code> (text) 检索方法：以下三个关键字之一，必填
+        - <code>search_method</code> (text) 检索方法：以下四个关键字之一，必填
           - <code>keyword_search</code> 关键字检索
           - <code>semantic_search</code> 语义检索
           - <code>full_text_search</code> 全文检索
