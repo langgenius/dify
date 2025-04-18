@@ -15,6 +15,7 @@ const Operator = ({ handleUndo, handleRedo }: OperatorProps) => {
   const bottomPanelRef = useRef<HTMLDivElement>(null)
   const workflowCanvasWidth = useStore(s => s.workflowCanvasWidth)
   const rightPanelWidth = useStore(s => s.rightPanelWidth)
+  const setBottomPanelWidth = useStore(s => s.setBottomPanelWidth)
   const setBottomPanelHeight = useStore(s => s.setBottomPanelHeight)
 
   const bottomPanelWidth = useMemo(() => {
@@ -28,7 +29,8 @@ const Operator = ({ handleUndo, handleRedo }: OperatorProps) => {
     if (bottomPanelRef.current) {
       const resizeContainerObserver = new ResizeObserver((entries) => {
         for (const entry of entries) {
-          const { blockSize } = entry.borderBoxSize[0]
+          const { inlineSize, blockSize } = entry.borderBoxSize[0]
+          setBottomPanelWidth(inlineSize)
           setBottomPanelHeight(blockSize)
         }
       })

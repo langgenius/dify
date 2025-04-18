@@ -1,4 +1,5 @@
 import type { FC } from 'react'
+import { useState } from 'react'
 import {
   RiCloseLine,
 } from '@remixicon/react'
@@ -8,10 +9,11 @@ import ActionButton from '@/app/components/base/action-button'
 import cn from '@/utils/classnames'
 
 const Panel: FC = () => {
+  const bottomPanelWidth = useStore(s => s.bottomPanelWidth)
   const setShowVariableInspectPanel = useStore(s => s.setShowVariableInspectPanel)
+  const [showLeftPanel, setShowLeftPanel] = useState(true)
 
-  const isEmpty = true
-
+  const isEmpty = false
   if (isEmpty) {
     return (
       <div className={cn('flex h-full flex-col')}>
@@ -29,7 +31,25 @@ const Panel: FC = () => {
   }
 
   return (
-    <div className={cn('relative pb-1')}>
+    <div className={cn('relative flex h-full')}>
+      {/* left */}
+      {showLeftPanel && <div className='absolute left-0 top-0 h-full w-full' onClick={() => setShowLeftPanel(false)}></div>}
+      <div
+        className={cn(
+          'w-60 shrink-0 border-r border-divider-burn',
+          bottomPanelWidth < 488
+            ? showLeftPanel
+              ? 'absolute left-0 top-0 h-full w-[217px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg backdrop-blur-sm'
+              : 'hidden'
+            : 'block',
+        )}
+      >
+        left
+      </div>
+      {/* right */}
+      <div className='grow'>
+        right
+      </div>
     </div>
   )
 }
