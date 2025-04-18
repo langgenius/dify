@@ -1,4 +1,3 @@
-
 def _parse_config(self, content: str) -> dict[str, str]:
     config: dict[str, str] = {}
     if not content:
@@ -11,16 +10,15 @@ def _parse_config(self, content: str) -> dict[str, str]:
 
         separator_index = -1
         for i, c in enumerate(cleaned_line):
-            if c in ('=', ':') and (i == 0 or cleaned_line[i-1] != '\\'):
+            if c in ('=', ':') and (i == 0 or cleaned_line[i - 1] != '\\'):
                 separator_index = i
                 break
 
         if separator_index == -1:
             continue
 
-
         key = cleaned_line[:separator_index].strip()
-        raw_value = cleaned_line[separator_index+1:].strip()
+        raw_value = cleaned_line[separator_index + 1:].strip()
 
         try:
             decoded_value = bytes(raw_value, 'utf-8').decode('unicode_escape')
