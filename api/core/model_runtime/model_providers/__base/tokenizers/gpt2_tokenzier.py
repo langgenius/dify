@@ -30,6 +30,8 @@ class GPT2Tokenizer:
     @staticmethod
     def get_encoder() -> Any:
         global _tokenizer, _lock
+        if _tokenizer is not None:
+            return _tokenizer
         with _lock:
             if _tokenizer is None:
                 # Try to use tiktoken to get the tokenizer because it is faster
