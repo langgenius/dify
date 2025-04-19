@@ -31,6 +31,7 @@ import { useOptions } from './hooks'
 import type { PickerBlockMenuOption } from './menu'
 import VarReferenceVars from '@/app/components/workflow/nodes/_base/components/variable/var-reference-vars'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
+import { KEY_ESCAPE_COMMAND } from 'lexical'
 
 type ComponentPickerProps = {
   triggerString: string
@@ -118,6 +119,11 @@ const ComponentPicker = ({
       editor.dispatchCommand(INSERT_WORKFLOW_VARIABLE_BLOCK_COMMAND, variables)
   }, [editor, checkForTriggerMatch, triggerString])
 
+  const dispatchEscapeCommand = () => {
+    const escapeEvent = new KeyboardEvent('keydown', { key: 'Escape' })
+    editor.dispatchCommand(KEY_ESCAPE_COMMAND, escapeEvent)
+  }
+
   const renderMenu = useCallback<MenuRenderFn<PickerBlockMenuOption>>((
     anchorElementRef,
     { options, selectedIndex, selectOptionAndCleanUp, setHighlightedIndex },
@@ -141,51 +147,56 @@ const ComponentPicker = ({
                   visibility: isPositioned ? 'visible' : 'hidden',
                 }}
                 ref={refs.setFloating}
+                data-testid="component-picker-container"
               >
                 {
-                  options.map((option, index) => (
-                    <Fragment key={option.key}>
-                      {
-                        // Divider
-                        index !== 0 && options.at(index - 1)?.group !== option.group && (
-                          <div className='my-1 h-px w-full -translate-x-1 bg-divider-subtle'></div>
-                        )
-                      }
-                      {option.renderMenuOption({
-                        queryString,
-                        isSelected: selectedIndex === index,
-                        onSelect: () => {
-                          selectOptionAndCleanUp(option)
-                        },
-                        onSetHighlight: () => {
-                          setHighlightedIndex(index)
-                        },
-                      })}
-                    </Fragment>
-                  ))
-                }
-                {
                   workflowVariableBlock?.show && (
-                    <>
-                      {
-                        (!!options.length) && (
-                          <div className='my-1 h-px w-full -translate-x-1 bg-divider-subtle'></div>
-                        )
-                      }
-                      <div className='p-1'>
-                        <VarReferenceVars
-                          hideSearch
-                          vars={workflowVariableOptions}
-                          onChange={(variables: string[]) => {
-                            handleSelectWorkflowVariable(variables)
-                          }}
-                          maxHeightClass='max-h-[34vh]'
-                          isSupportFileVar={isSupportFileVar}
-                        />
-                      </div>
-                    </>
+                    <div className='p-1'>
+                      <VarReferenceVars
+                        searchBoxClassName='mt-1'
+                        vars={workflowVariableOptions}
+                        onChange={(variables: string[]) => {
+                          setTimeout(() => handleSelectWorkflowVariable(variables), 0)
+                        }}
+                        maxHeightClass='max-h-[34vh]'
+                        isSupportFileVar={isSupportFileVar}
+                        onClose={dispatchEscapeCommand}
+                        onBlur={() => {
+                          setTimeout(dispatchEscapeCommand, 100)
+                        }}
+                      />
+                    </div>
                   )
                 }
+                {
+                  workflowVariableBlock?.show && !!options.length && (
+                    <div className='my-1 h-px w-full -translate-x-1 bg-divider-subtle'></div>
+                  )
+                }
+                <div data-testid="options-list">
+                  {
+                    options.map((option, index) => (
+                      <Fragment key={option.key}>
+                        {
+                          // Divider
+                          index !== 0 && options.at(index - 1)?.group !== option.group && (
+                            <div className='my-1 h-px w-full -translate-x-1 bg-divider-subtle'></div>
+                          )
+                        }
+                        {option.renderMenuOption({
+                          queryString,
+                          isSelected: selectedIndex === index,
+                          onSelect: () => {
+                            selectOptionAndCleanUp(option)
+                          },
+                          onSetHighlight: () => {
+                            setHighlightedIndex(index)
+                          },
+                        })}
+                      </Fragment>
+                    ))
+                  }
+                </div>
               </div>
             </div>,
             anchorElementRef.current,
