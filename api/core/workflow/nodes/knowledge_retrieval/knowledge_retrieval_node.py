@@ -264,6 +264,11 @@ class KnowledgeRetrievalNode(LLMNode):
                     "data_source_type": "external",
                     "retriever_from": "workflow",
                     "score": item.metadata.get("score"),
+                    "extras": {
+					    k: v
+					    for k, v in (item.metadata or {}).items()
+					    if k not in {"dataset_id", "dataset_name", "title", "score"}
+					}
                 },
                 "title": item.metadata.get("title"),
                 "content": item.page_content,
