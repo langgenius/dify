@@ -10,6 +10,8 @@ RUN npm install -g pnpm@10.8.0
 ENV PNPM_HOME="/pnpm"
 ENV PATH="$PNPM_HOME:$PATH"
 
+# if you located in China, you can use taobao mirror to speed up
+# RUN pnpm config set registry https://registry.npmmirror.com/
 
 # install packages
 FROM base AS packages

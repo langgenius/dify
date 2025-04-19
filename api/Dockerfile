@@ -5,21 +5,24 @@ WORKDIR /app/api
 
 # Install uv
 ENV UV_VERSION=0.6.14
+# if you are located in China,you can add the sentence to acceding uv pip tool
+# ENV UV_DEFAULT_INDEX="https://mirrors.aliyun.com/pypi/simple/"
 
-RUN pip install --no-cache-dir uv==${UV_VERSION}
+RUN python -m pip install -i https://mirrors.tuna.tsinghua.edu.cn/pypi/web/simple --upgrade pip
+RUN pip install --no-cache-dir uv==${UV_VERSION} -i https://mirrors.aliyun.com/pypi/simple/
 
+# if you meet some error about apt,you can try to use sources.list config apt images
+# RUN rm -rf /etc/apt/source* 
+# ADD sources.list /etc/apt/
 
 FROM base AS packages
-
-# if you located in China, you can use aliyun mirror to speed up
-# RUN sed -i 's@deb.debian.org@mirrors.aliyun.com@g' /etc/apt/sources.list.d/debian.sources
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends gcc g++ libc-dev libffi-dev libgmp-dev libmpfr-dev libmpc-dev
 
 # Install Python dependencies
 COPY pyproject.toml uv.lock ./
-RUN uv sync --locked
+RUN uv lock && uv sync --locked
 
 # production stage
 FROM base AS production
