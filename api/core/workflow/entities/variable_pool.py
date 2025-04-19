@@ -168,6 +168,20 @@ class VariablePool(BaseModel):
                 segments.append(variable_factory.build_segment(part))
         return SegmentGroup(value=segments)
 
+    def convert_template_escape(self, template: str, /):
+        parts = VARIABLE_PATTERN.split(template)
+        segments = []
+        for part in filter(lambda x: x, parts):
+            if "." in part and (variable := self.get(part.split("."))):
+                if isinstance(variable.value, str):
+                    escape_string = variable.value.replace('"', '\\"').replace('\n', '\\n')
+                    segments.append(variable_factory.build_segment(escape_string))
+                else:
+                    segments.append(variable)
+            else:
+                segments.append(variable_factory.build_segment(part))
+        return SegmentGroup(value=segments)
+
     def get_file(self, selector: Sequence[str], /) -> FileSegment | None:
         segment = self.get(selector)
         if isinstance(segment, FileSegment):
