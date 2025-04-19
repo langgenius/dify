@@ -5,11 +5,6 @@ model_type: llm
 features:
   - agent-thought
   - vision
-  - tool-call
-  - stream-tool-call
-  - document
-  - video
-  - audio
 model_properties:
   mode: chat
   context_size: 1048576
@@ -20,20 +15,21 @@ parameter_rules:
     use_template: top_p
   - name: top_k
     label:
-      zh_Hans: 取样数量
       en_US: Top k
     type: int
     help:
-      zh_Hans: 仅从每个后续标记的前 K 个选项中采样。
       en_US: Only sample from the top K options for each subsequent token.
     required: false
+  - name: presence_penalty
+    use_template: presence_penalty
+  - name: frequency_penalty
+    use_template: frequency_penalty
   - name: max_output_tokens
     use_template: max_tokens
+    required: true
     default: 8192
     min: 1
     max: 8192
-  - name: json_schema
-    use_template: json_schema
 pricing:
   input: '0.00'
   output: '0.00'
