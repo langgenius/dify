@@ -4,7 +4,7 @@ from werkzeug.exceptions import Forbidden, NotFound
 
 import services.dataset_service
 from controllers.service_api import api
-from controllers.service_api.dataset.error import DatasetInUseError, DatasetNameDuplicateError
+from controllers.service_api.dataset.error import DatasetInUseError, DatasetNameDuplicateError, InvalidActionError
 from controllers.service_api.wraps import DatasetApiResource
 from core.model_runtime.entities.model_entities import ModelType
 from core.plugin.entities.plugin import ModelProviderID
@@ -12,7 +12,7 @@ from core.provider_manager import ProviderManager
 from fields.dataset_fields import dataset_detail_fields
 from libs.login import current_user
 from models.dataset import Dataset, DatasetPermissionEnum
-from services.dataset_service import DatasetPermissionService, DatasetService
+from services.dataset_service import DatasetPermissionService, DatasetService, DocumentService
 from services.entities.knowledge_entities.knowledge_entities import RetrievalModel
 
 
@@ -320,5 +320,56 @@ class DatasetApi(DatasetApiResource):
             raise DatasetInUseError()
 
 
+class DocumentStatusApi(DatasetApiResource):
+    """Resource for batch document status operations."""
+
+    def patch(self, tenant_id, dataset_id, action):
+        """
+        Batch update document status.
+
+        Args:
+            tenant_id: tenant id
+            dataset_id: dataset id
+            action: action to perform (enable, disable, archive, un_archive)
+
+        Returns:
+            dict: A dictionary with a key 'result' and a value 'success'
+            int: HTTP status code 200 indicating that the operation was successful.
+
+        Raises:
+            NotFound: If the dataset with the given ID does not exist.
+            Forbidden: If the user does not have permission.
+            InvalidActionError: If the action is invalid or cannot be performed.
+        """
+        dataset_id_str = str(dataset_id)
+        dataset = DatasetService.get_dataset(dataset_id_str)
+
+        if dataset is None:
+            raise NotFound("Dataset not found.")
+
+        # Check user's permission
+        try:
+            DatasetService.check_dataset_permission(dataset, current_user)
+        except services.errors.account.NoPermissionError as e:
+            raise Forbidden(str(e))
+
+        # Check dataset model setting
+        DatasetService.check_dataset_model_setting(dataset)
+
+        # Get document IDs from request body
+        data = request.get_json()
+        document_ids = data.get("document_ids", [])
+
+        try:
+            DocumentService.batch_update_document_status(dataset, document_ids, action, current_user)
+        except services.errors.document.DocumentIndexingError as e:
+            raise InvalidActionError(str(e))
+        except ValueError as e:
+            raise InvalidActionError(str(e))
+
+        return {"result": "success"}, 200
+
+
 api.add_resource(DatasetListApi, "/datasets")
 api.add_resource(DatasetApi, "/datasets/<uuid:dataset_id>")
+api.add_resource(DocumentStatusApi, "/datasets/<uuid:dataset_id>/documents/status/<string:action>")

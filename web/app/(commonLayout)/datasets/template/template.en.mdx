@@ -1127,6 +1127,63 @@ import { Row, Col, Properties, Property, Heading, SubProperty, PropertyInstructi
 <hr className='ml-0 mr-0' />
 
 <Heading
+  url='/datasets/{dataset_id}/documents/status/{action}/batch'
+  method='PATCH'
+  title='Update Document Status'
+  name='#batch_document_status'
+/>
+<Row>
+  <Col>
+    ### Path
+    <Properties>
+      <Property name='dataset_id' type='string' key='dataset_id'>
+        Knowledge ID
+      </Property>
+      <Property name='action' type='string' key='action'>
+        - `enable` - Enable document
+        - `disable` - Disable document
+        - `archive` - Archive document
+        - `un_archive` - Unarchive document
+      </Property>
+    </Properties>
+
+    ### Request Body
+    <Properties>
+      <Property name='document_ids' type='array[string]' key='document_ids'>
+        List of document IDs
+      </Property>
+    </Properties>
+  </Col>
+  <Col sticky>
+    <CodeGroup
+      title="Request"
+      tag="PATCH"
+      label="/datasets/{dataset_id}/documents/status/{action}/batch"
+      targetCode={`curl --location --request PATCH '${props.apiBaseUrl}/datasets/{dataset_id}/documents/status/{action}/batch' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{\n    "document_ids": ["doc-id-1", "doc-id-2"]\n}'`}
+    >
+    ```bash {{ title: 'cURL' }}
+    curl --location --request PATCH '${props.apiBaseUrl}/datasets/{dataset_id}/documents/status/{action}/batch' \
+    --header 'Authorization: Bearer {api_key}' \
+    --header 'Content-Type: application/json' \
+    --data-raw '{
+        "document_ids": ["doc-id-1", "doc-id-2"]
+    }'
+    ```
+    </CodeGroup>
+
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {
+      "result": "success"
+    }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
+<hr className='ml-0 mr-0' />
+
+<Heading
   url='/datasets/{dataset_id}/documents/{document_id}/segments'
   method='POST'
   title='Add Chunks to a Document'
