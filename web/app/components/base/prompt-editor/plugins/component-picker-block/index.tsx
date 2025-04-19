@@ -119,10 +119,12 @@ const ComponentPicker = ({
       editor.dispatchCommand(INSERT_WORKFLOW_VARIABLE_BLOCK_COMMAND, variables)
   }, [editor, checkForTriggerMatch, triggerString])
 
-  const dispatchEscapeCommand = () => {
-    const escapeEvent = new KeyboardEvent('keydown', { key: 'Escape' })
-    editor.dispatchCommand(KEY_ESCAPE_COMMAND, escapeEvent)
-  }
+  const handleClose = useCallback(() => {
+    ReactDOM.flushSync(() => {
+      const escapeEvent = new KeyboardEvent('keydown', { key: 'Escape' })
+      editor.dispatchCommand(KEY_ESCAPE_COMMAND, escapeEvent)
+    })
+  }, [editor])
 
   const renderMenu = useCallback<MenuRenderFn<PickerBlockMenuOption>>((
     anchorElementRef,
@@ -156,14 +158,12 @@ const ComponentPicker = ({
                         searchBoxClassName='mt-1'
                         vars={workflowVariableOptions}
                         onChange={(variables: string[]) => {
-                          setTimeout(() => handleSelectWorkflowVariable(variables), 0)
+                          handleSelectWorkflowVariable(variables)
                         }}
                         maxHeightClass='max-h-[34vh]'
                         isSupportFileVar={isSupportFileVar}
-                        onClose={dispatchEscapeCommand}
-                        onBlur={() => {
-                          setTimeout(dispatchEscapeCommand, 100)
-                        }}
+                        onClose={handleClose}
+                        onBlur={handleClose}
                       />
                     </div>
                   )
@@ -204,7 +204,7 @@ const ComponentPicker = ({
         }
       </>
     )
-  }, [allFlattenOptions.length, workflowVariableBlock?.show, refs, isPositioned, floatingStyles, queryString, workflowVariableOptions, handleSelectWorkflowVariable])
+  }, [allFlattenOptions.length, workflowVariableBlock?.show, refs, isPositioned, floatingStyles, queryString, workflowVariableOptions, handleSelectWorkflowVariable, handleClose, isSupportFileVar])
 
   return (
     <LexicalTypeaheadMenuPlugin
