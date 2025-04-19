@@ -103,6 +103,9 @@ importers:
       '@tanstack/react-query-devtools':
         specifier: ^5.60.5
         version: 5.72.2(@tanstack/react-query@5.72.2(react@19.0.0))(react@19.0.0)
+      abcjs:
+        specifier: ^6.4.4
+        version: 6.4.4
       ahooks:
         specifier: ^3.8.4
         version: 3.8.4(react@19.0.0)
@@ -3415,6 +3418,9 @@ packages:
 
   abbrev@1.1.1:
     resolution: {integrity: sha512-nne9/IiQ/hzIhY6pdDnbBtz7DjPTKrY00P/zvPSm5pOFkl6xuGrGnXn/VtTNNfNtAfZ9/1RtehkszU9qcTii0Q==}
+
+  abcjs@6.4.4:
+    resolution: {integrity: sha512-dT3Z2vb8yihbiPMzSoup0JOcvO2je4qpFNlTD+kS5VBelE3AASAs18dS5qeMWkZeqCz7kI/hz62B2lpMDugWLA==}
 
   abort-controller@3.0.0:
     resolution: {integrity: sha512-h8lQ8tacZYnR3vNQTgibj+tODHI5/+l06Au2Pcriv/Gmet0eaj4TwWH41sO9wnHDiQsEj19q0drzdWdeAHtweg==}
@@ -12126,6 +12132,8 @@ snapshots:
 
   abbrev@1.1.1:
     optional: true
+
+  abcjs@6.4.4: {}
 
   abort-controller@3.0.0:
     dependencies:
