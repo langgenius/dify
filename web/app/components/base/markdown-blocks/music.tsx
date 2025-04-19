@@ -27,7 +27,6 @@ const MarkdownMusic = ({ children }: { children: React.ReactNode }) => {
       <div ref={containerRef} />
       <div
         ref={controlsRef}
-        style={{ marginTop: '10px' }}
       />
     </div>
   )
