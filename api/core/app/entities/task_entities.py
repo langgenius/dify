@@ -148,6 +148,7 @@ class MessageReplaceStreamResponse(StreamResponse):
 
     event: StreamEvent = StreamEvent.MESSAGE_REPLACE
     answer: str
+    reason: str
 
 
 class AgentThoughtStreamResponse(StreamResponse):

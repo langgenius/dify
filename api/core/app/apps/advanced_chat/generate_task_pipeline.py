@@ -684,7 +684,9 @@ class AdvancedChatAppGenerateTaskPipeline:
                 )
             elif isinstance(event, QueueMessageReplaceEvent):
                 # published by moderation
-                yield self._message_cycle_manager._message_replace_to_stream_response(answer=event.text)
+                yield self._message_cycle_manager._message_replace_to_stream_response(
+                    answer=event.text, reason=event.reason
+                )
             elif isinstance(event, QueueAdvancedChatMessageEndEvent):
                 if not graph_runtime_state:
                     raise ValueError("graph runtime state not initialized.")
@@ -695,7 +697,8 @@ class AdvancedChatAppGenerateTaskPipeline:
                 if output_moderation_answer:
                     self._task_state.answer = output_moderation_answer
                     yield self._message_cycle_manager._message_replace_to_stream_response(
-                        answer=output_moderation_answer
+                        answer=output_moderation_answer,
+                        reason=QueueMessageReplaceEvent.MessageReplaceReason.OUTPUT_MODERATION,
                     )
 
                 # Save message

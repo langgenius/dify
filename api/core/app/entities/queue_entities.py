@@ -264,8 +264,16 @@ class QueueMessageReplaceEvent(AppQueueEvent):
     QueueMessageReplaceEvent entity
     """
 
+    class MessageReplaceReason(StrEnum):
+        """
+        Reason for message replace event
+        """
+
+        OUTPUT_MODERATION = "output_moderation"
+
     event: QueueEvent = QueueEvent.MESSAGE_REPLACE
     text: str
+    reason: str
 
 
 class QueueRetrieverResourcesEvent(AppQueueEvent):
