@@ -24,6 +24,7 @@ services:
     volumes:
       # Mount the storage directory to the container, for storing user files.
       - ./volumes/app/storage:/app/api/storage
+      - ./volumes/app/logs:/app/logs
     networks:
       - ssrf_proxy_network
       - default
@@ -51,6 +52,7 @@ services:
     volumes:
       # Mount the storage directory to the container, for storing user files.
       - ./volumes/app/storage:/app/api/storage
+      - ./volumes/app/logs:/app/logs
     networks:
       - ssrf_proxy_network
       - default
