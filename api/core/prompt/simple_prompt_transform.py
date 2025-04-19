@@ -11,7 +11,7 @@ from core.memory.token_buffer_memory import TokenBufferMemory
 from core.model_runtime.entities.message_entities import (
     ImagePromptMessageContent,
     PromptMessage,
-    PromptMessageContent,
+    PromptMessageContentUnionTypes,
     SystemPromptMessage,
     TextPromptMessageContent,
     UserPromptMessage,
@@ -277,7 +277,7 @@ class SimplePromptTransform(PromptTransform):
         image_detail_config: Optional[ImagePromptMessageContent.DETAIL] = None,
     ) -> UserPromptMessage:
         if files:
-            prompt_message_contents: list[PromptMessageContent] = []
+            prompt_message_contents: list[PromptMessageContentUnionTypes] = []
             prompt_message_contents.append(TextPromptMessageContent(data=prompt))
             for file in files:
                 prompt_message_contents.append(
