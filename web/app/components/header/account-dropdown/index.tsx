@@ -14,6 +14,7 @@ import {
   RiMap2Line,
   RiSettings3Line,
   RiStarLine,
+  RiTShirt2Line,
 } from '@remixicon/react'
 import Link from 'next/link'
 import { Menu, MenuButton, MenuItem, MenuItems, Transition } from '@headlessui/react'
@@ -25,6 +26,7 @@ import Compliance from './compliance'
 import PremiumBadge from '@/app/components/base/premium-badge'
 import I18n from '@/context/i18n'
 import Avatar from '@/app/components/base/avatar'
+import ThemeSwitcher from '@/app/components/base/theme-switcher'
 import { logout } from '@/service/common'
 import AppContext, { useAppContext } from '@/context/app-context'
 import { useProviderContext } from '@/context/provider-context'
@@ -83,8 +85,8 @@ export default function AppSelector() {
                 <MenuItems
                   className="
                     absolute right-0 mt-1.5 w-60 max-w-80
-                    origin-top-right divide-y divide-divider-subtle rounded-xl bg-components-panel-bg-blur
-                    shadow-lg focus:outline-none
+                    origin-top-right divide-y divide-divider-subtle rounded-xl bg-components-panel-bg-blur shadow-lg
+                    backdrop-blur-sm focus:outline-none
                   "
                 >
                   <MenuItem disabled>
@@ -189,6 +191,15 @@ export default function AppSelector() {
                       )
                     }
                   </div>
+                  <MenuItem disabled>
+                    <div className='p-1'>
+                      <div className={cn(itemClassName, 'hover:bg-transparent')}>
+                        <RiTShirt2Line className='size-4 shrink-0 text-text-tertiary' />
+                        <div className='system-md-regular grow px-1 text-text-secondary'>{t('common.theme.theme')}</div>
+                        <ThemeSwitcher/>
+                      </div>
+                    </div>
+                  </MenuItem>
                   <MenuItem>
                     <div className='p-1' onClick={() => handleLogout()}>
                       <div
