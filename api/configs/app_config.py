@@ -13,6 +13,7 @@ from .observability import ObservabilityConfig
 from .packaging import PackagingInfo
 from .remote_settings_sources import RemoteSettingsSource, RemoteSettingsSourceConfig, RemoteSettingsSourceName
 from .remote_settings_sources.apollo import ApolloSettingsSource
+from .remote_settings_sources.nacos import NacosSettingsSource
 
 logger = logging.getLogger(__name__)
 
@@ -34,6 +35,8 @@ class RemoteSettingsSourceFactory(PydanticBaseSettingsSource):
         match remote_source_name:
             case RemoteSettingsSourceName.APOLLO:
                 remote_source = ApolloSettingsSource(current_state)
+            case RemoteSettingsSourceName.NACOS:
+                remote_source = NacosSettingsSource(current_state)
             case _:
                 logger.warning(f"Unsupported remote source: {remote_source_name}")
                 return {}
