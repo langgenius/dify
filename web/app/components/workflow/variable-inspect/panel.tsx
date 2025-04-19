@@ -5,6 +5,7 @@ import {
 } from '@remixicon/react'
 import { useStore } from '../store'
 import Empty from './empty'
+import Left from './left'
 import Right from './right'
 import ActionButton from '@/app/components/base/action-button'
 import cn from '@/utils/classnames'
@@ -45,7 +46,7 @@ const Panel: FC = () => {
             : 'block',
         )}
       >
-        left
+        <Left handleMenuClick={setShowLeftPanel} />
       </div>
       {/* right */}
       <div className='w-0 grow'>
