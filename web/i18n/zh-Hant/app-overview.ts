@@ -55,6 +55,7 @@ const translation = {
         chatColorThemeDesc: '設定聊天機器人的顏色主題',
         chatColorThemeInverted: '反轉',
         invalidHexMessage: '無效的十六進制值',
+        invalidPrivacyPolicy: '無效的隱私政策連結，請使用以 http 或 https 開頭的有效連結',
         more: {
           entry: '展示更多設定',
           copyright: '版權',
