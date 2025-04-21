@@ -40,7 +40,9 @@ class SQLAlchemyWorkflowNodeExecutionRepository:
         elif isinstance(session_factory, sessionmaker):
             self._session_factory = session_factory
         else:
-            raise ValueError(f"Invalid session_factory type {type(session_factory).__name__}; expected sessionmaker or Engine")
+            raise ValueError(
+                f"Invalid session_factory type {type(session_factory).__name__}; expected sessionmaker or Engine"
+            )
 
         self._tenant_id = tenant_id
         self._app_id = app_id
