@@ -3,7 +3,7 @@ from functools import wraps
 
 from flask_login import current_user  # type: ignore
 from flask_restful import Resource  # type: ignore
-from werkzeug.exceptions import NotFound, Unauthorized
+from werkzeug.exceptions import NotFound
 
 from controllers.console.wraps import account_initialization_required
 from extensions.ext_database import db
@@ -67,7 +67,7 @@ def user_allowed_to_access_app(view=None):
                 )
                 logging.info(f"res: {res}")
                 if not res:
-                    raise Unauthorized("User not allowed to access this app")
+                    raise ValueError("User not allowed to access this app")
 
             return view(installed_app, *args, **kwargs)
 
