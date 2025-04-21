@@ -198,6 +198,10 @@ const translation = {
     },
     updateSuccess: 'Update successfully',
   },
+  publishApp: {
+    title: 'Who can access web app',
+    notSet: 'Not set',
+  },
 }
 
 export default translation

@@ -199,6 +199,10 @@ const translation = {
     },
     updateSuccess: '更新成功',
   },
+  publishApp: {
+    title: '谁可以访问我的应用',
+    notSet: '未设置',
+  },
 }
 
 export default translation
