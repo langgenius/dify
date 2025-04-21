@@ -2,6 +2,7 @@ import { useMemo } from 'react'
 import type { HeaderProps } from '@/app/components/workflow/header'
 import Header from '@/app/components/workflow/header'
 import InputFieldButton from './input-field-button'
+import Publisher from './publisher'
 
 const RagPipelineHeader = () => {
   const headerProps: HeaderProps = useMemo(() => {
@@ -9,6 +10,7 @@ const RagPipelineHeader = () => {
       normal: {
         components: {
           left: <InputFieldButton />,
+          middle: <Publisher />,
         },
       },
     }
