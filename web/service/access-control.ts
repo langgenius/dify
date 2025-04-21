@@ -11,6 +11,7 @@ export const useAppWhiteListSubjects = (appId: string | undefined, enabled: bool
     queryKey: [NAME_SPACE, 'app-whitelist-subjects', appId],
     queryFn: () => get<{ groups: AccessControlGroup[]; members: AccessControlAccount[] }>(`/enterprise/webapp/app/subjects?appId=${appId}`),
     enabled: !!appId && enabled,
+    staleTime: 0,
     gcTime: 0,
   })
 }
@@ -71,15 +72,17 @@ export const useGetAppAccessMode = ({ appId, isInstalledApp = true }: { appId?: 
     queryKey: [NAME_SPACE, 'app-access-mode', appId],
     queryFn: () => getAppAccessMode(appId!, isInstalledApp),
     enabled: !!appId,
+    staleTime: 0,
     gcTime: 0,
   })
 }
 
-export const useGetUserCanAccessApp = ({ appId, isInstalledApp = true }: { appId?: string; isInstalledApp?: boolean }) => {
+export const useGetUserCanAccessApp = ({ appId, isInstalledApp = true, enabled = true }: { appId?: string; isInstalledApp?: boolean; enabled?: boolean }) => {
   return useQuery({
     queryKey: [NAME_SPACE, 'user-can-access-app', appId],
     queryFn: () => getUserCanAccess(appId!, isInstalledApp),
-    enabled: !!appId,
+    enabled: !!appId && enabled,
+    staleTime: 0,
     gcTime: 0,
   })
 }

@@ -182,13 +182,13 @@ const translation = {
     accessLabel: '配置谁有访问权限',
     accessItems: {
       anyone: '任何人',
-      specific: '特定组或用户',
+      specific: '特定组或成员',
       organization: '组织内的任何人',
     },
     groups_one: '{{count}} 个组',
     groups_other: '{{count}} 个组',
-    members_one: '{{count}} 个人',
-    members_other: '{{count}} 个人',
+    members_one: '{{count}} 个成员',
+    members_other: '{{count}} 个成员',
     noGroupsOrMembers: '没有添加组或成员',
     webAppSSONotEnabledTip: '请联系管理员启用 web app SSO 身份验证方式。',
     operateGroupAndMember: {
@@ -202,7 +202,9 @@ const translation = {
   publishApp: {
     title: '谁可以访问我的应用',
     notSet: '未设置',
+    notSetDesc: '目前没有人可以访问 web app，请设置权限。',
   },
+  noAccessPermission: '没有权限访问 web app ',
 }
 
 export default translation

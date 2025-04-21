@@ -189,6 +189,36 @@ const translation = {
     searchAllTemplate: 'すべてのテンプレートを検索...',
   },
   showMyCreatedAppsOnly: '自分が作成したアプリ',
+  accessControl: 'Webアプリアクセス制御',
+  accessControlDialog: {
+    title: 'Webアプリアクセス権',
+    description: 'Webアプリのアクセス権を設定します',
+    accessLabel: 'アクセス権限を持つ人を構成する',
+    accessItems: {
+      anyone: '誰でも',
+      specific: '特定のグループまたはユーザー',
+      organization: '組織内の誰でも',
+    },
+    groups_one: '{{count}} グループ',
+    groups_other: '{{count}} グループ',
+    members_one: '{{count}} メンバー',
+    members_other: '{{count}} メンバー',
+    noGroupsOrMembers: 'グループやメンバーが追加されていません',
+    webAppSSONotEnabledTip: '管理者に連絡して、WebアプリSSO認証方法を有効にしてください。',
+    operateGroupAndMember: {
+      searchPlaceholder: 'グループやメンバーを検索',
+      allMembers: 'すべてのメンバー',
+      expand: '展開',
+      noResult: '結果がありません',
+    },
+    updateSuccess: '更新が成功しました',
+  },
+  publishApp: {
+    title: '私のアプリにアクセスできる人',
+    notSet: '未設定',
+    notSetDesc: '現在、誰もWebアプリにアクセスできません。アクセス権を設定してください。',
+  },
+  noAccessPermission: 'Webアプリにアクセス権限がありません',
 }
 
 export default translation

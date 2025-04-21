@@ -201,8 +201,9 @@ const translation = {
   publishApp: {
     title: 'Who can access web app',
     notSet: 'Not set',
+    notSetDesc: 'Currently nobody can access the web app. Please set permissions.',
   },
-  noAccessPermission: 'No access permission',
+  noAccessPermission: 'No permission to access web app',
 }
 
 export default translation

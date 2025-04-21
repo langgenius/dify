@@ -32,7 +32,7 @@ import { FileText } from '@/app/components/base/icons/src/vender/line/files'
 import WorkflowToolConfigureButton from '@/app/components/tools/workflow-tool/configure-button'
 import type { InputVar } from '@/app/components/workflow/types'
 import { appDefaultIconBackground } from '@/config'
-import { useAppWhiteListSubjects, useGetAppAccessMode, useGetUserCanAccessApp } from '@/service/access-control'
+import { useAppWhiteListSubjects, useGetUserCanAccessApp } from '@/service/access-control'
 import { AccessMode } from '@/models/access-control'
 import { fetchAppDetail } from '@/service/apps'
 
@@ -77,23 +77,27 @@ const AppPublisher = ({
   const { app_base_url: appBaseURL = '', access_token: accessToken = '' } = appDetail?.site ?? {}
   const appMode = (appDetail?.mode !== 'completion' && appDetail?.mode !== 'workflow') ? 'chat' : appDetail.mode
   const appURL = `${appBaseURL}/${appMode}/${accessToken}`
-  const { data: appAccessMode, isPending: isGettingAppAccessMode } = useGetAppAccessMode({ appId: appDetail?.id })
-  const { data: useCanAccessApp, isPending: isGettingUserCanAccessApp } = useGetUserCanAccessApp({ appId: appDetail?.id })
-  const { data: appAccessSubjects, isPending: isGettingAppWhiteListSubjects } = useAppWhiteListSubjects(appDetail?.id, open)
+  const { data: useCanAccessApp, isPending: isGettingUserCanAccessApp, refetch } = useGetUserCanAccessApp({ appId: appDetail?.id, enabled: false })
+  const { data: appAccessSubjects, isPending: isGettingAppWhiteListSubjects } = useAppWhiteListSubjects(appDetail?.id, open && appDetail?.access_mode === AccessMode.SPECIFIC_GROUPS_MEMBERS)
+
+  useEffect(() => {
+    if (open && appDetail)
+      refetch()
+  }, [open, appDetail, refetch])
 
   const [showAppAccessControl, setShowAppAccessControl] = useState(false)
-  const [isAppAccessSet, setIsAppAccessSet] = useState(false)
+  const [isAppAccessSet, setIsAppAccessSet] = useState(true)
   useEffect(() => {
-    if (appAccessMode && appAccessSubjects) {
-      if (appAccessMode.accessMode === AccessMode.SPECIFIC_GROUPS_MEMBERS && appAccessSubjects.groups?.length > 0 && appAccessSubjects.members?.length > 0)
+    if (appDetail && appAccessSubjects) {
+      if (appDetail.access_mode === AccessMode.SPECIFIC_GROUPS_MEMBERS && appAccessSubjects.groups?.length === 0 && appAccessSubjects.members?.length === 0)
         setIsAppAccessSet(false)
       else
         setIsAppAccessSet(true)
     }
     else {
-      setIsAppAccessSet(false)
+      setIsAppAccessSet(true)
     }
-  }, [appAccessSubjects, appAccessMode])
+  }, [appAccessSubjects, appDetail])
   const language = useGetLanguage()
   const formatTimeFromNow = useCallback((time: number) => {
     return dayjs(time).locale(language === 'zh_Hans' ? 'zh-cn' : language.replace('_', '-')).fromNow()
@@ -228,10 +232,10 @@ const AppPublisher = ({
               )
             }
           </div>
-          {(isGettingAppAccessMode || isGettingUserCanAccessApp || isGettingAppWhiteListSubjects)
-            ? <div><Loading /></div>
+          {(isGettingUserCanAccessApp || isGettingAppWhiteListSubjects)
+            ? <div className='py-2'><Loading /></div>
             : <>
-              <Divider />
+              <Divider className='my-0' />
               <div className='p-4 pt-3'>
                 <div className='flex items-center h-6'>
                   <p className='system-xs-medium text-text-tertiary'>{t('app.publishApp.title')}</p>
@@ -242,15 +246,16 @@ const AppPublisher = ({
                   }}>
                   <div className='grow flex items-center gap-x-1.5 pr-1'>
                     <RiLockLine className='w-4 h-4 text-text-secondary shrink-0' />
-                    {appAccessMode?.accessMode === AccessMode.ORGANIZATION && <p className='system-xs-medium text-text-secondary'>{t('app.accessControlDialog.accessItems.organization')}</p>}
-                    {appAccessMode?.accessMode === AccessMode.SPECIFIC_GROUPS_MEMBERS && <p className='system-xs-medium text-text-secondary'>{t('app.accessControlDialog.accessItems.specific')}</p>}
-                    {appAccessMode?.accessMode === AccessMode.PUBLIC && <p className='system-xs-medium text-text-secondary'>{t('app.accessControlDialog.accessItems.anyone')}</p>}
+                    {appDetail?.access_mode === AccessMode.ORGANIZATION && <p className='system-xs-medium text-text-secondary'>{t('app.accessControlDialog.accessItems.organization')}</p>}
+                    {appDetail?.access_mode === AccessMode.SPECIFIC_GROUPS_MEMBERS && <p className='system-xs-medium text-text-secondary'>{t('app.accessControlDialog.accessItems.specific')}</p>}
+                    {appDetail?.access_mode === AccessMode.PUBLIC && <p className='system-xs-medium text-text-secondary'>{t('app.accessControlDialog.accessItems.anyone')}</p>}
                   </div>
                   {!isAppAccessSet && <p className='shrink-0 system-xs-regular text-text-tertiary'>{t('app.publishApp.notSet')}</p>}
                   <div className='shrink-0 w-4 h-4 flex items-center justify-center'>
                     <RiArrowRightSLine className='w-4 h-4 text-text-quaternary' />
                   </div>
                 </div>
+                {!isAppAccessSet && <p className='system-xs-regular text-text-warning mt-1'>{t('app.publishApp.notSetDesc')}</p>}
               </div>
               <div className='p-4 pt-3 border-t-[0.5px] border-t-black/5 flex flex-col gap-y-1'>
                 <Tooltip triggerClassName='flex' disabled={useCanAccessApp?.result} popupContent={t('app.noAccessPermission')} asChild={false}>
