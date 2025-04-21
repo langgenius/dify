@@ -96,5 +96,5 @@ class AppWebAuthPermission(Resource):
 api.add_resource(AppParameterApi, "/parameters")
 api.add_resource(AppMeta, "/meta")
 # webapp auth apis
-api.add_resource(AppAccessMode, "/webapp/access-mode")
-api.add_resource(AppWebAuthPermission, "/webapp/permission")
+api.add_resource(AppAccessMode, "/enterprise/webapp/app/access-mode")
+api.add_resource(AppWebAuthPermission, "/enterprise/webapp/permission")
