@@ -134,7 +134,7 @@ const translation = {
     install: 'インストール',
     dropPluginToInstall: 'プラグインパッケージをここにドロップしてインストールします',
     installPlugin: 'プラグインをインストールする',
-    back: 'バック',
+    back: '戻る',
     uploadingPackage: '{{packageName}}をアップロード中...',
   },
   installFromGitHub: {
