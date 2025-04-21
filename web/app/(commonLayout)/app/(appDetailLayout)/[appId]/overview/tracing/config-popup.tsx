@@ -157,17 +157,18 @@ const ConfigPopup: FC<PopupProps> = ({
 
   const moreProviderPanel = () => {
     const notConfiguredPanels: JSX.Element[] = []
-    if (!weaveConfig)
-      notConfiguredPanels.push(weavePanel)
-
-    if (!langSmithConfig)
-      notConfiguredPanels.push(langSmithPanel)
 
     if (!langFuseConfig)
       notConfiguredPanels.push(langfusePanel)
 
+    if (!langSmithConfig)
+      notConfiguredPanels.push(langSmithPanel)
+
     if (!opikConfig)
       notConfiguredPanels.push(opikPanel)
+
+    if (!weaveConfig)
+      notConfiguredPanels.push(weavePanel)
 
     return notConfiguredPanels
   }
