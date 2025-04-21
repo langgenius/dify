@@ -191,7 +191,7 @@ const translation = {
     installingWithError: '{{installingLength}}個のプラグインをインストール中、{{successLength}}件成功、{{errorLength}}件失敗',
     installing: '{{installingLength}}個のプラグインをインストール中、0個完了。',
   },
-  from: 'から',
+  from: 'インストール元',
   install: '{{num}} インストール',
   installAction: 'インストール',
   installFrom: 'インストール元',
