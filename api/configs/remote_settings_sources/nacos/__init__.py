@@ -21,17 +21,13 @@ class NacosSettingsSource(RemoteSettingsSource):
         self.async_init()
 
     def async_init(self):
-        data_id = os.getenv('DIFY_ENV_NACOS_DATA_ID', 'dify-api-env.properties')
-        group = os.getenv('DIFY_ENV_NACOS_GROUP', 'nacos-dify')
-        tenant = os.getenv('DIFY_ENV_NACOS_NAMESPACE', '')
+        data_id = os.getenv("DIFY_ENV_NACOS_DATA_ID", "dify-api-env.properties")
+        group = os.getenv("DIFY_ENV_NACOS_GROUP", "nacos-dify")
+        tenant = os.getenv("DIFY_ENV_NACOS_NAMESPACE", "")
 
-        params = {
-            "dataId": data_id,
-            "group": group,
-            "tenant": tenant
-        }
+        params = {"dataId": data_id, "group": group, "tenant": tenant}
         try:
-            content = NacosHttpClient().http_request("/nacos/v1/cs/configs", method='GET', headers={}, params=params)
+            content = NacosHttpClient().http_request("/nacos/v1/cs/configs", method="GET", headers={}, params=params)
             self.remote_configs = self._parse_config(content)
         except Exception as e:
             logger.exception("[get-access-token] exception occurred")
@@ -46,7 +42,6 @@ class NacosSettingsSource(RemoteSettingsSource):
             raise RuntimeError(f"Failed to parse config: {e}")
 
     def get_field_value(self, field: FieldInfo, field_name: str) -> tuple[Any, str, bool]:
-
         if not isinstance(self.remote_configs, dict):
             raise ValueError(f"remote configs is not dict, but {type(self.remote_configs)}")
 

@@ -5,12 +5,12 @@ def _parse_config(self, content: str) -> dict[str, str]:
 
     for line in content.splitlines():
         cleaned_line = line.strip()
-        if not cleaned_line or cleaned_line.startswith(('#', '!')):
+        if not cleaned_line or cleaned_line.startswith(("#", "!")):
             continue
 
         separator_index = -1
         for i, c in enumerate(cleaned_line):
-            if c in ('=', ':') and (i == 0 or cleaned_line[i - 1] != '\\'):
+            if c in ("=", ":") and (i == 0 or cleaned_line[i - 1] != "\\"):
                 separator_index = i
                 break
 
@@ -18,11 +18,11 @@ def _parse_config(self, content: str) -> dict[str, str]:
             continue
 
         key = cleaned_line[:separator_index].strip()
-        raw_value = cleaned_line[separator_index + 1:].strip()
+        raw_value = cleaned_line[separator_index + 1 :].strip()
 
         try:
-            decoded_value = bytes(raw_value, 'utf-8').decode('unicode_escape')
-            decoded_value = decoded_value.replace(r'\=', '=').replace(r'\:', ':')
+            decoded_value = bytes(raw_value, "utf-8").decode("unicode_escape")
+            decoded_value = decoded_value.replace(r"\=", "=").replace(r"\:", ":")
         except UnicodeDecodeError:
             decoded_value = raw_value
 
