@@ -289,7 +289,7 @@ class WorkflowService:
             params={
                 "tenant_id": app_model.tenant_id,
                 "app_id": app_model.id,
-                "session_factory": db.session.get_bind,
+                "session_factory": db.session.get_bind(),
             }
         )
         repository.save(workflow_node_execution)

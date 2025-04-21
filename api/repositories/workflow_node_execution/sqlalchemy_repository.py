@@ -37,8 +37,10 @@ class SQLAlchemyWorkflowNodeExecutionRepository:
         # If an engine is provided, create a sessionmaker from it
         if isinstance(session_factory, Engine):
             self._session_factory = sessionmaker(bind=session_factory, expire_on_commit=False)
-        else:
+        elif isinstance(session_factory, sessionmaker):
             self._session_factory = session_factory
+        else:
+            raise ValueError("session_factory must be a sessionmaker or Engine")
 
         self._tenant_id = tenant_id
         self._app_id = app_id
