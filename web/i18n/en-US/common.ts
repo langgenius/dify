@@ -65,6 +65,9 @@ const translation = {
     input: 'Please enter',
     select: 'Please select',
   },
+  label: {
+    optional: '(optional)',
+  },
   voice: {
     language: {
       zhHans: 'Chinese',

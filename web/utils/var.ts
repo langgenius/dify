@@ -42,6 +42,9 @@ export const getNewVarInWorkflow = (key: string, type = InputVarType.textInput) 
     type,
     variable: key,
     label: key.slice(0, getMaxVarNameLength(key)),
+    placeholder: '',
+    default: '',
+    hint: '',
   }
 }
 

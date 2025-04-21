@@ -179,6 +179,7 @@ export enum InputVarType {
   singleFile = 'file',
   multiFiles = 'file-list',
   loop = 'loop', // loop input
+  checkbox = 'checkbox',
 }
 
 export type InputVar = {
@@ -191,11 +192,13 @@ export type InputVar = {
   }
   variable: string
   max_length?: number
-  default?: string
+  default?: string | number
   required: boolean
   hint?: string
   options?: string[]
   value_selector?: ValueSelector
+  placeholder?: string
+  unit?: string
 } & Partial<UploadFileSetting>
 
 export type ModelConfig = {

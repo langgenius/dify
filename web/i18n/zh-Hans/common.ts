@@ -65,6 +65,9 @@ const translation = {
     input: '请输入',
     select: '请选择',
   },
+  label: {
+    optional: '（可选）',
+  },
   voice: {
     language: {
       zhHans: '中文',
