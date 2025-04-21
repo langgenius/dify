@@ -55,6 +55,7 @@ const translation = {
         chatColorThemeDesc: 'Définir le thème de couleur du chatbot',
         chatColorThemeInverted: 'Inversé',
         invalidHexMessage: 'Valeur hexadécimale invalide',
+        invalidPrivacyPolicy: 'Lien de politique de confidentialité invalide. Veuillez utiliser un lien valide commençant par http ou https',
         more: {
           entry: 'Afficher plus de paramètres',
           copyright: 'Droits d\'auteur',
