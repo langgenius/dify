@@ -71,6 +71,7 @@ export const useGetAppAccessMode = ({ appId, isInstalledApp }: { appId?: string;
     queryKey: [NAME_SPACE, 'app-access-mode', appId],
     queryFn: () => getAppAccessMode(appId!, isInstalledApp),
     enabled: !!appId,
+    gcTime: 0,
   })
 }
 
@@ -79,5 +80,6 @@ export const useGetUserCanAccessApp = ({ appId, isInstalledApp }: { appId?: stri
     queryKey: [NAME_SPACE, 'user-can-access-app', appId],
     queryFn: () => getUserCanAccess(appId!, isInstalledApp),
     enabled: !!appId,
+    gcTime: 0,
   })
 }

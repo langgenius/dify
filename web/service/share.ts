@@ -223,9 +223,15 @@ export const fetchAccessToken = async (appCode: string) => {
 }
 
 export const getAppAccessMode = (appId: string, isInstalledApp: boolean) => {
-  return (getAction('get', isInstalledApp))<{ accessMode: AccessMode }>(`/enterprise/webapp/app/access-mode?appId=${appId}`)
+  if (isInstalledApp)
+    return consoleGet<{ accessMode: AccessMode }>(`/enterprise/webapp/app/access-mode?appId=${appId}`)
+
+  return get<{ accessMode: AccessMode }>(`/webapp/access-mode?appId=${appId}`)
 }
 
 export const getUserCanAccess = (appId: string, isInstalledApp: boolean) => {
-  return (getAction('get', isInstalledApp))<{ result: boolean }>(`/enterprise/webapp/permission?appId=${appId}`)
+  if (isInstalledApp)
+    return consoleGet<{ result: boolean }>(`/enterprise/webapp/permission?appId=${appId}`)
+
+  return get<{ result: boolean }>(`/webapp/permission?appId=${appId}`)
 }
