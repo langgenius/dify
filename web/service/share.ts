@@ -11,6 +11,7 @@ import type {
   ConversationItem,
 } from '@/models/share'
 import type { ChatConfig } from '@/app/components/base/chat/types'
+import type { AccessMode } from '@/models/access-control'
 
 function getAction(action: 'get' | 'post' | 'del' | 'patch', isInstalledApp: boolean) {
   switch (action) {
@@ -219,4 +220,12 @@ export const fetchAccessToken = async (appCode: string) => {
   const headers = new Headers()
   headers.append('X-App-Code', appCode)
   return get('/passport', { headers }) as Promise<{ access_token: string }>
+}
+
+export const getAppAccessMode = (appId: string, isInstalledApp: boolean) => {
+  return (getAction('get', isInstalledApp))<{ accessMode: AccessMode }>(`/enterprise/webapp/app/access-mode?appId=${appId}`)
+}
+
+export const getUserCanAccess = (appId: string, isInstalledApp: boolean) => {
+  return (getAction('get', isInstalledApp))<{ result: boolean }>(`/enterprise/webapp/permission?appId=${appId}`)
 }

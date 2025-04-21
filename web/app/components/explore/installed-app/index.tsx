@@ -28,13 +28,13 @@ const InstalledApp: FC<IInstalledAppProps> = ({
   return (
     <div className='h-full py-2 pl-0 pr-2 sm:p-2 bg-background-default'>
       {installedApp.app.mode !== 'completion' && installedApp.app.mode !== 'workflow' && (
-        <ChatWithHistory isFromExplore installedAppInfo={installedApp} className='rounded-2xl shadow-md overflow-hidden' />
+        <ChatWithHistory installedAppInfo={installedApp} className='rounded-2xl shadow-md overflow-hidden' />
       )}
       {installedApp.app.mode === 'completion' && (
-        <TextGenerationApp isFromExplore isInstalledApp installedAppInfo={installedApp} />
+        <TextGenerationApp isInstalledApp installedAppInfo={installedApp} />
       )}
       {installedApp.app.mode === 'workflow' && (
-        <TextGenerationApp isFromExplore isWorkflow isInstalledApp installedAppInfo={installedApp} />
+        <TextGenerationApp isWorkflow isInstalledApp installedAppInfo={installedApp} />
       )}
     </div>
   )

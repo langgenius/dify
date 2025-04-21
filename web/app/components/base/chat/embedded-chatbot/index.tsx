@@ -26,7 +26,6 @@ import Tooltip from '@/app/components/base/tooltip'
 const Chatbot = () => {
   const { t } = useTranslation()
   const {
-    isFromExplore,
     userCanAccess,
     isMobile,
     appInfoError,
@@ -110,11 +109,7 @@ const Chatbot = () => {
   )
 }
 
-type EmbeddedChatbotProps = {
-  isFromExplore?: boolean
-}
-
-const EmbeddedChatbotWrapper = ({ isFromExplore }: EmbeddedChatbotProps) => {
+const EmbeddedChatbotWrapper = () => {
   const media = useBreakpoints()
   const isMobile = media === MediaType.mobile
   const themeBuilder = useThemeContext()
@@ -150,7 +145,6 @@ const EmbeddedChatbotWrapper = ({ isFromExplore }: EmbeddedChatbotProps) => {
   } = useEmbeddedChatbot()
 
   return <EmbeddedChatbotContext.Provider value={{
-    isFromExplore: !!isFromExplore,
     userCanAccess,
     accessMode,
     appInfoError,
@@ -185,7 +179,7 @@ const EmbeddedChatbotWrapper = ({ isFromExplore }: EmbeddedChatbotProps) => {
   </EmbeddedChatbotContext.Provider>
 }
 
-const EmbeddedChatbot = ({ isFromExplore = false }: EmbeddedChatbotProps) => {
+const EmbeddedChatbot = () => {
   const [initialized, setInitialized] = useState(false)
   const [appUnavailable, setAppUnavailable] = useState<boolean>(false)
   const [isUnknownReason, setIsUnknownReason] = useState<boolean>(false)
@@ -214,7 +208,7 @@ const EmbeddedChatbot = ({ isFromExplore = false }: EmbeddedChatbotProps) => {
   if (appUnavailable)
     return <AppUnavailable isUnknownReason={isUnknownReason} />
 
-  return <EmbeddedChatbotWrapper isFromExplore={isFromExplore} />
+  return <EmbeddedChatbotWrapper />
 }
 
 export default EmbeddedChatbot

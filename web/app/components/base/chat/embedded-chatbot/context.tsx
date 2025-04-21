@@ -17,7 +17,6 @@ import type {
 import { AccessMode } from '@/models/access-control'
 
 export type EmbeddedChatbotContextValue = {
-  isFromExplore: boolean
   accessMode?: AccessMode
   userCanAccess?: boolean
   appInfoError?: any
@@ -50,7 +49,6 @@ export type EmbeddedChatbotContextValue = {
 }
 
 export const EmbeddedChatbotContext = createContext<EmbeddedChatbotContextValue>({
-  isFromExplore: false,
   userCanAccess: false,
   accessMode: AccessMode.SPECIFIC_GROUPS_MEMBERS,
   currentConversationId: '',

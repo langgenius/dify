@@ -105,12 +105,10 @@ const ChatWithHistory: FC<ChatWithHistoryProps> = ({
 export type ChatWithHistoryWrapProps = {
   installedAppInfo?: InstalledApp
   className?: string
-  isFromExplore?: boolean
 }
 const ChatWithHistoryWrap: FC<ChatWithHistoryWrapProps> = ({
   installedAppInfo,
   className,
-  isFromExplore,
 }) => {
   const media = useBreakpoints()
   const isMobile = media === MediaType.mobile
@@ -153,7 +151,6 @@ const ChatWithHistoryWrap: FC<ChatWithHistoryWrapProps> = ({
 
   return (
     <ChatWithHistoryContext.Provider value={{
-      isFromExplore: !!isFromExplore,
       appInfoError,
       appInfoLoading,
       appData,
@@ -197,7 +194,6 @@ const ChatWithHistoryWrap: FC<ChatWithHistoryWrapProps> = ({
 const ChatWithHistoryWrapWithCheckToken: FC<ChatWithHistoryWrapProps> = ({
   installedAppInfo,
   className,
-  isFromExplore = false,
 }) => {
   const [initialized, setInitialized] = useState(false)
   const [appUnavailable, setAppUnavailable] = useState<boolean>(false)
@@ -233,7 +229,6 @@ const ChatWithHistoryWrapWithCheckToken: FC<ChatWithHistoryWrapProps> = ({
     <ChatWithHistoryWrap
       installedAppInfo={installedAppInfo}
       className={className}
-      isFromExplore={isFromExplore}
     />
   )
 }

@@ -73,8 +73,8 @@ function getFormattedChatList(messages: any[]) {
 export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
   const isInstalledApp = useMemo(() => !!installedAppInfo, [installedAppInfo])
   const { data: appInfo, isLoading: appInfoLoading, error: appInfoError } = useSWR(installedAppInfo ? null : 'appInfo', fetchAppInfo)
-  const { isPending: isGettingAccessMode, data: appAccessMode } = useGetAppAccessMode(installedAppInfo?.app.id || appInfo?.app_id)
-  const { isPending: isCheckingPermission, data: userCanAccessResult } = useGetUserCanAccessApp(installedAppInfo?.app.id || appInfo?.app_id)
+  const { isPending: isGettingAccessMode, data: appAccessMode } = useGetAppAccessMode({ appId: installedAppInfo?.app.id || appInfo?.app_id, isInstalledApp })
+  const { isPending: isCheckingPermission, data: userCanAccessResult } = useGetUserCanAccessApp({ appId: installedAppInfo?.app.id || appInfo?.app_id, isInstalledApp })
 
   useAppFavicon({
     enable: !installedAppInfo,

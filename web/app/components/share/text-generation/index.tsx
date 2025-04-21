@@ -64,14 +64,12 @@ export type IMainProps = {
   isInstalledApp?: boolean
   installedAppInfo?: InstalledApp
   isWorkflow?: boolean
-  isFromExplore?: boolean
 }
 
 const TextGeneration: FC<IMainProps> = ({
   isInstalledApp = false,
   installedAppInfo,
   isWorkflow = false,
-  isFromExplore = false,
 }) => {
   const { notify } = Toast
 
@@ -112,8 +110,8 @@ const TextGeneration: FC<IMainProps> = ({
   const [moreLikeThisConfig, setMoreLikeThisConfig] = useState<MoreLikeThisConfig | null>(null)
   const [textToSpeechConfig, setTextToSpeechConfig] = useState<TextToSpeechConfig | null>(null)
 
-  const { isPending: isGettingAccessMode, data: appAccessMode } = useGetAppAccessMode(appId)
-  const { isPending: isCheckingPermission, data: userCanAccessResult } = useGetUserCanAccessApp(appId)
+  const { isPending: isGettingAccessMode, data: appAccessMode } = useGetAppAccessMode({ appId, isInstalledApp })
+  const { isPending: isCheckingPermission, data: userCanAccessResult } = useGetUserCanAccessApp({ appId, isInstalledApp })
 
   // save message
   const [savedMessages, setSavedMessages] = useState<SavedMessage[]>([])
@@ -581,7 +579,7 @@ const TextGeneration: FC<IMainProps> = ({
                   />
                   <div className='text-lg font-semibold text-gray-800'>{siteInfo.title}</div>
                 </div>
-                <MenuDropdown hideLogout={isFromExplore || appAccessMode?.accessMode === AccessMode.PUBLIC} />
+                <MenuDropdown hideLogout={isInstalledApp || appAccessMode?.accessMode === AccessMode.PUBLIC} />
               </div>
               {!isPC && (
                 <Button

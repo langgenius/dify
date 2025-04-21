@@ -1,5 +1,6 @@
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { get, post } from './base'
+import { getAppAccessMode, getUserCanAccess } from './share'
 import type { AccessControlAccount, AccessControlGroup, AccessMode, Subject } from '@/models/access-control'
 import type { App } from '@/types/app'
 
@@ -64,18 +65,18 @@ export const useUpdateAccessMode = () => {
   })
 }
 
-export const useGetAppAccessMode = (appId?: string) => {
+export const useGetAppAccessMode = ({ appId, isInstalledApp }: { appId?: string; isInstalledApp: boolean }) => {
   return useQuery({
     queryKey: [NAME_SPACE, 'app-access-mode', appId],
-    queryFn: () => get<{ accessMode: AccessMode }>(`/enterprise/webapp/app/access-mode?appId=${appId}`),
+    queryFn: () => getAppAccessMode(appId!, isInstalledApp),
     enabled: !!appId,
   })
 }
 
-export const useGetUserCanAccessApp = (appId?: string) => {
+export const useGetUserCanAccessApp = ({ appId, isInstalledApp }: { appId?: string; isInstalledApp: boolean }) => {
   return useQuery({
     queryKey: [NAME_SPACE, 'user-can-access-app', appId],
-    queryFn: () => get<{ result: boolean }>(`/enterprise/webapp/permission?appId=${appId}`),
+    queryFn: () => getUserCanAccess(appId!, isInstalledApp),
     enabled: !!appId,
   })
 }

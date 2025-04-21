@@ -66,8 +66,8 @@ function getFormattedChatList(messages: any[]) {
 export const useEmbeddedChatbot = () => {
   const isInstalledApp = false
   const { data: appInfo, isLoading: appInfoLoading, error: appInfoError } = useSWR('appInfo', fetchAppInfo)
-  const { isPending: isGettingAccessMode, data: appAccessMode } = useGetAppAccessMode(appInfo?.app_id)
-  const { isPending: isCheckingPermission, data: userCanAccessResult } = useGetUserCanAccessApp(appInfo?.app_id)
+  const { isPending: isGettingAccessMode, data: appAccessMode } = useGetAppAccessMode({ appId: appInfo?.app_id, isInstalledApp })
+  const { isPending: isCheckingPermission, data: userCanAccessResult } = useGetUserCanAccessApp({ appId: appInfo?.app_id, isInstalledApp })
 
   const appData = useMemo(() => {
     return appInfo

@@ -18,7 +18,6 @@ import type {
 import { AccessMode } from '@/models/access-control'
 
 export type ChatWithHistoryContextValue = {
-  isFromExplore: boolean
   appInfoError?: any
   appInfoLoading?: boolean
   appMeta?: AppMeta
@@ -56,7 +55,6 @@ export type ChatWithHistoryContextValue = {
 }
 
 export const ChatWithHistoryContext = createContext<ChatWithHistoryContextValue>({
-  isFromExplore: false,
   accessMode: AccessMode.SPECIFIC_GROUPS_MEMBERS,
   userCanAccess: false,
   currentConversationId: '',
