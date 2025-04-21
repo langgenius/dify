@@ -319,12 +319,19 @@ const formatItem = (
         const outputSchema: any[] = []
         Object.keys(output_schema.properties).forEach((outputKey) => {
           const output = output_schema.properties[outputKey]
+          const dataType = output.type
           outputSchema.push({
             variable: outputKey,
-            type: output.type === 'array'
+            type: dataType === 'array'
               ? `array[${output.items?.type.slice(0, 1).toLocaleLowerCase()}${output.items?.type.slice(1)}]`
               : `${output.type.slice(0, 1).toLocaleLowerCase()}${output.type.slice(1)}`,
             description: output.description,
+            children: output.type === 'object' ? {
+              schema: {
+                type: 'object',
+                properties: output.properties,
+              },
+            } : undefined,
           })
         })
         res.vars = [
