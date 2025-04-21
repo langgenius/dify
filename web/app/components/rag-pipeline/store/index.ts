@@ -1,12 +1,16 @@
 import type { StateCreator } from 'zustand'
 
 export type RagPipelineSliceShape = {
-  showInputFieldDialog: boolean
-  setShowInputFieldDialog: (showInputFieldDialog: boolean) => void
+  showInputFieldEditor: boolean
+  setShowInputFieldEditor: (showInputFieldDialog: boolean) => void
+  showInputFieldPanel: boolean
+  setShowInputFieldPanel: (showInputFieldPanel: boolean) => void
 }
 
 export type CreateRagPipelineSliceSlice = StateCreator<RagPipelineSliceShape>
 export const createRagPipelineSliceSlice: StateCreator<RagPipelineSliceShape> = set => ({
-  showInputFieldDialog: false,
-  setShowInputFieldDialog: showInputFieldDialog => set(() => ({ showInputFieldDialog })),
+  showInputFieldEditor: false,
+  setShowInputFieldEditor: showInputFieldEditor => set(() => ({ showInputFieldEditor })),
+  showInputFieldPanel: false,
+  setShowInputFieldPanel: showInputFieldPanel => set(() => ({ showInputFieldPanel })),
 })

@@ -1,7 +1,7 @@
 import WorkflowWithDefaultContext, {
   WorkflowWithInnerContext,
 } from '@/app/components/workflow'
-import Panel from '@/app/components/workflow/panel'
+import RagPipelinePanel from './components/panel'
 import {
   WorkflowContextProvider,
 } from '@/app/components/workflow/context'
@@ -23,7 +23,7 @@ const RagPipeline = () => {
           edges={[]}
         >
           <RagPipelineHeader />
-          <Panel />
+          <RagPipelinePanel />
         </WorkflowWithInnerContext>
       </WorkflowWithDefaultContext>
     </WorkflowContextProvider>
