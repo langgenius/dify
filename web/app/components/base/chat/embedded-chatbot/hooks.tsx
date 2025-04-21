@@ -80,8 +80,30 @@ export const useEmbeddedChatbot = () => {
   }, [])
 
   useEffect(() => {
-    if (appInfo?.site.default_language)
-      changeLanguage(appInfo.site.default_language)
+    const setLanguageFromParams = async () => {
+      // Check URL parameters for language override
+      const urlParams = new URLSearchParams(window.location.search)
+      const localeParam = urlParams.get('locale')
+
+      // Check for encoded system variables
+      const systemVariables = await getProcessedSystemVariablesFromUrlParams()
+      const localeFromSysVar = systemVariables.locale
+
+      if (localeParam) {
+        // If locale parameter exists in URL, use it instead of default
+        changeLanguage(localeParam)
+      }
+      else if (localeFromSysVar) {
+        // If locale is set as a system variable, use that
+        changeLanguage(localeFromSysVar)
+      }
+      else if (appInfo?.site.default_language) {
+        // Otherwise use the default from app config
+        changeLanguage(appInfo.site.default_language)
+      }
+    }
+
+    setLanguageFromParams()
   }, [appInfo])
 
   const [conversationIdInfo, setConversationIdInfo] = useLocalStorageState<Record<string, Record<string, string>>>(CONVERSATION_ID_INFO, {
