@@ -1,3 +1,4 @@
+import logging
 from functools import wraps
 
 from flask_login import current_user  # type: ignore
@@ -59,10 +60,12 @@ def user_allowed_to_access_app(view=None):
             if feature.webapp_auth.enabled:
                 app_id = kwargs.get("installed_app_id")
                 app_code = AppService.get_app_code_by_id(app_id)
+                logging.info(f"app_id: {app_id}, app_code: {app_code}")
                 res = EnterpriseService.WebAppAuth.is_user_allowed_to_access_webapp(
                     user_id=str(current_user.id),
                     app_code=app_code,
                 )
+                logging.info(f"res: {res}")
                 if not res:
                     raise Unauthorized("User not allowed to access this app")
 
