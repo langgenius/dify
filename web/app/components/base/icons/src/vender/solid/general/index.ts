@@ -1,4 +1,5 @@
 export { default as AnswerTriangle } from './AnswerTriangle'
+export { default as ArrowDownRoundFill } from './ArrowDownRoundFill'
 export { default as CheckCircle } from './CheckCircle'
 export { default as CheckDone01 } from './CheckDone01'
 export { default as Download02 } from './Download02'

@@ -55,6 +55,7 @@ const translation = {
         chatColorThemeDesc: 'Setați tema de culoare a chatbotului',
         chatColorThemeInverted: 'Inversat',
         invalidHexMessage: 'Valoare hex nevalidă',
+        invalidPrivacyPolicy: 'Link politică de confidențialitate invalid. Vă rugăm să folosiți un link valid care începe cu http sau https',
         more: {
           entry: 'Afișați mai multe setări',
           copyright: 'Drepturi de autor',

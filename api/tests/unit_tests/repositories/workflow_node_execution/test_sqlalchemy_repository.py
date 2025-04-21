@@ -152,3 +152,27 @@ def test_update(repository, session):
 
     # Assert session.merge was called
     session_obj.merge.assert_called_once_with(execution)
+
+
+def test_clear(repository, session, mocker: MockerFixture):
+    """Test clear method."""
+    session_obj, _ = session
+    # Set up mock
+    mock_delete = mocker.patch("repositories.workflow_node_execution.sqlalchemy_repository.delete")
+    mock_stmt = mocker.MagicMock()
+    mock_delete.return_value = mock_stmt
+    mock_stmt.where.return_value = mock_stmt
+
+    # Mock the execute result with rowcount
+    mock_result = mocker.MagicMock()
+    mock_result.rowcount = 5  # Simulate 5 records deleted
+    session_obj.execute.return_value = mock_result
+
+    # Call method
+    repository.clear()
+
+    # Assert delete was called with correct parameters
+    mock_delete.assert_called_once_with(WorkflowNodeExecution)
+    mock_stmt.where.assert_called()
+    session_obj.execute.assert_called_once_with(mock_stmt)
+    session_obj.commit.assert_called_once()

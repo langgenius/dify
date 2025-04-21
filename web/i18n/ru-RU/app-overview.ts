@@ -55,6 +55,7 @@ const translation = {
         chatColorThemeDesc: 'Установите цветовую тему чат-бота',
         chatColorThemeInverted: 'Инвертированные цвета',
         invalidHexMessage: 'Неверное HEX-значение',
+        invalidPrivacyPolicy: 'Недопустимая ссылка на политику конфиденциальности. Пожалуйста, используйте действительную ссылку, начинающуюся с http или https',
         sso: {
           label: 'SSO аутентификация',
           title: 'WebApp SSO',

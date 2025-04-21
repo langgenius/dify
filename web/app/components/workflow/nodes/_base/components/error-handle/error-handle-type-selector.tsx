@@ -50,6 +50,7 @@ const ErrorHandleTypeSelector = ({
     >
       <PortalToFollowElemTrigger onClick={(e) => {
         e.stopPropagation()
+        e.nativeEvent.stopImmediatePropagation()
         setOpen(v => !v)
       }}>
         <Button
@@ -68,6 +69,7 @@ const ErrorHandleTypeSelector = ({
                 className='flex cursor-pointer rounded-lg p-2 pr-3 hover:bg-state-base-hover'
                 onClick={(e) => {
                   e.stopPropagation()
+                  e.nativeEvent.stopImmediatePropagation()
                   onSelected(option.value)
                   setOpen(false)
                 }}

@@ -630,6 +630,7 @@ class WorkflowNodeExecution(Base):
     @property
     def created_by_account(self):
         created_by_role = CreatedByRole(self.created_by_role)
+        # TODO(-LAN-): Avoid using db.session.get() here.
         return db.session.get(Account, self.created_by) if created_by_role == CreatedByRole.ACCOUNT else None
 
     @property
@@ -637,6 +638,7 @@ class WorkflowNodeExecution(Base):
         from models.model import EndUser
 
         created_by_role = CreatedByRole(self.created_by_role)
+        # TODO(-LAN-): Avoid using db.session.get() here.
         return db.session.get(EndUser, self.created_by) if created_by_role == CreatedByRole.END_USER else None
 
     @property
