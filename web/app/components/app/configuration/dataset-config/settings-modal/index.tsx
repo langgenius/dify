@@ -32,6 +32,8 @@ import {
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { fetchMembers } from '@/service/common'
 import type { Member } from '@/models/common'
+import useUpdateFlagStore from '@/app/components/workflow/nodes/knowledge-retrieval/useUpdateFlagStore'
+
 
 type SettingsModalProps = {
   currentDataset: DataSet
@@ -89,6 +91,8 @@ const SettingsModal: FC<SettingsModalProps> = ({
     if (data.score_threshold_enabled !== undefined)
       setScoreThresholdEnabled(data.score_threshold_enabled)
   }
+
+  const toggleFlag = useUpdateFlagStore(s => s.toggleFlag)
 
   const handleSave = async () => {
     if (loading)
@@ -149,6 +153,7 @@ const SettingsModal: FC<SettingsModalProps> = ({
         indexing_technique: indexMethod,
         retrieval_model_dict: retrievalConfig,
       })
+      toggleFlag()
     }
     catch {
       notify({ type: 'error', message: t('common.actionMsg.modifiedUnsuccessfully') })

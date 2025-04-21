@@ -32,6 +32,7 @@ import {
   getMultipleRetrievalConfig,
   getSelectedDatasetsMode,
 } from './utils'
+import useUpdateFlagStore from './useUpdateFlagStore'
 import { RETRIEVE_TYPE } from '@/types/app'
 import { DATASET_DEFAULT } from '@/config'
 import type { DataSet } from '@/models/datasets'
@@ -51,6 +52,9 @@ const useConfig = (id: string, payload: KnowledgeRetrievalNodeType) => {
   const startNodeId = startNode?.id
   const { inputs, setInputs: doSetInputs } = useNodeCrud<KnowledgeRetrievalNodeType>(id, payload)
   const updateDatasetsDetail = useDatasetsDetailStore(s => s.updateDatasetsDetail)
+
+  const updateFlag = useUpdateFlagStore(s => s.updateFlag)
+
 
   const inputRef = useRef(inputs)
 
@@ -231,7 +235,7 @@ const useConfig = (id: string, payload: KnowledgeRetrievalNodeType) => {
       setSelectedDatasetsLoaded(true)
     })()
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [updateFlag])
 
   useEffect(() => {
     const inputs = inputRef.current
