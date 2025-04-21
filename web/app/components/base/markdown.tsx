@@ -23,6 +23,7 @@ import VideoGallery from '@/app/components/base/video-gallery'
 import AudioGallery from '@/app/components/base/audio-gallery'
 import MarkdownButton from '@/app/components/base/markdown-blocks/button'
 import MarkdownForm from '@/app/components/base/markdown-blocks/form'
+import MarkdownMusic from '@/app/components/base/markdown-blocks/music'
 import ThinkBlock from '@/app/components/base/markdown-blocks/think-block'
 import { Theme } from '@/types/app'
 import useTheme from '@/hooks/use-theme'
@@ -51,6 +52,7 @@ const capitalizationLanguageNameMap: Record<string, string> = {
   json: 'JSON',
   latex: 'Latex',
   svg: 'SVG',
+  abc: 'ABC',
 }
 const getCorrectCapitalizationLanguageName = (language: string) => {
   if (!language)
@@ -137,45 +139,54 @@ const CodeBlock: any = memo(({ inline, className, children, ...props }: any) => 
 
   const renderCodeContent = useMemo(() => {
     const content = String(children).replace(/\n$/, '')
-    if (language === 'mermaid' && isSVG) {
-      return <Flowchart PrimitiveCode={content} />
-    }
-    else if (language === 'echarts') {
-      return (
-        <div style={{ minHeight: '350px', minWidth: '100%', overflowX: 'scroll' }}>
+    switch (language) {
+      case 'mermaid':
+        if (isSVG)
+          return <Flowchart PrimitiveCode={content} />
+        break
+      case 'echarts':
+        return (
+          <div style={{ minHeight: '350px', minWidth: '100%', overflowX: 'scroll' }}>
+            <ErrorBoundary>
+              <ReactEcharts option={chartData} style={{ minWidth: '700px' }} />
+            </ErrorBoundary>
+          </div>
+        )
+      case 'svg':
+        if (isSVG) {
+          return (
+            <ErrorBoundary>
+              <SVGRenderer content={content} />
+            </ErrorBoundary>
+          )
+        }
+        break
+      case 'abc':
+        return (
           <ErrorBoundary>
-            <ReactEcharts option={chartData} style={{ minWidth: '700px' }} />
+            <MarkdownMusic children={content} />
           </ErrorBoundary>
-        </div>
-      )
+        )
+      default:
+        return (
+          <SyntaxHighlighter
+            {...props}
+            style={theme === Theme.light ? atelierHeathLight : atelierHeathDark}
+            customStyle={{
+              paddingLeft: 12,
+              borderBottomLeftRadius: '10px',
+              borderBottomRightRadius: '10px',
+              backgroundColor: 'var(--color-components-input-bg-normal)',
+            }}
+            language={match?.[1]}
+            showLineNumbers
+            PreTag="div"
+          >
+            {content}
+          </SyntaxHighlighter>
+        )
     }
-    else if (language === 'svg' && isSVG) {
-      return (
-        <ErrorBoundary>
-          <SVGRenderer content={content} />
-        </ErrorBoundary>
-      )
-    }
-    else {
-      return (
-        <SyntaxHighlighter
-          {...props}
-          style={theme === Theme.light ? atelierHeathLight : atelierHeathDark}
-          customStyle={{
-            paddingLeft: 12,
-            borderBottomLeftRadius: '10px',
-            borderBottomRightRadius: '10px',
-            backgroundColor: 'var(--color-components-input-bg-normal)',
-          }}
-          language={match?.[1]}
-          showLineNumbers
-          PreTag="div"
-        >
-          {content}
-        </SyntaxHighlighter>
-      )
-    }
-  }, [language, match, props, children, chartData, isSVG])
+  }, [children, language, isSVG, chartData, props, theme, match])
 
   if (inline || !match)
     return <code {...props} className={className}>{children}</code>
