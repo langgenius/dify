@@ -199,6 +199,7 @@ export type FileResponse = {
   transfer_method: TransferMethod
   type: string
   url: string
+  upload_file_id: string
 }
 
 export type NodeFinishedResponse = {

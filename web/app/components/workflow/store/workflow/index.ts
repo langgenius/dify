@@ -1,4 +1,7 @@
 import { useContext } from 'react'
+import type {
+  StateCreator,
+} from 'zustand'
 import {
   useStore as useZustandStore,
 } from 'zustand'
@@ -33,6 +36,7 @@ import { createCurrentVarsSlice } from './current-vars-slice'
 import { WorkflowContext } from '@/app/components/workflow/context'
 import type { LayoutSliceShape } from './layout-slice'
 import { createLayoutSlice } from './layout-slice'
+import type { WorkflowSliceShape as WorkflowAppSliceShape } from '@/app/components/workflow-app/store/workflow/workflow-slice'
 
 export type Shape =
   ChatVariableSliceShape &
@@ -48,9 +52,16 @@ export type Shape =
   WorkflowSliceShape &
   LastRunSliceShape &
   CurrentVarsSliceShape &
-  LayoutSliceShape
+  LayoutSliceShape &
+  WorkflowAppSliceShape
 
-export const createWorkflowStore = () => {
+type CreateWorkflowStoreParams = {
+  injectWorkflowStoreSliceFn?: StateCreator<WorkflowAppSliceShape>
+}
+
+export const createWorkflowStore = (params: CreateWorkflowStoreParams) => {
+  const { injectWorkflowStoreSliceFn } = params || {}
+
   return createStore<Shape>((...args) => ({
     ...createChatVariableSlice(...args),
     ...createEnvVariableSlice(...args),
@@ -66,6 +77,7 @@ export const createWorkflowStore = () => {
     ...createLastRunSlice(...args),
     ...createCurrentVarsSlice(...args),
     ...createLayoutSlice(...args),
+    ...(injectWorkflowStoreSliceFn?.(...args) || {} as WorkflowAppSliceShape),
   }))
 }
 

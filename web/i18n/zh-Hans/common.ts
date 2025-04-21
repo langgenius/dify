@@ -56,6 +56,7 @@ const translation = {
     regenerate: '重新生成',
     submit: '提交',
     skip: '跳过',
+    format: '格式化',
   },
   errorMsg: {
     fieldRequired: '{{field}} 为必填项',

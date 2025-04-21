@@ -202,7 +202,7 @@ export const OperationAction: FC<{
   const isListScene = scene === 'list'
 
   const onOperate = async (operationName: OperationName) => {
-    let opApi = deleteDocument
+    let opApi
     switch (operationName) {
       case 'archive':
         opApi = archiveDocument
@@ -490,7 +490,7 @@ const DocumentList: FC<IDocumentListProps> = ({
 
   const handleAction = (actionName: DocumentActionType) => {
     return async () => {
-      let opApi = deleteDocument
+      let opApi
       switch (actionName) {
         case DocumentActionType.archive:
           opApi = archiveDocument
@@ -527,7 +527,7 @@ const DocumentList: FC<IDocumentListProps> = ({
                     <Checkbox
                       className='mr-2 shrink-0'
                       checked={isAllSelected}
-                      mixed={!isAllSelected && isSomeSelected}
+                      indeterminate={!isAllSelected && isSomeSelected}
                       onCheck={onSelectedAll}
                     />
                   )}

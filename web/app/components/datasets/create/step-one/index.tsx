@@ -20,7 +20,7 @@ import { useProviderContext } from '@/context/provider-context'
 import VectorSpaceFull from '@/app/components/billing/vector-space-full'
 import classNames from '@/utils/classnames'
 import { Icon3Dots } from '@/app/components/base/icons/src/vender/line/others'
-
+import { ENABLE_WEBSITE_FIRECRAWL, ENABLE_WEBSITE_JINAREADER, ENABLE_WEBSITE_WATERCRAWL } from '@/config'
 type IStepOneProps = {
   datasetId?: string
   dataSourceType?: DataSourceType
@@ -126,9 +126,7 @@ const StepOne = ({
       return true
     if (files.some(file => !file.file.id))
       return true
-    if (isShowVectorSpaceFull)
-      return true
-    return false
+    return isShowVectorSpaceFull
   }, [files, isShowVectorSpaceFull])
 
   return (
@@ -193,7 +191,8 @@ const StepOne = ({
                         {t('datasetCreation.stepOne.dataSourceType.notion')}
                       </span>
                     </div>
-                    <div
+                    {(ENABLE_WEBSITE_FIRECRAWL || ENABLE_WEBSITE_JINAREADER || ENABLE_WEBSITE_WATERCRAWL) && (
+                      <div
                       className={cn(
                         s.dataSourceItem,
                         'system-sm-medium',
@@ -201,7 +200,7 @@ const StepOne = ({
                         dataSourceTypeDisable && dataSourceType !== DataSourceType.WEB && s.disabled,
                       )}
                       onClick={() => changeType(DataSourceType.WEB)}
-                    >
+                      >
                       <span className={cn(s.datasetIcon, s.web)} />
                       <span
                         title={t('datasetCreation.stepOne.dataSourceType.web')}
@@ -209,7 +208,8 @@ const StepOne = ({
                       >
                         {t('datasetCreation.stepOne.dataSourceType.web')}
                       </span>
-                    </div>
+                      </div>
+                    )}
                   </div>
                 )
               }
