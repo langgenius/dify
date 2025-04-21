@@ -1135,7 +1135,8 @@ class LLMNode(BaseNode[LLMNodeData]):
 
 
 def _combine_message_content_with_role(
-        *, contents: Optional[str | list[PromptMessageContentUnionTypes]] = None, role: PromptMessageRole):
+    *, contents: Optional[str | list[PromptMessageContentUnionTypes]] = None, role: PromptMessageRole
+):
     match role:
         case PromptMessageRole.USER:
             return UserPromptMessage(content=contents)
