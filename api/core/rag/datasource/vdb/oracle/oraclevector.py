@@ -109,8 +109,7 @@ class OracleVector(BaseVector):
             )
 
     def _get_connection(self) -> Connection:
-        connection = oracledb.connect(user=self.config.user, password=self.config.password,
-                                      dsn=self.config.dsn)
+        connection = oracledb.connect(user=self.config.user, password=self.config.password, dsn=self.config.dsn)
         return connection
 
     def _create_connection_pool(self, config: OracleVectorConfig):
@@ -156,16 +155,19 @@ class OracleVector(BaseVector):
         with self._get_connection() as conn:
             conn.inputtypehandler = self.input_type_handler
             conn.outputtypehandler = self.output_type_handler
-            #with conn.cursor() as cur:
+            # with conn.cursor() as cur:
             #    cur.executemany(
             #        f"INSERT INTO {self.table_name} (id, text, meta, embedding) VALUES (:1, :2, :3, :4)", values
             #    )
-            #conn.commit()
+            # conn.commit()
             for value in values:
                 with conn.cursor() as cur:
                     try:
-                        cur.execute(f"""INSERT INTO {self.table_name} (id, text, meta, embedding) 
-                        VALUES (:1, :2, :3, :4)""", value)
+                        cur.execute(
+                            f"""INSERT INTO {self.table_name} (id, text, meta, embedding) 
+                        VALUES (:1, :2, :3, :4)""",
+                            value,
+                        )
                         conn.commit()
                     except Exception as e:
                         print(e)
