@@ -55,6 +55,7 @@ const translation = {
         chatColorThemeDesc: 'チャットボットのカラーテーマを設定します',
         chatColorThemeInverted: '反転',
         invalidHexMessage: '無効な16進数値',
+        invalidPrivacyPolicy: '無効なプライバシーポリシーのリンクです。http または https で始まる有効なリンクを使用してください',
         more: {
           entry: 'その他の設定を表示',
           copyright: '著作権',
