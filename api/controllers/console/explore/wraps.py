@@ -55,10 +55,10 @@ def installed_app_required(view=None):
 def user_allowed_to_access_app(view=None):
     def decorator(view):
         @wraps(view)
-        def decorated(*args, **kwargs):
+        def decorated(installed_app: InstalledApp, *args, **kwargs):
             feature = FeatureService.get_system_features()
             if feature.webapp_auth.enabled:
-                app_id = kwargs.get("installed_app_id")
+                app_id = installed_app.app_id
                 app_code = AppService.get_app_code_by_id(app_id)
                 logging.info(f"app_id: {app_id}, app_code: {app_code}")
                 res = EnterpriseService.WebAppAuth.is_user_allowed_to_access_webapp(
@@ -69,7 +69,7 @@ def user_allowed_to_access_app(view=None):
                 if not res:
                     raise Unauthorized("User not allowed to access this app")
 
-            return view(*args, **kwargs)
+            return view(installed_app, *args, **kwargs)
 
         return decorated
     if view:
