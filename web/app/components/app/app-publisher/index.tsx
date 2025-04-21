@@ -12,6 +12,7 @@ import type { ModelAndParameter } from '../configuration/debug/types'
 import Divider from '../../base/divider'
 import AccessControl from '../app-access-control'
 import Loading from '../../base/loading'
+import Tooltip from '../../base/tooltip'
 import SuggestedAction from './suggested-action'
 import PublishWithMultipleModel from './publish-with-multiple-model'
 import Button from '@/app/components/base/button'
@@ -251,10 +252,12 @@ const AppPublisher = ({
                   </div>
                 </div>
               </div>
-              <div className='p-4 pt-3 border-t-[0.5px] border-t-black/5'>
-                <SuggestedAction disabled={!publishedAt || !useCanAccessApp?.result} link={appURL} icon={<PlayCircle />}>{t('workflow.common.runApp')}</SuggestedAction>
+              <div className='p-4 pt-3 border-t-[0.5px] border-t-black/5 flex flex-col gap-y-1'>
+                <Tooltip triggerClassName='flex' disabled={useCanAccessApp?.result} popupContent={t('app.noAccessPermission')} asChild={false}>
+                  <SuggestedAction disabled={!publishedAt || !useCanAccessApp?.result} link={appURL} icon={<PlayCircle />}>{t('workflow.common.runApp')}</SuggestedAction>
+                </Tooltip>
                 {appDetail?.mode === 'workflow'
-                  ? (
+                  ? (<Tooltip triggerClassName='flex' disabled={useCanAccessApp?.result} popupContent={t('app.noAccessPermission')} asChild={false}>
                     <SuggestedAction
                       disabled={!publishedAt || !useCanAccessApp?.result}
                       link={`${appURL}${appURL.includes('?') ? '&' : '?'}mode=batch`}
@@ -262,8 +265,9 @@ const AppPublisher = ({
                     >
                       {t('workflow.common.batchRunApp')}
                     </SuggestedAction>
+                  </Tooltip>
                   )
-                  : (
+                  : (<Tooltip triggerClassName='flex' disabled={useCanAccessApp?.result} popupContent={t('app.noAccessPermission')} asChild={false}>
                     <SuggestedAction
                       onClick={() => {
                         setEmbeddingModalOpen(true)
@@ -274,33 +278,41 @@ const AppPublisher = ({
                     >
                       {t('workflow.common.embedIntoSite')}
                     </SuggestedAction>
+                  </Tooltip>
                   )}
-                <SuggestedAction
-                  onClick={() => {
-                    handleOpenInExplore()
-                  }}
-                  disabled={!publishedAt || !useCanAccessApp?.result}
-                  icon={<RiPlanetLine className='w-4 h-4' />}
-                >
-                  {t('workflow.common.openInExplore')}
-                </SuggestedAction>
-                <SuggestedAction disabled={!publishedAt || !useCanAccessApp?.result} link='./develop' icon={<FileText className='w-4 h-4' />}>{t('workflow.common.accessAPIReference')}</SuggestedAction>
-                {appDetail?.mode === 'workflow' && (
-                  <WorkflowToolConfigureButton
-                    disabled={!publishedAt || !useCanAccessApp?.result}
-                    published={!!toolPublished}
-                    detailNeedUpdate={!!toolPublished && published}
-                    workflowAppId={appDetail?.id}
-                    icon={{
-                      content: (appDetail.icon_type === 'image' ? '🤖' : appDetail?.icon) || '🤖',
-                      background: (appDetail.icon_type === 'image' ? appDefaultIconBackground : appDetail?.icon_background) || appDefaultIconBackground,
+                <Tooltip triggerClassName='flex' disabled={useCanAccessApp?.result} popupContent={t('app.noAccessPermission')} asChild={false}>
+                  <SuggestedAction
+                    onClick={() => {
+                      handleOpenInExplore()
                     }}
-                    name={appDetail?.name}
-                    description={appDetail?.description}
-                    inputs={inputs}
-                    handlePublish={handlePublish}
-                    onRefreshData={onRefreshData}
-                  />
+                    disabled={!publishedAt || !useCanAccessApp?.result}
+                    icon={<RiPlanetLine className='w-4 h-4' />}
+                  >
+                    {t('workflow.common.openInExplore')}
+                  </SuggestedAction>
+                </Tooltip>
+                <Tooltip triggerClassName='flex' disabled={useCanAccessApp?.result} popupContent={t('app.noAccessPermission')} asChild={false}>
+                  <SuggestedAction disabled={!publishedAt || !useCanAccessApp?.result} link='./develop' icon={<FileText className='w-4 h-4' />}>{t('workflow.common.accessAPIReference')}</SuggestedAction>
+                </Tooltip>
+
+                {appDetail?.mode === 'workflow' && (
+                  <Tooltip triggerClassName='flex' disabled={useCanAccessApp?.result} popupContent={t('app.noAccessPermission')} asChild={false}>
+                    <WorkflowToolConfigureButton
+                      disabled={!publishedAt || !useCanAccessApp?.result}
+                      published={!!toolPublished}
+                      detailNeedUpdate={!!toolPublished && published}
+                      workflowAppId={appDetail?.id}
+                      icon={{
+                        content: (appDetail.icon_type === 'image' ? '🤖' : appDetail?.icon) || '🤖',
+                        background: (appDetail.icon_type === 'image' ? appDefaultIconBackground : appDetail?.icon_background) || appDefaultIconBackground,
+                      }}
+                      name={appDetail?.name}
+                      description={appDetail?.description}
+                      inputs={inputs}
+                      handlePublish={handlePublish}
+                      onRefreshData={onRefreshData}
+                    />
+                  </Tooltip>
                 )}
               </div>
             </>}

@@ -90,6 +90,7 @@ const Tooltip: FC<TooltipProps> = ({
         }}
         onMouseLeave={() => triggerMethod === 'hover' && handleLeave(true)}
         asChild={asChild}
+        className={!asChild ? triggerClassName : ''}
       >
         {children || <div className={triggerClassName || 'p-[1px] w-3.5 h-3.5 shrink-0'}><RiQuestionLine className='text-text-quaternary hover:text-text-tertiary w-full h-full' /></div>}
       </PortalToFollowElemTrigger>

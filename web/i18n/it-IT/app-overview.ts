@@ -73,7 +73,7 @@ const translation = {
             'Inserisci il testo del disclaimer personalizzato',
           customDisclaimerTip:
             'Il testo del disclaimer personalizzato verrà visualizzato sul lato client, fornendo informazioni aggiuntive sull\'applicazione',
-          copyrightTip: 'Visualizzare le informazioni sul copyright nella webapp',
+          copyrightTip: 'Visualizzare le informazioni sul copyright nella web app',
           copyrightTooltip: 'Si prega di eseguire l\'upgrade al piano Professional o superiore',
         },
         sso: {

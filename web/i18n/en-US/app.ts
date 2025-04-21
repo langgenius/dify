@@ -174,10 +174,10 @@ const translation = {
     },
   },
   showMyCreatedAppsOnly: 'Created by me',
-  accessControl: 'Webapp Access Control',
+  accessControl: 'web app Access Control',
   accessControlDialog: {
     title: 'Access Control',
-    description: 'Set webapp access permissions',
+    description: 'Set web app access permissions',
     accessLabel: 'Who has access',
     accessItems: {
       anyone: 'Anyone with the link',
@@ -202,6 +202,7 @@ const translation = {
     title: 'Who can access web app',
     notSet: 'Not set',
   },
+  noAccessPermission: 'No access permission',
 }
 
 export default translation

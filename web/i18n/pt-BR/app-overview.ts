@@ -65,7 +65,7 @@ const translation = {
           customDisclaimer: 'Aviso Legal Personalizado',
           customDisclaimerPlaceholder: 'Insira o texto do aviso legal',
           customDisclaimerTip: 'O texto do aviso legal personalizado será exibido no lado do cliente, fornecendo informações adicionais sobre o aplicativo',
-          copyrightTip: 'Exibir informações de direitos autorais no webapp',
+          copyrightTip: 'Exibir informações de direitos autorais no web app',
           copyrightTooltip: 'Por favor, atualize para o plano Professional ou superior',
         },
         sso: {
