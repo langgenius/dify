@@ -80,7 +80,7 @@ const translation = {
     configureApp: 'アプリを設定する',
     endpointDeleteContent: '{{name}}を削除しますか？',
     actionNum: '{{num}} {{action}} が含まれています',
-    endpointsDocLink: '文書を表示する',
+    endpointsDocLink: 'ドキュメントを表示する',
     switchVersion: 'スイッチ版',
   },
   debugInfo: {
