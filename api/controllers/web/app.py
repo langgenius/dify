@@ -1,7 +1,6 @@
 import logging
 
 from flask import request
-from flask_login import current_user
 from flask_restful import Resource, marshal_with, reqparse  # type: ignore
 
 from controllers.common import fields
@@ -85,7 +84,6 @@ class AppWebAuthPermission(Resource):
         args = parser.parse_args()
 
         app_id = args["appId"]
-        user_id = current_user.id
         logging.info(f"App ID: {app_id}, User ID: {user_id}")
 
         app_code = AppService.get_app_code_by_id(app_id)
