@@ -6,14 +6,14 @@ WORKDIR /app/api
 # Install uv
 ENV UV_VERSION=0.6.14
 # if you are located in China,you can add the sentence to acceding uv pip tool
-# ENV UV_DEFAULT_INDEX="https://mirrors.aliyun.com/pypi/simple/"
+ENV UV_DEFAULT_INDEX="https://mirrors.aliyun.com/pypi/simple/"
 
 RUN python -m pip install -i https://mirrors.tuna.tsinghua.edu.cn/pypi/web/simple --upgrade pip
 RUN pip install --no-cache-dir uv==${UV_VERSION} -i https://mirrors.aliyun.com/pypi/simple/
 
 # if you meet some error about apt,you can try to use sources.list config apt images
-# RUN rm -rf /etc/apt/source* 
-# ADD sources.list /etc/apt/
+RUN rm -rf /etc/apt/source* 
+ADD sources.list /etc/apt/
 
 FROM base AS packages
 
