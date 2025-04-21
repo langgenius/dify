@@ -11,6 +11,7 @@ export const useAppWhiteListSubjects = (appId: string, enabled: boolean) => {
     queryKey: [NAME_SPACE, 'app-whitelist-subjects', appId],
     queryFn: () => get<{ groups: AccessControlGroup[]; members: AccessControlAccount[] }>(`/enterprise/webapp/app/subjects?appId=${appId}`),
     enabled,
+    gcTime: 0,
   })
 }
 
