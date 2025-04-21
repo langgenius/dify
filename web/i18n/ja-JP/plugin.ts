@@ -70,7 +70,7 @@ const translation = {
     endpointDeleteTip: 'エンドポイントを削除',
     modelNum: '{{num}} モデルが含まれています',
     serviceOk: 'サービスは正常です',
-    disabled: '障害者',
+    disabled: 'サービスは無効化されています',
     endpoints: 'エンドポイント',
     endpointsTip: 'このプラグインはエンドポイントを介して特定の機能を提供し、現在のワークスペースのために複数のエンドポイントセットを構成できます。',
     configureModel: 'モデルを設定する',
