@@ -94,7 +94,7 @@ class DatasetRetrieverTool(DatasetRetrieverBaseTool):
                         "title": item.metadata.get("title"),
                         "content": item.page_content,
                     }
-                context_list.append(source)
+                    context_list.append(source)
             for hit_callback in self.hit_callbacks:
                 hit_callback.return_retriever_resource_info(context_list)
 

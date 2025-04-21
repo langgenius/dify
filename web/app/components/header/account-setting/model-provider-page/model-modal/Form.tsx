@@ -376,6 +376,7 @@ function Form<
             tooltip={tooltip?.[language] || tooltip?.en_US}
             value={value[variable] || []}
             onChange={item => handleFormChange(variable, item as any)}
+            supportCollapse
           />
           {fieldMoreInfo?.(formSchema)}
           {validating && changeKey === variable && <ValidatingTip />}

@@ -59,6 +59,7 @@ const translation = {
         chatColorThemeDesc: 'Ustaw motyw kolorystyczny czatu',
         chatColorThemeInverted: 'Odwrócony',
         invalidHexMessage: 'Nieprawidłowa wartość heksadecymalna',
+        invalidPrivacyPolicy: 'Nieprawidłowy link do polityki prywatności. Proszę użyć prawidłowego linku zaczynającego się od http lub https',
         more: {
           entry: 'Pokaż więcej ustawień',
           copyright: 'Prawa autorskie',
