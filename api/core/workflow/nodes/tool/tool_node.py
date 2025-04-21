@@ -279,15 +279,13 @@ class ToolNode(BaseNode[ToolNodeData]):
                 json.append(message.message.json_object)
             elif message.type == ToolInvokeMessage.MessageType.LINK:
                 assert isinstance(message.message, ToolInvokeMessage.TextMessage)
-                url = message.message.text
 
-                # 获取 transfer_method，与其他类型保持一致
                 if message.meta:
                     transfer_method = message.meta.get("transfer_method", FileTransferMethod.TOOL_FILE)
                 else:
                     transfer_method = FileTransferMethod.TOOL_FILE
 
-                tool_file_id = str(url).rsplit('/', maxsplit=1)[-1].split(".")[0]
+                tool_file_id = message.message.text.split("/")[-1].split(".")[0]
 
                 with Session(db.engine) as session:
                     stmt = select(ToolFile).where(ToolFile.id == tool_file_id)
@@ -295,12 +293,11 @@ class ToolNode(BaseNode[ToolNodeData]):
                     if tool_file is None:
                         raise ToolFileError(f"Tool file {tool_file_id} does not exist")
 
-                # 完整的 mapping 信息
                 mapping = {
                     "tool_file_id": tool_file_id,
                     "type": file_factory.get_file_type_by_mime_type(tool_file.mimetype),
                     "transfer_method": transfer_method,
-                    "url": url,
+                    "url": message.message.text,
                 }
 
                 file = file_factory.build_from_mapping(
@@ -309,7 +306,6 @@ class ToolNode(BaseNode[ToolNodeData]):
                 )
                 files.append(file)
 
-                # 保持原有的文本处理
                 stream_text = f"Link: {message.message.text}\n"
                 text += stream_text
                 yield RunStreamChunkEvent(chunk_content=stream_text, from_variable_selector=[self.node_id, "text"])
