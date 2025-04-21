@@ -59,6 +59,7 @@ const translation = {
         chatColorThemeDesc: 'चैटबॉट का रंग थीम निर्धारित करें',
         chatColorThemeInverted: 'उल्टा',
         invalidHexMessage: 'अमान्य हेक्स मान',
+        invalidPrivacyPolicy: 'गोपनीयता नीति लिंक अमान्य है। कृपया http या https से शुरू होने वाला एक वैध लिंक उपयोग करें।',
         more: {
           entry: 'अधिक सेटिंग्स दिखाएं',
           copyright: 'कॉपीराइट',

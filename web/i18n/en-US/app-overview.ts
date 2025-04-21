@@ -57,6 +57,7 @@ const translation = {
         chatColorThemeDesc: 'Set the color theme of the chatbot',
         chatColorThemeInverted: 'Inverted',
         invalidHexMessage: 'Invalid hex value',
+        invalidPrivacyPolicy: 'Invalid privacy policy link. Please use a valid link that starts with http or https',
         sso: {
           label: 'SSO Enforcement',
           title: 'WebApp SSO',
