@@ -5,7 +5,7 @@ const translation = {
     suffix: ', щоб налаштувати свій бренд.',
   },
   webapp: {
-    title: 'Налаштувати бренд для WebApp',
+    title: 'Налаштувати бренд для web app',
     removeBrand: 'Видалити Powered by Dify',
     changeLogo: 'Змінити зображення бренду "Powered by"',
     changeLogoTip: 'Формат SVG або PNG з мінімальним розміром 40x40 пікселів',

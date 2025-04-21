@@ -33,27 +33,27 @@ const translation = {
   overview: {
     title: 'Panoramica',
     appInfo: {
-      explanation: 'AI WebApp pronta all\'uso',
+      explanation: 'AI web app pronta all\'uso',
       accessibleAddress: 'URL Pubblico',
       preview: 'Anteprima',
       regenerate: 'Rigenera',
       regenerateNotice: 'Vuoi rigenerare l\'URL pubblico?',
-      preUseReminder: 'Attiva WebApp prima di continuare.',
+      preUseReminder: 'Attiva web app prima di continuare.',
       settings: {
         entry: 'Impostazioni',
-        title: 'Impostazioni WebApp',
-        webName: 'Nome WebApp',
-        webDesc: 'Descrizione WebApp',
+        title: 'Impostazioni web app',
+        webName: 'Nome web app',
+        webDesc: 'Descrizione web app',
         webDescTip:
           'Questo testo verrà visualizzato sul lato client, fornendo una guida di base su come utilizzare l\'applicazione',
-        webDescPlaceholder: 'Inserisci la descrizione della WebApp',
+        webDescPlaceholder: 'Inserisci la descrizione della web app',
         language: 'Lingua',
         workflow: {
           title: 'Fasi del Workflow',
           show: 'Mostra',
           hide: 'Nascondi',
           subTitle: 'Dettagli del flusso di lavoro',
-          showDesc: 'Mostrare o nascondere i dettagli del flusso di lavoro in WebApp',
+          showDesc: 'Mostrare o nascondere i dettagli del flusso di lavoro in web app',
         },
         chatColorTheme: 'Tema colore chat',
         chatColorThemeDesc: 'Imposta il tema colore del chatbot',
@@ -78,9 +78,9 @@ const translation = {
         },
         sso: {
           label: 'Autenticazione SSO',
-          title: 'WebApp SSO',
-          description: 'Tutti gli utenti devono effettuare l\'accesso con SSO prima di utilizzare WebApp',
-          tooltip: 'Contattare l\'amministratore per abilitare l\'SSO di WebApp',
+          title: 'web app SSO',
+          description: 'Tutti gli utenti devono effettuare l\'accesso con SSO prima di utilizzare web app',
+          tooltip: 'Contattare l\'amministratore per abilitare l\'SSO di web app',
         },
         modalTip: 'Impostazioni dell\'app Web lato client.',
       },
@@ -104,7 +104,7 @@ const translation = {
       customize: {
         way: 'modo',
         entry: 'Personalizza',
-        title: 'Personalizza AI WebApp',
+        title: 'Personalizza AI web app',
         explanation:
           'Puoi personalizzare il frontend della Web App per adattarla alle tue esigenze di scenario e stile.',
         way1: {

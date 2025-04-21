@@ -112,9 +112,9 @@ const translation = {
     image: 'Image',
   },
   answerIcon: {
-    title: 'Use WebApp icon to replace 🤖',
-    description: 'Whether to use the WebApp icon to replace 🤖 in the shared application',
-    descriptionInExplore: 'Whether to use the WebApp icon to replace 🤖 in Explore',
+    title: 'Use web app icon to replace 🤖',
+    description: 'Whether to use the web app icon to replace 🤖 in the shared application',
+    descriptionInExplore: 'Whether to use the web app icon to replace 🤖 in Explore',
   },
   switch: 'Switch to Workflow Orchestrate',
   switchTipStart: 'A new app copy will be created for you, and the new copy will switch to Workflow Orchestrate. The new copy will ',
@@ -189,7 +189,7 @@ const translation = {
     members_one: '{{count}} MEMBER',
     members_other: '{{count}} MEMBERS',
     noGroupsOrMembers: 'No access members have been added yet',
-    webAppSSONotEnabledTip: 'Please contact the administrator to enable the WebApp identity authentication method.',
+    webAppSSONotEnabledTip: 'Please contact the administrator to enable the web app identity authentication method.',
     operateGroupAndMember: {
       searchPlaceholder: 'Search groups and members',
       allMembers: 'All members',

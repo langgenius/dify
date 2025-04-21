@@ -5,7 +5,7 @@ const translation = {
     suffix: 'स्वयं अपना ब्रांड चुनना।',
   },
   webapp: {
-    title: 'WebApp का ब्रांड व्यक्तिकरण करें',
+    title: 'web app का ब्रांड व्यक्तिकरण करें',
     removeBrand: 'पावर्ड द्वारा डिफी हटाएं',
     changeLogo: 'पावर्ड द्वारा ब्रांड छवि बदले',
     changeLogoTip: 'SVG या PNG प्रारूप के साथ न्यूनतम आकार 40x40px होना चाहिए',

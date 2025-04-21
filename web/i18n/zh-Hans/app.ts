@@ -113,9 +113,9 @@ const translation = {
     image: '图片',
   },
   answerIcon: {
-    title: '使用 WebApp 图标替换 🤖',
-    description: '是否使用 WebApp 图标替换分享的应用界面中的 🤖',
-    descriptionInExplore: '是否使用 WebApp 图标替换 Explore 界面中的 🤖',
+    title: '使用 web app 图标替换 🤖',
+    description: '是否使用 web app 图标替换分享的应用界面中的 🤖',
+    descriptionInExplore: '是否使用 web app 图标替换 Explore 界面中的 🤖',
   },
   switch: '迁移为工作流编排',
   switchTipStart: '将为您创建一个使用工作流编排的新应用。新应用将',
@@ -175,10 +175,10 @@ const translation = {
   },
   openInExplore: '在“探索”中打开',
   showMyCreatedAppsOnly: '我创建的',
-  accessControl: 'WebApp 访问控制',
+  accessControl: 'web app 访问控制',
   accessControlDialog: {
-    title: 'WebApp 访问权限',
-    description: '设置 WebApp 的访问权限',
+    title: 'web app 访问权限',
+    description: '设置 web app 的访问权限',
     accessLabel: '配置谁有访问权限',
     accessItems: {
       anyone: '任何人',
@@ -190,7 +190,7 @@ const translation = {
     members_one: '{{count}} 个人',
     members_other: '{{count}} 个人',
     noGroupsOrMembers: '没有添加组或成员',
-    webAppSSONotEnabledTip: '请联系管理员启用 WebApp SSO 身份验证方式。',
+    webAppSSONotEnabledTip: '请联系管理员启用 web app SSO 身份验证方式。',
     operateGroupAndMember: {
       searchPlaceholder: '搜索组或成员',
       allMembers: '所有成员',

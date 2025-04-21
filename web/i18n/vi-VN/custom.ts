@@ -5,7 +5,7 @@ const translation = {
     suffix: 'tùy chỉnh thương hiệu.',
   },
   webapp: {
-    title: 'Tùy chỉnh thương hiệu WebApp',
+    title: 'Tùy chỉnh thương hiệu web app',
     removeBrand: 'Xóa "Được hỗ trợ bởi Dify"',
     changeLogo: 'Thay đổi logo "Được hỗ trợ bởi"',
     changeLogoTip: 'Định dạng SVG hoặc PNG với kích thước tối thiểu 40x40px',
