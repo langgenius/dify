@@ -793,6 +793,7 @@ class Message(db.Model):  # type: ignore[name-defined]
         db.Index("message_workflow_run_id_idx", "conversation_id", "workflow_run_id"),
         db.Index("message_created_at_idx", "created_at"),
         db.Index("message_organization_id_idx", "organization_id"),
+        db.Index("message_end_user_org_created_idx", "from_end_user_id", "organization_id", "created_at"),
     )
 
     id: Mapped[str] = mapped_column(StringUUID, server_default=db.text("uuid_generate_v4()"))
