@@ -16,11 +16,16 @@ import {
   ModelTypeEnum,
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
-import useOneStepRun from '@/app/components/workflow/nodes/_base/hooks/use-one-step-run'
-import { RETRIEVAL_OUTPUT_STRUCT } from '@/app/components/workflow/constants'
 import { checkHasContextBlock, checkHasHistoryBlock, checkHasQueryBlock } from '@/app/components/base/prompt-editor/constants'
+import type { PanelProps } from '@/types/workflow'
 
-const useConfig = (id: string, payload: LLMNodeType) => {
+const useConfig = (id: string, payload: LLMNodeType, panelProps?: PanelProps) => {
+  const getVarInputs = panelProps?.getInputVars
+  const toVarInputs = panelProps?.toVarInputs
+  const runInputData = panelProps?.runInputData || {}
+  const runInputDataRef = panelProps?.runInputDataRef || { current: {} }
+  const setRunInputData = panelProps?.setRunInputData
+
   const { nodesReadOnly: readOnly } = useNodesReadOnly()
   const isChatMode = useIsChatMode()
 
@@ -322,28 +327,6 @@ const useConfig = (id: string, payload: LLMNodeType) => {
     filterVar: filterMemoryPromptVar,
   })
 
-  // single run
-  const {
-    isShowSingleRun,
-    hideSingleRun,
-    getInputVars,
-    runningStatus,
-    handleRun,
-    handleStop,
-    runInputData,
-    runInputDataRef,
-    setRunInputData,
-    runResult,
-    toVarInputs,
-  } = useOneStepRun<LLMNodeType>({
-    id,
-    data: inputs,
-    defaultRunInputData: {
-      '#context#': [RETRIEVAL_OUTPUT_STRUCT],
-      '#files#': [],
-    },
-  })
-
   const inputVarValues = (() => {
     const vars: Record<string, any> = {}
     Object.keys(runInputData)
@@ -360,12 +343,12 @@ const useConfig = (id: string, payload: LLMNodeType) => {
       '#context#': runInputDataRef.current['#context#'],
       '#files#': runInputDataRef.current['#files#'],
     }
-    setRunInputData(newVars)
+    setRunInputData?.(newVars)
   }, [runInputDataRef, setRunInputData])
 
   const contexts = runInputData['#context#']
   const setContexts = useCallback((newContexts: string[]) => {
-    setRunInputData({
+    setRunInputData?.({
       ...runInputDataRef.current,
       '#context#': newContexts,
     })
@@ -373,7 +356,7 @@ const useConfig = (id: string, payload: LLMNodeType) => {
 
   const visionFiles = runInputData['#files#']
   const setVisionFiles = useCallback((newFiles: any[]) => {
-    setRunInputData({
+    setRunInputData?.({
       ...runInputDataRef.current,
       '#files#': newFiles,
     })
@@ -390,9 +373,9 @@ const useConfig = (id: string, payload: LLMNodeType) => {
   })()
 
   const varInputs = (() => {
-    const vars = getInputVars(allVarStrArr)
+    const vars = getVarInputs?.(allVarStrArr) || []
     if (isShowVars)
-      return [...vars, ...toVarInputs(inputs.prompt_config?.jinja2_variables || [])]
+      return [...vars, ...(toVarInputs ? (toVarInputs(inputs.prompt_config?.jinja2_variables || [])) : [])]
 
     return vars
   })()
@@ -423,8 +406,6 @@ const useConfig = (id: string, payload: LLMNodeType) => {
     handleSyeQueryChange,
     handleVisionResolutionEnabledChange,
     handleVisionResolutionChange,
-    isShowSingleRun,
-    hideSingleRun,
     inputVarValues,
     setInputVarValues,
     visionFiles,
@@ -432,15 +413,11 @@ const useConfig = (id: string, payload: LLMNodeType) => {
     contexts,
     setContexts,
     varInputs,
-    runningStatus,
     isModelSupportStructuredOutput,
     handleStructureOutputChange,
     structuredOutputCollapsed,
     setStructuredOutputCollapsed,
     handleStructureOutputEnableChange,
-    handleRun,
-    handleStop,
-    runResult,
     filterJinjia2InputVar,
   }
 }

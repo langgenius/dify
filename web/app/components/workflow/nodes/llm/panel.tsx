@@ -1,5 +1,4 @@
-import type { FC } from 'react'
-import React, { useCallback } from 'react'
+import React, { forwardRef, useCallback, useImperativeHandle } from 'react'
 import { useTranslation } from 'react-i18next'
 import MemoryConfig from '../_base/components/memory-config'
 import VarReferencePicker from '../_base/components/variable/var-reference-picker'
@@ -15,28 +14,28 @@ import Split from '@/app/components/workflow/nodes/_base/components/split'
 import ModelParameterModal from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
 import OutputVars, { VarItem } from '@/app/components/workflow/nodes/_base/components/output-vars'
 import { InputVarType, type NodePanelProps } from '@/app/components/workflow/types'
-import BeforeRunForm from '@/app/components/workflow/nodes/_base/components/before-run-form'
 import type { Props as FormProps } from '@/app/components/workflow/nodes/_base/components/before-run-form/form'
-import ResultPanel from '@/app/components/workflow/run/result-panel'
 import Tooltip from '@/app/components/base/tooltip'
 import Editor from '@/app/components/workflow/nodes/_base/components/prompt/editor'
 import useCurrentVars from '../../hooks/use-current-vars'
 import StructureOutput from './components/structure-output'
 import Switch from '@/app/components/base/switch'
 import { RiAlertFill, RiQuestionLine } from '@remixicon/react'
+import type { PanelExposedType } from '@/types/workflow'
 
 const i18nPrefix = 'workflow.nodes.llm'
 
-const Panel: FC<NodePanelProps<LLMNodeType>> = ({
+const Panel = forwardRef<PanelExposedType, NodePanelProps<LLMNodeType>>(({
   id,
   data,
-}) => {
+  panelProps,
+}, ref) => {
   const { t } = useTranslation()
   const {
     currentVars,
     getLastRunInfos,
   } = useCurrentVars()
-  console.log(currentVars, getLastRunInfos())
+  // console.log(currentVars, getLastRunInfos())
   const {
     readOnly,
     inputs,
@@ -63,26 +62,20 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
     handleMemoryChange,
     handleVisionResolutionEnabledChange,
     handleVisionResolutionChange,
-    isShowSingleRun,
-    hideSingleRun,
     inputVarValues,
     setInputVarValues,
     visionFiles,
     setVisionFiles,
     contexts,
     setContexts,
-    runningStatus,
     isModelSupportStructuredOutput,
     structuredOutputCollapsed,
     setStructuredOutputCollapsed,
     handleStructureOutputEnableChange,
     handleStructureOutputChange,
-    handleRun,
-    handleStop,
     varInputs,
-    runResult,
     filterJinjia2InputVar,
-  } = useConfig(id, data)
+  } = useConfig(id, data, panelProps)
 
   const model = inputs.model
 
@@ -146,6 +139,12 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
     handleModelChanged(model)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  useImperativeHandle(ref, () => ({
+    singleRunParams: {
+      forms: singleRunForms,
+    },
+  }))
 
   return (
     <div className='mt-2'>
@@ -348,20 +347,8 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
           )}
         </>
       </OutputVars>
-      {isShowSingleRun && (
-        <BeforeRunForm
-          nodeName={inputs.title}
-          nodeType={inputs.type}
-          onHide={hideSingleRun}
-          forms={singleRunForms}
-          runningStatus={runningStatus}
-          onRun={handleRun}
-          onStop={handleStop}
-          result={<ResultPanel {...runResult} showSteps={false} />}
-        />
-      )}
     </div>
   )
-}
+})
 
 export default React.memo(Panel)

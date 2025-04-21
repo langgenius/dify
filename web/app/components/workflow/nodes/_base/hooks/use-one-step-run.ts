@@ -32,7 +32,7 @@ import LoopDefault from '@/app/components/workflow/nodes/loop/default'
 import { ssePost } from '@/service/base'
 import { noop } from 'lodash-es'
 import { getInputVars as doGetInputVars } from '@/app/components/base/prompt-editor/constants'
-import type { NodeTracing } from '@/types/workflow'
+import type { NodeRunResult, NodeTracing } from '@/types/workflow'
 const { checkValid: checkLLMValid } = LLMDefault
 const { checkValid: checkKnowledgeRetrievalValid } = KnowledgeRetrievalDefault
 const { checkValid: checkIfElseValid } = IfElseDefault
@@ -152,7 +152,7 @@ const useOneStepRun = <T>({
   }, [])
   const iterationTimes = iteratorInputKey ? runInputData[iteratorInputKey].length : 0
   const loopTimes = loopInputKey ? runInputData[loopInputKey].length : 0
-  const [runResult, setRunResult] = useState<any>(null)
+  const [runResult, setRunResult] = useState<NodeRunResult | null>(null)
 
   const { handleNodeDataUpdate }: { handleNodeDataUpdate: (data: any) => void } = useNodeDataUpdate()
   const [canShowSingleRun, setCanShowSingleRun] = useState(false)

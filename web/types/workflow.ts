@@ -1,9 +1,10 @@
 import type { Viewport } from 'reactflow'
-import type { BlockEnum, ConversationVariable, Edge, EnvironmentVariable, InputVar, Node } from '@/app/components/workflow/types'
+import type { BlockEnum, ConversationVariable, Edge, EnvironmentVariable, InputVar, Node, Variable } from '@/app/components/workflow/types'
 import type { TransferMethod } from '@/types/app'
 import type { ErrorHandleTypeEnum } from '@/app/components/workflow/nodes/_base/components/error-handle/types'
 import type { BeforeRunFormProps } from '@/app/components/workflow/nodes/_base/components/before-run-form'
 import type { SpecialResultPanelProps } from '@/app/components/workflow/run/special-result-panel'
+import type { MutableRefObject } from 'react'
 
 export type AgentLogItem = {
   node_execution_id: string,
@@ -361,7 +362,11 @@ export type PanelExposedType = {
 
 export type PanelProps = {
   getInputVars: (textList: string[]) => InputVar[]
+  toVarInputs: (variables: Variable[]) => InputVar[]
   runInputData: Record<string, any>
+  runInputDataRef: MutableRefObject<Record<string, any>>
   setRunInputData: (data: Record<string, any>) => void
   runResult: any
 }
+
+export type NodeRunResult = NodeTracing

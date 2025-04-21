@@ -6,10 +6,10 @@ import {
   cloneElement,
   memo,
   useCallback,
-  useRef,
-  useState,
   useEffect,
   useMemo,
+  useRef,
+  useState,
 } from 'react'
 import {
   RiCloseLine,
@@ -56,6 +56,7 @@ import type { PanelExposedType } from '@/types/workflow'
 import BeforeRunForm from '../before-run-form'
 import { sleep } from '@/utils'
 import { debounce } from 'lodash-es'
+import { NODES_EXTRA_DATA } from '@/app/components/workflow/constants'
 
 type BasePanelProps = {
   children: ReactNode
@@ -147,13 +148,15 @@ const BasePanel: FC<BasePanelProps> = ({
     handleRun,
     handleStop,
     runInputData,
+    runInputDataRef,
     setRunInputData: doSetRunInputData,
     runResult,
     getInputVars,
+    toVarInputs,
   } = useOneStepRun<typeof data>({
     id,
     data,
-    defaultRunInputData: {},
+    defaultRunInputData: NODES_EXTRA_DATA[data.type]?.defaultRunInputData || {},
   })
   const [singleRunParams, setSingleRunParams] = useState<PanelExposedType['singleRunParams'] | undefined>(undefined)
 
@@ -256,9 +259,11 @@ const BasePanel: FC<BasePanelProps> = ({
                 data,
                 panelProps: {
                   getInputVars,
+                  toVarInputs,
                   runInputData,
                   setRunInputData,
                   runResult,
+                  runInputDataRef,
                 },
                 ref: childPanelRef,
               })}
