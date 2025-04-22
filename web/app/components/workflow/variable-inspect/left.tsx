@@ -1,11 +1,12 @@
 // import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import {
   RiArrowRightSLine,
   RiErrorWarningFill,
   RiLoader2Line,
 } from '@remixicon/react'
-  // import { useStore } from '../store'
-  import { BlockEnum } from '../types'
+// import { useStore } from '../store'
+import { BlockEnum } from '../types'
 import Button from '@/app/components/base/button'
 //   import ActionButton from '@/app/components/base/action-button'
 //   import Tooltip from '@/app/components/base/tooltip'
@@ -20,6 +21,8 @@ type Props = {
 }
 
 const Left = ({ handleMenuClick }: Props) => {
+  const { t } = useTranslation()
+
   // const bottomPanelWidth = useStore(s => s.bottomPanelWidth)
   // const setShowVariableInspectPanel = useStore(s => s.setShowVariableInspectPanel)
   const {
@@ -33,8 +36,8 @@ const Left = ({ handleMenuClick }: Props) => {
     <div className={cn('flex h-full flex-col')}>
       {/* header */}
       <div className='flex shrink-0 items-center justify-between gap-1 pl-4 pr-1 pt-2'>
-        <div className='system-sm-semibold-uppercase truncate text-text-primary'>Variable inspect</div>
-        <Button variant='ghost' size='small' className='shrink-0' onClick={clearCurrentVars}>Clear all</Button>
+        <div className='system-sm-semibold-uppercase truncate text-text-primary'>{t('workflow.debug.variableInspect.title')}</div>
+        <Button variant='ghost' size='small' className='shrink-0' onClick={clearCurrentVars}>{t('workflow.debug.variableInspect.clearAll')}</Button>
       </div>
       {/* content */}
       <div className='grow overflow-y-auto py-1'>
@@ -44,7 +47,7 @@ const Left = ({ handleMenuClick }: Props) => {
           <div className='flex h-6 items-center gap-0.5'>
             <RiArrowRightSLine className='h-3 w-3 rotate-90 text-text-tertiary' />
             <div className='flex grow cursor-pointer items-center gap-1'>
-              <div className='system-xs-medium-uppercase truncate text-text-tertiary'>Environment</div>
+              <div className='system-xs-medium-uppercase truncate text-text-tertiary'>{t('workflow.env.envPanelTitle')}</div>
             </div>
           </div>
           {/* var item list */}
@@ -68,7 +71,7 @@ const Left = ({ handleMenuClick }: Props) => {
           <div className='flex h-6 items-center gap-0.5'>
             <RiArrowRightSLine className='h-3 w-3 rotate-90 text-text-tertiary' />
             <div className='flex grow cursor-pointer items-center gap-1'>
-              <div className='system-xs-medium-uppercase truncate text-text-tertiary'>Conversation</div>
+              <div className='system-xs-medium-uppercase truncate text-text-tertiary'>{t('workflow.chatVariable.panelTitle')}</div>
             </div>
           </div>
           {/* var item list */}

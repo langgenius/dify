@@ -915,6 +915,14 @@ const translation = {
       runThisNode: 'Run this node',
     },
     variableInspect: {
+      title: 'Variable Inspect',
+      emptyTip: 'After stepping through a node on the canvas or running a node step by step, you can view the current value of the node variable in Variable Inspect',
+      emptyLink: 'Learn more',
+      clearAll: 'Clear all',
+      clearNode: 'Clear cached variable',
+      view: 'View log',
+      edited: 'Edited',
+      reset: 'Reset to last run value',
       trigger: {
         normal: 'Variable Inspect',
         running: 'Caching running status',

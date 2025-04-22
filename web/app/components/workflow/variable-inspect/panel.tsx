@@ -1,5 +1,6 @@
 import type { FC } from 'react'
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import {
   RiCloseLine,
 } from '@remixicon/react'
@@ -11,6 +12,8 @@ import ActionButton from '@/app/components/base/action-button'
 import cn from '@/utils/classnames'
 
 const Panel: FC = () => {
+  const { t } = useTranslation()
+
   const bottomPanelWidth = useStore(s => s.bottomPanelWidth)
   const setShowVariableInspectPanel = useStore(s => s.setShowVariableInspectPanel)
   const [showLeftPanel, setShowLeftPanel] = useState(true)
@@ -20,7 +23,7 @@ const Panel: FC = () => {
     return (
       <div className={cn('flex h-full flex-col')}>
         <div className='flex shrink-0 items-center justify-between pl-4 pr-2 pt-2'>
-          <div className='system-sm-semibold-uppercase'>Variable Inspect</div>
+          <div className='system-sm-semibold-uppercase'>{t('workflow.debug.variableInspect.title')}</div>
           <ActionButton onClick={() => setShowVariableInspectPanel(false)}>
             <RiCloseLine className='h-4 w-4' />
           </ActionButton>
