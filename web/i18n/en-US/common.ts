@@ -617,6 +617,7 @@ const translation = {
   license: {
     expiring: 'Expiring in one day',
     expiring_plural: 'Expiring in {{count}} days',
+    unlimited: 'Unlimited',
   },
   pagination: {
     perPage: 'Items per page',

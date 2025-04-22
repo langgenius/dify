@@ -36,6 +36,12 @@ type ProviderContextState = {
   modelLoadBalancingEnabled: boolean
   datasetOperatorEnabled: boolean
   webappCopyrightEnabled: boolean
+  licenseLimit: {
+    workspace_members: {
+      size: number
+      limit: number
+    }
+  }
 }
 const ProviderContext = createContext<ProviderContextState>({
   modelProviders: [],
@@ -66,6 +72,12 @@ const ProviderContext = createContext<ProviderContextState>({
   modelLoadBalancingEnabled: false,
   datasetOperatorEnabled: false,
   webappCopyrightEnabled: false,
+  licenseLimit: {
+    workspace_members: {
+      size: 0,
+      limit: 0,
+    },
+  },
 })
 
 export const useProviderContext = () => useContext(ProviderContext)
@@ -94,6 +106,12 @@ export const ProviderContextProvider = ({
   const [modelLoadBalancingEnabled, setModelLoadBalancingEnabled] = useState(false)
   const [datasetOperatorEnabled, setDatasetOperatorEnabled] = useState(false)
   const [webappCopyrightEnabled, setWebappCopyrightEnabled] = useState(false)
+  const [licenseLimit, setLicenseLimit] = useState({
+    workspace_members: {
+      size: 0,
+      limit: 0,
+    },
+  })
 
   const fetchPlan = async () => {
     const data = await fetchCurrentPlanInfo()
@@ -110,6 +128,8 @@ export const ProviderContextProvider = ({
       setDatasetOperatorEnabled(true)
     if (data.webapp_copyright_enabled)
       setWebappCopyrightEnabled(true)
+    if (data.workspace_members)
+      setLicenseLimit({ workspace_members: data.workspace_members })
   }
   useEffect(() => {
     fetchPlan()
@@ -129,6 +149,7 @@ export const ProviderContextProvider = ({
       modelLoadBalancingEnabled,
       datasetOperatorEnabled,
       webappCopyrightEnabled,
+      licenseLimit,
     }}>
       {children}
     </ProviderContext.Provider>
