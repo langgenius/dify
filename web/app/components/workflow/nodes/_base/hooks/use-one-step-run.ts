@@ -152,7 +152,19 @@ const useOneStepRun = <T>({
   }, [])
   const iterationTimes = iteratorInputKey ? runInputData[iteratorInputKey].length : 0
   const loopTimes = loopInputKey ? runInputData[loopInputKey].length : 0
-  const [runResult, setRunResult] = useState<NodeRunResult | null>(null)
+
+  const workflowStore = useWorkflowStore()
+  const {
+    setLastRunNodeInfo,
+    setCurrentNodeVars,
+    setShowSingleRunPanel,
+  } = workflowStore.getState()
+  const [runResult, doSetRunResult] = useState<NodeRunResult | null>(null)
+  const setRunResult = useCallback((data: NodeRunResult | null) => {
+    doSetRunResult(data)
+    setLastRunNodeInfo(id, data as any)
+    setCurrentNodeVars(id, data as any)
+  }, [id, setLastRunNodeInfo, setCurrentNodeVars])
 
   const { handleNodeDataUpdate }: { handleNodeDataUpdate: (data: any) => void } = useNodeDataUpdate()
   const [canShowSingleRun, setCanShowSingleRun] = useState(false)
@@ -186,10 +198,9 @@ const useOneStepRun = <T>({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data._isSingleRun])
 
-  const workflowStore = useWorkflowStore()
   useEffect(() => {
-    workflowStore.getState().setShowSingleRunPanel(!!isShowSingleRun)
-  }, [isShowSingleRun, workflowStore])
+    setShowSingleRunPanel(!!isShowSingleRun)
+  }, [isShowSingleRun, setShowSingleRunPanel])
 
   const hideSingleRun = () => {
     handleNodeDataUpdate({

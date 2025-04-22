@@ -41,14 +41,15 @@ export const createCurrentVarsSlice: StateCreator<CurrentVarsSliceShape> = (set,
     },
     setCurrentNodeVars: (nodeId, payload) => {
       set((state) => {
-        const nodes = state.currentNodes.map((node) => {
-          // eslint-disable-next-line curly
-          if (node.node_id === nodeId) {
-            return payload
-          }
-
-          return node
+        const prevNodes = state.currentNodes
+        const nodes = produce(prevNodes, (draft) => {
+          const index = prevNodes.findIndex(node => node.id === nodeId)
+          if (index === -1)
+            draft.push(payload)
+          else
+            draft[index] = payload
         })
+
         return {
           currentNodes: nodes,
         }

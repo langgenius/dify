@@ -33,9 +33,8 @@ const Panel = forwardRef<PanelExposedType, NodePanelProps<LLMNodeType>>(({
   const { t } = useTranslation()
   const {
     currentVars,
-    getLastRunInfos,
   } = useCurrentVars()
-  // console.log(currentVars, getLastRunInfos())
+  console.log(currentVars)
   const {
     readOnly,
     inputs,
