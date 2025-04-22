@@ -252,7 +252,7 @@ const Img = ({ src }: any) => {
   return <div className="markdown-img-wrapper"><ImageGallery srcs={[src]} /></div>
 }
 
-const Link = ({ node, ...props }: any) => {
+const Link = ({ node, children, ...props }: any) => {
   if (node.properties?.href && node.properties.href?.toString().startsWith('abbr')) {
     // eslint-disable-next-line react-hooks/rules-of-hooks
     const { onSend } = useChatContext()
@@ -261,7 +261,7 @@ const Link = ({ node, ...props }: any) => {
     return <abbr className="cursor-pointer underline !decoration-primary-700 decoration-dashed" onClick={() => onSend?.(hidden_text)} title={node.children[0]?.value}>{node.children[0]?.value}</abbr>
   }
   else {
-    return <a {...props} target="_blank" className="cursor-pointer underline !decoration-primary-700 decoration-dashed">{node.children[0] ? node.children[0]?.value : 'Download'}</a>
+    return <a {...props} target="_blank" className="cursor-pointer underline !decoration-primary-700 decoration-dashed">{children || 'Download'}</a>
   }
 }
 

@@ -14,7 +14,7 @@ from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExport
 from opentelemetry.instrumentation.celery import CeleryInstrumentor
 from opentelemetry.instrumentation.flask import FlaskInstrumentor
 from opentelemetry.instrumentation.sqlalchemy import SQLAlchemyInstrumentor
-from opentelemetry.metrics import get_meter_provider, set_meter_provider
+from opentelemetry.metrics import get_meter, get_meter_provider, set_meter_provider
 from opentelemetry.propagate import set_global_textmap
 from opentelemetry.propagators.b3 import B3Format
 from opentelemetry.propagators.composite import CompositePropagator
@@ -112,12 +112,22 @@ def is_celery_worker():
 
 
 def init_flask_instrumentor(app: DifyApp):
+    meter = get_meter("http_metrics", version=dify_config.CURRENT_VERSION)
+    _http_response_counter = meter.create_counter(
+        "http.server.response.count", description="Total number of HTTP responses by status code", unit="{response}"
+    )
+
     def response_hook(span: Span, status: str, response_headers: list):
         if span and span.is_recording():
             if status.startswith("2"):
                 span.set_status(StatusCode.OK)
             else:
                 span.set_status(StatusCode.ERROR, status)
+
+            status = status.split(" ")[0]
+            status_code = int(status)
+            status_class = f"{status_code // 100}xx"
+            _http_response_counter.add(1, {"status_code": status_code, "status_class": status_class})
 
     instrumentor = FlaskInstrumentor()
     if dify_config.DEBUG:

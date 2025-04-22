@@ -35,6 +35,7 @@ const translation = {
     helpText: 'Tìm hiểu cách viết mô tả tập dữ liệu tốt.',
     indexMethodChangeToEconomyDisabledTip: 'Không khả dụng để hạ cấp từ HQ xuống ECO',
     upgradeHighQualityTip: 'Sau khi nâng cấp lên chế độ Chất lượng cao, không thể hoàn nguyên về chế độ Tiết kiệm',
+    searchModel: 'Tìm kiếm mô hình',
   },
 }
 
