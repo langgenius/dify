@@ -22,7 +22,7 @@ type Option = {
   value: string
 }
 
-type PureSelectProps = {
+export type PureSelectProps = {
   options: Option[]
   value?: string
   onChange?: (value: string) => void

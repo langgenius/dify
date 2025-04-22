@@ -1,14 +1,13 @@
 'use client'
-import React, { useCallback, useRef } from 'react'
+import React, { useRef } from 'react'
 import { useHover } from 'ahooks'
 import { useTranslation } from 'react-i18next'
 import {
   RiDeleteBinLine,
+  RiDraggable,
   RiEditLine,
 } from '@remixicon/react'
 import type { InputVar } from '@/app/components/workflow/types'
-import { noop } from 'lodash-es'
-import { useStore } from '@/app/components/workflow/store'
 import { InputField } from '@/app/components/base/icons/src/public/pipeline'
 import InputVarTypeIcon from '@/app/components/workflow/nodes/_base/components/input-var-type-icon'
 import cn from '@/utils/classnames'
@@ -17,23 +16,20 @@ import Badge from '@/app/components/base/badge'
 type FieldItemProps = {
   readonly?: boolean
   payload: InputVar
-  onRemove?: () => void
+  onClickEdit: () => void
+  onRemove: () => void
 }
 
 const FieldItem = ({
   readonly,
   payload,
-  onRemove = noop,
+  onClickEdit,
+  onRemove,
 }: FieldItemProps) => {
   const { t } = useTranslation()
 
   const ref = useRef(null)
   const isHovering = useHover(ref)
-  const setShowInputFieldEditor = useStore(state => state.setShowInputFieldEditor)
-
-  const showInputFieldEditor = useCallback(() => {
-    setShowInputFieldEditor?.(true)
-  }, [setShowInputFieldEditor])
 
   return (
     <div
@@ -44,7 +40,11 @@ const FieldItem = ({
       )}
     >
       <div className='flex grow basis-0 items-center gap-x-1'>
-        <InputField className='size-4 text-text-accent' />
+        {
+          isHovering
+            ? <RiDraggable className='handle h-4 w-4 cursor-all-scroll text-text-quaternary' />
+            : <InputField className='size-4 text-text-accent' />
+        }
         <div
           title={payload.variable}
           className='system-sm-medium max-w-[130px] shrink-0 truncate text-text-secondary'
@@ -77,7 +77,7 @@ const FieldItem = ({
             <button
               type='button'
               className='cursor-pointer rounded-md p-1 hover:bg-state-base-hover'
-              onClick={showInputFieldEditor}
+              onClick={onClickEdit}
             >
               <RiEditLine className='size-4 text-text-tertiary' />
             </button>

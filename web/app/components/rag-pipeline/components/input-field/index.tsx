@@ -4,31 +4,35 @@ import {
 } from 'react'
 import { useStore } from '@/app/components/workflow/store'
 import { RiCloseLine } from '@remixicon/react'
-import FieldList from './field-list'
 import { Jina } from '@/app/components/base/icons/src/public/llm'
 import { InputVarType } from '@/app/components/workflow/types'
 import Tooltip from '@/app/components/base/tooltip'
+import DialogWrapper from './dialog-wrapper'
+import FieldList from './field-list'
 import FooterTip from './footer-tip'
-import InputFieldEditor from './editor'
 
-type InputFieldPanelProps = {
+type InputFieldDialogProps = {
   readonly?: boolean
 }
 
-const InputFieldPanel = ({
+const InputFieldDialog = ({
   readonly = false,
-}: InputFieldPanelProps) => {
-  const showInputFieldEditor = useStore(state => state.showInputFieldEditor)
-  const setShowInputFieldPanel = useStore(state => state.setShowInputFieldPanel)
+}: InputFieldDialogProps) => {
+  const showInputFieldDialog = useStore(state => state.showInputFieldDialog)
+  const setShowInputFieldDialog = useStore(state => state.setShowInputFieldDialog)
 
   const closePanel = useCallback(() => {
-    setShowInputFieldPanel?.(false)
-  }, [setShowInputFieldPanel])
+    setShowInputFieldDialog?.(false)
+  }, [setShowInputFieldDialog])
 
   return (
-    <div className='flex h-full flex-row-reverse gap-x-1'>
-      <div className='flex h-full w-[420px] flex-col rounded-l-2xl border-y border-l border-components-panel-border bg-components-panel-bg-alt shadow-xl shadow-shadow-shadow-5'>
+    <DialogWrapper
+      show={!!showInputFieldDialog}
+      onClose={closePanel}
+    >
+      <div className='flex grow flex-col'>
         <div className='flex items-center p-4 pb-0'>
+          {/* // TODO： i18n */}
           <div className='system-xl-semibold grow'>
             User input fields
           </div>
@@ -60,6 +64,11 @@ const InputFieldPanel = ({
               type: InputVarType.textInput,
               required: true,
               max_length: 12,
+            }, {
+              variable: 'num',
+              label: 'num',
+              type: InputVarType.number,
+              required: true,
             }]}
             readonly={readonly}
             labelClassName='pt-2 pb-1'
@@ -108,9 +117,8 @@ const InputFieldPanel = ({
         </div>
         <FooterTip />
       </div>
-      {showInputFieldEditor && <InputFieldEditor />}
-    </div>
+    </DialogWrapper>
   )
 }
 
-export default memo(InputFieldPanel)
+export default memo(InputFieldDialog)

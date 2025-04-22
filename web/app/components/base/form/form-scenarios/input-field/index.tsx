@@ -103,6 +103,9 @@ const InputFieldForm = ({
               label={t('appDebug.variableConfig.fieldType')}
               options={inputTypes}
               onChange={handleTypeChange}
+              popupProps={{
+                wrapperClassName: 'z-40',
+              }}
             />
           )}
         />

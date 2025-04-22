@@ -1,8 +1,9 @@
-import { useStore } from '@/app/components/workflow/store'
 import type { InputVar } from '@/app/components/workflow/types'
 import { RiAddLine } from '@remixicon/react'
 import FieldItem from './field-item'
 import cn from '@/utils/classnames'
+import { useState } from 'react'
+import InputFieldEditor from '../editor'
 
 type FieldListProps = {
   LabelRightContent: React.ReactNode
@@ -17,13 +18,18 @@ const FieldList = ({
   readonly,
   labelClassName,
 }: FieldListProps) => {
-  const showInputFieldEditor = useStore(state => state.showInputFieldEditor)
-  const setShowInputFieldEditor = useStore(state => state.setShowInputFieldEditor)
-
-  const isReadonly = readonly || showInputFieldEditor
+  const [showInputFieldEditor, setShowInputFieldEditor] = useState(false)
 
   const handleAddField = () => {
-    setShowInputFieldEditor?.(true)
+    setShowInputFieldEditor(true)
+  }
+
+  const handleEditField = (index: number) => {
+    setShowInputFieldEditor(true)
+  }
+
+  const handleCloseEditor = () => {
+    setShowInputFieldEditor(false)
   }
 
   return (
@@ -36,8 +42,8 @@ const FieldList = ({
           type='button'
           className='h-6 px-2 py-1 disabled:cursor-not-allowed'
           onClick={handleAddField}
-          disabled={isReadonly}
-          aria-disabled={isReadonly}
+          disabled={readonly}
+          aria-disabled={readonly}
         >
           <RiAddLine className='h-4 w-4 text-text-tertiary' />
         </button>
@@ -46,14 +52,21 @@ const FieldList = ({
         {inputFields?.map((item, index) => (
           <FieldItem
             key={index}
-            readonly={isReadonly}
+            readonly={readonly}
             payload={item}
             onRemove={() => {
               // Handle remove action
             }}
+            onClickEdit={handleEditField.bind(null, index)}
           />
         ))}
       </div>
+      {showInputFieldEditor && (
+        <InputFieldEditor
+          show={showInputFieldEditor}
+          onClose={handleCloseEditor}
+        />
+      )}
     </div>
   )
 }

@@ -1,5 +1,6 @@
 import cn from '@/utils/classnames'
 import { useFieldContext } from '../..'
+import type { PureSelectProps } from '../../../select/pure'
 import PureSelect from '../../../select/pure'
 import Label from '../label'
 import { useCallback } from 'react'
@@ -18,7 +19,7 @@ type SelectFieldProps = {
   tooltip?: string
   className?: string
   labelClassName?: string
-}
+} & Omit<PureSelectProps, 'options' | 'value' | 'onChange'>
 
 const SelectField = ({
   label,
@@ -29,6 +30,7 @@ const SelectField = ({
   tooltip,
   className,
   labelClassName,
+  ...selectProps
 }: SelectFieldProps) => {
   const field = useFieldContext<string>()
 
@@ -51,6 +53,7 @@ const SelectField = ({
         value={field.state.value}
         options={options}
         onChange={handleChange}
+        {...selectProps}
       />
     </div>
   )

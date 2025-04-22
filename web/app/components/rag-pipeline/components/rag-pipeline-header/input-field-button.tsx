@@ -3,12 +3,11 @@ import { InputField } from '@/app/components/base/icons/src/public/pipeline'
 import { useStore } from '@/app/components/workflow/store'
 import { useCallback } from 'react'
 
-// TODO: i18n
 const InputFieldButton = () => {
-  const setShowInputFieldPanel = useStore(state => state.setShowInputFieldPanel)
+  const setShowInputFieldDialog = useStore(state => state.setShowInputFieldDialog)
   const handleClick = useCallback(() => {
-    setShowInputFieldPanel?.(true)
-  }, [setShowInputFieldPanel])
+    setShowInputFieldDialog?.(true)
+  }, [setShowInputFieldDialog])
 
   return (
     <Button
@@ -17,6 +16,7 @@ const InputFieldButton = () => {
       onClick={handleClick}
     >
       <InputField className='h-4 w-4' />
+      {/* // TODO: i18n */}
       <span className='px-0.5'>Input Field</span>
     </Button>
   )
