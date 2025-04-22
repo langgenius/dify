@@ -1,5 +1,7 @@
-import { BlockEnum, EditionType } from '../../types'
+import type { Var } from '../../types'
+import { BlockEnum, EditionType, VarType } from '../../types'
 import { type NodeDefault, type PromptItem, PromptRole } from '../../types'
+import { getNotExistVariablesByArray, getNotExistVariablesByText } from '../../utils/workflow'
 import type { LLMNodeType } from './types'
 import { ALL_CHAT_AVAILABLE_BLOCKS, ALL_COMPLETION_AVAILABLE_BLOCKS } from '@/app/components/workflow/blocks'
 
@@ -84,6 +86,37 @@ const nodeDefault: NodeDefault<LLMNodeType> = {
     return {
       isValid: !errorMessages,
       errorMessage: errorMessages,
+    }
+  },
+  checkVarValid(payload: LLMNodeType, varMap: Record<string, Var>, t: any) {
+    const errorMessageArr = []
+    const prompt_templates_warnings: string[] = []
+    if (payload.context?.enabled && payload.context?.variable_selector?.length) {
+      const context_variable_selector_warnings = getNotExistVariablesByArray([payload.context.variable_selector], varMap)
+      if (context_variable_selector_warnings.length)
+        errorMessageArr.push(`${t('workflow.nodes.llm.context')} ${t('workflow.common.referenceVar')}${context_variable_selector_warnings.join('、')}${t('workflow.common.noExist')}`)
+    }
+    const prompt_templates = Array.isArray(payload.prompt_template) ? payload.prompt_template : [payload.prompt_template] as PromptItem[]
+    prompt_templates.forEach((v) => {
+      prompt_templates_warnings.push(...getNotExistVariablesByText(v.text, { context: { variable: 'context', type: VarType.string }, ...varMap }))
+    })
+    if (prompt_templates_warnings.length)
+      errorMessageArr.push(`${t('workflow.nodes.llm.prompt')} ${t('workflow.common.referenceVar')}${prompt_templates_warnings.join('、')}${t('workflow.common.noExist')}`)
+
+    const memory_query_prompt_template_warnings = getNotExistVariablesByText(payload.memory?.query_prompt_template || '', varMap)
+    if (memory_query_prompt_template_warnings.length)
+      errorMessageArr.push(`${t('workflow.nodes.common.memories.title')}USER ${t('workflow.common.referenceVar')}${memory_query_prompt_template_warnings.join('、')}${t('workflow.common.noExist')}`)
+
+    if (payload.vision?.enabled && payload.vision?.configs?.variable_selector?.length) {
+      const vision_variable_selector_warnings = getNotExistVariablesByArray([payload.vision.configs.variable_selector], varMap)
+      if (vision_variable_selector_warnings.length)
+        errorMessageArr.push(`${t('workflow.nodes.llm.vision')} ${t('workflow.common.referenceVar')}${vision_variable_selector_warnings.join('、')}${t('workflow.common.noExist')}`)
+    }
+
+    return {
+      isValid: true,
+      warning_vars: [...prompt_templates_warnings, ...memory_query_prompt_template_warnings],
+      errorMessage: errorMessageArr,
     }
   },
 }
