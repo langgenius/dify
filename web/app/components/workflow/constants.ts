@@ -22,6 +22,7 @@ import IterationStartDefault from './nodes/iteration-start/default'
 import AgentDefault from './nodes/agent/default'
 import LoopStartDefault from './nodes/loop-start/default'
 import LoopEndDefault from './nodes/loop-end/default'
+import DataSourceDefault from './nodes/data-source/default'
 
 type NodesExtraData = {
   author: string
@@ -33,6 +34,15 @@ type NodesExtraData = {
   checkValid: any
 }
 export const NODES_EXTRA_DATA: Record<BlockEnum, NodesExtraData> = {
+  [BlockEnum.DataSource]: {
+    author: 'Dify',
+    about: '',
+    availablePrevNodes: [],
+    availableNextNodes: [],
+    getAvailablePrevNodes: DataSourceDefault.getAvailablePrevNodes,
+    getAvailableNextNodes: DataSourceDefault.getAvailableNextNodes,
+    checkValid: DataSourceDefault.checkValid,
+  },
   [BlockEnum.Start]: {
     author: 'Dify',
     about: '',
@@ -243,6 +253,12 @@ export const NODES_EXTRA_DATA: Record<BlockEnum, NodesExtraData> = {
 }
 
 export const NODES_INITIAL_DATA = {
+  [BlockEnum.DataSource]: {
+    type: BlockEnum.DataSource,
+    title: '',
+    desc: '',
+    ...DataSourceDefault.defaultValue,
+  },
   [BlockEnum.Start]: {
     type: BlockEnum.Start,
     title: '',

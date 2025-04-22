@@ -25,11 +25,8 @@ import {
   useStore,
   useWorkflowStore,
 } from '../store'
+
 import {
-  getParallelInfo,
-} from '../utils'
-import {
-  PARALLEL_DEPTH_LIMIT,
   PARALLEL_LIMIT,
   SUPPORT_OUTPUT_VARS_NODE,
 } from '../constants'
@@ -323,24 +320,24 @@ export const useWorkflow = () => {
   }, [store, workflowStore, t])
 
   const checkNestedParallelLimit = useCallback((nodes: Node[], edges: Edge[], parentNodeId?: string) => {
-    const {
-      parallelList,
-      hasAbnormalEdges,
-    } = getParallelInfo(nodes, edges, parentNodeId)
-    const { workflowConfig } = workflowStore.getState()
+    // const {
+    //   parallelList,
+    //   hasAbnormalEdges,
+    // } = getParallelInfo(nodes, edges, parentNodeId)
+    // const { workflowConfig } = workflowStore.getState()
 
-    if (hasAbnormalEdges)
-      return false
+    // if (hasAbnormalEdges)
+    //   return false
 
-    for (let i = 0; i < parallelList.length; i++) {
-      const parallel = parallelList[i]
+    // for (let i = 0; i < parallelList.length; i++) {
+    //   const parallel = parallelList[i]
 
-      if (parallel.depth > (workflowConfig?.parallel_depth_limit || PARALLEL_DEPTH_LIMIT)) {
-        const { setShowTips } = workflowStore.getState()
-        setShowTips(t('workflow.common.parallelTip.depthLimit', { num: (workflowConfig?.parallel_depth_limit || PARALLEL_DEPTH_LIMIT) }))
-        return false
-      }
-    }
+    //   if (parallel.depth > (workflowConfig?.parallel_depth_limit || PARALLEL_DEPTH_LIMIT)) {
+    //     const { setShowTips } = workflowStore.getState()
+    //     setShowTips(t('workflow.common.parallelTip.depthLimit', { num: (workflowConfig?.parallel_depth_limit || PARALLEL_DEPTH_LIMIT) }))
+    //     return false
+    //   }
+    // }
 
     return true
   }, [t, workflowStore])

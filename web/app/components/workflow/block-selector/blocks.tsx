@@ -109,7 +109,7 @@ const Blocks = ({
   }, [groups, nodesExtraData, onSelect, t])
 
   return (
-    <div className='p-1'>
+    <div className='max-h-[480px] overflow-y-auto p-1'>
       {
         isEmpty && (
           <div className='flex h-[22px] items-center px-3 text-xs font-medium text-text-tertiary'>{t('workflow.tabs.noResult')}</div>

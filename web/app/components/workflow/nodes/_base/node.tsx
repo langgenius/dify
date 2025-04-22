@@ -131,7 +131,7 @@ const BaseNode: FC<BaseNodeProps> = ({
   return (
     <div
       className={cn(
-        'flex rounded-2xl border-[2px]',
+        'relative flex rounded-2xl border',
         showSelectedBorder ? 'border-components-option-card-option-selected-border' : 'border-transparent',
         !showSelectedBorder && data._inParallelHovering && 'border-workflow-block-border-highlight',
         data._waitingRun && 'opacity-70',
@@ -142,6 +142,15 @@ const BaseNode: FC<BaseNodeProps> = ({
         height: (data.type === BlockEnum.Iteration || data.type === BlockEnum.Loop) ? data.height : 'auto',
       }}
     >
+      {
+        data.type === BlockEnum.DataSource && (
+          <div className='absolute inset-[-2px] top-[-22px] z-[-1] rounded-[18px] bg-node-data-source-bg p-0.5 backdrop-blur-[6px]'>
+            <div className='system-2xs-semibold-uppercase flex h-5 items-center px-2.5 text-text-tertiary'>
+              data source
+            </div>
+          </div>
+        )
+      }
       <div
         className={cn(
           'group relative pb-1 shadow-xs',

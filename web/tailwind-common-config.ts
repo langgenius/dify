@@ -120,6 +120,7 @@ const config = {
         'price-premium-text-background': 'var(--color-premium-text-background)',
         'price-enterprise-background': 'var(--color-price-enterprise-background)',
         'grid-mask-background': 'var(--color-grid-mask-background)',
+        'node-data-source-bg': 'var(--color-node-data-source-bg)',
       },
       animation: {
         'spin-slow': 'spin 2s linear infinite',

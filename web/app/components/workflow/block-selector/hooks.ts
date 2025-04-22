@@ -1,3 +1,7 @@
+import {
+  useMemo,
+  useState,
+} from 'react'
 import { useTranslation } from 'react-i18next'
 import { BLOCKS } from './constants'
 import {
@@ -16,19 +20,43 @@ export const useBlocks = () => {
   })
 }
 
-export const useTabs = () => {
+export const useTabs = (noBlocks?: boolean) => {
   const { t } = useTranslation()
+  const tabs = useMemo(() => {
+    return [
+      ...(
+        noBlocks
+          ? []
+          : [
+              {
+                key: TabsEnum.Blocks,
+                name: t('workflow.tabs.blocks'),
+              },
+            ]
+      ),
+      {
+        key: TabsEnum.Sources,
+        name: t('workflow.tabs.sources'),
+      },
+      {
+        key: TabsEnum.Tools,
+        name: t('workflow.tabs.tools'),
+      },
+    ]
+  }, [t, noBlocks])
+  const initialTab = useMemo(() => {
+    if (noBlocks)
+      return TabsEnum.Sources
 
-  return [
-    {
-      key: TabsEnum.Blocks,
-      name: t('workflow.tabs.blocks'),
-    },
-    {
-      key: TabsEnum.Tools,
-      name: t('workflow.tabs.tools'),
-    },
-  ]
+    return TabsEnum.Blocks
+  }, [noBlocks])
+  const [activeTab, setActiveTab] = useState(initialTab)
+
+  return {
+    tabs,
+    activeTab,
+    setActiveTab,
+  }
 }
 
 export const useToolTabs = () => {

@@ -229,6 +229,7 @@ const translation = {
     'utilities': 'Utilities',
     'noResult': 'No match found',
     'agent': 'Agent Strategy',
+    'sources': 'Sources',
   },
   blocks: {
     'start': 'Start',

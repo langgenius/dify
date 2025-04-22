@@ -5,6 +5,12 @@ import { BlockClassificationEnum } from './types'
 export const BLOCKS: Block[] = [
   {
     classification: BlockClassificationEnum.Default,
+    type: BlockEnum.DataSource,
+    title: 'File upload',
+    description: '',
+  },
+  {
+    classification: BlockClassificationEnum.Default,
     type: BlockEnum.Start,
     title: 'Start',
     description: '',
