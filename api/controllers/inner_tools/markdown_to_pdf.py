@@ -11,9 +11,12 @@ from flask import Response, jsonify, request
 from flask_restful import Resource  # type: ignore
 from models.account import Tenant
 from reportlab.lib.pagesizes import letter
+from reportlab.lib.styles import ParagraphStyle
+from reportlab.lib.units import inch
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.cidfonts import UnicodeCIDFont
 from reportlab.pdfgen import canvas
+from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer
 
 
 class MarkdownToPDFApi(Resource):
@@ -60,58 +63,55 @@ class MarkdownToPDFApi(Resource):
 
     def _generate_pdf_binary(self, markdown_text: str, title: str) -> Tuple[bytes, str]:
         """Generate PDF from markdown text and return the binary data and filename"""
-        # Convert markdown to HTML (for potential future enhancement)
-        html_content = markdown.markdown(markdown_text, extensions=['extra'])
-
-        # Create PDF using reportlab
         buffer = io.BytesIO()
-        pdf = canvas.Canvas(buffer, pagesize=letter)
 
-        # Register a Chinese font
+        # Create PDF document with proper margins
+        doc = SimpleDocTemplate(buffer, pagesize=letter, rightMargin=72, leftMargin=72, topMargin=72, bottomMargin=72)
+
+        # Register Chinese font
         pdfmetrics.registerFont(UnicodeCIDFont('STSong-Light'))
 
+        # Define styles
+        title_style = ParagraphStyle('CustomTitle', fontName='STSong-Light', fontSize=16, spaceAfter=30, leading=20)
+
+        h1_style = ParagraphStyle(
+            'CustomH1', fontName='STSong-Light', fontSize=14, spaceAfter=12, spaceBefore=12, leading=18
+        )
+
+        h2_style = ParagraphStyle(
+            'CustomH2', fontName='STSong-Light', fontSize=13, spaceAfter=10, spaceBefore=10, leading=16
+        )
+
+        normal_style = ParagraphStyle('CustomNormal', fontName='STSong-Light', fontSize=12, spaceAfter=8, leading=14)
+
+        # Prepare content elements
+        elements = []
+
         # Add title
-        pdf.setFont("STSong-Light", 16)
-        pdf.drawString(72, 760, title)
+        elements.append(Paragraph(title, title_style))
+        elements.append(Spacer(1, 20))
 
-        # Add markdown content
-        pdf.setFont("STSong-Light", 12)
-        y_position = 730
+        # Process markdown content
+        lines = markdown_text.split('\n')
+        for line in lines:
+            if not line.strip():
+                elements.append(Spacer(1, 10))
+                continue
 
-        # Simple text rendering - each line as a separate line in the PDF
-        for line in markdown_text.split('\n'):
-            if line.startswith('# '):  # H1 heading
-                pdf.setFont("STSong-Light", 14)
-                pdf.drawString(72, y_position, line[2:])
-                y_position -= 20
-                pdf.setFont("STSong-Light", 12)
-            elif line.startswith('## '):  # H2 heading
-                pdf.setFont("STSong-Light", 13)
-                pdf.drawString(72, y_position, line[3:])
-                y_position -= 18
-                pdf.setFont("STSong-Light", 12)
-            elif line.startswith('### '):  # H3 heading
-                pdf.setFont("STSong-Light", 12)
-                pdf.drawString(72, y_position, line[4:])
-                y_position -= 16
-                pdf.setFont("STSong-Light", 12)
-            elif line.strip() == '':  # Empty line
-                y_position -= 12
-            else:  # Regular text
-                pdf.drawString(72, y_position, line)
-                y_position -= 14
+            if line.startswith('# '):
+                elements.append(Paragraph(line[2:], h1_style))
+            elif line.startswith('## '):
+                elements.append(Paragraph(line[3:], h2_style))
+            elif line.startswith('### '):
+                elements.append(Paragraph(line[4:], h2_style))
+            else:
+                elements.append(Paragraph(line, normal_style))
 
-            # Check if we need a new page
-            if y_position < 72:
-                pdf.showPage()
-                y_position = 760
-                pdf.setFont("STSong-Light", 12)
-
-        # Save the PDF
-        pdf.save()
+        # Build PDF
+        doc.build(elements)
         buffer.seek(0)
 
-        # Generate a filename based on the title
+        # Generate filename
         filename = f"{title.replace(' ', '_')}_{uuid.uuid4().hex[:8]}.pdf"
 
         return buffer.getvalue(), filename
