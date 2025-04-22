@@ -24,7 +24,7 @@ from core.model_runtime.entities import (
 from core.model_runtime.entities.llm_entities import LLMResult, LLMUsage
 from core.model_runtime.entities.message_entities import (
     AssistantPromptMessage,
-    PromptMessageContent,
+    PromptMessageContentUnionTypes,
     PromptMessageRole,
     SystemPromptMessage,
     UserPromptMessage,
@@ -594,8 +594,7 @@ class LLMNode(BaseNode[LLMNodeData]):
         variable_pool: VariablePool,
         jinja2_variables: Sequence[VariableSelector],
     ) -> tuple[Sequence[PromptMessage], Optional[Sequence[str]]]:
-        # FIXME: fix the type error cause prompt_messages is type quick a few times
-        prompt_messages: list[Any] = []
+        prompt_messages: list[PromptMessage] = []
 
         if isinstance(prompt_template, list):
             # For chat model
@@ -657,12 +656,14 @@ class LLMNode(BaseNode[LLMNodeData]):
             # For issue #11247 - Check if prompt content is a string or a list
             prompt_content_type = type(prompt_content)
             if prompt_content_type == str:
+                prompt_content = str(prompt_content)
                 if "#histories#" in prompt_content:
                     prompt_content = prompt_content.replace("#histories#", memory_text)
                 else:
                     prompt_content = memory_text + "\n" + prompt_content
                 prompt_messages[0].content = prompt_content
             elif prompt_content_type == list:
+                prompt_content = prompt_content if isinstance(prompt_content, list) else []
                 for content_item in prompt_content:
                     if content_item.type == PromptMessageContentType.TEXT:
                         if "#histories#" in content_item.data:
@@ -675,9 +676,10 @@ class LLMNode(BaseNode[LLMNodeData]):
             # Add current query to the prompt message
             if sys_query:
                 if prompt_content_type == str:
-                    prompt_content = prompt_messages[0].content.replace("#sys.query#", sys_query)
+                    prompt_content = str(prompt_messages[0].content).replace("#sys.query#", sys_query)
                     prompt_messages[0].content = prompt_content
                 elif prompt_content_type == list:
+                    prompt_content = prompt_content if isinstance(prompt_content, list) else []
                     for content_item in prompt_content:
                         if content_item.type == PromptMessageContentType.TEXT:
                             content_item.data = sys_query + "\n" + content_item.data
@@ -707,7 +709,7 @@ class LLMNode(BaseNode[LLMNodeData]):
         filtered_prompt_messages = []
         for prompt_message in prompt_messages:
             if isinstance(prompt_message.content, list):
-                prompt_message_content = []
+                prompt_message_content: list[PromptMessageContentUnionTypes] = []
                 for content_item in prompt_message.content:
                     # Skip content if features are not defined
                     if not model_config.model_schema.features:
@@ -1132,7 +1134,9 @@ class LLMNode(BaseNode[LLMNodeData]):
         )
 
 
-def _combine_message_content_with_role(*, contents: Sequence[PromptMessageContent], role: PromptMessageRole):
+def _combine_message_content_with_role(
+    *, contents: Optional[str | list[PromptMessageContentUnionTypes]] = None, role: PromptMessageRole
+):
     match role:
         case PromptMessageRole.USER:
             return UserPromptMessage(content=contents)
