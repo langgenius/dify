@@ -29,6 +29,7 @@ class AnswersSummaryAnalysisApi(Resource):
 
         data = request.get_json()
         categories = data.get('categories')
+        correct_answer = data.get('correct_answer')  # a list of correct answer
         workflow_run_id = data.get('workflow_run_id')
 
         # read the arg of this workflow run
@@ -63,7 +64,7 @@ class AnswersSummaryAnalysisApi(Resource):
             return {"error": "Failed to parse answers from file"}, 400
 
         # Calculate category statistics
-        summary_analysis = self._calculate_category_statistics(parsed_answers, categories)
+        summary_analysis = self._calculate_category_statistics(parsed_answers, correct_answer, categories)
 
         # Return the response
         return jsonify({'user_answers': parsed_answers, 'summary_analysis': summary_analysis})
@@ -141,13 +142,14 @@ class AnswersSummaryAnalysisApi(Resource):
             return []
 
     def _calculate_category_statistics(
-        self, parsed_answers: List[Dict[str, Any]], categories: List[Dict[str, Any]]
+        self, parsed_answers: List[Dict[str, Any]], correct_answer: List[str], categories: List[Dict[str, Any]]
     ) -> List[Dict[str, Any]]:
         """Calculate statistics by category.
 
-        For demonstration, we're assuming:
-        - Correct answers are predetermined or defined in the system
-        - We're calculating the percentage of correct answers per category
+        Args:
+            parsed_answers: List of dictionaries containing parsed student answers
+            correct_answer: List of correct answers for all questions
+            categories: List of question categories
 
         Returns:
             A list of dictionaries with category statistics:
@@ -160,16 +162,16 @@ class AnswersSummaryAnalysisApi(Resource):
                 }
             ]
         """
-        # Simplified example: assume we have correct answers defined
-        # In a real system, these would come from a database or predefined source
-        # For now, we'll just count non-empty answers
+        # Validate correct_answer list
+        if not correct_answer or not isinstance(correct_answer, list):
+            # Fallback to original behavior if no correct answers provided
+            return self._legacy_calculate_statistics(parsed_answers, categories)
 
         summary = []
 
         # For each category in the list
         for category in categories:
-            # Based on the image, categories format is like ['理由原因类': [...], '时间类': [...]]
-            # Extract category name (the key) and question numbers (the values)
+            # Extract category name and question numbers
             if isinstance(category, dict):
                 # Original format with 'name' and 'items'
                 category_name = category.get('name', '')
@@ -179,7 +181,71 @@ class AnswersSummaryAnalysisApi(Resource):
                     category_name = next(iter(category))
                     question_numbers = category.get(category_name, [])
             elif isinstance(category, list) and len(category) == 2:
-                # New format from image: ['category_name', ['30', '36', '39', '50']]
+                # New format: ['category_name', ['30', '36', '39', '50']]
+                category_name = category[0]
+                question_numbers = category[1]
+            else:
+                continue  # Skip invalid category format
+
+            total_answers = 0
+            correct_answers = 0
+
+            for answer_data in parsed_answers:
+                answers = answer_data.get('answers', [])
+
+                # Check each question in this category
+                for q_num in question_numbers:
+                    try:
+                        # Convert to 0-based index
+                        idx = int(q_num) - 1
+                        if idx < 0 or idx >= len(answers) or idx >= len(correct_answer):
+                            continue
+
+                        student_answer = answers[idx].strip()
+                        # Skip empty answers or placeholders
+                        if not student_answer or student_answer in ['#', '?', '-']:
+                            continue
+
+                        total_answers += 1
+                        # Compare with correct answer (case insensitive)
+                        if student_answer.lower() == correct_answer[idx].lower():
+                            correct_answers += 1
+                    except (ValueError, IndexError):
+                        continue
+
+            # Calculate statistics
+            correct_rate = correct_answers / total_answers if total_answers > 0 else 0
+            error_count = total_answers - correct_answers
+
+            summary.append(
+                {
+                    "category": category_name,
+                    "correct_rate": round(correct_rate, 2),
+                    "error_count": error_count,
+                    "total_count": total_answers,
+                }
+            )
+
+        return summary
+
+    def _legacy_calculate_statistics(
+        self, parsed_answers: List[Dict[str, Any]], categories: List[Dict[str, Any]]
+    ) -> List[Dict[str, Any]]:
+        """Legacy method for calculating statistics when no correct answers are provided.
+        This maintains backward compatibility with the original implementation."""
+        summary = []
+
+        # For each category in the list
+        for category in categories:
+            # Extract category name and question numbers
+            if isinstance(category, dict):
+                category_name = category.get('name', '')
+                question_numbers = category.get('items', [])
+
+                if not category_name or not question_numbers:
+                    category_name = next(iter(category))
+                    question_numbers = category.get(category_name, [])
+            elif isinstance(category, list) and len(category) == 2:
                 category_name = category[0]
                 question_numbers = category[1]
             else:
