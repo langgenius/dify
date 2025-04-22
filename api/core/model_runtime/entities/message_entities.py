@@ -1,8 +1,8 @@
 from collections.abc import Sequence
 from enum import Enum, StrEnum
-from typing import Optional
+from typing import Any, Optional, Union
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_serializer, field_validator
 
 
 class PromptMessageRole(Enum):
@@ -134,6 +134,16 @@ class PromptMessage(BaseModel):
         :return: True if prompt message is empty, False otherwise
         """
         return not self.content
+
+    @field_serializer("content")
+    def serialize_content(
+        self, content: Optional[Union[str, Sequence[PromptMessageContent]]]
+    ) -> Optional[str | list[dict[str, Any] | PromptMessageContent] | Sequence[PromptMessageContent]]:
+        if content is None or isinstance(content, str):
+            return content
+        if isinstance(content, list):
+            return [item.model_dump() if hasattr(item, "model_dump") else item for item in content]
+        return content
 
 
 class UserPromptMessage(PromptMessage):

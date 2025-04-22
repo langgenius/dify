@@ -80,8 +80,8 @@ const translation = {
     configureApp: 'アプリを設定する',
     endpointDeleteContent: '{{name}}を削除しますか？',
     actionNum: '{{num}} {{action}} が含まれています',
-    endpointsDocLink: '文書を表示する',
-    switchVersion: 'スイッチ版',
+    endpointsDocLink: 'ドキュメントを表示する',
+    switchVersion: 'バージョンの切り替え',
   },
   debugInfo: {
     title: 'デバッグ',
@@ -134,7 +134,7 @@ const translation = {
     install: 'インストール',
     dropPluginToInstall: 'プラグインパッケージをここにドロップしてインストールします',
     installPlugin: 'プラグインをインストールする',
-    back: 'バック',
+    back: '戻る',
     uploadingPackage: '{{packageName}}をアップロード中...',
   },
   installFromGitHub: {
@@ -191,7 +191,7 @@ const translation = {
     installingWithError: '{{installingLength}}個のプラグインをインストール中、{{successLength}}件成功、{{errorLength}}件失敗',
     installing: '{{installingLength}}個のプラグインをインストール中、0個完了。',
   },
-  from: 'から',
+  from: 'インストール元',
   install: '{{num}} インストール',
   installAction: 'インストール',
   installFrom: 'インストール元',
