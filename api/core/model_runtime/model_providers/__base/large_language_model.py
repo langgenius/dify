@@ -13,9 +13,9 @@ from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, 
 from core.model_runtime.entities.message_entities import (
     AssistantPromptMessage,
     PromptMessage,
-    PromptMessageContent,
+    PromptMessageContentUnionTypes,
     PromptMessageTool,
-    TextPromptMessageContent, PromptMessageContentUnionTypes,
+    TextPromptMessageContent,
 )
 from core.model_runtime.entities.model_entities import (
     ModelType,
