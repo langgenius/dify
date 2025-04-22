@@ -869,7 +869,9 @@ class DatasetRetrieval:
                         )
                     )
                 metadata_condition = MetadataCondition(
-                    logical_operator=metadata_filtering_conditions.logical_operator,  # type: ignore
+                    logical_operator=metadata_filtering_conditions.logical_operator
+                    if metadata_filtering_conditions
+                    else "or",  # type: ignore
                     conditions=conditions,
                 )
         elif metadata_filtering_mode == "manual":
@@ -891,10 +893,10 @@ class DatasetRetrieval:
         else:
             raise ValueError("Invalid metadata filtering mode")
         if filters:
-            if metadata_filtering_conditions.logical_operator == "or":  # type: ignore
-                document_query = document_query.filter(or_(*filters))
-            else:
+            if metadata_filtering_conditions and metadata_filtering_conditions.logical_operator == "and":  # type: ignore
                 document_query = document_query.filter(and_(*filters))
+            else:
+                document_query = document_query.filter(or_(*filters))
         documents = document_query.all()
         # group by dataset_id
         metadata_filter_document_ids = defaultdict(list) if documents else None  # type: ignore
