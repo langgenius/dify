@@ -743,7 +743,7 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
         onClose={onCloseDrawer}
         mask={isMobile}
         footer={null}
-        panelClassname='mt-16 mx-2 sm:mr-2 mb-4 !p-0 !max-w-[640px] rounded-xl bg-components-panel-bg'
+        panelClassName='mt-16 mx-2 sm:mr-2 mb-4 !p-0 !max-w-[640px] rounded-xl bg-components-panel-bg'
       >
         <DrawerContext.Provider value={{
           onClose: onCloseDrawer,
