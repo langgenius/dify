@@ -1,8 +1,10 @@
+import type { Type } from '../../workflow/nodes/llm/types'
 import type { Dataset } from './plugins/context-block'
 import type { RoleName } from './plugins/history-block'
 import type {
   Node,
   NodeOutPutVar,
+  ValueSelector,
 } from '@/app/components/workflow/types'
 
 export type Option = {
@@ -54,12 +56,18 @@ export type ExternalToolBlockType = {
   onAddExternalTool?: () => void
 }
 
+export type GetVarType = (payload: {
+  nodeId: string,
+  valueSelector: ValueSelector,
+}) => Type
+
 export type WorkflowVariableBlockType = {
   show?: boolean
   variables?: NodeOutPutVar[]
   workflowNodesMap?: Record<string, Pick<Node['data'], 'title' | 'type'>>
   onInsert?: () => void
   onDelete?: () => void
+  getVarType?: GetVarType
 }
 
 export type MenuTextMatch = {

@@ -47,7 +47,7 @@ export const MaxLengthInput: FC<InputNumberProps> = (props) => {
   </div>}>
     <InputNumber
       type="number"
-      className='h-9'
+      size='large'
       placeholder={`≤ ${maxValue}`}
       max={maxValue}
       min={1}
@@ -70,7 +70,7 @@ export const OverlapInput: FC<InputNumberProps> = (props) => {
   </div>}>
     <InputNumber
       type="number"
-      className='h-9'
+      size='large'
       placeholder={t('datasetCreation.stepTwo.overlap') || ''}
       min={1}
       {...props}

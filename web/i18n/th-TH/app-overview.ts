@@ -55,6 +55,7 @@ const translation = {
         chatColorThemeDesc: 'กําหนดธีมสีของแชทบอท',
         chatColorThemeInverted: 'คว่ำ',
         invalidHexMessage: 'ค่าฐานสิบหกไม่ถูกต้อง',
+        invalidPrivacyPolicy: 'ลิงก์นโยบายความเป็นส่วนตัวไม่ถูกต้อง โปรดใช้ลิงก์ที่ถูกต้องขึ้นต้นด้วย http หรือ https',
         sso: {
           label: 'การรับรองความถูกต้องของ SSO',
           title: 'เว็บแอป SSO',

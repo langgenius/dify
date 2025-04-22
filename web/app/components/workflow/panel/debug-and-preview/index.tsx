@@ -5,15 +5,15 @@ import {
   useRef,
   useState,
 } from 'react'
-import { useKeyPress } from 'ahooks'
+
 import { RiCloseLine, RiEqualizer2Line } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
 import { useNodes } from 'reactflow'
 import {
-  useEdgesInteractions,
-  useNodesInteractions,
   useWorkflowInteractions,
 } from '../../hooks'
+import { useEdgesInteractionsWithoutSync } from '@/app/components/workflow/hooks/use-edges-interactions-without-sync'
+import { useNodesInteractionsWithoutSync } from '@/app/components/workflow/hooks/use-nodes-interactions-without-sync'
 import { BlockEnum } from '../../types'
 import type { StartNodeType } from '../../nodes/start/types'
 import ChatWrapper from './chat-wrapper'
@@ -32,8 +32,8 @@ const DebugAndPreview = () => {
   const { t } = useTranslation()
   const chatRef = useRef({ handleRestart: noop })
   const { handleCancelDebugAndPreviewPanel } = useWorkflowInteractions()
-  const { handleNodeCancelRunningStatus } = useNodesInteractions()
-  const { handleEdgeCancelRunningStatus } = useEdgesInteractions()
+  const { handleNodeCancelRunningStatus } = useNodesInteractionsWithoutSync()
+  const { handleEdgeCancelRunningStatus } = useEdgesInteractionsWithoutSync()
   const varList = useStore(s => s.conversationVariables)
   const [expanded, setExpanded] = useState(true)
   const nodes = useNodes<StartNodeType>()
@@ -47,12 +47,6 @@ const DebugAndPreview = () => {
     handleEdgeCancelRunningStatus()
     chatRef.current.handleRestart()
   }
-
-  useKeyPress('shift.r', () => {
-    handleRestartChat()
-  }, {
-    exactMatch: true,
-  })
 
   const [panelWidth, setPanelWidth] = useState(420)
   const [isResizing, setIsResizing] = useState(false)
@@ -122,7 +116,7 @@ const DebugAndPreview = () => {
                   <RiEqualizer2Line className='h-4 w-4' />
                 </ActionButton>
               </Tooltip>
-              {expanded && <div className='absolute bottom-[-17px] right-[5px] z-10 h-3 w-3 rotate-45 border-l-[0.5px] border-t-[0.5px] border-components-panel-border-subtle bg-components-panel-on-panel-item-bg'/>}
+              {expanded && <div className='absolute bottom-[-17px] right-[5px] z-10 h-3 w-3 rotate-45 border-l-[0.5px] border-t-[0.5px] border-components-panel-border-subtle bg-components-panel-on-panel-item-bg' />}
             </div>
           )}
           <div className='mx-3 h-3.5 w-[1px] bg-divider-regular'></div>
