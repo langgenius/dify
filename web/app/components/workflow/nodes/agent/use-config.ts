@@ -14,6 +14,7 @@ import type { Memory, Var } from '../../types'
 import { VarType as VarKindType } from '../../types'
 import useAvailableVarList from '../_base/hooks/use-available-var-list'
 import produce from 'immer'
+import { FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 
 export type StrategyStatus = {
   plugin: {
@@ -92,11 +93,20 @@ const useConfig = (id: string, payload: AgentNodeType) => {
       }),
     )
   }, [inputs.agent_parameters, currentStrategy?.parameters])
+
+  const getParamVarType = useCallback((paramName: string) => {
+    const isVariable = currentStrategy?.parameters.some(
+      param => param.name === paramName && param.type === FormTypeEnum.varSelector,
+    )
+    if (isVariable) return VarType.variable
+    return VarType.constant
+  }, [currentStrategy?.parameters])
+
   const onFormChange = (value: Record<string, any>) => {
     const res: ToolVarInputs = {}
     Object.entries(value).forEach(([key, val]) => {
       res[key] = {
-        type: VarType.constant,
+        type: getParamVarType(key),
         value: val,
       }
     })
