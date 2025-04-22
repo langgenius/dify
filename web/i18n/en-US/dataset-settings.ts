@@ -36,6 +36,7 @@ const translation = {
     retrievalSettings: 'Retrieval Settings',
     save: 'Save',
     indexMethodChangeToEconomyDisabledTip: 'Not available for downgrading from HQ to ECO',
+    searchModel: 'Search model',
   },
 }
 

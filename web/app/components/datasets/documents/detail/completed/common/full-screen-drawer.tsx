@@ -20,7 +20,7 @@ const FullScreenDrawer: FC<IFullScreenDrawerProps> = ({
     <Drawer
       isOpen={isOpen}
       onClose={onClose}
-      panelClassname={classNames('!p-0 bg-components-panel-bg',
+      panelClassName={classNames('!p-0 bg-components-panel-bg',
         fullScreen
           ? '!max-w-full !w-full'
           : 'mt-16 mr-2 mb-2 !max-w-[560px] !w-[560px] border-[0.5px] border-components-panel-border rounded-xl',
