@@ -46,6 +46,18 @@ class BrandingModel(BaseModel):
     favicon: str = ""
 
 
+class WebAppAuthSSOModel(BaseModel):
+    protocol: str = ""
+
+
+class WebAppAuthModel(BaseModel):
+    enabled: bool = False
+    allow_sso: bool = False
+    sso_config: WebAppAuthSSOModel = WebAppAuthSSOModel()
+    allow_email_code_login: bool = False
+    allow_email_password_login: bool = False
+
+
 class FeatureModel(BaseModel):
     billing: BillingModel = BillingModel()
     members: LimitationModel = LimitationModel(size=0, limit=1)
@@ -67,9 +79,6 @@ class FeatureModel(BaseModel):
 class SystemFeatureModel(BaseModel):
     sso_enforced_for_signin: bool = False
     sso_enforced_for_signin_protocol: str = ""
-    sso_enforced_for_web: bool = False
-    sso_enforced_for_web_protocol: str = ""
-    enable_web_sso_switch_component: bool = False
     enable_email_code_login: bool = False
     enable_email_password_login: bool = True
     enable_social_oauth_login: bool = False
@@ -78,6 +87,7 @@ class SystemFeatureModel(BaseModel):
     is_email_setup: bool = False
     license: LicenseModel = LicenseModel()
     branding: BrandingModel = BrandingModel()
+    webapp_auth: WebAppAuthModel = WebAppAuthModel()
 
 
 class FeatureService:
@@ -103,8 +113,8 @@ class FeatureService:
         cls._fulfill_system_params_from_env(system_features)
 
         if dify_config.ENTERPRISE_ENABLED:
-            system_features.enable_web_sso_switch_component = True
             system_features.branding.enabled = True
+            system_features.webapp_auth.enabled = True
             cls._fulfill_params_from_enterprise(system_features)
 
         return system_features
@@ -171,20 +181,11 @@ class FeatureService:
             features.model_load_balancing_enabled = billing_info["model_load_balancing_enabled"]
 
     @classmethod
-    def _fulfill_params_from_enterprise(cls, features):
+    def _fulfill_params_from_enterprise(cls, features: SystemFeatureModel):
         enterprise_info = EnterpriseService.get_info()
 
         if "SSOEnforcedForSignin" in enterprise_info:
             features.sso_enforced_for_signin = enterprise_info["SSOEnforcedForSignin"]
-
-        if "SSOEnforcedForSigninProtocol" in enterprise_info:
-            features.sso_enforced_for_signin_protocol = enterprise_info["SSOEnforcedForSigninProtocol"]
-
-        if "SSOEnforcedForWeb" in enterprise_info:
-            features.sso_enforced_for_web = enterprise_info["SSOEnforcedForWeb"]
-
-        if "SSOEnforcedForWebProtocol" in enterprise_info:
-            features.sso_enforced_for_web_protocol = enterprise_info["SSOEnforcedForWebProtocol"]
 
         if "EnableEmailCodeLogin" in enterprise_info:
             features.enable_email_code_login = enterprise_info["EnableEmailCodeLogin"]
@@ -203,6 +204,16 @@ class FeatureService:
             features.branding.login_page_logo = enterprise_info["Branding"].get("loginPageLogo", "")
             features.branding.workspace_logo = enterprise_info["Branding"].get("workspaceLogo", "")
             features.branding.favicon = enterprise_info["Branding"].get("favicon", "")
+
+        if "WebAppAuth" in enterprise_info:
+            features.webapp_auth.allow_sso = enterprise_info["WebAppAuth"].get("allowSso", False)
+            features.webapp_auth.allow_email_code_login = enterprise_info["WebAppAuth"].get(
+                "allowEmailCodeLogin", False
+            )
+            features.webapp_auth.allow_email_password_login = enterprise_info["WebAppAuth"].get(
+                "allowEmailPasswordLogin", False
+            )
+            features.webapp_auth.sso_config.protocol = enterprise_info.get("SSOEnforcedForSigninProtocol", "")
 
         if "License" in enterprise_info:
             license_info = enterprise_info["License"]

@@ -21,6 +21,8 @@ from extensions.ext_database import db
 from models.account import Account
 from models.model import App, AppMode, AppModelConfig
 from models.tools import ApiToolProvider
+from services.enterprise.enterprise_service import EnterpriseService
+from services.feature_service import FeatureService
 from services.tag_service import TagService
 from tasks.remove_app_and_related_data_task import remove_app_and_related_data_task
 
@@ -151,6 +153,10 @@ class AppService:
         db.session.commit()
 
         app_was_created.send(app, account=account)
+
+        if FeatureService.get_system_features().webapp_auth.enabled:
+            # update web app setting as private
+            EnterpriseService.WebAppAuth.update_app_access_mode(app.id, "private")
 
         return app
 
@@ -307,6 +313,10 @@ class AppService:
         """
         db.session.delete(app)
         db.session.commit()
+
+        # clean up web app settings
+        if FeatureService.get_system_features().webapp_auth.enabled:
+            EnterpriseService.WebAppAuth.cleanup_webapp(app.id)
 
         # Trigger asynchronous deletion of app and related data
         remove_app_and_related_data_task.delay(tenant_id=app.tenant_id, app_id=app.id)
