@@ -1,20 +1,26 @@
+import logging
 from datetime import UTC, datetime
 from typing import Any
 
 from flask import request
 from flask_login import current_user  # type: ignore
-from flask_restful import Resource, inputs, marshal_with, reqparse  # type: ignore
+from flask_restful import (Resource, inputs, marshal_with,  # type: ignore
+                           reqparse)
 from sqlalchemy import and_
 from werkzeug.exceptions import BadRequest, Forbidden, NotFound
 
 from controllers.console import api
 from controllers.console.explore.wraps import InstalledAppResource
-from controllers.console.wraps import account_initialization_required, cloud_edition_billing_resource_check
+from controllers.console.wraps import (account_initialization_required,
+                                       cloud_edition_billing_resource_check)
 from extensions.ext_database import db
 from fields.installed_app_fields import installed_app_list_fields
 from libs.login import login_required
 from models import App, InstalledApp, RecommendedApp
 from services.account_service import TenantService
+from services.app_service import AppService
+from services.enterprise.enterprise_service import EnterpriseService
+from services.feature_service import FeatureService
 
 
 class InstalledAppsListApi(Resource):
@@ -48,6 +54,23 @@ class InstalledAppsListApi(Resource):
             for installed_app in installed_apps
             if installed_app.app is not None
         ]
+
+        # filter out apps that user doesn't have access to
+        if FeatureService.get_system_features().webapp_auth.enabled:
+            user_id = current_user.id
+            res = []
+            for installed_app in installed_app_list:
+                app_code = AppService.get_app_code_by_id(str(installed_app["app"].id))
+                if EnterpriseService.WebAppAuth.is_user_allowed_to_access_webapp(
+                    user_id=user_id,
+                    app_code=app_code,
+                ):
+                    res.append(installed_app)
+            installed_app_list = res
+            logging.info(
+                f"installed_app_list: {installed_app_list}, user_id: {user_id}"
+            )
+
         installed_app_list.sort(
             key=lambda app: (
                 -app["is_pinned"],
