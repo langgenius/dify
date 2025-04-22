@@ -915,6 +915,15 @@ const translation = {
       description: '上次运行的结果将显示在这里',
       runThisNode: '运行此节点',
     },
+    variableInspect: {
+      trigger: {
+        normal: '变量检查',
+        running: '缓存中',
+        stop: '停止运行',
+        cached: '查看缓存',
+        clear: '清除',
+      },
+    },
   },
 }
 

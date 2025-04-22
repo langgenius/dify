@@ -914,6 +914,15 @@ const translation = {
       description: 'The results of the last run will be displayed here',
       runThisNode: 'Run this node',
     },
+    variableInspect: {
+      trigger: {
+        normal: 'Variable Inspect',
+        running: 'Caching running status',
+        stop: 'Stop run',
+        cached: 'View cached variables',
+        clear: 'Clear',
+      },
+    },
   },
 }
 
