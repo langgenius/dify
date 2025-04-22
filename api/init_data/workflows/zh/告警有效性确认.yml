@@ -312,17 +312,6 @@ workflow:
       zIndex: 0
     - data:
         isInIteration: false
-        sourceType: tool
-        targetType: variable-aggregator
-      id: 17424339242280-source-1741162531836-target
-      source: '17424339242280'
-      sourceHandle: source
-      target: '1741162531836'
-      targetHandle: target
-      type: custom
-      zIndex: 0
-    - data:
-        isInIteration: false
         sourceType: variable-aggregator
         targetType: variable-aggregator
       id: 1741162531836-source-1742434016239-target
@@ -590,6 +579,7 @@ workflow:
         sourceType: question-classifier
         targetType: tool
       id: 1741158559444-1741158765960-1742979394268-target
+      selected: false
       source: '1741158559444'
       sourceHandle: '1741158765960'
       target: '1742979394268'
@@ -761,6 +751,72 @@ workflow:
       targetHandle: target
       type: custom
       zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: tool
+        targetType: code
+      id: 17424339242280-source-1744599772545-target
+      source: '17424339242280'
+      sourceHandle: source
+      target: '1744599772545'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: code
+        targetType: if-else
+      id: 1744599772545-source-1744599891369-target
+      source: '1744599772545'
+      sourceHandle: source
+      target: '1744599891369'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: if-else
+        targetType: code
+      id: 1744599891369-true-1744339618961-target
+      source: '1744599891369'
+      sourceHandle: 'true'
+      target: '1744339618961'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: if-else
+        targetType: end
+      id: 1744599891369-false-1744599930141-target
+      source: '1744599891369'
+      sourceHandle: 'false'
+      target: '1744599930141'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: code
+        targetType: variable-aggregator
+      id: 1744339618961-source-1744627472534-target
+      source: '1744339618961'
+      sourceHandle: source
+      target: '1744627472534'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: variable-aggregator
+        targetType: end
+      id: 1744627472534-source-1744343454355-target
+      source: '1744627472534'
+      sourceHandle: source
+      target: '1744343454355'
+      targetHandle: target
+      type: custom
+      zIndex: 0
     nodes:
     - data:
         desc: ''
@@ -815,10 +871,10 @@ workflow:
       id: '1741157526222'
       position:
         x: 30
-        y: 578
+        y: 586
       positionAbsolute:
         x: 30
-        y: 578
+        y: 586
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -838,10 +894,10 @@ workflow:
       id: '1741157560922'
       position:
         x: 3374
-        y: 578
+        y: 586
       positionAbsolute:
         x: 3374
-        y: 578
+        y: 586
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -917,9 +973,11 @@ workflow:
 
             容器被kill'
         - id: '1744093223338'
-          name: '应用程指标
+          name: '应用指标
 
-            日志错误数相关'
+            日志错误数相关
+
+            log error count'
         desc: ''
         instruction: '请你从告警事件描述
 
@@ -940,14 +998,14 @@ workflow:
         type: question-classifier
         vision:
           enabled: false
-      height: 756
+      height: 772
       id: '1741158559444'
       position:
         x: 942
-        y: 578
+        y: 586
       positionAbsolute:
         x: 942
-        y: 578
+        y: 586
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -1865,10 +1923,10 @@ workflow:
       id: '1741159085487'
       position:
         x: 2158
-        y: 578
+        y: 586
       positionAbsolute:
         x: 2158
-        y: 578
+        y: 586
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -1881,8 +1939,6 @@ workflow:
         title: 变量聚合提供给大模型分析
         type: variable-aggregator
         variables:
-        - - '1741328045214'
-          - text
         - - '1742979394268'
           - text
         - - '1741328076453'
@@ -1911,14 +1967,14 @@ workflow:
           - text
         - - '1741328213545'
           - text
-      height: 416
+      height: 394
       id: '1741162531836'
       position:
         x: 1854
-        y: 1293
+        y: 1207
       positionAbsolute:
         x: 1854
-        y: 1293
+        y: 1207
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -1952,10 +2008,10 @@ workflow:
       id: '1741311244655'
       position:
         x: 2462
-        y: 578
+        y: 586
       positionAbsolute:
         x: 2462
-        y: 578
+        y: 586
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -1983,10 +2039,10 @@ workflow:
       id: '1741311294320'
       position:
         x: 2766
-        y: 578
+        y: 586
       positionAbsolute:
         x: 2766
-        y: 578
+        y: 586
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -2003,14 +2059,16 @@ workflow:
           - result
         - - '1742366303110'
           - class_name
-      height: 130
+        - - '1744339618961'
+          - abnormal
+      height: 152
       id: '1741311394752'
       position:
         x: 3070
-        y: 578
+        y: 586
       positionAbsolute:
         x: 3070
-        y: 578
+        y: 586
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -2152,10 +2210,10 @@ workflow:
       id: '1741328045214'
       position:
         x: 1246
-        y: 635
+        y: 2125
       positionAbsolute:
         x: 1246
-        y: 635
+        y: 2125
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -2297,10 +2355,10 @@ workflow:
       id: '1741328076453'
       position:
         x: 1246
-        y: 729
+        y: 643
       positionAbsolute:
         x: 1246
-        y: 729
+        y: 643
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -2442,10 +2500,10 @@ workflow:
       id: '1741328197695'
       position:
         x: 1246
-        y: 917
+        y: 831
       positionAbsolute:
         x: 1246
-        y: 917
+        y: 831
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -2559,10 +2617,10 @@ workflow:
       id: '1741328213545'
       position:
         x: 1246
-        y: 1011
+        y: 925
       positionAbsolute:
         x: 1246
-        y: 1011
+        y: 925
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -2676,10 +2734,10 @@ workflow:
       id: '1741328346220'
       position:
         x: 1246
-        y: 1105
+        y: 1019
       positionAbsolute:
         x: 1246
-        y: 1105
+        y: 1019
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -2793,10 +2851,10 @@ workflow:
       id: '1741328423453'
       position:
         x: 1246
-        y: 1199
+        y: 1113
       positionAbsolute:
         x: 1246
-        y: 1199
+        y: 1113
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -2910,10 +2968,10 @@ workflow:
       id: '1741328466394'
       position:
         x: 1246
-        y: 1293
+        y: 1207
       positionAbsolute:
         x: 1246
-        y: 1293
+        y: 1207
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -3027,10 +3085,10 @@ workflow:
       id: '1741328742817'
       position:
         x: 1246
-        y: 1387
+        y: 1301
       positionAbsolute:
         x: 1246
-        y: 1387
+        y: 1301
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -3144,10 +3202,10 @@ workflow:
       id: '1741328773213'
       position:
         x: 1246
-        y: 1481
+        y: 1395
       positionAbsolute:
         x: 1246
-        y: 1481
+        y: 1395
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -3261,10 +3319,10 @@ workflow:
       id: '1741328799030'
       position:
         x: 1246
-        y: 1575
+        y: 1489
       positionAbsolute:
         x: 1246
-        y: 1575
+        y: 1489
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -3406,10 +3464,10 @@ workflow:
       id: '1741329632798'
       position:
         x: 1246
-        y: 823
+        y: 737
       positionAbsolute:
         x: 1246
-        y: 823
+        y: 737
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -3479,10 +3537,10 @@ workflow:
       id: '1742366141890'
       position:
         x: 2462
-        y: 1332
+        y: 1246
       positionAbsolute:
         x: 2462
-        y: 1332
+        y: 1246
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -3526,10 +3584,10 @@ workflow:
       id: '1742366303110'
       position:
         x: 2766
-        y: 1236
+        y: 1150
       positionAbsolute:
         x: 2766
-        y: 1236
+        y: 1150
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -3569,10 +3627,10 @@ workflow:
       id: '1742433446760'
       position:
         x: 638
-        y: 578
+        y: 586
       positionAbsolute:
         x: 638
-        y: 578
+        y: 586
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -3714,10 +3772,10 @@ workflow:
       id: '17424339242280'
       position:
         x: 1550
-        y: 635
+        y: 2125
       positionAbsolute:
         x: 1550
-        y: 635
+        y: 2125
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -3730,8 +3788,6 @@ workflow:
         title: 聚合历史指标数据
         type: variable-aggregator
         variables:
-        - - '17424339242280'
-          - text
         - - '17429797664440'
           - text
         - - '17424348570980'
@@ -3760,14 +3816,14 @@ workflow:
           - text
         - - '17429835940550'
           - text
-      height: 416
+      height: 394
       id: '1742434016239'
       position:
         x: 2158
-        y: 1184
+        y: 1109
       positionAbsolute:
         x: 2158
-        y: 1184
+        y: 1109
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -3909,10 +3965,10 @@ workflow:
       id: '17424342365860'
       position:
         x: 1550
-        y: 729
+        y: 643
       positionAbsolute:
         x: 1550
-        y: 729
+        y: 643
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -4054,10 +4110,10 @@ workflow:
       id: '17424344697090'
       position:
         x: 1550
-        y: 823
+        y: 737
       positionAbsolute:
         x: 1550
-        y: 823
+        y: 737
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -4199,10 +4255,10 @@ workflow:
       id: '17424345080000'
       position:
         x: 1550
-        y: 917
+        y: 831
       positionAbsolute:
         x: 1550
-        y: 917
+        y: 831
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -4316,10 +4372,10 @@ workflow:
       id: '17424345315500'
       position:
         x: 1550
-        y: 1011
+        y: 925
       positionAbsolute:
         x: 1550
-        y: 1011
+        y: 925
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -4433,10 +4489,10 @@ workflow:
       id: '17424345826170'
       position:
         x: 1550
-        y: 1105
+        y: 1019
       positionAbsolute:
         x: 1550
-        y: 1105
+        y: 1019
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -4550,10 +4606,10 @@ workflow:
       id: '17424346884650'
       position:
         x: 1550
-        y: 1199
+        y: 1113
       positionAbsolute:
         x: 1550
-        y: 1199
+        y: 1113
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -4667,10 +4723,10 @@ workflow:
       id: '17424347242840'
       position:
         x: 1550
-        y: 1293
+        y: 1207
       positionAbsolute:
         x: 1550
-        y: 1293
+        y: 1207
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -4784,10 +4840,10 @@ workflow:
       id: '17424348206030'
       position:
         x: 1550
-        y: 1387
+        y: 1301
       positionAbsolute:
         x: 1550
-        y: 1387
+        y: 1301
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -4901,10 +4957,10 @@ workflow:
       id: '17424348526540'
       position:
         x: 1550
-        y: 1481
+        y: 1395
       positionAbsolute:
         x: 1550
-        y: 1481
+        y: 1395
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -5018,10 +5074,10 @@ workflow:
       id: '17424348570980'
       position:
         x: 1550
-        y: 1575
+        y: 1489
       positionAbsolute:
         x: 1550
-        y: 1575
+        y: 1489
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -5066,10 +5122,10 @@ workflow:
       id: '1742806924635'
       position:
         x: 334
-        y: 578
+        y: 586
       positionAbsolute:
         x: 334
-        y: 578
+        y: 586
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -5237,10 +5293,10 @@ workflow:
       id: '1742979394268'
       position:
         x: 1246
-        y: 1857
+        y: 1771
       positionAbsolute:
         x: 1246
-        y: 1857
+        y: 1771
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -5408,10 +5464,10 @@ workflow:
       id: '1742979595004'
       position:
         x: 1246
-        y: 1951
+        y: 1865
       positionAbsolute:
         x: 1246
-        y: 1951
+        y: 1865
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -5579,10 +5635,10 @@ workflow:
       id: '17429797453350'
       position:
         x: 1246
-        y: 1669
+        y: 1583
       positionAbsolute:
         x: 1246
-        y: 1669
+        y: 1583
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -5750,10 +5806,10 @@ workflow:
       id: '17429797664440'
       position:
         x: 1550
-        y: 1669
+        y: 1583
       positionAbsolute:
         x: 1550
-        y: 1669
+        y: 1583
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -5892,10 +5948,10 @@ workflow:
       id: '1742979828391'
       position:
         x: 1246
-        y: 1763
+        y: 1677
       positionAbsolute:
         x: 1246
-        y: 1763
+        y: 1677
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -6034,10 +6090,10 @@ workflow:
       id: '17429798797920'
       position:
         x: 1550
-        y: 1763
+        y: 1677
       positionAbsolute:
         x: 1550
-        y: 1763
+        y: 1677
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -6205,10 +6261,10 @@ workflow:
       id: '17429835599060'
       position:
         x: 1550
-        y: 1857
+        y: 1771
       positionAbsolute:
         x: 1550
-        y: 1857
+        y: 1771
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -6376,10 +6432,10 @@ workflow:
       id: '17429835940550'
       position:
         x: 1550
-        y: 1951
+        y: 1865
       positionAbsolute:
         x: 1550
-        y: 1951
+        y: 1865
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -6546,10 +6602,10 @@ workflow:
       id: '1744093337863'
       position:
         x: 1246
-        y: 2063
+        y: 1977
       positionAbsolute:
         x: 1246
-        y: 2063
+        y: 1977
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -6562,18 +6618,18 @@ workflow:
           - '1744093531084'
           - output
           variable: text
-        selected: true
+        selected: false
         title: 结束
         type: end
       height: 90
       id: '1744093385250'
       position:
         x: 2158
-        y: 2117
+        y: 2031
       positionAbsolute:
         x: 2158
-        y: 2117
-      selected: true
+        y: 2031
+      selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
@@ -6590,9 +6646,11 @@ workflow:
           name: deepseek-chat
           provider: langgenius/deepseek/deepseek
         prompt_template:
-        - role: system
+        - id: a1de005a-fbe2-44a6-9b2c-bb021ae6b3a4
+          role: system
           text: 你是一个智能助手,帮助用户解决可观测性领域的问题
-        - role: user
+        - id: 897a817e-14a2-4609-9081-430a6fd0a6dd
+          role: user
           text: '# 目的
 
             当前应用一直产生日志错误级别日志，
@@ -6618,10 +6676,10 @@ workflow:
       id: '1744093428286'
       position:
         x: 1550
-        y: 2045
+        y: 1959
       positionAbsolute:
         x: 1550
-        y: 2045
+        y: 1959
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -6638,16 +6696,495 @@ workflow:
       id: '1744093531084'
       position:
         x: 1854
-        y: 2244
+        y: 2147
       positionAbsolute:
         x: 1854
-        y: 2244
+        y: 2147
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        code: "import requests\nimport json\n\nAPO_URL = \"http://apo-backend-svc:8080\"\
+          \n\nAPO_VM = \"http://apo-victoria-metrics-single-server-svc:8428\"\n\n\
+          DEBUG_OUTPUT = False\n\n\nclass Utils:\n    @staticmethod\n    def get_step(start_time:\
+          \ int, end_time: int) -> dict:\n        time_diff = end_time - start_time\n\
+          \n        SECOND = 1000000  # microseconds\n        MINUTE = 60 * SECOND\n\
+          \        HOUR = 60 * MINUTE\n\n        step = SECOND  # default step is\
+          \ 1 second\n        stepStr = \"1s\"\n        if time_diff <= 15 * MINUTE:\n\
+          \            step = 30 * SECOND\n            stepStr = \"30s\"\n       \
+          \ elif time_diff <= 30 * MINUTE:\n            step = 1 * MINUTE\n      \
+          \      stepStr = \"1m\"\n        elif time_diff <= 1 * HOUR:\n         \
+          \   step = 2 * MINUTE\n            stepStr = \"2m\"\n        elif time_diff\
+          \ <= 1.5 * HOUR:\n            step = 3 * MINUTE\n            stepStr = \"\
+          3m\"\n        elif time_diff <= 3 * HOUR:\n            step = 6 * MINUTE\n\
+          \            stepStr = \"6m\"\n        elif time_diff <= 6 * HOUR:\n   \
+          \         step = 12 * MINUTE\n            stepStr = \"12m\"\n        elif\
+          \ time_diff <= 12 * HOUR:\n            step = 24 * MINUTE\n            stepStr\
+          \ = \"24m\"\n        elif time_diff <= 15 * HOUR:\n            step = 30\
+          \ * MINUTE\n            stepStr = \"30m\"\n        elif time_diff <= 30\
+          \ * HOUR:\n            step = 1 * HOUR\n            stepStr = \"1h\"\n \
+          \       else:\n            step = ((time_diff + 30 * SECOND - 1) // (30\
+          \ * SECOND)) * SECOND\n            custom = (time_diff + 30 * SECOND - 1)\
+          \ // (30 * SECOND)\n            stepStr = f\"{custom}s\"\n\n        return\
+          \ {\n            \"step\": step,\n            \"stepStr\": stepStr,\n  \
+          \      }\n\n    @staticmethod\n    def get_avg(data_json) -> dict:\n   \
+          \     results = data_json[\"data\"][\"result\"]\n\n        stats = {}\n\n\
+          \        for entry in results:\n            tid = entry[\"metric\"][\"tid\"\
+          ]\n            values = [float(value[1]) for value in entry[\"values\"]]\n\
+          \n            stats[tid] = {\n                \"avg\": sum(values) / len(values),\n\
+          \            }\n\n        return stats\n\n    @staticmethod\n    def extract_values(thread_data:\
+          \ dict):\n        return [float(item[1]) for item in thread_data[\"values\"\
+          ]]\n\n    @staticmethod\n    def extract_rtt_values(rtt_data):\n       \
+          \ \"\"\"从RTT数据中提取时间戳和值\"\"\"\n        chart_data = rtt_data[\"chart\"][\"\
+          chartData\"]\n        return list(chart_data.values())\n\n    @staticmethod\n\
+          \    def net_rtt_trend_analysis(current_metrics: dict, pid: str) -> dict:\n\
+          \        rtt_threshold = 0.05\n        majority_point_threshold = 0.5\n\n\
+          \        num_rtt_sets = len(current_metrics[\"result\"][\"timeseries\"])\n\
+          \        anomalous_rtt_sets = 0\n        rtt_details = {}\n\n        for\
+          \ item in current_metrics[\"result\"][\"timeseries\"] or []:\n         \
+          \   if item[\"labels\"][\"pid\"] != pid:\n                continue\n   \
+          \         legend = item[\"legend\"]\n            points = Utils.extract_rtt_values(item)\n\
+          \            num_points = len(points)\n\n            # 统计高于阈值的点数\n     \
+          \       exceed_count = sum(1 for p in points if p > rtt_threshold)\n   \
+          \         exceed_ratio = exceed_count / num_points  # 超过阈值的比例\n\n      \
+          \      # 判断是否“大多数情况”异常\n            is_anomaly = exceed_ratio >= majority_point_threshold\n\
+          \            if is_anomaly:\n                anomalous_rtt_sets += 1\n\n\
+          \            rtt_details[legend] = {\n                \"points\": points,\n\
+          \                \"exceed_count\": exceed_count,\n                \"exceed_ratio\"\
+          : exceed_ratio,\n                \"is_anomaly\": is_anomaly,\n         \
+          \   }\n\n        # 判断大部分RTT数据集是否异常\n        anomaly_ratio = anomalous_rtt_sets\
+          \ / num_rtt_sets if num_rtt_sets > 0 else 0\n        is_majority_anomalous\
+          \ = False\n        if anomalous_rtt_sets != 0:\n            is_majority_anomalous\
+          \ = True\n\n        result = {\n            \"total\": num_rtt_sets,\n \
+          \           \"anomalous\": anomalous_rtt_sets,\n            \"anomaly_ratio\"\
+          : anomaly_ratio,\n            \"details\": rtt_details,\n        }\n   \
+          \     return {\"abnormal\": is_majority_anomalous, \"result\": result}\n\
+          \n    @staticmethod\n    def thread_polaris_trend_analysis(current_metrics:\
+          \ dict, avg_metrics: dict) -> dict:\n        exceed_threshold = 20\n   \
+          \     majority_point_threshold = 0.5\n        majority_thread_threshold\
+          \ = 0.4\n\n        thread_details = {}\n        anomalous_threads = 0\n\
+          \        num_threads = len(current_metrics[\"data\"][\"result\"])\n\n  \
+          \      for item in current_metrics[\"data\"][\"result\"] or []:\n      \
+          \      tid = item[\"metric\"][\"tid\"]\n            points = Utils.extract_values(item)\n\
+          \            num_points = len(points)\n            avg = avg_metrics.get(tid,\
+          \ {}).get(\"avg\", 0)\n            # 计算每个点相对于历史均值的百分比变化\n            if\
+          \ avg != 0:\n                percent_changes = [(p - avg) / avg * 100 for\
+          \ p in points]\n            else:\n                percent_changes = [float(\"\
+          inf\") for _ in range(num_points)]\n\n            # 统计高于均值且超过exceed_threshold的点数\n\
+          \            exceed_count = sum(1 for pc in percent_changes if pc > exceed_threshold)\n\
+          \            exceed_ratio = exceed_count / num_points  # 超过阈值的比例\n\n   \
+          \         # 判断是否“大多数情况”异常升高\n            is_anomaly_increase = exceed_ratio\
+          \ >= majority_point_threshold\n            if avg == 0:\n              \
+          \  is_anomaly_increase = False\n            if is_anomaly_increase:\n  \
+          \              anomalous_threads += 1\n\n            thread_details[tid]\
+          \ = {\n                \"points\": points,\n                \"historical_avg\"\
+          : avg,\n                \"exceed_count\": exceed_count,\n              \
+          \  \"exceed_ratio\": exceed_ratio,\n                \"percent_changes\"\
+          : percent_changes,\n                \"is_anomaly\": is_anomaly_increase,\n\
+          \            }\n        \n        if num_threads == 0:\n            anomaly_ratio\
+          \ = 0\n        else:\n            anomaly_ratio = anomalous_threads / num_threads\n\
+          \n        is_majority_anomalous = anomaly_ratio >= majority_thread_threshold\n\
+          \n        result = {\n            \"total\": num_threads,\n            \"\
+          anomalous\": anomalous_threads,\n            \"anomaly_ratio\": anomaly_ratio,\n\
+          \            \"details\": thread_details,\n        }\n\n        return {\n\
+          \            \"abnormal\": is_majority_anomalous,\n            \"result\"\
+          : result,\n        }\n\n    @staticmethod\n    def display_polaris_trend_analysis(analysis_dit:\
+          \ dict, type: str) -> str:\n        is_majority_anomalous = analysis_dit.get(\"\
+          abnormal\", False)\n        result = analysis_dit.get(\"result\", {})\n\
+          \        output = []\n        output.append(f\"\\n{type}线程耗时异常升高分析:\")\n\
+          \        output.append(f\"大部分线程异常升高: {is_majority_anomalous}\")\n      \
+          \  output.append(\n            f\"异常线程比例: {result['anomaly_ratio']:.2%}\
+          \ ({result['anomalous']}/{result['total']})\"\n        )\n        if not\
+          \ is_majority_anomalous:\n            return \"\\n\".join(output)\n    \
+          \    for thread_id, details in result[\"details\"].items():\n          \
+          \  if details[\"historical_avg\"] == 0:\n                continue\n    \
+          \        output.append(\n                f\"{thread_id}: 历史均值={details.get('historical_avg',\
+          \ 0):.2f}, \"\n                f\"超过历史均值20%的点数={details['exceed_count']}/{len(details['points'])}\
+          \ ({details['exceed_ratio']:.2%}), \"\n                f\"是否异常升高={details['is_anomaly']}\"\
+          \n            )\n\n        return \"\\n\".join(output)\n\n    @staticmethod\n\
+          \    def display_rtt_trend_analysis(analysis_dit: dict, type: str) -> str:\n\
+          \        is_majority_anomalous = analysis_dit.get(\"abnormal\", False)\n\
+          \        result = analysis_dit.get(\"result\", {})\n        output = []\n\
+          \        output.append(f\"\\n{type}异常分析:\")\n        output.append(f\"是否存在异常网络RTT:\
+          \ {is_majority_anomalous}\")\n        if not is_majority_anomalous:\n  \
+          \          output.append(\"所有对外网络RTT均为正常范围（低于50ms）\")\n            return\
+          \ \"\\n\".join(output)\n        for thread_id, details in result[\"details\"\
+          ].items():\n            output.append(\n                f\"{thread_id}:\
+          \ RTT阈值=50ms, \"\n                f\"超过阈值的点数={details['exceed_count']}/{len(details['points'])}\
+          \ ({details['exceed_ratio']:.2%}), \"\n                f\"是否异常升高={details['is_anomaly']}\"\
+          \n            )\n\n        return \"\\n\".join(output)\n\n\ndef get_pod_info(arg:\
+          \ dict) -> list:\n    timeseries = arg[\"result\"][\"timeseries\"]\n\n \
+          \   seen = set()\n    pod_info = []\n\n    for item in timeseries:\n   \
+          \     labels = item[\"labels\"]\n        namespace = labels.get(\"namespace\"\
+          , \"\")\n        pod = labels.get(\"pod\", \"\")\n        pid = labels.get(\"\
+          pid\", \"\")\n\n        if pid == \"1\" or pod == \"\":\n            continue\n\
+          \        unique_key = (namespace, pod, pid)\n\n        if unique_key not\
+          \ in seen:\n            seen.add(unique_key)\n            info = {\"namespace\"\
+          : namespace, \"pod\": pod, \"pid\": pid}\n            pod_info.append(info)\n\
+          \    return pod_info\n\n\ndef get_service_instances(start: int, end: int,\
+          \ service: str):\n    params = {\n        \"metricName\": \"Originx 北极星指标\
+          \ (服务层级) - 北极星指标 - 列出指定服务的所有实例\",\n        \"params\": {\n            \"\
+          service_name\": service,\n        },\n        \"startTime\": start,\n  \
+          \      \"endTime\": end,\n        \"step\": Utils.get_step(start, end).get(\"\
+          step\"),\n    }\n    resp = requests.post(f\"{APO_URL}/api/metric/query\"\
+          , json=params)\n    return get_pod_info(resp.json())\n\n\ndef get_pod_rtt(start:\
+          \ int, end: int, namespace: str, pod: str):\n    params = {\n        \"\
+          metricName\": \"基础设施情况 - 容器网络 - 与下游服务RTT\",\n        \"params\": {\"pod\"\
+          : pod, \"namespace\": namespace},\n        \"startTime\": start,\n     \
+          \   \"endTime\": end,\n        \"step\": Utils.get_step(start, end).get(\"\
+          step\"),\n    }\n    resp = requests.post(f\"{APO_URL}/api/metric/query\"\
+          , json=params)\n    return resp.json()\n\n\ndef get_thread_metrics(start:\
+          \ int, end: int, namespace: str, pod: str, type: str):\n    query = (\n\
+          \        'increase(originx_thread_polaris_nanoseconds_sum{pod=\"'\n    \
+          \    + pod\n        + '\", type=\"'\n        + type\n        + '\"}[1m])'\n\
+          \    )\n\n    res = requests.get(\n        APO_VM + \"/prometheus/api/v1/query_range\"\
+          ,\n        params={\n            \"query\": query,\n            \"start\"\
+          : start / 1000,\n            \"end\": end / 1000,\n            \"step\"\
+          : Utils.get_step(start, end).get(\"stepStr\"),\n        },\n    )\n    return\
+          \ res.json()\n\n\ndef polaris_trend_analysis(\n    start: int, end: int,\
+          \ namespace: str, pod: str, type: str\n) -> dict:\n    hour = 3600 * 1000000\n\
+          \    current = get_thread_metrics(\n        start,\n        end,\n     \
+          \   namespace,\n        pod,\n        type,\n    )\n    avg = Utils.get_avg(\n\
+          \        get_thread_metrics(\n            start - hour,\n            start,\n\
+          \            namespace,\n            pod,\n            type,\n        )\n\
+          \    )\n    result = Utils.thread_polaris_trend_analysis(current, avg)\n\
+          \    check = result.get(\"abnormal\", False)\n    conclusion = Utils.display_polaris_trend_analysis(result,\
+          \ type)\n    return {\n        \"abnormal\": check,\n        \"conclusion\"\
+          : conclusion,\n    }\n\n\ndef net_rtt_trend_analysis(\n    start: int, end:\
+          \ int, namespace: str, pod: str, pid: str\n) -> dict:\n    rtt = get_pod_rtt(\n\
+          \        start,\n        end,\n        namespace,\n        pod,\n    )\n\
+          \    res = Utils.net_rtt_trend_analysis(rtt, pid)\n    check = res.get(\"\
+          abnormal\", False)\n    conclusion = Utils.display_rtt_trend_analysis(res,\
+          \ \"rtt\")\n    return {\n        \"abnormal\": check,\n        \"conclusion\"\
+          : conclusion,\n    }\n\n\ndef check_dependency(start: int, end: int, namespace:\
+          \ str, pod: str) -> dict:\n    \"\"\"\n    net, epoll\n    \"\"\"\n    net_check\
+          \ = polaris_trend_analysis(start, end, namespace, pod, \"net\")\n    epoll_check\
+          \ = polaris_trend_analysis(start, end, namespace, pod, \"epoll\")\n    return\
+          \ {\n        \"abnormal\": net_check.get(\"abnormal\", False)\n        or\
+          \ epoll_check.get(\"abnormal\", False),\n        \"conclusion\": net_check.get(\"\
+          conclusion\", \"\")\n        + epoll_check.get(\"conclusion\", \"\"),\n\
+          \    }\n\n\ndef check_self_infra(start: int, end: int, namespace: str, pod:\
+          \ str, pid: str):\n    \"\"\"\n    cpu, runq, rtt\n    \"\"\"\n    cpu_check\
+          \ = polaris_trend_analysis(start, end, namespace, pod, \"cpu\")\n    runq_check\
+          \ = polaris_trend_analysis(start, end, namespace, pod, \"runq\")\n    rtt_check\
+          \ = net_rtt_trend_analysis(start, end, namespace, pod, pid)\n    return\
+          \ {\n        \"abnormal\": cpu_check.get(\"abnormal\", False)\n        or\
+          \ runq_check.get(\"abnormal\", False)\n        or rtt_check.get(\"abnormal\"\
+          , False),\n        \"conclusion\": cpu_check.get(\"conclusion\", \"\")\n\
+          \        + runq_check.get(\"conclusion\", \"\")\n        + rtt_check.get(\"\
+          conclusion\", \"\"),\n    }\n\n\ndef analyze_instance(start: int, end: int,\
+          \ namespace: str, pod: str, pid: str) -> dict:\n    dep_check = check_dependency(\n\
+          \        start,\n        end,\n        namespace,\n        pod,\n    )\n\
+          \    output = \"\"\n    check = True\n    if not dep_check.get(\"abnormal\"\
+          , False):\n        output += \"\\n结论：对外调用耗时正常，是自身问题, 不可以忽略\"\n        return\
+          \ {\n        \"abnormal\": False,\n        \"conclusion\": dep_check.get(\"\
+          conclusion\", \"\")\n        + output,\n        }\n\n    infra_check = check_self_infra(\n\
+          \        start,\n        end,\n        namespace,\n        pod,\n      \
+          \  pid,\n    )\n    check \n    if infra_check.get(\"abnormal\", False):\n\
+          \        output += \"\\n结论：对外调用耗时异常，同时应用程序自身耗时也异常, 告警不可忽略\"\n        check\
+          \ = False\n    else:\n        output += \"\\n结论：对外调用耗时异常，但是自身应用正常，可以忽略该告警\"\
+          \n        check = True\n\n    return {\n        \"abnormal\": check,\n \
+          \       \"conclusion\": dep_check.get(\"conclusion\", \"\")\n        + infra_check.get(\"\
+          conclusion\", \"\")\n        + output,\n    }\n\n\n\n\n\ndef main(service:\
+          \ str, start: int, end: int) -> dict:\n    items = get_service_instances(\n\
+          \        start, end, service\n    )\n\n    vaild = \"true\"\n\n    output\
+          \ = []\n    for item in items:\n        res = analyze_instance(\n      \
+          \      start,\n            end,\n            item[\"namespace\"],\n    \
+          \        item[\"pod\"],\n            item[\"pid\"],\n        )\n       \
+          \ con = res.get(\"conclusion\", \"\")\n        if res.get(\"abnormal\",\
+          \ False) is False:\n            vaild = \"false\"\n        pod = item['pod']\n\
+          \        output.append(f'\\n{pod}{con}')\n    \n    return {\n        \"\
+          abnormal\": str(vaild),\n        \"conclusion\": \"\\n\".join(output),\n\
+          \    }"
+        code_language: python3
+        desc: ''
+        outputs:
+          abnormal:
+            children: null
+            type: string
+          conclusion:
+            children: null
+            type: string
+        selected: false
+        title: 判断是依赖还是自身问题
+        type: code
+        variables:
+        - value_selector:
+          - '1742806924635'
+          - service
+          variable: service
+        - value_selector:
+          - '1741157526222'
+          - startTime
+          variable: start
+        - value_selector:
+          - '1741157526222'
+          - endTime
+          variable: end
+      height: 54
+      id: '1744339618961'
+      position:
+        x: 2462
+        y: 2182
+      positionAbsolute:
+        x: 2462
+        y: 2182
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        desc: ''
+        outputs:
+        - value_selector:
+          - '1744339618961'
+          - abnormal
+          variable: text
+        - value_selector:
+          - '1744627472534'
+          - output
+          variable: output
+        selected: false
+        title: 结束 3
+        type: end
+      height: 116
+      id: '1744343454355'
+      position:
+        x: 3070
+        y: 2143
+      positionAbsolute:
+        x: 3070
+        y: 2143
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        code: "from datetime import datetime\nimport requests\n\nAPO_URL = \"http://apo-backend-svc:8080\"\
+          \n\nAPO_VM = \"http://apo-victoria-metrics-single-server-svc:8428\"\n\n\
+          class Utils:\n    @staticmethod\n    def get_step(start_time: int, end_time:\
+          \ int) -> dict:\n        time_diff = end_time - start_time\n\n        SECOND\
+          \ = 1000000  # microseconds\n        MINUTE = 60 * SECOND\n        HOUR\
+          \ = 60 * MINUTE\n\n        step = SECOND  # default step is 1 second\n \
+          \       stepStr = \"1s\"\n        if time_diff <= 15 * MINUTE:\n       \
+          \     step = 30 * SECOND\n            stepStr = \"30s\"\n        elif time_diff\
+          \ <= 30 * MINUTE:\n            step = 1 * MINUTE\n            stepStr =\
+          \ \"1m\"\n        elif time_diff <= 1 * HOUR:\n            step = 2 * MINUTE\n\
+          \            stepStr = \"2m\"\n        elif time_diff <= 1.5 * HOUR:\n \
+          \           step = 3 * MINUTE\n            stepStr = \"3m\"\n        elif\
+          \ time_diff <= 3 * HOUR:\n            step = 6 * MINUTE\n            stepStr\
+          \ = \"6m\"\n        elif time_diff <= 6 * HOUR:\n            step = 12 *\
+          \ MINUTE\n            stepStr = \"12m\"\n        elif time_diff <= 12 *\
+          \ HOUR:\n            step = 24 * MINUTE\n            stepStr = \"24m\"\n\
+          \        elif time_diff <= 15 * HOUR:\n            step = 30 * MINUTE\n\
+          \            stepStr = \"30m\"\n        elif time_diff <= 30 * HOUR:\n \
+          \           step = 1 * HOUR\n            stepStr = \"1h\"\n        else:\n\
+          \            step = ((time_diff + 30 * SECOND - 1) // (30 * SECOND)) * SECOND\n\
+          \            custom = (time_diff + 30 * SECOND - 1) // (30 * SECOND)\n \
+          \           stepStr = f\"{custom}s\"\n\n        return {\n            \"\
+          step\": step,\n            \"stepStr\": stepStr,\n        }\n\n\ndef get_service_latency(start:\
+          \ int, end: int, service: str, endpoint: str):\n    params = {\n       \
+          \ \"metricName\": \"Originx 北极星指标 (服务层级) - RED指标 - 平均响应时间\",\n        \"\
+          params\": {\"service_name\": service, \"content_key\": endpoint},\n    \
+          \    \"startTime\": start,\n        \"endTime\": end,\n        \"step\"\
+          : Utils.get_step(start, end).get(\"step\"),\n    }\n    resp = requests.post(f\"\
+          {APO_URL}/api/metric/query\", json=params)\n    return resp.json()\n\ndef\
+          \ timestamp_to_readable(ts):\n    \"\"\"将微秒时间戳转换为可读格式\"\"\"\n    return\
+          \ datetime.fromtimestamp(int(ts) / 1000000).strftime('%Y-%m-%d %H:%M:%S')\n\
+          \ndef analyze_trend(data, time_window=15*60):\n    \"\"\"分析15分钟内的趋势\"\"\"\
+          \n    points = []\n    for ts in data['result']['timeseries']:\n       \
+          \ for timestamp, value in ts['chart']['chartData'].items():\n          \
+          \  points.append((int(timestamp), float(value)))\n    \n    if not points:\n\
+          \        return \"No data available.\"\n    \n    points.sort()  # 按时间戳排序\n\
+          \    trend = []\n    current_group = []\n    prev_value = points[0][1]\n\
+          \    \n    for ts, value in points:\n        if not current_group:\n   \
+          \         current_group.append((ts, value))\n        elif abs(value - prev_value)\
+          \ < 0.01 or (value == 0 and prev_value == 0):  # 连续相似值\n            current_group.append((ts,\
+          \ value))\n        else:\n            trend.append(current_group)\n    \
+          \        current_group = [(ts, value)]\n        prev_value = value\n   \
+          \ \n    if current_group:\n        trend.append(current_group)\n    \n \
+          \   # 生成趋势描述\n    description = []\n    for group in trend:\n        start_ts,\
+          \ start_val = group[0]\n        end_ts, end_val = group[-1]\n        avg_val\
+          \ = sum(v for _, v in group) / len(group)\n        \n        if avg_val\
+          \ == 0:\n            description.append(\n                f\"{len(group)}个数据点({timestamp_to_readable(start_ts)}\
+          \ - \"\n                f\"{timestamp_to_readable(end_ts)})值为0，完全正常\"\n\
+          \            )\n        elif avg_val < 0.01:\n            description.append(\n\
+          \                f\"{timestamp_to_readable(start_ts)}出现轻微波动({avg_val:.6f})\"\
+          \n            )\n        elif avg_val > 0.1:\n            description.append(f\"\
+          显著峰值在{timestamp_to_readable(start_ts)} - \"\n                          \
+          \   f\"{timestamp_to_readable(end_ts)}期间：\")\n            for ts, val in\
+          \ group:\n                description.append(f\"  {timestamp_to_readable(ts)}:\
+          \ {val:.3f}\")\n        else:\n            description.append(\n       \
+          \         f\"{timestamp_to_readable(start_ts)}值约为{avg_val:.6f}\"\n     \
+          \       )\n    \n    return description\n\ndef analyze_history(data):\n\
+          \    \"\"\"分析历史数据特征\"\"\"\n    values = []\n    for ts in data['result']['timeseries']:\n\
+          \        for _, value in ts['chart']['chartData'].items():\n           \
+          \ values.append(float(value))\n    \n    if not values:\n        return\
+          \ \"No historical data available.\"\n    \n    # 统计范围和峰值\n    min_val =\
+          \ min(values)\n    max_val = max(values)\n    avg_val = sum(values) / len(values)\n\
+          \    high_values = sorted([v for v in values if v > avg_val * 2], reverse=True)\n\
+          \    \n    description = [\n        \"历史数据显示该指标通常维持在很低的水平：\",\n        f\"\
+          大多数值在{avg_val:.6f} - {avg_val * 1.2:.6f}之间\",\n        f\"偶尔有较高值({', '.join(f'{v:.3f}'\
+          \ for v in high_values[:2])})但持续时间很短\"\n    ]\n    \n    return description,\
+          \ avg_val\n\ndef analyze_latency(past_24h, recent_15m):\n    \"\"\"综合分析并生成报告\"\
+          \"\"\n    # 分析15分钟趋势\n    trend_desc = analyze_trend(recent_15m)\n    \n\
+          \    # 分析历史数据\n    history_desc, history_max = analyze_history(past_24h)\n\
+          \    \n    # 获取15分钟内的最大值和最后几个点\n    recent_values = []\n    for ts in recent_15m['result']['timeseries']:\n\
+          \        for timestamp, value in ts['chart']['chartData'].items():\n   \
+          \         recent_values.append((int(timestamp), float(value)))\n    \n \
+          \   recent_values.sort()\n    recent_max = max(v for _, v in recent_values)\
+          \ if recent_values else 0\n    last_few = [v for _, v in recent_values[-3:]]\
+          \ if len(recent_values) >= 3 else [v for _, v in recent_values]\n    \n\
+          \    # 判断告警有效性\n    vaild = \"true\"\n    alert_desc = []\n    if recent_max\
+          \ > history_max * 2:  # 峰值远超历史\n        alert_desc.append(\n           \
+          \ f\"当前15分钟内出现的{recent_max:.3f}峰值远高于历史平均({history_max:.3f})\"\n        )\n\
+          \        peak_duration = sum(1 for _, v in recent_values if v > history_max\
+          \ * 2) * 0.5  # 假设每点3分钟\n        alert_desc.append(f\"虽然指标在短时间内(约{peak_duration}分钟)出现了远高于历史水平的峰值，但：\"\
+          )\n        alert_desc.append(f\"峰值持续时间很短(约{peak_duration}分钟)\")\n      \
+          \  \n        if all(v < 0.01 for v in last_few):\n            alert_desc.append(\"\
+          随后指标迅速回落到正常水平(0附近)\")\n            alert_desc.append(\"当前时刻指标已恢复正常\")\n\
+          \            alert_conclusion = \"告警无效\"\n        else:\n            alert_desc.append(\"\
+          指标未完全恢复正常\")\n            alert_conclusion = \"告警有效\"\n            vaild\
+          \ = \"false\"\n    else:\n        alert_desc.append(\"当前15分钟内无显著异常峰值\")\n\
+          \        alert_conclusion = \"告警无效\"\n    \n    # 组合报告\n    report = [\n\
+          \        \"MetricsData趋势分析\",\n        \"当前15分钟数据趋势：\"\n    ] + [f\"  {line}\"\
+          \ for line in trend_desc] + [\n        \"历史数据对比：\"\n    ] + [f\"  {line}\"\
+          \ for line in history_desc] + [\n        \"告警有效性判断：\"\n    ] + [f\"  {line}\"\
+          \ for line in alert_desc] + [\n        f\"结论：{alert_conclusion}\"\n    ]\n\
+          \    \n    return {\n        \"abnormal\": str(vaild),\n        \"conclusion\"\
+          : \"\\n\".join(report)+\"\\n\",\n    }\n\ndef main(service: str, endpoint:\
+          \ str, start: int, end: int) -> dict:\n    current = get_service_latency(start,\
+          \ end, service, endpoint)\n\n    hour = 3600 * 1000000\n    history = get_service_latency(\n\
+          \        start - hour,\n        start,\n        service,\n        endpoint,\n\
+          \    )\n    res = analyze_latency(history, current)\n    return res\n"
+        code_language: python3
+        desc: ''
+        outputs:
+          abnormal:
+            children: null
+            type: string
+          conclusion:
+            children: null
+            type: string
+        selected: true
+        title: 检测是否异常
+        type: code
+        variables:
+        - value_selector:
+          - '1742806924635'
+          - service
+          variable: service
+        - value_selector:
+          - '1742806924635'
+          - endpoint
+          variable: endpoint
+        - value_selector:
+          - '1741157526222'
+          - startTime
+          variable: start
+        - value_selector:
+          - '1741157526222'
+          - endTime
+          variable: end
+      height: 54
+      id: '1744599772545'
+      position:
+        x: 1854
+        y: 2295
+      positionAbsolute:
+        x: 1854
+        y: 2295
+      selected: true
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        cases:
+        - case_id: 'true'
+          conditions:
+          - comparison_operator: contains
+            id: 386bdf86-7414-490d-9106-cd665b9bf6da
+            value: 'false'
+            varType: string
+            variable_selector:
+            - '1744599772545'
+            - abnormal
+          id: 'true'
+          logical_operator: and
+        desc: ''
+        selected: false
+        title: 条件分支
+        type: if-else
+      height: 126
+      id: '1744599891369'
+      position:
+        x: 2158
+        y: 2161
+      positionAbsolute:
+        x: 2158
+        y: 2161
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        desc: ''
+        outputs:
+        - value_selector:
+          - '1744599772545'
+          - abnormal
+          variable: text
+        - value_selector:
+          - '1744599772545'
+          - conclusion
+          variable: output
+        selected: false
+        title: 结束 4
+        type: end
+      height: 116
+      id: '1744599930141'
+      position:
+        x: 2462
+        y: 2276
+      positionAbsolute:
+        x: 2462
+        y: 2276
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        desc: ''
+        output_type: string
+        selected: false
+        title: 变量聚合器 4
+        type: variable-aggregator
+        variables:
+        - - '1744599772545'
+          - conclusion
+        - - '1744339618961'
+          - conclusion
+      height: 130
+      id: '1744627472534'
+      position:
+        x: 2766
+        y: 2087
+      positionAbsolute:
+        x: 2766
+        y: 2087
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
       width: 244
     viewport:
-      x: 0
-      y: 0
+      x: -974
+      y: -959.0000000000002
       zoom: 0.7
