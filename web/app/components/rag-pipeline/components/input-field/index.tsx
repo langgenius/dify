@@ -1,10 +1,12 @@
 import {
   memo,
   useCallback,
+  useState,
 } from 'react'
 import { useStore } from '@/app/components/workflow/store'
 import { RiCloseLine } from '@remixicon/react'
 import { Jina } from '@/app/components/base/icons/src/public/llm'
+import type { InputVar } from '@/app/components/workflow/types'
 import { InputVarType } from '@/app/components/workflow/types'
 import Tooltip from '@/app/components/base/tooltip'
 import DialogWrapper from './dialog-wrapper'
@@ -13,13 +15,51 @@ import FooterTip from './footer-tip'
 
 type InputFieldDialogProps = {
   readonly?: boolean
+  initialInputFieldsMap?: Record<string, InputVar[]>
 }
 
 const InputFieldDialog = ({
   readonly = false,
+  initialInputFieldsMap,
 }: InputFieldDialogProps) => {
   const showInputFieldDialog = useStore(state => state.showInputFieldDialog)
   const setShowInputFieldDialog = useStore(state => state.setShowInputFieldDialog)
+  // TODO: delete mock data
+  const [inputFieldsMap, setInputFieldsMap] = useState(initialInputFieldsMap || {
+    jina: [{
+      variable: 'name',
+      label: 'name',
+      type: InputVarType.textInput,
+      required: true,
+      max_length: 12,
+    }, {
+      variable: 'num',
+      label: 'num',
+      type: InputVarType.number,
+      required: true,
+    }],
+    firecrawl: [{
+      variable: 'name',
+      label: 'name',
+      type: InputVarType.textInput,
+      required: true,
+      max_length: 12,
+    }],
+    shared: [{
+      variable: 'name',
+      label: 'name',
+      type: InputVarType.textInput,
+      required: true,
+      max_length: 12,
+    }],
+  })
+
+  const updateInputFields = useCallback((key: string, value: InputVar[]) => {
+    setInputFieldsMap(prev => ({
+      ...prev,
+      [key]: value,
+    }))
+  }, [])
 
   const closePanel = useCallback(() => {
     setShowInputFieldDialog?.(false)
@@ -58,20 +98,10 @@ const InputFieldDialog = ({
                 <span className='system-sm-medium text-text-secondary'>Jina Reader</span>
               </div>
             )}
-            inputFields={[{
-              variable: 'name',
-              label: 'name',
-              type: InputVarType.textInput,
-              required: true,
-              max_length: 12,
-            }, {
-              variable: 'num',
-              label: 'num',
-              type: InputVarType.number,
-              required: true,
-            }]}
+            inputFields={inputFieldsMap.jina}
             readonly={readonly}
             labelClassName='pt-2 pb-1'
+            handleInputFieldsChange={updateInputFields.bind(null, 'jina')}
           />
           {/* Firecrawl Field List */}
           <FieldList
@@ -83,15 +113,10 @@ const InputFieldDialog = ({
                 <span className='system-sm-medium text-text-secondary'>Firecrawl</span>
               </div>
             )}
-            inputFields={[{
-              variable: 'name',
-              label: 'name',
-              type: InputVarType.textInput,
-              required: true,
-              max_length: 12,
-            }]}
+            inputFields={inputFieldsMap.firecrawl}
             readonly={readonly}
             labelClassName='pt-2 pb-1'
+            handleInputFieldsChange={updateInputFields.bind(null, 'firecrawl')}
           />
           {/* Shared Inputs */}
           <FieldList
@@ -104,15 +129,10 @@ const InputFieldDialog = ({
                 />
               </div>
             )}
-            inputFields={[{
-              variable: 'name',
-              label: 'name',
-              type: InputVarType.textInput,
-              required: true,
-              max_length: 12,
-            }]}
+            inputFields={inputFieldsMap.shared}
             readonly={readonly}
             labelClassName='pt-1 pb-2'
+            handleInputFieldsChange={updateInputFields.bind(null, 'shared')}
           />
         </div>
         <FooterTip />

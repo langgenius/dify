@@ -2,12 +2,14 @@ import type { InputVar } from '@/app/components/workflow/types'
 import { RiAddLine } from '@remixicon/react'
 import FieldItem from './field-item'
 import cn from '@/utils/classnames'
-import { useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import InputFieldEditor from '../editor'
+import { ReactSortable } from 'react-sortablejs'
 
 type FieldListProps = {
   LabelRightContent: React.ReactNode
-  inputFields?: InputVar[]
+  inputFields: InputVar[]
+  handleInputFieldsChange: (value: InputVar[]) => void
   readonly?: boolean
   labelClassName?: string
 }
@@ -15,22 +17,44 @@ type FieldListProps = {
 const FieldList = ({
   LabelRightContent,
   inputFields,
+  handleInputFieldsChange,
   readonly,
   labelClassName,
 }: FieldListProps) => {
   const [showInputFieldEditor, setShowInputFieldEditor] = useState(false)
 
+  const optionList = useMemo(() => {
+    return inputFields.map((content, index) => {
+      return ({
+        id: index,
+        name: content.variable,
+      })
+    })
+  }, [inputFields])
+
+  const handleListSortChange = useCallback((list: Array<{ id: number, name: string }>) => {
+    const newInputFields = list.map((item) => {
+      return inputFields.find(field => field.variable === item.name)
+    })
+    handleInputFieldsChange(newInputFields as InputVar[])
+  }, [handleInputFieldsChange, inputFields])
+
+  const handleRemoveField = useCallback((index: number) => {
+    const newInputFields = inputFields.filter((_, i) => i !== index)
+    handleInputFieldsChange(newInputFields)
+  }, [handleInputFieldsChange, inputFields])
+
   const handleAddField = () => {
     setShowInputFieldEditor(true)
   }
 
-  const handleEditField = (index: number) => {
+  const handleEditField = useCallback((index: number) => {
     setShowInputFieldEditor(true)
-  }
+  }, [])
 
-  const handleCloseEditor = () => {
+  const handleCloseEditor = useCallback(() => {
     setShowInputFieldEditor(false)
-  }
+  }, [])
 
   return (
     <div className='flex flex-col'>
@@ -48,19 +72,25 @@ const FieldList = ({
           <RiAddLine className='h-4 w-4 text-text-tertiary' />
         </button>
       </div>
-      <div className='flex flex-col gap-y-1 px-4 pb-2'>
+      <ReactSortable
+        className='flex flex-col gap-y-1 px-4 pb-2'
+        list={optionList}
+        setList={list => handleListSortChange(list)}
+        handle='.handle'
+        ghostClass="opacity-50"
+        animation={150}
+        disabled={readonly}
+      >
         {inputFields?.map((item, index) => (
           <FieldItem
             key={index}
             readonly={readonly}
             payload={item}
-            onRemove={() => {
-              // Handle remove action
-            }}
+            onRemove={handleRemoveField.bind(null, index)}
             onClickEdit={handleEditField.bind(null, index)}
           />
         ))}
-      </div>
+      </ReactSortable>
       {showInputFieldEditor && (
         <InputFieldEditor
           show={showInputFieldEditor}
