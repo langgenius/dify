@@ -55,7 +55,6 @@ const useConfig = (id: string, payload: KnowledgeRetrievalNodeType) => {
 
   const updateFlag = useUpdateFlagStore(s => s.updateFlag)
 
-
   const inputRef = useRef(inputs)
 
   const setInputs = useCallback((s: KnowledgeRetrievalNodeType) => {

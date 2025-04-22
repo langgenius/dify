@@ -34,7 +34,6 @@ import { fetchMembers } from '@/service/common'
 import type { Member } from '@/models/common'
 import useUpdateFlagStore from '@/app/components/workflow/nodes/knowledge-retrieval/useUpdateFlagStore'
 
-
 type SettingsModalProps = {
   currentDataset: DataSet
   onCancel: () => void
