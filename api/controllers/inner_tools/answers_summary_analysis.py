@@ -174,6 +174,10 @@ class AnswersSummaryAnalysisApi(Resource):
                 # Original format with 'name' and 'items'
                 category_name = category.get('name', '')
                 question_numbers = category.get('items', [])
+
+                if not category_name or not question_numbers:
+                    category_name = next(iter(category))
+                    question_numbers = category.get(category_name, [])
             elif isinstance(category, list) and len(category) == 2:
                 # New format from image: ['category_name', ['30', '36', '39', '50']]
                 category_name = category[0]
