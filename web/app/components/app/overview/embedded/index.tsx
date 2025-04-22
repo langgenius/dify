@@ -24,7 +24,7 @@ const OPTION_MAP = {
   iframe: {
     getContent: (url: string, token: string) =>
       `<iframe
- src="${url}/chatbot/${token}"
+ src="${url}/chat/${token}"
  style="width: 100%; height: 100%; min-height: 700px"
  frameborder="0"
  allow="microphone">
@@ -35,12 +35,12 @@ const OPTION_MAP = {
       `<script>
  window.difyChatbotConfig = {
   token: '${token}'${isTestEnv
-  ? `,
+        ? `,
   isDev: true`
-  : ''}${IS_CE_EDITION
-  ? `,
+        : ''}${IS_CE_EDITION
+          ? `,
   baseUrl: '${url}'`
-  : ''}
+          : ''}
  }
 </script>
 <script
