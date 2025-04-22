@@ -115,10 +115,8 @@ def graph_runtime_state() -> GraphRuntimeState:
 
 @pytest.fixture
 def llm_node(
-        llm_node_data: LLMNodeData,
-        graph_init_params: GraphInitParams,
-        graph: Graph,
-        graph_runtime_state: GraphRuntimeState) -> LLMNode:
+    llm_node_data: LLMNodeData, graph_init_params: GraphInitParams, graph: Graph, graph_runtime_state: GraphRuntimeState
+) -> LLMNode:
     mock_file_saver = mock.MagicMock(spec=MultiModalFileSaver)
     mock_file_downloader = mock.MagicMock(spec=FileDownloader)
     node = LLMNode(
@@ -501,8 +499,8 @@ def test_handle_list_messages_basic(llm_node):
 
 @pytest.fixture
 def llm_node_for_multimodal(
-        llm_node_data, graph_init_params, graph, graph_runtime_state
-    ) -> tuple[LLMNode, FileDownloader, MultiModalFileSaver]:
+    llm_node_data, graph_init_params, graph, graph_runtime_state
+) -> tuple[LLMNode, FileDownloader, MultiModalFileSaver]:
     mock_file_downloader: FileDownloader = mock.MagicMock(spec=FileDownloader)
     mock_file_saver: MultiModalFileSaver = mock.MagicMock(spec=MultiModalFileSaver)
     node = LLMNode(
@@ -515,7 +513,7 @@ def llm_node_for_multimodal(
         graph=graph,
         graph_runtime_state=graph_runtime_state,
         file_downloader=mock_file_downloader,
-        multi_modal_file_saver=mock_file_saver
+        multi_modal_file_saver=mock_file_saver,
     )
     return node, mock_file_downloader, mock_file_saver
 
@@ -534,23 +532,23 @@ class TestLLMNodeSaveMultiModalImageOutput:
         assert file.get_extension() == ".png"
 
     def test_llm_node_save_inline_output(
-            self,
-            llm_node_for_multimodal: tuple[LLMNode, FileDownloader, MultiModalFileSaver]):
+        self, llm_node_for_multimodal: tuple[LLMNode, FileDownloader, MultiModalFileSaver]
+    ):
         llm_node, _, mock_file_saver = llm_node_for_multimodal
         content = ImagePromptMessageContent(
             format="png",
-            base64_data=base64.b64encode(b'test-data').decode(),
+            base64_data=base64.b64encode(b"test-data").decode(),
             mime_type="image/png",
         )
         mock_file = File(
             id=str(uuid.uuid4()),
-            tenant_id='1',
+            tenant_id="1",
             type=FileType.IMAGE,
             transfer_method=FileTransferMethod.TOOL_FILE,
             related_id=str(uuid.uuid4()),
-            filename='test-file.png',
-            extension='.png',
-            mime_type='image/png',
+            filename="test-file.png",
+            extension=".png",
+            mime_type="image/png",
             size=9,
         )
         mock_file_saver.save_file.return_value = mock_file
@@ -558,13 +556,18 @@ class TestLLMNodeSaveMultiModalImageOutput:
         assert llm_node._file_outputs == [mock_file]
         assert file == mock_file
         expected_saved_multimodal_file = MultiModalFile(
-            user_id='1', tenant_id='1', file_type=FileType.IMAGE,
-            data=b'test-data', mime_type='image/png', extension_override=None)
+            user_id="1",
+            tenant_id="1",
+            file_type=FileType.IMAGE,
+            data=b"test-data",
+            mime_type="image/png",
+            extension_override=None,
+        )
         mock_file_saver.save_file.assert_called_once_with(expected_saved_multimodal_file)
 
     def test_llm_node_save_url_output(
-            self,
-            llm_node_for_multimodal: tuple[LLMNode, FileDownloader, MultiModalFileSaver]):
+        self, llm_node_for_multimodal: tuple[LLMNode, FileDownloader, MultiModalFileSaver]
+    ):
         llm_node, mock_file_downloader, mock_file_saver = llm_node_for_multimodal
         content = ImagePromptMessageContent(
             format="png",
@@ -573,13 +576,13 @@ class TestLLMNodeSaveMultiModalImageOutput:
         )
         mock_file = File(
             id=str(uuid.uuid4()),
-            tenant_id='1',
+            tenant_id="1",
             type=FileType.IMAGE,
             transfer_method=FileTransferMethod.TOOL_FILE,
             related_id=str(uuid.uuid4()),
-            filename='test-file.png',
-            extension='.png',
-            mime_type='image/png',
+            filename="test-file.png",
+            extension=".png",
+            mime_type="image/png",
             size=9,
         )
         mock_file_downloader.get.return_value = Response(body=b"test-data", content_type="image/png")
@@ -588,8 +591,13 @@ class TestLLMNodeSaveMultiModalImageOutput:
         assert llm_node._file_outputs == [mock_file]
         assert file == mock_file
         expected_saved_multimodal_file = MultiModalFile(
-            user_id='1', tenant_id='1', file_type=FileType.IMAGE,
-            data=b'test-data', mime_type='image/png', extension_override='.png')
+            user_id="1",
+            tenant_id="1",
+            file_type=FileType.IMAGE,
+            data=b"test-data",
+            mime_type="image/png",
+            extension_override=".png",
+        )
         mock_file_downloader.get.assert_called_once_with(content.url)
         mock_file_saver.save_file.assert_called_once_with(expected_saved_multimodal_file)
 
@@ -603,23 +611,23 @@ def test_llm_node_image_file_to_markdown(llm_node: LLMNode):
 
 class TestExtractContentTypeAndExtension:
     def test_with_both_content_type_and_extension(self):
-        content_type, extension = _extract_content_type_and_extension('https://example.com/image.jpg',  "image/png")
+        content_type, extension = _extract_content_type_and_extension("https://example.com/image.jpg", "image/png")
         assert content_type == "image/png"
         assert extension == ".png"
 
     def test_url_with_file_extension(self):
         for content_type in [None, ""]:
-            content_type, extension = _extract_content_type_and_extension('https://example.com/image.png', content_type)
+            content_type, extension = _extract_content_type_and_extension("https://example.com/image.png", content_type)
             assert content_type == "image/png"
             assert extension == ".png"
 
     def test_response_with_content_type(self):
-        content_type, extension = _extract_content_type_and_extension('https://example.com/image', "image/png")
+        content_type, extension = _extract_content_type_and_extension("https://example.com/image", "image/png")
         assert content_type == "image/png"
         assert extension == ".png"
 
     def test_no_content_type_and_no_extension(self):
         for content_type in [None, ""]:
-            content_type, extension = _extract_content_type_and_extension('https://example.com/image', content_type)
-            assert content_type == 'application/octet-stream'
-            assert extension == '.bin'
+            content_type, extension = _extract_content_type_and_extension("https://example.com/image", content_type)
+            assert content_type == "application/octet-stream"
+            assert extension == ".bin"

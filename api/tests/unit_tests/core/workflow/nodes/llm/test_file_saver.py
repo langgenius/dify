@@ -11,7 +11,7 @@ from core.tools.tool_file_manager import ToolFileManager
 from core.workflow.nodes.llm.file_saver import MultiModalFile, StorageFileSaver
 from models import ToolFile
 
-_PNG_DATA = b'\x89PNG\r\n\x1a\n'
+_PNG_DATA = b"\x89PNG\r\n\x1a\n"
 #
 # class _MockToolFileManager:
 #     def __init__(self, mock_tool_file: ToolFile, mock_signed_url: str):
@@ -34,6 +34,7 @@ _PNG_DATA = b'\x89PNG\r\n\x1a\n'
 #     def sign_file(tool_file_id: str, extension: str) -> str:
 #         return ""
 
+
 def test_storage_file_saver(monkeypatch):
     def gen_id():
         return str(uuid.uuid4())
@@ -43,16 +44,16 @@ def test_storage_file_saver(monkeypatch):
         tenant_id=gen_id(),
         file_type=FileType.IMAGE,
         data=_PNG_DATA,
-        mime_type='image/png',
-        extension_override=None
+        mime_type="image/png",
+        extension_override=None,
     )
-    mock_signed_url = 'https://example.com/image.png'
+    mock_signed_url = "https://example.com/image.png"
     mock_tool_file = ToolFile(
         id=gen_id(),
         user_id=mmf.user_id,
         tenant_id=mmf.tenant_id,
         conversation_id=None,
-        file_key='test-file-key',
+        file_key="test-file-key",
         mimetype=mmf.mime_type,
         original_url=None,
         name=f"{gen_id()}.png",
@@ -94,45 +95,35 @@ def test_storage_file_saver(monkeypatch):
 
 def test_multi_modal_file_extension_override():
     # Test should pass if `extension_override` is not set.
-    MultiModalFile(
-        user_id='',
-        tenant_id='',
-        file_type=FileType.IMAGE,
-        data=b'',
-        mime_type='image/png'
-    )
+    MultiModalFile(user_id="", tenant_id="", file_type=FileType.IMAGE, data=b"", mime_type="image/png")
 
     # Test should pass if `extension_override` is explicitly set to `None`.
     MultiModalFile(
-        user_id='',
-        tenant_id='',
-        file_type=FileType.IMAGE,
-        data=b'',
-        mime_type='image/png',
-        extension_override=None
+        user_id="", tenant_id="", file_type=FileType.IMAGE, data=b"", mime_type="image/png", extension_override=None
     )
 
     # Test should pass if `extension_override` is a string prefixed with `.`.
-    for extension_override in ['.png', '.tar.gz']:
+    for extension_override in [".png", ".tar.gz"]:
         MultiModalFile(
-            user_id='',
-            tenant_id='',
+            user_id="",
+            tenant_id="",
             file_type=FileType.IMAGE,
-            data=b'',
-            mime_type='image/png',
+            data=b"",
+            mime_type="image/png",
             extension_override=extension_override,
         )
 
-    for invalid_ext_override in ['png', 'tar.gz']:
+    for invalid_ext_override in ["png", "tar.gz"]:
         with pytest.raises(pydantic.ValidationError) as exc:
             MultiModalFile(
-                user_id='',
-                tenant_id='',
+                user_id="",
+                tenant_id="",
                 file_type=FileType.IMAGE,
-                data=b'',
-                mime_type='image/png',
-                extension_override=invalid_ext_override)
+                data=b"",
+                mime_type="image/png",
+                extension_override=invalid_ext_override,
+            )
 
         error_details = exc.value.errors()
         assert exc.value.error_count() == 1
-        assert error_details[0]['loc'] == ('extension_override',)
+        assert error_details[0]["loc"] == ("extension_override",)

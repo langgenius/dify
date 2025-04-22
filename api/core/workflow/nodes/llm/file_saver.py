@@ -54,13 +54,13 @@ class MultiModalFile(BaseModel):
             return extension
         return mimetypes.guess_extension(self.mime_type) or DEFAULT_EXTENSION
 
-    @field_validator('extension_override')
+    @field_validator("extension_override")
     @classmethod
     def _validate_extension_override(cls, extension_override: str | None) -> str | None:
         # `extension_override` is allow to be `None or `""`.
         if not extension_override:
             return None
-        if not extension_override.startswith('.'):
+        if not extension_override.startswith("."):
             raise ValueError("extension_override should start with '.' if not None or empty.", extension_override)
         return extension_override
 
@@ -70,6 +70,7 @@ class MultiModalFileSaver(tp.Protocol):
     def save_file(self, mmf: MultiModalFile) -> File:
         pass
 
+
 EngineFactory: tp.TypeAlias = tp.Callable[[], Engine]
 
 
@@ -78,6 +79,7 @@ class StorageFileSaver(MultiModalFileSaver):
 
     def __init__(self, engine_factory: EngineFactory | None = None):
         if engine_factory is None:
+
             def _factory():
                 return global_db.engine
 
@@ -88,7 +90,7 @@ class StorageFileSaver(MultiModalFileSaver):
         return ToolFileManager(engine=self._engine_factory())
 
     def save_file(self, mmf: MultiModalFile) -> File:
-        tool_file_manager =  self._get_tool_file_manager()
+        tool_file_manager = self._get_tool_file_manager()
         tool_file = tool_file_manager.create_file_by_raw(
             user_id=mmf.user_id,
             tenant_id=mmf.tenant_id,
@@ -114,4 +116,3 @@ class StorageFileSaver(MultiModalFileSaver):
             # What's the purpose of `storage_key` and `dify_model_identity`?
             storage_key=tool_file.file_key,
         )
-

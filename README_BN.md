@@ -8,7 +8,7 @@
   <a href="https://cloud.dify.ai">ডিফাই ক্লাউড</a> ·
   <a href="https://docs.dify.ai/getting-started/install-self-hosted">সেল্ফ-হোস্টিং</a> ·
   <a href="https://docs.dify.ai">ডকুমেন্টেশন</a> ·
-  <a href="https://udify.app/chat/22L1zSxg6yW1cWQg">ব্যাবসায়িক অনুসন্ধান</a>
+  <a href="https://dify.ai/pricing">Dify পণ্যের রূপভেদ</a>
 </p>
 
 <p align="center">

@@ -22,10 +22,8 @@ class ToolFilePreviewApi(Resource):
 
         args = parser.parse_args()
         if not verify_tool_file_signature(
-                file_id=file_id,
-                timestamp=args["timestamp"],
-                nonce=args["nonce"],
-                sign=args["sign"]):
+            file_id=file_id, timestamp=args["timestamp"], nonce=args["nonce"], sign=args["sign"]
+        ):
             raise Forbidden("Invalid request.")
 
         try:

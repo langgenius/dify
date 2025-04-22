@@ -557,7 +557,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, PropertyInstructi
 
 <Heading
   url='/datasets/{dataset_id}'
-  method='POST'
+  method='PATCH'
   title='Update knowledge base'
   name='#update_dataset'
 />
@@ -585,8 +585,21 @@ import { Row, Col, Properties, Property, Heading, SubProperty, PropertyInstructi
       <Property name='embedding_model' type='string' key='embedding_model'>
         Specified embedding model, corresponding to the model field(Optional)
       </Property>
-      <Property name='retrieval_model' type='string' key='retrieval_model'>
-        Specified retrieval model, corresponding to the model field(Optional)
+      <Property name='retrieval_model' type='object' key='retrieval_model'>
+        Retrieval model (optional, if not filled, it will be recalled according to the default method)
+        - <code>search_method</code> (text) Search method: One of the following four keywords is required
+          - <code>keyword_search</code> Keyword search
+          - <code>semantic_search</code> Semantic search
+          - <code>full_text_search</code> Full-text search
+          - <code>hybrid_search</code> Hybrid search
+        - <code>reranking_enable</code> (bool) Whether to enable reranking, required if the search mode is semantic_search or hybrid_search (optional)
+        - <code>reranking_mode</code> (object) Rerank model configuration, required if reranking is enabled
+            - <code>reranking_provider_name</code> (string) Rerank model provider
+            - <code>reranking_model_name</code> (string) Rerank model name
+        - <code>weights</code> (float) Semantic search weight setting in hybrid search mode
+        - <code>top_k</code> (integer) Number of results to return (optional)
+        - <code>score_threshold_enabled</code> (bool) Whether to enable score threshold
+        - <code>score_threshold</code> (float) Score threshold
       </Property>
       <Property name='partial_member_list' type='array' key='partial_member_list'>
         Partial member list(Optional)
@@ -596,16 +609,56 @@ import { Row, Col, Properties, Property, Heading, SubProperty, PropertyInstructi
   <Col sticky>
     <CodeGroup
       title="Request"
-      tag="POST"
+      tag="PATCH"
       label="/datasets/{dataset_id}"
-      targetCode={`curl --location --request POST '${props.apiBaseUrl}/datasets/{dataset_id}' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{"name": "Test Knowledge Base", "indexing_technique": "high_quality", "permission": "only_me", "embedding_model_provider": "zhipuai", "embedding_model": "embedding-3", "retrieval_model": "", "partial_member_list": []}' `}
+      targetCode={`curl --location --request PATCH '${props.apiBaseUrl}/datasets/{dataset_id}' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{
+        "name": "Test Knowledge Base", 
+        "indexing_technique": "high_quality", 
+        "permission": "only_me", 
+        "embedding_model_provider": "zhipuai", 
+        "embedding_model": "embedding-3", 
+        "retrieval_model": {
+          "search_method": "keyword_search",
+          "reranking_enable": false,
+          "reranking_mode": null,
+          "reranking_model": {
+              "reranking_provider_name": "",
+              "reranking_model_name": ""
+          },
+          "weights": null,
+          "top_k": 1,
+          "score_threshold_enabled": false,
+          "score_threshold": null
+        }, 
+        "partial_member_list": []
+      }'
+    `}
     >
     ```bash {{ title: 'cURL' }}
-    curl --location --request POST '${props.apiBaseUrl}/datasets/{dataset_id}' \
+    curl --location --request PATCH '${props.apiBaseUrl}/datasets/{dataset_id}' \
     --header 'Authorization: Bearer {api_key}' \
     --header 'Content-Type: application/json' \
-    --data-raw '{"name": "Test Knowledge Base", "indexing_technique": "high_quality", "permission": "only_me",\
-      "embedding_model_provider": "zhipuai", "embedding_model": "embedding-3", "retrieval_model": "", "partial_member_list": []}'
+    --data-raw '{
+      "name": "Test Knowledge Base", 
+      "indexing_technique": "high_quality", 
+      "permission": "only_me", 
+      "embedding_model_provider": "zhipuai", 
+      "embedding_model": "embedding-3", 
+      "retrieval_model": {
+        "search_method": "keyword_search",
+        "reranking_enable": false,
+        "reranking_mode": null,
+        "reranking_model": {
+            "reranking_provider_name": "",
+            "reranking_model_name": ""
+        },
+        "weights": null,
+        "top_k": 1,
+        "score_threshold_enabled": false,
+        "score_threshold": null
+      }, 
+      "partial_member_list": []
+    }'
     ```
     </CodeGroup>
     <CodeGroup title="Response">

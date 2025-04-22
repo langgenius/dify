@@ -1,4 +1,5 @@
 import type { I18nText } from '@/i18n/language'
+import type { Model } from '@/types/app'
 
 export type CommonResponse = {
   result: 'success' | 'fail'
@@ -291,3 +292,13 @@ export type ModerationService = (
     text: string
   }
 ) => Promise<ModerateResponse>
+
+export type StructuredOutputRulesRequestBody = {
+  instruction: string
+  model_config: Model
+}
+
+export type StructuredOutputRulesResponse = {
+  output: string
+  error?: string
+}

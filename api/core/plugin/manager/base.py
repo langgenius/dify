@@ -82,7 +82,7 @@ class BasePluginManager:
         Make a stream request to the plugin daemon inner API
         """
         response = self._request(method, path, headers, data, params, files, stream=True)
-        for line in response.iter_lines():
+        for line in response.iter_lines(chunk_size=1024 * 8):
             line = line.decode("utf-8").strip()
             if line.startswith("data:"):
                 line = line[5:].strip()

@@ -13,22 +13,23 @@ from core.workflow.nodes.llm.file_downloader import (
 
 _TEST_URL = "https://example.com"
 
+
 class TestSSRFProxyFileDownloader:
     def test(self, monkeypatch):
         mock_request = httpx.Request("GET", _TEST_URL)
         mock_response = httpx.Response(
             status_code=200,
-            content=b'test-data',
-            headers={'Content-Type': 'text/plain'},
+            content=b"test-data",
+            headers={"Content-Type": "text/plain"},
             request=mock_request,
         )
         mock_get = mock.MagicMock(spec=ssrf_proxy.get, return_value=mock_response)
-        monkeypatch.setattr(ssrf_proxy, 'get', mock_get)
+        monkeypatch.setattr(ssrf_proxy, "get", mock_get)
 
         downloader = SSRFProxyFileDownloader()
         response = downloader.get(_TEST_URL)
         mock_get.assert_called_once_with(_TEST_URL)
-        assert response == Response(body=mock_response.content, content_type='text/plain')
+        assert response == Response(body=mock_response.content, content_type="text/plain")
 
     def test_should_raise_when_status_is_not_successful(self, monkeypatch):
         mock_request = httpx.Request("GET", _TEST_URL)
@@ -37,7 +38,7 @@ class TestSSRFProxyFileDownloader:
             request=mock_request,
         )
         mock_get = mock.MagicMock(spec=ssrf_proxy.get, return_value=mock_response)
-        monkeypatch.setattr(ssrf_proxy, 'get', mock_get)
+        monkeypatch.setattr(ssrf_proxy, "get", mock_get)
 
         downloader = SSRFProxyFileDownloader()
         with pytest.raises(HTTPStatusError) as exc:
@@ -47,10 +48,9 @@ class TestSSRFProxyFileDownloader:
 
     def test_should_convert_timeout_to_file_download_error(self, monkeypatch):
         mock_get = mock.MagicMock(spec=ssrf_proxy.get, side_effect=httpx.TimeoutException("timeout"))
-        monkeypatch.setattr(ssrf_proxy, 'get', mock_get)
+        monkeypatch.setattr(ssrf_proxy, "get", mock_get)
 
         downloader = SSRFProxyFileDownloader()
         with pytest.raises(FileDownloadError) as exc:
             response = downloader.get(_TEST_URL)
         mock_get.assert_called_once_with(_TEST_URL)
-

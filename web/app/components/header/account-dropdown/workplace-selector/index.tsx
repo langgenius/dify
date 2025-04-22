@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { Menu, MenuButton, MenuItems, Transition } from '@headlessui/react'
 import { RiArrowDownSLine } from '@remixicon/react'
 import cn from '@/utils/classnames'
+import { basePath } from '@/utils/var'
 import PlanBadge from '@/app/components/header/plan-badge'
 import { switchWorkspace } from '@/service/common'
 import { useWorkspacesContext } from '@/context/workspace-context'
@@ -22,7 +23,7 @@ const WorkplaceSelector = () => {
         return
       await switchWorkspace({ url: '/workspaces/switch', body: { tenant_id } })
       notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
-      location.assign(`${location.origin}`)
+      location.assign(`${location.origin}${basePath}`)
     }
     catch {
       notify({ type: 'error', message: t('common.provider.saveFailed') })
@@ -41,7 +42,7 @@ const WorkplaceSelector = () => {
               `,
             )}>
               <div className='flex h-6 w-6 items-center justify-center rounded-md bg-components-icon-bg-blue-solid text-[13px]'>
-                <span className='bg-gradient-to-r from-components-avatar-shape-fill-stop-0 to-components-avatar-shape-fill-stop-100 bg-clip-text font-semibold uppercase text-shadow-shadow-1 opacity-90'>{currentWorkspace?.name[0]?.toLocaleUpperCase()}</span>
+                <span className='h-6 bg-gradient-to-r from-components-avatar-shape-fill-stop-0 to-components-avatar-shape-fill-stop-100 bg-clip-text align-middle font-semibold uppercase leading-6 text-shadow-shadow-1 opacity-90'>{currentWorkspace?.name[0]?.toLocaleUpperCase()}</span>
               </div>
               <div className='flex flex-row'>
                 <div className={'system-sm-medium max-w-[160px] truncate text-text-secondary'}>{currentWorkspace?.name}</div>
@@ -72,7 +73,7 @@ const WorkplaceSelector = () => {
                     workspaces.map(workspace => (
                       <div className='flex items-center gap-2 self-stretch rounded-lg py-1 pl-3 pr-2 hover:bg-state-base-hover' key={workspace.id} onClick={() => handleSwitchWorkspace(workspace.id)}>
                         <div className='flex h-6 w-6 items-center justify-center rounded-md bg-components-icon-bg-blue-solid text-[13px]'>
-                          <span className='bg-gradient-to-r from-components-avatar-shape-fill-stop-0 to-components-avatar-shape-fill-stop-100 bg-clip-text font-semibold uppercase text-shadow-shadow-1 opacity-90'>{workspace?.name[0]?.toLocaleUpperCase()}</span>
+                          <span className='h-6 bg-gradient-to-r from-components-avatar-shape-fill-stop-0 to-components-avatar-shape-fill-stop-100 bg-clip-text align-middle font-semibold uppercase leading-6 text-shadow-shadow-1 opacity-90'>{workspace?.name[0]?.toLocaleUpperCase()}</span>
                         </div>
                         <div className='system-md-regular line-clamp-1 grow cursor-pointer overflow-hidden text-ellipsis text-text-secondary'>{workspace.name}</div>
                         <PlanBadge plan={workspace.plan as Plan} />

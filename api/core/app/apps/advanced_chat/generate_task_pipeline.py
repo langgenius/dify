@@ -320,10 +320,9 @@ class AdvancedChatAppGenerateTaskPipeline:
                         session=session, workflow_run_id=self._workflow_run_id
                     )
                     workflow_node_execution = self._workflow_cycle_manager._handle_workflow_node_execution_retried(
-                        session=session, workflow_run=workflow_run, event=event
+                        workflow_run=workflow_run, event=event
                     )
                     node_retry_resp = self._workflow_cycle_manager._workflow_node_retry_to_stream_response(
-                        session=session,
                         event=event,
                         task_id=self._application_generate_entity.task_id,
                         workflow_node_execution=workflow_node_execution,
@@ -341,11 +340,10 @@ class AdvancedChatAppGenerateTaskPipeline:
                         session=session, workflow_run_id=self._workflow_run_id
                     )
                     workflow_node_execution = self._workflow_cycle_manager._handle_node_execution_start(
-                        session=session, workflow_run=workflow_run, event=event
+                        workflow_run=workflow_run, event=event
                     )
 
                     node_start_resp = self._workflow_cycle_manager._workflow_node_start_to_stream_response(
-                        session=session,
                         event=event,
                         task_id=self._application_generate_entity.task_id,
                         workflow_node_execution=workflow_node_execution,
@@ -363,11 +361,10 @@ class AdvancedChatAppGenerateTaskPipeline:
 
                 with Session(db.engine, expire_on_commit=False) as session:
                     workflow_node_execution = self._workflow_cycle_manager._handle_workflow_node_execution_success(
-                        session=session, event=event
+                        event=event
                     )
 
                     node_finish_resp = self._workflow_cycle_manager._workflow_node_finish_to_stream_response(
-                        session=session,
                         event=event,
                         task_id=self._application_generate_entity.task_id,
                         workflow_node_execution=workflow_node_execution,
@@ -383,18 +380,15 @@ class AdvancedChatAppGenerateTaskPipeline:
                 | QueueNodeInLoopFailedEvent
                 | QueueNodeExceptionEvent,
             ):
-                with Session(db.engine, expire_on_commit=False) as session:
-                    workflow_node_execution = self._workflow_cycle_manager._handle_workflow_node_execution_failed(
-                        session=session, event=event
-                    )
+                workflow_node_execution = self._workflow_cycle_manager._handle_workflow_node_execution_failed(
+                    event=event
+                )
 
-                    node_finish_resp = self._workflow_cycle_manager._workflow_node_finish_to_stream_response(
-                        session=session,
-                        event=event,
-                        task_id=self._application_generate_entity.task_id,
-                        workflow_node_execution=workflow_node_execution,
-                    )
-                    session.commit()
+                node_finish_resp = self._workflow_cycle_manager._workflow_node_finish_to_stream_response(
+                    event=event,
+                    task_id=self._application_generate_entity.task_id,
+                    workflow_node_execution=workflow_node_execution,
+                )
 
                 if node_finish_resp:
                     yield node_finish_resp

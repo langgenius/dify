@@ -52,7 +52,7 @@
 5. Install dependencies
 
    ```bash
-   uv sync --group lint --group dev
+   uv sync --dev
    ```
 
 6. Run migrate
@@ -82,7 +82,7 @@
 1. Install dependencies for both the backend and the test environment
 
    ```bash
-   uv sync --group lint --group dev
+   uv sync --dev
    ```
 
 2. Run the tests locally with mocked system environment variables in `tool.pytest_env` section in `pyproject.toml`

@@ -51,6 +51,7 @@ class HttpRequestNode(BaseNode[HttpRequestNodeData]):
                     "max_read_timeout": dify_config.HTTP_REQUEST_MAX_READ_TIMEOUT,
                     "max_write_timeout": dify_config.HTTP_REQUEST_MAX_WRITE_TIMEOUT,
                 },
+                "ssl_verify": dify_config.HTTP_REQUEST_NODE_SSL_VERIFY,
             },
             "retry_config": {
                 "max_retries": dify_config.SSRF_DEFAULT_MAX_RETRIES,

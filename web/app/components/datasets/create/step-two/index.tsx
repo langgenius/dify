@@ -97,7 +97,7 @@ export enum IndexingType {
 }
 
 const DEFAULT_SEGMENT_IDENTIFIER = '\\n\\n'
-const DEFAULT_MAXIMUM_CHUNK_LENGTH = 500
+const DEFAULT_MAXIMUM_CHUNK_LENGTH = 1024
 const DEFAULT_OVERLAP = 50
 const MAXIMUM_CHUNK_TOKEN_LENGTH = Number.parseInt(globalThis.document?.body?.getAttribute('data-public-indexing-max-segmentation-tokens-length') || '4000', 10)
 
@@ -117,11 +117,11 @@ const defaultParentChildConfig: ParentChildConfig = {
   chunkForContext: 'paragraph',
   parent: {
     delimiter: '\\n\\n',
-    maxLength: 500,
+    maxLength: 1024,
   },
   child: {
     delimiter: '\\n',
-    maxLength: 200,
+    maxLength: 512,
   },
 }
 
@@ -623,12 +623,12 @@ const StepTwo = ({
                   onChange={e => setSegmentIdentifier(e.target.value, true)}
                 />
                 <MaxLengthInput
-                  unit='tokens'
+                  unit='characters'
                   value={maxChunkLength}
                   onChange={setMaxChunkLength}
                 />
                 <OverlapInput
-                  unit='tokens'
+                  unit='characters'
                   value={overlap}
                   min={1}
                   onChange={setOverlap}
@@ -756,7 +756,7 @@ const StepTwo = ({
                         })}
                       />
                       <MaxLengthInput
-                        unit='tokens'
+                        unit='characters'
                         value={parentChildConfig.parent.maxLength}
                         onChange={value => setParentChildConfig({
                           ...parentChildConfig,
@@ -803,7 +803,7 @@ const StepTwo = ({
                     })}
                   />
                   <MaxLengthInput
-                    unit='tokens'
+                    unit='characters'
                     value={parentChildConfig.child.maxLength}
                     onChange={value => setParentChildConfig({
                       ...parentChildConfig,
