@@ -246,9 +246,9 @@ const AppPublisher = ({
                   }}>
                   <div className='grow flex items-center gap-x-1.5 pr-1'>
                     <RiLockLine className='w-4 h-4 text-text-secondary shrink-0' />
-                    {appDetail?.access_mode === AccessMode.ORGANIZATION && <p className='system-xs-medium text-text-secondary'>{t('app.accessControlDialog.accessItems.organization')}</p>}
-                    {appDetail?.access_mode === AccessMode.SPECIFIC_GROUPS_MEMBERS && <p className='system-xs-medium text-text-secondary'>{t('app.accessControlDialog.accessItems.specific')}</p>}
-                    {appDetail?.access_mode === AccessMode.PUBLIC && <p className='system-xs-medium text-text-secondary'>{t('app.accessControlDialog.accessItems.anyone')}</p>}
+                    {appDetail?.access_mode === AccessMode.ORGANIZATION && <p className='system-sm-medium text-text-secondary'>{t('app.accessControlDialog.accessItems.organization')}</p>}
+                    {appDetail?.access_mode === AccessMode.SPECIFIC_GROUPS_MEMBERS && <p className='system-sm-medium text-text-secondary'>{t('app.accessControlDialog.accessItems.specific')}</p>}
+                    {appDetail?.access_mode === AccessMode.PUBLIC && <p className='system-sm-medium text-text-secondary'>{t('app.accessControlDialog.accessItems.anyone')}</p>}
                   </div>
                   {!isAppAccessSet && <p className='shrink-0 system-xs-regular text-text-tertiary'>{t('app.publishApp.notSet')}</p>}
                   <div className='shrink-0 w-4 h-4 flex items-center justify-center'>
