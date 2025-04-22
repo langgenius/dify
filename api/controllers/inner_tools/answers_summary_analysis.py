@@ -168,8 +168,18 @@ class AnswersSummaryAnalysisApi(Resource):
 
         # For each category in the list
         for category in categories:
-            category_name = category.get('name', '')
-            question_numbers = category.get('items', [])
+            # Based on the image, categories format is like ['理由原因类': [...], '时间类': [...]]
+            # Extract category name (the key) and question numbers (the values)
+            if isinstance(category, dict):
+                # Original format with 'name' and 'items'
+                category_name = category.get('name', '')
+                question_numbers = category.get('items', [])
+            elif isinstance(category, list) and len(category) == 2:
+                # New format from image: ['category_name', ['30', '36', '39', '50']]
+                category_name = category[0]
+                question_numbers = category[1]
+            else:
+                continue  # Skip invalid category format
 
             total_answers = 0
             valid_answers = 0
