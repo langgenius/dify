@@ -97,7 +97,7 @@ const Item: FC<ItemProps> = ({
           <RiDeleteBinLine className='h-4 w-4' />
         </div>
       </div>
-      <Drawer isOpen={showSettingsModal} onClose={() => setShowSettingsModal(false)} footer={null} mask={isMobile} panelClassname='mt-16 mx-2 sm:mr-2 mb-3 !p-0 !max-w-[640px] rounded-xl'>
+      <Drawer isOpen={showSettingsModal} onClose={() => setShowSettingsModal(false)} footer={null} mask={isMobile} panelClassName='mt-16 mx-2 sm:mr-2 mb-3 !p-0 !max-w-[640px] rounded-xl'>
         <SettingsModal
           currentDataset={config}
           onCancel={() => setShowSettingsModal(false)}
