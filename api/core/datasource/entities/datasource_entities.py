@@ -38,20 +38,15 @@ class ToolLabelEnum(Enum):
     OTHER = "other"
 
 
-class ToolProviderType(enum.StrEnum):
+class DatasourceProviderType(enum.StrEnum):
     """
-    Enum class for tool provider
+    Enum class for datasource provider
     """
 
-    PLUGIN = "plugin"
-    BUILT_IN = "builtin"
-    WORKFLOW = "workflow"
-    API = "api"
-    APP = "app"
-    DATASET_RETRIEVAL = "dataset-retrieval"
+    RAG_PIPELINE = "rag_pipeline"
 
     @classmethod
-    def value_of(cls, value: str) -> "ToolProviderType":
+    def value_of(cls, value: str) -> "DatasourceProviderType":
         """
         Get value of given mode.
 
@@ -211,12 +206,12 @@ class ToolInvokeMessageBinary(BaseModel):
     file_var: Optional[dict[str, Any]] = None
 
 
-class ToolParameter(PluginParameter):
+class DatasourceParameter(PluginParameter):
     """
     Overrides type
     """
 
-    class ToolParameterType(enum.StrEnum):
+    class DatasourceParameterType(enum.StrEnum):
         """
         removes TOOLS_SELECTOR from PluginParameterType
         """
@@ -240,14 +235,14 @@ class ToolParameter(PluginParameter):
         def cast_value(self, value: Any):
             return cast_parameter_value(self, value)
 
-    class ToolParameterForm(Enum):
+    class DatasourceParameterForm(Enum):
         SCHEMA = "schema"  # should be set while adding tool
         FORM = "form"  # should be set before invoking tool
         LLM = "llm"  # will be set by LLM
 
-    type: ToolParameterType = Field(..., description="The type of the parameter")
+    type: DatasourceParameterType = Field(..., description="The type of the parameter")
     human_description: Optional[I18nObject] = Field(default=None, description="The description presented to the user")
-    form: ToolParameterForm = Field(..., description="The form of the parameter, schema/form/llm")
+    form: DatasourceParameterForm = Field(..., description="The form of the parameter, schema/form/llm")
     llm_description: Optional[str] = None
 
     @classmethod
@@ -255,12 +250,12 @@ class ToolParameter(PluginParameter):
         cls,
         name: str,
         llm_description: str,
-        typ: ToolParameterType,
+        typ: DatasourceParameterType,
         required: bool,
         options: Optional[list[str]] = None,
-    ) -> "ToolParameter":
+    ) -> "DatasourceParameter":
         """
-        get a simple tool parameter
+        get a simple datasource parameter
 
         :param name: the name of the parameter
         :param llm_description: the description presented to the LLM
@@ -306,7 +301,7 @@ class ToolProviderIdentity(BaseModel):
     )
 
 
-class ToolIdentity(BaseModel):
+class DatasourceIdentity(BaseModel):
     author: str = Field(..., description="The author of the tool")
     name: str = Field(..., description="The name of the tool")
     label: I18nObject = Field(..., description="The label of the tool")
@@ -314,15 +309,15 @@ class ToolIdentity(BaseModel):
     icon: Optional[str] = None
 
 
-class ToolDescription(BaseModel):
+class DatasourceDescription(BaseModel):
     human: I18nObject = Field(..., description="The description presented to the user")
     llm: str = Field(..., description="The description presented to the LLM")
 
 
-class ToolEntity(BaseModel):
-    identity: ToolIdentity
-    parameters: list[ToolParameter] = Field(default_factory=list)
-    description: Optional[ToolDescription] = None
+class DatasourceEntity(BaseModel):
+    identity: DatasourceIdentity
+    parameters: list[DatasourceParameter] = Field(default_factory=list)
+    description: Optional[DatasourceDescription] = None
     output_schema: Optional[dict] = None
     has_runtime_parameters: bool = Field(default=False, description="Whether the tool has runtime parameters")
 
@@ -331,7 +326,7 @@ class ToolEntity(BaseModel):
 
     @field_validator("parameters", mode="before")
     @classmethod
-    def set_parameters(cls, v, validation_info: ValidationInfo) -> list[ToolParameter]:
+    def set_parameters(cls, v, validation_info: ValidationInfo) -> list[DatasourceParameter]:
         return v or []
 
 
@@ -341,8 +336,8 @@ class ToolProviderEntity(BaseModel):
     credentials_schema: list[ProviderConfig] = Field(default_factory=list)
 
 
-class ToolProviderEntityWithPlugin(ToolProviderEntity):
-    tools: list[ToolEntity] = Field(default_factory=list)
+class DatasourceProviderEntityWithPlugin(ToolProviderEntity):
+    datasources: list[DatasourceEntity] = Field(default_factory=list)
 
 
 class WorkflowToolParameterConfiguration(BaseModel):
@@ -352,12 +347,12 @@ class WorkflowToolParameterConfiguration(BaseModel):
 
     name: str = Field(..., description="The name of the parameter")
     description: str = Field(..., description="The description of the parameter")
-    form: ToolParameter.ToolParameterForm = Field(..., description="The form of the parameter")
+    form: DatasourceParameter.DatasourceParameterForm = Field(..., description="The form of the parameter")
 
 
-class ToolInvokeMeta(BaseModel):
+class DatasourceInvokeMeta(BaseModel):
     """
-    Tool invoke meta
+    Datasource invoke meta
     """
 
     time_cost: float = Field(..., description="The time cost of the tool invoke")
@@ -365,16 +360,16 @@ class ToolInvokeMeta(BaseModel):
     tool_config: Optional[dict] = None
 
     @classmethod
-    def empty(cls) -> "ToolInvokeMeta":
+    def empty(cls) -> "DatasourceInvokeMeta":
         """
-        Get an empty instance of ToolInvokeMeta
+        Get an empty instance of DatasourceInvokeMeta
         """
         return cls(time_cost=0.0, error=None, tool_config={})
 
     @classmethod
-    def error_instance(cls, error: str) -> "ToolInvokeMeta":
+    def error_instance(cls, error: str) -> "DatasourceInvokeMeta":
         """
-        Get an instance of ToolInvokeMeta with error
+        Get an instance of DatasourceInvokeMeta with error
         """
         return cls(time_cost=0.0, error=error, tool_config={})
 
@@ -386,9 +381,9 @@ class ToolInvokeMeta(BaseModel):
         }
 
 
-class ToolLabel(BaseModel):
+class DatasourceLabel(BaseModel):
     """
-    Tool label
+    Datasource label
     """
 
     name: str = Field(..., description="The name of the tool")
@@ -396,32 +391,30 @@ class ToolLabel(BaseModel):
     icon: str = Field(..., description="The icon of the tool")
 
 
-class ToolInvokeFrom(Enum):
+class DatasourceInvokeFrom(Enum):
     """
-    Enum class for tool invoke
+    Enum class for datasource invoke
     """
 
-    WORKFLOW = "workflow"
-    AGENT = "agent"
-    PLUGIN = "plugin"
+    RAG_PIPELINE = "rag_pipeline"
 
 
-class ToolSelector(BaseModel):
+class DatasourceSelector(BaseModel):
     dify_model_identity: str = TOOL_SELECTOR_MODEL_IDENTITY
 
     class Parameter(BaseModel):
         name: str = Field(..., description="The name of the parameter")
-        type: ToolParameter.ToolParameterType = Field(..., description="The type of the parameter")
+        type: DatasourceParameter.DatasourceParameterType = Field(..., description="The type of the parameter")
         required: bool = Field(..., description="Whether the parameter is required")
         description: str = Field(..., description="The description of the parameter")
         default: Optional[Union[int, float, str]] = None
         options: Optional[list[PluginParameterOption]] = None
 
     provider_id: str = Field(..., description="The id of the provider")
-    tool_name: str = Field(..., description="The name of the tool")
-    tool_description: str = Field(..., description="The description of the tool")
-    tool_configuration: Mapping[str, Any] = Field(..., description="Configuration, type form")
-    tool_parameters: Mapping[str, Parameter] = Field(..., description="Parameters, type llm")
+    datasource_name: str = Field(..., description="The name of the datasource")
+    datasource_description: str = Field(..., description="The description of the datasource")
+    datasource_configuration: Mapping[str, Any] = Field(..., description="Configuration, type form")
+    datasource_parameters: Mapping[str, Parameter] = Field(..., description="Parameters, type llm")
 
     def to_plugin_parameter(self) -> dict[str, Any]:
         return self.model_dump()
