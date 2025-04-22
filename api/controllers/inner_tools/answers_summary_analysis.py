@@ -380,14 +380,16 @@ class GenerateAnalysisReportApi(Resource):
                         <div>{{ category.category }}</div>
                         <div class="category-bar">
                             <div class="bar" style="width: 500px; position: relative; background-color: #e1e9f3;">
-                                <div style="position: absolute; left: 0; top: 0; height: 100%; width: {{ (1 - category.correct_rate) * 100 }}%; background-color: #7eb0e3; display: flex; align-items: center; justify-content: center;">
+                                <div style="position: absolute; left: 0; top: 0; height: 100%; width: {% if category.error_count > 0 %}{% if (1 - category.correct_rate) * 100 < 0.1 %}0.1{% else %}{{ (1 - category.correct_rate) * 100 }}{% endif %}{% else %}0{% endif %}%; background-color: #7eb0e3; display: flex; align-items: center; justify-content: center;">
+                                    {% if category.error_count > 0 %}
                                     <span style="color: #333; font-size: 14px;">做错{{ category.error_count }}</span>
+                                    {% endif %}
                                 </div>
                                 <div style="position: absolute; right: 10px; top: 0; height: 100%; display: flex; align-items: center;">
                                     <span style="color: #666;">总考生数{{ category.total_count }}</span>
                                 </div>
-                                <div style="position: absolute; right: -80px; top: 0; height: 100%; display: flex; align-items: center;">
-                                    <span style="color: #666;">失分比{{ ((1 - category.correct_rate) * 100)|round }}%</span>
+                                <div style="position: absolute; right: -130px; top: 0; height: 100%; display: flex; align-items: center;">
+                                    <span style="color: #666;">失分比{% if category.error_count == 0 %}0{% else %}{{ ((1 - category.correct_rate) * 100)|round }}{% endif %}%</span>
                                 </div>
                             </div>
                         </div>
