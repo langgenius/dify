@@ -228,6 +228,7 @@ const useOneStepRun = <T>({
       id,
       data: {
         ...data,
+        _isSingleRun: false,
         _singleRunningStatus: NodeRunningStatus.Running,
       },
     })
@@ -250,6 +251,7 @@ const useOneStepRun = <T>({
                 id,
                 data: {
                   ...data,
+                  _isSingleRun: false,
                   _singleRunningStatus: NodeRunningStatus.Succeeded,
                 },
               })
@@ -326,6 +328,7 @@ const useOneStepRun = <T>({
                 id,
                 data: {
                   ...data,
+                  _isSingleRun: false,
                   _singleRunningStatus: NodeRunningStatus.Failed,
                 },
               })
@@ -347,6 +350,7 @@ const useOneStepRun = <T>({
                 id,
                 data: {
                   ...data,
+                  _isSingleRun: false,
                   _singleRunningStatus: NodeRunningStatus.Succeeded,
                 },
               })
@@ -424,6 +428,7 @@ const useOneStepRun = <T>({
                 id,
                 data: {
                   ...data,
+                  _isSingleRun: false,
                   _singleRunningStatus: NodeRunningStatus.Failed,
                 },
               })
@@ -441,6 +446,7 @@ const useOneStepRun = <T>({
           id,
           data: {
             ...data,
+            _isSingleRun: false,
             _singleRunningStatus: NodeRunningStatus.Failed,
           },
         })
@@ -461,6 +467,7 @@ const useOneStepRun = <T>({
         id,
         data: {
           ...data,
+          _isSingleRun: false,
           _singleRunningStatus: NodeRunningStatus.Succeeded,
         },
       })

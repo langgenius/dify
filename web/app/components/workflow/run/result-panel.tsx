@@ -21,7 +21,7 @@ type ResultPanelProps = {
   nodeInfo?: NodeTracing
   inputs?: string
   process_data?: string
-  outputs?: string
+  outputs?: string | Record<string, any>
   status: string
   error?: string
   elapsed_time?: number

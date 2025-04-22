@@ -145,7 +145,7 @@ const BasePanel: FC<BasePanelProps> = ({
     showSingleRun,
     hideSingleRun,
     runningStatus,
-    handleRun,
+    handleRun: callRunApi,
     handleStop,
     runInputData,
     runInputDataRef,
@@ -168,6 +168,11 @@ const BasePanel: FC<BasePanelProps> = ({
   }, [doSetRunInputData])
 
   const [tabType, setTabType] = useState<TabType>(TabType.settings)
+  const handleRun = async (data: Record<string, any>) => {
+    setTabType(TabType.lastRun)
+    callRunApi(data)
+    hideSingleRun()
+  }
   const hasLastRunData = true // TODO: add disabled logic
 
   return (
@@ -302,7 +307,7 @@ const BasePanel: FC<BasePanelProps> = ({
         )}
 
         {tabType === TabType.lastRun && (
-          <LastRun appId={id} />
+          <LastRun nodeId={id} runningStatus={runningStatus} />
         )}
 
         {

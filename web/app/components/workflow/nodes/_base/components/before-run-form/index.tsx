@@ -1,6 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import React, { useCallback } from 'react'
+import React from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   RiCloseLine,
@@ -87,7 +87,7 @@ const BeforeRunForm: FC<BeforeRunFormProps> = ({
 
     return true
   })()
-  const handleRun = useCallback(() => {
+  const handleRun = () => {
     let errMsg = ''
     forms.forEach((form) => {
       form.inputs.forEach((input) => {
@@ -137,7 +137,7 @@ const BeforeRunForm: FC<BeforeRunFormProps> = ({
     }
 
     onRun(submitData)
-  }, [forms, onRun, t])
+  }
   return (
     <div className='absolute inset-0 z-10 rounded-2xl bg-background-overlay-alt'>
       <div className='flex h-full flex-col rounded-2xl bg-components-panel-bg'>

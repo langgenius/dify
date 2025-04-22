@@ -17,7 +17,6 @@ import { InputVarType, type NodePanelProps } from '@/app/components/workflow/typ
 import type { Props as FormProps } from '@/app/components/workflow/nodes/_base/components/before-run-form/form'
 import Tooltip from '@/app/components/base/tooltip'
 import Editor from '@/app/components/workflow/nodes/_base/components/prompt/editor'
-import useCurrentVars from '../../hooks/use-current-vars'
 import StructureOutput from './components/structure-output'
 import Switch from '@/app/components/base/switch'
 import { RiAlertFill, RiQuestionLine } from '@remixicon/react'
@@ -31,10 +30,6 @@ const Panel = forwardRef<PanelExposedType, NodePanelProps<LLMNodeType>>(({
   panelProps,
 }, ref) => {
   const { t } = useTranslation()
-  const {
-    currentVars,
-  } = useCurrentVars()
-  console.log(currentVars)
   const {
     readOnly,
     inputs,
