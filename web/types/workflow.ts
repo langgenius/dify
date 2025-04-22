@@ -38,7 +38,7 @@ export type NodeTracing = {
   title: string
   inputs: any
   process_data: any
-  outputs?: any
+  outputs?: Record<string, any>
   status: string
   parallel_run_id?: string
   error?: string

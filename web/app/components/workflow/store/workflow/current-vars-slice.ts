@@ -1,17 +1,9 @@
 import type { StateCreator } from 'zustand'
-
 import produce from 'immer'
+import type { NodeTracing } from '@/types/workflow'
 
-type NodeVars = {
-  id: string
-  name: string
-  type: string
-  vars: {
-    key: string
-    type: string
-    value: any
-  }[]
-}
+// TODO: Missing var type
+type NodeVars = NodeTracing
 
 type CurrentVarsState = {
   currentNodes: NodeVars[]
@@ -33,12 +25,7 @@ export type CurrentVarsSliceShape = CurrentVarsState & CurrentVarsActions
 
 export const createCurrentVarsSlice: StateCreator<CurrentVarsSliceShape> = (set, get) => {
   return ({
-    currentNodes: [{
-      id: 'abc',
-      name: '',
-      type: '',
-      vars: [],
-    }],
+    currentNodes: [],
     setCurrentVars: (vars) => {
       set(() => ({
         currentNodes: vars,
@@ -52,13 +39,12 @@ export const createCurrentVarsSlice: StateCreator<CurrentVarsSliceShape> = (set,
         currentNodes: [],
       }))
     },
-    setCurrentNodeVars: (nodeId, vars) => {
+    setCurrentNodeVars: (nodeId, payload) => {
       set((state) => {
         const nodes = state.currentNodes.map((node) => {
-          if (node.id === nodeId) {
-            return produce(node, (draft) => {
-              draft.vars = vars.vars
-            })
+          // eslint-disable-next-line curly
+          if (node.node_id === nodeId) {
+            return payload
           }
 
           return node
@@ -70,14 +56,14 @@ export const createCurrentVarsSlice: StateCreator<CurrentVarsSliceShape> = (set,
     },
     clearCurrentNodeVars: (nodeId) => {
       set(produce((state: CurrentVarsSliceShape) => {
-        const nodes = state.currentNodes.filter(node => node.id !== nodeId)
+        const nodes = state.currentNodes.filter(node => node.node_id !== nodeId)
         state.currentNodes = nodes
       },
       ))
     },
     getCurrentNodeVars: (nodeId) => {
       const nodes = get().currentNodes
-      return nodes.find(node => node.id === nodeId)
+      return nodes.find(node => node.node_id === nodeId)
     },
     hasCurrentNodeVars: (nodeId) => {
       return !!get().getCurrentNodeVars(nodeId)
@@ -87,9 +73,9 @@ export const createCurrentVarsSlice: StateCreator<CurrentVarsSliceShape> = (set,
         const nodes = state.currentNodes.map((node) => {
           if (node.id === nodeId) {
             return produce(node, (draft) => {
-              const index = draft.vars.findIndex(v => v.key === key)
-              if (index !== -1)
-                draft.vars[index].value = value
+              if (!draft.outputs)
+                draft.outputs = {}
+              draft.outputs[key] = value
             })
           }
           return node
@@ -102,11 +88,8 @@ export const createCurrentVarsSlice: StateCreator<CurrentVarsSliceShape> = (set,
       if (!node)
         return undefined
 
-      const variable = node.vars.find(v => v.key === key)
-      if (!variable)
-        return undefined
-
-      return variable.value
+      const variable = node.outputs?.[key]
+      return variable
     },
   })
 }

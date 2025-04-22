@@ -1,18 +1,7 @@
+import type { NodeTracing } from '@/types/workflow'
 import type { StateCreator } from 'zustand'
 
-type NodeInfo = {
-  id: string
-  name: string
-  type: string
-  vars: {
-    key: string
-    type: string
-    value: any
-  }[]
-} & {
-  input: Record<string, any>
-  output: Record<string, any>
-}
+type NodeInfo = NodeTracing
 
 type LastRunState = {
   nodes: NodeInfo[]
@@ -29,14 +18,7 @@ export type LastRunSliceShape = LastRunState & LastRunActions
 
 export const createLastRunSlice: StateCreator<LastRunSliceShape> = (set, get) => {
   return ({
-    nodes: [{
-      id: 'test',
-      name: '',
-      type: '',
-      vars: [],
-      input: {},
-      output: {},
-    }],
+    nodes: [],
     setLastRunInfos: (vars) => {
       set(() => ({
         nodes: vars,
@@ -52,18 +34,18 @@ export const createLastRunSlice: StateCreator<LastRunSliceShape> = (set, get) =>
     },
     getLastRunNodeInfo: (nodeId) => {
       const nodes = get().nodes
-      return nodes.find(node => node.id === nodeId)
+      return nodes.find(node => node.node_id === nodeId)
     },
     getLastRunVar: (nodeId, key) => {
       const node = get().getLastRunNodeInfo(nodeId)
       if (!node)
         return undefined
 
-      const varItem = node.vars.find(v => v.key === key)
+      const varItem = node
       if (!varItem)
         return undefined
 
-      return varItem.value
+      return varItem.outputs?.[key]
     },
   })
 }
