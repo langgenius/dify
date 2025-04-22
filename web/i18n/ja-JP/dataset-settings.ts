@@ -36,6 +36,7 @@ const translation = {
     retrievalSettings: '取得設定',
     externalKnowledgeAPI: '外部ナレッジベースAPI',
     indexMethodChangeToEconomyDisabledTip: 'HQからECOへのダウングレードはできません。',
+    searchModel: 'モデル検索',
   },
 }
 

@@ -36,6 +36,7 @@ const translation = {
     save: '保存',
     retrievalSettings: '检索设置',
     indexMethodChangeToEconomyDisabledTip: '无法从高质量降级为经济',
+    searchModel: '搜索模型',
   },
 }
 
