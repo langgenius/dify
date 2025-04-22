@@ -1,0 +1,25 @@
+identity:
+  name: abnormal charts
+  author: APO
+  label:
+    en_US: Analyze chart abnormal samples.
+    zh_Hans: 分析图表的异常样本
+    pt_BR: Analyze chart abnormal samples.
+description:
+  human:
+    en_US: Analyze chart abnormal samples.
+    zh_Hans: 分析图表的异常样本
+    pt_BR: Analyze chart abnormal samples.
+  llm: Analyze chart abnormal samples.
+parameters:
+  - name: result
+    type: string
+    required: true
+    label:
+      en_US: 指标查询结果
+      zh_Hans: Metrics query result
+    human_description:
+      en_US: 指标查询结果
+      zh_Hans: Metrics query result
+    llm_description: Metrics query result
+    form: llm
