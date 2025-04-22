@@ -6,13 +6,13 @@ from flask_restful import Resource, reqparse  # type: ignore
 
 from constants.languages import languages
 from controllers.console import api
-from controllers.console.auth.error import EmailCodeError, InvalidEmailError, InvalidTokenError, PasswordMismatchError
-from controllers.console.error import (
-    AccountInFreezeError,
-    AccountNotFound,
-    EmailSendIpLimitError,
-)
-from controllers.console.wraps import setup_required
+from controllers.console.auth.error import (EmailCodeError, InvalidEmailError,
+                                            InvalidTokenError,
+                                            PasswordMismatchError)
+from controllers.console.error import (AccountInFreezeError, AccountNotFound,
+                                       EmailSendIpLimitError)
+from controllers.console.wraps import (email_password_login_enabled,
+                                       setup_required)
 from events.tenant_event import tenant_was_created
 from extensions.ext_database import db
 from libs.helper import email, extract_remote_ip
@@ -20,7 +20,7 @@ from libs.password import hash_password, valid_password
 from models.account import Account
 from services.account_service import AccountService, TenantService
 from services.errors.account import AccountRegisterError
-from services.errors.workspace import WorkSpaceNotAllowedCreateError, WorkspacesLimitExceededError
+from services.errors.workspace import WorkSpaceNotAllowedCreateError
 from services.feature_service import FeatureService
 
 
@@ -131,8 +131,6 @@ class ForgotPasswordResetApi(Resource):
                 pass
             except AccountRegisterError as are:
                 raise AccountInFreezeError()
-            except WorkspacesLimitExceededError:
-                pass
 
         return {"result": "success"}
 

@@ -187,6 +187,9 @@ class FeatureService:
         if "SSOEnforcedForSignin" in enterprise_info:
             features.sso_enforced_for_signin = enterprise_info["SSOEnforcedForSignin"]
 
+        if "SSOEnforcedForSigninProtocol" in enterprise_info:
+            features.sso_enforced_for_signin_protocol = enterprise_info["SSOEnforcedForSigninProtocol"]
+
         if "EnableEmailCodeLogin" in enterprise_info:
             features.enable_email_code_login = enterprise_info["EnableEmailCodeLogin"]
 
