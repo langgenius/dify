@@ -297,96 +297,106 @@ class GenerateAnalysisReportApi(Resource):
         data = request.get_json()
         summary_analysis = data.get('summary_analysis')
         school_name = data.get('school_name', '山东单县一中')  # Default value if not provided
+        html_template = data.get('html_template')
 
         if not summary_analysis:
             return {"error": "summary_analysis is required"}, 400
 
-        # HTML template for the report
-        html_template = """
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <meta charset="UTF-8">
-            <style>
-                body {
-                    font-family: "SimHei", "Microsoft YaHei", sans-serif;
-                    padding: 20px;
-                }
-                .title {
-                    text-align: center;
-                    font-size: 24px;
-                    margin-bottom: 20px;
-                }
-                .subtitle {
-                    text-align: center;
-                    font-size: 18px;
-                    color: #666;
-                    margin-bottom: 30px;
-                }
-                .summary-section {
-                    display: flex;
-                    justify-content: space-between;
-                    margin-bottom: 30px;
-                }
-                .summary-item {
-                    margin: 10px 0;
-                }
-                .analysis-section {
-                    margin-top: 20px;
-                }
-                .category-bar {
-                    display: flex;
-                    align-items: center;
-                    margin: 10px 0;
-                }
-                .bar {
-                    background-color: #e6f3ff;
-                    height: 20px;
-                    margin-right: 10px;
-                }
-                .stats {
-                    color: #666;
-                }
-            </style>
-        </head>
-        <body>
-            <h1 class="title">模拟考分析报告</h1>
-            <div class="subtitle">Analysis of Examination</div>
-            
-            <h2 class="title">{{ school_name }}</h2>
-            
-            <div class="summary-section">
-                <div class="left-summary">
-                    <div class="summary-item">总参考人数:</div>
-                    <div class="summary-item">总平均分:</div>
-                    <div class="summary-item">省内排名:</div>
-                </div>
-                <div class="right-summary">
-                    <div class="summary-item">省内总人数:</div>
-                    <div class="summary-item">省内平均分:</div>
-                    <div class="summary-item">全国排名:</div>
-                </div>
-            </div>
-
-            <div class="analysis-section">
-                <h3>题目分析:</h3>
+        if not html_template:  # default template
+            html_template = """
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <meta charset="UTF-8">
+                <style>
+                    body {
+                        font-family: "SimHei", "Microsoft YaHei", sans-serif;
+                        padding: 20px;
+                    }
+                    .title {
+                        text-align: center;
+                        font-size: 24px;
+                        margin-bottom: 20px;
+                    }
+                    .subtitle {
+                        text-align: center;
+                        font-size: 18px;
+                        color: #666;
+                        margin-bottom: 30px;
+                    }
+                    .summary-section {
+                        display: flex;
+                        justify-content: space-between;
+                        margin-bottom: 30px;
+                    }
+                    .summary-item {
+                        margin: 10px 0;
+                    }
+                    .analysis-section {
+                        margin-top: 20px;
+                    }
+                    .category-bar {
+                        display: flex;
+                        align-items: center;
+                        margin: 10px 0;
+                    }
+                    .bar {
+                        background-color: #e6f3ff;
+                        height: 20px;
+                        margin-right: 10px;
+                    }
+                    .stats {
+                        color: #666;
+                    }
+                    .category-item {
+                        margin-bottom: 20px;
+                    }
+                </style>
+            </head>
+            <body>
+                <h1 class="title">模拟考分析报告</h1>
+                <div class="subtitle">Analysis of Examination</div>
                 
-                {% for category in summary_analysis %}
-                <div class="category-item">
-                    <div>{{ category.category }}</div>
-                    <div class="category-bar">
-                        <div class="bar" style="width: {{ category.error_count * 2 }}px;"></div>
-                        <span class="stats">
-                            错误数{{ category.error_count }} / 总数{{ category.total_count }}
-                            失分比{{ (1 - category.correct_rate) * 100 }}%
-                        </span>
+                <h2 class="title">{{ school_name }}</h2>
+                
+                <div class="summary-section">
+                    <div class="left-summary">
+                        <div class="summary-item">总参考人数:</div>
+                        <div class="summary-item">总平均分:</div>
+                        <div class="summary-item">省内排名:</div>
+                    </div>
+                    <div class="right-summary">
+                        <div class="summary-item">省内总人数:</div>
+                        <div class="summary-item">省内平均分:</div>
+                        <div class="summary-item">全国排名:</div>
                     </div>
                 </div>
-                {% endfor %}
-            </div>
-        </body>
-        </html>
-        """
+
+                <div class="analysis-section">
+                    <h3>题目分析:</h3>
+                    
+                    {% for category in summary_analysis %}
+                    <div class="category-item">
+                        <div>{{ category.category }}</div>
+                        <div class="category-bar">
+                            <div class="bar" style="width: 500px; position: relative; background-color: #e1e9f3;">
+                                <div style="position: absolute; left: 0; top: 0; height: 100%; width: {{ (1 - category.correct_rate) * 100 }}%; background-color: #7eb0e3; display: flex; align-items: center; justify-content: center;">
+                                    <span style="color: #333; font-size: 14px;">做错{{ category.error_count }}</span>
+                                </div>
+                                <div style="position: absolute; right: 10px; top: 0; height: 100%; display: flex; align-items: center;">
+                                    <span style="color: #666;">总考生数{{ category.total_count }}</span>
+                                </div>
+                                <div style="position: absolute; right: -80px; top: 0; height: 100%; display: flex; align-items: center;">
+                                    <span style="color: #666;">失分比{{ ((1 - category.correct_rate) * 100)|round }}%</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </body>
+            </html>
+            """
 
         # Create the HTML with the template
         template = Template(html_template)
