@@ -109,12 +109,13 @@ class ConversationVariablesApi(Resource):
         conversation_id = str(c_id)
 
         parser = reqparse.RequestParser()
+        parser.add_argument("last_id", type=uuid_value, location="args")
         parser.add_argument("limit", type=int_range(1, 100), required=False, default=20, location="args")
         args = parser.parse_args()
 
         try:
             return ConversationService.get_conversational_variable(
-                app_model, conversation_id, end_user, args["limit"]
+                app_model, conversation_id, end_user, args["limit"], args["last_id"]
             )
         except services.errors.conversation.ConversationNotExistsError:
             raise NotFound("Conversation Not Exists.")

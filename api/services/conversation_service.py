@@ -12,7 +12,11 @@ from libs.infinite_scroll_pagination import InfiniteScrollPagination
 from models import ConversationVariable
 from models.account import Account
 from models.model import App, Conversation, EndUser, Message
-from services.errors.conversation import ConversationNotExistsError, LastConversationNotExistsError
+from services.errors.conversation import (
+    ConversationNotExistsError,
+    LastConversationNotExistsError,
+    ConversationVariableNotExistsError,
+)
 from services.errors.message import MessageNotExistsError
 
 
@@ -175,6 +179,7 @@ class ConversationService:
         conversation_id: str,
         user: Optional[Union[Account, EndUser]],
         limit: int,
+        last_id: Optional[str],
     ) -> InfiniteScrollPagination:
         conversation = cls.get_conversation(app_model, conversation_id, user)
 
@@ -185,13 +190,23 @@ class ConversationService:
             .order_by(ConversationVariable.created_at)
         )
 
-        total_count = db.session.scalar(select(func.count()).select_from(stmt))
-        has_more = total_count > limit
-
-        stmt = stmt.limit(limit)
-
         with Session(db.engine) as session:
-            rows = session.scalars(stmt).all()
+            if last_id:
+                last_variable = session.scalar(stmt.where(ConversationVariable.id == last_id))
+                if not last_variable:
+                    raise ConversationVariableNotExistsError()
+                
+                # Filter for variables created after the last_id
+                stmt = stmt.where(ConversationVariable.created_at > last_variable.created_at)
+
+            # Apply limit to query
+            query_stmt = stmt.limit(limit)  # Get one extra to check if there are more
+            rows = session.scalars(query_stmt).all()
+
+        has_more = False
+        if len(rows) > limit:
+            has_more = True
+            rows = rows[:limit]  # Remove the extra item
 
         variables = [
             {
