@@ -38,12 +38,12 @@ class QueryRootCauseReportTool(BuiltinTool):
         resp = requests.post(url, json=params)
 
         res_list = []
-
-        for item in resp.json()["list"] or []:
-            resurl = f"{dify_config.APO_BACKEND_URL}/#/cause/report/{item['traceId']}/{item['spanId']}?mutatedType={reason}"
-            res_list.append(resurl)
-            if len(res_list) == 3:
-                break
+        if resp.status_code == 200:
+            for item in resp.json()["list"] or []:
+                resurl = f"{dify_config.APO_BACKEND_URL}/#/cause/report/{item['traceId']}/{item['spanId']}?mutatedType={reason}"
+                res_list.append(resurl)
+                if len(res_list) == 3:
+                    break
 
         list = json.dumps({
             'type': 'report',
