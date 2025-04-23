@@ -1,4 +1,5 @@
 import type { InputVar } from '@/app/components/workflow/types'
+import type { RemixiconComponentType } from '@remixicon/react'
 import type { TFunction } from 'i18next'
 import { z } from 'zod'
 
@@ -50,4 +51,11 @@ export type InputFieldFormProps = {
 
 export type TextFieldsProps = {
   initialData?: InputVar
+}
+
+export type FileTypeSelectOption = {
+  value: string
+  label: string
+  Icon: RemixiconComponentType
+  type: string
 }

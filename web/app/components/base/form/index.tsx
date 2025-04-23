@@ -3,6 +3,7 @@ import TextField from './components/field/text'
 import NumberInputField from './components/field/number-input'
 import CheckboxField from './components/field/checkbox'
 import SelectField from './components/field/select'
+import CustomSelectField from './components/field/custom-select'
 import OptionsField from './components/field/options'
 import SubmitButton from './components/form/submit-button'
 
@@ -15,6 +16,7 @@ export const { useAppForm, withForm } = createFormHook({
     NumberInputField,
     CheckboxField,
     SelectField,
+    CustomSelectField,
     OptionsField,
   },
   formComponents: {

@@ -1,8 +1,8 @@
 import { useTranslation } from 'react-i18next'
 import { useAppForm } from '../..'
-import type { InputFieldFormProps } from './types'
+import type { FileTypeSelectOption, InputFieldFormProps } from './types'
 import { getNewVarInWorkflow } from '@/utils/var'
-import { useHiddenFieldNames, useInputTypes } from './hooks'
+import { useHiddenFieldNames, useInputTypeOptions } from './hooks'
 import Divider from '../../../divider'
 import { useCallback, useMemo, useState } from 'react'
 import { useStore } from '@tanstack/react-form'
@@ -14,6 +14,9 @@ import UseUploadMethodField from './hooks/use-upload-method-field'
 import UseMaxNumberOfUploadsField from './hooks/use-max-number-of-uploads-filed'
 import { DEFAULT_FILE_UPLOAD_SETTING } from '@/app/components/workflow/constants'
 import { DEFAULT_VALUE_MAX_LEN } from '@/config'
+import { RiArrowDownSLine } from '@remixicon/react'
+import cn from '@/utils/classnames'
+import Badge from '../../../badge'
 
 const InputFieldForm = ({
   initialData,
@@ -40,7 +43,7 @@ const InputFieldForm = ({
   const type = useStore(form.store, state => state.values.type)
   const options = useStore(form.store, state => state.values.options)
   const hiddenFieldNames = useHiddenFieldNames(type)
-  const inputTypes = useInputTypes(supportFile)
+  const inputTypes = useInputTypeOptions(supportFile)
 
   const FileTypesFields = UseFileTypesFields({ initialData })
   const UploadMethodField = UseUploadMethodField({ initialData })
@@ -99,12 +102,49 @@ const InputFieldForm = ({
         <form.AppField
           name='type'
           children={field => (
-            <field.SelectField
+            <field.CustomSelectField<FileTypeSelectOption>
               label={t('appDebug.variableConfig.fieldType')}
               options={inputTypes}
               onChange={handleTypeChange}
+              triggerProps={{
+                className: 'gap-x-0.5',
+              }}
               popupProps={{
+                className: 'w-[368px]',
                 wrapperClassName: 'z-40',
+                itemClassName: 'gap-x-1',
+              }}
+              CustomTrigger={(option, open) => {
+                return (
+                  <>
+                    {option ? (
+                      <>
+                        <option.Icon className='h-4 w-4 shrink-0 text-text-tertiary' />
+                        <span className='grow p-1'>{option.label}</span>
+                        <div className='pr-0.5'>
+                          <Badge text={option.type} uppercase={false} />
+                        </div>
+                      </>
+                    ) : (
+                      <span className='grow p-1'>{t('common.placeholder.select')}</span>
+                    )}
+                    <RiArrowDownSLine
+                      className={cn(
+                        'h-4 w-4 shrink-0 text-text-quaternary group-hover:text-text-secondary',
+                        open && 'text-text-secondary',
+                      )}
+                    />
+                  </>
+                )
+              }}
+              CustomOption={(option) => {
+                return (
+                  <>
+                    <option.Icon className='h-4 w-4 shrink-0 text-text-tertiary' />
+                    <span className='grow px-1'>{option.label}</span>
+                    <Badge text={option.type} uppercase={false} />
+                  </>
+                )
               }}
             />
           )}
