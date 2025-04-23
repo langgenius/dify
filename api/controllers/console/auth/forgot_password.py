@@ -26,6 +26,7 @@ from services.feature_service import FeatureService
 
 class ForgotPasswordSendEmailApi(Resource):
     @setup_required
+    @email_password_login_enabled
     def post(self):
         parser = reqparse.RequestParser()
         parser.add_argument("email", type=email, required=True, location="json")
@@ -57,6 +58,7 @@ class ForgotPasswordSendEmailApi(Resource):
 
 class ForgotPasswordCheckApi(Resource):
     @setup_required
+    @email_password_login_enabled
     def post(self):
         parser = reqparse.RequestParser()
         parser.add_argument("email", type=str, required=True, location="json")
@@ -76,11 +78,20 @@ class ForgotPasswordCheckApi(Resource):
         if args["code"] != token_data.get("code"):
             raise EmailCodeError()
 
-        return {"is_valid": True, "email": token_data.get("email")}
+        # Verified, revoke the first token
+        AccountService.revoke_reset_password_token(args["token"])
+
+        # Refresh token data by generating a new token
+        _, new_token = AccountService.generate_reset_password_token(
+            user_email, code=args["code"], additional_data={"phase": "reset"}
+        )
+
+        return {"is_valid": True, "email": token_data.get("email"), "token": new_token}
 
 
 class ForgotPasswordResetApi(Resource):
     @setup_required
+    @email_password_login_enabled
     def post(self):
         parser = reqparse.RequestParser()
         parser.add_argument("token", type=str, required=True, nullable=False, location="json")
@@ -98,6 +109,9 @@ class ForgotPasswordResetApi(Resource):
         reset_data = AccountService.get_reset_password_data(token)
 
         if reset_data is None:
+            raise InvalidTokenError()
+        # Must use token in reset phase
+        if reset_data.get("phase", "") != "reset":
             raise InvalidTokenError()
 
         AccountService.revoke_reset_password_token(token)
