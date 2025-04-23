@@ -14,8 +14,8 @@ from models.account import Account
 from models.model import App, Conversation, EndUser, Message
 from services.errors.conversation import (
     ConversationNotExistsError,
-    LastConversationNotExistsError,
     ConversationVariableNotExistsError,
+    LastConversationNotExistsError,
 )
 from services.errors.message import MessageNotExistsError
 
