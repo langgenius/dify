@@ -772,6 +772,9 @@ export const getVarType = ({
 
     const isStructuredOutputVar = !!targetVar.children?.schema?.properties
     if (isStructuredOutputVar) {
+      if (valueSelector.length === 2) { // root
+        return VarType.object
+      }
       let currProperties = targetVar.children.schema;
       (valueSelector as ValueSelector).slice(2).forEach((key, i) => {
         const isLast = i === valueSelector.length - 3
