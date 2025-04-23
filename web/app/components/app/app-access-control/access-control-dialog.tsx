@@ -17,10 +17,12 @@ const AccessControlDialog = ({
   show,
   onClose,
 }: DialogProps) => {
-  const close = useCallback(() => onClose?.(), [onClose])
+  const close = useCallback(() => {
+    onClose?.()
+  }, [onClose])
   return (
     <Transition appear show={show} as={Fragment}>
-      <Dialog as="div" open={true} className="relative z-20" onClose={close}>
+      <Dialog as="div" open={true} className="relative z-20" onClose={() => null}>
         <Transition.Child
           as={Fragment}
           enter="ease-out duration-300"
@@ -44,7 +46,7 @@ const AccessControlDialog = ({
             leaveTo="opacity-0 scale-95"
           >
             <Dialog.Panel className={cn('w-[600px] min-h-[323px] h-auto bg-components-panel-bg shadow-xl rounded-2xl transition-all transform relative p-0 overflow-y-auto', className)}>
-              <div onClick={close} className="absolute top-5 right-5 w-8 h-8 flex items-center justify-center cursor-pointer z-10">
+              <div onClick={() => close()} className="absolute top-5 right-5 w-8 h-8 flex items-center justify-center cursor-pointer z-10">
                 <RiCloseLine className='w-5 h-5' />
               </div>
               {children}
