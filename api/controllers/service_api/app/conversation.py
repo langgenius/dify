@@ -15,9 +15,10 @@ from fields.conversation_fields import (
     conversation_infinite_scroll_pagination_fields,
     simple_conversation_fields,
 )
-from fields.conversation_variable_fields import paginated_conversation_variable_fields
+from fields.conversation_variable_fields import (
+    paginated_conversation_variable_fields,
+)
 from libs.helper import uuid_value
-from models import ConversationVariable
 from models.model import App, AppMode, EndUser
 from services.conversation_service import ConversationService
 
@@ -109,38 +110,9 @@ class ConversationVariablesApi(Resource):
         conversation_id = str(c_id)
 
         try:
-            ConversationService.get_conversation(app_model, conversation_id, end_user)
+            return ConversationService.get_conversational_variable(app_model, conversation_id, end_user)
         except services.errors.conversation.ConversationNotExistsError:
             raise NotFound("Conversation Not Exists.")
-
-        stmt = (
-            select(ConversationVariable)
-            .where(ConversationVariable.app_id == app_model.id)
-            .where(ConversationVariable.conversation_id == conversation_id)
-            .order_by(ConversationVariable.created_at)
-        )
-
-        page = 1
-        page_size = 100
-        stmt = stmt.limit(page_size).offset((page - 1) * page_size)
-
-        with Session(db.engine) as session:
-            rows = session.scalars(stmt).all()
-
-        return {
-            "page": page,
-            "limit": page_size,
-            "total": len(rows),
-            "has_more": False,
-            "data": [
-                {
-                    "created_at": row.created_at,
-                    "updated_at": row.updated_at,
-                    **row.to_variable().model_dump(),
-                }
-                for row in rows
-            ],
-        }
 
 
 api.add_resource(ConversationRenameApi, "/conversations/<uuid:c_id>/name", endpoint="conversation_name")

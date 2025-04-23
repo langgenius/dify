@@ -9,6 +9,7 @@ from core.app.entities.app_invoke_entities import InvokeFrom
 from core.llm_generator.llm_generator import LLMGenerator
 from extensions.ext_database import db
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
+from models import ConversationVariable
 from models.account import Account
 from models.model import App, Conversation, EndUser, Message
 from services.errors.conversation import ConversationNotExistsError, LastConversationNotExistsError
@@ -166,3 +167,41 @@ class ConversationService:
         conversation.is_deleted = True
         conversation.updated_at = datetime.now(UTC).replace(tzinfo=None)
         db.session.commit()
+
+    @classmethod
+    def get_conversational_variable(
+        cls,
+        app_model: App,
+        conversation_id: str,
+        user: Optional[Union[Account, EndUser]]
+    ) -> InfiniteScrollPagination:
+        conversation = cls.get_conversation(app_model, conversation_id, user)
+
+        stmt = (
+            select(ConversationVariable)
+            .where(ConversationVariable.app_id == app_model.id)
+            .where(ConversationVariable.conversation_id == conversation.id)
+            .order_by(ConversationVariable.created_at)
+        )
+
+        page = 1
+        page_size = 100
+        stmt = stmt.limit(page_size).offset((page - 1) * page_size)
+
+        with Session(db.engine) as session:
+            rows = session.scalars(stmt).all()
+
+        return {
+            "page": page,
+            "limit": page_size,
+            "total": len(rows),
+            "has_more": False,
+            "data": [
+                {
+                    "created_at": row.created_at,
+                    "updated_at": row.updated_at,
+                    **row.to_variable().model_dump(),
+                }
+                for row in rows
+            ],
+        }
