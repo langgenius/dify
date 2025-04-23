@@ -262,28 +262,28 @@ const AppPublisher = ({
                   <SuggestedAction disabled={!publishedAt || !useCanAccessApp?.result} link={appURL} icon={<PlayCircle />}>{t('workflow.common.runApp')}</SuggestedAction>
                 </Tooltip>
                 {appDetail?.mode === 'workflow'
-                  ? (<Tooltip triggerClassName='flex' disabled={useCanAccessApp?.result} popupContent={t('app.noAccessPermission')} asChild={false}>
+                  ? (<div className='flex'>
                     <SuggestedAction
-                      disabled={!publishedAt || !useCanAccessApp?.result}
+                      disabled={!publishedAt}
                       link={`${appURL}${appURL.includes('?') ? '&' : '?'}mode=batch`}
                       icon={<LeftIndent02 className='w-4 h-4' />}
                     >
                       {t('workflow.common.batchRunApp')}
                     </SuggestedAction>
-                  </Tooltip>
+                  </div>
                   )
-                  : (<Tooltip triggerClassName='flex' disabled={useCanAccessApp?.result} popupContent={t('app.noAccessPermission')} asChild={false}>
+                  : (<div className='flex'>
                     <SuggestedAction
                       onClick={() => {
                         setEmbeddingModalOpen(true)
                         handleTrigger()
                       }}
-                      disabled={!publishedAt || !useCanAccessApp?.result}
+                      disabled={!publishedAt}
                       icon={<CodeBrowser className='w-4 h-4' />}
                     >
                       {t('workflow.common.embedIntoSite')}
                     </SuggestedAction>
-                  </Tooltip>
+                  </div>
                   )}
                 <Tooltip triggerClassName='flex' disabled={useCanAccessApp?.result} popupContent={t('app.noAccessPermission')} asChild={false}>
                   <SuggestedAction
@@ -296,14 +296,14 @@ const AppPublisher = ({
                     {t('workflow.common.openInExplore')}
                   </SuggestedAction>
                 </Tooltip>
-                <Tooltip triggerClassName='flex' disabled={useCanAccessApp?.result} popupContent={t('app.noAccessPermission')} asChild={false}>
-                  <SuggestedAction disabled={!publishedAt || !useCanAccessApp?.result} link='./develop' icon={<FileText className='w-4 h-4' />}>{t('workflow.common.accessAPIReference')}</SuggestedAction>
-                </Tooltip>
+                <div className='flex' >
+                  <SuggestedAction disabled={!publishedAt} link='./develop' icon={<FileText className='w-4 h-4' />}>{t('workflow.common.accessAPIReference')}</SuggestedAction>
+                </div>
 
                 {appDetail?.mode === 'workflow' && (
-                  <Tooltip triggerClassName='flex' disabled={useCanAccessApp?.result} popupContent={t('app.noAccessPermission')} asChild={false}>
+                  <div className='flex' >
                     <WorkflowToolConfigureButton
-                      disabled={!publishedAt || !useCanAccessApp?.result}
+                      disabled={!publishedAt}
                       published={!!toolPublished}
                       detailNeedUpdate={!!toolPublished && published}
                       workflowAppId={appDetail?.id}
@@ -317,7 +317,7 @@ const AppPublisher = ({
                       handlePublish={handlePublish}
                       onRefreshData={onRefreshData}
                     />
-                  </Tooltip>
+                  </div>
                 )}
               </div>
             </>}
