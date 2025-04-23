@@ -1,0 +1,71 @@
+identity:
+  name: 查询服务根因报告
+  author: APO
+  label:
+    en_US: Query service root cause report
+    zh_Hans: 查询服务根因报告
+description:
+  human:
+    en_US: Query service root cause report
+    zh_Hans: 查询服务根因报告
+  llm: Query service root cause report
+parameters:
+  - name: service
+    type: string
+    required: True
+    label:
+      en_US: Service name
+      zh_Hans: 业务服务名称
+    human_description:
+      en_US: Service name
+      zh_Hans: 业务服务名称
+    llm_description: Service name
+    form: llm
+  - name: endpoint
+    type: string
+    required: True
+    label:
+      en_US: endpoint
+      zh_Hans: 业务服务端点
+    human_description:
+      en_US: endpoint
+      zh_Hans: 业务服务端点
+    llm_description: endpoint
+    form: llm
+  - name: type
+    type: string
+    required: False
+    label:
+      en_US: Type (cpu,net,file,runq)
+      zh_Hans: 报告类型(cpu,net,file,runq)
+    human_description:
+      en_US: Type (cpu,net,file,runq)
+      zh_Hans: 报告类型(cpu,net,file,runq)
+    llm_description: Type (cpu,net,file,runq)
+    form: llm
+  - name: startTime
+    type: number
+    required: true
+    label:
+      en_US: startTime
+      zh_Hans: startTime
+      pt_BR: startTime
+    human_description:
+      en_US: Data query start time(Microsecond)
+      zh_Hans: 开始时间 (微秒)
+      pt_BR: Data query start time
+    llm_description: Data query start time(Microsecond)
+    form: llm
+  - name: endTime
+    type: number
+    required: true
+    label:
+      en_US: endTime
+      zh_Hans: endTime
+      pt_BR: endTime
+    human_description:
+      en_US: Data query end time(Microsecond)
+      zh_Hans: 结束时间 (微秒)
+      pt_BR: Data query end time(Microsecond)
+    llm_description: Data query end time(Microsecond)
+    form: llm
