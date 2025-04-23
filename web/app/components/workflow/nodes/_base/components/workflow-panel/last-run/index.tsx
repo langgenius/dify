@@ -4,6 +4,7 @@ import { useWorkflowStore } from '@/app/components/workflow/store'
 import { NodeRunningStatus } from '@/app/components/workflow/types'
 import type { FC } from 'react'
 import React, { useEffect, useState } from 'react'
+import NoData from './no-data'
 
 type Props = {
   nodeId: string
@@ -26,12 +27,17 @@ const LastRun: FC<Props> = ({
     setRunResult(getLastRunNodeInfo(nodeId))
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [runningStatus])
+
+  const handleSingleRun = () => {
+    console.log('run')
+  }
+
   if (isRunning)
     return <ResultPanel status='running' showSteps={false} />
 
   if (!runResult) {
     return (
-      <div>no data</div>
+      <NoData onSingleRun={handleSingleRun} />
     )
   }
   return (

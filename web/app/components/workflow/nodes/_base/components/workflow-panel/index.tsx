@@ -167,7 +167,7 @@ const BasePanel: FC<BasePanelProps> = ({
     setSingleRunParams(childPanelRef.current?.singleRunParams)
   }, [doSetRunInputData])
 
-  const [tabType, setTabType] = useState<TabType>(TabType.settings)
+  const [tabType, setTabType] = useState<TabType>(TabType.lastRun)
   const handleRun = async (data: Record<string, any>) => {
     setTabType(TabType.lastRun)
     callRunApi(data)
@@ -177,7 +177,7 @@ const BasePanel: FC<BasePanelProps> = ({
 
   return (
     <div className={cn(
-      'relative mr-1 h-full',
+      'relative mr-1  h-full',
       showMessageLogModal && '!absolute -top-[5px] right-[416px] z-0 !mr-0 w-[384px] overflow-hidden rounded-2xl border-[0.5px] border-components-panel-border shadow-lg transition-all',
     )}>
       <div
@@ -187,12 +187,12 @@ const BasePanel: FC<BasePanelProps> = ({
       </div>
       <div
         ref={containerRef}
-        className={cn('h-full rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg', showSingleRunPanel ? 'overflow-hidden' : 'overflow-y-auto')}
+        className={cn('flex h-full flex-col rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg', showSingleRunPanel ? 'overflow-hidden' : 'overflow-y-auto')}
         style={{
           width: `${nodePanelWidth}px`,
         }}
       >
-        <div className='sticky top-0 z-10 border-b-[0.5px] border-divider-regular bg-components-panel-bg'>
+        <div className='sticky top-0 z-10 shrink-0 border-b-[0.5px] border-divider-regular bg-components-panel-bg'>
           <div className='flex items-center px-4 pb-1 pt-4'>
             <BlockIcon
               className='mr-1 shrink-0'
