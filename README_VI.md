@@ -4,7 +4,7 @@
   <a href="https://cloud.dify.ai">Dify Cloud</a> ·
   <a href="https://docs.dify.ai/getting-started/install-self-hosted">Tự triển khai</a> ·
   <a href="https://docs.dify.ai">Tài liệu</a> ·
-  <a href="https://udify.app/chat/22L1zSxg6yW1cWQg">Yêu cầu doanh nghiệp</a>
+  <a href="https://dify.ai/pricing">Tổng quan các lựa chọn sản phẩm Dify</a>
 </p>
 
 <p align="center">

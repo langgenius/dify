@@ -74,7 +74,7 @@ const Popup: FC<PopupProps> = ({
           />
           <input
             className='block h-[18px] grow appearance-none bg-transparent text-[13px] text-text-primary outline-none'
-            placeholder='Search model'
+            placeholder={t('datasetSettings.form.searchModel') || ''}
             value={searchText}
             onChange={e => setSearchText(e.target.value)}
           />

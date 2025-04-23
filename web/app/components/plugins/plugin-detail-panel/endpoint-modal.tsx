@@ -46,7 +46,7 @@ const EndpointModal: FC<Props> = ({
       footer={null}
       mask
       positionCenter={false}
-      panelClassname={cn('mb-2 mr-2 mt-[64px] !w-[420px] !max-w-[420px] justify-start rounded-2xl border-[0.5px] border-components-panel-border !bg-components-panel-bg !p-0 shadow-xl')}
+      panelClassName={cn('mb-2 mr-2 mt-[64px] !w-[420px] !max-w-[420px] justify-start rounded-2xl border-[0.5px] border-components-panel-border !bg-components-panel-bg !p-0 shadow-xl')}
     >
       <>
         <div className='p-4 pb-2'>

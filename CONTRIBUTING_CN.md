@@ -6,7 +6,7 @@
 
 本指南和 Dify 一样在不断完善中。如果有任何滞后于项目实际情况的地方，恳请谅解，我们也欢迎任何改进建议。
 
-关于许可证，请花一分钟阅读我们简短的[许可和贡献者协议](./LICENSE)。社区同时也遵循[行为准则](https://github.com/langgenius/.github/blob/main/CODE_OF_CONDUCT.md)。
+关于许可证，请花一分钟阅读我们简短的[许可和贡献者协议](./LICENSE)。同时也请遵循社区[行为准则](https://github.com/langgenius/.github/blob/main/CODE_OF_CONDUCT.md)。
 
 ## 开始之前
 

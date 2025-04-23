@@ -150,8 +150,8 @@ const PermissionSelector = ({ disabled, permission, value, memberList, onChange,
               </div>
             </div>
             {isPartialMembers && (
-              <div className='max-h-[360px] overflow-y-auto border-t-[1px] border-divider-regular p-1'>
-                <div className='sticky left-0 top-0 p-2 pb-1'>
+              <div className='max-h-[360px] overflow-y-auto border-t-[1px] border-divider-regular pb-1 pl-1 pr-1'>
+                <div className='sticky left-0 top-0 z-10 bg-white p-2 pb-1'>
                   <Input
                     showLeftIcon
                     showClearIcon

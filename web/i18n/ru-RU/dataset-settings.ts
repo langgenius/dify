@@ -35,6 +35,7 @@ const translation = {
     helpText: 'Узнайте, как написать хорошее описание набора данных.',
     upgradeHighQualityTip: 'После обновления до режима «Высокое качество» возврат к экономичному режиму невозможен',
     indexMethodChangeToEconomyDisabledTip: 'Недоступно для понижения уровня с HQ до ECO',
+    searchModel: 'Поиск модели',
   },
 }
 
