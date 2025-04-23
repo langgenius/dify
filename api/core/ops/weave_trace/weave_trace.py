@@ -38,8 +38,22 @@ class WeaveDataTrace(BaseTraceInstance):
         self.weave_api_key = weave_config.api_key
         self.project_name = weave_config.project
         self.entity = weave_config.entity
+
+        # Login with API key first
+        login_status = wandb.login(key=self.weave_api_key, verify=True, relogin=True)
+        if not login_status:
+            logger.error(
+                "Failed to login to Weights & Biases with the provided API key"
+            )
+            raise ValueError("Weave login failed")
+
+        # Then initialize weave client
         self.weave_client = weave.init(
-            project_name=(f"{self.entity}/{self.project_name}" if self.entity else self.project_name)
+            project_name=(
+                f"{self.entity}/{self.project_name}"
+                if self.entity
+                else self.project_name
+            )
         )
         self.file_base_url = os.getenv("FILES_URL", "http://127.0.0.1:5001")
         self.calls: dict[str, Any] = {}
