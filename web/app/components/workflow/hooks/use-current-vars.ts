@@ -2,11 +2,11 @@ import { useWorkflowStore } from '../store'
 const useCurrentVars = () => {
   const workflowStore = useWorkflowStore()
   const {
-    currentNodes,
-    getCurrentVar,
-    setCurrentVar,
-    clearCurrentVars,
-    clearCurrentNodeVars,
+    nodes: currentNodes,
+    getInspectVar: getCurrentVar,
+    setInspectVar: setCurrentVar,
+    clearInspectVars: clearCurrentVars,
+    clearNodeInspectVars: clearCurrentNodeVars,
     getLastRunVar,
     getLastRunInfos,
   } = workflowStore.getState()

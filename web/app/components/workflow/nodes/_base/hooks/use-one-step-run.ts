@@ -156,7 +156,7 @@ const useOneStepRun = <T>({
   const workflowStore = useWorkflowStore()
   const {
     setLastRunNodeInfo,
-    setCurrentNodeVars,
+    setNodeInspectVars: setCurrentNodeVars,
     setShowSingleRunPanel,
   } = workflowStore.getState()
   const [runResult, doSetRunResult] = useState<NodeRunResult | null>(null)

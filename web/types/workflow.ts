@@ -1,5 +1,5 @@
 import type { Viewport } from 'reactflow'
-import type { BlockEnum, ConversationVariable, Edge, EnvironmentVariable, InputVar, Node, Variable } from '@/app/components/workflow/types'
+import type { BlockEnum, ConversationVariable, Edge, EnvironmentVariable, InputVar, Node, ValueSelector, VarType, Variable } from '@/app/components/workflow/types'
 import type { TransferMethod } from '@/types/app'
 import type { ErrorHandleTypeEnum } from '@/app/components/workflow/nodes/_base/components/error-handle/types'
 import type { BeforeRunFormProps } from '@/app/components/workflow/nodes/_base/components/before-run-form'
@@ -370,3 +370,28 @@ export type PanelProps = {
 }
 
 export type NodeRunResult = NodeTracing
+
+// Var Inspect
+export enum VarInInspectType {
+  conversation = 'conversation',
+  environment = 'environment',
+  node = 'node',
+}
+
+export type VarInInspect = {
+  id: string
+  type: VarInInspectType
+  name: string
+  description: string
+  selector: ValueSelector
+  value_type: VarType
+  value: any
+  edited: boolean
+}
+
+export type NodeWithVar = {
+  nodeId: string
+  nodeType: BlockEnum
+  title: string
+  vars: VarInInspect[]
+}
