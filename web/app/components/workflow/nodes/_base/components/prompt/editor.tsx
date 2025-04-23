@@ -35,6 +35,7 @@ import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/
 import Switch from '@/app/components/base/switch'
 import { Jinja } from '@/app/components/base/icons/src/vender/workflow'
 import { useStore } from '@/app/components/workflow/store'
+import { useWorkflowVariableType } from '@/app/components/workflow/hooks'
 
 type Props = {
   className?: string
@@ -144,6 +145,8 @@ const Editor: FC<Props> = ({
     eventEmitter?.emit({ type: PROMPT_EDITOR_INSERT_QUICKLY, instanceId } as any)
   }
 
+  const getVarType = useWorkflowVariableType()
+
   return (
     <Wrap className={cn(className, wrapClassName)} style={wrapStyle} isInNode isExpand={isExpand}>
       <div ref={ref} className={cn(isFocus ? (gradientBorder && 'bg-gradient-to-r from-components-input-border-active-prompt-1 to-components-input-border-active-prompt-2') : 'bg-transparent', isExpand && 'h-full', '!rounded-[9px] p-0.5', containerClassName)}>
@@ -251,6 +254,7 @@ const Editor: FC<Props> = ({
                     workflowVariableBlock={{
                       show: true,
                       variables: nodesOutputVars || [],
+                      getVarType,
                       workflowNodesMap: availableNodes.reduce((acc, node) => {
                         acc[node.id] = {
                           title: node.data.title,

@@ -57,7 +57,14 @@ const inputVarTypeToVarType = (type: InputVarType): VarType => {
   } as any)[type] || VarType.string
 }
 
-const structTypeToVarType = (type: Type): VarType => {
+const structTypeToVarType = (type: Type, isArray?: boolean): VarType => {
+  if (isArray) {
+    return ({
+      [Type.string]: VarType.arrayString,
+      [Type.number]: VarType.arrayNumber,
+      [Type.object]: VarType.arrayObject,
+    } as any)[type] || VarType.string
+  }
   return ({
     [Type.string]: VarType.string,
     [Type.number]: VarType.number,
@@ -82,9 +89,12 @@ const findExceptVarInStructuredProperties = (properties: Record<string, StructFi
     Object.keys(properties).forEach((key) => {
       const item = properties[key]
       const isObj = item.type === Type.object
+      const isArray = item.type === Type.array
+      const arrayType = item.items?.type
+
       if (!isObj && !filterVar({
         variable: key,
-        type: structTypeToVarType(item.type),
+        type: structTypeToVarType(isArray ? arrayType! : item.type, isArray),
       }, [key])) {
         delete properties[key]
         return
@@ -103,9 +113,11 @@ const findExceptVarInStructuredOutput = (structuredOutput: StructuredOutput, fil
     Object.keys(properties).forEach((key) => {
       const item = properties[key]
       const isObj = item.type === Type.object
+      const isArray = item.type === Type.array
+      const arrayType = item.items?.type
       if (!isObj && !filterVar({
         variable: key,
-        type: structTypeToVarType(item.type),
+        type: structTypeToVarType(isArray ? arrayType! : item.type, isArray),
       }, [key])) {
         delete properties[key]
         return
@@ -319,12 +331,19 @@ const formatItem = (
         const outputSchema: any[] = []
         Object.keys(output_schema.properties).forEach((outputKey) => {
           const output = output_schema.properties[outputKey]
+          const dataType = output.type
           outputSchema.push({
             variable: outputKey,
-            type: output.type === 'array'
+            type: dataType === 'array'
               ? `array[${output.items?.type.slice(0, 1).toLocaleLowerCase()}${output.items?.type.slice(1)}]`
               : `${output.type.slice(0, 1).toLocaleLowerCase()}${output.type.slice(1)}`,
             description: output.description,
+            children: output.type === 'object' ? {
+              schema: {
+                type: 'object',
+                properties: output.properties,
+              },
+            } : undefined,
           })
         })
         res.vars = [
@@ -753,6 +772,9 @@ export const getVarType = ({
 
     const isStructuredOutputVar = !!targetVar.children?.schema?.properties
     if (isStructuredOutputVar) {
+      if (valueSelector.length === 2) { // root
+        return VarType.object
+      }
       let currProperties = targetVar.children.schema;
       (valueSelector as ValueSelector).slice(2).forEach((key, i) => {
         const isLast = i === valueSelector.length - 3
@@ -1307,9 +1329,12 @@ const varToValueSelectorList = (v: Var, parentValueSelector: ValueSelector, res:
   }
   if (isStructuredOutput) {
     Object.keys((v.children as StructuredOutput)?.schema?.properties || {}).forEach((key) => {
+      const type = (v.children as StructuredOutput)?.schema?.properties[key].type
+      const isArray = type === Type.array
+      const arrayType = (v.children as StructuredOutput)?.schema?.properties[key].items?.type
       varToValueSelectorList({
         variable: key,
-        type: structTypeToVarType((v.children as StructuredOutput)?.schema?.properties[key].type),
+        type: structTypeToVarType(isArray ? arrayType! : type, isArray),
       }, [...parentValueSelector, v.variable], res)
     })
   }
