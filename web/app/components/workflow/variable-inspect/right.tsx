@@ -9,6 +9,7 @@ import { useStore } from '../store'
 import { BlockEnum } from '../types'
 import useCurrentVars from '../hooks/use-current-vars'
 import Empty from './empty'
+import ValueContent from './value-content'
 import ActionButton from '@/app/components/base/action-button'
 import Badge from '@/app/components/base/badge'
 import CopyFeedback from '@/app/components/base/copy-feedback'
@@ -32,6 +33,7 @@ export const currentVar = {
   // var_type: 'file',
   // var_type: 'array[file]',
   value: 'tuituitui',
+  edited: true,
 }
 
 type Props = {
@@ -90,15 +92,19 @@ const Right = ({ handleOpenMenu }: Props) => {
         <div className='flex shrink-0 items-center gap-1'>
           {current && (
             <>
-              <Badge>
-                <span className='ml-[2.5px] mr-[4.5px] h-[3px] w-[3px] rounded bg-text-accent-secondary'></span>
-                <span className='system-2xs-semibold-uupercase'>{t('workflow.debug.variableInspect.edited')}</span>
-              </Badge>
-              <Tooltip popupContent={t('workflow.debug.variableInspect.reset')}>
-                <ActionButton onClick={resetValue}>
-                  <RiArrowGoBackLine className='h-4 w-4' />
-                </ActionButton>
-              </Tooltip>
+              {current.edited && (
+                <Badge>
+                  <span className='ml-[2.5px] mr-[4.5px] h-[3px] w-[3px] rounded bg-text-accent-secondary'></span>
+                  <span className='system-2xs-semibold-uupercase'>{t('workflow.debug.variableInspect.edited')}</span>
+                </Badge>
+              )}
+              {current.edited && (
+                <Tooltip popupContent={t('workflow.debug.variableInspect.reset')}>
+                  <ActionButton onClick={resetValue}>
+                    <RiArrowGoBackLine className='h-4 w-4' />
+                  </ActionButton>
+                </Tooltip>
+              )}
               {(current.type !== 'environment' || current.var_type !== 'secret') && (
                 <CopyFeedback content={current.value ? JSON.stringify(current.value) : ''} />
               )}
@@ -112,6 +118,7 @@ const Right = ({ handleOpenMenu }: Props) => {
       {/* content */}
       <div className='grow p-2'>
         {!current && <Empty />}
+        {current && <ValueContent />}
       </div>
     </div>
   )
