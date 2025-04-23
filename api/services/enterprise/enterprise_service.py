@@ -16,7 +16,7 @@ class WebAppSettings(BaseModel):
 class EnterpriseService:
     @classmethod
     def get_info(cls, tenant_id=None):
-        return EnterpriseRequest.send_request("GET", "/info", tenant_id=tenant_id)
+        return EnterpriseRequest.send_request("GET", "/info", params={"tenant_id": tenant_id})
 
     class WebAppAuth:
         @classmethod
