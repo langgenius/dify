@@ -16,6 +16,7 @@ import cn from '@/utils/classnames'
 
 export type IHeaderProps = {
   isMobile?: boolean
+  allowResetChat?: boolean
   customerIcon?: React.ReactNode
   title: string
   theme?: Theme
@@ -23,6 +24,7 @@ export type IHeaderProps = {
 }
 const Header: FC<IHeaderProps> = ({
   isMobile,
+  allowResetChat,
   customerIcon,
   title,
   theme,
@@ -57,7 +59,7 @@ const Header: FC<IHeaderProps> = ({
           {currentConversationId && (
             <Divider type='vertical' className='h-3.5' />
           )}
-          {currentConversationId && (
+          {currentConversationId && allowResetChat && (
             <Tooltip
               popupContent={t('share.chat.resetChat')}
             >
@@ -89,7 +91,7 @@ const Header: FC<IHeaderProps> = ({
         </div>
       </div>
       <div className='flex items-center gap-1'>
-        {currentConversationId && (
+        {currentConversationId && allowResetChat && (
           <Tooltip
             popupContent={t('share.chat.resetChat')}
           >
