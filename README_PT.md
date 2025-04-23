@@ -8,7 +8,7 @@
   <a href="https://cloud.dify.ai">Dify Cloud</a> ·
   <a href="https://docs.dify.ai/getting-started/install-self-hosted">Auto-hospedagem</a> ·
   <a href="https://docs.dify.ai">Documentação</a> ·
-  <a href="https://udify.app/chat/22L1zSxg6yW1cWQg">Consultas empresariais</a>
+  <a href="https://dify.ai/pricing">Visão geral das edições do Dify</a>
 </p>
 
 <p align="center">
