@@ -1,5 +1,6 @@
 from flask_restful import Resource, marshal_with, reqparse  # type: ignore
 from flask_restful.inputs import int_range  # type: ignore
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import NotFound
 
@@ -14,7 +15,9 @@ from fields.conversation_fields import (
     conversation_infinite_scroll_pagination_fields,
     simple_conversation_fields,
 )
+from fields.conversation_variable_fields import paginated_conversation_variable_fields
 from libs.helper import uuid_value
+from models import ConversationVariable
 from models.model import App, AppMode, EndUser
 from services.conversation_service import ConversationService
 
@@ -93,6 +96,54 @@ class ConversationRenameApi(Resource):
             raise NotFound("Conversation Not Exists.")
 
 
+class ConversationVariablesApi(Resource):
+    @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.QUERY))
+    @marshal_with(paginated_conversation_variable_fields)
+    def get(self, app_model: App, end_user: EndUser, c_id):
+
+        # conversational variable only for chat app
+        app_mode = AppMode.value_of(app_model.mode)
+        if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
+            raise NotChatAppError()
+
+        conversation_id = str(c_id)
+
+        try:
+            ConversationService.get_conversation(app_model, conversation_id, end_user)
+        except services.errors.conversation.ConversationNotExistsError:
+            raise NotFound("Conversation Not Exists.")
+
+        stmt = (
+            select(ConversationVariable)
+            .where(ConversationVariable.app_id == app_model.id)
+            .where(ConversationVariable.conversation_id == conversation_id)
+            .order_by(ConversationVariable.created_at)
+        )
+
+        page = 1
+        page_size = 100
+        stmt = stmt.limit(page_size).offset((page - 1) * page_size)
+
+        with Session(db.engine) as session:
+            rows = session.scalars(stmt).all()
+
+        return {
+            "page": page,
+            "limit": page_size,
+            "total": len(rows),
+            "has_more": False,
+            "data": [
+                {
+                    "created_at": row.created_at,
+                    "updated_at": row.updated_at,
+                    **row.to_variable().model_dump(),
+                }
+                for row in rows
+            ],
+        }
+
+
 api.add_resource(ConversationRenameApi, "/conversations/<uuid:c_id>/name", endpoint="conversation_name")
 api.add_resource(ConversationApi, "/conversations")
 api.add_resource(ConversationDetailApi, "/conversations/<uuid:c_id>", endpoint="conversation_detail")
+api.add_resource(ConversationVariablesApi, "/conversations/<uuid:c_id>/variables", endpoint="conversation_variables")
