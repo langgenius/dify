@@ -200,9 +200,9 @@ const translation = {
     updateSuccess: '更新成功',
   },
   publishApp: {
-    title: '谁可以访问我的应用',
+    title: '谁可以访问 web 应用',
     notSet: '未设置',
-    notSetDesc: '目前没有人可以访问 web app，请设置权限。',
+    notSetDesc: '当前，任何人都无法访问 Web 应用。请设置访问权限。',
   },
   noAccessPermission: '没有权限访问 web app ',
 }

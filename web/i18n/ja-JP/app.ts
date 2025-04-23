@@ -214,9 +214,9 @@ const translation = {
     updateSuccess: '更新が成功しました',
   },
   publishApp: {
-    title: '私のアプリにアクセスできる人',
+    title: 'Webアプリへのアクセス権',
     notSet: '未設定',
-    notSetDesc: '現在、誰もWebアプリにアクセスできません。アクセス権を設定してください。',
+    notSetDesc: '現在、このWebアプリには誰もアクセスできません。権限を設定してください。',
   },
   noAccessPermission: 'Webアプリにアクセス権限がありません',
 }
