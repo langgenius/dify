@@ -216,7 +216,7 @@ const translation = {
   publishApp: {
     title: 'Webアプリへのアクセス権',
     notSet: '未設定',
-    notSetDesc: '現在、このWebアプリには誰もアクセスできません。権限を設定してください。',
+    notSetDesc: '現在このWebアプリには誰もアクセスできません。権限を設定してください。',
   },
   noAccessPermission: 'Webアプリにアクセス権限がありません',
 }
