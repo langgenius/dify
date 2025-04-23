@@ -210,3 +210,16 @@ def enterprise_license_required(view):
         return view(*args, **kwargs)
 
     return decorated
+
+
+def email_password_login_enabled(view):
+    @wraps(view)
+    def decorated(*args, **kwargs):
+        features = FeatureService.get_system_features()
+        if features.enable_email_password_login:
+            return view(*args, **kwargs)
+
+        # otherwise, return 403
+        abort(403)
+
+    return decorated

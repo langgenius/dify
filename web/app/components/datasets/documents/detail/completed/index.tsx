@@ -220,13 +220,11 @@ const Completed: FC<ICompletedProps> = ({
   const resetList = useCallback(() => {
     setSelectedSegmentIds([])
     invalidSegmentList()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [invalidSegmentList])
 
   const resetChildList = useCallback(() => {
     invalidChildSegmentList()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [invalidChildSegmentList])
 
   const onClickCard = (detail: SegmentDetailModel, isEditMode = false) => {
     setCurrSegment({ segInfo: detail, showModal: true, isEditMode })
@@ -253,7 +251,7 @@ const Completed: FC<ICompletedProps> = ({
   const invalidChunkListEnabled = useInvalid(useChunkListEnabledKey)
   const invalidChunkListDisabled = useInvalid(useChunkListDisabledKey)
 
-  const refreshChunkListWithStatusChanged = () => {
+  const refreshChunkListWithStatusChanged = useCallback(() => {
     switch (selectedStatus) {
       case 'all':
         invalidChunkListDisabled()
@@ -262,7 +260,7 @@ const Completed: FC<ICompletedProps> = ({
       default:
         invalidSegmentList()
     }
-  }
+  }, [selectedStatus, invalidChunkListDisabled, invalidChunkListEnabled, invalidSegmentList])
 
   const onChangeSwitch = useCallback(async (enable: boolean, segId?: string) => {
     const operationApi = enable ? enableSegment : disableSegment
@@ -280,8 +278,7 @@ const Completed: FC<ICompletedProps> = ({
         notify({ type: 'error', message: t('common.actionMsg.modifiedUnsuccessfully') })
       },
     })
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [datasetId, documentId, selectedSegmentIds, segments])
+  }, [datasetId, documentId, selectedSegmentIds, segments, disableSegment, enableSegment, t, notify, refreshChunkListWithStatusChanged])
 
   const { mutateAsync: deleteSegment } = useDeleteSegment()
 
@@ -296,12 +293,11 @@ const Completed: FC<ICompletedProps> = ({
         notify({ type: 'error', message: t('common.actionMsg.modifiedUnsuccessfully') })
       },
     })
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [datasetId, documentId, selectedSegmentIds])
+  }, [datasetId, documentId, selectedSegmentIds, deleteSegment, resetList, t, notify])
 
   const { mutateAsync: updateSegment } = useUpdateSegment()
 
-  const refreshChunkListDataWithDetailChanged = () => {
+  const refreshChunkListDataWithDetailChanged = useCallback(() => {
     switch (selectedStatus) {
       case 'all':
         invalidChunkListDisabled()
@@ -316,7 +312,7 @@ const Completed: FC<ICompletedProps> = ({
         invalidChunkListEnabled()
         break
     }
-  }
+  }, [selectedStatus, invalidChunkListDisabled, invalidChunkListEnabled, invalidChunkListAll])
 
   const handleUpdateSegment = useCallback(async (
     segmentId: string,
@@ -375,17 +371,18 @@ const Completed: FC<ICompletedProps> = ({
         eventEmitter?.emit('update-segment-done')
       },
     })
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [segments, datasetId, documentId])
+  }, [segments, datasetId, documentId, updateSegment, docForm, notify, eventEmitter, onCloseSegmentDetail, refreshChunkListDataWithDetailChanged, t])
 
   useEffect(() => {
     resetList()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pathname])
 
   useEffect(() => {
     if (importStatus === ProcessStatus.COMPLETED)
       resetList()
-  }, [importStatus, resetList])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [importStatus])
 
   const onCancelBatchOperation = useCallback(() => {
     setSelectedSegmentIds([])
@@ -430,8 +427,7 @@ const Completed: FC<ICompletedProps> = ({
       const count = segmentListData?.total || 0
       return `${total} ${t('datasetDocuments.segment.searchResults', { count })}`
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [segmentListData?.total, mode, parentMode, searchValue, selectedStatus])
+  }, [segmentListData, mode, parentMode, searchValue, selectedStatus, t])
 
   const toggleFullScreen = useCallback(() => {
     setFullScreen(!fullScreen)
@@ -449,8 +445,7 @@ const Completed: FC<ICompletedProps> = ({
       resetList()
       currentPage !== totalPages && setCurrentPage(totalPages)
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [segmentListData, limit, currentPage])
+  }, [segmentListData, limit, currentPage, resetList])
 
   const { mutateAsync: deleteChildSegment } = useDeleteChildSegment()
 
@@ -470,8 +465,7 @@ const Completed: FC<ICompletedProps> = ({
         },
       },
     )
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [datasetId, documentId, parentMode])
+  }, [datasetId, documentId, parentMode, deleteChildSegment, resetList, resetChildList, t, notify])
 
   const handleAddNewChildChunk = useCallback((parentChunkId: string) => {
     setShowNewChildSegmentModal(true)
@@ -490,8 +484,7 @@ const Completed: FC<ICompletedProps> = ({
     else {
       resetChildList()
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [parentMode, currChunkId, segments])
+  }, [parentMode, currChunkId, segments, refreshChunkListDataWithDetailChanged, resetChildList])
 
   const viewNewlyAddedChildChunk = useCallback(() => {
     const totalPages = childChunkListData?.total_pages || 0
@@ -505,8 +498,7 @@ const Completed: FC<ICompletedProps> = ({
       resetChildList()
       currentPage !== totalPages && setCurrentPage(totalPages)
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [childChunkListData, limit, currentPage])
+  }, [childChunkListData, limit, currentPage, resetChildList])
 
   const onClickSlice = useCallback((detail: ChildChunkDetail) => {
     setCurrChildChunk({ childChunkInfo: detail, showModal: true })
@@ -560,8 +552,7 @@ const Completed: FC<ICompletedProps> = ({
         eventEmitter?.emit('update-child-segment-done')
       },
     })
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [segments, childSegments, datasetId, documentId, parentMode])
+  }, [segments, datasetId, documentId, parentMode, updateChildSegment, notify, eventEmitter, onCloseChildSegmentDetail, refreshChunkListDataWithDetailChanged, resetChildList, t])
 
   const onClearFilter = useCallback(() => {
     setInputValue('')
@@ -569,6 +560,12 @@ const Completed: FC<ICompletedProps> = ({
     setSelectedStatus('all')
     setCurrentPage(1)
   }, [])
+
+  const selectDefaultValue = useMemo(() => {
+    if (selectedStatus === 'all')
+      return 'all'
+    return selectedStatus ? 1 : 0
+  }, [selectedStatus])
 
   return (
     <SegmentListContext.Provider value={{
@@ -583,7 +580,7 @@ const Completed: FC<ICompletedProps> = ({
         <Checkbox
           className='shrink-0'
           checked={isAllSelected}
-          mixed={!isAllSelected && isSomeSelected}
+          indeterminate={!isAllSelected && isSomeSelected}
           onCheck={onSelectedAll}
           disabled={isLoadingSegmentList}
         />
@@ -591,7 +588,7 @@ const Completed: FC<ICompletedProps> = ({
         <SimpleSelect
           onSelect={onChangeStatus}
           items={statusList.current}
-          defaultValue={selectedStatus === 'all' ? 'all' : selectedStatus ? 1 : 0}
+          defaultValue={selectDefaultValue}
           className={s.select}
           wrapperClassName='h-fit mr-2'
           optionWrapClassName='w-[160px]'
