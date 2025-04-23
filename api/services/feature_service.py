@@ -35,8 +35,6 @@ class LicenseModel(BaseModel):
     status: LicenseStatus = LicenseStatus.NONE
     expired_at: str = ""
     product_id: str = ""
-    workspaces: LimitationModel = LimitationModel(size=0, limit=0)
-
 
 class BrandingModel(BaseModel):
     enabled: bool = False
@@ -86,6 +84,7 @@ class SystemFeatureModel(BaseModel):
     is_allow_create_workspace: bool = False
     is_email_setup: bool = False
     license: LicenseModel = LicenseModel()
+    workspaces: LimitationModel = LimitationModel(size=0, limit=0)
     branding: BrandingModel = BrandingModel()
     webapp_auth: WebAppAuthModel = WebAppAuthModel()
 
@@ -102,7 +101,7 @@ class FeatureService:
 
         if dify_config.ENTERPRISE_ENABLED:
             features.webapp_copyright_enabled = True
-            cls._fulfill_parms_from_license_info(features, tenant_id)
+            cls._fulfill_params_from_workspaces_quota(features, tenant_id)
 
         return features
 
@@ -135,10 +134,10 @@ class FeatureService:
         features.dataset_operator_enabled = dify_config.DATASET_OPERATOR_ENABLED
 
     @classmethod
-    def _fulfill_parms_from_license_info(cls, features: FeatureModel, tenant_id: str):
-        license_info = EnterpriseService.get_info(tenant_id)["License"]
-        features.workspace_members.limit = license_info["workspaceMembers"]["limit"]
-        features.workspace_members.size = license_info["workspaceMembers"]["used"]
+    def _fulfill_params_from_workspaces_quota(cls, features: FeatureModel, tenant_id: str):
+        workspace_members_quota = EnterpriseService.get_workspace_info(tenant_id)["WorkspaceMembersQuota"]
+        features.workspace_members.limit = workspace_members_quota["limit"]
+        features.workspace_members.size = workspace_members_quota["used"]
 
     @classmethod
     def _fulfill_params_from_billing_api(cls, features: FeatureModel, tenant_id: str):
@@ -230,6 +229,7 @@ class FeatureService:
             if "productId" in license_info:
                 features.license.product_id = license_info["productId"]
 
-            if "workspaces" in license_info:
-                features.license.workspaces.limit = license_info["workspaces"]["limit"]
-                features.license.workspaces.size = license_info["workspaces"]["used"]
+        if "WorkspacesQuota" in enterprise_info:
+            features.workspaces.limit =enterprise_info["WorkspacesQuota"]["limit"]
+            features.workspaces.size = enterprise_info["WorkspacesQuota"]["used"]
+
