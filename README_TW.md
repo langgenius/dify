@@ -8,7 +8,7 @@
   <a href="https://cloud.dify.ai">Dify 雲端服務</a> ·
   <a href="https://docs.dify.ai/getting-started/install-self-hosted">自行託管</a> ·
   <a href="https://docs.dify.ai">說明文件</a> ·
-  <a href="https://udify.app/chat/22L1zSxg6yW1cWQg">企業諮詢</a>
+  <a href="https://dify.ai/pricing">產品方案概覽</a>
 </p>
 
 <p align="center">

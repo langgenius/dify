@@ -277,7 +277,7 @@ const DocumentDetail: FC<Props> = ({ datasetId, documentId }) => {
               }
             </div>
           }
-          <FloatRightContainer showClose isOpen={showMetadata} onClose={() => setShowMetadata(false)} isMobile={isMobile} panelClassname='!justify-start' footer={null}>
+          <FloatRightContainer showClose isOpen={showMetadata} onClose={() => setShowMetadata(false)} isMobile={isMobile} panelClassName='!justify-start' footer={null}>
             <Metadata
               className='mr-2 mt-3'
               datasetId={datasetId}

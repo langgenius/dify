@@ -178,7 +178,7 @@ const AddToolModal: FC<Props> = ({
         clickOutsideNotOpen
         onClose={onHide}
         footer={null}
-        panelClassname={cn('mx-2 mb-3 mt-16 rounded-xl !p-0 sm:mr-2', 'mt-2 !w-[640px]', '!max-w-[640px]')}
+        panelClassName={cn('mx-2 mb-3 mt-16 rounded-xl !p-0 sm:mr-2', 'mt-2 !w-[640px]', '!max-w-[640px]')}
       >
         <div
           className='flex w-full rounded-xl border-[0.5px] border-gray-200 bg-white shadow-xl'

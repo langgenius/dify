@@ -81,7 +81,7 @@ const translation = {
     endpointDeleteContent: '{{name}}を削除しますか？',
     actionNum: '{{num}} {{action}} が含まれています',
     endpointsDocLink: 'ドキュメントを表示する',
-    switchVersion: 'スイッチ版',
+    switchVersion: 'バージョンの切り替え',
   },
   debugInfo: {
     title: 'デバッグ',
