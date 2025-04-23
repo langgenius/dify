@@ -910,6 +910,10 @@ const translation = {
   debug: {
     settingsTab: 'Settings',
     lastRunTab: 'Last Run',
+    noData: {
+      description: 'The results of the last run will be displayed here',
+      runThisNode: 'Run this node',
+    },
   },
 }
 

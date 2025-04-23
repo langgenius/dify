@@ -911,6 +911,10 @@ const translation = {
   debug: {
     settingsTab: '设置',
     lastRunTab: '上次运行',
+    noData: {
+      description: '上次运行的结果将显示在这里',
+      runThisNode: '运行此节点',
+    },
   },
 }
 
