@@ -1,0 +1,1674 @@
+app:
+  description: ''
+  icon: 🤖
+  icon_background: '#FFEAD5'
+  mode: workflow
+  name: 可用性告警
+  use_icon_as_answer_icon: false
+dependencies:
+- current_identifier: null
+  type: package
+  value:
+    plugin_unique_identifier: langgenius/deepseek:0.0.5@fd6efd37c2a931911de8ab9ca3ba2da303bef146d45ee87ad896b04b36d09403
+kind: app
+version: 0.1.5
+workflow:
+  conversation_variables: []
+  environment_variables: []
+  features:
+    file_upload:
+      allowed_file_extensions:
+      - .JPG
+      - .JPEG
+      - .PNG
+      - .GIF
+      - .WEBP
+      - .SVG
+      allowed_file_types:
+      - image
+      allowed_file_upload_methods:
+      - local_file
+      - remote_url
+      enabled: false
+      fileUploadConfig:
+        audio_file_size_limit: 50
+        batch_count_limit: 5
+        file_size_limit: 15
+        image_file_size_limit: 10
+        video_file_size_limit: 100
+        workflow_file_upload_limit: 10
+      image:
+        enabled: false
+        number_limits: 3
+        transfer_methods:
+        - local_file
+        - remote_url
+      number_limits: 3
+    opening_statement: ''
+    retriever_resource:
+      enabled: true
+    sensitive_word_avoidance:
+      enabled: false
+    speech_to_text:
+      enabled: false
+    suggested_questions: []
+    suggested_questions_after_answer:
+      enabled: false
+    text_to_speech:
+      enabled: false
+      language: ''
+      voice: ''
+  graph:
+    edges:
+    - data:
+        isInIteration: false
+        sourceType: template-transform
+        targetType: end
+      id: 1741592094819-source-1741592144815-target
+      selected: false
+      source: '1741592094819'
+      sourceHandle: source
+      target: '1741592144815'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: start
+        targetType: code
+      id: 1741227526517-source-1742807803325-target
+      selected: false
+      source: '1741227526517'
+      sourceHandle: source
+      target: '1742807803325'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: code
+        targetType: tool
+      id: 1744878352649-source-1744878296971-target
+      selected: false
+      source: '1744878352649'
+      sourceHandle: source
+      target: '1744878296971'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: tool
+        targetType: code
+      id: 1744878298576-source-1744878389686-target
+      selected: false
+      source: '1744878298576'
+      sourceHandle: source
+      target: '1744878389686'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: code
+        targetType: code
+      id: 1744878389686-source-17448784268890-target
+      selected: false
+      source: '1744878389686'
+      sourceHandle: source
+      target: '17448784268890'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: code
+        targetType: tool
+      id: 17448784268890-source-17448784142480-target
+      selected: false
+      source: '17448784268890'
+      sourceHandle: source
+      target: '17448784142480'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: llm
+        targetType: variable-aggregator
+      id: 17448784398000-source-1744878466157-target
+      selected: false
+      source: '17448784398000'
+      sourceHandle: source
+      target: '1744878466157'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: llm
+        targetType: variable-aggregator
+      id: 1744878372490-source-1744878466157-target
+      selected: false
+      source: '1744878372490'
+      sourceHandle: source
+      target: '1744878466157'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: variable-aggregator
+        targetType: end
+      id: 1744878466157-source-1744878476249-target
+      selected: false
+      source: '1744878466157'
+      sourceHandle: source
+      target: '1744878476249'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: tool
+        targetType: code
+      id: 1744878296971-source-1744901266309-target
+      selected: false
+      source: '1744878296971'
+      sourceHandle: source
+      target: '1744901266309'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: code
+        targetType: llm
+      id: 1744901266309-source-1744878372490-target
+      selected: false
+      source: '1744901266309'
+      sourceHandle: source
+      target: '1744878372490'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: tool
+        targetType: code
+      id: 17448784142480-source-17449013347930-target
+      selected: false
+      source: '17448784142480'
+      sourceHandle: source
+      target: '17449013347930'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: code
+        targetType: if-else
+      id: 1742807803325-source-1742453019576-target
+      selected: false
+      source: '1742807803325'
+      sourceHandle: source
+      target: '1742453019576'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: question-classifier
+        targetType: tool
+      id: 17430590082510-1744901730034-1744878298576-target
+      selected: false
+      source: '17430590082510'
+      sourceHandle: '1744901730034'
+      target: '1744878298576'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: question-classifier
+        targetType: code
+      id: 17430590082510-1744901735377-1744878352649-target
+      selected: false
+      source: '17430590082510'
+      sourceHandle: '1744901735377'
+      target: '1744878352649'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: code
+        targetType: llm
+      id: 17449013347930-source-17448784398000-target
+      selected: false
+      source: '17449013347930'
+      sourceHandle: source
+      target: '17448784398000'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: template-transform
+        targetType: end
+      id: 1745313576757-source-1745313574375-target
+      source: '1745313576757'
+      sourceHandle: source
+      target: '1745313574375'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: if-else
+        targetType: template-transform
+      id: 1742453019576-true-1741592094819-target
+      source: '1742453019576'
+      sourceHandle: 'true'
+      target: '1741592094819'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: if-else
+        targetType: question-classifier
+      id: 1742453019576-false-17430590082510-target
+      source: '1742453019576'
+      sourceHandle: 'false'
+      target: '17430590082510'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: question-classifier
+        targetType: template-transform
+      id: 17430590082510-1745391097407-1745313576757-target
+      source: '17430590082510'
+      sourceHandle: '1745391097407'
+      target: '1745313576757'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: question-classifier
+        targetType: llm
+      id: 17430590082510-1745391089084-1745391138767-target
+      source: '17430590082510'
+      sourceHandle: '1745391089084'
+      target: '1745391138767'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: llm
+        targetType: end
+      id: 1745391138767-source-1745391142578-target
+      source: '1745391138767'
+      sourceHandle: source
+      target: '1745391142578'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    nodes:
+    - data:
+        desc: ''
+        selected: false
+        title: start
+        type: start
+        variables:
+        - label: startTime
+          max_length: 48
+          options: []
+          required: true
+          type: number
+          variable: startTime
+        - label: endTime
+          max_length: 48
+          options: []
+          required: true
+          type: number
+          variable: endTime
+        - label: params
+          max_length: 9999999
+          options: []
+          required: false
+          type: paragraph
+          variable: params
+      height: 142
+      id: '1741227526517'
+      position:
+        x: 30
+        y: 276
+      positionAbsolute:
+        x: 30
+        y: 276
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        desc: ''
+        selected: false
+        template: 服务名和Pod均为空，无法分析根因。
+        title: unsupport alert
+        type: template-transform
+        variables: []
+      height: 54
+      id: '1741592094819'
+      position:
+        x: 942
+        y: 276
+      positionAbsolute:
+        x: 942
+        y: 276
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        desc: ''
+        outputs:
+        - value_selector:
+          - '1741592094819'
+          - output
+          variable: output
+        selected: false
+        title: End
+        type: end
+      height: 90
+      id: '1741592144815'
+      position:
+        x: 1246
+        y: 276
+      positionAbsolute:
+        x: 1246
+        y: 276
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        cases:
+        - case_id: 'true'
+          conditions:
+          - comparison_operator: empty
+            id: 22866ae7-2bfa-47e9-9c19-d31e8b63001f
+            value: ''
+            varType: string
+            variable_selector:
+            - '1742807803325'
+            - pod
+          - comparison_operator: empty
+            id: add89997-787b-4d71-a187-3e9f8e8f25a3
+            value: ''
+            varType: string
+            variable_selector:
+            - '1742807803325'
+            - service
+          id: 'true'
+          logical_operator: and
+        desc: ''
+        selected: false
+        title: alert instance info
+        type: if-else
+      height: 152
+      id: '1742453019576'
+      position:
+        x: 638
+        y: 276
+      positionAbsolute:
+        x: 638
+        y: 276
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        code: "  \ndef get_value(data, keys): \n  for key in keys: \n    value = data.get(key)\
+          \ \n    if value is not None: \n      return value \n  return \"\" \n\n\
+          import json \n\ndef main(arg: str) -> dict:\n  data = json.loads(arg) \n\
+          \  return { \n  \"alertName\": get_value(data, [\"alertName\"]),      \n\
+          \  \"service\": get_value(data, [\"svc_name\", \"service\"]), \n  \"endpoint\"\
+          : get_value(data,[\"endpoint\", \"content_key\"]), \n  \"pod\": get_value(data,[\"\
+          pod\", \"src_pod\", \"pod_name\"]), \n  \"namespace\": get_value(data,[\"\
+          namespace\", \"src_namespace\"]), \n}"
+        code_language: python3
+        desc: ''
+        outputs:
+          alertName:
+            children: null
+            type: string
+          endpoint:
+            children: null
+            type: string
+          namespace:
+            children: null
+            type: string
+          pod:
+            children: null
+            type: string
+          service:
+            children: null
+            type: string
+        selected: false
+        title: get alert event label info
+        type: code
+        variables:
+        - value_selector:
+          - '1741227526517'
+          - params
+          variable: arg
+      height: 54
+      id: '1742807803325'
+      position:
+        x: 334
+        y: 276
+      positionAbsolute:
+        x: 334
+        y: 276
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        classes:
+        - id: '1744901730034'
+          name: 请求错误率
+        - id: '1744901735377'
+          name: 日志错误率
+        - id: '1745391089084'
+          name: '事件类型
+
+            container was killed'
+        - id: '1745391097407'
+          name: 其他
+        desc: ''
+        instruction: 你是一个智能告警分类助手。你的任务是对给定的警报事件进行分类。
+        instructions: ''
+        isInIteration: true
+        iteration_id: '1741497176064'
+        model:
+          completion_params:
+            temperature: 0.7
+          mode: chat
+          name: deepseek-chat
+          provider: langgenius/deepseek/deepseek
+        query_variable_selector:
+        - '1742807803325'
+        - alertName
+        selected: false
+        title: alert event cls
+        topics: []
+        type: question-classifier
+        vision:
+          enabled: false
+      height: 240
+      id: '17430590082510'
+      position:
+        x: 942
+        y: 370
+      positionAbsolute:
+        x: 942
+        y: 370
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+      zIndex: 1002
+    - data:
+        desc: ''
+        is_team_authorization: true
+        output_schema: null
+        paramSchemas:
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: Query condition(clickhouse where clause).
+            ja_JP: Query condition(clickhouse where clause).
+            pt_BR: Query condition(clickhouse where clause).
+            zh_Hans: 查询条件（clickhouse where子句）
+          label:
+            en_US: Query condition(clickhouse where clause).
+            ja_JP: Query condition(clickhouse where clause).
+            pt_BR: Query condition(clickhouse where clause).
+            zh_Hans: 查询条件（clickhouse where子句）
+          llm_description: Query condition(clickhouse where clause).
+          max: null
+          min: null
+          name: query
+          options: []
+          placeholder: null
+          precision: null
+          required: false
+          scope: null
+          template: null
+          type: string
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: Start timestamp in microseconds
+            ja_JP: Start timestamp in microseconds
+            pt_BR: Start timestamp in microseconds
+            zh_Hans: 查询开始时间（微秒）
+          label:
+            en_US: Start Time
+            ja_JP: Start Time
+            pt_BR: Start Time
+            zh_Hans: 开始时间
+          llm_description: Microsecond timestamp for start time
+          max: null
+          min: null
+          name: startTime
+          options: []
+          placeholder: null
+          precision: null
+          required: true
+          scope: null
+          template: null
+          type: number
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: End timestamp in microseconds
+            ja_JP: End timestamp in microseconds
+            pt_BR: End timestamp in microseconds
+            zh_Hans: 查询结束时间（微秒）
+          label:
+            en_US: End Time
+            ja_JP: End Time
+            pt_BR: End Time
+            zh_Hans: 结束时间
+          llm_description: Microsecond timestamp for end time
+          max: null
+          min: null
+          name: endTime
+          options: []
+          placeholder: null
+          precision: null
+          required: true
+          scope: null
+          template: null
+          type: number
+        params:
+          endTime: ''
+          query: ''
+          startTime: ''
+        provider_id: apo_select
+        provider_name: apo_select
+        provider_type: builtin
+        selected: false
+        title: 查询全量日志
+        tool_configurations: {}
+        tool_label: 查询全量日志
+        tool_name: 查询全量日志
+        tool_parameters:
+          endTime:
+            type: variable
+            value:
+            - '1741227526517'
+            - endTime
+          pageNum:
+            type: constant
+            value: 1
+          pageSize:
+            type: constant
+            value: 999
+          query:
+            type: mixed
+            value: '{{#1744878352649.query#}}'
+          startTime:
+            type: variable
+            value:
+            - '1741227526517'
+            - startTime
+        type: tool
+      height: 54
+      id: '1744878296971'
+      position:
+        x: 2158
+        y: 762
+      positionAbsolute:
+        x: 2158
+        y: 762
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        desc: ''
+        is_team_authorization: true
+        output_schema: null
+        paramSchemas:
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: service name
+            ja_JP: service name
+            pt_BR: service name
+            zh_Hans: 服务名
+          label:
+            en_US: service
+            ja_JP: service
+            pt_BR: service
+            zh_Hans: service
+          llm_description: service name
+          max: null
+          min: null
+          name: service
+          options: []
+          placeholder: null
+          precision: null
+          required: false
+          scope: null
+          template: null
+          type: string
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: namespace
+            ja_JP: namespace
+            pt_BR: namespace
+            zh_Hans: 命名空间
+          label:
+            en_US: namespace
+            ja_JP: namespace
+            pt_BR: namespace
+            zh_Hans: namespace
+          llm_description: namespace
+          max: null
+          min: null
+          name: namespace
+          options: []
+          placeholder: null
+          precision: null
+          required: false
+          scope: null
+          template: null
+          type: string
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: endpoint name
+            ja_JP: endpoint name
+            pt_BR: endpoint name
+            zh_Hans: 服务端点
+          label:
+            en_US: endpoint
+            ja_JP: endpoint
+            pt_BR: endpoint
+            zh_Hans: endpoint
+          llm_description: endpoint name
+          max: null
+          min: null
+          name: endpoint
+          options: []
+          placeholder: null
+          precision: null
+          required: false
+          scope: null
+          template: null
+          type: string
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: instance name
+            ja_JP: instance name
+            pt_BR: instance name
+            zh_Hans: 实例名
+          label:
+            en_US: instance
+            ja_JP: instance
+            pt_BR: instance
+            zh_Hans: instance
+          llm_description: instance name
+          max: null
+          min: null
+          name: instance
+          options: []
+          placeholder: null
+          precision: null
+          required: false
+          scope: null
+          template: null
+          type: string
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: node name
+            ja_JP: node name
+            pt_BR: node name
+            zh_Hans: 服务端点
+          label:
+            en_US: nodeName
+            ja_JP: nodeName
+            pt_BR: nodeName
+            zh_Hans: 主机名
+          llm_description: node name
+          max: null
+          min: null
+          name: nodeName
+          options: []
+          placeholder: null
+          precision: null
+          required: false
+          scope: null
+          template: null
+          type: string
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: containerId
+            ja_JP: containerId
+            pt_BR: containerId
+            zh_Hans: 服务端点
+          label:
+            en_US: containerId
+            ja_JP: containerId
+            pt_BR: containerId
+            zh_Hans: 容器id
+          llm_description: node name
+          max: null
+          min: null
+          name: containerId
+          options: []
+          placeholder: null
+          precision: null
+          required: false
+          scope: null
+          template: null
+          type: string
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: process id
+            ja_JP: process id
+            pt_BR: process id
+            zh_Hans: 进程id
+          label:
+            en_US: pid
+            ja_JP: pid
+            pt_BR: pid
+            zh_Hans: 进程id
+          llm_description: process id
+          max: null
+          min: null
+          name: pid
+          options: []
+          placeholder: null
+          precision: null
+          required: false
+          scope: null
+          template: null
+          type: string
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: trace id
+            ja_JP: trace id
+            pt_BR: trace id
+            zh_Hans: trace id
+          label:
+            en_US: traceId
+            ja_JP: traceId
+            pt_BR: traceId
+            zh_Hans: traceId
+          llm_description: trace id
+          max: null
+          min: null
+          name: traceId
+          options: []
+          placeholder: null
+          precision: null
+          required: false
+          scope: null
+          template: null
+          type: string
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: page number
+            ja_JP: page number
+            pt_BR: page number
+            zh_Hans: 页码
+          label:
+            en_US: pageNum
+            ja_JP: pageNum
+            pt_BR: pageNum
+            zh_Hans: 页码
+          llm_description: page number
+          max: null
+          min: null
+          name: pageNum
+          options: []
+          placeholder: null
+          precision: null
+          required: false
+          scope: null
+          template: null
+          type: number
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: page size
+            ja_JP: page size
+            pt_BR: page size
+            zh_Hans: 每页条数
+          label:
+            en_US: pageSize
+            ja_JP: pageSize
+            pt_BR: pageSize
+            zh_Hans: 每页条数
+          llm_description: page size
+          max: null
+          min: null
+          name: pageSize
+          options: []
+          placeholder: null
+          precision: null
+          required: false
+          scope: null
+          template: null
+          type: number
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: Data query start time(Microsecond)
+            ja_JP: Data query start time(Microsecond)
+            pt_BR: Data query start time(Microsecond)
+            zh_Hans: 开始时间 (微秒)
+          label:
+            en_US: startTime
+            ja_JP: startTime
+            pt_BR: startTime
+            zh_Hans: startTime
+          llm_description: Data query start time(Microsecond)
+          max: null
+          min: null
+          name: startTime
+          options: []
+          placeholder: null
+          precision: null
+          required: true
+          scope: null
+          template: null
+          type: number
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: Data query end time(Microsecond)
+            ja_JP: Data query end time(Microsecond)
+            pt_BR: Data query end time(Microsecond)
+            zh_Hans: 结束时间 (微秒)
+          label:
+            en_US: endTime
+            ja_JP: endTime
+            pt_BR: endTime
+            zh_Hans: endTime
+          llm_description: Data query end time(Microsecond)
+          max: null
+          min: null
+          name: endTime
+          options: []
+          placeholder: null
+          precision: null
+          required: true
+          scope: null
+          template: null
+          type: number
+        params:
+          containerId: ''
+          endTime: ''
+          endpoint: ''
+          instance: ''
+          namespace: ''
+          nodeName: ''
+          pageNum: ''
+          pageSize: ''
+          pid: ''
+          service: ''
+          startTime: ''
+          traceId: ''
+        provider_id: apo_select
+        provider_name: apo_select
+        provider_type: builtin
+        selected: false
+        title: 查询链路数据
+        tool_configurations: {}
+        tool_label: 查询链路数据
+        tool_name: 查询链路数据
+        tool_parameters:
+          endTime:
+            type: variable
+            value:
+            - '1741227526517'
+            - endTime
+          instance:
+            type: mixed
+            value: '{{#1742807803325.pod#}}'
+          namespace:
+            type: mixed
+            value: ''
+          pageNum:
+            type: constant
+            value: 1
+          pageSize:
+            type: constant
+            value: 100
+          service:
+            type: mixed
+            value: '{{#1742807803325.service#}}'
+          startTime:
+            type: variable
+            value:
+            - '1741227526517'
+            - startTime
+        type: tool
+      height: 54
+      id: '1744878298576'
+      position:
+        x: 1246
+        y: 481
+      positionAbsolute:
+        x: 1246
+        y: 481
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        code: "\ndef main(pod: str, service: str) -> dict:\n    query = ''\n    if\
+          \ len(pod) > 0 and len(service) > 0:\n        query = f\"\"\"k8s_pod_name='{pod}'\
+          \ and container_name='{service}'\"\"\"\n    elif len(pod) > 0:\n       \
+          \ query = f\"\"\"k8s_pod_name='{pod}'\"\"\"\n    elif len(service) > 0:\n\
+          \        query = f\"\"\"container_name='{service}'\"\"\"\n\n    return {\n\
+          \        \"query\": query,\n    }"
+        code_language: python3
+        desc: ''
+        outputs:
+          query:
+            children: null
+            type: string
+        selected: false
+        title: 获取查询条件
+        type: code
+        variables:
+        - value_selector:
+          - '1742807803325'
+          - pod
+          variable: pod
+        - value_selector:
+          - '1742807803325'
+          - service
+          variable: service
+      height: 54
+      id: '1744878352649'
+      position:
+        x: 1854
+        y: 762
+      positionAbsolute:
+        x: 1854
+        y: 762
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        context:
+          enabled: false
+          variable_selector: []
+        desc: ''
+        model:
+          completion_params:
+            temperature: 0.7
+          mode: chat
+          name: deepseek-chat
+          provider: langgenius/deepseek/deepseek
+        prompt_template:
+        - id: 615ece65-9193-4bad-a375-d51b67dbaafc
+          role: system
+          text: 你是一位可观测性领域智能助手，帮助用户分析解决问题。
+        - id: cc52b45f-d678-4d55-98d1-7ed48f7b4091
+          role: user
+          text: '# 目的
+
+            根据异常pod，结合相关日志，分析告警{{#1742807803325.alertName#}}
+
+            产生的原因和对{{#1742807803325.service#}}
+
+            或{{#1742807803325.pod#}}
+
+            的影响。最后结合日志和常见排查思路为用户提出解决方案。
+
+
+
+            # 数据
+
+            数据包括：
+
+            1. 对应时间内的error日志{{#1744901266309.logs#}}
+
+
+            # 分析思路
+
+            结合异常pods和日志，找到出错pods和对应的错误内容，分析错误原因。如果没有异常日志则提示用户主动查看相关时间内的日志内容，并提醒用户配置日志解析规则。
+
+
+            # 注意事项
+
+            - 时间单位均为微秒
+
+
+            # 输出内容
+
+            告警{{#1742807803325.alertName#}}
+
+            产生的原因是xx，对
+
+            {{#1742807803325.pod#}}或{{#1742807803325.service#}}
+
+            的影响是：哪些pods出错，具体日志为xx。
+
+
+            解决方案：xx'
+        selected: false
+        title: 总结日志错误
+        type: llm
+        variables: []
+        vision:
+          enabled: false
+      height: 90
+      id: '1744878372490'
+      position:
+        x: 2766
+        y: 762
+      positionAbsolute:
+        x: 2766
+        y: 762
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        code: "import json\n\ndef main(data_json: str):\n    data = json.loads(data_json).get('data',\
+          \ {}).get('list', [])\n\n    error_instances = []\n    for trace in data:\
+          \ \n        if not trace.get(\"flags\", {}).get('is_error', False):\n  \
+          \          continue\n\n        error_instances.append({\n            'endpoint':\
+          \ trace.get('endpoint'),\n            'instance': trace.get('instanceId'),\n\
+          \            'tid': trace.get('tid'),\n            'service': trace.get('service')\n\
+          \        })\n    error_instances = error_instances[:30]\n    return {\n\
+          \        'errorInstances': error_instances,\n    }\n"
+        code_language: python3
+        desc: ''
+        outputs:
+          errorInstances:
+            children: null
+            type: array[object]
+        selected: false
+        title: 提取故障链路相关端点
+        type: code
+        variables:
+        - value_selector:
+          - '1744878298576'
+          - text
+          variable: data_json
+      height: 54
+      id: '1744878389686'
+      position:
+        x: 1550
+        y: 463
+      positionAbsolute:
+        x: 1550
+        y: 463
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        desc: ''
+        is_team_authorization: true
+        output_schema: null
+        paramSchemas:
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: Query condition(clickhouse where clause).
+            ja_JP: Query condition(clickhouse where clause).
+            pt_BR: Query condition(clickhouse where clause).
+            zh_Hans: 查询条件（clickhouse where子句）
+          label:
+            en_US: Query condition(clickhouse where clause).
+            ja_JP: Query condition(clickhouse where clause).
+            pt_BR: Query condition(clickhouse where clause).
+            zh_Hans: 查询条件（clickhouse where子句）
+          llm_description: Query condition(clickhouse where clause).
+          max: null
+          min: null
+          name: query
+          options: []
+          placeholder: null
+          precision: null
+          required: false
+          scope: null
+          template: null
+          type: string
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: Start timestamp in microseconds
+            ja_JP: Start timestamp in microseconds
+            pt_BR: Start timestamp in microseconds
+            zh_Hans: 查询开始时间（微秒）
+          label:
+            en_US: Start Time
+            ja_JP: Start Time
+            pt_BR: Start Time
+            zh_Hans: 开始时间
+          llm_description: Microsecond timestamp for start time
+          max: null
+          min: null
+          name: startTime
+          options: []
+          placeholder: null
+          precision: null
+          required: true
+          scope: null
+          template: null
+          type: number
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: End timestamp in microseconds
+            ja_JP: End timestamp in microseconds
+            pt_BR: End timestamp in microseconds
+            zh_Hans: 查询结束时间（微秒）
+          label:
+            en_US: End Time
+            ja_JP: End Time
+            pt_BR: End Time
+            zh_Hans: 结束时间
+          llm_description: Microsecond timestamp for end time
+          max: null
+          min: null
+          name: endTime
+          options: []
+          placeholder: null
+          precision: null
+          required: true
+          scope: null
+          template: null
+          type: number
+        params:
+          endTime: ''
+          query: ''
+          startTime: ''
+        provider_id: apo_select
+        provider_name: apo_select
+        provider_type: builtin
+        selected: false
+        title: 查询全量日志
+        tool_configurations: {}
+        tool_label: 查询全量日志
+        tool_name: 查询全量日志
+        tool_parameters:
+          endTime:
+            type: variable
+            value:
+            - '1741227526517'
+            - endTime
+          pageNum:
+            type: constant
+            value: 1
+          pageSize:
+            type: constant
+            value: 999
+          query:
+            type: mixed
+            value: '{{#17448784268890.query#}}'
+          startTime:
+            type: variable
+            value:
+            - '1741227526517'
+            - startTime
+        type: tool
+      height: 54
+      id: '17448784142480'
+      position:
+        x: 2158
+        y: 463
+      positionAbsolute:
+        x: 2158
+        y: 463
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        code: "\ndef main(pod: str, service: str) -> dict:\n    query = ''\n    if\
+          \ len(pod) > 0 and len(service) > 0:\n        query = f\"\"\"k8s_pod_name='{pod}'\
+          \ and container_name='{service}'\"\"\"\n    elif len(pod) > 0:\n       \
+          \ query = f\"\"\"k8s_pod_name='{pod}'\"\"\"\n    elif len(service) > 0:\n\
+          \        query = f\"\"\"container_name='{service}'\"\"\"\n\n    return {\n\
+          \        \"query\": query,\n    }"
+        code_language: python3
+        desc: ''
+        outputs:
+          query:
+            children: null
+            type: string
+        selected: false
+        title: 获取查询条件
+        type: code
+        variables:
+        - value_selector:
+          - '1742807803325'
+          - pod
+          variable: pod
+        - value_selector:
+          - '1742807803325'
+          - service
+          variable: service
+      height: 54
+      id: '17448784268890'
+      position:
+        x: 1854
+        y: 463
+      positionAbsolute:
+        x: 1854
+        y: 463
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        context:
+          enabled: false
+          variable_selector: []
+        desc: ''
+        model:
+          completion_params:
+            temperature: 0.7
+          mode: chat
+          name: deepseek-chat
+          provider: langgenius/deepseek/deepseek
+        prompt_template:
+        - id: 615ece65-9193-4bad-a375-d51b67dbaafc
+          role: system
+          text: 你是一位可观测性领域智能助手，帮助用户分析解决问题。
+        - id: 1701b6b3-dcd0-4d8b-80cc-62a96aef9170
+          role: user
+          text: '# 目的
+
+            根据异常pod，结合相关日志，分析告警{{#1742807803325.alertName#}}
+
+            产生的原因和对{{#1742807803325.pod#}}
+
+            或{{#1742807803325.service#}}
+
+            的影响。最后结合日志和常见排查思路为用户提出解决方案。
+
+
+
+            # 数据
+
+            数据包括：
+
+            1. 对应时间内的error日志{{#17449013347930.logs#}}
+
+
+            2. 对应时间段内链路相关的30个endpoints，service和instances组合{{#1744878389686.errorInstances#}}
+
+
+            3. 产生告警的service{{#1742807803325.service#}}和endpoint{{#1742807803325.endpoint#}}
+
+
+
+            # 分析思路
+
+            结合异常pods和日志，找到出错pods和对应的错误内容，分析错误原因。如果没有异常日志则提示用户主动查看相关时间内的日志内容，并提醒用户配置日志解析规则。
+
+
+
+            # 注意事项
+
+            - 时间单位均为微秒
+
+
+            # 输出内容
+
+            告警{{#1742807803325.alertName#}}
+
+            产生的原因是xx，对
+
+            {{#1742807803325.service#}}或{{#1742807803325.pod#}}
+
+            的影响是：哪些pods出错，具体日志为xx。
+
+
+            解决方案：xx'
+        selected: false
+        title: 总结请求错误
+        type: llm
+        variables: []
+        vision:
+          enabled: false
+      height: 90
+      id: '17448784398000'
+      position:
+        x: 2766
+        y: 463
+      positionAbsolute:
+        x: 2766
+        y: 463
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        desc: ''
+        output_type: string
+        selected: false
+        title: 变量聚合器
+        type: variable-aggregator
+        variables:
+        - - '1744878372490'
+          - text
+        - - '17448784398000'
+          - text
+      height: 130
+      id: '1744878466157'
+      position:
+        x: 3070
+        y: 463
+      positionAbsolute:
+        x: 3070
+        y: 463
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        desc: ''
+        outputs:
+        - value_selector:
+          - '1744878466157'
+          - output
+          variable: output
+        selected: false
+        title: 结束
+        type: end
+      height: 90
+      id: '1744878476249'
+      position:
+        x: 3374
+        y: 463
+      positionAbsolute:
+        x: 3374
+        y: 463
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        code: "import re\nfrom typing import List\nimport json\n\nERROR_PATTERNS:\
+          \ List[str] = [\n    r\"\\bERROR\\b\",\n    r\"\\bERR\\b\",\n    r\"\\bEXCEPTION\\\
+          b\",\n    r\"\\bPANIC\\b\",\n    r\"\\bFAIL(?:ED)?\\b\",\n    r\"\\bWRONG\\\
+          b\",\n    r\"\\bFATAL\\b\",\n    r\"\\b500\\b\",\n    r\"\\b5\\d{2}\\b\"\
+          ,\n]\n\nERROR_REGEXES = [re.compile(pat, re.IGNORECASE) for pat in ERROR_PATTERNS]\n\
+          \ndef is_error_log(line: str) -> bool:\n    if not isinstance(line, (str,\
+          \ bytes)):\n        return False\n    for regex in ERROR_REGEXES:\n    \
+          \    if regex.search(line):\n            return True\n    return False\n\
+          \ndef main(data_json: str) -> dict:\n    logs = json.loads(data_json).get(\"\
+          data\", {}).get(\"logs\", [])\n\n    error_logs = []\n    simplified_logs\
+          \ = []\n    for log in logs:\n        source = log.get(\"tags\", {}).get(\"\
+          source\", \"\")\n        level = log.get(\"logFields\", {}).get(\"level\"\
+          , \"\")\n        content = log.get(\"content\", \"\")\n        pod = log.get(\"\
+          k8s_pod_name\", \"\")\n        timestamp = log.get(\"timestamp\")\n\n  \
+          \      simplified_log = {\n            \"content\": content,\n         \
+          \   \"level\": level,\n            \"pod\": pod,\n            \"timestamp\"\
+          : timestamp,\n        }\n\n        if is_error_log(level) or source == \"\
+          stderr\" or is_error_log(content):\n            error_logs.append(simplified_log)\n\
+          \        \n        if len(simplified_logs) < 100:\n            simplified_logs.append(simplified_log)\n\
+          \n    error_logs = error_logs[:100]\n    if not error_logs:\n        error_logs\
+          \ = simplified_logs[:100]\n\n    MAX_LENGTH = 80000 \n    error_logs_str\
+          \ = json.dumps(error_logs, separators=(\",\", \":\"))\n    \n    while len(error_logs_str)\
+          \ > MAX_LENGTH and len(error_logs) > 0:\n        remove_count = max(1, len(error_logs)\
+          \ // 10)\n        error_logs = error_logs[:-remove_count]\n        error_logs_str\
+          \ = json.dumps(error_logs, separators=(\",\", \":\"))\n\n    return {\"\
+          logs\": error_logs_str}"
+        code_language: python3
+        desc: ''
+        outputs:
+          logs:
+            children: null
+            type: string
+        selected: false
+        title: 提取错误日志
+        type: code
+        variables:
+        - value_selector:
+          - '1744878296971'
+          - text
+          variable: data_json
+      height: 54
+      id: '1744901266309'
+      position:
+        x: 2462
+        y: 762
+      positionAbsolute:
+        x: 2462
+        y: 762
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        code: "import re\nfrom typing import List\nimport json\n\nERROR_PATTERNS:\
+          \ List[str] = [\n    r\"\\bERROR\\b\",\n    r\"\\bERR\\b\",\n    r\"\\bEXCEPTION\\\
+          b\",\n    r\"\\bPANIC\\b\",\n    r\"\\bFAIL(?:ED)?\\b\",\n    r\"\\bWRONG\\\
+          b\",\n    r\"\\bFATAL\\b\",\n    r\"\\b500\\b\",\n    r\"\\b5\\d{2}\\b\"\
+          ,\n]\n\nERROR_REGEXES = [re.compile(pat, re.IGNORECASE) for pat in ERROR_PATTERNS]\n\
+          \ndef is_error_log(line: str) -> bool:\n    if not isinstance(line, (str,\
+          \ bytes)):\n        return False\n    for regex in ERROR_REGEXES:\n    \
+          \    if regex.search(line):\n            return True\n    return False\n\
+          \ndef main(data_json: str) -> dict:\n    logs = json.loads(data_json).get(\"\
+          data\", {}).get(\"logs\", [])\n\n    error_logs = []\n    simplified_logs\
+          \ = []\n    for log in logs:\n        source = log.get(\"tags\", {}).get(\"\
+          source\", \"\")\n        level = log.get(\"logFields\", {}).get(\"level\"\
+          , \"\")\n        content = log.get(\"content\", \"\")\n        pod = log.get(\"\
+          k8s_pod_name\", \"\")\n        timestamp = log.get(\"timestamp\")\n\n  \
+          \      simplified_log = {\n            \"content\": content,\n         \
+          \   \"level\": level,\n            \"pod\": pod,\n            \"timestamp\"\
+          : timestamp,\n        }\n\n        if is_error_log(level) or source == \"\
+          stderr\" or is_error_log(content):\n            error_logs.append(simplified_log)\n\
+          \        \n        if len(simplified_logs) < 100:\n            simplified_logs.append(simplified_log)\n\
+          \n    error_logs = error_logs[:100]\n    if not error_logs:\n        error_logs\
+          \ = simplified_logs[:100]\n\n    MAX_LENGTH = 80000\n    error_logs_str\
+          \ = json.dumps(error_logs, separators=(\",\", \":\"))\n    \n    while len(error_logs_str)\
+          \ > MAX_LENGTH and len(error_logs) > 0:\n        remove_count = max(1, len(error_logs)\
+          \ // 10)\n        error_logs = error_logs[:-remove_count]\n        error_logs_str\
+          \ = json.dumps(error_logs, separators=(\",\", \":\"))\n\n    return {\"\
+          logs\": error_logs_str}"
+        code_language: python3
+        desc: ''
+        outputs:
+          logs:
+            children: null
+            type: string
+        selected: false
+        title: 提取错误日志
+        type: code
+        variables:
+        - value_selector:
+          - '17448784142480'
+          - text
+          variable: data_json
+      height: 54
+      id: '17449013347930'
+      position:
+        x: 2462
+        y: 463
+      positionAbsolute:
+        x: 2462
+        y: 463
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        desc: ''
+        outputs:
+        - value_selector:
+          - '1745313576757'
+          - output
+          variable: output
+        selected: false
+        title: 结束
+        type: end
+      height: 90
+      id: '1745313574375'
+      position:
+        x: 1550
+        y: 557
+      positionAbsolute:
+        x: 1550
+        y: 557
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        desc: ''
+        selected: false
+        template: 暂不支持改告警类型。
+        title: 不支持的告警类型
+        type: template-transform
+        variables: []
+      height: 54
+      id: '1745313576757'
+      position:
+        x: 1246
+        y: 593
+      positionAbsolute:
+        x: 1246
+        y: 593
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        context:
+          enabled: false
+          variable_selector: []
+        desc: ''
+        model:
+          completion_params:
+            temperature: 0.7
+          mode: chat
+          name: deepseek-chat
+          provider: langgenius/deepseek/deepseek
+        prompt_template:
+        - id: 8eba855d-6560-4b17-95ce-79dcdef46512
+          role: system
+          text: 你是可观测性领域的智能助手，协助用户分析解决问题。
+        - id: 6879b5be-4f99-4107-af3a-e4f5d5d26cd0
+          role: user
+          text: '此告警事件{{#1742807803325.alertName#}}属于event类型，
+
+            告警信息
+
+            {{#1741227526517.params#}}
+
+            请给出一些建议'
+        selected: false
+        title: LLM 3
+        type: llm
+        variables: []
+        vision:
+          enabled: false
+      height: 90
+      id: '1745391138767'
+      position:
+        x: 1246
+        y: 687
+      positionAbsolute:
+        x: 1246
+        y: 687
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        desc: ''
+        outputs:
+        - value_selector:
+          - '1745391138767'
+          - text
+          variable: text
+        selected: false
+        title: 结束
+        type: end
+      height: 90
+      id: '1745391142578'
+      position:
+        x: 1550
+        y: 687
+      positionAbsolute:
+        x: 1550
+        y: 687
+      selected: true
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    viewport:
+      x: -194.75652126551518
+      y: -6.080975685131534
+      zoom: 0.4938246047619723
