@@ -48,6 +48,7 @@ const OPTION_MAP = {
     : ''},
   systemVariables: {
     // user_id: 'YOU CAN DEFINE USER ID HERE',
+    // conversation_id: 'YOU CAN DEFINE CONVERSATION ID HERE',
   },
  }
 </script>
