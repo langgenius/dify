@@ -173,7 +173,8 @@ class ConversationService:
         cls,
         app_model: App,
         conversation_id: str,
-        user: Optional[Union[Account, EndUser]]
+        user: Optional[Union[Account, EndUser]],
+        limit: int,
     ) -> InfiniteScrollPagination:
         conversation = cls.get_conversation(app_model, conversation_id, user)
 
@@ -184,24 +185,21 @@ class ConversationService:
             .order_by(ConversationVariable.created_at)
         )
 
-        page = 1
-        page_size = 100
-        stmt = stmt.limit(page_size).offset((page - 1) * page_size)
+        total_count = db.session.scalar(select(func.count()).select_from(stmt))
+        has_more = total_count > limit
+
+        stmt = stmt.limit(limit)
 
         with Session(db.engine) as session:
             rows = session.scalars(stmt).all()
 
-        return {
-            "page": page,
-            "limit": page_size,
-            "total": len(rows),
-            "has_more": False,
-            "data": [
-                {
-                    "created_at": row.created_at,
-                    "updated_at": row.updated_at,
-                    **row.to_variable().model_dump(),
-                }
-                for row in rows
-            ],
-        }
+        variables = [
+            {
+                "created_at": row.created_at,
+                "updated_at": row.updated_at,
+                **row.to_variable().model_dump(),
+            }
+            for row in rows
+        ]
+
+        return InfiniteScrollPagination(variables, limit, has_more)

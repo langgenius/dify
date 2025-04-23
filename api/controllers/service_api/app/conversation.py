@@ -15,7 +15,7 @@ from fields.conversation_fields import (
     simple_conversation_fields,
 )
 from fields.conversation_variable_fields import (
-    paginated_conversation_variable_fields,
+    conversation_variable_infinite_scroll_pagination_fields,
 )
 from libs.helper import uuid_value
 from models.model import App, AppMode, EndUser
@@ -98,7 +98,7 @@ class ConversationRenameApi(Resource):
 
 class ConversationVariablesApi(Resource):
     @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.QUERY))
-    @marshal_with(paginated_conversation_variable_fields)
+    @marshal_with(conversation_variable_infinite_scroll_pagination_fields)
     def get(self, app_model: App, end_user: EndUser, c_id):
 
         # conversational variable only for chat app
@@ -108,8 +108,14 @@ class ConversationVariablesApi(Resource):
 
         conversation_id = str(c_id)
 
+        parser = reqparse.RequestParser()
+        parser.add_argument("limit", type=int_range(1, 100), required=False, default=20, location="args")
+        args = parser.parse_args()
+
         try:
-            return ConversationService.get_conversational_variable(app_model, conversation_id, end_user)
+            return ConversationService.get_conversational_variable(
+                app_model, conversation_id, end_user, args["limit"]
+            )
         except services.errors.conversation.ConversationNotExistsError:
             raise NotFound("Conversation Not Exists.")
 
