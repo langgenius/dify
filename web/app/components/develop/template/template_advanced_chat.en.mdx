@@ -869,13 +869,17 @@ Chat applications support session persistence, allowing previous chat history to
       <Property name='user' type='string' key='user'>
         The user identifier, defined by the developer, must ensure uniqueness within the application
       </Property>
+      <Property name='last_id' type='string' key='last_id'>
+          (Optional) The ID of the last record on the current page, default is null.
+      </Property>
+      <Property name='limit' type='int' key='limit'>
+          (Optional) How many records to return in one request, default is the most recent 20 entries. Maximum 100, minimum 1.
+      </Property>
     </Properties>
 
     ### Response
 
-    - `page` (int) Current page number
     - `limit` (int) Number of items per page
-    - `total` (int) Total number of items
     - `has_more` (bool) Whether there is a next page
     - `data` (array[object]) List of variables
       - `id` (string) Variable ID
@@ -911,9 +915,7 @@ Chat applications support session persistence, allowing previous chat history to
     <CodeGroup title="Response">
     ```json {{ title: 'Response' }}
     {
-      "page": 1,
       "limit": 100,
-      "total": 2,
       "has_more": false,
       "data": [
         {

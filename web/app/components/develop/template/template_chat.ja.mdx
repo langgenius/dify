@@ -900,13 +900,17 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
       <Property name='user' type='string' key='user'>
         ユーザー識別子。開発者によって定義されたルールに従い、アプリケーション内で一意である必要があります。
       </Property>
+      <Property name='last_id' type='string' key='last_id'>
+          (Optional)現在のページの最後のレコードのID、デフォルトはnullです。
+      </Property>
+      <Property name='limit' type='int' key='limit'>
+          (Optional)1回のリクエストで返すレコードの数、デフォルトは最新の20件です。最大100、最小1。
+      </Property>
     </Properties>
 
     ### レスポンス
 
-    - `page` (int) 現在のページ番号
     - `limit` (int) ページごとのアイテム数
-    - `total` (int) アイテムの総数
     - `has_more` (bool) さらにアイテムがあるかどうか
     - `data` (array[object]) 変数のリスト
       - `id` (string) 変数ID
@@ -942,9 +946,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
     <CodeGroup title="Response">
     ```json {{ title: 'Response' }}
     {
-      "page": 1,
       "limit": 100,
-      "total": 2,
       "has_more": false,
       "data": [
         {

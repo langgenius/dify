@@ -905,13 +905,17 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
       <Property name='user' type='string' key='user'>
         用户标识符，由开发人员定义的规则，在应用程序内必须唯一。
       </Property>
+      <Property name='last_id' type='string' key='last_id'>
+        （选填）当前页最后面一条记录的 ID，默认 null
+      </Property>
+      <Property name='limit' type='int' key='limit'>
+        （选填）一次请求返回多少条记录，默认 20 条，最大 100 条，最小 1 条。
+      </Property>
     </Properties>
 
     ### 响应
 
-    - `page` (int) 当前页码
     - `limit` (int) 每页项目数
-    - `total` (int) 项目总数
     - `has_more` (bool) 是否有更多项目
     - `data` (array[object]) 变量列表
       - `id` (string) 变量ID
@@ -947,9 +951,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
     <CodeGroup title="Response">
     ```json {{ title: 'Response' }}
     {
-      "page": 1,
       "limit": 100,
-      "total": 2,
       "has_more": false,
       "data": [
         {
