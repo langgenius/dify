@@ -655,8 +655,6 @@ services:
       TENCENT_COS_SECRET_KEY: ${PLUGIN_TENCENT_COS_SECRET_KEY:-}
       TENCENT_COS_SECRET_ID: ${PLUGIN_TENCENT_COS_SECRET_ID:-}
       TENCENT_COS_REGION: ${PLUGIN_TENCENT_COS_REGION:-}
-    ports:
-      - "${EXPOSE_PLUGIN_DEBUGGING_PORT:-5003}:${PLUGIN_DEBUGGING_PORT:-5003}"
     volumes:
       - ./volumes/plugin_daemon:/app/storage
     depends_on:
@@ -740,9 +738,6 @@ services:
     depends_on:
       - api
       - web
-    ports:
-      - '${EXPOSE_NGINX_PORT:-80}:${NGINX_PORT:-80}'
-      - '${EXPOSE_NGINX_SSL_PORT:-443}:${NGINX_SSL_PORT:-443}'
 
   # The Weaviate vector store.
   weaviate:
@@ -892,8 +887,6 @@ services:
       OB_TENANT_PASSWORD: ${OCEANBASE_VECTOR_PASSWORD:-difyai123456}
       OB_CLUSTER_NAME: ${OCEANBASE_CLUSTER_NAME:-difyai}
       MODE: MINI
-    ports:
-      - "${OCEANBASE_VECTOR_PORT:-2881}:2881"
 
   # Oracle vector database
   oracle:
@@ -972,9 +965,6 @@ services:
     depends_on:
       - etcd
       - minio
-    ports:
-      - 19530:19530
-      - 9091:9091
     networks:
       - milvus
 
@@ -1034,8 +1024,6 @@ services:
       interval: 10s
       timeout: 10s
       retries: 10
-    ports:
-      - ${OPENGAUSS_PORT:-6600}:${OPENGAUSS_PORT:-6600}
 
   # MyScale vector database
   myscale:
@@ -1049,8 +1037,6 @@ services:
       - ./volumes/myscale/data:/var/lib/clickhouse
       - ./volumes/myscale/log:/var/log/clickhouse-server
       - ./volumes/myscale/config/users.d/custom_users_config.xml:/etc/clickhouse-server/users.d/custom_users_config.xml
-    ports:
-      - ${MYSCALE_PORT:-8123}:${MYSCALE_PORT:-8123}
 
   # https://www.elastic.co/guide/en/elasticsearch/reference/current/settings.html
   # https://www.elastic.co/guide/en/elasticsearch/reference/current/docker.html#docker-prod-prerequisites
@@ -1074,8 +1060,6 @@ services:
       xpack.security.enabled: 'true'
       xpack.security.enrollment.enabled: 'false'
       xpack.security.http.ssl.enabled: 'false'
-    ports:
-      - ${ELASTICSEARCH_PORT:-9200}:9200
     deploy:
       resources:
         limits:
@@ -1107,8 +1091,6 @@ services:
       I18N_LOCALE: zh-CN
       SERVER_PORT: '5601'
       ELASTICSEARCH_HOSTS: http://elasticsearch:9200
-    ports:
-      - ${KIBANA_PORT:-5601}:5601
     healthcheck:
       test: [ 'CMD-SHELL', 'curl -s http://localhost:5601 >/dev/null || exit 1' ]
       interval: 30s
