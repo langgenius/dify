@@ -84,7 +84,6 @@ class MemberInviteEmailApi(Resource):
                 )
                 break
             except Exception as e:
-                print(str(e))
                 invitation_results.append({"status": "failed", "email": invitee_email, "message": str(e)})
 
         return {
