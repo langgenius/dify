@@ -39,6 +39,7 @@ export type EmbeddedChatbotContextValue = {
   chatShouldReloadKey: string
   isMobile: boolean
   isInstalledApp: boolean
+  allowResetChat: boolean
   appId?: string
   handleFeedback: (messageId: string, feedback: Feedback) => void
   currentChatInstanceRef: RefObject<{ handleStop: () => void }>
@@ -67,6 +68,7 @@ export const EmbeddedChatbotContext = createContext<EmbeddedChatbotContextValue>
   chatShouldReloadKey: '',
   isMobile: false,
   isInstalledApp: false,
+  allowResetChat: true,
   handleFeedback: noop,
   currentChatInstanceRef: { current: { handleStop: noop } },
   clearChatList: false,

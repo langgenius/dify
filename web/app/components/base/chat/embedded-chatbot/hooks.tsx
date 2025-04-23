@@ -111,6 +111,7 @@ export const useEmbeddedChatbot = () => {
   const [conversationIdInfo, setConversationIdInfo] = useLocalStorageState<Record<string, Record<string, string>>>(CONVERSATION_ID_INFO, {
     defaultValue: {},
   })
+  const allowResetChat = !conversationId
   const currentConversationId = useMemo(() => conversationIdInfo?.[appId || '']?.[userId || 'DEFAULT'] || conversationId || '',
     [appId, conversationIdInfo, userId, conversationId])
   const handleConversationIdInfoChange = useCallback((changeConversationId: string) => {
@@ -365,6 +366,7 @@ export const useEmbeddedChatbot = () => {
     appInfoError,
     appInfoLoading,
     isInstalledApp,
+    allowResetChat,
     appId,
     currentConversationId,
     currentConversationItem,
