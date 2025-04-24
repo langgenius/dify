@@ -175,6 +175,11 @@ const translation = {
   },
   showMyCreatedAppsOnly: 'Created by me',
   accessControl: 'Web App Access Control',
+  accessItemsDescription: {
+    anyone: 'Anyone can access the web app',
+    specific: 'Only specific groups or members can access the web app',
+    organization: 'Anyone in the organization can access the web app',
+  },
   accessControlDialog: {
     title: 'Web App Access Control',
     description: 'Set web app access permissions',

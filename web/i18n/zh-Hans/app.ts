@@ -180,6 +180,11 @@ const translation = {
     title: 'Web 应用访问权限',
     description: '设置 web 应用访问权限。',
     accessLabel: '谁可以访问',
+    accessItemsDescription: {
+      anyone: '任何人可以访问 web 应用',
+      specific: '特定组或成员可以访问 web 应用',
+      organization: '组织内任何人可以访问 web 应用',
+    },
     accessItems: {
       anyone: '任何人',
       specific: '特定组或成员',
