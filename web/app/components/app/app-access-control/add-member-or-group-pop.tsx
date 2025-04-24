@@ -3,6 +3,7 @@ import { RiAddCircleFill, RiArrowRightSLine, RiOrganizationChart } from '@remixi
 import { useTranslation } from 'react-i18next'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useDebounce } from 'ahooks'
+import { FloatingOverlay } from '@floating-ui/react'
 import Avatar from '../../base/avatar'
 import Button from '../../base/button'
 import Checkbox from '../../base/checkbox'
@@ -50,6 +51,7 @@ export default function AddMemberOrGroupDialog() {
         <span>{t('common.operation.add')}</span>
       </Button>
     </PortalToFollowElemTrigger>
+    {open && <FloatingOverlay />}
     <PortalToFollowElemContent className='z-[25]'>
       <div className='w-[400px] max-h-[400px] relative overflow-y-auto flex flex-col border-[0.5px] border-components-panel-border rounded-xl bg-components-panel-bg-blur backdrop-blur-[5px] shadow-lg'>
         <div className='p-2 pb-0.5 sticky top-0 bg-components-panel-bg-blur backdrop-blur-[5px] z-1'>

@@ -83,7 +83,7 @@ const MenuDropdown: FC<Props> = ({
                 }}
                 className='system-md-regular cursor-pointer rounded-lg px-3 py-1.5 text-text-secondary hover:bg-state-base-hover'
               >{t('common.userProfile.about')}</div>
-              {!hideLogout && (
+              {false && (
                 <>
                   <Divider />
                   <div
