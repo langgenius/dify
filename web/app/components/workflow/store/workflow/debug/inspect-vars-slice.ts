@@ -1,7 +1,7 @@
 import type { StateCreator } from 'zustand'
 import produce from 'immer'
-import type { NodeWithVar, VarInInspect } from '@/types/workflow'
-import type { ValueSelector } from '../../../types'
+import { type NodeWithVar, type VarInInspect, VarInInspectType } from '@/types/workflow'
+import { BlockEnum, VarType } from '../../../types'
 
 type InspectVarsState = {
   currentFocusNodeId: string | null
@@ -17,8 +17,8 @@ type InspectVarsActions = {
   clearNodeInspectVars: (nodeId: string) => void
   getNodeInspectVars: (nodeId: string) => NodeWithVar | undefined
   hasNodeInspectVars: (nodeId: string) => boolean
-  setInspectVar: (nodeId: string, selector: ValueSelector, value: any) => void
-  getInspectVar: (nodeId: string, selector: ValueSelector) => any
+  setInspectVar: (nodeId: string, name: string, value: any) => void
+  getInspectVar: (nodeId: string, name: string) => any // The big value is null
 }
 
 export type InspectVarsSliceShape = InspectVarsState & InspectVarsActions
@@ -26,7 +26,25 @@ export type InspectVarsSliceShape = InspectVarsState & InspectVarsActions
 export const createInspectVarsSlice: StateCreator<InspectVarsSliceShape> = (set, get) => {
   return ({
     currentFocusNodeId: null,
-    nodesWithInspectVars: [],
+    nodesWithInspectVars: [
+      {
+        nodeId: '1745476079387',
+        nodeType: BlockEnum.LLM,
+        title: 'llm 2',
+        vars: [
+          {
+            id: 'xxx',
+            type: VarInInspectType.node,
+            name: 'llm 2',
+            description: '',
+            selector: ['1745476079387', 'text'],
+            value_type: VarType.string,
+            value: 'text value...',
+            edited: false,
+          },
+        ],
+      },
+    ],
     conversationVars: [],
     setCurrentFocusNodeId: (nodeId) => {
       set(() => ({
@@ -71,13 +89,13 @@ export const createInspectVarsSlice: StateCreator<InspectVarsSliceShape> = (set,
     hasNodeInspectVars: (nodeId) => {
       return !!get().getNodeInspectVars(nodeId)
     },
-    setInspectVar: (nodeId, selector, value) => {
+    setInspectVar: (nodeId, name, value) => {
       set(produce((state: InspectVarsSliceShape) => {
         const nodes = state.nodesWithInspectVars.map((node) => {
           if (node.nodeId === nodeId) {
             return produce(node, (draft) => {
               const needChangeVarIndex = draft.vars.findIndex((varItem) => {
-                return varItem.selector.join('.') === selector.join('.')
+                return varItem.selector[1] === name
               })
               if (needChangeVarIndex !== -1)
                 draft.vars[needChangeVarIndex].value = value
@@ -88,13 +106,13 @@ export const createInspectVarsSlice: StateCreator<InspectVarsSliceShape> = (set,
         state.nodesWithInspectVars = nodes
       }))
     },
-    getInspectVar(nodeId, key) {
+    getInspectVar(nodeId, name) {
       const node = get().getNodeInspectVars(nodeId)
       if (!node)
         return undefined
 
       const variable = node.vars.find((varItem) => {
-        return varItem.selector.join('.') === key.join('.')
+        return varItem.selector[1] === name
       })?.value
       return variable
     },

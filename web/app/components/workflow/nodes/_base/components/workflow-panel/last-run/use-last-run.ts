@@ -28,7 +28,7 @@ const useLastRun = <T>({
   }, [doSetRunInputData])
 
   const [isDataFromHistory, setIsDataFromHistory] = useState(true)
-  const [tabType, setTabType] = useState<TabType>(TabType.lastRun)
+  const [tabType, setTabType] = useState<TabType>(TabType.settings)
   const handleRun = async (data: Record<string, any>) => {
     setIsDataFromHistory(false)
     setTabType(TabType.lastRun)
