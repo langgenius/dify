@@ -657,6 +657,7 @@ class DatasetRetrievalSettingApi(Resource):
                 | VectorType.ELASTICSEARCH
                 | VectorType.ELASTICSEARCH_JA
                 | VectorType.PGVECTOR
+                | VectorType.VASTBASE
                 | VectorType.TIDB_ON_QDRANT
                 | VectorType.LINDORM
                 | VectorType.COUCHBASE
@@ -706,6 +707,7 @@ class DatasetRetrievalSettingMockApi(Resource):
                 | VectorType.ELASTICSEARCH_JA
                 | VectorType.COUCHBASE
                 | VectorType.PGVECTOR
+                | VectorType.VASTBASE
                 | VectorType.LINDORM
                 | VectorType.OPENGAUSS
                 | VectorType.OCEANBASE
