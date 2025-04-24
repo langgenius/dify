@@ -90,6 +90,11 @@ const BaseNode: FC<BaseNodeProps> = ({
     }
   }, [data.isInLoop, data.selected, id, handleNodeLoopChildSizeChange])
 
+  const workflowStore = useWorkflowStore()
+  const {
+    hasNodeInspectVars,
+  } = workflowStore.getState()
+  const hasVarValue = hasNodeInspectVars(id)
   const showSelectedBorder = data.selected || data._isBundled || data._isEntering
   const {
     showRunningBorder,
@@ -99,7 +104,7 @@ const BaseNode: FC<BaseNodeProps> = ({
   } = useMemo(() => {
     return {
       showRunningBorder: data._runningStatus === NodeRunningStatus.Running && !showSelectedBorder,
-      showSuccessBorder: data._runningStatus === NodeRunningStatus.Succeeded && !showSelectedBorder,
+      showSuccessBorder: (data._runningStatus === NodeRunningStatus.Succeeded || hasVarValue) && !showSelectedBorder,
       showFailedBorder: data._runningStatus === NodeRunningStatus.Failed && !showSelectedBorder,
       showExceptionBorder: data._runningStatus === NodeRunningStatus.Exception && !showSelectedBorder,
     }
@@ -128,11 +133,6 @@ const BaseNode: FC<BaseNodeProps> = ({
 
     return null
   }, [data._loopIndex, data._runningStatus, t])
-
-  const workflowStore = useWorkflowStore()
-  const {
-    hasNodeInspectVars,
-  } = workflowStore.getState()
 
   return (
     <div
@@ -271,7 +271,7 @@ const BaseNode: FC<BaseNodeProps> = ({
             )
           }
           {
-            (data._runningStatus === NodeRunningStatus.Succeeded || hasNodeInspectVars(id)) && (
+            (data._runningStatus === NodeRunningStatus.Succeeded || hasVarValue) && (
               <RiCheckboxCircleFill className='h-3.5 w-3.5 text-text-success' />
             )
           }
