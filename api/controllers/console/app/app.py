@@ -1,4 +1,3 @@
-import logging
 import uuid
 from typing import cast
 
@@ -68,7 +67,6 @@ class AppListApi(Resource):
 
         if FeatureService.get_system_features().webapp_auth.enabled:
             app_ids = [str(app.id) for app in app_pagination.items]
-            logging.info(f"app_ids: {app_ids}")
             res = EnterpriseService.WebAppAuth.batch_get_app_access_mode_by_id(app_ids=app_ids)
             if len(res) != len(app_ids):
                 raise BadRequest("Invalid app id in webapp auth")
