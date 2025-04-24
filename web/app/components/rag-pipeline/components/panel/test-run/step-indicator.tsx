@@ -19,7 +19,7 @@ const StepIndicator = ({
   return (
     <div className='flex items-center gap-x-2 px-1'>
       {steps.map((step, index) => {
-        const isCurrentStep = index === currentStep
+        const isCurrentStep = index === currentStep - 1
         const isLastStep = index === steps.length - 1
         return (
           <div key={index} className='flex items-center gap-x-2'>

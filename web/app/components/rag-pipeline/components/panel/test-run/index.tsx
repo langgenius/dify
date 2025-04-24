@@ -13,10 +13,11 @@ import { useTranslation } from 'react-i18next'
 import { useProviderContextSelector } from '@/context/provider-context'
 import type { NotionPage } from '@/models/common'
 import Notion from './data-source/notion'
+import VectorSpaceFull from '@/app/components/billing/vector-space-full'
 
 const TestRunPanel = () => {
   const { t } = useTranslation()
-  const [currentStep, setCurrentStep] = useState(0)
+  const [currentStep, setCurrentStep] = useState(1)
   const [dataSourceType, setDataSourceType] = useState<string>(DataSourceType.FILE)
   const [fileList, setFiles] = useState<FileItem[]>([])
   const [notionPages, setNotionPages] = useState<NotionPage[]>([])
@@ -39,6 +40,14 @@ const TestRunPanel = () => {
       return true
     return isShowVectorSpaceFull
   }, [fileList, isShowVectorSpaceFull])
+
+  const nextBtnDisabled = useMemo(() => {
+    if (dataSourceType === DataSourceType.FILE)
+      return nextDisabled
+    if (dataSourceType === DataSourceType.NOTION)
+      return isShowVectorSpaceFull || !notionPages.length
+    return false
+  }, [dataSourceType, nextDisabled, isShowVectorSpaceFull, notionPages.length])
 
   const handleClose = () => {
     setShowTestRunPanel?.(false)
@@ -87,7 +96,7 @@ const TestRunPanel = () => {
         <StepIndicator steps={steps} currentStep={currentStep} />
       </div>
       {
-        currentStep === 0 && (
+        currentStep === 1 && (
           <>
             <div className='flex flex-col gap-y-4 px-4 py-2'>
               <DataSourceOptions
@@ -101,28 +110,22 @@ const TestRunPanel = () => {
                   updateFile={updateFile}
                   updateFileList={updateFileList}
                   notSupportBatchUpload={notSupportBatchUpload}
-                  isShowVectorSpaceFull={isShowVectorSpaceFull}
                 />
               )}
               {dataSourceType === DataSourceType.NOTION && (
                 <Notion
                   notionPages={notionPages}
                   updateNotionPages={updateNotionPages}
-                  isShowVectorSpaceFull={isShowVectorSpaceFull}
                 />
+              )}
+              {isShowVectorSpaceFull && (
+                <VectorSpaceFull />
               )}
             </div>
             <div className='flex justify-end p-4 pt-2'>
-              {dataSourceType === DataSourceType.FILE && (
-                <Button disabled={nextDisabled} variant='primary' onClick={handleNextStep}>
-                  <span className='px-0.5'>{t('datasetCreation.stepOne.button')}</span>
-                </Button>
-              )}
-              {dataSourceType === DataSourceType.NOTION && (
-                <Button disabled={isShowVectorSpaceFull || !notionPages.length} variant='primary' onClick={handleNextStep}>
-                  <span className="px-0.5">{t('datasetCreation.stepOne.button')}</span>
-                </Button>
-              )}
+              <Button disabled={nextBtnDisabled} variant='primary' onClick={handleNextStep}>
+                <span className='px-0.5'>{t('datasetCreation.stepOne.button')}</span>
+              </Button>
             </div>
           </>
         )
