@@ -36,9 +36,9 @@ from models.enums import CreatedByRole
 from models.model import Message, MessageFile
 
 
-class ToolEngine:
+class DatasourceEngine:
     """
-    Tool runtime engine take care of the tool executions.
+    Datasource runtime engine take care of the datasource executions.
     """
 
     @staticmethod

@@ -1,7 +1,9 @@
 from collections.abc import Generator
 from typing import Any, Optional
 
+from core.datasource.__base.datasource_runtime import DatasourceRuntime
 from core.datasource.entities.datasource_entities import DatasourceEntity, DatasourceParameter, DatasourceProviderType
+from core.plugin.manager.datasource import PluginDatasourceManager
 from core.plugin.manager.tool import PluginToolManager
 from core.plugin.utils.converter import convert_parameters_to_plugin_format
 from core.tools.__base.tool import Tool
@@ -9,7 +11,7 @@ from core.tools.__base.tool_runtime import ToolRuntime
 from core.tools.entities.tool_entities import ToolEntity, ToolInvokeMessage, ToolParameter, ToolProviderType
 
 
-class DatasourceTool(Tool):
+class DatasourcePlugin(Datasource):
     tenant_id: str
     icon: str
     plugin_unique_identifier: str
@@ -31,53 +33,45 @@ class DatasourceTool(Tool):
         self,
         user_id: str,
         datasource_parameters: dict[str, Any],
-        conversation_id: Optional[str] = None,
         rag_pipeline_id: Optional[str] = None,
-        message_id: Optional[str] = None,
     ) -> Generator[ToolInvokeMessage, None, None]:
-        manager = PluginToolManager()
+        manager = PluginDatasourceManager()
 
         datasource_parameters = convert_parameters_to_plugin_format(datasource_parameters)
 
         yield from manager.invoke_first_step(
             tenant_id=self.tenant_id,
             user_id=user_id,
-            tool_provider=self.entity.identity.provider,
-            tool_name=self.entity.identity.name,
+            datasource_provider=self.entity.identity.provider,
+            datasource_name=self.entity.identity.name,
             credentials=self.runtime.credentials,
-            tool_parameters=tool_parameters,
-            conversation_id=conversation_id,
-            app_id=app_id,
-            message_id=message_id,
+            datasource_parameters=datasource_parameters,
+            rag_pipeline_id=rag_pipeline_id,
         )
 
     def _invoke_second_step(
         self,
         user_id: str,
         datasource_parameters: dict[str, Any],
-        conversation_id: Optional[str] = None,
         rag_pipeline_id: Optional[str] = None,
-        message_id: Optional[str] = None,
     ) -> Generator[ToolInvokeMessage, None, None]:
-        manager = PluginToolManager()
+        manager = PluginDatasourceManager()
 
         datasource_parameters = convert_parameters_to_plugin_format(datasource_parameters)
 
         yield from manager.invoke(
             tenant_id=self.tenant_id,
             user_id=user_id,
-            tool_provider=self.entity.identity.provider,
-            tool_name=self.entity.identity.name,
+            datasource_provider=self.entity.identity.provider,
+            datasource_name=self.entity.identity.name,
             credentials=self.runtime.credentials,
-            tool_parameters=tool_parameters,
-            conversation_id=conversation_id,
-            app_id=app_id,
-            message_id=message_id,
+            datasource_parameters=datasource_parameters,
+            rag_pipeline_id=rag_pipeline_id,
         )
 
 
-    def fork_tool_runtime(self, runtime: ToolRuntime) -> "DatasourceTool":
-        return DatasourceTool(
+    def fork_datasource_runtime(self, runtime: DatasourceRuntime) -> "DatasourcePlugin":
+        return DatasourcePlugin(
             entity=self.entity,
             runtime=runtime,
             tenant_id=self.tenant_id,
@@ -87,9 +81,7 @@ class DatasourceTool(Tool):
 
     def get_runtime_parameters(
         self,
-        conversation_id: Optional[str] = None,
-        app_id: Optional[str] = None,
-        message_id: Optional[str] = None,
+        rag_pipeline_id: Optional[str] = None,
     ) -> list[DatasourceParameter]:
         """
         get the runtime parameters
@@ -100,16 +92,14 @@ class DatasourceTool(Tool):
         if self.runtime_parameters is not None:
             return self.runtime_parameters
 
-        manager = PluginToolManager()
+        manager = PluginDatasourceManager()
         self.runtime_parameters = manager.get_runtime_parameters(
             tenant_id=self.tenant_id,
             user_id="",
             provider=self.entity.identity.provider,
-            tool=self.entity.identity.name,
+            datasource=self.entity.identity.name,
             credentials=self.runtime.credentials,
-            conversation_id=conversation_id,
-            app_id=app_id,
-            message_id=message_id,
+            rag_pipeline_id=rag_pipeline_id,
         )
 
         return self.runtime_parameters

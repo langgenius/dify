@@ -6,31 +6,30 @@ from typing import TYPE_CHECKING, Any, Optional
 if TYPE_CHECKING:
     from models.model import File
 
-from core.tools.__base.tool_runtime import ToolRuntime
+from core.datasource.__base.datasource_runtime import DatasourceRuntime
+from core.datasource.entities.datasource_entities import DatasourceEntity, DatasourceProviderType
 from core.tools.entities.tool_entities import (
-    ToolEntity,
     ToolInvokeMessage,
     ToolParameter,
-    ToolProviderType,
 )
 
 
-class Tool(ABC):
+class Datasource(ABC):
     """
-    The base class of a tool
+    The base class of a datasource 
     """
 
-    entity: ToolEntity
-    runtime: ToolRuntime
+    entity: DatasourceEntity
+    runtime: DatasourceRuntime    
 
-    def __init__(self, entity: ToolEntity, runtime: ToolRuntime) -> None:
+    def __init__(self, entity: DatasourceEntity, runtime: DatasourceRuntime) -> None:
         self.entity = entity
         self.runtime = runtime
 
-    def fork_tool_runtime(self, runtime: ToolRuntime) -> "Tool":
+    def fork_datasource_runtime(self, runtime: DatasourceRuntime) -> "Datasource":
         """
-        fork a new tool with metadata
-        :return: the new tool
+        fork a new datasource with metadata
+        :return: the new datasource
         """
         return self.__class__(
             entity=self.entity.model_copy(),
@@ -38,9 +37,9 @@ class Tool(ABC):
         )
 
     @abstractmethod
-    def tool_provider_type(self) -> ToolProviderType:
+    def datasource_provider_type(self) -> DatasourceProviderType:
         """
-        get the tool provider type
+        get the datasource provider type
 
         :return: the tool provider type
         """
