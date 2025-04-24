@@ -16,6 +16,7 @@ import Button from '@/app/components/base/button'
 
 import { fetchInitValidateStatus, fetchSetupStatus, setup } from '@/service/common'
 import type { InitValidateStatusResponse, SetupStatusResponse } from '@/models/common'
+import { basePath } from '@/utils/var'
 
 const validPassword = /^(?=.*[a-zA-Z])(?=.*\d).{8,}$/
 
@@ -80,12 +81,12 @@ const InstallForm = () => {
     fetchSetupStatus().then((res: SetupStatusResponse) => {
       if (res.step === 'finished') {
         localStorage.setItem('setup_status', 'finished')
-        router.push('/signin')
+        router.push(`${basePath}/signin`)
       }
       else {
         fetchInitValidateStatus().then((res: InitValidateStatusResponse) => {
           if (res.status === 'not_started')
-            router.push('/init')
+            router.push(`${basePath}/init`)
         })
       }
       setLoading(false)

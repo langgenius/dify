@@ -1,4 +1,4 @@
-const { basePath } = require('./utils/var-basePath')
+const { basePath, assetPrefix } = require('./utils/var-basePath')
 const { codeInspectorPlugin } = require('code-inspector-plugin')
 const withMDX = require('@next/mdx')({
   extension: /\.mdx?$/,
@@ -16,6 +16,7 @@ const withMDX = require('@next/mdx')({
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   basePath,
+  assetPrefix,
   webpack: (config, { dev, isServer }) => {
     config.plugins.push(codeInspectorPlugin({ bundler: 'webpack' }))
     return config
