@@ -59,7 +59,7 @@ class RemoteFileApi(Resource):
     @marshal_with(file_fields_with_signed_url)
     def post(self, app_model: App, end_user: EndUser):
         parser = reqparse.RequestParser()
-        parser.add_argument("url", type=str, required=True, help="URL is required", location='form')
+        parser.add_argument("url", type=str, required=True, help="URL is required", location="form")
         args = parser.parse_args()
 
         url = args["url"]
@@ -97,11 +97,7 @@ class RemoteFileApi(Resource):
 
         try:
             upload_file = FileService.upload_file(
-                filename=file_info.filename,
-                content=content,
-                mimetype=file_info.mimetype,
-                user=end_user,
-                source_url=url
+                filename=file_info.filename, content=content, mimetype=file_info.mimetype, user=end_user, source_url=url
             )
         except services.errors.file.FileTooLargeError as file_too_large_error:
             raise FileTooLargeError(file_too_large_error.description)
