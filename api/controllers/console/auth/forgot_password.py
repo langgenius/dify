@@ -20,7 +20,7 @@ from libs.password import hash_password, valid_password
 from models.account import Account
 from services.account_service import AccountService, TenantService
 from services.errors.account import AccountRegisterError
-from services.errors.workspace import WorkSpaceNotAllowedCreateError
+from services.errors.workspace import WorkSpaceNotAllowedCreateError, WorkspacesLimitExceededError
 from services.feature_service import FeatureService
 
 
@@ -145,6 +145,8 @@ class ForgotPasswordResetApi(Resource):
                 pass
             except AccountRegisterError as are:
                 raise AccountInFreezeError()
+            except WorkspacesLimitExceededError:
+                pass
 
         return {"result": "success"}
 
