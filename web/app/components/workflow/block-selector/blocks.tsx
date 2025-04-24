@@ -7,12 +7,8 @@ import { useTranslation } from 'react-i18next'
 import { groupBy } from 'lodash-es'
 import BlockIcon from '../block-icon'
 import { BlockEnum } from '../types'
-import {
-  useIsChatMode,
-  useNodesExtraData,
-} from '../hooks'
+import type { NodeDefault } from '../types'
 import { BLOCK_CLASSIFICATIONS } from './constants'
-import { useBlocks } from './hooks'
 import type { ToolDefaultValue } from './types'
 import Tooltip from '@/app/components/base/tooltip'
 import Badge from '@/app/components/base/badge'
@@ -21,23 +17,19 @@ type BlocksProps = {
   searchText: string
   onSelect: (type: BlockEnum, tool?: ToolDefaultValue) => void
   availableBlocksTypes?: BlockEnum[]
+  blocks: NodeDefault[]
 }
 const Blocks = ({
   searchText,
   onSelect,
   availableBlocksTypes = [],
+  blocks,
 }: BlocksProps) => {
   const { t } = useTranslation()
-  const isChatMode = useIsChatMode()
-  const nodesExtraData = useNodesExtraData()
-  const blocks = useBlocks()
 
   const groups = useMemo(() => {
     return BLOCK_CLASSIFICATIONS.reduce((acc, classification) => {
       const list = groupBy(blocks, 'classification')[classification].filter((block) => {
-        if (block.type === BlockEnum.Answer && !isChatMode)
-          return false
-
         return block.title.toLowerCase().includes(searchText.toLowerCase()) && availableBlocksTypes.includes(block.type)
       })
 
@@ -46,11 +38,11 @@ const Blocks = ({
         [classification]: list,
       }
     }, {} as Record<string, typeof blocks>)
-  }, [blocks, isChatMode, searchText, availableBlocksTypes])
+  }, [blocks, searchText, availableBlocksTypes])
   const isEmpty = Object.values(groups).every(list => !list.length)
 
   const renderGroup = useCallback((classification: string) => {
-    const list = groups[classification]
+    const list = groups[classification].sort((a, b) => a.sort - b.sort)
 
     return (
       <div
@@ -78,7 +70,7 @@ const Blocks = ({
                     type={block.type}
                   />
                   <div className='system-md-medium mb-1 text-text-primary'>{block.title}</div>
-                  <div className='system-xs-regular text-text-tertiary'>{nodesExtraData[block.type].about}</div>
+                  <div className='system-xs-regular text-text-tertiary'>{block.description}</div>
                 </div>
               )}
             >
@@ -106,7 +98,7 @@ const Blocks = ({
         }
       </div>
     )
-  }, [groups, nodesExtraData, onSelect, t])
+  }, [groups, onSelect, t])
 
   return (
     <div className='p-1'>

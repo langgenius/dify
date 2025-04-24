@@ -31,7 +31,6 @@ import {
   ITERATION_PADDING,
   LOOP_CHILDREN_Z_INDEX,
   LOOP_PADDING,
-  NODES_INITIAL_DATA,
   NODE_WIDTH_X_OFFSET,
   X_OFFSET,
   Y_OFFSET,
@@ -60,6 +59,7 @@ import {
   useWorkflowReadOnly,
 } from './use-workflow'
 import { WorkflowHistoryEvent, useWorkflowHistory } from './use-workflow-history'
+import { useNodesMetaData } from './use-nodes-meta-data'
 
 export const useNodesInteractions = () => {
   const { t } = useTranslation()
@@ -84,6 +84,7 @@ export const useNodesInteractions = () => {
     handleNodeLoopChildrenCopy,
   } = useNodeLoopInteractions()
   const dragNodeStartPosition = useRef({ x: 0, y: 0 } as { x: number; y: number })
+  const { nodesMap: nodesMetaDataMap } = useNodesMetaData()
 
   const { saveStateToHistory, undo, redo } = useWorkflowHistory()
 
@@ -683,14 +684,18 @@ export const useNodesInteractions = () => {
     const nodes = getNodes()
     const nodesWithSameType = nodes.filter(node => node.data.type === nodeType)
     const {
+      defaultValue,
+      title,
+    } = nodesMetaDataMap![nodeType]
+    const {
       newNode,
       newIterationStartNode,
       newLoopStartNode,
     } = generateNewNode({
       type: getNodeCustomTypeByNodeDataType(nodeType),
       data: {
-        ...NODES_INITIAL_DATA[nodeType],
-        title: nodesWithSameType.length > 0 ? `${t(`workflow.blocks.${nodeType}`)} ${nodesWithSameType.length + 1}` : t(`workflow.blocks.${nodeType}`),
+        ...(defaultValue as any),
+        title: nodesWithSameType.length > 0 ? `${title} ${nodesWithSameType.length + 1}` : title,
         ...(toolDefaultValue || {}),
         selected: true,
         _showAddVariablePopup: (nodeType === BlockEnum.VariableAssigner || nodeType === BlockEnum.VariableAggregator) && !!prevNodeId,
@@ -1093,7 +1098,7 @@ export const useNodesInteractions = () => {
     }
     handleSyncWorkflowDraft()
     saveStateToHistory(WorkflowHistoryEvent.NodeAdd)
-  }, [getNodesReadOnly, store, t, handleSyncWorkflowDraft, saveStateToHistory, workflowStore, getAfterNodesInSameBranch, checkNestedParallelLimit])
+  }, [getNodesReadOnly, store, handleSyncWorkflowDraft, saveStateToHistory, workflowStore, getAfterNodesInSameBranch, checkNestedParallelLimit, nodesMetaDataMap])
 
   const handleNodeChange = useCallback((
     currentNodeId: string,
@@ -1115,14 +1120,18 @@ export const useNodesInteractions = () => {
     const connectedEdges = getConnectedEdges([currentNode], edges)
     const nodesWithSameType = nodes.filter(node => node.data.type === nodeType)
     const {
+      defaultValue,
+      title,
+    } = nodesMetaDataMap![nodeType]
+    const {
       newNode: newCurrentNode,
       newIterationStartNode,
       newLoopStartNode,
     } = generateNewNode({
       type: getNodeCustomTypeByNodeDataType(nodeType),
       data: {
-        ...NODES_INITIAL_DATA[nodeType],
-        title: nodesWithSameType.length > 0 ? `${t(`workflow.blocks.${nodeType}`)} ${nodesWithSameType.length + 1}` : t(`workflow.blocks.${nodeType}`),
+        ...(defaultValue as any),
+        title: nodesWithSameType.length > 0 ? `${title} ${nodesWithSameType.length + 1}` : title,
         ...(toolDefaultValue || {}),
         _connectedSourceHandleIds: [],
         _connectedTargetHandleIds: [],
@@ -1175,7 +1184,7 @@ export const useNodesInteractions = () => {
     handleSyncWorkflowDraft()
 
     saveStateToHistory(WorkflowHistoryEvent.NodeChange)
-  }, [getNodesReadOnly, store, t, handleSyncWorkflowDraft, saveStateToHistory])
+  }, [getNodesReadOnly, store, handleSyncWorkflowDraft, saveStateToHistory, nodesMetaDataMap])
 
   const handleNodesCancelSelected = useCallback(() => {
     const {
@@ -1285,7 +1294,7 @@ export const useNodesInteractions = () => {
         } = generateNewNode({
           type: nodeToPaste.type,
           data: {
-            ...NODES_INITIAL_DATA[nodeType],
+            ...nodesMetaDataMap![nodeType].defaultValue,
             ...nodeToPaste.data,
             selected: false,
             _isBundled: false,
@@ -1361,7 +1370,7 @@ export const useNodesInteractions = () => {
       saveStateToHistory(WorkflowHistoryEvent.NodePaste)
       handleSyncWorkflowDraft()
     }
-  }, [getNodesReadOnly, workflowStore, store, reactflow, saveStateToHistory, handleSyncWorkflowDraft, handleNodeIterationChildrenCopy, handleNodeLoopChildrenCopy])
+  }, [getNodesReadOnly, workflowStore, store, reactflow, saveStateToHistory, handleSyncWorkflowDraft, handleNodeIterationChildrenCopy, handleNodeLoopChildrenCopy, nodesMetaDataMap])
 
   const handleNodesDuplicate = useCallback((nodeId?: string) => {
     if (getNodesReadOnly())

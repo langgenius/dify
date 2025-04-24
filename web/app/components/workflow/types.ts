@@ -15,6 +15,7 @@ import type {
 } from '@/app/components/workflow/nodes/_base/components/error-handle/types'
 import type { WorkflowRetryConfig } from '@/app/components/workflow/nodes/_base/components/retry/types'
 import type { StructuredOutput } from '@/app/components/workflow/nodes/llm/types'
+import type { BlockClassificationEnum } from '@/app/components/workflow/block-selector/types'
 
 export enum BlockEnum {
   Start = 'start',
@@ -285,17 +286,15 @@ export type NodeOutPutVar = {
   isLoop?: boolean
 }
 
-export type Block = {
-  classification?: string
+export type NodeDefault<T = {}> = {
+  classification: BlockClassificationEnum
+  sort: number
   type: BlockEnum
   title: string
+  author: string
   description?: string
-}
-
-export type NodeDefault<T> = {
+  helpLinkUri?: string
   defaultValue: Partial<T>
-  getAvailablePrevNodes: (isChatMode: boolean) => BlockEnum[]
-  getAvailableNextNodes: (isChatMode: boolean) => BlockEnum[]
   checkValid: (payload: T, t: any, moreDataForCheckValid?: any) => { isValid: boolean; errorMessage?: string }
 }
 

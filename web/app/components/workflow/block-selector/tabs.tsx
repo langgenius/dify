@@ -1,7 +1,10 @@
 import type { FC } from 'react'
 import { memo } from 'react'
 import { useAllBuiltInTools, useAllCustomTools, useAllWorkflowTools } from '@/service/use-tools'
-import type { BlockEnum } from '../types'
+import type {
+  BlockEnum,
+  NodeDefault,
+} from '../types'
 import { useTabs } from './hooks'
 import type { ToolDefaultValue } from './types'
 import { TabsEnum } from './types'
@@ -16,7 +19,7 @@ export type TabsProps = {
   tags: string[]
   onSelect: (type: BlockEnum, tool?: ToolDefaultValue) => void
   availableBlocksTypes?: BlockEnum[]
-  noBlocks?: boolean
+  blocks: NodeDefault[]
 }
 const Tabs: FC<TabsProps> = ({
   activeTab,
@@ -25,7 +28,7 @@ const Tabs: FC<TabsProps> = ({
   searchText,
   onSelect,
   availableBlocksTypes,
-  noBlocks,
+  blocks,
 }) => {
   const tabs = useTabs()
   const { data: buildInTools } = useAllBuiltInTools()
@@ -35,7 +38,7 @@ const Tabs: FC<TabsProps> = ({
   return (
     <div onClick={e => e.stopPropagation()}>
       {
-        !noBlocks && (
+        !!blocks.length && (
           <div className='flex items-center border-b-[0.5px] border-divider-subtle px-3'>
             {
               tabs.map(tab => (
@@ -57,11 +60,12 @@ const Tabs: FC<TabsProps> = ({
         )
       }
       {
-        activeTab === TabsEnum.Blocks && !noBlocks && (
+        activeTab === TabsEnum.Blocks && !!blocks.length && (
           <Blocks
             searchText={searchText}
             onSelect={onSelect}
             availableBlocksTypes={availableBlocksTypes}
+            blocks={blocks}
           />
         )
       }
