@@ -44,6 +44,7 @@ import AddVariablePopupWithPosition from './components/add-variable-popup-with-p
 import cn from '@/utils/classnames'
 import BlockIcon from '@/app/components/workflow/block-icon'
 import Tooltip from '@/app/components/base/tooltip'
+import { useWorkflowStore } from '../../store'
 
 type BaseNodeProps = {
   children: ReactElement
@@ -127,6 +128,11 @@ const BaseNode: FC<BaseNodeProps> = ({
 
     return null
   }, [data._loopIndex, data._runningStatus, t])
+
+  const workflowStore = useWorkflowStore()
+  const {
+    hasNodeInspectVars,
+  } = workflowStore.getState()
 
   return (
     <div
@@ -265,7 +271,7 @@ const BaseNode: FC<BaseNodeProps> = ({
             )
           }
           {
-            data._runningStatus === NodeRunningStatus.Succeeded && (
+            (data._runningStatus === NodeRunningStatus.Succeeded || hasNodeInspectVars(id)) && (
               <RiCheckboxCircleFill className='h-3.5 w-3.5 text-text-success' />
             )
           }

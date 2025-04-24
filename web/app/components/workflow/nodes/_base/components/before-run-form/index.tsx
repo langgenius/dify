@@ -1,6 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import React, { useMemo } from 'react'
+import React from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   RiCloseLine,
@@ -21,7 +21,6 @@ import type { BlockEnum } from '@/app/components/workflow/types'
 import type { Emoji } from '@/app/components/tools/types'
 import type { SpecialResultPanelProps } from '@/app/components/workflow/run/special-result-panel'
 import SpecialResultPanel from '@/app/components/workflow/run/special-result-panel'
-import { useWorkflowStore } from '@/app/components/workflow/store'
 
 const i18nPrefix = 'workflow.singleRun'
 
@@ -36,6 +35,8 @@ export type BeforeRunFormProps = {
   result?: React.JSX.Element
   forms: FormProps[]
   showSpecialResultPanel?: boolean
+  existVarValuesInForms: Record<string, any>[]
+  filteredExistVarForms: FormProps[]
 } & Partial<SpecialResultPanelProps>
 
 function formatValue(value: string | any, type: InputVarType) {
@@ -70,64 +71,11 @@ const BeforeRunForm: FC<BeforeRunFormProps> = ({
   result,
   forms,
   showSpecialResultPanel,
+  filteredExistVarForms,
+  existVarValuesInForms,
   ...restResultPanelParams
 }) => {
   const { t } = useTranslation()
-  console.log(forms)
-
-  const workflowStore = useWorkflowStore()
-  const {
-    getInspectVar,
-  } = workflowStore.getState()
-
-  const existVarValuesInForms = useMemo(() => {
-    const valuesArr = forms.map((form) => {
-      const values: Record<string, any> = {}
-      form.inputs.forEach(({ variable }) => {
-        // #nodeId.path1?.path2?...# => [nodeId, path1]
-        // TODO: conversation vars and envs
-        const selector = variable.slice(1, -1).split('.')
-        const [nodeId, varName] = selector.slice(0, 2)
-        const inspectVarValue = getInspectVar(nodeId, varName)
-        if (inspectVarValue !== undefined) {
-          const subPathArr = selector.slice(2)
-          if (subPathArr.length > 0) {
-            let current = inspectVarValue.value
-            let invalid = false
-            subPathArr.forEach((subPath) => {
-              if (invalid)
-                return
-
-              if (current && typeof current === 'object' && subPath in current) {
-                current = current[subPath]
-                return
-              }
-              invalid = true
-            })
-            values[variable] = current
-          }
-          else {
-            values[variable] = inspectVarValue
-          }
-        }
-      })
-      return values
-    })
-    return valuesArr
-  }, [forms, getInspectVar])
-
-  const filteredExistVarForms = useMemo(() => {
-    const res = forms.map((form, i) => {
-      const existVarValuesInForm = existVarValuesInForms[i]
-      const newForm = { ...form }
-      const inputs = form.inputs.filter((input) => {
-        return !(input.variable in existVarValuesInForm)
-      })
-      newForm.inputs = inputs
-      return newForm
-    }).filter(form => form.inputs.length > 0)
-    return res
-  }, [forms, existVarValuesInForms])
 
   const isFinished = runningStatus === NodeRunningStatus.Succeeded || runningStatus === NodeRunningStatus.Failed || runningStatus === NodeRunningStatus.Exception
   const isRunning = runningStatus === NodeRunningStatus.Running
@@ -180,7 +128,7 @@ const BeforeRunForm: FC<BeforeRunFormProps> = ({
 
       form.inputs.forEach((input) => {
         if (input.variable in existVarValuesInForm) {
-          // TODO: if is the big value, should fetch value from server
+          // TODO: wait for api if need to pass exist var values
           submitData[input.variable] = existVarValuesInForm[input.variable]
           return
         }

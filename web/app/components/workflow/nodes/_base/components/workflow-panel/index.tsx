@@ -156,6 +156,8 @@ const BasePanel: FC<BasePanelProps> = ({
     hasLastRunData,
     isDataFromHistory,
     handleRun,
+    getExistVarValuesInForms,
+    getFilteredExistVarForms,
   } = useLastRun<typeof data>({
     id,
     data,
@@ -206,8 +208,16 @@ const BasePanel: FC<BasePanelProps> = ({
                           console.error('childPanelRef is not set')
                           return
                         }
-                        setSingleRunParams(childPanelRef.current?.singleRunParams)
-                        showSingleRun()
+                        const filteredExistVarForms = getFilteredExistVarForms(childPanelRef.current?.singleRunParams.forms)
+                        if (filteredExistVarForms.length > 0) {
+                          setSingleRunParams(childPanelRef.current?.singleRunParams)
+                          showSingleRun()
+                        }
+                        else {
+                          // TODO: check valid
+                          // TODO: all value is setted. wait for api if need to pass exist var values
+                          handleRun({})
+                        }
                         handleSyncWorkflowDraft(true)
                       }}
                     >
@@ -307,7 +317,9 @@ const BasePanel: FC<BasePanelProps> = ({
               onRun={handleRun}
               onStop={handleStop}
               {...singleRunParams!}
-              result={<div>xxx</div>}
+              existVarValuesInForms={getExistVarValuesInForms(singleRunParams?.forms as any)}
+              filteredExistVarForms={getFilteredExistVarForms(singleRunParams?.forms as any)}
+              result={<></>}
             />
           )
         }
