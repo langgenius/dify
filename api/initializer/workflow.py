@@ -157,6 +157,7 @@ def _adjust_workflows(language, account):
                 "api_token": "app-x0mOJKUvhr35BOISSeNmsfXj"
             },
             "告警事件分类": {
+                "app_id": "3d642d64-4377-418f-8e8c-8aa81afd7d28",
                 "api_token": "app-s8e5CusGAqNcjyTUbPCoJcu4"
             },
             "告警简单根因分析": {
