@@ -190,6 +190,11 @@ const translation = {
   },
   showMyCreatedAppsOnly: '自分が作成したアプリ',
   accessControl: 'Webアプリアクセス制御',
+  accessItemsDescription: {
+    anyone: '誰でも Web アプリにアクセス可能',
+    specific: '特定のグループまたはメンバーのみが Web アプリにアクセス可能',
+    organization: '組織内の誰でも Web アプリにアクセス可能',
+  },
   accessControlDialog: {
     title: 'アクセス権限',
     description: 'Webアプリのアクセス権限を設定します',
