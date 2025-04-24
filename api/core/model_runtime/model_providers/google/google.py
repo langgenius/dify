@@ -19,8 +19,8 @@ class GoogleProvider(ModelProvider):
         try:
             model_instance = self.get_model_instance(ModelType.LLM)
 
-            # Use `gemini-pro` model for validate,
-            model_instance.validate_credentials(model="gemini-pro", credentials=credentials)
+            # Use `gemini-2.0-flash` model for validate,
+            model_instance.validate_credentials(model="gemini-2.0-flash", credentials=credentials)
         except CredentialsValidateFailedError as ex:
             raise ex
         except Exception as ex:

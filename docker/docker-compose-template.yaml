@@ -1,8 +1,8 @@
-x-shared-env: &shared-api-worker-env
+x-shared-env: &shared-api-worker-env 
 services:
   # API service
   api:
-    image: langgenius/dify-api:0.15.4
+    image: langgenius/dify-api:0.15.6
     restart: always
     environment:
       # Use the shared environment variables.
@@ -25,7 +25,7 @@ services:
   # worker service
   # The Celery worker for processing the queue.
   worker:
-    image: langgenius/dify-api:0.15.4
+    image: langgenius/dify-api:0.15.6
     restart: always
     environment:
       # Use the shared environment variables.
@@ -47,7 +47,7 @@ services:
 
   # Frontend web application.
   web:
-    image: langgenius/dify-web:0.15.4
+    image: langgenius/dify-web:0.15.6
     restart: always
     environment:
       CONSOLE_API_URL: ${CONSOLE_API_URL:-}
@@ -56,6 +56,7 @@ services:
       NEXT_TELEMETRY_DISABLED: ${NEXT_TELEMETRY_DISABLED:-0}
       TEXT_GENERATION_TIMEOUT_MS: ${TEXT_GENERATION_TIMEOUT_MS:-60000}
       CSP_WHITELIST: ${CSP_WHITELIST:-}
+      ALLOW_EMBED: ${ALLOW_EMBED:-false}
       TOP_K_MAX_VALUE: ${TOP_K_MAX_VALUE:-}
       INDEXING_MAX_SEGMENTATION_TOKENS_LENGTH: ${INDEXING_MAX_SEGMENTATION_TOKENS_LENGTH:-}
 
