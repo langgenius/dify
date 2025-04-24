@@ -32,4 +32,4 @@ class LindormConfig(BaseSettings):
         description="Using UGC index will store the same type of Index in a single index but can retrieve separately.",
         default=False,
     )
-    QUERY_TIMEOUT: Optional[float] = Field(description="The lindorm search request timeout (s)", default=2.0)
+    LINDORM_QUERY_TIMEOUT: Optional[float] = Field(description="The lindorm search request timeout (s)", default=2.0)

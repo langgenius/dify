@@ -555,7 +555,7 @@ class LindormVectorStoreFactory(AbstractVectorFactory):
             username=dify_config.LINDORM_USERNAME,
             password=dify_config.LINDORM_PASSWORD,
             using_ugc=dify_config.USING_UGC_INDEX,
-            request_timeout=dify_config.QUERY_TIMEOUT,
+            request_timeout=dify_config.LINDORM_QUERY_TIMEOUT,
         )
         using_ugc = dify_config.USING_UGC_INDEX
         if using_ugc is None:
