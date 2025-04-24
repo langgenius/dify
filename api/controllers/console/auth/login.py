@@ -91,11 +91,7 @@ class LoginApi(Resource):
         if len(tenants) == 0:
             system_features = FeatureService.get_system_features()
 
-            if (
-                system_features.is_allow_create_workspace
-                and system_features.license.workspaces.limit != 0
-                and system_features.license.workspaces.limit - system_features.license.workspaces.size <= 0
-            ):
+            if system_features.is_allow_create_workspace and not system_features.license.workspaces.is_available():
                 raise WorkspacesLimitExceeded()
             else:
                 return {
@@ -209,11 +205,7 @@ class EmailCodeLoginApi(Resource):
             tenant = TenantService.get_join_tenants(account)
             if not tenant:
                 workspaces = FeatureService.get_system_features().license.workspaces
-                if (
-                    FeatureService.get_system_features().license.product_id == "DIFY_ENTERPRISE_STANDARD"
-                    and workspaces.limit != 0  # if limit == 0 means unlimited
-                    and workspaces.limit - workspaces.size <= 0
-                ):
+                if not workspaces.is_available():
                     raise WorkspacesLimitExceeded()
                 if not FeatureService.get_system_features().is_allow_create_workspace:
                     raise NotAllowedCreateWorkspace()

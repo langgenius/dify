@@ -58,11 +58,8 @@ class MemberInviteEmailApi(Resource):
         console_web_url = dify_config.CONSOLE_WEB_URL
 
         workspace_members = FeatureService.get_features(tenant_id=inviter.current_tenant.id).workspace_members
-        if (
-            FeatureService.get_system_features().license.product_id == "DIFY_ENTERPRISE_STANDARD"
-            and workspace_members.limit != 0  # if limit == 0, it means unlimited
-            and len(invitee_emails) > workspace_members.limit - workspace_members.size
-        ):
+
+        if not workspace_members.is_available(len(invitee_emails)):
             raise WorkspaceMembersLimitExceeded()
 
         for invitee_email in invitee_emails:
