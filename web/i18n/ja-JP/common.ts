@@ -622,6 +622,7 @@ const translation = {
   pagination: {
     perPage: 'ページあたりのアイテム数',
   },
+  you: 'あなた',
 }
 
 export default translation

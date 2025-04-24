@@ -57,9 +57,9 @@ const translation = {
         invalidHexMessage: 'Неверное HEX-значение',
         sso: {
           label: 'SSO аутентификация',
-          title: 'WebApp SSO',
-          description: 'Все пользователи должны войти в систему с помощью SSO перед использованием WebApp',
-          tooltip: 'Обратитесь к администратору, чтобы включить WebApp SSO',
+          title: 'web app SSO',
+          description: 'Все пользователи должны войти в систему с помощью SSO перед использованием web app',
+          tooltip: 'Обратитесь к администратору, чтобы включить web app SSO',
         },
         more: {
           entry: 'Показать больше настроек',

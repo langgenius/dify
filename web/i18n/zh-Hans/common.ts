@@ -622,6 +622,7 @@ const translation = {
   pagination: {
     perPage: '每页显示',
   },
+  you: '你',
 }
 
 export default translation

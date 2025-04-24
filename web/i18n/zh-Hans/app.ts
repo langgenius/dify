@@ -113,9 +113,9 @@ const translation = {
     image: '图片',
   },
   answerIcon: {
-    title: '使用 WebApp 图标替换 🤖',
-    description: '是否使用 WebApp 图标替换分享的应用界面中的 🤖',
-    descriptionInExplore: '是否使用 WebApp 图标替换 Explore 界面中的 🤖',
+    title: '使用 web app 图标替换 🤖',
+    description: '是否使用 web app 图标替换分享的应用界面中的 🤖',
+    descriptionInExplore: '是否使用 web app 图标替换 Explore 界面中的 🤖',
   },
   switch: '迁移为工作流编排',
   switchTipStart: '将为您创建一个使用工作流编排的新应用。新应用将',
@@ -175,6 +175,36 @@ const translation = {
   },
   openInExplore: '在“探索”中打开',
   showMyCreatedAppsOnly: '我创建的',
+  accessControl: 'Web 应用访问控制',
+  accessControlDialog: {
+    title: 'Web 应用访问权限',
+    description: '设置 web 应用访问权限。',
+    accessLabel: '谁可以访问',
+    accessItems: {
+      anyone: '任何人',
+      specific: '特定组或成员',
+      organization: '组织内任何人',
+    },
+    groups_one: '{{count}} 个组',
+    groups_other: '{{count}} 个组',
+    members_one: '{{count}} 个成员',
+    members_other: '{{count}} 个成员',
+    noGroupsOrMembers: '未选择分组或成员',
+    webAppSSONotEnabledTip: '请联系企业管理员配置 web 应用的身份认证方式。',
+    operateGroupAndMember: {
+      searchPlaceholder: '搜索组或成员',
+      allMembers: '所有成员',
+      expand: '展开',
+      noResult: '没有结果',
+    },
+    updateSuccess: '更新成功',
+  },
+  publishApp: {
+    title: '谁可以访问 web 应用',
+    notSet: '未设置',
+    notSetDesc: '当前任何人都无法访问 Web 应用。请设置访问权限。',
+  },
+  noAccessPermission: '没有权限访问 web app ',
 }
 
 export default translation

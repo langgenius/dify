@@ -109,9 +109,9 @@ const translation = {
     image: 'Slika',
   },
   answerIcon: {
-    title: 'Uporabite ikono WebApp za zamenjavo 🤖',
-    description: 'Ali uporabiti ikono WebApp za zamenjavo 🤖 v deljeni aplikaciji',
-    descriptionInExplore: 'Ali uporabiti ikono WebApp za zamenjavo 🤖 v razdelku Razišči',
+    title: 'Uporabite ikono web app za zamenjavo 🤖',
+    description: 'Ali uporabiti ikono web app za zamenjavo 🤖 v deljeni aplikaciji',
+    descriptionInExplore: 'Ali uporabiti ikono web app za zamenjavo 🤖 v razdelku Razišči',
   },
   switch: 'Preklopi na Workflow Orchestrate',
   switchTipStart: 'Za vas bo ustvarjena nova kopija aplikacije, ki bo preklopila na Workflow Orchestrate. Nova kopija ne bo ',

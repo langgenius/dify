@@ -1,13 +1,18 @@
 import {
   memo,
   useCallback,
+  useEffect,
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import dayjs from 'dayjs'
-import { RiArrowDownSLine, RiPlanetLine } from '@remixicon/react'
+import { RiArrowDownSLine, RiArrowRightSLine, RiLockLine, RiPlanetLine } from '@remixicon/react'
 import Toast from '../../base/toast'
 import type { ModelAndParameter } from '../configuration/debug/types'
+import Divider from '../../base/divider'
+import AccessControl from '../app-access-control'
+import Loading from '../../base/loading'
+import Tooltip from '../../base/tooltip'
 import SuggestedAction from './suggested-action'
 import PublishWithMultipleModel from './publish-with-multiple-model'
 import Button from '@/app/components/base/button'
@@ -27,6 +32,9 @@ import { FileText } from '@/app/components/base/icons/src/vender/line/files'
 import WorkflowToolConfigureButton from '@/app/components/tools/workflow-tool/configure-button'
 import type { InputVar } from '@/app/components/workflow/types'
 import { appDefaultIconBackground } from '@/config'
+import { useAppWhiteListSubjects, useGetUserCanAccessApp } from '@/service/access-control'
+import { AccessMode } from '@/models/access-control'
+import { fetchAppDetail } from '@/service/apps'
 
 export type AppPublisherProps = {
   disabled?: boolean
@@ -65,10 +73,31 @@ const AppPublisher = ({
   const [published, setPublished] = useState(false)
   const [open, setOpen] = useState(false)
   const appDetail = useAppStore(state => state.appDetail)
+  const setAppDetail = useAppStore(s => s.setAppDetail)
   const { app_base_url: appBaseURL = '', access_token: accessToken = '' } = appDetail?.site ?? {}
   const appMode = (appDetail?.mode !== 'completion' && appDetail?.mode !== 'workflow') ? 'chat' : appDetail.mode
   const appURL = `${appBaseURL}/${appMode}/${accessToken}`
+  const { data: useCanAccessApp, isLoading: isGettingUserCanAccessApp, refetch } = useGetUserCanAccessApp({ appId: appDetail?.id, enabled: false })
+  const { data: appAccessSubjects, isLoading: isGettingAppWhiteListSubjects } = useAppWhiteListSubjects(appDetail?.id, open && appDetail?.access_mode === AccessMode.SPECIFIC_GROUPS_MEMBERS)
 
+  useEffect(() => {
+    if (open && appDetail)
+      refetch()
+  }, [open, appDetail, refetch])
+
+  const [showAppAccessControl, setShowAppAccessControl] = useState(false)
+  const [isAppAccessSet, setIsAppAccessSet] = useState(true)
+  useEffect(() => {
+    if (appDetail && appAccessSubjects) {
+      if (appDetail.access_mode === AccessMode.SPECIFIC_GROUPS_MEMBERS && appAccessSubjects.groups?.length === 0 && appAccessSubjects.members?.length === 0)
+        setIsAppAccessSet(false)
+      else
+        setIsAppAccessSet(true)
+    }
+    else {
+      setIsAppAccessSet(true)
+    }
+  }, [appAccessSubjects, appDetail])
   const language = useGetLanguage()
   const formatTimeFromNow = useCallback((time: number) => {
     return dayjs(time).locale(language === 'zh_Hans' ? 'zh-cn' : language.replace('_', '-')).fromNow()
@@ -119,6 +148,13 @@ const AppPublisher = ({
       Toast.notify({ type: 'error', message: `${e.message || e}` })
     }
   }, [appDetail?.id])
+
+  const handleAccessControlUpdate = useCallback(() => {
+    fetchAppDetail({ url: '/apps', id: appDetail!.id }).then((res) => {
+      setAppDetail(res)
+      setShowAppAccessControl(false)
+    })
+  }, [appDetail, setAppDetail])
 
   const [embeddingModalOpen, setEmbeddingModalOpen] = useState(false)
 
@@ -196,58 +232,95 @@ const AppPublisher = ({
               )
             }
           </div>
-          <div className='p-4 pt-3 border-t-[0.5px] border-t-black/5'>
-            <SuggestedAction disabled={!publishedAt} link={appURL} icon={<PlayCircle />}>{t('workflow.common.runApp')}</SuggestedAction>
-            {appDetail?.mode === 'workflow'
-              ? (
-                <SuggestedAction
-                  disabled={!publishedAt}
-                  link={`${appURL}${appURL.includes('?') ? '&' : '?'}mode=batch`}
-                  icon={<LeftIndent02 className='w-4 h-4' />}
-                >
-                  {t('workflow.common.batchRunApp')}
-                </SuggestedAction>
-              )
-              : (
-                <SuggestedAction
+          {(isGettingUserCanAccessApp || isGettingAppWhiteListSubjects)
+            ? <div className='py-2'><Loading /></div>
+            : <>
+              <Divider className='my-0' />
+              <div className='p-4 pt-3'>
+                <div className='flex items-center h-6'>
+                  <p className='system-xs-medium text-text-tertiary'>{t('app.publishApp.title')}</p>
+                </div>
+                <div className='h-8 flex items-center pl-2.5 pr-2  py-1 gap-x-0.5 rounded-lg bg-components-input-bg-normal hover:bg-primary-50 hover:text-text-accent cursor-pointer'
                   onClick={() => {
-                    setEmbeddingModalOpen(true)
-                    handleTrigger()
-                  }}
-                  disabled={!publishedAt}
-                  icon={<CodeBrowser className='w-4 h-4' />}
-                >
-                  {t('workflow.common.embedIntoSite')}
-                </SuggestedAction>
-              )}
-            <SuggestedAction
-              onClick={() => {
-                handleOpenInExplore()
-              }}
-              disabled={!publishedAt}
-              icon={<RiPlanetLine className='w-4 h-4' />}
-            >
-              {t('workflow.common.openInExplore')}
-            </SuggestedAction>
-            <SuggestedAction disabled={!publishedAt} link='./develop' icon={<FileText className='w-4 h-4' />}>{t('workflow.common.accessAPIReference')}</SuggestedAction>
-            {appDetail?.mode === 'workflow' && (
-              <WorkflowToolConfigureButton
-                disabled={!publishedAt}
-                published={!!toolPublished}
-                detailNeedUpdate={!!toolPublished && published}
-                workflowAppId={appDetail?.id}
-                icon={{
-                  content: (appDetail.icon_type === 'image' ? '🤖' : appDetail?.icon) || '🤖',
-                  background: (appDetail.icon_type === 'image' ? appDefaultIconBackground : appDetail?.icon_background) || appDefaultIconBackground,
-                }}
-                name={appDetail?.name}
-                description={appDetail?.description}
-                inputs={inputs}
-                handlePublish={handlePublish}
-                onRefreshData={onRefreshData}
-              />
-            )}
-          </div>
+                    setShowAppAccessControl(true)
+                  }}>
+                  <div className='grow flex items-center gap-x-1.5 pr-1'>
+                    <RiLockLine className='w-4 h-4 text-text-secondary shrink-0' />
+                    {appDetail?.access_mode === AccessMode.ORGANIZATION && <p className='system-sm-medium text-text-secondary'>{t('app.accessControlDialog.accessItems.organization')}</p>}
+                    {appDetail?.access_mode === AccessMode.SPECIFIC_GROUPS_MEMBERS && <p className='system-sm-medium text-text-secondary'>{t('app.accessControlDialog.accessItems.specific')}</p>}
+                    {appDetail?.access_mode === AccessMode.PUBLIC && <p className='system-sm-medium text-text-secondary'>{t('app.accessControlDialog.accessItems.anyone')}</p>}
+                  </div>
+                  {!isAppAccessSet && <p className='shrink-0 system-xs-regular text-text-tertiary'>{t('app.publishApp.notSet')}</p>}
+                  <div className='shrink-0 w-4 h-4 flex items-center justify-center'>
+                    <RiArrowRightSLine className='w-4 h-4 text-text-quaternary' />
+                  </div>
+                </div>
+                {!isAppAccessSet && <p className='system-xs-regular text-text-warning mt-1'>{t('app.publishApp.notSetDesc')}</p>}
+              </div>
+              <div className='p-4 pt-3 border-t-[0.5px] border-t-black/5 flex flex-col gap-y-1'>
+                <Tooltip triggerClassName='flex' disabled={useCanAccessApp?.result} popupContent={t('app.noAccessPermission')} asChild={false}>
+                  <SuggestedAction disabled={!publishedAt || !useCanAccessApp?.result} link={appURL} icon={<PlayCircle />}>{t('workflow.common.runApp')}</SuggestedAction>
+                </Tooltip>
+                {appDetail?.mode === 'workflow'
+                  ? (<div className='flex'>
+                    <SuggestedAction
+                      disabled={!publishedAt}
+                      link={`${appURL}${appURL.includes('?') ? '&' : '?'}mode=batch`}
+                      icon={<LeftIndent02 className='w-4 h-4' />}
+                    >
+                      {t('workflow.common.batchRunApp')}
+                    </SuggestedAction>
+                  </div>
+                  )
+                  : (<div className='flex'>
+                    <SuggestedAction
+                      onClick={() => {
+                        setEmbeddingModalOpen(true)
+                        handleTrigger()
+                      }}
+                      disabled={!publishedAt}
+                      icon={<CodeBrowser className='w-4 h-4' />}
+                    >
+                      {t('workflow.common.embedIntoSite')}
+                    </SuggestedAction>
+                  </div>
+                  )}
+                <Tooltip triggerClassName='flex' disabled={useCanAccessApp?.result} popupContent={t('app.noAccessPermission')} asChild={false}>
+                  <SuggestedAction
+                    onClick={() => {
+                      handleOpenInExplore()
+                    }}
+                    disabled={!publishedAt || !useCanAccessApp?.result}
+                    icon={<RiPlanetLine className='w-4 h-4' />}
+                  >
+                    {t('workflow.common.openInExplore')}
+                  </SuggestedAction>
+                </Tooltip>
+                <div className='flex' >
+                  <SuggestedAction disabled={!publishedAt} link='./develop' icon={<FileText className='w-4 h-4' />}>{t('workflow.common.accessAPIReference')}</SuggestedAction>
+                </div>
+
+                {appDetail?.mode === 'workflow' && (
+                  <div className='flex' >
+                    <WorkflowToolConfigureButton
+                      disabled={!publishedAt}
+                      published={!!toolPublished}
+                      detailNeedUpdate={!!toolPublished && published}
+                      workflowAppId={appDetail?.id}
+                      icon={{
+                        content: (appDetail.icon_type === 'image' ? '🤖' : appDetail?.icon) || '🤖',
+                        background: (appDetail.icon_type === 'image' ? appDefaultIconBackground : appDetail?.icon_background) || appDefaultIconBackground,
+                      }}
+                      name={appDetail?.name}
+                      description={appDetail?.description}
+                      inputs={inputs}
+                      handlePublish={handlePublish}
+                      onRefreshData={onRefreshData}
+                    />
+                  </div>
+                )}
+              </div>
+            </>}
         </div>
       </PortalToFollowElemContent>
       <EmbeddedModal
@@ -257,6 +330,7 @@ const AppPublisher = ({
         appBaseUrl={appBaseURL}
         accessToken={accessToken}
       />
+      {showAppAccessControl && <AccessControl app={appDetail!} onConfirm={handleAccessControlUpdate} onClose={() => { setShowAppAccessControl(false) }} />}
     </PortalToFollowElem >
   )
 }

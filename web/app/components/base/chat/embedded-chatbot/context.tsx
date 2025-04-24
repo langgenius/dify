@@ -14,8 +14,11 @@ import type {
   AppMeta,
   ConversationItem,
 } from '@/models/share'
+import { AccessMode } from '@/models/access-control'
 
 export type EmbeddedChatbotContextValue = {
+  accessMode?: AccessMode
+  userCanAccess?: boolean
   appInfoError?: any
   appInfoLoading?: boolean
   appMeta?: AppMeta
@@ -46,6 +49,8 @@ export type EmbeddedChatbotContextValue = {
 }
 
 export const EmbeddedChatbotContext = createContext<EmbeddedChatbotContextValue>({
+  userCanAccess: false,
+  accessMode: AccessMode.SPECIFIC_GROUPS_MEMBERS,
   currentConversationId: '',
   appPrevChatList: [],
   pinnedConversationList: [],
@@ -53,16 +58,16 @@ export const EmbeddedChatbotContext = createContext<EmbeddedChatbotContextValue>
   showConfigPanelBeforeChat: false,
   newConversationInputs: {},
   newConversationInputsRef: { current: {} },
-  handleNewConversationInputsChange: () => {},
+  handleNewConversationInputsChange: () => { },
   inputsForms: [],
-  handleNewConversation: () => {},
-  handleStartChat: () => {},
-  handleChangeConversation: () => {},
-  handleNewConversationCompleted: () => {},
+  handleNewConversation: () => { },
+  handleStartChat: () => { },
+  handleChangeConversation: () => { },
+  handleNewConversationCompleted: () => { },
   chatShouldReloadKey: '',
   isMobile: false,
   isInstalledApp: false,
-  handleFeedback: () => {},
-  currentChatInstanceRef: { current: { handleStop: () => {} } },
+  handleFeedback: () => { },
+  currentChatInstanceRef: { current: { handleStop: () => { } } },
 })
 export const useEmbeddedChatbotContext = () => useContext(EmbeddedChatbotContext)

@@ -42,6 +42,7 @@ import { changeLanguage } from '@/i18n/i18next-config'
 import { useAppFavicon } from '@/hooks/use-app-favicon'
 import { InputVarType } from '@/app/components/workflow/types'
 import { TransferMethod } from '@/types/app'
+import { useGetAppAccessMode, useGetUserCanAccessApp } from '@/service/access-control'
 
 function getFormattedChatList(messages: any[]) {
   const newChatList: ChatItem[] = []
@@ -72,6 +73,8 @@ function getFormattedChatList(messages: any[]) {
 export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
   const isInstalledApp = useMemo(() => !!installedAppInfo, [installedAppInfo])
   const { data: appInfo, isLoading: appInfoLoading, error: appInfoError } = useSWR(installedAppInfo ? null : 'appInfo', fetchAppInfo)
+  const { isPending: isGettingAccessMode, data: appAccessMode } = useGetAppAccessMode({ appId: installedAppInfo?.app.id || appInfo?.app_id, isInstalledApp })
+  const { isPending: isCheckingPermission, data: userCanAccessResult } = useGetUserCanAccessApp({ appId: installedAppInfo?.app.id || appInfo?.app_id, isInstalledApp })
 
   useAppFavicon({
     enable: !installedAppInfo,
@@ -418,7 +421,9 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
 
   return {
     appInfoError,
-    appInfoLoading,
+    appInfoLoading: appInfoLoading || isGettingAccessMode || isCheckingPermission,
+    accessMode: appAccessMode?.accessMode,
+    userCanAccess: userCanAccessResult?.result,
     isInstalledApp,
     appId,
     currentConversationId,
