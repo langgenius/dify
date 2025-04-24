@@ -17,6 +17,10 @@ class EnterpriseService:
     def get_info(cls):
         return EnterpriseRequest.send_request("GET", "/info")
 
+    @classmethod
+    def get_workspace_info(cls, tenant_id:str):
+        return EnterpriseRequest.send_request("GET", f"/workspace/{tenant_id}/info")
+
     class WebAppAuth:
         @classmethod
         def is_user_allowed_to_access_webapp(cls, user_id: str, app_code: str) -> bool:

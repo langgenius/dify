@@ -1,6 +1,6 @@
 from enum import StrEnum
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 from configs import dify_config
 from services.billing_service import BillingService
@@ -22,6 +22,32 @@ class LimitationModel(BaseModel):
     limit: int = 0
 
 
+class LicenseLimitationModel(BaseModel):
+    """
+    - enabled: whether this limit is enforced
+    - size: current usage count
+    - limit: maximum allowed count; 0 means unlimited
+    """
+
+    enabled: bool = Field(False, description="Whether this limit is currently active")
+    size: int = Field(0, description="Number of resources already consumed")
+    limit: int = Field(0, description="Maximum number of resources allowed; 0 means no limit")
+
+    def is_available(self, required: int = 1) -> bool:
+        """
+        Determine whether the requested amount can be allocated.
+
+        Returns True if:
+         - this limit is not active, or
+         - the limit is zero (unlimited), or
+         - there is enough remaining quota.
+        """
+        if not self.enabled or self.limit == 0:
+            return True
+
+        return (self.limit - self.size) >= required
+
+
 class LicenseStatus(StrEnum):
     NONE = "none"
     INACTIVE = "inactive"
@@ -34,6 +60,7 @@ class LicenseStatus(StrEnum):
 class LicenseModel(BaseModel):
     status: LicenseStatus = LicenseStatus.NONE
     expired_at: str = ""
+    workspaces: LicenseLimitationModel = LicenseLimitationModel(enabled=False, size=0, limit=0)
 
 
 class BrandingModel(BaseModel):
@@ -68,6 +95,7 @@ class FeatureModel(BaseModel):
     model_load_balancing_enabled: bool = False
     dataset_operator_enabled: bool = False
     webapp_copyright_enabled: bool = False
+    workspace_members: LicenseLimitationModel = LicenseLimitationModel(enabled=False, size=0, limit=0)
 
     # pydantic configs
     model_config = ConfigDict(protected_namespaces=())
@@ -99,6 +127,7 @@ class FeatureService:
 
         if dify_config.ENTERPRISE_ENABLED:
             features.webapp_copyright_enabled = True
+            cls._fulfill_params_from_workspace_info(features, tenant_id)
 
         return features
 
@@ -129,6 +158,14 @@ class FeatureService:
         features.can_replace_logo = dify_config.CAN_REPLACE_LOGO
         features.model_load_balancing_enabled = dify_config.MODEL_LB_ENABLED
         features.dataset_operator_enabled = dify_config.DATASET_OPERATOR_ENABLED
+
+    @classmethod
+    def _fulfill_params_from_workspace_info(cls, features: FeatureModel, tenant_id: str):
+        workspace_info = EnterpriseService.get_workspace_info(tenant_id)
+        if "WorkspaceMembers" in workspace_info:
+            features.workspace_members.size = workspace_info["WorkspaceMembers"]["used"]
+            features.workspace_members.limit = workspace_info["WorkspaceMembers"]["limit"]
+            features.workspace_members.enabled = workspace_info["WorkspaceMembers"]["enabled"]
 
     @classmethod
     def _fulfill_params_from_billing_api(cls, features: FeatureModel, tenant_id: str):
@@ -216,3 +253,8 @@ class FeatureService:
 
             if "expiredAt" in license_info:
                 features.license.expired_at = license_info["expiredAt"]
+
+            if "workspaces" in license_info:
+                features.license.workspaces.enabled = license_info["workspaces"]["enabled"]
+                features.license.workspaces.limit = license_info["workspaces"]["limit"]
+                features.license.workspaces.size = license_info["workspaces"]["used"]

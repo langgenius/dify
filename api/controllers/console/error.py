@@ -46,6 +46,18 @@ class NotAllowedCreateWorkspace(BaseHTTPException):
     code = 400
 
 
+class WorkspaceMembersLimitExceeded(BaseHTTPException):
+    error_code = "limit_exceeded"
+    description = "Unable to add member because the maximum workspace's member limit was exceeded"
+    code = 400
+
+
+class WorkspacesLimitExceeded(BaseHTTPException):
+    error_code = "limit_exceeded"
+    description = "Unable to create workspace because the maximum workspace limit was exceeded"
+    code = 400
+
+
 class AccountBannedError(BaseHTTPException):
     error_code = "account_banned"
     description = "Account is banned."

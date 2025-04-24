@@ -49,7 +49,7 @@ from services.errors.account import (
     RoleAlreadyAssignedError,
     TenantNotFoundError,
 )
-from services.errors.workspace import WorkSpaceNotAllowedCreateError
+from services.errors.workspace import WorkSpaceNotAllowedCreateError, WorkspacesLimitExceededError
 from services.feature_service import FeatureService
 from tasks.delete_account_task import delete_account_task
 from tasks.mail_account_deletion_task import send_account_deletion_verification_code
@@ -598,6 +598,10 @@ class TenantService:
         """Create owner tenant if not exist"""
         if not FeatureService.get_system_features().is_allow_create_workspace and not is_setup:
             raise WorkSpaceNotAllowedCreateError()
+
+        workspaces = FeatureService.get_system_features().license.workspaces
+        if not workspaces.is_available():
+            raise WorkspacesLimitExceededError()
 
         if name:
             tenant = TenantService.create_tenant(name=name, is_setup=is_setup)
