@@ -379,11 +379,11 @@ export enum VarInInspectType {
 }
 
 export type VarInInspect = {
-  id: string
+  id?: string // value parse from output not has id
   type: VarInInspectType
   name: string
   description: string
-  selector: ValueSelector
+  selector: ValueSelector // can get node id from selector[0]
   value_type: VarType
   value: any
   edited: boolean

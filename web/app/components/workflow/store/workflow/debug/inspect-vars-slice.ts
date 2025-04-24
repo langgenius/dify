@@ -1,15 +1,16 @@
 import type { StateCreator } from 'zustand'
 import produce from 'immer'
 import type { NodeWithVar, VarInInspect } from '@/types/workflow'
-import type { ValueSelector } from '../../types'
+import type { ValueSelector } from '../../../types'
 
 type InspectVarsState = {
   currentFocusNodeId: string | null
-  nodes: NodeWithVar[] // the nodes have data
+  nodesWithInspectVars: NodeWithVar[] // the nodes have data
   conversationVars: VarInInspect[]
 }
 
 type InspectVarsActions = {
+  setCurrentFocusNodeId: (nodeId: string | null) => void
   getAllInspectVars: () => NodeWithVar[]
   clearInspectVars: () => void
   setNodeInspectVars: (nodeId: string, payload: NodeWithVar) => void
@@ -20,24 +21,29 @@ type InspectVarsActions = {
   getInspectVar: (nodeId: string, selector: ValueSelector) => any
 }
 
-export type CurrentVarsSliceShape = InspectVarsState & InspectVarsActions
+export type InspectVarsSliceShape = InspectVarsState & InspectVarsActions
 
-export const createInspectVarsSlice: StateCreator<CurrentVarsSliceShape> = (set, get) => {
+export const createInspectVarsSlice: StateCreator<InspectVarsSliceShape> = (set, get) => {
   return ({
     currentFocusNodeId: null,
-    nodes: [],
+    nodesWithInspectVars: [],
     conversationVars: [],
+    setCurrentFocusNodeId: (nodeId) => {
+      set(() => ({
+        currentFocusNodeId: nodeId,
+      }))
+    },
     getAllInspectVars: () => {
-      return get().nodes
+      return get().nodesWithInspectVars
     },
     clearInspectVars: () => {
       set(() => ({
-        nodes: [],
+        nodesWithInspectVars: [],
       }))
     },
     setNodeInspectVars: (nodeId, payload) => {
       set((state) => {
-        const prevNodes = state.nodes
+        const prevNodes = state.nodesWithInspectVars
         const nodes = produce(prevNodes, (draft) => {
           const index = prevNodes.findIndex(node => node.nodeId === nodeId)
           if (index === -1)
@@ -47,27 +53,27 @@ export const createInspectVarsSlice: StateCreator<CurrentVarsSliceShape> = (set,
         })
 
         return {
-          nodes,
+          nodesWithInspectVars: nodes,
         }
       })
     },
     clearNodeInspectVars: (nodeId) => {
-      set(produce((state: CurrentVarsSliceShape) => {
-        const nodes = state.nodes.filter(node => node.nodeId !== nodeId)
-        state.nodes = nodes
+      set(produce((state: InspectVarsSliceShape) => {
+        const nodes = state.nodesWithInspectVars.filter(node => node.nodeId !== nodeId)
+        state.nodesWithInspectVars = nodes
       },
       ))
     },
     getNodeInspectVars: (nodeId) => {
-      const nodes = get().nodes
+      const nodes = get().nodesWithInspectVars
       return nodes.find(node => node.nodeId === nodeId)
     },
     hasNodeInspectVars: (nodeId) => {
       return !!get().getNodeInspectVars(nodeId)
     },
     setInspectVar: (nodeId, selector, value) => {
-      set(produce((state: CurrentVarsSliceShape) => {
-        const nodes = state.nodes.map((node) => {
+      set(produce((state: InspectVarsSliceShape) => {
+        const nodes = state.nodesWithInspectVars.map((node) => {
           if (node.nodeId === nodeId) {
             return produce(node, (draft) => {
               const needChangeVarIndex = draft.vars.findIndex((varItem) => {
@@ -79,7 +85,7 @@ export const createInspectVarsSlice: StateCreator<CurrentVarsSliceShape> = (set,
           }
           return node
         })
-        state.nodes = nodes
+        state.nodesWithInspectVars = nodes
       }))
     },
     getInspectVar(nodeId, key) {

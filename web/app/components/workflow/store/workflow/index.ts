@@ -28,10 +28,10 @@ import type { WorkflowDraftSliceShape } from './workflow-draft-slice'
 import { createWorkflowDraftSlice } from './workflow-draft-slice'
 import type { WorkflowSliceShape } from './workflow-slice'
 import { createWorkflowSlice } from './workflow-slice'
-import type { LastRunSliceShape } from './last-run-slice'
-import { createLastRunSlice } from './last-run-slice'
-import type { CurrentVarsSliceShape } from './var-inspect-slice'
-import { createInspectVarsSlice } from './var-inspect-slice'
+import type { LastRunSliceShape } from './debug/last-run-slice'
+import { createLastRunSlice } from './debug/last-run-slice'
+import type { InspectVarsSliceShape } from './debug/inspect-vars-slice'
+import { createInspectVarsSlice } from './debug/inspect-vars-slice'
 
 import { WorkflowContext } from '@/app/components/workflow/context'
 import type { LayoutSliceShape } from './layout-slice'
@@ -51,7 +51,7 @@ export type Shape =
   WorkflowDraftSliceShape &
   WorkflowSliceShape &
   LastRunSliceShape &
-  CurrentVarsSliceShape &
+  InspectVarsSliceShape &
   LayoutSliceShape &
   WorkflowAppSliceShape
 
