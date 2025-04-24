@@ -1,5 +1,4 @@
 import json
-import logging
 from typing import Optional, Union
 
 from core.app.apps.advanced_chat.app_config_manager import AdvancedChatAppConfigManager
