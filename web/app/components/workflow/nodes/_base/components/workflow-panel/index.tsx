@@ -8,8 +8,6 @@ import {
   useCallback,
   useEffect,
   useMemo,
-  useRef,
-  useState,
 } from 'react'
 import {
   RiCloseLine,
@@ -51,10 +49,8 @@ import { useStore as useAppStore } from '@/app/components/app/store'
 import { useStore } from '@/app/components/workflow/store'
 import Tab, { TabType } from './tab'
 import LastRun from './last-run'
-import useOneStepRun from '../../hooks/use-one-step-run'
-import type { PanelExposedType } from '@/types/workflow'
+import useLastRun from './last-run/use-last-run'
 import BeforeRunForm from '../before-run-form'
-import { sleep } from '@/utils'
 import { debounce } from 'lodash-es'
 import { NODES_EXTRA_DATA } from '@/app/components/workflow/constants'
 
@@ -138,42 +134,33 @@ const BasePanel: FC<BasePanelProps> = ({
   }, [handleNodeDataUpdateWithSyncDraft, id, saveStateToHistory])
 
   const isSupportSingleRun = canRunBySingle(data.type)
-  const childPanelRef = useRef<PanelExposedType>(null)
+  const appDetail = useAppStore(state => state.appDetail)
 
   const {
     isShowSingleRun,
     showSingleRun,
     hideSingleRun,
     runningStatus,
-    handleRun: callRunApi,
     handleStop,
     runInputData,
     runInputDataRef,
-    setRunInputData: doSetRunInputData,
     runResult,
     getInputVars,
     toVarInputs,
-  } = useOneStepRun<typeof data>({
+    childPanelRef,
+    tabType,
+    setTabType,
+    singleRunParams,
+    setSingleRunParams,
+    setRunInputData,
+    hasLastRunData,
+    isDataFromHistory,
+    handleRun,
+  } = useLastRun<typeof data>({
     id,
     data,
     defaultRunInputData: NODES_EXTRA_DATA[data.type]?.defaultRunInputData || {},
   })
-  const [singleRunParams, setSingleRunParams] = useState<PanelExposedType['singleRunParams'] | undefined>(undefined)
-
-  const setRunInputData = useCallback(async (data: Record<string, any>) => {
-    doSetRunInputData(data)
-    // console.log(childPanelRef.current?.singleRunParams)
-    await sleep(0) // wait for childPanelRef.current?.singleRunParams refresh
-    setSingleRunParams(childPanelRef.current?.singleRunParams)
-  }, [doSetRunInputData])
-
-  const [tabType, setTabType] = useState<TabType>(TabType.lastRun)
-  const handleRun = async (data: Record<string, any>) => {
-    setTabType(TabType.lastRun)
-    callRunApi(data)
-    hideSingleRun()
-  }
-  const hasLastRunData = true // TODO: add disabled logic
 
   return (
     <div className={cn(
@@ -307,7 +294,7 @@ const BasePanel: FC<BasePanelProps> = ({
         )}
 
         {tabType === TabType.lastRun && (
-          <LastRun nodeId={id} runningStatus={runningStatus} />
+          <LastRun appId={appDetail?.id || ''} nodeId={id} runningStatus={runningStatus} isDataFromHistory={isDataFromHistory} />
         )}
 
         {

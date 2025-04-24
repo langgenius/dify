@@ -67,7 +67,7 @@ const checkValidFns: Record<BlockEnum, Function> = {
   [BlockEnum.Loop]: checkLoopValid,
 } as any
 
-type Params<T> = {
+export type Params<T> = {
   id: string
   data: CommonNodeType<T>
   defaultRunInputData: Record<string, any>
