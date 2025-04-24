@@ -1,4 +1,3 @@
-import logging
 
 from pydantic import BaseModel, Field
 
@@ -46,7 +45,6 @@ class EnterpriseService:
                 raise ValueError("No data found.")
 
             if not isinstance(data["accessModes"], dict):
-                logging.info(f"Batch get app access mode by id returns data: {data}")
                 raise ValueError("Invalid data format.")
 
             ret = {}
@@ -55,7 +53,6 @@ class EnterpriseService:
                 curr.access_mode = value
                 ret[key] = curr
 
-            logging.info(f"Batch get app access mode by id returns data: {ret}")
             return ret
 
         @classmethod

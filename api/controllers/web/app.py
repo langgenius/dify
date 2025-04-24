@@ -1,4 +1,3 @@
-import logging
 
 from flask import request
 from flask_restful import Resource, marshal_with, reqparse  # type: ignore
@@ -84,10 +83,7 @@ class AppWebAuthPermission(Resource):
         args = parser.parse_args()
 
         app_id = args["appId"]
-        logging.info(f"App ID: {app_id}, User ID: {user_id}")
-
         app_code = AppService.get_app_code_by_id(app_id)
-        logging.info(f"App code: {app_code}")
 
         res = EnterpriseService.WebAppAuth.is_user_allowed_to_access_webapp(str(user_id), app_code)
         return {"result": res}
