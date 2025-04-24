@@ -175,7 +175,7 @@ const translation = {
   },
   openInExplore: '在“探索”中打开',
   showMyCreatedAppsOnly: '我创建的',
-  accessControl: 'web 应用访问控制',
+  accessControl: 'Web 应用访问控制',
   accessControlDialog: {
     title: 'Web 应用访问权限',
     description: '设置 web 应用访问权限。',
