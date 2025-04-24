@@ -2,7 +2,7 @@ import { useDataSources } from '@/service/use-common'
 import { useCallback, useMemo } from 'react'
 import { NotionPageSelector } from '@/app/components/base/notion-page-selector'
 import type { NotionPage } from '@/models/common'
-import { NotionConnector } from '@/app/components/base/notion-connector'
+import NotionConnector from '@/app/components/base/notion-connector'
 import { useModalContextSelector } from '@/context/modal-context'
 
 type NotionProps = {
@@ -34,6 +34,7 @@ const Notion = ({
           value={notionPages.map(page => page.page_id)}
           onSelect={updateNotionPages}
           canPreview={false}
+          isInPipeline
         />
       )}
     </>

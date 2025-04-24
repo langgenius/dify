@@ -1,13 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import useSWR from 'swr'
-import { RiEqualizer2Line } from '@remixicon/react'
 import WorkspaceSelector from './workspace-selector'
 import SearchInput from './search-input'
 import PageSelector from './page-selector'
-import { preImportNotionPages } from '@/service/datasets'
 import type { DataSourceNotionPageMap, DataSourceNotionWorkspace, NotionPage } from '@/models/common'
 import { useModalContextSelector } from '@/context/modal-context'
-import { NotionConnector } from '../notion-connector'
+import NotionConnector from '../notion-connector'
+import { usePreImportNotionPages } from '@/service/knowledge/use-import'
+import Header from './header'
 
 type NotionPageSelectorProps = {
   value?: string[]
@@ -16,6 +15,7 @@ type NotionPageSelectorProps = {
   previewPageId?: string
   onPreview?: (selectedPage: NotionPage) => void
   datasetId?: string
+  isInPipeline?: boolean
 }
 
 const NotionPageSelector = ({
@@ -25,8 +25,9 @@ const NotionPageSelector = ({
   previewPageId,
   onPreview,
   datasetId = '',
+  isInPipeline = false,
 }: NotionPageSelectorProps) => {
-  const { data, mutate } = useSWR({ url: '/notion/pre-import/pages', datasetId }, preImportNotionPages)
+  const { data, refetch } = usePreImportNotionPages({ url: '/notion/pre-import/pages', datasetId })
   const [prevData, setPrevData] = useState(data)
   const [searchValue, setSearchValue] = useState('')
   const [currentWorkspaceId, setCurrentWorkspaceId] = useState('')
@@ -86,47 +87,52 @@ const NotionPageSelector = ({
     setCurrentWorkspaceId(firstWorkspaceId)
   }, [firstWorkspaceId])
 
+  const handleConfigureNotion = useCallback(() => {
+    setShowAccountSettingModal({ payload: 'data-source', onCancelCallback: refetch })
+  }, [setShowAccountSettingModal, refetch])
+
   return (
     <>
       {
         data?.notion_info?.length
           ? (
-            <div className='rounded-xl border border-components-panel-border bg-background-default-subtle'>
-              <div className='flex h-12 items-center gap-x-2 rounded-t-xl border-b border-b-divider-regular bg-components-panel-bg p-2'>
-                <div className='flex grow items-center gap-x-1'>
-                  <WorkspaceSelector
-                    value={currentWorkspaceId || firstWorkspaceId}
-                    items={notionWorkspaces}
-                    onSelect={handleSelectWorkspace}
-                  />
-                  <div className='mx-1 h-3 w-[1px] bg-divider-regular' />
-                  <RiEqualizer2Line
-                    className='h-4 w-4 cursor-pointer text-text-tertiary'
-                    onClick={() => setShowAccountSettingModal({ payload: 'data-source', onCancelCallback: mutate })}
+            <div className='flex flex-col gap-y-2'>
+              <Header
+                isInPipeline={isInPipeline}
+                handleConfigureNotion={handleConfigureNotion}
+              />
+              <div className='rounded-xl border border-components-panel-border bg-background-default-subtle'>
+                <div className='flex h-12 items-center gap-x-2 rounded-t-xl border-b border-b-divider-regular bg-components-panel-bg p-2'>
+                  <div className='flex grow items-center gap-x-1'>
+                    <WorkspaceSelector
+                      value={currentWorkspaceId || firstWorkspaceId}
+                      items={notionWorkspaces}
+                      onSelect={handleSelectWorkspace}
+                    />
+                  </div>
+                  <SearchInput
+                    value={searchValue}
+                    onChange={handleSearchValueChange}
                   />
                 </div>
-                <SearchInput
-                  value={searchValue}
-                  onChange={handleSearchValueChange}
-                />
-              </div>
-              <div className='overflow-hidden rounded-b-xl'>
-                <PageSelector
-                  value={selectedPagesId}
-                  disabledValue={getPagesMapAndSelectedPagesId[2]}
-                  searchValue={searchValue}
-                  list={currentWorkspace?.pages || []}
-                  pagesMap={getPagesMapAndSelectedPagesId[0]}
-                  onSelect={handleSelectPages}
-                  canPreview={canPreview}
-                  previewPageId={previewPageId}
-                  onPreview={handlePreviewPage}
-                />
+                <div className='overflow-hidden rounded-b-xl'>
+                  <PageSelector
+                    value={selectedPagesId}
+                    disabledValue={getPagesMapAndSelectedPagesId[2]}
+                    searchValue={searchValue}
+                    list={currentWorkspace?.pages || []}
+                    pagesMap={getPagesMapAndSelectedPagesId[0]}
+                    onSelect={handleSelectPages}
+                    canPreview={canPreview}
+                    previewPageId={previewPageId}
+                    onPreview={handlePreviewPage}
+                  />
+                </div>
               </div>
             </div>
           )
           : (
-            <NotionConnector onSetting={() => setShowAccountSettingModal({ payload: 'data-source', onCancelCallback: mutate })} />
+            <NotionConnector onSetting={handleConfigureNotion} />
           )
       }
     </>

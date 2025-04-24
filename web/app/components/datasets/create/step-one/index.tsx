@@ -20,7 +20,7 @@ import { useProviderContext } from '@/context/provider-context'
 import VectorSpaceFull from '@/app/components/billing/vector-space-full'
 import classNames from '@/utils/classnames'
 import { ENABLE_WEBSITE_FIRECRAWL, ENABLE_WEBSITE_JINAREADER, ENABLE_WEBSITE_WATERCRAWL } from '@/config'
-import { NotionConnector } from '@/app/components/base/notion-connector'
+import NotionConnector from '@/app/components/base/notion-connector'
 
 type IStepOneProps = {
   datasetId?: string

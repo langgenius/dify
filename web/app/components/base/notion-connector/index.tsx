@@ -2,11 +2,13 @@ import { useTranslation } from 'react-i18next'
 import { Notion } from '../icons/src/public/common'
 import { Icon3Dots } from '../icons/src/vender/line/others'
 import Button from '../button'
+import React from 'react'
 
 type NotionConnectorProps = {
   onSetting: () => void
 }
-export const NotionConnector = ({ onSetting }: NotionConnectorProps) => {
+
+const NotionConnector = ({ onSetting }: NotionConnectorProps) => {
   const { t } = useTranslation()
 
   return (
@@ -25,3 +27,5 @@ export const NotionConnector = ({ onSetting }: NotionConnectorProps) => {
     </div>
   )
 }
+
+export default React.memo(NotionConnector)
