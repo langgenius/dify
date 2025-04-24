@@ -8,7 +8,6 @@ import cn from '@/utils/classnames'
 import Toast from '@/app/components/base/toast'
 import { fetchWebOAuth2SSOUrl, fetchWebOIDCSSOUrl, fetchWebSAMLSSOUrl } from '@/service/share'
 import { setAccessToken } from '@/app/components/share/utils'
-import Button from '@/app/components/base/button'
 import { useGlobalPublicStore } from '@/context/global-public-context'
 import { SSOProtocol } from '@/types/feature'
 import Loading from '@/app/components/base/loading'
@@ -97,10 +96,11 @@ const WebSSOForm: FC = () => {
 
   if (systemFeatures.webapp_auth.enabled) {
     if (systemFeatures.webapp_auth.allow_sso) {
+      handleSSOLogin()
       return (
         <div className="flex items-center justify-center h-full">
           <div className={cn('flex flex-col items-center w-full grow justify-center', 'px-6', 'md:px-[108px]')}>
-            <Button variant='primary' onClick={() => { handleSSOLogin() }}>{t('login.withSSO')}</Button>
+            <Loading />
           </div>
         </div>
       )
