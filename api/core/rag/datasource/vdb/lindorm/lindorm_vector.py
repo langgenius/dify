@@ -32,7 +32,7 @@ class LindormVectorStoreConfig(BaseModel):
     username: Optional[str] = None
     password: Optional[str] = None
     using_ugc: Optional[bool] = False
-    request_timeout: Optional[float] = 1.0      # timeout units: s
+    request_timeout: Optional[float] = 1.0  # timeout units: s
 
     @model_validator(mode="before")
     @classmethod
@@ -82,12 +82,12 @@ class LindormVectorStore(BaseVector):
         self._client.indices.refresh(index=self._collection_name)
 
     def add_texts(
-            self,
-            documents: list[Document],
-            embeddings: list[list[float]],
-            batch_size: int = 64,
-            timeout: int = 60,
-            **kwargs,
+        self,
+        documents: list[Document],
+        embeddings: list[list[float]],
+        batch_size: int = 64,
+        timeout: int = 60,
+        **kwargs,
     ):
         logger.info(f"Total documents to add: {len(documents)}")
         uuids = self._get_uuids(documents)
@@ -254,7 +254,7 @@ class LindormVectorStore(BaseVector):
         try:
             params = {"timeout": self._client_config.request_timeout}
             if self._using_ugc:
-                params["routing"] = self._routing
+                params["routing"] = self._routing  # type: ignore
             response = self._client.search(index=self._collection_name, body=query, params=params)
         except Exception:
             logger.exception(f"Error executing vector search, query: {query}")
@@ -445,17 +445,17 @@ def default_text_mapping(dimension: int, method_name: str, **kwargs: Any) -> dic
 
 
 def default_text_search_query(
-        query_text: str,
-        k: int = 4,
-        text_field: str = Field.CONTENT_KEY.value,
-        must: Optional[list[dict]] = None,
-        must_not: Optional[list[dict]] = None,
-        should: Optional[list[dict]] = None,
-        minimum_should_match: int = 0,
-        filters: Optional[list[dict]] = None,
-        routing: Optional[str] = None,
-        routing_field: Optional[str] = None,
-        **kwargs,
+    query_text: str,
+    k: int = 4,
+    text_field: str = Field.CONTENT_KEY.value,
+    must: Optional[list[dict]] = None,
+    must_not: Optional[list[dict]] = None,
+    should: Optional[list[dict]] = None,
+    minimum_should_match: int = 0,
+    filters: Optional[list[dict]] = None,
+    routing: Optional[str] = None,
+    routing_field: Optional[str] = None,
+    **kwargs,
 ) -> dict:
     query_clause: dict[str, Any] = {}
     if routing is not None:
@@ -502,17 +502,17 @@ def default_text_search_query(
 
 
 def default_vector_search_query(
-        query_vector: list[float],
-        k: int = 4,
-        min_score: str = "0.0",
-        ef_search: Optional[str] = None,  # only for hnsw
-        nprobe: Optional[str] = None,  # "2000"
-        reorder_factor: Optional[str] = None,  # "20"
-        client_refactor: Optional[str] = None,  # "true"
-        vector_field: str = Field.VECTOR.value,
-        filters: Optional[list[dict]] = None,
-        filter_type: Optional[str] = None,
-        **kwargs,
+    query_vector: list[float],
+    k: int = 4,
+    min_score: str = "0.0",
+    ef_search: Optional[str] = None,  # only for hnsw
+    nprobe: Optional[str] = None,  # "2000"
+    reorder_factor: Optional[str] = None,  # "20"
+    client_refactor: Optional[str] = None,  # "true"
+    vector_field: str = Field.VECTOR.value,
+    filters: Optional[list[dict]] = None,
+    filter_type: Optional[str] = None,
+    **kwargs,
 ) -> dict:
     if filters is not None:
         filter_type = "pre_filter" if filter_type is None else filter_type
@@ -555,7 +555,7 @@ class LindormVectorStoreFactory(AbstractVectorFactory):
             username=dify_config.LINDORM_USERNAME,
             password=dify_config.LINDORM_PASSWORD,
             using_ugc=dify_config.USING_UGC_INDEX,
-            request_timeout=dify_config.QUERY_TIMEOUT
+            request_timeout=dify_config.QUERY_TIMEOUT,
         )
         using_ugc = dify_config.USING_UGC_INDEX
         if using_ugc is None:
