@@ -27,7 +27,7 @@ const translation = {
     },
     uploader: {
       title: 'Cargar archivo',
-      button: 'Arrastra y suelta el archivo, o',
+      button: 'Arrastre y suelte archivos o carpetas, o',
       browse: 'Buscar',
       tip: 'Soporta {{supportTypes}}. Máximo {{size}}MB cada uno.',
       validation: {
