@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useContext } from 'use-context-selector'
 import { useTranslation } from 'react-i18next'
 import { RiListUnordered } from '@remixicon/react'
@@ -67,6 +67,17 @@ const Doc = ({ apiBaseUrl }: DocProps) => {
     }
   }
 
+  const Template = useMemo(() => {
+    switch (locale) {
+      case LanguagesSupported[1]:
+        return <TemplateZh apiBaseUrl={apiBaseUrl} />
+      case LanguagesSupported[7]:
+        return <TemplateJa apiBaseUrl={apiBaseUrl} />
+      default:
+        return <TemplateEn apiBaseUrl={apiBaseUrl} />
+    }
+  }, [apiBaseUrl, locale])
+
   return (
     <div className="flex">
       <div className={`fixed right-20 top-32 z-10 transition-all ${isTocExpanded ? 'w-64' : 'w-10'}`}>
@@ -107,16 +118,7 @@ const Doc = ({ apiBaseUrl }: DocProps) => {
           )}
       </div>
       <article className='prose-xl prose mx-1 rounded-t-xl bg-white px-4 pt-16 sm:mx-12'>
-        {(() => {
-          switch (locale) {
-            case LanguagesSupported[1]:
-              return <TemplateZh apiBaseUrl={apiBaseUrl} />
-            case LanguagesSupported[7]:
-              return <TemplateJa apiBaseUrl={apiBaseUrl} />
-            default:
-              return <TemplateEn apiBaseUrl={apiBaseUrl} />
-          }
-        })()}
+        {Template}
       </article>
     </div>
   )

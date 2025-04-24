@@ -558,10 +558,10 @@ services:
     volumes:
       - ./volumes/db/data:/var/lib/postgresql/data
     healthcheck:
-      test: [ 'CMD', 'pg_isready' ]
+      test: [ 'CMD', 'pg_isready', '-h', 'db', '-U', '${PGUSER:-postgres}', '-d', '${POSTGRES_DB:-dify}' ]
       interval: 1s
       timeout: 3s
-      retries: 30
+      retries: 60
 
   # The redis cache.
   redis:
@@ -643,7 +643,8 @@ services:
     volumes:
       - ./volumes/plugin_daemon:/app/storage
     depends_on:
-      - db
+      db:
+        condition: service_healthy
 
   # ssrf_proxy server
   # for more information, please refer to
