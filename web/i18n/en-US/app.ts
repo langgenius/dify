@@ -174,7 +174,7 @@ const translation = {
     },
   },
   showMyCreatedAppsOnly: 'Created by me',
-  accessControl: 'Web app Access Control',
+  accessControl: 'Web App Access Control',
   accessControlDialog: {
     title: 'Web App Access Control',
     description: 'Set web app access permissions',
