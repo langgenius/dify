@@ -3,7 +3,7 @@ app:
   icon: 🤖
   icon_background: '#FFEAD5'
   mode: workflow
-  name: 可用性告警
+  name: 可用性告警分析
   use_icon_as_answer_icon: false
 dependencies:
 - current_identifier: null
