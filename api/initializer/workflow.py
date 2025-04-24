@@ -160,7 +160,7 @@ def _adjust_workflows(language, account):
                 "api_token": "app-s8e5CusGAqNcjyTUbPCoJcu4"
             },
             "告警简单根因分析": {
-                "app_id": "8c175371-0c29-4342-bba1-a957609a2d3d"
+                "app_id": "a2d4d3aa-3401-4393-859e-df051bdd5cd1"
             },
             "可用性告警分析": {
                 "app_id": "40dea201-7aa4-4e27-865b-6ebeab91a0c3"

@@ -375,9 +375,9 @@ workflow:
       type: custom
       width: 244
     - data:
-        code: "\ndef main(arg1: str) -> dict:\n    res = \"8c175371-0c29-4342-bba1-a957609a2d3d\"\
+        code: "\ndef main(arg1: str) -> dict:\n    res = \"a2d4d3aa-3401-4393-859e-df051bdd5cd1\"\
           \n    match arg1:\n        case \"request_latency\":\n            res =\
-          \ \"8c175371-0c29-4342-bba1-a957609a2d3d\"\n        case \"service_availability\"\
+          \ \"a2d4d3aa-3401-4393-859e-df051bdd5cd1\"\n        case \"service_availability\"\
           :\n            res = \"40dea201-7aa4-4e27-865b-6ebeab91a0c3\"\n        case\
           \ \"infrastructure\":\n            res = \"f514d742-6043-498e-98f1-ab03cbcb0250\"\
           \n    return {\n        \"result\": res,\n    }\n"
