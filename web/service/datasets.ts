@@ -272,7 +272,7 @@ export const checkWatercrawlTaskStatus: Fetcher<CommonResponse, string> = (jobId
   })
 }
 
-type FileTypesRes = {
+export type FileTypesRes = {
   allowed_extensions: string[]
 }
 

@@ -1,6 +1,8 @@
 export { default as Chunk } from './Chunk'
 export { default as Collapse } from './Collapse'
+export { default as File } from './File'
 export { default as GeneralType } from './GeneralType'
 export { default as LayoutRight2LineMod } from './LayoutRight2LineMod'
 export { default as ParentChildType } from './ParentChildType'
 export { default as SelectionMod } from './SelectionMod'
+export { default as Watercrawl } from './Watercrawl'

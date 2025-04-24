@@ -5,11 +5,10 @@ import { getNewVarInWorkflow } from '@/utils/var'
 import { useField } from '@tanstack/react-form'
 import Label from '../../../components/label'
 import { useCallback, useMemo } from 'react'
-import useSWR from 'swr'
-import { fetchFileUploadConfig } from '@/service/common'
 import { useFileSizeLimit } from '@/app/components/base/file-uploader/hooks'
 import { formatFileSize } from '@/utils/format'
 import InputNumberWithSlider from '@/app/components/workflow/nodes/_base/components/input-number-with-slider'
+import { useFileUploadConfig } from '@/service/use-common'
 
 type MaxNumberOfUploadsFieldProps = {
   initialData?: InputVar
@@ -28,7 +27,7 @@ const UseMaxNumberOfUploadsField = ({
         const maxNumberOfUploadsField = useField({ form, name: 'max_length' })
         const { value: max_length = 0 } = maxNumberOfUploadsField.state
 
-        const { data: fileUploadConfigResponse } = useSWR({ url: '/files/upload' }, fetchFileUploadConfig)
+        const { data: fileUploadConfigResponse } = useFileUploadConfig()
         const {
           imgSizeLimit,
           docSizeLimit,

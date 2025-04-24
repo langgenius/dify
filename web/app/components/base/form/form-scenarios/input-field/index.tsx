@@ -1,12 +1,12 @@
 import { useTranslation } from 'react-i18next'
 import { useAppForm } from '../..'
-import type { FileTypeSelectOption, InputFieldFormProps } from './types'
+import { type FileTypeSelectOption, type InputFieldFormProps, TEXT_MAX_LENGTH, createInputFieldSchema } from './types'
 import { getNewVarInWorkflow } from '@/utils/var'
 import { useHiddenFieldNames, useInputTypeOptions } from './hooks'
 import Divider from '../../../divider'
 import { useCallback, useMemo, useState } from 'react'
 import { useStore } from '@tanstack/react-form'
-import { InputVarType } from '@/app/components/workflow/types'
+import { ChangeType, InputVarType } from '@/app/components/workflow/types'
 import ShowAllSettings from './show-all-settings'
 import Button from '../../../button'
 import UseFileTypesFields from './hooks/use-file-types-fields'
@@ -17,6 +17,7 @@ import { DEFAULT_VALUE_MAX_LEN } from '@/config'
 import { RiArrowDownSLine } from '@remixicon/react'
 import cn from '@/utils/classnames'
 import Badge from '../../../badge'
+import Toast from '../../../toast'
 
 const InputFieldForm = ({
   initialData,
@@ -29,13 +30,29 @@ const InputFieldForm = ({
     defaultValues: initialData || getNewVarInWorkflow(''),
     validators: {
       onSubmit: ({ value }) => {
-        // TODO: Add validation logic here
-        console.log('Validator form on submit:', value)
+        const { type } = value
+        const schema = createInputFieldSchema(type, t)
+        const result = schema.safeParse(value)
+        if (!result.success) {
+          const issues = result.error.issues
+          const firstIssue = issues[0].message
+          Toast.notify({
+            type: 'error',
+            message: firstIssue,
+          })
+          return firstIssue
+        }
+        return undefined
       },
     },
     onSubmit: ({ value }) => {
-      // TODO: Add submit logic here
-      onSubmit(value)
+      const moreInfo = value.variable === initialData?.variable
+        ? undefined
+        : {
+          type: ChangeType.changeVarName,
+          payload: { beforeKey: initialData?.variable || '', afterKey: value.variable },
+        }
+      onSubmit(value, moreInfo)
     },
   })
 
@@ -173,6 +190,8 @@ const InputFieldForm = ({
             children={field => (
               <field.NumberInputField
                 label={t('appDebug.variableConfig.maxLength')}
+                max={TEXT_MAX_LENGTH}
+                min={1}
               />
             )}
           />

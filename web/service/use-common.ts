@@ -5,13 +5,15 @@ import type {
   StructuredOutputRulesResponse,
 } from '@/models/common'
 import { useMutation, useQuery } from '@tanstack/react-query'
+import type { FileTypesRes } from './datasets'
 
 const NAME_SPACE = 'common'
 
-export const useFileUploadConfig = () => {
+export const useFileUploadConfig = (enabled?: true) => {
   return useQuery<FileUploadConfigResponse>({
     queryKey: [NAME_SPACE, 'file-upload-config'],
     queryFn: () => get<FileUploadConfigResponse>('/files/upload'),
+    enabled,
   })
 }
 
@@ -24,5 +26,12 @@ export const useGenerateStructuredOutputRules = () => {
         { body },
       )
     },
+  })
+}
+
+export const useFileSupportTypes = () => {
+  return useQuery<FileTypesRes>({
+    queryKey: [NAME_SPACE, 'file-types'],
+    queryFn: () => get<FileTypesRes>('/files/support-type'),
   })
 }
