@@ -61,7 +61,7 @@ const DatasetCard = ({
       if (onSuccess)
         onSuccess()
     }
-    catch (e: any) {
+    catch {
     }
     setShowConfirmDelete(false)
   }, [dataset.id, notify, onSuccess, t])

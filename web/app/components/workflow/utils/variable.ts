@@ -14,8 +14,5 @@ export const variableTransformer = (v: ValueSelector | string) => {
 }
 
 export const isExceptionVariable = (variable: string, nodeType?: BlockEnum) => {
-  if ((variable === 'error_message' || variable === 'error_type') && hasErrorHandleNode(nodeType))
-    return true
-
-  return false
+  return (variable === 'error_message' || variable === 'error_type') && hasErrorHandleNode(nodeType)
 }

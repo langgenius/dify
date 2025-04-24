@@ -73,7 +73,7 @@ const Panel = (props: PanelProps) => {
       setCreating(false)
       onCreate()
     }
-    catch (e: any) {
+    catch {
       notify({ type: 'error', message: t('common.tag.failed') })
       setCreating(false)
     }
@@ -83,7 +83,7 @@ const Panel = (props: PanelProps) => {
       await bindTag(tagIDs, targetID, type)
       notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
     }
-    catch (e: any) {
+    catch {
       notify({ type: 'error', message: t('common.actionMsg.modifiedUnsuccessfully') })
     }
   }
@@ -92,7 +92,7 @@ const Panel = (props: PanelProps) => {
       await unBindTag(tagID, targetID, type)
       notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
     }
-    catch (e: any) {
+    catch {
       notify({ type: 'error', message: t('common.actionMsg.modifiedUnsuccessfully') })
     }
   }

@@ -10,6 +10,7 @@ import Slider from '@/app/components/base/slider'
 import Radio from '@/app/components/base/radio'
 import { SimpleSelect } from '@/app/components/base/select'
 import TagInput from '@/app/components/base/tag-input'
+import { useTranslation } from 'react-i18next'
 
 export type ParameterValue = number | string | string[] | boolean | undefined
 
@@ -27,6 +28,7 @@ const ParameterItem: FC<ParameterItemProps> = ({
   onSwitch,
   isInWorkflow,
 }) => {
+  const { t } = useTranslation()
   const language = useLanguage()
   const [localValue, setLocalValue] = useState(value)
   const numberInputRef = useRef<HTMLInputElement>(null)
@@ -37,7 +39,7 @@ const ParameterItem: FC<ParameterItemProps> = ({
     if (parameterRule.type === 'int' || parameterRule.type === 'float')
       defaultValue = isNullOrUndefined(parameterRule.default) ? (parameterRule.min || 0) : parameterRule.default
     else if (parameterRule.type === 'string' || parameterRule.type === 'text')
-      defaultValue = parameterRule.options?.length ? (parameterRule.default || '') : (parameterRule.default || '')
+      defaultValue = parameterRule.default || ''
     else if (parameterRule.type === 'boolean')
       defaultValue = !isNullOrUndefined(parameterRule.default) ? parameterRule.default : false
     else if (parameterRule.type === 'tag')
@@ -132,8 +134,6 @@ const ParameterItem: FC<ParameterItemProps> = ({
           step = 1
         else if (parameterRule.max < 1000)
           step = 10
-        else if (parameterRule.max < 10000)
-          step = 100
       }
 
       return (

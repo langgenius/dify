@@ -1,3 +1,4 @@
+import type { ChangeEvent } from 'react'
 import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
@@ -13,7 +14,6 @@ import type { ExternalKnowledgeBaseHitTestingResponse, HitTestingResponse } from
 import { externalKnowledgeBaseHitTesting, hitTesting } from '@/service/datasets'
 import { asyncRunSafe } from '@/utils'
 import { RETRIEVE_METHOD, type RetrievalConfig } from '@/types/app'
-import promptS from '@/app/components/app/configuration/config-prompt/style.module.css'
 
 type TextAreaWithButtonIProps = {
   datasetId: string
@@ -59,7 +59,7 @@ const TextAreaWithButton = ({
     setIsSettingsOpen(false)
   }
 
-  function handleTextChange(event: any) {
+  function handleTextChange(event: ChangeEvent<HTMLTextAreaElement>) {
     setText(event.target.value)
   }
 
@@ -107,7 +107,7 @@ const TextAreaWithButton = ({
   const icon = <Image className='size-3.5 text-util-colors-purple-purple-600' src={getIcon(retrievalMethod)} alt='' />
   return (
     <>
-      <div className={cn('relative rounded-xl', promptS.gradientBorder)}>
+      <div className={cn('relative rounded-xl bg-gradient-to-r from-components-input-border-active-prompt-1 to-components-input-border-active-prompt-2 p-0.5 shadow-xs')}>
         <div className='relative rounded-t-xl bg-background-section-burn pt-1.5'>
           <div className="flex h-8 items-center justify-between pb-1 pl-4 pr-1.5">
             <span className="text-[13px] font-semibold uppercase leading-4 text-text-secondary">

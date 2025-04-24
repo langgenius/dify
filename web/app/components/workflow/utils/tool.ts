@@ -20,8 +20,8 @@ export const getToolCheckParams = (
   const currCollection = currentTools.find(item => canFindTool(item.id, provider_id))
   const currTool = currCollection?.tools.find(tool => tool.name === tool_name)
   const formSchemas = currTool ? toolParametersToFormSchemas(currTool.parameters) : []
-  const toolInputVarSchema = formSchemas.filter((item: any) => item.form === 'llm')
-  const toolSettingSchema = formSchemas.filter((item: any) => item.form !== 'llm')
+  const toolInputVarSchema = formSchemas.filter(item => item.form === 'llm')
+  const toolSettingSchema = formSchemas.filter(item => item.form !== 'llm')
 
   return {
     toolInputsSchema: (() => {

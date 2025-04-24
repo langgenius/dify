@@ -51,7 +51,7 @@ const ConfigSelect: FC<IConfigSelectProps> = ({
                 <RiDraggable className='handle h-4 w-4 cursor-grab text-text-quaternary' />
                 <input
                   key={index}
-                  type="input"
+                  type='input'
                   value={o || ''}
                   onChange={(e) => {
                     const value = e.target.value
@@ -67,6 +67,7 @@ const ConfigSelect: FC<IConfigSelectProps> = ({
                   onBlur={() => setFocusID(null)}
                 />
                 <div
+                  role='button'
                   className='absolute right-1.5 top-1/2 block translate-y-[-50%] cursor-pointer rounded-md p-1 text-text-tertiary hover:bg-state-destructive-hover hover:text-text-destructive'
                   onClick={() => {
                     onChange(options.filter((_, i) => index !== i))

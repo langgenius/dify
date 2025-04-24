@@ -123,7 +123,7 @@ const ChatVariableModal = ({
       case ChatVarType.Number:
         return value || 0
       case ChatVarType.Object:
-        return formatValueFromObject(objectValue)
+        return editInJSON ? value : formatValueFromObject(objectValue)
       case ChatVarType.ArrayString:
       case ChatVarType.ArrayNumber:
       case ChatVarType.ArrayObject:
@@ -178,7 +178,7 @@ const ChatVariableModal = ({
             })
             setObjectValue(newObjectValue)
           }
-          catch (e) {
+          catch {
             // ignore JSON.parse errors
           }
         }
@@ -209,7 +209,7 @@ const ChatVariableModal = ({
         const newValue = JSON.parse(content)
         setValue(newValue)
       }
-      catch (e) {
+      catch {
         // ignore JSON.parse errors
       }
     }

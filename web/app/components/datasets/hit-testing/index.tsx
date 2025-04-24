@@ -176,7 +176,7 @@ const HitTestingPage: FC<Props> = ({ datasetId }: Props) => {
               <RecordsEmpty />
             )}
       </div>
-      <FloatRightContainer panelClassname='!justify-start !overflow-y-auto' showClose isMobile={isMobile} isOpen={isShowRightPanel} onClose={hideRightPanel} footer={null}>
+      <FloatRightContainer panelClassName='!justify-start !overflow-y-auto' showClose isMobile={isMobile} isOpen={isShowRightPanel} onClose={hideRightPanel} footer={null}>
         <div className='flex flex-col pt-3'>
           {/* {renderHitResults(generalResultData)} */}
           {submitLoading
@@ -197,7 +197,7 @@ const HitTestingPage: FC<Props> = ({ datasetId }: Props) => {
           }
         </div>
       </FloatRightContainer>
-      <Drawer unmount={true} isOpen={isShowModifyRetrievalModal} onClose={() => setIsShowModifyRetrievalModal(false)} footer={null} mask={isMobile} panelClassname='mt-16 mx-2 sm:mr-2 mb-3 !p-0 !max-w-[640px] rounded-xl'>
+      <Drawer unmount={true} isOpen={isShowModifyRetrievalModal} onClose={() => setIsShowModifyRetrievalModal(false)} footer={null} mask={isMobile} panelClassName='mt-16 mx-2 sm:mr-2 mb-3 !p-0 !max-w-[640px] rounded-xl'>
         <ModifyRetrievalModal
           indexMethod={currentDataset?.indexing_technique || ''}
           value={retrievalConfig}

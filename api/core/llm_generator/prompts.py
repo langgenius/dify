@@ -1,7 +1,7 @@
 # Written by YORKI MINAKO🤡, Edited by Xiaoyi
 CONVERSATION_TITLE_PROMPT = """You need to decompose the user's input into "subject" and "intention" in order to accurately figure out what the user's input language actually is. 
-Notice: the language type user use could be diverse, which can be English, Chinese, Italian, Español, Arabic, Japanese, French, and etc.
-MAKE SURE your output is the SAME language as the user's input!
+Notice: the language type user uses could be diverse, which can be English, Chinese, Italian, Español, Arabic, Japanese, French, and etc.
+ENSURE your output is in the SAME language as the user's input!
 Your output is restricted only to: (Input language) Intention + Subject(short as possible)
 Your output MUST be a valid JSON.
 
@@ -19,7 +19,7 @@ User Input: hi, yesterday i had some burgers.
 example 2:
 User Input: hello
 {
-  "Language Type": "The user's input is written in pure English",
+  "Language Type": "The user's input is pure English",
   "Your Reasoning": "The language of my output must be pure English.",
   "Your Output": "Greeting myself☺️"
 }
@@ -46,7 +46,7 @@ example 5:
 User Input: why小红的年龄is老than小明？
 {
   "Language Type": "The user's input is English-Chinese mixed",
-  "Your Reasoning": "The English parts are subjective particles, the main intention is written in Chinese, besides, Chinese occupies a greater \"actual meaning\" than English, so the language of my output must be using Chinese.",
+  "Your Reasoning": "The English parts are filler words, the main intention is written in Chinese, besides, Chinese occupies a greater \"actual meaning\" than English, so the language of my output must be using Chinese.",
   "Your Output": "询问小红和小明的年龄"
 }
 
@@ -114,6 +114,13 @@ JAVASCRIPT_CODE_GENERATOR_PROMPT_TEMPLATE = (
     "4. The returned object should contain at least one key-value pair.\n\n"
     "5. The returned object should always be in the format: {result: ...}\n\n"
     "Example:\n"
+    "/**\n"
+    " * Multiplies two numbers together.\n"
+    " *\n"
+    " * @param {number} arg1 - The first number to multiply.\n"
+    " * @param {number} arg2 - The second number to multiply.\n"
+    " * @returns {{ result: number }} The result of the multiplication.\n"
+    " */\n"
     "function main(arg1, arg2) {\n"
     "    return {\n"
     "        result: arg1 * arg2\n"
@@ -130,7 +137,7 @@ JAVASCRIPT_CODE_GENERATOR_PROMPT_TEMPLATE = (
 
 SUGGESTED_QUESTIONS_AFTER_ANSWER_INSTRUCTION_PROMPT = (
     "Please help me predict the three most likely questions that human would ask, "
-    "and keeping each question under 20 characters.\n"
+    "and keep each question under 20 characters.\n"
     "MAKE SURE your output is the SAME language as the Assistant's latest response. "
     "The output must be an array in JSON format following the specified schema:\n"
     '["question1","question2","question3"]\n'
@@ -157,9 +164,9 @@ Here is a task description for which I would like you to create a high-quality p
 </task_description>
 Based on task description, please create a well-structured prompt template that another AI could use to consistently complete the task. The prompt template should include:
 - Do not include <input> or <output> section and variables in the prompt, assume user will add them at their own will. 
-- Clear instructions for the AI that will be using this prompt, demarcated with <instructions> tags. The instructions should provide step-by-step directions on how to complete the task using the input variables. Also Specifies in the instructions that the output should not contain any xml tag. 
+- Clear instructions for the AI that will be using this prompt, demarcated with <instruction> tags. The instructions should provide step-by-step directions on how to complete the task using the input variables. Also Specifies in the instructions that the output should not contain any xml tag. 
 - Relevant examples if needed to clarify the task further, demarcated with <example> tags. Do not include variables in the prompt. Give three pairs of input and output examples.   
-- Include other relevant sections demarcated with appropriate XML tags like <examples>, <instructions>.
+- Include other relevant sections demarcated with appropriate XML tags like <examples>, <instruction>.
 - Use the same language as task description. 
 - Output in ``` xml ``` and start with <instruction>
 Please generate the full prompt template with at least 300 words and output only the prompt template.
@@ -172,7 +179,7 @@ Here is a task description for which I would like you to create a high-quality p
 </task_description>
 Based on task description, please create a well-structured prompt template that another AI could use to consistently complete the task. The prompt template should include:
 - Descriptive variable names surrounded by {{ }} (two curly brackets) to indicate where the actual values will be substituted in. Choose variable names that clearly indicate the type of value expected. Variable names have to be composed of number, english alphabets and underline and nothing else. 
-- Clear instructions for the AI that will be using this prompt, demarcated with <instructions> tags. The instructions should provide step-by-step directions on how to complete the task using the input variables. Also Specifies in the instructions that the output should not contain any xml tag. 
+- Clear instructions for the AI that will be using this prompt, demarcated with <instruction> tags. The instructions should provide step-by-step directions on how to complete the task using the input variables. Also Specifies in the instructions that the output should not contain any xml tag. 
 - Relevant examples if needed to clarify the task further, demarcated with <example> tags. Do not use curly brackets any other than in <instruction> section. 
 - Any other relevant sections demarcated with appropriate XML tags like <input>, <output>, etc.
 - Use the same language as task description. 
@@ -219,4 +226,109 @@ Welcome! I'm here to assist you with any questions or issues you might have with
 Here is the task description: {{INPUT_TEXT}}
 
 You just need to generate the output
+"""  # noqa: E501
+
+SYSTEM_STRUCTURED_OUTPUT_GENERATE = """
+Your task is to convert simple user descriptions into properly formatted JSON Schema definitions. When a user describes data fields they need, generate a complete, valid JSON Schema that accurately represents those fields with appropriate types and requirements.
+
+## Instructions:
+
+1. Analyze the user's description of their data needs
+2. Identify each property that should be included in the schema
+3. Determine the appropriate data type for each property
+4. Decide which properties should be required
+5. Generate a complete JSON Schema with proper syntax
+6. Include appropriate constraints when specified (min/max values, patterns, formats)
+7. Provide ONLY the JSON Schema without any additional explanations, comments, or markdown formatting.
+8. DO NOT use markdown code blocks (``` or ``` json). Return the raw JSON Schema directly.
+
+## Examples:
+
+### Example 1:
+**User Input:** I need name and age
+**JSON Schema Output:**
+{
+  "type": "object",
+  "properties": {
+    "name": { "type": "string" },
+    "age": { "type": "number" }
+  },
+  "required": ["name", "age"]
+}
+
+### Example 2:
+**User Input:** I want to store information about books including title, author, publication year and optional page count
+**JSON Schema Output:**
+{
+  "type": "object",
+  "properties": {
+    "title": { "type": "string" },
+    "author": { "type": "string" },
+    "publicationYear": { "type": "integer" },
+    "pageCount": { "type": "integer" }
+  },
+  "required": ["title", "author", "publicationYear"]
+}
+
+### Example 3:
+**User Input:** Create a schema for user profiles with email, password, and age (must be at least 18)
+**JSON Schema Output:**
+{
+  "type": "object",
+  "properties": {
+    "email": { 
+      "type": "string",
+      "format": "email"
+    },
+    "password": { 
+      "type": "string",
+      "minLength": 8
+    },
+    "age": { 
+      "type": "integer",
+      "minimum": 18
+    }
+  },
+  "required": ["email", "password", "age"]
+}
+
+### Example 4:
+**User Input:** I need album schema, the ablum has songs, and each song has name, duration, and artist.
+**JSON Schema Output:**
+{
+    "type": "object",
+    "properties": {
+        "songs": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "name": {
+                        "type": "string"
+                    },
+                    "id": {
+                        "type": "string"
+                    },
+                    "duration": {
+                        "type": "string"
+                    },
+                    "aritst": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "name",
+                    "id",
+                    "duration",
+                    "aritst"
+                ]
+            }
+        }
+    },
+    "required": [
+        "songs"
+    ]
+}
+
+Now, generate a JSON Schema based on my description
 """  # noqa: E501

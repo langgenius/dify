@@ -547,7 +547,7 @@ const CompletionConversationDetailComp: FC<{ appId?: string; conversationId?: st
       notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
       return true
     }
-    catch (err) {
+    catch {
       notify({ type: 'error', message: t('common.actionMsg.modifiedUnsuccessfully') })
       return false
     }
@@ -560,7 +560,7 @@ const CompletionConversationDetailComp: FC<{ appId?: string; conversationId?: st
       notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
       return true
     }
-    catch (err) {
+    catch {
       notify({ type: 'error', message: t('common.actionMsg.modifiedUnsuccessfully') })
       return false
     }
@@ -591,7 +591,7 @@ const ChatConversationDetailComp: FC<{ appId?: string; conversationId?: string }
       notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
       return true
     }
-    catch (err) {
+    catch {
       notify({ type: 'error', message: t('common.actionMsg.modifiedUnsuccessfully') })
       return false
     }
@@ -603,7 +603,7 @@ const ChatConversationDetailComp: FC<{ appId?: string; conversationId?: string }
       notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
       return true
     }
-    catch (err) {
+    catch {
       notify({ type: 'error', message: t('common.actionMsg.modifiedUnsuccessfully') })
       return false
     }
@@ -743,7 +743,7 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
         onClose={onCloseDrawer}
         mask={isMobile}
         footer={null}
-        panelClassname='mt-16 mx-2 sm:mr-2 mb-4 !p-0 !max-w-[640px] rounded-xl bg-components-panel-bg'
+        panelClassName='mt-16 mx-2 sm:mr-2 mb-4 !p-0 !max-w-[640px] rounded-xl bg-components-panel-bg'
       >
         <DrawerContext.Provider value={{
           onClose: onCloseDrawer,

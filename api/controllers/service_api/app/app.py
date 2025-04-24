@@ -1,10 +1,10 @@
 from flask_restful import Resource, marshal_with  # type: ignore
 
 from controllers.common import fields
-from controllers.common import helpers as controller_helpers
 from controllers.service_api import api
 from controllers.service_api.app.error import AppUnavailableError
 from controllers.service_api.wraps import validate_app_token
+from core.app.app_config.common.parameters_mapping import get_parameters_from_feature_dict
 from models.model import App, AppMode
 from services.app_service import AppService
 
@@ -32,9 +32,7 @@ class AppParameterApi(Resource):
 
             user_input_form = features_dict.get("user_input_form", [])
 
-        return controller_helpers.get_parameters_from_feature_dict(
-            features_dict=features_dict, user_input_form=user_input_form
-        )
+        return get_parameters_from_feature_dict(features_dict=features_dict, user_input_form=user_input_form)
 
 
 class AppMetaApi(Resource):

@@ -1,16 +1,20 @@
 import atexit
+import logging
 import os
 import platform
 import socket
+import sys
 from typing import Union
 
+from celery.signals import worker_init  # type: ignore
 from flask_login import user_loaded_from_request, user_logged_in  # type: ignore
 from opentelemetry import trace
 from opentelemetry.exporter.otlp.proto.http.metric_exporter import OTLPMetricExporter
 from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
+from opentelemetry.instrumentation.celery import CeleryInstrumentor
 from opentelemetry.instrumentation.flask import FlaskInstrumentor
 from opentelemetry.instrumentation.sqlalchemy import SQLAlchemyInstrumentor
-from opentelemetry.metrics import set_meter_provider
+from opentelemetry.metrics import get_meter, get_meter_provider, set_meter_provider
 from opentelemetry.propagate import set_global_textmap
 from opentelemetry.propagators.b3 import B3Format
 from opentelemetry.propagators.composite import CompositePropagator
@@ -24,7 +28,7 @@ from opentelemetry.sdk.trace.export import (
 )
 from opentelemetry.sdk.trace.sampling import ParentBasedTraceIdRatio
 from opentelemetry.semconv.resource import ResourceAttributes
-from opentelemetry.trace import Span, get_current_span, set_tracer_provider
+from opentelemetry.trace import Span, get_current_span, get_tracer_provider, set_tracer_provider
 from opentelemetry.trace.propagation.tracecontext import TraceContextTextMapPropagator
 from opentelemetry.trace.status import StatusCode
 
@@ -96,20 +100,45 @@ def init_app(app: DifyApp):
             export_timeout_millis=dify_config.OTEL_METRIC_EXPORT_TIMEOUT,
         )
         set_meter_provider(MeterProvider(resource=resource, metric_readers=[reader]))
-
-        def response_hook(span: Span, status: str, response_headers: list):
-            if span and span.is_recording():
-                if status.startswith("2"):
-                    span.set_status(StatusCode.OK)
-                else:
-                    span.set_status(StatusCode.ERROR, status)
-
-        instrumentor = FlaskInstrumentor()
-        instrumentor.instrument_app(app, response_hook=response_hook)
-        with app.app_context():
-            engines = list(app.extensions["sqlalchemy"].engines.values())
-            SQLAlchemyInstrumentor().instrument(enable_commenter=True, engines=engines)
+        if not is_celery_worker():
+            init_flask_instrumentor(app)
+            CeleryInstrumentor(tracer_provider=get_tracer_provider(), meter_provider=get_meter_provider()).instrument()
+        init_sqlalchemy_instrumentor(app)
         atexit.register(shutdown_tracer)
+
+
+def is_celery_worker():
+    return "celery" in sys.argv[0].lower()
+
+
+def init_flask_instrumentor(app: DifyApp):
+    meter = get_meter("http_metrics", version=dify_config.CURRENT_VERSION)
+    _http_response_counter = meter.create_counter(
+        "http.server.response.count", description="Total number of HTTP responses by status code", unit="{response}"
+    )
+
+    def response_hook(span: Span, status: str, response_headers: list):
+        if span and span.is_recording():
+            if status.startswith("2"):
+                span.set_status(StatusCode.OK)
+            else:
+                span.set_status(StatusCode.ERROR, status)
+
+            status = status.split(" ")[0]
+            status_code = int(status)
+            status_class = f"{status_code // 100}xx"
+            _http_response_counter.add(1, {"status_code": status_code, "status_class": status_class})
+
+    instrumentor = FlaskInstrumentor()
+    if dify_config.DEBUG:
+        logging.info("Initializing Flask instrumentor")
+    instrumentor.instrument_app(app, response_hook=response_hook)
+
+
+def init_sqlalchemy_instrumentor(app: DifyApp):
+    with app.app_context():
+        engines = list(app.extensions["sqlalchemy"].engines.values())
+        SQLAlchemyInstrumentor().instrument(enable_commenter=True, engines=engines)
 
 
 def setup_context_propagation():
@@ -122,6 +151,15 @@ def setup_context_propagation():
             ]
         )
     )
+
+
+@worker_init.connect(weak=False)
+def init_celery_worker(*args, **kwargs):
+    tracer_provider = get_tracer_provider()
+    metric_provider = get_meter_provider()
+    if dify_config.DEBUG:
+        logging.info("Initializing OpenTelemetry for Celery worker")
+    CeleryInstrumentor(tracer_provider=tracer_provider, meter_provider=metric_provider).instrument()
 
 
 def shutdown_tracer():

@@ -245,7 +245,7 @@ const ModerationSettingModal: FC<ModerationSettingModalProps> = ({
     >
       <div className='flex items-center justify-between'>
         <div className='title-2xl-semi-bold text-text-primary'>{t('appDebug.feature.moderation.modal.title')}</div>
-        <div className='cursor-pointer p-1' onClick={onCancel}><RiCloseLine className='h-4 w-4 text-text-tertiary'/></div>
+        <div className='cursor-pointer p-1' onClick={onCancel}><RiCloseLine className='h-4 w-4 text-text-tertiary' /></div>
       </div>
       <div className='py-2'>
         <div className='text-sm font-medium leading-9 text-text-primary'>
@@ -348,14 +348,14 @@ const ModerationSettingModal: FC<ModerationSettingModalProps> = ({
         config={localeData.config?.inputs_config || { enabled: false, preset_response: '' }}
         onConfigChange={config => handleDataContentChange('inputs_config', config)}
         info={(localeData.type === 'api' && t('appDebug.feature.moderation.modal.content.fromApi')) || ''}
-        showPreset={!(localeData.type === 'api')}
+        showPreset={localeData.type !== 'api'}
       />
       <ModerationContent
         title={t('appDebug.feature.moderation.modal.content.output') || ''}
         config={localeData.config?.outputs_config || { enabled: false, preset_response: '' }}
         onConfigChange={config => handleDataContentChange('outputs_config', config)}
         info={(localeData.type === 'api' && t('appDebug.feature.moderation.modal.content.fromApi')) || ''}
-        showPreset={!(localeData.type === 'api')}
+        showPreset={localeData.type !== 'api'}
       />
       <div className='mb-8 mt-1 text-xs font-medium text-text-tertiary'>{t('appDebug.feature.moderation.modal.content.condition')}</div>
       <div className='flex items-center justify-end'>

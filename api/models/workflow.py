@@ -1,14 +1,12 @@
 import json
 from collections.abc import Mapping, Sequence
 from datetime import UTC, datetime
-from enum import Enum
+from enum import Enum, StrEnum
 from typing import TYPE_CHECKING, Any, Optional, Self, Union
 from uuid import uuid4
 
 if TYPE_CHECKING:
     from models.model import AppMode
-from enum import StrEnum
-from typing import TYPE_CHECKING
 
 import sqlalchemy as sa
 from sqlalchemy import Index, PrimaryKeyConstraint, func
@@ -245,6 +243,13 @@ class Workflow(Base):
 
     @property
     def tool_published(self) -> bool:
+        """
+        DEPRECATED: This property is not accurate for determining if a workflow is published as a tool.
+        It only checks if there's a WorkflowToolProvider for the app, not if this specific workflow version
+        is the one being used by the tool.
+
+        For accurate checking, use a direct query with tenant_id, app_id, and version.
+        """
         from models.tools import WorkflowToolProvider
 
         return (
@@ -510,7 +515,7 @@ class WorkflowRun(Base):
         )
 
 
-class WorkflowNodeExecutionTriggeredFrom(Enum):
+class WorkflowNodeExecutionTriggeredFrom(StrEnum):
     """
     Workflow Node Execution Triggered From Enum
     """
@@ -518,21 +523,8 @@ class WorkflowNodeExecutionTriggeredFrom(Enum):
     SINGLE_STEP = "single-step"
     WORKFLOW_RUN = "workflow-run"
 
-    @classmethod
-    def value_of(cls, value: str) -> "WorkflowNodeExecutionTriggeredFrom":
-        """
-        Get value of given mode.
 
-        :param value: mode value
-        :return: mode
-        """
-        for mode in cls:
-            if mode.value == value:
-                return mode
-        raise ValueError(f"invalid workflow node execution triggered from value {value}")
-
-
-class WorkflowNodeExecutionStatus(Enum):
+class WorkflowNodeExecutionStatus(StrEnum):
     """
     Workflow Node Execution Status Enum
     """
@@ -542,19 +534,6 @@ class WorkflowNodeExecutionStatus(Enum):
     FAILED = "failed"
     EXCEPTION = "exception"
     RETRY = "retry"
-
-    @classmethod
-    def value_of(cls, value: str) -> "WorkflowNodeExecutionStatus":
-        """
-        Get value of given mode.
-
-        :param value: mode value
-        :return: mode
-        """
-        for mode in cls:
-            if mode.value == value:
-                return mode
-        raise ValueError(f"invalid workflow node execution status value {value}")
 
 
 class WorkflowNodeExecution(Base):
@@ -656,6 +635,7 @@ class WorkflowNodeExecution(Base):
     @property
     def created_by_account(self):
         created_by_role = CreatedByRole(self.created_by_role)
+        # TODO(-LAN-): Avoid using db.session.get() here.
         return db.session.get(Account, self.created_by) if created_by_role == CreatedByRole.ACCOUNT else None
 
     @property
@@ -663,6 +643,7 @@ class WorkflowNodeExecution(Base):
         from models.model import EndUser
 
         created_by_role = CreatedByRole(self.created_by_role)
+        # TODO(-LAN-): Avoid using db.session.get() here.
         return db.session.get(EndUser, self.created_by) if created_by_role == CreatedByRole.END_USER else None
 
     @property

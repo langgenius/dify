@@ -196,7 +196,8 @@ const Chat: FC<ChatProps> = ({
     const chatContainer = chatContainerRef.current
     if (chatContainer) {
       const setUserScrolled = () => {
-        if (chatContainer)
+        // eslint-disable-next-line sonarjs/no-gratuitous-expressions
+        if (chatContainer) // its in event callback, chatContainer may be null
           userScrolledRef.current = chatContainer.scrollHeight - chatContainer.scrollTop > chatContainer.clientHeight
       }
       chatContainer.addEventListener('scroll', setUserScrolled)
@@ -207,7 +208,7 @@ const Chat: FC<ChatProps> = ({
   useEffect(() => {
     if (!sidebarCollapseState)
       setTimeout(() => handleWindowResize(), 200)
-  }, [sidebarCollapseState])
+  }, [handleWindowResize, sidebarCollapseState])
 
   const hasTryToAsk = config?.suggested_questions_after_answer?.enabled && !!suggestedQuestions?.length && onSend
 
@@ -264,6 +265,7 @@ const Chat: FC<ChatProps> = ({
                     item={item}
                     questionIcon={questionIcon}
                     theme={themeBuilder?.theme}
+                    switchSibling={switchSibling}
                   />
                 )
               })
