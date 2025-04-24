@@ -275,6 +275,76 @@ The text generation application offers non-session support and is ideal for tran
   </CodeGroup>
   </Col>
 </Row>
+
+---
+
+<Heading
+  url='/remote-files/upload'
+  method='POST'
+  title='Upload Remote File'
+  name='#remote-files-upload'
+/>
+<Row>
+  <Col>
+    Upload a remote file via URL for use when sending messages, enabling multimodal understanding.
+    <i>Uploaded files are for use by the current end-user only.</i>
+
+    ### Request Body
+    <Properties>
+      <Property name='url' type='string' key='url'>
+        The URL address of the remote file.
+      </Property>
+    </Properties>
+
+    ### Response
+    After a successful upload, the server will return the file's ID and related information.
+    - `id` (uuid) ID
+    - `name` (string) File name
+    - `size` (int) File size (bytes)
+    - `extension` (string) File extension
+    - `mime_type` (string) File mime-type
+    - `created_by` (uuid) End-user ID
+    - `created_at` (timestamp) Creation timestamp
+    - `url` (string) The signed access URL of the file
+
+    ### Errors
+    - 400, `remote_file_upload_error`, Remote file upload failed, including the following cases:
+      - Request timeout
+      - Network error
+      - Empty file content
+      - File processing failure
+    - 400, `file_too_large`, The file is too large
+    - 400, `unsupported_file_type`, Unsupported extension
+    - 503, `s3_connection_failed`, Unable to connect to S3 service
+    - 503, `s3_permission_denied`, No permission to upload files to S3
+    - 503, `s3_file_too_large`, File exceeds S3 size limit
+  </Col>
+  <Col sticky>
+    <CodeGroup title="Request" tag="POST" label="/remote-files/upload" targetCode={`curl -X POST '${props.appDetail.api_base_url}/remote-files/upload' \\\n--header 'Authorization: Bearer {api_key}' \\\n--form 'url=https://example.com/image.jpg'`}>
+      ```bash {{ title: 'cURL' }}
+      curl -X POST '${props.appDetail.api_base_url}/remote-files/upload' \
+      --header 'Authorization: Bearer {api_key}' \
+      --form 'url=https://example.com/image.jpg'
+      ```
+    </CodeGroup>
+
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {
+      "id": "72fa9618-8f89-4a37-9b33-7e1178a24a67",
+      "name": "example.jpg",
+      "size": 1024,
+      "extension": "jpg",
+      "mime_type": "image/jpeg",
+      "created_by": 123,
+      "created_at": 1577836800,
+      "url": "https://example.com/signed-url"
+    }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
 ---
 
 <Heading

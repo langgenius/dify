@@ -251,6 +251,75 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
     </CodeGroup>
   </Col>
 </Row>
+
+---
+<Heading
+  url='/remote-files/upload'
+  method='POST'
+  title='上传远程文件'
+  name='#remote-files-upload'
+/>
+<Row>
+  <Col>
+    通过URL上传远程文件并在发送消息时使用，可实现多模态理解。
+    <i>上传的文件仅供当前终端用户使用。</i>
+
+    ### Request Body
+    <Properties>
+      <Property name='url' type='string' key='url'>
+        远程文件的URL地址。
+      </Property>
+    </Properties>
+
+    ### Response
+    成功上传后，服务器会返回文件的 ID 和相关信息。
+    - `id` (uuid) ID
+    - `name` (string) 文件名
+    - `size` (int) 文件大小（byte）
+    - `extension` (string) 文件后缀
+    - `mime_type` (string) 文件 mime-type
+    - `created_by` (uuid) 上传人 ID
+    - `created_at` (timestamp) 上传时间
+    - `url` (string) 文件的签名访问URL
+
+    ### Errors
+    - 400，`remote_file_upload_error`，远程文件上传失败，包括以下情况：
+      - 请求超时
+      - 网络错误
+      - 空文件内容
+      - 文件处理失败
+    - 400，`file_too_large`，文件太大
+    - 400，`unsupported_file_type`，不支持的扩展名
+    - 503，`s3_connection_failed`，无法连接到 S3 服务
+    - 503，`s3_permission_denied`，无权限上传文件到 S3
+    - 503，`s3_file_too_large`，文件超出 S3 大小限制
+  </Col>
+  <Col sticky>
+    <CodeGroup title="Request" tag="POST" label="/remote-files/upload" targetCode={`curl -X POST '${props.appDetail.api_base_url}/remote-files/upload' \\\n--header 'Authorization: Bearer {api_key}' \\\n--form 'url=https://example.com/image.jpg'`}>
+      ```bash {{ title: 'cURL' }}
+      curl -X POST '${props.appDetail.api_base_url}/remote-files/upload' \
+      --header 'Authorization: Bearer {api_key}' \
+      --form 'url=https://example.com/image.jpg'
+      ```
+    </CodeGroup>
+
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {
+      "id": "72fa9618-8f89-4a37-9b33-7e1178a24a67",
+      "name": "example.jpg",
+      "size": 1024,
+      "extension": "jpg",
+      "mime_type": "image/jpeg",
+      "created_by": 123,
+      "created_at": 1577836800,
+      "url": "https://example.com/signed-url"
+    }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
 ---
 <Heading
   url='/completion-messages/:task_id/stop'

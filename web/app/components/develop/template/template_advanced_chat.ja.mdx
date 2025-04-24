@@ -382,6 +382,74 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
 ---
 
 <Heading
+  url='/remote-files/upload'
+  method='POST'
+  title='リモートファイルのアップロード'
+  name='#remote-files-upload'
+/>
+<Row>
+  <Col>
+    URLを使用してリモートファイルをアップロードし、メッセージ送信時に使用することで、マルチモーダルな理解を可能にします。
+    <i>アップロードされたファイルは、現在のエンドユーザーのみが使用できます。</i>
+
+    ### リクエストボディ
+    <Properties>
+      <Property name='url' type='string' key='url'>
+        リモートファイルのURLアドレス。
+      </Property>
+    </Properties>
+
+    ### レスポンス
+    アップロードが成功すると、サーバーはファイルのIDと関連情報を返します。
+    - `id` (uuid) ID
+    - `name` (string) ファイル名
+    - `size` (int) ファイルサイズ（バイト）
+    - `extension` (string) ファイル拡張子
+    - `mime_type` (string) ファイルのMIMEタイプ
+    - `created_by` (uuid) エンドユーザーID
+    - `created_at` (timestamp) 作成タイムスタンプ
+    - `url` (string) ファイルの署名付きアクセスURL
+
+    ### エラー
+    - 400, `remote_file_upload_error`, リモートファイルのアップロードに失敗しました。以下の場合が含まれます：
+      - リクエストタイムアウト
+      - ネットワークエラー
+      - 空のファイル内容
+      - ファイル処理の失敗
+    - 400, `file_too_large`, ファイルが大きすぎます
+    - 400, `unsupported_file_type`, サポートされていない拡張子です
+    - 503, `s3_connection_failed`, S3サービスに接続できません
+    - 503, `s3_permission_denied`, S3へのファイルアップロード権限がありません
+    - 503, `s3_file_too_large`, ファイルがS3のサイズ制限を超えています
+  </Col>
+  <Col sticky>
+    <CodeGroup title="Request" tag="POST" label="/remote-files/upload" targetCode={`curl -X POST '${props.appDetail.api_base_url}/remote-files/upload' \\\n--header 'Authorization: Bearer {api_key}' \\\n--form 'url=https://example.com/image.jpg'`}>
+      ```bash {{ title: 'cURL' }}
+      curl -X POST '${props.appDetail.api_base_url}/remote-files/upload' \
+      --header 'Authorization: Bearer {api_key}' \
+      --form 'url=https://example.com/image.jpg'
+      ```
+    </CodeGroup>
+
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {
+      "id": "72fa9618-8f89-4a37-9b33-7e1178a24a67",
+      "name": "example.jpg",
+      "size": 1024,
+      "extension": "jpg",
+      "mime_type": "image/jpeg",
+      "created_by": 123,
+      "created_at": 1577836800,
+      "url": "https://example.com/signed-url"
+    }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+---
+
+<Heading
   url='/chat-messages/:task_id/stop'
   method='POST'
   title='生成を停止'
