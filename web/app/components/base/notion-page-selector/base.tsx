@@ -5,9 +5,9 @@ import WorkspaceSelector from './workspace-selector'
 import SearchInput from './search-input'
 import PageSelector from './page-selector'
 import { preImportNotionPages } from '@/service/datasets'
-import { NotionConnector } from '@/app/components/datasets/create/step-one'
 import type { DataSourceNotionPageMap, DataSourceNotionWorkspace, NotionPage } from '@/models/common'
-import { useModalContext } from '@/context/modal-context'
+import { useModalContextSelector } from '@/context/modal-context'
+import { NotionConnector } from '../notion-connector'
 
 type NotionPageSelectorProps = {
   value?: string[]
@@ -30,7 +30,7 @@ const NotionPageSelector = ({
   const [prevData, setPrevData] = useState(data)
   const [searchValue, setSearchValue] = useState('')
   const [currentWorkspaceId, setCurrentWorkspaceId] = useState('')
-  const { setShowAccountSettingModal } = useModalContext()
+  const setShowAccountSettingModal = useModalContextSelector(s => s.setShowAccountSettingModal)
 
   const notionWorkspaces = useMemo(() => {
     return data?.notion_info || []
@@ -87,11 +87,11 @@ const NotionPageSelector = ({
   }, [firstWorkspaceId])
 
   return (
-    <div className='rounded-xl border border-components-panel-border bg-background-default-subtle'>
+    <>
       {
         data?.notion_info?.length
           ? (
-            <>
+            <div className='rounded-xl border border-components-panel-border bg-background-default-subtle'>
               <div className='flex h-12 items-center gap-x-2 rounded-t-xl border-b border-b-divider-regular bg-components-panel-bg p-2'>
                 <div className='flex grow items-center gap-x-1'>
                   <WorkspaceSelector
@@ -123,13 +123,13 @@ const NotionPageSelector = ({
                   onPreview={handlePreviewPage}
                 />
               </div>
-            </>
+            </div>
           )
           : (
             <NotionConnector onSetting={() => setShowAccountSettingModal({ payload: 'data-source', onCancelCallback: mutate })} />
           )
       }
-    </div>
+    </>
   )
 }
 

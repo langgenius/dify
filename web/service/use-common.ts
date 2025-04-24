@@ -1,5 +1,6 @@
 import { get, post } from './base'
 import type {
+  DataSourceNotion,
   FileUploadConfigResponse,
   StructuredOutputRulesRequestBody,
   StructuredOutputRulesResponse,
@@ -9,11 +10,10 @@ import type { FileTypesRes } from './datasets'
 
 const NAME_SPACE = 'common'
 
-export const useFileUploadConfig = (enabled?: true) => {
+export const useFileUploadConfig = () => {
   return useQuery<FileUploadConfigResponse>({
     queryKey: [NAME_SPACE, 'file-upload-config'],
     queryFn: () => get<FileUploadConfigResponse>('/files/upload'),
-    enabled,
   })
 }
 
@@ -33,5 +33,16 @@ export const useFileSupportTypes = () => {
   return useQuery<FileTypesRes>({
     queryKey: [NAME_SPACE, 'file-types'],
     queryFn: () => get<FileTypesRes>('/files/support-type'),
+  })
+}
+
+type DataSourcesResponse = {
+  data: DataSourceNotion[]
+}
+
+export const useDataSources = () => {
+  return useQuery<DataSourcesResponse>({
+    queryKey: [NAME_SPACE, 'data-sources'],
+    queryFn: () => get<DataSourcesResponse>('/data-source/integrates'),
   })
 }
