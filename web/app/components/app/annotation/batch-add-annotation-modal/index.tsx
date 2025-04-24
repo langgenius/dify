@@ -11,6 +11,7 @@ import Toast from '@/app/components/base/toast'
 import { annotationBatchImport, checkAnnotationBatchImportProgress } from '@/service/annotation'
 import { useProviderContext } from '@/context/provider-context'
 import AnnotationFull from '@/app/components/billing/annotation-full'
+import { noop } from 'lodash-es'
 
 export enum ProcessStatus {
   WAITING = 'waiting',
@@ -87,7 +88,7 @@ const BatchModal: FC<IBatchModalProps> = ({
   }
 
   return (
-    <Modal isShow={isShow} onClose={() => { }} className='!max-w-[520px] !rounded-xl px-8 py-6'>
+    <Modal isShow={isShow} onClose={noop} className='!max-w-[520px] !rounded-xl px-8 py-6'>
       <div className='system-xl-medium relative pb-1 text-text-primary'>{t('appAnnotation.batchModal.title')}</div>
       <div className='absolute right-4 top-4 cursor-pointer p-2' onClick={onCancel}>
         <RiCloseLine className='h-4 w-4 text-text-tertiary' />

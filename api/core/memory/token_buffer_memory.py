@@ -8,11 +8,11 @@ from core.model_runtime.entities import (
     AssistantPromptMessage,
     ImagePromptMessageContent,
     PromptMessage,
-    PromptMessageContent,
     PromptMessageRole,
     TextPromptMessageContent,
     UserPromptMessage,
 )
+from core.model_runtime.entities.message_entities import PromptMessageContentUnionTypes
 from core.prompt.utils.extract_thread_messages import extract_thread_messages
 from extensions.ext_database import db
 from factories import file_factory
@@ -44,6 +44,7 @@ class TokenBufferMemory:
                 Message.created_at,
                 Message.workflow_run_id,
                 Message.parent_message_id,
+                Message.answer_tokens,
             )
             .filter(
                 Message.conversation_id == self.conversation.id,
@@ -63,7 +64,7 @@ class TokenBufferMemory:
         thread_messages = extract_thread_messages(messages)
 
         # for newly created message, its answer is temporarily empty, we don't need to add it to memory
-        if thread_messages and not thread_messages[0].answer:
+        if thread_messages and not thread_messages[0].answer and thread_messages[0].answer_tokens == 0:
             thread_messages.pop(0)
 
         messages = list(reversed(thread_messages))
@@ -99,7 +100,7 @@ class TokenBufferMemory:
                 if not file_objs:
                     prompt_messages.append(UserPromptMessage(content=message.query))
                 else:
-                    prompt_message_contents: list[PromptMessageContent] = []
+                    prompt_message_contents: list[PromptMessageContentUnionTypes] = []
                     prompt_message_contents.append(TextPromptMessageContent(data=message.query))
                     for file in file_objs:
                         prompt_message = file_manager.to_prompt_message_content(

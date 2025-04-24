@@ -17,7 +17,9 @@ import type {
   ModelLoadBalancingConfigEntry,
   ModelProvider,
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
-
+import {
+  EDUCATION_VERIFYING_LOCALSTORAGE_ITEM,
+} from '@/app/education-apply/constants'
 import Pricing from '@/app/components/billing/pricing'
 import type { ModerationConfig, PromptVariable } from '@/models/debug'
 import type {
@@ -33,6 +35,8 @@ import type { OpeningStatement } from '@/app/components/base/features/types'
 import type { InputVar } from '@/app/components/workflow/types'
 import type { UpdatePluginPayload } from '@/app/components/plugins/types'
 import UpdatePlugin from '@/app/components/plugins/update-plugin'
+import { removeSpecificQueryParam } from '@/utils'
+import { noop } from 'lodash-es'
 
 export type ModalState<T> = {
   payload: T
@@ -74,18 +78,18 @@ export type ModalContextState = {
   setShowUpdatePluginModal: Dispatch<SetStateAction<ModalState<UpdatePluginPayload> | null>>
 }
 const ModalContext = createContext<ModalContextState>({
-  setShowAccountSettingModal: () => { },
-  setShowApiBasedExtensionModal: () => { },
-  setShowModerationSettingModal: () => { },
-  setShowExternalDataToolModal: () => { },
-  setShowPricingModal: () => { },
-  setShowAnnotationFullModal: () => { },
-  setShowModelModal: () => { },
-  setShowExternalKnowledgeAPIModal: () => { },
-  setShowModelLoadBalancingModal: () => { },
-  setShowModelLoadBalancingEntryModal: () => { },
-  setShowOpeningModal: () => { },
-  setShowUpdatePluginModal: () => { },
+  setShowAccountSettingModal: noop,
+  setShowApiBasedExtensionModal: noop,
+  setShowModerationSettingModal: noop,
+  setShowExternalDataToolModal: noop,
+  setShowPricingModal: noop,
+  setShowAnnotationFullModal: noop,
+  setShowModelModal: noop,
+  setShowExternalKnowledgeAPIModal: noop,
+  setShowModelLoadBalancingModal: noop,
+  setShowModelLoadBalancingEntryModal: noop,
+  setShowOpeningModal: noop,
+  setShowUpdatePluginModal: noop,
 })
 
 export const useModalContext = () => useContext(ModalContext)
@@ -121,6 +125,12 @@ export const ModalContextProvider = ({
   const [showPricingModal, setShowPricingModal] = useState(searchParams.get('show-pricing') === '1')
   const [showAnnotationFullModal, setShowAnnotationFullModal] = useState(false)
   const handleCancelAccountSettingModal = () => {
+    const educationVerifying = localStorage.getItem(EDUCATION_VERIFYING_LOCALSTORAGE_ITEM)
+
+    if (educationVerifying === 'yes')
+      localStorage.removeItem(EDUCATION_VERIFYING_LOCALSTORAGE_ITEM)
+
+    removeSpecificQueryParam('action')
     setShowAccountSettingModal(null)
     if (showAccountSettingModal?.onCancelCallback)
       showAccountSettingModal?.onCancelCallback()

@@ -82,6 +82,9 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
 
     ### ChatCompletionResponse
     完全なアプリ結果を返します。`Content-Type`は`application/json`です。
+    - `event` (string) イベントタイプ、固定で `message`
+    - `task_id` (string) タスクID、リクエスト追跡と以下のStop Generate APIに使用
+    - `id` (string) ユニークID
     - `message_id` (string) 一意のメッセージID
     - `conversation_id` (string) 会話ID
     - `mode` (string) アプリモード、`chat`として固定
@@ -197,6 +200,8 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
     ```json {{ title: '応答' }}
     {
         "event": "message",
+        "task_id": "c3800678-a077-43df-a102-53f23ed20b88", 
+        "id": "9da23599-e713-473b-982c-4328d4f5c78a",
         "message_id": "9da23599-e713-473b-982c-4328d4f5c78a",
         "conversation_id": "45701982-8118-4bc5-8e9b-64562b4555f2",
         "mode": "chat",

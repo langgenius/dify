@@ -1,6 +1,7 @@
 import { Dialog, DialogPanel, Transition, TransitionChild } from '@headlessui/react'
 import { RiCloseLargeLine } from '@remixicon/react'
 import classNames from '@/utils/classnames'
+import { noop } from 'lodash-es'
 
 type IModal = {
   className?: string
@@ -18,7 +19,7 @@ export default function FullScreenModal({
   className,
   wrapperClassName,
   open,
-  onClose = () => { },
+  onClose = noop,
   children,
   closable = false,
   overflowVisible = false,

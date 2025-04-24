@@ -6,6 +6,7 @@ import {
   RiCloseLine,
 } from '@remixicon/react'
 import { AuthHeaderPrefix, AuthType, CollectionType } from '../types'
+import { basePath } from '@/utils/var'
 import type { Collection, CustomCollectionBackend, Tool, WorkflowToolProviderRequest, WorkflowToolProviderResponse } from '../types'
 import ToolItem from './tool-item'
 import cn from '@/utils/classnames'
@@ -213,7 +214,7 @@ const ProviderDetail = ({
         setToolList(list)
       }
     }
-    catch (e) { }
+    catch { }
     setIsDetailLoading(false)
   }, [collection.name, collection.type])
 
@@ -233,28 +234,30 @@ const ProviderDetail = ({
       footer={null}
       mask={false}
       positionCenter={false}
-      panelClassname={cn('mb-2 mr-2 mt-[64px] !w-[420px] !max-w-[420px] justify-start rounded-2xl border-[0.5px] border-components-panel-border !bg-components-panel-bg !p-0 shadow-xl')}
+      panelClassName={cn('mb-2 mr-2 mt-[64px] !w-[420px] !max-w-[420px] justify-start rounded-2xl border-[0.5px] border-components-panel-border !bg-components-panel-bg !p-0 shadow-xl')}
     >
-      <div className='p-4'>
-        <div className='mb-3 flex'>
-          <Icon src={collection.icon} />
-          <div className="ml-3 w-0 grow">
-            <div className="flex h-5 items-center">
-              <Title title={collection.label[language]} />
+      <div className='flex h-full flex-col p-4'>
+        <div className="shrink-0">
+          <div className='mb-3 flex'>
+            <Icon src={collection.icon} />
+            <div className="ml-3 w-0 grow">
+              <div className="flex h-5 items-center">
+                <Title title={collection.label[language]} />
+              </div>
+              <div className='mb-1 flex h-4 items-center justify-between'>
+                <OrgInfo
+                  className="mt-0.5"
+                  packageNameClassName='w-auto'
+                  orgName={collection.author}
+                  packageName={collection.name}
+                />
+              </div>
             </div>
-            <div className='mb-1 flex h-4 items-center justify-between'>
-              <OrgInfo
-                className="mt-0.5"
-                packageNameClassName='w-auto'
-                orgName={collection.author}
-                packageName={collection.name}
-              />
+            <div className='flex gap-1'>
+              <ActionButton onClick={onHide}>
+                <RiCloseLine className='h-4 w-4' />
+              </ActionButton>
             </div>
-          </div>
-          <div className='flex gap-1'>
-            <ActionButton onClick={onHide}>
-              <RiCloseLine className='h-4 w-4' />
-            </ActionButton>
           </div>
         </div>
         {!!collection.description[language] && (
@@ -276,7 +279,7 @@ const ProviderDetail = ({
                 variant='primary'
                 className={cn('my-3 w-[183px] shrink-0')}
               >
-                <a className='flex items-center' href={`/app/${(customCollection as WorkflowToolProviderResponse).workflow_app_id}/workflow`} rel='noreferrer' target='_blank'>
+                <a className='flex items-center' href={`${basePath}/app/${(customCollection as WorkflowToolProviderResponse).workflow_app_id}/workflow`} rel='noreferrer' target='_blank'>
                   <div className='system-sm-medium'>{t('tools.openInStudio')}</div>
                   <LinkExternal02 className='ml-1 h-4 w-4' />
                 </a>
@@ -291,85 +294,84 @@ const ProviderDetail = ({
             </>
           )}
         </div>
-        {/* Tools */}
-        <div className='pt-3'>
+        <div className='flex min-h-0 flex-1 flex-col pt-3'>
           {isDetailLoading && <div className='flex h-[200px]'><Loading type='app' /></div>}
-          {/* Builtin type */}
-          {!isDetailLoading && (collection.type === CollectionType.builtIn) && isAuthed && (
-            <div className='system-sm-semibold-uppercase mb-1 flex h-6 items-center justify-between text-text-secondary'>
-              {t('plugin.detailPanel.actionNum', { num: toolList.length, action: toolList.length > 1 ? 'actions' : 'action' })}
-              {needAuth && (
-                <Button
-                  variant='secondary'
-                  size='small'
-                  onClick={() => {
-                    if (collection.type === CollectionType.builtIn || collection.type === CollectionType.model)
-                      showSettingAuthModal()
-                  }}
-                  disabled={!isCurrentWorkspaceManager}
-                >
-                  <Indicator className='mr-2' color={'green'} />
-                  {t('tools.auth.authorized')}
-                </Button>
-              )}
-            </div>
-          )}
-          {!isDetailLoading && (collection.type === CollectionType.builtIn) && needAuth && !isAuthed && (
-            <>
-              <div className='system-sm-semibold-uppercase text-text-secondary'>
-                <span className=''>{t('tools.includeToolNum', { num: toolList.length, action: toolList.length > 1 ? 'actions' : 'action' }).toLocaleUpperCase()}</span>
-                <span className='px-1'>·</span>
-                <span className='text-util-colors-orange-orange-600'>{t('tools.auth.setup').toLocaleUpperCase()}</span>
-              </div>
-              <Button
-                variant='primary'
-                className={cn('my-3 w-full shrink-0')}
-                onClick={() => {
-                  if (collection.type === CollectionType.builtIn || collection.type === CollectionType.model)
-                    showSettingAuthModal()
-                }}
-                disabled={!isCurrentWorkspaceManager}
-              >
-                {t('tools.auth.unauthorized')}
-              </Button>
-            </>
-          )}
-          {/* Custom type */}
-          {!isDetailLoading && (collection.type === CollectionType.custom) && (
-            <div className='system-sm-semibold-uppercase text-text-secondary'>
-              <span className=''>{t('tools.includeToolNum', { num: toolList.length, action: toolList.length > 1 ? 'actions' : 'action' }).toLocaleUpperCase()}</span>
-            </div>
-          )}
-          {/* Workflow type */}
-          {!isDetailLoading && (collection.type === CollectionType.workflow) && (
-            <div className='system-sm-semibold-uppercase text-text-secondary'>
-              <span className=''>{t('tools.createTool.toolInput.title').toLocaleUpperCase()}</span>
-            </div>
-          )}
           {!isDetailLoading && (
-            <div className='mt-1 py-2'>
-              {collection.type !== CollectionType.workflow && toolList.map(tool => (
-                <ToolItem
-                  key={tool.name}
-                  disabled={false}
-                  // disabled={needAuth && (isBuiltIn || isModel) && !isAuthed}
-                  collection={collection}
-                  tool={tool}
-                  isBuiltIn={isBuiltIn}
-                  isModel={isModel}
-                />
-              ))}
-              {collection.type === CollectionType.workflow && (customCollection as WorkflowToolProviderResponse)?.tool?.parameters.map(item => (
-                <div key={item.name} className='mb-1 py-1'>
-                  <div className='mb-1 flex items-center gap-2'>
-                    <span className='code-sm-semibold text-text-secondary'>{item.name}</span>
-                    <span className='system-xs-regular text-text-tertiary'>{item.type}</span>
-                    <span className='system-xs-medium text-text-warning-secondary'>{item.required ? t('tools.createTool.toolInput.required') : ''}</span>
+            <>
+              <div className="shrink-0">
+                {(collection.type === CollectionType.builtIn || collection.type === CollectionType.model) && isAuthed && (
+                  <div className='system-sm-semibold-uppercase mb-1 flex h-6 items-center justify-between text-text-secondary'>
+                    {t('plugin.detailPanel.actionNum', { num: toolList.length, action: toolList.length > 1 ? 'actions' : 'action' })}
+                    {needAuth && (
+                      <Button
+                        variant='secondary'
+                        size='small'
+                        onClick={() => {
+                          if (collection.type === CollectionType.builtIn || collection.type === CollectionType.model)
+                            showSettingAuthModal()
+                        }}
+                        disabled={!isCurrentWorkspaceManager}
+                      >
+                        <Indicator className='mr-2' color={'green'} />
+                        {t('tools.auth.authorized')}
+                      </Button>
+                    )}
                   </div>
-                  <div className='system-xs-regular text-text-tertiary'>{item.llm_description}</div>
-                </div>
-              ))}
-            </div>
+                )}
+                {(collection.type === CollectionType.builtIn || collection.type === CollectionType.model) && needAuth && !isAuthed && (
+                  <>
+                    <div className='system-sm-semibold-uppercase text-text-secondary'>
+                      <span className=''>{t('tools.includeToolNum', { num: toolList.length, action: toolList.length > 1 ? 'actions' : 'action' }).toLocaleUpperCase()}</span>
+                      <span className='px-1'>·</span>
+                      <span className='text-util-colors-orange-orange-600'>{t('tools.auth.setup').toLocaleUpperCase()}</span>
+                    </div>
+                    <Button
+                      variant='primary'
+                      className={cn('my-3 w-full shrink-0')}
+                      onClick={() => {
+                        if (collection.type === CollectionType.builtIn || collection.type === CollectionType.model)
+                          showSettingAuthModal()
+                      }}
+                      disabled={!isCurrentWorkspaceManager}
+                    >
+                      {t('tools.auth.unauthorized')}
+                    </Button>
+                  </>
+                )}
+                {(collection.type === CollectionType.custom) && (
+                  <div className='system-sm-semibold-uppercase text-text-secondary'>
+                    <span className=''>{t('tools.includeToolNum', { num: toolList.length, action: toolList.length > 1 ? 'actions' : 'action' }).toLocaleUpperCase()}</span>
+                  </div>
+                )}
+                {(collection.type === CollectionType.workflow) && (
+                  <div className='system-sm-semibold-uppercase text-text-secondary'>
+                    <span className=''>{t('tools.createTool.toolInput.title').toLocaleUpperCase()}</span>
+                  </div>
+                )}
+              </div>
+              <div className='mt-1 flex-1 overflow-y-auto py-2'>
+                {collection.type !== CollectionType.workflow && toolList.map(tool => (
+                  <ToolItem
+                    key={tool.name}
+                    disabled={false}
+                    collection={collection}
+                    tool={tool}
+                    isBuiltIn={isBuiltIn}
+                    isModel={isModel}
+                  />
+                ))}
+                {collection.type === CollectionType.workflow && (customCollection as WorkflowToolProviderResponse)?.tool?.parameters.map(item => (
+                  <div key={item.name} className='mb-1 py-1'>
+                    <div className='mb-1 flex items-center gap-2'>
+                      <span className='code-sm-semibold text-text-secondary'>{item.name}</span>
+                      <span className='system-xs-regular text-text-tertiary'>{item.type}</span>
+                      <span className='system-xs-medium text-text-warning-secondary'>{item.required ? t('tools.createTool.toolInput.required') : ''}</span>
+                    </div>
+                    <div className='system-xs-regular text-text-tertiary'>{item.llm_description}</div>
+                  </div>
+                ))}
+              </div>
+            </>
           )}
         </div>
         {showSettingAuth && (

@@ -1,13 +1,14 @@
 import type { FC } from 'react'
-import React from 'react'
+import React, { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-
+import { RiAddLine } from '@remixicon/react'
 import Split from '../_base/components/split'
 import ResultPanel from '../../run/result-panel'
 import InputNumberWithSlider from '../_base/components/input-number-with-slider'
 import type { LoopNodeType } from './types'
 import useConfig from './use-config'
 import ConditionWrap from './components/condition-wrap'
+import LoopVariable from './components/loop-variables'
 import type { NodePanelProps } from '@/app/components/workflow/types'
 import Field from '@/app/components/workflow/nodes/_base/components/field'
 import BeforeRunForm from '@/app/components/workflow/nodes/_base/components/before-run-form'
@@ -45,14 +46,52 @@ const Panel: FC<NodePanelProps<LoopNodeType>> = ({
     handleUpdateSubVariableCondition,
     handleToggleSubVariableConditionLogicalOperator,
     handleUpdateLoopCount,
+    handleAddLoopVariable,
+    handleRemoveLoopVariable,
+    handleUpdateLoopVariable,
   } = useConfig(id, data)
 
-  const nodeInfo = formatTracing(loopRunResult, t)[0]
+  const nodeInfo = useMemo(() => {
+    const formattedNodeInfo = formatTracing(loopRunResult, t)[0]
+
+    if (runResult && formattedNodeInfo) {
+      return {
+        ...formattedNodeInfo,
+        execution_metadata: {
+          ...runResult.execution_metadata,
+          ...formattedNodeInfo.execution_metadata,
+        },
+      }
+    }
+
+    return formattedNodeInfo
+  }, [runResult, loopRunResult, t])
   const logsParams = useLogs()
 
   return (
     <div className='mt-2'>
       <div>
+        <Field
+          title={<div className='pl-3'>{t('workflow.nodes.loop.loopVariables')}</div>}
+          operations={
+            <div
+              className='mr-4 flex h-5 w-5 cursor-pointer items-center justify-center'
+              onClick={handleAddLoopVariable}
+            >
+              <RiAddLine className='h-4 w-4 text-text-tertiary' />
+            </div>
+          }
+        >
+          <div className='px-4'>
+            <LoopVariable
+              variables={inputs.loop_variables}
+              nodeId={id}
+              handleRemoveLoopVariable={handleRemoveLoopVariable}
+              handleUpdateLoopVariable={handleUpdateLoopVariable}
+            />
+          </div>
+        </Field>
+        <Split className='my-2' />
         <Field
           title={<div className='pl-3'>{t(`${i18nPrefix}.breakCondition`)}</div>}
           tooltip={t(`${i18nPrefix}.breakConditionTip`)}
@@ -74,7 +113,7 @@ const Panel: FC<NodePanelProps<LoopNodeType>> = ({
             logicalOperator={inputs.logical_operator!}
           />
         </Field>
-        <Split />
+        <Split className='mt-2' />
         <div className='mt-2'>
           <Field
             title={<div className='pl-3'>{t(`${i18nPrefix}.loopMaxCount`)}</div>}

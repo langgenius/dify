@@ -258,6 +258,21 @@ const FileUploader = ({
     },
     [initialUpload, isValid, notSupportBatchUpload, traverseFileEntry],
   )
+  const handleDrop = useCallback((e: DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setDragging(false)
+    if (!e.dataTransfer)
+      return
+
+    let files = [...e.dataTransfer.files] as File[]
+    if (notSupportBatchUpload)
+      files = files.slice(0, 1)
+
+    const validFiles = files.filter(isValid)
+    initialUpload(validFiles)
+  }, [initialUpload, isValid, notSupportBatchUpload])
+
   const selectHandle = () => {
     if (fileUploader.current)
       fileUploader.current.click()

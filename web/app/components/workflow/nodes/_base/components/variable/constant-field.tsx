@@ -15,8 +15,10 @@ type Props = {
   onChange: (value: string | number, varKindType: VarKindType, varInfo?: Var) => void
 }
 
+const DEFAULT_SCHEMA = {} as CredentialFormSchema
+
 const ConstantField: FC<Props> = ({
-  schema = {} as CredentialFormSchema,
+  schema = DEFAULT_SCHEMA,
   readonly,
   value,
   onChange,

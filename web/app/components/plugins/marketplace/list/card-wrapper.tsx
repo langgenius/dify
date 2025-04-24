@@ -46,30 +46,28 @@ const CardWrapper = ({
           }
         />
         {
-          showInstallButton && (
-            <div className='absolute bottom-0 hidden w-full items-center space-x-2 rounded-b-xl bg-gradient-to-tr from-components-panel-on-panel-item-bg to-background-gradient-mask-transparent px-4 pb-4 pt-8 group-hover:flex'>
+          <div className='absolute bottom-0 hidden w-full items-center space-x-2 rounded-b-xl bg-gradient-to-tr from-components-panel-on-panel-item-bg to-background-gradient-mask-transparent px-4 pb-4 pt-8 group-hover:flex'>
+            <Button
+              variant='primary'
+              className='w-[calc(50%-4px)]'
+              onClick={showInstallFromMarketplace}
+            >
+              {t('plugin.detailPanel.operation.install')}
+            </Button>
+            <a href={`${getPluginLinkInMarketplace(plugin)}?language=${localeFromLocale}`} target='_blank' className='block w-[calc(50%-4px)] flex-1 shrink-0'>
               <Button
-                variant='primary'
-                className='w-[calc(50%-4px)]'
-                onClick={showInstallFromMarketplace}
+                className='w-full gap-0.5'
               >
-                {t('plugin.detailPanel.operation.install')}
+                {t('plugin.detailPanel.operation.detail')}
+                <RiArrowRightUpLine className='ml-1 h-4 w-4' />
               </Button>
-              <a href={`${getPluginLinkInMarketplace(plugin)}?language=${localeFromLocale}`} target='_blank' className='block w-[calc(50%-4px)] flex-1 shrink-0'>
-                <Button
-                  className='w-full gap-0.5'
-                >
-                  {t('plugin.detailPanel.operation.detail')}
-                  <RiArrowRightUpLine className='ml-1 h-4 w-4' />
-                </Button>
-              </a>
-            </div>
-          )
+            </a>
+          </div>
         }
         {
           isShowInstallFromMarketplace && (
             <InstallFromMarketplace
-              manifest={plugin as any}
+              manifest={plugin}
               uniqueIdentifier={plugin.latest_package_identifier}
               onClose={hideInstallFromMarketplace}
               onSuccess={hideInstallFromMarketplace}

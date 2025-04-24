@@ -19,7 +19,7 @@ parameters:
       zh_Hans: 本地时间
     human_description:
       en_US: localtime, such as 2024-1-1 0:0:0
-      zh_Hans: 本地时间, 比如2024-1-1 0:0:0
+      zh_Hans: 本地时间，比如 2024-1-1 0:0:0
   - name: timezone
     type: string
     required: false
@@ -29,5 +29,5 @@ parameters:
       zh_Hans: 时区
     human_description:
       en_US: Timezone, such as Asia/Shanghai
-      zh_Hans: 时区, 比如Asia/Shanghai
+      zh_Hans: 时区，比如 Asia/Shanghai
     default: Asia/Shanghai

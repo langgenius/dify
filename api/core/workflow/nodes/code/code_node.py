@@ -6,6 +6,7 @@ from core.helper.code_executor.code_executor import CodeExecutionError, CodeExec
 from core.helper.code_executor.code_node_provider import CodeNodeProvider
 from core.helper.code_executor.javascript.javascript_code_provider import JavascriptCodeProvider
 from core.helper.code_executor.python3.python3_code_provider import Python3CodeProvider
+from core.variables.segments import ArrayFileSegment
 from core.workflow.entities.node_entities import NodeRunResult
 from core.workflow.nodes.base import BaseNode
 from core.workflow.nodes.code.entities import CodeNodeData
@@ -49,7 +50,10 @@ class CodeNode(BaseNode[CodeNodeData]):
         for variable_selector in self.node_data.variables:
             variable_name = variable_selector.variable
             variable = self.graph_runtime_state.variable_pool.get(variable_selector.value_selector)
-            variables[variable_name] = variable.to_object() if variable else None
+            if isinstance(variable, ArrayFileSegment):
+                variables[variable_name] = [v.to_dict() for v in variable.value] if variable.value else None
+            else:
+                variables[variable_name] = variable.to_object() if variable else None
         # Run code
         try:
             result = CodeExecutor.execute_workflow_code_template(

@@ -4,6 +4,7 @@ import {
 } from 'use-context-selector'
 import type { Locale } from '@/i18n'
 import { getLanguage } from '@/i18n/language'
+import { noop } from 'lodash-es'
 
 type II18NContext = {
   locale: Locale
@@ -14,7 +15,7 @@ type II18NContext = {
 const I18NContext = createContext<II18NContext>({
   locale: 'en-US',
   i18n: {},
-  setLocaleOnClient: (_lang: Locale, _reloadPage?: boolean) => { },
+  setLocaleOnClient: noop,
 })
 
 export const useI18N = () => useContext(I18NContext)

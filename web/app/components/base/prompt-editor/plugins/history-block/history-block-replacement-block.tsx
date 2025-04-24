@@ -13,12 +13,13 @@ import {
   HistoryBlockNode,
 } from '../history-block/node'
 import { CustomTextNode } from '../custom-text/node'
+import { noop } from 'lodash-es'
 
 const REGEX = new RegExp(HISTORY_PLACEHOLDER_TEXT)
 
 const HistoryBlockReplacementBlock = ({
   history = { user: '', assistant: '' },
-  onEditRole = () => {},
+  onEditRole = noop,
   onInsert,
 }: HistoryBlockType) => {
   const [editor] = useLexicalComposerContext()

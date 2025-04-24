@@ -26,9 +26,7 @@ export const useNodeHelpLink = (nodeType: BlockEnum) => {
         [BlockEnum.VariableAggregator]: 'variable-aggregator',
         [BlockEnum.Assigner]: 'variable-assigner',
         [BlockEnum.Iteration]: 'iteration',
-        [BlockEnum.IterationStart]: 'iteration',
         [BlockEnum.Loop]: 'loop',
-        [BlockEnum.LoopStart]: 'loop',
         [BlockEnum.ParameterExtractor]: 'parameter-extractor',
         [BlockEnum.HttpRequest]: 'http-request',
         [BlockEnum.Tool]: 'tools',
@@ -52,9 +50,7 @@ export const useNodeHelpLink = (nodeType: BlockEnum) => {
       [BlockEnum.VariableAggregator]: 'variable-aggregator',
       [BlockEnum.Assigner]: 'variable-assigner',
       [BlockEnum.Iteration]: 'iteration',
-      [BlockEnum.IterationStart]: 'iteration',
       [BlockEnum.Loop]: 'loop',
-      [BlockEnum.LoopStart]: 'loop',
       [BlockEnum.ParameterExtractor]: 'parameter-extractor',
       [BlockEnum.HttpRequest]: 'http-request',
       [BlockEnum.Tool]: 'tools',
@@ -62,7 +58,12 @@ export const useNodeHelpLink = (nodeType: BlockEnum) => {
       [BlockEnum.ListFilter]: 'list-operator',
       [BlockEnum.Agent]: 'agent',
     }
-  }, [language])
+  }, [language]) as Record<string, string>
 
-  return `${prefixLink}${linkMap[nodeType]}`
+  const link = linkMap[nodeType]
+
+  if (!link)
+    return ''
+
+  return `${prefixLink}${link}`
 }

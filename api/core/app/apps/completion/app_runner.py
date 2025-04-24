@@ -54,20 +54,6 @@ class CompletionAppRunner(AppRunner):
         )
         image_detail_config = image_detail_config or ImagePromptMessageContent.DETAIL.LOW
 
-        # Pre-calculate the number of tokens of the prompt messages,
-        # and return the rest number of tokens by model context token size limit and max token size limit.
-        # If the rest number of tokens is not enough, raise exception.
-        # Include: prompt template, inputs, query(optional), files(optional)
-        # Not Include: memory, external data, dataset context
-        self.get_pre_calculate_rest_tokens(
-            app_record=app_record,
-            model_config=application_generate_entity.model_conf,
-            prompt_template_entity=app_config.prompt_template,
-            inputs=inputs,
-            files=files,
-            query=query,
-        )
-
         # organize all inputs and template to prompt messages
         # Include: prompt template, inputs, query(optional), files(optional)
         prompt_messages, stop = self.organize_prompt_messages(

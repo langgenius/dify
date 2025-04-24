@@ -10,13 +10,14 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import Loading from '../components/base/loading'
 import Input from '../components/base/input'
 import Button from '@/app/components/base/button'
+import { basePath } from '@/utils/var'
 
 import {
   fetchInitValidateStatus,
   fetchSetupStatus,
   sendForgotPasswordEmail,
 } from '@/service/common'
-import type { InitValidateStatusResponse, SetupStatusResponse } from '@/models/common'
+import type { InitValidateStatusResponse } from '@/models/common'
 
 const accountFormSchema = z.object({
   email: z
@@ -67,10 +68,10 @@ const ForgotPasswordForm = () => {
   }
 
   useEffect(() => {
-    fetchSetupStatus().then((res: SetupStatusResponse) => {
+    fetchSetupStatus().then(() => {
       fetchInitValidateStatus().then((res: InitValidateStatusResponse) => {
         if (res.status === 'not_started')
-          window.location.href = '/init'
+          window.location.href = `${basePath}/init`
       })
 
       setLoading(false)

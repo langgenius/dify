@@ -89,7 +89,7 @@ const DatasetItem: FC<Props> = ({
           }
           <ActionButton
             onClick={handleRemove}
-            state={ActionButtonState.Destructive}
+            state={isDeleteHovered ? ActionButtonState.Destructive : ActionButtonState.Default}
             onMouseEnter={() => setIsDeleteHovered(true)}
             onMouseLeave={() => setIsDeleteHovered(false)}
           >
@@ -111,7 +111,7 @@ const DatasetItem: FC<Props> = ({
       }
 
       {isShowSettingsModal && (
-        <Drawer isOpen={isShowSettingsModal} onClose={hideSettingsModal} footer={null} mask={isMobile} panelClassname='mt-16 mx-2 sm:mr-2 mb-3 !p-0 !max-w-[640px] rounded-xl'>
+        <Drawer isOpen={isShowSettingsModal} onClose={hideSettingsModal} footer={null} mask={isMobile} panelClassName='mt-16 mx-2 sm:mr-2 mb-3 !p-0 !max-w-[640px] rounded-xl'>
           <SettingsModal
             currentDataset={payload}
             onCancel={hideSettingsModal}

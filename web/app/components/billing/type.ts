@@ -87,6 +87,10 @@ export type CurrentPlanInfoBackend = {
   can_replace_logo: boolean
   model_load_balancing_enabled: boolean
   dataset_operator_enabled: boolean
+  education: {
+    enabled: boolean
+    activated: boolean
+  }
 }
 
 export type SubscriptionItem = {

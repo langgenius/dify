@@ -270,7 +270,7 @@ class ApolloClient:
         while not self._stopping:
             for namespace in self._notification_map:
                 self._do_heart_beat(namespace)
-            time.sleep(60 * 10)  # 10分钟
+            time.sleep(60 * 10)  # 10 minutes
 
     def _do_heart_beat(self, namespace):
         url = "{}/configs/{}/{}/{}?ip={}".format(self.config_url, self.app_id, self.cluster, namespace, self.ip)

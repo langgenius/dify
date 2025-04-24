@@ -10,6 +10,7 @@ import {
   updateApiBasedExtension,
 } from '@/service/common'
 import { useToastContext } from '@/app/components/base/toast'
+import { noop } from 'lodash-es'
 
 export type ApiBasedExtensionData = {
   name?: string
@@ -74,7 +75,7 @@ const ApiBasedExtensionModal: FC<ApiBasedExtensionModalProps> = ({
   return (
     <Modal
       isShow
-      onClose={() => { }}
+      onClose={noop}
       className='!w-[640px] !max-w-none !p-8 !pb-6'
     >
       <div className='mb-2 text-xl font-semibold text-text-primary'>

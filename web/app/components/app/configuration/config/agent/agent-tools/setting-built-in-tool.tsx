@@ -56,8 +56,8 @@ const SettingBuiltInTool: FC<Props> = ({
   const [tools, setTools] = useState<Tool[]>([])
   const currTool = tools.find(tool => tool.name === toolName)
   const formSchemas = currTool ? toolParametersToFormSchemas(currTool.parameters) : []
-  const infoSchemas = formSchemas.filter((item: any) => item.form === 'llm')
-  const settingSchemas = formSchemas.filter((item: any) => item.form !== 'llm')
+  const infoSchemas = formSchemas.filter(item => item.form === 'llm')
+  const settingSchemas = formSchemas.filter(item => item.form !== 'llm')
   const hasSetting = settingSchemas.length > 0
   const [tempSetting, setTempSetting] = useState(setting)
   const [currType, setCurrType] = useState('info')
@@ -88,7 +88,7 @@ const SettingBuiltInTool: FC<Props> = ({
           setTempSetting(addDefaultValue(setting, formSchemas))
         }
       }
-      catch (e) { }
+      catch { }
       setIsLoading(false)
     })()
   }, [collection?.name, collection?.id, collection?.type])
@@ -99,7 +99,7 @@ const SettingBuiltInTool: FC<Props> = ({
 
   const isValid = (() => {
     let valid = true
-    settingSchemas.forEach((item: any) => {
+    settingSchemas.forEach((item) => {
       if (item.required && !tempSetting[item.name])
         valid = false
     })
@@ -120,7 +120,7 @@ const SettingBuiltInTool: FC<Props> = ({
     <div className=''>
       {infoSchemas.length > 0 && (
         <div className='space-y-1 py-2'>
-          {infoSchemas.map((item: any, index) => (
+          {infoSchemas.map((item, index) => (
             <div key={index} className='py-1'>
               <div className='flex items-center gap-2'>
                 <div className='code-sm-semibold text-text-secondary'>{item.label[language]}</div>
@@ -147,7 +147,7 @@ const SettingBuiltInTool: FC<Props> = ({
     <Form
       value={tempSetting}
       onChange={setTempSetting}
-      formSchemas={settingSchemas as any}
+      formSchemas={settingSchemas}
       isEditMode={false}
       showOnVariableMap={{}}
       validating={false}
@@ -163,7 +163,7 @@ const SettingBuiltInTool: FC<Props> = ({
       footer={null}
       mask={false}
       positionCenter={false}
-      panelClassname={cn('mb-2 mr-2 mt-[64px] !w-[420px] !max-w-[420px] justify-start rounded-2xl border-[0.5px] border-components-panel-border !bg-components-panel-bg !p-0 shadow-xl')}
+      panelClassName={cn('mb-2 mr-2 mt-[64px] !w-[420px] !max-w-[420px] justify-start rounded-2xl border-[0.5px] border-components-panel-border !bg-components-panel-bg !p-0 shadow-xl')}
     >
       <>
         {isLoading && <Loading type='app' />}

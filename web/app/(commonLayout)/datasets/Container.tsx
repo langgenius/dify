@@ -11,7 +11,7 @@ import { useQuery } from '@tanstack/react-query'
 import ExternalAPIPanel from '../../components/datasets/external-api/external-api-panel'
 import Datasets from './Datasets'
 import DatasetFooter from './DatasetFooter'
-import ApiServer from './ApiServer'
+import ApiServer from '../../components/develop/ApiServer'
 import Doc from './Doc'
 import TabSliderNew from '@/app/components/base/tab-slider-new'
 import TagManagementModal from '@/app/components/base/tag-management'
@@ -37,6 +37,8 @@ const Container = () => {
   const showTagManagementModal = useTagStore(s => s.showTagManagementModal)
   const { showExternalApiPanel, setShowExternalApiPanel } = useExternalApiPanel()
   const [includeAll, { toggle: toggleIncludeAll }] = useBoolean(false)
+
+  document.title = `${t('dataset.knowledge')} - Dify`
 
   const options = useMemo(() => {
     return [

@@ -14,6 +14,9 @@ const HelpLink = ({
   const { t } = useTranslation()
   const link = useNodeHelpLink(nodeType)
 
+  if (!link)
+    return null
+
   return (
     <TooltipPlus
       popupContent={t('common.userProfile.helpCenter')}

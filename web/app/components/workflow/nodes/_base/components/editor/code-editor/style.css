@@ -1,9 +1,13 @@
-.margin-view-overlays {
-  padding-left: 10px;
-}
 
-.no-wrapper .margin-view-overlays {
-  padding-left: 0;
+.monaco-editor {
+  background-color: transparent !important;
+  outline: none !important;
+}
+.monaco-editor .monaco-editor-background {
+  background-color: transparent !important;
+}
+.monaco-editor .margin {
+  background-color: transparent !important;
 }
 
 /* hide readonly tooltip */

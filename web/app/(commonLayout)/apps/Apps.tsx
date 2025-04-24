@@ -1,7 +1,9 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { useRouter } from 'next/navigation'
+import {
+  useRouter,
+} from 'next/navigation'
 import useSWRInfinite from 'swr/infinite'
 import { useTranslation } from 'react-i18next'
 import { useDebounceFn } from 'ahooks'
@@ -64,6 +66,7 @@ const Apps = () => {
   const [isCreatedByMe, setIsCreatedByMe] = useState(queryIsCreatedByMe)
   const [tagFilterValue, setTagFilterValue] = useState<string[]>(tagIDs)
   const [searchKeywords, setSearchKeywords] = useState(keywords)
+  const newAppCardRef = useRef<HTMLDivElement>(null)
   const setKeywords = useCallback((keywords: string) => {
     setQuery(prev => ({ ...prev, keywords }))
   }, [setQuery])
@@ -71,10 +74,15 @@ const Apps = () => {
     setQuery(prev => ({ ...prev, tagIDs }))
   }, [setQuery])
 
-  const { data, isLoading, setSize, mutate } = useSWRInfinite(
+  const { data, isLoading, error, setSize, mutate } = useSWRInfinite(
     (pageIndex: number, previousPageData: AppListResponse) => getKey(pageIndex, previousPageData, activeTab, isCreatedByMe, tagIDs, searchKeywords),
     fetchAppList,
-    { revalidateFirstPage: true },
+    {
+      revalidateFirstPage: true,
+      shouldRetryOnError: false,
+      dedupingInterval: 500,
+      errorRetryCount: 3,
+    },
   )
 
   const anchorRef = useRef<HTMLDivElement>(null)
@@ -103,15 +111,22 @@ const Apps = () => {
   useEffect(() => {
     const hasMore = data?.at(-1)?.has_more ?? true
     let observer: IntersectionObserver | undefined
+
+    if (error) {
+      if (observer)
+        observer.disconnect()
+      return
+    }
+
     if (anchorRef.current) {
       observer = new IntersectionObserver((entries) => {
-        if (entries[0].isIntersecting && !isLoading && hasMore)
+        if (entries[0].isIntersecting && !isLoading && !error && hasMore)
           setSize((size: number) => size + 1)
       }, { rootMargin: '100px' })
       observer.observe(anchorRef.current)
     }
     return () => observer?.disconnect()
-  }, [isLoading, setSize, anchorRef, mutate, data])
+  }, [isLoading, setSize, anchorRef, mutate, data, error])
 
   const { run: handleSearch } = useDebounceFn(() => {
     setSearchKeywords(keywords)
@@ -164,14 +179,14 @@ const Apps = () => {
       {(data && data[0].total > 0)
         ? <div className='relative grid grow grid-cols-1 content-start gap-4 px-12 pt-2 sm:grid-cols-1 md:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-5 2k:grid-cols-6'>
           {isCurrentWorkspaceEditor
-            && <NewAppCard onSuccess={mutate} />}
+            && <NewAppCard ref={newAppCardRef} onSuccess={mutate} />}
           {data.map(({ data: apps }) => apps.map(app => (
             <AppCard key={app.id} app={app} onRefresh={mutate} />
           )))}
         </div>
         : <div className='relative grid grow grid-cols-1 content-start gap-4 overflow-hidden px-12 pt-2 sm:grid-cols-1 md:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-5 2k:grid-cols-6'>
           {isCurrentWorkspaceEditor
-            && <NewAppCard className='z-10' onSuccess={mutate} />}
+            && <NewAppCard ref={newAppCardRef} className='z-10' onSuccess={mutate} />}
           <NoAppsFound />
         </div>}
       <CheckModal />

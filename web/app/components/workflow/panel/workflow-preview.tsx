@@ -1,5 +1,6 @@
 import {
   memo,
+  useCallback,
   useEffect,
   useState,
 } from 'react'
@@ -47,31 +48,66 @@ const WorkflowPreview = () => {
       switchTab('DETAIL')
   }, [workflowRunningData])
 
+  const [panelWidth, setPanelWidth] = useState(420)
+  const [isResizing, setIsResizing] = useState(false)
+
+  const startResizing = useCallback((e: React.MouseEvent) => {
+    e.preventDefault()
+    setIsResizing(true)
+  }, [])
+
+  const stopResizing = useCallback(() => {
+    setIsResizing(false)
+  }, [])
+
+  const resize = useCallback((e: MouseEvent) => {
+    if (isResizing) {
+      const newWidth = window.innerWidth - e.clientX
+      if (newWidth > 420 && newWidth < 1024)
+        setPanelWidth(newWidth)
+    }
+  }, [isResizing])
+
+  useEffect(() => {
+    window.addEventListener('mousemove', resize)
+    window.addEventListener('mouseup', stopResizing)
+    return () => {
+      window.removeEventListener('mousemove', resize)
+      window.removeEventListener('mouseup', stopResizing)
+    }
+  }, [resize, stopResizing])
+
   return (
     <div className={`
-      flex h-full w-[420px] flex-col rounded-l-2xl border-[0.5px] border-gray-200 bg-white shadow-xl
-    `}>
-      <div className='flex items-center justify-between p-4 pb-1 text-base font-semibold text-gray-900'>
+      relative flex h-full flex-col rounded-l-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-xl
+    `}
+      style={{ width: `${panelWidth}px` }}
+    >
+      <div
+        className="absolute bottom-0 left-[3px] top-1/2 z-50 h-6 w-[3px] cursor-col-resize rounded bg-gray-300"
+        onMouseDown={startResizing}
+      />
+      <div className='flex items-center justify-between p-4 pb-1 text-base font-semibold text-text-primary'>
         {`Test Run${!workflowRunningData?.result.sequence_number ? '' : `#${workflowRunningData?.result.sequence_number}`}`}
         <div className='cursor-pointer p-1' onClick={() => handleCancelDebugAndPreviewPanel()}>
-          <RiCloseLine className='h-4 w-4 text-gray-500' />
+          <RiCloseLine className='h-4 w-4 text-text-tertiary' />
         </div>
       </div>
       <div className='relative flex grow flex-col'>
-        <div className='flex shrink-0 items-center border-b-[0.5px] border-[rgba(0,0,0,0.05)] px-4'>
+        <div className='flex shrink-0 items-center border-b-[0.5px] border-divider-subtle px-4'>
           {showInputsPanel && (
             <div
               className={cn(
-                'mr-6 cursor-pointer border-b-2 border-transparent py-3 text-[13px] font-semibold leading-[18px] text-gray-400',
-                currentTab === 'INPUT' && '!border-[rgb(21,94,239)] text-gray-700',
+                'mr-6 cursor-pointer border-b-2 border-transparent py-3 text-[13px] font-semibold leading-[18px] text-text-tertiary',
+                currentTab === 'INPUT' && '!border-[rgb(21,94,239)] text-text-secondary',
               )}
               onClick={() => switchTab('INPUT')}
             >{t('runLog.input')}</div>
           )}
           <div
             className={cn(
-              'mr-6 cursor-pointer border-b-2 border-transparent py-3 text-[13px] font-semibold leading-[18px] text-gray-400',
-              currentTab === 'RESULT' && '!border-[rgb(21,94,239)] text-gray-700',
+              'mr-6 cursor-pointer border-b-2 border-transparent py-3 text-[13px] font-semibold leading-[18px] text-text-tertiary',
+              currentTab === 'RESULT' && '!border-[rgb(21,94,239)] text-text-secondary',
               !workflowRunningData && '!cursor-not-allowed opacity-30',
             )}
             onClick={() => {
@@ -82,8 +118,8 @@ const WorkflowPreview = () => {
           >{t('runLog.result')}</div>
           <div
             className={cn(
-              'mr-6 cursor-pointer border-b-2 border-transparent py-3 text-[13px] font-semibold leading-[18px] text-gray-400',
-              currentTab === 'DETAIL' && '!border-[rgb(21,94,239)] text-gray-700',
+              'mr-6 cursor-pointer border-b-2 border-transparent py-3 text-[13px] font-semibold leading-[18px] text-text-tertiary',
+              currentTab === 'DETAIL' && '!border-[rgb(21,94,239)] text-text-secondary',
               !workflowRunningData && '!cursor-not-allowed opacity-30',
             )}
             onClick={() => {
@@ -94,8 +130,8 @@ const WorkflowPreview = () => {
           >{t('runLog.detail')}</div>
           <div
             className={cn(
-              'mr-6 cursor-pointer border-b-2 border-transparent py-3 text-[13px] font-semibold leading-[18px] text-gray-400',
-              currentTab === 'TRACING' && '!border-[rgb(21,94,239)] text-gray-700',
+              'mr-6 cursor-pointer border-b-2 border-transparent py-3 text-[13px] font-semibold leading-[18px] text-text-tertiary',
+              currentTab === 'TRACING' && '!border-[rgb(21,94,239)] text-text-secondary',
               !workflowRunningData && '!cursor-not-allowed opacity-30',
             )}
             onClick={() => {
@@ -117,7 +153,7 @@ const WorkflowPreview = () => {
               <ResultText
                 isRunning={workflowRunningData?.result?.status === WorkflowRunningStatus.Running || !workflowRunningData?.result}
                 outputs={workflowRunningData?.resultText}
-                allFiles={workflowRunningData?.result?.files as any}
+                allFiles={workflowRunningData?.result?.files}
                 error={workflowRunningData?.result?.error}
                 onClick={() => switchTab('DETAIL')}
               />

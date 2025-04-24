@@ -2,6 +2,7 @@
 import type { FC } from 'react'
 import React from 'react'
 import cn from '@/utils/classnames'
+import { noop } from 'lodash-es'
 
 type Props = {
   className?: string
@@ -23,7 +24,7 @@ const RadioCard: FC<Props> = ({
   description,
   noRadio,
   isChosen,
-  onChosen = () => { },
+  onChosen = noop,
   chosenConfig,
   chosenConfigWrapClassName,
   className,

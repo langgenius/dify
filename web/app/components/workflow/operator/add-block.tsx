@@ -9,6 +9,7 @@ import { useTranslation } from 'react-i18next'
 import type { OffsetOptions } from '@floating-ui/react'
 import {
   generateNewNode,
+  getNodeCustomTypeByNodeDataType,
 } from '../utils'
 import {
   useAvailableBlocks,
@@ -56,6 +57,7 @@ const AddBlock = ({
     const nodes = getNodes()
     const nodesWithSameType = nodes.filter(node => node.data.type === type)
     const { newNode } = generateNewNode({
+      type: getNodeCustomTypeByNodeDataType(type),
       data: {
         ...NODES_INITIAL_DATA[type],
         title: nodesWithSameType.length > 0 ? `${t(`workflow.blocks.${type}`)} ${nodesWithSameType.length + 1}` : t(`workflow.blocks.${type}`),
