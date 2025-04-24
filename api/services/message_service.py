@@ -1,4 +1,5 @@
 import json
+import logging
 from typing import Optional, Union
 
 from core.app.apps.advanced_chat.app_config_manager import AdvancedChatAppConfigManager
@@ -176,6 +177,20 @@ class MessageService:
         db.session.commit()
 
         return feedback
+
+    @classmethod
+    def get_all_messages_feedbacks(cls, app_model: App, page: int, limit: int):
+        """Get all feedbacks of an app"""
+        feedbacks = (
+            db.session.query(MessageFeedback)
+            .filter(
+                MessageFeedback.app_id == app_model.id,
+            )
+            .order_by(MessageFeedback.created_at.desc(), MessageFeedback.id.desc())
+            .paginate(page=page, per_page=limit, max_per_page=100, error_out=False)
+        )
+
+        return [record.to_dict() for record in feedbacks]
 
     @classmethod
     def get_message(cls, app_model: App, user: Optional[Union[Account, EndUser]], message_id: str):
