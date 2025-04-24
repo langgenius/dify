@@ -29,7 +29,7 @@ const OPTION_MAP = {
   iframe: {
     getContent: (url: string, token: string) =>
       `<iframe
- src="${url}${basePath}/chat/${token}"
+ src="${url}${basePath}/chatbot/${token}"
  style="width: 100%; height: 100%; min-height: 700px"
  frameborder="0"
  allow="microphone">
@@ -48,6 +48,7 @@ const OPTION_MAP = {
           : ''},
   systemVariables: {
     // user_id: 'YOU CAN DEFINE USER ID HERE',
+    // conversation_id: 'YOU CAN DEFINE CONVERSATION ID HERE, IT MUST BE A VALID UUID',
   },
  }
 </script>

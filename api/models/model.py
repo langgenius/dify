@@ -3,8 +3,8 @@ import re
 import uuid
 from collections.abc import Mapping
 from datetime import datetime
-from enum import Enum
-from typing import TYPE_CHECKING, Optional
+from enum import Enum, StrEnum
+from typing import TYPE_CHECKING, Any, Literal, Optional, cast
 
 from core.plugin.entities.plugin import GenericProviderID
 from core.tools.entities.tool_entities import ToolProviderType
@@ -12,9 +12,6 @@ from services.plugin.plugin_service import PluginService
 
 if TYPE_CHECKING:
     from models.workflow import Workflow
-
-from enum import StrEnum
-from typing import TYPE_CHECKING, Any, Literal, cast
 
 import sqlalchemy as sa
 from flask import request
