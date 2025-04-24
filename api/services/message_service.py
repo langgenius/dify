@@ -180,13 +180,14 @@ class MessageService:
     @classmethod
     def get_all_messages_feedbacks(cls, app_model: App, page: int, limit: int):
         """Get all feedbacks of an app"""
+        offset = (page - 1) * limit
         feedbacks = (
             db.session.query(MessageFeedback)
-            .filter(
-                MessageFeedback.app_id == app_model.id,
-            )
+            .filter(MessageFeedback.app_id == app_model.id)
             .order_by(MessageFeedback.created_at.desc(), MessageFeedback.id.desc())
-            .paginate(page=page, per_page=limit, max_per_page=100, error_out=False)
+            .limit(limit)
+            .offset(offset)
+            .all()
         )
 
         return [record.to_dict() for record in feedbacks]
