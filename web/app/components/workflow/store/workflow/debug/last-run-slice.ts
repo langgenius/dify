@@ -1,18 +1,16 @@
-import type { NodeTracing } from '@/types/workflow'
 import produce from 'immer'
 import type { StateCreator } from 'zustand'
-
-type NodeInfo = NodeTracing
+import type { NodeRunResult } from '@/types/workflow'
 
 type LastRunState = {
-  nodes: NodeInfo[]
+  nodes: NodeRunResult[]
 }
 
 type LastRunActions = {
-  setLastRunInfos: (vars: NodeInfo[]) => void
-  getLastRunInfos: () => NodeInfo[]
-  setLastRunNodeInfo: (nodeId: string, payload: NodeInfo) => void
-  getLastRunNodeInfo: (nodeId: string) => NodeInfo | undefined
+  setLastRunInfos: (vars: NodeRunResult[]) => void
+  getLastRunInfos: () => NodeRunResult[]
+  setLastRunNodeInfo: (nodeId: string, payload: NodeRunResult) => void
+  getLastRunNodeInfo: (nodeId: string) => NodeRunResult | undefined
   getLastRunVar: (nodeId: string, key: string) => any
 }
 

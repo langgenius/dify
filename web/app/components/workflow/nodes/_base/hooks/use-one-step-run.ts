@@ -33,6 +33,7 @@ import { ssePost } from '@/service/base'
 import { noop } from 'lodash-es'
 import { getInputVars as doGetInputVars } from '@/app/components/base/prompt-editor/constants'
 import type { NodeRunResult, NodeTracing } from '@/types/workflow'
+import { getNodeWithVar } from '../../../utils/debug'
 const { checkValid: checkLLMValid } = LLMDefault
 const { checkValid: checkKnowledgeRetrievalValid } = KnowledgeRetrievalDefault
 const { checkValid: checkIfElseValid } = IfElseDefault
@@ -156,15 +157,21 @@ const useOneStepRun = <T>({
   const workflowStore = useWorkflowStore()
   const {
     setLastRunNodeInfo,
-    setNodeInspectVars: setCurrentNodeVars,
+    setNodeInspectVars,
     setShowSingleRunPanel,
   } = workflowStore.getState()
   const [runResult, doSetRunResult] = useState<NodeRunResult | null>(null)
+  const nodeData = data
   const setRunResult = useCallback((data: NodeRunResult | null) => {
     doSetRunResult(data)
-    setLastRunNodeInfo(id, data as any)
-    setCurrentNodeVars(id, data as any)
-  }, [id, setLastRunNodeInfo, setCurrentNodeVars])
+    setLastRunNodeInfo(id, data!)
+    setNodeInspectVars(id, getNodeWithVar({
+      nodeId: id,
+      nodeType: nodeData.type,
+      title: nodeData.title,
+      values: data?.outputs || {},
+    }))
+  }, [nodeData, id, setLastRunNodeInfo, setNodeInspectVars])
 
   const { handleNodeDataUpdate }: { handleNodeDataUpdate: (data: any) => void } = useNodeDataUpdate()
   const [canShowSingleRun, setCanShowSingleRun] = useState(false)

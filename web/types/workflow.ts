@@ -379,7 +379,7 @@ export enum VarInInspectType {
 }
 
 export type VarInInspect = {
-  id?: string // value parse from output not has id
+  id: string
   type: VarInInspectType
   name: string
   description: string
