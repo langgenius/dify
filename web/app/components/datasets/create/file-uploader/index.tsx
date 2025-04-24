@@ -204,7 +204,7 @@ const FileUploader = ({
       return new Promise((resolve) => {
         if (entry.isFile) {
           entry.file((file: FileWithPath) => {
-            file.relativePath = `${prefix}${file.name}` // 保留相对路径
+            file.relativePath = `${prefix}${file.name}` 
             resolve([file])
           })
         }
@@ -234,7 +234,7 @@ const FileUploader = ({
         }
       })
     },
-    [], // ← 依赖为空，引用稳定
+    [], 
   )
 
   const handleDrop = useCallback(
