@@ -60,7 +60,6 @@ class LicenseStatus(StrEnum):
 class LicenseModel(BaseModel):
     status: LicenseStatus = LicenseStatus.NONE
     expired_at: str = ""
-    product_id: str = ""
     workspaces: LicenseLimitationModel = LicenseLimitationModel(enabled=False, size=0, limit=0)
 
 
@@ -254,9 +253,6 @@ class FeatureService:
 
             if "expiredAt" in license_info:
                 features.license.expired_at = license_info["expiredAt"]
-
-            if "productId" in license_info:
-                features.license.product_id = license_info["productId"]
 
             if "workspaces" in license_info:
                 features.license.workspaces.enabled = license_info["workspaces"]["enabled"]
