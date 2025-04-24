@@ -100,7 +100,6 @@ class ConversationVariablesApi(Resource):
     @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.QUERY))
     @marshal_with(conversation_variable_infinite_scroll_pagination_fields)
     def get(self, app_model: App, end_user: EndUser, c_id):
-
         # conversational variable only for chat app
         app_mode = AppMode.value_of(app_model.mode)
         if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:

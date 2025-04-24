@@ -195,7 +195,7 @@ class ConversationService:
                 last_variable = session.scalar(stmt.where(ConversationVariable.id == last_id))
                 if not last_variable:
                     raise ConversationVariableNotExistsError()
-                
+
                 # Filter for variables created after the last_id
                 stmt = stmt.where(ConversationVariable.created_at > last_variable.created_at)
 
