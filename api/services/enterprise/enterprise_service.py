@@ -39,7 +39,7 @@ class EnterpriseService:
         @classmethod
         def batch_get_app_access_mode_by_id(cls, app_ids: list[str]) -> dict[str, WebAppSettings]:
             if not app_ids:
-                raise ValueError("app_ids must be provided.")
+                return {}
             body = {"appIds": app_ids}
             data: dict[str, str] = EnterpriseRequest.send_request("POST", "/webapp/access-mode/batch/id", json=body)
             if not data:
