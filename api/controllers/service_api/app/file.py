@@ -1,10 +1,10 @@
+import httpx
 from flask import request
 from flask_restful import Resource, marshal_with, reqparse  # type: ignore
-import httpx
 
 import services
-from controllers.common.errors import FilenameNotExistsError, RemoteFileUploadError
 from controllers.common import helpers
+from controllers.common.errors import FilenameNotExistsError, RemoteFileUploadError
 from controllers.service_api import api
 from controllers.service_api.app.error import (
     FileTooLargeError,
@@ -13,11 +13,11 @@ from controllers.service_api.app.error import (
     UnsupportedFileTypeError,
 )
 from controllers.service_api.wraps import FetchUserArg, WhereisUserArg, validate_app_token
-from fields.file_fields import file_fields, file_fields_with_signed_url
 from core.file import helpers as file_helpers
+from core.helper import ssrf_proxy
+from fields.file_fields import file_fields, file_fields_with_signed_url
 from models.model import App, EndUser
 from services.file_service import FileService
-from core.helper import ssrf_proxy
 
 
 class FileApi(Resource):
@@ -108,7 +108,7 @@ class RemoteFileApi(Resource):
         except services.errors.file.UnsupportedFileTypeError:
             raise UnsupportedFileTypeError("Unsupported file type.")
         except Exception as e:
-            raise RemoteFileUploadError(f"Failed to save or process the fetched file.")
+            raise RemoteFileUploadError("Failed to save or process the fetched file.")
 
         return {
             "id": upload_file.id,
