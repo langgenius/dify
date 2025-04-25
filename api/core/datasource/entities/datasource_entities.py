@@ -105,7 +105,7 @@ class ApiProviderAuthType(Enum):
         raise ValueError(f"invalid mode value {value}")
 
 
-class ToolInvokeMessage(BaseModel):
+class DatasourceInvokeMessage(BaseModel):
     class TextMessage(BaseModel):
         text: str
 
@@ -200,7 +200,7 @@ class ToolInvokeMessage(BaseModel):
         return v
 
 
-class ToolInvokeMessageBinary(BaseModel):
+class DatasourceInvokeMessageBinary(BaseModel):
     mimetype: str = Field(..., description="The mimetype of the binary")
     url: str = Field(..., description="The url of the binary")
     file_var: Optional[dict[str, Any]] = None

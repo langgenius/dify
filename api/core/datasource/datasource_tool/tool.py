@@ -1,14 +1,16 @@
 from collections.abc import Generator
 from typing import Any, Optional
 
+from core.datasource.__base.datasource import Datasource
 from core.datasource.__base.datasource_runtime import DatasourceRuntime
-from core.datasource.entities.datasource_entities import DatasourceEntity, DatasourceParameter, DatasourceProviderType
+from core.datasource.entities.datasource_entities import (
+    DatasourceEntity,
+    DatasourceInvokeMessage,
+    DatasourceParameter,
+    DatasourceProviderType,
+)
 from core.plugin.manager.datasource import PluginDatasourceManager
-from core.plugin.manager.tool import PluginToolManager
 from core.plugin.utils.converter import convert_parameters_to_plugin_format
-from core.tools.__base.tool import Tool
-from core.tools.__base.tool_runtime import ToolRuntime
-from core.tools.entities.tool_entities import ToolEntity, ToolInvokeMessage, ToolParameter, ToolProviderType
 
 
 class DatasourcePlugin(Datasource):
@@ -16,11 +18,14 @@ class DatasourcePlugin(Datasource):
     icon: str
     plugin_unique_identifier: str
     runtime_parameters: Optional[list[DatasourceParameter]]
+    entity: DatasourceEntity
+    runtime: DatasourceRuntime    
 
     def __init__(
-        self, entity: DatasourceEntity, runtime: ToolRuntime, tenant_id: str, icon: str, plugin_unique_identifier: str
+        self, entity: DatasourceEntity, runtime: DatasourceRuntime, tenant_id: str, icon: str, plugin_unique_identifier: str
     ) -> None:
-        super().__init__(entity, runtime)
+        self.entity = entity
+        self.runtime = runtime
         self.tenant_id = tenant_id
         self.icon = icon
         self.plugin_unique_identifier = plugin_unique_identifier
@@ -34,7 +39,7 @@ class DatasourcePlugin(Datasource):
         user_id: str,
         datasource_parameters: dict[str, Any],
         rag_pipeline_id: Optional[str] = None,
-    ) -> Generator[ToolInvokeMessage, None, None]:
+    ) -> Generator[DatasourceInvokeMessage, None, None]:
         manager = PluginDatasourceManager()
 
         datasource_parameters = convert_parameters_to_plugin_format(datasource_parameters)
@@ -54,7 +59,7 @@ class DatasourcePlugin(Datasource):
         user_id: str,
         datasource_parameters: dict[str, Any],
         rag_pipeline_id: Optional[str] = None,
-    ) -> Generator[ToolInvokeMessage, None, None]:
+    ) -> Generator[DatasourceInvokeMessage, None, None]:
         manager = PluginDatasourceManager()
 
         datasource_parameters = convert_parameters_to_plugin_format(datasource_parameters)
