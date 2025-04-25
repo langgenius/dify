@@ -198,7 +198,9 @@ const Apps = ({
             <div className='pb-1 pt-4'>
               {searchKeywords
                 ? <p className='title-md-semi-bold text-text-tertiary'>{searchFilteredList.length > 1 ? t('app.newApp.foundResults', { count: searchFilteredList.length }) : t('app.newApp.foundResult', { count: searchFilteredList.length })}</p>
-                : <AppCategoryLabel category={currCategory as AppCategories} className='title-md-semi-bold text-text-primary' />}
+                : <div className='flex h-[22px] items-center'>
+                  <AppCategoryLabel category={currCategory as AppCategories} className='title-md-semi-bold text-text-primary' />
+                </div>}
             </div>
             <div
               className={cn(
