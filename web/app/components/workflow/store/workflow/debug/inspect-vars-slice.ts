@@ -1,7 +1,6 @@
 import type { StateCreator } from 'zustand'
 import produce from 'immer'
-import { type NodeWithVar, type VarInInspect, VarInInspectType } from '@/types/workflow'
-import { BlockEnum, VarType } from '../../../types'
+import type { NodeWithVar, VarInInspect } from '@/types/workflow'
 
 type InspectVarsState = {
   currentFocusNodeId: string | null
@@ -11,8 +10,9 @@ type InspectVarsState = {
 
 type InspectVarsActions = {
   setCurrentFocusNodeId: (nodeId: string | null) => void
-  getAllInspectVars: () => NodeWithVar[]
+  setNodesWithInspectVars: (payload: NodeWithVar[]) => void
   clearInspectVars: () => void
+  getAllInspectVars: () => NodeWithVar[]
   setNodeInspectVars: (nodeId: string, payload: NodeWithVar) => void
   clearNodeInspectVars: (nodeId: string) => void
   getNodeInspectVars: (nodeId: string) => NodeWithVar | undefined
@@ -26,29 +26,16 @@ export type InspectVarsSliceShape = InspectVarsState & InspectVarsActions
 export const createInspectVarsSlice: StateCreator<InspectVarsSliceShape> = (set, get) => {
   return ({
     currentFocusNodeId: null,
-    nodesWithInspectVars: [
-      {
-        nodeId: '1745476079387',
-        nodeType: BlockEnum.LLM,
-        title: 'llm 2',
-        vars: [
-          {
-            id: 'xxx',
-            type: VarInInspectType.node,
-            name: 'llm 2',
-            description: '',
-            selector: ['1745476079387', 'text'],
-            value_type: VarType.string,
-            value: 'text value...',
-            edited: false,
-          },
-        ],
-      },
-    ],
+    nodesWithInspectVars: [],
     conversationVars: [],
     setCurrentFocusNodeId: (nodeId) => {
       set(() => ({
         currentFocusNodeId: nodeId,
+      }))
+    },
+    setNodesWithInspectVars: (payload) => {
+      set(() => ({
+        nodesWithInspectVars: payload,
       }))
     },
     getAllInspectVars: () => {

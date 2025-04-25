@@ -82,6 +82,7 @@ import Confirm from '@/app/components/base/confirm'
 import DatasetsDetailProvider from './datasets-detail-store/provider'
 import { HooksStoreContextProvider } from './hooks-store'
 import type { Shape as HooksStoreShape } from './hooks-store'
+import useWorkflowVars from '../workflow-app/hooks/use-workflow-vars'
 
 const nodeTypes = {
   [CUSTOM_NODE]: CustomNode,
@@ -273,6 +274,7 @@ export const Workflow: FC<WorkflowProps> = memo(({
   })
 
   useShortcuts()
+  useWorkflowVars()
 
   const store = useStoreApi()
   if (process.env.NODE_ENV === 'development') {
