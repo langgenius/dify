@@ -39,7 +39,7 @@ export type SystemFeatures = {
     enabled: boolean
     allow_sso: boolean
     sso_config: {
-      protocol: SSOProtocol
+      protocol: SSOProtocol | ''
     }
     allow_email_code_login: boolean
     allow_email_password_login: boolean
@@ -70,7 +70,7 @@ export const defaultSystemFeatures: SystemFeatures = {
     enabled: false,
     allow_sso: false,
     sso_config: {
-      protocol: SSOProtocol.SAML,
+      protocol: '',
     },
     allow_email_code_login: false,
     allow_email_password_login: false,
