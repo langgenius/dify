@@ -1009,6 +1009,8 @@ services:
       - 9091:9091
     networks:
       - milvus
+      - ssrf_proxy_network
+      - default
 
   # Opensearch vector database
   opensearch:
