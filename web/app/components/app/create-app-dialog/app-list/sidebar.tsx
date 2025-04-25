@@ -18,10 +18,10 @@ type SidebarProps = {
 export default function Sidebar({ current, categories, onClick, onCreateFromBlank }: SidebarProps) {
   const { t } = useTranslation()
   return <div className="flex h-full w-full flex-col">
-    <ul>
+    <ul className='pt-0.5'>
       <CategoryItem category={AppCategories.RECOMMENDED} active={current === AppCategories.RECOMMENDED} onClick={onClick} />
     </ul>
-    <div className='system-xs-medium-uppercase px-3 pb-1 pt-2 text-text-tertiary'>{t('app.newAppFromTemplate.byCategories')}</div>
+    <div className='system-xs-medium-uppercase mb-0.5 mt-3 px-3 pb-1 pt-2 text-text-tertiary'>{t('app.newAppFromTemplate.byCategories')}</div>
     <ul className='flex grow flex-col gap-0.5'>
       {categories.map(category => (<CategoryItem key={category} category={category} active={current === category} onClick={onClick} />))}
     </ul>
@@ -55,5 +55,6 @@ type AppCategoryLabelProps = {
   className?: string
 }
 export function AppCategoryLabel({ category, className }: AppCategoryLabelProps) {
-  return <span className={className}>{category}</span>
+  const { t } = useTranslation()
+  return <span className={className}>{category === AppCategories.RECOMMENDED ? t('app.newAppFromTemplate.sidebar.Recommended') : category}</span>
 }
