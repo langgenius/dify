@@ -1,7 +1,6 @@
 from collections.abc import Generator
 from typing import Any, Optional
 
-from core.datasource.__base.datasource import Datasource
 from core.datasource.__base.datasource_runtime import DatasourceRuntime
 from core.datasource.entities.datasource_entities import (
     DatasourceEntity,
@@ -13,7 +12,7 @@ from core.plugin.manager.datasource import PluginDatasourceManager
 from core.plugin.utils.converter import convert_parameters_to_plugin_format
 
 
-class DatasourcePlugin(Datasource):
+class DatasourcePlugin:
     tenant_id: str
     icon: str
     plugin_unique_identifier: str

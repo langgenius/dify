@@ -1,1 +1,1 @@
-TOOL_SELECTOR_MODEL_IDENTITY = "__dify__tool_selector__"
+DATASOURCE_SELECTOR_MODEL_IDENTITY = "__dify__datasource_selector__"

@@ -1,15 +1,15 @@
 from typing import Any
 
-from core.datasource.datasource_tool.tool import DatasourceTool
+from core.datasource.__base.datasource_plugin import DatasourcePlugin
+from core.datasource.__base.datasource_runtime import DatasourceRuntime
 from core.datasource.entities.datasource_entities import DatasourceProviderEntityWithPlugin, DatasourceProviderType
+from core.entities.provider_entities import ProviderConfig
 from core.plugin.manager.tool import PluginToolManager
-from core.tools.__base.tool_runtime import ToolRuntime
 from core.tools.builtin_tool.provider import BuiltinToolProviderController
-from core.tools.entities.tool_entities import ToolProviderEntityWithPlugin, ToolProviderType
 from core.tools.errors import ToolProviderCredentialValidationError
 
 
-class DatasourceToolProviderController(BuiltinToolProviderController):
+class DatasourcePluginProviderController(BuiltinToolProviderController):
     entity: DatasourceProviderEntityWithPlugin
     tenant_id: str
     plugin_id: str
@@ -45,7 +45,7 @@ class DatasourceToolProviderController(BuiltinToolProviderController):
         ):
             raise ToolProviderCredentialValidationError("Invalid credentials")
 
-    def get_datasource(self, datasource_name: str) -> DatasourceTool:  # type: ignore
+    def get_datasource(self, datasource_name: str) -> DatasourcePlugin:  # type: ignore
         """
         return datasource with given name
         """
@@ -56,9 +56,9 @@ class DatasourceToolProviderController(BuiltinToolProviderController):
         if not datasource_entity:
             raise ValueError(f"Datasource with name {datasource_name} not found")
 
-        return DatasourceTool(
+        return DatasourcePlugin(
             entity=datasource_entity,
-            runtime=ToolRuntime(tenant_id=self.tenant_id),
+            runtime=DatasourceRuntime(tenant_id=self.tenant_id),
             tenant_id=self.tenant_id,
             icon=self.entity.identity.icon,
             plugin_unique_identifier=self.plugin_unique_identifier,
@@ -69,9 +69,9 @@ class DatasourceToolProviderController(BuiltinToolProviderController):
         get all datasources
         """
         return [
-            DatasourceTool(
+            DatasourcePlugin(
                 entity=datasource_entity,
-                runtime=ToolRuntime(tenant_id=self.tenant_id),
+                runtime=DatasourceRuntime(tenant_id=self.tenant_id),
                 tenant_id=self.tenant_id,
                 icon=self.entity.identity.icon,
                 plugin_unique_identifier=self.plugin_unique_identifier,

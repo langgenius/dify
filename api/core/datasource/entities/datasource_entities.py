@@ -6,6 +6,7 @@ from typing import Any, Optional, Union
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, field_serializer, field_validator, model_validator
 
+from core.datasource.entities.constants import DATASOURCE_SELECTOR_MODEL_IDENTITY
 from core.entities.provider_entities import ProviderConfig
 from core.plugin.entities.parameters import (
     PluginParameter,
@@ -16,7 +17,6 @@ from core.plugin.entities.parameters import (
     init_frontend_parameter,
 )
 from core.tools.entities.common_entities import I18nObject
-from core.tools.entities.constants import TOOL_SELECTOR_MODEL_IDENTITY
 
 
 class ToolLabelEnum(Enum):
@@ -400,7 +400,7 @@ class DatasourceInvokeFrom(Enum):
 
 
 class DatasourceSelector(BaseModel):
-    dify_model_identity: str = TOOL_SELECTOR_MODEL_IDENTITY
+    dify_model_identity: str = DATASOURCE_SELECTOR_MODEL_IDENTITY
 
     class Parameter(BaseModel):
         name: str = Field(..., description="The name of the parameter")
