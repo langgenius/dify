@@ -176,6 +176,11 @@ const translation = {
   openInExplore: '在“探索”中打开',
   showMyCreatedAppsOnly: '我创建的',
   accessControl: 'Web 应用访问控制',
+  accessItemsDescription: {
+    anyone: '任何人可以访问 web 应用',
+    specific: '特定组或成员可以访问 web 应用',
+    organization: '组织内任何人可以访问 web 应用',
+  },
   accessControlDialog: {
     title: 'Web 应用访问权限',
     description: '设置 web 应用访问权限。',
