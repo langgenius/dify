@@ -96,7 +96,7 @@ const useConfig = (id: string, payload: AgentNodeType) => {
 
   const getParamVarType = useCallback((paramName: string) => {
     const isVariable = currentStrategy?.parameters.some(
-      param => param.name === paramName && param.type === FormTypeEnum.varSelector,
+      param => param.name === paramName && param.type === FormTypeEnum.any,
     )
     if (isVariable) return VarType.variable
     return VarType.constant

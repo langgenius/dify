@@ -410,7 +410,7 @@ function Form<
       )
     }
 
-    if (formSchema.type === FormTypeEnum.varSelector) {
+    if (formSchema.type === FormTypeEnum.any) {
       const {
         variable, label, required, scope,
       } = formSchema as (CredentialFormSchemaTextInput | CredentialFormSchemaSecretInput)

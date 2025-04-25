@@ -246,7 +246,7 @@ class ToolParameter(PluginParameter):
         FILES = PluginParameterType.FILES.value
         APP_SELECTOR = PluginParameterType.APP_SELECTOR.value
         MODEL_SELECTOR = PluginParameterType.MODEL_SELECTOR.value
-        VAR_SELECTOR = PluginParameterType.VAR_SELECTOR.value
+        ANY = PluginParameterType.ANY.value
 
         # deprecated, should not use.
         SYSTEM_FILES = PluginParameterType.SYSTEM_FILES.value

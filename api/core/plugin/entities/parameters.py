@@ -36,7 +36,7 @@ class PluginParameterType(enum.StrEnum):
     APP_SELECTOR = CommonParameterType.APP_SELECTOR.value
     MODEL_SELECTOR = CommonParameterType.MODEL_SELECTOR.value
     TOOLS_SELECTOR = CommonParameterType.TOOLS_SELECTOR.value
-    VAR_SELECTOR = CommonParameterType.VAR_SELECTOR.value
+    ANY = CommonParameterType.ANY.value
 
     # deprecated, should not use.
     SYSTEM_FILES = CommonParameterType.SYSTEM_FILES.value
@@ -136,7 +136,7 @@ def cast_parameter_value(typ: enum.StrEnum, value: Any, /):
                 if value and not isinstance(value, list):
                     raise ValueError("The tools selector must be a list.")
                 return value
-            case PluginParameterType.VAR_SELECTOR:
+            case PluginParameterType.ANY:
                 if value and not isinstance(value, str | dict | list | NumberType):
                     raise ValueError("The var selector must be a string, dictionary, list or number.")
                 return value

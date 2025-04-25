@@ -14,7 +14,7 @@ class CommonParameterType(StrEnum):
     APP_SELECTOR = "app-selector"
     MODEL_SELECTOR = "model-selector"
     TOOLS_SELECTOR = "array[tools]"
-    VAR_SELECTOR = "var-selector"
+    ANY = "any"
 
     # TOOL_SELECTOR = "tool-selector"
 
