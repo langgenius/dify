@@ -123,7 +123,11 @@ function unicodeToChar(text: string) {
 }
 
 function requiredWebSSOLogin(message?: string) {
-  globalThis.location.href = `/webapp-signin?redirect_url=${globalThis.location.pathname}&message=${message}`
+  const params = new URLSearchParams()
+  params.append('redirect_url', globalThis.location.pathname)
+  if (message)
+    params.append('message', message)
+  globalThis.location.href = `/webapp-signin?${params.toString()}}`
 }
 
 function getAccessToken(isPublicAPI?: boolean) {
