@@ -59,7 +59,7 @@ const ImportFromTool: FC<Props> = ({
     })()
     const currCollection = currentTools.find(item => canFindTool(item.id, provider_id))
     const currTool = currCollection?.tools.find(tool => tool.name === tool_name)
-    const toExactParams = (currTool?.parameters || []).filter((item: any) => item.form === 'llm')
+    const toExactParams = (currTool?.parameters || []).filter(item => item.form === 'llm')
     const formattedParams = toParmExactParams(toExactParams, language)
     onImport(formattedParams)
   }, [buildInTools, customTools, language, onImport, workflowTools])
@@ -68,8 +68,8 @@ const ImportFromTool: FC<Props> = ({
     return (
       <div>
         <div className={cn(
-          'flex h-6 cursor-pointer items-center rounded-md px-2 text-xs font-medium text-gray-500 hover:bg-gray-100',
-          open && 'bg-gray-100',
+          'flex h-6 cursor-pointer items-center rounded-md px-2 text-xs font-medium text-text-tertiary hover:bg-state-base-hover',
+          open && 'bg-state-base-hover',
         )}>
           {t(`${i18nPrefix}.importFromTool`)}
         </div>

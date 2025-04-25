@@ -124,7 +124,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ src }) => {
       setWaveformData(normalizedWaveform)
       setIsAudioAvailable(true)
     }
-    catch (error) {
+    catch {
       const waveform: number[] = []
       let prevValue = Math.random()
 

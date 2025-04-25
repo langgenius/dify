@@ -25,6 +25,9 @@ export enum Type {
   boolean = 'boolean',
   object = 'object',
   array = 'array',
+  arrayString = 'array[string]',
+  arrayNumber = 'array[number]',
+  arrayObject = 'array[object]',
 }
 
 export enum ArrayType {

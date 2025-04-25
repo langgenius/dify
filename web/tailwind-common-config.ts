@@ -113,6 +113,7 @@ const config = {
         'dataset-option-card-purple-gradient': 'var(--color-dataset-option-card-purple-gradient)',
         'dataset-option-card-orange-gradient': 'var(--color-dataset-option-card-orange-gradient)',
         'dataset-chunk-list-mask-bg': 'var(--color-dataset-chunk-list-mask-bg)',
+        'line-divider-bg': 'var(--color-line-divider-bg)',
         'dataset-warning-message-bg': 'var(--color-dataset-warning-message-bg)',
         'price-premium-badge-background': 'var(--color-premium-badge-background)',
         'premium-yearly-tip-text-background': 'var(--color-premium-yearly-tip-text-background)',

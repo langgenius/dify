@@ -24,6 +24,7 @@ import AnswerIcon from '@/app/components/base/answer-icon'
 import SuggestedQuestions from '@/app/components/base/chat/chat/answer/suggested-questions'
 import { Markdown } from '@/app/components/base/markdown'
 import cn from '@/utils/classnames'
+import type { FileEntity } from '../../file-uploader/types'
 
 const ChatWrapper = () => {
   const {
@@ -138,21 +139,16 @@ const ChatWrapper = () => {
         isPublicAPI: !isInstalledApp,
       },
     )
-  }, [
-    chatList,
-    handleNewConversationCompleted,
-    handleSend,
-    currentConversationId,
-    currentConversationItem,
-    newConversationInputs,
-    isInstalledApp,
-    appId,
-  ])
+  }, [currentConversationId, currentConversationInputs, newConversationInputs, chatList, handleSend, isInstalledApp, appId, handleNewConversationCompleted])
 
-  const doRegenerate = useCallback((chatItem: ChatItemInTree) => {
-    const question = chatList.find(item => item.id === chatItem.parentMessageId)!
+  const doRegenerate = useCallback((chatItem: ChatItemInTree, editedQuestion?: { message: string, files?: FileEntity[] }) => {
+    const question = editedQuestion ? chatItem : chatList.find(item => item.id === chatItem.parentMessageId)!
     const parentAnswer = chatList.find(item => item.id === question.parentMessageId)
-    doSend(question.content, question.message_files, true, isValidGeneratedAnswer(parentAnswer) ? parentAnswer : null)
+    doSend(editedQuestion ? editedQuestion.message : question.content,
+      editedQuestion ? editedQuestion.files : question.message_files,
+      true,
+      isValidGeneratedAnswer(parentAnswer) ? parentAnswer : null,
+    )
   }, [chatList, doSend])
 
   const messageList = useMemo(() => {
@@ -188,7 +184,7 @@ const ChatWrapper = () => {
       return null
     if (welcomeMessage.suggestedQuestions && welcomeMessage.suggestedQuestions?.length > 0) {
       return (
-        <div className='flex h-[50vh] items-center justify-center px-4 py-12'>
+        <div className={cn('flex items-center justify-center px-4 py-12', isMobile ? 'min-h-[30vh] py-0' : 'h-[50vh]')}>
           <div className='flex max-w-[720px] grow gap-4'>
             <AppIcon
               size='xl'
@@ -206,7 +202,7 @@ const ChatWrapper = () => {
       )
     }
     return (
-      <div className={cn('flex h-[50vh] flex-col items-center justify-center gap-3 py-12')}>
+      <div className={cn('flex h-[50vh] flex-col items-center justify-center gap-3 py-12', isMobile ? 'min-h-[30vh] py-0' : 'h-[50vh]')}>
         <AppIcon
           size='xl'
           iconType={appData?.site.icon_type}

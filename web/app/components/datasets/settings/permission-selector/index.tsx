@@ -114,17 +114,17 @@ const PermissionSelector = ({ disabled, permission, value, memberList, onChange,
         <PortalToFollowElemContent className='z-[1002]'>
           <div className='relative w-[480px] rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-sm'>
             <div className='p-1'>
-              <div className='cursor-pointer rounded-lg py-1 pl-3 pr-2 hover:bg-gray-50' onClick={() => {
+              <div className='cursor-pointer rounded-lg py-1 pl-3 pr-2 hover:bg-state-base-hover' onClick={() => {
                 onChange(DatasetPermission.onlyMe)
                 setOpen(false)
               }}>
                 <div className='flex items-center gap-2'>
                   <Avatar avatar={userProfile.avatar_url} name={userProfile.name} className='mr-2 shrink-0' size={24} />
-                  <div className='mr-2 grow text-sm leading-5 text-gray-900'>{t('datasetSettings.form.permissionsOnlyMe')}</div>
+                  <div className='mr-2 grow text-sm leading-5 text-text-primary'>{t('datasetSettings.form.permissionsOnlyMe')}</div>
                   {isOnlyMe && <Check className='h-4 w-4 text-primary-600' />}
                 </div>
               </div>
-              <div className='cursor-pointer rounded-lg py-1 pl-3 pr-2 hover:bg-gray-50' onClick={() => {
+              <div className='cursor-pointer rounded-lg py-1 pl-3 pr-2 hover:bg-state-base-hover' onClick={() => {
                 onChange(DatasetPermission.allTeamMembers)
                 setOpen(false)
               }}>
@@ -132,11 +132,11 @@ const PermissionSelector = ({ disabled, permission, value, memberList, onChange,
                   <div className='mr-2 flex h-6 w-6 items-center justify-center rounded-lg bg-[#EEF4FF]'>
                     <Users01 className='h-3.5 w-3.5 text-[#444CE7]' />
                   </div>
-                  <div className='mr-2 grow text-sm leading-5 text-gray-900'>{t('datasetSettings.form.permissionsAllMember')}</div>
+                  <div className='mr-2 grow text-sm leading-5 text-text-primary'>{t('datasetSettings.form.permissionsAllMember')}</div>
                   {isAllTeamMembers && <Check className='h-4 w-4 text-primary-600' />}
                 </div>
               </div>
-              <div className='cursor-pointer rounded-lg py-1 pl-3 pr-2 hover:bg-gray-50' onClick={() => {
+              <div className='cursor-pointer rounded-lg py-1 pl-3 pr-2 hover:bg-state-base-hover' onClick={() => {
                 onChange(DatasetPermission.partialMembers)
                 onMemberSelect([userProfile.id])
               }}>
@@ -144,14 +144,14 @@ const PermissionSelector = ({ disabled, permission, value, memberList, onChange,
                   <div className={cn('mr-2 flex h-6 w-6 items-center justify-center rounded-lg bg-[#FFF6ED]', isPartialMembers && '!bg-[#EEF4FF]')}>
                     <UsersPlus className={cn('h-3.5 w-3.5 text-[#FB6514]', isPartialMembers && '!text-[#444CE7]')} />
                   </div>
-                  <div className='mr-2 grow text-sm leading-5 text-gray-900'>{t('datasetSettings.form.permissionsInvitedMembers')}</div>
+                  <div className='mr-2 grow text-sm leading-5 text-text-primary'>{t('datasetSettings.form.permissionsInvitedMembers')}</div>
                   {isPartialMembers && <Check className='h-4 w-4 text-primary-600' />}
                 </div>
               </div>
             </div>
             {isPartialMembers && (
-              <div className='max-h-[360px] overflow-y-auto border-t-[1px] border-gray-100 p-1'>
-                <div className='sticky left-0 top-0 bg-white p-2 pb-1'>
+              <div className='max-h-[360px] overflow-y-auto border-t-[1px] border-divider-regular pb-1 pl-1 pr-1'>
+                <div className='sticky left-0 top-0 z-10 bg-white p-2 pb-1'>
                   <Input
                     showLeftIcon
                     showClearIcon

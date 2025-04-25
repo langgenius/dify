@@ -259,6 +259,7 @@ class KnowledgeRetrievalNode(LLMNode):
                     "_source": "knowledge",
                     "dataset_id": item.metadata.get("dataset_id"),
                     "dataset_name": item.metadata.get("dataset_name"),
+                    "document_id": item.metadata.get("document_id") or item.metadata.get("title"),
                     "document_name": item.metadata.get("title"),
                     "data_source_type": "external",
                     "retriever_from": "workflow",
@@ -348,7 +349,9 @@ class KnowledgeRetrievalNode(LLMNode):
                         )
                     )
                 metadata_condition = MetadataCondition(
-                    logical_operator=node_data.metadata_filtering_conditions.logical_operator,  # type: ignore
+                    logical_operator=node_data.metadata_filtering_conditions.logical_operator
+                    if node_data.metadata_filtering_conditions
+                    else "or",  # type: ignore
                     conditions=conditions,
                 )
         elif node_data.metadata_filtering_mode == "manual":
@@ -379,7 +382,10 @@ class KnowledgeRetrievalNode(LLMNode):
         else:
             raise ValueError("Invalid metadata filtering mode")
         if filters:
-            if node_data.metadata_filtering_conditions.logical_operator == "and":  # type: ignore
+            if (
+                node_data.metadata_filtering_conditions
+                and node_data.metadata_filtering_conditions.logical_operator == "and"
+            ):  # type: ignore
                 document_query = document_query.filter(and_(*filters))
             else:
                 document_query = document_query.filter(or_(*filters))
@@ -596,7 +602,6 @@ class KnowledgeRetrievalNode(LLMNode):
     def _get_prompt_template(self, node_data: KnowledgeRetrievalNodeData, metadata_fields: list, query: str):
         model_mode = ModelMode.value_of(node_data.metadata_model_config.mode)  # type: ignore
         input_text = query
-        memory_str = ""
 
         prompt_messages: list[LLMNodeChatModelMessage] = []
         if model_mode == ModelMode.CHAT:

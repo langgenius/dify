@@ -81,13 +81,13 @@ const Panel: FC<NodePanelProps<TemplateTransformNodeType>> = ({
           headerRight={
             <div className='flex items-center'>
               <a
-                className='flex h-[18px] items-center space-x-0.5 text-xs font-normal text-gray-500'
+                className='flex h-[18px] items-center space-x-0.5 text-xs font-normal text-text-tertiary'
                 href="https://jinja.palletsprojects.com/en/3.1.x/templates/"
                 target='_blank'>
                 <span>{t(`${i18nPrefix}.codeSupportTip`)}</span>
                 <RiQuestionLine className='h-3 w-3' />
               </a>
-              <div className='mx-1.5 h-3 w-px bg-gray-200'></div>
+              <div className='mx-1.5 h-3 w-px bg-divider-regular'></div>
             </div>
           }
           value={inputs.template}

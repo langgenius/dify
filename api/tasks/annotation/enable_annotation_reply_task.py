@@ -4,7 +4,6 @@ import time
 
 import click
 from celery import shared_task  # type: ignore
-from werkzeug.exceptions import NotFound
 
 from core.rag.datasource.vdb.vector_factory import Vector
 from core.rag.models.document import Document
@@ -34,7 +33,9 @@ def enable_annotation_reply_task(
     app = db.session.query(App).filter(App.id == app_id, App.tenant_id == tenant_id, App.status == "normal").first()
 
     if not app:
-        raise NotFound("App not found")
+        logging.info(click.style("App not found: {}".format(app_id), fg="red"))
+        db.session.close()
+        return
 
     annotations = db.session.query(MessageAnnotation).filter(MessageAnnotation.app_id == app_id).all()
     enable_app_annotation_key = "enable_app_annotation_{}".format(str(app_id))
@@ -121,3 +122,4 @@ def enable_annotation_reply_task(
         db.session.rollback()
     finally:
         redis_client.delete(enable_app_annotation_key)
+        db.session.close()

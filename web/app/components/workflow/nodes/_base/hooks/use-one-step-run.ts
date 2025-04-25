@@ -30,7 +30,7 @@ import IterationDefault from '@/app/components/workflow/nodes/iteration/default'
 import DocumentExtractorDefault from '@/app/components/workflow/nodes/document-extractor/default'
 import LoopDefault from '@/app/components/workflow/nodes/loop/default'
 import { ssePost } from '@/service/base'
-
+import { noop } from 'lodash-es'
 import { getInputVars as doGetInputVars } from '@/app/components/base/prompt-editor/constants'
 import type { NodeTracing } from '@/types/workflow'
 const { checkValid: checkLLMValid } = LLMDefault
@@ -233,8 +233,7 @@ const useOneStepRun = <T>({
           getIterationSingleNodeRunUrl(isChatMode, appId!, id),
           { body: { inputs: submitData } },
           {
-            onWorkflowStarted: () => {
-            },
+            onWorkflowStarted: noop,
             onWorkflowFinished: (params) => {
               handleNodeDataUpdate({
                 id,
@@ -331,8 +330,7 @@ const useOneStepRun = <T>({
           getLoopSingleNodeRunUrl(isChatMode, appId!, id),
           { body: { inputs: submitData } },
           {
-            onWorkflowStarted: () => {
-            },
+            onWorkflowStarted: noop,
             onWorkflowFinished: (params) => {
               handleNodeDataUpdate({
                 id,

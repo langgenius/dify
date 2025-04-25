@@ -68,9 +68,9 @@ const AddVariable = ({
           >
             <Plus02
               className={cn(
-                'h-2.5 w-2.5 text-gray-500',
-                'group-hover/addvariable:text-white',
-                open && '!text-white',
+                'h-2.5 w-2.5 text-text-tertiary',
+                'group-hover/addvariable:text-text-primary',
+                open && '!text-text-primary',
               )}
             />
           </div>

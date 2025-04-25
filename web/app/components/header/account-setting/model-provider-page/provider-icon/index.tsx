@@ -1,9 +1,10 @@
 import type { FC } from 'react'
 import type { ModelProvider } from '../declarations'
+import { basePath } from '@/utils/var'
 import { useLanguage } from '../hooks'
 import { Openai } from '@/app/components/base/icons/src/vender/other'
 import { AnthropicDark, AnthropicLight } from '@/app/components/base/icons/src/public/llm'
-import { renderI18nObject } from '@/hooks/use-i18n'
+import { renderI18nObject } from '@/i18n'
 import { Theme } from '@/types/app'
 import cn from '@/utils/classnames'
 import useTheme from '@/hooks/use-theme'
@@ -40,7 +41,7 @@ const ProviderIcon: FC<ProviderIconProps> = ({
     <div className={cn('inline-flex items-center gap-2', className)}>
       <img
         alt='provider-icon'
-        src={renderI18nObject(provider.icon_small, language)}
+        src={basePath + renderI18nObject(provider.icon_small, language)}
         className='h-6 w-6'
       />
       <div className='system-md-semibold text-text-primary'>

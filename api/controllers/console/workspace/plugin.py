@@ -49,6 +49,23 @@ class PluginListApi(Resource):
         return jsonable_encoder({"plugins": plugins})
 
 
+class PluginListLatestVersionsApi(Resource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    def post(self):
+        req = reqparse.RequestParser()
+        req.add_argument("plugin_ids", type=list, required=True, location="json")
+        args = req.parse_args()
+
+        try:
+            versions = PluginService.list_latest_versions(args["plugin_ids"])
+        except PluginDaemonClientSideError as e:
+            raise ValueError(e)
+
+        return jsonable_encoder({"versions": versions})
+
+
 class PluginListInstallationsFromIdsApi(Resource):
     @setup_required
     @login_required
@@ -230,6 +247,31 @@ class PluginInstallFromMarketplaceApi(Resource):
             raise ValueError(e)
 
         return jsonable_encoder(response)
+
+
+class PluginFetchMarketplacePkgApi(Resource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @plugin_permission_required(install_required=True)
+    def get(self):
+        tenant_id = current_user.current_tenant_id
+
+        parser = reqparse.RequestParser()
+        parser.add_argument("plugin_unique_identifier", type=str, required=True, location="args")
+        args = parser.parse_args()
+
+        try:
+            return jsonable_encoder(
+                {
+                    "manifest": PluginService.fetch_marketplace_pkg(
+                        tenant_id,
+                        args["plugin_unique_identifier"],
+                    )
+                }
+            )
+        except PluginDaemonClientSideError as e:
+            raise ValueError(e)
 
 
 class PluginFetchManifestApi(Resource):
@@ -453,6 +495,7 @@ class PluginFetchPermissionApi(Resource):
 
 api.add_resource(PluginDebuggingKeyApi, "/workspaces/current/plugin/debugging-key")
 api.add_resource(PluginListApi, "/workspaces/current/plugin/list")
+api.add_resource(PluginListLatestVersionsApi, "/workspaces/current/plugin/list/latest-versions")
 api.add_resource(PluginListInstallationsFromIdsApi, "/workspaces/current/plugin/list/installations/ids")
 api.add_resource(PluginIconApi, "/workspaces/current/plugin/icon")
 api.add_resource(PluginUploadFromPkgApi, "/workspaces/current/plugin/upload/pkg")
@@ -470,6 +513,7 @@ api.add_resource(PluginDeleteInstallTaskApi, "/workspaces/current/plugin/tasks/<
 api.add_resource(PluginDeleteAllInstallTaskItemsApi, "/workspaces/current/plugin/tasks/delete_all")
 api.add_resource(PluginDeleteInstallTaskItemApi, "/workspaces/current/plugin/tasks/<task_id>/delete/<path:identifier>")
 api.add_resource(PluginUninstallApi, "/workspaces/current/plugin/uninstall")
+api.add_resource(PluginFetchMarketplacePkgApi, "/workspaces/current/plugin/marketplace/pkg")
 
 api.add_resource(PluginChangePermissionApi, "/workspaces/current/plugin/permission/change")
 api.add_resource(PluginFetchPermissionApi, "/workspaces/current/plugin/permission/fetch")

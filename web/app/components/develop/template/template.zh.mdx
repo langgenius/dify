@@ -776,6 +776,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
   </Col>
   <Col sticky>
     嵌入模型的提供商和模型名称可以通过以下接口获取：v1/workspaces/current/models/model-types/text-embedding， 具体见：通过 API 维护知识库。 使用的Authorization是Dataset的API Token。
+    该接口是异步执行，所以会返回一个job_id，通过查询job状态接口可以获取到最终的执行结果。
     <CodeGroup
       title="Request"
       tag="POST"
@@ -801,7 +802,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
       "job_status": "waiting"
     }
     ```
-    该接口是异步执行，所以会返回一个job_id，通过查询job状态接口可以获取到最终的执行结果。
+    
     </CodeGroup>
   </Col>
 </Row>

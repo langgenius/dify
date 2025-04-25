@@ -1,19 +1,11 @@
 'use client'
 
-import { ToolTipContent } from '../components/base/tooltip/content'
-import { SwitchPluginVersion } from '../components/workflow/nodes/_base/components/switch-plugin-version'
-import { useTranslation } from 'react-i18next'
+import DemoForm from '../components/base/form/form-scenarios/demo'
 
 export default function Page() {
-  const { t } = useTranslation()
-  return <div className="p-20">
-    <SwitchPluginVersion
-      uniqueIdentifier={'langgenius/openai:12'}
-      tooltip={<ToolTipContent
-        title={t('workflow.nodes.agent.unsupportedStrategy')}
-      >
-        {t('workflow.nodes.agent.strategyNotFoundDescAndSwitchVersion')}
-      </ToolTipContent>}
-    />
-  </div>
+  return (
+    <div className='flex h-screen w-full items-center justify-center p-20'>
+      <DemoForm />
+    </div>
+  )
 }

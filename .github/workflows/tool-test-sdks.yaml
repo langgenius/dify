@@ -18,7 +18,7 @@ jobs:
 
     strategy:
       matrix:
-        node-version: [16, 18, 20]
+        node-version: [16, 18, 20, 22]
 
     defaults:
       run:
@@ -27,7 +27,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0
           persist-credentials: false
 
       - name: Use Node.js ${{ matrix.node-version }}

@@ -66,7 +66,7 @@ const WorkflowToolAsModal: FC<Props> = ({
     if (name === '')
       return true
 
-    return /^[a-zA-Z0-9_]+$/.test(name)
+    return /^\w+$/.test(name)
   }
 
   const onConfirm = () => {

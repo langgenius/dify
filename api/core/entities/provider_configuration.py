@@ -798,7 +798,25 @@ class ProviderConfiguration(BaseModel):
             provider_models = [m for m in provider_models if m.status == ModelStatus.ACTIVE]
 
         # resort provider_models
-        return sorted(provider_models, key=lambda x: x.model_type.value)
+        # Optimize sorting logic: first sort by provider.position order, then by model_type.value
+        # Get the position list for model types (retrieve only once for better performance)
+        model_type_positions = {}
+        if hasattr(self.provider, "position") and self.provider.position:
+            model_type_positions = self.provider.position
+
+        def get_sort_key(model: ModelWithProviderEntity):
+            # Get the position list for the current model type
+            positions = model_type_positions.get(model.model_type.value, [])
+
+            # If the model name is in the position list, use its index for sorting
+            # Otherwise use a large value (list length) to place undefined models at the end
+            position_index = positions.index(model.model) if model.model in positions else len(positions)
+
+            # Return composite sort key: (model_type value, model position index)
+            return (model.model_type.value, position_index)
+
+        # Sort using the composite sort key
+        return sorted(provider_models, key=get_sort_key)
 
     def _get_system_provider_models(
         self,

@@ -3,6 +3,8 @@ from configs import dify_config
 HIDDEN_VALUE = "[__HIDDEN__]"
 UUID_NIL = "00000000-0000-0000-0000-000000000000"
 
+DEFAULT_FILE_NUMBER_LIMITS = 3
+
 IMAGE_EXTENSIONS = ["jpg", "jpeg", "png", "webp", "gif", "svg"]
 IMAGE_EXTENSIONS.extend([ext.upper() for ext in IMAGE_EXTENSIONS])
 

@@ -55,6 +55,7 @@ const translation = {
         chatColorThemeDesc: 'Thiết lập giao diện màu của chatbot',
         chatColorThemeInverted: 'Đảo ngược',
         invalidHexMessage: 'Giá trị mã màu không hợp lệ',
+        invalidPrivacyPolicy: 'Liên kết chính sách bảo mật không hợp lệ. Vui lòng sử dụng liên kết hợp lệ bắt đầu bằng http hoặc https',
         more: {
           entry: 'Hiển thị thêm cài đặt',
           copyright: 'Bản quyền',

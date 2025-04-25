@@ -1,13 +1,9 @@
 import {
   useCallback,
-  useEffect,
   useMemo,
-  useState,
 } from 'react'
-import dayjs from 'dayjs'
 import { uniqBy } from 'lodash-es'
 import { useTranslation } from 'react-i18next'
-import { useContext } from 'use-context-selector'
 import {
   getIncomers,
   getOutgoers,
@@ -40,25 +36,16 @@ import {
 import { CUSTOM_NOTE_NODE } from '../note-node/constants'
 import { findUsedVarNodes, getNodeOutputVars, updateNodeVars } from '../nodes/_base/components/variable/utils'
 import { useNodesExtraData } from './use-nodes-data'
-import { useWorkflowTemplate } from './use-workflow-template'
 import { useStore as useAppStore } from '@/app/components/app/store'
-import {
-  fetchNodesDefaultConfigs,
-  fetchPublishedWorkflow,
-  fetchWorkflowDraft,
-  syncWorkflowDraft,
-} from '@/service/workflow'
-import type { FetchWorkflowDraftResponse } from '@/types/workflow'
 import {
   fetchAllBuiltInTools,
   fetchAllCustomTools,
   fetchAllWorkflowTools,
 } from '@/service/tools'
-import I18n from '@/context/i18n'
 import { CollectionType } from '@/app/components/tools/types'
 import { CUSTOM_ITERATION_START_NODE } from '@/app/components/workflow/nodes/iteration-start/constants'
 import { CUSTOM_LOOP_START_NODE } from '@/app/components/workflow/nodes/loop-start/constants'
-import { useWorkflowConfig } from '@/service/use-workflow'
+import { basePath } from '@/utils/var'
 import { canFindTool } from '@/utils'
 
 export const useIsChatMode = () => {
@@ -69,12 +56,9 @@ export const useIsChatMode = () => {
 
 export const useWorkflow = () => {
   const { t } = useTranslation()
-  const { locale } = useContext(I18n)
   const store = useStoreApi()
   const workflowStore = useWorkflowStore()
-  const appId = useStore(s => s.appId)
   const nodesExtraData = useNodesExtraData()
-  const { data: workflowConfig } = useWorkflowConfig(appId)
   const setPanelWidth = useCallback((width: number) => {
     localStorage.setItem('workflow-node-panel-width', `${width}`)
     workflowStore.setState({ panelWidth: width })
@@ -119,7 +103,7 @@ export const useWorkflow = () => {
 
     list.push(...incomers)
 
-    return uniqBy(list, 'id').filter((item) => {
+    return uniqBy(list, 'id').filter((item: Node) => {
       return SUPPORT_OUTPUT_VARS_NODE.includes(item.data.type)
     })
   }, [store])
@@ -166,7 +150,7 @@ export const useWorkflow = () => {
 
     const length = list.length
     if (length) {
-      return uniqBy(list, 'id').reverse().filter((item) => {
+      return uniqBy(list, 'id').reverse().filter((item: Node) => {
         return SUPPORT_OUTPUT_VARS_NODE.includes(item.data.type)
       })
     }
@@ -343,6 +327,7 @@ export const useWorkflow = () => {
       parallelList,
       hasAbnormalEdges,
     } = getParallelInfo(nodes, edges, parentNodeId)
+    const { workflowConfig } = workflowStore.getState()
 
     if (hasAbnormalEdges)
       return false
@@ -358,7 +343,7 @@ export const useWorkflow = () => {
     }
 
     return true
-  }, [t, workflowStore, workflowConfig?.parallel_depth_limit])
+  }, [t, workflowStore])
 
   const isValidConnection = useCallback(({ source, sourceHandle, target }: Connection) => {
     const {
@@ -406,10 +391,6 @@ export const useWorkflow = () => {
     return !hasCycle(targetNode)
   }, [store, nodesExtraData, checkParallelLimit])
 
-  const formatTimeFromNow = useCallback((time: number) => {
-    return dayjs(time).locale(locale === 'zh-Hans' ? 'zh-cn' : locale).fromNow()
-  }, [locale])
-
   const getNode = useCallback((nodeId?: string) => {
     const { getNodes } = store.getState()
     const nodes = getNodes()
@@ -431,7 +412,6 @@ export const useWorkflow = () => {
     checkNestedParallelLimit,
     isValidConnection,
     isFromStartNode,
-    formatTimeFromNow,
     getNode,
     getBeforeNodeById,
     getIterationNodeChildren,
@@ -446,6 +426,12 @@ export const useFetchToolsData = () => {
     if (type === 'builtin') {
       const buildInTools = await fetchAllBuiltInTools()
 
+      if (basePath) {
+        buildInTools.forEach((item) => {
+          if (typeof item.icon == 'string' && !item.icon.includes(basePath))
+            item.icon = `${basePath}${item.icon}`
+        })
+      }
       workflowStore.setState({
         buildInTools: buildInTools || [],
       })
@@ -468,107 +454,6 @@ export const useFetchToolsData = () => {
 
   return {
     handleFetchAllTools,
-  }
-}
-
-export const useWorkflowInit = () => {
-  const workflowStore = useWorkflowStore()
-  const {
-    nodes: nodesTemplate,
-    edges: edgesTemplate,
-  } = useWorkflowTemplate()
-  const { handleFetchAllTools } = useFetchToolsData()
-  const appDetail = useAppStore(state => state.appDetail)!
-  const setSyncWorkflowDraftHash = useStore(s => s.setSyncWorkflowDraftHash)
-  const [data, setData] = useState<FetchWorkflowDraftResponse>()
-  const [isLoading, setIsLoading] = useState(true)
-  useEffect(() => {
-    workflowStore.setState({ appId: appDetail.id })
-  }, [appDetail.id, workflowStore])
-
-  const handleGetInitialWorkflowData = useCallback(async () => {
-    try {
-      const res = await fetchWorkflowDraft(`/apps/${appDetail.id}/workflows/draft`)
-      setData(res)
-      workflowStore.setState({
-        envSecrets: (res.environment_variables || []).filter(env => env.value_type === 'secret').reduce((acc, env) => {
-          acc[env.id] = env.value
-          return acc
-        }, {} as Record<string, string>),
-        environmentVariables: res.environment_variables?.map(env => env.value_type === 'secret' ? { ...env, value: '[__HIDDEN__]' } : env) || [],
-        conversationVariables: res.conversation_variables || [],
-      })
-      setSyncWorkflowDraftHash(res.hash)
-      setIsLoading(false)
-    }
-    catch (error: any) {
-      if (error && error.json && !error.bodyUsed && appDetail) {
-        error.json().then((err: any) => {
-          if (err.code === 'draft_workflow_not_exist') {
-            workflowStore.setState({ notInitialWorkflow: true })
-            syncWorkflowDraft({
-              url: `/apps/${appDetail.id}/workflows/draft`,
-              params: {
-                graph: {
-                  nodes: nodesTemplate,
-                  edges: edgesTemplate,
-                },
-                features: {
-                  retriever_resource: { enabled: true },
-                },
-                environment_variables: [],
-                conversation_variables: [],
-              },
-            }).then((res) => {
-              workflowStore.getState().setDraftUpdatedAt(res.updated_at)
-              handleGetInitialWorkflowData()
-            })
-          }
-        })
-      }
-    }
-  }, [appDetail, nodesTemplate, edgesTemplate, workflowStore, setSyncWorkflowDraftHash])
-
-  useEffect(() => {
-    handleGetInitialWorkflowData()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
-
-  const handleFetchPreloadData = useCallback(async () => {
-    try {
-      const nodesDefaultConfigsData = await fetchNodesDefaultConfigs(`/apps/${appDetail?.id}/workflows/default-workflow-block-configs`)
-      const publishedWorkflow = await fetchPublishedWorkflow(`/apps/${appDetail?.id}/workflows/publish`)
-      workflowStore.setState({
-        nodesDefaultConfigs: nodesDefaultConfigsData.reduce((acc, block) => {
-          if (!acc[block.type])
-            acc[block.type] = { ...block.config }
-          return acc
-        }, {} as Record<string, any>),
-      })
-      workflowStore.getState().setPublishedAt(publishedWorkflow?.created_at)
-    }
-    catch (e) {
-      console.error(e)
-    }
-  }, [workflowStore, appDetail])
-
-  useEffect(() => {
-    handleFetchPreloadData()
-    handleFetchAllTools('builtin')
-    handleFetchAllTools('custom')
-    handleFetchAllTools('workflow')
-  }, [handleFetchPreloadData, handleFetchAllTools])
-
-  useEffect(() => {
-    if (data) {
-      workflowStore.getState().setDraftUpdatedAt(data.updated_at)
-      workflowStore.getState().setToolPublished(data.tool_published)
-    }
-  }, [data, workflowStore])
-
-  return {
-    data,
-    isLoading,
   }
 }
 
