@@ -9,9 +9,14 @@ from core.app.entities.app_invoke_entities import InvokeFrom
 from core.llm_generator.llm_generator import LLMGenerator
 from extensions.ext_database import db
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
+from models import ConversationVariable
 from models.account import Account
 from models.model import App, Conversation, EndUser, Message
-from services.errors.conversation import ConversationNotExistsError, LastConversationNotExistsError
+from services.errors.conversation import (
+    ConversationNotExistsError,
+    ConversationVariableNotExistsError,
+    LastConversationNotExistsError,
+)
 from services.errors.message import MessageNotExistsError
 
 
@@ -166,3 +171,50 @@ class ConversationService:
         conversation.is_deleted = True
         conversation.updated_at = datetime.now(UTC).replace(tzinfo=None)
         db.session.commit()
+
+    @classmethod
+    def get_conversational_variable(
+        cls,
+        app_model: App,
+        conversation_id: str,
+        user: Optional[Union[Account, EndUser]],
+        limit: int,
+        last_id: Optional[str],
+    ) -> InfiniteScrollPagination:
+        conversation = cls.get_conversation(app_model, conversation_id, user)
+
+        stmt = (
+            select(ConversationVariable)
+            .where(ConversationVariable.app_id == app_model.id)
+            .where(ConversationVariable.conversation_id == conversation.id)
+            .order_by(ConversationVariable.created_at)
+        )
+
+        with Session(db.engine) as session:
+            if last_id:
+                last_variable = session.scalar(stmt.where(ConversationVariable.id == last_id))
+                if not last_variable:
+                    raise ConversationVariableNotExistsError()
+
+                # Filter for variables created after the last_id
+                stmt = stmt.where(ConversationVariable.created_at > last_variable.created_at)
+
+            # Apply limit to query
+            query_stmt = stmt.limit(limit)  # Get one extra to check if there are more
+            rows = session.scalars(query_stmt).all()
+
+        has_more = False
+        if len(rows) > limit:
+            has_more = True
+            rows = rows[:limit]  # Remove the extra item
+
+        variables = [
+            {
+                "created_at": row.created_at,
+                "updated_at": row.updated_at,
+                **row.to_variable().model_dump(),
+            }
+            for row in rows
+        ]
+
+        return InfiniteScrollPagination(variables, limit, has_more)
