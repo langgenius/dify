@@ -36,7 +36,7 @@ const Field = <T,>({
     if (!isAllConditionsMet)
       return <></>
 
-    if ([BaseVarType.textInput].includes(type)) {
+    if (type === BaseVarType.textInput) {
       return (
         <form.AppField
           name={variable}
@@ -51,7 +51,7 @@ const Field = <T,>({
       )
     }
 
-    if ([BaseVarType.numberInput].includes(type)) {
+    if (type === BaseVarType.numberInput) {
       return (
         <form.AppField
           name={variable}
@@ -68,7 +68,7 @@ const Field = <T,>({
       )
     }
 
-    if ([BaseVarType.checkbox].includes(type)) {
+    if (type === BaseVarType.checkbox) {
       return (
         <form.AppField
           name={variable}
@@ -81,7 +81,7 @@ const Field = <T,>({
       )
     }
 
-    if ([BaseVarType.select].includes(type)) {
+    if (type === BaseVarType.select) {
       return (
         <form.AppField
           name={variable}
