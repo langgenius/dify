@@ -3,7 +3,6 @@ import time
 
 import click
 from celery import shared_task  # type: ignore
-from werkzeug.exceptions import NotFound
 
 from core.rag.datasource.vdb.vector_factory import Vector
 from extensions.ext_database import db
@@ -23,14 +22,18 @@ def disable_annotation_reply_task(job_id: str, app_id: str, tenant_id: str):
     app = db.session.query(App).filter(App.id == app_id, App.tenant_id == tenant_id, App.status == "normal").first()
     annotations_count = db.session.query(MessageAnnotation).filter(MessageAnnotation.app_id == app_id).count()
     if not app:
-        raise NotFound("App not found")
+        logging.info(click.style("App not found: {}".format(app_id), fg="red"))
+        db.session.close()
+        return
 
     app_annotation_setting = (
         db.session.query(AppAnnotationSetting).filter(AppAnnotationSetting.app_id == app_id).first()
     )
 
     if not app_annotation_setting:
-        raise NotFound("App annotation setting not found")
+        logging.info(click.style("App annotation setting not found: {}".format(app_id), fg="red"))
+        db.session.close()
+        return
 
     disable_app_annotation_key = "disable_app_annotation_{}".format(str(app_id))
     disable_app_annotation_job_key = "disable_app_annotation_job_{}".format(str(job_id))
@@ -46,7 +49,7 @@ def disable_annotation_reply_task(job_id: str, app_id: str, tenant_id: str):
         try:
             if annotations_count > 0:
                 vector = Vector(dataset, attributes=["doc_id", "annotation_id", "app_id"])
-                vector.delete_by_metadata_field("app_id", app_id)
+                vector.delete()
         except Exception:
             logging.exception("Delete annotation index failed when annotation deleted.")
         redis_client.setex(disable_app_annotation_job_key, 600, "completed")
@@ -66,3 +69,4 @@ def disable_annotation_reply_task(job_id: str, app_id: str, tenant_id: str):
         redis_client.setex(disable_app_annotation_error_key, 600, str(e))
     finally:
         redis_client.delete(disable_app_annotation_key)
+        db.session.close()

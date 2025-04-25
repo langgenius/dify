@@ -146,7 +146,7 @@ const AddExtractParameter: FC<Props> = ({
                 <Select
                   defaultValue={param.type}
                   allowSearch={false}
-                  bgClassName='bg-gray-100'
+                  // bgClassName='bg-gray-100'
                   onSelect={v => handleParamChange('type')(v.value)}
                   optionClassName='capitalize'
                   items={
@@ -171,7 +171,7 @@ const AddExtractParameter: FC<Props> = ({
               </Field>
               <Field title={t(`${i18nPrefix}.addExtractParameterContent.required`)}>
                 <>
-                  <div className='mb-1.5 text-xs font-normal leading-[18px] text-gray-500'>{t(`${i18nPrefix}.addExtractParameterContent.requiredContent`)}</div>
+                  <div className='mb-1.5 text-xs font-normal leading-[18px] text-text-tertiary'>{t(`${i18nPrefix}.addExtractParameterContent.requiredContent`)}</div>
                   <Switch size='l' defaultValue={param.required} onChange={handleParamChange('required')} />
                 </>
               </Field>

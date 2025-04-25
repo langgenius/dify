@@ -18,6 +18,7 @@ import ConditionAdd from './condition-add'
 import cn from '@/utils/classnames'
 import Button from '@/app/components/base/button'
 import { PortalSelect as Select } from '@/app/components/base/select'
+import { noop } from 'lodash-es'
 
 type Props = {
   isSubVariable?: boolean
@@ -49,7 +50,7 @@ const ConditionWrap: FC<Props> = ({
   nodeId: id = '',
   cases = [],
   readOnly,
-  handleSortCase = () => { },
+  handleSortCase = noop,
   handleRemoveCase,
   handleUpdateCondition,
   handleAddCondition,

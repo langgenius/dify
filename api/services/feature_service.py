@@ -17,6 +17,11 @@ class BillingModel(BaseModel):
     subscription: SubscriptionModel = SubscriptionModel()
 
 
+class EducationModel(BaseModel):
+    enabled: bool = False
+    activated: bool = False
+
+
 class LimitationModel(BaseModel):
     size: int = 0
     limit: int = 0
@@ -38,6 +43,7 @@ class LicenseModel(BaseModel):
 
 class FeatureModel(BaseModel):
     billing: BillingModel = BillingModel()
+    education: EducationModel = EducationModel()
     members: LimitationModel = LimitationModel(size=0, limit=1)
     apps: LimitationModel = LimitationModel(size=0, limit=10)
     vector_space: LimitationModel = LimitationModel(size=0, limit=5)
@@ -128,6 +134,7 @@ class FeatureService:
         features.can_replace_logo = dify_config.CAN_REPLACE_LOGO
         features.model_load_balancing_enabled = dify_config.MODEL_LB_ENABLED
         features.dataset_operator_enabled = dify_config.DATASET_OPERATOR_ENABLED
+        features.education.enabled = dify_config.EDUCATION_ENABLED
 
     @classmethod
     def _fulfill_params_from_billing_api(cls, features: FeatureModel, tenant_id: str):
@@ -136,6 +143,7 @@ class FeatureService:
         features.billing.enabled = billing_info["enabled"]
         features.billing.subscription.plan = billing_info["subscription"]["plan"]
         features.billing.subscription.interval = billing_info["subscription"]["interval"]
+        features.education.activated = billing_info["subscription"].get("education", False)
 
         if "members" in billing_info:
             features.members.size = billing_info["members"]["size"]

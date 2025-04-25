@@ -2,6 +2,7 @@
 
 import { createContext, useContext } from 'use-context-selector'
 import type { DataSet } from '@/models/datasets'
+import { noop } from 'lodash-es'
 
 export type DatasetsContextValue = {
   datasets: DataSet[]
@@ -11,7 +12,7 @@ export type DatasetsContextValue = {
 
 const DatasetsContext = createContext<DatasetsContextValue>({
   datasets: [],
-  mutateDatasets: () => {},
+  mutateDatasets: noop,
   currentDataset: undefined,
 })
 

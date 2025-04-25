@@ -21,9 +21,10 @@ const Item: FC<ItemProps> = ({
   return (
     <div
       className={cn(
-        isSelected ? 'border-[2px] border-primary-400 bg-white shadow-xs' : 'border border-gray-100 bg-gray-25',
-        'flex h-8 w-0 grow cursor-pointer items-center justify-center rounded-lg text-[13px] font-normal text-gray-900')
-      }
+        'system-sm-regular flex h-8 grow cursor-default items-center rounded-md border border-components-option-card-option-border bg-components-option-card-option-bg px-2 text-text-secondary',
+        !isSelected && 'cursor-pointer hover:border-components-option-card-option-border-hover hover:bg-components-option-card-option-bg-hover hover:shadow-xs',
+        isSelected && 'system-sm-medium border-[1.5px] border-components-option-card-option-selected-border bg-components-option-card-option-selected-bg shadow-xs',
+      )}
       onClick={onClick}
     >
       {title}

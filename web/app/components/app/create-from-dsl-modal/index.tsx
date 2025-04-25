@@ -5,7 +5,8 @@ import { useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useContext } from 'use-context-selector'
 import { useTranslation } from 'react-i18next'
-import { RiCloseLine } from '@remixicon/react'
+import { RiCloseLine, RiCommandLine, RiCornerDownLeftLine } from '@remixicon/react'
+import { useDebounceFn, useKeyPress } from 'ahooks'
 import Uploader from './uploader'
 import Button from '@/app/components/base/button'
 import Input from '@/app/components/base/input'
@@ -26,6 +27,7 @@ import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
 import { getRedirection } from '@/utils/app-redirection'
 import cn from '@/utils/classnames'
 import { usePluginDependencies } from '@/app/components/workflow/plugin-dependency/hooks'
+import { noop } from 'lodash-es'
 
 type CreateFromDSLModalProps = {
   show: boolean
@@ -142,6 +144,18 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
     isCreatingRef.current = false
   }
 
+  const { run: handleCreateApp } = useDebounceFn(onCreate, { wait: 300 })
+
+  useKeyPress(['meta.enter', 'ctrl.enter'], () => {
+    if (show && !isAppsFull && ((currentTab === CreateFromDSLModalTab.FROM_FILE && currentFile) || (currentTab === CreateFromDSLModalTab.FROM_URL && dslUrlValue)))
+      handleCreateApp()
+  })
+
+  useKeyPress('esc', () => {
+    if (show && !showErrorModal)
+      onClose()
+  })
+
   const onDSLConfirm: MouseEventHandler = async () => {
     try {
       if (!importId)
@@ -203,7 +217,7 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
       <Modal
         className='w-[520px] rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg p-0 shadow-xl'
         isShow={show}
-        onClose={() => { }}
+        onClose={noop}
       >
         <div className='title-2xl-semi-bold flex items-center justify-between pb-3 pl-6 pr-5 pt-6 text-text-primary'>
           {t('app.importFromDSL')}
@@ -265,7 +279,18 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
         )}
         <div className='flex justify-end px-6 py-5'>
           <Button className='mr-2' onClick={onClose}>{t('app.newApp.Cancel')}</Button>
-          <Button disabled={buttonDisabled} variant="primary" onClick={onCreate}>{t('app.newApp.Create')}</Button>
+          <Button
+            disabled={buttonDisabled}
+            variant="primary"
+            onClick={handleCreateApp}
+            className="gap-1"
+          >
+            <span>{t('app.newApp.Create')}</span>
+            <div className='flex gap-0.5'>
+              <RiCommandLine size={14} className='system-kbd rounded-sm bg-components-kbd-bg-white p-0.5' />
+              <RiCornerDownLeftLine size={14} className='system-kbd rounded-sm bg-components-kbd-bg-white p-0.5' />
+            </div>
+          </Button>
         </div>
       </Modal>
       <Modal

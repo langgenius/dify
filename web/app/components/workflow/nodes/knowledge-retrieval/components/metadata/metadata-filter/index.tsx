@@ -10,6 +10,7 @@ import Tooltip from '@/app/components/base/tooltip'
 import type { MetadataShape } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
 import { MetadataFilteringModeEnum } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
 import ModelParameterModal from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
+import { noop } from 'lodash-es'
 
 type MetadataFilterProps = {
   metadataFilterMode?: MetadataFilteringModeEnum
@@ -38,7 +39,8 @@ const MetadataFilter = ({
       disabled={metadataFilterMode === MetadataFilteringModeEnum.disabled || metadataFilterMode === MetadataFilteringModeEnum.manual}
       collapsed={collapsed}
       onCollapse={setCollapsed}
-      trigger={
+      hideCollapseIcon
+      trigger={collapseIcon => (
         <div className='flex grow items-center justify-between pr-4'>
           <div className='flex items-center'>
             <div className='system-sm-semibold-uppercase mr-0.5 text-text-secondary'>
@@ -51,6 +53,7 @@ const MetadataFilter = ({
                 </div>
               )}
             />
+            {collapseIcon}
           </div>
           <div className='flex items-center'>
             <MetadataFilterSelector
@@ -66,7 +69,7 @@ const MetadataFilter = ({
             }
           </div>
         </div>
-      }
+      )}
     >
       <>
         {
@@ -85,8 +88,8 @@ const MetadataFilter = ({
                   provider={metadataModelConfig?.provider || ''}
                   completionParams={metadataModelConfig?.completion_params || { temperature: 0.7 }}
                   modelId={metadataModelConfig?.name || ''}
-                  setModel={handleMetadataModelChange || (() => {})}
-                  onCompletionParamsChange={handleMetadataCompletionParamsChange || (() => {})}
+                  setModel={handleMetadataModelChange || noop}
+                  onCompletionParamsChange={handleMetadataCompletionParamsChange || noop}
                   hideDebugWithMultipleModel
                   debugWithMultipleModel={false}
                 />

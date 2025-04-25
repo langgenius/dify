@@ -3,6 +3,7 @@ import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import useSWR from 'swr'
 import { useSearchParams } from 'next/navigation'
+import { basePath } from '@/utils/var'
 import cn from 'classnames'
 import { CheckCircleIcon } from '@heroicons/react/24/solid'
 import Input from '../components/base/input'
@@ -72,7 +73,7 @@ const ChangePasswordForm = () => {
     catch {
       await revalidateToken()
     }
-  }, [password, revalidateToken, token, valid])
+  }, [confirmPassword, password, revalidateToken, searchParams, valid])
 
   return (
     <div className={
@@ -86,8 +87,8 @@ const ChangePasswordForm = () => {
       {verifyTokenRes && !verifyTokenRes.is_valid && (
         <div className="flex flex-col md:w-[400px]">
           <div className="mx-auto w-full">
-            <div className="mb-3 flex h-20 w-20 items-center justify-center rounded-[20px] border border-gray-100 p-5 text-[40px] font-bold shadow-lg">🤷‍♂️</div>
-            <h2 className="text-[32px] font-bold text-gray-900">{t('login.invalid')}</h2>
+            <div className="mb-3 flex h-20 w-20 items-center justify-center rounded-[20px] border border-divider-regular bg-components-option-card-option-bg p-5 text-[40px] font-bold shadow-lg">🤷‍♂️</div>
+            <h2 className="text-[32px] font-bold text-text-primary">{t('login.invalid')}</h2>
           </div>
           <div className="mx-auto mt-6 w-full">
             <Button variant='primary' className='w-full !text-sm'>
@@ -99,19 +100,19 @@ const ChangePasswordForm = () => {
       {verifyTokenRes && verifyTokenRes.is_valid && !showSuccess && (
         <div className='flex flex-col md:w-[400px]'>
           <div className="mx-auto w-full">
-            <h2 className="text-[32px] font-bold text-gray-900">
+            <h2 className="text-[32px] font-bold text-text-primary">
               {t('login.changePassword')}
             </h2>
-            <p className='mt-1 text-sm text-gray-600'>
+            <p className='mt-1 text-sm text-text-secondary'>
               {t('login.changePasswordTip')}
             </p>
           </div>
 
           <div className="mx-auto mt-6 w-full">
-            <div className="bg-white">
+            <div className="relative">
               {/* Password */}
               <div className='mb-5'>
-                <label htmlFor="password" className="my-2 flex items-center justify-between text-sm font-medium text-gray-900">
+                <label htmlFor="password" className="my-2 flex items-center justify-between text-sm font-medium text-text-primary">
                   {t('common.account.newPassword')}
                 </label>
                 <Input
@@ -126,7 +127,7 @@ const ChangePasswordForm = () => {
               </div>
               {/* Confirm Password */}
               <div className='mb-5'>
-                <label htmlFor="confirmPassword" className="my-2 flex items-center justify-between text-sm font-medium text-gray-900">
+                <label htmlFor="confirmPassword" className="my-2 flex items-center justify-between text-sm font-medium text-text-primary">
                   {t('common.account.confirmPassword')}
                 </label>
                 <Input
@@ -154,16 +155,16 @@ const ChangePasswordForm = () => {
       {verifyTokenRes && verifyTokenRes.is_valid && showSuccess && (
         <div className="flex flex-col md:w-[400px]">
           <div className="mx-auto w-full">
-            <div className="mb-3 flex h-20 w-20 items-center justify-center rounded-[20px] border border-gray-100 p-5 text-[40px] font-bold shadow-lg">
+            <div className="mb-3 flex h-20 w-20 items-center justify-center rounded-[20px] border border-divider-regular bg-components-option-card-option-bg p-5 text-[40px] font-bold shadow-lg">
               <CheckCircleIcon className='h-10 w-10 text-[#039855]' />
             </div>
-            <h2 className="text-[32px] font-bold text-gray-900">
+            <h2 className="text-[32px] font-bold text-text-primary">
               {t('login.passwordChangedTip')}
             </h2>
           </div>
           <div className="mx-auto mt-6 w-full">
             <Button variant='primary' className='w-full'>
-              <a href="/signin">{t('login.passwordChanged')}</a>
+              <a href={`${basePath}/signin`}>{t('login.passwordChanged')}</a>
             </Button>
           </div>
         </div>

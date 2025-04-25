@@ -7,7 +7,6 @@ import {
 import { useTranslation } from 'react-i18next'
 import {
   RiClipboardLine,
-  RiEditLine,
   RiResetLeftLine,
   RiThumbDownLine,
   RiThumbUpLine,
@@ -16,6 +15,7 @@ import type { ChatItem } from '../../types'
 import { useChatContext } from '../context'
 import copy from 'copy-to-clipboard'
 import Toast from '@/app/components/base/toast'
+import AnnotationCtrlButton from '@/app/components/base/features/new-feature-panel/annotation-reply/annotation-ctrl-button'
 import EditReplyModal from '@/app/components/app/annotation/edit-annotation-modal'
 import Log from '@/app/components/base/chat/chat/log'
 import ActionButton, { ActionButtonState } from '@/app/components/base/action-button'
@@ -134,9 +134,15 @@ const Operation: FC<OperationProps> = ({
               </ActionButton>
             )}
             {(config?.supportAnnotation && config.annotation_reply?.enabled) && (
-              <ActionButton onClick={() => setIsShowReplyModal(true)}>
-                <RiEditLine className='h-4 w-4' />
-              </ActionButton>
+              <AnnotationCtrlButton
+                appId={config?.appId || ''}
+                messageId={id}
+                cached={!!annotation?.id}
+                query={question}
+                answer={content}
+                onAdded={(id, authorName) => onAnnotationAdded?.(id, authorName, question, content, index)}
+                onEdit={() => setIsShowReplyModal(true)}
+              />
             )}
           </div>
         )}

@@ -54,6 +54,10 @@ const translation = {
     vectorSpaceTooltip: '采用高质量索引模式的文档会消耗知识数据存储资源。当知识数据存储达到限制时，将不会上传新文档。',
     documentsRequestQuota: '{{count,number}}/分钟 知识库请求频率限制',
     documentsRequestQuotaTooltip: '指每分钟内，一个空间在知识库中可执行的操作总数，包括数据集的创建、删除、更新，文档的上传、修改、归档，以及知识库查询等，用于评估知识库请求的性能。例如，Sandbox 用户在 1 分钟内连续执行 10 次命中测试，其工作区将在接下来的 1 分钟内无法继续执行以下操作：数据集的创建、删除、更新，文档的上传、修改等操作。',
+    apiRateLimit: 'API 请求频率限制',
+    apiRateLimitUnit: '{{count,number}} 次/天',
+    unlimitedApiRate: 'API 请求频率无限制',
+    apiRateLimitTooltip: 'API 请求频率限制涵盖所有通过 Dify API 发起的调用，例如文本生成、聊天对话、工作流执行和文档处理等。',
     documentProcessingPriority: '文档处理',
     documentProcessingPriorityUpgrade: '以更快的速度、更高的精度处理更多的数据。',
     priority: {
@@ -169,8 +173,11 @@ const translation = {
     fullSolution: '升级您的套餐以获得更多空间。',
   },
   apps: {
-    fullTipLine1: '升级您的套餐以',
-    fullTipLine2: '构建更多的程序。',
+    fullTip1: '升级以创建更多应用',
+    fullTip1des: '您已达到此计划上构建应用的限制',
+    fullTip2: '计划限制已达到',
+    fullTip2des: '推荐您清理不活跃的应用或者联系我们',
+    contactUs: '联系我们',
   },
   annotatedResponse: {
     fullTipLine1: '升级您的套餐以',

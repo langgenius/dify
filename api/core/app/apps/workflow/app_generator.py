@@ -92,6 +92,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
             mappings=files,
             tenant_id=app_model.tenant_id,
             config=file_extra_config,
+            strict_type_validation=True if invoke_from == InvokeFrom.SERVICE_API else False,
         )
 
         # convert to app config
@@ -114,7 +115,10 @@ class WorkflowAppGenerator(BaseAppGenerator):
             app_config=app_config,
             file_upload_config=file_extra_config,
             inputs=self._prepare_user_inputs(
-                user_inputs=inputs, variables=app_config.variables, tenant_id=app_model.tenant_id
+                user_inputs=inputs,
+                variables=app_config.variables,
+                tenant_id=app_model.tenant_id,
+                strict_type_validation=True if invoke_from == InvokeFrom.SERVICE_API else False,
             ),
             files=list(system_files),
             user_id=user.id,
@@ -158,7 +162,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
         :param user: account or end user
         :param application_generate_entity: application generate entity
         :param invoke_from: invoke from source
-        :param stream: is stream
+        :param streaming: is stream
         :param workflow_thread_pool_id: workflow thread pool id
         """
         # init queue manager
@@ -208,10 +212,10 @@ class WorkflowAppGenerator(BaseAppGenerator):
 
         :param app_model: App
         :param workflow: Workflow
+        :param node_id: the node id
         :param user: account or end user
         :param args: request args
-        :param invoke_from: invoke from source
-        :param stream: is stream
+        :param streaming: is streamed
         """
         if not node_id:
             raise ValueError("node_id is required")
@@ -264,10 +268,10 @@ class WorkflowAppGenerator(BaseAppGenerator):
 
         :param app_model: App
         :param workflow: Workflow
+        :param node_id: the node id
         :param user: account or end user
         :param args: request args
-        :param invoke_from: invoke from source
-        :param stream: is stream
+        :param streaming: is streamed
         """
         if not node_id:
             raise ValueError("node_id is required")

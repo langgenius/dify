@@ -5,6 +5,7 @@ from typing import Optional
 from unittest.mock import MagicMock
 
 from core.app.entities.app_invoke_entities import InvokeFrom
+from core.model_runtime.entities import AssistantPromptMessage
 from core.workflow.entities.variable_pool import VariablePool
 from core.workflow.enums import SystemVariableKey
 from core.workflow.graph_engine.entities.graph import Graph
@@ -306,6 +307,46 @@ def test_extract_json_response():
         }
         hello world.
     """)
+
+    assert result is not None
+    assert result["location"] == "kawaii"
+
+
+def test_extract_json_from_tool_call():
+    """
+    Test extract json response.
+    """
+
+    node = init_parameter_extractor_node(
+        config={
+            "id": "llm",
+            "data": {
+                "title": "123",
+                "type": "parameter-extractor",
+                "model": {
+                    "provider": "langgenius/openai/openai",
+                    "name": "gpt-3.5-turbo-instruct",
+                    "mode": "completion",
+                    "completion_params": {},
+                },
+                "query": ["sys", "query"],
+                "parameters": [{"name": "location", "type": "string", "description": "location", "required": True}],
+                "reasoning_mode": "prompt",
+                "instruction": "{{#sys.query#}}",
+                "memory": None,
+            },
+        },
+    )
+
+    result = node._extract_json_from_tool_call(
+        AssistantPromptMessage.ToolCall(
+            id="llm",
+            type="parameter-extractor",
+            function=AssistantPromptMessage.ToolCall.ToolCallFunction(
+                name="foo", arguments="""{"location":"kawaii"}{"location": 1}"""
+            ),
+        )
+    )
 
     assert result is not None
     assert result["location"] == "kawaii"

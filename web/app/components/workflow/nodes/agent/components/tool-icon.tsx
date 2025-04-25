@@ -10,6 +10,7 @@ import { Group } from '@/app/components/base/icons/src/vender/other'
 type Status = 'not-installed' | 'not-authorized' | undefined
 
 export type ToolIconProps = {
+  id: string
   providerName: string
 }
 
@@ -29,10 +30,11 @@ export const ToolIcon = memo(({ providerName }: ToolIconProps) => {
   const author = providerNameParts[0]
   const name = providerNameParts[1]
   const icon = useMemo(() => {
+    if (!isDataReady) return ''
     if (currentProvider) return currentProvider.icon as string
     const iconFromMarketPlace = getIconFromMarketPlace(`${author}/${name}`)
     return iconFromMarketPlace
-  }, [author, currentProvider, name])
+  }, [author, currentProvider, name, isDataReady])
   const status: Status = useMemo(() => {
     if (!isDataReady) return undefined
     if (!currentProvider) return 'not-installed'
@@ -60,7 +62,7 @@ export const ToolIcon = memo(({ providerName }: ToolIconProps) => {
       )}
       ref={containerRef}
     >
-      {!iconFetchError
+      {(!iconFetchError && isDataReady)
 
         ? <img
           src={icon}

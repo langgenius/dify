@@ -38,12 +38,7 @@ class ToolParameterCache:
             return None
 
     def set(self, parameters: dict) -> None:
-        """
-        Cache model provider credentials.
-
-        :param credentials: provider credentials
-        :return:
-        """
+        """Cache model provider credentials."""
         redis_client.setex(self.cache_key, 86400, json.dumps(parameters))
 
     def delete(self) -> None:

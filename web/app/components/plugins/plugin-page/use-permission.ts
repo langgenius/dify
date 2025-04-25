@@ -7,6 +7,7 @@ import { useInvalidatePermissions, useMutationPermissions, usePermissions } from
 const hasPermission = (permission: PermissionType | undefined, isAdmin: boolean) => {
   if (!permission)
     return false
+
   if (permission === PermissionType.noOne)
     return false
 

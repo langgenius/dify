@@ -15,6 +15,7 @@ import { useLanguage } from '../hooks'
 import PopupItem from './popup-item'
 import { XCircle } from '@/app/components/base/icons/src/vender/solid/general'
 import { useModalContext } from '@/context/modal-context'
+import { supportFunctionCall } from '@/utils/tool-call'
 
 type PopupProps = {
   defaultModel?: DefaultModel
@@ -50,7 +51,7 @@ const Popup: FC<PopupProps> = ({
             return true
           return scopeFeatures.every((feature) => {
             if (feature === ModelFeatureEnum.toolCall)
-              return modelItem.features?.some(featureItem => featureItem === ModelFeatureEnum.toolCall || featureItem === ModelFeatureEnum.multiToolCall)
+              return supportFunctionCall(modelItem.features)
             return modelItem.features?.some(featureItem => featureItem === feature)
           })
         })
@@ -73,7 +74,7 @@ const Popup: FC<PopupProps> = ({
           />
           <input
             className='block h-[18px] grow appearance-none bg-transparent text-[13px] text-text-primary outline-none'
-            placeholder='Search model'
+            placeholder={t('datasetSettings.form.searchModel') || ''}
             value={searchText}
             onChange={e => setSearchText(e.target.value)}
           />

@@ -84,12 +84,8 @@ class ModelInvocationUtils:
 
         :param user_id: user id
         :param tenant_id: tenant id, the tenant id of the creator of the tool
-        :param tool_provider: tool provider
-        :param tool_id: tool id
+        :param tool_type: tool type
         :param tool_name: tool name
-        :param provider: model provider
-        :param model: model name
-        :param model_parameters: model parameters
         :param prompt_messages: prompt messages
         :return: AssistantPromptMessage
         """

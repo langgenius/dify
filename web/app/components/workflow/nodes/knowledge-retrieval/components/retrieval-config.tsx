@@ -84,7 +84,7 @@ const RetrievalConfig: FC<Props> = ({
             model: configs.reranking_model?.reranking_model_name,
           }),
       reranking_mode: configs.reranking_mode,
-      weights: configs.weights as any,
+      weights: configs.weights,
       reranking_enable: configs.reranking_enable,
     })
   }, [onMultipleRetrievalConfigChange, payload.retrieval_mode, validRerankDefaultProvider, validRerankDefaultModel, onRetrievalModeChange])
@@ -116,7 +116,7 @@ const RetrievalConfig: FC<Props> = ({
         </Button>
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent style={{ zIndex: 1001 }}>
-        <div className='w-[404px] rounded-2xl border border-gray-200 bg-white  px-4 pb-4 pt-3  shadow-xl'>
+        <div className='w-[404px] rounded-2xl border border-components-panel-border bg-components-panel-bg  px-4 pb-4 pt-3  shadow-xl'>
           <ConfigRetrievalContent
             datasetConfigs={
               {

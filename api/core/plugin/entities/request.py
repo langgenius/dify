@@ -204,3 +204,11 @@ class RequestRequestUploadFile(BaseModel):
 
     filename: str
     mimetype: str
+
+
+class RequestFetchAppInfo(BaseModel):
+    """
+    Request to fetch app info
+    """
+
+    app_id: str

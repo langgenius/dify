@@ -9,6 +9,7 @@ import { emailRegex } from '@/config'
 import { login } from '@/service/common'
 import Input from '@/app/components/base/input'
 import I18NContext from '@/context/i18n'
+import { noop } from 'lodash-es'
 
 type MailAndPasswordAuthProps = {
   isInvite: boolean
@@ -103,7 +104,7 @@ export default function MailAndPasswordAuth({ isInvite, isEmailSetup, allowRegis
     }
   }
 
-  return <form onSubmit={() => { }}>
+  return <form onSubmit={noop}>
     <div className='mb-3'>
       <label htmlFor="email" className="system-md-semibold my-2 text-text-secondary">
         {t('login.email')}

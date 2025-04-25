@@ -20,7 +20,7 @@ const Switch = (
     disabled = false,
     className,
   }: SwitchProps & {
-    ref: React.RefObject<HTMLButtonElement>;
+    ref?: React.RefObject<HTMLButtonElement>;
   },
 ) => {
   const [enabled, setEnabled] = useState(defaultValue)

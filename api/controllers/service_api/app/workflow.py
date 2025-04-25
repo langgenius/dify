@@ -1,6 +1,6 @@
 import logging
-from datetime import datetime
 
+from dateutil.parser import isoparse
 from flask_restful import Resource, fields, marshal_with, reqparse  # type: ignore
 from flask_restful.inputs import int_range  # type: ignore
 from sqlalchemy.orm import Session
@@ -54,7 +54,7 @@ workflow_run_fields = {
 class WorkflowRunDetailApi(Resource):
     @validate_app_token
     @marshal_with(workflow_run_fields)
-    def get(self, app_model: App, workflow_id: str):
+    def get(self, app_model: App, workflow_run_id: str):
         """
         Get a workflow task running detail
         """
@@ -62,7 +62,7 @@ class WorkflowRunDetailApi(Resource):
         if app_mode != AppMode.WORKFLOW:
             raise NotWorkflowAppError()
 
-        workflow_run = db.session.query(WorkflowRun).filter(WorkflowRun.id == workflow_id).first()
+        workflow_run = db.session.query(WorkflowRun).filter(WorkflowRun.id == workflow_run_id).first()
         return workflow_run
 
 
@@ -140,10 +140,10 @@ class WorkflowAppLogApi(Resource):
 
         args.status = WorkflowRunStatus(args.status) if args.status else None
         if args.created_at__before:
-            args.created_at__before = datetime.fromisoformat(args.created_at__before.replace("Z", "+00:00"))
+            args.created_at__before = isoparse(args.created_at__before)
 
         if args.created_at__after:
-            args.created_at__after = datetime.fromisoformat(args.created_at__after.replace("Z", "+00:00"))
+            args.created_at__after = isoparse(args.created_at__after)
 
         # get paginate workflow app logs
         workflow_app_service = WorkflowAppService()
@@ -163,6 +163,6 @@ class WorkflowAppLogApi(Resource):
 
 
 api.add_resource(WorkflowRunApi, "/workflows/run")
-api.add_resource(WorkflowRunDetailApi, "/workflows/run/<string:workflow_id>")
+api.add_resource(WorkflowRunDetailApi, "/workflows/run/<string:workflow_run_id>")
 api.add_resource(WorkflowTaskStopApi, "/workflows/tasks/<string:task_id>/stop")
 api.add_resource(WorkflowAppLogApi, "/workflows/logs")

@@ -1,6 +1,6 @@
 from typing import Optional
 
-from pydantic import Field, NonNegativeInt, computed_field
+from pydantic import Field, NonNegativeInt
 from pydantic_settings import BaseSettings
 
 

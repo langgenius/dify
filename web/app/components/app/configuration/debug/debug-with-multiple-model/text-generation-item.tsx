@@ -14,6 +14,7 @@ import { TransferMethod } from '@/app/components/base/chat/types'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { useProviderContext } from '@/context/provider-context'
 import { useFeatures } from '@/app/components/base/features/hooks'
+import { noop } from 'lodash-es'
 
 type TextGenerationItemProps = {
   modelAndParameter: ModelAndParameter
@@ -134,7 +135,7 @@ const TextGenerationItem: FC<TextGenerationItemProps> = ({
       siteInfo={null}
       messageId={messageId}
       isError={false}
-      onRetry={() => { }}
+      onRetry={noop}
       inSidePanel
     />
   )

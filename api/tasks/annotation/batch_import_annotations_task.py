@@ -88,3 +88,5 @@ def batch_import_annotations_task(job_id: str, content_list: list[dict], app_id:
             indexing_error_msg_key = "app_annotation_batch_import_error_msg_{}".format(str(job_id))
             redis_client.setex(indexing_error_msg_key, 600, str(e))
             logging.exception("Build index for batch import annotations failed")
+        finally:
+            db.session.close()

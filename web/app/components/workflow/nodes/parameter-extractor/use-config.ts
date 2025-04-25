@@ -12,13 +12,11 @@ import useOneStepRun from '../_base/hooks/use-one-step-run'
 import useConfigVision from '../../hooks/use-config-vision'
 import type { Param, ParameterExtractorNodeType, ReasoningModeType } from './types'
 import { useModelListAndDefaultModelAndCurrentProviderAndModel, useTextGenerationCurrentProviderAndModelAndModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
-import {
-  ModelFeatureEnum,
-  ModelTypeEnum,
-} from '@/app/components/header/account-setting/model-provider-page/declarations'
+import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
 import { checkHasQueryBlock } from '@/app/components/base/prompt-editor/constants'
 import useAvailableVarList from '@/app/components/workflow/nodes/_base/hooks/use-available-var-list'
+import { supportFunctionCall } from '@/utils/tool-call'
 
 const useConfig = (id: string, payload: ParameterExtractorNodeType) => {
   const { nodesReadOnly: readOnly } = useNodesReadOnly()
@@ -159,7 +157,7 @@ const useConfig = (id: string, payload: ParameterExtractorNodeType) => {
     },
   )
 
-  const isSupportFunctionCall = currModel?.features?.includes(ModelFeatureEnum.toolCall) || currModel?.features?.includes(ModelFeatureEnum.multiToolCall)
+  const isSupportFunctionCall = supportFunctionCall(currModel?.features)
 
   const filterInputVar = useCallback((varPayload: Var) => {
     return [VarType.number, VarType.string].includes(varPayload.type)

@@ -375,11 +375,25 @@ def _process_sub_conditions(
     for condition in sub_conditions:
         key = FileAttribute(condition.key)
         values = [file_manager.get_attr(file=file, attr=key) for file in files]
+        expected_value = condition.value
+        if key == FileAttribute.EXTENSION:
+            if not isinstance(expected_value, str):
+                raise TypeError("Expected value must be a string when key is FileAttribute.EXTENSION")
+            if expected_value and not expected_value.startswith("."):
+                expected_value = "." + expected_value
+
+            normalized_values = []
+            for value in values:
+                if value and isinstance(value, str):
+                    if not value.startswith("."):
+                        value = "." + value
+                normalized_values.append(value)
+            values = normalized_values
         sub_group_results = [
             _evaluate_condition(
                 value=value,
                 operator=condition.comparison_operator,
-                expected=condition.value,
+                expected=expected_value,
             )
             for value in values
         ]

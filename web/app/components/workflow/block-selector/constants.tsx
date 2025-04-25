@@ -41,6 +41,12 @@ export const BLOCKS: Block[] = [
   },
   {
     classification: BlockClassificationEnum.Logic,
+    type: BlockEnum.LoopEnd,
+    title: 'Exit Loop',
+    description: '',
+  },
+  {
+    classification: BlockClassificationEnum.Logic,
     type: BlockEnum.Iteration,
     title: 'Iteration',
   },

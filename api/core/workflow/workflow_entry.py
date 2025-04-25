@@ -204,6 +204,8 @@ class WorkflowEntry:
         NOTE: only parameter_extractor/question_classifier are supported
 
         :param node_data: node data
+        :param node_id: node id
+        :param tenant_id: tenant id
         :param user_id: user id
         :param user_inputs: user inputs
         :return:

@@ -10,13 +10,14 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import Loading from '../components/base/loading'
 import Input from '../components/base/input'
 import Button from '@/app/components/base/button'
+import { basePath } from '@/utils/var'
 
 import {
   fetchInitValidateStatus,
   fetchSetupStatus,
   sendForgotPasswordEmail,
 } from '@/service/common'
-import type { InitValidateStatusResponse, SetupStatusResponse } from '@/models/common'
+import type { InitValidateStatusResponse } from '@/models/common'
 
 const accountFormSchema = z.object({
   email: z
@@ -67,10 +68,10 @@ const ForgotPasswordForm = () => {
   }
 
   useEffect(() => {
-    fetchSetupStatus().then((res: SetupStatusResponse) => {
+    fetchSetupStatus().then(() => {
       fetchInitValidateStatus().then((res: InitValidateStatusResponse) => {
         if (res.status === 'not_started')
-          window.location.href = '/init'
+          window.location.href = `${basePath}/init`
       })
 
       setLoading(false)
@@ -82,20 +83,20 @@ const ForgotPasswordForm = () => {
       ? <Loading />
       : <>
         <div className="sm:mx-auto sm:w-full sm:max-w-md">
-          <h2 className="text-[32px] font-bold text-gray-900">
+          <h2 className="text-[32px] font-bold text-text-primary">
             {isEmailSent ? t('login.resetLinkSent') : t('login.forgotPassword')}
           </h2>
-          <p className='mt-1 text-sm text-gray-600'>
+          <p className='mt-1 text-sm text-text-secondary'>
             {isEmailSent ? t('login.checkEmailForResetLink') : t('login.forgotPasswordDesc')}
           </p>
         </div>
         <div className="mt-8 grow sm:mx-auto sm:w-full sm:max-w-md">
-          <div className="bg-white ">
+          <div className="relative">
             <form>
               {!isEmailSent && (
                 <div className='mb-5'>
                   <label htmlFor="email"
-                    className="my-2 flex items-center justify-between text-sm font-medium text-gray-900">
+                    className="my-2 flex items-center justify-between text-sm font-medium text-text-primary">
                     {t('login.email')}
                   </label>
                   <div className="mt-1">

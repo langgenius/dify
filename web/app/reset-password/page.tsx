@@ -12,6 +12,7 @@ import Input from '@/app/components/base/input'
 import Toast from '@/app/components/base/toast'
 import { sendResetPasswordCode } from '@/service/common'
 import I18NContext from '@/context/i18n'
+import { noop } from 'lodash-es'
 
 export default function CheckCode() {
   const { t } = useTranslation()
@@ -76,7 +77,7 @@ export default function CheckCode() {
       </p>
     </div>
 
-    <form onSubmit={() => { }}>
+    <form onSubmit={noop}>
       <input type='text' className='hidden' />
       <div className='mb-2'>
         <label htmlFor="email" className='system-md-semibold my-2 text-text-secondary'>{t('login.email')}</label>
@@ -91,8 +92,8 @@ export default function CheckCode() {
     <div className='py-2'>
       <div className='h-px bg-gradient-to-r from-background-gradient-mask-transparent via-divider-regular to-background-gradient-mask-transparent'></div>
     </div>
-    <Link href={`/signin?${searchParams.toString()}`} className='flex h-9 items-center justify-center text-text-tertiary'>
-      <div className='bg-background-default-dimm inline-block rounded-full p-1'>
+    <Link href={`/signin?${searchParams.toString()}`} className='flex h-9 items-center justify-center text-text-tertiary hover:text-text-primary'>
+      <div className='inline-block rounded-full bg-background-default-dimmed p-1'>
         <RiArrowLeftLine size={12} />
       </div>
       <span className='system-xs-regular ml-2'>{t('login.backToLogin')}</span>

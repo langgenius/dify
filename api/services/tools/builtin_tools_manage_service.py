@@ -28,7 +28,6 @@ class BuiltinToolManageService:
         """
         list builtin tool provider tools
 
-        :param user_id: the id of the user
         :param tenant_id: the id of the tenant
         :param provider: the name of the provider
 

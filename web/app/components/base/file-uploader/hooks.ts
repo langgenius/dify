@@ -28,6 +28,7 @@ import type { FileUpload } from '@/app/components/base/features/types'
 import { formatFileSize } from '@/utils/format'
 import { uploadRemoteFileInfo } from '@/service/common'
 import type { FileUploadConfigResponse } from '@/models/common'
+import { noop } from 'lodash-es'
 
 export const useFileSizeLimit = (fileUploadConfig?: FileUploadConfigResponse) => {
   const imgSizeLimit = Number(fileUploadConfig?.image_file_size_limit) * 1024 * 1024 || IMG_SIZE_LIMIT
@@ -243,9 +244,9 @@ export const useFile = (fileConfig: FileUpload) => {
     })
   }, [checkSizeLimit, handleAddFile, handleUpdateFile, notify, t, handleRemoveFile, fileConfig?.allowed_file_types, fileConfig.allowed_file_extensions, startProgressTimer, params.token])
 
-  const handleLoadFileFromLinkSuccess = useCallback(() => { }, [])
+  const handleLoadFileFromLinkSuccess = useCallback(noop, [])
 
-  const handleLoadFileFromLinkError = useCallback(() => { }, [])
+  const handleLoadFileFromLinkError = useCallback(noop, [])
 
   const handleClearFiles = useCallback(() => {
     const {

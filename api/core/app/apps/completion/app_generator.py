@@ -74,7 +74,7 @@ class CompletionAppGenerator(MessageBasedAppGenerator):
         :param user: account or end user
         :param args: request args
         :param invoke_from: invoke from source
-        :param stream: is stream
+        :param streaming: is stream
         """
         query = args["query"]
         if not isinstance(query, str):

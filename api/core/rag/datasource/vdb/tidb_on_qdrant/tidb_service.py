@@ -22,7 +22,6 @@ class TidbService:
         :param iam_url: The URL of the TiDB Cloud IAM API (required).
         :param public_key: The public key for the API (required).
         :param private_key: The private key for the API (required).
-        :param display_name: The user-friendly display name of the cluster (required).
         :param region: The region where the cluster will be created (required).
 
         :return: The response from the API.
@@ -149,13 +148,12 @@ class TidbService:
     ):
         """
         Update the status of a new TiDB Serverless cluster.
+        :param tidb_serverless_list: The TiDB serverless list (required).
         :param project_id: The project ID of the TiDB Cloud project (required).
         :param api_url: The URL of the TiDB Cloud API (required).
         :param iam_url: The URL of the TiDB Cloud IAM API (required).
         :param public_key: The public key for the API (required).
         :param private_key: The private key for the API (required).
-        :param display_name: The user-friendly display name of the cluster (required).
-        :param region: The region where the cluster will be created (required).
 
         :return: The response from the API.
         """
@@ -186,12 +184,12 @@ class TidbService:
     ) -> list[dict]:
         """
         Creates a new TiDB Serverless cluster.
+        :param batch_size: The batch size (required).
         :param project_id: The project ID of the TiDB Cloud project (required).
         :param api_url: The URL of the TiDB Cloud API (required).
         :param iam_url: The URL of the TiDB Cloud IAM API (required).
         :param public_key: The public key for the API (required).
         :param private_key: The private key for the API (required).
-        :param display_name: The user-friendly display name of the cluster (required).
         :param region: The region where the cluster will be created (required).
 
         :return: The response from the API.

@@ -54,7 +54,7 @@ const ParamItem: FC<Props> = ({ className, id, name, noTooltip, tip, step = 0.1,
             max={max}
             step={step}
             amount={step}
-            size='sm'
+            size='regular'
             value={value}
             onChange={(value) => {
               onChange(id, value)

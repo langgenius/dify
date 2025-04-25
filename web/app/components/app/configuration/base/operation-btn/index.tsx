@@ -7,6 +7,7 @@ import {
   RiEditLine,
 } from '@remixicon/react'
 import cn from '@/utils/classnames'
+import { noop } from 'lodash-es'
 
 export type IOperationBtnProps = {
   className?: string
@@ -24,7 +25,7 @@ const OperationBtn: FC<IOperationBtnProps> = ({
   className,
   type,
   actionName,
-  onClick = () => { },
+  onClick = noop,
 }) => {
   const { t } = useTranslation()
   return (

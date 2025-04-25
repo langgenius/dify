@@ -41,6 +41,7 @@ import { CopyIcon } from '@/app/components/base/copy-icon'
 import { buildChatItemTree, getThreadMessages } from '@/app/components/base/chat/utils'
 import { getProcessedFilesFromResponse } from '@/app/components/base/file-uploader/utils'
 import cn from '@/utils/classnames'
+import { noop } from 'lodash-es'
 
 dayjs.extend(utc)
 dayjs.extend(timezone)
@@ -411,7 +412,7 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
               content={detail.message.answer}
               messageId={detail.message.id}
               isError={false}
-              onRetry={() => { }}
+              onRetry={noop}
               isInstalledApp={false}
               supportFeedback
               feedback={detail.message.feedbacks.find((item: any) => item.from_source === 'admin')}
@@ -546,7 +547,7 @@ const CompletionConversationDetailComp: FC<{ appId?: string; conversationId?: st
       notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
       return true
     }
-    catch (err) {
+    catch {
       notify({ type: 'error', message: t('common.actionMsg.modifiedUnsuccessfully') })
       return false
     }
@@ -559,7 +560,7 @@ const CompletionConversationDetailComp: FC<{ appId?: string; conversationId?: st
       notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
       return true
     }
-    catch (err) {
+    catch {
       notify({ type: 'error', message: t('common.actionMsg.modifiedUnsuccessfully') })
       return false
     }
@@ -590,7 +591,7 @@ const ChatConversationDetailComp: FC<{ appId?: string; conversationId?: string }
       notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
       return true
     }
-    catch (err) {
+    catch {
       notify({ type: 'error', message: t('common.actionMsg.modifiedUnsuccessfully') })
       return false
     }
@@ -602,7 +603,7 @@ const ChatConversationDetailComp: FC<{ appId?: string; conversationId?: string }
       notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
       return true
     }
-    catch (err) {
+    catch {
       notify({ type: 'error', message: t('common.actionMsg.modifiedUnsuccessfully') })
       return false
     }
@@ -742,7 +743,7 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
         onClose={onCloseDrawer}
         mask={isMobile}
         footer={null}
-        panelClassname='mt-16 mx-2 sm:mr-2 mb-4 !p-0 !max-w-[640px] rounded-xl bg-components-panel-bg'
+        panelClassName='mt-16 mx-2 sm:mr-2 mb-4 !p-0 !max-w-[640px] rounded-xl bg-components-panel-bg'
       >
         <DrawerContext.Provider value={{
           onClose: onCloseDrawer,

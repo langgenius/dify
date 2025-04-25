@@ -13,6 +13,7 @@ import { IS_CE_EDITION } from '@/config'
 import type { SiteInfo } from '@/models/share'
 import { useThemeContext } from '@/app/components/base/chat/embedded-chatbot/theme/theme-context'
 import ActionButton from '@/app/components/base/action-button'
+import { basePath } from '@/utils/var'
 import cn from '@/utils/classnames'
 
 type Props = {
@@ -28,7 +29,7 @@ const OPTION_MAP = {
   iframe: {
     getContent: (url: string, token: string) =>
       `<iframe
- src="${url}/chatbot/${token}"
+ src="${url}${basePath}/chatbot/${token}"
  style="width: 100%; height: 100%; min-height: 700px"
  frameborder="0"
  allow="microphone">
@@ -39,16 +40,20 @@ const OPTION_MAP = {
       `<script>
  window.difyChatbotConfig = {
   token: '${token}'${isTestEnv
-    ? `,
+        ? `,
   isDev: true`
-    : ''}${IS_CE_EDITION
-    ? `,
-  baseUrl: '${url}'`
-    : ''}
+        : ''}${IS_CE_EDITION
+          ? `,
+  baseUrl: '${url}${basePath}'`
+          : ''},
+  systemVariables: {
+    // user_id: 'YOU CAN DEFINE USER ID HERE',
+    // conversation_id: 'YOU CAN DEFINE CONVERSATION ID HERE, IT MUST BE A VALID UUID',
+  },
  }
 </script>
 <script
- src="${url}/embed.min.js"
+ src="${url}${basePath}/embed.min.js"
  id="${token}"
  defer>
 </script>
@@ -63,7 +68,7 @@ const OPTION_MAP = {
 </style>`,
   },
   chromePlugin: {
-    getContent: (url: string, token: string) => `ChatBot URL: ${url}/chatbot/${token}`,
+    getContent: (url: string, token: string) => `ChatBot URL: ${url}${basePath}/chatbot/${token}`,
   },
 }
 const prefixEmbedded = 'appOverview.overview.appInfo.embedded'
@@ -107,7 +112,7 @@ const Embedded = ({ siteInfo, isShow, onClose, appBaseUrl, accessToken, classNam
   }
 
   const navigateToChromeUrl = () => {
-    window.open('https://chrome.google.com/webstore/detail/dify-chatbot/ceehdapohffmjmkdcifjofadiaoeggaf', '_blank')
+    window.open('https://chrome.google.com/webstore/detail/dify-chatbot/ceehdapohffmjmkdcifjofadiaoeggaf', '_blank', 'noopener,noreferrer')
   }
 
   useEffect(() => {

@@ -28,9 +28,7 @@ class BuiltinTool(Tool):
 
     def fork_tool_runtime(self, runtime: ToolRuntime) -> "BuiltinTool":
         """
-        fork a new tool with meta data
-
-        :param meta: the meta data of a tool call processing, tenant_id is required
+        fork a new tool with metadata
         :return: the new tool
         """
         return self.__class__(
@@ -43,7 +41,7 @@ class BuiltinTool(Tool):
         """
         invoke model
 
-        :param model_config: the model config
+        :param user_id: the user id
         :param prompt_messages: the prompt messages
         :param stop: the stop words
         :return: the model result
@@ -64,7 +62,6 @@ class BuiltinTool(Tool):
         """
         get max tokens
 
-        :param model_config: the model config
         :return: the max tokens
         """
         if self.runtime is None:

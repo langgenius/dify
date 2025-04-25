@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import Toast from '../components/base/toast'
 import Loading from '../components/base/loading'
 import Button from '@/app/components/base/button'
+import { basePath } from '@/utils/var'
 import { fetchInitValidateStatus, initValidate } from '@/service/common'
 import type { InitValidateStatusResponse } from '@/models/common'
 
@@ -41,7 +42,7 @@ const InitPasswordPopup = () => {
   useEffect(() => {
     fetchInitValidateStatus().then((res: InitValidateStatusResponse) => {
       if (res.status === 'finished')
-        window.location.href = '/install'
+        window.location.href = `${basePath}/install`
       else
         setLoading(false)
     })
@@ -54,7 +55,7 @@ const InitPasswordPopup = () => {
         {!validated && (
           <div className="mx-12 block min-w-28">
             <div className="mb-4">
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700">
+              <label htmlFor="password" className="block text-sm font-medium text-text-secondary">
                 {t('login.adminInitPassword')}
 
               </label>
@@ -64,7 +65,7 @@ const InitPasswordPopup = () => {
                   type="password"
                   value={password}
                   onChange={e => setPassword(e.target.value)}
-                  className="block w-full appearance-none rounded-md border border-gray-300 px-3 py-2 shadow-sm placeholder:text-gray-400 focus:border-indigo-500 focus:outline-none focus:ring-indigo-500 sm:text-sm"
+                  className="block w-full appearance-none rounded-md border border-divider-regular px-3 py-2 shadow-sm placeholder:text-text-quaternary focus:border-indigo-500 focus:outline-none focus:ring-indigo-500 sm:text-sm"
                 />
               </div>
             </div>

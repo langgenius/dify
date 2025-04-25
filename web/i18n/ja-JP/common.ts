@@ -56,6 +56,7 @@ const translation = {
     viewDetails: '詳細を見る',
     copied: 'コピーしました',
     in: '中',
+    format: 'フォーマット',
   },
   errorMsg: {
     fieldRequired: '{{field}}は必要です',
@@ -218,6 +219,9 @@ const translation = {
     feedbackLabel: 'アカウントを削除した理由を教えてください。',
     feedbackPlaceholder: '随意',
     sendVerificationButton: '確認コードの送信',
+    editWorkspaceInfo: 'ワークスペース情報を編集',
+    workspaceName: 'ワークスペース名',
+    workspaceIcon: 'ワークスペースアイコン',
   },
   members: {
     team: 'チーム',

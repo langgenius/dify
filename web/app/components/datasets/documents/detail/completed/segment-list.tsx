@@ -42,7 +42,7 @@ const SegmentList = (
     embeddingAvailable,
     onClearFilter,
   }: ISegmentListProps & {
-    ref: React.RefObject<unknown>;
+    ref: React.LegacyRef<HTMLDivElement>
   },
 ) => {
   const mode = useDocumentContext(s => s.mode)

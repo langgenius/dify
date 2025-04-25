@@ -1,6 +1,6 @@
 import type {
   FC,
-  ReactNode,
+  ReactElement,
 } from 'react'
 import {
   cloneElement,
@@ -46,7 +46,7 @@ import BlockIcon from '@/app/components/workflow/block-icon'
 import Tooltip from '@/app/components/base/tooltip'
 
 type BaseNodeProps = {
-  children: ReactNode
+  children: ReactElement
 } & NodeProps
 
 const BaseNode: FC<BaseNodeProps> = ({
@@ -103,6 +103,30 @@ const BaseNode: FC<BaseNodeProps> = ({
       showExceptionBorder: data._runningStatus === NodeRunningStatus.Exception && !showSelectedBorder,
     }
   }, [data._runningStatus, showSelectedBorder])
+
+  const LoopIndex = useMemo(() => {
+    let text = ''
+
+    if (data._runningStatus === NodeRunningStatus.Running)
+      text = t('workflow.nodes.loop.currentLoopCount', { count: data._loopIndex })
+    if (data._runningStatus === NodeRunningStatus.Succeeded || data._runningStatus === NodeRunningStatus.Failed)
+      text = t('workflow.nodes.loop.totalLoopCount', { count: data._loopIndex })
+
+    if (text) {
+      return (
+        <div
+          className={cn(
+            'system-xs-medium mr-2 text-text-tertiary',
+            data._runningStatus === NodeRunningStatus.Running && 'text-text-accent',
+          )}
+        >
+          {text}
+        </div>
+      )
+    }
+
+    return null
+  }, [data._loopIndex, data._runningStatus, t])
 
   return (
     <div
@@ -233,11 +257,7 @@ const BaseNode: FC<BaseNodeProps> = ({
             )
           }
           {
-            data._loopLength && data._loopIndex && data._runningStatus === NodeRunningStatus.Running && (
-              <div className='mr-1.5 text-xs font-medium text-primary-600'>
-                {data._loopIndex > data._loopLength ? data._loopLength : data._loopIndex}/{data._loopLength}
-              </div>
-            )
+            data.type === BlockEnum.Loop && data._loopIndex && LoopIndex
           }
           {
             (data._runningStatus === NodeRunningStatus.Running || data._singleRunningStatus === NodeRunningStatus.Running) && (

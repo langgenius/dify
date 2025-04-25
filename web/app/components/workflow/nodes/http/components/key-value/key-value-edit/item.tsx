@@ -62,7 +62,7 @@ const KeyValueItem: FC<Props> = ({
 
   return (
     // group class name is for hover row show remove button
-    <div className={cn(className, 'h-min-7 group flex border-t border-gray-200')}>
+    <div className={cn(className, 'h-min-7 group flex border-t border-divider-regular')}>
       <div className={cn('shrink-0 border-r border-divider-regular', isSupportFile ? 'w-[140px]' : 'w-1/2')}>
         {!keyNotSupportVar
           ? (
@@ -79,7 +79,7 @@ const KeyValueItem: FC<Props> = ({
           )
           : (
             <input
-              className='system-sm-regular focus:bg-gray-100! appearance-none rounded-none border-none bg-white outline-none hover:bg-gray-50 focus:ring-0'
+              className='system-sm-regular focus:bg-gray-100! appearance-none rounded-none border-none bg-transparent outline-none hover:bg-components-input-bg-hover focus:ring-0'
               value={payload.key}
               onChange={e => handleChange('key')(e.target.value)}
             />
@@ -95,7 +95,7 @@ const KeyValueItem: FC<Props> = ({
               { name: 'file', value: 'file' },
             ]}
             readonly={readonly}
-            triggerClassName='rounded-none h-7'
+            triggerClassName='rounded-none h-7 text-text-primary'
             triggerClassNameFn={isOpen => isOpen ? 'bg-state-base-hover' : 'bg-transparent'}
             popupClassName='w-[80px] h-7'
           />

@@ -55,10 +55,12 @@ export enum ModelFeatureEnum {
   toolCall = 'tool-call',
   multiToolCall = 'multi-tool-call',
   agentThought = 'agent-thought',
+  streamToolCall = 'stream-tool-call',
   vision = 'vision',
   video = 'video',
   document = 'document',
   audio = 'audio',
+  StructuredOutput = 'structured-output',
 }
 
 export enum ModelFeatureTextEnum {

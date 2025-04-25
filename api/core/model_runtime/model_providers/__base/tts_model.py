@@ -38,7 +38,6 @@ class TTSModel(AIModel):
         :param credentials: model credentials
         :param voice: model timbre
         :param content_text: text content to be translated
-        :param streaming: output is streaming
         :param user: unique user id
         :return: translated audio file
         """

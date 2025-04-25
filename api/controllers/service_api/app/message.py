@@ -1,3 +1,4 @@
+import json
 import logging
 
 from flask_restful import Resource, fields, marshal_with, reqparse  # type: ignore
@@ -10,7 +11,7 @@ from controllers.service_api.app.error import NotChatAppError
 from controllers.service_api.wraps import FetchUserArg, WhereisUserArg, validate_app_token
 from core.app.entities.app_invoke_entities import InvokeFrom
 from fields.conversation_fields import message_file_fields
-from fields.message_fields import agent_thought_fields, feedback_fields, retriever_resource_fields
+from fields.message_fields import agent_thought_fields, feedback_fields
 from fields.raws import FilesContainedField
 from libs.helper import TimestampField, uuid_value
 from models.model import App, AppMode, EndUser
@@ -28,7 +29,11 @@ class MessageListApi(Resource):
         "answer": fields.String(attribute="re_sign_file_url_answer"),
         "message_files": fields.List(fields.Nested(message_file_fields)),
         "feedback": fields.Nested(feedback_fields, attribute="user_feedback", allow_null=True),
-        "retriever_resources": fields.List(fields.Nested(retriever_resource_fields)),
+        "retriever_resources": fields.Raw(
+            attribute=lambda obj: json.loads(obj.message_metadata).get("retriever_resources", [])
+            if obj.message_metadata
+            else []
+        ),
         "created_at": TimestampField,
         "agent_thoughts": fields.List(fields.Nested(agent_thought_fields)),
         "status": fields.String,

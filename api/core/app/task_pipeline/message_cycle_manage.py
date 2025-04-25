@@ -48,7 +48,7 @@ class MessageCycleManage:
     def _generate_conversation_name(self, *, conversation_id: str, query: str) -> Optional[Thread]:
         """
         Generate conversation name.
-        :param conversation: conversation
+        :param conversation_id: conversation id
         :param query: query
         :return: thread
         """
@@ -182,10 +182,12 @@ class MessageCycleManage:
             from_variable_selector=from_variable_selector,
         )
 
-    def _message_replace_to_stream_response(self, answer: str) -> MessageReplaceStreamResponse:
+    def _message_replace_to_stream_response(self, answer: str, reason: str = "") -> MessageReplaceStreamResponse:
         """
         Message replace to stream response.
         :param answer: answer
         :return:
         """
-        return MessageReplaceStreamResponse(task_id=self._application_generate_entity.task_id, answer=answer)
+        return MessageReplaceStreamResponse(
+            task_id=self._application_generate_entity.task_id, answer=answer, reason=reason
+        )

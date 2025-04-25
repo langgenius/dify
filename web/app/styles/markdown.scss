@@ -1,7 +1,7 @@
-@import '../../themes/light';
-@import '../../themes/dark';
-@import '../../themes/markdown-light';
-@import '../../themes/markdown-dark';
+@use '../../themes/light';
+@use '../../themes/dark';
+@use '../../themes/markdown-light';
+@use '../../themes/markdown-dark';
 
 .markdown-body {
   -ms-text-size-adjust: 100%;
@@ -1038,4 +1038,7 @@
 
 .markdown-body .react-syntax-highlighter-line-number {
   color: var(--color-text-quaternary);
+}
+.markdown-body .abcjs-inline-audio .abcjs-btn {
+  display: flex !important;
 }

@@ -32,7 +32,9 @@ const ListWithCollection = ({
   return (
     <>
       {
-        marketplaceCollections.map(collection => (
+        marketplaceCollections.filter((collection) => {
+          return marketplaceCollectionPluginsMap[collection.name]?.length
+        }).map(collection => (
           <div
             key={collection.name}
             className='py-3'

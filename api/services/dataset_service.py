@@ -169,6 +169,9 @@ class DatasetService:
         provider: str = "vendor",
         external_knowledge_api_id: Optional[str] = None,
         external_knowledge_id: Optional[str] = None,
+        embedding_model_provider: Optional[str] = None,
+        embedding_model_name: Optional[str] = None,
+        retrieval_model: Optional[RetrievalModel] = None,
     ):
         # check if dataset name already exists
         if Dataset.query.filter_by(name=name, tenant_id=tenant_id).first():
@@ -176,9 +179,30 @@ class DatasetService:
         embedding_model = None
         if indexing_technique == "high_quality":
             model_manager = ModelManager()
-            embedding_model = model_manager.get_default_model_instance(
-                tenant_id=tenant_id, model_type=ModelType.TEXT_EMBEDDING
-            )
+            if embedding_model_provider and embedding_model_name:
+                # check if embedding model setting is valid
+                DatasetService.check_embedding_model_setting(tenant_id, embedding_model_provider, embedding_model_name)
+                embedding_model = model_manager.get_model_instance(
+                    tenant_id=tenant_id,
+                    provider=embedding_model_provider,
+                    model_type=ModelType.TEXT_EMBEDDING,
+                    model=embedding_model_name,
+                )
+            else:
+                embedding_model = model_manager.get_default_model_instance(
+                    tenant_id=tenant_id, model_type=ModelType.TEXT_EMBEDDING
+                )
+            if retrieval_model and retrieval_model.reranking_model:
+                if (
+                    retrieval_model.reranking_model.reranking_provider_name
+                    and retrieval_model.reranking_model.reranking_model_name
+                ):
+                    # check if reranking model setting is valid
+                    DatasetService.check_embedding_model_setting(
+                        tenant_id,
+                        retrieval_model.reranking_model.reranking_provider_name,
+                        retrieval_model.reranking_model.reranking_model_name,
+                    )
         dataset = Dataset(name=name, indexing_technique=indexing_technique)
         # dataset = Dataset(name=name, provider=provider, config=config)
         dataset.description = description
@@ -187,6 +211,7 @@ class DatasetService:
         dataset.tenant_id = tenant_id
         dataset.embedding_model_provider = embedding_model.provider if embedding_model else None
         dataset.embedding_model = embedding_model.model if embedding_model else None
+        dataset.retrieval_model = retrieval_model.model_dump() if retrieval_model else None
         dataset.permission = permission or DatasetPermissionEnum.ONLY_ME
         dataset.provider = provider
         db.session.add(dataset)
@@ -528,7 +553,7 @@ class DocumentService:
                 {"id": "remove_extra_spaces", "enabled": True},
                 {"id": "remove_urls_emails", "enabled": False},
             ],
-            "segmentation": {"delimiter": "\n", "max_tokens": 500, "chunk_overlap": 50},
+            "segmentation": {"delimiter": "\n", "max_tokens": 1024, "chunk_overlap": 50},
         },
         "limits": {
             "indexing_max_segmentation_tokens_length": dify_config.INDEXING_MAX_SEGMENTATION_TOKENS_LENGTH,
@@ -880,6 +905,9 @@ class DocumentService:
                         website_info = knowledge_config.data_source.info_list.website_info_list
                         count = len(website_info.urls)  # type: ignore
                     batch_upload_limit = int(dify_config.BATCH_UPLOAD_LIMIT)
+
+                    if features.billing.subscription.plan == "sandbox" and count > 1:
+                        raise ValueError("Your current plan does not support batch upload, please upgrade your plan.")
                     if count > batch_upload_limit:
                         raise ValueError(f"You have reached the batch upload limit of {batch_upload_limit}.")
 
@@ -920,11 +948,11 @@ class DocumentService:
                         "score_threshold_enabled": False,
                     }
 
-                    dataset.retrieval_model = (
-                        knowledge_config.retrieval_model.model_dump()
-                        if knowledge_config.retrieval_model
-                        else default_retrieval_model
-                    )  # type: ignore
+                dataset.retrieval_model = (
+                    knowledge_config.retrieval_model.model_dump()
+                    if knowledge_config.retrieval_model
+                    else default_retrieval_model
+                )  # type: ignore
 
         documents = []
         if knowledge_config.original_document_id:
@@ -1328,6 +1356,8 @@ class DocumentService:
                 website_info = knowledge_config.data_source.info_list.website_info_list  # type: ignore
                 if website_info:
                     count = len(website_info.urls)
+            if features.billing.subscription.plan == "sandbox" and count > 1:
+                raise ValueError("Your current plan does not support batch upload, please upgrade your plan.")
             batch_upload_limit = int(dify_config.BATCH_UPLOAD_LIMIT)
             if count > batch_upload_limit:
                 raise ValueError(f"You have reached the batch upload limit of {batch_upload_limit}.")
@@ -1663,6 +1693,7 @@ class SegmentService:
                     content=content,
                     word_count=len(content),
                     tokens=tokens,
+                    keywords=segment_item.get("keywords", []),
                     status="completed",
                     indexing_at=datetime.datetime.now(datetime.UTC).replace(tzinfo=None),
                     completed_at=datetime.datetime.now(datetime.UTC).replace(tzinfo=None),
@@ -1780,12 +1811,8 @@ class SegmentService:
                     )
                 elif document.doc_form in (IndexType.PARAGRAPH_INDEX, IndexType.QA_INDEX):
                     if args.enabled or keyword_changed:
-                        VectorService.create_segments_vector(
-                            [args.keywords] if args.keywords else None,
-                            [segment],
-                            dataset,
-                            document.doc_form,
-                        )
+                        # update segment vector index
+                        VectorService.update_segment_vector(args.keywords, segment, dataset)
             else:
                 segment_hash = helper.generate_text_hash(content)
                 tokens = 0
@@ -1998,7 +2025,7 @@ class SegmentService:
                 dataset_id=dataset.id,
                 document_id=document.id,
                 segment_id=segment.id,
-                position=max_position + 1,
+                position=max_position + 1 if max_position else 1,
                 index_node_id=index_node_id,
                 index_node_hash=index_node_hash,
                 content=content,
@@ -2148,7 +2175,13 @@ class SegmentService:
 
     @classmethod
     def get_segments(
-        cls, document_id: str, tenant_id: str, status_list: list[str] | None = None, keyword: str | None = None
+        cls,
+        document_id: str,
+        tenant_id: str,
+        status_list: list[str] | None = None,
+        keyword: str | None = None,
+        page: int = 1,
+        limit: int = 20,
     ):
         """Get segments for a document with optional filtering."""
         query = DocumentSegment.query.filter(
@@ -2161,10 +2194,11 @@ class SegmentService:
         if keyword:
             query = query.filter(DocumentSegment.content.ilike(f"%{keyword}%"))
 
-        segments = query.order_by(DocumentSegment.position.asc()).all()
-        total = len(segments)
+        paginated_segments = query.order_by(DocumentSegment.position.asc()).paginate(
+            page=page, per_page=limit, max_per_page=100, error_out=False
+        )
 
-        return segments, total
+        return paginated_segments.items, paginated_segments.total
 
     @classmethod
     def update_segment_by_id(

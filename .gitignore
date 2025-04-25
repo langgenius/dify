@@ -46,6 +46,7 @@ htmlcov/
 .cache
 nosetests.xml
 coverage.xml
+coverage.json
 *.cover
 *.py,cover
 .hypothesis/
@@ -103,6 +104,7 @@ celerybeat.pid
 
 # Environments
 .env
+.env-local
 .venv
 env/
 venv/

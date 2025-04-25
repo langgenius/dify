@@ -1,4 +1,4 @@
-from enum import Enum
+from enum import StrEnum
 from typing import Literal, Optional
 
 from pydantic import BaseModel
@@ -11,7 +11,7 @@ class SegmentUpdateEntity(BaseModel):
     enabled: Optional[bool] = None
 
 
-class ParentMode(str, Enum):
+class ParentMode(StrEnum):
     FULL_DOC = "full-doc"
     PARAGRAPH = "paragraph"
 

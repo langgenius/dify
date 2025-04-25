@@ -130,7 +130,6 @@ const DatePicker = ({
 
   const handleConfirmDate = () => {
     // debugger
-    console.log(selectedDate, selectedDate?.tz(timezone))
     onChange(selectedDate ? selectedDate.tz(timezone) : undefined)
     setIsOpen(false)
   }

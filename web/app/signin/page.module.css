@@ -5,8 +5,3 @@
 .googleIcon {
   background: center/contain url('./assets/google.svg');
 }
-
-.background {
-  background-image: url('./assets/background.png');
-  background-size: cover;
-}

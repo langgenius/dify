@@ -7,7 +7,6 @@ import produce from 'immer'
 import { useWorkflowStore } from '@/app/components/workflow/store'
 import type { LoopStartedResponse } from '@/types/workflow'
 import { NodeRunningStatus } from '@/app/components/workflow/types'
-import { DEFAULT_LOOP_TIMES } from '@/app/components/workflow/constants'
 
 export const useWorkflowNodeLoopStarted = () => {
   const store = useStoreApi()
@@ -25,7 +24,6 @@ export const useWorkflowNodeLoopStarted = () => {
     const {
       workflowRunningData,
       setWorkflowRunningData,
-      setLoopTimes,
     } = workflowStore.getState()
     const {
       getNodes,
@@ -41,7 +39,6 @@ export const useWorkflowNodeLoopStarted = () => {
         status: NodeRunningStatus.Running,
       })
     }))
-    setLoopTimes(DEFAULT_LOOP_TIMES)
 
     const {
       setViewport,

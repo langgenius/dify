@@ -7,21 +7,24 @@ import { useEdgesInteractions } from '../../../hooks'
 import AddButton from '../../_base/components/add-button'
 import Item from './class-item'
 import type { Topic } from '@/app/components/workflow/nodes/question-classifier/types'
+import type { ValueSelector, Var } from '@/app/components/workflow/types'
 
 const i18nPrefix = 'workflow.nodes.questionClassifiers'
 
 type Props = {
-  id: string
+  nodeId: string
   list: Topic[]
   onChange: (list: Topic[]) => void
   readonly?: boolean
+  filterVar: (payload: Var, valueSelector: ValueSelector) => boolean
 }
 
 const ClassList: FC<Props> = ({
-  id,
+  nodeId,
   list,
   onChange,
   readonly,
+  filterVar,
 }) => {
   const { t } = useTranslation()
   const { handleEdgeDeleteByDeleteBranch } = useEdgesInteractions()
@@ -44,13 +47,13 @@ const ClassList: FC<Props> = ({
 
   const handleRemoveClass = useCallback((index: number) => {
     return () => {
-      handleEdgeDeleteByDeleteBranch(id, list[index].id)
+      handleEdgeDeleteByDeleteBranch(nodeId, list[index].id)
       const newList = produce(list, (draft) => {
         draft.splice(index, 1)
       })
       onChange(newList)
     }
-  }, [list, onChange, handleEdgeDeleteByDeleteBranch, id])
+  }, [list, onChange, handleEdgeDeleteByDeleteBranch, nodeId])
 
   // Todo Remove; edit topic name
   return (
@@ -59,12 +62,14 @@ const ClassList: FC<Props> = ({
         list.map((item, index) => {
           return (
             <Item
+              nodeId={nodeId}
               key={index}
               payload={item}
               onChange={handleClassChange(index)}
               onRemove={handleRemoveClass(index)}
               index={index + 1}
               readonly={readonly}
+              filterVar={filterVar}
             />
           )
         })

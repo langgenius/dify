@@ -54,6 +54,17 @@ def only_edition_self_hosted(view):
     return decorated
 
 
+def cloud_edition_billing_enabled(view):
+    @wraps(view)
+    def decorated(*args, **kwargs):
+        features = FeatureService.get_features(current_user.current_tenant_id)
+        if not features.billing.enabled:
+            abort(403, "Billing feature is not enabled.")
+        return view(*args, **kwargs)
+
+    return decorated
+
+
 def cloud_edition_billing_resource_check(resource: str):
     def interceptor(view):
         @wraps(view)
@@ -197,5 +208,18 @@ def enterprise_license_required(view):
             raise UnauthorizedAndForceLogout("Your license is invalid. Please contact your administrator.")
 
         return view(*args, **kwargs)
+
+    return decorated
+
+
+def email_password_login_enabled(view):
+    @wraps(view)
+    def decorated(*args, **kwargs):
+        features = FeatureService.get_system_features()
+        if features.enable_email_password_login:
+            return view(*args, **kwargs)
+
+        # otherwise, return 403
+        abort(403)
 
     return decorated

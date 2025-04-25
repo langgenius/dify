@@ -83,6 +83,9 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
     ### ChatCompletionResponse
 
     返回完整的 App 结果，`Content-Type` 为 `application/json`。
+    - `event` (string) 事件类型，固定为 `message`
+    - `task_id` (string) 任务 ID，用于请求跟踪和下方的停止响应接口
+    - `id` (string) 唯一ID
     - `message_id` (string) 消息唯一 ID
     - `conversation_id` (string) 会话 ID
     - `mode` (string) App 模式，固定为 chat
@@ -91,7 +94,6 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
       - `usage` (Usage) 模型用量信息
       - `retriever_resources` (array[RetrieverResource]) 引用和归属分段列表
     - `created_at` (int) 消息创建时间戳，如：1705395332
-
     ### ChunkChatCompletionResponse
     返回 App 输出的流式块，`Content-Type` 为 `text/event-stream`。
     每个流式块均为 data: 开头，块之间以 \n\n 即两个换行符分隔，如下所示：
@@ -210,6 +212,8 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
     ```json {{ title: 'Response' }}
     {
         "event": "message",
+        "task_id": "c3800678-a077-43df-a102-53f23ed20b88", 
+        "id": "9da23599-e713-473b-982c-4328d4f5c78a",
         "message_id": "9da23599-e713-473b-982c-4328d4f5c78a",
         "conversation_id": "45701982-8118-4bc5-8e9b-64562b4555f2",
         "mode": "chat",
@@ -881,6 +885,106 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
       "introduction": "",
       "created_at": 1732731141,
       "updated_at": 1732734510
+    }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
+---
+
+<Heading
+  url='/conversations/:conversation_id/variables'
+  method='GET'
+  title='获取对话变量'
+  name='#conversation-variables'
+/>
+<Row>
+  <Col>
+    从特定对话中检索变量。此端点对于提取对话过程中捕获的结构化数据非常有用。
+
+    ### 路径参数
+
+    <Properties>
+      <Property name='conversation_id' type='string' key='conversation_id'>
+        要从中检索变量的对话ID。
+      </Property>
+    </Properties>
+
+    ### 查询参数
+
+    <Properties>
+      <Property name='user' type='string' key='user'>
+        用户标识符，由开发人员定义的规则，在应用程序内必须唯一。
+      </Property>
+      <Property name='last_id' type='string' key='last_id'>
+        （选填）当前页最后面一条记录的 ID，默认 null
+      </Property>
+      <Property name='limit' type='int' key='limit'>
+        （选填）一次请求返回多少条记录，默认 20 条，最大 100 条，最小 1 条。
+      </Property>
+    </Properties>
+
+    ### 响应
+
+    - `limit` (int) 每页项目数
+    - `has_more` (bool) 是否有更多项目
+    - `data` (array[object]) 变量列表
+      - `id` (string) 变量ID
+      - `name` (string) 变量名称
+      - `value_type` (string) 变量类型（字符串、数字、布尔等）
+      - `value` (string) 变量值
+      - `description` (string) 变量描述
+      - `created_at` (int) 创建时间戳
+      - `updated_at` (int) 最后更新时间戳
+
+    ### 错误
+    - 404, `conversation_not_exists`, 对话不存在
+
+  </Col>
+  <Col sticky>
+
+    <CodeGroup title="Request" tag="GET" label="/conversations/:conversation_id/variables" targetCode={`curl -X GET '${props.appDetail.api_base_url}/conversations/{conversation_id}/variables?user=abc-123' \\\n--header 'Authorization: Bearer {api_key}'`}>
+
+    ```bash {{ title: 'cURL' }}
+    curl -X GET '${props.appDetail.api_base_url}/conversations/{conversation_id}/variables?user=abc-123' \
+    --header 'Authorization: Bearer {api_key}'
+    ```
+
+    </CodeGroup>
+
+    <CodeGroup title="Request with variable name filter">
+    ```bash {{ title: 'cURL' }}
+    curl -X GET '${props.appDetail.api_base_url}/conversations/{conversation_id}/variables?user=abc-123&variable_name=customer_name' \
+    --header 'Authorization: Bearer {api_key}'
+    ```
+    </CodeGroup>
+
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {
+      "limit": 100,
+      "has_more": false,
+      "data": [
+        {
+          "id": "variable-uuid-1",
+          "name": "customer_name",
+          "value_type": "string",
+          "value": "John Doe",
+          "description": "客户名称（从对话中提取）",
+          "created_at": 1650000000000,
+          "updated_at": 1650000000000
+        },
+        {
+          "id": "variable-uuid-2",
+          "name": "order_details",
+          "value_type": "json",
+          "value": "{\"product\":\"Widget\",\"quantity\":5,\"price\":19.99}",
+          "description": "客户的订单详情",
+          "created_at": 1650000000000,
+          "updated_at": 1650000000000
+        }
+      ]
     }
     ```
     </CodeGroup>
