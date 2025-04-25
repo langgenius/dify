@@ -11,7 +11,8 @@ from sqlalchemy.engine import Engine
 from sqlalchemy.orm import sessionmaker
 
 from core.repository.workflow_node_execution_repository import OrderConfig
-from models.workflow import WorkflowNodeExecution, WorkflowNodeExecutionStatus, WorkflowNodeExecutionTriggeredFrom
+from core.workflow.entities import WorkflowNodeExecutionStatus
+from models.workflow import WorkflowNodeExecution, WorkflowNodeExecutionTriggeredFrom
 
 logger = logging.getLogger(__name__)
 

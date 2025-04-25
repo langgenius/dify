@@ -5,12 +5,12 @@ from typing import Any, cast
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.variables import SegmentType, Variable
 from core.workflow.constants import CONVERSATION_VARIABLE_NODE_ID
+from core.workflow.entities import WorkflowNodeExecutionStatus
 from core.workflow.entities.node_entities import NodeRunResult
 from core.workflow.nodes.base import BaseNode
 from core.workflow.nodes.enums import NodeType
 from core.workflow.nodes.variable_assigner.common import helpers as common_helpers
 from core.workflow.nodes.variable_assigner.common.exc import VariableOperatorNodeError
-from models.workflow import WorkflowNodeExecutionStatus
 
 from . import helpers
 from .constants import EMPTY_VALUE_MAPPING

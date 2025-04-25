@@ -2,6 +2,7 @@ from typing import Literal
 
 from typing_extensions import deprecated
 
+from core.workflow.entities import WorkflowNodeExecutionStatus
 from core.workflow.entities.node_entities import NodeRunResult
 from core.workflow.entities.variable_pool import VariablePool
 from core.workflow.nodes.base import BaseNode
@@ -9,7 +10,6 @@ from core.workflow.nodes.enums import NodeType
 from core.workflow.nodes.if_else.entities import IfElseNodeData
 from core.workflow.utils.condition.entities import Condition
 from core.workflow.utils.condition.processor import ConditionProcessor
-from models.workflow import WorkflowNodeExecutionStatus
 
 
 class IfElseNode(BaseNode[IfElseNodeData]):

@@ -51,6 +51,7 @@ from core.ops.entities.trace_entity import TraceTaskName
 from core.ops.ops_trace_manager import TraceQueueManager, TraceTask
 from core.repository.workflow_node_execution_repository import WorkflowNodeExecutionRepository
 from core.tools.tool_manager import ToolManager
+from core.workflow.entities import WorkflowNodeExecutionStatus
 from core.workflow.entities.node_entities import NodeRunMetadataKey
 from core.workflow.enums import SystemVariableKey
 from core.workflow.nodes import NodeType
@@ -62,7 +63,6 @@ from models.model import EndUser
 from models.workflow import (
     Workflow,
     WorkflowNodeExecution,
-    WorkflowNodeExecutionStatus,
     WorkflowNodeExecutionTriggeredFrom,
     WorkflowRun,
     WorkflowRunStatus,

@@ -13,6 +13,7 @@ from core.provider_manager import ProviderManager
 from core.tools.entities.tool_entities import ToolParameter, ToolProviderType
 from core.tools.tool_manager import ToolManager
 from core.variables.segments import StringSegment
+from core.workflow.entities import WorkflowNodeExecutionStatus
 from core.workflow.entities.node_entities import NodeRunResult
 from core.workflow.entities.variable_pool import VariablePool
 from core.workflow.enums import SystemVariableKey
@@ -25,7 +26,6 @@ from core.workflow.utils.variable_template_parser import VariableTemplateParser
 from extensions.ext_database import db
 from factories.agent_factory import get_plugin_agent_strategy
 from models.model import Conversation
-from models.workflow import WorkflowNodeExecutionStatus
 
 
 class AgentNode(ToolNode):

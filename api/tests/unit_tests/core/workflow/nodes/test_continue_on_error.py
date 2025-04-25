@@ -1,6 +1,7 @@
 from unittest.mock import patch
 
 from core.app.entities.app_invoke_entities import InvokeFrom
+from core.workflow.entities import WorkflowNodeExecutionStatus
 from core.workflow.entities.node_entities import NodeRunMetadataKey, NodeRunResult
 from core.workflow.enums import SystemVariableKey
 from core.workflow.graph_engine.entities.event import (
@@ -14,7 +15,7 @@ from core.workflow.graph_engine.graph_engine import GraphEngine
 from core.workflow.nodes.event.event import RunCompletedEvent, RunStreamChunkEvent
 from core.workflow.nodes.llm.node import LLMNode
 from models.enums import UserFrom
-from models.workflow import WorkflowNodeExecutionStatus, WorkflowType
+from models.workflow import WorkflowType
 
 
 class ContinueOnErrorTestHelper:

@@ -14,6 +14,7 @@ from flask import Flask, current_app
 from configs import dify_config
 from core.app.apps.base_app_queue_manager import GenerateTaskStoppedError
 from core.app.entities.app_invoke_entities import InvokeFrom
+from core.workflow.entities import WorkflowNodeExecutionStatus
 from core.workflow.entities.node_entities import AgentNodeStrategyInit, NodeRunMetadataKey, NodeRunResult
 from core.workflow.entities.variable_pool import VariablePool, VariableValue
 from core.workflow.graph_engine.condition_handlers.condition_manager import ConditionManager
@@ -54,7 +55,7 @@ from core.workflow.nodes.event import RunCompletedEvent, RunRetrieverResourceEve
 from core.workflow.nodes.node_mapping import NODE_TYPE_CLASSES_MAPPING
 from extensions.ext_database import db
 from models.enums import UserFrom
-from models.workflow import WorkflowNodeExecutionStatus, WorkflowType
+from models.workflow import WorkflowType
 
 logger = logging.getLogger(__name__)
 

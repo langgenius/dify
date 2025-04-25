@@ -25,13 +25,13 @@ from core.prompt.advanced_prompt_transform import AdvancedPromptTransform
 from core.prompt.entities.advanced_prompt_entities import ChatModelMessage, CompletionModelPromptTemplate
 from core.prompt.simple_prompt_transform import ModelMode
 from core.prompt.utils.prompt_message_util import PromptMessageUtil
+from core.workflow.entities import WorkflowNodeExecutionStatus
 from core.workflow.entities.node_entities import NodeRunMetadataKey, NodeRunResult
 from core.workflow.entities.variable_pool import VariablePool
 from core.workflow.nodes.enums import NodeType
 from core.workflow.nodes.llm import LLMNode, ModelConfig
 from core.workflow.utils import variable_template_parser
 from extensions.ext_database import db
-from models.workflow import WorkflowNodeExecutionStatus
 
 from .entities import ParameterExtractorNodeData
 from .exc import (
