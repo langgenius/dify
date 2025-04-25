@@ -127,7 +127,7 @@ function requiredWebSSOLogin(message?: string) {
   params.append('redirect_url', globalThis.location.pathname)
   if (message)
     params.append('message', message)
-  globalThis.location.href = `/webapp-signin?${params.toString()}}`
+  globalThis.location.href = `/webapp-signin?${params.toString()}`
 }
 
 function getAccessToken(isPublicAPI?: boolean) {
