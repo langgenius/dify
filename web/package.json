@@ -61,6 +61,7 @@
     "ahooks": "^3.8.4",
     "class-variance-authority": "^0.7.0",
     "classnames": "^2.5.1",
+    "clsx": "^2.1.1",
     "copy-to-clipboard": "^3.3.3",
     "crypto-js": "^4.2.0",
     "dayjs": "^1.11.13",
