@@ -1,5 +1,5 @@
 'use client'
-import { RiStickyNoteAddLine, RiThumbUpFill } from '@remixicon/react'
+import { RiStickyNoteAddLine, RiThumbUpLine } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
 import classNames from '@/utils/classnames'
 import Divider from '@/app/components/base/divider'
@@ -40,10 +40,10 @@ type CategoryItemProps = {
 }
 function CategoryItem({ category, active, onClick }: CategoryItemProps) {
   return <li
-    className={classNames('p-1 pl-3 rounded-lg flex items-center gap-2 group cursor-pointer hover:bg-state-base-hover [&.active]:bg-state-base-active', active && 'active')}
+    className={classNames('p-1 pl-3 h-8 rounded-lg flex items-center gap-2 group cursor-pointer hover:bg-state-base-hover [&.active]:bg-state-base-active', active && 'active')}
     onClick={() => { onClick?.(category) }}>
-    {category === AppCategories.RECOMMENDED && <div className='inline-flex h-5 w-5 items-center justify-center rounded-md border border-divider-regular bg-components-icon-bg-midnight-solid group-[.active]:bg-components-icon-bg-blue-solid'>
-      <RiThumbUpFill className='h-3.5 w-3.5 text-components-avatar-shape-fill-stop-100' />
+    {category === AppCategories.RECOMMENDED && <div className='inline-flex h-5 w-5 items-center justify-center rounded-md'>
+      <RiThumbUpLine className='h-4 w-4 text-components-menu-item-text group-[.active]:text-components-menu-item-text-active' />
     </div>}
     <AppCategoryLabel category={category}
       className={classNames('system-sm-medium text-components-menu-item-text group-[.active]:text-components-menu-item-text-active group-hover:text-components-menu-item-text-hover', active && 'system-sm-semibold')} />
