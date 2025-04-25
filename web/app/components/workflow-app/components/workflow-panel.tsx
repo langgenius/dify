@@ -74,7 +74,7 @@ const WorkflowPanelOnRight = () => {
         )
       }
       {
-        showChatVariablePanel && (
+        showChatVariablePanel && isChatMode && (
           <ChatVariablePanel />
         )
       }

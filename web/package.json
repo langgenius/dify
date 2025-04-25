@@ -1,6 +1,6 @@
 {
   "name": "dify-web",
-  "version": "1.2.0",
+  "version": "1.3.0",
   "private": true,
   "engines": {
     "node": ">=v22.11.0"
@@ -61,6 +61,7 @@
     "ahooks": "^3.8.4",
     "class-variance-authority": "^0.7.0",
     "classnames": "^2.5.1",
+    "clsx": "^2.1.1",
     "copy-to-clipboard": "^3.3.3",
     "crypto-js": "^4.2.0",
     "dayjs": "^1.11.13",

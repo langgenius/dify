@@ -1,14 +1,12 @@
 import json
 from collections.abc import Mapping, Sequence
 from datetime import UTC, datetime
-from enum import Enum
+from enum import Enum, StrEnum
 from typing import TYPE_CHECKING, Any, Optional, Self, Union
 from uuid import uuid4
 
 if TYPE_CHECKING:
     from models.model import AppMode
-from enum import StrEnum
-from typing import TYPE_CHECKING
 
 import sqlalchemy as sa
 from sqlalchemy import Index, PrimaryKeyConstraint, func

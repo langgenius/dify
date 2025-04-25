@@ -17,6 +17,7 @@ import {
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { Model, ModelProvider } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { RETRIEVE_METHOD } from '@/types/app'
+import type { BasicPlan } from '@/app/components/billing/type'
 import { Plan, type UsagePlanInfo } from '@/app/components/billing/type'
 import { fetchCurrentPlanInfo } from '@/service/billing'
 import { parseCurrentPlan } from '@/app/components/billing/utils'
@@ -34,7 +35,7 @@ type ProviderContextState = {
   supportRetrievalMethods: RETRIEVE_METHOD[]
   isAPIKeySet: boolean
   plan: {
-    type: Plan
+    type: BasicPlan
     usage: UsagePlanInfo
     total: UsagePlanInfo
   }

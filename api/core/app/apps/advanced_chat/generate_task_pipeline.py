@@ -62,6 +62,7 @@ from core.app.task_pipeline.workflow_cycle_manage import WorkflowCycleManage
 from core.model_runtime.entities.llm_entities import LLMUsage
 from core.model_runtime.utils.encoders import jsonable_encoder
 from core.ops.ops_trace_manager import TraceQueueManager
+from core.repository.workflow_node_execution_repository import WorkflowNodeExecutionRepository
 from core.workflow.enums import SystemVariableKey
 from core.workflow.graph_engine.entities.graph_runtime_state import GraphRuntimeState
 from core.workflow.nodes import NodeType
@@ -93,6 +94,7 @@ class AdvancedChatAppGenerateTaskPipeline:
         user: Union[Account, EndUser],
         stream: bool,
         dialogue_count: int,
+        workflow_node_execution_repository: WorkflowNodeExecutionRepository,
     ) -> None:
         self._base_task_pipeline = BasedGenerateTaskPipeline(
             application_generate_entity=application_generate_entity,
@@ -123,6 +125,7 @@ class AdvancedChatAppGenerateTaskPipeline:
                 SystemVariableKey.WORKFLOW_ID: workflow.id,
                 SystemVariableKey.WORKFLOW_RUN_ID: application_generate_entity.workflow_run_id,
             },
+            workflow_node_execution_repository=workflow_node_execution_repository,
         )
 
         self._task_state = WorkflowTaskState()
@@ -684,7 +687,9 @@ class AdvancedChatAppGenerateTaskPipeline:
                 )
             elif isinstance(event, QueueMessageReplaceEvent):
                 # published by moderation
-                yield self._message_cycle_manager._message_replace_to_stream_response(answer=event.text)
+                yield self._message_cycle_manager._message_replace_to_stream_response(
+                    answer=event.text, reason=event.reason
+                )
             elif isinstance(event, QueueAdvancedChatMessageEndEvent):
                 if not graph_runtime_state:
                     raise ValueError("graph runtime state not initialized.")
@@ -695,7 +700,8 @@ class AdvancedChatAppGenerateTaskPipeline:
                 if output_moderation_answer:
                     self._task_state.answer = output_moderation_answer
                     yield self._message_cycle_manager._message_replace_to_stream_response(
-                        answer=output_moderation_answer
+                        answer=output_moderation_answer,
+                        reason=QueueMessageReplaceEvent.MessageReplaceReason.OUTPUT_MODERATION,
                     )
 
                 # Save message
