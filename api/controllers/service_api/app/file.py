@@ -84,7 +84,11 @@ class RemoteFileApi(Resource):
             raise FileTooLargeError("File size exceeds the limit.")
 
         try:
-            content = resp.content if resp.request.method == "GET" else ssrf_proxy.get(url=url, timeout=10, follow_redirects=True).content
+            content = (
+                resp.content
+                if resp.request.method == "GET"
+                else ssrf_proxy.get(url=url, timeout=10, follow_redirects=True).content
+            )
         except httpx.TimeoutException:
             raise RemoteFileUploadError(f"Request timed out while downloading file content from {url}.")
         except httpx.RequestError as e:
