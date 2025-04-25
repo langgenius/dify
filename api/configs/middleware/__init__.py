@@ -39,6 +39,7 @@ from .vdb.tencent_vector_config import TencentVectorDBConfig
 from .vdb.tidb_on_qdrant_config import TidbOnQdrantConfig
 from .vdb.tidb_vector_config import TiDBVectorConfig
 from .vdb.upstash_config import UpstashConfig
+from .vdb.vastbase_vector_config import VastbaseVectorConfig
 from .vdb.vikingdb_config import VikingDBConfig
 from .vdb.weaviate_config import WeaviateConfig
 
@@ -270,6 +271,7 @@ class MiddlewareConfig(
     OpenSearchConfig,
     OracleConfig,
     PGVectorConfig,
+    VastbaseVectorConfig,
     PGVectoRSConfig,
     QdrantConfig,
     RelytConfig,
