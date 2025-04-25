@@ -58,6 +58,11 @@ def create_workflow_node_execution_repository(params: Mapping[str, Any]) -> SQLA
         params: Parameters for creating the repository, including:
             - tenant_id: Required. The tenant ID for multi-tenancy.
             - app_id: Optional. The application ID for filtering.
+            - workflow_id: Optional. The workflow ID for filtering.
+            - triggered_from: Optional. The triggered_from value for filtering
+                (WorkflowNodeExecutionTriggeredFrom enum).
+            - created_by_role: Optional. The creator role for new executions.
+            - created_by: Optional. The creator ID for new executions.
             - session_factory: Optional. A SQLAlchemy sessionmaker instance. If not provided,
               a new sessionmaker will be created using the global database engine.
 
@@ -74,6 +79,10 @@ def create_workflow_node_execution_repository(params: Mapping[str, Any]) -> SQLA
 
     # Extract optional parameters
     app_id = params.get("app_id")
+    workflow_id = params.get("workflow_id")
+    triggered_from = params.get("triggered_from")
+    created_by_role = params.get("created_by_role")
+    created_by = params.get("created_by")
 
     # Use the session_factory from params if provided, otherwise create one using the global db engine
     session_factory = params.get("session_factory")
@@ -83,5 +92,11 @@ def create_workflow_node_execution_repository(params: Mapping[str, Any]) -> SQLA
 
     # Create and return the repository
     return SQLAlchemyWorkflowNodeExecutionRepository(
-        session_factory=session_factory, tenant_id=tenant_id, app_id=app_id
+        session_factory=session_factory,
+        tenant_id=tenant_id,
+        app_id=app_id,
+        workflow_id=workflow_id,
+        triggered_from=triggered_from,
+        created_by_role=created_by_role,
+        created_by=created_by,
     )

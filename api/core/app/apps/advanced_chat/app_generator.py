@@ -31,7 +31,7 @@ from extensions.ext_database import db
 from factories import file_factory
 from models.account import Account
 from models.model import App, Conversation, EndUser, Message
-from models.workflow import Workflow
+from models.workflow import Workflow, WorkflowNodeExecutionTriggeredFrom
 from services.conversation_service import ConversationService
 from services.errors.message import MessageNotExistsError
 
@@ -167,6 +167,9 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
             params={
                 "tenant_id": application_generate_entity.app_config.tenant_id,
                 "app_id": application_generate_entity.app_config.app_id,
+                "workflow_id": workflow.id,
+                # Default for advanced chat app
+                "triggered_from": WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
                 "session_factory": session_factory,
             }
         )
@@ -235,6 +238,9 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
             params={
                 "tenant_id": application_generate_entity.app_config.tenant_id,
                 "app_id": application_generate_entity.app_config.app_id,
+                "workflow_id": workflow.id,
+                # For debugging
+                "triggered_from": WorkflowNodeExecutionTriggeredFrom.SINGLE_STEP,
                 "session_factory": session_factory,
             }
         )
@@ -301,6 +307,8 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
             params={
                 "tenant_id": application_generate_entity.app_config.tenant_id,
                 "app_id": application_generate_entity.app_config.app_id,
+                "workflow_id": workflow.id,
+                "triggered_from": WorkflowNodeExecutionTriggeredFrom.SINGLE_STEP,  # For debugging
                 "session_factory": session_factory,
             }
         )

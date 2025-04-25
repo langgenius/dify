@@ -133,6 +133,8 @@ class WorkflowRunService:
             params={
                 "tenant_id": app_model.tenant_id,
                 "app_id": app_model.id,
+                "workflow_id": workflow_run.workflow_id,
+                "triggered_from": workflow_run.triggered_from,
                 "session_factory": db.session.get_bind(),
             }
         )

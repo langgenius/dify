@@ -26,14 +26,27 @@ class SQLAlchemyWorkflowNodeExecutionRepository:
     to the database. This prevents long-running connections in the workflow core.
     """
 
-    def __init__(self, session_factory: sessionmaker | Engine, tenant_id: str, app_id: Optional[str] = None):
+    def __init__(
+        self,
+        session_factory: sessionmaker | Engine,
+        tenant_id: str,
+        app_id: str | None = None,
+        workflow_id: str | None = None,
+        triggered_from: WorkflowNodeExecutionTriggeredFrom | None = None,
+        created_by_role: str | None = None,
+        created_by: str | None = None,
+    ):
         """
-        Initialize the repository with a SQLAlchemy sessionmaker or engine and tenant context.
+        Initialize the repository with a SQLAlchemy sessionmaker or engine and context parameters.
 
         Args:
             session_factory: SQLAlchemy sessionmaker or engine for creating sessions
             tenant_id: Tenant ID for multi-tenancy
-            app_id: Optional app ID for filtering by application
+            app_id: App ID for filtering by application (optional)
+            workflow_id: Workflow ID for filtering by workflow (optional)
+            triggered_from: Triggered_from value (WorkflowNodeExecutionTriggeredFrom enum) (optional)
+            created_by_role: Creator role (e.g., 'account', 'end_user') (optional)
+            created_by: Creator ID (optional)
         """
         # If an engine is provided, create a sessionmaker from it
         if isinstance(session_factory, Engine):
@@ -47,6 +60,10 @@ class SQLAlchemyWorkflowNodeExecutionRepository:
 
         self._tenant_id = tenant_id
         self._app_id = app_id
+        self._workflow_id = workflow_id
+        self._triggered_from = triggered_from
+        self._created_by_role = created_by_role
+        self._created_by = created_by
 
     def save(self, execution: WorkflowNodeExecution) -> None:
         """
@@ -56,13 +73,24 @@ class SQLAlchemyWorkflowNodeExecutionRepository:
             execution: The WorkflowNodeExecution instance to save
         """
         with self._session_factory() as session:
-            # Ensure tenant_id is set
-            if not execution.tenant_id:
-                execution.tenant_id = self._tenant_id
+            # Always set tenant_id from the repository context
+            execution.tenant_id = self._tenant_id
 
-            # Set app_id if provided and not already set
-            if self._app_id and not execution.app_id:
+            # Set other fields only if they are provided in the repository
+            if self._app_id is not None:
                 execution.app_id = self._app_id
+
+            if self._workflow_id is not None:
+                execution.workflow_id = self._workflow_id
+
+            if self._triggered_from is not None:
+                execution.triggered_from = self._triggered_from
+
+            if self._created_by_role is not None:
+                execution.created_by_role = self._created_by_role
+
+            if self._created_by is not None:
+                execution.created_by = self._created_by
 
             session.add(execution)
             session.commit()
@@ -83,8 +111,15 @@ class SQLAlchemyWorkflowNodeExecutionRepository:
                 WorkflowNodeExecution.tenant_id == self._tenant_id,
             )
 
+            # Apply additional filters if provided
             if self._app_id:
                 stmt = stmt.where(WorkflowNodeExecution.app_id == self._app_id)
+
+            if self._workflow_id:
+                stmt = stmt.where(WorkflowNodeExecution.workflow_id == self._workflow_id)
+
+            if self._triggered_from:
+                stmt = stmt.where(WorkflowNodeExecution.triggered_from == self._triggered_from)
 
             return session.scalar(stmt)
 
@@ -109,11 +144,23 @@ class SQLAlchemyWorkflowNodeExecutionRepository:
             stmt = select(WorkflowNodeExecution).where(
                 WorkflowNodeExecution.workflow_run_id == workflow_run_id,
                 WorkflowNodeExecution.tenant_id == self._tenant_id,
-                WorkflowNodeExecution.triggered_from == WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
             )
 
+            # Use the triggered_from from the instance if provided, otherwise use the default
+            if self._triggered_from:
+                stmt = stmt.where(WorkflowNodeExecution.triggered_from == self._triggered_from)
+            else:
+                # Default behavior for backward compatibility
+                stmt = stmt.where(
+                    WorkflowNodeExecution.triggered_from == WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN
+                )
+
+            # Apply additional filters if provided
             if self._app_id:
                 stmt = stmt.where(WorkflowNodeExecution.app_id == self._app_id)
+
+            if self._workflow_id:
+                stmt = stmt.where(WorkflowNodeExecution.workflow_id == self._workflow_id)
 
             # Apply ordering if provided
             if order_config and order_config.order_by:
@@ -147,11 +194,23 @@ class SQLAlchemyWorkflowNodeExecutionRepository:
                 WorkflowNodeExecution.workflow_run_id == workflow_run_id,
                 WorkflowNodeExecution.tenant_id == self._tenant_id,
                 WorkflowNodeExecution.status == WorkflowNodeExecutionStatus.RUNNING,
-                WorkflowNodeExecution.triggered_from == WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
             )
 
+            # Use the triggered_from from the instance if provided, otherwise use the default
+            if self._triggered_from:
+                stmt = stmt.where(WorkflowNodeExecution.triggered_from == self._triggered_from)
+            else:
+                # Default behavior for backward compatibility
+                stmt = stmt.where(
+                    WorkflowNodeExecution.triggered_from == WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN
+                )
+
+            # Apply additional filters if provided
             if self._app_id:
                 stmt = stmt.where(WorkflowNodeExecution.app_id == self._app_id)
+
+            if self._workflow_id:
+                stmt = stmt.where(WorkflowNodeExecution.workflow_id == self._workflow_id)
 
             return session.scalars(stmt).all()
 
@@ -163,35 +222,96 @@ class SQLAlchemyWorkflowNodeExecutionRepository:
             execution: The WorkflowNodeExecution instance to update
         """
         with self._session_factory() as session:
-            # Ensure tenant_id is set
-            if not execution.tenant_id:
-                execution.tenant_id = self._tenant_id
+            # Always set tenant_id from the repository context
+            execution.tenant_id = self._tenant_id
 
-            # Set app_id if provided and not already set
-            if self._app_id and not execution.app_id:
+            # Set other fields only if they are provided in the repository
+            if self._app_id is not None:
                 execution.app_id = self._app_id
+
+            if self._workflow_id is not None:
+                execution.workflow_id = self._workflow_id
+
+            if self._triggered_from is not None:
+                execution.triggered_from = self._triggered_from
+
+            if self._created_by_role is not None:
+                execution.created_by_role = self._created_by_role
+
+            if self._created_by is not None:
+                execution.created_by = self._created_by
 
             session.merge(execution)
             session.commit()
 
+    def update_context(
+        self,
+        app_id: str | None = None,
+        workflow_id: str | None = None,
+        triggered_from: WorkflowNodeExecutionTriggeredFrom | None = None,
+        created_by_role: str | None = None,
+        created_by: str | None = None,
+    ) -> None:
+        """
+        Update the repository's context parameters.
+
+        This method allows updating the repository's context parameters after initialization.
+        Only parameters that are not None will be updated.
+
+        Args:
+            app_id: New app ID for filtering
+            workflow_id: New workflow ID for filtering
+            triggered_from: New triggered_from value (WorkflowNodeExecutionTriggeredFrom enum)
+            created_by_role: New creator role
+            created_by: New creator ID
+        """
+        if app_id is not None:
+            self._app_id = app_id
+        if workflow_id is not None:
+            self._workflow_id = workflow_id
+        if triggered_from is not None:
+            self._triggered_from = triggered_from
+        if created_by_role is not None:
+            self._created_by_role = created_by_role
+        if created_by is not None:
+            self._created_by = created_by
+
     def clear(self) -> None:
         """
-        Clear all WorkflowNodeExecution records for the current tenant_id and app_id.
+        Clear all WorkflowNodeExecution records for the current tenant_id and other filters.
 
         This method deletes all WorkflowNodeExecution records that match the tenant_id
-        and app_id (if provided) associated with this repository instance.
+        and other filters (app_id, workflow_id, triggered_from) associated with this repository instance.
         """
         with self._session_factory() as session:
             stmt = delete(WorkflowNodeExecution).where(WorkflowNodeExecution.tenant_id == self._tenant_id)
 
+            # Apply additional filters if provided
             if self._app_id:
                 stmt = stmt.where(WorkflowNodeExecution.app_id == self._app_id)
+
+            if self._workflow_id:
+                stmt = stmt.where(WorkflowNodeExecution.workflow_id == self._workflow_id)
+
+            if self._triggered_from:
+                stmt = stmt.where(WorkflowNodeExecution.triggered_from == self._triggered_from)
 
             result = session.execute(stmt)
             session.commit()
 
+            # Build log message with all applied filters
+            filter_parts = []
+            if self._tenant_id:
+                filter_parts.append(f"tenant {self._tenant_id}")
+            if self._app_id:
+                filter_parts.append(f"app {self._app_id}")
+
+            if self._workflow_id:
+                filter_parts.append(f"workflow {self._workflow_id}")
+
+            if self._triggered_from:
+                filter_parts.append(f"triggered_from {self._triggered_from}")
+
+            filters_str = " and ".join(filter_parts)
             deleted_count = result.rowcount
-            logger.info(
-                f"Cleared {deleted_count} workflow node execution records for tenant {self._tenant_id}"
-                + (f" and app {self._app_id}" if self._app_id else "")
-            )
+            logger.info(f"Cleared {deleted_count} workflow node execution records for {filters_str}")

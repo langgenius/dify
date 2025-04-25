@@ -25,6 +25,7 @@ from core.ops.entities.trace_entity import (
 from core.repository.repository_factory import RepositoryFactory
 from extensions.ext_database import db
 from models.model import EndUser, MessageFile
+from models.workflow import WorkflowNodeExecutionTriggeredFrom
 
 logger = logging.getLogger(__name__)
 
@@ -154,6 +155,8 @@ class OpikDataTrace(BaseTraceInstance):
             params={
                 "tenant_id": trace_info.tenant_id,
                 "app_id": trace_info.metadata.get("app_id"),
+                "workflow_id": trace_info.workflow_data.id,
+                "triggered_from": WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
                 "session_factory": session_factory,
             },
         )

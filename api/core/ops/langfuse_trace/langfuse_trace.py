@@ -32,6 +32,7 @@ from core.ops.utils import filter_none_values
 from core.repository.repository_factory import RepositoryFactory
 from extensions.ext_database import db
 from models.model import EndUser
+from models.workflow import WorkflowNodeExecutionTriggeredFrom
 
 logger = logging.getLogger(__name__)
 
@@ -114,7 +115,13 @@ class LangFuseDataTrace(BaseTraceInstance):
         # through workflow_run_id get all_nodes_execution using repository
         session_factory = sessionmaker(bind=db.engine)
         workflow_node_execution_repository = RepositoryFactory.create_workflow_node_execution_repository(
-            params={"tenant_id": trace_info.tenant_id, "session_factory": session_factory},
+            params={
+                "tenant_id": trace_info.tenant_id,
+                "app_id": trace_info.metadata.get("app_id"),
+                "workflow_id": trace_info.workflow_data.id,
+                "triggered_from": WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
+                "session_factory": session_factory,
+            },
         )
 
         # Get all executions for this workflow run
@@ -233,7 +240,7 @@ class LangFuseDataTrace(BaseTraceInstance):
 
                 self.add_generation(langfuse_generation_data=node_generation_data)
 
-    def message_trace(self, trace_info: MessageTraceInfo, **kwargs):
+    def message_trace(self, trace_info: MessageTraceInfo):
         # get message file data
         file_list = trace_info.file_list
         metadata = trace_info.metadata

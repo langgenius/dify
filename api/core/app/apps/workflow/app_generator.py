@@ -28,6 +28,7 @@ from core.repository.workflow_node_execution_repository import WorkflowNodeExecu
 from extensions.ext_database import db
 from factories import file_factory
 from models import Account, App, EndUser, Workflow
+from models.workflow import WorkflowNodeExecutionTriggeredFrom
 
 logger = logging.getLogger(__name__)
 
@@ -142,6 +143,8 @@ class WorkflowAppGenerator(BaseAppGenerator):
             params={
                 "tenant_id": application_generate_entity.app_config.tenant_id,
                 "app_id": application_generate_entity.app_config.app_id,
+                "workflow_id": workflow.id,
+                "triggered_from": WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,  # Default for workflow app
                 "session_factory": session_factory,
             }
         )
@@ -268,6 +271,8 @@ class WorkflowAppGenerator(BaseAppGenerator):
             params={
                 "tenant_id": application_generate_entity.app_config.tenant_id,
                 "app_id": application_generate_entity.app_config.app_id,
+                "workflow_id": workflow.id,
+                "triggered_from": WorkflowNodeExecutionTriggeredFrom.SINGLE_STEP,  # For debugging
                 "session_factory": session_factory,
             }
         )
@@ -333,6 +338,8 @@ class WorkflowAppGenerator(BaseAppGenerator):
             params={
                 "tenant_id": application_generate_entity.app_config.tenant_id,
                 "app_id": application_generate_entity.app_config.app_id,
+                "workflow_id": workflow.id,
+                "triggered_from": WorkflowNodeExecutionTriggeredFrom.SINGLE_STEP,  # For debugging
                 "session_factory": session_factory,
             }
         )

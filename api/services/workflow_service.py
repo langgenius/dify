@@ -289,6 +289,10 @@ class WorkflowService:
             params={
                 "tenant_id": app_model.tenant_id,
                 "app_id": app_model.id,
+                "workflow_id": draft_workflow.id,
+                "triggered_from": workflow_node_execution.triggered_from,
+                "created_by_role": workflow_node_execution.created_by_role,
+                "created_by": workflow_node_execution.created_by,
                 "session_factory": db.session.get_bind(),
             }
         )
@@ -388,7 +392,7 @@ class WorkflowService:
         workflow_node_execution = WorkflowNodeExecution()
         workflow_node_execution.id = str(uuid4())
         workflow_node_execution.tenant_id = tenant_id
-        workflow_node_execution.triggered_from = WorkflowNodeExecutionTriggeredFrom.SINGLE_STEP.value
+        workflow_node_execution.triggered_from = WorkflowNodeExecutionTriggeredFrom.SINGLE_STEP
         workflow_node_execution.index = 1
         workflow_node_execution.node_id = node_id
         workflow_node_execution.node_type = node_instance.node_type
