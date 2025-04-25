@@ -893,7 +893,10 @@ class RegisterService:
             if open_id is not None and provider is not None:
                 AccountService.link_account_integrate(provider, open_id, account)
 
-            if FeatureService.get_system_features().is_allow_create_workspace and create_workspace_required:
+            if (FeatureService.get_system_features().is_allow_create_workspace
+                    and create_workspace_required
+                    and FeatureService.get_system_features().license.workspaces.is_available()
+            ):
                 tenant = TenantService.create_tenant(f"{account.name}'s Workspace")
                 TenantService.create_tenant_member(tenant, account, role="owner")
                 account.current_tenant = tenant
