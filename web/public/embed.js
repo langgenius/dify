@@ -25,7 +25,7 @@
   // Main function to embed the chatbot
   async function embedChatbot() {
     let isDragging = false
-    
+
     if (!config || !config.token) {
       console.error(`${configKey} is empty or token is not provided`);
       return;
@@ -81,7 +81,7 @@
     // 3) APPEND it to the document body right away:
     document.body.appendChild(preloadedIframe);
     // ─── End Fix Snippet
-    if(iframeUrl.length > 2048) {
+    if (iframeUrl.length > 2048) {
       console.error("The URL is too long, please reduce the number of inputs to prevent the bot from failing to load");
     }
 
@@ -252,6 +252,8 @@
         } else {
           startX = e.clientX - element.offsetLeft;
           startY = e.clientY - element.offsetTop;
+          startClientX = e.clientX;
+          startClientY = e.clientY;
         }
         document.addEventListener("mousemove", drag);
         document.addEventListener("touchmove", drag, { passive: false });
@@ -264,7 +266,7 @@
         const touch = e.type === "touchmove" ? e.touches[0] : e;
         const deltaX = touch.clientX - startClientX;
         const deltaY = touch.clientY - startClientY;
-        
+
         // Determine whether it is a drag operation
         if (Math.abs(deltaX) > 8 || Math.abs(deltaY) > 8) {
           isDragging = true;
