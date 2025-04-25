@@ -318,9 +318,7 @@ const InputFieldForm = ({
           {t('common.operation.cancel')}
         </Button>
         <form.AppForm>
-          <form.SubmitButton variant='primary'>
-            {t('common.operation.save')}
-          </form.SubmitButton>
+          <form.Actions />
         </form.AppForm>
       </div>
     </form>

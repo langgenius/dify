@@ -1,18 +1,13 @@
 import cn from '@/utils/classnames'
 import { useFieldContext } from '../..'
-import type { PureSelectProps } from '../../../select/pure'
+import type { Option, PureSelectProps } from '../../../select/pure'
 import PureSelect from '../../../select/pure'
 import Label from '../label'
 import { useCallback } from 'react'
 
-type SelectOption = {
-  value: string
-  label: string
-}
-
 type SelectFieldProps = {
   label: string
-  options: SelectOption[]
+  options: Option[]
   onChange?: (value: string) => void
   isRequired?: boolean
   showOptional?: boolean

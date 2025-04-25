@@ -5,7 +5,9 @@ import CheckboxField from './components/field/checkbox'
 import SelectField from './components/field/select'
 import CustomSelectField from './components/field/custom-select'
 import OptionsField from './components/field/options'
-import SubmitButton from './components/form/submit-button'
+import Actions from './components/form/actions'
+
+export type FormType = ReturnType<typeof useFormContext>
 
 export const { fieldContext, useFieldContext, formContext, useFormContext }
   = createFormHookContexts()
@@ -20,7 +22,7 @@ export const { useAppForm, withForm } = createFormHook({
     OptionsField,
   },
   formComponents: {
-    SubmitButton,
+    Actions,
   },
   fieldContext,
   formContext,
