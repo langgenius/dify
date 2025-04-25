@@ -1,36 +1,36 @@
-from core.tools.entities.tool_entities import ToolInvokeMeta
+from core.datasource.entities.datasource_entities import DatasourceInvokeMeta
 
 
-class ToolProviderNotFoundError(ValueError):
+class DatasourceProviderNotFoundError(ValueError):
     pass
 
 
-class ToolNotFoundError(ValueError):
+class DatasourceNotFoundError(ValueError):
     pass
 
 
-class ToolParameterValidationError(ValueError):
+class DatasourceParameterValidationError(ValueError):
     pass
 
 
-class ToolProviderCredentialValidationError(ValueError):
+class DatasourceProviderCredentialValidationError(ValueError):
     pass
 
 
-class ToolNotSupportedError(ValueError):
+class DatasourceNotSupportedError(ValueError):
     pass
 
 
-class ToolInvokeError(ValueError):
+class DatasourceInvokeError(ValueError):
     pass
 
 
-class ToolApiSchemaError(ValueError):
+class DatasourceApiSchemaError(ValueError):
     pass
 
 
-class ToolEngineInvokeError(Exception):
-    meta: ToolInvokeMeta
+class DatasourceEngineInvokeError(Exception):
+    meta: DatasourceInvokeMeta
 
     def __init__(self, meta, **kwargs):
         self.meta = meta
