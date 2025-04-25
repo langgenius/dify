@@ -1,12 +1,10 @@
-import WorkflowWithDefaultContext, {
-  WorkflowWithInnerContext,
-} from '@/app/components/workflow'
+import WorkflowWithDefaultContext from '@/app/components/workflow'
 import {
   WorkflowContextProvider,
 } from '@/app/components/workflow/context'
 import type { InjectWorkflowStoreSliceFn } from '@/app/components/workflow/store'
 import { createRagPipelineSliceSlice } from './store'
-import RagPipelineChildren from './components/rag-pipeline-children'
+import RagPipelineMain from './components/rag-pipeline-main'
 
 const RagPipeline = () => {
   return (
@@ -17,12 +15,10 @@ const RagPipeline = () => {
         edges={[]}
         nodes={[]}
       >
-        <WorkflowWithInnerContext
-          nodes={[]}
+        <RagPipelineMain
           edges={[]}
-        >
-          <RagPipelineChildren />
-        </WorkflowWithInnerContext>
+          nodes={[]}
+        />
       </WorkflowWithDefaultContext>
     </WorkflowContextProvider>
   )

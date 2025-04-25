@@ -58,7 +58,6 @@ const CustomEdge = ({
   const { handleNodeAdd } = useNodesInteractions()
   const { availablePrevBlocks } = useAvailableBlocks((data as Edge['data'])!.targetType, (data as Edge['data'])?.isInIteration || (data as Edge['data'])?.isInLoop)
   const { availableNextBlocks } = useAvailableBlocks((data as Edge['data'])!.sourceType, (data as Edge['data'])?.isInIteration || (data as Edge['data'])?.isInLoop)
-  console.log(availableNextBlocks, 'xx')
   const {
     _sourceRunningStatus,
     _targetRunningStatus,

@@ -20,13 +20,15 @@ import type {
 } from '../types'
 import Tabs from './tabs'
 import { TabsEnum } from './types'
+import { useTabs } from './hooks'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
 import Input from '@/app/components/base/input'
-import SearchBox from '@/app/components/plugins/marketplace/search-box'
+// import SearchBox from '@/app/components/plugins/marketplace/search-box'
+import cn from '@/utils/classnames'
 
 import {
   Plus02,
@@ -89,10 +91,12 @@ const NodeSelector: FC<NodeSelectorProps> = ({
     onSelect(type, toolDefaultValue)
   }, [handleOpenChange, onSelect])
 
-  const [activeTab, setActiveTab] = useState(!blocks.length ? TabsEnum.Tools : TabsEnum.Blocks)
-  const handleActiveTabChange = useCallback((newActiveTab: TabsEnum) => {
-    setActiveTab(newActiveTab)
-  }, [])
+  const {
+    activeTab,
+    setActiveTab,
+    tabs,
+  } = useTabs(!blocks.length)
+
   const searchPlaceholder = useMemo(() => {
     if (activeTab === TabsEnum.Blocks)
       return t('workflow.tabs.searchBlock')
@@ -132,9 +136,31 @@ const NodeSelector: FC<NodeSelectorProps> = ({
         }
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent className='z-[1000]'>
-        <div className={`rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg ${popupClassName}`}>
-          <div className='px-2 pt-2' onClick={e => e.stopPropagation()}>
-            {activeTab === TabsEnum.Blocks && (
+      <div className={cn(
+          'overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg backdrop-blur-[5px]',
+          popupClassName,
+        )}>
+          <div className='border-b border-divider-subtle bg-background-section-burn'>
+            <div className='flex h-9 items-center px-1 pt-1'>
+              {
+                tabs.map(tab => (
+                  <div
+                    key={tab.key}
+                    className={cn(
+                      'system-sm-medium mr-0.5 cursor-pointer rounded-t-lg px-3 py-2 text-text-tertiary hover:bg-state-base-hover',
+                      activeTab === tab.key && 'bg-components-panel-bg text-text-accent shadow-sm',
+                    )}
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      setActiveTab(tab.key)
+                    }}
+                  >
+                    {tab.name}
+                  </div>
+                ))
+              }
+            </div>
+            <div className='relative z-[1] bg-components-panel-bg p-2'>
               <Input
                 showLeftIcon
                 showClearIcon
@@ -144,6 +170,10 @@ const NodeSelector: FC<NodeSelectorProps> = ({
                 onChange={e => setSearchText(e.target.value)}
                 onClear={() => setSearchText('')}
               />
+            </div>
+          </div>
+          {/* <div className='p-2' onClick={e => e.stopPropagation()}>
+            {activeTab === TabsEnum.Blocks && (
             )}
             {activeTab === TabsEnum.Tools && (
               <SearchBox
@@ -155,11 +185,9 @@ const NodeSelector: FC<NodeSelectorProps> = ({
                 placeholder={t('plugin.searchTools')!}
               />
             )}
-
-          </div>
+          </div> */}
           <Tabs
             activeTab={activeTab}
-            onActiveTabChange={handleActiveTabChange}
             onSelect={handleSelect}
             searchText={searchText}
             tags={tags}

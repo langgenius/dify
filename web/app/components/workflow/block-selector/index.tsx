@@ -9,7 +9,6 @@ const NodeSelectorWrapper = (props: NodeSelectorProps) => {
 
   const blocks = useMemo(() => {
     const result = availableNodesMetaData?.nodes || []
-    console.log(result, 'result')
 
     return result.filter((block) => {
       if (block.type === BlockEnum.Start)
