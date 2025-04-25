@@ -12,6 +12,7 @@ from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from models.dataset import RateLimitLog
 from models.model import DifySetup
+from models.account import AccountStatus
 from services.feature_service import FeatureService, LicenseStatus
 from services.operation_service import OperationService
 
@@ -24,7 +25,7 @@ def account_initialization_required(view):
         # check account initialization
         account = current_user
 
-        if account.status == "uninitialized":
+        if account.status == AccountStatus.UNINITIALIZED:
             raise AccountNotInitializedError()
 
         return view(*args, **kwargs)
