@@ -22,7 +22,7 @@ import {
 } from '../constants'
 import type { ToolNodeType } from '../nodes/tool/types'
 import { useIsChatMode } from './use-workflow'
-import { useNodesExtraData } from './use-nodes-data'
+import { useNodesMetaData } from './use-nodes-meta-data'
 import { useToastContext } from '@/app/components/base/toast'
 import { CollectionType } from '@/app/components/tools/types'
 import { useGetLanguage } from '@/context/i18n'
@@ -37,7 +37,7 @@ import { fetchDatasets } from '@/service/datasets'
 export const useChecklist = (nodes: Node[], edges: Edge[]) => {
   const { t } = useTranslation()
   const language = useGetLanguage()
-  const nodesExtraData = useNodesExtraData()
+  const { nodesMap: nodesExtraData } = useNodesMetaData()
   const isChatMode = useIsChatMode()
   const buildInTools = useStore(s => s.buildInTools)
   const customTools = useStore(s => s.customTools)
@@ -100,7 +100,7 @@ export const useChecklist = (nodes: Node[], edges: Edge[]) => {
 
       if (node.type === CUSTOM_NODE) {
         const checkData = getCheckData(node.data)
-        const { errorMessage } = nodesExtraData[node.data.type].checkValid(checkData, t, moreDataForCheckValid)
+        const { errorMessage } = nodesExtraData![node.data.type].checkValid(checkData, t, moreDataForCheckValid)
 
         if (errorMessage || !validNodes.find(n => n.id === node.id)) {
           list.push({
@@ -148,7 +148,7 @@ export const useChecklistBeforePublish = () => {
   const { notify } = useToastContext()
   const isChatMode = useIsChatMode()
   const store = useStoreApi()
-  const nodesExtraData = useNodesExtraData()
+  const { nodesMap: nodesExtraData } = useNodesMetaData()
   const { data: strategyProviders } = useStrategyProviders()
   const updateDatasetsDetail = useDatasetsDetailStore(s => s.updateDatasetsDetail)
   const updateTime = useRef(0)
@@ -228,7 +228,7 @@ export const useChecklistBeforePublish = () => {
       }
 
       const checkData = getCheckData(node.data, datasets)
-      const { errorMessage } = nodesExtraData[node.data.type as BlockEnum].checkValid(checkData, t, moreDataForCheckValid)
+      const { errorMessage } = nodesExtraData![node.data.type as BlockEnum].checkValid(checkData, t, moreDataForCheckValid)
 
       if (errorMessage) {
         notify({ type: 'error', message: `[${node.data.title}] ${errorMessage}` })

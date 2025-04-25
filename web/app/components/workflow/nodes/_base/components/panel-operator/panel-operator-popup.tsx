@@ -12,8 +12,8 @@ import {
 import { useStore } from '@/app/components/workflow/store'
 import {
   useNodeDataUpdate,
-  useNodesExtraData,
   useNodesInteractions,
+  useNodesMetaData,
   useNodesReadOnly,
   useNodesSyncDraft,
 } from '@/app/components/workflow/hooks'
@@ -48,14 +48,14 @@ const PanelOperatorPopup = ({
   const { handleNodeDataUpdate } = useNodeDataUpdate()
   const { handleSyncWorkflowDraft } = useNodesSyncDraft()
   const { nodesReadOnly } = useNodesReadOnly()
-  const nodesExtraData = useNodesExtraData()
+  const { nodesMap: nodesExtraData } = useNodesMetaData()
   const buildInTools = useStore(s => s.buildInTools)
   const customTools = useStore(s => s.customTools)
   const workflowTools = useStore(s => s.workflowTools)
   const edge = edges.find(edge => edge.target === id)
   const author = useMemo(() => {
     if (data.type !== BlockEnum.Tool)
-      return nodesExtraData[data.type].author
+      return nodesExtraData![data.type].author
 
     if (data.provider_type === CollectionType.builtIn)
       return buildInTools.find(toolWithProvider => canFindTool(toolWithProvider.id, data.provider_id))?.author
@@ -68,7 +68,7 @@ const PanelOperatorPopup = ({
 
   const about = useMemo(() => {
     if (data.type !== BlockEnum.Tool)
-      return nodesExtraData[data.type].about
+      return nodesExtraData![data.type].description
 
     if (data.provider_type === CollectionType.builtIn)
       return buildInTools.find(toolWithProvider => canFindTool(toolWithProvider.id, data.provider_id))?.description[language]

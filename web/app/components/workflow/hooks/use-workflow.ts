@@ -32,7 +32,7 @@ import {
 } from '../constants'
 import { CUSTOM_NOTE_NODE } from '../note-node/constants'
 import { findUsedVarNodes, getNodeOutputVars, updateNodeVars } from '../nodes/_base/components/variable/utils'
-import { useNodesExtraData } from './use-nodes-data'
+import { useAvailableBlocks } from './use-available-blocks'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import {
   fetchAllBuiltInTools,
@@ -55,7 +55,7 @@ export const useWorkflow = () => {
   const { t } = useTranslation()
   const store = useStoreApi()
   const workflowStore = useWorkflowStore()
-  const nodesExtraData = useNodesExtraData()
+  const { getAvailableBlocks } = useAvailableBlocks()
   const setPanelWidth = useCallback((width: number) => {
     localStorage.setItem('workflow-node-panel-width', `${width}`)
     workflowStore.setState({ panelWidth: width })
@@ -361,8 +361,8 @@ export const useWorkflow = () => {
       return false
 
     if (sourceNode && targetNode) {
-      const sourceNodeAvailableNextNodes = nodesExtraData[sourceNode.data.type].availableNextNodes
-      const targetNodeAvailablePrevNodes = [...nodesExtraData[targetNode.data.type].availablePrevNodes, BlockEnum.Start]
+      const sourceNodeAvailableNextNodes = getAvailableBlocks(sourceNode.data.type, !!sourceNode.parentId).availableNextBlocks
+      const targetNodeAvailablePrevNodes = getAvailableBlocks(targetNode.data.type, !!targetNode.parentId).availablePrevBlocks
 
       if (!sourceNodeAvailableNextNodes.includes(targetNode.data.type))
         return false
@@ -386,7 +386,7 @@ export const useWorkflow = () => {
     }
 
     return !hasCycle(targetNode)
-  }, [store, nodesExtraData, checkParallelLimit])
+  }, [store, checkParallelLimit, getAvailableBlocks])
 
   const getNode = useCallback((nodeId?: string) => {
     const { getNodes } = store.getState()

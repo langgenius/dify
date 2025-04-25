@@ -3,15 +3,17 @@ import {
   NODE_WIDTH_X_OFFSET,
   START_INITIAL_POSITION,
 } from '@/app/components/workflow/constants'
-import { useNodesInitialData } from '@/app/components/workflow/hooks'
 import { useIsChatMode } from './use-is-chat-mode'
+import type { StartNodeType } from '@/app/components/workflow/nodes/start/types'
+import startDefault from '@/app/components/workflow/nodes/start/default'
+import llmDefault from '@/app/components/workflow/nodes/llm/default'
+import answerDefault from '@/app/components/workflow/nodes/answer/default'
 
 export const useWorkflowTemplate = () => {
   const isChatMode = useIsChatMode()
-  const nodesInitialData = useNodesInitialData()
 
   const { newNode: startNode } = generateNewNode({
-    data: nodesInitialData.start,
+    data: startDefault.defaultValue as StartNodeType,
     position: START_INITIAL_POSITION,
   })
 
@@ -19,7 +21,7 @@ export const useWorkflowTemplate = () => {
     const { newNode: llmNode } = generateNewNode({
       id: 'llm',
       data: {
-        ...nodesInitialData.llm,
+        ...llmDefault.defaultValue,
         memory: {
           window: { enabled: false, size: 10 },
           query_prompt_template: '{{#sys.query#}}',
@@ -35,7 +37,7 @@ export const useWorkflowTemplate = () => {
     const { newNode: answerNode } = generateNewNode({
       id: 'answer',
       data: {
-        ...nodesInitialData.answer,
+        ...answerDefault.defaultValue,
         answer: `{{#${llmNode.id}.text#}}`,
       },
       position: {
