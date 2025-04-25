@@ -1,10 +1,10 @@
 import type { NodeWithVar, VarInInspect } from '@/types/workflow'
 import { useWorkflowStore } from '../../workflow/store'
-import { useWorkflowVars as useDoFetchWorkflowVars } from '@/service/use-workflow'
+import { useWorkflowVars } from '@/service/use-workflow'
 import { useStoreApi } from 'reactflow'
 import type { Node } from '@/app/components/workflow/types'
 
-const useWorkflowVars = () => {
+const useSetWorkflowVarsWithValue = () => {
   const workflowStore = useWorkflowStore()
   const { setNodesWithInspectVars, appId } = workflowStore.getState()
   const store = useStoreApi()
@@ -13,6 +13,7 @@ const useWorkflowVars = () => {
     const { getNodes } = store.getState()
     const nodeArr = getNodes()
     const nodesKeyValue: Record<string, Node> = {}
+    // TODO: handle conversation, env and system variables
     nodeArr.forEach((node) => {
       nodesKeyValue[node.id] = node
     })
@@ -44,9 +45,8 @@ const useWorkflowVars = () => {
       return nodeWithVar
     })
     setNodesWithInspectVars(res)
-    console.log(res)
   }
-  useDoFetchWorkflowVars(appId, 1, addNodeInfo)
+  useWorkflowVars(appId, addNodeInfo)
 }
 
-export default useWorkflowVars
+export default useSetWorkflowVarsWithValue

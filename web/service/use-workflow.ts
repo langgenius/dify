@@ -126,9 +126,9 @@ export const useLastRun = (appID: string, nodeId: string, enabled: boolean) => {
   })
 }
 
-export const useWorkflowVars = (appId: string, pageAt: number, onSuccess: (data: VarInInspect[]) => void) => {
+export const useWorkflowVars = (appId: string, onSuccess: (data: VarInInspect[]) => void) => {
   return useQuery({
-    queryKey: [NAME_SPACE, 'variables', appId, pageAt],
+    queryKey: [NAME_SPACE, 'variables', appId],
     queryFn: async () => {
       // TODO: mock data. and need to get the rest data if has more data
       await sleep(1000)
