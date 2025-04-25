@@ -846,6 +846,106 @@ Chat applications support session persistence, allowing previous chat history to
 ---
 
 <Heading
+  url='/conversations/:conversation_id/variables'
+  method='GET'
+  title='Get Conversation Variables'
+  name='#conversation-variables'
+/>
+<Row>
+  <Col>
+    Retrieve variables from a specific conversation. This endpoint is useful for extracting structured data that was captured during the conversation.
+
+    ### Path Parameters
+
+    <Properties>
+      <Property name='conversation_id' type='string' key='conversation_id'>
+        The ID of the conversation to retrieve variables from.
+      </Property>
+    </Properties>
+
+    ### Query Parameters
+
+    <Properties>
+      <Property name='user' type='string' key='user'>
+        The user identifier, defined by the developer, must ensure uniqueness within the application
+      </Property>
+      <Property name='last_id' type='string' key='last_id'>
+          (Optional) The ID of the last record on the current page, default is null.
+      </Property>
+      <Property name='limit' type='int' key='limit'>
+          (Optional) How many records to return in one request, default is the most recent 20 entries. Maximum 100, minimum 1.
+      </Property>
+    </Properties>
+
+    ### Response
+
+    - `limit` (int) Number of items per page
+    - `has_more` (bool) Whether there is a next page
+    - `data` (array[object]) List of variables
+      - `id` (string) Variable ID
+      - `name` (string) Variable name
+      - `value_type` (string) Variable type (string, number, object, etc.)
+      - `value` (string) Variable value
+      - `description` (string) Variable description
+      - `created_at` (int) Creation timestamp
+      - `updated_at` (int) Last update timestamp
+
+    ### Errors
+    - 404, `conversation_not_exists`, Conversation not found
+
+  </Col>
+  <Col sticky>
+
+    <CodeGroup title="Request" tag="GET" label="/conversations/:conversation_id/variables" targetCode={`curl -X GET '${props.appDetail.api_base_url}/conversations/{conversation_id}/variables?user=abc-123' \\\n--header 'Authorization: Bearer {api_key}'`}>
+
+    ```bash {{ title: 'cURL' }}
+    curl -X GET '${props.appDetail.api_base_url}/conversations/{conversation_id}/variables?user=abc-123' \
+    --header 'Authorization: Bearer {api_key}'
+    ```
+
+    </CodeGroup>
+
+    <CodeGroup title="Request with variable name filter">
+    ```bash {{ title: 'cURL' }}
+    curl -X GET '${props.appDetail.api_base_url}/conversations/{conversation_id}/variables?user=abc-123&variable_name=customer_name' \
+    --header 'Authorization: Bearer {api_key}'
+    ```
+    </CodeGroup>
+
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {
+      "limit": 100,
+      "has_more": false,
+      "data": [
+        {
+          "id": "variable-uuid-1",
+          "name": "customer_name",
+          "value_type": "string",
+          "value": "John Doe",
+          "description": "Customer name extracted from the conversation",
+          "created_at": 1650000000000,
+          "updated_at": 1650000000000
+        },
+        {
+          "id": "variable-uuid-2",
+          "name": "order_details",
+          "value_type": "json",
+          "value": "{\"product\":\"Widget\",\"quantity\":5,\"price\":19.99}",
+          "description": "Order details from the customer",
+          "created_at": 1650000000000,
+          "updated_at": 1650000000000
+        }
+      ]
+    }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
+---
+
+<Heading
   url='/audio-to-text'
   method='POST'
   title='Speech to Text'
