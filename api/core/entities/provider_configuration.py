@@ -801,7 +801,7 @@ class ProviderConfiguration(BaseModel):
         # Optimize sorting logic: first sort by provider.position order, then by model_type.value
         # Get the position list for model types (retrieve only once for better performance)
         model_type_positions = {}
-        if hasattr(self.provider, 'position') and self.provider.position:
+        if hasattr(self.provider, "position") and self.provider.position:
             model_type_positions = self.provider.position
 
         def get_sort_key(model: ModelWithProviderEntity):
