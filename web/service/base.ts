@@ -122,8 +122,8 @@ function unicodeToChar(text: string) {
   })
 }
 
-function requiredWebSSOLogin() {
-  globalThis.location.href = `/webapp-signin?redirect_url=${globalThis.location.pathname}`
+function requiredWebSSOLogin(message?: string) {
+  globalThis.location.href = `/webapp-signin?redirect_url=${globalThis.location.pathname}&message=${message}`
 }
 
 function getAccessToken(isPublicAPI?: boolean) {
@@ -512,15 +512,9 @@ export const ssePost = (
           }).catch(() => {
             res.json().then((data: any) => {
               if (isPublicAPI) {
-                if (data.code === 'web_app_access_denied') {
-                  Toast.notify({
-                    type: 'error',
-                    message: data.message,
-                  })
-                  setTimeout(() => {
-                    requiredWebSSOLogin()
-                  }, 1500)
-                }
+                if (data.code === 'web_app_access_denied')
+                  requiredWebSSOLogin(data.message)
+
                 if (data.code === 'web_sso_auth_required')
                   requiredWebSSOLogin()
 
@@ -576,13 +570,7 @@ export const request = async<T>(url: string, options = {}, otherOptions?: IOther
       const { code, message } = errRespData
       // webapp sso
       if (code === 'web_app_access_denied') {
-        Toast.notify({
-          type: 'error',
-          message,
-        })
-        setTimeout(() => {
-          requiredWebSSOLogin()
-        }, 1500)
+        requiredWebSSOLogin(message)
         return Promise.reject(err)
       }
       if (code === 'web_sso_auth_required') {
