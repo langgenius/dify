@@ -11,6 +11,7 @@ import { setAccessToken } from '@/app/components/share/utils'
 import { useGlobalPublicStore } from '@/context/global-public-context'
 import { SSOProtocol } from '@/types/feature'
 import Loading from '@/app/components/base/loading'
+import AppUnavailable from '@/app/components/base/app-unavailable'
 
 const WebSSOForm: FC = () => {
   const { t } = useTranslation()
@@ -48,7 +49,7 @@ const WebSSOForm: FC = () => {
     router.push(redirectUrl)
   }, [getAppCodeFromRedirectUrl, redirectUrl, router, tokenFromUrl])
 
-  const handleSSOLogin = async () => {
+  const handleSSOLogin = useCallback(async () => {
     const appCode = getAppCodeFromRedirectUrl()
     if (!appCode || !redirectUrl) {
       showErrorToast('redirect url or app code is invalid.')
@@ -74,7 +75,7 @@ const WebSSOForm: FC = () => {
       default:
         showErrorToast('SSO protocol is not supported.')
     }
-  }
+  }, [getAppCodeFromRedirectUrl, redirectUrl, router, systemFeatures.webapp_auth.sso_config.protocol])
 
   useEffect(() => {
     const init = async () => {
@@ -83,20 +84,26 @@ const WebSSOForm: FC = () => {
         return
       }
 
-      if (!tokenFromUrl)
+      if (!tokenFromUrl) {
+        await handleSSOLogin()
         return
+      }
 
       await processTokenAndRedirect()
     }
 
     init()
-  }, [message, processTokenAndRedirect, tokenFromUrl])
+  }, [message, processTokenAndRedirect, tokenFromUrl, handleSSOLogin])
   if (tokenFromUrl)
     return <div className='flex items-center justify-center h-full'><Loading /></div>
+  if (message) {
+    return <div className='flex items-center justify-center h-full'>
+      <AppUnavailable code={'App Unavailable'} unknownReason={message} />
+    </div>
+  }
 
   if (systemFeatures.webapp_auth.enabled) {
     if (systemFeatures.webapp_auth.allow_sso) {
-      handleSSOLogin()
       return (
         <div className="flex items-center justify-center h-full">
           <div className={cn('flex flex-col items-center w-full grow justify-center', 'px-6', 'md:px-[108px]')}>
