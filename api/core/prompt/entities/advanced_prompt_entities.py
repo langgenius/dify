@@ -1,3 +1,4 @@
+from enum import Enum
 from typing import Literal, Optional
 
 from pydantic import BaseModel
@@ -24,6 +25,11 @@ class CompletionModelPromptTemplate(BaseModel):
     edition_type: Optional[Literal["basic", "jinja2"]] = None
 
 
+class LLMMemoryType(str, Enum):
+    INDEPENDENT = "independent"
+    GLOBAL = "global"
+
+
 class MemoryConfig(BaseModel):
     """
     Memory Config.
@@ -48,3 +54,4 @@ class MemoryConfig(BaseModel):
     role_prefix: Optional[RolePrefix] = None
     window: WindowConfig
     query_prompt_template: Optional[str] = None
+    type: LLMMemoryType = LLMMemoryType.GLOBAL

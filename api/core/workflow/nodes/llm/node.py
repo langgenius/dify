@@ -13,6 +13,7 @@ from core.entities.provider_entities import QuotaUnit
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
 from core.file import FileType, file_manager
 from core.helper.code_executor import CodeExecutor, CodeLanguage
+from core.memory.model_context_memory import ModelContextMemory
 from core.memory.token_buffer_memory import TokenBufferMemory
 from core.model_manager import ModelInstance, ModelManager
 from core.model_runtime.entities import (
@@ -39,7 +40,7 @@ from core.model_runtime.entities.model_entities import (
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
 from core.model_runtime.utils.encoders import jsonable_encoder
 from core.plugin.entities.plugin import ModelProviderID
-from core.prompt.entities.advanced_prompt_entities import CompletionModelPromptTemplate, MemoryConfig
+from core.prompt.entities.advanced_prompt_entities import CompletionModelPromptTemplate, LLMMemoryType, MemoryConfig
 from core.prompt.utils.prompt_message_util import PromptMessageUtil
 from core.variables import (
     ArrayAnySegment,
@@ -190,6 +191,7 @@ class LLMNode(BaseNode[LLMNodeData]):
                 ),
                 "model_provider": model_config.provider,
                 "model_name": model_config.model,
+                "memory_type": self.node_data.memory.type if self.node_data.memory else None,
             }
 
             # handle invoke result
@@ -553,10 +555,9 @@ class LLMNode(BaseNode[LLMNodeData]):
 
     def _fetch_memory(
         self, node_data_memory: Optional[MemoryConfig], model_instance: ModelInstance
-    ) -> Optional[TokenBufferMemory]:
+    ) -> Optional[TokenBufferMemory | ModelContextMemory]:
         if not node_data_memory:
             return None
-
         # get conversation id
         conversation_id_variable = self.graph_runtime_state.variable_pool.get(
             ["sys", SystemVariableKey.CONVERSATION_ID.value]
@@ -575,7 +576,15 @@ class LLMNode(BaseNode[LLMNodeData]):
         if not conversation:
             return None
 
-        memory = TokenBufferMemory(conversation=conversation, model_instance=model_instance)
+        memory = (
+            TokenBufferMemory(conversation=conversation, model_instance=model_instance)
+            if node_data_memory.type == LLMMemoryType.GLOBAL
+            else ModelContextMemory(
+                conversation=conversation,
+                node_id=self.node_id,
+                model_instance=model_instance,
+            )
+        )
 
         return memory
 
@@ -585,7 +594,7 @@ class LLMNode(BaseNode[LLMNodeData]):
         sys_query: str | None = None,
         sys_files: Sequence["File"],
         context: str | None = None,
-        memory: TokenBufferMemory | None = None,
+        memory: TokenBufferMemory | ModelContextMemory | None = None,
         model_config: ModelConfigWithCredentialsEntity,
         prompt_template: Sequence[LLMNodeChatModelMessage] | LLMNodeCompletionModelPromptTemplate,
         memory_config: MemoryConfig | None = None,
@@ -1201,7 +1210,7 @@ def _calculate_rest_token(
 
 def _handle_memory_chat_mode(
     *,
-    memory: TokenBufferMemory | None,
+    memory: TokenBufferMemory | ModelContextMemory | None,
     memory_config: MemoryConfig | None,
     model_config: ModelConfigWithCredentialsEntity,
 ) -> Sequence[PromptMessage]:
@@ -1218,7 +1227,7 @@ def _handle_memory_chat_mode(
 
 def _handle_memory_completion_mode(
     *,
-    memory: TokenBufferMemory | None,
+    memory: TokenBufferMemory | ModelContextMemory | None,
     memory_config: MemoryConfig | None,
     model_config: ModelConfigWithCredentialsEntity,
 ) -> str:

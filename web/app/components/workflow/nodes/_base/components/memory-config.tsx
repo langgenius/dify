@@ -4,12 +4,13 @@ import React, { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import produce from 'immer'
 import type { Memory } from '../../../types'
-import { MemoryRole } from '../../../types'
+import { LLMMemoryType, MemoryRole } from '../../../types'
 import cn from '@/utils/classnames'
 import Field from '@/app/components/workflow/nodes/_base/components/field'
 import Switch from '@/app/components/base/switch'
 import Slider from '@/app/components/base/slider'
 import Input from '@/app/components/base/input'
+import { SimpleSelect } from '@/app/components/base/select'
 
 const i18nPrefix = 'workflow.nodes.common.memory'
 const WINDOW_SIZE_MIN = 1
@@ -54,6 +55,7 @@ type Props = {
 const MEMORY_DEFAULT: Memory = {
   window: { enabled: false, size: WINDOW_SIZE_DEFAULT },
   query_prompt_template: '{{#sys.query#}}',
+  type: LLMMemoryType.GLOBAL,
 }
 
 const MemoryConfig: FC<Props> = ({
@@ -177,6 +179,23 @@ const MemoryConfig: FC<Props> = ({
                   disabled={readonly || !payload.window?.enabled}
                 />
               </div>
+            </div>
+            <div>
+              <SimpleSelect
+                items={[{
+                  value: LLMMemoryType.INDEPENDENT,
+                  name: 'Individual memory',
+                }, {
+                  value: LLMMemoryType.GLOBAL,
+                  name: 'Global memory',
+                }]}
+                onSelect={(value) => {
+                  const newPayload = produce(payload || MEMORY_DEFAULT, (draft) => {
+                    draft.type = value.value as LLMMemoryType
+                  })
+                  onChange(newPayload)
+                }}
+              />
             </div>
             {canSetRoleName && (
               <div className='mt-4'>

@@ -234,6 +234,11 @@ export type RolePrefix = {
   assistant: string
 }
 
+export enum LLMMemoryType {
+  INDEPENDENT = 'independent',
+  GLOBAL = 'global',
+}
+
 export type Memory = {
   role_prefix?: RolePrefix
   window: {
@@ -241,6 +246,7 @@ export type Memory = {
     size: number | string | null
   }
   query_prompt_template: string
+  type: LLMMemoryType
 }
 
 export enum VarType {

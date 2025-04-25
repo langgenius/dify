@@ -1,9 +1,8 @@
-from typing import Any
-
 from constants import UUID_NIL
+from models.model import Message
 
 
-def extract_thread_messages(messages: list[Any]):
+def extract_thread_messages(messages: list[Message]) -> list[Message]:
     thread_messages = []
     next_message = None
 
