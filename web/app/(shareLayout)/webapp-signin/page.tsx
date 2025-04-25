@@ -72,6 +72,8 @@ const WebSSOForm: FC = () => {
         router.push(oauth2Res.url)
         break
       }
+      case '':
+        break
       default:
         showErrorToast('SSO protocol is not supported.')
     }
