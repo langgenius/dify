@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useGetLanguage } from '@/context/i18n'
+import knowledgeBaseDefault from '@/app/components/workflow/nodes/knowledge-base/default'
 import { WORKFLOW_COMMON_NODES } from '@/app/components/workflow/constants/node'
 import type { AvailableNodesMetaData } from '@/app/components/workflow/hooks-store/store'
 
@@ -10,6 +11,7 @@ export const useAvailableNodesMetaData = () => {
 
   const mergedNodesMetaData = useMemo(() => [
     ...WORKFLOW_COMMON_NODES,
+    knowledgeBaseDefault,
   ], [])
 
   const prefixLink = useMemo(() => {
