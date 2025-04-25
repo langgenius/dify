@@ -214,7 +214,7 @@ const translation = {
     notSet: '未设置',
     notSetDesc: '当前任何人都无法访问 Web 应用。请设置访问权限。',
   },
-  noAccessPermission: '没有权限访问 web app ',
+  noAccessPermission: '没有权限访问 web 应用',
 }
 
 export default translation
