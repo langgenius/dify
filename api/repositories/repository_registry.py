@@ -11,7 +11,7 @@ from typing import Any
 from sqlalchemy.orm import sessionmaker
 
 from configs import dify_config
-from core.repository.repository_factory import RepositoryFactory
+from core.repository import RepositoryFactory
 from extensions.ext_database import db
 from repositories.workflow_node_execution import SQLAlchemyWorkflowNodeExecutionRepository
 

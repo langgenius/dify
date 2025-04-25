@@ -6,6 +6,7 @@ from docx.oxml.text.paragraph import CT_P
 from core.file import File, FileTransferMethod
 from core.variables import ArrayFileSegment
 from core.variables.variables import StringVariable
+from core.workflow.entities import WorkflowNodeExecutionStatus
 from core.workflow.entities.node_entities import NodeRunResult
 from core.workflow.nodes.document_extractor import DocumentExtractorNode, DocumentExtractorNodeData
 from core.workflow.nodes.document_extractor.node import (
@@ -14,7 +15,6 @@ from core.workflow.nodes.document_extractor.node import (
     _extract_text_from_plain_text,
 )
 from core.workflow.nodes.enums import NodeType
-from models.workflow import WorkflowNodeExecutionStatus
 
 
 @pytest.fixture

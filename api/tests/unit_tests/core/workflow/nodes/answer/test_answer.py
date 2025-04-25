@@ -3,6 +3,7 @@ import uuid
 from unittest.mock import MagicMock
 
 from core.app.entities.app_invoke_entities import InvokeFrom
+from core.workflow.entities import WorkflowNodeExecutionStatus
 from core.workflow.entities.variable_pool import VariablePool
 from core.workflow.enums import SystemVariableKey
 from core.workflow.graph_engine.entities.graph import Graph
@@ -11,7 +12,7 @@ from core.workflow.graph_engine.entities.graph_runtime_state import GraphRuntime
 from core.workflow.nodes.answer.answer_node import AnswerNode
 from extensions.ext_database import db
 from models.enums import UserFrom
-from models.workflow import WorkflowNodeExecutionStatus, WorkflowType
+from models.workflow import WorkflowType
 
 
 def test_execute_answer():

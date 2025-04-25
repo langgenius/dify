@@ -3,6 +3,7 @@ import uuid
 from unittest.mock import patch
 
 from core.app.entities.app_invoke_entities import InvokeFrom
+from core.workflow.entities import WorkflowNodeExecutionStatus
 from core.workflow.entities.node_entities import NodeRunResult
 from core.workflow.entities.variable_pool import VariablePool
 from core.workflow.enums import SystemVariableKey
@@ -14,7 +15,7 @@ from core.workflow.nodes.iteration.entities import ErrorHandleMode
 from core.workflow.nodes.iteration.iteration_node import IterationNode
 from core.workflow.nodes.template_transform.template_transform_node import TemplateTransformNode
 from models.enums import UserFrom
-from models.workflow import WorkflowNodeExecutionStatus, WorkflowType
+from models.workflow import WorkflowType
 
 
 def test_run():

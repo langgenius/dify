@@ -5,6 +5,7 @@ import pytest
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.tools.entities.tool_entities import ToolInvokeMessage, ToolProviderType
 from core.tools.errors import ToolInvokeError
+from core.workflow.entities import WorkflowNodeExecutionStatus
 from core.workflow.entities.node_entities import NodeRunResult
 from core.workflow.entities.variable_pool import VariablePool
 from core.workflow.graph_engine import Graph, GraphInitParams, GraphRuntimeState
@@ -14,7 +15,7 @@ from core.workflow.nodes.enums import ErrorStrategy
 from core.workflow.nodes.event import RunCompletedEvent
 from core.workflow.nodes.tool import ToolNode
 from core.workflow.nodes.tool.entities import ToolNodeData
-from models import UserFrom, WorkflowNodeExecutionStatus, WorkflowType
+from models import UserFrom, WorkflowType
 
 
 def _create_tool_node():
