@@ -77,13 +77,19 @@ def _check_version_compatibility(imported_version: str) -> ImportStatus:
     except version.InvalidVersion:
         return ImportStatus.FAILED
 
-    # Compare major version and minor version
-    if current_ver.major != imported_ver.major or current_ver.minor != imported_ver.minor:
+    # If imported version is newer than current, always return PENDING
+    if imported_ver > current_ver:
         return ImportStatus.PENDING
 
-    if current_ver.micro != imported_ver.micro:
+    # If imported version is older than current's major, return PENDING
+    if imported_ver.major < current_ver.major:
+        return ImportStatus.PENDING
+
+    # If imported version is older than current's minor, return COMPLETED_WITH_WARNINGS
+    if imported_ver.minor < current_ver.minor:
         return ImportStatus.COMPLETED_WITH_WARNINGS
 
+    # If imported version equals or is older than current's micro, return COMPLETED
     return ImportStatus.COMPLETED
 
 
