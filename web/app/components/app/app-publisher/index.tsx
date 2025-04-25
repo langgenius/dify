@@ -262,15 +262,15 @@ const AppPublisher = ({
                   <SuggestedAction disabled={!publishedAt || !useCanAccessApp?.result} link={appURL} icon={<PlayCircle />}>{t('workflow.common.runApp')}</SuggestedAction>
                 </Tooltip>
                 {appDetail?.mode === 'workflow'
-                  ? (<div className='flex'>
+                  ? (<Tooltip triggerClassName='flex' disabled={useCanAccessApp?.result} popupContent={t('app.noAccessPermission')} asChild={false}>
                     <SuggestedAction
-                      disabled={!publishedAt}
+                      disabled={!publishedAt || !useCanAccessApp?.result}
                       link={`${appURL}${appURL.includes('?') ? '&' : '?'}mode=batch`}
                       icon={<LeftIndent02 className='w-4 h-4' />}
                     >
                       {t('workflow.common.batchRunApp')}
                     </SuggestedAction>
-                  </div>
+                  </Tooltip>
                   )
                   : (<div className='flex'>
                     <SuggestedAction
