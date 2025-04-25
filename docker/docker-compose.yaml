@@ -138,6 +138,7 @@ x-shared-env: &shared-api-worker-env
   QDRANT_GRPC_ENABLED: ${QDRANT_GRPC_ENABLED:-false}
   QDRANT_GRPC_PORT: ${QDRANT_GRPC_PORT:-6334}
   MILVUS_URI: ${MILVUS_URI:-http://host.docker.internal:19530}
+  MILVUS_DATABASE: ${MILVUS_DATABASE:-}
   MILVUS_TOKEN: ${MILVUS_TOKEN:-}
   MILVUS_USER: ${MILVUS_USER:-}
   MILVUS_PASSWORD: ${MILVUS_PASSWORD:-}
@@ -163,6 +164,13 @@ x-shared-env: &shared-api-worker-env
   PGVECTOR_MAX_CONNECTION: ${PGVECTOR_MAX_CONNECTION:-5}
   PGVECTOR_PG_BIGM: ${PGVECTOR_PG_BIGM:-false}
   PGVECTOR_PG_BIGM_VERSION: ${PGVECTOR_PG_BIGM_VERSION:-1.2-20240606}
+  VASTBASE_HOST: ${VASTBASE_HOST:-vastbase}
+  VASTBASE_PORT: ${VASTBASE_PORT:-5432}
+  VASTBASE_USER: ${VASTBASE_USER:-dify}
+  VASTBASE_PASSWORD: ${VASTBASE_PASSWORD:-Difyai123456}
+  VASTBASE_DATABASE: ${VASTBASE_DATABASE:-dify}
+  VASTBASE_MIN_CONNECTION: ${VASTBASE_MIN_CONNECTION:-1}
+  VASTBASE_MAX_CONNECTION: ${VASTBASE_MAX_CONNECTION:-5}
   PGVECTO_RS_HOST: ${PGVECTO_RS_HOST:-pgvecto-rs}
   PGVECTO_RS_PORT: ${PGVECTO_RS_PORT:-5432}
   PGVECTO_RS_USER: ${PGVECTO_RS_USER:-postgres}
@@ -250,6 +258,7 @@ x-shared-env: &shared-api-worker-env
   LINDORM_URL: ${LINDORM_URL:-http://lindorm:30070}
   LINDORM_USERNAME: ${LINDORM_USERNAME:-lindorm}
   LINDORM_PASSWORD: ${LINDORM_PASSWORD:-lindorm}
+  LINDORM_QUERY_TIMEOUT: ${LINDORM_QUERY_TIMEOUT:-1}
   OCEANBASE_VECTOR_HOST: ${OCEANBASE_VECTOR_HOST:-oceanbase}
   OCEANBASE_VECTOR_PORT: ${OCEANBASE_VECTOR_PORT:-2881}
   OCEANBASE_VECTOR_USER: ${OCEANBASE_VECTOR_USER:-root@test}
@@ -619,7 +628,7 @@ services:
 
   # plugin daemon
   plugin_daemon:
-    image: langgenius/dify-plugin-daemon:0.0.8-local
+    image: langgenius/dify-plugin-daemon:0.0.9-local
     restart: always
     environment:
       # Use the shared environment variables.
@@ -834,6 +843,30 @@ services:
       - ./volumes/pgvector/data:/var/lib/postgresql/data
       - ./pgvector/docker-entrypoint.sh:/docker-entrypoint.sh
     entrypoint: [ '/docker-entrypoint.sh' ]
+    healthcheck:
+      test: [ 'CMD', 'pg_isready' ]
+      interval: 1s
+      timeout: 3s
+      retries: 30
+
+  # get image from https://www.vastdata.com.cn/
+  vastbase:
+    image: vastdata/vastbase-vector
+    profiles:
+      - vastbase
+    restart: always
+    environment:
+      - VB_DBCOMPATIBILITY=PG
+      - VB_DB=dify
+      - VB_USERNAME=dify
+      - VB_PASSWORD=Difyai123456
+    ports:
+      - '5434:5432'
+    volumes:
+      - ./vastbase/lic:/home/vastbase/vastbase/lic
+      - ./vastbase/data:/home/vastbase/data
+      - ./vastbase/backup:/home/vastbase/backup
+      - ./vastbase/backup_log:/home/vastbase/backup_log
     healthcheck:
       test: [ 'CMD', 'pg_isready' ]
       interval: 1s
