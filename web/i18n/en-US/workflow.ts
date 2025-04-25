@@ -254,6 +254,7 @@ const translation = {
     'loop-start': 'Loop Start',
     'loop': 'Loop',
     'loop-end': 'Exit Loop',
+    'knowledge-base': 'Knowledge Base',
   },
   blocksAbout: {
     'start': 'Define the initial parameters for launching a workflow',
@@ -276,6 +277,7 @@ const translation = {
     'document-extractor': 'Used to parse uploaded documents into text content that is easily understandable by LLM.',
     'list-operator': 'Used to filter or sort array content.',
     'agent': 'Invoking large language models to answer questions or process natural language',
+    'knowledge-base': 'Knowledge Base About',
   },
   operator: {
     zoomIn: 'Zoom In',
