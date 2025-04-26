@@ -1,4 +1,4 @@
-from flask_restful import Resource, marshal_with
+from flask_restful import Resource, marshal_with # type: ignore
 
 from controllers.service_api import api
 from controllers.service_api.wraps import validate_app_token

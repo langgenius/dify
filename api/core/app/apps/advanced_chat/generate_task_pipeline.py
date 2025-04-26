@@ -174,13 +174,13 @@ class AdvancedChatAppGenerateTaskPipeline:
         for stream_response in generator:
             if is_async:
                 return ChatbotAppBlockingResponse(
-                    task_id=self._application_generate_entity.workflow_run_id,
+                    task_id=stream_response.task_id,
                     data=ChatbotAppBlockingResponse.Data(
                         id=self._message_id,
                         mode=self._conversation_mode,
                         conversation_id=self._conversation_id,
                         message_id=self._message_id,
-                        answer=self._application_generate_entity.workflow_run_id,
+                        answer=str(self._application_generate_entity.workflow_run_id),
                         created_at=int(self._message_created_at),
                     ),
                 )
@@ -225,7 +225,7 @@ class AdvancedChatAppGenerateTaskPipeline:
                     stream_response=MessageStreamResponse(
                         task_id=self._application_generate_entity.task_id,
                         id="0",
-                        answer=self._application_generate_entity.workflow_run_id,
+                        answer=str(self._application_generate_entity.workflow_run_id),
                     ),
                 )
                 return
@@ -299,7 +299,7 @@ class AdvancedChatAppGenerateTaskPipeline:
         worker_thread = threading.Thread(
             target=self._generate_worker,
             kwargs={
-                "flask_app": current_app._get_current_object(),
+                "flask_app": current_app._get_current_object(),  # type: ignore
                 "queue_manager": queue_manager,
                 "context": contextvars.copy_context(),
                 "publisher": publisher,

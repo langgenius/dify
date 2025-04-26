@@ -149,7 +149,11 @@ class WorkflowAppGenerateTaskPipeline:
                         id=self._application_generate_entity.app_config.app_id,
                         workflow_id=self._workflow_id,
                         status="processing",
+                        elapsed_time=0,
+                        total_tokens=0,
+                        total_steps=0,
                         created_at=int(time.time()),
+                        finished_at=int(time.time()),
                     ),
                 )
             if isinstance(stream_response, ErrorStreamResponse):
@@ -291,7 +295,7 @@ class WorkflowAppGenerateTaskPipeline:
         worker_thread = threading.Thread(
             target=self._generate_worker,
             kwargs={
-                "flask_app": current_app._get_current_object(),
+                "flask_app": current_app._get_current_object(),  # type: ignore
                 "queue_manager": queue_manager,
                 "context": contextvars.copy_context(),
                 "publisher": publisher,
