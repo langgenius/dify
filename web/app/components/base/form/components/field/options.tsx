@@ -1,18 +1,19 @@
 import cn from '@/utils/classnames'
 import { useFieldContext } from '../..'
+import type { LabelProps } from '../label'
 import Label from '../label'
 import ConfigSelect from '@/app/components/app/configuration/config-var/config-select'
 
 type OptionsFieldProps = {
   label: string;
+  labelOptions?: Omit<LabelProps, 'htmlFor' | 'label'>
   className?: string;
-  labelClassName?: string;
 }
 
 const OptionsField = ({
   label,
   className,
-  labelClassName,
+  labelOptions,
 }: OptionsFieldProps) => {
   const field = useFieldContext<string[]>()
 
@@ -21,7 +22,7 @@ const OptionsField = ({
       <Label
         htmlFor={field.name}
         label={label}
-        className={labelClassName}
+        {...(labelOptions ?? {})}
       />
       <ConfigSelect
         options={field.state.value}

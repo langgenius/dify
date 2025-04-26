@@ -1,0 +1,64 @@
+import cn from '@/utils/classnames'
+import { useFieldContext } from '../../..'
+import type { CustomSelectProps } from '../../../../select/custom'
+import CustomSelect from '../../../../select/custom'
+import type { LabelProps } from '../../label'
+import Label from '../../label'
+import { useCallback } from 'react'
+import Trigger from './trigger'
+import type { FileTypeSelectOption } from './types'
+import { useInputTypeOptions } from './hooks'
+import Option from './option'
+
+type InputTypeSelectFieldProps = {
+  label: string
+  labeOptions?: Omit<LabelProps, 'htmlFor' | 'label'>
+  supportFile: boolean
+  className?: string
+} & Omit<CustomSelectProps<FileTypeSelectOption>, 'options' | 'value' | 'onChange' | 'CustomTrigger' | 'CustomOption'>
+
+const InputTypeSelectField = ({
+  label,
+  labeOptions,
+  supportFile,
+  className,
+  ...customSelectProps
+}: InputTypeSelectFieldProps) => {
+  const field = useFieldContext<string>()
+  const inputTypeOptions = useInputTypeOptions(supportFile)
+
+  const renderTrigger = useCallback((option: FileTypeSelectOption | undefined, open: boolean) => {
+    return <Trigger option={option} open={open} />
+  }, [])
+  const renderOption = useCallback((option: FileTypeSelectOption) => {
+    return <Option option={option} />
+  }, [])
+
+  return (
+    <div className={cn('flex flex-col gap-y-0.5', className)}>
+      <Label
+        htmlFor={field.name}
+        label={label}
+        {...(labeOptions ?? {})}
+      />
+      <CustomSelect<FileTypeSelectOption>
+        value={field.state.value}
+        options={inputTypeOptions}
+        onChange={value => field.handleChange(value)}
+        triggerProps={{
+          className: 'gap-x-0.5',
+        }}
+        popupProps={{
+          className: 'w-[368px]',
+          wrapperClassName: 'z-40',
+          itemClassName: 'gap-x-1',
+        }}
+        CustomTrigger={renderTrigger}
+        CustomOption={renderOption}
+        {...customSelectProps}
+      />
+    </div>
+  )
+}
+
+export default InputTypeSelectField

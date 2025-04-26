@@ -3,15 +3,15 @@ import { type BaseConfiguration, BaseVarType } from './types'
 import { withForm } from '../..'
 import { useStore } from '@tanstack/react-form'
 
-type FieldProps<T> = {
+type BaseFieldProps<T> = {
   initialData?: T
   config: BaseConfiguration<T>
 }
 
-const Field = <T,>({
+const BaseField = <T,>({
   initialData,
   config,
-}: FieldProps<T>) => withForm({
+}: BaseFieldProps<T>) => withForm({
   defaultValues: initialData,
   props: {
     config,
@@ -20,7 +20,7 @@ const Field = <T,>({
     form,
     config,
   }) {
-    const { type, label, placeholder, variable, tooltip, showConditions, max, min, options } = config
+    const { type, label, placeholder, variable, tooltip, showConditions, max, min, options, required, showOptional } = config
 
     const fieldValues = useStore(form.store, state => state.values)
 
@@ -43,7 +43,11 @@ const Field = <T,>({
           children={field => (
             <field.TextField
               label={label}
-              tooltip={tooltip}
+              labelOptions={{
+                tooltip,
+                isRequired: required,
+                showOptional,
+              }}
               placeholder={placeholder}
             />
           )}
@@ -58,7 +62,11 @@ const Field = <T,>({
           children={field => (
             <field.NumberInputField
               label={label}
-              tooltip={tooltip}
+              labelOptions={{
+                tooltip,
+                isRequired: required,
+                showOptional,
+              }}
               placeholder={placeholder}
               max={max}
               min={min}
@@ -87,8 +95,13 @@ const Field = <T,>({
           name={variable}
           children={field => (
             <field.SelectField
-              options={options!}
               label={label}
+              labelOptions={{
+                tooltip,
+                isRequired: required,
+                showOptional,
+              }}
+              options={options!}
             />
           )}
         />
@@ -99,4 +112,4 @@ const Field = <T,>({
   },
 })
 
-export default Field
+export default BaseField

@@ -39,8 +39,8 @@ export type CustomSelectProps<T extends Option> = {
     itemClassName?: string
     title?: string
   },
-  CustomTrigger?: (option: T | undefined, open: boolean) => React.ReactNode
-  CustomOption?: (option: T, selected: boolean) => React.ReactNode
+  CustomTrigger?: (option: T | undefined, open: boolean) => React.JSX.Element
+  CustomOption?: (option: T, selected: boolean) => React.JSX.Element
 }
 const CustomSelect = <T extends Option>({
   options,

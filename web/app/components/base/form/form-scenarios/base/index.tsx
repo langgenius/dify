@@ -1,6 +1,6 @@
 import React from 'react'
 import { useAppForm } from '../..'
-import Field from './field'
+import BaseField from './field'
 import type { BaseFormProps } from './types'
 
 const BaseForm = <T,>({
@@ -32,7 +32,7 @@ const BaseForm = <T,>({
     >
       <div className='flex flex-col gap-4 px-4 py-2'>
         {configurations.map((config, index) => {
-          const FieldComponent = Field<T>({
+          const FieldComponent = BaseField<T>({
             initialData,
             config,
           })

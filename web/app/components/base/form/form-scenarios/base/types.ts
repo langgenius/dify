@@ -29,6 +29,7 @@ export type BaseConfiguration<T> = {
   maxLength?: number // Max length for text input
   placeholder?: string
   required: boolean
+  showOptional?: boolean // show optional label
   showConditions: ShowCondition<T>[] // Show this field only when all conditions are met
   type: BaseVarType
   tooltip?: string // Tooltip for this field
