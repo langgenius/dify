@@ -11,10 +11,11 @@ from controllers.service_api.app.error import NotChatAppError
 from controllers.service_api.wraps import FetchUserArg, WhereisUserArg, validate_app_token
 from core.app.entities.app_invoke_entities import InvokeFrom
 from fields.conversation_fields import message_file_fields
-from fields.message_fields import agent_thought_fields, feedback_fields
+from fields.message_fields import agent_thought_fields, feedback_fields, message_fields
 from fields.raws import FilesContainedField
 from libs.helper import TimestampField, uuid_value
-from models.model import App, AppMode, EndUser
+from models import db
+from models.model import App, AppMode, EndUser, Message
 from services.errors.message import SuggestedQuestionsAfterAnswerDisabledError
 from services.message_service import MessageService
 
@@ -116,6 +117,21 @@ class MessageSuggestedApi(Resource):
         return {"result": "success", "data": questions}
 
 
+class MessageApi(Resource):
+    @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.QUERY))
+    @marshal_with(message_fields)
+    def get(self, app_model: App, end_user: EndUser, message_id):
+        message_id = str(message_id)
+
+        message = db.session.query(Message).filter(Message.id == message_id, Message.app_id == app_model.id).first()
+
+        if not message:
+            raise NotFound("Message Not Exists.")
+
+        return message
+
+
 api.add_resource(MessageListApi, "/messages")
 api.add_resource(MessageFeedbackApi, "/messages/<uuid:message_id>/feedbacks")
 api.add_resource(MessageSuggestedApi, "/messages/<uuid:message_id>/suggested")
+api.add_resource(MessageApi, "/apps/messages/<uuid:message_id>")

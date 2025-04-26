@@ -80,6 +80,8 @@ class WorkflowRunApi(Resource):
         parser.add_argument("inputs", type=dict, required=True, nullable=False, location="json")
         parser.add_argument("files", type=list, required=False, location="json")
         parser.add_argument("response_mode", type=str, choices=["blocking", "streaming"], location="json")
+        parser.add_argument("is_async", type=bool, required=False, default=False, location="json")
+
         args = parser.parse_args()
 
         streaming = args.get("response_mode") == "streaming"
