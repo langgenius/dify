@@ -55,10 +55,12 @@
     right: var(--${buttonId}-right, 1rem); /* Align with dify-chatbot-bubble-button. */
     bottom: var(--${buttonId}-bottom, 1rem); /* Align with dify-chatbot-bubble-button. */
     left: unset;
-    width: 32rem;
+    min-width: 24rem;
+    width: 48%;
     max-width: calc(100vw - 2rem);
     min-height: 43.75rem;
-    height: calc(100vh - var(--${buttonId}-bottom, 1rem) - var(--${buttonId}-bottom, 1rem));
+    height: 88%;
+    max-height: calc(100vh - 6rem);
     border: none;
     z-index: 2147483640;
     overflow: hidden;
