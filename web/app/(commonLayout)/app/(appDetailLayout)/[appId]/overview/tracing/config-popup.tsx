@@ -221,10 +221,10 @@ const ConfigPopup: FC<PopupProps> = ({
             <>
               <div className='system-xs-medium-uppercase text-text-tertiary'>{t(`${I18N_PREFIX}.configProviderTitle.${providerAllConfigured ? 'configured' : 'notConfigured'}`)}</div>
               <div className='mt-2 space-y-2'>
-                {weavePanel}
-                {langSmithPanel}
                 {langfusePanel}
+                {langSmithPanel}
                 {opikPanel}
+                {weavePanel}
               </div>
             </>
           )
