@@ -28,7 +28,6 @@ workflow_queue_task_map = {
     StreamEvent.TEXT_CHUNK: QueueEvent.TEXT_CHUNK,
     StreamEvent.TEXT_REPLACE: QueueEvent.MESSAGE_REPLACE,
     StreamEvent.AGENT_LOG: QueueEvent.AGENT_LOG,
-
 }
 
 advance_chat_queue_task_map = {
@@ -65,5 +64,6 @@ class ForwardQueueMessage(AppQueueEvent):
     """
     ForwardQueueMessage entity
     """
+
     event: QueueEvent = QueueEvent.PING
     response: StreamResponse

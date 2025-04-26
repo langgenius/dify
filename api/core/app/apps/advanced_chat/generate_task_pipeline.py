@@ -296,12 +296,15 @@ class AdvancedChatAppGenerateTaskPipeline:
             app_mode=self._conversation_mode,
             message_id=self._message_id,
         )
-        worker_thread = threading.Thread(target=self._generate_worker, kwargs={
-            'flask_app': current_app._get_current_object(),
-            'queue_manager': queue_manager,
-            'context': contextvars.copy_context(),
-            'publisher': publisher
-        })
+        worker_thread = threading.Thread(
+            target=self._generate_worker,
+            kwargs={
+                "flask_app": current_app._get_current_object(),
+                "queue_manager": queue_manager,
+                "context": contextvars.copy_context(),
+                "publisher": publisher,
+            },
+        )
 
         worker_thread.start()
 
@@ -313,9 +316,9 @@ class AdvancedChatAppGenerateTaskPipeline:
             if isinstance(event, ForwardQueueMessage):
                 yield event.response
 
-    def _generate_worker(self, flask_app: Flask,
-                         queue_manager: AppQueueManager,
-                         context: contextvars.Context, publisher) -> None:
+    def _generate_worker(
+        self, flask_app: Flask, queue_manager: AppQueueManager, context: contextvars.Context, publisher
+    ) -> None:
         """
         Generate worker in a new thread.
         :param flask_app: Flask app
@@ -335,10 +338,9 @@ class AdvancedChatAppGenerateTaskPipeline:
                 queue_manager.publish(message, PublishFrom.TASK_PIPELINE)
 
     def _sync_process_stream_response(self, publisher):
-
-        for response in self._process_stream_response(publisher,
-                                                      trace_manager=self._application_generate_entity.trace_manager):
-
+        for response in self._process_stream_response(
+            publisher, trace_manager=self._application_generate_entity.trace_manager
+        ):
             while True:
                 audio_response = self._listen_audio_msg(publisher, task_id=self._application_generate_entity.task_id)
                 if audio_response:

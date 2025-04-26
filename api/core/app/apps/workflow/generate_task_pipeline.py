@@ -148,7 +148,7 @@ class WorkflowAppGenerateTaskPipeline:
                     data=WorkflowAppBlockingResponse.Data(
                         id=self._application_generate_entity.app_config.app_id,
                         workflow_id=self._workflow_id,
-                        status='processing',
+                        status="processing",
                         created_at=int(time.time()),
                     ),
                 )
@@ -258,9 +258,9 @@ class WorkflowAppGenerateTaskPipeline:
             if isinstance(event, ForwardQueueMessage):
                 yield event.response
 
-    def _generate_worker(self, flask_app: Flask,
-                         queue_manager: AppQueueManager,
-                         context: contextvars.Context, publisher) -> None:
+    def _generate_worker(
+        self, flask_app: Flask, queue_manager: AppQueueManager, context: contextvars.Context, publisher
+    ) -> None:
         """
         Generate worker in a new thread.
         :param flask_app: Flask app
@@ -288,20 +288,24 @@ class WorkflowAppGenerateTaskPipeline:
             app_mode=self._application_generate_entity.app_config.app_mode,
         )
 
-        worker_thread = threading.Thread(target=self._generate_worker, kwargs={
-            'flask_app': current_app._get_current_object(),
-            'queue_manager': queue_manager,
-            'context': contextvars.copy_context(),
-            'publisher': publisher
-        })
+        worker_thread = threading.Thread(
+            target=self._generate_worker,
+            kwargs={
+                "flask_app": current_app._get_current_object(),
+                "queue_manager": queue_manager,
+                "context": contextvars.copy_context(),
+                "publisher": publisher,
+            },
+        )
 
         worker_thread.start()
 
         yield from self._consumer_worker(queue_manager)
 
     def _sync_process_stream_response(self, publisher):
-        for response in self._process_stream_response(publisher,
-                                                      trace_manager=self._application_generate_entity.trace_manager):
+        for response in self._process_stream_response(
+            publisher, trace_manager=self._application_generate_entity.trace_manager
+        ):
             while True:
                 audio_response = self._listen_audio_msg(publisher, task_id=self._application_generate_entity.task_id)
                 if audio_response:
