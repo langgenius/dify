@@ -1,12 +1,18 @@
 import { useEffect, useRef, useState } from 'react'
 // import { useTranslation } from 'react-i18next'
+import { debounce } from 'lodash-es'
 import Textarea from '@/app/components/base/textarea'
 import SchemaEditor from '@/app/components/workflow/nodes/llm/components/json-schema-config-modal/schema-editor'
 import ErrorMessage from '@/app/components/workflow/nodes/llm/components/json-schema-config-modal/error-message'
 import {
-  validateArrayString,
+  checkJsonSchemaDepth,
+  getValidationErrorMessage,
+  validateSchemaAgainstDraft7,
+} from '@/app/components/workflow/nodes/llm/utils'
+import {
+  validateJSONSchema,
 } from '@/app/components/workflow/variable-inspect/utils'
-import { debounce } from 'lodash-es'
+import { JSON_SCHEMA_MAX_DEPTH } from '@/config'
 import cn from '@/utils/classnames'
 
 export const currentVar = {
@@ -17,19 +23,19 @@ export const currentVar = {
   name: 'out_put',
   // var_type: 'string',
   // var_type: 'number',
-  // var_type: 'object',
-  var_type: 'array[string]',
+  var_type: 'object',
+  // var_type: 'array[string]',
   // var_type: 'array[number]',
   // var_type: 'array[object]',
   // var_type: 'file',
   // var_type: 'array[file]',
   // value: 'tuituitui',
-  value: ['aaa', 'bbb', 'ccc'],
-  // value: {
-  //   abc: '123',
-  //   def: 456,
-  //   fff: true,
-  // },
+  // value: ['aaa', 'bbb', 'ccc'],
+  value: {
+    abc: '123',
+    def: 456,
+    fff: true,
+  },
   edited: true,
 }
 
@@ -58,14 +64,26 @@ const ValueContent = () => {
     }
   }
 
-  const arrayStringValidate = (value: string) => {
+  const jsonValueValidate = (value: string, type: string) => {
     try {
       const newJSONSchema = JSON.parse(value)
       setParseError(null)
-      const result = validateArrayString(newJSONSchema)
+      const result = validateJSONSchema(newJSONSchema, type)
       if (!result.success) {
         setValidationError(result.error.message)
         return false
+      }
+      if (type === 'object' || type === 'array[object]') {
+        const schemaDepth = checkJsonSchemaDepth(newJSONSchema)
+        if (schemaDepth > JSON_SCHEMA_MAX_DEPTH) {
+          setValidationError(`Schema exceeds maximum depth of ${JSON_SCHEMA_MAX_DEPTH}.`)
+          return false
+        }
+        const validationErrors = validateSchemaAgainstDraft7(newJSONSchema)
+        if (validationErrors.length > 0) {
+          setValidationError(getValidationErrorMessage(validationErrors))
+          return false
+        }
       }
       setValidationError('')
       return true
@@ -84,22 +102,11 @@ const ValueContent = () => {
   }
 
   const handleEditorChange = (value: string) => {
-    if (current.var_type === 'array[string]') {
-      setJson(value)
-      if (arrayStringValidate(value)) {
-        const parsed = JSON.parse(value)
-        setJsonSchema(parsed)
-      }
-      return
-    }
-    if (current.var_type === 'array[number]') {
-      // TODO update array[number]
-    }
-    if (current.var_type === 'object') {
-      // TODO update object
-    }
-    if (current.var_type === 'array[object]') {
-      // TODO update array[object]
+    setJson(value)
+    if (jsonValueValidate(value, current.var_type)) {
+      const parsed = JSON.parse(value)
+      setJsonSchema(parsed)
+      // TODO call api of value update
     }
   }
 
