@@ -4,8 +4,8 @@ import threading
 import time
 from collections.abc import Generator
 from typing import Optional, Union
-from flask import Flask, current_app
 
+from flask import Flask, current_app
 from sqlalchemy.orm import Session
 
 from constants.tts_auto_play_timeout import TTS_AUTO_PLAY_TIMEOUT, TTS_AUTO_PLAY_YIELD_CPU_TIME
@@ -43,18 +43,19 @@ from core.app.entities.queue_entities import (
     QueueWorkflowStartedEvent,
     QueueWorkflowSucceededEvent,
 )
-from core.app.entities.queue_task_bridge import workflow_queue_task_map, ForwardQueueMessage
+from core.app.entities.queue_task_bridge import ForwardQueueMessage, workflow_queue_task_map
 from core.app.entities.task_entities import (
     ErrorStreamResponse,
     MessageAudioEndStreamResponse,
     MessageAudioStreamResponse,
+    MessageStreamResponse,
     StreamResponse,
     TextChunkStreamResponse,
     WorkflowAppBlockingResponse,
     WorkflowAppStreamResponse,
     WorkflowFinishStreamResponse,
     WorkflowStartStreamResponse,
-    WorkflowTaskState, MessageStreamResponse,
+    WorkflowTaskState,
 )
 from core.app.task_pipeline.based_generate_task_pipeline import BasedGenerateTaskPipeline
 from core.app.task_pipeline.workflow_cycle_manage import WorkflowCycleManage

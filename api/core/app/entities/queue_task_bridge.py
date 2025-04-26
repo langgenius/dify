@@ -1,4 +1,4 @@
-from core.app.entities.queue_entities import QueueEvent, AppQueueEvent
+from core.app.entities.queue_entities import AppQueueEvent, QueueEvent
 from core.app.entities.task_entities import StreamEvent, StreamResponse
 
 workflow_queue_task_map = {

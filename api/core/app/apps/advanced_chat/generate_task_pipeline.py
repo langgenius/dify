@@ -8,7 +8,6 @@ from threading import Thread
 from typing import Any, Optional, Union
 
 from flask import Flask, current_app
-
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -51,7 +50,7 @@ from core.app.entities.queue_entities import (
     QueueWorkflowStartedEvent,
     QueueWorkflowSucceededEvent,
 )
-from core.app.entities.queue_task_bridge import advance_chat_queue_task_map, ForwardQueueMessage
+from core.app.entities.queue_task_bridge import ForwardQueueMessage, advance_chat_queue_task_map
 from core.app.entities.task_entities import (
     ChatbotAppBlockingResponse,
     ChatbotAppStreamResponse,
@@ -59,8 +58,9 @@ from core.app.entities.task_entities import (
     MessageAudioEndStreamResponse,
     MessageAudioStreamResponse,
     MessageEndStreamResponse,
+    MessageStreamResponse,
     StreamResponse,
-    WorkflowTaskState, MessageStreamResponse,
+    WorkflowTaskState,
 )
 from core.app.task_pipeline.based_generate_task_pipeline import BasedGenerateTaskPipeline
 from core.app.task_pipeline.message_cycle_manage import MessageCycleManage
