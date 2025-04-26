@@ -149,7 +149,7 @@ class AccountService:
     def authenticate(email: str, password: str, invite_token: Optional[str] = None) -> Account:
         """authenticate account with email and password"""
 
-        account = db.session.query(Account).filter_by(email=email).first()
+        account = db.session.query(Account).filter(func.lower(Account.email) == email.lower()).first()
         if not account:
             raise AccountNotFoundError()
 
