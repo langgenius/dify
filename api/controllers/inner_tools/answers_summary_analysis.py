@@ -252,10 +252,6 @@ class AnswersSummaryAnalysisApi(Resource):
                 }
             ]
         """
-        # Validate correct_answer list
-        if not correct_answer or not isinstance(correct_answer, list):
-            # Fallback to original behavior if no correct answers provided
-            return self._legacy_calculate_statistics(parsed_answers, categories)
 
         summary = []
 
@@ -306,65 +302,6 @@ class AnswersSummaryAnalysisApi(Resource):
             # Calculate statistics
             correct_rate = correct_answers / total_answers if total_answers > 0 else 0
             error_count = total_answers - correct_answers
-
-            summary.append(
-                {
-                    "category": category_name,
-                    "correct_rate": round(correct_rate, 2),
-                    "error_count": error_count,
-                    "total_count": total_answers,
-                }
-            )
-
-        return summary
-
-    def _legacy_calculate_statistics(
-        self, parsed_answers: List[Dict[str, Any]], categories: List[Dict[str, Any]]
-    ) -> List[Dict[str, Any]]:
-        """Legacy method for calculating statistics when no correct answers are provided.
-        This maintains backward compatibility with the original implementation."""
-        summary = []
-
-        # For each category in the list
-        for category in categories:
-            # Extract category name and question numbers
-            if isinstance(category, dict):
-                category_name = category.get('name', '')
-                question_numbers = category.get('items', [])
-
-                if not category_name or not question_numbers:
-                    category_name = next(iter(category))
-                    question_numbers = category.get(category_name, [])
-            elif isinstance(category, list) and len(category) == 2:
-                category_name = category[0]
-                question_numbers = category[1]
-            else:
-                continue  # Skip invalid category format
-
-            total_answers = 0
-            valid_answers = 0
-
-            for answer_data in parsed_answers:
-                answers = answer_data.get('answers', [])
-
-                # Check each question in this category
-                for q_num in question_numbers:
-                    try:
-                        # Convert to 0-based index
-                        idx = int(q_num) - 1
-                        if idx < 0 or idx >= len(answers):
-                            continue
-
-                        total_answers += 1
-                        # Count non-empty and non-placeholder answers as valid
-                        if answers[idx] and answers[idx] not in ['#', '?', '-']:
-                            valid_answers += 1
-                    except (ValueError, IndexError):
-                        continue
-
-            # Calculate percentage
-            correct_rate = valid_answers / total_answers if total_answers > 0 else 0
-            error_count = total_answers - valid_answers
 
             summary.append(
                 {
