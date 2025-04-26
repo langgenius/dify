@@ -413,7 +413,7 @@ class GenerateAnalysisReportApi(Resource):
                                     {% endif %}
                                 </div>
                                 <div style="position: absolute; right: 10px; top: 0; height: 100%; display: flex; align-items: center;">
-                                    <span style="color: #666;">总考生数{{ category.total_count }}</span>
+                                    <span style="color: #666;">总解答数{{ category.total_count }}</span>
                                 </div>
                                 <div style="position: absolute; right: -130px; top: 0; height: 100%; display: flex; align-items: center;">
                                     <span style="color: #666;">失分比{% if category.error_count == 0 %}0{% else %}{{ ((1 - category.correct_rate) * 100)|round }}{% endif %}%</span>
