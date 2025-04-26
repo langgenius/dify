@@ -6,6 +6,10 @@ import SelectField from './components/field/select'
 import CustomSelectField from './components/field/custom-select'
 import OptionsField from './components/field/options'
 import Actions from './components/form/actions'
+import InputTypeSelectField from './components/field/input-type-select'
+import FileTypesField from './components/field/file-types'
+import UploadMethodField from './components/field/upload-method'
+import NumberSliderField from './components/field/number-slider'
 
 export type FormType = ReturnType<typeof useFormContext>
 
@@ -20,6 +24,10 @@ export const { useAppForm, withForm } = createFormHook({
     SelectField,
     CustomSelectField,
     OptionsField,
+    InputTypeSelectField,
+    FileTypesField,
+    UploadMethodField,
+    NumberSliderField,
   },
   formComponents: {
     Actions,
