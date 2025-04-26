@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react'
 import { debounce } from 'lodash-es'
 import Textarea from '@/app/components/base/textarea'
 import SchemaEditor from '@/app/components/workflow/nodes/llm/components/json-schema-config-modal/schema-editor'
+import { FileUploaderInAttachmentWrapper } from '@/app/components/base/file-uploader'
 import ErrorMessage from '@/app/components/workflow/nodes/llm/components/json-schema-config-modal/error-message'
 import {
   checkJsonSchemaDepth,
@@ -12,7 +13,12 @@ import {
 import {
   validateJSONSchema,
 } from '@/app/components/workflow/variable-inspect/utils'
+import { useFeatures } from '@/app/components/base/features/hooks'
+import { getProcessedFiles } from '@/app/components/base/file-uploader/utils'
 import { JSON_SCHEMA_MAX_DEPTH } from '@/config'
+import { TransferMethod } from '@/types/app'
+import { FILE_EXTS } from '@/app/components/base/prompt-editor/constants'
+import { SupportUploadFileTypes } from '@/app/components/workflow/types'
 import cn from '@/utils/classnames'
 
 export const currentVar = {
@@ -23,19 +29,20 @@ export const currentVar = {
   name: 'out_put',
   // var_type: 'string',
   // var_type: 'number',
-  var_type: 'object',
+  // var_type: 'object',
   // var_type: 'array[string]',
   // var_type: 'array[number]',
   // var_type: 'array[object]',
   // var_type: 'file',
-  // var_type: 'array[file]',
+  var_type: 'array[file]',
   // value: 'tuituitui',
   // value: ['aaa', 'bbb', 'ccc'],
-  value: {
-    abc: '123',
-    def: 456,
-    fff: true,
-  },
+  // value: {
+  //   abc: '123',
+  //   def: 456,
+  //   fff: true,
+  // },
+  value: [],
   edited: true,
 }
 
@@ -53,6 +60,14 @@ const ValueContent = () => {
   const [json, setJson] = useState(JSON.stringify(jsonSchema, null, 2))
   const [parseError, setParseError] = useState<Error | null>(null)
   const [validationError, setValidationError] = useState<string>('')
+  const fileFeature = useFeatures(s => s.features.file)
+  const [fileValue, setFileValue] = useState<any>(
+    current.var_type === 'array[file]'
+    ? current.value || []
+    : current.value
+      ? [current.value]
+      : [],
+  )
 
   const handleTextChange = (value: string) => {
     if (current.var_type === 'string')
@@ -62,6 +77,7 @@ const ValueContent = () => {
       if (/^-?\d+(\.)?(\d+)?$/.test(value))
         setValue(value)
     }
+    // TODO call api of value update
   }
 
   const jsonValueValidate = (value: string, type: string) => {
@@ -110,12 +126,16 @@ const ValueContent = () => {
     }
   }
 
-  const handleFileChange = (value: string) => {
+  const handleFileChange = (value: any) => {
+    console.log('value', value)
+    setFileValue(value)
+    // TODO check every file upload progress
+    // invoke update api after every file uploaded
     if (current.var_type === 'file') {
-      // TODO update file
+      // TODO call api of value update
     }
     if (current.var_type === 'array[file]') {
-      // TODO update array[file]
+      // TODO call api of value update
     }
   }
 
@@ -160,7 +180,29 @@ const ValueContent = () => {
           />
         )}
         {showFileEditor && (
-          <div>TODO</div>
+          <div className='max-w-[460px]'>
+            <FileUploaderInAttachmentWrapper
+              value={fileValue}
+              onChange={files => handleFileChange(getProcessedFiles(files))}
+              fileConfig={{
+                allowed_file_types: [
+                  SupportUploadFileTypes.image,
+                  SupportUploadFileTypes.document,
+                  SupportUploadFileTypes.audio,
+                  SupportUploadFileTypes.video,
+                ],
+                allowed_file_extensions: [
+                  ...FILE_EXTS[SupportUploadFileTypes.image],
+                  ...FILE_EXTS[SupportUploadFileTypes.document],
+                  ...FILE_EXTS[SupportUploadFileTypes.audio],
+                  ...FILE_EXTS[SupportUploadFileTypes.video],
+                ],
+                allowed_file_upload_methods: [TransferMethod.local_file, TransferMethod.remote_url],
+                number_limits: current.var_type === 'file' ? 1 : (fileFeature as any).fileUploadConfig.workflow_file_upload_limit,
+                fileUploadConfig: (fileFeature as any).fileUploadConfig,
+              }}
+            />
+          </div>
         )}
       </div>
       <div ref={errorMessageRef} className='shrink-0'>
