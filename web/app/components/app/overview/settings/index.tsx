@@ -162,9 +162,20 @@ const SettingsModal: FC<ISettingsModalProps> = ({
       return check
     }
 
+    const validatePrivacyPolicy = (privacyPolicy: string | null) => {
+      if (privacyPolicy === null || privacyPolicy?.length === 0)
+        return true
+
+      return privacyPolicy.startsWith('http://') || privacyPolicy.startsWith('https://')
+    }
+
     if (inputInfo !== null) {
       if (!validateColorHex(inputInfo.chatColorTheme)) {
         notify({ type: 'error', message: t(`${prefixSettings}.invalidHexMessage`) })
+        return
+      }
+      if (!validatePrivacyPolicy(inputInfo.privacyPolicy)) {
+        notify({ type: 'error', message: t(`${prefixSettings}.invalidPrivacyPolicy`) })
         return
       }
     }
@@ -410,7 +421,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
                 <p className={cn('body-xs-regular pb-0.5 text-text-tertiary')}>
                   <Trans
                     i18nKey={`${prefixSettings}.more.privacyPolicyTip`}
-                    components={{ privacyPolicyLink: <Link href={'https://docs.dify.ai/user-agreement/privacy-policy'} target='_blank' rel='noopener noreferrer' className='text-text-accent' /> }}
+                    components={{ privacyPolicyLink: <Link href={'https://dify.ai/privacy'} target='_blank' rel='noopener noreferrer' className='text-text-accent' /> }}
                   />
                 </p>
                 <Input

@@ -134,7 +134,7 @@ const WorkflowAppLogList: FC<ILogs> = ({ logs, appDetail, onRefresh }) => {
         onClose={onCloseDrawer}
         mask={isMobile}
         footer={null}
-        panelClassname='mt-16 mx-2 sm:mr-2 mb-3 !p-0 !max-w-[600px] rounded-xl border border-components-panel-border'
+        panelClassName='mt-16 mx-2 sm:mr-2 mb-3 !p-0 !max-w-[600px] rounded-xl border border-components-panel-border'
       >
         <DetailPanel onClose={onCloseDrawer} runID={currentLog?.workflow_run.id || ''} />
       </Drawer>

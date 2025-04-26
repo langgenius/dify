@@ -35,6 +35,7 @@ const translation = {
     indexMethodChangeToEconomyDisabledTip: 'Não disponível para rebaixamento de HQ para ECO',
     helpText: 'Aprenda a escrever uma boa descrição do conjunto de dados.',
     upgradeHighQualityTip: 'Depois de atualizar para o modo de alta qualidade, reverter para o modo econômico não está disponível',
+    searchModel: 'Pesquisar modelo',
   },
 }
 

@@ -28,6 +28,7 @@ from extensions.ext_database import db
 from models.account import Account
 from models.enums import CreatedByRole
 from models.model import App, AppMode
+from models.tools import WorkflowToolProvider
 from models.workflow import (
     Workflow,
     WorkflowNodeExecution,
@@ -288,7 +289,7 @@ class WorkflowService:
             params={
                 "tenant_id": app_model.tenant_id,
                 "app_id": app_model.id,
-                "session_factory": db.session.get_bind,
+                "session_factory": db.session.get_bind(),
             }
         )
         repository.save(workflow_node_execution)
@@ -523,8 +524,19 @@ class WorkflowService:
             # Cannot delete a workflow that's currently in use by an app
             raise WorkflowInUseError(f"Cannot delete workflow that is currently in use by app '{app.name}'")
 
-        # Check if this workflow is published as a tool
-        if workflow.tool_published:
+        # Don't use workflow.tool_published as it's not accurate for specific workflow versions
+        # Check if there's a tool provider using this specific workflow version
+        tool_provider = (
+            session.query(WorkflowToolProvider)
+            .filter(
+                WorkflowToolProvider.tenant_id == workflow.tenant_id,
+                WorkflowToolProvider.app_id == workflow.app_id,
+                WorkflowToolProvider.version == workflow.version,
+            )
+            .first()
+        )
+
+        if tool_provider:
             # Cannot delete a workflow that's published as a tool
             raise WorkflowInUseError("Cannot delete workflow that is published as a tool")
 

@@ -5,6 +5,7 @@ from werkzeug.exceptions import Forbidden
 from controllers.console import api
 from controllers.console.wraps import account_initialization_required, setup_required
 from core.model_runtime.utils.encoders import jsonable_encoder
+from core.plugin.manager.exc import PluginPermissionDeniedError
 from libs.login import login_required
 from services.plugin.endpoint_service import EndpointService
 
@@ -28,15 +29,18 @@ class EndpointCreateApi(Resource):
         settings = args["settings"]
         name = args["name"]
 
-        return {
-            "success": EndpointService.create_endpoint(
-                tenant_id=user.current_tenant_id,
-                user_id=user.id,
-                plugin_unique_identifier=plugin_unique_identifier,
-                name=name,
-                settings=settings,
-            )
-        }
+        try:
+            return {
+                "success": EndpointService.create_endpoint(
+                    tenant_id=user.current_tenant_id,
+                    user_id=user.id,
+                    plugin_unique_identifier=plugin_unique_identifier,
+                    name=name,
+                    settings=settings,
+                )
+            }
+        except PluginPermissionDeniedError as e:
+            raise ValueError(e.description) from e
 
 
 class EndpointListApi(Resource):
