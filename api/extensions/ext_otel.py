@@ -42,7 +42,7 @@ class ExceptionLoggingHandler(logging.Handler):
     def emit(self, record):
         try:
             if record.exc_info:
-                tracer = get_tracer_provider().get_tracer(__name__)
+                tracer = get_tracer_provider().get_tracer("dify.exception.logging")
                 with tracer.start_as_current_span(
                     "log.exception",
                     attributes={
