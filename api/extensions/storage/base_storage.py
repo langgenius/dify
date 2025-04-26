@@ -31,6 +31,10 @@ class BaseStorage(ABC):
     def delete(self, filename):
         raise NotImplementedError
 
-    @abstractmethod
-    def scan(self, path, files, directories) -> list[str]:
-        raise NotImplementedError
+    def scan(self, path, files=True, directories=False) -> list[str]:
+        """
+        Scan files and directories in the given path.
+        This method is implemented only in some storage backends.
+        If a storage backend doesn't support scanning, it will raise NotImplementedError.
+        """
+        raise NotImplementedError("This storage backend doesn't support scanning")
