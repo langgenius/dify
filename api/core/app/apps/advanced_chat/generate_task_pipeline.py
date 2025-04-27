@@ -244,7 +244,9 @@ class AdvancedChatAppGenerateTaskPipeline:
                     is_end_with_finish = True
                     break
                 else:
-                    logger.info(f"TTS: convert audio trunk to audio stream response. message_id: {self._message_id}")
+                    logger.info(
+                        f"TTS: audio trunk status: {audio_trunk.status}, task_id: {task_id}, audio: {audio_trunk.audio}"
+                    )
                     start_listener_time = time.time()
                     yield MessageAudioStreamResponse(audio=audio_trunk.audio, task_id=task_id)
             except Exception as e:
