@@ -2,7 +2,7 @@ import type { DeepKeys } from '@tanstack/react-form'
 import type { FormType } from '../..'
 import type { Option } from '../../../select/pure'
 
-export enum BaseVarType {
+export enum BaseFieldType {
   textInput = 'textInput',
   numberInput = 'numberInput',
   checkbox = 'checkbox',
@@ -31,7 +31,7 @@ export type BaseConfiguration<T> = {
   required: boolean
   showOptional?: boolean // show optional label
   showConditions: ShowCondition<T>[] // Show this field only when all conditions are met
-  type: BaseVarType
+  type: BaseFieldType
   tooltip?: string // Tooltip for this field
 } & NumberConfiguration & SelectConfiguration
 

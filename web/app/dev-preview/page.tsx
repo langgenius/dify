@@ -1,6 +1,6 @@
 'use client'
 import BaseForm from '../components/base/form/form-scenarios/base'
-import { BaseVarType } from '../components/base/form/form-scenarios/base/types'
+import { BaseFieldType } from '../components/base/form/form-scenarios/base/types'
 
 export default function Page() {
   return (
@@ -16,21 +16,21 @@ export default function Page() {
           }}
           configurations={[
             {
-              type: BaseVarType.textInput,
+              type: BaseFieldType.textInput,
               variable: 'variable',
               label: 'Variable',
               required: true,
               showConditions: [],
             },
             {
-              type: BaseVarType.textInput,
+              type: BaseFieldType.textInput,
               variable: 'label',
               label: 'Label',
               required: true,
               showConditions: [],
             },
             {
-              type: BaseVarType.numberInput,
+              type: BaseFieldType.numberInput,
               variable: 'maxLength',
               label: 'Max Length',
               required: true,
@@ -39,14 +39,14 @@ export default function Page() {
               min: 1,
             },
             {
-              type: BaseVarType.checkbox,
+              type: BaseFieldType.checkbox,
               variable: 'required',
               label: 'Required',
               required: true,
               showConditions: [],
             },
             {
-              type: BaseVarType.select,
+              type: BaseFieldType.select,
               variable: 'type',
               label: 'Type',
               required: true,

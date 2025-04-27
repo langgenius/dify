@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react'
-import { type BaseConfiguration, BaseVarType } from './types'
+import { type BaseConfiguration, BaseFieldType } from './types'
 import { withForm } from '../..'
 import { useStore } from '@tanstack/react-form'
 
@@ -36,7 +36,7 @@ const BaseField = <T,>({
     if (!isAllConditionsMet)
       return <></>
 
-    if (type === BaseVarType.textInput) {
+    if (type === BaseFieldType.textInput) {
       return (
         <form.AppField
           name={variable}
@@ -55,7 +55,7 @@ const BaseField = <T,>({
       )
     }
 
-    if (type === BaseVarType.numberInput) {
+    if (type === BaseFieldType.numberInput) {
       return (
         <form.AppField
           name={variable}
@@ -76,7 +76,7 @@ const BaseField = <T,>({
       )
     }
 
-    if (type === BaseVarType.checkbox) {
+    if (type === BaseFieldType.checkbox) {
       return (
         <form.AppField
           name={variable}
@@ -89,7 +89,7 @@ const BaseField = <T,>({
       )
     }
 
-    if (type === BaseVarType.select) {
+    if (type === BaseFieldType.select) {
       return (
         <form.AppField
           name={variable}
