@@ -131,4 +131,4 @@ class MessageSuggestedApi(Resource):
 api.add_resource(MessageListApi, "/messages")
 api.add_resource(MessageFeedbackApi, "/messages/<uuid:message_id>/feedbacks")
 api.add_resource(MessageSuggestedApi, "/messages/<uuid:message_id>/suggested")
-api.add_resource(AppGetFeedbacksApi, "/feedbacks")
+api.add_resource(AppGetFeedbacksApi, "/app/feedbacks")
