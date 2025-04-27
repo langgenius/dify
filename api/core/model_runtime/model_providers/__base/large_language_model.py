@@ -20,6 +20,7 @@ from core.model_runtime.entities.model_entities import (
     PriceType,
 )
 from core.model_runtime.model_providers.__base.ai_model import AIModel
+from core.model_runtime.utils.helper import convert_llm_result_chunk_to_str
 from core.plugin.manager.model import PluginModelManager
 
 logger = logging.getLogger(__name__)
@@ -280,7 +281,8 @@ class LargeLanguageModel(AIModel):
                     callbacks=callbacks,
                 )
 
-                assistant_message.content += chunk.delta.message.content
+                text = convert_llm_result_chunk_to_str(chunk.delta.message.content)
+                assistant_message.content += text
                 real_model = chunk.model
                 if chunk.delta.usage:
                     usage = chunk.delta.usage
