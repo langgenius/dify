@@ -86,7 +86,7 @@ class TagUpdateDeleteApi(Resource):
 
         TagService.delete_tag(tag_id)
 
-        return 200
+        return 204
 
 
 class TagBindingCreateApi(Resource):

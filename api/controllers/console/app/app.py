@@ -159,7 +159,7 @@ class AppApi(Resource):
         app_service = AppService()
         app_service.delete_app(app_model)
 
-        return {"result": "success"}, 200
+        return {"result": "success"}, 204
 
 
 class AppCopyApi(Resource):
