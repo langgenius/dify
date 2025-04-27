@@ -48,3 +48,8 @@ class SchoolConfig(BaseSettings):
         description="App id for image generation.",
         default=None,
     )
+
+    DEBUG_ADMIN_PHONE: Optional[str] = Field(
+        description="Debug admin phone for DEMO school-level features.",
+        default=None,
+    )

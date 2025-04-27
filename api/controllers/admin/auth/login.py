@@ -1,10 +1,11 @@
 from typing import cast
 
 import flask_login  # type: ignore
+from configs import dify_config
 from controllers.admin import api
 from controllers.service_api_with_auth.auth.error import InvalidTokenError
 from controllers.service_api_with_auth.error import AccountInFreezeError, AccountNotFound
-from flask import Blueprint, request
+from flask import request
 from flask_restful import Api, Resource, reqparse  # type: ignore
 from libs.helper import extract_remote_ip
 from models.account import Account
@@ -52,20 +53,22 @@ class SendVerificationCodeApi(Resource):
         parser.add_argument("phone", type=str, required=True, location="json")
         args = parser.parse_args()
 
+        phone = args["phone"]
+
         ip_address = extract_remote_ip(request)
-        if AccountService.is_phone_send_ip_limit(ip_address):
+        if AccountService.is_phone_send_ip_limit(ip_address) and phone != dify_config.DEBUG_ADMIN_PHONE:
             return {"result": "fail", "data": "Too many requests from this IP address"}, 429
 
         try:
             # find account by phone number & chech role is end_admin
-            account = AccountService.get_admin_through_phone(args["phone"])
+            account = AccountService.get_admin_through_phone(phone)
         except AccountRegisterError:
             raise AccountInFreezeError()
 
         if account is None:
             return {"result": "fail", "data": "Phone number not registered as admin"}, 404
 
-        token = AccountService.send_phone_code_login(phone=args["phone"])
+        token = AccountService.send_phone_code_login(phone=phone)
 
         return {"result": "success", "data": token}
 
