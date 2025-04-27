@@ -5,11 +5,11 @@ from pydantic import BaseModel
 
 from core.plugin.entities.plugin import GenericProviderID, ToolProviderID
 from core.plugin.entities.plugin_daemon import PluginBasicBooleanResponse, PluginToolProviderEntity
-from core.plugin.manager.base import BasePluginManager
+from core.plugin.impl.base import BasePluginClient
 from core.tools.entities.tool_entities import ToolInvokeMessage, ToolParameter
 
 
-class PluginToolManager(BasePluginManager):
+class PluginToolManager(BasePluginClient):
     def fetch_tool_providers(self, tenant_id: str) -> list[PluginToolProviderEntity]:
         """
         Fetch tool providers for the given tenant.

@@ -18,9 +18,9 @@ from core.plugin.entities.plugin import (
     PluginInstallationSource,
 )
 from core.plugin.entities.plugin_daemon import PluginInstallTask, PluginUploadResponse
-from core.plugin.manager.asset import PluginAssetManager
-from core.plugin.manager.debugging import PluginDebuggingManager
-from core.plugin.manager.plugin import PluginInstallationManager
+from core.plugin.impl.asset import PluginAssetManager
+from core.plugin.impl.debugging import PluginDebuggingClient
+from core.plugin.impl.plugin import PluginInstaller
 from extensions.ext_redis import redis_client
 
 logger = logging.getLogger(__name__)
@@ -91,7 +91,7 @@ class PluginService:
         """
         get the debugging key of the tenant
         """
-        manager = PluginDebuggingManager()
+        manager = PluginDebuggingClient()
         return manager.get_debugging_key(tenant_id)
 
     @staticmethod
@@ -106,7 +106,7 @@ class PluginService:
         """
         list all plugins of the tenant
         """
-        manager = PluginInstallationManager()
+        manager = PluginInstaller()
         plugins = manager.list_plugins(tenant_id)
         return plugins
 
@@ -115,7 +115,7 @@ class PluginService:
         """
         List plugin installations from ids
         """
-        manager = PluginInstallationManager()
+        manager = PluginInstaller()
         return manager.fetch_plugin_installation_by_ids(tenant_id, ids)
 
     @staticmethod
@@ -133,7 +133,7 @@ class PluginService:
         """
         check if the plugin unique identifier is already installed by other tenant
         """
-        manager = PluginInstallationManager()
+        manager = PluginInstaller()
         return manager.fetch_plugin_by_identifier(tenant_id, plugin_unique_identifier)
 
     @staticmethod
@@ -141,7 +141,7 @@ class PluginService:
         """
         Fetch plugin manifest
         """
-        manager = PluginInstallationManager()
+        manager = PluginInstaller()
         return manager.fetch_plugin_manifest(tenant_id, plugin_unique_identifier)
 
     @staticmethod
@@ -149,12 +149,12 @@ class PluginService:
         """
         Fetch plugin installation tasks
         """
-        manager = PluginInstallationManager()
+        manager = PluginInstaller()
         return manager.fetch_plugin_installation_tasks(tenant_id, page, page_size)
 
     @staticmethod
     def fetch_install_task(tenant_id: str, task_id: str) -> PluginInstallTask:
-        manager = PluginInstallationManager()
+        manager = PluginInstaller()
         return manager.fetch_plugin_installation_task(tenant_id, task_id)
 
     @staticmethod
@@ -162,7 +162,7 @@ class PluginService:
         """
         Delete a plugin installation task
         """
-        manager = PluginInstallationManager()
+        manager = PluginInstaller()
         return manager.delete_plugin_installation_task(tenant_id, task_id)
 
     @staticmethod
@@ -172,7 +172,7 @@ class PluginService:
         """
         Delete all plugin installation task items
         """
-        manager = PluginInstallationManager()
+        manager = PluginInstaller()
         return manager.delete_all_plugin_installation_task_items(tenant_id)
 
     @staticmethod
@@ -180,7 +180,7 @@ class PluginService:
         """
         Delete a plugin installation task item
         """
-        manager = PluginInstallationManager()
+        manager = PluginInstaller()
         return manager.delete_plugin_installation_task_item(tenant_id, task_id, identifier)
 
     @staticmethod
@@ -197,7 +197,7 @@ class PluginService:
             raise ValueError("you should not upgrade plugin with the same plugin")
 
         # check if plugin pkg is already downloaded
-        manager = PluginInstallationManager()
+        manager = PluginInstaller()
 
         try:
             manager.fetch_plugin_manifest(tenant_id, new_plugin_unique_identifier)
@@ -230,7 +230,7 @@ class PluginService:
         """
         Upgrade plugin with github
         """
-        manager = PluginInstallationManager()
+        manager = PluginInstaller()
         return manager.upgrade_plugin(
             tenant_id,
             original_plugin_unique_identifier,
@@ -250,7 +250,7 @@ class PluginService:
 
         returns: plugin_unique_identifier
         """
-        manager = PluginInstallationManager()
+        manager = PluginInstaller()
         return manager.upload_pkg(tenant_id, pkg, verify_signature)
 
     @staticmethod
@@ -265,7 +265,7 @@ class PluginService:
             f"https://github.com/{repo}/releases/download/{version}/{package}", dify_config.PLUGIN_MAX_PACKAGE_SIZE
         )
 
-        manager = PluginInstallationManager()
+        manager = PluginInstaller()
         return manager.upload_pkg(
             tenant_id,
             pkg,
@@ -279,12 +279,12 @@ class PluginService:
         """
         Upload a plugin bundle and return the dependencies.
         """
-        manager = PluginInstallationManager()
+        manager = PluginInstaller()
         return manager.upload_bundle(tenant_id, bundle, verify_signature)
 
     @staticmethod
     def install_from_local_pkg(tenant_id: str, plugin_unique_identifiers: Sequence[str]):
-        manager = PluginInstallationManager()
+        manager = PluginInstaller()
         return manager.install_from_identifiers(
             tenant_id,
             plugin_unique_identifiers,
@@ -298,7 +298,7 @@ class PluginService:
         Install plugin from github release package files,
         returns plugin_unique_identifier
         """
-        manager = PluginInstallationManager()
+        manager = PluginInstaller()
         return manager.install_from_identifiers(
             tenant_id,
             [plugin_unique_identifier],
@@ -322,7 +322,7 @@ class PluginService:
         if not dify_config.MARKETPLACE_ENABLED:
             raise ValueError("marketplace is not enabled")
 
-        manager = PluginInstallationManager()
+        manager = PluginInstaller()
         try:
             declaration = manager.fetch_plugin_manifest(tenant_id, plugin_unique_identifier)
         except Exception:
@@ -342,7 +342,7 @@ class PluginService:
         if not dify_config.MARKETPLACE_ENABLED:
             raise ValueError("marketplace is not enabled")
 
-        manager = PluginInstallationManager()
+        manager = PluginInstaller()
 
         # check if already downloaded
         for plugin_unique_identifier in plugin_unique_identifiers:
@@ -368,7 +368,7 @@ class PluginService:
 
     @staticmethod
     def uninstall(tenant_id: str, plugin_installation_id: str) -> bool:
-        manager = PluginInstallationManager()
+        manager = PluginInstaller()
         return manager.uninstall(tenant_id, plugin_installation_id)
 
     @staticmethod
@@ -376,5 +376,5 @@ class PluginService:
         """
         Check if the tools exist
         """
-        manager = PluginInstallationManager()
+        manager = PluginInstaller()
         return manager.check_tools_existence(tenant_id, provider_ids)

@@ -1,4 +1,4 @@
-from core.plugin.manager.tool import PluginToolManager
+from core.plugin.impl.tool import PluginToolManager
 from tests.integration_tests.plugin.__mock.http import setup_http_mock
 
 
