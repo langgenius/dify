@@ -230,26 +230,28 @@ class AdvancedChatAppGenerateTaskPipeline:
         while (time.time() - start_listener_time) < TTS_AUTO_PLAY_TIMEOUT:
             try:
                 if not tts_publisher:
-                    logging.info(f"TTS: tts_publisher is None")
+                    logger.info(f"TTS: tts_publisher is None")
                     break
                 audio_trunk = tts_publisher.check_and_get_audio()
                 if audio_trunk is None:
                     # release cpu
                     # sleep 20 ms ( 40ms => 1280 byte audio file,20ms => 640 byte audio file)
                     time.sleep(TTS_AUTO_PLAY_YIELD_CPU_TIME)
+                    logger.info(f"TTS: audio trunk is None, waiting. message_id: {self._message_id}")
                     continue
 
                 if audio_trunk.status == "finish":
                     is_end_with_finish = True
                     break
                 else:
+                    logger.info(f"TTS: convert audio trunk to audio stream response. message_id: {self._message_id}")
                     start_listener_time = time.time()
                     yield MessageAudioStreamResponse(audio=audio_trunk.audio, task_id=task_id)
             except Exception as e:
                 logger.exception(f"TTS: Failed to listen audio message, task_id: {task_id}")
                 break
 
-        logging.info(f"TTS: audio end, is_end_with_finish: {is_end_with_finish}")
+        logger.info(f"TTS: audio end, is_end_with_finish: {is_end_with_finish}")
         if tts_publisher:
             yield MessageAudioEndStreamResponse(audio="", task_id=task_id)
 
