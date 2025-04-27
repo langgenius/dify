@@ -1,16 +1,17 @@
 'use client'
-import InputFieldForm from '../components/base/form/form-scenarios/base'
+import BaseForm from '../components/base/form/form-scenarios/base'
 import { BaseVarType } from '../components/base/form/form-scenarios/base/types'
 
 export default function Page() {
   return (
     <div className='flex h-screen w-full items-center justify-center p-20'>
       <div className='w-[400px] rounded-lg border border-components-panel-border bg-components-panel-bg'>
-        <InputFieldForm
+        <BaseForm
           initialData={{
             type: 'option_1',
             variable: 'test',
             label: 'Test',
+            maxLength: 48,
             required: true,
           }}
           configurations={[
@@ -19,14 +20,18 @@ export default function Page() {
               variable: 'variable',
               label: 'Variable',
               required: true,
-              showConditions: [{
-                variable: 'type',
-                value: 'option_1',
-              }],
+              showConditions: [],
+            },
+            {
+              type: BaseVarType.textInput,
+              variable: 'label',
+              label: 'Label',
+              required: true,
+              showConditions: [],
             },
             {
               type: BaseVarType.numberInput,
-              variable: 'max_length',
+              variable: 'maxLength',
               label: 'Max Length',
               required: true,
               showConditions: [],

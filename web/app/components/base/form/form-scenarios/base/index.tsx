@@ -1,7 +1,8 @@
-import React from 'react'
+import React, { useMemo } from 'react'
 import { useAppForm } from '../..'
 import BaseField from './field'
 import type { BaseFormProps } from './types'
+import { generateZodSchema } from './utils'
 
 const BaseForm = <T,>({
   initialData,
@@ -9,11 +10,22 @@ const BaseForm = <T,>({
   onSubmit,
   CustomActions,
 }: BaseFormProps<T>) => {
+  const schema = useMemo(() => {
+    const schema = generateZodSchema<T>(configurations)
+    return schema
+  }, [configurations])
+
   const baseForm = useAppForm({
     defaultValues: initialData,
     validators: {
-      onSubmit: ({ value }) => {
-        console.log('onSubmit', value)
+      onChange: ({ value }) => {
+        const result = schema.safeParse(value)
+        if (!result.success) {
+          const issues = result.error.issues
+          const firstIssue = issues[0].message
+          return firstIssue
+        }
+        return undefined
       },
     },
     onSubmit: ({ value }) => {
