@@ -5,16 +5,10 @@ from collections.abc import Generator, Mapping
 from threading import Thread
 from typing import Any, Optional, Union
 
-from sqlalchemy import select
-from sqlalchemy.orm import Session
-
 from constants.tts_auto_play_timeout import TTS_AUTO_PLAY_TIMEOUT, TTS_AUTO_PLAY_YIELD_CPU_TIME
 from core.app.apps.advanced_chat.app_generator_tts_publisher import AppGeneratorTTSPublisher, AudioTrunk
 from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
-from core.app.entities.app_invoke_entities import (
-    AdvancedChatAppGenerateEntity,
-    InvokeFrom,
-)
+from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, InvokeFrom
 from core.app.entities.queue_entities import (
     QueueAdvancedChatMessageEndEvent,
     QueueAnnotationReplyEvent,
@@ -65,10 +59,9 @@ from extensions.ext_database import db
 from models import Conversation, EndUser, Message, MessageFile
 from models.account import Account
 from models.enums import CreatedByRole
-from models.workflow import (
-    Workflow,
-    WorkflowRunStatus,
-)
+from models.workflow import Workflow, WorkflowRunStatus
+from sqlalchemy import select
+from sqlalchemy.orm import Session
 
 logger = logging.getLogger(__name__)
 
@@ -231,10 +224,13 @@ class AdvancedChatAppGenerateTaskPipeline:
             yield response
 
         start_listener_time = time.time()
+
+        is_end_with_finish = False
         # timeout
         while (time.time() - start_listener_time) < TTS_AUTO_PLAY_TIMEOUT:
             try:
                 if not tts_publisher:
+                    logging.info(f"TTS: tts_publisher is None")
                     break
                 audio_trunk = tts_publisher.check_and_get_audio()
                 if audio_trunk is None:
@@ -242,14 +238,18 @@ class AdvancedChatAppGenerateTaskPipeline:
                     # sleep 20 ms ( 40ms => 1280 byte audio file,20ms => 640 byte audio file)
                     time.sleep(TTS_AUTO_PLAY_YIELD_CPU_TIME)
                     continue
+
                 if audio_trunk.status == "finish":
+                    is_end_with_finish = True
                     break
                 else:
                     start_listener_time = time.time()
                     yield MessageAudioStreamResponse(audio=audio_trunk.audio, task_id=task_id)
             except Exception as e:
-                logger.exception(f"Failed to listen audio message, task_id: {task_id}")
+                logger.exception(f"TTS: Failed to listen audio message, task_id: {task_id}")
                 break
+
+        logging.info(f"TTS: audio end, is_end_with_finish: {is_end_with_finish}")
         if tts_publisher:
             yield MessageAudioEndStreamResponse(audio="", task_id=task_id)
 
@@ -665,9 +665,11 @@ class AdvancedChatAppGenerateTaskPipeline:
                 url=file["remote_url"],
                 belongs_to="assistant",
                 upload_file_id=file["related_id"],
-                created_by_role=CreatedByRole.ACCOUNT
-                if message.invoke_from in {InvokeFrom.EXPLORE, InvokeFrom.DEBUGGER}
-                else CreatedByRole.END_USER,
+                created_by_role=(
+                    CreatedByRole.ACCOUNT
+                    if message.invoke_from in {InvokeFrom.EXPLORE, InvokeFrom.DEBUGGER}
+                    else CreatedByRole.END_USER
+                ),
                 created_by=message.from_account_id or message.from_end_user_id or "",
             )
             for file in self._recorded_files
