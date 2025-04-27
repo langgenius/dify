@@ -8,6 +8,7 @@ import { useTranslation } from 'react-i18next'
 import InstallMulti from './install-multi'
 import { useInstallOrUpdate } from '@/service/use-plugins'
 import useRefreshPluginList from '../../hooks/use-refresh-plugin-list'
+import { useCanInstallPluginFromMarketplace } from '@/app/components/plugins/plugin-page/use-permission'
 const i18nPrefix = 'plugin.installModal'
 
 type Props = {
@@ -74,6 +75,7 @@ const Install: FC<Props> = ({
       installedInfo: installedInfo!,
     })
   }
+  const { canInstallPluginFromMarketplace } = useCanInstallPluginFromMarketplace()
   return (
     <>
       <div className='flex flex-col items-start justify-center gap-4 self-stretch px-6 py-3'>
@@ -101,7 +103,7 @@ const Install: FC<Props> = ({
           <Button
             variant='primary'
             className='flex min-w-[72px] space-x-0.5'
-            disabled={!canInstall || isInstalling || selectedPlugins.length === 0}
+            disabled={!canInstall || isInstalling || selectedPlugins.length === 0 || !canInstallPluginFromMarketplace}
             onClick={handleInstall}
           >
             {isInstalling && <RiLoader2Line className='h-4 w-4 animate-spin-slow' />}
