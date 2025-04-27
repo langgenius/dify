@@ -6,7 +6,7 @@ const NECESSARY_DOMAIN = '*.sentry.io http://localhost:* http://127.0.0.1:* http
 const wrapResponseWithXFrameOptions = (response: NextResponse, pathname: string) => {
   // prevent clickjacking: https://owasp.org/www-community/attacks/Clickjacking
   // Chatbot page should be allowed to be embedded in iframe. It's a feature
-  if (process.env.NEXT_PUBLIC_ALLOW_EMBED !== 'true' && !pathname.startsWith('/chat'))
+  if (process.env.NEXT_PUBLIC_ALLOW_EMBED !== 'true' && !pathname.startsWith('/chat') && !pathname.startsWith('/workflow') && !pathname.startsWith('/completion'))
     response.headers.set('X-Frame-Options', 'DENY')
 
   return response
