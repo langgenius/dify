@@ -13,7 +13,7 @@ import Button from '@/app/components/base/button'
 import BlockIcon from '@/app/components/workflow/block-icon'
 import { BubbleX, Env } from '@/app/components/base/icons/src/vender/line/others'
 import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'
-import useCurrentVars from '../hooks/use-current-vars'
+import useCurrentVars from '../hooks/use-inspect-vars-crud'
 import cn from '@/utils/classnames'
 
 type Props = {

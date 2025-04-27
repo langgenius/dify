@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { RiLoader2Line, RiStopCircleFill } from '@remixicon/react'
 import Tooltip from '@/app/components/base/tooltip'
 import { useStore } from '../store'
-import useCurrentVars from '../hooks/use-current-vars'
+import useCurrentVars from '../hooks/use-inspect-vars-crud'
 import { WorkflowRunningStatus } from '@/app/components/workflow/types'
 import { NodeRunningStatus } from '@/app/components/workflow/types'
 import cn from '@/utils/classnames'
@@ -25,7 +25,7 @@ const VariableInspectTrigger: FC = () => {
   }, [workflowRunningData])
 
   const {
-    currentVars,
+    nodesWithInspectVars: currentVars,
     clearCurrentVars,
   } = useCurrentVars()
 
@@ -51,7 +51,7 @@ const VariableInspectTrigger: FC = () => {
             onClick={() => setShowVariableInspectPanel(true)}
           >
             {t('workflow.debug.variableInspect.trigger.cached')}
-            </div>
+          </div>
           <div
             className='system-xs-medium flex h-6 cursor-pointer items-center rounded-md border-[0.5px] border-effects-highlight bg-components-actionbar-bg px-1 text-text-tertiary shadow-lg backdrop-blur-sm hover:bg-components-actionbar-bg-accent hover:text-text-accent'
             onClick={clearCurrentVars}
@@ -74,7 +74,7 @@ const VariableInspectTrigger: FC = () => {
           >
             <div
               className='flex h-6 cursor-pointer items-center rounded-md border-[0.5px] border-effects-highlight bg-components-actionbar-bg px-1 shadow-lg backdrop-blur-sm hover:bg-components-actionbar-bg-accent'
-              // onClick={() => {}}
+            // onClick={() => {}}
             >
               <RiStopCircleFill className='h-4 w-4 text-text-accent' />
             </div>

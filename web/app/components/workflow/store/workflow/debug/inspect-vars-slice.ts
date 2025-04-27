@@ -11,10 +11,10 @@ type InspectVarsState = {
 type InspectVarsActions = {
   setCurrentFocusNodeId: (nodeId: string | null) => void
   setNodesWithInspectVars: (payload: NodeWithVar[]) => void
-  clearInspectVars: () => void
+  deleteAllInspectVars: () => void
   getAllInspectVars: () => NodeWithVar[]
   setNodeInspectVars: (nodeId: string, payload: NodeWithVar) => void
-  clearNodeInspectVars: (nodeId: string) => void
+  deleteNodeInspectVars: (nodeId: string) => void
   getNodeInspectVars: (nodeId: string) => NodeWithVar | undefined
   hasNodeInspectVars: (nodeId: string) => boolean
   setInspectVar: (nodeId: string, name: string, value: any) => void
@@ -41,7 +41,7 @@ export const createInspectVarsSlice: StateCreator<InspectVarsSliceShape> = (set,
     getAllInspectVars: () => {
       return get().nodesWithInspectVars
     },
-    clearInspectVars: () => {
+    deleteAllInspectVars: () => {
       set(() => ({
         nodesWithInspectVars: [],
       }))
@@ -62,7 +62,7 @@ export const createInspectVarsSlice: StateCreator<InspectVarsSliceShape> = (set,
         }
       })
     },
-    clearNodeInspectVars: (nodeId) => {
+    deleteNodeInspectVars: (nodeId) => {
       set(produce((state: InspectVarsSliceShape) => {
         const nodes = state.nodesWithInspectVars.filter(node => node.nodeId !== nodeId)
         state.nodesWithInspectVars = nodes

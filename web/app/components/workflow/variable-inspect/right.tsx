@@ -7,7 +7,7 @@ import {
 } from '@remixicon/react'
 import { useStore } from '../store'
 import { BlockEnum } from '../types'
-import useCurrentVars from '../hooks/use-current-vars'
+import useCurrentVars from '../hooks/use-inspect-vars-crud'
 import Empty from './empty'
 import ValueContent from './value-content'
 import ActionButton from '@/app/components/base/action-button'
@@ -65,29 +65,29 @@ const Right = ({ handleOpenMenu }: Props) => {
           </ActionButton>
         )}
         <div className='flex w-0 grow items-center gap-1'>
-        {current && (
-          <>
-            {current.type === 'environment' && (
-              <Env className='h-4 w-4 shrink-0 text-util-colors-violet-violet-600' />
-            )}
-            {current.type === 'conversation' && (
-              <BubbleX className='h-4 w-4 shrink-0 text-util-colors-teal-teal-700' />
-            )}
-            {current.type === 'node' && (
-              <>
-                <BlockIcon
-                  className='shrink-0'
-                  type={BlockEnum.LLM}
-                  size='xs'
-                />
-                <div className='system-sm-regular shrink-0 text-text-secondary'>LLM</div>
-                <div className='system-sm-regular shrink-0 text-text-quaternary'>/</div>
-              </>
-            )}
-            <div title={current.name} className='system-sm-semibold truncate text-text-secondary'>{current.name}</div>
-            <div className='system-xs-medium ml-1 shrink-0 text-text-tertiary'>{current.var_type}</div>
-          </>
-        )}
+          {current && (
+            <>
+              {current.type === 'environment' && (
+                <Env className='h-4 w-4 shrink-0 text-util-colors-violet-violet-600' />
+              )}
+              {current.type === 'conversation' && (
+                <BubbleX className='h-4 w-4 shrink-0 text-util-colors-teal-teal-700' />
+              )}
+              {current.type === 'node' && (
+                <>
+                  <BlockIcon
+                    className='shrink-0'
+                    type={BlockEnum.LLM}
+                    size='xs'
+                  />
+                  <div className='system-sm-regular shrink-0 text-text-secondary'>LLM</div>
+                  <div className='system-sm-regular shrink-0 text-text-quaternary'>/</div>
+                </>
+              )}
+              <div title={current.name} className='system-sm-semibold truncate text-text-secondary'>{current.name}</div>
+              <div className='system-xs-medium ml-1 shrink-0 text-text-tertiary'>{current.var_type}</div>
+            </>
+          )}
         </div>
         <div className='flex shrink-0 items-center gap-1'>
           {current && (

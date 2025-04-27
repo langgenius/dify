@@ -394,4 +394,6 @@ export type NodeWithVar = {
   nodeType: BlockEnum
   title: string
   vars: VarInInspect[]
+  isFetchingValues?: boolean
+  isSingRunRunning: boolean
 }
